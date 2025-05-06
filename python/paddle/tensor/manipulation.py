@@ -1458,8 +1458,6 @@ def concat(
         else:
             input = [input]
 
-        if not isinstance(input, paddle.pir.Value):
-            input = [t for t in input if t.shape.count(0) == 0]
         return _C_ops.concat(input, axis)
     else:
         check_type(input, 'input', (list, tuple, Variable), 'concat')
@@ -4056,6 +4054,7 @@ def gather(
             x,
             'x',
             [
+                'bool',
                 'float16',
                 'float32',
                 'float64',
@@ -6010,10 +6009,10 @@ def tensordot(
         sx, sy = shape_x[dim_x], shape_y[dim_y]
         if sx == 1:
             shape_y[dim_y] = 1
-            y = y.sum(dim_y).reshape(shape_y)
+            y = y.sum(dim_y, dtype=y.dtype).reshape(shape_y)
         elif sy == 1:
             shape_x[dim_x] = 1
-            x = x.sum(dim_x).reshape(shape_x)
+            x = x.sum(dim_x, dtype=x.dtype).reshape(shape_x)
         else:
             assert sx == sy, (
                 "The dimensional size for 'x' and 'y' in "
@@ -6559,7 +6558,11 @@ def take_along_axis(
         arr = paddle.broadcast_to(arr, broadcast_shape)
     else:
         for i in range(len(arr.shape)):
-            if i != axis and arr.shape[i] < indices.shape[i]:
+            if (
+                i != axis
+                and arr.shape[i] != -1
+                and arr.shape[i] < indices.shape[i]
+            ):
                 raise RuntimeError(
                     f"Size does not match at dimension {i} expected index {indices.shape} to be smaller than self {arr.shape} apart from dimension {axis}"
                 )

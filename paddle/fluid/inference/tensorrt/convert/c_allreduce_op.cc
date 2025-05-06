@@ -20,8 +20,7 @@ namespace paddle::inference::tensorrt {
 using ReduceType = paddle::inference::tensorrt::plugin::ReduceType;
 std::map<std::string, ReduceType> op_to_reduce_type = {
     {"c_allreduce_sum", paddle::inference::tensorrt::plugin::kRedSum},
-    {"c_allreduce_min", paddle::inference::tensorrt::plugin::kRedMin},
-    {"c_allreduce_prod", paddle::inference::tensorrt::plugin::kRedProd}};
+};
 
 class CAllReduceOpConverter : public OpConverter {
  public:
@@ -88,5 +87,3 @@ class CAllReduceOpConverter : public OpConverter {
 }  // namespace paddle::inference::tensorrt
 
 REGISTER_TRT_OP_CONVERTER(c_allreduce_sum, CAllReduceOpConverter);
-REGISTER_TRT_OP_CONVERTER(c_allreduce_min, CAllReduceOpConverter);
-REGISTER_TRT_OP_CONVERTER(c_allreduce_prod, CAllReduceOpConverter);

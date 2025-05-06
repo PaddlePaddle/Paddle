@@ -32,6 +32,11 @@ void NonZeroKernel(const Context& dev_ctx,
 
   using XPUType = typename XPUTypeTrait<T>::Type;
 
+  if (numel == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
+
   xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
   int64_t* true_num = RAII_GUARD.alloc_l3_or_gm<int64_t>(1);
   int64_t* workspace =

@@ -364,7 +364,7 @@ inline void pir_run_program_ad_func(
 
     grad_node->SetFwdParams(params_tmp);
 
-    grad_node->SetStepScope(step_scope);  // just for set useable.
+    grad_node->SetStepScope(step_scope);  // just for set usable.
 
     grad_node->SetGradOutMeta(x, /*slot id*/ 0);
     grad_node->SetGradOutMeta(params, /*slot id*/ 1);

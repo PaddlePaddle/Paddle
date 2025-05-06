@@ -24,26 +24,27 @@ import numpy as np
 
 import paddle
 
-from ...symbolic_shape import (
+from ...symbolic_shape.operators import (
     SYMBOLIC_BINARY_OPS,
     SYMBOLIC_UNARY_OPS,
     symbolic_not,
     symbolic_to_bool,
 )
 from ...utils import (
+    NUMPY_API_SUPPORTED_DICT,
     BreakGraphError,
     BuiltinFunctionBreak,
     FallbackError,
     UnsupportedIteratorBreak,
     UnsupportedOperationBreak,
     do_until_stop_iteration,
-    get_numpy_ufuncs,
 )
 from ...utils.exceptions import InnerError
 from ...utils.magic_methods import (
     BINARY_OPS,
     UNARY_OPS,
     magic_method_builtin_dispatch,
+    non_inplace_op_to_inplace_op,
 )
 from .dispatch_functions import (
     create_raise_break_graph_handler,
@@ -1150,22 +1151,32 @@ for unary_fn in SYMBOLIC_UNARY_OPS:
         ),
     )
 for binary_fn in SYMBOLIC_BINARY_OPS:
-    Dispatcher.register(
-        binary_fn,
-        ("SymbolicVariable", "SymbolicVariable | ConstantVariable"),
-        partial(
-            lambda fn, var, other: var.graph.call_symbolic_api(fn, var, other),
-            binary_fn,
-        ),
-    )
-    Dispatcher.register(
-        binary_fn,
-        ("ConstantVariable", "SymbolicVariable"),
-        partial(
-            lambda fn, var, other: var.graph.call_symbolic_api(fn, var, other),
-            binary_fn,
-        ),
-    )
+    register_fns = [binary_fn]
+    if (
+        inplace_binary_fn := non_inplace_op_to_inplace_op(binary_fn)
+    ) is not None:
+        register_fns.append(inplace_binary_fn)
+    for register_fn in register_fns:
+        Dispatcher.register(
+            register_fn,
+            ("SymbolicVariable", "SymbolicVariable | ConstantVariable"),
+            partial(
+                lambda fn, var, other: var.graph.call_symbolic_api(
+                    fn, var, other
+                ),
+                binary_fn,
+            ),
+        )
+        Dispatcher.register(
+            register_fn,
+            ("ConstantVariable", "SymbolicVariable"),
+            partial(
+                lambda fn, var, other: var.graph.call_symbolic_api(
+                    fn, var, other
+                ),
+                binary_fn,
+            ),
+        )
 
 
 @Dispatcher.register_decorator(bool)
@@ -1452,11 +1463,8 @@ Dispatcher.register(
 
 # NumpyVariable dispatch
 def constant_numpy_equal(left, right):
-    numpy_ans = left.get_py_value() == right.get_py_value()
-    return VariableFactory.from_value(
-        numpy_ans,
-        left.graph,
-        tracker=DummyTracker([left, right]),
+    return left.graph.call_numpy_api(
+        NUMPY_API_SUPPORTED_DICT[np.equal], left, right
     )
 
 
@@ -1548,36 +1556,6 @@ Dispatcher.register(
     ),
 )
 
-unary_ufuncs, binary_ufuncs = get_numpy_ufuncs()
-for ufunc in unary_ufuncs:
-    Dispatcher.register(
-        ufunc,
-        ("ConstantVariable | NumpyNumberVariable",),
-        partial(
-            lambda ufunc, var: VariableFactory.from_value(
-                ufunc(var.get_py_value()),
-                var.graph,
-                tracker=DummyTracker([var]),
-            ),
-            ufunc,
-        ),
-    )
-for ufunc in binary_ufuncs:
-    Dispatcher.register(
-        ufunc,
-        (
-            "ConstantVariable | NumpyNumberVariable",
-            "ConstantVariable | NumpyNumberVariable",
-        ),
-        partial(
-            lambda ufunc, var, other: VariableFactory.from_value(
-                ufunc(var.get_py_value(), other.get_py_value()),
-                var.graph,
-                tracker=DummyTracker([var, other]),
-            ),
-            ufunc,
-        ),
-    )
 
 # place
 Dispatcher.register(

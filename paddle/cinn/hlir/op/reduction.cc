@@ -54,20 +54,21 @@ std::shared_ptr<OpStrategy> StrategyForReduceSymbolic(
     const std::vector<std::vector<ir::Dim>> &output_shapes,
     const Target &target,
     const std::string &op_name,
-    ReduceFunc common_reduce_func) {
+    ReduceFunc common_reduce_func,
+    bool is_composite_reduce = false) {
   std::vector<int> reduce_axes;
   auto ndim = inputs[0]->shape.size();
   if (attrs.attr_store.count("axis")) {
     reduce_axes = [&] {
-      if (absl::holds_alternative<std::vector<int64_t>>(
+      if (std::holds_alternative<std::vector<int64_t>>(
               attrs.attr_store.at("axis"))) {
         const auto &dim_attr =
-            absl::get<std::vector<int64_t>>(attrs.attr_store.at("axis"));
+            std::get<std::vector<int64_t>>(attrs.attr_store.at("axis"));
         return std::vector<int>(dim_attr.begin(), dim_attr.end());
-      } else if (absl::holds_alternative<std::vector<int>>(
+      } else if (std::holds_alternative<std::vector<int>>(
                      attrs.attr_store.at("axis"))) {
-        return absl::get<std::vector<int>>(attrs.attr_store.at("axis"));
-      } else if (absl::holds_alternative<bool>(attrs.attr_store.at("axis"))) {
+        return std::get<std::vector<int>>(attrs.attr_store.at("axis"));
+      } else if (std::holds_alternative<bool>(attrs.attr_store.at("axis"))) {
         return std::vector<int>{};
       } else {
         PADDLE_THROW(::common::errors::InvalidArgument(
@@ -112,7 +113,7 @@ std::shared_ptr<OpStrategy> StrategyForReduceSymbolic(
 
   bool keepdim = false;
   if (attrs.attr_store.count("keepdim")) {
-    keepdim = absl::get<bool>(attrs.attr_store.at("keepdim"));
+    keepdim = std::get<bool>(attrs.attr_store.at("keepdim"));
   }
 
   framework::CINNCompute reduction_compute([=](lang::Args args,
@@ -149,6 +150,15 @@ std::shared_ptr<OpStrategy> StrategyForReduceSymbolic(
 
     VLOG(3) << "Do Reduce Compute!";
     auto out = common_reduce_func(x, reduce_axes, keepdim, tensor_name);
+    if (is_composite_reduce) {
+      PADDLE_ENFORCE_GT(
+          out_type.size(),
+          0,
+          ::common::errors::InvalidArgument(
+              "Out type vector is empty, this is invalid for arg reduce op"));
+      out->set_type(out_type[0]);
+      VLOG(4) << "Arg Reduce: out type: " << out->type();
+    }
 
     std::vector<CINNValue> cinn_values{CINNValue(out)};
     *ret = CINNValuePack{cinn_values};
@@ -160,32 +170,62 @@ std::shared_ptr<OpStrategy> StrategyForReduceSymbolic(
   return strategy;
 }
 
-#define STRATEGY_FOR_REDUCE_SYMBOLIC(op_name_, reduce_op_, common_reduce_func) \
-  std::shared_ptr<OpStrategy> StrategyFor##reduce_op_##Symbolic(               \
-      const framework::NodeAttr &attrs,                                        \
-      const std::vector<ir::Tensor> &inputs,                                   \
-      const std::vector<Type> &out_type,                                       \
-      const std::vector<std::vector<ir::Dim>> &output_shapes,                  \
-      const Target &target) {                                                  \
-    return StrategyForReduceSymbolic(attrs,                                    \
-                                     inputs,                                   \
-                                     out_type,                                 \
-                                     output_shapes,                            \
-                                     target,                                   \
-                                     #op_name_,                                \
-                                     common_reduce_func);                      \
+#define STRATEGY_FOR_REDUCE_SYMBOLIC(                              \
+    op_name_, reduce_op_, common_reduce_func, is_composite_reduce) \
+  std::shared_ptr<OpStrategy> StrategyFor##reduce_op_##Symbolic(   \
+      const framework::NodeAttr &attrs,                            \
+      const std::vector<ir::Tensor> &inputs,                       \
+      const std::vector<Type> &out_type,                           \
+      const std::vector<std::vector<ir::Dim>> &output_shapes,      \
+      const Target &target) {                                      \
+    return StrategyForReduceSymbolic(attrs,                        \
+                                     inputs,                       \
+                                     out_type,                     \
+                                     output_shapes,                \
+                                     target,                       \
+                                     #op_name_,                    \
+                                     common_reduce_func,           \
+                                     is_composite_reduce);         \
   }
 
-STRATEGY_FOR_REDUCE_SYMBOLIC(reduce_sum, ReduceSum, pe::ReduceSum);
-STRATEGY_FOR_REDUCE_SYMBOLIC(reduce_prod, ReduceProd, pe::ReduceProd);
-STRATEGY_FOR_REDUCE_SYMBOLIC(reduce_max, ReduceMax, pe::ReduceMax);
-STRATEGY_FOR_REDUCE_SYMBOLIC(reduce_min, ReduceMin, pe::ReduceMin);
-STRATEGY_FOR_REDUCE_SYMBOLIC(reduce_all, ReduceAll, pe::ReduceAll);
-STRATEGY_FOR_REDUCE_SYMBOLIC(reduce_any, ReduceAny, pe::ReduceAny);
-STRATEGY_FOR_REDUCE_SYMBOLIC(variance, Variance, pe::Variance);
+#define COMPOSITE_REDUCE_FLAG true
+#define NORMAL_REDUCE_FLAG false
+
+STRATEGY_FOR_REDUCE_SYMBOLIC(reduce_sum,
+                             ReduceSum,
+                             pe::ReduceSum,
+                             NORMAL_REDUCE_FLAG);
+STRATEGY_FOR_REDUCE_SYMBOLIC(reduce_prod,
+                             ReduceProd,
+                             pe::ReduceProd,
+                             NORMAL_REDUCE_FLAG);
+STRATEGY_FOR_REDUCE_SYMBOLIC(reduce_max,
+                             ReduceMax,
+                             pe::ReduceMax,
+                             NORMAL_REDUCE_FLAG);
+STRATEGY_FOR_REDUCE_SYMBOLIC(reduce_min,
+                             ReduceMin,
+                             pe::ReduceMin,
+                             NORMAL_REDUCE_FLAG);
+STRATEGY_FOR_REDUCE_SYMBOLIC(reduce_all,
+                             ReduceAll,
+                             pe::ReduceAll,
+                             NORMAL_REDUCE_FLAG);
+STRATEGY_FOR_REDUCE_SYMBOLIC(reduce_any,
+                             ReduceAny,
+                             pe::ReduceAny,
+                             NORMAL_REDUCE_FLAG);
+STRATEGY_FOR_REDUCE_SYMBOLIC(variance,
+                             Variance,
+                             pe::Variance,
+                             NORMAL_REDUCE_FLAG);
+STRATEGY_FOR_REDUCE_SYMBOLIC(argmax, Argmax, pe::Argmax, COMPOSITE_REDUCE_FLAG);
+STRATEGY_FOR_REDUCE_SYMBOLIC(argmin, Argmin, pe::Argmin, COMPOSITE_REDUCE_FLAG);
 
 #undef STRATEGY_FOR_REDUCE
 #undef STRATEGY_FOR_REDUCE_SYMBOLIC
+#undef COMPOSITE_REDUCE_FLAG
+#undef NORMAL_REDUCE_FLAG
 
 }  // namespace op
 }  // namespace hlir
@@ -210,6 +250,8 @@ CINN_REGISTER_HELPER(reduce_ops) {
   CINN_REGISTER_REDUCTION(reduce_sum, ReduceSum);
   CINN_REGISTER_REDUCTION(reduce_prod, ReduceProd);
   CINN_REGISTER_REDUCTION(variance, Variance);
+  CINN_REGISTER_REDUCTION(argmax, Argmax);
+  CINN_REGISTER_REDUCTION(argmin, Argmin);
   CINN_REGISTER_REDUCTION(reduce_max, ReduceMax);
   CINN_REGISTER_REDUCTION(reduce_min, ReduceMin);
 

@@ -35,6 +35,7 @@ from paddle.tensorrt.converter_utils import (
     trt_unsqueeze,
 )
 from paddle.tensorrt.register import converter_registry
+from paddle.tensorrt.util import RefitManager
 
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
@@ -547,8 +548,15 @@ def anchor_generator_converter(network, paddle_op, inputs):
 
 @converter_registry.register("pd_op.affine_channel", trt_version="8.x")
 def affine_channel_converter(network, paddle_op, inputs):
-    x, scale_weights, bias_weights = inputs
+    x, scale, bias = inputs
     data_layout = paddle_op.attrs().get("data_layout")
+    if isinstance(scale, trt.ITensor):
+        refit_manager = RefitManager()
+        scale_weights = refit_manager.get_trt_weight_tensor(scale.name)
+        bias_weights = refit_manager.get_trt_weight_tensor(bias.name)
+    else:
+        scale_weights = scale
+        bias_weights = bias
 
     if data_layout == "NCHW":
         channel_axis = 1
@@ -562,11 +570,6 @@ def affine_channel_converter(network, paddle_op, inputs):
         channel_axis = 1
     else:
         raise ValueError(f"affine_channel: Unsupported layout: {data_layout}")
-
-    if not isinstance(scale_weights, trt.Weights):
-        raise TypeError("affine_channel requires scale as trt.Weights")
-    if not isinstance(bias_weights, trt.Weights):
-        raise TypeError("affine_channel requires bias as trt.Weights")
 
     if scale_weights.size != bias_weights.size:
         raise ValueError(

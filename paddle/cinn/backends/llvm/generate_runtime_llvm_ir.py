@@ -24,10 +24,10 @@ def main():
     llvm_config = sys.argv[3]
 
     srcs = []
-    srcs.append('#include <absl/strings/string_view.h>')
+    srcs.append('#include <string_view>')
     # srcs.append('#include "paddle/cinn/backends/llvm/cinn_runtime_llvm_ir.h"\n')
     srcs.append('namespace cinn::backends {')
-    srcs.append("static const absl::string_view kRuntimeLlvmIr(")
+    srcs.append("static const std::string_view kRuntimeLlvmIr(")
     srcs.append('R"ROC(')
     with open(path, 'r') as fr:
         srcs.append(fr.read())
