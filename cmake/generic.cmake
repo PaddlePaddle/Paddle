@@ -276,14 +276,23 @@ function(merge_static_libs TARGET_NAME)
     set(mri_file
         ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME}.mri
         CACHE INTERNAL "phi_static.mri file")
-    set(ABS_MERGE_LIB_PATH $<TARGET_FILE:${TARGET_NAME}>)
-    file(WRITE ${mri_file} "create ${ABS_MERGE_LIB_PATH}\n")
-
+    add_custom_command(
+      TARGET ${TARGET_NAME}
+      POST_BUILD
+      COMMAND ${CMAKE_COMMAND} -E echo "create $<TARGET_FILE:${TARGET_NAME}>" >
+              ${mri_file})
     foreach(lib ${libs})
-      set(ABS_LIB_PATH $<TARGET_FILE:${lib}>)
-      file(APPEND ${mri_file} "addlib ${ABS_LIB_PATH}\n")
+      add_custom_command(
+        TARGET ${TARGET_NAME}
+        POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E echo "addlib $<TARGET_FILE:${lib}>" >>
+                ${mri_file})
     endforeach()
-    file(APPEND ${mri_file} "save\nend\n")
+    add_custom_command(
+      TARGET ${TARGET_NAME}
+      POST_BUILD
+      COMMAND ${CMAKE_COMMAND} -E echo "save" >> ${mri_file}
+      COMMAND ${CMAKE_COMMAND} -E echo "end" >> ${mri_file})
 
     add_custom_command(
       TARGET ${TARGET_NAME}
