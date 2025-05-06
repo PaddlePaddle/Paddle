@@ -5176,16 +5176,16 @@ void SendUERecvInferMeta(const MetaTensor& x,
 
   // Infer out's shape according to x and e(need broadcasting condition)
   out->set_dtype(x.dtype());
-  auto x_dims1 = common::vectorize<int>(x_dims);
-  auto y_dims1 = common::vectorize<int>(y_dims);
-  std::vector<int> x_dims2(x_dims1.begin() + 1, x_dims1.end());
-  std::vector<int> y_dims2(y_dims1.begin() + 1, y_dims1.end());
+  auto x_dims1 = common::vectorize<int64_t>(x_dims);
+  auto y_dims1 = common::vectorize<int64_t>(y_dims);
+  std::vector<int64_t> x_dims2(x_dims1.begin() + 1, x_dims1.end());
+  std::vector<int64_t> y_dims2(y_dims1.begin() + 1, y_dims1.end());
 
   int max_dim = static_cast<int>(std::max(x_dims2.size(), y_dims2.size()));
   int axis = std::abs(static_cast<int>(x_dims2.size() - y_dims2.size()));
-  std::vector<int> x_dims_array(max_dim);
-  std::vector<int> y_dims_array(max_dim);
-  std::vector<int> out_dims_array(max_dim);
+  std::vector<int64_t> x_dims_array(max_dim);
+  std::vector<int64_t> y_dims_array(max_dim);
+  std::vector<int64_t> out_dims_array(max_dim);
   // Only need to broadcast dimensions other than the 0th dimension.
   phi::funcs::GetBroadcastDimsArrays(common::make_ddim(x_dims2),
                                      common::make_ddim(y_dims2),
@@ -5247,15 +5247,15 @@ void SendUVInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
   auto x_dims = x.dims();
   auto y_dims = y.dims();
-  auto x_dims1 = common::vectorize<int>(x_dims);
-  auto y_dims1 = common::vectorize<int>(y_dims);
-  std::vector<int> x_dims2(x_dims1.begin() + 1, x_dims1.end());
-  std::vector<int> y_dims2(y_dims1.begin() + 1, y_dims1.end());
+  auto x_dims1 = common::vectorize<int64_t>(x_dims);
+  auto y_dims1 = common::vectorize<int64_t>(y_dims);
+  std::vector<int64_t> x_dims2(x_dims1.begin() + 1, x_dims1.end());
+  std::vector<int64_t> y_dims2(y_dims1.begin() + 1, y_dims1.end());
   int max_dim = static_cast<int>(std::max(x_dims2.size(), y_dims2.size()));
   int axis = std::abs(static_cast<int>(x_dims2.size() - y_dims2.size()));
-  std::vector<int> x_dims_array(max_dim);
-  std::vector<int> y_dims_array(max_dim);
-  std::vector<int> out_dims_array(max_dim);
+  std::vector<int64_t> x_dims_array(max_dim);
+  std::vector<int64_t> y_dims_array(max_dim);
+  std::vector<int64_t> out_dims_array(max_dim);
   // Only need to broadcast dimensions other than the 0th dimension.
   phi::funcs::GetBroadcastDimsArrays(common::make_ddim(x_dims2),
                                      common::make_ddim(y_dims2),
