@@ -54,7 +54,6 @@ class TestArange(unittest.TestCase):
         self.eval(func, [])
 
     def test_different_input_default(self):
-        # reduce axis = None case
         def func():
             # kwargs
             tensor = paddle.arange(start=1024, end=0, step=-4, dtype="int32")
@@ -69,7 +68,7 @@ class TestArange(unittest.TestCase):
         self.eval(func, [])
 
     def test_arange_slice_reshape_index(self):
-        # tensor slicing, grid reduce, func composition
+        # tensor slicing, indexing and reshaping
         def func(x):
             indices = paddle.arange(2048, dtype="int64")[:1024]
             return x[indices, :1].reshape([1, -1])
