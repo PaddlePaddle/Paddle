@@ -13,9 +13,9 @@
 // limitations under the License.
 
 #pragma once
-#include <absl/types/any.h>
-#include <isl/cpp.h>
 
+#include <isl/cpp.h>
+#include <any>
 #include <mutex>
 #include <set>
 #include <string>

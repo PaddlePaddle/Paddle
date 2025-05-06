@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include <absl/strings/string_view.h>
 #include <isl/cpp.h>
 
 #include <map>
@@ -22,6 +21,7 @@
 #include <optional>
 #include <set>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -207,7 +207,7 @@ class _Tensor_ : public ExprNode<_Tensor_> {
    * @param statement The name of a statement(equivalent to the id of tensor).
    * @return A boolean.
    */
-  bool IsDependOnStatement(absl::string_view statement);
+  bool IsDependOnStatement(std::string_view statement);
 
   /**
    * Get the names of the tensors those this tensor depends on.
