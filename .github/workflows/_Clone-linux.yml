@@ -2,6 +2,13 @@ name: Clone-linux
 
 on:
   workflow_call:
+    inputs:
+      workflow-name:
+        type: string
+        required: false
+    outputs:
+      can-skip:
+        value: ${{ jobs.Clone.outputs.can-skip }}
 
 permissions: read-all
 
@@ -18,6 +25,9 @@ jobs:
   Clone:
     # Don't run on forked repos.
     name: Clone Paddle
+    outputs:
+      can-skip: ${{ steps.check-bypass.outputs.can-skip }}
+
     if: github.repository_owner == 'PaddlePaddle'
     runs-on:
       group: HK-Clone
@@ -47,6 +57,13 @@ jobs:
           git merge --no-ff pr
           git branch -d pr
           bash ${ci_scripts}/third_party_tag.sh
+
+      - name: Check bypass
+        id: check-bypass
+        uses: ./.github/actions/check-bypass
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          workflow-name: ${{ inputs.workflow-name }}
 
       - name: Download bos client
         env:
