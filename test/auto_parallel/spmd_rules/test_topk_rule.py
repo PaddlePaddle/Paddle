@@ -59,10 +59,11 @@ class TestTopkSPMDRule(unittest.TestCase):
             self.attrs['largest'],
             self.attrs['sorted'],
         )
+
+        self.assertEqual(len(result_dist_attrs), 2)
         inferred_input_dist_attrs = result_dist_attrs[0]
         inferred_output_dist_attrs = result_dist_attrs[1]
 
-        self.assertEqual(len(result_dist_attrs), 2)
         self.assertEqual(len(inferred_input_dist_attrs), 1)
         self.assertEqual(len(inferred_output_dist_attrs), 2)
 
