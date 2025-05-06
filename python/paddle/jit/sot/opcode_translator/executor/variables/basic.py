@@ -1713,7 +1713,7 @@ class NumPyVariable(VariableBase):
     @staticmethod
     def format_dtype(dtype: np.dtype):
         if (
-            np.lib.NumPyVersion(np.__version__) >= "1.20.0"
+            np.lib.NumpyVersion(np.__version__) >= "1.20.0"
             and dtype == np.bool_
         ):
             return "np.bool_"
