@@ -140,6 +140,8 @@ __global__ void KernelPool2D(const int nthreads,
                              const int stride_width,
                              const int padding_height,
                              const int padding_width,
+                             const int dilation_height,
+                             const int dilation_width,
                              FastDivModForPooling divmods,
                              PoolProcess pool_process,
                              bool exclusive,
@@ -162,16 +164,25 @@ __global__ void KernelPool2D(const int nthreads,
                                                          &input_offset);
     input_data += input_offset;
 
+    const int dilation_ksize_height = (ksize_height - 1) * dilation_height + 1;
+    const int dilation_ksize_width = (ksize_width - 1) * dilation_width + 1;
+
     hstart = h_offset * stride_height - padding_height;
-    hend = min(hstart + ksize_height, input_height);
-    hstart = max(hstart, 0);
+    hend = min(hstart + dilation_ksize_height, input_height);
+    while (hstart < 0) {
+      hstart += dilation_height;
+    }
+    // hstart = max(hstart, 0);
     wstart = w_offset * stride_width - padding_width;
-    wend = min(wstart + ksize_width, input_width);
-    wstart = max(wstart, 0);
+    wend = min(wstart + dilation_ksize_width, input_width);
+    while (wstart < 0) {
+      wstart += dilation_width;
+    }
+    // wstart = max(wstart, 0);
 
     T ele = pool_process.initial();
-    for (int h = hstart; h < hend; ++h) {
-      for (int w = wstart; w < wend; ++w) {
+    for (int h = hstart; h < hend; h += dilation_height) {
+      for (int w = wstart; w < wend; w += dilation_width) {
         auto input_idx = channel_last
                              ? (h * input_width + w) * channels + c_offset
                              : h * input_width + w;
@@ -391,6 +402,8 @@ __global__ void KernelMaxPool2DGrad(const int nthreads,
                                     const int stride_width,
                                     const int padding_height,
                                     const int padding_width,
+                                    const int dilation_height,
+                                    const int dilation_width,
                                     T* input_grad,
                                     FastDivModForPooling divmods,
                                     bool channel_last = false) {
@@ -411,19 +424,28 @@ __global__ void KernelMaxPool2DGrad(const int nthreads,
     input_data += input_offset;
     input_grad += input_offset;
 
+    const int dilation_ksize_height = (ksize_height - 1) * dilation_height + 1;
+    const int dilation_ksize_width = (ksize_width - 1) * dilation_width + 1;
+
     int hstart = h_offset * stride_height - padding_height;
-    int hend = min(hstart + ksize_height, input_height);
-    hstart = max(hstart, 0);
+    int hend = min(hstart + dilation_ksize_height, input_height);
+    while (hstart < 0) {
+      hstart += dilation_height;
+    }
+    // hstart = max(hstart, 0);
 
     int wstart = w_offset * stride_width - padding_width;
-    int wend = min(wstart + ksize_width, input_width);
-    wstart = max(wstart, 0);
+    int wend = min(wstart + dilation_ksize_width, input_width);
+    while (wstart < 0) {
+      wstart += dilation_width;
+    }
+    // wstart = max(wstart, 0);
 
     T ele = output_data[index];
     int maxIndex = -1;
     bool stop = false;
-    for (int h = hstart; h < hend && !stop; ++h) {
-      for (int w = wstart; w < wend && !stop; ++w) {
+    for (int h = hstart; h < hend && !stop; h += dilation_height) {
+      for (int w = wstart; w < wend && !stop; w += dilation_width) {
         int input_data_idx = channel_last
                                  ? (h * input_width + w) * channels + c_offset
                                  : h * input_width + w;
@@ -524,6 +546,8 @@ void Pool2dDirectCUDAFunctor<PoolProcess, T>::operator()(
                                                                stride_width,
                                                                padding_height,
                                                                padding_width,
+                                                               1,
+                                                               1,
                                                                pool_divmods,
                                                                pool_compute,
                                                                exclusive,
@@ -546,6 +570,7 @@ class Pool2dFunctor<phi::GPUContext, PoolProcess, T> {
                   const std::vector<int>& ksize,
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings,
+                  const std::vector<int>& dilations,
                   bool exclusive,
                   bool adaptive,
                   DenseTensor* output,
@@ -563,6 +588,8 @@ class Pool2dFunctor<phi::GPUContext, PoolProcess, T> {
     const int stride_width = strides[1];
     const int padding_height = paddings[0];
     const int padding_width = paddings[1];
+    const int dilation_height = dilations[0];
+    const int dilation_width = dilations[1];
 
     const T* input_data = input.data<T>();
     T* output_data = context.template Alloc<T>(output);
@@ -623,6 +650,8 @@ class Pool2dFunctor<phi::GPUContext, PoolProcess, T> {
                                                    stride_width,
                                                    padding_height,
                                                    padding_width,
+                                                   dilation_height,
+                                                   dilation_width,
                                                    pool_divmods,
                                                    pool_process,
                                                    exclusive,
@@ -634,6 +663,7 @@ class Pool2dFunctor<phi::GPUContext, PoolProcess, T> {
                   const std::vector<int>& ksize,
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings,
+                  const std::vector<int>& dilations,
                   const std::string data_format,
                   bool exclusive,
                   bool adaptive,
@@ -661,6 +691,9 @@ class Pool2dFunctor<phi::GPUContext, PoolProcess, T> {
 
     const int padding_height = paddings[0];
     const int padding_width = paddings[1];
+
+    const int dilation_height = dilations[0];
+    const int dilation_width = dilations[1];
 
     const T* input_data = input.data<T>();
     T* output_data = context.template Alloc<T>(output);
@@ -722,6 +755,8 @@ class Pool2dFunctor<phi::GPUContext, PoolProcess, T> {
                                                    stride_width,
                                                    padding_height,
                                                    padding_width,
+                                                   dilation_height,
+                                                   dilation_width,
                                                    pool_divmods,
                                                    pool_process,
                                                    exclusive,
@@ -894,6 +929,7 @@ class MaxPool2dGradFunctor<phi::GPUContext, T> {
                   const std::vector<int>& ksize,
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings,
+                  const std::vector<int>& dilations,
                   DenseTensor* input_grad) {
     const int batch_size = input.dims()[0];
     const int input_channels = input.dims()[1];
@@ -908,6 +944,8 @@ class MaxPool2dGradFunctor<phi::GPUContext, T> {
     const int stride_width = strides[1];
     const int padding_height = paddings[0];
     const int padding_width = paddings[1];
+    const int dilation_height = dilations[0];
+    const int dilation_width = dilations[1];
 
     const T* input_data = input.data<T>();
     const T* output_data = output.data<T>();
@@ -937,6 +975,8 @@ class MaxPool2dGradFunctor<phi::GPUContext, T> {
                                                  stride_width,
                                                  padding_height,
                                                  padding_width,
+                                                 dilation_height,
+                                                 dilation_width,
                                                  input_grad_data,
                                                  pool_divmods);
   }
@@ -946,6 +986,7 @@ class MaxPool2dGradFunctor<phi::GPUContext, T> {
                   const DenseTensor& output_grad,
                   const std::vector<int>& ksize,
                   const std::vector<int>& strides,
+                  const std::vector<int>& paddings,
                   const std::vector<int>& paddings,
                   const std::string data_format,
                   DenseTensor* input_grad) {
@@ -972,6 +1013,9 @@ class MaxPool2dGradFunctor<phi::GPUContext, T> {
     const int padding_height = paddings[0];
     const int padding_width = paddings[1];
 
+    const int dilation_height = dilations[0];
+    const int dilation_width = dilations[1];
+
     const T* input_data = input.data<T>();
     const T* output_data = output.data<T>();
     const T* output_grad_data = output_grad.data<T>();
@@ -1001,6 +1045,8 @@ class MaxPool2dGradFunctor<phi::GPUContext, T> {
                                                  stride_width,
                                                  padding_height,
                                                  padding_width,
+                                                 dilation_height,
+                                                 dilation_width,
                                                  input_grad_data,
                                                  pool_divmods,
                                                  channel_last);
@@ -1084,11 +1130,18 @@ __global__ void KernelPool3D(const int nthreads,
                              const int padding_depth,
                              const int padding_height,
                              const int padding_width,
+                             const int dilation_depth,
+                             const int dilation_height,
+                             const int dilation_width,
                              PoolProcess pool_process,
                              bool exclusive,
                              bool adaptive,
                              T* output_data,
                              bool channel_last = false) {
+  const int dilation_ksize_depth = (ksize_depth - 1) * dilation_depth + 1;
+  const int dilation_ksize_height = (ksize_height - 1) * dilation_height + 1;
+  const int dilation_ksize_width = (ksize_width - 1) * dilation_width + 1;
+
   for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < nthreads;
        index += blockDim.x * gridDim.x) {
     int pw, ph, pd, c, batch_idx;
@@ -1124,12 +1177,21 @@ __global__ void KernelPool3D(const int nthreads,
       dstart = pd * stride_depth - padding_depth;
       hstart = ph * stride_height - padding_height;
       wstart = pw * stride_width - padding_width;
-      dend = min(dstart + ksize_depth, input_depth);
-      hend = min(hstart + ksize_height, input_height);
-      wend = min(wstart + ksize_width, input_width);
-      dstart = max(dstart, 0);
-      hstart = max(hstart, 0);
-      wstart = max(wstart, 0);
+      dend = min(dstart + dilation_ksize_depth, input_depth);
+      hend = min(hstart + dilation_ksize_height, input_height);
+      wend = min(wstart + dilation_ksize_width, input_width);
+      while (dstart < 0) {
+        dstart += dilation_depth;
+      }
+      while (hstart < 0) {
+        hstart += dilation_height;
+      }
+      while (wstart < 0) {
+        wstart += dilation_width;
+      }
+      // dstart = max(dstart, 0);
+      // hstart = max(hstart, 0);
+      // wstart = max(wstart, 0);
     }
 
     int input_data_stride;
@@ -1143,9 +1205,9 @@ __global__ void KernelPool3D(const int nthreads,
     input_data += input_data_stride;
 
     T ele = pool_process.initial();
-    for (int d = dstart; d < dend; ++d) {
-      for (int h = hstart; h < hend; ++h) {
-        for (int w = wstart; w < wend; ++w) {
+    for (int d = dstart; d < dend; d += dilation_depth) {
+      for (int h = hstart; h < hend; h += dilation_height) {
+        for (int w = wstart; w < wend; w += dilation_width) {
           auto input_data_idx =
               channel_last
                   ? ((d * input_height + h) * input_width + w) * channels + c
@@ -1314,8 +1376,15 @@ __global__ void KernelMaxPool3DGrad(const int nthreads,
                                     const int padding_depth,
                                     const int padding_height,
                                     const int padding_width,
+                                    const int dilation_depth,
+                                    const int dilation_height,
+                                    const int dilation_width,
                                     T* input_grad,
                                     bool channel_last = false) {
+  const int dilation_ksize_depth = (ksize_depth - 1) * dilation_depth + 1;
+  const int dilation_ksize_height = (ksize_height - 1) * dilation_height + 1;
+  const int dilation_ksize_width = (ksize_width - 1) * dilation_width + 1;
+
   for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < nthreads;
        index += blockDim.x * gridDim.x) {
     int pw, ph, pd, c, batch_idx;
@@ -1340,13 +1409,23 @@ __global__ void KernelMaxPool3DGrad(const int nthreads,
     int hstart = ph * stride_height - padding_height;
     int wstart = pw * stride_width - padding_width;
 
-    int dend = min(dstart + ksize_depth, input_depth);
-    int hend = min(hstart + ksize_height, input_height);
-    int wend = min(wstart + ksize_width, input_width);
+    int dend = min(dstart + dilation_ksize_depth, input_depth);
+    int hend = min(hstart + dilation_ksize_height, input_height);
+    int wend = min(wstart + dilation_ksize_width, input_width);
 
-    dstart = max(dstart, 0);
-    hstart = max(hstart, 0);
-    wstart = max(wstart, 0);
+    while (dstart < 0) {
+      dstart += dilation_depth;
+    }
+    while (hstart < 0) {
+      hstart += dilation_height;
+    }
+    while (wstart < 0) {
+      wstart += dilation_width;
+    }
+
+    // dstart = max(dstart, 0);
+    // hstart = max(hstart, 0);
+    // wstart = max(wstart, 0);
 
     T ele = output_data[index];
     bool stop = false;
@@ -1362,9 +1441,9 @@ __global__ void KernelMaxPool3DGrad(const int nthreads,
     }
     input_data += input_stride;
     input_grad += input_stride;
-    for (int d = dstart; d < dend && !stop; ++d) {
-      for (int h = hstart; h < hend && !stop; ++h) {
-        for (int w = wstart; w < wend && !stop; ++w) {
+    for (int d = dstart; d < dend && !stop; d += dilation_depth) {
+      for (int h = hstart; h < hend && !stop; h += dilation_height) {
+        for (int w = wstart; w < wend && !stop; w += dilation_width) {
           int input_data_idx =
               channel_last
                   ? ((d * input_height + h) * input_width + w) * channels + c
@@ -1465,6 +1544,7 @@ class Pool3dFunctor<phi::GPUContext, PoolProcess, T> {
                   const std::vector<int>& ksize,
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings,
+                  const std::vector<int>& dilations,
                   bool exclusive,
                   bool adaptive,
                   DenseTensor* output,
@@ -1487,6 +1567,9 @@ class Pool3dFunctor<phi::GPUContext, PoolProcess, T> {
     const int padding_depth = paddings[0];
     const int padding_height = paddings[1];
     const int padding_width = paddings[2];
+    const int dilation_depth = dilations[0];
+    const int dilation_height = dilations[1];
+    const int dilation_width = dilations[2];
 
     const T* input_data = input.data<T>();
     T* output_data = context.template Alloc<T>(output);
@@ -1520,6 +1603,9 @@ class Pool3dFunctor<phi::GPUContext, PoolProcess, T> {
                                                  padding_depth,
                                                  padding_height,
                                                  padding_width,
+                                                 dilation_depth,
+                                                 dilation_height,
+                                                 dilation_width,
                                                  pool_process,
                                                  exclusive,
                                                  adaptive,
@@ -1530,6 +1616,7 @@ class Pool3dFunctor<phi::GPUContext, PoolProcess, T> {
                   const std::vector<int>& ksize,
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings,
+                  const std::vector<int>& dilations,
                   const std::string data_format,
                   bool exclusive,
                   bool adaptive,
@@ -1564,6 +1651,10 @@ class Pool3dFunctor<phi::GPUContext, PoolProcess, T> {
     const int padding_height = paddings[1];
     const int padding_width = paddings[2];
 
+    const int dilation_depth = dilations[0];
+    const int dilation_height = dilations[1];
+    const int dilation_width = dilations[2];
+
     const T* input_data = input.data<T>();
     T* output_data = context.template Alloc<T>(output);
 
@@ -1596,6 +1687,9 @@ class Pool3dFunctor<phi::GPUContext, PoolProcess, T> {
                                                  padding_depth,
                                                  padding_height,
                                                  padding_width,
+                                                 dilation_depth,
+                                                 dilation_height,
+                                                 dilation_width,
                                                  pool_process,
                                                  exclusive,
                                                  adaptive,
@@ -1779,6 +1873,7 @@ class MaxPool3dGradFunctor<phi::GPUContext, T> {
                   const std::vector<int>& ksize,
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings,
+                  const std::vector<int>& dilations,
                   DenseTensor* input_grad) {
     const int batch_size = input.dims()[0];
     const int input_channels = input.dims()[1];
@@ -1798,6 +1893,9 @@ class MaxPool3dGradFunctor<phi::GPUContext, T> {
     const int padding_depth = paddings[0];
     const int padding_height = paddings[1];
     const int padding_width = paddings[2];
+    const int dilation_depth = dilations[0];
+    const int dilation_height = dilations[1];
+    const int dilation_width = dilations[2];
 
     const T* input_data = input.data<T>();
     const T* output_data = output.data<T>();
@@ -1831,6 +1929,9 @@ class MaxPool3dGradFunctor<phi::GPUContext, T> {
                                                  padding_depth,
                                                  padding_height,
                                                  padding_width,
+                                                 dilation_depth,
+                                                 dilation_height,
+                                                 dilation_width,
                                                  input_grad_data);
   }
   void operator()(const phi::GPUContext& context,
@@ -1840,6 +1941,7 @@ class MaxPool3dGradFunctor<phi::GPUContext, T> {
                   const std::vector<int>& ksize,
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings,
+                  const std::vector<int>& dilations,
                   const std::string data_format,
                   DenseTensor* input_grad) {
     bool channel_last = (data_format == "NDHWC");
@@ -1868,6 +1970,10 @@ class MaxPool3dGradFunctor<phi::GPUContext, T> {
     const int padding_depth = paddings[0];
     const int padding_height = paddings[1];
     const int padding_width = paddings[2];
+
+    const int dilation_depth = dilations[0];
+    const int dilation_height = dilations[1];
+    const int dilation_width = dilations[2];
 
     const T* input_data = input.data<T>();
     const T* output_data = output.data<T>();
@@ -1901,6 +2007,9 @@ class MaxPool3dGradFunctor<phi::GPUContext, T> {
         padding_depth,
         padding_height,
         padding_width,
+        dilation_depth,
+        dilation_height,
+        dilation_width,
         input_grad_data,
         channel_last);  // add channel_last
   }
@@ -2083,6 +2192,8 @@ __global__ void KernelMaxPool2DWithIdxGrad(const int nthreads,
                                            const int stride_width,
                                            const int padding_height,
                                            const int padding_width,
+                                           const int dilation_height,
+                                           const int dilation_width,
                                            bool adaptive,
                                            T1* input_grad,
                                            FastDivModForPooling divmods) {
@@ -2112,14 +2223,19 @@ __global__ void KernelMaxPool2DWithIdxGrad(const int nthreads,
       pwend =
           min((w_offset + 1) * output_width / input_width + 1, output_width);
     } else {
-      phstart =
-          (h_offset + padding_height < ksize_height)
-              ? 0
-              : (h_offset + padding_height - ksize_height) / stride_height + 1;
-      pwstart =
-          (w_offset + padding_width < ksize_width)
-              ? 0
-              : (w_offset + padding_width - ksize_width) / stride_width + 1;
+      int effective_ksize_height = (ksize_height - 1) * dilation_height + 1;
+      int effective_ksize_width = (ksize_width - 1) * dilation_width + 1;
+
+      phstart = (h_offset + padding_height < effective_ksize_height)
+                    ? 0
+                    : (h_offset + padding_height - effective_ksize_height) /
+                              stride_height +
+                          1;
+      pwstart = (w_offset + padding_width < effective_ksize_width)
+                    ? 0
+                    : (w_offset + padding_width - effective_ksize_width) /
+                              stride_width +
+                          1;
       phend =
           min((h_offset + padding_height) / stride_height + 1, output_height);
       pwend = min((w_offset + padding_width) / stride_width + 1, output_width);
@@ -2150,6 +2266,7 @@ class MaxPool2dWithIndexFunctor<phi::GPUContext, T1, T2> {
                   const std::vector<int>& ksize,
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings,
+                  const std::vector<int>& dilations,
                   bool adaptive,
                   DenseTensor* output,
                   DenseTensor* mask) {
@@ -2166,6 +2283,8 @@ class MaxPool2dWithIndexFunctor<phi::GPUContext, T1, T2> {
     const int stride_width = strides[1];
     const int padding_height = paddings[0];
     const int padding_width = paddings[1];
+    const int dilation_height = dilations[0];
+    const int dilation_width = dilations[1];
 
     const T1* input_data = input.data<T1>();
     T1* output_data = context.template Alloc<T1>(output);
@@ -2226,6 +2345,9 @@ class MaxPool2dWithIndexFunctor<phi::GPUContext, T1, T2> {
                                                    stride_width,
                                                    padding_height,
                                                    padding_width,
+                                                   dilation_height,
+                                                   dilation_width,
+                                                   dilation_width,
                                                    adaptive,
                                                    output_data,
                                                    mask_data,
@@ -2248,6 +2370,7 @@ class MaxPool2dWithIndexGradFunctor<phi::GPUContext, T1, T2> {
                   const std::vector<int>& ksize,
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings,
+                  const std::vector<int>& dilations,
                   bool adaptive,
                   DenseTensor* input_grad) {
     const int batch_size = input_grad->dims()[0];
@@ -2262,6 +2385,8 @@ class MaxPool2dWithIndexGradFunctor<phi::GPUContext, T1, T2> {
     const int stride_width = strides[1];
     const int padding_height = paddings[0];
     const int padding_width = paddings[1];
+    const int dilation_height = dilations[0];
+    const int dilation_width = dilations[1];
 
     const T2* mask_data = mask.data<T2>();
     const T1* output_grad_data = output_grad.data<T1>();
@@ -2289,6 +2414,8 @@ class MaxPool2dWithIndexGradFunctor<phi::GPUContext, T1, T2> {
                                                  stride_width,
                                                  padding_height,
                                                  padding_width,
+                                                 dilation_height,
+                                                 dilation_width,
                                                  adaptive,
                                                  input_grad_data,
                                                  pool_divmods);
@@ -2327,6 +2454,9 @@ __global__ void KernelMaxPool3DWithIdx(const int ncd,
                                        const int padding_depth,
                                        const int padding_height,
                                        const int padding_width,
+                                       const int dilation_depth,
+                                       const int dilation_height,
+                                       const int dilation_width,
                                        bool adaptive,
                                        T1* output_data,
                                        T2* mask_data,
@@ -2337,6 +2467,10 @@ __global__ void KernelMaxPool3DWithIdx(const int ncd,
 
   w_offset = blockIdx.x * blockDim.x + threadIdx.x;
   h_offset = blockIdx.y * blockDim.y + threadIdx.y;
+
+  const int dilation_ksize_depth = (ksize_depth - 1) * dilation_depth + 1;
+  const int dilation_ksize_height = (ksize_height - 1) * dilation_height + 1;
+  const int dilation_ksize_width = (ksize_width - 1) * dilation_width + 1;
 
   if (w_offset < output_width && h_offset < output_height) {
     for (int index_z = blockIdx.z * blockDim.z + threadIdx.z; index_z < ncd;
@@ -2364,19 +2498,28 @@ __global__ void KernelMaxPool3DWithIdx(const int ncd,
         dstart = d_offset * stride_depth - padding_depth;
         hstart = h_offset * stride_height - padding_height;
         wstart = w_offset * stride_width - padding_width;
-        dend = min(dstart + ksize_depth, input_depth);
-        hend = min(hstart + ksize_height, input_height);
-        wend = min(wstart + ksize_width, input_width);
-        dstart = max(dstart, 0);
-        hstart = max(hstart, 0);
-        wstart = max(wstart, 0);
+        dend = min(dstart + dilation_ksize_depth, input_depth);
+        hend = min(hstart + dilation_ksize_height, input_height);
+        wend = min(wstart + dilation_ksize_width, input_width);
+        while (dstart < 0) {
+          dstart += dilation_depth;
+        }
+        while (hstart < 0) {
+          hstart += dilation_height;
+        }
+        while (wstart < 0) {
+          wstart += dilation_width;
+        }
+        // dstart = max(dstart, 0);
+        // hstart = max(hstart, 0);
+        // wstart = max(wstart, 0);
       }
 
       T1 ele = static_cast<T1>(-FLT_MAX);
       int max_index = -1;
-      for (int d = dstart; d < dend; ++d) {
-        for (int h = hstart; h < hend; ++h) {
-          for (int w = wstart; w < wend; ++w) {
+      for (int d = dstart; d < dend; d += dilation_depth) {
+        for (int h = hstart; h < hend; h += dilation_height) {
+          for (int w = wstart; w < wend; w += dilation_width) {
             if (ele <
                 input_data_cur[(d * input_height + h) * input_width + w]) {
               max_index = (d * input_height + h) * input_width + w;
@@ -2412,6 +2555,9 @@ __global__ void KernelMaxPool3DWithIdxGrad(
     const int padding_depth,
     const int padding_height,
     const int padding_width,
+    const int dilation_depth,
+    const int dilation_height,
+    const int dilation_width,
     bool adaptive,
     T1* input_grad,
     FastDivModForPooling3D divmods_output) {
@@ -2454,6 +2600,7 @@ class MaxPool3dWithIndexFunctor<phi::GPUContext, T1, T2> {
                   const std::vector<int>& ksize,
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings,
+                  const std::vector<int>& dilations,
                   bool adaptive,
                   DenseTensor* output,
                   DenseTensor* mask) {
@@ -2475,6 +2622,9 @@ class MaxPool3dWithIndexFunctor<phi::GPUContext, T1, T2> {
     const int padding_depth = paddings[0];
     const int padding_height = paddings[1];
     const int padding_width = paddings[2];
+    const int dilation_depth = dilations[0];
+    const int dilation_height = dilations[1];
+    const int dilation_width = dilations[2];
 
     const T1* input_data = input.data<T1>();
     T1* output_data = context.template Alloc<T1>(output);
@@ -2516,6 +2666,9 @@ class MaxPool3dWithIndexFunctor<phi::GPUContext, T1, T2> {
                                                  padding_depth,
                                                  padding_height,
                                                  padding_width,
+                                                 dilation_depth,
+                                                 dilation_height,
+                                                 dilation_width,
                                                  adaptive,
                                                  output_data,
                                                  mask_data,
@@ -2537,6 +2690,7 @@ class MaxPool3dWithIndexGradFunctor<phi::GPUContext, T1, T2> {
                   const std::vector<int>& ksize,
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings,
+                  const std::vector<int>& dilations,
                   bool adaptive,
                   DenseTensor* input_grad) {
     const int batch_size = input_grad->dims()[0];
@@ -2556,6 +2710,9 @@ class MaxPool3dWithIndexGradFunctor<phi::GPUContext, T1, T2> {
     const int padding_depth = paddings[0];
     const int padding_height = paddings[1];
     const int padding_width = paddings[2];
+    const int dilation_depth = dilations[0];
+    const int dilation_height = dilations[1];
+    const int dilation_width = dilations[2];
 
     const T1* output_grad_data = output_grad.data<T1>();
     const T2* mask_data = mask.data<T2>();
@@ -2598,6 +2755,9 @@ class MaxPool3dWithIndexGradFunctor<phi::GPUContext, T1, T2> {
                                                  padding_depth,
                                                  padding_height,
                                                  padding_width,
+                                                 dilation_depth,
+                                                 dilation_height,
+                                                 dilation_width,
                                                  adaptive,
                                                  input_grad_data,
                                                  pool_divmods_output);

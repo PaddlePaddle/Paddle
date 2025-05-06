@@ -428,6 +428,22 @@ void OperationFactory::RegisterManualOpCreator() {
                                    .data());
           }
 
+          PADDLE_ENFORCE_EQ(attrs.find("dilations") != attrs.end(),
+                            true,
+                            common::errors::InvalidArgument(
+                                "'dilations' Attribute is expected for "
+                                "Pool2dOp. "));
+          std::vector<int> dilations;
+          for (size_t i = 0;
+               i < attrs.at("dilations").dyn_cast<pir::ArrayAttribute>().size();
+               i++) {
+            dilations.push_back(attrs.at("dilations")
+                                    .dyn_cast<pir::ArrayAttribute>()
+                                    .at(i)
+                                    .dyn_cast<pir::Int32Attribute>()
+                                    .data());
+          }
+
           PADDLE_ENFORCE_EQ(attrs.find("ceil_mode") != attrs.end(),
                             true,
                             common::errors::InvalidArgument(
@@ -515,6 +531,7 @@ void OperationFactory::RegisterManualOpCreator() {
               inputs[1],
               strides,
               paddings,
+              dilations,
               ceil_mode,
               exclusive,
               data_format,

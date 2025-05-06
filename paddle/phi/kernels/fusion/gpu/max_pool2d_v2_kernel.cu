@@ -33,6 +33,7 @@ void MaxPoolV2CUDNNKernel(const Context& ctx,
                           const std::vector<int>& kernel_size,
                           const std::vector<int>& strides,
                           const std::vector<int>& paddings,
+                          const std::vector<int>& dilations,
                           const std::string& data_format,
                           bool global_pooling,
                           bool adaptive,
@@ -91,6 +92,7 @@ void MaxPoolV2CUDNNKernel(const Context& ctx,
   using helper = CudnnFrontendConvHelper;
   auto kernel_size_int64 = helper::GetInt64Array(kernel_size_);
   auto strides_int64 = helper::GetInt64Array(strides);
+  auto dilations_int64 = helper::GetInt64Array(dilations);
 
   // Prepare for execution
   auto& plan_cache = phi::autotune::AutoTuneCache::Instance().GetConvV8(
@@ -122,6 +124,7 @@ void MaxPoolV2CUDNNKernel(const Context& ctx,
                                     strides_int64,
                                     pre_padding,
                                     post_padding,
+                                    dilations_int64,
                                     data_format,
                                     input_dtype,
                                     saved_idx_dtype);
@@ -160,6 +163,7 @@ void MaxPoolV2CUDNNKernel(const Context& ctx,
                        .setSpatialStride(data_dim, strides_int64.data())
                        .setPrePadding(data_dim, pre_padding.data())
                        .setPostPadding(data_dim, post_padding.data())
+                       .setDilation(data_dim, dilations_int64.data())
                        .build();
 
   // Create maxpooling op
@@ -202,6 +206,7 @@ void MaxPool2dV2CUDNNKernel(const Context& ctx,
                             const std::vector<int>& kernel_size,
                             const std::vector<int>& strides,
                             const std::vector<int>& paddings,
+                            const std::vector<int>& dilations,
                             const std::string& data_format,
                             bool global_pooling,
                             bool adaptive,
@@ -213,6 +218,7 @@ void MaxPool2dV2CUDNNKernel(const Context& ctx,
                                    kernel_size,
                                    strides,
                                    paddings,
+                                   dilations,
                                    data_format,
                                    global_pooling,
                                    adaptive,
