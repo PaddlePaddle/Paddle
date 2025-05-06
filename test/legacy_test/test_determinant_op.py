@@ -335,7 +335,7 @@ class TestSlogDeterminantOpCase1(TestSlogDeterminantOp):
 class TestSlogDeterminantOpCase2(TestSlogDeterminantOp):
     def init_data(self):
         np.random.seed(0)
-        self.case = np.random.rand(4, 4).astype(np.float32)
+        self.case = np.random.rand(10, 10).astype(np.float32)
         self.inputs = {'Input': self.case}
         s, l = np.linalg.slogdet(self.case)
         self.sign = s
