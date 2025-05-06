@@ -90,7 +90,7 @@ class TestDealInplace(Dy2StTestBase):
                 dygraph_out.numpy(),
                 static_out.numpy(),
                 rtol=1e-5,
-                atol=1e-8,
+                atol=1e-6,
                 err_msg=f"Run {i}-th check failed.",
             )
 

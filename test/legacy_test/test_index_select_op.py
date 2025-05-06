@@ -112,6 +112,18 @@ class TestIndexSelectFP16OP(TestIndexSelectOp):
         self.index_size = 100
 
 
+class TestIndexSelectBoolOP(TestIndexSelectOp):
+    def init_dtype_type(self):
+        self.dim = 1
+        self.x_type = bool
+        self.index_type = np.int64
+        self.x_shape = (100, 4, 5)
+        self.index_size = 100
+
+    def test_check_grad_normal(self):
+        pass
+
+
 # no scatter op (the backward op of index_select/gather) for bf16
 @unittest.skipIf(
     not paddle.is_compiled_with_cuda(), "paddle is not compiled with cuda"
