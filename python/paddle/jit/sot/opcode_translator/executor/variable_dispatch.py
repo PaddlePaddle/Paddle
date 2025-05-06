@@ -31,13 +31,13 @@ from ...symbolic_shape.operators import (
     symbolic_to_bool,
 )
 from ...utils import (
+    NUMPY_API_SUPPORTED_DICT,
     BreakGraphError,
     BuiltinFunctionBreak,
     FallbackError,
     UnsupportedIteratorBreak,
     UnsupportedOperationBreak,
     do_until_stop_iteration,
-    get_numpy_ufuncs,
 )
 from ...utils.exceptions import InnerError
 from ...utils.magic_methods import (
@@ -1463,11 +1463,8 @@ Dispatcher.register(
 
 # NumpyVariable dispatch
 def constant_numpy_equal(left, right):
-    numpy_ans = left.get_py_value() == right.get_py_value()
-    return VariableFactory.from_value(
-        numpy_ans,
-        left.graph,
-        tracker=DummyTracker([left, right]),
+    return left.graph.call_numpy_api(
+        NUMPY_API_SUPPORTED_DICT[np.equal], left, right
     )
 
 
@@ -1559,36 +1556,6 @@ Dispatcher.register(
     ),
 )
 
-unary_ufuncs, binary_ufuncs = get_numpy_ufuncs()
-for ufunc in unary_ufuncs:
-    Dispatcher.register(
-        ufunc,
-        ("ConstantVariable | NumpyNumberVariable",),
-        partial(
-            lambda ufunc, var: VariableFactory.from_value(
-                ufunc(var.get_py_value()),
-                var.graph,
-                tracker=DummyTracker([var]),
-            ),
-            ufunc,
-        ),
-    )
-for ufunc in binary_ufuncs:
-    Dispatcher.register(
-        ufunc,
-        (
-            "ConstantVariable | NumpyNumberVariable",
-            "ConstantVariable | NumpyNumberVariable",
-        ),
-        partial(
-            lambda ufunc, var, other: VariableFactory.from_value(
-                ufunc(var.get_py_value(), other.get_py_value()),
-                var.graph,
-                tracker=DummyTracker([var, other]),
-            ),
-            ufunc,
-        ),
-    )
 
 # place
 Dispatcher.register(

@@ -25,6 +25,7 @@ import numpy as np
 import paddle
 from paddle._typing import unreached
 from paddle.framework import core
+from paddle.pir.core import _PADDLE_PIR_DTYPE_2_NUMPY_DTYPE
 
 from ....infer_meta import (
     DistInfo,
@@ -120,6 +121,7 @@ from ..tracker import (
 from .base import VariableBase, VariableFactory
 
 if TYPE_CHECKING:
+    import numpy.typing as npt
     from typing_extensions import TypeAlias
 
     from ..function_graph import FunctionGraph
@@ -1730,12 +1732,6 @@ class NumpyVariable(VariableBase):
     def make_stringified_guard(self) -> None:
         raise NotImplementedError
 
-    @VariableFactory.register_from_value()
-    def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
-        if isinstance(value, np.ndarray):
-            return NumpyArrayVariable(value, graph, tracker)
-        return None
-
 
 class NumpyNumberVariable(NumpyVariable):
     def _reconstruct(self, codegen: PyCodeGen):
@@ -1811,51 +1807,132 @@ class NumpyBoolVariable(NumpyNumberVariable):
 
 
 class NumpyArrayVariable(NumpyVariable):
+    var_name_generator = NameGenerator("np_var_")
+    value: npt.NDArray[Any]
+    mutable_attrs: list[str] = ["meta"]
+
+    def __init__(
+        self,
+        value_or_meta: npt.NDArray[Any] | MetaInfo,
+        graph: FunctionGraph,
+        tracker: Tracker,
+    ):
+        super().__init__(None, graph, tracker)
+        self.var_name = self.var_name_generator.next()
+        self.graph.side_effects.record_mutable_variable(self)
+
+        if isinstance(value_or_meta, MetaInfo):
+            # TODO(wangmingkai02): self.value
+            self.value = None
+            self.meta = value_or_meta
+        else:
+            self.value = value_or_meta
+            self.meta = MetaInfo.from_numpy(self.value)
+
+    def __len__(self):
+        if isinstance(self.meta.shape[0], SymbolicInt):
+            raise BreakGraphError(
+                DataDependencyDynamicShapeBreak(
+                    "length of NumPy array Variable with first dimension is dynamic shape causes graph break."
+                )
+            )
+        return self.meta.shape[0]
+
+    def get_py_type(self):
+        return np.ndarray
+
+    def get_py_value(self, allow_tensor=False) -> Any:
+        raise BreakGraphError(
+            UnsupportedOperationBreak(
+                reason_str="NumpyArrayVariable doesn't support get_py_value operation."
+            )
+        )
+
+    def get_symbol(self) -> Symbol:
+        return Symbol(self.var_name)
+
+    def get_iter(self):
+        from .iter import SequenceIterVariable
+
+        return SequenceIterVariable(self, self.graph, GetIterTracker(self))
+
+    @VariableFactory.register_from_value()
+    def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
+        if isinstance(value, np.ndarray):
+            return NumpyArrayVariable(value, graph, tracker)
+        return None
+
+    @property
+    def out_var_name(self):
+        return f"{self.graph.OUT_VAR_PREFIX}{self.var_name}"
+
+    def _reconstruct(self, codegen: PyCodeGen):
+        codegen.gen_load_fast(self.out_var_name)
+        codegen.gen_load_method("numpy")
+        codegen.gen_call_method(0)
+
     @check_faster_guard
     def make_faster_guard(self) -> list[paddle.framework.core.GuardNodeBase]:
         expr_node = self.tracker.guard_tree_expr_node()
+        type_guard = paddle.framework.core.GuardNode(
+            paddle.framework.core.TypeMatchGuard(self.get_py_type()),
+            [expr_node],
+        )
         dtype_guard = paddle.framework.core.GuardNode(
             paddle.framework.core.NumPyDtypeMatchGuard(
-                self.get_py_value().dtype
+                np.dtype(_PADDLE_PIR_DTYPE_2_NUMPY_DTYPE[self.meta.dtype])
             ),
             [expr_node],
         )
-        value_guard = paddle.framework.core.GuardNode(
-            paddle.framework.core.NumPyArrayValueMatchGuard(
-                self.get_py_value()
-            ),
+        shape_guard = paddle.framework.core.GuardNode(
+            paddle.framework.core.NumPyArrayShapeMatchGuard(self.meta.shape),
             [expr_node],
         )
-
-        return [dtype_guard, value_guard]
+        return [type_guard, dtype_guard, shape_guard]
 
     @check_guard
     def make_stringified_guard(self) -> list[StringifiedExpression]:
         frame_value_tracer = self.tracker.trace_value_from_frame()
-        obj_free_var_name = f"__{self.id}"
+        meta = self.meta
 
         dtype_guard = FasterStringifiedExpression(
-            f"{{}}.dtype == {NumpyVariable.format_dtype(self.get_py_value().dtype)}",
+            f"{{}}.dtype == {NumpyVariable.format_dtype(np.dtype(_PADDLE_PIR_DTYPE_2_NUMPY_DTYPE[self.meta.dtype]))}",
             paddle.framework.core.NumPyDtypeMatchGuard(
-                self.get_py_value().dtype
+                np.dtype(_PADDLE_PIR_DTYPE_2_NUMPY_DTYPE[self.meta.dtype])
             ),
             [frame_value_tracer],
             union_free_vars(frame_value_tracer.free_vars, {"np": np}),
         )
 
         return [
-            dtype_guard,
             FasterStringifiedExpression(
-                f"({{}} == {obj_free_var_name}).all()",
-                paddle.framework.core.NumPyArrayValueMatchGuard(
-                    self.get_py_value()
-                ),
+                f"id(type({{}})) == {id(self.get_py_type())}",
+                paddle.core.TypeMatchGuard(self.get_py_type()),
                 [frame_value_tracer],
-                union_free_vars(
-                    frame_value_tracer.free_vars,
-                    {obj_free_var_name: self.get_py_value()},
-                ),
+                union_free_vars(frame_value_tracer.free_vars),
             ),
+            dtype_guard,
+            StringifiedExpression(
+                f"len({{}}.shape) == {len(meta.shape)}",
+                [frame_value_tracer],
+                union_free_vars(frame_value_tracer.free_vars),
+            ),
+            *[
+                (
+                    StringifiedExpression(
+                        f"{{}}.shape[{i}] == {meta.shape[i]}",
+                        [frame_value_tracer],
+                        union_free_vars(frame_value_tracer.free_vars),
+                    )
+                    if not isinstance(meta.shape[i], SymbolicInt)
+                    else StringifiedExpression(
+                        f"{{}}.shape[{i}] >= 1",
+                        [frame_value_tracer],
+                        union_free_vars(frame_value_tracer.free_vars),
+                    )
+                )
+                for i in range(len(meta.shape))
+            ],
         ]
 
 
