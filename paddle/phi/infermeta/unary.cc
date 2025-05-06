@@ -6049,13 +6049,7 @@ void SlogdetInferMeta(const MetaTensor& x,
   sign->set_layout(x_layout);
   sign->set_dims(out_dims);
 
-  if (x_dtype == DataType::COMPLEX64)
-    logdet->set_dtype(DataType::FLOAT32);
-  else if (x_dtype == DataType::COMPLEX128)
-    logdet->set_dtype(DataType::FLOAT64);
-  else
-    logdet->set_dtype(x_dtype);
-
+  logdet->set_dtype(dtype::ToReal(x_dtype));
   logdet->set_layout(x_layout);
   logdet->set_dims(out_dims);
 }
