@@ -41,6 +41,8 @@ jobs:
     name: Coverage build docker
     needs: clone
     uses: ./.github/workflows/docker.yml
+    with:
+      bos_dir: Paddle-coverage
 
   build:
     name: Coverage build
