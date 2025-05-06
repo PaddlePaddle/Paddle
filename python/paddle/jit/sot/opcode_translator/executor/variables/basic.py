@@ -78,6 +78,7 @@ from ....utils import (
     DataDependencyOperationBreak,
     FallbackError,
     NameGenerator,
+    SotCapturedExceptionFactory,
     UnsupportedOperationBreak,
     get_tensor_methods,
     log,
@@ -124,7 +125,8 @@ if TYPE_CHECKING:
 
     from ..function_graph import FunctionGraph
     from ..pycode_generator import PyCodeGen
-    from .callable import ClassVariable, FunctionVariable
+    from .callable import BuiltinVariable, ClassVariable, FunctionVariable
+    from .container import TupleVariable
 
     SymbolicConstraint: TypeAlias = tuple[
         ConstraintNode, dict[str, "SymbolicVariable"]
@@ -2104,15 +2106,15 @@ class ExceptionVariable(VariableBase):
                 *[arg.get_py_value() for arg in self.args]
             )
 
-        exception.__context__ = (
-            exception.__context__ or self.__context__.get_py_value()
-        )
-        exception.__cause__ = (
-            exception.__cause__ or self.__cause__.get_py_value()
-        )
-        exception.__suppress_context__ = exception.__suppress_context__ or (
-            self.__suppress_context__.get_py_value()
-        )
+            exception.__context__ = (
+                exception.__context__ or self.__context__.get_py_value()
+            )
+            exception.__cause__ = (
+                exception.__cause__ or self.__cause__.get_py_value()
+            )
+            exception.__suppress_context__ = exception.__suppress_context__ or (
+                self.__suppress_context__.get_py_value()
+            )
         return exception
 
     @property
@@ -2175,7 +2177,6 @@ class ExceptionVariable(VariableBase):
             raise InnerError(f"ExceptionVariable don't need attribute {key}")
 
     def getattr(self, name: str, default=None) -> VariableBase:
-
         if name == "__traceback__":
             return ConstantVariable.wrap_literal(None, self.graph)
 
@@ -2193,6 +2194,44 @@ class ExceptionVariable(VariableBase):
 
     def __repr__(self):
         return self.__str__()
+
+    @classmethod
+    def check_if_exception_matches(
+        cls,
+        exc_instance: BuiltinVariable | ExceptionVariable,
+        expected_exc_types: BuiltinVariable | TupleVariable,
+    ):
+        """
+        try: exc_instance except: expected_exc_types
+        """
+        from .callable import BuiltinVariable
+        from .container import TupleVariable
+
+        if isinstance(expected_exc_types, TupleVariable):
+            expected_types = expected_exc_types.get_wrapped_items()
+        else:
+            expected_types = [
+                expected_exc_types,
+            ]
+        for expected_type in expected_types:
+            if not isinstance(expected_type, BuiltinVariable):
+                raise FallbackError(
+                    f"`except ...` requires a BuiltinVariable as the exception type, but received: {expected_type}."
+                )
+            # Exception -> SotCapturedException
+            expected_type_exception = SotCapturedExceptionFactory.get(
+                expected_type.get_py_value()
+            )
+            if isinstance(exc_instance, ExceptionVariable) and issubclass(
+                exc_instance.exc_type,
+                expected_type_exception,
+            ):
+                return True
+            elif isinstance(exc_instance, BuiltinVariable) and issubclass(
+                exc_instance.get_py_value(), expected_type_exception
+            ):
+                return True
+        return False
 
     @VariableFactory.register_from_value()
     def from_value(value: Exception, graph: FunctionGraph, tracker: Tracker):
@@ -2226,3 +2265,20 @@ class ExceptionVariable(VariableBase):
 
             return exception_var
         return None
+
+    # def __eq__(self, other: ExceptionVariable) -> bool:
+    #     if sys.version_info >= (3, 8) and sys.version_info < (3, 9):
+    #         raise FallbackError("Python version >= 3.8 but < 3.9")
+
+    #     # `operator.eq` of `ExceptionVariable` dispatch
+    #     def exception_variable_equal(left, right):
+    #         result = (left is right) or (
+    #             left.get_py_value() == right.get_py_value()
+    #         )
+    #         return VariableFactory.from_value(
+    #             result,
+    #             left.graph,
+    #             tracker=DummyTracker([left, right]),
+    #         )
+
+    #     return exception_variable_equal(self, other)

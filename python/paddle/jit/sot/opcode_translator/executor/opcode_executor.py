@@ -138,6 +138,13 @@ COMPARE_OP_NAME_TO_FN = {
 
 # In Python 3.13, the method layout is changed, and a NULL will be pushed after the value.
 CALL_METHOD_LAYOUT_NULL_AFTER_VALUE = sys.version_info >= (3, 13)
+ALREADY_SUPPORTED_EXCEPTION = sys.version_info >= (
+    3,
+    9,
+) and sys.version_info < (
+    3,
+    11,
+)
 
 
 @dataclass
@@ -2128,44 +2135,14 @@ class OpcodeExecutorBase:
                 origin_exc=val.get_py_value()
             )
 
-    def check_if_exception_matches(self):
+    @fallback_if_python_version_unsupported
+    def JUMP_IF_NOT_EXC_MATCH(self, instr: Instruction):
         assert len(self.stack) >= 2
         expected_exc_types = self.stack.pop()
         exc_instance = self.stack.pop()
-
-        if isinstance(expected_exc_types, TupleVariable):
-            expected_types = expected_exc_types.get_wrapped_items()
-        else:
-            expected_types = [
-                expected_exc_types,
-            ]
-
-        for expected_type in expected_types:
-            if not isinstance(expected_type, BuiltinVariable):
-                raise FallbackError(
-                    f"`except ...` requires a BuiltinVariable as the exception type, but received: {expected_type}."
-                )
-
-            # Exception -> SotCapturedException
-            expected_type_exception = SotCapturedExceptionFactory.get(
-                expected_type.get_py_value()
-            )
-
-            if self._is_exception_isinstance(exc_instance) and issubclass(
-                exc_instance.exc_type,
-                expected_type_exception,
-            ):
-                return True
-            elif isinstance(exc_instance, BuiltinVariable) and issubclass(
-                exc_instance.get_py_value(), expected_type_exception
-            ):
-                return True
-
-        return False
-
-    @fallback_if_python_version_unsupported
-    def JUMP_IF_NOT_EXC_MATCH(self, instr: Instruction):
-        if not self.check_if_exception_matches():
+        if not ExceptionVariable.check_if_exception_matches(
+            exc_instance, expected_exc_types
+        ):
             self.jump_to(instr.jump_to)
 
     @fallback_if_python_version_unsupported

@@ -50,6 +50,7 @@ from ...utils.magic_methods import (
 from .dispatch_functions import (
     create_raise_break_graph_handler,
     generator_send,
+    operator_exception_match,
     operator_in,
     operator_is_none,
     operator_is_not_none,
@@ -1524,6 +1525,23 @@ Dispatcher.register(
     lambda left, right: constant_numpy_equal(left, right),
 )
 
+
+# `operator.eq` of `ExceptionVariable` dispatch
+def exception_variable_equal(left, right):
+    result = (left is right) or (left.get_py_value() == right.get_py_value())
+    return VariableFactory.from_value(
+        result,
+        left.graph,
+        tracker=DummyTracker([left, right]),
+    )
+
+
+Dispatcher.register(
+    operator.eq,
+    ("ExceptionVariable", "ExceptionVariable"),
+    lambda left, right: exception_variable_equal(left, right),
+)
+
 Dispatcher.register(
     bool,
     ("NumpyVariable",),
@@ -1631,5 +1649,17 @@ Dispatcher.register(
     ("VariableBase",),
     lambda x: ConstantVariable(
         not x.get_py_value(allow_tensor=False), x.graph, DummyTracker([x])
+    ),
+)
+
+
+Dispatcher.register(
+    operator_exception_match,
+    ("BuiltinVariable | ExceptionVariable", "BuiltinVariable | TupleVariable"),
+    lambda exc_instance, expected_exc_types: ConstantVariable.wrap_literal(
+        ExceptionVariable.check_if_exception_matches(
+            exc_instance, expected_exc_types
+        ),
+        exc_instance.graph,
     ),
 )

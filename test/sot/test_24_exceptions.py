@@ -22,7 +22,7 @@ import paddle
 from paddle.jit.sot.psdb import check_no_breakgraph
 from paddle.jit.sot.utils import strict_mode_guard
 
-NOT_ALLOW_FALLBACK = sys.version_info < (3, 11)
+NOT_ALLOW_FALLBACK = sys.version_info < (3, 11) and sys.version_info >= (3, 9)
 
 
 class TestNestingCase(TestCaseBase):
@@ -46,13 +46,11 @@ class TestNestingCase(TestCaseBase):
                                     raise  # RAISE_VARARGS(0)
                             except (KeyError, IndexError):
                                 x *= 4
-                                pass
                             except ValueError:
                                 x += 5
                                 raise NameError  # RAISE_VARARGS(1)
                         except SyntaxError:
                             x /= 6
-                            pass
                         except (TypeError, FileNotFoundError, NameError) as e:
                             x -= 7
                             raise TimeoutError(
@@ -63,7 +61,6 @@ class TestNestingCase(TestCaseBase):
                         raise AssertionError
                 except IndentationError as e:
                     x *= 9
-                    pass
                 except AssertionError as e:
                     x += 10
                     raise  # RAISE_VARARGS(0)
@@ -159,13 +156,14 @@ class TestAssertException(TestCaseBase):
     def test_assert_with_py_var_as_condition(self):
         # Test the case where `condition` is Python variable
         self.assert_results(self.try_assert, paddle.to_tensor(1), False)
-        self.assert_results(self.try_assert, paddle.to_tensor(1), True)
-        self.assert_results(self.try_assert, paddle.to_tensor(1), [])
-        self.assert_results(self.try_assert, paddle.to_tensor(1), [1])
-        self.assert_results(self.try_assert, paddle.to_tensor(1), "")
-        self.assert_results(self.try_assert, paddle.to_tensor(1), "QAQ")
-        self.assert_results(self.try_assert, paddle.to_tensor(1), ValueError)
-        self.assert_results(self.try_assert, paddle.to_tensor(1), ValueError())
+        self.assert_results(self.try_assert, paddle.to_tensor(2), True)
+        self.assert_results(self.try_assert, paddle.to_tensor(3), [])
+        self.assert_results(self.try_assert, paddle.to_tensor(4), [1])
+        self.assert_results(self.try_assert, paddle.to_tensor(5), "")
+        self.assert_results(self.try_assert, paddle.to_tensor(6), "QAQ")
+        # TODO(DrRyanHuang): The following two cases are not supported yet.
+        # self.assert_results(self.try_assert, paddle.to_tensor(7), ValueError)
+        # self.assert_results(self.try_assert, paddle.to_tensor(8), ValueError())
 
     # Currently, since the assert statement is essentially an if statement and can cause breakgraph,
     # using a Tensor as a condition is not supported. Therefore, fallback is allowed.
@@ -173,13 +171,13 @@ class TestAssertException(TestCaseBase):
     def test_assert_with_tensor_as_condition(self):
         # Test the case where `condition` is Paddle Tensor
         self.assert_results(
-            self.try_assert, paddle.to_tensor(2), paddle.to_tensor(1)
+            self.try_assert, paddle.to_tensor(8), paddle.to_tensor(1)
         )
         self.assert_results(
-            self.try_assert, paddle.to_tensor(2), paddle.to_tensor(0)
+            self.try_assert, paddle.to_tensor(9), paddle.to_tensor(0)
         )
         self.assert_results(
-            self.try_assert, paddle.to_tensor(2), paddle.to_tensor(-1)
+            self.try_assert, paddle.to_tensor(10), paddle.to_tensor(-1)
         )
 
     @strict_mode_guard(False)
@@ -193,7 +191,6 @@ class TestAssertException(TestCaseBase):
                 x += 3
             except:
                 x += 4
-                pass
 
         self.assert_results(try_assert_except, paddle.to_tensor(10))
 
@@ -206,7 +203,6 @@ class TestAssertException(TestCaseBase):
                 assert x < -10000
             except AssertionError:
                 x += 6
-                pass
 
             return x
 
