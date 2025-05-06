@@ -1,4 +1,4 @@
-name: Linux-build
+name: Static-check
 
 on:
   workflow_call:
@@ -24,7 +24,7 @@ jobs:
   build:
     name: Test
     runs-on:
-      group: BD-V100-test
+      group: BD-BJ-V100
 
     steps:
       - name: Check docker image and run container
@@ -103,7 +103,7 @@ jobs:
         uses: ./.github/actions/check-bypass
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          workflow-name: build
+          workflow-name: static-check
 
       - name: Static check
         run: |
@@ -117,6 +117,7 @@ jobs:
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ${{ github.workspace }}/../../../proxy
           source ~/.bashrc
+          unset GREP_OPTIONS
           bash ${work_dir}/tools/check_api_approvals.sh;approval_error=$?
           if [ "$approval_error" != 0 ];then
             exit 6
