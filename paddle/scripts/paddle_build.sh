@@ -1587,6 +1587,7 @@ function card_test() {
     tmpfile_rand=`date +%s%N`
     NUM_PROC=$[CUDA_DEVICE_COUNT/$cardnumber]
     export NUM_PROC=1
+    export parallel_job=1
     echo "****************************************************************"
     echo "***These unittests run $parallel_job job each time with $cardnumber GPU***"
     echo "****************************************************************"
