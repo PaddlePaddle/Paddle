@@ -44,11 +44,6 @@ jobs:
     with:
       docker_inference_image: ${{ needs.build-docker.outputs.docker_inference_image }}
 
-  coverage:
-    name: Coverage
-    uses: ./.github/workflows/_Coverage.yml
-    needs: clone
-
   cpu:
     name: Linux-CPU
     uses: ./.github/workflows/_Linux-CPU.yml
