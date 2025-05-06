@@ -67,9 +67,13 @@ jobs:
   build:
     name: Linux-build
     uses: ./.github/workflows/_Linux-build.yml
-    needs: clone
+    needs: build-docker
+    with:
+      docker_build_image: ${{ needs.build-docker.outputs.docker_build_image }}
 
   static-check:
     name: Static-Check
     uses: ./.github/workflows/_Static-Check.yml
     needs: build
+    with:
+      docker_build_image: ${{ needs.build.outputs.docker_build_image }}
