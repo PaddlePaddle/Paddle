@@ -65,7 +65,7 @@ from ....utils.exceptions import (
     OtherInlineCallBreak,
     PsdbBreakReason,
     SotErrorBase,
-    UnsupportedNumpyAPIBreak,
+    UnsupportedNumPyAPIBreak,
     UnsupportedOperationBreak,
     UnsupportedPaddleAPIBreak,
 )
@@ -97,7 +97,7 @@ from .base import (
 )
 from .basic import (
     ConstantVariable,
-    NumpyNumberVariable,
+    NumPyNumberVariable,
     ObjectVariable,
     PrintStmtVariable,
     SliceVariable,
@@ -371,9 +371,9 @@ class PaddleApiVariable(FunctionVariable):
     make_faster_guard = object_equal_faster_guard
 
 
-class NumpyApiVariable(FunctionVariable):
+class NumPyApiVariable(FunctionVariable):
     """
-    NumpyApiVariable is a subclass of FunctionVariable used to wrap a numpy API function.
+    NumPyApiVariable is a subclass of FunctionVariable used to wrap a numpy API function.
 
     Args:
         fn (Callable[..., Any]): The numpy API to be wrapped.
@@ -391,12 +391,12 @@ class NumpyApiVariable(FunctionVariable):
     def call_function(self, /, *args, **kwargs):
         # TODO(wangmingkai02): judge whether this is a break api
         if all(
-            isinstance(arg, (ConstantVariable, NumpyNumberVariable))
+            isinstance(arg, (ConstantVariable, NumPyNumberVariable))
             for arg in args
         ):
             if any(
                 self.value in ufuncs
-                for ufuncs in NumpyApiVariable._get_numpy_ufuncs()
+                for ufuncs in NumPyApiVariable._get_numpy_ufuncs()
             ):
                 vars = list(args)
                 var_py_values = [var.get_py_value() for var in vars]
@@ -410,7 +410,7 @@ class NumpyApiVariable(FunctionVariable):
                 NUMPY_API_SUPPORTED_DICT[self.value], *args, **kwargs
             )
         raise BreakGraphError(
-            UnsupportedNumpyAPIBreak(fn_name=self.value.__name__)
+            UnsupportedNumPyAPIBreak(fn_name=self.value.__name__)
         )
 
     @classmethod
@@ -429,11 +429,11 @@ class NumpyApiVariable(FunctionVariable):
                 value in NUMPY_API_SUPPORTED_DICT
                 or any(
                     value in ufuncs
-                    for ufuncs in NumpyApiVariable._get_numpy_ufuncs()
+                    for ufuncs in NumPyApiVariable._get_numpy_ufuncs()
                 )
             )
         ):
-            return NumpyApiVariable(value, graph, tracker)
+            return NumPyApiVariable(value, graph, tracker)
         return None
 
     @property

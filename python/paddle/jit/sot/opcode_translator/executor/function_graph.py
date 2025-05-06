@@ -88,7 +88,7 @@ from .variables import (
     GlobalVariable,
     ListVariable,
     NullVariable,
-    NumpyArrayVariable,
+    NumPyArrayVariable,
     PaddleLayerVariable,
     ParameterVariable,
     SymbolicVariable,
@@ -103,7 +103,7 @@ if TYPE_CHECKING:
     import types
 
     GraphNodeVariableType: TypeAlias = Union[
-        TensorVariable, SymbolicVariable, NumpyArrayVariable
+        TensorVariable, SymbolicVariable, NumPyArrayVariable
     ]
 
 
@@ -118,7 +118,7 @@ CompileGraphResult: TypeAlias = Tuple[
 GraphNodeVariableClasses = (
     TensorVariable,
     SymbolicVariable,
-    NumpyArrayVariable,
+    NumPyArrayVariable,
 )
 
 
@@ -571,7 +571,7 @@ class FunctionGraph:
         **kwargs: VariableBase,
     ):
         """
-        Record Numpy API to SIR
+        Record NumPy API to SIR
 
         Args:
             func: numpy api
@@ -814,7 +814,7 @@ class FunctionGraph:
                 list(args) + list(kwargs.values()), func
             )
         elif api_type == APIType.NUMPY:
-            var_cls = NumpyArrayVariable
+            var_cls = NumPyArrayVariable
             tracker = DummyTracker(list(args) + list(kwargs.values()))
         else:
             var_cls = TensorVariable
@@ -969,8 +969,8 @@ class FunctionGraph:
                 input_var.tracker.gen_instructions(self.pycode_gen)
                 self.pycode_gen.gen_load_const("int64")
                 self.pycode_gen.gen_call_function(3)
-            elif isinstance(input_var, NumpyArrayVariable):
-                # For NumpyArrayVariable, we use paddle.to_tensor(value) to convert it to a Tensor
+            elif isinstance(input_var, NumPyArrayVariable):
+                # For NumPyArrayVariable, we use paddle.to_tensor(value) to convert it to a Tensor
                 self.pycode_gen.gen_load_object(
                     paddle.to_tensor,
                     "___paddle_to_tensor",

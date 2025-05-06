@@ -106,7 +106,7 @@ class UnsupportedPaddleAPIBreak(UnsupportedOperationBreak):
         )
 
 
-class UnsupportedNumpyAPIBreak(UnsupportedOperationBreak):
+class UnsupportedNumPyAPIBreak(UnsupportedOperationBreak):
     def __init__(
         self,
         *,
@@ -116,7 +116,7 @@ class UnsupportedNumpyAPIBreak(UnsupportedOperationBreak):
         line_number=-1,
     ):
         if reason_str is None:
-            reason_str = f"Not support Numpy API: {fn_name}"
+            reason_str = f"Not support NumPy API: {fn_name}"
 
         super().__init__(
             reason_str=reason_str,

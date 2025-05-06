@@ -40,7 +40,7 @@ def forward2(x, y):
         return y * 2
 
 
-class TestJumpWithNumpy(TestCaseBase):
+class TestJumpWithNumPy(TestCaseBase):
     def test_jump(self):
         self.assert_results(forward, np.array([1]), paddle.to_tensor(2))
         self.assert_results(forward, np.array([0]), paddle.to_tensor(2))
