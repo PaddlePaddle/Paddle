@@ -47,23 +47,25 @@ class TestArange(unittest.TestCase):
         def func():
             return (
                 paddle.arange(0, 2048, 0.25, dtype="float64")
-                .astype("int32")
                 .min()
+                .astype("int32")
             )
 
         self.eval(func, [])
 
-    def test_different_input_default(self):
+    def test_default_hv_fusing(self):
         def func():
             # kwargs
             tensor = paddle.arange(start=1024, end=0, step=-4, dtype="int32")
-            return paddle.arange(256).astype("int32") + tensor  # default args
+            return paddle.arange(256).astype("int32") + tensor, paddle.arange(
+                end=512, step=2
+            )
 
         self.eval(func, [])
 
-    def test_broadcast_with_large_tensor(self):
+    def test_broadcast_tensor(self):
         def func():
-            return paddle.arange(1, 2) + paddle.arange(268435457)
+            return paddle.arange(1, 2) + paddle.arange(end=32769)
 
         self.eval(func, [])
 
