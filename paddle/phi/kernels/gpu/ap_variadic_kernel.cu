@@ -52,7 +52,8 @@ void ApVariadicKernel(const Context& dev_ctx,
           "num_outputs must be greater than 1. current _outputs: // %d",
           outs.size()));
   for (auto* out : outs) {
-    dev_ctx.template Alloc<T>(out);
+    // dev_ctx.template Alloc<T>(out);
+    dev_ctx.Alloc(out, out->dtype());
   }
   std::shared_ptr<ap::kernel_dispatch::DeviceCtxImpl> impl =
       std::make_shared<ap::paddle::DeviceCtx<Context>>(&dev_ctx);
@@ -89,6 +90,7 @@ PD_REGISTER_KERNEL(ap_variadic,
                    GPU,
                    ALL_LAYOUT,
                    phi::ApVariadicKernel,
+                   int,
                    float,
                    double,
                    phi::dtype::float16,

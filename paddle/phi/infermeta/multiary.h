@@ -1273,6 +1273,7 @@ void MoeUnzipInferMeta(const MetaTensor& X,
                        MetaTensor* X_unzipped,
                        MetaTensor* zipped_expertwise_rowmap,
                        MetaTensor* token_prob_unzipped,
-                       MetaTensor* XScale_unzipped);
+                       MetaTensor* XScale_unzipped,
+                       MetaTensor* global_expertwise_block_cumsum);
 
 }  // namespace phi

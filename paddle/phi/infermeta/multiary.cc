@@ -6234,7 +6234,8 @@ void MoeUnzipInferMeta(const MetaTensor& X,
                        MetaTensor* X_unzipped,
                        MetaTensor* zipped_expertwise_rowmap,
                        MetaTensor* token_prob_unzipped,
-                       MetaTensor* XScale_unzipped) {
+                       MetaTensor* XScale_unzipped,
+                       MetaTensor* global_expertwise_block_cumsum) {
   auto x_dim = X.dims();
   auto xscale_dim = XScale.dims();
   auto expert_routemap_topk_dim = expert_routemap_topk.dims();
@@ -6315,6 +6316,8 @@ void MoeUnzipInferMeta(const MetaTensor& X,
                         xscale_dim[1],
                         x_dim[1]));
 
+  int CUMSUM_BLOCK_SIZE = 48;
+
   X_unzipped->set_dims({-1, x_dim[1]});  // can not infer
   X_unzipped->set_dtype(X.dtype());
 
@@ -6326,6 +6329,10 @@ void MoeUnzipInferMeta(const MetaTensor& X,
 
   XScale_unzipped->set_dims({-1, xscale_dim[1]});  // can not infer
   XScale_unzipped->set_dtype(XScale.dtype());
+
+  global_expertwise_block_cumsum->set_dims(phi::make_ddim(
+      {(x_dim[0] + CUMSUM_BLOCK_SIZE - 1) / CUMSUM_BLOCK_SIZE, num_experts}));
+  global_expertwise_block_cumsum->set_dtype(phi::DataType::INT32);
 }
 
 }  // namespace phi

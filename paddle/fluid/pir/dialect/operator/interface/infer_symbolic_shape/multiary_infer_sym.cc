@@ -4991,14 +4991,6 @@ bool YoloBoxPostOpInferSymbolicShape(
 
 bool MoeUnzipOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  const std::vector<symbol::DimExpr> &out_dims = [&] {
-    std::vector<symbol::DimExpr> out_dims;
-    symbol::DimExpr out_shape =
-        infer_context->GetNextSymName();  // unknown until runtime
-    out_dims.push_back(out_shape);
-    return out_dims;
-  }();
-
   const symbol::ShapeOrDataDimExprs &x_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();
@@ -5036,13 +5028,31 @@ bool MoeUnzipOpInferSymbolicShape(
                         "The input(expert_prob_topk) must be a 2D Tensor"));
 
   int num_experts = op->attribute<pir::Int32Attribute>("num_experts").data();
+  int CUMSUM_BLOCK_SIZE = 48;
 
+  symbol::DimExpr u_seqlen;
+  if (op->HasAttribute("max_tokens_per_expert")) {
+    int max_tokens_per_expert =
+        op->attribute<pir::Int32Attribute>("max_tokens_per_expert").data();
+    int u_seqlen_static = (max_tokens_per_expert + 127) / 128 * 128;
+    u_seqlen = symbol::DimExpr(u_seqlen_static);
+  } else if (op->operand_source(4)) {
+    const auto &max_tokens_per_expert_shape_or_data =
+        infer_context->GetShapeOrDataForValue(op->operand_source(4));
+    if (max_tokens_per_expert_shape_or_data.data().has_value()) {
+      u_seqlen = (max_tokens_per_expert_shape_or_data.data().value()[0] + 127) /
+                 128 * 128;
+    } else {
+      u_seqlen = infer_context->GetNextSymName();
+    }
+  }
   std::vector<symbol::DimExpr> x_unzipped_shape;
   std::vector<symbol::DimExpr> zipped_expertwise_rowmap_shape;
   std::vector<symbol::DimExpr> token_prob_unzipped_shape;
   std::vector<symbol::DimExpr> xscale_unzipped_shape;
+  std::vector<symbol::DimExpr> global_expertwise_block_cumsum_shape;
 
-  x_unzipped_shape = {out_dims[0], x_shape[1]};
+  x_unzipped_shape = {u_seqlen, x_shape[1]};
   infer_context->SetShapeOrDataForValue(
       op->result(0),
       symbol::ShapeOrDataDimExprs{
@@ -5054,17 +5064,24 @@ bool MoeUnzipOpInferSymbolicShape(
       symbol::ShapeOrDataDimExprs{
           symbol::TensorShapeOrDataDimExprs(zipped_expertwise_rowmap_shape)});
 
-  token_prob_unzipped_shape = {out_dims[0], symbol::DimExpr(1)};
+  token_prob_unzipped_shape = {u_seqlen, symbol::DimExpr(1)};
   infer_context->SetShapeOrDataForValue(
       op->result(2),
       symbol::ShapeOrDataDimExprs{
           symbol::TensorShapeOrDataDimExprs(token_prob_unzipped_shape)});
 
-  xscale_unzipped_shape = {out_dims[0], xs_shape[1]};
+  xscale_unzipped_shape = {u_seqlen, xs_shape[1]};
   infer_context->SetShapeOrDataForValue(
       op->result(3),
       symbol::ShapeOrDataDimExprs{
           symbol::TensorShapeOrDataDimExprs(xscale_unzipped_shape)});
+
+  global_expertwise_block_cumsum_shape = {
+      (x_shape[0] + CUMSUM_BLOCK_SIZE - 1) / CUMSUM_BLOCK_SIZE, num_experts};
+  infer_context->SetShapeOrDataForValue(
+      op->result(4),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(
+          global_expertwise_block_cumsum_shape)});
 
   return true;
 }
