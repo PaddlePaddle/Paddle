@@ -303,6 +303,7 @@ class TensorRTBaseTest(unittest.TestCase):
                 max_input_shape=self.max_shape,
             )
             trt_config = TensorRTConfig(inputs=[input])
+            trt_config.disable_loggling = False
             if precision_mode == "fp16":
                 trt_config.precision_mode = PrecisionMode.FP16
 

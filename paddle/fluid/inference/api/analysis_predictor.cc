@@ -2392,6 +2392,14 @@ CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
         if (std::getenv("FLAGS_cache_inference_while_scope") == nullptr) {
           SetGflag("cache_inference_while_scope", "1");
         }
+        std::string model_path = config.prog_file();
+        if (!model_path.empty()) {
+          std::string model_dir = model_path.substr(0, model_path.rfind('.'));
+          SetGflag("trt_engine_serialized_path", model_dir.c_str());
+        } else if (!config.model_dir().empty()) {
+          std::string model_dir = config.model_dir();
+          SetGflag("trt_engine_serialized_path", model_dir.c_str());
+        }
       });
 
       if (config.thread_local_stream_enabled() &&

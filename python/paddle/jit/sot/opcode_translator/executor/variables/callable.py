@@ -29,18 +29,24 @@ from typing import (
 )
 
 import paddle
+from paddle.base.dygraph.base import _DecoratorContextManager
 
 from .... import psdb
 from ....profiler import EventGuard
 from ....utils import (
     ENV_SOT_ALLOW_DYNAMIC_SHAPE,
     ENV_SOT_EXPORT,
+    ENV_SOT_TRACE_NUMPY,
+    NUMPY_API_SUPPORTED_DICT,
+    get_numpy_ufuncs,
     get_obj_stable_repr,
     get_static_function,
+    hashable,
     is_break_graph_api,
     is_break_graph_tensor_methods,
     is_builtin_fn,
     is_directly_run_api,
+    is_namedtuple_class,
     is_not_supported_paddle_layer,
     is_paddle_api,
     log,
@@ -59,6 +65,7 @@ from ....utils.exceptions import (
     OtherInlineCallBreak,
     PsdbBreakReason,
     SotErrorBase,
+    UnsupportedNumPyAPIBreak,
     UnsupportedOperationBreak,
     UnsupportedPaddleAPIBreak,
 )
@@ -86,9 +93,11 @@ from ..virtual_frame import VirtualFrame
 from .base import (
     VariableBase,
     VariableFactory,
+    fn_bind_inputs,
 )
 from .basic import (
     ConstantVariable,
+    NumPyNumberVariable,
     ObjectVariable,
     PrintStmtVariable,
     SliceVariable,
@@ -350,6 +359,81 @@ class PaddleApiVariable(FunctionVariable):
     def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
         if callable(value) and is_paddle_api(value):
             return PaddleApiVariable(value, graph, tracker)
+        return None
+
+    @property
+    def main_info(self) -> dict[str, Any]:
+        return {
+            "name": self.value.__name__,
+        }
+
+    make_stringified_guard = object_equal_stringified_guard
+    make_faster_guard = object_equal_faster_guard
+
+
+class NumPyApiVariable(FunctionVariable):
+    """
+    NumPyApiVariable is a subclass of FunctionVariable used to wrap a numpy API function.
+
+    Args:
+        fn (Callable[..., Any]): The numpy API to be wrapped.
+        graph(FunctionGraph): The FunctionGraph object that this variable is associated with.
+        tracker(Tracker): The Tracker object that tracks the information of this variable.
+    """
+
+    _cached_numpy_ufuncs = None
+
+    def __init__(
+        self, fn: Callable[..., Any], graph: FunctionGraph, tracker: Tracker
+    ):
+        super().__init__(fn, graph, tracker)
+
+    def call_function(self, /, *args, **kwargs):
+        # TODO(wangmingkai02): judge whether this is a break api
+        if all(
+            isinstance(arg, (ConstantVariable, NumPyNumberVariable))
+            for arg in args
+        ):
+            if any(
+                self.value in ufuncs
+                for ufuncs in NumPyApiVariable._get_numpy_ufuncs()
+            ):
+                vars = list(args)
+                var_py_values = [var.get_py_value() for var in vars]
+                return VariableFactory.from_value(
+                    self.value(*var_py_values),
+                    vars[0].graph,
+                    tracker=DummyTracker(vars),
+                )
+        if self.value in NUMPY_API_SUPPORTED_DICT:
+            return self.graph.call_numpy_api(
+                NUMPY_API_SUPPORTED_DICT[self.value], *args, **kwargs
+            )
+        raise BreakGraphError(
+            UnsupportedNumPyAPIBreak(fn_name=self.value.__name__)
+        )
+
+    @classmethod
+    def _get_numpy_ufuncs(cls):
+        if cls._cached_numpy_ufuncs is None:
+            cls._cached_numpy_ufuncs = get_numpy_ufuncs()
+        return cls._cached_numpy_ufuncs
+
+    @VariableFactory.register_from_value(successor="BuiltinVariable")
+    def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
+        # TODO(wangmingkai02): support other numpy api.
+        if (
+            ENV_SOT_TRACE_NUMPY.get()
+            and hashable(value)
+            and (
+                value in NUMPY_API_SUPPORTED_DICT
+                or any(
+                    value in ufuncs
+                    for ufuncs in NumPyApiVariable._get_numpy_ufuncs()
+                )
+            )
+        ):
+            return NumPyApiVariable(value, graph, tracker)
         return None
 
     @property
@@ -910,6 +994,34 @@ class FunctoolsLruCacheWrapperVariable(FunctionVariable):
         return None
 
 
+class NoGradFunctionVariable(FunctionVariable):
+    def __init__(
+        self, fn: Callable[..., Any], graph: FunctionGraph, tracker: Tracker
+    ):
+        super().__init__(fn, graph, tracker)
+        self.value = fn
+
+    def call_function(self, /, *args, **kwargs):
+        wrapped_fn = self.value.__wrapped__
+        wrapped_fn = VariableFactory.from_value(
+            wrapped_fn, self.graph, GetAttrTracker(self, "__wrapped__")
+        )
+        with self.graph.no_grad():
+            return wrapped_fn(*args, **kwargs)
+
+    @VariableFactory.register_from_value(
+        successor="UserDefinedFunctionVariable"
+    )
+    def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
+        if (
+            decorated_by := getattr(
+                value, _DecoratorContextManager.DECORATED_BY_MARKER_ATTR, None
+            )
+        ) and (isinstance(decorated_by, paddle.no_grad)):
+            return NoGradFunctionVariable(value, graph, tracker)
+        return None
+
+
 class UserDefinedGeneratorFunctionVariable(FunctionVariable):
     """
     UserDefinedGeneratorFunctionVariable is a subclass of FunctionVariable used to wrap a user-defined generator.
@@ -1076,4 +1188,34 @@ class PureClassVariable(ClassVariable):
     def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
         if inspect.isclass(value) and value in PD_PURE_CLASSES:
             return PureClassVariable(value, graph, tracker)
+        return None
+
+
+class NamedTupleClassVariable(ClassVariable):
+    def __init__(
+        self, class_: type[Any], graph: FunctionGraph, tracker: Tracker
+    ):
+        super().__init__(class_, graph, tracker)
+
+    def call_function(self, /, *args, **kwargs):
+        from .container import NamedTupleVariable
+
+        parameters = fn_bind_inputs(self.value, self.graph, *args, **kwargs)
+        fields = self.get_py_value()._fields
+        assert all(
+            field in parameters for field in fields
+        ), f"All fields of namedtuple should be in parameters, but got parameter {parameters} and fields {fields}"
+
+        parameters_tuple = tuple(parameters[field] for field in fields)
+        return NamedTupleVariable(
+            parameters_tuple,
+            self.get_py_value(),
+            self.graph,
+            DummyTracker([self, *args, *kwargs.values()]),
+        )
+
+    @VariableFactory.register_from_value(successor="ClassVariable")
+    def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
+        if is_namedtuple_class(value):
+            return NamedTupleClassVariable(value, graph, tracker)
         return None

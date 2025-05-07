@@ -52,19 +52,25 @@ void GroupNormGradKernel(const Context& dev_ctx,
       data_layout == DataLayout::kNCHW ? x_dims[1] : x_dims[x_dims.size() - 1]);
   const int group_size = C / groups;
 
-  dev_ctx.template Alloc<T>(d_x);
   phi::funcs::SetConstant<CPUContext, T> set_zero;
 
   auto* x_data = y.data<T>();
-  auto* d_x_data = d_x->data<T>();
   auto* y_data = d_y.data<T>();
   auto* var_data = var.data<T>();
+
+  T* d_x_data = nullptr;
+  if (d_x) {
+    dev_ctx.template Alloc<T>(d_x);
+    d_x_data = d_x->data<T>();
+  }
+
   T* d_scale_data = nullptr;
   if (d_scale) {
     dev_ctx.template Alloc<T>(d_scale);
     set_zero(dev_ctx, d_scale, static_cast<T>(0));
     d_scale_data = d_scale->data<T>();
   }
+
   T* d_bias_data = nullptr;
   if (d_bias) {
     dev_ctx.template Alloc<T>(d_bias);
@@ -124,22 +130,23 @@ void GroupNormGradKernel(const Context& dev_ctx,
               d_scale_data[gid * group_size + cid] += val * dval;
           }
         }
-
-        for (int cid = 0; cid < number; cid++) {
-          for (int imid = 0; imid < imsize;
-               imid++, iter_d_x_data++, tmp_x++, tmp_y++) {
-            T v_y = tmp_x[0];
-            T dly = tmp_y[0];
-            T dss = dp_scale;
-            T dbs = dp_bias;
-            T v_scale = 1., v_bias = 0.;
-            if (scale_data) v_scale = scale_data[gid * group_size + cid];
-            if (bias_data) v_bias = bias_data[gid * group_size + cid];
-            v_y -= v_bias;
-            if (v_scale != 0) v_y /= v_scale;
-            iter_d_x_data[0] =
-                (dly * v_scale - number_inv * dss * v_y - number_inv * dbs) *
-                var_inv;
+        if (d_x_data) {
+          for (int cid = 0; cid < number; cid++) {
+            for (int imid = 0; imid < imsize;
+                 imid++, iter_d_x_data++, tmp_x++, tmp_y++) {
+              T v_y = tmp_x[0];
+              T dly = tmp_y[0];
+              T dss = dp_scale;
+              T dbs = dp_bias;
+              T v_scale = 1., v_bias = 0.;
+              if (scale_data) v_scale = scale_data[gid * group_size + cid];
+              if (bias_data) v_bias = bias_data[gid * group_size + cid];
+              v_y -= v_bias;
+              if (v_scale != 0) v_y /= v_scale;
+              iter_d_x_data[0] =
+                  (dly * v_scale - number_inv * dss * v_y - number_inv * dbs) *
+                  var_inv;
+            }
           }
         }
       } else {
@@ -162,35 +169,40 @@ void GroupNormGradKernel(const Context& dev_ctx,
               d_scale_data[gid * group_size + cid] += val * dval;
           }
         }
-
-        for (int cid = 0; cid < number; cid++) {
-          tmp_x = x_src_data + cid;
-          tmp_y = y_src_data + cid;
-          iter_d_x_data = tmp_d_x + cid;
-          for (int imid = 0; imid < imsize;
-               imid++, iter_d_x_data += C, tmp_x += C, tmp_y += C) {
-            T v_y = tmp_x[0];
-            T dly = tmp_y[0];
-            T dss = dp_scale;
-            T dbs = dp_bias;
-            T v_scale = 1.0, v_bias = 0.;
-            if (scale_data) v_scale = scale_data[gid * group_size + cid];
-            if (bias_data) v_bias = bias_data[gid * group_size + cid];
-            v_y -= v_bias;
-            if (v_scale != 0) v_y /= v_scale;
-            iter_d_x_data[0] =
-                (dly * v_scale - number_inv * dss * v_y - number_inv * dbs) *
-                var_inv;
+        if (d_x_data) {
+          for (int cid = 0; cid < number; cid++) {
+            tmp_x = x_src_data + cid;
+            tmp_y = y_src_data + cid;
+            iter_d_x_data = tmp_d_x + cid;
+            for (int imid = 0; imid < imsize;
+                 imid++, iter_d_x_data += C, tmp_x += C, tmp_y += C) {
+              T v_y = tmp_x[0];
+              T dly = tmp_y[0];
+              T dss = dp_scale;
+              T dbs = dp_bias;
+              T v_scale = 1.0, v_bias = 0.;
+              if (scale_data) v_scale = scale_data[gid * group_size + cid];
+              if (bias_data) v_bias = bias_data[gid * group_size + cid];
+              v_y -= v_bias;
+              if (v_scale != 0) v_y /= v_scale;
+              iter_d_x_data[0] =
+                  (dly * v_scale - number_inv * dss * v_y - number_inv * dbs) *
+                  var_inv;
+            }
           }
         }
         iter_x_data = iter_x_data_backup + group_size;
         iter_y_data = iter_y_data_backup + group_size;
-        iter_d_x_data = iter_d_x_data_backup + group_size;
+        if (d_x_data) {
+          iter_d_x_data = iter_d_x_data_backup + group_size;
+        }
       }
     }
     if (data_layout == DataLayout::kNHWC) {
       iter_x_data = x_data + (bid + 1) * C * imsize;
-      iter_d_x_data = d_x_data + (bid + 1) * C * imsize;
+      if (d_x_data) {
+        iter_d_x_data = d_x_data + (bid + 1) * C * imsize;
+      }
       iter_y_data = y_data + (bid + 1) * C * imsize;
     }
   }
