@@ -1,4 +1,3 @@
-set(AP_COMMON_DEPS absl)
 if(WITH_ONEDNN)
   list(APPEND AP_COMMON_DEPS onednn)
 endif()

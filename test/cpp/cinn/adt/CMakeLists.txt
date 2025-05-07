@@ -9,5 +9,4 @@ cinn_cc_test(
   inline_translator_test.cc
   DEPS
   gtest
-  glog
-  absl)
+  glog)
