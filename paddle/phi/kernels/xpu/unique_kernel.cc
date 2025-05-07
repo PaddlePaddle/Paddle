@@ -40,7 +40,7 @@ void XPUFlattenUniqueKernelImpl(const Context& dev_ctx,
   using XPUType = typename XPUTypeTrait<T>::Type;
   const auto* x_data = x.data<T>();
   int64_t x_len = x.numel();
-  int r = XPU_SUCCESS;
+  int r = 0;
   xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
   int64_t unique_len_cpu = 0;
   int64_t* unique_len_xpu = RAII_GUARD.alloc_l3_or_gm<int64_t>(1);
@@ -116,7 +116,7 @@ void XPUDimUniqueKernelImpl(const Context& dev_ctx,
                             DenseTensor* counts) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
-  int r = xpu::SUCCESS;
+  int r = 0;
   const auto* x_data = x.data<T>();
   auto* x_trans_data = RAII_GUARD.alloc_l3_or_gm<XPUType>(x.numel());
   std::vector<int> permute(x.dims().size());
