@@ -25,7 +25,7 @@ namespace funcs {
 
 template <typename T, typename IndexT, typename ArrayT>
 __global__ void StackCudaKernel(ArrayT array,
-                                GeneralDivMod<IndexT> divmoder,
+                                FastDivMod<IndexT> divmoder,
                                 IndexT split_size,
                                 IndexT rows,
                                 IndexT cols,
@@ -37,7 +37,7 @@ __global__ void StackCudaKernel(ArrayT array,
   for (; grid_x < cols; grid_x += grid_x_stride) {
     IndexT grid_y = static_cast<IndexT>(blockIdx.y) * blockDim.y + threadIdx.y;
 
-    auto divmod_rslt = divmoder.div_mod(grid_x);
+    auto divmod_rslt = divmoder.Divmod(grid_x);
     IndexT split = divmod_rslt[0];       // grid_x / split_size
     IndexT col_offset = divmod_rslt[1];  // grid_x % split_size
     const T* input_ptr = array.data[split];
@@ -63,7 +63,7 @@ void LaunchStackKernel(const Context& ctx,
   auto config = phi::backends::gpu::GetGpuLaunchConfig2D(ctx, out_col, x_row);
 
   ConstPointerArraySetter<Context, T, Size> setter(ctx, x);
-  GeneralDivMod<IndexT> divmoder(x_col);
+  FastDivMod<IndexT> divmoder(x_col);
   StackCudaKernel<T, IndexT, decltype(setter.array)>
       <<<config.block_per_grid, config.thread_per_block, 0, ctx.stream()>>>(
           setter.array, divmoder, x_col, x_row, out_col, out_ptr);
@@ -115,7 +115,7 @@ __global__ void UnStackCudaKernel(const T* __restrict__ input,
                                   IndexT split_dim,
                                   IndexT out_col,
                                   IndexT num_splits,
-                                  GeneralDivMod<IndexT> col_divmoder,
+                                  FastDivMod<IndexT> col_divmoder,
                                   ArrayT array) {
   assert(blockDim.y == 1);
   assert(blockDim.z == 1);
@@ -129,7 +129,7 @@ __global__ void UnStackCudaKernel(const T* __restrict__ input,
   IndexT offset = blockIdx.x * blockDim.x + threadIdx.x;
   if (each_dim_size == 1) {
     for (; offset < numel; offset += blockDim.x * gridDim.x) {
-      auto col_divmod_rslt = col_divmoder.div_mod(offset);
+      auto col_divmod_rslt = col_divmoder.Divmod(offset);
 
       IndexT i = offset / split_dim_with_out_col;
       IndexT j = col_divmod_rslt[0] - i * split_dim;
@@ -143,7 +143,7 @@ __global__ void UnStackCudaKernel(const T* __restrict__ input,
     }
   } else {
     for (; offset < numel; offset += blockDim.x * gridDim.x) {
-      auto col_divmod_rslt = col_divmoder.div_mod(offset);
+      auto col_divmod_rslt = col_divmoder.Divmod(offset);
 
       IndexT i = offset / split_dim_with_out_col;
       IndexT j = col_divmod_rslt[0] - i * split_dim;
@@ -230,7 +230,7 @@ void LaunchUnStackKernel(const Context& ctx,
         <<<grids, blocks, 0, ctx.stream()>>>(
             x_ptr, split_dim, out_row, tile_x_num, setter.array);
   } else {
-    GeneralDivMod<IndexT> col_divmoder(out_col);
+    FastDivMod<IndexT> col_divmoder(out_col);
     auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
         ctx, out_row * split_dim * out_col);
 

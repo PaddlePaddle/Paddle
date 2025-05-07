@@ -53,7 +53,7 @@ void FusedAttentionGradKernel(
     const DenseTensor &fmha_out,
     const DenseTensor &out_linear_out,
     const DenseTensor &dropout_mask_out,
-    int num_heads,
+    int num_heads_,  // unused
     bool transpose_qkv_wb,
     bool pre_layer_norm,
     float epsilon,
@@ -209,11 +209,11 @@ void FusedAttentionGradKernel(
   const auto input_x_dims = x.dims();
   const auto qkv_w_dims = qkv_weight.dims();
 
-  int batch_size = input_x_dims[0];
-  int seq_len = input_x_dims[1];
-  int embed_dims = input_x_dims[2];
-  num_heads = qkv_w_dims[1];
-  int head_dims = qkv_w_dims[2];
+  int64_t batch_size = input_x_dims[0];
+  int64_t seq_len = input_x_dims[1];
+  int64_t embed_dims = input_x_dims[2];
+  int64_t num_heads = qkv_w_dims[1];
+  int64_t head_dims = qkv_w_dims[2];
 
   xpu::Context *xpu_ctx = dev_ctx.x_context();
   xpu::ctx_guard RAII_GUARD(xpu_ctx);
@@ -334,7 +334,7 @@ void FusedAttentionGradKernel(
                       {0LL});
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "reduce_sum");
   {
-    int qkv_size = batch_size * seq_len * num_heads * head_dims;
+    int64_t qkv_size = batch_size * seq_len * num_heads * head_dims;
     const XPUTypeT *q_out_ptr = qkv_transpose_out_ptr;
     const XPUTypeT *k_out_ptr = q_out_ptr + qkv_size;
     const XPUTypeT *v_out_ptr = k_out_ptr + qkv_size;

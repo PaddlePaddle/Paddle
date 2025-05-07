@@ -95,6 +95,7 @@ from .variables import (
     ListVariable,
     MethodVariable,
     NullVariable,
+    NumPyArrayVariable,
     RangeVariable,
     SequenceIterVariable,
     SliceVariable,
@@ -269,7 +270,7 @@ def if_break_graph_decorator(normal_jump: Callable):
 
     def inner(self: OpcodeExecutor, instr: Instruction):
         result = self.stack.top
-        if isinstance(result, TensorVariable):
+        if isinstance(result, (TensorVariable, NumPyArrayVariable)):
             # fallback when in OpcodeExecutor
             # raise error in OpcodeInlineExecutor
             log(3, "[BreakGraph] break graph for if jump tensor\n")
@@ -441,7 +442,7 @@ class OpcodeExecutorBase:
         Prints the Static Instruction Representation (SIR) in the executor.
 
         """
-        print(self._graph.sir_ctx.TOS)
+        print(self._graph.sir_builder.current_sir)
 
     def _prepare_virtual_env(self):
         """
@@ -626,7 +627,7 @@ class OpcodeExecutorBase:
             self._current_line = instr.starts_line
         if not hasattr(self, instr.opname):
             raise FallbackError(f"opcode: {instr.opname} is not supported.")
-        log_message = f"[Translate {self._name}]: (line {self._current_line:>3}) {instr.opname:<12} {instr.argval}, stack is {self.stack}\n"
+        log_message = f"[Translate {self._name}] (line {self._current_line:>3}) {instr.opname:<12} {instr.argval}, stack is {self.stack}\n"
         log(3, log_message)
         code_file = self.vframe.code.co_filename
         code_line = self._current_line
@@ -1615,6 +1616,7 @@ class OpcodeExecutorBase:
                 )
             )
 
+    @call_break_graph_decorator(push_n=1)
     def GET_ITER(self, instr: Instruction):
         source_obj = self.stack.pop()
         iter_variable = BuiltinVariable(iter, self._graph, DanglingTracker())(
@@ -2440,7 +2442,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
 
             log(
                 3,
-                "[Resumed Function]: break graph in loop create loop body as\n",
+                "[Resumed Function] break graph in loop create loop body as\n",
             )
             log_do(3, lambda: dis.dis(loop_body_fn))
 
@@ -2685,7 +2687,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
 
             log(
                 3,
-                f"[Resumed Function]: Inline call for loop function {inline_call_fn.__code__.co_name}\n",
+                f"[Resumed Function] Inline call for loop function {inline_call_fn.__code__.co_name}\n",
             )
             log_do(3, lambda: dis.dis(inline_call_fn))
 

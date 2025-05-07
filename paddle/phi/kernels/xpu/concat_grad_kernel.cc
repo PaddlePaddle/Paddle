@@ -47,11 +47,9 @@ void ConcatGradKernel(const Context& dev_ctx,
   // get output tensor that the name is not kEmptyVarName
   std::vector<XPUType*> ptrs(outs.size());
   for (size_t j = 0; j < outs.size(); ++j) {
-    if (outs[j] && outs[j]->numel() != 0UL) {
+    if (outs[j]) {
       dev_ctx.template Alloc<T>(outs[j]);
       ptrs[j] = reinterpret_cast<XPUType*>(outs[j]->data<T>());
-    } else {
-      ptrs[j] = nullptr;
     }
   }
   PADDLE_ENFORCE_GE(axis,
@@ -70,9 +68,9 @@ void ConcatGradKernel(const Context& dev_ctx,
                         out_grad.dims().size()));
 
   auto input_dims = x[0]->dims();
-  std::vector<int> split_list(x.size());
-  std::vector<int> xdims_list(input_dims.size());
-  int total_length = 0;
+  std::vector<int64_t> split_list(x.size());
+  std::vector<int64_t> xdims_list(input_dims.size());
+  int64_t total_length = 0;
   for (size_t i = 0; i < x.size(); ++i) {
     split_list[i] = x[i]->dims()[axis];
     total_length += x[i]->dims()[axis];
