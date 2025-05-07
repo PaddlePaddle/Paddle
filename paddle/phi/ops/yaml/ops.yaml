@@ -12,6 +12,7 @@
   output : Tensor(out)
   infer_meta :
     func : RealAndImagInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
   kernel :
     func : abs
     data_type : x
@@ -277,6 +278,14 @@
   traits : paddle::dialect::ForwardOnlyTrait
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
 
+- op : ap_variadic
+  args : (Tensor[] xs, int num_outputs, str code_module_lambda, str infer_meta_lambda, str rnel_dispatch_lambda, str kernel_dispatch_const_data_lambda)
+  output : Tensor[](out){num_outputs}
+  infer_meta :
+    func : ApVariadicInferMeta
+  kernel :
+    func : ap_variadic
+
 - op : apply_per_channel_scale
   args: (Tensor x, Tensor scales)
   output: Tensor(out)
@@ -305,6 +314,7 @@
   output : Tensor(out)
   infer_meta :
     func : ArgMinMaxInferMeta
+    spmd_rule : ArgMinInferSpmdDynamic
   kernel :
     func : argmin
     data_type : x
@@ -450,6 +460,7 @@
   output : Tensor(out)
   infer_meta :
     func : Atan2InferMeta
+    spmd_rule : ElementwiseBinaryInferSpmd
   kernel :
     func : atan2
   backward : atan2_grad
@@ -689,6 +700,7 @@
   output : Tensor(out)
   infer_meta :
     func : ElementwiseInferMeta
+    spmd_rule : ElementwiseBinaryInferSpmd
   kernel :
     func : bitwise_or
     backend : x
@@ -1142,6 +1154,7 @@
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
   kernel :
     func : cosh
   inplace: (x -> out)
@@ -2074,6 +2087,7 @@
   infer_meta :
     param: [x, y]
     func : ElementwiseInferMeta
+    spmd_rule : ElementwiseBinaryInferSpmd
   kernel :
     func : fmax
   backward : fmax_grad
@@ -2086,6 +2100,7 @@
   infer_meta :
     func : ElementwiseInferMeta
     param: [x, y]
+    spmd_rule : ElementwiseBinaryInferSpmd
   kernel :
     func : fmin
   backward : fmin_grad
@@ -4092,6 +4107,7 @@
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
   kernel :
     func : reciprocal
   inplace : (x -> out)

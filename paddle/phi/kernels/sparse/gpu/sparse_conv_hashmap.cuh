@@ -118,6 +118,7 @@ __global__ void lookup_coords_kernel(
 {
     int tidx = blockIdx.x * blockDim.x + threadIdx.x;
     int idx = tidx / kernel_volume;
+    if (idx >= n) return;
     int _kernel_idx = tidx % kernel_volume;
     int kernel_idx = _kernel_idx;
     const int* in_coords = coords + _width * idx;

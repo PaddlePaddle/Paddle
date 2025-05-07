@@ -50,6 +50,7 @@ static inline Array<T, ElementCount> VectorToArray(const VectorLikeType& vec) {
   return ret;
 }
 }  // namespace details
+
 template <typename IndexType>
 struct IndexCalculator {
   IndexCalculator(int dim,
@@ -57,53 +58,48 @@ struct IndexCalculator {
                   const std::vector<int64_t>& cal_strides,
                   const std::vector<int64_t>& full_strides)
       : dim(dim) {
-    dims = details::VectorToArray<int64_t, kMaxRank>(cal_dims);
-    strides = details::VectorToArray<int64_t, kMaxRank>(full_strides);
-    reduce_strides = details::VectorToArray<int64_t, kMaxRank>(cal_strides);
-#ifndef PADDLE_WITH_XPU_KP
-    std::vector<kps::details::FastDivMod> cal_divmoders;
-    // fast divmod
-    for (auto i : cal_strides) {
-      cal_divmoders.push_back(kps::details::FastDivMod(i));
+    std::vector<int64_t> dim_strides;
+    for (auto i : cal_dims) {
+      dim_strides.push_back(full_strides[i]);
     }
-    divmoders = details::VectorToArray<kps::details::FastDivMod, kMaxRank>(
-        cal_divmoders);
+    strides = details::VectorToArray<int64_t, kMaxRank>(dim_strides);
+#ifdef PADDLE_WITH_XPU_KP
+    reduce_strides = details::VectorToArray<int64_t, kMaxRank>(cal_strides);
+#else
+    std::vector<FastDivMod<IndexType>> cal_divmoders;
+    for (auto i : cal_strides) {
+      cal_divmoders.emplace_back(i);
+    }
+    divmoders =
+        details::VectorToArray<FastDivMod<IndexType>, kMaxRank>(cal_divmoders);
 #endif
   }
 
   __device__ inline IndexType operator()(IndexType offset) const {
+    IndexType index = 0;
+#pragma unroll
+    for (int i = 0; i < kMaxRank; ++i) {
+      if (i == dim) {
+        break;
+      }
 #ifdef PADDLE_WITH_XPU_KP
-    IndexType index = 0;
-#pragma unroll
-    for (int i = 0; i < kMaxRank; ++i) {
-      if (i == dim) {
-        break;
-      }
-      index += (offset / reduce_strides[i]) * strides[dims[i]];
+      index += (offset / reduce_strides[i]) * strides[i];
       offset = offset % reduce_strides[i];
-    }
-    return index;
 #else
-    IndexType index = 0;
-#pragma unroll
-    for (int i = 0; i < kMaxRank; ++i) {
-      if (i == dim) {
-        break;
-      }
       auto divmod = divmoders[i].Divmod(offset);
-      index += (divmod.val[0] * strides[dims[i]]);
+      index += (divmod.val[0] * strides[i]);
       offset = divmod.val[1];
+#endif
     }
     return index;
-#endif
   }
 
   int dim;
-  Array<int64_t, kMaxRank> dims;
   Array<int64_t, kMaxRank> strides;
+#ifdef PADDLE_WITH_XPU_KP
   Array<int64_t, kMaxRank> reduce_strides;
-#ifndef PADDLE_WITH_XPU_KP
-  Array<kps::details::FastDivMod, kMaxRank> divmoders;
+#else
+  Array<FastDivMod<IndexType>, kMaxRank> divmoders;
 #endif
 };
 
