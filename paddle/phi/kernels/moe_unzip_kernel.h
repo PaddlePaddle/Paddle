@@ -30,5 +30,6 @@ void MoeUnzipKernel(const Context& dev_ctx,
                     DenseTensor* X_unzipped,
                     DenseTensor* zipped_expertwise_rowmap,
                     DenseTensor* token_prob_unzipped,
-                    DenseTensor* XScale_unzipped);
+                    DenseTensor* XScale_unzipped,
+                    DenseTensor* global_expertwise_block_cumsum);
 }  // namespace phi
