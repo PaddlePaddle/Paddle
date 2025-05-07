@@ -133,6 +133,7 @@ inline std::unique_ptr<DeviceContext> CreateDeviceContext(
           custom_ctx->stream());
     }
     dev_ctx->SetAllocator(instance.GetAllocator(p, custom_ctx->stream()).get());
+    custom_ctx->PartialInitWithAllocator();
     dev_ctx->SetGenerator(phi::DefaultCustomDeviceGenerator(p).get());
 #endif
   } else {
