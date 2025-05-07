@@ -72,3 +72,8 @@ jobs:
     needs: build
     with:
       docker_build_image: ${{ needs.build.outputs.docker_build_image }}
+
+  api-benchmark:
+    name: Api-Benchmark
+    uses: ./.github/workflows/_Api-Benchmark.yml
+    needs: build
