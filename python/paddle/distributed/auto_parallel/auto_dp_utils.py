@@ -47,20 +47,37 @@ def _convert_fake_replicate_grad_to_partial(params_grads):
             param, grad = params_grads[idx][0], params_grads[idx][1]
             if grad.is_dist():
                 grad_placements = grad.placements
-
                 if not isinstance(grad_placements[0], dist.Partial):
                     grad = _fake_replicate_grad_to_partial(grad, 0)
-                    params_grads[idx] = (param, grad)
+            else:
+                default_grad_placements = [
+                    dist.Partial(dist.ReduceType.kRedSum)
+                ]
+                default_grad_mesh = dist.ProcessMesh(
+                    list(range(0, word_size)), dim_names=["dp"]
+                )
+                grad = dist.auto_parallel.api.dtensor_from_local(
+                    grad, default_grad_mesh, default_grad_placements
+                )
+            params_grads[idx] = (param, grad)
     else:
         for idx in range(len(params_grads['params'])):
             grad = params_grads['params'][idx]
             if grad.is_dist():
                 grad_placements = grad.placements
-
                 if not isinstance(grad_placements[0], dist.Partial):
-                    params_grads['params'][idx] = (
-                        _fake_replicate_grad_to_partial(grad, 0)
-                    )
+                    grad = _fake_replicate_grad_to_partial(grad, 0)
+            else:
+                default_grad_placements = [
+                    dist.Partial(dist.ReduceType.kRedSum)
+                ]
+                default_grad_mesh = dist.ProcessMesh(
+                    list(range(0, word_size)), dim_names=["dp"]
+                )
+                grad = dist.auto_parallel.api.dtensor_from_local(
+                    grad, default_grad_mesh, default_grad_placements
+                )
+            params_grads['params'][idx] = grad
 
 
 def in_auto_dp_mode():
