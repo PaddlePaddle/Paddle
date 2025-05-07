@@ -95,11 +95,6 @@ void ApplyFuseApTrivialPass(
   }
   {
     std::shared_ptr<pir::PassManager> pass_manager = CreatePassManager();
-    pass_manager->AddPass(CreateFallbackNestedFusionOpToPhiPass());
-    pass_manager->Run(program);
-  }
-  {
-    std::shared_ptr<pir::PassManager> pass_manager = CreatePassManager();
     pass_manager->AddPass(CreatePutApTrivialOpsInRangePass());
     pass_manager->AddPass(CreateFuseApTrivialPass());
     pass_manager->Run(program);

@@ -65,13 +65,12 @@ def _compile(
     func,
     input_specs,
     train=False,
-    ap_path=None,
+    ap_path="",
     ap_workspace_dir='/tmp/paddle/ap',
     backend_device='cuda',
     target_framework='paddle',
     compile_engine='PCC',
 ):
-    assert ap_path is not None
     assert not train, "only support inference now"
     os.makedirs(ap_workspace_dir, exist_ok=True)
     build_strategy = paddle.static.BuildStrategy()
