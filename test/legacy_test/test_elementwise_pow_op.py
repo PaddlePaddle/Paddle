@@ -274,20 +274,15 @@ class TestElementwisePowComplexOp(OpTest):
         return places
 
     def test_check_output(self):
-        if hasattr(self, 'attrs'):
-            self.check_output(check_dygraph=False)
-        else:
-            self.check_output(check_pir=True, check_symbol_infer=False)
+
+        self.check_output(check_pir=True, check_symbol_infer=False)
 
     def test_check_grad_normal(self):
-        if hasattr(self, 'attrs'):
-            self.check_grad(['X', 'Y'], 'Out', check_dygraph=False)
-        else:
-            self.check_grad(
-                ['X', 'Y'],
-                'Out',
-                check_pir=True,
-            )
+        self.check_grad(
+            ['X', 'Y'],
+            'Out',
+            check_pir=True,
+        )
 
 
 @unittest.skipIf(
