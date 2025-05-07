@@ -628,14 +628,14 @@ void IRSchedule::Annotate(const Expr& block,
                           const attr_t& value) {
   impl_->Annotate(block, key, value);
 
-#define TRACE_ANNOTATE_ITEM(data_type, step_name)               \
-  if (absl::holds_alternative<data_type>(value)) {              \
-    trace_.Append(ScheduleDesc::Step(                           \
-        #step_name,                                             \
-        {{"block", std::vector<Expr>({block})}},                \
-        {{"key", key}, {"value", absl::get<data_type>(value)}}, \
-        {}));                                                   \
-    return;                                                     \
+#define TRACE_ANNOTATE_ITEM(data_type, step_name)              \
+  if (std::holds_alternative<data_type>(value)) {              \
+    trace_.Append(ScheduleDesc::Step(                          \
+        #step_name,                                            \
+        {{"block", std::vector<Expr>({block})}},               \
+        {{"key", key}, {"value", std::get<data_type>(value)}}, \
+        {}));                                                  \
+    return;                                                    \
   }
   TRACE_ANNOTATE_ITEM(int, AnnotateIntAttr)
   TRACE_ANNOTATE_ITEM(bool, AnnotateBoolAttr)

@@ -106,6 +106,25 @@ class UnsupportedPaddleAPIBreak(UnsupportedOperationBreak):
         )
 
 
+class UnsupportedNumPyAPIBreak(UnsupportedOperationBreak):
+    def __init__(
+        self,
+        *,
+        fn_name=None,
+        reason_str=None,
+        file_path="",
+        line_number=-1,
+    ):
+        if reason_str is None:
+            reason_str = f"Not support NumPy API: {fn_name}"
+
+        super().__init__(
+            reason_str=reason_str,
+            file_path=file_path,
+            line_number=line_number,
+        )
+
+
 class BuiltinFunctionBreak(UnsupportedOperationBreak):
     """Break reason for unsupported built-in function calls.
 

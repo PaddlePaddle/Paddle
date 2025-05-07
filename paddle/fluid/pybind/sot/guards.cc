@@ -193,6 +193,24 @@ bool NumPyArrayValueMatchGuard::check(PyObject* value) {
       .cast<bool>();
 }
 
+bool NumPyArrayShapeMatchGuard::check(PyObject* value) {
+  py::array array = py::reinterpret_borrow<py::array>(value);
+  if (!array) {
+    return false;
+  }
+  int ndim = array.ndim();
+  auto shape = array.shape();
+  if (ndim != static_cast<int>(expected_.size())) {
+    return false;
+  }
+  for (int i = 0; i < ndim; ++i) {
+    if (expected_[i].has_value() && shape[i] != expected_[i].value()) {
+      return false;
+    }
+  }
+  return true;
+}
+
 bool WeakRefMatchGuard::check(PyObject* value) {
   if (value == nullptr || expected_ == nullptr || Py_IsNone(expected_)) {
     return false;

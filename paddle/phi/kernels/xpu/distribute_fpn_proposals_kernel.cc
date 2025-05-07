@@ -41,7 +41,7 @@ static void Sort(const XPUContext& dev_ctx,
   DenseTensor index_t;
   index_t.Resize({value.numel()});
   int* index = dev_ctx.template HostAlloc<int>(&index_t);
-  for (int i = 0; i < value.numel(); ++i) {
+  for (int64_t i = 0; i < value.numel(); ++i) {
     index[i] = i;
   }
 

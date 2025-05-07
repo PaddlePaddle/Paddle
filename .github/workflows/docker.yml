@@ -1,0 +1,77 @@
+on:
+  workflow_call:
+    outputs:
+      docker_cpu_image:
+        description: "Generate images for all CI usage"
+        value: ${{ jobs.build-docker-images.outputs.docker_cpu_image }}
+
+      docker_inference_image:
+        description: "Generate images for all CI usage"
+        value: ${{ jobs.build-docker-images.outputs.docker_inference_image }}
+
+      docker_coverage_image:
+        description: "Generate images for all CI usage"
+        value: ${{ jobs.build-docker-images.outputs.docker_coverage_image }}
+
+      docker_build_image:
+        description: "Generate images for all CI usage"
+        value: ${{ jobs.build-docker-images.outputs.docker_build_image }}
+
+      docker_distribute_file:
+        description: "Generate images for all CI usage"
+        value: ${{ jobs.build-docker-images.outputs.docker_distribute_image }}
+
+jobs:
+  build-docker-images:
+    name: build docker
+    runs-on:
+      group: Docker-build
+    outputs:
+      docker_cpu_image: ${{ steps.build-docker-images.outputs.docker_cpu_image }}
+      docker_inference_image: ${{ steps.build-docker-images.outputs.docker_inference_image }}
+      docker_coverage_image: ${{ steps.build-docker-images.outputs.docker_coverage_image }}
+      docker_build_image: ${{ steps.build-docker-images.outputs.docker_build_image }}
+      docker_distribute_image: ${{ steps.build-docker-images.outputs.docker_distribute_image }}
+    steps:
+      - id: build-docker-images
+        name: build docker images
+        env:
+          PR_ID: ${{ github.event.pull_request.number }}
+          COMMIT_ID: ${{ github.event.pull_request.head.sha }}
+          docker_cpu_file: Dockerfile.cuda9_cudnn7_gcc48_py35_centos6
+          docker_inference_file: Dockerfile.cuda11.2_cudnn8.1_trt8.4_gcc8.2_ubuntu18
+          docker_coverage_file: Dockerfile.cuda117_cudnn8_gcc82_ubuntu18_coverage
+          docker_build_file: Dockerfile.cuda11.2_cudnn8_gcc82_trt8
+          docker_distribute_file: Dockerfile.cuda123_cudnn9_gcc122_ubuntu20
+        run: |
+          set -x
+          wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/Paddle/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
+          tar xf Paddle.tar.gz --strip-components=1
+          rm Paddle.tar.gz
+          cd tools/dockerfile
+          bash ci_dockerfile.sh
+          cd ../..
+
+          # docker build images
+          declare -A docker_files=(["docker_cpu"]="$docker_cpu_file" ["docker_inference"]="$docker_inference_file" ["docker_coverage"]="$docker_coverage_file" ["docker_build"]="$docker_build_file" ["docker_distribute"]="$docker_distribute_file")
+          for name in "${!docker_files[@]}"
+          do
+            md5_value=`md5sum tools/dockerfile/${docker_files[$name]} | awk '{print $1}'`
+            docker_image="ccr-2vdh3abv-pub.cnc.bj.baidubce.com/ci/paddle:${md5_value}"
+            declare "${name}_image=${docker_image}"
+            echo "${name}_image=${docker_image}" >> $GITHUB_OUTPUT
+            set +e
+            docker pull $docker_image
+            if [ $? -eq 0 ];then
+              echo use docker cache
+            else
+              docker build -t $docker_image -f tools/dockerfile/${docker_files[$name]} .
+              docker push $docker_image
+              echo end docker build
+            fi
+            set -e
+          done
+
+          # clean workspace
+          cd ${{ github.workspace }}
+          rm -rf ./*

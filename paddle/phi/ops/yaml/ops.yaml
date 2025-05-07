@@ -12,6 +12,7 @@
   output : Tensor(out)
   infer_meta :
     func : RealAndImagInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
   kernel :
     func : abs
     data_type : x
@@ -313,6 +314,7 @@
   output : Tensor(out)
   infer_meta :
     func : ArgMinMaxInferMeta
+    spmd_rule : ArgMinInferSpmdDynamic
   kernel :
     func : argmin
     data_type : x
@@ -1152,6 +1154,7 @@
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
   kernel :
     func : cosh
   inplace: (x -> out)

@@ -140,7 +140,7 @@ void SetValueGradImpl(const Context& dev_ctx,
   }
 
   phi::funcs::SetConstant<Context, T> set_zero;
-  int r = XPU_SUCCESS;
+  int r = 0;
 
   if (x_grad) {
     // Set gradient of `Input`

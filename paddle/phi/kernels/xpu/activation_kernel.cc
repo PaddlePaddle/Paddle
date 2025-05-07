@@ -72,7 +72,7 @@ int xpu_activation_func(
     const Context& dev_ctx,
     const DenseTensor& x,
     DenseTensor* out,
-    std::function<int(xpu::Context*, const XPUType*, XPUType*, int)> func) {
+    std::function<int(xpu::Context*, const XPUType*, XPUType*, int64_t)> func) {
   int r = func(dev_ctx.x_context(),
                reinterpret_cast<const XPUType*>(x.data<T>()),
                reinterpret_cast<XPUType*>(out->data<T>()),
@@ -85,8 +85,8 @@ int xpu_activation_func_with_max_x_y(
     const Context& dev_ctx,
     const DenseTensor& x,
     DenseTensor* out,
-    std::function<
-        int(xpu::Context*, const XPUType*, XPUType*, int, const float*, float*)>
+    std::function<int(
+        xpu::Context*, const XPUType*, XPUType*, int64_t, const float*, float*)>
         func) {
   // does not support "const float* max_x, float* max_y" now
   int r = func(dev_ctx.x_context(),
@@ -106,7 +106,7 @@ int xpu_activation_1attr_func(const Context& dev_ctx,
                               std::function<int(xpu::Context*,
                                                 const XPUType*,
                                                 XPUType*,
-                                                int,
+                                                int64_t,
                                                 float,
                                                 const float*,
                                                 float*)> func) {
@@ -130,7 +130,7 @@ int xpu_activation_2attr_func(const Context& dev_ctx,
                               std::function<int(xpu::Context*,
                                                 const XPUType*,
                                                 XPUType*,
-                                                int,
+                                                int64_t,
                                                 float,
                                                 float,
                                                 const float*,
