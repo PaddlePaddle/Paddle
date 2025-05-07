@@ -87,7 +87,6 @@ from ....utils import (
 )
 from ....utils.envs import ENV_SOT_BREAK_GRAPH_ON_GET_SYMBOLIC_VALUE
 from ....utils.exceptions import (
-    HasNoAttributeError,
     InnerError,
     UnsupportedPaddleAPIBreak,
 )
@@ -1511,9 +1510,7 @@ class SuperVariable(VariableBase):
                 attr = attr.bind(self.obj, name)
             return attr
 
-        raise HasNoAttributeError(
-            f"{self.obj.__class__.__name__} {self} has no attribute {name}"
-        )
+        return super().getattr(name)
 
     @VariableFactory.register_from_value()
     def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
