@@ -104,9 +104,9 @@ def shape(input: Tensor) -> Tensor:
 
             >>> img = np.ones((3, 100, 100)).astype(np.float32)
 
-            >>> res = exe.run(paddle.static.default_main_program(), feed={'x':img}, fetch_list=[output])
+            >>> res = exe.run(paddle.static.default_main_program(), feed={'x': img}, fetch_list=[output])
             >>> print(res)
-            [array([  3, 100, 100], dtype=int32)]
+            [array([  3, 100, 100], dtype=int64)]
     """
     if in_dynamic_or_pir_mode():
         out = _C_ops.shape64(input)  # type: ignore
