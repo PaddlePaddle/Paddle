@@ -90,4 +90,4 @@ jobs:
 
           # clean workspace
           cd ${{ github.workspace }}
-          rm -rf ./*
+          rm -rf * .[^.]*
