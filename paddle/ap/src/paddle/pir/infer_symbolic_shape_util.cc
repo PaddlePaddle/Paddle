@@ -249,13 +249,13 @@ bool ApOpFacadeOpInferSymbolicShape(
     pir::Operation* op, pir::InferSymbolicShapeContext* infer_context) {
   const auto& ret = TryApOpFacadeOpInferSymbolicShape(op, infer_context);
   bool success = !ret.HasError();
-  PADDLE_ENFORCE(
-      success,
-      "ApOpFacadeOpInferSymbolicShape failed. \nTraceback (most recent call "
-      "last):\n%s\n%s: %s. ",
-      ret.GetError().CallStackToString(),
-      ret.GetError().class_name(),
-      ret.GetError().msg());
+  PADDLE_ENFORCE(success,
+                 phi::errors::Fatal("ApOpFacadeOpInferSymbolicShape failed. "
+                                    "\nTraceback (most recent call "
+                                    "last):\n%s\n%s: %s. ",
+                                    ret.GetError().CallStackToString(),
+                                    ret.GetError().class_name(),
+                                    ret.GetError().msg()));
   return success;
 }
 
@@ -263,13 +263,13 @@ bool PdOpApFacadeOpInferSymbolicShape(
     pir::Operation* op, pir::InferSymbolicShapeContext* infer_context) {
   const auto& ret = TryPdOpApFacadeOpInferSymbolicShape(op, infer_context);
   bool success = !ret.HasError();
-  PADDLE_ENFORCE(
-      success,
-      "PdOpApFacadeOpInferSymbolicShape failed. \nTraceback (most recent call "
-      "last):\n%s\n%s: %s. ",
-      ret.GetError().CallStackToString(),
-      ret.GetError().class_name(),
-      ret.GetError().msg());
+  PADDLE_ENFORCE(success,
+                 phi::errors::Fatal("PdOpApFacadeOpInferSymbolicShape failed. "
+                                    "\nTraceback (most recent call "
+                                    "last):\n%s\n%s: %s. ",
+                                    ret.GetError().CallStackToString(),
+                                    ret.GetError().class_name(),
+                                    ret.GetError().msg()));
   return success;
 }
 

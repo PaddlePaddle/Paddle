@@ -36,8 +36,8 @@ void ApFacadeKernel(const Context& dev_ctx,
                     const std::string& infer_symbolic_func_name,
                     const std::string& serialized_attributes,
                     std::vector<DenseTensor*> outs) {
-  PADDLE_THROW(common::errors::Unimplemented(
-      "[DEAD CODE] pd_op.ap_facade has no kernel registered."));
+  PADDLE_THROW(
+      common::errors::Unimplemented("ap_facade has no kernel registered."));
 }
 
 }  // namespace phi

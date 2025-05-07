@@ -43,13 +43,15 @@ class ConvertPdFacadeToApFacadePattern
   bool MatchAndRewrite(paddle::dialect::ApFacadeOp pd_facade_op,
                        pir::PatternRewriter& rewriter) const override {
     const auto& ret = TryMatchAndRewrite(pd_facade_op, &rewriter);
-    PADDLE_ENFORCE(!ret.HasError(),
-                   "ConvertPdFacadeToApFacadePattern::MatchAndRewrite failed. "
-                   "\nTraceback (most recent call "
-                   "last):\n%s\n%s: %s. ",
-                   ret.GetError().CallStackToString(),
-                   ret.GetError().class_name(),
-                   ret.GetError().msg());
+    PADDLE_ENFORCE(
+        !ret.HasError(),
+        phi::errors::Fatal(
+            "ConvertPdFacadeToApFacadePattern::MatchAndRewrite failed. "
+            "\nTraceback (most recent call "
+            "last):\n%s\n%s: %s. ",
+            ret.GetError().CallStackToString(),
+            ret.GetError().class_name(),
+            ret.GetError().msg()));
     return ret.GetOkValue();
   }
 

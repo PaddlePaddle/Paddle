@@ -304,15 +304,26 @@ file(GLOB_RECURSE dist_dialect_srcs
 # if(WITH_DISTRIBUTE) FIXME in next PR
 set(op_dialect_srcs ${op_dialect_srcs} ${dist_dialect_srcs})
 # endif()
+
+if(NOT WITH_CINN)
+  list(
+    REMOVE_ITEM
+    op_dialect_srcs
+    "${CMAKE_CURRENT_SOURCE_DIR}/operator/interface/infer_symbolic_shape/ap_infer_sym.cc"
+  )
+endif()
+
 set(op_dialect_deps
     phi
     common
     pir
-    ap_pir
     type_info
     string_helper
     global_utils
     amp)
+if(WITH_CINN)
+  set(op_dialect_deps ${op_dialect_deps} ap_pir)
+endif()
 if(WITH_ROCM)
   set(op_dialect_deps ${op_dialect_deps} global_utils)
 endif()

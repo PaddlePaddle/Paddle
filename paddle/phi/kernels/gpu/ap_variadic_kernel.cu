@@ -15,7 +15,6 @@
 #include <mutex>
 #include <unordered_map>
 #include "glog/logging.h"
-#include "jitify.hpp"  // NOLINT
 #include "paddle/common/enforce.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
@@ -101,12 +100,13 @@ void ApVariadicKernel(const Context& dev_ctx,
                                             kernel_dispatch_lambda,
                                             kernel_dispatch_const_data_lambda,
                                             outs);
-  PADDLE_ENFORCE(
-      !ret.HasError(),
-      "ap_kernel failed. \nTraceback (most recent call last):\n%s\n%s: %s. ",
-      ret.GetError().CallStackToString(),
-      ret.GetError().class_name(),
-      ret.GetError().msg());
+  PADDLE_ENFORCE_NE(ret.HasError(),
+                    true,
+                    phi::errors::Fatal("ap_variadic failed. \nTraceback (most "
+                                       "recent call last):\n%s\n%s: %s. ",
+                                       ret.GetError().CallStackToString(),
+                                       ret.GetError().class_name(),
+                                       ret.GetError().msg()));
 }
 
 }  // namespace phi
