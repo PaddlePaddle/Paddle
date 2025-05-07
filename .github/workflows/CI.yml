@@ -68,8 +68,8 @@ jobs:
 
   static-check:
     name: Static-Check
-    if: ${{ needs.build.outputs.can-skip != 'true' }}
     uses: ./.github/workflows/_Static-Check.yml
     needs: build
     with:
       docker_build_image: ${{ needs.build.outputs.docker_build_image }}
+      can-skip: ${{ needs.build.outputs.can-skip }}
