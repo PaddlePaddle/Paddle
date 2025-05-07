@@ -42,5 +42,10 @@ from .pp_utils.forward_backward_overlap_utils import (  # noqa: F401
     ScheduleNode,
     ScheduleChunk,
 )
+from .pp_utils.overlapped_offload_utils import (  # noqa: F401
+    RROOQueue,
+    get_rroo_queue_manager,
+    get_rroo_buffer_pool_manager,
+)
 
 __all__ = []
