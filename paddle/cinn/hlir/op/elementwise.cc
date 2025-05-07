@@ -1293,12 +1293,12 @@ std::shared_ptr<framework::OpStrategy> StrategyForArangeSymbolic(
   auto dtype =
       cinn::common::Str2Type(std::get<std::string>(attr_store.at("dtype")));
 
-#define EXPR_FROM_ATTR(type)                             \
-  type start_ = absl::get<type>(attr_store.at("start")); \
-  type end_ = absl::get<type>(attr_store.at("end"));     \
-  type step_ = absl::get<type>(attr_store.at("step"));   \
-  arange_size = GetArangeSize(start_, end_, step_);      \
-  start = Expr(start_);                                  \
+#define EXPR_FROM_ATTR(type)                            \
+  type start_ = std::get<type>(attr_store.at("start")); \
+  type end_ = std::get<type>(attr_store.at("end"));     \
+  type step_ = std::get<type>(attr_store.at("step"));   \
+  arange_size = GetArangeSize(start_, end_, step_);     \
+  start = Expr(start_);                                 \
   step = Expr(step_);
 
   Expr start, step;
