@@ -68,6 +68,7 @@ jobs:
 
   static-check:
     name: Static-Check
+    if: ${{ needs.build.outputs.can-skip != 'true' }}
     uses: ./.github/workflows/_Static-Check.yml
     needs: build
     with:

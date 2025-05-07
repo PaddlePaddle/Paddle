@@ -10,6 +10,9 @@ on:
       docker_build_image:
         description: "Generate images for all CI usage"
         value: ${{ inputs.docker_build_image }}
+      can-skip:
+        description: "Whether to skip the job"
+        value: ${{ jobs.build.outputs.can-skip }}
 
 
 env:
@@ -30,6 +33,8 @@ defaults:
 jobs:
   build:
     name: Build
+    outputs:
+      can-skip: ${{ steps.check-bypass.outputs.can-skip }}
     runs-on:
       group: GZ_BD-CPU
 
@@ -147,6 +152,7 @@ jobs:
           workflow-name: build
 
       - name: Build
+        if: steps.check-bypass.outputs.can-skip != 'true'
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           mkdir -p /root/.cache/build
@@ -156,6 +162,7 @@ jobs:
           '
 
       - name: Check sequence op
+        if: steps.check-bypass.outputs.can-skip != 'true'
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ${ci_scripts}/utils.sh; init
@@ -164,6 +171,7 @@ jobs:
           '
 
       - name: Upload paddle_whl
+        if: steps.check-bypass.outputs.can-skip != 'true'
         env:
           home_path: ${{ github.workspace }}/..
           bos_file: ${{ github.workspace }}/../bos/BosClient.py
@@ -193,7 +201,7 @@ jobs:
           '
 
       - name: Terminate and delete the container
-        if: always()
+        if: ${{ steps.check-bypass.outputs.can-skip != 'true' && always() }}
         run: |
           set +e
           docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'
