@@ -187,20 +187,23 @@ class DistAttr(core.TensorDistAttr):
             raise ValueError("The sharding_specs must be an instance of list.")
         assert all(
             isinstance(dim_name, str) or dim_name is None
-            for dim_name in sharding_specs
+            for dim_name_list in sharding_specs for dim_name in dim_name_list
         ), 'The dimension name in sharding_specs must be an instance of str.'
 
         self._sharding_specs = sharding_specs
-        dims_mapping = [
-            mesh.dim_names.index(dim_name) if dim_name is not None else -1
-            for dim_name in sharding_specs
-        ]
+
+        new_dims_mapping = [[] for _ in range(len(sharding_specs))]
+        for i, mesh_dims in enumerate(sharding_specs):
+            if len(mesh_dims) > 0:
+                for d in mesh_dims:
+                    new_dims_mapping[i].append(mesh.dim_names.index(d))
 
         # 2. init core.TensorDistAttr
         core.TensorDistAttr.__init__(self)
 
         self.process_mesh = mesh
-        self.dims_mapping = dims_mapping
+        self.dims_mapping = [-1] * len(sharding_specs)
+        self.new_dims_mapping = new_dims_mapping
         self.mark_annotated("process_mesh")
         self.mark_annotated("dims_mapping")
 
@@ -840,12 +843,19 @@ def reshard(
         # when reshard has been changed align dygraph logic, delete it.
         sharding_specs = get_shard_spec(mesh, placements, dist_tensor.ndim)
         dist_attr = DistAttr(mesh, sharding_specs)
+        print("dist attr = ", dist_attr)
         partial_dims = []
+        split_factor_map = {}
         for i, p in enumerate(placements):
             if isinstance(p, dist.Partial):
                 partial_dims.append(i)
+            if p.is_shard() and p.get_split_factor() > 1:
+                split_factor_map[i] = p.get_split_factor()
+
+        assert len(split_factor_map) <= 1, "only support rearrange once at most at now."
         if len(partial_dims) > 0:
             dist_attr._set_partial_dims(partial_dims)
+        dist_attr._set_split_factor_map(split_factor_map)
 
         alltoall_dim = _specific_alltoall_dim(dist_tensor, mesh, placements)
         if alltoall_dim is not None:

@@ -80,21 +80,18 @@ def to_dim_map(placements, tensor_dims):
     Returns:
         List[int]: a list of integer that represents sharding on each tensor dimension.
     """
-    dim_map = [-1] * tensor_dims
+    dim_map = [[] for _ in range(tensor_dims)]
     partial_status = {}
     for i, placement in enumerate(placements):
         if placement.is_shard():
             shard_dim = cast("Shard", placement).get_dim()
-            if dim_map[shard_dim] > -1:
-                import logging
-
-                logging.warning(
-                    f"Tensor dim {shard_dim} is already sharded on mesh dim {dim_map[shard_dim]}."
-                )
-
-            dim_map[shard_dim] = i
+            dim_map[shard_dim].append(i)
         if placement.is_partial():
             partial_status[i] = cast("Partial", placement).reduce_type()
+    
+    for shard_dim in dim_map:
+        if len(shard_dim) > 0:
+            shard_dim.sort(key=lambda idx : placements[idx].get_co_shard_order())
 
     return dim_map, partial_status
 
@@ -103,9 +100,10 @@ def get_shard_spec(mesh, placements, tensor_dims):
     """to get shard_spec for construct DistAttr for static API."""
     dim_map, _ = to_dim_map(placements, tensor_dims)
     mesh_dim_names = mesh.dim_names
-    shard_spec = [None] * len(dim_map)
+    shard_spec = [[] for _ in range(len(dim_map))]
     for i, d in enumerate(dim_map):
-        if d > -1:
-            shard_spec[i] = mesh_dim_names[d]
-
+        if len(d) > 0:
+            for mesh_dim in d:
+                shard_spec[i].append(mesh_dim_names[mesh_dim])
+    
     return shard_spec

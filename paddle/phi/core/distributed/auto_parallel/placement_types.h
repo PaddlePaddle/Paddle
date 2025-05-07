@@ -70,6 +70,8 @@ class Shard : public Placement {
  public:
   explicit Shard(int dim) : dim_(dim) {}
 
+  Shard(int dim, int split_factor) : dim_(dim), split_factor_(split_factor) {}
+
   bool is_shard(std::optional<int> dim = std::nullopt) const override {
     if (dim && *dim == this->dim_) {
       return true;
@@ -93,17 +95,53 @@ class Shard : public Placement {
 
   int get_dim() const { return dim_; }
 
+  virtual int get_co_shard_order() const { return 0; }
+
+  int get_split_factor() const { return split_factor_; }
+
   friend std::ostream& operator<<(std::ostream& os, const Shard& p) {
     os << p.to_string();
     return os;
   }
 
   std::string to_string() const override {
-    return "Shard(dim=" + std::to_string(dim_) + ")";
+    std::stringstream ss;
+    ss << "Shard(dim="  << std::to_string(dim_);
+    if (split_factor_ != 1) {
+      ss << ", sf=" << std::to_string(split_factor_);
+    }
+    ss << ")";
+
+    return ss.str();
   }
 
- private:
+ protected:
   int dim_;
+  int split_factor_ = 1;
+};
+
+class CoShard : public Shard {
+public:
+  CoShard(int64_t dim, int64_t co_shard_order) :
+    Shard(dim, 1), co_shard_order_(co_shard_order) {}
+
+  int get_co_shard_order() const override { return co_shard_order_; }
+
+  std::string to_string() const override {
+    std::stringstream ss;
+    ss << "Shard(dim="  << std::to_string(dim_);
+    ss << ", co_shard_order=" << std::to_string(co_shard_order_) << ")";
+
+    return ss.str();
+  }
+
+  friend std::ostream& operator<<(std::ostream& os, const CoShard& p) {
+    os << p.to_string();
+    return os;
+  }
+
+private:
+  int64_t co_shard_order_ = 0;
 };
 
 class Replicate : public Placement {

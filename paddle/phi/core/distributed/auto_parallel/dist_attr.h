@@ -21,6 +21,7 @@ limitations under the License. */
 #include <set>
 #include <string>
 #include <vector>
+#include <optional>
 
 #include "paddle/phi/common/reduce_type.h"
 #include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
@@ -96,7 +97,17 @@ class TEST_API TensorDistAttr {
 
   const std::vector<int64_t>& dims_mapping() const { return dims_mapping_; }
 
+  const std::vector<std::vector<int64_t>>& new_dims_mapping() const { return new_dims_mapping_; }
+
+  const std::unordered_map<int64_t, int64_t>& split_factor_map() const { return split_factor_map_; }
+
+  int64_t get_split_factor(int64_t mesh_dim) const;
+
   void set_dims_mapping(const std::vector<int64_t>& dims_mapping);
+
+  void set_new_dims_mapping(const std::vector<std::vector<int64_t>>& dims_mapping);
+
+  void set_split_factor_map(const std::unordered_map<int64_t, int64_t>& split_factor_map);
 
   // return vector of mesh dims on which the this tensor is partial on
   const std::set<int64_t> partial_dims() const;
@@ -191,7 +202,7 @@ class TEST_API TensorDistAttr {
   // if mesh_axis is not -1, check only on specific axis
   // if tensor_axis is not -1, return true only if the shard axis equal to
   // tensor_axis.
-  bool is_shard(int64_t mesh_axis = -1, int64_t tensor_axis = -1) const;
+  bool is_shard(int64_t mesh_axis = -1, std::optional<int64_t> dim = std::nullopt) const;
 
   // if mesh_axis is -1, check if tensor is partial on whole process_mesh
   // if mesh_axis is not -1, check only on specific axis.
@@ -205,6 +216,7 @@ class TEST_API TensorDistAttr {
   static std::vector<std::string> fields_;
   ProcessMesh process_mesh_;
   std::vector<int64_t> dims_mapping_;
+  std::vector<std::vector<int64_t>> new_dims_mapping_;
   int64_t batch_dim_{0};
   std::vector<bool> dynamic_dims_;
   std::map<std::string, bool> annotated_;
@@ -213,6 +225,8 @@ class TEST_API TensorDistAttr {
   // iterate operation (copy and comparison) would more frequency than random
   // element access. <key: dim on mesh, value: reduce type>
   paddle::flat_hash_map<int64_t, ReduceType> partial_status_;
+
+  std::unordered_map<int64_t, int64_t> split_factor_map_;
   // The flag indicates whether to skip checking the process mesh.
   bool skip_check_mesh_ = false;
 };

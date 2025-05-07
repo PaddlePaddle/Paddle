@@ -471,7 +471,15 @@ void BindAutoParallel(py::module *m) {
                    .def(py::init([](int64_t dim) {
                      return std::make_shared<phi::distributed::Shard>(dim);
                    }))
+                   .def(py::init([](int64_t dim, int64_t split_factor){
+                     return std::make_shared<phi::distributed::Shard>(dim, split_factor);
+                   }), py::arg("dim"), py::kw_only(), py::arg("split_factor")=1)
+                   .def(py::init([](int64_t dim, int64_t co_shard_order) {
+                     return std::make_shared<phi::distributed::CoShard>(dim, co_shard_order);
+                   }), py::arg("dim"), py::kw_only(), py::arg("co_shard_order")=0)
                    .def("get_dim", &phi::distributed::Shard::get_dim)
+                   .def("get_co_shard_order", &phi::distributed::Shard::get_co_shard_order)
+                   .def("get_split_factor", &phi::distributed::Shard::get_split_factor)
                    .def("__hash__", &phi::distributed::Shard::hash)
                    .def("__str__", &phi::distributed::Shard::to_string)
                    .def("__repr__", &phi::distributed::Shard::to_string)
@@ -583,6 +591,9 @@ void BindAutoParallel(py::module *m) {
       .def_property("dims_mapping",
                     &TensorDistAttr::dims_mapping,
                     &TensorDistAttr::set_dims_mapping)
+      .def_property("new_dims_mapping",
+                    &TensorDistAttr::new_dims_mapping,
+                    &TensorDistAttr::set_new_dims_mapping)
       .def_property("batch_dim",
                     &TensorDistAttr::batch_dim,
                     &TensorDistAttr::set_batch_dim)
@@ -630,7 +641,9 @@ void BindAutoParallel(py::module *m) {
            [](TensorDistAttr &self, const std::vector<int64_t> &dims) {
              self.set_partial_status(dims);
            })
-      .def("_clean_partial_status", &TensorDistAttr::clean_partial_status);
+      .def("_clean_partial_status", &TensorDistAttr::clean_partial_status)
+      .def("_set_split_factor_map", &TensorDistAttr::set_split_factor_map);
+
 
   py::class_<phi::distributed::SpmdRule>(*m, "SpmdRule")
       .def("infer_forward", &infer_forward)

@@ -87,6 +87,22 @@ inline std::string str_join(std::map<std::string, bool> const& elements,
   return str.substr(0, str.size() - 1);
 }
 
+inline std::string str_join(const std::vector<std::vector<int64_t>>& elements) {
+  std::stringstream ss;
+  for (const auto& e : elements) {
+    ss << "[" << str_join(e) << "] ";
+  }
+  return ss.str();
+}
+
+inline std::string str_join(const std::unordered_map<int64_t, int64_t>& map) {
+  std::stringstream ss;
+  for (const auto& [k, v] : map) {
+    ss << "mesh dim: " << std::to_string(k) << ", split factor: " << std::to_string(v);
+  }
+  return ss.str();
+}
+
 // Refer to https://stackoverflow.com/a/46931770
 inline std::vector<std::string> str_split(std::string const& input,
                                           const std::string& delimiter = ",") {

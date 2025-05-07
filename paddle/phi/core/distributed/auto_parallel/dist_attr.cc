@@ -11,15 +11,14 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-
-#include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
-
 #include <algorithm>
 #include <iostream>
 #include <iterator>
 
 #include "glog/logging.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
 #include "paddle/phi/core/distributed/auto_parallel/proto_helper.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 
 namespace phi::distributed {
 using phi::distributed::auto_parallel::str_join;
@@ -43,18 +42,22 @@ TensorDistAttr& TensorDistAttr::operator=(const TensorDistAttr& dist_attr) {
   TensorDistAttr tmp(dist_attr);
   std::swap(this->process_mesh_, tmp.process_mesh_);
   std::swap(this->dims_mapping_, tmp.dims_mapping_);
+  std::swap(this->new_dims_mapping_, tmp.new_dims_mapping_);
   std::swap(this->batch_dim_, tmp.batch_dim_);
   std::swap(this->chunk_id_, tmp.chunk_id_);
   std::swap(this->dynamic_dims_, tmp.dynamic_dims_);
   std::swap(this->annotated_, tmp.annotated_);
   std::swap(this->partial_status_, tmp.partial_status_);
   std::swap(this->skip_check_mesh_, tmp.skip_check_mesh_);
+  std::swap(this->split_factor_map_, tmp.split_factor_map_);
   return *this;
 }
 
 void TensorDistAttr::copy_from(const TensorDistAttr& dist_attr) {
   set_process_mesh(dist_attr.process_mesh());
   set_dims_mapping(dist_attr.dims_mapping());
+  set_new_dims_mapping(dist_attr.new_dims_mapping());
+  set_split_factor_map(dist_attr.split_factor_map());
   set_batch_dim(dist_attr.batch_dim());
   set_chunk_id(dist_attr.chunk_id());
   set_dynamic_dims(dist_attr.dynamic_dims());
@@ -76,6 +79,16 @@ void TensorDistAttr::set_dims_mapping(
   }
 }
 
+void TensorDistAttr::set_new_dims_mapping(
+    const std::vector<std::vector<int64_t>>& dims_mapping) {
+  new_dims_mapping_ = dims_mapping;
+}
+
+void TensorDistAttr::set_split_factor_map(
+  const std::unordered_map<int64_t, int64_t>& split_factor_map) {
+    split_factor_map_ = split_factor_map;
+}
+
 void TensorDistAttr::set_batch_dim(int64_t batch_dim) {
   batch_dim_ = batch_dim;
 }
@@ -91,6 +104,12 @@ void TensorDistAttr::set_dynamic_dims(const std::vector<bool>& dynamic_dims) {
 void TensorDistAttr::set_annotated(
     const std::map<std::string, bool>& annotated) {
   annotated_ = annotated;
+}
+
+int64_t TensorDistAttr::get_split_factor(int64_t mesh_dim) const {
+  PADDLE_ENFORCE_LE(mesh_dim, process_mesh_.ndim(),
+           "Mesh dim is %d, Process mesh ndim is %d", mesh_dim, process_mesh_.ndim());
+  return split_factor_map_.count(mesh_dim) ? split_factor_map_.at(mesh_dim) : 1;
 }
 
 const std::set<int64_t> TensorDistAttr::partial_dims() const {
@@ -139,6 +158,7 @@ void TensorDistAttr::set_default_dims_mapping(
     const std::vector<int64_t>& tensor_shape) {
   if (!tensor_shape.empty()) {
     dims_mapping_ = std::vector<int64_t>(tensor_shape.size(), -1);
+    new_dims_mapping_ = std::vector<std::vector<int64_t>>(tensor_shape.size());
   }
 }
 
@@ -288,12 +308,14 @@ std::string TensorDistAttr::to_string() const {
   std::string dist_str;
   dist_str += "{process_mesh: " + process_mesh_.to_string() + ", ";
   dist_str += "dims_mappings: [" + str_join(dims_mapping_) + "], ";
+  dist_str += "new dim_mappings: [" + str_join(new_dims_mapping_) + "], ";
   dist_str += "batch_dim: " + std::to_string(batch_dim_) + ", ";
   dist_str += "chunk_id: " + std::to_string(chunk_id_) + ", ";
   dist_str += "skip_check_mesh: " + std::to_string(skip_check_mesh_) + ", ";
   dist_str += "dynamic_dims: [" + str_join(dynamic_dims_) + "], ";
   dist_str += "annotated: [" + str_join(annotated_) + "], ";
-  dist_str += "partial: " + partial_status_string() + ".}";
+  dist_str += "partial: " + partial_status_string() + ", ";
+  dist_str += "split_factor: " + str_join(split_factor_map_) + ".}";
   return dist_str;
 }
 
@@ -350,6 +372,9 @@ bool operator==(const TensorDistAttr& lhs, const TensorDistAttr& rhs) {
     return false;
   }
   if (lhs.dims_mapping() != rhs.dims_mapping()) {
+    return false;
+  }
+  if (lhs.new_dims_mapping() != rhs.new_dims_mapping()) {
     return false;
   }
   if (lhs.batch_dim() != rhs.batch_dim()) {
@@ -414,25 +439,25 @@ std::vector<std::shared_ptr<PlacementStatus>> TensorDistAttr::to_placement()
 }
 
 bool TensorDistAttr::is_replicated(int64_t mesh_axis) const {
-  auto placement = to_placement();
+  auto placement = ToPlacements(*this);
   if (mesh_axis == -1) {
     return std::all_of(placement.begin(),
                        placement.end(),
-                       [](std::shared_ptr<PlacementStatus> status) {
-                         return status->is_replicated();
+                       [](std::shared_ptr<Placement> p) {
+                         return p->is_replicated();
                        });
   } else {
     return placement[mesh_axis]->is_replicated();
   }
 }
 
-bool TensorDistAttr::is_shard(int64_t mesh_axis, int64_t tensor_axis) const {
-  auto placement = to_placement();
+bool TensorDistAttr::is_shard(int64_t mesh_axis, std::optional<int64_t> tensor_axis) const {
+  auto placement = ToPlacements(*this);
   if (mesh_axis == -1) {
     return std::any_of(placement.begin(),
                        placement.end(),
-                       [tensor_axis](std::shared_ptr<PlacementStatus> status) {
-                         return status->is_shard(tensor_axis);
+                       [tensor_axis](std::shared_ptr<Placement> p) {
+                         return p->is_shard(tensor_axis);
                        });
   } else {
     return placement[mesh_axis]->is_shard(tensor_axis);
