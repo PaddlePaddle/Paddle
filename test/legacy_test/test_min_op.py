@@ -19,7 +19,7 @@ sys.path.append("../../legacy_test")
 import os
 
 import numpy as np
-from op_test import check_out_dtype
+from op_test import OpTest, check_out_dtype
 from test_sum_op import TestReduceOPTensorAxisBase
 from utils import dygraph_guard, static_guard
 
@@ -181,6 +181,42 @@ class TestMinZeroSize3(TestMinZeroSize1):
         self.shape = [0, 0, 2]
         self.axis = [2]
         self.keepdims = True
+
+
+class TestMinOp(OpTest):
+    def setUp(self):
+        self.op_type = "reduce_min"
+        self.python_api = paddle.min
+        self.init_data()
+        self.prepare_data()
+
+    def init_data(self):
+        self.shape = [0, 1, 2]
+        self.axis = [1]
+        self.keepdims = False
+        self.check_pir_onednn = True
+
+    def prepare_data(self):
+        self._input_data = np.random.random(self.shape).astype(np.float64)
+        self._output_data = np.min(
+            self._input_data, keepdims=self.keepdims, axis=tuple(self.axis)
+        )
+        self.inputs = {'X': self._input_data}
+        self.outputs = {'Out': self._output_data}
+        self.attrs = {"dim": self.axis, "keep_dim": self.keepdims}
+
+    def test_check_output(self):
+        self.check_output(
+            check_pir=True, check_pir_onednn=self.check_pir_onednn
+        )
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['X'],
+            ['Out'],
+            check_pir=True,
+            check_pir_onednn=self.check_pir_onednn,
+        )
 
 
 class TestMinAPIWithEmptyTensor(unittest.TestCase):

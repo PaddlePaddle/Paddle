@@ -22,6 +22,7 @@ from op_test import check_out_dtype
 sys.path.append("../../legacy_test")
 import os
 
+from op_test import OpTest
 from test_sum_op import TestReduceOPTensorAxisBase
 from utils import dygraph_guard, static_guard
 
@@ -196,13 +197,40 @@ class TestMaxZeroSize3(TestMaxZeroSize1):
         self.keepdims = True
 
 
-class TestMaxZeroSize1(unittest.TestCase):
+class TestMaxOp(OpTest):
+    def setUp(self):
+        self.op_type = "reduce_max"
+        self.python_api = paddle.max
+        self.init_data()
+        self.prepare_data()
+
     def init_data(self):
-        self.pd_api = paddle.max
-        self.np_api = np.max
-        self.x = paddle.randn([0, 0, 2], dtype='float64')
-        self.np_axis = np.array([2], dtype='int64')
-        self.tensor_axis = paddle.to_tensor([2], dtype='int64')
+        self.shape = [0, 1, 2]
+        self.axis = [1]
+        self.keepdims = False
+        self.check_pir_onednn = True
+
+    def prepare_data(self):
+        self._input_data = np.random.random(self.shape).astype(np.float64)
+        self._output_data = np.max(
+            self._input_data, keepdims=self.keepdims, axis=tuple(self.axis)
+        )
+        self.inputs = {'X': self._input_data}
+        self.outputs = {'Out': self._output_data}
+        self.attrs = {"dim": self.axis, "keep_dim": self.keepdims}
+
+    def test_check_output(self):
+        self.check_output(
+            check_pir=True, check_pir_onednn=self.check_pir_onednn
+        )
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['X'],
+            ['Out'],
+            check_pir=True,
+            check_pir_onednn=self.check_pir_onednn,
+        )
 
 
 class TestMaxWithNan(unittest.TestCase):
