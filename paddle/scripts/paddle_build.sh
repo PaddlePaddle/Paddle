@@ -1556,7 +1556,7 @@ function card_test() {
         # 2 card for P800 ci
         CUDA_DEVICE_COUNT=2
     elif [[ "${WITH_ROCM}" == "ON" ]]; then
-        CUDA_DEVICE_COUNT=$(rocm-smi -i | grep DCU | wc -l)
+	CUDA_DEVICE_COUNT=`echo $HIP_VISIBLE_DEVICES | tr ',' '\n' | wc -l`
     elif [[ "${WITH_IPU}" == "ON" ]]; then
         CUDA_DEVICE_COUNT=1
     else
