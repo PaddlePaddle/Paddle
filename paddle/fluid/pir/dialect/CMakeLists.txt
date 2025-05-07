@@ -305,14 +305,6 @@ file(GLOB_RECURSE dist_dialect_srcs
 set(op_dialect_srcs ${op_dialect_srcs} ${dist_dialect_srcs})
 # endif()
 
-if(NOT WITH_CINN)
-  list(
-    REMOVE_ITEM
-    op_dialect_srcs
-    "${CMAKE_CURRENT_SOURCE_DIR}/operator/interface/infer_symbolic_shape/ap_infer_sym.cc"
-  )
-endif()
-
 set(op_dialect_deps
     phi
     common
