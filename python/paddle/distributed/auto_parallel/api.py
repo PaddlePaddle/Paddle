@@ -70,6 +70,7 @@ from paddle.io.dataloader.batch_sampler import (
 )
 from paddle.optimizer import Optimizer
 
+from .auto_dp_utils import _fake_replicate_grad_to_partial
 from .moe_utils import (
     _cal_local_shape,
     _dist_reshape,
@@ -1137,6 +1138,10 @@ class _ShardOptimizer(Optimizer):
             for param in self._inner_opt._parameter_list:
                 self._shard_fn._shard_parameter(param)
 
+        self._enable_auto_dp_comm = (
+            os.getenv("FLAGS_enable_auto_dp_comm") == "1"
+        )
+
     def _set_and_check_sharding_prop_from_param(self):
         global_mesh = fleet.auto.get_mesh()
         if global_mesh:
@@ -1562,27 +1567,13 @@ class _ShardOptimizer(Optimizer):
         return setattr(self._inner_opt, item, value)
 
 
-def _fake_replicate_grad_to_partial(grad, partial_axis):
-    new_placements = grad.placements
-    assert (
-        new_placements[partial_axis] == dist.Replicate()
-    ), "when reshard fake replicated grad to partial, the partial axis of grad should be Replicate"
-
-    new_placements[partial_axis] = dist.Partial(dist.ReduceType.kRedSum)
-
-    grad_mesh = grad.process_mesh
-    grad = dtensor_to_local(grad, grad_mesh, grad.placements)
-    grad = dtensor_from_local(grad, grad_mesh, new_placements)
-    return grad
-
-
 class _ShardingStageBase:
     def __init__(self, mesh, sharding_mesh_dim):
         self._mesh = mesh
         self._sharding_axis = 0
         self._sharding_mesh_dim = sharding_mesh_dim
-        self._enable_manual_dp_comm = (
-            os.getenv("FLAGS_enable_manual_dp_comm") == "1"
+        self._enable_auto_dp_comm = (
+            os.getenv("FLAGS_enable_auto_dp_comm") == "1"
         )
 
     def _set_sharding_axis(self, sharding_axis):
@@ -1663,7 +1654,7 @@ class _ShardingStage0(_ShardingStageBase):
         self.sharding_axis = 0
 
     def __call__(self, key: str, param: Tensor, tensor: Tensor) -> Tensor:
-        if key == "grad" and self._enable_manual_dp_comm:
+        if key == "grad" and self._enable_auto_dp_comm:
             return self._reshard_fake_replicate_grad_to_partial(tensor)
 
         return tensor
@@ -1719,13 +1710,14 @@ class ShardingStage1(_ShardingStageBase):
         if not param.is_dist():
             return tensor
 
-        if key == "grad" and self._enable_manual_dp_comm:
+        if key == "grad" and self._enable_auto_dp_comm:
             tensor = self._reshard_fake_replicate_grad_to_partial(tensor)
 
         if 'beta' not in key:
             placements = get_placement_with_sharding(param, self._sharding_axis)
         else:
             placements = [dist.Replicate() for _ in param.process_mesh.shape]
+
         return self._apply_placement(tensor, param, placements)
 
 
@@ -1849,7 +1841,7 @@ class ShardingStage3(_ShardingStageBase):
         if not param.is_dist():
             return tensor
 
-        if key == "grad" and self._enable_manual_dp_comm:
+        if key == "grad" and self._enable_auto_dp_comm:
             tensor = self._reshard_fake_replicate_grad_to_partial(tensor)
 
         if 'beta' not in key:
@@ -3411,8 +3403,8 @@ class ShardDataloader:
         is_dataset_splitted: bool = False,
         dense_tensor_idx: list[list[int]] | None = None,
     ):
-        self.enable_manual_dp_comm = (
-            os.getenv("FLAGS_enable_manual_dp_comm") == "1"
+        self._enable_auto_dp_comm = (
+            os.getenv("FLAGS_enable_auto_dp_comm") == "1"
         )
 
         # do some check
@@ -3542,7 +3534,7 @@ class ShardDataloader:
             if self._all_inputs_in_one_mesh
             else self._shard_dims[index]
         )
-        if shard_dim is not None and not self.enable_manual_dp_comm:
+        if shard_dim is not None and not self._enable_auto_dp_comm:
             placements = [dist.Shard(0)]
         else:
             placements = [dist.Replicate()]
@@ -3573,7 +3565,7 @@ class ShardDataloader:
 
         placements = []
         for i in range(length):
-            if shard_dims[i] is not None and not self.enable_manual_dp_comm:
+            if shard_dims[i] is not None and not self._enable_auto_dp_comm:
                 placement = [dist.Shard(0)]
             else:
                 placement = [dist.Replicate()]
@@ -3905,3 +3897,48 @@ def in_auto_parallel_align_mode():
     return paddle.base.framework.get_flags(
         "FLAGS_enable_auto_parallel_align_mode"
     )["FLAGS_enable_auto_parallel_align_mode"]
+
+
+def enable_auto_dp():
+    """
+    Enables an automated Data Parallel (DP) setup for auto-parallel training.
+
+    This function simplifies the process of implementing vanilla (standard) Data
+    Parallelism within the auto-parallel framework. By calling `enable_auto_dp()`,
+    users can achieve data parallel training without needing to manually configure
+    `paddle.distributed.shard_dataloader` (or a similar distributed dataloader
+    interface) for DP-specific data sharding or distribution. This mode aims to
+    automate the underlying setup required for DP communication and data handling.
+
+    The function works by setting the environment variable
+    'FLAGS_enable_auto_dp_comm' to '1'. This signals to the auto-parallel
+    system that it should automatically manage the data parallelism aspects of
+    the training process according to this predefined automated strategy.
+
+    A significant advantage of this automated DP mode is its inherent robustness
+    and ability to handle scenarios that can be challenging for manual or other
+    standard DP configurations. For instance, it is particularly effective for:
+    - Training models where input data may have non-uniform shapes across
+      different data parallel ranks (e.g., certain video generation models
+      like Wanx). In such cases, where traditional DP might lead to program
+      hangs due to shape mismatches during communication, this automated mode
+      employs strategies (like adjusting data representation and gradient
+      synchronization) to ensure smooth training.
+
+    In essence, `enable_auto_dp()` provides two key benefits:
+    1.  **Simplified DP Setup:** Automates the configuration for basic data
+        parallelism, reducing manual setup effort (e.g., no need for manual
+        `shard_dataloader` DP configuration).
+    2.  **Robustness for Complex Cases:** The enabled automated DP strategy
+        is also designed to effectively handle advanced scenarios like
+        non-uniform input shapes.
+
+    Note:
+        This function should typically be called at the very beginning of your
+        training script, prior to initializing Paddle's distributed environment
+        or any auto-parallel components. The underlying auto-parallel framework,
+        including its data loading and optimizer components, must be designed to
+        recognize and act upon the 'FLAGS_enable_auto_dp_comm' environment variable.
+
+    """
+    os.environ['FLAGS_enable_auto_dp_comm'] = '1'

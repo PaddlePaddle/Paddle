@@ -41,6 +41,10 @@ from paddle.base.framework import (
     in_pir_mode,
     name_scope,
 )
+from paddle.distributed.auto_parallel.auto_dp_utils import (
+    _convert_fake_replicate_grad_to_partial,
+    in_auto_dp_mode,
+)
 from paddle.regularizer import L2Decay, WeightDecayRegularizer
 
 from ..base import framework, unique_name
@@ -1247,7 +1251,7 @@ class Optimizer:
             'Adam',
         ]:
             if (
-                len(self._param_dict['FP32_DenseTensor'][param_group_idx]) == 0
+                len(self._aram_dict['FP32_DenseTensor'][param_group_idx]) == 0
                 and len(self._param_dict['FP16_DenseTensor'][param_group_idx])
                 == 0
             ):
@@ -1661,6 +1665,9 @@ class Optimizer:
                 paddle.static.default_main_program(),
                 paddle.static.default_startup_program(),
             ):
+                if in_auto_dp_mode():
+                    _convert_fake_replicate_grad_to_partial(params_grads)
+
                 if isinstance(params_grads, list):
                     if self._grad_clip is not None:
                         params_grads = self._grad_clip(params_grads)
