@@ -596,7 +596,9 @@ class TestComplexElementwiseMulOp(OpTest):
         self.x = np.random.random((2, 3, 4, 5)).astype(
             self.dtype
         ) + 1j * np.random.random((2, 3, 4, 5)).astype(self.dtype)
-        self.y = np.random.random((2, 3, 4, 5)).astype(self.dtype)
+        self.y = np.random.random((2, 3, 4, 5)).astype(
+            self.dtype
+        ) + 1j * np.random.random((2, 3, 4, 5)).astype(self.dtype)
         self.out = self.x * self.y
 
     def test_check_output(self):

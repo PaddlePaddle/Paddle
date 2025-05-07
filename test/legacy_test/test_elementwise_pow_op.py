@@ -259,10 +259,11 @@ class TestElementwisePowComplexOp(OpTest):
         self.python_api = paddle.pow
         self.public_python_api = paddle.pow
         self.prim_op_type = "prim"
+        self._check_cinn = True
 
         self.inputs = {
-            'X': np.asarray([1 + 2j, 3 + 4j, 5 + 6j]),
-            'Y': np.asarray([2.0, 3.0, 4.0]),
+            'X': np.array([1 + 2j, 3 + 4j, 5 + 6j], dtype=np.complex128),
+            'Y': np.array([2.0, 3.0, 4.0], dtype=np.float64),
         }
         self.outputs = {'Out': np.power(self.inputs['X'], self.inputs['Y'])}
 
@@ -283,7 +284,7 @@ class TestElementwisePowComplexOp(OpTest):
             self.check_grad(['X', 'Y'], 'Out', check_dygraph=False)
         else:
             self.check_grad(
-                ['X'],
+                ['X', 'Y'],
                 'Out',
                 check_pir=True,
             )
@@ -299,6 +300,7 @@ class TestElementwisePowComplexOp1(TestElementwisePowComplexOp):
         self.python_api = paddle.pow
         self.public_python_api = paddle.pow
         self.prim_op_type = "prim"
+        self._check_cinn = True
 
         real_part = np.random.uniform(-5, 5, size=(3, 4))
         imag_part = np.random.uniform(-5, 5, size=(3, 4))
@@ -319,6 +321,7 @@ class TestElementwisePowComplexOp2(TestElementwisePowComplexOp):
         self.python_api = paddle.pow
         self.public_python_api = paddle.pow
         self.prim_op_type = "prim"
+        self._check_cinn = True
 
         real_part = np.random.uniform(-5, 5, size=(20, 50))
         imag_part = np.random.uniform(-5, 5, size=(20, 50))
@@ -339,6 +342,7 @@ class TestElementwisePowComplexOp3(TestElementwisePowComplexOp):
         self.python_api = paddle.pow
         self.public_python_api = paddle.pow
         self.prim_op_type = "prim"
+        self._check_cinn = True
 
         real_part = np.random.uniform(-5, 5, size=(3, 5, 3))
         imag_part = np.random.uniform(-5, 5, size=(3, 5, 3))
@@ -359,6 +363,7 @@ class TestElementwisePowComplexOp4(TestElementwisePowComplexOp):
         self.python_api = paddle.pow
         self.public_python_api = paddle.pow
         self.prim_op_type = "prim"
+        self._check_cinn = True
 
         real_part = np.random.uniform(-5, 5, size=(3, 5, 3))
         imag_part = np.random.uniform(-5, 5, size=(3, 5, 3))
@@ -379,6 +384,7 @@ class TestElementwisePowComplexOp5(TestElementwisePowComplexOp):
         self.python_api = paddle.pow
         self.public_python_api = paddle.pow
         self.prim_op_type = "prim"
+        self._check_cinn = True
 
         x_real_part = np.random.uniform(-5, 5, size=(5, 3))
         x_imag_part = np.random.uniform(-5, 5, size=(5, 3))
