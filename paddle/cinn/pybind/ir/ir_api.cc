@@ -384,6 +384,7 @@ void BindIrIr(py::module *m) {
                                     const std::string &,
                                     bool,
                                     bool,
+                                    bool,
                                     bool>(&ir::_Var_::Make))
       .def("copy", &ir::_Var_::Copy);
 

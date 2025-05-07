@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import inspect
 import operator
+from contextlib import contextmanager
 from functools import cached_property
 from queue import Queue
 from typing import TYPE_CHECKING, Any, Callable, Optional
@@ -654,3 +655,45 @@ class VariableBase:
         if isinstance(value, VariableBase):
             return value
         return None
+
+
+@contextmanager
+def signature_clear_guard(fn, name):
+    if not hasattr(fn, name):
+        yield
+    else:
+        saved_attr = getattr(fn, name)
+        delattr(fn, name)
+        yield
+        setattr(fn, name, saved_attr)
+
+
+def fn_bind_inputs(
+    fn: Callable[..., Any],
+    graph: FunctionGraph,
+    *args: Any,
+    **kwargs: Any,
+):
+    # temparay clear the fn.__signature__ to avoid signature check error
+    with signature_clear_guard(fn, "__signature__"), signature_clear_guard(
+        fn, "__wrapped__"
+    ):
+        sig = inspect.signature(fn)
+        bound_args = sig.bind(*args, **kwargs)
+    bound_args.apply_defaults()
+    parameters = {}
+    for name, value in bound_args.arguments.items():
+        assert name in sig.parameters
+        # Convert varargs and kwargs to Variable
+        if sig.parameters[name].kind == inspect.Parameter.VAR_POSITIONAL:
+            tracker = DummyTracker(value)
+        elif sig.parameters[name].kind == inspect.Parameter.VAR_KEYWORD:
+            tracker = DummyTracker(list(value.values()))
+        # Convert default args to Variable
+        elif not isinstance(value, VariableBase):
+            tracker = ConstTracker(value)
+        else:
+            tracker = value.tracker
+        value = VariableFactory.from_value(value, graph, tracker)
+        parameters[name] = value
+    return parameters

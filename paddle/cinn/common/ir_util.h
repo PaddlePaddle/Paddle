@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #pragma once
-#include <absl/container/flat_hash_map.h>
 
 #include <map>
 #include <memory>
@@ -24,6 +23,7 @@
 #include "paddle/cinn/common/float16.h"
 #include "paddle/cinn/common/integer_set.h"
 #include "paddle/cinn/ir/ir.h"
+#include "paddle/utils/flat_hash_map.h"
 
 namespace cinn {
 namespace common {
