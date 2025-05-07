@@ -7,13 +7,9 @@ on:
         type: string
         required: true
     outputs:
-      docker_build_image:
-        description: "Generate images for all CI usage"
-        value: ${{ inputs.docker_build_image }}
       can-skip:
         description: "Whether to skip the job"
         value: ${{ jobs.build.outputs.can-skip }}
-
 
 env:
   PR_ID: ${{ github.event.pull_request.number }}
