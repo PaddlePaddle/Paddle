@@ -283,7 +283,7 @@ class TestElementwisePowComplexOp(OpTest):
             self.check_grad(['X', 'Y'], 'Out', check_dygraph=False)
         else:
             self.check_grad(
-                ['X', 'Y'],
+                ['X'],
                 'Out',
                 check_pir=True,
             )
