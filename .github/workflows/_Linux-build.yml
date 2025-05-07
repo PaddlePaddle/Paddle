@@ -1,19 +1,26 @@
-name: Linux-CPU
+name: Linux-build
 
 on:
   workflow_call:
+    inputs:
+      docker_build_image:
+        type: string
+        required: true
+    outputs:
+      docker_build_image:
+        description: "Generate images for all CI usage"
+        value: ${{ inputs.docker_build_image }}
+
 
 env:
-  dockerfile: Dockerfile.cuda9_cudnn7_gcc48_py35_centos6
-  docker_image: 3d2fa88da0da
   PR_ID: ${{ github.event.pull_request.number }}
   COMMIT_ID: ${{ github.event.pull_request.head.sha }}
   work_dir: /paddle
   PADDLE_ROOT: /paddle
-  TASK: paddle-CI-${{ github.event.pull_request.number }}-cpu
-  ci_scripts: ${{ github.workspace }}/ci
+  TASK: paddle-CI-${{ github.event.pull_request.number }}-build
+  ci_scripts: /paddle/ci
   BRANCH: ${{ github.event.pull_request.base.ref }}
-  CI_name: cpu
+  CI_name: build
   no_proxy: "bcebos.com,apiin.im.baidu.com,gitee.com,aliyun.com,.baidu.com,.tuna.tsinghua.edu.cn"
 
 defaults:
@@ -21,38 +28,50 @@ defaults:
     shell: bash
 
 jobs:
-  build-and-test:
-    name: Build and test
+  build:
+    name: Build
     runs-on:
       group: GZ_BD-CPU
 
     steps:
-      - name: Check docker image  and run container
+      - name: Check docker image and run container
         env:
-          WITH_SHARED_PHI: "ON"
-          WITH_MKL: "OFF"
-          WITH_TESTING: "ON"
+          PADDLE_CUDA_INSTALL_REQUIREMENTS: "ON"
+          FLAGS_fraction_of_gpu_memory_to_use: 0.15
+          CTEST_OUTPUT_ON_FAILURE: 1
+          CTEST_PARALLEL_LEVEL: 2
+          WITH_GPU: "ON"
+          CUDA_ARCH_NAME: Volta
+          WITH_COVERAGE: "OFF"
+          PADDLE_FRACTION_GPU_MEMORY_TO_USE: 0.15
+          CUDA_VISIBLE_DEVICES: 0,1
+          PRECISION_TEST: "ON"
+          WITH_CINN: "ON"
+          INFERENCE_DEMO_INSTALL_DIR: /home/data/cfs/.cache/build
+          WITH_INCREMENTAL_COVERAGE: "OFF"
+          WITH_AVX: "ON"
+          WITH_TESTING: "OFF"
           COVERALLS_UPLOAD: "OFF"
           GIT_PR_ID: ${{ github.event.pull_request.number }}
           PADDLE_VERSION: 0.0.0
           WITH_DISTRIBUTE: "ON"
-          PREC_SUFFIX: .py3
           WITH_UNITY_BUILD: "ON"
-          PY_VERSION: 3.9
-          PROC_RUN: 12
-          FLAGS_enable_eager_mode: 1
-          WITH_TENSORRT: "OFF"
-          GENERATOR: "Ninja"
+          PY_VERSION: "3.10"
+          WITH_SHARED_PHI: "ON"
           CCACHE_MAXSIZE: 150G
           CCACHE_LIMIT_MULTIPLE: 0.8
-          WITH_AVX: "OFF"
-          CCACHE_DIR: "/root/.ccache/cpu"
+          CCACHE_STATSLOG: /paddle/build/.stats.log
+          CCACHE_SLOPPINESS: clang_index_store,time_macros,include_file_mtime
+          CACHE_DIR: /home/data/cfs/.cache/build
+          CCACHE_DIR: /home/data/cfs/.ccache/build
         run: |
           container_name=${TASK}-$(date +%Y%m%d-%H%M%S)
           echo "container_name=${container_name}" >> ${{ github.env }}
+          docker_image=${{ inputs.docker_build_image }}
+          docker pull $docker_image
           docker run -d -t --name ${container_name} \
             -v "/home/data/cfs:/home/data/cfs" \
-            -v "/home/data/cfs/.cache/python35-cpu:/root/.cache" \
+            -v "/home/data/cfs/.cache:/root/.cache" \
             -v "/home/data/cfs/.ccache:/root/.ccache" \
             -v "/dev/shm:/dev/shm"  \
             -v ${{ github.workspace }}/../../..:${{ github.workspace }}/../../.. \
@@ -62,28 +81,37 @@ jobs:
             -e COMMIT_ID \
             -e work_dir \
             -e PADDLE_ROOT \
+            -e ci_scripts \
+            -e PADDLE_CUDA_INSTALL_REQUIREMENTS \
+            -e FLAGS_fraction_of_gpu_memory_to_use \
+            -e CTEST_OUTPUT_ON_FAILURE \
+            -e CTEST_PARALLEL_LEVEL \
+            -e WITH_GPU \
+            -e CUDA_ARCH_NAME \
+            -e WITH_COVERAGE \
+            -e PADDLE_FRACTION_GPU_MEMORY_TO_USE \
+            -e CUDA_VISIBLE_DEVICES \
+            -e PRECISION_TEST \
+            -e WITH_CINN \
+            -e INFERENCE_DEMO_INSTALL_DIR \
+            -e WITH_INCREMENTAL_COVERAGE \
             -e WITH_SHARED_PHI \
-            -e WITH_MKL \
             -e WITH_TESTING \
             -e COVERALLS_UPLOAD \
             -e GIT_PR_ID \
             -e PADDLE_VERSION \
             -e WITH_DISTRIBUTE \
-            -e PREC_SUFFIX \
             -e WITH_UNITY_BUILD \
             -e PY_VERSION \
-            -e PROC_RUN \
-            -e FLAGS_enable_eager_mode \
-            -e WITH_TENSORRT \
-            -e GENERATOR \
             -e CCACHE_MAXSIZE \
             -e CCACHE_LIMIT_MULTIPLE \
-            -e GITHUB_ENV \
-            -e ci_scripts \
             -e WITH_AVX \
+            -e CACHE_DIR \
             -e CCACHE_DIR \
-            -e CI_name \
+            -e CCACHE_SLOPPINESS \
+            -e CCACHE_STATSLOG \
             -e no_proxy \
+            -e CI_name \
             -w /paddle --network host ${docker_image}
 
       - name: Download paddle.tar.gz and merge target branch
@@ -96,7 +124,9 @@ jobs:
           echo "Downloading Paddle.tar.gz"
           wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/Paddle/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
           echo "Extracting Paddle.tar.gz"
+          git config --global --add safe.directory ${work_dir}
           tar xf Paddle.tar.gz --strip-components=1
+          git submodule foreach "git config --global --add safe.directory \$toplevel/\$sm_path"
           rm Paddle.tar.gz
           git config --global user.name "PaddleCI"
           git config --global user.email "paddle_ci@example.com"
@@ -114,41 +144,32 @@ jobs:
         uses: ./.github/actions/check-bypass
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          workflow-name: cpu
+          workflow-name: build
 
       - name: Build
-        if: steps.check-bypass.outputs.can-skip != 'true'
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
+          mkdir -p /root/.cache/build
+          mkdir -p /root/.ccache/build
           source ${{ github.workspace }}/../../../proxy
           bash ${ci_scripts}/run_setup.sh bdist_wheel
-          EXCODE=$?
-          exit $EXCODE
           '
 
-      - name: Test
-        if: steps.check-bypass.outputs.can-skip != 'true'
+      - name: Check sequence op
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
-          source ${{ github.workspace }}/../../../proxy
-          bash ${ci_scripts}/run_linux_cpu_test.sh
-          EXCODE=$?
-          source ${ci_scripts}/utils.sh; clean_build_files
-          exit $EXCODE
+          source ${ci_scripts}/utils.sh; init
+          bash ${work_dir}/tools/check_sequence_op.sh
+          clean_build_files
           '
 
       - name: Upload paddle_whl
-        if: steps.check-bypass.outputs.can-skip != 'true'
         env:
           home_path: ${{ github.workspace }}/..
           bos_file: ${{ github.workspace }}/../bos/BosClient.py
-          paddle_whl: paddlepaddle-0.0.0-cp39-cp39-linux_x86_64.whl
+          paddle_whl: paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
-          echo "::group::Install bce-python-sdk"
-          source ${{ github.workspace }}/../../../proxy
-          python -m pip install bce-python-sdk==0.8.74
-          echo "::endgroup::"
           export AK=paddle
           export SK=paddle
           if [ ! -f "${{ env.bos_file }}" ]; then
@@ -156,10 +177,19 @@ jobs:
             mkdir ${{ env.home_path }}/bos
             tar xf ${{ env.home_path }}/bos_new.tar.gz -C ${{ env.home_path }}/bos
           fi
-          cd dist
+          cd /paddle/build/paddle
+          ls | grep -v cinn | xargs rm -rf
+          rm -rf /paddle/build/third_party
+          rm -rf /paddle/build/dist
+          cd /
+          tar --use-compress-program="pzstd -1" -cf build.tar.gz paddle
+          echo "Uploading build.tar.gz to bos"
+          python ${{ env.bos_file }} build.tar.gz paddle-github-action/PR/build/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
+          mkdir -p /home/data/cfs/build/${PR_ID}/${COMMIT_ID}
+          mv build.tar.gz /home/data/cfs/build/${PR_ID}/${COMMIT_ID}
+          mv /paddle/build/pr_whl/${{ env.paddle_whl }} .
           echo "Uploading paddle_whl to bos"
-          source ${{ github.workspace }}/../../../unproxy
-          python3.9 ${{ env.bos_file }} ${{ env.paddle_whl }} paddle-github-action/PR/cpu_whl/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
+          python ${{ env.bos_file }} ${{ env.paddle_whl }} paddle-github-action/PR/build/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
           '
 
       - name: Terminate and delete the container

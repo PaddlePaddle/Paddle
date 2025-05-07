@@ -1619,6 +1619,12 @@ def get_package_data_and_package_dir():
         shutil.copy(env_dict.get("XPU_BKCL_LIB"), libs_path)
         package_data['paddle.libs'] += [env_dict.get("XPU_BKCL_LIB_NAME")]
 
+    if env_dict.get("WITH_XPU_FFT") == 'ON':
+        xpu_fft_lib_list = glob.glob(env_dict.get("XPU_FFT_LIB") + '*')
+        for xpu_fft_lib_file in xpu_fft_lib_list:
+            shutil.copy(xpu_fft_lib_file, libs_path)
+            package_data['paddle.libs'] += [os.path.basename(xpu_fft_lib_file)]
+
     if env_dict.get("WITH_XPU_XFT") == 'ON':
         shutil.copy(env_dict.get("XPU_XFT_LIB"), libs_path)
         package_data['paddle.libs'] += [env_dict.get("XPU_XFT_LIB_NAME")]

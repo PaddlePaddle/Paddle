@@ -1,7 +1,15 @@
 name: Coverage
 
 on:
-  workflow_call:
+  pull_request:
+    types: [opened, synchronize]
+    branches: [develop, release/**]
+
+permissions: read-all
+
+concurrency:
+  group: ${{ github.event.pull_request.number }}-${{ github.workflow }}
+  cancel-in-progress: true
 
 env:
   Dockerfile: Dockerfile.cuda117_cudnn8_gcc82_ubuntu18_coverage
@@ -22,8 +30,24 @@ defaults:
     shell: bash
 
 jobs:
+  clone:
+    name: Coverage clone
+    uses: ./.github/workflows/_Clone-linux.yml
+    with:
+      workflow-name: 'coverage'
+      bos_dir: Paddle-coverage
+
+  build-docker:
+    name: Coverage build docker
+    needs: clone
+    uses: ./.github/workflows/docker.yml
+    with:
+      bos_dir: Paddle-coverage
+
   build:
     name: Coverage build
+    needs: [clone, build-docker]
+    if: needs.clone.outputs.can-skip != 'true'
     runs-on:
       group: GZ_BD-CPU
     outputs:
@@ -34,7 +58,7 @@ jobs:
         run: |
           set -e
           echo "Downloading Paddle.tar.gz"
-          wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/Paddle/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
+          wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/Paddle-coverage/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
           echo "Extracting Paddle.tar.gz"
           tar xf Paddle.tar.gz --strip-components=1
           rm Paddle.tar.gz
@@ -84,6 +108,8 @@ jobs:
         run: |
           container_name=${TASK}-build-$(date +%Y%m%d-%H%M%S)
           echo "container_name=${container_name}" >> ${{ github.env }}
+          docker_image=${{ needs.build-docker.outputs.docker_coverage_image }}
+          docker pull $docker_image
           docker run -d -t --name ${container_name} \
             -v "/home/data/cfs:/home/data/cfs" \
             -v "/home/data/cfs/.cache:/root/.cache" \
