@@ -43,8 +43,9 @@ class ConvertPdFacadeToApFacadePattern
   bool MatchAndRewrite(paddle::dialect::ApFacadeOp pd_facade_op,
                        pir::PatternRewriter& rewriter) const override {
     const auto& ret = TryMatchAndRewrite(pd_facade_op, &rewriter);
-    PADDLE_ENFORCE(
-        !ret.HasError(),
+    PADDLE_ENFORCE_EQ(
+        ret.HasError(),
+        false,
         phi::errors::Fatal(
             "ConvertPdFacadeToApFacadePattern::MatchAndRewrite failed. "
             "\nTraceback (most recent call "

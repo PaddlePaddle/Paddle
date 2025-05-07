@@ -482,8 +482,9 @@ void ApVariadicInferMeta(const std::vector<const MetaTensor*>& xs,
 #ifdef PADDLE_WITH_CINN
   ApInferMetaHelper helper{};
   const auto& ret = helper.InferMeta(infer_meta_lambda, &xs, &outs);
-  PADDLE_ENFORCE(
-      !ret.HasError(),
+  PADDLE_ENFORCE_EQ(
+      ret.HasError(),
+      false,
       phi::errors::Fatal(
           "ApVariadicInferMeta failed. \nTraceback (most recent call "
           "last):\n%s\n%s: %s. ",
