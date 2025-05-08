@@ -119,18 +119,8 @@ jobs:
           REPO: ${{ github.event.repository.name }}
           JOB_NAME: 'PR-CI-Inference / Test'
 
-      - name: Rerun coverage
-        if: ${{ contains(env.comment_body, 'coverage') && !contains(env.comment_body, 'build') && !contains(env.comment_body, 'test') }}
-        uses: ./.github/actions/rerun-workflow
-        with:
-          PR_ID: ${{ github.event.issue.number }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          OWNER: ${{ github.repository_owner }}
-          REPO: ${{ github.event.repository.name }}
-          JOB_NAME: 'Coverage clone'
-
       - name: Rerun coverage build
-        if: ${{ contains(env.comment_body, 'coverage') && contains(env.comment_body, 'build') && !contains(env.comment_body, 'test') }}
+        if: ${{ contains(env.comment_body, 'coverage') }}
         uses: ./.github/actions/rerun-workflow
         with:
           PR_ID: ${{ github.event.issue.number }}
@@ -198,3 +188,13 @@ jobs:
           OWNER: ${{ github.repository_owner }}
           REPO: ${{ github.event.repository.name }}
           JOB_NAME: 'Distribute-stable / Test'
+
+      - name: Rerun static-check test
+        if: ${{ contains(env.comment_body, 'static-check') }}
+        uses: ./.github/actions/rerun-workflow
+        with:
+          PR_ID: ${{ github.event.issue.number }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.event.repository.name }}
+          JOB_NAME: 'Static-Check / Test'
