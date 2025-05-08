@@ -417,8 +417,13 @@ def shutdown_process_group(group: Group | None = None) -> None:
     shutdown_groups = _get_shutdown_group_map_by_name()
 
     if group is None:
+        global _default_group_name
         for pg_name, pg in _get_group_map_by_name().items():
-            if pg.process_group is not None and pg_name not in shutdown_groups:
+            if (
+                pg.process_group is not None
+                and pg_name not in shutdown_groups
+                and pg_name != _default_group_name
+            ):
                 pg.process_group.shutdown()
                 _update_shutdown_group_map_by_name(pg_name, pg)
     else:
@@ -434,7 +439,7 @@ def restart_process_group(group: Group | None = None) -> None:
     shutdown_groups = _get_shutdown_group_map_by_name()
 
     if group is None:
-        for pg_name, pg in shutdown_groups.items():
+        for pg in shutdown_groups.values():
             pg.process_group.restart()
         _clear_shutdown_group_map_by_name()
     else:

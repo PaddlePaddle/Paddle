@@ -39,18 +39,6 @@ NCCLCommContext::NCCLCommContext(int rank,
       nranks(size_),
       myrank(rank_),
       param(nccl_comm_init_option) {
-  // if (nccl_comm_init_option > 0 && phi::dynload::ncclCommInitRank2.IsValid())
-  // {
-  //   LOG(WARNING) << "Creating modified qp with ncclCommInitRank2.";
-  //   NCCL_CHECK(phi::dynload::ncclCommInitRank2(
-  //       &nccl_comm_, size_, nccl_id, rank_, nccl_comm_init_option));
-  // } else {
-  //   if (nccl_comm_init_option > 0) {
-  //     LOG(WARNING) << "ncclCommInitRank2 is not supported.";
-  //   }
-  //   NCCL_CHECK(
-  //       phi::dynload::ncclCommInitRank(&nccl_comm_, size_, nccl_id, rank_));
-  // }
   this->CreateNCCLComm(nccl_id);
   NCCL_CHECK(phi::dynload::ncclGetVersion(&nccl_version_));
 }
