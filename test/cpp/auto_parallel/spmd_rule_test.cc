@@ -1586,18 +1586,6 @@ TEST(ElementwiseUnaryLike, Ctor) {
       phi::distributed::ThresholdedReluGradInfoSpmd(input, input, 1.0, 1.0);
   check_element_unary_like_backward(inferred_dist_attrs);
 
-  // gelu
-  input =
-      phi::distributed::DistMetaTensor(common::make_ddim(shape), t_dist_attr);
-  inferred_dist_attrs = phi::distributed::GeluInfoSpmd(input, true);
-  check_element_unary_like(inferred_dist_attrs);
-
-  // gelu backward
-  input =
-      phi::distributed::DistMetaTensor(common::make_ddim(shape), t_dist_attr);
-  inferred_dist_attrs = phi::distributed::GeluGradInfoSpmd(input, input, true);
-  check_element_unary_like_backward(inferred_dist_attrs);
-
   // logit
   input =
       phi::distributed::DistMetaTensor(common::make_ddim(shape), t_dist_attr);

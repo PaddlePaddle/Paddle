@@ -2381,7 +2381,6 @@
   infer_meta :
     func : UnchangedInferMeta
     param: [x]
-    spmd_rule : GeluInfoSpmd
   kernel :
     func : gelu
   backward : gelu_grad

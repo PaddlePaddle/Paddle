@@ -636,17 +636,6 @@ SpmdInfo ThresholdedReluGradInfoSpmd(const DistMetaTensor& x,
   return ElementwiseUnaryGradInferSpmd(x, out_grad);
 }
 
-// gelu
-SpmdInfo GeluInfoSpmd(const DistMetaTensor& x, const bool approximate) {
-  return ElementwiseUnaryInferSpmd(x);
-}
-
-SpmdInfo GeluGradInfoSpmd(const DistMetaTensor& x,
-                          const DistMetaTensor& out_grad,
-                          const bool approximate) {
-  return ElementwiseUnaryGradInferSpmd(x, out_grad);
-}
-
 // logit
 SpmdInfo LogitInfoSpmd(const DistMetaTensor& x, const float eps) {
   return ElementwiseUnaryInferSpmd(x);

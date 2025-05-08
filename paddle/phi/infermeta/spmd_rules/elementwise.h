@@ -119,11 +119,6 @@ SpmdInfo ThresholdedReluGradInfoSpmd(const DistMetaTensor& x,
                                      const float threshold,
                                      const float value);
 
-SpmdInfo GeluInfoSpmd(const DistMetaTensor& x, const bool approximate);
-SpmdInfo GeluGradInfoSpmd(const DistMetaTensor& x,
-                          const DistMetaTensor& out_grad,
-                          const bool approximate);
-
 SpmdInfo LogitInfoSpmd(const DistMetaTensor& x, const float eps);
 SpmdInfo LogitGradInfoSpmd(const DistMetaTensor& x,
                            const DistMetaTensor& out_grad,
