@@ -1247,7 +1247,7 @@ class Optimizer:
             'Adam',
         ]:
             if (
-                len(self._aram_dict['FP32_DenseTensor'][param_group_idx]) == 0
+                len(self._param_dict['FP32_DenseTensor'][param_group_idx]) == 0
                 and len(self._param_dict['FP16_DenseTensor'][param_group_idx])
                 == 0
             ):
