@@ -12,7 +12,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import fuse
-from .compiler import compile
-
-__all__ = ['fuse', 'compile']
+from . import fuse  # noqa: F401
+from .compiler import compile  # noqa: F401

@@ -14,12 +14,6 @@
 
 from __future__ import annotations
 
-__all__ = [
-    'DimVar',
-    'DTypeVar',
-    'Tensor',
-]
-
 
 # Usage:
 #   N = paddle.incubate.cc.typing.DimVar("N")

@@ -26,8 +26,6 @@ from paddle.static import InputSpec
 
 from . import typing as pct
 
-__all__ = ['compile']
-
 
 # Usage:
 # import paddle.incubate.cc.typing as pct
