@@ -51,9 +51,9 @@ jobs:
         run: |
           set -x
           wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/${{ inputs.bos_dir }}/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
-          tar xf Paddle.tar.gz --strip-components=1
+          tar xf Paddle.tar.gz
           rm Paddle.tar.gz
-          cd tools/dockerfile
+          cd Paddle/tools/dockerfile
           bash ci_dockerfile.sh
           cd ../..
 
