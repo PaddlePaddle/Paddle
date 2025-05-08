@@ -40,6 +40,8 @@ class YieldInstruction : public InstructionBase {
 
   std::vector<Variable*> input_vars_;
 
+  std::vector<int> eager_gc_input_var_idxs_;
+
   std::vector<Variable*> output_vars_;
 };
 
