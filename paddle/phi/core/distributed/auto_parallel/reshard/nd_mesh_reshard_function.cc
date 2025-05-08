@@ -60,11 +60,23 @@ int64_t FindFirstDiffShardAxis(const TensorDistAttr& in_dist_attr,
                                const TensorDistAttr& out_dist_attr) {
   const auto& in_dims_mapping = in_dist_attr.new_dims_mapping();
   const auto& out_dims_mapping = out_dist_attr.new_dims_mapping();
+
+  VLOG(3) << "In find diff axis, in dim mapping " << auto_parallel::str_join(in_dims_mapping) << ", out dim mapping " << auto_parallel::str_join(out_dims_mapping);
   int64_t axis = -1;
 
   for (int64_t i = static_cast<int64_t>(in_dims_mapping.size() - 1); i >= 0;
        --i) {
     if (in_dims_mapping[i] != out_dims_mapping[i]) {
+      axis = i;
+      break;
+    }
+    auto predicate = [&in_dist_attr, &out_dist_attr](int64_t mesh_dim) {
+      if (in_dist_attr.get_split_factor(mesh_dim) != out_dist_attr.get_split_factor(mesh_dim)) {
+        return true;
+      }
+      return false;
+    };
+    if (std::any_of(in_dims_mapping[i].begin(), in_dims_mapping[i].end(), predicate)) {
       axis = i;
       break;
     }
@@ -154,7 +166,7 @@ protected:
     ReshardContext ctx_;
 };
 
-class PToRStrategy : public SingleDimReshardStrategy<PToRReshardFunction> {
+class PartialToReplicate : public SingleDimReshardStrategy<PToRReshardFunction> {
 public:
     using SingleDimReshardStrategy<PToRReshardFunction>::SingleDimReshardStrategy;
 
@@ -173,7 +185,7 @@ public:
     }
 };
 
-class SToRStrategy : public SingleDimReshardStrategy<SToRReshardFunction> {
+class ShardToReplicate : public SingleDimReshardStrategy<SToRReshardFunction> {
 public:
     using SingleDimReshardStrategy<SToRReshardFunction>::SingleDimReshardStrategy;
 
@@ -182,11 +194,13 @@ public:
       std::vector<std::vector<int64_t>> real_dims_mapping = real_out_attr.new_dims_mapping();
       real_dims_mapping[cur_tensor_dim_] = {};    
       real_out_attr.set_new_dims_mapping(real_dims_mapping);
+      real_out_attr.clear_split_factor(cur_mesh_dim_);
       return real_out_attr;
     }
 
     TensorDistAttr CreateOneDimInDistAttr(const ProcessMesh& sub_mesh) const override {
       auto split_factor = ctx_.out->dist_attr().get_split_factor(cur_mesh_dim_);
+      VLOG(3) << "In S To R, cur mesh dim is " << cur_mesh_dim_ << ", split factor is " << split_factor;
       return ctx_.CreateOneDimDistAttr(sub_mesh, false, cur_tensor_dim_, split_factor);
     }
 
@@ -196,7 +210,7 @@ public:
 
 };
 
-class RToPStrategy : public SingleDimReshardStrategy<RToPReshardFunction> {
+class ReplicateToPartial : public SingleDimReshardStrategy<RToPReshardFunction> {
 public:
     using SingleDimReshardStrategy<RToPReshardFunction>::SingleDimReshardStrategy;
     TensorDistAttr CalculateNewDistAttr() const override {
@@ -214,7 +228,7 @@ public:
     }
 };
 
-class RToSStrategy : public SingleDimReshardStrategy<RToSReshardFunction> {
+class ReplicateToShard : public SingleDimReshardStrategy<RToSReshardFunction> {
 public:
     using SingleDimReshardStrategy<RToSReshardFunction>::SingleDimReshardStrategy;
 
@@ -224,6 +238,9 @@ public:
             real_out_dist_attr.new_dims_mapping();
         real_dims_mapping[cur_tensor_dim_].push_back(cur_mesh_dim_);
         real_out_dist_attr.set_new_dims_mapping(real_dims_mapping);
+
+        auto split_factor = ctx_.out_dist_attr.get_split_factor(cur_mesh_dim_);
+        real_out_dist_attr.set_split_factor(cur_mesh_dim_, split_factor);
         return real_out_dist_attr;
     }
 
@@ -233,12 +250,13 @@ public:
 
     TensorDistAttr CreateOneDimOutDistAttr(const ProcessMesh& sub_mesh) const override {
       auto split_factor = ctx_.out_dist_attr.get_split_factor(cur_mesh_dim_);
+      VLOG(3) << "In R to S mesh dim is " << cur_mesh_dim_ << ", split factor is " << split_factor;
       return ctx_.CreateOneDimDistAttr(sub_mesh, false, cur_tensor_dim_, split_factor);
     }
 };
 
 
-class PToSStrategy : public SingleDimReshardStrategy<PToSReshardFunction> {
+class PartialToShard : public SingleDimReshardStrategy<PToSReshardFunction> {
 public:
     using SingleDimReshardStrategy<PToSReshardFunction>::SingleDimReshardStrategy;
 
@@ -251,6 +269,9 @@ public:
         if (real_out_dist_attr.is_partial(cur_mesh_dim_)) {
           real_out_dist_attr.clean_partial_dims({cur_mesh_dim_});
         }
+
+        auto split_factor = ctx_.out_dist_attr.get_split_factor(cur_mesh_dim_);
+        real_out_dist_attr.set_split_factor(cur_mesh_dim_, split_factor);
         return real_out_dist_attr;
     }
 
@@ -260,6 +281,7 @@ public:
 
     TensorDistAttr CreateOneDimOutDistAttr(const ProcessMesh& sub_mesh) const override {
       auto split_factor = ctx_.out_dist_attr.get_split_factor(cur_mesh_dim_);
+      VLOG(3) << "In P to S mesh dim is " << cur_mesh_dim_ << ", split factor is " << split_factor;
       return ctx_.CreateOneDimDistAttr(sub_mesh, false, cur_tensor_dim_, split_factor);
     }
 };
@@ -276,9 +298,10 @@ void ProcessPartialToReplicated(phi::DeviceContext* dev_ctx,
       for (const auto& [k, v] : partial_status) {
           VLOG(3) << "Step1: partial axis " << k;
           if (out_partial_status.count(k) != 0 || out_dist_attr.is_shard(k)) { continue; }
-          auto strategy = std::make_unique<PToRStrategy>(-1, k, ctx);
+          auto strategy = std::make_unique<PartialToReplicate>(-1, k, ctx);
           strategy->Eval();
       }
+      VLOG(3) << "After P to R, dist attr is " << out->dist_attr();
     }
 }
 
@@ -286,18 +309,31 @@ void ProcessShardToReplicated(phi::DeviceContext* dev_ctx,
                               const DistTensor& in,
                               TensorDistAttr out_dist_attr,
                               DistTensor* out)  {
+    auto is_same_shard = [&out_dist_attr, &out](std::vector<int64_t> in_mesh_axis, std::vector<int64_t> out_mesh_axis) {
+      if (in_mesh_axis != out_mesh_axis) { return false; }
+      for (auto dim : in_mesh_axis) {
+        if (out_dist_attr.get_split_factor(dim) != out->dist_attr().get_split_factor(dim)) {
+          return false;
+        }
+      }
+      return true;
+    };
     int64_t first_diff_axis = FindFirstDiffShardAxis(out->dist_attr(), out_dist_attr);
+    VLOG(3) << "In S to R, fist diff axis is " << first_diff_axis;
     for (int cur_tensor_dim = first_diff_axis; cur_tensor_dim >= 0; --cur_tensor_dim) {
         auto in_mesh_axis = out->dist_attr().new_dims_mapping()[cur_tensor_dim];
         auto out_mesh_axis = out_dist_attr.new_dims_mapping()[cur_tensor_dim];
-        if (in_mesh_axis.size() == 0 || in_mesh_axis == out_mesh_axis) { continue; }
+        if (in_mesh_axis.size() == 0 || is_same_shard(in_mesh_axis, out_mesh_axis)) { continue; }
         VLOG(3) << "Step2: in_mesh axis " << auto_parallel::str_join(in_mesh_axis);
         ReshardContext ctx(dev_ctx, in, out_dist_attr, out);
         for (int64_t idx = in_mesh_axis.size() - 1; idx >= 0; idx--) {
           int64_t cur_mesh_dim = in_mesh_axis.at(idx);
-          auto strategy = std::make_unique<SToRStrategy>(cur_tensor_dim, cur_mesh_dim, ctx);
+          auto strategy = std::make_unique<ShardToReplicate>(cur_tensor_dim, cur_mesh_dim, ctx);
           strategy->Eval();
         }
+    }
+    if (first_diff_axis >= 0) {
+      VLOG(3) << "After S to R, dist attr is " << out->dist_attr();
     }
 }
 
@@ -312,9 +348,10 @@ void ProcessReplicatedToPartial(phi::DeviceContext* dev_ctx,
       if (in_partial_status.count(k) != 0) { continue; }
       VLOG(3) << "Step3: Partial status mesh axis " << k;
       ReshardContext ctx(dev_ctx, in, out_dist_attr, out);
-      auto strategy = std::make_unique<RToPStrategy>(-1, k, ctx);
+      auto strategy = std::make_unique<ReplicateToPartial>(-1, k, ctx);
       strategy->Eval();
     }
+    VLOG(3) << "After R to P, dist attr is " << out->dist_attr();
   }
 }
 
@@ -323,11 +360,10 @@ void ProcessReplicateOrPartialToShard(phi::DeviceContext* dev_ctx,
                                 TensorDistAttr out_dist_attr,
                                 DistTensor* out)  {
   int64_t first_diff_axis = FindFirstDiffShardAxis(out->dist_attr(), out_dist_attr);
+  VLOG(3) << "In P or R to S, fist diff axis is " << first_diff_axis;
   for (int64_t cur_tensor_dim = first_diff_axis; cur_tensor_dim >= 0; --cur_tensor_dim) {
     const auto& in_mesh_axis = out->dist_attr().new_dims_mapping()[cur_tensor_dim];
     const auto& out_mesh_axis = out_dist_attr.new_dims_mapping()[cur_tensor_dim];
-    VLOG(4) << "in mesh axis = " << auto_parallel::str_join(in_mesh_axis);
-    VLOG(4) << "out mesh axis = " << auto_parallel::str_join(out_mesh_axis);
     if (in_mesh_axis == out_mesh_axis) { continue; }
 
     const auto& in_partial_status = out->dist_attr().partial_status();
@@ -339,12 +375,15 @@ void ProcessReplicateOrPartialToShard(phi::DeviceContext* dev_ctx,
         << "; partial state :" << is_partial;
       std::shared_ptr<SameNdMeshReshardFunction::ReshardStrategy> strategy;
       if (is_partial) {
-        strategy = std::make_unique<PToSStrategy>(cur_tensor_dim, cur_mesh_dim, ctx);
+        strategy = std::make_unique<PartialToShard>(cur_tensor_dim, cur_mesh_dim, ctx);
       } else {
-        strategy = std::make_unique<RToSStrategy>(cur_tensor_dim, cur_mesh_dim, ctx);
+        strategy = std::make_unique<ReplicateToShard>(cur_tensor_dim, cur_mesh_dim, ctx);
       }
       strategy->Eval();
     }
+  }
+  if (first_diff_axis >= 0) {
+    VLOG(3) << "After P or R to S, dist attr is " << out->dist_attr();
   }
 }
 
@@ -375,6 +414,11 @@ void SameNdMeshReshardFunction::Eval(phi::DeviceContext* dev_ctx,
     ProcessReplicatedToPartial(dev_ctx, in, out_dist_attr_orig, out);
     // 4. Change replicated/partial to shard
     ProcessReplicateOrPartialToShard(dev_ctx, in, out_dist_attr_orig, out);
+
+    // Final attr check
+    PADDLE_ENFORCE_EQ(out->dist_attr() == out_dist_attr_orig, true,
+       "Expected that out of reshard has to be target dist, "
+       "out dist att is " + out->dist_attr().to_string() + ", but target is " + out_dist_attr_orig.to_string());
 }
 
 /*void SameNdMeshReshardFunction::Eval(phi::DeviceContext* dev_ctx,

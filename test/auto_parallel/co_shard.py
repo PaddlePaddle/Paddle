@@ -98,12 +98,12 @@ class TestCoShard:
             golden = np.array([[1, 2], [5, 6]])
         else:
             golden = np.array([[3, 4], [7, 8]])
+        print(input._local_value().numpy().flatten())
         np.testing.assert_equal(input._local_value().numpy().flatten(), golden.flatten())
         
         reshard_placements = [dist.Replicate(), dist.Replicate()]
         out = dist.reshard(input, mesh, reshard_placements)
         np.testing.assert_equal(out._local_value().numpy().flatten(), a.numpy().flatten())
-
 
         reshard_placements = [dist.Shard(0), dist.Replicate()]
         out = dist.reshard(input, mesh, reshard_placements)
@@ -111,17 +111,17 @@ class TestCoShard:
         np.testing.assert_equal(out._local_value().numpy().flatten(), a[new_idx : new_idx + 2].numpy().flatten())
 
 
-        # reshard_placements = [dist.Replicate(), dist.Shard(0)]
-        # out = dist.reshard(input, mesh, reshard_placements)
-        # new_idx = idx % 2 * 2
-        # np.testing.assert_equal(out._local_value().numpy().flatten(), a[new_idx : new_idx + 2].numpy().flatten())
-        
+        reshard_placements = [dist.Replicate(), dist.Shard(0)]
+        out = dist.reshard(input, mesh, reshard_placements)
+        new_idx = idx % 2 * 2
+        np.testing.assert_equal(out._local_value().numpy().flatten(), a[new_idx : new_idx + 2].numpy().flatten())
 
         
     def run_test_case_main(self):
         # self.run_test_case_0()
         # self.run_test_case_1()
         self.run_test_case_2()
+        # self.run_test_case_3() # reshape
 
 if __name__ == '__main__':
     TestCoShard().run_test_case_main()

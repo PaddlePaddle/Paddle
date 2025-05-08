@@ -112,6 +112,19 @@ int64_t TensorDistAttr::get_split_factor(int64_t mesh_dim) const {
   return split_factor_map_.count(mesh_dim) ? split_factor_map_.at(mesh_dim) : 1;
 }
 
+void TensorDistAttr::set_split_factor(int64_t mesh_dim, int64_t split_factor) {
+  if (split_factor != 1) {
+    split_factor_map_[mesh_dim] = split_factor;
+  }
+  PADDLE_ENFORCE_LE(split_factor_map_.size(), 1, "At now only support to rearrange at one mesh dim.");
+}
+
+void TensorDistAttr::clear_split_factor(int64_t mesh_dim) {
+  if (split_factor_map_.count(mesh_dim)) {
+    split_factor_map_.erase(mesh_dim);
+  }
+}
+
 const std::set<int64_t> TensorDistAttr::partial_dims() const {
   std::set<int64_t> keys;
   for (auto& kv : partial_status_) {
@@ -387,6 +400,9 @@ bool operator==(const TensorDistAttr& lhs, const TensorDistAttr& rhs) {
     return false;
   }
   if (lhs.partial_status() != rhs.partial_status()) {
+    return false;
+  }
+  if (lhs.split_factor_map() != rhs.split_factor_map()) {
     return false;
   }
   return true;

@@ -103,6 +103,10 @@ class TEST_API TensorDistAttr {
 
   int64_t get_split_factor(int64_t mesh_dim) const;
 
+  void set_split_factor(int64_t mesh_dim, int64_t split_factor);
+
+  void clear_split_factor(int64_t mesh_dim);
+
   void set_dims_mapping(const std::vector<int64_t>& dims_mapping);
 
   void set_new_dims_mapping(const std::vector<std::vector<int64_t>>& dims_mapping);
