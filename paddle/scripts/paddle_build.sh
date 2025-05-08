@@ -1557,6 +1557,7 @@ function card_test() {
         CUDA_DEVICE_COUNT=2
     elif [[ "${WITH_ROCM}" == "ON" ]]; then
 	CUDA_DEVICE_COUNT=`echo $HIP_VISIBLE_DEVICES | tr ',' '\n' | wc -l`
+	IFS=',' read -ra DEVICE_ARRAY <<< "$HIP_VISIBLE_DEVICES"
     elif [[ "${WITH_IPU}" == "ON" ]]; then
         CUDA_DEVICE_COUNT=1
     else
@@ -1630,7 +1631,7 @@ function card_test() {
                 (ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" ${run_label_mode} --timeout 120 --output-on-failure  -j $parallel_job | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
             else
                 if [[ "$WITH_ROCM" == "ON" ]]; then
-		    (env HIP_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" ${run_label_mode} --timeout 120 --output-on-failure -j $parallel_job | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
+		    (env HIP_VISIBLE_DEVICES=${DEVICE_ARRAY[$i]} ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" ${run_label_mode} --timeout 120 --output-on-failure -j $parallel_job | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
                 elif [[ "$WITH_XPU" == "ON" ]]; then
                     (env XPU_VISIBLE_DEVICES=$cuda_list_str ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" ${run_label_mode} --timeout 120 --output-on-failure  -j $parallel_job | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
                 else
