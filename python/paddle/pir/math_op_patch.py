@@ -270,7 +270,7 @@ def monkey_patch_value():
         """
         return len(self.shape)
 
-    def _item(self):
+    def _item(self, *args):
         """
         In order to be compatible with the item interface introduced by the dynamic graph, it does nothing but returns self.
         It will check that the shape must be a 1-D tensor
