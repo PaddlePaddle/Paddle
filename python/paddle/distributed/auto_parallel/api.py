@@ -37,11 +37,6 @@ from paddle.base.framework import (
     in_pir_mode,
     use_pir_api,
 )
-from paddle.base.libpaddle.pir import (
-    create_op_dist_attribute,
-    create_tensor_dist_attribute,
-    cvt_to_dist_type,
-)
 from paddle.distributed import fleet
 from paddle.distributed.auto_parallel import Engine, strategy as auto_strategy
 from paddle.distributed.auto_parallel.interface import (
@@ -1617,12 +1612,14 @@ class _ShardingStageBase:
 
     def _init_dist_attr(self, tensor: Tensor, param: Tensor, placements: list):
         dim_map, partial_status = to_dim_map(placements, len(tensor.shape))
-        dist_attr = create_tensor_dist_attribute(
+        dist_attr = paddle.base.libpaddle.pir.create_tensor_dist_attribute(
             param.process_mesh, dim_map, partial_status
         )
-        dist_type = cvt_to_dist_type(tensor.type(), dist_attr)
+        dist_type = paddle.base.libpaddle.pir.cvt_to_dist_type(
+            tensor.type(), dist_attr
+        )
         tensor.set_type(dist_type)
-        op_dist_attr = create_op_dist_attribute(
+        op_dist_attr = paddle.base.libpaddle.pir.create_op_dist_attribute(
             param.process_mesh, [], [dist_attr]
         )
         tensor.get_defining_op().dist_attr = op_dist_attr
