@@ -85,7 +85,7 @@ void GatherNdKernel(const Context &ctx,
   xpu::VectorParam<int> x_vec = {
       x_shape.data(), static_cast<int>(x_shape.size()), nullptr};
 
-  int ret = XPU_SUCCESS;
+  int ret = 0;
 #ifndef PADDLE_WITH_XPU_PLUGIN
   if (index_type == DataType::INT32) {
     ret = xpu::gather_nd<XPUType, int>(

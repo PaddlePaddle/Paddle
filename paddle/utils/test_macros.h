@@ -15,7 +15,7 @@
 #pragma once
 
 #define TEST_API
-#if defined(_WIN32) && defined(PADDLE_WITH_TESTING) && !defined(STATIC_PADDLE)
+#if defined(_WIN32) && !defined(STATIC_PADDLE)
 #ifdef PADDLE_DLL_EXPORT
 #define TEST_API __declspec(dllexport)
 #else

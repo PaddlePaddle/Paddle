@@ -13,7 +13,10 @@
 # limitations under the License.
 from __future__ import annotations
 
+import random
 from typing import TYPE_CHECKING, Any, TypedDict
+
+import numpy as np
 
 import paddle
 from paddle import framework
@@ -109,6 +112,8 @@ class _HPRecomputeFunction(PyLayer):
         # store the rng states
         ctx.fwd_rng_state = paddle.get_rng_state()
         ctx.fwd_rng_state_tracker = get_rng_state_tracker().get_states_tracker()
+        ctx.fwd_numpy_state = np.random.get_state()
+        ctx.fwd_random_state = random.getstate()
 
         # save config info
         ctx.mp_group = mp_group
@@ -214,7 +219,10 @@ class _HPRecomputeFunction(PyLayer):
 
             # need restore auto_cast state as well as w/b list
             with switch_rng_state_tracker(
-                ctx.fwd_rng_state, ctx.fwd_rng_state_tracker
+                ctx.fwd_rng_state,
+                ctx.fwd_rng_state_tracker,
+                ctx.fwd_numpy_state,
+                ctx.fwd_random_state,
             ):
                 if ctx.is_fw_autocast:
                     with paddle.amp.auto_cast(

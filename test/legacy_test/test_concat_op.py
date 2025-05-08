@@ -286,6 +286,76 @@ class TestConcatOp7(TestConcatOp):
         self.axis = 1
 
 
+class TestConcatOp0Size(TestConcatOp):
+    def setUp(self):
+        self.op_type = "concat"
+        self.python_api = paddle.concat
+        self.public_python_api = paddle.concat
+        self.prim_op_type = "prim"
+        self.if_enable_cinn()
+        self.dtype = self.get_dtype()
+        self.init_test_data()
+        self.inputs = {'X': [('x0', self.x0), ('x1', self.x1), ('x2', self.x2)]}
+        self.attrs = {'axis': self.axis}
+        if self.axis < 0:
+            self.actual_axis = self.axis + len(self.x0.shape)
+            self.actual_axis = max(0, self.actual_axis)
+        else:
+            self.actual_axis = self.axis
+
+        self.outputs = {
+            'Out': np.concatenate(
+                (self.x0, self.x1, self.x2), axis=self.actual_axis
+            )
+        }
+
+    def if_enable_cinn(self):
+        pass
+
+    def get_dtype(self):
+        return "float64"
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['x0'],
+            'Out',
+            check_prim=True,
+            check_pir=True,
+            check_prim_pir=True,
+        )
+        self.check_grad(
+            ['x1'],
+            'Out',
+            check_prim=True,
+            check_pir=True,
+            check_prim_pir=True,
+        )
+        self.check_grad(
+            ['x2'],
+            'Out',
+            check_prim=True,
+            check_pir=True,
+            check_prim_pir=True,
+        )
+
+    def init_test_data(self):
+        if self.dtype == np.uint16:
+            x0 = np.random.random((5, 1, 4, 5)).astype(np.float32)
+            self.x0 = convert_float_to_uint16(x0)
+            x1 = np.random.random((5, 0, 4, 5)).astype(np.float32)
+            self.x1 = convert_float_to_uint16(x1)
+            x2 = np.random.random((5, 3, 4, 5)).astype(np.float32)
+            self.x2 = convert_float_to_uint16(x2)
+        else:
+            self.x0 = np.random.random((5, 1, 4, 5)).astype(self.dtype)
+            self.x1 = np.random.random((5, 0, 4, 5)).astype(self.dtype)
+            self.x2 = np.random.random((5, 3, 4, 5)).astype(self.dtype)
+        self.axis = 1
+
+
 def create_test_AxisTensor(parent):
     class TestConcatAxisTensor(parent):
         def setUp(self):

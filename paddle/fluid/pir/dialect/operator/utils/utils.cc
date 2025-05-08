@@ -37,7 +37,6 @@ namespace paddle {
 namespace dialect {
 
 const std::unordered_set<std::string> LegacyOpList = {
-    DistributedPushSparseOp::name(),
     SendV2Op::name(),
     RecvV2Op::name(),
 };

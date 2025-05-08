@@ -66,7 +66,7 @@ class TestAST2Func(Dy2StTestBase):
             x_v = paddle.to_tensor(x_data)
             true_ret = func(x_v).numpy()
             test_ret = self._ast2func(func)(x_v).numpy()
-            self.assertTrue((true_ret == test_ret).all())
+            np.testing.assert_allclose(true_ret, test_ret)
 
     @test_ast_only
     @test_pir_only
@@ -85,7 +85,7 @@ class TestAST2Func(Dy2StTestBase):
                 test_ret = self._ast2func(func)(x_v)
                 exe = paddle.static.Executor(paddle.CPUPlace())
                 ret = exe.run(main_program, fetch_list=[true_ret, test_ret])
-                self.assertTrue((ret[0] == ret[1]).all())
+                np.testing.assert_allclose(ret[0], ret[1])
 
     @test_ast_only
     @test_pir_only

@@ -118,4 +118,6 @@ void Stream::Synchronize() const { device_->SynchronizeStream(this); }
 
 const Place& Stream::GetPlace() const { return place_; }
 
+StreamId Stream::id() const { return id_; }
+
 }  // namespace phi::stream

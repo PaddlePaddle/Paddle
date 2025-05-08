@@ -1246,6 +1246,7 @@ class ConcreteProgram:
             func_spec(FunctionSpec): A FunctionSpec instance for decorated function.
             input_spec(list[InputSpec]):
         """
+        backend = kwargs["backend"]
         # verify the instance is initialized in imperative mode.
         _verify_init_in_dynamic_mode(class_instance)
 
@@ -1294,7 +1295,11 @@ class ConcreteProgram:
                 # 2. Builds program only once and returns the output Variables.
                 with param_guard(
                     get_parameters(class_instance, True)
-                ), param_guard(get_buffers(class_instance, True)):
+                ), param_guard(
+                    get_buffers(class_instance, True)
+                ), backend_guard(
+                    backend
+                ):
                     try:
                         # only for jit.save, do nothing while train and eval process
                         inputs = hook_helper.apply_pre_hooks(static_inputs)
