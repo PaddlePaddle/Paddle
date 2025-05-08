@@ -388,3 +388,56 @@ def _init_parallel_env(backend: _BackendList) -> None:
         core.CommContextManager.create_bkcl_comm_context(
             store, "0", rank, world_size, endpoints_str_hash
         )
+
+
+_shutdown_group_map_by_name = {}
+
+
+def _get_shutdown_group_map_by_name():
+    global _shutdown_group_map_by_name
+    return _shutdown_group_map_by_name
+
+
+def _update_shutdown_group_map_by_name(pg_name, group):
+    global _shutdown_group_map_by_name
+    _shutdown_group_map_by_name[pg_name] = group
+
+
+def _delete_shutdown_group_map_by_name(pg_name):
+    global _shutdown_group_map_by_name
+    del _shutdown_group_map_by_name[pg_name]
+
+
+def _clear_shutdown_group_map_by_name():
+    global _shutdown_group_map_by_name
+    _shutdown_group_map_by_name.clear()
+
+
+def shutdown_process_group(group: Group | None = None) -> None:
+    shutdown_groups = _get_shutdown_group_map_by_name()
+
+    if group is None:
+        for pg_name, pg in _get_group_map_by_name().items():
+            if pg.process_group is not None and pg_name not in shutdown_groups:
+                pg.process_group.shutdown()
+                _update_shutdown_group_map_by_name(pg_name, pg)
+    else:
+        if (
+            group.process_group is not None
+            and group.name not in shutdown_groups
+        ):
+            group.process_group.shutdown()
+            _update_shutdown_group_map_by_name(group.name, group)
+
+
+def restart_process_group(group: Group | None = None) -> None:
+    shutdown_groups = _get_shutdown_group_map_by_name()
+
+    if group is None:
+        for pg_name, pg in shutdown_groups.items():
+            pg.process_group.restart()
+        _clear_shutdown_group_map_by_name()
+    else:
+        if group.process_group is not None and group.name in shutdown_groups:
+            group.process_group.restart()
+            _delete_shutdown_group_map_by_name(group.name)
