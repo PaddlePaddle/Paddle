@@ -2582,7 +2582,7 @@ set +x
             #install paddlex
             git clone --depth 1000 https://gitee.com/paddlepaddle/PaddleX.git
             cd PaddleX
-            pip install -e .
+            pip install -e .[base]
 
             #install paddle x dependency
             paddlex --install PaddleClas
@@ -2813,7 +2813,7 @@ function hybrid_paddlex() {
     unset HIP_VISIBLE_DEVICES
     git clone --depth=1000 https://gitee.com/paddlepaddle/PaddleX.git
     cd PaddleX
-    pip install -e .
+    pip install -e .[base]
     paddlex --install PaddleClas
     paddlex --install PaddleSeg
     wget -q https://paddle-model-ecology.bj.bcebos.com/paddlex/data/cls_flowers_examples.tar -P ./dataset
@@ -4859,7 +4859,9 @@ function main() {
         ;;
       hyg_dcu_test)
         parallel_test
-        #hybrid_paddlex
+        if [[ "$IF_DCU" == "ON" ]]; then
+          hybrid_paddlex
+	fi
         ;;
       nv_cicheck_coverage)
         parallel_test

@@ -120,14 +120,24 @@ jobs:
           JOB_NAME: 'PR-CI-Inference / Test'
 
       - name: Rerun coverage
-        if: ${{ contains(env.comment_body, 'coverage') && !contains(env.comment_body, 'test') }}
+        if: ${{ contains(env.comment_body, 'coverage') && !contains(env.comment_body, 'build') && !contains(env.comment_body, 'test') }}
         uses: ./.github/actions/rerun-workflow
         with:
           PR_ID: ${{ github.event.issue.number }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OWNER: ${{ github.repository_owner }}
           REPO: ${{ github.event.repository.name }}
-          JOB_NAME: 'Coverage / Coverage build'
+          JOB_NAME: 'Coverage clone'
+
+      - name: Rerun coverage build
+        if: ${{ contains(env.comment_body, 'coverage') && contains(env.comment_body, 'build') && !contains(env.comment_body, 'test') }}
+        uses: ./.github/actions/rerun-workflow
+        with:
+          PR_ID: ${{ github.event.issue.number }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.event.repository.name }}
+          JOB_NAME: 'Coverage build'
 
       - name: Rerun coverage test
         if: ${{ contains(env.comment_body, 'coverage') && contains(env.comment_body, 'test') }}
@@ -137,7 +147,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OWNER: ${{ github.repository_owner }}
           REPO: ${{ github.event.repository.name }}
-          JOB_NAME: 'Coverage / Coverage test'
+          JOB_NAME: 'Coverage test'
 
       - name: Rerun XPU
         if: ${{ contains(env.comment_body, 'xpu') && !contains(env.comment_body, 'build') && !contains(env.comment_body, 'test') }}
@@ -168,3 +178,23 @@ jobs:
           OWNER: ${{ github.repository_owner }}
           REPO: ${{ github.event.repository.name }}
           JOB_NAME: 'Linux-XPU / Test'
+
+      - name: Rerun distribute-stable build
+        if: ${{ contains(env.comment_body, 'distribute') && !contains(env.comment_body, 'test') }}
+        uses: ./.github/actions/rerun-workflow
+        with:
+          PR_ID: ${{ github.event.issue.number }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.event.repository.name }}
+          JOB_NAME: 'Distribute-stable / Build'
+
+      - name: Rerun distribute-stable test
+        if: ${{ contains(env.comment_body, 'distribute') && contains(env.comment_body, 'test') }}
+        uses: ./.github/actions/rerun-workflow
+        with:
+          PR_ID: ${{ github.event.issue.number }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.event.repository.name }}
+          JOB_NAME: 'Distribute-stable / Test'

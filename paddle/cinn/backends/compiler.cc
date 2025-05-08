@@ -564,7 +564,7 @@ void Compiler::ExportObject(const std::string& path) {
   engine_->ExportObject(path);
 }
 
-void* Compiler::Lookup(absl::string_view fn_name) {
+void* Compiler::Lookup(std::string_view fn_name) {
   PADDLE_ENFORCE_NOT_NULL(
       engine_, ::common::errors::InvalidArgument("Sorry, engine_ is nullptr"));
   if (engine_->Lookup(fn_name) != nullptr) {

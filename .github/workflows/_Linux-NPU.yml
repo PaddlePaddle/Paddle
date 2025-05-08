@@ -132,6 +132,7 @@ jobs:
             -e FLAGS_npu_storage_format \
             -e TEST_IMPORTANT \
             -e PADDLE_BRANCH \
+            -e CI_name \
             -w /paddle --network host ${docker_image} /bin/bash
 
       - name: Install Paddle-CPU

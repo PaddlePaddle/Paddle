@@ -66,6 +66,12 @@ class TestMatrixRankAtolRtolOP(OpTest):
         self.attrs = {'hermitian': self.hermitian}
         self.outputs = {'out': self.out}
 
+    def _get_places(self):
+        places = [base.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(base.CUDAPlace(0))
+        return places
+
     def test_check_output(self):
         self.check_output(check_pir=True)
 
@@ -79,15 +85,25 @@ class TestMatrixRankAtolRtolOP(OpTest):
         self.out = np_matrix_rank_atol_rtol(
             self.x, self.atol, self.rtol, self.hermitian
         )
+        target_dtype = (
+            np.float32
+            if self.x.dtype == np.complex64
+            else (np.float64 if self.x.dtype == np.complex128 else self.x.dtype)
+        )
         if self.atol is None:
-            self.atol = np.full([], 0.0, self.x.dtype)
+            self.atol = np.full([], 0.0, target_dtype)
         if isinstance(self.atol, (float, int)):
-            self.atol = np.full([], self.atol, self.x.dtype)
+            self.atol = np.full([], self.atol, target_dtype)
+        if self.atol.dtype != target_dtype:
+            self.atol = self.atol.astype(target_dtype)
 
         if self.rtol is None:
-            self.rtol = np.full([], 0.0, self.x.dtype)
+            self.rtol = np.full([], 0.0, target_dtype)
         if isinstance(self.rtol, (float, int)):
-            self.rtol = np.full([], self.rtol, self.x.dtype)
+            self.rtol = np.full([], self.rtol, target_dtype)
+        if self.rtol.dtype != target_dtype:
+            self.rtol = self.rtol.astype(target_dtype)
+
         self.atol, self.rtol = np.broadcast_arrays(self.atol, self.rtol)
 
 
@@ -145,6 +161,104 @@ class TestMatrixRankAtolRtolOP7(TestMatrixRankAtolRtolOP):
         self.atol = np.random.random([200, 1]).astype(self.x.dtype)
         self.rtol = np.random.random([200, 200]).astype(self.x.dtype)
         self.hermitian = True
+
+
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    "Skip XPU for complex dtype is not fully supported",
+)
+class TestMatrixRankAtolRtolComplexOP1(TestMatrixRankAtolRtolOP):
+    def init_data(self):
+        x_real = np.eye(3, dtype=np.float32)
+        x_imag = np.eye(3, dtype=np.float32)
+        self.x = x_real + 1j * x_imag
+        self.atol = None
+        self.rtol = 0.05
+        self.hermitian = True
+
+
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    "Skip XPU for complex dtype is not fully supported",
+)
+class TestMatrixRankAtolRtolComplexOP2(TestMatrixRankAtolRtolOP):
+    def init_data(self):
+        x_real = np.random.rand(3, 4, 5, 6).astype(np.float32)
+        x_imag = np.random.rand(3, 4, 5, 6).astype(np.float32)
+        self.x = x_real + 1j * x_imag
+        self.atol = np.random.random([3, 4]).astype(x_real.dtype)
+        self.rtol = None
+        self.hermitian = False
+
+
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    "Skip XPU for complex dtype is not fully supported",
+)
+class TestMatrixRankAtolRtolComplexOP3(TestMatrixRankAtolRtolOP):
+    def init_data(self):
+        x_real = np.random.rand(3, 4, 5, 6).astype(np.float32)
+        x_imag = np.random.rand(3, 4, 5, 6).astype(np.float32)
+        self.x = x_real + 1j * x_imag
+        self.atol = None
+        self.rtol = np.random.random([3, 4]).astype(x_real.dtype)
+        self.hermitian = False
+
+
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    "Skip XPU for complex dtype is not fully supported",
+)
+class TestMatrixRankAtolRtolComplexOP4(TestMatrixRankAtolRtolOP):
+    def init_data(self):
+        x_real = np.random.rand(1, 10).astype(np.float32)
+        x_imag = np.random.rand(1, 10).astype(np.float32)
+        self.x = x_real + 1j * x_imag
+        self.atol = 0.2
+        self.rtol = 1.1
+        self.hermitian = False
+
+
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    "Skip XPU for complex dtype is not fully supported",
+)
+class TestMatrixRankAtolRtolComplexOP5(TestMatrixRankAtolRtolOP):
+    def init_data(self):
+        x_real = np.random.rand(5, 1).astype(np.float64)
+        x_imag = np.random.rand(5, 1).astype(np.float64)
+        self.x = x_real + 1j * x_imag
+        self.atol = np.random.random([1, 4]).astype(x_real.dtype)
+        self.rtol = np.random.random([1, 4]).astype(x_real.dtype)
+        self.hermitian = False
+
+
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    "Skip XPU for complex dtype is not fully supported",
+)
+class TestMatrixRankAtolRtolComplexOP6(TestMatrixRankAtolRtolOP):
+    def init_data(self):
+        x_real = np.eye(200, dtype=np.float64)
+        x_imag = np.eye(200, dtype=np.float64)
+        self.x = x_real + 1j * x_imag
+        self.atol = np.random.random([200, 200]).astype(x_real.dtype)
+        self.rtol = 0.8
+        self.hermitian = False
+
+
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    "Skip XPU for complex dtype is not fully supported",
+)
+class TestMatrixRankAtolRtolComplexOP7(TestMatrixRankAtolRtolOP):
+    def init_data(self):
+        x_real = np.eye(200, dtype=np.float64)
+        x_imag = np.eye(200, dtype=np.float64)
+        self.x = x_real + 1j * x_imag
+        self.atol = np.random.random([200, 1]).astype(x_real.dtype)
+        self.rtol = np.random.random([200, 200]).astype(x_real.dtype)
+        self.hermitian = False
 
 
 class TestMatrixRankAtolRtolAPI(unittest.TestCase):

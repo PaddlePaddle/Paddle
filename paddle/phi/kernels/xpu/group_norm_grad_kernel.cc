@@ -43,7 +43,7 @@ void GroupNormGradKernel(const Context& dev_ctx,
                          DenseTensor* d_bias) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
-  int ret = xpu::SUCCESS;
+  int ret = 0;
   const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
   const auto scale_ptr = scale.get_ptr();
   const auto bias_ptr = bias.get_ptr();
