@@ -372,7 +372,8 @@ bool ContainsVectorizableAxis(const ir::IRSchedule* sch,
 
   VLOG(4) << "Checking ContainsVectorizableAxis on block: [" << block_id
           << "], loop:\n"
-          << sch->GetModule().GetExprs().front() << "\n vectorize expr:\n"
+          << sch->GetModule().GetExprs().front() << "\n"
+          << "vectorize expr:\n"
           << vectorize_expr;
 
   // Get all the lter values in the axis bind that contain a loop var and the
@@ -416,12 +417,11 @@ void ReduceRegionWithReduceBlockVectorizeTilingSchedule(
     const std::string& block_id,
     const int rd_thread,
     const int vectorize_factor) {
-  int loop_axis = 1;
-  int threads_axis = 2;
-  int vectorize_axis = 3;
+  int threads_axis = 1;
+  int vectorize_axis = 2;
   auto loops = sch->GetLoops(block_id);
   if (ContainsVectorizableAxis(sch, loops.size() - 1, block_id)) {
-    sch->Split(loops[1], {-1, rd_thread, vectorize_factor});
+    sch->Split(loops[1], {rd_thread, vectorize_factor});
     loops = sch->GetLoops(block_id);
     sch->Vectorize(loops[vectorize_axis], vectorize_factor);
   } else {
@@ -429,10 +429,6 @@ void ReduceRegionWithReduceBlockVectorizeTilingSchedule(
     loops = sch->GetLoops(block_id);
   }
 
-  loops = sch->GetLoops(block_id);
-  sch->Reorder({loops[threads_axis], loops[loop_axis]});
-  threads_axis = 1;
-  loops = sch->GetLoops(block_id);
   if (IsReductionSBlock(sch->GetBlock(block_id))) {
     ir::Expr rf_tensor =
         sch->FactorizeReduction(loops[threads_axis],
@@ -459,7 +455,7 @@ void ReduceRegionWithSpatialBlockVectorizeTilingSchedule(
     const int vectorize_factor) {
   auto loops = sch->GetLoops(block_id);
   if (ContainsVectorizableAxis(sch, loops.size() - 1, block_id)) {
-    sch->Split(loops[1], std::vector<int>{-1, rd_thread, vectorize_factor});
+    sch->Split(loops[1], std::vector<int>{rd_thread, vectorize_factor});
 
     // set vectorize schedule primitives
     loops = sch->GetLoops(block_id);

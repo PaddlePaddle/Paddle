@@ -40,12 +40,12 @@ void CumsumKernel(const Context& dev_ctx,
   }
 
   // prepare for call xdnn api
-  std::vector<int> x_shape = common::vectorize<int>(x.dims());
+  std::vector<int64_t> x_shape = common::vectorize<int64_t>(x.dims());
   int axis_as_int = axis.to<int>();
 
   if (flatten) {
     // flatten to 1-dim vector
-    x_shape = {static_cast<int>(x.numel())};
+    x_shape = {x.numel()};
     axis_as_int = 0;
   } else {
     // not flatten

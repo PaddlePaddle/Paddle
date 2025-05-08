@@ -1,0 +1,336 @@
+name: Distribute-stable
+
+on:
+  workflow_call:
+
+env:
+  dockerfile: Dockerfile.cuda123_cudnn9_gcc122_ubuntu20
+  docker_image: 4b95dcca2173
+  PR_ID: ${{ github.event.pull_request.number }}
+  COMMIT_ID: ${{ github.event.pull_request.head.sha }}
+  work_dir: /paddle
+  PADDLE_ROOT: /paddle
+  TASK: paddle-CI-${{ github.event.pull_request.number }}-distribute
+  ci_scripts: /paddle/ci
+  BRANCH: ${{ github.event.pull_request.base.ref }}
+  CI_name: distribute
+  no_proxy: bcebos.com,apiin.im.baidu.com,gitee.com,aliyun.com,.baidu.com,.tuna.tsinghua.edu.cn,paddlepaddle.org.cn
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build:
+    name: Build
+    runs-on:
+      group: GZ_BD-CPU
+
+    steps:
+      - name: Check docker image and run container
+        env:
+          FLAGS_fraction_of_gpu_memory_to_use: 0.15
+          CTEST_OUTPUT_ON_FAILURE: 1
+          CTEST_PARALLEL_LEVEL: 4
+          WITH_GPU: "ON"
+          WITH_AVX: "ON"
+          WITH_MKL: "OFF"
+          WITH_PYTHON: "ON"
+          WITH_DISTRIBUTE: "ON"
+          WITH_PSCORE: "ON"
+          WITH_PSLIB: "OFF"
+          WITH_HETERPS: "ON"
+          WITH_TESTING: "ON"
+          WITH_INFERENCE_API_TEST: "OFF"
+          COVERALLS_UPLOAD: "ON"
+          PADDLE_VERSION: 0.0.0
+          CUDA_VISIBLE_DEVICES: 0,1
+          GIT_PR_ID: ${{ github.event.pull_request.number }}
+          GPUBOX_DEMO_INSTALL_DIR: /root/.cache/build
+          INFERENCE_DEMO_INSTALL_DIR: /root/.cache/python35
+          PY_VERSION: "3.10"
+          WITH_TENSORRT: "OFF"
+          GENERATOR: "Ninja"
+          WITH_SHARED_PHI: "ON"
+          CUDA_ARCH_NAME: Ampere
+          WITH_CUDNN_FRONTEND: "ON"
+          FLAGS_enable_cudnn_frontend: 1
+          CACHE_DIR: /root/.cache/build
+          CCACHE_DIR: /root/.ccache/gpubox
+          CCACHE_MAXSIZE: 150G
+          CCACHE_LIMIT_MULTIPLE: 0.8
+          CCACHE_STATSLOG: /paddle/build/.stats.log
+          CCACHE_SLOPPINESS: clang_index_store,time_macros,include_file_mtime
+        run: |
+          container_name=${TASK}-build-$(date +%Y%m%d-%H%M%S)
+          echo "container_name=${container_name}" >> ${{ github.env }}
+          docker run -d -t --name ${container_name} \
+            -v "/home/data/cfs:/home/data/cfs" \
+            -v "/home/data/cfs/.cache/:/root/.cache" \
+            -v "/home/data/cfs/.ccache:/root/.ccache" \
+            -v "/dev/shm:/dev/shm"  \
+            -v ${{ github.workspace }}/../../..:${{ github.workspace }}/../../.. \
+            -v ${{ github.workspace }}:/paddle \
+            -e BRANCH \
+            -e PR_ID \
+            -e COMMIT_ID \
+            -e work_dir \
+            -e PADDLE_ROOT \
+            -e ci_scripts \
+            -e CI_name \
+            -e WITH_SHARED_PHI \
+            -e WITH_MKL \
+            -e WITH_TESTING \
+            -e COVERALLS_UPLOAD \
+            -e GIT_PR_ID \
+            -e PADDLE_VERSION \
+            -e WITH_DISTRIBUTE \
+            -e PY_VERSION \
+            -e WITH_TENSORRT \
+            -e GENERATOR \
+            -e CCACHE_MAXSIZE \
+            -e CCACHE_LIMIT_MULTIPLE \
+            -e WITH_AVX \
+            -e WITH_PYTHON \
+            -e CACHE_DIR \
+            -e CCACHE_DIR \
+            -e CCACHE_STATSLOG \
+            -e CCACHE_SLOPPINESS \
+            -e FLAGS_fraction_of_gpu_memory_to_use \
+            -e CTEST_OUTPUT_ON_FAILURE \
+            -e CTEST_PARALLEL_LEVEL \
+            -e WITH_GPU \
+            -e WITH_PSCORE \
+            -e WITH_PSLIB \
+            -e WITH_HETERPS \
+            -e WITH_INFERENCE_API_TEST \
+            -e CUDA_VISIBLE_DEVICES \
+            -e GPUBOX_DEMO_INSTALL_DIR \
+            -e INFERENCE_DEMO_INSTALL_DIR \
+            -e CUDA_ARCH_NAME \
+            -e WITH_CUDNN_FRONTEND \
+            -e FLAGS_enable_cudnn_frontend \
+            -e no_proxy \
+            -w /paddle --network host ${docker_image}
+
+      - name: Download paddle.tar.gz and merge target branch
+        env:
+          work_dir: ${{ github.workspace }}
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
+          mkdir -p /root/.cache/build
+          mkdir -p /root/.ccache/gpubox
+          rm -rf * .[^.]*
+          set -e
+          echo "Downloading Paddle.tar.gz"
+          wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/Paddle/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
+          echo "Extracting Paddle.tar.gz"
+          tar xf Paddle.tar.gz --strip-components=1
+          rm Paddle.tar.gz
+          git remote add upstream https://github.com/PaddlePaddle/Paddle.git
+          source ${{ github.workspace }}/../../../proxy
+          git checkout test
+          echo "Pull upstream develop"
+          git pull upstream $BRANCH --no-edit
+          '
+
+      - name: Check bypass
+        id: check-bypass
+        uses: ./.github/actions/check-bypass
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          workflow-name: distribute
+
+      - name: Download flashattn cache
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
+          set +e
+          flashattn_version=$(git submodule status | grep flashattn | awk "{print \$1}" | sed "s#-##g")
+          echo "flashattn_version=${flashattn_version}" >> ${{ github.env }}
+          wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/gpups/flashattn_cache/flashattn_libs_${flashattn_version}.tar.gz --no-check-certificate; FACODE=$?
+          if [ $FACODE -ne 0 ]; then
+            echo "flashattn_cached_package=true" >> ${{ github.env }}
+          fi
+          '
+
+      - name: Build
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
+          source ${{ github.workspace }}/../../../proxy
+          bash ${ci_scripts}/run_setup.sh bdist_wheel
+          '
+
+      - name: Packaging of products
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
+          if [ "${{ env.flashattn_cached_package }}" == "true" ]; then
+            cd ${work_dir}/build/third_party/install/flashattn/lib
+            mkdir flashattn_libs_${{ env.flashattn_version }} && cd flashattn_libs_${{ env.flashattn_version }}
+            mkdir fa_libs && cp ../lib*.so fa_libs && tar -zcf fa_libs.tar ./fa_libs && rm -rf ./fa_libs
+            md5sum fa_libs.tar |awk "{print \$1}" >MD5.txt
+            cd .. && tar -zcf flashattn_libs_${{ env.flashattn_version }}.tar ./flashattn_libs_${{ env.flashattn_version }}
+          fi
+          cd ${work_dir}/build
+          rm -rf $(find . -name "*.a")
+          rm -rf $(find . -name "*.o")
+          cd ${work_dir}/build/third_party && find `ls | grep -v "dlpack"| grep -v "install"|grep -v "eigen3"|grep -v "gflags" ` -type f ! -name "*.so" -a ! -name "libdnnl.so*" -delete
+          cd ${work_dir}/..
+          tar --use-compress-program="pzstd -1" --warning=no-file-changed -cf Paddle.tar.gz paddle
+          '
+
+      - name: Upload product to bos
+        env:
+          home_path: ${{ github.workspace }}/..
+          bos_file: ${{ github.workspace }}/../bos/BosClient.py
+          paddle_whl: paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
+          set -x
+          export AK=paddle
+          export SK=paddle
+          source ${{ github.workspace }}/../../../proxy
+          echo "::group::Install bce-python-sdk"
+          python -m pip install bce-python-sdk==0.8.74
+          echo "::endgroup::"
+          if [ ! -f "${{ env.bos_file }}" ]; then
+            wget -q --no-proxy -O ${{ env.home_path }}/bos_new.tar.gz https://xly-devops.bj.bcebos.com/home/bos_new.tar.gz --no-check-certificate
+            mkdir ${{ env.home_path }}/bos
+            tar xf ${{ env.home_path }}/bos_new.tar.gz -C ${{ env.home_path }}/bos
+          fi
+          cd ..
+          source ${{ github.workspace }}/../../../unproxy
+          echo "Uploading Paddle.tar.gz to bos"
+          python ${{ env.bos_file }} Paddle.tar.gz paddle-github-action/PR/gpups/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
+          echo "Uploading whl to bos"
+          mv ${work_dir}/dist/${{ env.paddle_whl }} .
+          python ${{ env.bos_file }} ${{ env.paddle_whl }} paddle-github-action/PR/gpups/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
+          if [ "${{ env.flashattn_cached_package }}" == "true" ]; then
+            echo "Uploading flashattn_libs_${flashattn_version}.tar.gz to bos"
+            mv ${work_dir}/build/third_party/install/flashattn/lib/flashattn_libs_${{ env.flashattn_version }}.tar .
+            python ${{ env.bos_file }} flashattn_libs_${{ env.flashattn_version }}.tar paddle-github-action/PR/gpups/flashattn_cache
+          fi
+          rm -rf Paddle.tar.gz ${{ env.paddle_whl }} flashattn_libs_${flashattn_version}.tar
+          '
+
+      - name: Terminate and delete the container
+        if: always()
+        run: |
+          set +e
+          docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'
+          docker stop ${{ env.container_name }}
+          docker rm ${{ env.container_name }}
+
+  test:
+    name: Test
+    needs: build
+    runs-on:
+      group: Distribute
+    steps:
+      - name: Check docker image and run container
+        env:
+          FLAGS_fraction_of_gpu_memory_to_use: 0.15
+          CTEST_OUTPUT_ON_FAILURE: 1
+          CTEST_PARALLEL_LEVEL: 4
+          WITH_GPU: "ON"
+          WITH_AVX: "ON"
+          WITH_DISTRIBUTE: "ON"
+          WITH_HETERPS: "ON"
+          WITH_TESTING: "ON"
+          WITH_COVERAGE: "OFF"
+          CMAKE_BUILD_TYPE: Release
+          PADDLE_FRACTION_GPU_MEMORY_TO_USE: 0.15
+          PRECISION_TEST: "OFF"
+          WITH_UNITY_BUILD: "ON"
+          AGILE_COMPILE_BRANCH: ${{ github.event.pull_request.base.ref }}
+          AGILE_REVISION: ${{ github.event.pull_request.head.sha }}
+          WITH_INCREMENTAL_COVERAGE: "OFF"
+          WITH_ONNXRUNTIME: "OFF"
+          COVERALLS_UPLOAD: "ON"
+          PADDLE_VERSION: 0.0.0
+          GIT_PR_ID: ${{ github.event.pull_request.number }}
+          PY_VERSION: "3.10"
+          CUDA_ARCH_NAME: Auto
+          WITH_CUDNN_FRONTEND: "ON"
+          FLAGS_enable_cudnn_frontend: 1
+          CACHE_DIR: /root/.cache/build
+          CCACHE_DIR: /root/.ccache/gpubox
+        run: |
+          export CUDA_SO="$(\ls /usr/lib64/libcuda* | xargs -I{} echo "-v {}:{}") $(\ls /usr/lib64/libnvidia* | xargs -I{} echo "-v {}:{}")"
+          export DEVICES="$(\ls -d /dev/nvidia* | xargs -I{} echo "-v {}:{}") $(\ls /dev/nvidia-caps/* | xargs -I{} echo "-v {}:{}")"
+          export SMI="-v /usr/bin/nvidia-smi:/usr/bin/nvidia-smi"
+          container_name=${TASK}-test-$(date +%Y%m%d-%H%M%S)
+          echo "container_name=${container_name}" >> ${{ github.env }}
+          docker run --privileged -d -t --name ${container_name} ${CUDA_SO} ${DEVICES} ${SMI} --shm-size=32G \
+          -v "/home/data/cfs:/home/data/cfs" \
+          -v "/home/data/cfs/.cache/:/root/.cache" \
+          -v "/home/data/cfs/.ccache:/root/.ccache" \
+          -v "/ssd1/root:/root" \
+          -v "/dev/shm:/dev/shm"  \
+          -v ${{ github.workspace }}/../../..:${{ github.workspace }}/../../.. \
+          -v ${{ github.workspace }}:/paddle \
+          -e BRANCH \
+          -e PR_ID \
+          -e COMMIT_ID \
+          -e work_dir \
+          -e PADDLE_ROOT \
+          -e ci_scripts \
+          -e CI_name \
+          -e FLAGS_fraction_of_gpu_memory_to_use \
+          -e CTEST_OUTPUT_ON_FAILURE \
+          -e CTEST_PARALLEL_LEVEL \
+          -e WITH_GPU \
+          -e WITH_AVX \
+          -e WITH_DISTRIBUTE \
+          -e WITH_HETERPS \
+          -e WITH_TESTING \
+          -e WITH_COVERAGE \
+          -e CMAKE_BUILD_TYPE \
+          -e PADDLE_FRACTION_GPU_MEMORY_TO_USE \
+          -e PRECISION_TEST \
+          -e WITH_UNITY_BUILD \
+          -e AGILE_COMPILE_BRANCH \
+          -e AGILE_REVISION \
+          -e WITH_INCREMENTAL_COVERAGE \
+          -e WITH_ONNXRUNTIME \
+          -e COVERALLS_UPLOAD \
+          -e PADDLE_VERSION \
+          -e GIT_PR_ID \
+          -e PY_VERSION \
+          -e CUDA_ARCH_NAME \
+          -e WITH_CUDNN_FRONTEND \
+          -e FLAGS_enable_cudnn_frontend \
+          -e CACHE_DIR \
+          -e CCACHE_DIR \
+          -e no_proxy \
+          -w /paddle --network host ${docker_image}
+
+      - name: Download paddle.tar.gz and merge target branch
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
+          rm -rf * .[^.]*
+          echo "Downloading Paddle.tar.gz"
+          wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/gpups/${{ env.PR_ID }}/${{ env.COMMIT_ID }}/Paddle.tar.gz --no-check-certificate
+          # wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/gpups/72396/2b797c6b9b483cc0bd8433fb9d97d06b7ce137c1/Paddle.tar.gz --no-check-certificate
+          echo "Extracting Paddle.tar.gz"
+          tar --use-compress-program="pzstd" -xf Paddle.tar.gz --strip-components=1
+          rm Paddle.tar.gz
+          git checkout test
+          echo "Pull upstream $BRANCH"
+          source ${{ github.workspace }}/../../../proxy
+          git pull upstream $BRANCH --no-edit
+          '
+
+      - name: Test
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
+          source ${{ github.workspace }}/../../../proxy
+          bash ${ci_scripts}/distribute_test.sh
+          '
+
+      - name: Terminate and delete the container
+        if: always()
+        run: |
+          set +e
+          docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'
+          docker stop ${{ env.container_name }}
+          docker rm ${{ env.container_name }}

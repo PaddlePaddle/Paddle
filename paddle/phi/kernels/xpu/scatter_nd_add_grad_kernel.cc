@@ -26,7 +26,7 @@ void ScatterNdAddGradKernel(const Context &ctx,
                             DenseTensor *x_grad,
                             DenseTensor *updates_grad) {
   using XPUType = typename XPUTypeTrait<T>::Type;
-  int ret = xpu::SUCCESS;
+  int ret = 0;
   const T *out_grad_data = out_grad.data<T>();
   if (x_grad) {
     auto *x_grad_data = ctx.template Alloc<T>(x_grad);
