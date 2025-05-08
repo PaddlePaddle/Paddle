@@ -266,8 +266,9 @@ phi::DataType GetValueDtype(const pir::Value& val);
  * SourceOpT and TargetOpT should be the derived class of pir::Op
  */
 template <typename TargetOpT, typename SourceOpT>
-bool IsDefinedBy(const SourceOpT& op, const size_t idx) {
-  const pir::Operation* defined_op = op->operand_source(idx).defining_op();
+bool IsDefinedBy(const SourceOpT& op, const size_t input_index) {
+  const pir::Operation* defined_op =
+      op->operand_source(input_index).defining_op();
   return defined_op && defined_op->isa<TargetOpT>();
 }
 
