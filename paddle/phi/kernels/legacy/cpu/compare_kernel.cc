@@ -110,41 +110,6 @@ void NotEqualRawKernel(const Context& ctx,
 }
 }  // namespace phi
 
-PD_REGISTER_KERNEL(less_than_raw,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::LessThanRawKernel,
-                   bool,
-                   uint8_t,
-                   int8_t,
-                   int16_t,
-                   int,
-                   int64_t,
-                   float,
-                   double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {
-  kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
-}
-
-#define PD_REGISTER_COMPARE_RAW_KERNEL(name, func)        \
-  PD_REGISTER_KERNEL(name##_raw,                          \
-                     CPU,                                 \
-                     ALL_LAYOUT,                          \
-                     phi::func##RawKernel,                \
-                     bool,                                \
-                     uint8_t,                             \
-                     int8_t,                              \
-                     int16_t,                             \
-                     int,                                 \
-                     int64_t,                             \
-                     float,                               \
-                     double,                              \
-                     phi::dtype::float16,                 \
-                     phi::dtype::bfloat16) {              \
-    kernel->OutputAt(0).SetDataType(phi::DataType::BOOL); \
-  }
-
 #define PD_REGISTER_COMPLEX_COMPARE_RAW_KERNEL(name, func) \
   PD_REGISTER_KERNEL(name##_raw,                           \
                      CPU,                                  \
@@ -165,9 +130,10 @@ PD_REGISTER_KERNEL(less_than_raw,
     kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);  \
   }
 
-PD_REGISTER_COMPARE_RAW_KERNEL(less_equal, LessEqual)
-PD_REGISTER_COMPARE_RAW_KERNEL(greater_than, GreaterThan)
-PD_REGISTER_COMPARE_RAW_KERNEL(greater_equal, GreaterEqual)
+PD_REGISTER_COMPLEX_COMPARE_RAW_KERNEL(less_than, LessThan)
+PD_REGISTER_COMPLEX_COMPARE_RAW_KERNEL(less_equal, LessEqual)
+PD_REGISTER_COMPLEX_COMPARE_RAW_KERNEL(greater_than, GreaterThan)
+PD_REGISTER_COMPLEX_COMPARE_RAW_KERNEL(greater_equal, GreaterEqual)
 
 PD_REGISTER_COMPLEX_COMPARE_RAW_KERNEL(equal, Equal)
 PD_REGISTER_COMPLEX_COMPARE_RAW_KERNEL(not_equal, NotEqual)
