@@ -1,4 +1,4 @@
-// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -48,13 +48,16 @@ class FallbackFusionOpToPhiPattern
   bool MatchAndRewrite(::cinn::dialect::FusionOp fusion_op,
                        pir::PatternRewriter& rewriter) const override {
     const auto& ret = TryMatchAndRewrite(fusion_op, &rewriter);
-    PADDLE_ENFORCE(!ret.HasError(),
-                   "FallbackFusionOpToPhiPattern::MatchAndRewrite failed. "
-                   "\nTraceback (most recent call "
-                   "last):\n%s\n%s: %s. ",
-                   ret.GetError().CallStackToString(),
-                   ret.GetError().class_name(),
-                   ret.GetError().msg());
+    PADDLE_ENFORCE_EQ(
+        ret.HasError(),
+        false,
+        phi::errors::Fatal(
+            "FallbackFusionOpToPhiPattern::MatchAndRewrite failed. "
+            "\nTraceback (most recent call "
+            "last):\n%s\n%s: %s. ",
+            ret.GetError().CallStackToString(),
+            ret.GetError().class_name(),
+            ret.GetError().msg()));
     return ret.GetOkValue();
   }
 
