@@ -37,6 +37,9 @@ jobs:
       group: HK-Clone
 
     steps:
+      - name: Workaround checkout Needed single revision issue
+        run: git submodule foreach 'git rev-parse HEAD || rm -rf $PWD' || true
+
       - name: Clone paddle
         uses: actions/checkout@v4
         with:
