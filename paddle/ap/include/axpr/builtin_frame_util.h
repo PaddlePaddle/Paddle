@@ -41,6 +41,7 @@ void VisitEachBuiltinFrameAttr(const YieldT& Yield) {
   Yield("__builtin_not__", &BuiltinNot);
 
   Yield("__builtin__foreach", &ForEach);
+
   auto YieldTwice = [&](const auto& name, const auto& value) {
     Yield(name, value);
     Yield(std::string("__builtin__") + name, value);

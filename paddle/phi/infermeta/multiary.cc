@@ -482,12 +482,44 @@ void ApVariadicInferMeta(const std::vector<const MetaTensor*>& xs,
 #ifdef PADDLE_WITH_CINN
   ApInferMetaHelper helper{};
   const auto& ret = helper.InferMeta(infer_meta_lambda, &xs, &outs);
+  PADDLE_ENFORCE_EQ(
+      ret.HasError(),
+      false,
+      phi::errors::Fatal(
+          "ApVariadicInferMeta failed. \nTraceback (most recent call "
+          "last):\n%s\n%s: %s. ",
+          ret.GetError().CallStackToString(),
+          ret.GetError().class_name(),
+          ret.GetError().msg()));
+#else
+  PADDLE_THROW(phi::errors::Unimplemented(
+      "ap_variadic is not implemented when cinn is not enabled."));
+#endif
+}
+
+void ApFacadeInferMeta(
+    const paddle::optional<std::vector<const MetaTensor*>>& xs,
+    int64_t num_outputs,
+    const std::string& custom_op_name,
+    const std::string& infer_meta_func_name,
+    const std::string& infer_symbolic_func_name,
+    const std::string& serialized_attributes,
+    std::vector<MetaTensor*> outs,
+    MetaConfig config) {
+#ifdef PADDLE_WITH_CINN
+  ApInferMetaHelper helper{};
+  const auto& ret = helper.InferMetaByAxprHook(
+      xs, infer_meta_func_name, serialized_attributes, outs);
   PADDLE_ENFORCE(!ret.HasError(),
-                 "ApVariadicInferMeta failed. \nTraceback (most recent call "
-                 "last):\n%s\n%s: %s. ",
-                 ret.GetError().CallStackToString(),
-                 ret.GetError().class_name(),
-                 ret.GetError().msg());
+                 phi::errors::Fatal(
+                     "ApFacadeInferMeta failed. \nTraceback (most recent call "
+                     "last):\n%s\n%s: %s. ",
+                     ret.GetError().CallStackToString(),
+                     ret.GetError().class_name(),
+                     ret.GetError().msg()));
+#else
+  PADDLE_THROW(phi::errors::Unimplemented(
+      "ap_facade is not implemented when cinn is not enabled."));
 #endif
 }
 

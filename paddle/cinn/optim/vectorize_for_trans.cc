@@ -477,15 +477,24 @@ class VectorizeForTransMutator : public ir::IRMutator<ir::Expr *> {
   void Visit(const ir::Load *op, ir::Expr *expr) override {
     auto *node = expr->As<ir::Load>();
     auto *tensor = node->tensor.As<ir::_Tensor_>();
-    if (in_vectorize_ && node->is_addr_tensor() &&
-        scalar_tensor_without_vectorize_axis_.count(tensor->name)) {
-      PreLoadScalarTensorWithoutVectorizeAxis(node, &node->indices, expr);
-      return;
-    }
+    PADDLE_ENFORCE_NOT_NULL(
+        tensor,
+        ::common::errors::InvalidArgument(
+            "Expected _Tensor_ node in Load, but received nullptr."));
 
     if (in_vectorize_ && node->is_addr_tensor() &&
         tensor_can_vectorized_.count(tensor->name)) {
       TensorVectorized(node, &node->indices, false);
+      return;
+    }
+
+    if (in_vectorize_ && schedule_block_write_dependency_.count(tensor->name)) {
+      return;
+    }
+
+    if (in_vectorize_ && node->is_addr_tensor() &&
+        scalar_tensor_without_vectorize_axis_.count(tensor->name)) {
+      PreLoadScalarTensorWithoutVectorizeAxis(node, &node->indices, expr);
       return;
     }
 
@@ -502,6 +511,7 @@ class VectorizeForTransMutator : public ir::IRMutator<ir::Expr *> {
         tensor,
         ::common::errors::InvalidArgument(
             "Expected _Tensor_ node in Store, but received nullptr."));
+    schedule_block_write_dependency_.insert(tensor->name);
 
     if (in_vectorize_ && node->is_addr_tensor() &&
         tensor_can_vectorized_.count(tensor->name)) {
@@ -585,6 +595,7 @@ class VectorizeForTransMutator : public ir::IRMutator<ir::Expr *> {
     tensor_to_vectorized_vars_.clear();
     tensor_can_vectorized_.clear();
     scalar_tensor_without_vectorize_axis_.clear();
+    schedule_block_write_dependency_.clear();
     scalar_tensor_to_local_var_.clear();
     scalar_tensor_to_local_buffer_.clear();
     preload_scalar_tensor_stmts_.clear();
@@ -888,6 +899,8 @@ class VectorizeForTransMutator : public ir::IRMutator<ir::Expr *> {
 
   std::unordered_set<std::string> tensor_can_vectorized_;
   std::unordered_set<std::string> scalar_tensor_without_vectorize_axis_;
+  // avoid to preload tensor which is written in schedule block.
+  std::unordered_set<std::string> schedule_block_write_dependency_;
 
   paddle::flat_hash_map<std::string, ir::Var> tensor_to_vectorized_vars_;
   paddle::flat_hash_map<std::string, ir::Var> scalar_tensor_to_local_var_;

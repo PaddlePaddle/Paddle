@@ -37,12 +37,8 @@ using DrrCtx = ap::drr::DrrCtx;
 }  // namespace
 
 DrrInterpreter::DrrInterpreter(
-    const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
-        backend_ir_ctx,
     const std::weak_ptr<ap::memory::CirclableRefListBase>& circlable_ref_list)
-    : interpreter_(ap::drr::MakeBuiltinFrameAttrMap(
-                       [&](const auto& Insert) { Insert(backend_ir_ctx); }),
-                   circlable_ref_list) {}
+    : interpreter_(ap::drr::MakeBuiltinFrameAttrMap(), circlable_ref_list) {}
 
 adt::Result<DrrCtx> DrrInterpreter::InterpretDrrCtxMaker(
     const Function& lambda, const std::vector<axpr::Value>& args) {
