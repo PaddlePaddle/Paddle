@@ -2755,7 +2755,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
 
         assert (
             get_rroo_buffer_pool_manager().is_all_memory_free()
-        ), "rroo_buffer_pool_manager should be all free"
+        ), "all buffers in rroo_buffer_pool_manager should be free"
         assert (
             get_rroo_queue_manager().empty()
         ), "rroo_queue_manager should be empty"
