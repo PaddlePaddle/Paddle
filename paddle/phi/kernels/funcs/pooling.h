@@ -30,6 +30,20 @@ limitations under the License. */
 namespace phi {
 namespace funcs {
 
+namespace details {
+static inline int64_t GetInt64LastPow2(int64_t x) {
+  if (x <= 0) return 0;
+  uint64_t ux = x;
+  ux |= (ux >> 1);
+  ux |= (ux >> 2);
+  ux |= (ux >> 4);
+  ux |= (ux >> 8);
+  ux |= (ux >> 16);
+  ux |= (ux >> 32);
+  return static_cast<int64_t>(ux - (ux >> 1));
+}
+}  // namespace details
+
 /*
  * \brief Extracting simple operations from pooling.
  *        Both MaxPool and AvgPool need "initial", "compute" and "finalize"
@@ -211,17 +225,6 @@ class Pool2dDirectCUDAFunctor {
 template <typename Context, typename PoolProcess, typename T>
 class Pool2dFunctor {
  public:
-  void operator()(const Context& context,
-                  const DenseTensor& input,
-                  const std::vector<int>& ksize,
-                  const std::vector<int>& strides,
-                  const std::vector<int>& paddings,
-                  bool exclusive,
-                  bool adaptive,
-                  DenseTensor* output,
-                  PoolProcess pool_compute);
-
-  // overload operator() to support argument data_format
   void operator()(const Context& context,
                   const DenseTensor& input,
                   const std::vector<int>& ksize,

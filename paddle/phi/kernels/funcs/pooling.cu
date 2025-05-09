@@ -180,59 +180,52 @@ __global__ void KernelPool2D(const int nthreads,
 }
 
 template <typename PoolProcess, typename T>
-__global__ void AdaptiveKernelPool2D(const int nthreads,
-                                     const T* input_data,
-                                     const int channels,
-                                     const int input_height,
-                                     const int input_width,
-                                     const int output_height,
-                                     const int output_width,
-                                     const int ksize_height,
-                                     const int ksize_width,
-                                     const int stride_height,
-                                     const int stride_width,
-                                     const int padding_height,
-                                     const int padding_width,
-                                     FastDivModForPooling divmods,
+__global__ void AdaptiveKernelPool2D(const T* input_data,
+                                     const int64_t channels,
+                                     const int64_t input_height,
+                                     const int64_t input_width,
+                                     const int64_t output_height,
+                                     const int64_t output_width,
                                      PoolProcess pool_process,
                                      bool exclusive,
                                      T* output_data,
                                      bool channel_last = false) {
-  const int n_offset = blockIdx.y;
-  const int c_offset = blockIdx.x * blockDim.y + threadIdx.y;
+  const int64_t n_offset = blockIdx.y;
+  const int64_t c_offset = blockIdx.x * blockDim.y + threadIdx.y;
   if (c_offset >= channels) {
     return;
   }
-  int hstart, hend, wstart, wend;
-  int input_offset =
+  int64_t hstart, hend, wstart, wend;
+  int64_t input_offset =
       channel_last
           ? n_offset * input_height * input_width * channels
           : (n_offset * channels + c_offset) * input_height * input_width;
-  int output_offset =
+  int64_t output_offset =
       channel_last
           ? n_offset * output_height * output_width * channels
           : (n_offset * channels + c_offset) * output_height * output_width;
-  for (int hw_offset = threadIdx.x; hw_offset < output_height * output_width;
+  for (int64_t hw_offset = threadIdx.x;
+       hw_offset < output_height * output_width;
        hw_offset += blockDim.x) {
-    int w_offset = hw_offset % output_width;
-    int h_offset = hw_offset / output_width;
+    int64_t w_offset = hw_offset % output_width;
+    int64_t h_offset = hw_offset / output_width;
     hstart = AdaptStartIndex(h_offset, input_height, output_height);
     hend = AdaptEndIndex(h_offset, input_height, output_height);
     wstart = AdaptStartIndex(w_offset, input_width, output_width);
     wend = AdaptEndIndex(w_offset, input_width, output_width);
 
     T ele = pool_process.initial();
-    for (int h = hstart; h < hend; ++h) {
-      for (int w = wstart; w < wend; ++w) {
-        auto input_idx = channel_last
-                             ? (h * input_width + w) * channels + c_offset
-                             : h * input_width + w;
+    for (int64_t h = hstart; h < hend; ++h) {
+      for (int64_t w = wstart; w < wend; ++w) {
+        int64_t input_idx = channel_last
+                                ? (h * input_width + w) * channels + c_offset
+                                : h * input_width + w;
         pool_process.compute(input_data[input_offset + input_idx], &ele);
       }
     }
-    int pool_size = (hend - hstart) * (wend - wstart);
+    int64_t pool_size = (hend - hstart) * (wend - wstart);
     pool_process.finalize(static_cast<T>(pool_size), &ele);
-    int output_idx =
+    int64_t output_idx =
         channel_last
             ? (h_offset * output_width + w_offset) * channels + c_offset
             : h_offset * output_width + w_offset;
@@ -478,20 +471,12 @@ void Pool2dDirectCUDAFunctor<PoolProcess, T>::operator()(
               batch_size,
               1);
     AdaptiveKernelPool2D<PoolProcess, T>
-        <<<grid, threads, 0, stream>>>(nthreads,
-                                       input,
+        <<<grid, threads, 0, stream>>>(input,
                                        input_channels,
                                        input_height,
                                        input_width,
                                        output_height,
                                        output_width,
-                                       ksize_height,
-                                       ksize_width,
-                                       stride_height,
-                                       stride_width,
-                                       padding_height,
-                                       padding_width,
-                                       pool_divmods,
                                        pool_compute,
                                        exclusive,
                                        output);
@@ -540,111 +525,26 @@ class Pool2dFunctor<phi::GPUContext, PoolProcess, T> {
                   const std::vector<int>& ksize,
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings,
-                  bool exclusive,
-                  bool adaptive,
-                  DenseTensor* output,
-                  PoolProcess pool_process) {
-    const int batch_size = input.dims()[0];
-    const int input_channels = input.dims()[1];
-    const int input_height = input.dims()[2];
-    const int input_width = input.dims()[3];
-    const int output_channels = output->dims()[1];
-    const int output_height = output->dims()[2];
-    const int output_width = output->dims()[3];
-    const int ksize_height = ksize[0];
-    const int ksize_width = ksize[1];
-    const int stride_height = strides[0];
-    const int stride_width = strides[1];
-    const int padding_height = paddings[0];
-    const int padding_width = paddings[1];
-
-    const T* input_data = input.data<T>();
-    T* output_data = context.template Alloc<T>(output);
-
-    int64_t nthreads = static_cast<int64_t>(batch_size) * output_channels *
-                       output_height * output_width;
-    auto pool_divmods =
-        FastDivModForPooling(input_channels, output_width, output_height);
-    if (adaptive) {
-      int64_t max_threads = 512;
-      int64_t thread_num = std::min(
-          phi::funcs::details::GetLastPow2(output_height * output_width),
-          max_threads);
-      int64_t blocks = std::min(max_threads / thread_num,
-                                static_cast<int64_t>(output_channels));
-      dim3 threads(thread_num, blocks, 1);
-      dim3 grid(std::max((output_channels + blocks - 1) / blocks,
-                         static_cast<int64_t>(1)),
-                batch_size,
-                1);
-      AdaptiveKernelPool2D<PoolProcess, T>
-          <<<grid, threads, 0, context.stream()>>>(nthreads,
-                                                   input_data,
-                                                   input_channels,
-                                                   input_height,
-                                                   input_width,
-                                                   output_height,
-                                                   output_width,
-                                                   ksize_height,
-                                                   ksize_width,
-                                                   stride_height,
-                                                   stride_width,
-                                                   padding_height,
-                                                   padding_width,
-                                                   pool_divmods,
-                                                   pool_process,
-                                                   exclusive,
-                                                   output_data);
-    } else {
-      int thread_num = 1024;
-#ifdef WITH_NV_JETSON
-      backends::gpu::ChangeThreadNum(context, &thread_num);
-#endif
-      int blocks = (nthreads + thread_num - 1) / thread_num;
-      dim3 threads(thread_num, 1);
-      dim3 grid(blocks, 1);
-      KernelPool2D<PoolProcess, T>
-          <<<grid, threads, 0, context.stream()>>>(nthreads,
-                                                   input_data,
-                                                   input_channels,
-                                                   input_height,
-                                                   input_width,
-                                                   output_height,
-                                                   output_width,
-                                                   ksize_height,
-                                                   ksize_width,
-                                                   stride_height,
-                                                   stride_width,
-                                                   padding_height,
-                                                   padding_width,
-                                                   pool_divmods,
-                                                   pool_process,
-                                                   exclusive,
-                                                   output_data);
-    }
-  }
-  void operator()(const phi::GPUContext& context,
-                  const DenseTensor& input,
-                  const std::vector<int>& ksize,
-                  const std::vector<int>& strides,
-                  const std::vector<int>& paddings,
                   const std::string data_format,
                   bool exclusive,
                   bool adaptive,
                   DenseTensor* output,
                   PoolProcess pool_process) {
     bool channel_last = (data_format == "NHWC");
-    const int batch_size = input.dims()[0];
+    const int64_t batch_size = input.dims()[0];
 
-    const int input_channels = channel_last ? input.dims()[3] : input.dims()[1];
-    const int input_height = channel_last ? input.dims()[1] : input.dims()[2];
-    const int input_width = channel_last ? input.dims()[2] : input.dims()[3];
+    const int64_t input_channels =
+        channel_last ? input.dims()[3] : input.dims()[1];
+    const int64_t input_height =
+        channel_last ? input.dims()[1] : input.dims()[2];
+    const int64_t input_width =
+        channel_last ? input.dims()[2] : input.dims()[3];
 
-    const int output_channels =
+    const int64_t output_channels =
         channel_last ? output->dims()[3] : output->dims()[1];
-    const int output_height =
+    const int64_t output_height =
         channel_last ? output->dims()[1] : output->dims()[2];
-    const int output_width =
+    const int64_t output_width =
         channel_last ? output->dims()[2] : output->dims()[3];
 
     const int ksize_height = ksize[0];
@@ -659,37 +559,28 @@ class Pool2dFunctor<phi::GPUContext, PoolProcess, T> {
     const T* input_data = input.data<T>();
     T* output_data = context.template Alloc<T>(output);
 
-    int64_t nthreads = static_cast<int64_t>(batch_size) * output_channels *
-                       output_height * output_width;
+    int64_t nthreads =
+        batch_size * output_channels * output_height * output_width;
     auto pool_divmods =
         FastDivModForPooling(input_channels, output_width, output_height);
     if (adaptive) {
       int64_t max_threads = 512;
       int64_t thread_num = std::min(
-          phi::funcs::details::GetLastPow2(output_height * output_width),
+          phi::funcs::details::GetInt64LastPow2(output_height * output_width),
           max_threads);
-      int64_t blocks = std::min(max_threads / thread_num,
-                                static_cast<int64_t>(output_channels));
+      int64_t blocks = std::min(max_threads / thread_num, output_channels);
       dim3 threads(thread_num, blocks, 1);
       dim3 grid(std::max((output_channels + blocks - 1) / blocks,
                          static_cast<int64_t>(1)),
                 batch_size,
                 1);
       AdaptiveKernelPool2D<PoolProcess, T>
-          <<<grid, threads, 0, context.stream()>>>(nthreads,
-                                                   input_data,
+          <<<grid, threads, 0, context.stream()>>>(input_data,
                                                    input_channels,
                                                    input_height,
                                                    input_width,
                                                    output_height,
                                                    output_width,
-                                                   ksize_height,
-                                                   ksize_width,
-                                                   stride_height,
-                                                   stride_width,
-                                                   padding_height,
-                                                   padding_width,
-                                                   pool_divmods,
                                                    pool_process,
                                                    exclusive,
                                                    output_data,
