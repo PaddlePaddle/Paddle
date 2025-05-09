@@ -94,10 +94,6 @@ void FullFakeTensor(const pir::Value &output_value, Variable *output_var) {
       abs_dims[i] = 1;
     }
   }
-  const auto GetNumElementsFromDim = [](const ::pir::DDim &dim) -> int64_t {
-    return ::common::product(dim);
-  };
-  int64_t numel = GetNumElementsFromDim(abs_dims);
 #ifdef PADDLE_WITH_CUDA
   phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
   auto *dev_ctx = pool.Get(phi::GPUPlace());
