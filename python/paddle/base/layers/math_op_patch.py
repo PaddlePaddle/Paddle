@@ -409,7 +409,7 @@ def monkey_patch_variable():
         array_write(x=var, i=array_length(self), array=self)
 
     @static_only
-    def _item(self, *args):
+    def _item(self, *args: int):
         """
         In order to be compatible with the item interface introduced by the dynamic graph, it does nothing but returns self.
         It will check that the shape must be a 1-D tensor

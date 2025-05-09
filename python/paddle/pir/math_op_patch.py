@@ -16,6 +16,7 @@
 import inspect
 import textwrap
 import warnings
+from functools import reduce
 
 import numpy as np
 
@@ -270,7 +271,7 @@ def monkey_patch_value():
         """
         return len(self.shape)
 
-    def _item(self, *args):
+    def _item(self, *args: int):
         """
         In order to be compatible with the item interface introduced by the dynamic graph, it does nothing but returns self.
         It will check that the shape must be a 1-D tensor
@@ -279,6 +280,49 @@ def monkey_patch_value():
             raise TypeError(
                 f"Required input var should be 1-D Value, but received {self.shape}"
             )
+
+        # TODO: We need to handle distributed tensor here
+        if self.is_dist() and not self._is_initialized():
+            return None
+
+        def check_getitem_from_offset(tensor, *args):
+            # Python implementation of the input validation logic for the C++ function `tensor__getitem_from_offset`.
+
+            dims = tensor.shape
+            stride = tensor.strides
+
+            numel = reduce(lambda x, y: x * y, dims)
+            offset = 0
+
+            if len(args) == 0:
+                if numel != 1:
+                    raise ValueError(
+                        "only one element tensors can be converted to Python "
+                        "scalars when no input coordinates"
+                    )
+            elif len(args) == 1:
+                (offset,) = args
+                if offset >= numel:
+                    raise ValueError(
+                        f"index {offset} is out of bounds for size {numel}"
+                    )
+            else:
+                if len(args) != len(dims):
+                    raise ValueError("incorrect number of indices for Tensor")
+                for i in range(len(args)):
+                    index = args[i]
+                    if not isinstance(index, int):
+                        raise TypeError(
+                            f"Item of args must be an integer, got {type(index)}"
+                        )
+                    if index >= dims[i]:
+                        raise ValueError(
+                            f"index {index} is out of bounds for dimension {i}"
+                            f" with size {dims[i]}"
+                        )
+                    offset += index * stride[i]
+
+        check_getitem_from_offset(self, *args)
         return self
 
     def astype(self, dtype):

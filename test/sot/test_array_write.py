@@ -1,4 +1,4 @@
-# Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -30,7 +30,6 @@ class TestArrayWrite(TestCaseBase):
             # In SOT, it cannot be directly handled as a PaddleApiVariable; instead, it requires internal function simulation for execution.
             # Thus, a manual breakpoint is marked to flag this issue.
             sot.psdb.breakgraph()
-            # 在 array_write / array_read 中存在 item 方法会导致打断
             # The presence of the `item` method within `array_write` / `array_read` can cause breakgraph.
             arr = paddle.tensor.array_write(x, i, array=arr)
             item = paddle.tensor.array_read(arr, i)
