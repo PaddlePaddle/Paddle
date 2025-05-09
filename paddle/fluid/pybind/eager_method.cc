@@ -1498,6 +1498,23 @@ static PyObject* tensor__getitem_dygraph(TensorObject* self,
              &has_advanced_index,
              &use_strided_slice);
 
+  // Special: Check if the index is single bool
+  if (PyTuple_GET_SIZE(_index) == 1 &&
+      PyBool_Check(PyTuple_GetItem(_index, 0))) {
+    if (PyTuple_GetItem(_index, 0) == Py_True) {
+      // unsqueeze the tensor to a new tensor with shape (1,)
+      paddle::Tensor out;
+      out.copy_(unsqueeze_ad_func(tensor, {0}), tensor.place(), false);
+      return ToPyObject(out);
+    } else {
+      // create a new tensor with shape (0,)
+      auto shape = tensor.shape();
+      shape.insert(shape.begin(), 0);
+      auto out = paddle::empty(shape, tensor.dtype(), tensor.place());
+      return ToPyObject(out);
+    }
+  }
+
   // step2: Dealing with basic indexing
   bool out_is_view = false;
   auto out = getTensorWithBasicIndexing(tensor,
