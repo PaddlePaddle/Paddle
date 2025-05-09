@@ -1128,6 +1128,10 @@ class _ShardOptimizer(Optimizer):
             for param in self._inner_opt._parameter_list:
                 self._shard_fn._shard_parameter(param)
 
+        self.enable_inplace_master_grad = (
+            os.getenv("FLAGS_enable_inplace_master_grad") == '1'
+        )
+
     def _set_and_check_sharding_prop_from_param(self):
         global_mesh = fleet.auto.get_mesh()
         if global_mesh:
@@ -1253,6 +1257,9 @@ class _ShardOptimizer(Optimizer):
 
     def _finish_update(self, block, parameters_and_grads):
         self._inner_opt._finish_update(block, parameters_and_grads)
+        if self.enable_inplace_master_grad:
+            for param, _ in parameters_and_grads:
+                param.main_grad._local_value().zero_()
         if isinstance(parameters_and_grads, list):
             for p, _ in parameters_and_grads:
                 self._reset_placements(p)
