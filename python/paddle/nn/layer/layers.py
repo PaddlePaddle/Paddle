@@ -2002,15 +2002,13 @@ class Layer:
         if include_sublayers:
             for layer_name, layer_item in self._sub_layers.items():
                 if layer_item is not None:
-                    destination_temp = destination.copy()
-                    destination_temp.update(
+                    destination.update(
                         layer_item._obtain_parameters_buffers(
-                            destination_temp,
+                            destination,
                             include_sublayers,
                             structured_name_prefix + layer_name + ".",
                         )
                     )
-                    destination = destination_temp
         return destination
 
     def _state_dict_impl(
