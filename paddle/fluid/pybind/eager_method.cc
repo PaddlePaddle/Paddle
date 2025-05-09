@@ -1452,6 +1452,15 @@ static PyObject* tensor__getitem_dygraph(TensorObject* self,
   PyObject* _index = PyTuple_GET_ITEM(args, 0);
   VLOG(4) << "Call new indexing strategy _getitem_dygraph";
 
+  PyObject* index_ptr =
+      !PyTuple_Check(_index) ? PyTuple_Pack(1, _index) : _index;
+  DEFINE_PADDLE_SCOPE_GUARD([index_ptr, &_index]() {
+    if (!PyTuple_Check(_index)) {
+      Py_DECREF(index_ptr);
+      VLOG(4) << "Call Py_DECREF";
+    }
+  });
+
   // Note(0x45f): Using defined() instead of initialized()
   // to support slice tensor which shape like [0, 0, 0].
   PADDLE_ENFORCE_EQ(
@@ -1476,7 +1485,7 @@ static PyObject* tensor__getitem_dygraph(TensorObject* self,
 
   // step1: parsing the index and recording them
   ParseIndex(tensor,
-             _index,
+             index_ptr,
              &slice_axes,
              &slice_starts,
              &slice_ends,
@@ -1748,6 +1757,7 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
             tensor.name()));
   }
   const int rank = tensor.shape().size();
+  const int size = PyTuple_GET_SIZE(index_ptr);
   std::vector<int> slice_starts, slice_ends, slice_strides;
   std::vector<int64_t> slice_axes, decrease_axis, infer_flags, none_axes;
 
@@ -1760,7 +1770,7 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
 
   // step1: parsing the index and recording them
   ParseIndex(tensor,
-             _index,
+             index_ptr,
              &slice_axes,
              &slice_starts,
              &slice_ends,
@@ -1808,14 +1818,18 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
       if (InputsContainDistTensor(&mesh, self->tensor, value_tensor)) {
         ConvertAllInputsToDistTensor(mesh, self->tensor, value_tensor);
       }
-      self->tensor = set_value_with_tensor__ad_func(self->tensor,
-                                                    value_tensor,
-                                                    slice_starts,
-                                                    slice_ends,
-                                                    slice_strides,
-                                                    slice_axes,
-                                                    decrease_axis,
-                                                    none_axes);
+      if (size == 1 && PyTuple_GetItem(index_ptr, 0) == Py_False) {
+        // do nothing
+      } else {
+        self->tensor = set_value_with_tensor__ad_func(self->tensor,
+                                                      value_tensor,
+                                                      slice_starts,
+                                                      slice_ends,
+                                                      slice_strides,
+                                                      slice_axes,
+                                                      decrease_axis,
+                                                      none_axes);
+      }
       if (PyCheckTensor(value_obj)) {
         // pass the stop_gradient from value to tensor.
         // pass stop gradient should be done after CheckInplace in
@@ -1830,15 +1844,19 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
       if (InputsContainDistTensor(&mesh, self->tensor)) {
         ConvertAllInputsToDistTensor(mesh, self->tensor);
       }
-      self->tensor = set_value__ad_func(self->tensor,
-                                        slice_starts,
-                                        slice_ends,
-                                        slice_strides,
-                                        slice_axes,
-                                        decrease_axis,
-                                        none_axes,
-                                        {1},
-                                        values);
+      if (size == 1 && PyTuple_GetItem(index_ptr, 0) == Py_False) {
+        // do nothing
+      } else {
+        self->tensor = set_value__ad_func(self->tensor,
+                                          slice_starts,
+                                          slice_ends,
+                                          slice_strides,
+                                          slice_axes,
+                                          decrease_axis,
+                                          none_axes,
+                                          {1},
+                                          values);
+      }
     }
   } else {
     // step3.2: Case for there are advanced indexing.
