@@ -156,19 +156,32 @@ class RROOTensorWrapper:
         assert self.cpu_buffer is not None and self.cpu_buffer.is_used
 
         numel = nonblocking_numel(self.cuda_data)
-        numel_per_split = numel // self.split_factor
         assert numel == nonblocking_numel(self.cpu_buffer)
-        assert numel % self.split_factor == 0
 
+        # Calculate base chunk size and remainder elements that need distribution
+        base_size = numel // self.split_factor
+        remainder = numel % self.split_factor
+
+        # Calculate actual chunk size for current split (earlier splits handle one extra element)
+        if self.split_id < remainder:
+            current_size = base_size + 1
+            offset = (base_size + 1) * self.split_id
+        else:
+            current_size = base_size
+            offset = (base_size + 1) * remainder + base_size * (
+                self.split_id - remainder
+            )
+
+        paddle.framework.core.nvprof_nvtx_push("rroo offload")
         task = async_offload_with_offset(
             src_tensor=self.cuda_data.flatten(),
             dst_tensor=self.cpu_buffer.data,
-            src_offset=numel_per_split * self.split_id,
-            dst_offset=numel_per_split * self.split_id,
-            offload_size=numel_per_split,
+            src_offset=offset,
+            dst_offset=offset,
+            offload_size=current_size,
             async_loader=self.loader,
         )
-
+        paddle.framework.core.nvprof_nvtx_pop()
         self.split_id += 1
         offload_completed = self.split_id >= self.split_factor
         return task, offload_completed
@@ -214,11 +227,11 @@ class RROOOffloadQueue:
         task, offload_completed = self.offload_transaction_queue[0].offload()
         self.task_list.append(task)
         if offload_completed:
-            rroo_transaction = self.offload_transaction_queue.pop(0)
+            tensor_wrapper = self.offload_transaction_queue.pop(0)
             self.cuda_tensor_to_release.append(
-                rroo_transaction.get_cuda_datas_to_release()
+                tensor_wrapper.get_cuda_datas_to_release()
             )
-            return rroo_transaction
+            return tensor_wrapper
         else:
             return None
 
@@ -262,6 +275,7 @@ class RROOReloadQueue:
             return
 
         tensor_wrapper = self.reload_transaction_queue.pop(0)
+
         self.task_list.append(tensor_wrapper.reload())
         self.cpu_buffer_to_release.append(
             tensor_wrapper.pop_cpu_buffers_to_release()
@@ -281,12 +295,16 @@ class RROOReloadQueue:
 class RROOQueue:
     """Queue for managing tensor offloading and reloading operations."""
 
-    def __init__(self, split_factor: int = 1, do_rroo: bool = False) -> None:
+    def __init__(
+        self, acc_num: int, split_factor: int = 1, do_rroo: bool = False
+    ) -> None:
         self.activations_queue = queue.Queue()
 
         self.offload_transaction_manager = RROOOffloadQueue()
         self.reload_transaction_manager = RROOReloadQueue()
 
+        self.acc_num = acc_num
+        self.acc_id = 0
         self.split_factor = split_factor
         self.do_rroo = (
             do_rroo  # For all acc in a chunk, either all do RROO or none do
@@ -300,14 +318,19 @@ class RROOQueue:
             return False
         if not self.reload_transaction_manager.empty():
             return False
+        if not 0 == self.acc_id:
+            return False
         return True
 
     def put(self, cuda_data: paddle.Tensor) -> None:
         """Put a tensor into the queue, routing to appropriate method based on RROO flag."""
-        if self.do_rroo:
-            self.rroo_put(cuda_data)
-        else:
-            self.simple_put(cuda_data)
+        put_method = (
+            self.rroo_put
+            if self.do_rroo and self.can_offload_current_acc()
+            else self.simple_put
+        )
+        put_method(cuda_data)
+        self.acc_id = (self.acc_id + 1) % self.acc_num
 
     def simple_put(self, cuda_data: paddle.Tensor) -> None:
         """Simple put without offloading."""
@@ -359,21 +382,35 @@ class RROOQueue:
         """Start reloading at the beginning of each backward step."""
         self.reload_transaction_manager.reload()
 
+    def can_offload_current_acc(self) -> bool:
+        """Determine if the current accumulation can be offloaded.
+
+        Returns:
+            bool: True if the current accumulation can be offloaded, False otherwise.
+            - For single-split case: Can't offload first or last accumulation
+            - For multi-split case: Can't offload last accumulation
+        """
+        is_last_acc = self.acc_id == (self.acc_num - 1)
+        is_first_acc = self.acc_id == 0
+
+        if self.split_factor == 1:
+            return not (is_first_acc or is_last_acc)
+        else:
+            return not is_last_acc
+
 
 class RROOQueueManager:
     """Manager for queues that handle offloading and reloading operations."""
 
-    def __init__(self, chunk_num: int = 1) -> None:
+    def init(self, chunk_num: int, acc_num: int) -> None:
         self.queues: list[RROOQueue] = []
-        self.set_chunk_num(chunk_num)
-        self.cur_chunk_id = 0  # Follows the pipeline framework's design, setting VPP id as object state
-
-    def set_chunk_num(self, chunk_num: int) -> None:
         self.offload_dict: list[list[RROOQueue]] = [
             [] for _ in range(chunk_num)
         ]
         self.reload_dict: list[list[RROOQueue]] = [[] for _ in range(chunk_num)]
         self.chunk_num = chunk_num
+        self.cur_chunk_id = 0  # Follows the pipeline framework's design, setting VPP id as object state
+        self.acc_num = acc_num
 
     def calc_rroo_infos(
         self, split_factor: int
@@ -390,7 +427,7 @@ class RROOQueueManager:
             return False, None, None
 
         # Given total chunks, current chunk id and split factor, determine offload/reload chunks
-        tgt_chunk_id = 1 + split_factor * self.cur_chunk_id
+        tgt_chunk_id = split_factor * self.cur_chunk_id
         if tgt_chunk_id + split_factor > self.chunk_num:
             return False, None, None
         offload_chunk_ids = list(
@@ -408,7 +445,7 @@ class RROOQueueManager:
             split_factor
         )
 
-        rroo_queue = RROOQueue(split_factor, do_rroo)
+        rroo_queue = RROOQueue(self.acc_num, split_factor, do_rroo)
 
         self.queues.append(rroo_queue)
         if do_rroo:

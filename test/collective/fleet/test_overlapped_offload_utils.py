@@ -32,7 +32,7 @@ class TestRROO(unittest.TestCase):
         rroo_buffer_pool_manager = get_rroo_buffer_pool_manager()
 
         for do_rroo in [True, False]:
-            rroo_queue = RROOQueue(do_rroo=do_rroo)
+            rroo_queue = RROOQueue(acc_num=2, do_rroo=do_rroo)
 
             cuda_data0_acc_0 = paddle.randn([4096, 4096])
             cuda_data1_acc_0 = paddle.randn([4096, 4096])
@@ -124,16 +124,20 @@ class TestRROO(unittest.TestCase):
             )
 
     def test_rroo_queue_manager(self):
-        chunk_num = 8
+        chunk_num = 4
+        acc_num = 5
         rroo_queue_manager = get_rroo_queue_manager()
-        rroo_queue_manager.set_chunk_num(chunk_num)
+        rroo_queue_manager.init(chunk_num, acc_num)
 
         rroo_buffer_pool_manager = get_rroo_buffer_pool_manager()
 
-        for split_factor in [1, 2, 4, 8]:
+        for split_factor in range(1, chunk_num):
 
             queue_list = [None for _ in range(chunk_num)]
-            data_list = [paddle.randn([4096, 4096]) for _ in range(chunk_num)]
+            data_list = [
+                [paddle.randn([4096, 4096]) for _ in range(acc_num)]
+                for _ in range(chunk_num)
+            ]
             # init
             for chunk_id in range(chunk_num):
                 rroo_queue_manager.set_cur_chunk_id(chunk_id)
@@ -144,29 +148,33 @@ class TestRROO(unittest.TestCase):
             # forward
             for chunk_id in range(chunk_num):
                 rroo_queue_manager.set_cur_chunk_id(chunk_id)
-                rroo_queue_manager.offload()
 
-                rroo_queue = queue_list[chunk_id]
-                rroo_queue.put(data_list[chunk_id].clone())
+                for acc_id in range(acc_num):
+                    rroo_queue_manager.offload()
 
-                rroo_queue_manager.wait_and_release()
+                    rroo_queue = queue_list[chunk_id]
+                    rroo_queue.put(data_list[chunk_id][acc_id].clone())
+
+                    rroo_queue_manager.wait_and_release()
 
             # backward
             for chunk_id in range(chunk_num - 1, -1, -1):
                 rroo_queue_manager.set_cur_chunk_id(chunk_id)
-                rroo_queue_manager.reload()
 
-                rroo_queue = queue_list[chunk_id]
-                data = rroo_queue.get()
-                np.testing.assert_array_equal(
-                    data._md5sum(),
-                    data_list[chunk_id]._md5sum(),
-                )
-                np.testing.assert_array_equal(
-                    data.shape,
-                    data_list[chunk_id].shape,
-                )
-                rroo_queue_manager.wait_and_release()
+                for acc_id in range(acc_num):
+                    rroo_queue_manager.reload()
+
+                    rroo_queue = queue_list[chunk_id]
+                    data = rroo_queue.get()
+                    np.testing.assert_array_equal(
+                        data._md5sum(),
+                        data_list[chunk_id][acc_id]._md5sum(),
+                    )
+                    np.testing.assert_array_equal(
+                        data.shape,
+                        data_list[chunk_id][acc_id].shape,
+                    )
+                    rroo_queue_manager.wait_and_release()
 
             np.testing.assert_array_equal(
                 rroo_queue_manager.empty(),
