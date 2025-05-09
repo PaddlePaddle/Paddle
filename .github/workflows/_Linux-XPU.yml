@@ -149,7 +149,7 @@ jobs:
           fi
           sudo yum install zstd -y
           cd ..
-          tar --use-compress-program="pzstd -5" -cf build.tar.gz Paddle
+          tar --use-compress-program="pzstd" -cf build.tar.gz Paddle
           # source /home/opt/deck/1.0/etc/bashrc
           echo "Uploading build.tar.gz"
           python3 ${bos_file} build.tar.gz paddle-github-action/PR/xpu/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
