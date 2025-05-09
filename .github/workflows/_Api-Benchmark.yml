@@ -20,21 +20,19 @@ defaults:
     shell: bash
 
 jobs:
+  check-bypass:
+    name: Check bypass for Api-Benchmark
+    uses: ./.github/workflows/check-bypass.yml
+    with:
+      workflow-name: 'api-bm'
+    secrets:
+      github-token: ${{ secrets.GITHUB_TOKEN }}
+
   data-storage:
     name: Performance data storage
     runs-on:
       group: Api-bm
-
     steps:
-      # - run: mkdir -p .github/actions/check-bypass && wget -q -O .github/actions/check-bypass/action.yml https://raw.githubusercontent.com/PaddlePaddle/Paddle/refs/heads/develop/.github/actions/check-bypass/action.yml
-
-      - name: Check bypass
-        id: check-bypass
-        uses: ./.github/actions/check-bypass
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          workflow-name: api-bm
-
       - name: Determine the runner
         run: |
           cp -r /home/PTSTools .
