@@ -288,7 +288,6 @@ def monkey_patch_value():
             # Python implementation of the input validation logic for the C++ function `tensor__getitem_from_offset`.
 
             dims = tensor.shape
-            stride = tensor.strides
 
             numel = reduce(lambda x, y: x * y, dims)
             offset = 0
@@ -319,7 +318,6 @@ def monkey_patch_value():
                             f"index {index} is out of bounds for dimension {i}"
                             f" with size {dims[i]}"
                         )
-                    offset += index * stride[i]
 
         check_getitem_from_offset(self, *args)
         return self
