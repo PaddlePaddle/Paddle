@@ -467,6 +467,71 @@ size_t DeviceManager::GetExtraPaddingSize(const Place& place) {
   return dev_impl->GetExtraPaddingSize(device_id);
 }
 
+size_t DeviceManager::GetComputeCapability(const Place& place) {
+  auto device_type = place.GetDeviceType();
+  auto device_id = place.GetDeviceId();
+  auto dev_impl = GetDeviceInterfaceWithType(device_type);
+  return dev_impl->GetComputeCapability(device_id);
+}
+
+size_t DeviceManager::GetRuntimeVersion(const Place& place) {
+  auto device_type = place.GetDeviceType();
+  auto device_id = place.GetDeviceId();
+  auto dev_impl = GetDeviceInterfaceWithType(device_type);
+  return dev_impl->GetRuntimeVersion(device_id);
+}
+
+size_t DeviceManager::GetDriverVersion(const Place& place) {
+  auto device_type = place.GetDeviceType();
+  auto device_id = place.GetDeviceId();
+  auto dev_impl = GetDeviceInterfaceWithType(device_type);
+  return dev_impl->GetDriverVersion(device_id);
+}
+
+size_t DeviceManager::GetMultiProcessors(const Place& place) {
+  auto device_type = place.GetDeviceType();
+  auto device_id = place.GetDeviceId();
+  auto dev_impl = GetDeviceInterfaceWithType(device_type);
+  return dev_impl->GetMultiProcessors(device_id);
+}
+
+size_t DeviceManager::GetMaxThreadsPerMultiProcessor(const Place& place) {
+  auto device_type = place.GetDeviceType();
+  auto device_id = place.GetDeviceId();
+  auto dev_impl = GetDeviceInterfaceWithType(device_type);
+  return dev_impl->GetMaxThreadsPerMultiProcessor(device_id);
+}
+
+size_t DeviceManager::GetMaxThreadsPerBlock(const Place& place) {
+  auto device_type = place.GetDeviceType();
+  auto device_id = place.GetDeviceId();
+  auto dev_impl = GetDeviceInterfaceWithType(device_type);
+  return dev_impl->GetMaxThreadsPerBlock(device_id);
+}
+
+std::array<unsigned int, 3> DeviceManager::GetMaxGridDimSize(
+    const Place& place) {
+  auto device_type = place.GetDeviceType();
+  auto device_id = place.GetDeviceId();
+  auto dev_impl = GetDeviceInterfaceWithType(device_type);
+  return dev_impl->GetMaxGridDimSize(device_id);
+}
+
+void* DeviceManager::InitEigenDevice(const Place& place,
+                                     phi::stream::stream_t stream,
+                                     phi::Allocator* allocator) {
+  auto device_type = place.GetDeviceType();
+  auto dev_impl = GetDeviceInterfaceWithType(device_type);
+  return dev_impl->InitEigenDevice(place, stream, allocator);
+}
+
+void DeviceManager::DestroyEigenDevice(const Place& place, void* eigen_device) {
+  auto device_type = place.GetDeviceType();
+  auto device_id = place.GetDeviceId();
+  auto dev_impl = GetDeviceInterfaceWithType(device_type);
+  return dev_impl->DestroyEigenDevice(device_id, eigen_device);
+}
+
 void DeviceManager::MemoryStats(const Place& place,
                                 size_t* total,
                                 size_t* free) {

@@ -1,4 +1,4 @@
-// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -249,13 +249,14 @@ bool ApOpFacadeOpInferSymbolicShape(
     pir::Operation* op, pir::InferSymbolicShapeContext* infer_context) {
   const auto& ret = TryApOpFacadeOpInferSymbolicShape(op, infer_context);
   bool success = !ret.HasError();
-  PADDLE_ENFORCE(
-      success,
-      "ApOpFacadeOpInferSymbolicShape failed. \nTraceback (most recent call "
-      "last):\n%s\n%s: %s. ",
-      ret.GetError().CallStackToString(),
-      ret.GetError().class_name(),
-      ret.GetError().msg());
+  PADDLE_ENFORCE_EQ(success,
+                    true,
+                    phi::errors::Fatal("ApOpFacadeOpInferSymbolicShape failed. "
+                                       "\nTraceback (most recent call "
+                                       "last):\n%s\n%s: %s. ",
+                                       ret.GetError().CallStackToString(),
+                                       ret.GetError().class_name(),
+                                       ret.GetError().msg()));
   return success;
 }
 
@@ -263,13 +264,15 @@ bool PdOpApFacadeOpInferSymbolicShape(
     pir::Operation* op, pir::InferSymbolicShapeContext* infer_context) {
   const auto& ret = TryPdOpApFacadeOpInferSymbolicShape(op, infer_context);
   bool success = !ret.HasError();
-  PADDLE_ENFORCE(
+  PADDLE_ENFORCE_EQ(
       success,
-      "PdOpApFacadeOpInferSymbolicShape failed. \nTraceback (most recent call "
-      "last):\n%s\n%s: %s. ",
-      ret.GetError().CallStackToString(),
-      ret.GetError().class_name(),
-      ret.GetError().msg());
+      true,
+      phi::errors::Fatal("PdOpApFacadeOpInferSymbolicShape failed. "
+                         "\nTraceback (most recent call "
+                         "last):\n%s\n%s: %s. ",
+                         ret.GetError().CallStackToString(),
+                         ret.GetError().class_name(),
+                         ret.GetError().msg()));
   return success;
 }
 

@@ -68,9 +68,9 @@ void ConcatGradKernel(const Context& dev_ctx,
                         out_grad.dims().size()));
 
   auto input_dims = x[0]->dims();
-  std::vector<int> split_list(x.size());
-  std::vector<int> xdims_list(input_dims.size());
-  int total_length = 0;
+  std::vector<int64_t> split_list(x.size());
+  std::vector<int64_t> xdims_list(input_dims.size());
+  int64_t total_length = 0;
   for (size_t i = 0; i < x.size(); ++i) {
     split_list[i] = x[i]->dims()[axis];
     total_length += x[i]->dims()[axis];

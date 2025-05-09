@@ -482,12 +482,44 @@ void ApVariadicInferMeta(const std::vector<const MetaTensor*>& xs,
 #ifdef PADDLE_WITH_CINN
   ApInferMetaHelper helper{};
   const auto& ret = helper.InferMeta(infer_meta_lambda, &xs, &outs);
+  PADDLE_ENFORCE_EQ(
+      ret.HasError(),
+      false,
+      phi::errors::Fatal(
+          "ApVariadicInferMeta failed. \nTraceback (most recent call "
+          "last):\n%s\n%s: %s. ",
+          ret.GetError().CallStackToString(),
+          ret.GetError().class_name(),
+          ret.GetError().msg()));
+#else
+  PADDLE_THROW(phi::errors::Unimplemented(
+      "ap_variadic is not implemented when cinn is not enabled."));
+#endif
+}
+
+void ApFacadeInferMeta(
+    const paddle::optional<std::vector<const MetaTensor*>>& xs,
+    int64_t num_outputs,
+    const std::string& custom_op_name,
+    const std::string& infer_meta_func_name,
+    const std::string& infer_symbolic_func_name,
+    const std::string& serialized_attributes,
+    std::vector<MetaTensor*> outs,
+    MetaConfig config) {
+#ifdef PADDLE_WITH_CINN
+  ApInferMetaHelper helper{};
+  const auto& ret = helper.InferMetaByAxprHook(
+      xs, infer_meta_func_name, serialized_attributes, outs);
   PADDLE_ENFORCE(!ret.HasError(),
-                 "ApVariadicInferMeta failed. \nTraceback (most recent call "
-                 "last):\n%s\n%s: %s. ",
-                 ret.GetError().CallStackToString(),
-                 ret.GetError().class_name(),
-                 ret.GetError().msg());
+                 phi::errors::Fatal(
+                     "ApFacadeInferMeta failed. \nTraceback (most recent call "
+                     "last):\n%s\n%s: %s. ",
+                     ret.GetError().CallStackToString(),
+                     ret.GetError().class_name(),
+                     ret.GetError().msg()));
+#else
+  PADDLE_THROW(phi::errors::Unimplemented(
+      "ap_facade is not implemented when cinn is not enabled."));
 #endif
 }
 
@@ -505,28 +537,6 @@ void ApTrivialFusionEndInferMeta(
     MetaConfig config) {
   out->set_dims(common::make_ddim({}));
   out->set_dtype(phi::DataType::BOOL);
-}
-
-void ApFacadeInferMeta(
-    const paddle::optional<std::vector<const MetaTensor*>>& xs,
-    int64_t num_outputs,
-    const std::string& custom_op_name,
-    const std::string& infer_meta_func_name,
-    const std::string& infer_symbolic_func_name,
-    const std::string& serialized_attributes,
-    std::vector<MetaTensor*> outs,
-    MetaConfig config) {
-#ifdef PADDLE_WITH_CINN
-  ApInferMetaHelper helper{};
-  const auto& ret = helper.InferMetaByAxprHook(
-      xs, infer_meta_func_name, serialized_attributes, outs);
-  PADDLE_ENFORCE(!ret.HasError(),
-                 "ApFacadeInferMeta failed. \nTraceback (most recent call "
-                 "last):\n%s\n%s: %s. ",
-                 ret.GetError().CallStackToString(),
-                 ret.GetError().class_name(),
-                 ret.GetError().msg());
-#endif
 }
 
 // TODO(YuanRisheng) This InferMeta is used in Fluid
@@ -5214,16 +5224,16 @@ void SendUERecvInferMeta(const MetaTensor& x,
 
   // Infer out's shape according to x and e(need broadcasting condition)
   out->set_dtype(x.dtype());
-  auto x_dims1 = common::vectorize<int>(x_dims);
-  auto y_dims1 = common::vectorize<int>(y_dims);
-  std::vector<int> x_dims2(x_dims1.begin() + 1, x_dims1.end());
-  std::vector<int> y_dims2(y_dims1.begin() + 1, y_dims1.end());
+  auto x_dims1 = common::vectorize<int64_t>(x_dims);
+  auto y_dims1 = common::vectorize<int64_t>(y_dims);
+  std::vector<int64_t> x_dims2(x_dims1.begin() + 1, x_dims1.end());
+  std::vector<int64_t> y_dims2(y_dims1.begin() + 1, y_dims1.end());
 
   int max_dim = static_cast<int>(std::max(x_dims2.size(), y_dims2.size()));
   int axis = std::abs(static_cast<int>(x_dims2.size() - y_dims2.size()));
-  std::vector<int> x_dims_array(max_dim);
-  std::vector<int> y_dims_array(max_dim);
-  std::vector<int> out_dims_array(max_dim);
+  std::vector<int64_t> x_dims_array(max_dim);
+  std::vector<int64_t> y_dims_array(max_dim);
+  std::vector<int64_t> out_dims_array(max_dim);
   // Only need to broadcast dimensions other than the 0th dimension.
   phi::funcs::GetBroadcastDimsArrays(common::make_ddim(x_dims2),
                                      common::make_ddim(y_dims2),
@@ -5285,15 +5295,15 @@ void SendUVInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
   auto x_dims = x.dims();
   auto y_dims = y.dims();
-  auto x_dims1 = common::vectorize<int>(x_dims);
-  auto y_dims1 = common::vectorize<int>(y_dims);
-  std::vector<int> x_dims2(x_dims1.begin() + 1, x_dims1.end());
-  std::vector<int> y_dims2(y_dims1.begin() + 1, y_dims1.end());
+  auto x_dims1 = common::vectorize<int64_t>(x_dims);
+  auto y_dims1 = common::vectorize<int64_t>(y_dims);
+  std::vector<int64_t> x_dims2(x_dims1.begin() + 1, x_dims1.end());
+  std::vector<int64_t> y_dims2(y_dims1.begin() + 1, y_dims1.end());
   int max_dim = static_cast<int>(std::max(x_dims2.size(), y_dims2.size()));
   int axis = std::abs(static_cast<int>(x_dims2.size() - y_dims2.size()));
-  std::vector<int> x_dims_array(max_dim);
-  std::vector<int> y_dims_array(max_dim);
-  std::vector<int> out_dims_array(max_dim);
+  std::vector<int64_t> x_dims_array(max_dim);
+  std::vector<int64_t> y_dims_array(max_dim);
+  std::vector<int64_t> out_dims_array(max_dim);
   // Only need to broadcast dimensions other than the 0th dimension.
   phi::funcs::GetBroadcastDimsArrays(common::make_ddim(x_dims2),
                                      common::make_ddim(y_dims2),

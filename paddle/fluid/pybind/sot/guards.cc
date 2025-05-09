@@ -33,10 +33,31 @@ static inline PyObject* PyObject_CallOneArg(PyObject* func, PyObject* arg) {
 #define Py_IsNone(x) ((x) == Py_None)
 #endif
 
+// check if the tensor is null, tensor is std::optional<paddle::Tensor>
+#define HANDLE_NULL_TENSOR(tensor) \
+  {                                \
+    if (!tensor) {                 \
+      return false;                \
+    }                              \
+  }
+
+// check if the value is null and decref it
+#define HANDLE_NULL_VALUE_DECREF(value) \
+  {                                     \
+    if ((value) == NULL) {              \
+      Py_DECREF(value);                 \
+      PyErr_Clear();                    \
+      return false;                     \
+    }                                   \
+  }
+
+// check if the value is null
 #define HANDLE_NULL_VALUE(value) \
-  if ((value) == NULL) {         \
-    PyErr_Clear();               \
-    return false;                \
+  {                              \
+    if ((value) == NULL) {       \
+      PyErr_Clear();             \
+      return false;              \
+    }                            \
   }
 
 static inline bool PyObject_Equal(PyObject* a, PyObject* b) {
@@ -106,9 +127,7 @@ bool LengthMatchGuard::check(PyObject* value) {
 
 bool DtypeMatchGuard::check(PyObject* value) {
   auto tensor = GetTensorFromPyObject(value);
-  if (!tensor) {
-    return false;
-  }
+  HANDLE_NULL_TENSOR(tensor);
   auto dtype = tensor->type();
   return phi::TransToProtoVarType(dtype) == expected_;
 }
@@ -116,9 +135,7 @@ bool DtypeMatchGuard::check(PyObject* value) {
 bool ShapeMatchGuard::check(PyObject* value) {
   HANDLE_NULL_VALUE(value);
   auto tensor = GetTensorFromPyObject(value);
-  if (!tensor) {
-    return false;
-  }
+  HANDLE_NULL_TENSOR(tensor);
   auto shape = tensor->shape();
   if (shape.size() != expected_.size()) {
     return false;
@@ -174,6 +191,24 @@ bool NumPyArrayValueMatchGuard::check(PyObject* value) {
       .attr("__eq__")(py_value)
       .attr("all")()
       .cast<bool>();
+}
+
+bool NumPyArrayShapeMatchGuard::check(PyObject* value) {
+  py::array array = py::reinterpret_borrow<py::array>(value);
+  if (!array) {
+    return false;
+  }
+  int ndim = array.ndim();
+  auto shape = array.shape();
+  if (ndim != static_cast<int>(expected_.size())) {
+    return false;
+  }
+  for (int i = 0; i < ndim; ++i) {
+    if (expected_[i].has_value() && shape[i] != expected_[i].value()) {
+      return false;
+    }
+  }
+  return true;
 }
 
 bool WeakRefMatchGuard::check(PyObject* value) {
@@ -336,59 +371,89 @@ std::string BinaryExprNode::stringify(int indent) {
   return ss.str();
 }
 
-std::optional<int> GuardNode::lookup(FrameProxy* frame) {
-  // TODO(zrr1999): support multiple exprs
-  auto expr = exprs.back();
-  auto value = expr->eval(frame);
-  if (guard->check(value)) {
-    if (return_cache_index.has_value()) {
-      return return_cache_index.value();
-    }
-    for (auto& next_guard_node : next_guard_nodes) {
-      auto ret = next_guard_node->lookup(frame);
-      if (ret.has_value()) {
-        return ret.value();
-      }
+std::optional<int> GuardNodeBase::lookup_next(FrameProxy* frame) {
+  if (return_cache_index.has_value()) {
+    return return_cache_index.value();
+  }
+  for (auto& next_guard_node : next_guard_nodes) {
+    auto ret = next_guard_node->lookup(frame);
+    if (ret.has_value()) {
+      return ret.value();
     }
   }
   return std::nullopt;
 }
-std::string GuardNode::stringify(int indent) {
-  std::stringstream ss;
-  // TODO(zrr1999): support multiple exprs
-  auto expr = exprs.back();
-  ss << std::string(indent, ' ') << guard->get_guard_name();
-  ss << "(" << exprs.back()->stringify() << ")";
-  if (!next_guard_nodes.empty()) {
-    ss << " |" << std::endl;
-    for (auto& next_guard_node : next_guard_nodes) {
-      ss << std::string(indent + 2, ' ');
-      ss << next_guard_node->stringify(indent + 2) << std::endl;
-    }
+
+bool TensorDistMetaMatchGuardNode::check(std::array<PyObject*, 2> values) {
+  PyObject* expr = values[0];
+  HANDLE_NULL_VALUE(expr);
+
+  auto tensor = GetTensorFromPyObject(expr);
+  HANDLE_NULL_TENSOR(tensor);
+
+  if (tensor->is_dist_tensor() == false && is_dist_ == false) return true;
+  if (tensor->is_dist_tensor() != is_dist_) {
+    return false;
   }
-  return ss.str();
+
+  PyObject* dist_info_from_tensor_func = values[1];
+  HANDLE_NULL_VALUE(dist_info_from_tensor_func);
+
+  PyObject* dist_info = PyObject_CallOneArg(dist_info_from_tensor_func, expr);
+  HANDLE_NULL_VALUE_DECREF(dist_info);
+
+  PyObject* mesh = PyObject_GetAttrString(dist_info, "mesh");
+  HANDLE_NULL_VALUE_DECREF(mesh);
+
+  PyObject* mesh_shape = PyObject_GetAttrString(mesh, "shape");
+  HANDLE_NULL_VALUE_DECREF(mesh_shape);
+  PyObject* process_ids = PyObject_GetAttrString(mesh, "process_ids");
+  HANDLE_NULL_VALUE_DECREF(process_ids);
+  PyObject* dims_mapping = PyObject_GetAttrString(dist_info, "dims_mapping");
+  HANDLE_NULL_VALUE_DECREF(dims_mapping);
+  PyObject* local_shape = PyObject_GetAttrString(dist_info, "local_shape");
+  HANDLE_NULL_VALUE_DECREF(local_shape);
+
+  if (py::handle(mesh_shape).cast<std::vector<int>>() != mesh_shape_expected_ ||
+      py::handle(process_ids).cast<std::vector<int>>() !=
+          mesh_process_ids_expected_.value() ||
+      !PyObject_Equal(dims_mapping, dims_mapping_expected_.value()) ||
+      !PyObject_Equal(local_shape, local_shape_expected_.value())) {
+    Py_DECREF(mesh);
+    Py_DECREF(mesh_shape);
+    Py_DECREF(process_ids);
+    Py_DECREF(dims_mapping);
+    Py_DECREF(local_shape);
+    PyErr_Clear();
+    return false;
+  }
+
+  Py_DECREF(mesh);
+  Py_DECREF(mesh_shape);
+  Py_DECREF(process_ids);
+  Py_DECREF(dims_mapping);
+  Py_DECREF(local_shape);
+  return true;
+}
+
+bool LegacyGuardNode::check(std::array<PyObject*, 1> values) {
+  // TODO(zrr1999): support multiple exprs
+  PyObject* value = values[0];
+  HANDLE_NULL_VALUE(value);
+  return guard->check(value);
 }
 
 std::optional<int> ExprGuardNode::lookup(FrameProxy* frame) {
-  auto expr = expr_;
   auto value = expr->eval(frame);
   if (PyObject_IsTrue(value)) {
-    if (return_cache_index.has_value()) {
-      return return_cache_index.value();
-    }
-    for (auto& next_guard_node : next_guard_nodes) {
-      auto ret = next_guard_node->lookup(frame);
-      if (ret.has_value()) {
-        return ret.value();
-      }
-    }
+    return lookup_next(frame);
   }
   return std::nullopt;
 }
 std::string ExprGuardNode::stringify(int indent) {
   std::stringstream ss;
   ss << std::string(indent, ' ');
-  ss << "(" << expr_->stringify() << ")";
+  ss << "(" << expr->stringify() << ")";
   if (!next_guard_nodes.empty()) {
     ss << " |" << std::endl;
     for (auto& next_guard_node : next_guard_nodes) {
@@ -399,12 +464,22 @@ std::string ExprGuardNode::stringify(int indent) {
   return ss.str();
 }
 
+std::optional<int> DummyGuardNode::lookup(FrameProxy* frame) {
+  if (return_true_) {
+    return lookup_next(frame);
+  }
+  return std::nullopt;
+}
+std::string DummyGuardNode::stringify(int indent) {
+  return std::string(indent, ' ') + "DummyGuard(" +
+         (return_true_ ? "True" : "False") + ")";
+}
+
 void GuardTree::add_guard_chain(
     const std::vector<std::shared_ptr<GuardNodeBase>>& guard_chain) {
   if (guard_chain.empty()) {
-    // TODO(zrr1999): empty guard nodes means that some
-    // tracker.make_faster_guard is not implemented.
-    return;
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Empty guard chain, please check the guard chain"));
   }
   for (size_t i = 1; i < guard_chain.size(); ++i) {
     guard_chain[i - 1]->next_guard_nodes.push_back(guard_chain[i]);

@@ -1,4 +1,4 @@
-// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,8 +13,11 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/ap_infer_sym.h"
+#ifdef PADDLE_WITH_CINN
 #include "paddle/ap/include/paddle/pir/infer_symbolic_shape_util.h"
+#endif
 #include "paddle/common/ddim.h"
+#include "paddle/common/enforce.h"
 #include "paddle/common/layout.h"
 #include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/infer_sym_utils.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
@@ -23,23 +26,41 @@ namespace paddle::dialect {
 
 bool ApTrivialFusionBeginOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+#ifdef PADDLE_WITH_CINN
   symbol::ShapeOrDataDimExprs empty_shape{
       symbol::TensorShapeOrDataDimExprs{std::vector<symbol::DimExpr>{}}};
   infer_context->SetShapeOrDataForValue(op->result(0), empty_shape);
   return true;
+#else
+  PADDLE_THROW(phi::errors::Unimplemented(
+      "ap_facade is not implemented when cinn is not enabled."));
+  return false;
+#endif
 }
 
 bool ApTrivialFusionEndOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+#ifdef PADDLE_WITH_CINN
   symbol::ShapeOrDataDimExprs empty_shape{
       symbol::TensorShapeOrDataDimExprs{std::vector<symbol::DimExpr>{}}};
   infer_context->SetShapeOrDataForValue(op->result(0), empty_shape);
   return true;
+#else
+  PADDLE_THROW(phi::errors::Unimplemented(
+      "ap_facade is not implemented when cinn is not enabled."));
+  return false;
+#endif
 }
 
 bool ApFacadeOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+#ifdef PADDLE_WITH_CINN
   return ap::dialect::PdOpApFacadeOpInferSymbolicShape(op, infer_context);
+#else
+  PADDLE_THROW(phi::errors::Unimplemented(
+      "ap_facade is not implemented when cinn is not enabled."));
+  return false;
+#endif
 }
 
 }  // namespace paddle::dialect

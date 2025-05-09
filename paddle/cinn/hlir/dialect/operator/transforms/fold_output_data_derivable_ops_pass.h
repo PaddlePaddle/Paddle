@@ -20,7 +20,7 @@ namespace cinn {
 namespace dialect {
 namespace ir {
 
-std::unique_ptr<pir::Pass> CreateFoldAssignValueOpPass();
+std::unique_ptr<pir::Pass> CreateFoldOutputDataDerivableOpsPass();
 
 }  // namespace ir
 }  // namespace dialect
