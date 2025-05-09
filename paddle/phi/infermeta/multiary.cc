@@ -6331,7 +6331,8 @@ void MoeUnzipInferMeta(const MetaTensor& X,
   XScale_unzipped->set_dtype(XScale.dtype());
 
   global_expertwise_block_cumsum->set_dims(phi::make_ddim(
-      {(x_dim[0] + CUMSUM_BLOCK_SIZE - 1) / CUMSUM_BLOCK_SIZE, num_experts}));
+      {(x_dim[0] + CUMSUM_BLOCK_SIZE - 1) / CUMSUM_BLOCK_SIZE + 1,
+       num_experts}));
   global_expertwise_block_cumsum->set_dtype(phi::DataType::INT32);
 }
 

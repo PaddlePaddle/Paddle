@@ -5040,8 +5040,10 @@ bool MoeUnzipOpInferSymbolicShape(
     const auto &max_tokens_per_expert_shape_or_data =
         infer_context->GetShapeOrDataForValue(op->operand_source(4));
     if (max_tokens_per_expert_shape_or_data.data().has_value()) {
-      u_seqlen = (max_tokens_per_expert_shape_or_data.data().value()[0] + 127) /
-                 128 * 128;
+      u_seqlen =
+          (max_tokens_per_expert_shape_or_data.data().value()[0] * num_experts +
+           127) /
+          128 * 128;
     } else {
       u_seqlen = infer_context->GetNextSymName();
     }
@@ -5077,7 +5079,8 @@ bool MoeUnzipOpInferSymbolicShape(
           symbol::TensorShapeOrDataDimExprs(xscale_unzipped_shape)});
 
   global_expertwise_block_cumsum_shape = {
-      (x_shape[0] + CUMSUM_BLOCK_SIZE - 1) / CUMSUM_BLOCK_SIZE, num_experts};
+      (x_shape[0] + CUMSUM_BLOCK_SIZE - 1) / CUMSUM_BLOCK_SIZE + 1,
+      num_experts};
   infer_context->SetShapeOrDataForValue(
       op->result(4),
       symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(
