@@ -2173,6 +2173,7 @@
   infer_meta :
     func : UnchangedExceptLayoutInferMeta
     param: [x]
+    spmd_rule : MeanAllGradInferSpmd
   kernel :
     func : mean_all_grad
     data_type: out_grad

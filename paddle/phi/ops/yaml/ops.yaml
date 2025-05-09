@@ -3451,6 +3451,7 @@
   output : Tensor
   infer_meta :
     func : MeanAllInferMeta
+    spmd_rule : MeanAllInferSpmd
   kernel :
     func : mean_all
   backward : mean_all_grad
