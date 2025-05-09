@@ -2293,7 +2293,7 @@ void InverseInferMeta(const MetaTensor& x, MetaTensor* out) {
         true,
         errors::InvalidArgument(
             "Each dimension of input tensor is expected to be -1 or a "
-            "positive number, but received %d. Input's shape is [%s].",
+            "non-negative number, but received %d. Input's shape is [%s].",
             input_dims[i],
             input_dims));
   }
