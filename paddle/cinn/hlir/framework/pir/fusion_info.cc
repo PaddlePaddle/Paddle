@@ -218,7 +218,18 @@ std::size_t FusionInfo::hash() const {
 }
 
 std::ostream& operator<<(std::ostream& os, const FusionInfo& fusion_info) {
-  os << "fn_name: " << fusion_info.unique_fn_name_ << "\n";
+  os << "FusionInfo - " << fusion_info.hash();
+  if (VLOG_IS_ON(5)) {
+    os << "{\n";
+    if (!FLAGS_enable_cinn_compile_cache)
+      os << "fn_name: " << fusion_info.unique_fn_name_ << ", ";
+    os << "input_dim_exprs: {";
+    for (const auto& dim_expr : fusion_info.input_dim_exprs_)
+      os << " " << dim_expr;
+    os << " }\n";
+    for (const auto& op_info : fusion_info.op_infos_) os << op_info << "\n";
+    os << "}\n";
+  }
   return os;
 }
 
