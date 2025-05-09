@@ -15,8 +15,11 @@
 #pragma once
 
 #include "paddle/ap/include/adt/adt.h"
+#include "paddle/ap/include/axpr/attr_map.h"
 #include "paddle/ap/include/axpr/core_expr.h"
+#include "paddle/ap/include/axpr/value.h"
 #include "paddle/phi/core/meta_tensor.h"
+#include "paddle/pir/include/core/operation_utils.h"
 
 namespace phi {
 
@@ -29,6 +32,12 @@ struct ApInferMetaHelper {
   adt::Result<adt::Ok> InferMeta(const std::string& lambda,
                                  const std::vector<const MetaTensor*>* inputs,
                                  std::vector<MetaTensor*>* outputs);
+
+  adt::Result<adt::Ok> InferMetaByAxprHook(
+      const ::paddle::optional<std::vector<const MetaTensor*>>& inputs,
+      const std::string& infer_meta_func_name,
+      const std::string& serialized_attributes,
+      const std::vector<MetaTensor*>& outputs);
 };
 
 }  // namespace phi

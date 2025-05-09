@@ -31,19 +31,51 @@ namespace phi {
       "%s is not implemented on %s device.", __func__, Type()));
 
 // info
-size_t DeviceInterface::GetComputeCapability() {
+size_t DeviceInterface::GetComputeCapability(size_t dev_id) {
   VLOG(10) << Type() << " get compute capability " << 0;
   return 0;
 }
 
-size_t DeviceInterface::GetRuntimeVersion() {
+size_t DeviceInterface::GetRuntimeVersion(size_t dev_id) {
   VLOG(10) << Type() << " get runtime version " << 0;
   return 0;
 }
 
-size_t DeviceInterface::GetDriverVersion() {
+size_t DeviceInterface::GetDriverVersion(size_t dev_id) {
   VLOG(10) << Type() << " get driver version " << 0;
   return 0;
+}
+
+size_t DeviceInterface::GetMultiProcessors(size_t dev_id) {
+  VLOG(10) << Type() << " get multiprocessors " << 0;
+  return 0;
+}
+
+size_t DeviceInterface::GetMaxThreadsPerMultiProcessor(size_t dev_id) {
+  VLOG(10) << Type() << " get max threads per multiprocessor " << 0;
+  return 0;
+}
+
+size_t DeviceInterface::GetMaxThreadsPerBlock(size_t dev_id) {
+  VLOG(10) << Type() << " get max threads per block " << 0;
+  return 0;
+}
+
+std::array<unsigned int, 3> DeviceInterface::GetMaxGridDimSize(size_t dev_id) {
+  VLOG(10) << Type() << " get max grid dim size [" << 0 << ", " << 0 << ", "
+           << 0 << "]";
+  return {0, 0, 0};
+}
+
+void* DeviceInterface::InitEigenDevice(const Place& place,
+                                       phi::stream::stream_t stream,
+                                       phi::Allocator* allocator) {
+  VLOG(10) << Type() << " init eigen device ";
+  return 0;
+}
+
+void DeviceInterface::DestroyEigenDevice(size_t dev_id, void* eigen_device) {
+  VLOG(10) << Type() << " destroy eigen device ";
 }
 
 // device manage

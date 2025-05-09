@@ -1693,6 +1693,8 @@ XPUOpMap& get_kl3_ops() {
                      phi::DataType::BFLOAT16})},
       {"warpctc_grad", XPUKernelSet({phi::DataType::FLOAT32})},
       {"warpctc", XPUKernelSet({phi::DataType::FLOAT32})},
+      {"weight_only_linear",
+       XPUKernelSet({phi::DataType::FLOAT16, phi::DataType::BFLOAT16})},
       {"where_index",
        XPUKernelSet({phi::DataType::INT32,
                      phi::DataType::BOOL,
