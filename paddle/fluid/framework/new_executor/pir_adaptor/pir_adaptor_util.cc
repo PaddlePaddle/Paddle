@@ -142,8 +142,8 @@ Variable* ValueExecutionInfo::GetVarByValue(pir::Value value) const {
       return pair.first;
     }
   }
-  PADDLE_THROW(::common::errors::InvalidArgument("Cannot find value by var %s",
-                                                 GetVarName(var)));
+  PADDLE_THROW(::common::errors::Unimplemented("Cannot find value by var %s",
+                                               GetVarName(var)));
 }
 
 const std::unordered_map<::pir::Value, std::string>&
