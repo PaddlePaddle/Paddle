@@ -38,7 +38,7 @@ jobs:
 
     steps:
       - name: Check submodules status
-        run: git submodule foreach  --recursive 'git rev-parse HEAD || rm -rf $PWD' || true
+        run: git submodule foreach --recursive 'git rev-parse HEAD || rm -rf $PWD' || true
 
       - name: Clone paddle
         uses: actions/checkout@v4
