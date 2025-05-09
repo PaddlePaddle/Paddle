@@ -20,6 +20,7 @@
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/impl/activation_grad_impl.h"
@@ -36,8 +37,8 @@ void ApFacadeKernel(const Context& dev_ctx,
                     const std::string& infer_symbolic_func_name,
                     const std::string& serialized_attributes,
                     std::vector<DenseTensor*> outs) {
-  PADDLE_THROW(common::errors::Unimplemented(
-      "[DEAD CODE] pd_op.ap_facade has no kernel registered."));
+  PADDLE_THROW(
+      common::errors::Unimplemented("ap_facade has no kernel registered."));
 }
 
 }  // namespace phi

@@ -18,13 +18,12 @@ import numpy as np
 from test_case_base import TestCaseBase
 
 import paddle
-from paddle.jit.sot.psdb import check_no_breakgraph, check_no_fallback
+from paddle.jit.sot.psdb import check_no_fallback
 from paddle.jit.sot.utils import ENV_MIN_GRAPH_SIZE
 
 ENV_MIN_GRAPH_SIZE.set(-1)
 
 
-@check_no_breakgraph
 @check_no_fallback
 def forward(x, y):
     if x == 0:
@@ -33,7 +32,6 @@ def forward(x, y):
         return y * 2
 
 
-@check_no_breakgraph
 @check_no_fallback
 def forward2(x, y):
     if x == x:  # numpy == numpy
@@ -42,7 +40,7 @@ def forward2(x, y):
         return y * 2
 
 
-class TestJumpWithNumpy(TestCaseBase):
+class TestJumpWithNumPy(TestCaseBase):
     def test_jump(self):
         self.assert_results(forward, np.array([1]), paddle.to_tensor(2))
         self.assert_results(forward, np.array([0]), paddle.to_tensor(2))

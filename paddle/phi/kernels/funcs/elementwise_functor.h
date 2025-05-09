@@ -22,7 +22,7 @@ limitations under the License. */
 #include "paddle/phi/core/enforce.h"
 #if defined(__xpu__)
 #include <xpu/runtime.h>
-
+#include <type_traits>
 #include "xpu/kernel/math_xpu2.h"  // pow()
 #endif
 #include "paddle/phi/common/amp_type_traits.h"
@@ -467,9 +467,40 @@ struct MultiplyGradXYFunctor<ComplexType<InT>, ComplexType<OutT>> {
 };
 
 // Maximum
-template <typename T>
+template <typename T, typename Enable = void>
 struct MaximumFunctor {
   inline HOSTDEVICE T operator()(const T a, const T b) const {
+    if constexpr ((std::is_floating_point_v<T>)&&(
+                      !(std::is_same_v<T, int32_t> ||
+                        std::is_same_v<T, int64_t>))) {
+#if defined(__CUDACC__) || defined(__HIPCC__)
+      if (::isnan(a)) {
+        return a;
+      }
+      if (::isnan(b)) {
+        return b;
+      }
+#else
+      if (std::isnan(a)) {
+        return a;
+      }
+      if (std::isnan(b)) {
+        return b;
+      }
+#endif
+    }
+    return a > b ? a : b;
+  }
+};
+
+template <typename T>
+struct MaximumFunctor<
+    T,
+    typename std::enable_if<std::is_same_v<T, phi::dtype::bfloat16> ||
+                            std::is_same_v<T, phi::dtype::float16>>::type> {
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
+    if (phi::dtype::isnan(a)) return a;
+    if (phi::dtype::isnan(b)) return b;
     return a > b ? a : b;
   }
 };
@@ -509,12 +540,44 @@ struct MaxGradXYFunctor {
 };
 
 // Minimum
-template <typename T>
+template <typename T, typename Enable = void>
 struct MinimumFunctor {
   inline HOSTDEVICE T operator()(const T a, const T b) const {
+    if constexpr (std::is_floating_point_v<T> &&
+                  (!(std::is_same_v<T, int32_t> ||
+                     std::is_same_v<T, int64_t>))) {
+#if defined(__CUDACC__) || defined(__HIPCC__)
+      if (::isnan(a)) {
+        return a;
+      }
+      if (::isnan(b)) {
+        return b;
+      }
+#else
+      if (std::isnan(a)) {
+        return a;
+      }
+      if (std::isnan(b)) {
+        return b;
+      }
+#endif
+    }
     return a < b ? a : b;
   }
 };
+
+template <typename T>
+struct MinimumFunctor<
+    T,
+    typename std::enable_if<std::is_same_v<T, phi::dtype::bfloat16> ||
+                            std::is_same_v<T, phi::dtype::float16>>::type> {
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
+    if (phi::dtype::isnan(a)) return a;
+    if (phi::dtype::isnan(b)) return b;
+    return a < b ? a : b;
+  }
+};
+
 template <typename T>
 struct MinGradXFunctor {
   inline HOSTDEVICE T operator()(const T x, const T y, const T dout) const {

@@ -1,0 +1,137 @@
+name: Static-check
+
+on:
+  workflow_call:
+    inputs:
+      docker_build_image:
+        type: string
+        required: true
+
+env:
+  PR_ID: ${{ github.event.pull_request.number }}
+  COMMIT_ID: ${{ github.event.pull_request.head.sha }}
+  work_dir: /paddle
+  PADDLE_ROOT: /paddle
+  TASK: paddle-CI-${{ github.event.pull_request.number }}-static-check
+  ci_scripts: /paddle/ci
+  BRANCH: ${{ github.event.pull_request.base.ref }}
+  CI_name: static-check
+  no_proxy: "bcebos.com,apiin.im.baidu.com,gitee.com,aliyun.com,.baidu.com,.tuna.tsinghua.edu.cn"
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build:
+    name: Test
+    runs-on:
+      group: BD_BJ-V100
+
+    steps:
+      - name: Check docker image and run container
+        env:
+          WITH_GPU: "ON"
+          CUDA_ARCH_NAME: Volta
+          WITH_AVX: "ON"
+          WITH_TESTING: "OFF"
+          WITH_COVERAGE: "OFF"
+          COVERALLS_UPLOAD: "OFF"
+          GIT_PR_ID: ${{ github.event.pull_request.number }}
+          PADDLE_VERSION: 0.0.0
+          WITH_DISTRIBUTE: "ON"
+          PY_VERSION: "3.10"
+          WITH_SHARED_PHI: "ON"
+          WITH_MKL: "ON"
+          SAMPLE_CODE_EXEC_THREADS: 1
+          CACHE_DIR: /home/data/cfs/.cache/static-check
+          CCACHE_DIR: /home/data/cfs/.ccache/static-check
+          GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          container_name=${TASK}-$(date +%Y%m%d-%H%M%S)
+          echo "container_name=${container_name}" >> ${{ github.env }}
+          docker_image=${{ inputs.docker_build_image }}
+          docker pull ${docker_image}
+          docker run -d -t --name ${container_name} \
+            -v "/home/data/cfs:/home/data/cfs" \
+            -v "/home/data/cfs/.cache:/root/.cache" \
+            -v "/home/data/cfs/.ccache:/root/.ccache" \
+            -v "/dev/shm:/dev/shm" \
+            -v ${{ github.workspace }}/../../..:${{ github.workspace }}/../../.. \
+            -v ${{ github.workspace }}:/paddle \
+            -e BRANCH \
+            -e PR_ID \
+            -e COMMIT_ID \
+            -e work_dir \
+            -e PADDLE_ROOT \
+            -e ci_scripts \
+            -e WITH_MKL \
+            -e SAMPLE_CODE_EXEC_THREADS \
+            -e WITH_GPU \
+            -e CUDA_ARCH_NAME \
+            -e WITH_COVERAGE \
+            -e WITH_SHARED_PHI \
+            -e WITH_TESTING \
+            -e COVERALLS_UPLOAD \
+            -e GIT_PR_ID \
+            -e PADDLE_VERSION \
+            -e WITH_DISTRIBUTE \
+            -e PY_VERSION \
+            -e WITH_AVX \
+            -e CACHE_DIR \
+            -e CCACHE_DIR \
+            -e no_proxy \
+            -e CI_name \
+            -e GITHUB_API_TOKEN \
+            -w /paddle --network host ${docker_image}
+
+      - name: Download paddle.tar.gz and merge target branch
+        env:
+          work_dir: ${{ github.workspace }}
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
+          rm -rf  * .[^.]*
+          set -e
+          echo "Downloading build.tar.gz"
+          wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/build/${PR_ID}/${COMMIT_ID}/build.tar.gz --no-check-certificate
+          echo "Extracting build.tar.gz"
+          git config --global --add safe.directory ${work_dir}
+          tar --use-compress-program="pzstd -1" -xpf build.tar.gz --strip-components=1
+          git submodule foreach "git config --global --add safe.directory \$toplevel/\$sm_path"
+          rm build.tar.gz
+          git checkout test
+          '
+
+      - name: Check bypass
+        id: check-bypass
+        uses: ./.github/actions/check-bypass
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          workflow-name: static-check
+
+      - name: Static check
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
+          source ${{ github.workspace }}/../../../proxy
+          bash ${ci_scripts}/static_check.sh
+          '
+
+      - name: Check api approval
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
+          source ${{ github.workspace }}/../../../proxy
+          source ~/.bashrc
+          unset GREP_OPTIONS
+          bash ${work_dir}/tools/check_api_approvals.sh;approval_error=$?
+          if [ "$approval_error" != 0 ];then
+            exit 6
+          fi
+          '
+
+      - name: Terminate and delete the container
+        if: always()
+        run: |
+          set +e
+          docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'
+          docker stop ${{ env.container_name }}
+          docker rm ${{ env.container_name }}

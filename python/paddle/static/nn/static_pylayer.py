@@ -312,46 +312,42 @@ def static_pylayer(forward_fn, inputs, backward_fn=None, name=None):
     Examples:
         .. code-block:: python
 
-                >>> import paddle
-                >>> import numpy as np
+            >>> import paddle
+            >>> import numpy as np
 
-                >>> paddle.enable_static()
+            >>> paddle.enable_static()
 
-                >>> def forward_fn(x):
-                ...     return paddle.exp(x)
+            >>> def forward_fn(x):
+            ...     return paddle.exp(x)
 
-                >>> def backward_fn(dy):
-                ...     return 2 * paddle.exp(dy)
+            >>> def backward_fn(dy):
+            ...     return 2 * paddle.exp(dy)
 
-                >>> main_program = paddle.static.Program()
-                >>> start_program = paddle.static.Program()
+            >>> main_program = paddle.static.Program()
+            >>> start_program = paddle.static.Program()
 
-                >>> place = paddle.CPUPlace()
-                >>> exe = paddle.static.Executor(place)
-                >>> with paddle.static.program_guard(main_program, start_program):
-                ...     data = paddle.static.data(name="X", shape=[None, 5], dtype="float32")
-                ...     data.stop_gradient = False
-                ...     ret = paddle.static.nn.static_pylayer(forward_fn, [data], backward_fn)
-                ...     data_grad = paddle.static.gradients([ret], data)[0]
+            >>> place = paddle.CPUPlace()
+            >>> exe = paddle.static.Executor(place)
+            >>> with paddle.static.program_guard(main_program, start_program):
+            ...     data = paddle.static.data(name="X", shape=[None, 5], dtype="float32")
+            ...     data.stop_gradient = False
+            ...     ret = paddle.static.nn.static_pylayer(forward_fn, [data], backward_fn)
+            ...     data_grad = paddle.static.gradients([ret], data)[0]
 
-                >>> exe.run(start_program)
-                >>> x = np.array([[1.0, 2.0, 3.0, 4.0, 5.0]], dtype=np.float32) # type: ignore[var-annotated]
-                >>> x, x_grad, y = exe.run(
-                ...     main_program,
-                ...     feed={"X": x},
-                ...     fetch_list=[
-                ...         data.name,
-                ...         data_grad.name,
-                ...         ret.name
-                ...     ],
-                ... )
+            >>> exe.run(start_program)
+            >>> x = np.array([[1.0, 2.0, 3.0, 4.0, 5.0]], dtype=np.float32)
+            >>> x, x_grad, y = exe.run(
+            ...     main_program,
+            ...     feed={"X": x},
+            ...     fetch_list=[data, data_grad, ret],
+            ... )
 
-                >>> print(x)
-                [[1. 2. 3. 4. 5.]]
-                >>> print(x_grad)
-                [[5.4365635 5.4365635 5.4365635 5.4365635 5.4365635]]
-                >>> print(y)
-                [[  2.7182817   7.389056   20.085537   54.59815   148.41316  ]]
+            >>> print(x)
+            [[1. 2. 3. 4. 5.]]
+            >>> print(x_grad)
+            [[5.4365635 5.4365635 5.4365635 5.4365635 5.4365635]]
+            >>> print(y)
+            [[  2.7182817   7.389056   20.085537   54.59815   148.41316  ]]
     """
     assert (
         in_dygraph_mode() is False

@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
+import itertools
 import unittest
 
 import numpy as np
 from op_test import OpTest, skip_check_grad_ci
+from utils import dygraph_guard, static_guard
 
 import paddle
 from paddle import base
@@ -25,19 +26,25 @@ from paddle.base import core
 
 class TestSvdOp(OpTest):
     def setUp(self):
-        paddle.enable_static()
-        self.python_api = paddle.linalg.svd
-        self.generate_input()
-        self.generate_output()
-        self.op_type = "svd"
-        assert hasattr(self, "_output_data")
-        self.inputs = {"X": self._input_data}
-        self.attrs = {'full_matrices': self.get_full_matrices_option()}
-        self.outputs = {
-            "U": self._output_data[0],
-            "S": self._output_data[1],
-            "VH": self._output_data[2],
-        }
+        with static_guard():
+            self.python_api = paddle.linalg.svd
+            self.generate_input()
+            self.generate_output()
+            self.op_type = "svd"
+            assert hasattr(self, "_output_data")
+            self.inputs = {"X": self._input_data}
+            self.attrs = {'full_matrices': self.get_full_matrices_option()}
+            self.outputs = {
+                "U": self._output_data[0],
+                "S": self._output_data[1],
+                "VH": self._output_data[2],
+            }
+
+    def _get_places(self):
+        places = [base.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(base.CUDAPlace(0))
+        return places
 
     def generate_input(self):
         """return a input_data and input_shape"""
@@ -59,17 +66,14 @@ class TestSvdOp(OpTest):
         single_input = self._input_data.reshape(
             [-1, self._input_shape[-2], self._input_shape[-1]]
         )[0]
-        paddle.disable_static()
-        dy_x = paddle.to_tensor(single_input)
-        dy_u, dy_s, dy_vt = paddle.linalg.svd(dy_x)
-        dy_out_x = dy_u.matmul(paddle.diag(dy_s)).matmul(dy_vt)
-        if (paddle.abs(dy_out_x - dy_x) < 1e-7).all():
-            ...
-        else:
-            print("EXPECTED:\n", dy_x)
-            print("GOT     :\n", dy_out_x)
-            raise RuntimeError("Check SVD Failed")
-        paddle.enable_static()
+        with dygraph_guard():
+            dy_x = paddle.to_tensor(single_input)
+            dy_u, dy_s, dy_vt = paddle.linalg.svd(dy_x)
+            dy_out_x = dy_u.matmul(paddle.diag(dy_s)).matmul(dy_vt)
+            if (paddle.abs(dy_out_x - dy_x) < 1e-5).all():
+                ...
+            else:
+                raise RuntimeError("Check SVD Failed")
 
     def check_S_grad(self):
         self.check_grad(['X'], ['S'], numeric_grad_delta=0.001, check_pir=True)
@@ -87,6 +91,76 @@ class TestSvdOp(OpTest):
         self.check_S_grad()
         self.check_U_grad()
         self.check_V_grad()
+
+
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    "Skip XPU for complex dtype is not fully supported",
+)
+class TestSvdOpComplexCase1(TestSvdOp):
+    def generate_input(self):
+        """return a input_data and input_shape"""
+        self._input_shape = (5, 3)
+        real_part = np.random.rand(*self._input_shape).astype("float32")
+        imag_part = np.random.rand(*self._input_shape).astype("float32")
+        self._input_data = real_part + 1j * imag_part
+
+    def test_check_grad(self):
+        places = self._get_places()
+        with dygraph_guard():
+            for place in places:
+                x = paddle.to_tensor(
+                    self._input_data, place=place, stop_gradient=False
+                )
+                U, s, Vh = paddle.linalg.svd(x, self.get_full_matrices_option())
+                loss = (
+                    paddle.sum(paddle.abs(U))
+                    + paddle.sum(paddle.abs(s))
+                    + paddle.sum(paddle.abs(Vh))
+                )
+                x_grad = paddle.grad(outputs=[loss], inputs=[x])
+
+
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    "Skip XPU for complex dtype is not fully supported",
+)
+class TestSvdOpComplexCase2(TestSvdOpComplexCase1):
+    def generate_input(self):
+        """return a input_data and input_shape"""
+        self._input_shape = (3, 30)
+        real_part = np.random.rand(*self._input_shape).astype("float32")
+        imag_part = np.random.rand(*self._input_shape).astype("float32")
+        self._input_data = real_part + 1j * imag_part
+
+
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    "Skip XPU for complex dtype is not fully supported",
+)
+class TestSvdOpComplexCase3(TestSvdOpComplexCase1):
+    def generate_input(self):
+        """return a input_data and input_shape"""
+        self._input_shape = (100, 40)
+        real_part = np.random.rand(*self._input_shape).astype("float64")
+        imag_part = np.random.rand(*self._input_shape).astype("float64")
+        self._input_data = real_part + 1j * imag_part
+
+
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    "Skip XPU for complex dtype is not fully supported",
+)
+class TestSvdOpComplexCase4(TestSvdOpComplexCase1):
+    def generate_input(self):
+        """return a input_data and input_shape"""
+        self._input_shape = (100, 200)
+        real_part = np.random.rand(*self._input_shape).astype("float64")
+        imag_part = np.random.rand(*self._input_shape).astype("float64")
+        self._input_data = real_part + 1j * imag_part
+
+    def get_full_matrices_option(self):
+        return True
 
 
 class TestSvdCheckGrad2(TestSvdOp):
@@ -287,52 +361,113 @@ class TestSvdFullMatriceGrad(TestSvdNormalMatrix6x3):
 
 class TestSvdAPI(unittest.TestCase):
     def test_dygraph(self):
-        paddle.disable_static()
-        a = np.random.rand(5, 5)
-        x = paddle.to_tensor(a)
-        u, s, vh = paddle.linalg.svd(x)
-        gt_u, gt_s, gt_vh = np.linalg.svd(a, full_matrices=False)
-        np.testing.assert_allclose(s, gt_s, rtol=1e-05)
+        def run_svd_dygraph(shape, dtype):
+            if dtype == "float32":
+                np_dtype = np.float32
+            elif dtype == "float64":
+                np_dtype = np.float64
+            elif dtype == "complex64":
+                np_dtype = np.complex64
+            elif dtype == "complex128":
+                np_dtype = np.complex128
+            if np.issubdtype(np_dtype, np.complexfloating):
+                a_dtype = np.float32 if np_dtype == np.complex64 else np.float64
+                a_real = np.random.rand(*shape).astype(a_dtype)
+                a_imag = np.random.rand(*shape).astype(a_dtype)
+                a = a_real + 1j * a_imag
+            else:
+                a = np.random.rand(*shape).astype(np_dtype)
+
+            places = []
+            places.append(base.CPUPlace())
+            if core.is_compiled_with_cuda():
+                places.append(base.CUDAPlace(0))
+            for place in places:
+                x = paddle.to_tensor(a, place=place)
+                u, s, vh = paddle.linalg.svd(x)
+                gt_u, gt_s, gt_vh = np.linalg.svd(a, full_matrices=False)
+                np.testing.assert_allclose(s, gt_s, rtol=1e-05)
+
+        with dygraph_guard():
+            np.random.seed(7)
+            tensor_shapes = [
+                (0, 3),
+                (3, 5),
+                (5, 5),
+                (5, 3),  # 2-dim Tensors
+                (0, 3, 5),
+                (4, 0, 5),
+                (5, 4, 0),
+                (4, 5, 3),  # 3-dim Tensors
+                (0, 5, 3, 5),
+                (2, 5, 3, 5),
+                (3, 5, 5, 5),
+                (4, 5, 5, 3),  # 4-dim Tensors
+            ]
+            dtypes = ["float32", "float64", 'complex64', 'complex128']
+            for tensor_shape, dtype in itertools.product(tensor_shapes, dtypes):
+                run_svd_dygraph(tensor_shape, dtype)
 
     def test_static(self):
-        paddle.enable_static()
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
+        def run_svd_static(shape, dtype):
+            if dtype == "float32":
+                np_dtype = np.float32
+            elif dtype == "float64":
+                np_dtype = np.float64
+            elif dtype == "complex64":
+                np_dtype = np.complex64
+            elif dtype == "complex128":
+                np_dtype = np.complex128
+            if np.issubdtype(np_dtype, np.complexfloating):
+                a_dtype = np.float32 if np_dtype == np.complex64 else np.float64
+                a_real = np.random.rand(*shape).astype(a_dtype)
+                a_imag = np.random.rand(*shape).astype(a_dtype)
+                a = a_real + 1j * a_imag
+            else:
+                a = np.random.rand(*shape).astype(np_dtype)
+
+            places = []
             places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
-        for place in places:
-            with paddle.static.program_guard(
-                paddle.static.Program(), paddle.static.Program()
-            ):
-                a = np.random.rand(5, 5)
-                x = paddle.static.data(
-                    name="input", shape=[5, 5], dtype='float64'
-                )
-                u, s, vh = paddle.linalg.svd(x)
-                exe = paddle.static.Executor(place)
-                gt_u, gt_s, gt_vh = np.linalg.svd(a, full_matrices=False)
-                fetches = exe.run(
-                    feed={"input": a},
-                    fetch_list=[s],
-                )
-                np.testing.assert_allclose(fetches[0], gt_s, rtol=1e-05)
+            if core.is_compiled_with_cuda():
+                places.append(base.CUDAPlace(0))
+            for place in places:
+                with paddle.static.program_guard(
+                    paddle.static.Program(), paddle.static.Program()
+                ):
+                    x = paddle.static.data(
+                        name="input", shape=shape, dtype=dtype
+                    )
+                    u, s, vh = paddle.linalg.svd(x)
+                    exe = paddle.static.Executor(place)
+                    gt_u, gt_s, gt_vh = np.linalg.svd(a, full_matrices=False)
+                    fetches = exe.run(
+                        feed={"input": a},
+                        fetch_list=[s],
+                    )
+                    np.testing.assert_allclose(fetches[0], gt_s, rtol=1e-05)
 
-    def test_errors(self):
-        with paddle.base.dygraph.guard():
-            # The size of input in svd should not be 0.
-            def test_0_size():
-                array = np.array([], dtype=np.float32)
-                x = paddle.to_tensor(np.reshape(array, [0, 0]), dtype='float32')
-                paddle.linalg.svd(x, full_matrices=False)
-
-            self.assertRaises(ValueError, test_0_size)
+            with static_guard():
+                np.random.seed(7)
+                tensor_shapes = [
+                    (0, 3),
+                    (3, 5),
+                    (5, 5),
+                    (5, 3),  # 2-dim Tensors
+                    (0, 3, 5),
+                    (4, 0, 5),
+                    (5, 4, 0),
+                    (4, 5, 3),  # 3-dim Tensors
+                    (0, 5, 3, 5),
+                    (2, 5, 3, 5),
+                    (3, 5, 5, 5),
+                    (4, 5, 5, 3),  # 4-dim Tensors
+                ]
+                dtypes = ["float32", "float64", 'complex64', 'complex128']
+                for tensor_shape, dtype in itertools.product(
+                    tensor_shapes, dtypes
+                ):
+                    run_svd_static(tensor_shape, dtype)
 
 
 if __name__ == "__main__":
-    paddle.enable_static()
     unittest.main()

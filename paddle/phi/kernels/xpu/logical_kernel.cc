@@ -40,7 +40,7 @@ void LogicalBinaryKernel(
     std::string funcname = "logical") {
   dev_ctx.template Alloc<bool>(out);
 
-  int r = xpu::SUCCESS;
+  int r = 0;
   const auto* x_data = x.data<T>();
   const auto* y_data = y.data<T>();
   auto* out_data = out->data<T>();

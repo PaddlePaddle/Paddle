@@ -29,7 +29,7 @@ void GatherNdGradKernel(const Context &ctx,
   using XPUType = typename XPUTypeTrait<T>::Type;
   ctx.template Alloc<T>(x_grad);
 
-  int r = XPU_SUCCESS;
+  int r = 0;
   XPUType *dx_data = reinterpret_cast<XPUType *>(x_grad->data<T>());
   r = xpu::constant<XPUType>(
       ctx.x_context(), dx_data, x_grad->numel(), static_cast<XPUType>(0));

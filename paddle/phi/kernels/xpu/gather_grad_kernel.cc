@@ -61,7 +61,7 @@ void GatherGradKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(x_grad);
   using XPUType = typename XPUTypeTrait<T>::Type;
 
-  int r = XPU_SUCCESS;
+  int r = 0;
   if (index_type == DataType::INT32) {
     r = xpu::gather_grad<XPUType, int>(
         dev_ctx.x_context(),

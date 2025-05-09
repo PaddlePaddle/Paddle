@@ -30,6 +30,7 @@ from paddle.framework import (
 )
 from paddle.tensor.creation import full
 from paddle.utils import deprecated
+from paddle.utils.layers_utils import NotSupportedTensorArgumentError
 
 from ...base.data_feeder import (
     check_dtype,
@@ -158,25 +159,33 @@ def unfold(
     if isinstance(kernel_sizes, int):
         kernel_sizes = [kernel_sizes, kernel_sizes]
     else:
-        assert isinstance(kernel_sizes, (list, tuple)) and (
-            len(kernel_sizes) == 2
-        ), "kernel_sizes should either be an integer or a list/tuple of two integers"
+        if not (
+            isinstance(kernel_sizes, (list, tuple)) and (len(kernel_sizes) == 2)
+        ):
+            raise NotSupportedTensorArgumentError(
+                "kernel_sizes should either be an integer or a list/tuple of two integers",
+                "kernel_sizes",
+            )
         kernel_sizes = list(kernel_sizes)
 
     if isinstance(strides, int):
         strides = [strides, strides]
     else:
-        assert isinstance(strides, (list, tuple)) and (
-            len(strides) == 2
-        ), "strides should either be an integer or a list/tuple of two integers"
+        if not (isinstance(strides, (list, tuple)) and (len(strides) == 2)):
+            raise NotSupportedTensorArgumentError(
+                "strides should either be an integer or a list/tuple of two integers",
+                "strides",
+            )
         strides = list(strides)
 
     if isinstance(dilations, int):
         dilations = [dilations, dilations]
     else:
-        assert isinstance(dilations, (list, tuple)) and (
-            len(dilations) == 2
-        ), "dilations should either be an integer or a list/tuple of two integers"
+        if not (isinstance(dilations, (list, tuple)) and (len(dilations) == 2)):
+            raise NotSupportedTensorArgumentError(
+                "dilations should either be an integer or a list/tuple of two integers",
+                "dilations",
+            )
         dilations = list(dilations)
 
     if isinstance(paddings, int):
