@@ -102,7 +102,7 @@ void TensorDistAttr::set_annotated(
 }
 
 int64_t TensorDistAttr::get_split_factor(int64_t mesh_dim) const {
-  PADDLE_ENFORCE_LE(mesh_dim, process_mesh_.ndim(),
+  PADDLE_ENFORCE_LT(mesh_dim, process_mesh_.ndim(),
            "Mesh dim is %d, Process mesh ndim is %d", mesh_dim, process_mesh_.ndim());
   return split_factor_map_.count(mesh_dim) ? split_factor_map_.at(mesh_dim) : 1;
 }

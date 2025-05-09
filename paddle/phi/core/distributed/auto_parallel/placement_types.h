@@ -108,7 +108,7 @@ class Shard : public Placement {
     std::stringstream ss;
     ss << "Shard(dim="  << std::to_string(dim_);
     if (split_factor_ != 1) {
-      ss << ", sf=" << std::to_string(split_factor_);
+      ss << ", split_factor=" << std::to_string(split_factor_);
     }
     ss << ")";
 

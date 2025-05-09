@@ -18,6 +18,13 @@ import paddle.distributed as dist
 
 
 class TestCoShard:
+    def basic_interface_case(self):
+        shard = dist.Shard(0, co_shard_order=0)
+        np.testing.assert_equal(str(shard), "Shard(dim=0, co_shard_order=0)")
+
+        shard = dist.Shard(0, split_factor=2)
+        np.testing.assert_equal(str(shard), "Shard(dim=0, split_factor=2)")
+
     def run_test_case_0(self):
         a = paddle.to_tensor([[1,2],
                               [3,4],
@@ -118,6 +125,7 @@ class TestCoShard:
 
         
     def run_test_case_main(self):
+        self.basic_interface_case()
         self.run_test_case_0()
         self.run_test_case_1()
         self.run_test_case_2()
