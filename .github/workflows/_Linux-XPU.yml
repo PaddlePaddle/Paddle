@@ -129,7 +129,7 @@ jobs:
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ${{ github.workspace }}/../../../proxy
-          bash -x ${ci_scripts}/run_setup.sh bdist_wheel
+          bash ${ci_scripts}/run_setup.sh bdist_wheel
           EXCODE=$?
           exit $EXCODE
           '
@@ -147,6 +147,7 @@ jobs:
             mkdir ${{ env.home_path }}/bos
             tar xf ${{ env.home_path }}/bos_new.tar.gz -C ${{ env.home_path }}/bos
           fi
+          sudo yum install zstd -y
           cd ..
           tar --use-compress-program="pzstd -5" -cf build.tar.gz Paddle
           # source /home/opt/deck/1.0/etc/bashrc
