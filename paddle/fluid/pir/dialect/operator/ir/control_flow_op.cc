@@ -996,7 +996,8 @@ bool WhileOp::InferSymbolicShape(
   };
 
   for (size_t i = 0; i < num_results(); ++i) {
-    // If the result data and related input data is not equal, clear the data.
+    // If the result is const data and related input data is not equal,
+    // set new symbol for result data
     auto yield_input_shape_or_data =
         infer_context->GetShapeOrDataForValue(yield_op.operand_source(i + 1));
     auto yield_input_data_opt = yield_input_shape_or_data.data();
@@ -1004,8 +1005,9 @@ bool WhileOp::InferSymbolicShape(
         infer_context->GetShapeOrDataForValue(body_args[i]).data();
     bool const_data_not_euqal =
         is_all_const_data(yield_input_data_opt) &&
-        is_all_const_data(input_data_opt) &&
-        yield_input_data_opt.value() != input_data_opt.value();
+        (!is_all_const_data(input_data_opt) ||
+         is_all_const_data(input_data_opt) &&
+             yield_input_data_opt.value() != input_data_opt.value());
     auto result_shape_or_data =
         const_data_not_euqal
             ? symbol::TensorShapeOrDataDimExprs(
