@@ -210,7 +210,7 @@ class RROOOffloadQueue:
     def wait(self) -> None:
         """Wait for all offloading tasks to complete."""
         for task in self.task_list:
-            task.cpu_wait()
+            task.cuda_wait()
         self.task_list = []
 
     def get_cuda_datas_to_release(self) -> list[paddle.Tensor]:
@@ -260,7 +260,7 @@ class RROOReloadQueue:
     def wait(self) -> None:
         """Wait for all reloading tasks to complete."""
         for task in self.task_list:
-            task.cpu_wait()
+            task.cuda_wait()
         self.task_list = []
 
     def pop_cpu_buffers_to_release(self) -> list[RROOBuffer]:

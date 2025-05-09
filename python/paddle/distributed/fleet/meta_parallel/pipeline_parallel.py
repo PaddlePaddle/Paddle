@@ -57,6 +57,10 @@ from paddle.distributed.fleet.utils.tensor_fusion_helper import (
 from .pipeline_hooks import (
     PipelineHook,
 )
+from .pp_utils.overlapped_offload_utils import (
+    get_rroo_buffer_pool_manager,
+    get_rroo_queue_manager,
+)
 
 g_profile_pipeline_details_steps = int(
     os.getenv("FLAGS_profile_pipeline_details_steps", "0")
@@ -1497,6 +1501,10 @@ class PipelineParallelWithInterleave(PipelineParallel):
         # reinit user hook since now we have virtual stages
         self._init_user_hooks()
 
+        get_rroo_queue_manager().init(
+            self.accumulate_steps, self.num_model_chunks
+        )
+
     def _get_scheduler_name(self):
         return f"PipelineParallelWithInterleave with overlapping forward backward={self.overlap_schedule_mode}, overlap p2p comm={self._overlap_p2p_comm}"
 
@@ -1677,6 +1685,9 @@ class PipelineParallelWithInterleave(PipelineParallel):
         virtual_pp_rank = self._get_virtual_pp_rank(micro_step, forward=True)
         self.set_virtual_pipeline_rank(virtual_pp_rank)
 
+        get_rroo_queue_manager().set_cur_chunk_id(virtual_pp_rank)
+        get_rroo_queue_manager().offload()
+
         input_tensor = self._get_forward_input(virtual_pp_rank)
 
         output_tensor, schedule_chunk, loss_fn_node = self._forward_step(
@@ -1687,6 +1698,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
             overlap_schedule_mode=overlap_schedule_mode,
         )
 
+        get_rroo_queue_manager().wait_and_release()
         self._store_forward_outputs(
             virtual_pp_rank, output_tensor, schedule_chunk, loss_fn_node
         )
@@ -1759,6 +1771,9 @@ class PipelineParallelWithInterleave(PipelineParallel):
         virtual_pp_rank = self._get_virtual_pp_rank(micro_step, forward=False)
         self.set_virtual_pipeline_rank(virtual_pp_rank)
 
+        get_rroo_queue_manager().set_cur_chunk_id(virtual_pp_rank)
+        get_rroo_queue_manager().reload()
+
         (
             input_tensor,
             output_tensor,
@@ -1776,6 +1791,8 @@ class PipelineParallelWithInterleave(PipelineParallel):
             schedule_chunk=schedule_chunk,
             loss_fn_node=loss_fn_node,
         )
+
+        get_rroo_queue_manager().wait_and_release()
 
         self._overlap_comm_grads()
 
@@ -2736,6 +2753,12 @@ class PipelineParallelWithInterleave(PipelineParallel):
 
         self._flush_records()
 
+        assert (
+            get_rroo_buffer_pool_manager().is_all_memory_free()
+        ), "rroo_buffer_pool_manager should be all free"
+        assert (
+            get_rroo_queue_manager().empty()
+        ), "rroo_queue_manager should be empty"
         assert bwd_buffer_queue.empty(), "backward buffer should be empty"
         if compute_loss:
             # return loss if compute loss
@@ -3043,6 +3066,13 @@ class PipelineParallelWithInterleaveFthenB(PipelineParallelWithInterleave):
             self._layers.allreduce_shared_weight_gradients()
             if self._enable_timer:
                 self.timers("allreduce_shared_weight_gradients").stop()
+
+        assert (
+            get_rroo_buffer_pool_manager().is_all_memory_free()
+        ), "buffers in rroo_buffer_pool_manager should be all free"
+        assert (
+            get_rroo_queue_manager().empty()
+        ), "rroo_queue_manager should be empty"
 
         if compute_loss:
             # return loss if compute loss
@@ -3377,6 +3407,13 @@ class VPPFhenBInBalancedMemory(PipelineParallelWithInterleaveFthenB):
         self._layers.allreduce_shared_weight_gradients()
         if self._enable_timer:
             self.timers("allreduce_shared_weight_gradients").stop()
+
+        assert (
+            get_rroo_buffer_pool_manager().is_all_memory_free()
+        ), "buffers in rroo_buffer_pool_manager should be all free"
+        assert (
+            get_rroo_queue_manager().empty()
+        ), "rroo_queue_manager should be empty"
 
         if compute_loss:
             # return loss if compute loss
