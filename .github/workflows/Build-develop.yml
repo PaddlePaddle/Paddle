@@ -39,12 +39,12 @@ jobs:
           submodules: 'recursive'
           fetch-depth: 1000
 
-      - name: Merge PR to test branch
+      - name: Post clone
         run: |
           git config --unset http.https://github.com/.extraheader
           git submodule foreach --recursive sh -c "git config --local --unset-all 'http.https://github.com/.extraheader'"
           git submodule foreach --recursive sh -c "git config remote.origin.fetch '+refs/heads/*:refs/remotes/origin/*'"
-          bash ${ci_scripts}/third_party_tag.sh
+          bash ci/third_party_tag.sh
 
       - name: Check docker image and run container
         env:
