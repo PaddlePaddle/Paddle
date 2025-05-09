@@ -13,9 +13,10 @@
 // limitations under the License.
 
 #pragma once
+#include <optional>
+#include <unordered_set>
 #include "paddle/cinn/ir/stmt.h"
 #include "paddle/cinn/pass/pass.h"
-
 namespace cinn {
 namespace optim {
 

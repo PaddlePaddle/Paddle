@@ -924,7 +924,30 @@ TEST(WhereRule, Ctor) {
   check_dim_mapping(inferred_dist_attrs.second[1], {-1});
   check_partial_dims(inferred_dist_attrs.second[1], {0});
 }
+TEST(ArgminRule, Ctor) {
+  std::vector<int64_t> mesh_shape = {2, 2};
+  std::vector<int64_t> process_ids = {0, 1, 2, 3};
+  std::vector<std::string> dim_names = {"x", "y"};
+  ProcessMesh process_mesh(mesh_shape, process_ids, dim_names);
 
+  // test forward
+  auto t_dist_attr = TensorDistAttr();
+  t_dist_attr.set_process_mesh(process_mesh);
+  t_dist_attr.set_dims_mapping({0, 1, -1});
+  t_dist_attr.set_dynamic_dims({false, false, false});
+  phi::distributed::DistMetaTensor x = phi::distributed::DistMetaTensor(
+      common::make_ddim({4, 6, 8}), t_dist_attr);
+  phi::Scalar axis(1);
+  bool keep_dim = false;
+  bool flatten = false;
+  phi::distributed::SpmdInfo forward_info =
+      phi::distributed::ArgMinInferSpmdDynamic(
+          x, axis, keep_dim, flatten, phi::DataType::FLOAT32);
+  check_dim_mapping(forward_info.first[0], {0, -1, -1});
+  check_partial_dims(forward_info.first[0], {});
+  check_dim_mapping(forward_info.second[0], {0, -1});
+  check_partial_dims(forward_info.second[0], {});
+}
 TEST(ReduceMaxRule, Ctor) {
   std::vector<int64_t> mesh_shape = {2};
   std::vector<int64_t> process_ids = {0, 1};
@@ -955,6 +978,27 @@ TEST(ReduceMaxRule, Ctor) {
   check_partial_dims(backward_info.first[1], {});
   check_dim_mapping(backward_info.second[0], {-1, -1, -1});
   check_partial_dims(backward_info.second[0], {});
+}
+
+TEST(ReduceMinRule, Ctor) {
+  std::vector<int64_t> mesh_shape = {2};
+  std::vector<int64_t> process_ids = {0, 1};
+  std::vector<std::string> dim_names = {"x"};
+  ProcessMesh process_mesh(mesh_shape, process_ids, dim_names);
+
+  // test forward
+  auto t_dist_attr = TensorDistAttr();
+  t_dist_attr.set_process_mesh(process_mesh);
+  t_dist_attr.set_dims_mapping({-1, 0, -1});
+  t_dist_attr.set_dynamic_dims({false, false, false});
+  phi::distributed::DistMetaTensor x = phi::distributed::DistMetaTensor(
+      common::make_ddim({4, 6, 8}), t_dist_attr);
+  phi::IntArray axis = {1};
+  bool keep_dim = false;
+  phi::distributed::SpmdInfo forward_info =
+      phi::distributed::ReductionMinInferSpmdDynamic(x, axis, keep_dim);
+  check_dim_mapping(forward_info.second[0], {-1, -1});
+  check_partial_dims(forward_info.second[0], {0});
 }
 
 TEST(ReduceAllRule, Ctor) {
@@ -2380,6 +2424,49 @@ TEST(Dropout, Ctor) {
   check_dim_mapping(backward_info.first[0], {0, -1, -1});
   check_dim_mapping(backward_info.first[1], {0, -1, -1});
   check_dim_mapping(backward_info.second[0], {0, -1, -1});
+}
+
+TEST(MeanAll, Ctor) {
+  std::vector<int64_t> mesh_shape = {2, 2};
+  std::vector<int64_t> process_ids = {0, 1, 2, 3};
+  std::vector<std::string> dim_names = {"x", "y"};
+  ProcessMesh process_mesh(mesh_shape, process_ids, dim_names);
+
+  // test forward
+  // [0, -1] --> [], partial_on_dim:[0]
+  auto t_dist_attr = TensorDistAttr();
+  t_dist_attr.set_process_mesh(process_mesh);
+  t_dist_attr.set_dims_mapping({0, -1});
+  t_dist_attr.set_dynamic_dims({false, false});
+  phi::distributed::DistMetaTensor x =
+      phi::distributed::DistMetaTensor(common::make_ddim({4, 8}), t_dist_attr);
+  phi::distributed::SpmdInfo forward_info =
+      phi::distributed::MeanAllInferSpmd(x);
+
+  EXPECT_EQ(forward_info.first.size(), 1UL);
+  EXPECT_EQ(forward_info.second.size(), 1UL);
+
+  check_dim_mapping(forward_info.first[0], {0, -1});
+  check_dim_mapping(forward_info.second[0], {});
+  check_partial_dims(forward_info.second[0], {0});
+
+  // test backward
+  // [] --> [-1, -1], []
+  auto out_grad_dist_attr = TensorDistAttr();
+  out_grad_dist_attr.set_process_mesh(process_mesh);
+  out_grad_dist_attr.set_dims_mapping({});
+  out_grad_dist_attr.set_dynamic_dims({});
+  phi::distributed::DistMetaTensor out_grad = phi::distributed::DistMetaTensor(
+      common::make_ddim({}), out_grad_dist_attr);
+  phi::distributed::SpmdInfo backward_info =
+      phi::distributed::MeanAllGradInferSpmd(x, out_grad);
+
+  EXPECT_EQ(backward_info.first.size(), 2UL);
+  EXPECT_EQ(backward_info.second.size(), 1UL);
+
+  check_dim_mapping(backward_info.first[0], {-1, -1});
+  check_dim_mapping(backward_info.first[1], {});
+  check_dim_mapping(backward_info.second[0], {-1, -1});
 }
 
 }  // namespace auto_parallel

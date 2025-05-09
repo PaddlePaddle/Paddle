@@ -41,8 +41,12 @@ void Conv2dTransposeGradKernel(const Context& ctx,
   DenseTensor filter_ = filter;
   if (!dx && !dfilter) return;
 
-  std::vector<int> paddings_ = paddings;
-  std::vector<int> dilations_ = dilations;
+  std::vector<int64_t> strides_ =
+      std::vector<int64_t>(strides.begin(), strides.end());
+  std::vector<int64_t> paddings_ =
+      std::vector<int64_t>(paddings.begin(), paddings.end());
+  std::vector<int64_t> dilations_ =
+      std::vector<int64_t>(dilations.begin(), dilations.end());
 
   PADDLE_ENFORCE_EQ(
       data_format == "NHWC" || data_format == "NDHWC",
@@ -52,17 +56,21 @@ void Conv2dTransposeGradKernel(const Context& ctx,
 
   DDim in_data_dims = slice_ddim(x.dims(), 2, x.dims().size());
   DDim filter_data_dims = slice_ddim(filter_.dims(), 2, filter_.dims().size());
-  std::vector<int> ksize = common::vectorize<int>(filter_data_dims);
-  UpdatePaddingAndDilation(
-      &paddings_, &dilations_, padding_algorithm, in_data_dims, strides, ksize);
+  std::vector<int64_t> ksize = common::vectorize<int64_t>(filter_data_dims);
+  UpdatePaddingAndDilation(&paddings_,
+                           &dilations_,
+                           padding_algorithm,
+                           in_data_dims,
+                           strides_,
+                           ksize);
 
-  const int batch_size = static_cast<int>(x.dims()[0]);
-  const int img_yc = static_cast<int>(x.dims()[1]);
-  const int img_yh = static_cast<int>(x.dims()[2]);
-  const int img_yw = static_cast<int>(x.dims()[3]);
-  const int img_xc = static_cast<int>(dout.dims()[1]);
-  const int img_xh = static_cast<int>(dout.dims()[2]);
-  const int img_xw = static_cast<int>(dout.dims()[3]);
+  const int64_t batch_size = x.dims()[0];
+  const int64_t img_yc = x.dims()[1];
+  const int64_t img_yh = x.dims()[2];
+  const int64_t img_yw = x.dims()[3];
+  const int64_t img_xc = dout.dims()[1];
+  const int64_t img_xh = dout.dims()[2];
+  const int64_t img_xw = dout.dims()[3];
   if (dx) {
     ctx.template Alloc<T>(dx);
   }
@@ -88,7 +96,7 @@ void Conv2dTransposeGradKernel(const Context& ctx,
         img_xh,
         img_xw,
         ksize,
-        strides,
+        strides_,
         paddings_,
         dilations_,
         groups,
@@ -115,7 +123,7 @@ void Conv2dTransposeGradKernel(const Context& ctx,
         img_xh,
         img_xw,
         ksize,
-        strides,
+        strides_,
         paddings_,
         dilations_,
         groups,

@@ -25,6 +25,7 @@ from test_case_base import (
 import paddle
 from paddle.jit.sot.psdb import check_no_breakgraph
 from paddle.jit.sot.utils import (
+    ConditionalFallbackError,
     allow_dynamic_shape_guard,
 )
 
@@ -138,11 +139,11 @@ class TestOpcodeExecutorDynamicShapeCache(TestCaseBase):
         ), test_instruction_translator_cache_context() as ctx:
             translate_count_map = {
                 0: 1,
-                1: 2,  # 0, 1 is specialize to static dim
-                2: 3,  # 2 is dynamic dim
-                3: 3,  # 3 hit cache, no recompile
-                4: 4,  # 4 is dynamic dim, but it not hit cache
-                5: 4,  # 5 hit cache, no recompile
+                1: 2,  # 1 is dynamic dim
+                2: 2,  # 2 hit cache, no recompile
+                3: 2,  # 3 hit cache, no recompile
+                4: 3,  # 4 is dynamic dim, but it not hit cache
+                5: 3,  # 5 hit cache, no recompile
             }
             for i in range(0, 6):
                 self.assert_results(
@@ -251,7 +252,7 @@ class TestOpcodeExecutorDynamicShapeCache(TestCaseBase):
         ), test_instruction_translator_cache_context() as ctx:
             const_dim = 6
             self.assert_results(
-                dynamic_shape_constraint, paddle.randn([0, 1, const_dim])
+                dynamic_shape_constraint, paddle.randn([1, 1, const_dim])
             )
             self.assertEqual(ctx.translate_count, 1)
 
@@ -326,6 +327,11 @@ class TestOpcodeExecutorDynamicShapeCache(TestCaseBase):
                 ctx.translate_count, 5  # hit 2 * (s0 + s1 - 2) <= 30
             )
 
+            with self.assertRaises(ConditionalFallbackError):
+                self.assert_results(
+                    dynamic_shape_constraint, paddle.randn([0, 1, const_dim])
+                )
+
     def test_mixed_dynamic_and_static(self):
         with allow_dynamic_shape_guard(
             True
@@ -352,7 +358,7 @@ class TestOpcodeExecutorDynamicShapeCache(TestCaseBase):
             self.assert_results(dynamic_int_input_func1, a, 0)
             self.assertEqual(ctx.translate_count, 3)
             self.assert_results(dynamic_int_input_func1, a, 1)
-            self.assertEqual(ctx.translate_count, 4)
+            self.assertEqual(ctx.translate_count, 3)
 
     def test_dynamic_shape_with_constraints(self):
         with allow_dynamic_shape_guard(

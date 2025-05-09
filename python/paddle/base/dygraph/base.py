@@ -94,7 +94,7 @@ def to_static_unsupported_argument_warning(
 
 
 def _switch_to_static_graph_(
-    func: Callable[_InputT, _RetT]
+    func: Callable[_InputT, _RetT],
 ) -> Callable[_InputT, _RetT]:
     def __impl__(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
         with framework._dygraph_guard(None):
@@ -134,7 +134,7 @@ def sot_simulation_mode_guard(
 
 @signature_safe_contextmanager
 def param_guard(
-    parameters: OrderedDict[str, Tensor]
+    parameters: OrderedDict[str, Tensor],
 ) -> Generator[None, None, None]:
     # Note: parameters is a reference of self._parameters or self._buffers
     if in_to_static_mode() and not paddle.in_dynamic_mode() and parameters:
@@ -391,6 +391,8 @@ def no_grad(func=None):
 class _DecoratorContextManager:
     """Allow a context manager to be used as a decorator"""
 
+    DECORATED_BY_MARKER_ATTR = "__decorated_by__"
+
     def __call__(
         self, func: Callable[_InputT, _RetT]
     ) -> Callable[_InputT, _RetT]:
@@ -406,9 +408,15 @@ class _DecoratorContextManager:
                 yield from gen
 
         if inspect.isgeneratorfunction(func):
-            return _decorate_generator(func)
+            decorated_fn = _decorate_generator(func)
         else:
-            return _decorate_function(func)
+            decorated_fn = _decorate_function(func)
+        setattr(
+            decorated_fn,
+            _DecoratorContextManager.DECORATED_BY_MARKER_ATTR,
+            self,
+        )
+        return decorated_fn
 
     def __enter__(self) -> Any:
         raise NotImplementedError

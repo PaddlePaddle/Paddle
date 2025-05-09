@@ -13,9 +13,9 @@
 // limitations under the License.
 
 #pragma once
-#include <absl/types/any.h>
-#include <glog/logging.h>
 
+#include <glog/logging.h>
+#include <any>
 #include <vector>
 
 #include "paddle/cinn/common/common.h"
@@ -234,7 +234,7 @@ class CINNValue : public cinn_pod_value_t {
   static int TypeCode();
 
  protected:
-  absl::any shared_;
+  std::any shared_;
 };
 
 }  // namespace common
