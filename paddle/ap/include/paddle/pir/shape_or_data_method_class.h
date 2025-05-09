@@ -30,4 +30,25 @@ namespace ap::paddle {
 axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>
 GetPirShapeOrDataClass();
 
+adt::Result<axpr::Value> MakeNullShapeOrDataDimExpr(
+    const axpr::Value&, const std::vector<axpr::Value>& args);
+
+adt::Result<axpr::Value> MakeTensorShapeOrDataDimExprs(
+    const axpr::Value&, const std::vector<axpr::Value>& args);
+
+adt::Result<axpr::Value> MakeTensorListShapeOrDataDimExprs(
+    const axpr::Value&, const std::vector<axpr::Value>& args);
+
+adt::Result<axpr::Value> MakeRankedTensorArrayShapeOrDataDimExprs(
+    const axpr::Value&, const std::vector<axpr::Value>& args);
+
+template <typename YieldT>
+void ForEachShapeOrDataMaker(const YieldT& Yield) {
+  Yield("s_null", &MakeNullShapeOrDataDimExpr);
+  Yield("s_tensor_shape_or_data", &MakeTensorShapeOrDataDimExprs);
+  Yield("s_tensor_list_shape_or_data", &MakeTensorListShapeOrDataDimExprs);
+  Yield("s_ranked_tensor_array_shape_or_data",
+        &MakeRankedTensorArrayShapeOrDataDimExprs);
+}
+
 }  // namespace ap::paddle

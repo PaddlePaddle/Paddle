@@ -24,6 +24,8 @@ jobs:
   build-docker:
     name: Develop build docker
     uses: ./.github/workflows/docker.yml
+    with:
+      is_merge: "true"
 
   build:
     name: Build

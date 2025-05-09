@@ -7,10 +7,9 @@ on:
         type: string
         required: true
     outputs:
-      docker_build_image:
-        description: "Generate images for all CI usage"
-        value: ${{ inputs.docker_build_image }}
-
+      can-skip:
+        description: "Whether to skip the job"
+        value: ${{ jobs.build.outputs.can-skip }}
 
 env:
   PR_ID: ${{ github.event.pull_request.number }}
@@ -30,6 +29,8 @@ defaults:
 jobs:
   build:
     name: Build
+    outputs:
+      can-skip: ${{ steps.check-bypass.outputs.can-skip }}
     runs-on:
       group: GZ_BD-CPU
 
@@ -119,7 +120,7 @@ jobs:
           work_dir: ${{ github.workspace }}
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
-          rm -rf  * .[^.]*
+          rm -rf * .[^.]*
           set -e
           echo "Downloading Paddle.tar.gz"
           wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/Paddle/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
@@ -147,6 +148,7 @@ jobs:
           workflow-name: build
 
       - name: Build
+        if: steps.check-bypass.outputs.can-skip != 'true'
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           mkdir -p /root/.cache/build
@@ -156,6 +158,7 @@ jobs:
           '
 
       - name: Check sequence op
+        if: steps.check-bypass.outputs.can-skip != 'true'
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ${ci_scripts}/utils.sh; init
@@ -164,6 +167,7 @@ jobs:
           '
 
       - name: Upload paddle_whl
+        if: steps.check-bypass.outputs.can-skip != 'true'
         env:
           home_path: ${{ github.workspace }}/..
           bos_file: ${{ github.workspace }}/../bos/BosClient.py
@@ -193,7 +197,7 @@ jobs:
           '
 
       - name: Terminate and delete the container
-        if: always()
+        if: ${{ steps.check-bypass.outputs.can-skip != 'true' && always() }}
         run: |
           set +e
           docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'
