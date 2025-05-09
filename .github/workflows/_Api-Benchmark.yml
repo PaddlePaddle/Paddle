@@ -26,7 +26,7 @@ jobs:
       group: Api-bm
 
     steps:
-      - run: mkdir -p .github/actions/check-bypass && wget -O .github/actions/check-bypass/action.yml https://raw.githubusercontent.com/PaddlePaddle/Paddle/refs/heads/develop/.github/actions/check-bypass/action.yml
+      # - run: mkdir -p .github/actions/check-bypass && wget -q -O .github/actions/check-bypass/action.yml https://raw.githubusercontent.com/PaddlePaddle/Paddle/refs/heads/develop/.github/actions/check-bypass/action.yml
 
       - name: Check bypass
         id: check-bypass
@@ -118,7 +118,6 @@ jobs:
       - name: Terminate and delete the container
         if: always()
         run: |
-          set +e
-          docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'
+          # sudo rm -rf * .[^.]*
           docker stop ${{ env.container_name }}
           docker rm ${{ env.container_name }}
