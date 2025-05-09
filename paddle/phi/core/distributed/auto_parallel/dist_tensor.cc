@@ -43,17 +43,12 @@ TensorDistAttr ToTensorDistAttr(const ProcessMesh& process_mesh,
 
   // Step2: set dim_mapping
   std::vector<std::vector<int64_t>> dim_mapping(dims.size());
-  std::unordered_map<int64_t, int64_t> split_factor_map;
-
   for (size_t i = 0; i < placements.size(); i++) {
     const auto& cur_placement = placements[i];
     if (!cur_placement->is_shard()) { continue; }
     const auto& shard = dynamic_cast<const Shard&>(*cur_placement);
-    if (split_factor_map.size() > 1) {
-      PADDLE_THROW(common::errors::PreconditionNotMet("Only support rearrange onece at now."));
-    }
     dim_mapping[shard.get_dim()].push_back(i);
-    split_factor_map[i] = shard.get_split_factor();
+    dist_attr.set_split_factor(i, shard.get_split_factor());
   }
 
   auto compare_functor = [&](size_t a, size_t b) {
@@ -69,7 +64,6 @@ TensorDistAttr ToTensorDistAttr(const ProcessMesh& process_mesh,
     }
   }
   dist_attr.set_new_dims_mapping(dim_mapping);
-  dist_attr.set_split_factor_map(split_factor_map);
 
   // Step3: set partial_status
   paddle::flat_hash_map<int64_t, ReduceType> partial_status;
@@ -97,9 +91,7 @@ Placements ToPlacements(const TensorDistAttr& dist_attr) {
     placements[pair.first] = std::make_shared<Partial>(pair.second);
   }
 
-  const std::unordered_map<int64_t, int64_t>& split_factor_map = dist_attr.split_factor_map();
   const std::vector<std::vector<int64_t>>& dim_mapping = dist_attr.new_dims_mapping();
-
   for (size_t t_dim = 0; t_dim < dim_mapping.size(); t_dim++) {
     auto m_dims = dim_mapping[t_dim];
 
@@ -107,7 +99,7 @@ Placements ToPlacements(const TensorDistAttr& dist_attr) {
 
     for (size_t idx = 0; idx < m_dims.size(); idx++) {
       int64_t mesh_dim = m_dims[idx];
-      int64_t split_factor = split_factor_map.count(mesh_dim) ? split_factor_map.at(mesh_dim) : 1;
+      int64_t split_factor = dist_attr.get_split_factor(mesh_dim);
       auto& p = placements.at(mesh_dim);
 
       if (p->is_shard()) {

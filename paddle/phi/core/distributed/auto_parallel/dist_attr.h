@@ -111,8 +111,6 @@ class TEST_API TensorDistAttr {
 
   void set_new_dims_mapping(const std::vector<std::vector<int64_t>>& dims_mapping);
 
-  void set_split_factor_map(const std::unordered_map<int64_t, int64_t>& split_factor_map);
-
   // return vector of mesh dims on which the this tensor is partial on
   const std::set<int64_t> partial_dims() const;
 

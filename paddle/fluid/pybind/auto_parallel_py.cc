@@ -642,7 +642,7 @@ void BindAutoParallel(py::module *m) {
              self.set_partial_status(dims);
            })
       .def("_clean_partial_status", &TensorDistAttr::clean_partial_status)
-      .def("_set_split_factor_map", &TensorDistAttr::set_split_factor_map);
+      .def("_set_split_factor", &TensorDistAttr::set_split_factor);
 
 
   py::class_<phi::distributed::SpmdRule>(*m, "SpmdRule")

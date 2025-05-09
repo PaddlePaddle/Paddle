@@ -57,7 +57,7 @@ void TensorDistAttr::copy_from(const TensorDistAttr& dist_attr) {
   set_process_mesh(dist_attr.process_mesh());
   set_dims_mapping(dist_attr.dims_mapping());
   set_new_dims_mapping(dist_attr.new_dims_mapping());
-  set_split_factor_map(dist_attr.split_factor_map());
+  split_factor_map_ = dist_attr.split_factor_map();
   set_batch_dim(dist_attr.batch_dim());
   set_chunk_id(dist_attr.chunk_id());
   set_dynamic_dims(dist_attr.dynamic_dims());
@@ -84,11 +84,6 @@ void TensorDistAttr::set_new_dims_mapping(
   new_dims_mapping_ = dims_mapping;
 }
 
-void TensorDistAttr::set_split_factor_map(
-  const std::unordered_map<int64_t, int64_t>& split_factor_map) {
-    split_factor_map_ = split_factor_map;
-}
-
 void TensorDistAttr::set_batch_dim(int64_t batch_dim) {
   batch_dim_ = batch_dim;
 }
@@ -113,7 +108,8 @@ int64_t TensorDistAttr::get_split_factor(int64_t mesh_dim) const {
 }
 
 void TensorDistAttr::set_split_factor(int64_t mesh_dim, int64_t split_factor) {
-  if (split_factor != 1) {
+  // default value is 1
+  if (split_factor > 1) {
     split_factor_map_[mesh_dim] = split_factor;
   }
   PADDLE_ENFORCE_LE(split_factor_map_.size(), 1, "At now only support to rearrange at one mesh dim.");

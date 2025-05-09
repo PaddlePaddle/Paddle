@@ -86,7 +86,7 @@ int64_t FindFirstDiffShardAxis(const TensorDistAttr& in_dist_attr,
 }
 }  // namespace
 
-class ReshardContext {
+class ReshardContext final {
 public:
     ReshardContext(phi::DeviceContext* dev_ctx, 
                   const DistTensor& in,
@@ -111,7 +111,7 @@ public:
           dims_mapping[cur_tensor_dim.value()] = {0};
           dist_attr.set_new_dims_mapping(dims_mapping);
           if (cur_mesh_split_factor) {
-            dist_attr.set_split_factor_map({{0, cur_mesh_split_factor.value()}});
+            dist_attr.set_split_factor(0, cur_mesh_split_factor.value());
           }
       }
       return dist_attr;
@@ -155,7 +155,7 @@ public:
       SetDistProps(ctx_.out, cur_dist_attr);
       VLOG(3) << "Set Cur Dist Attr";
     }
-
+private:
     virtual TensorDistAttr CalculateNewDistAttr() const = 0;
     virtual TensorDistAttr CreateOneDimInDistAttr(const ProcessMesh& sub_mesh) const = 0;
     virtual TensorDistAttr CreateOneDimOutDistAttr(const ProcessMesh& sub_mesh) const = 0;
@@ -166,8 +166,8 @@ protected:
     ReshardContext ctx_;
 };
 
-class PartialToReplicate : public SingleDimReshardStrategy<PToRReshardFunction> {
-public:
+class PartialToReplicate final : public SingleDimReshardStrategy<PToRReshardFunction> {
+private:
     using SingleDimReshardStrategy<PToRReshardFunction>::SingleDimReshardStrategy;
 
     TensorDistAttr CalculateNewDistAttr() const override {
@@ -185,8 +185,8 @@ public:
     }
 };
 
-class ShardToReplicate : public SingleDimReshardStrategy<SToRReshardFunction> {
-public:
+class ShardToReplicate final : public SingleDimReshardStrategy<SToRReshardFunction> {
+private:
     using SingleDimReshardStrategy<SToRReshardFunction>::SingleDimReshardStrategy;
 
     TensorDistAttr CalculateNewDistAttr() const override {
@@ -210,8 +210,8 @@ public:
 
 };
 
-class ReplicateToPartial : public SingleDimReshardStrategy<RToPReshardFunction> {
-public:
+class ReplicateToPartial final : public SingleDimReshardStrategy<RToPReshardFunction> {
+private:
     using SingleDimReshardStrategy<RToPReshardFunction>::SingleDimReshardStrategy;
     TensorDistAttr CalculateNewDistAttr() const override {
       TensorDistAttr real_out_dist_attr = ctx_.out->dist_attr();
@@ -228,8 +228,8 @@ public:
     }
 };
 
-class ReplicateToShard : public SingleDimReshardStrategy<RToSReshardFunction> {
-public:
+class ReplicateToShard final : public SingleDimReshardStrategy<RToSReshardFunction> {
+private:
     using SingleDimReshardStrategy<RToSReshardFunction>::SingleDimReshardStrategy;
 
     TensorDistAttr CalculateNewDistAttr() const override {
@@ -256,8 +256,8 @@ public:
 };
 
 
-class PartialToShard : public SingleDimReshardStrategy<PToSReshardFunction> {
-public:
+class PartialToShard final : public SingleDimReshardStrategy<PToSReshardFunction> {
+private:
     using SingleDimReshardStrategy<PToSReshardFunction>::SingleDimReshardStrategy;
 
     TensorDistAttr CalculateNewDistAttr() const override {

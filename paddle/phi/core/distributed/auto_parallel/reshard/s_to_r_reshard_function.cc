@@ -135,8 +135,7 @@ void SToRReshardFunction::Eval(DeviceContext* dev_ctx,
   int64_t num_of_process = in_process_mesh.size();
   int64_t num_of_padding = in.dims()[split_axis] % num_of_process;
   VLOG(4) << "dist attr " << in_dist_attr.to_string();
-  int64_t split_factor = in_dist_attr.split_factor_map().count(mesh_axis) ? 
-              in_dist_attr.split_factor_map().at(mesh_axis) : 1;
+  int64_t split_factor = in_dist_attr.get_split_factor(mesh_axis);
   bool is_balanced_split = (num_of_padding == 0);
 
   if (is_balanced_split) {

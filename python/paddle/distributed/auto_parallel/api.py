@@ -845,17 +845,14 @@ def reshard(
         dist_attr = DistAttr(mesh, sharding_specs)
         print("dist attr = ", dist_attr)
         partial_dims = []
-        split_factor_map = {}
         for i, p in enumerate(placements):
             if isinstance(p, dist.Partial):
                 partial_dims.append(i)
             if p.is_shard() and p.get_split_factor() > 1:
-                split_factor_map[i] = p.get_split_factor()
+                dist_attr._set_split_factor(i, p.get_split_factor())
 
-        assert len(split_factor_map) <= 1, "only support rearrange once at most at now."
         if len(partial_dims) > 0:
             dist_attr._set_partial_dims(partial_dims)
-        dist_attr._set_split_factor_map(split_factor_map)
 
         alltoall_dim = _specific_alltoall_dim(dist_tensor, mesh, placements)
         if alltoall_dim is not None:

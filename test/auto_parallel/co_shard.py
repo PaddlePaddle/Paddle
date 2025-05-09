@@ -118,8 +118,8 @@ class TestCoShard:
 
         
     def run_test_case_main(self):
-        # self.run_test_case_0()
-        # self.run_test_case_1()
+        self.run_test_case_0()
+        self.run_test_case_1()
         self.run_test_case_2()
         # self.run_test_case_3() # reshape
 
