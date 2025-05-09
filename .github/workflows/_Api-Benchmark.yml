@@ -26,6 +26,8 @@ jobs:
       group: Api-bm
 
     steps:
+      - run: mkdir -p .github/actions/check-bypass && wget -O .github/actions/check-bypass/action.yml https://raw.githubusercontent.com/PaddlePaddle/Paddle/refs/heads/develop/.github/actions/check-bypass/action.yml
+
       - name: Check bypass
         id: check-bypass
         uses: ./.github/actions/check-bypass
