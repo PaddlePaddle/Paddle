@@ -1502,7 +1502,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
         self._init_user_hooks()
 
         get_rroo_queue_manager().init(
-            self.accumulate_steps, self.num_model_chunks
+            self.num_model_chunks, self.accumulate_steps
         )
 
     def _get_scheduler_name(self):

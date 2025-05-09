@@ -176,6 +176,8 @@ class TestRROO(unittest.TestCase):
                     )
                     rroo_queue_manager.wait_and_release()
 
+            rroo_queue_manager.clear_counter()
+
             np.testing.assert_array_equal(
                 rroo_queue_manager.empty(),
                 True,

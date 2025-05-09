@@ -398,6 +398,10 @@ class RROOQueue:
         else:
             return not is_last_acc
 
+    def clear_counter(self) -> None:
+        """clear_counter"""
+        self.acc_id = 0
+
 
 class RROOQueueManager:
     """Manager for queues that handle offloading and reloading operations."""
@@ -464,6 +468,11 @@ class RROOQueueManager:
         """Perform reloading for current chunk."""
         for q in self.reload_dict[self.cur_chunk_id]:
             q.reload()
+
+    def clear_counter(self) -> None:
+        """clear_counter"""
+        for q in self.queues:
+            q.clear_counter()
 
     def wait_and_release(self) -> None:
         """Wait for all operations to complete and release resources."""
