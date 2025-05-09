@@ -17,7 +17,6 @@ from __future__ import annotations
 import dis
 import functools
 import inspect
-import itertools
 import operator
 import sys
 import types
@@ -34,7 +33,6 @@ from paddle.base.dygraph.base import _DecoratorContextManager
 from .... import psdb
 from ....profiler import EventGuard
 from ....utils import (
-    ENV_SOT_ALLOW_DYNAMIC_SHAPE,
     ENV_SOT_EXPORT,
     get_obj_stable_repr,
     get_static_function,
@@ -48,7 +46,6 @@ from ....utils import (
     log,
     log_do,
     magic_method_builtin_dispatch,
-    map_if,
 )
 from ....utils.exceptions import (
     BreakGraphError,
@@ -778,44 +775,12 @@ class BuiltinVariable(FunctionVariable):
         self.value = fn
 
     def call_function(self, /, *args, **kwargs):
-        from .basic import SymbolicVariable
 
         # Lookup the handler from dispatcher
         handler = Dispatcher.dispatch(self.value, *args, **kwargs)
 
         if handler is not None:
             return handler(*args, **kwargs)
-
-        if ENV_SOT_ALLOW_DYNAMIC_SHAPE.get() and any(
-            isinstance(var, SymbolicVariable)
-            for var in itertools.chain(args, kwargs.values())
-        ):
-            fake_args, fake_kwargs = map_if(
-                (args, kwargs),
-                pred=lambda x: isinstance(x, SymbolicVariable),
-                # this is a fake args, we don't need to care about the value of the args
-                true_fn=lambda x: ConstantVariable.wrap_literal(
-                    None, graph=self.graph
-                ),
-                false_fn=lambda x: x,
-            )
-            handler = Dispatcher.dispatch(self.value, *fake_args, **fake_kwargs)
-            if handler is not None:
-                from ..executor_cache import (
-                    OpcodeExecutorCache,
-                )
-
-                symbolic_inputs = OpcodeExecutorCache().get_symbolic_inputs(
-                    self.graph.pycode_gen._origin_code
-                )
-
-                args, kwargs = map_if(
-                    (args, kwargs),
-                    pred=lambda x: isinstance(x, SymbolicVariable),
-                    true_fn=lambda x: x.to_constant(),
-                    false_fn=lambda x: x,
-                )
-                return handler(*args, **kwargs)
 
         # If API can be directly called in simulation mode (e.g. user defined native code
         # without graph affect), we can directly call it.

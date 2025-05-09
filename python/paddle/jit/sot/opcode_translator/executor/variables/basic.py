@@ -83,7 +83,6 @@ from ....utils import (
     log,
     printable,
 )
-from ....utils.envs import ENV_SOT_BREAK_GRAPH_ON_GET_SYMBOLIC_VALUE
 from ....utils.exceptions import (
     HasNoAttributeError,
     InnerError,
@@ -1010,8 +1009,9 @@ class SymbolicVariable(VariableBase):
                 return
 
             disabled_vars.add(var)
-            if var.tracker.is_traceable():
+            if var.tracker.is_traceable() and isinstance(var, SymbolicVariable):
                 tracker_expr = var.tracker.trace_value_from_frame().inlined_expr
+                var.need_guard_value = True
                 symbolic_inputs[tracker_expr] = None
                 return
             for input_var in var.tracker.inputs:
@@ -1021,36 +1021,13 @@ class SymbolicVariable(VariableBase):
         self.graph.need_cache = False
         log(3, f"Fallback {self} to ConstantVariable\n")
         return ConstantVariable(
-            self.get_py_value(), self.graph, DummyTracker([self])
+            self.get_example_value(), self.graph, DummyTracker([self])
         )
 
     def get_py_value(self, allow_tensor: bool = False) -> bool | int | float:
-        if ENV_SOT_BREAK_GRAPH_ON_GET_SYMBOLIC_VALUE.get():
-            raise BreakGraphError(
-                DataDependencyOperationBreak(
-                    "get_py_value from SymbolicVariable"
-                )
-            )
-        self.need_guard_value = True
-        log(
-            3,
-            f"get_py_value from SymbolicVariable {self} caused value need guard\n",
+        raise BreakGraphError(
+            DataDependencyOperationBreak("get_py_value from SymbolicVariable")
         )
-        if self.value.is_backed():
-            return self.value.get_example_value()
-        inputs = self.tracker.inputs
-        input_values = [x.get_py_value() for x in inputs]
-        if not isinstance(self.tracker, SymbolicOperationTracker):
-            raise BreakGraphError(
-                DataDependencyOperationBreak(
-                    f"SymbolicVariable.get_py_value() got {self.tracker}. May be a symbol from a inner tensor."
-                )
-            )
-        value = self.tracker.op(*input_values)
-        assert isinstance(
-            value, (bool, int, float)
-        ), f"SymbolicVariable.get_py_value() should return bool, int or float, but got {type(value)}"
-        return value
 
     def get_example_value(
         self, allow_tensor: bool = False
