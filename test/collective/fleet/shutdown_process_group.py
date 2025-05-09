@@ -18,7 +18,7 @@ import paddle
 import paddle.distributed as dist
 
 
-class TestProcessGroupAPI:
+class TestShutdownProcessGroupAPI:
     def __init__(self):
         dist.init_parallel_env()
         if dist.get_rank() == 0:
@@ -26,7 +26,7 @@ class TestProcessGroupAPI:
         else:
             self.data = paddle.to_tensor([[1, 2, 3], [4, 5, 6]])
 
-    def test_shutdown_and_recreate(self):
+    def test_shutdown_and_recreate_all(self):
         pg = paddle.distributed.new_group([0, 1])
 
         result_base = self.data.clone()
@@ -38,9 +38,24 @@ class TestProcessGroupAPI:
         result_test = self.data.clone()
         dist.all_reduce(result_test, group=pg)
 
-        assert np.array_equal(result_base.numpy(), result_test.numpy())
+        np.testing.assert_array_equal(result_base.numpy(), result_test.numpy())
+
+    def test_shutdown_and_recreate_single(self):
+        pg = paddle.distributed.new_group([0, 1])
+
+        result_base = self.data.clone()
+        dist.all_reduce(result_base, group=pg)
+
+        paddle.distributed.shutdown_process_group(pg)
+        paddle.distributed.restart_process_group(pg)
+
+        result_test = self.data.clone()
+        dist.all_reduce(result_test, group=pg)
+
+        np.testing.assert_array_equal(result_base.numpy(), result_test.numpy())
 
 
 if __name__ == "__main__":
-    test_case = TestProcessGroupAPI()
-    test_case.test_shutdown_and_recreate()
+    test_case = TestShutdownProcessGroupAPI()
+    test_case.test_shutdown_and_recreate_all()
+    test_case.test_shutdown_and_recreate_single()
