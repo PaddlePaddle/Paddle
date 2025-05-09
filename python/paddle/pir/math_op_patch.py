@@ -281,7 +281,6 @@ def monkey_patch_value():
                 f"Required input var should be 1-D Value, but received {self.shape}"
             )
 
-        # TODO: We need to handle distributed tensor here
         if self.is_dist() and not self._is_initialized():
             return None
 
