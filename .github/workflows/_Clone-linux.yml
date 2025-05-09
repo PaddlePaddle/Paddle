@@ -37,7 +37,7 @@ jobs:
       group: HK-Clone
 
     steps:
-      - name: Workaround checkout Needed single revision issue
+      - name: Check submodules status
         run: git submodule foreach --recursive 'git rev-parse HEAD || rm -rf $PWD' || true
 
       - name: Clone paddle
