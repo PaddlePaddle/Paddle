@@ -76,8 +76,8 @@ void CConcatKernel(const Context& dev_ctx,
   int axis = x->dims().size() - 1;
   auto out_dims = x->dims();
   out_dims[out_dims.size() - 1] *= nranks;
-  int rows_per_tensor = x->dims()[0];
-  int offset = 0;
+  int64_t rows_per_tensor = x->dims()[0];
+  int64_t offset = 0;
   for (int i = 0; i < nranks; i++) {
     phi::DenseTensor temp = temp_out.Slice(offset, offset + rows_per_tensor);
     inputs.emplace_back(temp);

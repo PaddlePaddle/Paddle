@@ -112,7 +112,7 @@ std::shared_ptr<OpStrategy> StrategyForBroadcast(
     bool trans_a;
     for (auto &iter : attrs.attr_store) {
       if (iter.first == "axis") {
-        axis = Expr(absl::get<int>(iter.second));
+        axis = Expr(std::get<int>(iter.second));
         break;
       }
     }
@@ -181,7 +181,7 @@ std::shared_ptr<OpStrategy> StrategyForBroadcastSymbolic(
     bool trans_a;
     for (auto &iter : attrs.attr_store) {
       if (iter.first == "axis") {
-        axis = Expr(absl::get<int>(iter.second));
+        axis = Expr(std::get<int>(iter.second));
         break;
       }
     }
@@ -207,14 +207,14 @@ std::shared_ptr<OpStrategy> StrategyForBroadcastTo(
       1,
       ::common::errors::InvalidArgument(
           "The attrs.attr_store doesn't have the attribute of 'out_shape'."));
-  out_shape = absl::get<std::vector<int>>(attrs.attr_store.at("out_shape"));
+  out_shape = std::get<std::vector<int>>(attrs.attr_store.at("out_shape"));
   PADDLE_ENFORCE_GE(
       attrs.attr_store.count("broadcast_axes"),
       1,
       ::common::errors::InvalidArgument("The attrs.attr_store doesn't have the "
                                         "attribute of 'broadcast_axes'."));
   broadcast_axes =
-      absl::get<std::vector<int>>(attrs.attr_store.at("broadcast_axes"));
+      std::get<std::vector<int>>(attrs.attr_store.at("broadcast_axes"));
   VLOG(3) << "broadcast out shape: " << utils::Join(out_shape, ", ");
   VLOG(3) << "broadcast_axes shape: " << utils::Join(broadcast_axes, ", ");
 

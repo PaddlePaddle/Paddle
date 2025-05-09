@@ -311,7 +311,7 @@ Expr or_all(const std::vector<Expr> &conds) {
 void CheckTensorUniqueInExpr(Expr expr) {
   auto tensor_uniq = ir::ir_utils::CollectIRNodes(
       expr, [](const Expr *x) { return x->as_tensor(); });
-  absl::flat_hash_map<std::string, const ir::_Tensor_ *> tensor_names;
+  paddle::flat_hash_map<std::string, const ir::_Tensor_ *> tensor_names;
   for (auto &t : tensor_uniq) {
     auto *tp = t.as_tensor();
     if (!tensor_names.count(tp->name)) {
@@ -506,20 +506,24 @@ void OpDataTypePromote(Expr *expr) {
 
     void Visit(const ir::Let *op, ir::Expr *expr) {
       auto node = expr->As<ir::Let>();
+      // For Symbol of LetOp, we need to insert a cast to convert its type, but
+      // inside LetOp, we should directly convert the Symbol type instead of
+      // inserting a cast.so we set the flag to false before the conversion and
+      // set it to true after the conversion, e.g.
+      // inside LetOp: type of v, v1 are int32.
+      //   int32 v = v1 * 2   ==TypePromote==>  int64 v = v1 * 2ll
+      // outside LetOp: type of v, v2 are int32 and v is defined by LetOp.
+      //   v2 = v * 2         ==TypePromote==>  v2 = (int64)v * 2ll
+      if (node->symbol.is_var()) {
+        node->symbol.as_var()->is_let_symbol = false;
+      }
       auto promote_args =
           std::move(ir::TryElevateInt32ToInt64({node->symbol, node->body}));
       node->symbol = promote_args.at(0);
       node->body = promote_args.at(1);
-      IRMutator::Visit(op, expr);
-    }
-
-    void Visit(const ir::For *op, ir::Expr *expr) {
-      auto node = expr->As<ir::For>();
-      auto promote_args = std::move(ir::TryElevateInt32ToInt64(
-          {node->loop_var, node->min, node->extent}));
-      node->loop_var = promote_args.at(0);
-      node->min = promote_args.at(1);
-      node->extent = promote_args.at(2);
+      if (node->symbol.is_var()) {
+        node->symbol.as_var()->is_let_symbol = true;
+      }
       IRMutator::Visit(op, expr);
     }
   };

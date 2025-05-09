@@ -74,65 +74,6 @@ void ReduceSumGradKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void ReduceMinGradKernel(const Context& dev_ctx,
-                         const DenseTensor& x,
-                         const DenseTensor& out,
-                         const DenseTensor& out_grad,
-                         const IntArray& dims,
-                         bool keep_dim,
-                         bool reduce_all,
-                         DenseTensor* x_grad) {
-  if (dims.size() == 0) {
-    reduce_all = recompute_reduce_all(x, dims, reduce_all);
-    ReduceCudaAMaxAMinGrad<T, Context>(dev_ctx,
-                                       x,
-                                       out,
-                                       out_grad,
-                                       dims.GetData(),
-                                       keep_dim,
-                                       reduce_all,
-                                       x_grad);
-  } else {
-    dev_ctx.Alloc(x_grad, x.dtype());
-    reduce_all = recompute_reduce_all(x, dims, reduce_all);
-
-    // get reduce_dim
-    int dim_size = x.dims().size();
-    auto reduce_dims =
-        funcs::details::GetReduceDim(dims.GetData(), dim_size, reduce_all);
-    auto update_dims = common::vectorize(x.dims());
-    for (auto i : reduce_dims) {
-      update_dims[i] = 1;
-    }
-
-    // make new tensor of out and out_grad
-    phi::DenseTensor new_out(out.type());
-    new_out.ShareDataWith(out);
-    new_out.Resize(common::make_ddim(update_dims));
-
-    phi::DenseTensor new_out_grad(out_grad.type());
-    new_out_grad.ShareDataWith(out_grad);
-    new_out_grad.Resize(common::make_ddim(update_dims));
-
-    // make equal_out
-    phi::DenseTensor* equal_out = new phi::DenseTensor();
-    equal_out->Resize(x.dims());
-    dev_ctx.template Alloc<T>(equal_out);
-
-    // compute
-    // 1. equal_out = Equal(x, y)
-    std::vector<const phi::DenseTensor*> equal_inputs = {&new_out, &x};
-    std::vector<phi::DenseTensor*> equal_outputs = {equal_out};
-    funcs::BroadcastKernel<T>(
-        dev_ctx, equal_inputs, &equal_outputs, funcs::EqualFunctor<T>(), 0);
-
-    // 2. dx = dout * 1
-    phi::MultiplyKernel<T, Context>(dev_ctx, new_out_grad, *equal_out, x_grad);
-    delete equal_out;
-  }
-}
-
-template <typename T, typename Context>
 void ReduceMeanGradKernel(const Context& dev_ctx,
                           const DenseTensor& x,
                           const DenseTensor& out_grad,
@@ -174,65 +115,6 @@ void ReduceMeanGradKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void ReduceMaxGradKernel(const Context& dev_ctx,
-                         const DenseTensor& x,
-                         const DenseTensor& out,
-                         const DenseTensor& out_grad,
-                         const IntArray& dims,
-                         bool keep_dim,
-                         bool reduce_all,
-                         DenseTensor* x_grad) {
-  if (dims.size() == 0) {
-    reduce_all = recompute_reduce_all(x, dims, reduce_all);
-    ReduceCudaAMaxAMinGrad<T, Context>(dev_ctx,
-                                       x,
-                                       out,
-                                       out_grad,
-                                       dims.GetData(),
-                                       keep_dim,
-                                       reduce_all,
-                                       x_grad);
-  } else {
-    dev_ctx.Alloc(x_grad, x.dtype());
-    reduce_all = recompute_reduce_all(x, dims, reduce_all);
-
-    // get reduce_dim
-    int dim_size = x.dims().size();
-    auto reduce_dims =
-        funcs::details::GetReduceDim(dims.GetData(), dim_size, reduce_all);
-    auto update_dims = common::vectorize(x.dims());
-    for (auto i : reduce_dims) {
-      update_dims[i] = 1;
-    }
-
-    // make new tensor of out and out_grad
-    phi::DenseTensor new_out(out.type());
-    new_out.ShareDataWith(out);
-    new_out.Resize(common::make_ddim(update_dims));
-
-    phi::DenseTensor new_out_grad(out_grad.type());
-    new_out_grad.ShareDataWith(out_grad);
-    new_out_grad.Resize(common::make_ddim(update_dims));
-
-    // make equal_out
-    phi::DenseTensor* equal_out = new phi::DenseTensor();
-    equal_out->Resize(x.dims());
-    dev_ctx.template Alloc<T>(equal_out);
-
-    // compute
-    // 1. equal_out = Equal(x, y)
-    std::vector<const phi::DenseTensor*> equal_inputs = {&new_out, &x};
-    std::vector<phi::DenseTensor*> equal_outputs = {equal_out};
-    funcs::BroadcastKernel<T>(
-        dev_ctx, equal_inputs, &equal_outputs, funcs::EqualFunctor<T>(), 0);
-
-    // 2. dx = dout * 1
-    phi::MultiplyKernel<T, Context>(dev_ctx, new_out_grad, *equal_out, x_grad);
-    delete equal_out;
-  }
-}
-
-template <typename T, typename Context>
 void ReduceAMinGradKernel(const Context& dev_ctx,
                           const DenseTensor& x,
                           const DenseTensor& out,
@@ -247,6 +129,19 @@ void ReduceAMinGradKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
+void ReduceMinGradKernel(const Context& dev_ctx,
+                         const DenseTensor& x,
+                         const DenseTensor& out,
+                         const DenseTensor& out_grad,
+                         const IntArray& dims,
+                         bool keep_dim,
+                         bool reduce_all,
+                         DenseTensor* x_grad) {
+  ReduceAMinGradKernel<T, Context>(
+      dev_ctx, x, out, out_grad, dims.GetData(), keep_dim, reduce_all, x_grad);
+}
+
+template <typename T, typename Context>
 void ReduceAMaxGradKernel(const Context& dev_ctx,
                           const DenseTensor& x,
                           const DenseTensor& out,
@@ -258,6 +153,19 @@ void ReduceAMaxGradKernel(const Context& dev_ctx,
   reduce_all = recompute_reduce_all(x, dims, reduce_all);
   ReduceCudaAMaxAMinGrad<T, Context>(
       dev_ctx, x, out, out_grad, dims, keep_dim, reduce_all, x_grad);
+}
+
+template <typename T, typename Context>
+void ReduceMaxGradKernel(const Context& dev_ctx,
+                         const DenseTensor& x,
+                         const DenseTensor& out,
+                         const DenseTensor& out_grad,
+                         const IntArray& dims,
+                         bool keep_dim,
+                         bool reduce_all,
+                         DenseTensor* x_grad) {
+  ReduceAMaxGradKernel<T, Context>(
+      dev_ctx, x, out, out_grad, dims.GetData(), keep_dim, reduce_all, x_grad);
 }
 
 template <typename T, typename Context>

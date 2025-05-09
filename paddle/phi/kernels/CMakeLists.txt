@@ -241,8 +241,10 @@ endif()
 
 # Remove AP kernel when CINN is not enabled.
 if(NOT WITH_CINN)
-  list(REMOVE_ITEM kernel_cu "gpu/ap_variadic_kernel.cu")
-  list(REMOVE_ITEM kernel_gpu "gpu/ap_variadic_kernel.cu")
+  list(REMOVE_ITEM kernel_cu "gpu/ap_facade_kernel.cu"
+       "gpu/ap_variadic_kernel.cu")
+  list(REMOVE_ITEM kernel_gpu "gpu/ap_facade_kernel.cu"
+       "gpu/ap_variadic_kernel.cu")
 endif()
 
 set(cc_search_pattern

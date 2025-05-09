@@ -43,7 +43,6 @@ from .auto_parallel_grad_clip import (  # noqa: F401
 )
 from .auto_parallel_gradient_merge import (  # noqa: F401
     GradientMergePass,
-    parse_program,
 )
 from .auto_parallel_master_grad import (  # noqa: F401
     MasterGradPass,

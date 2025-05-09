@@ -39,7 +39,6 @@ from .utils import (
     auto_layout_is_enabled,
     backend_guard,
     cse_is_enabled,
-    runtime_guards,
 )
 
 if TYPE_CHECKING:
@@ -735,22 +734,21 @@ class PartialProgramLayer:
         attrs = self._prepare_attributes(in_sot_mode=False)
         inputs = self._valid_vars(in_vars)
 
-        with runtime_guards(self._backend):
-            _C_ops.run_program(
-                inputs,
-                self._valid_vars(self._params),
-                self._valid_vars(out_vars),
-                self._create_scope_vec(
-                    cache_key=(
-                        hash_with_seed(
-                            self.program_id,
-                            self._calc_input_places_hash(inputs),
-                        )
-                    ),
-                    use_scope_cache=True,
+        _C_ops.run_program(
+            inputs,
+            self._valid_vars(self._params),
+            self._valid_vars(out_vars),
+            self._create_scope_vec(
+                cache_key=(
+                    hash_with_seed(
+                        self.program_id,
+                        self._calc_input_places_hash(inputs),
+                    )
                 ),
-                *attrs,
-            )
+                use_scope_cache=True,
+            ),
+            *attrs,
+        )
         restored_nest_out = self._restore_out(out_vars)
         return self._remove_no_value(restored_nest_out)
 
@@ -762,22 +760,21 @@ class PartialProgramLayer:
         attrs = self._prepare_attributes(in_sot_mode=True)
         inputs = self._valid_vars(inputs)
 
-        with runtime_guards(self._backend):
-            _C_ops.run_program(
-                inputs,
-                self._valid_vars(self._params),
-                self._valid_vars(out_vars),
-                self._create_scope_vec(
-                    cache_key=(
-                        hash_with_seed(
-                            self.program_id,
-                            self._calc_input_places_hash(inputs),
-                        )
-                    ),
-                    use_scope_cache=True,
+        _C_ops.run_program(
+            inputs,
+            self._valid_vars(self._params),
+            self._valid_vars(out_vars),
+            self._create_scope_vec(
+                cache_key=(
+                    hash_with_seed(
+                        self.program_id,
+                        self._calc_input_places_hash(inputs),
+                    )
                 ),
-                *attrs,
-            )
+                use_scope_cache=True,
+            ),
+            *attrs,
+        )
         return self._outputs.quick_restore(out_vars)
 
     @cached_property

@@ -21,7 +21,7 @@ from typing import TYPE_CHECKING, Any
 
 import paddle
 
-from ....utils import ConstTypes
+from ....utils import ConstTypes, is_namedtuple_class
 from ....utils.exceptions import FallbackError, InnerError
 from ..dispatcher import Dispatcher
 from ..guard import (
@@ -680,6 +680,49 @@ class TupleVariable(ContainerVariable):
     def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
         if type(value) is tuple:
             return TupleVariable(value, graph, tracker)
+        return None
+
+
+class NamedTupleVariable(TupleVariable):
+    def __init__(
+        self,
+        val_tuple: tuple[VariableBase, ...],
+        cls: type[Any],
+        graph: FunctionGraph,
+        tracker: Tracker,
+    ):
+        super().__init__(val_tuple, graph, tracker)
+        self.cls = cls
+        self.fields = cls._fields
+
+    def getattr(self, name: str, default=None):
+        from .callable import BuiltinVariable
+
+        if default is not None:
+            raise FallbackError(
+                "default argument for getattr is not implemented"
+            )
+
+        if name == "_fields":
+            return VariableFactory.from_value(
+                self.fields, self.graph, DummyTracker([self])
+            )
+
+        if name in self.fields:
+            idx = self.fields.index(name)
+            idx_var = ConstantVariable(idx, self.graph, DummyTracker([self]))
+            return BuiltinVariable(
+                operator.getitem, self.graph, DanglingTracker()
+            ).bind_dangling_fn(self, name)(idx_var)
+        return super().getattr(name, default)
+
+    def get_py_type(self):
+        return self.cls
+
+    @VariableFactory.register_from_value()
+    def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
+        if is_namedtuple_class(type(value)):
+            return NamedTupleVariable(value, type(value), graph, tracker)
         return None
 
 

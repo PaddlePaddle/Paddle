@@ -124,7 +124,7 @@ IndexExpr Add::Make(IndexExpr a, IndexExpr b) {
   return IndexExpr(node);
 }
 
-void BinaryNodeVerify(const Expr &a, const Expr &b, absl::string_view ir_name) {
+void BinaryNodeVerify(const Expr &a, const Expr &b, std::string_view ir_name) {
   PADDLE_ENFORCE_EQ(
       a.defined(),
       true,
@@ -347,10 +347,23 @@ Expr Let::Make(Expr symbol, Expr body) {
                           "The type of the body is not valid. "
                           "If a body is defined, it must have a valid type."));
   }
+  // For Symbol of LetOp, we need to insert a cast to convert its type, but
+  // inside LetOp, we should directly convert the Symbol type instead of
+  // inserting a cast.so we set the flag to false before the conversion and
+  // set it to true after the conversion, e.g.
+  // inside LetOp: type of v, v1 are int32.
+  //   int32 v = v1 * 2   ==TypePromote==>  int64 v = v1 * 2ll
+  // outside LetOp: type of v, v2 are int32 and v is defined by LetOp.
+  //   v2 = v * 2         ==TypePromote==>  v2 = (int64)v * 2ll
+  if (symbol.is_var()) {
+    symbol.as_var()->is_let_symbol = false;
+  }
   auto promote_args = std::move(ir::TryElevateInt32ToInt64({symbol, body}));
   symbol = promote_args.at(0);
   body = promote_args.at(1);
-
+  if (symbol.is_var()) {
+    symbol.as_var()->is_let_symbol = true;
+  }
   n->symbol = symbol;
   n->body = body;
   n->set_type(n->symbol->type());
@@ -395,13 +408,15 @@ Expr _Var_::Make(Expr lower_bound,
                  const std::string &name,
                  bool is_reduce_axis,
                  bool is_symbolic_constant,
-                 bool is_keepdim) {
+                 bool is_keepdim,
+                 bool is_let_symbol) {
   auto *n = make_shared<_Var_>();
   n->lower_bound = lower_bound;
   n->upper_bound = upper_bound;
   n->is_reduce_axis = is_reduce_axis;
   n->is_keepdim = is_keepdim;
   n->is_symbolic_constant = is_symbolic_constant;
+  n->is_let_symbol = is_let_symbol;
   n->name = name;
   n->set_type(lower_bound.type());
   return Expr(n);
@@ -412,6 +427,8 @@ Expr _Var_::Copy() const {
   n->name = name;
   n->is_reduce_axis = is_reduce_axis;
   n->is_keepdim = is_keepdim;
+  n->is_symbolic_constant = is_symbolic_constant;
+  n->is_let_symbol = is_let_symbol;
   n->set_index(get_index());
   n->lower_bound = lower_bound;
   n->upper_bound = upper_bound;

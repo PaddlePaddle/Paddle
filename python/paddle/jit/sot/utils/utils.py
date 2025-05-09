@@ -231,6 +231,17 @@ def is_break_graph_api(func):
     return func in break_graph_set
 
 
+def is_namedtuple_class(cls):
+    if not inspect.isclass(cls):
+        return False
+    if not issubclass(cls, tuple):
+        return False
+    # The signature created by nametuple function
+    namedtuple_attrs = {"_make", "_asdict", "_fields", "_replace"}
+    cls_attrs = set(dir(cls))
+    return namedtuple_attrs.issubset(cls_attrs)
+
+
 def map_if(
     *structures: NestedStructure[T1],
     pred: Callable[[T1], bool],
