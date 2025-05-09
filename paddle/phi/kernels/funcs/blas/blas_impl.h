@@ -78,31 +78,31 @@ struct CBlas<phi::dtype::bfloat16> {
   }
 
   template <typename... ARGS>
-  static void VADD(int n,
+  static void VADD(int64_t n,
                    const phi::dtype::bfloat16 *x,
                    const phi::dtype::bfloat16 *y,
                    phi::dtype::bfloat16 *z) {
-    for (int i = 0; i < n; ++i) {
+    for (int64_t i = 0; i < n; ++i) {
       z[i] = x[i] + y[i];
     }
   }
 
   template <typename... ARGS>
-  static void VMUL(int n,
+  static void VMUL(int64_t n,
                    const phi::dtype::bfloat16 *x,
                    const phi::dtype::bfloat16 *y,
                    phi::dtype::bfloat16 *z) {
-    for (int i = 0; i < n; ++i) {
+    for (int64_t i = 0; i < n; ++i) {
       z[i] = x[i] * y[i];
     }
   }
 
   template <typename... ARGS>
-  static void VSUB(int n,
+  static void VSUB(int64_t n,
                    const phi::dtype::bfloat16 *x,
                    const phi::dtype::bfloat16 *y,
                    phi::dtype::bfloat16 *z) {
-    for (int i = 0; i < n; ++i) {
+    for (int64_t i = 0; i < n; ++i) {
       z[i] = x[i] - y[i];
     }
   }

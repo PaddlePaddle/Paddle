@@ -81,21 +81,21 @@ struct FabsCubicFunctor {
 
 inline void GetDims(const phi::DDim& dim,
                     int axis,
-                    int* pre,
-                    int* n,
-                    int* post,
+                    int64_t* pre,
+                    int64_t* n,
+                    int64_t* post,
                     bool asvector) {
   *pre = 1;
   *post = 1;
-  *n = static_cast<int>(dim[axis]);
+  *n = dim[axis];
   if (asvector) {
-    *n = static_cast<int>(product(dim));
+    *n = product(dim);
   } else {
     for (int i = 0; i < axis; ++i) {
-      (*pre) *= static_cast<int>(dim[i]);
+      (*pre) *= dim[i];
     }
     for (int i = axis + 1; i < dim.size(); ++i) {
-      (*post) *= static_cast<int>(dim[i]);
+      (*post) *= dim[i];
     }
   }
 }
@@ -111,7 +111,7 @@ void ReducePNormEigen(const Context& dev_ctx,
                       DenseTensor* out) {
   auto xdim = x.dims();
   if (axis < 0) axis = xdim.size() + axis;
-  int pre = 0, n = 0, post = 0;
+  int64_t pre = 0, n = 0, post = 0;
   GetDims(xdim, axis, &pre, &n, &post, asvector);
 
   for (int i = 0; i < xdim.size(); i++) {

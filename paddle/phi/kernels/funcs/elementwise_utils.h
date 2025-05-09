@@ -39,19 +39,19 @@ using DDim = phi::DDim;
  */
 inline void GetMidDims(const DDim &x_dims,
                        const DDim &y_dims,
-                       const int axis,
-                       int *pre,
-                       int *n,
-                       int *post,
-                       int *is_run_common_broadcast) {
+                       const int64_t axis,
+                       int64_t *pre,
+                       int64_t *n,
+                       int64_t *post,
+                       int64_t *is_run_common_broadcast) {
   *pre = 1;
   *n = 1;
   *post = 1;
   *is_run_common_broadcast = 0;
-  for (int i = 0; i < axis; ++i) {
+  for (int64_t i = 0; i < axis; ++i) {
     (*pre) *= x_dims[i];
   }
-  for (int i = 0; i < y_dims.size(); ++i) {
+  for (int64_t i = 0; i < y_dims.size(); ++i) {
     if (x_dims[i + axis] != y_dims[i]) {
       PADDLE_ENFORCE_EQ(y_dims[i] == 1 || x_dims[i + axis] == 1,
                         true,
@@ -69,7 +69,7 @@ inline void GetMidDims(const DDim &x_dims,
     }
     (*n) *= y_dims[i];
   }
-  for (int i = axis + y_dims.size(); i < x_dims.size(); ++i) {
+  for (int64_t i = axis + y_dims.size(); i < x_dims.size(); ++i) {
     (*post) *= x_dims[i];
   }
 }
@@ -82,7 +82,7 @@ inline DDim TrimTrailingSingularDims(const DDim &dims) {
     if (dims[actual_dims_size - 1] != 1) break;
   }
   if (actual_dims_size == dims.size()) return dims;
-  std::vector<int> trim_dims;
+  std::vector<int64_t> trim_dims;
   trim_dims.resize(actual_dims_size);
   for (int i = 0; i < actual_dims_size; ++i) {
     trim_dims[i] = dims[i];

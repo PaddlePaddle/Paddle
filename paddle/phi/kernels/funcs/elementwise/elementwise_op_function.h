@@ -115,13 +115,13 @@ template <typename T,
 static void FusedElemwiseAndActBroadcast1CPU(const T *x,
                                              const T *y,
                                              CompoundFunctor compound_functor,
-                                             int h,
-                                             int w,
+                                             int64_t h,
+                                             int64_t w,
                                              T *out,
                                              T *intermediate_out) {
-  for (int i = 0; i < h; ++i) {
-    for (int j = 0; j < w; ++j) {
-      int offset = i * w + j;
+  for (int64_t i = 0; i < h; ++i) {
+    for (int64_t j = 0; j < w; ++j) {
+      int64_t offset = i * w + j;
 
       T y_val = BcastY ? y[j] : y[offset];
       T x_val = BcastY ? x[offset] : x[j];
@@ -160,16 +160,16 @@ template <typename T,
           bool SameShapeOfIntermediateOutAndOut>
 static void FusedElemwiseAndActBroadcast2CPU(const T *x,
                                              const T *y,
-                                             int pre,
-                                             int n,
-                                             int post,
+                                             int64_t pre,
+                                             int64_t n,
+                                             int64_t post,
                                              CompoundFunctor compound_functor,
                                              T *out,
                                              T *intermediate_out) {
-  for (int i = 0; i < pre; ++i) {
-    for (int j = 0; j < n; ++j) {
-      for (int k = 0; k < post; ++k) {
-        int offset = i * n * post + j * post + k;
+  for (int64_t i = 0; i < pre; ++i) {
+    for (int64_t j = 0; j < n; ++j) {
+      for (int64_t k = 0; k < post; ++k) {
+        int64_t offset = i * n * post + j * post + k;
 
         T y_val = BcastY ? y[j] : y[offset];
         T x_val = BcastY ? x[offset] : x[j];
@@ -208,16 +208,16 @@ template <typename T,
 static __global__ void FusedElemwiseAndActBroadcast1CUDAKernel(
     const T *x,
     const T *y,
-    int h,
-    int w,
+    int64_t h,
+    int64_t w,
     CompoundFunctor compound_functor,
     T *out,
     T *intermediate_out) {
-  int i = blockIdx.x;
-  int j = threadIdx.x;
+  int64_t i = blockIdx.x;
+  int64_t j = threadIdx.x;
 
   while (j < w) {
-    int offset = i * w + j;
+    int64_t offset = i * w + j;
 
     T y_val = BcastY ? y[j] : y[offset];
     T x_val = BcastY ? x[offset] : x[j];
@@ -255,12 +255,12 @@ static void FusedElemwiseAndActBroadcast1CUDA(gpuStream_t stream,
                                               const T *x,
                                               const T *y,
                                               CompoundFunctor compound_functor,
-                                              int h,
-                                              int w,
+                                              int64_t h,
+                                              int64_t w,
                                               T *out,
                                               T *intermediate_out) {
-  int block_size = std::min(ELEMWISE_MAX_BLOCK_DIM, w);
-  int gird_size = h;
+  int64_t block_size = std::min(ELEMWISE_MAX_BLOCK_DIM, w);
+  int64_t gird_size = h;
   FusedElemwiseAndActBroadcast1CUDAKernel<T,
                                           CompoundFunctor,
                                           BcastY,
@@ -279,20 +279,20 @@ static __global__ void FusedElemwiseAndActBroadcast2CUDAKernel(
     const T *x,
     const T *y,
     CompoundFunctor compound_functor,
-    int pre,
-    int n,
-    int post,
+    int64_t pre,
+    int64_t n,
+    int64_t post,
     T *out,
     T *intermediate_out) {
-  int tid = threadIdx.x;
-  int j = blockIdx.x;
+  int64_t tid = threadIdx.x;
+  int64_t j = blockIdx.x;
 
   while (true) {
-    int i = tid / post;
-    int k = tid % post;
+    int64_t i = tid / post;
+    int64_t k = tid % post;
     if (i >= pre) break;
 
-    int offset = i * n * post + j * post + k;
+    int64_t offset = i * n * post + j * post + k;
 
     T y_val = BcastY ? y[j] : y[offset];
     T x_val = BcastY ? x[offset] : x[j];
@@ -329,14 +329,14 @@ template <typename T,
 static void FusedElemwiseAndActBroadcast2CUDA(gpuStream_t stream,
                                               const T *x,
                                               const T *y,
-                                              int pre,
-                                              int n,
-                                              int post,
+                                              int64_t pre,
+                                              int64_t n,
+                                              int64_t post,
                                               CompoundFunctor compound_functor,
                                               T *out,
                                               T *intermediate_out) {
-  int block_size = std::min(ELEMWISE_MAX_BLOCK_DIM, pre * post);
-  int gird_size = n;
+  int64_t block_size = std::min(ELEMWISE_MAX_BLOCK_DIM, pre * post);
+  int64_t gird_size = n;
 
   FusedElemwiseAndActBroadcast2CUDAKernel<T,
                                           CompoundFunctor,
@@ -395,12 +395,12 @@ void FusedElemwiseAndActComputeWithBroadcast(
   auto y_dim = phi::funcs::TrimTrailingSingularDims(y_dim_untrimed);
   axis = (y_dim.size() == 0) ? x_dim.size() : axis;
 
-  int pre, n, post, is_run_common_broadcast;
+  int64_t pre, n, post, is_run_common_broadcast;
   phi::funcs::GetMidDims(
       x_dim, y_dim, axis, &pre, &n, &post, &is_run_common_broadcast);
   if (post == 1) {
-    int h = pre;
-    int w = n;
+    int64_t h = pre;
+    int64_t w = n;
     if (dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU) {
 #if defined(__NVCC__) || defined(__HIPCC__)
       FusedElemwiseAndActBroadcast1CUDA<T,
@@ -579,8 +579,8 @@ static void FusedElemwiseAndActGradBroadcast1CPU(
     const T *intermediate_out,
     const T *out,
     const T *dout,
-    int h,
-    int w,
+    int64_t h,
+    int64_t w,
     DX_OP dx_op,
     DY_OP dy_op,
     DIntermediate_OP dintermediate_op,
@@ -589,9 +589,9 @@ static void FusedElemwiseAndActGradBroadcast1CPU(
     T *d_intermediate) {
   int64_t tmp_out_idx, x_idx, y_idx;
   T zero = static_cast<T>(0);
-  for (int i = 0; i < h; ++i) {
-    for (int j = 0; j < w; ++j) {
-      int offset = i * w + j;
+  for (int64_t i = 0; i < h; ++i) {
+    for (int64_t j = 0; j < w; ++j) {
+      int64_t offset = i * w + j;
 
       tmp_out_idx = BcastY ? j : offset;
       y_idx = BcastY ? j : offset;
@@ -675,9 +675,9 @@ static void FusedElemwiseAndActGradBroadcast2CPU(
     const T *intermediate_out,
     const T *out,
     const T *dout,
-    int pre,
-    int n,
-    int post,
+    int64_t pre,
+    int64_t n,
+    int64_t post,
     DX_OP dx_op,
     DY_OP dy_op,
     DIntermediate_OP dintermediate_op,
@@ -686,10 +686,10 @@ static void FusedElemwiseAndActGradBroadcast2CPU(
     T *d_intermediate) {
   int64_t tmp_out_idx, x_idx, y_idx;
   T zero = static_cast<T>(0);
-  for (int i = 0; i < pre; ++i) {
-    for (int j = 0; j < n; ++j) {
-      for (int k = 0; k < post; ++k) {
-        int offset = i * n * post + j * post + k;
+  for (int64_t i = 0; i < pre; ++i) {
+    for (int64_t j = 0; j < n; ++j) {
+      for (int64_t k = 0; k < post; ++k) {
+        int64_t offset = i * n * post + j * post + k;
 
         tmp_out_idx = BcastY ? j : offset;
         y_idx = BcastY ? j : offset;
@@ -778,8 +778,8 @@ static __global__ void FusedElemwiseAndActGradBroadcast1CUDAKernel(
     const T *intermediate_out,
     const T *out,
     const T *dout,
-    int h,
-    int w,
+    int64_t h,
+    int64_t w,
     DX_OP dx_op,
     DY_OP dy_op,
     DIntermediate_OP dintermediate_op,
@@ -787,22 +787,22 @@ static __global__ void FusedElemwiseAndActGradBroadcast1CUDAKernel(
     T *dy,
     T *d_intermediate) {
   __shared__ T sdata[BLOCK_Y][BLOCK_X];
-  size_t idx = threadIdx.x + BLOCK_X * blockIdx.x;
-  size_t width_stride = gridDim.x * BLOCK_X;
+  int64_t idx = threadIdx.x + BLOCK_X * blockIdx.x;
+  int64_t width_stride = gridDim.x * BLOCK_X;
 
-  size_t full_w = ROUNDUP(w, BLOCK_X);
+  int64_t full_w = ROUNDUP(w, BLOCK_X);
 
   T zero = static_cast<T>(0);
 
-  for (size_t j = idx; j < full_w; j += width_stride) {
+  for (int64_t j = idx; j < full_w; j += width_stride) {
     T val(0), inter_val(0);
     if (j < w) {
-      for (size_t i = threadIdx.y; i < h; i += BLOCK_Y) {
-        size_t offset = i * w + j;
+      for (int64_t i = threadIdx.y; i < h; i += BLOCK_Y) {
+        int64_t offset = i * w + j;
 
-        size_t tmp_out_idx = BcastY ? j : offset;
-        size_t y_idx = BcastY ? j : offset;
-        size_t x_idx = BcastY ? offset : j;
+        int64_t tmp_out_idx = BcastY ? j : offset;
+        int64_t y_idx = BcastY ? j : offset;
+        int64_t x_idx = BcastY ? offset : j;
         T x_val = (x == nullptr) ? zero : x[x_idx];
         T y_val = (y == nullptr) ? zero : y[y_idx];
 
@@ -911,8 +911,8 @@ static void FusedElemwiseAndActGradBroadcast1CUDA(
     const T *intermediate_out,
     const T *out,
     const T *dout,
-    int h,
-    int w,
+    int64_t h,
+    int64_t w,
     DX_OP dx_op,
     DY_OP dy_op,
     DIntermediate_OP dintermediate_op,
@@ -962,28 +962,28 @@ static __global__ void FusedElemwiseAndActGradBroadcast2CUDAKernel(
     const T *intermediate_out,
     const T *out,
     const T *dout,
-    int pre,
-    int n,
-    int post,
+    int64_t pre,
+    int64_t n,
+    int64_t post,
     DX_OP dx_op,
     DY_OP dy_op,
     DIntermediate_OP dintermediate_op,
     T *dx,
     T *dy,
     T *d_intermediate) {
-  int tid = threadIdx.x;
-  int j = blockIdx.x;
+  int64_t tid = threadIdx.x;
+  int64_t j = blockIdx.x;
 
   T val(0), inter_val(0);
-  int ttid = tid;
+  int64_t ttid = tid;
   int64_t tmp_out_idx, x_idx, y_idx;
   T zero = static_cast<T>(0);
   while (true) {
-    int i = ttid / post;
-    int k = ttid % post;
+    int64_t i = ttid / post;
+    int64_t k = ttid % post;
     if (i >= pre) break;
 
-    int offset = i * n * post + j * post + k;
+    int64_t offset = i * n * post + j * post + k;
 
     tmp_out_idx = BcastY ? j : offset;
     y_idx = BcastY ? j : offset;
@@ -1082,17 +1082,17 @@ static void FusedElemwiseAndActGradBroadcast2CUDA(
     const T *intermediate_out,
     const T *out,
     const T *dout,
-    int pre,
-    int n,
-    int post,
+    int64_t pre,
+    int64_t n,
+    int64_t post,
     DX_OP dx_op,
     DY_OP dy_op,
     DIntermediate_OP dintermediate_op,
     T *dx,
     T *dy,
     T *dintermediate) {
-  int block_size = std::min(ELEMWISE_MAX_BLOCK_DIM, pre * post);
-  int gird_size = n;
+  int64_t block_size = std::min(ELEMWISE_MAX_BLOCK_DIM, pre * post);
+  int64_t gird_size = n;
   FusedElemwiseAndActGradBroadcast2CUDAKernel<T,
                                               DX_OP,
                                               DY_OP,
@@ -1145,7 +1145,7 @@ void FusedElemwiseAndActGradComputeWithBroadcast(
   auto y_dim = phi::funcs::TrimTrailingSingularDims(y_dim_untrimed);
   axis = (y_dim.size() == 0) ? x_dim.size() : axis;
 
-  int pre, n, post, is_run_common_broadcast;
+  int64_t pre, n, post, is_run_common_broadcast;
   phi::funcs::GetMidDims(
       x_dim, y_dim, axis, &pre, &n, &post, &is_run_common_broadcast);
   const T *x_data = nullptr;
@@ -1153,8 +1153,8 @@ void FusedElemwiseAndActGradComputeWithBroadcast(
   if (x->IsInitialized()) x_data = x->data<T>();
   if (y->IsInitialized()) y_data = y->data<T>();
   if (post == 1) {
-    int h = pre;
-    int w = n;
+    int64_t h = pre;
+    int64_t w = n;
 
     if (dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU) {
 #if defined(__NVCC__) || defined(__HIPCC__)

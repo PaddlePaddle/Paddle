@@ -26,21 +26,21 @@ namespace phi {
 
 inline void GetDims(const phi::DDim& dim,
                     int axis,
-                    int* pre,
-                    int* n,
-                    int* post,
+                    int64_t* pre,
+                    int64_t* n,
+                    int64_t* post,
                     bool asvector) {
   *pre = 1;
   *post = 1;
-  *n = static_cast<int>(dim[axis]);
+  *n = static_cast<int64_t>(dim[axis]);
   if (asvector) {
-    *n = static_cast<int>(product(dim));
+    *n = static_cast<int64_t>(product(dim));
   } else {
     for (int i = 0; i < axis; ++i) {
-      (*pre) *= static_cast<int>(dim[i]);
+      (*pre) *= static_cast<int64_t>(dim[i]);
     }
     for (int i = axis + 1; i < dim.size(); ++i) {
-      (*post) *= static_cast<int>(dim[i]);
+      (*post) *= static_cast<int64_t>(dim[i]);
     }
   }
 }
@@ -59,7 +59,7 @@ void PNormKernel(const Context& dev_ctx,
 
   auto xdim = in_x->dims();
   if (axis < 0) axis = xdim.size() + axis;
-  int pre = 0, n = 0, post = 0;
+  int64_t pre = 0, n = 0, post = 0;
   GetDims(xdim, axis, &pre, &n, &post, asvector);
 
   if (x.numel() == 0) {
@@ -73,8 +73,8 @@ void PNormKernel(const Context& dev_ctx,
 
   auto* place = dev_ctx.eigen_device();
 
-  Eigen::DSizes<int, 3> shape(pre, n, post);
-  Eigen::DSizes<int, 2> norm_shape(pre, post);
+  Eigen::DSizes<int64_t, 3> shape(pre, n, post);
+  Eigen::DSizes<int64_t, 2> norm_shape(pre, post);
 
   auto x_e = phi::EigenVector<T>::Flatten(*in_x);
   auto norm_e = phi::EigenVector<T>::Flatten(*out);
@@ -86,7 +86,7 @@ void PNormKernel(const Context& dev_ctx,
   // p=inf means the maximum of |xr|
   // p=-inf means the minimum of |xr|
   // otherwise, Lp-norm = pow(sum(pow(|xr|, p)), 1/p)
-  Eigen::DSizes<int, 1> rdim(1);
+  Eigen::DSizes<int64_t, 1> rdim(1);
   if (porder == 0) {
     norm.device(*place) = (xr != xr.constant(0)).template cast<T>().sum(rdim);
   } else if (porder == INFINITY) {

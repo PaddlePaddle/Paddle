@@ -222,7 +222,7 @@ class TransformFunctor {
     trans(ctx_, x_, x_ + nx_, y_, z_, func_);
   }
 
-  inline void RunRowWise(int n) const {
+  inline void RunRowWise(int64_t n) const {
     phi::Transform<DeviceContext> trans;
     if (is_xsize_larger_) {
       trans(ctx_,
@@ -241,7 +241,7 @@ class TransformFunctor {
     }
   }
 
-  inline void RunMidWise(int n, int post) const {
+  inline void RunMidWise(int64_t n, int64_t post) const {
     phi::Transform<DeviceContext> trans;
     if (is_xsize_larger_) {
       trans(ctx_,
@@ -294,8 +294,8 @@ void CommonForwardBroadcastCPU(const DenseTensor &x,
                                            out_dims_array + max_dim,
                                            1ll,
                                            std::multiplies<int64_t>());
-  int x_index, y_index;
-  for (int out_index = 0; out_index < out_size; ++out_index) {
+  int64_t x_index, y_index;
+  for (int64_t out_index = 0; out_index < out_size; ++out_index) {
     x_index = GetElementwiseIndex(x_dims_array, max_dim, index_array.data());
     y_index = GetElementwiseIndex(y_dims_array, max_dim, index_array.data());
     if (is_xsize_larger) {
@@ -403,7 +403,7 @@ void ElementwiseCompute(const CPUContext &dev_ctx,
           max_dim,
           axis));
 
-  int pre, n, post, is_run_common_broadcast, axis_trim = 0;
+  int64_t pre, n, post, is_run_common_broadcast, axis_trim = 0;
   if (is_xsize_larger) {
     auto y_dims_trimmed = TrimTrailingSingularDims(y_dims);
     axis_trim = (y_dims_trimmed.size() == 0) ? x_dims.size() : axis;

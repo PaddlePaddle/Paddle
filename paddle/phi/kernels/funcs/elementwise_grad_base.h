@@ -32,7 +32,7 @@ limitations under the License. */
 
 #endif
 
-constexpr int ELEMWISE_MAX_BLOCK_DIM = 1024;
+constexpr int64_t ELEMWISE_MAX_BLOCK_DIM = 1024;
 
 #define BLOCK_X 32
 #define BLOCK_Y 32
@@ -104,8 +104,8 @@ static void ElemwiseGradBroadcast1CPU(const T *x,
                                       const T *y,
                                       const Tout *out,
                                       const Tout *dout,
-                                      int h,
-                                      int w,
+                                      int64_t h,
+                                      int64_t w,
                                       bool is_xsize_larger,
                                       DX_OP dx_op,
                                       DY_OP dy_op,
@@ -114,10 +114,10 @@ static void ElemwiseGradBroadcast1CPU(const T *x,
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
 
   if (is_xsize_larger) {
-    for (int j = 0; j < w; ++j) {
+    for (int64_t j = 0; j < w; ++j) {
       MPType sum_y = static_cast<MPType>(0);
-      for (int i = 0; i < h; ++i) {
-        int x_offset = i * w + j;
+      for (int64_t i = 0; i < h; ++i) {
+        int64_t x_offset = i * w + j;
         if (dx != nullptr) {
           dx[x_offset] =
               dx_op(x[x_offset], y[j], out[x_offset], dout[x_offset]);
@@ -132,10 +132,10 @@ static void ElemwiseGradBroadcast1CPU(const T *x,
       }
     }
   } else {
-    for (int j = 0; j < w; ++j) {
+    for (int64_t j = 0; j < w; ++j) {
       MPType sum_x = static_cast<MPType>(0);
-      for (int i = 0; i < h; ++i) {
-        int y_offset = i * w + j;
+      for (int64_t i = 0; i < h; ++i) {
+        int64_t y_offset = i * w + j;
         if (dy != nullptr) {
           dy[y_offset] =
               dy_op(x[j], y[y_offset], out[y_offset], dout[y_offset]);
@@ -157,9 +157,9 @@ static void ElemwiseGradBroadcast2CPU(const T *x,
                                       const T *y,
                                       const Tout *out,
                                       const Tout *dout,
-                                      int pre,
-                                      int n,
-                                      int post,
+                                      int64_t pre,
+                                      int64_t n,
+                                      int64_t post,
                                       bool is_xsize_larger,
                                       DX_OP dx_op,
                                       DY_OP dy_op,
@@ -168,11 +168,11 @@ static void ElemwiseGradBroadcast2CPU(const T *x,
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
 
   if (is_xsize_larger) {
-    for (int j = 0; j < n; ++j) {
+    for (int64_t j = 0; j < n; ++j) {
       MPType sum_y = static_cast<MPType>(0);
-      for (int i = 0; i < pre; ++i) {
-        for (int k = 0; k < post; ++k) {
-          int x_offset = i * n * post + j * post + k;
+      for (int64_t i = 0; i < pre; ++i) {
+        for (int64_t k = 0; k < post; ++k) {
+          int64_t x_offset = i * n * post + j * post + k;
           if (dx != nullptr) {
             dx[x_offset] =
                 dx_op(x[x_offset], y[j], out[x_offset], dout[x_offset]);
@@ -188,11 +188,11 @@ static void ElemwiseGradBroadcast2CPU(const T *x,
       }
     }
   } else {
-    for (int j = 0; j < n; ++j) {
+    for (int64_t j = 0; j < n; ++j) {
       MPType sum_x = static_cast<MPType>(0);
-      for (int i = 0; i < pre; ++i) {
-        for (int k = 0; k < post; ++k) {
-          int y_offset = i * n * post + j * post + k;
+      for (int64_t i = 0; i < pre; ++i) {
+        for (int64_t k = 0; k < post; ++k) {
+          int64_t y_offset = i * n * post + j * post + k;
           if (dy != nullptr) {
             dy[y_offset] =
                 dy_op(x[j], y[y_offset], out[y_offset], dout[y_offset]);
@@ -298,7 +298,7 @@ void ElemwiseGradComputeWithBroadcast(const CPUContext &ctx,
           max_dim,
           axis));
 
-  int pre, n, post, is_run_common_broadcast, axis_trim = 0;
+  int64_t pre, n, post, is_run_common_broadcast, axis_trim = 0;
   if (is_xsize_larger) {
     auto y_dims_trimmed = TrimTrailingSingularDims(y_dims);
     axis_trim = (y_dims_trimmed.size() == 0) ? x_dims.size() : axis;
