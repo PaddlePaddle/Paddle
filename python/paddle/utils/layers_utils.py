@@ -596,7 +596,7 @@ def is_same_shape(shape1: ShapeLike, shape2: ShapeLike) -> bool:
     return True
 
 
-def _init_params_decorator(func):
+def _init_lazy_guard_params(func):
     """
     Only in dygraph mode, Decorator function that initializes parameters before calling the decorated method.
 
@@ -614,11 +614,11 @@ def _init_params_decorator(func):
 
     @functools.wraps(func)
     def wrapper(self, *args, **kwargs):
-        if not self._is_parameters_initialized:
+        if not self._is_lazy_guard_initialized:
             for _, param in self.named_parameters():
                 if not param._is_initialized():
                     param.initialize()
-            self._is_parameters_initialized = True
+            self._is_lazy_guard_initialized = True
 
         return func(self, *args, **kwargs)
 

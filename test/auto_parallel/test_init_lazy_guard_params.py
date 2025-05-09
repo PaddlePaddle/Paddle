@@ -37,7 +37,7 @@ class TestObjectListCommunication(test_base.CommunicationTestDistBase):
         )
         for envs in envs_list:
             self.run_test_case(
-                "init_params_decorator_demo.py",
+                "init_lazy_guard_params_demo.py",
                 user_defined_envs=envs,
             )
 

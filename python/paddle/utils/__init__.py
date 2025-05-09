@@ -28,7 +28,7 @@ from .layers_utils import (  # noqa: F401
     _contain_var,
     _convert_to_tensor_list,
     _hash_with_id,
-    _init_params_decorator,
+    _init_lazy_guard_params,
     _is_symmetric_padding,
     _packed_nest_with_indices,
     _recursive_assert_same_structure,

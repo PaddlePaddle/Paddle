@@ -463,7 +463,7 @@ class Layer:
         self._original_funcs = OrderedDict()
 
         # Records parameters whether they are initialized
-        self._is_parameters_initialized = False
+        self._is_lazy_guard_initialized = False
 
     def train(self) -> None:
         """
