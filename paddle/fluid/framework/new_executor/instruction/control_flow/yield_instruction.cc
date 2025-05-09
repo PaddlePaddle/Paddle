@@ -45,7 +45,7 @@ YieldInstruction::YieldInstruction(size_t id,
       input_vars_.push_back(value_exe_info_->GetVarByValue(in));
     } else {
       // value 为空的时候根据 parent op 输出 value 的 meta 信息填一个全 0
-      // tensor进去 build instruction 的时候先创建 var
+      // tensor。Build instruction 的时候先创建 var
       if (parent_op->result(i) && parent_op->result(i).type()) {
         auto out_type = parent_op->result(i).type();
         std::string new_name = "_fake_var_op_" + std::to_string(op->id()) +
