@@ -33,6 +33,9 @@ jobs:
     runs-on:
       group: GZ_BD-CPU
     steps:
+      - name: Check submodules status
+        run: git submodule foreach --recursive 'git rev-parse HEAD || rm -rf $PWD' || true
+
       - name: Checkout paddle
         uses: actions/checkout@v4
         with:
