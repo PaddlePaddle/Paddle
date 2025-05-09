@@ -77,8 +77,6 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
                   test_pattern_match_deprecated)
   py_test_modules(test_rule_based_tuner_deprecated MODULES
                   test_rule_based_tuner_deprecated)
-  py_test_modules(test_shard_layer_api_deprecated MODULES
-                  test_shard_layer_api_deprecated)
   # End of unittests WITH single card WITHOUT timeout
 
   py_test_modules(test_pass_grad_clip_deprecated MODULES
@@ -137,8 +135,6 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_to_static_deprecated MODULES test_to_static_deprecated)
   py_test_modules(test_dist_attr_v2_deprecated MODULES
                   test_dist_attr_v2_deprecated)
-  py_test_modules(test_dist_matmul_deprecated MODULES
-                  test_dist_matmul_deprecated)
   py_test_modules(test_dist_assign_deprecated MODULES
                   test_dist_assign_deprecated)
   py_test_modules(test_dist_concat_deprecated MODULES
