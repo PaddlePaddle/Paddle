@@ -820,10 +820,11 @@ std::shared_ptr<OpStrategy> StrategyForPool2d(
     const std::vector<std::vector<int>> &output_shapes,
     const Target &target) {
   auto attr_store = attrs.attr_store;
-  std::vector<int> kernel_size;   // [kernel_h, kernel_w]
-  std::vector<int> stride_size;   // [stride_h, stride_w]
-  std::vector<int> padding_size;  // [padding_top, padding_left,
-                                  // padding_bottom, padding_right]
+  std::vector<int> kernel_size;    // [kernel_h, kernel_w]
+  std::vector<int> stride_size;    // [stride_h, stride_w]
+  std::vector<int> padding_size;   // [padding_top, padding_left,
+                                   // padding_bottom, padding_right]
+  std::vector<int> dilation_size;  // [dilation_h, dilation_w]
   std::string pool_type = "max";
   bool ceil_mode = false;
   bool exclusive = true;
@@ -837,6 +838,8 @@ std::shared_ptr<OpStrategy> StrategyForPool2d(
       stride_size = absl::get<std::vector<int>>(iter.second);
     } else if (iter.first == "padding_size") {
       padding_size = absl::get<std::vector<int>>(iter.second);
+    } else if (iter.first == "dilation_size") {
+      dilation_size = absl::get<std::vector<int>>(iter.second);
     } else if (iter.first == "pool_type") {
       pool_type = absl::get<std::string>(iter.second);
     } else if (iter.first == "ceil_mode") {
@@ -879,6 +882,10 @@ std::shared_ptr<OpStrategy> StrategyForPool2d(
                     false,
                     ::common::errors::NotFound(
                         "Padding_size for pool2d is empty! Please check."));
+  PADDLE_ENFORCE_EQ(dilation_size.empty(),
+                    false,
+                    ::common::errors::NotFound(
+                        "Dilation_size for pool2d is empty! Please check."));
   PADDLE_ENFORCE(pool_type == "max" || pool_type == "avg",
                  ::common::errors::InvalidArgument(
                      "pool_type for pool2d should be max or avg."));
@@ -978,6 +985,7 @@ std::shared_ptr<OpStrategy> StrategyForPool2d(
                           kernel_size,
                           stride_size,
                           padding_size,
+                          dilation_size,
                           pool_type,
                           ceil_mode,
                           exclusive,
