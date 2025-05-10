@@ -288,8 +288,7 @@ def monkey_patch_value():
             # Python implementation of the input validation logic for the C++ function `tensor__getitem_from_offset`.
 
             dims = tensor.shape
-
-            numel = reduce(lambda x, y: x * y, dims)
+            numel = reduce(lambda x, y: x * y, dims) if len(dims) != 0 else 1
             offset = 0
 
             if len(args) == 0:
