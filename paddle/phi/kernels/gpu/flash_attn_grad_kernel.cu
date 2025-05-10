@@ -227,8 +227,8 @@ void FlashAttnUnpaddedGradBaseKernel(
     const DenseTensor& seed_offset,
     const paddle::optional<DenseTensor>& attn_mask,
     const DenseTensor& dout,
-    int64_t max_seqlen_q,
-    int64_t max_seqlen_k,
+    const Scalar& max_seqlen_q_,
+    const Scalar& max_seqlen_k_,
     float scale,
     float dropout,
     bool causal,
@@ -293,6 +293,9 @@ void FlashAttnUnpaddedGradBaseKernel(
       head_size,
       common::errors::InvalidArgument(
           "flash_attn_bwd receive input with head_size_og == head_size"));
+
+  int64_t max_seqlen_q = max_seqlen_q_.to<int64_t>();
+  int64_t max_seqlen_k = max_seqlen_k_.to<int64_t>();
 
   FlashAttnBwdParamsV2 params =
       FlashAttnBwdParamsV2(ctx,
@@ -479,8 +482,8 @@ void FlashAttnUnpaddedGradKernel(const Context& ctx,
                                  const DenseTensor& seed_offset,
                                  const paddle::optional<DenseTensor>& attn_mask,
                                  const DenseTensor& dout,
-                                 int64_t max_seqlen_q,
-                                 int64_t max_seqlen_k,
+                                 const Scalar& max_seqlen_q,
+                                 const Scalar& max_seqlen_k,
                                  float scale,
                                  float dropout,
                                  bool causal,
@@ -569,8 +572,8 @@ void FlashAttnVarlenQKVPackedGradKernel(
     const DenseTensor& seed_offset,
     const paddle::optional<DenseTensor>& attn_mask,
     const DenseTensor& dout,
-    int64_t max_seqlen_q,
-    int64_t max_seqlen_k,
+    const Scalar& max_seqlen_q,
+    const Scalar& max_seqlen_k,
     float scale,
     float dropout,
     bool causal,

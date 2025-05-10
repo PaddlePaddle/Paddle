@@ -54,6 +54,7 @@ struct ScheduleConfig {
     int64_t grid_reduce_num{1};
     int64_t spatial_inner_num{1};
     int64_t vectorize_factor{1};
+    int64_t reduce_inner_num{1};
     ReduceMethod reduce_method{NoneReduceMethod()};
   };
 

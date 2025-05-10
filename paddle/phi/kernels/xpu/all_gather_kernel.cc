@@ -46,7 +46,7 @@ void AllGatherKernel(const Context& dev_ctx,
       errors::InvalidArgument(
           "nranks: %s should equal to %s", nranks, comm_ctx->GetSize()));
 
-  XPUStream stream = comm_ctx->GetStream();
+  XPUStream stream = dev_ctx.stream();
   comm_ctx->AllGather(out, x, stream);
 #else
   PADDLE_THROW(common::errors::PreconditionNotMet(

@@ -1546,7 +1546,7 @@ class Executor:
         Prune operators and variables which are not needed to generate
         :code:`fetch_list` and optimize operators.
         Prune operators and variables which are needed
-        to generate variables to be feeded.
+        to generate variables to be fed.
 
         Notes: This is a very low level API. Users should not use this API
         directly.

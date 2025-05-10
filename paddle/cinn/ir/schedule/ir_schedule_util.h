@@ -134,7 +134,7 @@ void ReplaceExpr(Expr* source,
  * Validate the factors param of Split. We will check if factors are validate
  * and change -1 to positive integer.
  * @param factors The original factors.
- * @param total_extent The extent of the loop to be splitted.
+ * @param total_extent The extent of the loop to be split.
  * @return return The validated factors.
  */
 std::vector<int> ValidateFactors(const std::vector<int>& factors,

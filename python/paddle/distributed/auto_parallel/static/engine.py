@@ -230,31 +230,6 @@ class Engine:
 
         self._logger = get_logger(logging.INFO)
 
-        self._json_config = None
-        if cluster:
-            self._cluster = cluster
-        else:
-            auto_config = None
-            if os.getenv("PADDLE_AUTO_PARALLEL_CONFIG"):
-                try:
-                    path = os.getenv("PADDLE_AUTO_PARALLEL_CONFIG")
-                    with open(path, "r") as f:
-                        self._json_config = json.load(f)
-                except Exception as e:
-                    self._logger.info(
-                        "Load json failed, please check json file, engine will run default config."
-                    )
-                    self._json_config = None
-            else:
-                if os.getenv("PADDLE_AUTO_CLUSTER"):
-                    auto_config = int(os.getenv("PADDLE_AUTO_CLUSTER"))
-            self._cluster = get_default_cluster(self._json_config, auto_config)
-
-        if self._cluster is None:
-            raise TypeError(
-                "'cluster' must be the object or class `paddle.distributed.auto_parallel.Cluster`"
-            )
-
         # for compute cost
         # TODO: remove _fwd_main_progs and _orig_optimizer and _pir_main_progs
         self._fwd_dist_contexts = {}
@@ -325,6 +300,35 @@ class Engine:
         self.enable_job_schedule_profiler = False
 
         self.fused_ffn_qkv = None
+
+        # self._cluster is UNUSED in PIR mode
+        if not self._in_pir_mode:
+            self._json_config = None
+            if cluster:
+                self._cluster = cluster
+            else:
+                auto_config = None
+                if os.getenv("PADDLE_AUTO_PARALLEL_CONFIG"):
+                    try:
+                        path = os.getenv("PADDLE_AUTO_PARALLEL_CONFIG")
+                        with open(path, "r") as f:
+                            self._json_config = json.load(f)
+                    except Exception as e:
+                        self._logger.info(
+                            "Load json failed, please check json file, engine will run default config."
+                        )
+                        self._json_config = None
+                else:
+                    if os.getenv("PADDLE_AUTO_CLUSTER"):
+                        auto_config = int(os.getenv("PADDLE_AUTO_CLUSTER"))
+                self._cluster = get_default_cluster(
+                    self._json_config, auto_config
+                )
+
+            if self._cluster is None:
+                raise TypeError(
+                    "'cluster' must be the object or class `paddle.distributed.auto_parallel.Cluster`"
+                )
 
     # get dist input spec from shard dataloader
     def _prepare_data_spec_from_dataloader(self, dataloader):

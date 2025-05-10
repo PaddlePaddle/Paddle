@@ -72,6 +72,48 @@ class TestConverterDummy(unittest.TestCase):
             err_msg="Outputs are not within the 1e-2 tolerance",
         )
 
+    def test_paddle_to_tensorrt_collect_shape(self):
+        program, scope, param_dict = get_dummy_program()
+
+        # Set input
+        input_data = tuple(
+            np.random.rand(n, 64).astype(np.float32) for n in (1, 4, 8)
+        )
+        input_optim_data = input_data[1]
+        input_config = Input(warmup_data=input_data)
+
+        # Create a TensorRTConfig with inputs as a required field.
+        trt_config = TensorRTConfig(inputs=[input_config])
+        trt_config.precision_mode = PrecisionMode.FP16
+        trt_config.ops_run_float = "pd_op.add"
+        trt_config.optimization_level = 5
+
+        # get tensorrt_engine_op(converted_program)
+        program_with_trt = convert_to_trt(program, trt_config, scope)
+
+        output_var = program.list_vars()[-1]
+
+        # get original results(for tests only)
+        output_expected = predict_program(
+            program, {"input": input_optim_data}, [output_var]
+        )
+
+        output_var = program_with_trt.list_vars()[-1]
+
+        # run inference(converted_program)
+        output_converted = predict_program(
+            program_with_trt, {"input": input_optim_data}, [output_var]
+        )
+
+        # Check that the results are close to each other within a tolerance of 1e-2
+        np.testing.assert_allclose(
+            output_expected[0],
+            output_converted[0],
+            rtol=1e-2,
+            atol=1e-2,
+            err_msg="Auto shape collection outputs mismatch",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

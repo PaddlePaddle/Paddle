@@ -101,4 +101,10 @@ PD_REGISTER_KERNEL(gather_grad,
                    ALL_LAYOUT,
                    phi::GatherGradKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   int8_t,
+                   int16_t,
+                   int32_t,
+                   int64_t,
+                   bool) {}

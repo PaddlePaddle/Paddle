@@ -105,7 +105,7 @@ void parallel_run(const WorkerFuncType& fn,
     LOG(ERROR) << "Parallel compile error " << e.what();
     PADDLE_THROW(::common::errors::Fatal("Parallel compile std::exception"));
   } catch (...) {
-    PADDLE_THROW(::common::errors::Fatal("Parallel compile unknow exception"));
+    PADDLE_THROW(::common::errors::Fatal("Parallel compile unknown exception"));
   }
 }
 

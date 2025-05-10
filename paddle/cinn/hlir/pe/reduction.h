@@ -144,6 +144,25 @@ ir::Tensor ReduceAny(const ir::Tensor& A,
                      const std::string& output_name = "T_Reduce_Any_out");
 
 /**
+ * @brief compute the variance of array elements over the given axis
+ *
+ * @param A The input Tensor
+ * @param axis Axis or axes to compute the variance over. If axis is empty, the
+ * operation will compute over all elements of the input array. If axis is
+ * negative it counts from the last to the first axis.
+ * @param keep_dims If it is set true, the axes which are reduced are left in
+ * the result as dimensions with size one. With this option, the result will
+ * broadcast correctly against the input array.
+ * @param output_name The name of the output Tensor
+ *
+ * @return The result Tensor.
+ */
+ir::Tensor Variance(const ir::Tensor& A,
+                    const std::vector<int>& axis,
+                    const bool keep_dims = false,
+                    const std::string& output_name = "T_Variance_out");
+
+/**
  * @brief find the max of array elements over the last dimension
  *
  * @param A The input Tensor.
@@ -467,6 +486,8 @@ std::vector<ir::Tensor> TwoStepBlockReduceAny(
     const std::vector<int>& axes,
     const bool keep_dim,
     const std::string& output_name = "T_Reduce_Any_out");
+
+constexpr char* kVarianceFuncName = "cinn_reduce_variance";
 
 std::string CrossThreadReduceExternalFuncName(const ir::Expr& op,
                                               const ir::Expr& tensor);

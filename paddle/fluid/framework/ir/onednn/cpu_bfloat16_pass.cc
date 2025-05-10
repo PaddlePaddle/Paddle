@@ -146,7 +146,7 @@ class Quantizer final : public Quanter {
   // should be added before the input to the operator
   bool IsNotPermittedName(const std::string& input_name) const override {
     // Only the inputs listed in \"permitted_names\"
-    // requires quanitization before the bfloat16 operator.
+    // requires quantization before the bfloat16 operator.
     // Other inputs, such as Filter and Bias are reordered in the kernel.
     const std::vector<std::string> permitted_names = {
         "X", "Y", "Input", "ResidualData"};

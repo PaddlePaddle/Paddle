@@ -85,9 +85,23 @@ pir::Value dtensor_from_local(const pir::Value& x,
       .result(0);
 }
 
-pir::Value dtensor_to_local(const pir::Value& x) {
-  return ApiBuilder::Instance().GetBuilder()->Build<DtensorToLocalOp>(x).result(
-      0);
+pir::Value dtensor_to_local(
+    const pir::Value& x,
+    const phi::distributed::ProcessMesh& process_mesh,
+    const std::vector<int64_t>& dims_mapping,
+    const flat_hash_map<int64_t, phi::ReduceType>& partial_status) {
+  pir::IrContext* ctx = pir::IrContext::Instance();
+  TensorDistAttribute grad_dist_attr =
+      TensorDistAttribute::get(ctx, process_mesh, dims_mapping, partial_status);
+  return dtensor_to_local(x, grad_dist_attr);
+}
+
+pir::Value dtensor_to_local(const pir::Value& x,
+                            const TensorDistAttribute& grad_dist_attr) {
+  return ApiBuilder::Instance()
+      .GetBuilder()
+      ->Build<DtensorToLocalOp>(x, grad_dist_attr)
+      .result(0);
 }
 
 std::vector<pir::Value> moe_sub_mesh_tensors(

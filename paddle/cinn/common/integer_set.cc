@@ -92,7 +92,7 @@ std::optional<bool> SymbolicExprAnalyzer::ProveEQ(const ir::Expr& lhs,
     if (lhs == rhs) {
       return true;
     }
-    ir::Expr diff = AutoSimplify(ir::Sub::Make(lhs, rhs), var_intervals_);
+    ir::Expr diff = optim::ArithSimplify(ir::Sub::Make(lhs, rhs));
     if (diff.is_constant()) {
       return diff.get_constant() == 0;
     }
@@ -149,7 +149,7 @@ std::optional<bool> SymbolicExprAnalyzer::ProveGE(const ir::Expr& lhs,
         rhs == SymbolicExprLimit::negative_inf) {
       return true;
     }
-    ir::Expr diff = AutoSimplify(ir::Sub::Make(lhs, rhs), var_intervals_);
+    ir::Expr diff = optim::ArithSimplify(ir::Sub::Make(lhs, rhs));
     VLOG(6) << "diff of " << ir::Sub::Make(lhs, rhs) << " = " << diff;
     if (diff.is_constant() && diff.get_constant() < 0) {
       return false;
@@ -195,7 +195,7 @@ std::optional<bool> SymbolicExprAnalyzer::ProveGT(const ir::Expr& lhs,
         rhs == SymbolicExprLimit::negative_inf) {
       return true;
     }
-    ir::Expr diff = AutoSimplify(ir::Sub::Make(lhs, rhs), var_intervals_);
+    ir::Expr diff = optim::ArithSimplify(ir::Sub::Make(lhs, rhs));
     VLOG(6) << "diff of " << ir::Sub::Make(lhs, rhs) << " = " << diff;
     if (diff.is_constant() && diff.get_constant() <= 0) {
       return false;
@@ -370,6 +370,9 @@ class BoundReplacer : public ir::IRMutator<> {
 
  private:
   void Visit(const ir::_Var_* var, ir::Expr* op) override {
+    // if the variable is S0/S1..., do not replace it.
+    if (var->is_symbolic_constant) return;
+
     ir::Expr lower_bound = SymbolicExprLimit::negative_inf;
     ir::Expr upper_bound = SymbolicExprLimit::positive_inf;
     if (var_intervals_.count(var->name) != 0) {

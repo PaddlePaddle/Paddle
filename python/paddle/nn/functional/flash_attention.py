@@ -20,7 +20,7 @@ import numpy as np
 
 import paddle
 import paddle.nn.functional as F
-from paddle import _C_ops, in_dynamic_mode
+from paddle import _C_ops
 from paddle.base.framework import in_dynamic_or_pir_mode
 from paddle.base.layer_helper import LayerHelper
 from paddle.base.wrapped_decorator import signature_safe_contextmanager
@@ -890,7 +890,7 @@ def flash_attn_unpadded(
             >>> output = paddle.nn.functional.flash_attention.flash_attn_unpadded(qq, qq, qq, cu, cu, 128, 128, 0.25, 0.0, False, False)
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         (
             result_attention,
             result_softmax,
@@ -1078,7 +1078,7 @@ def flash_attn_varlen_qkvpacked(
             >>> # doctest: -SKIP
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         (
             result_attention,
             result_softmax,

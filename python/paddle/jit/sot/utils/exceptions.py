@@ -15,6 +15,154 @@ from __future__ import annotations
 
 import traceback
 
+from .info_collector import BreakGraphReasonInfo
+
+
+class BreakGraphReasonBase:
+    """Base class for representing reasons why graph execution was interrupted.
+
+    Attributes:
+        reason_str (str): Description of the break reason
+        file_path (str): Path to the file where break occurred
+        line_number (int): Line number where break occurred
+    """
+
+    def __init__(
+        self,
+        reason_str,
+        file_path="",
+        line_number=-1,
+    ):
+        self.reason_str = reason_str
+        self.file_path = file_path
+        self.line_number = line_number
+
+    def __repr__(self) -> str:
+        return f"{self.reason_str}"
+
+
+class DataDependencyBreak(BreakGraphReasonBase):
+    pass
+
+
+class DataDependencyControlFlowBreak(DataDependencyBreak):
+    """Break reason for control flow execution."""
+
+    def __init__(self, reason_str=None, file_path="", line_number=-1):
+        if reason_str is None:
+
+            reason_str = "OpcodeInlineExecutor want break graph when simulate control flow."
+
+        super().__init__(
+            reason_str,
+            file_path,
+            line_number,
+        )
+
+
+class DataDependencyDynamicShapeBreak(DataDependencyBreak):
+    pass
+
+
+class DataDependencyOperationBreak(DataDependencyBreak):
+    pass
+
+
+class UnsupportedOperationBreak(BreakGraphReasonBase):
+    def __init__(
+        self,
+        *,
+        left_type=None,
+        right_type=None,
+        operator=None,
+        reason_str=None,
+        file_path="",
+        line_number=-1,
+    ):
+        if reason_str is None:
+            reason_str = f"Unsupported operator '{operator}' between {left_type} and {right_type}"
+        super().__init__(reason_str, file_path, line_number)
+
+
+class UnsupportedPaddleAPIBreak(UnsupportedOperationBreak):
+    def __init__(
+        self,
+        *,
+        fn_name=None,
+        reason_str=None,
+        file_path="",
+        line_number=-1,
+    ):
+        if reason_str is None:
+            reason_str = f"Not support Paddlepaddle API: {fn_name}"
+
+        super().__init__(
+            reason_str=reason_str,
+            file_path=file_path,
+            line_number=line_number,
+        )
+
+
+class BuiltinFunctionBreak(UnsupportedOperationBreak):
+    """Break reason for unsupported built-in function calls.
+
+    Args:
+        fn_name (str): Name of the builtin function
+        arg_types (list): Types of the arguments passed to the function
+        file_path (str): Path to the file where break occurred
+        line_number (int): Line number where break occurred
+    """
+
+    def __init__(
+        self,
+        *,
+        fn_name=None,
+        arg_types=None,
+        reason_str=None,
+        file_path="",
+        line_number=-1,
+    ):
+        if reason_str is None:
+            reason_str = f"Not support builtin function: {fn_name} with args: Args({arg_types})"
+
+        super().__init__(
+            reason_str=reason_str,
+            file_path=file_path,
+            line_number=line_number,
+        )
+
+
+class SideEffectBreak(BreakGraphReasonBase):
+    pass
+
+
+class UnsupportedIteratorBreak(SideEffectBreak):
+    pass
+
+
+class InlineCallBreak(BreakGraphReasonBase):
+    pass
+
+
+class DygraphInconsistentWithStaticBreak(BreakGraphReasonBase):
+    pass
+
+
+class PsdbBreakReason(BreakGraphReasonBase):
+    pass
+
+
+class InferMetaBreak(BreakGraphReasonBase):
+    """Break reason during meta information inference phase."""
+
+    pass
+
+
+class UnspecifiedBreakReason(BreakGraphReasonBase):
+    """Break reason for cases that don't fall into other categories."""
+
+    pass
+
 
 class SotErrorBase(Exception):
     def __init__(self, *args, **kwargs):
@@ -44,7 +192,14 @@ class FallbackError(SotErrorBase):
 
 # raise in inline function call strategy.
 class BreakGraphError(SotErrorBase):
-    pass
+    def __init__(self, reason: BreakGraphReasonBase | str = None):
+        super().__init__()
+
+        if isinstance(reason, str):
+            # if reason is a string, then create a UnspecifiedBreakReason object
+            reason = UnspecifiedBreakReason(reason)
+        self.reason = reason
+        BreakGraphReasonInfo.collect_break_graph_reason(reason)
 
 
 def inner_error_default_handler(func, message_fn):

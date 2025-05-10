@@ -27,6 +27,7 @@ void IndexSelectGradKernel(const Context& ctx,
                            const DenseTensor& out_grad,
                            int dim,
                            DenseTensor* x_grad) {
+  using XPUType = typename XPUTypeTrait<T>::Type;
   if (dim < 0) {
     dim += out_grad.dims().size();
   }
@@ -42,8 +43,10 @@ void IndexSelectGradKernel(const Context& ctx,
                         phi::DataType::INT32,
                         phi::DataType::INT64));
 
-  T* x_grad_data = ctx.template Alloc<T>(x_grad);
-  const T* out_grad_data = out_grad.data<T>();
+  XPUType* x_grad_data =
+      reinterpret_cast<XPUType*>((ctx.template Alloc<T>(x_grad)));
+  const XPUType* out_grad_data =
+      reinterpret_cast<const XPUType*>(out_grad.data<T>());
 
   auto out_grad_shape = common::vectorize<int64_t>(out_grad.dims());
   auto x_grad_shape = common::vectorize<int64_t>(x_grad->dims());
@@ -51,29 +54,33 @@ void IndexSelectGradKernel(const Context& ctx,
   int r = xpu::Error_t::SUCCESS;
   if (index_type == phi::DataType::INT32) {
     const int* index_data = index.data<int>();
-    r = xpu::index_select_grad<T, int>(ctx.x_context(),
-                                       nullptr,
-                                       index_data,
-                                       out_grad_data,
-                                       dim,
-                                       x_grad_data,
-                                       out_grad_shape,
-                                       x_grad_shape);
+    r = xpu::index_select_grad<XPUType, int>(ctx.x_context(),
+                                             nullptr,
+                                             index_data,
+                                             out_grad_data,
+                                             dim,
+                                             x_grad_data,
+                                             out_grad_shape,
+                                             x_grad_shape);
   } else if (index_type == phi::DataType::INT64) {
     const int64_t* index_data = index.data<int64_t>();
-    r = xpu::index_select_grad<T, int64_t>(ctx.x_context(),
-                                           nullptr,
-                                           index_data,
-                                           out_grad_data,
-                                           dim,
-                                           x_grad_data,
-                                           out_grad_shape,
-                                           x_grad_shape);
+    r = xpu::index_select_grad<XPUType, int64_t>(ctx.x_context(),
+                                                 nullptr,
+                                                 index_data,
+                                                 out_grad_data,
+                                                 dim,
+                                                 x_grad_data,
+                                                 out_grad_shape,
+                                                 x_grad_shape);
   }
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "index_select_grad");
 }
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    index_select_grad, XPU, ALL_LAYOUT, phi::IndexSelectGradKernel, float) {}
+PD_REGISTER_KERNEL(index_select_grad,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::IndexSelectGradKernel,
+                   float,
+                   phi::dtype::float16) {}

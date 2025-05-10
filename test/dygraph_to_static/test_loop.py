@@ -24,6 +24,7 @@ from dygraph_to_static_utils import (
 import paddle
 import paddle.nn.functional as F
 from paddle.jit.dy2static.transformers.loop_transformer import NameVisitor
+from paddle.static import InputSpec
 from paddle.utils import gast
 
 SEED = 2020
@@ -500,6 +501,64 @@ class TestLoopChangeValueToInt(Dy2StTestBase):
         )
         static_res = static_fn()
         dygraph_res = loop_change_value_to_int()
+        np.testing.assert_allclose(dygraph_res.numpy(), static_res.numpy())
+
+
+def loop_update_iter_inner_normal(x):
+    y = x + 1
+    out = 0
+    for item in y:
+        y[0] = paddle.full([], 1, dtype="int64")
+        out += y
+    return out
+
+
+def loop_update_iter_inner_with_enumerate(x):
+    y = x + 1
+    out = 0
+    for i, item in enumerate(y):
+        y[i] = item + 1
+        out += y[i]
+    return out
+
+
+class TestLoopUpdateIterInner(Dy2StTestBase):
+    def test_loop_update_iter_inner_normal_paddle_control_flow(self):
+        static_fn = paddle.jit.to_static(
+            loop_update_iter_inner_normal,
+            input_spec=[InputSpec(shape=[-1, 1], dtype="int64", name="x")],
+        )
+        x = paddle.to_tensor([[1], [2], [3]], dtype="int64")
+        static_res = static_fn(x)
+        dygraph_res = loop_update_iter_inner_normal(x)
+        np.testing.assert_allclose(dygraph_res.numpy(), static_res.numpy())
+
+    def test_loop_update_iter_inner_normal_python_control_flow(self):
+        static_fn = paddle.jit.to_static(
+            loop_update_iter_inner_normal,
+        )
+        x = paddle.to_tensor([[1], [2], [3]], dtype="int64")
+        static_res = static_fn(x)
+        dygraph_res = loop_update_iter_inner_normal(x)
+        np.testing.assert_allclose(dygraph_res.numpy(), static_res.numpy())
+
+    def test_loop_update_iter_inner_with_enumerate_paddle_control_flow(self):
+        static_fn = paddle.jit.to_static(
+            loop_update_iter_inner_with_enumerate,
+            input_spec=[InputSpec(shape=[-1, 1], dtype="int64", name="x")],
+        )
+        x = paddle.to_tensor([[1], [2], [3]], dtype="int64")
+        static_res = static_fn(x)
+        dygraph_res = loop_update_iter_inner_with_enumerate(x)
+        np.testing.assert_allclose(dygraph_res.numpy(), static_res.numpy())
+
+    def test_loop_update_iter_inner_with_enumerate_python_control_flow(self):
+        static_fn = paddle.jit.to_static(
+            loop_update_iter_inner_with_enumerate,
+        )
+        x = paddle.to_tensor([[1], [2], [3]], dtype="int64")
+        static_res = static_fn(x)
+        dygraph_res = loop_update_iter_inner_with_enumerate(x)
         np.testing.assert_allclose(dygraph_res.numpy(), static_res.numpy())
 
 

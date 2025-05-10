@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include <glog/logging.h>
-#include "paddle/phi/api/backward/backward_api.h"
+#include "paddle/phi/api/backward/backward_api_base.h"
 #include "paddle/phi/api/include/api.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/backends/device_manager.h"

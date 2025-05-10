@@ -38,7 +38,7 @@ void AllToAllKernel(const Context& dev_ctx,
                         "BKCLCommContext is nullptr, collective op should "
                         "has ring_id attr."));
 
-  XPUStream stream = comm_ctx->GetStream();
+  XPUStream stream = dev_ctx.stream();
   int nranks = comm_ctx->GetSize();
   PADDLE_ENFORCE_EQ(
       x_dims[0] % nranks,

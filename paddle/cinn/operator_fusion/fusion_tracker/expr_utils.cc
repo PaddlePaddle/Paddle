@@ -23,6 +23,46 @@ using namespace cinn::hlir::framework::pir::trivial_fusion_detail;  // NOLINT
 using namespace ExprSetFinderUtils;                                 // NOLINT
 using namespace ExprTransformerUtils;                               // NOLINT
 
+ir::Expr ApplyAxisTransform::operator()(const TransposeTransformPtr& trans) {
+  VLOG(4) << "[AxisTransform] Start " << trans->DebugStr();
+  auto result = TransposeForsTransformer(trans->perm)(expr_);
+  VLOG(4) << "[AxisTransform] After " << trans->DebugStr() << ": \n" << result;
+  return result;
+}
+
+ir::Expr ApplyAxisTransform::operator()(const AppendAxisTransformPtr& trans) {
+  VLOG(4) << "[AxisTransform] Start " << trans->DebugStr();
+  auto unique_var_name = []() {
+    static thread_local std::atomic<int> counter(0);
+    return "append_var_" + std::to_string(counter.fetch_add(1));
+  };
+  std::vector<ir::Var> append_vars;
+  for (size_t i = 0; i < trans->axis.size(); ++i) {
+    const auto upper_bound =
+        cinn::common::DimExprConverter().ConvertToIrExpr(trans->shape[i]);
+    append_vars.push_back(ir::Var(upper_bound, unique_var_name()));
+  }
+  auto result = InsertForsTransformer(CastVector<int64_t, int32_t>(trans->axis),
+                                      append_vars)(expr_);
+  VLOG(4) << "[AxisTransform] After " << trans->DebugStr() << ": \n" << result;
+  return result;
+}
+
+ir::Expr ApplyAxisTransform::operator()(const DeleteAxisTransformPtr& trans) {
+  VLOG(4) << "[AxisTransform] Start " << trans->DebugStr();
+  auto result =
+      RemoveForsTransformer(CastVector<int64_t, int32_t>(trans->axis))(expr_);
+  VLOG(4) << "[AxisTransform] After " << trans->DebugStr() << ": \n" << result;
+  return result;
+}
+
+ir::Expr ApplyAxisTransform::operator()(const ReshapeTransformPtr& trans) {
+  VLOG(4) << "[AxisTransform] Start " << trans->DebugStr();
+  auto result = ReshapeLoop(expr_, trans->in_shape, trans->out_shape);
+  VLOG(4) << "[AxisTransform] After " << trans->DebugStr() << ": \n" << result;
+  return result;
+}
+
 ir::Expr ApplyItersTransform::operator()(const TransposeItersTransform& trans) {
   auto result = TransposeForsTransformer(trans.perm_)(expr_);
   VLOG(4) << "[ItersTransform] After TransposeItersTransform: " << result;
@@ -32,7 +72,7 @@ ir::Expr ApplyItersTransform::operator()(const TransposeItersTransform& trans) {
 ir::Expr ApplyItersTransform::operator()(const RemoveOnesTransform& trans) {
   VLOG(4) << "[ItersTransform] Before RemoveOnesTransform("
           << utils::Join(trans.ones_, ",") << "): " << expr_;
-  auto result = RemoveOnesTransformer(trans.ones_)(expr_);
+  auto result = RemoveForsTransformer(trans.ones_)(expr_);
   VLOG(4) << "[ItersTransform] After  RemoveOnesTransform: " << result;
   return result;
 }

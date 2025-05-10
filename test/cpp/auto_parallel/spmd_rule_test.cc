@@ -752,6 +752,29 @@ TEST(ConcatRule, Ctor) {
   }
   check_dim_mapping(inferred_dist_attrs.second[0], {1, -1, 0});
   check_partial_dims(inferred_dist_attrs.second[0], {});
+
+  // test 3，special case: concat one dimensional tensor
+  shapes = {{16}, {32}, {64}};
+  dim_mappings = {{0}, {1}, {-1}};
+  partial_status = {{}, {}, {1}};
+  inputs = build_inputs();
+  inferred_dist_attrs = phi::distributed::ConcatInferSpmd(inputs, 0);
+  // list of tensor => single tensor
+  EXPECT_EQ(inferred_dist_attrs.first.size(), static_cast<size_t>(1));
+  EXPECT_EQ(inferred_dist_attrs.second.size(), static_cast<size_t>(1));
+  EXPECT_TRUE(
+      paddle::holds_alternative<std::vector<phi::distributed::TensorDistAttr>>(
+          inferred_dist_attrs.first[0]));
+  EXPECT_TRUE(paddle::holds_alternative<phi::distributed::TensorDistAttr>(
+      inferred_dist_attrs.second[0]));
+  auto& inputs_infer3 = PADDLE_GET_CONST(std::vector<TensorDistAttr>,
+                                         inferred_dist_attrs.first[0]);
+  for (auto e : inputs_infer3) {
+    check_dim_mapping(e, {-1});
+    check_partial_dims(e, {});
+  }
+  check_dim_mapping(inferred_dist_attrs.second[0], {-1});
+  check_partial_dims(inferred_dist_attrs.second[0], {});
 }
 
 TEST(StackRule, Ctor) {

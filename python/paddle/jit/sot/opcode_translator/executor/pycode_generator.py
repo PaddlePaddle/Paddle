@@ -413,7 +413,10 @@ class PyCodeGen:
     """Helper to create new code object"""
 
     def __init__(
-        self, frame: types.FrameType, disable_eval_frame: bool = False
+        self,
+        real_code: types.CodeType,
+        real_globals: dict[str, object],
+        disable_eval_frame: bool = False,
     ):
         """
         Initializes a PyCodeGen object.
@@ -422,11 +425,10 @@ class PyCodeGen:
             frame: The frame to be translated.
             disable_eval_frame (bool): Whether to disable the evaluation frame. Defaults to False.
         """
-        self._frame = frame
-        self._origin_code = frame.f_code
+        self._origin_code = real_code
         self._code_options = gen_code_options(self._origin_code)
         self.update_code_name("", is_resumed_fn=False)
-        self._f_globals = frame.f_globals
+        self._real_globals = real_globals
         self._instructions = []
         self.disable_eval_frame = disable_eval_frame
         self.hooks = []
@@ -666,8 +668,8 @@ class PyCodeGen:
             obj_name (str): The name of the object.
         """
 
-        if obj_name not in self._f_globals:
-            self._f_globals[obj_name] = obj
+        if obj_name not in self._real_globals:
+            self._real_globals[obj_name] = obj
         return self.gen_load_global(obj_name, push_null=push_null)
 
     def gen_load_null_variable(self):
@@ -1007,9 +1009,12 @@ class ResumeFunctionCreator:
     CODE_CACHE = {}
 
     def __init__(
-        self, frame: types.FrameType, disable_eval_frame: bool = False
+        self,
+        code: types.CodeType,
+        globals: dict[str, object],
+        disable_eval_frame: bool = False,
     ):
-        self.codegen = PyCodeGen(frame, disable_eval_frame)
+        self.codegen = PyCodeGen(code, globals, disable_eval_frame)
         self.name = ResumeFnNameFactory().next()
 
     def set_inputs(
@@ -1064,7 +1069,7 @@ class ResumeFunctionCreator:
             cached_code = self.CODE_CACHE[cache_key]
             ResumeFunctionCreator.validate_code(cached_code)
             return types.FunctionType(
-                cached_code, self.codegen._f_globals, cached_code.co_name
+                cached_code, self.codegen._real_globals, cached_code.co_name
             )
         return None
 
@@ -1080,6 +1085,6 @@ class ResumeFunctionCreator:
             self.CODE_CACHE[cache_key] = new_code
         ResumeFunctionCreator.validate_code(new_code)
         fn = types.FunctionType(
-            new_code, self.codegen._f_globals, new_code.co_name
+            new_code, self.codegen._real_globals, new_code.co_name
         )
         return fn

@@ -27,7 +27,11 @@ void DivideKernel(const Context& dev_ctx,
                   const DenseTensor& x,
                   const DenseTensor& y,
                   DenseTensor* out) {
-  // allocate memory for out
+  if (x.numel() == 0 || y.numel() == 0) {
+    out->Resize(out->dims());
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   dev_ctx.template Alloc<T>(out);
   if (x.dims() == y.dims() && std::is_floating_point<T>::value) {
     SameDimsElementwiseCompute<SameDimsDivideFunctor<CPUContext, T>>()(

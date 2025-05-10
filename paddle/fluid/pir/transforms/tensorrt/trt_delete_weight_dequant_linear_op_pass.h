@@ -1,4 +1,4 @@
-// Copyright (c) 2021 CINN Authors. All Rights Reserved.
+// Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,20 +13,15 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/cinn/ir/ir.h"
 
-/** simplify expressions with vars' div and mod.
- *
- * For example, input the code
- * \code
- * ((i_j_k_fused / 3) * 144) + (48 * (i_j_k_fused % 3))
- * \endcode
- *
- * with the `i_j_k_fused` set as var will be simplified to i_j_k_fused
- *
- */
-namespace cinn::optim {
+#include <glog/logging.h>
+#include <memory>
+#include "paddle/pir/include/core/dll_decl.h"
 
-void VarModSimplify(Expr* e);
+namespace pir {
 
-}  // namespace cinn::optim
+class Pass;
+
+IR_API std::unique_ptr<Pass> CreateTrtDeleteWeightDequantLinearOpPass();
+
+}  // namespace pir

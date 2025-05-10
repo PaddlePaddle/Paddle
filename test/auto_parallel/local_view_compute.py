@@ -88,8 +88,8 @@ def masked_lm_loss_func(pred, label):
 
 
 class LocalViewMaskLoss(LocalLayer):
-    def __init__(self, out_dist_attrs):
-        super().__init__(out_dist_attrs)
+    def __init__(self, out_dist_attrs, grad_dist_attrs):
+        super().__init__(out_dist_attrs, grad_dist_attrs)
         self.local_loss = None
 
     def forward(self, pred, label):
@@ -222,9 +222,6 @@ class TestLocalViewCompute:
         out_process_mesh = ProcessMesh([0, 1], dim_names=["dp"])
         out_placements = [dist.Partial(dist.ReduceType.kRedAvg)]
 
-        loss_func = LocalViewMaskLoss(
-            out_dist_attrs=[(out_process_mesh, out_placements)]
-        )
         local_loss_list = []
 
         for batch_id, data in enumerate(dist_dataloader()):
@@ -234,6 +231,10 @@ class TestLocalViewCompute:
             img, label = data
 
             out = model(img)
+            loss_func = LocalViewMaskLoss(
+                out_dist_attrs=[(out_process_mesh, out_placements)],
+                grad_dist_attrs=[None, None],
+            )
             avg_loss = loss_func(out, label)
             avg_loss.backward()
             local_loss_list.append(loss_func.local_loss)
@@ -263,10 +264,12 @@ class TestLocalViewCompute:
             dataloader=train_loader, meshes=world_process_mesh, shard_dims="dp"
         )
 
-        out_process_mesh = ProcessMesh([0, 1], dim_names=["dp"])
+        process_mesh = ProcessMesh([0, 1], dim_names=["dp"])
         out_placements = [dist.Partial(dist.ReduceType.kRedAvg)]
+        in_grad_placements = [dist.Shard(0)]
         loss_func = LocalViewMaskLoss(
-            out_dist_attrs=[(out_process_mesh, out_placements)]
+            out_dist_attrs=[(process_mesh, out_placements)],
+            grad_dist_attrs=[(process_mesh, in_grad_placements), None],
         )
         dist_model = dist.to_static(
             model, dist_dataloader, loss_func, optimizer

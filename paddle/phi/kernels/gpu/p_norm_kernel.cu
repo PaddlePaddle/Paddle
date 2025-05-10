@@ -16,6 +16,7 @@
 
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/funcs/p_norm_utils.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
@@ -169,11 +170,13 @@ void PNormKernel(const Context& dev_ctx,
   std::vector<int> reduce_axis =
       funcs::details::GetReduceDim(axis_dims, xdim.size(), asvector);
 
-  for (int i = 0; i < xdim.size(); i++) {
-    PADDLE_ENFORCE_LT(0,
-                      xdim[i],
-                      errors::InvalidArgument(
-                          "The dims of Input(X) should be greater than 0."));
+  if (x.numel() == 0) {
+    if (out->numel() > 0) {
+      std::vector<int64_t> vec_dims = common::vectorize(out->dims());
+      phi::Full<T, Context>(
+          dev_ctx, phi::IntArray(vec_dims), static_cast<T>(0), out);
+    }
+    return;
   }
 
   if (x.numel() > std::numeric_limits<int32_t>::max()) {

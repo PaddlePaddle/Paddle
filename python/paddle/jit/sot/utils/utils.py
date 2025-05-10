@@ -338,34 +338,28 @@ def get_unbound_method(obj, name):
 
 class GraphLogger(metaclass=Singleton):
     graph_num: int
-    op_num: int
     graphs: list[Program]
-    ops: list[paddle.base.framework.Operator]
+    num_ops_per_graph: list[int]
 
     def __init__(self):
         self.clear()
 
     def clear(self):
         self.graph_num = 0
-        self.op_num = 0
         self.graphs = []
-        self.ops = []
+        self.num_ops_per_graph = []
 
     def get_graph_num(self):
         return self.graph_num
 
     def get_op_num(self):
-        return self.op_num
+        return sum(self.num_ops_per_graph)
 
     def add_subgraph(self, program: Program):
         self.graph_num += 1
         self.graphs.append(program)
-
-        sub_op_num = 0
-        for op in program.global_block().ops:
-            self.op_num += 1
-            sub_op_num += 1
-        self.ops.append(sub_op_num)
+        sub_graph_op_num = len(program.global_block().ops)
+        self.num_ops_per_graph.append(sub_graph_op_num)
 
     def add_subgraph_info(self, strs):
         for i in range(len(self.graphs)):
@@ -373,7 +367,7 @@ class GraphLogger(metaclass=Singleton):
                 "------------------------------------------------------"
             )
 
-            strs.append(f"subgraph {i}, OpNum: {self.ops[i]}")
+            strs.append(f"subgraph {i}, OpNum: {self.num_ops_per_graph[i]}")
             strs.append(f"{self.graphs[i]}")
 
     def __str__(self):
@@ -552,3 +546,15 @@ def get_api_fullname(api):
             return module_str + "." + api_name
         module_str = module_str.rpartition(".")[0]
     return None
+
+
+def get_numpy_ufuncs():
+    ufuncs = [
+        ufunc
+        for _, ufunc in inspect.getmembers(
+            np, lambda member: isinstance(member, np.ufunc)
+        )
+    ]
+    unary_ufuncs = filter(lambda ufunc: ufunc.nin == 1, ufuncs)
+    binary_ufuncs = filter(lambda ufunc: ufunc.nin == 2, ufuncs)
+    return list(unary_ufuncs), list(binary_ufuncs)

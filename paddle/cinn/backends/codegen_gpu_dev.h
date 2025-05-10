@@ -108,6 +108,9 @@ class CodeGenGpuDev : public CodeGenC {
   std::vector<ir::stmt::StmtRef> GenerateBufferAliasStmts(
       const ir::_LoweredFunc_* op, const std::vector<ir::Buffer>& temp_buffers);
 
+  std::vector<ir::stmt::StmtRef> FilterDeallocTempBuffers(
+      const std::vector<ir::stmt::StmtRef>& frees);
+
   /**
    * Print the function declaration, this is different from C, we expand the
    * arguments and get something like

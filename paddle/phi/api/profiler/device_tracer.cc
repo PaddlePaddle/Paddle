@@ -513,7 +513,7 @@ class DeviceTracerImpl : public DeviceTracer {
     ret = dynload::cuptiSubscribe(
         &subscriber_, static_cast<CUpti_CallbackFunc>(ApiCallback), this);
     if (ret == CUPTI_ERROR_MAX_LIMIT_REACHED) {
-      fprintf(stderr, "CUPTI subcriber limit reached.\n");
+      fprintf(stderr, "CUPTI subscriber limit reached.\n");
     } else if (ret != CUPTI_SUCCESS) {
       fprintf(stderr, "Failed to create CUPTI subscriber.\n");
     }

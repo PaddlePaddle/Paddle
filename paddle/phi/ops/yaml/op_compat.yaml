@@ -1335,6 +1335,26 @@
   outputs :
     out : Out
 
+- op : flash_attn_unpadded
+  backward : flash_attn_unpadded_grad
+  scalar :
+    max_seqlen_q :
+      data_type : int64_t
+      support_tensor : true
+    max_seqlen_k :
+      data_type : int64_t
+      support_tensor : true
+
+- op : flash_attn_varlen_qkvpacked
+  backward : flash_attn_varlen_qkvpacked_grad
+  scalar :
+    max_seqlen_q :
+      data_type : int64_t
+      support_tensor : true
+    max_seqlen_k :
+      data_type : int64_t
+      support_tensor : true
+
 - op : flatten (flatten_contiguous_range)
   backward : flatten_grad (flatten_contiguous_range_grad)
   inputs :
@@ -2559,6 +2579,16 @@
     x : X
   outputs :
     out : Out
+
+- op : memory_efficient_attention
+  backward : memory_efficient_attention_grad
+  scalar :
+    max_seqlen_q :
+      data_type : int64_t
+      support_tensor : true
+    max_seqlen_k :
+      data_type : int64_t
+      support_tensor : true
 
 - op : merge_selected_rows
   inputs :

@@ -129,19 +129,22 @@ class DataNormKernel<T, phi::GPUContext> : public framework::OpKernel<T> {
                           "The dims of Input(X) should be greater than 0."));
 
     const T *batch_size_in =
-        ctx.Input<phi::DenseTensor>("BatchSize")->data<T>();
-    const T *batch_sum_in = ctx.Input<phi::DenseTensor>("BatchSum")->data<T>();
+        ctx.Input<phi::DenseTensor>("BatchSize")->template data<T>();
+    const T *batch_sum_in =
+        ctx.Input<phi::DenseTensor>("BatchSum")->template data<T>();
     const T *batch_square_sum_in =
-        ctx.Input<phi::DenseTensor>("BatchSquareSum")->data<T>();
-    auto *x_data = x->data<T>();
+        ctx.Input<phi::DenseTensor>("BatchSquareSum")->template data<T>();
+    auto *x_data = x->template data<T>();
 
     // alloc memory
-    T *y_data =
-        ctx.Output<phi::DenseTensor>("Y")->mutable_data<T>(ctx.GetPlace());
+    T *y_data = ctx.Output<phi::DenseTensor>("Y")->template mutable_data<T>(
+        ctx.GetPlace());
     T *mean_out_data =
-        ctx.Output<phi::DenseTensor>("Means")->mutable_data<T>(ctx.GetPlace());
+        ctx.Output<phi::DenseTensor>("Means")->template mutable_data<T>(
+            ctx.GetPlace());
     T *scale_out_data =
-        ctx.Output<phi::DenseTensor>("Scales")->mutable_data<T>(ctx.GetPlace());
+        ctx.Output<phi::DenseTensor>("Scales")->template mutable_data<T>(
+            ctx.GetPlace());
 
     auto stream = ctx.template device_context<phi::GPUContext>().stream();
 
@@ -185,31 +188,32 @@ class DataNormGradKernel<T, phi::GPUContext> : public framework::OpKernel<T> {
     }
     T *d_batch_size =
         ctx.Output<phi::DenseTensor>(framework::GradVarName("BatchSize"))
-            ->mutable_data<T>(ctx.GetPlace());
+            ->template mutable_data<T>(ctx.GetPlace());
     T *d_batch_sum =
         ctx.Output<phi::DenseTensor>(framework::GradVarName("BatchSum"))
-            ->mutable_data<T>(ctx.GetPlace());
+            ->template mutable_data<T>(ctx.GetPlace());
     T *d_batch_square_sum =
         ctx.Output<phi::DenseTensor>(framework::GradVarName("BatchSquareSum"))
-            ->mutable_data<T>(ctx.GetPlace());
+            ->template mutable_data<T>(ctx.GetPlace());
 
     auto stream = ctx.template device_context<phi::GPUContext>().stream();
     if (d_x != nullptr) {
       KernelDataNormBP<<<GET_BLOCKS(C * N),
                          PADDLE_CUDA_NUM_THREADS,
                          0,
-                         stream>>>(N,
-                                   C,
-                                   d_y->data<T>(),
-                                   scales->data<T>(),
-                                   d_x->mutable_data<T>(ctx.GetPlace()));
+                         stream>>>(
+          N,
+          C,
+          d_y->template data<T>(),
+          scales->template data<T>(),
+          d_x->template mutable_data<T>(ctx.GetPlace()));
     }
 
     KernelDataNormBPStat<<<GET_BLOCKS(C), PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
         N,
         C,
-        x->data<T>(),
-        means->data<T>(),
+        x->template data<T>(),
+        means->template data<T>(),
         epsilon,
         d_batch_size,
         d_batch_sum,
@@ -306,11 +310,11 @@ class DataNormGradKernel<T, phi::GPUContext> : public framework::OpKernel<T> {
     }
 
     T *batch_size_data = ctx.Output<phi::DenseTensor>("BatchSize")
-                             ->mutable_data<T>(ctx.GetPlace());
+                             ->template mutable_data<T>(ctx.GetPlace());
     T *batch_sum_data = ctx.Output<phi::DenseTensor>("BatchSum")
-                            ->mutable_data<T>(ctx.GetPlace());
+                            ->template mutable_data<T>(ctx.GetPlace());
     T *batch_square_sum_data = ctx.Output<phi::DenseTensor>("BatchSquareSum")
-                                   ->mutable_data<T>(ctx.GetPlace());
+                                   ->template mutable_data<T>(ctx.GetPlace());
     KernelUpdateParam<<<GET_BLOCKS(C), PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
         C,
         d_batch_size,

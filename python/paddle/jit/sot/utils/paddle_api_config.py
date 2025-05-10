@@ -123,6 +123,7 @@ break_graph_tensor_method = {
     'register_hook',
     'numpy',
     'clear_gradient',
+    'tolist',
     # TODO: Browse all possible functions and make prior judgments.
 }
 

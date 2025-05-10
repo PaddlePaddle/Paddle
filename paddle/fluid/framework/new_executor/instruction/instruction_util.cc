@@ -173,7 +173,12 @@ phi::DeviceContext* ParseDeviceContext(pir::Operation* op,
             op_name.compare(paddle::dialect::AllGatherOp::name()) == 0 ||
             op_name.compare(paddle::dialect::MpAllreduceSum_Op::name()) == 0 ||
             op_name.compare(paddle::dialect::CIdentity_Op::name()) == 0 ||
-            op_name.compare(paddle::dialect::CConcatOp::name()) == 0) {
+            op_name.compare(paddle::dialect::CConcatOp::name()) == 0 ||
+            op_name.compare(paddle::dialect::CConcatOp::name()) == 0 ||
+            op_name.compare(paddle::dialect::AllGatherOp::name()) == 0 ||
+            op_name.compare(paddle::dialect::AllToAllOp::name()) == 0 ||
+            op_name.compare(
+                paddle::dialect::CSoftmaxWithCrossEntropyOp::name()) == 0) {
           if (phi::is_gpu_place(place) && execution_stream == kDefaultStream) {
             if (origin_dev_ctx != nullptr) {
               // set stream

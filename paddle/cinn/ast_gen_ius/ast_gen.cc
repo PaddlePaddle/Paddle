@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/cinn/ast_gen_ius/ast_gen.h"
+#include "paddle/cinn/hlir/pe/reduction.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_base.h"
 #include "paddle/cinn/ir/ir_printer.h"
@@ -67,6 +68,14 @@ StmtRef ConvertReduceBody(ir::Expr body,
       return Store(tensor, tensor(axis_exprs) && reduce_node->body, axis_exprs);
     case ir::Reduce::kAny:
       return Store(tensor, tensor(axis_exprs) || reduce_node->body, axis_exprs);
+    case ir::Reduce::kVariance:
+      return Store(tensor,
+                   ir::Call::Make(tensor->type(),
+                                  hlir::pe::kVarianceFuncName,
+                                  {tensor(axis_exprs), reduce_node->body},
+                                  {},
+                                  ir::CallType::Intrinsic),
+                   axis_exprs);
     default:
       CINN_NOT_IMPLEMENTED
   }

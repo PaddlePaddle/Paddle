@@ -118,6 +118,10 @@ class BackwardAPI(BaseAPI):
                 not invoke_func_name.endswith('_impl')
             ):
                 return ""
+
+        if self.is_only_composite_api:
+            return ""
+
         api_func_name = self.get_api_func_name()
         api_declaration = f"""
 PADDLE_API void {api_func_name}({self.get_declare_args()});
@@ -333,9 +337,9 @@ def generate_backward_api(
     header_file.write(namespace[0])
 
     include_header_file = (
-        "paddle/phi/api/backward/fused_backward_api.h"
+        "paddle/phi/api/backward/fused_backward_api_base.h"
         if is_fused_backward_yaml
-        else "paddle/phi/api/backward/backward_api.h"
+        else "paddle/phi/api/backward/backward_api_base.h"
     )
     include_fw_header_file = (
         "paddle/phi/api/include/fused_api.h"
@@ -388,13 +392,13 @@ def main():
     parser.add_argument(
         '--backward_header_path',
         help='output of generated backward header code file',
-        default='paddle/phi/api/backward/backward_api.h',
+        default='paddle/phi/api/backward/backward_api_base.h',
     )
 
     parser.add_argument(
         '--backward_source_path',
         help='output of generated backward source code file',
-        default='paddle/phi/api/lib/backward_api.cc',
+        default='paddle/phi/api/lib/backward_api_base.cc',
     )
 
     options = parser.parse_args()

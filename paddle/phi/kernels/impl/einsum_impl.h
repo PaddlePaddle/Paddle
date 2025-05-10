@@ -658,6 +658,17 @@ void EinsumKernel(const Context& dev_ctx,
                   DenseTensor* out,
                   std::vector<DenseTensor*> cache,
                   std::vector<DenseTensor*> xshape UNUSED) {
+  for (const auto& input : inputs) {
+    if (input->numel() == 0) {
+      dev_ctx.template Alloc<T>(out);
+      if (out->numel() > 0) {
+        std::vector<int64_t> vec_dims = common::vectorize(out->dims());
+        phi::Full<T, Context>(
+            dev_ctx, phi::IntArray(vec_dims), static_cast<T>(0), out);
+      }
+      return;
+    }
+  }
   std::vector<char> tmp;
   // for the sake of compatibility, we may load and run v2.3 EinsumOp. Output
   // may have nullptr and the cache.size() is not equal to inputs.size(). refer

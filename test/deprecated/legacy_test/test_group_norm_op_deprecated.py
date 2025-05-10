@@ -1529,7 +1529,7 @@ class TestCompositeGroupNorm(unittest.TestCase):
             if core._is_fwd_prim_enabled():
                 paddle.incubate.autograd.primapi.to_prim(mp.blocks)
                 fwd_ops_new = [op.type for op in blocks[0].ops]
-                # Ensure that group_norm is splitted into small ops
+                # Ensure that group_norm is split into small ops
                 assert 'group_norm' not in fwd_ops_new
 
             grads = paddle.static.gradients([output], [input_, scale_, bias_])
@@ -1621,7 +1621,7 @@ class TestCompositeGroupNorm(unittest.TestCase):
                     if core._is_fwd_prim_enabled():
                         paddle.incubate.autograd.primapi.to_prim(mp.blocks)
                         fwd_ops_new = [op.type for op in blocks[0].ops]
-                        # Ensure that group_norm is splitted into small ops
+                        # Ensure that group_norm is split into small ops
                         assert 'group_norm' not in fwd_ops_new
 
                     grads = paddle.static.gradients(

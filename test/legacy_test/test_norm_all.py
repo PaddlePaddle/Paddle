@@ -347,6 +347,64 @@ class TestPnormOp6(TestPnormOp):
         )
 
 
+class TestPnormOpZeroSize(TestPnormOp):
+    def init_test_case(self):
+        self.shape = [0, 20, 3]
+        self.axis = 1
+        self.epsilon = 1e-12
+        self.porder = 2
+        self.keepdim = False
+        self.asvector = False
+
+    def init_dtype(self):
+        self.dtype = "float32"
+
+    def test_check_output(self):
+        places = (
+            [paddle.CPUPlace(), paddle.CUDAPlace(0)]
+            if core.is_compiled_with_cuda()
+            else [paddle.CPUPlace()]
+        )
+        for place in places:
+            self.check_output_with_place(place)
+
+    def test_check_grad(self):
+        pass
+
+    def calc_gradient(self):
+        pass
+
+
+class TestPnormOpZeroSize2(TestPnormOpZeroSize):
+    def init_test_case(self):
+        self.shape = [3, 0, 3]
+        self.axis = 1
+        self.epsilon = 1e-12
+        self.porder = 2
+        self.keepdim = False
+        self.asvector = False
+
+
+class TestPnormOpZeroSize3(TestPnormOpZeroSize):
+    def init_test_case(self):
+        self.shape = [0, 20, 3]
+        self.axis = 2
+        self.epsilon = 1e-12
+        self.porder = 2
+        self.keepdim = False
+        self.asvector = False
+
+
+class TestPnormOpZeroSize4(TestPnormOpZeroSize):
+    def init_test_case(self):
+        self.shape = [0, 20, 3]
+        self.axis = -1
+        self.epsilon = 1e-12
+        self.porder = 2
+        self.keepdim = False
+        self.asvector = False
+
+
 def create_test_fp16_class(parent, max_relative_error=2e-3):
     @unittest.skipIf(
         not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
@@ -1418,15 +1476,6 @@ class API_NormTest(unittest.TestCase):
             self.assertRaises(
                 ValueError, paddle.norm, data, p='unspport', axis=[-3, -2, -1]
             )
-
-        with base.dygraph.guard():
-            # The size of input in Norm should not be 0.
-            def test_0_size():
-                array = np.array([], dtype=np.float32)
-                x = paddle.to_tensor(np.reshape(array, [0, 0]), dtype='float32')
-                paddle.linalg.norm(x, axis=0)
-
-            self.assertRaises(ValueError, test_0_size)
 
 
 if __name__ == '__main__':

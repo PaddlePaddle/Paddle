@@ -581,6 +581,15 @@ XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
 IpuPassStrategy::IpuPassStrategy() : PassStrategy({}) {
   passes_.assign({"inference_process_pass"});
 }
+const std::vector<std::string> kPirCustomDevicePasses{
+    // Functional pass
+    "add_shadow_output_after_dead_parameter_pass",
+    "delete_quant_dequant_linear_op_pass",
+    "delete_weight_dequant_linear_op_pass",
+    "map_op_to_another_pass",
+    "identity_op_clean_pass",
+    "matmul_scale_fuse_pass",
+};
 
 const std::vector<std::string> kPirGpuPasses{
     // Functional pass

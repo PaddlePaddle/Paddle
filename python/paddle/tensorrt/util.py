@@ -68,7 +68,7 @@ def all_ops_into_trt(program):
     return True
 
 
-def run_pir_pass(program, disable_passes=[], scope=None):
+def run_pir_pass(program, disable_passes=[], scope=None, precision_mode=None):
     def _add_pass_(pm, passes, disable_passes):
         for pass_item in passes:
             for pass_name, pass_attr in pass_item.items():
@@ -86,6 +86,21 @@ def run_pir_pass(program, disable_passes=[], scope=None):
     passes = [
         {'trt_op_marker_pass': {}},
     ]
+    if precision_mode is not None and precision_mode.value == "INT8":
+        passes.append(
+            {
+                'delete_quant_dequant_linear_op_pass': {
+                    "__param_scope__": scope,
+                }
+            }
+        )
+        passes.append(
+            {
+                'trt_delete_weight_dequant_linear_op_pass': {
+                    "__param_scope__": scope,
+                }
+            }
+        )
     _add_pass_(pm, passes, disable_passes)
     pm.run(program)
 
@@ -153,28 +168,19 @@ def predict_program(program, feed_data, fetch_var_list, scope=None):
             return output
 
 
-def warmup_shape_infer(
-    program, min_shape_feed, opt_shape_feed, max_shape_feed, scope=None
-):
+def warmup_shape_infer(program, feeds, scope=None):
     paddle.framework.set_flags({"FLAGS_enable_collect_shape": True})
     with paddle.pir_utils.IrGuard():
         with paddle.static.program_guard(program):
             executor = paddle.static.Executor()
             # Run the program with input_data
-            for _ in range(1):
-                executor.run(program, feed=min_shape_feed, scope=scope)
-
-            for _ in range(1):
-                executor.run(program, feed=opt_shape_feed, scope=scope)
-
-            # Run the program with input_data_max_shape (fake max_shape input)
-            for _ in range(1):
-                executor.run(program, feed=max_shape_feed, scope=scope)
+            for i in range(len(feeds)):
+                executor.run(program, feed=feeds[i], scope=scope)
 
             exe_program, _, _ = (
                 executor._executor_cache.get_pir_program_and_executor(
                     program,
-                    feed=max_shape_feed,
+                    feed=feeds[-1],
                     fetch_list=None,
                     feed_var_name='feed',
                     fetch_var_name='fetch',
@@ -278,12 +284,15 @@ def weight_to_tensor(network, paddle_value, trt_tensor, use_op_name):
         "pd_op.depthwise_conv2d",
         "pd_op.conv2d",
         "pd_op.conv2d_transpose",
+        "pd_op.conv3d",
+        "pd_op.conv3d_transpose",
         "pd_op.batch_norm",
         "pd_op.batch_norm_",
         "pd_op.layer_norm",
         "pd_op.depthwise_conv2d_transpose",
         "pd_op.fused_conv2d_add_act",
         "pd_op.affine_channel",
+        "pd_op.prelu",
         "pd_op.fused_bias_dropout_residual_layer_norm",
         "pd_op.deformable_conv",
     ]
@@ -342,6 +351,15 @@ def remove_duplicate_value(value_list):
             ret_list.append(value)
             ret_list_id.append(value.id)
     return ret_list
+
+
+def set_dynamic_range(paddle_op, trt_inputs):
+    if paddle_op.has_attr("inputs_index"):
+        inputs_index = paddle_op.attrs()["inputs_index"]
+        inputs_scale = paddle_op.attrs()["inputs_scale"]
+        for i, index in enumerate(inputs_index):
+            scale = inputs_scale[i]
+            trt_inputs[index].set_dynamic_range(-scale, scale)
 
 
 def get_trt_version():

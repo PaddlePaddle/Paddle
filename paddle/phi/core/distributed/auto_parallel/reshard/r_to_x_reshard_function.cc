@@ -71,10 +71,6 @@ void RToXExpandReshardFunction::Eval(phi::DeviceContext* dev_ctx,
   if (root_rank == cur_global_rank) {
     for (const auto& out_process_id : out_process_ids) {
       if (out_process_id != root_rank) {
-#if defined(PADDLE_WITH_XPU)
-        PADDLE_THROW(::common::errors::Unimplemented(
-            "Not supported PSendKernel on xpu yet."));
-#else
         RESHARD_FUNCTOR_WITH_COMM(dev_ctx,
                                   PSendKernel,
                                   dtype,
@@ -82,17 +78,12 @@ void RToXExpandReshardFunction::Eval(phi::DeviceContext* dev_ctx,
                                   in.value(),
                                   out_process_id,
                                   /*dynamic_shape=*/true);
-#endif
       }
     }
     if (cur_rank_in_out_mesh) {
       result_value = in.value();
     }
   } else {
-#if defined(PADDLE_WITH_XPU)
-    PADDLE_THROW(
-        ::common::errors::Unimplemented("Not supported PRecv on xpu yet."));
-#else
     RESHARD_FUNCTOR_WITH_COMM(dev_ctx,
                               PRecv,
                               dtype,
@@ -101,7 +92,6 @@ void RToXExpandReshardFunction::Eval(phi::DeviceContext* dev_ctx,
                               {} /*out_shape*/,
                               /*dynamic_shape=*/true,
                               &result_value);
-#endif
   }
 
   if (cur_rank_in_out_mesh) {

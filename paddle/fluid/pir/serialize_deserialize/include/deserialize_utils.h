@@ -640,6 +640,12 @@ pir::Type AttrTypeReader::ReadBuiltInType(const std::string type_name,
   } else if (type_name == pir::IndexType::name()) {
     VLOG(8) << "Parse IndexType ... ";
     return pir::deserializeTypeFromJson<pir::IndexType>(type_json, ctx);
+  } else if (type_name == pir::Float8E4M3FNType::name()) {
+    VLOG(8) << "Parse IndexType ... ";
+    return pir::deserializeTypeFromJson<pir::Float8E4M3FNType>(type_json, ctx);
+  } else if (type_name == pir::Float8E5M2Type::name()) {
+    VLOG(8) << "Parse IndexType ... ";
+    return pir::deserializeTypeFromJson<pir::Float8E5M2Type>(type_json, ctx);
   } else if (type_name == pir::Complex64Type::name()) {
     VLOG(8) << "Parse Complex64Type ... ";
     return pir::deserializeTypeFromJson<pir::Complex64Type>(type_json, ctx);

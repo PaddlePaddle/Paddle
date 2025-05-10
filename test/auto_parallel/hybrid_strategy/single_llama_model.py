@@ -205,7 +205,9 @@ class LlamaModel(nn.Layer):
         global_tensor = self.global_layer(None)
 
         for idx, (decoder_layer) in enumerate(self.layers):
-            hidden_states = decoder_layer(hidden_states, global_tensor)
+            hidden_states = decoder_layer(
+                hidden_states=hidden_states, global_tensor=global_tensor
+            )
 
         hidden_states = self.norm(hidden_states)
 

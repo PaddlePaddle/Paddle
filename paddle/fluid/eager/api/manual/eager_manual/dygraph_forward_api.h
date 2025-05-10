@@ -57,7 +57,10 @@ paddle::Tensor reshard_ad_function(
     const paddle::Tensor& tensor,
     const phi::distributed::TensorDistAttr dist_attr);
 
-paddle::Tensor dtensor_to_local_ad_function(const paddle::Tensor& input);
+paddle::Tensor dtensor_to_local_ad_function(
+    const paddle::Tensor& input,
+    const phi::distributed::ProcessMesh& processmesh,
+    const phi::distributed::Placements& placements);
 
 paddle::Tensor dtensor_from_local_ad_function(
     const paddle::Tensor& input,

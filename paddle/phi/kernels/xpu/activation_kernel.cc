@@ -737,8 +737,13 @@ PD_REGISTER_KERNEL(exp,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}
 
-PD_REGISTER_KERNEL(
-    round, XPU, ALL_LAYOUT, phi::RoundKernel, float, phi::dtype::float16) {}
+PD_REGISTER_KERNEL(round,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::RoundKernel,
+                   float,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 
 PD_REGISTER_KERNEL(
     tan, XPU, ALL_LAYOUT, phi::TanKernel, float, phi::dtype::float16) {}

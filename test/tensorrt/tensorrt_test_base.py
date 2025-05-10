@@ -271,9 +271,7 @@ class TensorRTBaseTest(unittest.TestCase):
             scope = paddle.static.global_scope()
             main_program = warmup_shape_infer(
                 main_program,
-                min_shape_feed=min_shape_data,
-                opt_shape_feed=opt_shape_data,
-                max_shape_feed=max_shape_data,
+                feeds=[min_shape_data, opt_shape_data, max_shape_data],
                 scope=scope,
             )
             for op in main_program.global_block().ops[::-1]:

@@ -143,6 +143,9 @@ TEST_F(TestIndexExpr, IndexExpr_3) {
   ir::Expr q16 =
       ((S4 * 256 + S5) / S6 / S7 * S7 + (S4 * 256 + S5) / S6 % S7) * S6 +
       (S4 * 256 + S5) % S6;
+  ir::Expr q17 = S4 / (S5 * S6) * S6 + S4 % (S5 * S6) / S5;
+  ir::Expr q18 = (S4 * 1024 + S5 * 256 + S6) / 2097152 * 32 +
+                 (S4 * 1024 + S5 * 256 + S6) % 2097152 / 65536;
 
   // `Div` corner cases
   ir::Expr q6 = (S4 % S5 - S4) / S5;
@@ -174,6 +177,9 @@ TEST_F(TestIndexExpr, IndexExpr_3) {
             ir::IndexExpr((S4 * 256 + S5 + S6 * 1024)) % 25088);
   EXPECT_EQ(q16.as_index().Normalize(ir::IndexExpr::OptLevel::Level2),
             ir::IndexExpr(S4 * 256 + S5));
+  EXPECT_EQ(q17.as_index().Normalize(), ir::IndexExpr(S4 / S5));
+  EXPECT_EQ(q18.as_index().Normalize(),
+            ir::IndexExpr((S4 * 1024 + S5 * 256 + S6) / 65536));
 }
 
 TEST_F(TestIndexExpr, Change_Seq_Of_Div_Mod) {
@@ -494,6 +500,38 @@ TEST_F(TestIndexExpr, CommonFactor) {
           S3) *
          S2) *
         (((((S5 + S9) + S21) + S17) + S13) + S1))));
+}
+
+TEST_F(TestIndexExpr, TestCheckPattern) {
+  ir::Var a = ir::Var("a");
+  ir::Var b = ir::Var("b");
+  ir::Var f = ir::Var("f");
+
+  ir::Var S0 = ir::Var("S0");
+  ir::Var S1 = ir::Var("S1");
+  ir::Var S2 = ir::Var("S2");
+  ir::Var S3 = ir::Var("S3");
+  ir::Var S4 = ir::Var("S4");
+  ir::Var S5 = ir::Var("S5");
+  ir::Var S6 = ir::Var("S6");
+  ir::Var S7 = ir::Var("S7");
+  ir::Var S8 = ir::Var("S8");
+  ir::Var S9 = ir::Var("S9");
+
+  ir::IndexExpr pattern = f / (a * b) * b + f % (a * b) / a;
+  ir::IndexExpr pattern1 = f / (a * b) * a + f % (a * b) / b;
+  ir::IndexExpr e = (S0 * (S1 + S2) + S1 * S2 + S2) / (S4 * S5) * S5 +
+                    (S0 * (S1 + S2) + S1 * S2 + S2) % (S4 * S5) / S4;
+  ir::IndexExpr e1 = (S0 * (S1 + S2) + S1 * S2 + S2) / (S4 * S5) * S4 +
+                     (S0 * (S1 + S2) + S1 * S2 + S2) % (S4 * S5) / S5;
+  std::unordered_map<std::string, ir::IndexExpr> map;
+  EXPECT_TRUE(common::CheckPattern(e, pattern, &map));
+  map.clear();
+  EXPECT_FALSE(common::CheckPattern(e, pattern1, &map));
+  map.clear();
+  EXPECT_FALSE(common::CheckPattern(e1, pattern, &map));
+  map.clear();
+  EXPECT_TRUE(common::CheckPattern(e1, pattern1, &map));
 }
 }  // namespace common
 }  // namespace cinn

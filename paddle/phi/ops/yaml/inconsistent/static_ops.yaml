@@ -532,6 +532,7 @@
     func : memcpy
     param: [x, dst_place_type]
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : min
   args : (Tensor x, IntArray axis={}, bool keepdim=false)

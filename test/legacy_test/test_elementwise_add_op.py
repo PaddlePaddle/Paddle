@@ -144,6 +144,36 @@ class TestElementwiseAddOp_ZeroDim3(TestElementwiseAddOp_ZeroDim1):
         self.out = np.add(self.x, self.y)
 
 
+class TestElementwiseAddOp_ZeroSize1(TestElementwiseAddOp):
+    def init_input_output(self):
+        self.x = np.random.uniform(0.1, 1, [3]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [0, 3]).astype(self.dtype)
+        self.out = np.add(self.x, self.y)
+
+    def test_check_grad_normal(self):
+        pass
+
+    def test_check_grad_ignore_x(self):
+        pass
+
+    def test_check_grad_ignore_y(self):
+        pass
+
+
+class TestElementwiseAddOp_ZeroSize2(TestElementwiseAddOp_ZeroSize1):
+    def init_input_output(self):
+        self.x = np.random.uniform(0.1, 1, [1, 3, 4]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [0, 3, 4]).astype(self.dtype)
+        self.out = np.add(self.x, self.y)
+
+
+class TestElementwiseAddOp_ZeroSize3(TestElementwiseAddOp_ZeroSize1):
+    def init_input_output(self):
+        self.x = np.random.uniform(0.1, 1, [1, 0, 2]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [3, 0, 1]).astype(self.dtype)
+        self.out = np.add(self.x, self.y)
+
+
 @unittest.skipIf(
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
@@ -657,6 +687,67 @@ class TestAddApi(unittest.TestCase):
             np_z = z.numpy()
             z_expected = np.array([3.0, 8.0, 6.0])
             self.assertEqual((np_z == z_expected).all(), True)
+
+
+class TestAddApiZeroSize(unittest.TestCase):
+    def init_data(self):
+        self.x_numpy = np.random.rand(1, 3, 4).astype('float32')
+        self.y_numpy = np.random.rand(0, 3, 4).astype('float32')
+
+    def _executed_api(self, x, y, name=None):
+        return paddle.add(x, y, name)
+
+    def test_declarative(self):
+        self.init_data()
+        with base.program_guard(base.Program()):
+            x = paddle.static.data(
+                name="x", shape=self.x_numpy.shape, dtype=self.x_numpy.dtype
+            )
+            y = paddle.static.data(
+                name="y", shape=self.y_numpy.shape, dtype=self.y_numpy.dtype
+            )
+            z = self._executed_api(x, y)
+
+            place = base.CPUPlace()
+            exe = base.Executor(place)
+            z_value = exe.run(
+                feed={"x": self.x_numpy, "y": self.y_numpy}, fetch_list=[z]
+            )
+            np_z = np.add(self.x_numpy, self.y_numpy)
+            np.testing.assert_allclose(z_value[0], np_z, rtol=1e-05, atol=1e-05)
+
+    def test_dygraph(self):
+        self.init_data()
+        places = (
+            [paddle.CPUPlace(), paddle.CUDAPlace(0)]
+            if core.is_compiled_with_cuda()
+            else [paddle.CPUPlace()]
+        )
+        for place in places:
+            with base.dygraph.guard(place):
+                x = paddle.to_tensor(self.x_numpy)
+                y = paddle.to_tensor(self.y_numpy)
+                z = self._executed_api(x, y)
+                np_z = np.add(self.x_numpy, self.y_numpy)
+                np.testing.assert_allclose(z, np_z, rtol=1e-05, atol=1e-05)
+
+
+class TestAddApiZeroSize2(TestAddApiZeroSize):
+    def init_data(self):
+        self.x_numpy = np.random.rand(3).astype('float32')
+        self.y_numpy = np.random.rand(0, 3).astype('float32')
+
+
+class TestAddApiZeroSize3(TestAddApiZeroSize):
+    def init_data(self):
+        self.x_numpy = np.random.rand(2, 0).astype('float32')
+        self.y_numpy = np.random.rand(1, 0).astype('float32')
+
+
+class TestAddApiZeroSize4(TestAddApiZeroSize):
+    def init_data(self):
+        self.x_numpy = np.random.rand(1, 0, 2).astype('float32')
+        self.y_numpy = np.random.rand(3, 0, 1).astype('float32')
 
 
 class TestAddInplaceApi(TestAddApi):

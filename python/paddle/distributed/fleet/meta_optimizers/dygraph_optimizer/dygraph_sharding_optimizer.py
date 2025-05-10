@@ -490,7 +490,7 @@ class DygraphShardingOptimizer:
 
             if self._broadcast_order_params is None:
                 warnings.warn(
-                    r"The param name passed to the optimizer doesn't follow .+_[0-9]+\..+ patter, "
+                    r"The param name passed to the optimizer doesn't follow .+_[0-9]+\..+ pattern, "
                     "overlap broadcast may harm the performance."
                 )
                 self._broadcast_order_params = self._parameter_list

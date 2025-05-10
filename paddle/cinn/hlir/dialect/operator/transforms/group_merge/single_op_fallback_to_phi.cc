@@ -58,6 +58,10 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
             "The last operator of fusion_op must be YieldOp, but got %s",
             fusion_op.GetOperators()[2]->name()));
 
+    if (fusion_op.GetOperators()[0]->isa<paddle::dialect::VarianceOp>()) {
+      return false;
+    }
+
     std::optional<pir::Operation*> paddle_op =
         FallBackOp(fusion_op.GetOperators()[0], rewriter);
     if (!paddle_op.has_value()) {

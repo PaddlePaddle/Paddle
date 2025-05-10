@@ -288,9 +288,8 @@ class VariableCreator(metaclass=Singleton):
         self.var_name_generator = UniqueNameGenerator(SOT_INFER_META_INNER_VAR)
 
     def gen_name(self, meta):
-        name = f"{meta.dtype}_{meta.stop_gradient}"
-        for l in meta.shape:
-            name += f"_{l}"
+        name = f"{meta.dtype}_{meta.stop_gradient}_"
+        name += "_".join(map(str, meta.shape))
         return name
 
     @property

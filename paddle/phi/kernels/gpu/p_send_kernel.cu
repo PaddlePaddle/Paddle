@@ -20,6 +20,7 @@
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/utils/data_type.h"
+#include "paddle/phi/kernels/funcs/send_recv_functor.h"
 
 #if defined(PADDLE_WITH_NCCL) || \
     defined(PADDLE_WITH_RCCL) && NCCL_VERSION_CODE >= 2703
@@ -28,97 +29,6 @@
 
 namespace phi {
 
-#if (defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_NCCL)) && \
-    NCCL_VERSION_CODE >= 2703
-template <typename Context>
-void send_shape_info(const Context& dev_ctx,
-                     const DenseTensor& x,
-                     distributed::NCCLCommContext* comm_ctx,
-                     int peer,
-                     gpuStream_t stream) {
-  PADDLE_ENFORCE_EQ((stream != nullptr && comm_ctx != nullptr),
-                    true,
-                    errors::InvalidArgument(
-                        "NCCLComm and Stream should be provided if use NCCL "
-                        "to send the shape info."));
-  paddle::DataType shape_dtype = paddle::DataType::INT32;
-  ncclDataType_t nccl_dtype = ncclInt;
-  auto dims = x.dims();
-  int shape_size = dims.size();
-
-  // step1: send the shape size
-  phi::DenseTensor cpu_shape_size_tensor(shape_dtype);
-  cpu_shape_size_tensor.Resize({1});
-  dev_ctx.HostAlloc(&cpu_shape_size_tensor, shape_dtype);
-  auto* cpu_data = cpu_shape_size_tensor.data<int>();
-  cpu_data[0] = shape_size;
-
-  // copy the shape size tensor to gpu and send
-  phi::DenseTensor* gpu_shape_size_tensor = new phi::DenseTensor(shape_dtype);
-  gpu_shape_size_tensor->Resize({1});
-  dev_ctx.Alloc(gpu_shape_size_tensor, shape_dtype);
-  const auto& cpu_place = phi::CPUPlace();
-  memory_utils::Copy(dev_ctx.GetPlace(),
-                     gpu_shape_size_tensor->data(),
-                     cpu_place,
-                     cpu_shape_size_tensor.data(),
-                     cpu_shape_size_tensor.numel() * sizeof(int),
-                     stream);
-
-  comm_ctx->Send(
-      *gpu_shape_size_tensor, gpu_shape_size_tensor->numel(), peer, stream);
-  VLOG(3) << "send the shape size: " << shape_size << " to peer";
-
-  // step2: send the shape
-  phi::DenseTensor cpu_shape_tensor(shape_dtype);
-  cpu_shape_tensor.Resize({shape_size});
-  dev_ctx.HostAlloc(&cpu_shape_tensor, shape_dtype);
-  auto* cpu_shape_data = cpu_shape_tensor.data<int>();
-  for (int i = 0; i < shape_size; ++i) {
-    cpu_shape_data[i] = dims[i];
-  }
-
-  // copy the shape tensor to gpu and send
-  phi::DenseTensor* gpu_shape_tensor = new phi::DenseTensor(shape_dtype);
-  gpu_shape_tensor->Resize({shape_size});
-  dev_ctx.Alloc(gpu_shape_tensor, shape_dtype);
-  memory_utils::Copy(dev_ctx.GetPlace(),
-                     gpu_shape_tensor->data(),
-                     cpu_place,
-                     cpu_shape_tensor.data(),
-                     cpu_shape_tensor.numel() * sizeof(int),
-                     stream);
-  comm_ctx->Send(*gpu_shape_tensor, gpu_shape_tensor->numel(), peer, stream);
-  VLOG(3) << "send the shape: (" << dims << ") to peer";
-}
-
-template <typename Context>
-distributed::NCCLCommContext* GetCommContext(const Context& dev_ctx, int peer) {
-  PADDLE_ENFORCE_GE(
-      peer,
-      0,
-      errors::InvalidArgument("The peer (%d) for send op must be non-negative.",
-                              peer));
-
-  auto comm_ctx =
-      static_cast<distributed::NCCLCommContext*>(dev_ctx.GetCommContext());
-  PADDLE_ENFORCE_NE(
-      comm_ctx,
-      nullptr,
-      errors::Unavailable("NCCLCommContext is nullptr, collective op should "
-                          "has ring_id attr."));
-
-  PADDLE_ENFORCE_LT(
-      peer,
-      comm_ctx->GetSize(),
-      errors::InvalidArgument("The value of peer (%d) you set must "
-                              "be less than comm->nranks (%d).",
-                              peer,
-                              comm_ctx->GetSize()));
-  return comm_ctx;
-}
-#endif
-
 template <typename T, typename Context>
 void PSendKernel(const Context& dev_ctx,
                  const DenseTensor& x,
@@ -126,12 +36,13 @@ void PSendKernel(const Context& dev_ctx,
                  bool dynamic_shape) {
 #if defined(PADDLE_WITH_NCCL) || \
     defined(PADDLE_WITH_RCCL) && NCCL_VERSION_CODE >= 2703
-  auto comm_ctx = GetCommContext(dev_ctx, peer);
+  auto comm_ctx =
+      GetCommContext<Context, distributed::NCCLCommContext>(dev_ctx, peer);
   gpuStream_t stream = dev_ctx.stream();
   if (dynamic_shape) {
-    send_shape_info<Context>(dev_ctx, x, comm_ctx, peer, stream);
+    send_shape_info<Context, distributed::NCCLCommContext, gpuStream_t>(
+        dev_ctx, x, comm_ctx, peer, stream);
   }
-
   comm_ctx->Send(x, x.numel(), peer, stream);
 #else
   PADDLE_THROW(
@@ -146,8 +57,8 @@ void PSendArrayKernel(const Context& dev_ctx,
                       int peer) {
 #if defined(PADDLE_WITH_NCCL) || \
     defined(PADDLE_WITH_RCCL) && NCCL_VERSION_CODE >= 2703
-
-  auto comm_ctx = GetCommContext(dev_ctx, peer);
+  auto comm_ctx =
+      GetCommContext<Context, distributed::NCCLCommContext>(dev_ctx, peer);
   gpuStream_t stream = dev_ctx.stream();
   for (size_t idx = 0; idx < x_array.size(); idx++) {
     VLOG(3) << "DenseTensorArray: idx(" << idx << ")";

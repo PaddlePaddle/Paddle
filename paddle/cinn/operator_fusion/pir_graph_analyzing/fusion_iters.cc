@@ -166,7 +166,7 @@ FusionItersSignature FusionItersManager::GetItersSignature(pir::Operation* op) {
 FusionItersSignature FusionItersManager::SingleDownstreamItersFusion(
     const FusionItersSignature& upstream,
     const FusionItersSignature& downstream) {
-  VLOG(4) << "[ItersFusion] Start SingleDownstreamItersFusion."
+  VLOG(8) << "[ItersFusion] Start SingleDownstreamItersFusion."
           << "\nUpstream: " << PrintItersSignature(upstream)
           << "\nDownstream: " << PrintItersSignature(downstream);
   FusionItersSignature fused_signature;
@@ -213,7 +213,7 @@ FusionItersSignature FusionItersManager::SingleDownstreamItersFusion(
                SetDifference(downstream.input_values, upstream.output_values));
   fused_signature.output_values = downstream.output_values;
 
-  VLOG(4) << "[ItersFusion] Fused: \n" << PrintItersSignature(fused_signature);
+  VLOG(8) << "[ItersFusion] Fused: \n" << PrintItersSignature(fused_signature);
   return fused_signature;
 }
 
@@ -221,7 +221,7 @@ FusionItersSignature FusionItersManager::MultiDownstreamItersFusion(
     const FusionItersSignature& upstream,
     const FusionItersSignature& downstream,
     const FusionItersManager::FusionDirection& direction) {
-  VLOG(4) << "[ItersFusion] Start MultiDownstreamItersFusion."
+  VLOG(8) << "[ItersFusion] Start MultiDownstreamItersFusion."
           << "\nUpstream: " << PrintItersSignature(upstream)
           << "\nDownstream: " << PrintItersSignature(downstream);
   FusionItersSignature fused_signature;
@@ -258,7 +258,7 @@ FusionItersSignature FusionItersManager::MultiDownstreamItersFusion(
     }
   }
 
-  VLOG(4) << "[ItersFusion] Fused: \n" << PrintItersSignature(fused_signature);
+  VLOG(8) << "[ItersFusion] Fused: \n" << PrintItersSignature(fused_signature);
   return fused_signature;
 }
 

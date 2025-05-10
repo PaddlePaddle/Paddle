@@ -201,7 +201,6 @@ DimUsageRelation AnalysisIndexExprRelation(
     }
   }
 
-  VLOG(4) << "[AnalysisIndexExprRelation] Result " << RelationDebugStr(res);
   return res;
 }
 

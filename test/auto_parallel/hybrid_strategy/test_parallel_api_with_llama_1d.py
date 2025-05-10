@@ -75,7 +75,7 @@ class TestPipelineParallelAPI(test_base.CommunicationTestDistBase):
             "amp_level": ["O2"],
             "amp_dtype": ["bfloat16"],
             "amp_master_grad": ["False"],
-            "num_hidden_layers": ["2", "4"],
+            "num_hidden_layers": ["3", "4"],
             "test_share_embedding": [
                 "1",
             ],

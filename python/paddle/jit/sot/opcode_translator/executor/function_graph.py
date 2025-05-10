@@ -22,7 +22,7 @@ import inspect
 from collections import namedtuple
 from copy import deepcopy
 from functools import cached_property, reduce
-from typing import Any, Callable, Tuple, Union
+from typing import TYPE_CHECKING, Any, Callable, Tuple, Union
 
 from typing_extensions import TypeAlias, TypeGuard
 
@@ -52,7 +52,12 @@ from ...utils import (
     map_if,
     switch_symbol_registry,
 )
-from ...utils.exceptions import BreakGraphError, SotExtraInfo
+from ...utils.exceptions import (
+    BreakGraphError,
+    DygraphInconsistentWithStaticBreak,
+    InferMetaBreak,
+    SotExtraInfo,
+)
 from ..instruction_utils import get_instructions
 from .guard import Guard, StringifiedExpression, make_guard
 from .mutable_data import MutationDel, MutationNew, MutationSet
@@ -82,6 +87,10 @@ from .variables import (
     find_traceable_vars,
     map_variables,
 )
+
+if TYPE_CHECKING:
+    import types
+
 
 CompileGraphResult: TypeAlias = Tuple[
     Callable[..., Any],
@@ -211,11 +220,13 @@ class FunctionGraph:
         ],
     )
 
-    def __init__(self, frame, **kwargs):
+    def __init__(
+        self, code: types.CodeType, globals: dict[str, object], **kwargs
+    ):
         self.sir_ctx = SymbolicTraceContext()
         self.inner_out = set()
         self.input_variables = []  # Store variables required within a function
-        self.pycode_gen = PyCodeGen(frame, disable_eval_frame=True)
+        self.pycode_gen = PyCodeGen(code, globals, disable_eval_frame=True)
         self.side_effects = SideEffects()
         self.need_cache = True
         self._global_guarded_variables: OrderedSet[VariableBase] = OrderedSet()
@@ -229,7 +240,7 @@ class FunctionGraph:
         # prepare builtins
         for name, value in builtins.__dict__.items():
             builtins_[name] = VariableFactory.from_value(
-                value, self, BuiltinTracker(name), debug_name=name
+                value, self, BuiltinTracker(name)
             )
         return builtins_
 
@@ -665,7 +676,9 @@ class FunctionGraph:
                     ):
                         # TODO(zrr1999): maybe we can continue to fallback to all args are constant.
                         raise BreakGraphError(
-                            f"InferMeta encount {type(e)}, but all args are not symbolic."
+                            InferMetaBreak(
+                                f"InferMeta encount {type(e)}, but all args are not symbolic."
+                            )
                         )
 
                     args, kwargs = map_if(
@@ -692,7 +705,9 @@ class FunctionGraph:
                         for arg in flatten_vars
                     ):
                         raise BreakGraphError(
-                            f"InferMeta encount {type(e)}, but all args are not symbolic."
+                            InferMetaBreak(
+                                f"InferMeta encount {type(e)}, but all args are not symbolic."
+                            )
                         )
 
                     args, kwargs = map_structure(
@@ -706,7 +721,9 @@ class FunctionGraph:
             except Exception as e:
                 if SotExtraInfo.from_exception(e).need_breakgraph:
                     raise BreakGraphError(
-                        f"API {func} encountered a need break graph error {e}"
+                        DygraphInconsistentWithStaticBreak(
+                            f"API {func} encountered a need break graph error {e}"
+                        )
                     )
                 raise e
 
@@ -868,6 +885,28 @@ class FunctionGraph:
                 self.pycode_gen.gen_load_const("int64")
                 self.pycode_gen.gen_call_function(3)
 
+    @staticmethod
+    def _is_graph_output(
+        var,
+    ) -> TypeGuard[TensorVariable | SymbolicVariable]:
+        return isinstance(
+            var.tracker, (DummyTracker, SymbolicOperationTracker)
+        ) and isinstance(var, (TensorVariable, SymbolicVariable))
+
+    @staticmethod
+    def _collect_related_dummy_tensor(var):
+        if not isinstance(
+            var.tracker, (DummyTracker, SymbolicOperationTracker)
+        ):
+            return []
+        if FunctionGraph._is_graph_output(var):
+            return [var]
+
+        retval = []
+        for inp in var.tracker.inputs:
+            retval.extend(FunctionGraph._collect_related_dummy_tensor(inp))
+        return retval
+
     def _find_tensor_outputs(
         self, outputs: list[VariableBase]
     ) -> OrderedSet[TensorVariable | SymbolicVariable]:
@@ -878,26 +917,6 @@ class FunctionGraph:
             outputs: output variables
         """
 
-        def is_graph_output(
-            var,
-        ) -> TypeGuard[TensorVariable | SymbolicVariable]:
-            return isinstance(
-                var.tracker, (DummyTracker, SymbolicOperationTracker)
-            ) and isinstance(var, (TensorVariable, SymbolicVariable))
-
-        def collect_related_dummy_tensor(var):
-            if isinstance(
-                var.tracker, (DummyTracker, SymbolicOperationTracker)
-            ):
-                if is_graph_output(var):
-                    return [var]
-                else:
-                    retval = []
-                    for inp in var.tracker.inputs:
-                        retval.extend(collect_related_dummy_tensor(inp))
-                    return retval
-            return []
-
         output_tensors: OrderedSet[TensorVariable | SymbolicVariable] = (
             OrderedSet()
         )
@@ -906,11 +925,13 @@ class FunctionGraph:
             if isinstance(
                 output.tracker, (DummyTracker, SymbolicOperationTracker)
             ):
-                if is_graph_output(output):
+                if FunctionGraph._is_graph_output(output):
                     output_tensors.add(output)
                 else:
                     for inp in output.tracker.inputs:
-                        for _var in collect_related_dummy_tensor(inp):
+                        for _var in FunctionGraph._collect_related_dummy_tensor(
+                            inp
+                        ):
                             output_tensors.add(_var)
                     # Guard output that can not be traced.
                     self.add_global_guarded_variable(output)
@@ -919,7 +940,7 @@ class FunctionGraph:
             if isinstance(side_effect_var, (ListVariable, DictVariable)):
                 for var in side_effect_var.flatten_inner_vars():
                     if (
-                        is_graph_output(var)
+                        FunctionGraph._is_graph_output(var)
                         and side_effect_var.tracker.is_traceable()
                     ):
                         output_tensors.add(var)
@@ -934,12 +955,12 @@ class FunctionGraph:
                 for record in proxy_records:
                     if isinstance(record, (MutationSet, MutationNew)):
                         for var in record.value.flatten_inner_vars():
-                            if is_graph_output(var):
+                            if FunctionGraph._is_graph_output(var):
                                 output_tensors.add(var)
         # Find Tensor in print_stmts
         for print_stmt in self._print_variables:
             for var in print_stmt.flatten_inner_vars():
-                if is_graph_output(var):
+                if FunctionGraph._is_graph_output(var):
                     output_tensors.add(var)
 
         # add inplace tensors into output tensors.

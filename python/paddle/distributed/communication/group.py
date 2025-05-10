@@ -345,9 +345,11 @@ def barrier(group: Group | None = None) -> None:
 
     barrier_tensor = paddle.full([1], 1, dtype="int32")
     if framework.in_dynamic_mode():
-        return paddle._legacy_C_ops.barrier(
-            barrier_tensor, barrier_tensor, 'ring_id', ring_id
-        )
+        # barrier is not available in xpu for now
+        if not paddle.framework.core.is_compiled_with_xpu():
+            return paddle._legacy_C_ops.barrier(
+                barrier_tensor, barrier_tensor, 'ring_id', ring_id
+            )
     else:
         op_type = 'barrier'
         if not isinstance(ring_id, int):

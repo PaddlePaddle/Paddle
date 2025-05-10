@@ -48,7 +48,7 @@ std::string GetBroadcastAxes(const int64_t& tensor_ndim,
   return alphabet.substr(broadcast_ndim - tensor_ndim, tensor_ndim);
 }
 
-// Rule1: A repicated dimension could be merged by any sharded dimension.
+// Rule1: A replicated dimension could be merged by any sharded dimension.
 // Rule2: A tensor axis could at most be sharded by one mesh dimension.
 // (TODO trigger heuristics cost model and reshard to handle axis sharded by
 // multiple dimension case.)

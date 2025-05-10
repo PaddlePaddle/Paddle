@@ -20,9 +20,19 @@ import operator
 from functools import partial, reduce
 from typing import TYPE_CHECKING
 
+import numpy as np
+
 import paddle
 
-from ...utils import BreakGraphError, FallbackError
+from ...utils import (
+    BreakGraphError,
+    BuiltinFunctionBreak,
+    FallbackError,
+    UnsupportedIteratorBreak,
+    UnsupportedOperationBreak,
+    get_numpy_ufuncs,
+)
+from ...utils.exceptions import InnerError
 from ...utils.magic_methods import (
     BINARY_OPS,
     UNARY_OPS,
@@ -30,23 +40,26 @@ from ...utils.magic_methods import (
 )
 from ...utils.paddle_api_config import get_tensor_methods
 from .dispatch_functions import (
+    create_raise_break_graph_handler,
     operator_in,
     operator_is_none,
     operator_is_not_none,
     operator_not_in,
-    raise_break_graph_fn,
     tensor_numel,
 )
 from .dispatcher import Dispatcher, optional
 from .tracker import ConstTracker, DanglingTracker, DummyTracker
 from .variables import (
     BuiltinVariable,
+    CallableVariable,
     ConstantVariable,
     ContainerVariable,
     DictVariable,
     EnumerateVariable,
+    IterVariable,
     ListVariable,
     MapVariable,
+    NumpyArrayVariable,
     NumpyVariable,
     RangeVariable,
     SliceVariable,
@@ -117,7 +130,9 @@ Dispatcher.register(
 Dispatcher.register(
     operator_in,
     ("VariableBase", "IterVariable"),
-    raise_err_handle(BreakGraphError("Codes like: `variable in iterator`.")),
+    create_raise_break_graph_handler(
+        UnsupportedIteratorBreak("Codes like: `variable in iterator`.")
+    ),
 )
 
 Dispatcher.register(
@@ -149,8 +164,8 @@ Dispatcher.register(
 Dispatcher.register(
     operator_not_in,
     ("VariableBase", "IterVariable"),
-    raise_err_handle(
-        BreakGraphError("Codes like: `variable not in iterator`.")
+    create_raise_break_graph_handler(
+        UnsupportedIteratorBreak("Codes like: `variable not in iterator`.")
     ),
 )
 
@@ -980,7 +995,7 @@ for unary_fn in UNARY_OPS:
     for magic_method in magic_method_builtin_dispatch(unary_fn):
         Dispatcher.register(
             unary_fn,
-            ("ConstantVariable",),
+            ("ConstantVariable | NumpyNumberVariable",),
             partial(
                 lambda fn, var: VariableFactory.from_value(
                     fn(var.get_py_value()),
@@ -994,7 +1009,10 @@ for binary_fn in BINARY_OPS:
     for magic_method in magic_method_builtin_dispatch(binary_fn):
         Dispatcher.register(
             binary_fn,
-            ("ConstantVariable", "ConstantVariable"),
+            (
+                "ConstantVariable | NumpyNumberVariable",
+                "ConstantVariable | NumpyNumberVariable",
+            ),
             partial(
                 lambda fn, var, other: VariableFactory.from_value(
                     fn(var.get_py_value(), other.get_py_value()),
@@ -1019,7 +1037,11 @@ for unary_fn in UNARY_OPS:
         Dispatcher.register(
             unary_fn,
             ("TensorVariable",),
-            raise_break_graph_fn,
+            create_raise_break_graph_handler(
+                BuiltinFunctionBreak(
+                    fn_name=unary_fn, arg_types="TensorVariable"
+                )
+            ),
         )
         continue
 
@@ -1064,7 +1086,7 @@ for binary_fn in BINARY_OPS:
                 binary_fn,
                 (
                     "TensorVariable",
-                    "TensorVariable | SymbolicVariable | ConstantVariable | NumpyVariable",
+                    "TensorVariable | SymbolicVariable | ConstantVariable | NumpyNumberVariable",
                 ),
                 partial(
                     lambda magic_name, var, other: var.graph.call_tensor_method(
@@ -1084,7 +1106,11 @@ for binary_fn in BINARY_OPS:
                 ):
                     if var.get_py_type() is str:
                         raise BreakGraphError(
-                            "(ConstantVariable % TensorVariable) raise a callback. "
+                            UnsupportedOperationBreak(
+                                left_type="ConstantVariable",
+                                right_type="TensorVariable",
+                                operator="__rmod__",
+                            )
                         )
                     raise FallbackError("Tensor doesn't support __rmod__")
 
@@ -1092,7 +1118,7 @@ for binary_fn in BINARY_OPS:
                 Dispatcher.register(
                     binary_fn,
                     (
-                        "SymbolicVariable | ConstantVariable | NumpyVariable",
+                        "SymbolicVariable | ConstantVariable | NumpyNumberVariable",
                         "TensorVariable",
                     ),
                     partial(
@@ -1137,31 +1163,6 @@ for binary_fn in BINARY_OPS:
                     magic_method.name,
                 ),
             )
-
-# Register dispatch for NumpyVariable: fallback !
-for unary_fn in UNARY_OPS:
-    if unary_fn in [bool]:
-        continue
-    for magic_method in magic_method_builtin_dispatch(unary_fn):
-
-        @Dispatcher.register_decorator(unary_fn)
-        def numpy_unary_dispatcher(var: NumpyVariable):
-            raise FallbackError('Numpy operator need fallback to dygraph')
-
-
-Dispatcher.register(
-    operator.eq,
-    ("NumpyVariable", "ConstantVariable | NumpyVariable"),
-    lambda left, right: constant_numpy_equal(right, left),
-)
-
-
-for binary_fn in BINARY_OPS:
-    for magic_method in magic_method_builtin_dispatch(binary_fn):
-
-        @Dispatcher.register_decorator(binary_fn)
-        def numpy_binary_dispatcher(var: NumpyVariable, other: NumpyVariable):
-            raise FallbackError('Numpy operator need fallback to dygraph')
 
 
 # Register dispatch for DataVariable: directly call and return a wrapped variable.
@@ -1246,7 +1247,7 @@ def dispatch_pow(
 ):
     graph = base.graph
     result = BuiltinVariable(operator.pow, graph, DanglingTracker())(base, exp)
-    if exp is not None:
+    if mod is not None:
         result = BuiltinVariable(operator.mod, graph, DanglingTracker())(
             result, mod
         )
@@ -1282,6 +1283,36 @@ def dispatch_sum(
     )
     return result
 
+
+@Dispatcher.register_decorator(reduce)
+def dispatch_reduce(
+    func: CallableVariable,
+    iterable: ContainerVariable | TensorVariable | IterVariable,
+    initializer: VariableBase = None,  # type: ignore
+):
+    iterator = iterable.get_iter()
+    if initializer is None or (
+        isinstance(initializer, ConstantVariable)
+        and initializer.get_py_value() is None
+    ):
+        try:
+            initializer = iterator.next()
+        except StopIteration:
+            raise InnerError("reduce() of empty iterable with no initial value")
+    result = initializer
+    while True:
+        try:
+            result = func(result, iterator.next())
+        except StopIteration:
+            break
+    return result
+
+
+Dispatcher.register(
+    next,
+    ("IterVariable",),
+    lambda var: var.next(),
+)
 
 Dispatcher.register(
     max,
@@ -1344,7 +1375,7 @@ def get_math_unary_functions():
 for fn in get_math_unary_functions():
     Dispatcher.register(
         fn,
-        ("ConstantVariable",),
+        ("ConstantVariable | NumpyNumberVariable",),
         partial(
             lambda fn, var: ConstantVariable(
                 fn(var.get_py_value()),
@@ -1356,7 +1387,7 @@ for fn in get_math_unary_functions():
     )
 Dispatcher.register(
     math.log,
-    ("ConstantVariable",),
+    ("ConstantVariable | NumpyNumberVariable",),
     lambda var: ConstantVariable(
         math.log(var.get_py_value()),
         var.graph,
@@ -1365,13 +1396,39 @@ Dispatcher.register(
 )
 
 
+# NumpyVariable dispatch
 def constant_numpy_equal(left, right):
     numpy_ans = left.get_py_value() == right.get_py_value()
-    return NumpyVariable(
+    return VariableFactory.from_value(
         numpy_ans,
         left.graph,
         tracker=DummyTracker([left, right]),
     )
+
+
+for unary_fn in UNARY_OPS:
+    if unary_fn is bool:
+        continue
+    for magic_method in magic_method_builtin_dispatch(unary_fn):
+
+        @Dispatcher.register_decorator(unary_fn)
+        def numpy_unary_dispatcher(var: NumpyArrayVariable):
+            raise FallbackError('Numpy operator need fallback to dygraph')
+
+
+Dispatcher.register(
+    operator.eq,
+    ("NumpyVariable", "ConstantVariable | NumpyVariable"),
+    lambda left, right: constant_numpy_equal(right, left),
+)
+
+
+for binary_fn in BINARY_OPS:
+    for magic_method in magic_method_builtin_dispatch(binary_fn):
+
+        @Dispatcher.register_decorator(binary_fn)
+        def numpy_binary_dispatcher(var: NumpyVariable, other: NumpyVariable):
+            raise FallbackError('Numpy operator need fallback to dygraph')
 
 
 Dispatcher.register(
@@ -1389,3 +1446,81 @@ Dispatcher.register(
         tracker=DummyTracker([x]),
     ),
 )
+
+
+# any for list
+@Dispatcher.register_decorator(any)
+def dispatch_list_any(var: ContainerVariable | IterVariable):
+    graph = var.graph
+    to_bool = BuiltinVariable(bool, graph, DanglingTracker())
+    it = var.get_iter()
+    while True:
+        try:
+            item = it.next()
+            bool_item = to_bool(item)
+            assert isinstance(bool_item, ConstantVariable)
+            if bool_item.get_py_value():
+                return ConstantVariable(True, graph, DummyTracker([var]))
+        except StopIteration:
+            break
+    return ConstantVariable(False, graph, DummyTracker([var]))
+
+
+# all for list
+@Dispatcher.register_decorator(all)
+def dispatch_list_all(var: ContainerVariable | IterVariable):
+    graph = var.graph
+    to_bool = BuiltinVariable(bool, graph, DanglingTracker())
+    it = var.get_iter()
+    while True:
+        try:
+            item = it.next()
+            bool_item = to_bool(item)
+            assert isinstance(bool_item, ConstantVariable)
+            if not bool_item.get_py_value():
+                return ConstantVariable(False, graph, DummyTracker([var]))
+        except StopIteration:
+            break
+    return ConstantVariable(True, graph, DummyTracker([var]))
+
+
+Dispatcher.register(
+    np.number.item,
+    ("NumpyNumberVariable",),
+    lambda x: ConstantVariable(
+        x.get_py_value().item(),
+        x.graph,
+        tracker=DummyTracker([x]),
+    ),
+)
+
+unary_ufuncs, binary_ufuncs = get_numpy_ufuncs()
+for ufunc in unary_ufuncs:
+    Dispatcher.register(
+        ufunc,
+        ("ConstantVariable | NumpyNumberVariable",),
+        partial(
+            lambda ufunc, var: VariableFactory.from_value(
+                ufunc(var.get_py_value()),
+                var.graph,
+                tracker=DummyTracker([var]),
+            ),
+            ufunc,
+        ),
+    )
+for ufunc in binary_ufuncs:
+    Dispatcher.register(
+        ufunc,
+        (
+            "ConstantVariable | NumpyNumberVariable",
+            "ConstantVariable | NumpyNumberVariable",
+        ),
+        partial(
+            lambda ufunc, var, other: VariableFactory.from_value(
+                ufunc(var.get_py_value(), other.get_py_value()),
+                var.graph,
+                tracker=DummyTracker([var, other]),
+            ),
+            ufunc,
+        ),
+    )

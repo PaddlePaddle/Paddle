@@ -53,7 +53,7 @@ class AutoCheckPointACLBase(AutoCheckpointBase):
 
         file_name = os.path.basename(__file__)
         base_name = os.path.splitext(file_name)[0]
-        print("runnng name:", base_name)
+        print("running name:", base_name)
 
     def _run_normal(self):
         exe, main_prog, startup_prog = self._generate()

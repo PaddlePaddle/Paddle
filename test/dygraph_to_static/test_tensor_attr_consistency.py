@@ -75,7 +75,6 @@ DYGRAPH_ONLY_TENSOR_ATTRS_ALLOW_LIST = OrderedSet(
         'strides',
         'to_sparse_coo',
         'to_sparse_csr',
-        'tolist',
         'value',
         'zero_',
         "__cuda_array_interface__",

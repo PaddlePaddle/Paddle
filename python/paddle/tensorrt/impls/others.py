@@ -269,6 +269,7 @@ def set_value_converter(network, paddle_op, inputs):
 
 
 @converter_registry.register("pd_op.share_data", trt_version="8.x")
+@converter_registry.register("pd_op.share_data_", trt_version="8.x")
 def share_data_converter(network, paddle_op, inputs):
     x = inputs[0]
 

@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import functools
 import inspect
 import itertools
 import operator
@@ -47,9 +48,15 @@ from ....utils import (
 )
 from ....utils.exceptions import (
     BreakGraphError,
+    BuiltinFunctionBreak,
+    DataDependencyOperationBreak,
     FallbackError,
+    InlineCallBreak,
     InnerError,
+    PsdbBreakReason,
     SotErrorBase,
+    UnsupportedOperationBreak,
+    UnsupportedPaddleAPIBreak,
 )
 from ..dispatcher import Dispatcher
 from ..guard import (
@@ -195,7 +202,9 @@ class UserDefinedFunctionVariable(FunctionVariable):
             BM.add(BM.cur_exe._code.co_filename, BM.cur_exe._current_line)
             return ConstantVariable.wrap_literal(None, self.graph)
         elif self.value is psdb.breakgraph:
-            raise BreakGraphError("breakgraph by psdb.breakgraph")
+            raise BreakGraphError(
+                PsdbBreakReason("breakgraph by psdb.breakgraph")
+            )
         elif self.value is psdb.fallback:
             raise FallbackError("fallback by psdb.fallback")
         elif self.value is psdb.in_sot:
@@ -231,7 +240,9 @@ class UserDefinedFunctionVariable(FunctionVariable):
             code_name = self.value.__code__.co_name
             location_info = f'File "{filename}", line {lineno}, in {code_name}'
             raise BreakGraphError(
-                f"{location_info} encountered breakgraph error caused by\n{indent}{e}"
+                InlineCallBreak(
+                    f"{location_info} encountered breakgraph error caused by\n{indent}{e}"
+                )
             )
         return output
 
@@ -288,7 +299,7 @@ class PaddleApiVariable(FunctionVariable):
     def call_function(self, /, *args, **kwargs):
         if is_break_graph_api(self.value):
             raise BreakGraphError(
-                f"breakgraph by unsupported function: {self.value.__name__}"
+                UnsupportedPaddleAPIBreak(fn_name=self.value.__name__)
             )
         return self.graph.call_paddle_api(self.value, *args, **kwargs)
 
@@ -335,7 +346,9 @@ class TensorFunctionVariable(FunctionVariable):
 
     def call_function(self, /, *args, **kwargs):
         if is_break_graph_tensor_methods(self.method_name):
-            raise BreakGraphError("call break_graph_tensor_method.")
+            raise BreakGraphError(
+                DataDependencyOperationBreak("call break_graph_tensor_method.")
+            )
         return self.graph.call_tensor_method(self.method_name, *args, **kwargs)
 
     def bind(self, instance: VariableBase, name: str):
@@ -523,7 +536,9 @@ class ContainerLayerVariable(LayerVariable):
                 )
             except Exception as e:
                 raise BreakGraphError(
-                    f"call {self.value.__class__.__name__}.__getitem__ with slice as key, and slice with py value failed: {e}."
+                    UnsupportedOperationBreak(
+                        reason_str=f"call {self.value.__class__.__name__}.__getitem__ with slice as key, and slice with py value failed: {e}."
+                    )
                 )
 
         else:
@@ -778,7 +793,7 @@ class BuiltinVariable(FunctionVariable):
             else self.value
         )
         raise BreakGraphError(
-            f"Not support builtin function: {fn_name} with args: Args({arg_types})"
+            BuiltinFunctionBreak(fn_name=fn_name, arg_types=arg_types)
         )
 
     @VariableFactory.register_from_value(successor="ClassVariable")
@@ -792,6 +807,27 @@ class BuiltinVariable(FunctionVariable):
         return {
             "name": self.value.__name__,
         }
+
+
+class FunctoolsLruCacheWrapperVariable(FunctionVariable):
+    def __init__(
+        self, fn: Callable[..., Any], graph: FunctionGraph, tracker: Tracker
+    ):
+        super().__init__(fn, graph, tracker)
+        self.value = fn
+
+    def call_function(self, /, *args, **kwargs):
+        wrapped_fn = self.value.__wrapped__
+        wrapped_fn = VariableFactory.from_value(
+            wrapped_fn, self.graph, GetAttrTracker(self, "__wrapped__")
+        )
+        return wrapped_fn(*args, **kwargs)
+
+    @VariableFactory.register_from_value()
+    def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
+        if isinstance(value, functools._lru_cache_wrapper):
+            return FunctoolsLruCacheWrapperVariable(value, graph, tracker)
+        return None
 
 
 class UserDefinedGeneratorFunctionVariable(FunctionVariable):

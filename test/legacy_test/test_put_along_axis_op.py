@@ -27,10 +27,10 @@ from paddle.static import InputSpec
 paddle.enable_static()
 
 
-def put_along_axis_net(arr):
+def put_along_axis_net(arr, axis=-1):
     indices = paddle.to_tensor([[[[2]]]], dtype='int32', stop_gradient=False)
-    return paddle.tensor.put_along_axis(
-        arr, indices=indices, values=-4.0, axis=-2, reduce='add'
+    return paddle.put_along_axis(
+        arr, indices=indices, values=-4.0, axis=axis, reduce='add'
     )
 
 
@@ -1346,6 +1346,7 @@ class TestPutAlongAxisDynamicShape(unittest.TestCase):
         self.enable_cinn = False
         self.tol = 1e-6
         self.dtype = "float32"
+        self.axis = -2
         self.input_specs = [
             InputSpec(
                 shape=(-1, -1, -1, -1),
@@ -1370,7 +1371,7 @@ class TestPutAlongAxisDynamicShape(unittest.TestCase):
         else:
             net = self.net
 
-        res = net(arr)
+        res = net(arr, self.axis)
         res.backward()
         arr_grad = arr.gradient()
         return res, arr_grad
@@ -1387,6 +1388,60 @@ class TestPutAlongAxisDynamicShape(unittest.TestCase):
 
             for dr, d in zip(dy_grads, st_grads):
                 np.testing.assert_allclose(dr, d, rtol=self.tol, atol=self.tol)
+
+
+class TestPutAlongAxisDynamicShape1(TestPutAlongAxisDynamicShape):
+    def setUp(self):
+        np.random.seed(2024)
+        self.net = put_along_axis_net
+        self.enable_cinn = False
+        self.tol = 1e-6
+        self.dtype = "float32"
+        self.axis = 0
+        self.input_specs = [
+            InputSpec(
+                shape=(-1, -1, -1, -1),
+                dtype=self.dtype,
+                stop_gradient=False,
+            )
+        ]
+        self.arr = np.random.random([16, 16, 16, 16]).astype(self.dtype)
+
+
+class TestPutAlongAxisDynamicShape2(TestPutAlongAxisDynamicShape):
+    def setUp(self):
+        np.random.seed(2024)
+        self.net = put_along_axis_net
+        self.enable_cinn = False
+        self.tol = 1e-6
+        self.dtype = "float32"
+        self.axis = -1
+        self.input_specs = [
+            InputSpec(
+                shape=(-1, -1, -1, -1),
+                dtype=self.dtype,
+                stop_gradient=False,
+            )
+        ]
+        self.arr = np.random.random([20, 20, 20, 20]).astype(self.dtype)
+
+
+class TestPutAlongAxisDynamicShape3(TestPutAlongAxisDynamicShape):
+    def setUp(self):
+        np.random.seed(2024)
+        self.net = put_along_axis_net
+        self.enable_cinn = False
+        self.tol = 1e-6
+        self.dtype = "float32"
+        self.axis = 3
+        self.input_specs = [
+            InputSpec(
+                shape=(-1, -1, -1, -1),
+                dtype=self.dtype,
+                stop_gradient=False,
+            )
+        ]
+        self.arr = np.random.random([32, 32, 32, 32]).astype(self.dtype)
 
 
 if __name__ == "__main__":

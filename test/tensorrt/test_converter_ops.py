@@ -415,21 +415,62 @@ class TestYoloBoxPattern(TensorRTBaseTest):
     def test_trt_result(self):
         self.check_trt_result()
 
+    def test_trt_fp16_result(self):
+        self.check_trt_result(rtol=1e-3, atol=1e-3, precision_mode="fp16")
 
-class TestYoloBoxCase1Pattern(TensorRTBaseTest):
+
+class TestYoloBoxDynamicShapePattern(TensorRTBaseTest):
     def setUp(self):
         self.python_api = yolo_box
         self.api_args = {
             "x": np.random.randn(2, 14, 8, 8).astype("float32"),
             "img_size": np.ones([2, 2]).astype("int32"),
         }
-        self.program_config = {"feed_list": []}
+        self.program_config = {"feed_list": ["x", "img_size"]}
+        self.min_shape = {"x": [1, 14, 8, 8], "img_size": [1, 2]}
+        self.opt_shape = {"x": [2, 14, 8, 8], "img_size": [2, 2]}
+        self.max_shape = {"x": [3, 14, 8, 8], "img_size": [3, 2]}
 
-        self.min_shape = {}
-        self.opt_shape = {}
-        self.max_shape = {}
+    def test_trt_result_dynamic(self):
+        self.check_trt_result()
 
-    def test_trt_fp16_result(self):
+    def test_trt_fp16_result_dynamic(self):
+        self.check_trt_result(rtol=1e-3, atol=1e-3, precision_mode="fp16")
+
+
+class TestTanTRTPattern(TensorRTBaseTest):
+    def setUp(self):
+        self.python_api = paddle.tan
+        self.api_args = {
+            "x": np.random.randn(1, 2, 32, 32).astype("float32"),
+        }
+        self.program_config = {"feed_list": ["x"]}
+        self.min_shape = {"x": [1, 2, 32, 32]}
+        self.opt_shape = {"x": [1, 2, 32, 32]}
+        self.max_shape = {"x": [1, 2, 32, 32]}
+
+    def test_trt_result(self):
+        self.check_trt_result(rtol=1e-3, atol=1e-3)
+
+    def test_trt_result_fp16(self):
+        self.check_trt_result(rtol=1e-3, atol=1e-3, precision_mode="fp16")
+
+
+class TestAsinTRTPattern(TensorRTBaseTest):
+    def setUp(self):
+        self.python_api = paddle.asin
+        self.api_args = {
+            "x": np.random.randn(1, 2, 32, 32).astype("float32"),
+        }
+        self.program_config = {"feed_list": ["x"]}
+        self.min_shape = {"x": [1, 2, 32, 32]}
+        self.opt_shape = {"x": [1, 2, 32, 32]}
+        self.max_shape = {"x": [2, 2, 32, 32]}
+
+    def test_trt_result(self):
+        self.check_trt_result(rtol=1e-3, atol=1e-3)
+
+    def test_trt_result_fp16(self):
         self.check_trt_result(rtol=1e-3, atol=1e-3, precision_mode="fp16")
 
 
@@ -480,6 +521,45 @@ class TestDeformableConvTRTPattern(TensorRTBaseTest):
 
     def test_trt_result(self):
         self.check_trt_result()
+
+    def test_trt_result_fp16(self):
+        self.check_trt_result(precision_mode="fp16")
+
+
+class TestAcosTRTPattern(TensorRTBaseTest):
+    def setUp(self):
+        self.python_api = paddle.acos
+        self.api_args = {
+            "x": np.random.randn(1, 2, 32, 32).astype("float32"),
+        }
+        self.program_config = {"feed_list": ["x"]}
+        self.min_shape = {"x": [1, 2, 32, 32]}
+        self.opt_shape = {"x": [1, 2, 32, 32]}
+        self.max_shape = {"x": [2, 2, 32, 32]}
+
+    def test_trt_result(self):
+        self.check_trt_result(rtol=1e-3, atol=1e-3)
+
+    def test_trt_result_fp16(self):
+        self.check_trt_result(rtol=1e-3, atol=1e-3, precision_mode="fp16")
+
+
+class TestAtanTRTPattern(TensorRTBaseTest):
+    def setUp(self):
+        self.python_api = paddle.atan
+        self.api_args = {
+            "x": np.random.randn(1, 2, 32, 32).astype("float32"),
+        }
+        self.program_config = {"feed_list": ["x"]}
+        self.min_shape = {"x": [1, 2, 32, 32]}
+        self.opt_shape = {"x": [1, 2, 32, 32]}
+        self.max_shape = {"x": [2, 2, 32, 32]}
+
+    def test_trt_result(self):
+        self.check_trt_result(rtol=1e-3, atol=1e-3)
+
+    def test_trt_result_fp16(self):
+        self.check_trt_result(rtol=1e-3, atol=1e-3, precision_mode="fp16")
 
 
 if __name__ == '__main__':

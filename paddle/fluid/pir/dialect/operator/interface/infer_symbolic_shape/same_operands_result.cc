@@ -12,8 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/same_operands_result.h"
+#include <cmath>
+
 #include <optional>
+#include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/same_operands_result.h"
 
 #define OP_SAME_OPERANDS_AND_RESULT(name)                                     \
   bool name##OpInferSymbolicShape(                                            \
@@ -121,7 +123,6 @@ OP_SAME_OPERANDS_AND_RESULT(Logit_)
 OP_SAME_OPERANDS_AND_RESULT(Logsigmoid)
 OP_SAME_OPERANDS_AND_RESULT(Logsigmoid_)
 OP_SAME_OPERANDS_AND_RESULT(LogSoftmax)
-OP_SAME_OPERANDS_AND_RESULT(Memcpy)
 OP_SAME_OPERANDS_AND_RESULT(Mish)
 OP_SAME_OPERANDS_AND_RESULT(NumberCount)
 OP_SAME_OPERANDS_AND_RESULT(Pow)
@@ -193,10 +194,6 @@ OP_SAME_OPERANDS_AND_RESULT(EnableCheckModelNanInf)
 OP_SAME_OPERANDS_AND_RESULT(ViewShape)
 OP_SAME_OPERANDS_AND_RESULT(Silu)
 OP_SAME_OPERANDS_AND_RESULT(ViewDtype)
-OP_SAME_OPERANDS_AND_RESULT(Sqrt)
-OP_SAME_OPERANDS_AND_RESULT(Sqrt_)
-OP_SAME_OPERANDS_AND_RESULT(SqrtSr)
-OP_SAME_OPERANDS_AND_RESULT(SqrtSr_)
 OP_SAME_OPERANDS_AND_RESULT(FusedSoftmaxMaskUpperTriangle)
 OP_SAME_OPERANDS_AND_RESULT(Gammaln)
 OP_SAME_OPERANDS_AND_RESULT(Gammaln_)
@@ -293,6 +290,67 @@ bool CeilOpInferSymbolicShape(pir::Operation *op,
 bool Ceil_OpInferSymbolicShape(pir::Operation *op,
                                pir::InferSymbolicShapeContext *infer_context) {
   return CeilOpInferSymbolicShape(op, infer_context);
+}
+
+bool SqrtOpInferSymbolicShape(pir::Operation *op,
+                              pir::InferSymbolicShapeContext *infer_context) {
+  const symbol::ShapeOrDataDimExprs &operand_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+
+  auto CheckSqrt = [&](const int64_t checked_dim) -> bool {
+    const int64_t root = static_cast<int64_t>(std::sqrt(checked_dim));
+    return ((root * root) == checked_dim);
+  };
+
+  if (operand_shape_or_data.data().has_value()) {
+    std::vector<symbol::DimExpr> result_data;
+    bool has_symbol_dim = false;
+    for (auto &dim : operand_shape_or_data.data().value()) {
+      if (dim.isa<int64_t>() && CheckSqrt(dim.dyn_cast<int64_t>())) {
+        result_data.push_back(
+            static_cast<int64_t>(std::sqrt(dim.dyn_cast<int64_t>())));
+      } else {
+        has_symbol_dim = true;
+        break;
+      }
+    }
+
+    if (!has_symbol_dim) {
+      symbol::ShapeOrDataDimExprs result_shape_or_data(
+          symbol::TensorShapeOrDataDimExprs(operand_shape_or_data.shape(),
+                                            result_data));
+      infer_context->SetShapeOrDataForValue(op->result(0),
+                                            result_shape_or_data);
+      return true;
+    }
+  }
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::TensorShapeOrDataDimExprs(operand_shape_or_data.shape()));
+  return true;
+}
+
+bool Sqrt_OpInferSymbolicShape(pir::Operation *op,
+                               pir::InferSymbolicShapeContext *infer_context) {
+  return SqrtOpInferSymbolicShape(op, infer_context);
+}
+
+bool SqrtSrOpInferSymbolicShape(pir::Operation *op,
+                                pir::InferSymbolicShapeContext *infer_context) {
+  return SqrtOpInferSymbolicShape(op, infer_context);
+}
+
+bool SqrtSr_OpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return SqrtOpInferSymbolicShape(op, infer_context);
+}
+
+bool MemcpyOpInferSymbolicShape(pir::Operation *op,
+                                pir::InferSymbolicShapeContext *infer_context) {
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      infer_context->GetShapeOrDataForValue(op->operand_source(0)));
+  return true;
 }
 
 }  // namespace paddle::dialect

@@ -23,6 +23,7 @@ from paddle.jit import not_to_static, to_static
 from paddle.jit.dy2static.program_translator import (
     ProgramTranslator,
     StaticFunction,
+    unwrap_decorators,
 )
 from paddle.jit.dy2static.utils import as_not_paddle_func
 from paddle.nn import Layer
@@ -91,7 +92,17 @@ class ProxyLayer(Layer):
         self._label_vars[mode] = labels
 
         # step 2. call inner_layer.forward
-        self._output_vars[mode] = self.inner_layer(*inputs)
+        has_labels_arg = False
+        if isinstance(self.inner_layer, Layer):
+            _, fwd_func = unwrap_decorators(self.inner_layer.forward)
+            if "labels" in inspect.signature(fwd_func).parameters.keys():
+                has_labels_arg = True
+        if has_labels_arg:
+            self._output_vars[mode] = self.inner_layer(
+                *inputs, labels=labels[0]
+            )
+        else:
+            self._output_vars[mode] = self.inner_layer(*inputs)
 
         # step 3. calculate loss if needed
         new_inputs = self._prepare(self.output_vars, labels)
@@ -454,9 +465,11 @@ class ProgramHelper:
         ):
             paddle.disable_static()
             barrier_tensor = paddle.full([1], 1, dtype="int32")
-            paddle._legacy_C_ops.barrier(
-                barrier_tensor, barrier_tensor, 'ring_id', 0
-            )
+            # barrier is not available in xpu for now
+            if not paddle.framework.core.is_compiled_with_xpu():
+                paddle._legacy_C_ops.barrier(
+                    barrier_tensor, barrier_tensor, 'ring_id', 0
+                )
             paddle.enable_static()
 
     def init(self, main_program, place, dist_context):
@@ -596,9 +609,11 @@ class ProgramHelper:
         ):
             paddle.disable_static()
             barrier_tensor = paddle.full([1], 1, dtype="int32")
-            paddle._legacy_C_ops.barrier(
-                barrier_tensor, barrier_tensor, 'ring_id', 0
-            )
+            # barrier is not available in xpu for now
+            if not paddle.framework.core.is_compiled_with_xpu():
+                paddle._legacy_C_ops.barrier(
+                    barrier_tensor, barrier_tensor, 'ring_id', 0
+                )
             paddle.enable_static()
 
     def cache_whole_graph_dist_attr(self, all_params):

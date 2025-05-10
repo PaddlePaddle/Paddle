@@ -92,6 +92,42 @@ struct type_caster<paddle::Tensor> {
   }
 };
 
+template <>
+struct optional_caster<paddle::optional<paddle::Tensor>> {
+  using value_conv = make_caster<paddle::Tensor>;
+
+  template <typename T>
+  static handle cast(T&& src, return_value_policy policy, handle parent) {
+    if (!src) {
+      return none().release();
+    }
+    if (!std::is_lvalue_reference<T>::value) {
+      policy = return_value_policy_override<paddle::Tensor>::policy(policy);
+    }
+    return value_conv::cast(*std::forward<T>(src), policy, parent);
+  }
+
+  bool load(handle src, bool convert) {
+    if (!src) {
+      return false;
+    }
+    if (src.is_none()) {
+      return true;  // default-constructed value is already empty
+    }
+    value_conv inner_caster;
+    if (!inner_caster.load(src, convert)) {
+      return false;
+    }
+
+    value = paddle::make_optional(
+        cast_op<paddle::Tensor&&>(std::move(inner_caster)));
+    return true;
+  }
+
+  PYBIND11_TYPE_CASTER(paddle::optional<paddle::Tensor>,
+                       const_name("Optional[paddle::Tensor]"));
+};
+
 // Pybind11 bindings for optional types.
 // http://pybind11.readthedocs.io/en/stable/advanced/cast/stl.html#c-17-library-containers
 template <typename T>

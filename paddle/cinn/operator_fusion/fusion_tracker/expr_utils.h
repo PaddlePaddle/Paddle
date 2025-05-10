@@ -45,6 +45,22 @@ struct ApplyItersTransform {
   ir::Expr aligned_expr_;
 };
 
+struct ApplyAxisTransform {
+  explicit ApplyAxisTransform(const ir::Expr& expr) : expr_(expr) {}
+  ir::Expr operator()(const IdentityTransformPtr& trans) { return expr_; }
+  ir::Expr operator()(const TransposeTransformPtr& trans);
+  ir::Expr operator()(const AppendAxisTransformPtr& trans);
+  ir::Expr operator()(const DeleteAxisTransformPtr& trans);
+  ir::Expr operator()(const ReshapeTransformPtr& trans);
+  ir::Expr operator()(const UnsupportedTransformPtr& trans) {
+    PADDLE_THROW(
+        ::common::errors::Unavailable("Cannot apply UnsupportedTransform!"));
+  }
+
+ private:
+  ir::Expr expr_;
+};
+
 std::vector<ir::Expr> GetFusibleOpsExpr(std::vector<FusibleOp> fusion_ops);
 
 std::vector<ir::Expr> TopoSort(const std::vector<ir::Expr>& op_exprs);

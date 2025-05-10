@@ -32,6 +32,11 @@ void SubtractKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     const DenseTensor& y,
                     DenseTensor* out) {
+  if (x.numel() == 0 || y.numel() == 0) {
+    out->Resize(out->dims());
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   phi::SubtractRawKernel<T, Context>(dev_ctx, x, y, -1, out);
 }
 
@@ -40,6 +45,11 @@ void MultiplyKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     const DenseTensor& y,
                     DenseTensor* out) {
+  if (x.numel() == 0 || y.numel() == 0) {
+    out->Resize(out->dims());
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   phi::MultiplyRawKernel<T, Context>(dev_ctx, x, y, -1, out);
 }
 
@@ -48,6 +58,11 @@ void DivideKernel(const Context& dev_ctx,
                   const DenseTensor& x,
                   const DenseTensor& y,
                   DenseTensor* out) {
+  if (x.numel() == 0 || y.numel() == 0) {
+    out->Resize(out->dims());
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   phi::DivideRawKernel<T, Context>(dev_ctx, x, y, -1, out);
 }
 
@@ -85,6 +100,11 @@ void AddKernel(const Context& dev_ctx,
                const DenseTensor& x,
                const DenseTensor& y,
                DenseTensor* out) {
+  if (x.numel() == 0 || y.numel() == 0) {
+    out->Resize(out->dims());
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
 #ifdef PADDLE_WITH_CUDA
   if (x.dtype() == phi::DataType::FLOAT32 &&
       (y.dtype() == phi::DataType::BFLOAT16 ||

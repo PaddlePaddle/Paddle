@@ -220,9 +220,11 @@ class ProcessGroup:
             # TODO(shenliang03): This is a temporary solution to solve the problem of
             # hang caused by cross-creation of new_group
             barrier_tensor = paddle.full([1], 1, dtype="int32")
-            paddle._legacy_C_ops.barrier(
-                barrier_tensor, barrier_tensor, 'ring_id', ring_id
-            )
+            # barrier is not available in xpu for now
+            if not paddle.framework.core.is_compiled_with_xpu():
+                paddle._legacy_C_ops.barrier(
+                    barrier_tensor, barrier_tensor, 'ring_id', ring_id
+                )
 
             # NOTE(zhiqiu): to avoid send/recv hang in lazy init
             if self._group_type == 'p2p':
@@ -236,9 +238,11 @@ class ProcessGroup:
 
         if self.nranks > 1:
             barrier_tensor = paddle.full([1], 1, dtype="int32")
-            paddle._legacy_C_ops.barrier(
-                barrier_tensor, barrier_tensor, 'ring_id', 0
-            )
+            # barrier is not available in xpu for now
+            if not paddle.framework.core.is_compiled_with_xpu():
+                paddle._legacy_C_ops.barrier(
+                    barrier_tensor, barrier_tensor, 'ring_id', 0
+                )
 
         self._is_instantiate = True
 

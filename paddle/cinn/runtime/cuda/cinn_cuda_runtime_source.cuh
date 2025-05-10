@@ -80,10 +80,14 @@ __device__ inline bool FN_FP32(isinf)(float x) { return isinf(x); }
 __device__ inline bool FN_FP32(isnan)(float x) { return isnan(x); }
 
 __device__ inline float FN_FP32(pow)(float a, float b) { return powf(a, b); }
-
 __device__ inline float FN_FP32(mod)(float a, float b) {
   float res = fmodf(a, b);
   if ((res != 0.0f) && ((res < 0.0f) != (b < 0.0f))) res += b;
+  return res;
+}
+__device__ inline float FN_FP32(rcp)(float x) {
+  float res;
+  asm("rcp.approx.ftz.f32 %0, %1;" : "=f"(res) : "f"(x));
   return res;
 }
 
@@ -130,6 +134,66 @@ __device__ inline double FN_FP64(mod)(double a, double b) {
   if ((res != 0.0) && ((res < 0.0) != (b < 0.0))) res += b;
   return res;
 }
+__device__ inline double FN_FP64(rcp)(double x) {
+  double res;
+  asm("rcp.approx.ftz.f64 %0, %1;" : "=d"(res) : "d"(x));
+  return res;
+}
+}
+
+// *************************************************************** //
+// welford struct and operators
+
+#define WELFORD_STRUCT_MACRO(TYPENAME, DTYPE) \
+  struct TYPENAME {                           \
+    DTYPE mean;                               \
+    DTYPE m2;                                 \
+    DTYPE weight;                             \
+    __device__ TYPENAME() {};                 \
+    __device__ explicit TYPENAME(DTYPE value) : mean(value), m2(0), weight(1) {} \
+    __device__ TYPENAME(DTYPE mean, DTYPE m2, DTYPE weight) : mean(mean), m2(m2), weight(weight) {} \
+    __device__ explicit operator DTYPE() const { return m2 / weight; } \
+  };
+
+#define WELFORD_COMBINE_MACRO(TYPENAME, DTYPE, RCP_FUNC)       \
+  __device__ inline TYPENAME operator+(const TYPENAME& a, const TYPENAME& b) { \
+    DTYPE delta = b.mean - a.mean;                             \
+    DTYPE weight = a.weight + b.weight;                        \
+    DTYPE mean, m2;                                            \
+    if (b.weight == 1) {                                       \
+      mean = a.mean + delta * RCP_FUNC(weight);                \
+      m2 = a.m2 + delta * (b.mean - mean);                     \
+    } else {                                                   \
+      DTYPE w2_over_w = a.weight == b.weight ? (DTYPE)0.5 : b.weight * RCP_FUNC(weight); \
+      mean = a.mean + delta * w2_over_w;                       \
+      m2 = a.m2 + b.m2 + delta * delta * a.weight * w2_over_w; \
+    }                                                          \
+    return {mean, m2, weight};                                 \
+  }
+
+#define WELFORD_SHFL_SYNC_MACRO(TYPENAME, DTYPE, SHFL_FUNC, ARG2_TYPE, ARG2) \
+  __device__ inline TYPENAME SHFL_FUNC(unsigned mask, const TYPENAME& var, ARG2_TYPE ARG2, int width = 32) { \
+    DTYPE mean = SHFL_FUNC(mask, var.mean, ARG2, width);                     \
+    DTYPE m2 = SHFL_FUNC(mask, var.m2, ARG2, width);                         \
+    DTYPE weight = SHFL_FUNC(mask, var.weight, ARG2, width);                 \
+    return {mean, m2, weight};                                               \
+  }
+
+#define EXPAND_WELFORD_MACRO(TYPE_SUFFIX, DTYPE)                                           \
+  WELFORD_STRUCT_MACRO(welford_##TYPE_SUFFIX, DTYPE)                                       \
+  WELFORD_COMBINE_MACRO(welford_##TYPE_SUFFIX, DTYPE, cinn_nvgpu_rcp_##TYPE_SUFFIX)        \
+  WELFORD_SHFL_SYNC_MACRO(welford_##TYPE_SUFFIX, DTYPE, __shfl_down_sync, unsigned, delta) \
+  WELFORD_SHFL_SYNC_MACRO(welford_##TYPE_SUFFIX, DTYPE, __shfl_xor_sync, int, laneMask)
+
+EXPAND_WELFORD_MACRO(fp32, float)
+EXPAND_WELFORD_MACRO(fp64, double)
+
+#undef WELFORD_STRUCT_MACRO
+#undef WELFORD_COMBINE_MACRO
+#undef WELFORD_SHFL_SYNC_MACRO
+#undef EXPAND_WELFORD_MACRO
+
+extern "C" {
 
 // *************************************************************** //
 // int32 unary and binary operator
@@ -403,12 +467,14 @@ __device__ inline long long int cinn_min_int64(const long long int left, const l
   MACRO(sum_fp32, 0.0f, float, ##__VA_ARGS__)          \
   MACRO(prod_fp32, 1.0f, float, ##__VA_ARGS__)         \
   MACRO(max_fp32, -3.40282e+38f, float, ##__VA_ARGS__) \
-  MACRO(min_fp32, 3.40282e+38f, float, ##__VA_ARGS__)
+  MACRO(min_fp32, 3.40282e+38f, float, ##__VA_ARGS__)  \
+  MACRO(sum_welford_fp32, welford_fp32(0.0f, 0.0f, 0.0f), welford_fp32, ##__VA_ARGS__)
 
 __device__ inline float cinn_sum_fp32(const float left, const float right) { return left + right; }
 __device__ inline float cinn_prod_fp32(const float left, const float right) { return left * right; }
 __device__ inline float cinn_max_fp32(const float left, const float right) { return max(left, right); }
 __device__ inline float cinn_min_fp32(const float left, const float right) { return min(left, right); }
+__device__ inline welford_fp32 cinn_sum_welford_fp32(welford_fp32 left, welford_fp32 right) { return left + right; }
 
 #ifdef CINN_CUDA_BF16
 
@@ -442,12 +508,14 @@ __device__ inline float16 cinn_min_fp16(const float16 left, const float16 right)
   MACRO(sum_fp64, 0.0, double, ##__VA_ARGS__)           \
   MACRO(prod_fp64, 1.0, double, ##__VA_ARGS__)          \
   MACRO(max_fp64, -1.79769e+308, double, ##__VA_ARGS__) \
-  MACRO(min_fp64, 1.79769e+308, double, ##__VA_ARGS__)
+  MACRO(min_fp64, 1.79769e+308, double, ##__VA_ARGS__)  \
+  MACRO(sum_welford_fp64, welford_fp64(0.0, 0.0, 0.0), welford_fp64, ##__VA_ARGS__)
 
 __device__ inline double cinn_sum_fp64(const double left, const double right) { return left + right; }
 __device__ inline double cinn_prod_fp64(const double left, const double right) { return left * right; }
 __device__ inline double cinn_max_fp64(const double left, const double right) { return max(left, right); }
 __device__ inline double cinn_min_fp64(const double left, const double right) { return min(left, right); }
+__device__ inline welford_fp64 cinn_sum_welford_fp64(welford_fp64 left, welford_fp64 right) { return left + right; }
 
 #define EXPAND_REDUCE_BOOL_MACRO(MACRO, ...) \
   MACRO(all, true, bool, ##__VA_ARGS__)      \

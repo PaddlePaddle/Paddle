@@ -310,6 +310,14 @@ Tensor ReduceAny(const Tensor& A,
   return Reduce(A, axes, lang::ReduceAny, keep_dims, Expr(false), output_name);
 }
 
+Tensor Variance(const Tensor& A,
+                const std::vector<int>& axes,
+                const bool keep_dims,
+                const std::string& output_name) {
+  return Reduce(
+      A, axes, lang::Variance, keep_dims, lang::Zero(A->type()), output_name);
+}
+
 std::vector<Tensor> WarpReduce(const ir::Tensor& A,
                                const int last_reduce_dim_num,
                                const bool keep_dim,

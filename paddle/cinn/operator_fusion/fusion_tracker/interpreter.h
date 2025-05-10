@@ -32,12 +32,16 @@ struct ScopeElement {
 };
 using ScopeElementPtr = std::shared_ptr<ScopeElement>;
 using cinn::hlir::framework::pir::trivial_fusion_detail::GetOutputTensor;
+using DimExprMap = std::unordered_map<symbol::DimExpr, symbol::DimExpr>;
 
 struct FusionInterpreter {
   FusionInterpreter(const FusionTrackerPtr& tracker,
                     const std::vector<::pir::Operation*>& ops,
-                    const std::vector<FusibleOp>& init_fusible_op)
-      : tracker(tracker), initialized_lowered_op(init_fusible_op) {
+                    const std::vector<FusibleOp>& init_fusible_op,
+                    const DimExprMap& dimexpr_map)
+      : tracker(tracker),
+        initialized_lowered_op(init_fusible_op),
+        substitute_dimexpr_map(dimexpr_map) {
     for (size_t i = 0; i < ops.size(); i++) {
       if (ops[i]->name() == "cinn_op.yield_store" ||
           ops[i]->name() == "pd_op.assign_out_") {
@@ -51,6 +55,7 @@ struct FusionInterpreter {
   std::vector<FusibleOp> initialized_lowered_op;
   std::vector<std::string> global_var_names;
   std::unordered_map<std::string, ScopeElementPtr> scope;
+  DimExprMap substitute_dimexpr_map;
   FusionTrackerPtr tracker;
 
   std::vector<ir::Expr> ret_expr;

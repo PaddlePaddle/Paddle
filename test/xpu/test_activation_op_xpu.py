@@ -109,18 +109,23 @@ class XPUTestRoundOP(XPUOpTestWrapper):
         def set_case(self):
             self.op_type = 'round'
 
-            self.init_dtype()
+            self.dtype = self.in_type
             self.set_shape()
             self.set_decimals()
 
             np.random.seed(1024)
-            x = np.random.uniform(-1, 1, self.shape).astype(self.dtype) * 100
+            x = np.random.uniform(-100, 100, self.shape)
+
+            if self.dtype == np.uint16:
+                # bfloat16 actually
+                new_x = convert_float_to_uint16(x)
+            else:
+                new_x = x.astype(self.dtype)
             out = np.round(x, decimals=self.decimals)
 
-            self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
+            self.inputs = {'X': OpTest.np_dtype_to_base_dtype(new_x)}
             self.outputs = {'Out': out}
             self.attrs = {'decimals': self.decimals}
-            self.convert_input_output()
 
         def set_shape(self):
             self.shape = [10, 12]
@@ -131,36 +136,43 @@ class XPUTestRoundOP(XPUOpTestWrapper):
         def test_check_grad(self):
             pass
 
-        def convert_input_output(self):
-            if self.dtype == np.uint16:
-                self.inputs = {'X': convert_float_to_uint16(self.inputs['X'])}
-                self.outputs = {
-                    'Out': convert_float_to_uint16(self.outputs['Out'])
-                }
-
     class XPUTestRound_ZeroDIm(XPUTestRound):
         def set_shape(self):
             self.shape = []
 
     class XPUTestRound_decimals1(XPUTestRound):
-        def init_decimals(self):
+        def set_decimals(self):
             self.decimals = 2
 
         def test_round_api(self):
             with dynamic_guard():
-                x_np = (
-                    np.random.uniform(-1, 1, self.shape).astype(self.dtype)
-                    * 100
+                if self.dtype != np.float32:
+                    # no float16 and bfloat16 on cpu
+                    return
+
+                np.random.seed(1024)
+                x_np = np.random.uniform(-100, 100, [10, 12]).astype(self.dtype)
+
+                x_paddle = paddle.to_tensor(x_np, place=paddle.XPUPlace(0))
+                x_paddle_cpu = paddle.to_tensor(x_np, place=paddle.CPUPlace())
+
+                # round using xpu
+                y = paddle.round(x_paddle, self.decimals)
+                # round using cpu
+                y_cpu = paddle.round(x_paddle_cpu, self.decimals)
+                # round using numpy
+                numpy_result = np.round(x_np, decimals=self.decimals)
+
+                # compare
+                np.testing.assert_allclose(
+                    y.numpy(), y_cpu.numpy(), atol=0, rtol=0
                 )
-                out_expect = np.round(x_np, decimals=self.decimals)
-                x_paddle = paddle.to_tensor(
-                    x_np, dtype=self.dtype, place=self.place
+                np.testing.assert_allclose(
+                    y.numpy(), numpy_result, atol=0, rtol=1e-7
                 )
-                y = paddle.round(x_paddle, decimals=self.decimals)
-                np.testing.assert_allclose(y.numpy(), out_expect, rtol=1e-3)
 
     class TestRound_decimals2(XPUTestRound_decimals1):
-        def init_decimals(self):
+        def set_decimals(self):
             self.decimals = -1
 
 

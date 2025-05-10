@@ -607,6 +607,14 @@ Json AttrTypeWriter::WriteBuiltInType(const pir::Type& type) {
     VLOG(8) << "Write IndexType ... ";
     return pir::serializeTypeToJson<pir::IndexType>(
         type.dyn_cast<pir::IndexType>());
+  } else if (type.isa<pir::Float8E4M3FNType>()) {
+    VLOG(8) << "Write Float8E4M3FNType ... ";
+    return pir::serializeTypeToJson<pir::Float8E4M3FNType>(
+        type.dyn_cast<pir::Float8E4M3FNType>());
+  } else if (type.isa<pir::Float8E5M2Type>()) {
+    VLOG(8) << "Write Float8E5M2Type ... ";
+    return pir::serializeTypeToJson<pir::Float8E5M2Type>(
+        type.dyn_cast<pir::Float8E5M2Type>());
   } else if (type.isa<pir::Complex64Type>()) {
     VLOG(8) << "Write Complex64Type ... ";
     return pir::serializeTypeToJson<pir::Complex64Type>(

@@ -413,7 +413,8 @@ std::vector<std::vector<pir::Value>> DtensorFromLocalOp::Vjp(
                    ->result(0);
   }
 
-  auto grad_op = builder.Build<DtensorToLocalOp>(out_grad);
+  auto grad_op = builder.Build<DtensorToLocalOp>(
+      out_grad, dist_type.tensor_dist_attr() /*unused*/);
 
   VLOG(6) << "End call vjp for dtensor_from_local op.";
 
@@ -422,13 +423,23 @@ std::vector<std::vector<pir::Value>> DtensorFromLocalOp::Vjp(
 
 void DtensorToLocalOp::Build(pir::Builder& builder,
                              pir::OperationArgument& argument,
-                             pir::Value input) {
+                             pir::Value input,
+                             TensorDistAttribute grad_dist_attr) {
   VLOG(4) << "Start build DtensorToLocalOp";
+  paddle::dialect::DistDenseTensorType input_tensor_type;
+  if (input.type().isa<paddle::dialect::DistDenseTensorType>()) {
+    input_tensor_type =
+        input.type().dyn_cast<paddle::dialect::DistDenseTensorType>();
+  } else {
+    PADDLE_THROW(common::errors::Unimplemented(
+        "Only support paddle::dialect::DistDenseTensorType"));
+  }
 
   VLOG(4) << "Builder construction inputs";
   argument.AddInput(input);
 
   VLOG(4) << "Builder construction attributes";
+  argument.AddAttribute("grad_dist_attr", grad_dist_attr);
 
   VLOG(4) << "Builder construction outputs";
 
@@ -494,9 +505,11 @@ std::vector<std::vector<pir::Value>> DtensorToLocalOp::Vjp(
           "dtensor_from_local op's outputs grad[0] size should be 1"));
 
   auto& builder = *ApiBuilder::Instance().GetBuilder();
+  const auto& grad_dist_attr =
+      op->attribute<paddle::dialect::TensorDistAttribute>("grad_dist_attr");
 
-  auto grad_op = builder.Build<DtensorFromLocalOp>(
-      out_grads[0][0], dist_type.tensor_dist_attr());
+  auto grad_op =
+      builder.Build<DtensorFromLocalOp>(out_grads[0][0], grad_dist_attr);
 
   VLOG(6) << "End call vjp for dtensor_from_local op.";
 

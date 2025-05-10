@@ -43,7 +43,7 @@ class TestPrimBlacklistFlags(unittest.TestCase):
             z = decomp.decompose(main_program, [z])
 
             fwd_ops_new = [op.name() for op in main_program.global_block().ops]
-            # Ensure that tanh is splitted into small ops
+            # Ensure that tanh is split into small ops
             self.assertTrue(op_name not in fwd_ops_new)
 
         exe = paddle.static.Executor()
@@ -72,7 +72,7 @@ class TestPrimBlacklistFlags(unittest.TestCase):
             z = decomp.decompose(main_program, [z])
 
             fwd_ops_new = [op.name() for op in main_program.global_block().ops]
-            # Ensure that tanh is splitted into small ops
+            # Ensure that tanh is split into small ops
             self.assertTrue(op_name in fwd_ops_new)
 
         exe = paddle.static.Executor()

@@ -874,6 +874,15 @@ class DictVariable(ContainerVariable):
         return len(self.proxy.get_all())
 
     def get(self, key, default=None):
+        # `d.get(key, default)` equivalent to `d[key] if key in d else default`
+        # We need guard `key in d`, but now we simply guard `d` and `key` separately
+        # (`key` is guarded in __getitem__ and key is guarded in getitem)
+        # TODO: We should add some tracker to record the key and the dict
+        # in the future, to guard more fine-grained information.
+        # In the other way, we can also dispatch `d.get(key, default)` to
+        # `d[key] if key in d else default`, but we need implement the
+        # new mechanism to allow the dispatcher to dispatch to a polyfill function.
+        self.graph.add_global_guarded_variable(self)
         if isinstance(key, VariableBase):
             raise InnerError(
                 f"[{self.__class__.__name__}]: received {key} to get value."

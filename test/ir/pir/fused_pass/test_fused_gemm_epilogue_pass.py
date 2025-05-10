@@ -52,20 +52,20 @@ class TestFusedGemm_epilogueAdd(unittest.TestCase):
         main_program = paddle.base.Program()
         with paddle.pir_utils.IrGuard():
             x_np = np.random.normal(3, 2.5, size=(1024, 1024)).astype(
-                np.float32
+                np.float16
             )
             y_np = x_np
-            z_np = np.random.normal(3, 2.5, size=(1024)).astype(np.float32)
+            z_np = np.random.normal(3, 2.5, size=(1024)).astype(np.float16)
             with paddle.base.program_guard(main_program):
                 with pir_op_role_guard(0), pir_chunk_id_guard(0):
                     x_ = paddle.static.data(
-                        name="x", shape=[1024, 1024], dtype="float32"
+                        name="x", shape=[1024, 1024], dtype="float16"
                     )
                     y_ = paddle.static.data(
-                        name="y", shape=[1024, 1024], dtype="float32"
+                        name="y", shape=[1024, 1024], dtype="float16"
                     )
                     z_ = paddle.static.data(
-                        name="z", shape=[1024], dtype="float32"
+                        name="z", shape=[1024], dtype="float16"
                     )
                     x_.stop_gradient = False
                     y_.stop_gradient = False

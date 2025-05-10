@@ -38,10 +38,14 @@ from ..guard import (
 )
 from ..mutable_data import MutableDictLikeData
 from ..tracker import (
+    BuiltinTracker,
+    ConstTracker,
     DummyTracker,
     GetAttrTracker,
     GetItemTracker,
     GetIterTracker,
+    GlobalTracker,
+    LocalTracker,
     Tracker,
 )
 
@@ -229,8 +233,6 @@ class VariableFactory:
         value: Any,
         graph: FunctionGraph,
         tracker: Tracker,
-        *,
-        debug_name: str | None = None,
     ) -> VariableBase:
         """
         Create a new variable object from the given value.
@@ -243,7 +245,6 @@ class VariableFactory:
             value (Any): The input value.
             graph (FunctionGraph): The FunctionGraph object that this variable is associated with.
             tracker (Tracker): The Tracker object that tracks the information of this variable.
-            debug_name (str | None): An optional debug name for the variable.
 
         Returns:
             VariableBase: A new variable object representing the input value.
@@ -270,8 +271,20 @@ class VariableFactory:
             var = VariableFactory.default_from_value(
                 value, graph, tracker
             )  # If a Variable could not be found using the registered functions, use the default function to create a new Variable
-        var.debug_name = debug_name
         return var
+
+
+def infer_debug_name_from_tracker(tracker: Tracker) -> str:
+    res = None
+    if isinstance(tracker, (LocalTracker, GlobalTracker, BuiltinTracker)):
+        res = f"{tracker.name}"
+    elif isinstance(tracker, ConstTracker):
+        res = f"{tracker.value}"
+    elif isinstance(tracker, GetItemTracker) and tracker.container.debug_name:
+        res = f"{tracker.container.debug_name}[{tracker.key}]"
+    elif isinstance(tracker, GetAttrTracker) and tracker.obj.debug_name:
+        res = f"{tracker.obj.debug_name}.{tracker.attr}"
+    return res
 
 
 class VariableBase:
@@ -300,10 +313,11 @@ class VariableBase:
     mutable_attrs = []
 
     def __init__(self, graph: FunctionGraph, tracker: Tracker):
+
         self.graph = graph
         self.tracker = tracker
         self.id = VariableBase.name_generator.next()
-        self._debug_name: str | None = None
+        self.debug_name = infer_debug_name_from_tracker(tracker)
 
     @property
     def main_info(self) -> dict[str, Any]:
@@ -320,44 +334,12 @@ class VariableBase:
         """
         Property method to return a dictionary of debug information about the variable
         """
-        return {
-            "debug_name": self.debug_name,
+        info = {
             "id": self.id,
         }
-
-    @property
-    def debug_name(self) -> str:
-        """
-        Generate a debug_name for each variable.
-
-        Returns:
-            _debug_name: the name of variable.
-        """
-        if self._debug_name is not None:
-            # Return the self._debug_name cache if it is not None.
-            return self._debug_name
-        inputs = self.tracker.inputs
-        if isinstance(self.tracker, GetItemTracker):
-            self._debug_name = (
-                f"{self.tracker.container.debug_name}[{self.tracker.key}]"
-            )
-        elif isinstance(self.tracker, GetAttrTracker):
-            self._debug_name = (
-                f"{self.tracker.obj.debug_name}.{self.tracker.attr}"
-            )
-        elif len(inputs) == 0:
-            self._debug_name = "tmp_var"
-        else:  # len(inputs) >= 0
-            for input in inputs:
-                assert input is not None
-            self._debug_name = "tmp_var_" + "_".join(
-                input.debug_name for input in inputs
-            )
-        return self._debug_name
-
-    @debug_name.setter
-    def debug_name(self, name):
-        self._debug_name = name
+        if self.debug_name:
+            info["debug_name"] = self.debug_name
+        return info
 
     def __hash__(self):
         return hash(self.id)

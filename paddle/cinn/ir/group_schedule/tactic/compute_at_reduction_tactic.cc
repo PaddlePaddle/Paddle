@@ -15,8 +15,6 @@
 #include "paddle/cinn/ir/group_schedule/tactic/compute_at_reduction_tactic.h"
 #include "paddle/cinn/ir/ir_analyzer/data_dependency_graph.h"
 #include "paddle/cinn/ir/ir_analyzer/ir_analyzer.h"
-#include "paddle/cinn/ir/utils/ir_compare.h"
-#include "paddle/cinn/ir/utils/stmt_converter.h"
 #include "paddle/cinn/optim/replace_var_with_expr.h"
 
 namespace cinn {
@@ -173,7 +171,7 @@ bool HasCommonLoad(const std::vector<ir::Expr>& first_loads,
                    const std::vector<ir::Expr>& other_loads) {
   for (auto& first_load : first_loads) {
     for (auto& other_load : other_loads) {
-      if (ir::ir_utils::IRCompare(first_load, other_load)) return true;
+      if (first_load == other_load) return true;
     }
   }
   return false;
@@ -409,6 +407,8 @@ ComputeAtReductionTactic::GetDependencyHarzardFreeBlocks(
     if (dep_graph.HasDependency(*it, *this_it) == analyzer::DepKind::DEP) break;
     results.push_back(other_id);
   }
+  // Note: reverse results here because upstreams were added in reversed order.
+  std::reverse(results.begin(), results.end());
 
   // Search downwards
   for (auto it = this_it + 1; it != stmts.end(); ++it) {
@@ -470,7 +470,7 @@ std::vector<ir::Expr> ComputeAtReductionTactic::GetLoopVariantLoads(
   for (auto& load : loads) {
     auto it = std::find_if(
         dedup_loads.begin(), dedup_loads.end(), [&](const ir::Expr& other) {
-          return ir::ir_utils::IRCompare(load, other);
+          return load == other;
         });
     if (it == dedup_loads.end()) {
       dedup_loads.push_back(load);

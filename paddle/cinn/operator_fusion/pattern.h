@@ -20,6 +20,8 @@
 #include <vector>
 #include "glog/logging.h"
 #include "paddle/cinn/operator_fusion/fusion_tracker/tracker.h"
+#include "paddle/cinn/operator_fusion/pir_graph_analyzing/loop_axis_mapping.h"
+#include "paddle/cinn/operator_fusion/pir_graph_analyzing/loop_transform_analysis.h"
 #include "paddle/cinn/operator_fusion/utils.h"
 #include "paddle/pir/include/core/operation.h"
 
@@ -31,6 +33,7 @@ enum class PatternType {
   ReduceTree,
   ReduceTreePlusTrivial,
   ItersPermutation,
+  Anchor,
   Horizontal,
   Unsupported = -1,
 };
@@ -54,6 +57,11 @@ struct PatternBase {
   std::vector<pir::Operation*> ops() const { return ops_; }
   FusionTrackerPtr tracker_;
   void update_tracker() const {}
+  LoopAxisMapping loop_axis_mapping_;
+  LoopAxisMapping loop_axis_mapping() const { return loop_axis_mapping_; }
+  void set_loop_axis_mapping(const LoopAxisMapping& loop_axis_mapping) {
+    loop_axis_mapping_ = loop_axis_mapping;
+  }
 };
 
 #define DEFINE_PATTERN_STATIC_ATTR(pattern)                         \
@@ -202,6 +210,16 @@ struct ItersPermutationPattern : public PatternBase {
   LoopFramework loop_dims() const { return loop_dims_; }
 };
 
+struct AnchorPattern : public PatternBase {
+  explicit AnchorPattern(const std::vector<pir::Operation*>& ops,
+                         const FusionTrackerPtr& tracker,
+                         const LoopAxisMapping& loop_axis_mapping)
+      : PatternBase(UniqueId(), tracker, ops) {
+    set_loop_axis_mapping(loop_axis_mapping);
+  }
+  DEFINE_PATTERN_STATIC_ATTR(Anchor);
+};
+
 struct HorizontalFusionPattern : public PatternBase {
   struct PaddingStmtPattern;
   explicit HorizontalFusionPattern(
@@ -227,9 +245,10 @@ using StmtPattern = std::variant<TrivialPattern,
                                  ReducePattern,
                                  ReduceTreePattern,
                                  ReduceTreePlusTrivialPattern,
+                                 ItersPermutationPattern,
+                                 AnchorPattern,
                                  HorizontalFusionPattern,
-                                 UnsupportedPattern,
-                                 ItersPermutationPattern>;
+                                 UnsupportedPattern>;
 
 static std::string GetPatternId(const StmtPattern& s);
 static std::vector<pir::Operation*> GetOpsInPattern(const StmtPattern& pattern);
@@ -290,6 +309,11 @@ static std::vector<pir::Operation*> GetOpsInPattern(
   return std::visit([](const auto& impl) { return impl.ops(); }, pattern);
 }
 
+static LoopAxisMapping GetPatternLoopAxisMapping(const StmtPattern& s) {
+  return std::visit([](const auto& impl) { return impl.loop_axis_mapping(); },
+                    s);
+}
+
 static std::unordered_set<pir::Value> GetPatternInputValuesIncludeInner(
     const StmtPattern& A) {
   std::unordered_set<pir::Value> result;
@@ -325,4 +349,5 @@ static std::unordered_set<pir::Value> GetPatternInputValues(
 static void PatternUpdateTracker(const StmtPattern& pattern) {
   return std::visit([](const auto& impl) { impl.update_tracker(); }, pattern);
 }
+
 }  // namespace cinn::fusion

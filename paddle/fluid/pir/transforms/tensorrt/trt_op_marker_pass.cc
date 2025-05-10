@@ -66,7 +66,6 @@ DEFINE_GENERAL_PATTERN(Layer_norm, paddle::dialect::LayerNormOp)
 DEFINE_GENERAL_PATTERN(Add, paddle::dialect::AddOp)
 DEFINE_GENERAL_PATTERN(Full, paddle::dialect::FullOp)
 DEFINE_GENERAL_PATTERN(Silu, paddle::dialect::SiluOp)
-DEFINE_GENERAL_PATTERN(Conv2d, paddle::dialect::Conv2dOp)
 DEFINE_GENERAL_PATTERN(FusedConv2dAddAct, paddle::dialect::FusedConv2dAddActOp)
 DEFINE_GENERAL_PATTERN(DepthwiseConv2d, paddle::dialect::DepthwiseConv2dOp)
 DEFINE_GENERAL_PATTERN(Shape, paddle::dialect::ShapeOp)
@@ -80,6 +79,7 @@ DEFINE_GENERAL_PATTERN(Hardswish, paddle::dialect::HardswishOp)
 DEFINE_GENERAL_PATTERN(Assign, paddle::dialect::AssignOp)
 DEFINE_GENERAL_PATTERN(Tile, paddle::dialect::TileOp)
 DEFINE_GENERAL_PATTERN(Share_Data, paddle::dialect::ShareDataOp)
+DEFINE_GENERAL_PATTERN(Share_Data_, paddle::dialect::ShareData_Op)
 DEFINE_GENERAL_PATTERN(AssignOut, paddle::dialect::AssignOut_Op)
 DEFINE_GENERAL_PATTERN(Swish, paddle::dialect::SwishOp)
 DEFINE_GENERAL_PATTERN(Log, paddle::dialect::LogOp)
@@ -94,6 +94,8 @@ DEFINE_GENERAL_PATTERN(Flip, paddle::dialect::FlipOp)
 DEFINE_GENERAL_PATTERN(Mish, paddle::dialect::MishOp)
 DEFINE_GENERAL_PATTERN(AssignValue, paddle::dialect::AssignValueOp)
 DEFINE_GENERAL_PATTERN(AssignValue_, paddle::dialect::AssignValue_Op)
+DEFINE_GENERAL_PATTERN(LeakyRelu, paddle::dialect::LeakyReluOp)
+DEFINE_GENERAL_PATTERN(LeakyRelu_, paddle::dialect::LeakyRelu_Op)
 DEFINE_GENERAL_PATTERN(Anchor_Generator, paddle::dialect::AnchorGeneratorOp)
 DEFINE_GENERAL_PATTERN(Exp, paddle::dialect::ExpOp)
 DEFINE_GENERAL_PATTERN(Abs, paddle::dialect::AbsOp)
@@ -108,6 +110,7 @@ DEFINE_GENERAL_PATTERN(Cosh, paddle::dialect::CoshOp)
 DEFINE_GENERAL_PATTERN(Asinh, paddle::dialect::AsinhOp)
 DEFINE_GENERAL_PATTERN(Acosh, paddle::dialect::AcoshOp)
 DEFINE_GENERAL_PATTERN(Atanh, paddle::dialect::AtanhOp)
+DEFINE_GENERAL_PATTERN(Tanh, paddle::dialect::TanhOp)
 DEFINE_GENERAL_PATTERN(Ceil, paddle::dialect::CeilOp)
 DEFINE_GENERAL_PATTERN(Rsqrt, paddle::dialect::RsqrtOp)
 DEFINE_GENERAL_PATTERN(Reciprocal, paddle::dialect::ReciprocalOp)
@@ -117,6 +120,10 @@ DEFINE_GENERAL_PATTERN(Sign, paddle::dialect::SignOp)
 DEFINE_GENERAL_PATTERN(Round, paddle::dialect::RoundOp)
 DEFINE_GENERAL_PATTERN(Numel, paddle::dialect::NumelOp)
 DEFINE_GENERAL_PATTERN(Pool3d, paddle::dialect::Pool3dOp)
+DEFINE_GENERAL_PATTERN(Tan, paddle::dialect::TanOp)
+DEFINE_GENERAL_PATTERN(Asin, paddle::dialect::AsinOp)
+DEFINE_GENERAL_PATTERN(Acos, paddle::dialect::AcosOp)
+DEFINE_GENERAL_PATTERN(Atan, paddle::dialect::AtanOp)
 DEFINE_GENERAL_PATTERN(ShuffleChannel, paddle::dialect::ShuffleChannelOp)
 
 #undef DEFINE_GENERAL_PATTERN
@@ -261,6 +268,28 @@ using FloorDivideOpPattern =
 using RemainderOpPattern =
     ElementwiseCommonOpPattern<paddle::dialect::RemainderOp>;
 
+class PowOpPattern : public pir::OpRewritePattern<paddle::dialect::PowOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::PowOp>::OpRewritePattern;
+  bool MatchAndRewrite(paddle::dialect::PowOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    if (op->HasAttribute(kCanRunTrtAttr) &&
+        op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
+      return false;
+    }
+    pir::Value x = op.operand_source(0);
+    auto x_dtype = pir::GetDataTypeFromValue(x);
+    if (x_dtype.isa<pir::Int32Type>()) {
+      VLOG(3) << "These operations (pow) do not support int32 "
+                 "datatype.";
+      return false;
+    }
+
+    op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
+    return true;
+  }
+};
+
 template <typename OpType>
 class ActOpPattern : public pir::OpRewritePattern<OpType> {
  public:
@@ -287,7 +316,6 @@ class ActOpPattern : public pir::OpRewritePattern<OpType> {
     return true;
   }
 };
-using TanhOpPattern = ActOpPattern<paddle::dialect::TanhOp>;
 using CeluOpPattern = ActOpPattern<paddle::dialect::CeluOp>;
 using TanhShrinkOpPattern = ActOpPattern<paddle::dialect::TanhShrinkOp>;
 
@@ -431,6 +459,22 @@ class Pool2dOpPattern
   }
 };
 
+class Conv2dOpPattern
+    : public pir::OpRewritePattern<paddle::dialect::Conv2dOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::Conv2dOp>::OpRewritePattern;
+  bool MatchAndRewrite(paddle::dialect::Conv2dOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    auto filter_define_op = pir::GetDefiningOpForInput(op, 1);
+    if (filter_define_op->name() != "builtin.parameter" &&
+        filter_define_op->name() != "builtin.constant") {
+      return false;
+    }
+    op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
+    return true;
+  }
+};
+
 class Conv2dTransposeOpPattern
     : public pir::OpRewritePattern<paddle::dialect::Conv2dTransposeOp> {
  public:
@@ -547,6 +591,91 @@ class DepthwiseConv2dTransposeOpPattern
       }
     }
 
+    op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
+    return true;
+  }
+};
+
+class Conv3dTransposeOpPattern
+    : public pir::OpRewritePattern<paddle::dialect::Conv3dTransposeOp> {
+ public:
+  using pir::OpRewritePattern<
+      paddle::dialect::Conv3dTransposeOp>::OpRewritePattern;
+
+  bool MatchAndRewrite(paddle::dialect::Conv3dTransposeOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    if (op->HasAttribute(kCanRunTrtAttr) &&
+        op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
+      return false;
+    }
+    auto paddings_attr = op->attribute<pir::ArrayAttribute>("paddings");
+    std::vector<int32_t> paddings;
+    for (const auto &attr : paddings_attr.AsVector()) {
+      paddings.push_back(attr.dyn_cast<pir::Int32Attribute>().data());
+    }
+    if (paddings.size() > 3) {
+      VLOG(3) << "In conv3d_transpose, paddings size must be less than or "
+                 "equal to 3";
+      return false;
+    }
+    if (!op->HasAttribute("dilations")) {
+      VLOG(3) << "In conv3d_transpose, dilations attribute does not exist";
+      return false;
+    } else {
+      auto dilation_attr = op->attribute<pir::ArrayAttribute>("dilations");
+      std::vector<int32_t> dilations;
+      for (const auto &attr : dilation_attr.AsVector()) {
+        dilations.push_back(attr.dyn_cast<pir::Int32Attribute>().data());
+      }
+      if (dilations[0] != 1 || dilations[1] != 1 || dilations[2] != 1) {
+        VLOG(3) << "In conv3d_transpose, Dilations must be (1, 1, 1) for "
+                   "tensorRT, but given ("
+                << dilations[0] << ", " << dilations[1] << ", " << dilations[2]
+                << ")";
+        return false;
+      }
+    }
+    pir::Value filter = op.operand_source(1);
+    auto filter_type =
+        filter.type().dyn_cast<paddle::dialect::DenseTensorType>();
+    auto filter_shape = filter_type.dims();
+    if (filter_shape.size() != 5) {
+      VLOG(3) << "The conv3d filter's dims size should be 5";
+      return false;
+    }
+    op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
+    return true;
+  }
+};
+
+class Conv3dOpPattern
+    : public pir::OpRewritePattern<paddle::dialect::Conv3dOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::Conv3dOp>::OpRewritePattern;
+
+  bool MatchAndRewrite(paddle::dialect::Conv3dOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    if (op->HasAttribute(kCanRunTrtAttr) &&
+        op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
+      return false;
+    }
+    auto paddings_attr = op->attribute<pir::ArrayAttribute>("paddings");
+    std::vector<int32_t> paddings;
+    for (const auto &attr : paddings_attr.AsVector()) {
+      paddings.push_back(attr.dyn_cast<pir::Int32Attribute>().data());
+    }
+    if (paddings.size() > 3) {
+      VLOG(3) << "In conv3d, paddings size must be less than or equal to 3";
+      return false;
+    }
+    pir::Value filter = op.operand_source(1);
+    auto filter_type =
+        filter.type().dyn_cast<paddle::dialect::DenseTensorType>();
+    auto filter_shape = filter_type.dims();
+    if (filter_shape.size() != 5) {
+      VLOG(3) << "The conv3d filter's dims size should be 5";
+      return false;
+    }
     op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
     return true;
   }
@@ -1021,6 +1150,7 @@ class FlattenOpPattern
     return true;
   }
 };
+
 class CastOpPattern : public pir::OpRewritePattern<paddle::dialect::CastOp> {
  public:
   using pir::OpRewritePattern<paddle::dialect::CastOp>::OpRewritePattern;
@@ -1042,6 +1172,63 @@ class CastOpPattern : public pir::OpRewritePattern<paddle::dialect::CastOp> {
           << "the cast op supports inputs and outputs of BOOL by trt8.4 above ";
       return false;
 #endif
+    }
+    op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
+    return true;
+  }
+};
+
+class PadOpPattern : public pir::OpRewritePattern<paddle::dialect::PadOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::PadOp>::OpRewritePattern;
+
+  bool MatchAndRewrite(paddle::dialect::PadOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    if (op->HasAttribute(kCanRunTrtAttr) &&
+        op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
+      return false;
+    }
+    pir::Value pad_value_tensor = op.operand_source(1);
+    if (!op->HasAttribute("paddings") || !pad_value_tensor) {
+      VLOG(3) << "PadOp must has 'paddings' and 'pad_value'.";
+      return false;
+    }
+    if (pir::GetDefiningOpForInput(op, 1)->isa<paddle::dialect::FullOp>()) {
+      paddle::dialect::FullOp full_op =
+          pir::GetDefiningOpForInput(op, 1)
+              ->dyn_cast<paddle::dialect::FullOp>();
+      auto pad_value =
+          full_op->attribute<paddle::dialect::ScalarAttribute>("value")
+              .data()
+              .to<float>();
+      if (pad_value != 0.0f) {
+        VLOG(3) << "The pad layer of TRT only support zero.";
+        return false;
+      }
+    }
+    auto paddings_attr = op->attribute<pir::ArrayAttribute>("paddings");
+    std::vector<int> paddings;
+    for (const auto &attr : paddings_attr.AsVector()) {
+      paddings.push_back(attr.dyn_cast<pir::Int32Attribute>().data());
+    }
+    int pad_size = paddings.size();
+    pir::Value x = op.operand_source(0);
+    auto x_type = x.type().dyn_cast<paddle::dialect::DenseTensorType>();
+    auto input_shape = x_type.dims();
+    int nbDims = input_shape.size();
+    if (nbDims < 2) {
+      VLOG(3) << "Input must have at least 2 dimensions.";
+      return false;
+    }
+    if (nbDims * 2 != pad_size) {
+      VLOG(3) << "Padding size must be twice the number of input dimensions.";
+      return false;
+    }
+    for (int i = 0; i < pad_size - 4; i++) {
+      if (paddings[i] != 0) {
+        VLOG(3) << "Only the last two dimensions can have non-zero paddings.";
+        return false;
+      }
     }
     op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
     return true;
@@ -1973,6 +2160,41 @@ class FullWithTensorPattern
   }
 };
 
+class IndexPutOpPattern
+    : public pir::OpRewritePattern<paddle::dialect::IndexPutOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::IndexPutOp>::OpRewritePattern;
+  bool MatchAndRewrite(paddle::dialect::IndexPutOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    if (op->HasAttribute(kCanRunTrtAttr) &&
+        op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
+      return false;
+    }
+    pir::Value value = op.operand_source(2);
+    auto value_shape = pir::GetShapeFromValue(value);
+    int value_num = std::accumulate(
+        value_shape.begin(), value_shape.end(), 1, std::multiplies<int>());
+    if (value_num != 1) {
+      VLOG(3) << " index_put op only support value_num = 1 in tensorrt."
+              << value_num;
+      return false;
+    }
+    pir::Value indices = op.operand_source(1);
+    pir::VectorType vec_type = indices.type().dyn_cast<pir::VectorType>();
+    size_t output_num = vec_type.size();
+    for (size_t j = 0; j < output_num; j++) {
+      auto dtype =
+          vec_type[j].dyn_cast<paddle::dialect::DenseTensorType>().dtype();
+      if (!dtype.isa<pir::BoolType>()) {
+        VLOG(3) << "index_put op only support bool indices in tensorrt.";
+        return false;
+      }
+    }
+    op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
+    return true;
+  }
+};
+
 class TakeAlongAxisOpPattern
     : public pir::OpRewritePattern<paddle::dialect::TakeAlongAxisOp> {
  public:
@@ -2272,6 +2494,42 @@ class OneHotOpPattern
   }
 };
 
+class Pad3dOpPattern : public pir::OpRewritePattern<paddle::dialect::Pad3dOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::Pad3dOp>::OpRewritePattern;
+
+  bool MatchAndRewrite(paddle::dialect::Pad3dOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    if (op->HasAttribute(kCanRunTrtAttr) &&
+        op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
+      return false;
+    }
+    pir::Value paddings_tensor = op.operand_source(1);
+    if (!paddings_tensor) {
+      VLOG(3) << "pad3d should have paddings.";
+      return false;
+    }
+    if (op->HasAttribute("mode")) {
+      auto mode = op->attribute<pir::StrAttribute>("mode").AsString();
+      if (mode != "constant" && mode != "reflect" && mode != "replicate") {
+        VLOG(3) << "The pad3d layer of TRT only support "
+                   "constant/reflect/replicate mode.";
+        return false;
+      }
+    }
+    if (op->HasAttribute("data_format")) {
+      auto data_format =
+          op->attribute<pir::StrAttribute>("data_format").AsString();
+      if (data_format != "NCDHW") {
+        VLOG(3) << "The pad3d layer of TRT only support NCDHW data format.";
+        return false;
+      }
+    }
+    op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
+    return true;
+  }
+};
+
 class TemporalShiftOpPattern
     : public pir::OpRewritePattern<paddle::dialect::TemporalShiftOp> {
  public:
@@ -2441,6 +2699,25 @@ class AffineChannelOpPattern
   }
 };
 
+class PreluOpPattern : public pir::OpRewritePattern<paddle::dialect::PreluOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::PreluOp>::OpRewritePattern;
+  bool MatchAndRewrite(paddle::dialect::PreluOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    if (op->HasAttribute(kCanRunTrtAttr) &&
+        op.attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
+      return false;
+    }
+    pir::Value alpha_var = op.operand_source(1);
+    if (!alpha_var) {
+      VLOG(3) << "Variable Alpha of prelu TRT converter not found.";
+      return false;
+    }
+    op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
+    return true;
+  }
+};
+
 class YoloBoxOpPattern
     : public pir::OpRewritePattern<paddle::dialect::YoloBoxOp> {
  public:
@@ -2497,6 +2774,120 @@ class FullBatchSizeLikeOpPattern
   }
 };
 
+class LinearInterpOpPattern
+    : public pir::OpRewritePattern<paddle::dialect::LinearInterpOp> {
+ public:
+  using pir::OpRewritePattern<
+      paddle::dialect::LinearInterpOp>::OpRewritePattern;
+  bool MatchAndRewrite(paddle::dialect::LinearInterpOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    if (op->HasAttribute(kCanRunTrtAttr) &&
+        op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
+      return false;
+    }
+    const std::vector<std::string> required_attrs = {"data_format",
+                                                     "interp_method",
+                                                     "align_corners",
+                                                     "scale",
+                                                     "out_h",
+                                                     "out_w"};
+    for (const auto &attr : required_attrs) {
+      if (!op->HasAttribute(attr)) {
+        VLOG(3) << "pd_op.linear_interp " << attr
+                << " attribute does not exist";
+        return false;
+      }
+    }
+
+    pir::Value size_tensor = op.operand_source(2);
+    if (size_tensor) {
+      auto size_tensor_type = size_tensor.type();
+      if (size_tensor_type.isa<pir::VectorType>()) {
+        auto vector_type = size_tensor.type().dyn_cast<pir::VectorType>();
+        if (vector_type.size() == 1) {
+          op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
+          return true;
+        }
+      }
+    }
+
+    if (size_tensor.impl() != nullptr) {
+      VLOG(3) << "The Paddle-TRT doesn't support the SizeTensor for "
+                 "pd_op.linear_interp";
+      return false;
+    }
+
+    auto data_format =
+        op->attribute<pir::StrAttribute>("data_format").AsString();
+    if (data_format != "NCHW" && data_format != "NHWC") {
+      VLOG(3) << "pd_op.linear_interp data_format must be NCHW or NHWC";
+      return false;
+    }
+    auto interp_method =
+        op->attribute<pir::StrAttribute>("interp_method").AsString();
+    if (interp_method != "linear") {
+      VLOG(3) << "The interp_method of pd_op.linear_interp is not linear";
+      return false;
+    }
+
+    pir::Value scale_tensor = op.operand_source(3);
+
+    bool has_scale_input = false;
+    if (scale_tensor) {
+      has_scale_input = true;
+    }
+    if (has_scale_input) {
+      VLOG(3) << "pd_op.linear_interp has scale input can not into trt,support "
+                 "scale attribute into trt";
+      return false;
+    }
+
+    auto scale_tensor_type = scale_tensor.type();
+    int scale_shape = 0;
+    if (scale_tensor_type.isa<pir::VectorType>()) {
+      auto vector_type = scale_tensor.type().dyn_cast<pir::VectorType>();
+      scale_shape = vector_type.size();
+    }
+
+    if (!has_scale_input || (has_scale_input && scale_shape != 1)) {
+      std::vector<float> scale;
+      auto scale_attr = op->attribute<pir::ArrayAttribute>("scale");
+      for (const auto &attr : scale_attr.AsVector()) {
+        scale.push_back(attr.dyn_cast<pir::FloatAttribute>().data());
+      }
+      if (scale.size() == 0) {
+        if (!op->HasAttribute("out_w")) {
+          VLOG(3)
+              << "pd_op.linear_interp doesn't have scale_tensor and the scale "
+                 "size <=1 and without"
+                 "out_w, it will return false";
+          return false;
+        }
+        auto out_w = op->attribute<pir::Int32Attribute>("out_w").data();
+        if (out_w <= 0) {
+          VLOG(3)
+              << "pd_op.linear_interp out_w must be greater than 0 if scale "
+                 "is not set.";
+          return false;
+        }
+      } else {
+        for (size_t i = 0; i < scale.size(); i++) {
+          if (scale[i] <= 0) {
+            VLOG(3)
+                << "pd_op.linear_interp dynamic shape not support Attr(scale["
+                << i << "]" << scale[i]
+                << " less than 1 and Input(Scale) Vector not set.";
+            return false;
+          }
+        }
+      }
+    }
+
+    op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
+    return true;
+  }
+};
+
 class TrtOpMarkerPass : public pir::PatternRewritePass {
  public:
   TrtOpMarkerPass() : pir::PatternRewritePass("trt_op_marker_pass", 2) {}
@@ -2538,6 +2929,7 @@ class TrtOpMarkerPass : public pir::PatternRewritePass {
     ADD_PATTERN(Assign)
     ADD_PATTERN(Tile)
     ADD_PATTERN(Share_Data)
+    ADD_PATTERN(Share_Data_)
     ADD_PATTERN(Swish)
     ADD_PATTERN(Log)
     ADD_PATTERN(Floor)
@@ -2551,6 +2943,8 @@ class TrtOpMarkerPass : public pir::PatternRewritePass {
     ADD_PATTERN(Mish)
     ADD_PATTERN(AssignValue)
     ADD_PATTERN(AssignValue_)
+    ADD_PATTERN(LeakyRelu)
+    ADD_PATTERN(LeakyRelu_)
     ADD_PATTERN(Anchor_Generator)
     ADD_PATTERN(Exp)
     ADD_PATTERN(Abs)
@@ -2575,12 +2969,18 @@ class TrtOpMarkerPass : public pir::PatternRewritePass {
     ADD_PATTERN(Round)
     ADD_PATTERN(Numel)
     ADD_PATTERN(Pool3d)
+    ADD_PATTERN(Tanh)
+    ADD_PATTERN(Tan)
+    ADD_PATTERN(Asin)
+    ADD_PATTERN(Acos)
+    ADD_PATTERN(Atan)
     ADD_PATTERN(ShuffleChannel)
 #if IS_TRT_VERSION_GE(8600)
     ADD_PATTERN(Layer_norm)
 #endif
 #undef ADD_PATTERN
     ps.Add(std::make_unique<Pool2dOpPattern>(context));
+    ps.Add(std::make_unique<Conv2dOpPattern>(context));
     ps.Add(std::make_unique<Conv2dTransposeOpPattern>(context));
     ps.Add(std::make_unique<DepthwiseConv2dTransposeOpPattern>(context));
     ps.Add(std::make_unique<DeformableConvOpPattern>(context));
@@ -2625,6 +3025,7 @@ class TrtOpMarkerPass : public pir::PatternRewritePass {
     ps.Add(std::make_unique<ElementwisePowOpPattern>(context));
     ps.Add(std::make_unique<MeanOpPattern>(context));
     ps.Add(std::make_unique<RemainderOpPattern>(context));
+    ps.Add(std::make_unique<PowOpPattern>(context));
     ps.Add(std::make_unique<MulticlassNms3OpPattern>(context));
     ps.Add(std::make_unique<ArgmaxOpPattern>(context));
     ps.Add(std::make_unique<ArgminOpPattern>(context));
@@ -2654,18 +3055,24 @@ class TrtOpMarkerPass : public pir::PatternRewritePass {
     ps.Add(std::make_unique<EqualOpPattern>(context));
     ps.Add(std::make_unique<NotEqualOpPattern>(context));
     ps.Add(std::make_unique<LogicalXorOpPattern>(context));
-    ps.Add(std::make_unique<TanhOpPattern>(context));
     ps.Add(std::make_unique<CeluOpPattern>(context));
+    ps.Add(std::make_unique<Conv3dOpPattern>(context));
+    ps.Add(std::make_unique<Conv3dTransposeOpPattern>(context));
     ps.Add(std::make_unique<OneHotOpPattern>(context));
+    ps.Add(std::make_unique<PadOpPattern>(context));
     ps.Add(std::make_unique<TemporalShiftOpPattern>(context));
+    ps.Add(std::make_unique<IndexPutOpPattern>(context));
     ps.Add(std::make_unique<InstanceNormOpPattern>(context));
+    ps.Add(std::make_unique<Pad3dOpPattern>(context));
     ps.Add(std::make_unique<EinsumOpPattern>(context));
     ps.Add(std::make_unique<PNormOpPattern>(context));
     ps.Add(std::make_unique<AffineChannelOpPattern>(context));
+    ps.Add(std::make_unique<PreluOpPattern>(context));
     ps.Add(
         std::make_unique<FusedBiasDropoutResidualLayerNormOpPattern>(context));
     ps.Add(std::make_unique<YoloBoxOpPattern>(context));
     ps.Add(std::make_unique<FullBatchSizeLikeOpPattern>(context));
+    ps.Add(std::make_unique<LinearInterpOpPattern>(context));
     return ps;
   }
 };

@@ -45,27 +45,41 @@ void BindGenerator(py::module* m_ptr) {
       // type, resulting in a problem with precision under the cpu.
       .def(py::pickle(
           [](const phi::Generator::GeneratorState& s) {  // __getstate__
-            return py::make_tuple(s.device, s.seed, s.offset);
+            // NOTE(zhangwl):because pickle cnnot serialize mt19937_64, so we
+            // need serialize mt19937_64 to bitstream before so that pickle can
+            // dump
+            std::stringstream ss;
+            ss << *s.cpu_engine;
+            std::string str = ss.str();
+            // switch stringstream to bitstream
+            std::vector<uint8_t> bitstream(str.begin(), str.end());
+            return py::make_tuple(s.device, s.seed, s.offset, bitstream);
           },
           [](py::tuple s) {  // __setstate__
-            if (s.size() != 3)
+            if (s.size() != 4)
               throw std::runtime_error(
                   "Invalid Random state. Please check the format(device, "
-                  "current_seed, thread_offset).");
-
+                  "current_seed, thread_offset ,rng_state).");
             int64_t device = s[0].cast<int64_t>();
             int64_t seed = s[1].cast<int64_t>();
             uint64_t offset = s[2].cast<uint64_t>();
-
-            phi::Generator::GeneratorState state(device, seed, offset);
-
+            // NOTE(zhangwl):switch bitstream to mt19937_64;
+            std::vector<uint8_t> bitstream = s[3].cast<std::vector<uint8_t>>();
+            std::string str(bitstream.begin(), bitstream.end());
+            std::stringstream ss(str);
+            std::mt19937_64 rng;
+            ss >> rng;
+            std::shared_ptr<std::mt19937_64> cpu_engine =
+                std::make_shared<std::mt19937_64>(rng);
+            phi::Generator::GeneratorState state(
+                device, seed, offset, cpu_engine);
             return state;
           }))
 #endif
       .def("__str__", [](const phi::Generator::GeneratorState& self) {
         std::stringstream ostr;
         ostr << self.device << " " << self.seed << " " << self.offset << " "
-             << self.cpu_engine;
+             << self.cpu_engine << " " << *self.cpu_engine;
         return ostr.str();
       });
 

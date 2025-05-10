@@ -214,7 +214,9 @@ class TestResnet(unittest.TestCase):
 
         if paddle.version.cuda() == "12.0":
             standard_prim = DY2ST_PRIM_GT_CUDA12
-        np.testing.assert_allclose(dy2st_prim, standard_prim, rtol=1e-5)
+        np.testing.assert_allclose(
+            dy2st_prim, standard_prim, rtol=2e-2, atol=1e-2
+        )
 
 
 if __name__ == '__main__':

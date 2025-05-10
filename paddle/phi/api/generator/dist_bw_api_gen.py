@@ -520,6 +520,9 @@ def source_include(header_file_path, fw_header_file_path):
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
+#elif defined(PADDLE_WITH_XPU_BKCL)
+#include "paddle/phi/core/distributed/comm_context_manager.h"
+#include "paddle/phi/core/distributed/bkcl_comm_context.h"
 #endif
 
 #ifdef PADDLE_WITH_DISTRIBUTE
@@ -572,9 +575,9 @@ def generate_backward_api(
     header_file.write(namespace[0])
 
     include_header_file = (
-        "paddle/phi/api/backward/fused_backward_api.h"
+        "paddle/phi/api/backward/fused_backward_api_base.h"
         if is_fused_backward_yaml
-        else "paddle/phi/api/backward/backward_api.h"
+        else "paddle/phi/api/backward/backward_api_base.h"
     )
     include_fw_header_file = (
         "paddle/phi/api/include/fused_api.h"
@@ -630,13 +633,13 @@ def main():
     parser.add_argument(
         '--backward_header_path',
         help='output of generated backward header code file',
-        default='paddle/phi/api/backward/backward_api.h',
+        default='paddle/phi/api/backward/backward_api_base.h',
     )
 
     parser.add_argument(
         '--backward_source_path',
         help='output of generated backward source code file',
-        default='paddle/phi/api/lib/backward_api.cc',
+        default='paddle/phi/api/lib/backward_api_base.cc',
     )
 
     options = parser.parse_args()

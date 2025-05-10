@@ -36,10 +36,10 @@ static void PullGpuPSSparseFunctor(const framework::ExecutionContext &ctx) {
   for (size_t i = 0; i < slot_size; i++) {
     const auto *slot = inputs[i];
     const uint64_t *single_slot_keys =
-        reinterpret_cast<const uint64_t *>(slot->data<int64_t>());
+        reinterpret_cast<const uint64_t *>(slot->template data<int64_t>());
     all_keys[i] = single_slot_keys;
     slot_lengths[i] = slot->numel();
-    auto *output = outputs[i]->mutable_data<T>(ctx.GetPlace());
+    auto *output = outputs[i]->template mutable_data<T>(ctx.GetPlace());
     // double type is not fully supported now
     all_values[i] = reinterpret_cast<float *>(output);
   }
@@ -68,7 +68,7 @@ static void PushGpuPSSparseFunctor(const framework::ExecutionContext &ctx) {
   for (size_t i = 0; i < slot_size; i++) {
     const auto *slot = inputs[i];
     const uint64_t *single_slot_keys =
-        reinterpret_cast<const uint64_t *>(slot->data<int64_t>());
+        reinterpret_cast<const uint64_t *>(slot->template data<int64_t>());
     all_keys[i] = single_slot_keys;
     slot_lengths[i] = slot->numel();
     int cur_batch_size =
@@ -82,7 +82,7 @@ static void PushGpuPSSparseFunctor(const framework::ExecutionContext &ctx) {
                             "The batch size of all input slots should be same, "
                             "please check"));
     }
-    const float *grad_value = d_output[i]->data<float>();
+    const float *grad_value = d_output[i]->template data<float>();
     all_grad_values[i] = grad_value;
   }
 #ifdef PADDLE_WITH_HETERPS

@@ -148,7 +148,7 @@ Tensor p_norm_decomp(const Tensor& x,
     auto porder_tensor = full_scalar<T>(porder, x_tmp.dtype(), x_tmp.place());
     auto inv_porder_tensor =
         full_scalar<T>(1 / porder, x_tmp.dtype(), x_tmp.place());
-    res = elementwise_pow<T>(x_tmp, porder_tensor);
+    res = elementwise_pow<T>(abs<T>(x_tmp), porder_tensor);
     res = sum<T>(res, reduce_axis, x_tmp.dtype(), keepdim);
     res = elementwise_pow<T>(res, inv_porder_tensor);
   }
@@ -290,8 +290,7 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> batch_norm_decomp(
   Tensor inv_std;
   if (!use_run_stat) {
     batch_mean = mean_decomp<T>(x_cast, reduce_axes, true);
-    auto temp = mean_decomp<T>(x_cast * x_cast, reduce_axes, true);
-    auto batch_var = temp - batch_mean * batch_mean;
+    auto batch_var = variance<T>(x_cast, reduce_axes, true);
     inv_std = rsqrt<T>(batch_var + eps);
 
     x_hat = (x_cast - batch_mean) * inv_std;

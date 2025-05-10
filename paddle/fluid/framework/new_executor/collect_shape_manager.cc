@@ -30,9 +30,19 @@ void CollectShapeManager::CollectShapeInfo(
   std::lock_guard<std::mutex> lock(info_mutex_);
   is_shape_range_info_ready_ = false;
   for (auto &input : instr->Inputs()) {
+    if (!op_value2instr_id_.count(input.first)) {
+      // Because the input value maybe same between different ops.
+      // To prevent duplicate shape collection, we only select one op for
+      // getting shape of value
+      op_value2instr_id_[input.first] = instr->Id();
+    }
+    if (op_value2instr_id_[input.first] != instr->Id()) {
+      continue;
+    }
     auto var_name = value_exe_info->GetVarName(input.first);
     auto *var = scope->FindVar(var_name);
     if (!var || !var->IsType<phi::DenseTensor>()) continue;
+
     auto tensor = var->Get<phi::DenseTensor>();
     if (!tensor.initialized() && !instr->NoNeedBuffer().count(input.first)) {
       continue;

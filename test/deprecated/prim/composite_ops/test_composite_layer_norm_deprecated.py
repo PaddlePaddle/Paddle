@@ -166,7 +166,7 @@ class TestCompositelayer_norm(unittest.TestCase):
             primapi.to_prim(blocks)
 
             fwd_ops_new = [op.type for op in blocks[0].ops]
-            # Ensure that layer_norm is splitted into small ops
+            # Ensure that layer_norm is split into small ops
             self.assertTrue('layer_norm' not in fwd_ops_new)
 
         exe = paddle.static.Executor()
@@ -205,7 +205,7 @@ class TestCompositelayer_norm(unittest.TestCase):
             primapi.to_prim(blocks)
 
             fwd_ops_new = [op.type for op in blocks[0].ops]
-            # Ensure that layer_norm is splitted into small ops
+            # Ensure that layer_norm is split into small ops
             self.assertTrue('layer_norm' not in fwd_ops_new)
 
         exe = paddle.static.Executor()

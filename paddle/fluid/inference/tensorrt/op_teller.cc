@@ -201,9 +201,16 @@ struct SimpleOpTypeSetTeller : public Teller {
         return false;
       }
 #endif
-#if !IS_TRT_VERSION_GE(8600)
       auto x_var_name = desc.Input("X")[0];
       auto* x_var_desc = block->FindVarRecursive(x_var_name);
+      auto x_dtype = x_var_desc->GetDataType();
+      if (x_dtype == framework::proto::VarType::COMPLEX64 ||
+          x_dtype == framework::proto::VarType::COMPLEX128) {
+        VLOG(3) << op_type
+                << " op does not support COMPLEX64 or COMPLEX128 input";
+        return false;
+      }
+#if !IS_TRT_VERSION_GE(8600)
       const auto x_shape = x_var_desc->GetShape();
       if (x_shape.empty() && unary_list.find(op_type) != unary_list.end()) {
         VLOG(3) << op_type

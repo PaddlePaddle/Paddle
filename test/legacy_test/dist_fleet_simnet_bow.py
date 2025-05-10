@@ -100,12 +100,12 @@ def train_network(
     # nt
     nt = paddle.static.data(name="neg_title_ids", shape=[-1, 1], dtype="int64")
 
-    datas = [q, label, pt, nt]
+    data = [q, label, pt, nt]
 
     reader = None
     if is_pyreader:
         reader = base.io.PyReader(
-            feed_list=datas,
+            feed_list=data,
             capacity=64,
             iterable=False,
             use_double_buffer=False,

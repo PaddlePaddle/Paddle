@@ -414,5 +414,23 @@ std::optional<ir::IndexExpr> DivByPartMul(const ir::IndexExpr &lhs,
  */
 std::optional<ir::IndexExpr> SimplifyComplexMod(const ir::IndexExpr &lhs,
                                                 const ir::IndexExpr &rhs);
+
+/*!
+ * \brief Check whether the expression matches the pattern.
+ * \param expr The expression to be checked.
+ * \param pattern The pattern to be matched. which includes some variables.
+ * \param map return the matched variables.
+ * \return A boolean value indicating whether `expr` is matched.
+ *
+ * For example:
+ * 1. (i / S0 * S0 + i % (S0 * S1)) % S0 matched by a / b * b + a % (b * c)
+ *    with map = {a: i, b: S0, c: S1}
+ * 2. S0 + 5 matched by a + 5 with map = {a: S0, b: 5}
+ *
+ * Note: a * b and b * a is two different pattern.
+ */
+bool CheckPattern(const ir::IndexExpr &expr,
+                  const ir::IndexExpr &pattern,
+                  std::unordered_map<std::string, ir::IndexExpr> *map);
 }  // namespace common
 }  // namespace cinn

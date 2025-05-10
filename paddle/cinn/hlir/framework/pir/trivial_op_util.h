@@ -255,7 +255,7 @@ ExprTransformer WrapScheduleRealizer(const std::vector<ir::Var>& block_vars,
                                      const std::string& tensor_name);
 
 ExprTransformer TransposeForsTransformer(const std::vector<int32_t>& perm);
-ExprTransformer RemoveOnesTransformer(const std::vector<int32_t>& ones);
+ExprTransformer RemoveForsTransformer(const std::vector<int32_t>& ones);
 ExprTransformer InsertForsTransformer(const std::vector<int32_t>& axis,
                                       const std::vector<ir::Var>& vars);
 ExprTransformer InsertIfForAppendVarsTransformer();
