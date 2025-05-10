@@ -276,10 +276,6 @@ def monkey_patch_value():
         In order to be compatible with the item interface introduced by the dynamic graph, it does nothing but returns self.
         It will check that the shape must be a 1-D tensor
         """
-        if len(self.shape) > 1:
-            raise TypeError(
-                f"Required input var should be 1-D Value, but received {self.shape}"
-            )
 
         if self.is_dist() and not self._is_initialized():
             return None
