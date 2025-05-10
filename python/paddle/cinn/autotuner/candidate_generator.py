@@ -33,15 +33,15 @@ class BFGenerator(BaseCandidateGenerator):
             # 每个 range 全展开
             key: list(range(start, end+1)) for key, (start, end) in candidate_range.items()
         }
+        # 全排列所有组合
+        self.all_combinations = itertools.product(*self.candidates_each_dim.values())
+        self.valid_candidates = [
+            list(comb) for comb in self.all_combinations if self.is_valid(list(comb))
+        ]
 
     # 返回所以可选的cadidate
     def candidates(self) -> List[List[int]]:
-        # 全排列所有组合
-        all_combinations = itertools.product(*self.candidates_each_dim.values())
-        valid_candidates = [
-            list(comb) for comb in all_combinations if self.is_valid(list(comb))
-        ]
-        return valid_candidates
+        return self.valid_candidates
 
     def next(self, candidate: List[int], ndim: int, step: int) -> List[int]:
         assert len(candidate) == len(self.candidates_each_dim)

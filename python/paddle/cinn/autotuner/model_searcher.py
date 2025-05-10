@@ -6,7 +6,6 @@ from typing import *
 import logging, json
 import datetime
 
-import utils
 from paddle import static, Tensor
 from paddle.base.core import cinn
 # from paddle.cinn import common
@@ -15,6 +14,8 @@ from .candidate_generator import BaseCandidateGenerator
 from .candidate_searcher import CandidateSearcher
 from .config import *
 
+def candidate_join(name, candidate):
+    return [{'name': a, 'value': b} for a, b in zip(name, candidate)]
 
 class ModelSearcher:
     def __init__(
@@ -65,7 +66,7 @@ class ModelSearcher:
                 except:
                     raise Exception(f"Cannot create directory: {test_path}")
                     
-        root_path = os.getcwd()
+        root_path = os.path.join(os.getcwd(), "tune_log")
             
         target_str = f"{target.arch_str()}_{target.device_name_str()}"
         
@@ -177,11 +178,16 @@ class ModelSearcher:
         logging.info("=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=")
         logging.info(f"Start search for shape: {shape}")
         logging.info("=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=")
+
+        # Baseline
+        cinn.autotuner.tuner_config._env_set_tile_config_policy("default")
+        baseline_score = bench_func([])
+
         # 寻找最佳性能
         cinn.autotuner.tuner_config._env_set_tile_config_policy("search")
         best = candidate_searcher.search()
         best_score = best[0] / graph_num
-        best_candidate = json.dumps(utils.candidate_join(
+        best_candidate = json.dumps(candidate_join(
             self.candidate_generator.param_names(), best[1]
         ), indent=4)
                     
@@ -191,6 +197,7 @@ class ModelSearcher:
         logging.info("=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=")
         
         # 写入CSV文件
+        output_file.write(f"baseline_score: {(baseline_score/ graph_num):.3f} \n")
         output_file.write(f"best_score: {best_score:.3f} \n")
         output_file.write(f"best_candidate: \n{best_candidate} \n")
         output_file.write(f"=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n")

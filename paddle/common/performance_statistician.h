@@ -24,6 +24,8 @@
 #if defined(PADDLE_WITH_CUDA)
 #include <cuda.h>
 #include <cuda_runtime.h>
+#elif defined(PADDLE_WITH_HIP)
+#include <hip/hip_runtime.h>
 #endif
 #include "paddle/common/enforce.h"
 
@@ -77,7 +79,16 @@ class PerformanceStatistician {
     cuda_events_[label].first = e_start;
     cuda_events_[label].second = e_stop;
     cudaEventRecord(cuda_events_[label].first, 0);
+#elif defined(PADDLE_WITH_HIP)
+    std::lock_guard<std::mutex> lck_guard(record_mtx_);
+    hipEvent_t e_start, e_stop;
+    hipEventCreate(&e_start);
+    hipEventCreate(&e_stop);
+    hip_events_[label].first = e_start;
+    hip_events_[label].second = e_stop;
+    hipEventRecord(hip_events_[label].first, 0);
 #endif
+
   }
 
   void CudaEnd(const std::string& label) {
@@ -103,6 +114,28 @@ class PerformanceStatistician {
     cudaEventDestroy(cuda_events_[label].first);
     cudaEventDestroy(cuda_events_[label].second);
     cuda_events_.erase(label);
+#elif defined(PADDLE_WITH_HIP)
+    std::lock_guard<std::mutex> lck_guard(record_mtx_);
+    PADDLE_ENFORCE_NE(hip_events_.count(label),
+                      0,
+                      common::errors::InvalidArgument(
+                          "Key for hip time record does not exist"));
+
+    hipEventRecord(hip_events_[label].second, 0);
+    hipEventSynchronize(hip_events_[label].second);
+    float event_duration;
+    hipEventElapsedTime(
+        &event_duration, hip_events_[label].first, hip_events_[label].second);
+    std::thread::id thread_id = std::this_thread::get_id();
+    TimePoint start_time_point = std::chrono::steady_clock::now();
+    TimePoint end_time_point =
+        start_time_point + std::chrono::nanoseconds(
+                               static_cast<int64_t>(event_duration * 1000000));
+    record_[label][thread_id].push_back(TimePointInfo{true, start_time_point});
+    record_[label][thread_id].push_back(TimePointInfo{false, end_time_point});
+    hipEventDestroy(hip_events_[label].first);
+    hipEventDestroy(hip_events_[label].second);
+    hip_events_.erase(label);
 #endif
   }
 
@@ -169,6 +202,9 @@ class PerformanceStatistician {
 #if defined(PADDLE_WITH_CUDA)
   std::unordered_map<std::string, std::pair<cudaEvent_t, cudaEvent_t>>
       cuda_events_;
+#elif defined(PADDLE_WITH_HIP)
+std::unordered_map<std::string, std::pair<hipEvent_t, hipEvent_t>>
+      hip_events_;
 #endif
   std::mutex record_mtx_;
   int graph_nodes_num_ = 25;
