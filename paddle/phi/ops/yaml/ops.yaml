@@ -12,6 +12,7 @@
   output : Tensor(out)
   infer_meta :
     func : RealAndImagInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
   kernel :
     func : abs
     data_type : x
@@ -277,6 +278,17 @@
   traits : paddle::dialect::ForwardOnlyTrait
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
 
+- op : ap_facade
+  args : (Tensor[] xs, int64_t num_outputs, str custom_op_name, str infer_meta_func_name, str infer_symbolic_func_name, str serialized_attributes)
+  output : Tensor[](out){num_outputs}
+  optional : xs
+  infer_meta :
+    func : ApFacadeInferMeta
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+  kernel :
+    func : ap_facade
+  traits : paddle::dialect::ForwardOnlyTrait
+
 - op : ap_variadic
   args : (Tensor[] xs, int num_outputs, str code_module_lambda, str infer_meta_lambda, str rnel_dispatch_lambda, str kernel_dispatch_const_data_lambda)
   output : Tensor[](out){num_outputs}
@@ -284,6 +296,7 @@
     func : ApVariadicInferMeta
   kernel :
     func : ap_variadic
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : apply_per_channel_scale
   args: (Tensor x, Tensor scales)
@@ -313,6 +326,7 @@
   output : Tensor(out)
   infer_meta :
     func : ArgMinMaxInferMeta
+    spmd_rule : ArgMinInferSpmdDynamic
   kernel :
     func : argmin
     data_type : x
@@ -1152,6 +1166,7 @@
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
   kernel :
     func : cosh
   inplace: (x -> out)
@@ -3436,6 +3451,7 @@
   output : Tensor
   infer_meta :
     func : MeanAllInferMeta
+    spmd_rule : MeanAllInferSpmd
   kernel :
     func : mean_all
   backward : mean_all_grad

@@ -24,73 +24,67 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/kernels/funcs/distribution_helper.h"
+#include "paddle/phi/kernels/funcs/fast_divmod.h"
 #include "paddle/phi/kernels/funcs/pooling.h"
 #include "paddle/phi/kernels/funcs/random.cuh"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
-#include "paddle/phi/kernels/primitive/datamover_primitives.h"
 
 namespace phi {
 namespace funcs {
 
 struct FastDivModForPooling {
  public:
-  phi::kps::details::FastDivMod channel;
-  phi::kps::details::FastDivMod width;
-  phi::kps::details::FastDivMod height;
+  FastDivMod<int> channel;
+  FastDivMod<int> width;
+  FastDivMod<int> height;
 
   explicit HOSTDEVICE FastDivModForPooling(const int channels,
                                            const int output_width,
-                                           const int output_height) {
-    channel = phi::kps::details::FastDivMod(channels);
-    width = phi::kps::details::FastDivMod(output_width);
-    height = phi::kps::details::FastDivMod(output_height);
-  }
+                                           const int output_height)
+      : channel(channels), width(output_width), height(output_height) {}
 };
 
 struct FastDivModForPooling3D {
  public:
-  phi::kps::details::FastDivMod channel;
-  phi::kps::details::FastDivMod width;
-  phi::kps::details::FastDivMod height;
-  phi::kps::details::FastDivMod depth;
+  FastDivMod<int> channel;
+  FastDivMod<int> width;
+  FastDivMod<int> height;
+  FastDivMod<int> depth;
 
   explicit HOSTDEVICE FastDivModForPooling3D(const int channels,
                                              const int output_width,
                                              const int output_height,
-                                             const int output_depth) {
-    channel = phi::kps::details::FastDivMod(channels);
-    width = phi::kps::details::FastDivMod(output_width);
-    height = phi::kps::details::FastDivMod(output_height);
-    depth = phi::kps::details::FastDivMod(output_depth);
-  }
+                                             const int output_depth)
+      : channel(channels),
+        width(output_width),
+        height(output_height),
+        depth(output_depth) {}
 };
 
 struct FastDivModForPoolingWithMoreStaff {
  public:
-  phi::kps::details::FastDivMod channel;
-  phi::kps::details::FastDivMod width;
-  phi::kps::details::FastDivMod height;
-  phi::kps::details::FastDivMod ksize_w;
-  phi::kps::details::FastDivMod ksize_h;
-  phi::kps::details::FastDivMod stride_w;
-  phi::kps::details::FastDivMod stride_h;
+  FastDivMod<int> channel;
+  FastDivMod<int> width;
+  FastDivMod<int> height;
+  FastDivMod<int> ksize_w;
+  FastDivMod<int> ksize_h;
+  FastDivMod<int> stride_w;
+  FastDivMod<int> stride_h;
 
-  explicit HOSTDEVICE FastDivModForPoolingWithMoreStaff(
-      const int channels,
-      const int input_width,
-      const int input_height,
-      const int ksize_width,
-      const int ksize_height,
-      const int stride_width,
-      const int stride_height) {
-    channel = phi::kps::details::FastDivMod(channels);
-    width = phi::kps::details::FastDivMod(input_width);
-    height = phi::kps::details::FastDivMod(input_height);
-    ksize_w = phi::kps::details::FastDivMod(ksize_width);
-    ksize_h = phi::kps::details::FastDivMod(ksize_height);
-    stride_w = phi::kps::details::FastDivMod(stride_width);
-    stride_h = phi::kps::details::FastDivMod(stride_height);
-  }
+  explicit HOSTDEVICE FastDivModForPoolingWithMoreStaff(const int channels,
+                                                        const int input_width,
+                                                        const int input_height,
+                                                        const int ksize_width,
+                                                        const int ksize_height,
+                                                        const int stride_width,
+                                                        const int stride_height)
+      : channel(channels),
+        width(input_width),
+        height(input_height),
+        ksize_w(ksize_width),
+        ksize_h(ksize_height),
+        stride_w(stride_width),
+        stride_h(stride_height) {}
 };
 
 template <typename FastDivModForPooling>

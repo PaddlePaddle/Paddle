@@ -106,9 +106,9 @@ std::shared_ptr<framework::OpStrategy> StrategyForRepeat(
   int axis = 0;
   for (auto &iter : attrs.attr_store) {
     if (iter.first == "repeats") {
-      repeats = absl::get<int>(iter.second);
+      repeats = std::get<int>(iter.second);
     } else if (iter.first == "axis") {
-      axis = absl::get<int>(iter.second);
+      axis = std::get<int>(iter.second);
     }
   }
   PADDLE_ENFORCE_GE(

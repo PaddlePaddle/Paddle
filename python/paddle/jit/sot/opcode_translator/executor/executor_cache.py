@@ -34,6 +34,7 @@ from ...utils import (
     InfoCollector,
     InnerError,
     Singleton,
+    SotCapturedException,
     is_strict_mode,
     log,
     log_do,
@@ -408,6 +409,9 @@ def start_translate(
             guard,
             guard_chain,
         )
+    except SotCapturedException as e:
+        dummy_guard_chain: GuardChain = [paddle.framework.core.DummyGuardNode()]
+        return (CustomCode(None, True), dummy_guard, dummy_guard_chain)
     except Exception as e:
         raise InnerError(OpcodeExecutorBase.error_message_summary(e)) from e
     finally:

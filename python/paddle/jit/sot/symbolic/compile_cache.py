@@ -44,7 +44,7 @@ from .interpreter import compile_sir
 if TYPE_CHECKING:
     from paddle.static import InputSpec, Program
 
-    from .symbolic_context import SymbolicTraceContext
+    from .builder import StatementIRBuilder
 
 
 def trace_back_frames():
@@ -299,7 +299,7 @@ class CompileSIRCache(Cache, metaclass=Singleton):
 
     def key_fn(
         self,
-        context: SymbolicTraceContext,
+        builder: StatementIRBuilder,
         sir_name: str,
         input_spec: tuple[InputSpec, ...],
         **kwargs,
@@ -315,14 +315,14 @@ class CompileSIRCache(Cache, metaclass=Singleton):
         Returns:
             The hash key of the SIR
         """
-        sir = context.get_sir(sir_name)
+        sir = builder.get_sir(sir_name)
         # NOTE(dev): Is str(sir) a heavy operation ?
         hash_key = hash((str(sir), *input_spec, kwargs['training']))
         return hash_key
 
     def value_fn(
         self,
-        context: SymbolicTraceContext,
+        builder: StatementIRBuilder,
         sir_name: str,
         input_spec: tuple[InputSpec, ...],
         **kwargs,
@@ -342,12 +342,12 @@ class CompileSIRCache(Cache, metaclass=Singleton):
         backend = kwargs.get("backend", None)
         return FallbackWrapper(
             paddle.jit.to_static(
-                compile_sir(context, sir_name),
+                compile_sir(builder, sir_name),
                 input_spec=[input_spec],
                 build_strategy=build_strategy,
                 backend=backend,
                 full_graph=True,
             ),
-            context.get_sir(sir_name),
+            builder.get_sir(sir_name),
             is_training=kwargs['training'],
         )

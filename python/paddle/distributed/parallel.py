@@ -348,7 +348,7 @@ class DataParallel(Layer):
             ...     model = paddle.DataParallel(model)
             ...     opt = paddle.optimizer.SGD(learning_rate=0.01, parameters=model.parameters())
             ...     for step in range(10):
-            ...         x_data = numpy.random.randn(2, 2).astype(numpy.float32) # type: ignore[var-annotated]
+            ...         x_data = numpy.random.randn(2, 2).astype(numpy.float32)
             ...         x = paddle.to_tensor(x_data)
             ...         x.stop_gradient = False
             ...         # step 1 : skip gradient synchronization by 'no_sync'

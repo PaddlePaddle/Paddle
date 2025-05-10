@@ -14,8 +14,6 @@
 
 #pragma once
 
-#include <absl/container/flat_hash_map.h>
-
 #include <string>
 #include <vector>
 
@@ -25,6 +23,7 @@
 #include "paddle/cinn/ir/schedule/ir_schedule_util.h"
 #include "paddle/cinn/lang/compute.h"
 #include "paddle/cinn/poly/stage.h"
+#include "paddle/utils/flat_hash_map.h"
 
 namespace cinn {
 namespace hlir {

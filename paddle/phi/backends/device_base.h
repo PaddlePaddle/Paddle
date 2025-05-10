@@ -18,6 +18,8 @@
 #include "paddle/phi/backends/c_comm_lib.h"
 #include "paddle/phi/backends/event.h"
 #include "paddle/phi/backends/stream.h"
+#include "paddle/phi/common/place.h"
+#include "paddle/phi/core/allocator.h"
 
 namespace phi {
 
@@ -34,11 +36,25 @@ class DeviceInterface {  // Driver / Runtime
   virtual ~DeviceInterface() {}
 
   // Info
-  virtual size_t GetComputeCapability();
+  virtual size_t GetComputeCapability(size_t dev_id);
 
-  virtual size_t GetRuntimeVersion();
+  virtual size_t GetRuntimeVersion(size_t dev_id);
 
-  virtual size_t GetDriverVersion();
+  virtual size_t GetDriverVersion(size_t dev_id);
+
+  virtual size_t GetMultiProcessors(size_t dev_id);
+
+  virtual size_t GetMaxThreadsPerMultiProcessor(size_t dev_id);
+
+  virtual size_t GetMaxThreadsPerBlock(size_t dev_id);
+
+  virtual std::array<unsigned int, 3> GetMaxGridDimSize(size_t dev_id);
+
+  virtual void* InitEigenDevice(const Place& place,
+                                phi::stream::stream_t stream,
+                                phi::Allocator* allocator);
+
+  virtual void DestroyEigenDevice(size_t dev_id, void* eigen_device);
 
   // Platform
   //! Initialize
