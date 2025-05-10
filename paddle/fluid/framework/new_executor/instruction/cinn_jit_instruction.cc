@@ -136,6 +136,18 @@ class CinnJitInstruction::FnPtrImpl {
 #else
         CINN_NOT_IMPLEMENTED
 #endif
+
+        #define CUDA_CALL(call)                                                        \
+            do {                                                                       \
+                cudaError_t result = call;                                             \
+                if (cudaSuccess != result)                                             \
+                    std::cerr << "ERROR: " << result << " in " << __FILE__ << ":"      \
+                              << __LINE__ << ": " << cudaGetErrorString(result)        \
+                              << " (" << #call << ")" << std::endl;                    \
+                cudaDeviceReset();                                                     \
+                exit(-1);                                                              \
+            } while (0)
+
         ps.CudaStart(FLAGS_cinn_kernel_execution_label);
         phi::gpuGraphLaunch(instance, stream);
         ps.CudaEnd(FLAGS_cinn_kernel_execution_label);

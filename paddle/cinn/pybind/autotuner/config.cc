@@ -85,9 +85,10 @@ void BindTunerConfig(pybind11::module *m) {
         .def_readwrite("iter_type", &BucketInfo::Dimension::iter_type)
         .def_readwrite("is_dynamic", &BucketInfo::Dimension::is_dynamic);
 
+    // TODO: Update BucketInfo structure to support more shape
     // 绑定BucketInfo类
+    // 构造函数
     py::class_<BucketInfo>(*m, "BucketInfo")
-        // 构造函数
         .def(py::init<>())  // 默认构造函数
         .def(py::init<int, int, int, int, bool, bool>(),  // 六参数构造函数
              py::arg("sp_lower_bound"),

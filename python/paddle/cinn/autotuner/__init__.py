@@ -31,6 +31,15 @@ from .ops_searcher import (
     OpsSearcher
 )
 
+from .model_searcher import (
+    ModelSearcher
+)
+
+from .config import (
+    ModelInfo,
+    SearchOption
+)
+
 
 __all__ = []
 

@@ -64,9 +64,14 @@ Program::~Program() {
 }
 
 std::shared_ptr<Program> Program::Clone(IrMapping& ir_mapping) const {
+  // LOG(INFO) << "--------- Program::Clone() Begin ---------";
+
+
   pir::IrContext* ctx = pir::IrContext::Instance();
   auto new_program = std::make_shared<Program>(ctx);
   auto clone_options = CloneOptions::All();
+
+  // LOG(INFO) << "[Debug] " << __FILE__ << ":" << __LINE__;
 
   // deal kwargs
   for (auto [key, value] : block()->kwargs()) {
@@ -76,11 +81,24 @@ std::shared_ptr<Program> Program::Clone(IrMapping& ir_mapping) const {
       new_arg.set_attribute(name, attr_value);
     }
     ir_mapping.Add(value, new_arg);
+    // // print value & new_arg
+    // LOG(INFO) << "[Debug] deal kwargs";
+    // value.Print(LOG(INFO) << "[Debug] value: ");
+    // new_arg.Print(LOG(INFO) << "[Debug] new_arg: ");
   }
 
+
+  // LOG(INFO) << "[Debug] " << __FILE__ << ":" << __LINE__;
+
   for (const auto& op : *block()) {
+    // LOG(INFO) << __LINE__ << " | " << op.name()  << " | " << op.id();
     auto* new_op = op.Clone(ir_mapping, clone_options);
+
+    // LOG(INFO) << __LINE__ << " | " << op.name() << " | " << op.id();
+
     new_program->block()->push_back(new_op);
+
+    // LOG(INFO) << __LINE__ << " | " << op.name() << " | " << op.id();
 
     if (new_op->name() == "builtin.set_parameter") {
       std::unique_ptr<pir::Parameter> param_new(
@@ -90,6 +108,9 @@ std::shared_ptr<Program> Program::Clone(IrMapping& ir_mapping) const {
           std::move(param_new));
     }
   }
+  // LOG(INFO) << "[Debug]" << __FILE__ << ":" << __LINE__;
+  // LOG(INFO) << "--------- Program::Clone() End ---------";
+
   return new_program;
 }
 

@@ -15,12 +15,18 @@
 #pragma once
 
 #include "paddle/cinn/ir/group_schedule/search/measurer.h"
+#include <sstream>
 
+#include "glog/logging.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/add_cinn_pass.h"
+#include "paddle/fluid/framework/device_worker.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/transforms/build_cinn_pass.h"
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
+#include "paddle/phi/backends/context_pool.h"
+#include "paddle/phi/common/place.h"
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/pir/include/core/builtin_dialect.h"
 #include "paddle/pir/include/core/builtin_type.h"
 #include "paddle/pir/include/core/program.h"
@@ -47,23 +53,75 @@ std::shared_ptr<pir::PassManager> CreatePassManager() {
   return pass_manager;
 }
 
-Measurer::Measurer(::pir::Program* program) : program_(program) {
+Measurer::Measurer(::pir::Program* program) : main_program_(program) {
   std::stringstream ss;
-  ss << *program_;
-  compile_label_ = "Compile Program\n" + ss.str();
-  execute_label_ = "Execute Program\n" + ss.str();
+  ss << *main_program_;
+  compile_label_ = "Compile Main Program\n" + ss.str();
+  execute_label_ = "Execute Main Program\n" + ss.str();
+}
+
+Measurer::Measurer(
+  ::pir::Program* main_program,
+  ::pir::Program* startup_program
+) : main_program_(main_program), startup_program_(startup_program) {
+  
+  std::stringstream ss;
+  ss << *main_program;
+  compile_label_ = "Compile Main Program\n" + ss.str();
+  execute_label_ = "Execute Main Program\n" + ss.str();
+}
+
+void Measurer::Prepare() {
+  VLOG(4) << "[Debug] ============= Measurer::Prepare() Begin ============= \n";
+  if (startup_program_ == nullptr) {
+  VLOG(4) << "[Debug] Measurer::Prepare() Skip due to startup_program_ == nullptr";
+    return;
+  }
+  ::pir::IrMapping ir_mapping;
+  VLOG(4) << "[Debug] Measurer::Prepare() Before Clone ir_mapping";
+  std::shared_ptr<::pir::Program> program_cloned = startup_program_->Clone(ir_mapping);
+  VLOG(4) << "[Debug] Measurer::Prepare() Before ApplyCinnPass";
+  cinn::dialect::ir::ApplyCinnPass(program_cloned.get(), CreatePassManager);
+  VLOG(4) << "[Debug] Measurer::Prepare() Before PdOpLowerToKernelPass";
+  kernel_program_ = std::move(
+      paddle::dialect::PdOpLowerToKernelPass(program_cloned.get(), place_));
+  VLOG(4) << "[Debug] Measurer::Prepare() Before executor_.reset";
+  std::vector<std::string> fetch_var_names{};
+  executor_.reset(new paddle::framework::InterpreterCore(
+      place_, fetch_var_names, kernel_program_->block(), exe_scope_.get()));
+  VLOG(4) << "[Debug] Measurer::Prepare() Before executor_.Run";
+  std::vector<std::string> feed_names{};
+  executor_->Run(feed_names, true);
+  VLOG(4) << "[Debug] ============= Measurer::Prepare() End ============= \n";
+
 }
 
 void Measurer::Compile() {
+  Prepare();
+  // auto w0 = exe_scope_->FindVar("conv2d_0.w_0")->Get<phi::DenseTensor>();
+  // const float* w0_cpu = w0.data<float>();
+  // std::stringstream ss;
+  // ss << "w0 = [";
+  // for (size_t i = 0; i < w0.numel(); ++i) {
+  //   ss << w0_cpu[i] << ", ";
+  // }
+  // ss << " ]";
+  // VLOG(6) << ss.str();
+
+
   common::PerformanceStatisticsStart(compile_label_);
   ::pir::IrMapping ir_mapping;
-  std::shared_ptr<::pir::Program> program_cloned = program_->Clone(ir_mapping);
+  VLOG(4) << "[Debug] Measurer::Compile() Before Clone ir_mapping";
+  std::shared_ptr<::pir::Program> program_cloned = main_program_->Clone(ir_mapping);
+  VLOG(4) << "[Debug] Measurer::Compile() Before ApplyCinnPass";
   cinn::dialect::ir::ApplyCinnPass(program_cloned.get(), CreatePassManager);
+  VLOG(4) << "[Debug] Measurer::Compile() Before PdOpLowerToKernelPass";
   kernel_program_ = std::move(
       paddle::dialect::PdOpLowerToKernelPass(program_cloned.get(), place_));
+  VLOG(4) << "[Debug] Measurer::Compile() Before executor_.reset";
   executor_.reset(new paddle::framework::InterpreterCore(
       place_, {"out@fetch"}, kernel_program_->block(), exe_scope_.get()));
-  LOG(INFO) << "[CPP] Kernel after Measurer compile: \n"<< *kernel_program_;
+  VLOG(4) << "[Debug] Measurer::Compile() Kernel after Measurer compile: \n"<< *kernel_program_;
   common::PerformanceStatisticsEnd(compile_label_);
 }
 
@@ -83,6 +141,40 @@ std::string ConcatShapeAsLabel(
   return label;
 }
 
+template <typename T> 
+void CopyBetweenDeviceHost(phi::DenseTensor* dst, const phi::DenseTensor* src) {
+  #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  auto src_place = src->place();
+
+  // auto *dev_ctxs = reinterpret_cast<const std::map<
+  //     phi::Place,
+  //     std::shared_future<std::unique_ptr<phi::DeviceContext>>> *>(
+  //     device_contexts_);
+  // auto *dev_ctx =
+  //     static_cast<phi::GPUContext *>(dev_ctxs->at(src_place).get().get());
+  auto * dev_ctx = static_cast<phi::GPUContext *>(phi::DeviceContextPool::Instance().Get(
+    phi::GPUPlace()));
+  paddle::memory::Copy(dst->place(),
+                       static_cast<void *>(dst->data<T>()),
+                       src_place,
+                       src->data<T>(),
+                       src->numel() * sizeof(T),
+                       dev_ctx->stream());
+#ifdef PADDLE_WITH_HIP
+  hipStreamSynchronize(dev_ctx->stream());
+#else
+
+  cudaStreamSynchronize(dev_ctx->stream());
+  
+#endif
+#else
+  PADDLE_THROW(common::errors::Unavailable(
+      "Can not create tensor with CUDA place because paddle is not compiled "
+      "with CUDA."));
+#endif
+};
+
+
 void Measurer::Run(const std::unordered_map<std::string, std::vector<int64_t>>&
                        input_name_and_shape,
                    int repeat) {
@@ -100,6 +192,26 @@ void Measurer::Run(const std::unordered_map<std::string, std::vector<int64_t>>&
     phi::DDim ddim(item.second.data(), item.second.size());
     tensor.ResizeAndAllocate(ddim);
     float* data = tensor.mutable_data<float>(ddim, place_);
+
+
+    phi::DenseTensor cpu_tensor;
+    cpu_tensor.ResizeAndAllocate(ddim);
+    auto cpu = cpu_tensor.mutable_data<float>(ddim, phi::CPUPlace());
+
+    for (size_t i = 0; i < cpu_tensor.numel(); ++i) {
+      cpu[i] = static_cast<float>(sin(i));
+    }
+
+    CopyBetweenDeviceHost<float>(&tensor, &cpu_tensor);
+
+    VLOG(3) << "[Debug] tensor.strides: " <<  cpu_tensor.strides();
+    VLOG(3) << "[Debug] tensor.dims: " <<  cpu_tensor.dims();
+    VLOG(3) << "[Debug] tensor.numel: " <<  cpu_tensor.numel();
+    // VLOG(3) << "tensor.NumElements: " <<  tensor.NumElements();
+
+    VLOG(3) << "[Debug] Input Tensor: " <<  paddle::framework::PrintDenseTensor(&cpu_tensor,0, 50);
+
+    // LOG(INFO) << "data[0][0][0][0]" << data[0]; 
     input_tensors.push_back(tensor);
   }
   std::string input_shape_label = ConcatShapeAsLabel(input_name_and_shape);
@@ -108,8 +220,16 @@ void Measurer::Run(const std::unordered_map<std::string, std::vector<int64_t>>&
       common::PerformanceStatistician::Instance();
   for (int i = 0; i < repeat; ++i) {
     ps.Start(execute_label_ + "\n" + input_shape_label);
-    executor_->Run(input_names, input_tensors, true);
+    auto fetch_list = executor_->Run(input_names, input_tensors, true);
     ps.End(execute_label_ + "\n" + input_shape_label);
+    // for (size_t i = 0; i < fetch_list.size(); ++i) {
+    //   const float* fetch_data =
+    //   PADDLE_GET_CONST(phi::DenseTensor, fetch_list[i]).data<float>();
+    //   VLOG(7) << "fetch_data[" << i << "] =  " << *fetch_data;
+    // }
+    auto tensor = PADDLE_GET_CONST(phi::DenseTensor, fetch_list[0]);
+    VLOG(3) << "[Debug] Output Tensor: " <<  paddle::framework::PrintDenseTensor(&tensor,0, 50);
+
   }
 }
 

@@ -141,7 +141,16 @@ Operation *Operation::Create(const std::vector<Value> &inputs,
 }
 
 Operation *Operation::Clone(IrMapping &ir_mapping, CloneOptions options) const {
+  // LOG(INFO) << "--------- Operation::Clone() Begin ---------";
   auto inputs = operands_source();
+
+  // LOG(INFO) << "--> print `inputs`";
+  // for (auto& i : inputs) {
+  //   LOG(INFO) << i.PrintUdChain();
+  // }
+  // LOG(INFO) << "<-- print `inputs`";
+
+
   if (options.IsCloneOperands()) {
     // replace value by IRMapping inplacely.
     for (auto &value : inputs) {
@@ -149,10 +158,14 @@ Operation *Operation::Clone(IrMapping &ir_mapping, CloneOptions options) const {
     }
   }
 
+  // LOG(INFO) << "--> line: " << __LINE__;
+
   std::vector<Type> output_types;
   for (auto &result : results()) {
     output_types.push_back(result.type());
   }
+
+  // LOG(INFO) << "--> line: " << __LINE__;
 
   std::vector<Block *> successors = {};
   if (options.IsCloneSuccessors()) {
@@ -160,6 +173,9 @@ Operation *Operation::Clone(IrMapping &ir_mapping, CloneOptions options) const {
       successors.push_back(ir_mapping.Lookup(successor(i)));
     }
   }
+  
+  // LOG(INFO) << "--> line: " << __LINE__;
+
   auto *new_op = Create(inputs,
                         attributes_,
                         output_types,
@@ -169,10 +185,14 @@ Operation *Operation::Clone(IrMapping &ir_mapping, CloneOptions options) const {
                         false);
   ir_mapping.Add(this, new_op);
 
+  // LOG(INFO) << "--> line: " << __LINE__;
+
   // record outputs mapping info
   for (uint32_t i = 0; i < num_results_; ++i) {
     ir_mapping.Add(result(i), new_op->result(i));
   }
+
+  // LOG(INFO) << "--> line: " << __LINE__;
 
   if (options.IsCloneRegions()) {
     // clone regions recursively
@@ -180,6 +200,8 @@ Operation *Operation::Clone(IrMapping &ir_mapping, CloneOptions options) const {
       this->region(i).CloneInto(new_op->region(i), ir_mapping);
     }
   }
+
+  // LOG(INFO) << "--------- Operation::Clone() End ---------";
 
   return new_op;
 }

@@ -40,6 +40,11 @@ struct IR_API MeasureResult {
 class IR_API Measurer {
  public:
   explicit Measurer(::pir::Program* program);
+  explicit Measurer(
+    ::pir::Program* main_program,
+    ::pir::Program* startup_program
+  );
+  void Prepare();
 
   void Compile();
 
@@ -52,7 +57,8 @@ class IR_API Measurer {
  private:
   std::string compile_label_;
   std::string execute_label_;
-  ::pir::Program* program_;
+  ::pir::Program* main_program_;
+  ::pir::Program* startup_program_ = nullptr;
   phi::Place place_ = phi::GPUPlace(0);
   std::unique_ptr<pir::Program> kernel_program_;
   std::unique_ptr<paddle::framework::Scope> exe_scope_ =

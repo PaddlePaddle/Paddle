@@ -17,6 +17,7 @@
 #include <pybind11/operators.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
+#include <ostream>
 
 #include "paddle/cinn/ir/group_schedule/search/measurer.h"
 #include "paddle/common/enforce.h"
@@ -38,8 +39,18 @@ void BindSearch(pybind11::module *m) {
   py::class_<Measurer, std::shared_ptr<Measurer>>(*m, "Measurer")
       .def(py::init(
         [](std::shared_ptr<::pir::Program> program){
-            LOG(INFO) << "[Pybind] Pass-in Program when binding `measurer`: \n" << *program;
+            LOG(INFO) << "[Pybind::Measurer] Pass-in Single Program: \n" << *program;
             return std::make_shared<Measurer>(program.get());
+        }))
+      .def(py::init(
+        [](std::shared_ptr<::pir::Program> main_program, std::shared_ptr<::pir::Program> startup_program){
+            std::flush(std::cout);
+            std::cout << "[Pybind::Measurer] Pass-in Main Program: \n" << *main_program;
+            std::flush(std::cout);
+            std::cout << "[Pybind::Measurer] Pass-in StartUp Program: \n" << *startup_program;
+            std::flush(std::cout);
+
+            return std::make_shared<Measurer>(main_program.get(), startup_program.get());
         }))
       .def("compile", &Measurer::Compile)
       .def("run", &Measurer::Run

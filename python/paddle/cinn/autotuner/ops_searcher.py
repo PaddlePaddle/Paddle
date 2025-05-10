@@ -73,7 +73,7 @@ class OpsSearcher:
             is_reduce_dynamic
         ))
         bucket_info.space = space
-        print(bucket_info)
+        logging.info(bucket_info)
         return bucket_info
 
     def write_bucket_info(
