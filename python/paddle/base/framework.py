@@ -1715,7 +1715,7 @@ class Variable(metaclass=VariableMetaClass):
     two variables in different :ref:`api_guide_Block_en` could have the same name.
 
     There are many kinds of variables. Each kind of them has its own attributes
-    and usages. Please refer to the `framework.proto <https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/base/framework/framework.proto>`_ for details.
+    and usages. Please refer to the `framework.proto <https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/phi/core/framework/framework.proto>`_ for details.
 
     Most of a Variable's member variables can be set to be None. It mean
     it is not available or will be specified later.
