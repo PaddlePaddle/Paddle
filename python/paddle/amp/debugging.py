@@ -496,7 +496,7 @@ def enable_operator_stats_collection() -> None:
             >>> x = paddle.rand([10, 3, 32, 32])
 
             >>> paddle.amp.debugging.enable_operator_stats_collection()
-            >>> # AMP list including conv2d, elementwise_add, reshape, cast
+            >>> # AMP list including cast, conv2d, elementwise_add, reshape
             >>> with paddle.amp.auto_cast(enable=True, level='O2'):
             ...     out = conv(x)
             >>> # Print to the standard output.
@@ -533,7 +533,7 @@ def disable_operator_stats_collection() -> None:
             >>> x = paddle.rand([10, 3, 32, 32])
 
             >>> paddle.amp.debugging.enable_operator_stats_collection()
-            >>> # AMP list including conv2d, elementwise_add, reshape, cast
+            >>> # AMP list including cast, conv2d, elementwise_add, reshape
             >>> with paddle.amp.auto_cast(enable=True, level='O2'):
             ...     out = conv(x)
             >>> # Print to the standard output.
@@ -573,7 +573,7 @@ def collect_operator_stats() -> Generator[None, None, None]:
             >>> x = paddle.rand([10, 3, 32, 32])
 
             >>> with paddle.amp.debugging.collect_operator_stats():
-            ...     # AMP list including conv2d, elementwise_add, reshape, cast
+            ...     # AMP list including cast, conv2d, elementwise_add, reshape
             ...     with paddle.amp.auto_cast(enable=True, level='O2'):
             ...         out = conv(x)
             >>> # Print to the standard output.
