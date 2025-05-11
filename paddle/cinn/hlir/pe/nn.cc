@@ -1389,7 +1389,7 @@ std::vector<Tensor> PoolImpl(const Tensor &tensor,
   std::vector<Expr> kernel(k_size);
   std::vector<Expr> stride(k_size);
   std::vector<Expr> dilation(k_size);
-  std::vector<Expr> dilation_size(k_size);
+  std::vector<Expr> dilated_kernel(k_size);
   std::vector<Expr> pad_head(k_size);
   std::vector<Expr> pad_tail(k_size);
   std::vector<Expr> pad_before(x_size, Expr(0));
@@ -1402,7 +1402,7 @@ std::vector<Tensor> PoolImpl(const Tensor &tensor,
     kernel[i] = Expr(kernel_size[i]);
     stride[i] = Expr(stride_size[i]);
     dilation[i] = Expr(dilation_size[i]);
-    dilated_kernel[i] = (kernel[i] - 1) * dilation[i] + 1;
+    dilated_kernel[i] = Expr((kernel_size[i] - 1) * dilation_size[i] + 1);
     pad_head[i] = Expr(padding_size[i]);
     pad_tail[i] = Expr(padding_size[i + k_size]);
     do_pad = (do_pad) ? do_pad : (padding_size[i] || padding_size[i + k_size]);
