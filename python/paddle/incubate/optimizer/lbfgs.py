@@ -93,10 +93,10 @@ class LBFGS(Optimizer):
 
             >>> paddle.disable_static()
             >>> np.random.seed(0)
-            >>> np_w = np.random.rand(1).astype(np.float32) # type: ignore[var-annotated]
-            >>> np_x = np.random.rand(1).astype(np.float32) # type: ignore[var-annotated]
+            >>> np_w = np.random.rand(1).astype(np.float32)
+            >>> np_x = np.random.rand(1).astype(np.float32)
 
-            >>> inputs = [np.random.rand(1).astype(np.float32) for i in range(10)] # type: ignore[var-annotated]
+            >>> inputs = [np.random.rand(1).astype(np.float32) for i in range(10)]
             >>> # y = 2x
             >>> targets = [2 * x for x in inputs]
 

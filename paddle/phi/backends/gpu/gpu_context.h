@@ -15,6 +15,10 @@ limitations under the License. */
 
 #pragma once
 
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+#include "paddle/phi/backends/custom/custom_context.h"
+#include "paddle/phi/backends/gpu/gpu_helper.h"
+#else
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
     defined(PADDLE_WITH_XPU_KP)
 
@@ -309,4 +313,5 @@ class GPUPinnedContext
 #endif
 }  // namespace phi
 
+#endif
 #endif

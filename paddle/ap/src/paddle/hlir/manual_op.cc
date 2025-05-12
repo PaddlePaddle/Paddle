@@ -14,13 +14,32 @@
 
 #include <glog/logging.h>
 
-#include "paddle/ap/include/paddle/pir/manual_op.h"
+#include "paddle/ap/include/paddle/hlir/manual_op.h"
+#include "paddle/ap/include/paddle/pir/infer_symbolic_shape_util.h"
 #include "paddle/common/enforce.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
 #include "paddle/pir/include/core/builtin_type.h"
 #include "paddle/pir/include/dialect/shape/ir/shape_attribute.h"
 
 namespace ap::dialect {
+
+const char* FacadeOp::attributes_name[FacadeOp::attributes_num] = {
+    "custom_op_name", "infer_meta", "infer_symbolic"};
+
+void FacadeOp::Build(pir::Builder& builder,             // NOLINT
+                     pir::OperationArgument& argument,  // NOLINT
+                     const std::vector<pir::Value>& inputs,
+                     const pir::AttributeMap& attributes,
+                     const std::vector<pir::Type>& output_types) {
+  argument.inputs = inputs;
+  argument.attributes = attributes;
+  argument.output_types = output_types;
+}
+
+bool FacadeOp::InferSymbolicShape(
+    pir::InferSymbolicShapeContext* infer_context) {
+  return ApOpFacadeOpInferSymbolicShape(*this, infer_context);
+}
 
 void UpSpiderOp::Build(pir::Builder& builder,             // NOLINT
                        pir::OperationArgument& argument,  // NOLINT
@@ -145,6 +164,7 @@ bool StoreToGlobalOp::InferSymbolicShape(
 
 }  // namespace ap::dialect
 
+IR_DEFINE_EXPLICIT_TYPE_ID(ap::dialect::FacadeOp);
 IR_DEFINE_EXPLICIT_TYPE_ID(ap::dialect::UpSpiderOp);
 IR_DEFINE_EXPLICIT_TYPE_ID(ap::dialect::DownSpiderOp);
 IR_DEFINE_EXPLICIT_TYPE_ID(ap::dialect::LoadFromRegisterOp);

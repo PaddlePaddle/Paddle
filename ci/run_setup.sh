@@ -18,18 +18,23 @@ init
 export PATH=/usr/local/bin:${PATH}
 ln -sf $(which python${PY_VERSION}) /usr/local/bin/python
 ln -sf $(which pip${PY_VERSION}) /usr/local/bin/pip
+echo "::group::Installing zstd"
+apt install zstd -y
+echo "::endgroup::"
 
-if [ "$CI_name" == "cpu" ] || [ "$CI_name" == "coverage" ] || [ "$CI_name" == "xpu" ] || [ "$CI_name" == "distribute" ]; then
+if [ "$CI_name" == "cpu" ] || [ "$CI_name" == "coverage" ] || [ "$CI_name" == "xpu" ] || [ "$CI_name" == "distribute" ] || [ "$CI_name" == "build" ]; then
     if [ "$CI_name" == "xpu" ]; then
         echo "::group::Installing ninja-build"
         apt install ninja-build -y
         echo "::endgroup::"
     fi
-    apt install zstd -y
+    if [ "$CI_name" == "build" ]; then
+        export LD_LIBRARY_PATH=/usr/local/cuda/compat:/usr/local/cuda/lib:/usr/local/cuda/lib64:/usr/local/nvidia/lib:/usr/local/nvidia/lib64:/usr/lib/x86_64-linux-gnu:${LD_LIBRARY_PATH}
+        echo "export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}" >> ~/.bashrc
+    fi
     pip config set global.cache-dir "/root/.cache/pip"
     pip install --upgrade pip
     echo "::group::Installing python dependencies"
-    pip install -r "${work_dir}/python/requirements.txt"
     if [ "$CI_name" != "distribute" ]; then
         pip install -r "${work_dir}/python/unittest_py/requirements.txt"
     fi
@@ -168,6 +173,7 @@ function run_setup(){
         else
             echo "::group::Installing python dependencies"
             pip install -r ${PADDLE_ROOT}/python/requirements.txt
+            echo "end"
             echo "::endgroup::"
         fi
     fi
@@ -316,6 +322,57 @@ EOF
 }
 
 run_setup "$@"
+
+if [ "$CI_name" == "build" ]; then
+    if [ ! -d "${PADDLE_ROOT}/build/python/dist/" ]; then
+        mkdir ${PADDLE_ROOT}/build/python/dist/
+    fi
+    mv ${PADDLE_ROOT}/dist/*.whl ${PADDLE_ROOT}/build/python/dist/
+    cmake_change=`git diff --name-only upstream/$BRANCH | grep "cmake/external" || true`
+    # Temporarily save some scripts from PR branch
+    mkdir -p /tmp
+    cp ${PADDLE_ROOT}/python/requirements.txt /tmp
+    cp ${PADDLE_ROOT}/tools/print_signatures.py /tmp
+
+    generate_api_spec "" "PR"
+    mkdir ${PADDLE_ROOT}/build/pr_whl && cp ${PADDLE_ROOT}/build/python/dist/*.whl ${PADDLE_ROOT}/build/pr_whl
+    rm -f ${PADDLE_ROOT}/build/python/dist/*.whl && rm -f ${PADDLE_ROOT}/build/python/build/.timestamp
+
+    git checkout $BRANCH
+    dev_commit=`git log -2|grep -w 'commit'|awk '{print $2}'`
+    for commit_id in $dev_commit
+    do
+    dev_url="https://xly-devops.bj.bcebos.com/PR/build_whl/0/${commit_id}/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl"
+    url_return=`curl -s -m 5 -IL ${dev_url} |awk 'NR==1{print $2}'`
+      if [ "$url_return" == '200' ];then
+        break
+      fi
+    done
+    if [ "$url_return" == '200' ];then
+        mkdir ${PADDLE_ROOT}/build/dev_whl && wget -q -P ${PADDLE_ROOT}/build/dev_whl ${dev_url}
+        cp ${PADDLE_ROOT}/build/dev_whl/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl ${PADDLE_ROOT}/build/python/dist
+    else
+        cp -r ${PADDLE_ROOT}/build /tmp/
+        if [[ ${cmake_change} ]];then
+            rm -rf ${PADDLE_ROOT}/build/Makefile ${PADDLE_ROOT}/build/CMakeCache.txt ${PADDLE_ROOT}/build/build.ninja
+            rm -rf ${PADDLE_ROOT}/build/third_party
+        fi
+        git checkout $BRANCH
+        git submodule update --init
+        run_setup "rerun-cmake bdist_wheel"
+        rm -rf ${PADDLE_ROOT}/build
+        mv /tmp/build ${PADDLE_ROOT}
+        if [ ! -d "${PADDLE_ROOT}/build/python/dist/" ]; then
+            mkdir ${PADDLE_ROOT}/build/python/dist/
+        fi
+        mv ${PADDLE_ROOT}/dist/*.whl ${PADDLE_ROOT}/build/python/dist/
+        mkdir ${PADDLE_ROOT}/build/dev_whl && cp ${PADDLE_ROOT}/build/python/dist/*.whl ${PADDLE_ROOT}/build/dev_whl
+        git checkout test
+    fi
+
+    generate_api_spec "" "DEV"
+fi
+
 
 if [[ -f ${PADDLE_ROOT}/build/build_summary.txt ]];then
     echo "=====================build summary======================"
