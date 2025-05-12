@@ -375,6 +375,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param: [out_grad]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : ceil_grad
   inplace : (out_grad -> x_grad)
@@ -1221,6 +1222,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param: [out_grad]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : floor_grad
   composite : floor_grad(out_grad, x_grad)
@@ -2435,6 +2437,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [out_grad]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : poisson_grad
 
@@ -2796,6 +2799,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param: [out_grad]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : round_grad
   inplace : (out_grad -> x_grad)
@@ -3616,6 +3620,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [out_grad]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : trunc_grad
 
