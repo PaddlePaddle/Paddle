@@ -19,7 +19,6 @@
 
 #include "glog/logging.h"
 #include "paddle/common/errors.h"
-#include "paddle/common/flags.h"
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_analysis_config.h"
 #include "paddle/fluid/inference/api/paddle_pass_builder.h"

@@ -36,10 +36,10 @@ void CrossEntropyWithSoftmaxGradKernel(const Context& dev_ctx,
 
   const int rank = logit_grad->dims().size();
   const int axis = phi::funcs::CanonicalAxis(axis_in, rank);
-  const int n = phi::funcs::SizeToAxis(axis, logit_grad->dims());
-  const int d = phi::funcs::SizeFromAxis(axis, logit_grad->dims());
+  const int64_t n = phi::funcs::SizeToAxis(axis, logit_grad->dims());
+  const int64_t d = phi::funcs::SizeFromAxis(axis, logit_grad->dims());
 
-  int r = XPU_SUCCESS;
+  int r = 0;
 
   if (axis == rank - 1) {
     if (soft_label) {
@@ -89,9 +89,9 @@ void CrossEntropyWithSoftmaxGradKernel(const Context& dev_ctx,
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "hard_softmax_with_cross_entropy_grad");
     }
   } else {
-    int t = logit_grad->dims()[axis];
+    int64_t t = logit_grad->dims()[axis];
     xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
-    int len = softmax.numel();
+    int64_t len = softmax.numel();
     XPUType* trans_logit = RAII_GUARD.alloc_l3_or_gm<XPUType>(len);
     PADDLE_ENFORCE_XDNN_NOT_NULL(trans_logit);
 

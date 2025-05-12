@@ -53,33 +53,12 @@ class Location:
 
 
 def ast_to_source_code(node: ast.AST):
-    if sys.version_info >= (3, 9):
-        ast.fix_missing_locations(node)
-        return ast.unparse(node)
-
-    if isinstance(node, ast.Name):
-        return node.id
-    elif isinstance(node, ast.Attribute):
-        return f'{ast_to_source_code(node.value)}.{node.attr}'
-    elif isinstance(node, ast.Tuple):
-        return f'({", ".join(ast_to_source_code(elt) for elt in node.elts)})'
-    elif isinstance(node, ast.List):
-        return f'[{", ".join(ast_to_source_code(elt) for elt in node.elts)}]'
-    elif isinstance(node, ast.Set):
-        return f'{{{", ".join(ast_to_source_code(elt) for elt in node.elts)}}}'
-    elif isinstance(node, ast.Dict):
-        return f'{{{", ".join(f"{ast_to_source_code(k)}: {ast_to_source_code(v)}" for k, v in zip(node.keys, node.values))}}}'
-        return f'{ast_to_source_code(node.value)}[{ast_to_source_code(node.slice)}]'
-    elif isinstance(node, ast.Constant):
-        return repr(node.value)
-    elif isinstance(node, ast.Call):
-        unparsed_args = [ast_to_source_code(arg) for arg in node.args]
-        unparsed_keywords = [
-            f'{kw.arg}={ast_to_source_code(kw.value)}' for kw in node.keywords
-        ]
-        return f'{ast_to_source_code(node.func)}({", ".join(unparsed_args + unparsed_keywords)})'
-    else:
-        raise NotImplementedError(f'Unsupported node type: {type(node)}')
+    if sys.version_info < (3, 9):
+        raise NotImplementedError(
+            "ast.unparse is only available in Python 3.9 and later"
+        )
+    ast.fix_missing_locations(node)
+    return ast.unparse(node)
 
 
 class Diagnostic:

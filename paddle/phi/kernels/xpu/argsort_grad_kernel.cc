@@ -51,15 +51,15 @@ void ArgsortGradKernel(const Context& dev_ctx,
   if (axis == -1 || axis + 1 == in_dims.size()) {
     is_need_transpose = false;
   }
-  int len_before = common::product(common::slice_ddim(in_dims, 0, axis));
-  int len_after =
+  auto len_before = common::product(common::slice_ddim(in_dims, 0, axis));
+  auto len_after =
       common::product(common::slice_ddim(in_dims, axis + 1, in_dims.size()));
-  int m = len_before * len_after;
-  int n = in_dims[axis];
-  int len = m * n;
-  std::vector<int> permute_vec{0, 2, 1};
-  std::vector<int> data_shape{len_before, n, len_after};
-  std::vector<int> data_shape_trans{len_before, len_after, n};
+  auto m = len_before * len_after;
+  auto n = in_dims[axis];
+  auto len = m * n;
+  std::vector<int64_t> permute_vec{0, 2, 1};
+  std::vector<int64_t> data_shape{len_before, n, len_after};
+  std::vector<int64_t> data_shape_trans{len_before, len_after, n};
 
   const int64_t* indices_data = indices.data<int64_t>();
   const T* out_grad_data = out_grad.data<T>();

@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/ap/src/paddle/pass/op_factory.h"
-#include "paddle/ap/include/paddle/pir/manual_op.h"
+#include "paddle/ap/include/paddle/hlir/manual_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/include/core/builtin_attribute.h"

@@ -65,6 +65,7 @@ EXTRA_IMPORTS = {
     'typing_extensions': 'import typing_extensions',
     'pybind11_stubgen': 'import pybind11_stubgen',
     'npt': 'import numpy.typing as npt',
+    'types': 'import types',
 }
 
 # some invalid attr from pybind11.
@@ -76,6 +77,9 @@ PYBIND11_ATTR_MAPPING = {}
 
 # some bad full expression pybind11-stubgen can not catch as invalid exp
 PYBIND11_INVALID_FULL_MAPPING = {
+    'PyCodeObject': 'types.CodeType',
+    'PyInterpreterFrameProxy': 'typing.Any',
+    '_object': 'typing.Any',
     'float16': 'numpy.float16',
     'Variant': 'typing.Any',
     'capsule': 'typing_extensions.CapsuleType',
