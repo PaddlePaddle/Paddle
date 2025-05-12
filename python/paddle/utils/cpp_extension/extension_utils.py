@@ -80,6 +80,8 @@ CLANG_COMPILE_FLAGS = [
     '-O3',
     '-arch',
     'x86_64',
+    '-arch',
+    'arm64',
 ]
 CLANG_LINK_FLAGS = [
     '-dynamiclib',
@@ -87,6 +89,8 @@ CLANG_LINK_FLAGS = [
     'dynamic_lookup',
     '-arch',
     'x86_64',
+    '-arch',
+    'arm64',
 ]
 
 MSVC_LINK_FLAGS = ['/MACHINE:X64']
