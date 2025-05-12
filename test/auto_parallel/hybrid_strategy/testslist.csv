@@ -19,3 +19,4 @@ test_parallel_api_with_llama_3d,LINUX,GPU,400,HYBRID,test_runner.py,,,http_proxy
 test_to_distributed_api_for_llama,LINUX,GPU,180,HYBRID,test_runner.py,,,http_proxy=;https_proxy=;PYTHONPATH=../..,
 test_parallel_api_with_llama_lora,LINUX,GPU,360,HYBRID,test_runner.py,,,http_proxy=;https_proxy=;PYTHONPATH=../..,
 test_process_mesh,LINUX,GPU,60,HYBRID,test_runner.py,,,http_proxy=;https_proxy=;PYTHONPATH=../..,
+test_init_lazy_guard_params,LINUX,GPU,60,HYBRID,test_runner.py,,,http_proxy=;https_proxy=;PYTHONPATH=../..,
