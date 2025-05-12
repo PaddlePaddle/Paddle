@@ -130,6 +130,7 @@ jobs:
           source ${{ github.workspace }}/../../../proxy
           bash ${ci_scripts}/run_setup.sh bdist_wheel
           EXCODE=$?
+          python -m pip install bce-python-sdk==0.8.74
           exit $EXCODE
           '
 
