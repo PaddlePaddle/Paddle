@@ -11,13 +11,13 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-
-#include "paddle/phi/kernels/funcs/selected_rows_functor.h"
-
 #include <algorithm>
 #include <map>
 #include <set>
 #include <vector>
+
+#include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/selected_rows_functor.h"
 
 #include "paddle/common/ddim.h"
 #include "paddle/phi/core/mixed_vector.h"

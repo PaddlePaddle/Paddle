@@ -14,11 +14,14 @@ limitations under the License. */
 #include "paddle/common/enforce.h"
 
 #ifdef PADDLE_WITH_CUDA
+#include <cuda_runtime.h>
+#ifndef PADDLE_WITH_CUSTOM_DEVICE
 #include <cublas_v2.h>
 #include <cudnn.h>
 #include <cufft.h>
 #include <curand.h>
 #include <cusparse.h>
+#endif
 #include <thrust/system/cuda/error.h>
 #include <thrust/system_error.h>
 #endif  // PADDLE_WITH_CUDA
@@ -45,6 +48,7 @@ limitations under the License. */
 #endif
 
 #ifdef PADDLE_WITH_CUDA
+#ifndef PADDLE_WITH_CUSTOM_DEVICE
 #include "paddle/phi/backends/dynload/cublas.h"
 #include "paddle/phi/backends/dynload/cudnn.h"
 #include "paddle/phi/backends/dynload/curand.h"
@@ -53,6 +57,7 @@ limitations under the License. */
 #include <error.h>
 #include "paddle/phi/backends/dynload/nccl.h"
 #endif  // __APPLE__
+#endif
 #endif  // PADDLE_WITH_CUDA
 
 #ifdef PADDLE_WITH_HIP
@@ -302,6 +307,7 @@ struct ExternalApiType {};
   }
 
 DEFINE_EXTERNAL_API_TYPE(cudaError_t, cudaSuccess);
+#ifndef PADDLE_WITH_CUSTOM_DEVICE
 DEFINE_EXTERNAL_API_TYPE(curandStatus_t, CURAND_STATUS_SUCCESS);
 DEFINE_EXTERNAL_API_TYPE(cudnnStatus_t, CUDNN_STATUS_SUCCESS);
 DEFINE_EXTERNAL_API_TYPE(cublasStatus_t, CUBLAS_STATUS_SUCCESS);
@@ -309,6 +315,7 @@ DEFINE_EXTERNAL_API_TYPE(cusparseStatus_t, CUSPARSE_STATUS_SUCCESS);
 DEFINE_EXTERNAL_API_TYPE(cusolverStatus_t, CUSOLVER_STATUS_SUCCESS);
 DEFINE_EXTERNAL_API_TYPE(cufftResult_t, CUFFT_SUCCESS);
 DEFINE_EXTERNAL_API_TYPE(CUresult, CUDA_SUCCESS);
+#endif
 
 #if !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
 DEFINE_EXTERNAL_API_TYPE(ncclResult_t, ncclSuccess);
@@ -328,7 +335,7 @@ inline std::string build_nvidia_error_msg(cudaError_t e) {
        << GetExternalErrorMsg(e);
   return sout.str();
 }
-
+#ifndef PADDLE_WITH_CUSTOM_DEVICE
 /*************** CURAND ERROR ***************/
 inline bool is_error(curandStatus_t stat) {
   return stat != CURAND_STATUS_SUCCESS;
@@ -403,7 +410,7 @@ inline std::string build_nvidia_error_msg(CUresult stat) {
   sout << "CU error(" << stat << "). " << GetExternalErrorMsg(stat);
   return sout.str();
 }
-
+#endif
 /**************** NCCL ERROR ****************/
 #if !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
 inline bool is_error(ncclResult_t nccl_result) {
