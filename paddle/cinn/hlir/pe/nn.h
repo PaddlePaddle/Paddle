@@ -432,6 +432,7 @@ std::vector<ir::Tensor> Pool3d(
     const std::vector<int> &kernel_size,
     const std::vector<int> &stride_size,
     const std::vector<int> &padding_size,
+    const std::vector<int> &dilation_size,
     const std::string &pool_type = "max",
     bool ceil_mode = false,
     bool exclusive = true,

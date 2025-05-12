@@ -735,6 +735,7 @@ std::shared_ptr<OpStrategy> StrategyForPool1d(
     std::vector<int> kernel_size;   // [kernel_w]
     std::vector<int> stride_size;   // [stride_w]
     std::vector<int> padding_size;  // [padding_left, padding_right]
+    std::vector<int> dilation_size; // [dilation_w]
     std::string pool_type = "max";
     bool ceil_mode = false;
     bool exclusive = true;
@@ -746,6 +747,8 @@ std::shared_ptr<OpStrategy> StrategyForPool1d(
         stride_size = std::get<std::vector<int>>(iter.second);
       } else if (iter.first == "padding_size") {
         padding_size = std::get<std::vector<int>>(iter.second);
+      } else if (iter.first == "dilation_size") {
+        dilation_size = std::get<std::vector<int>>(iter.second);
       } else if (iter.first == "pool_type") {
         pool_type = std::get<std::string>(iter.second);
       } else if (iter.first == "ceil_mode") {
@@ -770,6 +773,10 @@ std::shared_ptr<OpStrategy> StrategyForPool1d(
                       false,
                       ::common::errors::NotFound(
                           "Padding_size for pool1d is empty! Please check."));
+    PADDLE_ENFORCE_EQ(dilation_size.empty(),
+                      false,
+                      ::common::errors::NotFound(
+                          "Dilation_size for pool1d is empty! Please check."));
     PADDLE_ENFORCE(pool_type == "max" || pool_type == "avg",
                    ::common::errors::InvalidArgument(
                        "pool_type for pool1d should be max or avg."));
@@ -788,6 +795,7 @@ std::shared_ptr<OpStrategy> StrategyForPool1d(
                           kernel_size,
                           stride_size,
                           padding_size,
+                          dilation_size,
                           pool_type,
                           ceil_mode,
                           exclusive,
@@ -1066,6 +1074,7 @@ std::shared_ptr<OpStrategy> StrategyForPool3d(
     std::vector<int>
         padding_size;  // [padding_front, padding_top, padding_left,
                        // padding_back, padding_bottom, padding_right]
+    std::vector<int> dilation_size; // [dilation_d, dilation_h, dilation_w]
     std::string pool_type = "max";
     bool ceil_mode = false;
     bool exclusive = true;
@@ -1077,6 +1086,8 @@ std::shared_ptr<OpStrategy> StrategyForPool3d(
         stride_size = std::get<std::vector<int>>(iter.second);
       } else if (iter.first == "padding_size") {
         padding_size = std::get<std::vector<int>>(iter.second);
+      } else if (iter.first == "dilation_size") {
+        dilation_size = std::get<std::vector<int>>(iter.second);
       } else if (iter.first == "pool_type") {
         pool_type = std::get<std::string>(iter.second);
       } else if (iter.first == "ceil_mode") {
@@ -1101,6 +1112,10 @@ std::shared_ptr<OpStrategy> StrategyForPool3d(
                       false,
                       ::common::errors::NotFound(
                           "Padding_size for pool3d is empty! Please check."));
+    PADDLE_ENFORCE_EQ(dilation_size.empty(),
+                      false,
+                      ::common::errors::NotFound(
+                          "Dilation_size for pool3d is empty! Please check."));
     PADDLE_ENFORCE(pool_type == "max" || pool_type == "avg",
                    ::common::errors::InvalidArgument(
                        "pool_type for pool3d should be max or avg."));
@@ -1119,6 +1134,7 @@ std::shared_ptr<OpStrategy> StrategyForPool3d(
                           kernel_size,
                           stride_size,
                           padding_size,
+                          dilation_size,
                           pool_type,
                           ceil_mode,
                           exclusive,
