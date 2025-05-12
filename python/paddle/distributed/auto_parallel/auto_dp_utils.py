@@ -62,7 +62,7 @@ def _convert_fake_replicate_grad_to_partial(params_grads):
             params_grads[idx] = (param, grad)
     else:
         for idx in range(len(params_grads['params'])):
-            grad = params_grads['params'][idx]
+            grad = params_grads['params'][idx][1]
             if grad.is_dist():
                 grad_placements = grad.placements
                 if not isinstance(grad_placements[0], dist.Partial):
@@ -77,7 +77,7 @@ def _convert_fake_replicate_grad_to_partial(params_grads):
                 grad = dist.auto_parallel.api.dtensor_from_local(
                     grad, default_grad_mesh, default_grad_placements
                 )
-            params_grads['params'][idx] = grad
+            params_grads['params'][idx] = (params_grads['params'][idx][0], grad)
 
 
 def in_auto_dp_mode():
