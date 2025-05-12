@@ -16,10 +16,7 @@ import random
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils import (
-    Dy2StTestBase,
-    test_sot_only,
-)
+from dygraph_to_static_utils import Dy2StTestBase, test_pir_only
 
 import paddle
 
@@ -54,8 +51,8 @@ class TestItem(Dy2StTestBase):
         static_result = static_forward(t)
         self.assertEqual(dynamic_result, static_result)
 
-    @test_sot_only
-    def test_1_arg_sot_only(self):
+    @test_pir_only
+    def test_1_arg(self):
         random_shape = [
             [9],
             [3, 5],
@@ -75,8 +72,8 @@ class TestItem(Dy2StTestBase):
             static_result = static_forward(t)
             self.assertEqual(dynamic_result, static_result)
 
-    @test_sot_only
-    def test_n_arg_sot_only(self):
+    @test_pir_only
+    def test_n_arg(self):
         random_shape_and_idx = [
             [[3, 5], [1, 3]],
             [[2, 3, 4], [0, 2, 1]],
@@ -96,7 +93,7 @@ class TestItem(Dy2StTestBase):
         static_result = static_forward(t, idx)
         self.assertEqual(dynamic_result, static_result)
 
-    @test_sot_only
+    @test_pir_only
     def test_error(self):
         def test_raise_error(t, exception_type, expected_exception_str, *args):
             def dynamic_forward(x):

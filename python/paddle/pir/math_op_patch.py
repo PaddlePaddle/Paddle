@@ -306,16 +306,20 @@ def monkey_patch_value():
                     index = args[i]
                     if not isinstance(index, int):
                         raise TypeError(
-                            f"Item of args must be an integer, got {type(index)}"
+                            f"argument (position {i}) must be long, but got {type(index)}",
                         )
                     if index >= dims[i]:
                         raise ValueError(
-                            f"index {index} is out of bounds for dimension {i}"
-                            f" with size {dims[i]}"
+                            f"index {index} is out of bounds for axis {i} with size {dims[i]}"
                         )
 
         check_getitem_from_offset(self, *args)
-        return self
+        if len(args) == 0:
+            return self
+        if len(args) == 1:
+            return self.flatten()[args[0]]
+
+        return self[args]
 
     def astype(self, dtype):
         """

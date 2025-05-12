@@ -564,12 +564,7 @@ class TestMathOpPatchesPir(unittest.TestCase):
     def test_item(self):
         with paddle.pir_utils.IrGuard():
             x = paddle.static.data(name='x', shape=[3, 2, 1])
-            y = paddle.static.data(
-                name='y',
-                shape=[
-                    1,
-                ],
-            )
+            y = paddle.static.data(name='y', shape=[1])
             self.assertTrue(y.item().is_same(y))
             with self.assertRaises(ValueError):
                 x.item()
