@@ -38,25 +38,10 @@ namespace ir {
 using CompatibleInfo = cinn::hlir::framework::pir::CompatibleInfo;
 using paddle::dialect::FullIntArrayOp;
 using paddle::dialect::FullOp;
+using ::pir::CastDefinedTo;
+using ::pir::IsDefinedBy;
 
 namespace {
-
-template <typename TargetOpT, typename SourceOpT>
-bool IsDefinedBy(const SourceOpT &op, const size_t idx) {
-  const pir::Operation *defined_op = op->operand_source(idx).defining_op();
-  return defined_op && defined_op->isa<TargetOpT>();
-}
-
-template <typename TargetOpT, typename SourceOpT>
-TargetOpT CastDefinedTo(const SourceOpT &op, const size_t idx) {
-  PADDLE_ENFORCE_EQ(IsDefinedBy<TargetOpT>(op, idx),
-                    true,
-                    ::common::errors::PreconditionNotMet(
-                        "Required defined op shall not be nullptr and can cast "
-                        "to target type."));
-  pir::Operation *defined_op = op->operand_source(idx).defining_op();
-  return defined_op->dyn_cast<TargetOpT>();
-}
 
 template <typename T = int>
 std::vector<T> GetVectorFromIntArrayAttribute(
@@ -525,6 +510,66 @@ class SliceOpPattern : public pir::OpRewritePattern<paddle::dialect::SliceOp> {
     // we need to update it manually.
     cinn_slice.result(0).set_type(op.result(0).type());
     rewriter.ReplaceAllUsesWith(op.result(0), cinn_slice.result(0));
+    rewriter.EraseOp(op);
+  }
+};
+
+class ArangeOpPattern
+    : public pir::OpRewritePattern<paddle::dialect::ArangeOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::ArangeOp>::OpRewritePattern;
+
+  bool Match(paddle::dialect::ArangeOp op) const override {
+    // ArangeOp for CINN must have static start, end, step to calculate
+    // the shape of output tensor. Otherwise, it will be denied
+    // due to CauseNewSymbolicShape returning false
+    bool is_denied = CompatibleInfo::IsDeniedForCinn(*op.operation());
+    return !is_denied && IsDefinedBy<FullOp>(op, 0) &&
+           IsDefinedBy<FullOp>(op, 1) && IsDefinedBy<FullOp>(op, 2);
+  }
+
+  void Rewrite(paddle::dialect::ArangeOp op,
+               pir::PatternRewriter &rewriter) const override {
+    const auto &dtype = op.attributes()
+                            .at("dtype")
+                            .dyn_cast<paddle::dialect::DataTypeAttribute>()
+                            .data();
+
+    std::array<phi::Scalar, 3> input_list;
+    for (int i = 0; i < 3; i++) {
+      const FullOp full_op = CastDefinedTo<FullOp>(op, i);
+      phi::Scalar input = full_op.attribute("value")
+                              .dyn_cast<paddle::dialect::ScalarAttribute>()
+                              .data();
+      if (input.dtype() != dtype) {
+        // FullOp creates a tensor (scalar) with fp64 type by default
+        // therefore, we might need to perform type casting
+        switch (dtype) {
+          case phi::DataType::FLOAT32:
+            input = phi::Scalar(input.to<float>());
+            break;
+          case phi::DataType::FLOAT64:
+            input = phi::Scalar(input.to<double>());
+            break;
+          case phi::DataType::INT32:
+            input = phi::Scalar(input.to<int>());
+            break;
+          default:
+            input = phi::Scalar(input.to<int64_t>());
+        }
+      }
+      input_list[i] = input;
+    }
+    auto cinn_arange =
+        rewriter.Build<cinn::dialect::ArangeOp>(op->operand_source(0),
+                                                op->operand_source(1),
+                                                op->operand_source(2),
+                                                input_list[0],
+                                                input_list[1],
+                                                input_list[2],
+                                                dtype);
+    cinn_arange.result(0).set_type(op.result(0).type());
+    rewriter.ReplaceAllUsesWith(op.result(0), cinn_arange.result(0));
     rewriter.EraseOp(op);
   }
 };
@@ -1385,6 +1430,7 @@ pir::RewritePatternSet PdOpToCinnOpPass::InitializePatterns(
   ps.Add<
       ArgMinMaxOpPattern<paddle::dialect::ArgmaxOp, cinn::dialect::ArgmaxOp>>(
       context);
+  ps.Add<ArangeOpPattern>(context);
   ps.Add<ProdOpPattern>(context);
   ps.Add<ReshapeOpPattern>(context);
   ps.Add<PowOpPattern>(context);

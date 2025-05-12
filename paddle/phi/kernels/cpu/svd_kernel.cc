@@ -106,6 +106,12 @@ void SvdKernel(const Context& dev_ctx,
   int full = full_matrices;
   /*Create Tensors and output, set the dim ...*/
   auto numel = X.numel();
+  if (numel == 0) {
+    dev_ctx.template Alloc<T>(U);
+    dev_ctx.template Alloc<phi::dtype::Real<T>>(S);
+    dev_ctx.template Alloc<T>(VH);
+    return;
+  }
   DenseTensor trans_x =
       ::phi::TransposeLast2Dim<T>(dev_ctx, Conj<T, Context>(dev_ctx, X));
   auto x_dims = X.dims();
@@ -114,14 +120,6 @@ void SvdKernel(const Context& dev_ctx,
   // int k = std::min(rows, cols);
   // int col_u = full ? rows : k;
   // int col_v = full ? cols : k;
-  PADDLE_ENFORCE_LT(
-      0,
-      rows,
-      errors::InvalidArgument("The row of Input(X) should be greater than 0."));
-  PADDLE_ENFORCE_LT(
-      0,
-      cols,
-      errors::InvalidArgument("The col of Input(X) should be greater than 0."));
   auto* x_data = trans_x.data<T>();
   int batches = static_cast<int>(numel / (rows * cols));
   auto* U_out = dev_ctx.template Alloc<T>(U);
@@ -148,4 +146,11 @@ void SvdKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(svd, CPU, ALL_LAYOUT, phi::SvdKernel, float, double) {}
+PD_REGISTER_KERNEL(svd,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::SvdKernel,
+                   float,
+                   double,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

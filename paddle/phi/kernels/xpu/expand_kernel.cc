@@ -103,7 +103,7 @@ void ExpandKernel(const Context& ctx,
     out_shape = {1};
   }
 
-  int r = XPU_SUCCESS;
+  int r = 0;
   if (std::is_same<T, bool>::value) {
     auto x_data = reinterpret_cast<const int8_t*>(x.data<T>());
     auto out_data = reinterpret_cast<int8_t*>(out->data<T>());

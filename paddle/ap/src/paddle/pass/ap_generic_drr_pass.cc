@@ -39,11 +39,11 @@
 #include "paddle/ap/include/ir_match/ir_match_ctx.h"
 #include "paddle/ap/include/ir_match/op_match_ctx_method_class.h"
 #include "paddle/ap/include/ir_match/tensor_match_ctx_method_class.h"
+#include "paddle/ap/include/paddle/hlir/manual_op.h"
 #include "paddle/ap/include/paddle/pass/ap_drr_helper.h"
 #include "paddle/ap/include/paddle/pass/ap_kernel_define_helper.h"
 #include "paddle/ap/include/paddle/pass/ap_registry_helper.h"
 #include "paddle/ap/include/paddle/pass/ir_helper_method_class.h"
-#include "paddle/ap/include/paddle/pir/manual_op.h"
 #include "paddle/ap/include/paddle/pir/pir_method_class.h"
 #include "paddle/ap/include/paddle/pir/pir_node_matched_src_ptn_ctx_helper.h"
 #include "paddle/ap/include/paddle/pir/pir_to_anf_expr_helper.h"
@@ -967,9 +967,17 @@ struct ApRewriter {
       const std::vector<symbol::DimExpr>& dim_exprs) const {
     std::vector<AnfExpr> anf_dims;
     for (const auto& dim_expr : dim_exprs) {
-      ADT_LET_CONST_REF(anf_dim_expr,
-                        ConstructDDimDimExpr(ctx, infer_meta_ctx, dim_expr));
-      anf_dims.emplace_back(anf_dim_expr);
+      const auto& anf_dim_expr =
+          ConstructDDimDimExpr(ctx, infer_meta_ctx, dim_expr);
+      if (anf_dim_expr.HasOkValue()) {
+        anf_dims.emplace_back(anf_dim_expr.GetOkValue());
+      } else if (anf_dim_expr.GetError()
+                     .template Has<adt::errors::MismatchError>()) {
+        // TODO(lixinqi): anf_dims.emplace_back(AnfExpr{ctx->Int64(-1)});
+        return anf_dim_expr.GetError();
+      } else {
+        return anf_dim_expr.GetError();
+      }
     }
     return ctx->Call(ap::axpr::kBuiltinList(), anf_dims);
   }
@@ -990,7 +998,9 @@ struct ApRewriter {
       const OpInferMetaCtx& infer_meta_ctx,
       const symbol::DimExpr& dim_expr) const {
     const auto& idx_iter = infer_meta_ctx.dim_expr2in_dim_index.find(dim_expr);
-    ADT_CHECK(idx_iter != infer_meta_ctx.dim_expr2in_dim_index.end());
+    if (idx_iter == infer_meta_ctx.dim_expr2in_dim_index.end()) {
+      return adt::errors::MismatchError{};
+    }
     auto anf_expr_iter = infer_meta_ctx.dim_expr2anf_expr.find(dim_expr);
     if (anf_expr_iter == infer_meta_ctx.dim_expr2anf_expr.end()) {
       const auto& in_dim = ConstructInDimExpr(ctx, idx_iter->second);

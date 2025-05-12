@@ -46,7 +46,7 @@ void SoftmaxKernel(const Context& dev_ctx,
     x_dims.push_back(x.dims()[i]);
   }
 
-  int r = XPU_SUCCESS;
+  int r = 0;
   auto version =
       phi::backends::xpu::get_xpu_version(dev_ctx.GetPlace().GetDeviceId());
   if (version == phi::backends::xpu::XPUVersion::XPU1) {
