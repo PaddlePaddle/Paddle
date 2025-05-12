@@ -54,28 +54,6 @@ jobs:
       can-skip: ${{ steps.check-bypass.outputs.can-skip }}
 
     steps:
-      - name: Download paddle.tar.gz and update test branch
-        run: |
-          set -e
-          echo "Downloading Paddle.tar.gz"
-          wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/Paddle-coverage/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
-          echo "Extracting Paddle.tar.gz"
-          tar xf Paddle.tar.gz --strip-components=1
-          rm Paddle.tar.gz
-          git remote add upstream https://github.com/PaddlePaddle/Paddle.git
-          git config pull.rebase false
-          git checkout test
-          echo "Pull upstream $BRANCH"
-          source ${{ github.workspace }}/../../../proxy
-          git pull upstream $BRANCH --no-edit
-
-      - name: Check bypass
-        id: check-bypass
-        uses: ./.github/actions/check-bypass
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          workflow-name: coverage
-
       - name: Check docker image and run container
         if: steps.check-bypass.outputs.can-skip != 'true'
         env:
@@ -152,6 +130,31 @@ jobs:
             -e UT_RUN_TYPE_SETTING \
             -e no_proxy \
             -w /paddle --network host ${docker_image}
+
+      - name: Download paddle.tar.gz and update test branch
+        run: |
+          docker exec -t ${{ env.container_name }}  /bin/bash -c '
+          rm -rf * .[^.]*
+          set -e
+          echo "Downloading Paddle.tar.gz"
+          wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/Paddle-coverage/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
+          echo "Extracting Paddle.tar.gz"
+          tar xf Paddle.tar.gz --strip-components=1
+          rm Paddle.tar.gz
+          git remote add upstream https://github.com/PaddlePaddle/Paddle.git
+          git config pull.rebase false
+          git checkout test
+          echo "Pull upstream $BRANCH"
+          source ${{ github.workspace }}/../../../proxy
+          git pull upstream $BRANCH --no-edit
+          '
+
+      - name: Check bypass
+        id: check-bypass
+        uses: ./.github/actions/check-bypass
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          workflow-name: coverage
 
       - name: Build
         if: steps.check-bypass.outputs.can-skip != 'true'
