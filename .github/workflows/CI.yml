@@ -73,3 +73,11 @@ jobs:
     with:
       can-skip: ${{ needs.build.outputs.can-skip }}
       docker_build_image: ${{ needs.build-docker.outputs.docker_build_image }}
+
+  api-benchmark-gpu:
+    name: Api-Benchmark
+    uses: ./.github/workflows/_Api-Benchmark_GPU.yml
+    needs: [build-docker, build]
+    with:
+      can-skip: ${{ needs.build.outputs.can-skip }}
+      docker_build_image: ${{ needs.build-docker.outputs.docker_build_image }}
