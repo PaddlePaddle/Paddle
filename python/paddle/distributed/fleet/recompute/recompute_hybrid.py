@@ -229,7 +229,7 @@ class _HPRecomputeFunction(PyLayer):
                 ctx.fwd_rng_state_tracker,
                 ctx.fwd_numpy_state,
                 ctx.fwd_random_state,
-                ctx.custom_state,
+                ctx.fwd_custom_state,
                 ctx.custom_get_state_func,
                 ctx.custom_set_state_func,
             ):
