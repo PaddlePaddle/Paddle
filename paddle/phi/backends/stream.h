@@ -18,6 +18,12 @@
 #include "paddle/phi/backends/callback_manager.h"
 #include "paddle/phi/common/place.h"
 
+#ifndef STREAM_TYPE
+#define STREAM_TYPE void*
+#else
+#include <cuda_runtime.h>
+#endif
+
 namespace phi {
 
 class Device;
@@ -27,7 +33,8 @@ class Event;
 }  // namespace event
 
 namespace stream {
-using stream_t = void*;
+using stream_t = STREAM_TYPE;
+using StreamId = uint64_t;
 class Stream {
  public:
   enum class Priority : uint8_t {
@@ -68,6 +75,8 @@ class Stream {
 
   static void ReleaseAll();
 
+  StreamId id() const;
+
  private:
   DISABLE_COPY_AND_ASSIGN(Stream);
   Place place_;
@@ -75,6 +84,7 @@ class Stream {
   stream_t stream_;
   std::unique_ptr<CallbackManager> callback_manager_;
   bool own_data_ = true;
+  StreamId id_{0};  // not owned the stream
 };
 
 }  // namespace stream

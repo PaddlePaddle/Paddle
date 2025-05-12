@@ -82,6 +82,7 @@ jobs:
             -e ci_scripts \
             -e WITH_AVX \
             -e CCACHE_DIR \
+            -e CI_name \
             -e no_proxy \
             -w /paddle --network host ${docker_image}
 

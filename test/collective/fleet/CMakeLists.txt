@@ -824,11 +824,25 @@ if(LOCAL_ALL_ARCH AND (LINUX OR APPLE))
 endif()
 if((WITH_GPU OR WITH_XPU) AND LOCAL_ALL_PLAT)
   bash_test_modules(
-    overlapped_offload_utils
+    test_overlapped_offload_utils
     START_BASH
     test_overlapped_offload_utils.sh
     LABELS
     "RUN_TYPE=DIST"
     ENVS
     "PADDLE_DIST_UT_PORT=21268;http_proxy=;https_proxy=")
+endif()
+if((WITH_GPU) AND LOCAL_ALL_PLAT)
+  bash_test_modules(
+    test_shutdown_process_group
+    START_BASH
+    ../../legacy_test/dist_test.sh
+    TIMEOUT
+    "200"
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=22024;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+  )
+  set_tests_properties(test_shutdown_process_group PROPERTIES TIMEOUT "200")
 endif()

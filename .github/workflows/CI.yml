@@ -44,11 +44,6 @@ jobs:
     with:
       docker_inference_image: ${{ needs.build-docker.outputs.docker_inference_image }}
 
-  coverage:
-    name: Coverage
-    uses: ./.github/workflows/_Coverage.yml
-    needs: clone
-
   cpu:
     name: Linux-CPU
     uses: ./.github/workflows/_Linux-CPU.yml
@@ -63,3 +58,18 @@ jobs:
     name: Distribute-stable
     uses: ./.github/workflows/_Distribute-stable.yml
     needs: clone
+
+  build:
+    name: Linux-build
+    uses: ./.github/workflows/_Linux-build.yml
+    needs: build-docker
+    with:
+      docker_build_image: ${{ needs.build-docker.outputs.docker_build_image }}
+
+  static-check:
+    name: Static-Check
+    uses: ./.github/workflows/_Static-Check.yml
+    needs: [build-docker, build]
+    with:
+      can-skip: ${{ needs.build.outputs.can-skip }}
+      docker_build_image: ${{ needs.build-docker.outputs.docker_build_image }}

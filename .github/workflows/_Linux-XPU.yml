@@ -175,7 +175,6 @@ jobs:
       group: Kunlun
 
     steps:
-
       - name: Download build.tar.gz
         run: |
           sudo rm -rf * .[^.]*

@@ -45,6 +45,7 @@ limitations under the License. */
 #include "paddle/phi/infermeta/spmd_rules/layer_norm.h"
 #include "paddle/phi/infermeta/spmd_rules/logsumexp.h"
 #include "paddle/phi/infermeta/spmd_rules/matmul.h"
+#include "paddle/phi/infermeta/spmd_rules/mean_all.h"
 #include "paddle/phi/infermeta/spmd_rules/moe_combine.h"
 #include "paddle/phi/infermeta/spmd_rules/moe_gate_dispatch.h"
 #include "paddle/phi/infermeta/spmd_rules/nonzero.h"

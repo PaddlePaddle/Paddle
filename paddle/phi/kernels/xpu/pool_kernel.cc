@@ -79,14 +79,6 @@ void Pool2dKernel(const Context& ctx,
                        strides,
                        kernel_size);
 
-  if (ceil_mode) {
-    int in_h_ceil = (out_h - 1) * strides[0] + kernel_size[0] - 2 * paddings[0];
-    int in_w_ceil = (out_w - 1) * strides[1] + kernel_size[1] - 2 * paddings[2];
-
-    paddings[1] += (in_h_ceil - in_h);
-    paddings[3] += (in_w_ceil - in_w);
-  }
-
   ctx.template Alloc<T>(out);
   int* index_data = nullptr;
   int r = xpu::Error_t::SUCCESS;
