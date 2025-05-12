@@ -122,6 +122,13 @@ void BindGuard(pybind11::module *m) {
       "NumPyArrayValueMatchGuard",
       R"DOC(NumPyArrayValueMatchGuard Class.)DOC")
       .def(py::init<const py::object &>(), py::arg("array"));
+  py::class_<NumPyArrayShapeMatchGuard,
+             GuardBase,
+             std::shared_ptr<NumPyArrayShapeMatchGuard>>(
+      *m,
+      "NumPyArrayShapeMatchGuard",
+      R"DOC(NumPyArrayShapeMatchGuard Class.)DOC")
+      .def(py::init<const std::vector<py::object> &>(), py::arg("shape"));
   py::class_<WeakRefMatchGuard, GuardBase, std::shared_ptr<WeakRefMatchGuard>>(
       *m, "WeakRefMatchGuard", R"DOC(WeakRefMatchGuard Class.)DOC")
       .def(py::init<const py::object &>(), py::arg("func"));

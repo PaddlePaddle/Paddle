@@ -57,7 +57,7 @@ void GatherKernel(const Context& dev_ctx,
 
   using XPUType = typename XPUTypeTrait<T>::Type;
 
-  int r = XPU_SUCCESS;
+  int r = 0;
   if (index_type == DataType::INT32) {
     r = xpu::paddle_gather<XPUType, int>(
         dev_ctx.x_context(),

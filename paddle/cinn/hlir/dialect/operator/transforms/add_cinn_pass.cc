@@ -29,6 +29,7 @@
 
 #include "paddle/ap/include/memory/guard.h"
 #include "paddle/ap/include/paddle/pass/ap_generic_drr_pass.h"
+#include "paddle/ap/include/paddle/pass/convert_pd_facade_to_ap_facade.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/accuracy_check_pass.h"
@@ -227,9 +228,19 @@ void ApplyApGenericDrrPass(
     ::pir::Program* program,
     const std::function<std::shared_ptr<pir::PassManager>()>&
         CreatePassManager) {
-  std::shared_ptr<pir::PassManager> pass_manager = CreatePassManager();
+  {
+    pir::IrPrinter(LOG(ERROR) << "before ConvertPdFacadeToApFacadePass:\n")
+        .PrintProgram(program);
+    std::shared_ptr<pir::PassManager> pass_manager = CreatePassManager();
+    pass_manager->AddPass(CreateConvertPdFacadeToApFacadePass());
+    pass_manager->Run(program);
+    pir::IrPrinter(LOG(ERROR) << "after ConvertPdFacadeToApFacadePass:\n")
+        .PrintProgram(program);
+  }
   ap::memory::Guard guard{};
   if (auto pass = CreateApGenericClassicDrrPass(guard.circlable_ref_list())) {
+    std::shared_ptr<pir::PassManager> pass_manager = CreatePassManager();
+    pass_manager->AddPass(CreateConvertPdFacadeToApFacadePass());
     pass_manager->AddPass(std::move(pass.value()));
     pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
     pir::IrPrinter(LOG(ERROR) << "before ApGenericClassicDrrPass:\n")
@@ -239,6 +250,7 @@ void ApplyApGenericDrrPass(
         .PrintProgram(program);
   }
   if (auto pass = CreateApGenericAbstractDrrPass(guard.circlable_ref_list())) {
+    std::shared_ptr<pir::PassManager> pass_manager = CreatePassManager();
     pass_manager->AddPass(std::move(pass.value()));
     pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
     pir::IrPrinter(LOG(ERROR) << "before ApGenericAbstractDrrPass:\n")

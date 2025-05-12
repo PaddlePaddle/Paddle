@@ -136,7 +136,7 @@ void SetValueImpl(const Context& dev_ctx,
   // be two ops points to the output in graph: op1 -> output <- set_value.
   // In this case, we have to find a way to handle the running order of
   // set_value is what we want.
-  int r = XPU_SUCCESS;
+  int r = 0;
   out->Resize(in.dims());
   dev_ctx.template Alloc<T>(out);
 

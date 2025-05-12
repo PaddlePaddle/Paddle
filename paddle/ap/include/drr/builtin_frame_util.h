@@ -27,9 +27,7 @@ void VisitEachBuiltinFrameClass(const DoEachT& DoEach) {
   DoEach(drr::Type<DrrCtx>{}.GetClass());
 }
 
-template <typename VisitorT>
-ap::axpr::AttrMap<axpr::Value> MakeBuiltinFrameAttrMap(
-    const VisitorT& Visitor) {
+inline ap::axpr::AttrMap<axpr::Value> MakeBuiltinFrameAttrMap() {
   ap::axpr::AttrMap<axpr::Value> attr_map;
   ap::axpr::VisitEachBuiltinFrameAttr<axpr::Value>(
       [&](const std::string& k, const axpr::Value& v) { attr_map->Set(k, v); });
@@ -38,7 +36,6 @@ ap::axpr::AttrMap<axpr::Value> MakeBuiltinFrameAttrMap(
     attr_map->Set(std::string("__builtin__") + cls.Name(), cls);
   };
   VisitEachBuiltinFrameClass(Insert);
-  Visitor(Insert);
   return attr_map;
 }
 

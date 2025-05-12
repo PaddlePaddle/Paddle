@@ -1680,7 +1680,7 @@ class Embedding(Layer):
     last dimension of the input Tensor shape.
 
     Note:
-        The id in :attr:`x` must satisfy :math:`0 =< id < num_embeddings` ,
+        The id in :attr:`x` must satisfy :math:`0 <= id < num_embeddings` ,
         otherwise the program will throw an exception and exit.
 
     .. code-block:: text

@@ -33,7 +33,7 @@ void KLDivLossGradKernel(const Context& dev_ctx,
     return;
   }
 
-  int r = XPU_SUCCESS;
+  int r = 0;
 
   if (log_target) {
     xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());

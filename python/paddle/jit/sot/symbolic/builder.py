@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+from contextlib import contextmanager
 from typing import TYPE_CHECKING, Any, Callable
 
 from ..utils import log
@@ -24,6 +25,7 @@ from .statement_ir import (
     CallStatement,
     LayerStatement,
     MethodStatement,
+    StatementContext,
     StatementIR,
     StatementIRFactory,
     Symbol,
@@ -33,10 +35,9 @@ if TYPE_CHECKING:
     from paddle.static import InputSpec
 
 
-class SymbolicTraceContext:
+class StatementIRBuilder:
     """
-    SymbolicTraceContext is a context manager, which is used to record the symbolic trace.
-
+    A class to build a StatementIR.
     """
 
     def __init__(self):
@@ -47,37 +48,43 @@ class SymbolicTraceContext:
         Reset the context.
         """
 
-        # TODO(dev): StatementIRFactory is a singleton, but SymbolicTraceContext is not.
-        # whether will two different SymbolicTraceContext objects be conflict ?
         self.statement_factory = StatementIRFactory()
-        self.sir_stack = [self.statement_factory.create()]
+        self._current_statement_ctxs = []
+        self._current_sir: StatementIR = self.statement_factory.create()
 
     @property
-    def TOS(self):
+    def current_sir(self) -> StatementIR:
         """
-        The top SIR of sir_stack.
-
-        Returns:
-            StatementIR: the top of stack.
+        Get the current SIR.
         """
+        return self._current_sir
 
-        return self.sir_stack[-1]
+    def replace_current_sir(self, sir: StatementIR):
+        """
+        Replace the current SIR with a new SIR.
+        """
+        self._current_sir = sir
+        self.statement_factory.update(sir)
 
     def call_SIR(self, sirname, inputs, outputs, stacks):
         """
         Call a SIR, which is a subgraph.
         """
 
-        stmt = CallStatement(sirname, inputs, outputs, stacks)
-        self.TOS.add_statement(stmt)
+        stmt = CallStatement(
+            sirname, inputs, outputs, list(self._current_statement_ctxs), stacks
+        )
+        self.current_sir.add_statement(stmt)
 
     def call_API(self, api, inputs, outputs, stacks):
         """
         Call a paddle api.
         """
         assert callable(api), "call_API must receive a paddle api."
-        stmt = ApiStatement(api, inputs, outputs, stacks)
-        self.TOS.add_statement(stmt)
+        stmt = ApiStatement(
+            api, inputs, outputs, list(self._current_statement_ctxs), stacks
+        )
+        self.current_sir.add_statement(stmt)
 
     def call_METHOD(self, method_name, inputs, outputs, stacks):
         """
@@ -89,19 +96,33 @@ class SymbolicTraceContext:
         assert isinstance(
             inputs[0][0], Symbol
         ), "call_METHOD first argument must be Symbol Variable."
-        stmt = MethodStatement(method_name, inputs, outputs, stacks)
-        self.TOS.add_statement(stmt)
+        stmt = MethodStatement(
+            method_name,
+            inputs,
+            outputs,
+            list(self._current_statement_ctxs),
+            stacks,
+        )
+        self.current_sir.add_statement(stmt)
 
     def call_LAYER(self, layer, inputs, outputs, stacks):
         """
         Call a layer of a api.
         """
-        stmt = LayerStatement(layer, inputs, outputs, stacks)
-        self.TOS.add_statement(stmt)
+        stmt = LayerStatement(
+            layer, inputs, outputs, list(self._current_statement_ctxs), stacks
+        )
+        self.current_sir.add_statement(stmt)
 
     def call_AST(self, static_function, inputs, outputs, stacks):
-        stmt = ASTStatement(static_function, inputs, outputs, stacks)
-        self.TOS.add_statement(stmt)
+        stmt = ASTStatement(
+            static_function,
+            inputs,
+            outputs,
+            list(self._current_statement_ctxs),
+            stacks,
+        )
+        self.current_sir.add_statement(stmt)
 
     def get_sir(self, name: str):
         """
@@ -115,31 +136,26 @@ class SymbolicTraceContext:
         """
         return self.statement_factory[name]
 
-    def reset_TOS(self):
+    @contextmanager
+    def attach_statement_context_guard(self, ctx: StatementContext):
         """
-        Reset the TOS.
+        Attach a statement context to the current SIR.
         """
-        self.sir_stack.pop()
-        self.sir_stack.append(self.statement_factory.create())
+        self._current_statement_ctxs.append(ctx)
+        try:
+            yield
+        finally:
+            self._current_statement_ctxs.pop()
 
-    def replace_TOS(self, sir):
-        """
-        Use deepcopyed sir to replace the TOS.
-        This function will update statement_factory.
-        """
-        self.sir_stack.pop()
-        self.sir_stack.append(sir)
-        self.statement_factory.update(sir)
-
-    def return_TOS(self, ret_vals):
-        cur_sir: StatementIR = self.TOS
-        cur_sir.inputs = cur_sir.analyse_inputs()
-        cur_sir.outputs = ret_vals
+    def finalize(self, ret_vals):
+        current_sir: StatementIR = self.current_sir
+        current_sir.inputs = current_sir.analyse_inputs()
+        current_sir.outputs = ret_vals
         log(2, "start subgraph compile and execution.\n")
-        log(2, self.TOS, "\n")
-        return cur_sir
+        log(2, current_sir, "\n")
+        return current_sir
 
-    def compile_do_nothing(self) -> Callable[[...], Any]:
+    def compile_do_nothing(self) -> Callable[..., Any]:
         """
         Return a dummy function, which will return an empty list.
 
