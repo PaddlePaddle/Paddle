@@ -4,7 +4,7 @@ on:
   workflow_call:
 
 env:
-  docker_image: registry.baidubce.com/baidu.xiaolvyun.images/paddlepaddle:9d89685018c11de667c330545f1589ff
+  docker_image: ccr-2vdh3abv-pub.cnc.bj.baidubce.com/ci/paddle:29f259c1f2a060142f49e2d0307cfc4e
   PR_ID: ${{ github.event.pull_request.number }}
   COMMIT_ID: ${{ github.event.pull_request.head.sha }}
   work_dir: /paddle
