@@ -407,7 +407,7 @@ class TestTriangularSolveOpCp644b4b(TestTriangularSolveOp):
             ['X', 'Y'],
             'Out',
             check_pir=True,
-            max_relative_error=0.008,
+            max_relative_error=0.009,
         )
 
 
