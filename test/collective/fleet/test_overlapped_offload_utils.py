@@ -79,6 +79,8 @@ class TestRROO(unittest.TestCase):
             rroo_queue.wait_and_release()
             d = rroo_queue.get()
 
+            rroo_queue.reset_counter()
+
             # check
             np.testing.assert_array_equal(
                 rroo_queue.empty(),
@@ -176,7 +178,7 @@ class TestRROO(unittest.TestCase):
                     )
                     rroo_queue_manager.wait_and_release()
 
-            rroo_queue_manager.clear_counter()
+            rroo_queue_manager.reset_counter()
 
             np.testing.assert_array_equal(
                 rroo_queue_manager.empty(),

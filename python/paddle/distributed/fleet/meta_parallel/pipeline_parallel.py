@@ -2753,6 +2753,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
 
         self._flush_records()
 
+        get_rroo_queue_manager().reset_counter()
         assert (
             get_rroo_buffer_pool_manager().is_all_memory_free()
         ), "all buffers in rroo_buffer_pool_manager should be free"
@@ -3067,6 +3068,7 @@ class PipelineParallelWithInterleaveFthenB(PipelineParallelWithInterleave):
             if self._enable_timer:
                 self.timers("allreduce_shared_weight_gradients").stop()
 
+        get_rroo_queue_manager().reset_counter()
         assert (
             get_rroo_buffer_pool_manager().is_all_memory_free()
         ), "buffers in rroo_buffer_pool_manager should be all free"
@@ -3408,6 +3410,7 @@ class VPPFhenBInBalancedMemory(PipelineParallelWithInterleaveFthenB):
         if self._enable_timer:
             self.timers("allreduce_shared_weight_gradients").stop()
 
+        get_rroo_queue_manager().reset_counter()
         assert (
             get_rroo_buffer_pool_manager().is_all_memory_free()
         ), "buffers in rroo_buffer_pool_manager should be all free"

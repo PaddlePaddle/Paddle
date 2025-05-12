@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import logging
 import queue
 
 import paddle
@@ -22,6 +23,8 @@ from paddle.incubate.tensor.manipulation import (
     async_reload,
     create_async_load,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class RROOBuffer:
@@ -138,6 +141,9 @@ class RROOTensorWrapper:
         self.split_factor = split_factor  # Total number of splits
         self.loader = create_async_load()
 
+        self.offload_completed = False
+        self.reload_completed = False
+
     def get_cuda_datas_to_release(self) -> paddle.Tensor:
         """Get the CUDA tensor that can be released after offloading."""
         assert self.split_factor is not None
@@ -154,7 +160,7 @@ class RROOTensorWrapper:
         """Offload a portion of the tensor to CPU memory."""
         assert self.split_factor is not None
         assert self.cpu_buffer is not None and self.cpu_buffer.is_used
-
+        assert not self.offload_completed
         numel = nonblocking_numel(self.cuda_data)
         assert numel == nonblocking_numel(self.cpu_buffer)
 
@@ -183,16 +189,19 @@ class RROOTensorWrapper:
         )
         paddle.framework.core.nvprof_nvtx_pop()
         self.split_id += 1
-        offload_completed = self.split_id >= self.split_factor
-        return task, offload_completed
+        if self.split_id == self.split_factor:
+            self.offload_completed = True
+        return task
 
     def reload(self) -> paddle.Tensor:
         """Reload the tensor from CPU memory to GPU memory."""
         assert self.split_factor is not None
         assert self.cpu_buffer is not None and self.cpu_buffer.is_used
+        assert not self.reload_completed
 
         cuda_data, task = async_reload(self.cpu_buffer.data, self.loader)
         self.cuda_data = cuda_data.reshape(self.shape)
+        self.reload_completed = True
         return task
 
 
@@ -224,10 +233,11 @@ class RROOOffloadQueue:
         if 0 == len(self.offload_transaction_queue):
             return None
 
-        task, offload_completed = self.offload_transaction_queue[0].offload()
+        tensor_wrapper = self.offload_transaction_queue[0]
+        task = tensor_wrapper.offload()
         self.task_list.append(task)
-        if offload_completed:
-            tensor_wrapper = self.offload_transaction_queue.pop(0)
+        if tensor_wrapper.offload_completed:
+            self.offload_transaction_queue.pop(0)
             self.cuda_tensor_to_release.append(
                 tensor_wrapper.get_cuda_datas_to_release()
             )
@@ -244,6 +254,9 @@ class RROOOffloadQueue:
         if len(self.cuda_tensor_to_release) > 0:
             return False
         return True
+
+    def remove(self, tensor_wrapper: RROOTensorWrapper) -> None:
+        self.offload_transaction_queue.remove(tensor_wrapper)
 
 
 class RROOReloadQueue:
@@ -291,6 +304,9 @@ class RROOReloadQueue:
             return False
         return True
 
+    def remove(self, tensor_wrapper: RROOTensorWrapper) -> None:
+        self.reload_transaction_queue.remove(tensor_wrapper)
+
 
 class RROOQueue:
     """Queue for managing tensor offloading and reloading operations."""
@@ -324,13 +340,9 @@ class RROOQueue:
 
     def put(self, cuda_data: paddle.Tensor) -> None:
         """Put a tensor into the queue, routing to appropriate method based on RROO flag."""
-        put_method = (
-            self.rroo_put
-            if self.do_rroo and self.can_offload_current_acc()
-            else self.simple_put
-        )
+        put_method = self.rroo_put if self.do_rroo else self.simple_put
         put_method(cuda_data)
-        self.acc_id = (self.acc_id + 1) % self.acc_num
+        self.acc_id = self.acc_id + 1
 
     def simple_put(self, cuda_data: paddle.Tensor) -> None:
         """Simple put without offloading."""
@@ -351,10 +363,22 @@ class RROOQueue:
         """Get the next tensor from the queue."""
         assert self.activations_queue.qsize() > 0
         tensor_wrapper = self.activations_queue.get()
-        assert (
-            tensor_wrapper.cpu_buffer is None
-            or not tensor_wrapper.cpu_buffer.is_used
-        ), "CPU buffer leakage occurred. Maybe someone was not offloaded."
+        if tensor_wrapper.cpu_buffer is not None:
+            if not tensor_wrapper.offload_completed:
+                self.offload_transaction_manager.remove(tensor_wrapper)
+                get_rroo_buffer_pool_manager().release_buffer(
+                    tensor_wrapper.cpu_buffer
+                )
+            elif not tensor_wrapper.reload_completed:
+                self.reload_transaction_manager.remove(tensor_wrapper)
+                task = tensor_wrapper.reload()
+                task.cuda_wait()
+                get_rroo_buffer_pool_manager().release_buffer(
+                    tensor_wrapper.cpu_buffer
+                )
+                logger.warning(
+                    "Someone is not reloaded completely before using."
+                )
         return tensor_wrapper.cuda_data
 
     def wait_and_release(self) -> None:
@@ -382,24 +406,8 @@ class RROOQueue:
         """Start reloading at the beginning of each backward step."""
         self.reload_transaction_manager.reload()
 
-    def can_offload_current_acc(self) -> bool:
-        """Determine if the current accumulation can be offloaded.
-
-        Returns:
-            bool: True if the current accumulation can be offloaded, False otherwise.
-            - For single-split case: Can't offload first or last accumulation
-            - For multi-split case: Can't offload last accumulation
-        """
-        is_last_acc = self.acc_id == (self.acc_num - 1)
-        is_first_acc = self.acc_id == 0
-
-        if self.split_factor == 1:
-            return not (is_first_acc or is_last_acc)
-        else:
-            return not is_last_acc
-
-    def clear_counter(self) -> None:
-        """clear_counter"""
+    def reset_counter(self) -> None:
+        """reset_counter"""
         self.acc_id = 0
 
 
@@ -432,12 +440,18 @@ class RROOQueueManager:
 
         # Given total chunks, current chunk id and split factor, determine offload/reload chunks
         tgt_chunk_id = split_factor * self.cur_chunk_id
-        if tgt_chunk_id + split_factor > self.chunk_num:
-            return False, None, None
         offload_chunk_ids = list(
             range(tgt_chunk_id, tgt_chunk_id + split_factor)
         )
         reload_chunk_ids = [tgt_chunk_id]
+
+        for o_id in offload_chunk_ids:
+            if o_id >= self.chunk_num:
+                return False, None, None
+        for r_id in reload_chunk_ids:
+            if r_id >= self.chunk_num:
+                return False, None, None
+
         return True, offload_chunk_ids, reload_chunk_ids
 
     def set_cur_chunk_id(self, cur_chunk_id: int) -> None:
@@ -469,10 +483,10 @@ class RROOQueueManager:
         for q in self.reload_dict[self.cur_chunk_id]:
             q.reload()
 
-    def clear_counter(self) -> None:
-        """clear_counter"""
+    def reset_counter(self) -> None:
+        """reset_counter"""
         for q in self.queues:
-            q.clear_counter()
+            q.reset_counter()
 
     def wait_and_release(self) -> None:
         """Wait for all operations to complete and release resources."""

@@ -16,4 +16,4 @@
 
 set -e
 
-python -m paddle.distributed.launch --gpus=0,1  overlapped_offload_utils.py
+python -m paddle.distributed.launch --gpus=0,1  test_overlapped_offload_utils.py
