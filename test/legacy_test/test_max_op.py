@@ -207,11 +207,12 @@ class TestMaxOp(OpTest):
     def init_data(self):
         self.shape = [0, 1, 2]
         self.axis = [1]
+        self.dtype = np.float32
         self.keepdims = False
         self.check_pir_onednn = True
 
     def prepare_data(self):
-        self._input_data = np.random.random(self.shape).astype(np.float64)
+        self._input_data = np.random.random(self.shape).astype(self.dtype)
         self._output_data = np.max(
             self._input_data, keepdims=self.keepdims, axis=tuple(self.axis)
         )
