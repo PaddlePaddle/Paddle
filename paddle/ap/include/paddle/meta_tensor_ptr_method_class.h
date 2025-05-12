@@ -103,10 +103,11 @@ struct MetaTensorPtrMethodClass {
 
   adt::Result<axpr::Value> SetDims(const Self& self,
                                    const axpr::Value& dims_val) {
+    if (dims_val.CastableTo<DDim>()) {
+      ADT_LET_CONST_REF(ddim, dims_val.CastTo<DDim>());
+      return SetDimsByDDim(self, ddim);
+    }
     return dims_val.Match(
-        [&](const DDim& ddims) -> adt::Result<axpr::Value> {
-          return SetDimsByDDim(self, ddims);
-        },
         [&](const adt::List<axpr::Value>& list) -> adt::Result<axpr::Value> {
           return SetDimsByIntList(self, list);
         },

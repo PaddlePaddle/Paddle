@@ -12,10 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# if ! docker image inspect ${docker_image} > /dev/null 2>&1; then
-#   cd ..
-#   wget https://raw.githubusercontent.com/PaddlePaddle/Paddle/refs/heads/develop/tools/dockerfile/ci_dockerfile.sh
-#   wget https://raw.githubusercontent.com/PaddlePaddle/Paddle/refs/heads/develop/tools/dockerfile/Dockerfile.ubuntu20
-#   bash ci_dockerfile.sh
-#   docker build -t ${docker-image} -f ${dockerfile} .
-# fi
+import numpy as np
+
+import paddle
+
+NUMPY_API_SUPPORTED_DICT = {
+    np.add: paddle.add,
+    np.subtract: paddle.subtract,
+    np.multiply: paddle.multiply,
+    np.divide: paddle.divide,
+    np.equal: paddle.equal,
+}

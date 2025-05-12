@@ -28,9 +28,9 @@ static int CalculateInvBNY(xpu::Context *ctx,
                            const T *bias,
                            const T *mean,
                            const T *variance,
-                           const int N,
-                           const int C,
-                           const int M,
+                           const int64_t N,
+                           const int64_t C,
+                           const int64_t M,
                            const T *y) {
   PADDLE_ENFORCE_EQ(x,
                     y,
@@ -58,7 +58,7 @@ template <typename T>
 static int CalculateInvVar(xpu::Context *ctx,
                            const T *var,
                            const T epsilon,
-                           const int C,
+                           const int64_t C,
                            T *epsilon_data,
                            T *inv_var) {
   int r1 = constant(ctx, epsilon_data, 1, epsilon);
@@ -124,7 +124,7 @@ void BatchNormGradKernel(const Context &dev_ctx,
           "But received: the size of input's dimensions is [%d]",
           x_dims.size()));
 
-  int N = -1, C = -1, H = -1, W = -1, D = -1;
+  int64_t N = -1, C = -1, H = -1, W = -1, D = -1;
   funcs::ExtractNCWHD(x_dims, data_layout_val, &N, &C, &H, &W, &D);
   N = (N == 0) ? 1 : N;
   C = (C == 0) ? 1 : C;

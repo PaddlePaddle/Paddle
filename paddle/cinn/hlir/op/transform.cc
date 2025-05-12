@@ -160,10 +160,10 @@ std::shared_ptr<OpStrategy> StrategyForSplit(
   int axis = 0;
   if (attrs.attr_store.find("num_or_sections") != attrs.attr_store.end()) {
     sections =
-        absl::get<std::vector<int>>(attrs.attr_store.at("num_or_sections"));
+        std::get<std::vector<int>>(attrs.attr_store.at("num_or_sections"));
   }
   if (attrs.attr_store.find("axis") != attrs.attr_store.end()) {
-    axis = absl::get<int>(attrs.attr_store.at("axis"));
+    axis = std::get<int>(attrs.attr_store.at("axis"));
   }
   if (axis < 0) axis += static_cast<int>(output_shapes[0].size());
 
@@ -268,7 +268,7 @@ std::shared_ptr<OpStrategy> StrategyForConcat(
             "The output_shapes of Concat is empty! Please check.\n"));
     int axis = 0;
     if (attrs.attr_store.count("axis")) {
-      axis = absl::get<int>(attrs.attr_store.at("axis"));
+      axis = std::get<int>(attrs.attr_store.at("axis"));
     }
 
     std::vector<ir::Tensor> input_tensors;
@@ -336,7 +336,7 @@ std::shared_ptr<OpStrategy> StrategyForConcatSymbolic(
             "The output_shapes of Concat is empty! Please check."));
     int axis = 0;
     if (attrs.attr_store.count("axis")) {
-      axis = absl::get<int>(attrs.attr_store.at("axis"));
+      axis = std::get<int>(attrs.attr_store.at("axis"));
     }
 
     std::vector<ir::Tensor> input_tensors;
@@ -546,10 +546,10 @@ std::shared_ptr<OpStrategy> StrategyForLayoutTransform(
     std::string src_layout;
     std::string dst_layout;
     if (attrs.attr_store.find("src_layout") != attrs.attr_store.end()) {
-      src_layout = absl::get<std::string>(attrs.attr_store.at("src_layout"));
+      src_layout = std::get<std::string>(attrs.attr_store.at("src_layout"));
     }
     if (attrs.attr_store.find("dst_layout") != attrs.attr_store.end()) {
-      dst_layout = absl::get<std::string>(attrs.attr_store.at("dst_layout"));
+      dst_layout = std::get<std::string>(attrs.attr_store.at("dst_layout"));
     }
     PADDLE_ENFORCE_EQ(!src_layout.empty(),
                       true,
@@ -612,7 +612,7 @@ std::shared_ptr<OpStrategy> StrategyForReverse(
   // get axis[0, n_dim)
   std::vector<int> axis;
   if (attrs.attr_store.find("axis") != attrs.attr_store.end()) {
-    axis = absl::get<std::vector<int>>(attrs.attr_store.at("axis"));
+    axis = std::get<std::vector<int>>(attrs.attr_store.at("axis"));
     for (auto &e : axis) {
       if (e >= static_cast<int>(output_shapes[0].size()) ||
           e < -1 * static_cast<int>(output_shapes[0].size())) {
@@ -685,7 +685,7 @@ std::shared_ptr<OpStrategy> StrategyForReverseSymbolic(
   // get axis[0, n_dim)
   std::vector<int> axis;
   if (attrs.attr_store.find("axis") != attrs.attr_store.end()) {
-    axis = absl::get<std::vector<int>>(attrs.attr_store.at("axis"));
+    axis = std::get<std::vector<int>>(attrs.attr_store.at("axis"));
     for (auto &e : axis) {
       if (e >= static_cast<int>(output_shapes[0].size()) ||
           e < -1 * static_cast<int>(output_shapes[0].size())) {
@@ -756,7 +756,7 @@ std::shared_ptr<OpStrategy> StrategyForTranspose(
   std::vector<int> axis;
   auto input_shape = inputs[0]->shape;
   if (attrs.attr_store.find("axis") != attrs.attr_store.end()) {
-    axis = absl::get<std::vector<int>>(attrs.attr_store.at("axis"));
+    axis = std::get<std::vector<int>>(attrs.attr_store.at("axis"));
     PADDLE_ENFORCE_EQ(
         axis.size(),
         output_shapes[0].size(),
@@ -856,7 +856,7 @@ std::shared_ptr<OpStrategy> StrategyForTransposeSymbolic(
   std::vector<int> axis;
   auto input_shape = inputs[0]->shape;
   if (attrs.attr_store.find("axis") != attrs.attr_store.end()) {
-    axis = absl::get<std::vector<int>>(attrs.attr_store.at("axis"));
+    axis = std::get<std::vector<int>>(attrs.attr_store.at("axis"));
     PADDLE_ENFORCE_LE(axis.size(),
                       output_shapes[0].size(),
                       ::common::errors::InvalidArgument(
@@ -933,7 +933,7 @@ std::shared_ptr<OpStrategy> StrategyForGather(
 
   int axis = 0;
   if (attrs.attr_store.count("axis")) {
-    axis = absl::get<int>(attrs.attr_store.at("axis"));
+    axis = std::get<int>(attrs.attr_store.at("axis"));
   }
   axis = axis < 0 ? axis + static_cast<int>(inputs[0]->shape.size()) : axis;
 
@@ -1025,7 +1025,7 @@ std::shared_ptr<OpStrategy> StrategyForGatherSymbolic(
 
   int axis = 0;
   if (attrs.attr_store.count("axis")) {
-    axis = absl::get<int>(attrs.attr_store.at("axis"));
+    axis = std::get<int>(attrs.attr_store.at("axis"));
   }
   axis = axis < 0 ? axis + static_cast<int>(inputs[0]->shape.size()) : axis;
 
@@ -1080,7 +1080,7 @@ std::shared_ptr<OpStrategy> StrategyForScatterAssign(
     const Target &target) {
   int axis = 0;
   if (attrs.attr_store.find("axis") != attrs.attr_store.end()) {
-    axis = absl::get<int>(attrs.attr_store.at("axis"));
+    axis = std::get<int>(attrs.attr_store.at("axis"));
   }
 
   framework::CINNCompute scatter_assign_compute([=](lang::Args args,
@@ -1165,7 +1165,7 @@ std::shared_ptr<OpStrategy> StrategyForScatterAdd(
     const Target &target) {
   int axis = 0;
   if (attrs.attr_store.find("axis") != attrs.attr_store.end()) {
-    axis = absl::get<int>(attrs.attr_store.at("axis"));
+    axis = std::get<int>(attrs.attr_store.at("axis"));
   }
 
   framework::CINNCompute scatter_add_compute([=](lang::Args args,
@@ -1248,20 +1248,20 @@ std::shared_ptr<OpStrategy> StrategyForSlice(
     const Target &target) {
   std::vector<int> starts, ends, axes, strides, decrease_axis;
   if (attrs.attr_store.find("starts") != attrs.attr_store.end()) {
-    starts = absl::get<std::vector<int>>(attrs.attr_store.at("starts"));
+    starts = std::get<std::vector<int>>(attrs.attr_store.at("starts"));
   }
   if (attrs.attr_store.find("ends") != attrs.attr_store.end()) {
-    ends = absl::get<std::vector<int>>(attrs.attr_store.at("ends"));
+    ends = std::get<std::vector<int>>(attrs.attr_store.at("ends"));
   }
   if (attrs.attr_store.find("axes") != attrs.attr_store.end()) {
-    axes = absl::get<std::vector<int>>(attrs.attr_store.at("axes"));
+    axes = std::get<std::vector<int>>(attrs.attr_store.at("axes"));
   }
   if (attrs.attr_store.find("strides") != attrs.attr_store.end()) {
-    strides = absl::get<std::vector<int>>(attrs.attr_store.at("strides"));
+    strides = std::get<std::vector<int>>(attrs.attr_store.at("strides"));
   }
   if (attrs.attr_store.find("decrease_axis") != attrs.attr_store.end()) {
     decrease_axis =
-        absl::get<std::vector<int>>(attrs.attr_store.at("decrease_axis"));
+        std::get<std::vector<int>>(attrs.attr_store.at("decrease_axis"));
   }
 
   PADDLE_ENFORCE_EQ(!starts.empty(),
@@ -1364,13 +1364,13 @@ std::shared_ptr<OpStrategy> StrategyForSlice(
 
 template <typename T = int>
 std::vector<T> GetIntVectorFromAttr(const utils::Attribute &attr) {
-  if (absl::holds_alternative<std::vector<int64_t>>(attr)) {
-    const auto &attr_data = absl::get<std::vector<int64_t>>(attr);
+  if (std::holds_alternative<std::vector<int64_t>>(attr)) {
+    const auto &attr_data = std::get<std::vector<int64_t>>(attr);
     return std::vector<T>(attr_data.begin(), attr_data.end());
-  } else if (absl::holds_alternative<std::vector<int>>(attr)) {
-    const auto &attr_data = absl::get<std::vector<int>>(attr);
+  } else if (std::holds_alternative<std::vector<int>>(attr)) {
+    const auto &attr_data = std::get<std::vector<int>>(attr);
     return std::vector<T>(attr_data.begin(), attr_data.end());
-  } else if (absl::holds_alternative<bool>(attr)) {
+  } else if (std::holds_alternative<bool>(attr)) {
     return std::vector<T>{};
   } else {
     PADDLE_THROW(::common::errors::InvalidArgument(
@@ -1573,16 +1573,16 @@ std::shared_ptr<OpStrategy> StrategyForSliceAssign(
 
   std::vector<int> starts, ends, axes, strides;
   if (attrs.attr_store.find("starts") != attrs.attr_store.end()) {
-    starts = absl::get<std::vector<int>>(attrs.attr_store.at("starts"));
+    starts = std::get<std::vector<int>>(attrs.attr_store.at("starts"));
   }
   if (attrs.attr_store.find("ends") != attrs.attr_store.end()) {
-    ends = absl::get<std::vector<int>>(attrs.attr_store.at("ends"));
+    ends = std::get<std::vector<int>>(attrs.attr_store.at("ends"));
   }
   if (attrs.attr_store.find("axes") != attrs.attr_store.end()) {
-    axes = absl::get<std::vector<int>>(attrs.attr_store.at("axes"));
+    axes = std::get<std::vector<int>>(attrs.attr_store.at("axes"));
   }
   if (attrs.attr_store.find("strides") != attrs.attr_store.end()) {
-    strides = absl::get<std::vector<int>>(attrs.attr_store.at("strides"));
+    strides = std::get<std::vector<int>>(attrs.attr_store.at("strides"));
   }
 
   PADDLE_ENFORCE_EQ(

@@ -210,13 +210,13 @@ def grid_sample(
                 + ws * d_e * d_n + es * d_w * d_n
 
     Args:
-        x(Tensor): The input tensor, which is a 4-d tensor with shape
-                     [N, C, H, W] or a 5-d tensor with shape [N, C, D, H, W],
+        x(Tensor): The input tensor, which is a 4-D tensor with shape
+                     [N, C, H, W] or a 5-D tensor with shape [N, C, D, H, W],
                      N is the batch size, C is the channel number,
                      D, H and W is the feature depth, height and width.
                      The data type is float32 or float64.
-        grid(Tensor): Input grid tensor, which is a 4-d tensor with shape [N, grid_H,
-                        grid_W, 2] or a 5-d tensor with shape [N, grid_D, grid_H,
+        grid(Tensor): Input grid tensor, which is a 4-D tensor with shape [N, grid_H,
+                        grid_W, 2] or a 5-D tensor with shape [N, grid_D, grid_H,
                         grid_W, 3]. The data type is float32 or float64.
         mode(str, optional): The interpolation method which can be 'bilinear' or 'nearest'.
                          Default: 'bilinear'.

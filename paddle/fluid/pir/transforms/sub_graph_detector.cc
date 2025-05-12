@@ -779,8 +779,10 @@ void SubgraphDetector::SubgraphFusion() {
     }
   }
 
-  VLOG(4) << "Merge non-related subgraphs";
   auto subgraph_list = GetSubgraphList();
+  VLOG(4) << "Merge non-related subgraphs (size=" << subgraph_list.size()
+          << ")";
+  if (subgraph_list.size() > 2048) return;
   for (size_t i = 0; i < subgraph_list.size(); ++i) {
     auto lhs = subgraph_list[i];
     if (!lhs->substitute) continue;

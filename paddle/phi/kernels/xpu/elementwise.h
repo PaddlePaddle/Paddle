@@ -78,7 +78,7 @@ void XPUElementwise(const XPUContext& dev_ctx,
     }
   }
 
-  int ret = xpu::SUCCESS;
+  int ret = 0;
 
   // For [2, 3] + [] --> [2, 3] + [1, 1]
   // For [] + [2, 3] --> [1, 1] + [2, 3]

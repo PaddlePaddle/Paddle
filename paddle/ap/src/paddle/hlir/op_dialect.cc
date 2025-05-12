@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/ap/include/paddle/pir/op_dialect.h"
-#include "paddle/ap/include/paddle/pir/manual_op.h"
+#include "paddle/ap/include/paddle/hlir/op_dialect.h"
+#include "paddle/ap/include/paddle/hlir/manual_op.h"
 
 namespace ap {
 namespace dialect {
@@ -25,6 +25,7 @@ OperatorDialect::OperatorDialect(::pir::IrContext *context)
 }
 
 void OperatorDialect::initialize() {
+  RegisterOp<FacadeOp>();
   RegisterOp<UpSpiderOp>();
   RegisterOp<DownSpiderOp>();
   RegisterOp<LoadFromRegisterOp>();
