@@ -195,7 +195,7 @@ class TestMinOp(OpTest):
         self.axis = [1]
         self.keepdims = False
         self.check_pir_onednn = True
-        self.dtype = np.float32
+        self.dtype = np.float16
 
     def prepare_data(self):
         self._input_data = np.random.random(self.shape).astype(self.dtype)

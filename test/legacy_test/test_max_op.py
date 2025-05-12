@@ -207,7 +207,7 @@ class TestMaxOp(OpTest):
     def init_data(self):
         self.shape = [0, 1, 2]
         self.axis = [1]
-        self.dtype = np.float32
+        self.dtype = np.float16
         self.keepdims = False
         self.check_pir_onednn = True
 
