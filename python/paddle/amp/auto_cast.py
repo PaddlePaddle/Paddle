@@ -656,18 +656,12 @@ def amp_guard(
             and not amp_global_state().already_register_final_backward_hook
         ):
 
-            def _dtensor_from_local(
-                local_tensor, mesh, placements, local_tensor_shape=None
-            ):
+            def _dtensor_from_local(local_tensor, mesh, placements):
                 global_dims = list(local_tensor.shape)
-                if local_tensor_shape is not None:
-                    global_dims = local_tensor_shape
                 for idx, placement in enumerate(placements):
                     if placement.is_shard():
-                        shard_dim = placement.get_dim()
-                        local_dim_size = global_dims[shard_dim]
-                        global_dims[shard_dim] = (
-                            local_dim_size * mesh.shape[idx]
+                        global_dims[placement.get_dim()] = (
+                            global_dims[placement.get_dim()] * mesh.shape[idx]
                         )
                 place = paddle.framework._current_expected_place()
                 place = paddle.framework._get_paddle_place(place)
