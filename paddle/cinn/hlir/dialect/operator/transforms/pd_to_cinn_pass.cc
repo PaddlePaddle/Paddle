@@ -554,6 +554,12 @@ class ArangeOpPattern
           case phi::DataType::INT32:
             input = phi::Scalar(input.to<int>());
             break;
+          case phi::DataType::FLOAT16:
+            input = phi::Scalar(input.to<float>());
+            break;
+          case phi::DataType::BFLOAT16:
+            input = phi::Scalar(input.to<float>());
+            break;
           default:
             input = phi::Scalar(input.to<int64_t>());
         }
