@@ -95,11 +95,9 @@ jobs:
           # git config --global --add safe.directory ${work_dir}
           tar -zvxf PaddleTest.tar.gz 1>/dev/null 2>&1
           # git submodule foreach "git config --global --add safe.directory \$toplevel/\$sm_path"
-          ${python} -m pip install https://paddle-github-action.bj.bcebos.com/PR/build/72632/f8d90bca31a6536cfdbd96174750ec1bc69baff7/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl
-          ${python} -m pip install -r requirement.txt
           '
 
-      - name: Check
+      - name: Paddletest check
         env:
           work_dir: ${{ github.workspace }}
         run: |
@@ -107,6 +105,8 @@ jobs:
           export LD_LIBRARY_PATH=/usr/local/cuda/compat:/usr/local/cuda/lib:/usr/local/cuda/lib64:/usr/local/nvidia/lib:/usr/local/nvidia/lib64:/usr/lib/x86_64-linux-gnu:${LD_LIBRARY_PATH}
           cd ./PaddleTest/framework/e2e/api_benchmark_new
           cp /paddle/PTSTools/Uploader/apibm_config.yml .
+          ${python} -m pip install https://paddle-github-action.bj.bcebos.com/PR/build/72632/f8d90bca31a6536cfdbd96174750ec1bc69baff7/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl
+          ${python} -m pip install -r requirement.txt
           if [ ${core_index} -eq -1 ];then
             ${python} runner_ci_action.py --yaml ../yaml/api_benchmark_fp32.yml --core_index 2
           else
@@ -118,5 +118,4 @@ jobs:
         if: always()
         run: |
           # sudo rm -rf * .[^.]*
-          docker stop ${{ env.container_name }}
-          docker rm ${{ env.container_name }}
+          docker rm -f ${{ env.container_name }}
