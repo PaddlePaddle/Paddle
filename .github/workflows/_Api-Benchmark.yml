@@ -42,7 +42,8 @@ jobs:
     steps:
       - name: Determine the runner
         run: |
-          # cp -r /home/PTSTools .
+          sudo rm -rf * .[^.]*
+          cp -r /home/PTSTools .
           runner_name=`(echo $PWD|awk -F '/' '{print $4}')`
           echo $runner_name
           core_index=-1
