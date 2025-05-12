@@ -443,7 +443,7 @@ class RROOQueueManager:
         offload_chunk_ids = list(
             range(tgt_chunk_id, tgt_chunk_id + split_factor)
         )
-        reload_chunk_ids = [tgt_chunk_id]
+        reload_chunk_ids = [tgt_chunk_id + 1]
 
         for o_id in offload_chunk_ids:
             if o_id >= self.chunk_num:
