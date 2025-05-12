@@ -128,8 +128,10 @@ jobs:
           ulimit -n 102400
           git config --global --add safe.directory ${work_dir}
           git submodule foreach "git config --global --add safe.directory \$toplevel/\$sm_path"
-          bash -x ${ci_scripts}/run_setup.sh bdist_wheel
+          bash ${ci_scripts}/run_setup.sh bdist_wheel
           EXCODE=$?
+          rm -rf `find . -name "*.a"`
+          rm -rf `find . -name "*.o"`
           exit $EXCODE
           '
 
