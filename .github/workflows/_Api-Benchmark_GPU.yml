@@ -98,14 +98,12 @@ jobs:
           ${python} -m pip install torch==2.6.0 torchvision==0.21.0 torchaudio==2.6.0 --index-url https://download.pytorch.org/whl/cu118
           '
 
-      - name: Paddletest check
+      - name: Test
         env:
           work_dir: ${{ github.workspace }}
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           export LD_LIBRARY_PATH=/usr/local/cuda-11.8/compat:/usr/local/cuda/compat:/usr/local/cuda/lib:/usr/local/cuda/lib64:/usr/local/nvidia/lib:/usr/local/nvidia/lib64:/usr/lib/x86_64-linux-gnu:${LD_LIBRARY_PATH}
-          cd ./PaddleTest/framework/e2e/api_benchmark_new
-          cp /paddle/PTSTools/Uploader/apibm_config.yml .
           ${python} -m pip install https://paddle-github-action.bj.bcebos.com/PR/build/${PR_ID}/${COMMIT_ID}/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl
           ${python} test_set_item.py 0
           '
