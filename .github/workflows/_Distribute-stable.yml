@@ -17,6 +17,7 @@ env:
   BRANCH: ${{ github.event.pull_request.base.ref }}
   CI_name: distribute
   no_proxy: bcebos.com,apiin.im.baidu.com,gitee.com,aliyun.com,.baidu.com,.tuna.tsinghua.edu.cn,paddlepaddle.org.cn
+  docker_image: ${{ inputs.docker_distribute_image }}
 
 defaults:
   run:
@@ -68,7 +69,6 @@ jobs:
         run: |
           container_name=${TASK}-build-$(date +%Y%m%d-%H%M%S)
           echo "container_name=${container_name}" >> ${{ github.env }}
-          docker_image=${{ inputs.docker_distribute_image }}
           docker run -d -t --name ${container_name} \
             -v "/home/data/cfs:/home/data/cfs" \
             -v "/home/data/cfs/.cache/:/root/.cache" \
