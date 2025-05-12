@@ -33,6 +33,10 @@ jobs:
     runs-on:
       group: GZ_BD-CPU
     steps:
+      - name: Clean directory
+        run: |
+          docker run -i --rm -v ${{ github.workspace }}:/paddle -w /paddle /bin/bash -c 'rm -rf * .[^.]*'
+
       - name: Checkout paddle
         uses: actions/checkout@v4
         with:
