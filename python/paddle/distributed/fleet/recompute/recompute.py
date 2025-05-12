@@ -147,9 +147,9 @@ def switch_rng_state_tracker(
     tracker,
     numpy_state,
     random_state,
-    custom_state,
-    custom_get_state_func,
-    custom_set_state_func,
+    custom_state=None,
+    custom_get_state_func=None,
+    custom_set_state_func=None,
 ):
     orig_rng_state = paddle.get_rng_state()
     orig_rng_tracker = get_rng_state_tracker().get_states_tracker()
@@ -161,8 +161,11 @@ def switch_rng_state_tracker(
     np.random.set_state(numpy_state)
     random.setstate(random_state)
 
-    orig_custom_state = custom_get_state_func()
-    custom_set_state_func(custom_state)
+    if custom_state is not None:
+        assert custom_get_state_func is not None
+        assert custom_set_state_func is not None
+        orig_custom_state = custom_get_state_func()
+        custom_set_state_func(custom_state)
     try:
         yield
     finally:
@@ -171,7 +174,8 @@ def switch_rng_state_tracker(
         np.random.set_state(orig_numpy_state)
         random.setstate(orig_random_state)
 
-        custom_set_state_func(orig_custom_state)
+        if custom_state is not None:
+            custom_set_state_func(orig_custom_state)
 
 
 class RecomputeFunction(PyLayer):
