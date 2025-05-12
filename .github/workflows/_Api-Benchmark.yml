@@ -107,6 +107,7 @@ jobs:
           cp /paddle/PTSTools/Uploader/apibm_config.yml .
           ${python} -m pip install https://paddle-github-action.bj.bcebos.com/PR/build/72632/f8d90bca31a6536cfdbd96174750ec1bc69baff7/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl
           ${python} -m pip install -r requirement.txt
+          ${python} -m pip install -r pymysql
           if [ ${core_index} -eq -1 ];then
             ${python} runner_ci_action.py --yaml ../yaml/api_benchmark_fp32.yml --core_index 2
           else
