@@ -30,20 +30,6 @@ limitations under the License. */
 namespace phi {
 namespace funcs {
 
-namespace details {
-static inline int64_t GetInt64LastPow2(int64_t x) {
-  if (x <= 0) return 0;
-  uint64_t ux = x;
-  ux |= (ux >> 1);
-  ux |= (ux >> 2);
-  ux |= (ux >> 4);
-  ux |= (ux >> 8);
-  ux |= (ux >> 16);
-  ux |= (ux >> 32);
-  return static_cast<int64_t>(ux - (ux >> 1));
-}
-}  // namespace details
-
 /*
  * \brief Extracting simple operations from pooling.
  *        Both MaxPool and AvgPool need "initial", "compute" and "finalize"
@@ -140,19 +126,13 @@ class LPPoolGrad {
 
 /* used for adaptive pool to calculate start and end index of each divided grid
  */
-template <typename IndexT>
-HOSTDEVICE inline IndexT AdaptStartIndex(IndexT ph,
-                                         IndexT input_size,
-                                         IndexT output_size) {
-  return static_cast<IndexT>(
+HOSTDEVICE inline int AdaptStartIndex(int ph, int input_size, int output_size) {
+  return static_cast<int>(
       floor(static_cast<float>(ph * input_size) / output_size));
 }
 
-template <typename IndexT>
-HOSTDEVICE inline IndexT AdaptEndIndex(IndexT ph,
-                                       IndexT input_size,
-                                       IndexT output_size) {
-  return static_cast<IndexT>(
+HOSTDEVICE inline int AdaptEndIndex(int ph, int input_size, int output_size) {
+  return static_cast<int>(
       ceil(static_cast<float>((ph + 1) * input_size) / output_size));
 }
 
@@ -233,9 +213,20 @@ class Pool2dFunctor {
  public:
   void operator()(const Context& context,
                   const DenseTensor& input,
-                  const std::vector<int64_t>& ksize,
-                  const std::vector<int64_t>& strides,
-                  const std::vector<int64_t>& paddings,
+                  const std::vector<int>& ksize,
+                  const std::vector<int>& strides,
+                  const std::vector<int>& paddings,
+                  bool exclusive,
+                  bool adaptive,
+                  DenseTensor* output,
+                  PoolProcess pool_compute);
+
+  // overload operator() to support argument data_format
+  void operator()(const Context& context,
+                  const DenseTensor& input,
+                  const std::vector<int>& ksize,
+                  const std::vector<int>& strides,
+                  const std::vector<int>& paddings,
                   const std::string data_format,
                   bool exclusive,
                   bool adaptive,
@@ -250,9 +241,21 @@ class Pool2dGradFunctor {
                   const DenseTensor& input,
                   const DenseTensor& output,
                   const DenseTensor& output_grad,
-                  const std::vector<int64_t>& ksize,
-                  const std::vector<int64_t>& strides,
-                  const std::vector<int64_t>& paddings,
+                  const std::vector<int>& ksize,
+                  const std::vector<int>& strides,
+                  const std::vector<int>& paddings,
+                  bool exclusive,
+                  bool adaptive,
+                  DenseTensor* input_grad,
+                  PoolProcess pool_compute);
+  // overload operator() to support argument data_format
+  void operator()(const Context& context,
+                  const DenseTensor& input,
+                  const DenseTensor& output,
+                  const DenseTensor& output_grad,
+                  const std::vector<int>& ksize,
+                  const std::vector<int>& strides,
+                  const std::vector<int>& paddings,
                   const std::string data_format,
                   bool exclusive,
                   bool adaptive,
@@ -267,9 +270,18 @@ class MaxPool2dGradFunctor {
                   const DenseTensor& input,
                   const DenseTensor& output,
                   const DenseTensor& output_grad,
-                  const std::vector<int64_t>& ksize,
-                  const std::vector<int64_t>& strides,
-                  const std::vector<int64_t>& paddings,
+                  const std::vector<int>& ksize,
+                  const std::vector<int>& strides,
+                  const std::vector<int>& paddings,
+                  DenseTensor* input_grad);
+  // overload operator() to support argument data_format
+  void operator()(const Context& context,
+                  const DenseTensor& input,
+                  const DenseTensor& output,
+                  const DenseTensor& output_grad,
+                  const std::vector<int>& ksize,
+                  const std::vector<int>& strides,
+                  const std::vector<int>& paddings,
                   const std::string data_format,
                   DenseTensor* input_grad);
 };
@@ -297,9 +309,19 @@ class Pool3dFunctor {
  public:
   void operator()(const Context& context,
                   const DenseTensor& input,
-                  const std::vector<int64_t>& ksize,
-                  const std::vector<int64_t>& strides,
-                  const std::vector<int64_t>& paddings,
+                  const std::vector<int>& ksize,
+                  const std::vector<int>& strides,
+                  const std::vector<int>& paddings,
+                  bool exclusive,
+                  bool adaptive,
+                  DenseTensor* output,
+                  PoolProcess pool_compute);
+  // overload operator() to support argument data_format
+  void operator()(const Context& context,
+                  const DenseTensor& input,
+                  const std::vector<int>& ksize,
+                  const std::vector<int>& strides,
+                  const std::vector<int>& paddings,
                   const std::string data_format,
                   bool exclusive,
                   bool adaptive,
@@ -314,9 +336,21 @@ class Pool3dGradFunctor {
                   const DenseTensor& input,
                   const DenseTensor& output,
                   const DenseTensor& output_grad,
-                  const std::vector<int64_t>& ksize,
-                  const std::vector<int64_t>& strides,
-                  const std::vector<int64_t>& paddings,
+                  const std::vector<int>& ksize,
+                  const std::vector<int>& strides,
+                  const std::vector<int>& paddings,
+                  bool exclusive,
+                  bool adaptive,
+                  DenseTensor* input_grad,
+                  PoolProcess pool_compute);
+  // overload operator() to support argument data_format
+  void operator()(const Context& context,
+                  const DenseTensor& input,
+                  const DenseTensor& output,
+                  const DenseTensor& output_grad,
+                  const std::vector<int>& ksize,
+                  const std::vector<int>& strides,
+                  const std::vector<int>& paddings,
                   const std::string data_format,
                   bool exclusive,
                   bool adaptive,
@@ -331,9 +365,18 @@ class MaxPool3dGradFunctor {
                   const DenseTensor& input,
                   const DenseTensor& output,
                   const DenseTensor& output_grad,
-                  const std::vector<int64_t>& ksize,
-                  const std::vector<int64_t>& strides,
-                  const std::vector<int64_t>& paddings,
+                  const std::vector<int>& ksize,
+                  const std::vector<int>& strides,
+                  const std::vector<int>& paddings,
+                  DenseTensor* input_grad);
+  // overload operator() to support argument data_format
+  void operator()(const Context& context,
+                  const DenseTensor& input,
+                  const DenseTensor& output,
+                  const DenseTensor& output_grad,
+                  const std::vector<int>& ksize,
+                  const std::vector<int>& strides,
+                  const std::vector<int>& paddings,
                   const std::string data_format,
                   DenseTensor* input_grad);
 };
@@ -455,13 +498,12 @@ class FractionalMaxPool3dGradFunctor {
                   DenseTensor* input_grad);
 };
 
-template <typename T = int>
-inline T PoolOutputSize(T input_size,
-                        T filter_size,
-                        T padding_1,
-                        T padding_2,
-                        T stride,
-                        bool ceil_mode) {
+inline int PoolOutputSize(int input_size,
+                          int filter_size,
+                          int padding_1,
+                          int padding_2,
+                          int stride,
+                          bool ceil_mode) {
   PADDLE_ENFORCE_NE(
       stride,
       0,
@@ -469,7 +511,7 @@ inline T PoolOutputSize(T input_size,
           "The stride of PoolOutputSize shall not be 0, but received %d.",
           stride));
 
-  T output_size;
+  int output_size;
   if (!ceil_mode) {
     output_size =
         (input_size - filter_size + padding_1 + padding_2) / stride + 1;
@@ -496,9 +538,8 @@ inline T PoolOutputSize(T input_size,
   return output_size;
 }
 
-template <typename T = int>
-inline T MaxPoolOutputSize(
-    T input_size, T filter_size, T padding, T stride, bool ceil_mode) {
+inline int MaxPoolOutputSize(
+    int input_size, int filter_size, int padding, int stride, bool ceil_mode) {
   PADDLE_ENFORCE_NE(
       stride,
       0,

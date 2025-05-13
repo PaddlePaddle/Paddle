@@ -52,9 +52,9 @@ inline int64_t GetReduceNum(const DenseTensor& input,
 template <typename T, typename Context>
 void PoolRawKernel(const Context& ctx,
                    const DenseTensor& x,
-                   const std::vector<int64_t>& kernel_size,
-                   const std::vector<int64_t>& strides,
-                   const std::vector<int64_t>& paddings,
+                   const std::vector<int>& kernel_size,
+                   const std::vector<int>& strides,
+                   const std::vector<int>& paddings,
                    bool exclusive,
                    const std::string& data_format,
                    const std::string& pooling_type,
@@ -64,8 +64,8 @@ void PoolRawKernel(const Context& ctx,
                    const float norm_type,
                    DenseTensor* out) {
   const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
-  std::vector<int64_t> paddings_ = paddings;
-  std::vector<int64_t> kernel_size_ = kernel_size;
+  std::vector<int> paddings_ = paddings;
+  std::vector<int> kernel_size_ = kernel_size;
 
   // update paddings
   auto x_dims = x.dims();
@@ -263,13 +263,15 @@ void Pool2dKernel(const Context& ctx,
                   bool adaptive,
                   const std::string& padding_algorithm,
                   DenseTensor* out) {
-  std::vector<int64_t> kernel_size_val(kernel_size.GetData().begin(),
-                                       kernel_size.GetData().end());
+  std::vector<int> kernel_size_val(kernel_size.GetData().begin(),
+                                   kernel_size.GetData().end());
+  std::vector<int> strides_val(strides.begin(), strides.end());
+  std::vector<int> paddings_val(paddings.begin(), paddings.end());
   PoolRawKernel<T, Context>(ctx,
                             x,
                             kernel_size_val,
-                            strides,
-                            paddings,
+                            strides_val,
+                            paddings_val,
                             exclusive,
                             data_format,
                             pooling_type,
@@ -295,13 +297,15 @@ void LPPool2dKernel(const Context& ctx,
                     const std::string& padding_algorithm,
                     const float norm_type,
                     DenseTensor* out) {
-  std::vector<int64_t> kernel_size_val(kernel_size.GetData().begin(),
-                                       kernel_size.GetData().end());
+  std::vector<int> kernel_size_val(kernel_size.GetData().begin(),
+                                   kernel_size.GetData().end());
+  std::vector<int> strides_val(strides.begin(), strides.end());
+  std::vector<int> paddings_val(paddings.begin(), paddings.end());
   PoolRawKernel<T, Context>(ctx,
                             x,
                             kernel_size_val,
-                            strides,
-                            paddings,
+                            strides_val,
+                            paddings_val,
                             exclusive,
                             data_format,
                             pooling_type,
@@ -348,11 +352,14 @@ void Pool3dKernel(const Context& ctx,
                   bool adaptive,
                   const std::string& padding_algorithm,
                   DenseTensor* out) {
+  std::vector<int> kernel_size_val(kernel_size.begin(), kernel_size.end());
+  std::vector<int> strides_val(strides.begin(), strides.end());
+  std::vector<int> paddings_val(paddings.begin(), paddings.end());
   PoolRawKernel<T, Context>(ctx,
                             x,
-                            kernel_size,
-                            strides,
-                            paddings,
+                            kernel_size_val,
+                            strides_val,
+                            paddings_val,
                             exclusive,
                             data_format,
                             pooling_type,
