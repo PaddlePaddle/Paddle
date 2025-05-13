@@ -60,6 +60,20 @@ static inline PyObject* PyObject_CallOneArg(PyObject* func, PyObject* arg) {
     }                            \
   }
 
+#define CheckShape(expected, ndim, actual_shape)         \
+  {                                                      \
+    if (expected.size() != ndim) {                       \
+      return false;                                      \
+    }                                                    \
+    for (size_t i = 0; i < expected.size(); ++i) {       \
+      if (!expected[i] || actual_shape[i] < 1) continue; \
+      if (actual_shape[i] != expected[i].value()) {      \
+        return false;                                    \
+      }                                                  \
+    }                                                    \
+    return true;                                         \
+  }
+
 static inline bool PyObject_Equal(PyObject* a, PyObject* b) {
   if (a == b) {
     return true;
@@ -137,16 +151,7 @@ bool ShapeMatchGuard::check(PyObject* value) {
   auto tensor = GetTensorFromPyObject(value);
   HANDLE_NULL_TENSOR(tensor);
   auto shape = tensor->shape();
-  if (shape.size() != expected_.size()) {
-    return false;
-  }
-  for (size_t i = 0; i < shape.size(); ++i) {
-    if (expected_[i] == -1 && shape[i] >= 1) continue;
-    if (shape[i] != expected_[i]) {
-      return false;
-    }
-  }
-  return true;
+  CheckShape(expected_, shape.size(), shape);
 }
 
 bool AttributeMatchGuard::check(PyObject* value) {
@@ -199,17 +204,9 @@ bool NumPyArrayShapeMatchGuard::check(PyObject* value) {
   if (!array) {
     return false;
   }
-  int ndim = array.ndim();
-  auto shape = array.shape();
-  if (ndim != static_cast<int>(expected_.size())) {
-    return false;
-  }
-  for (int i = 0; i < ndim; ++i) {
-    if (expected_[i].has_value() && shape[i] != expected_[i].value()) {
-      return false;
-    }
-  }
-  return true;
+  // int ndim = array.ndim();
+  // auto shape = array.shape();
+  CheckShape(expected_, array.ndim(), array.shape());
 }
 
 bool WeakRefMatchGuard::check(PyObject* value) {

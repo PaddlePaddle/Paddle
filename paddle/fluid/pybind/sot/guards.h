@@ -157,12 +157,10 @@ class DtypeMatchGuard : public GuardBase {
 class ShapeMatchGuard : public GuardBase {
  public:
   explicit ShapeMatchGuard(const std::vector<py::object>& shape) {
-    expected_.reserve(shape.size());
-    for (const auto& s : shape) {
-      if (py::isinstance<py::int_>(s)) {
-        expected_.push_back(s.cast<int64_t>());
-      } else {
-        expected_.push_back(-1);
+    expected_.resize(shape.size());
+    for (size_t i = 0; i < shape.size(); ++i) {
+      if (py::isinstance<py::int_>(shape[i]) && shape[i].cast<int64_t>() > 0) {
+        expected_[i] = shape[i].cast<int64_t>();
       }
     }
   }
@@ -171,7 +169,7 @@ class ShapeMatchGuard : public GuardBase {
   std::string get_guard_name() const override { return "ShapeMatchGuard"; }
 
  private:
-  std::vector<int64_t> expected_;
+  std::vector<std::optional<int64_t>> expected_;
 };
 
 class AttributeMatchGuard : public GuardBase {
@@ -254,15 +252,11 @@ class NumPyArrayValueMatchGuard : public GuardBase {
 
 class NumPyArrayShapeMatchGuard : public GuardBase {
  public:
-  explicit NumPyArrayShapeMatchGuard(
-      const std::vector<std::optional<int64_t>>& shape)
-      : expected_(shape) {}
-
   explicit NumPyArrayShapeMatchGuard(const std::vector<py::object>& shape) {
     expected_.resize(shape.size());
     for (size_t i = 0; i < shape.size(); ++i) {
       if (py::isinstance<py::int_>(shape[i]) && shape[i].cast<int64_t>() > 0) {
-        expected_[i] = std::make_optional(shape[i].cast<int64_t>());
+        expected_[i] = shape[i].cast<int64_t>();
       }
     }
   }
