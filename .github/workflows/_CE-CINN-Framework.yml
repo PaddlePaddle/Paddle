@@ -110,10 +110,10 @@ jobs:
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ~/.bashrc
-          pip config set global.cache-dir "/home/data/cfs/.cache/pip"
-          pip install /paddle/build/pr_whl/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl
-          pip install -r requirement.txt
+          pip3.10 config set global.cache-dir "/home/data/cfs/.cache/pip"
+          pip3.10 install /paddle/build/pr_whl/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl
           cd /PaddleTest/framework/e2e/PaddleLT_new
+          pip3.10 install -r requirement.txt
           source ./scene/set_ci_dy^dy2stcinn_train^dy2stcinn_eval_inputspec_env.sh
           python3.10 support/dict_to_yml.py --filename apibm_config.yml --data_str $(cat $CACHE_DIR/cinn_config)
           python3.10 run.py
