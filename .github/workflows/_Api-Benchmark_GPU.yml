@@ -104,12 +104,12 @@ jobs:
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           export LD_LIBRARY_PATH=/usr/local/cuda-11.8/compat:/usr/local/cuda/compat:/usr/local/cuda/lib:/usr/local/cuda/lib64:/usr/local/nvidia/lib:/usr/local/nvidia/lib64:/usr/lib/x86_64-linux-gnu:${LD_LIBRARY_PATH}
-          ${python} -m pip install https://paddle-github-action.bj.bcebos.com/PR/build/${PR_ID}/${COMMIT_ID}/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl
+          ${python} -m pip install https://paddle-github-action.bj.bcebos.com/PR/build/72680/aaa207ab82467ca9730b505ece315fe7d36a24a1/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl
           ${python} test_set_item.py 0
           '
 
-      - name: Terminate and delete the container
-        if: always()
-        run: |
-          sudo rm -rf * .[^.]*
-          docker rm -f ${{ env.container_name }}
+    # - name: Terminate and delete the container
+    #   if: always()
+    #   run: |
+    #     sudo rm -rf * .[^.]*
+    #     docker rm -f ${{ env.container_name }}
