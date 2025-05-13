@@ -2000,7 +2000,7 @@ class Optimizer:
             for param in self._param_groups:
                 if param.stop_gradient:
                     continue
-                if os.getenv("FLAGS_enable_inplace_master_grad") == '1':
+                if os.getenv("FLAGS_enable_tensor_fusion") == '1':
                     if (
                         hasattr(param, "main_grad")
                         and param.main_grad is not None

@@ -1128,8 +1128,8 @@ class _ShardOptimizer(Optimizer):
             for param in self._inner_opt._parameter_list:
                 self._shard_fn._shard_parameter(param)
 
-        self.enable_inplace_master_grad = (
-            os.getenv("FLAGS_enable_inplace_master_grad") == '1'
+        self.enable_tensor_fusion = (
+            os.getenv("FLAGS_enable_tensor_fusion") == '1'
         )
 
     def _set_and_check_sharding_prop_from_param(self):
@@ -1257,7 +1257,7 @@ class _ShardOptimizer(Optimizer):
 
     def _finish_update(self, block, parameters_and_grads):
         self._inner_opt._finish_update(block, parameters_and_grads)
-        if self.enable_inplace_master_grad:
+        if self.enable_tensor_fusion:
             for param, _ in parameters_and_grads:
                 param.main_grad._local_value().zero_()
         if isinstance(parameters_and_grads, list):
