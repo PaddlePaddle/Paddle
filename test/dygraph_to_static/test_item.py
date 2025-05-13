@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import random
 import unittest
 
 import numpy as np
@@ -30,7 +29,7 @@ paddle.seed(SEED)
 
 
 class TestItem(Dy2StTestBase):
-    random_type = [
+    type_list = [
         "float64",
         "float32",
         "float16",
@@ -44,32 +43,11 @@ class TestItem(Dy2StTestBase):
         return paddle.rand(shape, dtype=dtype)
 
     def test_no_args(self):
-        dtype = random.choice(self.random_type)
-        t = self._create_tensor([1], dtype)
-
-        def dynamic_forward(x):
-            return x.item()
-
-        static_forward = paddle.jit.to_static(dynamic_forward)
-        dynamic_result = dynamic_forward(t)
-        static_result = static_forward(t)
-        self.assertEqual(dynamic_result, static_result)
-
-    @test_pir_only
-    def test_1_arg(self):
-        random_shape = [
-            [9],
-            [3, 5],
-            [2, 3, 4],
-            [3, 3, 3, 3, 3, 3],
-        ]
-        for _ in range(10):
-            dtype = random.choice(self.random_type)
-            shape = random.choice(random_shape)
-            t = self._create_tensor(shape, dtype)
+        for dtype in self.type_list:
+            t = self._create_tensor([1], dtype)
 
             def dynamic_forward(x):
-                return x.item(6)
+                return x.item()
 
             static_forward = paddle.jit.to_static(dynamic_forward)
             dynamic_result = dynamic_forward(t)
@@ -77,25 +55,45 @@ class TestItem(Dy2StTestBase):
             self.assertEqual(dynamic_result, static_result)
 
     @test_pir_only
+    def test_1_arg(self):
+        shape_list = [
+            [9],
+            [3, 5],
+            [2, 3, 4],
+            [3, 3, 3, 3, 3, 3],
+        ]
+        for dtype in self.type_list:
+            for shape in shape_list:
+                t = self._create_tensor(shape, dtype)
+
+                def dynamic_forward(x):
+                    return x.item(6)
+
+                static_forward = paddle.jit.to_static(dynamic_forward)
+                dynamic_result = dynamic_forward(t)
+                static_result = static_forward(t)
+                self.assertEqual(dynamic_result, static_result)
+
+    @test_pir_only
     def test_n_arg(self):
-        random_shape_and_idx = [
+        shape_and_idx_list = [
             [[3, 5], [1, 3]],
             [[2, 3, 4], [0, 2, 1]],
             [[2, 3, 4, 5], [0, 1, 3, 0]],
             [[3, 3, 3, 3, 3, 3], [1, 1, 1, 1, 1, 0]],
         ]
 
-        dtype = random.choice(self.random_type)
-        shape, idx = random.choice(random_shape_and_idx)
-        t = self._create_tensor(shape, dtype)
+        for dtype in self.type_list:
+            for shape, idx in shape_and_idx_list:
+                t = self._create_tensor(shape, dtype)
 
-        def dynamic_forward(x, idx):
-            return x.item(*idx)
+                def dynamic_forward(x, idx):
+                    return x.item(*idx)
 
-        static_forward = paddle.jit.to_static(dynamic_forward)
-        dynamic_result = dynamic_forward(t, idx)
-        static_result = static_forward(t, idx)
-        self.assertEqual(dynamic_result, static_result)
+                static_forward = paddle.jit.to_static(dynamic_forward)
+                dynamic_result = dynamic_forward(t, idx)
+                static_result = static_forward(t, idx)
+                self.assertEqual(dynamic_result, static_result)
 
     @test_pir_only
     def test_error(self):
@@ -105,15 +103,11 @@ class TestItem(Dy2StTestBase):
 
             static_forward = paddle.jit.to_static(dynamic_forward)
 
-            with self.assertRaises(exception_type) as cm:
+            with self.assertRaisesRegex(exception_type, expected_exception_str):
                 static_forward(t)
 
-            exception_info = cm.exception.args[0]
-
-            self.assertRegex(
-                exception_info,
-                expected_exception_str,
-            )
+            with self.assertRaisesRegex(exception_type, expected_exception_str):
+                dynamic_forward(t)
 
         t = self._create_tensor([8, 8, 8], "float32")
         test_raise_error(
