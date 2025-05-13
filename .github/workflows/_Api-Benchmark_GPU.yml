@@ -3,9 +3,9 @@ name: Api-Benchmark-GPU
 on:
   workflow_call:
     inputs:
-      docker_build_image:
-        type: string
-        required: true
+      # docker_build_image:
+      #   type: string
+      #   required: true
       can-skip:
         type: string
         required: false
@@ -15,10 +15,10 @@ env:
   COMMIT_ID: ${{ github.event.pull_request.head.sha }}
   work_dir: /paddle
   PADDLE_ROOT: /paddle
-  TASK: paddle-CI-${{ github.event.pull_request.number }}-api-benchmark
+  TASK: paddle-CI-${{ github.event.pull_request.number }}-api-benchmark-gpu
   ci_scripts: /paddle/ci
   BRANCH: ${{ github.event.pull_request.base.ref }}
-  CI_name: api-benchmark
+  CI_name: api-benchmark-gpu
   no_proxy: "bcebos.com,apiin.im.baidu.com,gitee.com,aliyun.com,.baidu.com,.tuna.tsinghua.edu.cn"
 
 defaults:
@@ -59,6 +59,7 @@ jobs:
           container_name="api_benchmark_ci_${RUN_ID}"
           echo "container_name=${container_name}" >> ${{ github.env }}
           docker_image=${{ inputs.docker_build_image }}
+          docker_image=ccr-2vdh3abv-pub.cnc.bj.baidubce.com/ci/paddle:29f259c1f2a060142f49e2d0307cfc4e
           nvidia-docker run -d -t --name ${container_name} --privileged --shm-size=128g \
             -v ${{ github.workspace }}/../../..:${{ github.workspace }}/../../.. \
             -v ${{ github.workspace }}:/paddle \

@@ -89,6 +89,6 @@ jobs:
   api-benchmark-gpu:
     name: Api-Benchmark-GPU
     uses: ./.github/workflows/_Api-Benchmark_GPU.yml
-    needs: [build-docker]
-    with:
-      docker_build_image: ${{ needs.build-docker.outputs.docker_build_image }}
+    # needs: [build-docker]
+    # with:
+    #   docker_build_image: ${{ needs.build-docker.outputs.docker_build_image }}
