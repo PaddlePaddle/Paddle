@@ -26,8 +26,8 @@ defaults:
     shell: bash
 
 jobs:
-  data-storage:
-    name: Performance data storage
+  cinn:
+    name: CINN
     if: ${{ inputs.can-skip != 'true' }}
     runs-on:
       group: v100-test
