@@ -43,7 +43,7 @@ jobs:
     steps:
       - name: Prepare workspace
         run: |
-          rm -rf * .[^.]*
+          sudo rm -rf * .[^.]*
           cp -r /home/paddle/api-bm-tools/api_benchmark_gpu/test_set_item.py .
           docker container ls -a --filter "name=api_gpu_benchmark_ci*" --format "{{.ID}}" | xargs -r docker rm -f
           docker container ls -a --filter "name=api_benchmark_ci_baseline_" --format "{{.ID}} {{.CreatedAt}}" | awk '$2 <= "'$(date -d '1 day ago' +'%Y-%m-%d')'" {print $1}' | xargs -r docker rm -f
