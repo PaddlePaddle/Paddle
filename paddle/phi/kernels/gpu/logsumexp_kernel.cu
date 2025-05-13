@@ -15,6 +15,7 @@
 #include "paddle/phi/kernels/logsumexp_kernel.h"
 #include "paddle/phi/kernels/gpu/logsumexp_function.cu.h"
 
+#include "glog/logging.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -115,6 +116,7 @@ void LogsumexpKernel(const Context& dev_ctx,
       axis_vec.push_back(i);
     }
   }
+  VLOG(4) << "Logsumexp type: " << typeid(T).name();
   for (size_t i = 0; i < xdim.size(); i++) {
     bool flag = false;
     for (auto v : axis_vec) {
@@ -138,6 +140,7 @@ void LogsumexpKernel(const Context& dev_ctx,
 
   auto outdim = common::make_ddim(outdim_vec);
   if (compute_size <= 1024) {
+    VLOG(4) << "Logsumexp compute_size: " << compute_size << ", if branch";
     if (perm.size() != xdim.size())
       perm.insert(perm.end(), axis_vec.begin(), axis_vec.end());
     for (auto i : axis_vec) transpose_shape.push_back(xdim[i]);
@@ -157,6 +160,8 @@ void LogsumexpKernel(const Context& dev_ctx,
         dev_ctx, num_row, num_col, transpose_x.data<T>(), out->data<T>());
     out->Resize(outdim);
   } else {
+    VLOG(4) << "Logsumexp compute_size: " << compute_size
+            << ", else fall back kernel";
     LogsumexpFallbackKernel<T, Context>(dev_ctx,
                                         x,
                                         axis_vec,

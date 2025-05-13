@@ -14,6 +14,7 @@
 #pragma once
 
 #include <assert.h>
+#include "glog/logging.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
 #include "paddle/phi/kernels/primitive/functor_primitives.h"
 
@@ -208,8 +209,25 @@ inline cudaError_t LaunchLogsumexpWarp(const Context& dev_ctx,
   const int64_t num_blocks =
       (num_row / RowsPerThread + thread_groups_per_block - 1) /
       thread_groups_per_block;
-  int grid_dim_x;
+  int grid_dim_x = num_blocks;
   { GetNumBlocks(block_size, num_blocks, waves, &grid_dim_x); }
+  VLOG(4) << "HQY number of blocks:" << grid_dim_x << ", r, c: " << num_row
+          << ", " << num_col << ", num blocks:" << num_blocks;
+  VLOG(4) << "HQY RowsPerThread: " << RowsPerThread
+          << ", ThreadGroupWidth: " << ThreadGroupWidth
+          << ", ColsPerThread: " << ColsPerThread << ", VecSize: " << VecSize;
+  int max_block_x, max_block_y, max_block_z, max_block_cnt, dev;
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaGetDevice(&dev));
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      cudaDeviceGetAttribute(&max_block_x, cudaDevAttrMaxGridDimX, dev));
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      cudaDeviceGetAttribute(&max_block_y, cudaDevAttrMaxGridDimY, dev));
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      cudaDeviceGetAttribute(&max_block_z, cudaDevAttrMaxGridDimZ, dev));
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceGetAttribute(
+      &max_block_cnt, cudaDevAttrMaxThreadsPerMultiProcessor, dev));
+  VLOG(4) << "Limits: " << max_block_x << ", " << max_block_y << ", "
+          << max_block_z << ", " << max_block_cnt;
   LogsumexpWarpImpl<T,
                     SourceType,
                     Context,
