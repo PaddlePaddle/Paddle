@@ -560,7 +560,8 @@ class FusedCommBuffer:
         for p in self._params:
             self._params_step_dict[p.name] = 0
 
-    def _copy_grad_to_buffer(self, param):
+    def _copy_grad_to_buffer(self, param, param_grad_is_none=False):
+        # if param_grad is not None , skip record grad addr
         if self._params_step_dict[param.name] > 0:
             return
 
@@ -586,9 +587,17 @@ class FusedCommBuffer:
             )
 
         grad_var = param.main_grad if self.use_main_grad else param.grad
+
+        if param_grad_is_none:
+            assert (
+                grad_var is None
+            ), f"The current parameter[{param.name}] has gradient, its stop_grdient is {param.stop_gradient} , but we excepte it^s grad is None ,  Here are some examples: user marked_unsed_param incorrect ,like marked_unsed_param when backward unfinished,marked_unsed_param which param should have grad."
+            return
+
         assert (
             grad_var is not None
         ), f"The current parameter[{param.name}] has no gradient, its stop_grdient is {param.stop_gradient}"
+
         grad_var.stop_gradient = True
         grad_var.flatten_()
 
@@ -622,10 +631,13 @@ class FusedCommBuffer:
             and len(self._params_step_dict) == 0
         )
 
-    def add_grad(self, param, use_comm=True):
+    def add_grad(self, param, use_comm=True, param_grad_is_none=False):
         assert param.name in self._params_step_dict
-
-        if not self._release_grads or self._params_step_dict[param.name] > 0:
+        if (
+            not self._release_grads
+            or self._params_step_dict[param.name] > 0
+            or param_grad_is_none is True
+        ):
             current_ptr = get_grad_address(param, self.use_main_grad)
             if self._grads_to_addr[param.name] != current_ptr:
                 error_message = f"The address of the grad/main_grad of param {param.name} has been changed during training, which is not allowed for dp/sharding overlap with pp. This may be caused by some non-inplace operations on the grad/main_grad. Here are some examples: 1. The grad/main_grad of the param is changed by other operations, such as: clear_grad; 2. Using non-inplace operations on the grad/main_grad, such as: add, sub, mul, div, etc."
@@ -635,7 +647,7 @@ class FusedCommBuffer:
             # When release_grads is enabled, fusing of gradients only happen
             # in the 0-th gradient accumulation step, and remain unchanged for
             # the following `acc_steps - 1` steps.
-            self._copy_grad_to_buffer(param)
+            self._copy_grad_to_buffer(param, param_grad_is_none)
 
         self._params_step_dict[param.name] += 1
 
