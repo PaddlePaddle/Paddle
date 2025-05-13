@@ -414,7 +414,7 @@ class RROOQueue:
 class RROOQueueManager:
     """Manager for queues that handle offloading and reloading operations."""
 
-    def init(self, chunk_num: int, acc_num: int) -> None:
+    def init(self, chunk_num: int, acc_num: int, is_vpp: bool = True) -> None:
         self.queues: list[RROOQueue] = []
         self.offload_dict: list[list[RROOQueue]] = [
             [] for _ in range(chunk_num)
@@ -423,8 +423,17 @@ class RROOQueueManager:
         self.chunk_num = chunk_num
         self.cur_chunk_id = 0  # Follows the pipeline framework's design, setting VPP id as object state
         self.acc_num = acc_num
+        self.is_vpp = is_vpp
 
     def calc_rroo_infos(
+        self, split_factor: int
+    ) -> tuple[bool, list[int] | None, list[int] | None]:
+        if self.is_vpp:
+            return self.calc_rroo_infos_for_vpp(split_factor)
+        else:
+            return self.calc_rroo_infos_for_non_vpp(split_factor)
+
+    def calc_rroo_infos_for_non_vpp(
         self, split_factor: int
     ) -> tuple[bool, list[int] | None, list[int] | None]:
         """
@@ -444,6 +453,36 @@ class RROOQueueManager:
             range(tgt_chunk_id, tgt_chunk_id + split_factor)
         )
         reload_chunk_ids = [tgt_chunk_id + 1]
+
+        for o_id in offload_chunk_ids:
+            if o_id >= self.chunk_num:
+                return False, None, None
+        for r_id in reload_chunk_ids:
+            if r_id >= self.chunk_num:
+                return False, None, None
+
+        return True, offload_chunk_ids, reload_chunk_ids
+
+    def calc_rroo_infos_for_vpp(
+        self, split_factor: int
+    ) -> tuple[bool, list[int] | None, list[int] | None]:
+        """
+        Calculate RROO (Round-Robin Offloading) information.
+
+        Returns:
+            - bool: Whether RROO can be performed on current queue
+            - list: Chunk IDs where offloading should occur
+            - list: Chunk IDs where reloading should occur
+        """
+        if split_factor < 1:
+            return False, None, None
+
+        # Given total chunks, current chunk id and split factor, determine offload/reload chunks
+        tgt_chunk_id = 1 + split_factor * self.cur_chunk_id
+        offload_chunk_ids = list(
+            range(tgt_chunk_id, tgt_chunk_id + split_factor)
+        )
+        reload_chunk_ids = [tgt_chunk_id]
 
         for o_id in offload_chunk_ids:
             if o_id >= self.chunk_num:
