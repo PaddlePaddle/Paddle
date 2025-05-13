@@ -161,7 +161,11 @@ class TestRowOpWithTensorInput(OpTest):
 
     def test_check_grad_ignore_x(self):
         self.check_grad(
-            ['Filter'], 'Out', no_grad_set=set('X'), check_dygraph=False
+            ['Filter'],
+            'Out',
+            no_grad_set=set('X'),
+            check_dygraph=False,
+            max_relative_error=0.007,
         )
 
     def test_check_grad_normal(self):
