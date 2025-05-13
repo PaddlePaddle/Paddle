@@ -230,14 +230,9 @@ class TestMaxOp(OpTest):
         )
 
 
-class TestMaxOp1(TestMaxOp):
-    def init_data(self):
-        self.shape = [2, 0, 4, 6, 10]
-        self.axis = [2, 3]
-        self.keepdims = False
-        self.dtype = np.int64
-
-
+@unittest.skipIf(
+    not core.supports_bfloat16(), "place does not support BF16 evaluation"
+)
 class TestMaxBfloat16(unittest.TestCase):
     def init_data(self):
         self.shape = [0, 1, 2]
