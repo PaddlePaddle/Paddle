@@ -300,6 +300,42 @@ class TestCopySignBroadcastCase3(TestCopySignAPI):
         self.y = (np.random.randn(3, 4, 5) * 10).astype(dtype)
 
 
+class TestCopySignZeroSize1(TestCopySignAPI):
+    def input_init(self):
+        self.x = np.random.randn(0, 5)
+        self.y = np.random.randn(0, 5)
+
+
+class TestCopySignZeroSize2(TestCopySignAPI):
+    def input_init(self):
+        self.x = np.random.randn(0, 5)
+        self.y = np.random.randn(3, 0, 5)
+
+
+class TestCopySignZeroSize3(TestCopySignAPI):
+    def input_init(self):
+        self.x = np.random.randn(3, 0, 5)
+        self.y = np.random.randn(0, 5)
+
+
+class TestCopySignZeroSize4(TestCopySignAPI):
+    def input_init(self):
+        self.x = np.random.randn(5, 0)
+        self.y = np.random.randn(3, 5, 0)
+
+
+class TestCopySignZeroSize5(TestCopySignAPI):
+    def input_init(self):
+        self.x = np.random.randn(2, 5)
+        self.y = np.random.randn(0, 2, 5)
+
+
+class TestCopySignTypePromotion(TestCopySignAPI):
+    def input_init(self):
+        self.x = np.random.randn(2, 5).astype(np.float64)
+        self.y = np.random.randn(2, 5).astype(np.float32)
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()
