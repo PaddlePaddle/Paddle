@@ -93,8 +93,6 @@ jobs:
           work_dir: ${{ github.workspace }}
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
-          echo $wheel_link
-          rm -rf * .[^.]*
           ldconfig
           set -e
           echo "Downloading PaddleTest.tar.gz"
