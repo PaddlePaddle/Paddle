@@ -289,6 +289,28 @@
     func : ap_facade
   traits : paddle::dialect::ForwardOnlyTrait
 
+- op : ap_trivial_fusion_begin
+  args : (Tensor[] xs)
+  output : Tensor(out)
+  optional : xs
+  infer_meta :
+    func : ApTrivialFusionBeginInferMeta
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+  kernel :
+    func : ap_trivial_fusion_begin
+  traits : pir::SideEffectTrait, paddle::dialect::ForwardOnlyTrait
+
+- op : ap_trivial_fusion_end
+  args : (Tensor[] xs)
+  output : Tensor(out)
+  optional : xs
+  infer_meta :
+    func : ApTrivialFusionEndInferMeta
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+  kernel :
+    func : ap_trivial_fusion_end
+  traits : pir::SideEffectTrait, paddle::dialect::ForwardOnlyTrait
+
 - op : ap_variadic
   args : (Tensor[] xs, int num_outputs, str code_module_lambda, str infer_meta_lambda, str rnel_dispatch_lambda, str kernel_dispatch_const_data_lambda)
   output : Tensor[](out){num_outputs}

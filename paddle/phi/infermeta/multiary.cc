@@ -523,6 +523,22 @@ void ApFacadeInferMeta(
 #endif
 }
 
+void ApTrivialFusionBeginInferMeta(
+    const paddle::optional<std::vector<const MetaTensor*>>& xs,
+    MetaTensor* out,
+    MetaConfig config) {
+  out->set_dims(common::make_ddim({}));
+  out->set_dtype(phi::DataType::BOOL);
+}
+
+void ApTrivialFusionEndInferMeta(
+    const paddle::optional<std::vector<const MetaTensor*>>& xs,
+    MetaTensor* out,
+    MetaConfig config) {
+  out->set_dims(common::make_ddim({}));
+  out->set_dtype(phi::DataType::BOOL);
+}
+
 // TODO(YuanRisheng) This InferMeta is used in Fluid
 //                   and will be deleted in the future.
 void AddNTensorArrayInferMeta(const std::vector<const MetaTensor*>& x,

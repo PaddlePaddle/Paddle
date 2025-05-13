@@ -191,11 +191,6 @@ static void ParseIndex(const paddle::Tensor& tensor,
   const auto& shape = tensor.dims();
   const int rank = shape.size();
   const int size = PyTuple_GET_SIZE(index);
-  if (size == 1 && PyBool_Check(PyTuple_GetItem(index, 0))) {
-    // true and none using set_value full_set branch
-    // false do nothing
-    return;
-  }
   // Check Ellipsis is valid
   int specified_dims = 0;
   int ell_count = 0;
