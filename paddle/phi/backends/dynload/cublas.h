@@ -143,7 +143,9 @@ CUBLAS_BLAS_ROUTINE_EACH_R4(DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP)
 
 #if CUDA_VERSION >= 12000
 #define CUBLAS_BLAS_ROUTINE_EACH_R5(__macro) \
-  __macro(cublasGemmStridedBatchedEx_64);
+  __macro(cublasGemmStridedBatchedEx_64);    \
+  __macro(cublasGemmEx_64);                  \
+  __macro(cublasSgemmEx_64);
 
 CUBLAS_BLAS_ROUTINE_EACH_R5(DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP)
 #endif
