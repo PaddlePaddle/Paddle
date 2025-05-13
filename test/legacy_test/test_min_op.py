@@ -194,8 +194,7 @@ class TestMinOp(OpTest):
         self.shape = [0, 1, 2]
         self.axis = [1]
         self.keepdims = False
-        self.check_pir_onednn = True
-        self.dtype = np.float16
+        self.dtype = np.float64
 
     def prepare_data(self):
         self._input_data = np.random.random(self.shape).astype(self.dtype)
@@ -207,17 +206,42 @@ class TestMinOp(OpTest):
         self.attrs = {"dim": self.axis, "keep_dim": self.keepdims}
 
     def test_check_output(self):
-        self.check_output(
-            check_pir=True, check_pir_onednn=self.check_pir_onednn
-        )
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
         self.check_grad(
             ['X'],
             ['Out'],
             check_pir=True,
-            check_pir_onednn=self.check_pir_onednn,
         )
+
+
+class TestMinOp1(TestMinOp):
+    def init_data(self):
+        self.shape = [2, 0, 4, 6, 10]
+        self.axis = [2, 3]
+        self.keepdims = False
+        self.dtype = np.int64
+
+
+class TestMinBfloat16(unittest.TestCase):
+    def init_data(self):
+        self.shape = [0, 1, 2]
+        self.axis = [1]
+        self.keepdims = False
+
+    def setUp(self):
+        self.init_data()
+        data = np.random.random(self.shape).astype(np.float64)
+        res = np.min(data, axis=tuple(self.axis), keepdims=self.keepdims)
+        self.expect_shape = res.shape
+
+    def test_shape(self):
+        with dygraph_guard():
+            x = paddle.zeros(self.shape, dtype=paddle.bfloat16)
+            res = paddle.min(x, axis=self.axis, keepdim=self.keepdims)
+            res = res.numpy()
+            np.testing.assert_equal(res.shape, self.expect_shape)
 
 
 class TestMinAPIWithEmptyTensor(unittest.TestCase):
