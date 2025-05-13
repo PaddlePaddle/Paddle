@@ -23,43 +23,24 @@
 namespace phi {
 
 template <typename T, typename Context>
-void ReduceSumGradKernel(const Context& dev_ctx,
-                         const DenseTensor& x,
-                         const DenseTensor& out_grad,
-                         const IntArray& dims,
-                         bool keep_dim,
-                         bool reduce_all,
-                         DenseTensor* x_grad) {
+void ReduceSumGradKernel(const Context& dev_ctx, const DenseTensor& x,
+                         const DenseTensor& out_grad, const IntArray& dims,
+                         bool keep_dim, bool reduce_all, DenseTensor* x_grad) {
   reduce_all = recompute_reduce_all(x, dims, reduce_all);
-  if(x_grad && x_grad->numel() == 0){
+  if (x_grad && x_grad->numel() == 0) {
     dev_ctx.template Alloc<T>(x_grad);
     return;
   }
-  ReduceGradKernel<Context, T, funcs::SumGradFunctor, true>(dev_ctx,
-                                                            x,
-                                                            paddle::none,
-                                                            out_grad,
-                                                            dims.GetData(),
-                                                            keep_dim,
-                                                            reduce_all,
-                                                            x_grad);
+  ReduceGradKernel<Context, T, funcs::SumGradFunctor, true>(
+      dev_ctx, x, paddle::none, out_grad, dims.GetData(), keep_dim, reduce_all,
+      x_grad);
 }
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(sum_grad,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::ReduceSumGradKernel,
-                   bool,
-                   float,
-                   double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   int16_t,
-                   int,
-                   int64_t,
-                   phi::dtype::complex<float>,
+PD_REGISTER_KERNEL(sum_grad, CPU, ALL_LAYOUT, phi::ReduceSumGradKernel, bool,
+                   float, double, phi::dtype::float16, phi::dtype::bfloat16,
+                   int16_t, int, int64_t, phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {
   kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
 }
