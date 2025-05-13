@@ -93,7 +93,7 @@ jobs:
           tar -zvxf PaddleTest.tar.gz 1>/dev/null 2>&1
           # git submodule foreach "git config --global --add safe.directory \$toplevel/\$sm_path"
           # source ${{ github.workspace }}/../../../proxy
-          pip config set global.cache-dir ${{ github.workspace }}/../../../.cache/pip
+          ${python} -m pip config set global.cache-dir ${{ github.workspace }}/../../../.cache/pip
           ${python} -m pip install -r ./PaddleTest/framework/e2e/api_benchmark_new/requirement.txt
           ${python} -m pip install torch==2.6.0 torchvision==0.21.0 torchaudio==2.6.0 --index-url https://download.pytorch.org/whl/cu118
           '
