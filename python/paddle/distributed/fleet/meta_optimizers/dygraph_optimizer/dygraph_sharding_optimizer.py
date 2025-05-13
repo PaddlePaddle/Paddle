@@ -732,16 +732,14 @@ class DygraphShardingOptimizerV2:
         # sharding optimzier will fake zero grad to fill the comm_buffer so that ensure gradient can cal reduce normally.
         if not self.comm_overlap:
             return
-
         unused_param_name = []
         for param in unused_param:
             unused_param_name.append(param.name)
-        print(unused_param_name)
         for buffer in self._comm_buffer_list:
             for param in buffer._params:
                 if param.name in unused_param_name:
-                    # NOTE(zhangwl): in acc . maybe param_a have grad_a in acc_1 , dnot have grad in acc_2. we need to skip fake zero_grad in acc_2.
-                    param_grad_is_none = False if param.grad is None else True
+                    # NOTE(zhangwl): in acc . maybe param_a have grad_a in acc_1 , dnot have grad in acc_2,need support this scene.
+                    param_grad_is_none = True if param.grad is None else False
                     buffer.add_grad(
                         param,
                         use_comm=True,

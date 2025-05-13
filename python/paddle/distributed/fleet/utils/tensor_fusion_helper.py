@@ -586,6 +586,7 @@ class FusedCommBuffer:
         grad_var = param.main_grad if self.use_main_grad else param.grad
 
         if param_grad_is_none:
+            # NOTE(zhangwl): in acc . maybe param_a have grad_a in acc_1 , dnot have grad in acc_2,need support this scene.
             assert (
                 grad_var is None
             ), f"The current parameter[{param.name}] has gradient, its stop_grdient is {param.stop_gradient} , but we excepte it^s grad is None ,  Here are some examples: user marked_unused_param incorrect ,like marked_unused_param when backward unfinished,marked_unused_param which param have grad"
@@ -630,13 +631,12 @@ class FusedCommBuffer:
 
     def add_grad(self, param, use_comm=True, param_grad_is_none=False):
         assert param.name in self._params_step_dict
-        if (
-            not self._release_grads
-            or self._params_step_dict[param.name] > 0
-            or param_grad_is_none is True
-        ):
+        if not self._release_grads or self._params_step_dict[param.name] > 0:
             current_ptr = get_grad_address(param, self.use_main_grad)
-            if self._grads_to_addr[param.name] != current_ptr:
+            if (
+                self._grads_to_addr[param.name] is not None
+                and self._grads_to_addr[param.name] != current_ptr
+            ):
                 error_message = f"The address of the grad/main_grad of param {param.name} has been changed during training, which is not allowed for dp/sharding overlap with pp. This may be caused by some non-inplace operations on the grad/main_grad. Here are some examples: 1. The grad/main_grad of the param is changed by other operations, such as: clear_grad; 2. Using non-inplace operations on the grad/main_grad, such as: add, sub, mul, div, etc."
                 logger.error(error_message)
                 raise ValueError(error_message)
