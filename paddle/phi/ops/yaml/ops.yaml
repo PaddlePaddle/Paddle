@@ -3473,6 +3473,7 @@
   output : Tensor
   infer_meta :
     func : MeanAllInferMeta
+    spmd_rule : MeanAllInferSpmd
   kernel :
     func : mean_all
   backward : mean_all_grad
@@ -5165,6 +5166,7 @@
   output : Tensor(out), Tensor(indices)
   infer_meta :
     func : TopKInferMeta
+    spmd_rule: TopkInferSpmdDynamic
   kernel :
     func : topk
     data_type : x

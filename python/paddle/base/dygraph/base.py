@@ -814,7 +814,7 @@ def grad(
 
         to_static_unsupported_argument_warning(
             "paddle.grad",
-            ["retain_graph", "create_grad", "only_inputs", "allow_unused"],
+            ["retain_graph", "create_graph", "only_inputs", "allow_unused"],
             [retain_graph, create_graph, only_inputs, allow_unused],
             [None, False, True, False],
         )

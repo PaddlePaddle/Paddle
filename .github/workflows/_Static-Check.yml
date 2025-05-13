@@ -6,6 +6,9 @@ on:
       docker_build_image:
         type: string
         required: true
+      can-skip:
+        type: string
+        required: false
 
 env:
   PR_ID: ${{ github.event.pull_request.number }}
@@ -25,6 +28,7 @@ defaults:
 jobs:
   build:
     name: Test
+    if: ${{ inputs.can-skip != 'true' }}
     runs-on:
       group: BD_BJ-V100
 

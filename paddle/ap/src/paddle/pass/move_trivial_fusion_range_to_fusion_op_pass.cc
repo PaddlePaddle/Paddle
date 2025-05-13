@@ -1,4 +1,4 @@
-// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -50,14 +50,16 @@ class MoveTrivialFusionRangeToContainerOpPattern
       ::paddle::dialect::ApTrivialFusionEndOp ap_trivial_fusion_end_op,
       pir::PatternRewriter& rewriter) const override {
     const auto& ret = TryMatchAndRewrite(ap_trivial_fusion_end_op, &rewriter);
-    PADDLE_ENFORCE(
-        !ret.HasError(),
-        "MoveTrivialFusionRangeToContainerOpPattern::MatchAndRewrite failed. "
-        "\nTraceback (most recent call "
-        "last):\n%s\n%s: %s. ",
-        ret.GetError().CallStackToString(),
-        ret.GetError().class_name(),
-        ret.GetError().msg());
+    PADDLE_ENFORCE_EQ(
+        ret.HasError(),
+        false,
+        phi::errors::Fatal(
+            "MoveTrivialFusionRangeToFusionOpPattern::MatchAndRewrite failed. "
+            "\nTraceback (most recent call "
+            "last):\n%s\n%s: %s. ",
+            ret.GetError().CallStackToString(),
+            ret.GetError().class_name(),
+            ret.GetError().msg()));
     return ret.GetOkValue();
   }
 
