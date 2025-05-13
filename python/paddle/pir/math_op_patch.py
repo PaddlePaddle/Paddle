@@ -280,46 +280,58 @@ def monkey_patch_value():
         if self.is_dist() and not self._is_initialized():
             return None
 
-        def check_getitem_from_offset(tensor, *args):
+        def check_input_and_calculate_offset(tensor, *args):
             # Python implementation of the input validation logic for the C++ function `tensor__getitem_from_offset`.
 
-            dims = tensor.shape
-            numel = reduce(lambda x, y: x * y, dims) if len(dims) != 0 else 1
+            from paddle.jit.dy2static import Shape
+
+            dims = Shape(tensor)
+            numel = (
+                reduce(lambda x, y: int(x * y), dims) if len(dims) != 0 else 1
+            )
             offset = 0
 
             if len(args) == 0:
-                if numel != 1:
+                if not isinstance(numel, paddle.pir.Value) and numel != 1:
                     raise ValueError(
                         "only one element tensors can be converted to Python "
                         "scalars when no input coordinates"
                     )
             elif len(args) == 1:
                 (offset,) = args
-                if offset >= numel:
+                if not isinstance(numel, paddle.pir.Value) and offset >= numel:
                     raise ValueError(
                         f"index {offset} is out of bounds for size {numel}"
                     )
             else:
                 if len(args) != len(dims):
                     raise ValueError("incorrect number of indices for Tensor")
+
+                # TODO(dev): In certain cases, the stride calculation of the tensor may be modified by as_strided.
+                # This scenario needs to be considered in the future.
+                strides = [1] * len(dims)
+                for i in range(1, len(strides)):
+                    strides[-i - 1] = strides[-i] * dims[-i]
+
                 for i in range(len(args)):
                     index = args[i]
                     if not isinstance(index, int):
                         raise TypeError(
                             f"argument (position {i}) must be long, but got {type(index)}",
                         )
-                    if index >= dims[i]:
+                    if (
+                        not isinstance(dims[i], paddle.pir.Value)
+                        and index >= dims[i]
+                    ):
                         raise ValueError(
                             f"index {index} is out of bounds for axis {i} with size {dims[i]}"
                         )
+                    offset += index * strides[i]
 
-        check_getitem_from_offset(self, *args)
-        if len(args) == 0:
-            return self
-        if len(args) == 1:
-            return self.flatten()[args[0]]
+            return offset
 
-        return self[args]
+        offset = check_input_and_calculate_offset(self, *args)
+        return self.flatten()[offset]
 
     def astype(self, dtype):
         """
