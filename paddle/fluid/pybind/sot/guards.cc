@@ -62,7 +62,7 @@ static inline PyObject* PyObject_CallOneArg(PyObject* func, PyObject* arg) {
 
 #define CHECK_SHAPE(expected, ndim, actual_shape)        \
   {                                                      \
-    if (expected.size() != ndim) {                       \
+    if (expected.size() != static_cast<size_t>(ndim)) {  \
       return false;                                      \
     }                                                    \
     for (size_t i = 0; i < expected.size(); ++i) {       \
