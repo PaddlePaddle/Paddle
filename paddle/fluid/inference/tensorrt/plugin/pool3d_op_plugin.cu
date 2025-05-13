@@ -510,7 +510,8 @@ nvinfer1::IPluginV2DynamicExt *PIRPool3DPluginDynamic::clone() const
                                     ksize_,
                                     strides_,
                                     paddings_,
-                                    dilations_ is_global_);
+                                    dilations_,
+                                    is_global_);
 }
 
 const char *PIRPool3DPluginDynamic::getPluginType() const TRT_NOEXCEPT {

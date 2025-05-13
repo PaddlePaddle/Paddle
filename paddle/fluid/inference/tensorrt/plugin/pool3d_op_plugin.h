@@ -32,8 +32,7 @@ static std::vector<int> CalcOutputSize(const std::vector<int>& input_shape,
                                        const std::vector<int>& ksize,
                                        const std::vector<int>& strides,
                                        const std::vector<int>& paddings,
-                                       const std::vector<int>& dilations = {
-                                           1, 1, 1}) {
+                                       const std::vector<int>& dilations) {
   std::vector<int> output_shape = input_shape;
   if (adaptive) {
     output_shape[0] = ksize[0];
