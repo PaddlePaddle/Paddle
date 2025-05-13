@@ -207,4 +207,14 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OWNER: ${{ github.repository_owner }}
           REPO: ${{ github.event.repository.name }}
-          JOB_NAME: 'Api-Benchmark / Performance data storage'
+          JOB_NAME: 'Api-Benchmark / Check bypass for inference / Check bypass'
+
+      - name: Rerun Api-Benchmark-GPU
+        if: ${{ contains(env.comment_body, 'api-bm-gpu') }}
+        uses: ./.github/actions/rerun-workflow
+        with:
+          PR_ID: ${{ github.event.issue.number }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.event.repository.name }}
+          JOB_NAME: 'Api-Benchmark-GPU / Check bypass for inference / Check bypass'

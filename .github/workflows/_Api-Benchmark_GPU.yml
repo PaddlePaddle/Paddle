@@ -1,4 +1,4 @@
-name: Api-Benchmark
+name: Api-Benchmark-GPU
 
 on:
   workflow_call:
@@ -36,7 +36,8 @@ jobs:
 
   data-storage:
     name: Performance data storage
-    if: ${{ inputs.can-skip != 'true' }}
+    needs: check-bypass
+    if: ${{ inputs.can-skip != 'true' && needs.check-bypass.outputs.can-skip != 'true' }}
     runs-on:
       group: Api-bm-GPU
     steps:
@@ -53,7 +54,7 @@ jobs:
           GIT_PR_ID: ${{ github.event.pull_request.number }}
           GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RUN_ID: ${{ github.run_id }}
-          wheel_link: https://paddle-github-action.bj.bcebos.com/PR/build/${PR_ID}/${COMMIT_ID}/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl
+          wheel_link: https://paddle-github-action.bj.bcebos.com/PR/build/${{ github.event.pull_request.number }}/${{ github.event.pull_request.head.sha }}/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl
         run: |
           set -x
           container_name="api_benchmark_ci_${RUN_ID}"
