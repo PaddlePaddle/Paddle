@@ -727,6 +727,27 @@ class DygraphShardingOptimizerV2:
         if self._all_gather_overlap_forward:
             self._layers = layers
 
+    def marked_unused_param(self, unused_param):
+        # In sparse scenarios, some parameters may not have gradients at this step even if stop_gradient are true.
+        # sharding optimzier will fake zero grad to fill the comm_buffer so that ensure gradient can cal reduce normally.
+        if not self.comm_overlap:
+            return
+
+        unused_param_name = []
+        for param in unused_param:
+            unused_param_name.append(param.name)
+        print(unused_param_name)
+        for buffer in self._comm_buffer_list:
+            for param in buffer._params:
+                if param.name in unused_param_name:
+                    # NOTE(zhangwl): in acc . maybe param_a have grad_a in acc_1 , dnot have grad in acc_2. we need to skip fake zero_grad in acc_2.
+                    param_grad_is_none = False if param.grad is None else True
+                    buffer.add_grad(
+                        param,
+                        use_comm=True,
+                        param_grad_is_none=param_grad_is_none,
+                    )
+
     def register_reduce_overlap_hook(self, use_comm):
         # Register backward hooks for each parameter in the buffer
         for buffer in self._comm_buffer_list:
