@@ -29,6 +29,8 @@ set(XPU_XBLAS_LIB_NAME "libxpu_blas.so")
 set(XPU_XFA_LIB_NAME "libxpu_flash_attention.so")
 set(XPU_XPUDNN_LIB_NAME "libxpu_dnn.so")
 set(XPU_FFT_LIB_NAME "libcufft.so")
+# Avoid deprecated int32 apis:
+add_compile_definitions(XPUAPI_NOT_INCLUDE_DEPRECATED)
 
 if(NOT DEFINED XPU_XHPC_BASE_DATE)
   set(XPU_XHPC_BASE_DATE "dev/20250417")

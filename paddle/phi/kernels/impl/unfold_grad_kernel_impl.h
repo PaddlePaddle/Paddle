@@ -39,13 +39,13 @@ void UnfoldGradKernel(const Context& ctx,
   const auto& x_dims = x_grad->dims();
   const int batch_size = static_cast<int>(x_dims[0]);
 
-  int out_height = phi::funcs::CalcOutputSize(x_dims[2],
+  int out_height = phi::funcs::CalcOutputSize(static_cast<int>(x_dims[2]),
                                               kernel_sizes[0],
                                               dilations[0],
                                               paddings[0],
                                               paddings[2],
                                               strides[0]);
-  int out_width = phi::funcs::CalcOutputSize(x_dims[3],
+  int out_width = phi::funcs::CalcOutputSize(static_cast<int>(x_dims[3]),
                                              kernel_sizes[1],
                                              dilations[1],
                                              paddings[1],

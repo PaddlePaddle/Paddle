@@ -34,7 +34,7 @@ void Pad3dGradKernel(const Context& dev_ctx,
 
   auto* d_out = &out_grad;
   auto* d_in = x_grad;
-  auto d_in_dims = common::vectorize<int>(d_in->dims());
+  auto d_in_dims = common::vectorize<int64_t>(d_in->dims());
   const T* d_out_data = d_out->data<T>();
   T* d_in_data = dev_ctx.template Alloc<T>(d_in);
 
@@ -43,11 +43,11 @@ void Pad3dGradKernel(const Context& dev_ctx,
     is_ncdhw = false;
   }
 
-  const int num = d_in_dims[0];  // n
-  int channels = d_in_dims[1];   // c
-  int in_depth = d_in_dims[2];   // xd
-  int in_height = d_in_dims[3];  // xh
-  int in_width = d_in_dims[4];   // xw
+  const int64_t num = d_in_dims[0];  // n
+  int64_t channels = d_in_dims[1];   // c
+  int64_t in_depth = d_in_dims[2];   // xd
+  int64_t in_height = d_in_dims[3];  // xh
+  int64_t in_width = d_in_dims[4];   // xw
   if (data_format == "NDHWC") {
     channels = d_in_dims[4];
     in_depth = d_in_dims[1];
@@ -55,7 +55,7 @@ void Pad3dGradKernel(const Context& dev_ctx,
     in_width = d_in_dims[3];
   }
 
-  std::vector<int> pads_xpu(6);
+  std::vector<int64_t> pads_xpu(6);
   pads_xpu[0] = pads[4];  // pf
   pads_xpu[1] = pads[5];  // pb
   pads_xpu[2] = pads[2];  // pt
