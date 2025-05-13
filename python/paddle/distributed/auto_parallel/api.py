@@ -1191,7 +1191,7 @@ class _ShardOptimizer(Optimizer):
 
     def _shard_accumulator(self, param):
         # Note (luchang): Some models may have parameters whose first dimension is 1,
-        # such as modulation parameters in DiT models. These parameters can not need to be sharded.
+        # such as modulation parameters in DiT models. These parameters can not be sharded.
         if param.shape[0] == 1:
             return
 
