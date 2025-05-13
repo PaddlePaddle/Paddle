@@ -17,6 +17,7 @@
 #include <sstream>
 #include <stdexcept>
 #include "paddle/ap/include/axpr/abstract_list.h"
+#include "paddle/ap/include/axpr/atomic_axpr_method_class.h"
 #include "paddle/ap/include/axpr/bool_helper.h"
 #include "paddle/ap/include/axpr/bool_int_double_helper.h"
 #include "paddle/ap/include/axpr/builtin_frame_util.h"
@@ -617,6 +618,18 @@ Result<axpr::Value> SetAttr(axpr::InterpreterBase<axpr::Value>* interpreter,
   ADT_LET_CONST_REF(ret,
                     interpreter->InterpretCall(func, {args.at(1), args.at(2)}));
   return ret;
+}
+
+Result<axpr::Value> FunctionToAtomicAxpr(const axpr::Value&,
+                                         const std::vector<axpr::Value>& args) {
+  ADT_CHECK(args.size() == 1) << adt::errors::TypeError{
+      std::string() + "function_to_atomic_axpr() takes 1 arguments, but " +
+      std::to_string(args.size()) + " were given"};
+  ADT_LET_CONST_REF(
+      func,
+      args.at(0).template CastTo<axpr::Function<axpr::SerializableValue>>());
+  axpr::Atomic<axpr::CoreExpr> atomic{func->lambda};
+  return axpr::GetAtomicAxprClass().New(atomic);
 }
 
 }  // namespace ap::axpr

@@ -48,6 +48,8 @@ void VisitEachBuiltinFrameAttr(const YieldT& Yield) {
   Yield("__builtin__dirname", &fs::DirName);
   Yield("__builtin__basename", &fs::BaseName);
 
+  Yield("__builtin__function_to_atomic_axpr", &FunctionToAtomicAxpr);
+
   auto YieldTwice = [&](const auto& name, const auto& value) {
     Yield(name, value);
     Yield(std::string("__builtin__") + name, value);
