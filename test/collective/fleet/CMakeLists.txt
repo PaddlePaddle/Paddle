@@ -827,6 +827,8 @@ if((WITH_GPU OR WITH_XPU) AND LOCAL_ALL_PLAT)
     test_overlapped_offload_utils
     START_BASH
     test_overlapped_offload_utils.sh
+    TIMEOUT
+    "1000"
     LABELS
     "RUN_TYPE=DIST"
     ENVS
