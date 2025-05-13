@@ -428,12 +428,13 @@ class RROOQueueManager:
     def calc_rroo_infos(
         self, split_factor: int
     ) -> tuple[bool, list[int] | None, list[int] | None]:
-        if self.is_vpp:
-            return self.calc_rroo_infos_for_vpp(split_factor)
+        if self.is_vpp and split_factor == 1:
+            return self.calc_rroo_infos_navie(split_factor)
         else:
-            return self.calc_rroo_infos_for_non_vpp(split_factor)
+            # Is able to offload more, but is hard to schedule if split_factor is one when using vpp.
+            return self.calc_rroo_infos_eager_offload(split_factor)
 
-    def calc_rroo_infos_for_non_vpp(
+    def calc_rroo_infos_eager_offload(
         self, split_factor: int
     ) -> tuple[bool, list[int] | None, list[int] | None]:
         """
@@ -463,7 +464,7 @@ class RROOQueueManager:
 
         return True, offload_chunk_ids, reload_chunk_ids
 
-    def calc_rroo_infos_for_vpp(
+    def calc_rroo_infos_navie(
         self, split_factor: int
     ) -> tuple[bool, list[int] | None, list[int] | None]:
         """
