@@ -33,7 +33,7 @@ struct Value;
 namespace ap {
 namespace paddle {
 
-std::unique_ptr<::pir::Pass> CreateConvertPdFacadeToApFacadePass();
+std::unique_ptr<::pir::Pass> CreateFuseApTrivialPass();
 
 }  // namespace paddle
 }  // namespace ap

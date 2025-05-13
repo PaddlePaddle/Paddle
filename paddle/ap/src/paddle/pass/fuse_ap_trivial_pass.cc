@@ -12,28 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/ap/include/paddle/pass/fuse_ap_trivial_pass.h"
+#include "paddle/ap/include/paddle/pass/move_trivial_fusion_range_to_fusion_op_pass.h"
 
-#include <memory>
-#include <optional>
-#include "paddle/pir/include/pass/pass.h"
+namespace ap::paddle {
 
-namespace ap::memory {
-
-class CirclableRefListBase;
-
+std::unique_ptr<::pir::Pass> CreateFuseApTrivialPass() {
+  return CreateMoveTrivialFusionRangeToFusionOpPass();
 }
 
-namespace ap::axpr {
-
-struct Value;
-
-}
-
-namespace ap {
-namespace paddle {
-
-std::unique_ptr<::pir::Pass> CreateConvertPdFacadeToApFacadePass();
-
-}  // namespace paddle
-}  // namespace ap
+}  // namespace ap::paddle

@@ -14,26 +14,21 @@
 
 #pragma once
 
+#include <functional>
 #include <memory>
-#include <optional>
-#include "paddle/pir/include/pass/pass.h"
 
-namespace ap::memory {
+namespace pir {
 
-class CirclableRefListBase;
+class PassManager;
+class Program;
 
-}
+}  // namespace pir
 
-namespace ap::axpr {
+namespace ap::paddle {
 
-struct Value;
+void ApplyPccPass(
+    ::pir::Program* program,
+    const std::function<std::shared_ptr<pir::PassManager>()>& CreatePassManager,
+    bool is_train_mode = false);
 
-}
-
-namespace ap {
-namespace paddle {
-
-std::unique_ptr<::pir::Pass> CreateConvertPdFacadeToApFacadePass();
-
-}  // namespace paddle
-}  // namespace ap
+}  // namespace ap::paddle

@@ -232,15 +232,15 @@ void ApplyApGenericDrrPass(
     pir::IrPrinter(LOG(ERROR) << "before ConvertPdFacadeToApFacadePass:\n")
         .PrintProgram(program);
     std::shared_ptr<pir::PassManager> pass_manager = CreatePassManager();
-    pass_manager->AddPass(CreateConvertPdFacadeToApFacadePass());
+    pass_manager->AddPass(ap::paddle::CreateConvertPdFacadeToApFacadePass());
     pass_manager->Run(program);
     pir::IrPrinter(LOG(ERROR) << "after ConvertPdFacadeToApFacadePass:\n")
         .PrintProgram(program);
   }
   ap::memory::Guard guard{};
-  if (auto pass = CreateApGenericClassicDrrPass(guard.circlable_ref_list())) {
+  if (auto pass = ap::paddle::CreateApGenericClassicDrrPass(
+          guard.circlable_ref_list())) {
     std::shared_ptr<pir::PassManager> pass_manager = CreatePassManager();
-    pass_manager->AddPass(CreateConvertPdFacadeToApFacadePass());
     pass_manager->AddPass(std::move(pass.value()));
     pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
     pir::IrPrinter(LOG(ERROR) << "before ApGenericClassicDrrPass:\n")
@@ -249,7 +249,8 @@ void ApplyApGenericDrrPass(
     pir::IrPrinter(LOG(ERROR) << "after ApGenericClassicDrrPass:\n")
         .PrintProgram(program);
   }
-  if (auto pass = CreateApGenericAbstractDrrPass(guard.circlable_ref_list())) {
+  if (auto pass = ap::paddle::CreateApGenericAbstractDrrPass(
+          guard.circlable_ref_list())) {
     std::shared_ptr<pir::PassManager> pass_manager = CreatePassManager();
     pass_manager->AddPass(std::move(pass.value()));
     pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());

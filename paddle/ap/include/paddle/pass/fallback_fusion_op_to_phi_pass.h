@@ -33,7 +33,9 @@ struct Value;
 namespace ap {
 namespace paddle {
 
-std::unique_ptr<::pir::Pass> CreateConvertPdFacadeToApFacadePass();
+std::unique_ptr<::pir::Pass> CreateFallbackFusionOpToPhiPass();
+
+std::unique_ptr<::pir::Pass> CreateFallbackNestedFusionOpToPhiPass();
 
 }  // namespace paddle
 }  // namespace ap
