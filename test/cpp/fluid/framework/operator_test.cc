@@ -610,28 +610,6 @@ REGISTER_OP_WITHOUT_GRADIENT(
 REGISTER_OP_CPU_KERNEL(op_without_unused_var,
                        paddle::framework::OpWithoutUnusedVarKernelTest<float>);
 
-// test with single input
-TEST(OpWithUnusedVar, all) {
-  paddle::framework::InitDevices();
-  paddle::framework::proto::OpDesc op_desc;
-  op_desc.set_type("op_with_unused_var");
-  BuildVar("X", {"X"}, op_desc.add_inputs());
-  BuildVar("Y", {"Y"}, op_desc.add_outputs());
-
-  phi::CPUPlace cpu_place;
-  paddle::framework::Scope scope;
-  auto* x = scope.Var("X")->GetMutable<phi::DenseTensor>();
-  auto* y = scope.Var("Y")->GetMutable<phi::DenseTensor>();
-  x->Resize({32, 64});
-  y->Resize({32, 64});
-  x->mutable_data<float>(cpu_place);
-  y->mutable_data<float>(cpu_place);
-
-  auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
-  // should throw exception
-  ASSERT_THROW(op->Run(scope, cpu_place), paddle::platform::EnforceNotMet);
-}
-
 TEST(OpWithoutUnusedVar, all) {
   paddle::framework::InitDevices();
   paddle::framework::proto::OpDesc op_desc;
