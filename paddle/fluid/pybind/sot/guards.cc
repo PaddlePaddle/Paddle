@@ -60,7 +60,7 @@ static inline PyObject* PyObject_CallOneArg(PyObject* func, PyObject* arg) {
     }                            \
   }
 
-#define CheckShape(expected, ndim, actual_shape)         \
+#define CHECK_SHAPE(expected, ndim, actual_shape)        \
   {                                                      \
     if (expected.size() != ndim) {                       \
       return false;                                      \
@@ -151,7 +151,7 @@ bool ShapeMatchGuard::check(PyObject* value) {
   auto tensor = GetTensorFromPyObject(value);
   HANDLE_NULL_TENSOR(tensor);
   auto shape = tensor->shape();
-  CheckShape(expected_, shape.size(), shape);
+  CHECK_SHAPE(expected_, shape.size(), shape);
 }
 
 bool AttributeMatchGuard::check(PyObject* value) {
@@ -204,9 +204,9 @@ bool NumPyArrayShapeMatchGuard::check(PyObject* value) {
   if (!array) {
     return false;
   }
-  // int ndim = array.ndim();
-  // auto shape = array.shape();
-  CheckShape(expected_, array.ndim(), array.shape());
+  int ndim = array.ndim();
+  auto shape = array.shape();
+  CHECK_SHAPE(expected_, ndim, shape);
 }
 
 bool WeakRefMatchGuard::check(PyObject* value) {
