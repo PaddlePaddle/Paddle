@@ -682,7 +682,6 @@ ir::IndexExpr BoundSimplify(const ir::IndexExpr &expr) {
   if (expr.node_type() != ir::IrNodeTy::Div &&
       expr.node_type() != ir::IrNodeTy::Mod)
     return expr;
-
   common::cas_intervals_t var_intervals =
       common::CollectVarIntervalsOfExprs({expr});
   common::SymbolicExprAnalyzer ana(var_intervals);
@@ -698,7 +697,98 @@ ir::IndexExpr BoundSimplify(const ir::IndexExpr &expr) {
       return expr.operand(0);
     }
   }
-  return expr;
+
+  // 处理 `(a * C1 + b) / C2` 和 `(a * C1 + b) % C2`的情况（其中 `C1` 和 `C2` 是常量）
+  // 获取分子和分母
+  auto numerator = expr.operand(0);
+  auto denominator = expr.operand(1);
+
+  // 检查分母是否是常量
+  if (!denominator.is_constant()) {
+    return expr;
+  }
+  int64_t denom_val = denominator.as_int64();
+
+  // 递归展开加法链，收集所有项
+  std::vector<ir::IndexExpr> terms;
+  std::function<void(ir::IndexExpr)> flatten_add = [&](ir::IndexExpr e) {
+    if (e.node_type() == ir::IrNodeTy::Add) {
+      flatten_add(e.operand(0));
+      flatten_add(e.operand(1));
+    } else {
+      terms.push_back(e);
+    }
+  };
+  flatten_add(numerator);
+
+  if (terms.empty()) {
+    return expr;
+  }
+
+  // 分离出包含分母倍数的项和其他项
+  std::vector<ir::IndexExpr> multiple_terms;
+  std::vector<ir::IndexExpr> remainder_terms;
+  
+  for (auto& term : terms) {
+    if (term.node_type() == ir::IrNodeTy::Mul) {
+      auto rhs = term.operand(1);
+      if (rhs.is_constant() && rhs.as_int64() == denom_val) {
+        // 分裂出项可被denominator整除
+        multiple_terms.push_back(term.operand(0)); // 提取被乘数部分
+        continue;
+      }
+    }
+    // 分裂出项不可被denominator整除
+    auto remainder_upper = ana.UpperBound(term);
+    if (!ana.ProveLE(remainder_upper, denominator).value_or(false)) {
+      return expr;
+    }
+    remainder_terms.push_back(term);
+  }
+
+  // 构建余项表达式
+  ir::IndexExpr remainder_expr;
+  if (remainder_terms.empty()) {
+    remainder_expr = ir::IndexExpr(0);
+  } else if (remainder_terms.size() == 1) {
+    remainder_expr = remainder_terms[0];
+  } else {
+    remainder_expr = ir::Add::Make(remainder_terms[0], remainder_terms[1]);
+    for (size_t i = 2; i < remainder_terms.size(); ++i) {
+      remainder_expr = ir::Add::Make(remainder_expr, remainder_terms[i]);
+    }
+  }
+  
+  // 构建被乘数项表达式
+  ir::IndexExpr multiple_expr;
+  if (multiple_terms.empty()) {
+    multiple_expr = ir::IndexExpr(0);
+  } else if (multiple_terms.size() == 1) {
+    multiple_expr = multiple_terms[0];
+  } else {
+    multiple_expr = ir::Add::Make(multiple_terms[0], multiple_terms[1]);
+    for (size_t i = 2; i < multiple_terms.size(); ++i) {
+      multiple_expr = ir::Add::Make(multiple_expr, multiple_terms[i]);
+    }
+  }
+
+  // 验证余项范围是否小于分母
+  auto remainder_upper = ana.UpperBound(remainder_expr);
+  if (!ana.ProveLE(remainder_upper, denominator).value_or(false)) {
+    // 余项大于分母，则余项除分母后不为零，则余项单独计算
+    if (expr.node_type() == ir::IrNodeTy::Div) {
+      return ir::Add::Make(multiple_expr, ir::Div::Make(remainder_expr, denominator));
+    } else { // 模运算
+      return ir::Mod::Make(remainder_expr, denominator);
+    }
+  } else {
+    // 余项小于分母，则余项除分母后为零
+    if (expr.node_type() == ir::IrNodeTy::Div) {
+      return multiple_expr;
+    } else {
+      return remainder_expr;
+    }
+  }
 }
 
 ir::IndexExpr BroadcastSimplify(const ir::IndexExpr &expr) {

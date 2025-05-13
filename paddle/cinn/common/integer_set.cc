@@ -490,7 +490,7 @@ class BoundReplacer : public ir::IRMutator<> {
       lower_bound =
           interval.e_l.defined() ? interval.e_l : ir::Expr(interval.l);
       upper_bound =
-          interval.e_r.defined() ? interval.e_r : ir::Expr(interval.r);
+          interval.e_r.defined() ? (interval.e_r - ir::Expr(1)) : (ir::Expr(interval.r) - ir::Expr(1));
     }
     if (!var_visited_.count(var->name)) {
       if (sign_) {
