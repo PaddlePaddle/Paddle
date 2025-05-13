@@ -59,7 +59,7 @@ jobs:
           container_name="api_benchmark_ci_${RUN_ID}"
           echo "container_name=${container_name}" >> ${{ github.env }}
           docker_image=${{ inputs.docker_build_image }}
-          docker run -d -t --name ${container_name} --privileged --shm-size=128g \
+          docker run -d -t --gpus all --name ${container_name} --privileged --shm-size=128g \
             -v ${{ github.workspace }}/../../..:${{ github.workspace }}/../../.. \
             -v ${{ github.workspace }}:/paddle \
             -e python \
