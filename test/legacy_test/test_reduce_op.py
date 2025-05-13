@@ -205,6 +205,27 @@ def create_test_fp16_class(parent):
                 check_prim_pir=True,
                 check_pir=True,
             )
+class TestSumOp3D0size1(TestSumOp3Dim):
+    def init_input(self):
+        self.x = np.random.uniform(0, 0.1, (5, 0, 10)).astype(self.dtype)
+
+    def init_attrs(self):
+        self.attrs = {'dim': (0, 1, 2)}
+
+class TestSumOp3D0size2(TestSumOp3Dim):
+    def init_input(self):
+        self.x = np.random.uniform(0, 0.1, (0, 6, 10)).astype(self.dtype)
+
+    def init_attrs(self):
+        self.attrs = {'dim': (0, 1, 2)}
+
+class TestSumOp3D0size3(TestSumOp3Dim):
+    def init_input(self):
+        self.x = np.random.uniform(0, 0.1, (4, 6, 0)).astype(self.dtype)
+        print(self.x)
+
+    def init_attrs(self):
+        self.attrs = {'dim': (0, 1, 2)}
 
 
 create_test_fp16_class(TestSumOp)
