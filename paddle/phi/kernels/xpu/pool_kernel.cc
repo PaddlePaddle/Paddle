@@ -24,8 +24,8 @@ template <typename T, typename Context>
 void Pool2dKernel(const Context& ctx,
                   const DenseTensor& x,
                   const IntArray& kernel_size_t,
-                  const std::vector<int>& strides,
-                  const std::vector<int>& paddings_t,
+                  const std::vector<int64_t>& strides_t,
+                  const std::vector<int64_t>& paddings_t,
                   bool ceil_mode,
                   bool exclusive,
                   const std::string& data_format,
@@ -36,7 +36,8 @@ void Pool2dKernel(const Context& ctx,
                   DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
 
-  std::vector<int> paddings(paddings_t);
+  std::vector<int> strides(strides_t.begin(), strides_t.end());
+  std::vector<int> paddings(paddings_t.begin(), paddings_t.end());
   std::vector<int> kernel_size(kernel_size_t.GetData().begin(),
                                kernel_size_t.GetData().end());
 
@@ -158,9 +159,9 @@ void Pool2dKernel(const Context& ctx,
 template <typename T, typename Context>
 void Pool3dKernel(const Context& ctx,
                   const DenseTensor& x,
-                  const std::vector<int>& kernel_size_t,
-                  const std::vector<int>& strides,
-                  const std::vector<int>& paddings_t,
+                  const std::vector<int64_t>& kernel_size_t,
+                  const std::vector<int64_t>& strides_t,
+                  const std::vector<int64_t>& paddings_t,
                   bool ceil_mode,
                   bool exclusive,
                   const std::string& data_format,
@@ -172,8 +173,9 @@ void Pool3dKernel(const Context& ctx,
   using XPUType = typename XPUTypeTrait<T>::Type;
 
   const bool channel_last = data_format == "NDHWC";
-  std::vector<int> paddings(paddings_t);
-  std::vector<int> kernel_size(kernel_size_t);
+  std::vector<int> strides(strides_t.begin(), strides_t.end());
+  std::vector<int> paddings(paddings_t.begin(), paddings_t.end());
+  std::vector<int> kernel_size(kernel_size_t.begin(), kernel_size_t.end());
 
   auto x_dims = x.dims();
   int n = x.dims()[0];

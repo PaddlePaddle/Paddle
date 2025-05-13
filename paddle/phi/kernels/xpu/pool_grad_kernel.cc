@@ -25,8 +25,8 @@ void Pool2dGradKernel(const Context& ctx,
                       const DenseTensor& out,
                       const DenseTensor& dout,
                       const IntArray& kernel_size_t,
-                      const std::vector<int>& strides_t,
-                      const std::vector<int>& paddings_t,
+                      const std::vector<int64_t>& strides_t,
+                      const std::vector<int64_t>& paddings_t,
                       bool ceil_mode,
                       bool exclusive,
                       const std::string& data_format,
@@ -37,10 +37,10 @@ void Pool2dGradKernel(const Context& ctx,
                       DenseTensor* dx) {
   using XPUType = typename XPUTypeTrait<T>::Type;
 
-  std::vector<int> paddings(paddings_t);
+  std::vector<int> paddings(paddings_t.begin(), paddings_t.end());
   std::vector<int> kernel_size(kernel_size_t.GetData().begin(),
                                kernel_size_t.GetData().end());
-  std::vector<int> strides(strides_t);
+  std::vector<int> strides(strides_t.begin(), strides_t.end());
 
   PADDLE_ENFORCE_EQ(
       data_format,
@@ -182,9 +182,9 @@ void Pool3dGradKernel(const Context& ctx,
                       const DenseTensor& x,
                       const DenseTensor& out,
                       const DenseTensor& dout,
-                      const std::vector<int>& kernel_size_t,
-                      const std::vector<int>& strides_t,
-                      const std::vector<int>& paddings_t,
+                      const std::vector<int64_t>& kernel_size_t,
+                      const std::vector<int64_t>& strides_t,
+                      const std::vector<int64_t>& paddings_t,
                       bool ceil_mode,
                       bool exclusive,
                       const std::string& data_format,
@@ -197,9 +197,9 @@ void Pool3dGradKernel(const Context& ctx,
   auto x_dims = x.dims();
   const bool channel_last = data_format == "NDHWC";
 
-  std::vector<int> paddings(paddings_t);
-  std::vector<int> kernel_size(kernel_size_t);
-  std::vector<int> strides(strides_t);
+  std::vector<int> paddings(paddings_t.begin(), paddings_t.end());
+  std::vector<int> kernel_size(kernel_size_t.begin(), kernel_size_t.end());
+  std::vector<int> strides(strides_t.begin(), strides_t.end());
 
   PADDLE_ENFORCE_EQ(
       data_format,
