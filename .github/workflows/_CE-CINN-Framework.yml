@@ -96,6 +96,7 @@ jobs:
           work_dir: ${{ github.workspace }}
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
+          source ${{ github.workspace }}/../../../proxy
           source ${ci_scripts}/ce_cinn_diff.sh
           if [ ${sum_num} -eq 0 ];then
             echo "The modified files does not affect LayerCase in PR-CE-CINN-Framework, so skip this ci."
