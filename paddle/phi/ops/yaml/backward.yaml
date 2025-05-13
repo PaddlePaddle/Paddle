@@ -3620,7 +3620,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [out_grad]
-    spmd_rule : ElementwiseUnaryWithPartialInferSpmd
+    spmd_rule : ElementwiseUnaryWithPartialInferSpmdElementwiseUnaryInferSpmd
   kernel :
     func : trunc_grad
 
