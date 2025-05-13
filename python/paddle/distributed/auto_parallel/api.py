@@ -1190,6 +1190,11 @@ class _ShardOptimizer(Optimizer):
                 ), "The sharding degree of all parameters must be equal currently."
 
     def _shard_accumulator(self, param):
+        # Note (luchang): Some models may have parameters whose first dimension is 1,
+        # such as modulation parameters in DiT models. These parameters can not need to be sharded.
+        if param.shape[0] == 1:
+            return
+
         target_name = param.name
         if param.name in self._inner_opt._master_weights.keys():
             master_weight = self._inner_opt._master_weights[param.name]
