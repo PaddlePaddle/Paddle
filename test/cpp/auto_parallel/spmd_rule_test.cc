@@ -1486,7 +1486,7 @@ TEST(ElementwiseUnaryLike, Ctor) {
 
   check_element_unary_like(inferred_dist_attrs);
   // ElementwiseUnaryGradInferSpmd
-  auto input =
+  input =
       phi::distributed::DistMetaTensor(common::make_ddim(shape), t_dist_attr);
   inferred_dist_attrs = phi::distributed::ElementwiseUnaryGradInferSpmd(input);
   check_element_unary_like(inferred_dist_attrs);
