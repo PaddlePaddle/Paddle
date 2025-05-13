@@ -693,7 +693,7 @@ def amp_guard(
                                     param.process_mesh
                                 ].append(param)
                     amp_global_state().already_classify_params_meshes = True
-                if not os.getenv("FLAGS_enable_inplace_master_grad") == '1':
+                if not os.getenv("FLAGS_enable_tensor_fusion") == '1':
                     if len(amp_global_state().mesh2params):
                         for _, params in amp_global_state().mesh2params.items():
                             core.eager.set_master_grads(params)
@@ -729,7 +729,7 @@ def amp_guard(
 
                 return param_hook
 
-            if os.getenv("FLAGS_enable_inplace_master_grad") == '1':
+            if os.getenv("FLAGS_enable_tensor_fusion") == '1':
                 for param in amp_global_state().model_parameters:
                     if not hasattr(param, "main_grad"):
                         param.main_grad = None

@@ -1145,9 +1145,6 @@ class _ShardOptimizer(Optimizer):
         self.comm_group = None
         self.do_tensor_fusion_once = True
         self._strategy = Strategy()
-        self.enable_inplace_master_grad = (
-            os.getenv("FLAGS_enable_inplace_master_grad") == '1'
-        )
         self.enable_tensor_fusion = (
             os.getenv("FLAGS_enable_tensor_fusion") == '1'
         )
@@ -1281,11 +1278,10 @@ class _ShardOptimizer(Optimizer):
     def _finish_update(self, block, parameters_and_grads):
         self._inner_opt._finish_update(block, parameters_and_grads)
         if self.enable_tensor_fusion:
-            if self.enable_inplace_master_grad:
-                # zero the grad storage for add_ op in inplace_master_grad
-                for grad_storage in self.grad_storage:
-                    grad_storage.zero_()
-                    grad_storage.check_in = 0
+            # zero the grad storage for add_ op in inplace_master_grad
+            for grad_storage in self.grad_storage:
+                grad_storage.zero_()
+                grad_storage.check_in = 0
             if not self.enable_sharding_overlap:
                 for i in range(len(self.fuse_param_view)):
                     shard_size = (
@@ -1301,9 +1297,6 @@ class _ShardOptimizer(Optimizer):
                     ).wait()
 
         else:
-            if self.enable_inplace_master_grad:
-                for param, _ in parameters_and_grads:
-                    param.main_grad._local_value().zero_()
             if isinstance(parameters_and_grads, list):
                 for p, _ in parameters_and_grads:
                     self._reset_placements(p)
