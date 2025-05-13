@@ -81,9 +81,9 @@ jobs:
   ce-cinn-framework:
     name: CE-CINN-Framework
     uses: ./.github/workflows/_CE-CINN-Framework.yml
-    needs: [build-docker]
-    with:
-      docker_build_image: ${{ needs.build-docker.outputs.docker_build_image }}
+    # needs: [build-docker]
+    # with:
+    #   docker_build_image: ${{ needs.build-docker.outputs.docker_build_image }}
 
   api-benchmark:
     name: Api-Benchmark
