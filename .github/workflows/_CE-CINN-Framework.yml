@@ -111,7 +111,7 @@ jobs:
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ~/.bashrc
-          pip config set global.cache-dir "/home/data/cfs/.cache/pip"
+          pip config set global.cache-dir "$CACHE_DIR/pip"
           pip install /paddle/build/pr_whl/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl
           cd /PaddleTest/framework/e2e/PaddleLT_new
           pip install -r requirement.txt
