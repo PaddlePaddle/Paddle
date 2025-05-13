@@ -24,7 +24,7 @@
 #include "paddle/ap/include/drr/value_method_class.h"
 #include "paddle/ap/include/paddle/pir/pir_method_class.h"
 
-namespace cinn::dialect::ir {
+namespace ap::paddle {
 
 namespace adt = ap::adt;
 
@@ -61,4 +61,4 @@ adt::Result<DrrCtx> ApDrrHelper::Interpret(
   return drr_interpreter_.InterpretPass(cls);
 }
 
-}  // namespace cinn::dialect::ir
+}  // namespace ap::paddle

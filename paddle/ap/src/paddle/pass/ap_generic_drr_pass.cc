@@ -61,7 +61,7 @@
 #include "paddle/pir/include/core/builtin_type.h"
 #include "paddle/pir/include/pass/pass_registry.h"
 
-namespace cinn::dialect::ir {
+namespace ap::paddle {
 
 namespace adt = ap::adt;
 
@@ -788,7 +788,7 @@ struct ApRewriter {
     }
     try {
       pir::Operation* op =
-          paddle::drr::OperationFactory::Instance().CreateOperation(
+          ::paddle::drr::OperationFactory::Instance().CreateOperation(
               res_ptn_ir_op->op_declare->op_name, inputs, attrs, *rewriter);
       return op->results();
     } catch (const std::exception& e) {
@@ -1166,7 +1166,7 @@ struct ApRewriter {
       const std::string& infer_meta_lambda_str,
       const std::string& kernel_dispatch_lambda_str,
       const std::string& kernel_dispatch_const_data_lambda_str) const {
-    auto ap_variadic = rewriter->Build<paddle::dialect::ApVariadicOp>(
+    auto ap_variadic = rewriter->Build<::paddle::dialect::ApVariadicOp>(
         input,
         num_outputs,
         code_gen_lambda_str,
@@ -3422,4 +3422,4 @@ std::optional<std::unique_ptr<::pir::Pass>> CreateCustomAccessTopoDrrPass(
   return std::move(pass);
 }
 
-}  // namespace cinn::dialect::ir
+}  // namespace ap::paddle
