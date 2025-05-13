@@ -1822,7 +1822,8 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
       if (InputsContainDistTensor(&mesh, self->tensor, value_tensor)) {
         ConvertAllInputsToDistTensor(mesh, self->tensor, value_tensor);
       }
-      if (size != 1 || PyTuple_GetItem(index_ptr, 0) == Py_True) {
+      if (size != 1 || PyTuple_GetItem(index_ptr, 0) != Py_False) {
+        // if index is single false, do nothing.
         self->tensor = set_value_with_tensor__ad_func(self->tensor,
                                                       value_tensor,
                                                       slice_starts,
@@ -1846,7 +1847,8 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
       if (InputsContainDistTensor(&mesh, self->tensor)) {
         ConvertAllInputsToDistTensor(mesh, self->tensor);
       }
-      if (size != 1 || PyTuple_GetItem(index_ptr, 0) == Py_True) {
+      if (size != 1 || PyTuple_GetItem(index_ptr, 0) != Py_False) {
+        // if index is single false, do nothing.
         self->tensor = set_value__ad_func(self->tensor,
                                           slice_starts,
                                           slice_ends,
