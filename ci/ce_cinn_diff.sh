@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+set -x
 PATH=/usr/local/bin:${PATH}
 echo "PATH=${PATH}" >> ~/.bashrc
 ln -sf $(which python3.10) /usr/local/bin/python
 ln -sf $(which pip3.10) /usr/local/bin/pip
 
 cp -r /PaddleTest/framework/e2e/PaddleLT_new/support/pr_info.py .
-python pr_info.py --pr_id ${AGILE_PULL_ID} --title_keyword CINN
+python pr_info.py --pr_id ${PR_ID} --title_keyword CINN
 title_num=`grep -o '[0-9]\+' pr_title.log`
 
 git diff --numstat --diff-filter=AMRD develop | grep paddle/cinn | awk '{print $NF}' | tee pr_filelist1.log
