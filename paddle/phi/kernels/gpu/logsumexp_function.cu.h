@@ -14,7 +14,6 @@
 #pragma once
 
 #include <assert.h>
-#include "glog/logging.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
 #include "paddle/phi/kernels/primitive/functor_primitives.h"
 
@@ -53,40 +52,6 @@ __inline__ __device__ T WarpAllReduce(T val) {
   }
   return val;
 }
-
-#if PADDLE_WITH_HIP
-inline void GetNumBlocks(int64_t block_size,
-                         int64_t max_blocks,
-                         int64_t waves,
-                         int* num_blocks) {
-  int dev;
-  PADDLE_ENFORCE_GPU_SUCCESS(hipGetDevice(&dev));
-  int sm_count;
-  PADDLE_ENFORCE_GPU_SUCCESS(hipDeviceGetAttribute(
-      &sm_count, hipDeviceAttributeMultiprocessorCount, dev));
-  int tpm;
-  PADDLE_ENFORCE_GPU_SUCCESS(hipDeviceGetAttribute(
-      &tpm, hipDeviceAttributeMaxThreadsPerMultiProcessor, dev));
-  *num_blocks = std::max<int>(
-      1, std::min<int64_t>(max_blocks, sm_count * tpm / block_size * waves));
-}
-#else
-inline void GetNumBlocks(int64_t block_size,
-                         int64_t max_blocks,
-                         int64_t waves,
-                         int* num_blocks) {
-  int dev;
-  PADDLE_ENFORCE_GPU_SUCCESS(cudaGetDevice(&dev));
-  int sm_count;
-  PADDLE_ENFORCE_GPU_SUCCESS(
-      cudaDeviceGetAttribute(&sm_count, cudaDevAttrMultiProcessorCount, dev));
-  int tpm;
-  PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceGetAttribute(
-      &tpm, cudaDevAttrMaxThreadsPerMultiProcessor, dev));
-  *num_blocks = std::max<int>(
-      1, std::min<int64_t>(max_blocks, sm_count * tpm / block_size * waves));
-}
-#endif
 
 template <typename T,
           typename SourceType,
@@ -209,25 +174,6 @@ inline cudaError_t LaunchLogsumexpWarp(const Context& dev_ctx,
   const int64_t num_blocks =
       (num_row / RowsPerThread + thread_groups_per_block - 1) /
       thread_groups_per_block;
-  int grid_dim_x = num_blocks;
-  { GetNumBlocks(block_size, num_blocks, waves, &grid_dim_x); }
-  VLOG(4) << "HQY number of blocks:" << grid_dim_x << ", r, c: " << num_row
-          << ", " << num_col << ", num blocks:" << num_blocks;
-  VLOG(4) << "HQY RowsPerThread: " << RowsPerThread
-          << ", ThreadGroupWidth: " << ThreadGroupWidth
-          << ", ColsPerThread: " << ColsPerThread << ", VecSize: " << VecSize;
-  int max_block_x, max_block_y, max_block_z, max_block_cnt, dev;
-  PADDLE_ENFORCE_GPU_SUCCESS(cudaGetDevice(&dev));
-  PADDLE_ENFORCE_GPU_SUCCESS(
-      cudaDeviceGetAttribute(&max_block_x, cudaDevAttrMaxGridDimX, dev));
-  PADDLE_ENFORCE_GPU_SUCCESS(
-      cudaDeviceGetAttribute(&max_block_y, cudaDevAttrMaxGridDimY, dev));
-  PADDLE_ENFORCE_GPU_SUCCESS(
-      cudaDeviceGetAttribute(&max_block_z, cudaDevAttrMaxGridDimZ, dev));
-  PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceGetAttribute(
-      &max_block_cnt, cudaDevAttrMaxThreadsPerMultiProcessor, dev));
-  VLOG(4) << "Limits: " << max_block_x << ", " << max_block_y << ", "
-          << max_block_z << ", " << max_block_cnt;
   LogsumexpWarpImpl<T,
                     SourceType,
                     Context,
@@ -236,7 +182,7 @@ inline cudaError_t LaunchLogsumexpWarp(const Context& dev_ctx,
                     RowsPerThread,
                     ThreadGroupWidth,
                     NeedPadding>
-      <<<grid_dim_x, block_dim, 0, dev_ctx.stream()>>>(
+      <<<num_blocks, block_dim, 0, dev_ctx.stream()>>>(
           dev_ctx, num_row, num_col, in, out);
 #if PADDLE_WITH_HIP
   return hipPeekAtLastError();
