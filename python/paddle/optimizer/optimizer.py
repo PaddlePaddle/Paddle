@@ -2000,16 +2000,16 @@ class Optimizer:
             for param in self._param_groups:
                 if param.stop_gradient:
                     continue
-                enable_inplace_master_grad = (
-                    os.getenv("FLAGS_enable_inplace_master_grad") == '1'
-                )
-                if not enable_inplace_master_grad:
+                if os.getenv("FLAGS_enable_tensor_fusion") == '1':
+                    if (
+                        hasattr(param, "main_grad")
+                        and param.main_grad is not None
+                    ):
+                        params_grads.append((param, param.main_grad))
+                else:
                     if param._grad_ivar() is not None:
                         grad_var = param._grad_ivar()
                         params_grads.append((param, grad_var))
-                else:
-                    if param.main_grad is not None:
-                        params_grads.append((param, param.main_grad))
 
             self._apply_optimize(
                 loss=None,
