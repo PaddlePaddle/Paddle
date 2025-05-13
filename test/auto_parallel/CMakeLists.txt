@@ -176,6 +176,7 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
                   test_dtensor_from_local_api)
   py_test_modules(test_dy_local_view_compute MODULES test_dy_local_view_compute)
   py_test_modules(test_local_view_compute MODULES test_local_view_compute)
+  py_test_modules(test_PipelineStage MODULES test_PipelineStage)
   # End of unittests WITH single card WITHOUT timeout
 
 endif()
