@@ -20,21 +20,32 @@ limitations under the License. */
 
 namespace phi {
 template <typename T, typename Context>
-void SumRawKernel(const Context& dev_ctx, const DenseTensor& x,
-                  const IntArray& dims, bool keep_dim, bool reduce_all,
-                  DataType out_dtype UNUSED, DenseTensor* out) {
+void SumRawKernel(const Context& dev_ctx,
+                  const DenseTensor& x,
+                  const IntArray& dims,
+                  bool keep_dim,
+                  bool reduce_all,
+                  DataType out_dtype UNUSED,
+                  DenseTensor* out) {
   reduce_all = recompute_reduce_all(x, dims, reduce_all);
   if (x.numel() == 0) {
     dev_ctx.template Alloc<T>(out);
     FullKernel<T, Context>(dev_ctx,
-                           phi::IntArray(common::vectorize(out->dims())), 0,
-                           out_dtype, out);
+                           phi::IntArray(common::vectorize(out->dims())),
+                           0,
+                           out_dtype,
+                           out);
     return;
   }
-  ReduceKernel<T, Context>(dev_ctx, x, dims, keep_dim, reduce_all, out,
+  ReduceKernel<T, Context>(dev_ctx,
+                           x,
+                           dims,
+                           keep_dim,
+                           reduce_all,
+                           out,
                            dnnl::algorithm::reduction_sum);
 }
 }  // namespace phi
 
-PD_REGISTER_KERNEL(sum_raw, OneDNN, ONEDNN, phi::SumRawKernel, float,
-                   phi::dtype::bfloat16) {}
+PD_REGISTER_KERNEL(
+    sum_raw, OneDNN, ONEDNN, phi::SumRawKernel, float, phi::dtype::bfloat16) {}

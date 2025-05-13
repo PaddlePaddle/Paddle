@@ -22,27 +22,41 @@
 namespace phi {
 
 template <typename T, typename Context>
-void SumRawKernel(const Context& dev_ctx, const DenseTensor& x,
-                  const IntArray& dims, bool keep_dim, bool reduce_all,
-                  DataType out_dtype, DenseTensor* out) {
+void SumRawKernel(const Context& dev_ctx,
+                  const DenseTensor& x,
+                  const IntArray& dims,
+                  bool keep_dim,
+                  bool reduce_all,
+                  DataType out_dtype,
+                  DenseTensor* out) {
   if (out_dtype == DataType::UNDEFINED && out->dtype() != x.dtype()) {
     out_dtype = out->dtype();
   }
   if (x.numel() == 0) {
     dev_ctx.template Alloc<T>(out);
     FullKernel<T, Context>(dev_ctx,
-                           phi::IntArray(common::vectorize(out->dims())), 0,
-                           out_dtype, out);
+                           phi::IntArray(common::vectorize(out->dims())),
+                           0,
+                           out_dtype,
+                           out);
     return;
   }
-  XPUReduce<Context, T, phi::SumFunctor>(dev_ctx, x, dims.GetData(), keep_dim,
-                                         reduce_all, out_dtype, out);
+  XPUReduce<Context, T, phi::SumFunctor>(
+      dev_ctx, x, dims.GetData(), keep_dim, reduce_all, out_dtype, out);
 }
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(sum_raw, XPU, ALL_LAYOUT, phi::SumRawKernel, float,
-                   phi::dtype::float16, phi::dtype::bfloat16, int8_t, int,
-                   int64_t, bool) {
+PD_REGISTER_KERNEL(sum_raw,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::SumRawKernel,
+                   float,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   int8_t,
+                   int,
+                   int64_t,
+                   bool) {
   kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
 }

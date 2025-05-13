@@ -25,17 +25,23 @@
 namespace phi {
 
 template <typename T, typename Context>
-void SumRawKernel(const Context& dev_ctx, const DenseTensor& x,
-                  const IntArray& dims, bool keep_dim, bool reduce_all,
-                  DataType out_dtype, DenseTensor* out) {
+void SumRawKernel(const Context& dev_ctx,
+                  const DenseTensor& x,
+                  const IntArray& dims,
+                  bool keep_dim,
+                  bool reduce_all,
+                  DataType out_dtype,
+                  DenseTensor* out) {
   if (out_dtype == DataType::UNDEFINED && out->dtype() != x.dtype()) {
     out_dtype = out->dtype();
   }
   if (x.numel() == 0) {
     dev_ctx.template Alloc<T>(out);
     FullKernel<T, Context>(dev_ctx,
-                           phi::IntArray(common::vectorize(out->dims())), 0,
-                           out_dtype, out);
+                           phi::IntArray(common::vectorize(out->dims())),
+                           0,
+                           out_dtype,
+                           out);
     return;
   }
   phi::Reduce<CPUContext, T, phi::funcs::SumFunctor>(
@@ -47,8 +53,21 @@ void SumRawKernel(const Context& dev_ctx, const DenseTensor& x,
 using complex64 = ::phi::dtype::complex<float>;
 using complex128 = ::phi::dtype::complex<double>;
 
-PD_REGISTER_KERNEL(sum_raw, CPU, ALL_LAYOUT, phi::SumRawKernel, bool, float,
-                   double, phi::dtype::float16, phi::dtype::bfloat16, int16_t,
-                   int8_t, uint8_t, int, int64_t, complex64, complex128) {
+PD_REGISTER_KERNEL(sum_raw,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::SumRawKernel,
+                   bool,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   int16_t,
+                   int8_t,
+                   uint8_t,
+                   int,
+                   int64_t,
+                   complex64,
+                   complex128) {
   kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
 }

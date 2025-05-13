@@ -31,7 +31,7 @@ void ReduceSumGradKernel(const Context& dev_ctx,
                          bool reduce_all,
                          DenseTensor* x_grad) {
   using XPUType = typename XPUTypeTrait<T>::Type;
-  if(x_grad && x_grad->numel() == 0){
+  if (x_grad && x_grad->numel() == 0) {
     dev_ctx.template Alloc<T>(x_grad);
     return;
   }
