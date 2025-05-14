@@ -1469,6 +1469,7 @@ class _ShardOptimizer(Optimizer):
                 task = paddle.distributed.all_gather(
                     self.param_storage[idx],
                     slice_buffer,
+                    group=self.comm_group,
                     sync_op=False,
                 )
 
@@ -1527,7 +1528,7 @@ class _ShardOptimizer(Optimizer):
         sharding_degree,
     ):
         def get_padded_size(param):
-            size = np.prod(param.shape)
+            size = np.prod(param._local_shape)
             align_size = (
                 alignment[get_current_device_type()]
                 // align[param.dtype]
@@ -1574,7 +1575,7 @@ class _ShardOptimizer(Optimizer):
                 index,
                 index + param._numel(),
             )
-            tmp_param.get_tensor()._set_dims(param.shape)
+            tmp_param.get_tensor()._set_dims(param._local_shape)
             tmp_param = _dtensor_from_local(
                 tmp_param,
                 param.process_mesh,
@@ -1594,7 +1595,7 @@ class _ShardOptimizer(Optimizer):
                 index,
                 index + grad._local_value()._numel(),
             )
-            tmp_grad.get_tensor()._set_dims(grad.shape)
+            tmp_grad.get_tensor()._set_dims(grad._local_shape)
             tmp_grad = _dtensor_from_local(
                 tmp_grad,
                 grad.process_mesh,
