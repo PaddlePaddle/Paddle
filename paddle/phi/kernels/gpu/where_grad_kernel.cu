@@ -21,8 +21,8 @@ namespace phi {
 
 template <typename T>
 __global__ void WhereGradCUDAKernel(
-    const int N, const T* dout, const bool* cond, T* dx, T* dy) {
-  int idx = blockDim.x * blockIdx.x + threadIdx.x;
+    const int64_t N, const T* dout, const bool* cond, T* dx, T* dy) {
+  int64_t idx = blockDim.x * blockIdx.x + threadIdx.x;
   for (; idx < N; idx += blockDim.x * gridDim.x) {
     if (dx != nullptr) {
       dx[idx] = cond[idx] ? dout[idx] : static_cast<T>(0.);
