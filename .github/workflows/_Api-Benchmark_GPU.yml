@@ -96,6 +96,7 @@ jobs:
           tar -zvxf PaddleTest.tar.gz 1>/dev/null 2>&1
           # git submodule foreach "git config --global --add safe.directory \$toplevel/\$sm_path"
           # source ${{ github.workspace }}/../../../proxy
+          set -x
           ${python} -m pip config set global.cache-dir ${{ github.workspace }}/../../../.cache/pip
           ${python} -m pip install -r ./PaddleTest/framework/e2e/api_benchmark_new/requirement.txt
           ${python} -m pip install torch==2.6.0 torchvision==0.21.0 torchaudio==2.6.0 --index-url https://download.pytorch.org/whl/cu118
@@ -106,6 +107,7 @@ jobs:
           work_dir: ${{ github.workspace }}
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
+          set -x
           export LD_LIBRARY_PATH=/usr/local/cuda-11.8/compat:/usr/local/cuda/compat:/usr/local/cuda/lib:/usr/local/cuda/lib64:/usr/local/nvidia/lib:/usr/local/nvidia/lib64:/usr/lib/x86_64-linux-gnu:${LD_LIBRARY_PATH}
           ${python} -m pip install https://paddle-github-action.bj.bcebos.com/PR/build/72680/aaa207ab82467ca9730b505ece315fe7d36a24a1/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl
           ldconfig
