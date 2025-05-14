@@ -30,7 +30,7 @@ jobs:
     name: CINN
     if: ${{ inputs.can-skip != 'true' }}
     runs-on:
-      group: v100-test
+      group: BD_BJ-V100
     steps:
       - name: Check docker image and run container
         env:
