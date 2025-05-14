@@ -22,16 +22,16 @@ cp -r /PaddleTest/framework/e2e/PaddleLT_new/support/pr_info.py .
 python pr_info.py --pr_id ${PR_ID} --title_keyword CINN
 title_num=`grep -o '[0-9]\+' pr_title.log`
 
-git diff --numstat --diff-filter=AMRD develop | grep paddle/cinn | awk '{print $NF}' | tee pr_filelist1.log
+git diff --numstat --diff-filter=AMRD $BRANCH | grep paddle/cinn | awk '{print $NF}' | tee pr_filelist1.log
 filelist_num1=`cat pr_filelist1.log | wc -l`
 
-git diff --numstat --diff-filter=AMRD develop | grep paddle/fluid/primitive/ | awk '{print $NF}' | tee pr_filelist2.log
+git diff --numstat --diff-filter=AMRD $BRANCH | grep paddle/fluid/primitive/ | awk '{print $NF}' | tee pr_filelist2.log
 filelist_num2=`cat pr_filelist2.log | wc -l`
 
-git diff --numstat --diff-filter=AMRD develop | grep paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/ | awk '{print $NF}' | tee pr_filelist3.log
+git diff --numstat --diff-filter=AMRD $BRANCH | grep paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/ | awk '{print $NF}' | tee pr_filelist3.log
 filelist_num3=`cat pr_filelist3.log | wc -l`
 
-git diff --numstat --diff-filter=AMRD develop | grep paddle/fluid/pir/dialect/operator/interface | awk '{print $NF}' | tee pr_filelist4.log
+git diff --numstat --diff-filter=AMRD $BRANCH | grep paddle/fluid/pir/dialect/operator/interface | awk '{print $NF}' | tee pr_filelist4.log
 filelist_num4=`cat pr_filelist4.log | wc -l`
 
 sum_num=$((title_num + filelist_num1 + filelist_num2 + filelist_num3 + filelist_num4))
