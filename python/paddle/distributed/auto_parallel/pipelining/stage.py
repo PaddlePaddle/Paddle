@@ -30,14 +30,14 @@ from paddle.distributed.auto_parallel.api import (
 from ._backward import stage_backward
 from .utils import (
     TensorMeta,
-    detach_and_requires_grad,
-    flatten_args,
-    get_stage_mesh,
-    map_debug_info,
+    _detach_and_requires_grad,
+    _flatten_args,
+    _get_stage_mesh,
+    _map_debug_info,
+    _map_structure_only,
+    _validate_tensors_metadata,
+    _zero_initialize_with_meta,
     map_structure,
-    map_structure_only,
-    validate_tensors_metadata,
-    zero_initialize_with_meta,
 )
 
 if TYPE_CHECKING:
@@ -357,7 +357,7 @@ class _PipelineStageBase(ABC):
                 info, _RecvInfo
             ), "set_local_Fwd_input should only be called on non-first stage, which should always have RecvInfo"
 
-            info.buffer = detach_and_requires_grad(tensor)
+            info.buffer = _detach_and_requires_grad(tensor)
 
     def get_local_bwd_output(self, mb_index):
         """
@@ -584,7 +584,7 @@ class _PipelineStageBase(ABC):
         return grads
 
     def forward_maybe_with_nosync(self, *args, **kwargs):
-        curr_mesh = get_stage_mesh(self.stage_index, self.group_size)
+        curr_mesh = _get_stage_mesh(self.stage_index, self.group_size)
 
         def restore_placements_info(args, infos):
             if isinstance(args, paddle.Tensor) and infos.placements is not None:
@@ -687,8 +687,8 @@ class _PipelineStageBase(ABC):
         except Exception as e:
             exc_msg = f"""
             {self.log_prefix} failed to run forward:
-            args: {map_debug_info(composite_args)}
-            kwargs: {map_debug_info(composite_kwargs)}
+            args: {_map_debug_info(composite_args)}
+            kwargs: {_map_debug_info(composite_kwargs)}
             """
             raise RuntimeError(exc_msg) from e
 
@@ -699,8 +699,8 @@ class _PipelineStageBase(ABC):
         self.output_chunks.append(output)
 
         # Save activations and inputs for backward
-        flat_args = flatten_args(composite_args)
-        flat_kwargs = flatten_args(composite_kwargs)
+        flat_args = _flatten_args(composite_args)
+        flat_kwargs = _flatten_args(composite_kwargs)
         flatten_input_tensors = flat_args + flat_kwargs
         self.fwd_cache[fwd_chunk_id] = (
             output_tuple,  # stage_output
@@ -711,7 +711,7 @@ class _PipelineStageBase(ABC):
             "%s Forwarded chunk %s, outputs: %s",
             self.log_prefix,
             fwd_chunk_id,
-            map_debug_info(output),
+            _map_debug_info(output),
         )
         self._validate_fwd_outputs(output_tuple)
 
@@ -811,7 +811,7 @@ class _PipelineStageBase(ABC):
             e.meta if isinstance(e, _RootArgPlaceholder) else e.buffer
             for e in expected_args
         ]
-        validate_tensors_metadata(
+        _validate_tensors_metadata(
             f"Stage {self.stage_index} forward inputs",
             expected_tensors_meta,
             args,
@@ -824,7 +824,7 @@ class _PipelineStageBase(ABC):
         mixed precision which changes output dtype.
         """
         expected_tensors_meta = self.get_outputs_meta()
-        validate_tensors_metadata(
+        _validate_tensors_metadata(
             f"Stage {self.stage_index} forward outputs",
             expected_tensors_meta,
             outputs,
@@ -939,7 +939,7 @@ class PipelineStage(_PipelineStageBase):
                 "Shape inference: stage %s skipping recv, because shape info passed in via `args`",
                 self.stage_index,
             )
-            args = map_structure_only(
+            args = _map_structure_only(
                 paddle.Tensor,
                 lambda x: TensorMeta(x),
                 args,
@@ -963,10 +963,10 @@ class PipelineStage(_PipelineStageBase):
         self.inputs_meta = args
         # zero-initialise tensors only for inference outputs
         zero_initialize_with_meta_ = partial(
-            zero_initialize_with_meta,
-            mesh=get_stage_mesh(self.stage_index, self.group_size),
+            _zero_initialize_with_meta,
+            mesh=_get_stage_mesh(self.stage_index, self.group_size),
         )
-        args = map_structure_only(
+        args = _map_structure_only(
             TensorMeta,
             zero_initialize_with_meta_,
             args,
@@ -985,11 +985,11 @@ class PipelineStage(_PipelineStageBase):
                     x.stop_gradient = False
                     return x
 
-                args = map_structure_only(paddle.Tensor, requires_grad, args)
+                args = _map_structure_only(paddle.Tensor, requires_grad, args)
 
             outputs = self.sublayer(*args, **kwargs)
             if self.has_backward:
-                flatten_input_tensors = flatten_args(args) + flatten_args(
+                flatten_input_tensors = _flatten_args(args) + _flatten_args(
                     kwargs
                 )
                 self.fwd_cache[0] = (
@@ -1005,7 +1005,7 @@ class PipelineStage(_PipelineStageBase):
         # 1 - its faster (esp. since obj coll pickles tensor data!)
         # 2 - avoid activating a cuda context for the src rank when unpickling on the recv end!
         outputs_meta = tuple(
-            map_structure_only(paddle.Tensor, lambda x: TensorMeta(x), outputs)
+            _map_structure_only(paddle.Tensor, lambda x: TensorMeta(x), outputs)
         )
         self._configure_outputs_meta(outputs_meta)
 
@@ -1127,10 +1127,10 @@ class PipelineStage(_PipelineStageBase):
 
         # zero-initialize tensors only for inference backward meta-info
         zero_initialize_with_meta_ = partial(
-            zero_initialize_with_meta,
-            mesh=get_stage_mesh(self.stage_index, self.group_size),
+            _zero_initialize_with_meta,
+            mesh=_get_stage_mesh(self.stage_index, self.group_size),
         )
-        grads = map_structure_only(
+        grads = _map_structure_only(
             TensorMeta, zero_initialize_with_meta_, grads
         )
 

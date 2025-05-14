@@ -19,7 +19,7 @@ from typing import Any, Iterator
 
 import paddle
 
-from .utils import map_debug_info
+from .utils import _map_debug_info
 
 logger = logging.getLogger(__name__)
 
@@ -129,9 +129,9 @@ def stage_backward(
     except Exception as e:
         exc_msg = f"""
         Failed to run stage backward:
-        Stage output: {map_debug_info(stage_output)}
-        Output gradient: {map_debug_info(output_grads)}
-        Input: {map_debug_info(input_values)}
+        Stage output: {_map_debug_info(stage_output)}
+        Output gradient: {_map_debug_info(output_grads)}
+        Input: {_map_debug_info(input_values)}
         """
         raise RuntimeError(exc_msg) from e
 

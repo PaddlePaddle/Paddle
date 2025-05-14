@@ -24,19 +24,19 @@ from paddle.utils import map_structure
 logger = logging.getLogger(__name__)
 
 
-def detach_and_requires_grad(x):
+def _detach_and_requires_grad(x):
     o = x.detach()
     o.stop_gradient = False
     return o
 
 
-def detach_and_keep_grad(x):
+def _detach_and_keep_grad(x):
     o = x.detach_()
     o.stop_gradient = x.stop_gradient
     return o
 
 
-def zero_initialize_with_meta(meta, mesh):
+def _zero_initialize_with_meta(meta, mesh):
     assert isinstance(meta, TensorMeta)
     x = paddle.zeros(meta.shape, dtype=meta.dtype)
     if meta.placements:
@@ -44,7 +44,7 @@ def zero_initialize_with_meta(meta, mesh):
     return x
 
 
-def flatten_args(args):
+def _flatten_args(args):
     """
     Flatten the args into a list form.
     """
@@ -67,7 +67,7 @@ class PipeliningShapeError(RuntimeError):
     """Shape mismatch between configured and runtime values."""
 
 
-def validate_tensor_metadata(desc, expected, given):
+def _validate_tensor_metadata(desc, expected, given):
     if not expected.shape == given.shape:
         raise PipeliningShapeError(
             f"{desc} has a shape mismatch: expected {expected.shape} actual {given.shape}"
@@ -78,7 +78,7 @@ def validate_tensor_metadata(desc, expected, given):
         )
 
 
-def validate_tensors_metadata(
+def _validate_tensors_metadata(
     desc,
     expected_tensors: list[paddle.Tensor] | tuple[paddle.Tensor, ...],
     actual_tensors: list[paddle.Tensor] | tuple[paddle.Tensor, ...],
@@ -88,7 +88,7 @@ def validate_tensors_metadata(
             f"{desc}: Number of values ({len(actual_tensors)}) does not match expected number ({len(expected_tensors)})"
         )
     for i in range(len(expected_tensors)):
-        validate_tensor_metadata(
+        _validate_tensor_metadata(
             f"{desc}: value {i}", expected_tensors[i], actual_tensors[i]
         )
 
@@ -96,7 +96,7 @@ def validate_tensors_metadata(
 NestedStruct = Union[List[Any], Tuple[Any, ...], Dict[Any, Any]]
 
 
-def map_structure_only(
+def _map_structure_only(
     type_: Any, fn: Callable[[Any], Any], structure: NestedStruct
 ) -> NestedStruct:
     """
@@ -117,7 +117,7 @@ class TensorMeta:
         return f"TensorMeta(shape={self.shape}, dtype={self.dtype}, placements={self.placements})"
 
 
-def get_pp_mesh(pp_idx=0, pp_dim_names="pp"):
+def _get_pp_mesh(pp_idx=0, pp_dim_names="pp"):
     """
     Get the mesh of the {pp_idx}th PipelineStage.
     """
@@ -134,7 +134,7 @@ def get_pp_mesh(pp_idx=0, pp_dim_names="pp"):
     return mesh
 
 
-def get_stage_mesh(stage_index, pp_group_size, style=None):
+def _get_stage_mesh(stage_index, pp_group_size, style=None):
     if style == "v":
         raise NotImplementedError
     if style is not None:
@@ -142,10 +142,10 @@ def get_stage_mesh(stage_index, pp_group_size, style=None):
     else:
 
         pp_idx = stage_index % pp_group_size
-        return get_pp_mesh(pp_idx)
+        return _get_pp_mesh(pp_idx)
 
 
-def friendly_debug_info(v):
+def _friendly_debug_info(v):
     """
     Helper function to print out debug info in a friendly way.
     """
@@ -155,9 +155,9 @@ def friendly_debug_info(v):
         return str(v)
 
 
-def map_debug_info(a):
+def _map_debug_info(a):
     """
     Helper function to apply `friendly_debug_info` to items in `a`.
     `a` may be a list, tuple, or dict.
     """
-    return map_structure(friendly_debug_info, a)
+    return map_structure(_friendly_debug_info, a)

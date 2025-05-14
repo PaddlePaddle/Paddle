@@ -36,10 +36,10 @@ from paddle.distributed.auto_parallel.pipelining.stage import (
 )
 from paddle.distributed.auto_parallel.pipelining.utils import (
     PipeliningShapeError,
-    detach_and_keep_grad,
-    get_stage_mesh,
-    validate_tensor_metadata,
-    validate_tensors_metadata,
+    _detach_and_keep_grad,
+    _get_stage_mesh,
+    _validate_tensor_metadata,
+    _validate_tensors_metadata,
 )
 from paddle.io import Dataset
 
@@ -405,12 +405,12 @@ class TestPipelineStage:
         if self.rank == 0:
             # 1. Test exceptions in get_stage_mesh
             try:
-                get_stage_mesh(0, 2, style="v")
+                _get_stage_mesh(0, 2, style="v")
                 raise AssertionError("Should raise Error")
             except NotImplementedError as e:
                 pass
             try:
-                get_stage_mesh(0, 2, style="unknown")
+                _get_stage_mesh(0, 2, style="unknown")
                 raise AssertionError("Should raise Error")
             except ValueError as e:
                 pass
@@ -420,7 +420,7 @@ class TestPipelineStage:
                 # Length mismatch
                 expected = [paddle.to_tensor([1.0, 2.0])]
                 actual = [paddle.to_tensor([1.0]), paddle.to_tensor([2.0])]
-                validate_tensors_metadata("test", expected, actual)
+                _validate_tensors_metadata("test", expected, actual)
                 raise AssertionError("Should raise Error")
             except PipeliningShapeError as e:
                 pass
@@ -430,7 +430,7 @@ class TestPipelineStage:
                 # Shape mismatch
                 expected = paddle.to_tensor([1.0, 2.0])
                 actual = paddle.to_tensor([1.0])
-                validate_tensor_metadata("test", expected, actual)
+                _validate_tensor_metadata("test", expected, actual)
                 raise AssertionError("Should raise Error")
             except PipeliningShapeError as e:
                 pass
@@ -439,7 +439,7 @@ class TestPipelineStage:
                 # Dtype mismatch
                 expected = paddle.to_tensor([1.0, 2.0], dtype='float32')
                 actual = paddle.to_tensor([1, 2], dtype='int32')
-                validate_tensor_metadata("test", expected, actual)
+                _validate_tensor_metadata("test", expected, actual)
                 raise AssertionError("Should raise Error")
             except PipeliningShapeError as e:
                 pass
@@ -447,7 +447,7 @@ class TestPipelineStage:
             # 4. Test detach_and_keep_grad
             a = paddle.to_tensor([2.0], stop_gradient=False)
             b = a * 2
-            x = detach_and_keep_grad(b)
+            x = _detach_and_keep_grad(b)
             assert x is b
             assert x.stop_gradient == b.stop_gradient
             assert (x.numpy() == b.numpy()).all()
