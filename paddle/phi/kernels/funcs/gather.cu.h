@@ -37,18 +37,16 @@ __global__ void GatherNdCUDAKernel(const T* input,
                                    size_t remain_size,
                                    size_t slice_size,
                                    size_t end_size) {
-  int64_t total_size = remain_size * slice_size;
-  int64_t idx = (blockIdx.x * blockDim.x + threadIdx.x) * VecSize;
-  int64_t stride = blockDim.x * gridDim.x * VecSize;
+  auto total_size = remain_size * slice_size;
+  auto idx = (blockIdx.x * blockDim.x + threadIdx.x) * VecSize;
 
-#pragma unroll
-  for (; idx < total_size; idx += stride) {
-    int64_t indices_i = idx / slice_size;
+  if (idx < total_size) {
+    auto indices_i = idx / slice_size;
     int64_t slice_i = idx % slice_size;
     int64_t gather_i = 0;
     int64_t temp = slice_size;
 #pragma unroll
-    for (int64_t j = end_size - 1; j >= 0; --j) {
+    for (int j = end_size - 1; j >= 0; --j) {
       auto index_value = indices[indices_i * end_size + j];
       PADDLE_ENFORCE(
           index_value >= -input_dims[j] && index_value < input_dims[j],
