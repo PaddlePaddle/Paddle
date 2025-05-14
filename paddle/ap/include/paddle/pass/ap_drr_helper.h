@@ -19,7 +19,7 @@
 #include "paddle/ap/include/drr/value.h"
 #include "paddle/ap/include/registry/abstract_drr_pass_registry_item.h"
 
-namespace cinn::dialect::ir {
+namespace ap::paddle {
 
 struct ApDrrHelper {
  public:
@@ -53,4 +53,4 @@ struct ApDrrHelper {
   mutable ap::drr::DrrInterpreter drr_interpreter_;
 };
 
-}  // namespace cinn::dialect::ir
+}  // namespace ap::paddle

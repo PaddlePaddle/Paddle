@@ -21,7 +21,7 @@
 #include "paddle/ap/include/code_module/code_module.h"
 #include "paddle/ap/include/paddle/pir_node.h"
 
-namespace cinn::dialect::ir {
+namespace ap::paddle {
 
 struct ApKernelDefineHelper {
   std::weak_ptr<ap::memory::CirclableRefListBase> circlable_ref_list_;
@@ -41,4 +41,4 @@ struct ApKernelDefineHelper {
                                            const CodeGenCtx& code_gen_ctx);
 };
 
-}  // namespace cinn::dialect::ir
+}  // namespace ap::paddle

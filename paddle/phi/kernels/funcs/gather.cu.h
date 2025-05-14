@@ -177,9 +177,8 @@ void GPUGatherNd(const phi::GPUContext& ctx,
     vec_size /= 2;
   }
 
-  constexpr int loop_count = 4;
   auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
-      ctx, remain_numel * slice_size, vec_size * loop_count);
+      ctx, remain_numel * slice_size, vec_size);
 
   DispatchGatherNdKernel<T, IndexT, 4>(ctx,
                                        p_input,

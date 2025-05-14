@@ -36,28 +36,8 @@ jobs:
     env:
       TASK: paddle-CI-${{ github.event.pull_request.number }}-xpu_build
     runs-on:
-      group: Kunlun-CPU
-
+      group: XPU-build
     steps:
-      - name: Download paddle.tar.gz and update test branch
-        run: |
-          set -e
-          echo "Downloading Paddle.tar.gz"
-          wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/Paddle/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
-          echo "Extracting Paddle.tar.gz"
-          git config --global --add safe.directory ${work_dir}
-          tar xf Paddle.tar.gz  --strip-components=1
-          git submodule foreach "git config --global --add safe.directory \$toplevel/\$sm_path"
-          rm Paddle.tar.gz
-          git config --global user.name "PaddleCI"
-          git config --global user.email "paddle_ci@example.com"
-          git remote add upstream https://github.com/PaddlePaddle/Paddle.git
-          source ${{ github.workspace }}/../../../proxy
-          git config pull.rebase false
-          git checkout test
-          echo "Pull upstream develop or target branch"
-          git pull upstream $BRANCH --no-edit
-
       - name: Check docker image and run  container
         env:
           WITH_SHARED_PHI: "ON"
@@ -118,6 +98,29 @@ jobs:
             -e CI_name \
             -w /paddle --network host ${docker_image} /bin/bash
 
+      - name: Download paddle.tar.gz and update test branch
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
+          ulimit -n 102400
+          rm -rf * .[^.]*
+          set -e
+          echo "Downloading Paddle.tar.gz"
+          wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/Paddle/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
+          echo "Extracting Paddle.tar.gz"
+          git config --global --add safe.directory ${work_dir}
+          tar xf Paddle.tar.gz  --strip-components=1
+          git submodule foreach "git config --global --add safe.directory \$toplevel/\$sm_path"
+          rm Paddle.tar.gz
+          git config --global user.name "PaddleCI"
+          git config --global user.email "paddle_ci@example.com"
+          git remote add upstream https://github.com/PaddlePaddle/Paddle.git
+          source ${{ github.workspace }}/../../../proxy
+          git config pull.rebase false
+          git checkout test
+          echo "Pull upstream develop or target branch"
+          git pull upstream $BRANCH --no-edit
+          '
+
       - name: Run build
         env:
           work_dir: ${{ github.workspace }}
@@ -125,11 +128,9 @@ jobs:
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ${{ github.workspace }}/../../../proxy
-          ulimit -n 102400
-          git config --global --add safe.directory ${work_dir}
-          git submodule foreach "git config --global --add safe.directory \$toplevel/\$sm_path"
           bash ${ci_scripts}/run_setup.sh bdist_wheel
           EXCODE=$?
+          python -m pip install bce-python-sdk==0.8.74
           rm -rf `find . -name "*.a"`
           rm -rf `find . -name "*.o"`
           exit $EXCODE
@@ -143,28 +144,27 @@ jobs:
           bos_file: ${{ github.workspace }}/../bos/BosClient.py
           paddle_whl: paddlepaddle_xpu-0.0.0-cp310-cp310-linux_x86_64.whl
         run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
           if [ ! -f "${{ env.bos_file }}" ]; then
             wget -q --no-proxy -O ${{ env.home_path }}/bos_new.tar.gz https://xly-devops.bj.bcebos.com/home/bos_new.tar.gz --no-check-certificate
             mkdir ${{ env.home_path }}/bos
             tar xf ${{ env.home_path }}/bos_new.tar.gz -C ${{ env.home_path }}/bos
           fi
+          apt install zstd -y
           cd ..
-          tar --use-compress-program="pzstd -5" -cf build.tar.gz Paddle
+          tar --use-compress-program="pzstd -5" -cf build.tar.gz paddle
           # source /home/opt/deck/1.0/etc/bashrc
           echo "Uploading build.tar.gz"
-          python3 ${bos_file} build.tar.gz paddle-github-action/PR/xpu/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
-          rm build.tar.gz
+          python ${{ env.bos_file }} build.tar.gz paddle-github-action/PR/xpu/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
           echo "Uploading paddle_whl"
-          cp ${{ github.workspace }}/dist/$paddle_whl .
-          python3 ${bos_file} ${paddle_whl} paddle-github-action/PR/xpu/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
-          rm ${paddle_whl}
+          cp /paddle/dist/${{ env.paddle_whl }} .
+          python ${{ env.bos_file }} ${{ env.paddle_whl }} paddle-github-action/PR/xpu/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
+          '
 
       - name: Terminate and delete the container
         if: always()
         run: |
-          set +e
-          rm Paddle.tar.gz
-          docker exec -t ${container_name} /bin/bash -c 'rm -rf * .[^.]*'
+          sudo rm -rf * .[^.]*
           docker stop ${container_name}
           docker rm ${container_name}
 
@@ -182,7 +182,7 @@ jobs:
           sudo rm -rf * .[^.]*
           wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/xpu/${PR_ID}/${COMMIT_ID}/build.tar.gz --no-check-certificate
           sudo yum install zstd -y
-          tar --use-compress-program="pzstd" -xf build.tar.gz --strip-components=1
+          sudo tar --use-compress-program="pzstd" -xf build.tar.gz --strip-components=1
           rm build.tar.gz
 
       - name: Determine the runner

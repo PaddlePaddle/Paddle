@@ -1498,23 +1498,6 @@ static PyObject* tensor__getitem_dygraph(TensorObject* self,
              &has_advanced_index,
              &use_strided_slice);
 
-  // Special: Check if the index is single bool
-  if (PyTuple_GET_SIZE(_index) == 1 &&
-      PyBool_Check(PyTuple_GetItem(_index, 0))) {
-    if (PyTuple_GetItem(_index, 0) == Py_True) {
-      // unsqueeze the tensor to a new tensor with shape (1,)
-      paddle::Tensor out;
-      out.copy_(unsqueeze_ad_func(tensor, {0}), tensor.place(), false);
-      return ToPyObject(out);
-    } else {
-      // create a new tensor with shape (0,)
-      auto shape = tensor.shape();
-      shape.insert(shape.begin(), 0);
-      auto out = paddle::empty(shape, tensor.dtype(), tensor.place());
-      return ToPyObject(out);
-    }
-  }
-
   // step2: Dealing with basic indexing
   bool out_is_view = false;
   auto out = getTensorWithBasicIndexing(tensor,
@@ -1786,19 +1769,23 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
   std::vector<paddle::Tensor> advanced_index;  // content is index tensor
 
   // step1: parsing the index and recording them
-  ParseIndex(tensor,
-             index_ptr,
-             &slice_axes,
-             &slice_starts,
-             &slice_ends,
-             &slice_strides,
-             &decrease_axis,
-             &none_axes,
-             &infer_flags,
-             &advanced_index_dim,
-             &advanced_index,
-             &has_advanced_index,
-             &use_strided_slice);
+  if (size != 1 || !PyBool_Check(PyTuple_GetItem(index_ptr, 0))) {
+    // single true uses set_value full_set branch
+    // single false does nothing
+    ParseIndex(tensor,
+               index_ptr,
+               &slice_axes,
+               &slice_starts,
+               &slice_ends,
+               &slice_strides,
+               &decrease_axis,
+               &none_axes,
+               &infer_flags,
+               &advanced_index_dim,
+               &advanced_index,
+               &has_advanced_index,
+               &use_strided_slice);
+  }
 
   // step2: Parse values
   std::vector<phi::Scalar> values;
@@ -1835,9 +1822,8 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
       if (InputsContainDistTensor(&mesh, self->tensor, value_tensor)) {
         ConvertAllInputsToDistTensor(mesh, self->tensor, value_tensor);
       }
-      if (size == 1 && PyTuple_GetItem(index_ptr, 0) == Py_False) {
-        // do nothing
-      } else {
+      if (size != 1 || PyTuple_GetItem(index_ptr, 0) != Py_False) {
+        // if index is single false, do nothing.
         self->tensor = set_value_with_tensor__ad_func(self->tensor,
                                                       value_tensor,
                                                       slice_starts,
@@ -1861,9 +1847,8 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
       if (InputsContainDistTensor(&mesh, self->tensor)) {
         ConvertAllInputsToDistTensor(mesh, self->tensor);
       }
-      if (size == 1 && PyTuple_GetItem(index_ptr, 0) == Py_False) {
-        // do nothing
-      } else {
+      if (size != 1 || PyTuple_GetItem(index_ptr, 0) != Py_False) {
+        // if index is single false, do nothing.
         self->tensor = set_value__ad_func(self->tensor,
                                           slice_starts,
                                           slice_ends,
