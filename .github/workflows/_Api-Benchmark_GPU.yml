@@ -61,7 +61,7 @@ jobs:
           echo "container_name=${container_name}" >> ${{ github.env }}
           docker_image=${{ inputs.docker_build_image }}
           docker_image=ccr-2vdh3abv-pub.cnc.bj.baidubce.com/ci/paddle:29f259c1f2a060142f49e2d0307cfc4e
-          nvidia-docker run -d -t --name ${container_name} --privileged --shm-size=128g \
+          docker run -d -t --gpus all --name ${container_name} --privileged --shm-size=128g \
             -v ${{ github.workspace }}/../../..:${{ github.workspace }}/../../.. \
             -v ${{ github.workspace }}:/paddle \
             -e python \
@@ -108,6 +108,7 @@ jobs:
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           export LD_LIBRARY_PATH=/usr/local/cuda-11.8/compat:/usr/local/cuda/compat:/usr/local/cuda/lib:/usr/local/cuda/lib64:/usr/local/nvidia/lib:/usr/local/nvidia/lib64:/usr/lib/x86_64-linux-gnu:${LD_LIBRARY_PATH}
           ${python} -m pip install https://paddle-github-action.bj.bcebos.com/PR/build/72680/aaa207ab82467ca9730b505ece315fe7d36a24a1/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl
+          ldconfig
           ${python} test_set_item.py
           '
 
