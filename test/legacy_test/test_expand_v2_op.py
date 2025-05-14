@@ -684,6 +684,48 @@ class TestExpandPirValueListShape(unittest.TestCase):
                 x = paddle.expand(x, shape=[shape1, 1, -1, -1])
                 np.testing.assert_equal(tuple(x.shape), (-1, 1, -1, -1))
 
+class TestExpandV2OneDNNOp(OpTest):
+    def setUp(self):
+        self.op_type = "expand_v2"
+        self.init_data()
+        self.x = np.random.random(self.ori_shape).astype("float32")
+        self.attrs = {'shape': self.shape, 'use_mkldnn': True}
+        self.set_inputs()
+        self.set_additional_inputs()
+        output = np.zeros(self.expect_shape).astype("float32")
+        self.outputs = {'Out': output}
+
+    def set_inputs(self):
+        self.inputs = {'X': self.x}
+
+    def set_additional_inputs(self):
+        pass
+
+    def init_data(self):
+        self.ori_shape = [1, 1, 1, 140]
+        self.shape = [2, 3, 0, 140]
+        self.expect_shape = [2, 3, 0, 140]
+
+    def test_check_output(self):
+        self.check_output_with_place(core.CPUPlace(), check_pir_onednn=True,check_dygraph=False)
+        
+    # def test_check_grad(self):
+    #     self.check_grad_with_place(
+    #         core.CPUPlace(), ["X"], "Out", check_pir_onednn=True, check_dygraph=False
+    #     )
+class TestExpandV2ZeroSizeOneDNNOp(TestExpandV2OneDNNOp):
+
+    def init_data(self):
+        self.ori_shape = (1, 3)
+        self.shape = (0, 3)
+        self.expect_shape = (0, 3)
+
+class TestExpandV2ZeroSizeOneDNNOp2(TestExpandV2OneDNNOp):
+
+    def init_data(self):
+        self.ori_shape = (1, 3)
+        self.shape = (1, 0, 3)
+        self.expect_shape = (1, 0, 3)
 
 if __name__ == "__main__":
     paddle.enable_static()
