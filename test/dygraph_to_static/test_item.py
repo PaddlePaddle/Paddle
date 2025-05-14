@@ -29,11 +29,6 @@ paddle.seed(SEED)
 
 
 class TestItem(Dy2StTestBase):
-    type_list = [
-        "float32",
-        # "float64", "float16","int32", "int64", "bool",
-    ]
-
     @classmethod
     def _create_tensor(cls, shape=None, dtype="float32"):
         if shape is None:
@@ -41,16 +36,16 @@ class TestItem(Dy2StTestBase):
         return paddle.rand(shape, dtype=dtype)
 
     def test_no_args(self):
-        for dtype in self.type_list:
-            t = self._create_tensor([1], dtype)
 
-            def dynamic_forward(x):
-                return x.item()
+        t = self._create_tensor([1])
 
-            static_forward = paddle.jit.to_static(dynamic_forward)
-            dynamic_result = dynamic_forward(t)
-            static_result = static_forward(t)
-            self.assertEqual(dynamic_result, static_result)
+        def dynamic_forward(x):
+            return x.item()
+
+        static_forward = paddle.jit.to_static(dynamic_forward)
+        dynamic_result = dynamic_forward(t)
+        static_result = static_forward(t)
+        self.assertEqual(dynamic_result, static_result)
 
     @test_pir_only
     def test_1_arg(self):
@@ -60,17 +55,17 @@ class TestItem(Dy2StTestBase):
             [2, 3, 4],
             [3, 3, 3, 3, 3, 3],
         ]
-        for dtype in self.type_list:
-            for shape in shape_list:
-                t = self._create_tensor(shape, dtype)
 
-                def dynamic_forward(x):
-                    return x.item(6)
+        for shape in shape_list:
+            t = self._create_tensor(shape)
 
-                static_forward = paddle.jit.to_static(dynamic_forward)
-                dynamic_result = dynamic_forward(t)
-                static_result = static_forward(t)
-                self.assertEqual(dynamic_result, static_result)
+            def dynamic_forward(x):
+                return x.item(6)
+
+            static_forward = paddle.jit.to_static(dynamic_forward)
+            dynamic_result = dynamic_forward(t)
+            static_result = static_forward(t)
+            self.assertEqual(dynamic_result, static_result)
 
     @test_pir_only
     def test_n_arg(self):
@@ -81,17 +76,16 @@ class TestItem(Dy2StTestBase):
             [[3, 3, 3, 3, 3, 3], [1, 1, 1, 1, 1, 0]],
         ]
 
-        for dtype in self.type_list:
-            for shape, idx in shape_and_idx_list:
-                t = self._create_tensor(shape, dtype)
+        for shape, idx in shape_and_idx_list:
+            t = self._create_tensor(shape)
 
-                def dynamic_forward(x, idx):
-                    return x.item(*idx)
+            def dynamic_forward(x, idx):
+                return x.item(*idx)
 
-                static_forward = paddle.jit.to_static(dynamic_forward)
-                dynamic_result = dynamic_forward(t, idx)
-                static_result = static_forward(t, idx)
-                self.assertEqual(dynamic_result, static_result)
+            static_forward = paddle.jit.to_static(dynamic_forward)
+            dynamic_result = dynamic_forward(t, idx)
+            static_result = static_forward(t, idx)
+            self.assertEqual(dynamic_result, static_result)
 
     @test_pir_only
     def test_error(self):
