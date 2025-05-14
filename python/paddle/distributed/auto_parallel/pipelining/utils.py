@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Callable, Dict, List, Tuple, TypeVar, Union
+from typing import Any, Callable, Dict, List, Tuple, Union
 
 import paddle
 from paddle.distributed import fleet
@@ -93,8 +93,7 @@ def validate_tensors_metadata(
         )
 
 
-T = TypeVar('T')
-NestedStruct = Union[List[Any], Tuple[Any, ...], Dict[Any, Any], T]
+NestedStruct = Union[List[Any], Tuple[Any, ...], Dict[Any, Any]]
 
 
 def map_structure_only(
@@ -103,17 +102,9 @@ def map_structure_only(
     """
     Apply `fn` to each entry which matches `type_` in `structure` and return a new structure with the same shape.
     """
-    if isinstance(structure, (list, tuple)):
-        return type(structure)(
-            [map_structure_only(type_, fn, item) for item in structure]
-        )
-    elif isinstance(structure, dict):
-        return {
-            key: map_structure_only(type_, fn, value)
-            for key, value in structure.items()
-        }
-    else:
-        return fn(structure) if isinstance(structure, type_) else structure
+    return map_structure(
+        lambda x: fn(x) if isinstance(x, type_) else x, structure
+    )
 
 
 class TensorMeta:

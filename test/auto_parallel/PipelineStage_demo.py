@@ -25,9 +25,21 @@ import paddle
 import paddle.distributed as dist
 from paddle import nn
 from paddle.distributed import fleet
+from paddle.distributed.auto_parallel.pipelining._backward import (
+    stage_backward,
+    stage_backward_input,
+    stage_backward_weight,
+)
 from paddle.distributed.auto_parallel.pipelining.stage import (
     PipelineStage,
     _RecvInfo,
+)
+from paddle.distributed.auto_parallel.pipelining.utils import (
+    PipeliningShapeError,
+    detach_and_keep_grad,
+    get_stage_mesh,
+    validate_tensor_metadata,
+    validate_tensors_metadata,
 )
 from paddle.io import Dataset
 
@@ -345,11 +357,113 @@ class TestPipelineStage:
                 grad_input[0]
             )
 
+    def test_backward_some_simple_examples(self):
+        """Test simple examples in backward"""
+        if self.rank == 0:
+            # 1. Test backward propagation with dictionary and tuple outputs
+            input_tensor = paddle.to_tensor([1.0, 2.0], stop_gradient=False)
+
+            output_dict = {
+                "out": input_tensor * 2.0,
+                "out_tensor_is_dict_grad_is_None": {"out": input_tensor * 2.0},
+                "out_tensor_is_tuple_grad_is_None": (input_tensor * 2.0,),
+            }
+            grad_dict = {
+                "out": paddle.to_tensor([0.1, 0.2]),
+                "out_tensor_is_dict_grad_is_None": None,
+                "out_tensor_is_tuple_grad_is_None": None,
+            }
+
+            input_grads = stage_backward(output_dict, grad_dict, [input_tensor])
+            expected_grad = paddle.to_tensor([2 * 0.1, 2 * 0.2])
+
+            np.testing.assert_allclose(
+                input_grads[0].numpy(), expected_grad.numpy(), rtol=1e-5
+            )
+            # 2. Test not yet implemented stage_backward_input and stage_backward_weight
+            try:
+                stage_backward_input(
+                    [input_tensor * 2.0],
+                    [paddle.to_tensor([0.1, 0.2])],
+                    [input_tensor],
+                    iter([paddle.to_tensor([1.0, 1.0])]),
+                )
+                raise AssertionError("Should raise Error")
+            except NotImplementedError as e:
+                pass
+            try:
+                stage_backward_weight(
+                    iter([paddle.to_tensor([1.0, 1.0])]),
+                    [{"params": [paddle.to_tensor([1.0, 1.0])]}],
+                )
+                raise AssertionError("Should raise Error")
+            except NotImplementedError as e:
+                pass
+
+    def test_utils_some_simple_examples(self):
+        """Test simple examples in utils"""
+        if self.rank == 0:
+            # 1. Test exceptions in get_stage_mesh
+            try:
+                get_stage_mesh(0, 2, style="v")
+                raise AssertionError("Should raise Error")
+            except NotImplementedError as e:
+                pass
+            try:
+                get_stage_mesh(0, 2, style="unknown")
+                raise AssertionError("Should raise Error")
+            except ValueError as e:
+                pass
+
+            # 2. Test exceptions in validate_tensors_metadata
+            try:
+                # Length mismatch
+                expected = [paddle.to_tensor([1.0, 2.0])]
+                actual = [paddle.to_tensor([1.0]), paddle.to_tensor([2.0])]
+                validate_tensors_metadata("test", expected, actual)
+                raise AssertionError("Should raise Error")
+            except PipeliningShapeError as e:
+                pass
+
+            # 3. Test exceptions in validate_tensor_metadata
+            try:
+                # Shape mismatch
+                expected = paddle.to_tensor([1.0, 2.0])
+                actual = paddle.to_tensor([1.0])
+                validate_tensor_metadata("test", expected, actual)
+                raise AssertionError("Should raise Error")
+            except PipeliningShapeError as e:
+                pass
+
+            try:
+                # Dtype mismatch
+                expected = paddle.to_tensor([1.0, 2.0], dtype='float32')
+                actual = paddle.to_tensor([1, 2], dtype='int32')
+                validate_tensor_metadata("test", expected, actual)
+                raise AssertionError("Should raise Error")
+            except PipeliningShapeError as e:
+                pass
+
+            # 4. Test detach_and_keep_grad
+            a = paddle.to_tensor([2.0], stop_gradient=False)
+            b = a * 2
+            x = detach_and_keep_grad(b)
+            assert x is b
+            assert x.stop_gradient == b.stop_gradient
+            assert (x.numpy() == b.numpy()).all()
+            x.stop_gradient = False
+            z = x * 3
+            z.backward()
+
+            assert x.grad is not None
+            assert a.grad is None
+
     def run_test(self):
         """Compare losses between three training methods"""
         self.setUpClass()
         self.test_simple_func_about_schedulers()
-
+        self.test_backward_some_simple_examples()
+        self.test_utils_some_simple_examples()
         # Run three training methods
         pipeline_losses = self.test_PipelineStage()
         pp_losses = self.test_pp_model()

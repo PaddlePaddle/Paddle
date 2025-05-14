@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import logging
 from abc import ABC, abstractmethod
+from functools import partial
 from typing import TYPE_CHECKING, Any, Callable, Union
 
 import paddle
@@ -34,6 +35,7 @@ from .utils import (
     get_stage_mesh,
     map_debug_info,
     map_structure,
+    map_structure_only,
     validate_tensors_metadata,
     zero_initialize_with_meta,
 )
@@ -937,8 +939,9 @@ class PipelineStage(_PipelineStageBase):
                 "Shape inference: stage %s skipping recv, because shape info passed in via `args`",
                 self.stage_index,
             )
-            args = map_structure(
-                lambda x: TensorMeta(x) if isinstance(x, paddle.Tensor) else x,
+            args = map_structure_only(
+                paddle.Tensor,
+                lambda x: TensorMeta(x),
                 args,
             )
         else:
@@ -959,14 +962,13 @@ class PipelineStage(_PipelineStageBase):
         # cache input shapes for use during recv buffer allocation
         self.inputs_meta = args
         # zero-initialise tensors only for inference outputs
-        args = map_structure(
-            lambda x: (
-                zero_initialize_with_meta(
-                    x, mesh=get_stage_mesh(self.stage_index, self.group_size)
-                )
-                if isinstance(x, TensorMeta)
-                else x
-            ),
+        zero_initialize_with_meta_ = partial(
+            zero_initialize_with_meta,
+            mesh=get_stage_mesh(self.stage_index, self.group_size),
+        )
+        args = map_structure_only(
+            TensorMeta,
+            zero_initialize_with_meta_,
             args,
         )
 
@@ -983,12 +985,7 @@ class PipelineStage(_PipelineStageBase):
                     x.stop_gradient = False
                     return x
 
-                args = map_structure(
-                    lambda x: (
-                        requires_grad(x) if isinstance(x, paddle.Tensor) else x
-                    ),
-                    args,
-                )
+                args = map_structure_only(paddle.Tensor, requires_grad, args)
 
             outputs = self.sublayer(*args, **kwargs)
             if self.has_backward:
@@ -1008,10 +1005,7 @@ class PipelineStage(_PipelineStageBase):
         # 1 - its faster (esp. since obj coll pickles tensor data!)
         # 2 - avoid activating a cuda context for the src rank when unpickling on the recv end!
         outputs_meta = tuple(
-            map_structure(
-                lambda x: TensorMeta(x) if isinstance(x, paddle.Tensor) else x,
-                outputs,
-            )
+            map_structure_only(paddle.Tensor, lambda x: TensorMeta(x), outputs)
         )
         self._configure_outputs_meta(outputs_meta)
 
@@ -1132,15 +1126,12 @@ class PipelineStage(_PipelineStageBase):
         self.grads_meta = grads
 
         # zero-initialize tensors only for inference backward meta-info
-        grads = map_structure(
-            lambda x: (
-                zero_initialize_with_meta(
-                    x, mesh=get_stage_mesh(self.stage_index, self.group_size)
-                )
-                if isinstance(x, TensorMeta)
-                else x
-            ),
-            grads,
+        zero_initialize_with_meta_ = partial(
+            zero_initialize_with_meta,
+            mesh=get_stage_mesh(self.stage_index, self.group_size),
+        )
+        grads = map_structure_only(
+            TensorMeta, zero_initialize_with_meta_, grads
         )
 
         paddle.autograd.backward(stage_output, grads, True)
