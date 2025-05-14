@@ -199,6 +199,36 @@ jobs:
           REPO: ${{ github.event.repository.name }}
           JOB_NAME: 'Static-Check / Test'
 
+      - name: Rerun CE-Framework Whl
+        if: ${{ contains(env.comment_body, 'ce') && contains(env.comment_body, 'whl') }}
+        uses: ./.github/actions/rerun-workflow
+        with:
+          PR_ID: ${{ github.event.issue.number }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.event.repository.name }}
+          JOB_NAME: 'CE-Framework / Whl'
+
+      - name: Rerun CE-Framework Infer
+        if: ${{ contains(env.comment_body, 'ce') && contains(env.comment_body, 'infer') }}
+        uses: ./.github/actions/rerun-workflow
+        with:
+          PR_ID: ${{ github.event.issue.number }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.event.repository.name }}
+          JOB_NAME: 'CE-Framework / Infer'
+
+      - name: Rerun CE-Framework Test
+        if: ${{ contains(env.comment_body, 'ce') && contains(env.comment_body, 'test') }}
+        uses: ./.github/actions/rerun-workflow
+        with:
+          PR_ID: ${{ github.event.issue.number }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.event.repository.name }}
+          JOB_NAME: 'CE-Framework / Test'
+
       - name: Rerun Api-Benchmark
         if: ${{ contains(env.comment_body, 'api-bm') }}
         uses: ./.github/actions/rerun-workflow

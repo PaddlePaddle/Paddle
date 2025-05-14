@@ -3,9 +3,9 @@ name: CE-Framework
 on:
   workflow_call:
     inputs:
-      # docker_build_image:
-      #   type: string
-      #   required: true
+      docker_build_image:
+        type: string
+        required: true
       can-skip:
         type: string
         required: false
@@ -63,7 +63,7 @@ jobs:
     name: Infer
     if: ${{ inputs.can-skip != 'true' }}
     runs-on:
-      group: v100-test
+      group: BD_BJ-V100
     env:
       TASK: paddle-CI-${{ github.event.pull_request.number }}-CE-Framework-infer
     steps:
@@ -75,7 +75,6 @@ jobs:
           container_name=${TASK}-${core_index}-$(date +%Y%m%d-%H%M%S)
           echo "container_name=${container_name}" >> ${{ github.env }}
           docker_image=${{ inputs.docker_build_image }}
-          docker_image=ccr-2vdh3abv-pub.cnc.bj.baidubce.com/ci/paddle:29f259c1f2a060142f49e2d0307cfc4e
           docker run -d -t --gpus all --name ${container_name} --privileged --shm-size=128g \
             -v "/home/data/cfs:/home/data/cfs" \
             -v "/home/data/cfs/.cache:/root/.cache" \
@@ -102,7 +101,7 @@ jobs:
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           rm -rf * .[^.]*
           echo "Downloading build.tar.gz"
-          wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/build/72711/a0eafab1f9cfcb44234483992f4021c010deab3a/build.tar.gz --no-check-certificate
+          wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/build/${PR_ID}/${COMMIT_ID}/build.tar.gz --no-check-certificate
           echo "Extracting build.tar.gz"
           git config --global --add safe.directory ${work_dir}
           tar --use-compress-program="pzstd -1" -xpf build.tar.gz --strip-components=1
@@ -161,7 +160,7 @@ jobs:
     name: Test
     if: ${{ inputs.can-skip != 'true' }}
     runs-on:
-      group: v100-test
+      group: BD_BJ-V100
     env:
       TASK: paddle-CI-${{ github.event.pull_request.number }}-CE-Framework-test
     steps:
@@ -173,7 +172,6 @@ jobs:
           container_name=${TASK}-${core_index}-$(date +%Y%m%d-%H%M%S)
           echo "container_name=${container_name}" >> ${{ github.env }}
           docker_image=${{ inputs.docker_build_image }}
-          docker_image=ccr-2vdh3abv-pub.cnc.bj.baidubce.com/ci/paddle:29f259c1f2a060142f49e2d0307cfc4e
           docker run -d -t --gpus all --name ${container_name} --privileged --shm-size=128g \
             -v "/home/data/cfs:/home/data/cfs" \
             -v "/home/data/cfs/.cache:/root/.cache" \
@@ -200,7 +198,7 @@ jobs:
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           rm -rf * .[^.]*
           echo "Downloading build.tar.gz"
-          wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/build/72711/a0eafab1f9cfcb44234483992f4021c010deab3a/build.tar.gz --no-check-certificate
+          wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/build/${PR_ID}/${COMMIT_ID}/build.tar.gz --no-check-certificate
           echo "Extracting build.tar.gz"
           git config --global --add safe.directory ${work_dir}
           tar --use-compress-program="pzstd -1" -xpf build.tar.gz --strip-components=1
