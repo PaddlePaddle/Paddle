@@ -348,7 +348,7 @@ class TestCopySignNan1(TestCopySignAPI):
         self.y = np.array(
             [[np.nan, np.nan], [np.nan, np.nan]], dtype=np.float64
         )
-        self.y.view('uint64')[0, 0] |= 0x8000000000000000
+        self.y.view('uint64')[0, 0] |= np.uint64(0x8000000000000000)
 
 
 class TestCopySignNan2(TestCopySignAPI):
@@ -357,7 +357,7 @@ class TestCopySignNan2(TestCopySignAPI):
         self.y = np.array(
             [[np.nan, np.nan], [np.nan, np.nan]], dtype=np.float64
         )
-        self.y.view('uint64')[0, 0] &= ~0x8000000000000000
+        self.y.view('uint64')[0, 0] &= ~np.uint64(0x8000000000000000)
 
 
 class TestCopySignNan3(TestCopySignAPI):
@@ -390,7 +390,7 @@ class TestCopySignNan7(TestCopySignAPI):
         self.y = np.array(
             [[np.nan, np.nan], [np.nan, np.nan]], dtype=np.float64
         )
-        self.y.view('uint64')[0, 0] |= 0x8000000000000000
+        self.y.view('uint64')[0, 0] |= np.uint64(0x8000000000000000)
 
 
 class TestCopySignNan8(TestCopySignAPI):
@@ -399,7 +399,7 @@ class TestCopySignNan8(TestCopySignAPI):
         self.y = np.array(
             [[np.nan, np.nan], [np.nan, np.nan]], dtype=np.float64
         )
-        self.y.view('uint64')[0, 0] &= ~0x8000000000000000
+        self.y.view('uint64')[0, 0] &= ~np.uint64(0x8000000000000000)
 
 
 if __name__ == "__main__":
