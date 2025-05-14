@@ -1142,7 +1142,8 @@ class _ShardOptimizer(Optimizer):
         self.fuse_param_view = []
         self.param_storage = []
         self.grad_storage = []
-        self.comm_group = None
+        self._sharding_group = None
+        self._mp_group = None
         self.do_tensor_fusion_once = True
         self._strategy = Strategy()
         self.enable_tensor_fusion = (
@@ -1285,14 +1286,15 @@ class _ShardOptimizer(Optimizer):
             if not self.enable_sharding_overlap:
                 for i in range(len(self.fuse_param_view)):
                     shard_size = (
-                        self.param_storage[i]._numel() // self.comm_group.nranks
+                        self.param_storage[i]._numel()
+                        // self._sharding_group.nranks
                     )
-                    begin = shard_size * max(self.comm_group.rank, 0)
+                    begin = shard_size * max(self._sharding_group.rank, 0)
                     end = begin + shard_size
                     slice_buffer = paddle._C_ops.view_slice(
                         self.param_storage[i], begin, end
                     )
-                    self.comm_group.process_group.all_gather(
+                    self._sharding_group.process_group.all_gather(
                         slice_buffer, self.param_storage[i]
                     ).wait()
 
@@ -1459,9 +1461,10 @@ class _ShardOptimizer(Optimizer):
             if hasattr(param_and_grad[0], 'last_idx'):
                 idx = param_and_grad[0].last_idx
                 shard_size = (
-                    self.param_storage[idx]._numel() // self.comm_group.nranks
+                    self.param_storage[idx]._numel()
+                    // self._sharding_group.nranks
                 )
-                begin = shard_size * max(self.comm_group.rank, 0)
+                begin = shard_size * max(self._sharding_group.rank, 0)
                 end = begin + shard_size
                 slice_buffer = paddle._C_ops.view_slice(
                     self.param_storage[idx], begin, end
@@ -1469,20 +1472,20 @@ class _ShardOptimizer(Optimizer):
                 task = paddle.distributed.all_gather(
                     self.param_storage[idx],
                     slice_buffer,
-                    group=self.comm_group,
+                    group=self._sharding_group,
                     sync_op=False,
                 )
 
     def _reduce_scatter_gradients(self, grad_storage):
-        shard_size = grad_storage._numel() // self.comm_group.nranks
-        begin = shard_size * max(self.comm_group.rank, 0)
+        shard_size = grad_storage._numel() // self._sharding_group.nranks
+        begin = shard_size * max(self._sharding_group.rank, 0)
         end = begin + shard_size
         reduce_scattered = paddle._C_ops.view_slice(grad_storage, begin, end)
         paddle.distributed.reduce_scatter(
             reduce_scattered,
             grad_storage,
             op=paddle.distributed.ReduceOp.SUM,
-            group=self.comm_group,
+            group=self._sharding_group,
             sync_op=False,
         ).wait()
 
@@ -1518,7 +1521,7 @@ class _ShardOptimizer(Optimizer):
                     fuse_comm_hook_func(
                         param_group_len,
                         self.grad_storage[i],
-                        self.comm_group,
+                        self._sharding_group,
                     )
                 )
 
@@ -1614,7 +1617,15 @@ class _ShardOptimizer(Optimizer):
             for group in shard_groups:
                 comm_group = dist.new_group(sorted(group))
                 if dist.get_rank() in group:
-                    self.comm_group = comm_group
+                    self._sharding_group = comm_group
+            if "mp" in mesh._dim_names:
+                mp_mesh_axis = mesh._dim_names.index("mp")
+                self._mp_degree = mesh._shape[mp_mesh_axis]
+                mp_groups = get_mesh_comm_list(mesh, "mp")
+                for group in mp_groups:
+                    comm_group = dist.new_group(sorted(group))
+                    if dist.get_rank() in group:
+                        self._mp_group = comm_group
             self.do_tensor_fusion_once = False
             parameters = [p_g[0] for p_g in params_grads]
             comm_buffer_size_MB = self._strategy.sharding.comm_buffer_size_MB
@@ -1642,7 +1653,7 @@ class _ShardOptimizer(Optimizer):
                     grad_storage,
                 ) = self._build_fuse_param_view(
                     params_and_grads,
-                    self.comm_group.nranks,
+                    self._sharding_group.nranks,
                 )
                 self.fuse_param_view.append(fuse_param_view)
                 self.param_storage.append(param_storage)
@@ -1653,7 +1664,9 @@ class _ShardOptimizer(Optimizer):
 
             if self._inner_opt._grad_clip is not None:
                 self._inner_opt._grad_clip.should_comm_on_shard_dim = True
-                self._inner_opt._grad_clip.sharding_group = self.comm_group
+                self._inner_opt._grad_clip.sharding_group = self._sharding_group
+                if self._mp_degree > 1:
+                    self._inner_opt._grad_clip.mp_group = self._mp_group
 
         new_params = []
         new_grads = []
@@ -1665,9 +1678,10 @@ class _ShardOptimizer(Optimizer):
                 param = view['param']
                 index = view['index']
                 shard_size = (
-                    self.param_storage[i]._numel() // self.comm_group.nranks
+                    self.param_storage[i]._numel()
+                    // self._sharding_group.nranks
                 )
-                rank_begin = shard_size * max(self.comm_group.rank, 0)
+                rank_begin = shard_size * max(self._sharding_group.rank, 0)
                 rank_end = rank_begin + shard_size
                 param_begin = max(index, rank_begin)
                 param_end = min(index + param._numel(), rank_end)
