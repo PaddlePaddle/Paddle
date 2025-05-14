@@ -166,7 +166,7 @@ void ArgFullSort(const phi::GPUContext& ctx,
   int64_t offset = 0;
   DenseTensor input_indices;
 
-  T* sorted_out_ptr = nullptr;
+  T* sorted_out_ptr = sorted_out_ptr = output->data<T>();
   IndType* ind_ptr = nullptr;
 
   while (offset < total_elements) {
@@ -187,15 +187,6 @@ void ArgFullSort(const phi::GPUContext& ctx,
     // Init a index array
     FillIndex<<<grid_size, block_size, 0, cu_stream>>>(
         ind_ptr, n_segments, segment_size);
-
-    // paritially allocate output tensor, this might be erroneous
-    // even though sorted outputs are not used, therefore needs testing
-    if (output->initialized()) {
-      sorted_out_ptr = output->data<T>();
-    } else {
-      output->Resize({n_segments, segment_size});
-      sorted_out_ptr = ctx.template Alloc<T>(output);
-    }
 
     PREDICATE_CUB_ARGSORT(descending,
                           cub::DeviceSegmentedRadixSort::SortPairsDescending,
@@ -290,6 +281,7 @@ void ArgsortKernel(const Context& dev_ctx,
         common::product(common::slice_ddim(in_dims, 0, in_dims.size() - 1));
     const int64_t input_width = in_dims[in_dims.size() - 1];
     dev_ctx.template Alloc<int64_t>(indices);
+    dev_ctx.template Alloc<T>(output);
     ArgFullSort<T, int64_t>(dev_ctx,
                             &input,
                             output,
@@ -323,6 +315,10 @@ void ArgsortKernel(const Context& dev_ctx,
         common::slice_ddim(trans_dims, 0, trans_dims.size() - 1));
     const int64_t input_width = trans_dims[trans_dims.size() - 1];
 
+    DenseTensor tmp_out;
+    tmp_out.Resize(trans_dims);
+    dev_ctx.template Alloc<T>(&tmp_out);
+
     DenseTensor tmp_indices;
     // temp indices for sorting
     tmp_indices.Resize(trans_dims);
@@ -330,22 +326,18 @@ void ArgsortKernel(const Context& dev_ctx,
 
     ArgFullSort<T, int64_t>(dev_ctx,
                             &trans_inp,
-                            output,
+                            &tmp_out,
                             &tmp_indices,
                             input_height,
                             input_width,
                             descending);
-
+    // delay output allocation until after transpose, to avoid
+    // allocating too much memory
+    dev_ctx.template Alloc<T>(output);
     dev_ctx.template Alloc<int64_t>(indices);
-
     // transpose back
+    TransposeKernel<T, Context>(dev_ctx, tmp_out, trans, output);
     TransposeKernel<int64_t, Context>(dev_ctx, tmp_indices, trans, indices);
-    // Warning: since the output values are not used (only as the intermediate
-    // result of the sort) and the output allocation is done in ArgFullSort
-    // when there are too many elements (exceeding INT_MAX), output might
-    // only represent a part of the original data, so it is basically
-    // meaningless we therefore choose not to transpose back to the original
-    // shape
     return;
   }
 }
