@@ -129,6 +129,10 @@ jobs:
           work_dir: ${{ github.workspace }}
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
+          mkdir run_env
+          ln -s $(which python3.10) run_env/python
+          ln -s $(which pip3.10) run_env/pip
+          export PATH=$(pwd)/run_env:${PATH}
           pip3.10 config set global.cache-dir "/home/data/cfs/.cache/pip"
           pip3.10 config set global.index-url https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple
           cd /PaddleTest/inference/python_api_test
@@ -143,6 +147,7 @@ jobs:
           work_dir: ${{ github.workspace }}
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
+          export PATH=$(pwd)/run_env:${PATH}
           cd /PaddleTest/inference/python_api_test
           bash parallel_run.sh 2
           '
