@@ -777,7 +777,6 @@ class FunctionGraph:
             args, kwargs, max_retry_times=10
         ):
             try:
-                print("[INFERMETA]", func, args, kwargs)
                 return args, kwargs, infer_meta(args, kwargs)
             except (NotSupportedTensorArgumentError, TypeError) as e:
                 err = e
