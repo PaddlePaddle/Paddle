@@ -46,8 +46,8 @@ void MergedMomentumKernel(
     std::vector<DenseTensor*> master_param_out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   T mu = static_cast<T>(mu_in);
-  int op_num = params.size();
-  int lr_len = learning_rate.size();
+  int64_t op_num = params.size();
+  int64_t lr_len = learning_rate.size();
   PADDLE_ENFORCE_EQ(op_num,
                     params_out.size(),
                     errors::InvalidArgument(
@@ -91,10 +91,10 @@ void MergedMomentumKernel(
   std::vector<XPUType*> velocity_out_list(op_num);
   std::vector<XPUType*> param_out_list(op_num);
   std::vector<const float*> lr_list(op_num);
-  std::vector<int> sizes(op_num);
+  std::vector<int64_t> sizes(op_num);
   std::vector<float> l2_weight_decay(op_num);
   if (op_num > 0) {
-    for (int j = 0; j < op_num; j++) {
+    for (int64_t j = 0; j < op_num; j++) {
       param_list[j] =
           reinterpret_cast<XPUType*>(const_cast<T*>(params[j]->data<T>()));
       velocity_list[j] =
@@ -107,7 +107,7 @@ void MergedMomentumKernel(
       if (lr_len == op_num) {
         lr_list[j] = learning_rate[j]->data<float>();
       }
-      sizes[j] = static_cast<int>(params[j]->numel());
+      sizes[j] = params[j]->numel();
       if (regularization_method[j] != "l2_decay") {
         l2_weight_decay[j] = 0.0f;
       } else {
@@ -128,7 +128,7 @@ void MergedMomentumKernel(
     return;
   }
   if (lr_len == op_num) {
-    for (int j = 0; j < op_num; j++) {
+    for (int64_t j = 0; j < op_num; j++) {
       int r = xpu::momentum(dev_ctx.x_context(),
                             param_list[j],
                             velocity_list[j],

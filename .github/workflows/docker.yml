@@ -5,6 +5,10 @@ on:
         required: false
         type: string
         default: "Paddle"
+      is_merge:
+        required: false
+        type: string
+        default: "false"
     outputs:
       docker_cpu_image:
         description: "Generate images for all CI usage"
@@ -28,7 +32,7 @@ on:
 
 jobs:
   build-docker-images:
-    name: build docker
+    name: Build docker
     runs-on:
       group: Docker-build
     outputs:
@@ -39,7 +43,7 @@ jobs:
       docker_distribute_image: ${{ steps.build-docker-images.outputs.docker_distribute_image }}
     steps:
       - id: build-docker-images
-        name: build docker images
+        name: Build docker images
         env:
           PR_ID: ${{ github.event.pull_request.number }}
           COMMIT_ID: ${{ github.event.pull_request.head.sha }}
@@ -48,12 +52,19 @@ jobs:
           docker_coverage_file: Dockerfile.cuda117_cudnn8_gcc82_ubuntu18_coverage
           docker_build_file: Dockerfile.cuda11.2_cudnn8_gcc82_trt8
           docker_distribute_file: Dockerfile.cuda123_cudnn9_gcc122_ubuntu20
+          dockerfile_script: https://raw.githubusercontent.com/PaddlePaddle/Paddle/refs/heads/develop/tools/dockerfile/ci_dockerfile.sh
+          dockerfile_origin: https://raw.githubusercontent.com/PaddlePaddle/Paddle/refs/heads/develop/tools/dockerfile/Dockerfile.ubuntu20
         run: |
           set -x
-          wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/${{ inputs.bos_dir }}/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
-          tar xf Paddle.tar.gz --strip-components=1
-          rm Paddle.tar.gz
-          cd tools/dockerfile
+          if [ "${{ inputs.is_merge }}" == "true" ]; then
+            mkdir -p tools/dockerfile && cd tools/dockerfile
+            wget -q --no-proxy ${dockerfile_script} ${dockerfile_origin} --no-check-certificate
+          else
+            wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/${{ inputs.bos_dir }}/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
+            tar xf Paddle.tar.gz --strip-components=1
+            rm Paddle.tar.gz
+            cd tools/dockerfile
+          fi
           bash ci_dockerfile.sh
           cd ../..
 
@@ -79,4 +90,4 @@ jobs:
 
           # clean workspace
           cd ${{ github.workspace }}
-          rm -rf ./*
+          rm -rf * .[^.]*

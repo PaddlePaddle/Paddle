@@ -39,30 +39,10 @@ void DefineMethods(Builder* m) {
 #define DEF_MAKE_TYPE(cls) m->Def(cls::name(), &MakePirTypeImpl<cls>::Call);
   FOR_EACH_PIR_ALTERNATIVE_TYPE(DEF_MAKE_TYPE);
 #undef DEF_MAKE_TYPE
+  ForEachShapeOrDataMaker(
+      [&](const auto& name, const auto& value) { m->Def(name, value); });
 }
 
 REGISTER_AP_BUILTIN_MODULE("pir", [](auto* m) { DefineMethods(m); });
-
-axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>> GetPirClass() {
-  static auto cls(
-      axpr::MakeBuiltinClass<axpr::Value>("pir", [&](const auto& Yield) {
-        Yield("UndefinedPlace", &CreateUndefinedPlace);
-        Yield("CPUPlace", &CreateCPUPlace);
-        Yield("GPUPlace", &CreateGPUPlace);
-        Yield("GPUPinnedPlace", &CreateGPUPinnedPlace);
-        Yield("XPUPlace", &CreateXPUPlace);
-        Yield("IPUPlace", &CreateIPUPlace);
-        Yield("CustomPlace", &CreateCustomPlace);
-#define YIELD_MAKE_ATTRIBUTE(attr_type) \
-  Yield(attr_type::name(), &MakePirAttributeImpl<attr_type>::Call);
-        FOR_EACH_PIR_ATTRIBUTE_TYPE(YIELD_MAKE_ATTRIBUTE);
-#undef YIELD_MAKE_ATTRIBUTE
-
-#define YIELD_MAKE_TYPE(cls) Yield(cls::name(), &MakePirTypeImpl<cls>::Call);
-        FOR_EACH_PIR_ALTERNATIVE_TYPE(YIELD_MAKE_TYPE);
-#undef YIELD_MAKE_TYPE
-      }));
-  return axpr::MakeGlobalNaiveClassOps<Pir>(cls);
-}
 
 }  // namespace ap::paddle

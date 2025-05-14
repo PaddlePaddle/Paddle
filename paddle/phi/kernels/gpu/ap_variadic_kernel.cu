@@ -12,18 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <mutex>
-#include <unordered_map>
-#include "glog/logging.h"
-#include "jitify.hpp"  // NOLINT
 #include "paddle/common/enforce.h"
-
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/backends/gpu/gpu_device_function.h"
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/funcs/elementwise_base.h"
-#include "paddle/phi/kernels/impl/activation_grad_impl.h"
-#include "paddle/phi/kernels/impl/activation_impl.h"
 
 #include "paddle/ap/include/axpr/data_type_util.h"
 #include "paddle/ap/include/kernel_dispatch/ap_variadic_kernel.h"
@@ -101,12 +93,13 @@ void ApVariadicKernel(const Context& dev_ctx,
                                             kernel_dispatch_lambda,
                                             kernel_dispatch_const_data_lambda,
                                             outs);
-  PADDLE_ENFORCE(
-      !ret.HasError(),
-      "ap_kernel failed. \nTraceback (most recent call last):\n%s\n%s: %s. ",
-      ret.GetError().CallStackToString(),
-      ret.GetError().class_name(),
-      ret.GetError().msg());
+  PADDLE_ENFORCE_EQ(ret.HasError(),
+                    false,
+                    phi::errors::Fatal("ap_variadic failed. \nTraceback (most "
+                                       "recent call last):\n%s\n%s: %s. ",
+                                       ret.GetError().CallStackToString(),
+                                       ret.GetError().class_name(),
+                                       ret.GetError().msg()));
 }
 
 }  // namespace phi

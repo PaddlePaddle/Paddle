@@ -19,13 +19,13 @@ namespace fusion {
 template <typename T, typename Context>
 void Pad2dXPUKernel(const Context& dev_ctx,
                     const DenseTensor& x,
-                    const std::vector<int>& paddings,
+                    const std::vector<int>& paddings_,
                     const std::string& mode,
                     float pad_value,
                     const std::string& data_format,
                     DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
-  std::vector<int> pads = paddings;
+  std::vector<int64_t> pads(paddings_.begin(), paddings_.end());
 
   auto in_dims = x.dims();
   const T* in_data = x.data<T>();
@@ -48,10 +48,10 @@ void Pad2dXPUKernel(const Context& dev_ctx,
   }
 
   T* out_data = dev_ctx.template Alloc<T>(out);
-  const int num = in_dims[0];  // n
-  int channels = in_dims[1];   // c
-  int in_height = in_dims[2];  // xh
-  int in_width = in_dims[3];   // xw
+  const int64_t num = in_dims[0];  // n
+  int64_t channels = in_dims[1];   // c
+  int64_t in_height = in_dims[2];  // xh
+  int64_t in_width = in_dims[3];   // xw
   if (data_format == "NHWC") {
     in_height = in_dims[1];  // xh
     in_width = in_dims[2];   // xw
@@ -111,7 +111,7 @@ void Pad2dXPUKernel(const Context& dev_ctx,
   }
 
   // set pad3d's pads to pad2d's pads_xpu
-  std::vector<int> pads_xpu(4);
+  std::vector<int64_t> pads_xpu(4);
   pads_xpu[0] = pads[2];  // pt
   pads_xpu[1] = pads[3];  // pd
   pads_xpu[2] = pads[0];  // pl

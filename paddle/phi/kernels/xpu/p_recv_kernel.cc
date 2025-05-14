@@ -51,8 +51,8 @@ void PRecvKernel(const Context& dev_ctx,
   dev_ctx.Alloc(out, dtype);
   comm_ctx->Recv(out, out->numel(), peer, stream);
 #else
-  PADDLE_THROW(
-      errors::PreconditionNotMet("PaddlePaddle should compile with XPU."));
+  PADDLE_THROW(errors::PreconditionNotMet(
+      "PaddlePaddle should compile with DWITH_XPU_BKCL."));
 #endif
 }
 
@@ -77,8 +77,8 @@ void PRecvArrayKernel(const Context& dev_ctx,
             << common::product(out_dims) << " from " << peer;
   }
 #else
-  PADDLE_THROW(
-      errors::PreconditionNotMet("PaddlePaddle should compile with XPU."));
+  PADDLE_THROW(errors::PreconditionNotMet(
+      "PaddlePaddle should compile with DWITH_XPU_BKCL."));
 #endif
 }
 

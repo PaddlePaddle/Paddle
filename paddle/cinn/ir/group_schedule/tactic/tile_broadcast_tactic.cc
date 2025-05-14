@@ -532,14 +532,17 @@ std::vector<std::string> TileBroadcastTactic::TileVectorizeNCHW(
     const int block_size,
     const int vectorize_factor) {
   /**
-   * block_size = 256, vectorize_factor = 4
+   * block_size = 256, vectorize_loop factor = 4
    * block_element_nums = block_size * vectorize_factor = 1024
    * 1. For small size:
    *        [B, P, B<=block_element_nums]
-   *     => [blockY, blockX, (threadX, loop)].
+   *     => [blockY, blockX, (threadX, vectorize_loop)].
    * 2. For medium size:
-   *        [B, P, block_element_nums<B],
-   *     => [blockY, blockX, (threadX, loop)].
+   *        [B, P, block_element_nums<B<=2048],
+   *     => [blockY, blockX, (threadX, vectorize_loop)].
+   * 2. For large size:
+   *        [B, P, 2048<B],
+   *     => [blockX', blockY, (blockX, threadX, vectorize_loop)].
    */
   const int block_element_nums = block_size * vectorize_factor;
   VLOG(4) << "TileBroadcastTactic using original NCHW layout, "
@@ -548,9 +551,14 @@ std::vector<std::string> TileBroadcastTactic::TileVectorizeNCHW(
   if (low_broadcast_size_ <= block_element_nums) {
     sch->Split(block_id, 2, {-1, vectorize_factor});
     return {"blockIdx.y", "blockIdx.x", "threadIdx.x", ""};
-  } else {
+  } else if (low_broadcast_size_ <= 2048) {
     sch->Split(block_id, 2, {-1, block_size, vectorize_factor});
     sch->Fuse(block_id, {1, 2});
+    return {"blockIdx.y", "blockIdx.x", "threadIdx.x", ""};
+  } else {
+    sch->Reorder(block_id, {1, 0});
+    sch->Fuse(block_id, {1, 2});
+    sch->Split(block_id, 1, {-1, block_size, vectorize_factor});
     return {"blockIdx.y", "blockIdx.x", "threadIdx.x", ""};
   }
 }
@@ -562,6 +570,7 @@ void TileBroadcastTactic::Apply(ir::IRSchedule* sch,
 
   if (CanEnableVectorize(block_size)) {
     ApplyVectorize(sch, block_id, block_size);
+    return;
   }
   // check the number of warps here, if not a applicable
   // preserved_size, func will return later

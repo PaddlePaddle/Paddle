@@ -521,6 +521,11 @@ PD_REGISTER_SPMD_RULE(
     PD_INFER_SPMD(phi::distributed::ReductionInferSpmd),
     PD_INFER_SPMD(phi::distributed::ReductionInferSpmdReverse));
 
+// mean_all
+PD_REGISTER_SPMD_RULE(mean_all,
+                      PD_INFER_SPMD(phi::distributed::MeanAllInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::MeanAllGradInferSpmd));
+
 // layer_norm
 PD_REGISTER_SPMD_RULE(
     layer_norm,
@@ -713,6 +718,11 @@ PD_REGISTER_SPMD_RULE(
     argmax,
     PD_INFER_SPMD(phi::distributed::ArgMaxInferSpmdBase),
     PD_INFER_SPMD(phi::distributed::ArgMaxInferSpmdReverseBase));
+
+// topk
+PD_REGISTER_SPMD_RULE(topk,
+                      PD_INFER_SPMD(phi::distributed::TopkInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::TopkGradInferSpmd));
 
 // unbind
 PD_REGISTER_SPMD_RULE(unbind,
