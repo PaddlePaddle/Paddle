@@ -53,7 +53,7 @@ void DeformableConvKernel(const Context& dev_ctx,
                         "Filter high and weight should less than 8 on xpu "
                         "in deformable_conv op."));
 
-  const int batch_size = static_cast<int>(x.dims()[0]);
+  const int64_t batch_size = x.dims()[0];
   std::vector<int64_t> output_shape_vec(common::vectorize(out->dims()));
 
   const T* input_ptr = x.data<T>();
@@ -66,36 +66,35 @@ void DeformableConvKernel(const Context& dev_ctx,
   const int zero = 0;
   int r = xpu::constant<T>(dev_ctx.x_context(), output_prt, out->numel(), zero);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
-  int input_dim = x.numel() / x.dims()[0];
-  int input_offset_dim = offset.numel() / offset.dims()[0];
-  int input_mask_dim = mask->numel() / mask->dims()[0];
-  int output_dim =
+  int64_t input_dim = x.numel() / x.dims()[0];
+  int64_t input_offset_dim = offset.numel() / offset.dims()[0];
+  int64_t input_mask_dim = mask->numel() / mask->dims()[0];
+  int64_t output_dim =
       output_shape_vec[1] * output_shape_vec[2] * output_shape_vec[3];
-  std::vector<int> ksize{static_cast<int>(filter.dims()[2]),
-                         static_cast<int>(filter.dims()[3])};
-  int n = im2col_step;
-  int c = x.dims()[1];
-  int h = x.dims()[2];
-  int w = x.dims()[3];
-  int f = filter.dims()[0];
+  std::vector<int64_t> ksize{filter.dims()[2], filter.dims()[3]};
+  int64_t n = static_cast<int64_t>(im2col_step);
+  int64_t c = x.dims()[1];
+  int64_t h = x.dims()[2];
+  int64_t w = x.dims()[3];
+  int64_t f = filter.dims()[0];
 
-  for (int i = 0; i < batch_size / im2col_step; ++i) {
+  for (int64_t i = 0; i < batch_size / n; ++i) {
     int r = xpu::deformable_conv<float, float, float, int>(
         dev_ctx.x_context(),
-        input_ptr + i * im2col_step * input_dim,
+        input_ptr + i * n * input_dim,
         filter_ptr,
-        offset_ptr + i * im2col_step * input_offset_dim,
-        mask_ptr + i * im2col_step * input_mask_dim,
-        output_prt + i * im2col_step * output_dim,
+        offset_ptr + i * n * input_offset_dim,
+        mask_ptr + i * n * input_mask_dim,
+        output_prt + i * n * output_dim,
         n,
         c,
         h,
         w,
         f,
         ksize,
-        strides,
-        paddings,
-        dilations,
+        std::vector<int64_t>{strides.begin(), strides.end()},
+        std::vector<int64_t>{paddings.begin(), paddings.end()},
+        std::vector<int64_t>{dilations.begin(), dilations.end()},
         groups,
         deformable_groups,
         nullptr,

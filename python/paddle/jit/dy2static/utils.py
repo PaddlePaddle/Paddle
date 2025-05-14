@@ -89,6 +89,7 @@ ENV_ENABLE_CINN_IN_DY2ST = BooleanEnvironmentVariable(
 class Backend(Enum):
     CINN = auto()
     PHI = auto()
+    PCC = auto()
 
     @staticmethod
     def from_arg(arg: str | Backend | None):
@@ -98,12 +99,17 @@ class Backend(Enum):
             return Backend.PHI
         if arg.upper() == "CINN":
             return Backend.CINN
+        if arg.upper() == "PCC":
+            return Backend.PCC
         raise ValueError(
             f"Unknown backend {arg}. Only support 'CINN' or None for PHI."
         )
 
     def is_cinn(self):
         return self == Backend.CINN
+
+    def is_pcc(self):
+        return self == Backend.PCC
 
     def is_phi(self):
         return self == Backend.PHI
@@ -765,36 +771,6 @@ def prim_is_enabled():
 def is_api_in_module_helper(obj, module_prefix):
     m = inspect.getmodule(obj)
     return m is not None and m.__name__.startswith(module_prefix)
-
-
-def add_auto_layout_guard(backend, guard_creators):
-    # AutoLayoutPass may change layout of bn to NHWC, if not enable `FLAGS_cudnn_batchnorm_spatial_persistent`, it will revert to NCHW. So if the user does not set this Flag, we set it to True.
-    if (
-        auto_layout_is_enabled()
-        and backend.is_cinn()
-        and paddle.is_compiled_with_cuda()
-        and os.getenv("FLAGS_cudnn_batchnorm_spatial_persistent") is None
-    ):
-        guard_creators.append(
-            lambda: paddle.base.framework.flag_guard(
-                "FLAGS_cudnn_batchnorm_spatial_persistent",
-                True,
-            )
-        )
-
-
-@contextmanager
-def runtime_guards(backend):
-    """
-    runtime_guards is the guard method before program execution, which can integrate and add various guards.
-    """
-    guard_creators = []
-    # Add FLAGS_cudnn_batchnorm_spatial_persistent guard
-    add_auto_layout_guard(backend, guard_creators)
-    # add more guards here
-
-    with compose_guards(*guard_creators)():
-        yield
 
 
 def auto_layout_is_enabled():

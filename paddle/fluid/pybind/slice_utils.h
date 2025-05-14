@@ -171,7 +171,7 @@ static int _PySlice_GetIndices(PySliceObject* r,
 }
 
 static void ParseIndex(const paddle::Tensor& tensor,
-                       PyObject* _index,
+                       PyObject* index,
                        std::vector<int64_t>* slice_axes,
                        std::vector<int>* slice_starts,
                        std::vector<int>* slice_ends,
@@ -183,14 +183,6 @@ static void ParseIndex(const paddle::Tensor& tensor,
                        std::vector<paddle::Tensor>* advanced_index,
                        bool* has_advanced_index,
                        bool* use_strided_slice) {
-  // NOTE(zhiqiu): PyTuple_Pack increases refcount.
-  PyObject* index = !PyTuple_Check(_index) ? PyTuple_Pack(1, _index) : _index;
-  DEFINE_PADDLE_SCOPE_GUARD([index, _index]() {
-    if (!PyTuple_Check(_index)) {
-      Py_DECREF(index);
-      VLOG(4) << "Call Py_DECREF";
-    }
-  });
   // for case 0-size tensor in slice
   PADDLE_ENFORCE_EQ(
       tensor.defined(),
@@ -199,7 +191,6 @@ static void ParseIndex(const paddle::Tensor& tensor,
   const auto& shape = tensor.dims();
   const int rank = shape.size();
   const int size = PyTuple_GET_SIZE(index);
-
   // Check Ellipsis is valid
   int specified_dims = 0;
   int ell_count = 0;
@@ -519,6 +510,12 @@ static paddle::Tensor getValueForBoolTensor(const paddle::Tensor& tensor,
   if (bool_index.shape().size() == tensor_shape.size()) {
     return masked_select_ad_func(tensor, bool_index);
   }
+
+  if (bool_index.shape().size() == 1) {
+    auto bool_2_idx = nonzero_ad_func(bool_index);
+    return gather_ad_func(tensor, bool_2_idx);
+  }
+
   auto bool_2_idx = nonzero_ad_func(bool_index);
   return gather_nd_ad_func(tensor, bool_2_idx);
 }

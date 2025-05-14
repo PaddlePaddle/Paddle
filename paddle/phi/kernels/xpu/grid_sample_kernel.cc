@@ -64,14 +64,14 @@ void GridSampleKernel(const Context& dev_ctx,
   const T* input_data = x.data<T>();
   const T* grid_data = grid.data<T>();
 
-  int n = x.dims()[0];
-  int c = x.dims()[1];
+  int64_t n = x.dims()[0];
+  int64_t c = x.dims()[1];
 
   if (x.dims().size() == 4) {  // 2D grid sample
-    int h = x.dims()[2];
-    int w = x.dims()[3];
-    int out_h = grid.dims()[1];
-    int out_w = grid.dims()[2];
+    int64_t h = x.dims()[2];
+    int64_t w = x.dims()[3];
+    int64_t out_h = grid.dims()[1];
+    int64_t out_w = grid.dims()[2];
 
     bool is_nchw_bool;
     if (data_format == "NCHW") {
@@ -104,12 +104,12 @@ void GridSampleKernel(const Context& dev_ctx,
                              is_nchw_bool);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "grid_sampler");
   } else {  // 3D grid sample
-    int d = x.dims()[2];
-    int h = x.dims()[3];
-    int w = x.dims()[4];
-    int out_d = grid.dims()[1];
-    int out_h = grid.dims()[2];
-    int out_w = grid.dims()[3];
+    int64_t d = x.dims()[2];
+    int64_t h = x.dims()[3];
+    int64_t w = x.dims()[4];
+    int64_t out_d = grid.dims()[1];
+    int64_t out_h = grid.dims()[2];
+    int64_t out_w = grid.dims()[3];
 
     out->Resize(common::make_ddim({n, c, out_d, out_h, out_w}));
     T* output_data = dev_ctx.template Alloc<T>(out);

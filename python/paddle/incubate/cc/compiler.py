@@ -69,17 +69,20 @@ def _compile(
     ap_workspace_dir='/tmp/paddle/ap',
     backend_device='cuda',
     target_framework='paddle',
+    compile_engine='PCC',
 ):
     assert ap_path is not None
+    assert not train, "only support inference now"
     os.makedirs(ap_workspace_dir, exist_ok=True)
     build_strategy = paddle.static.BuildStrategy()
+    assert compile_engine in ('CINN', 'PCC')
     with _ap_envs(ap_path, ap_workspace_dir):
         static_fn = paddle.jit.to_static(
             func,
             input_spec=input_specs,
             build_strategy=build_strategy,
             full_graph=True,
-            backend='CINN',
+            backend=compile_engine,
         )
         if not train:
             static_fn.eval()
@@ -92,7 +95,10 @@ def _compile(
         )
         partial_program_layer.training = static_fn._is_train_mode()
         # Force to generate the program immediately.
-        _ = partial_program_layer.train_program.forward_program
+        if train:
+            _ = partial_program_layer.train_program.forward_program
+        else:
+            _ = partial_program_layer.infer_program.forward_program
         return partial_program_layer
 
 

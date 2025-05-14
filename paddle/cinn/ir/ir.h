@@ -17,12 +17,12 @@
  */
 #pragma once
 
-#include <absl/types/variant.h>
 #include <algorithm>
 #include <map>
 #include <memory>
 #include <set>
 #include <string>
+#include <variant>
 #include <vector>
 #include "paddle/common/enforce.h"
 
@@ -49,7 +49,7 @@ using cinn::common::Object;
 using cinn::common::Shared;
 // NOTE attr_t only support POD, can not contain Expr or other IR nodes, or the
 // IRVisitor or IRCopy on PrimitiveNode will result in undefined behavior.
-using attr_t = absl::variant<int, float, bool, std::string>;
+using attr_t = std::variant<int, float, bool, std::string>;
 
 /**
  * Cast a node to another type, can't change the width.
@@ -393,6 +393,7 @@ struct _Var_ : public ExprNode<_Var_> {
   bool is_reduce_axis{false};
   bool is_keepdim{false};
   bool is_symbolic_constant{false};
+  bool is_let_symbol{false};
   //! Lower bound and upper bound of a axis.
   // @{
   Expr lower_bound;
@@ -413,7 +414,8 @@ struct _Var_ : public ExprNode<_Var_> {
                    const std::string& name,
                    bool is_reduce,
                    bool is_symbolic_constant = false,
-                   bool is_keepdim = false);
+                   bool is_keepdim = false,
+                   bool is_let_symbol = false);
 
   void Verify() const override;
 

@@ -28,7 +28,7 @@ void RollKernel(const Context& dev_ctx,
   auto shifts_data = shifts.GetData();
   dev_ctx.template Alloc<T>(out);
   DDim input_dim = x.dims();
-  std::vector<int> xshape;
+  std::vector<int64_t> xshape;
   size_t nums = shifts_data.size();
   for (int i = 0; i < input_dim.size(); ++i) {
     xshape.emplace_back(input_dim[i]);
@@ -41,16 +41,16 @@ void RollKernel(const Context& dev_ctx,
     dims.push_back(0l);
     input_dim = phi::Dim<1>(x.numel());
   }
-  std::vector<int> shifts_in;
-  std::vector<int> axis_in;
+  std::vector<int64_t> shifts_in;
+  std::vector<int64_t> axis_in;
 
   for (size_t i = 0; i < nums; ++i) {
-    int a = dims[i];
+    int64_t a = dims[i];
     if (a < 0) {
       a += (input_dim.size());
     }
     axis_in.emplace_back(a);
-    int sh = shifts_data[i] % input_dim[a];
+    int64_t sh = shifts_data[i] % input_dim[a];
     if (sh < 0) {
       sh += input_dim[a];
     }

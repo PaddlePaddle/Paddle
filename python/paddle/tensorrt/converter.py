@@ -135,7 +135,8 @@ class PaddleToTensorRTConverter:
         if self.trt_config is not None and self.trt_config.ops_run_float:
             _logger.info(f"force_fp32_ops: {trt_manager.get_force_fp32_ops()}")
 
-        _logger.info(f"start process {group_op}")
+        if not self.trt_config.disable_loggling:
+            _logger.info(f"start process {group_op}")
 
         operations = next(iter(group_op.blocks())).ops
         input_values, output_values = self.find_graph_inputs_outputs(group_op)
@@ -326,9 +327,10 @@ class PaddleToTensorRTConverter:
                 # constant/parameter condition, needn't get min/opt/max shape
                 continue
             input_name = trt_input.name
-            _logger.info(
-                f"set shape of {value}, op is: {value.get_defining_op()}"
-            )
+            if not self.trt_config.disable_loggling:
+                _logger.info(
+                    f"set shape of {value}, op is: {value.get_defining_op()}"
+                )
             min_shape = []
             opt_shape = []
             max_shape = []
@@ -372,22 +374,24 @@ class PaddleToTensorRTConverter:
                         value, True, paddle.base.core.ShapeMode.kMAX
                     )
             if not trt_input.is_shape_tensor:
-                _logger.info(f"set min_shape of {value} as {min_shape}")
-                _logger.info(f"set opt_shape of {value} as {opt_shape}")
-                _logger.info(f"set max_shape of {value} as {max_shape}")
+                if not self.trt_config.disable_loggling:
+                    _logger.info(f"set min_shape of {value} as {min_shape}")
+                    _logger.info(f"set opt_shape of {value} as {opt_shape}")
+                    _logger.info(f"set max_shape of {value} as {max_shape}")
                 profile.set_shape(
                     input_name, min=min_shape, opt=opt_shape, max=max_shape
                 )
             else:
-                _logger.info(
-                    f"set min_value of shape input: {value} as {min_value}"
-                )
-                _logger.info(
-                    f"set opt_value of shape input: {value} as {opt_value}"
-                )
-                _logger.info(
-                    f"set max_value of shape input: {value} as {max_value}"
-                )
+                if not self.trt_config.disable_loggling:
+                    _logger.info(
+                        f"set min_value of shape input: {value} as {min_value}"
+                    )
+                    _logger.info(
+                        f"set opt_value of shape input: {value} as {opt_value}"
+                    )
+                    _logger.info(
+                        f"set max_value of shape input: {value} as {max_value}"
+                    )
                 profile.set_shape_input(
                     input_name, min=min_value, opt=opt_value, max=max_value
                 )
@@ -610,7 +614,8 @@ class PaddleToTensorRTConverter:
     def convert_program_to_trt(self):
         for op in self.program.global_block().ops:
             if op.name() == "cinn_op.group" or op.name() == "builtin.group":
-                _logger.info(f"start process {op.name()}")
+                if not self.trt_config.disable_loggling:
+                    _logger.info(f"start process {op.name()}")
                 self.engine_num += 1
                 new_out = self.convert_subgraph_to_trt(self.program, op)
                 orin_out_values = op.results()

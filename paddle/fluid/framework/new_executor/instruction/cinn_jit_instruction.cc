@@ -103,8 +103,14 @@ class CinnJitInstruction::FnPtrImpl {
 
     // Pass real tensor data to cinn_buffer_t func args placeholder
     for (size_t i = 0; i < kernel_tensor_args.size(); ++i) {
-      cinn_pod_value_to_buffer_p(&(func_args_[i]))->memory =
-          reinterpret_cast<uint8_t*>(kernel_tensor_args[i]->data());
+      if (!kernel_tensor_args[i]->has_allocation()) {
+        VLOG(2) << "WARNING! Access DenseTensor::data() without allocation, "
+                   "return nullptr!";
+        cinn_pod_value_to_buffer_p(&(func_args_[i]))->memory = nullptr;
+      } else {
+        cinn_pod_value_to_buffer_p(&(func_args_[i]))->memory =
+            reinterpret_cast<uint8_t*>(kernel_tensor_args[i]->data());
+      }
     }
 
     // Launch host kernel
@@ -297,6 +303,7 @@ CinnJitInstruction::CinnJitInstruction(
     ir_dims_.push_back(
         result.type().dyn_cast<paddle::dialect::DenseTensorType>().dims());
     tensor_args_.push_back(tensor);
+    alloc_tensors_.push_back(tensor);
     auto alloc_tensor_type =
         result.type().dyn_cast<paddle::dialect::AllocatedDenseTensorType>();
     tensor->set_type(
@@ -321,6 +328,7 @@ CinnJitInstruction::CinnJitInstruction(
   }
   for (auto& tensor : temp_space_tensors_) {
     tensor_args_.push_back(&tensor);
+    alloc_tensors_.push_back(&tensor);
   }
   output_tensor_size += temp_space_tensors_.size();
 }
@@ -343,8 +351,8 @@ void CinnJitInstruction::Run() {
     fn_ptr_impl_->InferShape(
         tensor_args_, ir_dims_, input_tensor_size, output_tensor_size);
   }
-  for (size_t i = 0; i < tensor_args_.size(); ++i) {
-    dev_ctx_->Alloc(tensor_args_[i], tensor_args_[i]->dtype());
+  for (size_t i = 0; i < alloc_tensors_.size(); ++i) {
+    dev_ctx_->Alloc(alloc_tensors_[i], alloc_tensors_[i]->dtype());
   }
 
   // 2. execute kernel

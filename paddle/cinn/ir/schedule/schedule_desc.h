@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #pragma once
-#include <absl/container/flat_hash_map.h>
 
 #include <map>
 #include <string>
@@ -24,6 +23,7 @@
 #include "paddle/cinn/ir/stmt.h"
 #include "paddle/cinn/utils/registry.h"
 #include "paddle/cinn/utils/type_defs.h"
+#include "paddle/utils/flat_hash_map.h"
 
 namespace cinn {
 namespace ir {
@@ -41,18 +41,18 @@ class ScheduleDesc {
   // each operation executed through IRSchedule is recorded as a step
   struct Step {
     std::string type;  // step name
-    absl::flat_hash_map<std::string, std::vector<Expr>> inputs;
+    paddle::flat_hash_map<std::string, std::vector<Expr>> inputs;
     utils::AttributeMap attrs;
     std::vector<Expr> outputs;
     std::vector<stmt::StmtRef> stmt_outputs;
     Step() = default;
     Step(std::string type_i,
-         absl::flat_hash_map<std::string, std::vector<Expr>> inputs_i,
+         paddle::flat_hash_map<std::string, std::vector<Expr>> inputs_i,
          utils::AttributeMap attrs_i,
          std::vector<Expr> outputs_i)
         : type(type_i), inputs(inputs_i), attrs(attrs_i), outputs(outputs_i) {}
     Step(std::string type_i,
-         absl::flat_hash_map<std::string, std::vector<Expr>> inputs_i,
+         paddle::flat_hash_map<std::string, std::vector<Expr>> inputs_i,
          utils::AttributeMap attrs_i,
          std::vector<Expr> outputs_i,
          std::vector<stmt::StmtRef> stmt_outputs_i)
