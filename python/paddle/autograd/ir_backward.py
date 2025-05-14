@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import logging
 import warnings
+from itertools import islice
 from typing import TYPE_CHECKING
 
 import paddle.pir
@@ -1055,7 +1056,9 @@ def append_backward_ops(
                     state.op_to_opgrad[op] = []
 
         after_ops_num = len(bwd_block.ops)
-        grad_op_list = bwd_block.ops[before_ops_num:after_ops_num]
+        backward_ops.append(
+            list(islice(bwd_block.ops, before_ops_num, after_ops_num))
+        )
         if fwd_block != bwd_block:
             if while_prune_check(while_tuple_ops):
                 remove_op(bwd_block, while_tuple_ops[0], state)
@@ -1297,7 +1300,6 @@ def calc_gradient_helper(
     return input_grad_map
 
 
-@paddle.utils.timeit("ir_backward.calc_gradient")
 def calc_gradient(
     outputs: Value | Sequence[Value],
     inputs: Value | Sequence[Value],
@@ -1348,7 +1350,6 @@ def calc_gradient(
     return inputgrad
 
 
-@paddle.utils.timeit("ir_backward.grad")
 def grad(
     outputs: Value | Sequence[Value],
     inputs: Value | Sequence[Value],
