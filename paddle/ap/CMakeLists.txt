@@ -3,7 +3,7 @@ if(WITH_ONEDNN)
   list(APPEND AP_COMMON_DEPS onednn)
 endif()
 
-file(GLOB_RECURSE axpr_srcs "src/axpr/*.cc")
+file(GLOB_RECURSE axpr_srcs "src/axpr/*.cc" "src/fs/*.cc")
 set(axpr_deps common)
 cc_library(
   axpr

@@ -74,7 +74,7 @@ class MutableGlobalEnvironment : public Environment<ValueT> {
   }
 
   bool IsTempVar(const std::string& var) const {
-    static std::string tmp_var_prefix("__");
+    static std::string tmp_var_prefix("___");
     return var.substr(0, tmp_var_prefix.size()) == tmp_var_prefix;
   }
 
