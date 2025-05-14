@@ -222,7 +222,6 @@ class TestSumOp3D0size2(TestSumOp3Dim):
 class TestSumOp3D0size3(TestSumOp3Dim):
     def init_input(self):
         self.x = np.random.uniform(0, 0.1, (4, 6, 0)).astype(self.dtype)
-        print(self.x)
 
     def init_attrs(self):
         self.attrs = {'dim': (0, 1, 2)}
