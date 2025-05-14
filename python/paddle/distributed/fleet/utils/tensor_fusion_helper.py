@@ -765,10 +765,12 @@ class FusedCommBuffer:
     @imperative_base.no_grad
     def scale_grads(self):
         if self.need_reduce_scale_sync():
+            if self._comm_group.nranks == 1 and self._task is None:
+                return
             assert self._task is not None, "Task is not initialized."
             self._task.wait()
 
-            # scale will be skiped when use reduce_avg comm operation
+            # scale will be skipped when use reduce_avg comm operation
             if self._scale_after_comm and not self._use_reduce_avg:
                 scale_factor = 1.0 / self._comm_group.nranks
                 self.grad_storage.scale_(scale_factor)
