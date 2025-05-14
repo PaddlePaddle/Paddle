@@ -738,7 +738,7 @@ class FunctionGraph:
                     # TODO(zrr1999): maybe we can continue to fallback to all args are constant.
                     raise BreakGraphError(
                         InferMetaBreak(
-                            f"InferMeta encount {type(err)}, but all args are not symbolic."
+                            f"InferMeta encountered {type(err)}, but all args are not symbolic."
                         )
                     )
 
@@ -764,7 +764,7 @@ class FunctionGraph:
                 ):
                     raise BreakGraphError(
                         InferMetaBreak(
-                            f"InferMeta encount {type(err)}, but all args are not symbolic."
+                            f"InferMeta encountered {type(err)}, but all args are not symbolic."
                         )
                     )
 
