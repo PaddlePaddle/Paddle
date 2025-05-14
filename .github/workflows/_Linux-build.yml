@@ -42,7 +42,7 @@ jobs:
           CTEST_OUTPUT_ON_FAILURE: 1
           CTEST_PARALLEL_LEVEL: 2
           WITH_GPU: "ON"
-          CUDA_ARCH_NAME: Volta,Ampere
+          CUDA_ARCH_NAME: Volta
           WITH_COVERAGE: "OFF"
           PADDLE_FRACTION_GPU_MEMORY_TO_USE: 0.15
           CUDA_VISIBLE_DEVICES: 0,1
