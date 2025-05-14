@@ -806,7 +806,7 @@ class FunctionGraph:
                 try_infer_meta_with_fallback_symbolic_to_constant(args, kwargs)
             )
         else:
-            out_metas = infer_meta(func, args, kwargs)
+            out_metas = infer_meta(args, kwargs)
 
         self.collect_input_variables(list(args))
         self.collect_input_variables(list(kwargs.values()))
