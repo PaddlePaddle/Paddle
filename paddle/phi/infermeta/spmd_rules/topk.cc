@@ -20,8 +20,7 @@ limitations under the License. */
 namespace phi {
 namespace distributed {
 
-SpmdInfo TopkInferSpmd(
-    const DistMetaTensor& x, int k, int axis, bool largest, bool sorted) {
+SpmdInfo TopkInferSpmdBase(const DistMetaTensor& x, int axis) {
   // Verify input args
   EXTRACT_SHAPE_AND_DIST_ATTR(x);
   axis = axis < 0 ? x_ndim + axis : axis;
@@ -60,13 +59,10 @@ SpmdInfo TopkInferSpmd(
   return {{x_dist_attr_dst}, {out_dist_attr_dst, indices_dist_attr_dst}};
 }
 
-SpmdInfo TopkGradInferSpmd(const DistMetaTensor& x,
-                           const DistMetaTensor& indices,
-                           const DistMetaTensor& out_grad,
-                           int k,
-                           int axis,
-                           bool largest,
-                           bool sorted) {
+SpmdInfo TopkGradInferSpmdBase(const DistMetaTensor& x,
+                               const DistMetaTensor& indices,
+                               const DistMetaTensor& out_grad,
+                               int axis) {
   // Verify input args
   EXTRACT_SHAPE_AND_DIST_ATTR(x);
   EXTRACT_SHAPE_AND_DIST_ATTR(indices);
@@ -141,6 +137,22 @@ SpmdInfo TopkGradInferSpmd(const DistMetaTensor& x,
   return {{x_dist_attr_dst, indices_dist_attr_dst, out_grad_dist_attr_dst},
           {x_grad_dist_attr_dst}};
 }
+
+SpmdInfo TopkInferSpmd(
+    const DistMetaTensor& x, int k, int axis, bool largest, bool sorted) {
+  return TopkInferSpmdBase(x, axis);
+}
+
+SpmdInfo TopkGradInferSpmd(const DistMetaTensor& x,
+                           const DistMetaTensor& indices,
+                           const DistMetaTensor& out_grad,
+                           int k,
+                           int axis,
+                           bool largest,
+                           bool sorted) {
+  return TopkGradInferSpmdBase(x, indices, out_grad, axis);
+}
+
 SpmdInfo TopkInferSpmdDynamic(const DistMetaTensor& x,
                               const Scalar& k,
                               int axis,

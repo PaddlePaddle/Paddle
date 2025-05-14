@@ -1275,6 +1275,7 @@
   output : Tensor(out), Tensor(indices)
   infer_meta :
     func : CumWithIndicesInferMeta
+    spmd_rule : CummaxInferSpmd
   kernel :
     func : cummax
     data_type : x
@@ -1286,6 +1287,7 @@
   output : Tensor(out), Tensor(indices)
   infer_meta :
     func : CumWithIndicesInferMeta
+    spmd_rule : CumminInferSpmd
   kernel :
     func : cummin
     data_type : x

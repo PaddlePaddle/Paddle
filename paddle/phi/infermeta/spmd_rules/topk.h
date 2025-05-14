@@ -20,7 +20,11 @@ limitations under the License. */
 
 namespace phi {
 namespace distributed {
-
+SpmdInfo TopkInferSpmdBase(const DistMetaTensor& x, int axis);
+SpmdInfo TopkGradInferSpmdBase(const DistMetaTensor& x,
+                               const DistMetaTensor& indices,
+                               const DistMetaTensor& out_grad,
+                               int axis);
 SpmdInfo TopkInferSpmd(
     const DistMetaTensor& x, int k, int axis, bool largest, bool sorted);
 

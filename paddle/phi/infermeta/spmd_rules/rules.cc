@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/infermeta/spmd_rules/rules.h"
+#include "paddle/phi/infermeta/spmd_rules/topk.h"
 
 /**
  * Design Notes:
@@ -752,4 +753,14 @@ PD_REGISTER_SPMD_RULE(nonzero,
 
 // add_n
 PD_REGISTER_SPMD_RULE(add_n, PD_INFER_SPMD(phi::distributed::AddNInferSpmd));
+
+// cummax
+PD_REGISTER_SPMD_RULE(cummax,
+                      PD_INFER_SPMD(phi::distributed::TopkInferSpmdBase),
+                      PD_INFER_SPMD(phi::distributed::TopkGradInferSpmdBase));
+// cummin
+PD_REGISTER_SPMD_RULE(cummin,
+                      PD_INFER_SPMD(phi::distributed::TopkInferSpmdBase),
+                      PD_INFER_SPMD(phi::distributed::TopkGradInferSpmdBase));
+
 }  // namespace phi::distributed
