@@ -619,14 +619,14 @@ class EPHybridCommunicateGroup(HybridCommunicateGroup):
         self.global_rank = paddle.distributed.get_rank()
 
         dim_dict = dict(zip(hybrid_group_names, dims))
-        self._ep_degree = dim_dict['expert']
-        self._moe_sharding_degree = dim_dict['moe_sharding']
-        self._moe_pp_degree = dim_dict['pipe']
-        self._dp_degree = dim_dict['data']
-        self._mp_degree = dim_dict['model']
-        self._pp_degree = dim_dict['pipe']
-        self._sharding_degree = dim_dict['sharding']
-        self._sep_degree = dim_dict['sep']
+        self._ep_degree = dim_dict.get('expert', 1)
+        self._moe_sharding_degree = dim_dict.get('moe_sharding', 1)
+        self._moe_pp_degree = dim_dict.get('pipe', 1)
+        self._dp_degree = dim_dict.get('data', 1)
+        self._mp_degree = dim_dict.get('model', 1)
+        self._pp_degree = dim_dict.get('pipe', 1)
+        self._sharding_degree = dim_dict.get('sharding', 1)
+        self._sep_degree = dim_dict.get('sep', 1)
 
         moe_hybrid_group_names = []
         moe_dims = []
@@ -634,21 +634,40 @@ class EPHybridCommunicateGroup(HybridCommunicateGroup):
             if name in ["pipe", "moe_sharding", "expert"]:
                 moe_hybrid_group_names.append(name)
                 moe_dims.append(dim)
+        assert (
+            "moe_sharding" in moe_hybrid_group_names
+            and "expert" in moe_hybrid_group_names
+        )
 
         self._moe_topo = CommunicateTopology(moe_hybrid_group_names, moe_dims)
+
         dim_dict["dense_sharding"] = (
             dim_dict["sharding"] // dim_dict["moe_sharding"]
         )
         dense_group_names = [
-            "moe_sharding",
-            "pipe",
-            "dense_sharding",
-            "data",
-            "sep",
-            "model",
+            name
+            for name in hybrid_group_names
+            if name not in ["moe_sharding", "sharding", "expert"]
         ]
+        pipe_idx = dense_group_names.index("pipe")
+        if hybrid_group_names.index("pipe") > hybrid_group_names.index(
+            "moe_sharding"
+        ):
+            dense_group_names.insert(pipe_idx + 1, "dense_sharding")
+            dense_group_names.insert(pipe_idx, "moe_sharding")
+        else:
+            dense_group_names.insert(pipe_idx + 1, "moe_sharding")
+            dense_group_names.insert(pipe_idx + 2, "dense_sharding")
+
         dense_dims = [dim_dict[name] for name in dense_group_names]
+        assert dense_group_names.index(
+            "moe_sharding"
+        ) < dense_group_names.index(
+            "dense_sharding"
+        ), "moe_sharding must be before sharding."
+
         self._dense_topo = CommunicateTopology(dense_group_names, dense_dims)
+
         self._moe_topo._parent_hcg = self
         self._dense_topo._parent_hcg = self
         self._topo = self._dense_topo
