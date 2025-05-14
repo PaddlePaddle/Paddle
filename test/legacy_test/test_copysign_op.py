@@ -305,11 +305,17 @@ class TestCopySignZeroSize1(TestCopySignAPI):
         self.x = np.random.randn(0, 5)
         self.y = np.random.randn(0, 5)
 
+    def place_init(self):
+        self.place = paddle.CPUPlace()
+
 
 class TestCopySignZeroSize2(TestCopySignAPI):
     def input_init(self):
         self.x = np.random.randn(0, 5)
         self.y = np.random.randn(3, 0, 5)
+
+    def place_init(self):
+        self.place = paddle.CPUPlace()
 
 
 class TestCopySignZeroSize3(TestCopySignAPI):
