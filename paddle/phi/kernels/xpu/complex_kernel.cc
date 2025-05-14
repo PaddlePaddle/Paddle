@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#ifdef PADDLE_WITH_XPU_FFT
 #include "paddle/phi/kernels/complex_kernel.h"
 
 #include "fft/cuComplex.h"
@@ -21,6 +22,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/expand_kernel.h"
 #include "paddle/phi/kernels/funcs/common_infer_shape_functions.h"
+#include "paddle/phi/kernels/xpu/xpu_api_wrapper.h"
 
 namespace xfft_internal::xpu {
 int combine_as_complex(int N, float* real, float* imag, float2* out);
@@ -34,11 +36,21 @@ void ConjKernel(const Context& dev_ctx,
                 const DenseTensor& x,
                 DenseTensor* out) {
   dev_ctx.template Alloc<T>(out);
-  int r = xfft_internal::xpu::Conj(
-      x.numel(),
-      reinterpret_cast<cuFloatComplex*>(const_cast<T*>(x.data<T>())),
-      reinterpret_cast<cuFloatComplex*>(out->data<T>()));
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "conj");
+  if (std::is_same<T, phi::dtype::complex<float>>::value) {
+    int r = xfft_internal::xpu::Conj(
+        x.numel(),
+        reinterpret_cast<cuFloatComplex*>(const_cast<T*>(x.data<T>())),
+        reinterpret_cast<cuFloatComplex*>(out->data<T>()));
+    PADDLE_ENFORCE_XPU_SUCCESS(r);
+  } else {
+    using XPUType = typename XPUCopyTypeTrait<T>::Type;
+    const auto* input_data = x.data<T>();
+    int r = xpu::copy<XPUType>(dev_ctx.x_context(),
+                               reinterpret_cast<const XPUType*>(input_data),
+                               reinterpret_cast<XPUType*>(out->data<T>()),
+                               x.numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
+  }
 }
 
 template <typename T, typename Context>
@@ -46,6 +58,7 @@ void RealKernel(const Context& dev_ctx,
                 const DenseTensor& x,
                 DenseTensor* out) {
   dev_ctx.template Alloc<phi::dtype::Real<T>>(out);
+  // The allocation of imag here is redundant and could be optimized.
   phi::DenseTensor imag;
   imag.Resize(x.dims());
   dev_ctx.template Alloc<phi::dtype::Real<T>>(&imag);
@@ -54,7 +67,7 @@ void RealKernel(const Context& dev_ctx,
       reinterpret_cast<cuFloatComplex*>(const_cast<T*>(x.data<T>())),
       out->data<phi::dtype::Real<T>>(),
       imag.data<phi::dtype::Real<T>>());
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "real");
+  PADDLE_ENFORCE_XPU_SUCCESS(r);
 }
 
 template <typename T, typename Context>
@@ -62,6 +75,7 @@ void ImagKernel(const Context& dev_ctx,
                 const DenseTensor& x,
                 DenseTensor* out) {
   dev_ctx.template Alloc<phi::dtype::Real<T>>(out);
+  // The allocation of ‘real’ here is redundant and could be optimized.
   phi::DenseTensor real;
   real.Resize(x.dims());
   dev_ctx.template Alloc<phi::dtype::Real<T>>(&real);
@@ -70,7 +84,7 @@ void ImagKernel(const Context& dev_ctx,
       reinterpret_cast<cuFloatComplex*>(const_cast<T*>(x.data<T>())),
       real.data<phi::dtype::Real<T>>(),
       out->data<phi::dtype::Real<T>>());
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "imag");
+  PADDLE_ENFORCE_XPU_SUCCESS(r);
 }
 
 template <typename T, typename Context>
@@ -114,24 +128,44 @@ void ComplexKernel(const Context& dev_ctx,
       x_data,
       y_data,
       reinterpret_cast<cuFloatComplex*>(out->data<C>()));
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "complex");
+  PADDLE_ENFORCE_XPU_SUCCESS(r);
 }
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    conj, XPU, ALL_LAYOUT, phi::ConjKernel, float, phi::dtype::complex<float>) {
-}
+PD_REGISTER_KERNEL(conj,  // xpufft
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::ConjKernel,
+                   bool,
+                   int,
+                   int64_t,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>) {}
 
-PD_REGISTER_KERNEL(
-    real, XPU, ALL_LAYOUT, phi::RealKernel, phi::dtype::complex<float>) {
+PD_REGISTER_KERNEL(real,  // xpufft
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::RealKernel,
+                   phi::dtype::complex<float>) {
   kernel->OutputAt(0).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
 }
 
-PD_REGISTER_KERNEL(
-    imag, XPU, ALL_LAYOUT, phi::ImagKernel, phi::dtype::complex<float>) {
+PD_REGISTER_KERNEL(imag,  // xpufft
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::ImagKernel,
+                   phi::dtype::complex<float>) {
   kernel->OutputAt(0).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
 }
 
-PD_REGISTER_KERNEL(complex, XPU, ALL_LAYOUT, phi::ComplexKernel, float) {
+PD_REGISTER_KERNEL(complex,  // xpufft
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::ComplexKernel,
+                   float) {
   kernel->OutputAt(0).SetDataType(phi::dtype::ToComplex(kernel_key.dtype()));
 }
+#endif  // PADDLE_WITH_XPU_FFT

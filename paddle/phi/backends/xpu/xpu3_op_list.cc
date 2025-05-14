@@ -298,8 +298,6 @@ XPUOpMap& get_kl3_ops() {
        XPUKernelSet({phi::DataType::FLOAT32,
                      phi::DataType::FLOAT16,
                      phi::DataType::BFLOAT16})},
-      {"complex", XPUKernelSet({phi::DataType::FLOAT32})},
-      {"complex_grad", XPUKernelSet({phi::DataType::FLOAT32})},
       {"concat_grad",
        XPUKernelSet({phi::DataType::FLOAT32,
                      phi::DataType::FLOAT16,
@@ -803,8 +801,6 @@ XPUOpMap& get_kl3_ops() {
       {"huber_loss", XPUKernelSet({phi::DataType::FLOAT32})},
       {"kldiv_loss", XPUKernelSet({phi::DataType::FLOAT32})},
       {"kldiv_loss_grad", XPUKernelSet({phi::DataType::FLOAT32})},
-      {"imag", XPUKernelSet({phi::DataType::COMPLEX64})},
-      {"imag_grad", XPUKernelSet({phi::DataType::COMPLEX64})},
       {"increment",
        XPUKernelSet({phi::DataType::FLOAT32,
                      phi::DataType::INT32,
@@ -1102,8 +1098,6 @@ XPUOpMap& get_kl3_ops() {
                      phi::DataType::INT64,
                      phi::DataType::FLOAT32,
                      phi::DataType::FLOAT64})},
-      {"real", XPUKernelSet({phi::DataType::COMPLEX64})},
-      {"real_grad", XPUKernelSet({phi::DataType::COMPLEX64})},
       {"reciprocal", XPUKernelSet({phi::DataType::FLOAT32})},
       {"reciprocal_grad",
        XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
@@ -1828,6 +1822,15 @@ XPUOpMap& get_kl3_ops() {
                      phi::DataType::INT16,
                      phi::DataType::INT64,
                      phi::DataType::INT32})},
+#ifdef PADDLE_WITH_XPU_FFT
+      {"conj", XPUKernelSet({phi::DataType::COMPLEX64})},
+      {"real", XPUKernelSet({phi::DataType::COMPLEX64})},
+      {"real_grad", XPUKernelSet({phi::DataType::COMPLEX64})},
+      {"imag", XPUKernelSet({phi::DataType::COMPLEX64})},
+      {"imag_grad", XPUKernelSet({phi::DataType::COMPLEX64})},
+      {"complex", XPUKernelSet({phi::DataType::FLOAT32})},
+      {"complex_grad", XPUKernelSet({phi::DataType::FLOAT32})},
+#endif
   };
 
   return s_xpu3_kernels;

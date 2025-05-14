@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#ifdef PADDLE_WITH_XPU_FFT
 #include "paddle/phi/kernels/complex_grad_kernel.h"
 
 #include "fft/cuComplex.h"
@@ -54,7 +55,7 @@ void RealGradKernel(const Context& dev_ctx,
       const_cast<phi::dtype::Real<T>*>(dout.data<phi::dtype::Real<T>>()),
       imag.data<phi::dtype::Real<T>>(),
       reinterpret_cast<cuFloatComplex*>(dx_data));
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "real_grad");
+  PADDLE_ENFORCE_XPU_SUCCESS(r);
 }
 
 template <typename T, typename Context>
@@ -71,7 +72,7 @@ void ImagGradKernel(const Context& dev_ctx,
       real.data<phi::dtype::Real<T>>(),
       const_cast<phi::dtype::Real<T>*>(dout.data<phi::dtype::Real<T>>()),
       reinterpret_cast<cuFloatComplex*>(dx_data));
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "imag_grad");
+  PADDLE_ENFORCE_XPU_SUCCESS(r);
 }
 
 template <typename T, typename Context>
@@ -94,7 +95,7 @@ void ComplexGradKernel(const Context& dev_ctx,
       reinterpret_cast<cuFloatComplex*>(const_cast<C*>(dout.data<C>())),
       real_data,
       imag_data);
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "complex_grad");
+  PADDLE_ENFORCE_XPU_SUCCESS(r);
 
   if (dx) {
     if (x.dims() == dout.dims()) {
@@ -116,7 +117,7 @@ void ComplexGradKernel(const Context& dev_ctx,
 }
 }  // namespace phi
 
-PD_REGISTER_KERNEL(imag_grad,
+PD_REGISTER_KERNEL(imag_grad,  // xpufft
                    XPU,
                    ALL_LAYOUT,
                    phi::ImagGradKernel,
@@ -124,7 +125,7 @@ PD_REGISTER_KERNEL(imag_grad,
   kernel->InputAt(0).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
 }
 
-PD_REGISTER_KERNEL(real_grad,
+PD_REGISTER_KERNEL(real_grad,  // xpufft
                    XPU,
                    ALL_LAYOUT,
                    phi::RealGradKernel,
@@ -132,7 +133,11 @@ PD_REGISTER_KERNEL(real_grad,
   kernel->InputAt(0).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
 }
 
-PD_REGISTER_KERNEL(
-    complex_grad, XPU, ALL_LAYOUT, phi::ComplexGradKernel, float) {
+PD_REGISTER_KERNEL(complex_grad,  // xpufft
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::ComplexGradKernel,
+                   float) {
   kernel->InputAt(2).SetDataType(phi::dtype::ToComplex(kernel_key.dtype()));
 }
+#endif  // PADDLE_WITH_XPU_FFT
