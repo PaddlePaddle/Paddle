@@ -1146,12 +1146,14 @@ class _ShardOptimizer(Optimizer):
         self._mp_group = None
         self.do_tensor_fusion_once = True
         self._strategy = Strategy()
-        self.enable_tensor_fusion = (
-            os.getenv("FLAGS_enable_tensor_fusion") == '1'
-        )
-        self.enable_sharding_overlap = (
-            os.getenv("FLAGS_enable_sharding_overlap") == '1'
-        )
+        self.enable_tensor_fusion = os.getenv("FLAGS_enable_tensor_fusion") in [
+            "True",
+            "true",
+            "1",
+        ]
+        self.enable_sharding_overlap = os.getenv(
+            "FLAGS_enable_sharding_overlap"
+        ) in ["True", "true", "1"]
 
     def _set_and_check_sharding_prop_from_param(self):
         global_mesh = fleet.auto.get_mesh()
@@ -1882,7 +1884,7 @@ class _ShardingStageBase:
         self, param: Tensor, master_weight: Tensor
     ) -> Tensor:
         if param.is_dist():
-            if os.getenv("FLAGS_enable_tensor_fusion") == '1':
+            if os.getenv("FLAGS_enable_tensor_fusion") in ["True", "true", "1"]:
                 placements = param.placements
             else:
                 placements = get_placement_with_sharding(
@@ -1970,7 +1972,8 @@ class ShardingStage1(_ShardingStageBase):
         if param.is_dist():
             # Only deal with momentum in optimizer, beta should be replicated cross param's mesh
             if (
-                not os.getenv("FLAGS_enable_tensor_fusion") == '1'
+                os.getenv("FLAGS_enable_tensor_fusion")
+                not in ["True", "true", "1"]
                 and 'beta' not in key
             ):
                 placements = get_placement_with_sharding(
