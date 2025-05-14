@@ -57,7 +57,7 @@ void ExpandKernel(const Context& dev_ctx,
             "The expanded size (%d) for non-existing dimensions must be "
             "positive for expand_v2 op.",
             out_new_dims[i]));
-            
+
     PADDLE_ENFORCE_GE(
         x_vec_dims[i],
         0,
