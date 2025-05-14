@@ -36,7 +36,6 @@ class TestItem(Dy2StTestBase):
         return paddle.rand(shape, dtype=dtype)
 
     def test_no_args(self):
-
         t = self._create_tensor([1])
 
         def dynamic_forward(x):
@@ -102,6 +101,11 @@ class TestItem(Dy2StTestBase):
                 dynamic_forward(t)
 
         t = self._create_tensor([8, 8, 8], "float32")
+        test_raise_error(
+            t,
+            ValueError,
+            "only one element tensors can be converted to Python scalars when no input coordinates",
+        )
         test_raise_error(
             t, ValueError, "index (.)* is out of bounds for size (.)*", 10000
         )

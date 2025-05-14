@@ -331,6 +331,9 @@ def monkey_patch_value():
             return offset
 
         offset = check_input_and_calculate_offset(self, *args)
+        if len(args) == 0:
+            # NOTE: This is to maintain consistency with the original code.
+            return self
         return self.flatten()[offset]
 
     def astype(self, dtype):
