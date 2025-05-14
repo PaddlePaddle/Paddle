@@ -48,14 +48,16 @@ class FallbackContainerOpToPhiPattern
   bool MatchAndRewrite(ContainerOp container_op,
                        pir::PatternRewriter& rewriter) const override {
     const auto& ret = TryMatchAndRewrite(container_op, &rewriter);
-    PADDLE_ENFORCE_EQ(ret.HasError(), false,
-                   phi::errors::Fatal((
-                  "FallbackContainerOpToPhiPattern::MatchAndRewrite failed. "
-                   "\nTraceback (most recent call "
-                   "last):\n%s\n%s: %s. ",
-                   ret.GetError().CallStackToString(),
-                   ret.GetError().class_name(),
-                   ret.GetError().msg()));
+    PADDLE_ENFORCE_EQ(
+        ret.HasError(),
+        false,
+        phi::errors::Fatal(
+            "FallbackContainerOpToPhiPattern::MatchAndRewrite failed. "
+            "\nTraceback (most recent call "
+            "last):\n%s\n%s: %s. ",
+            ret.GetError().CallStackToString(),
+            ret.GetError().class_name(),
+            ret.GetError().msg()));
     return ret.GetOkValue();
   }
 
