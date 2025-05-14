@@ -58,7 +58,7 @@ void PriorBoxKernel(const Context& ctx,
     step_height = new_step_h;
   }
 
-  int num_priors = new_aspect_ratios.size() * min_sizes.size();
+  int64_t num_priors = new_aspect_ratios.size() * min_sizes.size();
   if (max_sizes.size() > 0) {
     num_priors += max_sizes.size();
   }
@@ -70,12 +70,12 @@ void PriorBoxKernel(const Context& ctx,
   auto var_data = var->data<T>();
   xpu::VectorParam<float> aspect_ratios_param{
       new_aspect_ratios.data(),
-      static_cast<int>(new_aspect_ratios.size()),
+      static_cast<int64_t>(new_aspect_ratios.size()),
       nullptr};
   xpu::VectorParam<float> min_sizes_param{
-      min_sizes.data(), static_cast<int>(min_sizes.size()), nullptr};
+      min_sizes.data(), static_cast<int64_t>(min_sizes.size()), nullptr};
   xpu::VectorParam<float> max_sizes_param{
-      max_sizes.data(), static_cast<int>(max_sizes.size()), nullptr};
+      max_sizes.data(), static_cast<int64_t>(max_sizes.size()), nullptr};
 
   int ret = xpu::gen_prior_box(ctx.x_context(),
                                boxes_data,
@@ -93,10 +93,10 @@ void PriorBoxKernel(const Context& ctx,
                                min_max_aspect_ratios_order);
   PADDLE_ENFORCE_XDNN_SUCCESS(ret, "gen_prior_box");
 
-  int box_num = feature_height * feature_width * num_priors;
-  int vlen = variances.size();
+  int64_t box_num = feature_height * feature_width * num_priors;
+  int64_t vlen = variances.size();
   std::vector<T> var_cpu(vlen * box_num);
-  for (int i = 0; i < box_num; ++i) {
+  for (int64_t i = 0; i < box_num; ++i) {
     std::copy(variances.begin(), variances.end(), var_cpu.begin() + i * vlen);
   }
   ctx.Wait();

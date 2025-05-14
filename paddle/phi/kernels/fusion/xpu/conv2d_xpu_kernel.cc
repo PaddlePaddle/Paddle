@@ -37,9 +37,9 @@ void Conv2dXPUKernelImpl(const Context& ctx,
                          const paddle::optional<DenseTensor>& branch_max,
                          const paddle::optional<DenseTensor>& scale_max,
                          const paddle::optional<DenseTensor>& out_max_in,
-                         const std::vector<int>& paddings,
-                         const std::vector<int>& dilations,
-                         const std::vector<int>& strides,
+                         const std::vector<int>& paddings_,
+                         const std::vector<int>& dilations_,
+                         const std::vector<int>& strides_,
                          const std::string& padding_algorithm,
                          int groups,
                          int act_type,
@@ -52,26 +52,23 @@ void Conv2dXPUKernelImpl(const Context& ctx,
   auto input_dims = x.dims();
   auto filter_dims = filter.dims();
   // update paddings and dilations according to padding_algorithm
-  std::vector<int> paddings_vec = paddings;
-  std::vector<int> dilations_vec = dilations;
+  std::vector<int64_t> paddings(paddings_.begin(), paddings_.end());
+  std::vector<int64_t> dilations(dilations_.begin(), dilations_.end());
+  std::vector<int64_t> strides(strides_.begin(), strides_.end());
   DDim in_data_dims = common::slice_ddim(input_dims, 2, input_dims.size());
   DDim filter_data_dims =
       common::slice_ddim(filter_dims, 2, filter_dims.size());
-  std::vector<int> ksize = common::vectorize<int>(filter_data_dims);
-  phi::UpdatePaddingAndDilation(&paddings_vec,
-                                &dilations_vec,
-                                padding_algorithm,
-                                in_data_dims,
-                                strides,
-                                ksize);
+  std::vector<int64_t> ksize = common::vectorize<int64_t>(filter_data_dims);
+  phi::UpdatePaddingAndDilation(
+      &paddings, &dilations, padding_algorithm, in_data_dims, strides, ksize);
 
-  int batch = static_cast<int>(input_dims[0]);
-  int in_c = static_cast<int>(input_dims[1]);
-  int in_h = static_cast<int>(input_dims[2]);
-  int in_w = static_cast<int>(input_dims[3]);
-  int out_c = static_cast<int>(filter_dims[0]);
-  int win_h = static_cast<int>(filter_dims[2]);
-  int win_w = static_cast<int>(filter_dims[3]);
+  int64_t batch = input_dims[0];
+  int64_t in_c = input_dims[1];
+  int64_t in_h = input_dims[2];
+  int64_t in_w = input_dims[3];
+  int64_t out_c = filter_dims[0];
+  int64_t win_h = filter_dims[2];
+  int64_t win_w = filter_dims[3];
   auto* input_data = reinterpret_cast<const XPUTypeX*>(x.data<T_X>());
   const float* input_max_data =
       x_max.get_ptr() == nullptr ? nullptr : x_max.get_ptr()->data<float>();
@@ -130,10 +127,11 @@ void Conv2dXPUKernelImpl(const Context& ctx,
           /* int64_t h */ in_h,
           /* int64_t w */ in_w,
           /* int64_t oc */ out_c,
-          /* const std::vector<int>& ksize */ std::vector<int>{win_h, win_w},
-          /* const std::vector<int>& strides */ strides,
-          /* const std::vector<int>& paddings */ paddings_vec,
-          /* const std::vector<int>& dilations */ dilations_vec,
+          /* const std::vector<int64_t>& ksize */
+          std::vector<int64_t>{win_h, win_w},
+          /* const std::vector<int64_t>& strides */ strides,
+          /* const std::vector<int64_t>& paddings */ paddings,
+          /* const std::vector<int64_t>& dilations */ dilations,
           /* int64_t groups */ groups,
           /* const float* in_maxptr */ input_max_data,
           /* const float* filter_maxptr */ filter_max_data,

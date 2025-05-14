@@ -13,18 +13,44 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/ap_infer_sym.h"
-
+#ifdef PADDLE_WITH_CINN
+#include "paddle/ap/include/paddle/pir/infer_symbolic_shape_util.h"
+#endif
 #include "paddle/common/ddim.h"
 #include "paddle/common/enforce.h"
 #include "paddle/common/layout.h"
 #include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/infer_sym_utils.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 
-#ifdef PADDLE_WITH_CINN
-#include "paddle/ap/include/paddle/pir/infer_symbolic_shape_util.h"
-#endif
-
 namespace paddle::dialect {
+
+bool ApTrivialFusionBeginOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+#ifdef PADDLE_WITH_CINN
+  symbol::ShapeOrDataDimExprs empty_shape{
+      symbol::TensorShapeOrDataDimExprs{std::vector<symbol::DimExpr>{}}};
+  infer_context->SetShapeOrDataForValue(op->result(0), empty_shape);
+  return true;
+#else
+  PADDLE_THROW(phi::errors::Unimplemented(
+      "ap_trivial_fusion_begin is not implemented when cinn is not enabled."));
+  return false;
+#endif
+}
+
+bool ApTrivialFusionEndOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+#ifdef PADDLE_WITH_CINN
+  symbol::ShapeOrDataDimExprs empty_shape{
+      symbol::TensorShapeOrDataDimExprs{std::vector<symbol::DimExpr>{}}};
+  infer_context->SetShapeOrDataForValue(op->result(0), empty_shape);
+  return true;
+#else
+  PADDLE_THROW(phi::errors::Unimplemented(
+      "ap_trivial_fusion_end is not implemented when cinn is not enabled."));
+  return false;
+#endif
+}
 
 bool ApFacadeOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {

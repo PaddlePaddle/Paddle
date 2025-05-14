@@ -29,7 +29,7 @@ limitations under the License. */
 namespace phi {
 namespace funcs {
 
-template <typename T, typename IndexT = int>
+template <typename T, typename IndexT, int VecSize>
 __global__ void GatherNdCUDAKernel(const T* input,
                                    const Dim<DDim::kMaxRank> input_dims,
                                    const IndexT* indices,
@@ -37,11 +37,17 @@ __global__ void GatherNdCUDAKernel(const T* input,
                                    size_t remain_size,
                                    size_t slice_size,
                                    size_t end_size) {
-  CUDA_KERNEL_LOOP_TYPE(i, remain_size * slice_size, int64_t) {
-    int64_t indices_i = i / slice_size;
-    int64_t slice_i = i - indices_i * slice_size;  // offset inside the slice
+  int64_t total_size = remain_size * slice_size;
+  int64_t idx = (blockIdx.x * blockDim.x + threadIdx.x) * VecSize;
+  int64_t stride = blockDim.x * gridDim.x * VecSize;
+
+#pragma unroll
+  for (; idx < total_size; idx += stride) {
+    int64_t indices_i = idx / slice_size;
+    int64_t slice_i = idx % slice_size;
     int64_t gather_i = 0;
     int64_t temp = slice_size;
+#pragma unroll
     for (int64_t j = end_size - 1; j >= 0; --j) {
       auto index_value = indices[indices_i * end_size + j];
       PADDLE_ENFORCE(
@@ -61,7 +67,75 @@ __global__ void GatherNdCUDAKernel(const T* input,
       temp *= input_dims[j];
     }
     int64_t input_i = gather_i + slice_i;
-    *(output + i) = *(input + input_i);
+
+    using VecType = kps::details::VectorType<T, VecSize>;
+    const VecType* src = reinterpret_cast<const VecType*>(&input[input_i]);
+    VecType* dst = reinterpret_cast<VecType*>(&output[idx]);
+    *dst = *src;
+  }
+}
+
+template <typename T, typename IndexT, int VecSize>
+void DispatchGatherNdKernel(const phi::GPUContext& ctx,
+                            const T* p_input,
+                            const Dim<DDim::kMaxRank>& g_input_dims,
+                            const IndexT* p_index,
+                            T* p_output,
+                            int64_t remain_numel,
+                            int64_t slice_size,
+                            int64_t end_size,
+                            int vec_size,
+                            const phi::backends::gpu::GpuLaunchConfig& config) {
+  if (vec_size == VecSize) {
+    auto stream = ctx.stream();
+    GatherNdCUDAKernel<T, IndexT, VecSize>
+        <<<config.block_per_grid, config.thread_per_block, 0, stream>>>(
+            p_input,
+            g_input_dims,
+            p_index,
+            p_output,
+            remain_numel,
+            slice_size,
+            end_size);
+  } else {
+    DispatchGatherNdKernel<T, IndexT, VecSize / 2>(ctx,
+                                                   p_input,
+                                                   g_input_dims,
+                                                   p_index,
+                                                   p_output,
+                                                   remain_numel,
+                                                   slice_size,
+                                                   end_size,
+                                                   vec_size,
+                                                   config);
+  }
+}
+
+template <typename T, typename IndexT>
+void DispatchGatherNdKernel(const phi::GPUContext& ctx,
+                            const T* p_input,
+                            const Dim<DDim::kMaxRank>& g_input_dims,
+                            const IndexT* p_index,
+                            T* p_output,
+                            int64_t remain_numel,
+                            int64_t slice_size,
+                            int64_t end_size,
+                            int vec_size,
+                            const phi::backends::gpu::GpuLaunchConfig& config) {
+  if (vec_size == 1) {
+    auto stream = ctx.stream();
+    GatherNdCUDAKernel<T, IndexT, 1>
+        <<<config.block_per_grid, config.thread_per_block, 0, stream>>>(
+            p_input,
+            g_input_dims,
+            p_index,
+            p_output,
+            remain_numel,
+            slice_size,
+            end_size);
+  } else {
+    PADDLE_THROW(common::errors::Unimplemented(
+        "Unsupported vectorized size: %d", vec_size));
   }
 }
 
@@ -98,18 +172,27 @@ void GPUGatherNd(const phi::GPUContext& ctx,
     g_input_dims[i] = input_dims[i];
   }
 
-  int block = 512;
-  int64_t n = slice_size * remain_numel;
-  dim3 grid = dim3((n + block - 1) / block);
-  phi::backends::gpu::LimitGridDim(ctx, &grid);
+  int vec_size = 4;
+  vec_size = std::min(phi::GetVectorizedSize(p_input), vec_size);
+  vec_size = std::min(phi::GetVectorizedSize(p_output), vec_size);
+  while (vec_size > 1 && slice_size % vec_size != 0) {
+    vec_size /= 2;
+  }
 
-  GatherNdCUDAKernel<T, IndexT><<<grid, block, 0, ctx.stream()>>>(p_input,
-                                                                  g_input_dims,
-                                                                  p_index,
-                                                                  p_output,
-                                                                  remain_numel,
-                                                                  slice_size,
-                                                                  end_size);
+  constexpr int loop_count = 4;
+  auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
+      ctx, remain_numel * slice_size, vec_size * loop_count);
+
+  DispatchGatherNdKernel<T, IndexT, 4>(ctx,
+                                       p_input,
+                                       g_input_dims,
+                                       p_index,
+                                       p_output,
+                                       remain_numel,
+                                       slice_size,
+                                       end_size,
+                                       vec_size,
+                                       config);
 }
 
 template <typename T, typename U, int VecSize>
