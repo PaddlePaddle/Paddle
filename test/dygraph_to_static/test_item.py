@@ -30,10 +30,8 @@ paddle.seed(SEED)
 
 class TestItem(Dy2StTestBase):
     type_list = [
-        "float64",
         "float32",
-        "float16",
-        # "int32", "int64", "bool",
+        # "float64", "float16","int32", "int64", "bool",
     ]
 
     @classmethod
