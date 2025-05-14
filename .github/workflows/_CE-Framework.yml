@@ -137,7 +137,7 @@ jobs:
           pip config set global.index-url https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple
           python -m pip install pip --upgrade
           pip install /paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl
-          pip install -r requirements.txt
+          pip install -r /PaddleTest/inference/python_api_test/requirements.txt
           '
 
       - name: Check
@@ -147,8 +147,7 @@ jobs:
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           export PATH=$(pwd)/run_env:${PATH}
-          cd /PaddleTest/inference/python_api_test
-          bash parallel_run.sh 2
+          bash /PaddleTest/inference/python_api_test/parallel_run.sh 2
           '
 
       - name: Terminate and delete the container
