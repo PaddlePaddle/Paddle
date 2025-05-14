@@ -1665,7 +1665,7 @@ class _ShardOptimizer(Optimizer):
             if self._inner_opt._grad_clip is not None:
                 self._inner_opt._grad_clip.should_comm_on_shard_dim = True
                 self._inner_opt._grad_clip.sharding_group = self._sharding_group
-                if self._mp_degree > 1:
+                if "mp" in mesh._dim_names and self._mp_degree > 1:
                     self._inner_opt._grad_clip.mp_group = self._mp_group
 
         new_params = []
