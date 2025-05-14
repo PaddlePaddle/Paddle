@@ -127,6 +127,100 @@ std::string to_string_with_precision(const T a_value, const int n = 2) {
   return out.str();
 }
 
+
+class DimMapProxy final {
+public:
+DimMapProxy() = default;
+DimMapProxy(const std::vector<std::vector<int64_t>>& dim_mapping) : dim_mapping_2d(dim_mapping) {
+  Sync1dMap();
+}
+
+DimMapProxy(const std::vector<int64_t>& dim_mapping) : dim_mapping_1d(dim_mapping) {
+  Sync2dMap();
+}
+
+operator const std::vector<int64_t>&() const {
+  return dim_mapping_1d;
+}
+
+operator const std::vector<std::vector<int64_t>>&() const {
+  return dim_mapping_2d;
+}
+
+private:
+void Sync1dMap() {
+  dim_mapping_1d.resize(dim_mapping_2d.size());
+  for (size_t i = 0; i < dim_mapping_2d.size(); ++i) {
+    PADDLE_ENFORCE_LE(dim_mapping_2d[i].size(), 1,
+      "Dim_mapping conversion is not supported, dim %d of tensor has be sharded on more than one dim of mesh");
+    dim_mapping_1d[i] = dim_mapping_2d[i].empty() ? -1 : dim_mapping_2d[i][0];
+  }
+}
+
+void Sync2dMap() {
+  dim_mapping_2d.resize(dim_mapping_1d.size());
+  for (size_t i = 0; i < dim_mapping_1d.size(); ++i) {
+    dim_mapping_2d[i] = {dim_mapping_1d[i]};
+  }
+}
+
+std::vector<int64_t> dim_mapping_1d;
+std::vector<std::vector<int64_t>> dim_mapping_2d;
+};
+
+class SplitFactor final {
+public:
+SplitFactor() {}
+SplitFactor(std::unordered_map<int64_t, int64_t> split_factor_map) :
+   split_factor_map_(split_factor_map) {}
+
+void set_split_factor(int64_t mesh_dim, int64_t split_factor) {
+ // default value is 1
+  if (split_factor > 1) {
+    split_factor_map_[mesh_dim] = split_factor;
+  }
+  PADDLE_ENFORCE_LE(split_factor_map_.size(), 1, "At now only support to rearrange at one mesh dim.");
+}
+
+int64_t get_split_factor(int64_t mesh_dim) const {
+  return split_factor_map_.count(mesh_dim) ? split_factor_map_.at(mesh_dim) : 1;
+}
+
+void clear_split_factor(int64_t mesh_dim) {
+  if (split_factor_map_.count(mesh_dim)) {
+    split_factor_map_.erase(mesh_dim);
+  }
+}
+bool operator==(const SplitFactor& other) const {
+  return split_factor_map_ == other.split_factor_map_;
+}
+
+bool operator!=(const SplitFactor& other) const {
+  return !(this->operator==(other));
+}
+
+std::string to_string() const {
+  std::stringstream ss;
+  for (const auto& [k, v] : split_factor_map_) {
+    ss << "mesh dim: " << std::to_string(k) << ", split factor: " << std::to_string(v);
+  }
+  return ss.str();
+}
+
+private:
+std::unordered_map<int64_t, int64_t> split_factor_map_;
+};
+
+
 }  // namespace auto_parallel
 }  // namespace distributed
 }  // namespace phi
+namespace std {
+template<>
+struct hash<phi::distributed::auto_parallel::SplitFactor> {
+  size_t operator()(const phi::distributed::auto_parallel::SplitFactor& split_factor) const {
+      string str = split_factor.to_string();
+      return hash<string>()(str);
+  }
+};
+}  // namespace std

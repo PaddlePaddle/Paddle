@@ -115,15 +115,17 @@ class TensorDistAttrStorage : public pir::AttributeStorage {
   /// \brief Declare ParamKey according to parameter type.
   ///
   using ParamKey = std::tuple<ProcessMeshAttribute,
-                              std::vector<int64_t>,
+                              std::vector<std::vector<int64_t>>,
+                              phi::distributed::auto_parallel::SplitFactor,
                               flat_hash_map<int64_t, phi::ReduceType>,
                               std::optional<PlacementsAttribute>>;
 
   TensorDistAttrStorage(ParamKey&& param)  // NOLINT
       : mesh_attr(std::get<0>(param)),
         dims_mapping(std::move(std::get<1>(param))),
-        partial_status(std::move(std::get<2>(param))),
-        placements_(std::move(std::get<3>(param))) {}
+        split_factor(std::move(std::get<2>(param))),
+        partial_status(std::move(std::get<3>(param))),
+        placements_(std::move(std::get<4>(param))) {}
   ///
   /// \brief Each derived TypeStorage must define a Construct method, which
   /// StorageManager uses to construct a derived TypeStorage.
@@ -137,18 +139,23 @@ class TensorDistAttrStorage : public pir::AttributeStorage {
   ///
   static std::size_t HashValue(const ParamKey& key) {
     auto mesh_hash = std::get<0>(key).hash();
-    auto dims_map_hash = std::hash<std::vector<int64_t>>()(std::get<1>(key));
+    auto dims_map_hash = std::hash<std::vector<std::vector<int64_t>>>()(std::get<1>(key));
+    auto combine_hash = pir::detail::hash_combine(mesh_hash, dims_map_hash);
+
+    auto sf_str_hash = std::hash<std::string>()(std::get<2>(key).to_string());
+    combine_hash = pir::detail::hash_combine(mesh_hash, sf_str_hash);
+
     std::string partial_status_str = "[";
-    for (auto& itr : std::get<2>(key)) {
+    for (auto& itr : std::get<3>(key)) {
       partial_status_str +=
           "Partial(dims:" + std::to_string(itr.first) + ", " +
           phi::ReduceTypeStrings[static_cast<int>(itr.second)] + "), ";
     }
     partial_status_str += "]";
-    auto combine_hash = pir::detail::hash_combine(mesh_hash, dims_map_hash);
-    if (std::get<3>(key).has_value()) {
+
+    if (std::get<4>(key).has_value()) {
       combine_hash =
-          pir::detail::hash_combine(combine_hash, std::get<3>(key)->hash());
+          pir::detail::hash_combine(combine_hash, std::get<4>(key)->hash());
     }
     return pir::detail::hash_combine(
         combine_hash, std::hash<std::string>()(partial_status_str));
@@ -159,12 +166,13 @@ class TensorDistAttrStorage : public pir::AttributeStorage {
   ///
   bool operator==(const ParamKey& key) const {
     return mesh_attr == std::get<0>(key) && dims_mapping == std::get<1>(key) &&
-           partial_status == std::get<2>(key) &&
-           placements_ == std::get<3>(key);
+           split_factor == std::get<2>(key) && partial_status == std::get<3>(key) &&
+           placements_ == std::get<4>(key);
   }
 
   ProcessMeshAttribute mesh_attr;
-  std::vector<int64_t> dims_mapping;
+  std::vector<std::vector<int64_t>> dims_mapping;
+  phi::distributed::auto_parallel::SplitFactor split_factor;
   // partial map would less or equal than to mesh.size.
   // iterate operation (copy and comparison) would more frequency than random
   // element access. <key: dim on mesh, value: reduce type>

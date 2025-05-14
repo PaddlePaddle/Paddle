@@ -325,7 +325,7 @@ pir::Attribute CvtToPirAttr(const phi::distributed::ArgDistAttr& dist_attr) {
   if (holds_alternative<phi::distributed::TensorDistAttr>(dist_attr)) {
     auto& attr = PADDLE_GET_CONST(phi::distributed::TensorDistAttr, dist_attr);
     return TensorDistAttribute::get(
-        ctx, attr.process_mesh(), attr.dims_mapping(), attr.partial_status());
+        ctx, attr.process_mesh(), attr.dims_mapping_2d(), attr.split_factor(), attr.partial_status());
   } else {
     auto& vec = PADDLE_GET_CONST(std::vector<phi::distributed::TensorDistAttr>,
                                  dist_attr);
@@ -334,7 +334,8 @@ pir::Attribute CvtToPirAttr(const phi::distributed::ArgDistAttr& dist_attr) {
     for (auto& attr : vec) {
       array.push_back(TensorDistAttribute::get(ctx,
                                                attr.process_mesh(),
-                                               attr.dims_mapping(),
+                                               attr.dims_mapping_2d(),
+                                               attr.split_factor(),
                                                attr.partial_status()));
     }
     return pir::ArrayAttribute::get(ctx, array);
@@ -347,7 +348,7 @@ pir::Attribute CreateReplicatedDistAttr(pir::Type prim_type,
   if (auto tensor_type = prim_type.dyn_cast<pir::DenseTensorType>()) {
     auto& ddim = tensor_type.dims();
     return TensorDistAttribute::get(
-        ctx, mesh, std::vector<int64_t>(ddim.size(), -1));
+        ctx, mesh, std::vector<std::vector<int64_t>>(ddim.size()));
   } else if (auto vec_type = prim_type.dyn_cast<pir::VectorType>()) {
     std::vector<pir::Attribute> array;
     for (size_t idx = 0; idx < vec_type.size(); ++idx) {

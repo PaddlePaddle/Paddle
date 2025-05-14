@@ -320,8 +320,8 @@ paddle::dialect::TensorDistAttribute deserializeTensorDistAttr(
   paddle::dialect::ProcessMeshAttribute mesh =
       deserializeProcessMeshAttr(&(data_json.at(0)), ctx);
   VLOG(8) << "deserialize dims_mapping";
-  std::vector<int64_t> dims_mapping =
-      data_json.at(1).template get<std::vector<int64_t>>();
+  std::vector<std::vector<int64_t>> dims_mapping =
+      {data_json.at(1).template get<std::vector<int64_t>>()};
   VLOG(8) << "deserialize partial_status";
   paddle::flat_hash_map<int64_t, phi::ReduceType> partial_status;
   Json map_json = data_json.at(2);

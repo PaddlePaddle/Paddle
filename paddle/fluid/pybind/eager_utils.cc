@@ -2925,35 +2925,32 @@ void BindEagerUtils(PyObject* module) {
   }
 }
 
-std::tuple<std::vector<int64_t>,
+std::tuple<std::vector<std::vector<int64_t>>, phi::distributed::auto_parallel::SplitFactor,
            paddle::flat_hash_map<int64_t, phi::ReduceType>>
 CvtPlacements(Placements placements, int ndim) {
-  std::vector<int64_t> dim_map(ndim, -1);
+  std::vector<std::vector<int64_t>> dim_mapping(ndim);
+  phi::distributed::auto_parallel::SplitFactor split_factor;
   for (size_t i = 0; i < placements.size(); i++) {
-    auto& placement = placements[i];
-    if (placement->is_shard()) {
-      auto shard_dim =
-          dynamic_cast<const phi::distributed::Shard&>(*placement).get_dim();
-      if (dim_map[shard_dim] != -1) {
-        LOG(WARNING) << "WARNING: Tensor dim " << shard_dim
-                     << " is already sharded on "
-                     << "mesh dim" << dim_map[shard_dim]
-                     << ". Sharding a tensor dim with "
-                     << "multiple mesh dim is not supported yet.";
-      }
-      // PADDLE_ENFORCE_EQ(
-      //     dim_map[shard_dim],
-      //     -1,
-      //     common::errors::InvalidArgument(
-      //         "Tensor dim %lld is already sharded on mesh dim %lld,"
-      //         " DistTensor operator implementation does not support things "
-      //         "like hybrid"
-      //         " sharding strategies yet (i.e. [Shard(0), Shard(0)])",
-      //         shard_dim,
-      //         dim_map[shard_dim]));
-      dim_map[shard_dim] = i;
+    const auto& cur_placement = placements[i];
+    if (!cur_placement->is_shard()) { continue; }
+    const auto& shard = dynamic_cast<const Shard&>(*cur_placement);
+    dim_mapping[shard.get_dim()].push_back(i);
+    split_factor.set_split_factor(i, shard.get_split_factor());
+  }
+
+  auto compare_functor = [&](size_t a, size_t b) {
+      const auto& shard_a = dynamic_cast<const Shard&>(*placements[a]);
+      const auto& shard_b = dynamic_cast<const Shard&>(*placements[b]);
+      return shard_a.get_co_shard_order() < shard_b.get_co_shard_order();
+  };
+
+  for (size_t i = 0; i < dim_mapping.size(); i++) {
+    auto& mesh_dims = dim_mapping[i];
+    if (mesh_dims.size() > 1) {
+      std::sort(mesh_dims.begin(), mesh_dims.end(), compare_functor);
     }
   }
+
   paddle::flat_hash_map<int64_t, phi::ReduceType> partial_status;
   for (size_t i = 0; i < placements.size(); ++i) {
     auto& p = placements[i];
@@ -2962,7 +2959,7 @@ CvtPlacements(Placements placements, int ndim) {
           {i, dynamic_cast<phi::distributed::Partial&>(*p).get_reduce_type()});
     }
   }
-  return {dim_map, partial_status};
+  return {dim_mapping, split_factor, partial_status};
 }
 
 void EagerSetDeviceId() {

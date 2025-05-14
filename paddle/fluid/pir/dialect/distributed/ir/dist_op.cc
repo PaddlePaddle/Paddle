@@ -554,7 +554,7 @@ TEST_API void paddle::dialect::MoESubMeshTensorsOp::Build(
       input_tensor_type.dense_tensor_type();
   for (auto local_dist_attr : local_dist_attrs) {
     phi::DDim local_tensor_dims(local_dims);  // global shape of local tensor
-    const std::vector<int64_t>& dims_mapping = local_dist_attr.dims_mapping();
+    const auto& dims_mapping = local_dist_attr.dims_mapping();
     ProcessMeshAttribute mesh = local_dist_attr.process_mesh_attr();
     const std::vector<int64_t>& mesh_shape = mesh.shape();
     PADDLE_ENFORCE_EQ(
@@ -566,8 +566,9 @@ TEST_API void paddle::dialect::MoESubMeshTensorsOp::Build(
             local_tensor_dims.size()));
 
     for (size_t i = 0; i < dims_mapping.size(); ++i) {
-      if (dims_mapping[i] != -1) {
-        int64_t dim_size = mesh_shape.at(dims_mapping.at(i));
+      if (dims_mapping[i].size() > 0) {
+        // In this special case, co shard don't exist.
+        int64_t dim_size = mesh_shape.at(dims_mapping.at(i).at(0));
         local_tensor_dims[i] *= dim_size;
       }
     }
@@ -939,6 +940,7 @@ std::vector<std::vector<pir::Value>> DistReshapeOp::Vjp(
       TensorDistAttribute::get(ctx,
                                tmp_attr.process_mesh_attr(),
                                tmp_attr.dims_mapping(),
+                               tmp_attr.split_factor(),
                                tmp_attr.partial_status(),
                                x_placements);
 

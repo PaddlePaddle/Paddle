@@ -56,7 +56,7 @@ class DistDenseTensorType
   ProcessMeshAttribute process_mesh_attr() const {
     return tensor_dist_attr().process_mesh_attr();
   }
-  const std::vector<int64_t>& dims_mapping() const {
+  const std::vector<std::vector<int64_t>>& dims_mapping() const {
     return tensor_dist_attr().dims_mapping();
   }
   std::set<int64_t> partial_dims() const {
@@ -95,7 +95,7 @@ class DistDenseTensorType
                                  ProcessMeshAttribute process_mesh_attr) {
     auto& ddim = dense_tensor_type.dims();
     auto attr = TensorDistAttribute::get(
-        ctx, process_mesh_attr, std::vector<int64_t>(ddim.size(), -1));
+        ctx, process_mesh_attr, std::vector<std::vector<int64_t>>(ddim.size()));
     return get(ctx, dense_tensor_type, attr, ddim);
   }
 };

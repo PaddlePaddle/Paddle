@@ -47,7 +47,7 @@ static PyObject *static_api_shard_tensor(PyObject *self,
 
     // Call ir static api
     auto static_api_out = paddle::dialect::shard_tensor(
-        input, process_mesh, std::get<0>(res), std::get<1>(res));
+        input, process_mesh, std::get<0>(res), std::get<1>(res), std::get<2>(res));
 
     return ToPyObject(static_api_out);
   } catch (...) {
@@ -78,7 +78,7 @@ static PyObject *static_api_reshard(PyObject *self,
 
     // Call ir static api
     auto static_api_out = paddle::dialect::reshard(
-        input, process_mesh, std::get<0>(res), std::get<1>(res), placements);
+        input, process_mesh, std::get<0>(res), std::get<1>(res), std::get<2>(res), placements);
 
     return ToPyObject(static_api_out);
   } catch (...) {
@@ -127,9 +127,11 @@ static PyObject *static_api_moe_sub_mesh_tensors(PyObject *self,
                                               local_mesh_list,
                                               std::get<0>(local_res),
                                               std::get<1>(local_res),
+                                              std::get<2>(local_res),
                                               global_mesh,
                                               std::get<0>(global_res),
-                                              std::get<1>(global_res));
+                                              std::get<1>(global_res),
+                                              std::get<2>(global_res));
 
     VLOG(6) << "End of adding moe_sub_mesh_tensors op into program";
     return ToPyObject(static_api_out);
@@ -161,7 +163,7 @@ static PyObject *static_api_dtensor_from_local(PyObject *self,
 
     // Call ir static api
     auto static_api_out = dialect::dtensor_from_local(
-        input, process_mesh, std::get<0>(res), std::get<1>(res));
+        input, process_mesh, std::get<0>(res), std::get<1>(res), std::get<2>(res));
 
     return ToPyObject(static_api_out);
   } catch (...) {
@@ -200,7 +202,7 @@ static PyObject *static_api_dtensor_to_local(PyObject *self,
 
     // Call ir static api
     auto static_api_out = paddle::dialect::dtensor_to_local(
-        input, process_mesh, std::get<0>(res), std::get<1>(res));
+        input, process_mesh, std::get<0>(res), std::get<1>(res), std::get<2>(res));
 
     return ToPyObject(static_api_out);
   } catch (...) {
@@ -262,9 +264,11 @@ static PyObject *static_api_moe_global_mesh_tensor(PyObject *self,
                                                 local_mesh_list,
                                                 std::get<0>(local_res),
                                                 std::get<1>(local_res),
+                                                std::get<2>(local_res),
                                                 global_mesh,
                                                 std::get<0>(global_res),
                                                 std::get<1>(global_res),
+                                                std::get<2>(global_res),
                                                 global_shape);
 
     VLOG(6) << "End of adding moe_global_mesh_tensor op into program";
@@ -312,7 +316,8 @@ static PyObject *static_api_dist_reshape(PyObject *self,
                                                         process_mesh,
                                                         placements,
                                                         std::get<0>(res),
-                                                        std::get<1>(res));
+                                                        std::get<1>(res),
+                                                        std::get<2>(res));
 
     return ToPyObject(static_api_out);
   } catch (...) {

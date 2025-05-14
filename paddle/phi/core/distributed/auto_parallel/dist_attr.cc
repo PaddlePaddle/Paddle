@@ -57,7 +57,7 @@ void TensorDistAttr::copy_from(const TensorDistAttr& dist_attr) {
   set_process_mesh(dist_attr.process_mesh());
   set_dims_mapping(dist_attr.dims_mapping());
   set_new_dims_mapping(dist_attr.new_dims_mapping());
-  split_factor_map_ = dist_attr.split_factor_map();
+  split_factor_map_ = dist_attr.split_factor();
   set_batch_dim(dist_attr.batch_dim());
   set_chunk_id(dist_attr.chunk_id());
   set_dynamic_dims(dist_attr.dynamic_dims());
@@ -76,6 +76,15 @@ void TensorDistAttr::set_dims_mapping(
   // dynamic_dims_ and dims_mapping may be not consistent
   if (dynamic_dims_.empty() || dims_mapping.empty()) {
     set_default_dynamic_dims(dims_mapping);
+  }
+}
+
+void TensorDistAttr::set_dims_mapping(
+  const std::vector<std::vector<int64_t>>& dims_mapping) {
+  dims_mapping_ = dims_mapping;
+  // dynamic_dims_ and dims_mapping may be not consistent
+  if (dynamic_dims_.empty() || dims_mapping.empty()) {
+    set_default_dynamic_dims(std::vector<int64_t>(dims_mapping.size()));
   }
 }
 
@@ -104,21 +113,15 @@ void TensorDistAttr::set_annotated(
 int64_t TensorDistAttr::get_split_factor(int64_t mesh_dim) const {
   PADDLE_ENFORCE_LT(mesh_dim, process_mesh_.ndim(),
            "Mesh dim is %d, Process mesh ndim is %d", mesh_dim, process_mesh_.ndim());
-  return split_factor_map_.count(mesh_dim) ? split_factor_map_.at(mesh_dim) : 1;
+  return split_factor_map_.get_split_factor(mesh_dim);
 }
 
 void TensorDistAttr::set_split_factor(int64_t mesh_dim, int64_t split_factor) {
-  // default value is 1
-  if (split_factor > 1) {
-    split_factor_map_[mesh_dim] = split_factor;
-  }
-  PADDLE_ENFORCE_LE(split_factor_map_.size(), 1, "At now only support to rearrange at one mesh dim.");
+  split_factor_map_.set_split_factor(mesh_dim, split_factor);
 }
 
 void TensorDistAttr::clear_split_factor(int64_t mesh_dim) {
-  if (split_factor_map_.count(mesh_dim)) {
-    split_factor_map_.erase(mesh_dim);
-  }
+  split_factor_map_.clear_split_factor(mesh_dim);
 }
 
 const std::set<int64_t> TensorDistAttr::partial_dims() const {
@@ -142,10 +145,10 @@ void TensorDistAttr::set_partial_status(const std::vector<int64_t>& dims,
           "Trying to Set dim %d as Partial which is already a Partial dim.",
           dim));
     }
-    if (std::count(dims_mapping_.begin(), dims_mapping_.end(), dim)) {
-      PADDLE_THROW(common::errors::InvalidArgument(
-          "Trying to Set dim %d as Partial which is a Sharding dim.", dim));
-    }
+    // if (std::count(dims_mapping_.begin(), dims_mapping_.end(), dim)) {
+    //   PADDLE_THROW(common::errors::InvalidArgument(
+    //       "Trying to Set dim %d as Partial which is a Sharding dim.", dim));
+    // }
     partial_status_.emplace(dim, type);
   }
 }
@@ -188,11 +191,11 @@ bool TensorDistAttr::verify_process_mesh(
   VLOG(4) << "[TensorDistAttr verify_process_mesh] "
           << process_mesh.to_string();
   if (!process_mesh_.empty()) {
-    for (int64_t dim_mapping : dims_mapping_) {
-      if (dim_mapping >= process_mesh_.ndim()) {
-        return false;
-      }
-    }
+    // for (int64_t dim_mapping : dims_mapping_) {
+    //   if (dim_mapping >= process_mesh_.ndim()) {
+    //     return false;
+    //   }
+    // }
   }
   return true;
 }
@@ -316,7 +319,7 @@ bool TensorDistAttr::verify_dynamic(
 std::string TensorDistAttr::to_string() const {
   std::string dist_str;
   dist_str += "{process_mesh: " + process_mesh_.to_string() + ", ";
-  dist_str += "dims_mappings: [" + str_join(dims_mapping_) + "], ";
+  dist_str += "dims_mappings: [" + str_join(std::vector<std::vector<int64_t>>(dims_mapping_)) + "], ";
   dist_str += "new dim_mappings: [" + str_join(new_dims_mapping_) + "], ";
   dist_str += "batch_dim: " + std::to_string(batch_dim_) + ", ";
   dist_str += "chunk_id: " + std::to_string(chunk_id_) + ", ";
@@ -324,35 +327,35 @@ std::string TensorDistAttr::to_string() const {
   dist_str += "dynamic_dims: [" + str_join(dynamic_dims_) + "], ";
   dist_str += "annotated: [" + str_join(annotated_) + "], ";
   dist_str += "partial: " + partial_status_string() + ", ";
-  dist_str += "split_factor: " + str_join(split_factor_map_) + ".}";
+  dist_str += "split_factor: " + split_factor_map_.to_string() + ".}";
   return dist_str;
 }
 
 void TensorDistAttr::from_proto(const TensorDistAttrProto& proto) {
-  process_mesh_ = ProcessMesh::from_proto(proto.process_mesh());
-  dims_mapping_.resize(proto.dims_mapping_size());
-  for (int i = 0; i < proto.dims_mapping_size(); ++i) {
-    dims_mapping_[i] = proto.dims_mapping(i);
-  }
-  batch_dim_ = proto.batch_dim();
-  chunk_id_ = proto.chunk_id();
-  dynamic_dims_.resize(proto.dynamic_dims_size());
-  for (int i = 0; i < proto.dynamic_dims_size(); ++i) {
-    dynamic_dims_[i] = proto.dynamic_dims(i);
-  }
+  // process_mesh_ = ProcessMesh::from_proto(proto.process_mesh());
+  // dims_mapping_.resize(proto.dims_mapping_size());
+  // for (int i = 0; i < proto.dims_mapping_size(); ++i) {
+  //   dims_mapping_[i] = proto.dims_mapping(i);
+  // }
+  // batch_dim_ = proto.batch_dim();
+  // chunk_id_ = proto.chunk_id();
+  // dynamic_dims_.resize(proto.dynamic_dims_size());
+  // for (int i = 0; i < proto.dynamic_dims_size(); ++i) {
+  //   dynamic_dims_[i] = proto.dynamic_dims(i);
+  // }
 }
 
 void TensorDistAttr::to_proto(TensorDistAttrProto* proto) const {
-  proto->mutable_process_mesh()->CopyFrom(
-      phi::distributed::to_proto(process_mesh_));
-  for (const auto& i : dims_mapping_) {
-    proto->add_dims_mapping(i);
-  }
-  proto->set_batch_dim(batch_dim_);
-  proto->set_chunk_id(chunk_id_);
-  for (const auto& i : dynamic_dims_) {
-    proto->add_dynamic_dims(i);
-  }
+  // proto->mutable_process_mesh()->CopyFrom(
+  //     phi::distributed::to_proto(process_mesh_));
+  // for (const auto& i : dims_mapping_) {
+  //   proto->add_dims_mapping(i);
+  // }
+  // proto->set_batch_dim(batch_dim_);
+  // proto->set_chunk_id(chunk_id_);
+  // for (const auto& i : dynamic_dims_) {
+  //   proto->add_dynamic_dims(i);
+  // }
 }
 
 std::string TensorDistAttr::serialize_to_string() {
@@ -380,9 +383,9 @@ bool operator==(const TensorDistAttr& lhs, const TensorDistAttr& rhs) {
   if (lhs.process_mesh() != rhs.process_mesh()) {
     return false;
   }
-  if (lhs.dims_mapping() != rhs.dims_mapping()) {
-    return false;
-  }
+  // if (lhs.dims_mapping() != rhs.dims_mapping()) {
+  //   return false;
+  // }
   if (lhs.new_dims_mapping() != rhs.new_dims_mapping()) {
     return false;
   }
@@ -398,7 +401,7 @@ bool operator==(const TensorDistAttr& lhs, const TensorDistAttr& rhs) {
   if (lhs.partial_status() != rhs.partial_status()) {
     return false;
   }
-  if (lhs.split_factor_map() != rhs.split_factor_map()) {
+  if (lhs.split_factor() != rhs.split_factor()) {
     return false;
   }
   return true;
@@ -425,28 +428,28 @@ std::vector<std::shared_ptr<PlacementStatus>> TensorDistAttr::to_placement()
   auto ndim = process_mesh_.ndim();
   std::vector<std::shared_ptr<PlacementStatus>> placement(
       ndim, std::make_shared<ReplicatedStatus>());
-  for (size_t i = 0; i < dims_mapping_.size(); ++i) {
-    if (dims_mapping_[i] != -1) {
-      PADDLE_ENFORCE_LT(
-          dims_mapping_[i],
-          ndim,
-          errors::InvalidArgument(
-              "Split axis %ld can not exceed the ndim of process_mesh %ld",
-              dims_mapping_[i],
-              ndim));
-      placement[dims_mapping_[i]] = std::make_shared<ShardStatus>(i);
-    }
-  }
-  for (auto& itr : partial_status_) {
-    PADDLE_ENFORCE_LT(
-        itr.first,
-        ndim,
-        errors::InvalidArgument(
-            "Partial axis %ld can not exceed the ndim of process_mesh %ld",
-            itr.first,
-            ndim));
-    placement[itr.first] = std::make_shared<PartialStatus>(itr.second);
-  }
+  // for (size_t i = 0; i < dims_mapping_.size(); ++i) {
+  //   if (dims_mapping_[i] != -1) {
+      // PADDLE_ENFORCE_LT(
+      //     dims_mapping_[i],
+      //     ndim,
+      //     errors::InvalidArgument(
+      //         "Split axis %ld can not exceed the ndim of process_mesh %ld",
+      //         dims_mapping_[i],
+      //         ndim));
+      // placement[dims_mapping_[i]] = std::make_shared<ShardStatus>(i);
+  //   }
+  // }
+  // for (auto& itr : partial_status_) {
+  //   PADDLE_ENFORCE_LT(
+  //       itr.first,
+  //       ndim,
+  //       errors::InvalidArgument(
+  //           "Partial axis %ld can not exceed the ndim of process_mesh %ld",
+  //           itr.first,
+  //           ndim));
+  //   placement[itr.first] = std::make_shared<PartialStatus>(itr.second);
+  // }
   return placement;
 }
 

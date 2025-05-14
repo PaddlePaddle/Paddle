@@ -27,6 +27,7 @@
 #include "paddle/common/errors.h"
 #include "paddle/phi/common/reduce_type.h"
 #include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/tensor_meta.h"
 #include "paddle/utils/flat_hash_map.h"
@@ -233,9 +234,10 @@ class DistTensorMeta : public std::enable_shared_from_this<DistTensorMeta> {
 
 bool equal_placements(const Placements& a, const Placements& b);
 
-phi::distributed::Placements cvt_dim_map_to_placements(
+Placements cvt_dim_map_to_placements(
     const ProcessMesh& process_mesh,
-    const std::vector<int64_t>& dim_mapping,
+    const std::vector<std::vector<int64_t>>& dim_mapping,
+    const auto_parallel::SplitFactor& split_factor,
     const paddle::flat_hash_map<int64_t, phi::ReduceType>& partial_status);
 
 }  // namespace distributed

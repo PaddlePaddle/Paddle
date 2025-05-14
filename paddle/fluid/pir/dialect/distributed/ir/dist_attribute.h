@@ -88,7 +88,7 @@ class TensorDistAttribute : public pir::AttrBase<TensorDistAttribute,
  public:
   using Base::Base;
   ProcessMeshAttribute process_mesh_attr() const;
-  const std::vector<int64_t>& dims_mapping() const;
+  const std::vector<std::vector<int64_t>>& dims_mapping() const;
   std::optional<PlacementsAttribute> placements_attr() const;
 
   // return vector of mesh dims on which the this tensor is partial on
@@ -97,27 +97,61 @@ class TensorDistAttribute : public pir::AttrBase<TensorDistAttribute,
   const flat_hash_map<int64_t, phi::ReduceType>& partial_status() const;
 
   phi::distributed::Placements placements() const;
+  
+  const phi::distributed::auto_parallel::SplitFactor& split_factor() const;
 
   // construct a new attribute with new mesh attribute.
   TensorDistAttribute CopyWithNewMesh(ProcessMeshAttribute mesh) const {
-    return get(ir_context(), mesh, dims_mapping(), partial_status());
+    return get(ir_context(), mesh, dims_mapping(), split_factor(), partial_status());
   }
 
   static TensorDistAttribute get(
       pir::IrContext* ctx,
       ProcessMeshAttribute mesh,
-      const std::vector<int64_t>& dims_mapping,
+      const std::vector<std::vector<int64_t>>& dims_mapping,
       const flat_hash_map<int64_t, phi::ReduceType>& partial_status = {},
-      const std::optional<PlacementsAttribute>& placements = std::nullopt);
+      const std::optional<PlacementsAttribute>& placements = std::nullopt) {
+      return get(ctx,
+                mesh,
+                dims_mapping,
+                {{}},
+                partial_status,
+                placements);
+  }
+
   static TensorDistAttribute get(
       pir::IrContext* ctx,
       const phi::distributed::ProcessMesh& mesh,
-      const std::vector<int64_t>& dims_mapping,
+      const std::vector<std::vector<int64_t>>& dims_mapping,
+      const flat_hash_map<int64_t, phi::ReduceType>& partial_status = {},
+      const std::optional<PlacementsAttribute>& placements = std::nullopt) {
+      return get(ctx,
+                 mesh,
+                 dims_mapping,
+                 {{}},
+                 partial_status,
+                 placements);
+  }
+
+  static TensorDistAttribute get(
+      pir::IrContext* ctx,
+      ProcessMeshAttribute mesh,
+      const std::vector<std::vector<int64_t>>& dims_mapping,
+      const phi::distributed::auto_parallel::SplitFactor& split_factor,
+      const flat_hash_map<int64_t, phi::ReduceType>& partial_status = {},
+      const std::optional<PlacementsAttribute>& placements = std::nullopt);
+
+  static TensorDistAttribute get(
+      pir::IrContext* ctx,
+      const phi::distributed::ProcessMesh& mesh,
+      const std::vector<std::vector<int64_t>>& dims_mapping,
+      const phi::distributed::auto_parallel::SplitFactor& split_factor,
       const flat_hash_map<int64_t, phi::ReduceType>& partial_status = {},
       const std::optional<PlacementsAttribute>& placements = std::nullopt) {
     return get(ctx,
                ProcessMeshAttribute::get(ctx, mesh),
                dims_mapping,
+               split_factor,
                partial_status,
                placements);
   }

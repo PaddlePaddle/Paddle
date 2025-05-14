@@ -65,7 +65,7 @@ SpmdInfo RmsNormInferSpmd(const DistMetaTensor& x,
   // Now, apply replicating.
   TensorDistAttr scale_dist_attr_dst =
       CopyTensorDistAttrForOutput(scale_dist_attr_src);
-  scale_dist_attr_dst.set_dims_mapping({-1});
+  scale_dist_attr_dst.set_dims_mapping(std::vector<int64_t>{-1});
 
   LOG_SPMD_INPUT(x);
   LOG_SPMD_INPUT(scale);
@@ -119,7 +119,7 @@ SpmdInfo RmsNormInferSpmdReverse(const DistMetaTensor& x,
   x_dist_attr_dst.set_dims_mapping(x_dims_mapping);
   TensorDistAttr scale_dist_attr_dst =
       CopyTensorDistAttrForOutput(scale_dist_attr_src);
-  scale_dist_attr_dst.set_dims_mapping({-1});
+  scale_dist_attr_dst.set_dims_mapping(std::vector<int64_t>{-1});
 
   LOG_SPMD_INPUT(x);
   LOG_SPMD_INPUT(scale);

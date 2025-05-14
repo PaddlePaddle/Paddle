@@ -2487,7 +2487,7 @@ pir::Type CreateDistDenseTensorTypeByDenseTensor(
     const pir::Type &gdense_tensor_type,
     const std::vector<int> &lshape,
     const phi::distributed::ProcessMesh &mesh,
-    const std::vector<int64_t> &dims_mapping) {
+    const std::vector<std::vector<int64_t>> &dims_mapping) {
   if (gdense_tensor_type.isa<DenseTensorType>()) {
     DenseTensorType type = gdense_tensor_type.dyn_cast<DenseTensorType>();
     paddle::flat_hash_map<int64_t, phi::ReduceType> partial_status;

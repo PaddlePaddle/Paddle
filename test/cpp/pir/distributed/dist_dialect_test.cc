@@ -70,7 +70,7 @@ TEST(tensor_dist_attr_test, base) {
   std::vector<std::string> dim_names = {"x", "y"};
   phi::distributed::ProcessMesh process_mesh(
       mesh_shape, process_ids, dim_names);
-  std::vector<int64_t> dims_mapping = {0, -1};
+  std::vector<std::vector<int64_t>> dims_mapping = {{0}, {}};
   paddle::flat_hash_map<int64_t, phi::ReduceType> partial_status,
       partial_status_1{{1, phi::ReduceType::kRedSum}};
 
@@ -79,11 +79,11 @@ TEST(tensor_dist_attr_test, base) {
 
   // construct a TensorDistAttribute.
   auto tensor_dist_attr =
-      TensorDistAttribute::get(ctx, mesh_attr, dims_mapping, partial_status);
+      TensorDistAttribute::get(ctx, mesh_attr, dims_mapping, {{}}, partial_status);
   auto tensor_dist_attr_1 =
-      TensorDistAttribute::get(ctx, process_mesh, dims_mapping, partial_status);
+      TensorDistAttribute::get(ctx, process_mesh, dims_mapping, {{}}, partial_status);
   auto tensor_dist_attr_2 = TensorDistAttribute::get(
-      ctx, process_mesh, dims_mapping, partial_status_1);
+      ctx, process_mesh, dims_mapping, {{}}, partial_status_1);
   EXPECT_EQ(tensor_dist_attr, tensor_dist_attr_1);
   EXPECT_NE(tensor_dist_attr, tensor_dist_attr_2);
 
@@ -105,12 +105,12 @@ TEST(dist_dense_tensor_type_test, base) {
       mesh_shape, process_ids, dim_names);
   auto mesh_attr = ProcessMeshAttribute::get(ctx, process_mesh);
 
-  std::vector<int64_t> dims_mapping = {0, -1};
+  std::vector<std::vector<int64_t>> dims_mapping = {{0}, {}};
   paddle::flat_hash_map<int64_t, phi::ReduceType> partial_status{
       {1, phi::ReduceType::kRedSum}};
   // construct a TensorDistAttribute.
   auto tensor_dist_attr =
-      TensorDistAttribute::get(ctx, mesh_attr, dims_mapping, partial_status);
+      TensorDistAttribute::get(ctx, mesh_attr, dims_mapping, {{}}, partial_status);
 
   pir::Type fp32_dtype = pir::Float32Type::get(ctx);
   common::DDim dims = {2, 2};
@@ -144,12 +144,12 @@ TEST(dist_dense_tensor_type_test, warp_type_interface) {
       mesh_shape, process_ids, dim_names);
   auto mesh_attr = ProcessMeshAttribute::get(ctx, process_mesh);
 
-  std::vector<int64_t> dims_mapping = {0, -1};
+  std::vector<std::vector<int64_t>> dims_mapping = {{0}, {}};
   paddle::flat_hash_map<int64_t, phi::ReduceType> partial_status{
       {1, phi::ReduceType::kRedSum}};
   // construct a TensorDistAttribute.
   auto tensor_dist_attr =
-      TensorDistAttribute::get(ctx, mesh_attr, dims_mapping, partial_status);
+      TensorDistAttribute::get(ctx, mesh_attr, dims_mapping, {{}}, partial_status);
 
   pir::Type fp32_dtype = pir::Float32Type::get(ctx);
   common::DDim dims = {2, 2};
@@ -178,12 +178,12 @@ TEST(dist_dense_tensor_type_test, dist_interface) {
       mesh_shape, process_ids, dim_names);
   auto mesh_attr = ProcessMeshAttribute::get(ctx, process_mesh);
 
-  std::vector<int64_t> dims_mapping = {0, -1};
+  std::vector<std::vector<int64_t>> dims_mapping = {{0}, {}};
   paddle::flat_hash_map<int64_t, phi::ReduceType> partial_status{
       {1, phi::ReduceType::kRedSum}};
   // construct a TensorDistAttribute.
   auto tensor_dist_attr =
-      TensorDistAttribute::get(ctx, mesh_attr, dims_mapping, partial_status);
+      TensorDistAttribute::get(ctx, mesh_attr, dims_mapping, {{}}, partial_status);
 
   pir::Type fp32_dtype = pir::Float32Type::get(ctx);
   common::DDim dims = {4, 8};
@@ -228,15 +228,15 @@ TEST(operation_dist_attr_test, base) {
 
   auto mesh_attr =
       ProcessMeshAttribute::get(ctx, mesh_shape, process_ids, dim_names);
-  std::vector<int64_t> dims_mapping = {0, -1};
+  std::vector<std::vector<int64_t>> dims_mapping = {{0}, {}};
 
   // construct a OperationDistAttribute.
   auto x_tensor_dist_attr =
-      TensorDistAttribute::get(ctx, process_mesh, dims_mapping, partial_status);
+      TensorDistAttribute::get(ctx, process_mesh, dims_mapping, {{}}, partial_status);
   auto y_tensor_dist_attr =
-      TensorDistAttribute::get(ctx, mesh_attr, dims_mapping, partial_status);
+      TensorDistAttribute::get(ctx, mesh_attr, dims_mapping, {{}}, partial_status);
   auto out_tensor_dist_attr =
-      TensorDistAttribute::get(ctx, mesh_attr, dims_mapping, partial_status);
+      TensorDistAttribute::get(ctx, mesh_attr, dims_mapping, {{}}, partial_status);
 
   auto operand_attrs =
       std::vector<pir::Attribute>{x_tensor_dist_attr, y_tensor_dist_attr};
@@ -252,11 +252,11 @@ TEST(operation_dist_attr_test, base) {
       ProcessMeshAttribute::get(ctx, mesh_shape, process_ids, dim_names_2);
 
   auto x_tensor_dist_attr_2 =
-      TensorDistAttribute::get(ctx, mesh_attr_2, dims_mapping, partial_status);
+      TensorDistAttribute::get(ctx, mesh_attr_2, dims_mapping, {{}}, partial_status);
   auto y_tensor_dist_attr_2 =
-      TensorDistAttribute::get(ctx, mesh_attr_2, dims_mapping, partial_status);
+      TensorDistAttribute::get(ctx, mesh_attr_2, dims_mapping, {{}}, partial_status);
   auto out_tensor_dist_attr_2 =
-      TensorDistAttribute::get(ctx, mesh_attr_2, dims_mapping, partial_status);
+      TensorDistAttribute::get(ctx, mesh_attr_2, dims_mapping, {{}}, partial_status);
 
   auto operand_attrs_2 =
       std::vector<pir::Attribute>{x_tensor_dist_attr_2, y_tensor_dist_attr_2};
@@ -299,14 +299,14 @@ TEST(shard_tensor_op_replicate_test, base) {
   paddle::flat_hash_map<int64_t, phi::ReduceType> partial_status;
 
   // construct a replicated
-  std::vector<int64_t> dims_mapping = {-1, -1};
+  std::vector<std::vector<int64_t>> dims_mapping = {{}, {}};
 
   auto data_op = builder.Build<paddle::dialect::DataOp>(
       "w0", data_shape, phi::DataType::FLOAT32, phi::CPUPlace());
 
   std::vector<int64_t> local_shape = {12, 6};
   auto tensor_dist_attr =
-      TensorDistAttribute::get(ctx, mesh_attr, dims_mapping, partial_status);
+      TensorDistAttribute::get(ctx, mesh_attr, dims_mapping, {{}}, partial_status);
 
   pir::AttributeMap attr_map = {{"tensor_dist_attr", tensor_dist_attr}};
 
@@ -335,13 +335,13 @@ TEST(shard_tensor_op_replicate_test, base) {
 
   // check reshard
   std::vector<int64_t> dst_mesh_shape = {3, 2};
-  std::vector<int64_t> dst_dims_mapping = {-1, 0};
+  std::vector<std::vector<int64_t>> dst_dims_mapping = {{}, {0}};
 
   phi::distributed::ProcessMesh dst_process_mesh(
       dst_mesh_shape, process_ids, dim_names);
   auto dst_mesh_attr = ProcessMeshAttribute::get(ctx, dst_process_mesh);
   auto dst_tensor_dist_attr = TensorDistAttribute::get(
-      ctx, dst_mesh_attr, dst_dims_mapping, partial_status);
+      ctx, dst_mesh_attr, dst_dims_mapping, {{}}, partial_status);
   paddle::dialect::ReshardOp reshard_op =
       builder.Build<paddle::dialect::ReshardOp>(shard_op.out(),
                                                 dst_tensor_dist_attr);
@@ -389,13 +389,13 @@ TEST(shard_tensor_op_shard_row_test, base) {
   paddle::flat_hash_map<int64_t, phi::ReduceType> partial_status;
 
   // construct a row shard
-  std::vector<int64_t> dims_mapping = {1, -1};
+  std::vector<std::vector<int64_t>> dims_mapping = {{1}, {}};
   auto data_op = builder.Build<paddle::dialect::DataOp>(
       "w1", data_shape, phi::DataType::FLOAT32, phi::CPUPlace());
 
   std::vector<int64_t> local_shape = {4, 6};
   auto tensor_dist_attr =
-      TensorDistAttribute::get(ctx, mesh_attr, dims_mapping, partial_status);
+      TensorDistAttribute::get(ctx, mesh_attr, dims_mapping, {{}}, partial_status);
 
   pir::AttributeMap attr_map = {{"tensor_dist_attr", tensor_dist_attr}};
 
@@ -427,7 +427,7 @@ TEST(shard_tensor_op_shard_row_test, base) {
       dst_mesh_shape, process_ids, dim_names);
   auto dst_mesh_attr = ProcessMeshAttribute::get(ctx, dst_process_mesh);
   auto dst_tensor_dist_attr = TensorDistAttribute::get(
-      ctx, dst_mesh_attr, dims_mapping, partial_status);
+      ctx, dst_mesh_attr, dims_mapping, {{}}, partial_status);
   paddle::dialect::ReshardOp reshard_op =
       builder.Build<paddle::dialect::ReshardOp>(shard_op.out(),
                                                 dst_tensor_dist_attr);
@@ -475,14 +475,14 @@ TEST(shard_tensor_op_shard_col_test, base) {
   paddle::flat_hash_map<int64_t, phi::ReduceType> partial_status;
 
   // construct a col shard
-  std::vector<int64_t> dims_mapping = {-1, 0};
+  std::vector<std::vector<int64_t>> dims_mapping = {{}, {0}};
 
   auto data_op = builder.Build<paddle::dialect::DataOp>(
       "w2", data_shape, phi::DataType::FLOAT32, phi::CPUPlace());
 
   std::vector<int64_t> local_shape = {12, 3};
   auto tensor_dist_attr =
-      TensorDistAttribute::get(ctx, mesh_attr, dims_mapping, partial_status);
+      TensorDistAttribute::get(ctx, mesh_attr, dims_mapping, {{}}, partial_status);
 
   pir::AttributeMap attr_map = {{"tensor_dist_attr", tensor_dist_attr}};
   paddle::dialect::ShardTensorOp shard_op =
@@ -508,12 +508,12 @@ TEST(shard_tensor_op_shard_col_test, base) {
             mesh_attr);
 
   // check reshard
-  std::vector<int64_t> dst_dims_mapping = {0, 1};
+  std::vector<std::vector<int64_t>> dst_dims_mapping = {{0}, {1}};
   phi::distributed::ProcessMesh dst_process_mesh(
       mesh_shape, process_ids, dim_names);
   auto dst_mesh_attr = ProcessMeshAttribute::get(ctx, dst_process_mesh);
   auto dst_tensor_dist_attr = TensorDistAttribute::get(
-      ctx, dst_mesh_attr, dst_dims_mapping, partial_status);
+      ctx, dst_mesh_attr, dst_dims_mapping, {{}}, partial_status);
   paddle::dialect::ReshardOp reshard_op =
       builder.Build<paddle::dialect::ReshardOp>(shard_op.out(),
                                                 dst_tensor_dist_attr);
@@ -558,21 +558,21 @@ TEST(mix_to_dist_pass_test, base) {
   std::vector<int64_t> y_shape = {6, 8};
 
   // construct x
-  std::vector<int64_t> x_dims_mapping = {0, 1};
+  std::vector<std::vector<int64_t>> x_dims_mapping = {{0}, {1}};
   auto x_data_op = builder.Build<paddle::dialect::DataOp>(
       "x", x_shape, phi::DataType::FLOAT32, phi::CPUPlace());
   std::vector<int64_t> x_local_shape = {6, 2};
   auto x_tensor_dist_attr =
-      TensorDistAttribute::get(ctx, mesh_attr, x_dims_mapping, partial_status);
+      TensorDistAttribute::get(ctx, mesh_attr, x_dims_mapping, {{}}, partial_status);
   pir::AttributeMap x_attr_map = {{"tensor_dist_attr", x_tensor_dist_attr}};
 
   // construct y
-  std::vector<int64_t> y_dims_mapping = {1, -1};
+  std::vector<std::vector<int64_t>> y_dims_mapping = {{1}, {}};
   auto y_data_op = builder.Build<paddle::dialect::DataOp>(
       "y", y_shape, phi::DataType::FLOAT32, phi::CPUPlace());
   std::vector<int64_t> y_local_shape = {2, 8};
   auto y_tensor_dist_attr =
-      TensorDistAttribute::get(ctx, mesh_attr, y_dims_mapping, partial_status);
+      TensorDistAttribute::get(ctx, mesh_attr, y_dims_mapping, {{}}, partial_status);
   pir::AttributeMap y_attr_map = {{"tensor_dist_attr", y_tensor_dist_attr}};
 
   // shard_tensor op

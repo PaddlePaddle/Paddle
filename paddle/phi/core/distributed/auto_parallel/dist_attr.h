@@ -97,19 +97,23 @@ class TEST_API TensorDistAttr {
 
   const std::vector<int64_t>& dims_mapping() const { return dims_mapping_; }
 
+  const std::vector<std::vector<int64_t>>& dims_mapping_2d() const { return dims_mapping_; }
+
   const std::vector<std::vector<int64_t>>& new_dims_mapping() const { return new_dims_mapping_; }
 
-  const std::unordered_map<int64_t, int64_t>& split_factor_map() const { return split_factor_map_; }
+  void set_dims_mapping(const std::vector<int64_t>& dims_mapping);
+
+  void set_dims_mapping(const std::vector<std::vector<int64_t>>& dims_mapping);
+
+  void set_new_dims_mapping(const std::vector<std::vector<int64_t>>& dims_mapping);
+
+  const auto_parallel::SplitFactor& split_factor() const { return split_factor_map_; }
 
   int64_t get_split_factor(int64_t mesh_dim) const;
 
   void set_split_factor(int64_t mesh_dim, int64_t split_factor);
 
   void clear_split_factor(int64_t mesh_dim);
-
-  void set_dims_mapping(const std::vector<int64_t>& dims_mapping);
-
-  void set_new_dims_mapping(const std::vector<std::vector<int64_t>>& dims_mapping);
 
   // return vector of mesh dims on which the this tensor is partial on
   const std::set<int64_t> partial_dims() const;
@@ -217,18 +221,18 @@ class TEST_API TensorDistAttr {
  private:
   static std::vector<std::string> fields_;
   ProcessMesh process_mesh_;
-  std::vector<int64_t> dims_mapping_;
+  auto_parallel::DimMapProxy dims_mapping_;
   std::vector<std::vector<int64_t>> new_dims_mapping_;
-  int64_t batch_dim_{0};
   std::vector<bool> dynamic_dims_;
   std::map<std::string, bool> annotated_;
+  int64_t batch_dim_{0};
   int64_t chunk_id_{0};
   // partial map would be small (less than mesh.size)
   // iterate operation (copy and comparison) would more frequency than random
   // element access. <key: dim on mesh, value: reduce type>
   paddle::flat_hash_map<int64_t, ReduceType> partial_status_;
 
-  std::unordered_map<int64_t, int64_t> split_factor_map_;
+  auto_parallel::SplitFactor split_factor_map_;
   // The flag indicates whether to skip checking the process mesh.
   bool skip_check_mesh_ = false;
 };

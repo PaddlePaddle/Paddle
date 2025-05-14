@@ -70,7 +70,8 @@ bool equal_placements(const Placements& a, const Placements& b) {
 
 phi::distributed::Placements cvt_dim_map_to_placements(
     const ProcessMesh& process_mesh,
-    const std::vector<int64_t>& dim_mapping,
+    const std::vector<std::vector<int64_t>>& dim_mapping,
+    const auto_parallel::SplitFactor& split_factor,
     const paddle::flat_hash_map<int64_t, phi::ReduceType>& partial_status) {
   phi::distributed::Placements placements;
   placements.resize(process_mesh.ndim(),
@@ -81,22 +82,30 @@ phi::distributed::Placements cvt_dim_map_to_placements(
         std::make_shared<phi::distributed::Partial>(pair.second);
   }
 
-  for (size_t i = 0; i < dim_mapping.size(); ++i) {
-    auto& mesh_id = dim_mapping[i];
-    if (mesh_id >= 0) {
-      auto& p = placements[mesh_id];
+  for (size_t t_dim = 0; t_dim < dim_mapping.size(); t_dim++) {
+    auto m_dims = dim_mapping[t_dim];
+
+    bool is_co_shard = m_dims.size() > 1;
+
+    for (size_t idx = 0; idx < m_dims.size(); idx++) {
+      int64_t mesh_dim = m_dims[idx];
+      int64_t sf = split_factor.get_split_factor(mesh_dim);
+      auto& p = placements.at(mesh_dim);
+
       if (p->is_shard()) {
         PADDLE_THROW(common::errors::PreconditionNotMet(
             "ProcessMesh dimension can't be mapped to two  dimension of the "
             "same tensor: {%d} and {%d}",
-            i,
-            dynamic_cast<phi::distributed::Shard&>(*p).get_dim()));
+            t_dim,
+            dynamic_cast<Shard&>(*p).get_dim()));
       } else if (p->is_partial()) {
         PADDLE_THROW(common::errors::PreconditionNotMet(
             "ProcessMesh dimension {%d} cannot be both shard and partial!",
-            mesh_id));
+            mesh_dim));
       }
-      placements[mesh_id] = std::make_shared<phi::distributed::Shard>(i);
+      // TODO(): add mesh_dim >= 0 check
+      placements[mesh_dim] = is_co_shard ? std::make_shared<CoShard>(t_dim, idx) :
+            std::make_shared<Shard>(t_dim, sf);
     }
   }
   return placements;
