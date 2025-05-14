@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-######
+
 import os
 import warnings
 from collections import defaultdict
-from distutils.util import strtobool
 from functools import reduce
 
 import paddle
@@ -32,6 +31,7 @@ from paddle.framework.recall_error import (
     SHARDING_PAD_NON_ZERO_ERROR,
     check_naninf,
 )
+from paddle.utils import strtobool
 
 from ...utils import timer_helper as timer
 from ...utils.log_util import logger
@@ -349,6 +349,11 @@ class DygraphShardingOptimizer:
                         )
                         g_var.scale_(1.0 / sharding_nrank)
                         reduce_op = ReduceOp.SUM
+
+                    # In align mode, we scale the grad in advance, so we need a SUM here
+                    if paddle.distributed.in_auto_parallel_align_mode():
+                        reduce_op = ReduceOp.SUM
+
                     param_rank = self._param2rank[param.name]
 
                     need_check = strtobool(
@@ -485,7 +490,7 @@ class DygraphShardingOptimizer:
 
             if self._broadcast_order_params is None:
                 warnings.warn(
-                    r"The param name passed to the optimizer doesn't follow .+_[0-9]+\..+ patter, "
+                    r"The param name passed to the optimizer doesn't follow .+_[0-9]+\..+ pattern, "
                     "overlap broadcast may harm the performance."
                 )
                 self._broadcast_order_params = self._parameter_list
@@ -741,18 +746,42 @@ class DygraphShardingOptimizerV2:
 
         return fused_allreduce
 
+    def _increase_comm_buffers_acc_steps(self, increment):
+        for buffer in self._comm_buffer_list:
+            buffer._acc_steps += increment
+
+    def _reset_comm_buffers_acc_steps(self, acc_steps):
+        for buffer in self._comm_buffer_list:
+            buffer._acc_steps = acc_steps
+
     def _build_comm_buffers(
         self, acc_steps, group_size=256 * 1024 * 1024, free_grads_in_comm=False
     ):
         if self.pp_overlap:
             return
+        # NOTE(lijin23): for XPU, we fuse all params to a single comm buffer to
+        # improve the communication bandwidth of BKCL.
+        if (
+            paddle.is_compiled_with_xpu()
+            and os.getenv("XPU_PADDLE_FUSE_SHARDING_BUFFER") is not None
+        ):
+            group_size = 2**62
 
         comm_group = self._hcg.get_sharding_parallel_group()
 
         color_dict = defaultdict(list)
         for param in self._parameter_list:
             color = getattr(param, 'color', -1)
-            color_dict[color].append(param)
+            color_color = -1
+            color_group = comm_group
+            if isinstance(color, dict):
+                # if color is dict: param.color = {'color': "1", 'group': group}
+                color_color = color.get('color', -1)
+                color_group = color.get('group', comm_group)
+            else:
+                # if color is not a dict: param.color = 1
+                color_color = color
+            color_dict[(color_color, color_group)].append(param)
 
         # NOTE(shenliang03): If comm_overlap is not used, the parameter list is sorted by data type to
         # to reduce communication overhead.
@@ -763,13 +792,15 @@ class DygraphShardingOptimizerV2:
         all_var_groups = []
         group_idx = 0
         for color, params in color_dict.items():
-            logger.info(f"Tensor Fusion Color {color}: ")
+            g_color = color[0]
+            g_group = color[1]
+            logger.info(f"Tensor Fusion Color {g_color} and Group {g_group}: ")
             var_groups = assign_group_by_size(params, group_size)
             for _, parameters in var_groups.items():
                 buffer = FusedCommBuffer(
                     group_idx,
                     parameters,
-                    comm_group,
+                    g_group,
                     acc_steps,
                     act=HOOK_ACTION.REDUCE_SCATTER,
                     release_grads=self.sd_release_grads,

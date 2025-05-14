@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import itertools
 import os
 import weakref
@@ -44,9 +43,9 @@ alignment = {
 }
 
 align = {
-    paddle.float16.value: 2,
-    paddle.bfloat16.value: 2,
-    paddle.float32.value: 4,
+    paddle.float16: 2,
+    paddle.bfloat16: 2,
+    paddle.float32: 4,
 }
 
 
@@ -89,7 +88,7 @@ def assign_group_by_size(parameters, group_size=128 * 1024 * 1024):
             group_size += np.prod(parameters[index].shape)
         dtype = parameters[indices[0]].dtype
         bytes = group_size * core.size_of_dtype(dtype)
-        msg = f"group_{group_idx}: {bytes / 1024 ** 2:.4f} MB, dtype: {str(dtype)}"
+        msg = f"group_{group_idx}: {bytes / 1024 ** 2:.4f} MB, dtype: {dtype!s}"
         group_msg.append(msg)
 
     logger.info(f"Tensor Fusion Group Info:\n{group_msg}\n")
@@ -143,7 +142,7 @@ def flatten_dense_tensors(
         dtype=grad_dtype,
         device=get_current_device_type(),
         destination="0",
-        parm2align=_param2align,
+        param2align=_param2align,
     )
 
     for param in parameters:
@@ -162,13 +161,10 @@ def flatten_dense_tensors(
         else:
             param_storage.buffer.main_grad = grad_storage.buffer
         param_storage.buffer.stop_gradient = False
-        outputs = (param_storage,) + outputs
+        outputs = (param_storage, *outputs)
 
     if release_grad:
-        outputs = outputs + (
-            _buffer_size,
-            _param2offset,
-        )
+        outputs = (*outputs, _buffer_size, _param2offset)
 
     return outputs
 
@@ -204,7 +200,7 @@ class ShardingGradView:
         self._use_main_grad = use_main_grad
         self._release_grad = release_grad
         shard_size = param_buffer._numel() // sharding_degree
-        rank_begin = rank * shard_size
+        rank_begin = max(rank, 0) * shard_size
         rank_end = rank_begin + shard_size
 
         param_begin = max(self._index, rank_begin)
@@ -358,7 +354,8 @@ def build_reduce_scatter_buffer(
     grad_dtype = paddle.float32 if use_main_grad else dtype
 
     param_buffer = paddle.zeros(shape=[total_buffer_size], dtype=dtype)
-    if get_current_device_type() == "gpu":
+    # TODO(@gexiao): Currently only support gpus
+    if core.is_compiled_with_cuda() and not core.is_compiled_with_rocm():
         param_buffer_ipc_meta = param_buffer.value().get_tensor()._share_cuda()
     else:
         param_buffer_ipc_meta = None
@@ -662,10 +659,11 @@ class FusedCommBuffer:
         group = self._comm_group
         shard_size = full_buffer._numel() // group.nranks
 
-        begin = shard_size * group.rank
+        begin = shard_size * max(group.rank, 0)
         end = begin + shard_size
         slice_buffer = full_buffer._slice(begin, end)
-
+        if group.nranks == 1:
+            return
         if sync:
             # default sync_op is False, so we need to wait here.
             # this will call distributed_py.cc in paddle. In distributed_py.cc, there defines two all gather function, their parameters are different.
@@ -711,7 +709,7 @@ class FusedCommBuffer:
             if self._use_reduce_avg
             else paddle.distributed.ReduceOp.SUM
         )
-        # scale will be skiped when reduce_avg comm operation is enabled.
+        # scale will be skipped when reduce_avg comm operation is enabled.
         if not self._scale_after_comm and not self._use_reduce_avg:
             scale_factor = 1.0 / self._comm_group.nranks
             self.grad_storage.scale_(scale_factor)
@@ -742,8 +740,11 @@ class FusedCommBuffer:
             )
 
         elif self._act == HOOK_ACTION.REDUCE_SCATTER:
+            # In align mode, we scale the grad in advance, so we need a SUM head
+            if paddle.distributed.in_auto_parallel_align_mode():
+                reduce_op = paddle.distributed.ReduceOp.SUM
             shard_size = self.grad_storage._numel() // self._comm_group.nranks
-            begin = shard_size * self._comm_group.rank
+            begin = shard_size * max(self._comm_group.rank, 0)
             end = begin + shard_size
             reduce_scattered = (
                 paddle.empty_like(self.grad_storage._slice(begin, end))
@@ -765,10 +766,12 @@ class FusedCommBuffer:
     @imperative_base.no_grad
     def scale_grads(self):
         if self.need_reduce_scale_sync():
+            if self._comm_group.nranks == 1 and self._task is None:
+                return
             assert self._task is not None, "Task is not initialized."
             self._task.wait()
 
-            # scale will be skiped when use reduce_avg comm operation
+            # scale will be skipped when use reduce_avg comm operation
             if self._scale_after_comm and not self._use_reduce_avg:
                 scale_factor = 1.0 / self._comm_group.nranks
                 self.grad_storage.scale_(scale_factor)
@@ -826,25 +829,29 @@ def obtain_storage(
 def filter_params(params, is_fp32, is_distributed, need_clip):
     params = list(
         filter(
-            lambda x: x.is_distributed
-            if is_distributed
-            else (not x.is_distributed),
+            lambda x: (
+                x.is_distributed if is_distributed else (not x.is_distributed)
+            ),
             params,
         )
     )
     params = list(
         filter(
-            lambda x: getattr(x, 'need_clip', True)
-            if need_clip
-            else (not getattr(x, 'need_clip', True)),
+            lambda x: (
+                getattr(x, 'need_clip', True)
+                if need_clip
+                else (not getattr(x, 'need_clip', True))
+            ),
             params,
         )
     )
     params = list(
         filter(
-            lambda x: x.dtype == paddle.float32
-            if is_fp32
-            else x.dtype != paddle.float32,
+            lambda x: (
+                x.dtype == paddle.float32
+                if is_fp32
+                else x.dtype != paddle.float32
+            ),
             params,
         )
     )
