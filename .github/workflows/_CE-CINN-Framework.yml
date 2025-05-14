@@ -118,7 +118,8 @@ jobs:
           cd /PaddleTest/framework/e2e/PaddleLT_new
           pip install -r requirement.txt
           source ./scene/set_ci_dy^dy2stcinn_train^dy2stcinn_eval_inputspec_env.sh
-          python support/dict_to_yml.py --filename apibm_config.yml --data_str $(cat $CACHE_DIR/cinn_config)
+          python support/dict_to_yml.py --filename apibm_config.yml --data_str "$(cat $CACHE_DIR/cinn_config)"
+          set -e
           python run.py
           exit $(head -n 1 "exit_code.txt")
           '
