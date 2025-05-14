@@ -16,6 +16,7 @@
 import os
 import warnings
 from collections import defaultdict
+from distutils.util import strtobool
 from functools import reduce
 
 import paddle
@@ -31,7 +32,6 @@ from paddle.framework.recall_error import (
     SHARDING_PAD_NON_ZERO_ERROR,
     check_naninf,
 )
-from paddle.utils import strtobool
 
 from ...utils import timer_helper as timer
 from ...utils.log_util import logger
