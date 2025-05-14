@@ -3,9 +3,9 @@ name: Api-Benchmark-GPU
 on:
   workflow_call:
     inputs:
-      # docker_build_image:
-      #   type: string
-      #   required: true
+      docker_build_image:
+        type: string
+        required: true
       can-skip:
         type: string
         required: false
@@ -44,27 +44,19 @@ jobs:
       - name: Prepare workspace
         run: |
           sudo rm -rf * .[^.]*
-          cp -r /home/paddle/gh_action/api_benchmark_gpu/test_set_item.py .
-          docker container ls -a --filter "name=api_gpu_benchmark_ci*" --format "{{.ID}}" | xargs -r docker rm -f
-          docker container ls -a --filter "name=api_benchmark_ci_baseline_" --format "{{.ID}} {{.CreatedAt}}" | awk '$2 <= "'$(date -d '1 day ago' +'%Y-%m-%d')'" {print $1}' | xargs -r docker rm -f
+          cp /home/paddle/gh_action/api_benchmark_gpu/test_set_item.py .
 
       - name: Check docker image and run container
         env:
-          python: "python3.10"
-          GIT_PR_ID: ${{ github.event.pull_request.number }}
-          GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          RUN_ID: ${{ github.run_id }}
-          CUDA_VISIBLE_DEVICES: 0
           wheel_link: https://paddle-github-action.bj.bcebos.com/PR/build/${{ github.event.pull_request.number }}/${{ github.event.pull_request.head.sha }}/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl
         run: |
           container_name="api_benchmark_ci_${RUN_ID}"
           echo "container_name=${container_name}" >> ${{ github.env }}
           docker_image=${{ inputs.docker_build_image }}
-          docker_image=registry.baidubce.com/paddlepaddle/paddle:latest-dev-cuda12.0-cudnn8.9-trt8.6-gcc12.2
+          # docker_image=registry.baidubce.com/paddlepaddle/paddle:latest-dev-cuda12.0-cudnn8.9-trt8.6-gcc12.2
           nvidia-docker run -d -t --cap-add=ALL --name ${container_name} --privileged --shm-size=128g \
             -v ${{ github.workspace }}/../../..:${{ github.workspace }}/../../.. \
             -v ${{ github.workspace }}:/paddle \
-            -e python \
             -e core_index \
             -e BRANCH \
             -e PR_ID \
@@ -74,33 +66,9 @@ jobs:
             -e work_dir \
             -e PADDLE_ROOT \
             -e ci_scripts \
-            -e GIT_PR_ID \
-            -e PADDLE_VERSION \
             -e no_proxy \
             -e CI_name \
-            -e CUDA_VISIBLE_DEVICES \
-            -e GITHUB_API_TOKEN \
             -w /paddle --network host ${docker_image}
-
-      - name: Download PaddleTest.tar.gz
-        env:
-          work_dir: ${{ github.workspace }}
-        run: |
-          docker exec -t ${{ env.container_name }} /bin/bash -c '
-          ldconfig
-          set -e
-          echo "Downloading PaddleTest.tar.gz"
-          wget -q --no-proxy https://xly-devops.bj.bcebos.com/PaddleTest/PaddleTest.tar.gz --no-check-certificate
-          echo "Extracting PaddleTest.tar.gz"
-          # git config --global --add safe.directory ${work_dir}
-          tar -zvxf PaddleTest.tar.gz 1>/dev/null 2>&1
-          # git submodule foreach "git config --global --add safe.directory \$toplevel/\$sm_path"
-          # source ${{ github.workspace }}/../../../proxy
-          set -x
-          ${python} -m pip config set global.cache-dir ${{ github.workspace }}/../../../.cache/pip
-          ${python} -m pip install -r ./PaddleTest/framework/e2e/api_benchmark_new/requirement.txt
-          ${python} -m pip install torch==2.6.0 torchvision==0.21.0 torchaudio==2.6.0 --index-url https://download.pytorch.org/whl/cu118
-          '
 
       - name: Test
         env:
@@ -108,10 +76,11 @@ jobs:
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           set -x
-          export LD_LIBRARY_PATH=/usr/local/cuda-11.8/compat:/usr/local/cuda/compat:/usr/local/cuda/lib:/usr/local/cuda/lib64:/usr/local/nvidia/lib:/usr/local/nvidia/lib64:/usr/lib/x86_64-linux-gnu:${LD_LIBRARY_PATH}
-          ${python} -m pip install https://paddle-github-action.bj.bcebos.com/PR/build/72680/aaa207ab82467ca9730b505ece315fe7d36a24a1/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl
-          ldconfig
-          ${python} test_set_item.py
+          python3.10 -m pip config set global.cache-dir ${{ github.workspace }}/../../../.cache/pip
+          python3.10 -m pip install torch==2.6.0 torchvision==0.21.0 torchaudio==2.6.0 --index-url https://download.pytorch.org/whl/cu118
+          # export LD_LIBRARY_PATH=/usr/local/cuda-11.8/compat:/usr/local/cuda/compat:/usr/local/cuda/lib:/usr/local/cuda/lib64:/usr/local/nvidia/lib:/usr/local/nvidia/lib64:/usr/lib/x86_64-linux-gnu:${LD_LIBRARY_PATH}
+          python3.10 -m pip install $wheel_link
+          python3.10 test_set_item.py 0
           '
 
     # - name: Terminate and delete the container
