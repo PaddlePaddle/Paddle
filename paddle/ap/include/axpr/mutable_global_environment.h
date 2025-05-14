@@ -18,6 +18,7 @@
 #include "paddle/ap/include/axpr/adt.h"
 #include "paddle/ap/include/axpr/environment.h"
 #include "paddle/ap/include/axpr/frame.h"
+#include "paddle/ap/include/axpr/method_class.h"
 #include "paddle/ap/include/axpr/serializable_value.h"
 #include "paddle/ap/include/axpr/serializable_value_helper.h"
 
