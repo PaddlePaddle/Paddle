@@ -344,15 +344,19 @@ class TestCopySignTypePromotion(TestCopySignAPI):
 
 class TestCopySignNan1(TestCopySignAPI):
     def input_init(self):
-        self.x = np.array([[1.0, 2.0], [3.0, 4.0]])
-        self.y = np.array([[np.nan, np.nan], [np.nan, np.nan]])
+        self.x = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float64)
+        self.y = np.array(
+            [[np.nan, np.nan], [np.nan, np.nan]], dtype=np.float64
+        )
         self.y.view('uint64')[0, 0] |= 0x8000000000000000
 
 
 class TestCopySignNan2(TestCopySignAPI):
     def input_init(self):
-        self.x = np.array([[1.0, 2.0], [3.0, 4.0]])
-        self.y = np.array([[np.nan, np.nan], [np.nan, np.nan]])
+        self.x = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float64)
+        self.y = np.array(
+            [[np.nan, np.nan], [np.nan, np.nan]], dtype=np.float64
+        )
         self.y.view('uint64')[0, 0] &= ~0x8000000000000000
 
 
@@ -382,15 +386,19 @@ class TestCopySignNan6(TestCopySignAPI):
 
 class TestCopySignNan7(TestCopySignAPI):
     def input_init(self):
-        self.x = np.array([[np.nan, 2.0], [3.0, 4.0]])
-        self.y = np.array([[np.nan, np.nan], [np.nan, np.nan]])
+        self.x = np.array([[np.nan, 2.0], [3.0, 4.0]], dtype=np.float64)
+        self.y = np.array(
+            [[np.nan, np.nan], [np.nan, np.nan]], dtype=np.float64
+        )
         self.y.view('uint64')[0, 0] |= 0x8000000000000000
 
 
 class TestCopySignNan8(TestCopySignAPI):
     def input_init(self):
-        self.x = np.array([[np.nan, 2.0], [3.0, 4.0]])
-        self.y = np.array([[np.nan, np.nan], [np.nan, np.nan]])
+        self.x = np.array([[np.nan, 2.0], [3.0, 4.0]], dtype=np.float64)
+        self.y = np.array(
+            [[np.nan, np.nan], [np.nan, np.nan]], dtype=np.float64
+        )
         self.y.view('uint64')[0, 0] &= ~0x8000000000000000
 
 
