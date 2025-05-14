@@ -86,19 +86,19 @@ void ResNetUnitGradXPUKernel(
   std::vector<XPUType *> dw_list = {
       reinterpret_cast<XPUType *>(dev_ctx.template Alloc<T>(filter_x_grad))};
 
-  std::vector<std::vector<int>> x_shape_list = {
-      common::vectorize<int>(x->dims())};
+  std::vector<std::vector<int64_t>> x_shape_list = {
+      common::vectorize<int64_t>(x->dims())};
 
-  auto filter_x_shape = common::vectorize<int>(filter_x->dims());
-  std::vector<int> x_ksize = {filter_x_shape[2], filter_x_shape[3]};
+  auto filter_x_shape = common::vectorize<int64_t>(filter_x->dims());
+  std::vector<int64_t> x_ksize = {filter_x_shape[2], filter_x_shape[3]};
   if (!is_nchw) {
     x_ksize[0] = filter_x_shape[1];
     x_ksize[1] = filter_x_shape[2];
   }
-  std::vector<std::vector<int>> ksize_list = {x_ksize};
-  std::vector<std::vector<int>> stride_list = {{stride, stride}};
-  std::vector<int> paddings = {padding, padding};
-  std::vector<int> dilations = {dilation, dilation};
+  std::vector<std::vector<int64_t>> ksize_list = {x_ksize};
+  std::vector<std::vector<int64_t>> stride_list = {{stride, stride}};
+  std::vector<int64_t> paddings = {padding, padding};
+  std::vector<int64_t> dilations = {dilation, dilation};
 
   std::vector<const float *> x_maxlist = {nullptr};
   std::vector<const float *> w_maxlist = {nullptr};
@@ -137,10 +137,10 @@ void ResNetUnitGradXPUKernel(
         reinterpret_cast<XPUType *>(dev_ctx.template Alloc<T>(z_grad)));
     dw_list.push_back(
         reinterpret_cast<XPUType *>(dev_ctx.template Alloc<T>(filter_z_grad)));
-    x_shape_list.push_back(common::vectorize<int>(z->dims()));
+    x_shape_list.push_back(common::vectorize<int64_t>(z->dims()));
 
-    auto filter_z_shape = common::vectorize<int>(filter_z->dims());
-    std::vector<int> ksize_z = {filter_z_shape[2], filter_z_shape[3]};
+    auto filter_z_shape = common::vectorize<int64_t>(filter_z->dims());
+    std::vector<int64_t> ksize_z = {filter_z_shape[2], filter_z_shape[3]};
     if (!is_nchw) {
       ksize_z[0] = filter_z_shape[1];
       ksize_z[1] = filter_z_shape[2];

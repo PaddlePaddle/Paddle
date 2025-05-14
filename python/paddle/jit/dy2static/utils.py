@@ -89,6 +89,7 @@ ENV_ENABLE_CINN_IN_DY2ST = BooleanEnvironmentVariable(
 class Backend(Enum):
     CINN = auto()
     PHI = auto()
+    PCC = auto()
 
     @staticmethod
     def from_arg(arg: str | Backend | None):
@@ -98,12 +99,17 @@ class Backend(Enum):
             return Backend.PHI
         if arg.upper() == "CINN":
             return Backend.CINN
+        if arg.upper() == "PCC":
+            return Backend.PCC
         raise ValueError(
             f"Unknown backend {arg}. Only support 'CINN' or None for PHI."
         )
 
     def is_cinn(self):
         return self == Backend.CINN
+
+    def is_pcc(self):
+        return self == Backend.PCC
 
     def is_phi(self):
         return self == Backend.PHI

@@ -54,20 +54,20 @@ void StridedSliceRawKernel(const Context& dev_ctx,
   out->Resize(out_dims);
   dev_ctx.template Alloc<T>(out);
 
-  std::vector<int> xshape;
-  std::vector<int> starts_in(in_dims.size(), 0);
-  std::vector<int> ends_in;
-  std::vector<int> strides_in(in_dims.size(), 1);
+  std::vector<int64_t> xshape;
+  std::vector<int64_t> starts_in(in_dims.size(), 0);
+  std::vector<int64_t> ends_in;
+  std::vector<int64_t> strides_in(in_dims.size(), 1);
 
   for (int i = 0; i < in_dims.size(); ++i) {
     xshape.emplace_back(in_dims[i]);
     ends_in.emplace_back(in_dims[i]);
   }
 
-  int num = axes.size();
-  for (int i = 0; i < num; ++i) {
-    int cur_axe = axes[i];
-    int st = starts_[i];
+  int64_t num = axes.size();
+  for (int64_t i = 0; i < num; ++i) {
+    int64_t cur_axe = axes[i];
+    int64_t st = starts_[i];
     if (st > xshape[cur_axe]) {
       st = xshape[cur_axe] - 1;
     }
@@ -76,7 +76,7 @@ void StridedSliceRawKernel(const Context& dev_ctx,
     }
     starts_in[cur_axe] = st;
 
-    int end = ends_[i];
+    int64_t end = ends_[i];
     if (end > xshape[cur_axe]) {
       end = xshape[cur_axe];
     }
@@ -120,8 +120,8 @@ void StridedSliceRawKernel(const Context& dev_ctx,
      * [1 3 5 7 9
      *  2 4 6 8 10]
      */
-    // int transpose(Context* ctx, const T* x, T* y, const std::vector<int>&
-    // xshape, const std::vector<int>& permute)
+    // int transpose(Context* ctx, const T* x, T* y, const std::vector<int64_t>&
+    // xshape, const std::vector<int64_t>& permute)
     int r =
         xpu::transpose<XPUType>(dev_ctx.x_context(),
                                 reinterpret_cast<const XPUType*>(x.data<T>()),
@@ -131,7 +131,7 @@ void StridedSliceRawKernel(const Context& dev_ctx,
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "transpose");
     // step 2: if starts from 0, use "first half" data as result, otherwise use
     // "second half".
-    int offset = 0;
+    int64_t offset = 0;
     if (starts_in.back() == 1) {
       offset = x.numel() / 2;
     }
