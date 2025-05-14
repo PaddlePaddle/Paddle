@@ -44,7 +44,7 @@ jobs:
       - name: Prepare workspace
         run: |
           sudo rm -rf * .[^.]*
-          cp -r /home/paddle/api-bm-tools/api_benchmark_gpu/test_set_item.py .
+          cp -r /home/paddle/gh_action/api_benchmark_gpu/test_set_item.py .
           docker container ls -a --filter "name=api_gpu_benchmark_ci*" --format "{{.ID}}" | xargs -r docker rm -f
           docker container ls -a --filter "name=api_benchmark_ci_baseline_" --format "{{.ID}} {{.CreatedAt}}" | awk '$2 <= "'$(date -d '1 day ago' +'%Y-%m-%d')'" {print $1}' | xargs -r docker rm -f
 
@@ -60,8 +60,8 @@ jobs:
           container_name="api_benchmark_ci_${RUN_ID}"
           echo "container_name=${container_name}" >> ${{ github.env }}
           docker_image=${{ inputs.docker_build_image }}
-          docker_image=ccr-2vdh3abv-pub.cnc.bj.baidubce.com/ci/paddle:29f259c1f2a060142f49e2d0307cfc4e
-          docker run -d -t --gpus all --name ${container_name} --privileged --shm-size=128g \
+          docker_image=registry.baidubce.com/paddlepaddle/paddle:latest-dev-cuda12.0-cudnn8.9-trt8.6-gcc12.2
+          nvidia-docker run -d -t --cap-add=ALL --name ${container_name} --privileged --shm-size=128g \
             -v ${{ github.workspace }}/../../..:${{ github.workspace }}/../../.. \
             -v ${{ github.workspace }}:/paddle \
             -e python \
