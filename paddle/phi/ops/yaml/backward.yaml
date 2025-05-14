@@ -1978,6 +1978,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param: [out]
+    spmd_rule : SoftmaxGradInferSpmd
   kernel :
     func : log_softmax_grad
     data_type : out_grad
