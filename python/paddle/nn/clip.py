@@ -796,6 +796,11 @@ class ClipGradByGlobalNorm(ClipGradBase):
                 global_norm_var._local_value(), group=self.sharding_group
             ).wait()
 
+        if self.should_comm_on_shard_dim and hasattr(self, 'mp_group'):
+            paddle.distributed.all_reduce(
+                global_norm_var._local_value(), group=self.mp_group
+            ).wait()
+
         global_norm_var = paddle.sqrt(global_norm_var)
         max_global_norm = paddle.full(
             shape=[1], dtype=sum_dtype, fill_value=self.clip_norm
