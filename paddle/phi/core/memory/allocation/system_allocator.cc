@@ -324,7 +324,7 @@ void* XPUPinnedAllocator::Alloc(size_t* index, size_t size) {
   void* p = nullptr;
   VLOG(6) << "Calling cudaHostAlloc for " << size << " bytes";
   // PINNED memory is visible to all CUDA contexts.
-  cudaError_t result = cudaHostAlloc(&p, size, cudaHostAllocPortable);
+  cudaError_t result = cudaHostAlloc(&p, size, cudaHostAllocDefault);
   VLOG(6) << "cudaHostAlloc returned: " << result;
 
   if (result == cudaSuccess) {
