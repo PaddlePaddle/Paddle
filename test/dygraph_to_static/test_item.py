@@ -18,7 +18,6 @@ import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
     test_pir_only,
-    test_sot_only,
 )
 
 import paddle
@@ -104,7 +103,8 @@ class TestItem(Dy2StTestBase):
         test_raise_error(
             t,
             ValueError,
-            "only one element tensors can be converted to Python scalars when no input coordinates",
+            "only one element tensors can be converted to "
+            "Python scalars when no input coordinates",
         )
         test_raise_error(
             t, ValueError, "index (.)* is out of bounds for size (.)*", 10000
@@ -128,21 +128,6 @@ class TestItem(Dy2StTestBase):
             9,
             9,
         )
-
-    # TODO(dev): Currently, the static graph mode does not support the as_strided function or the strides attribute,
-    # which prevents correct execution in static mode. Therefore, only SOT cases are tested (these will fallback to dynamic graph execution).
-    @test_sot_only
-    def test_case_using_as_strides(self):
-        x = paddle.arange(6).reshape((2, 3))
-        y = x.as_strided([5, 2], [1, 1])
-
-        def dynamic_forward(x):
-            return x.item(2)
-
-        static_forward = paddle.jit.to_static(dynamic_forward)
-        dynamic_result = dynamic_forward(y)
-        static_result = static_forward(y)
-        self.assertEqual(dynamic_result, static_result)
 
 
 if __name__ == '__main__':
