@@ -312,7 +312,7 @@
   traits : pir::SideEffectTrait, paddle::dialect::ForwardOnlyTrait
 
 - op : ap_variadic
-  args : (Tensor[] xs, int num_outputs, str code_module_lambda, str infer_meta_lambda, str rnel_dispatch_lambda, str kernel_dispatch_const_data_lambda)
+  args : (Tensor[] xs, int num_outputs, str code_module_lambda, str infer_symbolic_lambda, str infer_meta_lambda, str rnel_dispatch_lambda, str kernel_dispatch_const_data_lambda)
   output : Tensor[](out){num_outputs}
   infer_meta :
     func : ApVariadicInferMeta

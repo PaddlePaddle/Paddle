@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 import copy
+import os
 import warnings
 from typing import (
     TYPE_CHECKING,
@@ -655,6 +656,24 @@ def amp_guard(
             and not amp_global_state().already_register_final_backward_hook
         ):
 
+            def _dtensor_from_local(local_tensor, mesh, placements):
+                global_dims = list(local_tensor.shape)
+                for idx, placement in enumerate(placements):
+                    if placement.is_shard():
+                        global_dims[placement.get_dim()] = (
+                            global_dims[placement.get_dim()] * mesh.shape[idx]
+                        )
+                place = paddle.framework._current_expected_place()
+                place = paddle.framework._get_paddle_place(place)
+
+                return paddle.Tensor(
+                    local_tensor,
+                    dims=global_dims,
+                    process_mesh=mesh,
+                    placements=placements,
+                    place=place,
+                )
+
             def master_grad_hook():
                 # NOTE(lizhiyu): To support semi-auto of dygraph mode, we must
                 # classify the params of model into different classes according to their process_mesh.
@@ -674,16 +693,51 @@ def amp_guard(
                                     param.process_mesh
                                 ].append(param)
                     amp_global_state().already_classify_params_meshes = True
-
-                if len(amp_global_state().mesh2params):
-                    for _, params in amp_global_state().mesh2params.items():
-                        core.eager.set_master_grads(params)
-                else:
-                    core.eager.set_master_grads(
-                        amp_global_state().model_parameters
-                    )
+                if os.getenv("FLAGS_enable_tensor_fusion") not in [
+                    "True",
+                    "true",
+                    "1",
+                ]:
+                    if len(amp_global_state().mesh2params):
+                        for _, params in amp_global_state().mesh2params.items():
+                            core.eager.set_master_grads(params)
+                    else:
+                        core.eager.set_master_grads(
+                            amp_global_state().model_parameters
+                        )
 
                 amp_global_state().already_register_final_backward_hook = False
+
+            def _update_main_grad_hook(param):
+                @paddle.autograd.no_grad()
+                def param_hook(tmp_grad):
+                    if tmp_grad is not None and tmp_grad._is_initialized():
+                        if param.main_grad is None:
+                            tmp = core.eager.Tensor(
+                                value=tmp_grad._local_value()
+                                .cast(paddle.float32)
+                                .value(),
+                                place=tmp_grad.place,
+                                name="main_grad@" + param.name,
+                            )
+                            param.main_grad = _dtensor_from_local(
+                                tmp,
+                                tmp_grad.process_mesh,
+                                tmp_grad.placements,
+                            )
+                        else:
+                            param.main_grad._local_value().add_(
+                                tmp_grad._local_value()
+                            )
+                        tmp_grad._clear_data()
+
+                return param_hook
+
+            if os.getenv("FLAGS_enable_tensor_fusion") in ["True", "true", "1"]:
+                for param in amp_global_state().model_parameters:
+                    if not hasattr(param, "main_grad"):
+                        param.main_grad = None
+                        param._register_grad_hook(_update_main_grad_hook(param))
 
             core.eager._add_backward_final_hook(master_grad_hook)
             amp_global_state().already_register_final_backward_hook = True

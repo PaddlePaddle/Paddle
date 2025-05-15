@@ -65,13 +65,12 @@ def _compile(
     func,
     input_specs,
     train=False,
-    ap_path=None,
+    ap_path="",
     ap_workspace_dir='/tmp/paddle/ap',
     backend_device='cuda',
     target_framework='paddle',
     compile_engine='PCC',
 ):
-    assert ap_path is not None
     assert not train, "only support inference now"
     os.makedirs(ap_workspace_dir, exist_ok=True)
     build_strategy = paddle.static.BuildStrategy()
@@ -136,10 +135,11 @@ class InputSpecMakeCtx:
 
 @contextmanager
 def _ap_envs(ap_path, ap_workspace_dir):
+    ap_sys_path = f"{os.path.dirname(paddle.__file__)}/apy/sys"
     old_ap_path = os.environ.get('AP_PATH')
     old_ap_workspace_dir = os.environ.get('AP_WORKSPACE_DIR')
     os.environ['AP_PATH'] = (
-        f"{ap_path}:{old_ap_path}" if old_ap_path is not None else ap_path
+        f"{ap_sys_path}:{ap_path}:{old_ap_path if old_ap_path is not None else ''}"
     )
     os.environ['AP_WORKSPACE_DIR'] = ap_workspace_dir
     old_flags = paddle.get_flags(['FLAGS_enable_ap'])
