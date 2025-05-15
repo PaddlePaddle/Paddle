@@ -12,8 +12,6 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  Dockerfile: Dockerfile.cuda117_cudnn8_gcc82_ubuntu18_coverage
-  docker_image: 5a60bb165c34
   PR_ID: ${{ github.event.pull_request.number }}
   COMMIT_ID: ${{ github.event.pull_request.head.sha }}
   TASK: paddle-CI-${{ github.event.pull_request.number }}-coverage
@@ -55,7 +53,6 @@ jobs:
 
     steps:
       - name: Check docker image and run container
-        if: steps.check-bypass.outputs.can-skip != 'true'
         env:
           CCACHE_DIR: "/root/.ccache/coverage"
           FLAGS_fraction_of_gpu_memory_to_use: 0.15
@@ -243,7 +240,7 @@ jobs:
 
   test:
     name: Coverage test
-    needs: build
+    needs: [build, build-docker]
     if: needs.build.outputs.can-skip != 'true'
     runs-on:
       group: BD_BJ-V100
@@ -277,6 +274,7 @@ jobs:
         run: |
           container_name=${TASK}-$(date +%Y%m%d-%H%M%S)
           echo "container_name=${container_name}" >> ${{ github.env }}
+          docker_image=${{ needs.build-docker.outputs.docker_coverage_image }}
           docker run -d -t --gpus all --name ${container_name} \
             -v "/home/data/cfs:/home/data/cfs" \
             -v "/home/data/cfs/.cache:/root/.cache" \
