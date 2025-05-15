@@ -57,7 +57,6 @@ jobs:
           git config --global user.name "PaddleCI"
           git config --global user.email "paddle_ci@example.com"
           git remote add upstream https://github.com/PaddlePaddle/Paddle.git
-          #. ../../../proxy
           git checkout $BRANCH
           git pull upstream $BRANCH
           git fetch upstream $BRANCH
