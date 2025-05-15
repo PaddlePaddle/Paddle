@@ -76,7 +76,7 @@ class TestTopkSPMDRule(unittest.TestCase):
         self.out_dist_tensor_spec.set_dims_mapping([-1, 1, -1])
         result_dist_attrs = self.rule.infer_backward(
             self.x_dist_tensor_spec,
-            self.out_dist_tensor_spec,
+            self.x_dist_tensor_spec,
             self.out_dist_tensor_spec,
             self.attrs['axis'],
         )
