@@ -732,10 +732,10 @@ std::shared_ptr<OpStrategy> StrategyForPool1d(
                    ::common::errors::InvalidArgument(
                        "Datatype error! A is not a tensor."));
     auto attr_store = attrs.attr_store;
-    std::vector<int> kernel_size;   // [kernel_w]
-    std::vector<int> stride_size;   // [stride_w]
-    std::vector<int> padding_size;  // [padding_left, padding_right]
-    std::vector<int> dilation_size; // [dilation_w]
+    std::vector<int> kernel_size;    // [kernel_w]
+    std::vector<int> stride_size;    // [stride_w]
+    std::vector<int> padding_size;   // [padding_left, padding_right]
+    std::vector<int> dilation_size;  // [dilation_w]
     std::string pool_type = "max";
     bool ceil_mode = false;
     bool exclusive = true;
@@ -1074,7 +1074,7 @@ std::shared_ptr<OpStrategy> StrategyForPool3d(
     std::vector<int>
         padding_size;  // [padding_front, padding_top, padding_left,
                        // padding_back, padding_bottom, padding_right]
-    std::vector<int> dilation_size; // [dilation_d, dilation_h, dilation_w]
+    std::vector<int> dilation_size;  // [dilation_d, dilation_h, dilation_w]
     std::string pool_type = "max";
     bool ceil_mode = false;
     bool exclusive = true;
