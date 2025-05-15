@@ -44,7 +44,7 @@ jobs:
       - name: Prepare workspace
         run: |
           sudo rm -rf * .[^.]*
-          cp /home/paddle/gh_action/api_benchmark_gpu/test_set_item.py .
+          cp /home/data/cfs/test_set_item.py .
 
       - name: Check docker image and run container
         env:
