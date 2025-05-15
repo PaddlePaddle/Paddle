@@ -1505,8 +1505,8 @@ class _ShardOptimizer(Optimizer):
     def _apply_optimize(
         self, loss, startup_program, params_grads, param_group_idx=0
     ):
-        # Fuse the communication of gradients prior to the optimization operation in the dynamic mode.
-        if paddle.in_dynamic_mode():
+        # Fuse the communication of gradients prior to the optimization operation in the dynamic mode and "stage1" startegy.
+        if paddle.in_dynamic_mode() and isinstance(self._shard_fn, ShardingStage1):
             # Get fuse optimization flag.
             def get_env(flag_name):
                 if os.getenv(flag_name) in ['True', 'true', '1']:
