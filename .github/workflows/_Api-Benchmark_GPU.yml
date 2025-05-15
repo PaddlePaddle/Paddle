@@ -39,7 +39,7 @@ jobs:
     needs: check-bypass
     if: ${{ inputs.can-skip != 'true' && needs.check-bypass.outputs.can-skip != 'true' }}
     runs-on:
-      group: BD_BJ-V100
+      group: v100-test
     steps:
       - name: Prepare workspace
         run: |
