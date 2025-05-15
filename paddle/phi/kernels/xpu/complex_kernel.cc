@@ -36,7 +36,7 @@ void ConjKernel(const Context& dev_ctx,
                 const DenseTensor& x,
                 DenseTensor* out) {
   dev_ctx.template Alloc<T>(out);
-  if (std::is_same<T, phi::dtype::complex<float>>::value) {
+  if (std::is_same_v<T, phi::dtype::complex<float>>) {
     int r = xfft_internal::xpu::Conj(
         x.numel(),
         reinterpret_cast<cuFloatComplex*>(const_cast<T*>(x.data<T>())),
