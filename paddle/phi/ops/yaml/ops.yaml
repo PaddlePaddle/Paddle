@@ -4363,6 +4363,7 @@
   output : Tensor(out)
   infer_meta :
     func : RollInferMeta
+    spmd_rule : RollInferSpmdDynamic
   kernel :
     func : roll
     data_type : x
