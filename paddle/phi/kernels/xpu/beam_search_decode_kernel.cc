@@ -86,7 +86,7 @@ void BeamSearchDecodeXPUKernel(const Context& dev_ctx,
         *sentenceIds, sentenceIds_temp, 1, ids->at(0).place());
     PADDLE_ENFORCE_EQ(
         r,
-        xpu::Error_t::SUCCESS,
+        0,
         common::errors::External(
             "Execute function CopyTensorByXPU failed by [%d]", r));
 
@@ -94,7 +94,7 @@ void BeamSearchDecodeXPUKernel(const Context& dev_ctx,
         *sentenceScores, sentenceScores_temp, 1, ids->at(0).place());
     PADDLE_ENFORCE_EQ(
         r,
-        xpu::Error_t::SUCCESS,
+        0,
         common::errors::External(
             "Execute function CopyTensorByType failed by [%d]", r));
     sentenceIds_temp->set_lod(sentenceIds->lod());

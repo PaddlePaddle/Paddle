@@ -37,13 +37,13 @@ void UnfoldKernel(const Context& ctx,
   phi::funcs::Im2ColFunctor<phi::funcs::ColFormat::kCFO, Context, T> im2col;
   const auto& x_dims = x.dims();
 
-  int out_height = phi::funcs::CalcOutputSize(x_dims[2],
+  int out_height = phi::funcs::CalcOutputSize(static_cast<int>(x_dims[2]),
                                               kernel_sizes[0],
                                               dilations[0],
                                               paddings[0],
                                               paddings[2],
                                               strides[0]);
-  int out_width = phi::funcs::CalcOutputSize(x_dims[3],
+  int out_width = phi::funcs::CalcOutputSize(static_cast<int>(x_dims[3]),
                                              kernel_sizes[1],
                                              dilations[1],
                                              paddings[1],

@@ -14,8 +14,6 @@
 
 #pragma once
 
-#ifdef PADDLE_WITH_XPU
-
 #include <unordered_map>
 #include <vector>
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
@@ -910,4 +908,3 @@ MatmulGradFcInfo(xpu::Context* xpu_ctx,
 }
 
 }  // namespace phi
-#endif

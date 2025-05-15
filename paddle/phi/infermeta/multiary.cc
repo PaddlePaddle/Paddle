@@ -474,6 +474,7 @@ void AddNInferMeta(const std::vector<const MetaTensor*>& x,
 void ApVariadicInferMeta(const std::vector<const MetaTensor*>& xs,
                          int num_outputs,
                          const std::string& code_module_lambda,
+                         const std::string& infer_symbolic_lambda,
                          const std::string& infer_meta_lambda,
                          const std::string& kernel_dispatch_lambda,
                          const std::string& kernel_dispatch_const_data_lambda,
@@ -521,6 +522,22 @@ void ApFacadeInferMeta(
   PADDLE_THROW(phi::errors::Unimplemented(
       "ap_facade is not implemented when cinn is not enabled."));
 #endif
+}
+
+void ApTrivialFusionBeginInferMeta(
+    const paddle::optional<std::vector<const MetaTensor*>>& xs,
+    MetaTensor* out,
+    MetaConfig config) {
+  out->set_dims(common::make_ddim({}));
+  out->set_dtype(phi::DataType::BOOL);
+}
+
+void ApTrivialFusionEndInferMeta(
+    const paddle::optional<std::vector<const MetaTensor*>>& xs,
+    MetaTensor* out,
+    MetaConfig config) {
+  out->set_dims(common::make_ddim({}));
+  out->set_dtype(phi::DataType::BOOL);
 }
 
 // TODO(YuanRisheng) This InferMeta is used in Fluid

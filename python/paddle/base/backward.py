@@ -51,7 +51,7 @@ class ProgramStats:
         self.block = block
         self.ops = ops
         self.op_deps = {}  # op-> in_ops, out_ops
-        self.var_op_deps = {}  # var as input op, var as output op
+        self.var_op_deps = {}  # var as input ops, var as output ops
 
     def get_input_nodes(self):
         input_names = []
