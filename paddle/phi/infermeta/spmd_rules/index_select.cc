@@ -1,4 +1,4 @@
-/* Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -141,6 +141,11 @@ SpmdInfo IndexSelectGradInferSpmd(const DistMetaTensor& x,
     x_grad_dist_attr_dst.set_partial_status(partial_dims);
   }
 
+  VLOG(4) << "IndexSelectGradInferSpmd: Done.";
+  LOG_SPMD_INPUT(x);
+  LOG_SPMD_INPUT(index);
+  LOG_SPMD_INPUT(out_grad);
+  LOG_SPMD_OUTPUT(x_grad_dist_attr_dst);
   return {{x_dist_attr_dst, index_dist_attr_dst, out_grad_dist_attr_dst},
           {x_grad_dist_attr_dst}};
 }
