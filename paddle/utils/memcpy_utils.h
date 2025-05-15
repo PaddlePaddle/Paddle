@@ -181,7 +181,6 @@ void launch_optimized_memcpy(T *dst, const T *src, size_t num_elements,
       <<<num_blocks, BLOCK_SIZE, smem_size, stream>>>(dst, src, num_elements);
 }
 
-// 简单的类型提取
 template <paddle::DataType DType>
 struct TypeMap;
 template <>
@@ -233,38 +232,6 @@ struct alignas(16) VectorType<uint8_t, 16> {
   uint8_t data[16];
 };
 
-/*
-// Helper function to perform vectorized memory copy
-template <typename T>
-__device__ __forceinline__ void vectorized_memcpy(const T* src,
-                                                  T* dst,
-                                                  int num_elements) {
-  constexpr int vector_size_in_bytes = 16;
-  const int elements_per_vector = vector_size_in_bytes / sizeof(T);
-
-  // 已知单行token向量化不会超过4G大小，用int节省整数开销
-  int num_vectors = num_elements / elements_per_vector;
-  int remaining_elements = num_elements % elements_per_vector;
-
-  using VecType = VectorType<T, elements_per_vector>;
-  const VecType* src_vec = reinterpret_cast<const VecType*>(src);
-  VecType* dst_vec = reinterpret_cast<VecType*>(dst);
-
-// 已知paddle框架中的显存分配均为256Bytes对齐，所以默认align
-#pragma unroll
-  for (int idx = threadIdx.x; idx < num_vectors; idx += blockDim.x) {
-    dst_vec[idx] = src_vec[idx];
-  }
-
-  // 剩余无法向量化处理的元素
-  if (remaining_elements > 0) {
-    int offset = num_vectors * elements_per_vector;
-    for (int i = threadIdx.x; i < remaining_elements; i += blockDim.x) {
-      dst[offset + i] = src[offset + i];
-    }
-  }
-}
-*/
 template <typename T>
 __device__ __forceinline__ void vectorized_memcpy(T* dst,
                                                   const T* src,
