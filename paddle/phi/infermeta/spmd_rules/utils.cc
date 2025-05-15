@@ -86,6 +86,10 @@ std::unordered_map<std::string, int64_t> ShardingMergeForTensors(
   for (auto& pair : tensor_axes_to_dim_pairs) {
     for (size_t i = 0; i < pair.second.size(); ++i) {
       auto tensor_axis = pair.first.substr(i, 1);
+      // Cooperate with GetDimsMappingForAxes to deal "1" for replicated.
+      if (tensor_axis == "1") {
+        continue;
+      }
       auto mesh_dim = pair.second[i];
 
       if (axis_to_dim_map.count(tensor_axis) == 0) {
