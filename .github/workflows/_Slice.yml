@@ -57,6 +57,7 @@ jobs:
           docker_image=ccr-2vdh3abv-pub.cnc.bj.baidubce.com/ci/paddle:29f259c1f2a060142f49e2d0307cfc4e
           # docker_image=registry.baidubce.com/paddlepaddle/paddle:latest-dev-cuda12.0-cudnn8.9-trt8.6-gcc12.2
           docker run -d -t --gpus all --name ${container_name} --privileged --shm-size=128g \
+            -v "/home/data/cfs:/home/data/cfs" \
             -v ${{ github.workspace }}/../../..:${{ github.workspace }}/../../.. \
             -v ${{ github.workspace }}:/paddle \
             -e core_index \
