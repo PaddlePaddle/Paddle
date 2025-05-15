@@ -114,11 +114,9 @@ PD_REGISTER_KERNEL(contiguous,
                    int64_t,
                    float,
                    double,
-                   ::phi::dtype::float16,
-                   ::phi::dtype::bfloat16
 #ifdef PADDLE_WITH_XPU_FFT
-                   ,
-                   phi::dtype::complex<float>
+                   phi::dtype::complex<float>,
 #endif
-) {
+                   ::phi::dtype::float16,
+                   ::phi::dtype::bfloat16) {
 }
