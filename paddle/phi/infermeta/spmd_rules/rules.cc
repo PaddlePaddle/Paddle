@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/infermeta/spmd_rules/rules.h"
+#include "paddle/phi/infermeta/spmd_rules/index_select.h"
 
 /**
  * Design Notes:
@@ -752,4 +753,11 @@ PD_REGISTER_SPMD_RULE(nonzero,
 
 // add_n
 PD_REGISTER_SPMD_RULE(add_n, PD_INFER_SPMD(phi::distributed::AddNInferSpmd));
+
+// index_select
+PD_REGISTER_SPMD_RULE(
+    index_select,
+    PD_INFER_SPMD(phi::distributed::IndexSelectInferSpmd),
+    PD_INFER_SPMD(phi::distributed::IndexSelectGradInferSpmd));
+
 }  // namespace phi::distributed
