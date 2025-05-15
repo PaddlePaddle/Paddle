@@ -14,13 +14,32 @@
 
 #pragma once
 
-#include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
+#include <memory>
+#include <optional>
+#include "paddle/pir/include/pass/pass.h"
 
-namespace paddle::dialect {
+namespace ap::memory {
 
-OP_DECLARE_INFER_SYMBOLIC_SHAPE(ApTrivialFusionBegin)
-OP_DECLARE_INFER_SYMBOLIC_SHAPE(ApTrivialFusionEnd)
-OP_DECLARE_INFER_SYMBOLIC_SHAPE(ApFacade)
-OP_DECLARE_INFER_SYMBOLIC_SHAPE(ApVariadic)
+class CirclableRefListBase;
 
-}  // namespace paddle::dialect
+}
+
+namespace ap::axpr {
+
+struct Value;
+
+}
+
+namespace pir {
+
+class Program;
+
+}
+
+namespace ap {
+namespace paddle {
+
+std::unique_ptr<pir::Pass> CreatePutApTrivialOpsInRangePass();
+
+}  // namespace paddle
+}  // namespace ap

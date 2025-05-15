@@ -13,14 +13,18 @@
 // limitations under the License.
 
 #pragma once
+#include "paddle/ap/include/adt/adt.h"
+#include "paddle/ap/include/axpr/core_expr.h"
+#include "paddle/ap/include/axpr/value.h"
 
-#include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
+namespace ap::fs {
 
-namespace paddle::dialect {
+adt::Result<axpr::Value> DirName(const axpr::Value&,
+                                 const std::vector<axpr::Value>& args);
 
-OP_DECLARE_INFER_SYMBOLIC_SHAPE(ApTrivialFusionBegin)
-OP_DECLARE_INFER_SYMBOLIC_SHAPE(ApTrivialFusionEnd)
-OP_DECLARE_INFER_SYMBOLIC_SHAPE(ApFacade)
-OP_DECLARE_INFER_SYMBOLIC_SHAPE(ApVariadic)
+adt::Result<axpr::Value> BaseName(const axpr::Value&,
+                                  const std::vector<axpr::Value>& args);
 
-}  // namespace paddle::dialect
+void ForceLink();
+
+}  // namespace ap::fs
