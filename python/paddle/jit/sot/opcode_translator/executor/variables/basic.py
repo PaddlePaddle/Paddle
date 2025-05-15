@@ -30,6 +30,7 @@ from paddle.pir.core import _PADDLE_PIR_DTYPE_2_NUMPY_DTYPE
 from ....infer_meta import (
     DistInfo,
     MetaInfo,
+    MetaInfoBase,
 )
 from ....symbolic.statement_ir import Symbol
 from ....symbolic_shape.constraints import (
@@ -364,10 +365,10 @@ class TensorDtypeVariable(DataVariable):
             if not paddle.framework.use_pir_api():
                 return [
                     StringifiedExpression(
-                        f"MetaInfo.from_tensor({{}}).dtype == {dtype_str}",
+                        f"MetaInfoBase.from_tensor({{}}).dtype == {dtype_str}",
                         [tensor_value_tracer],
                         union_free_vars(
-                            {"MetaInfo": MetaInfo},
+                            {"MetaInfoBase": MetaInfoBase},
                             tensor_value_tracer.free_vars,
                             dtype_free_vars,
                         ),
@@ -417,7 +418,7 @@ class TensorVariable(VariableBase):
     TensorVariable is a subclass of VariableBase used to wrap a Variable of the tensor type.
 
     Args:
-        tensor (paddle.Tensor | MetaInfo): The tensor to be wrapped.
+        tensor (paddle.Tensor | MetaInfoBase): The tensor to be wrapped.
         graph (FunctionGraph): The FunctionGraph object that this variable is associated with.
         tracker (Tracker): The Tracker object that tracks the information of this variable.
     """
@@ -427,7 +428,7 @@ class TensorVariable(VariableBase):
 
     def __init__(
         self,
-        meta: MetaInfo,
+        meta: MetaInfoBase,
         graph: FunctionGraph,
         tracker: Tracker,
     ):
@@ -561,15 +562,15 @@ class TensorVariable(VariableBase):
         # TODO(cleanup-legacy-ir): Remove this branch after we remove legacy IR
         if not paddle.framework.use_pir_api():
             if ENV_SOT_ALLOW_DYNAMIC_SHAPE.get():
-                str_left_expr = f"MetaInfo.from_tensor({{}}, dynamic_axes={self.meta.dynamic_axes}).guard_str()"
+                str_left_expr = f"MetaInfoBase.from_tensor({{}}, dynamic_axes={self.meta.dynamic_axes}).guard_str()"
             else:
-                str_left_expr = "MetaInfo.from_tensor({}).guard_str()"
+                str_left_expr = "MetaInfoBase.from_tensor({}).guard_str()"
             return [
                 StringifiedExpression(
                     f"{str_left_expr} == '{self.origin_meta.guard_str()}'",
                     [frame_value_tracer],
                     union_free_vars(
-                        {"MetaInfo": MetaInfo},
+                        {"MetaInfoBase": MetaInfoBase},
                         frame_value_tracer.free_vars,
                     ),
                 )
@@ -898,9 +899,9 @@ class TensorVariable(VariableBase):
 
     @VariableFactory.register_from_value()
     def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
-        if isinstance(value, (paddle.Tensor, MetaInfo)):
+        if isinstance(value, (paddle.Tensor, MetaInfoBase)):
             value = (
-                MetaInfo.from_tensor(value)
+                MetaInfoBase.from_tensor(value)
                 if isinstance(value, paddle.Tensor)
                 else value
             )
@@ -908,7 +909,11 @@ class TensorVariable(VariableBase):
         return None
 
 
-def get_symbolic_from_meta(meta: MetaInfo) -> SymbolicValue:
+def get_symbolic_from_meta(meta: MetaInfoBase) -> SymbolicValue:
+    if not isinstance(meta, MetaInfo):
+        raise InnerError(
+            f"get_symbolic_from_meta() got {meta}. Only MetaInfo is supported."
+        )
     if meta.dtype in [paddle.bool]:
         value = SymbolicBool()
     elif meta.dtype in [
@@ -938,7 +943,7 @@ class SymbolicVariable(VariableBase):
     SymbolicVariable is a subclass of VariableBase used to wrap a symbolic value.
 
     Args:
-        value_or_meta (SymbolicInt | MetaInfo): The symbolic value  to be wrapped or metadata.
+        value_or_meta (SymbolicInt | MetaInfoBase): The symbolic value  to be wrapped or metadata.
         graph (FunctionGraph): The FunctionGraph object that this variable is associated with.
         tracker (Tracker): The Tracker object that tracks the information of this variable.
     """
@@ -949,13 +954,16 @@ class SymbolicVariable(VariableBase):
 
     def __init__(
         self,
-        value_or_meta: SymbolicInt | MetaInfo,
+        value_or_meta: SymbolicInt | MetaInfoBase,
         graph: FunctionGraph,
         tracker: Tracker,
     ):
         super().__init__(graph, tracker)
         self.var_name = self.var_name_generator.next()
-        if isinstance(value_or_meta, MetaInfo):
+        if isinstance(value_or_meta, MetaInfoBase):
+            assert isinstance(
+                value_or_meta, MetaInfo
+            ), "Only MetaInfo is supported"
             assert len(value_or_meta.shape) == 0
             self.value = get_symbolic_from_meta(value_or_meta)
             self.meta = value_or_meta
@@ -1407,7 +1415,7 @@ class SymbolicVariable(VariableBase):
 class ParameterVariable(TensorVariable):
     def __init__(
         self,
-        meta: MetaInfo,
+        meta: MetaInfoBase,
         graph: FunctionGraph,
         tracker: Tracker,
     ):
@@ -1416,7 +1424,7 @@ class ParameterVariable(TensorVariable):
     @VariableFactory.register_from_value(successor="TensorVariable")
     def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
         if isinstance(value, (paddle.base.framework.EagerParamBase)):
-            value = MetaInfo.from_tensor(value)
+            value = MetaInfoBase.from_tensor(value)
             return ParameterVariable(value, graph, tracker)
         return None
 
@@ -1813,7 +1821,7 @@ class NumPyArrayVariable(NumPyVariable):
 
     def __init__(
         self,
-        value_or_meta: npt.NDArray[Any] | MetaInfo,
+        value_or_meta: npt.NDArray[Any] | MetaInfoBase,
         graph: FunctionGraph,
         tracker: Tracker,
     ):
@@ -1821,13 +1829,13 @@ class NumPyArrayVariable(NumPyVariable):
         self.var_name = self.var_name_generator.next()
         self.graph.side_effects.record_mutable_variable(self)
 
-        if isinstance(value_or_meta, MetaInfo):
+        if isinstance(value_or_meta, MetaInfoBase):
             # TODO(wangmingkai02): self.value
             self.value = None
             self.meta = value_or_meta
         else:
             self.value = value_or_meta
-            self.meta = MetaInfo.from_numpy(self.value)
+            self.meta = MetaInfoBase.from_numpy(self.value)
 
     def __len__(self):
         if isinstance(self.meta.shape[0], SymbolicInt):
