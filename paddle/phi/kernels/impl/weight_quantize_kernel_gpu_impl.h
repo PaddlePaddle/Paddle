@@ -32,13 +32,12 @@ __global__ void weight_permute_kernel_wint8(const int8_t* input_data_dev,
        linear_idx += blockDim.x * gridDim.x) {
     int k_id = linear_idx / total_n;
     int n_id = linear_idx % total_n;
-    constexpr int k_permute_const = 8;
     int k_mod_16 = k_id % 16;
-    int temp_k_expr_1 = k_mod_16 - k_mod_16 / 8 * 8;
-    int temp_k_expr_2 = k_mod_16 / 8;
-    int permute_kk = temp_k_expr_1 + temp_k_expr_2 +
-                     (temp_k_expr_2 + 1) % 2 * k_mod_16 * 2 / 2 +
-                     temp_k_expr_1 * temp_k_expr_2 + k_id / 16 * 16;
+
+    constexpr int tmp[16] = {
+        0, 2, 4, 6, 8, 10, 12, 14, 1, 3, 5, 7, 9, 11, 13, 15};
+    int permute_kk = tmp[k_mod_16] + k_id / 16 * 16;
+
     int permute_index = permute_kk % 64 + permute_kk / 64 * 128 +
                         64 * (n_id % 2) + total_k * 2 * (n_id / 2);
     uint8_t shift_quant_weight = static_cast<uint8_t>(
