@@ -718,68 +718,80 @@ class FunctionGraph:
             func         : the logical function which will be represent as a stmt
         """
 
-        def try_infer_meta_fn(args, kwargs) -> Any:
-            try:
-                metas = convert_to_meta(args)
-                kwmetas = convert_to_meta(kwargs)
-                return args, kwargs, infer_meta_fn(func, *metas, **kwmetas)
-            except (NotSupportedTensorArgumentError, TypeError) as e:
-                bound_arguments = inspect.signature(func).bind(*args, **kwargs)
-                bound_arguments.apply_defaults()
-                if (
-                    isinstance(e, NotSupportedTensorArgumentError)
-                    and e.name in bound_arguments.arguments
+        def infer_meta(args, kwargs):
+            metas = convert_to_meta(args)
+            kwmetas = convert_to_meta(kwargs)
+            return infer_meta_fn(func, *metas, **kwmetas)
+
+        def fallback_symbolic_to_constant(args, kwargs, err):
+            bound_arguments = inspect.signature(func).bind(*args, **kwargs)
+            bound_arguments.apply_defaults()
+            if (
+                isinstance(err, NotSupportedTensorArgumentError)
+                and err.name in bound_arguments.arguments
+            ):
+                original_var = bound_arguments.arguments[err.name]
+                flatten_vars = original_var.flatten_inner_vars()
+                if not any(
+                    isinstance(arg, SymbolicVariable) for arg in flatten_vars
                 ):
-                    original_var = bound_arguments.arguments[e.name]
-                    flatten_vars = original_var.flatten_inner_vars()
-                    if not any(
-                        isinstance(arg, SymbolicVariable)
-                        for arg in flatten_vars
-                    ):
-                        # TODO(zrr1999): maybe we can continue to fallback to all args are constant.
-                        raise BreakGraphError(
-                            InferMetaBreak(
-                                f"InferMeta encount {type(e)}, but all args are not symbolic."
-                            )
+                    # TODO(zrr1999): maybe we can continue to fallback to all args are constant.
+                    raise BreakGraphError(
+                        InferMetaBreak(
+                            f"InferMeta encountered {type(err)}, but all args are not symbolic."
                         )
-
-                    args, kwargs = map_if(
-                        (args, kwargs),
-                        pred=lambda x: x is original_var,
-                        true_fn=lambda x: replace_symbolic_var_with_constant_var(
-                            x
-                        ),
-                        false_fn=lambda x: x,
-                    )
-                else:
-                    flatten_vars = reduce(
-                        lambda x, y: (
-                            x + y.flatten_inner_vars()
-                            if isinstance(y, VariableBase)
-                            else x
-                        ),
-                        bound_arguments.arguments.values(),
-                        [],
                     )
 
-                    if not any(
-                        isinstance(arg, SymbolicVariable)
-                        for arg in flatten_vars
-                    ):
-                        raise BreakGraphError(
-                            InferMetaBreak(
-                                f"InferMeta encount {type(e)}, but all args are not symbolic."
-                            )
+                args, kwargs = map_if(
+                    (args, kwargs),
+                    pred=lambda x: x is original_var,
+                    true_fn=lambda x: replace_symbolic_var_with_constant_var(x),
+                    false_fn=lambda x: x,
+                )
+            else:
+                flatten_vars = reduce(
+                    lambda x, y: (
+                        x + y.flatten_inner_vars()
+                        if isinstance(y, VariableBase)
+                        else x
+                    ),
+                    bound_arguments.arguments.values(),
+                    [],
+                )
+
+                if not any(
+                    isinstance(arg, SymbolicVariable) for arg in flatten_vars
+                ):
+                    raise BreakGraphError(
+                        InferMetaBreak(
+                            f"InferMeta encountered {type(err)}, but all args are not symbolic."
                         )
-
-                    args, kwargs = map_structure(
-                        replace_symbolic_var_with_constant_var, (args, kwargs)
                     )
 
-                metas = convert_to_meta(args)
-                kwmetas = convert_to_meta(kwargs)
-                return args, kwargs, infer_meta_fn(func, *metas, **kwmetas)
+                args, kwargs = map_structure(
+                    replace_symbolic_var_with_constant_var, (args, kwargs)
+                )
+            return args, kwargs
 
+        def try_infer_meta_with_fallback_symbolic_to_constant(
+            args, kwargs, max_retry_times=10
+        ):
+            try:
+                return args, kwargs, infer_meta(args, kwargs)
+            except (NotSupportedTensorArgumentError, TypeError) as e:
+                err = e
+                retry_times = 0
+                while True:
+                    retry_times += 1
+                    if retry_times >= max_retry_times:
+                        raise err
+                    try:
+                        args, kwargs = fallback_symbolic_to_constant(
+                            args, kwargs, err
+                        )
+                        return args, kwargs, infer_meta(args, kwargs)
+                    except (NotSupportedTensorArgumentError, TypeError) as e:
+                        err = e
             except Exception as e:
                 if SotExtraInfo.from_exception(e).need_breakgraph:
                     raise BreakGraphError(
@@ -790,11 +802,11 @@ class FunctionGraph:
                 raise e
 
         if ENV_SOT_ALLOW_DYNAMIC_SHAPE.get():
-            args, kwargs, out_metas = try_infer_meta_fn(args, kwargs)
+            args, kwargs, out_metas = (
+                try_infer_meta_with_fallback_symbolic_to_constant(args, kwargs)
+            )
         else:
-            metas = convert_to_meta(args)
-            kwmetas = convert_to_meta(kwargs)
-            out_metas = infer_meta_fn(func, *metas, **kwmetas)
+            out_metas = infer_meta(args, kwargs)
 
         self.collect_input_variables(list(args))
         self.collect_input_variables(list(kwargs.values()))

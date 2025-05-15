@@ -199,6 +199,16 @@ jobs:
           REPO: ${{ github.event.repository.name }}
           JOB_NAME: 'Static-Check / Test'
 
+      - name: Rerun CE-CINN-Framework
+        if: ${{ contains(env.comment_body, 'ce-cinn') }}
+        uses: ./.github/actions/rerun-workflow
+        with:
+          PR_ID: ${{ github.event.issue.number }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.event.repository.name }}
+          JOB_NAME: 'CE-CINN-Framework / CINN'
+
       - name: Rerun CE-Framework Whl
         if: ${{ contains(env.comment_body, 'ce') && contains(env.comment_body, 'whl') }}
         uses: ./.github/actions/rerun-workflow
@@ -237,4 +247,4 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OWNER: ${{ github.repository_owner }}
           REPO: ${{ github.event.repository.name }}
-          JOB_NAME: 'Api-Benchmark / Performance data storage'
+          JOB_NAME: 'Api-Benchmark / Check bypass for Api-Benchmark / Check bypass'

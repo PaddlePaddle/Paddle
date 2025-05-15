@@ -1199,6 +1199,8 @@ void BindTensor(pybind11::module &m) {  // NOLINT
              self.unsafe_mutable_value()->ShareDataNoCheckWith(src.value());
              return self;
            })
+      .def("_numel",
+           [](DistTensor &self) -> int64_t { return self.value().numel(); })
       .def("_share_data_with",
            [](DistTensor &self, const DistTensor &src) {
              self.unsafe_set_dims(src.dims());

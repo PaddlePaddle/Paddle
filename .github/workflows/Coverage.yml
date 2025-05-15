@@ -79,7 +79,6 @@ jobs:
           CCACHE_LIMIT_MULTIPLE: 0.8
           ON_INFER: "ON"
           PADDLE_CUDA_INSTALL_REQUIREMENTS: "ON"
-          FLAGS_enable_unused_var_check: 1
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           UT_RUN_TYPE_SETTING: WITHOUT_HYBRID
@@ -123,7 +122,6 @@ jobs:
             -e CCACHE_LIMIT_MULTIPLE \
             -e ON_INFER \
             -e PADDLE_CUDA_INSTALL_REQUIREMENTS \
-            -e FLAGS_enable_unused_var_check \
             -e GITHUB_TOKEN \
             -e GITHUB_API_TOKEN \
             -e UT_RUN_TYPE_SETTING \

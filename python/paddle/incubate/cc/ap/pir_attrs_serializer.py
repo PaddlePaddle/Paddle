@@ -20,7 +20,7 @@ import paddle
 
 from ..data_type_util import get_dtype_lower_case_name
 from ..typing import DType
-from .py_to_axpr_json import convert_python_stmts_to_axpr_json
+from .apy_to_axpr_json import convert_python_stmts_to_axpr_json
 
 
 class PirAttrsSerializer:
