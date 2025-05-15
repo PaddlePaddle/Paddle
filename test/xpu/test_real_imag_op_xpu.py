@@ -1,0 +1,141 @@
+#   Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import unittest
+
+import numpy as np
+from get_test_cover_info import (
+    XPUOpTestWrapper,
+    create_test_class,
+    get_xpu_op_support_types,
+)
+from op_test_xpu import XPUOpTest
+
+import paddle
+
+numpy_apis = {
+    "real": np.real,
+    "imag": np.imag,
+}
+
+paddle_apis = {
+    "real": paddle.real,
+    "imag": paddle.imag,
+}
+
+paddle.enable_static()
+
+
+class XPUTestRealOp(XPUOpTestWrapper):
+    def __init__(self):
+        self.op_name = 'real'
+        self.use_dynamic_create_class = False
+
+    class TestRealOp(XPUOpTest):
+        def setUp(self):
+            self.op_type = "real"
+            self.python_api = paddle.real
+            self.init_type()
+            self.init_input_output()
+            self.init_grad_input_output()
+
+        def init_type(self):
+            self.dtype = self.in_type
+
+        def init_input_output(self):
+            self.inputs = {
+                'X': np.random.random((20, 5)).astype(self.dtype)
+                + 1j * np.random.random((20, 5)).astype(self.dtype)
+            }
+            self.outputs = {'Out': numpy_apis[self.op_type](self.inputs['X'])}
+
+        def init_grad_input_output(self):
+            self.grad_out = np.ones((20, 5), self.dtype)
+            self.grad_x = np.real(self.grad_out) + 1j * np.zeros(
+                self.grad_out.shape
+            )
+
+        def test_check_output(self):
+            if paddle.is_compiled_with_xpu():
+                place = paddle.XPUPlace(0)
+                self.check_output_with_place(place)
+
+        def test_check_grad(self):
+            if paddle.is_compiled_with_xpu():
+                place = paddle.XPUPlace(0)
+                self.check_grad_with_place(
+                    place,
+                    ['X'],
+                    'Out',
+                    user_defined_grads=[self.grad_x],
+                    user_defined_grad_outputs=[self.grad_out],
+                )
+
+
+class XPUTestImagOp(XPUOpTestWrapper):
+    def __init__(self):
+        self.op_name = 'imag'
+        self.use_dynamic_create_class = False
+
+    class TestRealOp(XPUOpTest):
+        def setUp(self):
+            self.op_type = "imag"
+            self.python_api = paddle.imag
+            self.init_type()
+            self.init_input_output()
+            self.init_grad_input_output()
+
+        def init_type(self):
+            self.dtype = self.in_type
+
+        def init_input_output(self):
+            self.inputs = {
+                'X': np.random.random((20, 5)).astype(self.dtype)
+                + 1j * np.random.random((20, 5)).astype(self.dtype)
+            }
+            self.outputs = {'Out': numpy_apis[self.op_type](self.inputs['X'])}
+
+        def init_grad_input_output(self):
+            self.grad_out = np.ones((20, 5), self.dtype)
+            self.grad_x = np.zeros(self.grad_out.shape) + 1j * np.real(
+                self.grad_out
+            )
+
+        def test_check_output(self):
+            if paddle.is_compiled_with_xpu():
+                place = paddle.XPUPlace(0)
+                self.check_output_with_place(place)
+
+        def test_check_grad(self):
+            if paddle.is_compiled_with_xpu():
+                place = paddle.XPUPlace(0)
+                self.check_grad_with_place(
+                    place,
+                    ['X'],
+                    'Out',
+                    user_defined_grads=[self.grad_x],
+                    user_defined_grad_outputs=[self.grad_out],
+                )
+
+
+support_types = get_xpu_op_support_types('real')
+for stype in support_types:
+    create_test_class(globals(), XPUTestRealOp, stype)
+
+support_types = get_xpu_op_support_types('imag')
+for stype in support_types:
+    create_test_class(globals(), XPUTestImagOp, stype)
+
+if __name__ == "__main__":
+    unittest.main()

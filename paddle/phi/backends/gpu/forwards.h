@@ -27,6 +27,7 @@ struct GpuDevice;
 using cudaStream_t = struct CUstream_st *;
 using cudaEvent_t = struct CUevent_st *;
 
+#ifndef PADDLE_WITH_CUSTOM_DEVICE
 // Forward declaration of cuDNN types.
 using cudnnHandle_t = struct cudnnContext *;
 using cudnnTensorDescriptor_t = struct cudnnTensorStruct *;
@@ -114,3 +115,4 @@ using rocsolver_handle = rocblas_handle;
 
 // Forward declaration of rocSparse types.
 using rocsparse_handle = struct _rocsparse_handle *;
+#endif

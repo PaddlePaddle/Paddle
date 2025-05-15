@@ -5583,7 +5583,9 @@ void UnfoldInferMeta(const MetaTensor& x,
   std::vector<int> out_dims;
   out_dims.push_back(in_dims[0]);  // NOLINT
   int output_channels =
-      static_cast<int>(in_dims[1] * kernel_sizes[0] * kernel_sizes[1]);
+      in_dims[1] < 0
+          ? -1
+          : static_cast<int>(in_dims[1] * kernel_sizes[0] * kernel_sizes[1]);
   out_dims.push_back(output_channels);
 
   int output_height = phi::funcs::CalcOutputSize(static_cast<int>(in_dims[2]),

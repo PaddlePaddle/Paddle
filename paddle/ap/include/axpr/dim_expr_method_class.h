@@ -22,6 +22,8 @@
 #include "paddle/pir/include/dialect/shape/utils/dim_expr.h"
 
 namespace ap::axpr {
+template <typename ValueT>
+axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> GetDimExprClass();
 
 template <typename ValueT>
 struct DimExprMethodClass {
@@ -39,6 +41,38 @@ struct DimExprMethodClass {
     ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
     int64_t hash_value = std::hash<Self>()(self);
     return hash_value;
+  }
+
+  static adt::Result<ValueT> Add(const ValueT& self_val,
+                                 const std::vector<ValueT>& args) {
+    ADT_LET_CONST_REF(lhs, self_val.template CastTo<Self>());
+    ADT_CHECK(args.size() == 1);
+    ADT_LET_CONST_REF(rhs, args.at(0).template CastTo<Self>());
+    return GetDimExprClass<ValueT>().New(lhs + rhs);
+  }
+
+  static adt::Result<ValueT> Sub(const ValueT& self_val,
+                                 const std::vector<ValueT>& args) {
+    ADT_LET_CONST_REF(lhs, self_val.template CastTo<Self>());
+    ADT_CHECK(args.size() == 1);
+    ADT_LET_CONST_REF(rhs, args.at(0).template CastTo<Self>());
+    return GetDimExprClass<ValueT>().New(lhs - rhs);
+  }
+
+  static adt::Result<ValueT> Mul(const ValueT& self_val,
+                                 const std::vector<ValueT>& args) {
+    ADT_LET_CONST_REF(lhs, self_val.template CastTo<Self>());
+    ADT_CHECK(args.size() == 1);
+    ADT_LET_CONST_REF(rhs, args.at(0).template CastTo<Self>());
+    return GetDimExprClass<ValueT>().New(lhs * rhs);
+  }
+
+  static adt::Result<ValueT> FloorDiv(const ValueT& self_val,
+                                      const std::vector<ValueT>& args) {
+    ADT_LET_CONST_REF(lhs, self_val.template CastTo<Self>());
+    ADT_CHECK(args.size() == 1);
+    ADT_LET_CONST_REF(rhs, args.at(0).template CastTo<Self>());
+    return GetDimExprClass<ValueT>().New(lhs / rhs);
   }
 
   static adt::Result<ValueT> Match(axpr::InterpreterBase<ValueT>* interpreter,
@@ -93,6 +127,10 @@ axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> GetDimExprClass() {
   static auto cls(
       axpr::MakeBuiltinClass<ValueT>("DimExpr", [&](const auto& Define) {
         Define("__str__", &Impl::ToString);
+        Define("__add__", &Impl::Add);
+        Define("__sub__", &Impl::Sub);
+        Define("__mul__", &Impl::Mul);
+        Define("__floordiv__", &Impl::FloorDiv);
         Define("__hash__", &Impl::Hash);
         Define("match", &Impl::Match);
       }));

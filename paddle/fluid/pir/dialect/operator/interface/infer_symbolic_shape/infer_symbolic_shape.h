@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/ap_infer_sym.h"
 #include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/backward_infer_sym.h"
 #include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/binary_infer_sym.h"
 #include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/cinn_op_infer_sym.h"
