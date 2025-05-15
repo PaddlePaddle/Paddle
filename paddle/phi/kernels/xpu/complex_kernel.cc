@@ -132,7 +132,7 @@ void ComplexKernel(const Context& dev_ctx,
 }
 }  // namespace phi
 
-PD_REGISTER_KERNEL(conj,  // xpufft
+PD_REGISTER_KERNEL(conj,
                    XPU,
                    ALL_LAYOUT,
                    phi::ConjKernel,
@@ -145,27 +145,17 @@ PD_REGISTER_KERNEL(conj,  // xpufft
                    phi::dtype::bfloat16,
                    phi::dtype::complex<float>) {}
 
-PD_REGISTER_KERNEL(real,  // xpufft
-                   XPU,
-                   ALL_LAYOUT,
-                   phi::RealKernel,
-                   phi::dtype::complex<float>) {
+PD_REGISTER_KERNEL(
+    real, XPU, ALL_LAYOUT, phi::RealKernel, phi::dtype::complex<float>) {
   kernel->OutputAt(0).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
 }
 
-PD_REGISTER_KERNEL(imag,  // xpufft
-                   XPU,
-                   ALL_LAYOUT,
-                   phi::ImagKernel,
-                   phi::dtype::complex<float>) {
+PD_REGISTER_KERNEL(
+    imag, XPU, ALL_LAYOUT, phi::ImagKernel, phi::dtype::complex<float>) {
   kernel->OutputAt(0).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
 }
 
-PD_REGISTER_KERNEL(complex,  // xpufft
-                   XPU,
-                   ALL_LAYOUT,
-                   phi::ComplexKernel,
-                   float) {
+PD_REGISTER_KERNEL(complex, XPU, ALL_LAYOUT, phi::ComplexKernel, float) {
   kernel->OutputAt(0).SetDataType(phi::dtype::ToComplex(kernel_key.dtype()));
 }
 #endif  // PADDLE_WITH_XPU_FFT
