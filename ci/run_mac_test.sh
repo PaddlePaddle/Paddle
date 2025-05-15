@@ -231,7 +231,6 @@ EOF
 function collect_failed_tests() {
     for file in `ls $tmp_dir`; do
         exit_code=0
-	echo 111,$file
         grep -q 'The following tests FAILED:' $tmp_dir/$file||exit_code=$?
         if [ $exit_code -ne 0 ]; then
             failuretest=''
