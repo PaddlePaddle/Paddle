@@ -485,7 +485,7 @@ endif()
 if(WITH_GPU)
   if(${CMAKE_CUDA_COMPILER_VERSION} LESS 11.0
      OR (${CMAKE_CUDA_COMPILER_VERSION} GREATER_EQUAL 11.6
-         AND ${CMAKE_CUDA_COMPILER_VERSION} LESS 11.8))
+         AND ${CMAKE_CUDA_COMPILER_VERSION} LESS 12.0))
     include(external/cub) # download cub
     list(APPEND third_party_deps extern_cub)
   elseif(${CMAKE_CUDA_COMPILER_VERSION} GREATER_EQUAL 12.0 AND WITH_SHARED_PHI)
