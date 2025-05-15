@@ -1289,6 +1289,9 @@ def calc_gradient_helper(
                 remove_useless_full_like_ops(sub_block, sub_block.ops, state)
 
     for bwd_op in inverse_sort_op(remove_ops):
+        if bwd_op.num_results() == 0:
+            # builtin.shadow_output
+            continue
         if bwd_op.result(0) in ValueSet(complete_grad_outputs):
             continue
         if bwd_op.result(0).use_empty():
