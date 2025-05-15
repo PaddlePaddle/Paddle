@@ -128,29 +128,27 @@ repack_uint4(const uint32x8_t &input,
              const int offset_bytes // absolute byte offset
 ) {
   uint4 result;
-  // 计算字(word)偏移和字节(byte)偏移
-  const int word_offset = offset_bytes >> 2;  // 除以4，得到4字节对齐的偏移量
-  const int byte_offset = offset_bytes & 0x3; // 取模4，得到字节偏移量
-  const int bit_offset = byte_offset * 8;     // 字节偏移转换为位偏移
-  // 字节不对齐情况 - 使用位移指令, 由抽屉原理，顶多排布在5个word内
-  if(bit_offset !=0){
+  // multi-level offset calculating
+  const int word_offset = offset_bytes >> 2;  
+  const int byte_offset = offset_bytes & 0x3; 
+  const int bit_offset = byte_offset * 8;     
 
-  asm("shf.l.clamp.b32 %0, %1, %2, %3;"
-      : "=r"(result.x)
-      : "r"(input.data[word_offset + 0]), "r"(input.data[word_offset + 1]),
-        "r"(bit_offset));
-  asm("shf.l.clamp.b32 %0, %1, %2, %3;"
-      : "=r"(result.y)
-      : "r"(input.data[word_offset + 1]), "r"(input.data[word_offset + 2]),
-        "r"(bit_offset));
-  asm("shf.l.clamp.b32 %0, %1, %2, %3;"
-      : "=r"(result.z)
-      : "r"(input.data[word_offset + 2]), "r"(input.data[word_offset + 3]),
-        "r"(bit_offset));
-  asm("shf.l.clamp.b32 %0, %1, %2, %3;"
-      : "=r"(result.w)
-      : "r"(input.data[word_offset + 3]), "r"(input.data[word_offset + 4]),
-        "r"(bit_offset));
+  if(bit_offset !=0){
+    asm("shf.l.clamp.b32 %0, %1, %2, %3;"
+        : "=r"(result.x)
+        : "r"(input.data[word_offset + 0]), "r"(input.data[word_offset + 1]),
+          "r"(bit_offset));
+    asm("shf.l.clamp.b32 %0, %1, %2, %3;" : "=r"(result.y)
+        : "r"(input.data[word_offset + 1]), "r"(input.data[word_offset + 2]),
+          "r"(bit_offset));
+    asm("shf.l.clamp.b32 %0, %1, %2, %3;"
+        : "=r"(result.z)
+        : "r"(input.data[word_offset + 2]), "r"(input.data[word_offset + 3]),
+          "r"(bit_offset));
+    asm("shf.l.clamp.b32 %0, %1, %2, %3;"
+        : "=r"(result.w)
+        : "r"(input.data[word_offset + 3]), "r"(input.data[word_offset + 4]),
+          "r"(bit_offset));
   }else{
     result.x = input.data[word_offset + 0];
     result.y = input.data[word_offset + 1];
