@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import logging
 import warnings
-from itertools import islice
 from typing import TYPE_CHECKING
 
 import paddle.pir
@@ -1056,9 +1055,9 @@ def append_backward_ops(
                     state.op_to_opgrad[op] = []
 
         after_ops_num = len(bwd_block.ops)
-        backward_ops.append(
-            list(islice(bwd_block.ops, before_ops_num, after_ops_num))
-        )
+        for op_ in bwd_block.ops[before_ops_num:after_ops_num]:
+            backward_ops.append(op_)
+
         if fwd_block != bwd_block:
             if while_prune_check(while_tuple_ops):
                 remove_op(bwd_block, while_tuple_ops[0], state)
