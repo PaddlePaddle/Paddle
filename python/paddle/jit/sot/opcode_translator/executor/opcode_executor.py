@@ -109,6 +109,7 @@ from .variables import (
     VariableBase,
     VariableFactory,
 )
+from .virtual_frame import BlockStackItem
 
 if TYPE_CHECKING:
     from .function_graph import CompileGraphResult, FunctionGraph
@@ -338,6 +339,18 @@ def fallback_when_occur_error(fn: Callable):
             raise FallbackError(
                 f'[Fallback] An exception occurred when processing break graph, fallback to dygraph, error message is: \n{type(e)} : {e}\n'
             )
+
+    return inner
+
+
+def fallback_if_python_version_unsupported(fn: Callable):
+    def inner(*args, **kwargs):
+        if sys.version_info >= (3, 11):
+            raise FallbackError(
+                "SOT currently only partially supports exception handling (Python 3.10 and below). "
+                "Unsupported exception bytecode will fall back to dynamic graph mode."
+            )
+        return fn(*args, **kwargs)
 
     return inner
 
@@ -2026,6 +2039,44 @@ class OpcodeExecutor(OpcodeExecutorBase):
         ), f"Stack must have one element, but get {len(self.stack)} elements."
         ret_val = self.stack.pop()
         return self.compile_return(ret_val)
+
+    @fallback_if_python_version_unsupported
+    def SETUP_WITH(self, instr: Instruction):
+        mgr = self.pop()
+        exit = BuiltinVariable(
+            getattr, graph=self._graph, tracker=DanglingTracker()
+        )(mgr, "__exit__")
+
+        self.push(exit)
+
+        enter = BuiltinVariable(
+            getattr, graph=self._graph, tracker=DanglingTracker()
+        )(mgr, "__enter__")
+
+        res = enter.call_function()
+        self.vframe.block_stack.append(
+            BlockStackItem(
+                "SETUP_FINALLY", instr, instr.jump_to, len(self.stack)
+            )
+        )
+        self.push(res)
+
+    @fallback_if_python_version_unsupported
+    def WITH_EXCEPT_START(self, instr: Instruction):
+        """
+        At the top of the stack are 7 values (top is last):
+        [exit_func, previous_tb, previous_val, previous_exc, tb, val, exc]
+        We call exit_func(exc, val, tb).
+        Then push exc and the __exit__ return value.
+        """
+        exc = self.stack.peek[1]
+        val = self.stack.peek[2]
+        tb = self.stack.peek[3]
+
+        exit_func = self.stack.peek[7]
+        res = exit_func.call_function(exc, val, tb)
+
+        self.push(res)
 
     def RETURN_CONST(self, instr: Instruction):
         ret_const = self.vframe.consts[instr.arg]
