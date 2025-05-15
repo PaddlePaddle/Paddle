@@ -69,9 +69,9 @@ PoolPlugin *PoolPlugin::clone() const TRT_NOEXCEPT {
                         ksize_,
                         strides_,
                         paddings_,
-                        dilations_,
                         input_shape_,
-                        real_paddings_);
+                        real_paddings_,
+                        dilations_);
 }
 
 int PoolPlugin::enqueue(int batchSize,
@@ -154,7 +154,7 @@ size_t PoolPluginDynamic::getSerializationSize() const TRT_NOEXCEPT {
   return SerializedSize(ceil_mode_) + SerializedSize(pool_type_.c_str()) +
          SerializedSize(adaptive_) + SerializedSize(exclusive_) +
          SerializedSize(ksize_) + SerializedSize(strides_) +
-         SerializedSize(dilations_) + SerializedSize(paddings_) +
+         SerializedSize(paddings_) + SerializedSize(dilations_) +
          SerializedSize(is_global_);
 }
 

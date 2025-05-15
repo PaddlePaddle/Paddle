@@ -31,7 +31,8 @@ static std::vector<int> CalcOutputSize(const std::vector<int>& input_shape,
                                        const bool& adaptive,
                                        const std::vector<int>& ksize,
                                        const std::vector<int>& strides,
-                                       const std::vector<int>& real_paddings) {
+                                       const std::vector<int>& real_paddings,
+                                       const std::vector<int>& dilations) {
   std::vector<int> output_shape = input_shape;
   if (adaptive) {
     output_shape[0] = ksize[0];
@@ -45,10 +46,10 @@ static std::vector<int> CalcOutputSize(const std::vector<int>& input_shape,
                   real_paddings[1] + strides[0] - 1) /
                      strides[0] +
                  1;
-      output_w = = (input_shape[1] - effective_filter_w + real_paddings[2] +
-                    real_paddings[3] + strides[1] - 1) /
-                       strides[1] +
-                   1;
+      output_w = (input_shape[1] - effective_filter_w + real_paddings[2] +
+                  real_paddings[3] + strides[1] - 1) /
+                     strides[1] +
+                 1;
     }
     // TRT will use native layer when ceil_model=false
     /*
@@ -83,9 +84,9 @@ class PoolPlugin : public PluginTensorRT {
              std::vector<int> ksize,
              std::vector<int> strides,
              std::vector<int> paddings,
-             std::vector<int> dilations,
              std::vector<int> input_shape,
-             std::vector<int> real_paddings)
+             std::vector<int> real_paddings,
+             std::vector<int> dilations)
       : ceil_mode_(ceil_mode),
         pool_type_(pool_type),
         adaptive_(adaptive),
@@ -93,8 +94,8 @@ class PoolPlugin : public PluginTensorRT {
         ksize_(ksize),
         strides_(strides),
         paddings_(paddings),
-        dilations_(dilations),
         real_paddings_(real_paddings),
+        dilations_(dilations),
         input_shape_(input_shape) {
     output_shape_ = input_shape_;
     std::vector<int> output_shape =
@@ -120,8 +121,8 @@ class PoolPlugin : public PluginTensorRT {
     DeserializeValue(&serialData, &serialLength, &ksize_);
     DeserializeValue(&serialData, &serialLength, &strides_);
     DeserializeValue(&serialData, &serialLength, &paddings_);
-    DeserializeValue(&serialData, &serialLength, &dilations_);
     DeserializeValue(&serialData, &serialLength, &real_paddings_);
+    DeserializeValue(&serialData, &serialLength, &dilations_);
     DeserializeValue(&serialData, &serialLength, &input_shape_);
     DeserializeValue(&serialData, &serialLength, &output_shape_);
   }

@@ -465,6 +465,7 @@ void Pool2dDirectCUDAFunctor<PoolProcess, T>::operator()(
     const std::vector<int>& ksize,
     const std::vector<int>& strides,
     const std::vector<int>& paddings,
+    const std::vector<int>& dilations,
     bool exclusive,
     bool adaptive,
     T* output,
@@ -483,6 +484,8 @@ void Pool2dDirectCUDAFunctor<PoolProcess, T>::operator()(
   const int stride_width = strides[1];
   const int padding_height = paddings[0];
   const int padding_width = paddings[1];
+  const int dilation_height = dilations[0];
+  const int dilation_width = dilations[1];
   int64_t nthreads = static_cast<int64_t>(batch_size) * output_channels *
                      output_height * output_width;
   auto pool_divmods =
@@ -540,8 +543,8 @@ void Pool2dDirectCUDAFunctor<PoolProcess, T>::operator()(
                                                                stride_width,
                                                                padding_height,
                                                                padding_width,
-                                                               1,
-                                                               1,
+                                                               dilation_height,
+                                                               dilation_width,
                                                                pool_divmods,
                                                                pool_compute,
                                                                exclusive,
