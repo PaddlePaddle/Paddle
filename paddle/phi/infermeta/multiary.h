@@ -40,6 +40,26 @@ namespace phi {
 std::vector<DDim> GetMetaTensorsDim(
     const std::vector<const MetaTensor*>& tensors);
 
+void VectorQuantInferMeta(const MetaTensor& input,
+                          const float epsilon,
+                          const bool return_transpose,
+                          const bool pow2_scale,
+                          const bool permute_scale,
+                          const bool transpose_scales,
+                          MetaTensor* scale_inv,
+                          MetaTensor* scale_inv_t,
+                          MetaTensor* output,
+                          MetaTensor* output_t);
+
+void SquareQuantInferMeta(const MetaTensor& input,
+                          const float epsilon,
+                          const bool return_transpose,
+                          const bool pow2_scale,
+                          MetaTensor* scale_inv,
+                          MetaTensor* scale_inv_t,
+                          MetaTensor* output,
+                          MetaTensor* output_t);
+
 void AdadeltaInferMeta(const MetaTensor& param,
                        const MetaTensor& grad,
                        const MetaTensor& avg_squared_grad,

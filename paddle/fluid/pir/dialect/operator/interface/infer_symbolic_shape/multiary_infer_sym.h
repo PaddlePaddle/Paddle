@@ -17,7 +17,8 @@
 #include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 
 namespace paddle::dialect {
-
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(VectorQuant)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(SquareQuant)
 OP_DECLARE_INFER_SYMBOLIC_SHAPE(Accuracy)
 OP_DECLARE_INFER_SYMBOLIC_SHAPE(Addmm)
 OP_DECLARE_INFER_SYMBOLIC_SHAPE(Addmm_)

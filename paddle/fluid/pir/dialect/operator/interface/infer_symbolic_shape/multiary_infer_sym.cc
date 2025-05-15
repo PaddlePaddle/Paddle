@@ -21,6 +21,157 @@
 
 namespace paddle::dialect {
 
+bool VectorQuantOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const std::vector<symbol::DimExpr> &input_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
+
+  PADDLE_ENFORCE_EQ(
+      input_shape.size(),
+      2,
+      common::errors::InvalidArgument("The input must be a 2D Tensor"));
+
+  int64_t m = input_shape[0].Get<int64_t>();
+  int64_t n = input_shape[1].Get<int64_t>();
+  bool return_transpose =
+      op->attribute<pir::BoolAttribute>("return_transpose").data();
+  bool permute_scale =
+      op->attribute<pir::BoolAttribute>("permute_scale").data();
+  bool transpose_scales =
+      op->attribute<pir::BoolAttribute>("transpose_scales").data();
+
+  PADDLE_ENFORCE_EQ(
+      !(transpose_scales && permute_scale),
+      true,
+      common::errors::InvalidArgument(
+          "Permute scale and transpose scales are mutually exclusive flags."));
+
+  const int block_length = 128;
+
+  std::vector<symbol::DimExpr> scale_inv_shape;
+  std::vector<symbol::DimExpr> scale_inv_t_shape;
+  std::vector<symbol::DimExpr> output_shape;
+  std::vector<symbol::DimExpr> output_t_shape;
+
+  output_shape = {m, n};
+  if (permute_scale) {
+    scale_inv_shape = {
+        std::ceil(m / block_length), std::ceil(n / block_length), block_length};
+  } else {
+    if (transpose_scales) {
+      scale_inv_shape = {std::ceil(n / block_length), m};
+    } else {
+      scale_inv_shape = {m, std::ceil(n / block_length)};
+    }
+  }
+
+  if (return_transpose) {
+    output_t_shape = {n, m};
+    auto n_pad = std::ceil(n / block_length) * block_length;
+    if (permute_scale) {
+      scale_inv_t_shape = {std::ceil(n_pad / block_length),
+                           std::ceil(m / block_length),
+                           block_length};
+    } else {
+      if (transpose_scales) {
+        scale_inv_t_shape = {std::ceil(m / block_length), n};
+      } else {
+        scale_inv_t_shape = {n, std::ceil(m / block_length)};
+      }
+    }
+  } else {
+    output_t_shape = output_shape;
+    scale_inv_t_shape = scale_inv_shape;
+  }
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(scale_inv_shape)});
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(1),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(scale_inv_t_shape)});
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(2),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(output_shape)});
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(3),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(output_t_shape)});
+
+  return true;
+}
+
+bool SquareQuantOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const std::vector<symbol::DimExpr> &input_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
+
+  PADDLE_ENFORCE_EQ(
+      input_shape.size(),
+      2,
+      common::errors::InvalidArgument("The input must be a 2D Tensor"));
+
+  int64_t m = input_shape[0].Get<int64_t>();
+  int64_t n = input_shape[1].Get<int64_t>();
+  bool return_transpose =
+      op->attribute<pir::BoolAttribute>("return_transpose").data();
+
+  const int block_length = 128;
+
+  std::vector<symbol::DimExpr> scale_inv_shape;
+  std::vector<symbol::DimExpr> scale_inv_t_shape;
+  std::vector<symbol::DimExpr> output_shape;
+  std::vector<symbol::DimExpr> output_t_shape;
+
+  output_shape = {m, n};
+
+  int64_t n_dim = std::ceil(n / block_length);
+  if (n_dim % 4 != 0) {
+    n_dim += 4 - (n_dim % 4);
+  }
+  scale_inv_shape = {std::ceil(m / block_length), n_dim};
+
+  if (return_transpose) {
+    output_t_shape = {n, m};
+    int64_t m_dim = std::ceil(m / block_length);
+    if (m_dim % 4 != 0) {
+      m_dim += 4 - (m_dim % 4);
+    }
+    scale_inv_t_shape = {std::ceil(n / block_length), m_dim};
+  } else {
+    output_t_shape = output_shape;
+    scale_inv_t_shape = scale_inv_shape;
+  }
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(scale_inv_shape)});
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(1),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(scale_inv_t_shape)});
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(2),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(output_shape)});
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(3),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(output_t_shape)});
+
+  return true;
+}
+
 bool AccuracyOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const symbol::ShapeOrDataDimExprs &out_shape =

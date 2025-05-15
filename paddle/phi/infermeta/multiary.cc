@@ -45,6 +45,150 @@ std::vector<DDim> GetMetaTensorsDim(
   return dims;
 }
 
+void VectorQuantInferMeta(const MetaTensor& input,
+                          const float epsilon,
+                          const bool return_transpose,
+                          const bool pow2_scale,
+                          const bool permute_scale,
+                          const bool transpose_scales,
+                          MetaTensor* scale_inv,
+                          MetaTensor* scale_inv_t,
+                          MetaTensor* output,
+                          MetaTensor* output_t) {
+  auto input_dim = input.dims();
+  auto m = input_dim[0];
+  auto n = input_dim[1];
+
+  PADDLE_ENFORCE_EQ(
+      input.size(),
+      2,
+      errors::InvalidArgument("Input X should have 2 dimensions"));
+
+  PADDLE_ENFORCE_EQ(
+      !(transpose_scales && permute_scale),
+      true,
+      errors::InvalidArgument(
+          "Permute scale and transpose scales are mutually exclusive flags."));
+
+  PADDLE_ENFORCE_EQ((input.dtype() == phi::DataType::BFLOAT16 ||
+                     input.dtype() == phi::DataType::FLOAT32),
+                    true,
+                    errors::InvalidArgument(
+                        "The input X type should be bfloat16 or float32"));
+
+  const int block_length = 128;
+
+  phi::DDim scale_inv_dim, scale_inv_t_dim, output_dim, output_t_dim;
+  output_dim = {m, n};
+  if (permute_scale) {
+    scale_inv_dim = {
+        std::ceil(m / block_length), std::ceil(n / block_length), block_length};
+  } else {
+    if (transpose_scales) {
+      scale_inv_dim = {std::ceil(n / block_length), m};
+    } else {
+      scale_inv_dim = {m, std::ceil(n / block_length)};
+    }
+  }
+
+  if (return_transpose) {
+    output_t_dim = {n, m};
+    auto n_pad = std::ceil(n / block_length) * block_length;
+    if (permute_scale) {
+      scale_inv_t_dim = {std::ceil(n_pad / block_length),
+                         std::ceil(m / block_length),
+                         block_length};
+    } else {
+      if (transpose_scales) {
+        scale_inv_t_dim = {std::ceil(m / block_length), n};
+      } else {
+        scale_inv_t_dim = {n, std::ceil(m / block_length)};
+      }
+    }
+  } else {
+    output_t_dim = output_dim;
+    scale_inv_t_dim = scale_inv_dim;
+  }
+
+  scale_inv->set_dims(scale_inv_dim);
+  scale_inv->set_dtype(phi::DataType::FLOAT32);
+
+  scale_inv_t->set_dims(scale_inv_t_dim);
+  scale_inv_t->set_dtype(phi::DataType::FLOAT32);
+
+  output->set_dims(output_dim);
+  // TODO(baoqiwen):
+  // 这个其实和自己的输入有关，我再想想，是不是需要额外传一个参数。暂时先写成int8吧。
+  output->set_dtype(phi::DataType::INT8);
+
+  output_t->set_dims(output_t_dim);
+  output_t->set_dtype(phi::DataType::INT8);
+}
+
+void SquareQuantInferMeta(const MetaTensor& input,
+                          const float epsilon,
+                          const bool return_transpose,
+                          const bool pow2_scale,
+                          MetaTensor* scale_inv,
+                          MetaTensor* scale_inv_t,
+                          MetaTensor* output,
+                          MetaTensor* output_t) {
+  auto input_dim = input.dims();
+  auto m = input_dim[0];
+  auto n = input_dim[1];
+
+  PADDLE_ENFORCE_EQ(
+      input.size(),
+      2,
+      errors::InvalidArgument("Input X should have 2 dimensions"));
+
+  PADDLE_ENFORCE_EQ((input.dtype() == phi::DataType::BFLOAT16 ||
+                     input.dtype() == phi::DataType::FLOAT32),
+                    true,
+                    errors::InvalidArgument(
+                        "The input X type should be bfloat16 or float32"));
+
+  const int block_length = 128;
+
+  // 这里默认给的Backend是CUBLAS，只支持这个。
+
+  phi::DDim scale_inv_dim, scale_inv_t_dim, output_dim, output_t_dim;
+
+  output_dim = {m, n};
+
+  int64_t n_dim = std::ceil(n / block_length);
+  if (n_dim % 4 != 0) {
+    n_dim += 4 - (n_dim % 4);
+  }
+  scale_inv_dim = {std::ceil(m / block_length), n_dim};
+
+  if (return_transpose) {
+    output_t_dim = {n, m};
+    int64_t m_dim = std::ceil(m / block_length);
+    if (m_dim % 4 != 0) {
+      m_dim += 4 - (m_dim % 4);
+    }
+    scale_inv_t_dim = {std::ceil(n / block_length), m_dim};
+  } else {
+    output_t_dim = output_dim;
+    scale_inv_t_dim = scale_inv_dim;
+  }
+
+  scale_inv->set_dims(scale_inv_dim);
+  scale_inv->set_dtype(phi::DataType::FLOAT32);
+
+  scale_inv_t->set_dims(scale_inv_t_dim);
+  scale_inv_t->set_dtype(phi::DataType::FLOAT32);
+
+  output->set_dims(output_dim);
+  // TODO(baoqiwen):
+  // 这个其实和自己的输入有关，我再想想，是不是需要额外传一个参数。暂时先写成int8吧。
+  output->set_dtype(phi::DataType::INT8);
+
+  output_t->set_dims(output_t_dim);
+  output_t->set_dtype(phi::DataType::INT8);
+}
+
 void AdadeltaInferMeta(const MetaTensor& param,
                        const MetaTensor& grad,
                        const MetaTensor& avg_squared_grad,

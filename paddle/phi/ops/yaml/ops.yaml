@@ -7,6 +7,24 @@
 
   # interfaces : paddle::dialect::InferSymbolicShapeInterface
 
+- op : _square_quant
+  args : (Tensor input, float epsilon, bool return_transpose, bool pow2_scale)
+  output : Tensor(scale_inv), Tensor(scale_inv_t), Tensor(output), Tensor(output_t)
+  infer_meta :
+    func : SquareQuantInferMeta
+  kernel :
+    func : square_quant
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+
+- op : _vector_quant
+  args : (Tensor input, float epsilon, bool return_transpose, bool pow2_scale, bool permute_scale, bool transpose_scales)
+  output : Tensor(scale_inv), Tensor(scale_inv_t), Tensor(output), Tensor(output_t)
+  infer_meta :
+    func : VectorQuantInferMeta
+  kernel :
+    func : vector_quant
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+
 - op : abs
   args : (Tensor x)
   output : Tensor(out)
