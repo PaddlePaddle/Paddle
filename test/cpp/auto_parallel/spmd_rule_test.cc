@@ -2534,7 +2534,7 @@ TEST(IndexSelect, Ctor) {
       common::make_ddim({16, 16, 16}), x_dist_attr);
   auto index_dist_attr = TensorDistAttr();
   index_dist_attr.set_process_mesh(process_mesh);
-  index_dist_attr.set_dims_mapping({-1});
+  index_dist_attr.set_dims_mapping({0});
   index_dist_attr.set_dynamic_dims({false, false, false});
   phi::distributed::DistMetaTensor index =
       phi::distributed::DistMetaTensor(common::make_ddim({3}), index_dist_attr);

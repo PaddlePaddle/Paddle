@@ -47,7 +47,7 @@ class TestElementwiseSPMDRule(unittest.TestCase):
         self.x_spec.set_dims_mapping([-1, -1, -1])
         self.index_spec.set_dims_mapping([0])
         self.attrs["axis"] = 1
-        result_dist_attrs = self.rule.infer_backward(
+        result_dist_attrs = self.rule.infer_forward(
             self.x_spec,
             self.index_spec,
             self.attrs['axis'],
