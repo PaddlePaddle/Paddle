@@ -2545,8 +2545,8 @@ TEST(IndexSelect, Ctor) {
   EXPECT_EQ(forward_info.first.size(), 2UL);
   EXPECT_EQ(forward_info.second.size(), 1UL);
   check_dim_mapping(forward_info.first[0], {-1, -1, -1});
-  check_dim_mapping(forward_info.second[0], {0});
-  check_dim_mapping(forward_info.second[1], {-1, 0, -1});
+  check_dim_mapping(forward_info.first[1], {0});
+  check_dim_mapping(forward_info.second[0], {-1, 0, -1});
 
   // test backward
   // axis = 1
