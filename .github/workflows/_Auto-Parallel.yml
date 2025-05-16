@@ -3,9 +3,9 @@ name: Auto-Parallel
 on:
   workflow_call:
     inputs:
-      # docker_build_image:
-      #   type: string
-      #   required: true
+      docker_build_image:
+        type: string
+        required: true
       can-skip:
         type: string
         required: false
@@ -13,10 +13,10 @@ on:
 env:
   PR_ID: ${{ github.event.pull_request.number }}
   COMMIT_ID: ${{ github.event.pull_request.head.sha }}
-  work_dir: /paddle
-  PADDLE_ROOT: /paddle
+  work_dir: /workspace/Paddle
+  PADDLE_ROOT: /workspace/Paddle
   TASK: paddle-CI-${{ github.event.pull_request.number }}-Auto-Parallel
-  ci_scripts: /paddle/ci
+  ci_scripts: /workspace/Paddle/ci
   BRANCH: ${{ github.event.pull_request.base.ref }}
   CI_name: auto-parallel
   no_proxy: "localhost,bj.bcebos.com,su.bcebos.com,bcebos.com,apiin.im.baidu.com,gitee.com,aliyun.com,.baidu.com,.tuna.tsinghua.edu.cn"
@@ -41,22 +41,23 @@ jobs:
     runs-on:
       group: Auto-Parallel
     steps:
-      # - name: Download Paddle
-      #   env:
-      #     work_dir: ${{ github.workspace }}
-      #   run: |
-      #     rm -rf * .[^.]*
-      #     echo "Downloading build.tar.gz"
-      #     wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/build/72744/883d7f88970d67dd8d7b57d881ccfe421ba254ec/build.tar.gz --no-check-certificate
-      #     echo "Extracting build.tar.gz"
-      #     tar --use-compress-program="pzstd" -xpf build.tar.gz --strip-components=1
-      #     rm build.tar.gz
+      - name: Download Paddle
+        env:
+          work_dir: ${{ github.workspace }}
+        run: |
+          sudo rm -rf * .[^.]*
+          echo "Downloading build.tar.gz"
+          wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/build/${PR_ID}/${COMMIT_ID}/build.tar.gz --no-check-certificate
+          echo "Extracting build.tar.gz"
+          tar --use-compress-program="pzstd" -xpf build.tar.gz
+          mv paddle Paddle
+          rm build.tar.gz
 
       - name: Check docker image and run container
         env:
           CACHE_DIR: /home/data/cfs/.cache
           FLAGS_dynamic_static_unified_comm: "True"
-          paddle_whl: https://paddle-github-action.bj.bcebos.com/PR/build/72744/883d7f88970d67dd8d7b57d881ccfe421ba254ec/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl
+          paddle_whl: https://paddle-github-action.bj.bcebos.com/PR/build/${PR_ID}/${COMMIT_ID}/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl
         run: |
           container_name=${TASK}-${core_index}-$(date +%Y%m%d-%H%M%S)
           echo "container_name=${container_name}" >> ${{ github.env }}
@@ -65,7 +66,7 @@ jobs:
           nvidia-docker run -d -t --name ${container_name} --runtime=nvidia --shm-size=32G \
             -v /dev/shm:/dev/shm \
             -v ${{ github.workspace }}/../../..:${{ github.workspace }}/../../.. \
-            -v ${{ github.workspace }}:/paddle \
+            -v ${{ github.workspace }}:/workspace \
             -v /home/FleetX_CI:/gpt_data \
             -v /home/Llm_gpt_CI:/llm_gpt_data \
             -v /home/Llama_CI:/llama_data \
@@ -79,14 +80,13 @@ jobs:
             -e no_proxy \
             -e CI_name \
             -e paddle_whl \
-            -w /paddle --network host ${docker_image}
+            -w /workspace --network host ${docker_image}
 
       - name: Download PaddleTest
         env:
           work_dir: ${{ github.workspace }}
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
-          cd /
           echo "Download and extract PaddleNLP.tar.gz"
           wget -q --no-proxy  https://paddle-qa.bj.bcebos.com/CodeSync/develop/PaddleNLP.tar --no-check-certificate
           tar xf PaddleNLP.tar && rm -rf PaddleNLP.tar
@@ -110,29 +110,29 @@ jobs:
           ldconfig
           unset http_proxy && unset https_proxy
           export LD_LIBRARY_PATH=/usr/local/cuda-11.8/compat:$LD_LIBRARY_PATH
-          timeout 80m bash ci/auto_parallel/ci_auto_parallel.sh ${paddle_whl}
+          timeout 80m bash -x Paddle/ci/auto_parallel/ci_auto_parallel.sh ${paddle_whl}
           '
 
-      - name: Upload and display logs
-        env:
-          home_path: ${{ github.workspace }}/..
-          bos_file: ${{ github.workspace }}/../bos/BosClient.py
-        run: |
-          docker exec -t ${{ env.container_name }} /bin/bash -c '
-          export AK=paddle
-          export SK=paddle
-          if [ ! -f "${{ env.bos_file }}" ]; then
-            wget -q --no-proxy -O ${{ env.home_path }}/bos_new.tar.gz https://xly-devops.bj.bcebos.com/home/bos_new.tar.gz --no-check-certificate
-            mkdir ${{ env.home_path }}/bos
-            tar xf ${{ env.home_path }}/bos_new.tar.gz -C ${{ env.home_path }}/bos
-          fi
-          cd /case_logs
-          for FILE in /case_logs/*; do
-            file=$(basename "$FILE")
-            python ${{ env.bos_file }} file paddle-github-action/PR/Auto-Parallel/${PR_ID}/${COMMIT_ID}/logs
-            echo "$file: https://paddle-github-action.bj.bcebos.com/PR/Auto-Parallel/${PR_ID}/${COMMIT_ID}/logs/$file"
-          done
-          '
+        # - name: Upload and display logs
+        #   env:
+        #     home_path: ${{ github.workspace }}/..
+        #     bos_file: ${{ github.workspace }}/../bos/BosClient.py
+        #   run: |
+        #     docker exec -t ${{ env.container_name }} /bin/bash -c '
+        #     export AK=paddle
+        #     export SK=paddle
+        #     if [ ! -f "${{ env.bos_file }}" ]; then
+        #       wget -q --no-proxy -O ${{ env.home_path }}/bos_new.tar.gz https://xly-devops.bj.bcebos.com/home/bos_new.tar.gz --no-check-certificate
+        #       mkdir ${{ env.home_path }}/bos
+        #       tar xf ${{ env.home_path }}/bos_new.tar.gz -C ${{ env.home_path }}/bos
+        #     fi
+        #     cd /case_logs
+        #     for FILE in /case_logs/*; do
+        #       file=$(basename "$FILE")
+        #       python ${{ env.bos_file }} file paddle-github-action/PR/Auto-Parallel/${PR_ID}/${COMMIT_ID}/logs
+        #       echo "$file: https://paddle-github-action.bj.bcebos.com/PR/Auto-Parallel/${PR_ID}/${COMMIT_ID}/logs/$file"
+        #     done
+        #     '
 
     # - name: Terminate and delete the container
     #   if: always()
