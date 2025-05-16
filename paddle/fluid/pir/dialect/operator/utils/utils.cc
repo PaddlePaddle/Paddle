@@ -37,8 +37,8 @@ namespace paddle {
 namespace dialect {
 
 const std::unordered_set<std::string> LegacyOpList = {
-    SendV2Op::name(),
-    RecvV2Op::name(),
+    // SendV2Op::name(),
+    // RecvV2Op::name(),
 };
 
 enum class AttrType {
