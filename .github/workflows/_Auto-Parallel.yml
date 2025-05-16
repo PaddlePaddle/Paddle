@@ -86,7 +86,6 @@ jobs:
           work_dir: ${{ github.workspace }}
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
-          ldconfig
           cd /
           echo "Download and extract PaddleNLP.tar.gz"
           wget -q --no-proxy  https://paddle-qa.bj.bcebos.com/CodeSync/develop/PaddleNLP.tar --no-check-certificate
@@ -108,6 +107,7 @@ jobs:
           work_dir: ${{ github.workspace }}
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
+          ldconfig
           unset http_proxy && unset https_proxy
           export LD_LIBRARY_PATH=/usr/local/cuda-11.8/compat:$LD_LIBRARY_PATH
           timeout 80m bash ci/auto_parallel/ci_auto_parallel.sh ${paddle_whl}
