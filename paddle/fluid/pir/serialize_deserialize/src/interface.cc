@@ -28,7 +28,7 @@ namespace pir {
 #define PIR "pir"
 void WriteModule(const pir::Program& program,
                  const std::string& file_path,
-                 uint64_t pir_version,
+                 int64_t pir_version,
                  bool overwrite,
                  bool readable,
                  bool trainable) {
