@@ -30,7 +30,6 @@
 #include "paddle/phi/kernels/impl/set_value_kernel_impl.h"
 #include "paddle/phi/kernels/strided_copy_kernel.h"
 namespace phi {
-
 template <typename T, typename Context>
 void SetTensorValueKernelV2(const Context& dev_ctx,
                             const DenseTensor& in,
@@ -54,20 +53,8 @@ void SetTensorValueKernelV2(const Context& dev_ctx,
   int64_t output_offset = static_cast<int64_t>(in.offset());
   for (size_t i = 0; i < axes.size(); ++i) {
     int64_t axis_size = in.dims()[axes[i]];
-
     if (axis_size < 0) {
       continue;
-    }
-    bool dummy_zero_dim_out = false;
-    funcs::normalize_interval(starts_local[i],
-                              ends_local[i],
-                              steps_local[i],
-                              axis_size,
-                              &starts_local[i],
-                              &ends_local[i],
-                              &dummy_zero_dim_out);
-    if (ends_local[i] == -axis_size - 1) {
-      ends_local[i] = -1;
     }
 
     int64_t step_size = std::abs(steps_local[i]);
@@ -81,59 +68,21 @@ void SetTensorValueKernelV2(const Context& dev_ctx,
   }
 
   // generate new shape
-  if (!decrease_axes.empty()) {
-    std::vector<int64_t> new_out_shape;
-    std::vector<int64_t> new_out_stride;
-    for (auto de_axes : decrease_axes) {
-      output_dims[de_axes] = 0;
-    }
+  std::vector<int64_t> new_out_shape;
+  std::vector<int64_t> new_out_stride;
+  funcs::GetDecreasedDimsAndStrides(output_dims,
+                                    output_stride,
+                                    decrease_axes,
+                                    none_axes,
+                                    &new_out_shape,
+                                    &new_out_stride);
 
-    for (size_t i = 0; i < output_dims.size(); ++i) {
-      if (output_dims[i] != 0) {
-        new_out_shape.push_back(output_dims[i]);
-        new_out_stride.push_back(output_stride[i]);
-      }
-    }
-    output_dims = new_out_shape;
-    output_stride = new_out_stride;
-  }
-
-  if (!none_axes.empty()) {
-    std::vector<int64_t> new_out_shape;
-    std::vector<int64_t> new_out_stride;
-
-    size_t none_axes_cur = 0, decrease_axes_cur = 0;
-    for (int i = 0; i < output_dims.size(); ++i) {
-      while (none_axes_cur < none_axes.size() &&
-             none_axes[none_axes_cur] <= i) {
-        new_out_shape.push_back(1);
-        new_out_stride.push_back(output_stride[i]);
-        none_axes_cur++;
-      }
-      if (decrease_axes_cur < decrease_axes.size() &&
-          decrease_axes[decrease_axes_cur] == i) {
-        decrease_axes_cur++;
-      } else {
-        new_out_shape.push_back(output_dims[i]);
-        new_out_stride.push_back(output_stride[i]);
-      }
-    }
-    while (none_axes_cur < none_axes.size()) {
-      new_out_shape.push_back(1);
-      new_out_stride.push_back(output_stride[-1]);
-      none_axes_cur++;
-    }
-
-    output_dims = new_out_shape;
-    output_stride = new_out_stride;
-  }
-
-  if (product(phi::make_ddim(output_dims)) <= 0) {
+  if (product(phi::make_ddim(new_out_shape)) <= 0) {
     // 0-size tensor, no need to copy
     return;
   }
-  CheckIsDimsMatch(phi::make_ddim(output_dims), value.dims());
 
+  CheckIsDimsMatch(phi::make_ddim(new_out_shape), value.dims());
   auto value_dims = phi::vectorize<int64_t>(value.dims());
   DenseTensor value_tensor = Empty<T>(dev_ctx, IntArray{value_dims});
   value_tensor = value;
@@ -144,17 +93,20 @@ void SetTensorValueKernelV2(const Context& dev_ctx,
   if (value_dims.empty()) value_dims.push_back(1);
   value_tensor.Resize(phi::make_ddim(value_dims));
 
-  if (output_dims.empty()) output_dims.push_back(1);
+  if (new_out_shape.empty()) new_out_shape.push_back(1);
 
-  DenseTensor expand_tensor = Empty<T>(dev_ctx, IntArray{output_dims});
+  DenseTensor expand_tensor = Empty<T>(dev_ctx, IntArray{new_out_shape});
   ExpandKernel<T, Context>(
-      dev_ctx, value_tensor, IntArray{output_dims}, &expand_tensor);
+      dev_ctx, value_tensor, IntArray{new_out_shape}, &expand_tensor);
 
   out->ResetHolder(in.Holder());
   out->ShareInplaceVersionCounterWith(in);
-
-  StridedCopyKernel<T, Context>(
-      dev_ctx, expand_tensor, output_dims, output_stride, output_offset, out);
+  StridedCopyKernel<T, Context>(dev_ctx,
+                                expand_tensor,
+                                new_out_shape,
+                                new_out_stride,
+                                output_offset,
+                                out);
   out->set_meta(in.meta());
 }
 
