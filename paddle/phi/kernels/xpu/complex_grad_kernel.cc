@@ -145,7 +145,7 @@ void ComplexGradKernel(const Context& dev_ctx,
 }
 }  // namespace phi
 
-PD_REGISTER_KERNEL(imag_grad,  // xpufft
+PD_REGISTER_KERNEL(imag_grad,
                    XPU,
                    ALL_LAYOUT,
                    phi::ImagGradKernel,
@@ -153,7 +153,7 @@ PD_REGISTER_KERNEL(imag_grad,  // xpufft
   kernel->InputAt(0).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
 }
 
-PD_REGISTER_KERNEL(real_grad,  // xpufft
+PD_REGISTER_KERNEL(real_grad,
                    XPU,
                    ALL_LAYOUT,
                    phi::RealGradKernel,
@@ -161,11 +161,8 @@ PD_REGISTER_KERNEL(real_grad,  // xpufft
   kernel->InputAt(0).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
 }
 
-PD_REGISTER_KERNEL(complex_grad,  // xpufft
-                   XPU,
-                   ALL_LAYOUT,
-                   phi::ComplexGradKernel,
-                   float) {
+PD_REGISTER_KERNEL(
+    complex_grad, XPU, ALL_LAYOUT, phi::ComplexGradKernel, float) {
   kernel->InputAt(2).SetDataType(phi::dtype::ToComplex(kernel_key.dtype()));
 }
 #endif  // PADDLE_WITH_XPU_FFT
