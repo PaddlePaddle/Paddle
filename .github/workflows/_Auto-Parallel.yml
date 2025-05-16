@@ -3,9 +3,9 @@ name: Auto-Parallel
 on:
   workflow_call:
     inputs:
-      docker_build_image:
-        type: string
-        required: true
+      # docker_build_image:
+      #   type: string
+      #   required: true
       can-skip:
         type: string
         required: false
@@ -19,7 +19,7 @@ env:
   ci_scripts: /paddle/ci
   BRANCH: ${{ github.event.pull_request.base.ref }}
   CI_name: auto-parallel
-  no_proxy: "bcebos.com,apiin.im.baidu.com,gitee.com,aliyun.com,.baidu.com,.tuna.tsinghua.edu.cn"
+  no_proxy: "localhost,bj.bcebos.com,su.bcebos.com,bcebos.com,apiin.im.baidu.com,gitee.com,aliyun.com,.baidu.com,.tuna.tsinghua.edu.cn"
 
 defaults:
   run:
@@ -48,7 +48,7 @@ jobs:
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           rm -rf * .[^.]*
           echo "Downloading build.tar.gz"
-          wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/build/${PR_ID}/${COMMIT_ID}/build.tar.gz --no-check-certificate
+          wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/build/72744/883d7f88970d67dd8d7b57d881ccfe421ba254ec/build.tar.gz --no-check-certificate
           echo "Extracting build.tar.gz"
           tar --use-compress-program="pzstd -1" -xpf build.tar.gz --strip-components=1
           rm build.tar.gz
@@ -58,7 +58,7 @@ jobs:
         env:
           CACHE_DIR: /home/data/cfs/.cache
           FLAGS_dynamic_static_unified_comm: "True"
-          paddle_whl: https://paddle-github-action.bj.bcebos.com/PR/build/${{ github.event.pull_request.number }}/${{ github.event.pull_request.head.sha }}/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl
+          paddle_whl: https://paddle-github-action.bj.bcebos.com/PR/build/72744/883d7f88970d67dd8d7b57d881ccfe421ba254ec/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl
         run: |
           container_name=${TASK}-${core_index}-$(date +%Y%m%d-%H%M%S)
           echo "container_name=${container_name}" >> ${{ github.env }}
