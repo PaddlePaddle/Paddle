@@ -154,7 +154,7 @@ struct CUBlas<float> {
 // Because the gcc 4.8 doesn't expand template parameter pack that
 // appears in a lambda-expression, I can not use template parameter pack
 // here.
-#if CUDA_VERSION >= 12000
+#if CUDA_VERSION >= 12030
     VLOG(5) << "use_tensor_op_math: "
             << (dev_ctx->tensor_core_available() ? "True" : "False");
     dev_ctx->TensorCoreCublasCallIfAvailable([&](cublasHandle_t handle) {
@@ -178,7 +178,7 @@ struct CUBlas<float> {
     });
 #else
     PADDLE_THROW(common::errors::Unimplemented(
-        "cublasSgemmEx_64 is not supported on cuda < 12"));
+        "cublasSgemmEx_64 is not supported on cuda < 12.3"));
 #endif
   }
 
@@ -523,7 +523,7 @@ struct CUBlas<phi::dtype::float16> {
                          cudaDataType_t Ctype,
                          int64_t ldc,
                          cudaDataType_t computeType) {
-#if CUDA_VERSION >= 12000
+#if CUDA_VERSION >= 12030
     cublasGemmAlgo_t algo = CUBLAS_GEMM_DFALT;
     bool use_tensor_op_math = dev_ctx->tensor_core_available();
     if (use_tensor_op_math) {
@@ -556,7 +556,7 @@ struct CUBlas<phi::dtype::float16> {
     });
 #else
     PADDLE_THROW(common::errors::Unimplemented(
-        "cublasGemmEx_64 is not supported on cuda < 12"));
+        "cublasGemmEx_64 is not supported on cuda < 12.3"));
 #endif
   }
 };
@@ -786,7 +786,7 @@ struct CUBlas<phi::dtype::complex<float>> {
                          cudaDataType_t Ctype,
                          int64_t ldc,
                          cudaDataType_t computeType) {
-#if CUDA_VERSION >= 12000
+#if CUDA_VERSION >= 12030
     cublasGemmAlgo_t algo = CUBLAS_GEMM_DFALT;
     bool use_tensor_op_math = dev_ctx->tensor_core_available();
     if (use_tensor_op_math) {
@@ -819,7 +819,7 @@ struct CUBlas<phi::dtype::complex<float>> {
     });
 #else
     PADDLE_THROW(common::errors::Unimplemented(
-        "cublasGemmEx_64 is not supported on cuda < 12"));
+        "cublasGemmEx_64 is not supported on cuda < 12.3"));
 #endif
   }
 
@@ -1165,7 +1165,7 @@ struct CUBlas<phi::dtype::complex<double>> {
                          cudaDataType_t Ctype,
                          int64_t ldc,
                          cudaDataType_t computeType) {
-#if CUDA_VERSION >= 12000
+#if CUDA_VERSION >= 12030
     cublasGemmAlgo_t algo = CUBLAS_GEMM_DFALT;
     bool use_tensor_op_math = dev_ctx->tensor_core_available();
     if (use_tensor_op_math) {
@@ -1198,7 +1198,7 @@ struct CUBlas<phi::dtype::complex<double>> {
     });
 #else
     PADDLE_THROW(common::errors::Unimplemented(
-        "cublasGemmEx_64 is not supported on cuda < 12"));
+        "cublasGemmEx_64 is not supported on cuda < 12.3"));
 #endif
   }
 
@@ -1284,7 +1284,7 @@ void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
   if (FLAGS_enable_cublas_tensor_op_math && std::is_same<T, float>::value) {
     auto &cuda_ctx = const_cast<phi::GPUContext &>(context_);
     if (M > INT_MAX_VALUE || N > INT_MAX_VALUE || K > INT_MAX_VALUE) {
-#if CUDA_VERSION >= 12000
+#if CUDA_VERSION >= 12030
       CUBlas<T>::GEMM_EX_64(&cuda_ctx,
                             cuTransB,
                             cuTransA,
@@ -1304,7 +1304,7 @@ void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
                             N);
 #else
       PADDLE_THROW(common::errors::Unimplemented(
-          "GEMM_EX_64 is not supported on cuda < 12"));
+          "GEMM_EX_64 is not supported on cuda < 12.3"));
 #endif
     } else {
       CUBlas<T>::GEMM_EX(&cuda_ctx,
@@ -1329,7 +1329,7 @@ void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
 #endif  // CUDA_VERSION >= 8000
     if (M > INT_MAX_VALUE || N > INT_MAX_VALUE || K > INT_MAX_VALUE) {
       PADDLE_THROW(common::errors::Unimplemented(
-          "GEMM_EX_64 is not supported on cuda < 12"));
+          "GEMM_EX_64 is not supported on cuda < 12.3"));
     } else {
       context_.CublasCall([&](cublasHandle_t handle) {
         CUBlas<T>::GEMM(handle,
@@ -1394,7 +1394,7 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
   // using tensor cores in volta GPUs.
   auto &cuda_ctx = const_cast<phi::GPUContext &>(context_);
   if (M > INT_MAX_VALUE || N > INT_MAX_VALUE || K > INT_MAX_VALUE) {
-#if CUDA_VERSION >= 12000
+#if CUDA_VERSION >= 12030
     CUBlas<phi::dtype::float16>::GEMM_EX_64(&cuda_ctx,
                                             cuTransB,
                                             cuTransA,
@@ -1415,8 +1415,8 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
                                             CUDA_R_32F);
 #else
     PADDLE_THROW(common::errors::Unimplemented(
-        "GEMM_EX_64 is not supported on cuda < 12"));
-#endif  // CUDA_VERSION >= 12000
+        "GEMM_EX_64 is not supported on cuda < 12.3"));
+#endif  // CUDA_VERSION >= 12030
   } else {
     CUBlas<phi::dtype::float16>::GEMM_EX(&cuda_ctx,
                                          cuTransB,
@@ -1441,7 +1441,7 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
   // CUDA 7.5 does not support cublasGemmEx, hence we fall back to use hgemm
   if (M > INT_MAX_VALUE || N > INT_MAX_VALUE || K > INT_MAX_VALUE) {
     PADDLE_THROW(common::errors::Unimplemented(
-        "GEMM_EX_64 is not supported on cuda < 12"));
+        "GEMM_EX_64 is not supported on cuda < 12.3"));
   } else {
     context_.CublasCall([&](cublasHandle_t handle) {
       CUBlas<phi::dtype::float16>::GEMM(handle,
@@ -1491,7 +1491,7 @@ void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
   if (FLAGS_enable_cublas_tensor_op_math && std::is_same<T, float>::value) {
     auto &cuda_ctx = const_cast<phi::GPUContext &>(context_);
     if (M > INT_MAX_VALUE || N > INT_MAX_VALUE || K > INT_MAX_VALUE) {
-#if CUDA_VERSION >= 12000
+#if CUDA_VERSION >= 12030
       CUBlas<T>::GEMM_EX_64(&cuda_ctx,
                             cuTransB,
                             cuTransA,
@@ -1511,7 +1511,7 @@ void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
                             N);
 #else
       PADDLE_THROW(common::errors::Unimplemented(
-          "GEMM_EX_64 is not supported on cuda < 12"));
+          "GEMM_EX_64 is not supported on cuda < 12.3"));
 #endif
     } else {
       CUBlas<T>::GEMM_EX(&cuda_ctx,
@@ -1536,7 +1536,7 @@ void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
 #endif  // CUDA_VERSION >= 8000
     if (M > INT_MAX_VALUE || N > INT_MAX_VALUE || K > INT_MAX_VALUE) {
       PADDLE_THROW(common::errors::Unimplemented(
-          "GEMM_EX_64 is not supported on cuda < 12"));
+          "GEMM_EX_64 is not supported on cuda < 12.3"));
     } else {
       context_.CublasCall([&](cublasHandle_t handle) {
         CUBlas<T>::GEMM(handle,
@@ -1602,7 +1602,7 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
   // input/output in fp16, computation in fp32, which can also be accelerated
   // using tensor cores in volta GPUs.
   if (M > INT_MAX_VALUE || N > INT_MAX_VALUE || K > INT_MAX_VALUE) {
-#if CUDA_VERSION >= 12000
+#if CUDA_VERSION >= 12030
     CUBlas<phi::dtype::float16>::GEMM_EX_64(&cuda_ctx,
                                             cuTransB,
                                             cuTransA,
@@ -1623,8 +1623,8 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
                                             CUDA_R_32F);
 #else
     PADDLE_THROW(common::errors::Unimplemented(
-        "GEMM_EX_64 is not supported on cuda < 12"));
-#endif  // CUDA_VERSION >= 12000
+        "GEMM_EX_64 is not supported on cuda < 12.3"));
+#endif  // CUDA_VERSION >= 12030
   } else {
 #if CUDA_VERSION >= 8000
     CUBlas<phi::dtype::float16>::GEMM_EX(&cuda_ctx,
@@ -1707,7 +1707,7 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
   }
   VLOG(5) << "use_tensor_op_math: " << (use_tensor_op_math ? "True" : "False");
   if (M > INT_MAX_VALUE || N > INT_MAX_VALUE || K > INT_MAX_VALUE) {
-#if CUDA_VERSION >= 12000
+#if CUDA_VERSION >= 12030
     cublasComputeType_t migratedComputeType = CUBLAS_COMPUTE_32F;
     context_.TensorCoreCublasCallIfAvailable([&](cublasHandle_t handle) {
       PADDLE_ENFORCE_GPU_SUCCESS(
@@ -1733,8 +1733,8 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
     });
 #else
     PADDLE_THROW(common::errors::Unimplemented(
-        "cublasGemmEx_64 is not supported on cuda < 12"));
-#endif  // CUDA_VERSION >= 12000
+        "cublasGemmEx_64 is not supported on cuda < 12.3"));
+#endif  // CUDA_VERSION >= 12030
   } else {
     context_.TensorCoreCublasCallIfAvailable([&](cublasHandle_t handle) {
       PADDLE_ENFORCE_GPU_SUCCESS(
@@ -1807,7 +1807,7 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
   }
   VLOG(5) << "use_tensor_op_math: " << (use_tensor_op_math ? "True" : "False");
   if (M > INT_MAX_VALUE || N > INT_MAX_VALUE || K > INT_MAX_VALUE) {
-#if CUDA_VERSION >= 12000
+#if CUDA_VERSION >= 12030
     cublasComputeType_t migratedComputeType = CUBLAS_COMPUTE_32F;
     context_.TensorCoreCublasCallIfAvailable([&](cublasHandle_t handle) {
       PADDLE_ENFORCE_GPU_SUCCESS(
@@ -1833,8 +1833,8 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
     });
 #else
     PADDLE_THROW(common::errors::Unimplemented(
-        "cublasGemmEx_64 is not supported on cuda < 12"));
-#endif  // CUDA_VERSION >= 12000
+        "cublasGemmEx_64 is not supported on cuda < 12.3"));
+#endif  // CUDA_VERSION >= 12030
   } else {
     context_.TensorCoreCublasCallIfAvailable([&](cublasHandle_t handle) {
       PADDLE_ENFORCE_GPU_SUCCESS(
@@ -1906,7 +1906,7 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
 #endif
 
   if (M > INT_MAX_VALUE || N > INT_MAX_VALUE || K > INT_MAX_VALUE) {
-#if CUDA_VERSION >= 12000
+#if CUDA_VERSION >= 12030
     CUBlas<phi::dtype::complex<float>>::GEMM_EX_64(&cuda_ctx,
                                                    cuTransB,
                                                    cuTransA,
@@ -1927,8 +1927,8 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
                                                    CUDA_C_32F);
 #else
     PADDLE_THROW(common::errors::Unimplemented(
-        "GEMM_EX_64 is not supported on cuda < 12"));
-#endif  // CUDA_VERSION >= 12000
+        "GEMM_EX_64 is not supported on cuda < 12.3"));
+#endif  // CUDA_VERSION >= 12030
   } else {
 #if CUDA_VERSION >= 8000
     CUBlas<phi::dtype::complex<float>>::GEMM_EX(&cuda_ctx,
@@ -2015,7 +2015,7 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
   // input/output in fp16, computation in fp32, which can also be accelerated
   // using tensor cores in volta GPUs.
   if (M > INT_MAX_VALUE || N > INT_MAX_VALUE || K > INT_MAX_VALUE) {
-#if CUDA_VERSION >= 12000
+#if CUDA_VERSION >= 12030
     CUBlas<phi::dtype::complex<double>>::GEMM_EX_64(&cuda_ctx,
                                                     cuTransB,
                                                     cuTransA,
@@ -2036,8 +2036,8 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
                                                     CUDA_C_64F);
 #else
     PADDLE_THROW(common::errors::Unimplemented(
-        "GEMM_EX_64 is not supported on cuda < 12"));
-#endif  // CUDA_VERSION >= 12000
+        "GEMM_EX_64 is not supported on cuda < 12.3"));
+#endif  // CUDA_VERSION >= 12030
   } else {
 #if CUDA_VERSION >= 8000
     CUBlas<phi::dtype::complex<double>>::GEMM_EX(&cuda_ctx,
@@ -2391,7 +2391,7 @@ void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
 #endif
     }
     if (M > INT_MAX_VALUE || N > INT_MAX_VALUE || K > INT_MAX_VALUE) {
-#if CUDA_VERSION >= 12000
+#if CUDA_VERSION >= 12030
       context_.TensorCoreCublasCallIfAvailable([&](cublasHandle_t handle) {
         PADDLE_ENFORCE_GPU_SUCCESS(
             phi::dynload::cublasGemmStridedBatchedEx_64(handle,
@@ -2419,9 +2419,9 @@ void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
                                                         algo));
       });
 #else
-      PADDLE_THROW(commonphi::errors::Unimplemented(
-          "cublasGemmStridedBatchedEx_64 is not supported on cuda < 12"));
-#endif  // CUDA_VERSION >= 12000
+      PADDLE_THROW(common::errors::Unimplemented(
+          "cublasGemmStridedBatchedEx_64 is not supported on cuda < 12.3"));
+#endif  // CUDA_VERSION >= 12030
     } else {
       context_.TensorCoreCublasCallIfAvailable([&](cublasHandle_t handle) {
         PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasGemmStridedBatchedEx(
@@ -2539,8 +2539,9 @@ void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
 #endif
     }
 
-    if (M > INT_MAX_VALUE || N > INT_MAX_VALUE || K > INT_MAX_VALUE) {
-#if CUDA_VERSION >= 12000
+    if (M > INT_MAX_VALUE || N > INT_MAX_VALUE || K > INT_MAX_VALUE ||
+        batchCount > INT_MAX_VALUE) {
+#if CUDA_VERSION >= 12030
       context_.TensorCoreCublasCallIfAvailable([&](cublasHandle_t handle) {
         PADDLE_ENFORCE_GPU_SUCCESS(
             phi::dynload::cublasGemmStridedBatchedEx_64(handle,
@@ -2568,9 +2569,9 @@ void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
                                                         algo));
       });
 #else
-      PADDLE_THROW(commonphi::errors::Unimplemented(
-          "cublasGemmStridedBatchedEx_64 is not supported on cuda < 12"));
-#endif  // CUDA_VERSION >= 12000
+      PADDLE_THROW(common::errors::Unimplemented(
+          "cublasGemmStridedBatchedEx_64 is not supported on cuda < 12.3"));
+#endif  // CUDA_VERSION >= 12030
     } else {
       context_.TensorCoreCublasCallIfAvailable([&](cublasHandle_t handle) {
         PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasGemmStridedBatchedEx(
@@ -2668,7 +2669,7 @@ inline void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
   VLOG(5) << "use_tensor_op_math: " << (use_tensor_op_math ? "True" : "False");
   if (M > INT_MAX_VALUE || N > INT_MAX_VALUE || K > INT_MAX_VALUE ||
       batchCount > INT_MAX_VALUE) {
-#if CUDA_VERSION >= 12000
+#if CUDA_VERSION >= 12030
     context_.TensorCoreCublasCallIfAvailable([&](cublasHandle_t handle) {
       PADDLE_ENFORCE_GPU_SUCCESS(
           phi::dynload::cublasGemmStridedBatchedEx_64(handle,
@@ -2696,9 +2697,9 @@ inline void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
                                                       algo));
     });
 #else
-    PADDLE_THROW(commonphi::errors::Unimplemented(
-        "cublasGemmStridedBatchedEx_64 is not supported on cuda < 12"));
-#endif  // CUDA_VERSION >= 12000
+    PADDLE_THROW(common::errors::Unimplemented(
+        "cublasGemmStridedBatchedEx_64 is not supported on cuda < 12.3"));
+#endif  // CUDA_VERSION >= 12030
   } else {
     context_.TensorCoreCublasCallIfAvailable([&](cublasHandle_t handle) {
       PADDLE_ENFORCE_GPU_SUCCESS(
@@ -2773,7 +2774,7 @@ inline void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
   VLOG(5) << "use_tensor_op_math: " << (use_tensor_op_math ? "True" : "False");
   if (M > INT_MAX_VALUE || N > INT_MAX_VALUE || K > INT_MAX_VALUE ||
       batchCount > INT_MAX_VALUE) {
-#if CUDA_VERSION >= 12000
+#if CUDA_VERSION >= 12030
     context_.TensorCoreCublasCallIfAvailable([&](cublasHandle_t handle) {
       PADDLE_ENFORCE_GPU_SUCCESS(
           phi::dynload::cublasGemmStridedBatchedEx_64(handle,
@@ -2801,9 +2802,9 @@ inline void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
                                                       algo));
     });
 #else
-    PADDLE_THROW(commonphi::errors::Unimplemented(
-        "cublasGemmStridedBatchedEx_64 is not supported on cuda < 12"));
-#endif  // CUDA_VERSION >= 12000
+    PADDLE_THROW(common::errors::Unimplemented(
+        "cublasGemmStridedBatchedEx_64 is not supported on cuda < 12.3"));
+#endif  // CUDA_VERSION >= 12030
   } else {
     context_.TensorCoreCublasCallIfAvailable([&](cublasHandle_t handle) {
       PADDLE_ENFORCE_GPU_SUCCESS(
