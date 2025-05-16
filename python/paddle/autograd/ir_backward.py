@@ -72,7 +72,7 @@ if TYPE_CHECKING:
 __all__ = ['grad', 'calc_gradient', 'calc_gradient_helper']
 
 
-def append_full_like(float_value, copy_value, value, state, backward_ops):
+def append_full_like(float_value, copy_value, value, state, backward_ops=None):
     with paddle.amp.auto_cast(enable=False):
         if paddle.pir.is_fake_value(value):
             state.value_to_valuegrad[value] = [[paddle.pir.fake_value()]]
@@ -83,26 +83,12 @@ def append_full_like(float_value, copy_value, value, state, backward_ops):
                 float_value,
             )
             full_like_op = value_grad.get_defining_op()
-            backward_ops_ = [full_like_op]
+            if backward_ops is not None:
+                backward_ops.append(full_like_op)
         elif copy_value.is_combine():
             raise ValueError(
                 "This kind of scene, where VectorType grad be fulled with zeros should not occur."
             )
-            # values = paddle._C_ops.builtin_split(copy_value)
-            # value_grad = []
-            # backward_ops_ = []
-            # backward_ops_.append(values[0].get_defining_op())
-            # for v in values:
-            #     grad = paddle.full_like(
-            #         v,
-            #         float_value,
-            #         dtype=v.dtype,
-            #     )
-            #     value_grad.append(grad)
-            #     full_like_op = grad.get_defining_op()
-            #     full_op = full_like_op.operand_source(1).get_defining_op()
-            #     backward_ops_.append(full_like_op)
-            #     backward_ops_.append(full_op)
         else:
             value_grad = paddle.full_like(
                 copy_value,
@@ -111,12 +97,10 @@ def append_full_like(float_value, copy_value, value, state, backward_ops):
             )
             full_like_op = value_grad.get_defining_op()
             full_op = full_like_op.operand_source(1).get_defining_op()
-            backward_ops_ = [full_like_op, full_op]
-        update_bwdop_structure(
-            backward_ops,
-            state.op_to_opgrad[value.get_defining_op()],
-            backward_ops_,
-        )
+            if backward_ops is not None:
+                backward_ops.append(full_like_op)
+                backward_ops.append(full_op)
+
         if copy_value.is_combine():
             state.value_to_valuegrad[value] = [value_grad]
         else:
@@ -124,9 +108,7 @@ def append_full_like(float_value, copy_value, value, state, backward_ops):
         return value_grad
 
 
-def append_add_n(
-    op, value, state, backward_ops, bwd_value_to_block_argument_map
-):
+def append_add_n(op, value, state, bwd_value_to_block_argument_map):
     _MAX_ADD_NUM_ = paddle.framework._global_flags()[
         'FLAGS_max_inplace_grad_add'
     ]
@@ -165,18 +147,10 @@ def append_add_n(
                 grad_value = paddle._C_ops.add_(grad_value, add_n_list[index])
                 grad_op_list.append(grad_value.get_defining_op())
                 index += 1
-            update_bwdop_structure(
-                backward_ops, state.op_to_opgrad[op], cast_op + grad_op_list
-            )
             for tmp in state.value_to_valuegrad[value]:
                 state.value_to_sumvaluegrad[value].append(tmp)
             state.value_to_valuegrad[value] = [[grad_value]]
         elif len(add_n_list) == 1:
-            update_bwdop_structure(
-                backward_ops,
-                state.op_to_opgrad[op],
-                cast_op,
-            )
             for tmp in state.value_to_valuegrad[value]:
                 state.value_to_sumvaluegrad[value].append(tmp)
             state.value_to_valuegrad[value] = [add_n_list]
@@ -188,21 +162,10 @@ def append_add_n(
 
             add_n_op = add_n_value.get_defining_op()
             combine_op = add_n_op.operand_source(0).get_defining_op()
-            update_bwdop_structure(
-                backward_ops,
-                state.op_to_opgrad[op],
-                [*cast_op, combine_op, add_n_op],
-            )
 
             for tmp in state.value_to_valuegrad[value]:
                 state.value_to_sumvaluegrad[value].append(tmp)
             state.value_to_valuegrad[value] = [[add_n_value]]
-
-
-def update_bwdop_structure(backward_ops, op_to_opgrad_list, grad_op_list):
-    for grad_op in grad_op_list:
-        # backward_ops.append(grad_op)
-        op_to_opgrad_list.append(grad_op)
 
 
 def prepare_grad_outputs(grad_outputs, outputs, state):
@@ -245,11 +208,7 @@ def prepare_grad_outputs(grad_outputs, outputs, state):
                     f"The dtype of grad_output[{i}] {grad.dtype} is not same as the dtype of output[{i}] {output.dtype}"
                 )
             feedop = grad.get_defining_op()
-            update_bwdop_structure(
-                backward_ops,
-                state.op_to_opgrad[output.get_defining_op()],
-                [feedop],
-            )
+            backward_ops.append(feedop)
             state.value_to_valuegrad[output] = [[grad]]
 
     # add input for bwd first op
@@ -426,7 +385,6 @@ def append_backward_ops(
                     op,
                     value,
                     state,
-                    backward_ops,
                     bwd_value_to_block_argument_map,
                 )
 
@@ -457,9 +415,7 @@ def append_backward_ops(
                     # last bwd_op return None because input in no_grad_set,
                     # but this bwd_op need a input.
 
-                    append_full_like(
-                        0.0, new_value[0], value, state, backward_ops
-                    )
+                    append_full_like(0.0, new_value[0], value, state, None)
                     zero_flag[i] = True
 
             outputs.append(new_value)
@@ -484,7 +440,6 @@ def append_backward_ops(
                         op,
                         value,
                         state,
-                        backward_ops,
                         bwd_value_to_block_argument_map,
                     )
 
@@ -499,7 +454,7 @@ def append_backward_ops(
                     ),
                     value,
                     state,
-                    backward_ops,
+                    None,
                 )
 
             grad_value = state.value_to_valuegrad[value][0]
@@ -640,7 +595,6 @@ def append_backward_ops(
                             base_op,
                             value,
                             state,
-                            backward_ops,
                             bwd_value_to_block_argument_map,
                         )
                 else:
@@ -653,9 +607,7 @@ def append_backward_ops(
                             [paddle.pir.fake_value()]
                         ]
                     else:
-                        append_full_like(
-                            0.0, new_value, value, state, backward_ops
-                        )
+                        append_full_like(0.0, new_value, value, state, None)
 
                 input_grad = return_map_value(
                     state.value_to_valuegrad[value][0][0],
@@ -905,7 +857,6 @@ def append_backward_ops(
                                         op,
                                         input,
                                         state,
-                                        backward_ops,
                                         bwd_value_to_block_argument_map,
                                     )
 
@@ -914,7 +865,7 @@ def append_backward_ops(
                                 or sub_state.value_to_valuegrad[input] == []
                             ):
                                 append_full_like(
-                                    0.0, input, input, sub_state, backward_ops
+                                    0.0, input, input, sub_state, None
                                 )
 
                             grad_value = sub_state.value_to_valuegrad[input][0]
@@ -1016,9 +967,6 @@ def append_backward_ops(
                             op, input_grads, op.operands_source()
                         )
 
-                # update_bwdop_structure(
-                #     backward_ops, state.op_to_opgrad[op], bwd_ops
-                # )
             else:
                 if (
                     op.num_operands() == 0
@@ -1034,7 +982,6 @@ def append_backward_ops(
                                 op,
                                 value,
                                 state,
-                                backward_ops,
                                 bwd_value_to_block_argument_map,
                             )
                         else:
