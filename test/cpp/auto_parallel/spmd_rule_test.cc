@@ -2516,6 +2516,76 @@ TEST(Topk, Ctor) {
   check_dim_mapping(backward_info.second[0], {0, -1, 1});
 }
 
+TEST(Roll, Ctor) {
+  std::vector<int64_t> mesh_shape = {2, 2};
+  std::vector<int64_t> process_ids = {0, 1, 2, 3};
+  std::vector<std::string> dim_names = {"x", "y"};
+  ProcessMesh process_mesh(mesh_shape, process_ids, dim_names);
+  phi::IntArray shifts = {1};
+  std::vector<int64_t> axis = {};
+
+  // test forward
+  // axis = [], shifts = [1]
+  // [0, 1, -1] --> [-1, -1, -1], [-1, -1, -1]
+  auto x_dist_attr = TensorDistAttr();
+  x_dist_attr.set_process_mesh(process_mesh);
+  x_dist_attr.set_dims_mapping({0, 1, -1});
+  x_dist_attr.set_dynamic_dims({false, false, false});
+
+  phi::distributed::DistMetaTensor x = phi::distributed::DistMetaTensor(
+      common::make_ddim({16, 16, 16}), x_dist_attr);
+  phi::distributed::SpmdInfo forward_info =
+      phi::distributed::RollInferSpmdDynamic(x, shifts, axis);
+
+  EXPECT_EQ(forward_info.first.size(), 1UL);
+  EXPECT_EQ(forward_info.second.size(), 1UL);
+  check_dim_mapping(forward_info.first[0], {-1, -1, -1});
+  check_dim_mapping(forward_info.second[0], {-1, -1, -1});
+  // axis = [0, 2], shifts = [1, 2]
+  // [0, 1, -1] --> [-1, 1, -1], [-1, 1, -1]
+  shifts = {1, 2};
+  axis = {0, 2};
+  forward_info = phi::distributed::RollInferSpmdDynamic(x, shifts, axis);
+
+  EXPECT_EQ(forward_info.first.size(), 1UL);
+  EXPECT_EQ(forward_info.second.size(), 1UL);
+  check_dim_mapping(forward_info.first[0], {-1, 1, -1});
+  check_dim_mapping(forward_info.second[0], {-1, 1, -1});
+
+  // test backward
+  // axis = [], shifts = [1]
+  // [0, 1, -1], [-1, -1, -1] --> [-1, -1, -1], [-1, -1, -1], [-1, -1, -1]
+  shifts = {1};
+  axis = {};
+  x_dist_attr.set_dims_mapping({-1, -1, -1});
+  x = phi::distributed::DistMetaTensor(common::make_ddim({16, 16, 16}),
+                                       x_dist_attr);
+  auto out_grad_dist_attr = TensorDistAttr();
+  out_grad_dist_attr.set_process_mesh(process_mesh);
+  out_grad_dist_attr.set_dims_mapping({0, 1, -1});
+  out_grad_dist_attr.set_dynamic_dims({false, false, false});
+  phi::distributed::DistMetaTensor out_grad = phi::distributed::DistMetaTensor(
+      common::make_ddim({16, 16, 16}), out_grad_dist_attr);
+  phi::distributed::SpmdInfo backward_info =
+      phi::distributed::RollGradInferSpmdDynamic(x, out_grad, shifts, axis);
+  EXPECT_EQ(backward_info.first.size(), 2UL);
+  EXPECT_EQ(backward_info.second.size(), 1UL);
+  check_dim_mapping(backward_info.first[0], {-1, -1, -1});
+  check_dim_mapping(backward_info.first[1], {-1, -1, -1});
+  check_dim_mapping(backward_info.second[0], {-1, -1, -1});
+
+  // axis = [0, 2], shifts = [1, 2]
+  // [-1, -1, -1], [0, 1, -1] --> [-1, 1, -1], [-1, 1, -1], [-1, 1, -1]
+  shifts = {1, 2};
+  axis = {0, 2};
+  backward_info =
+      phi::distributed::RollGradInferSpmdDynamic(x, out_grad, shifts, axis);
+  EXPECT_EQ(backward_info.first.size(), 2UL);
+  EXPECT_EQ(backward_info.second.size(), 1UL);
+  check_dim_mapping(backward_info.first[0], {-1, 1, -1});
+  check_dim_mapping(backward_info.first[1], {-1, 1, -1});
+  check_dim_mapping(backward_info.second[0], {-1, 1, -1});
+}
 }  // namespace auto_parallel
 }  // namespace distributed
 }  // namespace paddle

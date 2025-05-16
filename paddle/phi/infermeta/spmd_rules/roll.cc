@@ -55,8 +55,8 @@ SpmdInfo RollInferSpmd(const DistMetaTensor& x,
           true,
           phi::errors::InvalidArgument("The axis of roll with index %d should "
                                        "be in range [0, %d), but got %d.",
-                                       x_ndim,
                                        i + 1,
+                                       x_ndim,
                                        axis_i));
       x_dims_mapping_dst[axis_i] = -1;
     }
