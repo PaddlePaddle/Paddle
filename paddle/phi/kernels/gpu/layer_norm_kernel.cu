@@ -678,7 +678,7 @@ PD_REGISTER_KERNEL(layer_norm,
   kernel->OutputAt(1).SetDataType(phi::DataType::UNDEFINED);
   kernel->OutputAt(2).SetDataType(phi::DataType::UNDEFINED);
 }
-#elif CUDNN_VERSION_MIN(8, 1, 0)
+#else
 PD_REGISTER_KERNEL(layer_norm,
                    GPU,
                    ALL_LAYOUT,
@@ -687,17 +687,6 @@ PD_REGISTER_KERNEL(layer_norm,
                    double,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {
-  kernel->OutputAt(1).SetDataType(phi::DataType::UNDEFINED);
-  kernel->OutputAt(2).SetDataType(phi::DataType::UNDEFINED);
-}
-#else
-PD_REGISTER_KERNEL(layer_norm,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::LayerNormKernel,
-                   float,
-                   double,
-                   phi::dtype::float16) {
   kernel->OutputAt(1).SetDataType(phi::DataType::UNDEFINED);
   kernel->OutputAt(2).SetDataType(phi::DataType::UNDEFINED);
 }

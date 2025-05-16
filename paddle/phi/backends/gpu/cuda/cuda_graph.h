@@ -39,7 +39,7 @@
 
 #ifdef PADDLE_WITH_CUDA
 
-#if CUDA_VERSION < 11000
+#if CUDA_VERSION < 11000 && !defined(PADDLE_WITH_COREX)
 // For CUDA versions less than 11.0, use a dummy type for cudaFunction_t.
 using cudaFunction_t = void *;
 cudaError_t cudaGetFuncBySymbol(cudaFunction_t *functionPtr,

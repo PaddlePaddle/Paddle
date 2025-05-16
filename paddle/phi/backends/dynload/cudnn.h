@@ -229,6 +229,15 @@ CUDNN_DNN_ROUTINE_EACH_AFTER_TWO_R7_REMOVED_IN_E9(
   __macro(cudnnRNNBackwardWeights_v8);
 CUDNN_DNN_ROUTINE_EACH_R9(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
 #endif
+
+#define CUDNN_DNN_ROUTINE_EACH_ATTN(__macro)               \
+  __macro(cudnnFlashAttnForward);                          \
+  __macro(cudnnCreateFlashAttnDescriptor);                 \
+  __macro(cudnnGetFlashAttnBuffers);                       \
+  __macro(cudnnDestroyFlashAttnDescriptor);                \
+  __macro(cudnnFlashAttnBackward);                         \
+  __macro(cudnnSetTensorNdDescriptor_lowerbound_2);
+CUDNN_DNN_ROUTINE_EACH_ATTN(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
 }  // namespace dynload
 }  // namespace phi
 

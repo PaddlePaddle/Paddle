@@ -683,8 +683,13 @@ class sherwood_v3_table : private EntryAlloc, private Hasher, private Equal {
   }
 
   size_t num_buckets_for_reserve(size_t num_elements) const {
+#ifdef PADDLE_WITH_COREX
+    return static_cast<size_t>(std::ceil(
+        num_elements / std::min((double)0.5, static_cast<double>(_max_load_factor))));
+#else
     return static_cast<size_t>(std::ceil(
         num_elements / std::min(0.5, static_cast<double>(_max_load_factor))));
+#endif
   }
   void rehash_for_other_container(const sherwood_v3_table &other) {
     rehash(

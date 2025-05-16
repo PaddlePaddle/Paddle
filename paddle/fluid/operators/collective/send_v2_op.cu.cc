@@ -203,7 +203,7 @@ PD_REGISTER_STRUCT_KERNEL(send_v2,
                           float,
                           double,
 #if (NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000) || \
-    defined(PADDLE_WITH_HIP)
+    defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_COREX)
                           phi::dtype::bfloat16,
 #endif
                           int,

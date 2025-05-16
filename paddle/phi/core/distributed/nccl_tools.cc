@@ -63,7 +63,7 @@ std::string NCCLDTypeToString(ncclDataType_t dtype) {
   PD_NCCL_DTYPE_TO_STR(ncclHalf, "float16");
   PD_NCCL_DTYPE_TO_STR(ncclFloat16, "float16");
 #if (NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000) || \
-    defined(PADDLE_WITH_HIP)
+    defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_COREX)
   PD_NCCL_DTYPE_TO_STR(ncclBfloat16, "bfloat16");
 #endif
   PD_NCCL_DTYPE_TO_STR(ncclDouble, "float64");

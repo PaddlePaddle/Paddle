@@ -103,6 +103,7 @@ PD_REGISTER_KERNEL(shape,
 }
 #endif
 
+#ifndef PADDLE_WITH_COREX
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 PD_REGISTER_KERNEL(shape,
                    Custom,
@@ -123,6 +124,7 @@ PD_REGISTER_KERNEL(shape,
   kernel->OutputAt(0).SetBackend(phi::Backend::CPU);
   kernel->OutputAt(0).SetDataType(phi::DataType::INT32);
 }
+#endif
 #endif
 
 PD_REGISTER_KERNEL(shape64,
@@ -186,6 +188,7 @@ PD_REGISTER_KERNEL(shape64,
 }
 #endif
 
+#ifndef PADDLE_WITH_COREX
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 PD_REGISTER_KERNEL(shape64,
                    Custom,
@@ -206,4 +209,5 @@ PD_REGISTER_KERNEL(shape64,
   kernel->OutputAt(0).SetBackend(phi::Backend::CPU);
   kernel->OutputAt(0).SetDataType(phi::DataType::INT64);
 }
+#endif
 #endif

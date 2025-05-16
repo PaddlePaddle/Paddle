@@ -123,7 +123,7 @@ PD_REGISTER_KERNEL(layer_norm_grad,
     kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);
   }
 }
-#elif CUDNN_VERSION_MIN(8, 1, 0)
+#else
 PD_REGISTER_KERNEL(layer_norm_grad,
                    GPU,
                    ALL_LAYOUT,
@@ -132,19 +132,6 @@ PD_REGISTER_KERNEL(layer_norm_grad,
                    double,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {
-  if (kernel_key.dtype() == phi::DataType::FLOAT16) {
-    kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
-    kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);
-  }
-}
-#else
-PD_REGISTER_KERNEL(layer_norm_grad,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::LayerNormGradKernel,
-                   float,
-                   double,
-                   phi::dtype::float16) {
   if (kernel_key.dtype() == phi::DataType::FLOAT16) {
     kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
     kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);

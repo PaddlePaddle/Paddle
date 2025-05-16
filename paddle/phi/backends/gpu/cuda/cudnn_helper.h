@@ -125,7 +125,6 @@ class CudnnDataType<phi::dtype::float8_e4m3fn> {
 #endif
 
 // CUDNN_DATA_BFLOAT16 is not valid before cudnn8.1
-#if CUDNN_VERSION_MIN(8, 1, 0)
 template <>
 class CudnnDataType<phi::dtype::bfloat16> {
  public:
@@ -141,7 +140,6 @@ class CudnnDataType<phi::dtype::bfloat16> {
     return &v;
   }
 };
-#endif
 
 template <>
 class CudnnDataType<phi::dtype::float16> {

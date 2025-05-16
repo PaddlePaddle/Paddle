@@ -213,7 +213,11 @@ void ElementwiseAddGrad(const GPUContext &ctx,
     phi::Copy(ctx, dout, ctx.GetPlace(), false, dx);
   } else if (dx_data != dout_data && dy_data != dout_data) {
     auto size = x.numel();
+#ifdef PADDLE_WITH_COREX
+    int vec_size = std::max(static_cast<int>(sizeof(float4) / sizeof(T)), 1);
+#else
     int vec_size = max(static_cast<int>(sizeof(float4) / sizeof(T)), 1);
+#endif
     dim3 block_size = dim3(PREDEFINED_BLOCK_SIZE, 1);
     dim3 grid_size =
         dim3(((size + vec_size - 1) / vec_size + PREDEFINED_BLOCK_SIZE - 1) /

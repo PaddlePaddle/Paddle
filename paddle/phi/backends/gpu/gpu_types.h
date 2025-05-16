@@ -59,6 +59,9 @@ DECLARE_TYPE_FOR_GPU(dnnActivationMode_t,
                      cudnnActivationMode_t,
                      miopenActivationMode_t);
 #endif
+#ifdef PADDLE_WITH_COREX
+typedef CUfunc_st * cudaFunction_t;
+#endif
 DECLARE_TYPE_FOR_GPU(gpuGraph_t, cudaGraph_t, hipGraph_t);
 DECLARE_TYPE_FOR_GPU(gpuFunction_t, cudaFunction_t, hipFunction_t);
 DECLARE_TYPE_FOR_GPU(gpuGraphExec_t, cudaGraphExec_t, hipGraphExec_t);
@@ -156,11 +159,13 @@ DECLARE_FUNCTION_FOR_GPU(gpuStreamEndCapture,
 DECLARE_FUNCTION_FOR_GPU(gpuStreamGetCaptureInfo,
                          cudaStreamGetCaptureInfo,
                          hipStreamGetCaptureInfo);
+#ifndef PADDLE_WITH_COREX
 DECLARE_FUNCTION_FOR_GPU(gpuEventCreateWithFlags,
                          cudaEventCreateWithFlags,
                          hipEventCreateWithFlags);
 DECLARE_FUNCTION_FOR_GPU(gpuEventRecord, cudaEventRecord, hipEventRecord);
 DECLARE_FUNCTION_FOR_GPU(gpuEventDestroy, cudaEventDestroy, hipEventDestroy);
+#endif
 DECLARE_FUNCTION_FOR_GPU(gpuEventQuery, cudaEventQuery, hipEventQuery);
 DECLARE_FUNCTION_FOR_GPU(gpuEventSynchronize,
                          cudaEventSynchronize,

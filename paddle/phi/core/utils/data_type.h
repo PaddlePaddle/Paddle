@@ -249,7 +249,7 @@ inline ncclDataType_t ToNCCLDataType(DataType type) {
              type == DataType::FLOAT8_E5M2) {
     return ncclUint8;
 #if (NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000) || \
-    defined(PADDLE_WITH_HIP)
+    defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_COREX)
   } else if (type == DataType::BFLOAT16) {
     return ncclBfloat16;
 #endif

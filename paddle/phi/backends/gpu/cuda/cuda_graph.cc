@@ -206,7 +206,7 @@ inline void sync_streams(gpuStream_t to_record, gpuStream_t to_wait) {
   PADDLE_ENFORCE_GPU_SUCCESS(
       cudaEventCreateWithFlags(&event, cudaEventDisableTiming));
   PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(event, to_record));
-  PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamWaitEvent(to_wait, event));
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamWaitEvent(to_wait, event, 0));
   PADDLE_ENFORCE_GPU_SUCCESS(cudaEventDestroy(event));
 }
 
@@ -323,7 +323,6 @@ void CUDAGraph::PrintToDotFiles(const std::string &dirname,
 #endif
 }
 
-#if CUDA_VERSION >= 11000
 void CUDAGraphNodeLauncher::KernelNodeLaunch(
     parameterSetter_t parameterSetter, gpuKernelCallback_t cudakernelCallback) {
   if (UNLIKELY(phi::backends::gpu::CUDAGraph::IsThisThreadCapturing())) {
@@ -388,20 +387,6 @@ CUDAGraphNodeLauncher::GetParameterSettersForExecGraph(cudaGraph_t graph) {
 
   return hooks;
 }
-#else
-void CUDAGraphNodeLauncher::KernelNodeLaunch(
-    cudaFunction_t cudaFunc,
-    parameterSetter_t parameterSetter,
-    gpuKernelCallback_t cudakernelCallback) {
-  cudakernelCallback(0);
-}
-
-std::vector<cudaGraphExecuterSetter_t>
-CUDAGraphNodeLauncher::GetParameterSettersForExecGraph(cudaGraph_t graph) {
-  PADDLE_THROW(common::errors::Unimplemented(
-      "CUDAGraphNodeLauncher is only supported when CUDA version >= 11.0"));
-}
-#endif
 
 }  // namespace phi::backends::gpu
 
