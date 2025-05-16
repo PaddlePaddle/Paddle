@@ -70,7 +70,7 @@ __global__ void weight_permute_kernel_wint4(const int8_t* input_data_dev,
   }
 }
 
-// convetr 0,1,2,3,4,5,6,7,8 4bit -> 0,2,4,6,1,3,5,7
+// convetr 0,1,2,3,4,5,6,7 4bit -> 0,2,4,6,1,3,5,7
 __global__ void weight_interval_kernel_wint4(int8_t* output_data_dev,
                                              int numel) {
   constexpr int value_per_interval_thread = 4;
