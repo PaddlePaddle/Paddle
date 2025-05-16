@@ -1339,6 +1339,7 @@ class Optimizer:
                 if (
                     "xpu" in paddle.device.get_device()
                     and found_inf is not None
+                    and isinstance(found_inf, core.eager.Tensor)
                     and found_inf.is_dist()
                 ):
                     found_inf = found_inf._local_value()
