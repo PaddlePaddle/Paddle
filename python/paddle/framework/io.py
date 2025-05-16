@@ -945,7 +945,7 @@ def save(
         if isinstance(obj, paddle.static.Program):
             if in_pir_mode():
                 paddle.core.serialize_pir_program(
-                    obj, path, 1, True, False, True
+                    obj, path, -1, True, False, True
                 )
             else:
                 obj.desc.flush()

@@ -1093,7 +1093,7 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
     if (config_.save_optimized_model_) {
       std::string optimized_model =
           GetOptimizedModelPath() + "/" + "_optimized.json";
-      pir::WriteModule(*pir_program_, optimized_model, 1, true, false, true);
+      pir::WriteModule(*pir_program_, optimized_model, -1, true, false, true);
       LOG(INFO) << "Optimized model saved to " << optimized_model;
       SaveOrLoadPirParameters(true);
     }

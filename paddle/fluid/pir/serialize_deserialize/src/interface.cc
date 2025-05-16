@@ -43,6 +43,11 @@ void WriteModule(const pir::Program& program,
   // write base code
   Json total;
 
+  if (pir_version < 0) {
+    pir_version = DEVELOP_VERSION;
+    VLOG(6) << "pir_version is null, get pir_version: " << pir_version;
+  }
+
   total[BASE_CODE] = {
       {MAGIC, PIR}, {PIRVERSION, pir_version}, {TRAINABLE, trainable}};
 

@@ -166,7 +166,7 @@ void BindIO(pybind11::module *m) {
          &pir::WriteModule,
          py::arg("program"),
          py::arg("file_path"),
-         py::arg("pir_version"),
+         py::arg("pir_version") = -1,
          py::arg("overwrite") = true,
          py::arg("readable") = false,
          py::arg("trainable") = true);
