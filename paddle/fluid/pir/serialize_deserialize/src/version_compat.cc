@@ -254,7 +254,7 @@ void PatchBuilder::ApplyAttrPatches(const std::string& attr_name,
           if (!data.contains(DATA)) {
             std::string data_name = data[ID].get<std::string>();
             auto json_data = json->at(ATTR_TYPE);
-            for (auto i = 0; i < json_data.at(DATA).size(); i++) {
+            for (size_t i = 0; i < json_data.at(DATA).size(); i++) {
               auto json_item = json_data.at(DATA).at(i);
               json_item.at(ID) = data_name;
               json_data.at(DATA).at(i) = json_item;
