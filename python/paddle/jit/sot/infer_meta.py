@@ -14,7 +14,6 @@
 from __future__ import annotations
 
 import copy
-from abc import abstractmethod
 from functools import cached_property
 from typing import TYPE_CHECKING, Any, TypeVar
 
@@ -48,6 +47,7 @@ from .utils import (
     map_if_extend,
     meta_str,
 )
+from .utils.exceptions import BreakGraphError, NullMetaBreak
 
 if TYPE_CHECKING:
     import numpy.typing as npt
@@ -98,38 +98,48 @@ class DistInfo:
         return f"DistInfo(mesh={self.mesh}, dims_mapping={self.dims_mapping}, local_shape={self.local_shape})"
 
 
-class MetaInfoBase:
-    @abstractmethod
-    def is_null(self):
-        raise NotImplementedError(
-            "MetaInfoBase is an abstract class, please implement is_null method."
-        )
+class MetaInfoOrNull:
+    def __init__(self, meta: MetaInfo | None):
+        self.meta = meta
 
-    @abstractmethod
+    @staticmethod
+    def null():
+        return MetaInfoOrNull(None)
+
+    def is_null(self):
+        return self.meta is None
+
+    def unwrap_or_breakgraph(self):
+        if self.meta is None:
+            raise BreakGraphError(NullMetaBreak())
+        return self.meta
+
+    def unwrap_unsafe(self):
+        if self.meta is None:
+            raise AssertionError("MetaInfo is None")
+        return self.meta
+
     def with_dynamic_axes(
         self, name: str, dynamic_axes: list[int]
-    ) -> MetaInfoBase:
-        raise NotImplementedError(
-            "MetaInfoBase is an abstract class, please implement with_dynamic_axes method."
-        )
+    ) -> MetaInfoOrNull:
+        if self.meta is None:
+            return MetaInfoOrNull.null()
+        return self.meta.with_dynamic_axes(name, dynamic_axes).wrap()
 
-    @abstractmethod
     def to_input_spec(self):
-        raise NotImplementedError(
-            "MetaInfoBase is an abstract class, please implement to_input_spec method."
-        )
+        if self.meta is None:
+            return None
+        return self.meta.to_input_spec()
 
-    @abstractmethod
     def guard_str(self):
-        raise NotImplementedError(
-            "MetaInfoBase is an abstract class, please implement guard_str method."
-        )
+        if self.meta is None:
+            return "(Null)"
+        return self.meta.guard_str()
 
-    @abstractmethod
     def __deepcopy__(self, memo):
-        raise NotImplementedError(
-            "MetaInfoBase is an abstract class, please implement __deepcopy__ method."
-        )
+        if self.meta is None:
+            return MetaInfoOrNull(None)
+        return MetaInfoOrNull(copy.deepcopy(self.meta))
 
     @staticmethod
     def _handle_legacy_ir_amp_dtype(dtype):
@@ -151,14 +161,14 @@ class MetaInfoBase:
     @staticmethod
     def from_tensor(
         tensor: paddle.Tensor, *, dynamic_axes: list[int] | None = None
-    ) -> MetaInfoBase:
-        if not tensor._is_initialized():
-            return NullInfo()
+    ) -> MetaInfoOrNull:
+        if not tensor._is_dense_tensor_hold_allocation():
+            return MetaInfoOrNull.null()
         assert isinstance(
             tensor, paddle.Tensor
         ), "Expect a Tensor, but got a Value."
 
-        dtype = MetaInfo._handle_legacy_ir_amp_dtype(tensor.dtype)
+        dtype = MetaInfoOrNull._handle_legacy_ir_amp_dtype(tensor.dtype)
         assert (
             -1 not in tensor.shape
         ), "Tensor shape should not contain -1, maybe you pass a Value to from_tensor"
@@ -181,12 +191,12 @@ class MetaInfoBase:
             tensor.place,
             None,
             dist_info=dist_info,
-        )
+        ).wrap()
 
     @staticmethod
     def from_numpy(
         nparray: npt.NDArray[Any], *, dynamic_axes: list[int] | None = None
-    ) -> MetaInfoBase:
+    ) -> MetaInfoOrNull:
         dtype = convert_np_dtype_to_dtype_(nparray.dtype)
         dynamic_axes = dynamic_axes or []
         shape = [
@@ -203,14 +213,14 @@ class MetaInfoBase:
             None,
             None,
             dist_info=None,
-        )
+        ).wrap()
 
     @staticmethod
-    def from_value(value) -> MetaInfoBase:
+    def from_value(value) -> MetaInfoOrNull:
         if is_fake_value(value):
-            return NullInfo()
+            return MetaInfoOrNull.null()
         name = SOT_INFER_META_INNER_VAR
-        dtype = MetaInfo._handle_legacy_ir_amp_dtype(value.dtype)
+        dtype = MetaInfoOrNull._handle_legacy_ir_amp_dtype(value.dtype)
         shape = [SymbolicInt() if dim == -1 else dim for dim in value.shape]
         if isinstance(value, paddle.pir.Value) and value.is_dist():
             dist_info = DistInfo.from_value(value)
@@ -226,29 +236,27 @@ class MetaInfoBase:
             None,  # We can't infer the right place in compile time.
             None,  # there's no spec_name specified when from_value.
             dist_info=dist_info,
-        )
+        ).wrap()
+
+    def __repr__(self):
+        if self.meta is None:
+            return "MetaInfoOrNull(None)"
+        return f"MetaInfoOrNull({self.meta})"
+
+    def __eq__(self, other):
+        if self.meta is None:
+            return other.meta is None
+        if other.meta is None:
+            return False
+        return self.meta == other.meta
+
+    def __hash__(self):
+        if self.meta is None:
+            return hash(None)
+        return hash(self.meta)
 
 
-class NullInfo(MetaInfoBase):
-    def is_null(self):
-        return True
-
-    def with_dynamic_axes(
-        self, name: str, dynamic_axes: list[int]
-    ) -> MetaInfoBase:
-        return NullInfo()
-
-    def to_input_spec(self):
-        return None
-
-    def guard_str(self):
-        return "(Null)"
-
-    def __deepcopy__(self, memo):
-        return NullInfo()
-
-
-class MetaInfo(MetaInfoBase):
+class MetaInfo:
     shape: list[int | SymbolicInt]
 
     def __init__(
@@ -276,8 +284,8 @@ class MetaInfo(MetaInfoBase):
         self.dist_info = dist_info
         self.spec_name = spec_name
 
-    def is_null(self):
-        return False
+    def wrap(self):
+        return MetaInfoOrNull(self)
 
     def shape_with_special_symbol(
         self, dynamic_symbol: DynamicSymbolT = -1
@@ -391,7 +399,10 @@ class VariableCreator(metaclass=Singleton):
         # self.startup_program = paddle.static.Program()
         self.var_name_generator = UniqueNameGenerator(SOT_INFER_META_INNER_VAR)
 
-    def gen_name(self, meta):
+    def gen_name(self, meta_or_null: MetaInfoOrNull):
+        if meta_or_null.is_null():
+            return "null"
+        meta = meta_or_null.unwrap_unsafe()
         name = f"{meta.dtype}_{meta.stop_gradient}_"
         name += "_".join(map(str, meta.shape))
         return name
@@ -435,10 +446,10 @@ class VariableCreator(metaclass=Singleton):
         else:
             return self.legacy_programs[1]
 
-    def create_var(self, meta: MetaInfoBase):
-        if meta.is_null():
+    def create_var(self, meta_or_null: MetaInfoOrNull):
+        if meta_or_null.is_null():
             return fake_value()
-        assert isinstance(meta, MetaInfo), "Expect a MetaInfo, but got {meta}."
+        meta = meta_or_null.unwrap_unsafe()
         shape = meta.shape_with_special_symbol(-1)
 
         if paddle.framework.use_pir_api():
@@ -446,7 +457,7 @@ class VariableCreator(metaclass=Singleton):
                 self.main_program, self.startup_program
             ):
                 var = paddle.static.input.data(
-                    name=self.gen_name(meta),
+                    name=self.gen_name(meta.wrap()),
                     shape=shape,
                     dtype=convert_dtype(meta.dtype),
                 )
@@ -470,7 +481,7 @@ class VariableCreator(metaclass=Singleton):
         ), "Expect a Variable, but got a Tensor."
         return var
 
-    def get_variable(self, meta, without_cache=False):
+    def get_variable(self, meta: MetaInfoOrNull, without_cache=False):
         var_feature_name = self.gen_name(meta)
         if without_cache:
             return self.create_var(meta)
@@ -508,7 +519,7 @@ class VariableCreator(metaclass=Singleton):
 def convert_meta_to_variable(args, without_cache=False):
     return map_if_extend(
         args,
-        pred=lambda x: isinstance(x, MetaInfoBase),
+        pred=lambda x: isinstance(x, MetaInfoOrNull),
         true_fn=lambda x: VariableCreator().get_variable(
             x, without_cache=without_cache
         ),
@@ -519,7 +530,7 @@ def convert_meta_to_variable(args, without_cache=False):
 def convert_meta_to_input_spec(args):
     return map_if_extend(
         args,
-        pred=lambda x: isinstance(x, MetaInfoBase),
+        pred=lambda x: isinstance(x, MetaInfoOrNull),
         true_fn=lambda x: x.to_input_spec(),
         # TODO(xiongkun): can x be tensor ?
         false_fn=lambda x: (
@@ -539,7 +550,7 @@ def convert_variable_to_meta_info(args):
     return map_if_extend(
         args,
         pred=lambda x: isinstance(x, static_variable_type),
-        true_fn=lambda x: MetaInfoBase.from_value(x),
+        true_fn=lambda x: MetaInfoOrNull.from_value(x),
         false_fn=lambda x: x,
     )
 
@@ -575,7 +586,7 @@ def infer_meta_for_layer(layer, *args, **kwargs):
             for x in paddle.utils.flatten(
                 convert_variable_to_meta_info(output_values)
             )
-            if isinstance(x, MetaInfoBase)
+            if isinstance(x, MetaInfoOrNull)
         ]
     )
     layer.forward.rollback()
@@ -596,7 +607,7 @@ def ast_infer_meta(static_function, *args, **kwargs):
             for x in paddle.utils.flatten(
                 convert_variable_to_meta_info(concrete_program.outputs)
             )
-            if isinstance(x, MetaInfoBase)
+            if isinstance(x, MetaInfoOrNull)
         ]
     )
 
@@ -661,7 +672,7 @@ class LayerInferMetaCache(Cache, metaclass=Singleton):
 
     def key_fn(self, layer, *args, **kwargs):
         params = [
-            MetaInfoBase.from_value(x)
+            MetaInfoOrNull.from_tensor(x)
             for x in layer.parameters(include_sublayers=True)
         ]
         return (
