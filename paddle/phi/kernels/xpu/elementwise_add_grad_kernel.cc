@@ -24,6 +24,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/complex_kernel.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 
 namespace phi {
@@ -35,6 +36,25 @@ void AddGradKernel(const Context& dev_ctx,
                    int axis,
                    DenseTensor* dx,
                    DenseTensor* dy) {
+  if (dout.numel() == 0) {
+    if (dx) {
+      if (dx->numel() == 0) {
+        dev_ctx.template Alloc<T>(dx);
+      } else {
+        phi::Full<T, Context>(
+            dev_ctx, phi::IntArray(common::vectorize(dx->dims())), 0, dx);
+      }
+    }
+    if (dy) {
+      if (dy->numel() == 0) {
+        dev_ctx.template Alloc<T>(dy);
+      } else {
+        phi::Full<T, Context>(
+            dev_ctx, phi::IntArray(common::vectorize(dy->dims())), 0, dy);
+      }
+    }
+    return;
+  }
   using XPUType = typename XPUTypeTrait<T>::Type;
   funcs::ElementwiseGradPreProcess(dout, dx);
   auto* dz = &dout;
@@ -112,6 +132,9 @@ void AddGradKernel<phi::dtype::complex<float>, XPUContext>(
   const bool compute_dx = (dx != nullptr);
   const bool compute_dy = (dy != nullptr);
 
+  // The current complex number implementation uses separate real/imaginary
+  // parts,resulting in redundant operations and performance
+  // penalties.Optimization should address this in future iterations.
   DenseTensor x_real = Real<T, XPUContext>(dev_ctx, x);
   DenseTensor x_imag = Imag<T, XPUContext>(dev_ctx, x);
   DenseTensor y_real = Real<T, XPUContext>(dev_ctx, y);

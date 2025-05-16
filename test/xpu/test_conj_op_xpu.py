@@ -43,12 +43,10 @@ class XPUTestConjOp(XPUOpTestWrapper):
             self.outputs = {'Out': out}
 
         def init_dtype_type(self):
-            self.dtype = np.complex64
+            self.dtype = self.in_type
 
         def init_input(self):
-            self.x = (
-                np.random.random((12, 14)) + 1j * np.random.random((12, 14))
-            ).astype(self.dtype)
+            self.x = np.random.random([2, 2, 3]).astype(self.dtype)
 
         def test_check_output(self):
             if paddle.is_compiled_with_xpu():
@@ -66,45 +64,64 @@ class XPUTestConjOp(XPUOpTestWrapper):
 
     class TestConjOp1(TestConjOp):
         def init_input(self):
-            self.x = (
-                np.random.random([2, 20, 2, 3])
-                + 1j * np.random.random([2, 20, 2, 3])
-            ).astype(self.dtype)
+            self.x = np.random.random([2, 3]).astype(self.dtype)
 
     class TestConjOp2(TestConjOp):
         def init_input(self):
-            self.x = (
-                np.random.random([2, 2, 3]) + 1j * np.random.random([2, 2, 3])
-            ).astype(self.dtype)
-
-    class TestConjOp3(TestConjOp):
-        def init_input(self):
-            self.x = np.random.random([2, 2, 3]).astype(np.int32)
-
-    class TestConjOp4(TestConjOp):
-        def init_input(self):
-            self.x = np.random.random([2, 2, 3]).astype(np.int64)
-
-    class TestConjOp5(TestConjOp):
-        def init_input(self):
-            self.x = np.random.random([2, 2, 3]).astype(np.float16)
-
-    class TestConjOp6(TestConjOp):
-        def init_input(self):
-            self.x = np.random.random([2, 2, 3]).astype(np.uint16)
-
-    class TestConjOp7(TestConjOp):
-        def init_input(self):
-            self.x = np.random.random([2, 2, 3]).astype(np.float32)
-
-    class TestConjOp8(TestConjOp):
-        def init_input(self):
-            self.x = np.random.random([2, 2, 3]).astype(np.float64)
+            self.x = np.random.random([2, 20, 2, 3]).astype(self.dtype)
 
 
 support_types = get_xpu_op_support_types('conj')
 for stype in support_types:
     create_test_class(globals(), XPUTestConjOp, stype)
+
+
+class TestConjComplexOp(XPUOpTest):
+    def setUp(self):
+        self.op_type = "conj"
+        self.python_api = paddle.tensor.conj
+        self.init_dtype_type()
+        self.init_input()
+        self.inputs = {'X': self.x}
+        out = np.conj(self.x)
+        self.outputs = {'Out': out}
+
+    def init_dtype_type(self):
+        self.dtype = np.complex64
+
+    def init_input(self):
+        self.x = (
+            np.random.random((12, 14)) + 1j * np.random.random((12, 14))
+        ).astype(self.dtype)
+
+    def test_check_output(self):
+        if paddle.is_compiled_with_xpu():
+            place = paddle.XPUPlace(0)
+            self.check_output_with_place(place)
+
+    def test_check_grad(self):
+        if paddle.is_compiled_with_xpu():
+            place = paddle.XPUPlace(0)
+            self.check_grad_with_place(
+                place,
+                ['X'],
+                'Out',
+            )
+
+
+class TestConjComplexOp1(TestConjComplexOp):
+    def init_input(self):
+        self.x = (
+            np.random.random([2, 20, 2, 3])
+            + 1j * np.random.random([2, 20, 2, 3])
+        ).astype(self.dtype)
+
+
+class TestConjComplexOp2(TestConjComplexOp):
+    def init_input(self):
+        self.x = (
+            np.random.random([2, 2, 3]) + 1j * np.random.random([2, 2, 3])
+        ).astype(self.dtype)
 
 
 if __name__ == "__main__":
