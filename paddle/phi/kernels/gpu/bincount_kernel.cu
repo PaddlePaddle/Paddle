@@ -107,7 +107,8 @@ void BincountCUDAInner(const Context& dev_ctx,
 
   DenseTensor input_min_max_cpu;
   input_min_max_cpu.Resize({2});
-  input_min_max_cpu.mutable_data<InputT>(phi::CPUPlace());
+  auto* input_min_max_cpu_data =
+      dev_ctx.template HostAlloc<InputT>(&input_min_max_cpu);
   input_min_max_cpu.data<InputT>()[0] = std::numeric_limits<InputT>::max();
   input_min_max_cpu.data<InputT>()[1] = std::numeric_limits<InputT>::lowest();
 
