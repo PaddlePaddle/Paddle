@@ -24,7 +24,7 @@ template <typename T, typename Context>
 void Pool2dKernel(const Context& ctx,
                   const DenseTensor& x,
                   const IntArray& kernel_size_t,
-                  const std::vector<int64_t>& strides_t,
+                  const std::vector<int64_t>& strides,
                   const std::vector<int64_t>& paddings_t,
                   bool ceil_mode,
                   bool exclusive,
@@ -38,7 +38,6 @@ void Pool2dKernel(const Context& ctx,
 
   std::vector<int64_t> kernel_size(kernel_size_t.GetData().begin(),
                                    kernel_size_t.GetData().end());
-  std::vector<int64_t> strides(strides_t.begin(), strides_t.end());
   std::vector<int64_t> paddings(paddings_t.begin(), paddings_t.end());
 
   PADDLE_ENFORCE_EQ(kernel_size.size(),
@@ -160,7 +159,7 @@ template <typename T, typename Context>
 void Pool3dKernel(const Context& ctx,
                   const DenseTensor& x,
                   const std::vector<int64_t>& kernel_size_t,
-                  const std::vector<int64_t>& strides_t,
+                  const std::vector<int64_t>& strides,
                   const std::vector<int64_t>& paddings_t,
                   bool ceil_mode,
                   bool exclusive,
@@ -174,7 +173,6 @@ void Pool3dKernel(const Context& ctx,
 
   const bool channel_last = data_format == "NDHWC";
   std::vector<int64_t> kernel_size(kernel_size_t.begin(), kernel_size_t.end());
-  std::vector<int64_t> strides(strides_t.begin(), strides_t.end());
   std::vector<int64_t> paddings(paddings_t.begin(), paddings_t.end());
 
   auto x_dims = x.dims();
