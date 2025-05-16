@@ -885,7 +885,7 @@ class TensorVariable(VariableBase):
             "place",
         ]:
             return VariableFactory.from_value(
-                getattr(self.meta, name),
+                getattr(self.meta.unwrap_or_breakgraph(), name),
                 self.graph,
                 tracker=GetAttrTracker(self, name),
             )
