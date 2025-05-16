@@ -297,7 +297,7 @@ class TestCrossOpZeroSizeTest(TestCrossOp):
     def initTestCase(self):
         self.shape = (0, 3, 3)
         self.dtype = np.float64
-        self.attr = {'dim': 1}
+        self.attr = {'dim': -1}
 
     def init_output(self):
         z_list = []
@@ -310,11 +310,24 @@ class TestCrossOpZeroSizeTest1(TestCrossOp):
     def initTestCase(self):
         self.shape = (3, 0, 3)
         self.dtype = np.float64
-        self.attr = {'dim': 0}
+        self.attr = {'dim': -1}
 
     def init_output(self):
         z_list = []
         for i in range(3):
+            z_list.append(np.cross(self.inputs['X'][i], self.inputs['Y'][i]))
+        self.outputs = {'Out': np.array(z_list).reshape(self.shape)}
+
+
+class TestCrossOpZeroSizeTest2(TestCrossOp):
+    def initTestCase(self):
+        self.shape = (0, 0, 3)
+        self.dtype = np.float64
+        self.attr = {'dim': -1}
+
+    def init_output(self):
+        z_list = []
+        for i in range(0):
             z_list.append(np.cross(self.inputs['X'][i], self.inputs['Y'][i]))
         self.outputs = {'Out': np.array(z_list).reshape(self.shape)}
 
