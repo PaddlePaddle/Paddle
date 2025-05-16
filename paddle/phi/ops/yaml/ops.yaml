@@ -15,6 +15,7 @@
   kernel :
     func : moe_unzip
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : abs
   args : (Tensor x)
