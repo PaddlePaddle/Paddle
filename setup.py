@@ -1262,10 +1262,7 @@ def retain_only_subdirs(root_dir, subdirs_to_keep):
 def download_cutlass_src_code():
     url = "https://paddle-ci.gz.bcebos.com/cutlass-3.7.0.tar.gz"
     tar_file = "cutlass-3.7.0.tar.gz"
-    dir_path = (
-        env_dict.get("PADDLE_BINARY_DIR")
-        + '/python/paddle/apy/matmul_pass/matmul'
-    )
+    dir_path = paddle_binary_dir + '/python/paddle/apy/matmul_pass/matmul'
     extract_dir = Path(dir_path) / "cutlass-3.7.0"
     tar_path = Path(dir_path) / tar_file
 
@@ -1313,7 +1310,7 @@ def get_cinn_config_jsons():
 def get_apy_files():
     from pathlib import Path
 
-    apy_path = env_dict.get("PADDLE_BINARY_DIR") + '/python/paddle/apy/'
+    apy_path = paddle_binary_dir + '/python/paddle/apy/'
     prefix_len = len(apy_path)
     p = Path(apy_path)
     file_list = []
