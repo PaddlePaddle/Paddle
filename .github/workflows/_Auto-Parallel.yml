@@ -41,16 +41,16 @@ jobs:
     runs-on:
       group: Auto-Parallel
     steps:
-      - name: Download Paddle
-        env:
-          work_dir: ${{ github.workspace }}
-        run: |
-          rm -rf * .[^.]*
-          echo "Downloading build.tar.gz"
-          wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/build/72744/883d7f88970d67dd8d7b57d881ccfe421ba254ec/build.tar.gz --no-check-certificate
-          echo "Extracting build.tar.gz"
-          tar --use-compress-program="pzstd" -xpf build.tar.gz --strip-components=1
-          rm build.tar.gz
+      # - name: Download Paddle
+      #   env:
+      #     work_dir: ${{ github.workspace }}
+      #   run: |
+      #     rm -rf * .[^.]*
+      #     echo "Downloading build.tar.gz"
+      #     wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/build/72744/883d7f88970d67dd8d7b57d881ccfe421ba254ec/build.tar.gz --no-check-certificate
+      #     echo "Extracting build.tar.gz"
+      #     tar --use-compress-program="pzstd" -xpf build.tar.gz --strip-components=1
+      #     rm build.tar.gz
 
       - name: Check docker image and run container
         env:
@@ -61,7 +61,7 @@ jobs:
           container_name=${TASK}-${core_index}-$(date +%Y%m%d-%H%M%S)
           echo "container_name=${container_name}" >> ${{ github.env }}
           docker_image=${{ inputs.docker_build_image }}
-          docker run -d -t --gpus all --name ${container_name} --runtime=nvidia --shm-size=32G \
+          nvidia-docker run -d -t --name ${container_name} --runtime=nvidia --shm-size=32G \
             -v /dev/shm:/dev/shm
             -v ${{ github.workspace }}/../../..:${{ github.workspace }}/../../.. \
             -v ${{ github.workspace }}:/paddle \
