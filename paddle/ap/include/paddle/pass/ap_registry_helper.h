@@ -17,10 +17,10 @@
 #include "paddle/ap/include/adt/adt.h"
 #include "paddle/ap/include/registry/registry.h"
 
-namespace cinn::dialect::ir {
+namespace ap::paddle {
 
 struct ApRegistryHelper {
   ap::adt::Result<ap::registry::Registry> SingletonRegistry();
 };
 
-}  // namespace cinn::dialect::ir
+}  // namespace ap::paddle

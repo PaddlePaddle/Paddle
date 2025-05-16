@@ -358,7 +358,7 @@ struct SelectedRowsAddToTensor<phi::XPUContext, T> {
     auto& in1_rows = input1.rows();
     int64_t* in1_rows_data = nullptr;
     xpu::VectorParam<int64_t> in1_rows_vec{
-        in1_rows.data(), static_cast<int>(in1_rows.size()), in1_rows_data};
+        in1_rows.data(), static_cast<int64_t>(in1_rows.size()), in1_rows_data};
 
     int64_t in1_row_numel = in1_value.numel() / in1_rows.size();
     PADDLE_ENFORCE_EQ(
@@ -373,9 +373,9 @@ struct SelectedRowsAddToTensor<phi::XPUContext, T> {
     auto* in1_data = in1_value.data<T>();
     auto* out_data = input2->data<T>();
 
-    int h = in1_rows.size();
-    int w = in1_row_numel;
-    const std::vector<int> xshape{h, w};
+    int64_t h = in1_rows.size();
+    int64_t w = in1_row_numel;
+    const std::vector<int64_t> xshape{h, w};
 
     int r = xpu::scatter<XPUType, int64_t>(
         context.x_context(),

@@ -67,7 +67,7 @@ void GatherKernel(const Context& dev_ctx,
         xshape,
         index.dims().size() == 0 ? 1 : index.dims()[0],
         axis_v);
-  } else {
+  } else if (index_type == DataType::INT64) {
     r = xpu::paddle_gather<XPUType, int64_t>(
         dev_ctx.x_context(),
         reinterpret_cast<const XPUType*>(x.data<T>()),
@@ -76,6 +76,9 @@ void GatherKernel(const Context& dev_ctx,
         xshape,
         index.dims().size() == 0 ? 1 : index.dims()[0],
         axis_v);
+  } else {
+    PADDLE_THROW(common::errors::InvalidArgument("Unsupported index type: %s",
+                                                 DataTypeToString(index_type)));
   }
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "paddle_gather");
 }

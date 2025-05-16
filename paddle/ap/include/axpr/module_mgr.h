@@ -77,6 +77,7 @@ class ModuleMgr {
       return iter->second;
     }
     auto frame_object = std::make_shared<AttrMapImpl<SerializableValue>>();
+    frame_object->Set("__file__", file_path);
     const auto& frame =
         Frame<SerializableValue>::Make(circlable_ref_list(), frame_object);
     ADT_LET_CONST_REF(lambda, GetLambdaByFilePath(file_path));

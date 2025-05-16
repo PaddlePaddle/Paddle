@@ -1075,6 +1075,7 @@ XPUOpMap& get_kl3_ops() {
                      phi::DataType::BFLOAT16})},
       {"pow2_decay_with_linear_warmup", XPUKernelSet({phi::DataType::FLOAT32})},
       {"prior_box", XPUKernelSet({phi::DataType::FLOAT32})},
+      {"prelu", XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
       {"prelu_grad",
        XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
       {"prod_raw", XPUKernelSet({phi::DataType::FLOAT32})},
@@ -1822,6 +1823,15 @@ XPUOpMap& get_kl3_ops() {
                      phi::DataType::INT16,
                      phi::DataType::INT64,
                      phi::DataType::INT32})},
+#ifdef PADDLE_WITH_XPU_FFT
+      {"conj", XPUKernelSet({phi::DataType::COMPLEX64})},
+      {"real", XPUKernelSet({phi::DataType::COMPLEX64})},
+      {"real_grad", XPUKernelSet({phi::DataType::COMPLEX64})},
+      {"imag", XPUKernelSet({phi::DataType::COMPLEX64})},
+      {"imag_grad", XPUKernelSet({phi::DataType::COMPLEX64})},
+      {"complex", XPUKernelSet({phi::DataType::FLOAT32})},
+      {"complex_grad", XPUKernelSet({phi::DataType::FLOAT32})},
+#endif
   };
 
   return s_xpu3_kernels;
