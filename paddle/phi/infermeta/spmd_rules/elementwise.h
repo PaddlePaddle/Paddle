@@ -28,7 +28,9 @@ SpmdInfo ElementwiseUnaryWithPartialInferSpmd(const DistMetaTensor& x);
 
 SpmdInfo ElementwiseUnaryInferSpmdReverse(const DistMetaTensor& x,
                                           const DistMetaTensor& out);
+
 SpmdInfo ElementwiseUnaryGradInferSpmd(const DistMetaTensor& out_grad);
+
 SpmdInfo ElementwiseUnaryGradInferSpmd(const DistMetaTensor& x,
                                        const DistMetaTensor& out_grad);
 
