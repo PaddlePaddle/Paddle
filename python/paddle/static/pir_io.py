@@ -872,7 +872,7 @@ def load_inference_model_pir(path_prefix, executor, **kwargs):
 
         # deserialize bytes to program
         program = paddle.static.Program()
-        paddle.base.core.deserialize_pir_program(model_filename, program, 1)
+        paddle.base.core.deserialize_pir_program(model_filename, program)
 
         params, opts = get_pir_parameters(program)
         vars = params + opts
@@ -926,7 +926,7 @@ def load_inference_model_pir(path_prefix, executor, **kwargs):
 
         # deserialize bytes to program
         program = paddle.static.Program()
-        paddle.base.core.deserialize_pir_program(model_path, program, 1)
+        paddle.base.core.deserialize_pir_program(model_path, program)
         # load parameters
         params, opts = get_pir_parameters(program)
         vars = params + opts

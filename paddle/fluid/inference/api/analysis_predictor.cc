@@ -1401,7 +1401,7 @@ bool AnalysisPredictor::PreparePirProgram() {
       common::errors::Fatal("Here, pir_program must be a nullptr!"));
 
   pir_program_ = std::make_shared<pir::Program>(pir::IrContext::Instance());
-  pir::ReadModule(config_.prog_file(), pir_program_.get(), 1 /*pir_version*/);
+  pir::ReadModule(config_.prog_file(), pir_program_.get());
   if (!SaveOrLoadPirParameters(false)) {
     return false;
   }
