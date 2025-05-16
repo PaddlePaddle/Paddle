@@ -86,6 +86,7 @@ jobs:
           work_dir: ${{ github.workspace }}
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
+          ldconfig
           cd /
           echo "Download and extract PaddleNLP.tar.gz"
           wget -q --no-proxy  https://paddle-qa.bj.bcebos.com/CodeSync/develop/PaddleNLP.tar --no-check-certificate
