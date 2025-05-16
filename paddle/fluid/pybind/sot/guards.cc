@@ -208,8 +208,8 @@ bool NumPyArrayShapeMatchGuard::check(PyObject* value) {
     return false;
   }
   int ndim = array.ndim();
-  const ssize_t* shape = array.shape();
-  return check_shape<const ssize_t*>(expected_, ndim, shape);
+  const Py_ssize_t* shape = array.shape();
+  return check_shape<const Py_ssize_t*>(expected_, ndim, shape);
 }
 
 bool WeakRefMatchGuard::check(PyObject* value) {
