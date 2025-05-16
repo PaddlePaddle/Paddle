@@ -2499,6 +2499,8 @@ TEST(Topk, Ctor) {
   // [0, -1, 1], [0, -1, 1], [-1, 1, -1]-> [0, -1, 1], [0, -1, 1], [0, -1,
   // 1], [0, -1, 1]
   x_dist_attr.set_dims_mapping({0, -1, 1});
+  x = phi::distributed::DistMetaTensor(common::make_ddim({16, 16, 16}),
+                                       x_dist_attr);
   auto out_grad_dist_attr = TensorDistAttr();
   out_grad_dist_attr.set_process_mesh(process_mesh);
   out_grad_dist_attr.set_dims_mapping({-1, 1, -1});
@@ -2547,6 +2549,8 @@ TEST(Cummax, Ctor) {
   // [0, -1, 1], [0, -1, 1], [-1, 1, -1]-> [0, -1, 1], [0, -1, 1], [0, -1,
   // 1], [0, -1, 1]
   x_dist_attr.set_dims_mapping({0, -1, 1});
+  x = phi::distributed::DistMetaTensor(common::make_ddim({16, 16, 16}),
+                                       x_dist_attr);
   auto out_grad_dist_attr = TensorDistAttr();
   out_grad_dist_attr.set_process_mesh(process_mesh);
   out_grad_dist_attr.set_dims_mapping({-1, 1, -1});
@@ -2595,6 +2599,8 @@ TEST(Cummin, Ctor) {
   // [0, -1, 1], [0, -1, 1], [-1, 1, -1]-> [0, -1, 1], [0, -1, 1], [0, -1,
   // 1], [0, -1, 1]
   x_dist_attr.set_dims_mapping({0, -1, 1});
+  x = phi::distributed::DistMetaTensor(common::make_ddim({16, 16, 16}),
+                                       x_dist_attr);
   auto out_grad_dist_attr = TensorDistAttr();
   out_grad_dist_attr.set_process_mesh(process_mesh);
   out_grad_dist_attr.set_dims_mapping({-1, 1, -1});

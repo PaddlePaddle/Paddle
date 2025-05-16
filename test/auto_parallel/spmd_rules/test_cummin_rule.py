@@ -51,7 +51,7 @@ class TestTopkSPMDRule(unittest.TestCase):
         self.x_dist_tensor_spec.set_dims_mapping([0, 1, -1])
         result_dist_attrs = self.rule.infer_forward(
             self.x_dist_tensor_spec,
-            self.attrs['k'],
+            self.attrs['axis'],
         )
 
         self.assertEqual(len(result_dist_attrs), 2)
