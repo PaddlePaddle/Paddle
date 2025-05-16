@@ -1,0 +1,138 @@
+name: Auto-Parallel
+
+on:
+  workflow_call:
+    inputs:
+      docker_build_image:
+        type: string
+        required: true
+      can-skip:
+        type: string
+        required: false
+
+env:
+  PR_ID: ${{ github.event.pull_request.number }}
+  COMMIT_ID: ${{ github.event.pull_request.head.sha }}
+  work_dir: /paddle
+  PADDLE_ROOT: /paddle
+  TASK: paddle-CI-${{ github.event.pull_request.number }}-Auto-Parallel
+  ci_scripts: /paddle/ci
+  BRANCH: ${{ github.event.pull_request.base.ref }}
+  CI_name: auto-parallel
+  no_proxy: "bcebos.com,apiin.im.baidu.com,gitee.com,aliyun.com,.baidu.com,.tuna.tsinghua.edu.cn"
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  check-bypass:
+    name: Check bypass for inference
+    uses: ./.github/workflows/check-bypass.yml
+    with:
+      workflow-name: 'auto-parallel'
+    secrets:
+      github-token: ${{ secrets.GITHUB_TOKEN }}
+
+  parallel-test:
+    name: Parallel-test
+    needs: check-bypass
+    if: ${{ inputs.can-skip != 'true'  && needs.check-bypass.outputs.can-skip != 'true' }}
+    runs-on:
+      group: Auto-Parallel
+    steps:
+      - name: Download Paddle
+        env:
+          work_dir: ${{ github.workspace }}
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
+          rm -rf * .[^.]*
+          echo "Downloading build.tar.gz"
+          wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/build/${PR_ID}/${COMMIT_ID}/build.tar.gz --no-check-certificate
+          echo "Extracting build.tar.gz"
+          tar --use-compress-program="pzstd -1" -xpf build.tar.gz --strip-components=1
+          rm build.tar.gz
+          '
+
+      - name: Check docker image and run container
+        env:
+          CACHE_DIR: /home/data/cfs/.cache
+          FLAGS_dynamic_static_unified_comm: "True"
+          paddle_whl: https://paddle-github-action.bj.bcebos.com/PR/build/${{ github.event.pull_request.number }}/${{ github.event.pull_request.head.sha }}/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl
+        run: |
+          container_name=${TASK}-${core_index}-$(date +%Y%m%d-%H%M%S)
+          echo "container_name=${container_name}" >> ${{ github.env }}
+          docker_image=${{ inputs.docker_build_image }}
+          docker run -d -t --gpus all --name ${container_name} --runtime=nvidia --shm-size=32G \
+            -v /dev/shm:/dev/shm
+            -v ${{ github.workspace }}/../../..:${{ github.workspace }}/../../.. \
+            -v ${{ github.workspace }}:/paddle \
+            -v /home/FleetX_CI:/gpt_data \
+            -v /home/Llm_gpt_CI:/llm_gpt_data \
+            -v /home/Llama_CI:/llama_data \
+            -v /home/.cache/pip:/home/.cache/pip \
+            -e BRANCH \
+            -e PR_ID \
+            -e COMMIT_ID \
+            -e work_dir \
+            -e PADDLE_ROOT \
+            -e ci_scripts \
+            -e no_proxy \
+            -e CI_name \
+            -e paddle_whl \
+            -w /paddle --network host ${docker_image}
+
+      - name: Download PaddleTest
+        env:
+          work_dir: ${{ github.workspace }}
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
+          cd /
+          echo "Download and extract PaddleNLP.tar.gz"
+          wget -q --no-proxy  https://paddle-qa.bj.bcebos.com/CodeSync/develop/PaddleNLP.tar --no-check-certificate
+          tar xf PaddleNLP.tar && rm -rf PaddleNLP.tar
+          # wget -q --no-proxy https://paddle-qa.bj.bcebos.com/paddlenlp/Bos.zip --no-check-certificate
+          # unzip -P "$(cat ${{ github.workspace }}/../../../bos_key)" Bos.zip
+          # mkdir paddlenlp && mv Bos/* ./paddlenlp/
+          source ${{ github.workspace }}/../../../proxy
+          cd PaddleNLP
+          git pull
+          git submodule update --init --recursive --force
+          ln -s $(which python3.10) /usr/bin/python
+          ln -s $(which pip3.10) /usr/local/bin/pip
+          '
+
+      - name: Test
+        env:
+          work_dir: ${{ github.workspace }}
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
+          timeout 80m bash ci/auto_parallel/ci_auto_parallel.sh ${paddle_whl}
+          '
+
+      - name: Upload and display logs
+        env:
+          home_path: ${{ github.workspace }}/..
+          bos_file: ${{ github.workspace }}/../bos/BosClient.py
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
+          export AK=paddle
+          export SK=paddle
+          if [ ! -f "${{ env.bos_file }}" ]; then
+            wget -q --no-proxy -O ${{ env.home_path }}/bos_new.tar.gz https://xly-devops.bj.bcebos.com/home/bos_new.tar.gz --no-check-certificate
+            mkdir ${{ env.home_path }}/bos
+            tar xf ${{ env.home_path }}/bos_new.tar.gz -C ${{ env.home_path }}/bos
+          fi
+          cd /case_logs
+          for FILE in /case_logs/*; do
+            file=$(basename "$FILE")
+            python ${{ env.bos_file }} file paddle-github-action/PR/Auto-Parallel/${PR_ID}/${COMMIT_ID}/logs
+            echo "$file: https://paddle-github-action.bj.bcebos.com/PR/Auto-Parallel/${PR_ID}/${COMMIT_ID}/logs/$file"
+          done
+          '
+
+      - name: Terminate and delete the container
+        if: always()
+        run: |
+          sudo rm -rf * .[^.]*
+          docker rm -f ${{ env.container_name }}
