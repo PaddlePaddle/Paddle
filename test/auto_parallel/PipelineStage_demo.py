@@ -186,7 +186,7 @@ class TestPipelineStage:
         """Test complete pipeline including forward, backward and model comparison"""
         fix_seeds()
         self.model = MyModel()
-        self.micro_batches = 1
+        self.micro_batches = 1  # The PipelineStage component is currently tested separately, so it is set to 1, and the micro_batches > 1 scenario will be overridden when the schedule component is tested in the future
         self.stage = manual_model_split(self.model, self.rank, self.group)
         self.stage.has_backward = True
         opt = paddle.optimizer.AdamW(
@@ -196,7 +196,7 @@ class TestPipelineStage:
         dataset = RandomDataset(image_size=8, num_samples=100)
 
         losses = []
-        num_iterations = 5
+        num_iterations = 20
 
         for iter_idx in range(num_iterations):
             data, label = dataset[iter_idx]
@@ -279,7 +279,7 @@ class TestPipelineStage:
         dataset = RandomDataset(image_size=8, num_samples=100)
 
         pp_losses = []
-        num_iterations = 5
+        num_iterations = 20
 
         for iter_idx in range(num_iterations):
             data, label = dataset[iter_idx]
@@ -311,7 +311,7 @@ class TestPipelineStage:
             dataset = RandomDataset(image_size=8, num_samples=100)
 
             losses = []
-            num_iterations = 5
+            num_iterations = 20
 
             for iter_idx in range(num_iterations):
                 data, label = dataset[iter_idx]
@@ -327,7 +327,7 @@ class TestPipelineStage:
             return losses
         return None
 
-    def test_simple_func_about_schedulers(self):
+    def test_simple_func_about_schedules(self):
         """Test local data transfer functions between stages on the same rank"""
         if self.rank == 0:
             # 1. Test set_local_fwd_input
@@ -403,7 +403,7 @@ class TestPipelineStage:
     def test_utils_some_simple_examples(self):
         """Test simple examples in utils"""
         if self.rank == 0:
-            # 1. Test exceptions in get_stage_mesh
+            # 1. Test exceptions in _get_stage_mesh
             try:
                 _get_stage_mesh(0, 2, style="v")
                 raise AssertionError("Should raise Error")
@@ -415,7 +415,7 @@ class TestPipelineStage:
             except ValueError as e:
                 pass
 
-            # 2. Test exceptions in validate_tensors_metadata
+            # 2. Test exceptions in _validate_tensors_metadata
             try:
                 # Length mismatch
                 expected = [paddle.to_tensor([1.0, 2.0])]
@@ -425,7 +425,7 @@ class TestPipelineStage:
             except PipeliningShapeError as e:
                 pass
 
-            # 3. Test exceptions in validate_tensor_metadata
+            # 3. Test exceptions in _validate_tensor_metadata
             try:
                 # Shape mismatch
                 expected = paddle.to_tensor([1.0, 2.0])
@@ -444,7 +444,7 @@ class TestPipelineStage:
             except PipeliningShapeError as e:
                 pass
 
-            # 4. Test detach_and_keep_grad
+            # 4. Test _detach_and_keep_grad
             a = paddle.to_tensor([2.0], stop_gradient=False)
             b = a * 2
             x = _detach_and_keep_grad(b)
@@ -461,7 +461,7 @@ class TestPipelineStage:
     def run_test(self):
         """Compare losses between three training methods"""
         self.setUpClass()
-        self.test_simple_func_about_schedulers()
+        self.test_simple_func_about_schedules()
         self.test_backward_some_simple_examples()
         self.test_utils_some_simple_examples()
         # Run three training methods
