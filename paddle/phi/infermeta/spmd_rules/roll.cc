@@ -49,13 +49,12 @@ SpmdInfo RollInferSpmd(const DistMetaTensor& x,
                                         axis.size(),
                                         shifts.size()));
     for (const auto& i : axis) {
-      int axis_i = i < 0 ? x_ndim + i : i;
+      int64_t axis_i = i < 0 ? x_ndim + i : i;
       PADDLE_ENFORCE_EQ(
           0 <= axis_i && axis_i < x_ndim,
           true,
-          phi::errors::InvalidArgument("The axis of roll with index %d should "
+          phi::errors::InvalidArgument("The axis of roll should "
                                        "be in range [0, %d), but got %d.",
-                                       i + 1,
                                        x_ndim,
                                        axis_i));
       x_dims_mapping_dst[axis_i] = -1;
@@ -115,14 +114,13 @@ SpmdInfo RollGradInferSpmd(const DistMetaTensor& x,
                                         axis.size(),
                                         shifts.size()));
     for (const auto& i : axis) {
-      int axis_i = i < 0 ? x_ndim + i : i;
+      int64_t axis_i = i < 0 ? x_ndim + i : i;
       PADDLE_ENFORCE_EQ(
           0 <= axis_i && axis_i < x_ndim,
           true,
-          phi::errors::InvalidArgument("The axis of roll with index %d should "
+          phi::errors::InvalidArgument("The axis of roll should "
                                        "be in range [0, %d), but got %d.",
                                        x_ndim,
-                                       i + 1,
                                        axis_i));
       x_axes[axis_i] = '1';
       out_grad_axes[axis_i] = '1';

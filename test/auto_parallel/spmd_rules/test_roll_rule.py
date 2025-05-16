@@ -37,7 +37,7 @@ class TestRollSPMDRule(unittest.TestCase):
         out_grad_tensor_dist_attr.dims_mapping = [-1, -1, -1]
         out_grad_tensor_dist_attr.process_mesh = process_mesh
         self.out_grad_dist_tensor_spec = DistTensorSpec(
-            out_shape, x_tensor_dist_attr
+            out_shape, out_grad_tensor_dist_attr
         )
 
         self.rule = core.get_phi_spmd_rule("roll")
@@ -45,31 +45,34 @@ class TestRollSPMDRule(unittest.TestCase):
         self.attrs['shifts'] = [1]
         self.attrs['axis'] = []
 
-    def test_topk_forward(self):
-        # axis = [], shifts = [1]
-        # [0, 1, -1] --> [-1, -1, -1], [-1, -1, -1]
-        self.attrs['axis'] = []
-        self.attrs['shifts'] = [1]
-        self.x_dist_tensor_spec.set_dims_mapping([0, 1, -1])
-        result_dist_attrs = self.rule.infer_forward(
-            self.x_dist_tensor_spec,
-            self.attrs['shifts'],
-            self.attrs['axis'],
-        )
+    def test_roll_forward(self):
+        # TODO(ooooo): Temporarily don't test it in python.It's tested in spmd_rule_test.
+        # Maybe use the default parameters to avoid pass empty list to cpp
 
-        self.assertEqual(len(result_dist_attrs), 2)
-        inferred_input_dist_attrs = result_dist_attrs[0]
-        inferred_output_dist_attrs = result_dist_attrs[1]
+        # # axis = [], shifts = [1]
+        # # [0, 1, -1] --> [-1, -1, -1], [-1, -1, -1]
+        # self.attrs['axis'] = []
+        # self.attrs['shifts'] = [1]
+        # self.x_dist_tensor_spec.set_dims_mapping([0, 1, -1])
+        # result_dist_attrs = self.rule.infer_forward(
+        #     self.x_dist_tensor_spec,
+        #     self.attrs['shifts'],
+        #     self.attrs['axis'],
+        # )
 
-        self.assertEqual(len(inferred_input_dist_attrs), 1)
-        self.assertEqual(len(inferred_output_dist_attrs), 1)
+        # self.assertEqual(len(result_dist_attrs), 2)
+        # inferred_input_dist_attrs = result_dist_attrs[0]
+        # inferred_output_dist_attrs = result_dist_attrs[1]
 
-        self.assertEqual(
-            inferred_input_dist_attrs[0].dims_mapping, [-1, -1, -1]
-        )
-        self.assertEqual(
-            inferred_output_dist_attrs[0].dims_mapping, [-1, -1, -1]
-        )
+        # self.assertEqual(len(inferred_input_dist_attrs), 1)
+        # self.assertEqual(len(inferred_output_dist_attrs), 1)
+
+        # self.assertEqual(
+        #     inferred_input_dist_attrs[0].dims_mapping, [-1, -1, -1]
+        # )
+        # self.assertEqual(
+        #     inferred_output_dist_attrs[0].dims_mapping, [-1, -1, -1]
+        # )
 
         # axis = [0, 2], shifts = [1, 2]
         # [0, 1, -1] --> [-1, 1, -1], [-1, 1, -1]
@@ -94,41 +97,44 @@ class TestRollSPMDRule(unittest.TestCase):
             inferred_output_dist_attrs[0].dims_mapping, [-1, 1, -1]
         )
 
-    def test_topk_backward(self):
-        # axis = [], shifts = [1]
-        # [-1, -1, -1], [0, 1, -1] --> [-1, -1, -1], [-1, -1, -1], [-1, -1, -1]
-        self.attrs['axis'] = []
-        self.attrs['shifts'] = [1]
-        self.x_dist_tensor_spec.set_dims_mapping([0, 1, -1])
-        self.out_grad_dist_tensor_spec.set_dims_mapping([-1, -1, -1])
-        result_dist_attrs = self.rule.infer_backward(
-            self.x_dist_tensor_spec,
-            self.out_grad_dist_tensor_spec,
-            self.attrs['shifts'],
-            self.attrs['axis'],
-        )
+    def test_roll_backward(self):
+        # TODO(ooooo): Temporarily don't test it in python.It's tested in spmd_rule_test.
+        # Maybe use the default parameters to avoid pass empty list to cpp
 
-        self.assertEqual(len(result_dist_attrs), 2)
-        inferred_input_dist_attrs = result_dist_attrs[0]
-        inferred_output_dist_attrs = result_dist_attrs[1]
-        self.assertEqual(len(inferred_input_dist_attrs), 2)
-        self.assertEqual(len(inferred_output_dist_attrs), 1)
-        self.assertEqual(
-            inferred_input_dist_attrs[0].dims_mapping, [-1, -1, -1]
-        )
-        self.assertEqual(
-            inferred_input_dist_attrs[1].dims_mapping, [-1, -1, -1]
-        )
-        self.assertEqual(
-            inferred_output_dist_attrs[0].dims_mapping, [-1, -1, -1]
-        )
+        # # axis = [], shifts = [1]
+        # # [-1, -1, -1], [0, 1, -1] --> [-1, -1, -1], [-1, -1, -1], [-1, -1, -1]
+        # self.attrs['axis'] = []
+        # self.attrs['shifts'] = [1]
+        # self.x_dist_tensor_spec.set_dims_mapping([-1, -1, -1])
+        # self.out_grad_dist_tensor_spec.set_dims_mapping([0, 1, -1])
+        # result_dist_attrs = self.rule.infer_backward(
+        #     self.x_dist_tensor_spec,
+        #     self.out_grad_dist_tensor_spec,
+        #     self.attrs['shifts'],
+        #     self.attrs['axis'],
+        # )
+
+        # self.assertEqual(len(result_dist_attrs), 2)
+        # inferred_input_dist_attrs = result_dist_attrs[0]
+        # inferred_output_dist_attrs = result_dist_attrs[1]
+        # self.assertEqual(len(inferred_input_dist_attrs), 2)
+        # self.assertEqual(len(inferred_output_dist_attrs), 1)
+        # self.assertEqual(
+        #     inferred_input_dist_attrs[0].dims_mapping, [-1, -1, -1]
+        # )
+        # self.assertEqual(
+        #     inferred_input_dist_attrs[1].dims_mapping, [-1, -1, -1]
+        # )
+        # self.assertEqual(
+        #     inferred_output_dist_attrs[0].dims_mapping, [-1, -1, -1]
+        # )
 
         # axis = [0, 2], shifts = [1, 2]
         # [-1, -1, -1], [0, 1, -1] --> [-1, 1, -1], [-1, 1, -1], [-1, 1, -1]
         self.attrs['axis'] = [0, 2]
         self.attrs['shifts'] = [1, 2]
-        self.x_dist_tensor_spec.set_dims_mapping([0, 1, -1])
-        self.out_grad_dist_tensor_spec.set_dims_mapping([-1, -1, -1])
+        self.x_dist_tensor_spec.set_dims_mapping([-1, -1, -1])
+        self.out_grad_dist_tensor_spec.set_dims_mapping([0, 1, -1])
         result_dist_attrs = self.rule.infer_backward(
             self.x_dist_tensor_spec,
             self.out_grad_dist_tensor_spec,
