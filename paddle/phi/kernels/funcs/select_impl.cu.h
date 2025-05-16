@@ -92,12 +92,13 @@ __global__ void GetBlockCountKernel(const InT *in,
                                     OutT *out,
                                     int64_t numel,
                                     int64_t main_offset) {
-  int64_t data_offset = BLOCK_ID_X * BLOCK_NUM_X * VecSize;
-  int64_t stride = BLOCK_NUM_X * GRID_NUM_X * VecSize;
+  int64_t size = static_cast<int64_t>(BLOCK_NUM_X) * VecSize;
+  int64_t data_offset = size * BLOCK_ID_X;
+  int64_t stride = size * GRID_NUM_X;
   int64_t repeat = 0;
   for (; data_offset < main_offset; data_offset += stride) {
     GetBlockCountImpl<InT, OutT, VecSize, false>(
-        in + data_offset, out, BLOCK_NUM_X * VecSize, repeat);
+        in + data_offset, out, size, repeat);
     repeat++;  // to get the real blockIdx
   }
 
@@ -155,12 +156,12 @@ __global__ void CumsumOneBlock(const InT *in,
                                int64_t numel,
                                int64_t main_offset,
                                Functor func) {
-  int64_t stride = BLOCK_NUM_X * VecSize;
+  int64_t stride = static_cast<int64_t>(BLOCK_NUM_X) * VecSize;
   int64_t offset = 0;
   OutT pre_cumsum = static_cast<OutT>(0);
   for (; offset < main_offset; offset += stride) {
     CumsumImpl<InT, OutT, Functor, VecSize, false>(
-        in + offset, out + offset, &pre_cumsum, BLOCK_NUM_X * VecSize, func);
+        in + offset, out + offset, &pre_cumsum, stride, func);
   }
 
   int64_t num = numel - offset;
@@ -265,7 +266,7 @@ __device__ void SelectKernelImpl(OutT *out,
                                  Functor func,
                                  int64_t num,
                                  int64_t data_offset,
-                                 int store_rank) {
+                                 int64_t store_rank) {
   const int kCVecSize = 2;
   // each thread cumsum 2 data
   using IdT = int64_t;
@@ -297,10 +298,9 @@ __device__ void SelectKernelImpl(OutT *out,
   // thread_fix
   kps::Cumsum<IdT, IdT, Add>(&cumsum_thread[0], &num_thread[0], Add());
   // get thread_fix
-  IdT thread_fix =
-      (static_cast<int>(cumsum_thread[0] - num_thread[0]) * store_rank);
+  IdT thread_fix = (cumsum_thread[0] - num_thread[0]) * store_rank;
   // get how many data need to store
-  IdT store_num = static_cast<int>(num_thread[0]) * store_rank;
+  IdT store_num = num_thread[0] * store_rank;
   // thread store num data, each thread may has different num
   // Get store data(index) according to mask_idt
   SelectCaller<OutT, MT, InT, Functor, VecSize, IsBoundary, MaskData> select;
@@ -321,11 +321,11 @@ __global__ void SelectKernel(OutT *out,
                              Functor func,
                              const int64_t numel,
                              int64_t main_offset,
-                             int store_rank) {
-  int64_t data_offset = BLOCK_ID_X * BLOCK_NUM_X * VecSize;
-  int64_t stride = BLOCK_NUM_X * GRID_NUM_X * VecSize;
+                             int64_t store_rank) {
+  int64_t size = static_cast<int64_t>(BLOCK_ID_X) * VecSize;
+  int64_t data_offset = size * BLOCK_NUM_X;
+  int64_t stride = static_cast<int64_t>(BLOCK_NUM_X) * GRID_NUM_X * VecSize;
   int64_t repeat = 0;
-  int64_t size = VecSize * BLOCK_ID_X;
   CT block_store_offset = 0;
   for (; data_offset < main_offset; data_offset += stride) {
     // Cumsum index
