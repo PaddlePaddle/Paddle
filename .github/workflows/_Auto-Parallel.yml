@@ -45,14 +45,12 @@ jobs:
         env:
           work_dir: ${{ github.workspace }}
         run: |
-          docker exec -t ${{ env.container_name }} /bin/bash -c '
           rm -rf * .[^.]*
           echo "Downloading build.tar.gz"
           wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/build/72744/883d7f88970d67dd8d7b57d881ccfe421ba254ec/build.tar.gz --no-check-certificate
           echo "Extracting build.tar.gz"
           tar --use-compress-program="pzstd -1" -xpf build.tar.gz --strip-components=1
           rm build.tar.gz
-          '
 
       - name: Check docker image and run container
         env:
