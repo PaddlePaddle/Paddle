@@ -32,6 +32,7 @@ on:
 
 jobs:
   build-docker-images:
+    if: github.repository_owner == 'PaddlePaddle'
     name: Build docker
     runs-on:
       group: Docker-build
