@@ -121,6 +121,45 @@ class XPUTestElementwiseAddOp(XPUOpTestWrapper):
             self.y = np.random.uniform(-1, 1, []).astype(self.dtype)
             self.out = self.x + self.y
 
+    class TestElementwiseAddOp_Complex1(TestElementwiseAddOp):
+        def init_input_output(self):
+            self.x = (
+                np.random.rand(2, 3, 4) + 1j * np.random.rand(2, 3, 4)
+            ).astype(self.dtype)
+            self.y = (
+                np.random.rand(2, 3, 4) + 1j * np.random.rand(2, 3, 4)
+            ).astype(self.dtype)
+            self.out = self.x + self.y
+
+        def init_dtype(self):
+            self.dtype = np.complex64
+
+    class TestElementwiseAddOp_Complex2(TestElementwiseAddOp):
+        def init_input_output(self):
+            self.x = (
+                np.random.rand(2, 3, 4) + 1j * np.random.rand(2, 3, 4)
+            ).astype(self.dtype)
+            self.y = (np.random.rand(1, 1) + 1j * np.random.rand(1, 1)).astype(
+                self.dtype
+            )
+            self.out = self.x + self.y
+
+        def init_dtype(self):
+            self.dtype = np.complex64
+
+    class TestElementwiseAddOp_Complex3(TestElementwiseAddOp):
+        def init_input_output(self):
+            self.x = (
+                np.random.rand(100, 2, 3) + 1j * np.random.rand(100, 2, 3)
+            ).astype(self.dtype)
+            self.y = (np.random.rand(1, 1) + 1j * np.random.rand(1, 1)).astype(
+                self.dtype
+            )
+            self.out = self.x + self.y
+
+        def init_dtype(self):
+            self.dtype = np.complex64
+
     @skip_check_grad_ci(
         reason="[skip shape check] Use y_shape(1) to test broadcast."
     )

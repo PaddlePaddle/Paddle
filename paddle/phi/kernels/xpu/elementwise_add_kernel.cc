@@ -24,6 +24,7 @@
 #include "paddle/phi/backends/xpu/xpu_info.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cast_kernel.h"
+#include "paddle/phi/kernels/complex_kernel.h"
 #include "paddle/phi/kernels/impl/elementwise_kernel_impl.h"
 #include "paddle/phi/kernels/xpu/elementwise.h"
 
@@ -111,14 +112,95 @@ void GradAddXPUKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast_add");
 }
 
+#ifdef PADDLE_WITH_XPU_FFT
+template <>
+void AddKernel<phi::dtype::complex<float>, XPUContext>(
+    const XPUContext& dev_ctx,
+    const DenseTensor& x,
+    const DenseTensor& y,
+    DenseTensor* out) {
+  using T = phi::dtype::complex<float>;
+
+  auto f = [](xpu::Context* ctx,
+              const float* x,
+              const float* y,
+              float* z,
+              const std::vector<int64_t>& xshape,
+              const std::vector<int64_t>& yshape) {
+    return xpu::broadcast_add<float>(ctx, x, y, z, xshape, yshape);
+  };
+  // The current complex number implementation uses separate real/imaginary
+  // parts,resulting in redundant operations and performance
+  // penalties.Optimization should address this in future iterations.
+  const DenseTensor x_real = Real<T, XPUContext>(dev_ctx, x);
+  const DenseTensor x_imag = Imag<T, XPUContext>(dev_ctx, x);
+  const DenseTensor y_real = Real<T, XPUContext>(dev_ctx, y);
+  const DenseTensor y_imag = Imag<T, XPUContext>(dev_ctx, y);
+  DenseTensor real_out, imag_out;
+  real_out.Resize(out->dims());
+  imag_out.Resize(out->dims());
+  dev_ctx.template Alloc<float>(&real_out);
+  dev_ctx.template Alloc<float>(&imag_out);
+
+  XPUElementwise<float, float>(dev_ctx, x_real, y_real, -1, &real_out, f);
+  XPUElementwise<float, float>(dev_ctx, x_imag, y_imag, -1, &imag_out, f);
+  phi::ComplexKernel<float>(dev_ctx, real_out, imag_out, out);
+}
+
+template <>
+void GradAddXPUKernel<phi::dtype::complex<float>, XPUContext>(
+    const XPUContext& dev_ctx,
+    const DenseTensor& x,
+    const DenseTensor& y,
+    DenseTensor* out) {
+  using T = phi::dtype::complex<float>;
+  dev_ctx.template Alloc<T>(out);
+  auto x_shape = common::vectorize<int64_t>(x.dims());
+  auto y_shape = common::vectorize<int64_t>(y.dims());
+
+  // The current complex number implementation uses separate real/imaginary
+  // parts,resulting in redundant operations and performance
+  // penalties.Optimization should address this in future iterations.
+  const DenseTensor x_real = Real<T, XPUContext>(dev_ctx, x);
+  const DenseTensor x_imag = Imag<T, XPUContext>(dev_ctx, x);
+  const DenseTensor y_real = Real<T, XPUContext>(dev_ctx, y);
+  const DenseTensor y_imag = Imag<T, XPUContext>(dev_ctx, y);
+  DenseTensor real_out, imag_out;
+  real_out.Resize(out->dims());
+  imag_out.Resize(out->dims());
+  dev_ctx.template Alloc<float>(&real_out);
+  dev_ctx.template Alloc<float>(&imag_out);
+
+  int r = xpu::broadcast_add(dev_ctx.x_context(),
+                             x_real.data<float>(),
+                             y_real.data<float>(),
+                             real_out.data<float>(),
+                             x_shape,
+                             y_shape);
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast_add");
+  r = xpu::broadcast_add(dev_ctx.x_context(),
+                         x_imag.data<float>(),
+                         y_imag.data<float>(),
+                         imag_out.data<float>(),
+                         x_shape,
+                         y_shape);
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast_add");
+  phi::ComplexKernel<float>(dev_ctx, real_out, imag_out, out);
+}
+#endif
+
 }  // namespace phi
 
 PD_REGISTER_KERNEL(grad_add,
                    XPU,
                    ALL_LAYOUT,
                    phi::GradAddXPUKernel,
+#ifdef PADDLE_WITH_XPU_FFT
+                   phi::dtype::complex<float>,
+#endif
                    phi::dtype::float16,
-                   float) {}
+                   float) {
+}
 
 PD_REGISTER_KERNEL(add,
                    XPU,
@@ -127,6 +209,10 @@ PD_REGISTER_KERNEL(add,
                    double,
                    phi::dtype::float16,
                    phi::dtype::bfloat16,
+#ifdef PADDLE_WITH_XPU_FFT
+                   phi::dtype::complex<float>,
+#endif
                    float,
                    int,
-                   int64_t) {}
+                   int64_t) {
+}
