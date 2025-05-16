@@ -15,10 +15,10 @@ env:
   COMMIT_ID: ${{ github.event.pull_request.head.sha }}
   work_dir: /paddle
   PADDLE_ROOT: /paddle
-  TASK: paddle-CI-${{ github.event.pull_request.number }}-api-benchmark-gpu
+  TASK: paddle-CI-${{ github.event.pull_request.number }}-slice
   ci_scripts: /paddle/ci
   BRANCH: ${{ github.event.pull_request.base.ref }}
-  CI_name: api-benchmark-gpu
+  CI_name: slice
   no_proxy: "bcebos.com,apiin.im.baidu.com,gitee.com,aliyun.com,.baidu.com,.tuna.tsinghua.edu.cn"
 
 defaults:
@@ -30,7 +30,7 @@ jobs:
     name: Check bypass for Api-Benchmark
     uses: ./.github/workflows/check-bypass.yml
     with:
-      workflow-name: 'api-bm-gpu'
+      workflow-name: 'slice'
     secrets:
       github-token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -43,7 +43,7 @@ jobs:
     steps:
       - name: Download test script
         run: |
-          sudo rm -rf * .[^.]*
+          sudo  rm -rf * .[^.]*
           source ${{ github.workspace }}/../../../proxy
           wget https://raw.githubusercontent.com/PaddlePaddle/Paddle/refs/heads/develop/ci/slice/test_slice_float32.py
 
