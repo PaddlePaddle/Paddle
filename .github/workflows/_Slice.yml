@@ -41,10 +41,11 @@ jobs:
     runs-on:
       group: v100-test
     steps:
-      - name: Prepare workspace
+      - name: Download test script
         run: |
           sudo rm -rf * .[^.]*
-          cp /home/data/cfs/test_set_item.py .
+          source ${{ github.workspace }}/../../../proxy
+          wget https://raw.githubusercontent.com/PaddlePaddle/Paddle/refs/heads/develop/ci/slice/test_slice_float32.py
 
       - name: Check docker image and run container
         env:
@@ -85,7 +86,7 @@ jobs:
           python3.10 -m pip install torch==2.6.0 torchvision==0.21.0 torchaudio==2.6.0 --index-url https://download.pytorch.org/whl/cu118
           # export LD_LIBRARY_PATH=/usr/local/cuda-11.8/compat:/usr/local/cuda/compat:/usr/local/cuda/lib:/usr/local/cuda/lib64:/usr/local/nvidia/lib:/usr/local/nvidia/lib64:/usr/lib/x86_64-linux-gnu:${LD_LIBRARY_PATH}
           python3.10 -m pip install $wheel_link
-          python3.10 test_set_item.py
+          python3.10 test_slice_float32.py
           '
 
     # - name: Terminate and delete the container
