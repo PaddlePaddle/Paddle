@@ -83,7 +83,7 @@ class TestMatmulEpilogue(unittest.TestCase):
     def test_subgraph(self):
         foo = self.getSubGraph()
         fused_foo = pcc.compile(
-            foo, ap_path=f"{os.path.dirname(paddle.__file__)}/apy/matmul_pass"
+            foo, ap_path=f"{os.path.dirname(paddle.__file__)}/apy"
         )
         generated_pir_program = GetPirProgram(
             fused_foo, [self.x, self.y, self.b]
