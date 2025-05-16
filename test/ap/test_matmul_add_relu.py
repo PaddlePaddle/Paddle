@@ -1,0 +1,74 @@
+# Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import os
+import unittest
+
+import numpy as np
+
+import paddle
+import paddle.incubate.cc as pcc
+import paddle.incubate.cc.typing as pct
+
+os.environ["AP_WORKSPACE_DIR"] = "/tmp/paddle/ap"
+
+
+class TestMatmulEpilogue(unittest.TestCase):
+    def setUp(self):
+        dtype = 'float16'
+        x_shape = [64, 32, 32]
+        self.x = paddle.randn(x_shape, dtype=dtype)
+        self.x.stop_gradient = False
+
+        y_shape = [32, 32]
+        self.y = paddle.randn(y_shape, dtype=dtype)
+        self.y.stop_gradient = False
+
+        b_shape = [64, 32, 32]
+        self.b = paddle.randn(b_shape, dtype=dtype)
+        self.b.stop_gradient = False
+
+    def getSubGraph(self):
+        B = pct.DimVar(64)
+        M = pct.DimVar(32)
+        K = pct.DimVar(32)
+        N = pct.DimVar(32)
+        DType = pct.DTypeVar("T", "float16")
+
+        def foo(
+            x: pct.Tensor([B, M, K], DType),
+            w: pct.Tensor([K, N], DType),
+            b: pct.Tensor([B, M, N], DType),
+        ):
+
+            y = paddle.matmul(x, w)
+            tmp = paddle.nn.functional.relu(y)
+            tmp2 = tmp + b
+            return tmp2
+
+        return foo
+
+    def test_subgraph(self):
+        foo = self.getSubGraph()
+        fused_foo = pcc.compile(
+            foo, ap_path=f"{os.path.dirname(paddle.__file__)}/apy/matmul_pass"
+        )
+        ap_outs = fused_foo(self.x, self.y, self.b)
+        dy_outs = foo(self.x, self.y, self.b)
+        for dy_out, ap_out in zip(dy_outs, ap_outs):
+            np.testing.assert_allclose(dy_out, ap_out, atol=1e-1)
+
+
+if __name__ == "__main__":
+    unittest.main()

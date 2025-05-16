@@ -22,6 +22,7 @@ from dataclasses import dataclass
 from typing import Callable
 
 import paddle
+from paddle.incubate.cc.tools import apy_to_axpr_json
 from paddle.static import InputSpec
 
 from . import typing as pct
@@ -71,6 +72,9 @@ def _compile(
     target_framework='paddle',
     compile_engine='PCC',
 ):
+    assert ap_path is not None
+    if ap_path != "":
+        apy_to_axpr_json.PyToAxpr(ap_path)(ap_path)
     assert not train, "only support inference now"
     os.makedirs(ap_workspace_dir, exist_ok=True)
     build_strategy = paddle.static.BuildStrategy()
