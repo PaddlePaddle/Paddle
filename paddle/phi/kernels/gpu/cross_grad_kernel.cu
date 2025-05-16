@@ -168,6 +168,9 @@ void CrossGradKernel(const Context& dev_ctx,
   const auto* input_out_grad_data = input_out_grad.data<T>();
   auto* output_x_grad_data = dev_ctx.template Alloc<T>(x_grad);
   auto* output_y_grad_data = dev_ctx.template Alloc<T>(y_grad);
+  if (numel == 0) {
+    return;
+  }
   auto index_calculator = phi::funcs::IndexCalculator<int>(
       merged_dims.size() - 1, cal_dims, left_strides, full_strides);
 
