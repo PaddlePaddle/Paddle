@@ -32,6 +32,7 @@
 #include "paddle/ap/include/paddle/pass/convert_pd_facade_to_ap_facade.h"
 #include "paddle/ap/include/paddle/pass/fallback_fusion_op_to_phi_pass.h"
 #include "paddle/ap/include/paddle/pass/fuse_ap_trivial_pass.h"
+#include "paddle/ap/include/paddle/pass/put_ap_trivial_ops_in_range_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/fuse_shape_ops_into_generate_shape_op_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/move_generate_shape_ops_to_prologue_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/remove_redundant_full_int_array_pass.h"
@@ -51,19 +52,6 @@ void ApplyShapeOptimizationPass(
       ::paddle::dialect::GetAllOpOriginalAttributes());
 
   pass_manager->AddPass(pir::CreateShapeOptimizationPass());
-  pass_manager->Run(program);
-}
-
-void ApplyGenerateShapePass(
-    ::pir::Program* program,
-    const std::function<std::shared_ptr<pir::PassManager>()>&
-        CreatePassManager) {
-  std::shared_ptr<pir::PassManager> pass_manager = CreatePassManager();
-  pass_manager->AddPass(
-      cinn::dialect::ir::CreateFuseShapeOpsIntoGenerateShapeOpPass());
-  pass_manager->AddPass(
-      cinn::dialect::ir::CreateMoveGenerateShapeOpsToProloguePass());
-  pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
   pass_manager->Run(program);
 }
 
@@ -107,7 +95,8 @@ void ApplyFuseApTrivialPass(
   }
   {
     std::shared_ptr<pir::PassManager> pass_manager = CreatePassManager();
-    pass_manager->AddPass(CreateFallbackNestedFusionOpToPhiPass());
+    pass_manager->AddPass(CreatePutApTrivialOpsInRangePass());
+    pass_manager->AddPass(CreateFuseApTrivialPass());
     pass_manager->Run(program);
   }
 }
@@ -119,14 +108,6 @@ void ApplyFallbackToPhiPass(
   {
     std::shared_ptr<pir::PassManager> pass_manager = CreatePassManager();
     pass_manager->AddPass(CreateFallbackFusionOpToPhiPass());
-    pass_manager->Run(program);
-  }
-  {
-    std::shared_ptr<pir::PassManager> pass_manager = CreatePassManager();
-    pass_manager->AddPass(
-        cinn::dialect::ir::CreateSplitGenerateShapeIntoShapeOpsPass());
-    pass_manager->AddPass(
-        cinn::dialect::ir::CreateRemoveRedundantFullIntArrayPass());
     pass_manager->Run(program);
   }
 }
@@ -164,8 +145,6 @@ void ApplyPccPass(
   Logger("ApplyApFacadePass");
   ApplyFuseApTrivialPass(program, CreatePassManager);
   Logger("ApplyFuseApTrivialPass");
-  ApplyGenerateShapePass(program, CreatePassManager);
-  Logger("ApplyGenerateShapePass");
   ApplyApGenericDrrPass(program, CreatePassManager);
   Logger("ApplyApGenericDrrPass");
   ApplyFallbackToPhiPass(program, CreatePassManager);

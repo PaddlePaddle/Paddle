@@ -199,6 +199,16 @@ jobs:
           REPO: ${{ github.event.repository.name }}
           JOB_NAME: 'Static-Check / Test'
 
+      - name: Rerun CE-CINN-Framework
+        if: ${{ contains(env.comment_body, 'ce-cinn') }}
+        uses: ./.github/actions/rerun-workflow
+        with:
+          PR_ID: ${{ github.event.issue.number }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.event.repository.name }}
+          JOB_NAME: 'CE-CINN-Framework / CINN'
+
       - name: Rerun Api-Benchmark
         if: ${{ contains(env.comment_body, 'api-bm') }}
         uses: ./.github/actions/rerun-workflow

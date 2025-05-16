@@ -14,10 +14,10 @@ env:
   COMMIT_ID: ${{ github.sha }}
   work_dir: /paddle
   PADDLE_ROOT: /paddle
-  TASK: paddle-CI-bbild-develop
+  TASK: paddle-CI-build-develop-${{ github.sha }}
   ci_scripts: /paddle/ci
   BRANCH: ${{ github.base.ref }}
-  CI_name: build-develop
+  CI_name: build
   no_proxy: "bcebos.com,apiin.im.baidu.com,gitee.com,aliyun.com,.baidu.com,.tuna.tsinghua.edu.cn"
 
 jobs:

@@ -56,6 +56,7 @@ jobs:
           dockerfile_origin: https://raw.githubusercontent.com/PaddlePaddle/Paddle/refs/heads/develop/tools/dockerfile/Dockerfile.ubuntu20
         run: |
           set -x
+          rm -rf * .[^.]*
           if [ "${{ inputs.is_merge }}" == "true" ]; then
             mkdir -p tools/dockerfile && cd tools/dockerfile
             wget -q --no-proxy ${dockerfile_script} ${dockerfile_origin} --no-check-certificate
