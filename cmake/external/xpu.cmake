@@ -96,9 +96,15 @@ if(WITH_XPU_FFT)
 endif()
 
 if(WITH_AARCH64)
-  set(XPU_XRE_DIR_NAME "xre-kylin_aarch64")
-  set(XPU_XCCL_DIR_NAME "") # TODO: xccl has no kylin output now.
-  set(XPU_XFT_DIR_NAME "") # TODO: xft has no kylin output at now.
+  if(WITH_XPU_XRE5)
+    set(XPU_XRE_DIR_NAME "xre-kylin_v10_server-aarch64-${XPU_XRE_BASE_VERSION}")
+    set(XPU_XCCL_DIR_NAME "xccl_Linux_aarch64")
+    set(XPU_XFT_DIR_NAME "") # TODO: xft has no kylin output at now.
+  else()
+    set(XPU_XRE_DIR_NAME "")
+    set(XPU_XCCL_DIR_NAME "") # TODO: xccl has no kylin output now.
+    set(XPU_XFT_DIR_NAME "") # TODO: xft has no kylin output at now.
+  endif()
 elseif(WITH_SUNWAY)
   set(XPU_XRE_DIR_NAME "xre-deepin_sw6_64")
   set(XPU_XCCL_DIR_NAME "") # TODO: xccl has no deepin output at now.
