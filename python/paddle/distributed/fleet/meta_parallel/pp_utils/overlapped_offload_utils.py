@@ -178,7 +178,6 @@ class RROOTensorWrapper:
                 self.split_id - remainder
             )
 
-        paddle.framework.core.nvprof_nvtx_push("rroo offload")
         task = async_offload_with_offset(
             src_tensor=self.cuda_data.flatten(),
             dst_tensor=self.cpu_buffer.data,
@@ -187,7 +186,6 @@ class RROOTensorWrapper:
             offload_size=current_size,
             async_loader=self.loader,
         )
-        paddle.framework.core.nvprof_nvtx_pop()
         self.split_id += 1
         if self.split_id == self.split_factor:
             self.offload_completed = True
@@ -453,7 +451,7 @@ class RROOQueueManager:
         offload_chunk_ids = list(
             range(tgt_chunk_id, tgt_chunk_id + split_factor)
         )
-        reload_chunk_ids = [tgt_chunk_id + 1]
+        reload_chunk_ids = [self.cur_chunk_id + 1]
 
         for o_id in offload_chunk_ids:
             if o_id >= self.chunk_num:
@@ -483,7 +481,7 @@ class RROOQueueManager:
         offload_chunk_ids = list(
             range(tgt_chunk_id, tgt_chunk_id + split_factor)
         )
-        reload_chunk_ids = [tgt_chunk_id]
+        reload_chunk_ids = [self.cur_chunk_id]
 
         for o_id in offload_chunk_ids:
             if o_id >= self.chunk_num:
