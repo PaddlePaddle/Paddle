@@ -295,6 +295,8 @@ class TestEighAPIZeroSize(unittest.TestCase):
             if paddle.is_compiled_with_cuda()
             else paddle.CPUPlace()
         )
+        self.rtol = 1e-5  # for test_eigh_grad
+        self.atol = 1e-5  # for test_eigh_grad
         np.random.seed(123)
 
     def init_input_shape(self):
@@ -345,10 +347,32 @@ class TestEighAPIZeroSize(unittest.TestCase):
                 self.real_data, actual_w.numpy(), actual_v.numpy()
             )
 
+    def test_eigh_grad(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.real_data, stop_gradient=False)
+        w, v = paddle.linalg.eigh(x)
+        self.trans_dims = [
+            *range(len(self.x_shape) - 2),
+            len(self.x_shape) - 1,
+            len(self.x_shape) - 2,
+        ]
+        (w.sum() + paddle.abs(v).sum()).backward()
+        np.testing.assert_allclose(
+            abs(x.grad.numpy()),
+            abs(x.grad.numpy().conj().transpose(self.trans_dims)),
+            rtol=self.rtol,
+            atol=self.atol,
+        )
+
 
 class TestEighBatchAPIZeroSize(TestEighAPIZeroSize):
     def init_input_shape(self):
         self.x_shape = [0, 5, 5]
+
+
+class TestEighBatchAPIZeroSize1(TestEighAPIZeroSize):
+    def init_input_shape(self):
+        self.x_shape = [5, 0, 0]
 
 
 if __name__ == "__main__":
