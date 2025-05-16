@@ -61,7 +61,7 @@ jobs:
           container_name=${TASK}-${core_index}-$(date +%Y%m%d-%H%M%S)
           echo "container_name=${container_name}" >> ${{ github.env }}
           docker_image=${{ inputs.docker_build_image }}
-          docker_image=ccr-2vdh3abv-pub.cnc.bj.baidubce.com/ci/paddle:29f259c1f2a060142f49e2d0307cfc4e
+          docker_image=registry.baidubce.com/baidu.xiaolvyun.images/paddlepaddle:8a09821b692912a392d4a7dd2825be02
           nvidia-docker run -d -t --name ${container_name} --runtime=nvidia --shm-size=32G \
             -v /dev/shm:/dev/shm \
             -v ${{ github.workspace }}/../../..:${{ github.workspace }}/../../.. \
