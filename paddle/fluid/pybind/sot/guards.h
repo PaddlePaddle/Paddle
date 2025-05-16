@@ -160,7 +160,7 @@ class ShapeMatchGuard : public GuardBase {
     expected_.resize(shape.size());
     for (size_t i = 0; i < shape.size(); ++i) {
       if (py::isinstance<py::int_>(shape[i]) && shape[i].cast<int64_t>() > 0) {
-        expected_[i] = shape[i].cast<int64_t>();
+        expected_[i] = std::make_optional(shape[i].cast<int64_t>());
       }
     }
   }
@@ -256,7 +256,7 @@ class NumPyArrayShapeMatchGuard : public GuardBase {
     expected_.resize(shape.size());
     for (size_t i = 0; i < shape.size(); ++i) {
       if (py::isinstance<py::int_>(shape[i]) && shape[i].cast<int64_t>() > 0) {
-        expected_[i] = shape[i].cast<int64_t>();
+        expected_[i] = std::make_optional(shape[i].cast<int64_t>());
       }
     }
   }
