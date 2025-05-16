@@ -61,9 +61,9 @@ jobs:
           container_name=${TASK}-${core_index}-$(date +%Y%m%d-%H%M%S)
           echo "container_name=${container_name}" >> ${{ github.env }}
           docker_image=${{ inputs.docker_build_image }}
-          docker_image=ccr-2vdh3abv-pub.cnc.bj.baidubce.com/ci/paddle:1027e03932b5469b27665187ff8aff88
+          docker_image=ccr-2vdh3abv-pub.cnc.bj.baidubce.com/ci/paddle:29f259c1f2a060142f49e2d0307cfc4e
           nvidia-docker run -d -t --name ${container_name} --runtime=nvidia --shm-size=32G \
-            -v /dev/shm:/dev/shm
+            -v /dev/shm:/dev/shm \
             -v ${{ github.workspace }}/../../..:${{ github.workspace }}/../../.. \
             -v ${{ github.workspace }}:/paddle \
             -v /home/FleetX_CI:/gpt_data \
