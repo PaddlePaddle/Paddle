@@ -373,7 +373,6 @@ class TestElementwiseAddOpComplex(XPUOpTest):
         self.init_dtype()
         self.init_input_output()
         self.init_axis()
-        self.init_max_relative_error()
         self.inputs = {
             'X': OpTest.np_dtype_to_base_dtype(self.x),
             'Y': OpTest.np_dtype_to_base_dtype(self.y),
@@ -393,7 +392,6 @@ class TestElementwiseAddOpComplex(XPUOpTest):
                 place,
                 ['X', 'Y'],
                 'Out',
-                max_relative_error=self.max_relative_error,
             )
 
     def test_check_grad_ignore_x(self):
@@ -404,7 +402,6 @@ class TestElementwiseAddOpComplex(XPUOpTest):
                 ['Y'],
                 'Out',
                 no_grad_set=set("X"),
-                max_relative_error=self.max_relative_error,
             )
 
     def test_check_grad_ignore_y(self):
@@ -415,7 +412,6 @@ class TestElementwiseAddOpComplex(XPUOpTest):
                 ['X'],
                 'Out',
                 no_grad_set=set("Y"),
-                max_relative_error=self.max_relative_error,
             )
 
     def init_input_output(self):
@@ -432,9 +428,6 @@ class TestElementwiseAddOpComplex(XPUOpTest):
 
     def init_axis(self):
         self.axis = -1
-
-    def init_max_relative_error(self):
-        self.max_relative_error = 0.006
 
 
 class TestElementwiseAddOpComplex2(TestElementwiseAddOpComplex):
