@@ -35,6 +35,10 @@ template <typename T, typename Context>
 void ConjKernel(const Context& dev_ctx,
                 const DenseTensor& x,
                 DenseTensor* out) {
+  if (out->numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   dev_ctx.template Alloc<T>(out);
   if (std::is_same<T, phi::dtype::complex<float>>::value) {
     int r = xfft_internal::xpu::Conj(
@@ -57,6 +61,10 @@ template <typename T, typename Context>
 void RealKernel(const Context& dev_ctx,
                 const DenseTensor& x,
                 DenseTensor* out) {
+  if (out->numel() == 0) {
+    dev_ctx.template Alloc<phi::dtype::Real<T>>(out);
+    return;
+  }
   dev_ctx.template Alloc<phi::dtype::Real<T>>(out);
   // The allocation of imag here is redundant and could be optimized.
   phi::DenseTensor imag;
@@ -74,6 +82,10 @@ template <typename T, typename Context>
 void ImagKernel(const Context& dev_ctx,
                 const DenseTensor& x,
                 DenseTensor* out) {
+  if (out->numel() == 0) {
+    dev_ctx.template Alloc<phi::dtype::Real<T>>(out);
+    return;
+  }
   dev_ctx.template Alloc<phi::dtype::Real<T>>(out);
   // The allocation of ‘real’ here is redundant and could be optimized.
   phi::DenseTensor real;
@@ -93,6 +105,10 @@ void ComplexKernel(const Context& dev_ctx,
                    const DenseTensor& y,
                    DenseTensor* out) {
   using C = phi::dtype::complex<T>;
+  if (out->numel() == 0) {
+    dev_ctx.template Alloc<C>(out);
+    return;
+  }
   auto x_dims = x.dims();
   auto y_dims = y.dims();
   auto out_dims = phi::funcs::BroadcastTwoDims(x_dims, y_dims);

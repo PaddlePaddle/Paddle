@@ -94,6 +94,26 @@ class XPUTestComplexOp(XPUOpTestWrapper):
             self.x_shape = [1, 100]
             self.y_shape = [100]
 
+    class TestComplexOpZeroSize1(TestComplexOp):
+        def init_spec(self):
+            self.x_shape = [0, 3, 1, 4]
+            self.y_shape = [1, 1]
+
+    class TestComplexOpZeroSize2(TestComplexOp):
+        def init_spec(self):
+            self.x_shape = [10, 0]
+            self.y_shape = [10, 0]
+
+    class TestComplexOpZeroSize3(TestComplexOp):
+        def init_spec(self):
+            self.x_shape = [3, 0, 1, 4]
+            self.y_shape = [1, 1]
+
+    class TestComplexOpZeroSize4(TestComplexOp):
+        def init_spec(self):
+            self.x_shape = [1, 1]
+            self.y_shape = [10, 3, 0, 4]
+
 
 support_types = get_xpu_op_support_types('complex')
 for stype in support_types:

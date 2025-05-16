@@ -10,10 +10,11 @@
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
-// limitations under the License.
+// limitations under the License.p
 
 #pragma once
 
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
 #include "paddle/phi/kernels/funcs/elementwise_grad_base.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
@@ -24,6 +25,10 @@ template <typename T, typename Context>
 void RealGradKernel(const Context& dev_ctx,
                     const DenseTensor& dout,
                     DenseTensor* dx) {
+  if (dx && dx->numel() == 0) {
+    dev_ctx.template Alloc<T>(dx);
+    return;
+  }
   auto numel = dout.numel();
   auto* dout_data = dout.data<phi::dtype::Real<T>>();
   auto* dx_data =
@@ -38,6 +43,10 @@ template <typename T, typename Context>
 void ImagGradKernel(const Context& dev_ctx,
                     const DenseTensor& dout,
                     DenseTensor* dx) {
+  if (dx && dx->numel() == 0) {
+    dev_ctx.template Alloc<T>(dx);
+    return;
+  }
   auto numel = dout.numel();
   auto* dout_data = dout.data<phi::dtype::Real<T>>();
   auto* dx_data =
@@ -76,7 +85,25 @@ void ComplexGradKernel(const Context& dev_ctx,
                        DenseTensor* dx,
                        DenseTensor* dy) {
   using C = phi::dtype::complex<T>;
-
+  if (dout.numel() == 0) {
+    if (dx) {
+      if (dx->numel() == 0) {
+        dev_ctx.template Alloc<T>(dx);
+      } else {
+        phi::Full<T, Context>(
+            dev_ctx, phi::IntArray(common::vectorize(dx->dims())), 0, dx);
+      }
+    }
+    if (dy) {
+      if (dy->numel() == 0) {
+        dev_ctx.template Alloc<T>(dy);
+      } else {
+        phi::Full<T, Context>(
+            dev_ctx, phi::IntArray(common::vectorize(dy->dims())), 0, dy);
+      }
+    }
+    return;
+  }
   // skip out in a hacky way
   auto out = dout;
   phi::funcs::ElemwiseGradCompute<Context,
