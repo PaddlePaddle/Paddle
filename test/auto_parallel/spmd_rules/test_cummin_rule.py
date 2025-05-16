@@ -23,7 +23,7 @@ from paddle.distributed.fleet import auto
 from paddle.framework import core
 
 
-class TestTopkSPMDRule(unittest.TestCase):
+class TestCumminSPMDRule(unittest.TestCase):
     def setUp(self):
         x_shape = [16, 16, 16]
         out_shape = [16, 2, 16]
@@ -62,9 +62,11 @@ class TestTopkSPMDRule(unittest.TestCase):
         self.assertEqual(len(inferred_output_dist_attrs), 2)
 
         self.assertEqual(inferred_input_dist_attrs[0].dims_mapping, [0, -1, -1])
-        self.assertEqual(inferred_input_dist_attrs[0].dims_mapping, [0, -1, -1])
         self.assertEqual(
             inferred_output_dist_attrs[0].dims_mapping, [0, -1, -1]
+        )
+        self.assertEqual(
+            inferred_output_dist_attrs[1].dims_mapping, [0, -1, -1]
         )
 
     def test_cummin_backward(self):
@@ -87,8 +89,8 @@ class TestTopkSPMDRule(unittest.TestCase):
         self.assertEqual(len(inferred_input_dist_attrs), 3)
         self.assertEqual(len(inferred_output_dist_attrs), 1)
         self.assertEqual(inferred_input_dist_attrs[0].dims_mapping, [0, -1, 1])
-        self.assertEqual(inferred_input_dist_attrs[0].dims_mapping, [0, -1, 1])
-        self.assertEqual(inferred_input_dist_attrs[0].dims_mapping, [0, -1, 1])
+        self.assertEqual(inferred_input_dist_attrs[1].dims_mapping, [0, -1, 1])
+        self.assertEqual(inferred_input_dist_attrs[2].dims_mapping, [0, -1, 1])
         self.assertEqual(inferred_output_dist_attrs[0].dims_mapping, [0, -1, 1])
 
 

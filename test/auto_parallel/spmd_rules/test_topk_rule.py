@@ -68,9 +68,11 @@ class TestTopkSPMDRule(unittest.TestCase):
         self.assertEqual(len(inferred_output_dist_attrs), 2)
 
         self.assertEqual(inferred_input_dist_attrs[0].dims_mapping, [0, -1, -1])
-        self.assertEqual(inferred_input_dist_attrs[0].dims_mapping, [0, -1, -1])
         self.assertEqual(
             inferred_output_dist_attrs[0].dims_mapping, [0, -1, -1]
+        )
+        self.assertEqual(
+            inferred_output_dist_attrs[1].dims_mapping, [0, -1, -1]
         )
 
     def test_topk_backward(self):
@@ -96,8 +98,8 @@ class TestTopkSPMDRule(unittest.TestCase):
         self.assertEqual(len(inferred_input_dist_attrs), 3)
         self.assertEqual(len(inferred_output_dist_attrs), 1)
         self.assertEqual(inferred_input_dist_attrs[0].dims_mapping, [0, -1, 1])
-        self.assertEqual(inferred_input_dist_attrs[0].dims_mapping, [0, -1, 1])
-        self.assertEqual(inferred_input_dist_attrs[0].dims_mapping, [0, -1, 1])
+        self.assertEqual(inferred_input_dist_attrs[1].dims_mapping, [0, -1, 1])
+        self.assertEqual(inferred_input_dist_attrs[2].dims_mapping, [0, -1, 1])
         self.assertEqual(inferred_output_dist_attrs[0].dims_mapping, [0, -1, 1])
 
 
