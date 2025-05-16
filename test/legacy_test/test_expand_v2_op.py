@@ -684,12 +684,18 @@ class TestExpandPirValueListShape(unittest.TestCase):
                 x = paddle.expand(x, shape=[shape1, 1, -1, -1])
                 np.testing.assert_equal(tuple(x.shape), (-1, 1, -1, -1))
 
+
 class TestExpandV2OneDNNOp(OpTest):
     def setUp(self):
         self.op_type = "expand_v2"
         self.init_data()
-        self.x = np.random.random(self.ori_shape).astype("float32")
-        self.attrs = {'shape': self.shape, 'use_mkldnn': True}
+        self.python_api = paddle.expand
+        self.x = np.zeros(self.ori_shape).astype("float32")
+        self.attrs = {
+            'shape': self.shape,
+            'use_mkldnn': True,
+            'dtype': int(paddle.float32),
+        }
         self.set_inputs()
         self.set_additional_inputs()
         output = np.zeros(self.expect_shape).astype("float32")
@@ -702,30 +708,90 @@ class TestExpandV2OneDNNOp(OpTest):
         pass
 
     def init_data(self):
-        self.ori_shape = [1, 1, 1, 140]
-        self.shape = [2, 3, 0, 140]
-        self.expect_shape = [2, 3, 0, 140]
+        self.ori_shape = [1, 0, 1, 140]
+        self.shape = [1, 0, 1, 140]
+        self.expect_shape = [1, 0, 1, 140]
 
     def test_check_output(self):
-        self.check_output_with_place(core.CPUPlace(), check_pir_onednn=True,check_dygraph=False)
-        
-    # def test_check_grad(self):
-    #     self.check_grad_with_place(
-    #         core.CPUPlace(), ["X"], "Out", check_pir_onednn=True, check_dygraph=False
-    #     )
+        self.check_output_with_place(
+            core.CPUPlace(), check_pir_onednn=True, check_dygraph=False
+        )
+
+    def test_check_grad(self):
+        self.check_grad_with_place(
+            core.CPUPlace(),
+            ["X"],
+            "Out",
+            check_pir_onednn=True,
+            check_dygraph=False,
+        )
+
+
 class TestExpandV2ZeroSizeOneDNNOp(TestExpandV2OneDNNOp):
 
     def init_data(self):
-        self.ori_shape = (1, 3)
-        self.shape = (0, 3)
-        self.expect_shape = (0, 3)
+        self.ori_shape = (0, 130)
+        self.shape = (4, 0, 130)
+        self.expect_shape = (4, 0, 130)
+
 
 class TestExpandV2ZeroSizeOneDNNOp2(TestExpandV2OneDNNOp):
 
     def init_data(self):
-        self.ori_shape = (1, 3)
-        self.shape = (1, 0, 3)
-        self.expect_shape = (1, 0, 3)
+        self.ori_shape = (0, 1, 8)
+        self.shape = (0, 8, 8)
+        self.expect_shape = (0, 8, 8)
+
+
+class TestExpandV2GPUOp(TestExpandV2OneDNNOp):
+    def test_check_output(self):
+        self.check_output_with_place(core.CUDAPlace(0), check_dygraph=True)
+
+    def test_check_grad(self):
+        if core.is_compiled_with_cuda():
+            self.check_grad_with_place(
+                core.CUDAPlace(0), ["X"], "Out", check_dygraph=True
+            )
+
+
+class TestExpandV2ZeroSizeGPUOp(TestExpandV2GPUOp):
+    def init_data(self):
+        self.ori_shape = (0, 130)
+        self.shape = (4, 0, 130)
+        self.expect_shape = (4, 0, 130)
+
+
+class TestExpandV2ZeroSizeGPUOp2(TestExpandV2GPUOp):
+    def init_data(self):
+        self.ori_shape = (0, 1)
+        self.shape = (0, 8)
+        self.expect_shape = (0, 8)
+
+
+class TestExpandV2CPUOp(TestExpandV2OneDNNOp):
+    def test_check_output(self):
+        self.check_output_with_place(core.CPUPlace(), check_dygraph=True)
+
+    def test_check_grad(self):
+        if core.is_compiled_with_cuda():
+            self.check_grad_with_place(
+                core.CPUPlace(), ["X"], "Out", check_dygraph=True
+            )
+
+
+class TestExpandV2CPUOp1(TestExpandV2CPUOp):
+    def init_data(self):
+        self.ori_shape = (0, 1)
+        self.shape = (0, 8)
+        self.expect_shape = (0, 8)
+
+
+class TestExpandV2CPUOp2(TestExpandV2CPUOp):
+    def init_data(self):
+        self.ori_shape = (0, 130)
+        self.shape = (4, 0, 130)
+        self.expect_shape = (4, 0, 130)
+
 
 if __name__ == "__main__":
     paddle.enable_static()
