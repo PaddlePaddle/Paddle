@@ -60,6 +60,23 @@ static inline PyObject* PyObject_CallOneArg(PyObject* func, PyObject* arg) {
     }                            \
   }
 
+template <typename T>
+static inline bool check_shape(
+    const std::vector<std::optional<int64_t>>& expected,
+    int ndim,
+    const T& actual_shape) {
+  if (expected.size() != static_cast<size_t>(ndim)) {
+    return false;
+  }
+  for (size_t i = 0; i < expected.size(); ++i) {
+    if (!expected[i] || actual_shape[i] < 1) continue;
+    if (actual_shape[i] != expected[i].value()) {
+      return false;
+    }
+  }
+  return true;
+}
+
 static inline bool PyObject_Equal(PyObject* a, PyObject* b) {
   if (a == b) {
     return true;
@@ -137,15 +154,7 @@ bool ShapeMatchGuard::check(PyObject* value) {
   auto tensor = GetTensorFromPyObject(value);
   HANDLE_NULL_TENSOR(tensor);
   auto shape = tensor->shape();
-  if (shape.size() != expected_.size()) {
-    return false;
-  }
-  for (size_t i = 0; i < shape.size(); ++i) {
-    if (expected_[i] && shape[i] != *expected_[i]) {
-      return false;
-    }
-  }
-  return true;
+  return check_shape<std::vector<int64_t>>(expected_, shape.size(), shape);
 }
 
 bool AttributeMatchGuard::check(PyObject* value) {
@@ -199,16 +208,8 @@ bool NumPyArrayShapeMatchGuard::check(PyObject* value) {
     return false;
   }
   int ndim = array.ndim();
-  auto shape = array.shape();
-  if (ndim != static_cast<int>(expected_.size())) {
-    return false;
-  }
-  for (int i = 0; i < ndim; ++i) {
-    if (expected_[i].has_value() && shape[i] != expected_[i].value()) {
-      return false;
-    }
-  }
-  return true;
+  const Py_ssize_t* shape = array.shape();
+  return check_shape<const Py_ssize_t*>(expected_, ndim, shape);
 }
 
 bool WeakRefMatchGuard::check(PyObject* value) {

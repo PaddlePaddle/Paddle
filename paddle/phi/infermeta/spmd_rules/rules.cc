@@ -762,4 +762,8 @@ PD_REGISTER_SPMD_RULE(cummin,
                       PD_INFER_SPMD(phi::distributed::TopkInferSpmdBase),
                       PD_INFER_SPMD(phi::distributed::TopkGradInferSpmdBase));
 
+// argsort
+PD_REGISTER_SPMD_RULE(argsort,
+                      PD_INFER_SPMD(phi::distributed::ArgSortInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::ArgSortGradInferSpmd));
 }  // namespace phi::distributed

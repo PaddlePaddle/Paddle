@@ -157,6 +157,7 @@
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule : ArgSortGradInferSpmd
     param : [x]
   kernel :
     func : argsort_grad

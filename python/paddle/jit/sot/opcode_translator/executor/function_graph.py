@@ -35,7 +35,7 @@ from .....utils.layers_utils import NotSupportedTensorArgumentError
 from ...infer_meta import (
     InferMetaCache,
     LayerInferMetaCache,
-    MetaInfo,
+    MetaInfoOrNull,
     ast_infer_meta,
 )
 from ...profiler import EventGuard, event_register
@@ -833,7 +833,7 @@ class FunctionGraph:
             tracker = DummyTracker(list(args) + list(kwargs.values()))
         outputs = map_if(
             out_metas,
-            pred=lambda x: isinstance(x, MetaInfo),
+            pred=lambda x: isinstance(x, MetaInfoOrNull),
             true_fn=lambda x: var_cls(
                 x,
                 self,

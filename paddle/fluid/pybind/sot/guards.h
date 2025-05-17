@@ -156,9 +156,6 @@ class DtypeMatchGuard : public GuardBase {
 
 class ShapeMatchGuard : public GuardBase {
  public:
-  explicit ShapeMatchGuard(const std::vector<std::optional<int64_t>>& shape)
-      : expected_(shape) {}
-
   explicit ShapeMatchGuard(const std::vector<py::object>& shape) {
     expected_.resize(shape.size());
     for (size_t i = 0; i < shape.size(); ++i) {
@@ -255,10 +252,6 @@ class NumPyArrayValueMatchGuard : public GuardBase {
 
 class NumPyArrayShapeMatchGuard : public GuardBase {
  public:
-  explicit NumPyArrayShapeMatchGuard(
-      const std::vector<std::optional<int64_t>>& shape)
-      : expected_(shape) {}
-
   explicit NumPyArrayShapeMatchGuard(const std::vector<py::object>& shape) {
     expected_.resize(shape.size());
     for (size_t i = 0; i < shape.size(); ++i) {
