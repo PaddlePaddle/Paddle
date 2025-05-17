@@ -186,7 +186,7 @@ __global__ void GetSlogDetFromLUComplex(const Complex_T* lu_data,
     T epsilon = std::numeric_limits<T>::epsilon();
 
     if (abs_det <= epsilon) {
-      sign[idx] = Complex_T(1.0, 0.0);
+      sign[idx] = Complex_T(0.0, 0.0);
       logdet[idx] = -std::numeric_limits<T>::infinity();
     } else {
       Complex_T abs_det_complex = static_cast<Complex_T>(abs_det);

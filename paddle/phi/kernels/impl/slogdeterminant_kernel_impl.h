@@ -105,9 +105,16 @@ struct SlogDeterminantFunctor<phi::dtype::complex<T>, Context> {
       VLOG(2) << "matrix val: " << matrix;
       std::complex<T> det_val = matrix.determinant();
       T abs_det_val = std::abs(det_val);
-      sign_data[i] = static_cast<Complex_T>(
-          phi::sign(det_val, static_cast<std::complex<T>>(abs_det_val)));
-      logdet_data[i] = std::log(abs_det_val);
+      T epsilon = std::numeric_limits<T>::epsilon();
+
+      if (abs_det_val <= epsilon) {
+        sign_data[i] = Complex_T(0.0, 0.0);
+        logdet_data[i] = -std::numeric_limits<T>::infinity();
+      } else {
+        sign_data[i] = static_cast<Complex_T>(
+            phi::sign(det_val, static_cast<std::complex<T>>(abs_det_val)));
+        logdet_data[i] = std::log(abs_det_val);
+      }
     }
   }
 };
