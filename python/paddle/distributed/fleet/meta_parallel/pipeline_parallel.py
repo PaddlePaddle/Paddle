@@ -17,6 +17,7 @@ import queue
 import sys
 import time
 import warnings
+import copy
 from collections import defaultdict, deque
 from dataclasses import dataclass
 from enum import Enum
@@ -165,7 +166,7 @@ class FakeMicroDataset:
         batch_size = data.shape[0]
         assert self._micro_batch_size * self._acc_steps == batch_size, (
             "batch_size needs to be divisible by micro_batch_size. Currently, "
-            f"batch_size = {batch_size}, micro_batch_size = {self._micro_batch_size}, accumulate_steps = {self._acc_steps}."
+            f"batch_size = {batch_size}, micro_batch_size = {self._micro_batch_size}, accumulate_steps = {self._acc_steps} data_shape= {data.shape}."
         )
 
 
@@ -1391,6 +1392,7 @@ class PipelineParallel(MetaParallelBase):
                 and isinstance(t, paddle.Tensor)
                 and t._is_initialized()
                 and t.inplace_version == 0
+                and (hasattr(t, "final_logits") and not t.final_logits) # should be returned as logits
             )
 
         if isinstance(output, (tuple, list)):
@@ -1673,11 +1675,9 @@ class PipelineParallelWithInterleave(PipelineParallel):
         self.schedule_chunks[virtual_pp_rank].append(schedule_chunk)
         if self.is_pipeline_last_stage():
             self.loss_fn_chunks.append(loss_fn_node)
-
-        if self._forward_only:
-            # no need to store tensor for backward
-            self.input_tensors[virtual_pp_rank].pop()
-            self.output_tensors[virtual_pp_rank].pop()
+            # save output_tensors for return value of eval batch
+            if not self._compute_loss:
+                setattr(output_tensor, "final_logits", True)
 
     def _forward_step_helper(
         self, micro_dataset, micro_step, overlap_schedule_mode=False
@@ -1973,7 +1973,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
         # https://github.com/NVIDIA/Megatron-LM/blob/main/megatron/schedules.py
         if not compute_loss:
             assert (
-                not forward_only
+                forward_only
             ), "compute_loss can only be set to False when forward_only is set to True"
 
         if static_scheduler:
@@ -2750,12 +2750,16 @@ class PipelineParallelWithInterleave(PipelineParallel):
             if self._enable_timer:
                 self.timers("broadcast_final_loss").start()
             with paddle.amp.auto_cast(enable=False):
-                train_loss = self._broadcast_final_loss(return_micro_batch_loss)
+                train_loss_or_logits = self._broadcast_final_loss(return_micro_batch_loss)
             if self._enable_timer:
                 self.timers("broadcast_final_loss").stop()
         else:
-            # else just return all intermediate output tensor for all micro steps
-            train_loss = self.output_tensors
+            # else just return logits without loss func calc
+            train_loss_or_logits = copy.deepcopy(self.output_tensors[-1])
+            # clear output tensors
+            for t in self.output_tensors[-1]:
+                setattr(t, "final_logits", False)
+            self._release_output(self.output_tensors[-1])
 
         if self._clear_every_step_cache:
             self._p2p_helper.clear_meta_cache()
@@ -2773,7 +2777,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
             ), "p2p dynamic_cnt should equal to send_recv_meta_list"
             self._p2p_helper._dynamic_cnt = 0
 
-        return train_loss
+        return train_loss_or_logits
 
     def train_batch(
         self,
@@ -2819,7 +2823,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
         ), f"loss function {loss_fn_idx} should exist to compute loss"
         self.loss_fn_idx = loss_fn_idx
 
-        return self.forward_backward_pipeline(data, None, forward_only=True)
+        return self.forward_backward_pipeline(data, None, forward_only=True, compute_loss=compute_loss)
 
     def get_static_scheduler(self):
         return self.forward_backward_pipeline(
@@ -2910,7 +2914,7 @@ class PipelineParallelWithInterleaveFthenB(PipelineParallelWithInterleave):
             get_sync_logger().info("start forward_backward_pipeline")
         if not compute_loss:
             assert (
-                not forward_only
+                forward_only
             ), "compute_loss can only be set to False when forward_only is set to True"
 
         # NOTE(shenliang03): Due to ring_exchange for pipeline with interleave, cache should be enabled
@@ -3057,12 +3061,16 @@ class PipelineParallelWithInterleaveFthenB(PipelineParallelWithInterleave):
             if self._enable_timer:
                 self.timers("broadcast_final_loss").start()
             with paddle.amp.auto_cast(enable=False):
-                train_loss = self._broadcast_final_loss(return_micro_batch_loss)
+                train_loss_or_logits = self._broadcast_final_loss(return_micro_batch_loss)
             if self._enable_timer:
                 self.timers("broadcast_final_loss").stop()
         else:
-            # else just return all intermediate output tensor for all micro steps
-            train_loss = self.output_tensors
+            # else just return logits without loss func calc
+            train_loss_or_logits = copy.deepcopy(self.output_tensors[-1])
+            # clear output tensors
+            for t in self.output_tensors[-1]:
+                setattr(t, "final_logits", False)
+            self._release_output(self.output_tensors[-1])
 
         if self._clear_every_step_cache:
             self._p2p_helper.clear_meta_cache()
@@ -3073,7 +3081,7 @@ class PipelineParallelWithInterleaveFthenB(PipelineParallelWithInterleave):
             get_sync_logger().info("end forward_backward_pipeline")
         self.processed_steps += 1
         self._check_user_hooks_status_at_step_end()
-        return train_loss
+        return train_loss_or_logits
 
 
 class OffloadQueue(queue.Queue):
@@ -3139,7 +3147,7 @@ class VPPFhenBInBalancedMemory(PipelineParallelWithInterleaveFthenB):
         self._reset_user_hooks_status()
         if not compute_loss:
             assert (
-                not forward_only
+                forward_only
             ), "compute_loss can only be set to False when forward_only is set to True"
         assert (
             self._using_cache
@@ -3391,12 +3399,16 @@ class VPPFhenBInBalancedMemory(PipelineParallelWithInterleaveFthenB):
             if self._enable_timer:
                 self.timers("broadcast_final_loss").start()
             with paddle.amp.auto_cast(enable=False):
-                train_loss = self._broadcast_final_loss(return_micro_batch_loss)
+                train_loss_or_logits = self._broadcast_final_loss(return_micro_batch_loss)
             if self._enable_timer:
                 self.timers("broadcast_final_loss").stop()
         else:
-            # else just return all intermediate output tensor for all micro steps
-            train_loss = self.output_tensors
+            # else just return logits without loss func calc
+            train_loss_or_logits = copy.deepcopy(self.output_tensors[-1])
+            # clear output tensors
+            for t in self.output_tensors[-1]:
+                setattr(t, "final_logits", False)
+            self._release_output(self.output_tensors[-1])
 
         if self._clear_every_step_cache:
             self._p2p_helper.clear_meta_cache()
@@ -3407,4 +3419,4 @@ class VPPFhenBInBalancedMemory(PipelineParallelWithInterleaveFthenB):
             get_sync_logger().info("end forward_backward_pipeline")
         self.processed_steps += 1
         self._check_user_hooks_status_at_step_end()
-        return train_loss
+        return train_loss_or_logits
