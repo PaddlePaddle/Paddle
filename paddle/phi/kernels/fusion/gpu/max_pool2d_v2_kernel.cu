@@ -53,6 +53,18 @@ void MaxPoolV2CUDNNKernel(const Context& ctx,
                     common::errors::InvalidArgument(
                         "Can't set exhaustive_search True and "
                         "FLAGS_cudnn_deterministic True at same time."));
+
+  // Check that all dilation values are 1, as cuDNN maxpool doesn't support
+  // dilated pooling
+  for (auto dilation : dilations) {
+    PADDLE_ENFORCE_EQ(
+        dilation,
+        1,
+        common::errors::InvalidArgument(
+            "Dilation in max pooling cuDNN kernel must be 1, but got %d",
+            dilation));
+  }
+
   // Allocate output tensors
   ctx.template Alloc<T1>(out);
   ctx.template Alloc<T2>(saved_idx);
@@ -92,7 +104,6 @@ void MaxPoolV2CUDNNKernel(const Context& ctx,
   using helper = CudnnFrontendConvHelper;
   auto kernel_size_int64 = helper::GetInt64Array(kernel_size_);
   auto strides_int64 = helper::GetInt64Array(strides);
-  auto dilations_int64 = helper::GetInt64Array(dilations);
 
   // Prepare for execution
   auto& plan_cache = phi::autotune::AutoTuneCache::Instance().GetConvV8(
@@ -124,7 +135,6 @@ void MaxPoolV2CUDNNKernel(const Context& ctx,
                                     strides_int64,
                                     pre_padding,
                                     post_padding,
-                                    dilations_int64,
                                     data_format,
                                     input_dtype,
                                     saved_idx_dtype);
@@ -163,7 +173,6 @@ void MaxPoolV2CUDNNKernel(const Context& ctx,
                        .setSpatialStride(data_dim, strides_int64.data())
                        .setPrePadding(data_dim, pre_padding.data())
                        .setPostPadding(data_dim, post_padding.data())
-                       .setDilation(data_dim, dilations_int64.data())
                        .build();
 
   // Create maxpooling op
