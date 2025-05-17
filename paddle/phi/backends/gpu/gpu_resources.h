@@ -32,6 +32,7 @@ void InitGpuProperties(Place place,
 void InitStream(gpuStream_t* stream);
 void DestroyStream(gpuStream_t stream);
 
+#ifndef PADDLE_WITH_CUSTOM_DEVICE
 void InitBlasHandle(blasHandle_t* blas_handle, gpuStream_t stream);
 void DestroyBlasHandle(blasHandle_t handle);
 
@@ -46,7 +47,7 @@ void DestroySolverHandle(solverHandle_t solver_handle);
 
 void InitSparseHandle(sparseHandle_t* handle, gpuStream_t stream);
 void DestroySparseHandle(sparseHandle_t handle);
-
+#endif
 // void InitDnnWorkspace();
 
 }  // namespace phi

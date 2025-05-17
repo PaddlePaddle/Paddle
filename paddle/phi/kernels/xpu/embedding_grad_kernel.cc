@@ -41,12 +41,6 @@ void EmbeddingGradKernel(const Context& ctx,
   }
 
   int64_t ids_numel = ids_t->numel();
-  PADDLE_ENFORCE_EQ(
-      ids_numel <= std::numeric_limits<int32_t>::max(),
-      true,
-      common::errors::OutOfRange(
-          "Number of ids greater than int32_t::max , please check "
-          "number of ids in LookupTableV2GradXPUKernel."));
 
   auto& dev_ctx = ctx;
   xpu::ctx_guard RAII_GUARD(ctx.x_context());
@@ -63,9 +57,9 @@ void EmbeddingGradKernel(const Context& ctx,
 
   const T* d_output_data = d_output_t->data<T>();
   T* d_table_data = dev_ctx.template Alloc<T>(d_table_t);
-  int xm = d_table_t->dims()[0];
-  int ym = static_cast<int>(ids_numel);
-  int n = d_table_t->dims()[1];
+  int64_t xm = d_table_t->dims()[0];
+  int64_t ym = ids_numel;
+  int64_t n = d_table_t->dims()[1];
 
   int r = xpu::embedding_grad<XPUType, int64_t>(
       dev_ctx.x_context(),

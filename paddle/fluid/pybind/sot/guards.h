@@ -253,6 +253,30 @@ class NumPyArrayValueMatchGuard : public GuardBase {
   PyObject* expected_;
 };
 
+class NumPyArrayShapeMatchGuard : public GuardBase {
+ public:
+  explicit NumPyArrayShapeMatchGuard(
+      const std::vector<std::optional<int64_t>>& shape)
+      : expected_(shape) {}
+
+  explicit NumPyArrayShapeMatchGuard(const std::vector<py::object>& shape) {
+    expected_.resize(shape.size());
+    for (size_t i = 0; i < shape.size(); ++i) {
+      if (py::isinstance<py::int_>(shape[i]) && shape[i].cast<int64_t>() > 0) {
+        expected_[i] = std::make_optional(shape[i].cast<int64_t>());
+      }
+    }
+  }
+
+  bool check(PyObject* value) override;
+  std::string get_guard_name() const override {
+    return "NumPyArrayShapeMatchGuard";
+  }
+
+ private:
+  std::vector<std::optional<int64_t>> expected_;
+};
+
 class WeakRefMatchGuard : public GuardBase {
  public:
   explicit WeakRefMatchGuard(const py::object& obj) {

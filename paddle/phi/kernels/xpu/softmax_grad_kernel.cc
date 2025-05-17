@@ -42,7 +42,7 @@ void SoftmaxGradKernel(const Context& dev_ctx,
     return;
   }
 
-  std::vector<int> x_dims;
+  std::vector<int64_t> x_dims;
   for (int i = 0; i < rank; i++) {
     x_dims.push_back(x_grad->dims()[i]);
   }
@@ -53,7 +53,7 @@ void SoftmaxGradKernel(const Context& dev_ctx,
       reinterpret_cast<const XPUType*>(out_grad.data<T>()),
       reinterpret_cast<XPUType*>(x_grad->data<T>()),
       x_dims,
-      calc_axis);
+      static_cast<int64_t>(calc_axis));
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "softmax_grad");
 }
 

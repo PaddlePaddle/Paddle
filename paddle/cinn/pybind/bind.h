@@ -14,11 +14,11 @@
 
 #pragma once
 
-#include <absl/strings/string_view.h>
-#include <absl/types/variant.h>
 #include <pybind11/cast.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
+#include <string_view>
+#include <variant>
 #include "paddle/utils/flat_hash_map.h"
 
 namespace pybind11 {
@@ -34,8 +34,7 @@ struct type_caster<paddle::flat_hash_map<Key, Value, Hash, Equal, Alloc>>
                  Value> {};
 
 template <>
-struct type_caster<absl::string_view> : string_caster<absl::string_view, true> {
-};
+struct type_caster<std::string_view> : string_caster<std::string_view, true> {};
 }  // namespace detail
 }  // namespace pybind11
 

@@ -12,11 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from contextlib import contextmanager
+
 import paddle
 
-__all__ = ['matmul']
+__all__ = ['matmul', 'by_register']
+
+
+@contextmanager
+def by_register():
+    paddle._C_ops.ap_trivial_fusion_begin(None)
+    yield
+    paddle._C_ops.ap_trivial_fusion_end(None)
 
 
 def matmul(x, w, epilogue, **kwargs):
     x = paddle.matmul(x, w, **kwargs)
-    return epilogue(x)
+    with by_register():
+        return epilogue(x)

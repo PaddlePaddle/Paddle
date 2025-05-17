@@ -22,6 +22,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : abs_grad
     data_type : x
@@ -156,6 +157,7 @@
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule : ArgSortGradInferSpmd
     param : [x]
   kernel :
     func : argsort_grad
@@ -639,6 +641,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : cosh_grad
   inplace : (out_grad -> x_grad)
@@ -2171,6 +2174,7 @@
   infer_meta :
     func : UnchangedExceptLayoutInferMeta
     param: [x]
+    spmd_rule : MeanAllGradInferSpmd
   kernel :
     func : mean_all_grad
     data_type: out_grad
@@ -3516,6 +3520,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule: TopkGradInferSpmdDynamic
   kernel :
     func : topk_grad
     data_type : out_grad

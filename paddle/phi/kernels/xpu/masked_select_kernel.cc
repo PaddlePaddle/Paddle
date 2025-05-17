@@ -44,8 +44,8 @@ void MaskedSelectKernel(const Context& dev_ctx,
                         input_dim,
                         mask_dim));
   xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
-  int* out_size = RAII_GUARD.alloc_l3_or_gm<int32_t>(1);
-  int out_size_cpu;
+  int64_t* out_size = RAII_GUARD.alloc_l3_or_gm<int64_t>(1);
+  int64_t out_size_cpu;
 
   PADDLE_ENFORCE_XDNN_SUCCESS(
       xpu::nonzero_count(
@@ -67,13 +67,13 @@ void MaskedSelectKernel(const Context& dev_ctx,
   out->Resize(out_dim);
   auto out_data = reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(out));
 
-  auto input_shape = common::vectorize<int>(input_dim);
-  auto mask_shape = common::vectorize<int>(mask_dim);
+  auto input_shape = common::vectorize<int64_t>(input_dim);
+  auto mask_shape = common::vectorize<int64_t>(mask_dim);
   if (input_dim.size() == 0) {
-    input_shape = std::vector<int>({1});
+    input_shape = std::vector<int64_t>({1});
   }
   if (mask_dim.size() == 0) {
-    mask_shape = std::vector<int>({1});
+    mask_shape = std::vector<int64_t>({1});
   }
 
   if (out_size_cpu > 0) {

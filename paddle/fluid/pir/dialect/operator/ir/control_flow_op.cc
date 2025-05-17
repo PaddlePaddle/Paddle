@@ -979,22 +979,41 @@ bool WhileOp::InferSymbolicShape(
     pir::InferSymExprForBlock(body(), infer_context);
   }
 
+  const auto is_all_const_data =
+      [](const std::optional<std::vector<symbol::DimExpr>> &data_opt) {
+        if (!data_opt.has_value()) return false;
+        for (const auto &item : data_opt.value()) {
+          if (!item.isa<int64_t>()) return false;
+        }
+        return true;
+      };
+  const auto creat_new_data = [&infer_context](int size) {
+    std::vector<symbol::DimExpr> data;
+    for (int i = 0; i < size; ++i) {
+      data.emplace_back(symbol::DimExpr{infer_context->GetNextSymName()});
+    }
+    return data;
+  };
+
   for (size_t i = 0; i < num_results(); ++i) {
-    // If the result data and related input data is not equal, clear the data.
+    // If the result is const data and related input data is not equal,
+    // set new symbol for result data
     auto yield_input_shape_or_data =
         infer_context->GetShapeOrDataForValue(yield_op.operand_source(i + 1));
     auto yield_input_data_opt = yield_input_shape_or_data.data();
     auto input_data_opt =
         infer_context->GetShapeOrDataForValue(body_args[i]).data();
-    bool data_equal = yield_input_data_opt.has_value() &&
-                      input_data_opt.has_value() &&
-                      yield_input_data_opt.value() == input_data_opt.value();
+    bool const_data_not_euqal =
+        is_all_const_data(yield_input_data_opt) &&
+        (!is_all_const_data(input_data_opt) ||
+         is_all_const_data(input_data_opt) &&
+             yield_input_data_opt.value() != input_data_opt.value());
     auto result_shape_or_data =
-        data_equal || !yield_input_shape_or_data
-                           .isa<symbol::TensorShapeOrDataDimExprs>()
-            ? yield_input_shape_or_data
-            : symbol::TensorShapeOrDataDimExprs(
-                  yield_input_shape_or_data.shape());
+        const_data_not_euqal
+            ? symbol::TensorShapeOrDataDimExprs(
+                  yield_input_shape_or_data.shape(),
+                  creat_new_data(yield_input_data_opt.value().size()))
+            : yield_input_shape_or_data;
     infer_context->SetShapeOrDataForValue(result(i), result_shape_or_data);
   }
 
