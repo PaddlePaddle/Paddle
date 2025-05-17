@@ -4048,6 +4048,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [arr]
+    spmd_rule : PutAlongAxisInferSpmd
   kernel :
     func : put_along_axis
     data_type : arr

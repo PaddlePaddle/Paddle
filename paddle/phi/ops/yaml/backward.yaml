@@ -2601,6 +2601,7 @@
   infer_meta :
     func : GeneralBinaryGradInferMeta
     param : [arr, indices]
+    spmd_rule : PutAlongAxisGradInferSpmd
   kernel :
     func : put_along_axis_grad
   backward: put_along_axis_double_grad
