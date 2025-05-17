@@ -36,6 +36,7 @@ from paddle.distributed.auto_parallel.static.utils import (
     convert_to_dims_mapping,
 )
 from paddle.framework import use_pir_api
+from paddle.pir import fake_value, is_fake_value
 from paddle.static import InputSpec
 from paddle.utils import flatten, is_sequence
 
@@ -46,6 +47,7 @@ from .utils import (
     map_if_extend,
     meta_str,
 )
+from .utils.exceptions import BreakGraphError, NullMetaBreak
 
 if TYPE_CHECKING:
     import numpy.typing as npt
@@ -96,6 +98,164 @@ class DistInfo:
         return f"DistInfo(mesh={self.mesh}, dims_mapping={self.dims_mapping}, local_shape={self.local_shape})"
 
 
+class MetaInfoOrNull:
+    def __init__(self, meta: MetaInfo | None):
+        self.meta = meta
+
+    @staticmethod
+    def null():
+        return MetaInfoOrNull(None)
+
+    def is_null(self):
+        return self.meta is None
+
+    def unwrap_or_breakgraph(self):
+        if self.meta is None:
+            raise BreakGraphError(NullMetaBreak())
+        return self.meta
+
+    def unwrap_unsafe(self):
+        if self.meta is None:
+            raise AssertionError("MetaInfo is None")
+        return self.meta
+
+    def with_dynamic_axes(
+        self, name: str, dynamic_axes: list[int]
+    ) -> MetaInfoOrNull:
+        if self.meta is None:
+            return MetaInfoOrNull.null()
+        return self.meta.with_dynamic_axes(name, dynamic_axes).wrap()
+
+    def to_input_spec(self):
+        if self.meta is None:
+            return None
+        return self.meta.to_input_spec()
+
+    def guard_str(self):
+        if self.meta is None:
+            return "(Null)"
+        return self.meta.guard_str()
+
+    def __deepcopy__(self, memo):
+        if self.meta is None:
+            return MetaInfoOrNull(None)
+        return MetaInfoOrNull(copy.deepcopy(self.meta))
+
+    @staticmethod
+    def _handle_legacy_ir_amp_dtype(dtype):
+        # TODO(cleanup-legacy-ir) remove after pir become default state.
+        # We always use float32 in simulation if AMP is enabled.
+        if use_pir_api():
+            return dtype
+        assert isinstance(dtype, paddle.core.VarDesc.VarType)
+
+        current_amp_state = amp_state()
+        if (
+            dtype == paddle.float16
+            and current_amp_state is not None
+            and current_amp_state["dtype"] == "float16"
+        ):
+            dtype = paddle.float32
+        return dtype
+
+    @staticmethod
+    def from_tensor(
+        tensor: paddle.Tensor, *, dynamic_axes: list[int] | None = None
+    ) -> MetaInfoOrNull:
+        if not tensor._is_dense_tensor_hold_allocation():
+            return MetaInfoOrNull.null()
+        assert isinstance(
+            tensor, paddle.Tensor
+        ), "Expect a Tensor, but got a Value."
+
+        dtype = MetaInfoOrNull._handle_legacy_ir_amp_dtype(tensor.dtype)
+        assert (
+            -1 not in tensor.shape
+        ), "Tensor shape should not contain -1, maybe you pass a Value to from_tensor"
+        dynamic_axes = dynamic_axes or []
+        shape = [
+            SymbolicInt() if i in dynamic_axes else dim
+            for i, dim in enumerate(tensor.shape)
+        ]
+        if tensor.is_dist():
+            dist_info = DistInfo.from_tensor(tensor)
+        else:
+            dist_info = None
+        return MetaInfo(
+            shape,
+            dtype,
+            tensor.stop_gradient,
+            tensor.name,
+            tensor.persistable,
+            tensor.type,
+            tensor.place,
+            None,
+            dist_info=dist_info,
+        ).wrap()
+
+    @staticmethod
+    def from_numpy(
+        nparray: npt.NDArray[Any], *, dynamic_axes: list[int] | None = None
+    ) -> MetaInfoOrNull:
+        dtype = convert_np_dtype_to_dtype_(nparray.dtype)
+        dynamic_axes = dynamic_axes or []
+        shape = [
+            SymbolicInt() if i in dynamic_axes else dim
+            for i, dim in enumerate(nparray.shape)
+        ]
+        return MetaInfo(
+            shape,
+            dtype,
+            True,  # stop_gradient
+            None,
+            None,  # persistable
+            None,
+            None,
+            None,
+            dist_info=None,
+        ).wrap()
+
+    @staticmethod
+    def from_value(value) -> MetaInfoOrNull:
+        if is_fake_value(value):
+            return MetaInfoOrNull.null()
+        name = SOT_INFER_META_INNER_VAR
+        dtype = MetaInfoOrNull._handle_legacy_ir_amp_dtype(value.dtype)
+        shape = [SymbolicInt() if dim == -1 else dim for dim in value.shape]
+        if isinstance(value, paddle.pir.Value) and value.is_dist():
+            dist_info = DistInfo.from_value(value)
+        else:
+            dist_info = None
+        return MetaInfo(
+            shape,
+            dtype,
+            value.stop_gradient,
+            name,
+            value.persistable,
+            None,  # type is not a unified attribute in dygraph and static mode.
+            None,  # We can't infer the right place in compile time.
+            None,  # there's no spec_name specified when from_value.
+            dist_info=dist_info,
+        ).wrap()
+
+    def __repr__(self):
+        if self.meta is None:
+            return "MetaInfoOrNull(None)"
+        return f"MetaInfoOrNull({self.meta})"
+
+    def __eq__(self, other):
+        if self.meta is None:
+            return other.meta is None
+        if other.meta is None:
+            return False
+        return self.meta == other.meta
+
+    def __hash__(self):
+        if self.meta is None:
+            return hash(None)
+        return hash(self.meta)
+
+
 class MetaInfo:
     shape: list[int | SymbolicInt]
 
@@ -123,6 +283,9 @@ class MetaInfo:
         self.stop_gradient = stop_gradient
         self.dist_info = dist_info
         self.spec_name = spec_name
+
+    def wrap(self):
+        return MetaInfoOrNull(self)
 
     def shape_with_special_symbol(
         self, dynamic_symbol: DynamicSymbolT = -1
@@ -159,99 +322,6 @@ class MetaInfo:
             if isinstance(dim, SymbolicInt)
         ]
 
-    @staticmethod
-    def _handle_legacy_ir_amp_dtype(dtype):
-        # TODO(cleanup-legacy-ir) remove after pir become default state.
-        # We always use float32 in simulation if AMP is enabled.
-        if use_pir_api():
-            return dtype
-        assert isinstance(dtype, paddle.core.VarDesc.VarType)
-
-        current_amp_state = amp_state()
-        if (
-            dtype == paddle.float16
-            and current_amp_state is not None
-            and current_amp_state["dtype"] == "float16"
-        ):
-            dtype = paddle.float32
-        return dtype
-
-    @staticmethod
-    def from_tensor(
-        tensor: paddle.Tensor, *, dynamic_axes: list[int] | None = None
-    ) -> MetaInfo:
-        assert isinstance(
-            tensor, paddle.Tensor
-        ), "Expect a Tensor, but got a Value."
-
-        dtype = MetaInfo._handle_legacy_ir_amp_dtype(tensor.dtype)
-        assert (
-            -1 not in tensor.shape
-        ), "Tensor shape should not contain -1, maybe you pass a Value to from_tensor"
-        dynamic_axes = dynamic_axes or []
-        shape = [
-            SymbolicInt() if i in dynamic_axes else dim
-            for i, dim in enumerate(tensor.shape)
-        ]
-        if tensor.is_dist():
-            dist_info = DistInfo.from_tensor(tensor)
-        else:
-            dist_info = None
-        return MetaInfo(
-            shape,
-            dtype,
-            tensor.stop_gradient,
-            tensor.name,
-            tensor.persistable,
-            tensor.type,
-            tensor.place,
-            None,
-            dist_info=dist_info,
-        )
-
-    @staticmethod
-    def from_value(value) -> MetaInfo:
-        name = SOT_INFER_META_INNER_VAR
-        dtype = MetaInfo._handle_legacy_ir_amp_dtype(value.dtype)
-        shape = [SymbolicInt() if dim == -1 else dim for dim in value.shape]
-        if isinstance(value, paddle.pir.Value) and value.is_dist():
-            dist_info = DistInfo.from_value(value)
-        else:
-            dist_info = None
-        return MetaInfo(
-            shape,
-            dtype,
-            value.stop_gradient,
-            name,
-            value.persistable,
-            None,  # type is not a unified attribute in dygraph and static mode.
-            None,  # We can't infer the right place in compile time.
-            None,  # there's no spec_name specified when from_value.
-            dist_info=dist_info,
-        )
-
-    @staticmethod
-    def from_numpy(
-        nparray: npt.NDArray[Any], *, dynamic_axes: list[int] | None = None
-    ):
-        dtype = convert_np_dtype_to_dtype_(nparray.dtype)
-        dynamic_axes = dynamic_axes or []
-        shape = [
-            SymbolicInt() if i in dynamic_axes else dim
-            for i, dim in enumerate(nparray.shape)
-        ]
-        return MetaInfo(
-            shape,
-            dtype,
-            True,  # stop_gradient
-            None,
-            None,  # persistable
-            None,
-            None,
-            None,
-            dist_info=None,
-        )
-
     def is_inner_var(self):
         return self.name == SOT_INFER_META_INNER_VAR
 
@@ -262,7 +332,7 @@ class MetaInfo:
         """
         return len(self.dynamic_axes) > 0
 
-    def to_input_spec(self):
+    def to_input_spec(self) -> DistributedInputSpec | ConstrainedInputSpec:
         shape = self.shape_with_special_symbol(None)
         if self.dist_info is not None:
             placements = to_placements(
@@ -329,7 +399,10 @@ class VariableCreator(metaclass=Singleton):
         # self.startup_program = paddle.static.Program()
         self.var_name_generator = UniqueNameGenerator(SOT_INFER_META_INNER_VAR)
 
-    def gen_name(self, meta):
+    def gen_name(self, meta_or_null: MetaInfoOrNull):
+        if meta_or_null.is_null():
+            return "null"
+        meta = meta_or_null.unwrap_unsafe()
         name = f"{meta.dtype}_{meta.stop_gradient}_"
         name += "_".join(map(str, meta.shape))
         return name
@@ -373,7 +446,10 @@ class VariableCreator(metaclass=Singleton):
         else:
             return self.legacy_programs[1]
 
-    def create_var(self, meta: MetaInfo):
+    def create_var(self, meta_or_null: MetaInfoOrNull):
+        if meta_or_null.is_null():
+            return fake_value()
+        meta = meta_or_null.unwrap_unsafe()
         shape = meta.shape_with_special_symbol(-1)
 
         if paddle.framework.use_pir_api():
@@ -381,7 +457,7 @@ class VariableCreator(metaclass=Singleton):
                 self.main_program, self.startup_program
             ):
                 var = paddle.static.input.data(
-                    name=self.gen_name(meta),
+                    name=self.gen_name(meta.wrap()),
                     shape=shape,
                     dtype=convert_dtype(meta.dtype),
                 )
@@ -405,7 +481,7 @@ class VariableCreator(metaclass=Singleton):
         ), "Expect a Variable, but got a Tensor."
         return var
 
-    def get_variable(self, meta, without_cache=False):
+    def get_variable(self, meta: MetaInfoOrNull, without_cache=False):
         var_feature_name = self.gen_name(meta)
         if without_cache:
             return self.create_var(meta)
@@ -443,7 +519,7 @@ class VariableCreator(metaclass=Singleton):
 def convert_meta_to_variable(args, without_cache=False):
     return map_if_extend(
         args,
-        pred=lambda x: isinstance(x, MetaInfo),
+        pred=lambda x: isinstance(x, MetaInfoOrNull),
         true_fn=lambda x: VariableCreator().get_variable(
             x, without_cache=without_cache
         ),
@@ -454,7 +530,7 @@ def convert_meta_to_variable(args, without_cache=False):
 def convert_meta_to_input_spec(args):
     return map_if_extend(
         args,
-        pred=lambda x: isinstance(x, MetaInfo),
+        pred=lambda x: isinstance(x, MetaInfoOrNull),
         true_fn=lambda x: x.to_input_spec(),
         # TODO(xiongkun): can x be tensor ?
         false_fn=lambda x: (
@@ -474,7 +550,7 @@ def convert_variable_to_meta_info(args):
     return map_if_extend(
         args,
         pred=lambda x: isinstance(x, static_variable_type),
-        true_fn=lambda x: MetaInfo.from_value(x),
+        true_fn=lambda x: MetaInfoOrNull.from_value(x),
         false_fn=lambda x: x,
     )
 
@@ -510,7 +586,7 @@ def infer_meta_for_layer(layer, *args, **kwargs):
             for x in paddle.utils.flatten(
                 convert_variable_to_meta_info(output_values)
             )
-            if isinstance(x, MetaInfo)
+            if isinstance(x, MetaInfoOrNull)
         ]
     )
     layer.forward.rollback()
@@ -531,7 +607,7 @@ def ast_infer_meta(static_function, *args, **kwargs):
             for x in paddle.utils.flatten(
                 convert_variable_to_meta_info(concrete_program.outputs)
             )
-            if isinstance(x, MetaInfo)
+            if isinstance(x, MetaInfoOrNull)
         ]
     )
 
@@ -596,7 +672,7 @@ class LayerInferMetaCache(Cache, metaclass=Singleton):
 
     def key_fn(self, layer, *args, **kwargs):
         params = [
-            MetaInfo.from_value(x)
+            MetaInfoOrNull.from_tensor(x)
             for x in layer.parameters(include_sublayers=True)
         ]
         return (
