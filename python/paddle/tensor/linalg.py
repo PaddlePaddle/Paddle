@@ -2853,7 +2853,7 @@ def det(x: Tensor, name: str | None = None) -> Tensor:
         return out
 
 
-def slogdet(x: Tensor, name: str | None = None) -> Tensor:
+def slogdet(x: Tensor, name: str | None = None) -> tuple[Tensor, Tensor]:
     """
 
     Calculates the sign and natural logarithm of the absolute value of a square matrix's or batches square matrices' determinant.
@@ -2874,9 +2874,11 @@ def slogdet(x: Tensor, name: str | None = None) -> Tensor:
             developers. Details: :ref:`api_guide_Name`. Default is None.
 
     Returns:
-        y (Tensor), A tensor containing the sign of the determinant and the natural logarithm
-        of the absolute value of determinant, respectively. The output shape is :math:`(2, *)`,
-        where math:`*` is one or more batch dimensions of the input `x`.
+        tuple(Tensor, Tensor): A tuple containing two Tensors: (sign, logabsdet).
+        The first Tensor represents the signs of the determinants and the second Tensor
+        represents the natural logarithms of the absolute values of the determinants.
+        Each output Tensor has a shape of :math:`(*)`, where :math:`*` matches the
+        batch dimensions of the input `x`.
 
     Examples:
         .. code-block:: python
@@ -2884,11 +2886,14 @@ def slogdet(x: Tensor, name: str | None = None) -> Tensor:
             >>> import paddle
             >>> paddle.seed(2023)
             >>> x = paddle.randn([3, 3, 3])
-            >>> A = paddle.linalg.slogdet(x)
-            >>> print(A)
-            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[-1.        ,  1.        ,  1.        ],
-             [ 0.25681755, -0.25061053, -0.10809582]])
+            >>> sign_values, logabsdet_values = paddle.linalg.slogdet(x) # Updated example
+            >>> print("Sign:", sign_values)
+            >>> print("LogAbsDet:", logabsdet_values)
+            # Expected output would show two separate tensors
+            # Sign: Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            # [-1.,  1.,  1.])
+            # LogAbsDet: Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            # [0.25681755, -0.25061053, -0.10809582])
 
     """
     if in_dynamic_or_pir_mode():
@@ -2912,14 +2917,25 @@ def slogdet(x: Tensor, name: str | None = None) -> Tensor:
             f"but received {input_shape[-2]} by {input_shape[-1]} matrix.\n"
         )
         helper = LayerHelper('slogdeterminant', **locals())
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        sign_dtype = x.dtype
+        if x.dtype == paddle.complex64:
+            logabsdet_dtype = paddle.float32
+        elif x.dtype == paddle.complex128:
+            logabsdet_dtype = paddle.float64
+        else:
+            logabsdet_dtype = x.dtype
+
+        sign_out = helper.create_variable_for_type_inference(dtype=sign_dtype)
+        logabsdet_out = helper.create_variable_for_type_inference(
+            dtype=logabsdet_dtype
+        )
 
         helper.append_op(
             type='slogdeterminant',
             inputs={'Input': [x]},
-            outputs={'Out': [out]},
+            outputs={'Sign': [sign_out], 'Logabsdet': [logabsdet_out]},
         )
-        return out
+        return sign_out, logabsdet_out
 
 
 def svd(
