@@ -55,10 +55,13 @@ void ExpandGradKernel(const Context& ctx,
                       DenseTensor* in_grad) {
   auto expand_shape = shape.GetData();
   auto x_dims = x.dims();
-  if (out_grad.numel() == 0 || (in_grad && in_grad->numel() == 0)) {
+  if (x.numel() == 0 || out_grad.numel() == 0 ||
+      (in_grad && in_grad->numel() == 0)) {
     ctx.template Alloc<T>(in_grad);
-    phi::Full<T, Context>(
-        ctx, phi::IntArray(common::vectorize(in_grad->dims())), 0, in_grad);
+    if (in_grad->numel() != 0) {
+      phi::Full<T, Context>(
+          ctx, phi::IntArray(common::vectorize(in_grad->dims())), 0, in_grad);
+    }
     return;
   }
 
