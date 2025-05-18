@@ -63,8 +63,7 @@ jobs:
           echo "container_name=${container_name}" >> ${{ github.env }}
           docker_image=${{ inputs.docker_build_image }}
           docker_image=registry.baidubce.com/baidu.xiaolvyun.images/paddlepaddle:8a09821b692912a392d4a7dd2825be02
-          sudo -E nvidia-docker run -d -t --name ${container_name} --runtime=nvidia --shm-size=32G \
-            -v /dev/shm:/dev/shm \
+          sudo -E nvidia-docker run -d -t --name ${container_name} -v /dev/shm:/dev/shm --shm-size=32G \
             -v ${{ github.workspace }}/../../..:${{ github.workspace }}/../../.. \
             -v ${{ github.workspace }}:/workspace \
             -v /home/FleetX_CI:/gpt_data \
@@ -80,14 +79,13 @@ jobs:
             -e no_proxy \
             -e CI_name \
             -e paddle_whl \
-            -w /workspace --network host ${docker_image}
+            -w /workspace --network host --runtime=nvidia ${docker_image}
 
       - name: Download PaddleTest
         env:
           work_dir: ${{ github.workspace }}
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
-          echo work_dir: $work_dir
           echo "Download and extract PaddleNLP.tar.gz"
           wget -q --no-proxy  https://paddle-qa.bj.bcebos.com/CodeSync/develop/PaddleNLP.tar --no-check-certificate
           tar xf PaddleNLP.tar && rm -rf PaddleNLP.tar
@@ -110,6 +108,7 @@ jobs:
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           ldconfig
           unset http_proxy && unset https_proxy
+          source ${{ github.workspace }}/../../../proxy
           export LD_LIBRARY_PATH=/usr/local/cuda-11.8/compat:$LD_LIBRARY_PATH
           timeout 80m bash -x Paddle/ci/auto_parallel/ci_auto_parallel.sh ${paddle_whl}
           '
@@ -135,8 +134,8 @@ jobs:
         #     done
         #     '
 
-      - name: Terminate and delete the container
-        if: always()
-        run: |
-          sudo rm -rf * .[^.]*
-          docker rm -f ${{ env.container_name }}
+    # - name: Terminate and delete the container
+    #   if: always()
+    #   run: |
+    #     sudo rm -rf * .[^.]*
+    #     docker rm -f ${{ env.container_name }}
