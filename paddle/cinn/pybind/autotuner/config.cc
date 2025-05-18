@@ -57,18 +57,21 @@ void BindTunerConfig(pybind11::module *m) {
 
     py::class_<ScheduleConfig::TileConfig>(*m, "TileConfig")
         .def(py::init<>())  // 默认构造函数
-        .def(py::init<int, int, int, int, int, ReduceMethod>(),  // 带参数的构造函数
+        .def(py::init<int, int,int, int, int, int, ReduceMethod>(),  // 带参数的构造函数
              py::arg("warp_num"),
              py::arg("tree_reduce_num"),
              py::arg("grid_reduce_num"),
              py::arg("spatial_inner_num"),
              py::arg("vectorize_factor"),
+	     py::arg("reduce_inner_num"),
              py::arg("reduce_method"))
         .def_readwrite("warp_num", &ScheduleConfig::TileConfig::warp_num)
         .def_readwrite("tree_reduce_num", &ScheduleConfig::TileConfig::tree_reduce_num)
         .def_readwrite("grid_reduce_num", &ScheduleConfig::TileConfig::grid_reduce_num)
         .def_readwrite("spatial_inner_num", &ScheduleConfig::TileConfig::spatial_inner_num)
         .def_readwrite("vectorize_factor", &ScheduleConfig::TileConfig::vectorize_factor)
+	.def_readwrite("reduce_inner_num", &ScheduleConfig::TileConfig::reduce_inner_num)
+
         .def_readwrite("reduce_method", &ScheduleConfig::TileConfig::reduce_method);
 
 
