@@ -55,7 +55,10 @@ class PToSReshardFunction(ReshardFunction):
         if src_value.get_defining_op().dist_attr:
             chunk_id = src_value.get_defining_op().dist_attr.chunk_id
 
-        split_axis = dst_dist_attr.dims_mapping.index(0)
+        for idx, dims in enumerate(dst_dist_attr.dims_mapping):
+            if len(dims) > 0:
+                split_axis = idx
+
         num_of_process = len(src_dist_attr.process_mesh.process_ids)
         remainder_of_padding = src_value.shape[split_axis] % num_of_process
         is_balanced_split = remainder_of_padding == 0
@@ -68,8 +71,8 @@ class PToSReshardFunction(ReshardFunction):
             src_value = paddle._C_ops.transpose(src_value, perm)
             permute = True
             tmp_dims_mapping = dst_dist_attr.dims_mapping
-            tmp_dims_mapping[split_axis] = -1
-            tmp_dims_mapping[0] = 0
+            tmp_dims_mapping[split_axis] = []
+            tmp_dims_mapping[0] = [0]
             dst_dist_attr = copy_dist_attr_with_new_member(
                 dst_dist_attr, new_dims_mapping=tmp_dims_mapping
             )
@@ -77,9 +80,9 @@ class PToSReshardFunction(ReshardFunction):
         if is_balanced_split:
             global_dst_attr = dst_type.as_dist_type().dist_attr()
             global_dims_mapping = global_dst_attr.dims_mapping
-            axis = global_dims_mapping[0]
-            global_dims_mapping[0] = global_dims_mapping[split_axis]
-            global_dims_mapping[split_axis] = axis
+            axis = global_dims_mapping[0][0]
+            global_dims_mapping[0][0] = global_dims_mapping[split_axis][0]
+            global_dims_mapping[split_axis][0] = [axis]
             global_dist_attr = copy_dist_attr_with_new_member(
                 global_dst_attr, new_dims_mapping=global_dims_mapping
             )

@@ -23,6 +23,7 @@ limitations under the License. */
 #include <vector>
 #include <optional>
 
+#include "paddle/fluid/framework/fleet/heter_ps/log_patch.h"
 #include "paddle/phi/common/reduce_type.h"
 #include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
 #include "paddle/phi/core/distributed/auto_parallel/utils.h"
@@ -97,9 +98,9 @@ class TEST_API TensorDistAttr {
 
   const std::vector<int64_t>& dims_mapping() const { return dims_mapping_; }
 
-  const std::vector<std::vector<int64_t>>& dims_mapping_2d() const { return dims_mapping_; }
+  const std::vector<std::vector<int64_t>>& dims_mapping_2d() const { return dims_mapping_2d_; }
 
-  const std::vector<std::vector<int64_t>>& new_dims_mapping() const { return new_dims_mapping_; }
+  const std::vector<std::vector<int64_t>>& new_dims_mapping() const { return dims_mapping_2d_; }
 
   void set_dims_mapping(const std::vector<int64_t>& dims_mapping);
 
@@ -165,7 +166,7 @@ class TEST_API TensorDistAttr {
 
   bool verify_process_mesh(const ProcessMesh& process_mesh) const;
 
-  bool verify_dims_mapping(const std::vector<int64_t>& dims_mapping,
+  bool verify_dims_mapping(const std::vector<std::vector<int64_t>>& dims_mapping,
                            const std::vector<int64_t>& tensor_shape) const;
 
   bool verify_batch_dim(int64_t dim,
@@ -219,10 +220,69 @@ class TEST_API TensorDistAttr {
   bool skip_check_mesh() const { return skip_check_mesh_; }
 
  private:
+   // delete it after all 1d vector dims_mapping_ upgrade to 2d.
+  class DimMapProxy final {
+    public:
+    DimMapProxy(std::vector<int64_t>& dims_mapping_1d,
+                 std::vector<std::vector<int64_t>>& dims_mapping_2d) 
+      : dims_mapping_1d(dims_mapping_1d), dims_mapping_2d(dims_mapping_2d) {}
+
+    DimMapProxy& operator=(const std::vector<std::vector<int64_t>>& dims_mapping) {
+      dims_mapping_2d = dims_mapping;
+      sync_1d_map();
+      VLOG(4) << "Set 2d dims_mapping, Sync 1d. 1d " <<
+      auto_parallel::str_join(dims_mapping_1d) << " , 2d  " << auto_parallel::str_join(dims_mapping_2d);
+      return *this;
+    }
+
+    DimMapProxy& operator=(const std::vector<int64_t>& dims_mapping) {
+      dims_mapping_1d = dims_mapping;
+      sync_2d_map();
+      VLOG(4) << "Set 1d dims_mapping, Sync 2d. 1d " <<
+      auto_parallel::str_join(dims_mapping_1d) << " , 2d  " << auto_parallel::str_join(dims_mapping_2d);
+      return *this;
+    }
+
+    DimMapProxy& operator=(const DimMapProxy& other) {
+      dims_mapping_1d = other.dims_mapping_1d;
+      dims_mapping_2d = other.dims_mapping_2d;
+      return *this;
+    }
+
+    bool operator==(const DimMapProxy& other) {
+      return (dims_mapping_1d == other.dims_mapping_1d) && (dims_mapping_2d == other.dims_mapping_2d);
+    }
+
+    bool operator!=(const DimMapProxy& other) {
+      return !this->operator==(other);
+    }
+
+    private:
+    void sync_1d_map() {
+      dims_mapping_1d.resize(dims_mapping_2d.size());
+      for (size_t i = 0; i < dims_mapping_2d.size(); ++i) {
+        PADDLE_ENFORCE_LE(dims_mapping_2d[i].size(), 1,
+          "Dim_mapping conversion is not supported, dim %d of tensor has be sharded on more than one dim of mesh");
+        dims_mapping_1d[i] = dims_mapping_2d[i].empty() ? -1 : dims_mapping_2d[i][0];
+      }
+    }
+
+    void sync_2d_map() {
+      dims_mapping_2d.resize(dims_mapping_1d.size());
+      for (size_t i = 0; i < dims_mapping_1d.size(); ++i) {
+        if (dims_mapping_1d.at(i) == -1) { continue; }
+        dims_mapping_2d[i] = {dims_mapping_1d[i]};
+      }
+    }
+
+    std::vector<int64_t>& dims_mapping_1d;
+    std::vector<std::vector<int64_t>>& dims_mapping_2d;
+  };
+
   static std::vector<std::string> fields_;
   ProcessMesh process_mesh_;
-  auto_parallel::DimMapProxy dims_mapping_;
-  std::vector<std::vector<int64_t>> new_dims_mapping_;
+  std::vector<int64_t> dims_mapping_;
+  std::vector<std::vector<int64_t>> dims_mapping_2d_;
   std::vector<bool> dynamic_dims_;
   std::map<std::string, bool> annotated_;
   int64_t batch_dim_{0};
@@ -235,6 +295,7 @@ class TEST_API TensorDistAttr {
   auto_parallel::SplitFactor split_factor_map_;
   // The flag indicates whether to skip checking the process mesh.
   bool skip_check_mesh_ = false;
+  DimMapProxy dims_mapping_proxy{dims_mapping_, dims_mapping_2d_};
 };
 
 inline std::ostream& operator<<(std::ostream& os, const TensorDistAttr& obj) {

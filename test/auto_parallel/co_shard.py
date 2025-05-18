@@ -130,6 +130,7 @@ class TestCoShard:
         self.run_test_case_1()
         self.run_test_case_2()
         # self.run_test_case_3() # reshape
+        # self.run_test_case_4() static graph
 
 if __name__ == '__main__':
     TestCoShard().run_test_case_main()

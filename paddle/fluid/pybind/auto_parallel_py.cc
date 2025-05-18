@@ -480,6 +480,7 @@ void BindAutoParallel(py::module *m) {
                    .def("get_dim", &phi::distributed::Shard::get_dim)
                    .def("get_co_shard_order", &phi::distributed::Shard::get_co_shard_order)
                    .def("get_split_factor", &phi::distributed::Shard::get_split_factor)
+                   .def("set_split_factor", &phi::distributed::Shard::set_split_factor)
                    .def("__hash__", &phi::distributed::Shard::hash)
                    .def("__str__", &phi::distributed::Shard::to_string)
                    .def("__repr__", &phi::distributed::Shard::to_string)

@@ -98,6 +98,8 @@ class Shard : public Placement {
 
   virtual int get_co_shard_order() const { return 0; }
 
+  void set_split_factor(int64_t sf) { split_factor_ = sf; }
+
   int get_split_factor() const { return split_factor_; }
 
   friend std::ostream& operator<<(std::ostream& os, const Shard& p) {

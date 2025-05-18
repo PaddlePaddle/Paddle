@@ -41,9 +41,9 @@ class RToSReshardFunction(ReshardFunction):
         split_axis = -1
         mesh_axis = -1
         for idx, v in enumerate(dst_dist_attr.dims_mapping):
-            if v != -1:
+            if len(v) > 0:
                 split_axis = idx
-                mesh_axis = v
+                mesh_axis = v[0]
 
         mesh = src_dist_attr.process_mesh
         curr_global_rank = paddle.distributed.get_rank()

@@ -46,7 +46,7 @@ def clean_reshard_funcs():
 
 def is_shard(dist_attr):
     for v in dist_attr.dims_mapping:
-        if v != -1:
+        if len(v) > 0:
             return True
     return False
 
@@ -58,10 +58,10 @@ def is_partial(dist_attr):
 
 
 def is_replicated(dist_attr):
-    dims_mapping_set = set(dist_attr.dims_mapping)
+    dims_mapping = dist_attr.dims_mapping
     if len(dist_attr.partial_status) == 0 and (
-        len(dims_mapping_set) == 0
-        or (len(dims_mapping_set) == 1 and -1 in dims_mapping_set)
+        len(dims_mapping) == 0
+        or sum([sum(dims) for dims in dims_mapping]) == 0
     ):
         return True
     return False

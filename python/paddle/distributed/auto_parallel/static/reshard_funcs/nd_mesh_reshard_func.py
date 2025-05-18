@@ -123,48 +123,52 @@ class NdMeshReshardFunction(ReshardFunction):
         for i in range(first_diff_axis, -1, -1):
             in_mesh_axis = src_dist_attr.dims_mapping[i]
             out_mesh_axis = dst_dist_attr.dims_mapping[i]
-            if in_mesh_axis == -1 or in_mesh_axis == out_mesh_axis:
+            if (len(in_mesh_axis) == 0) or (in_mesh_axis == out_mesh_axis):
                 continue
 
             # calculate the dist_attr after converting
             tmp_dims_mapping = src_dist_attr.dims_mapping
-            tmp_dims_mapping[i] = -1
+            tmp_dims_mapping[i] = []
             tmp_dst_dist_attr = copy_dist_attr_with_new_member(
                 src_dist_attr, new_dims_mapping=tmp_dims_mapping
             )
             tmp_dst_type = paddle.base.libpaddle.pir.cvt_to_dist_type(
                 src_value.type(), tmp_dst_dist_attr
             )
-            sub_mesh_list = split_mesh(process_mesh, in_mesh_axis)
-            for sub_mesh in sub_mesh_list:
-                new_process_group(sorted(sub_mesh.process_ids))
-            # get the process_mesh on specific axis
-            sub_mesh = get_1D_sub_process_mesh(process_mesh, in_mesh_axis)
 
-            # calculate corresponding 1-D dist_attr of src_dst_attr
-            in_one_dim_dims_mapping = [-1] * tensor_ndim
-            in_one_dim_dims_mapping[i] = 0
-            in_one_dim_dist_attr = (
-                paddle.base.libpaddle.pir.create_tensor_dist_attribute(
-                    sub_mesh, in_one_dim_dims_mapping, {}
+            for mesh_dim in in_mesh_axis:
+                sub_mesh_list = split_mesh(process_mesh, mesh_dim)
+                for sub_mesh in sub_mesh_list:
+                    new_process_group(sorted(sub_mesh.process_ids))
+                # get the process_mesh on specific axis
+                sub_mesh = get_1D_sub_process_mesh(process_mesh, mesh_dim)
+
+                # calculate corresponding 1-D dist_attr of src_dst_attr
+                # in_one_dim_dims_mapping = [-1] * tensor_ndim
+                in_one_dim_dims_mapping = [[] for _ in range(tensor_ndim)]
+                in_one_dim_dims_mapping[i] = [0]
+                in_one_dim_dist_attr = (
+                    paddle.base.libpaddle.pir.create_tensor_dist_attribute(
+                        sub_mesh, in_one_dim_dims_mapping, {}
+                    )
                 )
-            )
 
-            # calculate corresponding 1-D dist_attr of dst_dst_attr
-            out_one_dim_dims_mapping = [-1] * tensor_ndim
-            out_one_dim_dist_attr = (
-                paddle.base.libpaddle.pir.create_tensor_dist_attribute(
-                    sub_mesh, out_one_dim_dims_mapping, {}
+                # calculate corresponding 1-D dist_attr of dst_dst_attr
+                # out_one_dim_dims_mapping = [-1] * tensor_ndim
+                out_one_dim_dims_mapping = [[] for _ in range(tensor_ndim)]
+                out_one_dim_dist_attr = (
+                    paddle.base.libpaddle.pir.create_tensor_dist_attribute(
+                        sub_mesh, out_one_dim_dims_mapping, {}
+                    )
                 )
-            )
 
-            one_dim_func = SToRReshardFunction()
-            src_value = one_dim_func.reshard(
-                in_one_dim_dist_attr,
-                out_one_dim_dist_attr,
-                src_value,
-                tmp_dst_type,
-            )
+                one_dim_func = SToRReshardFunction()
+                src_value = one_dim_func.reshard(
+                    in_one_dim_dist_attr,
+                    out_one_dim_dist_attr,
+                    src_value,
+                    tmp_dst_type,
+                )
             src_dist_attr = tmp_dst_dist_attr
 
         # Step2.2. convert partial status to replicated
@@ -182,16 +186,18 @@ class NdMeshReshardFunction(ReshardFunction):
                     continue
 
                 p_to_s = False
-                if partial_dim in dst_dist_attr.dims_mapping:
+                if any([(len(dims) == 1) and (partial_dim == dims[0]) for dims in dst_dist_attr.dims_mapping]):
                     p_to_s = True
-                    shard_index = dst_dist_attr.dims_mapping.index(partial_dim)
+                    for dims in dst_dist_attr.dims_mapping:
+                        if partial_dim in dims:
+                            shard_index = dims.index(partial_dim)
                 # get the partial status after converting
                 tmp_partial_status = src_dist_attr.partial_status
                 tmp_partial_status.pop(partial_dim)
 
                 tmp_dims_mapping = src_dist_attr.dims_mapping
                 if p_to_s:
-                    tmp_dims_mapping[shard_index] = partial_dim
+                    tmp_dims_mapping[shard_index] = [partial_dim]
 
                 tmp_dst_dist_attr = copy_dist_attr_with_new_member(
                     src_dist_attr,
@@ -212,14 +218,14 @@ class NdMeshReshardFunction(ReshardFunction):
                 in_one_dim_dist_attr = (
                     paddle.base.libpaddle.pir.create_tensor_dist_attribute(
                         sub_mesh,
-                        [-1] * tensor_ndim,
+                        [[] for _ in range(tensor_ndim)],
                         in_one_dim_partial_status,
                     )
                 )
-                out_one_dim_dims_mapping = [-1] * tensor_ndim
+                out_one_dim_dims_mapping = [[] for _ in range(tensor_ndim)]
                 one_dim_func = PToRReshardFunction()
                 if p_to_s:
-                    out_one_dim_dims_mapping[shard_index] = 0
+                    out_one_dim_dims_mapping[shard_index] = [0]
                     one_dim_func = PToSReshardFunction()
 
                 # calculate corresponding 1-D dist_attr of dst_dst_attr
@@ -252,13 +258,13 @@ class NdMeshReshardFunction(ReshardFunction):
                 in_one_dim_dist_attr = (
                     paddle.base.libpaddle.pir.create_tensor_dist_attribute(
                         sub_mesh,
-                        [-1] * tensor_ndim,
+                        [[] for _ in range(tensor_ndim)],
                         {},
                     )
                 )
                 out_one_dim_dist_attr = (
                     paddle.base.libpaddle.pir.create_tensor_dist_attribute(
-                        sub_mesh, [-1] * tensor_ndim, {0: partial_type}
+                        sub_mesh, [[] for _ in range(tensor_ndim)], {0: partial_type}
                     )
                 )
 
@@ -295,32 +301,33 @@ class NdMeshReshardFunction(ReshardFunction):
                 src_value.type(), tmp_dst_dist_attr
             )
 
+            for mesh_dim in out_mesh_axis:
             # get the process_mesh on specific axis
-            sub_mesh = get_1D_sub_process_mesh(process_mesh, out_mesh_axis)
+                sub_mesh = get_1D_sub_process_mesh(process_mesh, mesh_dim)
 
-            # calculate the corresponding 1-D input dist attr
-            in_one_dim_dims_mapping = [-1] * tensor_ndim
-            in_one_dim_dist_attr = (
-                paddle.base.libpaddle.pir.create_tensor_dist_attribute(
-                    sub_mesh, in_one_dim_dims_mapping, {}
+                # calculate the corresponding 1-D input dist attr
+                in_one_dim_dims_mapping = [[] for _ in range(tensor_ndim)]
+                in_one_dim_dist_attr = (
+                    paddle.base.libpaddle.pir.create_tensor_dist_attribute(
+                        sub_mesh, in_one_dim_dims_mapping, {}
+                    )
                 )
-            )
 
-            # calculate the corresponding 1-D output dist attr
-            out_one_dim_dims_mapping = [-1] * tensor_ndim
-            out_one_dim_dims_mapping[i] = 0
-            out_one_dim_dist_attr = (
-                paddle.base.libpaddle.pir.create_tensor_dist_attribute(
-                    sub_mesh, out_one_dim_dims_mapping, {}
+                # calculate the corresponding 1-D output dist attr
+                out_one_dim_dims_mapping = [[] for _ in range(tensor_ndim)]
+                out_one_dim_dims_mapping[i] = {0}
+                out_one_dim_dist_attr = (
+                    paddle.base.libpaddle.pir.create_tensor_dist_attribute(
+                        sub_mesh, out_one_dim_dims_mapping, {}
+                    )
                 )
-            )
-            one_dim_func = RToSReshardFunction()
-            src_value = one_dim_func.reshard(
-                in_one_dim_dist_attr,
-                out_one_dim_dist_attr,
-                src_value,
-                tmp_dst_type,
-            )
+                one_dim_func = RToSReshardFunction()
+                src_value = one_dim_func.reshard(
+                    in_one_dim_dist_attr,
+                    out_one_dim_dist_attr,
+                    src_value,
+                    tmp_dst_type,
+                )
             src_dist_attr = tmp_dst_dist_attr
         return src_value
 

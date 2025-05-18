@@ -97,7 +97,7 @@ class SToRReshardFunction(ReshardFunction):
         def get_split_axis_with_dims_mapping(dims_mapping):
             split_axis = {}
             for idx, v in enumerate(dims_mapping):
-                if v != -1:
+                if len(v) > 0:
                     split_axis[idx] = v
             return split_axis
 

@@ -127,47 +127,6 @@ std::string to_string_with_precision(const T a_value, const int n = 2) {
   return out.str();
 }
 
-
-class DimMapProxy final {
-public:
-DimMapProxy() = default;
-DimMapProxy(const std::vector<std::vector<int64_t>>& dim_mapping) : dim_mapping_2d(dim_mapping) {
-  Sync1dMap();
-}
-
-DimMapProxy(const std::vector<int64_t>& dim_mapping) : dim_mapping_1d(dim_mapping) {
-  Sync2dMap();
-}
-
-operator const std::vector<int64_t>&() const {
-  return dim_mapping_1d;
-}
-
-operator const std::vector<std::vector<int64_t>>&() const {
-  return dim_mapping_2d;
-}
-
-private:
-void Sync1dMap() {
-  dim_mapping_1d.resize(dim_mapping_2d.size());
-  for (size_t i = 0; i < dim_mapping_2d.size(); ++i) {
-    PADDLE_ENFORCE_LE(dim_mapping_2d[i].size(), 1,
-      "Dim_mapping conversion is not supported, dim %d of tensor has be sharded on more than one dim of mesh");
-    dim_mapping_1d[i] = dim_mapping_2d[i].empty() ? -1 : dim_mapping_2d[i][0];
-  }
-}
-
-void Sync2dMap() {
-  dim_mapping_2d.resize(dim_mapping_1d.size());
-  for (size_t i = 0; i < dim_mapping_1d.size(); ++i) {
-    dim_mapping_2d[i] = {dim_mapping_1d[i]};
-  }
-}
-
-std::vector<int64_t> dim_mapping_1d;
-std::vector<std::vector<int64_t>> dim_mapping_2d;
-};
-
 class SplitFactor final {
 public:
 SplitFactor() {}

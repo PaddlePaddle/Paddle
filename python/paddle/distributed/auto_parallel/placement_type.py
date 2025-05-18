@@ -17,7 +17,7 @@ import paddle
 from paddle.base.core import Partial, Replicate, Shard
 
 
-def to_placements(dim_map, mesh, partial_idx=[]):
+def to_placements(dim_map, mesh, partial_idx=[], split_factor={}):
     """
     convert dim_map to placements.
 
@@ -38,19 +38,29 @@ def to_placements(dim_map, mesh, partial_idx=[]):
     for s in partial_idx:
         placements[s] = Partial()
 
-    for i, m in enumerate(dim_map):
-        if m >= 0:
-            p = placements[m]
+    for tensor_dim, mesh_dims in enumerate(dim_map):
+        if len(mesh_dims) <= 0:
+            continue
+        is_co_shard = len(mesh_dims) > 1
+        for shard_order, mesh_dim in enumerate(mesh_dims):
+            p = placements[mesh_dim]
             if p.is_shard():
                 p = cast("Shard", p)
                 raise Exception(
-                    f"ProcessMesh dimension can not be mapped to two dimension of same tensor: {i} and {p.get_dim()}."
+                    f"ProcessMesh dimension can not be mapped to two dimension of same tensor: {tensor_dim} and {p.get_dim()}."
                 )
             elif p.is_partial():
                 raise Exception(
-                    f"ProcessMesh dimension {m} can not be both shard and partial!"
+                    f"ProcessMesh dimension {mesh_dim} can not be both shard and partial!"
                 )
-            placements[m] = Shard(i)
+
+            shard = Shard(tensor_dim, co_shard_order=shard_order) if is_co_shard else Shard(tensor_dim)
+            placements[mesh_dim] = shard
+
+    # split factor size is 1
+    if len(split_factor) >= 1:
+        for k, v in split_factor:
+            placements[k].set_split_factor(v)
 
     return placements
 
