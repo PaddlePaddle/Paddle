@@ -41,23 +41,23 @@ jobs:
     runs-on:
       group: Auto-Parallel
     steps:
-      - name: Download Paddle
-        env:
-          work_dir: ${{ github.workspace }}
-        run: |
-          sudo rm -rf * .[^.]*
-          echo "Downloading build.tar.gz"
-          wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/build/${PR_ID}/${COMMIT_ID}/build.tar.gz --no-check-certificate
-          echo "Extracting build.tar.gz"
-          tar --use-compress-program="pzstd" -xpf build.tar.gz
-          mv paddle Paddle
-          rm build.tar.gz
+      # - name: Download Paddle
+      #   env:
+      #     work_dir: ${{ github.workspace }}
+      #   run: |
+      #     sudo rm -rf * .[^.]*
+      #     echo "Downloading build.tar.gz"
+      #     wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/build/${PR_ID}/${COMMIT_ID}/build.tar.gz --no-check-certificate
+      #     echo "Extracting build.tar.gz"
+      #     tar --use-compress-program="pzstd" -xpf build.tar.gz
+      #     mv paddle Paddle
+      #     rm build.tar.gz
 
       - name: Check docker image and run container
         env:
           CACHE_DIR: /home/data/cfs/.cache
           FLAGS_dynamic_static_unified_comm: "True"
-          paddle_whl: https://paddle-github-action.bj.bcebos.com/PR/build/${PR_ID}/${COMMIT_ID}/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl
+          paddle_whl: https://paddle-github-action.bj.bcebos.com/PR/build/72744/61cde9a4c24c5019ccdb5cdbb09a78e51b93a802/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl
         run: |
           container_name=${TASK}-${core_index}-$(date +%Y%m%d-%H%M%S)
           echo "container_name=${container_name}" >> ${{ github.env }}
@@ -87,16 +87,16 @@ jobs:
           work_dir: ${{ github.workspace }}
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
-          echo "Download and extract PaddleNLP.tar.gz"
-          wget -q --no-proxy  https://paddle-qa.bj.bcebos.com/CodeSync/develop/PaddleNLP.tar --no-check-certificate
-          tar xf PaddleNLP.tar && rm -rf PaddleNLP.tar
-          # wget -q --no-proxy https://paddle-qa.bj.bcebos.com/paddlenlp/Bos.zip --no-check-certificate
-          # unzip -P "$(cat ${{ github.workspace }}/../../../bos_key)" Bos.zip
-          # mkdir paddlenlp && mv Bos/* ./paddlenlp/
-          source ${{ github.workspace }}/../../../proxy
-          cd PaddleNLP
-          git pull
-          git submodule update --init --recursive --force
+          # echo "Download and extract PaddleNLP.tar.gz"
+          # wget -q --no-proxy  https://paddle-qa.bj.bcebos.com/CodeSync/develop/PaddleNLP.tar --no-check-certificate
+          # tar xf PaddleNLP.tar && rm -rf PaddleNLP.tar
+          # # wget -q --no-proxy https://paddle-qa.bj.bcebos.com/paddlenlp/Bos.zip --no-check-certificate
+          # # unzip -P "$(cat ${{ github.workspace }}/../../../bos_key)" Bos.zip
+          # # mkdir paddlenlp && mv Bos/* ./paddlenlp/
+          # source ${{ github.workspace }}/../../../proxy
+          # cd PaddleNLP
+          # git pull
+          # git submodule update --init --recursive --force
           ln -sf $(which python3.10) /usr/bin/python
           ln -sf $(which pip3.10) /usr/local/bin/pip
           python -m pip install bce-python-sdk==0.8.74
