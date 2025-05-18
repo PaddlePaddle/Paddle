@@ -63,7 +63,7 @@ jobs:
           echo "container_name=${container_name}" >> ${{ github.env }}
           docker_image=${{ inputs.docker_build_image }}
           docker_image=registry.baidubce.com/baidu.xiaolvyun.images/paddlepaddle:8a09821b692912a392d4a7dd2825be02
-          nvidia-docker run -d -t --name ${container_name} --runtime=nvidia --shm-size=32G \
+          sudo nvidia-docker run -d -t --name ${container_name} --runtime=nvidia --shm-size=32G \
             -v /dev/shm:/dev/shm \
             -v ${{ github.workspace }}/../../..:${{ github.workspace }}/../../.. \
             -v ${{ github.workspace }}:/workspace \
