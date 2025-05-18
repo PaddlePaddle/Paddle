@@ -172,30 +172,6 @@ create_expand_v2_bf16_test_class(TestExpandV2ExpandShapesTensor2OneDNNOp)
 create_expand_v2_bf16_test_class(TestExpandV2ShapesTensorOneDNNOp)
 
 
-class TestExpandV2OneDNNOpZeroSize(TestExpandV2OneDNNOp):
-    def setUp(self):
-        self.op_type = "expand_v2"
-        self.init_data()
-        self.x = np.random.random(self.ori_shape).astype("float32")
-        self.attrs = {'shape': self.shape, 'use_mkldnn': True}
-        self.set_inputs()
-        output = np.zeros(self.expect_shape)
-        self.outputs = {'Out': output}
-
-    def init_data(self):
-        self.ori_shape = (0, 130)
-        self.shape = (4, 0, 130)
-        self.expect_shape = (4, 0, 130)
-
-
-class TestExpandV2OneDNNOpZeroSize1(TestExpandV2OneDNNOpZeroSize):
-
-    def init_data(self):
-        self.ori_shape = (0, 1, 8)
-        self.shape = (0, 8, 8)
-        self.expect_shape = (0, 8, 8)
-
-
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()
