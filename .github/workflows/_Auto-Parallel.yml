@@ -140,8 +140,8 @@ jobs:
         #     done
         #     '
 
-      - name: Terminate and delete the container
-        if: always()
-        run: |
-          # sudo rm -rf * .[^.]*
-          docker rm -f ${{ env.container_name }}
+    # - name: Terminate and delete the container
+    #   if: always()
+    #   run: |
+    #     # sudo rm -rf * .[^.]*
+    #     docker rm -f ${{ env.container_name }}
