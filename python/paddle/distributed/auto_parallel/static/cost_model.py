@@ -250,7 +250,8 @@ class CostModel:
                 op.type.startswith('c_')
                 or op.type.startswith('send')
                 or op.type.startswith('recv')
-                or op.type in ['p_send', 'p_recv']
+                or op.type.startswith('p_send')
+                or op.type.startswith('p_recv')
             ):
                 is_bwd = False
                 if (
@@ -267,8 +268,10 @@ class CostModel:
                     is_bwd = '@GRAD' in op.output('Out')[0]
                 elif op.type.startswith('send'):
                     is_bwd = '@GRAD' in op.input('X')[0]
-                elif op.type in ['p_send', 'p_recv']:
+                elif op.type == 'p_send':
                     is_bwd = '@GRAD' in op.input('x')[0]
+                elif op.type == 'p_recv':
+                    is_bwd = '@GRAD' in op.output('out')[0]
                 op_node = CommOpCostNode(
                     op, CostNodeType.COMMUNICATION, op_id, is_bwd
                 )
@@ -420,7 +423,8 @@ class CostModel:
                 elif (
                     node_id.startswith('send')
                     or node_id.startswith('recv')
-                    or node_id.type in ['p_send', 'p_recv']
+                    or node_id.startswith('p_send')
+                    or node_id.startswith('p_recv')
                 ):
                     peer_rank = node.node.attr('peer')
                     node.set_ranks([sub_idx, peer_rank])
