@@ -116,8 +116,8 @@ jobs:
           # unset http_proxy && unset https_proxy
           # source ${{ github.workspace }}/../../../proxy
           pip config set global.cache-dir '/home/.cache/pip'
-          rm -rf /usr/bin/python;
-          ln -s /usr/bin/python${python_version} /usr/bin/python;
+          sudo rm -rf /usr/bin/python;
+          sudo ln -s /usr/bin/python${python_version} /usr/bin/python;
           python -c "import sys; print(sys.version_info[:])";
           unset http_proxy && unset https_proxy
           export LD_LIBRARY_PATH=/usr/local/cuda-11.8/compat:$LD_LIBRARY_PATH
