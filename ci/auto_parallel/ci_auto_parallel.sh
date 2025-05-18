@@ -44,54 +44,54 @@ install_external_ops(){
 }
 
 get_diff_TO_case(){
-cd ${paddle_dir}
-# get the location of "test/auto_parallel" in target_lists_for_semi_auto_ci
-count=0
-for element in "${target_lists_for_semi_auto_ci[@]}";do
-  if [[ "$element" == "test/auto_parallel" ]]; then
-    test_auto_num=$count
-    break
-  fi
-  count=$((count+1))
-done
-# get the location of "test/collective/hybrid_strategy" in target_lists_for_dygraph_ci
-count=0
-for element in "${target_lists_for_dygraph_ci[@]}";do
-  if [[ "$element" == "test/collective/hybrid_strategy" ]]; then
-    test_dygraph_num=$count
-    break
-  fi
-  count=$((count+1))
-done
+    cd ${paddle_dir}
+    # get the location of "test/auto_parallel" in target_lists_for_semi_auto_ci
+    count=0
+    for element in "${target_lists_for_semi_auto_ci[@]}";do
+    if [[ "$element" == "test/auto_parallel" ]]; then
+        test_auto_num=$count
+        break
+    fi
+    count=$((count+1))
+    done
+    # get the location of "test/collective/hybrid_strategy" in target_lists_for_dygraph_ci
+    count=0
+    for element in "${target_lists_for_dygraph_ci[@]}";do
+    if [[ "$element" == "test/collective/hybrid_strategy" ]]; then
+        test_dygraph_num=$count
+        break
+    fi
+    count=$((count+1))
+    done
 
-# There are two types of tests included here:
-# 1. The auto-parallel unit testing in Paddle repository. CI will immediately end with
-# an error when a test fails.
-# 2. The auto-parallel testing of large language models in `PaddleNLP` repository. The execution
-# status of each test will be recorded through global variables. When a test fails, it does not
-# affect the execution of subsequent tests. They will be summarized and output after the CI is completed.
-# Therefore, it is required to perform paddle unit testing first, followed by testing in `PaddleNLP`.
-case_list[${#case_list[*]}]="llama_auto_unit_test"
-case_list[${#case_list[*]}]=llama_auto
-case_list[${#case_list[*]}]=gpt-3_auto
-case_list[${#case_list[*]}]=gpt-3_dygraph
+    # There are two types of tests included here:
+    # 1. The auto-parallel unit testing in Paddle repository. CI will immediately end with
+    # an error when a test fails.
+    # 2. The auto-parallel testing of large language models in `PaddleNLP` repository. The execution
+    # status of each test will be recorded through global variables. When a test fails, it does not
+    # affect the execution of subsequent tests. They will be summarized and output after the CI is completed.
+    # Therefore, it is required to perform paddle unit testing first, followed by testing in `PaddleNLP`.
+    case_list[${#case_list[*]}]="llama_auto_unit_test"
+    case_list[${#case_list[*]}]=llama_auto
+    case_list[${#case_list[*]}]=gpt-3_auto
+    case_list[${#case_list[*]}]=gpt-3_dygraph
 }
 
 print_info(){
-#解决异常退出-6的问题，CI中的偶现问题，无法发现
-if [[ $1 -ne 0 ]] && [[ $1 -ne 250 ]];then
-    EXCODE=2
-    if [ ! -f ${log_path}/$2 ];then
-        echo -e "\033[31m run $2 CI FAIL \033"
-else
-    mv ${log_path}/$2 ${log_path}/$2_FAIL.log
-    echo -e "\033[31m ${log_path}/$2_FAIL \033"
-    tail -70 ${log_path}/$2_FAIL.log
+    #解决异常退出-6的问题，CI中的偶现问题，无法发现
+    if [[ $1 -ne 0 ]] && [[ $1 -ne 250 ]];then
+        EXCODE=2
+        if [ ! -f ${log_path}/$2 ];then
+            echo -e "\033[31m run $2 CI FAIL \033"
+    else
+        mv ${log_path}/$2 ${log_path}/$2_FAIL.log
+        echo -e "\033[31m ${log_path}/$2_FAIL \033"
+        tail -70 ${log_path}/$2_FAIL.log
+        fi
+        exit $EXCODE
+    else
+        echo -e "\033[32m The $3 CI has completed \033"
     fi
-    exit $EXCODE
-else
-    echo -e "\033[32m The $3 CI has completed \033"
-fi
 }
 
 function execute_func_list(){

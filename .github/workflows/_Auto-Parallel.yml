@@ -110,9 +110,9 @@ jobs:
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           ldconfig
           set -e
-          ln -sf $(which python3.10) /usr/bin/python
           # ln -sf $(which pip3.10) /usr/local/bin/pip
           pip config set global.cache-dir '/home/.cache/pip'
+          ln -sf $(which python${python_version}) /usr/bin/python
           unset http_proxy && unset https_proxy
           #  source ${{ github.workspace }}/../../../proxy
           export LD_LIBRARY_PATH=/usr/local/cuda-11.8/compat:$LD_LIBRARY_PATH
