@@ -110,7 +110,6 @@ jobs:
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           ldconfig
           set -e
-          rm -rf /usr/bin/python;
           ln -sf $(which python3.10) /usr/bin/python
           # ln -sf $(which pip3.10) /usr/local/bin/pip
           pip config set global.cache-dir '/home/.cache/pip'
