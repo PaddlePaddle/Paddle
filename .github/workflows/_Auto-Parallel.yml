@@ -93,7 +93,7 @@ jobs:
           # # wget -q --no-proxy https://paddle-qa.bj.bcebos.com/paddlenlp/Bos.zip --no-check-certificate
           # # unzip -P "$(cat ${{ github.workspace }}/../../../bos_key)" Bos.zip
           # # mkdir paddlenlp && mv Bos/* ./paddlenlp/
-          # source ${{ github.workspace }}/../../../proxy
+          source ${{ github.workspace }}/../../../proxy
           # cd PaddleNLP
           # git pull
           # git submodule update --init --recursive --force
