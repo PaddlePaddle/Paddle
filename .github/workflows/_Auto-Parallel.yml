@@ -79,6 +79,7 @@ jobs:
             -e no_proxy \
             -e CI_name \
             -e paddle_whl \
+            -e FLAGS_dynamic_static_unified_comm \
             -w /workspace --network host --runtime=nvidia ${docker_image}
 
       - name: Download PaddleTest
