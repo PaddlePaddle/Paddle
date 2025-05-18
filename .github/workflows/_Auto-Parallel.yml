@@ -3,9 +3,9 @@ name: Auto-Parallel
 on:
   workflow_call:
     inputs:
-      docker_build_image:
-        type: string
-        required: true
+      # docker_build_image:
+      #   type: string
+      #   required: true
       can-skip:
         type: string
         required: false
