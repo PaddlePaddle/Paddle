@@ -116,6 +116,7 @@ jobs:
           unset http_proxy && unset https_proxy
           #  source ${{ github.workspace }}/../../../proxy
           export LD_LIBRARY_PATH=/usr/local/cuda-11.8/compat:$LD_LIBRARY_PATH
+          python -m pip install --user --no-cache-dir ${paddle_whl} --force-reinstall --no-dependencies
           timeout 80m bash -x Paddle/ci/auto_parallel/ci_auto_parallel.sh ${paddle_whl}
           '
 
