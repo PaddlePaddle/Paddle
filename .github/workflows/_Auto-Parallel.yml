@@ -57,6 +57,7 @@ jobs:
         env:
           CACHE_DIR: /home/data/cfs/.cache
           FLAGS_dynamic_static_unified_comm: "True"
+          python_version: "3.10"
           paddle_whl: https://paddle-github-action.bj.bcebos.com/PR/build/72744/61cde9a4c24c5019ccdb5cdbb09a78e51b93a802/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl
         run: |
           container_name=${TASK}-${core_index}-$(date +%Y%m%d-%H%M%S)
@@ -80,6 +81,7 @@ jobs:
             -e CI_name \
             -e paddle_whl \
             -e FLAGS_dynamic_static_unified_comm \
+            -e python_version \
             -w /workspace --network host --runtime=nvidia ${docker_image}
 
       - name: Download PaddleTest
@@ -116,7 +118,8 @@ jobs:
           # unset http_proxy && unset https_proxy
           # source ${{ github.workspace }}/../../../proxy
           pip config set global.cache-dir '/home/.cache/pip'
-          ln -sf /usr/bin/python${python_version} /usr/bin/python;
+          rm -rf /usr/bin/python;
+          ln -s /usr/bin/python${python_version} /usr/bin/python;
           python -c "import sys; print(sys.version_info[:])";
           unset http_proxy && unset https_proxy
           export LD_LIBRARY_PATH=/usr/local/cuda-11.8/compat:$LD_LIBRARY_PATH
