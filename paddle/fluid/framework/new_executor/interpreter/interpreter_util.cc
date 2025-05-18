@@ -1223,9 +1223,9 @@ void BuildVariableScope(const framework::BlockDesc& block,
 
   for (auto& var_desc : block.AllVars()) {
     auto var_name = var_desc->Name();
-    // TODO(xiongkun): user may create a variable with name that exists
-    // before. under such circumstances, we should raise a error. Currently we
-    // can't get the var_desc of startup_program, so leave it later.
+    // TODO(xiongkun): user may create a variable with name that exists before.
+    // under such circumstances, we should raise a error. Currently we can't
+    // get the var_desc of startup_program, so leave it later.
     if (var_name == framework::kEmptyVarName) {
       continue;
     }
