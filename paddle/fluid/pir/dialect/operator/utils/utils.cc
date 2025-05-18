@@ -36,11 +36,6 @@
 namespace paddle {
 namespace dialect {
 
-const std::unordered_set<std::string> LegacyOpList = {
-    // SendV2Op::name(),
-    // RecvV2Op::name(),
-};
-
 enum class AttrType {
   UNDEFINED = 0,
   BOOL,
@@ -222,7 +217,7 @@ paddle::any TransAttrToAny(const pir::Attribute& attr) {
   return GetAttrCast<paddle::any>(attr_type)(attr);
 }
 
-bool IsLegacyOp(const std::string& name) { return LegacyOpList.count(name); }
+bool IsLegacyOp(const std::string& name) { return false; }
 
 bool IsEmptyValue(const pir::Value& value) {
   return !value.impl() || !value.type();
