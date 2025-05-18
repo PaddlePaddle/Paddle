@@ -107,12 +107,12 @@ jobs:
         env:
           work_dir: ${{ github.workspace }}
         run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c 'python -c "a = 1; print(a)"'
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           ldconfig
           unset http_proxy && unset https_proxy
           source ${{ github.workspace }}/../../../proxy
           export LD_LIBRARY_PATH=/usr/local/cuda-11.8/compat:$LD_LIBRARY_PATH
-          python -c "import sys; print(sys.version_info[:])";
           timeout 80m bash -x Paddle/ci/auto_parallel/ci_auto_parallel.sh ${paddle_whl}
           '
 
