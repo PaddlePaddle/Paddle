@@ -592,23 +592,18 @@ class FusedCommBuffer:
             ), f"The current parameter[{param.name}] has gradient, its stop_grdient is {param.stop_gradient} , but we excepte it^s grad is None ,  Here are some examples: user marked_unused_param incorrect ,like marked_unused_param when backward unfinished,marked_unused_param which param have grad"
             return
 
-        assert (
-            grad_var is not None
-        ), f"The current parameter[{param.name}] has no gradient, its stop_grdient is {param.stop_gradient}"
+        if grad_var is not None:
+            grad_var.stop_gradient = True
+            grad_var.flatten_()
+            tmp_var.add_(grad_var)
+            grad_var._clear()
 
-        grad_var.stop_gradient = True
-        grad_var.flatten_()
-
-        tmp_var.add_(grad_var)
         tmp_var.get_tensor()._set_dims(param.shape)
-
         if self.use_main_grad:
-            param.main_grad._clear()
             if not self._free_grads_in_comm:
                 param.main_grad = tmp_var
                 param.main_grad.name = "main_grad@" + param.name
         else:
-            param.grad._clear()
             if not self._free_grads_in_comm:
                 param._copy_gradient_from(tmp_var)
 
