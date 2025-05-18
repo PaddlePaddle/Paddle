@@ -107,6 +107,7 @@ jobs:
         env:
           work_dir: ${{ github.workspace }}
         run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c 'python -c "import paddle;print(paddle.__version__); paddle.utils.run_check()"'
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           ldconfig
           unset http_proxy && unset https_proxy
