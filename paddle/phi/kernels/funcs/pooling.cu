@@ -24,73 +24,67 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/kernels/funcs/distribution_helper.h"
+#include "paddle/phi/kernels/funcs/fast_divmod.h"
 #include "paddle/phi/kernels/funcs/pooling.h"
 #include "paddle/phi/kernels/funcs/random.cuh"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
-#include "paddle/phi/kernels/primitive/datamover_primitives.h"
 
 namespace phi {
 namespace funcs {
 
 struct FastDivModForPooling {
  public:
-  phi::kps::details::FastDivMod channel;
-  phi::kps::details::FastDivMod width;
-  phi::kps::details::FastDivMod height;
+  FastDivMod<int> channel;
+  FastDivMod<int> width;
+  FastDivMod<int> height;
 
   explicit HOSTDEVICE FastDivModForPooling(const int channels,
                                            const int output_width,
-                                           const int output_height) {
-    channel = phi::kps::details::FastDivMod(channels);
-    width = phi::kps::details::FastDivMod(output_width);
-    height = phi::kps::details::FastDivMod(output_height);
-  }
+                                           const int output_height)
+      : channel(channels), width(output_width), height(output_height) {}
 };
 
 struct FastDivModForPooling3D {
  public:
-  phi::kps::details::FastDivMod channel;
-  phi::kps::details::FastDivMod width;
-  phi::kps::details::FastDivMod height;
-  phi::kps::details::FastDivMod depth;
+  FastDivMod<int> channel;
+  FastDivMod<int> width;
+  FastDivMod<int> height;
+  FastDivMod<int> depth;
 
   explicit HOSTDEVICE FastDivModForPooling3D(const int channels,
                                              const int output_width,
                                              const int output_height,
-                                             const int output_depth) {
-    channel = phi::kps::details::FastDivMod(channels);
-    width = phi::kps::details::FastDivMod(output_width);
-    height = phi::kps::details::FastDivMod(output_height);
-    depth = phi::kps::details::FastDivMod(output_depth);
-  }
+                                             const int output_depth)
+      : channel(channels),
+        width(output_width),
+        height(output_height),
+        depth(output_depth) {}
 };
 
 struct FastDivModForPoolingWithMoreStaff {
  public:
-  phi::kps::details::FastDivMod channel;
-  phi::kps::details::FastDivMod width;
-  phi::kps::details::FastDivMod height;
-  phi::kps::details::FastDivMod ksize_w;
-  phi::kps::details::FastDivMod ksize_h;
-  phi::kps::details::FastDivMod stride_w;
-  phi::kps::details::FastDivMod stride_h;
+  FastDivMod<int> channel;
+  FastDivMod<int> width;
+  FastDivMod<int> height;
+  FastDivMod<int> ksize_w;
+  FastDivMod<int> ksize_h;
+  FastDivMod<int> stride_w;
+  FastDivMod<int> stride_h;
 
-  explicit HOSTDEVICE FastDivModForPoolingWithMoreStaff(
-      const int channels,
-      const int input_width,
-      const int input_height,
-      const int ksize_width,
-      const int ksize_height,
-      const int stride_width,
-      const int stride_height) {
-    channel = phi::kps::details::FastDivMod(channels);
-    width = phi::kps::details::FastDivMod(input_width);
-    height = phi::kps::details::FastDivMod(input_height);
-    ksize_w = phi::kps::details::FastDivMod(ksize_width);
-    ksize_h = phi::kps::details::FastDivMod(ksize_height);
-    stride_w = phi::kps::details::FastDivMod(stride_width);
-    stride_h = phi::kps::details::FastDivMod(stride_height);
-  }
+  explicit HOSTDEVICE FastDivModForPoolingWithMoreStaff(const int channels,
+                                                        const int input_width,
+                                                        const int input_height,
+                                                        const int ksize_width,
+                                                        const int ksize_height,
+                                                        const int stride_width,
+                                                        const int stride_height)
+      : channel(channels),
+        width(input_width),
+        height(input_height),
+        ksize_w(ksize_width),
+        ksize_h(ksize_height),
+        stride_w(stride_width),
+        stride_h(stride_height) {}
 };
 
 template <typename FastDivModForPooling>
@@ -467,18 +461,22 @@ void Pool2dDirectCUDAFunctor<PoolProcess, T>::operator()(
   const int stride_width = strides[1];
   const int padding_height = paddings[0];
   const int padding_width = paddings[1];
-  int nthreads = batch_size * output_channels * output_height * output_width;
+  int64_t nthreads = static_cast<int64_t>(batch_size) * output_channels *
+                     output_height * output_width;
   auto pool_divmods =
       FastDivModForPooling(input_channels, output_width, output_height);
   if (adaptive) {
-    int max_threads = 512;
-    int thread_num =
+    int64_t max_threads = 512;
+    int64_t thread_num =
         std::min(phi::funcs::details::GetLastPow2(output_height * output_width),
                  max_threads);
-    int blocks = std::min(max_threads / thread_num, output_channels);
+    int64_t blocks = std::min(max_threads / thread_num,
+                              static_cast<int64_t>(output_channels));
     dim3 threads(thread_num, blocks, 1);
-    dim3 grid(
-        std::max((output_channels + blocks - 1) / blocks, 1), batch_size, 1);
+    dim3 grid(std::max((output_channels + blocks - 1) / blocks,
+                       static_cast<int64_t>(1)),
+              batch_size,
+              1);
     AdaptiveKernelPool2D<PoolProcess, T>
         <<<grid, threads, 0, stream>>>(nthreads,
                                        input,
@@ -563,18 +561,22 @@ class Pool2dFunctor<phi::GPUContext, PoolProcess, T> {
     const T* input_data = input.data<T>();
     T* output_data = context.template Alloc<T>(output);
 
-    int nthreads = batch_size * output_channels * output_height * output_width;
+    int64_t nthreads = static_cast<int64_t>(batch_size) * output_channels *
+                       output_height * output_width;
     auto pool_divmods =
         FastDivModForPooling(input_channels, output_width, output_height);
     if (adaptive) {
-      int max_threads = 512;
-      int thread_num = std::min(
+      int64_t max_threads = 512;
+      int64_t thread_num = std::min(
           phi::funcs::details::GetLastPow2(output_height * output_width),
           max_threads);
-      int blocks = std::min(max_threads / thread_num, output_channels);
+      int64_t blocks = std::min(max_threads / thread_num,
+                                static_cast<int64_t>(output_channels));
       dim3 threads(thread_num, blocks, 1);
-      dim3 grid(
-          std::max((output_channels + blocks - 1) / blocks, 1), batch_size, 1);
+      dim3 grid(std::max((output_channels + blocks - 1) / blocks,
+                         static_cast<int64_t>(1)),
+                batch_size,
+                1);
       AdaptiveKernelPool2D<PoolProcess, T>
           <<<grid, threads, 0, context.stream()>>>(nthreads,
                                                    input_data,
@@ -657,18 +659,22 @@ class Pool2dFunctor<phi::GPUContext, PoolProcess, T> {
     const T* input_data = input.data<T>();
     T* output_data = context.template Alloc<T>(output);
 
-    int nthreads = batch_size * output_channels * output_height * output_width;
+    int64_t nthreads = static_cast<int64_t>(batch_size) * output_channels *
+                       output_height * output_width;
     auto pool_divmods =
         FastDivModForPooling(input_channels, output_width, output_height);
     if (adaptive) {
-      int max_threads = 512;
-      int thread_num = std::min(
+      int64_t max_threads = 512;
+      int64_t thread_num = std::min(
           phi::funcs::details::GetLastPow2(output_height * output_width),
           max_threads);
-      int blocks = std::min(max_threads / thread_num, output_channels);
+      int64_t blocks = std::min(max_threads / thread_num,
+                                static_cast<int64_t>(output_channels));
       dim3 threads(thread_num, blocks, 1);
-      dim3 grid(
-          std::max((output_channels + blocks - 1) / blocks, 1), batch_size, 1);
+      dim3 grid(std::max((output_channels + blocks - 1) / blocks,
+                         static_cast<int64_t>(1)),
+                batch_size,
+                1);
       AdaptiveKernelPool2D<PoolProcess, T>
           <<<grid, threads, 0, context.stream()>>>(nthreads,
                                                    input_data,
@@ -2159,18 +2165,22 @@ class MaxPool2dWithIndexFunctor<phi::GPUContext, T1, T2> {
     T1* output_data = context.template Alloc<T1>(output);
     T2* mask_data = context.template Alloc<T2>(mask);
 
-    int nthreads = batch_size * output_channels * output_height * output_width;
+    int64_t nthreads = static_cast<int64_t>(batch_size) * output_channels *
+                       output_height * output_width;
     auto pool_divmods =
         FastDivModForPooling(input_channels, output_width, output_height);
     if (adaptive && output_height > 1 && output_width > 1) {
-      int max_threads = 512;
-      int thread_num = std::min(
+      int64_t max_threads = 512;
+      int64_t thread_num = std::min(
           phi::funcs::details::GetLastPow2(output_height * output_width),
           max_threads);
-      int blocks = std::min(max_threads / thread_num, output_channels);
+      int64_t blocks = std::min(max_threads / thread_num,
+                                static_cast<int64_t>(output_channels));
       dim3 threads(thread_num, blocks, 1);
-      dim3 grid(
-          std::max((output_channels + blocks - 1) / blocks, 1), batch_size, 1);
+      dim3 grid(std::max((output_channels + blocks - 1) / blocks,
+                         static_cast<int64_t>(1)),
+                batch_size,
+                1);
       AdaptiveKernelMaxPool2dWithIdx<T1, T2>
           <<<grid, threads, 0, context.stream()>>>(nthreads,
                                                    input_data,

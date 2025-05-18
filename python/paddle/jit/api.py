@@ -219,7 +219,7 @@ def to_static(
     function=None,
     input_spec=None,
     build_strategy=None,
-    backend=None,
+    backend="CINN",
     **kwargs,
 ):
     """
@@ -238,13 +238,18 @@ def to_static(
         build_strategy (BuildStrategy|None): This argument is used to compile the
             converted program with the specified options, such as operators' fusion
             in the computational graph and memory optimization during the execution
-            of the computational graph. For more information about build_strategy,
-            please refer to :code:`paddle.static.BuildStrategy`. The default is None.
-        backend(str, Optional): Specifies compilation backend, which can be `CINN` or
-            None. When backend is `CINN`, CINN compiler will be used to speed up
-            training and inference.
-        kwargs: Support keys including `property`, set `property` to True if the function
-            is python property.
+            of the computational graph. For more information about :attr:`build_strategy`,
+            please refer to :ref:`paddle.static.BuildStrategy <cn_api_paddle_static_BuildStrategy>`.
+            The default is ``None``.
+        backend(str, Optional): Specifies compilation backend, which can be ``"CINN"`` or
+            ``None``. When backend is ``"CINN"``, CINN compiler will be used to speed up
+            training and inference. default value is ``"CINN"``.
+        kwargs: Support keys including :attr:`property` and :attr:`full_graph`.
+
+          - property (bool): If True, the function will be treated as a property
+            function. The default is False.
+          - full_graph (bool): If True, the function will be converted into a
+            full static graph. The default is False.
 
     Returns:
         Tensor(s): containing the numerical result.
@@ -279,11 +284,12 @@ def to_static(
             f"Required type(build_strategy) shall be `paddle.static.BuildStrategy`, but received {type(build_strategy).__name__}"
         )
     backend = Backend.from_arg(backend)
-    backend = (
-        Backend.CINN
-        if infer_use_cinn_backend(backend, build_strategy)
-        else Backend.PHI
-    )
+    if infer_use_cinn_backend(backend, build_strategy):
+        backend = Backend.CINN
+    elif backend.is_pcc():
+        pass
+    else:
+        backend = Backend.PHI
 
     def decorated(python_func):
         """
@@ -352,7 +358,7 @@ class _NotToStaticDecorator(Protocol):
 
 @overload
 def not_to_static(
-    func: Callable[_InputT, _RetT]
+    func: Callable[_InputT, _RetT],
 ) -> Callable[_InputT, _RetT]: ...
 
 
@@ -1231,6 +1237,7 @@ def save(
                     inner_layer.forward,
                     input_spec=inner_input_spec,
                     full_graph=True,
+                    backend=None,
                 )
 
                 concrete_program = (
@@ -1270,6 +1277,7 @@ def save(
                     static_func,
                     input_spec=inner_input_spec,
                     full_graph=True,
+                    backend=None,
                 )
                 concrete_program = static_function.concrete_program
 

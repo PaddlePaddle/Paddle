@@ -41,7 +41,15 @@ def download_file():
     if sysstr == 'win32':
         url = "https://sys-p0.bj.bcebos.com/prec/{}".format('disable_ut_win')
     else:
-        url = "https://sys-p0.bj.bcebos.com/prec/{}".format('disable_ut')
+        import os
+
+        branch = os.getenv('BRANCH')
+        if branch.startswith('release/'):
+            url = "https://sys-p0.bj.bcebos.com/prec/{}".format(
+                'disable_ut_release'
+            )
+        else:
+            url = "https://sys-p0.bj.bcebos.com/prec/{}".format('disable_ut')
 
     if paddle.is_compiled_with_rocm():
         if cuda.get_device_name() == 'K100_AI':

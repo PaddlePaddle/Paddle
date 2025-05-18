@@ -25,6 +25,7 @@ import shutil
 import sys
 import tempfile
 import textwrap
+import time
 import types
 import warnings
 from contextlib import contextmanager
@@ -88,6 +89,7 @@ ENV_ENABLE_CINN_IN_DY2ST = BooleanEnvironmentVariable(
 class Backend(Enum):
     CINN = auto()
     PHI = auto()
+    PCC = auto()
 
     @staticmethod
     def from_arg(arg: str | Backend | None):
@@ -97,6 +99,8 @@ class Backend(Enum):
             return Backend.PHI
         if arg.upper() == "CINN":
             return Backend.CINN
+        if arg.upper() == "PCC":
+            return Backend.PCC
         raise ValueError(
             f"Unknown backend {arg}. Only support 'CINN' or None for PHI."
         )
@@ -104,8 +108,32 @@ class Backend(Enum):
     def is_cinn(self):
         return self == Backend.CINN
 
+    def is_pcc(self):
+        return self == Backend.PCC
+
     def is_phi(self):
         return self == Backend.PHI
+
+
+class TimeCounter:
+    def __init__(self):
+        self._time_history: list[float] = []
+
+    def get_last_time(self):
+        if len(self._time_history) == 0:
+            return 0
+        return self._time_history[-1]
+
+    def get_total_time(self):
+        return sum(self._time_history)
+
+    @contextmanager
+    def record(self):
+        start_time = time.perf_counter()
+        yield
+        end_time = time.perf_counter()
+        elapsed_time = end_time - start_time
+        self._time_history.append(elapsed_time)
 
 
 def data_layer_not_check(name, shape, dtype='float32'):

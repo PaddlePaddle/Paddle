@@ -70,13 +70,13 @@ void StackGradKernel(const Context& dev_ctx,
           n_slices,
           axis));
 
-  std::vector<int> partial_shape = phi::vectorize<int>(og_dims);
-  partial_shape[axis] = static_cast<int>(needed_slices);
+  std::vector<int64_t> partial_shape = phi::vectorize<int64_t>(og_dims);
+  partial_shape[axis] = needed_slices;
 
   std::vector<XPUType*> dx_ptrs;
   dx_ptrs.reserve(needed_slices);
 
-  std::vector<int> dx_dims_list;
+  std::vector<int64_t> dx_dims_list;
   dx_dims_list.reserve(needed_slices);
 
   for (auto& vs : valid_slices) {

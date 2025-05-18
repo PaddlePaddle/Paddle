@@ -26,7 +26,6 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/variable.h"
-#include "paddle/fluid/operators/custom_device_common_op_registry.h"
 #include "paddle/fluid/pybind/eager_generator.h"
 #include "paddle/fluid/pybind/eager_legacy_op_function_generator.h"
 #include "paddle/fluid/pybind/pybind.h"
@@ -474,12 +473,6 @@ GenerateOpFunctions() {
 }
 
 int run_legacy_generator(int argc, char* argv[]) {
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
-  // We need a fake device to trigger the registration of the common kernel and
-  // generate api
-  paddle::operators::RegisterCustomDeviceCommonKernel("fake_device");
-#endif
-
   const std::string str = "\"paddle/fluid/eager/api/generated/fluid_generated/";
   std::vector<std::string> headers{
       "<Python.h>",

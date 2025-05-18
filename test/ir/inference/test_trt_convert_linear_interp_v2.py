@@ -91,7 +91,7 @@ class TrtConvertLinearInterpV2Test(TrtLayerAutoScanTest):
 
                 yield program_config
 
-    def generate_dynamic_shape(self):
+    def generate_dynamic_shape(self, attrs):
         self.dynamic_shape.min_input_shape = {"input_data": [1, 3, 64]}
         self.dynamic_shape.max_input_shape = {"input_data": [4, 3, 64]}
         self.dynamic_shape.opt_input_shape = {"input_data": [1, 3, 64]}
@@ -127,7 +127,7 @@ class TrtConvertLinearInterpV2Test(TrtLayerAutoScanTest):
             ), 1e-2
 
         # for dynamic_shape
-        self.generate_dynamic_shape()
+        self.generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         program_config.set_input_type(np.float32)
         yield self.create_inference_config(), generate_trt_nodes_num(
@@ -205,7 +205,7 @@ class TrtConvertLinearInterpV2Test1(TrtLayerAutoScanTest):
 
                     yield program_config
 
-    def generate_dynamic_shape(self):
+    def generate_dynamic_shape(self, attrs):
         self.dynamic_shape.min_input_shape = {"input_data": [1, 18, 144]}
         self.dynamic_shape.max_input_shape = {"input_data": [8, 18, 144]}
         self.dynamic_shape.opt_input_shape = {"input_data": [4, 18, 144]}
@@ -240,7 +240,7 @@ class TrtConvertLinearInterpV2Test1(TrtLayerAutoScanTest):
             ), 1e-2
 
         # for dynamic_shape
-        self.generate_dynamic_shape()
+        self.generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True

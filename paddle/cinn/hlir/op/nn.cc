@@ -235,29 +235,29 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(
   std::string conv_type = "";
   bool use_onednn = false;
   if (attrs.attr_store.find("padding") != attrs.attr_store.end()) {
-    padding = absl::get<std::vector<int>>(attrs.attr_store.at("padding"));
+    padding = std::get<std::vector<int>>(attrs.attr_store.at("padding"));
   }
   if (attrs.attr_store.find("stride") != attrs.attr_store.end()) {
-    stride = absl::get<std::vector<int>>(attrs.attr_store.at("stride"));
+    stride = std::get<std::vector<int>>(attrs.attr_store.at("stride"));
   }
   if (attrs.attr_store.find("dilation") != attrs.attr_store.end()) {
-    dilation = absl::get<std::vector<int>>(attrs.attr_store.at("dilation"));
+    dilation = std::get<std::vector<int>>(attrs.attr_store.at("dilation"));
   }
   if (attrs.attr_store.find("data_format") != attrs.attr_store.end()) {
-    data_format = absl::get<std::string>(attrs.attr_store.at("data_format"));
+    data_format = std::get<std::string>(attrs.attr_store.at("data_format"));
   }
   if (attrs.attr_store.find("groups") != attrs.attr_store.end()) {
-    groups = absl::get<int>(attrs.attr_store.at("groups"));
+    groups = std::get<int>(attrs.attr_store.at("groups"));
   }
   if (attrs.attr_store.find("use_onednn") != attrs.attr_store.end()) {
-    use_onednn = absl::get<bool>(attrs.attr_store.at("use_onednn"));
+    use_onednn = std::get<bool>(attrs.attr_store.at("use_onednn"));
   }
   if (attrs.attr_store.find("key") != attrs.attr_store.end()) {
-    key = absl::get<std::string>(attrs.attr_store.at("key"));
+    key = std::get<std::string>(attrs.attr_store.at("key"));
   }
   // get conv type
   if (attrs.attr_store.find("conv_type") != attrs.attr_store.end()) {
-    conv_type = absl::get<std::string>(attrs.attr_store.at("conv_type"));
+    conv_type = std::get<std::string>(attrs.attr_store.at("conv_type"));
   } else {
     conv_type = "forward";
   }
@@ -451,19 +451,19 @@ std::shared_ptr<OpStrategy> StrategyForDepthwiseConv2d(
   std::string data_format = "NCHW";
   std::string key;
   if (attrs.attr_store.find("padding") != attrs.attr_store.end()) {
-    padding = absl::get<std::vector<int>>(attrs.attr_store.at("padding"));
+    padding = std::get<std::vector<int>>(attrs.attr_store.at("padding"));
   }
   if (attrs.attr_store.find("stride") != attrs.attr_store.end()) {
-    stride = absl::get<std::vector<int>>(attrs.attr_store.at("stride"));
+    stride = std::get<std::vector<int>>(attrs.attr_store.at("stride"));
   }
   if (attrs.attr_store.find("data_format") != attrs.attr_store.end()) {
-    data_format = absl::get<std::string>(attrs.attr_store.at("data_format"));
+    data_format = std::get<std::string>(attrs.attr_store.at("data_format"));
   }
   if (attrs.attr_store.find("dilation") != attrs.attr_store.end()) {
-    dilation = absl::get<std::vector<int>>(attrs.attr_store.at("dilation"));
+    dilation = std::get<std::vector<int>>(attrs.attr_store.at("dilation"));
   }
   if (attrs.attr_store.find("key") != attrs.attr_store.end()) {
-    key = absl::get<std::string>(attrs.attr_store.at("key"));
+    key = std::get<std::string>(attrs.attr_store.at("key"));
   }
 
   framework::CINNCompute depthwise_conv2d_compute([=](lang::Args args,
@@ -594,10 +594,10 @@ std::shared_ptr<OpStrategy> StrategyForBatchNorm(
   float epsilon = 0.00001f;
   std::vector<std::string> input_layouts;
   if (attrs.attr_store.find("epsilon") != attrs.attr_store.end()) {
-    epsilon = absl::get<float>(attrs.attr_store.at("epsilon"));
+    epsilon = std::get<float>(attrs.attr_store.at("epsilon"));
   }
   if (attrs.attr_store.find("input_layouts") != attrs.attr_store.end()) {
-    input_layouts = absl::get<std::vector<std::string>>(
+    input_layouts = std::get<std::vector<std::string>>(
         attrs.attr_store.at("input_layouts"));
   }
   framework::CINNCompute batchnorm_compute([=](lang::Args args,
@@ -741,19 +741,19 @@ std::shared_ptr<OpStrategy> StrategyForPool1d(
     std::string data_format = "NCW";
     for (auto &iter : attrs.attr_store) {
       if (iter.first == "kernel_size") {
-        kernel_size = absl::get<std::vector<int>>(iter.second);
+        kernel_size = std::get<std::vector<int>>(iter.second);
       } else if (iter.first == "stride_size") {
-        stride_size = absl::get<std::vector<int>>(iter.second);
+        stride_size = std::get<std::vector<int>>(iter.second);
       } else if (iter.first == "padding_size") {
-        padding_size = absl::get<std::vector<int>>(iter.second);
+        padding_size = std::get<std::vector<int>>(iter.second);
       } else if (iter.first == "pool_type") {
-        pool_type = absl::get<std::string>(iter.second);
+        pool_type = std::get<std::string>(iter.second);
       } else if (iter.first == "ceil_mode") {
-        ceil_mode = absl::get<bool>(iter.second);
+        ceil_mode = std::get<bool>(iter.second);
       } else if (iter.first == "exclusive") {
-        exclusive = absl::get<bool>(iter.second);
+        exclusive = std::get<bool>(iter.second);
       } else if (iter.first == "data_format") {
-        data_format = absl::get<std::string>(iter.second);
+        data_format = std::get<std::string>(iter.second);
       } else {
         LOG(ERROR) << "Unsupported attr: " << iter.first << std::endl;
       }
@@ -832,39 +832,39 @@ std::shared_ptr<OpStrategy> StrategyForPool2d(
   std::string data_format = "NCHW";
   for (auto &iter : attrs.attr_store) {
     if (iter.first == "kernel_size") {
-      kernel_size = absl::get<std::vector<int>>(iter.second);
+      kernel_size = std::get<std::vector<int>>(iter.second);
     } else if (iter.first == "stride_size") {
-      stride_size = absl::get<std::vector<int>>(iter.second);
+      stride_size = std::get<std::vector<int>>(iter.second);
     } else if (iter.first == "padding_size") {
-      padding_size = absl::get<std::vector<int>>(iter.second);
+      padding_size = std::get<std::vector<int>>(iter.second);
     } else if (iter.first == "pool_type") {
-      pool_type = absl::get<std::string>(iter.second);
+      pool_type = std::get<std::string>(iter.second);
     } else if (iter.first == "ceil_mode") {
-      ceil_mode = absl::get<bool>(iter.second);
+      ceil_mode = std::get<bool>(iter.second);
     } else if (iter.first == "exclusive") {
-      exclusive = absl::get<bool>(iter.second);
+      exclusive = std::get<bool>(iter.second);
     } else if (iter.first == "data_format") {
-      data_format = absl::get<std::string>(iter.second);
+      data_format = std::get<std::string>(iter.second);
     } else if (iter.first == "global_pooling") {
-      global_pooling = absl::get<bool>(iter.second);
+      global_pooling = std::get<bool>(iter.second);
     } else if (iter.first == "adaptive") {
-      adaptive = absl::get<bool>(iter.second);
+      adaptive = std::get<bool>(iter.second);
     }
   }
   // It can be removed after fixing the global_pool2d problem
   if (attr_store.count("origin_kernel_size")) {
     kernel_size =
-        absl::get<std::vector<int>>(attr_store.at("origin_kernel_size"));
+        std::get<std::vector<int>>(attr_store.at("origin_kernel_size"));
   }
   if (attr_store.count("origin_padding_size")) {
     padding_size =
-        absl::get<std::vector<int>>(attr_store.at("origin_padding_size"));
+        std::get<std::vector<int>>(attr_store.at("origin_padding_size"));
   }
   if (attr_store.count("origin_global_pooling")) {
-    global_pooling = absl::get<bool>(attr_store.at("origin_global_pooling"));
+    global_pooling = std::get<bool>(attr_store.at("origin_global_pooling"));
   }
   if (attr_store.count("origin_adaptive")) {
-    adaptive = absl::get<bool>(attr_store.at("origin_adaptive"));
+    adaptive = std::get<bool>(attr_store.at("origin_adaptive"));
   }
 
   PADDLE_ENFORCE_EQ(kernel_size.empty(),
@@ -1064,19 +1064,19 @@ std::shared_ptr<OpStrategy> StrategyForPool3d(
     std::string data_format = "NCDHW";
     for (auto &iter : attrs.attr_store) {
       if (iter.first == "kernel_size") {
-        kernel_size = absl::get<std::vector<int>>(iter.second);
+        kernel_size = std::get<std::vector<int>>(iter.second);
       } else if (iter.first == "stride_size") {
-        stride_size = absl::get<std::vector<int>>(iter.second);
+        stride_size = std::get<std::vector<int>>(iter.second);
       } else if (iter.first == "padding_size") {
-        padding_size = absl::get<std::vector<int>>(iter.second);
+        padding_size = std::get<std::vector<int>>(iter.second);
       } else if (iter.first == "pool_type") {
-        pool_type = absl::get<std::string>(iter.second);
+        pool_type = std::get<std::string>(iter.second);
       } else if (iter.first == "ceil_mode") {
-        ceil_mode = absl::get<bool>(iter.second);
+        ceil_mode = std::get<bool>(iter.second);
       } else if (iter.first == "exclusive") {
-        exclusive = absl::get<bool>(iter.second);
+        exclusive = std::get<bool>(iter.second);
       } else if (iter.first == "data_format") {
-        data_format = absl::get<std::string>(iter.second);
+        data_format = std::get<std::string>(iter.second);
       } else {
         LOG(ERROR) << "Unsupported attr: " << iter.first << std::endl;
       }
@@ -1147,10 +1147,10 @@ std::shared_ptr<OpStrategy> StrategyForSoftmax(
   int axis = -1;
   bool use_onednn = false;
   if (attrs.attr_store.count("axis")) {
-    axis = absl::get<int>(attrs.attr_store.at("axis"));
+    axis = std::get<int>(attrs.attr_store.at("axis"));
   }
   if (attrs.attr_store.count("use_onednn")) {
-    use_onednn = absl::get<bool>(attrs.attr_store.at("use_onednn"));
+    use_onednn = std::get<bool>(attrs.attr_store.at("use_onednn"));
   }
   framework::CINNCompute softmax_compute([=](lang::Args args,
                                              lang::RetValue *ret) {
@@ -1231,12 +1231,12 @@ std::shared_ptr<OpStrategy> StrategyForDropoutInfer(
   float dropout_prob = 0;
   std::string dropout_implementation = "downgrade_in_infer";
   if (attrs.attr_store.find("dropout_prob") != attrs.attr_store.end()) {
-    dropout_prob = absl::get<float>(attrs.attr_store.at("dropout_prob"));
+    dropout_prob = std::get<float>(attrs.attr_store.at("dropout_prob"));
   }
   if (attrs.attr_store.find("dropout_implementation") !=
       attrs.attr_store.end()) {
     dropout_implementation =
-        absl::get<std::string>(attrs.attr_store.at("dropout_implementation"));
+        std::get<std::string>(attrs.attr_store.at("dropout_implementation"));
   }
 
   framework::CINNCompute dropout_infer_compute([=](lang::Args args,

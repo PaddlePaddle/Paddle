@@ -2289,7 +2289,7 @@ void InverseInferMeta(const MetaTensor& x, MetaTensor* out) {
           input_dims));
   for (int i = 0; i < input_rank; ++i) {
     PADDLE_ENFORCE_EQ(
-        (input_dims[i] == -1) || (input_dims[i] > 0),
+        (input_dims[i] == -1) || (input_dims[i] >= 0),
         true,
         errors::InvalidArgument(
             "Each dimension of input tensor is expected to be -1 or a "
@@ -2873,7 +2873,12 @@ void NonZeroInferMeta(const MetaTensor& condition, MetaTensor* out) {
       1UL,
       common::errors::InvalidArgument(
           "Input(Condition) should have number of dimension at least 1"));
-  out->set_dims(common::make_ddim({-1, rank}));
+  if (condition.numel() == 0) {
+    out->set_dims(common::make_ddim({0, rank}));
+  } else {
+    out->set_dims(common::make_ddim({-1, rank}));
+  }
+
   out->set_dtype(DataType::INT64);
 }
 
@@ -5578,7 +5583,9 @@ void UnfoldInferMeta(const MetaTensor& x,
   std::vector<int> out_dims;
   out_dims.push_back(in_dims[0]);  // NOLINT
   int output_channels =
-      static_cast<int>(in_dims[1] * kernel_sizes[0] * kernel_sizes[1]);
+      in_dims[1] < 0
+          ? -1
+          : static_cast<int>(in_dims[1] * kernel_sizes[0] * kernel_sizes[1]);
   out_dims.push_back(output_channels);
 
   int output_height = phi::funcs::CalcOutputSize(static_cast<int>(in_dims[2]),

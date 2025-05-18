@@ -50,6 +50,7 @@ from .util import (
     RefitRole,
     TensorRTConfigManager,
     TensorRTConstantManager,
+    all_ops_into_trt,
     get_cache_path,
     get_trt_version,
     get_trt_version_list,
@@ -134,7 +135,8 @@ class PaddleToTensorRTConverter:
         if self.trt_config is not None and self.trt_config.ops_run_float:
             _logger.info(f"force_fp32_ops: {trt_manager.get_force_fp32_ops()}")
 
-        _logger.info(f"start process {group_op}")
+        if not self.trt_config.disable_loggling:
+            _logger.info(f"start process {group_op}")
 
         operations = next(iter(group_op.blocks())).ops
         input_values, output_values = self.find_graph_inputs_outputs(group_op)
@@ -325,9 +327,10 @@ class PaddleToTensorRTConverter:
                 # constant/parameter condition, needn't get min/opt/max shape
                 continue
             input_name = trt_input.name
-            _logger.info(
-                f"set shape of {value}, op is: {value.get_defining_op()}"
-            )
+            if not self.trt_config.disable_loggling:
+                _logger.info(
+                    f"set shape of {value}, op is: {value.get_defining_op()}"
+                )
             min_shape = []
             opt_shape = []
             max_shape = []
@@ -371,22 +374,24 @@ class PaddleToTensorRTConverter:
                         value, True, paddle.base.core.ShapeMode.kMAX
                     )
             if not trt_input.is_shape_tensor:
-                _logger.info(f"set min_shape of {value} as {min_shape}")
-                _logger.info(f"set opt_shape of {value} as {opt_shape}")
-                _logger.info(f"set max_shape of {value} as {max_shape}")
+                if not self.trt_config.disable_loggling:
+                    _logger.info(f"set min_shape of {value} as {min_shape}")
+                    _logger.info(f"set opt_shape of {value} as {opt_shape}")
+                    _logger.info(f"set max_shape of {value} as {max_shape}")
                 profile.set_shape(
                     input_name, min=min_shape, opt=opt_shape, max=max_shape
                 )
             else:
-                _logger.info(
-                    f"set min_value of shape input: {value} as {min_value}"
-                )
-                _logger.info(
-                    f"set opt_value of shape input: {value} as {opt_value}"
-                )
-                _logger.info(
-                    f"set max_value of shape input: {value} as {max_value}"
-                )
+                if not self.trt_config.disable_loggling:
+                    _logger.info(
+                        f"set min_value of shape input: {value} as {min_value}"
+                    )
+                    _logger.info(
+                        f"set opt_value of shape input: {value} as {opt_value}"
+                    )
+                    _logger.info(
+                        f"set max_value of shape input: {value} as {max_value}"
+                    )
                 profile.set_shape_input(
                     input_name, min=min_value, opt=opt_value, max=max_value
                 )
@@ -524,6 +529,14 @@ class PaddleToTensorRTConverter:
         trt_params.min_shape_tensor = min_value_map
         trt_params.max_shape_tensor = max_value_map
         trt_params.optim_shape_tensor = opt_value_map
+        trt_params.use_cuda_graph = self.trt_config.use_cuda_graph
+        all_nodes_offload_to_trt = all_ops_into_trt(self.program)
+        if self.trt_config.use_cuda_graph and not all_nodes_offload_to_trt:
+            _logger.info(
+                "You have enabled CudaGraph, but not the entire graph offload to "
+                "trt, now return to normal mode."
+            )
+            trt_params.use_cuda_graph = False
         if self.trt_config.refit_params_path:
             trt_params.refit_params_path = self.trt_config.refit_params_path
             trt_params.refit_param_name = refit_param_name
@@ -601,7 +614,8 @@ class PaddleToTensorRTConverter:
     def convert_program_to_trt(self):
         for op in self.program.global_block().ops:
             if op.name() == "cinn_op.group" or op.name() == "builtin.group":
-                _logger.info(f"start process {op.name()}")
+                if not self.trt_config.disable_loggling:
+                    _logger.info(f"start process {op.name()}")
                 self.engine_num += 1
                 new_out = self.convert_subgraph_to_trt(self.program, op)
                 orin_out_values = op.results()
@@ -642,6 +656,9 @@ class PaddleToTensorRTConverter:
                     constant_array = np.array(
                         tensor_data, dtype=out_dtype
                     ).tolist()
+
+                    if isinstance(constant_array, (int, float)):
+                        constant_array = [constant_array]
 
                     # convert builtin.constant to pd_op.full_int_array/full and then delete it
                     with paddle.pir.core.program_guard(self.program):

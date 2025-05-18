@@ -172,15 +172,11 @@ def pir_prune_with_input(program, feed_vars, target_vars):
 
     total_ops = program.global_block().ops
     intersection_op_flags = [True] * len(total_ops)
-    skip_prune_ops = ["builtin.parameter"]
 
     # from output to input
     target_vars_ = ValueSet(target_vars)
     for i, op in reversed(list(enumerate(total_ops))):
-        if (
-            some_in_set(get_real_op_outputs(op), target_vars_)
-            or op.name() in skip_prune_ops
-        ):
+        if some_in_set(get_real_op_outputs(op), target_vars_):
             for operand in get_real_op_inputs(op):
                 target_vars_.add(operand)
         else:
@@ -417,7 +413,6 @@ def save_vars_pir(
             save_path = ''
             if save_to_memory is False:
                 save_path = os.path.join(os.path.normpath(dirname), filename)
-
             core.save_combine_func(
                 save_var_list,
                 save_var_names,
@@ -845,7 +840,7 @@ def load_inference_model_pir(path_prefix, executor, **kwargs):
 
             >>> [inference_program, feed_target_names, fetch_targets] = (
             ...     paddle.static.load_inference_model(path_prefix, exe))
-            >>> tensor_img = np.array(np.random.random((64, 784)), dtype=np.float32) # type: ignore[var-annotated]
+            >>> tensor_img = np.array(np.random.random((64, 784)), dtype=np.float32)
             >>> results = exe.run(inference_program,
             ...               feed={feed_target_names[0]: tensor_img},
             ...               fetch_list=fetch_targets)

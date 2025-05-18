@@ -450,6 +450,14 @@ def in_cinn_mode() -> bool:
     return paddle.get_flags(CINN_FLAG_NAME)[CINN_FLAG_NAME]
 
 
+def in_cinn_debug_mode() -> bool:
+    CINN_DEBUG_FLAG_NAME = "FLAGS_cinn_debug"
+    # NOTE: This flag only available when compiled with CINN
+    if not is_compiled_with_cinn():
+        return False
+    return paddle.get_flags(CINN_DEBUG_FLAG_NAME)[CINN_DEBUG_FLAG_NAME]
+
+
 global_ipu_index = -1
 global_ipu_stage = -1
 ipu_index_attr_name = "ipu_index"
@@ -1707,7 +1715,7 @@ class Variable(metaclass=VariableMetaClass):
     two variables in different :ref:`api_guide_Block_en` could have the same name.
 
     There are many kinds of variables. Each kind of them has its own attributes
-    and usages. Please refer to the `framework.proto <https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/base/framework/framework.proto>`_ for details.
+    and usages. Please refer to the `framework.proto <https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/phi/core/framework/framework.proto>`_ for details.
 
     Most of a Variable's member variables can be set to be None. It mean
     it is not available or will be specified later.
@@ -1961,7 +1969,7 @@ class Variable(metaclass=VariableMetaClass):
                 >>> import paddle
                 >>> paddle.disable_static()
 
-                >>> x = np.ones([2, 2], np.float32) # type: ignore[var-annotated]
+                >>> x = np.ones([2, 2], np.float32)
                 >>> inputs = []
                 >>> for _ in range(10):
                 ...     tmp = paddle.to_tensor(x)
@@ -2005,7 +2013,7 @@ class Variable(metaclass=VariableMetaClass):
                 >>> import numpy as np
 
                 >>> # example1: return ndarray
-                >>> x = np.ones([2, 2], np.float32) # type: ignore[var-annotated]
+                >>> x = np.ones([2, 2], np.float32)
                 >>> with base.dygraph.guard():
                 ...     inputs2 = []
                 ...     for _ in range(10):
@@ -2054,7 +2062,7 @@ class Variable(metaclass=VariableMetaClass):
                 >>> import paddle.base as base
                 >>> import numpy as np
 
-                >>> x = np.ones([2, 2], np.float32) # type: ignore[var-annotated]
+                >>> x = np.ones([2, 2], np.float32)
                 >>> inputs2 = []
                 >>> for _ in range(10):
                 >>>     tmp = paddle.to_tensor(x)
@@ -4780,7 +4788,7 @@ class Block:
     def _insert_op_without_sync(self, index, *args, **kwargs):
         """
         Insert an Operator according to the giving arguments,
-        without sync_with_cpp to meke the compilation faster.
+        without sync_with_cpp to make the compilation faster.
 
         Args:
             index(int): the place that the operator to insert.
@@ -5945,7 +5953,7 @@ class Program:
     it will contain nested block.
 
     Please reference the
-    `framework.proto <https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/base/framework/framework.proto>`_
+    `framework.proto <https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/phi/core/framework/framework.proto>`_
     for details.
 
     A set of Program usually contains startup program and main program.

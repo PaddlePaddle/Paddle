@@ -17,6 +17,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_XPU
 #include <cuda.h>
 #include <cuda_runtime.h>
+#include <xpu/xpuml.h>
 #endif
 
 #include "paddle/phi/backends/xpu/xpu_header.h"
@@ -126,6 +127,16 @@ DEFINE_EXTERNAL_API_TYPE(cudaError_t, cudaSuccess);
           common::errors::External("XPU Runtime Error: ", xre_msg); \
       __THROW_ERROR_INTERNAL__(__summary__);                        \
     }                                                               \
+  } while (0)
+
+// TODO(lijin23): support fine-grained error msg.
+#define PADDLE_ENFORCE_XPUML_SUCCESS(COND)                              \
+  do {                                                                  \
+    auto __cond__ = (COND);                                             \
+    PADDLE_ENFORCE_EQ(                                                  \
+        __cond__,                                                       \
+        XPUML_SUCCESS,                                                  \
+        common::errors::Fatal("XPUML Error, error_code=%d", __cond__)); \
   } while (0)
 
 }  // namespace xpu

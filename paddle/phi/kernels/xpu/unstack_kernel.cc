@@ -29,9 +29,9 @@ void UnStackKernel(const Context &dev_ctx,
   auto x_dims = x.dims();
 
   if (axis < 0) axis += x_dims.size();
-  auto x_shape = common::vectorize<int>(x_dims);
+  auto x_shape = common::vectorize<int64_t>(x_dims);
 
-  std::vector<int> dx_dims_list(outs.size(), 1);
+  std::vector<int64_t> dx_dims_list(outs.size(), 1);
   std::vector<XPUType *> dx_lists;
   for (size_t j = 0; j < outs.size(); ++j) {
     dev_ctx.template Alloc<T>(outs[j]);

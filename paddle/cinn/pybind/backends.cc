@@ -40,7 +40,7 @@ void BindExecutionEngine(py::module *m) {
       .def_readwrite("opt_level", &ExecutionOptions::opt_level)
       .def_readwrite("enable_debug_info", &ExecutionOptions::enable_debug_info);
 
-  auto lookup = [](ExecutionEngine &self, absl::string_view name) {
+  auto lookup = [](ExecutionEngine &self, std::string_view name) {
     auto *function_ptr =
         reinterpret_cast<void (*)(void **, int32_t)>(self.Lookup(name));
     auto function_wrapper =
@@ -64,7 +64,7 @@ void BindExecutionEngine(py::module *m) {
       .def("link", &ExecutionEngine::Link, py::arg("module"));
 
   {
-    auto lookup = [](Compiler &self, absl::string_view name) {
+    auto lookup = [](Compiler &self, std::string_view name) {
       auto *function_ptr =
           reinterpret_cast<void (*)(void **, int32_t)>(self.Lookup(name));
       auto function_wrapper =
