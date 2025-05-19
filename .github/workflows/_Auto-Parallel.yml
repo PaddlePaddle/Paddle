@@ -3,9 +3,9 @@ name: Auto-Parallel
 on:
   workflow_call:
     inputs:
-      docker_build_image:
-        type: string
-        required: true
+      # docker_build_image:
+      #   type: string
+      #   required: true
       can-skip:
         type: string
         required: false
@@ -47,7 +47,7 @@ jobs:
         run: |
           sudo rm -rf * .[^.]*
           echo "Downloading build.tar.gz"
-          wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/build/${PR_ID}/${COMMIT_ID}/build.tar.gz --no-check-certificate
+          wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/build/72744/9e98f692ae9328fbc82896e86959ac2ae86af1b2/build.tar.gz --no-check-certificate
           echo "Extracting build.tar.gz"
           tar --use-compress-program="pzstd" -xpf build.tar.gz
           mv paddle Paddle
@@ -58,7 +58,7 @@ jobs:
           CACHE_DIR: /home/data/cfs/.cache
           FLAGS_dynamic_static_unified_comm: "True"
           python_version: "3.10"
-          paddle_whl: https://paddle-github-action.bj.bcebos.com/PR/build/${{ github.event.pull_request.number }}/${{ github.event.pull_request.head.sha }}/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl
+          paddle_whl: https://paddle-github-action.bj.bcebos.com/PR/build/72744/9e98f692ae9328fbc82896e86959ac2ae86af1b2/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl
         run: |
           container_name=${TASK}-${core_index}-$(date +%Y%m%d-%H%M%S)
           echo "container_name=${container_name}" >> ${{ github.env }}
@@ -114,8 +114,8 @@ jobs:
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           ldconfig
           set -e
-          unset http_proxy && unset https_proxy
-          export LD_LIBRARY_PATH=/usr/local/cuda-11.8/compat:$LD_LIBRARY_PATH
+          # unset http_proxy && unset https_proxy
+          # export LD_LIBRARY_PATH=/usr/local/cuda-11.8/compat:$LD_LIBRARY_PATH
           timeout 80m bash Paddle/ci/auto_parallel/ci_auto_parallel.sh ${paddle_whl}
           '
 
@@ -141,8 +141,8 @@ jobs:
           done
           '
 
-      - name: Terminate and delete the container
-        if: always()
-        run: |
-          sudo rm -rf * .[^.]*
-          docker rm -f ${{ env.container_name }}
+    # - name: Terminate and delete the container
+    #   if: always()
+    #   run: |
+    #     sudo rm -rf * .[^.]*
+    #     docker rm -f ${{ env.container_name }}
