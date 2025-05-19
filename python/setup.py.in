@@ -750,7 +750,7 @@ def build_cutlass3_src_code():
         + f'git checkout {commit_id}'
     )
     if os.system(command) != 0:
-        raise Exception("copy cutlass-3.7.0 failed, command: %s" % command)
+        raise Exception(f"copy cutlass-3.7.0 failed, command: {command}")
 
 
 packages=['paddle',

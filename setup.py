@@ -1274,7 +1274,7 @@ def build_cutlass3_src_code():
         + f'git checkout {commit_id}'
     )
     if os.system(command) != 0:
-        raise Exception(f"copy cutlass-3.7.0 failed, command: f{command}")
+        raise Exception(f"copy cutlass-3.7.0 failed, command: {command}")
 
 
 def get_cinn_config_jsons():
