@@ -90,8 +90,10 @@ class MyModel(nn.Layer):
         self.linear3 = nn.Linear(8, 8, bias_attr=False)
         self.linear4 = nn.Linear(8, 8, bias_attr=False)
 
-    def forward(self, x):
+    def forward(self, x, debug_str=None):
         if hasattr(self, 'linear1'):
+            if debug_str:
+                logger.debug(f"{debug_str} linear1")
             x = self.linear1(x)
             x = self.linear2(x)
         if hasattr(self, 'linear3'):
@@ -205,9 +207,21 @@ class TestPipelineStage:
 
             #  Prepare infrastructure
             if self.rank == 0:
-                self.stage._prepare_forward_infra(self.micro_batches, (data,))
+                self.stage._prepare_forward_infra(
+                    self.micro_batches,
+                    (data,),
+                    {
+                        "debug_str": "test debug_str",
+                    },
+                )
             else:
-                self.stage._prepare_forward_infra(self.micro_batches, ())
+                self.stage._prepare_forward_infra(
+                    self.micro_batches,
+                    (),
+                    {
+                        "debug_str": "test debug_str",
+                    },
+                )
             self.stage._prepare_backward_infra(self.micro_batches)
 
             # Forward pass
@@ -220,7 +234,13 @@ class TestPipelineStage:
                 work.wait()
 
             # Forward computation
-            output = self.stage.forward_one_chunk(0, (data,), ())
+            output = self.stage.forward_one_chunk(
+                0,
+                (data,),
+                {
+                    "debug_str": "test debug_str",
+                },
+            )
             # Send operations
             ops = self.stage.get_fwd_send_ops(0)
             works = _sorted_batch_p2p(ops, desc="fwd_send")
