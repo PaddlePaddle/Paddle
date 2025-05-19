@@ -101,6 +101,11 @@ def unified(
     """
     Mark a function already unified in dygraph and static mode. So
     that it won't be transformed again in SOT or AST mode.
+
+    Args:
+        fn(callable): The function to decorate.
+        for_sot(bool): Whether to mark the function as unified in SOT mode.
+        for_ast(bool): Whether to mark the function as unified in AST mode.
     """
 
     def _mark_as_unified(fn, *, for_sot: bool, for_ast: bool):
