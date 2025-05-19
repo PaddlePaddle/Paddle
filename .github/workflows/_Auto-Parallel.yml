@@ -63,7 +63,7 @@ jobs:
           container_name=${TASK}-${core_index}-$(date +%Y%m%d-%H%M%S)
           echo "container_name=${container_name}" >> ${{ github.env }}
           docker_image=${{ inputs.docker_build_image }}
-          docker_image=registry.baidubce.com/baidu.xiaolvyun.images/paddlepaddle:8a09821b692912a392d4a7dd2825be02
+          docker_image=ccr-2vdh3abv-pub.cnc.bj.baidubce.com/ci/paddle:29f259c1f2a060142f49e2d0307cfc4e
           nvidia-docker run -d -t --name ${container_name} --net=host -v /dev/shm:/dev/shm --shm-size=32G \
             -v ${{ github.workspace }}/../../..:${{ github.workspace }}/../../.. \
             -v ${{ github.workspace }}:/workspace \
@@ -114,9 +114,9 @@ jobs:
           unset http_proxy && unset https_proxy
           #  source ${{ github.workspace }}/../../../proxy
           export LD_LIBRARY_PATH=/usr/local/cuda-11.8/compat:$LD_LIBRARY_PATH
-          python -m pip install --user --no-cache-dir ${paddle_whl} --force-reinstall --no-dependencies
-          '
-          docker exec -t ${{ env.container_name }} /bin/bash -c '
+          # python -m pip install --user --no-cache-dir ${paddle_whl} --force-reinstall --no-dependencies
+          # '
+          # docker exec -t ${{ env.container_name }} /bin/bash -c '
           ldconfig
           set -e
           # ln -sf $(which pip3.10) /usr/local/bin/pip
