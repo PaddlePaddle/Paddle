@@ -45,7 +45,9 @@ class TestSaveModuleWithCommonOp(unittest.TestCase):
 
         file_path = os.path.join(self.temp_dir.name, "test_save_program1.json")
         pir_version = 1
-        base.core.serialize_pir_program(main_program, file_path, pir_version)
+        base.core.serialize_pir_program(
+            main_program, file_path, True, False, True, pir_version
+        )
 
         recover_program = paddle.static.Program()
         base.core.deserialize_pir_program(
@@ -82,12 +84,12 @@ class TestSaveModuleWithCommonOp(unittest.TestCase):
         )
         pir_version = 1
         base.core.serialize_pir_program(
-            main_program, file_path, pir_version, True, True, False
+            main_program, file_path, True, True, False, pir_version
         )
 
         recover_program = paddle.static.Program()
         base.core.deserialize_pir_program(
-            file_path, recover_program, pir_version
+            file_path, recover_program, True, False, True, pir_version
         )
 
         self.assertEqual(
@@ -109,7 +111,7 @@ class TestSaveModuleWithCommonOp(unittest.TestCase):
         file_path = os.path.join(self.temp_dir.name, "test_save_program2.json")
         pir_version = 1
         base.core.serialize_pir_program(
-            main_program, file_path, pir_version, True, True, True
+            main_program, file_path, True, True, True, pir_version
         )
 
         recover_program = paddle.static.Program()
@@ -180,11 +182,13 @@ class TestSaveModuleWithIfOp(unittest.TestCase):
             self.temp_dir.name, "test_save_program_if.json"
         )
         pir_version = 1
-        base.core.serialize_pir_program(main_program, file_path, pir_version)
+        base.core.serialize_pir_program(
+            main_program, file_path, True, False, True, pir_version
+        )
 
         recover_program = paddle.static.Program()
         base.core.deserialize_pir_program(
-            file_path, recover_program, pir_version
+            file_path, recover_program, True, False, True, pir_version
         )
 
         self.check_block(
@@ -201,11 +205,13 @@ class TestSaveModuleWithIfOp(unittest.TestCase):
             self.temp_dir.name, "test_save_program_if2.json"
         )
         pir_version = 1
-        base.core.serialize_pir_program(main_program, file_path, pir_version)
+        base.core.serialize_pir_program(
+            main_program, file_path, True, False, True, pir_version
+        )
 
         recover_program = paddle.static.Program()
         base.core.deserialize_pir_program(
-            file_path, recover_program, pir_version
+            file_path, recover_program, True, False, True, pir_version
         )
 
         self.check_block(
@@ -267,11 +273,13 @@ class TestSaveModuleWithwhileOp(unittest.TestCase):
             self.temp_dir.name, "test_save_program_while.json"
         )
         pir_version = 1
-        base.core.serialize_pir_program(main_program, file_path, pir_version)
+        base.core.serialize_pir_program(
+            main_program, file_path, True, False, True, pir_version
+        )
 
         recover_program = paddle.static.Program()
         base.core.deserialize_pir_program(
-            file_path, recover_program, pir_version
+            file_path, recover_program, True, False, True, pir_version
         )
 
         self.check_block(
@@ -293,11 +301,13 @@ class TestSaveModuleWithwhileOp(unittest.TestCase):
             self.temp_dir.name, "test_save_program_while.json"
         )
         pir_version = 1
-        base.core.serialize_pir_program(main_program, file_path, pir_version)
+        base.core.serialize_pir_program(
+            main_program, file_path, True, False, True, pir_version
+        )
 
         recover_program = paddle.static.Program()
         base.core.deserialize_pir_program(
-            file_path, recover_program, pir_version
+            file_path, recover_program, True, False, True, pir_version
         )
 
         self.check_block(
@@ -357,11 +367,13 @@ class TestSaveModuleWithwhileOp(unittest.TestCase):
             self.temp_dir.name, "test_save_program_while_nest.json"
         )
         pir_version = 1
-        base.core.serialize_pir_program(main_program, file_path, pir_version)
+        base.core.serialize_pir_program(
+            main_program, file_path, True, False, True, pir_version
+        )
 
         recover_program = paddle.static.Program()
         base.core.deserialize_pir_program(
-            file_path, recover_program, pir_version
+            file_path, recover_program, True, False, True, pir_version
         )
 
         self.check_block(

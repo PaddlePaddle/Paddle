@@ -625,9 +625,7 @@ def save_pir(program, model_path, protocol=4, **configs):
         pickle.dump(opt_dict, f, protocol=protocol)
 
     # save program
-    paddle.core.serialize_pir_program(
-        program, model_path + ".json", -1, True, False, True
-    )
+    paddle.core.serialize_pir_program(program, model_path + ".json")
 
 
 @static_only
@@ -766,7 +764,6 @@ def save_inference_model_pir(
             if kwargs.get('separate_parameters', False)
             else model_path
         ),
-        -1,
         True,
         readable,
         trainable,
