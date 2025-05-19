@@ -63,7 +63,7 @@ TensorDistAttr ToTensorDistAttr(const ProcessMesh& process_mesh,
       std::sort(mesh_dims.begin(), mesh_dims.end(), compare_functor);
     }
   }
-  dist_attr.set_new_dims_mapping(dim_mapping);
+  dist_attr.set_dims_mapping(dim_mapping);
 
   // Step3: set partial_status
   paddle::flat_hash_map<int64_t, ReduceType> partial_status;
@@ -91,7 +91,7 @@ Placements ToPlacements(const TensorDistAttr& dist_attr) {
     placements[pair.first] = std::make_shared<Partial>(pair.second);
   }
 
-  const std::vector<std::vector<int64_t>>& dim_mapping = dist_attr.new_dims_mapping();
+  const std::vector<std::vector<int64_t>>& dim_mapping = dist_attr.dims_mapping_2d();
   for (size_t t_dim = 0; t_dim < dim_mapping.size(); t_dim++) {
     auto m_dims = dim_mapping[t_dim];
 

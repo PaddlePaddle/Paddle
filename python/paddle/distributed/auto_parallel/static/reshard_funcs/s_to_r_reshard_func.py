@@ -47,7 +47,7 @@ class SToRReshardFunction(ReshardFunction):
     def infer_allgather_dist_type(self, in_value, split_axis):
         tensor_ndim = len(in_value.shape)
         in_dist_attr = in_value.dist_attr()
-        split_mesh_dim = in_dist_attr.dims_mapping[split_axis]
+        split_mesh_dim = in_dist_attr.dims_mapping[split_axis][0]
         mesh = in_dist_attr.process_mesh
 
         # Calculate local shape. In nd_mesh_reshard, multiple tensor axis
@@ -65,7 +65,7 @@ class SToRReshardFunction(ReshardFunction):
         )
 
         out_dims_mapping = list(in_dist_attr.dims_mapping)
-        out_dims_mapping[split_axis] = -1
+        out_dims_mapping[split_axis] = []
         out_dist_attr = paddle.base.libpaddle.pir.create_tensor_dist_attribute(
             mesh, out_dims_mapping, in_dist_attr.partial_status
         )
@@ -246,7 +246,7 @@ class SToRReshardFunction(ReshardFunction):
         # set op_dist_attr
         new_dist_attr = paddle.base.libpaddle.pir.create_tensor_dist_attribute(
             dst_dist_attr.process_mesh,
-            [-1] * len(dst_dist_attr.dims_mapping),
+            [[] for _ in range(len(dst_dist_attr.dims_mapping))],
             dst_dist_attr.partial_status,
         )
         allgather_value.get_defining_op().dist_attr = (

@@ -66,7 +66,9 @@ class PartialStatus final : public PlacementStatus {
 
 class ShardStatus final : public PlacementStatus {
  public:
-  ShardStatus(int64_t axis) : axis_(axis) {}
+  explicit ShardStatus(int64_t axis) : axis_(axis) {}
+  ShardStatus(int64_t axis, int64_t co_shard_order) : 
+    axis_(axis), co_shard_order_(co_shard_order) {}
   bool is_shard(int64_t axis = -1) const override {
     if (axis == -1) {
       return true;
@@ -78,6 +80,7 @@ class ShardStatus final : public PlacementStatus {
 
  private:
   int64_t axis_{-1};
+  int64_t co_shard_order_{0};
 };
 
 class TEST_API TensorDistAttr {
@@ -96,17 +99,13 @@ class TEST_API TensorDistAttr {
 
   void set_process_mesh(const ProcessMesh& process_mesh);
 
-  const std::vector<int64_t>& dims_mapping() const { return dims_mapping_; }
+  const std::vector<int64_t>& dims_mapping() const { return dims_mapping_proxy; }
 
-  const std::vector<std::vector<int64_t>>& dims_mapping_2d() const { return dims_mapping_2d_; }
-
-  const std::vector<std::vector<int64_t>>& new_dims_mapping() const { return dims_mapping_2d_; }
+  const std::vector<std::vector<int64_t>>& dims_mapping_2d() const { return dims_mapping_proxy; }
 
   void set_dims_mapping(const std::vector<int64_t>& dims_mapping);
 
   void set_dims_mapping(const std::vector<std::vector<int64_t>>& dims_mapping);
-
-  void set_new_dims_mapping(const std::vector<std::vector<int64_t>>& dims_mapping);
 
   const auto_parallel::SplitFactor& split_factor() const { return split_factor_map_; }
 
@@ -220,18 +219,14 @@ class TEST_API TensorDistAttr {
   bool skip_check_mesh() const { return skip_check_mesh_; }
 
  private:
-   // delete it after all 1d vector dims_mapping_ upgrade to 2d.
+   // delete it after all 1d vector dims_mapping_ have been upgraded to 2d.
   class DimMapProxy final {
     public:
-    DimMapProxy(std::vector<int64_t>& dims_mapping_1d,
-                 std::vector<std::vector<int64_t>>& dims_mapping_2d) 
-      : dims_mapping_1d(dims_mapping_1d), dims_mapping_2d(dims_mapping_2d) {}
+    DimMapProxy(std::vector<std::vector<int64_t>>& dims_mapping_2d) 
+      :  dims_mapping_2d(dims_mapping_2d) {}
 
     DimMapProxy& operator=(const std::vector<std::vector<int64_t>>& dims_mapping) {
       dims_mapping_2d = dims_mapping;
-      sync_1d_map();
-      VLOG(4) << "Set 2d dims_mapping, Sync 1d. 1d " <<
-      auto_parallel::str_join(dims_mapping_1d) << " , 2d  " << auto_parallel::str_join(dims_mapping_2d);
       return *this;
     }
 
@@ -244,21 +239,32 @@ class TEST_API TensorDistAttr {
     }
 
     DimMapProxy& operator=(const DimMapProxy& other) {
-      dims_mapping_1d = other.dims_mapping_1d;
       dims_mapping_2d = other.dims_mapping_2d;
       return *this;
     }
 
     bool operator==(const DimMapProxy& other) {
-      return (dims_mapping_1d == other.dims_mapping_1d) && (dims_mapping_2d == other.dims_mapping_2d);
+      return dims_mapping_2d == other.dims_mapping_2d;
     }
 
     bool operator!=(const DimMapProxy& other) {
       return !this->operator==(other);
     }
 
+
+    operator const std::vector<std::vector<int64_t>>&() const {
+      return dims_mapping_2d;
+    }
+
+    operator const std::vector<int64_t>&() const {
+      sync_1d_map();
+      VLOG(4) << "Get 1d dims_mapping, Sync 1d. 1d " <<
+      auto_parallel::str_join(dims_mapping_1d) << " , 2d  " << auto_parallel::str_join(dims_mapping_2d);
+      return dims_mapping_1d;
+    }
+  
     private:
-    void sync_1d_map() {
+    void sync_1d_map() const {
       dims_mapping_1d.resize(dims_mapping_2d.size());
       for (size_t i = 0; i < dims_mapping_2d.size(); ++i) {
         PADDLE_ENFORCE_LE(dims_mapping_2d[i].size(), 1,
@@ -275,14 +281,12 @@ class TEST_API TensorDistAttr {
       }
     }
 
-    std::vector<int64_t>& dims_mapping_1d;
+    mutable std::vector<int64_t> dims_mapping_1d;
     std::vector<std::vector<int64_t>>& dims_mapping_2d;
   };
 
   static std::vector<std::string> fields_;
   ProcessMesh process_mesh_;
-  std::vector<int64_t> dims_mapping_;
-  std::vector<std::vector<int64_t>> dims_mapping_2d_;
   std::vector<bool> dynamic_dims_;
   std::map<std::string, bool> annotated_;
   int64_t batch_dim_{0};
@@ -291,11 +295,15 @@ class TEST_API TensorDistAttr {
   // iterate operation (copy and comparison) would more frequency than random
   // element access. <key: dim on mesh, value: reduce type>
   paddle::flat_hash_map<int64_t, ReduceType> partial_status_;
-
   auto_parallel::SplitFactor split_factor_map_;
   // The flag indicates whether to skip checking the process mesh.
   bool skip_check_mesh_ = false;
-  DimMapProxy dims_mapping_proxy{dims_mapping_, dims_mapping_2d_};
+  private:
+  std::vector<std::vector<int64_t>> dims_mapping_2d_;
+
+  protected:
+  // for short time, backward compatible for existing spmd relus.
+  DimMapProxy dims_mapping_proxy{dims_mapping_2d_};
 };
 
 inline std::ostream& operator<<(std::ostream& os, const TensorDistAttr& obj) {

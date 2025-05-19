@@ -315,7 +315,7 @@ class NdMeshReshardFunction(ReshardFunction):
 
                 # calculate the corresponding 1-D output dist attr
                 out_one_dim_dims_mapping = [[] for _ in range(tensor_ndim)]
-                out_one_dim_dims_mapping[i] = {0}
+                out_one_dim_dims_mapping[i] = [0]
                 out_one_dim_dist_attr = (
                     paddle.base.libpaddle.pir.create_tensor_dist_attribute(
                         sub_mesh, out_one_dim_dims_mapping, {}

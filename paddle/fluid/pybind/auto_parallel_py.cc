@@ -592,9 +592,6 @@ void BindAutoParallel(py::module *m) {
       .def_property("dims_mapping",
                     py::overload_cast<>(&TensorDistAttr::dims_mapping_2d, py::const_),
                     py::overload_cast<const std::vector<std::vector<int64_t>>& >(&TensorDistAttr::set_dims_mapping))
-      .def_property("new_dims_mapping",
-                    &TensorDistAttr::new_dims_mapping,
-                    &TensorDistAttr::set_new_dims_mapping)
       .def_property("batch_dim",
                     &TensorDistAttr::batch_dim,
                     &TensorDistAttr::set_batch_dim)

@@ -192,18 +192,17 @@ class DistAttr(core.TensorDistAttr):
 
         self._sharding_specs = sharding_specs
 
-        new_dims_mapping = [[] for _ in range(len(sharding_specs))]
+        dims_mapping = [[] for _ in sharding_specs]
         for i, mesh_dims in enumerate(sharding_specs):
             if len(mesh_dims) > 0:
                 for d in mesh_dims:
-                    new_dims_mapping[i].append(mesh.dim_names.index(d))
+                    dims_mapping[i].append(mesh.dim_names.index(d))
 
         # 2. init core.TensorDistAttr
         core.TensorDistAttr.__init__(self)
 
         self.process_mesh = mesh
-        self.dims_mapping = [-1] * len(sharding_specs)
-        self.new_dims_mapping = new_dims_mapping
+        self.dims_mapping = dims_mapping
         self.mark_annotated("process_mesh")
         self.mark_annotated("dims_mapping")
 
