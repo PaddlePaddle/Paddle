@@ -223,11 +223,6 @@ void ArgMinMaxOpCUDAKernel(const Context& dev_ctx,
                            bool flatten,
                            DataType dtype,
                            DenseTensor* out) {
-  PADDLE_ENFORCE_GE(
-      x.numel(),
-      0,
-      common::errors::InvalidArgument(
-          "argmin/argmax input numel must >= 0, but got %d", x.numel()));
   if (dtype == DataType::UNDEFINED) {
     phi::VisitDataTypeTiny(
         phi::DataType::INT64,
