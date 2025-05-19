@@ -680,4 +680,9 @@ void SetValueGradInferMeta(const MetaTensor& out_grad,
                            MetaTensor* x_grad,
                            MetaTensor* value_grad);
 
+void MaskedFillGradInferMeta(const MetaTensor& out_grad,
+                             const MetaTensor& value,
+                             MetaTensor* x_grad,
+                             MetaTensor* v_grad);
+
 }  // namespace phi

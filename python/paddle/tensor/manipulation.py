@@ -6417,8 +6417,7 @@ def masked_fill(
     if np.isscalar(value):
         value = paddle.full([], value, x.dtype)
 
-    mask = paddle.logical_not(mask)
-    out = paddle.where(mask, x, value)
+    out = _C_ops.masked_fill(x, mask, value)
     return out
 
 
@@ -6433,8 +6432,7 @@ def masked_fill_(
     if np.isscalar(value):
         value = paddle.full([], value, x.dtype)
 
-    mask = paddle.logical_not(mask)
-    out = paddle.where_(mask, x, value)
+    out = _C_ops.masked_fill(x, mask, value)
     return out
 
 

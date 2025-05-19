@@ -1899,6 +1899,7 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
 
     // Release gil and do tracing
     py::gil_scoped_release release;
+    bool inplace_autograd = false;
     if (value_tensor.initialized()) {
       if (self->tensor.dtype() != value_tensor.dtype()) {
         if (egr::Controller::Instance().GetAMPLevel() !=
@@ -1929,14 +1930,10 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
             mesh, self->tensor, transed_sub_tensor, value_tensor);
       }
       if (transed_index.size() == 1 &&
-          transed_index[0].dtype() == phi::DataType::BOOL &&
-          transed_index[0].shape().size() == self->tensor.shape().size() &&
-          value_tensor.numel() == 1) {
-        value_tensor = expand_ad_func(value_tensor, self->tensor.shape());
-        transed_sub_tensor =
-            where__ad_func(logical_not_ad_func(transed_index[0]),
-                           transed_sub_tensor,
-                           value_tensor);
+          MaskedFillDispatching(self->tensor, value_tensor, &transed_index)) {
+        inplace_autograd = true;
+        self->tensor =
+            masked_fill_ad_func(self->tensor, transed_index[0], value_tensor);
       } else {
         transed_sub_tensor =
             index_put__ad_func(transed_sub_tensor, transed_index, value_tensor);
@@ -2008,8 +2005,12 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
           egr::EagerUtils::SetHistory(x_autograd_meta, grad_node);
         }
       } else {
-        self->tensor.set_autograd_meta(
-            transed_sub_tensor.mutable_autograd_meta());
+        if (inplace_autograd) {
+          self->tensor.set_autograd_meta(self->tensor.mutable_autograd_meta());
+        } else {
+          transed_sub_tensor.set_autograd_meta(
+              self->tensor.mutable_autograd_meta());
+        }
       }
       if (PyCheckTensor(value_obj)) {
         // pass the stop_gradient from value to tensor.
