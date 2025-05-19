@@ -239,6 +239,7 @@ class TEST_API TensorDistAttr {
     }
 
     DimMapProxy& operator=(const DimMapProxy& other) {
+      if (this == &other) { return *this; }
       dims_mapping_2d = other.dims_mapping_2d;
       return *this;
     }

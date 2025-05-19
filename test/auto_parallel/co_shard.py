@@ -123,7 +123,26 @@ class TestCoShard:
         new_idx = idx % 2 * 2
         np.testing.assert_equal(out._local_value().numpy().flatten(), a[new_idx : new_idx + 2].numpy().flatten())
 
-        
+
+    def run_test_case_3(self):
+        a = paddle.to_tensor([[1,2],
+                              [3,4],
+                              [5,6],
+                              [7,8]])
+        mesh = dist.ProcessMesh([[0, 1], [2, 3]],  dim_names=['x', 'y'])
+        placements = [dist.Shard(0), dist.Shard(1)]
+        input = dist.shard_tensor(a, mesh, placements)
+
+        out = paddle.reshape(input, [-1])        
+
+        assert out.shape == [8]
+        assert out.placements == [dist.Shard(0, co_shard_order=0), dist.Shard(0, co_shard_order=1)]
+
+
+    def run_test_case_4(self):
+        def my_func(x):
+            
+
     def run_test_case_main(self):
         self.basic_interface_case()
         self.run_test_case_0()
