@@ -1249,8 +1249,6 @@ def build_cutlass3_src_code():
     target_path = f"{paddle_binary_dir}/python/paddle/apy/matmul_pass/matmul/cutlass-3.7.0"
     if not os.path.exists(target_path):
         os.mkdir(target_path)
-    else:
-        return
     try:
         cmd = ['git', 'rev-parse', 'HEAD']
         git_commit = (
