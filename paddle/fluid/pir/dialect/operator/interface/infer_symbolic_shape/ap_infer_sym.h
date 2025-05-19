@@ -21,5 +21,6 @@ namespace paddle::dialect {
 OP_DECLARE_INFER_SYMBOLIC_SHAPE(ApTrivialFusionBegin)
 OP_DECLARE_INFER_SYMBOLIC_SHAPE(ApTrivialFusionEnd)
 OP_DECLARE_INFER_SYMBOLIC_SHAPE(ApFacade)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(ApVariadic)
 
 }  // namespace paddle::dialect

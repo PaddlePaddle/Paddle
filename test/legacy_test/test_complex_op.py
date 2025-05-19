@@ -92,6 +92,34 @@ class TestComplexOpBroadcast3(TestComplexOp):
         self.dtype = "float32"
 
 
+class TestComplexOpZeroSize1(TestComplexOp):
+    def init_spec(self):
+        self.x_shape = [1, 0]
+        self.y_shape = [0]
+        self.dtype = "float32"
+
+
+class TestComplexOpZeroSize2(TestComplexOp):
+    def init_spec(self):
+        self.x_shape = [100, 1]
+        self.y_shape = [10, 0, 1, 4]
+        self.dtype = "float32"
+
+
+class TestComplexOpZeroSize3(TestComplexOp):
+    def init_spec(self):
+        self.x_shape = [10, 3, 1, 0]
+        self.y_shape = [100, 1]
+        self.dtype = "float32"
+
+
+class TestComplexOpZeroSize4(TestComplexOp):
+    def init_spec(self):
+        self.x_shape = [10, 3, 1, 0]
+        self.y_shape = [0, 1]
+        self.dtype = "float32"
+
+
 class TestComplexAPI(unittest.TestCase):
     def setUp(self):
         self.x = np.random.randn(10, 10)

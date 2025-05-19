@@ -64,6 +64,8 @@ from ....utils.exceptions import (
     InnerError,
     OtherInlineCallBreak,
     PsdbBreakReason,
+    SotCapturedException,
+    SotCapturedExceptionFactory,
     SotErrorBase,
     UnsupportedNumPyAPIBreak,
     UnsupportedOperationBreak,
@@ -276,6 +278,8 @@ class UserDefinedFunctionVariable(FunctionVariable):
                 f"Inline Call: {inline_executor.vframe.code.co_name}, file {inline_executor.vframe.code.co_filename}, line {int(inline_executor.vframe.code.co_firstlineno)}"
             ):
                 output = inline_executor.inline_call()
+        except (SotCapturedException, InnerError) as e:
+            raise e
         except SotErrorBase as error:
             self.graph.restore_memo(checkpoint)
             filename = self.value.__code__.co_filename
@@ -865,7 +869,14 @@ class BuiltinVariable(FunctionVariable):
         handler = Dispatcher.dispatch(self.value, *args, **kwargs)
 
         if handler is not None:
-            return handler(*args, **kwargs)
+            try:
+                return handler(*args, **kwargs)
+            except SotErrorBase as e:
+                # NOTE: BuiltinVariable.call_function cat not raise SotCapturedException,
+                # so we can directly raise SotErrorBase.
+                raise
+            except Exception as e:
+                raise SotCapturedExceptionFactory.create(origin_exc=e) from e
 
         if ENV_SOT_ALLOW_DYNAMIC_SHAPE.get() and any(
             isinstance(var, SymbolicVariable)
