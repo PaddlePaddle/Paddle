@@ -92,6 +92,7 @@ class TestMatmulEpilogue(unittest.TestCase):
         ap_outs = fused_foo(self.x, self.y, self.b)
         dy_outs = foo(self.x, self.y, self.b)
         if IsCertainDevices():
+            print('we are here')
             for dy_out, ap_out in zip(dy_outs, ap_outs):
                 np.testing.assert_allclose(dy_out, ap_out, atol=1e-1)
 
