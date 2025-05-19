@@ -729,6 +729,11 @@ def get_paddle_extra_install_requirements():
     return paddle_cuda_requires,paddle_tensorrt_requires
 
 def build_cutlass3_src_code():
+    target_path = "${PADDLE_BINARY_DIR}/python/paddle/apy/matmul_pass/matmul/cutlass-3.7.0"
+    if not os.path.exists(target_path):
+        os.mkdir(target_path)
+    else:
+        return
     try:
         cmd = ['git', 'rev-parse', 'HEAD']
         git_commit = subprocess.Popen(cmd, stdout = subprocess.PIPE,
@@ -743,10 +748,10 @@ def build_cutlass3_src_code():
         + 'git checkout v3.7.0 && '
         + 'cp '
         + '${PADDLE_SOURCE_DIR}/third_party/cutlass/tools -r '
-        + '${PADDLE_BINARY_DIR}/python/paddle/apy/matmul_pass/matmul/cutlass-3.7.0 && '
+        + f'{target_path} && '
         + 'cp '
         + '${PADDLE_SOURCE_DIR}/third_party/cutlass/include -r '
-        + '${PADDLE_BINARY_DIR}/python/paddle/apy/matmul_pass/matmul/cutlass-3.7.0 && '
+        + f'{target_path} && '
         + f'git checkout {commit_id}'
     )
     if os.system(command) != 0:
