@@ -26,13 +26,11 @@ import shlex
 import shutil
 import subprocess
 import sys
-import tarfile
 import time
 from contextlib import contextmanager
 from pathlib import Path
 from subprocess import CalledProcessError
 
-import requests
 from setuptools import Command, Extension, setup
 from setuptools.command.develop import develop as DevelopCommandBase
 from setuptools.command.egg_info import egg_info
@@ -1247,47 +1245,36 @@ def get_paddle_extra_install_requirements():
     return paddle_cuda_requires, paddle_tensorrt_requires
 
 
-def retain_only_subdirs(root_dir, subdirs_to_keep):
-    keep_paths = [os.path.join(root_dir, d) for d in subdirs_to_keep]
-    for item in os.listdir(root_dir):
-        item_path = os.path.join(root_dir, item)
-        if item_path in keep_paths:
-            continue
-        if os.path.isfile(item_path) or os.path.islink(item_path):
-            os.remove(item_path)
-        elif os.path.isdir(item_path):
-            shutil.rmtree(item_path)
-
-
-def download_cutlass_src_code():
-    url = "https://paddle-ci.gz.bcebos.com/cutlass-3.7.0.tar.gz"
-    tar_file = "cutlass-3.7.0.tar.gz"
-    dir_path = (
-        env_dict.get("PADDLE_BINARY_DIR")
-        + '/python/paddle/apy/matmul_pass/matmul'
+def build_cutlass3_src_code():
+    try:
+        cmd = ['git', 'rev-parse', 'HEAD']
+        git_commit = (
+            subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                cwd=f"{paddle_source_dir}/third_party/cutlass",
+            )
+            .communicate()[0]
+            .strip()
+        )
+    except:
+        git_commit = 'Unknown'
+        raise Exception("obtain commit id of third_party cutlass failed")
+    commit_id = str(git_commit.decode())
+    command = (
+        'cd '
+        + f'{paddle_source_dir}/third_party/cutlass && '
+        + 'git checkout v3.7.0 && '
+        + 'cp '
+        + f'{paddle_source_dir}/third_party/cutlass/tools -r '
+        + f'{paddle_binary_dir}/python/paddle/apy/matmul_pass/matmul/cutlass-3.7.0 && '
+        + 'cp '
+        + f'{paddle_source_dir}/third_party/cutlass/include -r '
+        + f'{paddle_binary_dir}/python/paddle/apy/matmul_pass/matmul/cutlass-3.7.0 && '
+        + f'git checkout {commit_id}'
     )
-    extract_dir = Path(dir_path) / "cutlass-3.7.0"
-    tar_path = Path(dir_path) / tar_file
-
-    if not extract_dir.exists():
-        try:
-            response = requests.get(url, stream=True)
-            response.raise_for_status()
-            with open(tar_path, 'wb') as f:
-                for chunk in response.iter_content(chunk_size=8192):
-                    f.write(chunk)
-        except Exception as e:
-            raise RuntimeError(f"Download cutlass failed: {e}")
-        try:
-            with tarfile.open(tar_path, "r:gz") as tar:
-                tar.extractall(path=dir_path)
-        except Exception as e:
-            raise RuntimeError(f"Extract cutlass failed: {e}")
-        try:
-            os.remove(tar_path)
-        except Exception as e:
-            print(f"Warning: Failed to delete tar file: {e}")
-    retain_only_subdirs(extract_dir, ['tools', 'include'])
+    if os.system(command) != 0:
+        raise Exception(f"copy cutlass-3.7.0 failed, command: f{command}")
 
 
 def get_cinn_config_jsons():
@@ -1389,10 +1376,10 @@ def get_package_data_and_package_dir():
         shutil.rmtree(whl_cinn_config_path)
     shutil.copytree(src_cinn_config_path, whl_cinn_config_path)
     json_path_list = get_cinn_config_jsons()
-    download_cutlass_src_code()
-
     for json in json_path_list:
         package_data['paddle.cinn_config'] += [json]
+
+    build_cutlass3_src_code()
 
     package_data['paddle.apy'] = []
     file_path_list = get_apy_files()
