@@ -1217,9 +1217,9 @@ def _custom_api_content(op_name):
         from paddle import _C_ops
         from paddle.framework import in_dynamic_or_pir_mode
         from paddle.base.layer_helper import LayerHelper
-        from paddle.jit import skip_transform
+        from paddle.jit.marker import unified
 
-        @skip_transform
+        @unified
         def {op_name}({params_list}):
             # The output variable's dtype use default value 'float32',
             # and the actual dtype of output variable will be inferred in runtime.

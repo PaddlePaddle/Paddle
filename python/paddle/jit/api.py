@@ -80,7 +80,6 @@ from .dy2static.program_translator import (
 from .dy2static.utils import (
     ENV_ENABLE_SOT,
     Backend,
-    TransformOptions,
     infer_use_cinn_backend,
 )
 from .pir_translated_layer import PIR_INFER_MODEL_SUFFIX, PirTranslatedLayer
@@ -345,87 +344,6 @@ def to_static(
 
     # for usage: `@to_static`
     return decorated
-
-
-class _NotToStaticDecorator(Protocol):
-    @overload
-    def __call__(
-        self, func: Callable[_InputT, _RetT]
-    ) -> Callable[_InputT, _RetT]: ...
-
-    @overload
-    def __call__(self, func: None = ...) -> _NotToStaticDecorator: ...
-
-
-@overload
-def not_to_static(
-    func: Callable[_InputT, _RetT],
-) -> Callable[_InputT, _RetT]: ...
-
-
-@overload
-def not_to_static(func: None = ...) -> _NotToStaticDecorator: ...
-
-
-def not_to_static(func=None):
-    """
-    A Decorator to suppresses the convention of a function.
-
-    Args:
-        func(callable): The function to decorate.
-
-    Returns:
-        callable: A function which won't be converted in Dynamic-to-Static.
-
-    Examples:
-        .. code-block:: python
-
-            >>> # doctest: +SKIP('`paddle.jit.to_static` can not run in xdoctest')
-            >>> import paddle
-
-            >>> @paddle.jit.not_to_static
-            ... def func_not_to_static(x):
-            ...     res = x - 1
-            ...     return res
-
-            >>> @paddle.jit.to_static
-            ... def func(x):
-            ...     if paddle.mean(x) < 0:
-            ...         out = func_not_to_static(x)
-            ...     else:
-            ...         out = x + 1
-            ...     return out
-            ...
-            >>> x = paddle.ones([1, 2], dtype='float32')
-            >>> out = func(x)
-            >>> print(out)
-            Tensor(shape=[1, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[2., 2.]])
-    """
-    return skip_transform(func, sot=False, ast=True)
-
-
-def skip_transform(
-    fn: Callable[_InputT, _RetT] | None = None,
-    *,
-    sot: bool = True,
-    ast: bool = True,
-) -> Callable[_InputT, _RetT]:
-    def _skip_transform(fn, *, sot: bool, ast: bool):
-        mode = TransformOptions.ToStaticMode.Nil()
-        if sot:
-            mode |= TransformOptions.ToStaticMode.SOT
-        if ast:
-            mode |= TransformOptions.ToStaticMode.AST
-        options = TransformOptions(
-            skip_transform_mode=mode,
-        )
-        options.attach(fn)
-        return fn
-
-    if fn is None:
-        return lambda fn: _skip_transform(fn, sot=sot, ast=ast)
-    return _skip_transform(fn, sot=sot, ast=ast)
 
 
 class _SaveLoadConfig:

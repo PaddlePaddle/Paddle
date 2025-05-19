@@ -317,7 +317,7 @@ class TestConvertPaddleAPI(Dy2StTestBase):
         self.assertIn("if x.shape[0] > 1", bn.forward.code)
 
 
-class TestSkipTransform(Dy2StTestBase):
+class TestMarkerUnified(Dy2StTestBase):
 
     def test_plain_function(self):
         def fn(x):
@@ -335,7 +335,7 @@ class TestSkipTransform(Dy2StTestBase):
         )
 
     def test_decorator_skip_sot_only(self):
-        @paddle.jit.skip_transform(sot=True, ast=False)
+        @paddle.jit.marker.unified(for_sot=True, for_ast=False)
         def fn(x):
             return x
 
@@ -351,7 +351,7 @@ class TestSkipTransform(Dy2StTestBase):
         )
 
     def test_decorator_skip_ast_only(self):
-        @paddle.jit.skip_transform(sot=False, ast=True)
+        @paddle.jit.marker.unified(for_sot=False, for_ast=True)
         def fn(x):
             return x
 
@@ -367,7 +367,7 @@ class TestSkipTransform(Dy2StTestBase):
         )
 
     def test_decorator_skip_ast_and_sot(self):
-        @paddle.jit.skip_transform(sot=True, ast=True)
+        @paddle.jit.marker.unified(for_sot=True, for_ast=True)
         def fn(x):
             return x
 
@@ -383,7 +383,7 @@ class TestSkipTransform(Dy2StTestBase):
         )
 
     def test_decorator_no_arg(self):
-        @paddle.jit.skip_transform
+        @paddle.jit.marker.unified
         def fn(x):
             return x
 
@@ -402,7 +402,7 @@ class TestSkipTransform(Dy2StTestBase):
         def fn(x):
             return x
 
-        paddle.jit.skip_transform(fn, sot=True, ast=False)
+        paddle.jit.marker.unified(fn, for_sot=True, for_ast=False)
 
         self.assertTrue(
             not TransformOptions.check_fn_need_transform(
@@ -419,7 +419,7 @@ class TestSkipTransform(Dy2StTestBase):
         def fn(x):
             return x
 
-        paddle.jit.skip_transform(fn, sot=False, ast=True)
+        paddle.jit.marker.unified(fn, for_sot=False, for_ast=True)
 
         self.assertTrue(
             TransformOptions.check_fn_need_transform(
@@ -436,7 +436,7 @@ class TestSkipTransform(Dy2StTestBase):
         def fn(x):
             return x
 
-        paddle.jit.skip_transform(fn, sot=True, ast=True)
+        paddle.jit.marker.unified(fn, for_sot=True, for_ast=True)
 
         self.assertTrue(
             not TransformOptions.check_fn_need_transform(

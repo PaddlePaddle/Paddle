@@ -138,7 +138,7 @@ class TransformOptions:
             setattr(fn, TransformOptions.TRANSFORM_OPTIONS_ATTR_NAME, self)
         else:
             warnings.warn(
-                f"Only support @skip_transform to type(function) or type(method), but received {type(fn)}"
+                f"Only support @jit.marker.unified to type(function) or type(method), but received {type(fn)}"
             )
 
     def need_transform(self, mode: ToStaticMode):

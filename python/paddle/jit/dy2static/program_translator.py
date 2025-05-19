@@ -251,7 +251,7 @@ def convert_to_static(function):
     if getattr(function, ALREADY_D2S, None):
         return function
 
-    # Return directly if decorated with @skip_transform and DO NOT Cache it
+    # Return directly if decorated with @jit.marker.unified and DO NOT Cache it
     # or ignore paddle api
     need_skip = (
         not TransformOptions.check_fn_need_transform(
