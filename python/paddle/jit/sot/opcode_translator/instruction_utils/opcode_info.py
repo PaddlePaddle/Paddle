@@ -112,3 +112,8 @@ def _get_pyopcode_cache_size() -> dict[str, int]:
 
 
 PYOPCODE_CACHE_SIZE = _get_pyopcode_cache_size()
+
+
+class ExceptionHandler:
+    opcode = 257
+    opname = "EXCEPT_HANDLER"

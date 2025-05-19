@@ -60,6 +60,7 @@ from ..instruction_utils import (
 from ..instruction_utils.opcode_info import (
     NEED_TO_BOOL,
     RETURN,
+    ExceptionHandler,
     JumpDirection,
     PopJumpCond,
 )
@@ -357,7 +358,7 @@ def fallback_when_occur_error(fn: Callable):
 
 def fallback_if_python_version_unsupported(fn: Callable):
     def inner(*args, **kwargs):
-        if sys.version_info >= (3, 11):
+        if not ALREADY_SUPPORTED_EXCEPTION:
             raise FallbackError(
                 "SOT currently only partially supports exception handling (Python 3.10 and below). "
                 "Unsupported exception bytecode will fall back to dynamic graph mode."
@@ -684,16 +685,16 @@ class OpcodeExecutorBase:
 
         # The exception is not raised by `raise Exception`
         if (
-            len(self.exception_stack) == 0
+            self.exception_stack.empty()
             or self.exception_stack.get_current_exception() != e_var
         ):
             self.exception_stack.set_current_exception(e_var, self._graph)
 
-        if len(self.vframe.block_stack):
+        if self.vframe.block_stack:
             # The implementation is referenced from the exception_unwind section
             # of CPython's main_loop.
             block_stack_entry = self.vframe.block_stack.pop()
-            while block_stack_entry.inst.opname == "EXCEPT_HANDLER":
+            while block_stack_entry.inst.opname == ExceptionHandler.opname:
                 # Remove previous EXCEPT_HANDLER entries, which indicate that the
                 # exception has already been handled. Continue until a SETUP_FINALLY
                 # block is encountered, which signifies an active exception handler.
@@ -704,7 +705,7 @@ class OpcodeExecutorBase:
                     # frame, so the exception is propagated to the outer function for handling.
                     self.stack.pop_n(
                         len(self.stack)
-                    )  # clear stack to prevent memory leaks
+                    )  # Just like CPython; no memory leaks in our simulation
                     raise e
                 block_stack_entry = self.vframe.block_stack.pop()
 
@@ -719,7 +720,7 @@ class OpcodeExecutorBase:
             # Push a dummy EXCEPT_HANDLER block onto the stack to indicate that exception
             # handling has begun and to record the current stack level.
             EXCEPT_HANDLER_INSTRUCTION = Instruction(
-                257, "EXCEPT_HANDLER", None, 0
+                ExceptionHandler.opcode, ExceptionHandler.opname, None, 0
             )
             self.vframe.block_stack.append(
                 BlockStackItem(
@@ -2067,7 +2068,7 @@ class OpcodeExecutorBase:
     def POP_EXCEPT(self, instr: Instruction):
         assert len(self.vframe.block_stack) > 0
 
-        if self.vframe.block_stack[-1].inst.opname != "EXCEPT_HANDLER":
+        if self.vframe.block_stack[-1].inst.opname != ExceptionHandler.opname:
             raise FallbackError(
                 "Bug in SOT tracing of exception handling."
                 "Top of the block stack is not EXCEPT_HANDLER."
@@ -2076,7 +2077,7 @@ class OpcodeExecutorBase:
         self.vframe.block_stack.pop()
         self.stack.pop_n(3)
 
-        assert len(self.exception_stack)
+        assert self.exception_stack
         self.exception_stack.pop()
 
     @staticmethod
@@ -2107,7 +2108,7 @@ class OpcodeExecutorBase:
     @fallback_if_python_version_unsupported
     def RAISE_VARARGS(self, instr: Instruction):
         if instr.arg == 0:
-            if not len(self.exception_stack):
+            if not self.exception_stack.empty():
                 msg = ConstantVariable.wrap_literal(
                     "No active exception to reraise", self._graph
                 )
@@ -2323,13 +2324,13 @@ class OpcodeExecutor(OpcodeExecutorBase):
                 compile_graph_result, store_vars, store_var_info
             )
 
-    def fallback_when_block_stack_is_empty(self):
+    def fallback_when_block_stack_is_not_empty(self):
         """
         SOT currently doesn't support a non-empty block stack (related to exception handling),
         triggering a fallback.
         """
 
-        if len(self.vframe.block_stack):
+        if self.vframe.block_stack:
             raise FallbackError(
                 'SOT currently does not support a non-empty block stack, '
                 'triggering a fallback\n'
@@ -2345,7 +2346,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
             instr: The jump instruction.
 
         """
-        self.fallback_when_block_stack_is_empty()
+        self.fallback_when_block_stack_is_not_empty()
         self._graph.add_global_guarded_variable(result)
 
         # 1. analyse info
@@ -2505,6 +2506,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
             push_n: The number of elements to be pushed onto the stack.
 
         """
+        self.fallback_when_block_stack_is_not_empty()
         self.stack = origin_stack
 
         # 1. collect infomations
@@ -2606,6 +2608,8 @@ class OpcodeExecutor(OpcodeExecutorBase):
     def _break_graph_when_for_loop(
         self, iterator: VariableBase, for_iter: Instruction
     ):
+        self.fallback_when_block_stack_is_not_empty()
+
         # 1. find the range of loop body
         assert for_iter.jump_to is not None
         for_iter_idx = self.indexof(for_iter)

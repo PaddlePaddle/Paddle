@@ -2247,7 +2247,7 @@ class ExceptionVariable(VariableBase):
                 and value.get_py_value() is None
             ) or isinstance(
                 value,
-                (ExceptionVariable),
+                ExceptionVariable,
             ):
                 self.__context__ = value
             else:
@@ -2260,7 +2260,7 @@ class ExceptionVariable(VariableBase):
                 and value.get_py_value() is None
             ) or isinstance(
                 value,
-                (ExceptionVariable),
+                ExceptionVariable,
             ):
                 self.__cause__ = value
                 self.__suppress_context__ = ConstantVariable.wrap_literal(
@@ -2271,9 +2271,8 @@ class ExceptionVariable(VariableBase):
                     "exception cause must be None or derive from BaseException"
                 )
         elif key == "__suppress_context__":
-            if isinstance(value, ConstantVariable) and value.get_py_value() in (
-                True,
-                False,
+            if isinstance(value, ConstantVariable) and isinstance(
+                value.get_py_value(), bool
             ):
                 self.__suppress_context__ = value
             else:
@@ -2352,7 +2351,8 @@ class ExceptionVariable(VariableBase):
     def from_value(value: Exception, graph: FunctionGraph, tracker: Tracker):
         if isinstance(value, Exception):
             args = [
-                ConstantVariable.wrap_literal(arg, graph) for arg in value.args
+                VariableFactory.from_value(arg, graph, tracker)
+                for arg in value.args
             ]
             exception_var = ExceptionVariable(
                 value.__class__, *args, graph=graph, tracker=tracker
@@ -2380,20 +2380,3 @@ class ExceptionVariable(VariableBase):
 
             return exception_var
         return None
-
-    # def __eq__(self, other: ExceptionVariable) -> bool:
-    #     if sys.version_info >= (3, 8) and sys.version_info < (3, 9):
-    #         raise FallbackError("Python version >= 3.8 but < 3.9")
-
-    #     # `operator.eq` of `ExceptionVariable` dispatch
-    #     def exception_variable_equal(left, right):
-    #         result = (left is right) or (
-    #             left.get_py_value() == right.get_py_value()
-    #         )
-    #         return VariableFactory.from_value(
-    #             result,
-    #             left.graph,
-    #             tracker=DummyTracker([left, right]),
-    #         )
-
-    #     return exception_variable_equal(self, other)
