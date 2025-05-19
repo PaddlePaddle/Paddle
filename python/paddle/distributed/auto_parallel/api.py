@@ -1638,6 +1638,7 @@ class _ShardingStageBase:
                 self._init_dist_attr(tensor, param, placements)
                 return tensor
             return dist.reshard(tensor, param.process_mesh, placements)
+
         return shard_tensor(
             tensor,
             mesh=param.process_mesh,
@@ -1844,7 +1845,9 @@ class ShardingStage3(_ShardingStageBase):
             return tensor
 
         if key == "grad" and self._enable_auto_dp_comm:
-            tensor = self._reshard_fake_replicate_grad_to_partial(tensor)
+            raise RuntimeError(
+                "Sharding Stage 3 does not support auto dp mode yet."
+            )
 
         if 'beta' not in key:
             placements = param.placements
