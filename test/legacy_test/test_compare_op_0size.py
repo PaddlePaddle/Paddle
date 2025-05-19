@@ -49,14 +49,15 @@ def create_test_class(op_type, dtype):
 
 
 create_test_class("equal", "float32")
-create_test_class("bitwise_left_shift", "int32")
-create_test_class("bitwise_right_shift", "int32")
 create_test_class("bitwise_or", "int32")
 create_test_class("bitwise_xor", "int32")
 create_test_class("bitwise_and", "int32")
 create_test_class("logical_or", "float32")
 create_test_class("logical_xor", "float32")
 create_test_class("logical_and", "float32")
+if not paddle.base.core.is_compiled_with_xpu():
+    create_test_class("bitwise_left_shift", "int32")
+    create_test_class("bitwise_right_shift", "int32")
 
 if __name__ == '__main__':
     unittest.main()
