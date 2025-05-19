@@ -6432,8 +6432,8 @@ def masked_fill_(
     if np.isscalar(value):
         value = paddle.full([], value, x.dtype)
 
-    out = _C_ops.masked_fill(x, mask, value)
-    return out
+    x = _C_ops.masked_fill_(x, mask, value)
+    return x
 
 
 @overload
