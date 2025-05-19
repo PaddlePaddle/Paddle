@@ -113,8 +113,28 @@ jobs:
           REPO: ${{ github.event.repository.name }}
           JOB_NAME: 'PR-CI-Inference / Test'
 
-      - name: Rerun Coverage build
+      - name: Rerun Coverage clone
         if: ${{ contains(github.event.comment.body, 'coverage') }}
+        uses: ./.github/actions/rerun-workflow
+        with:
+          PR_ID: ${{ github.event.issue.number }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.event.repository.name }}
+          JOB_NAME: 'Coverage clone / Clone Paddle'
+
+      - name: Rerun Coverage docker build
+        if: ${{ contains(github.event.comment.body, 'coverage') && contains(github.event.comment.body, 'docker') }}
+        uses: ./.github/actions/rerun-workflow
+        with:
+          PR_ID: ${{ github.event.issue.number }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.event.repository.name }}
+          JOB_NAME: 'Coverage build docker / Build docker'
+
+      - name: Rerun Coverage build
+        if: ${{ contains(github.event.comment.body, 'coverage') && contains(github.event.comment.body, 'build') }}
         uses: ./.github/actions/rerun-workflow
         with:
           PR_ID: ${{ github.event.issue.number }}
