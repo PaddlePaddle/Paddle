@@ -321,6 +321,12 @@ void ArgMinMaxInferMeta(const MetaTensor& x,
                           int_axis));
   }
 
+  PADDLE_ENFORCE_NE(
+      x_dims[static_cast<int>((int_axis + x_rank) % x_rank)],
+      0,
+      common::errors::OutOfRange(
+          "Expected reduction axis(%d) to have non-zero size.", int_axis));
+
   if (int_axis < 0) int_axis += x_rank;
 
   if (config.is_runtime) {
