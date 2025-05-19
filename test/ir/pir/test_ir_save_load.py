@@ -89,7 +89,7 @@ class TestSaveModuleWithCommonOp(unittest.TestCase):
 
         recover_program = paddle.static.Program()
         base.core.deserialize_pir_program(
-            file_path, recover_program, True, False, True, pir_version
+            file_path, recover_program, pir_version
         )
 
         self.assertEqual(
@@ -188,7 +188,7 @@ class TestSaveModuleWithIfOp(unittest.TestCase):
 
         recover_program = paddle.static.Program()
         base.core.deserialize_pir_program(
-            file_path, recover_program, True, False, True, pir_version
+            file_path, recover_program, pir_version
         )
 
         self.check_block(
@@ -211,7 +211,7 @@ class TestSaveModuleWithIfOp(unittest.TestCase):
 
         recover_program = paddle.static.Program()
         base.core.deserialize_pir_program(
-            file_path, recover_program, True, False, True, pir_version
+            file_path, recover_program, pir_version
         )
 
         self.check_block(
@@ -279,7 +279,7 @@ class TestSaveModuleWithwhileOp(unittest.TestCase):
 
         recover_program = paddle.static.Program()
         base.core.deserialize_pir_program(
-            file_path, recover_program, True, False, True, pir_version
+            file_path, recover_program, pir_version
         )
 
         self.check_block(
@@ -307,7 +307,7 @@ class TestSaveModuleWithwhileOp(unittest.TestCase):
 
         recover_program = paddle.static.Program()
         base.core.deserialize_pir_program(
-            file_path, recover_program, True, False, True, pir_version
+            file_path, recover_program, pir_version
         )
 
         self.check_block(
@@ -373,7 +373,7 @@ class TestSaveModuleWithwhileOp(unittest.TestCase):
 
         recover_program = paddle.static.Program()
         base.core.deserialize_pir_program(
-            file_path, recover_program, True, False, True, pir_version
+            file_path, recover_program, pir_version
         )
 
         self.check_block(
