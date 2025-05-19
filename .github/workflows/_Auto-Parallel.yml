@@ -3,9 +3,9 @@ name: Auto-Parallel
 on:
   workflow_call:
     inputs:
-      docker_build_image:
-        type: string
-        required: true
+      # docker_build_image:
+      #   type: string
+      #   required: true
       can-skip:
         type: string
         required: false
@@ -47,7 +47,7 @@ jobs:
         run: |
           sudo rm -rf * .[^.]*
           echo "Downloading build.tar.gz"
-          wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/build/${PR_ID}/${COMMIT_ID}/build.tar.gz --no-check-certificate
+          wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/build/72744/b905c2529f0357f97a128b3ded5e5726352e0cce/build.tar.gz --no-check-certificate
           echo "Extracting build.tar.gz"
           tar --use-compress-program="pzstd" -xpf build.tar.gz
           mv paddle Paddle
@@ -58,7 +58,7 @@ jobs:
           CACHE_DIR: /home/data/cfs/.cache
           FLAGS_dynamic_static_unified_comm: "True"
           python_version: "3.10"
-          paddle_whl: https://paddle-github-action.bj.bcebos.com/PR/build/${{ github.event.pull_request.number }}/${{ github.event.pull_request.head.sha }}/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl
+          paddle_whl: https://paddle-github-action.bj.bcebos.com/PR/build/72744/b905c2529f0357f97a128b3ded5e5726352e0cce/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl
         run: |
           container_name=${TASK}-${core_index}-$(date +%Y%m%d-%H%M%S)
           echo "container_name=${container_name}" >> ${{ github.env }}
