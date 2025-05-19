@@ -1887,5 +1887,4 @@ void SetValueGradInferMeta(const MetaTensor& out_grad,
     value_grad->share_lod(values);
   }
 }
-
 }  // namespace phi
