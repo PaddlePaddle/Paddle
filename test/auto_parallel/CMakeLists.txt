@@ -181,6 +181,7 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_dy_local_view_compute MODULES test_dy_local_view_compute)
   py_test_modules(test_local_view_compute MODULES test_local_view_compute)
   py_test_modules(test_PipelineStage MODULES test_PipelineStage)
+  py_test_modules(test_microbatch MODULES test_microbatch)
   # End of unittests WITH single card WITHOUT timeout
 
 endif()
