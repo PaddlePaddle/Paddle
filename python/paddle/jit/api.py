@@ -284,11 +284,12 @@ def to_static(
             f"Required type(build_strategy) shall be `paddle.static.BuildStrategy`, but received {type(build_strategy).__name__}"
         )
     backend = Backend.from_arg(backend)
-    backend = (
-        Backend.CINN
-        if infer_use_cinn_backend(backend, build_strategy)
-        else Backend.PHI
-    )
+    if infer_use_cinn_backend(backend, build_strategy):
+        backend = Backend.CINN
+    elif backend.is_pcc():
+        pass
+    else:
+        backend = Backend.PHI
 
     def decorated(python_func):
         """

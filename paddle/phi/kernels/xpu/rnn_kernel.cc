@@ -61,10 +61,10 @@ void RnnKernel(const Context& dev_ctx,
   auto last_c = state[1];
 
   // check shape
-  const int& seq_len = x.dims()[0];  // time_step
-  const int& batch_size = x.dims()[1];
-  const int& input_dim = x.dims()[2];
-  const int& direction_num = is_bidirec ? 2 : 1;
+  const int64_t seq_len = x.dims()[0];  // time_step
+  const int64_t batch_size = x.dims()[1];
+  const int64_t input_dim = x.dims()[2];
+  const int64_t direction_num = is_bidirec ? 2 : 1;
 
   PADDLE_ENFORCE_EQ(
       init_h->dims()[0],
@@ -95,10 +95,10 @@ void RnnKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(last_h);
   dev_ctx.template Alloc<T>(last_c);
 
-  int gate_num = 4;
-  int hidden_data_idx = (num_layers - 1);
+  int64_t gate_num = 4;
+  int64_t hidden_data_idx = (num_layers - 1);
   hidden_data_idx += (gate_num + 2) * num_layers;
-  const int& block_size = direction_num * seq_len * batch_size * hidden_size;
+  const int64_t block_size = direction_num * seq_len * batch_size * hidden_size;
   reserve->Resize({hidden_data_idx, block_size});
   dev_ctx.template Alloc<T>(reserve);
 
@@ -114,18 +114,26 @@ void RnnKernel(const Context& dev_ctx,
       i_f_g_o_ptr + num_layers * block_size * 4;  // 4 for i_f_g_o offset
   auto hidden_data_ptr = c_ptr + num_layers * block_size * 1;  // 1 for c offset
 
-  std::vector<int> seq_len_tensor(batch_size, seq_len);
+  std::vector<int64_t> seq_len_tensor(batch_size, seq_len);
 
   bool has_seq_length = sequence_length.is_initialized();
 
   if (has_seq_length) {
-    seq_len_tensor = phi::GetVectorFromTensor<int>(sequence_length.get_ptr());
+    if (sequence_length->dtype() == phi::DataType::INT32) {
+      std::vector<int> tensor_int32 =
+          phi::GetVectorFromTensor<int>(sequence_length.get_ptr());
+      seq_len_tensor =
+          std::vector<int64_t>(tensor_int32.begin(), tensor_int32.end());
+    } else {  // phi::DataType::INT64
+      seq_len_tensor =
+          phi::GetVectorFromTensor<int64_t>(sequence_length.get_ptr());
+    }
   }
 
-  int state_offset = pre_state[0]->dims()[1] * pre_state[0]->dims()[2];
+  int64_t state_offset = pre_state[0]->dims()[1] * pre_state[0]->dims()[2];
 
   const T* cur_input_ptr = nullptr;
-  int cur_xdim = -1;
+  int64_t cur_xdim = -1;
   T* cur_output_ptr = y;
   for (int i = 0; i < num_layers; i++) {
     auto i_f_g_o = i_f_g_o_ptr + i * block_size * 4;
@@ -180,6 +188,7 @@ void RnnKernel(const Context& dev_ctx,
                                            hidden_size,
                                            seq_len,
                                            seq_len_tensor,
+                                           false,
                                            nullptr,
                                            nullptr,
                                            nullptr,
@@ -187,7 +196,9 @@ void RnnKernel(const Context& dev_ctx,
                                            nullptr,
                                            nullptr,
                                            reinterpret_cast<T*>(i_f_g_o),
-                                           reinterpret_cast<T*>(c));
+                                           reinterpret_cast<T*>(c),
+                                           xpu::Activation_t::TANH,
+                                           xpu::Activation_t::SIGMOID);
 
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "bilstm_train");
     } else {
@@ -208,6 +219,7 @@ void RnnKernel(const Context& dev_ctx,
                                          hidden_size,
                                          seq_len,
                                          seq_len_tensor,
+                                         false,
                                          nullptr,
                                          nullptr,
                                          nullptr,

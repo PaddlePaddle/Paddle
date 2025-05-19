@@ -124,6 +124,7 @@ break_graph_tensor_method = {
     'numpy',
     'clear_gradient',
     'tolist',
+    'item',
     # TODO: Browse all possible functions and make prior judgments.
 }
 

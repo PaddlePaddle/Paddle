@@ -14,13 +14,60 @@
 
 #include <glog/logging.h>
 
-#include "paddle/ap/include/paddle/pir/manual_op.h"
+#include "paddle/ap/include/paddle/hlir/manual_op.h"
+#include "paddle/ap/include/paddle/pir/infer_symbolic_shape_util.h"
 #include "paddle/common/enforce.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
 #include "paddle/pir/include/core/builtin_type.h"
 #include "paddle/pir/include/dialect/shape/ir/shape_attribute.h"
 
 namespace ap::dialect {
+
+const char* FacadeOp::attributes_name[FacadeOp::attributes_num] = {
+    "custom_op_name", "infer_meta", "infer_symbolic"};
+
+void FacadeOp::Build(pir::Builder& builder,             // NOLINT
+                     pir::OperationArgument& argument,  // NOLINT
+                     const std::vector<pir::Value>& inputs,
+                     const pir::AttributeMap& attributes,
+                     const std::vector<pir::Type>& output_types) {
+  argument.inputs = inputs;
+  argument.attributes = attributes;
+  argument.output_types = output_types;
+}
+
+bool FacadeOp::InferSymbolicShape(
+    pir::InferSymbolicShapeContext* infer_context) {
+  return ApOpFacadeOpInferSymbolicShape(*this, infer_context);
+}
+
+void AddOp::Build(pir::Builder& builder,             // NOLINT
+                  pir::OperationArgument& argument,  // NOLINT
+                  pir::Value lhs,
+                  pir::Value rhs) {
+  argument.AddInput(lhs);
+  argument.AddInput(rhs);
+}
+
+bool AddOp::InferSymbolicShape(pir::InferSymbolicShapeContext* infer_context) {
+  const auto& lhs_shape_or_data =
+      infer_context->GetShapeOrDataForValue(operand_source(0));
+  const auto& rhs_shape_or_data =
+      infer_context->GetShapeOrDataForValue(operand_source(1));
+  PADDLE_ENFORCE_GT(lhs_shape_or_data.shape().size(),
+                    rhs_shape_or_data.shape().size(),
+                    phi::errors::InvalidArgument(
+                        "lhs and rhs of ap_op.add should have same rank"));
+  for (int i = 0; i < lhs_shape_or_data.shape().size(); ++i) {
+    const auto& lhs_dim_expr = lhs_shape_or_data.shape().at(i);
+    const auto& rhs_dim_expr = rhs_shape_or_data.shape().at(i);
+    if (lhs_dim_expr != rhs_dim_expr) {
+      infer_context->AddEqualCstr(lhs_dim_expr, rhs_dim_expr);
+    }
+  }
+  infer_context->SetShapeOrDataForValue(result(0), rhs_shape_or_data);
+  return true;
+}
 
 void UpSpiderOp::Build(pir::Builder& builder,             // NOLINT
                        pir::OperationArgument& argument,  // NOLINT
@@ -145,6 +192,8 @@ bool StoreToGlobalOp::InferSymbolicShape(
 
 }  // namespace ap::dialect
 
+IR_DEFINE_EXPLICIT_TYPE_ID(ap::dialect::FacadeOp);
+IR_DEFINE_EXPLICIT_TYPE_ID(ap::dialect::AddOp);
 IR_DEFINE_EXPLICIT_TYPE_ID(ap::dialect::UpSpiderOp);
 IR_DEFINE_EXPLICIT_TYPE_ID(ap::dialect::DownSpiderOp);
 IR_DEFINE_EXPLICIT_TYPE_ID(ap::dialect::LoadFromRegisterOp);

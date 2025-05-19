@@ -3578,7 +3578,7 @@ def embedding(
             >>> exe = paddle.static.Executor(place)
             >>> exe.run(paddle.static.default_startup_program())
 
-            >>> x = np.array([[7, 2, 4, 5],[4, 3, 2, 9]], dtype=np.int64) # type: ignore[var-annotated]
+            >>> x = np.array([[7, 2, 4, 5],[4, 3, 2, 9]], dtype=np.int64)
             >>> out, = exe.run(paddle.static.default_main_program(), feed={'x':x}, fetch_list=[output])
             >>> print(out)
             [[[1. 1. 1.]

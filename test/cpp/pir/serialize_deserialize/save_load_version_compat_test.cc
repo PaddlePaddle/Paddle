@@ -179,6 +179,43 @@ TEST(save_load_version_compat, attribute_patch_test1) {
             pir::Float64Type::get(ctx));
 }
 
+TEST(save_load_version_compat, attribute_patch_test2) {
+  pir::IrContext *ctx = pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<test1::Test1Dialect>();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+
+  pir::Program program(ctx);
+  auto block = program.block();
+  pir::Builder builder(ctx, block);
+
+  pir::Type dtype = pir::Float32Type::get(ctx);
+
+  // Get registered operations.
+  pir::OpInfo op4_info = ctx->GetRegisteredOpInfo(test1::Operation4::name());
+  std::unordered_map<std::string, pir::Attribute> op4_attribute{
+      {"op4_attr1",
+       pir::ArrayAttribute::get(ctx, {pir::Int32Attribute::get(ctx, 3)})}};
+
+  pir::Operation *op4 =
+      pir::Operation::Create({}, op4_attribute, {dtype}, op4_info);
+  block->push_back(op4);
+
+  // Save the program into file
+  pir::WriteModule(
+      program, "./test_save_load", /*pir_version*/ 1, true, false, true);
+  // Load the program from file
+  pir::Program new_program(ctx);
+  ReadModuleForTest("./test_save_load", &new_program, 2);
+  EXPECT_EQ(new_program.block()
+                ->front()
+                .attribute("op4_attr1")
+                .dyn_cast<::pir::ArrayAttribute>()
+                .AsVector()[0]
+                .dyn_cast<::pir::Int64Attribute>()
+                .data(),
+            3);
+}
+
 // Test for op I/O and op attribute modification.
 TEST(save_load_version_compat, op_patch_test1) {
   pir::IrContext *ctx = pir::IrContext::Instance();

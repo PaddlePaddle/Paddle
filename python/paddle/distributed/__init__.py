@@ -72,6 +72,8 @@ from .checkpoint.save_state_dict import save_state_dict
 from .collective import (
     is_available,
     new_group,
+    restart_process_group,
+    shutdown_process_group,
     split,
 )
 from .communication import (  # noqa: F401
@@ -94,11 +96,13 @@ from .communication import (  # noqa: F401
     is_initialized,
     isend,
     recv,
+    recv_object_list,
     reduce,
     reduce_scatter,
     scatter,
     scatter_object_list,
     send,
+    send_object_list,
     stream,
     wait,
 )
@@ -138,6 +142,8 @@ __all__ = [
     "broadcast_object_list",
     "ParallelEnv",
     "new_group",
+    "shutdown_process_group",
+    "restart_process_group",
     "init_parallel_env",
     "gloo_init_parallel_env",
     "gloo_barrier",
@@ -167,6 +173,8 @@ __all__ = [
     "destroy_process_group",
     "isend",
     "irecv",
+    "send_object_list",
+    "recv_object_list",
     "reduce_scatter",
     "is_available",
     "get_backend",

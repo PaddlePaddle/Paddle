@@ -192,6 +192,18 @@ class InferMetaBreak(BreakGraphReasonBase):
     pass
 
 
+class NullMetaBreak(BreakGraphReasonBase):
+    def __init__(
+        self,
+        *,
+        file_path="",
+        line_number=-1,
+    ):
+        super().__init__(
+            "Access attribute from null meta", file_path, line_number
+        )
+
+
 class SotErrorBase(Exception):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

@@ -30,9 +30,9 @@ void FastWhereXPUKernel(const Context& ctx,
   auto* x_data = reinterpret_cast<const XPUType*>(x.data<T>());
   auto* y_data = reinterpret_cast<const XPUType*>(y.data<T>());
   auto* out_data = reinterpret_cast<XPUType*>(ctx.template Alloc<T>(out));
-  auto condition_dims = common::vectorize<int>(condition.dims());
-  auto x_dims = common::vectorize<int>(x.dims());
-  auto y_dims = common::vectorize<int>(y.dims());
+  auto condition_dims = common::vectorize<int64_t>(condition.dims());
+  auto x_dims = common::vectorize<int64_t>(x.dims());
+  auto y_dims = common::vectorize<int64_t>(y.dims());
   PADDLE_ENFORCE_EQ(
       x_dims,
       y_dims,

@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/ap/include/axpr/attr_map.h"
 #include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/infer_symbolic_shape.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/pir/include/core/builder.h"
@@ -24,6 +25,39 @@
 #include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 
 namespace ap::dialect {
+
+class IR_API FacadeOp
+    : public pir::Op<FacadeOp, ::paddle::dialect::InferSymbolicShapeInterface> {
+ public:
+  using Op::Op;
+  static const char *name() { return "ap_op.facade"; }
+  static constexpr uint32_t attributes_num = 3;
+  static const char *attributes_name[attributes_num];
+  static void Build(pir::Builder &builder,             // NOLINT
+                    pir::OperationArgument &argument,  // NOLINT
+                    const std::vector<pir::Value> &inputs,
+                    const pir::AttributeMap &attributes,
+                    const std::vector<pir::Type> &output_types);
+  void VerifySig() const {}
+  bool InferSymbolicShape(pir::InferSymbolicShapeContext *infer_context);
+};
+
+class IR_API AddOp
+    : public pir::Op<AddOp,
+                     pir::ImmutableLayoutTrait,
+                     ::paddle::dialect::InferSymbolicShapeInterface> {
+ public:
+  using Op::Op;
+  static const char *name() { return "ap_op.add"; }
+  static constexpr uint32_t attributes_num = 0;
+  static constexpr const char **attributes_name = nullptr;
+  static void Build(pir::Builder &builder,             // NOLINT
+                    pir::OperationArgument &argument,  // NOLINT
+                    pir::Value lhs,
+                    pir::Value rhs);
+  void VerifySig() const {}
+  bool InferSymbolicShape(pir::InferSymbolicShapeContext *infer_context);
+};
 
 class IR_API UpSpiderOp
     : public pir::Op<UpSpiderOp,
@@ -134,6 +168,8 @@ class IR_API StoreToGlobalOp
 
 }  // namespace ap::dialect
 
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ap::dialect::FacadeOp);
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ap::dialect::AddOp);
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ap::dialect::UpSpiderOp);
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ap::dialect::DownSpiderOp);
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ap::dialect::LoadFromRegisterOp);
