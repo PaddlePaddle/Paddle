@@ -909,7 +909,7 @@ Tensor flatten_decomp(const Tensor& x, int start_axis, int end_axis) {
       return reshape<T>(x, x_dim);
     }
 
-    int slice_numel = 1;
+    int64_t slice_numel = 1;
     for (int i = start_axis; i <= end_axis; ++i) {
       slice_numel *= x_dim[i];
     }

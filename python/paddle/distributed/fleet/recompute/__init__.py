@@ -12,7 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .recompute import recompute, recompute_sequential  # noqa: F401
+from .recompute import (  # noqa: F401
+    custom_state_manager,
+    recompute,
+    recompute_sequential,
+)
 from .recompute_hybrid import recompute_hybrid  # noqa: F401
 
 __all__ = []

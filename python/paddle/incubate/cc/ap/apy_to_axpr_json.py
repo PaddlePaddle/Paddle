@@ -19,7 +19,6 @@ import functools
 import itertools
 import json
 import operator
-import sys
 import typing as t
 from dataclasses import dataclass
 
@@ -559,9 +558,3 @@ class ReturnCounterConstraint:
     def CountAndCheck(self):
         return_stmt_id = next(self.counter)
         assert return_stmt_id < self.limits
-
-
-if __name__ == "__main__":
-    tree = ast.parse(open(sys.argv[1]).read())
-    parser = PyToAnfParser()
-    parser(tree).ConvertToAnfExpr().DumpToFileAsJson(sys.argv[2])

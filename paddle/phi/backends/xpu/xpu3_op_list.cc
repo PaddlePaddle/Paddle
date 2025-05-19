@@ -407,6 +407,9 @@ XPUOpMap& get_kl3_ops() {
        XPUKernelSet({phi::DataType::FLOAT32,
                      phi::DataType::FLOAT16,
                      phi::DataType::BFLOAT16,
+#ifdef PADDLE_WITH_XPU_FFT
+                     phi::DataType::COMPLEX64,
+#endif
                      phi::DataType::INT64,
                      phi::DataType::INT32})},
       {"elementwise_add",
@@ -414,6 +417,9 @@ XPUOpMap& get_kl3_ops() {
                      phi::DataType::FLOAT32,
                      phi::DataType::FLOAT16,
                      phi::DataType::BFLOAT16,
+#ifdef PADDLE_WITH_XPU_FFT
+                     phi::DataType::COMPLEX64,
+#endif
                      phi::DataType::INT64,
                      phi::DataType::INT32})},
       {"elementwise_div_grad",
@@ -1823,6 +1829,23 @@ XPUOpMap& get_kl3_ops() {
                      phi::DataType::INT16,
                      phi::DataType::INT64,
                      phi::DataType::INT32})},
+#ifdef PADDLE_WITH_XPU_FFT
+      {"conj",
+       XPUKernelSet({phi::DataType::FLOAT32,
+                     phi::DataType::FLOAT16,
+                     phi::DataType::BFLOAT16,
+                     phi::DataType::FLOAT64,
+                     phi::DataType::BOOL,
+                     phi::DataType::INT64,
+                     phi::DataType::INT32,
+                     phi::DataType::COMPLEX64})},
+      {"real", XPUKernelSet({phi::DataType::COMPLEX64})},
+      {"real_grad", XPUKernelSet({phi::DataType::COMPLEX64})},
+      {"imag", XPUKernelSet({phi::DataType::COMPLEX64})},
+      {"imag_grad", XPUKernelSet({phi::DataType::COMPLEX64})},
+      {"complex", XPUKernelSet({phi::DataType::FLOAT32})},
+      {"complex_grad", XPUKernelSet({phi::DataType::FLOAT32})},
+#endif
   };
 
   return s_xpu3_kernels;

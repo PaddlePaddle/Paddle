@@ -16,6 +16,7 @@
 import inspect
 import textwrap
 import warnings
+from functools import reduce
 
 import numpy as np
 
@@ -270,16 +271,62 @@ def monkey_patch_value():
         """
         return len(self.shape)
 
-    def _item(self):
+    def _item(self, *args: int):
         """
         In order to be compatible with the item interface introduced by the dynamic graph, it does nothing but returns self.
         It will check that the shape must be a 1-D tensor
         """
-        if len(self.shape) > 1:
-            raise TypeError(
-                f"Required input var should be 1-D Value, but received {self.shape}"
-            )
-        return self
+
+        if self.is_dist() and not self._is_initialized():
+            return None
+
+        from paddle.jit.dy2static import Shape
+
+        # Python implementation of the input validation logic for the C++ function `tensor__getitem_from_offset`.
+        dims = Shape(self)
+        numel = reduce(lambda x, y: int(x * y), dims) if len(dims) != 0 else 1
+        offset = 0
+
+        if len(args) == 0:
+            if not isinstance(numel, paddle.pir.Value) and numel != 1:
+                raise ValueError(
+                    "only one element tensors can be converted to Python "
+                    "scalars when no input coordinates"
+                )
+            # NOTE: This is to maintain consistency with the original code.
+            return self
+        elif len(args) == 1:
+            (offset,) = args
+            if not isinstance(numel, paddle.pir.Value) and offset >= numel:
+                raise ValueError(
+                    f"index {offset} is out of bounds for size {numel}"
+                )
+        else:
+            if len(args) != len(dims):
+                raise ValueError("incorrect number of indices for Tensor")
+
+            # TODO(dev): In certain cases, the stride calculation of the tensor may be modified by as_strided.
+            # This scenario needs to be considered in the future.
+            strides = [1] * len(dims)
+            for i in range(1, len(strides)):
+                strides[-i - 1] = strides[-i] * dims[-i]
+
+            for i in range(len(args)):
+                index = args[i]
+                if not isinstance(index, int):
+                    raise TypeError(
+                        f"argument (position {i}) must be long, but got {type(index)}",
+                    )
+                if (
+                    not isinstance(dims[i], paddle.pir.Value)
+                    and index >= dims[i]
+                ):
+                    raise ValueError(
+                        f"index {index} is out of bounds for axis {i} with size {dims[i]}"
+                    )
+                offset += index * strides[i]
+
+        return self.flatten()[offset]
 
     def astype(self, dtype):
         """
