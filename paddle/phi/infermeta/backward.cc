@@ -1888,20 +1888,4 @@ void SetValueGradInferMeta(const MetaTensor& out_grad,
   }
 }
 
-void MaskedFillGradInferMeta(const MetaTensor& out_grad,
-                             const MetaTensor& value,
-                             MetaTensor* x_grad,
-                             MetaTensor* v_grad) {
-  if (x_grad) {
-    x_grad->set_dims(out_grad.dims());
-    x_grad->set_dtype(out_grad.dtype());
-    x_grad->share_lod(out_grad);
-  }
-  if (v_grad) {
-    v_grad->set_dims(value.dims());
-    v_grad->set_dtype(value.dtype());
-    v_grad->share_lod(value);
-  }
-}
-
 }  // namespace phi
