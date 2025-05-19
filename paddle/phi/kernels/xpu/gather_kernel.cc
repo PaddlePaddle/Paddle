@@ -77,8 +77,9 @@ void GatherKernel(const Context& dev_ctx,
         index.dims().size() == 0 ? 1 : index.dims()[0],
         axis_v);
   } else {
-    PADDLE_THROW(common::errors::InvalidArgument("Unsupported index type: %s",
-                                                 DataTypeToString(index_type)));
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "Unsupported index type, expected int32 or int64, but got type %s",
+        DataTypeToString(index_type)));
   }
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "paddle_gather");
 }

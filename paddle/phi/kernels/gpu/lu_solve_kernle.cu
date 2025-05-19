@@ -133,7 +133,7 @@ void LuSolveKernel(const Context& dev_ctx,
   } else if (trans == "C") {
     trans_op = rocblas_operation_conjugate_transpose;
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "trans must be one of ['N', 'T', 'C'], but got %s", trans));
   }
 #else
@@ -145,7 +145,7 @@ void LuSolveKernel(const Context& dev_ctx,
   } else if (trans == "C") {
     trans_op = CUBLAS_OP_C;
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "trans must be one of ['N', 'T', 'C'], but got %s", trans));
   }
 #endif

@@ -45,7 +45,7 @@ SpmdInfo ArgSortInferSpmd(const DistMetaTensor& x,
   PADDLE_ENFORCE_EQ(
       0 <= axis && axis < x_ndim,
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The axis of argsort should be in range [0, %d), but got %d.",
           x_ndim,
           axis));
@@ -139,7 +139,7 @@ SpmdInfo ArgSortGradInferSpmd(const DistMetaTensor& indices,
   PADDLE_ENFORCE_EQ(
       0 <= axis && axis < x_ndim,
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The axis of argsort should be in range [0, %d), but got %d.",
           x_ndim,
           axis));
