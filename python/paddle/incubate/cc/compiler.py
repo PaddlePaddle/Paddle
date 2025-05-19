@@ -73,8 +73,8 @@ def _compile(
     compile_engine='PCC',
 ):
     assert ap_path is not None
-    if ap_path != "":
-        apy_to_axpr_json.PyToAxpr(ap_path)(ap_path)
+    ap_root_path = f"{os.path.dirname(paddle.__file__)}/apy"
+    apy_to_axpr_json.PyToAxpr(ap_root_path)(ap_root_path)
     assert not train, "only support inference now"
     os.makedirs(ap_workspace_dir, exist_ok=True)
     build_strategy = paddle.static.BuildStrategy()
