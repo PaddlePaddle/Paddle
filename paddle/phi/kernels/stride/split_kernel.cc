@@ -66,15 +66,8 @@ void SplitWithNumStridedKernel(const Context& dev_ctx,
         "FLAGS_use_stride_kernel is closed. Strided kernel "
         "be called, something wrong has happened!"));
   }
-  int axis_value = axis_scalar.to<int>();
-  auto input_axis_dim = x.dims().at(axis_value);
-  std::vector<int64_t> sections_vec;
-  sections_vec.reserve(num);
-  for (int i = 0; i < num; ++i) {
-    sections_vec.push_back(input_axis_dim / num);
-  }
-  IntArray sections(sections_vec);
-  SplitStridedKernel<Context>(dev_ctx, x, sections, axis_scalar, outs);
+  SplitStridedKernel<Context>(
+      dev_ctx, x, CreateSplitSections(x, num, axis_scalar), axis_scalar, outs);
 }
 
 }  // namespace phi

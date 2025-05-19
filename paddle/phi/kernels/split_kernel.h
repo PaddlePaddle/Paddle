@@ -97,6 +97,7 @@ std::vector<DenseTensor> SplitWithNum(const Context& dev_ctx,
                                       const DenseTensor& x,
                                       int num,
                                       const Scalar& axis) {
+  // TODO(xiangmin): out_number is not always num
   size_t out_number = num;
 
   std::vector<MetaTensor> out_meta;
@@ -120,6 +121,28 @@ std::vector<DenseTensor> SplitWithNum(const Context& dev_ctx,
   SplitWithNumKernel<T, Context>(dev_ctx, x, num, axis, outs);
 
   return result;
+}
+
+inline IntArray CreateSplitSections(const DenseTensor& x,
+                                    int num,
+                                    const Scalar& axis_scalar) {
+  int axis_value = axis_scalar.to<int>();
+  auto input_axis_dim = x.dims().at(axis_value);
+  std::vector<int64_t> sections_vec;
+
+  if (input_axis_dim % num == 0) {
+    for (int i = 0; i < num; ++i) {
+      sections_vec.push_back(input_axis_dim / num);
+    }
+  } else {
+    auto base = input_axis_dim / num;
+    for (auto remaining = input_axis_dim; remaining > 0;
+         remaining -= sections_vec.back()) {
+      sections_vec.push_back((base + 1) <= remaining ? (base + 1) : remaining);
+    }
+  }
+
+  return IntArray(sections_vec);
 }
 
 }  // namespace phi

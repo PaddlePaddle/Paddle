@@ -136,6 +136,29 @@ class API_TestDygraphChunk(unittest.TestCase):
         np.testing.assert_allclose(ex_x1, x1_out, rtol=1e-05)
         np.testing.assert_allclose(ex_x2, x2_out, rtol=1e-05)
 
+    def test_out3(self):
+        with base.dygraph.guard():
+            input_1 = np.random.random([4, 10, 6]).astype("bool")
+            # input is a variable which shape is [4, 10, 6]
+            input = paddle.to_tensor(input_1)
+            x0, x1, x2 = paddle.chunk(input, chunks=3, axis=1)
+        # We only manually check the shape and do not compare it with numpy results
+        assert x0.shape == [
+            4,
+            4,
+            6,
+        ], f"x0.shape = {x0.shape}, expected [4, 4, 6]"
+        assert x1.shape == [
+            4,
+            4,
+            6,
+        ], f"x1.shape = {x1.shape}, expected [4, 4, 6]"
+        assert x2.shape == [
+            4,
+            2,
+            6,
+        ], f"x2.shape = {x2.shape}, expected [4, 2, 6]"
+
     def test_axis_tensor_input(self):
         with base.dygraph.guard():
             input_1 = np.random.random([4, 6, 6]).astype("int32")

@@ -4591,7 +4591,7 @@ void SplitWithNumInferMeta(const MetaTensor& x,
     std::vector<phi::DDim> out_dims;
     if (axis_value == -1) {  // NOLINT
       out_dims = std::vector<phi::DDim>(
-          num, common::make_ddim(std::vector<int>(x.dims().size(), -1)));
+          num, common::make_ddim(std::vector<int64_t>(x.dims().size(), -1)));
     } else {
       out_dims = std::vector<phi::DDim>(num, x.dims());
     }
@@ -4616,19 +4616,21 @@ void SplitWithNumInferMeta(const MetaTensor& x,
                       0,
                       common::errors::InvalidArgument(
                           "Attr(num_or_sections) should not be 0."));
-    PADDLE_ENFORCE_EQ(input_axis_dim % num,
-                      0,
-                      common::errors::InvalidArgument(
-                          "The input's size along the split dimension "
-                          "must be evenly divisible by Attr(num_or_sections). "
-                          "But received Attr(num_or_sections) "
-                          "= %d, input(X)'s shape = [%s], Attr(dim) = %d.",
-                          num,
-                          x.dims(),
-                          axis_value));
 
-    for (int i = 0; i < num; ++i) {
-      sections_vec.push_back(input_axis_dim / num);
+    if (input_axis_dim % num == 0) {
+      // paddle.arange(12).chunk(6)--->[2,2,2,2,2,2]
+      for (int i = 0; i < num; ++i) {
+        sections_vec.push_back(input_axis_dim / num);
+      }
+    } else {
+      // paddle.arange(13).chunk(6)--->[3,3,3,3,1]
+      // paddle.arange(11).chunk(6)--->[2,2,2,2,2,1]
+      auto base = input_axis_dim / num;
+      for (auto remaining = input_axis_dim; remaining > 0;
+           remaining -= sections_vec.back()) {
+        sections_vec.push_back((base + 1) <= remaining ? (base + 1)
+                                                       : remaining);
+      }
     }
     // setp2: fill out dims
     FillSplitOutDims(x, axis_value, sections_vec, &out);

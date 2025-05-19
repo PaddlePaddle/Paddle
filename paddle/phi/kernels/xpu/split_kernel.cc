@@ -74,14 +74,8 @@ void SplitWithNumKernel(const Context& dev_ctx,
                         int num,
                         const Scalar& axis_scalar,
                         std::vector<DenseTensor*> outs) {
-  int axis_value = axis_scalar.to<int>();
-  int64_t input_axis_dim = x.dims().at(axis_value);
-  std::vector<int64_t> sections_vec;
-  for (int i = 0; i < num; ++i) {
-    sections_vec.push_back(input_axis_dim / static_cast<int64_t>(num));
-  }
-  IntArray sections(sections_vec);
-  SplitKernel<T, Context>(dev_ctx, x, sections, axis_scalar, outs);
+  SplitKernel<T, Context>(
+      dev_ctx, x, CreateSplitSections(x, num, axis_scalar), axis_scalar, outs);
 }
 
 }  // namespace phi
