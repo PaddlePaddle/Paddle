@@ -32,10 +32,14 @@ class QuantHorizontalFusion(abstract_drr.DrrPass):
         o.quant_y_op.custom_op_name = pir.a_str("ap_custom_op.facade_quant")
         o.quant_y_op([t.tie_out1], [t.output1, t.scale1])
 
+        o.trivial_op = o.ap_trivial_fusion_op()
+        o.trivial_op([t.output0, t.output1], [t.output2])
+
     def result_pattern(self, o, t):
         o.fustion_op = o.ap_pattern_fusion_op(self.code_gen)
         o.fustion_op(
-            [t.input0, t.input1], [t.output0, t.scale0, t.output1, t.scale1]
+            [t.input0, t.input1],
+            [t.output0, t.scale0, t.output1, t.scale1, t.output2],
         )
 
     def constraint(self, o, t):
@@ -50,4 +54,5 @@ class QuantHorizontalFusion(abstract_drr.DrrPass):
             scale0_karg=ctx.out_tensor_data_ptr_kernel_arg_id(t.scale0),
             output1_karg=ctx.out_tensor_data_ptr_kernel_arg_id(t.output1),
             scale1_karg=ctx.out_tensor_data_ptr_kernel_arg_id(t.scale1),
+            output2_karg=ctx.out_tensor_data_ptr_kernel_arg_id(t.output2),
         )

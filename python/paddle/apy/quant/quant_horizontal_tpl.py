@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import ap
+
 
 class QuantHorizontalTemplate:
     def compile(
@@ -22,6 +24,7 @@ class QuantHorizontalTemplate:
         scale0_karg,
         output1_karg,
         scale1_karg,
+        output2_karg,
     ):
         project_module = self.make_project(
             input0_karg,
@@ -30,6 +33,7 @@ class QuantHorizontalTemplate:
             scale0_karg,
             output1_karg,
             scale1_karg,
+            output2_karg,
         )
         return CodeGenResult(
             module=project_module,
@@ -42,6 +46,7 @@ class QuantHorizontalTemplate:
                     scale0_karg.runtime_getter,
                     output1_karg.runtime_getter,
                     scale1_karg.runtime_getter,
+                    output2_karg.runtime_getter,
                 ]
             ),
         )
@@ -54,10 +59,11 @@ class QuantHorizontalTemplate:
         scale0_karg,
         output1_karg,
         scale1_karg,
+        output2_karg,
     ):
         code = """
 extern "C" {
-void DualQuantKernel(void* stream_ptr, const float* input0, const float* input1, float* output0, float*scale0, float*outpu1, float*scale1) {
+void DualQuantKernel(void* stream_ptr, const float* input0, const float* input1, float* output0, float*scale0, float*outpu1, float*scale1, float*output2) {
 }
 }
 """
@@ -71,6 +77,7 @@ void DualQuantKernel(void* stream_ptr, const float* input0, const float* input1,
                     PointerType.void_ptr,
                     PointerType.const_float_ptr,
                     PointerType.const_float_ptr,
+                    PointerType.float_ptr,
                     PointerType.float_ptr,
                     PointerType.float_ptr,
                     PointerType.float_ptr,
@@ -89,8 +96,9 @@ void DualQuantKernel(void* stream_ptr, const float* input0, const float* input1,
 
 
 def KernelDispatch(ctx):
+    import ap
     so_func = ctx.get_so_function("DualQuantKernel")
     stream_ptr = ctx.device_ctx.get_stream_addr_as_void_ptr()
     getters = ctx.kernel_dispatch_const_data.kernel_args_getters
-    args = [stream_ptr, *map(lambda getter: getter(ctx), getters)]
-    apply(so_func, args)
+    args = [stream_ptr, *ap.map(lambda getter: getter(ctx), getters)]
+    ap.apply(so_func, args)
