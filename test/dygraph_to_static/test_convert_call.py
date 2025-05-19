@@ -226,6 +226,7 @@ class NotToStaticHelper(paddle.nn.Layer):
 class TestNotToConvert(TestRecursiveCall2):
     def set_func(self):
         self.net = NotToStaticHelper()
+        # Apply the `not_to_static` decorator to `self.net.sum`.
         paddle.jit.not_to_static()(self.net.sum)
         self.dygraph_func = paddle.jit.to_static(self.net.outer)
 

@@ -142,7 +142,7 @@ class TransformOptions:
             )
 
     def need_transform(self, mode: ToStaticMode):
-        return not self.skip_transform_mode & mode
+        return not (self.skip_transform_mode & mode)
 
     @staticmethod
     def check_fn_need_transform(fn, mode: ToStaticMode):
