@@ -28,11 +28,13 @@ global_runtime_fail_arr=()
 global_verification_fail_arr=()
 
 install_paddle(){
+    echo "::group::Install paddlepaddle-gpu"
     echo -e "\033[31m ---- Install paddlepaddle-gpu  \033"
     if [ -n "$paddle" ];then
       python -m pip install --user --no-cache-dir ${paddle} --force-reinstall --no-dependencies;
     fi
     python -c "import paddle; print('paddle version:',paddle.__version__,'\npaddle commit:',paddle.version.commit)";
+    echo "::endgroup::"
 }
 
 install_external_ops(){
