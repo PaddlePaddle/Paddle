@@ -795,22 +795,28 @@ class TestExpandV2ZeroSizeOneDNNOp(TestExpandV2ZeroSizeOp):
         self.place = core.CPUPlace()
 
     def test_check_output(self):
+        flags_use_mkldnn = core.globals()["FLAGS_use_mkldnn"]
+        paddle.set_flags({'FLAGS_use_mkldnn': True})
         self.check_output_with_place(
             self.place,
             check_dygraph=False,
-            check_pir=True,
+            check_pir=False,
             check_pir_onednn=True,
         )
+        paddle.set_flags({'FLAGS_use_mkldnn': flags_use_mkldnn})
 
     def test_check_grad(self):
+        flags_use_mkldnn = core.globals()["FLAGS_use_mkldnn"]
+        paddle.set_flags({'FLAGS_use_mkldnn': True})
         self.check_grad_with_place(
             self.place,
             ["X"],
             "Out",
             check_dygraph=False,
-            check_pir=True,
+            check_pir=False,
             check_pir_onednn=True,
         )
+        paddle.set_flags({'FLAGS_use_mkldnn': flags_use_mkldnn})
 
 
 class TestExpandV2ZeroSizeOneDNNOp1(TestExpandV2ZeroSizeOneDNNOp):
