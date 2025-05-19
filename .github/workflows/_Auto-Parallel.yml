@@ -114,6 +114,8 @@ jobs:
           unset http_proxy && unset https_proxy
           #  source ${{ github.workspace }}/../../../proxy
           export LD_LIBRARY_PATH=/usr/local/cuda-11.8/compat:$LD_LIBRARY_PATH
+          '
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
           # python -m pip install --user --no-cache-dir ${paddle_whl} --force-reinstall --no-dependencies
           ldconfig
           set -e
@@ -121,26 +123,27 @@ jobs:
           timeout 80m bash Paddle/ci/auto_parallel/ci_auto_parallel.sh ${paddle_whl}
           '
 
-        # - name: Upload and display logs
-        #   env:
-        #     home_path: ${{ github.workspace }}/..
-        #     bos_file: ${{ github.workspace }}/../bos/BosClient.py
-        #   run: |
-        #     docker exec -t ${{ env.container_name }} /bin/bash -c '
-        #     export AK=paddle
-        #     export SK=paddle
-        #     if [ ! -f "${{ env.bos_file }}" ]; then
-        #       wget -q --no-proxy -O ${{ env.home_path }}/bos_new.tar.gz https://xly-devops.bj.bcebos.com/home/bos_new.tar.gz --no-check-certificate
-        #       mkdir ${{ env.home_path }}/bos
-        #       tar xf ${{ env.home_path }}/bos_new.tar.gz -C ${{ env.home_path }}/bos
-        #     fi
-        #     cd /case_logs
-        #     for FILE in /case_logs/*; do
-        #       file=$(basename "$FILE")
-        #       python ${{ env.bos_file }} file paddle-github-action/PR/Auto-Parallel/${PR_ID}/${COMMIT_ID}/logs
-        #       echo "$file: https://paddle-github-action.bj.bcebos.com/PR/Auto-Parallel/${PR_ID}/${COMMIT_ID}/logs/$file"
-        #     done
-        #     '
+      - name: Upload and display logs
+        if: always()
+        env:
+          home_path: ${{ github.workspace }}/..
+          bos_file: ${{ github.workspace }}/../bos/BosClient.py
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
+          export AK=paddle
+          export SK=paddle
+          if [ ! -f "${{ env.bos_file }}" ]; then
+            wget -q --no-proxy -O ${{ env.home_path }}/bos_new.tar.gz https://xly-devops.bj.bcebos.com/home/bos_new.tar.gz --no-check-certificate
+            mkdir ${{ env.home_path }}/bos
+            tar xf ${{ env.home_path }}/bos_new.tar.gz -C ${{ env.home_path }}/bos
+          fi
+          cd /workspace/case_logs
+          for FILE in /workspace/case_logs/*; do
+            file=$(basename "$FILE")
+            python ${{ env.bos_file }} file paddle-github-action/PR/Auto-Parallel/${PR_ID}/${COMMIT_ID}/logs
+            echo "$file: https://paddle-github-action.bj.bcebos.com/PR/Auto-Parallel/${PR_ID}/${COMMIT_ID}/logs/$file"
+          done
+          '
 
       - name: Terminate and delete the container
         if: always()
