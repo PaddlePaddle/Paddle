@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import ap
-
 
 class DrrPass:
 
@@ -38,5 +36,7 @@ class register_drr_pass:
         self.tag = tag
 
     def __call__(self, drr_pass_cls):
-        ap.registry.access_topo_drr_pass(self.pass_name, self.tag, drr_pass_cls)
+        Registry.access_topo_drr_pass(  # noqa: F821
+            self.pass_name, self.tag, drr_pass_cls
+        )
         return drr_pass_cls

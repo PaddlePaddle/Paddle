@@ -1382,7 +1382,8 @@ def get_package_data_and_package_dir():
     for json in json_path_list:
         package_data['paddle.cinn_config'] += [json]
 
-    build_cutlass3_src_code()
+    if env_dict.get("WITH_CINN") == 'ON':
+        build_cutlass3_src_code()
 
     package_data['paddle.apy'] = []
     file_path_list = get_apy_files()
