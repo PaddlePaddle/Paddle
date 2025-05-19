@@ -314,13 +314,11 @@ class Pipeline1F1BPass(PipelinePassBase):
             for op in block.ops:
                 if op.name() == "pd_op.p_send":
                     op.set_bool_attr("dynamic_shape", False)
-                    op.set_bool_attr("use_calc_stream", True)
                     ring_id = op.attrs()["ring_id"]
                     op.set_execution_stream("send_recv_stream")
                     op.set_scheduling_priority(0)
                 elif op.name() == "pd_op.p_recv":
                     op.set_bool_attr("dynamic_shape", False)
-                    op.set_bool_attr("use_calc_stream", True)
                     op.set_execution_stream("send_recv_stream")
                     op.set_scheduling_priority(0)
 
