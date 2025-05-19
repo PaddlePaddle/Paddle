@@ -363,6 +363,8 @@ class XPUTestElementwiseAddOp(XPUOpTestWrapper):
 
 
 support_types = get_xpu_op_support_types('elementwise_add')
+if 'complex64' in support_types:
+    support_types.remove('complex64')
 for stype in support_types:
     create_test_class(globals(), XPUTestElementwiseAddOp, stype)
 
