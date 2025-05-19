@@ -35,7 +35,7 @@ add_compile_definitions(XPUAPI_NOT_INCLUDE_DEPRECATED)
 if(NOT DEFINED XPU_XHPC_BASE_DATE)
   set(XPU_XHPC_BASE_DATE "dev/20250417")
 endif()
-set(XPU_XCCL_BASE_VERSION "3.0.2.5") # For XRE5
+set(XPU_XCCL_BASE_VERSION "3.0.2.7") # For XRE5
 if(NOT DEFINED XPU_XFT_BASE_VERSION)
   set(XPU_XFT_BASE_VERSION "20250507/xpu3")
 endif()
@@ -95,10 +95,11 @@ if(WITH_XPU_FFT)
   set(XPU_FFT_DIR_NAME "xpufft_ubuntu2004-x86_64")
 endif()
 
-if(WITH_AARCH64)
+if(WITH_ARM)
   if(WITH_XPU_XRE5)
     set(XPU_XRE_DIR_NAME "xre-kylin_v10_server-aarch64-${XPU_XRE_BASE_VERSION}")
     set(XPU_XCCL_DIR_NAME "xccl_Linux_aarch64")
+    set(XPU_XHPC_DIR_NAME "xhpc-kylinv4_aarch64")
     set(XPU_XFT_DIR_NAME "") # TODO: xft has no kylin output at now.
   else()
     set(XPU_XRE_DIR_NAME "")
