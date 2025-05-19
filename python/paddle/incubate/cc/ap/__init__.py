@@ -12,4 +12,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .facade_op import FacadeOp as FacadeOp
+from .facade_op import FacadeOp
+from .ops import FacadeQuantOp, TieOp
