@@ -2002,15 +2002,12 @@ class Layer:
         if include_sublayers:
             for layer_name, layer_item in self._sub_layers.items():
                 if layer_item is not None:
-                    destination_temp = destination.copy()
-                    destination_temp.update(
-                        layer_item._obtain_parameters_buffers(
-                            destination_temp,
-                            include_sublayers,
-                            structured_name_prefix + layer_name + ".",
-                        )
+                    layer_item._obtain_parameters_buffers(
+                        destination,
+                        include_sublayers,
+                        structured_name_prefix + layer_name + ".",
                     )
-                    destination = destination_temp
+
         return destination
 
     def _state_dict_impl(
@@ -2058,18 +2055,15 @@ class Layer:
         if include_sublayers:
             for layer_name, layer_item in self._sub_layers.items():
                 if layer_item is not None:
-                    destination_temp = destination.copy()
-                    destination_temp.update(
-                        layer_item._state_dict_impl(
-                            destination_temp,
-                            include_sublayers,
-                            structured_name_prefix + layer_name + ".",
-                            include_non_persistable_buffer,
-                            use_hook,
-                            keep_vars,
-                        )
+                    layer_item._state_dict_impl(
+                        destination,
+                        include_sublayers,
+                        structured_name_prefix + layer_name + ".",
+                        include_non_persistable_buffer,
+                        use_hook,
+                        keep_vars,
                     )
-                    destination = destination_temp
+
         if use_hook:
             for state_dict_hook in self._state_dict_hooks.values():
                 hook_result = state_dict_hook(destination)

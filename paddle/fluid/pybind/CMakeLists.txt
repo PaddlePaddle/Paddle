@@ -322,7 +322,6 @@ if(WITH_PYTHON)
       ${GLOB_OPERATOR_DEPS}
       pybind
       proto_desc
-      executor
       layer
       tracer
       engine
@@ -337,7 +336,6 @@ if(WITH_PYTHON)
     eager_generator generator.cc eager_legacy_op_function_generator.cc
                     eager_generator.cc)
   target_link_libraries(eager_generator ${EAGER_GENERATOR_DEPS})
-  target_link_libraries(eager_generator ${GENERATOR_DEPS})
 
   get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
   target_link_libraries(eager_generator ${os_dependency_modules})
@@ -346,10 +344,6 @@ if(WITH_PYTHON)
 
   if(WITH_ROCM)
     target_link_libraries(eager_generator ${ROCM_HIPRTC_LIB})
-  endif()
-
-  if(WITH_CINN)
-    target_link_libraries(eager_generator ${PYTHON_LIBRARIES})
   endif()
 
   if(WIN32)

@@ -13,9 +13,6 @@
 // limitations under the License.
 
 #pragma once
-
-#ifdef PADDLE_WITH_XPU
-
 #include <vector>
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/common/memory_utils.h"
@@ -24,7 +21,6 @@
 namespace xfa = baidu::xpu::xfa;
 namespace phi {
 
-#ifdef PADDLE_WITH_XPU_XRE5
 using XPUTypeFP16 = typename XPUTypeTrait<phi::dtype::float16>::Type;
 using XPUTypeBF16 = typename XPUTypeTrait<phi::dtype::bfloat16>::Type;
 
@@ -87,8 +83,5 @@ static void GenerateRNGState(
     seed_offset_data[1] = static_cast<int64_t>(seed_offset_pair.second);
   }
 }
-
-#endif
-
 }  // namespace phi
-#endif
+#

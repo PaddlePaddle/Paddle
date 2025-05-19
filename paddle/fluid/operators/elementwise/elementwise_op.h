@@ -106,9 +106,9 @@ class ElementwiseOp : public framework::OperatorWithKernel {
                             axis));
       axis = (axis < 0 ? (std::abs(x_dims.size() - y_dims.size()) + axis + 1)
                        : axis);
-      std::vector<int> x_dims_array(max_dim);
-      std::vector<int> y_dims_array(max_dim);
-      std::vector<int> out_dims_array(max_dim);
+      std::vector<int64_t> x_dims_array(max_dim);
+      std::vector<int64_t> y_dims_array(max_dim);
+      std::vector<int64_t> out_dims_array(max_dim);
 #ifdef PADDLE_WITH_DNNL
       // Broadcasting of dims has to be done on Paddle shapes (NHWC)
       // if model is using NHWC and any of shapes in at least 3D
@@ -120,8 +120,8 @@ class ElementwiseOp : public framework::OperatorWithKernel {
       if (should_rotate) {
         // Pick bigger shape and rotate this one
         bool x_over_y = (x_dims.size() > y_dims.size());
-        auto vdims = x_over_y ? common::vectorize<int>(x_dims)
-                              : common::vectorize<int>(y_dims);
+        auto vdims = x_over_y ? common::vectorize<int64_t>(x_dims)
+                              : common::vectorize<int64_t>(y_dims);
         std::rotate(vdims.begin() + 1, vdims.begin() + 2, vdims.end());
         if (x_over_y) {
           x_dims = common::make_ddim(vdims);

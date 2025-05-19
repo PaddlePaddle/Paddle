@@ -35,10 +35,10 @@ from .logging_utils import TranslatorLogger
 from .utils import (
     RETURN_NO_VALUE_MAGIC_NUM,
     Backend,
+    TimeCounter,
     auto_layout_is_enabled,
     backend_guard,
     cse_is_enabled,
-    runtime_guards,
 )
 
 if TYPE_CHECKING:
@@ -723,6 +723,8 @@ class PartialProgramLayer:
         self._backend = kwargs.get('backend', Backend.PHI)
         self._grad_var_names = {}
 
+        self._compile_time_counter = TimeCounter()
+
     def __call__(self, inputs):
         """
         Execute static graph by Interpreter and Return dynamic Tensors.
@@ -732,22 +734,21 @@ class PartialProgramLayer:
         attrs = self._prepare_attributes(in_sot_mode=False)
         inputs = self._valid_vars(in_vars)
 
-        with runtime_guards(self._backend):
-            _C_ops.run_program(
-                inputs,
-                self._valid_vars(self._params),
-                self._valid_vars(out_vars),
-                self._create_scope_vec(
-                    cache_key=(
-                        hash_with_seed(
-                            self.program_id,
-                            self._calc_input_places_hash(inputs),
-                        )
-                    ),
-                    use_scope_cache=True,
+        _C_ops.run_program(
+            inputs,
+            self._valid_vars(self._params),
+            self._valid_vars(out_vars),
+            self._create_scope_vec(
+                cache_key=(
+                    hash_with_seed(
+                        self.program_id,
+                        self._calc_input_places_hash(inputs),
+                    )
                 ),
-                *attrs,
-            )
+                use_scope_cache=True,
+            ),
+            *attrs,
+        )
         restored_nest_out = self._restore_out(out_vars)
         return self._remove_no_value(restored_nest_out)
 
@@ -759,22 +760,21 @@ class PartialProgramLayer:
         attrs = self._prepare_attributes(in_sot_mode=True)
         inputs = self._valid_vars(inputs)
 
-        with runtime_guards(self._backend):
-            _C_ops.run_program(
-                inputs,
-                self._valid_vars(self._params),
-                self._valid_vars(out_vars),
-                self._create_scope_vec(
-                    cache_key=(
-                        hash_with_seed(
-                            self.program_id,
-                            self._calc_input_places_hash(inputs),
-                        )
-                    ),
-                    use_scope_cache=True,
+        _C_ops.run_program(
+            inputs,
+            self._valid_vars(self._params),
+            self._valid_vars(out_vars),
+            self._create_scope_vec(
+                cache_key=(
+                    hash_with_seed(
+                        self.program_id,
+                        self._calc_input_places_hash(inputs),
+                    )
                 ),
-                *attrs,
-            )
+                use_scope_cache=True,
+            ),
+            *attrs,
+        )
         return self._outputs.quick_restore(out_vars)
 
     @cached_property
@@ -819,19 +819,28 @@ class PartialProgramLayer:
         if is_infer_mode:
 
             def pass_fn(forward_program, backward_program, program_name_attr):
-                apply_general_passes(
-                    forward_program,
-                    enable_cse=cse_is_enabled(),
-                    enable_delete_assert_op=self._backend.is_cinn(),
-                )
                 # if-else pass
                 if self._backend.is_cinn():
+                    apply_general_passes(
+                        forward_program,
+                        enable_cse=cse_is_enabled(),
+                        enable_delete_assert_op=self._backend.is_cinn(),
+                    )
                     paddle.base.libpaddle.pir.bind_symbolic_constraints(
                         forward_program, self._constraints
                     )
                     paddle.base.libpaddle.pir.apply_cinn_pass(forward_program)
-
+                elif self._backend.is_pcc():
+                    paddle.base.libpaddle.pir.bind_symbolic_constraints(
+                        forward_program, self._constraints
+                    )
+                    paddle.base.libpaddle.pir.apply_pcc_pass(forward_program)
                 else:
+                    apply_general_passes(
+                        forward_program,
+                        enable_cse=cse_is_enabled(),
+                        enable_delete_assert_op=self._backend.is_cinn(),
+                    )
                     paddle.base.libpaddle.pir.check_infer_symbolic_if_need(
                         forward_program
                     )
@@ -933,7 +942,11 @@ class PartialProgramLayer:
                         forward_program, backward_program
                     )
                     paddle.base.libpaddle.pir.apply_cinn_pass(backward_program)
-
+                elif self._backend.is_pcc():
+                    paddle.base.libpaddle.pir.bind_symbolic_constraints(
+                        forward_program, self._constraints
+                    )
+                    paddle.base.libpaddle.pir.apply_pcc_pass(forward_program)
                 else:
                     paddle.base.libpaddle.pir.check_infer_symbolic_if_need(
                         forward_program
@@ -974,12 +987,12 @@ class PartialProgramLayer:
 
     @cached_property
     def train_program(self) -> RunnableProgram:
-        with backend_guard(self._backend):
+        with backend_guard(self._backend), self._compile_time_counter.record():
             return self._create_program()
 
     @cached_property
     def infer_program(self) -> RunnableProgram:
-        with backend_guard(self._backend):
+        with backend_guard(self._backend), self._compile_time_counter.record():
             return self._create_program(is_infer_mode=True)
 
     def _verify_program(self, main_program, outputs):

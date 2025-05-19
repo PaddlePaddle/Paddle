@@ -193,6 +193,7 @@ struct KernelRegistrar {
  *
  * Note: `2TA` means `2 template argument`
  */
+#ifndef PADDLE_WITH_CUSTOM_DEVICE
 #define PD_REGISTER_KERNEL(kernel_name, backend, layout, meta_kernel_fn, ...) \
   _PD_REGISTER_KERNEL(::phi::RegType::INNER,                                  \
                       kernel_name,                                            \
@@ -205,6 +206,128 @@ struct KernelRegistrar {
                       PHI_KERNEL,                                             \
                       PHI_VARIADIC_KERNEL,                                    \
                       __VA_ARGS__)
+
+#else
+#define PD_REGISTER_CPU_KERNEL(                        \
+    kernel_name, backend, layout, meta_kernel_fn, ...) \
+  _PD_REGISTER_KERNEL(::phi::RegType::INNER,           \
+                      kernel_name,                     \
+                      backend,                         \
+                      ::phi::backend##Context,         \
+                      layout,                          \
+                      meta_kernel_fn,                  \
+                      FUNCTION_KERNEL_INSTANTIATION,   \
+                      ARG_PARSE_FUNCTOR,               \
+                      PHI_KERNEL,                      \
+                      PHI_VARIADIC_KERNEL,             \
+                      __VA_ARGS__)
+
+#define PD_REGISTER_NON_CPU_KERNEL(                          \
+    kernel_name, backend, layout, meta_kernel_fn, ...)       \
+  _PD_REGISTER_NON_CPU_KERNEL(::phi::RegType::OUTER,         \
+                              kernel_name,                   \
+                              backend,                       \
+                              ::phi::CustomContext,          \
+                              layout,                        \
+                              meta_kernel_fn,                \
+                              FUNCTION_KERNEL_INSTANTIATION, \
+                              __VA_ARGS__)
+
+#define _PD_REGISTER_NON_CPU_KERNEL(reg_type,                            \
+                                    kernel_name,                         \
+                                    backend,                             \
+                                    context,                             \
+                                    layout,                              \
+                                    meta_kernel_fn,                      \
+                                    kernel_instantiation_macro,          \
+                                    ...)                                 \
+  PD_KERNEL_INSTANTIATION(meta_kernel_fn,                                \
+                          backend,                                       \
+                          context,                                       \
+                          kernel_instantiation_macro,                    \
+                          __VA_ARGS__)                                   \
+  static void                                                            \
+      __FAKE_PD_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout( \
+          const ::phi::KernelKey kernel_key UNUSED,                      \
+          ::phi::Kernel* kernel UNUSED)
+
+#define CONCATENATE(x, y) CONCATENATE_HELPER(x, y)
+#define CONCATENATE_HELPER(x, y) x##y
+
+// check backend
+#define IS_BACKEND_CPU(backend) PD_EXPAND(IS_BACKEND_CPU_HELPER(backend))
+#define IS_BACKEND_CPU_HELPER(backend) PD_EXPAND(IS_BACKEND_CPU_##backend)
+
+#define IS_BACKEND_CPU_CPU 1
+#define IS_BACKEND_CPU_Custom 1
+#define IS_BACKEND_CPU_OneDNN 1
+#define IS_BACKEND_CPU_KPS 0
+#define IS_BACKEND_CPU_GPU 0
+#define IS_BACKEND_CPU_DEFAULT 0
+
+#define IF_ELSE(condition) IF_ELSE_EXPAND(IF_ELSE_HELPER(condition))
+#define IF_ELSE_HELPER(condition) CONCATENATE(IF_, condition)
+#define IF_ELSE_EXPAND(x) x
+
+#define IF_1(true_branch, false_branch) true_branch
+#define IF_0(true_branch, false_branch) false_branch
+#define IF_IS_BACKEND_CPU_DEFAULT(true_branch, false_branch) false_branch
+
+#define PD_REGISTER_KERNEL(kernel_name, backend, layout, meta_kernel_fn, ...) \
+  PD_EXPAND(IF_ELSE(IS_BACKEND_CPU(backend))(                                 \
+      PD_REGISTER_CPU_KERNEL(                                                 \
+          kernel_name, backend, layout, meta_kernel_fn, __VA_ARGS__),         \
+      PD_REGISTER_NON_CPU_KERNEL(                                             \
+          kernel_name, backend, layout, meta_kernel_fn, __VA_ARGS__)))
+
+// This macro is used for registering custom kernel.
+#define PD_CUSTOM_KERNEL_REGISTER(                          \
+    kernel_name, backend, layout, meta_kernel_fn, ...)      \
+  _PD_CUSTOM_REGISTER_KERNEL(::phi::RegType::OUTER,         \
+                             kernel_name,                   \
+                             backend,                       \
+                             ::phi::CustomContext,          \
+                             layout,                        \
+                             meta_kernel_fn,                \
+                             FUNCTION_KERNEL_INSTANTIATION, \
+                             ARG_PARSE_FUNCTOR,             \
+                             PHI_KERNEL,                    \
+                             PHI_VARIADIC_KERNEL,           \
+                             __VA_ARGS__)
+
+#define _PD_CUSTOM_REGISTER_KERNEL(reg_type,                                \
+                                   kernel_name,                             \
+                                   backend,                                 \
+                                   context,                                 \
+                                   layout,                                  \
+                                   meta_kernel_fn,                          \
+                                   kernel_instantiation_macro,              \
+                                   arg_parse_functor_macro,                 \
+                                   kernel_unfold_macro,                     \
+                                   variadic_kernel_unfold_marco,            \
+                                   ...)                                     \
+  PD_STATIC_ASSERT_GLOBAL_NAMESPACE(                                        \
+      PD_REGISTER_tp_kernel_ns_check_##kernel_name##_##backend##_##layout,  \
+      "PD_REGISTER_KERNEL must be called in global namespace.");            \
+  static void __PD_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout( \
+      const ::phi::KernelKey& kernel_key UNUSED,                            \
+      ::phi::Kernel* kernel UNUSED);                                        \
+  PD_KERNEL_REGISTRAR_INIT(                                                 \
+      reg_type,                                                             \
+      kernel_name,                                                          \
+      backend,                                                              \
+      context,                                                              \
+      layout,                                                               \
+      &__PD_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout,        \
+      meta_kernel_fn,                                                       \
+      arg_parse_functor_macro,                                              \
+      kernel_unfold_macro,                                                  \
+      variadic_kernel_unfold_marco,                                         \
+      __VA_ARGS__)                                                          \
+  void __PD_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout(        \
+      const ::phi::KernelKey& kernel_key UNUSED, ::phi::Kernel* kernel UNUSED)
+
+#endif
 
 #define _PD_REGISTER_KERNEL(reg_type,                                      \
                             kernel_name,                                   \

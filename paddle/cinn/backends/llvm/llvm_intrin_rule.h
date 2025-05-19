@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include <absl/container/flat_hash_map.h>
 #include <glog/logging.h>
 #include <llvm/IR/Intrinsics.h>
 
@@ -27,6 +26,7 @@
 #include "paddle/cinn/ir/registry.h"
 #include "paddle/cinn/lang/packed_func.h"
 #include "paddle/common/enforce.h"
+#include "paddle/utils/flat_hash_map.h"
 namespace cinn {
 namespace codegen {
 

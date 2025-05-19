@@ -82,13 +82,9 @@ class OpUtilsMap {
     fluid_op_to_phi_kernel_.insert({op_type, base_kernel_name});
   }
   void InsertFluidOplName(std::string op_type, std::string base_kernel_name) {
-    PADDLE_ENFORCE_EQ(
-        phi_kernel_to_fluid_op_.count(base_kernel_name),
-        0UL,
-        common::errors::AlreadyExists(
-            "Operator (%s)'s kernel name (%s) has been registered.",
-            op_type,
-            base_kernel_name));
+    if (phi_kernel_to_fluid_op_.count(base_kernel_name)) {
+      return;
+    }
     phi_kernel_to_fluid_op_.insert({base_kernel_name, op_type});
   }
 
@@ -97,12 +93,9 @@ class OpUtilsMap {
   }
 
   void InsertArgumentMappingFn(std::string op_type, ArgumentMappingFn fn) {
-    PADDLE_ENFORCE_EQ(
-        arg_mapping_fn_map_.count(op_type),
-        0UL,
-        common::errors::AlreadyExists(
-            "Operator (%s)'s argument mapping function has been registered.",
-            op_type));
+    if (arg_mapping_fn_map_.count(op_type)) {
+      return;
+    }
     arg_mapping_fn_map_.insert({std::move(op_type), std::move(fn)});
   }
 

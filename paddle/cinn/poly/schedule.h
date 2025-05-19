@@ -16,7 +16,6 @@
 /**
  * This file defines Schedule related concepts.
  */
-#include <absl/container/flat_hash_map.h>
 
 #include <algorithm>
 #include <map>
@@ -32,6 +31,7 @@
 #include "paddle/cinn/poly/map.h"
 #include "paddle/cinn/poly/stage.h"
 #include "paddle/common/enforce.h"
+#include "paddle/utils/flat_hash_map.h"
 
 namespace cinn {
 namespace poly {
