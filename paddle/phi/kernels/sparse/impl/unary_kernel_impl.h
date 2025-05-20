@@ -33,6 +33,10 @@ namespace sparse {
   void prefix##CooKernel(const Context& dev_ctx,                           \
                          const SparseCooTensor& x,                         \
                          SparseCooTensor* out) {                           \
+    if (out && out->numel() == 0) {                                        \
+      dev_ctx.template Alloc<T>(out);                                      \
+      return;                                                              \
+    }                                                                      \
     EmptyLikeCooKernel<T, Context>(dev_ctx, x, out);                       \
     phi::prefix##Kernel<T, Context>(                                       \
         dev_ctx, x.non_zero_elements(), out->mutable_non_zero_elements()); \
@@ -44,6 +48,10 @@ namespace sparse {
   void prefix##CsrKernel(const Context& dev_ctx,                           \
                          const SparseCsrTensor& x,                         \
                          SparseCsrTensor* out) {                           \
+    if (out && out->numel() == 0) {                                        \
+      dev_ctx.template Alloc<T>(out);                                      \
+      return;                                                              \
+    }                                                                      \
     EmptyLikeCsrKernel<T, Context>(dev_ctx, x, out);                       \
     phi::prefix##Kernel<T, Context>(                                       \
         dev_ctx, x.non_zero_elements(), out->mutable_non_zero_elements()); \
@@ -79,6 +87,10 @@ namespace sparse {
   void prefix##CooKernel(const Context& dev_ctx,                           \
                          const SparseCooTensor& x,                         \
                          SparseCooTensor* out) {                           \
+    if (out && out->numel() == 0) {                                        \
+      dev_ctx.template Alloc<T>(out);                                      \
+      return;                                                              \
+    }                                                                      \
     *(out->mutable_indices()) = x.indices();                               \
     DenseTensor* out_values = out->mutable_values();                       \
     const DenseTensor& x_values = x.values();                              \
@@ -93,6 +105,10 @@ namespace sparse {
   void prefix##CsrKernel(const Context& dev_ctx,                           \
                          const SparseCsrTensor& x,                         \
                          SparseCsrTensor* out) {                           \
+    if (out && out->numel() == 0) {                                        \
+      dev_ctx.template Alloc<T>(out);                                      \
+      return;                                                              \
+    }                                                                      \
     *(out->mutable_crows()) = x.crows();                                   \
     *(out->mutable_cols()) = x.cols();                                     \
     DenseTensor* out_values = out->mutable_values();                       \

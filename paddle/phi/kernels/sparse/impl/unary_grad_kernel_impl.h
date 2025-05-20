@@ -32,6 +32,10 @@ namespace sparse {
                              const SparseCooTensor& x_or_out,             \
                              const SparseCooTensor& dout,                 \
                              SparseCooTensor* dx) {                       \
+    if (dx && dx->numel() == 0) {                                         \
+      dev_ctx.template Alloc<T>(dx);                                      \
+      return;                                                             \
+    }                                                                     \
     EmptyLikeCooKernel<T, Context>(dev_ctx, x_or_out, dx);                \
     phi::prefix##GradKernel<T, Context>(dev_ctx,                          \
                                         x_or_out.non_zero_elements(),     \
@@ -44,6 +48,10 @@ namespace sparse {
                              const SparseCsrTensor& x_or_out,             \
                              const SparseCsrTensor& dout,                 \
                              SparseCsrTensor* dx) {                       \
+    if (dx && dx->numel() == 0) {                                         \
+      dev_ctx.template Alloc<T>(dx);                                      \
+      return;                                                             \
+    }                                                                     \
     EmptyLikeCsrKernel<T, Context>(dev_ctx, x_or_out, dx);                \
     phi::prefix##GradKernel<T, Context>(dev_ctx,                          \
                                         x_or_out.non_zero_elements(),     \
