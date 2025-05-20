@@ -221,7 +221,7 @@ bool LaunchStridedCopyCaseOneKernel(
     const phi::Array<int64_t, phi::DDim::kMaxRank + 1>& output_stride,
     const phi::Array<int64_t, phi::DDim::kMaxRank + 1>& dims,
     int rank,
-    int numel) {
+    int64_t numel) {
   dim3 grid(1, 1, 1), block(1, 1, 1);
   phi::Array<int64_t, 6> cur_dims;
   block.x = 512;
@@ -398,7 +398,7 @@ void LaunchStridedCopyDefaultKernel(
     const phi::Array<int64_t, phi::DDim::kMaxRank + 1>& output_stride,
     const phi::Array<int64_t, phi::DDim::kMaxRank + 1>& dims,
     int rank,
-    int numel) {
+    int64_t numel) {
   int64_t block = 512;
   int64_t grid = (numel + block - 1) / block;
 
@@ -648,7 +648,7 @@ bool LaunchStrided2ContiguousCaseOneKernel(
     T* output_data,
     const phi::Array<int64_t, phi::DDim::kMaxRank + 1>& dims,
     int rank,
-    int numel) {
+    int64_t numel) {
   dim3 grid(1, 1, 1), block(1, 1, 1);
   phi::Array<int64_t, 6> cur_dims;
   block.x = 512;
@@ -803,7 +803,7 @@ void LaunchStrided2ContiguousDefaultKernel(
     T* output_data,
     const phi::Array<int64_t, phi::DDim::kMaxRank + 1>& dims,
     int rank,
-    int numel) {
+    int64_t numel) {
   int64_t block = 512;
   int64_t grid = (numel + block - 1) / block;
 
@@ -1054,7 +1054,7 @@ bool LaunchContiguous2StridedCaseOneKernel(
     const phi::Array<int64_t, phi::DDim::kMaxRank + 1>& output_stride,
     const phi::Array<int64_t, phi::DDim::kMaxRank + 1>& dims,
     int rank,
-    int numel) {
+    int64_t numel) {
   dim3 grid(1, 1, 1), block(1, 1, 1);
   phi::Array<int64_t, 6> cur_dims;
   block.x = 512;
@@ -1209,7 +1209,7 @@ void LaunchContiguous2StridedDefaultKernel(
     const phi::Array<int64_t, phi::DDim::kMaxRank + 1>& output_stride,
     const phi::Array<int64_t, phi::DDim::kMaxRank + 1>& dims,
     int rank,
-    int numel) {
+    int64_t numel) {
   int64_t block = 512;
   int64_t grid = (numel + block - 1) / block;
 

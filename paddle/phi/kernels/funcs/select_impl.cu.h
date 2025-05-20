@@ -59,14 +59,14 @@ struct NonZeroFunctor {
 template <typename InT, typename OutT, int VecSize, int IsBoundary>
 __device__ void GetBlockCountImpl(const InT *in,
                                   OutT *out,
-                                  int num,
-                                  int repeat) {
+                                  int64_t num,
+                                  int64_t repeat) {
   InT in_data[VecSize];
   OutT temp[VecSize];
   OutT result = static_cast<OutT>(0.0f);
   using Add = kps::AddFunctor<OutT>;
   using Cast = NonZeroFunctor<InT>;
-  int store_fix = BLOCK_ID_X + repeat * GRID_NUM_X;
+  int64_t store_fix = BLOCK_ID_X + repeat * GRID_NUM_X;
 
   kps::Init<InT, VecSize>(&in_data[0], static_cast<InT>(0.0f));
   kps::ReadData<InT, VecSize, 1, IsBoundary>(&in_data[0], in, num);
@@ -92,16 +92,17 @@ __global__ void GetBlockCountKernel(const InT *in,
                                     OutT *out,
                                     int64_t numel,
                                     int64_t main_offset) {
-  int data_offset = BLOCK_ID_X * BLOCK_NUM_X * VecSize;
-  int stride = BLOCK_NUM_X * GRID_NUM_X * VecSize;
-  int repeat = 0;
+  int64_t size = static_cast<int64_t>(BLOCK_NUM_X) * VecSize;
+  int64_t data_offset = size * BLOCK_ID_X;
+  int64_t stride = size * GRID_NUM_X;
+  int64_t repeat = 0;
   for (; data_offset < main_offset; data_offset += stride) {
     GetBlockCountImpl<InT, OutT, VecSize, false>(
-        in + data_offset, out, BLOCK_NUM_X * VecSize, repeat);
+        in + data_offset, out, size, repeat);
     repeat++;  // to get the real blockIdx
   }
 
-  int num = numel - data_offset;
+  int64_t num = numel - data_offset;
   if (num > 0) {
     GetBlockCountImpl<InT, OutT, VecSize, true>(
         in + data_offset, out, num, repeat);
@@ -150,14 +151,17 @@ __device__ void CumsumImpl(
 
 // Compute this store_offset of this block
 template <typename InT, typename OutT, typename Functor, int VecSize>
-__global__ void CumsumOneBlock(
-    const InT *in, OutT *out, int numel, int main_offset, Functor func) {
-  int stride = BLOCK_NUM_X * VecSize;
-  int offset = 0;
+__global__ void CumsumOneBlock(const InT *in,
+                               OutT *out,
+                               int64_t numel,
+                               int64_t main_offset,
+                               Functor func) {
+  int64_t stride = BLOCK_NUM_X * VecSize;
+  int64_t offset = 0;
   OutT pre_cumsum = static_cast<OutT>(0);
   for (; offset < main_offset; offset += stride) {
     CumsumImpl<InT, OutT, Functor, VecSize, false>(
-        in + offset, out + offset, &pre_cumsum, BLOCK_NUM_X * VecSize, func);
+        in + offset, out + offset, &pre_cumsum, stride, func);
   }
 
   int num = numel - offset;
@@ -180,10 +184,10 @@ struct SelectCaller {
                                     const MT *mask_data,
                                     const InT *in,
                                     Functor func,
-                                    int data_offset,
-                                    int store_num,
-                                    int thread_fix,
-                                    int num) {
+                                    int64_t data_offset,
+                                    int64_t store_num,
+                                    int64_t thread_fix,
+                                    int64_t num) {
     int64_t in_data[VecSize];
     OutT store_data[VecSize * phi::DDim::kMaxRank];
     // set index
@@ -260,9 +264,9 @@ __device__ void SelectKernelImpl(OutT *out,
                                  const MT *mask,
                                  const InT *in,
                                  Functor func,
-                                 int num,
-                                 int data_offset,
-                                 int store_rank) {
+                                 int64_t num,
+                                 int64_t data_offset,
+                                 int64_t store_rank) {
   const int kCVecSize = 2;
   // each thread cumsum 2 data
   using IdT = int64_t;
@@ -294,10 +298,9 @@ __device__ void SelectKernelImpl(OutT *out,
   // thread_fix
   kps::Cumsum<IdT, IdT, Add>(&cumsum_thread[0], &num_thread[0], Add());
   // get thread_fix
-  int thread_fix =
-      (static_cast<int>(cumsum_thread[0] - num_thread[0]) * store_rank);
+  IdT thread_fix = (cumsum_thread[0] - num_thread[0]) * store_rank;
   // get how many data need to store
-  int store_num = static_cast<int>(num_thread[0]) * store_rank;
+  IdT store_num = num_thread[0] * store_rank;
   // thread store num data, each thread may has different num
   // Get store data(index) according to mask_idt
   SelectCaller<OutT, MT, InT, Functor, VecSize, IsBoundary, MaskData> select;
@@ -318,18 +321,20 @@ __global__ void SelectKernel(OutT *out,
                              Functor func,
                              const int64_t numel,
                              int64_t main_offset,
-                             int store_rank) {
-  int data_offset = BLOCK_ID_X * BLOCK_NUM_X * VecSize;
-  int stride = BLOCK_NUM_X * GRID_NUM_X * VecSize;
-  int repeat = 0;
-  int size = VecSize * BLOCK_ID_X;
+                             int64_t store_rank) {
+  int64_t size = static_cast<int64_t>(BLOCK_ID_X) * VecSize;
+  int64_t data_offset = size * BLOCK_NUM_X;
+  int64_t stride = static_cast<int64_t>(BLOCK_NUM_X) * GRID_NUM_X * VecSize;
+  int64_t repeat = 0;
   CT block_store_offset = 0;
   for (; data_offset < main_offset; data_offset += stride) {
     // Cumsum index
-    int idx_cumsum = repeat * GRID_NUM_X + BLOCK_ID_X;
+    int64_t idx_cumsum = repeat * GRID_NUM_X + BLOCK_ID_X;
     kps::details::ReadData<CT>(&block_store_offset, cumsum + idx_cumsum, 1);
-    int out_fix = MaskData < 2 ? block_store_offset * store_rank : data_offset;
-    int in_fix = MaskData < 2 ? data_offset : block_store_offset * store_rank;
+    int64_t out_fix =
+        MaskData < 2 ? block_store_offset * store_rank : data_offset;
+    int64_t in_fix =
+        MaskData < 2 ? data_offset : block_store_offset * store_rank;
     SelectKernelImpl<InT, MT, OutT, Functor, VecSize, MaskData, false>(
         out + out_fix,
         mask + data_offset,
@@ -341,13 +346,15 @@ __global__ void SelectKernel(OutT *out,
     repeat++;
   }
 
-  int num = numel - data_offset;
+  int64_t num = numel - data_offset;
   if (num > 0) {
     // Cumsum index
-    int idx_cumsum = repeat * GRID_NUM_X + BLOCK_ID_X;
+    int64_t idx_cumsum = repeat * GRID_NUM_X + BLOCK_ID_X;
     kps::details::ReadData<CT>(&block_store_offset, cumsum + idx_cumsum, 1);
-    int out_fix = MaskData < 2 ? block_store_offset * store_rank : data_offset;
-    int in_fix = MaskData < 2 ? data_offset : block_store_offset * store_rank;
+    int64_t out_fix =
+        MaskData < 2 ? block_store_offset * store_rank : data_offset;
+    int64_t in_fix =
+        MaskData < 2 ? data_offset : block_store_offset * store_rank;
     SelectKernelImpl<InT, MT, OutT, Functor, VecSize, MaskData, true>(
         out + out_fix,
         mask + data_offset,
@@ -398,19 +405,19 @@ void SelectKernel(const KPDevice &dev_ctx,
   int block = 64;
   auto stream = dev_ctx.x_context()->xpu_stream;
   const int num_per_block = kVecSize * block;
-  const int need_grids = (numel + num_per_block - 1) / num_per_block;
-  const int grid = std::min(need_grids, 8);
+  const int64_t need_grids = (numel + num_per_block - 1) / num_per_block;
+  const int64_t grid = std::min(need_grids, static_cast<int64_t>(8));
 #else
   const int block = 256;
   const int num_per_block = kVecSize * block;
-  const int need_grids = (numel + num_per_block - 1) / num_per_block;
-  const int grid = std::min(need_grids, 256);
+  const int64_t need_grids = (numel + num_per_block - 1) / num_per_block;
+  const int64_t grid = std::min(need_grids, static_cast<int64_t>(256));
   auto stream = dev_ctx.stream();
 #endif
   const int64_t main_offset = Floor(numel, num_per_block);
   // 1.2 alloc tmp data for CoutBlock
-  const int size_count_block = need_grids + 1;
-  std::vector<int> dims_vec = {size_count_block * 2};
+  const int64_t size_count_block = need_grids + 1;
+  std::vector<int64_t> dims_vec = {size_count_block * 2};
   IntArray dims_array(dims_vec);
   DenseTensor count_mem = phi::Empty<CT, KPDevice>(dev_ctx, dims_array);
   CT *count_data = count_mem.data<CT>();
@@ -424,7 +431,7 @@ void SelectKernel(const KPDevice &dev_ctx,
   CT total_true_num = static_cast<CT>(0);  // init
   const int kCumVesize = 2;
   const int block_c = 256;
-  const int main_offset_c = Floor(size_count_block, (kCumVesize * block_c));
+  const int64_t main_offset_c = Floor(size_count_block, (kCumVesize * block_c));
 
   using Add = kps::AddFunctor<CT>;
   CumsumOneBlock<CT, CT, Add, kCumVesize><<<1, block_c, 0, stream>>>(

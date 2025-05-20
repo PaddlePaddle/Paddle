@@ -114,6 +114,58 @@ struct MethodClassImpl<ValueT, BuiltinClassInstance<ValueT>> {
     return class_ops->Equals(self, rhs_val);
   }
 
+  adt::Result<ValueT> Add(InterpreterBase<ValueT>* interpreter,
+                          const Self& self,
+                          const ValueT& rhs_val) {
+    const auto& opt_func = GetClassAttr(self, "__add__");
+    const auto& class_attrs = self.type.class_attrs();
+    ADT_CHECK(opt_func.has_value())
+        << adt::errors::AttributeError{std::string() + class_attrs->class_name +
+                                       " class has no attribute '__add__'"};
+    std::vector<ValueT> args{rhs_val};
+    ADT_LET_CONST_REF(ret, interpreter->InterpretCall(opt_func.value(), args));
+    return ret;
+  }
+
+  adt::Result<ValueT> Sub(InterpreterBase<ValueT>* interpreter,
+                          const Self& self,
+                          const ValueT& rhs_val) {
+    const auto& opt_func = GetClassAttr(self, "__sub__");
+    const auto& class_attrs = self.type.class_attrs();
+    ADT_CHECK(opt_func.has_value())
+        << adt::errors::AttributeError{std::string() + class_attrs->class_name +
+                                       " class has no attribute '__sub__'"};
+    std::vector<ValueT> args{rhs_val};
+    ADT_LET_CONST_REF(ret, interpreter->InterpretCall(opt_func.value(), args));
+    return ret;
+  }
+
+  adt::Result<ValueT> Mul(InterpreterBase<ValueT>* interpreter,
+                          const Self& self,
+                          const ValueT& rhs_val) {
+    const auto& opt_func = GetClassAttr(self, "__mul__");
+    const auto& class_attrs = self.type.class_attrs();
+    ADT_CHECK(opt_func.has_value())
+        << adt::errors::AttributeError{std::string() + class_attrs->class_name +
+                                       " class has no attribute '__mul__'"};
+    std::vector<ValueT> args{rhs_val};
+    ADT_LET_CONST_REF(ret, interpreter->InterpretCall(opt_func.value(), args));
+    return ret;
+  }
+
+  adt::Result<ValueT> FloorDiv(InterpreterBase<ValueT>* interpreter,
+                               const Self& self,
+                               const ValueT& rhs_val) {
+    const auto& opt_func = GetClassAttr(self, "__floordiv__");
+    const auto& class_attrs = self.type.class_attrs();
+    ADT_CHECK(opt_func.has_value()) << adt::errors::AttributeError{
+        std::string() + class_attrs->class_name +
+        " class has no attribute '__floordiv__'"};
+    std::vector<ValueT> args{rhs_val};
+    ADT_LET_CONST_REF(ret, interpreter->InterpretCall(opt_func.value(), args));
+    return ret;
+  }
+
   adt::Result<ValueT> GetItem(InterpreterBase<ValueT>* interpreter,
                               const Self& self,
                               const ValueT& idx_val) {

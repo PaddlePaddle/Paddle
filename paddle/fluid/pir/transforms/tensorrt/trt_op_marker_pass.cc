@@ -370,9 +370,9 @@ class Pool2dOpPattern
     }
 
     auto padding_attr = op->attribute<pir::ArrayAttribute>("paddings");
-    std::vector<int32_t> paddings;
+    std::vector<int64_t> paddings;
     for (const auto &attr : padding_attr.AsVector()) {
-      paddings.push_back(attr.dyn_cast<pir::Int32Attribute>().data());
+      paddings.push_back(attr.dyn_cast<pir::Int64Attribute>().data());
     }
     if (paddings.size() > 2) {
       VLOG(3) << "The padding size should be less than 2";
@@ -435,10 +435,10 @@ class Pool2dOpPattern
     int g_post_pad_w = 0;
     int input_height = input_dims[input_dims.size() - 2];
     int input_width = input_dims[input_dims.size() - 1];
-    std::vector<int32_t> strides;
+    std::vector<int64_t> strides;
     auto strides_attr = op->attribute<pir::ArrayAttribute>("strides");
     for (const auto &attr : strides_attr.AsVector()) {
-      strides.push_back(attr.dyn_cast<pir::Int32Attribute>().data());
+      strides.push_back(attr.dyn_cast<pir::Int64Attribute>().data());
     }
     if (input_height > 0 &&
         input_height - kernel_size[0] + 2 * paddings[0] < 0) {

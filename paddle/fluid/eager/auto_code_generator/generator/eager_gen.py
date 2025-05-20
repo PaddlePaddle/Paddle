@@ -91,6 +91,7 @@ prim_white_list = [
     "take_along_axis_double_grad",
     "index_add_double_grad",
     "acos_double_grad",
+    "put_along_axis_double_grad",
 ]
 
 # white ops list whose kernel can automatically do type promotion.
@@ -119,6 +120,7 @@ type_promote_white_list = {
     "huber_loss": ["input", "label"],
     "nextafter": ["x", "y"],
     "atan2": ["x", "y"],
+    "copysign": ["x", "y"],
 }
 
 type_promote_inplace_white_list = {
@@ -137,6 +139,7 @@ type_promote_inplace_white_list = {
     "logical_or_": ["x", "y"],
     "logical_xor_": ["x", "y"],
     "remainder_": ["x", "y"],
+    "copysign_": ["x", "y"],
 }
 
 # ops support casting int tensor into float32 to do forward calculation

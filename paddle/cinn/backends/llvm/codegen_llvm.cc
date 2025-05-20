@@ -1511,7 +1511,7 @@ void CodeGenLLVM::InitTarget(const Target &target) {
 }
 
 void CodeGenLLVM::AddTbaaMetadata(llvm::Instruction *inst,
-                                  absl::string_view buffer,
+                                  std::string_view buffer,
                                   Expr index) {
   // If the index is constant, generate some TBAA info that helps LLVM
   // understand our loads/stores aren't aliased.

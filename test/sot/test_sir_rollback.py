@@ -53,16 +53,16 @@ class TestRollback(TestCaseBase):
         a = VariableFactory().from_value(a, graph, LocalTracker("a"))
         b = VariableFactory().from_value(b, graph, LocalTracker("b"))
         out = compute(a, b)
-        original_length = len(graph.sir_ctx.TOS.statements)
+        original_length = len(graph.sir_builder.current_sir.statements)
         memo = graph.save_memo()
         try_add(out, out)
 
-        assert len(graph.sir_ctx.TOS.statements) != len(
+        assert len(graph.sir_builder.current_sir.statements) != len(
             memo.stmt_ir.statements
         ), "After add, we must statement IR."
         graph.restore_memo(memo)
 
-        assert len(graph.sir_ctx.TOS.statements) == original_length
+        assert len(graph.sir_builder.current_sir.statements) == original_length
 
 
 def fn_with_side_effects_inner(x, y):

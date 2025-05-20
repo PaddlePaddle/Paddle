@@ -625,9 +625,7 @@ def save_pir(program, model_path, protocol=4, **configs):
         pickle.dump(opt_dict, f, protocol=protocol)
 
     # save program
-    paddle.core.serialize_pir_program(
-        program, model_path + ".json", 1, True, False, True
-    )
+    paddle.core.serialize_pir_program(program, model_path + ".json")
 
 
 @static_only
@@ -766,7 +764,6 @@ def save_inference_model_pir(
             if kwargs.get('separate_parameters', False)
             else model_path
         ),
-        1,
         True,
         readable,
         trainable,
@@ -840,7 +837,7 @@ def load_inference_model_pir(path_prefix, executor, **kwargs):
 
             >>> [inference_program, feed_target_names, fetch_targets] = (
             ...     paddle.static.load_inference_model(path_prefix, exe))
-            >>> tensor_img = np.array(np.random.random((64, 784)), dtype=np.float32) # type: ignore[var-annotated]
+            >>> tensor_img = np.array(np.random.random((64, 784)), dtype=np.float32)
             >>> results = exe.run(inference_program,
             ...               feed={feed_target_names[0]: tensor_img},
             ...               fetch_list=fetch_targets)
@@ -872,7 +869,7 @@ def load_inference_model_pir(path_prefix, executor, **kwargs):
 
         # deserialize bytes to program
         program = paddle.static.Program()
-        paddle.base.core.deserialize_pir_program(model_filename, program, 1)
+        paddle.base.core.deserialize_pir_program(model_filename, program)
 
         params, opts = get_pir_parameters(program)
         vars = params + opts
@@ -926,7 +923,7 @@ def load_inference_model_pir(path_prefix, executor, **kwargs):
 
         # deserialize bytes to program
         program = paddle.static.Program()
-        paddle.base.core.deserialize_pir_program(model_path, program, 1)
+        paddle.base.core.deserialize_pir_program(model_path, program)
         # load parameters
         params, opts = get_pir_parameters(program)
         vars = params + opts
