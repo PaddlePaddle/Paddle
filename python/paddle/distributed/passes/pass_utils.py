@@ -458,6 +458,8 @@ def _pir_overlap_send_recv(program):
                 op.set_scheduling_priority(0)
             elif op.name() == "pd_op.p_recv":
                 op.set_bool_attr("dynamic_shape", False)
+                ring_id = op.attrs()["ring_id"]
+                op.set_execution_stream(f"recv_stream_{ring_id}")
                 op.set_scheduling_priority(0)
 
 
