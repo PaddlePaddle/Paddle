@@ -2568,6 +2568,16 @@
     data_type : x
   optional : boxes_num
 
+- backward_op : put_along_axis_double_grad
+  forward : put_along_axis_grad (Tensor arr, Tensor indices, Tensor values, Tensor out, Tensor grad_out, int axis, str reduce, bool include_self) -> Tensor(grad_arr), Tensor(grad_values)
+  args : (Tensor arr, Tensor indices, Tensor values, Tensor grad_values_grad, Tensor grad_arr_grad, int axis, str reduce, bool include_self)
+  output : Tensor(grad_out_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [arr]
+  optional : grad_values_grad, grad_arr_grad
+  composite : put_along_axis_double_grad(arr, indices, values, grad_values_grad, grad_arr_grad, axis, reduce, include_self, grad_out_grad)
+
 - backward_op : put_along_axis_grad
   forward : put_along_axis (Tensor arr, Tensor indices, Tensor values, int axis, str reduce = "assign", bool include_self = true) -> Tensor(out)
   args : (Tensor arr, Tensor indices, Tensor values, Tensor out, Tensor out_grad, int axis, str reduce, bool include_self)
@@ -2577,6 +2587,7 @@
     param : [arr, indices]
   kernel :
     func : put_along_axis_grad
+  backward: put_along_axis_double_grad
 
 - backward_op : qr_grad
   forward : qr (Tensor x, str mode = "reduced") -> Tensor(q), Tensor(r)
