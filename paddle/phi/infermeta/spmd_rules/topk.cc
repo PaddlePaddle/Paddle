@@ -95,14 +95,19 @@ SpmdInfo TopkGradInferSpmdBase(const DistMetaTensor& x,
   x_axes[axis] = '1';
   std::string indices_axes = x_axes;
   std::string out_grad_axes = x_axes;
+  std::vector<int64_t> x_dims_mapping(x_dims_mapping_src);
+  std::vector<int64_t> indices_dims_mapping(indices_dims_mapping_src);
+  std::vector<int64_t> out_grad_dims_mapping(out_grad_dims_mapping_src);
+  x_dims_mapping[axis] = -1;
+  indices_dims_mapping[axis] = -1;
+  out_grad_dims_mapping[axis] = -1;
 
   // Merge sharding
   std::pair<std::string, std::vector<int64_t>> indices_pair(
-      indices_axes, indices_dims_mapping_src);
+      indices_axes, indices_dims_mapping);
   std::pair<std::string, std::vector<int64_t>> out_grad_pair(
-      out_grad_axes, out_grad_dims_mapping_src);
-  std::pair<std::string, std::vector<int64_t>> x_pair(x_axes,
-                                                      x_dims_mapping_src);
+      out_grad_axes, out_grad_dims_mapping);
+  std::pair<std::string, std::vector<int64_t>> x_pair(x_axes, x_dims_mapping);
   auto axis_to_dim_map =
       ShardingMergeForTensors({x_pair, indices_pair, out_grad_pair});
 
