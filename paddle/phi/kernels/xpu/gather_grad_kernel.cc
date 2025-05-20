@@ -26,9 +26,9 @@ void GatherGradKernel(const Context& dev_ctx,
                       const DenseTensor& out_grad,
                       const Scalar& axis,
                       DenseTensor* x_grad) {
-  auto axis_v = axis.to<int>();
+  auto axis_v = axis.to<int64_t>();
   if (axis_v < 0) {
-    axis_v += static_cast<int>(x.dims().size());
+    axis_v += static_cast<int64_t>(x.dims().size());
   }
 
   const auto& index_type = index.dtype();
@@ -53,7 +53,7 @@ void GatherGradKernel(const Context& dev_ctx,
             "The index should be 0D or 1D, when it is not 2D, but we get %d",
             index_dims.size()));
   }
-  std::vector<int> xshape(x_grad->dims().size());
+  std::vector<int64_t> xshape(x_grad->dims().size());
   for (int i = 0; i < x_grad->dims().size(); ++i) {
     xshape[i] = x_grad->dims()[i];
   }
@@ -72,24 +72,19 @@ void GatherGradKernel(const Context& dev_ctx,
         index.dims().size() == 0 ? 1 : index.dims()[0],
         axis_v,
         false);
-  } else {
-    xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
-    int* index_int_ptr_l3 = RAII_GUARD.alloc_l3_or_gm<int32_t>(index.numel());
-    r = xpu::cast<int64_t, int32_t>(dev_ctx.x_context(),
-                                    index.data<int64_t>(),
-                                    index_int_ptr_l3,
-                                    index.numel());
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
-
-    r = xpu::gather_grad<XPUType, int>(
+  } else if (index_type == DataType::INT64) {
+    r = xpu::gather_grad<XPUType, int64_t>(
         dev_ctx.x_context(),
         reinterpret_cast<const XPUType*>(out_grad.data<T>()),
-        index_int_ptr_l3,
+        index.data<int64_t>(),
         reinterpret_cast<XPUType*>(x_grad->data<T>()),
         xshape,
         index.dims().size() == 0 ? 1 : index.dims()[0],
         axis_v,
         false);
+  } else {
+    PADDLE_THROW(common::errors::InvalidArgument("Unsupported index type: %s",
+                                                 DataTypeToString(index_type)));
   }
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "gather_grad");
 }

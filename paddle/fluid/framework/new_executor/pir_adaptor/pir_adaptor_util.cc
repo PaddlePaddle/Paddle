@@ -136,6 +136,16 @@ Variable* ValueExecutionInfo::GetVarByValue(pir::Value value) const {
   return scope_->FindVar(GetVarName(value));
 }
 
+::pir::Value ValueExecutionInfo::GetValueByVar(const Variable* var) const {
+  for (const auto& pair : value_2_var_name_) {
+    if (pair.second == GetVarName(var)) {
+      return pair.first;
+    }
+  }
+  PADDLE_THROW(::common::errors::Unimplemented("Cannot find value by var %s",
+                                               GetVarName(var)));
+}
+
 const std::unordered_map<::pir::Value, std::string>&
 ValueExecutionInfo::GetValue2VarName() const {
   return value_2_var_name_;

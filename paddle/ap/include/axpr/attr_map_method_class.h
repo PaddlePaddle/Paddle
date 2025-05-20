@@ -51,11 +51,34 @@ struct AttrMapMethodClass {
 };
 
 template <typename ValueT>
+struct TypeImplBuiltinAttrMapMethodClass {
+  using This = TypeImplBuiltinAttrMapMethodClass;
+  using Self = TypeImpl<AttrMap<ValueT>>;
+
+  adt::Result<ValueT> Call(const Self&) { return &This::StaticConstruct; }
+
+  static adt::Result<ValueT> StaticConstruct(const ValueT&,
+                                             const std::vector<ValueT>& args) {
+    return This{}.Construct(args);
+  }
+
+  adt::Result<ValueT> Construct(const std::vector<ValueT>& args) {
+    const auto& packed_args = CastToPackedArgs(args);
+    const auto& [pos_args, kwargs] = *packed_args;
+    ADT_CHECK(pos_args->empty())
+        << adt::errors::TypeError{std::string() +
+                                  "the construct of AttrMap "
+                                  "takes no positional arguments."};
+    return kwargs;
+  }
+};
+
+template <typename ValueT>
 struct MethodClassImpl<ValueT, AttrMap<ValueT>>
     : public AttrMapMethodClass<ValueT> {};
 
 template <typename ValueT>
 struct MethodClassImpl<ValueT, TypeImpl<AttrMap<ValueT>>>
-    : public EmptyMethodClass<ValueT> {};
+    : public TypeImplBuiltinAttrMapMethodClass<ValueT> {};
 
 }  // namespace ap::axpr

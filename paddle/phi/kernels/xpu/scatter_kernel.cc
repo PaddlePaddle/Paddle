@@ -58,8 +58,7 @@ void ScatterKernel(const Context &ctx,
           "be 1), 0 but got index'dims shape is %d",
           index.dims().size()));
 
-  int index_size =
-      static_cast<int>(index.dims().size() == 0 ? 1 : index.dims()[0]);
+  int64_t index_size = index.dims().size() == 0 ? 1 : index.dims()[0];
   auto x_dims = x.dims();
   auto update_dims = updates.dims();
   if (index.dims().size() != 0) {
@@ -78,9 +77,8 @@ void ScatterKernel(const Context &ctx,
               update_dims[i]));
   }
 
-  int dim0 = static_cast<int>(x.dims()[0]);
-  int dim1 = static_cast<int>(
-      common::product(common::slice_ddim(x_dims, 1, x_dims.size())));
+  int64_t dim0 = x.dims()[0];
+  int64_t dim1 = common::product(common::slice_ddim(x_dims, 1, x_dims.size()));
 
   DenseTensor indices_cpu(index.type());
   phi::Copy(ctx, index, phi::CPUPlace(), true, &indices_cpu);

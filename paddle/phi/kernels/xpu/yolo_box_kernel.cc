@@ -24,7 +24,7 @@ template <typename T, typename Context>
 void YoloBoxKernel(const Context& dev_ctx,
                    const DenseTensor& x,
                    const DenseTensor& img_size,
-                   const std::vector<int>& anchors,
+                   const std::vector<int>& anchors_,
                    int class_num,
                    float conf_thresh,
                    int downsample_ratio,
@@ -41,11 +41,12 @@ void YoloBoxKernel(const Context& dev_ctx,
   float scale = scale_x_y;
   float bias = -0.5f * (scale - 1.f);
 
-  const int n = static_cast<int>(input->dims()[0]);
-  const int h = static_cast<int>(input->dims()[2]);
-  const int w = static_cast<int>(input->dims()[3]);
-  const int box_num = static_cast<int>(boxes->dims()[1]);
-  const int an_num = static_cast<int>(anchors.size() / 2);
+  std::vector<int64_t> anchors(anchors_.begin(), anchors_.end());
+  const int64_t n = input->dims()[0];
+  const int64_t h = input->dims()[2];
+  const int64_t w = input->dims()[3];
+  const int64_t box_num = boxes->dims()[1];
+  const int64_t an_num = anchors.size() / 2;
 
   boxes->Resize({n, box_num, 4});
   dev_ctx.template Alloc<T>(boxes);
@@ -58,12 +59,6 @@ void YoloBoxKernel(const Context& dev_ctx,
   auto boxes_data = reinterpret_cast<XPUType*>(boxes->data<T>());
   auto scores_data = reinterpret_cast<XPUType*>(scores->data<T>());
 
-  std::vector<int64_t> anchors_int64;
-  anchors_int64.resize(anchors.size());
-  for (size_t i = 0; i < anchors.size(); ++i) {
-    anchors_int64[i] = anchors[i];
-  }
-
   r = xpu::yolo_box<float>(dev_ctx.x_context(),
                            x_data,
                            img_size_data,
@@ -72,7 +67,7 @@ void YoloBoxKernel(const Context& dev_ctx,
                            n,
                            h,
                            w,
-                           anchors_int64,
+                           anchors,
                            an_num,
                            class_num,
                            conf_thresh,
