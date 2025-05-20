@@ -169,6 +169,26 @@ class DeviceManager {
 
   static size_t GetExtraPaddingSize(const Place& place);
 
+  static size_t GetComputeCapability(const Place& place);
+
+  static size_t GetRuntimeVersion(const Place& place);
+
+  static size_t GetDriverVersion(const Place& place);
+
+  static size_t GetMultiProcessors(const Place& place);
+
+  static size_t GetMaxThreadsPerMultiProcessor(const Place& place);
+
+  static size_t GetMaxThreadsPerBlock(const Place& place);
+
+  static std::array<unsigned int, 3> GetMaxGridDimSize(const Place& place);
+
+  static void* InitEigenDevice(const Place& place,
+                               phi::stream::stream_t stream,
+                               phi::Allocator* allocator);
+
+  static void DestroyEigenDevice(const Place& place, void* eigen_device);
+
   static void MemoryStats(const Place& place, size_t* total, size_t* free);
 
   static size_t GetDeviceCount(const std::string& device_type);

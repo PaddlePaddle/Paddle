@@ -48,17 +48,16 @@ void MultiClassNMSKernel(const Context& ctx,
   bool return_index = index != nullptr;
   bool has_rois_num = rois_num.get_ptr() != nullptr;
   bool return_rois_num = nms_rois_num != nullptr;
-  auto score_dims = common::vectorize<int>(scores.dims());
+  auto score_dims = common::vectorize<int64_t>(scores.dims());
   auto score_size = score_dims.size();
   bool is_lod = score_size == 2 ? true : false;
 
-  int n = 0;
-  int b = 0;
-  int class_num = scores.dims()[1];
-  int out_dim = bboxes.dims()[2] + 2;
-  int boxes_count = 0;
-  std::vector<int> rois_num_vec;
-  rois_num_vec.clear();
+  int64_t n = 0;
+  int64_t b = 0;
+  int64_t class_num = scores.dims()[1];
+  int64_t out_dim = bboxes.dims()[2] + 2;
+  int64_t boxes_count = 0;
+  std::vector<int64_t> rois_num_vec;
   if (is_lod) {
     if (has_rois_num) {
       phi::DenseTensor rois_num_host;
@@ -83,7 +82,7 @@ void MultiClassNMSKernel(const Context& ctx,
                   false,
                   &rois_num_host);
         n = rois_num.get_ptr()->numel();
-        for (int i = 0; i < n; i++) {
+        for (int64_t i = 0; i < n; i++) {
           rois_num_vec.push_back(rois_num_host.data<int>()[i]);
           boxes_count += rois_num_host.data<int>()[i];
         }
@@ -92,7 +91,7 @@ void MultiClassNMSKernel(const Context& ctx,
       auto lod = bboxes.lod().back();
       boxes_count = lod[lod.size() - 1];
       n = lod.size() - 1;
-      for (int i = 0; i < n; i++) {
+      for (int64_t i = 0; i < n; i++) {
         rois_num_vec.push_back(lod[i + 1] - lod[i]);
       }
     }
@@ -123,26 +122,27 @@ void MultiClassNMSKernel(const Context& ctx,
 
   std::vector<size_t> batch_starts;
   int r = 0;
-  r = xpu::multiclass_nms<T, int>(ctx.x_context(),
-                                  bboxes_data,
-                                  scores_data,
-                                  rois_num_vec,
-                                  outs_vec_,
-                                  out_index_vec_,
-                                  batch_starts,
-                                  n,
-                                  b,
-                                  class_num,
-                                  out_dim,
-                                  nums_top_k,
-                                  score_threshold,
-                                  keep_top_k,
-                                  nms_threshold,
-                                  background_label,
-                                  normalized,
-                                  nms_eta,
-                                  return_index,
-                                  is_lod);
+  r = xpu::multiclass_nms<T, int>(
+      ctx.x_context(),   // ctx
+      bboxes_data,       // const T* bboxes
+      scores_data,       // const T* scores
+      rois_num_vec,      // const std::vector<int64_t>& rois_num
+      outs_vec_,         // std::vector<T>& out
+      out_index_vec_,    // std::vector<TID>& out_index
+      batch_starts,      // std::vector<size_t>& accumulated_det_num
+      n,                 // int64_t n
+      b,                 // int64_t b
+      class_num,         // int64_t class_num
+      out_dim,           // int64_t out_dim
+      nums_top_k,        // int64_t nms_topk
+      score_threshold,   // float score_threshold
+      keep_top_k,        // int64_t keep_top_k
+      nms_threshold,     // float nms_threshold
+      background_label,  // int64_t background_label
+      normalized,        // bool normalized
+      nms_eta,           // float nms_eta
+      return_index,      // bool return_index
+      is_lod);           // bool is_lod
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "multiclass_nms");
   uint64_t num_kept = batch_starts.back();
 
@@ -206,7 +206,7 @@ void MultiClassNMSKernel(const Context& ctx,
     ctx.template HostAlloc<int>(&nms_rois_num_cpu);
     int* nms_rois_num_cpu_data = nms_rois_num_cpu.data<int>();
 
-    for (int i = 1; i <= n; i++) {
+    for (int64_t i = 1; i <= n; i++) {
       nms_rois_num_cpu_data[i - 1] = batch_starts[i] - batch_starts[i - 1];
     }
     phi::Copy(ctx, nms_rois_num_cpu, nms_rois_num->place(), true, nms_rois_num);

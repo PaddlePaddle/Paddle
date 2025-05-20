@@ -51,16 +51,16 @@ class ResnetBasicBlockGradAttr {
       const DenseTensor &max_filter3,
       const DenseTensor &out,
       const DenseTensor &out_grad,
-      int stride1_in,
-      int stride2_in,
-      int stride3_in,
-      int padding1_in,
-      int padding2_in,
-      int padding3_in,
-      int dilation1_in,
-      int dilation2_in,
-      int dilation3_in,
-      int group_in,
+      int64_t stride1_in,
+      int64_t stride2_in,
+      int64_t stride3_in,
+      int64_t padding1_in,
+      int64_t padding2_in,
+      int64_t padding3_in,
+      int64_t dilation1_in,
+      int64_t dilation2_in,
+      int64_t dilation3_in,
+      int64_t group_in,
       float momentum_in,
       float epsilon_in,
       const std::string &data_format_in,
@@ -100,16 +100,16 @@ class ResnetBasicBlockGradAttr {
     auto conv1_out = &conv1_in;
     auto filter2 = &filter2_in;
     auto conv2_out = &conv2_in;
-    conv1_input_shape = common::vectorize<int>(input1->dims());
-    conv1_output_shape = common::vectorize<int>(conv1_out->dims());
-    conv1_filter_shape = common::vectorize<int>(filter1->dims());
+    conv1_input_shape = common::vectorize<int64_t>(input1->dims());
+    conv1_output_shape = common::vectorize<int64_t>(conv1_out->dims());
+    conv1_filter_shape = common::vectorize<int64_t>(filter1->dims());
     conv1_filter_numel = filter1->numel();
     conv1_input_numel = input1->numel();
     conv1_output_numel = conv1_out->numel();
 
-    conv2_input_shape = common::vectorize<int>(conv1_out->dims());
-    conv2_output_shape = common::vectorize<int>(conv2_out->dims());
-    conv2_filter_shape = common::vectorize<int>(filter2->dims());
+    conv2_input_shape = common::vectorize<int64_t>(conv1_out->dims());
+    conv2_output_shape = common::vectorize<int64_t>(conv2_out->dims());
+    conv2_filter_shape = common::vectorize<int64_t>(filter2->dims());
     conv2_filter_numel = filter2->numel();
     conv2_input_numel = conv1_out->numel();
     conv2_output_numel = conv2_out->numel();
@@ -117,48 +117,48 @@ class ResnetBasicBlockGradAttr {
     if (has_shortcut) {
       auto filter3 = filter3_in.get_ptr();
       auto conv3_out = conv3_in.get_ptr();
-      conv3_input_shape = common::vectorize<int>(input1->dims());
-      conv3_output_shape = common::vectorize<int>(conv3_out->dims());
-      conv3_filter_shape = common::vectorize<int>(filter3->dims());
+      conv3_input_shape = common::vectorize<int64_t>(input1->dims());
+      conv3_output_shape = common::vectorize<int64_t>(conv3_out->dims());
+      conv3_filter_shape = common::vectorize<int64_t>(filter3->dims());
       conv3_filter_numel = filter3->numel();
       conv3_input_numel = input1->numel();
       conv3_output_numel = conv3_out->numel();
     }
   }
 
-  int padding1;
-  int padding2;
-  int padding3;
-  int stride1;
-  int stride2;
-  int stride3;
-  int dilation1;
-  int dilation2;
-  int dilation3;
-  int group;
+  int64_t padding1;
+  int64_t padding2;
+  int64_t padding3;
+  int64_t stride1;
+  int64_t stride2;
+  int64_t stride3;
+  int64_t dilation1;
+  int64_t dilation2;
+  int64_t dilation3;
+  int64_t group;
 
   bool has_shortcut;
   bool find_max;
 
-  std::vector<int> conv1_input_shape;
-  std::vector<int> conv1_output_shape;
-  std::vector<int> conv1_filter_shape;
-  std::vector<int> conv2_input_shape;
-  std::vector<int> conv2_output_shape;
-  std::vector<int> conv2_filter_shape;
-  std::vector<int> conv3_input_shape;
-  std::vector<int> conv3_output_shape;
-  std::vector<int> conv3_filter_shape;
+  std::vector<int64_t> conv1_input_shape;
+  std::vector<int64_t> conv1_output_shape;
+  std::vector<int64_t> conv1_filter_shape;
+  std::vector<int64_t> conv2_input_shape;
+  std::vector<int64_t> conv2_output_shape;
+  std::vector<int64_t> conv2_filter_shape;
+  std::vector<int64_t> conv3_input_shape;
+  std::vector<int64_t> conv3_output_shape;
+  std::vector<int64_t> conv3_filter_shape;
 
-  int conv1_filter_numel;
-  int conv2_filter_numel;
-  int conv3_filter_numel;
-  int conv1_input_numel;
-  int conv2_input_numel;
-  int conv3_input_numel;
-  int conv1_output_numel;
-  int conv2_output_numel;
-  int conv3_output_numel;
+  int64_t conv1_filter_numel;
+  int64_t conv2_filter_numel;
+  int64_t conv3_filter_numel;
+  int64_t conv1_input_numel;
+  int64_t conv2_input_numel;
+  int64_t conv3_input_numel;
+  int64_t conv1_output_numel;
+  int64_t conv2_output_numel;
+  int64_t conv3_output_numel;
 };
 
 template <typename T>
@@ -170,20 +170,20 @@ static inline void xpu_conv2d_grad(xpu::Context *ctx,
                                    T *filter_grad_data,
                                    const float *input_max_data,
                                    const float *filter_max_data,
-                                   const std::vector<int> &input_shape,
-                                   const std::vector<int> &filter_shape,
-                                   int padding,
-                                   int stride,
-                                   int dilation,
-                                   int group) {
-  std::vector<int> ksize{filter_shape[2], filter_shape[3]};
-  std::vector<int> stride_vec{stride, stride};
-  std::vector<int> dilation_vec{dilation, dilation};
-  std::vector<int> padding_vec{padding, padding};
-  int N = input_shape[0];
-  int C = input_shape[1];
-  int H = input_shape[2];
-  int W = input_shape[3];
+                                   const std::vector<int64_t> &input_shape,
+                                   const std::vector<int64_t> &filter_shape,
+                                   int64_t padding,
+                                   int64_t stride,
+                                   int64_t dilation,
+                                   int64_t group) {
+  std::vector<int64_t> ksize{filter_shape[2], filter_shape[3]};
+  std::vector<int64_t> stride_vec{stride, stride};
+  std::vector<int64_t> dilation_vec{dilation, dilation};
+  std::vector<int64_t> padding_vec{padding, padding};
+  int64_t N = input_shape[0];
+  int64_t C = input_shape[1];
+  int64_t H = input_shape[2];
+  int64_t W = input_shape[3];
 
   int r = xpu::conv2d_grad<T, T, T, int16_t>(ctx,
                                              input_data,

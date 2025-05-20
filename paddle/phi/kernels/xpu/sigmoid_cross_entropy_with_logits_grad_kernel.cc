@@ -66,7 +66,7 @@ void SigmoidCrossEntropyWithLogitsGradKernel(
       x.numel());
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "sigmoid_cross_entropy_with_logits");
   if (normalize) {
-    int* non_zero = RAII_GUARD.alloc_l3_or_gm<int>(1);
+    int64_t* non_zero = RAII_GUARD.alloc_l3_or_gm<int64_t>(1);
     PADDLE_ENFORCE_NOT_NULL(
         non_zero, errors::External("XPU alloc_l3_or_gm returns nullptr"));
     int r = xpu::nonzero_count(dev_ctx.x_context(),
@@ -74,12 +74,12 @@ void SigmoidCrossEntropyWithLogitsGradKernel(
                                non_zero,
                                x.numel());
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "nonzero_count");
-    int non_zero_cpu = 0;
+    int64_t non_zero_cpu = 0;
     memory_utils::Copy(CPUPlace(),
                        static_cast<void*>(&non_zero_cpu),
                        dev_ctx.GetPlace(),
                        static_cast<void*>(non_zero),
-                       sizeof(int));
+                       sizeof(int64_t));
     if (std::getenv("XPUSIM_SKIP_RUN") &&
         std::strcmp(std::getenv("XPUSIM_SKIP_RUN"), "1") == 0) {
       VLOG(3)

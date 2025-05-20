@@ -48,6 +48,7 @@
 - increment
 - linspace
 - logspace
+- lp_pool2d
 - matrix_rank
 - matrix_rank_tol
 - max

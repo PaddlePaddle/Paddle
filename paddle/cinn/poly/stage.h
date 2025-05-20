@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include <absl/container/flat_hash_map.h>
 #include <glog/logging.h>
 #include <isl/cpp.h>
 
@@ -32,6 +31,7 @@
 #include "paddle/cinn/ir/tensor.h"
 #include "paddle/cinn/poly/domain.h"
 #include "paddle/cinn/poly/map.h"
+#include "paddle/utils/flat_hash_map.h"
 
 namespace cinn {
 namespace poly {
@@ -513,7 +513,7 @@ class _StageMap_ : public Object {
   static constexpr const char* __type_info__ = "StageMap";
 
  private:
-  absl::flat_hash_map<std::string, Shared<Stage>> data_;
+  paddle::flat_hash_map<std::string, Shared<Stage>> data_;
 };
 }  // namespace poly
 }  // namespace cinn

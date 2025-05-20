@@ -70,6 +70,51 @@ class TestRealOp(OpTest):
         )
 
 
+class TestRealOpZeroSize1(TestRealOp):
+    def init_input_output(self):
+        self.inputs = {
+            'X': np.random.random(0).astype(self.dtype)
+            + 1j * np.random.random(0).astype(self.dtype)
+        }
+        self.outputs = {'Out': numpy_apis[self.op_type](self.inputs['X'])}
+
+    def init_grad_input_output(self):
+        self.grad_out = np.ones((0), self.dtype)
+        self.grad_x = np.real(self.grad_out) + 1j * np.zeros(
+            self.grad_out.shape
+        )
+
+
+class TestRealOpZeroSize2(TestRealOp):
+    def init_input_output(self):
+        self.inputs = {
+            'X': np.random.random((0, 5)).astype(self.dtype)
+            + 1j * np.random.random((0, 5)).astype(self.dtype)
+        }
+        self.outputs = {'Out': numpy_apis[self.op_type](self.inputs['X'])}
+
+    def init_grad_input_output(self):
+        self.grad_out = np.ones((0, 5), self.dtype)
+        self.grad_x = np.real(self.grad_out) + 1j * np.zeros(
+            self.grad_out.shape
+        )
+
+
+class TestRealOpZeroSize3(TestRealOp):
+    def init_input_output(self):
+        self.inputs = {
+            'X': np.random.random((2, 0, 5)).astype(self.dtype)
+            + 1j * np.random.random((2, 0, 5)).astype(self.dtype)
+        }
+        self.outputs = {'Out': numpy_apis[self.op_type](self.inputs['X'])}
+
+    def init_grad_input_output(self):
+        self.grad_out = np.ones((2, 0, 5), self.dtype)
+        self.grad_x = np.real(self.grad_out) + 1j * np.zeros(
+            self.grad_out.shape
+        )
+
+
 class TestImagOp(TestRealOp):
     def setUp(self):
         # switch to static
@@ -84,6 +129,51 @@ class TestImagOp(TestRealOp):
 
     def init_grad_input_output(self):
         self.grad_out = np.ones((20, 5), self.dtype)
+        self.grad_x = np.zeros(self.grad_out.shape) + 1j * np.real(
+            self.grad_out
+        )
+
+
+class TestImagOpZeroSize1(TestImagOp):
+    def init_input_output(self):
+        self.inputs = {
+            'X': np.random.random(0).astype(self.dtype)
+            + 1j * np.random.random(0).astype(self.dtype)
+        }
+        self.outputs = {'Out': numpy_apis[self.op_type](self.inputs['X'])}
+
+    def init_grad_input_output(self):
+        self.grad_out = np.ones((0), self.dtype)
+        self.grad_x = np.zeros(self.grad_out.shape) + 1j * np.real(
+            self.grad_out
+        )
+
+
+class TestImagOpZeroSize2(TestImagOp):
+    def init_input_output(self):
+        self.inputs = {
+            'X': np.random.random((0, 5)).astype(self.dtype)
+            + 1j * np.random.random((0, 5)).astype(self.dtype)
+        }
+        self.outputs = {'Out': numpy_apis[self.op_type](self.inputs['X'])}
+
+    def init_grad_input_output(self):
+        self.grad_out = np.ones((0, 5), self.dtype)
+        self.grad_x = np.zeros(self.grad_out.shape) + 1j * np.real(
+            self.grad_out
+        )
+
+
+class TestImagOpZeroSize3(TestImagOp):
+    def init_input_output(self):
+        self.inputs = {
+            'X': np.random.random((20, 0, 5)).astype(self.dtype)
+            + 1j * np.random.random((20, 0, 5)).astype(self.dtype)
+        }
+        self.outputs = {'Out': numpy_apis[self.op_type](self.inputs['X'])}
+
+    def init_grad_input_output(self):
+        self.grad_out = np.ones((20, 0, 5), self.dtype)
         self.grad_x = np.zeros(self.grad_out.shape) + 1j * np.real(
             self.grad_out
         )

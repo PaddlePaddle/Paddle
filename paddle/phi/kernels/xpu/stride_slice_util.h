@@ -18,10 +18,10 @@
 
 namespace phi {
 
-inline bool is_strided_slice_special_case(const std::vector<int>& xshape,
-                                          const std::vector<int>& starts,
-                                          const std::vector<int>& ends,
-                                          const std::vector<int>& strides) {
+inline bool is_strided_slice_special_case(const std::vector<int64_t>& xshape,
+                                          const std::vector<int64_t>& starts,
+                                          const std::vector<int64_t>& ends,
+                                          const std::vector<int64_t>& strides) {
   // starts match {0, 0, ..., 0, 0} or {0, 0, ..., 0, 1}
   for (size_t i = 0; i < starts.size() - 1; i++) {
     if (starts[i] != 0) {

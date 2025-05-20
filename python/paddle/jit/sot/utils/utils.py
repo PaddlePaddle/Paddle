@@ -30,6 +30,7 @@ from weakref import WeakValueDictionary
 import numpy as np
 
 import paddle
+from paddle.jit.dy2static.utils import TransformOptions
 from paddle.utils import flatten, map_structure
 
 from .envs import (
@@ -194,6 +195,14 @@ def is_paddle_api(func):
     ):  # paddle.Tensor should not be wrapped, but how about other situations?
         return False
     return in_paddle_module(func) or func in paddle_api_list
+
+
+def already_unified_in_dynamic_and_static_graph(fn):
+    if is_paddle_api(fn):
+        return True
+    return not TransformOptions.check_fn_need_transform(
+        fn, TransformOptions.ToStaticMode.SOT
+    )
 
 
 def is_builtin_fn(fn):
