@@ -225,6 +225,14 @@ std::vector<paddle::Tensor> RunBackward(
   std::unordered_map<GradNodeBase*, int> node_in_degree_map =
       getInDegreeMap(queue);
 
+  std::deque<GradNodeBase*> ready_queue;
+  for (GradNodeBase* item : queue) {
+    if (!node_in_degree_map.count(item)) {
+      ready_queue.push_back(item);
+    }
+  }
+  queue = ready_queue;
+
   std::list<GradNodeBase*> force_sequential_nodes_forward_queue =
       egr::Controller::Instance().GetForceSequentialNodes();
   std::deque<GradNodeBase*> force_sequential_nodes_queue;
