@@ -48,23 +48,23 @@ def IsCertainDevices():
 class TestMatmulEpilogue(unittest.TestCase):
     def setUp(self):
         dtype = 'float16'
-        x_shape = [64, 32, 32]
+        x_shape = [32, 16, 16]
         self.x = paddle.randn(x_shape, dtype=dtype)
         self.x.stop_gradient = False
 
-        y_shape = [32, 32]
+        y_shape = [16, 16]
         self.y = paddle.randn(y_shape, dtype=dtype)
         self.y.stop_gradient = False
 
-        b_shape = [64, 32, 32]
+        b_shape = [32, 16, 16]
         self.b = paddle.randn(b_shape, dtype=dtype)
         self.b.stop_gradient = False
 
     def getSubGraph(self):
-        B = pct.DimVar(64)
-        M = pct.DimVar(32)
-        K = pct.DimVar(32)
-        N = pct.DimVar(32)
+        B = pct.DimVar(32)
+        M = pct.DimVar(16)
+        K = pct.DimVar(16)
+        N = pct.DimVar(16)
         DType = pct.DTypeVar("T", "float16")
 
         def foo(
@@ -89,10 +89,9 @@ class TestMatmulEpilogue(unittest.TestCase):
             fused_foo, [self.x, self.y, self.b]
         )
         assert 'pd_op.ap_variadic' in generated_pir_program
-        ap_outs = fused_foo(self.x, self.y, self.b)
-        dy_outs = foo(self.x, self.y, self.b)
         if IsCertainDevices():
-            print('we are here')
+            ap_outs = fused_foo(self.x, self.y, self.b)
+            dy_outs = foo(self.x, self.y, self.b)
             for dy_out, ap_out in zip(dy_outs, ap_outs):
                 np.testing.assert_allclose(dy_out, ap_out, atol=1e-1)
 

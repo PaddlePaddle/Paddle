@@ -13,15 +13,21 @@
 # limitations under the License.
 
 import abstract_drr
+import access_topo_drr  # noqa: F401
 import ap
 import index_program_translator_util
 import ir_tools
 import kernel_arg_id_util
+import kernel_arg_translator_util  # noqa: F401
+import low_level_ir_code_gen_ctx_util  # noqa: F401
 import matmul_epilogue_pass
 import matmul_variadic_tpl
 import op_compute_translator_util
+import op_conversion_drr_pass  # noqa: F401
+import pir  # noqa: F401
 import program_translator_util
 import topo_drr_pass
+import umprime  # noqa: F401
 
 
 class MatmulEpilogueFusion(abstract_drr.DrrPass):

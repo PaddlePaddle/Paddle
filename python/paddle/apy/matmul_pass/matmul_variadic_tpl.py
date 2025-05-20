@@ -82,17 +82,19 @@ class MatmulVariadicTemplate:
             ),
         ]
         print(f"-- kargs_name_pair_list: {kargs_name_pair_list}")
-        ap.map(self._register_name, kargs_name_pair_list)
 
+        ap.map(self._register_name, kargs_name_pair_list)
         mut_lir_code_gen_ctx = (
             low_level_ir_code_gen_ctx_util.CudaLikeIrCodeGenCtx(
                 compute_dtype=ap.DataType.float
             )
         )
+
         self.program_translator.translate(
             mut_kernel_arg_id_registry=self.mut_kernel_arg_id_registry,
             mut_lir_code_gen_ctx=mut_lir_code_gen_ctx,
         )
+
         trivial_code_str = mut_lir_code_gen_ctx.get_stmts_joined_str(
             indent="    "
         )

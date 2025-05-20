@@ -325,7 +325,7 @@ class DownSpiderLoadFromGlobalAccessTopoPass(access_topo_drr.DrrPass):
         o.fustion_op([t.input], [t.output])
 
 
-# @access_topo_drr.register_drr_pass("down_spider_up_spider", tag="default")
+@access_topo_drr.register_drr_pass("down_spider_up_spider", tag="default")
 class DownSpiderUpSpiderAccessTopoPass(access_topo_drr.DrrPass):
 
     def source_pattern(self, o, t):
