@@ -264,7 +264,13 @@ bool IsDenseTensorHoldAllocationMatchGuard::check(PyObject* value) {
     PyErr_Print();
     return false;
   }
-  return !result;
+  int truthy = PyObject_IsTrue(result);
+  Py_DECREF(result);
+  if (truthy == -1) {
+    PyErr_Print();
+    return false;
+  }
+  return truthy;
 }
 
 PyObject* ConstantExprNode::eval(FrameProxy* frame) { return value_ptr_; }
