@@ -722,7 +722,7 @@
   composite: cumprod_grad(x, out, out_grad, dim, exclusive, reverse, x_grad)
 
 - backward_op : cumsum_grad
-  forward : cumsum(Tensor x, Scalar axis=-1, bool flatten=false, bool exclusive=false, bool reverse=false) -> Tensor(out)
+  forward : cumsum(Tensor x, Scalar axis=-1, bool flatten=false, bool exclusive=false, bool reverse=false, DataType dtype = DataType::UNDEFINED) -> Tensor(out)
   args : (Tensor x, Tensor out_grad, Scalar axis, bool flatten, bool exclusive, bool reverse)
   output : Tensor(x_grad)
   infer_meta :
@@ -730,7 +730,7 @@
     param: [x]
   kernel :
     func : cumsum_grad
-    data_type: x
+    data_type: out_grad
   composite: cumsum_grad(x, out_grad, axis, flatten, exclusive, reverse, x_grad)
 
 - backward_op : cvm_grad

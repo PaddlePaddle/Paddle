@@ -678,8 +678,18 @@ void CumScalarAxisInferMeta(const MetaTensor& x,
                             bool flatten,
                             bool exclusive,
                             bool reverse,
+                            DataType dtype,
                             MetaTensor* out) {
   CumInferMeta(x, axis.to<int>(), flatten, exclusive, reverse, out);
+  if (dtype == DataType::UNDEFINED) {
+    if (x.dtype() == DataType::INT32) {
+      out->set_dtype(DataType::INT64);
+    } else {
+      out->set_dtype(x.dtype());
+    }
+  } else {
+    out->set_dtype(dtype);
+  }
 }
 
 void CumWithIndicesInferMeta(const MetaTensor& x,

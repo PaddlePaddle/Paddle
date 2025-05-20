@@ -43,7 +43,8 @@ SpmdInfo CumSumInferSpmdDynamic(const DistMetaTensor& x,
                                 const Scalar& axis,
                                 bool flatten,
                                 bool exclusive,
-                                bool reverse);
+                                bool reverse,
+                                DataType dtype);
 
 SpmdInfo CumSumGradInferSpmd(const DistMetaTensor& x,
                              const DistMetaTensor& out_grad,

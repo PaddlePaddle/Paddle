@@ -26,6 +26,7 @@ void CumsumKernel(const Context& dev_ctx,
                   bool flatten,
                   bool exclusive,
                   bool reverse,
+                  DataType dtype,
                   DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   dev_ctx.template Alloc<T>(out);

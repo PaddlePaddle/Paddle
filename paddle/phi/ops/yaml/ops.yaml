@@ -1268,7 +1268,7 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
 
 - op : cumsum
-  args : (Tensor x, Scalar axis=-1, bool flatten=false, bool exclusive=false, bool reverse=false)
+  args : (Tensor x, Scalar axis=-1, bool flatten=false, bool exclusive=false, bool reverse=false, DataType dtype = DataType::UNDEFINED)
   output : Tensor(out)
   infer_meta :
     func : CumScalarAxisInferMeta

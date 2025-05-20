@@ -26,6 +26,7 @@ void CumsumKernel(const Context& dev_ctx,
                   bool flatten,
                   bool exclusive,
                   bool reverse,
+                  DataType dtype,
                   DenseTensor* out);
 
 template <typename T, typename Context>

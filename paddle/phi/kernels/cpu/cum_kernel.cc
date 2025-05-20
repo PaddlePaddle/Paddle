@@ -35,8 +35,9 @@ void ComputeImp(Device d,
                 bool exclusive,
                 Reducer reducer) {
   if (!reverse) {
-    out.reshape(dims).device(d) =
-        x.reshape(dims).scan(axis, reducer, exclusive);
+    out.reshape(dims).device(d) = x.reshape(dims)
+                                      .scan(axis, reducer, exclusive)
+                                      .template cast<typename Out::Scalar>();
   } else {
     std::array<bool, Dim::count> rev;
     rev.fill(false);
@@ -44,11 +45,12 @@ void ComputeImp(Device d,
     out.reshape(dims).device(d) = x.reshape(dims)
                                       .reverse(rev)
                                       .scan(axis, reducer, exclusive)
-                                      .reverse(rev);
+                                      .reverse(rev)
+                                      .template cast<typename Out::Scalar>();
   }
 }
 
-template <typename T, typename Context, typename Reducer>
+template <typename InT, typename OutT, typename Context, typename Reducer>
 void ScanKernel(const Context& dev_ctx,
                 const DenseTensor& x,
                 int axis,
@@ -57,7 +59,7 @@ void ScanKernel(const Context& dev_ctx,
                 bool reverse,
                 Reducer reducer,
                 DenseTensor* out) {
-  dev_ctx.template Alloc<T>(out);
+  dev_ctx.template Alloc<OutT>(out);
   if (out->numel() == 0) {
     return;
   }
@@ -92,8 +94,8 @@ void ScanKernel(const Context& dev_ctx,
     post *= static_cast<int>(out_dims[i]);
   }
 
-  auto x0 = EigenVector<T>::Flatten(x);
-  auto out0 = EigenVector<T>::Flatten(*out);
+  auto x0 = EigenVector<InT>::Flatten(x);
+  auto out0 = EigenVector<OutT>::Flatten(*out);
   auto& place = *dev_ctx.eigen_device();
 
   using IndexT = Eigen::DenseIndex;
@@ -140,6 +142,46 @@ void ScanKernel(const Context& dev_ctx,
   }
 }
 
+template <typename DeviceContext, typename InT>
+struct CumsumKernelVisitor {
+  const DeviceContext& dev_ctx_;
+  const DenseTensor& x_;
+  int axis_scalar_;
+  bool flatten_;
+  bool exclusive_;
+  bool reverse_;
+  DenseTensor* out_;
+
+  CumsumKernelVisitor(const DeviceContext& dev_ctx,
+                      const DenseTensor& x,
+                      int axis,
+                      bool flatten,
+                      bool exclusive,
+                      bool reverse,
+                      DenseTensor* out)
+      : dev_ctx_(dev_ctx),
+        x_(x),
+        axis_scalar_(axis),
+        flatten_(flatten),
+        exclusive_(exclusive),
+        reverse_(reverse),
+        out_(out) {}
+
+  template <typename OutT>
+  void apply() const {
+    using Reducer = Eigen::internal::SumReducer<InT>;
+    auto reducer = Reducer();
+    ScanKernel<InT, OutT, DeviceContext, Reducer>(dev_ctx_,
+                                                  x_,
+                                                  axis_scalar_,
+                                                  flatten_,
+                                                  exclusive_,
+                                                  reverse_,
+                                                  reducer,
+                                                  out_);
+  }
+};
+
 template <typename T, typename Context>
 void CumsumKernel(const Context& dev_ctx,
                   const DenseTensor& x,
@@ -147,11 +189,12 @@ void CumsumKernel(const Context& dev_ctx,
                   bool flatten,
                   bool exclusive,
                   bool reverse,
+                  DataType dtype,
                   DenseTensor* out) {
-  using Reducer = Eigen::internal::SumReducer<T>;
-  auto reducer = Reducer();
-  ScanKernel<T, Context, Reducer>(
-      dev_ctx, x, axis.to<int>(), flatten, exclusive, reverse, reducer, out);
+  phi::VisitDataType(
+      out->dtype(),
+      CumsumKernelVisitor<Context, T>{
+          dev_ctx, x, axis.to<int>(), flatten, exclusive, reverse, out});
 }
 
 template <typename T>
@@ -259,7 +302,7 @@ void LogcumsumexpKernel(const Context& dev_ctx,
                         DenseTensor* out) {
   using Reducer = LogSumExpReducer<T>;
   auto reducer = Reducer();
-  ScanKernel<T, Context, Reducer>(
+  ScanKernel<T, T, Context, Reducer>(
       dev_ctx, x, axis, flatten, exclusive, reverse, reducer, out);
 }
 

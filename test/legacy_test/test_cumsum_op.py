@@ -34,7 +34,7 @@ from paddle.base import core
 class TestCumsumOp(unittest.TestCase):
     def run_cases(self):
         data_np = np.arange(12).reshape(3, 4)
-        data = paddle.to_tensor(data_np)
+        data = paddle.to_tensor(data_np, place=paddle.base.CPUPlace())
 
         y = paddle.cumsum(data)
         z = np.cumsum(data_np)
@@ -59,7 +59,7 @@ class TestCumsumOp(unittest.TestCase):
         np.testing.assert_array_equal(z, y.numpy())
 
         data_np = np.random.random([1, 2, 0])
-        data = paddle.to_tensor(data_np)
+        data = paddle.to_tensor(data_np, place=paddle.base.CPUPlace())
 
         y = paddle.cumsum(data, axis=0, dtype=paddle.float32)
         z = np.cumsum(data_np, axis=0, dtype=np.float32)
@@ -109,6 +109,7 @@ class TestCumsumOp(unittest.TestCase):
         paddle.enable_static()
 
     def test_cpu_static(self):
+        paddle.enable_static()
         self.run_static()
 
     def test_gpu_dygraph(self):
@@ -131,8 +132,10 @@ class TestCumsumOp(unittest.TestCase):
                 self.assertTrue('out' in y.name)
 
 
-def cumsum_wrapper(x, axis=-1, flatten=False, exclusive=False, reverse=False):
-    return paddle._C_ops.cumsum(x, axis, flatten, exclusive, reverse)
+def cumsum_wrapper(
+    x, axis=-1, flatten=False, exclusive=False, reverse=False, dtype=None
+):
+    return paddle._C_ops.cumsum(x, axis, flatten, exclusive, reverse, dtype)
 
 
 class TestSumOp1(OpTest):
@@ -608,7 +611,7 @@ class BadInputTest(unittest.TestCase):
                 data = [1, 2, 4]
                 result = paddle.cumsum(data, axis=0)
 
-            with self.assertRaises(AttributeError):
+            with self.assertRaises(TypeError):
                 test_bad_x()
         paddle.disable_static()
 

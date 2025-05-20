@@ -177,6 +177,7 @@ void CumScalarAxisInferMeta(const MetaTensor& x,
                             bool flatten,
                             bool exclusive,
                             bool reverse,
+                            DataType dtype,
                             MetaTensor* out);
 
 void CumWithIndicesInferMeta(const MetaTensor& x,

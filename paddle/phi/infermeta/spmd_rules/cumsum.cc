@@ -104,7 +104,8 @@ SpmdInfo CumSumInferSpmdDynamic(const DistMetaTensor& x,
                                 const Scalar& axis,
                                 bool flatten,
                                 bool exclusive,
-                                bool reverse) {
+                                bool reverse,
+                                DataType dtype) {
   return CumSumInferSpmd(x, axis.to<int32_t>(), flatten, exclusive, reverse);
 }
 
