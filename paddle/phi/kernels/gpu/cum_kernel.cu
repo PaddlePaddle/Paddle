@@ -437,7 +437,6 @@ void ScanKernel(const Context& dev_ctx,
             next_out_data, next_in_data, width, height);
   }
 }
-}
 
 template <typename DeviceContext, typename InT>
 struct CumsumKernelVisitor {
