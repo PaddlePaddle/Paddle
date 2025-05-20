@@ -120,39 +120,21 @@ def verify_dims_mapping(dims_mapping, process_mesh):
 
 
 def convert_to_dims_mapping(shard_spec, process_mesh):
-    dims_mapping = [[] for _ in range(len(shard_spec))]
+    dims_mapping = [[] for _ in shard_spec]
     dim_names = process_mesh.dim_names
     for idx, shard in enumerate(shard_spec):
         if len(shard) > 0:
             dims_mapping[idx] = [dim_names.index(s) for s in shard]
     return dims_mapping
 
-    # for shard in shard_spec:
-    #     if shard is None:
-    #         dims_mapping.append(-1)
-    #     elif process_mesh.shape[process_mesh.dim_names.index(shard)] == 1:
-    #         dims_mapping.append(-1)
-    #     else:
-    #         dims_mapping.append(process_mesh.dim_names.index(shard))
-    # return dims_mapping
-
 
 def convert_to_shard_spec(dims_mapping, process_mesh):
     mesh_dim_names = process_mesh.dim_names
-    shard_spec = [[] for _ in range(len(dims_mapping))]
+    shard_spec = [[] for _ in dims_mapping]
     for tensor_dim, mesh_dims in enumerate(dims_mapping):
         if len(mesh_dims) > 0:
             shard_spec[tensor_dim] = mesh_dim_names[mesh_dims]
     return shard_spec
-    # shard_spec = []
-    # for dim_mapping in dims_mapping:
-    #     if dim_mapping == -1:
-    #         shard_spec.append(None)
-    #     else:
-    #         shard_spec.append(process_mesh.dim_names[dim_mapping])
-    # return shard_spec
-
-
 
 
 def verify_shard_spec(shard_spec, tensor_shape, process_mesh):
@@ -168,7 +150,7 @@ def verify_shard_spec(shard_spec, tensor_shape, process_mesh):
         return False
     for i in range(len(tensor_shape)):
         if (
-            dims_mapping[i] != -1
+            len(dims_mapping[i]) > 0
             and tensor_shape[i] > 0
             and tensor_shape[i] % process_mesh.shape[dims_mapping[i]] != 0
         ):

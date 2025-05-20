@@ -329,30 +329,42 @@ std::string TensorDistAttr::to_string() const {
 }
 
 void TensorDistAttr::from_proto(const TensorDistAttrProto& proto) {
-  // process_mesh_ = ProcessMesh::from_proto(proto.process_mesh());
-  // dims_mapping_.resize(proto.dims_mapping_size());
-  // for (int i = 0; i < proto.dims_mapping_size(); ++i) {
-  //   dims_mapping_[i] = proto.dims_mapping(i);
-  // }
-  // batch_dim_ = proto.batch_dim();
-  // chunk_id_ = proto.chunk_id();
-  // dynamic_dims_.resize(proto.dynamic_dims_size());
-  // for (int i = 0; i < proto.dynamic_dims_size(); ++i) {
-  //   dynamic_dims_[i] = proto.dynamic_dims(i);
-  // }
+  process_mesh_ = ProcessMesh::from_proto(proto.process_mesh());
+  dims_mapping_2d_.resize(proto.dims_mapping_size());
+
+  for (int i = 0; i < proto.dims_mapping_size(); ++i) {
+    const auto& mesh_dims_proto = proto.dims_mapping(i);
+    std::vector<int64_t> mesh_dims_vec;
+    for (int j = 0; j < mesh_dims_proto.mesh_dims_size(); ++j) {
+      mesh_dims_vec.push_back(mesh_dims_proto.mesh_dims(j));
+    }
+    dims_mapping_2d_[i] = mesh_dims_vec;
+  }
+
+  batch_dim_ = proto.batch_dim();
+  chunk_id_ = proto.chunk_id();
+  dynamic_dims_.resize(proto.dynamic_dims_size());
+  for (int i = 0; i < proto.dynamic_dims_size(); ++i) {
+    dynamic_dims_[i] = proto.dynamic_dims(i);
+  }
 }
 
 void TensorDistAttr::to_proto(TensorDistAttrProto* proto) const {
-  // proto->mutable_process_mesh()->CopyFrom(
-  //     phi::distributed::to_proto(process_mesh_));
-  // for (const auto& i : dims_mapping_) {
-  //   proto->add_dims_mapping(i);
-  // }
-  // proto->set_batch_dim(batch_dim_);
-  // proto->set_chunk_id(chunk_id_);
-  // for (const auto& i : dynamic_dims_) {
-  //   proto->add_dynamic_dims(i);
-  // }
+  proto->mutable_process_mesh()->CopyFrom(
+      phi::distributed::to_proto(process_mesh_));
+
+  for (size_t i = 0; i < dims_mapping_2d_.size(); ++i) {
+    proto->add_dims_mapping();
+    for (size_t j = 0; j < dims_mapping_2d_.at(i).size(); ++j) {
+      proto->mutable_dims_mapping(i)->add_mesh_dims(dims_mapping_2d_[i][j]);
+    }
+  }
+
+  proto->set_batch_dim(batch_dim_);
+  proto->set_chunk_id(chunk_id_);
+  for (const auto& i : dynamic_dims_) {
+    proto->add_dynamic_dims(i);
+  }
 }
 
 std::string TensorDistAttr::serialize_to_string() {

@@ -299,10 +299,8 @@ class TEST_API TensorDistAttr {
   auto_parallel::SplitFactor split_factor_map_;
   // The flag indicates whether to skip checking the process mesh.
   bool skip_check_mesh_ = false;
-  private:
+  
   std::vector<std::vector<int64_t>> dims_mapping_2d_;
-
-  protected:
   // for short time, backward compatible for existing spmd relus.
   DimMapProxy dims_mapping_proxy{dims_mapping_2d_};
 };
