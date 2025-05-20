@@ -12,9 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/scalar.h"
-#include "paddle/phi/infermeta/spmd_rules/unique.h"
 #include "test/cpp/auto_parallel/spmd_rule_test_util.h"
 
 namespace paddle {

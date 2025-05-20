@@ -23,7 +23,7 @@ from paddle.distributed.fleet import auto
 from paddle.framework import core
 
 
-class TestMeanAllSPMDRule(unittest.TestCase):
+class TestUniqueSPMDRule(unittest.TestCase):
     def setUp(self):
         self.rule = core.get_phi_spmd_rule("unique")
         x_shape = [4, 8]
