@@ -29,6 +29,10 @@ namespace phi {
                         const DenseTensor& dout,                    \
                         DenseTensor* dx) {                          \
     funcs::functor_class<T> functor;                                \
+    if (dx && dx->numel() == 0) {                                   \
+      dev_ctx.template Alloc<T>(dx);                                \
+      return;                                                       \
+    }                                                               \
     ActivationGradImpl<T, Context, funcs::functor_class<T>>(        \
         dev_ctx, &x, nullptr, &dout, dx, functor);                  \
   }
@@ -72,6 +76,10 @@ namespace phi {
                         const DenseTensor& dout,                      \
                         DenseTensor* dx) {                            \
     funcs::functor_class<T> functor;                                  \
+    if (dx && dx->numel() == 0) {                                     \
+      dev_ctx.template Alloc<T>(dx);                                  \
+      return;                                                         \
+    }                                                                 \
     ActivationGradImpl<T, Context, funcs::functor_class<T>>(          \
         dev_ctx, nullptr, &out, &dout, dx, functor);                  \
   }
@@ -113,6 +121,9 @@ namespace phi {
   void name##GradKernel(                                                  \
       const Context& dev_ctx, const DenseTensor& dout, DenseTensor* dx) { \
     funcs::functor_class<T> functor;                                      \
+    if (dx && dx->numel() == 0) {                                         \
+      dev_ctx.template Alloc<T>(dx);                                      \
+    }                                                                     \
     ActivationGradImpl<T, Context, funcs::functor_class<T>>(              \
         dev_ctx, nullptr, nullptr, &dout, dx, functor);                   \
   }
@@ -130,13 +141,6 @@ DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DEPX(Acosh, AcoshGradFunctor);
 DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DEPX(Atanh, AtanhGradFunctor);
 DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DEPX(TanhShrink, TanhShrinkGradFunctor);
 DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DEPX(Square, SquareGradFunctor);
-
-DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Exp, ExpGradFunctor);
-DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Expm1, Expm1GradFunctor);
-DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Reciprocal, ReciprocalGradFunctor);
-DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Sqrt, SqrtGradFunctor);
-DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Rsqrt, RsqrtGradFunctor);
-DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Relu6, Relu6GradFunctor);
 DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DEPX(Softsign, SoftsignGradFunctor);
 DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DEPX(LogSigmoid, LogSigmoidGradFunctor);
 DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DEPX(Log, LogGradFunctor);
@@ -145,6 +149,12 @@ DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DEPX(Log10, Log10GradFunctor);
 DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DEPX(Log1p, Log1pGradFunctor);
 DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DEPX(Swish, SwishGradFunctor);
 
+DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Exp, ExpGradFunctor);
+DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Expm1, Expm1GradFunctor);
+DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Reciprocal, ReciprocalGradFunctor);
+DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Sqrt, SqrtGradFunctor);
+DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Rsqrt, RsqrtGradFunctor);
+DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Relu6, Relu6GradFunctor);
 DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Relu, ReluGradFunctor);
 DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Tanh, TanhGradFunctor);
 DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Sigmoid, SigmoidGradFunctor);
