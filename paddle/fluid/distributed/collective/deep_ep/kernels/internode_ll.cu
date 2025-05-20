@@ -205,13 +205,12 @@ __global__ __launch_bounds__(
                   max_bound * scale * static_cast<float>(bf16_values[j]);
               quant_value = quant_value > max_bound ? max_bound : quant_value;
               quant_value = quant_value < min_bound ? min_bound : quant_value;
-              res_vec[j] = static_cast<int8_t>(quant_value);
+              res_vec[j] = static_cast<int8_t>(round(quant_value));
             }
-
-            (reinterpret_cast<int2*>(
-                reinterpret_cast<uint8_t*>(rdma_x) +
-                (ii + token_idx * num_topk) * num_bytes_per_msg +
-                sizeof(int4)))[i] = *reinterpret_cast<int2*>(&res_vec);
+            phi::Store(res_vec,
+                       reinterpret_cast<int8_t*>(rdma_x) +
+                           (ii + token_idx * num_topk) * num_bytes_per_msg +
+                           sizeof(int4) + i * sizeof(res_vec));
           }
         }
       }
