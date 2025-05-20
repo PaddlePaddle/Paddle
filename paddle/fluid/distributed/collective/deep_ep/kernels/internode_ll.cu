@@ -90,7 +90,7 @@ __global__ __launch_bounds__(
                      void* rdma_x,
                      const void* x,
                      const int64_t* topk_idx,
-                     const float* moe_in_w4a8_scale,
+                     const float* expertwise_scale,
                      int* atomic_counter_per_expert,
                      int* atomic_finish_counter_per_expert,
                      int* next_clean,
@@ -112,7 +112,7 @@ __global__ __launch_bounds__(
   const auto sub_warp_id = warp_id % kNumWarpsPerGroup;
   const auto responsible_expert_idx = sm_id * kNumWarpGroups + warp_group_id;
 
-  const bool use_w4a8 = moe_in_w4a8_scale;
+  const bool use_expertwise_scale = expertwise_scale;
 
   // FP8 staffs
   constexpr int kNumPerChannels = 128;
@@ -122,7 +122,7 @@ __global__ __launch_bounds__(
   size_t hidden_bytes =
       kHidden * (kUseFP8 ? sizeof(__nv_fp8_storage_t) : sizeof(nv_bfloat16));
 
-  if (use_w4a8) hidden_bytes = kHidden;
+  if (use_expertwise_scale) hidden_bytes = kHidden;
 
   const size_t hidden_int4 = hidden_bytes / sizeof(int4);
 
@@ -132,7 +132,7 @@ __global__ __launch_bounds__(
   size_t num_bytes_per_msg =
       sizeof(int4) + (kUseFP8 ? (kHidden + num_scales * sizeof(float))
                               : (kHidden * sizeof(nv_bfloat16)));
-  if (use_w4a8) num_bytes_per_msg = sizeof(int4) + kHidden;
+  if (use_expertwise_scale) num_bytes_per_msg = sizeof(int4) + kHidden;
 
   const size_t num_int4_per_msg = num_bytes_per_msg / sizeof(int4);
   EP_DEVICE_ASSERT(num_bytes_per_msg % sizeof(int4) == 0);
@@ -162,8 +162,9 @@ __global__ __launch_bounds__(
       auto rdma_x_src_idx = reinterpret_cast<int*>(
           reinterpret_cast<uint8_t*>(rdma_x) + token_idx * num_bytes_per_msg);
 
-      if (use_w4a8) {
-        // 每个token需要根据他被派送的不同专家，量化成不同的int8数据
+      if (use_expertwise_scale) {
+        // Each token needs to be quantified into different int8 data based on
+        // the experts it is dispatched to
         rdma_x_src_idx = reinterpret_cast<int*>(
             reinterpret_cast<uint8_t*>(rdma_x) +
             (warp_id + token_idx * num_topk) * num_bytes_per_msg);
@@ -180,7 +181,7 @@ __global__ __launch_bounds__(
                              : -1;
       thread_id == 0 ? (*rdma_x_src_idx = token_idx) : 0;
 
-      if (use_w4a8) {
+      if (use_expertwise_scale) {
         if (warp_id < num_topk) {
           lane_id == 0 ? (*rdma_x_src_idx = token_idx) : 0;
         }
@@ -188,11 +189,11 @@ __global__ __launch_bounds__(
       // Note(zkk)
       // create a run_deepep_loop, so I need not modify Deepep's code any more.
       int run_deepep_loop = 1;
-      if (use_w4a8) {
+      if (use_expertwise_scale) {
         run_deepep_loop = 0;
         for (int ii = 0; ii < num_topk; ii++) {
           int tmp_id = topk_idx[ii + token_idx * num_topk];
-          float scale = moe_in_w4a8_scale[tmp_id];
+          float scale = expertwise_scale[tmp_id];
 
           for (int i = thread_id; i < hidden_bf16_int4; i += num_threads) {
             auto int4_value = __ldg(x_int4 + i);
@@ -499,7 +500,7 @@ void dispatch(void* packed_recv_x,
               void* rdma_x,
               const void* x,
               const int64_t* topk_idx,
-              const float* moe_in_w4a8_scale,
+              const float* expertwise_scale,
               int* next_clean,
               int num_next_clean_int,
               int num_tokens,
@@ -548,7 +549,7 @@ void dispatch(void* packed_recv_x,
                   rdma_x,                                                     \
                   x,                                                          \
                   topk_idx,                                                   \
-                  moe_in_w4a8_scale,                                          \
+                  expertwise_scale,                                           \
                   atomic_counter_per_expert,                                  \
                   atomic_finish_counter_per_expert,                           \
                   next_clean,                                                 \

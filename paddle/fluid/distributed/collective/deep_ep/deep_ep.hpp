@@ -264,7 +264,7 @@ struct Buffer {
   low_latency_dispatch(
       const deep_ep::detail::Tensor& x,
       const deep_ep::detail::Tensor& topk_idx,
-      const std::optional<deep_ep::detail::Tensor>& moe_in_w4a8_scale,
+      const std::optional<deep_ep::detail::Tensor>& expertwise_scale,
       int num_max_dispatch_tokens_per_rank,
       int num_experts,
       bool use_fp8,
@@ -348,7 +348,7 @@ struct Buffer {
   low_latency_dispatch_api(
       const paddle::Tensor& x,
       const paddle::Tensor& topk_idx,
-      const std::optional<paddle::Tensor>& moe_in_w4a8_scale,
+      const std::optional<paddle::Tensor>& expertwise_scale,
       int num_max_dispatch_tokens_per_rank,
       int num_experts,
       bool use_fp8,
