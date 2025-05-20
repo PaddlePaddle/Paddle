@@ -1030,24 +1030,16 @@ void BindDecompRule(pybind11::module *m) {
          int start_index,
          int end_index) {
         VLOG(4) << "[Prim] Bind Decomp sinking_decomp begin.";
-        py::list res;
         auto original_insertion_point =
             paddle::dialect::ApiBuilder::Instance().GetCurrentInsertionPoint();
         DecompProgram decomp_object(
             program, src_vars, blacklist, whitelist, start_index, end_index);
         decomp_object.decomp_program();
         std::vector<pir::Value> tar_vars = decomp_object.get_dst_vars();
-        for (size_t i = 0; i < tar_vars.size(); ++i) {
-          if (!tar_vars[i]) {
-            res.append(nullptr);
-          } else {
-            res.append(tar_vars[i]);
-          }
-        }
         paddle::dialect::ApiBuilder::Instance().SetInsertionPoint(
             original_insertion_point);
         VLOG(4) << "[Prim] Bind Decomp sinking_decomp end.";
-        return res;
+        return tar_vars;
       });
 
   m->def("call_decomp_rule", [](pir::Operation &fwd_op) {
