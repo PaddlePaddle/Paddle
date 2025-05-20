@@ -127,7 +127,7 @@ function distribute_test() {
 
     echo "::group::Start auto_parallel Test"
     cd ${work_dir}
-    timeout 50m bash tools/auto_parallel/ci_distributed_stable.sh
+    timeout 50m bash ci/auto_parallel/ci_distributed_stable.sh
     EXIT_CODE=$?
     echo "End auto_parallel Test"
     echo "::endgroup::"
