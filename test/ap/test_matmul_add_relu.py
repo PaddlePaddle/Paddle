@@ -88,7 +88,9 @@ class TestMatmulEpilogue(unittest.TestCase):
         generated_pir_program = GetPirProgram(
             fused_foo, [self.x, self.y, self.b]
         )
-        assert 'pd_op.ap_variadic' in generated_pir_program
+        self.assertTrue(
+            'pd_op.ap_variadic' in generated_pir_program, "fusion failed"
+        )
         if IsCertainDevices():
             ap_outs = fused_foo(self.x, self.y, self.b)
             dy_outs = foo(self.x, self.y, self.b)
