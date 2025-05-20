@@ -194,7 +194,6 @@ void MatrixPowerGradKernel(const Context& ctx,
   auto dOut = &out_grad;
   auto dX = x_grad;
   if (x_grad && x_grad->numel() == 0) {
-    x_grad->Resize(x_grad->dims());
     ctx.template Alloc<T>(x_grad);
     return;
   }
