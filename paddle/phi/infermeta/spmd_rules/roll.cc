@@ -91,6 +91,9 @@ SpmdInfo RollGradInferSpmd(const DistMetaTensor& x,
   std::string alphabet = "abcdefghijlopqrstuvwxyz";
   std::string x_axes = alphabet.substr(0, x_ndim);
   std::string out_grad_axes = x_axes;
+
+  std::vector<int64_t> x_dims_mapping(x_dims_mapping_src);
+  std::vector<int64_t> out_grad_dims_mapping(out_grad_dims_mapping_src);
   if (axis.empty()) {
     PADDLE_ENFORCE_EQ(
         shifts.size(),
@@ -101,7 +104,9 @@ SpmdInfo RollGradInferSpmd(const DistMetaTensor& x,
                                         shifts.size()));
     for (int i = 0; i < x_ndim; ++i) {
       x_axes[i] = '1';
+      x_dims_mapping[i] = -1;
       out_grad_axes[i] = '1';
+      out_grad_dims_mapping[i] = -1;
     }
   } else {
     PADDLE_ENFORCE_EQ(
@@ -123,12 +128,13 @@ SpmdInfo RollGradInferSpmd(const DistMetaTensor& x,
                                        x_ndim,
                                        axis_i));
       x_axes[axis_i] = '1';
+      x_dims_mapping[axis_i] = -1;
       out_grad_axes[axis_i] = '1';
+      out_grad_dims_mapping[axis_i] = -1;
     }
   }
-  auto axis_to_dim_map =
-      ShardingMergeForTensors({{x_axes, x_dims_mapping_src},
-                               {out_grad_axes, out_grad_dims_mapping_src}});
+  auto axis_to_dim_map = ShardingMergeForTensors(
+      {{x_axes, x_dims_mapping}, {out_grad_axes, out_grad_dims_mapping}});
   std::vector<int64_t> x_dims_mapping_dst =
       GetDimsMappingForAxes(x_axes, axis_to_dim_map);
   std::vector<int64_t> out_grad_dims_mapping_dst = x_dims_mapping_dst;
