@@ -53,16 +53,19 @@ jobs:
             const branchName = context.ref.replace('refs/heads/', '');
             const developVersion = parseInt(process.env.DEVELOP_VERSION);
             const releaseVersion = parseInt(process.env.RELEASE_VERSION);
-            const issueTitle = `❗ paddle/fluid/pir/serialize_deserialize/CMakeLists.txt 中 DEVELOP_VERSION 与 RELEASE_VERSION 不相等(${branchName})`;
+            const issueTitle = `DEVELOP_VERSION and RELEASE_VERSION mismatch in paddle/fluid/pir/serialize_deserialize/CMakeLists.txt (${branchName})`;
             const issueBody =
-              `你好，新分支 \`${branchName}\` 中 \`paddle/fluid/pir/serialize_deserialize/CMakeLists.txt\` 文件里 \`DEVELOP_VERSION\` 和 \`RELEASE_VERSION\` 的值不一致，请确认。\n\n` +
-              `> DEVELOP_VERSION=${developVersion}\n` +
-              `> RELEASE_VERSION=${releaseVersion}\n` +
-              `推荐修改方法(develop分支和release分支):\n` +
+              `Hello, in the new branch \`${branchName}\`, the \`DEVELOP_VERSION\` and \`RELEASE_VERSION\` values in \`paddle/fluid/pir/serialize_deserialize/CMakeLists.txt\` are inconsistent. Please check.\n\n` +
+              `**Current values:**\n` +
+              `- DEVELOP_VERSION: \`${developVersion}\`\n` +
+              `- RELEASE_VERSION: \`${releaseVersion}\`\n\n` +
+              `**Recommended update (apply to both \`develop\` and \`release\` branches):**\n` +
+              `\`\`\`\n` +
               `DEVELOP_VERSION=${releaseVersion + 1}\n` +
               `RELEASE_VERSION=${releaseVersion + 1}\n` +
-              `请同时修改 paddle/fluid/pir/serialize_deserialize/patch 路径下的 yaml 文件。\n`;
-
+              `\`\`\`\n\n` +
+              `Also, please remember to update the corresponding YAML files under:\n` +
+              `\`paddle/fluid/pir/serialize_deserialize/patch\`\n`;
             const issueResult = await github.rest.issues.create({
               owner: context.repo.owner,
               repo: context.repo.repo,
