@@ -53,18 +53,6 @@ void MaskedFillKernel(const Context& dev_ctx,
     x_expand = x;
   }
 
-  auto input_dim = x_expand.dims();
-  auto mask_dim = mask_expand.dims();
-  PADDLE_ENFORCE_EQ(input_dim,
-                    mask_dim,
-                    common::errors::InvalidArgument(
-                        "The dim size of input and mask in OP(masked_fill) "
-                        "must be equal, but got input dim:(%ld), mask dim: "
-                        "(%ld). Please check input "
-                        "value.",
-                        input_dim,
-                        mask_dim));
-
   auto input_data = x_expand.data<T>();
   auto mask_data = mask_expand.data<bool>();
 

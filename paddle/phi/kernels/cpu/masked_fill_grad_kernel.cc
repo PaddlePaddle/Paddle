@@ -22,7 +22,6 @@
 #include "paddle/phi/kernels/expand_kernel.h"
 #include "paddle/phi/kernels/funcs/common_infer_shape_functions.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
-#include "paddle/phi/kernels/reshape_kernel.h"
 
 namespace phi {
 
@@ -34,7 +33,19 @@ void MaskedFillGradKernel(const Context& dev_ctx,
                           const DenseTensor& out_grad,
                           DenseTensor* x_grad,
                           DenseTensor* v_grad) {
-  auto x_grad_dims = out_grad.dims();
+  if (out_grad.numel() == 0 || mask.numel() == 0) {
+    if (x_grad != nullptr) {
+      x_grad->Resize({0});
+      dev_ctx.template Alloc<T>(x_grad);
+    }
+    if (v_grad != nullptr) {
+      v_grad->Resize({0});
+      dev_ctx.template Alloc<double>(v_grad);
+    }
+    return;
+  }
+
+  auto x_grad_dims = x_grad->dims();
   auto mask_dims = mask.dims();
   bool expand_x = false;
   auto expanded_size =
@@ -53,8 +64,7 @@ void MaskedFillGradKernel(const Context& dev_ctx,
   }
 
   if (x_grad->dims() != expanded_dims) {
-    ExpandKernel<T, Context>(
-        dev_ctx, *x_grad, IntArray(expanded_size), &x_grad_expand);
+    x_grad_expand = Empty<T, Context>(dev_ctx, IntArray(expanded_size));
     expand_x = true;
   } else {
     x_grad_expand = *x_grad;
@@ -65,9 +75,22 @@ void MaskedFillGradKernel(const Context& dev_ctx,
   auto numel = mask_expand.numel();
 
   if (x_grad != nullptr) {
-    auto* dx = dev_ctx.template Alloc<T>(&x_grad_expand);
+    dev_ctx.template Alloc<T>(x_grad);
+    auto mask_size = mask_expand.numel();
+    if (mask_size <= 0) return;
+
+    DenseTensor* x_grad_tmp = x_grad;
+    if (expand_x) {
+      x_grad_tmp = &x_grad_expand;
+    }
+    auto* dx = x_grad_tmp->data<T>();
     for (int i = 0; i < numel; i++) {
       dx[i] = mask_data[i] ? T{} : dout[i];
+    }
+
+    if (expand_x) {
+      ExpandGradKernel<T, Context>(
+          dev_ctx, x, x_grad_expand, IntArray(expanded_size), x_grad);
     }
   }
 
@@ -79,11 +102,6 @@ void MaskedFillGradKernel(const Context& dev_ctx,
         dv[0]++;
       }
     }
-  }
-
-  if (expand_x) {
-    ExpandGradKernel<T, Context>(
-        dev_ctx, x, x_grad_expand, IntArray(expanded_size), x_grad);
   }
 }
 

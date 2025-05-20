@@ -98,20 +98,6 @@ void GPUMaskedFill(const phi::GPUContext& ctx,
   ctx.template Alloc<T>(output);
   T* output_data = output->data<T>();
   const T* value_data = value.data<T>();
-
-  auto input_dim = input.dims();
-  auto mask_dim = mask.dims();
-  PADDLE_ENFORCE_EQ(
-      input_dim.size(),
-      mask_dim.size(),
-      common::errors::InvalidArgument(
-          "The dim size of input and mask in OP(masked_fill) "
-          "must be equal, but got input dim size:(%ld), mask dim size: "
-          "(%ld). Please check input "
-          "value.",
-          input_dim,
-          mask_dim));
-
   int64_t input_len = input.numel();
   int64_t mask_len = mask.numel();
   int batch_size = input_len / mask_len;
@@ -149,7 +135,16 @@ void MaskedFillKernel(const Context& dev_ctx,
     return;
   }
 
+  auto x_dims = x.dims();
+  auto mask_dims = mask.dims();
+
+  auto expanded_size =
+      common::vectorize(phi::funcs::BroadcastTwoDims(x_dims, mask_dims, -1));
+  DDim expanded_dims = common::make_ddim(expanded_size);
+
   bool flag = funcs::CanDispatchMaskFillShortcut(x.dims(), mask.dims());
+  if (expanded_dims != x_dims) flag = false;
+
   if (flag) {
     GPUMaskedFill<T>(dev_ctx, x, mask, value, out);
     return;
@@ -158,29 +153,21 @@ void MaskedFillKernel(const Context& dev_ctx,
   DenseTensor mask_expand;
   DenseTensor x_expand;
 
-  auto x_dims = x.dims();
-  auto mask_dims = mask.dims();
-
-  auto expanded_size =
-      common::vectorize(phi::funcs::BroadcastTwoDims(x_dims, mask_dims, -1));
-
-  DDim expand_dims = common::make_ddim(expanded_size);
-
-  if (mask.dims() != expand_dims) {
+  if (mask.dims() != expanded_dims) {
     phi::ExpandKernel<bool, Context>(
         dev_ctx, mask, IntArray(expanded_size), &mask_expand);
   } else {
     mask_expand = mask;
   }
 
-  if (x.dims() != expand_dims) {
+  if (x.dims() != expanded_dims) {
     phi::ExpandKernel<T, Context>(
         dev_ctx, x, IntArray(expanded_size), &x_expand);
   } else {
     x_expand = x;
   }
 
-  out->Resize(expand_dims);
+  out->Resize(expanded_dims);
 
   auto input_dim = x_expand.dims();
   auto mask_dim = mask_expand.dims();

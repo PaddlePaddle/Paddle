@@ -23,6 +23,7 @@
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/expand_grad_kernel.h"
 #include "paddle/phi/kernels/expand_kernel.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
@@ -100,19 +101,6 @@ void GPUMaskedFillGrad(const phi::GPUContext& ctx,
   ctx.template Alloc<T>(x_grad);
   T* output_data = x_grad->data<T>();
 
-  auto input_dim = out_grad.dims();
-  auto mask_dim = mask.dims();
-  PADDLE_ENFORCE_EQ(
-      input_dim.size(),
-      mask_dim.size(),
-      common::errors::InvalidArgument(
-          "The dim size of input and mask in OP(masked_fill) "
-          "must be equal, but got input dim size:(%ld), mask dim size: "
-          "(%ld). Please check input "
-          "value.",
-          input_dim,
-          mask_dim));
-
   int64_t input_len = out_grad.numel();
   int64_t mask_len = mask.numel();
   int batch_size = input_len / mask_len;
@@ -156,7 +144,21 @@ void MaskedFillGradKernel(const Context& dev_ctx,
     }
     return;
   }
-  bool flag = funcs::CanDispatchMaskFillShortcut(out_grad.dims(), mask.dims());
+
+  auto out_grad_dims = out_grad.dims();
+  auto x_grad_dims = x_grad->dims();
+  auto mask_dims = mask.dims();
+
+  DenseTensor mask_expand;
+  DenseTensor x_grad_expand;
+
+  bool expand_x = false;
+  auto expanded_size =
+      common::vectorize(funcs::BroadcastTwoDims(x_grad_dims, mask_dims, -1));
+  auto expanded_dims = common::make_ddim(expanded_size);
+
+  bool flag = funcs::CanDispatchMaskFillShortcut(out_grad_dims, mask_dims);
+  if (expanded_dims != x_grad_dims) flag = false;
 
   if (flag) {
     if (x_grad != nullptr) {
@@ -177,17 +179,6 @@ void MaskedFillGradKernel(const Context& dev_ctx,
     }
     return;
   }
-  auto x_grad_dims = out_grad.dims();
-  auto mask_dims = mask.dims();
-
-  DenseTensor mask_expand;
-  DenseTensor x_grad_expand;
-
-  bool expand_x = false;
-  auto expanded_size =
-      common::vectorize(funcs::BroadcastTwoDims(x_grad_dims, mask_dims, -1));
-
-  auto expanded_dims = common::make_ddim(expanded_size);
 
   if (mask.dims() != expanded_dims) {
     ExpandKernel<bool, Context>(
@@ -197,18 +188,23 @@ void MaskedFillGradKernel(const Context& dev_ctx,
   }
 
   if (x_grad->dims() != expanded_dims) {
-    ExpandKernel<T, Context>(
-        dev_ctx, *x_grad, IntArray(expanded_size), &x_grad_expand);
+    x_grad_expand = Empty<T, Context>(dev_ctx, IntArray(expanded_size));
     expand_x = true;
   } else {
     x_grad_expand = *x_grad;
   }
+
   if (x_grad != nullptr) {
     dev_ctx.template Alloc<T>(x_grad);
     auto mask_size = mask_expand.numel();
     if (mask_size <= 0) return;
 
-    GPUMaskedFillGrad<T>(dev_ctx, out_grad, mask_expand, value, &x_grad_expand);
+    DenseTensor* x_grad_tmp = x_grad;
+    if (expand_x) {
+      x_grad_tmp = &x_grad_expand;
+    }
+
+    GPUMaskedFillGrad<T>(dev_ctx, out_grad, mask_expand, value, x_grad_tmp);
 
     if (expand_x) {
       ExpandGradKernel<T, Context>(
