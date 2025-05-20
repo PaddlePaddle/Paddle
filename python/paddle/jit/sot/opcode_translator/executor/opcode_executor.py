@@ -2609,7 +2609,6 @@ class OpcodeExecutor(OpcodeExecutorBase):
         self, iterator: VariableBase, for_iter: Instruction
     ):
         self.fallback_when_block_stack_is_not_empty()
-
         # 1. find the range of loop body
         assert for_iter.jump_to is not None
         for_iter_idx = self.indexof(for_iter)

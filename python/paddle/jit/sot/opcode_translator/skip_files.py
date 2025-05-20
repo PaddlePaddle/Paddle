@@ -23,6 +23,7 @@ import copyreg
 import dataclasses
 import enum
 import functools
+import genericpath
 import importlib
 import inspect
 import linecache
@@ -92,6 +93,7 @@ NEED_SKIP_THIRD_PARTY_MODULES = {
     uuid,
     setuptools,
     warnings,
+    genericpath,
 }
 
 if sys.version_info < (3, 11):
