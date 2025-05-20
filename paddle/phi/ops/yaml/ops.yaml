@@ -7,6 +7,16 @@
 
   # interfaces : paddle::dialect::InferSymbolicShapeInterface
 
+- op : moe_combine
+  args : (Tensor x, Tensor combine_weights, Tensor scatter_index)
+  output : Tensor(y)
+  infer_meta :
+    func : MoeCombineInferMeta
+  kernel :
+    func : moe_combine
+    data_type : x
+  backward : moe_combine_grad
+
 - op : abs
   args : (Tensor x)
   output : Tensor(out)

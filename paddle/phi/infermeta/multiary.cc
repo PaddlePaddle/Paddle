@@ -35,6 +35,29 @@ limitations under the License. */
 
 namespace phi {
 
+  void MoeCombineGradInferMeta(const MetaTensor& x,
+                               const MetaTensor& combine_weights,
+                               const MetaTensor& scatter_index,
+                               const MetaTensor& grad_y,
+                               MetaTensor* grad_x,
+                               MetaTensor* grad_combine_weights_helper){
+  auto x_dim = x.dims();
+  auto combine_weights_shape = combine_weights.dims();
+  PADDLE_ENFORCE_EQ(
+      x_dim.size(),
+      2,
+      errors::InvalidArgument("Input X should have 2 dimensions"));
+  PADDLE_ENFORCE_EQ(
+    (scatter_index.dtype() == phi::DataType::INT32),
+    true,
+    errors::InvalidArgument(
+        "The input scatter_index type should be int32"));
+  grad_x->set_dims(phi::make_ddim(x_dim));
+  grad_x->set_dtype(x.dtype());
+  grad_combine_weights_helper->set_dims(phi::make_ddim({combine_weights_shape[0], combine_weights_shape[1], x_dim[1]}));
+  grad_combine_weights_helper->set_dtype(x.dtype());
+}
+
 std::vector<DDim> GetMetaTensorsDim(
     const std::vector<const MetaTensor*>& tensors) {
   std::vector<DDim> dims;

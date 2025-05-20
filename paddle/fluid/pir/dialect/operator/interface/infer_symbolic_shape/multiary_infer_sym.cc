@@ -20,6 +20,11 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 
 namespace paddle::dialect {
+bool MoeCombineInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+        return true;
+}
+
 
 bool AccuracyOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
