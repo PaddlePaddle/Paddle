@@ -623,6 +623,67 @@ def flash_attention(
             )
 
 
+def flash_attention_v3_varlen(
+    query,
+    key,
+    value,
+    cu_seqlens_q,
+    cu_seqlens_k,
+    dropout=0.0,
+    causal=False,
+    return_softmax=False,
+    *,
+    fixed_seed_offset=None,
+    rng_name="",
+    training=True,
+    name=None,
+    softmax_scale=None,
+    max_seqlen_q=0,
+    max_seqlen_k=0,
+):
+    r"""
+    The equation is:
+
+    .. math::
+
+        result=softmax(\frac{ Q * K^T }{\sqrt{d}}) * V
+
+    where : ``Q``, ``K``, and ``V`` represent the three input parameters of the attention module.
+    The dimensions of the three parameters are the same.
+    ``d`` represents the size of the last dimension of the three parameters.
+
+    Warning:
+        This API is only support inputs with dtype float16 and bfloat16.
+
+    This is the varlen version of flash attention.
+    """
+    if softmax_scale is None:
+        softmax_scale = query.shape[-1] ** (-0.5)
+    out, softmax_lse = _C_ops.flash_attn_v3_varlen(
+        query,
+        key,
+        value,
+        cu_seqlens_q,
+        cu_seqlens_k,
+        None,  # q_v_
+        None,  # q_descale_
+        None,  # k_descale_
+        None,  # v_descale_
+        softmax_scale,
+        causal,
+        -1,  # window_size_left
+        -1,  # window_size_right
+        0.0,  # softcap
+        1,  # num_splits
+        False,  # manual_set_pack_gqa
+        False,  # pack_gqa_
+        0,  # sm_margin,
+        max_seqlen_q,
+        max_seqlen_k,
+    )
+    return out, softmax_lse  # return_softmax
+
+
 @overload
 def flash_attn_qkvpacked(
     qkv: Tensor,

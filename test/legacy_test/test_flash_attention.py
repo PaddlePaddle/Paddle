@@ -27,6 +27,7 @@ from paddle.nn.functional import sdp_kernel
 from paddle.nn.functional.flash_attention import (
     calc_reduced_attention_scores,
     flash_attention,
+    flash_attention_v3_varlen,
     flash_attn_qkvpacked,
     flash_attn_unpadded,
     flash_attn_varlen_qkvpacked,
@@ -149,19 +150,33 @@ class TestFlashAttentionAPI(unittest.TestCase):
         cu_q = paddle.arange(0, (bs + 1) * ms, ms, dtype='int32')
 
         qq = paddle.reshape(q, [bs * ms, nh, hd])
-        out, _ = flash_attn_unpadded(
-            qq,
-            qq,
-            qq,
-            cu_q,
-            cu_q,
-            ms,
-            ms,
-            scale,
-            self.dropout,
-            self.causal,
-            self.return_softmax,
-        )
+        if is_sm90:
+            out, _ = flash_attention_v3_varlen(
+                qq,
+                qq,
+                qq,
+                cu_q,
+                cu_q,
+                self.dropout,
+                self.causal,
+                self.return_softmax,
+                max_seqlen_q=ms,
+                max_seqlen_k=ms,
+            )
+        else:
+            out, _ = flash_attn_unpadded(
+                qq,
+                qq,
+                qq,
+                cu_q,
+                cu_q,
+                ms,
+                ms,
+                scale,
+                self.dropout,
+                self.causal,
+                self.return_softmax,
+            )
         out_ = paddle.reshape(out_, [bs * ms, nh, hd])
 
         np.testing.assert_allclose(out.numpy(), out_, rtol=5e-03, atol=1e-03)
