@@ -16,9 +16,11 @@
 
 #include "paddle/common/macros.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/meshgrid_grad_kernel.h"
+
 namespace phi {
 
 template <typename T, typename Context, int Rank>
@@ -28,6 +30,17 @@ void MeshgridBackward(const Context& ctx,
                       std::vector<DenseTensor*> outs) {
   int n = out_grad.size();
   auto out_dims = out_grad[0]->dims();
+  if (out_grad[0]->numel() == 0) {
+    for (size_t i = 0; i < outs.size(); i++) {
+      auto* out = outs[i];
+      ctx.template Alloc<T>(out);
+      if (out->numel() != 0) {
+        phi::Full<T, Context>(
+            ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+      }
+    }
+    return;
+  }
 
   for (int i = 0; i < n; i++) {
     ctx.template Alloc<T>(outs[i]);

@@ -46,7 +46,7 @@ adt::Result<axpr::Value> GetApOpFacadeOpInputsVal(
   return axpr::Value{lst};
 }
 
-adt::Result<axpr::Value> GetPdOpApFacadeOpInputsVal(
+adt::Result<axpr::Value> GetShapeOrDataAxprValueForTensorListInput(
     pir::Operation* op, pir::InferSymbolicShapeContext* infer_context) {
   ADT_CHECK(op->num_operands() == 1);
   if (!op->operand_source(0)) {
@@ -66,6 +66,16 @@ adt::Result<axpr::Value> GetPdOpApFacadeOpInputsVal(
         ap::paddle::GetPirShapeOrDataClass().New(elt_shape_or_data));
   }
   return axpr::Value{lst};
+}
+
+adt::Result<axpr::Value> GetPdOpApFacadeOpInputsVal(
+    pir::Operation* op, pir::InferSymbolicShapeContext* infer_context) {
+  return GetShapeOrDataAxprValueForTensorListInput(op, infer_context);
+}
+
+adt::Result<axpr::Value> GetPdOpApVariadicOpInputsVal(
+    pir::Operation* op, pir::InferSymbolicShapeContext* infer_context) {
+  return GetShapeOrDataAxprValueForTensorListInput(op, infer_context);
 }
 
 adt::Result<Lambda> CastStrToLambda(const std::string& serialized_attributes) {
@@ -137,7 +147,7 @@ adt::Result<T> CacheResult(const std::string& serialized_attributes) {
   return ret;
 }
 
-adt::Result<Lambda> MakeInferSymbolicLambda(
+adt::Result<Lambda> MakeInferSymbolicLambdaByName(
     const std::string& infer_symbolic_func_name) {
   auto dot_pos = infer_symbolic_func_name.find('.');
   ADT_CHECK(dot_pos != std::string::npos);
@@ -160,8 +170,22 @@ adt::Result<Lambda> MakeInferSymbolicLambda(
   return atomic.Get<ap::axpr::Lambda<ap::axpr::CoreExpr>>();
 }
 
-const auto GetInferSymbolicLambda =
-    &CacheResult<Lambda, &MakeInferSymbolicLambda>;
+const auto GetInferSymbolicLambdaByName =
+    &CacheResult<Lambda, &MakeInferSymbolicLambdaByName>;
+
+adt::Result<Lambda> UnserializeInferSymbolicLambda(
+    const std::string& lambda_str) {
+  ADT_LET_CONST_REF(anf_expr, axpr::MakeAnfExprFromJsonString(lambda_str));
+  const auto& core_expr = ap::axpr::ConvertAnfExprToCoreExpr(anf_expr);
+  ADT_LET_CONST_REF(atomic,
+                    core_expr.TryGet<ap::axpr::Atomic<ap::axpr::CoreExpr>>());
+  ADT_LET_CONST_REF(lambda,
+                    atomic.TryGet<ap::axpr::Lambda<ap::axpr::CoreExpr>>());
+  return lambda;
+}
+
+const auto CachedUnserializeInferSymbolicLambda =
+    &CacheResult<Lambda, &UnserializeInferSymbolicLambda>;
 
 adt::Result<std::string> GetInferSymbolicFuncName(const pir::Operation* op) {
   const auto& attrs = op->attributes();
@@ -173,11 +197,10 @@ adt::Result<std::string> GetInferSymbolicFuncName(const pir::Operation* op) {
 }
 
 adt::Result<std::vector<symbol::TensorShapeOrDataDimExprs>>
-InferOutputsShapeOrValue(const std::string& infer_symbolic_func_name,
+InferOutputsShapeOrValue(const axpr::Lambda<axpr::CoreExpr>& lambda,
                          const axpr::Value& infer_ctx_val,
                          const axpr::Value& inputs_val,
                          const axpr::Value& attrs_val) {
-  ADT_LET_CONST_REF(lambda, GetInferSymbolicLambda(infer_symbolic_func_name));
   ap::memory::Guard guard{};
   ap::axpr::Interpreter interpreter(
       ap::paddle::MakeBuiltinFrameAttrMap<ap::axpr::Value>(),
@@ -198,6 +221,16 @@ InferOutputsShapeOrValue(const std::string& infer_symbolic_func_name,
         shape_or_data.template dyn_cast<symbol::TensorShapeOrDataDimExprs>());
   }
   return ret;
+}
+
+adt::Result<std::vector<symbol::TensorShapeOrDataDimExprs>>
+InferOutputsShapeOrValue(const std::string& infer_symbolic_func_name,
+                         const axpr::Value& infer_ctx_val,
+                         const axpr::Value& inputs_val,
+                         const axpr::Value& attrs_val) {
+  ADT_LET_CONST_REF(lambda,
+                    GetInferSymbolicLambdaByName(infer_symbolic_func_name));
+  return InferOutputsShapeOrValue(lambda, infer_ctx_val, inputs_val, attrs_val);
 }
 
 adt::Result<adt::Ok> TryApOpFacadeOpInferSymbolicShape(
@@ -243,6 +276,40 @@ adt::Result<adt::Ok> TryPdOpApFacadeOpInferSymbolicShape(
   return adt::Ok{};
 }
 
+adt::Result<Lambda> GetPdOpApVariadicInferSymbolicLambda(pir::Operation* op) {
+  const auto& attrs = op->attributes();
+  const auto& iter = attrs.find("infer_symbolic_lambda");
+  ADT_CHECK(iter == attrs.end());
+  ADT_CHECK(iter->second.isa<pir::StrAttribute>());
+  const auto& str = iter->second.dyn_cast<pir::StrAttribute>().AsString();
+  return CachedUnserializeInferSymbolicLambda(str);
+}
+
+adt::Result<adt::Ok> TryPdOpApVariadicOpInferSymbolicShape(
+    pir::Operation* op, pir::InferSymbolicShapeContext* infer_context) {
+  ADT_LET_CONST_REF(infer_ctx_val, GetInferCtxVal(infer_context));
+  ADT_LET_CONST_REF(inputs_val,
+                    GetPdOpApVariadicOpInputsVal(op, infer_context));
+  axpr::Value attrs_val{adt::Nothing{}};
+  ADT_LET_CONST_REF(lambda, GetPdOpApVariadicInferSymbolicLambda(op));
+  ADT_LET_CONST_REF(
+      outputs_shape_or_value,
+      InferOutputsShapeOrValue(lambda, infer_ctx_val, inputs_val, attrs_val));
+  std::size_t num_outputs = 0;
+  {
+    const auto iter = op->attributes().find("num_outputs");
+    ADT_CHECK(iter != op->attributes().end());
+    const auto& num_outputs_attr = iter->second;
+    ADT_CHECK(num_outputs_attr.isa<pir::Int32Attribute>());
+    num_outputs = num_outputs_attr.dyn_cast<pir::Int32Attribute>().data();
+  }
+  ADT_CHECK(num_outputs == outputs_shape_or_value.size());
+  ADT_CHECK(op->num_results(), 1);
+  symbol::ShapeOrDataDimExprs shape_or_value{outputs_shape_or_value};
+  infer_context->SetShapeOrDataForValue(op->result(0), shape_or_value);
+  return adt::Ok{};
+}
+
 }  // namespace
 
 bool ApOpFacadeOpInferSymbolicShape(
@@ -273,6 +340,23 @@ bool PdOpApFacadeOpInferSymbolicShape(
                          ret.GetError().CallStackToString(),
                          ret.GetError().class_name(),
                          ret.GetError().msg()));
+  return success;
+}
+
+bool PdOpApVariadicOpInferSymbolicShape(
+    pir::Operation* op, pir::InferSymbolicShapeContext* infer_context) {
+  const auto& ret = TryPdOpApVariadicOpInferSymbolicShape(op, infer_context);
+  bool success = !ret.HasError();
+  PADDLE_ENFORCE_EQ(
+      success,
+      true,
+      phi::errors::Fatal(
+          "PdOpApVariadicOpInferSymbolicShape failed. \nTraceback (most "
+          "recent call "
+          "last):\n%s\n%s: %s. ",
+          ret.GetError().CallStackToString(),
+          ret.GetError().class_name(),
+          ret.GetError().msg()));
   return success;
 }
 

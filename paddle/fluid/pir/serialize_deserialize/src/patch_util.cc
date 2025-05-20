@@ -35,7 +35,6 @@ Json BuildAttrJsonPatch(const YAML::Node &action) {
     j_attr_type = nullptr;
   } else {
     j_attr_type = GetAttrJson(action);
-    j_attr_type = GetAttrJson(action);
   }
   return j_attr_type;
 }
