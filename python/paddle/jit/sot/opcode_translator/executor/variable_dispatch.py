@@ -1623,10 +1623,11 @@ Dispatcher.register(
 Dispatcher.register(
     operator_exception_match,
     ("BuiltinVariable | ExceptionVariable", "BuiltinVariable | TupleVariable"),
-    lambda exc_instance, expected_exc_types: ConstantVariable.wrap_literal(
+    lambda exc_instance, expected_exc_types: ConstantVariable(
         ExceptionVariable.check_if_exception_matches(
             exc_instance, expected_exc_types
         ),
         exc_instance.graph,
+        DummyTracker([exc_instance, expected_exc_types]),
     ),
 )
