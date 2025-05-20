@@ -1686,6 +1686,9 @@ Buffer::low_latency_dispatch(
   EP_HOST_ASSERT(!(async && return_recv_hook));
   if (!return_recv_hook) stream_wait(launch_stream, compute_stream);
 
+  EP_HOST_ASSERT(
+      !(expertwise_scale.has_value() && use_fp8) &&
+      "expertwise_scale and use_fp8 can not arise at the same time.");
   auto return_x_dtype = phi::DataType::BFLOAT16;
   if (use_fp8) {
     return_x_dtype = phi::DataType::FLOAT8_E4M3FN;
