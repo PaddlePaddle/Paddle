@@ -29,7 +29,7 @@ class ExceptionStack:
     # This data structure manages exceptions as in CPython, primarily handling
     # the __context__ attribute of SotCapturedException.
 
-    _exception_stack: list[ExceptionVariable | None] = dataclasses.field(
+    _exception_stack: list[ExceptionVariable] = dataclasses.field(
         default_factory=list
     )
     _current_exception: ExceptionVariable | None = dataclasses.field(
@@ -39,7 +39,9 @@ class ExceptionStack:
     def clear_current_exception(self):
         self._current_exception = None
 
-    def set_current_exception(self, val: ExceptionVariable, graph):
+    def set_current_exception(
+        self, val: ExceptionVariable, graph: FunctionGraph
+    ):
         self._set_context_and_break_context_reference_cycle(val, graph)
         self._current_exception = val
 
@@ -51,6 +53,13 @@ class ExceptionStack:
         if self._current_exception is None:
             raise InnerError("Current exception should not be None")
         return self._current_exception
+
+    def _set_context_and_break_context_reference_cycle(
+        self, val: ExceptionVariable, graph: FunctionGraph
+    ):
+        # set Exception.__context__
+        self._set_context_recursive(val, len(self._exception_stack) - 1)
+        self._break_context_reference_cycle(val, graph)
 
     def _set_context_recursive(self, val: ExceptionVariable, prev_idx: int):
         # Recursively sets the __context__ attribute for ExceptionVariable objects
@@ -97,17 +106,10 @@ class ExceptionStack:
                 slow = slow.__context__
             slow_update_toggle = not slow_update_toggle
 
-    def _set_context_and_break_context_reference_cycle(
-        self, val: ExceptionVariable, graph: FunctionGraph
-    ):
-        # set Exception.__context__
-        self._set_context_recursive(val, len(self._exception_stack) - 1)
-        self._break_context_reference_cycle(val, graph)
-
-    def pop(self):
+    def pop(self) -> ExceptionVariable:
         return self._exception_stack.pop()
 
-    def push(self, val):
+    def push(self, val: ExceptionVariable) -> None:
         self._exception_stack.append(val)
 
     def empty(self) -> bool:
@@ -119,9 +121,9 @@ class ExceptionStack:
     def __repr__(self):
         return f"ExceptionStack({self._exception_stack})"
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: int) -> ExceptionVariable:
         return self._exception_stack[idx]
 
-    def cleanup(self):
+    def cleanup(self) -> None:
         self._exception_stack[:] = []
         self._current_exception = None
