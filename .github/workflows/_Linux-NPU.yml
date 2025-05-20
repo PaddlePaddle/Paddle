@@ -172,7 +172,7 @@ jobs:
           cd Paddle
           git submodule foreach "git config --global --add safe.directory \$toplevel/\$sm_path"
           cd ..
-          bash backends/npu/tools/pr_ci_npu.sh;EXCODE=$?
+          bash backends/npu/tools/pr_ci_npu.sh
           '
 
       - name: Terminate and delete the container
