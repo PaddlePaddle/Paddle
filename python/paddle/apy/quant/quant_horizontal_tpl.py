@@ -21,32 +21,29 @@ class QuantHorizontalTemplate:
         input0_karg,
         input1_karg,
         output0_karg,
-        scale0_karg,
         output1_karg,
-        scale1_karg,
-        output2_karg,
+        quant_scale0_karg,
+        quant_scale1_karg,
     ):
         project_module = self.make_project(
             input0_karg,
             input1_karg,
             output0_karg,
-            scale0_karg,
             output1_karg,
-            scale1_karg,
-            output2_karg,
+            quant_scale0_karg,
+            quant_scale1_karg,
         )
-        return CodeGenResult(
+        return CodeGenResult(  # noqa: F821
             module=project_module,
             kernel_dispatch_func=KernelDispatch,
-            kernel_dispatch_const_data=BuiltinSerializableAttrMap(
+            kernel_dispatch_const_data=ap.SerializableAttrMap(
                 kernel_args_getters=[
                     input0_karg.runtime_getter,
                     input1_karg.runtime_getter,
                     output0_karg.runtime_getter,
-                    scale0_karg.runtime_getter,
                     output1_karg.runtime_getter,
-                    scale1_karg.runtime_getter,
-                    output2_karg.runtime_getter,
+                    quant_scale0_karg.runtime_getter,
+                    quant_scale1_karg.runtime_getter,
                 ]
             ),
         )
@@ -56,10 +53,9 @@ class QuantHorizontalTemplate:
         input0_karg,
         input1_karg,
         output0_karg,
-        scale0_karg,
         output1_karg,
-        scale1_karg,
-        output2_karg,
+        quant_scale0_karg,
+        quant_scale1_karg,
     ):
         code = """
 extern "C" {
@@ -69,25 +65,27 @@ void DualQuantKernel(void* stream_ptr, const float* input0, const float* input1,
 """
         compile_cmd = "nvcc --compiler-options '-fPIC' --shared dual_quant_kernel.cu -o libdual_quant_kernel.so"
 
-        return CodeModule(
-            FuncDeclare(
-                DataType.void,
+        return CodeModule(  # noqa: F821
+            FuncDeclare(  # noqa: F821
+                ap.DataType.void,
                 "DualQuantKernel",
                 [
-                    PointerType.void_ptr,
-                    PointerType.const_float_ptr,
-                    PointerType.const_float_ptr,
-                    PointerType.float_ptr,
-                    PointerType.float_ptr,
-                    PointerType.float_ptr,
-                    PointerType.float_ptr,
-                    PointerType.float_ptr,
+                    ap.PointerType.void_ptr,
+                    ap.PointerType.const_float_ptr,
+                    ap.PointerType.const_float_ptr,
+                    ap.PointerType.float_ptr,
+                    ap.PointerType.float_ptr,
+                    ap.PointerType.float_ptr,
+                    ap.PointerType.float_ptr,
                 ],
             ),
-            Project(
-                nested_files=Project.Directory(
-                    ["dual_quant_kernel.cu", Project.FileContent(code)],
-                    ["make.sh", Project.FileContent(compile_cmd)],
+            Project(  # noqa: F821
+                nested_files=Project.Directory(  # noqa: F821
+                    [
+                        "dual_quant_kernel.cu",
+                        Project.FileContent(code),  # noqa: F821
+                    ],
+                    ["make.sh", Project.FileContent(compile_cmd)],  # noqa: F821
                 ),
                 compile_cmd="sh make.sh",
                 so_relative_path="libdual_quant_kernel.so",
@@ -97,6 +95,7 @@ void DualQuantKernel(void* stream_ptr, const float* input0, const float* input1,
 
 def KernelDispatch(ctx):
     import ap
+
     so_func = ctx.get_so_function("DualQuantKernel")
     stream_ptr = ctx.device_ctx.get_stream_addr_as_void_ptr()
     getters = ctx.kernel_dispatch_const_data.kernel_args_getters

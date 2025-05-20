@@ -31,8 +31,7 @@ class TestQuantHorizontalFusion(unittest.TestCase):
         self.x = paddle.randn(self.x_shape, dtype=self.dtype)
         self.x.stop_gradient = False
 
-        # self.y_shape = [128, 64]
-        self.y_shape = [4, 32, 128]
+        self.y_shape = [128, 64]
         self.y = paddle.randn(self.y_shape, dtype=self.dtype)
         self.y.stop_gradient = False
 
@@ -45,8 +44,7 @@ class TestQuantHorizontalFusion(unittest.TestCase):
 
         def horizontal_quant_func(
             x: pct.Tensor([B, M, K], DType),
-            # y: pct.Tensor([K, N], DType),
-            y: pct.Tensor([B, M, K], DType),
+            y: pct.Tensor([K, N], DType),
         ):
             tie_op = pcc.ap.TieOp()
             quant_x_op = pcc.ap.FacadeQuantOp()
@@ -55,9 +53,13 @@ class TestQuantHorizontalFusion(unittest.TestCase):
             tie_out0, tie_out1 = tie_op([x, y])
             x_quanted, x_scale = quant_x_op([tie_out0])
             y_quanted, y_scale = quant_y_op([tie_out1])
-            with pcc.fuse.by_register():
-                output = x_quanted + y_quanted
-            return x_quanted, x_scale, y_quanted, y_scale, output
+
+            with pcc.fuse.horizontal_component():
+                output0 = paddle.nn.functional.relu(x_quanted)
+
+            with pcc.fuse.horizontal_component():
+                output1 = paddle.nn.functional.relu(y_quanted)
+            return output0, output1, x_scale, y_scale
 
         fused = pcc.compile(horizontal_quant_func, compile_engine="PCC")
         outs = fused(self.x, self.y)

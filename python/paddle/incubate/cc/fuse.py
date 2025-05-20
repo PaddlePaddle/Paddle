@@ -16,7 +16,7 @@ from contextlib import contextmanager
 
 import paddle
 
-__all__ = ['matmul', 'by_register']
+__all__ = ['by_register', 'horizontal_component']
 
 
 @contextmanager
@@ -26,7 +26,8 @@ def by_register():
     paddle._C_ops.ap_trivial_fusion_end(None)
 
 
-def matmul(x, w, epilogue, **kwargs):
-    x = paddle.matmul(x, w, **kwargs)
-    with by_register():
-        return epilogue(x)
+@contextmanager
+def horizontal_component():
+    paddle._C_ops.ap_trivial_fusion_begin(None)
+    yield
+    paddle._C_ops.ap_trivial_fusion_end(None)
