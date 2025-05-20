@@ -24,7 +24,7 @@ jobs:
     name: Check bypass for SOT
     uses: ./.github/workflows/check-bypass.yml
     with:
-      workflow-name: 'sot'
+      workflow-name: "sot"
     secrets:
       github-token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -128,34 +128,6 @@ jobs:
           bash ${ci_scripts}/determine_sot_ci_trigger.sh
           determine_excode=$?
           echo "determine_excode=$determine_excode" >> ${{ github.env }}
-          '
-
-      - name: Build with python3.8
-        env:
-          work_dir: ${{ github.workspace }}
-          PADDLE_ROOT: ${{ github.workspace }}
-        if: ${{ env.determine_excode == 0 }}
-        run: |
-          docker exec -t ${{ env.container_name }} /bin/bash -c '
-          export PY_VERSION=3.8
-          source ${{ github.workspace }}/../../../proxy
-          bash ${ci_scripts}/run_setup.sh bdist_wheel
-          EXCODE=$?
-          exit $EXCODE
-          '
-
-      - name: Test with python3.8
-        env:
-          work_dir: ${{ github.workspace }}
-          PADDLE_ROOT: ${{ github.workspace }}
-        if: ${{ env.determine_excode == 0 }}
-        run: |
-          docker exec -t ${{ env.container_name }} /bin/bash -c '
-          source ${{ github.workspace }}/../../../proxy
-          bash ${ci_scripts}/run_sot_test.sh 3.8
-          EXCODE=$?
-          rm -rf ${PADDLE_ROOT}/build/CMakeCache.txt
-          exit $EXCODE
           '
 
       - name: Build with python3.9
