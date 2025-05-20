@@ -83,8 +83,9 @@ void GatherGradKernel(const Context& dev_ctx,
         axis_v,
         false);
   } else {
-    PADDLE_THROW(common::errors::InvalidArgument("Unsupported index type: %s",
-                                                 DataTypeToString(index_type)));
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "Unsupported index type, expected int32 or int64, but got type %s",
+        DataTypeToString(index_type)));
   }
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "gather_grad");
 }

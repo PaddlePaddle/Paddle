@@ -166,10 +166,10 @@ void BindIO(pybind11::module *m) {
          &pir::WriteModule,
          py::arg("program"),
          py::arg("file_path"),
-         py::arg("pir_version"),
          py::arg("overwrite") = true,
          py::arg("readable") = false,
-         py::arg("trainable") = true);
+         py::arg("trainable") = true,
+         py::arg("pir_version") = -1);
   m->def("deserialize_pir_program",
          &pir::ReadModule,
          py::arg("file_path"),

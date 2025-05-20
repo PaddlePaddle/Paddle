@@ -41,6 +41,14 @@ op_patches:
         object : name
         type : pir::StrAttribute
         default : "B"
+  - op_name : pd_op.pool
+    actions :
+      - action : modify_attr  # 修改Attribute
+        object : kernel_size
+        type : pir::ArrayAttribute
+        default :
+          - type: pir::Int64Attribute # 对于修改ArrayAttribute内部类型的情况，依然归属在modify_attr中，但是default值置为空即可
+          - type: pir::Int64Attribute
   - op_name : builtin.parameter
     actions :
       - action : add_attr           # 新增Attribute

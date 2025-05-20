@@ -37,14 +37,15 @@ void CastKernel(const Context& dev_ctx,
   }
 
   if (out->IsSharedWith(x)) {
-    PD_VISIT_ALL_TYPES(out_dtype, "CastInplaceKernelImpl", ([&] {
-                         CastInplaceKernelImpl<T, data_t>(
-                             dev_ctx, x, out_dtype, out);
-                       }));
+    PD_VISIT_ALL_CPU_TYPES(out_dtype, "CastInplaceKernelImpl", ([&] {
+                             CastInplaceKernelImpl<T, data_t>(
+                                 dev_ctx, x, out_dtype, out);
+                           }));
   } else {
-    PD_VISIT_ALL_TYPES(out_dtype, "CastKernelImpl", ([&] {
-                         CastKernelImpl<T, data_t>(dev_ctx, x, out_dtype, out);
-                       }));
+    PD_VISIT_ALL_CPU_TYPES(out_dtype, "CastKernelImpl", ([&] {
+                             CastKernelImpl<T, data_t>(
+                                 dev_ctx, x, out_dtype, out);
+                           }));
   }
 }
 
