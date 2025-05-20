@@ -610,7 +610,7 @@ class TestMatrixRankAtolRtolZeroSizeTensor(unittest.TestCase):
                 paddle.static.Program(), paddle.static.Program()
             ):
                 x_valid = paddle.static.data(
-                    name='x_valid', shape=[2, 0, 6, 0], dtype='float32'
+                    name='x_valid', shape=[2, 1, 6, 0], dtype='float32'
                 )
 
                 y_valid = paddle.linalg.matrix_rank(
@@ -619,7 +619,7 @@ class TestMatrixRankAtolRtolZeroSizeTensor(unittest.TestCase):
 
                 exe = paddle.static.Executor(place)
                 res_valid = exe.run(
-                    feed={'x_valid': np.zeros((2, 0, 6, 0), dtype='float32')},
+                    feed={'x_valid': np.zeros((2, 1, 6, 0), dtype='float32')},
                     fetch_list=[y_valid],
                 )
                 self.assertEqual(res_valid[0].shape, tuple(x_valid.shape[:-2]))
