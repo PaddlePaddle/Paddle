@@ -110,13 +110,6 @@ function(kernel_declare TARGET_LIST)
           set(first_registry "")
         endif()
       endif()
-      # The kernel related to xpufft must have WITH_XPU_FFT enabled.
-      if(WITH_XPU AND NOT WITH_XPU_FFT)
-        string(FIND "${first_registry}" "xpufft" pos)
-        if(pos GREATER 1)
-          set(first_registry "")
-        endif()
-      endif()
 
       if(NOT first_registry STREQUAL "")
         string(
@@ -148,7 +141,6 @@ function(kernel_declare TARGET_LIST)
         string(REPLACE "," ";" kernel_msg "${kernel_msg}")
         string(REGEX REPLACE "[ \\\t\r\n]+" "" kernel_msg "${kernel_msg}")
         string(REGEX REPLACE "//cuda_only" "" kernel_msg "${kernel_msg}")
-        string(REGEX REPLACE "//xpufft" "" kernel_msg "${kernel_msg}")
 
         list(GET kernel_msg 0 kernel_name)
         if(NOT is_all_backend STREQUAL "")

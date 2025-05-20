@@ -62,6 +62,14 @@ op_patches:
     actions :
       - action : delete_input
         object : 0
+  - op_name : test1.operation4
+    actions :
+      - action : modify_attr
+        object : op4_attr1
+        type : pir::ArrayAttribute
+        default :
+          - type: pir::Int64Attribute
+          - type: pir::Int64Attribute
 
 attr_patches:
   - attr_name : pir::FloatAttribute
