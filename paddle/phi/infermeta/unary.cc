@@ -1617,7 +1617,7 @@ void FlattenInferMeta(const MetaTensor& x,
   }
 
   int64_t outer = 1;
-  std::vector<int32_t> out_shape;
+  std::vector<int64_t> out_shape;
   out_shape.reserve(in_dims_size - stop_axis + start_axis + 1);
 
   for (int i = 0; i < start_axis; ++i) {
@@ -4387,7 +4387,7 @@ void SplitInferMeta(const MetaTensor& x,
         axis_value == -1) {  // NOLINT
       out_dims = std::vector<phi::DDim>(
           sections_data.size(),
-          common::make_ddim(std::vector<int>(x.dims().size(), -1)));
+          common::make_ddim(std::vector<int64_t>(x.dims().size(), -1)));
     } else {
       out_dims = std::vector<phi::DDim>(sections_data.size(), x.dims());
     }
@@ -4410,7 +4410,7 @@ void SplitInferMeta(const MetaTensor& x,
     const int unknow_dim_val = -1;
     int unknow_dim_idx = -1;
     int num_of_unknow = 0;
-    int sum_of_section = 0;
+    int64_t sum_of_section = 0;
 
     for (int i = 0; i < static_cast<int>(sections_data.size()); ++i) {
       sections_vec.push_back(sections_data[i]);
@@ -4419,7 +4419,7 @@ void SplitInferMeta(const MetaTensor& x,
         num_of_unknow++;
         unknow_dim_idx = i;
       } else {
-        sum_of_section += static_cast<int>(sections_data[i]);
+        sum_of_section += static_cast<int64_t>(sections_data[i]);
       }
     }
 

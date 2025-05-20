@@ -38,6 +38,7 @@ from ....utils import (
     ENV_SOT_EXPORT,
     ENV_SOT_TRACE_NUMPY,
     NUMPY_API_SUPPORTED_DICT,
+    already_unified_in_dynamic_and_static_graph,
     get_numpy_ufuncs,
     get_obj_stable_repr,
     get_static_function,
@@ -48,7 +49,6 @@ from ....utils import (
     is_directly_run_api,
     is_namedtuple_class,
     is_not_supported_paddle_layer,
-    is_paddle_api,
     log,
     log_do,
     magic_method_builtin_dispatch,
@@ -361,7 +361,9 @@ class PaddleApiVariable(FunctionVariable):
         successor="UserDefinedFunctionVariable"
     )
     def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
-        if callable(value) and is_paddle_api(value):
+        if callable(value) and already_unified_in_dynamic_and_static_graph(
+            value
+        ):
             return PaddleApiVariable(value, graph, tracker)
         return None
 

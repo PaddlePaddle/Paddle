@@ -1093,7 +1093,7 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
     if (config_.save_optimized_model_) {
       std::string optimized_model =
           GetOptimizedModelPath() + "/" + "_optimized.json";
-      pir::WriteModule(*pir_program_, optimized_model, 1, true, false, true);
+      pir::WriteModule(*pir_program_, optimized_model);
       LOG(INFO) << "Optimized model saved to " << optimized_model;
       SaveOrLoadPirParameters(true);
     }
@@ -1401,7 +1401,7 @@ bool AnalysisPredictor::PreparePirProgram() {
       common::errors::Fatal("Here, pir_program must be a nullptr!"));
 
   pir_program_ = std::make_shared<pir::Program>(pir::IrContext::Instance());
-  pir::ReadModule(config_.prog_file(), pir_program_.get(), 1 /*pir_version*/);
+  pir::ReadModule(config_.prog_file(), pir_program_.get());
   if (!SaveOrLoadPirParameters(false)) {
     return false;
   }

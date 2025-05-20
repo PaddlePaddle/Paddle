@@ -1478,6 +1478,7 @@ TEST(ElementwiseUnaryLike, Ctor) {
     check_dim_mapping(spmd_info.second[0], dims_mapping);
     check_partial_dims(spmd_info.second[0], {});
   };
+
   auto check_element_unary_like_backward = [&dims_mapping](auto& spmd_info) {
     EXPECT_GT(spmd_info.first.size(), static_cast<size_t>(1));
     EXPECT_EQ(spmd_info.second.size(), static_cast<size_t>(1));
@@ -1494,6 +1495,11 @@ TEST(ElementwiseUnaryLike, Ctor) {
   auto inferred_dist_attrs =
       phi::distributed::CastInferSpmd(input, phi::DataType::FLOAT32);
 
+  check_element_unary_like(inferred_dist_attrs);
+  // ElementwiseUnaryGradInferSpmd
+  input =
+      phi::distributed::DistMetaTensor(common::make_ddim(shape), t_dist_attr);
+  inferred_dist_attrs = phi::distributed::ElementwiseUnaryGradInferSpmd(input);
   check_element_unary_like(inferred_dist_attrs);
   // full like
   input =

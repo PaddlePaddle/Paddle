@@ -85,6 +85,7 @@ from .utils import (  # noqa: F401
     SIRToCodeMap,
     SotUndefinedVar,
     StepInfoManager,
+    already_unified_in_dynamic_and_static_graph,
     count_if,
     current_symbol_registry,
     do_until_stop_iteration,

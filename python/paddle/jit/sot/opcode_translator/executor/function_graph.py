@@ -54,9 +54,9 @@ from ...utils import (
     NameGenerator,
     SIRToCodeMap,
     SotUndefinedVar,
+    already_unified_in_dynamic_and_static_graph,
     inner_error_default_handler,
     is_inplace_api,
-    is_paddle_api,
     log,
     log_do,
     map_if,
@@ -549,7 +549,7 @@ class FunctionGraph:
         Args:
             func: paddle api
         """
-        assert is_paddle_api(func)
+        assert already_unified_in_dynamic_and_static_graph(func)
         log(3, f"call paddle.api : {func.__name__}", "\n")
 
         def message_handler(*args, **kwargs):
