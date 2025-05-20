@@ -13,14 +13,9 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/strided_copy_kernel.cu.h"
 
 namespace phi {
-bool VerifyStridedCopyThreadConfigurationParameters(const dim3& block,
-                                                    const dim3& grid) {
-  return block.x <= 1024 && block.y <= 1024 && block.z <= 64 &&
-         block.x * block.y * block.z <= 1024 &&
-         block.x * block.y * block.z >= 96 && grid.y < 65536 && grid.z < 65536;
-}
 
 template <typename T, size_t RANK>
 __global__ void StridedCopyCaseZeroFunc(
@@ -1268,7 +1263,31 @@ void StridedCopyKernel(const Context& dev_ctx,
   meta.dims = common::make_ddim(dims);
   meta.offset = offset;
   out->set_meta(meta);
+  int rank = out->dims().size();
+  auto numel = out->numel();
+  T* output_data = out->data<T>();
+  PADDLE_ENFORCE_NOT_NULL(output_data,
+                          common::errors::InvalidArgument(
+                              "StridedCopyKernel's out tensor must complete "
+                              "mutable data before call kernel."));
+  Array<int64_t, phi::DDim::kMaxRank + 1> output_dims;
+  Array<int64_t, phi::DDim::kMaxRank + 1> output_stride;
+  for (int i = 0; i < meta.dims.size(); i++) {
+    output_dims[i] = meta.dims[i];
+    output_stride[i] = meta.strides[i];
+  }
 
+  const T* input_data = input.data<T>();
+  if (input.dims() != out->dims() && input.numel() == 1) {
+    StrideCopyDiffDimKernel<T, Context>(dev_ctx,
+                                        input_data,
+                                        output_data,
+                                        output_stride,
+                                        output_dims,
+                                        rank,
+                                        numel);
+    return;
+  }
   PADDLE_ENFORCE_EQ(input.dims(),
                     out->dims(),
                     common::errors::InvalidArgument(
@@ -1283,27 +1302,12 @@ void StridedCopyKernel(const Context& dev_ctx,
                         input.numel(),
                         out->numel()));
 
-  const T* input_data = input.data<T>();
-  int rank = input.dims().size();
   Array<int64_t, phi::DDim::kMaxRank + 1> input_dims;
   Array<int64_t, phi::DDim::kMaxRank + 1> input_stride;
   for (int i = 0; i < input.dims().size(); i++) {
     input_dims[i] = input.dims()[i];
     input_stride[i] = input.strides()[i];
   }
-
-  T* output_data = out->data<T>();
-  PADDLE_ENFORCE_NOT_NULL(output_data,
-                          common::errors::InvalidArgument(
-                              "StridedCopyKernel's out tensor must complete "
-                              "mutable data before call kernel."));
-
-  Array<int64_t, phi::DDim::kMaxRank + 1> output_stride;
-  for (int i = 0; i < meta.dims.size(); i++) {
-    output_stride[i] = meta.strides[i];
-  }
-
-  auto numel = input.numel();
 
   if (numel == 1) {
 #ifdef PADDLE_WITH_HIP

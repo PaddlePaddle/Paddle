@@ -83,21 +83,30 @@ void SetTensorValueKernelV2(const Context& dev_ctx,
   }
 
   CheckIsDimsMatch(phi::make_ddim(new_out_shape), value.dims());
-  auto value_dims = phi::vectorize<int64_t>(value.dims());
-  DenseTensor value_tensor = Empty<T>(dev_ctx, IntArray{value_dims});
-  value_tensor = value;
-  auto it = value_dims.begin();
-  while (it != value_dims.end() && *it == 1) {
-    it = value_dims.erase(it);
+
+  DenseTensor expand_tensor;
+  if (value.numel() == 1) {
+    // std::cout << "[set_value ]value.numel() == 1 " << std::endl;
+    expand_tensor = value;
+    expand_tensor.Resize(phi::make_ddim({1}));
+  } else {
+    // std::cout << "[set_value ]value.numel() != 1 " << std::endl;
+    auto value_dims = phi::vectorize<int64_t>(value.dims());
+    DenseTensor value_tensor = Empty<T>(dev_ctx, IntArray{value_dims});
+    value_tensor = value;
+    auto it = value_dims.begin();
+    while (it != value_dims.end() && *it == 1) {
+      it = value_dims.erase(it);
+    }
+    if (value_dims.empty()) value_dims.push_back(1);
+    value_tensor.Resize(phi::make_ddim(value_dims));
+
+    if (new_out_shape.empty()) new_out_shape.push_back(1);
+
+    expand_tensor = Empty<T>(dev_ctx, IntArray{new_out_shape});
+    ExpandKernel<T, Context>(
+        dev_ctx, value_tensor, IntArray{new_out_shape}, &expand_tensor);
   }
-  if (value_dims.empty()) value_dims.push_back(1);
-  value_tensor.Resize(phi::make_ddim(value_dims));
-
-  if (new_out_shape.empty()) new_out_shape.push_back(1);
-
-  DenseTensor expand_tensor = Empty<T>(dev_ctx, IntArray{new_out_shape});
-  ExpandKernel<T, Context>(
-      dev_ctx, value_tensor, IntArray{new_out_shape}, &expand_tensor);
 
   out->ResetHolder(in.Holder());
   out->ShareInplaceVersionCounterWith(in);
