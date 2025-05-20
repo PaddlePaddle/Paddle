@@ -185,7 +185,8 @@ __global__ __launch_bounds__(
           lane_id == 0 ? (*rdma_x_src_idx = token_idx) : 0;
         }
       }
-      // 搞了一个变量 run_this_loop，这样我就不用改动deepep的代码了！
+      // Note(zkk)
+      // create a run_deepep_loop, so I need not modify Deepep's code any more.
       int run_deepep_loop = 1;
       if (use_w4a8) {
         run_deepep_loop = 0;
