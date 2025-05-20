@@ -850,6 +850,7 @@
   optional : indices, counts
   infer_meta :
     func : UniqueRawInferMeta
+    spmd_rule : UniqueInferSpmdStatic
   kernel :
     func : unique
     data_type : x
