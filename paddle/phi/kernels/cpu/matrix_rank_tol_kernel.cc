@@ -104,7 +104,6 @@ void MatrixRankTolKernel(const Context& dev_ctx,
   int cols = static_cast<int>(dim_x[dim_x.size() - 1]);
 
   if (x.numel() == 0) {
-    out->Resize(dim_out);
     dev_ctx.template Alloc<int64_t>(out);
     if (out && out->numel() != 0) {
       phi::Full<int64_t, Context>(
@@ -214,7 +213,6 @@ void MatrixRankAtolRtolKernel(const Context& dev_ctx,
 
   dev_ctx.template Alloc<int64_t>(out);
   if (x.numel() == 0) {
-    out->Resize(dim_out);
     if (out && out->numel() != 0) {
       phi::Full<int64_t, Context>(
           dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
