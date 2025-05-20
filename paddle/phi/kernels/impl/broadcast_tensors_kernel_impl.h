@@ -82,11 +82,11 @@ void BroadcastTensorsKernel(const Context& ctx,
   auto out_tensors = out;
   size_t num_ins = in_tensors.size();
 
-  PADDLE_ENFORCE_GT(
+  PADDLE_ENFORCE_GE(
       num_ins,
       1,
       errors::InvalidArgument(
-          "Expected at least 2 input tensors, but only received %d.",
+          "Expected at least 1 input tensor, but only received %d.",
           in_tensors.size()));
 
   PADDLE_ENFORCE_EQ(num_ins,

@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import builtins
+import copy
 import inspect
 import sys
 import time
@@ -22,12 +23,14 @@ import types
 import weakref
 from collections import OrderedDict
 from contextlib import contextmanager
+from functools import lru_cache
 from typing import TYPE_CHECKING, Any, Callable, TypeVar
 from weakref import WeakValueDictionary
 
 import numpy as np
 
 import paddle
+from paddle.jit.dy2static.utils import TransformOptions
 from paddle.utils import flatten, map_structure
 
 from .envs import (
@@ -126,6 +129,17 @@ class ResumeFnNameFactory(metaclass=Singleton):
         return name
 
 
+class SIRToCodeMap(metaclass=Singleton):
+    def __init__(self):
+        self._map = {}
+
+    def register(self, sir, code):
+        self._map[sir.name] = code
+
+    def get(self, sir):
+        return self._map.get(sir.name)
+
+
 def log(level, *args):
     cur_level = ENV_SOT_LOG_LEVEL.get()
     if level <= cur_level:
@@ -146,6 +160,11 @@ def log_format(level, str, *args):
 
 def log_enabled(level):
     return level <= ENV_SOT_LOG_LEVEL.get()
+
+
+@lru_cache
+def log_once(msg):
+    print(msg, flush=True)
 
 
 def no_eval_frame(func):
@@ -176,6 +195,14 @@ def is_paddle_api(func):
     ):  # paddle.Tensor should not be wrapped, but how about other situations?
         return False
     return in_paddle_module(func) or func in paddle_api_list
+
+
+def already_unified_in_dynamic_and_static_graph(fn):
+    if is_paddle_api(fn):
+        return True
+    return not TransformOptions.check_fn_need_transform(
+        fn, TransformOptions.ToStaticMode.SOT
+    )
 
 
 def is_builtin_fn(fn):
@@ -211,6 +238,17 @@ def in_paddle_module(func):
 
 def is_break_graph_api(func):
     return func in break_graph_set
+
+
+def is_namedtuple_class(cls):
+    if not inspect.isclass(cls):
+        return False
+    if not issubclass(cls, tuple):
+        return False
+    # The signature created by nametuple function
+    namedtuple_attrs = {"_make", "_asdict", "_fields", "_replace"}
+    cls_attrs = set(dir(cls))
+    return namedtuple_attrs.issubset(cls_attrs)
 
 
 def map_if(
@@ -267,12 +305,13 @@ def count_if(*structures, pred):
 
 
 class Cache:
-    def __init__(self, weak=False):
+    def __init__(self, weak=False, copy=False):
         if not weak:
             self.cache = {}
         else:
             self.cache = WeakValueDictionary()
         self.hit_num = 0
+        self.copy = copy
 
     def __call__(self, *args, **kwargs):
         cache_key = self.key_fn(*args, **kwargs)
@@ -281,7 +320,10 @@ class Cache:
         if cache_key in self.cache:
             log(5, "cache hit: ", cache_key, "\n")
             self.hit_num += 1
-            return self.cache[cache_key]
+            cache_item = self.cache[cache_key]
+            if self.copy:
+                cache_item = copy.deepcopy(cache_item)
+            return cache_item
         value = self.value_fn(*args, **kwargs)
         self.cache[cache_key] = value
         return value
@@ -428,6 +470,14 @@ def do_until_stop_iteration(fn: Callable[[], T]) -> list[T]:
         except StopIteration:
             break
     return res
+
+
+def update_list_inplace(
+    original_list: list[T], new_contents: list[T]
+) -> list[T]:
+    original_list.clear()
+    original_list.extend(new_contents)
+    return original_list
 
 
 def get_obj_stable_repr(obj) -> str:

@@ -52,7 +52,7 @@ void SquaredL2NormGradKernel(const Context& dev_ctx,
                      reinterpret_cast<XPUType*>(dx->data<T>()),
                      x.numel(),
                      false,
-                     dout_value_cpu * 2,
+                     static_cast<float>(dout_value_cpu * 2),
                      0.0f);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "scale");
 }

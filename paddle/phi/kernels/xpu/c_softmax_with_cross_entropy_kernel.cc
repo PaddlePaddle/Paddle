@@ -161,8 +161,8 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::XPUContext, T> {
     stream = dev_ctx.stream();
 
     // allocate memory on device.
-    dev_ctx.template Alloc(softmax, logits->dtype());
-    dev_ctx.template Alloc(loss, logits->dtype());
+    dev_ctx.Alloc(softmax, logits->dtype());
+    dev_ctx.Alloc(loss, logits->dtype());
 
     const auto& logits_dims = logits->dims();
 

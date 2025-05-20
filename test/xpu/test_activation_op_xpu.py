@@ -305,36 +305,39 @@ class XPUTestSigmoidOP(XPUOpTestWrapper):
             self.op_type = "sigmoid"
             self.dtype = self.in_type
             self.init_config()
+            if self.dtype == np.uint16:
+                # bfloat16 actually
+                new_x = convert_float_to_uint16(self.x)
+            else:
+                new_x = self.x.astype(self.dtype)
             out = 1 / (1 + np.exp(-self.x))
 
             self.attrs = {'use_xpu': True}
-            self.inputs = {'X': OpTest.np_dtype_to_base_dtype(self.x)}
+            self.inputs = {'X': OpTest.np_dtype_to_base_dtype(new_x)}
             self.outputs = {'Out': out}
 
         def init_config(self):
-            self.x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
+            self.x = np.random.uniform(-1, 1, [11, 17])
 
     class XPUTestSigmoid_ZeroDIm(XPUTestSigmoid):
         def init_config(self):
-            self.x = np.random.uniform(-2, 2, []).astype(self.dtype)
+            self.x = np.random.uniform(-2, 2, [])
 
     class XPUTestSigmoid2(XPUTestSigmoid):
         def init_config(self):
-            self.x = np.random.uniform(-2, 2, [100]).astype(self.dtype)
+            self.x = np.random.uniform(-2, 2, [100])
 
     class XPUTestSigmoid3(XPUTestSigmoid):
         def init_config(self):
-            self.x = np.random.uniform(-2, 2, [10, 12, 15]).astype(self.dtype)
+            self.x = np.random.uniform(-2, 2, [10, 12, 15])
 
     class XPUTestSigmoid4(XPUTestSigmoid):
         def init_config(self):
-            self.x = np.random.uniform(-2, 2, [19, 19]).astype(self.dtype)
+            self.x = np.random.uniform(-2, 2, [19, 19])
 
     class XPUTestSigmoid5(XPUTestSigmoid):
         def init_config(self):
-            self.x = np.random.uniform(-2, 2, [10, 20, 30, 40]).astype(
-                self.dtype
-            )
+            self.x = np.random.uniform(-2, 2, [10, 20, 30, 40])
 
 
 support_types = get_xpu_op_support_types('sigmoid')

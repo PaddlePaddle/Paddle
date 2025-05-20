@@ -474,7 +474,6 @@ void Copy<phi::XPUPlace, phi::XPUPinnedPlace>(phi::XPUPlace dst_place,
   VLOG(4) << "cudaMemcpy time: " << elapsed.count() << " ms";
 }
 
-// NOTE: only for (CPUPlace, CUDAPlace and CUDAPinnedPlace) -> (CUDAPinnedPlace)
 template <>
 void Copy<phi::XPUPinnedPlace, phi::Place>(phi::XPUPinnedPlace dst_place,
                                            void* dst,
@@ -485,7 +484,6 @@ void Copy<phi::XPUPinnedPlace, phi::Place>(phi::XPUPinnedPlace dst_place,
   Copy(phi::Place(dst_place.GetType()), dst, src_place, src, num, stream);
 }
 
-// NOTE: only for (CUDAPinnedPlace) -> (CPUPlace, CUDAPlace and CUDAPinnedPlace)
 template <>
 void Copy<phi::Place, phi::XPUPinnedPlace>(phi::Place dst_place,
                                            void* dst,
@@ -496,7 +494,6 @@ void Copy<phi::Place, phi::XPUPinnedPlace>(phi::Place dst_place,
   Copy(dst_place, dst, phi::Place(src_place.GetType()), src, num, stream);
 }
 
-// NOTE: only for (CPUPlace) -> (CUDAPinnedPlace)
 template <>
 void Copy<phi::XPUPinnedPlace, phi::Place>(phi::XPUPinnedPlace dst_place,
                                            void* dst,
@@ -506,7 +503,6 @@ void Copy<phi::XPUPinnedPlace, phi::Place>(phi::XPUPinnedPlace dst_place,
   Copy(phi::Place(dst_place.GetType()), dst, src_place, src, num, nullptr);
 }
 
-// NOTE: only for (CUDAPinnedPlace) -> (CPUPlace)
 template <>
 void Copy<phi::Place, phi::XPUPinnedPlace>(phi::Place dst_place,
                                            void* dst,

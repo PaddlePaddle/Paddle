@@ -12,6 +12,7 @@
   output : Tensor(out)
   infer_meta :
     func : RealAndImagInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
   kernel :
     func : abs
     data_type : x
@@ -48,6 +49,7 @@
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
   kernel :
     func : acos
   inplace: (x -> out)
@@ -60,6 +62,7 @@
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
   kernel :
     func : acosh
   inplace: (x -> out)
@@ -275,6 +278,48 @@
   traits : paddle::dialect::ForwardOnlyTrait
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
 
+- op : ap_facade
+  args : (Tensor[] xs, int64_t num_outputs, str custom_op_name, str infer_meta_func_name, str infer_symbolic_func_name, str serialized_attributes)
+  output : Tensor[](out){num_outputs}
+  optional : xs
+  infer_meta :
+    func : ApFacadeInferMeta
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+  kernel :
+    func : ap_facade
+  traits : paddle::dialect::ForwardOnlyTrait
+
+- op : ap_trivial_fusion_begin
+  args : (Tensor[] xs)
+  output : Tensor(out)
+  optional : xs
+  infer_meta :
+    func : ApTrivialFusionBeginInferMeta
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+  kernel :
+    func : ap_trivial_fusion_begin
+  traits : pir::SideEffectTrait, paddle::dialect::ForwardOnlyTrait
+
+- op : ap_trivial_fusion_end
+  args : (Tensor[] xs)
+  output : Tensor(out)
+  optional : xs
+  infer_meta :
+    func : ApTrivialFusionEndInferMeta
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+  kernel :
+    func : ap_trivial_fusion_end
+  traits : pir::SideEffectTrait, paddle::dialect::ForwardOnlyTrait
+
+- op : ap_variadic
+  args : (Tensor[] xs, int num_outputs, str code_module_lambda, str infer_symbolic_lambda, str infer_meta_lambda, str rnel_dispatch_lambda, str kernel_dispatch_const_data_lambda)
+  output : Tensor[](out){num_outputs}
+  infer_meta :
+    func : ApVariadicInferMeta
+  kernel :
+    func : ap_variadic
+  traits : paddle::dialect::ForwardOnlyTrait
+
 - op : apply_per_channel_scale
   args: (Tensor x, Tensor scales)
   output: Tensor(out)
@@ -303,6 +348,7 @@
   output : Tensor(out)
   infer_meta :
     func : ArgMinMaxInferMeta
+    spmd_rule : ArgMinInferSpmdDynamic
   kernel :
     func : argmin
     data_type : x
@@ -314,6 +360,7 @@
   output : Tensor(out), Tensor(indices)
   infer_meta :
     func : ArgsortInferMeta
+    spmd_rule : ArgSortInferSpmd
   kernel :
     func : argsort
   backward : argsort_grad
@@ -370,6 +417,7 @@
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
   kernel :
     func : asin
   inplace: (x -> out)
@@ -382,6 +430,7 @@
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
   kernel :
     func : asinh
   inplace: (x -> out)
@@ -433,6 +482,7 @@
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
   kernel :
     func : atan
   inplace: (x -> out)
@@ -445,6 +495,7 @@
   output : Tensor(out)
   infer_meta :
     func : Atan2InferMeta
+    spmd_rule : ElementwiseBinaryInferSpmd
   kernel :
     func : atan2
   backward : atan2_grad
@@ -455,6 +506,7 @@
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
   kernel :
     func : atanh
   inplace: (x -> out)
@@ -563,6 +615,7 @@
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
   kernel :
     func : bernoulli
   interfaces : paddle::dialect::InferSymbolicShapeInterface
@@ -682,6 +735,7 @@
   output : Tensor(out)
   infer_meta :
     func : ElementwiseInferMeta
+    spmd_rule : ElementwiseBinaryInferSpmd
   kernel :
     func : bitwise_or
     backend : x
@@ -853,13 +907,14 @@
     data_type : x
   inplace: (x -> out)
   backward : cast_grad
-  interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
 
 - op : ceil
   args : (Tensor x)
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
   kernel :
     func : ceil
   inplace : (x -> out)
@@ -873,6 +928,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param: [x]
+    spmd_rule : CeluInfoSpmd
   kernel :
     func : celu
   backward : celu_grad
@@ -1134,6 +1190,7 @@
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
   kernel :
     func : cosh
   inplace: (x -> out)
@@ -1527,7 +1584,7 @@
   traits : paddle::dialect::ForwardOnlyTrait
 
 - op : dropout
-  args : (Tensor x, Tensor seed_tensor, Scalar p, bool is_test, str mode, int seed, bool fix_seed)
+  args : (Tensor x, Tensor seed_tensor, Scalar p = 0.5f, bool is_test = false, str mode = "downgrade_in_infer", int seed = 0, bool fix_seed = false)
   output : Tensor(out), Tensor(mask)
   infer_meta :
     func : DropoutInferMeta
@@ -1600,6 +1657,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : EluInfoSpmd
   kernel :
     func : elu
   inplace : (x -> out)
@@ -1674,6 +1732,7 @@
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
   kernel :
     func : erf
   inplace : (x -> out)
@@ -1686,6 +1745,7 @@
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
   kernel :
     func : erfinv
   inplace : (x -> out)
@@ -1736,6 +1796,7 @@
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
     param : [x]
   kernel :
     func : expm1
@@ -1980,6 +2041,18 @@
   intermediate : softmax_lse, seed_offset
   backward : flash_attn_unpadded_grad
 
+- op : flash_attn_v3
+  args : (Tensor q, Tensor k, Tensor v, Tensor q_v_, Tensor q_descale_, Tensor k_descale_, Tensor v_descale_, float softmax_scale, bool is_causal, int window_size_left, int window_size_right, float softcap, int num_splits, bool manual_set_pack_gqa, bool pack_gqa_, int sm_margin)
+  output : Tensor(out), Tensor(softmax_lse)
+  optional : q_v_, q_descale_, k_descale_, v_descale_
+  infer_meta :
+    func : FlashAttnV3InferMeta
+    param : [q, k, v]
+  kernel :
+    func : flash_attn_v3
+    data_type : q
+  backward : flash_attn_v3_grad
+
 - op : flash_attn_varlen_qkvpacked
   args : (Tensor qkv, Tensor cu_seqlens_q,  Tensor cu_seqlens_k, Tensor fixed_seed_offset, Tensor attn_mask, Scalar max_seqlen_q, Scalar max_seqlen_k, float scale, float dropout = 0.0, bool causal = false, bool return_softmax = false, bool is_test = false, str rng_name = "", bool varlen_padded = true)
   output : Tensor(out), Tensor(softmax), Tensor(softmax_lse), Tensor(seed_offset)
@@ -2037,6 +2110,7 @@
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
   kernel :
     func : floor
   inplace : (x -> out)
@@ -2050,6 +2124,7 @@
   infer_meta :
     param: [x, y]
     func : ElementwiseInferMeta
+    spmd_rule : ElementwiseBinaryInferSpmd
   kernel :
     func : fmax
   backward : fmax_grad
@@ -2062,6 +2137,7 @@
   infer_meta :
     func : ElementwiseInferMeta
     param: [x, y]
+    spmd_rule : ElementwiseBinaryInferSpmd
   kernel :
     func : fmin
   backward : fmin_grad
@@ -2915,6 +2991,7 @@
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule: ElementwiseUnaryInferSpmd
   kernel :
     func : lgamma
   inplace: (x -> out)
@@ -2977,6 +3054,7 @@
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule: ElementwiseUnaryInferSpmd
   kernel :
     func : log
   inplace: (x -> out)
@@ -2989,6 +3067,7 @@
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
   kernel :
     func : log10
   inplace: (x -> out)
@@ -3001,6 +3080,7 @@
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
   kernel :
     func : log1p
   inplace: (x -> out)
@@ -3013,6 +3093,7 @@
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
   kernel :
     func : log2
   inplace: (x -> out)
@@ -3113,6 +3194,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : LogitInfoSpmd
   kernel :
     func : logit
   inplace: (x -> out)
@@ -3125,6 +3207,7 @@
   output : Tensor
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
   kernel :
     func : logsigmoid
   backward : logsigmoid_grad
@@ -3167,7 +3250,7 @@
   traits : paddle::dialect::ForwardOnlyTrait
 
 - op : lp_pool2d
-  args : (Tensor x, IntArray kernel_size, int[] strides = {1,1}, int[] paddings = {0,0}, bool ceil_mode = false, bool exclusive = true, str data_format = "NCHW", str pooling_type = "", bool global_pooling = false, bool adaptive = false, str padding_algorithm = "EXPLICIT", float norm_type = 0.0f)
+  args : (Tensor x, IntArray kernel_size, int64_t[] strides = {1,1}, int64_t[] paddings = {0,0}, bool ceil_mode = false, bool exclusive = true, str data_format = "NCHW", str pooling_type = "", bool global_pooling = false, bool adaptive = false, str padding_algorithm = "EXPLICIT", float norm_type = 0.0f)
   output : Tensor(out)
   infer_meta :
     func : Pool2DInferMeta
@@ -3394,6 +3477,7 @@
   output : Tensor
   infer_meta :
     func : MeanAllInferMeta
+    spmd_rule : MeanAllInferSpmd
   kernel :
     func : mean_all
   backward : mean_all_grad
@@ -3482,6 +3566,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : MishInfoSpmd
   kernel :
     func : mish
   backward : mish_grad
@@ -3497,35 +3582,6 @@
     func : mode
   backward : mode_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
-
-- op : moe_dispatch
-  args : (Tensor X, Tensor gating_output, int moe_topk = 2, bool group_moe = false, bool topk_only_mode = false)
-  output : Tensor(permute_input), Tensor(token_nums_per_expert), Tensor(permute_indices_per_token), Tensor(expert_scales_float), Tensor(top_k_indices)
-  infer_meta :
-    func : MoeDispatchInferMeta
-  kernel :
-    func : moe_dispatch
-    data_type : X
-
-- op : moe_ffn
-  args : (Tensor permute_input, Tensor token_nums_per_expert, Tensor ffn1_weight, Tensor ffn2_weight, Tensor ffn1_bias, Tensor ffn1_scale, Tensor ffn2_scale, str quant_method)
-  output : Tensor(ffn_out)
-  infer_meta :
-    func : MoeFFNInferMeta
-  kernel :
-    func : moe_ffn
-    data_type : permute_input
-  optional : ffn1_bias, ffn1_scale, ffn2_scale
-
-- op : moe_reduce
-  args : (Tensor ffn_out, Tensor expert_scales_float, Tensor permute_indices_per_token, Tensor top_k_indices, Tensor ffn2_bias, bool norm_topk_prob = false, float routed_scaling_factor = 1.0)
-  output : Tensor(output)
-  infer_meta :
-    func : MoeReduceInferMeta
-  kernel :
-    func : moe_reduce
-    data_type : ffn_out
-  optional : ffn2_bias
 
 - op : momentum_
   args : (Tensor param, Tensor grad, Tensor velocity, Tensor learning_rate, Tensor master_param, float mu, bool use_nesterov = false, str regularization_method = "", float regularization_coeff = 0.0f, bool multi_precision = false, float rescale_grad = 1.0f)
@@ -3683,6 +3739,7 @@
   output : Tensor(out)
   infer_meta :
     func : NonZeroInferMeta
+    spmd_rule : NonZeroInferSpmd
   kernel :
     func : nonzero
     data_type: condition
@@ -3848,6 +3905,7 @@
   output : Tensor
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule: ElementwiseUnaryInferSpmd
   kernel :
     func : poisson
   backward : poisson_grad
@@ -3866,7 +3924,7 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : pool2d
-  args : (Tensor x, IntArray kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm)
+  args : (Tensor x, IntArray kernel_size, int64_t[] strides, int64_t[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm)
   output : Tensor(out)
   infer_meta :
     func : Pool2DInferMeta
@@ -3878,7 +3936,7 @@
   interfaces : paddle::dialect::LayoutTransformationInterface, paddle::dialect::InferSymbolicShapeInterface
 
 - op : pool3d
-  args : (Tensor x, int[] kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm)
+  args : (Tensor x, int64_t[] kernel_size, int64_t[] strides, int64_t[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm)
   output : Tensor(out)
   infer_meta :
     func : PoolInferMeta
@@ -4090,6 +4148,7 @@
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
   kernel :
     func : reciprocal
   inplace : (x -> out)
@@ -4322,6 +4381,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : RoundInfoSpmd
   kernel :
     func : round
   inplace : (x -> out)
@@ -4436,6 +4496,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : SeluInfoSpmd
   kernel :
     func : selu
   backward : selu_grad
@@ -4650,6 +4711,7 @@
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
   kernel :
     func : sign
   backward : sign_grad
@@ -4686,6 +4748,7 @@
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
   kernel :
     func : sinh
   inplace: (x -> out)
@@ -4720,6 +4783,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : SoftplusInfoSpmd
   kernel :
     func : softplus
   backward : softplus_grad
@@ -4732,6 +4796,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : SoftshrinkInfoSpmd
   kernel :
     func : softshrink
   backward : softshrink_grad
@@ -4743,6 +4808,7 @@
   output : Tensor
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
     param : [x]
   kernel :
     func : softsign
@@ -4813,6 +4879,7 @@
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
   kernel :
     func : sqrt {dense -> dense},
            sqrt_sr {selected_rows -> selected_rows}
@@ -4887,6 +4954,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : StanhInfoSpmd
   kernel :
     func : stanh
   backward : stanh_grad
@@ -4963,6 +5031,7 @@
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
     param : [x]
   kernel :
     func : swish
@@ -5011,6 +5080,7 @@
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
   kernel :
     func : tan
   inplace : (x -> out)
@@ -5023,6 +5093,7 @@
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
   kernel :
     func : tanh
   inplace : (x -> out)
@@ -5035,6 +5106,7 @@
   output : Tensor
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
   kernel :
     func : tanh_shrink
   backward : tanh_shrink_grad
@@ -5081,6 +5153,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : ThresholdedReluInfoSpmd
   kernel :
     func : thresholded_relu
   inplace: (x -> out)
@@ -5105,6 +5178,7 @@
   output : Tensor(out), Tensor(indices)
   infer_meta :
     func : TopKInferMeta
+    spmd_rule: TopkInferSpmdDynamic
   kernel :
     func : topk
     data_type : x
@@ -5224,6 +5298,7 @@
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
   kernel :
     func : trunc
   inplace: (input -> out)
@@ -5450,13 +5525,13 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : weight_dequantize
-  args : (Tensor x, Tensor scale, str algo = "weight_only_int8", DataType out_dtype = DataType::FLOAT16, int group_size = -1)
+  args : (Tensor x, Tensor scale, str algo = "weight_only_int8", int group_size = -1)
   output : Tensor(out)
   infer_meta :
     func : WeightDequantizeInferMeta
   kernel :
     func : weight_dequantize
-    data_type : out_dtype
+    data_type : scale
   traits : paddle::dialect::ForwardOnlyTrait
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 

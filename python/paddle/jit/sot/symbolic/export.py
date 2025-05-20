@@ -174,7 +174,7 @@ class PyFileGen:
         init_fn.add_sub("super().__init__()")
 
         for param in self.SIR.param_symbol:
-            meta = self.SIR.symbol_meta_map[param]
+            meta = self.SIR.symbol_meta_map[param].unwrap_unsafe()
             init_fn.add_sub(
                 f"{self.name_gener(param)} = self.create_parameter(",
                 f"   shape={meta.shape},",
@@ -218,7 +218,7 @@ class PyFileGen:
 
         for inp in self.SIR.inputs:
             if inp in self.SIR.non_param_symbol:
-                meta = self.SIR.symbol_meta_map[inp.name]
+                meta = self.SIR.symbol_meta_map[inp.name].unwrap_unsafe()
                 shape_str = "[1]" if len(meta.shape) == 0 else str(meta.shape)
                 if meta.dtype in (
                     paddle.int8,
@@ -271,7 +271,7 @@ class PyFileGen:
         )
         train.add_sub(
             "if to_static:",
-            "    paddle.set_flags({'FLAGS_prim_all': with_prim})",
+            "    paddle.base.core._set_prim_all_enabled(with_prim)",
             "    if with_cinn:",
             '        assert with_prim, "with_cinn=True but with_prim=False is unsupported"',
             '        net = paddle.jit.to_static(net, backend="CINN", full_graph=True)',

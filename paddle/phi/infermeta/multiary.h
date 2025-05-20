@@ -140,6 +140,36 @@ void AddNInferMeta(const std::vector<const MetaTensor*>& x,
                    MetaTensor* out,
                    MetaConfig config = MetaConfig());
 
+void ApTrivialFusionBeginInferMeta(
+    const paddle::optional<std::vector<const MetaTensor*>>& xs,
+    MetaTensor* out,
+    MetaConfig config = MetaConfig());
+
+void ApTrivialFusionEndInferMeta(
+    const paddle::optional<std::vector<const MetaTensor*>>& xs,
+    MetaTensor* out,
+    MetaConfig config = MetaConfig());
+
+void ApFacadeInferMeta(
+    const paddle::optional<std::vector<const MetaTensor*>>& xs,
+    int64_t num_outputs,
+    const std::string& custom_op_name,
+    const std::string& infer_meta_func_name,
+    const std::string& infer_symbolic_func_name,
+    const std::string& serialized_attributes,
+    std::vector<MetaTensor*> outs,
+    MetaConfig config = MetaConfig());
+
+void ApVariadicInferMeta(const std::vector<const MetaTensor*>& xs,
+                         int num_outputs,
+                         const std::string& code_module_lambda,
+                         const std::string& infer_meta_lambda,
+                         const std::string& infer_symbolic_lambda,
+                         const std::string& kernel_dispatch_lambda,
+                         const std::string& kernel_dispatch_const_data_lambda,
+                         std::vector<MetaTensor*> outs,
+                         MetaConfig config = MetaConfig());
+
 void AddNTensorArrayInferMeta(const std::vector<const MetaTensor*>& x,
                               MetaTensor* out,
                               MetaConfig config);
@@ -1164,50 +1194,6 @@ void FusedConvInferMeta(const MetaTensor& input,
                         bool force_fp32_output,
                         MetaTensor* out,
                         MetaConfig config = MetaConfig());
-
-void FusedMoeInferMeta(const MetaTensor& X,
-                       const MetaTensor& gate_weight,
-                       const MetaTensor& ffn1_weight,
-                       const MetaTensor& ffn1_scale,
-                       const MetaTensor& ffn1_bias,
-                       const MetaTensor& ffn2_weight,
-                       const MetaTensor& ffn2_scale,
-                       const MetaTensor& ffn2_bias,
-                       const std::string& quant_method,
-                       const int moe_topk,
-                       const bool norm_topk_prob,
-                       const bool group_moe,
-                       MetaTensor* out);
-
-void MoeDispatchInferMeta(const MetaTensor& X,
-                          const MetaTensor& gating_output,
-                          const int moe_topk,
-                          const bool group_moe,
-                          const bool topk_only_mode,
-                          MetaTensor* permute_input,
-                          MetaTensor* token_nums_per_expert,
-                          MetaTensor* permute_indices_per_token,
-                          MetaTensor* expert_scales_float,
-                          MetaTensor* top_k_indices);
-
-void MoeFFNInferMeta(const MetaTensor& permute_input,
-                     const MetaTensor& token_nums_per_expert,
-                     const MetaTensor& ffn1_weight,
-                     const MetaTensor& ffn2_weight,
-                     const MetaTensor& ffn1_bias,
-                     const MetaTensor& ffn1_scale,
-                     const MetaTensor& ffn2_scale,
-                     const std::string& quant_method,
-                     MetaTensor* ffn_out);
-
-void MoeReduceInferMeta(const MetaTensor& ffn_out,
-                        const MetaTensor& expert_scales_float,
-                        const MetaTensor& permute_indices_per_token,
-                        const MetaTensor& top_k_indices,
-                        const MetaTensor& ffn2_bias,
-                        const bool norm_topk_prob,
-                        const float routed_scaling_factor,
-                        MetaTensor* output);
 
 void FusedMultiHeadAttentionInferMeta(const MetaTensor& query,
                                       const MetaTensor& key,

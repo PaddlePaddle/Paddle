@@ -828,16 +828,6 @@
   optional : mask
   support_dygraph_mode : true
 
-- op : weight_only_linear_xpu
-  args : (Tensor x, Tensor weight, Tensor bias, Tensor weight_scale, str weight_dtype, int arch = 80, int group_size = -1)
-  output : Tensor(out)
-  infer_meta :
-    func : WeightOnlyLinearInferMeta
-  kernel :
-    func : weight_only_linear_xpu
-    data_type : x
-  optional : bias
-
 - op : yolo_box_xpu
   args : (Tensor x, Tensor x_max, Tensor grid, Tensor stride, Tensor anchor_grid, float offset)
   output : Tensor(out), Tensor(out_max)
@@ -874,15 +864,3 @@
     data_type: embeddings
   optional: h0, c0
   intermediate: xx, batched_input, batched_hidden, batched_cell, reordered_h0, reordered_c0
-
-- op: fused_moe
-  args: (Tensor x, Tensor gate_weight, Tensor ffn1_weight, Tensor ffn1_scale, Tensor ffn1_bias, Tensor ffn2_weight, Tensor ffn2_scale, Tensor ffn2_bias,
-    str quant_method = "None", int moe_topk = 2, bool group_moe = false, bool norm_topk_prob = true)
-  output: Tensor (out)
-  infer_meta:
-    func: FusedMoeInferMeta
-  kernel:
-    func: fused_moe
-    data_type : x
-  optional : ffn1_bias, ffn1_scale, ffn2_bias, ffn2_scale
-  support_dygraph_mode : true

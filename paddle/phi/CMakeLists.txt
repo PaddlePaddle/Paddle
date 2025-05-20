@@ -51,6 +51,9 @@ set(PHI_DEPS
     cblas
     utf8proc
     common)
+if(WITH_CINN)
+  list(APPEND PHI_DEPS ap_phi)
+endif()
 
 list(
   APPEND
@@ -85,6 +88,10 @@ endif()
 
 if(WITH_GLOO)
   list(APPEND PHI_DEPS gloo)
+endif()
+
+if(WITH_FLAGCX)
+  list(APPEND PHI_DEPS flagcx)
 endif()
 
 if(WITH_CUDNN_FRONTEND)

@@ -86,7 +86,6 @@ limitations under the License. */
 #include "paddle/phi/core/memory/allocation/cuda_ipc_allocator.h"
 #endif
 #include "paddle/common/macros.h"
-#include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/operators/ops_extra_info.h"
 #include "paddle/fluid/operators/py_func_op.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -176,7 +175,6 @@ limitations under the License. */
 #endif
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-#include "paddle/fluid/operators/custom_device_common_op_registry.h"
 #include "paddle/fluid/platform/profiler/custom_device/custom_tracer.h"
 #include "paddle/phi/capi/capi.h"
 #include "paddle/phi/core/platform/collective_helper.h"
@@ -302,6 +300,14 @@ bool IsCompiledWithDISTRIBUTE() {
 
 bool IsCompiledWithNCCL() {
 #ifdef PADDLE_WITH_NCCL
+  return true;
+#else
+  return false;
+#endif
+}
+
+bool IsCompiledWithFlagcx() {
+#ifdef PADDLE_WITH_FLAGCX
   return true;
 #else
   return false;
@@ -1015,29 +1021,26 @@ void BindVjp(pybind11::module *m) {
 }
 
 void BindDecompRule(pybind11::module *m) {
-  m->def("sinking_decomp",
-         [](pir::Program *program,
-            std::vector<pir::Value> &src_vars,
-            std::set<std::string> &blacklist,
-            std::set<std::string> &whitelist,
-            int start_index,
-            int end_index) {
-           VLOG(4) << "[Prim] Bind Decomp sinking_decomp begin.";
-           py::list res;
-           DecompProgram decomp_object(
-               program, src_vars, blacklist, whitelist, start_index, end_index);
-           decomp_object.decomp_program();
-           std::vector<pir::Value> tar_vars = decomp_object.get_dst_vars();
-           for (size_t i = 0; i < tar_vars.size(); ++i) {
-             if (!tar_vars[i]) {
-               res.append(nullptr);
-             } else {
-               res.append(tar_vars[i]);
-             }
-           }
-           VLOG(4) << "[Prim] Bind Decomp sinking_decomp end.";
-           return res;
-         });
+  m->def(
+      "sinking_decomp",
+      [](pir::Program *program,
+         std::vector<pir::Value> &src_vars,
+         std::set<std::string> &blacklist,
+         std::set<std::string> &whitelist,
+         int start_index,
+         int end_index) {
+        VLOG(4) << "[Prim] Bind Decomp sinking_decomp begin.";
+        auto original_insertion_point =
+            paddle::dialect::ApiBuilder::Instance().GetCurrentInsertionPoint();
+        DecompProgram decomp_object(
+            program, src_vars, blacklist, whitelist, start_index, end_index);
+        decomp_object.decomp_program();
+        std::vector<pir::Value> tar_vars = decomp_object.get_dst_vars();
+        paddle::dialect::ApiBuilder::Instance().SetInsertionPoint(
+            original_insertion_point);
+        VLOG(4) << "[Prim] Bind Decomp sinking_decomp end.";
+        return tar_vars;
+      });
 
   m->def("call_decomp_rule", [](pir::Operation &fwd_op) {
     py::list res;
@@ -1151,6 +1154,8 @@ PYBIND11_MODULE(libpaddle, m) {
         &paddle::prim::PrimCommonUtils::SetFwdPrimEnabled);
   m.def("_is_fwd_prim_enabled",
         &paddle::prim::PrimCommonUtils::IsFwdPrimEnabled);
+  m.def("_is_all_prim_enabled",
+        &paddle::prim::PrimCommonUtils::IsAllPrimEnabled);
   m.def("__set_all_prim_enabled",
         &paddle::prim::PrimCommonUtils::SetAllPrimEnabled);
   m.def("_is_eager_prim_enabled",
@@ -2097,7 +2102,22 @@ All parameter, weight, gradient are variables in Paddle.
                 paddle::memory::allocation::AllocatorFacade::Instance()
                     .GetZeroAllocator(phi::CPUPlace())
                     .get());
+            context->SetPinnedAllocator(
+                paddle::memory::allocation::AllocatorFacade::Instance()
+                    .GetAllocator(phi::XPUPinnedPlace())
+                    .get());
             return context;
+#endif
+          })
+      .def_static(
+          "create",
+          [](phi::XPUPinnedPlace &place) -> phi::DeviceContext * {
+#if !defined(PADDLE_WITH_XPU)
+            PADDLE_THROW(common::errors::PermissionDenied(
+                "Cannot use XPUPinnedPlace in CPU only version, "
+                "Please recompile or reinstall Paddle with XPU support."));
+#else
+            return new phi::XPUPinnedContext(place);
 #endif
           })
       .def_static("create",
@@ -2274,6 +2294,13 @@ All parameter, weight, gradient are variables in Paddle.
            [](OperatorBase &self,
               const Scope &scope,
               const phi::GPUPinnedPlace &place) {
+             pybind11::gil_scoped_release release;
+             self.Run(scope, place);
+           })
+      .def("run",
+           [](OperatorBase &self,
+              const Scope &scope,
+              const phi::XPUPinnedPlace &place) {
              pybind11::gil_scoped_release release;
              self.Run(scope, place);
            })
@@ -2534,14 +2561,7 @@ All parameter, weight, gradient are variables in Paddle.
     egr::Controller::Instance().MergeOpMetaInfoMap(
         framework::LoadOpMetaInfoAndRegisterOp(dso_name));
   });
-  m.def("init_devices", []() {
-    framework::InitDevices();
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
-    for (auto &dev_type : phi::DeviceManager::GetAllCustomDeviceTypes()) {
-      paddle::operators::RegisterCustomDeviceCommonKernel(dev_type);
-    }
-#endif
-  });
+  m.def("init_devices", []() { framework::InitDevices(); });
   m.def("init_default_kernel_signatures",
         []() { framework::InitDefaultKernelSignatureMap(); });
   m.def("init_tensor_operants", []() {
@@ -2553,6 +2573,7 @@ All parameter, weight, gradient are variables in Paddle.
         std::make_unique<paddle::operants::PhiTensorOperants>();
     VLOG(4) << "Initialize tensor operants successfully";
   });
+  m.def("is_compiled_with_flagcx", IsCompiledWithFlagcx);
   m.def("is_compiled_with_avx", IsCompiledWithAVX);
   m.def("is_compiled_with_cuda", IsCompiledWithCUDA);
   m.def("is_compiled_with_cudnn_frontend", IsCompiledWithCudnnFrontend);
@@ -2902,6 +2923,10 @@ All parameter, weight, gradient are variables in Paddle.
 #ifdef PADDLE_WITH_XPU
   m.def("get_xpu_device_count", platform::GetXPUDeviceCount);
   m.def("xpu_empty_cache", platform::EmptyCache);
+  m.def("get_xpu_device_utilization_rate",
+        platform::GetXPUDeviceUtilizationRate);
+  m.def("get_xpu_device_total_memory", platform::GetXPUDeviceTotalMemory);
+  m.def("get_xpu_device_used_memory", platform::GetXPUDeviceUsedMemory);
 #endif
 
   py::enum_<platform::TracerOption>(m, "TracerOption", py::arithmetic())
@@ -3440,7 +3465,16 @@ All parameter, weight, gradient are variables in Paddle.
       .def_readwrite("optim_shape_tensor",
                      &paddle::platform::EngineParams::optim_shape_tensor)
       .def_readwrite("engine_serialized_data",
-                     &paddle::platform::EngineParams::engine_serialized_data);
+                     &paddle::platform::EngineParams::engine_serialized_data)
+      .def_readwrite("use_cuda_graph",
+                     &paddle::platform::EngineParams::use_cuda_graph)
+      .def_readwrite("refit_params_path",
+                     &paddle::platform::EngineParams::refit_params_path)
+      .def_readwrite("refit_param_name",
+                     &paddle::platform::EngineParams::refit_param_names)
+      .def_readwrite(
+          "refit_param_names2trt_names",
+          &paddle::platform::EngineParams::refit_param_names2trt_names);
 
   py::enum_<paddle::framework::ShapeMode>(m, "ShapeMode")
       .value("kMIN", paddle::framework::ShapeMode::kMIN)
@@ -3540,11 +3574,6 @@ All parameter, weight, gradient are variables in Paddle.
   GetWorkerInfoByRank(&m);
   GetCurrentWorkerInfo(&m);
   GetAllWorkerInfos(&m);
-#endif
-
-#if defined(PADDLE_WITH_CINN)
-  BindTest(&m);
-  cinn::pybind::BindCINN(&m);
 #endif
 
   BindPir(&m);

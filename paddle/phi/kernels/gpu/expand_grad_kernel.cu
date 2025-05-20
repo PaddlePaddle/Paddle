@@ -17,6 +17,7 @@
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
 
@@ -29,6 +30,11 @@ void ExpandGradKernel(const Context& ctx,
                       const IntArray& shape,
                       DenseTensor* x_grad) {
   ctx.template Alloc<T>(x_grad);
+  if ((x_grad && x_grad->numel() == 0) || out_grad.numel() == 0) {
+    phi::Full<T, Context>(
+        ctx, phi::IntArray(common::vectorize(x_grad->dims())), 0, x_grad);
+    return;
+  }
   if (x_grad->dims() == out_grad.dims()) {
     phi::Copy(ctx, out_grad, ctx.GetPlace(), false, x_grad);
   } else {

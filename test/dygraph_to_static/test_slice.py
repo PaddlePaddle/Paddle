@@ -205,7 +205,9 @@ class TestSetValueWithLayerAndSave(Dy2StTestBase):
 class TestSliceSupplementSpecialCase(Dy2StTestBase):
     # unittest for slice index which abs(step)>0. eg: x[::2]
     def test_static_slice_step(self):
-        with static_guard():
+        with static_guard(), paddle.static.program_guard(
+            paddle.static.Program()
+        ):
             array = np.arange(4**3).reshape((4, 4, 4)).astype('int64')
 
             x = paddle.static.data(name='x', shape=[4, 4, 4], dtype='int64')
@@ -253,18 +255,10 @@ class TestPaddleStridedSlice(Dy2StTestBase):
         stride1 = -2
         sl = paddle.strided_slice(
             pt,
-            axes=[
-                0,
-            ],
-            starts=[
-                s1,
-            ],
-            ends=[
-                e1,
-            ],
-            strides=[
-                stride1,
-            ],
+            axes=[0],
+            starts=[s1],
+            ends=[e1],
+            strides=[stride1],
         )
 
         self.assertTrue(array[s1:e1:stride1], sl)

@@ -59,6 +59,7 @@ typedef SSIZE_T ssize_t;
 #include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
 #include "paddle/fluid/framework/python_headers.h"
 #include "paddle/fluid/imperative/amp_utils.h"
+#include "paddle/fluid/pybind/cuda_streams_py.h"
 #include "paddle/fluid/pybind/tensor_py.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_function.h"
@@ -252,7 +253,8 @@ static PyObject* tensor_method_numpy(TensorObject* self,
   phi::DenseTensor cpu_tensor;
   phi::CPUPlace cpu_place;
 
-  if (self->tensor.is_cpu() || self->tensor.is_gpu_pinned()) {
+  if (self->tensor.is_cpu() || self->tensor.is_gpu_pinned() ||
+      self->tensor.is_xpu_pinned()) {
     eager_gil_scoped_release guard;
     phi::CPUPlace place;
     if (self->tensor.is_selected_rows()) {
@@ -1450,6 +1452,15 @@ static PyObject* tensor__getitem_dygraph(TensorObject* self,
   PyObject* _index = PyTuple_GET_ITEM(args, 0);
   VLOG(4) << "Call new indexing strategy _getitem_dygraph";
 
+  PyObject* index_ptr =
+      !PyTuple_Check(_index) ? PyTuple_Pack(1, _index) : _index;
+  DEFINE_PADDLE_SCOPE_GUARD([index_ptr, &_index]() {
+    if (!PyTuple_Check(_index)) {
+      Py_DECREF(index_ptr);
+      VLOG(4) << "Call Py_DECREF";
+    }
+  });
+
   // Note(0x45f): Using defined() instead of initialized()
   // to support slice tensor which shape like [0, 0, 0].
   PADDLE_ENFORCE_EQ(
@@ -1468,13 +1479,13 @@ static PyObject* tensor__getitem_dygraph(TensorObject* self,
   bool has_advanced_index = false;
   bool use_strided_slice = false;
   std::vector<int> advanced_index_dim(
-      rank * 2,
+      rank == 0 ? 1 : rank * 2,  // special case for zero dim tensor
       -1);  // content is dim, multiply 2 is to avoid all index are None
   std::vector<paddle::Tensor> advanced_index;  // content is index tensor
 
   // step1: parsing the index and recording them
   ParseIndex(tensor,
-             _index,
+             index_ptr,
              &slice_axes,
              &slice_starts,
              &slice_ends,
@@ -1746,30 +1757,35 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
             tensor.name()));
   }
   const int rank = tensor.shape().size();
+  const int size = PyTuple_GET_SIZE(index_ptr);
   std::vector<int> slice_starts, slice_ends, slice_strides;
   std::vector<int64_t> slice_axes, decrease_axis, infer_flags, none_axes;
 
   bool has_advanced_index = false;
   bool use_strided_slice = false;
   std::vector<int> advanced_index_dim(
-      rank * 2,
+      rank == 0 ? 1 : rank * 2,  // special case for zero dim tensor
       -1);  // content is dim, multiply 2 is to avoid all index are None
   std::vector<paddle::Tensor> advanced_index;  // content is index tensor
 
   // step1: parsing the index and recording them
-  ParseIndex(tensor,
-             _index,
-             &slice_axes,
-             &slice_starts,
-             &slice_ends,
-             &slice_strides,
-             &decrease_axis,
-             &none_axes,
-             &infer_flags,
-             &advanced_index_dim,
-             &advanced_index,
-             &has_advanced_index,
-             &use_strided_slice);
+  if (size != 1 || !PyBool_Check(PyTuple_GetItem(index_ptr, 0))) {
+    // single true uses set_value full_set branch
+    // single false does nothing
+    ParseIndex(tensor,
+               index_ptr,
+               &slice_axes,
+               &slice_starts,
+               &slice_ends,
+               &slice_strides,
+               &decrease_axis,
+               &none_axes,
+               &infer_flags,
+               &advanced_index_dim,
+               &advanced_index,
+               &has_advanced_index,
+               &use_strided_slice);
+  }
 
   // step2: Parse values
   std::vector<phi::Scalar> values;
@@ -1806,14 +1822,17 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
       if (InputsContainDistTensor(&mesh, self->tensor, value_tensor)) {
         ConvertAllInputsToDistTensor(mesh, self->tensor, value_tensor);
       }
-      self->tensor = set_value_with_tensor__ad_func(self->tensor,
-                                                    value_tensor,
-                                                    slice_starts,
-                                                    slice_ends,
-                                                    slice_strides,
-                                                    slice_axes,
-                                                    decrease_axis,
-                                                    none_axes);
+      if (size != 1 || PyTuple_GetItem(index_ptr, 0) != Py_False) {
+        // if index is single false, do nothing.
+        self->tensor = set_value_with_tensor__ad_func(self->tensor,
+                                                      value_tensor,
+                                                      slice_starts,
+                                                      slice_ends,
+                                                      slice_strides,
+                                                      slice_axes,
+                                                      decrease_axis,
+                                                      none_axes);
+      }
       if (PyCheckTensor(value_obj)) {
         // pass the stop_gradient from value to tensor.
         // pass stop gradient should be done after CheckInplace in
@@ -1828,15 +1847,18 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
       if (InputsContainDistTensor(&mesh, self->tensor)) {
         ConvertAllInputsToDistTensor(mesh, self->tensor);
       }
-      self->tensor = set_value__ad_func(self->tensor,
-                                        slice_starts,
-                                        slice_ends,
-                                        slice_strides,
-                                        slice_axes,
-                                        decrease_axis,
-                                        none_axes,
-                                        {1},
-                                        values);
+      if (size != 1 || PyTuple_GetItem(index_ptr, 0) != Py_False) {
+        // if index is single false, do nothing.
+        self->tensor = set_value__ad_func(self->tensor,
+                                          slice_starts,
+                                          slice_ends,
+                                          slice_strides,
+                                          slice_axes,
+                                          decrease_axis,
+                                          none_axes,
+                                          {1},
+                                          values);
+      }
     }
   } else {
     // step3.2: Case for there are advanced indexing.
@@ -3475,6 +3497,22 @@ static PyObject* tensor_method__set_impl(TensorObject* self,
 }
 
 #if defined(PADDLE_WITH_CUDA)
+static PyObject* tensor_method__record_stream(TensorObject* self,
+                                              PyObject* args,
+                                              PyObject* kwargs) {
+  EAGER_TRY
+  VLOG(4)
+      << "Running in tensor_method__record_stream: record stream for Tensor.";
+  auto* tensor = static_cast<phi::DenseTensor*>(self->tensor.impl().get());
+  if (tensor) {
+    const auto& device_id = paddle::platform::GetCurrentDeviceId();
+    auto stream = paddle::platform::get_current_stream(device_id)->raw_stream();
+    memory::RecordStream(tensor->Holder(), stream);
+  }
+  RETURN_PY_NONE
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 static PyObject* tensor_method__uva(TensorObject* self,
                                     PyObject* args,
                                     PyObject* kwargs) {
@@ -3809,6 +3847,10 @@ PyMethodDef variable_methods[] = {  // NOLINT
      METH_VARARGS | METH_KEYWORDS,
      nullptr},
 #if defined(PADDLE_WITH_CUDA)
+    {"_record_stream",
+     (PyCFunction)(void (*)())tensor_method__record_stream,
+     METH_VARARGS | METH_KEYWORDS,
+     nullptr},
     {"_tensor_uva",
      (PyCFunction)(void (*)())tensor_method__uva,
      METH_VARARGS | METH_KEYWORDS,

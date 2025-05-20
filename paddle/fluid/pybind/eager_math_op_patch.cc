@@ -99,6 +99,9 @@ void InitTensorWithNumpyValue(const py::object& array,
     SetTensorFromPyArray<phi::CPUPlace>(impl_ptr, array, place, zero_copy);
   } else if (phi::is_xpu_place(place)) {
     SetTensorFromPyArray<phi::XPUPlace>(impl_ptr, array, place, zero_copy);
+  } else if (phi::is_xpu_pinned_place(place)) {
+    SetTensorFromPyArray<phi::XPUPinnedPlace>(
+        impl_ptr, array, place, zero_copy);
   } else if (phi::is_gpu_place(place)) {
     SetTensorFromPyArray<phi::GPUPlace>(impl_ptr, array, place, zero_copy);
   } else if (phi::is_cuda_pinned_place(place)) {
@@ -2067,7 +2070,7 @@ static PyObject* tensor__ne__method(TensorObject* self,
       if (PyComplex_Check(other_obj)) {
         eager_gil_scoped_release guard;
         other_tensor =
-            full_ad_func({1}, value, DataType::COMPLEX64, self_tensor.place());
+            full_ad_func({}, value, DataType::COMPLEX64, self_tensor.place());
       } else {
         eager_gil_scoped_release guard;
         other_tensor = full_ad_func(self_tensor.shape(),
@@ -2160,7 +2163,7 @@ static PyObject* tensor__eq__method(TensorObject* self,
       if (PyComplex_Check(other_obj)) {
         eager_gil_scoped_release guard;
         other_tensor =
-            full_ad_func({1}, value, DataType::COMPLEX64, self_tensor.place());
+            full_ad_func({}, value, DataType::COMPLEX64, self_tensor.place());
       } else {
         eager_gil_scoped_release guard;
         other_tensor = full_ad_func(self_tensor.shape(),

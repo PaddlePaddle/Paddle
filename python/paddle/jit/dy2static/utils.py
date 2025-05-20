@@ -20,12 +20,16 @@ import functools
 import importlib.util
 import inspect
 import os
+import platform
 import shutil
 import sys
 import tempfile
 import textwrap
+import time
 import types
+import warnings
 from contextlib import contextmanager
+from enum import Enum, Flag, auto
 from importlib.machinery import SourceFileLoader
 from typing import TYPE_CHECKING, Any
 
@@ -39,6 +43,9 @@ from paddle.base.wrapped_decorator import signature_safe_contextmanager
 from paddle.framework import CUDAPinnedPlace
 from paddle.jit.utils import OrderedSet
 from paddle.utils import flatten, gast
+from paddle.utils.environments import (
+    BooleanEnvironmentVariable,
+)
 
 from .ast_utils import ast_to_source_code
 
@@ -72,6 +79,99 @@ NO_SHAPE_VAR_TYPE = [
     core.VarDesc.VarType.FEED_MINIBATCH,
     core.VarDesc.VarType.FETCH_LIST,
 ]
+
+ENV_ENABLE_SOT = BooleanEnvironmentVariable("ENABLE_FALL_BACK", True)
+ENV_ENABLE_CINN_IN_DY2ST = BooleanEnvironmentVariable(
+    "ENABLE_CINN_IN_DY2ST", True
+)
+
+
+class Backend(Enum):
+    CINN = auto()
+    PHI = auto()
+    PCC = auto()
+
+    @staticmethod
+    def from_arg(arg: str | Backend | None):
+        if isinstance(arg, Backend):
+            return arg
+        if arg is None:
+            return Backend.PHI
+        if arg.upper() == "CINN":
+            return Backend.CINN
+        if arg.upper() == "PCC":
+            return Backend.PCC
+        raise ValueError(
+            f"Unknown backend {arg}. Only support 'CINN' or None for PHI."
+        )
+
+    def is_cinn(self):
+        return self == Backend.CINN
+
+    def is_pcc(self):
+        return self == Backend.PCC
+
+    def is_phi(self):
+        return self == Backend.PHI
+
+
+class TransformOptions:
+
+    class ToStaticMode(Flag):
+        SOT = auto()
+        AST = auto()
+
+        @classmethod
+        def Nil(cls):
+            return cls(0)
+
+    TRANSFORM_OPTIONS_ATTR_NAME = "___jit_transform_options___"
+
+    def __init__(self, skip_transform_mode: ToStaticMode = ToStaticMode.Nil()):
+        self.skip_transform_mode = skip_transform_mode
+
+    def attach(self, fn):
+        if inspect.ismethod(fn):
+            fn = fn.__func__
+
+        if inspect.isfunction(fn):
+            setattr(fn, TransformOptions.TRANSFORM_OPTIONS_ATTR_NAME, self)
+        else:
+            warnings.warn(
+                f"Only support @jit.marker.unified to type(function) or type(method), but received {type(fn)}"
+            )
+
+    def need_transform(self, mode: ToStaticMode):
+        return not (self.skip_transform_mode & mode)
+
+    @staticmethod
+    def check_fn_need_transform(fn, mode: ToStaticMode):
+        if not hasattr(fn, TransformOptions.TRANSFORM_OPTIONS_ATTR_NAME):
+            return True
+        return getattr(
+            fn, TransformOptions.TRANSFORM_OPTIONS_ATTR_NAME
+        ).need_transform(mode)
+
+
+class TimeCounter:
+    def __init__(self):
+        self._time_history: list[float] = []
+
+    def get_last_time(self):
+        if len(self._time_history) == 0:
+            return 0
+        return self._time_history[-1]
+
+    def get_total_time(self):
+        return sum(self._time_history)
+
+    @contextmanager
+    def record(self):
+        start_time = time.perf_counter()
+        yield
+        end_time = time.perf_counter()
+        elapsed_time = end_time - start_time
+        self._time_history.append(elapsed_time)
 
 
 def data_layer_not_check(name, shape, dtype='float32'):
@@ -658,13 +758,42 @@ def prim_or_cinn_is_enabled(build_strategy, backend):
 
 
 def cinn_is_enabled(build_strategy, backend):
-    if backend == 'CINN':
+    if backend.is_cinn():
         return True
-    if build_strategy is not None and build_strategy.build_cinn_pass:
+    if build_strategy.build_cinn_pass:
+        warnings.warn(
+            "Use `build_strategy.build_cinn_pass = True` to enable CINN is deprecated, please use `backend = 'CINN'` instead."
+        )
         return True
     if paddle.base.framework.in_cinn_mode():
         return True
     return False
+
+
+def infer_use_cinn_backend(backend, build_strategy):
+    if not cinn_is_available():
+        return False
+    if not ENV_ENABLE_CINN_IN_DY2ST.get():
+        return False
+    if not cinn_is_enabled(build_strategy, backend):
+        return False
+    return True
+
+
+def cinn_is_available():
+    if not paddle.is_compiled_with_cinn():
+        return False
+    if not paddle.is_compiled_with_cuda():
+        return False
+    if not isinstance(
+        paddle.framework._current_expected_place_(), paddle.base.core.CUDAPlace
+    ):
+        return False
+    if platform.system() != "Linux":
+        return False
+    if not paddle.framework.use_pir_api():
+        return False
+    return True
 
 
 def cse_is_enabled():
@@ -674,7 +803,6 @@ def cse_is_enabled():
 
 
 def prim_is_enabled():
-    core.check_and_set_prim_all_enabled(True)
     return core._is_bwd_prim_enabled() or core._is_fwd_prim_enabled()
 
 
@@ -705,19 +833,47 @@ def is_builtin(func, name=None):
         return False
 
 
-@signature_safe_contextmanager
-def backend_guard(backend):
-    core.check_and_set_prim_all_enabled()
+def compose_guards(*guard_creators):
+    @contextmanager
+    def composed_guard():
+        if not guard_creators:
+            yield
+            return
+        with guard_creators[0]():
+            with compose_guards(*guard_creators[1:])():
+                yield
+
+    return composed_guard
+
+
+@contextmanager
+def prim_guard():
     origin_fwd = core._is_fwd_prim_enabled()
     origin_bwd = core._is_bwd_prim_enabled()
-
-    if backend == 'CINN':
-        core._set_prim_all_enabled(True)
+    core._set_prim_all_enabled(True)
     try:
         yield
     finally:
         core._set_prim_forward_enabled(origin_fwd)
         core._set_prim_backward_enabled(origin_bwd)
+
+
+@contextmanager
+def backend_guard(backend):
+    guard_creators = []
+    if backend.is_cinn():
+        guard_creators.append(lambda: prim_guard())
+        guard_creators.append(
+            lambda: paddle.base.framework.flag_guard(
+                "FLAGS_prim_enable_dynamic", True
+            )
+        )
+        guard_creators.append(
+            lambda: paddle.base.framework.flag_guard("FLAGS_use_cinn", True)
+        )
+
+    with compose_guards(*guard_creators)():
+        yield
 
 
 def construct_grad_names(grad_info_map, x_vars, param_vars, out_vars):

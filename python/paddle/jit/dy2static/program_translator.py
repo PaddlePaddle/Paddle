@@ -61,6 +61,7 @@ from .transformers import DygraphToStaticAst
 from .utils import (
     ALREADY_D2S,
     NO_SHAPE_VAR_TYPE,
+    TransformOptions,
     ast_to_func,
     backend_guard,
     cuda_pinned_tensors_move_to_excepted_place,
@@ -85,8 +86,6 @@ __all__ = []
 # For each traced function, we set `max_traced_program_count` = 10 to consider caching performance.
 # Once exceeding the threshold, we will raise warning to users to make sure the conversion is as expected.
 MAX_TRACED_PROGRAM_COUNT = 10
-
-CONVERSION_OPTIONS = "__jst_not_to_static"
 
 
 def synchronized(func):
@@ -252,12 +251,13 @@ def convert_to_static(function):
     if getattr(function, ALREADY_D2S, None):
         return function
 
-    # Return directly if decorated with @not_to_static and DO NOT Cache it
-    options = getattr(function, CONVERSION_OPTIONS, None)
+    # Return directly if decorated with @jit.marker.unified and DO NOT Cache it
     # or ignore paddle api
-    need_skip = (options is not None and options.not_convert) or is_paddle_func(
-        function
-    )
+    need_skip = (
+        not TransformOptions.check_fn_need_transform(
+            function, TransformOptions.ToStaticMode.AST
+        )
+    ) or is_paddle_func(function)
     if need_skip:
         return function.__func__ if inspect.ismethod(function) else function
 
@@ -637,7 +637,7 @@ class StaticFunction(Generic[_InputT, _RetT]):
         Returns:
             Function or Method
 
-        Example::
+        Examples:
             .. code-block:: python
 
                 >>> # doctest: +SKIP('`paddle.jit.to_static` can not run in xdoctest')
@@ -682,7 +682,7 @@ class StaticFunction(Generic[_InputT, _RetT]):
         """
         Customized behavior for copy.deepcopy, return a new StaticFunction instance.
 
-        Example::
+        Examples:
             .. code-block:: python
 
                 >>> import copy
@@ -1193,6 +1193,7 @@ class ConcreteProgram:
         "parameters",
         "function",
         'kwargs',
+        'constraints',
     ]
 
     def __init__(
@@ -1203,15 +1204,34 @@ class ConcreteProgram:
         function,
         main_program,
         startup_program=None,
+        *,
+        constraints=None,
         **kwargs,
     ):
         self.inputs = inputs
         self.outputs = outputs
+        # Avoid mutable default argument pitfall (new list per instance)
+        self.constraints = constraints if constraints is not None else []
         self.main_program = main_program
         self.startup_program = startup_program
         self.parameters = parameters
         self.function = function
         self.kwargs = kwargs
+
+    @staticmethod
+    def extract_constraints(input_specs):
+        """
+        Extract constraints from input_specs
+        """
+        input_specs = flatten(input_specs)
+        constraints = []
+        for input_spec in input_specs:
+            if not hasattr(input_spec, "ranges"):
+                return []
+            if len(input_spec.ranges):
+                for range in input_spec.ranges:
+                    constraints.append((input_spec.name, range))
+        return constraints
 
     @staticmethod
     @switch_to_static_graph
@@ -1226,6 +1246,7 @@ class ConcreteProgram:
             func_spec(FunctionSpec): A FunctionSpec instance for decorated function.
             input_spec(list[InputSpec]):
         """
+        backend = kwargs["backend"]
         # verify the instance is initialized in imperative mode.
         _verify_init_in_dynamic_mode(class_instance)
 
@@ -1274,7 +1295,11 @@ class ConcreteProgram:
                 # 2. Builds program only once and returns the output Variables.
                 with param_guard(
                     get_parameters(class_instance, True)
-                ), param_guard(get_buffers(class_instance, True)):
+                ), param_guard(
+                    get_buffers(class_instance, True)
+                ), backend_guard(
+                    backend
+                ):
                     try:
                         # only for jit.save, do nothing while train and eval process
                         inputs = hook_helper.apply_pre_hooks(static_inputs)
@@ -1313,6 +1338,7 @@ class ConcreteProgram:
         if not os.environ.get("stride_in_no_check_dy2st_diff", "0") == "1":
             check_view_api_used_by_inplace(main_program)
 
+        constraints = ConcreteProgram.extract_constraints(input_spec)
         return ConcreteProgram(
             inputs=program_inputs,
             outputs=outputs,
@@ -1320,6 +1346,7 @@ class ConcreteProgram:
             function=dygraph_function,
             main_program=main_program,
             startup_program=startup_program,
+            constraints=constraints,
             **kwargs,
         )
 
@@ -1665,8 +1692,8 @@ class ProgramCache:
                     partial_program.set_hooker(
                         PrimHooker(concrete_program.main_program, backend)
                     )
-        if use_pir_api() and core._enable_auto_recompute():
-            partial_program.add_hooker(PirAutoRecomputeHooker())
+            if use_pir_api() and core._enable_auto_recompute():
+                partial_program.add_hooker(PirAutoRecomputeHooker())
         return concrete_program, partial_program
 
     def __getitem__(self, item):

@@ -31,7 +31,7 @@ void CEmbeddingGradKernel(const Context& dev_ctx,
                           int64_t start_index,
                           DenseTensor* w_grad) {
   w_grad->Resize(w.dims());
-  dev_ctx.template Alloc(w_grad, w.dtype());
+  dev_ctx.Alloc(w_grad, w.dtype());
   const auto& index_type = ids.dtype();
   if (index_type == phi::DataType::INT32 ||
       index_type == phi::DataType::INT64) {

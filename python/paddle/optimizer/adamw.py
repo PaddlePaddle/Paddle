@@ -317,7 +317,7 @@ class AdamW(Optimizer):
         self._create_master_grad_states()
 
         self._use_fusion_storage = False
-        self._need_refuse = True
+        self._need_refuse = False
         self.fusion_storage = None
         self._fuse_buffer_version = 0
         self.merged_model_params = None

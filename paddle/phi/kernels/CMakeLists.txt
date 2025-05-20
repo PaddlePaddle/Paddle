@@ -193,8 +193,7 @@ if(WITH_CUTLASS)
     "fusion/cutlass/memory_efficient_attention/autogen/impl/*.cu"
     "fusion/cutlass/memory_efficient_attention/autogen_variable/impl/*.cu"
     "fusion/cutlass/cutlass_kernels/fpA_intB_gemm/autogen/*.cu"
-    "fusion/cutlass/cutlass_kernels/fpA_intB_gemm/*.cu"
-    "fusion/cutlass/cutlass_kernels/moe_gemm/*.cu")
+    "fusion/cutlass/cutlass_kernels/fpA_intB_gemm/*.cu")
 
   list(APPEND kernel_cu ${cutlass_cu})
 endif()
@@ -238,6 +237,16 @@ if(WITH_ROCM)
     "gpu/matrix_rank_tol_kernel.cu"
     "gpu/svd_kernel.cu"
     "gpu/cuda_gemm_kernel.cu")
+endif()
+
+# Remove AP kernel when CINN is not enabled.
+if(NOT WITH_CINN)
+  list(REMOVE_ITEM kernel_cu "gpu/ap_facade_kernel.cu"
+       "gpu/ap_trivial_fusion_begin_kernel.cu"
+       "gpu/ap_trivial_fusion_end_kernel.cu" "gpu/ap_variadic_kernel.cu")
+  list(REMOVE_ITEM kernel_gpu "gpu/ap_facade_kernel.cu"
+       "gpu/ap_trivial_fusion_begin_kernel.cu"
+       "gpu/ap_trivial_fusion_end_kernel.cu" "gpu/ap_variadic_kernel.cu")
 endif()
 
 set(cc_search_pattern
@@ -316,8 +325,14 @@ if(WITH_XPU)
     file(GLOB_RECURSE kernel_xpu_cc "${CMAKE_CURRENT_BINARY_DIR}/*.cc")
     collect_generated_srcs(kernels_srcs SRCS ${kernel_xpu_cc})
     set(kernel_cc "")
-
   endif()
+
+  # The kernel related to xpufft must have WITH_XPU_FFT enabled.
+  if(NOT WITH_XPU_FFT)
+    list(REMOVE_ITEM kernel_xpu "xpu/complex_kernel.cc"
+         "xpu/complex_grad_kernel.cc")
+  endif()
+
   collect_srcs(kernels_srcs SRCS ${kernel_xpu})
   kernel_declare("${kernel_xpu}")
   kernel_declare("${kernel_xpu_kps}")

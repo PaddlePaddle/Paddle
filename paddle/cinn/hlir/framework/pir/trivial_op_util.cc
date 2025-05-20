@@ -128,6 +128,14 @@ void MappingTargetExprToDestExprMutator::Visit(const ir::Reduce* reduce,
   }
 }
 
+void MappingTargetExprToDestExprMutator::Visit(const ir::_Var_* var, Expr* op) {
+  if (source_.is_var() && source_.as_var_ref()->name == var->name) {
+    *op = dest_;
+  } else {
+    IRMutator::Visit(var, op);
+  }
+}
+
 bool CheckIterEq(const std::vector<ir::Var>& up_iter,
                  const std::vector<ir::Var>& down_iter) {
   if (up_iter.size() != down_iter.size()) return false;
@@ -722,6 +730,14 @@ ExprTransformer RemoveForTransformer(int axis) {
         (ExprSetFinderUtils::ChildScheduleBlockRealizes *
          ExprSetFinderUtils::ScheduleBlockRealizeIsInit),
         RemoveVarInScheduleBlockRealize(iters[axis], ir::Expr(0)));
+    // Remove var in append if
+    auto loop_var = target_for.As<ir::For>()->loop_var;
+    auto realizes = (ExprSetFinderUtils::ChildScheduleBlockRealizes *
+                     ExprSetFinderUtils::ScheduleBlockRealizeNotRoot)(copied);
+    for (auto& realize : realizes) {
+      ComposeUtils::MappingTargetExprToDestExprMutator(loop_var,
+                                                       ir::Expr(0))(&realize);
+    }
     return copied;
   };
   return ExprTransformer(f);
@@ -1157,45 +1173,26 @@ ir::Tensor GetOutputTensor(const ir::Expr& root) {
       ->tensor.as_tensor_ref();
 }
 
-ir::Expr GetComputeBody(const ir::Expr& root) {
-  const auto& compute_realize =
-      (ExprSetFinderUtils::ChildScheduleBlockRealizes *
-       ExprSetFinderUtils::ScheduleBlockRealizeIsNotInit)
-          .GetSingle(root);
-  const auto& compute_body =
-      (ExprSetFinderUtils::ChildStores * ExprSetFinderUtils::Store2Value)
-          .GetSingle(compute_realize);
-  return ExprTransformerUtils::SubstituteByScheduleBlockRealize(
-      compute_realize)(compute_body);
-}
-
-std::vector<ir::Var> GetOutputIters(const ir::Expr& root) {
-  ir::Expr block_realize =
-      ExprSetFinderUtils::ChildScheduleBlockRealizes(root).front();
-  const std::vector<Expr>& outer_iter_expr =
-      block_realize.As<ir::ScheduleBlockRealize>()->iter_values;
-  return ComposeUtils::ExprVec2VarVec(outer_iter_expr);
-}
-
 void InlineGlobalVarComputeImpl(const ir::Expr& global_root,
                                 const std::vector<ir::Expr>& roots) {
   PADDLE_ENFORCE(!IsReducePattern(global_root),
                  ::common::errors::InvalidArgument(
                      "Can not inline global var compute for reduce pattern."));
-  auto store_indices = (ExprSetFinderUtils::ChildScheduleBlockRealizes *
-                        ExprSetFinderUtils::ScheduleBlockRealizeIsNotInit *
-                        ExprSetFinderUtils::ChildStores)
-                           .GetSingle(global_root)
-                           .As<ir::Store>()
-                           ->indices;
+  auto store = (ExprSetFinderUtils::ChildScheduleBlockRealizes *
+                ExprSetFinderUtils::ScheduleBlockRealizeIsNotInit *
+                ExprSetFinderUtils::ChildStores)
+                   .GetSingle(global_root);
+  auto store_indices = store.As<ir::Store>()->indices;
   std::vector<int> var_indices_pos;
+  std::vector<ir::Var> target_indices;
   for (int i = 0; i < store_indices.size(); ++i) {
-    if (store_indices[i].is_var()) var_indices_pos.push_back(i);
+    if (store_indices[i].is_var()) {
+      target_indices.push_back(store_indices[i].as_var_ref());
+      var_indices_pos.push_back(i);
+    }
   }
-
-  auto target_tensor = GetOutputTensor(global_root);
-  auto target_compute_body = GetComputeBody(global_root);
-  auto target_iters = GetOutputIters(global_root);
+  auto target_tensor = store.As<ir::Store>()->tensor.as_tensor_ref();
+  auto target_compute_body = (ExprSetFinderUtils::Store2Value).GetSingle(store);
 
   for (auto root : roots) {
     if (root == global_root) continue;
@@ -1207,7 +1204,7 @@ void InlineGlobalVarComputeImpl(const ir::Expr& global_root,
               load_expr,
               ComposeUtils::SubstituteIndexVector(
                   target_compute_body,
-                  target_iters,
+                  target_indices,
                   cinn::fusion::GatherVector(load_expr.As<ir::Load>()->indices,
                                              var_indices_pos)),
               compute_body);

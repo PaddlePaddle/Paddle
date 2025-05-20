@@ -18,6 +18,9 @@ limitations under the License. */
 
 #include "glog/logging.h"
 
+#ifdef PADDLE_WITH_CINN
+#include "paddle/ap/include/paddle/phi/ap_infer_meta_helper.h"
+#endif
 #include "paddle/common/layout.h"
 #include "paddle/phi/backends/device_memory_alignment.h"
 #include "paddle/phi/common/data_type.h"
@@ -466,6 +469,75 @@ void AddNInferMeta(const std::vector<const MetaTensor*>& x,
   }
   out->share_lod(*x[0]);
   out->set_dtype(x[0]->dtype());
+}
+
+void ApVariadicInferMeta(const std::vector<const MetaTensor*>& xs,
+                         int num_outputs,
+                         const std::string& code_module_lambda,
+                         const std::string& infer_symbolic_lambda,
+                         const std::string& infer_meta_lambda,
+                         const std::string& kernel_dispatch_lambda,
+                         const std::string& kernel_dispatch_const_data_lambda,
+                         std::vector<MetaTensor*> outs,
+                         MetaConfig config) {
+#ifdef PADDLE_WITH_CINN
+  ApInferMetaHelper helper{};
+  const auto& ret = helper.InferMeta(infer_meta_lambda, &xs, &outs);
+  PADDLE_ENFORCE_EQ(
+      ret.HasError(),
+      false,
+      phi::errors::Fatal(
+          "ApVariadicInferMeta failed. \nTraceback (most recent call "
+          "last):\n%s\n%s: %s. ",
+          ret.GetError().CallStackToString(),
+          ret.GetError().class_name(),
+          ret.GetError().msg()));
+#else
+  PADDLE_THROW(phi::errors::Unimplemented(
+      "ap_variadic is not implemented when cinn is not enabled."));
+#endif
+}
+
+void ApFacadeInferMeta(
+    const paddle::optional<std::vector<const MetaTensor*>>& xs,
+    int64_t num_outputs,
+    const std::string& custom_op_name,
+    const std::string& infer_meta_func_name,
+    const std::string& infer_symbolic_func_name,
+    const std::string& serialized_attributes,
+    std::vector<MetaTensor*> outs,
+    MetaConfig config) {
+#ifdef PADDLE_WITH_CINN
+  ApInferMetaHelper helper{};
+  const auto& ret = helper.InferMetaByAxprHook(
+      xs, infer_meta_func_name, serialized_attributes, outs);
+  PADDLE_ENFORCE(!ret.HasError(),
+                 phi::errors::Fatal(
+                     "ApFacadeInferMeta failed. \nTraceback (most recent call "
+                     "last):\n%s\n%s: %s. ",
+                     ret.GetError().CallStackToString(),
+                     ret.GetError().class_name(),
+                     ret.GetError().msg()));
+#else
+  PADDLE_THROW(phi::errors::Unimplemented(
+      "ap_facade is not implemented when cinn is not enabled."));
+#endif
+}
+
+void ApTrivialFusionBeginInferMeta(
+    const paddle::optional<std::vector<const MetaTensor*>>& xs,
+    MetaTensor* out,
+    MetaConfig config) {
+  out->set_dims(common::make_ddim({}));
+  out->set_dtype(phi::DataType::BOOL);
+}
+
+void ApTrivialFusionEndInferMeta(
+    const paddle::optional<std::vector<const MetaTensor*>>& xs,
+    MetaTensor* out,
+    MetaConfig config) {
+  out->set_dims(common::make_ddim({}));
+  out->set_dtype(phi::DataType::BOOL);
 }
 
 // TODO(YuanRisheng) This InferMeta is used in Fluid
@@ -5153,16 +5225,16 @@ void SendUERecvInferMeta(const MetaTensor& x,
 
   // Infer out's shape according to x and e(need broadcasting condition)
   out->set_dtype(x.dtype());
-  auto x_dims1 = common::vectorize<int>(x_dims);
-  auto y_dims1 = common::vectorize<int>(y_dims);
-  std::vector<int> x_dims2(x_dims1.begin() + 1, x_dims1.end());
-  std::vector<int> y_dims2(y_dims1.begin() + 1, y_dims1.end());
+  auto x_dims1 = common::vectorize<int64_t>(x_dims);
+  auto y_dims1 = common::vectorize<int64_t>(y_dims);
+  std::vector<int64_t> x_dims2(x_dims1.begin() + 1, x_dims1.end());
+  std::vector<int64_t> y_dims2(y_dims1.begin() + 1, y_dims1.end());
 
   int max_dim = static_cast<int>(std::max(x_dims2.size(), y_dims2.size()));
   int axis = std::abs(static_cast<int>(x_dims2.size() - y_dims2.size()));
-  std::vector<int> x_dims_array(max_dim);
-  std::vector<int> y_dims_array(max_dim);
-  std::vector<int> out_dims_array(max_dim);
+  std::vector<int64_t> x_dims_array(max_dim);
+  std::vector<int64_t> y_dims_array(max_dim);
+  std::vector<int64_t> out_dims_array(max_dim);
   // Only need to broadcast dimensions other than the 0th dimension.
   phi::funcs::GetBroadcastDimsArrays(common::make_ddim(x_dims2),
                                      common::make_ddim(y_dims2),
@@ -5224,15 +5296,15 @@ void SendUVInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
   auto x_dims = x.dims();
   auto y_dims = y.dims();
-  auto x_dims1 = common::vectorize<int>(x_dims);
-  auto y_dims1 = common::vectorize<int>(y_dims);
-  std::vector<int> x_dims2(x_dims1.begin() + 1, x_dims1.end());
-  std::vector<int> y_dims2(y_dims1.begin() + 1, y_dims1.end());
+  auto x_dims1 = common::vectorize<int64_t>(x_dims);
+  auto y_dims1 = common::vectorize<int64_t>(y_dims);
+  std::vector<int64_t> x_dims2(x_dims1.begin() + 1, x_dims1.end());
+  std::vector<int64_t> y_dims2(y_dims1.begin() + 1, y_dims1.end());
   int max_dim = static_cast<int>(std::max(x_dims2.size(), y_dims2.size()));
   int axis = std::abs(static_cast<int>(x_dims2.size() - y_dims2.size()));
-  std::vector<int> x_dims_array(max_dim);
-  std::vector<int> y_dims_array(max_dim);
-  std::vector<int> out_dims_array(max_dim);
+  std::vector<int64_t> x_dims_array(max_dim);
+  std::vector<int64_t> y_dims_array(max_dim);
+  std::vector<int64_t> out_dims_array(max_dim);
   // Only need to broadcast dimensions other than the 0th dimension.
   phi::funcs::GetBroadcastDimsArrays(common::make_ddim(x_dims2),
                                      common::make_ddim(y_dims2),
@@ -5931,25 +6003,6 @@ void FusedRopeInferMeta(const MetaTensor& q,
   }
 }
 
-void FusedMoeInferMeta(const MetaTensor& X,
-                       const MetaTensor& gate_weight,
-                       const MetaTensor& ffn1_weight,
-                       const MetaTensor& ffn1_scale,
-                       const MetaTensor& ffn1_bias,
-                       const MetaTensor& ffn2_weight,
-                       const MetaTensor& ffn2_scale,
-                       const MetaTensor& ffn2_bias,
-                       const std::string& quant_method,
-                       const int moe_topk,
-                       const bool group_moe,
-                       const bool norm_topk_prob,
-                       MetaTensor* out) {
-  out->set_dims(X.dims());
-  out->share_lod(X);
-  out->set_dtype(X.dtype());
-  out->set_layout(X.layout());
-}
-
 void WeightedSampleNeighborsInferMeta(const MetaTensor& row,
                                       const MetaTensor& col_ptr,
                                       const MetaTensor& edge_weight,
@@ -6028,81 +6081,6 @@ void MultiheadMatmulInferMeta(const MetaTensor& input,
   out->set_dims(input.dims());
   out->set_dtype(input.dtype());
   out->share_lod(input);
-}
-
-void MoeDispatchInferMeta(const MetaTensor& X,
-                          const MetaTensor& gating_output,
-                          const int moe_topk,
-                          const bool group_moe,
-                          const bool topk_only_mode,
-                          MetaTensor* permute_input,
-                          MetaTensor* token_nums_per_expert,
-                          MetaTensor* permute_indices_per_token,
-                          MetaTensor* expert_scales_float,
-                          MetaTensor* top_k_indices) {
-  int token_rows = -1;
-  auto input_dims = X.dims();
-  auto gating_dims = gating_output.dims();
-  if (input_dims.size() == 3) {
-    token_rows = input_dims[0] * input_dims[1];
-  } else {
-    token_rows = input_dims[0];
-  }
-  const int expert_num = gating_dims[gating_dims.size() - 1];
-  const int num_rows = token_rows;
-  const int hidden_size = X.dims()[input_dims.size() - 1];
-
-  permute_input->set_dims({moe_topk * num_rows, hidden_size});
-  permute_input->set_dtype(X.dtype());
-  permute_input->set_layout(X.layout());
-
-  permute_indices_per_token->set_dims({expert_num});
-  token_nums_per_expert->set_dtype(DataType::INT64);
-  token_nums_per_expert->set_layout(X.layout());
-
-  permute_indices_per_token->set_dims({moe_topk, num_rows});
-  permute_indices_per_token->set_dtype(DataType::INT32);
-  permute_indices_per_token->set_layout(X.layout());
-
-  expert_scales_float->set_dims({num_rows, moe_topk});
-  expert_scales_float->set_dtype(DataType::FLOAT32);
-  expert_scales_float->set_layout(X.layout());
-
-  top_k_indices->set_dims({num_rows, moe_topk});
-  top_k_indices->set_dtype(DataType::INT32);
-  top_k_indices->set_layout(X.layout());
-}
-
-void MoeFFNInferMeta(const MetaTensor& permute_input,
-                     const MetaTensor& token_nums_per_expert,
-                     const MetaTensor& ffn1_weight,
-                     const MetaTensor& ffn2_weight,
-                     const MetaTensor& ffn1_bias,
-                     const MetaTensor& ffn1_scale,
-                     const MetaTensor& ffn2_scale,
-                     const std::string& quant_method,
-                     MetaTensor* ffn_out) {
-  ffn_out->set_dims(permute_input.dims());
-  ffn_out->share_lod(permute_input);
-  ffn_out->set_dtype(permute_input.dtype());
-  ffn_out->set_layout(permute_input.layout());
-}
-
-void MoeReduceInferMeta(const MetaTensor& ffn_out,
-                        const MetaTensor& expert_scales_float,
-                        const MetaTensor& permute_indices_per_token,
-                        const MetaTensor& top_k_indices,
-                        const MetaTensor& ffn2_bias,
-                        const bool norm_topk_prob,
-                        const float routed_scaling_factor,
-                        MetaTensor* output) {
-  auto ffn_out_dims = ffn_out.dims();
-  const int top_k = top_k_indices.dims()[1];
-  const int num_rows = ffn_out_dims[0] / top_k;
-  const int hidden_size = ffn_out_dims[1];
-  output->set_dims({num_rows, hidden_size});
-  output->set_dtype(ffn_out.dtype());
-  output->set_layout(ffn_out.layout());
 }
 
 void MaskedMultiheadAttentionInferMeta(const MetaTensor& x,

@@ -15,11 +15,11 @@
 from __future__ import annotations
 
 import argparse
-import ast
 import functools
 import keyword
 import logging
 import os
+import py_compile
 import re
 import shutil
 import tempfile
@@ -65,6 +65,7 @@ EXTRA_IMPORTS = {
     'typing_extensions': 'import typing_extensions',
     'pybind11_stubgen': 'import pybind11_stubgen',
     'npt': 'import numpy.typing as npt',
+    'types': 'import types',
 }
 
 # some invalid attr from pybind11.
@@ -76,6 +77,9 @@ PYBIND11_ATTR_MAPPING = {}
 
 # some bad full expression pybind11-stubgen can not catch as invalid exp
 PYBIND11_INVALID_FULL_MAPPING = {
+    'PyCodeObject': 'types.CodeType',
+    'PyInterpreterFrameProxy': 'typing.Any',
+    '_object': 'typing.Any',
     'float16': 'numpy.float16',
     'Variant': 'typing.Any',
     'capsule': 'typing_extensions.CapsuleType',
@@ -323,40 +327,28 @@ def insert_import_modules(filename: str):
         f.write(stub_file)
 
 
-def check_remove_syntax_error(filename, limit=1000):
+def check_remove_syntax_error(filename: str, limit: int = 10000):
     """
     Args:
         filename: xxx.pyi
-        limit: check limit, or raise error
+        limit: the max times try to check syntax error
     """
     pattern_check = re.compile(
         rf"File.*{re.escape(filename)}.*line (?P<lineno>\d+)"
     )
 
-    while limit:
+    while limit > 0:
+
         limit -= 1
 
-        # read file and check syntax error
+        # check syntax error
         err = ""
-        source = ""
-        source_lines = []
-        with open(filename, "r", encoding="utf-8") as f:
-            source_lines = f.readlines()
-            source = "".join(source_lines)
 
-            is_valid = True
-
-            try:
-                ast.parse(source, filename)
-            except SyntaxError:
-                is_valid = False
-                err = traceback.format_exc()
-
-            if is_valid:
-                break
-            else:
-                if limit <= 0:
-                    print(f">>> Syntax error detected in file: {filename}")
+        try:
+            py_compile.compile(filename, doraise=True)
+            break
+        except py_compile.PyCompileError as e:
+            err = traceback.format_exc()
 
         print(f">>> Syntax error: find syntax error in file: {filename}")
 
@@ -364,17 +356,24 @@ def check_remove_syntax_error(filename, limit=1000):
         match_obj = pattern_check.search(err)
         if match_obj is not None:
             line_no = int(match_obj.group("lineno"))
+
+            # read file
+            source_lines = []
+            with open(filename, "r", encoding="utf-8") as f:
+                source_lines = f.readlines()
+
+            del source_lines[line_no - 1]
+
+            # write new lines
+            with open(filename, "w", encoding="utf-8") as f:
+                f.writelines(source_lines)
+
             print(
                 f">>> Syntax error: remove the error line {line_no}, and continue to check ..."
             )
-            del source_lines[line_no - 1]
         else:
             print(">>> Syntax error: no match obj, just continue ...")
             break
-
-        # write new lines
-        with open(filename, "w", encoding="utf-8") as f:
-            f.writelines(source_lines)
 
 
 def post_process(output_dir: str):

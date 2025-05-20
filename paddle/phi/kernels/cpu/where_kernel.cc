@@ -46,4 +46,6 @@ PD_REGISTER_KERNEL(where,
                    double,
                    int,
                    int64_t,
-                   bool) {}
+                   bool,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

@@ -26,6 +26,10 @@ void CastKernel(const Context& dev_ctx,
                 DataType out_dtype,
                 DenseTensor* out) {
   if (x.dtype() == out_dtype) {
+    if (x.dims() == phi::make_ddim({-1})) {
+      *out = x;
+      return;
+    }
     if (!out->IsSharedWith(x)) {
       phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
     }
@@ -33,14 +37,15 @@ void CastKernel(const Context& dev_ctx,
   }
 
   if (out->IsSharedWith(x)) {
-    PD_VISIT_ALL_TYPES(out_dtype, "CastInplaceKernelImpl", ([&] {
-                         CastInplaceKernelImpl<T, data_t>(
-                             dev_ctx, x, out_dtype, out);
-                       }));
+    PD_VISIT_ALL_CPU_TYPES(out_dtype, "CastInplaceKernelImpl", ([&] {
+                             CastInplaceKernelImpl<T, data_t>(
+                                 dev_ctx, x, out_dtype, out);
+                           }));
   } else {
-    PD_VISIT_ALL_TYPES(out_dtype, "CastKernelImpl", ([&] {
-                         CastKernelImpl<T, data_t>(dev_ctx, x, out_dtype, out);
-                       }));
+    PD_VISIT_ALL_CPU_TYPES(out_dtype, "CastKernelImpl", ([&] {
+                             CastKernelImpl<T, data_t>(
+                                 dev_ctx, x, out_dtype, out);
+                           }));
   }
 }
 
