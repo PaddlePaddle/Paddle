@@ -27,7 +27,7 @@ namespace phi {
   void name##Kernel(                                                    \
       const Context& dev_ctx, const DenseTensor& x, DenseTensor* out) { \
     funcs::functor_class<T> functor;                                    \
-    if (out && out->numel == 0) {                                       \
+    if (out && out->numel() == 0) {                                     \
       dev_ctx.template Alloc<T>(out);                                   \
       return;                                                           \
     }                                                                   \

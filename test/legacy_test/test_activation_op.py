@@ -5569,6 +5569,43 @@ create_test_act_cudnn_class(TestRelu)
 create_test_act_cudnn_class(TestRelu6)
 create_test_act_cudnn_class(TestSigmoid)
 create_test_act_cudnn_class(TestTanh)
+# ------------------ Test Zero Size Tensor --------------
+
+
+def create_test_zero_size_class(parent):
+    class TestActZeroSize(parent):
+        def init_shape(self):
+            self.shape = [12, 0]
+
+    cls_name = "{}_{}".format(parent.__name__, "ZeroSizeOp")
+    TestActZeroSize.__name__ = cls_name
+    globals()[cls_name] = TestActZeroSize
+
+
+create_test_zero_size_class(TestSin)
+create_test_zero_size_class(TestCos)
+create_test_zero_size_class(TestTan)
+create_test_zero_size_class(TestAsin)
+create_test_zero_size_class(TestAtan)
+create_test_zero_size_class(TestAcos)
+create_test_zero_size_class(TestSinh)
+create_test_zero_size_class(TestCosh)
+create_test_zero_size_class(TestAsinh)
+create_test_zero_size_class(TestAcosh)
+create_test_zero_size_class(TestAtanh)
+create_test_zero_size_class(TestRelu)
+create_test_zero_size_class(TestTanh)
+create_test_zero_size_class(TestTanhshrink)
+create_test_zero_size_class(TestSilu)
+create_test_zero_size_class(TestReciprocal)
+create_test_zero_size_class(TestSquare)
+create_test_zero_size_class(TestSqrt)
+create_test_zero_size_class(TestRsqrt)
+create_test_zero_size_class(TestSoftsign)
+create_test_zero_size_class(TestSigmoid)
+create_test_zero_size_class(TestLogSigmoid)
+create_test_zero_size_class(TestFloor)
+create_test_zero_size_class(TestCeil)
 
 
 # ------------------ Test Fp16 ----------------------
@@ -5935,6 +5972,7 @@ create_test_act_bf16_class(
 create_test_act_bf16_class(
     TestRsqrt, check_prim=True, check_pir=True, check_prim_pir=True
 )
+
 
 if __name__ == "__main__":
     unittest.main()
