@@ -150,6 +150,28 @@ void CastKernel(const Context& dev_ctx,
           "Not supported cast %d -> %d", x.dtype(), out_dtype));
   }
 }
+#ifdef PADDLE_WITH_XPU_FFT
+template <>
+void CastKernel<phi::dtype::complex<float>, XPUContext>(
+    const XPUContext& dev_ctx,
+    const DenseTensor& x,
+    DataType out_dtype,
+    DenseTensor* out) {
+  using T = phi::dtype::complex<float>;
+  if (x.dtype() == out_dtype) {
+    if (x.dims() == phi::make_ddim({-1})) {
+      *out = x;
+      return;
+    }
+    if (!out->IsSharedWith(x)) {
+      phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+    }
+    return;
+  }
+  DenseTensor x_real = Real<T, XPUContext>(dev_ctx, x);
+  CastKernel<float, XPUContext>(dev_ctx, x_real, out_dtype, out);
+}
+#endif
 }  // namespace phi
 
 PD_REGISTER_KERNEL(cast,
@@ -161,6 +183,9 @@ PD_REGISTER_KERNEL(cast,
                    float,
                    phi::dtype::float16,
                    phi::dtype::bfloat16,
+#ifdef PADDLE_WITH_XPU_FFT
+                   phi::dtype::complex<float>,
+#endif
                    int64_t,
                    bool,
                    int8_t,
