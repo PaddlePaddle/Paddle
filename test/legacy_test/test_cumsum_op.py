@@ -750,6 +750,7 @@ class TestCumSumOpFp16(unittest.TestCase):
 def create_test_class(op_type, dtype, shape, axis):
     class Cls(unittest.TestCase):
         def test_zero_size(self):
+            paddle.disable_static()
             numpy_tensor_1 = np.random.rand(*shape).astype(dtype)
             paddle_x = paddle.to_tensor(numpy_tensor_1)
             paddle_x.stop_gradient = False
