@@ -27,9 +27,7 @@ namespace phi::distributed {
 SpmdInfo IndexSelectInferSpmd(const DistMetaTensor& x,
                               const DistMetaTensor& index,
                               int axis) {
-  // Step0: Verify Input Args Based on Gather Logic
-  // extract and check x_ndim, x_shape, x_dist_attr_src and
-  // x_dims_mapping_src with the macro
+  // Step0: Verify Input
   EXTRACT_SHAPE_AND_DIST_ATTR(x);
   EXTRACT_SHAPE_AND_DIST_ATTR(index);
   axis = axis < 0 ? x_ndim + axis : axis;
@@ -44,6 +42,7 @@ SpmdInfo IndexSelectInferSpmd(const DistMetaTensor& x,
   // Step1: Build Einsum Notation
   std::string alphabet = "abcdefghijlmnopqrstuvwxyz";
   std::string x_axes = GetBroadcastAxes(x_ndim, x_ndim, alphabet);
+  x_axes[axis] = '1';
   std::string index_axes = "k";
   std::string out_axes = x_axes;
   out_axes[axis] = 'k';
@@ -103,6 +102,7 @@ SpmdInfo IndexSelectGradInferSpmd(const DistMetaTensor& x,
 
   std::string alphabet = "abcdefghijlmnopqrstuvwxyz";
   std::string x_axes = GetBroadcastAxes(x_ndim, x_ndim, alphabet);
+  x_axes[axis] = '1';
   std::string index_axes = "k";
   std::string out_grad_axes = x_axes;
   out_grad_axes[axis] = 'k';
