@@ -174,9 +174,6 @@ void CrossGradKernel(const Context& dev_ctx,
     return;
   }
   
-  auto index_calculator = phi::funcs::IndexCalculator<int>(
-      merged_dims.size() - 1, cal_dims, left_strides, full_strides);
-
   backends::gpu::GpuLaunchConfig config =
       backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel / 3);
   auto index_calculator = phi::funcs::IndexCalculator<int64_t>(
