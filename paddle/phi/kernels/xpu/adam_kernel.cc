@@ -56,7 +56,7 @@ void AdamDenseKernel(
   PADDLE_ENFORCE_NE(
       amsgrad,
       true,
-      phi::errors::Unimplemented("Operation amsgrad is not supported yet."));
+      common::errors::Unimplemented("Operation amsgrad is not supported yet."));
 
   xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
   float* param_ptr = nullptr;
@@ -291,7 +291,7 @@ void MergedAdamKernel(
   PADDLE_ENFORCE_NE(
       amsgrad,
       true,
-      phi::errors::Unimplemented("Operation amsgrad is not supported yet."));
+      common::errors::Unimplemented("Operation amsgrad is not supported yet."));
 
   VLOG(4) << "use_global_beta_pow:" << use_global_beta_pow;
 

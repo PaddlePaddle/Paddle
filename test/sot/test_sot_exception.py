@@ -55,7 +55,7 @@ def case5_inner3(x):
 
 def case5_inner2(x):
     x += 1
-    z = case5_inner3(1 / 0)
+    z = case5_inner3(y)  # noqa: F821
     return z + 1
 
 

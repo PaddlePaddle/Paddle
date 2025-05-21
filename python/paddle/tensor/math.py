@@ -6946,13 +6946,15 @@ def frac(x: Tensor, name: str | None = None) -> Tensor:
         paddle.int64,
         paddle.float32,
         paddle.float64,
+        paddle.float16,
         DataType.INT32,
         DataType.INT64,
         DataType.FLOAT32,
         DataType.FLOAT64,
+        DataType.FLOAT16,
     ]:
         raise TypeError(
-            f"The data type of input must be one of ['int32', 'int64', 'float32', 'float64'], but got {x.dtype}"
+            f"The data type of input must be one of ['int32', 'int64', 'float32', 'float64', 'float16'], but got {x.dtype}"
         )
     if in_dynamic_or_pir_mode():
         y = _C_ops.trunc(x)
@@ -6963,7 +6965,7 @@ def frac(x: Tensor, name: str | None = None) -> Tensor:
 
         helper = LayerHelper("trunc", **locals())
         check_variable_and_dtype(
-            x, "X", ['int32', 'int64', 'float32', 'float64'], 'trunc'
+            x, "X", ['int32', 'int64', 'float32', 'float64', 'float16'], 'trunc'
         )
         y = helper.create_variable_for_type_inference(dtype=x.dtype)
         helper.append_op(
@@ -6984,9 +6986,10 @@ def frac_(x: Tensor, name: str | None = None) -> Tensor:
         paddle.int64,
         paddle.float32,
         paddle.float64,
+        paddle.float16,
     ]:
         raise TypeError(
-            f"The data type of input must be one of ['int32', 'int64', 'float32', 'float64'], but got {x.dtype}"
+            f"The data type of input must be one of ['int32', 'int64', 'float32', 'float64', 'float16'], but got {x.dtype}"
         )
     if in_dynamic_mode():
         y = _C_ops.trunc(x)

@@ -187,6 +187,9 @@ void TensorAdd(const VarType& src, VarType* dst) {
     PADDLE_TENSOR_ADD(double, phi::XPUContext);
     PADDLE_TENSOR_ADD(phi::dtype::float16, phi::XPUContext);
     PADDLE_TENSOR_ADD(phi::dtype::bfloat16, phi::XPUContext);
+#ifdef PADDLE_WITH_XPU_FFT
+    PADDLE_TENSOR_ADD(phi::dtype::complex<float>, phi::XPUContext);
+#endif
 #endif
   }
 
