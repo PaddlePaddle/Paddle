@@ -31,6 +31,9 @@ void ActivationImpl(const Context& dev_ctx,
   PADDLE_ENFORCE_NOT_NULL(Out,
                           errors::NotFound("Output Out should not be nullptr"));
   dev_ctx.template Alloc<U>(Out);
+  if (Out->numel() == 0) {
+    return;
+  }
   auto x = phi::EigenVector<T>::Flatten(
       GET_DATA_SAFELY(&X, "Input", "X", "Activation"));
   auto out = phi::EigenVector<U>::Flatten(

@@ -34,6 +34,9 @@ void ActivationGPUImpl(const Context& dev_ctx,
   PADDLE_ENFORCE_NOT_NULL(out,
                           errors::NotFound("Output Out should not be nullptr"));
   dev_ctx.template Alloc<T>(out);
+  if (out->numel() == 0) {
+    return;
+  }
   std::vector<const DenseTensor*> ins = {&x};
   std::vector<DenseTensor*> outs = {out};
   funcs::ElementwiseKernel<T>(dev_ctx, ins, &outs, functor);
@@ -44,10 +47,6 @@ void ActivationGPUImpl(const Context& dev_ctx,
   void name##Kernel(                                                    \
       const Context& dev_ctx, const DenseTensor& x, DenseTensor* out) { \
     funcs::functor_class<T> functor;                                    \
-    if (out && out->numel() == 0) {                                     \
-      dev_ctx.template Alloc<T>(out);                                   \
-      return;                                                           \
-    }                                                                   \
     ActivationGPUImpl<T, Context, funcs::functor_class<T>>(             \
         dev_ctx, x, out, functor);                                      \
   }

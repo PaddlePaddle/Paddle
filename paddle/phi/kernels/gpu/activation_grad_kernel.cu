@@ -57,6 +57,9 @@ void ActivationGradGPUImpl(const Context& dev_ctx,
   }
 
   dev_ctx.template Alloc<T>(d_x);
+  if (d_x->numel() == 0) {
+    return;
+  }
 
   std::vector<const DenseTensor*> ins = {d_out};
   std::vector<DenseTensor*> outs = {d_x};
@@ -83,10 +86,6 @@ void ActivationGradGPUImpl(const Context& dev_ctx,
                         const DenseTensor& dout,                    \
                         DenseTensor* dx) {                          \
     funcs::functor_class<T> functor;                                \
-    if (dx && dx->numel() == 0) {                                   \
-      dev_ctx.template Alloc<T>(dx);                                \
-      return;                                                       \
-    }                                                               \
     ActivationGradGPUImpl<T, Context, funcs::functor_class<T>>(     \
         dev_ctx, &x, nullptr, &dout, dx, functor);                  \
   }
@@ -130,10 +129,6 @@ void ActivationGradGPUImpl(const Context& dev_ctx,
                         const DenseTensor& dout,                      \
                         DenseTensor* dx) {                            \
     funcs::functor_class<T> functor;                                  \
-    if (dx && dx->numel() == 0) {                                     \
-      dev_ctx.template Alloc<T>(dx);                                  \
-      return;                                                         \
-    }                                                                 \
     ActivationGradGPUImpl<T, Context, funcs::functor_class<T>>(       \
         dev_ctx, nullptr, &out, &dout, dx, functor);                  \
   }

@@ -29,6 +29,9 @@ void ActivationXPUImpl(const Context& dev_ctx,
   PADDLE_ENFORCE_NOT_NULL(out,
                           errors::NotFound("Output Out should not be nullptr"));
   dev_ctx.template Alloc<T>(out);
+  if (out->numel() == 0) {
+    return;
+  }
   functor(dev_ctx, x, out);
 }
 
@@ -37,10 +40,6 @@ void ActivationXPUImpl(const Context& dev_ctx,
   void name##Kernel(                                                           \
       const Context& dev_ctx, const DenseTensor& x, DenseTensor* out) {        \
     functor_class<T> functor;                                                  \
-    if (out && out->numel() == 0) {                                            \
-      dev_ctx.template Alloc<T>(out);                                          \
-      return;                                                                  \
-    }                                                                          \
     ActivationXPUImpl<T, Context, functor_class<T>>(dev_ctx, x, out, functor); \
   }
 
@@ -623,10 +622,6 @@ void RoundKernel(const Context& dev_ctx,
                  DenseTensor* out) {
   XPURoundFunctor<T> functor;
   auto attrs = functor.GetAttrs();
-  if (out && out->numel() == 0) {
-    dev_ctx.template Alloc<T>(out);
-    return;
-  }
   *(attrs[0].second) = decimals;
   ActivationXPUImpl<T, Context, XPURoundFunctor<T>>(dev_ctx, x, out, functor);
 }

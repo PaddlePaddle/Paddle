@@ -29,10 +29,6 @@ namespace phi {
                         const DenseTensor& dout,                    \
                         DenseTensor* dx) {                          \
     funcs::functor_class<T> functor;                                \
-    if (dx && dx->numel() == 0) {                                   \
-      dev_ctx.template Alloc<T>(dx);                                \
-      return;                                                       \
-    }                                                               \
     ActivationGradImpl<T, Context, funcs::functor_class<T>>(        \
         dev_ctx, &x, nullptr, &dout, dx, functor);                  \
   }
@@ -76,10 +72,6 @@ namespace phi {
                         const DenseTensor& dout,                      \
                         DenseTensor* dx) {                            \
     funcs::functor_class<T> functor;                                  \
-    if (dx && dx->numel() == 0) {                                     \
-      dev_ctx.template Alloc<T>(dx);                                  \
-      return;                                                         \
-    }                                                                 \
     ActivationGradImpl<T, Context, funcs::functor_class<T>>(          \
         dev_ctx, nullptr, &out, &dout, dx, functor);                  \
   }
@@ -121,9 +113,6 @@ namespace phi {
   void name##GradKernel(                                                  \
       const Context& dev_ctx, const DenseTensor& dout, DenseTensor* dx) { \
     funcs::functor_class<T> functor;                                      \
-    if (dx && dx->numel() == 0) {                                         \
-      dev_ctx.template Alloc<T>(dx);                                      \
-    }                                                                     \
     ActivationGradImpl<T, Context, funcs::functor_class<T>>(              \
         dev_ctx, nullptr, nullptr, &dout, dx, functor);                   \
   }
