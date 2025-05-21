@@ -160,6 +160,8 @@ def create_test_class(op_type, dtype, shape):
     class Cls(unittest.TestCase):
         def test_zero_size(self):
             paddle.disable_static()
+            import scipy  # noqa: F401
+
             numpy_tensor_1 = np.random.rand(*shape).astype(dtype)
             paddle_x = paddle.to_tensor(numpy_tensor_1)
             paddle_x.stop_gradient = False
