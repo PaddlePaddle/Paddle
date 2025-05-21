@@ -50,7 +50,7 @@ __global__ void MatrixRowReverse(const InT* matrix_data,
       int64_t dst_offset =
           bx * reverse_size + (reverse_size - reverse_offset - 1);
       if (reverse_offset < reverse_size) {
-        reverse_data[dst_offset] = static_cast<OutT> matrix_data[src_offset];
+        reverse_data[dst_offset] = static_cast<OutT>(matrix_data[src_offset]);
       }
     }
   }
