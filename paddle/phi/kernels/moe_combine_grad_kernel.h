@@ -14,7 +14,7 @@
 
 #pragma once
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/common/scalar.h"
+
 namespace phi {
 template <typename T, typename Context>
 void MoeCombineGradKernel(const Context& dev_ctx,
