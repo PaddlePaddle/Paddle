@@ -656,7 +656,7 @@ class Pool2dFunctor<phi::GPUContext, PoolProcess, T> {
 #ifdef WITH_NV_JETSON
       backends::gpu::ChangeThreadNum(context, &thread_num);
 #endif
-      uint blocks = (nthreads + thread_num - 1) / thread_num;
+      int64_t blocks = (nthreads + thread_num - 1) / thread_num;
       dim3 threads(thread_num, 1);
       dim3 grid(blocks, 1);
       if (input.numel() <= std::numeric_limits<int>::max()) {
@@ -885,7 +885,7 @@ class MaxPool2dGradFunctor<phi::GPUContext, T> {
 
     int64_t nthreads =
         batch_size * output_channels * output_height * output_width;
-    uint blocks = (nthreads + 1024 - 1) / 1024;
+    int64_t blocks = (nthreads + 1024 - 1) / 1024;
     dim3 threads(1024, 1);
     dim3 grid(blocks, 1);
 
@@ -1450,7 +1450,7 @@ class Pool3dFunctor<phi::GPUContext, PoolProcess, T> {
 #ifdef WITH_NV_JETSON
     backends::gpu::ChangeThreadNum(context, &thread_num);
 #endif
-    uint blocks = (nthreads + thread_num - 1) / thread_num;
+    int64_t blocks = (nthreads + thread_num - 1) / thread_num;
     dim3 threads(thread_num, 1);
     dim3 grid(blocks, 1);
 
@@ -1571,7 +1571,7 @@ class Pool3dGradFunctor<phi::GPUContext, PoolProcess, T> {
 
     int64_t nthreads =
         batch_size * input_channels * input_depth * input_height * input_width;
-    uint blocks = (nthreads + 1024 - 1) / 1024;
+    int64_t blocks = (nthreads + 1024 - 1) / 1024;
     dim3 threads(1024, 1);
     dim3 grid(blocks, 1);
 
@@ -1696,7 +1696,7 @@ class MaxPool3dGradFunctor<phi::GPUContext, T> {
 
     int64_t nthreads = batch_size * output_channels * output_depth *
                        output_height * output_width;
-    uint blocks = (nthreads + 1024 - 1) / 1024;
+    int64_t blocks = (nthreads + 1024 - 1) / 1024;
     dim3 threads(1024, 1);
     dim3 grid(blocks, 1);
     if (input.numel() <= std::numeric_limits<int>::max() &&
