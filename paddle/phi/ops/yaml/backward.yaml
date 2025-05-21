@@ -1,16 +1,6 @@
 # This file is designed for backward C++ operators associated with
 # the operator in ops.yaml.
 
-- backward_op : moe_combine_grad
-  forward : moe_combine (Tensor x, Tensor combine_weights, Tensor scatter_index) -> Tensor(y)
-  args : (Tensor x, Tensor combine_weights, Tensor scatter_index, Tensor y_grad)
-  output : Tensor(x_grad), Tensor(combine_weights_grad)
-  infer_meta :
-    func : MoeCombineGradInferMeta
-  kernel :
-    func : moe_combine_grad
-    data_type : x
-
 - backward_op : abs_double_grad
   forward : abs_grad (Tensor x, Tensor grad_out) -> Tensor(grad_x)
   args : (Tensor x, Tensor grad_x_grad)
@@ -2256,6 +2246,15 @@
     param: [x]
   kernel :
     func : mode_grad
+
+- backward_op : moe_combine_grad
+  forward : moe_combine (Tensor x, Tensor combine_weights, Tensor scatter_index) -> Tensor(y)
+  args : (Tensor x, Tensor combine_weights, Tensor scatter_index, Tensor y_grad)
+  output : Tensor(x_grad), Tensor(combine_weights_grad)
+  infer_meta :
+    func : MoeCombineGradInferMeta
+  kernel :
+    func : moe_combine_grad
 
 - backward_op : mp_allreduce_sum_grad
   forward : mp_allreduce_sum(Tensor x, int ring_id = 0) -> Tensor(out)

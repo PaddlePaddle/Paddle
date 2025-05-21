@@ -33,11 +33,6 @@ namespace phi {
 //
 // The InferMeta Functions in this file are arranged in alphabetic order.
 
-void MoeCombineInferMeta(const MetaTensor& x,
-                         const MetaTensor& combine_weights,
-                         const MetaTensor& scatter_index,
-                         MetaTensor* y);
-
 void AccuracyInferMeta(const MetaTensor& out,
                        const MetaTensor& indice,
                        const MetaTensor& label,
@@ -273,6 +268,11 @@ void MatrixRankAtolRtolInferMeta(const MetaTensor& x,
                                  const MetaTensor& rtol,
                                  bool hermitian,
                                  MetaTensor* out);
+
+void MoeCombineInferMeta(const MetaTensor& x,
+                         const MetaTensor& combine_weights,
+                         const MetaTensor& scatter_index,
+                         MetaTensor* y);
 
 void MovingAverageAbsMaxScaleInferMeta(const MetaTensor& x,
                                        const MetaTensor& in_accum,

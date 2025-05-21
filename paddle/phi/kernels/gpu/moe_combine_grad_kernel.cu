@@ -1,6 +1,5 @@
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/moe_combine_grad_kernel.h"
 namespace phi {
 

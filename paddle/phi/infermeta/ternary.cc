@@ -27,25 +27,6 @@ limitations under the License. */
 
 namespace phi {
 
-void MoeCombineInferMeta(const MetaTensor& x,
-                         const MetaTensor& combine_weights,
-                         const MetaTensor& scatter_index,
-                         MetaTensor* y){
-  auto x_dim = x.dims();
-  auto combine_weights_shape = combine_weights.dims();
-  PADDLE_ENFORCE_EQ(
-      x_dim.size(),
-      2,
-      errors::InvalidArgument("Input X should have 2 dimensions"));
-  PADDLE_ENFORCE_EQ(
-    combine_weights_shape.size(),
-    2,
-    errors::InvalidArgument("Input combine_weights should have 2 dimensions")); // maybe
-  y->set_dims(phi::make_ddim({combine_weights_shape[0], x_dim[1]}));
-  y->set_dtype(x.dtype());
-}
-
-
 void AccuracyInferMeta(const MetaTensor& out,
                        const MetaTensor& indice,
                        const MetaTensor& label,
@@ -1629,6 +1610,24 @@ void MultiClassNMSInferMeta(const MetaTensor& bboxes,
   index->set_dtype(DataType::INT32);
   nms_rois_num->set_dims(common::make_ddim({-1}));
   nms_rois_num->set_dtype(DataType::INT32);
+}
+
+void MoeCombineInferMeta(const MetaTensor& x,
+                         const MetaTensor& combine_weights,
+                         const MetaTensor& scatter_index,
+                         MetaTensor* y){
+  auto x_dim = x.dims();
+  auto combine_weights_shape = combine_weights.dims();
+  PADDLE_ENFORCE_EQ(
+      x_dim.size(),
+      2,
+      common::errors::InvalidArgument("The dimensions of Input(x) must be 1, but "
+                                      "received dimensions of"
+                                      "Input(x) is [%d]",
+                                      x_dim.size()));
+  // maybe there is more conditions here....
+  y->set_dims(phi::make_ddim({combine_weights_shape[0], x_dim[1]}));
+  y->set_dtype(x.dtype());
 }
 
 void MovingAverageAbsMaxScaleInferMeta(const MetaTensor& x,
