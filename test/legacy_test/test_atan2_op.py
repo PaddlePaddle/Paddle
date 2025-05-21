@@ -208,8 +208,23 @@ class TestAtan2Broadcasting(unittest.TestCase):
 
         if place is None:  # Dygraph mode
             with paddle.base.dygraph.guard():
-                tensors = [paddle.to_tensor(inp) for inp in inputs]
+                tensors = [
+                    paddle.to_tensor(inp, stop_gradient=False) for inp in inputs
+                ]
                 result = paddle.atan2(tensors[0], tensors[1])
+                loss = paddle.sum(result)
+                loss.backward()
+
+                # x_shape = list(tensors[0].shape)
+                # y_shape = list(tensors[1].shape)
+                # broadcast_shape = paddle.broadcast_shape(x_shape, y_shape)
+                np.testing.assert_allclose(
+                    tensors[0].shape, tensors[0].grad.shape, rtol=1e-05
+                )
+                np.testing.assert_allclose(
+                    tensors[1].shape, tensors[1].grad.shape, rtol=1e-05
+                )
+
         else:  # Static mode
             with paddle.static.program_guard(paddle.static.Program()):
                 data_tensors = [
