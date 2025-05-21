@@ -2107,12 +2107,14 @@ static PyObject* apply_backward_hook(TensorObject* self,
       !egr::EagerUtils::unsafe_autograd_meta(self->tensor)->StopGradient(),
       true,
       common::errors::InvalidArgument(
-          "Cannot register backward hook on a Tensor that stop "
+          "Cannot apply backward hook on a Tensor that stop "
           "gradient."));
-  PADDLE_ENFORCE(grad_node.get() != nullptr,
-                 common::errors::Fatal("Detected nullptr grad_node,"
-                                       "Leaf tensor should have had grad_node "
-                                       "with type: GradNodeAccumulation."));
+  PADDLE_ENFORCE_NE(
+      grad_node.get(),
+      nullptr,
+      common::errors::Fatal("Detected nullptr grad_node,"
+                            "Leaf tensor should have had grad_node "
+                            "with type: GradNodeAccumulation."));
 
   auto accumulation_grad_node =
       std::dynamic_pointer_cast<egr::GradNodeAccumulation>(grad_node);
