@@ -18,7 +18,7 @@
 #
 #
 # -------------------------------------------
-#     C+      CUDA C+     Go
+#     C++        CUDA C++       Go
 # -------------------------------------------
 # cc_library    nv_library   go_library
 # cc_test       nv_test      go_test

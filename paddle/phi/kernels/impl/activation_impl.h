@@ -17,7 +17,7 @@
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/activation_functor.h"
-#include "paddle/phi/kernels/funcs/blas/blas.h"
+// #include "paddle/phi/kernels/funcs/blas/blas.h"
 
 namespace phi {
 
