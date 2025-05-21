@@ -340,8 +340,9 @@ index 1be3dec..ea1e284 100644
      char padding[NVSHMEMI_IBGDA_QP_MANAGEMENT_PADDING];
  } __attribute__((__aligned__(8))) nvshmemi_ibgda_device_qp_management_v1;
 -static_assert(sizeof(nvshmemi_ibgda_device_qp_management_v1) == 104,
+-              "ibgda_device_qp_management_v1 must be 104 bytes.");
 +static_assert(sizeof(nvshmemi_ibgda_device_qp_management_v1) == 112,
-               "ibgda_device_qp_management_v1 must be 104 bytes.");
++              "ibgda_device_qp_management_v1 must be 112 bytes.");
 
  typedef nvshmemi_ibgda_device_qp_management_v1 nvshmemi_ibgda_device_qp_management_t;
 @@ -214,7 +215,7 @@ typedef struct nvshmemi_ibgda_device_qp {
@@ -349,7 +350,7 @@ index 1be3dec..ea1e284 100644
      nvshmemi_ibgda_device_qp_management_v1 mvars;  // management variables
  } nvshmemi_ibgda_device_qp_v1;
 -static_assert(sizeof(nvshmemi_ibgda_device_qp_v1) == 248, "ibgda_device_qp_v1 must be 248 bytes.");
-+static_assert(sizeof(nvshmemi_ibgda_device_qp_v1) == 256, "ibgda_device_qp_v1 must be 248 bytes.");
++static_assert(sizeof(nvshmemi_ibgda_device_qp_v1) == 256, "ibgda_device_qp_v1 must be 256 bytes.");
 
  typedef nvshmemi_ibgda_device_qp_v1 nvshmemi_ibgda_device_qp_t;
 
@@ -419,3 +420,18 @@ index ea1e284..e6640d6 100644
      } while (0);
 --
 2.25.1
+
+diff --git a/src/modules/transport/common/transport_ib_common.cpp b/src/modules/transport/common/transport_ib_common.cpp
+index c89f408..f99018a 100644
+--- a/src/modules/transport/common/transport_ib_common.cpp
++++ b/src/modules/transport/common/transport_ib_common.cpp
+@@ -26,6 +26,9 @@ int nvshmemt_ib_common_nv_peer_mem_available() {
+     if (access("/sys/kernel/mm/memory_peers/nvidia-peermem/version", F_OK) == 0) {
+         return NVSHMEMX_SUCCESS;
+     }
++    if (access("/sys/module/nvidia_peermem/version", F_OK) == 0) {
++        return NVSHMEMX_SUCCESS;
++    }
+ 
+     return NVSHMEMX_ERROR_INTERNAL;
+ }
