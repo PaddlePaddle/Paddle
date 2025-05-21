@@ -366,8 +366,6 @@ void ScanKernel(const Context& dev_ctx,
   int64_t transpose_grids = ((width + tile_size - 1) / tile_size) *
                             ((height + tile_size - 1) / tile_size);
   transpose_grids = std::min(transpose_grids, max_grid_x);
-  T* next_in_data = out_data;
-  T* next_out_data = tmp_data;
   if (transpose) {
     MatrixTranspose<InT, OutT, 32, 8>
         <<<transpose_grids, blocks, 0, dev_ctx.stream()>>>(
