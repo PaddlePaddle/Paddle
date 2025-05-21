@@ -285,11 +285,11 @@ class WeakRefMatchGuard : public GuardBase {
   PyObject* expected_;
 };
 
-class IsDenseTensorHoldAllocationMatchGuard : public GuardBase {
+class IsNotDenseTensorHoldAllocationMatchGuard : public GuardBase {
  public:
   bool check(PyObject* value) override;
   std::string get_guard_name() const override {
-    return "IsDenseTensorHoldAllocationMatchGuard";
+    return "IsNotDenseTensorHoldAllocationMatchGuard";
   }
 };
 

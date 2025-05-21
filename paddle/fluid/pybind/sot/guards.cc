@@ -237,7 +237,7 @@ bool WeakRefMatchGuard::check(PyObject* value) {
 #endif
 }
 
-bool IsDenseTensorHoldAllocationMatchGuard::check(PyObject* value) {
+bool IsNotDenseTensorHoldAllocationMatchGuard::check(PyObject* value) {
   auto tensor = GetTensorFromPyObject(value);
   HANDLE_NULL_TENSOR(tensor);
 

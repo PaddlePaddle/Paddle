@@ -527,7 +527,7 @@ class TensorVariable(VariableBase):
         if meta.is_null():
             return [
                 paddle.framework.core.GuardNode(
-                    paddle.framework.core.IsDenseTensorHoldAllocationMatchGuard(),
+                    paddle.framework.core.IsNotDenseTensorHoldAllocationMatchGuard(),
                     [expr_node],
                 ),
             ]

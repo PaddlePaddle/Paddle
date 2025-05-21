@@ -132,12 +132,12 @@ void BindGuard(pybind11::module *m) {
   py::class_<WeakRefMatchGuard, GuardBase, std::shared_ptr<WeakRefMatchGuard>>(
       *m, "WeakRefMatchGuard", R"DOC(WeakRefMatchGuard Class.)DOC")
       .def(py::init<const py::object &>(), py::arg("func"));
-  py::class_<IsDenseTensorHoldAllocationMatchGuard,
+  py::class_<IsNotDenseTensorHoldAllocationMatchGuard,
              GuardBase,
-             std::shared_ptr<IsDenseTensorHoldAllocationMatchGuard>>(
+             std::shared_ptr<IsNotDenseTensorHoldAllocationMatchGuard>>(
       *m,
-      "IsDenseTensorHoldAllocationMatchGuard",
-      R"DOC(IsDenseTensorHoldAllocationMatchGuard Class.)DOC")
+      "IsNotDenseTensorHoldAllocationMatchGuard",
+      R"DOC(IsNotDenseTensorHoldAllocationMatchGuard Class.)DOC")
       .def(py::init());
 
   m->def(
