@@ -161,8 +161,8 @@ class TestAtan2BF16OP(OpTest):
         self.public_python_api = paddle.atan2
         self.dtype = np.uint16
         self.check_cinn = True
-        x1 = np.random.uniform(-1, -0.1, [15, 17]).astype('float32')
-        x2 = np.random.uniform(0.1, 1, [15, 17]).astype('float32')
+        x1 = np.random.uniform(-1, -0.1, [15, 17]).astype('float64')
+        x2 = np.random.uniform(0.1, 1, [15, 17]).astype('float64')
         out = np.arctan2(x1, x2)
 
         self.inputs = {
@@ -215,9 +215,6 @@ class TestAtan2Broadcasting(unittest.TestCase):
                 loss = paddle.sum(result)
                 loss.backward()
 
-                # x_shape = list(tensors[0].shape)
-                # y_shape = list(tensors[1].shape)
-                # broadcast_shape = paddle.broadcast_shape(x_shape, y_shape)
                 np.testing.assert_allclose(
                     tensors[0].shape, tensors[0].grad.shape, rtol=1e-05
                 )
