@@ -9,12 +9,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/pybind/eager_utils.h"
+
 #include <Python.h>
 #include <string>
 #include <vector>
 
 #include "paddle/common/exception.h"
-#include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/pir/include/core/value.h"
 
 #include "paddle/common/flags.h"
