@@ -87,8 +87,8 @@ class MyModel(nn.Layer):
         super().__init__()
         self.linear1 = nn.Linear(8, 8, bias_attr=False)
         self.linear2 = nn.Linear(8, 8, bias_attr=False)
-        self.linear3 = nn.Linear(8, 8, bias_attr=False)
-        self.linear4 = nn.Linear(8, 8, bias_attr=False)
+        self.linear3 = nn.Linear(8, 8)
+        self.linear4 = nn.Linear(8, 8)
 
     def forward(self, x, debug_str=None):
         if hasattr(self, 'linear1'):
@@ -112,7 +112,10 @@ class PPMyModel(nn.Layer):
         # Create layers same as MyModel
         self.linears = nn.LayerList()
         for i in range(self.num_layers):
-            linear = nn.Linear(8, 8, bias_attr=False)
+            if i // 2 == 0:
+                linear = nn.Linear(8, 8, bias_attr=False)
+            else:
+                linear = nn.Linear(8, 8)
 
             # Mark network parameters
             linear.weight = dist.shard_tensor(
