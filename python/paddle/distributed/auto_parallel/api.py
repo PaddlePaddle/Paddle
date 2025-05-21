@@ -1280,12 +1280,11 @@ class _ShardOptimizer(Optimizer):
 
     def _finish_update(self, block, parameters_and_grads):
         self._inner_opt._finish_update(block, parameters_and_grads)
-        if self.enable_tensor_fusion:
+        if self.enable_tensor_fusion and not self.enable_sharding_overlap:
             # zero the grad storage for add_ op in inplace_master_grad
             for grad_storage in self.grad_storage:
                 grad_storage.zero_()
                 grad_storage.check_in = 0
-            if not self.enable_sharding_overlap:
                 for i in range(len(self.fuse_param_view)):
                     shard_size = (
                         self.param_storage[i]._numel()
@@ -1477,6 +1476,8 @@ class _ShardOptimizer(Optimizer):
                     group=self._sharding_group,
                     sync_op=False,
                 )
+                self.grad_storage[idx].zero_()
+                self.grad_storage[idx].check_in = 0
 
     def _reduce_scatter_gradients(self, grad_storage):
         shard_size = grad_storage._numel() // self._sharding_group.nranks
