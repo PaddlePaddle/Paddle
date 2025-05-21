@@ -44,6 +44,8 @@ bool PyObject_CheckBool(PyObject** obj);
 
 bool PyObject_CheckLong(PyObject* obj);
 
+bool PyObject_CheckDataType(PyObject* obj);
+
 int32_t PyObject_ToInt32(PyObject* obj);
 
 uint32_t PyObject_ToUInt32(PyObject* obj);

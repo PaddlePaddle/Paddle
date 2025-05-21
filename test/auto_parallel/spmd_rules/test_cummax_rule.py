@@ -20,7 +20,7 @@ from paddle.distributed.auto_parallel.static.dist_attribute import (
     TensorDistAttr,
 )
 from paddle.distributed.fleet import auto
-from paddle.framework import core
+from paddle.framework import convert_np_dtype_to_dtype_, core
 
 
 class TestCummaxSPMDRule(unittest.TestCase):
@@ -43,6 +43,7 @@ class TestCummaxSPMDRule(unittest.TestCase):
         self.rule = core.get_phi_spmd_rule("cummax")
         self.attrs = OrderedDict()
         self.attrs['axis'] = 1
+        self.attrs['dtype'] = convert_np_dtype_to_dtype_("int64")
 
     def test_cummax_forward(self):
         # axis = 1
@@ -52,6 +53,7 @@ class TestCummaxSPMDRule(unittest.TestCase):
         result_dist_attrs = self.rule.infer_forward(
             self.x_dist_tensor_spec,
             self.attrs['axis'],
+            self.attrs['dtype'],
         )
 
         self.assertEqual(len(result_dist_attrs), 2)
@@ -81,6 +83,7 @@ class TestCummaxSPMDRule(unittest.TestCase):
             self.x_dist_tensor_spec,
             self.out_dist_tensor_spec,
             self.attrs['axis'],
+            self.attrs['dtype'],
         )
 
         self.assertEqual(len(result_dist_attrs), 2)

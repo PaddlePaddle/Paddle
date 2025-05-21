@@ -92,7 +92,6 @@ SpmdInfo TopkGradInferSpmdBase(const DistMetaTensor& x,
   // Build einsum notation
   std::string alphabet = "abcdefghijlopqrstuvwxyz";
   std::string x_axes = alphabet.substr(0, x_ndim);
-  x_axes[axis] = '1';
   std::string indices_axes = x_axes;
   std::string out_grad_axes = x_axes;
   std::vector<int64_t> x_dims_mapping(x_dims_mapping_src);
