@@ -3193,5 +3193,29 @@ void FusedRMSNormInferMeta(const MetaTensor& x,
   invvar->set_layout(x.layout());
 
 }
+
+void IntBincountInferMeta(const MetaTensor& x,
+                          int64_t low,
+                          int64_t high,
+                          int64_t dtype,
+                          MetaTensor* out) {
+  // 1D 输入检查
+  PADDLE_ENFORCE_EQ(
+      x.dims().size(), 1,
+      errors::InvalidArgument(
+          "The input 'x' of int_bincount must be a 1-D Tensor, but got %u-D.",
+          x.dims().size()));
+  // 计算 bin 数量
+  PADDLE_ENFORCE_GT(
+      high, low,
+      errors::InvalidArgument("Attr high (%d) must be > low (%d).", high, low));
+  int64_t bin_count = high - low + 1;
+
+  // 设置输出 shape
+  out->set_dims(phi::make_ddim({bin_count}));
+  // 输出 dtype 从属性 dtype 里取
+  out->set_dtype(static_cast<phi::DataType>(dtype));
+  // 不继承 lod
+}
 }
 PD_REGISTER_INFER_META_FN(add_raw, phi::ElementwiseRawInferMeta);

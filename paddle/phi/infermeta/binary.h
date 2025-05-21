@@ -493,5 +493,9 @@ void FusedRMSNormInferMeta(const MetaTensor& x,
                                MetaTensor* mean,
                                MetaTensor* invvar);
 
-
+void IntBincountInferMeta(const MetaTensor& x,
+                          int64_t low,
+                          int64_t high,
+                          int64_t dtype,
+                          MetaTensor* out);
 }  // namespace phi

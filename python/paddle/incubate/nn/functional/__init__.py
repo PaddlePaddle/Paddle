@@ -24,6 +24,7 @@ from .fused_rotary_position_embedding import fused_rotary_position_embedding
 from .rms_norm import rms_norm
 from .fused_rms_norm_grad import fused_rms_norm_grad
 from .fused_rms_norm import fused_rms_norm
+from .int_bincount import int_bincount
 
 
 __all__ = [
@@ -37,6 +38,7 @@ __all__ = [
     'fused_dropout_add',
     'fused_rotary_position_embedding',
     "rms_norm",
-    "fused_rms_norm_grad",
+    # "fused_rms_norm_grad",
     "fused_rms_norm",
+    "int_bincount",
 ]

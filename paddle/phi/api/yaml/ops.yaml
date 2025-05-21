@@ -2669,3 +2669,12 @@
   optional : gt_score
   intermediate : objectness_mask, gt_match_mask
   backward : yolo_loss_grad
+
+- op: int_bincount
+  args: (Tensor x, int64 low, int64 high, int64 dtype)
+  output: Tensor(y)
+  infer_meta:
+    func: IntBincountInferMeta
+  kernel:
+    func: int_bincount
+    data_type: x
