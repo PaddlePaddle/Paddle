@@ -638,7 +638,6 @@ void MatrixRankTolKernel(const Context& dev_ctx,
   int cols = dim_x[dim_x.size() - 1];
 
   if (x.numel() == 0) {
-    out->Resize(dim_out);
     dev_ctx.template Alloc<int64_t>(out);
     if (out && out->numel() != 0) {
       phi::Full<int64_t, Context>(
