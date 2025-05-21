@@ -177,11 +177,11 @@ def create_test_class(op_type, dtype, shape):
     globals()[cls_name] = Cls
 
 
-op = "i0"
-create_test_class(op, "float32", [3, 4, 0])
-create_test_class(op, "float64", [3, 4, 0, 3, 4])
-create_test_class(op, "int32", [3, 4, 0])
-create_test_class(op, "int64", [3, 4, 0, 3, 4])
+op_type = "i0"
+create_test_class(op_type, "float32", [3, 4, 0])
+create_test_class(op_type, "float64", [3, 4, 0, 3, 4])
+create_test_class(op_type, "int32", [3, 4, 0])
+create_test_class(op_type, "int64", [3, 4, 0, 3, 4])
 
 if __name__ == "__main__":
     unittest.main()
