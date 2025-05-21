@@ -41,6 +41,34 @@ bool FacadeOp::InferSymbolicShape(
   return ApOpFacadeOpInferSymbolicShape(*this, infer_context);
 }
 
+void AddOp::Build(pir::Builder& builder,             // NOLINT
+                  pir::OperationArgument& argument,  // NOLINT
+                  pir::Value lhs,
+                  pir::Value rhs) {
+  argument.AddInput(lhs);
+  argument.AddInput(rhs);
+}
+
+bool AddOp::InferSymbolicShape(pir::InferSymbolicShapeContext* infer_context) {
+  const auto& lhs_shape_or_data =
+      infer_context->GetShapeOrDataForValue(operand_source(0));
+  const auto& rhs_shape_or_data =
+      infer_context->GetShapeOrDataForValue(operand_source(1));
+  PADDLE_ENFORCE_GT(lhs_shape_or_data.shape().size(),
+                    rhs_shape_or_data.shape().size(),
+                    phi::errors::InvalidArgument(
+                        "lhs and rhs of ap_op.add should have same rank"));
+  for (int i = 0; i < lhs_shape_or_data.shape().size(); ++i) {
+    const auto& lhs_dim_expr = lhs_shape_or_data.shape().at(i);
+    const auto& rhs_dim_expr = rhs_shape_or_data.shape().at(i);
+    if (lhs_dim_expr != rhs_dim_expr) {
+      infer_context->AddEqualCstr(lhs_dim_expr, rhs_dim_expr);
+    }
+  }
+  infer_context->SetShapeOrDataForValue(result(0), rhs_shape_or_data);
+  return true;
+}
+
 void UpSpiderOp::Build(pir::Builder& builder,             // NOLINT
                        pir::OperationArgument& argument,  // NOLINT
                        pir::Value lhs,
@@ -165,6 +193,7 @@ bool StoreToGlobalOp::InferSymbolicShape(
 }  // namespace ap::dialect
 
 IR_DEFINE_EXPLICIT_TYPE_ID(ap::dialect::FacadeOp);
+IR_DEFINE_EXPLICIT_TYPE_ID(ap::dialect::AddOp);
 IR_DEFINE_EXPLICIT_TYPE_ID(ap::dialect::UpSpiderOp);
 IR_DEFINE_EXPLICIT_TYPE_ID(ap::dialect::DownSpiderOp);
 IR_DEFINE_EXPLICIT_TYPE_ID(ap::dialect::LoadFromRegisterOp);

@@ -2,10 +2,12 @@ name: Distribute-stable
 
 on:
   workflow_call:
+    inputs:
+      docker_distribute_image:
+        type: string
+        required: true
 
 env:
-  dockerfile: Dockerfile.cuda123_cudnn9_gcc122_ubuntu20
-  docker_image: 4b95dcca2173
   PR_ID: ${{ github.event.pull_request.number }}
   COMMIT_ID: ${{ github.event.pull_request.head.sha }}
   work_dir: /paddle
@@ -15,6 +17,7 @@ env:
   BRANCH: ${{ github.event.pull_request.base.ref }}
   CI_name: distribute
   no_proxy: bcebos.com,apiin.im.baidu.com,gitee.com,aliyun.com,.baidu.com,.tuna.tsinghua.edu.cn,paddlepaddle.org.cn
+  docker_image: ${{ inputs.docker_distribute_image }}
 
 defaults:
   run:

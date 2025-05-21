@@ -1145,6 +1145,22 @@ def get_paddle_extra_install_requirements():
                     "nvidia-nvjitlink-cu12==12.8.61; platform_system == 'Linux' and platform_machine == 'x86_64' | "
                     "nvidia-cufile-cu12==1.13.0.11; platform_system == 'Linux' and platform_machine == 'x86_64'"
                 ),
+                "12.9": (
+                    "nvidia-cuda-nvrtc-cu12==12.9.41; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-cuda-runtime-cu12==12.9.37; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-cuda-cupti-cu12==12.9.19; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-cudnn-cu12==9.9.0.52; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-cublas-cu12==12.9.0.13; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-cufft-cu12==11.4.0.6; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-curand-cu12==10.3.10.19; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-cusolver-cu12==11.7.4.40; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-cusparse-cu12==12.5.9.5; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-cusparselt-cu12==0.7.1; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-nccl-cu12==2.26.5; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-nvtx-cu12==12.9.19; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-nvjitlink-cu12==12.9.41; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-cufile-cu12==1.14.0.30; platform_system == 'Linux' and platform_machine == 'x86_64'"
+                ),
             }
         elif platform.system() == 'Windows':
             PADDLE_CUDA_INSTALL_REQUIREMENTS = {
@@ -1183,6 +1199,15 @@ def get_paddle_extra_install_requirements():
                     "nvidia-curand-cu12==10.3.9.55 | "
                     "nvidia-cusolver-cu12==11.7.2.55 | "
                     "nvidia-cusparse-cu12==12.5.7.53 "
+                ),
+                "12.9": (
+                    "nvidia-cuda-runtime-cu12==12.9.37 | "
+                    "nvidia-cudnn-cu12==9.9.0.52 | "
+                    "nvidia-cublas-cu12==12.9.0.13 | "
+                    "nvidia-cufft-cu12==11.4.0.6 | "
+                    "nvidia-curand-cu12==10.3.10.19 | "
+                    "nvidia-cusolver-cu12==11.7.4.40 | "
+                    "nvidia-cusparse-cu12==12.5.9.5 "
                 ),
             }
         try:

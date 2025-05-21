@@ -201,9 +201,10 @@ def unfold(
                 "paddings should either be an integer or a list/tuple of 2 or 4 integers"
             )
     else:
-        raise ValueError(
-            "Unexpected type of paddings, it should be either an integer or a list/tuple"
-            "of 2 or 4 integers"
+        raise NotSupportedTensorArgumentError(
+            "Unexpected type of paddings, it should be either an integer or a list/tuple "
+            "of 2 or 4 integers",
+            "paddings",
         )
 
     if in_dynamic_or_pir_mode():
