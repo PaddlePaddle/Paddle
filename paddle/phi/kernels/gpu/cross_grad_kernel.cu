@@ -169,7 +169,9 @@ void CrossGradKernel(const Context& dev_ctx,
   const auto* input_out_grad_data = input_out_grad.data<T>();
   auto* output_x_grad_data = dev_ctx.template Alloc<T>(x_grad);
   auto* output_y_grad_data = dev_ctx.template Alloc<T>(y_grad);
-
+  if (numel == 0) {
+    return;
+  }
   backends::gpu::GpuLaunchConfig config =
       backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel / 3);
   auto index_calculator = phi::funcs::IndexCalculator<int64_t>(

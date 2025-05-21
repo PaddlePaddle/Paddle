@@ -110,6 +110,9 @@ void CrossGradKernel(const Context &dev_ctx,
 
   dev_ctx.template Alloc<T>(output_x_grad);
   dev_ctx.template Alloc<T>(output_y_grad);
+  if (numel == 0) {
+    return;
+  }
 
   for (int64_t i = 0; i < outer_loops; i++) {
     for (int64_t j = 0; j < 3; j++) {

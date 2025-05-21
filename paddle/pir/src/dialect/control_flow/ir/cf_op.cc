@@ -167,9 +167,42 @@ void TuplePopOp::VerifyRegion() {
           inlet_size == tuple_size(),
           common::errors::InvalidArgument(
               "The pop elements size must equal to push elements size."));
+      auto CheckType = [](const pir::Type &type1,
+                          const pir::Type &type2) -> bool {
+        if (type1.isa<DenseTensorType>() && type2.isa<DenseTensorType>()) {
+          DenseTensorType::Dim input_dims =
+              type1.dyn_cast<pir::DenseTensorType>().dims();
+          DenseTensorType::Dim output_dims =
+              type2.dyn_cast<pir::DenseTensorType>().dims();
+          PADDLE_ENFORCE_EQ(
+              input_dims.size(),
+              output_dims.size(),
+              common::errors::InvalidArgument(
+                  "The input and output dims size must be equal"));
+
+          for (int i = 0; i < input_dims.size(); i++) {
+            if (input_dims[i] == -1 || output_dims[i] == -1) {
+              continue;
+            }
+            if (input_dims[i] != output_dims[i]) {
+              return false;
+            }
+          }
+          return true;
+        } else {
+          if (type1 == type2) {
+            return true;
+          } else {
+            return false;
+          }
+        }
+      };
+
       for (size_t index = 0; index < inlet_size; ++index) {
+        bool check_result = CheckType(outlet_element(index).type(),
+                                      inlet_element(index).type());
         PADDLE_ENFORCE(
-            outlet_element(index).type() == inlet_element(index).type(),
+            check_result,
             common::errors::InvalidArgument(
                 "tuple_pop[id:%d]: The %d element's push type (%s) isn't equal "
                 "to pop type (%s)",
