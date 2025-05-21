@@ -17,6 +17,16 @@
     data_type : x
   backward : moe_combine_grad
 
+- op : expand_modality_expert_id
+  args : (Tensor expert_id, int64_t num_expert_per_modality, int64_t group_size, int64_t modality_offset, bool is_group_expert)
+  output : Tensor(expert_id_out)
+  infer_meta :
+    func : ExpandModalityExpertIdInferMeta
+  kernel :
+    func : expand_modality_expert_id
+    data_type : expert_id
+  
+
 - op : abs
   args : (Tensor x)
   output : Tensor(out)
