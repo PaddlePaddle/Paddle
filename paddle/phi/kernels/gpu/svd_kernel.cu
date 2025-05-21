@@ -20,6 +20,7 @@
 #include "paddle/phi/backends/dynload/cusolver.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/complex_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
@@ -35,7 +36,7 @@ static void GesvdjBatched(const phi::GPUContext& dev_ctx,
                           T* A,
                           T* U,
                           T* V,
-                          T* S,
+                          phi::dtype::Real<T>* S,
                           int* info,
                           int thin_UV = 1);
 
@@ -201,6 +202,172 @@ void GesvdjBatched<double>(const phi::GPUContext& dev_ctx,
       phi::dynload::cusolverDnDestroyGesvdjInfo(gesvdj_params));
 }
 
+template <>
+void GesvdjBatched<phi::dtype::complex<float>>(const phi::GPUContext& dev_ctx,
+                                               int batchSize,
+                                               int m,
+                                               int n,
+                                               int k,
+                                               phi::dtype::complex<float>* A,
+                                               phi::dtype::complex<float>* U,
+                                               phi::dtype::complex<float>* V,
+                                               float* S,
+                                               int* info,
+                                               int thin_UV) {
+  /* compute singular vectors */
+  const cusolverEigMode_t jobz =
+      CUSOLVER_EIG_MODE_VECTOR; /* compute singular vectors */
+  gesvdjInfo_t gesvdj_params = NULL;
+  int lda = m;
+  int ldu = m;
+  int ldt = n;
+  int lwork = 0;
+  auto handle = dev_ctx.cusolver_dn_handle();
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      phi::dynload::cusolverDnCreateGesvdjInfo(&gesvdj_params));
+  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cusolverDnCgesvdj_bufferSize(
+      handle,
+      jobz,
+      thin_UV,
+      m,
+      n,
+      reinterpret_cast<cuComplex*>(A),
+      lda,
+      S,
+      reinterpret_cast<cuComplex*>(U),
+      ldu,
+      reinterpret_cast<cuComplex*>(V),
+      ldt,
+      &lwork,
+      gesvdj_params));
+  auto workspace = phi::memory_utils::Alloc(
+      dev_ctx.GetPlace(),
+      lwork * sizeof(phi::dtype::complex<float>),
+      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+  phi::dtype::complex<float>* workspace_ptr =
+      reinterpret_cast<phi::dtype::complex<float>*>(workspace->ptr());
+  int stride_A = lda * n;
+  int stride_U = ldu * (thin_UV ? k : m);
+  int stride_V = ldt * (thin_UV ? k : n);
+  for (int i = 0; i < batchSize; ++i) {
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cusolverDnCgesvdj(
+        handle,
+        jobz,
+        thin_UV,
+        m,
+        n,
+        reinterpret_cast<cuComplex*>(A + stride_A * i),
+        lda,
+        reinterpret_cast<float*>(S + k * i),
+        reinterpret_cast<cuComplex*>(U + stride_U * i),
+        ldu,
+        reinterpret_cast<cuComplex*>(V + stride_V * i),
+        ldt,
+        reinterpret_cast<cuComplex*>(workspace_ptr),
+        lwork,
+        info,
+        gesvdj_params));
+    // check the error info
+    int error_info;
+    memory_utils::Copy(phi::CPUPlace(),
+                       &error_info,
+                       dev_ctx.GetPlace(),
+                       info,
+                       sizeof(int),
+                       dev_ctx.stream());
+    PADDLE_ENFORCE_EQ(
+        error_info,
+        0,
+        common::errors::PreconditionNotMet(
+            "For batch [%d]: CUSolver SVD is not zero. [%d]", i, error_info));
+  }
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      phi::dynload::cusolverDnDestroyGesvdjInfo(gesvdj_params));
+}
+
+template <>
+void GesvdjBatched<phi::dtype::complex<double>>(const phi::GPUContext& dev_ctx,
+                                                int batchSize,
+                                                int m,
+                                                int n,
+                                                int k,
+                                                phi::dtype::complex<double>* A,
+                                                phi::dtype::complex<double>* U,
+                                                phi::dtype::complex<double>* V,
+                                                double* S,
+                                                int* info,
+                                                int thin_UV) {
+  /* compute singular vectors */
+  const cusolverEigMode_t jobz =
+      CUSOLVER_EIG_MODE_VECTOR; /* compute singular vectors */
+  gesvdjInfo_t gesvdj_params = NULL;
+  int lda = m;
+  int ldu = m;
+  int ldt = n;
+  int lwork = 0;
+  auto handle = dev_ctx.cusolver_dn_handle();
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      phi::dynload::cusolverDnCreateGesvdjInfo(&gesvdj_params));
+  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cusolverDnZgesvdj_bufferSize(
+      handle,
+      jobz,
+      thin_UV,
+      m,
+      n,
+      reinterpret_cast<cuDoubleComplex*>(A),
+      lda,
+      S,
+      reinterpret_cast<cuDoubleComplex*>(U),
+      ldu,
+      reinterpret_cast<cuDoubleComplex*>(V),
+      ldt,
+      &lwork,
+      gesvdj_params));
+  auto workspace = phi::memory_utils::Alloc(
+      dev_ctx.GetPlace(),
+      lwork * sizeof(phi::dtype::complex<double>),
+      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+  phi::dtype::complex<double>* workspace_ptr =
+      reinterpret_cast<phi::dtype::complex<double>*>(workspace->ptr());
+  int stride_A = lda * n;
+  int stride_U = ldu * (thin_UV ? k : m);
+  int stride_V = ldt * (thin_UV ? k : n);
+  for (int i = 0; i < batchSize; ++i) {
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cusolverDnZgesvdj(
+        handle,
+        jobz,
+        thin_UV,
+        m,
+        n,
+        reinterpret_cast<cuDoubleComplex*>(A + stride_A * i),
+        lda,
+        reinterpret_cast<double*>(S + k * i),
+        reinterpret_cast<cuDoubleComplex*>(U + stride_U * i),
+        ldu,
+        reinterpret_cast<cuDoubleComplex*>(V + stride_V * i),
+        ldt,
+        reinterpret_cast<cuDoubleComplex*>(workspace_ptr),
+        lwork,
+        info,
+        gesvdj_params));
+    // check the error info
+    int error_info;
+    memory_utils::Copy(phi::CPUPlace(),
+                       &error_info,
+                       dev_ctx.GetPlace(),
+                       info,
+                       sizeof(int),
+                       dev_ctx.stream());
+    PADDLE_ENFORCE_EQ(
+        error_info,
+        0,
+        common::errors::PreconditionNotMet(
+            "For batch [%d]: CUSolver SVD is not zero. [%d]", i, error_info));
+  }
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      phi::dynload::cusolverDnDestroyGesvdjInfo(gesvdj_params));
+}
+
 template <typename T, typename Context>
 void SvdKernel(const Context& dev_ctx,
                const DenseTensor& X,
@@ -208,6 +375,12 @@ void SvdKernel(const Context& dev_ctx,
                DenseTensor* U,
                DenseTensor* S,
                DenseTensor* VH) {
+  if (X.numel() == 0) {
+    dev_ctx.template Alloc<T>(U);
+    dev_ctx.template Alloc<phi::dtype::Real<T>>(S);
+    dev_ctx.template Alloc<T>(VH);
+    return;
+  }
   auto& dims = X.dims();
   int batch_count = 1;
   for (int i = 0; i < dims.size() - 2; i++) {
@@ -217,17 +390,8 @@ void SvdKernel(const Context& dev_ctx,
   int m = dims[rank - 2];
   int n = dims[rank - 1];
 
-  PADDLE_ENFORCE_LT(
-      0,
-      m,
-      errors::InvalidArgument("The row of Input(X) should be greater than 0."));
-  PADDLE_ENFORCE_LT(
-      0,
-      n,
-      errors::InvalidArgument("The col of Input(X) should be greater than 0."));
-
-  auto* u_data = dev_ctx.template Alloc<phi::dtype::Real<T>>(U);
-  auto* vh_data = dev_ctx.template Alloc<phi::dtype::Real<T>>(VH);
+  auto* u_data = dev_ctx.template Alloc<T>(U);
+  auto* vh_data = dev_ctx.template Alloc<T>(VH);
   auto* s_data = dev_ctx.template Alloc<phi::dtype::Real<T>>(S);
   // NOTE:(@xiongkun03)
   // matrices are assumed to be stored in column-major order in cusolver
@@ -253,7 +417,7 @@ void SvdKernel(const Context& dev_ctx,
   auto UT_dim = U->dims();
   std::swap(UT_dim[rank - 1], UT_dim[rank - 2]);  // Get the dim of UT_dim
   U->Resize(UT_dim);                              // U is entirely UT
-  auto tmp_U = TransposeLast2Dim<T>(dev_ctx, *U);
+  auto tmp_U = TransposeLast2Dim<T>(dev_ctx, Conj<T, Context>(dev_ctx, *U));
   U->ShareDataWith(tmp_U);  // U becomse UT, aka VT;
 }
 }  // namespace phi
@@ -263,6 +427,8 @@ PD_REGISTER_KERNEL(svd,  // cuda_only
                    ALL_LAYOUT,
                    phi::SvdKernel,
                    float,
-                   double) {}
+                   double,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
 
 #endif  // not PADDLE_WITH_HIP

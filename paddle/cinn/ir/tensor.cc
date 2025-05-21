@@ -515,7 +515,7 @@ bool _Tensor_::is_tuple_get() const {
          operation->as<ir::CallOp>()->is_tuple_get;
 }
 
-bool _Tensor_::IsDependOnStatement(absl::string_view statement) {
+bool _Tensor_::IsDependOnStatement(std::string_view statement) {
   if (!is_compute_node()) {
     return false;
   }

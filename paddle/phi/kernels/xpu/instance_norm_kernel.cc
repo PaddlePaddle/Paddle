@@ -31,10 +31,10 @@ void InstanceNormKernel(const Context& dev_ctx,
   using XPUType = typename XPUTypeTrait<T>::Type;
 
   const auto& x_dims = x.dims();
-  int n = x_dims[0];
-  int c = x_dims[1];
-  int h = x_dims[2];
-  int w = x_dims[3];
+  int64_t n = x_dims[0];
+  int64_t c = x_dims[1];
+  int64_t h = x_dims[2];
+  int64_t w = x_dims[3];
   dev_ctx.template Alloc<T>(y);
   dev_ctx.template Alloc<float>(saved_mean);
   dev_ctx.template Alloc<float>(saved_var);

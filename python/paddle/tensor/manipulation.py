@@ -1458,8 +1458,6 @@ def concat(
         else:
             input = [input]
 
-        if not isinstance(input, paddle.pir.Value):
-            input = [t for t in input if t.shape.count(0) == 0]
         return _C_ops.concat(input, axis)
     else:
         check_type(input, 'input', (list, tuple, Variable), 'concat')
@@ -4056,6 +4054,7 @@ def gather(
             x,
             'x',
             [
+                'bool',
                 'float16',
                 'float32',
                 'float64',
@@ -6559,7 +6558,11 @@ def take_along_axis(
         arr = paddle.broadcast_to(arr, broadcast_shape)
     else:
         for i in range(len(arr.shape)):
-            if i != axis and arr.shape[i] < indices.shape[i]:
+            if (
+                i != axis
+                and arr.shape[i] != -1
+                and arr.shape[i] < indices.shape[i]
+            ):
                 raise RuntimeError(
                     f"Size does not match at dimension {i} expected index {indices.shape} to be smaller than self {arr.shape} apart from dimension {axis}"
                 )

@@ -175,7 +175,6 @@ limitations under the License. */
 #endif
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-#include "paddle/fluid/operators/custom_device_common_op_registry.h"
 #include "paddle/fluid/platform/profiler/custom_device/custom_tracer.h"
 #include "paddle/phi/capi/capi.h"
 #include "paddle/phi/core/platform/collective_helper.h"
@@ -1031,24 +1030,16 @@ void BindDecompRule(pybind11::module *m) {
          int start_index,
          int end_index) {
         VLOG(4) << "[Prim] Bind Decomp sinking_decomp begin.";
-        py::list res;
         auto original_insertion_point =
             paddle::dialect::ApiBuilder::Instance().GetCurrentInsertionPoint();
         DecompProgram decomp_object(
             program, src_vars, blacklist, whitelist, start_index, end_index);
         decomp_object.decomp_program();
         std::vector<pir::Value> tar_vars = decomp_object.get_dst_vars();
-        for (size_t i = 0; i < tar_vars.size(); ++i) {
-          if (!tar_vars[i]) {
-            res.append(nullptr);
-          } else {
-            res.append(tar_vars[i]);
-          }
-        }
         paddle::dialect::ApiBuilder::Instance().SetInsertionPoint(
             original_insertion_point);
         VLOG(4) << "[Prim] Bind Decomp sinking_decomp end.";
-        return res;
+        return tar_vars;
       });
 
   m->def("call_decomp_rule", [](pir::Operation &fwd_op) {
@@ -2570,14 +2561,7 @@ All parameter, weight, gradient are variables in Paddle.
     egr::Controller::Instance().MergeOpMetaInfoMap(
         framework::LoadOpMetaInfoAndRegisterOp(dso_name));
   });
-  m.def("init_devices", []() {
-    framework::InitDevices();
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
-    for (auto &dev_type : phi::DeviceManager::GetAllCustomDeviceTypes()) {
-      paddle::operators::RegisterCustomDeviceCommonKernel(dev_type);
-    }
-#endif
-  });
+  m.def("init_devices", []() { framework::InitDevices(); });
   m.def("init_default_kernel_signatures",
         []() { framework::InitDefaultKernelSignatureMap(); });
   m.def("init_tensor_operants", []() {
@@ -3590,11 +3574,6 @@ All parameter, weight, gradient are variables in Paddle.
   GetWorkerInfoByRank(&m);
   GetCurrentWorkerInfo(&m);
   GetAllWorkerInfos(&m);
-#endif
-
-#if defined(PADDLE_WITH_CINN)
-  BindTest(&m);
-  cinn::pybind::BindCINN(&m);
 #endif
 
   BindPir(&m);

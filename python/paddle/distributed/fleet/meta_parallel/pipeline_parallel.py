@@ -2760,6 +2760,9 @@ class PipelineParallelWithInterleave(PipelineParallel):
 
         # reset dynamic meta counter
         if self._dynamic_shape:
+            assert self._p2p_helper._dynamic_cnt == len(
+                self._p2p_helper._send_recv_meta_list
+            ), "p2p dynamic_cnt should equal to send_recv_meta_list"
             self._p2p_helper._dynamic_cnt = 0
 
         return train_loss
@@ -3241,8 +3244,14 @@ class VPPFhenBInBalancedMemory(PipelineParallelWithInterleaveFthenB):
             )
             self._record_stamp("F", forward_micro_step_id, '"E"', forward=True)
 
-            output_tensor_grad = self._p2p_helper.send_forward_recv_backward(
+            # NOTE: `send_forward_recv_backward` is intentionally unused to
+            # prevent hanging bugs in dynamic shape mode.
+            self._p2p_helper.send_forward(
                 output_tensor,
+                self.is_pipeline_last_stage(ignore_virtual=True),
+                batch_p2p_comm=self._use_batch_p2p_comm,
+            )
+            output_tensor_grad = self._p2p_helper.recv_backward(
                 self.is_pipeline_last_stage(ignore_virtual=True),
                 batch_p2p_comm=self._use_batch_p2p_comm,
             )
@@ -3269,7 +3278,13 @@ class VPPFhenBInBalancedMemory(PipelineParallelWithInterleaveFthenB):
                 backward_send_recv_buffer_queue.put(input_tensor_grad)
 
             if not last_iter:
-                input_tensor = self._p2p_helper.send_backward_recv_forward(
+                # NOTE: `send_backward_recv_forward` is intentionally unused to
+                # prevent hanging bugs in dynamic shape mode.
+                input_tensor = self._p2p_helper.recv_forward(
+                    self.is_pipeline_first_stage(ignore_virtual=True),
+                    batch_p2p_comm=self._use_batch_p2p_comm,
+                )
+                self._p2p_helper.send_backward(
                     input_tensor_grad,
                     self.is_pipeline_first_stage(ignore_virtual=True),
                     batch_p2p_comm=self._use_batch_p2p_comm,
@@ -3346,6 +3361,13 @@ class VPPFhenBInBalancedMemory(PipelineParallelWithInterleaveFthenB):
         assert (
             backward_send_recv_buffer_queue.empty()
         ), "send_recv buffer should be empty"
+
+        # reset dynamic meta counter
+        if self._dynamic_shape:
+            assert self._p2p_helper._dynamic_cnt == len(
+                self._p2p_helper._send_recv_meta_list
+            ), "p2p dynamic_cnt should equal to send_recv_meta_list"
+            self._p2p_helper._dynamic_cnt = 0
 
         self._flush_records()
         self._sync_overlap_grads()

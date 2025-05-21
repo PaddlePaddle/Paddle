@@ -44,7 +44,7 @@ void IndexSelectKernel(const Context& ctx,
   using XPUType = typename XPUTypeTrait<T>::Type;
   auto* in_data = x.data<T>();
   std::vector<int64_t> in_shape = common::vectorize<int64_t>(input_dim);
-  int index_len = output->dims()[dim];
+  int64_t index_len = output->dims()[dim];
   ctx.template Alloc<T>(output);
   int r = 0;
   xpu::ctx_guard RAII_GUARD(ctx.x_context());

@@ -25,7 +25,7 @@ void TransposeKernel(const Context& dev_ctx,
                      const std::vector<int>& axis,
                      DenseTensor* out) {
   size_t x_rank = x.dims().size();
-  std::vector<int> formatted_axis = axis;
+  std::vector<int64_t> formatted_axis(axis.begin(), axis.end());
   for (size_t i = 0; i < axis.size(); i++) {
     if (axis[i] < 0) {
       formatted_axis[i] = axis[i] + x_rank;
@@ -43,7 +43,7 @@ void TransposeKernel(const Context& dev_ctx,
     return;
   }
 
-  std::vector<int> x_dim_vec = common::vectorize<int>(x.dims());
+  std::vector<int64_t> x_dim_vec = common::vectorize<int64_t>(x.dims());
   int r = xpu::transpose<XPUType>(dev_ctx.x_context(),
                                   reinterpret_cast<const XPUType*>(x.data<T>()),
                                   reinterpret_cast<XPUType*>(out->data<T>()),

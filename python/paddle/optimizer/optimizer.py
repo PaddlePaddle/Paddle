@@ -327,7 +327,7 @@ class Optimizer:
 
         # for fusion storage
         self._use_fusion_storage = False
-        self._need_refuse = True
+        self._need_refuse = False
         self.fusion_storage = None
         self._fuse_buffer_version = 0
         self.merged_model_params = None
@@ -2000,9 +2000,20 @@ class Optimizer:
             for param in self._param_groups:
                 if param.stop_gradient:
                     continue
-                if param._grad_ivar() is not None:
-                    grad_var = param._grad_ivar()
-                    params_grads.append((param, grad_var))
+                if os.getenv("FLAGS_enable_tensor_fusion") in [
+                    "True",
+                    "true",
+                    "1",
+                ]:
+                    if (
+                        hasattr(param, "main_grad")
+                        and param.main_grad is not None
+                    ):
+                        params_grads.append((param, param.main_grad))
+                else:
+                    if param._grad_ivar() is not None:
+                        grad_var = param._grad_ivar()
+                        params_grads.append((param, grad_var))
 
             self._apply_optimize(
                 loss=None,
@@ -2128,6 +2139,7 @@ class Optimizer:
 
     def use_fusion_storage(self):
         self._use_fusion_storage = True
+        self.need_refuse()
 
     def need_refuse(self):
         self._need_refuse = self._use_fusion_storage
