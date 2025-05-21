@@ -2108,7 +2108,7 @@ class OpcodeExecutorBase:
     @fallback_if_python_version_unsupported
     def RAISE_VARARGS(self, instr: Instruction):
         if instr.arg == 0:
-            if not self.exception_stack.empty():
+            if self.exception_stack.empty():
                 msg = ConstantVariable.wrap_literal(
                     "No active exception to reraise", self._graph
                 )
