@@ -53,8 +53,9 @@ void PoolGradRawGPUDNNKernel(const Context& ctx,
   const DenseTensor* output = &out;
   const DenseTensor* output_grad = &dout;
   DenseTensor* input_grad = dx;
-  std::vector<int64_t> paddings_ = paddings;
-  std::vector<int64_t> kernel_size_ = kernel_size;
+  std::vector<int> strides_(strides.begin(), strides.end());
+  std::vector<int> paddings_(paddings.begin(), paddings.end());
+  std::vector<int> kernel_size_(kernel_size.begin(), kernel_size.end());
 
   const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
 
@@ -66,7 +67,7 @@ void PoolGradRawGPUDNNKernel(const Context& ctx,
                                      dout,
                                      kernel_size,
                                      strides,
-                                     paddings_,
+                                     paddings,
                                      exclusive,
                                      data_format,
                                      pooling_type,
@@ -92,7 +93,7 @@ void PoolGradRawGPUDNNKernel(const Context& ctx,
                        adaptive,
                        padding_algorithm,
                        data_dims,
-                       strides,
+                       strides_,
                        kernel_size_);
   if (data_dims.size() * 2 == static_cast<int>(paddings_.size())) {
     for (int i = 0; i < data_dims.size(); ++i) {
@@ -238,10 +239,10 @@ void PoolGradRawGPUDNNKernel(const Context& ctx,
 
 #ifdef PADDLE_WITH_HIP
   miopenPoolingDescriptor_t cudnn_pool_desc =
-      pool_desc.descriptor(pooling_mode, kernel_size_, paddings_, strides);
+      pool_desc.descriptor(pooling_mode, kernel_size_, paddings_, strides_);
 #else
   cudnnPoolingDescriptor_t cudnn_pool_desc =
-      pool_desc.descriptor(pooling_mode, kernel_size_, paddings_, strides);
+      pool_desc.descriptor(pooling_mode, kernel_size_, paddings_, strides_);
 #endif
 
   // ------------------- cudnn pool algorithm ---------------------
