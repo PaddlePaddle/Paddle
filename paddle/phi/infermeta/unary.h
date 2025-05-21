@@ -33,13 +33,6 @@ struct MetaConfig;
 //
 // The InferMeta Functions in this file are arranged in alphabetic order.
 
-void ExpandModalityExpertIdInferMeta(const MetaTensor& expert_id,
-                                     int64_t num_expert_per_modality,
-                                     int64_t group_size,
-                                     int64_t modality_offset,
-                                     bool is_group_expert
-                                     MetaTensor* expert_id_out);
-
 void AddPositionEncodingInferMeta(const MetaTensor& x,
                                   float alpha,
                                   float beta,
@@ -254,6 +247,13 @@ void EinsumRawInferMeta(const std::vector<const MetaTensor*>& inputs,
 void ExpandInferMeta(const MetaTensor& x,
                      const IntArray& shape,
                      MetaTensor* out);
+
+void ExpandModalityExpertIdInferMeta(const MetaTensor& expert_id,
+                                     int64_t num_expert_per_modality,
+                                     int64_t group_size,
+                                     int64_t modality_offset,
+                                     bool is_group_expert,
+                                     MetaTensor* expert_id_out);
 
 void FakeChannelWiseQuantizeAbsMaxInferMeta(const MetaTensor& x,
                                             int bit_length,
