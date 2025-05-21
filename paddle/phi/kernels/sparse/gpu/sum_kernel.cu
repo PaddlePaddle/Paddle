@@ -393,8 +393,14 @@ void SumCsr1Kernel(const Context& dev_ctx,
         dev_ctx, x_crows_reshape, last_indices, 1, &x_crows_last);
 
     DenseTensor batch_nnz = Empty<int64_t, Context>(dev_ctx, {x_dim0, 1});
-    CumsumKernel<int64_t, Context>(
-        dev_ctx, x_crows_last, Scalar(0), false, false, false, &batch_nnz);
+    CumsumKernel<int64_t, Context>(dev_ctx,
+                                   x_crows_last,
+                                   Scalar(0),
+                                   false,
+                                   false,
+                                   false,
+                                   batch_nnz.dtype(),
+                                   &batch_nnz);
     auto* batch_nnz_data = batch_nnz.data<int64_t>();
 
     auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
