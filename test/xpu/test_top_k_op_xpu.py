@@ -31,36 +31,6 @@ def api_wrapper(x, k):
     return paddle._legacy_C_ops.top_k(x, "k", k)
 
 
-def random_unique_float(shape, dtype):
-    # create a random float array with 10x length
-    numel = np.prod(shape)
-    arr = np.random.uniform(-10.0, 10.0, numel * 10).astype(dtype)
-    arr = np.unique(arr)
-    assert (
-        arr.shape[0] >= numel
-    ), f"failed to create enough unique values: {arr.shape[0]} vs {numel}"
-    arr = arr[:numel]
-    np.random.shuffle(arr)
-    arr = arr.reshape(shape)
-    return arr
-
-
-def numpy_topk(x, k=1, axis=-1, largest=True):
-    if axis < 0:
-        axis = len(x.shape) + axis
-    if largest:
-        indices = np.argsort(-x, axis=axis)
-    else:
-        indices = np.argsort(x, axis=axis)
-    if largest:
-        value = -np.sort(-x, axis=axis)
-    else:
-        value = np.sort(x, axis=axis)
-    indices = indices.take(indices=range(0, k), axis=axis)
-    value = value.take(indices=range(0, k), axis=axis)
-    return value, indices
-
-
 class XPUTestTopKOp(XPUOpTestWrapper):
     def __init__(self):
         self.op_name = 'top_k'
