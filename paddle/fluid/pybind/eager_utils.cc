@@ -16,8 +16,6 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/common/exception.h"
-#include "paddle/pir/include/core/value.h"
-
 #include "paddle/common/flags.h"
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/eager/api/all.h"
@@ -46,6 +44,7 @@ limitations under the License. */
 #include "paddle/phi/core/memory/allocation/allocator.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/pir/include/core/attribute.h"
+#include "paddle/pir/include/core/value.h"
 
 COMMON_DECLARE_bool(check_nan_inf);
 COMMON_DECLARE_int32(check_nan_inf_level);
