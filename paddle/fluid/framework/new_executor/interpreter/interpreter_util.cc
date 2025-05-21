@@ -864,20 +864,19 @@ void BuildOpFuncList(const phi::Place& place,
                   original_stream);
               // todo  set allocator in custom device
 #else
-
-            auto original_stream =
-                static_cast<phi::GPUContext*>(dev_ctx)->cuda_stream();
             if (map->has(ring_id) || op_type == "p_send" ||
                 op_type == "p_recv") {
+              auto original_stream =
+                  static_cast<phi::GPUContext*>(dev_ctx)->cuda_stream();
               if (map->has(ring_id)) {
                 distributed::ProcessGroup* pg = map->get(ring_id);
-                auto nccl_comm_context =
+                auto comm_context =
                     static_cast<paddle::distributed::ProcessGroupNCCL*>(pg)
                         ->GetOrCreateCommContext(place);
                 dev_ctx = static_cast<phi::distributed::NCCLCommContext*>(
-                              nccl_comm_context)
+                              comm_context)
                               ->GetDevContext();
-                dev_ctx->SetCommContext(nccl_comm_context);
+                dev_ctx->SetCommContext(comm_context);
               } else {
                 const auto& comm_context_manager =
                     phi::distributed::CommContextManager::GetInstance();
@@ -887,6 +886,8 @@ void BuildOpFuncList(const phi::Place& place,
                               comm_context)
                               ->GetDevContext();
                 dev_ctx->SetCommContext(comm_context);
+                original_stream =
+                    static_cast<phi::GPUContext*>(dev_ctx)->cuda_stream();
               }
               static_cast<phi::GPUContext*>(dev_ctx)->SetCUDAStream(
                   original_stream, false);
