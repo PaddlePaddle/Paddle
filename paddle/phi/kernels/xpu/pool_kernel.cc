@@ -316,7 +316,9 @@ void MaxPool2dWithIndexKernel(const Context& ctx,
   PADDLE_ENFORCE_EQ(kernel_size.size(),
                     2,
                     common::errors::InvalidArgument(
-                        "The Pool2d XPU OP only support 2 dimension pooling!"));
+                        "The Pool2d XPU OP only support 2 dimension pooling, "
+                        "but received kernel_size with size %d",
+                        kernel_size.size()));
   PADDLE_ENFORCE_EQ(!adaptive || (kernel_size[0] * kernel_size[1] == 1),
                     true,
                     common::errors::InvalidArgument(

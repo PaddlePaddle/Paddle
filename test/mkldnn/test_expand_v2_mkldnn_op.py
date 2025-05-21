@@ -171,6 +171,7 @@ create_expand_v2_bf16_test_class(TestExpandV2ExpandShapesTensor1OneDNNOp)
 create_expand_v2_bf16_test_class(TestExpandV2ExpandShapesTensor2OneDNNOp)
 create_expand_v2_bf16_test_class(TestExpandV2ShapesTensorOneDNNOp)
 
+
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()

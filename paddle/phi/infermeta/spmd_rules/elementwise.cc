@@ -365,7 +365,11 @@ SpmdInfo ElementwiseBinaryInferSpmdReverse(const DistMetaTensor& x,
 
   return {{x_dist_attr_dst, y_dist_attr_dst}, {out_dist_attr_dst}};
 }
-
+SpmdInfo ElementwiseUnaryGradInferSpmd(const DistMetaTensor& out_grad) {
+  auto dist_attr = CopyTensorDistAttrForOutput(out_grad.dist_attr());
+  dist_attr.set_dims_mapping(out_grad.dist_attr().dims_mapping());
+  return {{dist_attr}, {dist_attr}};
+}
 SpmdInfo ElementwiseUnaryGradInferSpmd(const DistMetaTensor& x,
                                        const DistMetaTensor& out_grad) {
   auto dist_attr = CopyTensorDistAttrForOutput(out_grad.dist_attr());

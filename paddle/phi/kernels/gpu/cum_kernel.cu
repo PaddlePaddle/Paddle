@@ -274,6 +274,10 @@ void ScanKernel(const Context& dev_ctx,
                 bool reverse,
                 Op op,
                 DenseTensor* out) {
+  if (out && out->numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   T* out_data = dev_ctx.template Alloc<T>(out);
 
   // For 0D Tensor
