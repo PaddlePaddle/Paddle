@@ -46,8 +46,11 @@ static PyObject *static_api_shard_tensor(PyObject *self,
     auto res = CvtPlacements(placements, ndim);
 
     // Call ir static api
-    auto static_api_out = paddle::dialect::shard_tensor(
-        input, process_mesh, std::get<0>(res), std::get<1>(res), std::get<2>(res));
+    auto static_api_out = paddle::dialect::shard_tensor(input,
+                                                        process_mesh,
+                                                        std::get<0>(res),
+                                                        std::get<1>(res),
+                                                        std::get<2>(res));
 
     return ToPyObject(static_api_out);
   } catch (...) {
@@ -77,8 +80,12 @@ static PyObject *static_api_reshard(PyObject *self,
     auto res = CvtPlacements(placements, ndim);
 
     // Call ir static api
-    auto static_api_out = paddle::dialect::reshard(
-        input, process_mesh, std::get<0>(res), std::get<1>(res), std::get<2>(res), placements);
+    auto static_api_out = paddle::dialect::reshard(input,
+                                                   process_mesh,
+                                                   std::get<0>(res),
+                                                   std::get<1>(res),
+                                                   std::get<2>(res),
+                                                   placements);
 
     return ToPyObject(static_api_out);
   } catch (...) {
@@ -162,8 +169,11 @@ static PyObject *static_api_dtensor_from_local(PyObject *self,
     auto res = CvtPlacements(placements, ndim);
 
     // Call ir static api
-    auto static_api_out = dialect::dtensor_from_local(
-        input, process_mesh, std::get<0>(res), std::get<1>(res), std::get<2>(res));
+    auto static_api_out = dialect::dtensor_from_local(input,
+                                                      process_mesh,
+                                                      std::get<0>(res),
+                                                      std::get<1>(res),
+                                                      std::get<2>(res));
 
     return ToPyObject(static_api_out);
   } catch (...) {
@@ -201,8 +211,11 @@ static PyObject *static_api_dtensor_to_local(PyObject *self,
     auto res = CvtPlacements(placements, ndim);
 
     // Call ir static api
-    auto static_api_out = paddle::dialect::dtensor_to_local(
-        input, process_mesh, std::get<0>(res), std::get<1>(res), std::get<2>(res));
+    auto static_api_out = paddle::dialect::dtensor_to_local(input,
+                                                            process_mesh,
+                                                            std::get<0>(res),
+                                                            std::get<1>(res),
+                                                            std::get<2>(res));
 
     return ToPyObject(static_api_out);
   } catch (...) {

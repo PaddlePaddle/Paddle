@@ -448,9 +448,10 @@ void BindAutoParallel(py::module *m) {
           .def(py::self == py::self)   // NOLINT
           .def(py::self != py::self);  // NOLINT
 
-  auto Shard = py::class_<phi::distributed::Shard,
-                          std::shared_ptr<phi::distributed::Shard>>(
-                   *m, "Shard", Placement, R"DOC(
+  auto Shard =
+      py::class_<phi::distributed::Shard,
+                 std::shared_ptr<phi::distributed::Shard>>(
+          *m, "Shard", Placement, R"DOC(
                The `Shard` describes how `Tensor` splitted across multiple devices according to specified dimensions.
 
                Parameters:
@@ -468,34 +469,43 @@ void BindAutoParallel(py::module *m) {
                        >>> d_tensor = dist.shard_tensor(a, mesh, [dist.Shard(0), dist.Shard(1)])
 
                )DOC")
-                   .def(py::init([](int64_t dim) {
-                     return std::make_shared<phi::distributed::Shard>(dim);
-                   }))
-                   .def(py::init([](int64_t dim, int64_t split_factor){
-                     return std::make_shared<phi::distributed::Shard>(dim, split_factor);
-                   }), py::arg("dim"), py::kw_only(), py::arg("split_factor")=1)
-                   .def(py::init([](int64_t dim, int64_t co_shard_order) {
-                     return std::make_shared<phi::distributed::CoShard>(dim, co_shard_order);
-                   }), py::arg("dim"), py::kw_only(), py::arg("co_shard_order")=0)
-                   .def("get_dim", &phi::distributed::Shard::get_dim)
-                   .def("get_co_shard_order", &phi::distributed::Shard::get_co_shard_order)
-                   .def("get_split_factor", &phi::distributed::Shard::get_split_factor)
-                   .def("set_split_factor", &phi::distributed::Shard::set_split_factor)
-                   .def("__hash__", &phi::distributed::Shard::hash)
-                   .def("__str__", &phi::distributed::Shard::to_string)
-                   .def("__repr__", &phi::distributed::Shard::to_string)
-                   .def("__copy__",
-                        [](const phi::distributed::Shard &self) {
-                          return phi::distributed::Shard(self);
-                        })
-                   .def(
-                       "__deepcopy__",
-                       [](const phi::distributed::Shard &self, py::dict) {
-                         return phi::distributed::Shard(self);
-                       },
-                       py::arg("memo"))
-                   .def(py::self == py::self)   // NOLINT
-                   .def(py::self != py::self);  // NOLINT
+          .def(py::init([](int64_t dim) {
+            return std::make_shared<phi::distributed::Shard>(dim);
+          }))
+          .def(py::init([](int64_t dim, int64_t split_factor) {
+                 return std::make_shared<phi::distributed::Shard>(dim,
+                                                                  split_factor);
+               }),
+               py::arg("dim"),
+               py::kw_only(),
+               py::arg("split_factor") = 1)
+          .def(py::init([](int64_t dim, int64_t co_shard_order) {
+                 return std::make_shared<phi::distributed::CoShard>(
+                     dim, co_shard_order);
+               }),
+               py::arg("dim"),
+               py::kw_only(),
+               py::arg("co_shard_order") = 0)
+          .def("get_dim", &phi::distributed::Shard::get_dim)
+          .def("get_co_shard_order",
+               &phi::distributed::Shard::get_co_shard_order)
+          .def("get_split_factor", &phi::distributed::Shard::get_split_factor)
+          .def("set_split_factor", &phi::distributed::Shard::set_split_factor)
+          .def("__hash__", &phi::distributed::Shard::hash)
+          .def("__str__", &phi::distributed::Shard::to_string)
+          .def("__repr__", &phi::distributed::Shard::to_string)
+          .def("__copy__",
+               [](const phi::distributed::Shard &self) {
+                 return phi::distributed::Shard(self);
+               })
+          .def(
+              "__deepcopy__",
+              [](const phi::distributed::Shard &self, py::dict) {
+                return phi::distributed::Shard(self);
+              },
+              py::arg("memo"))
+          .def(py::self == py::self)   // NOLINT
+          .def(py::self != py::self);  // NOLINT
 
   auto Replicate =
       py::class_<phi::distributed::Replicate,
@@ -589,9 +599,11 @@ void BindAutoParallel(py::module *m) {
       .def(py::init<const TensorDistAttr &>())
       .def_property(
           "process_mesh", &get_tensor_process_mesh, &set_tensor_process_mesh)
-      .def_property("dims_mapping",
-                    py::overload_cast<>(&TensorDistAttr::dims_mapping_2d, py::const_),
-                    py::overload_cast<const std::vector<std::vector<int64_t>>& >(&TensorDistAttr::set_dims_mapping))
+      .def_property(
+          "dims_mapping",
+          py::overload_cast<>(&TensorDistAttr::dims_mapping_2d, py::const_),
+          py::overload_cast<const std::vector<std::vector<int64_t>> &>(
+              &TensorDistAttr::set_dims_mapping))
       .def_property("batch_dim",
                     &TensorDistAttr::batch_dim,
                     &TensorDistAttr::set_batch_dim)
@@ -641,7 +653,6 @@ void BindAutoParallel(py::module *m) {
            })
       .def("_clean_partial_status", &TensorDistAttr::clean_partial_status)
       .def("_set_split_factor", &TensorDistAttr::set_split_factor);
-
 
   py::class_<phi::distributed::SpmdRule>(*m, "SpmdRule")
       .def("infer_forward", &infer_forward)

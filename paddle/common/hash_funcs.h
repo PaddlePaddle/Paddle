@@ -42,12 +42,13 @@ struct hash<std::vector<T>> {
 
 template <typename T>
 struct hash<std::vector<std::vector<T>>> {
-  std::size_t operator()(const std::vector<std::vector<T>>& vec) const noexcept {
+  std::size_t operator()(
+      const std::vector<std::vector<T>>& vec) const noexcept {
     std::size_t seed = 0xcbf29ce484222325;
     for (auto val : vec) {
       HashCombine(&seed, val);
     }
-    return seed; 
+    return seed;
   }
 };
 }  // namespace std

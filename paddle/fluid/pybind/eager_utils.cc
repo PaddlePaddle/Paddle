@@ -795,7 +795,8 @@ Placements CastPyArg2VectorOfPlacement(PyObject* obj, ssize_t arg_pos) {
   Placements result;
   auto check_and_emplace = [&](PyObject* item, ssize_t i) {
     if (PyObject_TypeCheck(item, g_placement_shard_pytype)) {  // NOLINT
-      result.emplace_back(::pybind11::handle(item).cast<std::shared_ptr<Shard>>());
+      result.emplace_back(
+          ::pybind11::handle(item).cast<std::shared_ptr<Shard>>());
     } else if (PyObject_TypeCheck(item, g_placement_replicated_pytype)) {
       result.emplace_back(std::make_shared<Replicate>(
           ::pybind11::handle(item).cast<Replicate>()));
@@ -2925,23 +2926,26 @@ void BindEagerUtils(PyObject* module) {
   }
 }
 
-std::tuple<std::vector<std::vector<int64_t>>, phi::distributed::auto_parallel::SplitFactor,
+std::tuple<std::vector<std::vector<int64_t>>,
+           phi::distributed::auto_parallel::SplitFactor,
            paddle::flat_hash_map<int64_t, phi::ReduceType>>
 CvtPlacements(Placements placements, int ndim) {
   std::vector<std::vector<int64_t>> dim_mapping(ndim);
   phi::distributed::auto_parallel::SplitFactor split_factor;
   for (size_t i = 0; i < placements.size(); i++) {
     const auto& cur_placement = placements[i];
-    if (!cur_placement->is_shard()) { continue; }
+    if (!cur_placement->is_shard()) {
+      continue;
+    }
     const auto& shard = dynamic_cast<const Shard&>(*cur_placement);
     dim_mapping[shard.get_dim()].push_back(i);
     split_factor.set_split_factor(i, shard.get_split_factor());
   }
 
   auto compare_functor = [&](size_t a, size_t b) {
-      const auto& shard_a = dynamic_cast<const Shard&>(*placements[a]);
-      const auto& shard_b = dynamic_cast<const Shard&>(*placements[b]);
-      return shard_a.get_co_shard_order() < shard_b.get_co_shard_order();
+    const auto& shard_a = dynamic_cast<const Shard&>(*placements[a]);
+    const auto& shard_b = dynamic_cast<const Shard&>(*placements[b]);
+    return shard_a.get_co_shard_order() < shard_b.get_co_shard_order();
   };
 
   for (size_t i = 0; i < dim_mapping.size(); i++) {

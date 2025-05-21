@@ -58,7 +58,8 @@ size_t PlacementsAttribute::hash() const {
 ProcessMeshAttribute TensorDistAttribute::process_mesh_attr() const {
   return storage()->mesh_attr;
 }
-const std::vector<std::vector<int64_t>>& TensorDistAttribute::dims_mapping() const {
+const std::vector<std::vector<int64_t>>& TensorDistAttribute::dims_mapping()
+    const {
   return storage()->dims_mapping;
 }
 std::optional<PlacementsAttribute> TensorDistAttribute::placements_attr()
@@ -80,7 +81,7 @@ TensorDistAttribute::partial_status() const {
   return storage()->partial_status;
 }
 
-const phi::distributed::auto_parallel::SplitFactor& 
+const phi::distributed::auto_parallel::SplitFactor&
 TensorDistAttribute::split_factor() const {
   return storage()->split_factor;
 }
@@ -118,9 +119,10 @@ phi::distributed::Placements TensorDistAttribute::placements() const {
             "ProcessMesh dimension {%d} cannot be both shard and partial!",
             mesh_dim));
       }
-      // TODO(): add mesh_dim >= 0 check
-      placements[mesh_dim] = is_co_shard ? std::make_shared<phi::distributed::CoShard>(t_dim, idx) :
-            std::make_shared<phi::distributed::Shard>(t_dim, sf);
+      // TODO(lfw): add mesh_dim >= 0 check
+      placements[mesh_dim] =
+          is_co_shard ? std::make_shared<phi::distributed::CoShard>(t_dim, idx)
+                      : std::make_shared<phi::distributed::Shard>(t_dim, sf);
     }
   }
   return placements;
@@ -149,7 +151,8 @@ TensorDistAttribute TensorDistAttribute::get(
                      partial_status,
                      PlacementsAttribute::get(ctx, p));
   } else {
-    return Base::get(ctx, mesh, dims_mapping, split_factor, partial_status, placements);
+    return Base::get(
+        ctx, mesh, dims_mapping, split_factor, partial_status, placements);
   }
 }
 

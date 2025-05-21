@@ -48,8 +48,8 @@ class ReshardFunction {
  protected:
   static void SetValue(DistTensor* tensor, const DenseTensor& value);
   static void SetDistProps(DistTensor* tensor,
-                    const DDim& dims,
-                    const TensorDistAttr& dist_attr);
+                           const DDim& dims,
+                           const TensorDistAttr& dist_attr);
   static void SetDistProps(DistTensor* tensor, const TensorDistAttr& dist_attr);
   DenseTensor* GetMutableTensor(DistTensor* tensor);
 };

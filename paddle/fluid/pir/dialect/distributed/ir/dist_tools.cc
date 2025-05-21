@@ -324,8 +324,11 @@ pir::Attribute CvtToPirAttr(const phi::distributed::ArgDistAttr& dist_attr) {
   auto ctx = pir::IrContext::Instance();
   if (holds_alternative<phi::distributed::TensorDistAttr>(dist_attr)) {
     auto& attr = PADDLE_GET_CONST(phi::distributed::TensorDistAttr, dist_attr);
-    return TensorDistAttribute::get(
-        ctx, attr.process_mesh(), attr.dims_mapping_2d(), attr.split_factor(), attr.partial_status());
+    return TensorDistAttribute::get(ctx,
+                                    attr.process_mesh(),
+                                    attr.dims_mapping_2d(),
+                                    attr.split_factor(),
+                                    attr.partial_status());
   } else {
     auto& vec = PADDLE_GET_CONST(std::vector<phi::distributed::TensorDistAttr>,
                                  dist_attr);

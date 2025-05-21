@@ -200,7 +200,10 @@ class FunctionSpec:
 
                     if isinstance(var_spec, DistributedInputSpec):
                         placements = to_placements(
-                            var_spec.dims_mapping, var_spec
+                            var_spec.dims_mapping,
+                            var_spec.mesh,
+                            var_spec.partial_status,
+                            var_spec.split_factor,
                         )
                         dist_feed_value = paddle._pir_ops.shard_tensor(
                             feed_value, var_spec.mesh, placements

@@ -26,8 +26,8 @@
 
 #include "paddle/common/errors.h"
 #include "paddle/phi/common/reduce_type.h"
-#include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
+#include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/tensor_meta.h"
 #include "paddle/utils/flat_hash_map.h"
@@ -109,7 +109,7 @@ class Shard : public Placement {
 
   std::string to_string() const override {
     std::stringstream ss;
-    ss << "Shard(dim="  << std::to_string(dim_);
+    ss << "Shard(dim=" << std::to_string(dim_);
     if (split_factor_ != 1) {
       ss << ", split_factor=" << std::to_string(split_factor_);
     }
@@ -124,15 +124,15 @@ class Shard : public Placement {
 };
 
 class CoShard : public Shard {
-public:
-  CoShard(int64_t dim, int64_t co_shard_order) :
-    Shard(dim, 1), co_shard_order_(co_shard_order) {}
+ public:
+  CoShard(int64_t dim, int64_t co_shard_order)
+      : Shard(dim, 1), co_shard_order_(co_shard_order) {}
 
   int get_co_shard_order() const override { return co_shard_order_; }
 
   std::string to_string() const override {
     std::stringstream ss;
-    ss << "Shard(dim="  << std::to_string(dim_);
+    ss << "Shard(dim=" << std::to_string(dim_);
     ss << ", co_shard_order=" << std::to_string(co_shard_order_) << ")";
 
     return ss.str();
@@ -143,7 +143,7 @@ public:
     return os;
   }
 
-private:
+ private:
   int64_t co_shard_order_ = 0;
 };
 

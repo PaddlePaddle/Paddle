@@ -36,7 +36,7 @@ void ReshardSToRWithPadding(DeviceContext* dev_ctx,
                             const DenseTensor& in,
                             int64_t padding_nums,
                             DenseTensor* out,
-                            int64_t split_factor=1) {
+                            int64_t split_factor = 1) {
   VLOG(4) << "split factor is " << split_factor;
   int64_t num_of_process = process_ids.size();
   auto dtype = in.dtype();
@@ -48,12 +48,15 @@ void ReshardSToRWithPadding(DeviceContext* dev_ctx,
       dev_ctx, AllGather, dtype, process_ids, in, num_of_process, out);
 
   if (split_axis != 0 || padding_nums != 0 || split_factor > 1) {
-    PADDLE_ENFORCE_EQ(
-      (in.dims()[0] % split_factor) == 0,
-      true,
-      ::common::errors::InvalidArgument(
-            "The specfied axis of tensor should be evenly splited, but got %d and %d.", in.dims()[0], split_factor));
-    IntArray sections(std::vector<int64_t>(num_of_process * split_factor, in.dims()[0] / split_factor));
+    PADDLE_ENFORCE_EQ((in.dims()[0] % split_factor) == 0,
+                      true,
+                      ::common::errors::InvalidArgument(
+                          "The specified axis of tensor should be evenly "
+                          "splited, but got %d and %d.",
+                          in.dims()[0],
+                          split_factor));
+    IntArray sections(std::vector<int64_t>(num_of_process * split_factor,
+                                           in.dims()[0] / split_factor));
 
     std::vector<DenseTensor> split_out_vec;
     RESHARD_FUNCTOR(dev_ctx,
@@ -83,10 +86,11 @@ void ReshardSToRWithPadding(DeviceContext* dev_ctx,
     concat_input_vec.reserve(split_out_vec.size());
 
     for (size_t idx = 0; idx < split_out_vec.size(); idx++) {
-      int64_t new_idx = idx % num_of_process * split_factor + idx / num_of_process;
+      int64_t new_idx =
+          idx % num_of_process * split_factor + idx / num_of_process;
       concat_input_vec.emplace_back(&(split_out_vec.at(new_idx)));
     }
-    
+
     RESHARD_FUNCTOR(dev_ctx, Concat, dtype, concat_input_vec, split_axis, out);
   }
 }
@@ -131,7 +135,8 @@ void SToRReshardFunction::Eval(DeviceContext* dev_ctx,
   const auto& in_process_ids = in_process_mesh.process_ids();
 
   int split_axis = GetSplitAxisWithDimsMapping(in_dims_mapping).begin()->first;
-  int64_t mesh_axis = GetSplitAxisWithDimsMapping(in_dims_mapping).begin()->second;
+  int64_t mesh_axis =
+      GetSplitAxisWithDimsMapping(in_dims_mapping).begin()->second;
   int64_t num_of_process = in_process_mesh.size();
   int64_t num_of_padding = in.dims()[split_axis] % num_of_process;
   VLOG(4) << "dist attr " << in_dist_attr.to_string();

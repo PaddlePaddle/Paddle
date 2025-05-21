@@ -187,7 +187,8 @@ class DistAttr(core.TensorDistAttr):
             raise ValueError("The sharding_specs must be an instance of list.")
         assert all(
             isinstance(dim_name, str) or dim_name is None
-            for dim_name_list in sharding_specs for dim_name in dim_name_list
+            for dim_name_list in sharding_specs
+            for dim_name in dim_name_list
         ), 'The dimension name in sharding_specs must be an instance of str.'
 
         self._sharding_specs = sharding_specs

@@ -60,8 +60,7 @@ def is_partial(dist_attr):
 def is_replicated(dist_attr):
     dims_mapping = dist_attr.dims_mapping
     if len(dist_attr.partial_status) == 0 and (
-        len(dims_mapping) == 0
-        or sum([sum(dims) for dims in dims_mapping]) == 0
+        len(dims_mapping) == 0 or sum([sum(dims) for dims in dims_mapping]) == 0
     ):
         return True
     return False

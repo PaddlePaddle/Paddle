@@ -185,9 +185,11 @@ class NdMeshReshardFunction(ReshardFunction):
                         )
                     continue
 
-                p_to_s = False
-                if any([(len(dims) == 1) and (partial_dim == dims[0]) for dims in dst_dist_attr.dims_mapping]):
-                    p_to_s = True
+                p_to_s = any(
+                    (len(dims) == 1) and (partial_dim == dims[0])
+                    for dims in dst_dist_attr.dims_mapping
+                )
+                if p_to_s:
                     for dims in dst_dist_attr.dims_mapping:
                         if partial_dim in dims:
                             shard_index = dims.index(partial_dim)
@@ -264,7 +266,9 @@ class NdMeshReshardFunction(ReshardFunction):
                 )
                 out_one_dim_dist_attr = (
                     paddle.base.libpaddle.pir.create_tensor_dist_attribute(
-                        sub_mesh, [[] for _ in range(tensor_ndim)], {0: partial_type}
+                        sub_mesh,
+                        [[] for _ in range(tensor_ndim)],
+                        {0: partial_type},
                     )
                 )
 
@@ -302,7 +306,7 @@ class NdMeshReshardFunction(ReshardFunction):
             )
 
             for mesh_dim in out_mesh_axis:
-            # get the process_mesh on specific axis
+                # get the process_mesh on specific axis
                 sub_mesh = get_1D_sub_process_mesh(process_mesh, mesh_dim)
 
                 # calculate the corresponding 1-D input dist attr

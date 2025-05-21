@@ -32,19 +32,17 @@ class SameNdMeshReshardFunction final : public ReshardFunction {
   std::string Name() override { return "SameNdMeshReshard"; }
 
   class ReshardStrategy {
-  public:
-      virtual ~ReshardStrategy() = default;
-      virtual void Eval() = 0;
-      void SetValue(DistTensor* tensor, const DenseTensor& value) {
-        ReshardFunction::SetValue(tensor, value);
-      }
+   public:
+    virtual ~ReshardStrategy() = default;
+    virtual void Eval() = 0;
+    void SetValue(DistTensor* tensor, const DenseTensor& value) {
+      ReshardFunction::SetValue(tensor, value);
+    }
 
-      void SetDistProps(DistTensor* tensor,
-                        const TensorDistAttr& dist_attr) {
-        ReshardFunction::SetDistProps(tensor, dist_attr);
-      }
+    void SetDistProps(DistTensor* tensor, const TensorDistAttr& dist_attr) {
+      ReshardFunction::SetDistProps(tensor, dist_attr);
+    }
   };
-
 };
 
 class CrossNdMeshReshardFunction final : public ReshardFunction {

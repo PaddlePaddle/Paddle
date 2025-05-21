@@ -45,16 +45,18 @@ TensorDistAttr ToTensorDistAttr(const ProcessMesh& process_mesh,
   std::vector<std::vector<int64_t>> dim_mapping(dims.size());
   for (size_t i = 0; i < placements.size(); i++) {
     const auto& cur_placement = placements[i];
-    if (!cur_placement->is_shard()) { continue; }
+    if (!cur_placement->is_shard()) {
+      continue;
+    }
     const auto& shard = dynamic_cast<const Shard&>(*cur_placement);
     dim_mapping[shard.get_dim()].push_back(i);
     dist_attr.set_split_factor(i, shard.get_split_factor());
   }
 
   auto compare_functor = [&](size_t a, size_t b) {
-      const auto& shard_a = dynamic_cast<const Shard&>(*placements[a]);
-      const auto& shard_b = dynamic_cast<const Shard&>(*placements[b]);
-      return shard_a.get_co_shard_order() < shard_b.get_co_shard_order();
+    const auto& shard_a = dynamic_cast<const Shard&>(*placements[a]);
+    const auto& shard_b = dynamic_cast<const Shard&>(*placements[b]);
+    return shard_a.get_co_shard_order() < shard_b.get_co_shard_order();
   };
 
   for (size_t i = 0; i < dim_mapping.size(); i++) {
@@ -91,7 +93,8 @@ Placements ToPlacements(const TensorDistAttr& dist_attr) {
     placements[pair.first] = std::make_shared<Partial>(pair.second);
   }
 
-  const std::vector<std::vector<int64_t>>& dim_mapping = dist_attr.dims_mapping_2d();
+  const std::vector<std::vector<int64_t>>& dim_mapping =
+      dist_attr.dims_mapping_2d();
   for (size_t t_dim = 0; t_dim < dim_mapping.size(); t_dim++) {
     auto m_dims = dim_mapping[t_dim];
 
@@ -113,9 +116,10 @@ Placements ToPlacements(const TensorDistAttr& dist_attr) {
             "ProcessMesh dimension {%d} cannot be both shard and partial!",
             mesh_dim));
       }
-      // TODO(): add mesh_dim >= 0 check
-      placements[mesh_dim] = is_co_shard ? std::make_shared<CoShard>(t_dim, idx) :
-            std::make_shared<Shard>(t_dim, split_factor);
+      // TODO(lfw): add mesh_dim >= 0 check
+      placements[mesh_dim] = is_co_shard
+                                 ? std::make_shared<CoShard>(t_dim, idx)
+                                 : std::make_shared<Shard>(t_dim, split_factor);
     }
   }
   return placements;

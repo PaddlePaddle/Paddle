@@ -17,8 +17,8 @@ limitations under the License. */
 
 #include "glog/logging.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
-#include "paddle/phi/core/distributed/auto_parallel/proto_helper.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
+#include "paddle/phi/core/distributed/auto_parallel/proto_helper.h"
 
 namespace phi::distributed {
 using phi::distributed::auto_parallel::str_join;
@@ -78,7 +78,7 @@ void TensorDistAttr::set_dims_mapping(
 }
 
 void TensorDistAttr::set_dims_mapping(
-  const std::vector<std::vector<int64_t>>& dims_mapping) {
+    const std::vector<std::vector<int64_t>>& dims_mapping) {
   dims_mapping_proxy = dims_mapping;
   // dynamic_dims_ and dims_mapping may be not consistent
   if (dynamic_dims_.empty() || dims_mapping.empty()) {
@@ -104,8 +104,11 @@ void TensorDistAttr::set_annotated(
 }
 
 int64_t TensorDistAttr::get_split_factor(int64_t mesh_dim) const {
-  PADDLE_ENFORCE_LT(mesh_dim, process_mesh_.ndim(),
-           "Mesh dim is %d, Process mesh ndim is %d", mesh_dim, process_mesh_.ndim());
+  PADDLE_ENFORCE_LT(mesh_dim,
+                    process_mesh_.ndim(),
+                    "Mesh dim is %d, Process mesh ndim is %d",
+                    mesh_dim,
+                    process_mesh_.ndim());
   return split_factor_map_.get_split_factor(mesh_dim);
 }
 
@@ -464,17 +467,17 @@ std::vector<std::shared_ptr<PlacementStatus>> TensorDistAttr::to_placement()
 bool TensorDistAttr::is_replicated(int64_t mesh_axis) const {
   auto placement = ToPlacements(*this);
   if (mesh_axis == -1) {
-    return std::all_of(placement.begin(),
-                       placement.end(),
-                       [](std::shared_ptr<Placement> p) {
-                         return p->is_replicated();
-                       });
+    return std::all_of(
+        placement.begin(), placement.end(), [](std::shared_ptr<Placement> p) {
+          return p->is_replicated();
+        });
   } else {
     return placement[mesh_axis]->is_replicated();
   }
 }
 
-bool TensorDistAttr::is_shard(int64_t mesh_axis, std::optional<int64_t> tensor_axis) const {
+bool TensorDistAttr::is_shard(int64_t mesh_axis,
+                              std::optional<int64_t> tensor_axis) const {
   auto placement = ToPlacements(*this);
   if (mesh_axis == -1) {
     return std::any_of(placement.begin(),

@@ -16,8 +16,7 @@ import copy
 
 from paddle.static import InputSpec
 
-from ..placement_type import get_shard_spec
-from .utils import convert_to_dims_mapping
+from ..placement_type import to_dim_map
 
 
 class DistributedInputSpec(InputSpec):
@@ -33,8 +32,9 @@ class DistributedInputSpec(InputSpec):
     ):
         super().__init__(shape, dtype, name, stop_gradient)
         self.mesh = copy.deepcopy(mesh)
-        sharding_specs = get_shard_spec(mesh, placements, len(self.shape))
-        self.dims_mapping = convert_to_dims_mapping(sharding_specs, mesh)
+        self.dims_mapping, self.partial_status, self.split_factor = to_dim_map(
+            placements, len(self.shape), True
+        )
         self.local_shape = local_shape
 
     @classmethod
@@ -59,4 +59,5 @@ class DistributedInputSpec(InputSpec):
         )
 
     def __repr__(self):
-        return f"{super().__repr__()}, mesh:{self.mesh}, placements:{self.dims_mapping}"
+        return f"{super().__repr__()}, mesh:{self.mesh}, dims_mapping:{self.dims_mapping}, \
+                  partial_status:{self.partial_status}, split_factor:{self.split_factor}"

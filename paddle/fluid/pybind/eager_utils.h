@@ -466,7 +466,8 @@ PyMODINIT_FUNC PyInit__static_op_arg_pre_cast_hook();
 /* ------------------ for auto parallel ----------------------- */
 void BindEagerUtils(PyObject* module);
 
-std::tuple<std::vector<std::vector<int64_t>>, phi::distributed::auto_parallel::SplitFactor,
+std::tuple<std::vector<std::vector<int64_t>>,
+           phi::distributed::auto_parallel::SplitFactor,
            paddle::flat_hash_map<int64_t, phi::ReduceType>>
 CvtPlacements(phi::distributed::Placements placements, int ndim);
 

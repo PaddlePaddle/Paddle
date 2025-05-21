@@ -18,10 +18,10 @@ limitations under the License. */
 #include <cstdint>
 #include <iostream>
 #include <map>
+#include <optional>
 #include <set>
 #include <string>
 #include <vector>
-#include <optional>
 
 #include "paddle/fluid/framework/fleet/heter_ps/log_patch.h"
 #include "paddle/phi/common/reduce_type.h"
@@ -67,8 +67,8 @@ class PartialStatus final : public PlacementStatus {
 class ShardStatus final : public PlacementStatus {
  public:
   explicit ShardStatus(int64_t axis) : axis_(axis) {}
-  ShardStatus(int64_t axis, int64_t co_shard_order) : 
-    axis_(axis), co_shard_order_(co_shard_order) {}
+  ShardStatus(int64_t axis, int64_t co_shard_order)
+      : axis_(axis), co_shard_order_(co_shard_order) {}
   bool is_shard(int64_t axis = -1) const override {
     if (axis == -1) {
       return true;
@@ -99,15 +99,21 @@ class TEST_API TensorDistAttr {
 
   void set_process_mesh(const ProcessMesh& process_mesh);
 
-  const std::vector<int64_t>& dims_mapping() const { return dims_mapping_proxy; }
+  const std::vector<int64_t>& dims_mapping() const {
+    return dims_mapping_proxy;
+  }
 
-  const std::vector<std::vector<int64_t>>& dims_mapping_2d() const { return dims_mapping_proxy; }
+  const std::vector<std::vector<int64_t>>& dims_mapping_2d() const {
+    return dims_mapping_proxy;
+  }
 
   void set_dims_mapping(const std::vector<int64_t>& dims_mapping);
 
   void set_dims_mapping(const std::vector<std::vector<int64_t>>& dims_mapping);
 
-  const auto_parallel::SplitFactor& split_factor() const { return split_factor_map_; }
+  const auto_parallel::SplitFactor& split_factor() const {
+    return split_factor_map_;
+  }
 
   int64_t get_split_factor(int64_t mesh_dim) const;
 
@@ -165,8 +171,9 @@ class TEST_API TensorDistAttr {
 
   bool verify_process_mesh(const ProcessMesh& process_mesh) const;
 
-  bool verify_dims_mapping(const std::vector<std::vector<int64_t>>& dims_mapping,
-                           const std::vector<int64_t>& tensor_shape) const;
+  bool verify_dims_mapping(
+      const std::vector<std::vector<int64_t>>& dims_mapping,
+      const std::vector<int64_t>& tensor_shape) const;
 
   bool verify_batch_dim(int64_t dim,
                         const std::vector<int64_t>& tensor_shape) const;
@@ -208,7 +215,8 @@ class TEST_API TensorDistAttr {
   // if mesh_axis is not -1, check only on specific axis
   // if tensor_axis is not -1, return true only if the shard axis equal to
   // tensor_axis.
-  bool is_shard(int64_t mesh_axis = -1, std::optional<int64_t> dim = std::nullopt) const;
+  bool is_shard(int64_t mesh_axis = -1,
+                std::optional<int64_t> dim = std::nullopt) const;
 
   // if mesh_axis is -1, check if tensor is partial on whole process_mesh
   // if mesh_axis is not -1, check only on specific axis.
@@ -219,71 +227,81 @@ class TEST_API TensorDistAttr {
   bool skip_check_mesh() const { return skip_check_mesh_; }
 
  private:
-   // delete it after all 1d vector dims_mapping_ have been upgraded to 2d.
+  // delete it after all 1d vector dims_mapping_ have been upgraded to 2d.
   class DimMapProxy final {
-    public:
-    DimMapProxy(std::vector<std::vector<int64_t>>& dims_mapping_2d) 
-      :  dims_mapping_2d(dims_mapping_2d) {}
+   public:
+    DimMapProxy(std::vector<std::vector<int64_t>>* dims_mapping_2d)
+        : dims_mapping_2d(dims_mapping_2d) {}
 
-    DimMapProxy& operator=(const std::vector<std::vector<int64_t>>& dims_mapping) {
-      dims_mapping_2d = dims_mapping;
+    DimMapProxy& operator=(
+        const std::vector<std::vector<int64_t>>& dims_mapping) {
+      dims_mapping_2d->resize(dims_mapping.size());
+      *dims_mapping_2d = dims_mapping;
       return *this;
     }
 
     DimMapProxy& operator=(const std::vector<int64_t>& dims_mapping) {
       dims_mapping_1d = dims_mapping;
       sync_2d_map();
-      VLOG(4) << "Set 1d dims_mapping, Sync 2d. 1d " <<
-      auto_parallel::str_join(dims_mapping_1d) << " , 2d  " << auto_parallel::str_join(dims_mapping_2d);
+      VLOG(4) << "Set 1d dims_mapping, Sync 2d. 1d "
+              << auto_parallel::str_join(dims_mapping_1d) << " , 2d  "
+              << auto_parallel::str_join(*dims_mapping_2d);
       return *this;
     }
 
     DimMapProxy& operator=(const DimMapProxy& other) {
-      if (this == &other) { return *this; }
-      dims_mapping_2d = other.dims_mapping_2d;
+      if (this == &other) {
+        return *this;
+      }
+      *dims_mapping_2d = (*other.dims_mapping_2d);
       return *this;
     }
 
     bool operator==(const DimMapProxy& other) {
-      return dims_mapping_2d == other.dims_mapping_2d;
+      return (*dims_mapping_2d) == (*other.dims_mapping_2d);
     }
 
     bool operator!=(const DimMapProxy& other) {
       return !this->operator==(other);
     }
 
-
     operator const std::vector<std::vector<int64_t>>&() const {
-      return dims_mapping_2d;
+      return *dims_mapping_2d;
     }
 
     operator const std::vector<int64_t>&() const {
       sync_1d_map();
-      VLOG(4) << "Get 1d dims_mapping, Sync 1d. 1d " <<
-      auto_parallel::str_join(dims_mapping_1d) << " , 2d  " << auto_parallel::str_join(dims_mapping_2d);
+      VLOG(4) << "Get 1d dims_mapping, Sync 1d. 1d "
+              << auto_parallel::str_join(dims_mapping_1d) << " , 2d  "
+              << auto_parallel::str_join(*dims_mapping_2d);
       return dims_mapping_1d;
     }
-  
-    private:
+
+   private:
     void sync_1d_map() const {
-      dims_mapping_1d.resize(dims_mapping_2d.size());
-      for (size_t i = 0; i < dims_mapping_2d.size(); ++i) {
-        PADDLE_ENFORCE_LE(dims_mapping_2d[i].size(), 1,
-          "Dim_mapping conversion is not supported, dim %d of tensor has be sharded on more than one dim of mesh");
-        dims_mapping_1d[i] = dims_mapping_2d[i].empty() ? -1 : dims_mapping_2d[i][0];
+      dims_mapping_1d.resize(dims_mapping_2d->size());
+      for (size_t i = 0; i < dims_mapping_2d->size(); ++i) {
+        PADDLE_ENFORCE_LE(dims_mapping_2d->at(i).size(),
+                          1,
+                          "There are %d mesh dim sharded on tensor dim %d"  
+                          "tensor has be sharded on more than one dim of mesh", dims_mapping_2d->at(i).size(), i);
+        dims_mapping_1d[i] =
+            (*dims_mapping_2d)[i].empty() ? -1 : (*dims_mapping_2d)[i][0];
       }
     }
 
     void sync_2d_map() {
-      dims_mapping_2d.resize(dims_mapping_1d.size());
+      dims_mapping_2d->resize(dims_mapping_1d.size());
       for (size_t i = 0; i < dims_mapping_1d.size(); ++i) {
-        if (dims_mapping_1d.at(i) == -1) { continue; }
-        dims_mapping_2d[i] = {dims_mapping_1d[i]};
+        if (dims_mapping_1d.at(i) == -1) {
+          continue;
+        }
+        (*dims_mapping_2d)[i] = {dims_mapping_1d[i]};
       }
     }
 
     mutable std::vector<int64_t> dims_mapping_1d;
-    std::vector<std::vector<int64_t>>& dims_mapping_2d;
+    std::vector<std::vector<int64_t>>* dims_mapping_2d;
   };
 
   static std::vector<std::string> fields_;
@@ -299,10 +317,10 @@ class TEST_API TensorDistAttr {
   auto_parallel::SplitFactor split_factor_map_;
   // The flag indicates whether to skip checking the process mesh.
   bool skip_check_mesh_ = false;
-  
+
   std::vector<std::vector<int64_t>> dims_mapping_2d_;
   // for short time, backward compatible for existing spmd relus.
-  DimMapProxy dims_mapping_proxy{dims_mapping_2d_};
+  DimMapProxy dims_mapping_proxy{&dims_mapping_2d_};
 };
 
 inline std::ostream& operator<<(std::ostream& os, const TensorDistAttr& obj) {

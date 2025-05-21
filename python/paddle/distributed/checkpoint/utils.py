@@ -21,7 +21,6 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 import paddle
-import paddle.distributed as dist
 from paddle.distributed.auto_parallel.placement_type import to_dim_map
 
 if TYPE_CHECKING:
@@ -70,7 +69,9 @@ def compute_local_shape_and_global_offset(
         local_offset = [0] * len(global_shape)
         for mesh_dim in mesh_dims:
             chunk_idx = rank_coordinator[mesh_dim]
-            chunks = balanced_split(local_shape[tensor_dim], process_mesh.shape[mesh_dim])
+            chunks = balanced_split(
+                local_shape[tensor_dim], process_mesh.shape[mesh_dim]
+            )
             local_shape[tensor_dim] = chunks[chunk_idx]
             local_offset[tensor_dim] = sum(chunks[:chunk_idx])
 

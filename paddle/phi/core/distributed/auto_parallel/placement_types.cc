@@ -103,9 +103,9 @@ phi::distributed::Placements cvt_dim_map_to_placements(
             "ProcessMesh dimension {%d} cannot be both shard and partial!",
             mesh_dim));
       }
-      // TODO(): add mesh_dim >= 0 check
-      placements[mesh_dim] = is_co_shard ? std::make_shared<CoShard>(t_dim, idx) :
-            std::make_shared<Shard>(t_dim, sf);
+      // TODO(lfw): add mesh_dim >= 0 check
+      placements[mesh_dim] = is_co_shard ? std::make_shared<CoShard>(t_dim, idx)
+                                         : std::make_shared<Shard>(t_dim, sf);
     }
   }
   return placements;

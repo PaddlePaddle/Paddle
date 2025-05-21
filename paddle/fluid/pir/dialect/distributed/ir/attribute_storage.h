@@ -139,7 +139,8 @@ class TensorDistAttrStorage : public pir::AttributeStorage {
   ///
   static std::size_t HashValue(const ParamKey& key) {
     auto mesh_hash = std::get<0>(key).hash();
-    auto dims_map_hash = std::hash<std::vector<std::vector<int64_t>>>()(std::get<1>(key));
+    auto dims_map_hash =
+        std::hash<std::vector<std::vector<int64_t>>>()(std::get<1>(key));
     auto combine_hash = pir::detail::hash_combine(mesh_hash, dims_map_hash);
 
     auto sf_str_hash = std::hash<std::string>()(std::get<2>(key).to_string());
@@ -166,7 +167,8 @@ class TensorDistAttrStorage : public pir::AttributeStorage {
   ///
   bool operator==(const ParamKey& key) const {
     return mesh_attr == std::get<0>(key) && dims_mapping == std::get<1>(key) &&
-           split_factor == std::get<2>(key) && partial_status == std::get<3>(key) &&
+           split_factor == std::get<2>(key) &&
+           partial_status == std::get<3>(key) &&
            placements_ == std::get<4>(key);
   }
 

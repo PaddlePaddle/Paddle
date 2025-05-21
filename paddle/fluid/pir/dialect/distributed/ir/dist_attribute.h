@@ -97,12 +97,13 @@ class TensorDistAttribute : public pir::AttrBase<TensorDistAttribute,
   const flat_hash_map<int64_t, phi::ReduceType>& partial_status() const;
 
   phi::distributed::Placements placements() const;
-  
+
   const phi::distributed::auto_parallel::SplitFactor& split_factor() const;
 
   // construct a new attribute with new mesh attribute.
   TensorDistAttribute CopyWithNewMesh(ProcessMeshAttribute mesh) const {
-    return get(ir_context(), mesh, dims_mapping(), split_factor(), partial_status());
+    return get(
+        ir_context(), mesh, dims_mapping(), split_factor(), partial_status());
   }
 
   static TensorDistAttribute get(
@@ -111,12 +112,7 @@ class TensorDistAttribute : public pir::AttrBase<TensorDistAttribute,
       const std::vector<std::vector<int64_t>>& dims_mapping,
       const flat_hash_map<int64_t, phi::ReduceType>& partial_status = {},
       const std::optional<PlacementsAttribute>& placements = std::nullopt) {
-      return get(ctx,
-                mesh,
-                dims_mapping,
-                {{}},
-                partial_status,
-                placements);
+    return get(ctx, mesh, dims_mapping, {{}}, partial_status, placements);
   }
 
   static TensorDistAttribute get(
@@ -125,12 +121,7 @@ class TensorDistAttribute : public pir::AttrBase<TensorDistAttribute,
       const std::vector<std::vector<int64_t>>& dims_mapping,
       const flat_hash_map<int64_t, phi::ReduceType>& partial_status = {},
       const std::optional<PlacementsAttribute>& placements = std::nullopt) {
-      return get(ctx,
-                 mesh,
-                 dims_mapping,
-                 {{}},
-                 partial_status,
-                 placements);
+    return get(ctx, mesh, dims_mapping, {{}}, partial_status, placements);
   }
 
   static TensorDistAttribute get(

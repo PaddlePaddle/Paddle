@@ -56,8 +56,13 @@ pir::Value reshard(
   pir::IrContext* ctx = pir::IrContext::Instance();
   PlacementsAttribute placements_attr =
       PlacementsAttribute::get(ctx, placements);
-  TensorDistAttribute tensor_dist_attr = TensorDistAttribute::get(
-      ctx, process_mesh, dims_mapping, split_factor, partial_status, placements_attr);
+  TensorDistAttribute tensor_dist_attr =
+      TensorDistAttribute::get(ctx,
+                               process_mesh,
+                               dims_mapping,
+                               split_factor,
+                               partial_status,
+                               placements_attr);
   return reshard(x, tensor_dist_attr);
 }
 
@@ -75,8 +80,8 @@ pir::Value dtensor_from_local(
     const phi::distributed::auto_parallel::SplitFactor& split_factor,
     const flat_hash_map<int64_t, phi::ReduceType>& partial_status) {
   pir::IrContext* ctx = pir::IrContext::Instance();
-  TensorDistAttribute tensor_dist_attr =
-      TensorDistAttribute::get(ctx, process_mesh, dims_mapping, split_factor, partial_status);
+  TensorDistAttribute tensor_dist_attr = TensorDistAttribute::get(
+      ctx, process_mesh, dims_mapping, split_factor, partial_status);
   return dtensor_from_local(x, tensor_dist_attr);
 }
 
@@ -95,8 +100,8 @@ pir::Value dtensor_to_local(
     const phi::distributed::auto_parallel::SplitFactor& split_factor,
     const flat_hash_map<int64_t, phi::ReduceType>& partial_status) {
   pir::IrContext* ctx = pir::IrContext::Instance();
-  TensorDistAttribute grad_dist_attr =
-      TensorDistAttribute::get(ctx, process_mesh, dims_mapping, split_factor, partial_status);
+  TensorDistAttribute grad_dist_attr = TensorDistAttribute::get(
+      ctx, process_mesh, dims_mapping, split_factor, partial_status);
   return dtensor_to_local(x, grad_dist_attr);
 }
 
@@ -121,11 +126,19 @@ std::vector<pir::Value> moe_sub_mesh_tensors(
   pir::IrContext* ctx = pir::IrContext::Instance();
   std::vector<TensorDistAttribute> local_dist_attrs;
   for (const phi::distributed::ProcessMesh& mesh : local_mesh_list) {
-    local_dist_attrs.emplace_back(TensorDistAttribute::get(
-        ctx, mesh, local_dims_mapping, local_split_factor, local_partial_status));
+    local_dist_attrs.emplace_back(
+        TensorDistAttribute::get(ctx,
+                                 mesh,
+                                 local_dims_mapping,
+                                 local_split_factor,
+                                 local_partial_status));
   }
-  TensorDistAttribute global_dist_attr = TensorDistAttribute::get(
-      ctx, global_mesh, global_dims_mapping, global_split_factor, global_partial_status);
+  TensorDistAttribute global_dist_attr =
+      TensorDistAttribute::get(ctx,
+                               global_mesh,
+                               global_dims_mapping,
+                               global_split_factor,
+                               global_partial_status);
 
   auto op = ApiBuilder::Instance().GetBuilder()->Build<MoESubMeshTensorsOp>(
       input, local_dist_attrs, global_dist_attr);
@@ -147,12 +160,20 @@ pir::Value moe_global_mesh_tensor(
 
   std::vector<TensorDistAttribute> local_dist_attrs;
   for (const phi::distributed::ProcessMesh& mesh : local_mesh_list) {
-    local_dist_attrs.emplace_back(TensorDistAttribute::get(
-        ctx, mesh, local_dims_mapping, local_split_factor, local_partial_status));
+    local_dist_attrs.emplace_back(
+        TensorDistAttribute::get(ctx,
+                                 mesh,
+                                 local_dims_mapping,
+                                 local_split_factor,
+                                 local_partial_status));
   }
 
-  TensorDistAttribute global_dist_attr = TensorDistAttribute::get(
-      ctx, global_mesh, global_dims_mapping, global_split_factor, global_partial_status);
+  TensorDistAttribute global_dist_attr =
+      TensorDistAttribute::get(ctx,
+                               global_mesh,
+                               global_dims_mapping,
+                               global_split_factor,
+                               global_partial_status);
 
   phi::DDim global_ddim = phi::make_ddim(global_shape);
 

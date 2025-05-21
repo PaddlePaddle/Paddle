@@ -92,14 +92,14 @@ def is_valid_list_index(list, index):
 
 
 def is_dim_shard(mapping):
-    if mapping != -1:
+    if len(mapping) > 0:
         return True
     else:
         return False
 
 
 def is_dim_replicate(mapping):
-    if mapping == -1:
+    if len(mapping) == 0:
         return True
     else:
         return False
@@ -108,14 +108,15 @@ def is_dim_replicate(mapping):
 def verify_dims_mapping(dims_mapping, process_mesh):
     if dims_mapping is None:
         return False
-    if not all(isinstance(d, int) for d in dims_mapping):
-        return False
-    for i in range(len(dims_mapping)):
-        if dims_mapping[i] < -1 or dims_mapping[i] >= len(process_mesh.shape):
-            return False
-    for i in range(len(process_mesh.shape)):
-        if dims_mapping.count(i) > 1:
-            return False
+    for mesh_dims in dims_mapping:
+        for d in mesh_dims:
+            if not isinstance(d, int):
+                return False
+            if d < 0 or d > len(process_mesh.shape):
+                return False
+        for i in range(len(process_mesh.shape)):
+            if mesh_dims.count(i) > 1:
+                return False
     return True
 
 
