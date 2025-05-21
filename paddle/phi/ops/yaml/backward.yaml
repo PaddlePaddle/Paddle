@@ -996,6 +996,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : ExpandAsGradInferSpmd
   kernel :
     func : expand_as_grad
   no_need_buffer : x
@@ -1826,6 +1827,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [out_grad]
+    spmd_rule : LabelSmoothGradInferSpmd
   kernel :
     func : label_smooth_grad
 

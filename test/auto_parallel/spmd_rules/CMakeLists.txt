@@ -49,6 +49,7 @@ if(WITH_DISTRIBUTE)
     py_test_modules(test_mean_all_rule MODULES test_mean_all_rule)
     py_test_modules(test_argmin_rule MODULES test_argmin_rule)
     py_test_modules(test_argsort_rule MODULES test_argsort_rule)
+    py_test_modules(test_label_smooth_rule MODULES test_label_smooth_rule)
   endif()
   # End of unittests WITH single card WITHOUT timeout
 
