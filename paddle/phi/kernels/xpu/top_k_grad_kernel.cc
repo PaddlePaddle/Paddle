@@ -95,27 +95,36 @@ void TopkGradKernel(const Context& dev_ctx,
   //  [ 8,  9, 10],
   //  [16, 17, 18]]
 
-  PADDLE_ENFORCE_EQ(
-      indices.numel(),
-      pre * k,
-      ::common::errors::InvalidArgument("The op_stmt should be unique"));
+  PADDLE_ENFORCE_EQ(indices.numel(),
+                    pre * k * post,
+                    ::common::errors::InvalidArgument(
+                        "indices.numel() must be pre * k * post, but got "
+                        "indices.numel() = %ld, pre "
+                        "= %ld, k = %d, n = %ld, post = %ld, axis=%ld",
+                        indices.numel(),
+                        pre,
+                        k,
+                        n,
+                        post,
+                        axis));
 
-  int64_t* offsets = RAII_GUARD.alloc_l3_or_gm<int64_t>(pre);
-  int64_t* accmulated_indices = RAII_GUARD.alloc_l3_or_gm<int64_t>(pre * k);
+  int64_t* offsets = RAII_GUARD.alloc<int64_t>(pre * post);
+  int64_t* accmulated_indices = RAII_GUARD.alloc<int64_t>(indices.numel());
 
-  int ret = xpu::range<int64_t>(dev_ctx.x_context(), offsets, 0LL, n, pre);
+  int ret =
+      xpu::range<int64_t>(dev_ctx.x_context(), offsets, 0LL, n, pre * post);
   PADDLE_ENFORCE_XDNN_SUCCESS(ret, "range");
 
   ret = xpu::broadcast_mul<int64_t>(dev_ctx.x_context(),
                                     indices_data,
                                     offsets,
                                     accmulated_indices,
-                                    {pre, 1LL},
-                                    {pre, k});
+                                    {pre, k, post},
+                                    {pre, 1, post});
   PADDLE_ENFORCE_XDNN_SUCCESS(ret, "broadcast_mul");
 
   const xpu::VectorParam<int64_t> indices_vp = {
-      nullptr, indices.numel(), indices_data};
+      nullptr, indices.numel(), accmulated_indices};
   // launch the xpu kernel to assign the grad
   ret = xpu::scatter<XPUType, int64_t>(
       dev_ctx.x_context(),
