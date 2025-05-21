@@ -25,9 +25,9 @@ namespace phi {
 template <typename T, typename Context>
 void PoolRawGPUDNNKernel(const Context& ctx,
                          const DenseTensor& x,
-                         const std::vector<int>& kernel_size,
-                         const std::vector<int>& strides,
-                         const std::vector<int>& paddings,
+                         const std::vector<int64_t>& kernel_size,
+                         const std::vector<int64_t>& strides,
+                         const std::vector<int64_t>& paddings,
                          bool exclusive,
                          const std::string& data_format,
                          const std::string& pooling_type,
@@ -43,8 +43,8 @@ void PoolRawGPUDNNKernel(const Context& ctx,
 
   const DenseTensor* input = &x;
   DenseTensor* output = out;
-  std::vector<int> paddings_ = paddings;
-  std::vector<int> kernel_size_ = kernel_size;
+  std::vector<int64_t> paddings_ = paddings;
+  std::vector<int64_t> kernel_size_ = kernel_size;
 
   ctx.template Alloc<T>(output);
 
@@ -241,15 +241,11 @@ void Pool2dGPUDNNKernel(const Context& ctx,
                         bool adaptive,
                         const std::string& padding_algorithm,
                         DenseTensor* out) {
-  std::vector<int> kernel_size_val(kernel_size.GetData().begin(),
-                                   kernel_size.GetData().end());
-  std::vector<int> strides_val(strides.begin(), strides.end());
-  std::vector<int> paddings_val(paddings.begin(), paddings.end());
   PoolRawGPUDNNKernel<T, Context>(ctx,
                                   x,
-                                  kernel_size_val,
-                                  strides_val,
-                                  paddings_val,
+                                  kernel_size.GetData(),
+                                  strides,
+                                  paddings,
                                   exclusive,
                                   data_format,
                                   pooling_type,
@@ -273,14 +269,11 @@ void Pool3dGPUDNNKernel(const Context& ctx,
                         bool adaptive,
                         const std::string& padding_algorithm,
                         DenseTensor* out) {
-  std::vector<int> kernel_size_val(kernel_size.begin(), kernel_size.end());
-  std::vector<int> strides_val(strides.begin(), strides.end());
-  std::vector<int> paddings_val(paddings.begin(), paddings.end());
   PoolRawGPUDNNKernel<T, Context>(ctx,
                                   x,
-                                  kernel_size_val,
-                                  strides_val,
-                                  paddings_val,
+                                  kernel_size,
+                                  strides,
+                                  paddings,
                                   exclusive,
                                   data_format,
                                   pooling_type,
