@@ -74,7 +74,7 @@ void moe_combine_fwd(const Context& dev_ctx,
                      const int64_t k,
                      const int64_t seqlen,
                      const int64_t hidden_size) {
-  apply_moe_combine_fwd(x.data<T>(),
+  apply_moe_combine_fwd<T>(x.data<T>(),
                         combine_weights.data<T>(),
                         scatter_index.data<int>(),
                         const_cast<T*>(y.data<T>()),
@@ -93,13 +93,15 @@ void moe_combine_fwd(const Context& dev_ctx,
     dev_ctx.template Alloc<T>(y);  // T cannot support phi::dtype::float8 very
                                    // well, maybe replaced with x.dtype();
     auto combine_weights_shape = combine_weights.dims();
-    moe_combine_fwd<T>(x,
-                       combine_weights,
-                       scatter_index,
-                       *y,
-                       combine_weights_shape[1],  // k
-                       combine_weights_shape[0],  // seqlen
-                       x_shape[1]);               // hidden_size
+    auto x_shape = x.dims();
+    moe_combine_fwd<T, Context>(dev_ctx,
+                                x,
+                                combine_weights,
+                                scatter_index,
+                                *y,
+                                combine_weights_shape[1],  // k
+                                combine_weights_shape[0],  // seqlen
+                                x_shape[1]);               // hidden_size
   }
 }
 

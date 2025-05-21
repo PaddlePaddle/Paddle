@@ -52,7 +52,7 @@ namespace phi {
     true,
     errors::InvalidArgument(
         "The input scatter_index type should be int32"));
-  grad_x->set_dims(phi::make_ddim(x_dim));
+  grad_x->set_dims(phi::make_ddim({x_dim[0],x_dim[1]}));
   grad_x->set_dtype(x.dtype());
   grad_combine_weights_helper->set_dims(phi::make_ddim({combine_weights_shape[0], combine_weights_shape[1], x_dim[1]}));
   grad_combine_weights_helper->set_dtype(x.dtype());

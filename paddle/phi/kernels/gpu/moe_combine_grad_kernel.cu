@@ -109,12 +109,12 @@ void moe_combine_bwd(const Context& dev_ctx,
                      const int64_t k,
                      const int64_t seqlen,
                      const int64_t hidden_size) {
-  apply_moe_combine_bwd(x.data<T>(),
+  apply_moe_combine_bwd<T>(x.data<T>(),
                         combine_weights.data<T>(),
                         scatter_index.data<int>(),
                         grad_y.data<T>(),
-                        const_cast<T*>(grad_x.data<T>()),
-                        const_cast<T*>(grad_combine_weights_helper.data<T>()),
+                        const_cast<T*>(grad_x->data<T>()),
+                        const_cast<T*>(grad_combine_weights_helper->data<T>()),
                         k,
                         seqlen,
                         hidden_size,
@@ -130,7 +130,10 @@ void MoeCombineGradKernel(const Context& dev_ctx,
                           DenseTensor* grad_combine_weights_helper) {
   dev_ctx.template Alloc<T>(grad_x);
   dev_ctx.template Alloc<T>(grad_combine_weights_helper);
-  moe_combine_bwd<T, Context>(x,
+  auto x_shape = x.dims();
+  auto combine_weights_shape = combine_weights.dims();
+  moe_combine_bwd<T, Context>(dev_ctx,
+                              x,
                               combine_weights,
                               scatter_index,
                               grad_y,
