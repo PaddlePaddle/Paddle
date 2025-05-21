@@ -28,6 +28,10 @@ void RollGradKernel(const Context& dev_ctx,
                     DenseTensor* x_grad) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   auto shifts_data = shifts.GetData();
+  if (x_grad && x_grad->numel() == 0) {
+    dev_ctx.template Alloc<T>(x_grad);
+    return;
+  }
   dev_ctx.template Alloc<T>(x_grad);
   DDim input_dim = x.dims();
   std::vector<int64_t> xshape;
