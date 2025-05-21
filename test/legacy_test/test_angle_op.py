@@ -167,5 +167,17 @@ class TestAngleAPI(unittest.TestCase):
         np.testing.assert_allclose(self.out, out_np, rtol=1e-05)
 
 
+class TestZeroSize(unittest.TestCase):
+    def setUp(self):
+        self.x = np.random.randn(2, 0) + 1j * np.random.randn(2, 0)
+        self.out = np.angle(self.x)
+
+    def test_0size(self):
+        with dygraph.guard():
+            x = paddle.to_tensor(self.x)
+            out_np = paddle.angle(x).numpy()
+        np.testing.assert_allclose(self.out, out_np, rtol=1e-05)
+
+
 if __name__ == "__main__":
     unittest.main()
