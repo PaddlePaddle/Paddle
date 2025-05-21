@@ -23,6 +23,10 @@ namespace phi {
 
 template <typename T, typename Context>
 void I0eKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
+  if (out && out->numel() == 0) {
+    ctx.template Alloc<T>(out);
+    return;
+  }
   int64_t size = x.numel();
   const T* x_data = x.data<T>();
   T* out_data = ctx.template Alloc<T>(out);

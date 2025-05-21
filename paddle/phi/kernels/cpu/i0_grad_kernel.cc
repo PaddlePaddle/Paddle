@@ -26,6 +26,10 @@ void I0GradKernel(const Context& ctx,
                   const DenseTensor& x,
                   const DenseTensor& out_grad,
                   DenseTensor* x_grad) {
+  if (x_grad && x_grad->numel() == 0) {
+    ctx.template Alloc<T>(x_grad);
+    return;
+  }
   auto size = x.numel();
   auto* x_data = x.data<T>();
   auto* out_grad_data = out_grad.data<T>();
