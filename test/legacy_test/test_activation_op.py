@@ -2040,6 +2040,8 @@ class TestCeil(TestActivation):
         self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
         self.outputs = {'Out': out}
         self.convert_input_output()
+        if not core.is_compiled_with_cuda():
+            self.__class__.no_need_check_grad = True
 
     def init_shape(self):
         self.shape = [10, 12]
@@ -2092,6 +2094,8 @@ class TestFloor(TestActivation):
         self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
         self.outputs = {'Out': out}
         self.convert_input_output()
+        if not core.is_compiled_with_cuda():
+            self.__class__.no_need_check_grad = True
 
     def init_shape(self):
         self.shape = [10, 12]

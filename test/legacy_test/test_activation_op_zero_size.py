@@ -43,7 +43,6 @@ from test_activation_op import (
 )
 
 import paddle
-from paddle.base import core
 
 paddle.disable_static()
 
@@ -84,28 +83,8 @@ create_test_zero_size_class(TestRsqrt)
 create_test_zero_size_class(TestSoftsign)
 create_test_zero_size_class(TestSigmoid)
 create_test_zero_size_class(TestLogSigmoid)
-
-
-# create_test_zero_size_class(TestFloor)
-# create_test_zero_size_class(TestCeil)
-class TestFloorZeroSize(TestFloor):
-    def init_shape(self):
-        self.shape = [12, 0]
-
-    def init_dtype(self):
-        self.dtype = np.float32
-        if not core.is_compiled_with_cuda():
-            self.__class__.no_need_check_grad = True
-
-
-class TestCeilZeroSize(TestCeil):
-    def init_shape(self):
-        self.shape = [12, 0]
-
-    def init_dtype(self):
-        self.dtype = np.float32
-        if not core.is_compiled_with_cuda():
-            self.__class__.no_need_check_grad = True
+create_test_zero_size_class(TestFloor)
+create_test_zero_size_class(TestCeil)
 
 
 if __name__ == "__main__":
