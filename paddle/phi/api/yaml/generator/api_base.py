@@ -128,6 +128,7 @@ class BaseAPI:
         inputs, attrs = self.parse_input_and_attr(
             api_name, api_item_yaml['args'], optional_vars
         )
+        # print("api_item_yaml is: ", api_item_yaml)
         output_type_list, output_names, out_size_expr = self.parse_output(
             api_name, api_item_yaml['output']
         )

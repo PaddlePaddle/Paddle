@@ -486,4 +486,12 @@ void RmsNormInferMeta(const MetaTensor& x,
                       const int begin_norm_axis,
                       MetaTensor* out);
 
+void FusedRMSNormInferMeta(const MetaTensor& x,
+                               const MetaTensor& scale,
+                               float epsilon,
+                               MetaTensor* y,
+                               MetaTensor* mean,
+                               MetaTensor* invvar);
+
+
 }  // namespace phi

@@ -3168,7 +3168,30 @@ void RmsNormInferMeta(const MetaTensor& x,
   out->set_layout(x.layout());
   out->share_lod(x);
 }
+void FusedRMSNormInferMeta(const MetaTensor& x,
+                               const MetaTensor& scale,
+                               float epsilon,
+                               MetaTensor* y,
+                               MetaTensor* mean,
+                               MetaTensor* invvar) {
+  // Y: same shape, dtype, layout as X
+  y->set_dims(x.dims());
+  y->share_lod(x);
+  y->set_dtype(x.dtype());
+  y->set_layout(x.layout());
 
-}  // namespace phi
+  // mean & invvar: 1-D length = x.dims()[0]
+  int64_t rows = x.dims()[0];
+  mean->set_dims(DDim({rows}));
+  mean->share_lod(x);
+  mean->set_dtype(DataType::FLOAT32);
+  mean->set_layout(x.layout());
 
+  invvar->set_dims(DDim({rows}));
+  invvar->share_lod(x);
+  invvar->set_dtype(DataType::FLOAT32);
+  invvar->set_layout(x.layout());
+
+}
+}
 PD_REGISTER_INFER_META_FN(add_raw, phi::ElementwiseRawInferMeta);

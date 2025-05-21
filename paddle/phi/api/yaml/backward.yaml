@@ -2490,3 +2490,13 @@
   kernel:
     func: unpool3d_grad
     data_type: x
+
+- backward_op: fused_rms_norm_grad
+  forward: fused_rms_norm (Tensor x, Tensor scale, float epsilon) -> Tensor(y), Tensor(mean), Tensor(invvar)
+  args: (Tensor x, Tensor scale, Tensor invvar, Tensor y_grad, float epsilon)
+  output: Tensor(x_grad), Tensor(scale_grad)
+  infer_meta:
+    func: FusedRMSNormGradInferMeta
+  kernel:
+    func: fused_rms_norm_grad
+    data_type: x
