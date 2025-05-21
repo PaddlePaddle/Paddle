@@ -25,32 +25,11 @@ void MaxKernel(const Context& dev_ctx,
                const IntArray& dims,
                bool keep_dim,
                DenseTensor* out) {
-  bool reduce_all = recompute_reduce_all(x, dims);
   if (x.numel() == 0) {
-    bool reduce_on_zero_dim = false;
-    if (reduce_all) {
-      reduce_on_zero_dim = true;
-    } else {
-      DDim x_dims = x.dims();
-      int64_t rank = x_dims.size();
-      int size = dims.size();
-      for (int i = 0; i < size; i++) {
-        int axis = dims[i];
-        int pos_axis = axis < 0 ? axis + rank : axis;
-        if (!x_dims[pos_axis]) {
-          reduce_on_zero_dim = true;
-          break;
-        }
-      }
-    }
-    PADDLE_ENFORCE_EQ(reduce_on_zero_dim,
-                      false,
-                      errors::InvalidArgument(
-                          "Zero-size tensor to reduction operation minimum "
-                          "which has no identity."));
     dev_ctx.template Alloc<T>(out);
     return;
   }
+  bool reduce_all = recompute_reduce_all(x, dims);
   ReduceKernel<T, Context>(dev_ctx,
                            x,
                            dims,
