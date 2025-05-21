@@ -2900,9 +2900,7 @@ def inner(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
         __check_input(nx, ny)
 
         if in_dynamic_or_pir_mode():
-            return _C_ops.matmul(
-                nx, paddle.transpose(ny, [1, 0]), False, False
-            ).reshape(dstshape)
+            return _C_ops.matmul(nx, ny, False, True).reshape(dstshape)
         else:
             helper = LayerHelper('inner', **locals())
             out = helper.create_variable_for_type_inference(dtype=nx.dtype)
