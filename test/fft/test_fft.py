@@ -1934,5 +1934,47 @@ class TestIfftShift(unittest.TestCase):
             )
 
 
+def create_test_class(op_type, dtype, shape, axis):
+    class Cls(unittest.TestCase):
+        def test_zero_size(self):
+            paddle.disable_static()
+            import scipy  # noqa: F401
+
+            numpy_tensor_1 = np.random.rand(*shape).astype(dtype)
+            paddle_x = paddle.to_tensor(numpy_tensor_1)
+            paddle_x.stop_gradient = False
+
+            paddle_api = eval(f"paddle.fft.{op_type}")
+            paddle_out = paddle_api(
+                paddle_x, axes=axis
+            )  # Here the parameter is axes
+            numpy_api = eval(f"scipy.fft.{op_type}")
+            numpy_out = numpy_api(numpy_tensor_1, axes=axis)
+
+            np.testing.assert_allclose(
+                paddle_out.numpy(),
+                numpy_out,
+                1e-2,
+                1e-2,
+            )
+            np.testing.assert_allclose(
+                paddle_out.shape,
+                numpy_out.shape,
+            )
+
+    cls_name = f"{op_type}{dtype}_0SizeTest"
+    Cls.__name__ = cls_name
+    globals()[cls_name] = Cls
+
+
+op_list = [
+    ("fftshift", ("complex64", "complex128"), (0, -1)),
+    ("ifftshift", ("complex64", "complex128"), (0, -1)),
+]
+
+for op in op_list:
+    create_test_class(op[0], op[1][0], [3, 4, 0], op[2][0])
+    create_test_class(op[0], op[1][1], [3, 4, 0, 3, 4], op[2][1])
+
 if __name__ == '__main__':
     unittest.main()
