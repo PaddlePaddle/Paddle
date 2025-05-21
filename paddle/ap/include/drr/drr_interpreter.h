@@ -23,11 +23,8 @@ namespace ap::drr {
 
 class DrrInterpreter {
  public:
-  explicit DrrInterpreter(
-      const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
-          backend_ir_ctx,
-      const std::weak_ptr<ap::memory::CirclableRefListBase>&
-          circlable_ref_list);
+  explicit DrrInterpreter(const std::weak_ptr<ap::memory::CirclableRefListBase>&
+                              circlable_ref_list);
 
   using Function = ap::axpr::Value;
 

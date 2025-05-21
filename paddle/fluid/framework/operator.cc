@@ -63,7 +63,6 @@ class DenseTensor;
 
 COMMON_DECLARE_bool(benchmark);
 COMMON_DECLARE_bool(check_nan_inf);
-PD_DECLARE_bool(enable_unused_var_check);
 COMMON_DECLARE_bool(run_kp_kernel);
 PHI_DECLARE_bool(enable_host_event_recorder_hook);
 
@@ -1153,8 +1152,6 @@ bool ExecutionContext::HasOutput(const std::string& name) const {
 }
 
 const Variable* ExecutionContext::InputVar(const std::string& name) const {
-  LogVarUsageIfUnusedVarCheckEnabled(name);
-
   auto it = ctx_.inputs.find(name);
   if (it == ctx_.inputs.end()) return nullptr;
 
@@ -1185,8 +1182,6 @@ Variable* ExecutionContext::OutputVar(const std::string& name) const {
 template <>
 const std::vector<const phi::DenseTensor*>
 ExecutionContext::MultiInput<phi::DenseTensor>(const std::string& name) const {
-  LogVarUsageIfUnusedVarCheckEnabled(name);
-
   auto vars = MultiInputVar(name);
   if (vars.empty()) {
     return {};
@@ -2046,10 +2041,6 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
         Type(), Attrs(), infer_shape_ctx, *runtime_ctx, Id());
   }
 
-  if (FLAGS_enable_unused_var_check) {
-    GetThreadLocalUsedVarNameSet()->clear();
-  }
-
   // TODO(panyx0718): ExecutionContext should only depend on RuntimeContext
   // not Scope. Imperative mode only pass inputs and get outputs.
   {
@@ -2119,15 +2110,6 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   // Only handle the case where the current kernel data type is complex
   if (framework::IsComplexType(kernel_type_->data_type_)) {
     HandleComplexGradToRealGrad(scope, runtime_ctx);
-  }
-
-  if (FLAGS_enable_unused_var_check) {
-    // skip op that uses onednn because it has different memory reuse strategy.
-    // use attr here because some GradMakers (like ActivationGradOpMaker) add
-    // input when use_mkldnn=true;
-    if (!(HasAttr("use_mkldnn") && Attr<bool>("use_mkldnn"))) {
-      CheckUnusedVar(*this, scope);
-    }
   }
 
   /*For profiling/benchmark only*/

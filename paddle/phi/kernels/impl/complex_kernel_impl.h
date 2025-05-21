@@ -26,13 +26,11 @@ template <typename T, typename Context>
 void ConjKernel(const Context& dev_ctx,
                 const DenseTensor& x,
                 DenseTensor* out) {
-  auto numel = x.numel();
-  if (x.numel() == 0) {
-    auto x_dims = x.dims();
-    out->Resize(x_dims);
+  if (out->numel() == 0) {
     dev_ctx.template Alloc<T>(out);
     return;
   }
+  auto numel = x.numel();
   auto* x_data = x.data<T>();
   auto* out_data = dev_ctx.template Alloc<T>(out);
 
@@ -45,6 +43,10 @@ template <typename T, typename Context>
 void RealKernel(const Context& dev_ctx,
                 const DenseTensor& x,
                 DenseTensor* out) {
+  if (out->numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   auto numel = x.numel();
   auto* x_data = x.data<T>();
   auto* out_data = dev_ctx.template Alloc<phi::dtype::Real<T>>(
@@ -59,6 +61,10 @@ template <typename T, typename Context>
 void ImagKernel(const Context& dev_ctx,
                 const DenseTensor& x,
                 DenseTensor* out) {
+  if (out->numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   auto numel = x.numel();
   auto* x_data = x.data<T>();
   auto* out_data = dev_ctx.template Alloc<phi::dtype::Real<T>>(
@@ -90,6 +96,10 @@ void ComplexKernel(const Context& dev_ctx,
                    const DenseTensor& y,
                    DenseTensor* out) {
   using C = phi::dtype::complex<T>;
+  if (out->numel() == 0) {
+    dev_ctx.template Alloc<C>(out);
+    return;
+  }
   dev_ctx.template Alloc<C>(out);
 
 // NOTE(chenfeiyu): be careful of the caveats of calling elementwise-related

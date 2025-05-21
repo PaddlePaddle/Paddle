@@ -193,9 +193,11 @@ def var(
         )
 
     u = mean(x, axis, True, name)
-    out = paddle.sum(paddle.pow((x - u), 2), axis, keepdim=keepdim, name=name)
+    dtype = paddle.float32 if x.dtype == paddle.float16 else x.dtype
+    out = paddle.sum(
+        paddle.pow((x - u), 2), axis, keepdim=keepdim, name=name, dtype=dtype
+    )
 
-    dtype = x.dtype
     n = paddle.cast(paddle.numel(x), "int64") / paddle.cast(
         paddle.numel(out), "int64"
     )
@@ -205,6 +207,8 @@ def var(
         n = where(n > one_const, n - 1.0, one_const)
     n.stop_gradient = True
     out /= n
+    if out.dtype != x.dtype:
+        return out.astype(x.dtype)
     return out
 
 

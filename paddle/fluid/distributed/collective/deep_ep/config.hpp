@@ -201,6 +201,11 @@ struct LowLatencyLayout {
     size_t combine_send_buffer_bytes = num_experts *
                                        num_max_dispatch_tokens_per_rank *
                                        num_bytes_per_combine_msg;
+
+    // NOTE(zkk):This is to support paddle w4a8 moe group-gemm
+    // 8 is topk
+    EP_HOST_ASSERT(dispatch_send_buffer_bytes * 8 <= combine_send_buffer_bytes);
+
     size_t send_buffer_bytes =
         std::max(dispatch_send_buffer_bytes, combine_send_buffer_bytes);
     EP_HOST_ASSERT(send_buffer_bytes % sizeof(int4) == 0);

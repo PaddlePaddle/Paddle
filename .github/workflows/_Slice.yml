@@ -1,0 +1,84 @@
+name: Slice
+
+on:
+  workflow_call:
+    inputs:
+      docker_build_image:
+        type: string
+        required: true
+      can-skip:
+        type: string
+        required: false
+
+env:
+  PR_ID: ${{ github.event.pull_request.number }}
+  COMMIT_ID: ${{ github.event.pull_request.head.sha }}
+  work_dir: /paddle
+  PADDLE_ROOT: /paddle
+  TASK: paddle-CI-${{ github.event.pull_request.number }}-slice
+  ci_scripts: /paddle/ci
+  BRANCH: ${{ github.event.pull_request.base.ref }}
+  CI_name: slice
+  no_proxy: "bcebos.com,apiin.im.baidu.com,gitee.com,aliyun.com,.baidu.com,.tuna.tsinghua.edu.cn"
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  slice:
+    name: Slice test
+    if: ${{ inputs.can-skip != 'true' }}
+    runs-on:
+      group: slice
+    steps:
+      - name: Download test script
+        run: |
+          sudo rm -rf * .[^.]*
+          source ${{ github.workspace }}/../../../proxy
+          wget https://raw.githubusercontent.com/PaddlePaddle/Paddle/refs/heads/develop/ci/slice/test_slice_float32.py
+
+      - name: Check docker image and run container
+        env:
+          wheel_link: https://paddle-github-action.bj.bcebos.com/PR/build/${{ github.event.pull_request.number }}/${{ github.event.pull_request.head.sha }}/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          container_name="api_benchmark_ci_${RUN_ID}"
+          echo "container_name=${container_name}" >> ${{ github.env }}
+          docker_image=${{ inputs.docker_build_image }}
+          docker run -d -t --gpus all --name ${container_name} --privileged --shm-size=128g \
+            -v "/home/data/cfs:/home/data/cfs" \
+            -v ${{ github.workspace }}/../../..:${{ github.workspace }}/../../.. \
+            -v ${{ github.workspace }}:/paddle \
+            -e core_index \
+            -e BRANCH \
+            -e PR_ID \
+            -e COMMIT_ID \
+            -e RUN_ID \
+            -e wheel_link \
+            -e work_dir \
+            -e PADDLE_ROOT \
+            -e ci_scripts \
+            -e no_proxy \
+            -e CI_name \
+            -w /paddle --network host ${docker_image}
+
+      - name: Test
+        env:
+          work_dir: ${{ github.workspace }}
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
+          set -x
+          mkdir -p ${{ github.workspace }}/../../../.cache/pip
+          source ${{ github.workspace }}/../../../proxy
+          python3.10 -m pip config set global.cache-dir ${{ github.workspace }}/../../../.cache/pip
+          python3.10 -m pip install torch==2.6.0 torchvision==0.21.0 torchaudio==2.6.0 --index-url https://download.pytorch.org/whl/cu118
+          python3.10 -m pip install $wheel_link
+          python3.10 test_slice_float32.py
+          '
+
+      - name: Terminate and delete the container
+        if: always()
+        run: |
+          sudo rm -rf * .[^.]*
+          docker rm -f ${{ env.container_name }}
