@@ -21,6 +21,7 @@
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 
 namespace phi {
 
@@ -66,6 +67,11 @@ void AllCloseKernel(const Context& dev_ctx,
                     const Scalar& atol,
                     bool equal_nan,
                     DenseTensor* out) {
+  if (x.numel() == 0 || y.numel() == 0) {
+    auto* out_data = dev_ctx.template Alloc<bool>(out);
+    *out_data = true;
+    return;
+  }
   double rtol_v, atol_v;
   if (rtol.dtype() == DataType::FLOAT64) {
     rtol_v = rtol.to<double>();

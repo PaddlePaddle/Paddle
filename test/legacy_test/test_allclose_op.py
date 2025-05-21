@@ -463,5 +463,38 @@ class TestAllcloseOpLargeDimInput(TestAllcloseOp):
         self.equal_nan = False
 
 
+def create_test_class(op_type, dtype, shape):
+    class Cls(unittest.TestCase):
+        def test_zero_size(self):
+            paddle.disable_static()
+            numpy_tensor_1 = np.random.rand(*shape).astype(dtype)
+            numpy_tensor_2 = numpy_tensor_1.copy()
+            paddle_x = paddle.to_tensor(numpy_tensor_1)
+            paddle_x.stop_gradient = False
+            paddle_y = paddle.to_tensor(numpy_tensor_2)
+            paddle_y.stop_gradient = False
+
+            paddle_api = eval(f"paddle.{op_type}")
+            paddle_out = paddle_api(paddle_x, paddle_y)
+            numpy_api = eval(f"np.{op_type}")
+            numpy_out = numpy_api(numpy_tensor_1, numpy_tensor_2)
+
+            np.testing.assert_allclose(
+                paddle_out.numpy(),
+                numpy_out,
+                1e-2,
+                1e-2,
+            )
+
+    cls_name = f"{op_type}{dtype}_0SizeTest"
+    Cls.__name__ = cls_name
+    globals()[cls_name] = Cls
+
+
+create_test_class("allclose", "float32", [3, 4, 0])
+create_test_class("allclose", "float64", [3, 4, 0, 3, 4])
+create_test_class("allclose", "int32", [3, 4, 0])
+create_test_class("allclose", "int64", [3, 4, 0, 3, 4])
+
 if __name__ == "__main__":
     unittest.main()
