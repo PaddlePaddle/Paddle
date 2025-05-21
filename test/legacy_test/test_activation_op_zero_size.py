@@ -14,6 +14,7 @@
 
 import unittest
 
+import numpy as np
 from test_activation_op import (
     TestAcos,
     TestAcosh,
@@ -41,13 +42,19 @@ from test_activation_op import (
     TestTanhshrink,
 )
 
+import paddle
+
+paddle.disable_static()
+
+
 # ------------------ Test Zero Size Tensor --------------
-
-
 def create_test_zero_size_class(parent):
     class TestActZeroSize(parent):
         def init_shape(self):
             self.shape = [12, 0]
+
+        def init_dtype(self):
+            self.dtype = np.float64
 
     cls_name = "{}_{}".format(parent.__name__, "ZeroSizeOp")
     TestActZeroSize.__name__ = cls_name
