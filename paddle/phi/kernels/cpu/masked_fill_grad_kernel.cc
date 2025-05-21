@@ -33,18 +33,6 @@ void MaskedFillGradKernel(const Context& dev_ctx,
                           const DenseTensor& out_grad,
                           DenseTensor* x_grad,
                           DenseTensor* v_grad) {
-  if (out_grad.numel() == 0 || mask.numel() == 0) {
-    if (x_grad != nullptr) {
-      x_grad->Resize({0});
-      dev_ctx.template Alloc<T>(x_grad);
-    }
-    if (v_grad != nullptr) {
-      v_grad->Resize({0});
-      dev_ctx.template Alloc<double>(v_grad);
-    }
-    return;
-  }
-
   auto x_grad_dims = x_grad->dims();
   auto mask_dims = mask.dims();
   bool expand_x = false;
