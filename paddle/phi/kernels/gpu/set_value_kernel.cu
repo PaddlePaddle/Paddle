@@ -42,6 +42,7 @@ void SetTensorValueKernelV2(const Context& dev_ctx,
                             const std::vector<int64_t>& none_axes,
                             DenseTensor* out) {
   auto in_dims = in.dims();
+  auto meta = in.meta();
   std::vector<int64_t> starts_local = starts.GetData();
   std::vector<int64_t> ends_local = ends.GetData();
   std::vector<int64_t> steps_local = steps.GetData();
@@ -116,7 +117,7 @@ void SetTensorValueKernelV2(const Context& dev_ctx,
                                 new_out_stride,
                                 output_offset,
                                 out);
-  out->set_meta(in.meta());
+  out->set_meta(meta);
 }
 
 template <typename T, typename Context>
