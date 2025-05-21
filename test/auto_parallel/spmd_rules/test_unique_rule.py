@@ -20,7 +20,7 @@ from paddle.distributed.auto_parallel.static.dist_attribute import (
     TensorDistAttr,
 )
 from paddle.distributed.fleet import auto
-from paddle.framework import core
+from paddle.framework import convert_np_dtype_to_dtype_, core
 
 
 class TestUniqueSPMDRule(unittest.TestCase):
@@ -39,6 +39,7 @@ class TestUniqueSPMDRule(unittest.TestCase):
         self.attrs["return_inverse"] = True
         self.attrs["return_counts"] = True
         self.attrs["axis"] = []
+        self.attrs['dtype'] = convert_np_dtype_to_dtype_("int32")
 
     def test_infer_forward(self):
         # return_index=True, return_inverse=True, return_counts=True, axis={}
@@ -50,6 +51,7 @@ class TestUniqueSPMDRule(unittest.TestCase):
         #     self.attrs["return_inverse"],
         #     self.attrs["return_counts"],
         #     self.attrs["axis"],
+        #     self.attrs['dtype'],
         # )
 
         # self.assertEqual(len(result_dist_attrs), 2)
@@ -75,6 +77,7 @@ class TestUniqueSPMDRule(unittest.TestCase):
             self.attrs["return_inverse"],
             self.attrs["return_counts"],
             self.attrs["axis"],
+            self.attrs['dtype'],
         )
 
         self.assertEqual(len(result_dist_attrs), 2)

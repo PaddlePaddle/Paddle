@@ -21,11 +21,12 @@ limitations under the License. */
 namespace phi {
 namespace distributed {
 
-SpmdInfo UniqueInferSpmdBase(const DistMetaTensor& x,
-                             bool return_index,
-                             bool return_inverse,
-                             bool return_counts,
-                             const std::vector<int>& axis) {
+SpmdInfo UniqueInferSpmd(const DistMetaTensor& x,
+                         bool return_index,
+                         bool return_inverse,
+                         bool return_counts,
+                         const std::vector<int>& axis,
+                         DataType dtype) {
   // Verify input args
   EXTRACT_SHAPE_AND_DIST_ATTR(x);
   std::vector<int64_t> x_dims_mapping_dst(x_ndim, -1);
@@ -39,40 +40,36 @@ SpmdInfo UniqueInferSpmdBase(const DistMetaTensor& x,
   TensorDistAttr out_dist_attr_dst =
       CopyTensorDistAttrForOutput(x_dist_attr_src);
   out_dist_attr_dst.set_dims_mapping(out_dims_mapping_dst);
-  std::vector<TensorDistAttr> outputs_spmd_info = {out_dist_attr_dst};
 
+  TensorDistAttr indices_dist_attr_dst = TensorDistAttr();
   if (return_index) {
-    TensorDistAttr indices_dist_attr_dst =
-        CopyTensorDistAttrForOutput(x_dist_attr_src);
+    indices_dist_attr_dst = CopyTensorDistAttrForOutput(x_dist_attr_src);
     indices_dist_attr_dst.set_dims_mapping({-1});
-    outputs_spmd_info.push_back(indices_dist_attr_dst);
   }
 
+  TensorDistAttr inverse_dist_attr_dst = TensorDistAttr();
   if (return_inverse) {
-    TensorDistAttr inverse_dist_attr_dst =
-        CopyTensorDistAttrForOutput(x_dist_attr_src);
+    inverse_dist_attr_dst = CopyTensorDistAttrForOutput(x_dist_attr_src);
     inverse_dist_attr_dst.set_dims_mapping({-1});
-    outputs_spmd_info.push_back(inverse_dist_attr_dst);
+    // TODO(dev): https://github.com/PaddlePaddle/Paddle/issues/72822
+    // if (axis.empty()) {
+    //   inverse_dist_attr_dst.set_dims_mapping(x_dims_mapping_dst);
+    // }
   }
 
+  TensorDistAttr counts_dist_attr_dst = TensorDistAttr();
   if (return_counts) {
-    TensorDistAttr counts_dist_attr_dst =
-        CopyTensorDistAttrForOutput(x_dist_attr_src);
+    counts_dist_attr_dst = CopyTensorDistAttrForOutput(x_dist_attr_src);
     counts_dist_attr_dst.set_dims_mapping({-1});
-    outputs_spmd_info.push_back(counts_dist_attr_dst);
   }
 
-  return {{x_dist_attr_dst}, ToArgDistAttr(outputs_spmd_info)};
-}
-
-SpmdInfo UniqueInferSpmd(const DistMetaTensor& x,
-                         bool return_index,
-                         bool return_inverse,
-                         bool return_counts,
-                         const std::vector<int>& axis,
-                         DataType dtype) {
-  return UniqueInferSpmdBase(
-      x, return_index, return_inverse, return_counts, axis);
+  VLOG(4) << "UniqueInferSpmd: All input and output TensorDistAttr are set to "
+             "fully replicated status.";
+  return {{x_dist_attr_dst},
+          {out_dist_attr_dst,
+           indices_dist_attr_dst,
+           inverse_dist_attr_dst,
+           counts_dist_attr_dst}};
 }
 
 SpmdInfo UniqueInferSpmdStatic(const DistMetaTensor& x,
@@ -82,8 +79,8 @@ SpmdInfo UniqueInferSpmdStatic(const DistMetaTensor& x,
                                const std::vector<int>& axis,
                                DataType dtype,
                                bool is_sorted) {
-  return UniqueInferSpmdBase(
-      x, return_index, return_inverse, return_counts, axis);
+  return UniqueInferSpmd(
+      x, return_index, return_inverse, return_counts, axis, dtype);
 }
 }  // namespace distributed
 }  // namespace phi
