@@ -847,8 +847,8 @@ void BuildOpFuncList(const phi::Place& place,
             auto ring_id_attr = attrs.at("ring_id");
             int ring_id = PADDLE_GET(int, ring_id_attr);
             auto map = distributed::ProcessGroupMapFromGid::getInstance();
-            if (map->has(ring_id)) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
+            if (map->has(ring_id)) {
               auto original_stream =
                   static_cast<phi::CustomContext*>(dev_ctx)->GetStream();
               distributed::ProcessGroup* pg = map->get(ring_id);
@@ -863,24 +863,31 @@ void BuildOpFuncList(const phi::Place& place,
               static_cast<phi::CustomContext*>(dev_ctx)->SetStream(
                   original_stream);
               // todo  set allocator in custom device
-            } else {
-              VLOG(3) << "ring_id " << ring_id
-                      << " not found in ProcessGroupMapFromGid ";
-            }
-          }
 #else
 
-              auto original_stream =
-                  static_cast<phi::GPUContext*>(dev_ctx)->cuda_stream();
-              distributed::ProcessGroup* pg = map->get(ring_id);
-              auto comm_context =
-                  static_cast<paddle::distributed::ProcessGroupNCCL*>(pg)
-                      ->GetOrCreateCommContext(place);
-              dev_ctx =
-                  static_cast<phi::distributed::NCCLCommContext*>(comm_context)
-                      ->GetDevContext();
-              dev_ctx->SetCommContext(comm_context);
-
+            auto original_stream =
+                static_cast<phi::GPUContext*>(dev_ctx)->cuda_stream();
+            if (map->has(ring_id) || op_type == "p_send" ||
+                op_type == "p_recv") {
+              if (map->has(ring_id)) {
+                distributed::ProcessGroup* pg = map->get(ring_id);
+                auto nccl_comm_context =
+                    static_cast<paddle::distributed::ProcessGroupNCCL*>(pg)
+                        ->GetOrCreateCommContext(place);
+                dev_ctx = static_cast<phi::distributed::NCCLCommContext*>(
+                              nccl_comm_context)
+                              ->GetDevContext();
+                dev_ctx->SetCommContext(nccl_comm_context);
+              } else {
+                const auto& comm_context_manager =
+                    phi::distributed::CommContextManager::GetInstance();
+                auto comm_context =
+                    comm_context_manager.Get(std::to_string(ring_id));
+                dev_ctx = static_cast<phi::distributed::NCCLCommContext*>(
+                              comm_context)
+                              ->GetDevContext();
+                dev_ctx->SetCommContext(comm_context);
+              }
               static_cast<phi::GPUContext*>(dev_ctx)->SetCUDAStream(
                   original_stream, false);
               auto& instance =
@@ -891,36 +898,12 @@ void BuildOpFuncList(const phi::Place& place,
                           place,
                           static_cast<phi::GPUContext*>(dev_ctx)->stream())
                       .get());
-
+#endif
             } else {
               VLOG(3) << "ring_id " << ring_id
                       << " not found in ProcessGroupMapFromGid ";
             }
-            if (op_type == "p_send" || op_type == "p_recv") {
-              const auto& comm_context_manager =
-                  phi::distributed::CommContextManager::GetInstance();
-              auto comm_context =
-                  comm_context_manager.Get(std::to_string(ring_id));
-              dev_ctx =
-                  static_cast<phi::distributed::NCCLCommContext*>(comm_context)
-                      ->GetDevContext();
-              dev_ctx->SetCommContext(comm_context);
-
-              auto original_stream =
-                  static_cast<phi::GPUContext*>(dev_ctx)->cuda_stream();
-              static_cast<phi::GPUContext*>(dev_ctx)->SetCUDAStream(
-                  original_stream, false);
-              auto& instance =
-                  paddle::memory::allocation::AllocatorFacade::Instance();
-              dev_ctx->SetAllocator(
-                  instance
-                      .GetAllocator(
-                          place,
-                          static_cast<phi::GPUContext*>(dev_ctx)->stream())
-                      .get());
-            }
           }
-#endif
 #endif
           if (static_build) {
             FakeInitializeOutputsForFunctionKernel(
