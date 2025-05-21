@@ -19,8 +19,8 @@ from abc import ABC, abstractmethod
 from functools import partial
 from typing import TYPE_CHECKING, Any, Callable, Union
 
-from _backward import stage_backward
-from utils import (
+from ._backward import stage_backward
+from .utils import (
     TensorMeta,
     detach_and_requires_grad,
     flatten_args,
@@ -111,6 +111,8 @@ def _make_tensor_from_meta(
     """
     Create a real dense tensor from a tensor.
     """
+    if not isinstance(example, TensorMeta):
+        return example
     return paddle.empty(
         example.shape,
         dtype=example.dtype,
@@ -1127,10 +1129,6 @@ class PipelineStage(_PipelineStageBase):
 
         paddle.autograd.backward(stage_output, grads, True)
 
-        # output is the grad meta for input_values(list)
-        output_meta = tuple(
-            map_structure(lambda x: TensorMeta(x.grad), input_values)
-        )
 
         if (
             self.is_first
@@ -1143,6 +1141,9 @@ class PipelineStage(_PipelineStageBase):
                 self.stage_index,
             )
         else:
+            output_meta = tuple(
+                map_structure(lambda x: TensorMeta(x.grad), input_values)
+            )
             logger.debug(
                 "Shape inference: stage %s sending to stage %s",
                 self.stage_index,

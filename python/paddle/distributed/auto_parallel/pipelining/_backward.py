@@ -17,7 +17,7 @@ from __future__ import annotations
 import logging
 from typing import Any, Iterator
 
-from utils import map_debug_info
+from .utils import map_debug_info
 
 import paddle
 
