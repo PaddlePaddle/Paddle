@@ -149,5 +149,6 @@ PD_REGISTER_KERNEL(moe_combine_grad,
                    ALL_LAYOUT,
                    phi::MoeCombineGradKernel,
                    float,
+                   double,
                    phi::dtype::bfloat16,
                    phi::dtype::float16) {}

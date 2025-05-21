@@ -40,13 +40,6 @@ namespace phi {
 std::vector<DDim> GetMetaTensorsDim(
     const std::vector<const MetaTensor*>& tensors);
 
-void MoeCombineGradInferMeta(const MetaTensor& x,
-                             const MetaTensor& combine_weights,
-                             const MetaTensor& scatter_index,
-                             const MetaTensor& grad_y,
-                             MetaTensor* grad_x,
-                             MetaTensor* grad_combine_weights_helper);
-
 void AdadeltaInferMeta(const MetaTensor& param,
                        const MetaTensor& grad,
                        const MetaTensor& avg_squared_grad,
