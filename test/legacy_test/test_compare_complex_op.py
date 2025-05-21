@@ -229,13 +229,21 @@ class TestEqualSpecialCase(unittest.TestCase):
 class TestLessThanComplex64Api(op_test.OpTest):
     def setUp(self):
         self.op_type = 'less_than'
-        self.typename = ("float32", "complex64")
+        self.real_dtype = "float32"
         self.dtype = "complex64"
         self.python_api = paddle.less_than
-        x_real = numpy.random.uniform(-10, 10, (6, 5, 4, 3))
-        x_imag = numpy.random.uniform(-10, 10, (6, 5, 4, 3))
-        y_real = numpy.random.uniform(-10, 10, (6, 5, 4, 3))
-        y_imag = numpy.random.uniform(-10, 10, (6, 5, 4, 3))
+        x_real = numpy.random.uniform(-10, 10, (6, 5, 4, 3)).astype(
+            self.real_dtype
+        )
+        x_imag = numpy.random.uniform(-10, 10, (6, 5, 4, 3)).astype(
+            self.real_dtype
+        )
+        y_real = numpy.random.uniform(-10, 10, (6, 5, 4, 3)).astype(
+            self.real_dtype
+        )
+        y_imag = numpy.random.uniform(-10, 10, (6, 5, 4, 3)).astype(
+            self.real_dtype
+        )
         x = x_real + 1j * x_imag
         y = y_real + 1j * y_imag
         self.inputs = {'X': x, 'Y': y}
@@ -256,10 +264,10 @@ class TestLessThanComplex64Api(op_test.OpTest):
 class TestLessThanComplex64InfCase(TestLessThanComplex64Api):
     def setUp(self):
         super().setUp()
-        x_real = np.array([1, np.inf, -np.inf, 0, 0]).astype(self.typename[0])
-        x_imag = np.array([1, -1, 1, np.inf, -np.inf]).astype(self.typename[0])
-        y_real = np.array([2, np.inf, -np.inf, 0, 0]).astype(self.typename[0])
-        y_imag = np.array([1, 1, -1, np.inf, np.inf]).astype(self.typename[0])
+        x_real = np.array([1, np.inf, -np.inf, 0, 0]).astype(self.real_dtype)
+        x_imag = np.array([1, -1, 1, np.inf, -np.inf]).astype(self.real_dtype)
+        y_real = np.array([2, np.inf, -np.inf, 0, 0]).astype(self.real_dtype)
+        y_imag = np.array([1, 1, -1, np.inf, np.inf]).astype(self.real_dtype)
         x = np.array([complex(r, i) for r, i in zip(x_real, x_imag)])
         y = np.array([complex(r, i) for r, i in zip(y_real, y_imag)])
         self.inputs = {'X': x, 'Y': y}
@@ -277,10 +285,10 @@ class TestLessThanComplex64InfCase(TestLessThanComplex64Api):
 class TestLessThanComplex64NanCase(TestLessThanComplex64Api):
     def setUp(self):
         super().setUp()
-        x_real = np.array([1, np.nan, -np.nan, 0, 0]).astype(self.typename[0])
-        x_imag = np.array([1, -1, 1, np.nan, -np.nan]).astype(self.typename[0])
-        y_real = np.array([2, np.nan, -np.nan, 0, 0]).astype(self.typename[0])
-        y_imag = np.array([1, 1, -1, np.nan, np.nan]).astype(self.typename[0])
+        x_real = np.array([1, np.nan, -np.nan, 0, 0]).astype(self.real_dtype)
+        x_imag = np.array([1, -1, 1, np.nan, -np.nan]).astype(self.real_dtype)
+        y_real = np.array([2, np.nan, -np.nan, 0, 0]).astype(self.real_dtype)
+        y_imag = np.array([1, 1, -1, np.nan, np.nan]).astype(self.real_dtype)
         x = x_real + 1j * x_imag
         y = y_real + 1j * y_imag
         self.inputs = {'X': x, 'Y': y}
@@ -291,20 +299,20 @@ class TestLessThanComplex64NanCase(TestLessThanComplex64Api):
 class TestLessThanComplex128Api(op_test.OpTest):
     def setUp(self):
         self.op_type = 'less_than'
-        self.typename = ("float64", "complex128")
+        self.real_dtype = "float64"
         self.dtype = "complex128"
         self.python_api = paddle.less_than
         x_real = numpy.random.uniform(-10, 10, (6, 5, 4, 3)).astype(
-            self.typename[0]
+            self.real_dtype
         )
         x_imag = numpy.random.uniform(-10, 10, (6, 5, 4, 3)).astype(
-            self.typename[0]
+            self.real_dtype
         )
         y_real = numpy.random.uniform(-10, 10, (6, 5, 4, 3)).astype(
-            self.typename[0]
+            self.real_dtype
         )
         y_imag = numpy.random.uniform(-10, 10, (6, 5, 4, 3)).astype(
-            self.typename[0]
+            self.real_dtype
         )
         x = x_real + 1j * x_imag
         y = y_real + 1j * y_imag
@@ -326,10 +334,10 @@ class TestLessThanComplex128Api(op_test.OpTest):
 class TestLessThanComplex128InfCase(TestLessThanComplex128Api):
     def setUp(self):
         super().setUp()
-        x_real = np.array([1, np.inf, -np.inf, 0, 0])
-        x_imag = np.array([1, -1, 1, np.inf, -np.inf])
-        y_real = np.array([2, np.inf, -np.inf, 0, 0])
-        y_imag = np.array([1, 1, -1, np.inf, np.inf])
+        x_real = np.array([1, np.inf, -np.inf, 0, 0]).astype(self.real_dtype)
+        x_imag = np.array([1, -1, 1, np.inf, -np.inf]).astype(self.real_dtype)
+        y_real = np.array([2, np.inf, -np.inf, 0, 0]).astype(self.real_dtype)
+        y_imag = np.array([1, 1, -1, np.inf, np.inf]).astype(self.real_dtype)
         x = np.array([complex(r, i) for r, i in zip(x_real, x_imag)])
         y = np.array([complex(r, i) for r, i in zip(y_real, y_imag)])
         self.inputs = {'X': x, 'Y': y}
@@ -347,10 +355,10 @@ class TestLessThanComplex128InfCase(TestLessThanComplex128Api):
 class TestLessThanComplex128NanCase(TestLessThanComplex128Api):
     def setUp(self):
         super().setUp()
-        x_real = np.array([1, np.nan, -np.nan, 0, 0]).astype(self.typename[0])
-        x_imag = np.array([1, -1, 1, np.nan, -np.nan]).astype(self.typename[0])
-        y_real = np.array([2, np.nan, -np.nan, 0, 0]).astype(self.typename[0])
-        y_imag = np.array([1, 1, -1, np.nan, np.nan]).astype(self.typename[0])
+        x_real = np.array([1, np.nan, -np.nan, 0, 0]).astype(self.real_dtype)
+        x_imag = np.array([1, -1, 1, np.nan, -np.nan]).astype(self.real_dtype)
+        y_real = np.array([2, np.nan, -np.nan, 0, 0]).astype(self.real_dtype)
+        y_imag = np.array([1, 1, -1, np.nan, np.nan]).astype(self.real_dtype)
         x = x_real + 1j * x_imag
         y = y_real + 1j * y_imag
         self.inputs = {'X': x, 'Y': y}
@@ -360,20 +368,20 @@ class TestLessThanComplex128NanCase(TestLessThanComplex128Api):
 class TestLessEqualComplex64Api(op_test.OpTest):
     def setUp(self):
         self.op_type = 'less_equal'
-        self.typename = ("float32", "complex64")
+        self.real_dtype = "float32"
         self.dtype = "complex64"
         self.python_api = paddle.less_equal
         x_real = numpy.random.uniform(-10, 10, (6, 5, 4, 3)).astype(
-            self.typename[0]
+            self.real_dtype
         )
         x_imag = numpy.random.uniform(-10, 10, (6, 5, 4, 3)).astype(
-            self.typename[0]
+            self.real_dtype
         )
         y_real = numpy.random.uniform(-10, 10, (6, 5, 4, 3)).astype(
-            self.typename[0]
+            self.real_dtype
         )
         y_imag = numpy.random.uniform(-10, 10, (6, 5, 4, 3)).astype(
-            self.typename[0]
+            self.real_dtype
         )
         x = x_real + 1j * x_imag
         y = y_real + 1j * y_imag
@@ -395,18 +403,12 @@ class TestLessEqualComplex64Api(op_test.OpTest):
 class TestLessEqualComplex64InfCase(TestLessEqualComplex64Api):
     def setUp(self):
         super().setUp()
-        x_real = np.array([1, np.inf, -np.inf, 0, 0, 1]).astype(
-            self.typename[0]
-        )
+        x_real = np.array([1, np.inf, -np.inf, 0, 0, 1]).astype(self.real_dtype)
         x_imag = np.array([1, -1, 1, np.inf, -np.inf, 1]).astype(
-            self.typename[0]
+            self.real_dtype
         )
-        y_real = np.array([2, np.inf, -np.inf, 0, 0, 1]).astype(
-            self.typename[0]
-        )
-        y_imag = np.array([1, 1, -1, np.inf, np.inf, 1]).astype(
-            self.typename[0]
-        )
+        y_real = np.array([2, np.inf, -np.inf, 0, 0, 1]).astype(self.real_dtype)
+        y_imag = np.array([1, 1, -1, np.inf, np.inf, 1]).astype(self.real_dtype)
         x = np.array([complex(r, i) for r, i in zip(x_real, x_imag)])
         y = np.array([complex(r, i) for r, i in zip(y_real, y_imag)])
         self.inputs = {'X': x, 'Y': y}
@@ -424,10 +426,10 @@ class TestLessEqualComplex64InfCase(TestLessEqualComplex64Api):
 class TestLessEqualComplex64NanCase(TestLessEqualComplex64Api):
     def setUp(self):
         super().setUp()
-        x_real = np.array([1, np.nan, -np.nan, 0, 0]).astype(self.typename[0])
-        x_imag = np.array([1, -1, 1, np.nan, -np.nan]).astype(self.typename[0])
-        y_real = np.array([2, np.nan, -np.nan, 0, 0]).astype(self.typename[0])
-        y_imag = np.array([1, 1, -1, np.nan, np.nan]).astype(self.typename[0])
+        x_real = np.array([1, np.nan, -np.nan, 0, 0]).astype(self.real_dtype)
+        x_imag = np.array([1, -1, 1, np.nan, -np.nan]).astype(self.real_dtype)
+        y_real = np.array([2, np.nan, -np.nan, 0, 0]).astype(self.real_dtype)
+        y_imag = np.array([1, 1, -1, np.nan, np.nan]).astype(self.real_dtype)
         x = x_real + 1j * x_imag
         y = y_real + 1j * y_imag
         self.inputs = {'X': x, 'Y': y}
@@ -437,20 +439,20 @@ class TestLessEqualComplex64NanCase(TestLessEqualComplex64Api):
 class TestLessEqualComplex128Api(op_test.OpTest):
     def setUp(self):
         self.op_type = 'less_equal'
-        self.typename = ("float64", "complex128")
+        self.real_dtype = "float64"
         self.dtype = "complex128"
         self.python_api = paddle.less_equal
         x_real = numpy.random.uniform(-10, 10, (6, 5, 4, 3)).astype(
-            self.typename[0]
+            self.real_dtype
         )
         x_imag = numpy.random.uniform(-10, 10, (6, 5, 4, 3)).astype(
-            self.typename[0]
+            self.real_dtype
         )
         y_real = numpy.random.uniform(-10, 10, (6, 5, 4, 3)).astype(
-            self.typename[0]
+            self.real_dtype
         )
         y_imag = numpy.random.uniform(-10, 10, (6, 5, 4, 3)).astype(
-            self.typename[0]
+            self.real_dtype
         )
         x = x_real + 1j * x_imag
         y = y_real + 1j * y_imag
@@ -472,18 +474,12 @@ class TestLessEqualComplex128Api(op_test.OpTest):
 class TestLessEqualComplex128InfCase(TestLessEqualComplex128Api):
     def setUp(self):
         super().setUp()
-        x_real = np.array([1, np.inf, -np.inf, 0, 0, 1]).astype(
-            self.typename[0]
-        )
+        x_real = np.array([1, np.inf, -np.inf, 0, 0, 1]).astype(self.real_dtype)
         x_imag = np.array([1, -1, 1, np.inf, -np.inf, 1]).astype(
-            self.typename[0]
+            self.real_dtype
         )
-        y_real = np.array([2, np.inf, -np.inf, 0, 0, 1]).astype(
-            self.typename[0]
-        )
-        y_imag = np.array([1, 1, -1, np.inf, np.inf, 1]).astype(
-            self.typename[0]
-        )
+        y_real = np.array([2, np.inf, -np.inf, 0, 0, 1]).astype(self.real_dtype)
+        y_imag = np.array([1, 1, -1, np.inf, np.inf, 1]).astype(self.real_dtype)
         x = np.array([complex(r, i) for r, i in zip(x_real, x_imag)])
         y = np.array([complex(r, i) for r, i in zip(y_real, y_imag)])
         self.inputs = {'X': x, 'Y': y}
@@ -501,10 +497,10 @@ class TestLessEqualComplex128InfCase(TestLessEqualComplex128Api):
 class TestLessEqualComplex128NanCase(TestLessEqualComplex128Api):
     def setUp(self):
         super().setUp()
-        x_real = np.array([1, np.nan, -np.nan, 0, 0]).astype(self.typename[0])
-        x_imag = np.array([1, -1, 1, np.nan, -np.nan]).astype(self.typename[0])
-        y_real = np.array([2, np.nan, -np.nan, 0, 0]).astype(self.typename[0])
-        y_imag = np.array([1, 1, -1, np.nan, np.nan]).astype(self.typename[0])
+        x_real = np.array([1, np.nan, -np.nan, 0, 0]).astype(self.real_dtype)
+        x_imag = np.array([1, -1, 1, np.nan, -np.nan]).astype(self.real_dtype)
+        y_real = np.array([2, np.nan, -np.nan, 0, 0]).astype(self.real_dtype)
+        y_imag = np.array([1, 1, -1, np.nan, np.nan]).astype(self.real_dtype)
         x = x_real + 1j * x_imag
         y = y_real + 1j * y_imag
         self.inputs = {'X': x, 'Y': y}
@@ -514,20 +510,20 @@ class TestLessEqualComplex128NanCase(TestLessEqualComplex128Api):
 class TestGreaterThanComplex64Api(op_test.OpTest):
     def setUp(self):
         self.op_type = 'greater_than'
-        self.typename = ("float32", "complex64")
+        self.real_dtype = "float32"
         self.dtype = "complex64"
         self.python_api = paddle.greater_than
         x_real = numpy.random.uniform(-10, 10, (6, 5, 4, 3)).astype(
-            self.typename[0]
+            self.real_dtype
         )
         x_imag = numpy.random.uniform(-10, 10, (6, 5, 4, 3)).astype(
-            self.typename[0]
+            self.real_dtype
         )
         y_real = numpy.random.uniform(-10, 10, (6, 5, 4, 3)).astype(
-            self.typename[0]
+            self.real_dtype
         )
         y_imag = numpy.random.uniform(-10, 10, (6, 5, 4, 3)).astype(
-            self.typename[0]
+            self.real_dtype
         )
         x = x_real + 1j * x_imag
         y = y_real + 1j * y_imag
@@ -549,10 +545,10 @@ class TestGreaterThanComplex64Api(op_test.OpTest):
 class TestGreaterThanComplex64InfCase(TestGreaterThanComplex64Api):
     def setUp(self):
         super().setUp()
-        x_real = np.array([2, np.inf, -np.inf, 0, 0]).astype(self.typename[0])
-        x_imag = np.array([1, 1, -1, np.inf, np.inf]).astype(self.typename[0])
-        y_real = np.array([1, np.inf, -np.inf, 0, 0]).astype(self.typename[0])
-        y_imag = np.array([1, -1, 1, np.inf, -np.inf]).astype(self.typename[0])
+        x_real = np.array([2, np.inf, -np.inf, 0, 0]).astype(self.real_dtype)
+        x_imag = np.array([1, 1, -1, np.inf, np.inf]).astype(self.real_dtype)
+        y_real = np.array([1, np.inf, -np.inf, 0, 0]).astype(self.real_dtype)
+        y_imag = np.array([1, -1, 1, np.inf, -np.inf]).astype(self.real_dtype)
         x = np.array([complex(r, i) for r, i in zip(x_real, x_imag)])
         y = np.array([complex(r, i) for r, i in zip(y_real, y_imag)])
 
@@ -571,10 +567,10 @@ class TestGreaterThanComplex64InfCase(TestGreaterThanComplex64Api):
 class TestGreaterThanComplex64NanCase(TestGreaterThanComplex64Api):
     def setUp(self):
         super().setUp()
-        x_real = np.array([2, np.nan, -np.nan, 0, 0]).astype(self.typename[0])
-        x_imag = np.array([1, 1, -1, np.nan, np.nan]).astype(self.typename[0])
-        y_real = np.array([1, np.nan, -np.nan, 0, 0]).astype(self.typename[0])
-        y_imag = np.array([1, -1, 1, np.nan, -np.nan]).astype(self.typename[0])
+        x_real = np.array([2, np.nan, -np.nan, 0, 0]).astype(self.real_dtype)
+        x_imag = np.array([1, 1, -1, np.nan, np.nan]).astype(self.real_dtype)
+        y_real = np.array([1, np.nan, -np.nan, 0, 0]).astype(self.real_dtype)
+        y_imag = np.array([1, -1, 1, np.nan, -np.nan]).astype(self.real_dtype)
         x = np.array([complex(r, i) for r, i in zip(x_real, x_imag)])
         y = np.array([complex(r, i) for r, i in zip(y_real, y_imag)])
         self.inputs = {'X': x, 'Y': y}
@@ -584,20 +580,20 @@ class TestGreaterThanComplex64NanCase(TestGreaterThanComplex64Api):
 class TestGreaterThanComplex128Api(op_test.OpTest):
     def setUp(self):
         self.op_type = 'greater_than'
-        self.typename = ("float64", "complex128")
+        self.real_dtype = "float64"
         self.dtype = "complex128"
         self.python_api = paddle.greater_than
         x_real = numpy.random.uniform(-10, 10, (6, 5, 4, 3)).astype(
-            self.typename[0]
+            self.real_dtype
         )
         x_imag = numpy.random.uniform(-10, 10, (6, 5, 4, 3)).astype(
-            self.typename[0]
+            self.real_dtype
         )
         y_real = numpy.random.uniform(-10, 10, (6, 5, 4, 3)).astype(
-            self.typename[0]
+            self.real_dtype
         )
         y_imag = numpy.random.uniform(-10, 10, (6, 5, 4, 3)).astype(
-            self.typename[0]
+            self.real_dtype
         )
         x = x_real + 1j * x_imag
         y = y_real + 1j * y_imag
@@ -619,10 +615,10 @@ class TestGreaterThanComplex128Api(op_test.OpTest):
 class TestGreaterThanComplex128InfCase(TestGreaterThanComplex128Api):
     def setUp(self):
         super().setUp()
-        x_real = np.array([2, np.inf, -np.inf, 0, 0]).astype(self.typename[0])
-        x_imag = np.array([1, 1, -1, np.inf, np.inf]).astype(self.typename[0])
-        y_real = np.array([1, np.inf, -np.inf, 0, 0]).astype(self.typename[0])
-        y_imag = np.array([1, -1, 1, np.inf, -np.inf]).astype(self.typename[0])
+        x_real = np.array([2, np.inf, -np.inf, 0, 0]).astype(self.real_dtype)
+        x_imag = np.array([1, 1, -1, np.inf, np.inf]).astype(self.real_dtype)
+        y_real = np.array([1, np.inf, -np.inf, 0, 0]).astype(self.real_dtype)
+        y_imag = np.array([1, -1, 1, np.inf, -np.inf]).astype(self.real_dtype)
         x = np.array([complex(r, i) for r, i in zip(x_real, x_imag)])
         y = np.array([complex(r, i) for r, i in zip(y_real, y_imag)])
         self.inputs = {'X': x, 'Y': y}
@@ -640,10 +636,10 @@ class TestGreaterThanComplex128InfCase(TestGreaterThanComplex128Api):
 class TestGreaterThanComplex128NanCase(TestGreaterThanComplex128Api):
     def setUp(self):
         super().setUp()
-        x_real = np.array([2, np.nan, -np.nan, 0, 0]).astype(self.typename[0])
-        x_imag = np.array([1, 1, -1, np.nan, np.nan]).astype(self.typename[0])
-        y_real = np.array([1, np.nan, -np.nan, 0, 0]).astype(self.typename[0])
-        y_imag = np.array([1, -1, 1, np.nan, -np.nan]).astype(self.typename[0])
+        x_real = np.array([2, np.nan, -np.nan, 0, 0]).astype(self.real_dtype)
+        x_imag = np.array([1, 1, -1, np.nan, np.nan]).astype(self.real_dtype)
+        y_real = np.array([1, np.nan, -np.nan, 0, 0]).astype(self.real_dtype)
+        y_imag = np.array([1, -1, 1, np.nan, -np.nan]).astype(self.real_dtype)
         x = x_real + 1j * x_imag
         y = y_real + 1j * y_imag
         self.inputs = {'X': x, 'Y': y}
@@ -653,20 +649,20 @@ class TestGreaterThanComplex128NanCase(TestGreaterThanComplex128Api):
 class TestGreaterEqualComplex64Api(op_test.OpTest):
     def setUp(self):
         self.op_type = 'greater_equal'
-        self.typename = ("float32", "complex64")
+        self.real_dtype = "float32"
         self.dtype = "complex64"
         self.python_api = paddle.greater_equal
         x_real = numpy.random.uniform(-10, 10, (6, 5, 4, 3)).astype(
-            self.typename[0]
+            self.real_dtype
         )
         x_imag = numpy.random.uniform(-10, 10, (6, 5, 4, 3)).astype(
-            self.typename[0]
+            self.real_dtype
         )
         y_real = numpy.random.uniform(-10, 10, (6, 5, 4, 3)).astype(
-            self.typename[0]
+            self.real_dtype
         )
         y_imag = numpy.random.uniform(-10, 10, (6, 5, 4, 3)).astype(
-            self.typename[0]
+            self.real_dtype
         )
         x = x_real + 1j * x_imag
         y = y_real + 1j * y_imag
@@ -688,17 +684,11 @@ class TestGreaterEqualComplex64Api(op_test.OpTest):
 class TestGreaterEqualComplex64InfCase(TestGreaterEqualComplex64Api):
     def setUp(self):
         super().setUp()
-        x_real = np.array([2, np.inf, -np.inf, 0, 0, 1]).astype(
-            self.typename[0]
-        )
-        x_imag = np.array([1, 1, -1, np.inf, np.inf, 1]).astype(
-            self.typename[0]
-        )
-        y_real = np.array([1, np.inf, -np.inf, 0, 0, 1]).astype(
-            self.typename[0]
-        )
+        x_real = np.array([2, np.inf, -np.inf, 0, 0, 1]).astype(self.real_dtype)
+        x_imag = np.array([1, 1, -1, np.inf, np.inf, 1]).astype(self.real_dtype)
+        y_real = np.array([1, np.inf, -np.inf, 0, 0, 1]).astype(self.real_dtype)
         y_imag = np.array([1, -1, 1, np.inf, -np.inf, 1]).astype(
-            self.typename[0]
+            self.real_dtype
         )
         x = np.array([complex(r, i) for r, i in zip(x_real, x_imag)])
         y = np.array([complex(r, i) for r, i in zip(y_real, y_imag)])
@@ -717,10 +707,10 @@ class TestGreaterEqualComplex64InfCase(TestGreaterEqualComplex64Api):
 class TestGreaterEqualComplex64NanCase(TestGreaterEqualComplex64Api):
     def setUp(self):
         super().setUp()
-        x_real = np.array([2, np.nan, -np.nan, 0, 0]).astype(self.typename[0])
-        x_imag = np.array([1, 1, -1, np.nan, np.nan]).astype(self.typename[0])
-        y_real = np.array([1, np.nan, -np.nan, 0, 0]).astype(self.typename[0])
-        y_imag = np.array([1, -1, 1, np.nan, -np.nan]).astype(self.typename[0])
+        x_real = np.array([2, np.nan, -np.nan, 0, 0]).astype(self.real_dtype)
+        x_imag = np.array([1, 1, -1, np.nan, np.nan]).astype(self.real_dtype)
+        y_real = np.array([1, np.nan, -np.nan, 0, 0]).astype(self.real_dtype)
+        y_imag = np.array([1, -1, 1, np.nan, -np.nan]).astype(self.real_dtype)
         x = x_real + 1j * x_imag
         y = y_real + 1j * y_imag
         self.inputs = {'X': x, 'Y': y}
@@ -730,20 +720,20 @@ class TestGreaterEqualComplex64NanCase(TestGreaterEqualComplex64Api):
 class TestGreaterEqualComplex128Api(op_test.OpTest):
     def setUp(self):
         self.op_type = 'greater_equal'
-        self.typename = ("float64", "complex128")
+        self.real_dtype = "float64"
         self.dtype = "complex128"
         self.python_api = paddle.greater_equal
         x_real = numpy.random.uniform(-10, 10, (6, 5, 4, 3)).astype(
-            self.typename[0]
+            self.real_dtype
         )
         x_imag = numpy.random.uniform(-10, 10, (6, 5, 4, 3)).astype(
-            self.typename[0]
+            self.real_dtype
         )
         y_real = numpy.random.uniform(-10, 10, (6, 5, 4, 3)).astype(
-            self.typename[0]
+            self.real_dtype
         )
         y_imag = numpy.random.uniform(-10, 10, (6, 5, 4, 3)).astype(
-            self.typename[0]
+            self.real_dtype
         )
         x = x_real + 1j * x_imag
         y = y_real + 1j * y_imag
@@ -765,17 +755,11 @@ class TestGreaterEqualComplex128Api(op_test.OpTest):
 class TestGreaterEqualComplex128InfCase(TestGreaterEqualComplex128Api):
     def setUp(self):
         super().setUp()
-        x_real = np.array([2, np.inf, -np.inf, 0, 0, 1]).astype(
-            self.typename[0]
-        )
-        x_imag = np.array([1, 1, -1, np.inf, np.inf, 1]).astype(
-            self.typename[0]
-        )
-        y_real = np.array([1, np.inf, -np.inf, 0, 0, 1]).astype(
-            self.typename[0]
-        )
+        x_real = np.array([2, np.inf, -np.inf, 0, 0, 1]).astype(self.real_dtype)
+        x_imag = np.array([1, 1, -1, np.inf, np.inf, 1]).astype(self.real_dtype)
+        y_real = np.array([1, np.inf, -np.inf, 0, 0, 1]).astype(self.real_dtype)
         y_imag = np.array([1, -1, 1, np.inf, -np.inf, 1]).astype(
-            self.typename[0]
+            self.real_dtype
         )
         x = np.array([complex(r, i) for r, i in zip(x_real, x_imag)])
         y = np.array([complex(r, i) for r, i in zip(y_real, y_imag)])
@@ -794,10 +778,10 @@ class TestGreaterEqualComplex128InfCase(TestGreaterEqualComplex128Api):
 class TestGreaterEqualComplex128NanCase(TestGreaterEqualComplex128Api):
     def setUp(self):
         super().setUp()
-        x_real = np.array([2, np.nan, -np.nan, 0, 0]).astype(self.typename[0])
-        x_imag = np.array([1, 1, -1, np.nan, np.nan]).astype(self.typename[0])
-        y_real = np.array([1, np.nan, -np.nan, 0, 0]).astype(self.typename[0])
-        y_imag = np.array([1, -1, 1, np.nan, -np.nan]).astype(self.typename[0])
+        x_real = np.array([2, np.nan, -np.nan, 0, 0]).astype(self.real_dtype)
+        x_imag = np.array([1, 1, -1, np.nan, np.nan]).astype(self.real_dtype)
+        y_real = np.array([1, np.nan, -np.nan, 0, 0]).astype(self.real_dtype)
+        y_imag = np.array([1, -1, 1, np.nan, -np.nan]).astype(self.real_dtype)
         x = x_real + 1j * x_imag
         y = y_real + 1j * y_imag
         self.inputs = {'X': x, 'Y': y}
