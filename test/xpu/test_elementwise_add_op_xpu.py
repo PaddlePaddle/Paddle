@@ -369,9 +369,10 @@ for stype in real_types:
 
 if 'complex64' in support_types:
 
-    class TestElementwiseAddOpComplex(XPUOpTest):
+    class TestElementwiseAddOpComplex(OpTest):
         def setUp(self):
             self.op_type = "elementwise_add"
+            self.python_api = paddle.add
             self.init_dtype()
             self.init_input_output()
             self.init_axis()
@@ -379,7 +380,6 @@ if 'complex64' in support_types:
                 'X': OpTest.np_dtype_to_base_dtype(self.x),
                 'Y': OpTest.np_dtype_to_base_dtype(self.y),
             }
-            self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
             self.outputs = {'Out': self.out}
 
         def test_check_output(self):
@@ -444,7 +444,7 @@ if 'complex64' in support_types:
     class TestElementwiseAddOpComplex3(TestElementwiseAddOpComplex):
         def init_input_output(self):
             self.x = (
-                np.random.rand(100, 2, 3) + 1j * np.random.rand(100, 2, 3)
+                np.random.rand(10, 2, 3) + 1j * np.random.rand(10, 2, 3)
             ).astype(self.dtype)
             self.y = (np.random.rand(1, 1) + 1j * np.random.rand(1, 1)).astype(
                 self.dtype

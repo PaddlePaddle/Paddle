@@ -135,10 +135,14 @@ void CastKernel(const Context& dev_ctx,
       break;
 #ifdef PADDLE_WITH_XPU_FFT
     case DataType::COMPLEX64: {
+      if (x.numel() == 0) {
+        dev_ctx.template Alloc<T>(out);
+        return;
+      }
       DenseTensor real;
       real.Resize(x.dims());
       CastXPUKernelImpl<T, float, Context>(dev_ctx, x, &real);
-      dev_ctx.template Alloc<dtype::complex<float>>(out);
+      dev_ctx.template Alloc<T>(out);
       DenseTensor imag = Fill<float, Context>(
           dev_ctx, common::vectorize<int>(x.dims()), static_cast<float>(0.0));
       phi::ComplexKernel<float>(dev_ctx, real, imag, out);
