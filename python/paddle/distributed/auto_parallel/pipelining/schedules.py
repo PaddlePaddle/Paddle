@@ -30,7 +30,7 @@ if TYPE_CHECKING:
     from .stage import _PipelineStageBase
 
 
-from microbatch import (
+from .microbatch import (
     TensorChunkSpec,
     merge_chunks,
     split_args_kwargs_into_chunks,
@@ -758,7 +758,6 @@ class PipelineScheduleMulti(_PipelineSchedule):
 
         # Split inputs into microbatches
         args_split, kwargs_split = self._split_inputs(args, kwargs)
-
         # Split target into microbatches
         if target is not None:
             targets_split = list(

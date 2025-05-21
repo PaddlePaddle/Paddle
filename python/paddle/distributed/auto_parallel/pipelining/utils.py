@@ -52,7 +52,8 @@ def flatten_args(args):
 
     def extract_tensor_args(a):
         nonlocal flat_args
-        flat_args.append(a)
+        if isinstance(a, paddle.Tensor):
+            flat_args.append(a)
         return a
 
     paddle.utils.map_structure(

@@ -110,8 +110,10 @@ def _generate_splits(num_layers, pp_size, schedule_mode, n_layers_per_stage):
     # Handle PipelineScheduleSingle
     if is_single_stage_schedule:
         num_stages_per_rank = 1
-        assert n_layers_per_stage == None or num_layers / pp_size == n_layers_per_stage, \
-            f"In PipelineScheduleSingle, n_layers_per_stage should be None or equals to num_layers/ pp_size {num_layers / pp_size}"
+        if n_layers_per_stage is not None:
+            expected_value = num_layers / pp_size
+            assert abs(n_layers_per_stage - expected_value) < 1e-6, \
+                f"In PipelineScheduleSingle, n_layers_per_stage should be None or equals to num_layers/pp_size ({expected_value}), but got {n_layers_per_stage}"
         n_layers_per_stage = num_layers // pp_size
     # Handle PipelineScheduleMulti
     else:
