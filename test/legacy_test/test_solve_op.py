@@ -985,12 +985,16 @@ class TestSolveOpAPIZeroDimCase(unittest.TestCase):
                 input_x_np = np.random.random(x_shape).astype(self.dtype)
                 input_y_np = np.random.random(y_shape).astype(self.dtype)
 
-                tensor_input_x = paddle.to_tensor(input_x_np)
-                tensor_input_y = paddle.to_tensor(input_y_np)
+                tensor_input_x = paddle.to_tensor(
+                    input_x_np, stop_gradient=False
+                )
+                tensor_input_y = paddle.to_tensor(
+                    input_y_np, stop_gradient=False
+                )
 
                 numpy_output = np.linalg.solve(input_x_np, input_y_np)
                 paddle_output = paddle.linalg.solve(
-                    tensor_input_x, tensor_input_y, left=False
+                    tensor_input_x, tensor_input_y, left=True
                 )
                 np.testing.assert_allclose(
                     numpy_output, paddle_output.numpy(), rtol=0.0001
@@ -998,9 +1002,22 @@ class TestSolveOpAPIZeroDimCase(unittest.TestCase):
                 self.assertEqual(
                     numpy_output.shape, paddle_output.numpy().shape
                 )
+                loss = paddle.sum(paddle_output)
+                loss.backward()
+                np.testing.assert_allclose(
+                    tensor_input_x.grad.shape, tensor_input_x.shape
+                )
+                np.testing.assert_allclose(
+                    tensor_input_y.grad.shape, tensor_input_y.shape
+                )
 
         for place in self.place:
+            run(place, x_shape=[1, 10, 10], y_shape=[1, 10, 10])
+            run(place, x_shape=[0, 10, 10], y_shape=[0, 10, 10])
+            run(place, x_shape=[0, 10, 10], y_shape=[1, 10, 10])
             run(place, x_shape=[10, 0, 0], y_shape=[10, 0, 0])
+            run(place, x_shape=[10, 1, 1], y_shape=[10, 1, 0])
+
             with self.assertRaises(ValueError) as context:
                 run(place, x_shape=[10, 0, 0], y_shape=[10])
 
