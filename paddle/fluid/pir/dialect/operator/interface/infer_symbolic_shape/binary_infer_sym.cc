@@ -777,8 +777,8 @@ bool SparseWeightEmbeddingOpInferSymbolicShape(
 
 bool ExpandAsOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  std::vector<int> target_shape =
-      paddle::dialect::details::GetVectorAttr<int>(op, "target_shape");
+  std::vector<int64_t> target_shape =
+      paddle::dialect::details::GetVectorAttr<int64_t>(op, "target_shape");
   const std::vector<symbol::DimExpr> &output_dims = [&] {
     const auto &input_shape_or_data =
         infer_context->GetShapeOrDataForValue(op->operand_source(1));
@@ -787,7 +787,7 @@ bool ExpandAsOpInferSymbolicShape(
     }
     std::vector<symbol::DimExpr> output_dims;
     output_dims.reserve(target_shape.size());
-    for (int shape : target_shape) {
+    for (int64_t shape : target_shape) {
       output_dims.push_back(shape);
     }
     return output_dims;

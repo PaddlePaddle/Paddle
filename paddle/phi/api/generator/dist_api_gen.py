@@ -1612,7 +1612,7 @@ class DistForwardAPI(ForwardAPI):
     def get_shape_type(self, attr_info):
         shape_type = "int"
         for name, info in attr_info.items():
-            if "IntArray" in info[0]:
+            if "IntArray" in info[0] or "int64_t" in info[0]:
                 shape_type = "int64_t"
         return shape_type
 

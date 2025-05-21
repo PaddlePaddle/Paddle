@@ -26,7 +26,7 @@ template <typename T, typename Context>
 void ExpandAsGradKernel(const Context& context,
                         const DenseTensor& x,
                         const DenseTensor& out_grad,
-                        const std::vector<int>& target_shape,
+                        const std::vector<int64_t>& target_shape,
                         DenseTensor* in_grad) {
   auto in_dims = x.dims();
   auto out_dims = out_grad.dims();
