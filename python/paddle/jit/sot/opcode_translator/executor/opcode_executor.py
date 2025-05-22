@@ -140,10 +140,7 @@ COMPARE_OP_NAME_TO_FN = {
 
 # In Python 3.13, the method layout is changed, and a NULL will be pushed after the value.
 CALL_METHOD_LAYOUT_NULL_AFTER_VALUE = sys.version_info >= (3, 13)
-ALREADY_SUPPORTED_EXCEPTION = sys.version_info >= (
-    3,
-    9,
-) and sys.version_info < (
+ALREADY_SUPPORTED_EXCEPTION = sys.version_info < (
     3,
     11,
 )
@@ -681,7 +678,12 @@ class OpcodeExecutorBase:
 
     def handle_exception(self, e: SotCapturedException):
         # TODO(DrRyanHuang): The newly created ExceptionVariable might differ from the previous one
-        e_var = VariableFactory.from_value(e, self._graph, DummyTracker([]))
+        e_var = VariableFactory.from_value(
+            e,
+            self._graph,
+            DummyTracker(e.tracked_args),
+        )
+        delattr(e, "tracked_args")
 
         # The exception is not raised by `raise Exception`
         if (

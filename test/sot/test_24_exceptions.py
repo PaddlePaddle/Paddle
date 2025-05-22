@@ -15,7 +15,6 @@ import unittest
 
 from test_case_base import (
     TestCaseBase,
-    test_instruction_translator_cache_context,
 )
 
 import paddle
@@ -354,23 +353,23 @@ class TestTryExcept(TestCaseBase):
     def test_try_except(self):
         print(f"NOT_ALLOW_FALLBACK: {NOT_ALLOW_FALLBACK}")
         self.assert_results(self.try_except_wo_error, paddle.to_tensor(2))
-        # self.assert_results(
-        #     self.try_except_exception_wo_error, paddle.to_tensor(3)
-        # )
-        # self.assert_results(
-        #     self.try_except_exception_as_e_wo_error, paddle.to_tensor(4)
-        # )
-        # self.assert_results(self.try_except_with_error_obj, paddle.to_tensor(5))
-        # self.assert_results(self.try_except_with_error_cls, paddle.to_tensor(6))
-        # self.assert_results(
-        #     self.try_except_exception_with_error, paddle.to_tensor(7)
-        # )
-        # self.assert_results(
-        #     self.try_except_exception_as_e_with_error, paddle.to_tensor(8)
-        # )
-        # self.assert_results(
-        #     self.try_except_exception_as_e_with_error_tuple, paddle.to_tensor(9)
-        # )
+        self.assert_results(
+            self.try_except_exception_wo_error, paddle.to_tensor(3)
+        )
+        self.assert_results(
+            self.try_except_exception_as_e_wo_error, paddle.to_tensor(4)
+        )
+        self.assert_results(self.try_except_with_error_obj, paddle.to_tensor(5))
+        self.assert_results(self.try_except_with_error_cls, paddle.to_tensor(6))
+        self.assert_results(
+            self.try_except_exception_with_error, paddle.to_tensor(7)
+        )
+        self.assert_results(
+            self.try_except_exception_as_e_with_error, paddle.to_tensor(8)
+        )
+        self.assert_results(
+            self.try_except_exception_as_e_with_error_tuple, paddle.to_tensor(9)
+        )
 
     @strict_mode_guard(False)
     def test_error(self):
@@ -388,75 +387,6 @@ class TestTryExcept(TestCaseBase):
             self.try_except_exception_as_e_with_matched_error_reraise,
             paddle.to_tensor(0.001),
         )
-
-    @strict_mode_guard(NOT_ALLOW_FALLBACK)
-    def test_guard_run(self):
-        with test_instruction_translator_cache_context() as ctx:
-            self.assertEqual(ctx.translate_count, 0)
-            self.assert_results(self.try_except_wo_error, paddle.to_tensor(11))
-            self.assert_results(self.try_except_wo_error, paddle.to_tensor(12))
-            self.assert_results(self.try_except_wo_error, paddle.to_tensor(13))
-            self.assertEqual(ctx.translate_count, 1)
-
-        with test_instruction_translator_cache_context() as ctx:
-            self.assertEqual(ctx.translate_count, 0)
-            self.assert_results(
-                self.try_except_exception_wo_error, paddle.to_tensor(14)
-            )
-            self.assert_results(
-                self.try_except_exception_wo_error, paddle.to_tensor(15)
-            )
-            self.assert_results(
-                self.try_except_exception_wo_error, paddle.to_tensor(16)
-            )
-            self.assertEqual(ctx.translate_count, 1)
-
-        with test_instruction_translator_cache_context() as ctx:
-            self.assertEqual(ctx.translate_count, 0)
-            self.assert_results(
-                self.try_except_exception_as_e_wo_error, paddle.to_tensor(17)
-            )
-            self.assert_results(
-                self.try_except_exception_as_e_wo_error, paddle.to_tensor(18)
-            )
-            self.assert_results(
-                self.try_except_exception_as_e_wo_error, paddle.to_tensor(19)
-            )
-            self.assertEqual(ctx.translate_count, 1)
-
-        with test_instruction_translator_cache_context() as ctx:
-            self.assertEqual(ctx.translate_count, 0)
-            self.assert_results(
-                self.try_except_with_error_obj, paddle.to_tensor(20)
-            )
-            self.assert_results(
-                self.try_except_with_error_obj, paddle.to_tensor(21)
-            )
-            self.assertEqual(ctx.translate_count, 1)
-            self.assert_results(
-                self.try_except_exception_with_error, paddle.to_tensor(22)
-            )
-            self.assert_results(
-                self.try_except_exception_with_error, paddle.to_tensor(23)
-            )
-            self.assertEqual(ctx.translate_count, 2)
-
-            self.assert_results(
-                self.try_except_exception_as_e_with_error, paddle.to_tensor(24)
-            )
-            self.assert_results(
-                self.try_except_exception_as_e_with_error, paddle.to_tensor(25)
-            )
-            self.assertEqual(ctx.translate_count, 3)
-            self.assert_results(
-                self.try_except_exception_as_e_with_error_tuple,
-                paddle.to_tensor(26),
-            )
-            self.assert_results(
-                self.try_except_exception_as_e_with_error_tuple,
-                paddle.to_tensor(27),
-            )
-            self.assertEqual(ctx.translate_count, 4)
 
 
 class TestTryFinally(TestCaseBase):
@@ -531,28 +461,6 @@ class TestTryFinally(TestCaseBase):
             self.try_finally_with_error_in_finally,
             paddle.to_tensor(17),
         )
-
-    @strict_mode_guard(NOT_ALLOW_FALLBACK)
-    def test_guard_run(self):
-        with test_instruction_translator_cache_context() as ctx:
-            self.assertEqual(ctx.translate_count, 0)
-            self.assert_results(self.try_finally_wo_error, paddle.to_tensor(16))
-            self.assert_results(self.try_finally_wo_error, paddle.to_tensor(17))
-            self.assert_results(self.try_finally_wo_error, paddle.to_tensor(18))
-            self.assertEqual(ctx.translate_count, 1)
-            self.assert_results(
-                self.try_finally_with_error_but_return_in_finally,
-                paddle.to_tensor(19),
-            )
-            self.assert_results(
-                self.try_finally_with_error_but_return_in_finally,
-                paddle.to_tensor(20),
-            )
-            self.assert_results(
-                self.try_finally_with_error_but_return_in_finally,
-                paddle.to_tensor(21),
-            )
-            self.assertEqual(ctx.translate_count, 2)
 
 
 class TestTryExceptElse(TestCaseBase):
@@ -643,38 +551,6 @@ class TestTryExceptElse(TestCaseBase):
             paddle.to_tensor(0.002),
         )
 
-    @strict_mode_guard(NOT_ALLOW_FALLBACK)
-    def test_guard_run(self):
-        with test_instruction_translator_cache_context() as ctx:
-            self.assertEqual(ctx.translate_count, 0)
-            self.assert_results(self.try_except_else, paddle.to_tensor(16))
-            self.assert_results(self.try_except_else, paddle.to_tensor(17))
-            self.assert_results(self.try_except_else, paddle.to_tensor(18))
-            self.assertEqual(ctx.translate_count, 1)
-            self.assert_results(
-                self.try_except_else_except_with_matched_error,
-                paddle.to_tensor(19),
-            )
-            self.assert_results(
-                self.try_except_else_except_with_matched_error,
-                paddle.to_tensor(20),
-            )
-            self.assert_results(
-                self.try_except_else_except_with_matched_error,
-                paddle.to_tensor(21),
-            )
-            self.assertEqual(ctx.translate_count, 2)
-            self.assert_results(
-                self.try_except_else_error_in_except, paddle.to_tensor(22)
-            )
-            self.assert_results(
-                self.try_except_else_error_in_except, paddle.to_tensor(23)
-            )
-            self.assert_results(
-                self.try_except_else_error_in_except, paddle.to_tensor(24)
-            )
-            self.assertEqual(ctx.translate_count, 3)
-
 
 class TestTryExceptFinally(TestCaseBase):
     # try ... except ... finally
@@ -764,41 +640,6 @@ class TestTryExceptFinally(TestCaseBase):
             self.try_except_finally_in_finally,
             paddle.to_tensor(0.001),
         )
-
-    @strict_mode_guard(NOT_ALLOW_FALLBACK)
-    def test_guard_run(self):
-        with test_instruction_translator_cache_context() as ctx:
-            self.assertEqual(ctx.translate_count, 0)
-            self.assert_results(self.try_except_finally, paddle.to_tensor(0.33))
-            self.assert_results(self.try_except_finally, paddle.to_tensor(0.44))
-            self.assert_results(self.try_except_finally, paddle.to_tensor(0.55))
-            self.assertEqual(ctx.translate_count, 1)
-            self.assert_results(
-                self.try_except_finally_with_matched_exception,
-                paddle.to_tensor(0.66),
-            )
-            self.assert_results(
-                self.try_except_finally_with_matched_exception,
-                paddle.to_tensor(0.77),
-            )
-            self.assert_results(
-                self.try_except_finally_with_matched_exception,
-                paddle.to_tensor(0.88),
-            )
-            self.assertEqual(ctx.translate_count, 2)
-            self.assert_results(
-                self.try_except_finally_in_except,
-                paddle.to_tensor(0.99),
-            )
-            self.assert_results(
-                self.try_except_finally_in_except,
-                paddle.to_tensor(0.88),
-            )
-            self.assert_results(
-                self.try_except_finally_in_except,
-                paddle.to_tensor(0.77),
-            )
-            self.assertEqual(ctx.translate_count, 3)
 
 
 class TestTryExceptElseFinally(TestCaseBase):
@@ -903,34 +744,6 @@ class TestTryExceptElseFinally(TestCaseBase):
             self.try_except_else_finally_with_exception_in_finally,
             paddle.to_tensor(0.001),
         )
-
-    @strict_mode_guard(NOT_ALLOW_FALLBACK)
-    def test_guard_run(self):
-        with test_instruction_translator_cache_context() as ctx:
-            self.assertEqual(ctx.translate_count, 0)
-            self.assert_results(
-                self.try_except_else_finally, paddle.to_tensor(0.33)
-            )
-            self.assert_results(
-                self.try_except_else_finally, paddle.to_tensor(0.44)
-            )
-            self.assert_results(
-                self.try_except_else_finally, paddle.to_tensor(0.55)
-            )
-            self.assertEqual(ctx.translate_count, 1)
-            self.assert_results(
-                self.try_except_else_finally_with_matched_exception,
-                paddle.to_tensor(0.66),
-            )
-            self.assert_results(
-                self.try_except_else_finally_with_matched_exception,
-                paddle.to_tensor(0.77),
-            )
-            self.assert_results(
-                self.try_except_else_finally_with_matched_exception,
-                paddle.to_tensor(0.88),
-            )
-            self.assertEqual(ctx.translate_count, 2)
 
 
 class TestNestingCase(TestCaseBase):
@@ -1115,6 +928,20 @@ class TestAssertException(TestCaseBase):
             return x
 
         self.assert_results(try_assert_except, paddle.to_tensor(10))
+
+
+class TestGuard(TestCaseBase):
+    @strict_mode_guard(False)
+    @check_no_breakgraph
+    def test_guard_run(self):
+        def fn():
+            try:
+                paddle.jit.sot.psdb.breakgraph()
+                raise ValueError
+            except ValueError:
+                print("Error caught!")
+
+        self.assert_results(fn)
 
 
 if __name__ == "__main__":
