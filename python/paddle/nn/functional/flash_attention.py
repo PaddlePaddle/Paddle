@@ -636,10 +636,10 @@ def flash_attention_v3_varlen(
     fixed_seed_offset=None,
     rng_name="",
     training=True,
-    name=None,
     softmax_scale=None,
     max_seqlen_q=0,
     max_seqlen_k=0,
+    name=None,
 ):
     r"""
     The equation is:
@@ -669,24 +669,22 @@ def flash_attention_v3_varlen(
                         3-D tensor with shape:
                         [token_num, num_heads, head_dim].
                         The dtype can be float16 or bfloat16.
-        cu_seqlens_q(Tensor): The cumsum q seq lens tensor in the Attention module.
-                               1-D tensor with shape: [batch_size + 1].
-                              The dtype is int32.
-        cu_seqlens_k(Tensor): The cumsum kv seq lens tensor in the Attention module.
-                               1-D tensor with shape: [batch_size + 1].
-                              The dtype is int32.
+        cu_seqlens_q(Tensor): The cumulative sequence lengths of the sequences in the batch,
+                        used to index query.
+        cu_seqlens_k(Tensor): The cumulative sequence lengths of the sequences in the batch,
+                        used to index key and value.
         dropout(float): The dropout ratio.
         causal(bool): Whether enable causal mode.
         return_softmax(bool): Whether to return softmax.
         fixed_seed_offset(Tensor|None, optional): With fixed seed, offset for dropout mask.
         rng_name(str): The name to select Generator.
         training(bool): Whether it is in the training phase.
+        softmax_scale(float): The softmax scale of the attention.
+        max_seqlen_q(int): Maximum sequence length of query in the batch. Note it's the padding length, not the max actual seqlen.
+        max_seqlen_k(int): Maximum sequence length of key/value in the batch.
         name(str|None, optional): The default value is None. Normally there is no need for user
                         to set this property. For more information, please refer to
                         :ref:`api_guide_Name`.
-        softmax_scale(float): The softmax scale of the attention.
-        max_seqlen_q(int): The max seq len of query.
-        max_seqlen_k(int): The max seq len of kye/value.
 
     Returns:
         out(Tensor): The attention tensor.
@@ -705,39 +703,7 @@ def flash_attention_v3_varlen(
             >>> max_seq_len_q = 10
 
             >>> output = paddle.nn.functional.flash_attention.flash_attention_v3_varlen(q, q, q, cu_seqlens_q, cu_seqlens_q, max_seqlen_q=max_seq_len_q, max_seqlen_k=max_seq_len_q, causal=True)
-            >>> print(output)
-            (Tensor(shape=[10, 2, 128], dtype=bfloat16, place=Place(gpu:0), stop_gradient=True,
-            [[[0.71875000, 0.47265625, 0.15722656, ..., 0.01062012,
-                0.27148438, 0.68750000],
-                [0.46289062, 0.57421875, 0.94921875, ..., 0.26171875,
-                0.91015625, 0.61718750]],
-
-                [[0.55078125, 0.20898438, 0.69921875, ..., 0.06298828,
-                0.26367188, 0.32031250],
-                [0.27148438, 0.75781250, 0.26367188, ..., 0.37890625,
-                0.83984375, 0.74609375]],
-
-                [[0.42968750, 0.23144531, 0.51562500, ..., 0.33007812,
-                0.51562500, 0.44531250],
-                [0.46093750, 0.85156250, 0.51953125, ..., 0.64843750,
-                0.82812500, 0.62890625]],
-
-                ...,
-
-                [[0.36132812, 0.61718750, 0.53906250, ..., 0.45312500,
-                0.41015625, 0.52343750],
-                [0.57421875, 0.70703125, 0.44531250, ..., 0.38867188,
-                0.68359375, 0.41015625]],
-
-                [[0.37304688, 0.68359375, 0.59375000, ..., 0.56640625,
-                0.36718750, 0.45898438],
-                [0.37695312, 0.64453125, 0.51171875, ..., 0.53906250,
-                0.75390625, 0.35546875]],
-
-                [[0.46484375, 0.54296875, 0.47656250, ..., 0.51171875,
-                0.31640625, 0.50781250],
-                [0.52734375, 0.58984375, 0.53515625, ..., 0.60156250,
-                0.74218750, 0.32617188]]]), None)
+            >>> # doctest: -SKIP
 
     """
     if softmax_scale is None:
