@@ -28,7 +28,7 @@ SpmdInfo TopkInferSpmd(
   PADDLE_ENFORCE_EQ(
       0 <= axis && axis < x_ndim,
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The axis of topk should be in range [0, %d), but got %d.",
           x_ndim,
           axis));
@@ -89,7 +89,7 @@ SpmdInfo TopkGradInferSpmd(const DistMetaTensor& x,
   PADDLE_ENFORCE_EQ(
       0 <= axis && axis < x_ndim,
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The axis of topk_grad should be in range [0, %d), but got %d.",
           x_ndim,
           axis));

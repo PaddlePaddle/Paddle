@@ -693,6 +693,7 @@ def amp_guard(
                                     param.process_mesh
                                 ].append(param)
                     amp_global_state().already_classify_params_meshes = True
+
                 if os.getenv("FLAGS_enable_tensor_fusion") not in [
                     "True",
                     "true",

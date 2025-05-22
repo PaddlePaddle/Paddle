@@ -261,13 +261,15 @@ struct Buffer {
              deep_ep::detail::Tensor,
              std::optional<EventHandle>,
              std::optional<std::function<void()>>>
-  low_latency_dispatch(const deep_ep::detail::Tensor& x,
-                       const deep_ep::detail::Tensor& topk_idx,
-                       int num_max_dispatch_tokens_per_rank,
-                       int num_experts,
-                       bool use_fp8,
-                       bool async,
-                       bool return_recv_hook);
+  low_latency_dispatch(
+      const deep_ep::detail::Tensor& x,
+      const deep_ep::detail::Tensor& topk_idx,
+      const std::optional<deep_ep::detail::Tensor>& expertwise_scale,
+      int num_max_dispatch_tokens_per_rank,
+      int num_experts,
+      bool use_fp8,
+      bool async,
+      bool return_recv_hook);
 
   std::tuple<deep_ep::detail::Tensor,
              std::optional<EventHandle>,
@@ -343,13 +345,15 @@ struct Buffer {
              paddle::Tensor,
              std::optional<EventHandle>,
              std::optional<std::function<void()>>>
-  low_latency_dispatch_api(const paddle::Tensor& x,
-                           const paddle::Tensor& topk_idx,
-                           int num_max_dispatch_tokens_per_rank,
-                           int num_experts,
-                           bool use_fp8,
-                           bool async,
-                           bool return_recv_hook);
+  low_latency_dispatch_api(
+      const paddle::Tensor& x,
+      const paddle::Tensor& topk_idx,
+      const std::optional<paddle::Tensor>& expertwise_scale,
+      int num_max_dispatch_tokens_per_rank,
+      int num_experts,
+      bool use_fp8,
+      bool async,
+      bool return_recv_hook);
 
   std::tuple<paddle::Tensor,
              std::optional<EventHandle>,

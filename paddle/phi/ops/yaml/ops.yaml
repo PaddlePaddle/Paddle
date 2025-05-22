@@ -3334,6 +3334,18 @@
   backward : margin_cross_entropy_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
+- op : masked_fill
+  args : (Tensor x, Tensor mask, Tensor value)
+  output : Tensor (out)
+  inplace: (x -> out)
+  infer_meta :
+    func : MaskedFillInferMeta
+  kernel :
+    func : masked_fill
+    data_type : x
+  backward : masked_fill_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+
 - op : masked_multihead_attention_
   args : (Tensor x, Tensor cache_kv, Tensor bias, Tensor src_mask, Tensor cum_offsets, Tensor sequence_lengths, Tensor rotary_tensor, Tensor beam_cache_offset, Tensor qkv_out_scale, Tensor out_shift, Tensor out_smooth, int seq_len, int rotary_emb_dims, bool use_neox_rotary_style=false, str compute_dtype = "default", float out_scale=-1, int quant_round_type=1, float quant_max_bound=127.0, float quant_min_bound=-127.0)
   output : Tensor(out), Tensor(cache_kv_out), Tensor(beam_cache_offset_out)

@@ -409,6 +409,25 @@ static paddle::Tensor getTensorWithBasicIndexing(
   return out;
 }
 
+inline static bool MaskedFillDispatching(
+    const paddle::Tensor& tensor,
+    const paddle::Tensor& value,
+    const std::vector<paddle::Tensor>& indices,
+    paddle::Tensor* mask_tensor) {
+  if (value.numel() != 1) return false;
+  int64_t num_ind = 0;
+  if ((indices)[0].dtype() != phi::DataType::BOOL) {
+    return false;
+  } else {
+    num_ind += (indices)[0].shape().size();
+  }
+  *mask_tensor = (indices)[0];
+  for (size_t i = num_ind; i < tensor.shape().size(); i++) {
+    *mask_tensor = unsqueeze_ad_func(*mask_tensor, {-1});
+  }
+  return true;
+}
+
 static paddle::Tensor dealWithAdvancedIndex(
     const paddle::Tensor& tensor,
     std::vector<int>* advanced_index_dim,
