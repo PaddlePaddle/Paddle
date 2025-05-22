@@ -91,10 +91,6 @@ void ActivationGradXPUImpl(const Context& dev_ctx,
                         const DenseTensor& dout,                      \
                         DenseTensor* dx) {                            \
     functor_class<T> functor;                                         \
-    if (dx && dx->numel() == 0) {                                     \
-      dev_ctx.template Alloc<T>(dx);                                  \
-      return;                                                         \
-    }                                                                 \
     ActivationGradXPUImpl<T, Context, functor_class<T>>(              \
         dev_ctx, nullptr, &out, &dout, dx, functor);                  \
   }
