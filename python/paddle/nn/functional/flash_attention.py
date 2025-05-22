@@ -727,9 +727,7 @@ def flash_attention_v3_varlen(
                         :ref:`api_guide_Name`.
 
     Returns:
-        out(Tensor): The attention tensor.
-                    3-D tensor with shape: [token_num, num_heads, head_dim].
-                    The dtype can be float16 or bfloat16.
+        out(Tensor): The attention tensor. 3-D tensor with shape: [token_num, num_heads, head_dim]. The dtype can be float16 or bfloat16.
         softmax(Tensor): The softmax tensor. None if return_softmax is False.
 
     Examples:
