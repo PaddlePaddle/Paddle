@@ -100,3 +100,5 @@ std::unique_ptr<::pir::Pass> CreateMoveGenerateShapeOpsToProloguePass() {
 }  // namespace cinn
 
 // REGISTER_IR_PASS(cinn_group_lowering, CinnGroupLoweringPass);
+REGISTER_IR_PASS(move_generate_shape_ops_to_prologue,
+                 ::cinn::dialect::MoveGenerateShapeOpsToProloguePass);

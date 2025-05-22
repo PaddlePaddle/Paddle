@@ -233,3 +233,6 @@ std::unique_ptr<pir::Pass> CreatePutApTrivialOpsInRangePass() {
 }
 
 }  // namespace ap::paddle
+
+REGISTER_IR_PASS(put_ap_trivial_ops_in_range_pass,
+                 ::ap::paddle::PutApTrivialOpsInRangePass);

@@ -19,6 +19,7 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/include/core/builtin_type_interfaces.h"
+#include "paddle/pir/include/pass/pass_registry.h"
 #include "paddle/pir/include/pattern_rewrite/pattern_rewrite_driver.h"
 
 namespace cinn {
@@ -171,3 +172,6 @@ std::unique_ptr<pir::Pass> CreateDynamicReshapeOpPass() {
 }  // namespace ir
 }  // namespace dialect
 }  // namespace cinn
+
+REGISTER_IR_PASS(cinn_dynamic_reshape_op_pass,
+                 ::cinn::dialect::ir::DynamicReshapeOpPass);

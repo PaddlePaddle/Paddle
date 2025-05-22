@@ -32,6 +32,7 @@
 #include "paddle/pir/include/dialect/shape/utils/dim_expr.h"
 #include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 #include "paddle/pir/include/pass/pass.h"
+#include "paddle/pir/include/pass/pass_registry.h"
 #include "paddle/pir/include/pattern_rewrite/frozen_rewrite_pattern_set.h"
 #include "paddle/pir/include/pattern_rewrite/pattern_applicator.h"
 #include "paddle/pir/include/pattern_rewrite/pattern_match.h"
@@ -572,3 +573,6 @@ std::unique_ptr<pir::Pass> CreateFuseShapeOpsIntoGenerateShapeOpPass() {
 }  // namespace ir
 }  // namespace dialect
 }  // namespace cinn
+
+REGISTER_IR_PASS(fuse_shape_ops_into_generate_shape_op_pass,
+                 ::cinn::dialect::ir::FuseShapeOpsIntoGenerateShapeOpPass);

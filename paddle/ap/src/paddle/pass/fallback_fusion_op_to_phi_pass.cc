@@ -136,3 +136,6 @@ std::unique_ptr<::pir::Pass> CreateFallbackNestedFusionOpToPhiPass() {
 }
 
 }  // namespace ap::paddle
+
+REGISTER_IR_PASS(fallback_group_op_to_phi_pass,
+                 ::ap::paddle::FallbackGroupOpToPhiPass<true>);

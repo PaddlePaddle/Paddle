@@ -24,6 +24,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/include/core/builtin_dialect.h"
 #include "paddle/pir/include/pass/pass.h"
+#include "paddle/pir/include/pass/pass_registry.h"
 #include "paddle/pir/include/pattern_rewrite/pattern_applicator.h"
 #include "paddle/pir/include/pattern_rewrite/pattern_match.h"
 #include "paddle/pir/include/pattern_rewrite/pattern_rewrite_driver.h"
@@ -135,3 +136,6 @@ std::unique_ptr<pir::Pass> CreateInsertBroadcastPass() {
 }  // namespace ir
 }  // namespace dialect
 }  // namespace cinn
+
+REGISTER_IR_PASS(insert_broadcast_pass,
+                 ::cinn::dialect::ir::InsertBroadcastPass);

@@ -23,6 +23,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/include/core/builtin_dialect.h"
 #include "paddle/pir/include/pass/pass.h"
+#include "paddle/pir/include/pass/pass_registry.h"
 #include "paddle/pir/include/pattern_rewrite/frozen_rewrite_pattern_set.h"
 #include "paddle/pir/include/pattern_rewrite/pattern_applicator.h"
 #include "paddle/pir/include/pattern_rewrite/pattern_match.h"
@@ -281,3 +282,6 @@ std::unique_ptr<pir::Pass> CreateDeleteUselessBroadcastPass() {
 }  // namespace ir
 }  // namespace dialect
 }  // namespace cinn
+
+REGISTER_IR_PASS(add_broadcast_to_elementwise_pass,
+                 ::cinn::dialect::ir::AddBroadcastToElementwisePass);

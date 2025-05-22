@@ -272,3 +272,6 @@ std::unique_ptr<::pir::Pass> CreateMoveTrivialFusionRangeToFusionOpPass() {
 }
 
 }  // namespace ap::paddle
+
+REGISTER_IR_PASS(move_trivial_fusion_range_to_group_op,
+                 ::ap::paddle::MoveTrivialFusionRangeToGroupOpPass);
