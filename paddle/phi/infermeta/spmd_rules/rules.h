@@ -28,6 +28,7 @@ limitations under the License. */
 #include "paddle/phi/infermeta/spmd_rules/coalesce_tensor.h"
 #include "paddle/phi/infermeta/spmd_rules/concat.h"
 #include "paddle/phi/infermeta/spmd_rules/conv2d.h"
+#include "paddle/phi/infermeta/spmd_rules/conv3d.h"
 #include "paddle/phi/infermeta/spmd_rules/cross_entropy_with_softmax.h"
 #include "paddle/phi/infermeta/spmd_rules/cummax.h"
 #include "paddle/phi/infermeta/spmd_rules/cummin.h"

@@ -570,6 +570,7 @@
   infer_meta :
     func : GeneralBinaryGradInferMeta
     param : [input, filter]
+    spmd_rule : Conv3dGradInferSpmd
   kernel :
     func : conv3d_grad
     data_type : input
