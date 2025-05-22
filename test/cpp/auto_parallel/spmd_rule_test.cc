@@ -2684,7 +2684,7 @@ TEST(LabelSmooth, Ctor) {
   EXPECT_EQ(forward_info.first.size(), 2UL);
   EXPECT_EQ(forward_info.second.size(), 1UL);
   check_dim_mapping(forward_info.first[0], {0, 1, -1});
-  EXPECT_EQ(forward_info.first[1], phi::distributed::DistMetaTensor());
+  EXPECT_EQ(forward_info.first[1], phi::distributed::TensorDistAttr());
   check_dim_mapping(forward_info.second[0], {0, 1, -1});
 
   // shape: [16, 16, 16], [1, 16]. [0, 1, -1], [-1, -1] --> [0, 1, -1], [-1,
