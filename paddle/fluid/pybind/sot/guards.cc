@@ -237,6 +237,42 @@ bool WeakRefMatchGuard::check(PyObject* value) {
 #endif
 }
 
+bool IsNotDenseTensorHoldAllocationMatchGuard::check(PyObject* value) {
+  auto tensor = GetTensorFromPyObject(value);
+  HANDLE_NULL_TENSOR(tensor);
+
+  if (!tensor->defined() ||
+      (!tensor->is_dense_tensor() && !tensor->is_dist_tensor()))
+    return true;
+
+  PyObject* method =
+      PyObject_GetAttrString(value, "_is_dense_tensor_hold_allocation");
+  if (!method) {
+    PyErr_Print();
+    return false;
+  }
+
+  if (!PyCallable_Check(method)) {
+    Py_DECREF(method);
+    PyErr_SetString(PyExc_TypeError, "Attribute is not callable");
+    return false;
+  }
+
+  PyObject* result = PyObject_CallOneArg(method, value);
+  Py_DECREF(method);
+  if (result == nullptr) {
+    PyErr_Print();
+    return false;
+  }
+  int truthy = PyObject_IsTrue(result);
+  Py_DECREF(result);
+  if (truthy == -1) {
+    PyErr_Print();
+    return false;
+  }
+  return !static_cast<bool>(truthy);
+}
+
 PyObject* ConstantExprNode::eval(FrameProxy* frame) { return value_ptr_; }
 std::string ConstantExprNode::stringify(int indent) {
   return py::str(value_ptr_);

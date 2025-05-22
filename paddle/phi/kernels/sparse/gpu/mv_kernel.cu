@@ -46,7 +46,7 @@ void MvKernelImpl(const Context& dev_ctx,
                     vec_dim[vec_ndims - 1],
                     common::errors::PreconditionNotMet(
                         "The shape of Input(x) and Input(vec) is not "
-                        "suitable for mv opetation, "
+                        "suitable for mv operation, "
                         "x_dim[-1] must be equal to vec_dim[-1]."));
   std::vector<int64_t> out_dim = {x_dim[x_ndims - 2]};
   out->Resize(common::make_ddim(out_dim));
