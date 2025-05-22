@@ -192,7 +192,10 @@ class MergeParallelLinearPattern
 
   bool MatchAndRewrite(paddle::dialect::FusedGemmEpilogueOp fused_gemm_op,
                        pir::PatternRewriter& rewriter) const override {
-    auto ValidFusedGemmAttr = [&](pir::Operation* op) -> bool {
+    auto ValidFusedGemmAttr = [](pir::Operation* op) -> bool {
+      if (!op->isa<paddle::dialect::FusedGemmEpilogueOp>()) {
+        return false;
+      }
       bool trans_x =
           op->attribute("trans_x").dyn_cast<pir::BoolAttribute>().data();
       bool trans_y =
