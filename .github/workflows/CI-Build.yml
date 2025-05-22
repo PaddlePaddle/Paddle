@@ -26,6 +26,8 @@ jobs:
     name: build docker images
     needs: clone
     uses: ./.github/workflows/docker.yml
+    with:
+      bos_dir: Paddle-build
 
   build:
     name: Linux-build
