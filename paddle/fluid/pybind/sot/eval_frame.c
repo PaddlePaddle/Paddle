@@ -355,9 +355,9 @@ static PyObject *_custom_eval_frame(PyThreadState *tstate,
   return out;
 }
 
-static PyObject *_custom_eval_frame_shim(PyThreadState *tstate,
-                                         FrameObject *frame,
-                                         int throw_flag) {
+static PyObject *custom_eval_frame_shim(PyThreadState *tstate,
+                                        FrameObject *frame,
+                                        int throw_flag) {
   PyObject *callback = eval_frame_callback_get();
 
   if (callback == Py_None) {
@@ -365,12 +365,6 @@ static PyObject *_custom_eval_frame_shim(PyThreadState *tstate,
   }
 
   return _custom_eval_frame(tstate, frame, throw_flag, callback);
-}
-
-static PyObject *custom_eval_frame_shim(PyThreadState *tstate,
-                                        FrameObject *frame,
-                                        int throw_flag) {
-  return _custom_eval_frame_shim(tstate, frame, throw_flag);
 }
 
 static PyObject *set_eval_frame(PyObject *new_callback, PyThreadState *tstate) {
