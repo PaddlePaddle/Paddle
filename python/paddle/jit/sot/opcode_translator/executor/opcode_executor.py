@@ -683,7 +683,6 @@ class OpcodeExecutorBase:
             self._graph,
             DummyTracker(e.tracked_args),
         )
-        delattr(e, "tracked_args")
 
         # The exception is not raised by `raise Exception`
         if (

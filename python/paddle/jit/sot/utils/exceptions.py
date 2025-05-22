@@ -444,6 +444,8 @@ class SotCapturedExceptionFactory:
         new_exc.__traceback__ = origin_exc.__traceback__
 
         # Propagating Exception Parameters through SotCapturedException
+        if tracked_args is None:
+            tracked_args = []
         new_exc.tracked_args = tracked_args
 
         return new_exc
