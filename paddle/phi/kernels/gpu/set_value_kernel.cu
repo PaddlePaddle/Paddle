@@ -79,7 +79,8 @@ void SetTensorValueKernelV2(const Context& dev_ctx,
                                     &new_out_stride);
 
   if (product(phi::make_ddim(new_out_shape)) <= 0) {
-    // 0-size tensor, no need to copy
+    out->ResetHolder(in.Holder());
+    out->ShareInplaceVersionCounterWith(in);
     return;
   }
 
