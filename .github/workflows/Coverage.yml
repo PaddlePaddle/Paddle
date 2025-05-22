@@ -63,7 +63,6 @@ jobs:
           WITH_COVERAGE: "ON"
           COVERALLS_UPLOAD: "ON"
           PADDLE_VERSION: 0.0.0
-          CUDA_VISIBLE_DEVICES: 0,1
           WITH_DISTRIBUTE: "ON"
           PRECISION_TEST: "ON"
           LITE_GIT_TAG: develop
@@ -79,6 +78,10 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           UT_RUN_TYPE_SETTING: WITHOUT_HYBRID
+          WITH_PIP_CUDA_LIBRARIES: "OFF"
+          CTEST_OUTPUT_ON_FAILURE: 1
+          WITH_TESTING: "ON"
+          WITH_FLAGCX: "ON"
         run: |
           container_name=${TASK}-build-$(date +%Y%m%d-%H%M%S)
           echo "container_name=${container_name}" >> ${{ github.env }}
@@ -123,6 +126,10 @@ jobs:
             -e GITHUB_API_TOKEN \
             -e UT_RUN_TYPE_SETTING \
             -e no_proxy \
+            -e WITH_PIP_CUDA_LIBRARIES \
+            -e CTEST_OUTPUT_ON_FAILURE \
+            -e WITH_TESTING \
+            -e WITH_FLAGCX \
             -w /paddle --network host ${docker_image}
 
       - name: Download paddle.tar.gz and update test branch
@@ -243,7 +250,7 @@ jobs:
     needs: [build, build-docker]
     if: needs.build.outputs.can-skip != 'true'
     runs-on:
-      group: BD_BJ-V100
+      group: v100-o
     steps:
       - name: Check docker image and run container
         env:
@@ -252,11 +259,12 @@ jobs:
           FLAGS_fraction_of_gpu_memory_to_use: 0.15
           CTEST_PARALLEL_LEVEL: 2
           WITH_GPU: "ON"
-          CUDA_ARCH_NAME: Volta
+          CUDA_ARCH_NAME: Auto
           WITH_AVX: "ON"
           WITH_COVERAGE: "ON"
           COVERALLS_UPLOAD: "ON"
           PADDLE_VERSION: 0.0.0
+          CUDA_VISIBLE_DEVICES: 0,1
           WITH_DISTRIBUTE: "ON"
           PRECISION_TEST: "ON"
           WITH_UNITY_BUILD: "ON"
@@ -264,6 +272,7 @@ jobs:
           WITH_SHARED_PHI: "ON"
           WITH_CINN: "ON"
           INFERENCE_DEMO_INSTALL_DIR: /root/.cache/coverage
+          UT_RUN_TYPE_SETTING: WITHOUT_HYBRID
           CCACHE_MAXSIZE: 200G
           CCACHE_LIMIT_MULTIPLE: 0.8
           FLAGS_PIR_OPTEST: "TRUE"
@@ -300,6 +309,7 @@ jobs:
             -e WITH_COVERAGE \
             -e COVERALLS_UPLOAD \
             -e PADDLE_VERSION \
+            -e CUDA_VISIBLE_DEVICES \
             -e WITH_DISTRIBUTE \
             -e PRECISION_TEST \
             -e WITH_UNITY_BUILD \
@@ -307,6 +317,7 @@ jobs:
             -e WITH_SHARED_PHI \
             -e WITH_CINN \
             -e INFERENCE_DEMO_INSTALL_DIR \
+            -e UT_RUN_TYPE_SETTING \
             -e CCACHE_MAXSIZE \
             -e CCACHE_LIMIT_MULTIPLE \
             -e FLAGS_PIR_OPTEST \
