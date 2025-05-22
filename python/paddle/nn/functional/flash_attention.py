@@ -670,10 +670,10 @@ def flash_attention_v3_varlen(
                         [token_num, num_heads, head_dim].
                         The dtype can be float16 or bfloat16.
         cu_seqlens_q(Tensor): The cumsum q seq lens tensor in the Attention module.
-                              1-D tensor with shape: [batch_size + 1].
+                               1-D tensor with shape: [batch_size + 1].
                               The dtype is int32.
         cu_seqlens_k(Tensor): The cumsum kv seq lens tensor in the Attention module.
-                              1-D tensor with shape: [batch_size + 1].
+                               1-D tensor with shape: [batch_size + 1].
                               The dtype is int32.
         dropout(float): The dropout ratio.
         causal(bool): Whether enable causal mode.
