@@ -217,6 +217,10 @@ void ArgsortKernel(const Context& dev_ctx,
   auto in_dims = input.dims();
   auto rank = in_dims.size();
 
+  if (output->numel() == 0) {
+    return;
+  }
+
   if (input.numel() == 0) {
     output->Resize(in_dims);
     indices->Resize(in_dims);

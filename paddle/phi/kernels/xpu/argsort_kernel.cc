@@ -17,6 +17,7 @@
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
@@ -97,6 +98,12 @@ void ArgsortKernel(const Context& dev_ctx,
                    bool stable,
                    DenseTensor* output,
                    DenseTensor* indices) {
+  if (input.numel() == 0) {
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(out->dims())), NAN, out);
+    return;
+  }
+
   auto in_dims = input.dims();
   auto rank = in_dims.size();
   axis = (axis < 0) ? (in_dims.size() + axis) : axis;

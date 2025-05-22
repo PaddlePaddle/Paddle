@@ -29,6 +29,10 @@ void ArgsortGradKernel(const Context& dev_ctx,
                        bool descending,
                        bool stable,
                        DenseTensor* in_grad) {
+  if (in_grad && in_grad->numel() == 0) {
+    dev_ctx.template Alloc<T>(in_grad);
+    return;
+  }
   auto in_dims = indices.dims();
   auto rank = in_dims.size();
   axis = (axis < 0) ? (in_dims.size() + axis) : axis;
