@@ -19349,6 +19349,64 @@ PyObject *static_api_number_count(PyObject *self, PyObject *args,
   }
 }
 
+PyObject *static_api_fused_rms_norm(PyObject *self, PyObject *args,
+                                    PyObject *kwargs) {
+  try {
+    VLOG(6) << "Add fused_rms_norm op into program";
+    VLOG(8) << "args count: " << (PyTuple_Size(args) / 2);
+
+    // Get Value from args
+    PyObject *x_obj = PyTuple_GET_ITEM(args, 0);
+    auto x = CastPyArg2Value(x_obj, "fused_rms_norm", 0, false);
+    PyObject *scale_obj = PyTuple_GET_ITEM(args, 1);
+    auto scale = CastPyArg2Value(scale_obj, "fused_rms_norm", 1, false);
+
+    // Parse Attributes
+    PyObject *epsilon_obj = PyTuple_GET_ITEM(args, 2);
+    float epsilon = CastPyArg2Float(epsilon_obj, "fused_rms_norm", 2);
+
+    // Call ir static api
+    CallStackRecorder callstack_recorder("fused_rms_norm");
+    callstack_recorder.Record();
+    auto static_api_out = paddle::dialect::fused_rms_norm(x, scale, epsilon);
+    callstack_recorder.AttachToOps();
+    return ToPyObject(static_api_out);
+  } catch (...) {
+    ThrowExceptionToPython(std::current_exception());
+    return nullptr;
+  }
+}
+
+PyObject *static_api_int_bincount(PyObject *self, PyObject *args,
+                                  PyObject *kwargs) {
+  try {
+    VLOG(6) << "Add int_bincount op into program";
+    VLOG(8) << "args count: " << (PyTuple_Size(args) / 2);
+
+    // Get Value from args
+    PyObject *x_obj = PyTuple_GET_ITEM(args, 0);
+    auto x = CastPyArg2Value(x_obj, "int_bincount", 0, false);
+
+    // Parse Attributes
+    PyObject *low_obj = PyTuple_GET_ITEM(args, 1);
+    int low = CastPyArg2Int(low_obj, "int_bincount", 1);
+    PyObject *high_obj = PyTuple_GET_ITEM(args, 2);
+    int high = CastPyArg2Int(high_obj, "int_bincount", 2);
+    PyObject *dtype_obj = PyTuple_GET_ITEM(args, 3);
+    int dtype = CastPyArg2Int(dtype_obj, "int_bincount", 3);
+
+    // Call ir static api
+    CallStackRecorder callstack_recorder("int_bincount");
+    callstack_recorder.Record();
+    auto static_api_out = paddle::dialect::int_bincount(x, low, high, dtype);
+    callstack_recorder.AttachToOps();
+    return ToPyObject(static_api_out);
+  } catch (...) {
+    ThrowExceptionToPython(std::current_exception());
+    return nullptr;
+  }
+}
+
 PyObject *static_api_abs_double_grad(PyObject *self, PyObject *args,
                                      PyObject *kwargs) {
   try {
@@ -33607,6 +33665,39 @@ PyObject *static_api_unpool_grad(PyObject *self, PyObject *args,
     callstack_recorder.AttachToOps();
     return ToPyObject(static_api_out);
 
+  } catch (...) {
+    ThrowExceptionToPython(std::current_exception());
+    return nullptr;
+  }
+}
+
+PyObject *static_api_fused_rms_norm_grad(PyObject *self, PyObject *args,
+                                         PyObject *kwargs) {
+  try {
+    VLOG(6) << "Add fused_rms_norm_grad op into program";
+    VLOG(8) << "args count: " << (PyTuple_Size(args) / 2);
+
+    // Get Value from args
+    PyObject *x_obj = PyTuple_GET_ITEM(args, 0);
+    auto x = CastPyArg2Value(x_obj, "fused_rms_norm_grad", 0, false);
+    PyObject *scale_obj = PyTuple_GET_ITEM(args, 1);
+    auto scale = CastPyArg2Value(scale_obj, "fused_rms_norm_grad", 1, false);
+    PyObject *invvar_obj = PyTuple_GET_ITEM(args, 2);
+    auto invvar = CastPyArg2Value(invvar_obj, "fused_rms_norm_grad", 2, false);
+    PyObject *y_grad_obj = PyTuple_GET_ITEM(args, 3);
+    auto y_grad = CastPyArg2Value(y_grad_obj, "fused_rms_norm_grad", 3, false);
+
+    // Parse Attributes
+    PyObject *epsilon_obj = PyTuple_GET_ITEM(args, 4);
+    float epsilon = CastPyArg2Float(epsilon_obj, "fused_rms_norm_grad", 4);
+
+    // Call ir static api
+    CallStackRecorder callstack_recorder("fused_rms_norm_grad");
+    callstack_recorder.Record();
+    auto static_api_out =
+        paddle::dialect::fused_rms_norm_grad(x, scale, invvar, y_grad, epsilon);
+    callstack_recorder.AttachToOps();
+    return ToPyObject(static_api_out);
   } catch (...) {
     ThrowExceptionToPython(std::current_exception());
     return nullptr;

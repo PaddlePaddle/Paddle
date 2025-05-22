@@ -3914,3 +3914,13 @@
     param : [condition]
   composite: where_double_grad(condition, grad_x_grad, grad_y_grad, grad_out_grad)
   optional: grad_x_grad, grad_y_grad
+
+- backward_op: fused_rms_norm_grad
+  forward: fused_rms_norm (Tensor x, Tensor scale, float epsilon) -> Tensor(y), Tensor(mean), Tensor(invvar)
+  args: (Tensor x, Tensor scale, Tensor invvar, Tensor y_grad, float epsilon)
+  output: Tensor(x_grad), Tensor(scale_grad)
+  infer_meta:
+    func: FusedRMSNormGradInferMeta
+  kernel:
+    func: fused_rms_norm_grad
+    data_type: x

@@ -29882,6 +29882,101 @@ PADDLE_API void unpool_grad(const Tensor& x, const Tensor& indices, const Tensor
   
 }
 
+PADDLE_API void fused_rms_norm_grad(const Tensor& x, const Tensor& scale, const Tensor& invvar, const Tensor& y_grad, float epsilon, Tensor* x_grad, Tensor* scale_grad) {
+
+  Backend kernel_backend = Backend::UNDEFINED;
+  DataLayout kernel_layout = DataLayout::UNDEFINED;
+  DataType kernel_data_type = DataType::UNDEFINED;
+
+  kernel_data_type = ParseDataType(x);
+
+  if (kernel_backend == Backend::UNDEFINED
+        || kernel_layout == DataLayout::UNDEFINED
+        || kernel_data_type == DataType::UNDEFINED ) {
+    auto kernel_key_set = ParseKernelKeyByInputArgs(x, scale, invvar, y_grad);
+    auto kernel_key = kernel_key_set.GetHighestPriorityKernelKey();
+    if (kernel_backend == Backend::UNDEFINED) {
+      kernel_backend = kernel_key.backend();
+    }
+    if (kernel_layout == DataLayout::UNDEFINED) {
+      kernel_layout = kernel_key.layout();
+    }
+    if (kernel_data_type == DataType::UNDEFINED) {
+      kernel_data_type = kernel_key.dtype();
+    }
+  }
+
+  VLOG(6) << "fused_rms_norm_grad API kernel key: [" << kernel_backend << ", " << kernel_layout << ", "<< kernel_data_type << "]";
+  auto kernel_result = phi::KernelFactory::Instance().SelectKernelOrThrowError(
+      "fused_rms_norm_grad", {kernel_backend, kernel_layout, kernel_data_type}, true);
+  const auto& kernel = kernel_result.kernel;
+  if (FLAGS_low_precision_op_list) {
+    phi::KernelFactory::Instance().AddToLowPrecisionKernelList("fused_rms_norm_grad", kernel_data_type);
+  }
+  VLOG(6) << "fused_rms_norm_grad kernel: " << kernel;
+  // add actual_kernel_backend to select actual kernel backend after a potential falling-back to CPU
+  Backend actual_kernel_backend = kernel_result.has_fallback_cpu ? Backend::CPU : kernel_backend;
+  auto* dev_ctx = GetDeviceContextByBackend(actual_kernel_backend);
+
+  auto input_x = PrepareData(x, GetKernelInputArgDef(kernel.InputAt(0), actual_kernel_backend), {}, kernel_result.is_stride_kernel);
+  auto input_scale = PrepareData(scale, GetKernelInputArgDef(kernel.InputAt(1), actual_kernel_backend), {}, kernel_result.is_stride_kernel);
+  auto input_invvar = PrepareData(invvar, GetKernelInputArgDef(kernel.InputAt(2), actual_kernel_backend), {}, kernel_result.is_stride_kernel);
+  auto input_y_grad = PrepareData(y_grad, GetKernelInputArgDef(kernel.InputAt(3), actual_kernel_backend), {}, kernel_result.is_stride_kernel);
+  if(phi::RecordOpInfoSupplement::IsEnabled()){
+     std::vector<std::pair<const char*, std::vector<phi::DDim>>> input_shapes{
+     {"x", {
+     (*input_x).dims()}},
+     {"scale", {
+     (*input_scale).dims()}},
+     {"invvar", {
+     (*input_invvar).dims()}},
+     {"y_grad", {
+     (*input_y_grad).dims()}}};
+     phi::AttributeMap attrs;
+     attrs["epsilon"] = epsilon;
+     phi::RecordOpInfoSupplement("fused_rms_norm_grad", input_shapes, attrs);
+  }
+
+  auto kernel_out_0 = SetKernelOutput(x_grad);
+  auto kernel_out_1 = SetKernelOutput(scale_grad);
+
+  phi::RecordEvent *infer_shape_record_event = nullptr;
+  if(phi::RecordEvent::IsEnabled()){
+    infer_shape_record_event = new phi::RecordEvent("fused_rms_norm_grad infer_meta", phi::TracerEventType::OperatorInner, 1);
+  }
+  phi::MetaTensor meta_out_0(kernel_out_0, kernel_result.is_stride_kernel);
+  phi::MetaTensor meta_out_1(kernel_out_1, kernel_result.is_stride_kernel);
+
+  phi::FusedRMSNormGradInferMeta(MakeMetaTensor(*input_x), MakeMetaTensor(*input_scale), MakeMetaTensor(*input_invvar), MakeMetaTensor(*input_y_grad), epsilon, kernel_out_0 ? &meta_out_0 : nullptr, kernel_out_1 ? &meta_out_1 : nullptr);
+
+  if(infer_shape_record_event != nullptr){
+    delete infer_shape_record_event;
+  }
+  using kernel_signature = void(*)(const phi::DeviceContext&, const phi::DenseTensor&, const phi::DenseTensor&, const phi::DenseTensor&, const phi::DenseTensor&, float, phi::DenseTensor*, phi::DenseTensor*);
+  auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
+  phi::RecordEvent* kernel_record_event = nullptr;
+  if(phi::RecordEvent::IsEnabled()){
+    kernel_record_event = new phi::RecordEvent("fused_rms_norm_grad kernel launch", phi::TracerEventType::DygraphKernelLaunch, 1);
+  }
+    (*kernel_fn)(*dev_ctx, *input_x, *input_scale, *input_invvar, *input_y_grad, epsilon, kernel_out_0, kernel_out_1);
+  if (FLAGS_benchmark) {
+      dev_ctx->Wait();
+      std::cout << "fused_rms_norm_grad kernel run finish." << std::endl;
+  }
+  if(kernel_record_event != nullptr){
+    delete kernel_record_event;
+  }
+  if (kernel_result.has_fallback_cpu) {
+
+    TransDataBackend(kernel_out_0, kernel_backend, kernel_out_0);
+    TransDataBackend(kernel_out_1, kernel_backend, kernel_out_1);
+
+  }
+  dev_ctx = GetDeviceContextByBackend(kernel_backend);
+
+  
+}
+
 PADDLE_API void add_double_grad(const Tensor& y, const Tensor& grad_out, const paddle::optional<Tensor>& grad_x_grad, const paddle::optional<Tensor>& grad_y_grad, int axis, Tensor* grad_out_grad) {
 
   Backend kernel_backend = Backend::UNDEFINED;

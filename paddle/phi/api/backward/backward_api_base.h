@@ -639,6 +639,8 @@ PADDLE_API void unpool3d_grad(const Tensor& x, const Tensor& indices, const Tens
 
 PADDLE_API void unpool_grad(const Tensor& x, const Tensor& indices, const Tensor& out, const Tensor& out_grad, const std::vector<int>& ksize, const std::vector<int>& strides, const std::vector<int>& padding, const IntArray& output_size, const std::string& data_format, Tensor* x_grad);
 
+PADDLE_API void fused_rms_norm_grad(const Tensor& x, const Tensor& scale, const Tensor& invvar, const Tensor& y_grad, float epsilon, Tensor* x_grad, Tensor* scale_grad);
+
 PADDLE_API void add_double_grad(const Tensor& y, const Tensor& grad_out, const paddle::optional<Tensor>& grad_x_grad, const paddle::optional<Tensor>& grad_y_grad, int axis, Tensor* grad_out_grad);
 
 PADDLE_API void add_grad(const Tensor& x, const Tensor& y, const Tensor& out_grad, int axis, Tensor* x_grad, Tensor* y_grad);

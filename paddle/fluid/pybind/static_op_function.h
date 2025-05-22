@@ -1480,6 +1480,12 @@ PyObject *static_api_chunk_eval(PyObject *self, PyObject *args,
 PyObject *static_api_number_count(PyObject *self, PyObject *args,
                                   PyObject *kwargs);
 
+PyObject *static_api_fused_rms_norm(PyObject *self, PyObject *args,
+                                    PyObject *kwargs);
+
+PyObject *static_api_int_bincount(PyObject *self, PyObject *args,
+                                  PyObject *kwargs);
+
 PyObject *static_api_abs_double_grad(PyObject *self, PyObject *args,
                                      PyObject *kwargs);
 
@@ -2666,6 +2672,9 @@ PyObject *static_api_unpool3d_grad(PyObject *self, PyObject *args,
 
 PyObject *static_api_unpool_grad(PyObject *self, PyObject *args,
                                  PyObject *kwargs);
+
+PyObject *static_api_fused_rms_norm_grad(PyObject *self, PyObject *args,
+                                         PyObject *kwargs);
 
 PyObject *static_api_blha_get_max_len(PyObject *self, PyObject *args,
                                       PyObject *kwargs);

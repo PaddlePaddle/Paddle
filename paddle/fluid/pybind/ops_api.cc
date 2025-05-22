@@ -5044,6 +5044,24 @@ static PyObject *number_count(PyObject *self, PyObject *args, PyObject *kwargs) 
     return eager_api_number_count(self, args, kwargs);
   }
 }
+static PyObject *fused_rms_norm(PyObject *self, PyObject *args, PyObject *kwargs) {
+  if (egr::Controller::Instance().GetCurrentTracer() == nullptr) {
+    VLOG(6) << "Call static_api_fused_rms_norm";
+    return static_api_fused_rms_norm(self, args, kwargs);
+  } else {
+    VLOG(6) << "Call eager_api_fused_rms_norm";
+    return eager_api_fused_rms_norm(self, args, kwargs);
+  }
+}
+static PyObject *int_bincount(PyObject *self, PyObject *args, PyObject *kwargs) {
+  if (egr::Controller::Instance().GetCurrentTracer() == nullptr) {
+    VLOG(6) << "Call static_api_int_bincount";
+    return static_api_int_bincount(self, args, kwargs);
+  } else {
+    VLOG(6) << "Call eager_api_int_bincount";
+    return eager_api_int_bincount(self, args, kwargs);
+  }
+}
 static PyObject *abs_grad(PyObject *self, PyObject *args, PyObject *kwargs) {
   if (egr::Controller::Instance().GetCurrentTracer() == nullptr) {
     VLOG(6) << "Call static_api_abs_grad";
@@ -8131,6 +8149,15 @@ static PyObject *unpool_grad(PyObject *self, PyObject *args, PyObject *kwargs) {
     return eager_api_unpool_grad(self, args, kwargs);
   }
 }
+static PyObject *fused_rms_norm_grad(PyObject *self, PyObject *args, PyObject *kwargs) {
+  if (egr::Controller::Instance().GetCurrentTracer() == nullptr) {
+    VLOG(6) << "Call static_api_fused_rms_norm_grad";
+    return static_api_fused_rms_norm_grad(self, args, kwargs);
+  } else {
+    VLOG(6) << "Call eager_api_fused_rms_norm_grad";
+    return eager_api_fused_rms_norm_grad(self, args, kwargs);
+  }
+}
 static PyObject *blha_get_max_len(PyObject *self, PyObject *args, PyObject *kwargs) {
   if (egr::Controller::Instance().GetCurrentTracer() == nullptr) {
     VLOG(6) << "Call static_api_blha_get_max_len";
@@ -10522,6 +10549,8 @@ static PyMethodDef OpsAPI[] = {
 {"yolo_loss", (PyCFunction)(void (*)(void))yolo_loss, METH_VARARGS | METH_KEYWORDS, "C++ interface function for yolo_loss."},
 {"chunk_eval", (PyCFunction)(void (*)(void))chunk_eval, METH_VARARGS | METH_KEYWORDS, "C++ interface function for chunk_eval."},
 {"number_count", (PyCFunction)(void (*)(void))number_count, METH_VARARGS | METH_KEYWORDS, "C++ interface function for number_count."},
+{"fused_rms_norm", (PyCFunction)(void (*)(void))fused_rms_norm, METH_VARARGS | METH_KEYWORDS, "C++ interface function for fused_rms_norm."},
+{"int_bincount", (PyCFunction)(void (*)(void))int_bincount, METH_VARARGS | METH_KEYWORDS, "C++ interface function for int_bincount."},
 {"abs_grad", (PyCFunction)(void (*)(void))abs_grad, METH_VARARGS | METH_KEYWORDS, "C++ interface function for abs_grad."},
 {"acos_grad", (PyCFunction)(void (*)(void))acos_grad, METH_VARARGS | METH_KEYWORDS, "C++ interface function for acos_grad."},
 {"acos_grad_", (PyCFunction)(void (*)(void))acos_grad_, METH_VARARGS | METH_KEYWORDS, "C++ interface function for acos_grad_."},
@@ -10865,6 +10894,7 @@ static PyMethodDef OpsAPI[] = {
 {"stft_grad", (PyCFunction)(void (*)(void))stft_grad, METH_VARARGS | METH_KEYWORDS, "C++ interface function for stft_grad."},
 {"unpool3d_grad", (PyCFunction)(void (*)(void))unpool3d_grad, METH_VARARGS | METH_KEYWORDS, "C++ interface function for unpool3d_grad."},
 {"unpool_grad", (PyCFunction)(void (*)(void))unpool_grad, METH_VARARGS | METH_KEYWORDS, "C++ interface function for unpool_grad."},
+{"fused_rms_norm_grad", (PyCFunction)(void (*)(void))fused_rms_norm_grad, METH_VARARGS | METH_KEYWORDS, "C++ interface function for fused_rms_norm_grad."},
 {"blha_get_max_len", (PyCFunction)(void (*)(void))blha_get_max_len, METH_VARARGS | METH_KEYWORDS, "C++ interface function for blha_get_max_len."},
 {"block_multihead_attention_", (PyCFunction)(void (*)(void))block_multihead_attention_, METH_VARARGS | METH_KEYWORDS, "C++ interface function for block_multihead_attention_."},
 {"block_multihead_attention_xpu_", (PyCFunction)(void (*)(void))block_multihead_attention_xpu_, METH_VARARGS | METH_KEYWORDS, "C++ interface function for block_multihead_attention_xpu_."},

@@ -7297,6 +7297,42 @@ KernelSignature NumberCountOpArgumentMapping(const ArgumentMappingContext& ctx) 
 /*
 ******************************************************************
 NOTE: The following codes are for 'get_compat_kernel_signature.py'
+All possible KernelSignatures returned by FusedRmsNormOpArgumentMapping:
+
+return KernelSignature("fused_rms_norm", {"x", "scale"}, {"epsilon"}, {"y", "mean", "invvar"});
+******************************************************************
+*/
+
+KernelSignature FusedRmsNormOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  paddle::small_vector<const char*> inputs {"x", "scale"};
+  paddle::small_vector<const char*> attrs;
+  attrs.emplace_back("epsilon");
+  paddle::small_vector<const char*> outputs {"y", "mean", "invvar"};
+  return KernelSignature("fused_rms_norm", std::move(inputs), std::move(attrs), std::move(outputs));
+}
+
+/*
+******************************************************************
+NOTE: The following codes are for 'get_compat_kernel_signature.py'
+All possible KernelSignatures returned by IntBincountOpArgumentMapping:
+
+return KernelSignature("int_bincount", {"x"}, {"low", "high", "dtype"}, {"y"});
+******************************************************************
+*/
+
+KernelSignature IntBincountOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  paddle::small_vector<const char*> inputs {"x"};
+  paddle::small_vector<const char*> attrs;
+  attrs.emplace_back("low");
+  attrs.emplace_back("high");
+  attrs.emplace_back("dtype");
+  paddle::small_vector<const char*> outputs {"y"};
+  return KernelSignature("int_bincount", std::move(inputs), std::move(attrs), std::move(outputs));
+}
+
+/*
+******************************************************************
+NOTE: The following codes are for 'get_compat_kernel_signature.py'
 All possible KernelSignatures returned by AbsDoubleGradOpArgumentMapping:
 
 return KernelSignature("abs_double_grad", {"X", "grad_x@GRAD"}, {}, {"grad_out@GRAD"});
@@ -12093,6 +12129,23 @@ KernelSignature Unpool3dGradOpArgumentMapping(const ArgumentMappingContext& ctx)
   return KernelSignature("unpool3d_grad", std::move(inputs), std::move(attrs), std::move(outputs));
 }
 
+/*
+******************************************************************
+NOTE: The following codes are for 'get_compat_kernel_signature.py'
+All possible KernelSignatures returned by FusedRmsNormGradOpArgumentMapping:
+
+return KernelSignature("fused_rms_norm_grad", {"x", "scale", "invvar", "y@GRAD"}, {"epsilon"}, {"x@GRAD", "scale@GRAD"});
+******************************************************************
+*/
+
+KernelSignature FusedRmsNormGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  paddle::small_vector<const char*> inputs {"x", "scale", "invvar", "y@GRAD"};
+  paddle::small_vector<const char*> attrs;
+  attrs.emplace_back("epsilon");
+  paddle::small_vector<const char*> outputs {"x@GRAD", "scale@GRAD"};
+  return KernelSignature("fused_rms_norm_grad", std::move(inputs), std::move(attrs), std::move(outputs));
+}
+
 }  // namespace phi
 
 PD_REGISTER_ARG_MAPPING_FN(abs, phi::AbsOpArgumentMapping);
@@ -12516,6 +12569,8 @@ PD_REGISTER_BASE_KERNEL_NAME(yolov3_loss, yolo_loss);
 PD_REGISTER_ARG_MAPPING_FN(yolov3_loss, phi::Yolov3LossOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(chunk_eval, phi::ChunkEvalOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(number_count, phi::NumberCountOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(fused_rms_norm, phi::FusedRmsNormOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(int_bincount, phi::IntBincountOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(abs_double_grad, phi::AbsDoubleGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(abs_grad, phi::AbsGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(acos_double_grad, phi::AcosDoubleGradOpArgumentMapping);
@@ -12823,3 +12878,4 @@ PD_REGISTER_ARG_MAPPING_FN(shuffle_batch_grad, phi::ShuffleBatchGradOpArgumentMa
 PD_REGISTER_ARG_MAPPING_FN(sparse_attention_grad, phi::SparseAttentionGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(stft_grad, phi::StftGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(unpool3d_grad, phi::Unpool3dGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(fused_rms_norm_grad, phi::FusedRmsNormGradOpArgumentMapping);
