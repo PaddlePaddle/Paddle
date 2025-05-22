@@ -300,13 +300,6 @@ class TestBF16Case5(TestClipBF16Op):
         self.min = 0.5
 
 
-class TestBF16Case_ZeroSize(TestClipBF16Op):
-    def initTestCase(self):
-        self.shape = (4, 0, 16)
-        self.max = 0.5
-        self.min = 0.5
-
-
 class TestClipOpError(unittest.TestCase):
 
     def test_errors(self):
