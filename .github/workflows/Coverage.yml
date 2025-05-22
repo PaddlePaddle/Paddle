@@ -266,7 +266,7 @@ jobs:
           PADDLE_VERSION: 0.0.0
           CUDA_VISIBLE_DEVICES: 0,1
           WITH_DISTRIBUTE: "ON"
-          PRECISION_TEST: "ON"
+          PRECISION_TEST: "OFF"
           WITH_UNITY_BUILD: "ON"
           PY_VERSION: 3.9
           WITH_SHARED_PHI: "ON"
