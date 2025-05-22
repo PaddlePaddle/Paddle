@@ -96,12 +96,8 @@ class FP16Utils:
                 continue
             output_name = op.desc.output_arg_names()[0]
             # TODO (JZ-LIANG) revise this for uniform mixed parallelism
-            param_name = (
-                output_name.removeprefix("@GRAD@MERGED").removesuffix(
-                    "@GRAD@MERGED"
-                )
-                if "@MERGED" in output_name
-                else output_name.removeprefix("@GRAD").removesuffix("@GRAD")
+            param_name = output_name.removesuffix("@MERGED").removesuffix(
+                "@GRAD"
             )
             if param_name not in shard.global_params:
                 raise ValueError(
@@ -127,14 +123,9 @@ class FP16Utils:
                 reversed_x_paramname = []
                 for input_name in op.desc.input('X'):
                     # TODO (JZ-LIANG) revise this for uniform mixed parallelism
-                    if "@MERGED" in input_name:
-                        param_name = input_name.removeprefix(
-                            "@GRAD@MERGED"
-                        ).removesuffix("@GRAD@MERGED")
-                    else:
-                        param_name = input_name.removeprefix(
-                            "@GRAD"
-                        ).removesuffix("@GRAD")
+                    param_name = input_name.removesuffix(
+                        "@MERGED"
+                    ).removesuffix("@GRAD")
                     if param_name not in shard.global_params:
                         raise ValueError(
                             "Input 'X' of check_finite_and_unscale must"
