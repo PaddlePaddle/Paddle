@@ -16,7 +16,7 @@ def moe_combine(
     Args:
         x: Input tensor [seq, dim]
         combine_weights: Combination weights [s, k]
-        scatter_index: Scatter indices [k, s]
+        scatter_index: Scatter indices [k, s] dtype=int32
     
     Returns:
         Output Combined output [s, dim]
