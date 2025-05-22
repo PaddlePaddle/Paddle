@@ -623,6 +623,46 @@ def flash_attention(
             )
 
 
+@overload
+def flash_attention_v3_varlen(
+    query: Tensor,
+    key: Tensor,
+    value: Tensor,
+    cu_seqlens_q: Tensor,
+    cu_seqlens_k: Tensor,
+    dropout: float = ...,
+    causal: bool = ...,
+    return_softmax: Literal[False] = ...,
+    fixed_seed_offset: Tensor | None = ...,
+    rng_name: str = ...,
+    training: bool = ...,
+    softmax_scale: float | None = ...,
+    max_seqlen_q: int = ...,
+    max_seqlen_k: int = ...,
+    name: str | None = ...,
+) -> tuple[Tensor, None]: ...
+
+
+@overload
+def flash_attention_v3_varlen(
+    query: Tensor,
+    key: Tensor,
+    value: Tensor,
+    cu_seqlens_q: Tensor,
+    cu_seqlens_k: Tensor,
+    dropout: float = ...,
+    causal: bool = ...,
+    return_softmax: Literal[True] = ...,
+    fixed_seed_offset: Tensor | None = ...,
+    rng_name: str = ...,
+    training: bool = ...,
+    softmax_scale: float | None = ...,
+    max_seqlen_q: int = ...,
+    max_seqlen_k: int = ...,
+    name: str | None = ...,
+) -> tuple[Tensor, Tensor]: ...
+
+
 def flash_attention_v3_varlen(
     query,
     key,
