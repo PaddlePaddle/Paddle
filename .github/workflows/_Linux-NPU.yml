@@ -95,7 +95,7 @@ jobs:
           echo ${ASCEND_RT_VISIBLE_DEVICES}
           container_name=${TASK}-$(date +%Y%m%d-%H%M%S)
           echo "container_name=${container_name}" >> ${{ github.env }}
-          docker run --pids-limit 409600 --shm-size=128G -d -t \
+          docker run --privileged --pids-limit 409600 --shm-size=128G -d -t \
             --cap-add=SYS_PTRACE --security-opt seccomp=unconfined --name ${container_name} \
             -v /usr/local/Ascend/driver:/usr/local/Ascend/driver \
             -v /usr/local/bin/npu-smi:/usr/local/bin/npu-smi \
