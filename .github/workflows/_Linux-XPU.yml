@@ -36,7 +36,7 @@ jobs:
     env:
       TASK: paddle-CI-${{ github.event.pull_request.number }}-xpu_build
     runs-on:
-      group: XPU-build
+      group: HK-CPU
     steps:
       - name: Check docker image and run  container
         env:
