@@ -793,4 +793,4 @@ def recompute_sequential(
             preserve_rng_state=preserve_rng_state,
             **kwargs,
         )
-    return _run_func(end + 1, len(functions) - 1, functions)(args)
+    return _run_func(end + 1, len(functions) - 1, functions)(*args)
