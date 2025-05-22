@@ -57,7 +57,7 @@ def build_tuple_unpack_with_call_inner(
 
 
 def build_map_unpack(x: dict[str, paddle.Tensor], y: dict[str, paddle.Tensor]):
-    z = x | y
+    z = {**x, **y}
     return z["a"] + 1
 
 
