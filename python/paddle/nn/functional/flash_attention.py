@@ -695,6 +695,7 @@ def flash_attention_v3_varlen(
     Examples:
         .. code-block:: python
 
+            >>> # doctest: +SKIP('flash_attn_v3 need H100 compile')
             >>> import paddle
 
             >>> paddle.seed(2023)
