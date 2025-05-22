@@ -680,10 +680,10 @@ void SetValueGradInferMeta(const MetaTensor& out_grad,
                            MetaTensor* x_grad,
                            MetaTensor* value_grad);
 
-void CalAuxLossGradInferMeta(const MetaTensor& gate_prob,
+void CalAuxLossGradInferMeta(const MetaTensor& l_aux_loss_grad,
+                             const MetaTensor& gate_prob,
                              const MetaTensor& seqlen_float,
                              const MetaTensor& ce,
-                             const MetaTensor& out_grad,
                              const int64_t num_experts,
                              const bool use_group,
                              const int64_t moe_k,

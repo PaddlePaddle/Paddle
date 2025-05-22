@@ -18,17 +18,14 @@
 namespace phi {
 
 template <typename T, typename Context>
-void CalAuxLossKernel(const Context& dev_ctx,
-                      const DenseTensor& gate_prob,
-                      const DenseTensor& dispatch_mask,
-                      const DenseTensor& tokens_mask,
-                      const DenseTensor& dispatch_tokens_mask,
-                      int64_t num_experts,
-                      bool use_group,
-                      int64_t moe_k,
-                      float clip_min,
-                      DenseTensor* l_aux_loss,
-                      DenseTensor* seqlen_float,
-                      DenseTensor* ce);
+void CalAuxLossGradKernel(const Context& dev_ctx,
+                          const DenseTensor& l_aux_loss_grad,
+                          const DenseTensor& gate_prob,
+                          const DenseTensor& seqlen_float,
+                          const DenseTensor& ce,
+                          const int64_t num_experts,
+                          const bool use_group,
+                          const int64_t moe_k,
+                          DenseTensor* gate_prob_grad);
 
 }  // namespace phi

@@ -231,7 +231,7 @@ if(WITH_ROCM)
     "gpu/affine_grid_grad_kernel.cu"
     "gpu/cal_aux_loss_kernel.cu"
     "gpu/cal_aux_loss_grad_kernel.cu"
-    "build_src_rank_and_local_expert_id_kernel.cu"
+    "gpu/build_src_rank_and_local_expert_id_kernel.cu"
     "gpu/apply_per_channel_scale_kernel.cu"
     "gpu/calc_reduced_attn_kernel.cu"
     "gpu/eigvalsh_kernel.cu"

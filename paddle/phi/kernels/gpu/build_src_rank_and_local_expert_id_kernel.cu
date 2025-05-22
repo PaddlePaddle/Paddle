@@ -11,22 +11,11 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#include <thrust/device_vector.h>
-#include <thrust/host_vector.h>
-#include <cassert>
-#include <vector>
 
-#include "paddle/extension.h"
-#include "paddle/phi/api/all.h"
-#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/kernels/cal_aux_loss_kernel.h"
 
-#include "paddle/phi/api/ext/spmd_infer.h"
-#include "paddle/phi/infermeta/spmd_rules/rules.h"
-#include "paddle/phi/infermeta/spmd_rules/utils.h"
-
-#include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/build_src_rank_and_local_expert_id_kernel.h"
 
 namespace phi {
 

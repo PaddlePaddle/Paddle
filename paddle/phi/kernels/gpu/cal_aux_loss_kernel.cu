@@ -14,19 +14,12 @@
 
 #pragma once
 
-#include <cassert>
-#include <vector>
-
-// #include "paddle/extension.h"
-// #include "paddle/phi/api/all.h"
-#include "paddle/phi/core/dense_tensor.h"
-// #include "paddle/phi/kernels/funcs/aligned_vector.h"
-#include "paddle/phi/kernels/funcs/math_cuda_utils.h"
-// #include "paddle/extension.h"
-
-#include "paddle/phi/backends/all_context.h"
-#include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cal_aux_loss_kernel.h"
+
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
+
+#include "paddle/phi/kernels/funcs/math_cuda_utils.h"
 
 namespace phi {
 
@@ -263,88 +256,6 @@ void CalAuxLossKernel(const Context& dev_ctx,
                   seqlen_float_data,
                   ce_data,
                   dev_ctx.stream());
-}
-
-template <typename T>
-__global__ void cal_aux_loss_grad_kernel(const T* out_grad,
-                                         const T* gate_prob,
-                                         const int64_t row_gate_prob,
-                                         const int64_t col_gate_prob,
-                                         const T* seqlen_float,
-                                         const T* ce,
-                                         const int64_t num_experts,
-                                         const bool use_group,
-                                         const int64_t moe_k,
-                                         T* gate_prob_grad) {
-  T ce_val = ce[threadIdx.x];
-  T l_aux_grad = *out_grad;
-  if (use_group) {
-    l_aux_grad = l_aux_grad / static_cast<T>(moe_k);
-  }
-  l_aux_grad *= static_cast<T>(num_experts);
-
-  gate_prob_grad[blockIdx.x * col_gate_prob + threadIdx.x] =
-      (ce_val * l_aux_grad) / (*seqlen_float);
-}
-
-template <typename T>
-void cal_aux_loss_grad(const T* out_grad,
-                       const T* gate_prob,
-                       const int64_t row_gate_prob, /*seq_len*/
-                       const int64_t col_gate_prob, /*expert_num*/
-                       const T* seqlen_float,
-                       const T* ce,
-                       const int64_t num_experts,
-                       const bool use_group,
-                       const int64_t moe_k,
-                       T* gate_prob_grad,
-                       cudaStream_t stream) {
-  cal_aux_loss_grad_kernel<T>
-      <<<row_gate_prob, col_gate_prob, 0, stream>>>(out_grad,
-                                                    gate_prob,
-                                                    row_gate_prob,
-                                                    col_gate_prob,
-                                                    seqlen_float,
-                                                    ce,
-                                                    num_experts,
-                                                    use_group,
-                                                    moe_k,
-                                                    gate_prob_grad);
-}
-
-template <typename T, typename Context>
-void CalAuxLossGradKernel(const Context& dev_ctx,
-                          const DenseTensor& gate_prob,
-                          const DenseTensor& seqlen_float,
-                          const DenseTensor& ce,
-                          const DenseTensor& out_grad,
-                          const int64_t num_experts,
-                          const bool use_group,
-                          const int64_t moe_k,
-                          DenseTensor* gate_prob_grad) {
-  auto gate_prob_dims = gate_prob.dims();
-
-  const T* out_grad_data = out_grad.data<T>();
-  const T* gate_prob_data = gate_prob.data<T>();
-  const T* seqlen_float_data = seqlen_float.data<T>();
-  const T* ce_data = ce.data<T>();
-
-  int64_t row_gate_prob = gate_prob_dims[0];
-  int64_t col_gate_prob = gate_prob_dims[1];
-
-  T* gate_prob_grad_data = dev_ctx.template Alloc<T>(gate_prob_grad);
-
-  cal_aux_loss_grad<T>(out_grad_data,
-                       gate_prob_data,
-                       row_gate_prob,
-                       col_gate_prob,
-                       seqlen_float_data,
-                       ce_data,
-                       num_experts,
-                       use_group,
-                       moe_k,
-                       gate_prob_grad_data,
-                       dev_ctx.stream());
 }
 
 }  // namespace phi
