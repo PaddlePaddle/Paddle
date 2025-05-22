@@ -679,8 +679,7 @@ Tensor gelu_decomp(const Tensor& x, bool approximate) {
     auto kAlpha =
         full_scalar<T>(PM_2_SQRTPI * PM_SQRT1_2, org_dtype, x.place());
     auto GELU_CONSTANT = full_scalar<T>(0.044715, org_dtype, x.place());
-    auto x_pow3 =
-        elementwise_pow<T>(x, full_scalar<T>(3, org_dtype, x.place()));
+    auto x_pow3 = x * x * x;
     auto tanh_out = tanh<T>(kAlpha * (x + x_pow3 * GELU_CONSTANT));
 
     auto res = x * half * (one + tanh_out);
