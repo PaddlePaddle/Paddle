@@ -498,12 +498,13 @@ class FractionalMaxPool3dGradFunctor {
                   DenseTensor* input_grad);
 };
 
-inline int PoolOutputSize(int input_size,
-                          int filter_size,
-                          int padding_1,
-                          int padding_2,
-                          int stride,
-                          bool ceil_mode) {
+template <typename T = int>
+inline T PoolOutputSize(T input_size,
+                        T filter_size,
+                        T padding_1,
+                        T padding_2,
+                        T stride,
+                        bool ceil_mode) {
   PADDLE_ENFORCE_NE(
       stride,
       0,
@@ -511,7 +512,7 @@ inline int PoolOutputSize(int input_size,
           "The stride of PoolOutputSize shall not be 0, but received %d.",
           stride));
 
-  int output_size;
+  T output_size;
   if (!ceil_mode) {
     output_size =
         (input_size - filter_size + padding_1 + padding_2) / stride + 1;

@@ -32,6 +32,7 @@ namespace phi {
 DECLARE_TYPE_FOR_GPU(gpuStream_t, cudaStream_t, hipStream_t);
 DECLARE_TYPE_FOR_GPU(gpuEvent_t, cudaEvent_t, hipEvent_t);
 
+#ifndef PADDLE_WITH_CUSTOM_DEVICE
 DECLARE_TYPE_FOR_GPU(dnnActivationDescriptor,
                      cudnnActivationStruct,
                      miopenActivationDescriptor);
@@ -69,5 +70,6 @@ DECLARE_TYPE_FOR_GPU(sparseHandle_t, cusparseHandle_t, rocsparse_handle);
 #undef DECLARE_TYPE_FOR_GPU
 
 using CUDAGraphID = unsigned long long;  // NOLINT
+#endif
 
 }  // namespace phi

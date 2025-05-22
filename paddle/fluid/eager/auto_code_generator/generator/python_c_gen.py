@@ -289,11 +289,6 @@ PYTHON_C_H_TEMPLATE = """
 
 #include <Python.h>
 
-// Avoid a problem with copysign defined in pyconfig.h on Windows.
-#ifdef copysign
-#undef copysign
-#endif
-
 namespace paddle {{
 namespace pybind {{
 

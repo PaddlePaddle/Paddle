@@ -88,8 +88,8 @@ void SliceKernel(const Context& ctx,
   // equal
   // to the dims size of input tensor, therefore, if shape_size >
   // axes.size(), the `starts_extension` and `ends_extension` is necessary.
-  std::vector<int> starts_extension(shape_size, 0);
-  std::vector<int> ends_extension(shape_size, 0);
+  std::vector<int64_t> starts_extension(shape_size, 0);
+  std::vector<int64_t> ends_extension(shape_size, 0);
   if (shape_size > axes.size()) {
     for (size_t i = 0; i < shape_size; ++i) {
       ends_extension[i] = in_dims[i];
@@ -106,7 +106,7 @@ void SliceKernel(const Context& ctx,
   }
 
   // prepare shape on XPU
-  std::vector<int> shape(shape_size, 0);
+  std::vector<int64_t> shape(shape_size, 0);
   for (size_t i = 0; i < shape_size; ++i) {
     shape[i] = in_dims[i];
   }

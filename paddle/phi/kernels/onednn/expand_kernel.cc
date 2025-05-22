@@ -39,16 +39,51 @@ void ExpandKernel(const Context& dev_ctx,
   auto x_vec_dims = common::vectorize(x.dims());
 
   auto out_new_dims = shape.GetData();
+  bool has_zero_size = false;
 
   for (size_t i = 0; i < out_new_dims.size(); ++i) {
-    out_new_dims[i] = out_new_dims[i] > 0 ? out_new_dims[i] : x_vec_dims[i];
+    out_new_dims[i] = out_new_dims[i] >= 0 ? out_new_dims[i] : x_vec_dims[i];
   }
 
   if (x_vec_dims.size() != out_new_dims.size()) {
     x_vec_dims = GetExtendedXDims(x_vec_dims, out_new_dims.size());  // NOLINT
   }
 
+  for (size_t i = 0; i < x_vec_dims.size(); ++i) {
+    PADDLE_ENFORCE_GE(
+        out_new_dims[i],
+        0,
+        common::errors::InvalidArgument(
+            "The expanded size (%d) for non-existing dimensions must be "
+            "positive for expand_v2 op.",
+            out_new_dims[i]));
+
+    PADDLE_ENFORCE_GE(
+        x_vec_dims[i],
+        0,
+        common::errors::InvalidArgument(
+            "The expanded size (%d) for non-existing dimensions must be "
+            "positive for expand_v2 op.",
+            x_vec_dims[i]));
+
+    PADDLE_ENFORCE_EQ(
+        x_vec_dims[i] == 1 || x_vec_dims[i] == out_new_dims[i],
+        true,
+        common::errors::InvalidArgument(
+            "The value (%d) of the non-singleton dimension does not match"
+            " the corresponding value (%d) in shape for expand_v2 op.",
+            x_vec_dims[i],
+            out_new_dims[i]));
+    if (out_new_dims[i] == 0) {
+      has_zero_size = true;
+    }
+  }
+
   out->Resize(common::make_ddim(out_new_dims));
+  if (has_zero_size) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   funcs::BroadcastDataOneDNNHandler<T> handler(dnnl::algorithm::binary_add,
                                                onednn_engine,
                                                dev_ctx.GetPlace(),

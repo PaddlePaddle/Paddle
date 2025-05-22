@@ -17,6 +17,7 @@ import copy
 import logging
 import os
 import warnings
+from collections import OrderedDict
 from types import MethodType
 from typing import TYPE_CHECKING, Any, Literal, TypedDict
 
@@ -58,6 +59,11 @@ from paddle.distributed.auto_parallel.static.utils import (
     split_param_func,
     to_list,
 )
+from paddle.distributed.fleet.utils.tensor_fusion_helper import (
+    align,
+    alignment,
+    get_current_device_type,
+)
 from paddle.framework import core
 from paddle.io.dataloader.batch_sampler import (
     DistributedBatchSampler,
@@ -68,6 +74,7 @@ from paddle.optimizer import Optimizer
 from .moe_utils import (
     _cal_local_shape,
     _dist_reshape,
+    _dtensor_from_local,
     _NdMeshAlltoAll,
     _reshard_mesh_shape,
     _specific_alltoall_dim,
@@ -79,7 +86,11 @@ from .placement_type import (
     to_placements,
 )
 from .random import determinate_rng, rng_state
-from .sharding import ShardingOptimizerStage1, get_placement_with_sharding
+from .sharding import (
+    ShardingOptimizerStage1,
+    get_mesh_comm_list,
+    get_placement_with_sharding,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
@@ -1128,6 +1139,22 @@ class _ShardOptimizer(Optimizer):
             for param in self._inner_opt._parameter_list:
                 self._shard_fn._shard_parameter(param)
 
+        self.fuse_param_view = []
+        self.param_storage = []
+        self.grad_storage = []
+        self._sharding_group = None
+        self._mp_group = None
+        self.do_tensor_fusion_once = True
+        self._strategy = Strategy()
+        self.enable_tensor_fusion = os.getenv("FLAGS_enable_tensor_fusion") in [
+            "True",
+            "true",
+            "1",
+        ]
+        self.enable_sharding_overlap = os.getenv(
+            "FLAGS_enable_sharding_overlap"
+        ) in ["True", "true", "1"]
+
     def _set_and_check_sharding_prop_from_param(self):
         global_mesh = fleet.auto.get_mesh()
         if global_mesh:
@@ -1253,13 +1280,34 @@ class _ShardOptimizer(Optimizer):
 
     def _finish_update(self, block, parameters_and_grads):
         self._inner_opt._finish_update(block, parameters_and_grads)
-        if isinstance(parameters_and_grads, list):
-            for p, _ in parameters_and_grads:
-                self._reset_placements(p)
+        if self.enable_tensor_fusion:
+            # zero the grad storage for add_ op in inplace_master_grad
+            for grad_storage in self.grad_storage:
+                grad_storage.zero_()
+                grad_storage.check_in = 0
+            if not self.enable_sharding_overlap:
+                for i in range(len(self.fuse_param_view)):
+                    shard_size = (
+                        self.param_storage[i]._numel()
+                        // self._sharding_group.nranks
+                    )
+                    begin = shard_size * max(self._sharding_group.rank, 0)
+                    end = begin + shard_size
+                    slice_buffer = paddle._C_ops.view_slice(
+                        self.param_storage[i], begin, end
+                    )
+                    self._sharding_group.process_group.all_gather(
+                        slice_buffer, self.param_storage[i]
+                    ).wait()
+
         else:
-            # reset the parameter and grad to right placements
-            for p, _ in parameters_and_grads['params']:
-                self._reset_placements(p)
+            if isinstance(parameters_and_grads, list):
+                for p, _ in parameters_and_grads:
+                    self._reset_placements(p)
+            else:
+                # reset the parameter and grad to right placements
+                for p, _ in parameters_and_grads['params']:
+                    self._reset_placements(p)
 
     def apply_gradients(self, params_grads):
         new_params_grads = []
@@ -1409,7 +1457,277 @@ class _ShardOptimizer(Optimizer):
                     grad, grad.shape, grad_mesh, [dist.Replicate()]
                 )
             param_and_grad = (param_and_grad[0], grad)
-        return self._inner_opt._append_optimize_op(block, param_and_grad)
+        self._inner_opt._append_optimize_op(block, param_and_grad)
+        if self.enable_sharding_overlap:
+            # overlap all_gather with optimizer op
+            if hasattr(param_and_grad[0], 'last_idx'):
+                idx = param_and_grad[0].last_idx
+                shard_size = (
+                    self.param_storage[idx]._numel()
+                    // self._sharding_group.nranks
+                )
+                begin = shard_size * max(self._sharding_group.rank, 0)
+                end = begin + shard_size
+                slice_buffer = paddle._C_ops.view_slice(
+                    self.param_storage[idx], begin, end
+                )
+                task = paddle.distributed.all_gather(
+                    self.param_storage[idx],
+                    slice_buffer,
+                    group=self._sharding_group,
+                    sync_op=False,
+                )
+
+    def _reduce_scatter_gradients(self, grad_storage):
+        shard_size = grad_storage._numel() // self._sharding_group.nranks
+        begin = shard_size * max(self._sharding_group.rank, 0)
+        end = begin + shard_size
+        reduce_scattered = paddle._C_ops.view_slice(grad_storage, begin, end)
+        paddle.distributed.reduce_scatter(
+            reduce_scattered,
+            grad_storage,
+            op=paddle.distributed.ReduceOp.SUM,
+            group=self._sharding_group,
+            sync_op=False,
+        ).wait()
+
+    def _async_reduce_scatter(self):
+        for i in range(len(self.fuse_param_view)):
+            self._reduce_scatter_gradients(self.grad_storage[i])
+
+            def fuse_comm_hook_func(param_group_len, grad_storage, comm_group):
+                @paddle.autograd.no_grad()
+                def fuse_comm(*_):
+                    grad_storage.check_in += 1
+                    if grad_storage.check_in == param_group_len:
+                        shard_size = grad_storage._numel() // comm_group.nranks
+                        begin = shard_size * max(comm_group.rank, 0)
+                        end = begin + shard_size
+                        reduce_scattered = paddle._C_ops.view_slice(
+                            grad_storage, begin, end
+                        )
+                        task = paddle.distributed.reduce_scatter(
+                            reduce_scattered,
+                            grad_storage,
+                            op=paddle.distributed.ReduceOp.SUM,
+                            group=comm_group,
+                            sync_op=False,
+                        )
+                        grad_storage.comm_task = task
+
+                return fuse_comm
+
+            param_group_len = len(self.fuse_param_view[i])
+            for name, view in self.fuse_param_view[i].items():
+                view['param']._register_backward_hook(
+                    fuse_comm_hook_func(
+                        param_group_len,
+                        self.grad_storage[i],
+                        self._sharding_group,
+                    )
+                )
+
+    def _build_fuse_param_view(
+        self,
+        params_and_grads,
+        sharding_degree,
+    ):
+        def get_padded_size(param):
+            size = np.prod(param._local_shape)
+            align_size = (
+                alignment[get_current_device_type()]
+                // align[param.dtype]
+                * sharding_degree
+            )
+            return ((size + align_size - 1) // align_size) * align_size
+
+        total_buffer_size = 0
+        param2index = {}
+        for param, _ in params_and_grads:
+            param2index[param.name] = total_buffer_size
+            total_buffer_size += get_padded_size(param)
+        param_buffer = paddle.zeros(
+            shape=[total_buffer_size], dtype=params_and_grads[0][0].dtype
+        )
+        grad_dtype = paddle.float32
+        grad_buffer = paddle.zeros(shape=[total_buffer_size], dtype=grad_dtype)
+        grad_buffer.check_in = 0
+        grad_buffer.comm_task = None
+
+        views = {}
+        for param, grad in params_and_grads:
+            padded_size = get_padded_size(param)
+            views[param.name] = {
+                'param': param,
+                'index': param2index[param.name],
+            }
+
+            index = param2index[param.name]
+            param_shape = param.shape
+            stop_gradient = param.stop_gradient
+            param.stop_gradient = True
+            param._local_value().flatten_()
+            paddle.assign(
+                param._local_value(),
+                param_buffer._slice(
+                    index,
+                    index + param._numel(),
+                ),
+            )
+            param.stop_gradient = stop_gradient
+            tmp_param = paddle._C_ops.view_slice(
+                param_buffer,
+                index,
+                index + param._numel(),
+            )
+            tmp_param.get_tensor()._set_dims(param._local_shape)
+            tmp_param = _dtensor_from_local(
+                tmp_param,
+                param.process_mesh,
+                param.placements,
+            )
+            param.get_tensor()._share_data_with(tmp_param.get_tensor())
+
+            paddle.assign(
+                grad._local_value(),
+                grad_buffer._slice(
+                    index,
+                    index + grad._local_value()._numel(),
+                ),
+            )
+            tmp_grad = paddle._C_ops.view_slice(
+                grad_buffer,
+                index,
+                index + grad._local_value()._numel(),
+            )
+            tmp_grad.get_tensor()._set_dims(grad._local_shape)
+            tmp_grad = _dtensor_from_local(
+                tmp_grad,
+                grad.process_mesh,
+                grad.placements,
+            )
+            param.main_grad = tmp_grad
+            grad.get_tensor()._clear()
+            paddle.device.cuda.empty_cache()
+
+        return (views, param_buffer, grad_buffer)
+
+    def _tensor_fusion(self, params_grads):
+        if self.do_tensor_fusion_once:
+            mesh = dist.auto_parallel.get_mesh()
+            shard_groups = get_mesh_comm_list(mesh, "dp")
+            for group in shard_groups:
+                comm_group = dist.new_group(sorted(group))
+                if dist.get_rank() in group:
+                    self._sharding_group = comm_group
+            if "mp" in mesh._dim_names:
+                mp_mesh_axis = mesh._dim_names.index("mp")
+                self._mp_degree = mesh._shape[mp_mesh_axis]
+                mp_groups = get_mesh_comm_list(mesh, "mp")
+                for group in mp_groups:
+                    comm_group = dist.new_group(sorted(group))
+                    if dist.get_rank() in group:
+                        self._mp_group = comm_group
+            self.do_tensor_fusion_once = False
+            parameters = [p_g[0] for p_g in params_grads]
+            comm_buffer_size_MB = self._strategy.sharding.comm_buffer_size_MB
+            if comm_buffer_size_MB < 0:
+                comm_buffer_size_MB = 256
+            group_size = comm_buffer_size_MB * 1024 * 1024
+            is_sparse_gradient = [False] * len(parameters)
+            shape_dict = {param.name: param.shape for param in parameters}
+            dense_params = [param._local_value() for param in parameters]
+
+            # group params according to comm_buffer_size_MB
+            group_indices = core.eager_assign_group_by_size(
+                dense_params, is_sparse_gradient, [group_size, group_size]
+            )
+            var_groups = OrderedDict()
+            for group_idx, indices in enumerate(group_indices):
+                for i in indices:
+                    var_groups.setdefault(group_idx, []).append(params_grads[i])
+
+            # create fuse_param_view, param_storage, grad_storage with groups
+            for group_idx, params_and_grads in var_groups.items():
+                (
+                    fuse_param_view,
+                    param_storage,
+                    grad_storage,
+                ) = self._build_fuse_param_view(
+                    params_and_grads,
+                    self._sharding_group.nranks,
+                )
+                self.fuse_param_view.append(fuse_param_view)
+                self.param_storage.append(param_storage)
+                self.grad_storage.append(grad_storage)
+
+            if self.enable_sharding_overlap:
+                self._async_reduce_scatter()
+
+            if self._inner_opt._grad_clip is not None:
+                self._inner_opt._grad_clip.should_comm_on_shard_dim = True
+                self._inner_opt._grad_clip.sharding_group = self._sharding_group
+                if "mp" in mesh._dim_names and self._mp_degree > 1:
+                    self._inner_opt._grad_clip.mp_group = self._mp_group
+
+        new_params = []
+        new_grads = []
+        for i in range(len(self.fuse_param_view)):
+            if not self.enable_sharding_overlap:
+                self._reduce_scatter_gradients(self.grad_storage[i])
+
+            for name, view in self.fuse_param_view[i].items():
+                param = view['param']
+                index = view['index']
+                shard_size = (
+                    self.param_storage[i]._numel()
+                    // self._sharding_group.nranks
+                )
+                rank_begin = shard_size * max(self._sharding_group.rank, 0)
+                rank_end = rank_begin + shard_size
+                param_begin = max(index, rank_begin)
+                param_end = min(index + param._numel(), rank_end)
+                if param_begin >= param_end:
+                    continue
+                # get new_param from param_storage
+                new_param = paddle._C_ops.view_slice(
+                    self.param_storage[i], param_begin, param_end
+                )
+                new_param = _dtensor_from_local(
+                    new_param,
+                    param.process_mesh,
+                    [dist.Replicate()],
+                )
+                new_param.name = name
+                new_param.stop_gradient = param.stop_gradient
+                new_param.need_clip = param.need_clip
+                new_param.persistable = True
+                new_param.trainable = param.trainable
+                new_param.stop_gradient = param.stop_gradient
+                new_param.optimize_attr = param.optimize_attr
+                new_param.regularizer = param.regularizer
+                new_param.do_model_average = param.do_model_average
+                new_param.is_distributed = param.is_distributed
+                new_params.append(new_param)
+
+                # get new_grad from grad_storage
+                new_grad = paddle._C_ops.view_slice(
+                    self.grad_storage[i], param_begin, param_end
+                )
+                new_grad = _dtensor_from_local(
+                    new_grad, param.process_mesh, [dist.Replicate()]
+                )
+                new_grads.append(new_grad)
+
+            if self.enable_sharding_overlap:
+                # last_idx marks the last param, start asyn comm
+                new_params[-1].last_idx = i
+                if self.grad_storage[i].comm_task is not None:
+                    self.grad_storage[i].comm_task.wait()
+
+        new_params_grads = list(zip(new_params, new_grads))
+
+        return new_params_grads
 
     def _fused_comm_before_apply_optimize(self, flags, params_grads):
         '''
@@ -1505,31 +1823,34 @@ class _ShardOptimizer(Optimizer):
     def _apply_optimize(
         self, loss, startup_program, params_grads, param_group_idx=0
     ):
-        # Fuse the communication of gradients prior to the optimization operation in the dynamic mode.
-        if paddle.in_dynamic_mode():
-            # Get fuse optimization flag.
-            def get_env(flag_name):
-                if os.getenv(flag_name) in ['True', 'true', '1']:
-                    return True
-                return False
+        if self.enable_tensor_fusion:
+            params_grads = self._tensor_fusion(params_grads)
+        else:
+            # Fuse the communication of gradients prior to the optimization operation in the dynamic mode.
+            if paddle.in_dynamic_mode():
+                # Get fuse optimization flag.
+                def get_env(flag_name):
+                    if os.getenv(flag_name) in ['True', 'true', '1']:
+                        return True
+                    return False
 
-            # TODO: This optimization hasn't been verified on a wide range of models. Currently,
-            # it's controlled by a flag switch and will be removed later.
-            fuse_allreduce_in_opt = get_env("FLAGS_fuse_allreduce_in_opt")
-            fuse_reducescatter_in_opt = get_env(
-                "FLAGS_fuse_reducescatter_in_opt"
-            )
-            assert not (
-                fuse_allreduce_in_opt and fuse_reducescatter_in_opt
-            ), "The `FLAGS_fuse_allreduce_in_opt` switch and the `FLAGS_fuse_reducescatter_in_opt` switch cannot be turned on simultaneously."
-
-            if fuse_allreduce_in_opt or fuse_reducescatter_in_opt:
-                flags = {}
-                flags["fuse_allreduce"] = fuse_allreduce_in_opt
-                flags["fuse_reducescatter"] = fuse_reducescatter_in_opt
-                params_grads = self._fused_comm_before_apply_optimize(
-                    flags, params_grads
+                # TODO: This optimization hasn't been verified on a wide range of models. Currently,
+                # it's controlled by a flag switch and will be removed later.
+                fuse_allreduce_in_opt = get_env("FLAGS_fuse_allreduce_in_opt")
+                fuse_reducescatter_in_opt = get_env(
+                    "FLAGS_fuse_reducescatter_in_opt"
                 )
+                assert not (
+                    fuse_allreduce_in_opt and fuse_reducescatter_in_opt
+                ), "The `FLAGS_fuse_allreduce_in_opt` switch and the `FLAGS_fuse_reducescatter_in_opt` switch cannot be turned on simultaneously."
+
+                if fuse_allreduce_in_opt or fuse_reducescatter_in_opt:
+                    flags = {}
+                    flags["fuse_allreduce"] = fuse_allreduce_in_opt
+                    flags["fuse_reducescatter"] = fuse_reducescatter_in_opt
+                    params_grads = self._fused_comm_before_apply_optimize(
+                        flags, params_grads
+                    )
 
         return super()._apply_optimize(
             loss, startup_program, params_grads, param_group_idx
@@ -1563,7 +1884,12 @@ class _ShardingStageBase:
         self, param: Tensor, master_weight: Tensor
     ) -> Tensor:
         if param.is_dist():
-            placements = get_placement_with_sharding(param, self._sharding_axis)
+            if os.getenv("FLAGS_enable_tensor_fusion") in ["True", "true", "1"]:
+                placements = param.placements
+            else:
+                placements = get_placement_with_sharding(
+                    param, self._sharding_axis
+                )
             if isinstance(master_weight, pir.Value):
                 data_op = master_weight.get_defining_op()
                 assert (
@@ -1645,7 +1971,11 @@ class ShardingStage1(_ShardingStageBase):
     def __call__(self, key: str, param: Tensor, accumulator: Tensor) -> Tensor:
         if param.is_dist():
             # Only deal with momentum in optimizer, beta should be replicated cross param's mesh
-            if 'beta' not in key:
+            if (
+                os.getenv("FLAGS_enable_tensor_fusion")
+                not in ["True", "true", "1"]
+                and 'beta' not in key
+            ):
                 placements = get_placement_with_sharding(
                     param, self._sharding_axis
                 )

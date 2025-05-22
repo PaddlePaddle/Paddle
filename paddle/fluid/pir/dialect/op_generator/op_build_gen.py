@@ -70,6 +70,10 @@ _INFERMETA_NEED_META_CONFIG = {
     'ResnetBasicBlockGradInferMeta',
     # multiary.h
     'AddNInferMeta',
+    'ApVariadicInferMeta',
+    'ApFacadeInferMeta',
+    'ApTrivialFusionBeginInferMeta',
+    'ApTrivialFusionEndInferMeta',
     'AddNTensorArrayInferMeta',
     'AttentionLstmInferMeta',
     'AucInferMeta',

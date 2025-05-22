@@ -43,12 +43,12 @@ void LarsMomentumKernel(
   std::vector<float*> velocity_list;
   std::vector<float*> velocity_out_list;
   std::vector<float*> lrs;
-  std::vector<int> param_sizes;
+  std::vector<int64_t> param_sizes;
 
   std::vector<float*> master_param_list;
   std::vector<float*> master_param_out_list;
-  int op_num = param.size();
-  for (int i = 0; i < op_num; ++i) {
+  int64_t op_num = param.size();
+  for (int64_t i = 0; i < op_num; ++i) {
     param_list.push_back(
         reinterpret_cast<XPUType*>(const_cast<T*>((param[i]->data<T>()))));
     grad_list.push_back(
@@ -86,21 +86,21 @@ void LarsMomentumKernel(
     }
   }
 
-  int r = lars_momentum(dev_ctx.x_context(),
-                        param_list,
-                        grad_list,
-                        velocity_list,
-                        lrs,
-                        master_param_list,
-                        param_out_list,
-                        velocity_out_list,
-                        master_param_out_list,
-                        weight_decay_arr,
-                        param_sizes,
-                        mu,
-                        lars_coeff,
-                        epsilon,
-                        rescale_grad);
+  int r = xpu::lars_momentum(dev_ctx.x_context(),
+                             param_list,
+                             grad_list,
+                             velocity_list,
+                             lrs,
+                             master_param_list,
+                             param_out_list,
+                             velocity_out_list,
+                             master_param_out_list,
+                             weight_decay_arr,
+                             param_sizes,
+                             mu,
+                             lars_coeff,
+                             epsilon,
+                             rescale_grad);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "lars_momentum");
 }
 }  // namespace phi

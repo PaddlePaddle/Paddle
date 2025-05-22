@@ -542,31 +542,100 @@ class CustomDevice : public DeviceInterface {
     return 0;
   }
 
-  size_t GetComputeCapability() override {
+  size_t GetComputeCapability(size_t dev_id) override {
+    const auto device = &devices_pool[dev_id];
     size_t compute_capability = 0;
     if (pimpl_->get_compute_capability) {
-      pimpl_->get_compute_capability(&compute_capability);
+      pimpl_->get_compute_capability(device, &compute_capability);
     }
     VLOG(10) << Type() << " get compute capability " << compute_capability;
     return compute_capability;
   }
 
-  size_t GetRuntimeVersion() override {
+  size_t GetRuntimeVersion(size_t dev_id) override {
+    const auto device = &devices_pool[dev_id];
     size_t version = 0;
     if (pimpl_->get_runtime_version) {
-      pimpl_->get_runtime_version(&version);
+      pimpl_->get_runtime_version(device, &version);
     }
     VLOG(10) << Type() << " get runtime version " << version;
     return version;
   }
 
-  size_t GetDriverVersion() override {
+  size_t GetDriverVersion(size_t dev_id) override {
+    const auto device = &devices_pool[dev_id];
     size_t version = 0;
     if (pimpl_->get_driver_version) {
-      pimpl_->get_driver_version(&version);
+      pimpl_->get_driver_version(device, &version);
     }
     VLOG(10) << Type() << " get driver version " << version;
     return version;
+  }
+
+  size_t GetMultiProcessors(size_t dev_id) override {
+    const auto device = &devices_pool[dev_id];
+    size_t multi_process = 0;
+    if (pimpl_->get_multi_process) {
+      pimpl_->get_multi_process(device, &multi_process);
+    }
+    VLOG(10) << Type() << " get multiprocessors " << multi_process;
+    return multi_process;
+  }
+
+  size_t GetMaxThreadsPerMultiProcessor(size_t dev_id) override {
+    const auto device = &devices_pool[dev_id];
+    size_t threads_per_mp = 0;
+    if (pimpl_->get_max_threads_per_mp) {
+      pimpl_->get_max_threads_per_mp(device, &threads_per_mp);
+    }
+    VLOG(10) << Type() << " get max threads per multiprocessor "
+             << threads_per_mp;
+    return threads_per_mp;
+  }
+
+  size_t GetMaxThreadsPerBlock(size_t dev_id) override {
+    const auto device = &devices_pool[dev_id];
+    size_t threads_per_block = 0;
+    if (pimpl_->get_max_threads_per_block) {
+      pimpl_->get_max_threads_per_block(device, &threads_per_block);
+    }
+    VLOG(10) << Type() << " get max threads per block " << threads_per_block;
+    return threads_per_block;
+  }
+
+  std::array<unsigned int, 3> GetMaxGridDimSize(size_t dev_id) override {
+    const auto device = &devices_pool[dev_id];
+    std::array<unsigned int, 3> grid_dim_size = {0, 0, 0};
+    if (pimpl_->get_max_grid_dim_size) {
+      pimpl_->get_max_grid_dim_size(device, &grid_dim_size);
+    }
+    VLOG(10) << Type() << " get max grid dim size [" << grid_dim_size[0] << ", "
+             << grid_dim_size[1] << ", " << grid_dim_size[2] << "]";
+    return grid_dim_size;
+  }
+
+  void* InitEigenDevice(const Place& place,
+                        phi::stream::stream_t stream,
+                        phi::Allocator* allocator) override {
+    void* eigen_device = nullptr;
+    Place place_t = place;
+    if (pimpl_->init_eigen_device) {
+      pimpl_->init_eigen_device(reinterpret_cast<C_Place>(&place_t),
+                                reinterpret_cast<C_EigenDevice*>(&eigen_device),
+                                reinterpret_cast<C_Stream>(stream),
+                                reinterpret_cast<C_Allocator>(allocator));
+    }
+    VLOG(10) << Type() << " init eigen device ";
+    return eigen_device;
+  }
+
+  void DestroyEigenDevice(size_t dev_id, void* eigen_device) override {
+    const auto device = &devices_pool[dev_id];
+    if (pimpl_->destroy_eigen_device) {
+      pimpl_->destroy_eigen_device(
+          device, reinterpret_cast<C_EigenDevice*>(&eigen_device));
+    }
+    VLOG(10) << Type() << " destroy eigen device ";
   }
 
   C_CCLReduceOp ToXCCLReduceOp(ccl::CCLReduceOp reduce_op) {
@@ -1018,6 +1087,12 @@ bool ValidCustomCustomRuntimeParams(const CustomRuntimeParams* params) {
   CHECK_INTERFACE(get_compute_capability, false);
   CHECK_INTERFACE(get_runtime_version, false);
   CHECK_INTERFACE(get_driver_version, false);
+  CHECK_INTERFACE(get_multi_process, false);
+  CHECK_INTERFACE(get_max_threads_per_mp, false);
+  CHECK_INTERFACE(get_max_threads_per_block, false);
+  CHECK_INTERFACE(get_max_grid_dim_size, false);
+  CHECK_INTERFACE(init_eigen_device, false);
+  CHECK_INTERFACE(destroy_eigen_device, false);
 
   CHECK_INTERFACE(xccl_get_unique_id, false);
   CHECK_INTERFACE(xccl_get_unique_id_size, false);

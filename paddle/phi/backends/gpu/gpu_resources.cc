@@ -227,6 +227,7 @@ void DestroyStream(gpuStream_t stream) {
   stream = nullptr;
 }
 
+#ifndef PADDLE_WITH_CUSTOM_DEVICE
 void InitBlasHandle(blasHandle_t* blas_handle, gpuStream_t stream) {
 #ifdef PADDLE_WITH_HIP
   phi::dynload::rocblas_create_handle(blas_handle);
@@ -387,5 +388,5 @@ void DestroySparseHandle(sparseHandle_t handle) {
   }
 #endif
 }
-
+#endif
 }  // namespace phi

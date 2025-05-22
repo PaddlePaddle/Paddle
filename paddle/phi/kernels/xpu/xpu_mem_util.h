@@ -13,9 +13,6 @@
 // limitations under the License.
 
 #pragma once
-
-#ifdef PADDLE_WITH_XPU
-
 #include <vector>
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_header.h"
@@ -53,4 +50,3 @@ XPUT* Alloc_l3_or_gm(const Context& dev_ctx,
 }
 
 }  // namespace phi
-#endif

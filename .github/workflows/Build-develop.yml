@@ -14,16 +14,18 @@ env:
   COMMIT_ID: ${{ github.sha }}
   work_dir: /paddle
   PADDLE_ROOT: /paddle
-  TASK: paddle-CI-bbild-develop
+  TASK: paddle-CI-build-develop-${{ github.sha }}
   ci_scripts: /paddle/ci
-  BRANCH: ${{ github.base.ref }}
-  CI_name: build-develop
+  BRANCH: develop
+  CI_name: build
   no_proxy: "bcebos.com,apiin.im.baidu.com,gitee.com,aliyun.com,.baidu.com,.tuna.tsinghua.edu.cn"
 
 jobs:
   build-docker:
     name: Develop build docker
     uses: ./.github/workflows/docker.yml
+    with:
+      is_merge: "true"
 
   build:
     name: Build
@@ -31,18 +33,24 @@ jobs:
     runs-on:
       group: GZ_BD-CPU
     steps:
+      - name: Clean directory
+        run: |
+          docker_image=${{ needs.build-docker.outputs.docker_build_image }}
+          echo "docker_image=${docker_image}" >> $GITHUB_ENV
+          docker run -i --rm -v ${{ github.workspace }}:/paddle -w /paddle $docker_image /bin/bash -c 'rm -rf * .[^.]*'
+
       - name: Checkout paddle
         uses: actions/checkout@v4
         with:
           submodules: 'recursive'
           fetch-depth: 1000
 
-      - name: Merge PR to test branch
+      - name: Post clone
         run: |
           git config --unset http.https://github.com/.extraheader
           git submodule foreach --recursive sh -c "git config --local --unset-all 'http.https://github.com/.extraheader'"
           git submodule foreach --recursive sh -c "git config remote.origin.fetch '+refs/heads/*:refs/remotes/origin/*'"
-          bash ${ci_scripts}/third_party_tag.sh
+          bash ci/third_party_tag.sh
 
       - name: Check docker image and run container
         env:
@@ -77,8 +85,6 @@ jobs:
         run: |
           container_name=${TASK}-$(date +%Y%m%d-%H%M%S)
           echo "container_name=${container_name}" >> ${{ github.env }}
-          docker_image=${{ needs.build-docker.outputs.docker_build_image }}
-          docker pull $docker_image
           docker run -d -t --name ${container_name} \
             -v "/home/data/cfs:/home/data/cfs" \
             -v "/home/data/cfs/.cache:/root/.cache" \

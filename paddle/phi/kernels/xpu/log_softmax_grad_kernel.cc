@@ -38,7 +38,7 @@ void LogSoftmaxGradKernel(const Context& dev_ctx,
     return;
   }
 
-  auto out_shape = common::vectorize<int>(out.dims());
+  auto out_shape = common::vectorize<int64_t>(out.dims());
   dev_ctx.template Alloc<T>(x_grad);
   int r = xpu::log_softmax_grad(
       dev_ctx.x_context(),

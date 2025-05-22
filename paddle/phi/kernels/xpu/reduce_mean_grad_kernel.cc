@@ -51,7 +51,7 @@ void ReduceMeanGradKernel(const Context& dev_ctx,
   if (reduce_all) {
     reduce_dims.clear();
     for (size_t d = 0; d < xdims.size(); ++d) {
-      reduce_dims.push_back(static_cast<int>(d));
+      reduce_dims.push_back(d);
     }
   }
   for (auto& d : reduce_dims) {

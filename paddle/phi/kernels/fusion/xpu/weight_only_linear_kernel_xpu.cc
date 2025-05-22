@@ -17,20 +17,20 @@
 
 namespace phi {
 template <typename T, typename Context>
-void WeightOnlyLinearKernel(const Context& dev_ctx,
-                            const DenseTensor& x,
-                            const DenseTensor& weight,
-                            const paddle::optional<DenseTensor>& bias,
-                            const DenseTensor& weight_scale,
-                            const std::string& weight_dtype,
-                            const int32_t arch,
-                            const int32_t group_size,
-                            DenseTensor* out) {
+void WeightOnlyLinearXpuKernel(const Context& dev_ctx,
+                               const DenseTensor& x,
+                               const DenseTensor& weight,
+                               const paddle::optional<DenseTensor>& bias,
+                               const DenseTensor& weight_scale,
+                               const std::string& weight_dtype,
+                               const int32_t arch,
+                               const int32_t group_size,
+                               DenseTensor* out) {
   PADDLE_ENFORCE_EQ(
       weight_dtype,
       "int8",
       common::errors::Fatal(
-          "WeightOnlyLinearKernel xpu just support int8 weight only"));
+          "WeightOnlyLinearXpuKernel xpu just support int8 weight only"));
   phi::XPUPlace place(phi::backends::xpu::GetXPUCurrentDeviceId());
   auto xpu_ctx = static_cast<const phi::XPUContext*>(&dev_ctx);
   dev_ctx.template Alloc<T>(out);
@@ -134,6 +134,6 @@ void WeightOnlyLinearKernel(const Context& dev_ctx,
 PD_REGISTER_KERNEL(weight_only_linear_xpu,
                    XPU,
                    ALL_LAYOUT,
-                   phi::WeightOnlyLinearKernel,
+                   phi::WeightOnlyLinearXpuKernel,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}

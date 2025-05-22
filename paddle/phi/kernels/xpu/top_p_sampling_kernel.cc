@@ -56,8 +56,8 @@ void TopPSamplingKernel(const Context& dev_ctx,
   XPUType* out_ptr = reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(out));
   int64_t* ids_ptr = dev_ctx.template Alloc<int64_t>(ids);
   auto x_dims = x.dims();
-  int bs = x_dims[0];
-  int vocab_size = x_dims[1];
+  int64_t bs = x_dims[0];
+  int64_t vocab_size = x_dims[1];
   // int p_num = ps.numel();
 
   // PADDLE_ENFORCE_EQ(
@@ -73,7 +73,7 @@ void TopPSamplingKernel(const Context& dev_ctx,
 
   std::uniform_real_distribution<float> dist(0.0, 1.0);
   std::vector<float> rand_coeff_cpu;
-  for (int i = 0; i < bs; i++) {
+  for (int64_t i = 0; i < bs; i++) {
     if (infer_seed[i] == -1) {
       std::shared_ptr<std::mt19937_64> engine =
           dev_ctx.GetGenerator()->GetCPUEngine();
@@ -109,36 +109,36 @@ void TopPSamplingKernel(const Context& dev_ctx,
                                                  heuristic_threshold);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "top_p_sampling");
   } else {
-    using XPUFP16 = typename XPUTypeTrait<phi::dtype::float16>::Type;
-    XPUFP16* x_fp16_ptr = RAII_GUARD.alloc<XPUFP16>(x.numel());
-    XPUFP16* ps_fp16_ptr = RAII_GUARD.alloc<XPUFP16>(ps.numel());
-    XPUFP16* out_fp16_ptr = RAII_GUARD.alloc<XPUFP16>(out->numel());
+    using XPUTypeFP16 = typename XPUTypeTrait<phi::dtype::float16>::Type;
+    XPUTypeFP16* x_fp16_ptr = RAII_GUARD.alloc<XPUTypeFP16>(x.numel());
+    XPUTypeFP16* ps_fp16_ptr = RAII_GUARD.alloc<XPUTypeFP16>(ps.numel());
+    XPUTypeFP16* out_fp16_ptr = RAII_GUARD.alloc<XPUTypeFP16>(out->numel());
 
     float fp16_scale = 32768.f;  // experience value
-    r = xpu::scale_cast_fusion<XPUType, XPUFP16>(
+    r = xpu::scale_cast_fusion<XPUType, XPUTypeFP16>(
         dev_ctx.x_context(), x_ptr, x_fp16_ptr, x.numel(), fp16_scale);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "scale_cast_fusion");
-    r = xpu::scale_cast_fusion<XPUType, XPUFP16>(
+    r = xpu::scale_cast_fusion<XPUType, XPUTypeFP16>(
         dev_ctx.x_context(), ps_ptr, ps_fp16_ptr, ps.numel(), fp16_scale);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "scale_cast_fusion");
 
-    r = xpu::faster_top_p_sampling<XPUFP16, int>(dev_ctx.x_context(),
-                                                 x_fp16_ptr,
-                                                 ps_fp16_ptr,
-                                                 rand_coeff_xpu,
-                                                 ids_int_ptr,
-                                                 bs,
-                                                 vocab_size,
-                                                 out_fp16_ptr,
-                                                 nullptr,
-                                                 heuristic_threshold);
+    r = xpu::faster_top_p_sampling<XPUTypeFP16, int>(dev_ctx.x_context(),
+                                                     x_fp16_ptr,
+                                                     ps_fp16_ptr,
+                                                     rand_coeff_xpu,
+                                                     ids_int_ptr,
+                                                     bs,
+                                                     vocab_size,
+                                                     out_fp16_ptr,
+                                                     nullptr,
+                                                     heuristic_threshold);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "top_p_sampling");
 
-    r = xpu::scale_cast_fusion<XPUFP16, XPUType>(dev_ctx.x_context(),
-                                                 out_fp16_ptr,
-                                                 out_ptr,
-                                                 out->numel(),
-                                                 1.f / fp16_scale);
+    r = xpu::scale_cast_fusion<XPUTypeFP16, XPUType>(dev_ctx.x_context(),
+                                                     out_fp16_ptr,
+                                                     out_ptr,
+                                                     out->numel(),
+                                                     1.f / fp16_scale);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "scale_cast_fusion");
   }
   r = xpu::cast<int, int64_t>(

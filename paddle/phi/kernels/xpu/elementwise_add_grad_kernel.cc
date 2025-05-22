@@ -23,6 +23,8 @@
 #include "paddle/phi/backends/xpu/xpu_info.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/kernels/complex_kernel.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 
 namespace phi {
@@ -34,6 +36,25 @@ void AddGradKernel(const Context& dev_ctx,
                    int axis,
                    DenseTensor* dx,
                    DenseTensor* dy) {
+  if (dout.numel() == 0) {
+    if (dx) {
+      if (dx->numel() == 0) {
+        dev_ctx.template Alloc<T>(dx);
+      } else {
+        phi::Full<T, Context>(
+            dev_ctx, phi::IntArray(common::vectorize(dx->dims())), 0, dx);
+      }
+    }
+    if (dy) {
+      if (dy->numel() == 0) {
+        dev_ctx.template Alloc<T>(dy);
+      } else {
+        phi::Full<T, Context>(
+            dev_ctx, phi::IntArray(common::vectorize(dy->dims())), 0, dy);
+      }
+    }
+    return;
+  }
   using XPUType = typename XPUTypeTrait<T>::Type;
   funcs::ElementwiseGradPreProcess(dout, dx);
   auto* dz = &dout;
@@ -97,6 +118,75 @@ void AddGradKernel(const Context& dev_ctx,
     }
   }
 }
+#ifdef PADDLE_WITH_XPU_FFT
+template <>
+void AddGradKernel<phi::dtype::complex<float>, XPUContext>(
+    const XPUContext& dev_ctx,
+    const DenseTensor& x,
+    const DenseTensor& y,
+    const DenseTensor& dout,
+    int axis,
+    DenseTensor* dx,
+    DenseTensor* dy) {
+  using T = phi::dtype::complex<float>;
+  const bool compute_dx = (dx != nullptr);
+  const bool compute_dy = (dy != nullptr);
+
+  // The current complex number implementation uses separate real/imaginary
+  // parts,resulting in redundant operations and performance
+  // penalties.Optimization should address this in future iterations.
+  DenseTensor x_real = Real<T, XPUContext>(dev_ctx, x);
+  DenseTensor x_imag = Imag<T, XPUContext>(dev_ctx, x);
+  DenseTensor y_real = Real<T, XPUContext>(dev_ctx, y);
+  DenseTensor y_imag = Imag<T, XPUContext>(dev_ctx, y);
+  DenseTensor dout_real = Real<T, XPUContext>(dev_ctx, dout);
+  DenseTensor dout_imag = Imag<T, XPUContext>(dev_ctx, dout);
+
+  if (compute_dx || compute_dy) {
+    DenseTensor dx_real, dx_imag, dy_real, dy_imag;
+
+    if (compute_dx) {
+      dx_real.Resize(x_real.dims());
+      dx_imag.Resize(x_imag.dims());
+      dev_ctx.template Alloc<float>(&dx_real);
+      dev_ctx.template Alloc<float>(&dx_imag);
+    }
+
+    if (compute_dy) {
+      dy_real.Resize(y_real.dims());
+      dy_imag.Resize(y_imag.dims());
+      dev_ctx.template Alloc<float>(&dy_real);
+      dev_ctx.template Alloc<float>(&dy_imag);
+    }
+
+    AddGradKernel<float, XPUContext>(dev_ctx,
+                                     x_real,
+                                     y_real,
+                                     dout_real,
+                                     axis,
+                                     compute_dx ? &dx_real : nullptr,
+                                     compute_dy ? &dy_real : nullptr);
+
+    AddGradKernel<float, XPUContext>(dev_ctx,
+                                     x_imag,
+                                     y_imag,
+                                     dout_imag,
+                                     axis,
+                                     compute_dx ? &dx_imag : nullptr,
+                                     compute_dy ? &dy_imag : nullptr);
+
+    if (compute_dx) {
+      dev_ctx.template Alloc<T>(dx);
+      phi::ComplexKernel<float>(dev_ctx, dx_real, dx_imag, dx);
+    }
+
+    if (compute_dy) {
+      dev_ctx.template Alloc<T>(dy);
+      phi::ComplexKernel<float>(dev_ctx, dy_real, dy_imag, dy);
+    }
+  }
+}
+#endif
 }  // namespace phi
 
 PD_REGISTER_KERNEL(add_grad,
@@ -105,6 +195,10 @@ PD_REGISTER_KERNEL(add_grad,
                    phi::AddGradKernel,
                    phi::dtype::float16,
                    phi::dtype::bfloat16,
+#ifdef PADDLE_WITH_XPU_FFT
+                   phi::dtype::complex<float>,
+#endif
                    float,
                    int,
-                   int64_t) {}
+                   int64_t) {
+}

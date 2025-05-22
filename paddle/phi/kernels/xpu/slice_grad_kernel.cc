@@ -40,25 +40,25 @@ void SliceGradKernel(const Context& ctx,
   const auto& in_dims = input.dims();
   int rank = in_dims.size();
 
-  std::vector<int> pad_left(rank);
-  std::vector<int> out_dims(rank);
-  std::vector<int> pad_right(rank);
-  int cnt = 0;
+  std::vector<int64_t> pad_left(rank);
+  std::vector<int64_t> out_dims(rank);
+  std::vector<int64_t> pad_right(rank);
+  int64_t cnt = 0;
   for (int i = 0; i < in_dims.size(); ++i) {
-    int start = 0;
-    int end = in_dims[i];
-    int axis = cnt < static_cast<int>(axes.size()) ? axes[cnt] : -1;
+    int64_t start = 0;
+    int64_t end = in_dims[i];
+    int64_t axis = cnt < static_cast<int64_t>(axes.size()) ? axes[cnt] : -1;
     if (axis == i) {
       start = starts[cnt];
       if (start < 0) {
         start = (start + in_dims[i]);
       }
-      start = std::max(start, static_cast<int>(0));
+      start = std::max(start, static_cast<int64_t>(0));
       end = ends[cnt];
       if (end < 0) {
         end = (end + in_dims[i]);
       }
-      end = std::min(end, static_cast<int>(in_dims[i]));
+      end = std::min(end, in_dims[i]);
       cnt++;
     }
 

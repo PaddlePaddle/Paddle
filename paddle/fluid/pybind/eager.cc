@@ -12,10 +12,6 @@ limitations under the License. */
 #include "paddle/fluid/pybind/eager.h"
 
 #include <Python.h>
-// Avoid a problem with copysign defined in pyconfig.h on Windows.
-#ifdef copysign
-#undef copysign
-#endif
 
 #include <string>
 #include <vector>

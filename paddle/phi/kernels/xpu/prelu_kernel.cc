@@ -34,10 +34,10 @@ void PReluKernel(const Context& dev_ctx,
 
   auto x_dim = x.dims();
   auto x_rank = x_dim.size();
-  std::vector<int> x_shape(x_rank);
+  std::vector<int64_t> x_shape(x_rank);
 
   if (x_rank == 0) {
-    x_shape = std::vector<int>({1});
+    x_shape = std::vector<int64_t>({1});
   } else {
     for (int i = 0; i < x_rank; i++) {
       x_shape[i] = x_dim[i];
@@ -46,10 +46,10 @@ void PReluKernel(const Context& dev_ctx,
 
   auto alpha_dim = alpha.dims();
   auto alpha_rank = alpha_dim.size();
-  std::vector<int> alpha_shape(x_rank, 1);  // same size with x_shape
+  std::vector<int64_t> alpha_shape(x_rank, 1);  // same size with x_shape
 
   if (x_rank == 0) {
-    alpha_shape = std::vector<int>({1});
+    alpha_shape = std::vector<int64_t>({1});
   } else {
     for (int i = 0; i < alpha_rank; i++) {
       alpha_shape[i] = alpha_dim[i];
@@ -67,4 +67,5 @@ void PReluKernel(const Context& dev_ctx,
 }
 }  // namespace phi
 
-PD_REGISTER_KERNEL(prelu, XPU, ALL_LAYOUT, phi::PReluKernel, float) {}
+PD_REGISTER_KERNEL(
+    prelu, XPU, ALL_LAYOUT, phi::PReluKernel, float, phi::dtype::float16) {}

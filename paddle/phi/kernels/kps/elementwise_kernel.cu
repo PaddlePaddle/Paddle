@@ -189,6 +189,10 @@ void CopySignKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     const DenseTensor& y,
                     DenseTensor* out) {
+  if (out->numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   std::vector<const DenseTensor*> inputs = {&x, &y};
   std::vector<DenseTensor*> outputs = {out};
   dev_ctx.template Alloc<T>(out);
@@ -252,7 +256,9 @@ PD_REGISTER_KERNEL(elementwise_pow,
                    int,
                    int64_t,
                    phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
 PD_REGISTER_KERNEL(copysign,
                    GPU,
                    ALL_LAYOUT,

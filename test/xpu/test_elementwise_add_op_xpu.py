@@ -121,6 +121,30 @@ class XPUTestElementwiseAddOp(XPUOpTestWrapper):
             self.y = np.random.uniform(-1, 1, []).astype(self.dtype)
             self.out = self.x + self.y
 
+    class TestElementwiseAddOp_ZeroSize1(TestElementwiseAddOp):
+        def init_input_output(self):
+            self.x = np.random.rand(0, 3, 4).astype(self.dtype)
+            self.y = np.random.rand(1).astype(self.dtype)
+            self.out = self.x + self.y
+
+    class TestElementwiseAddOp_ZeroSize2(TestElementwiseAddOp):
+        def init_input_output(self):
+            self.x = np.random.rand(0, 3, 4).astype(self.dtype)
+            self.y = np.random.rand(0, 3, 4).astype(self.dtype)
+            self.out = self.x + self.y
+
+    class TestElementwiseAddOp_ZeroSize3(TestElementwiseAddOp):
+        def init_input_output(self):
+            self.x = np.random.rand(3, 0, 4).astype(self.dtype)
+            self.y = np.random.rand(1, 1, 4).astype(self.dtype)
+            self.out = self.x + self.y
+
+    class TestElementwiseAddOp_ZeroSize4(TestElementwiseAddOp):
+        def init_input_output(self):
+            self.x = np.random.rand(3, 0, 4).astype(self.dtype)
+            self.y = np.random.rand(1, 0, 4).astype(self.dtype)
+            self.out = self.x + self.y
+
     @skip_check_grad_ci(
         reason="[skip shape check] Use y_shape(1) to test broadcast."
     )
@@ -341,6 +365,91 @@ class XPUTestElementwiseAddOp(XPUOpTestWrapper):
 support_types = get_xpu_op_support_types('elementwise_add')
 for stype in support_types:
     create_test_class(globals(), XPUTestElementwiseAddOp, stype)
+
+
+class TestElementwiseAddOpComplex(XPUOpTest):
+    def setUp(self):
+        self.op_type = "elementwise_add"
+        self.init_dtype()
+        self.init_input_output()
+        self.init_axis()
+        self.inputs = {
+            'X': OpTest.np_dtype_to_base_dtype(self.x),
+            'Y': OpTest.np_dtype_to_base_dtype(self.y),
+        }
+        self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
+        self.outputs = {'Out': self.out}
+
+    def test_check_output(self):
+        if paddle.is_compiled_with_xpu():
+            place = paddle.XPUPlace(0)
+            self.check_output_with_place(place)
+
+    def test_check_grad_normal(self):
+        if paddle.is_compiled_with_xpu():
+            place = paddle.XPUPlace(0)
+            self.check_grad_with_place(
+                place,
+                ['X', 'Y'],
+                'Out',
+            )
+
+    def test_check_grad_ignore_x(self):
+        if paddle.is_compiled_with_xpu():
+            place = paddle.XPUPlace(0)
+            self.check_grad_with_place(
+                place,
+                ['Y'],
+                'Out',
+                no_grad_set=set("X"),
+            )
+
+    def test_check_grad_ignore_y(self):
+        if paddle.is_compiled_with_xpu():
+            place = paddle.XPUPlace(0)
+            self.check_grad_with_place(
+                place,
+                ['X'],
+                'Out',
+                no_grad_set=set("Y"),
+            )
+
+    def init_input_output(self):
+        self.x = (
+            np.random.rand(2, 3, 4) + 1j * np.random.rand(2, 3, 4)
+        ).astype(self.dtype)
+        self.y = (
+            np.random.rand(2, 3, 4) + 1j * np.random.rand(2, 3, 4)
+        ).astype(self.dtype)
+        self.out = self.x + self.y
+
+    def init_dtype(self):
+        self.dtype = np.complex64
+
+    def init_axis(self):
+        self.axis = -1
+
+
+class TestElementwiseAddOpComplex2(TestElementwiseAddOpComplex):
+    def init_input_output(self):
+        self.x = (
+            np.random.rand(2, 3, 4) + 1j * np.random.rand(2, 3, 4)
+        ).astype(self.dtype)
+        self.y = (np.random.rand(1, 1) + 1j * np.random.rand(1, 1)).astype(
+            self.dtype
+        )
+        self.out = self.x + self.y
+
+
+class TestElementwiseAddOpComplex3(TestElementwiseAddOpComplex):
+    def init_input_output(self):
+        self.x = (
+            np.random.rand(100, 2, 3) + 1j * np.random.rand(100, 2, 3)
+        ).astype(self.dtype)
+        self.y = (np.random.rand(1, 1) + 1j * np.random.rand(1, 1)).astype(
+            self.dtype
+        )
+        self.out = self.x + self.y
 
 
 @unittest.skipIf(

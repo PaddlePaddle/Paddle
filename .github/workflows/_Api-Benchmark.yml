@@ -1,0 +1,128 @@
+name: Api-Benchmark
+
+on:
+  workflow_call:
+    inputs:
+      docker_build_image:
+        type: string
+        required: true
+      can-skip:
+        type: string
+        required: false
+
+env:
+  PR_ID: ${{ github.event.pull_request.number }}
+  COMMIT_ID: ${{ github.event.pull_request.head.sha }}
+  work_dir: /paddle
+  PADDLE_ROOT: /paddle
+  TASK: paddle-CI-${{ github.event.pull_request.number }}-api-benchmark
+  ci_scripts: /paddle/ci
+  BRANCH: ${{ github.event.pull_request.base.ref }}
+  CI_name: api-benchmark
+  no_proxy: "bcebos.com,apiin.im.baidu.com,gitee.com,aliyun.com,.baidu.com,.tuna.tsinghua.edu.cn"
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  check-bypass:
+    name: Check bypass for Api-Benchmark
+    uses: ./.github/workflows/check-bypass.yml
+    with:
+      workflow-name: 'api-bm'
+    secrets:
+      github-token: ${{ secrets.GITHUB_TOKEN }}
+
+  data-storage:
+    name: Performance data storage
+    needs: check-bypass
+    if: ${{ inputs.can-skip != 'true' && needs.check-bypass.outputs.can-skip != 'true' }}
+    runs-on:
+      group: Api-bm
+    steps:
+      - name: Determine the runner
+        run: |
+          sudo rm -rf * .[^.]*
+          cp -r /home/PTSTools .
+          runner_name=`(echo $PWD|awk -F '/' '{print $4}')`
+          echo $runner_name
+          core_index=-1
+          if [ $runner_name == "paddle-1" ];then
+            core_index=0
+          elif [ $runner_name == "paddle-2" ];then
+            core_index=8
+          fi
+          echo "core_index=${core_index}" >> $GITHUB_ENV
+
+      - name: Check docker image and run container
+        env:
+          python: "python3.10"
+          GIT_PR_ID: ${{ github.event.pull_request.number }}
+          GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_ID: ${{ github.run_id }}
+          wheel_link: https://paddle-github-action.bj.bcebos.com/PR/build/${{ github.event.pull_request.number }}/${{ github.event.pull_request.head.sha }}/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl
+        run: |
+          container_name=${TASK}-${core_index}-$(date +%Y%m%d-%H%M%S)
+          echo "container_name=${container_name}" >> ${{ github.env }}
+          docker_image=${{ inputs.docker_build_image }}
+          docker container ls -a --filter "name=paddle-CI-*-api-benchmark-${core_index}*" --format "{{.ID}}" | xargs -r docker rm -f
+          docker container ls -a --filter "name=api_benchmark_ci_baseline_" --format "{{.ID}} {{.CreatedAt}}" | awk '$2 <= "'$(date -d '1 day ago' +'%Y-%m-%d')'" {print $1}' | xargs -r docker rm -f
+          docker run -d -t --name ${container_name} --privileged --shm-size=128g \
+            -v ${{ github.workspace }}/../../..:${{ github.workspace }}/../../.. \
+            -v ${{ github.workspace }}:/paddle \
+            -e python \
+            -e core_index \
+            -e BRANCH \
+            -e PR_ID \
+            -e COMMIT_ID \
+            -e RUN_ID \
+            -e wheel_link \
+            -e work_dir \
+            -e PADDLE_ROOT \
+            -e ci_scripts \
+            -e GIT_PR_ID \
+            -e PADDLE_VERSION \
+            -e no_proxy \
+            -e CI_name \
+            -e GITHUB_API_TOKEN \
+            -w /paddle --network host ${docker_image}
+
+      - name: Download PaddleTest.tar.gz
+        env:
+          work_dir: ${{ github.workspace }}
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
+          ldconfig
+          set -e
+          echo "Downloading PaddleTest.tar.gz"
+          wget -q --no-proxy https://xly-devops.bj.bcebos.com/PaddleTest/PaddleTest.tar.gz --no-check-certificate
+          echo "Extracting PaddleTest.tar.gz"
+          # git config --global --add safe.directory ${work_dir}
+          tar -zvxf PaddleTest.tar.gz 1>/dev/null 2>&1
+          # git submodule foreach "git config --global --add safe.directory \$toplevel/\$sm_path"
+          source ${{ github.workspace }}/../../../proxy
+          ${python} -m pip install -r ./PaddleTest/framework/e2e/api_benchmark_new/requirement.txt
+          '
+
+      - name: Paddletest check
+        env:
+          work_dir: ${{ github.workspace }}
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
+          export LD_LIBRARY_PATH=/usr/local/cuda-11.8/compat:/usr/local/cuda/compat:/usr/local/cuda/lib:/usr/local/cuda/lib64:/usr/local/nvidia/lib:/usr/local/nvidia/lib64:/usr/lib/x86_64-linux-gnu:${LD_LIBRARY_PATH}
+          cd ./PaddleTest/framework/e2e/api_benchmark_new
+          cp /paddle/PTSTools/Uploader/apibm_config.yml .
+          ${python} -m pip install https://paddle-github-action.bj.bcebos.com/PR/build/${PR_ID}/${COMMIT_ID}/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl
+          if [ ${core_index} -eq -1 ];then
+            ${python} runner_ci_action.py --yaml ../yaml/api_benchmark_fp32.yml --core_index 2
+          else
+            ${python} runner_ci_multipro_action.py --yaml ../yaml/sort_api_benchmark_fp32.yml --core_index ${core_index}
+          fi
+          '
+
+      - name: Terminate and delete the container
+        if: always()
+        run: |
+          sudo rm -rf * .[^.]*
+          docker rm -f ${{ env.container_name }}
