@@ -103,9 +103,7 @@ SpmdInfo RollGradInferSpmd(const DistMetaTensor& x,
                                         "shifts.size() = %d",
                                         shifts.size()));
     for (int i = 0; i < x_ndim; ++i) {
-      x_axes[i] = '1';
       x_dims_mapping[i] = -1;
-      out_grad_axes[i] = '1';
       out_grad_dims_mapping[i] = -1;
     }
   } else {
@@ -127,9 +125,7 @@ SpmdInfo RollGradInferSpmd(const DistMetaTensor& x,
                                        "be in range [0, %d), but got %d.",
                                        x_ndim,
                                        axis_i));
-      x_axes[axis_i] = '1';
       x_dims_mapping[axis_i] = -1;
-      out_grad_axes[axis_i] = '1';
       out_grad_dims_mapping[axis_i] = -1;
     }
   }
