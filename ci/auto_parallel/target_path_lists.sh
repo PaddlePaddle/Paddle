@@ -33,7 +33,7 @@ target_lists_for_semi_auto_ci=(
     "test/auto_parallel/hybrid_strategy/semi_auto_llama_save_load.py"
     "python/paddle/base/executor.py"
 )
-
+a=aa
 target_lists_for_dygraph_ci=(
     "python/paddle/distributed/fleet"
     "python/paddle/distributed/communication"

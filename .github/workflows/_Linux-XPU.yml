@@ -219,7 +219,7 @@ jobs:
           container_name=${TASK}-$(date +%Y%m%d-%H%M%S)
           echo "container_name=${container_name}" >> ${{ github.env }}
           sudo mkdir -p /run/user/0
-          docker run --cap-add=SYS_PTRACE --ulimit nofile=102400 --ulimit core=-1 --shm-size=32g -d -t --name ${container_name} \
+          docker run --cap-add=SYS_PTRACE --privileged --ulimit nofile=102400 --ulimit core=-1 --shm-size=32g -d -t --name ${container_name} \
             -v /ssd1/cibuild/.cache:/root/.cache \
             -v /ssd1/cibuild/.ccache:/root/.ccache \
             -v ${{ github.workspace }}/../../..:${{ github.workspace }}/../../.. \
