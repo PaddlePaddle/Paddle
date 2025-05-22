@@ -42,10 +42,6 @@ from test_activation_op import (
     TestTanhshrink,
 )
 
-import paddle
-
-paddle.disable_static()
-
 
 # ------------------ Test Zero Size Tensor --------------
 def create_test_zero_size_class(parent):
@@ -55,6 +51,21 @@ def create_test_zero_size_class(parent):
 
         def init_dtype(self):
             self.dtype = np.float64
+
+        def test_check_output(self):
+            self.check_output(
+                check_pir=True,
+                check_symbol_infer=False,
+            )
+
+        def test_check_grad(self):
+            if self.dtype == np.float16:
+                return
+            self.check_grad(
+                ['X'],
+                'Out',
+                check_pir=True,
+            )
 
     cls_name = "{}_{}".format(parent.__name__, "ZeroSizeOp")
     TestActZeroSize.__name__ = cls_name
