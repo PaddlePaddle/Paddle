@@ -801,6 +801,13 @@ struct ElementwiseHeavisideFunctor {
   }
 };
 
+template <typename T>
+struct ElementwiseInverseHeavisideFunctor {
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
+    return b == static_cast<T>(0) ? a : static_cast<T>(b > static_cast<T>(0));
+  }
+};
+
 template <typename T, typename Enable = void>
 struct FloorDivideFunctor {
   inline HOSTDEVICE T operator()(const T a, const T b) const {
