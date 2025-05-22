@@ -998,4 +998,11 @@ void ArrayPopInferMeta(const MetaTensor& array,
                        MetaTensor* out,
                        MetaConfig config = MetaConfig());
 
+void BuildSrcRankAndLocalExpertIdInferMeta(
+    const MetaTensor& expert_num_global_tensor,
+    const std::vector<int64_t>& expert_num_global,
+    int64_t num_local_experts,
+    MetaTensor* src_rank,
+    MetaTensor* local_expert_id);
+
 }  // namespace phi

@@ -6273,5 +6273,94 @@ void TopPSamplingInferMeta(const MetaTensor& x,
   }
 }
 
+void CalAuxLossInferMeta(const MetaTensor& gate_prob,
+                         const MetaTensor& dispatch_mask,
+                         const MetaTensor& tokens_mask,
+                         const MetaTensor& dispatch_tokens_mask,
+                         const int64_t num_experts,
+                         const bool use_group,
+                         const int64_t moe_k,
+                         const float clip_min,
+                         MetaTensor* l_aux_loss,
+                         MetaTensor* seqlen_floats,
+                         MetaTensor* ce) {
+  auto gate_prob_dims = gate_prob.dims();
+  auto dispatch_mask_dims = dispatch_mask.dims();
+  auto tokens_mask_dims = tokens_mask.dims();
+  auto dispatch_tokens_mask_dims = dispatch_tokens_mask.dims();
+
+  PADDLE_ENFORCE_EQ(
+      gate_prob_dims.size(),
+      2,
+      errors::InvalidArgument("Input gate_prob_dims should have 2 dimensions"));
+
+  PADDLE_ENFORCE_EQ(gate_prob_dims[0] >= gate_prob_dims[1],
+                    true,
+                    errors::InvalidArgument(
+                        "The value of gate_prob_dims[0] should be greater than "
+                        "or equal to that of gate_prob_dims[1]."));
+
+  PADDLE_ENFORCE_EQ(
+      gate_prob_dims[1] <= 1024,
+      true,
+      errors::InvalidArgument(
+          "The value of gate_prob_dims[1] should be less than 1024."));
+
+  PADDLE_ENFORCE_EQ(
+      (dispatch_mask_dims.size() == 1) || (dispatch_mask_dims.size() == 2),
+      true,
+      errors::InvalidArgument(
+          "Input dispatch_mask_dims should have 1 or 2 dimensions"));
+
+  if (dispatch_mask_dims.size() == 1) {
+    PADDLE_ENFORCE_EQ(
+        dispatch_mask_dims[0],
+        gate_prob_dims[1],
+        errors::InvalidArgument("The value of dispatch_mask_shape.back() "
+                                "should be  equal to gate_prob_shape.back()."));
+  } else {
+    PADDLE_ENFORCE_EQ(
+        dispatch_mask_dims[1],
+        gate_prob_dims[1],
+        errors::InvalidArgument("The value of dispatch_mask_shape.back() "
+                                "should be  equal to gate_prob_shape.back()."));
+  }
+
+  PADDLE_ENFORCE_EQ(
+      dispatch_mask.dtype(),
+      phi::DataType::INT64,
+      errors::InvalidArgument("The input dispatch_mask type should be INT64"));
+
+  PADDLE_ENFORCE_EQ(
+      tokens_mask_dims.size(),
+      1,
+      errors::InvalidArgument("Input tokens_mask should have 1 dimensions"));
+
+  PADDLE_ENFORCE_EQ(
+      tokens_mask.dtype(),
+      gate_prob.dtype(),
+      errors::InvalidArgument(
+          "The input tokens_mask type should be equal to gate_prob type"));
+
+  PADDLE_ENFORCE_EQ(dispatch_tokens_mask_dims.size(),
+                    1,
+                    errors::InvalidArgument(
+                        "Input dispatch_tokens_mask should have 1 dimensions"));
+
+  PADDLE_ENFORCE_EQ(dispatch_tokens_mask.dtype(),
+                    phi::DataType::BOOL,
+                    errors::InvalidArgument(
+                        "The input dispatch_tokens_mask type should be BOOL"));
+
+  l_aux_loss->set_dims({1});
+  l_aux_loss->set_dtype(gate_prob.dtype());
+
+  seqlen_floats->set_dims({1});
+  seqlen_floats->set_dtype(gate_prob.dtype());
+
+  ce->set_dims({gate_prob_dims[1]});
+  ce->set_dtype(gate_prob.dtype());
+}
+
 }  // namespace phi
 PD_REGISTER_INFER_META_FN(batch_norm_infer, phi::BatchNormInferInferMeta);

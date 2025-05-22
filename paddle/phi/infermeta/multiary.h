@@ -1284,4 +1284,16 @@ void TopPSamplingInferMeta(const MetaTensor& x,
                            MetaTensor* topk_scores,
                            MetaTensor* topk_ids);
 
+void CalAuxLossInferMeta(const MetaTensor& gate_prob,
+                         const MetaTensor& dispatch_mask,
+                         const MetaTensor& tokens_mask,
+                         const MetaTensor& dispatch_tokens_mask,
+                         const int64_t num_experts,
+                         const bool use_group,
+                         const int64_t moe_k,
+                         const float clip_min,
+                         MetaTensor* l_aux_loss,
+                         MetaTensor* seqlen_floats,
+                         MetaTensor* ce);
+
 }  // namespace phi
