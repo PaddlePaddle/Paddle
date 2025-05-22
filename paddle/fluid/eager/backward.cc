@@ -264,10 +264,6 @@ std::vector<paddle::Tensor> RunBackward(
     GradNodeBase* node = queue.front();
     VLOG(3) << "Preparing GradNode:" << node->name() << " addr:" << node;
     try {
-      if (queue.size() > 1 && node_in_degree_map[node] != 0) {
-        queue.pop_front();
-        continue;
-      }
       queue.pop_front();
 
       // Run node: This is where Hook happens
