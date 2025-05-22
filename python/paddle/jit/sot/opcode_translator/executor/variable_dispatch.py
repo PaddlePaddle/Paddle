@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import builtins
 import inspect
 import math
 import operator
@@ -49,6 +50,7 @@ from ...utils.magic_methods import (
 from .dispatch_functions import (
     create_raise_break_graph_handler,
     generator_send,
+    operator_exception_match,
     operator_in,
     operator_is_none,
     operator_is_not_none,
@@ -66,6 +68,7 @@ from .variables import (
     ContainerVariable,
     DictVariable,
     EnumerateVariable,
+    ExceptionVariable,
     IterVariable,
     ListVariable,
     MapVariable,
@@ -83,6 +86,24 @@ from .variables import (
 
 if TYPE_CHECKING:
     from .variables import DataVariable, TensorVariable
+
+
+# NOTE(SigureMo): Don't directly capture free var inside for-loop, use partial instead.
+# ```python
+# lambdas = []
+# for i in range(10):
+#     lambdas.append(lambda: i)
+# for fn in lambdas:
+#     print(fn()) # result is 9, 9, 9, 9, 9, 9, 9, 9, 9, 9
+# ```
+# Rewrite by partial:
+# ```python
+# lambdas = []
+# for i in range(10):
+#     lambdas.append(partial(lambda i: i, i))
+# for fn in lambdas:
+#     print(fn()) # result is 0, 1, 2, 3, 4, 5, 6, 7, 8, 9
+# ```
 
 
 def add_guard(var: VariableBase):
@@ -242,19 +263,6 @@ Dispatcher.register(
     dict,
     ("DictVariable",),
     lambda var: var.copy(),
-)
-
-
-# super
-Dispatcher.register(
-    super,
-    ("ClassVariable", "VariableBase"),
-    lambda cls, obj: SuperVariable(
-        cls=cls,
-        obj=obj,
-        graph=Dispatcher.graph,
-        tracker=DummyTracker([cls, obj]),
-    ),
 )
 
 
@@ -609,6 +617,38 @@ Dispatcher.register(
     ("ContainerVariable | ContainerLayerVariable",),
     lambda var: var.len(),
 )
+
+# super
+Dispatcher.register(
+    super,
+    ("ClassVariable", "VariableBase"),
+    lambda cls, obj: SuperVariable(
+        cls=cls,
+        obj=obj,
+        graph=Dispatcher.graph,
+        tracker=DummyTracker([cls, obj]),
+    ),
+)
+
+
+def register_exception(exc):
+    @Dispatcher.register_decorator(exc)
+    def builtin_exception_dispatcher(*args) -> int:
+        return ExceptionVariable(
+            exc,
+            *args,
+            graph=Dispatcher.graph,
+            tracker=DummyTracker([]),
+        )
+
+
+# builtin Exception
+for name, obj in builtins.__dict__.items():
+    if not (isinstance(obj, type) and issubclass(obj, Exception)):
+        continue
+
+    register_exception(obj)
+
 
 # range
 # stop
@@ -995,23 +1035,6 @@ Dispatcher.register(
     lambda var: ConstantVariable(True, var.graph, DummyTracker([var])),
 )
 
-
-# NOTE(SigureMo): Don't directly capture free var inside for-loop, use partial instead.
-# ```python
-# lambdas = []
-# for i in range(10):
-#     lambdas.append(lambda: i)
-# for fn in lambdas:
-#     print(fn()) # result is 9, 9, 9, 9, 9, 9, 9, 9, 9, 9
-# ```
-# Rewrite by partial:
-# ```python
-# lambdas = []
-# for i in range(10):
-#     lambdas.append(partial(lambda i: i, i))
-# for fn in lambdas:
-#     print(fn()) # result is 0, 1, 2, 3, 4, 5, 6, 7, 8, 9
-# ```
 
 # Constant
 for unary_fn in UNARY_OPS:
@@ -1499,6 +1522,23 @@ Dispatcher.register(
     lambda left, right: constant_numpy_equal(left, right),
 )
 
+
+# `operator.eq` of `ExceptionVariable` dispatch
+def exception_variable_equal(left, right):
+    result = (left is right) or (left.get_py_value() == right.get_py_value())
+    return VariableFactory.from_value(
+        result,
+        left.graph,
+        tracker=DummyTracker([left, right]),
+    )
+
+
+Dispatcher.register(
+    operator.eq,
+    ("ExceptionVariable", "ExceptionVariable"),
+    lambda left, right: exception_variable_equal(left, right),
+)
+
 Dispatcher.register(
     bool,
     ("NumPyVariable",),
@@ -1576,5 +1616,17 @@ Dispatcher.register(
     ("VariableBase",),
     lambda x: ConstantVariable(
         not x.get_py_value(allow_tensor=False), x.graph, DummyTracker([x])
+    ),
+)
+
+
+Dispatcher.register(
+    operator_exception_match,
+    ("BuiltinVariable | ExceptionVariable", "BuiltinVariable | TupleVariable"),
+    lambda exc_instance, expected_exc_types: ConstantVariable.wrap_literal(
+        ExceptionVariable.check_if_exception_matches(
+            exc_instance, expected_exc_types
+        ),
+        exc_instance.graph,
     ),
 )

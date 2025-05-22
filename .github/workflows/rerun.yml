@@ -12,14 +12,8 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Convert comment to lowercase
-        run: |
-          comment_body=$(echo '${{ github.event.comment.body }}' | tr '[:upper:]' '[:lower:]')
-          echo $comment_body
-          echo "comment_body=$comment_body" >> $GITHUB_ENV
-
       - name: Rerun all failed jobs
-        if: ${{ contains(env.comment_body, 'all-failed') }}
+        if: ${{ contains(github.event.comment.body, 'all-failed') }}
         uses: ./.github/actions/rerun-workflow
         with:
           PR_ID: ${{ github.event.issue.number }}
@@ -29,7 +23,7 @@ jobs:
           JOB_NAME: 'all-failed'
 
       - name: Rerun Approval
-        if: ${{ contains(env.comment_body, 'approval') }}
+        if: ${{ contains(github.event.comment.body, 'approval') }}
         uses: ./.github/actions/rerun-workflow
         with:
           PR_ID: ${{ github.event.issue.number }}
@@ -39,7 +33,7 @@ jobs:
           JOB_NAME: 'Check approval'
 
       - name: Rerun Codestyle-check
-        if: ${{ contains(env.comment_body, 'codestyle') }}
+        if: ${{ contains(github.event.comment.body, 'codestyle') }}
         uses: ./.github/actions/rerun-workflow
         with:
           PR_ID: ${{ github.event.issue.number }}
@@ -49,7 +43,7 @@ jobs:
           JOB_NAME: 'Check bypass for codestyle / Check bypass'
 
       - name: Rerun Clone
-        if: ${{ contains(env.comment_body, 'clone') }}
+        if: ${{ contains(github.event.comment.body, 'clone') }}
         uses: ./.github/actions/rerun-workflow
         with:
           PR_ID: ${{ github.event.issue.number }}
@@ -59,7 +53,7 @@ jobs:
           JOB_NAME: 'Clone-linux / Clone Paddle'
 
       - name: Rerun sot
-        if: ${{ contains(env.comment_body, 'sot') }}
+        if: ${{ contains(github.event.comment.body, 'sot') }}
         uses: ./.github/actions/rerun-workflow
         with:
           PR_ID: ${{ github.event.issue.number }}
@@ -70,7 +64,7 @@ jobs:
 
 
       - name: Rerun CPU
-        if: ${{ contains(env.comment_body, 'cpu') }}
+        if: ${{ contains(github.event.comment.body, 'cpu') }}
         uses: ./.github/actions/rerun-workflow
         with:
           PR_ID: ${{ github.event.issue.number }}
@@ -80,7 +74,7 @@ jobs:
           JOB_NAME: 'Linux-CPU / Build and test'
 
       - name: Rerun NPU
-        if: ${{ contains(env.comment_body, 'npu')}}
+        if: ${{ contains(github.event.comment.body, 'npu')}}
         uses: ./.github/actions/rerun-workflow
         with:
           PR_ID: ${{ github.event.issue.number }}
@@ -90,7 +84,7 @@ jobs:
           JOB_NAME: 'Linux-NPU / Test'
 
       - name: Rerun Inference
-        if: ${{ contains(env.comment_body, 'inference') && !contains(env.comment_body, 'build') && !contains(env.comment_body, 'test') }}
+        if: ${{ contains(github.event.comment.body, 'inference') && !contains(github.event.comment.body, 'build') && !contains(github.event.comment.body, 'test') }}
         uses: ./.github/actions/rerun-workflow
         with:
           PR_ID: ${{ github.event.issue.number }}
@@ -100,7 +94,7 @@ jobs:
           JOB_NAME: 'PR-CI-Inference / Check bypass for inference / Check bypass'
 
       - name: Rerun Inference build
-        if: ${{ contains(env.comment_body, 'inference') && contains(env.comment_body, 'build') }}
+        if: ${{ contains(github.event.comment.body, 'inference') && contains(github.event.comment.body, 'build') }}
         uses: ./.github/actions/rerun-workflow
         with:
           PR_ID: ${{ github.event.issue.number }}
@@ -110,7 +104,7 @@ jobs:
           JOB_NAME: 'PR-CI-Inference / Build'
 
       - name: Rerun Inference test
-        if: ${{ contains(env.comment_body, 'inference') && contains(env.comment_body, 'test') }}
+        if: ${{ contains(github.event.comment.body, 'inference') && contains(github.event.comment.body, 'test') }}
         uses: ./.github/actions/rerun-workflow
         with:
           PR_ID: ${{ github.event.issue.number }}
@@ -119,8 +113,28 @@ jobs:
           REPO: ${{ github.event.repository.name }}
           JOB_NAME: 'PR-CI-Inference / Test'
 
+      - name: Rerun Coverage clone
+        if: ${{ contains(github.event.comment.body, 'coverage') }}
+        uses: ./.github/actions/rerun-workflow
+        with:
+          PR_ID: ${{ github.event.issue.number }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.event.repository.name }}
+          JOB_NAME: 'Coverage clone / Clone Paddle'
+
+      - name: Rerun Coverage docker build
+        if: ${{ contains(github.event.comment.body, 'coverage') && contains(github.event.comment.body, 'docker') }}
+        uses: ./.github/actions/rerun-workflow
+        with:
+          PR_ID: ${{ github.event.issue.number }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.event.repository.name }}
+          JOB_NAME: 'Coverage build docker / Build docker'
+
       - name: Rerun Coverage build
-        if: ${{ contains(env.comment_body, 'coverage') }}
+        if: ${{ contains(github.event.comment.body, 'coverage') && contains(github.event.comment.body, 'build') }}
         uses: ./.github/actions/rerun-workflow
         with:
           PR_ID: ${{ github.event.issue.number }}
@@ -130,7 +144,7 @@ jobs:
           JOB_NAME: 'Coverage build'
 
       - name: Rerun Coverage test
-        if: ${{ contains(env.comment_body, 'coverage') && contains(env.comment_body, 'test') }}
+        if: ${{ contains(github.event.comment.body, 'coverage') && contains(github.event.comment.body, 'test') }}
         uses: ./.github/actions/rerun-workflow
         with:
           PR_ID: ${{ github.event.issue.number }}
@@ -140,7 +154,7 @@ jobs:
           JOB_NAME: 'Coverage test'
 
       - name: Rerun XPU
-        if: ${{ contains(env.comment_body, 'xpu') && !contains(env.comment_body, 'build') && !contains(env.comment_body, 'test') }}
+        if: ${{ contains(github.event.comment.body, 'xpu') && !contains(github.event.comment.body, 'build') && !contains(github.event.comment.body, 'test') }}
         uses: ./.github/actions/rerun-workflow
         with:
           PR_ID: ${{ github.event.issue.number }}
@@ -150,7 +164,7 @@ jobs:
           JOB_NAME: 'Linux-XPU / Check bypass for XPU / Check bypass'
 
       - name: Rerun XPU build
-        if: ${{ contains(env.comment_body, 'xpu') && contains(env.comment_body, 'build') }}
+        if: ${{ contains(github.event.comment.body, 'xpu') && contains(github.event.comment.body, 'build') }}
         uses: ./.github/actions/rerun-workflow
         with:
           PR_ID: ${{ github.event.issue.number }}
@@ -160,7 +174,7 @@ jobs:
           JOB_NAME: 'Linux-XPU / Build'
 
       - name: Rerun XPU test
-        if: ${{ contains(env.comment_body, 'xpu') && contains(env.comment_body, 'test') }}
+        if: ${{ contains(github.event.comment.body, 'xpu') && contains(github.event.comment.body, 'test') }}
         uses: ./.github/actions/rerun-workflow
         with:
           PR_ID: ${{ github.event.issue.number }}
@@ -170,7 +184,7 @@ jobs:
           JOB_NAME: 'Linux-XPU / Test'
 
       - name: Rerun Distribute-stable build
-        if: ${{ contains(env.comment_body, 'distribute') && !contains(env.comment_body, 'test') }}
+        if: ${{ contains(github.event.comment.body, 'distribute') && !contains(github.event.comment.body, 'test') }}
         uses: ./.github/actions/rerun-workflow
         with:
           PR_ID: ${{ github.event.issue.number }}
@@ -180,7 +194,7 @@ jobs:
           JOB_NAME: 'Distribute-stable / Build'
 
       - name: Rerun Distribute-stable test
-        if: ${{ contains(env.comment_body, 'distribute') && contains(env.comment_body, 'test') }}
+        if: ${{ contains(github.event.comment.body, 'distribute') && contains(github.event.comment.body, 'test') }}
         uses: ./.github/actions/rerun-workflow
         with:
           PR_ID: ${{ github.event.issue.number }}
@@ -189,8 +203,18 @@ jobs:
           REPO: ${{ github.event.repository.name }}
           JOB_NAME: 'Distribute-stable / Test'
 
+      - name: Rerun build
+        if: ${{ contains(github.event.comment.body, 'build') }}
+        uses: ./.github/actions/rerun-workflow
+        with:
+          PR_ID: ${{ github.event.issue.number }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.event.repository.name }}
+          JOB_NAME: 'Linux-build / Build'
+
       - name: Rerun Static-check test
-        if: ${{ contains(env.comment_body, 'static-check') }}
+        if: ${{ contains(github.event.comment.body, 'static-check') }}
         uses: ./.github/actions/rerun-workflow
         with:
           PR_ID: ${{ github.event.issue.number }}
@@ -200,7 +224,7 @@ jobs:
           JOB_NAME: 'Static-Check / Test'
 
       - name: Rerun CE-CINN-Framework
-        if: ${{ contains(env.comment_body, 'ce-cinn') }}
+        if: ${{ contains(github.event.comment.body, 'ce-cinn') }}
         uses: ./.github/actions/rerun-workflow
         with:
           PR_ID: ${{ github.event.issue.number }}
@@ -209,12 +233,42 @@ jobs:
           REPO: ${{ github.event.repository.name }}
           JOB_NAME: 'CE-CINN-Framework / CINN'
 
-      - name: Rerun Api-Benchmark
-        if: ${{ contains(env.comment_body, 'api-bm') }}
+      - name: Rerun CE-Framework Whl
+        if: ${{ contains(github.event.comment.body, 'ce') && contains(github.event.comment.body, 'whl') }}
         uses: ./.github/actions/rerun-workflow
         with:
           PR_ID: ${{ github.event.issue.number }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OWNER: ${{ github.repository_owner }}
           REPO: ${{ github.event.repository.name }}
-          JOB_NAME: 'Api-Benchmark / Performance data storage'
+          JOB_NAME: 'CE-Framework / Whl'
+
+      - name: Rerun CE-Framework Infer
+        if: ${{ contains(github.event.comment.body, 'ce') && contains(github.event.comment.body, 'infer') }}
+        uses: ./.github/actions/rerun-workflow
+        with:
+          PR_ID: ${{ github.event.issue.number }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.event.repository.name }}
+          JOB_NAME: 'CE-Framework / Infer'
+
+      - name: Rerun CE-Framework Test
+        if: ${{ contains(github.event.comment.body, 'ce') && contains(github.event.comment.body, 'test') }}
+        uses: ./.github/actions/rerun-workflow
+        with:
+          PR_ID: ${{ github.event.issue.number }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.event.repository.name }}
+          JOB_NAME: 'CE-Framework / Test'
+
+      - name: Rerun Api-Benchmark
+        if: ${{ contains(github.event.comment.body, 'api-bm') }}
+        uses: ./.github/actions/rerun-workflow
+        with:
+          PR_ID: ${{ github.event.issue.number }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.event.repository.name }}
+          JOB_NAME: 'Api-Benchmark / Check bypass for inference / Check bypass'

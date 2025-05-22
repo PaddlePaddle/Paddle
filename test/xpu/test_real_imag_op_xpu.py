@@ -82,13 +82,55 @@ class XPUTestRealOp(XPUOpTestWrapper):
                     user_defined_grad_outputs=[self.grad_out],
                 )
 
+    class TestRealOpZeroSize1(TestRealOp):
+        def init_input_output(self):
+            self.inputs = {
+                'X': np.random.random(0).astype(self.dtype)
+                + 1j * np.random.random(0).astype(self.dtype)
+            }
+            self.outputs = {'Out': numpy_apis[self.op_type](self.inputs['X'])}
+
+        def init_grad_input_output(self):
+            self.grad_out = np.ones((0), self.dtype)
+            self.grad_x = np.real(self.grad_out) + 1j * np.zeros(
+                self.grad_out.shape
+            )
+
+    class TestRealOpZeroSize2(TestRealOp):
+        def init_input_output(self):
+            self.inputs = {
+                'X': np.random.random((0, 5)).astype(self.dtype)
+                + 1j * np.random.random((0, 5)).astype(self.dtype)
+            }
+            self.outputs = {'Out': numpy_apis[self.op_type](self.inputs['X'])}
+
+        def init_grad_input_output(self):
+            self.grad_out = np.ones((0, 5), self.dtype)
+            self.grad_x = np.real(self.grad_out) + 1j * np.zeros(
+                self.grad_out.shape
+            )
+
+    class TestRealOpZeroSize3(TestRealOp):
+        def init_input_output(self):
+            self.inputs = {
+                'X': np.random.random((3, 0, 5)).astype(self.dtype)
+                + 1j * np.random.random((3, 0, 5)).astype(self.dtype)
+            }
+            self.outputs = {'Out': numpy_apis[self.op_type](self.inputs['X'])}
+
+        def init_grad_input_output(self):
+            self.grad_out = np.ones((3, 0, 5), self.dtype)
+            self.grad_x = np.real(self.grad_out) + 1j * np.zeros(
+                self.grad_out.shape
+            )
+
 
 class XPUTestImagOp(XPUOpTestWrapper):
     def __init__(self):
         self.op_name = 'imag'
         self.use_dynamic_create_class = False
 
-    class TestRealOp(XPUOpTest):
+    class TestImagOp(XPUOpTest):
         def setUp(self):
             self.op_type = "imag"
             self.python_api = paddle.imag
@@ -127,6 +169,48 @@ class XPUTestImagOp(XPUOpTestWrapper):
                     user_defined_grads=[self.grad_x],
                     user_defined_grad_outputs=[self.grad_out],
                 )
+
+    class TTestImagOpZeroSize1(TestImagOp):
+        def init_input_output(self):
+            self.inputs = {
+                'X': np.random.random(0).astype(self.dtype)
+                + 1j * np.random.random(0).astype(self.dtype)
+            }
+            self.outputs = {'Out': numpy_apis[self.op_type](self.inputs['X'])}
+
+        def init_grad_input_output(self):
+            self.grad_out = np.ones((0), self.dtype)
+            self.grad_x = np.zeros(self.grad_out.shape) + 1j * np.real(
+                self.grad_out
+            )
+
+    class TestImagOpZeroSize2(TestImagOp):
+        def init_input_output(self):
+            self.inputs = {
+                'X': np.random.random((0, 5)).astype(self.dtype)
+                + 1j * np.random.random((0, 5)).astype(self.dtype)
+            }
+            self.outputs = {'Out': numpy_apis[self.op_type](self.inputs['X'])}
+
+        def init_grad_input_output(self):
+            self.grad_out = np.ones((0, 5), self.dtype)
+            self.grad_x = np.zeros(self.grad_out.shape) + 1j * np.real(
+                self.grad_out
+            )
+
+    class TestImagOpZeroSize3(TestImagOp):
+        def init_input_output(self):
+            self.inputs = {
+                'X': np.random.random((3, 0, 5)).astype(self.dtype)
+                + 1j * np.random.random((3, 0, 5)).astype(self.dtype)
+            }
+            self.outputs = {'Out': numpy_apis[self.op_type](self.inputs['X'])}
+
+        def init_grad_input_output(self):
+            self.grad_out = np.ones((3, 0, 5), self.dtype)
+            self.grad_x = np.zeros(self.grad_out.shape) + 1j * np.real(
+                self.grad_out
+            )
 
 
 support_types = get_xpu_op_support_types('real')
