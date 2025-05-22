@@ -74,7 +74,7 @@ class TestFunctools(TestCaseBase):
     def test_reduce_dict(self):
         d1 = {"a": 1, "b": 2}
         d2 = {"a": 3, "c": 4}
-        self.assert_results(try_reduce, lambda a, b: a | b, [d1, d2])
+        self.assert_results(try_reduce, lambda a, b: {**a, **b}, [d1, d2])
 
     def test_reduce_tuple(self):
         self.assert_results(try_reduce, lambda acc, x: acc * x, (1, 3, 4))
