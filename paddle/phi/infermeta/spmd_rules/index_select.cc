@@ -42,7 +42,6 @@ SpmdInfo IndexSelectInferSpmd(const DistMetaTensor& x,
   // Step1: Build Einsum Notation
   std::string alphabet = "abcdefghijlmnopqrstuvwxyz";
   std::string x_axes = GetBroadcastAxes(x_ndim, x_ndim, alphabet);
-  x_axes[axis] = '1';
   std::string index_axes = "k";
   std::string out_axes = x_axes;
   out_axes[axis] = 'k';
@@ -102,7 +101,6 @@ SpmdInfo IndexSelectGradInferSpmd(const DistMetaTensor& x,
 
   std::string alphabet = "abcdefghijlmnopqrstuvwxyz";
   std::string x_axes = GetBroadcastAxes(x_ndim, x_ndim, alphabet);
-  x_axes[axis] = '1';
   std::string index_axes = "k";
   std::string out_grad_axes = x_axes;
   out_grad_axes[axis] = 'k';
