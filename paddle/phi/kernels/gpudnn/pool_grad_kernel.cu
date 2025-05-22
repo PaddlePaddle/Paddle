@@ -22,9 +22,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/gpudnn/pool_gpudnn.h"
 #include "paddle/phi/kernels/pool_kernel.h"
 
-#ifdef PADDLE_WITH_HIP
 #include "paddle/phi/kernels/impl/pool_grad_kernel_impl.h"  //  PoolGradRawGPUDNNKernel will call PoolGradRawKernel for pooling type "max" in ROCm
-#endif
 
 namespace phi {
 
@@ -48,19 +46,7 @@ void PoolGradRawGPUDNNKernel(const Context& ctx,
       true,
       errors::InvalidArgument("Pool operator CUDA kernel must use CUDAPlace "
                               "rather than CPUPlace."));
-
-  const DenseTensor* input = &x;
-  const DenseTensor* output = &out;
-  const DenseTensor* output_grad = &dout;
-  DenseTensor* input_grad = dx;
-  std::vector<int> strides_(strides.begin(), strides.end());
-  std::vector<int> paddings_(paddings.begin(), paddings.end());
-  std::vector<int> kernel_size_(kernel_size.begin(), kernel_size.end());
-
-  const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
-
-#ifdef PADDLE_WITH_HIP
-  if (pooling_type == "max") {
+  auto run_cuda_kernel = [&]() {
     PoolGradRawKernel<T, GPUContext>(ctx,
                                      x,
                                      out,
@@ -76,6 +62,26 @@ void PoolGradRawGPUDNNKernel(const Context& ctx,
                                      padding_algorithm,
                                      0,
                                      dx);
+  };
+
+  if (std::max(x.numel(), out.numel()) > std::numeric_limits<int>::max()) {
+    run_cuda_kernel();
+    return;
+  }
+
+  const DenseTensor* input = &x;
+  const DenseTensor* output = &out;
+  const DenseTensor* output_grad = &dout;
+  DenseTensor* input_grad = dx;
+  std::vector<int> strides_(strides.begin(), strides.end());
+  std::vector<int> paddings_(paddings.begin(), paddings.end());
+  std::vector<int> kernel_size_(kernel_size.begin(), kernel_size.end());
+
+  const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
+
+#ifdef PADDLE_WITH_HIP
+  if (pooling_type == "max") {
+    run_cuda_kernel();
     return;
   }
 #endif
