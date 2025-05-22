@@ -242,6 +242,19 @@
     force_backend : force_cpu
   traits : paddle::dialect::ForwardOnlyTrait
 
+- op : expand_as
+  args : (Tensor x, Tensor y, int[] target_shape = {})
+  output : Tensor(out)
+  infer_meta :
+    func : ExpandAsInferMeta
+    local_shape: out
+  kernel :
+    func : expand_as
+    data_type : x
+  optional : y
+  backward : expand_as_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+
 - op : exponential_
   args : (Tensor x, float lam = 1.0f)
   output : Tensor(out)
