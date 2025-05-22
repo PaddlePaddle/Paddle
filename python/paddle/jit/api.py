@@ -156,13 +156,13 @@ def ignore_module(modules: list[ModuleType]) -> None:
         .. code-block:: python
 
             >>> import scipy
-            >>> import astor
+            >>> import torch
 
             >>> import paddle
             >>> from paddle.jit import ignore_module
             >>> modules = [
             ...     scipy,
-            ...     astor,
+            ...     torch,
             ... ]
             >>> ignore_module(modules)
 
