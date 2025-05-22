@@ -171,10 +171,10 @@ class TestI1Op_ZeroSize(OpTest):
         self.dtype = np.float32
 
     def test_check_output(self):
-        self.check_output(check_dygraph=True)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['x'], 'out', check_dygraph=True)
+        self.check_grad(['x'], 'out')
 
 
 if __name__ == "__main__":
