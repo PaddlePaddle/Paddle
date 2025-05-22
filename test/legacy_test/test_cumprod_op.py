@@ -306,6 +306,24 @@ class TestCumprodAPI(unittest.TestCase):
             run(place)
 
 
+class TestCumprodAPICase1(TestCumprodAPI):
+    def init_dtype(self):
+        self.dtype = 'int32'
+        self.shape = [2, 3, 10, 10]
+
+
+class TestCumprodAPICase2(TestCumprodAPI):
+    def init_dtype(self):
+        self.dtype = 'bool'
+        self.shape = [2, 3, 10, 10]
+
+
+class TestCumprodAPICase3(TestCumprodAPI):
+    def init_dtype(self):
+        self.dtype = 'int64'
+        self.shape = [2, 3, 10, 10]
+
+
 # test function.
 class TestCumprodReverse(TestCumprod):
     def init_dtype(self):
