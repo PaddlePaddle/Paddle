@@ -12,7 +12,6 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/gru_compute.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/detail/gru_gpu_kernel.h"
 #include "paddle/phi/kernels/funcs/detail/gru_kernel.h"
 
