@@ -91,7 +91,7 @@ void InitGpuProperties(Place place,
           {75, "Turing"},
           {80, "Ampere"},
           {86, "Ampere"},
-          {89, "Ampere"},
+          {89, "Ada Lovelace"},
           {90, "Hopper"},
       };
       if (!arch_computing_mapping_table.count(*compute_capability)) {
