@@ -151,24 +151,22 @@ class TestI0Op(OpTest):
 class TestI0Op_ZeroSize(OpTest):
     def setUp(self) -> None:
         self.__class__.op_type = "i0"
+        self.op_type = "i0"
         self.python_api = paddle.i0
         self.init_config()
-        x = np.random.randn(3, 4, 0).astype(self.dtype)
-        self.inputs = {'x': paddle.to_tensor(x)}
+        x = np.random.randn(3, 4, 0)
+        self.inputs = {'x': x.astype(self.dtype)}
         self.attrs = {}
-        self.outputs = {'out': output_i0(x)}
+        self.outputs = {'out': special.i0(x)}
 
     def init_config(self):
-        self.dtype = np.float64
+        self.dtype = np.float32
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=True)
 
     def test_check_grad(self):
-        self.check_grad(
-            ['x'],
-            'out',
-        )
+        self.check_grad(['x'], 'out', check_dygraph=True)
 
 
 if __name__ == "__main__":
