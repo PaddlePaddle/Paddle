@@ -148,42 +148,28 @@ class TestI0Op(OpTest):
         )
 
 
-def create_test_class(op_type, dtype, shape):
-    class Cls(unittest.TestCase):
-        def test_zero_size(self):
-            paddle.disable_static()
-            import scipy  # noqa: F401
+class TestI0Op_ZeroSize(OpTest):
+    def setUp(self) -> None:
+        self.__class__.op_type = "i0"
+        self.python_api = paddle.i0
+        self.init_config()
+        x = np.random.randn(3, 4, 0).astype(self.dtype)
+        self.inputs = {'x': paddle.to_tensor(x)}
+        self.attrs = {}
+        self.outputs = {'out': output_i0(x)}
 
-            numpy_tensor_1 = np.random.rand(*shape).astype(dtype)
-            paddle_x = paddle.to_tensor(numpy_tensor_1)
-            paddle_x.stop_gradient = False
+    def init_config(self):
+        self.dtype = np.float64
 
-            paddle_api = eval(f"paddle.{op_type}")
-            paddle_out = paddle_api(paddle_x)
-            numpy_api = eval(f"scipy.special.{op_type}")
-            numpy_out = numpy_api(numpy_tensor_1)
+    def test_check_output(self):
+        self.check_output()
 
-            np.testing.assert_allclose(
-                paddle_out.numpy(),
-                numpy_out,
-                1e-2,
-                1e-2,
-            )
-            np.testing.assert_allclose(
-                paddle_out.shape,
-                numpy_out.shape,
-            )
+    def test_check_grad(self):
+        self.check_grad(
+            ['x'],
+            'out',
+        )
 
-    cls_name = f"{op_type}{dtype}_0SizeTest"
-    Cls.__name__ = cls_name
-    globals()[cls_name] = Cls
-
-
-op_type = "i0"
-create_test_class(op_type, "float32", [3, 4, 0])
-create_test_class(op_type, "float64", [3, 4, 0, 3, 4])
-create_test_class(op_type, "int32", [3, 4, 0])
-create_test_class(op_type, "int64", [3, 4, 0, 3, 4])
 
 if __name__ == "__main__":
     unittest.main()
