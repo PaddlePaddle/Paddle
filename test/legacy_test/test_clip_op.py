@@ -31,7 +31,6 @@ class TestClipOp(OpTest):
         self.inputs = {}
         self.initTestCase()
 
-        self.__class__.op_type = "clip"
         self.op_type = "clip"
         self.prim_op_type = "comp"
         self.attrs = {}
@@ -215,7 +214,6 @@ class TestClipBF16Op(OpTest):
         self.inputs = {}
         self.initTestCase()
 
-        self.__class__.op_type = "clip"
         self.op_type = "clip"
         self.prim_op_type = "comp"
         self.attrs = {}
