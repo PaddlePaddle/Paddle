@@ -151,6 +151,13 @@ class TestLogitEps(TestLogitOp):
         self.eps = 1e-8
 
 
+class TestLogit_ZeroSize(TestLogitOp):
+    def set_attrs(self):
+        self.dtype = np.float64
+        self.shape = [2, 0]
+        self.eps = 1e-8
+
+
 class TestLogitAPI(unittest.TestCase):
     def setUp(self):
         self.x_shape = [120]
