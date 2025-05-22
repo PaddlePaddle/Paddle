@@ -1,1 +1,0 @@
-op_library(openvino_engine_op DEPS openvino_engine)
