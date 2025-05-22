@@ -73,7 +73,7 @@ class LayerDesc:
             )
 
     def build_layer(self, **extra_kwargs):
-        return self.layer_func(*self.inputs, **{**self.kwargs, **extra_kwargs})
+        return self.layer_func(*self.inputs, **self.kwargs | extra_kwargs)
 
     def __repr__(self):
         return layer_to_str(

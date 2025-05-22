@@ -180,7 +180,7 @@ def gen(
     )
     filter_compat_info(compats)
     apis = [
-        {**api, **{'class_name': to_pascal_case(api["name"]) + "Op"}}
+        api | {'class_name': to_pascal_case(api["name"]) + "Op"}
         for api in fwds + ir_fwds
     ]
 

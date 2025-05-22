@@ -197,9 +197,8 @@ class OrderedSet(Generic[T]):
         # self._data = {item: None for item in self if item not in other} | {
         #     item: None for item in other if item not in self
         # }
-        self._data = {
-            **{item: None for item in self if item not in other},
-            **{item: None for item in other if item not in self},
+        self._data = {item: None for item in self if item not in other} | {
+            item: None for item in other if item not in self
         }
         return self
 

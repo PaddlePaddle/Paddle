@@ -965,10 +965,9 @@ class CodeGen:
             zip(op_info.attribute_name_list, op_info.attribute_type_list)
         )
 
-        mapping_name_to_type = {
-            **mapping_input_name_to_type,
-            **mapping_attr_name_to_type,
-        }
+        mapping_name_to_type = (
+            mapping_input_name_to_type | mapping_attr_name_to_type
+        )
 
         mapping_input_name_to_optional = dict(
             zip(op_info.input_name_list, op_info.input_optional_list)

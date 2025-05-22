@@ -525,7 +525,7 @@ def ast_to_func(ast_root, dyfunc, delete_on_exit=True):
             for k, v in original_fn_globals.items()
             if not (k.startswith('__') and k.endswith('__'))
         }
-        return {**generated_fn_globals, **original_fn_globals_exclude_builtin}
+        return generated_fn_globals | original_fn_globals_exclude_builtin
 
     dyfunc_closures = inspect.getclosurevars(dyfunc).nonlocals
     ast_root = wrap_as_closure(ast_root, list(dyfunc_closures.keys()))
