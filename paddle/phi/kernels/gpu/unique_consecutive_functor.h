@@ -272,8 +272,6 @@ struct BinaryNotEqual {
   }
 };
 
-
-
 // index_select() function for Tensor
 template <typename Context, typename InT, typename IndexT>
 void IndexSelect(const Context& context,
@@ -292,14 +290,11 @@ void IndexSelect(const Context& context,
 
   auto input_width = slice_size * input_dim[dim];
   auto output_width = slice_size * output_dim[dim];
-
   auto outer_nums = 1;
   for (auto i = 0; i < dim; i++) {
     outer_nums *= input_dim[i];
   }
-
   auto index_size = index.dims()[0];
-
   std::vector<InT> input_vec;
   std::vector<IndexT> index_vec;
   phi::TensorToVector(input, context, &input_vec);
@@ -330,7 +325,6 @@ void IndexSelect(const Context& context,
   for (int64_t i = 0; i < outer_nums; i++) {
     int64_t input_start_offset = i * input_width;
     int64_t output_start_offset = i * output_width;
-
     for (int64_t j = 0; j < index_size; j++) {
       IndexT index_value = index_vec[j];
       if (index_value < 0) {
