@@ -1326,10 +1326,6 @@ static paddle::Tensor& GetTensorFromPyObject(const std::string& op_type,
                                              PyObject* obj,
                                              ssize_t arg_idx,
                                              bool dispensable) {
-  if (PyTuple_Check(obj)) {
-    obj = PyTuple_GET_ITEM(obj, 0);
-  }
-
   if (obj == nullptr || obj == Py_None) {
     if (!dispensable) {
       PADDLE_THROW(common::errors::InvalidArgument(
