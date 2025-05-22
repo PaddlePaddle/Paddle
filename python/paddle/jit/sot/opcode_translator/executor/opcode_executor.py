@@ -2166,7 +2166,7 @@ class OpcodeExecutorBase:
             exc_type, self._graph, DummyTracker(list(args))
         ).call_function(*args, **kwargs)
         self.exception_stack.set_current_exception(exc, self._graph)
-        raise SotCapturedExceptionFactory.get(exc_type)
+        raise SotCapturedExceptionFactory.create(exc.get_py_value())
 
 
 class OpcodeExecutor(OpcodeExecutorBase):
