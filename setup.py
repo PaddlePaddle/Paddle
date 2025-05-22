@@ -43,9 +43,9 @@ version_detail = sys.version_info
 version = str(version_detail[0]) + '.' + str(version_detail[1])
 env_version = os.getenv("PY_VERSION", None)
 
-if version_detail < (3, 8):
+if version_detail < (3, 9):
     raise RuntimeError(
-        f"Paddle only supports Python version >= 3.8 now,"
+        f"Paddle only supports Python version >= 3.9 now,"
         f"you are using Python {python_version}"
     )
 elif env_version is None:
@@ -1041,7 +1041,7 @@ def get_setup_requires():
         setup_requires = (
             f.read().splitlines()
         )  # Specify the dependencies to install
-    if sys.version_info >= (3, 8):
+    if sys.version_info >= (3, 9):
         setup_requires_tmp = []
         for setup_requires_i in setup_requires:
             if (
@@ -1052,6 +1052,8 @@ def get_setup_requires():
                 or '<"3.7"' in setup_requires_i
                 or '<="3.7"' in setup_requires_i
                 or '<"3.8"' in setup_requires_i
+                or '<="3.8"' in setup_requires_i
+                or '<"3.9"' in setup_requires_i
                 or setup_requires_i.strip().endswith('[build]')
             ):
                 continue
@@ -1061,7 +1063,7 @@ def get_setup_requires():
         return setup_requires
     else:
         raise RuntimeError(
-            "please check your python version,Paddle only support Python version>=3.8 now"
+            "please check your python version, Paddle only support Python version>=3.9 now"
         )
 
 
@@ -2703,7 +2705,6 @@ def main():
             'Intended Audience :: Science/Research',
             'License :: OSI Approved :: Apache Software License',
             'Programming Language :: C++',
-            'Programming Language :: Python :: 3.8',
             'Programming Language :: Python :: 3.9',
             'Programming Language :: Python :: 3.10',
             'Programming Language :: Python :: 3.11',
