@@ -17,18 +17,11 @@ import subprocess
 import unittest
 
 import numpy as np
+import utils
 
 import paddle
 import paddle.incubate.cc as pcc
 import paddle.incubate.cc.typing as pct
-
-os.environ["AP_WORKSPACE_DIR"] = "/tmp/paddle/ap"
-
-
-def GetPirProgram(fused_func, tensor_args):
-    dtypes = tuple(tensor.dtype for tensor in tensor_args)
-    func = fused_func.func_overload_ctx.dtypes2func.get(dtypes, None)
-    return str(func.infer_program.forward_program)
 
 
 def IsCertainDevices():
@@ -85,7 +78,7 @@ class TestMatmulEpilogue(unittest.TestCase):
         fused_foo = pcc.compile(
             foo, ap_path=f"{os.path.dirname(paddle.__file__)}/apy/matmul_pass"
         )
-        generated_pir_program = GetPirProgram(
+        generated_pir_program = utils.get_pir_program(
             fused_foo, [self.x, self.y, self.b]
         )
         self.assertTrue(

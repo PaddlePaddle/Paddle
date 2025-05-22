@@ -140,11 +140,13 @@ class InputSpecMakeCtx:
 @contextmanager
 def _ap_envs(ap_path, ap_workspace_dir):
     ap_sys_path = f"{os.path.dirname(paddle.__file__)}/apy/sys"
+    ap_common_path = f"{os.path.dirname(paddle.__file__)}/apy/common"
     matmul_path = f"{os.path.dirname(paddle.__file__)}/apy/matmul_pass"
+    quant_path = f"{os.path.dirname(paddle.__file__)}/apy/quant"
     old_ap_path = os.environ.get('AP_PATH')
     old_ap_workspace_dir = os.environ.get('AP_WORKSPACE_DIR')
     os.environ['AP_PATH'] = (
-        f"{ap_sys_path}:{ap_path}:{matmul_path}:{old_ap_path if old_ap_path is not None else ''}"
+        f"{ap_sys_path}:{ap_common_path}:{ap_path}:{matmul_path}:{quant_path}:{old_ap_path if old_ap_path is not None else ''}"
     )
     os.environ['AP_WORKSPACE_DIR'] = ap_workspace_dir
     old_flags = paddle.get_flags(['FLAGS_enable_ap'])

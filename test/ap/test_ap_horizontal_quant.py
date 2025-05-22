@@ -12,7 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
+
+import utils
 
 import paddle
 import paddle.incubate.cc as pcc
@@ -61,7 +64,12 @@ class TestQuantHorizontalFusion(unittest.TestCase):
                 output1 = paddle.nn.functional.relu(y_quanted)
             return output0, output1, x_scale, y_scale
 
-        fused = pcc.compile(horizontal_quant_func, compile_engine="PCC")
+        fused = pcc.compile(
+            horizontal_quant_func,
+            ap_path=f"{os.path.dirname(paddle.__file__)}/apy/quant",
+        )
+        ap_pir_program = utils.get_pir_program(fused, [self.x, self.y])
+        self.assertTrue('pd_op.ap_variadic' in ap_pir_program, "fusion failed")
         outs = fused(self.x, self.y)
         return outs
 
