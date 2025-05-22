@@ -363,93 +363,93 @@ class XPUTestElementwiseAddOp(XPUOpTestWrapper):
 
 
 support_types = get_xpu_op_support_types('elementwise_add')
-for stype in support_types:
+real_types = [t for t in support_types if t != 'complex64']
+for stype in real_types:
     create_test_class(globals(), XPUTestElementwiseAddOp, stype)
 
+if 'complex64' in support_types:
 
-class TestElementwiseAddOpComplex(XPUOpTest):
-    def setUp(self):
-        self.op_type = "elementwise_add"
-        self.init_dtype()
-        self.init_input_output()
-        self.init_axis()
-        self.inputs = {
-            'X': OpTest.np_dtype_to_base_dtype(self.x),
-            'Y': OpTest.np_dtype_to_base_dtype(self.y),
-        }
-        self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
-        self.outputs = {'Out': self.out}
+    class TestElementwiseAddOpComplex(OpTest):
+        def setUp(self):
+            self.op_type = "elementwise_add"
+            self.python_api = paddle.add
+            self.init_dtype()
+            self.init_input_output()
+            self.init_axis()
+            self.inputs = {
+                'X': OpTest.np_dtype_to_base_dtype(self.x),
+                'Y': OpTest.np_dtype_to_base_dtype(self.y),
+            }
+            self.outputs = {'Out': self.out}
 
-    def test_check_output(self):
-        if paddle.is_compiled_with_xpu():
-            place = paddle.XPUPlace(0)
-            self.check_output_with_place(place)
+        def test_check_output(self):
+            if paddle.is_compiled_with_xpu():
+                place = paddle.XPUPlace(0)
+                self.check_output_with_place(place)
 
-    def test_check_grad_normal(self):
-        if paddle.is_compiled_with_xpu():
-            place = paddle.XPUPlace(0)
-            self.check_grad_with_place(
-                place,
-                ['X', 'Y'],
-                'Out',
+        def test_check_grad_normal(self):
+            if paddle.is_compiled_with_xpu():
+                place = paddle.XPUPlace(0)
+                self.check_grad_with_place(
+                    place,
+                    ['X', 'Y'],
+                    'Out',
+                )
+
+        def test_check_grad_ignore_x(self):
+            if paddle.is_compiled_with_xpu():
+                place = paddle.XPUPlace(0)
+                self.check_grad_with_place(
+                    place,
+                    ['Y'],
+                    'Out',
+                    no_grad_set=set("X"),
+                )
+
+        def test_check_grad_ignore_y(self):
+            if paddle.is_compiled_with_xpu():
+                place = paddle.XPUPlace(0)
+                self.check_grad_with_place(
+                    place,
+                    ['X'],
+                    'Out',
+                    no_grad_set=set("Y"),
+                )
+
+        def init_input_output(self):
+            self.x = (
+                np.random.rand(2, 3, 4) + 1j * np.random.rand(2, 3, 4)
+            ).astype(self.dtype)
+            self.y = (
+                np.random.rand(2, 3, 4) + 1j * np.random.rand(2, 3, 4)
+            ).astype(self.dtype)
+            self.out = self.x + self.y
+
+        def init_dtype(self):
+            self.dtype = np.complex64
+
+        def init_axis(self):
+            self.axis = -1
+
+    class TestElementwiseAddOpComplex2(TestElementwiseAddOpComplex):
+        def init_input_output(self):
+            self.x = (
+                np.random.rand(2, 3, 4) + 1j * np.random.rand(2, 3, 4)
+            ).astype(self.dtype)
+            self.y = (np.random.rand(1, 1) + 1j * np.random.rand(1, 1)).astype(
+                self.dtype
             )
+            self.out = self.x + self.y
 
-    def test_check_grad_ignore_x(self):
-        if paddle.is_compiled_with_xpu():
-            place = paddle.XPUPlace(0)
-            self.check_grad_with_place(
-                place,
-                ['Y'],
-                'Out',
-                no_grad_set=set("X"),
+    class TestElementwiseAddOpComplex3(TestElementwiseAddOpComplex):
+        def init_input_output(self):
+            self.x = (
+                np.random.rand(10, 2, 3) + 1j * np.random.rand(10, 2, 3)
+            ).astype(self.dtype)
+            self.y = (np.random.rand(1, 1) + 1j * np.random.rand(1, 1)).astype(
+                self.dtype
             )
-
-    def test_check_grad_ignore_y(self):
-        if paddle.is_compiled_with_xpu():
-            place = paddle.XPUPlace(0)
-            self.check_grad_with_place(
-                place,
-                ['X'],
-                'Out',
-                no_grad_set=set("Y"),
-            )
-
-    def init_input_output(self):
-        self.x = (
-            np.random.rand(2, 3, 4) + 1j * np.random.rand(2, 3, 4)
-        ).astype(self.dtype)
-        self.y = (
-            np.random.rand(2, 3, 4) + 1j * np.random.rand(2, 3, 4)
-        ).astype(self.dtype)
-        self.out = self.x + self.y
-
-    def init_dtype(self):
-        self.dtype = np.complex64
-
-    def init_axis(self):
-        self.axis = -1
-
-
-class TestElementwiseAddOpComplex2(TestElementwiseAddOpComplex):
-    def init_input_output(self):
-        self.x = (
-            np.random.rand(2, 3, 4) + 1j * np.random.rand(2, 3, 4)
-        ).astype(self.dtype)
-        self.y = (np.random.rand(1, 1) + 1j * np.random.rand(1, 1)).astype(
-            self.dtype
-        )
-        self.out = self.x + self.y
-
-
-class TestElementwiseAddOpComplex3(TestElementwiseAddOpComplex):
-    def init_input_output(self):
-        self.x = (
-            np.random.rand(100, 2, 3) + 1j * np.random.rand(100, 2, 3)
-        ).astype(self.dtype)
-        self.y = (np.random.rand(1, 1) + 1j * np.random.rand(1, 1)).astype(
-            self.dtype
-        )
-        self.out = self.x + self.y
+            self.out = self.x + self.y
 
 
 @unittest.skipIf(

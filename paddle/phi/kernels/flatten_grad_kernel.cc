@@ -84,7 +84,7 @@ PD_REGISTER_KERNEL(flatten_grad,
 
 #endif
 
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
+#if defined(PADDLE_WITH_CUSTOM_DEVICE) && !defined(PADDLE_WITH_CUDA)
 PD_REGISTER_KERNEL(flatten_grad,
                    Custom,
                    ALL_LAYOUT,

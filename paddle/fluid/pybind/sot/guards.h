@@ -285,6 +285,14 @@ class WeakRefMatchGuard : public GuardBase {
   PyObject* expected_;
 };
 
+class IsNotDenseTensorHoldAllocationMatchGuard : public GuardBase {
+ public:
+  bool check(PyObject* value) override;
+  std::string get_guard_name() const override {
+    return "IsNotDenseTensorHoldAllocationMatchGuard";
+  }
+};
+
 class GuardTreeNodeBase {
  public:
   virtual ~GuardTreeNodeBase() = default;
