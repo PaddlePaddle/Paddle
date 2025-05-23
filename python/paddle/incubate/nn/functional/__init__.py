@@ -43,6 +43,7 @@ from .swiglu import swiglu
 from .variable_length_memory_efficient_attention import (
     variable_length_memory_efficient_attention,
 )
+from .int_bincount import int_bincount
 
 __all__ = [
     'fused_multi_head_attention',
@@ -62,4 +63,5 @@ __all__ = [
     "blha_get_max_len",
     "block_multihead_attention",
     "swiglu",
+    "int_bincount",
 ]

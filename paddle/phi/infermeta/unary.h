@@ -998,4 +998,10 @@ void ArrayPopInferMeta(const MetaTensor& array,
                        MetaTensor* out,
                        MetaConfig config = MetaConfig());
 
+void IntBincountInferMeta(const MetaTensor& x,
+                          int64_t low,
+                          int64_t high,
+                          int64_t dtype,
+                          MetaTensor* out);
+
 }  // namespace phi
