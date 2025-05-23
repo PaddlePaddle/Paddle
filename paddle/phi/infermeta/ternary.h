@@ -274,6 +274,18 @@ void MoeCombineInferMeta(const MetaTensor& x,
                          const MetaTensor& scatter_index,
                          MetaTensor* y);
 
+void MoeGateDispatchPermuteInferMeta(const MetaTensor& x,
+                                     const MetaTensor& gate_logits,
+                                     const MetaTensor& corr_bias,
+                                     int64_t k,
+                                     int64_t capacity,
+                                     int64_t world_size,
+                                     MetaTensor* y,
+                                     MetaTensor* combine_weights,
+                                     MetaTensor* scatter_index,
+                                     MetaTensor* expert_offset,
+                                     MetaTensor* expert_id);
+
 void MovingAverageAbsMaxScaleInferMeta(const MetaTensor& x,
                                        const MetaTensor& in_accum,
                                        const MetaTensor& in_state,
