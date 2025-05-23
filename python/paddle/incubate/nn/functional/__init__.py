@@ -45,6 +45,7 @@ from .variable_length_memory_efficient_attention import (
 )
 from .moe_combine import moe_combine
 from .expand_modality_expert_id import expand_modality_expert_id
+from .moe_gate_dispatch_permute import moe_gate_dispatch_permute
 
 __all__ = [
     'fused_multi_head_attention',
