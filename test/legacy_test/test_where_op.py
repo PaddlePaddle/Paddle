@@ -245,8 +245,11 @@ class TestWhereAPI(unittest.TestCase):
     def test_pir_api(self, use_cuda=False):
         for x_stop_gradient in [False, True]:
             for y_stop_gradient in [False, True]:
-                with paddle.pir_utils.IrGuard(), paddle.static.program_guard(
-                    paddle.static.Program(), paddle.static.Program()
+                with (
+                    paddle.pir_utils.IrGuard(),
+                    paddle.static.program_guard(
+                        paddle.static.Program(), paddle.static.Program()
+                    ),
                 ):
                     cond = paddle.static.data(
                         name='cond', shape=self.shape, dtype='bool'
