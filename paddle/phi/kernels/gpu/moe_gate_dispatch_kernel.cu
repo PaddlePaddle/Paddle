@@ -27,7 +27,7 @@ size_t getWorkspaceSize(const int num_rows,
                         const int num_experts,
                         const int k,
                         //  const int max_seq_len,
-                        const phi::CubKeyValueSorter &sorter) {
+                        phi::CubKeyValueSorter &sorter) {
   // const int buf_size = AlignTo16(k * num_rows * hidden_size);
   // const int interbuf_size = AlignTo16(k * num_rows * inter_size);
   // const int padded_experts = AlignTo16(num_experts);
