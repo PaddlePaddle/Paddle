@@ -1750,7 +1750,10 @@ def get_package_data_and_package_dir():
                     "$ORIGIN/../../nvidia/nvtx/lib",
                     "$ORIGIN/../libs",
                 ]
-                fluid_core_path = "${PADDLE_BINARY_DIR}/python/paddle/base/${FLUID_CORE_NAME}.so"
+                fluid_core_path = (
+                    env_dict.get("PADDLE_BINARY_DIR")
+                    + "/python/paddle/base/libpaddle.so"
+                )
 
                 # get existing rpath
                 existing_rpath = get_existing_rpath(fluid_core_path)
