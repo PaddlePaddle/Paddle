@@ -351,7 +351,6 @@ class TestTryExcept(TestCaseBase):
 
     @strict_mode_guard(NOT_ALLOW_FALLBACK)
     def test_try_except(self):
-        print(f"NOT_ALLOW_FALLBACK: {NOT_ALLOW_FALLBACK}")
         self.assert_results(self.try_except_wo_error, paddle.to_tensor(2))
         self.assert_results(
             self.try_except_exception_wo_error, paddle.to_tensor(3)
@@ -939,7 +938,8 @@ class TestGuard(TestCaseBase):
                 paddle.jit.sot.psdb.breakgraph()
                 raise ValueError
             except ValueError:
-                print("Error caught!")
+                return True
+            return False
 
         self.assert_results(fn)
 
