@@ -1330,6 +1330,19 @@ def extend_type_hints_package_data(packages, package_data, paddle_binary_dir):
     return packages, package_data
 
 
+def get_existing_rpath(binary_path):
+    """Get the current RPATH of the binary file"""
+    try:
+        result = subprocess.run(
+            ["patchelf", "--print-rpath", binary_path],
+            capture_output=True,
+            text=True,
+        )
+        return result.stdout.strip()
+    except subprocess.CalledProcessError:
+        return ""
+
+
 def get_package_data_and_package_dir():
     if os.name != 'nt':
         package_data = {
@@ -1722,13 +1735,41 @@ def get_package_data_and_package_dir():
                         + env_dict.get("IR_NAME")
                     )
             else:
-                commands = [
-                    "patchelf --set-rpath '$ORIGIN/../../nvidia/cuda_runtime/lib:$ORIGIN/../../nvidia/cuda_nvrtc/lib:$ORIGIN/../../nvidia/cublas/lib:$ORIGIN/../../nvidia/cudnn/lib:$ORIGIN/../../nvidia/curand/lib:$ORIGIN/../../nvidia/cusparse/lib:$ORIGIN/../../nvidia/nvjitlink/lib:$ORIGIN/../../nvidia/cuda_cupti/lib:$ORIGIN/../../nvidia/cuda_runtime/lib:$ORIGIN/../../nvidia/cufft/lib:$ORIGIN/../../nvidia/cufft/lib:$ORIGIN/../../nvidia/cusolver/lib:$ORIGIN/../../nvidia/nccl/lib:$ORIGIN/../../nvidia/nvtx/lib:$ORIGIN/../libs/' "
-                    + env_dict.get("PADDLE_BINARY_DIR")
-                    + '/python/paddle/base/'
-                    + env_dict.get("FLUID_CORE_NAME")
-                    + '.so'
+                nvidia_paths = [
+                    "$ORIGIN/../../nvidia/cuda_runtime/lib",
+                    "$ORIGIN/../../nvidia/cuda_nvrtc/lib",
+                    "$ORIGIN/../../nvidia/cublas/lib",
+                    "$ORIGIN/../../nvidia/cudnn/lib",
+                    "$ORIGIN/../../nvidia/curand/lib",
+                    "$ORIGIN/../../nvidia/cusparse/lib",
+                    "$ORIGIN/../../nvidia/nvjitlink/lib",
+                    "$ORIGIN/../../nvidia/cuda_cupti/lib",
+                    "$ORIGIN/../../nvidia/cufft/lib",
+                    "$ORIGIN/../../nvidia/cusolver/lib",
+                    "$ORIGIN/../../nvidia/nccl/lib",
+                    "$ORIGIN/../../nvidia/nvtx/lib",
+                    "$ORIGIN/../libs",
                 ]
+                fluid_core_path = "${PADDLE_BINARY_DIR}/python/paddle/base/${FLUID_CORE_NAME}.so"
+                # get existing rpath
+                existing_rpath = get_existing_rpath(fluid_core_path)
+                existing_paths = (
+                    existing_rpath.split(":") if existing_rpath else []
+                )
+                # merge old and new paths and remove duplicates
+                new_paths = ":".join(path for path in nvidia_paths)
+                new_paths = new_paths.split(":")
+                merged_paths = []
+                for path in existing_paths + new_paths:
+                    if path and path not in merged_paths:
+                        merged_paths.append(path)
+                updated_rpath = ":".join(merged_paths)
+                subprocess.run(
+                    ["patchelf", "--set-rpath", updated_rpath, fluid_core_path],
+                    check=True,
+                )
+
+                commands = []
                 if env_dict.get("WITH_SHARED_PHI") == "ON":
                     commands.append(
                         "patchelf --set-rpath '$ORIGIN/../../nvidia/cuda_runtime/lib:$ORIGIN:$ORIGIN/../libs' "

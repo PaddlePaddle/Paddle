@@ -685,11 +685,6 @@ if(WITH_PYTHON)
     target_compile_options(${SHARD_LIB_NAME} PRIVATE -Wno-maybe-uninitialized)
   endif()
 
-  # cc_test do not respect deps, whole archive to link symbols that may need by test
-  if(WITH_TESTING)
-    #set_target_properties(${SHARD_LIB_NAME} PROPERTIES LINK_FLAGS "-Wl,--whole-archive")
-  endif()
-
   # TODO(zhiqiu): some symbols not exported even setting the following
   # property. Need to find a better way.
 

@@ -1200,6 +1200,16 @@ if os.path.isfile(libs_path+'/__init__.py'):
     os.remove(libs_path+'/__init__.py')
 package_dir['paddle.libs']=libs_path
 
+def get_existing_rpath(binary_path):
+    """Get the current RPATH of the binary file"""
+    try:
+        result = subprocess.run(
+            ["patchelf", "--print-rpath", binary_path],
+            capture_output=True, text=True
+        )
+        return result.stdout.strip()
+    except subprocess.CalledProcessError:
+        return ""
 
 # change rpath of ${FLUID_CORE_NAME}.ext, add $ORIGIN/../libs/ to it.
 # The reason is that libwarpctc.ext, libiomp5.ext etc are in paddle.libs, and
@@ -1222,7 +1232,36 @@ if '${CMAKE_BUILD_TYPE}' == 'Release':
                 # change rpath of pir.ext for loading 3rd party libb
                 commands.append("install_name_tool -add_rpath '@loader_path' ${PADDLE_BINARY_DIR}/python/paddle/libs/${IR_NAME}")
         else:
-            commands = ["patchelf --set-rpath '$ORIGIN/../../nvidia/cuda_runtime/lib:$ORIGIN/../../nvidia/cuda_nvrtc/lib:$ORIGIN/../../nvidia/cublas/lib:$ORIGIN/../../nvidia/cudnn/lib:$ORIGIN/../../nvidia/curand/lib:$ORIGIN/../../nvidia/cusparse/lib:$ORIGIN/../../nvidia/nvjitlink/lib:$ORIGIN/../../nvidia/cuda_cupti/lib:$ORIGIN/../../nvidia/cuda_runtime/lib:$ORIGIN/../../nvidia/cufft/lib:$ORIGIN/../../nvidia/cufft/lib:$ORIGIN/../../nvidia/cusolver/lib:$ORIGIN/../../nvidia/nccl/lib:$ORIGIN/../../nvidia/nvtx/lib:$ORIGIN/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/base/${FLUID_CORE_NAME}" + '.so']
+            nvidia_paths = [
+                "$ORIGIN/../../nvidia/cuda_runtime/lib",
+                "$ORIGIN/../../nvidia/cuda_nvrtc/lib",
+                "$ORIGIN/../../nvidia/cublas/lib",
+                "$ORIGIN/../../nvidia/cudnn/lib",
+                "$ORIGIN/../../nvidia/curand/lib",
+                "$ORIGIN/../../nvidia/cusparse/lib",
+                "$ORIGIN/../../nvidia/nvjitlink/lib",
+                "$ORIGIN/../../nvidia/cuda_cupti/lib",
+                "$ORIGIN/../../nvidia/cufft/lib",
+                "$ORIGIN/../../nvidia/cusolver/lib",
+                "$ORIGIN/../../nvidia/nccl/lib",
+                "$ORIGIN/../../nvidia/nvtx/lib",
+                "$ORIGIN/../libs"
+            ]
+            fluid_core_path = "${PADDLE_BINARY_DIR}/python/paddle/base/${FLUID_CORE_NAME}.so"
+            # get existing rpath
+            existing_rpath = get_existing_rpath(fluid_core_path)
+            existing_paths = existing_rpath.split(":") if existing_rpath else []
+            # merge old and new paths and remove duplicates
+            new_paths = ":".join(path for path in nvidia_paths)
+            new_paths = new_paths.split(":")
+            merged_paths = []
+            for path in existing_paths + new_paths:
+                if path and path not in merged_paths:
+                    merged_paths.append(path)
+            updated_rpath = ":".join(merged_paths)
+            subprocess.run(["patchelf", "--set-rpath", updated_rpath, fluid_core_path], check=True)
+
+            commands = []
             if('${WITH_SHARED_PHI}' == 'ON'):
                 # change rpath of phi.ext for loading 3rd party lib
                 commands.append("patchelf --set-rpath '$ORIGIN/../../nvidia/cuda_runtime/lib:$ORIGIN:$ORIGIN/../libs' ${PADDLE_BINARY_DIR}/python/paddle/libs/${PHI_NAME}")
