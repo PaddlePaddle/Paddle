@@ -102,6 +102,8 @@ jobs:
           tar -zvxf PaddleTest.tar.gz 1>/dev/null 2>&1
           # git submodule foreach "git config --global --add safe.directory \$toplevel/\$sm_path"
           source ${{ github.workspace }}/../../../proxy
+          mkdir -p ${{ github.workspace }}/../../../pip
+          ${python} -m pip config set global.cache-dir ${{ github.workspace }}/../../../pip
           ${python} -m pip install -r ./PaddleTest/framework/e2e/api_benchmark_new/requirement.txt
           '
 
@@ -113,6 +115,7 @@ jobs:
           export LD_LIBRARY_PATH=/usr/local/cuda-11.8/compat:/usr/local/cuda/compat:/usr/local/cuda/lib:/usr/local/cuda/lib64:/usr/local/nvidia/lib:/usr/local/nvidia/lib64:/usr/lib/x86_64-linux-gnu:${LD_LIBRARY_PATH}
           cd ./PaddleTest/framework/e2e/api_benchmark_new
           cp /paddle/PTSTools/Uploader/apibm_config.yml .
+          source ${{ github.workspace }}/../../../proxy
           ${python} -m pip install https://paddle-github-action.bj.bcebos.com/PR/build/${PR_ID}/${COMMIT_ID}/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl
           if [ ${core_index} -eq -1 ];then
             ${python} runner_ci_action.py --yaml ../yaml/api_benchmark_fp32.yml --core_index 2

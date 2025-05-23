@@ -99,7 +99,7 @@ void StridedSliceRawStridedKernel(const Context& dev_ctx,
   auto tmp_dim = DDim(output_dims.data(), static_cast<int>(output_dims.size()));
   // if (product(meta.dims) > 0 && meta.dims != tmp_dim) {
   //   PADDLE_THROW(
-  //       common::errors::Fatal("Striede_slice kernel stride compute diff,
+  //       common::errors::Fatal("strided_slice kernel stride compute diff,
   //       infer "
   //                          "shape is %s, but compute is %s.",
   //                          meta.dims,

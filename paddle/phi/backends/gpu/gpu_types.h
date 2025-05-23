@@ -23,8 +23,12 @@
 #include "paddle/phi/backends/dynload/miopen.h"
 #include "paddle/phi/backends/dynload/rocblas.h"
 #else  // PADDLE_WITH_CUDA
+#ifndef PADDLE_WITH_CUSTOM_DEVICE
 #include "paddle/phi/backends/dynload/cublas.h"
 #include "paddle/phi/backends/dynload/cudnn.h"
+#else
+#include <cuda_runtime.h>
+#endif
 #endif
 
 namespace phi {
@@ -45,6 +49,7 @@ namespace phi {
 DECLARE_TYPE_FOR_GPU(gpuError_t, cudaError_t, hipError_t);
 DECLARE_TYPE_FOR_GPU(gpuMemcpyKind, cudaMemcpyKind, hipMemcpyKind);
 DECLARE_TYPE_FOR_GPU(gpuDeviceProp, cudaDeviceProp, hipDeviceProp_t);
+#ifndef PADDLE_WITH_CUSTOM_DEVICE
 DECLARE_TYPE_FOR_GPU(dnnDataType_t, cudnnDataType_t, miopenDataType_t);
 DECLARE_TYPE_FOR_GPU(dnnPoolingMode_t, cudnnPoolingMode_t, miopenPoolingMode_t);
 DECLARE_TYPE_FOR_GPU(dnnTensorFormat_t,
@@ -53,6 +58,7 @@ DECLARE_TYPE_FOR_GPU(dnnTensorFormat_t,
 DECLARE_TYPE_FOR_GPU(dnnActivationMode_t,
                      cudnnActivationMode_t,
                      miopenActivationMode_t);
+#endif
 DECLARE_TYPE_FOR_GPU(gpuGraph_t, cudaGraph_t, hipGraph_t);
 DECLARE_TYPE_FOR_GPU(gpuFunction_t, cudaFunction_t, hipFunction_t);
 DECLARE_TYPE_FOR_GPU(gpuGraphExec_t, cudaGraphExec_t, hipGraphExec_t);
