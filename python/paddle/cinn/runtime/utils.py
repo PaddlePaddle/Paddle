@@ -28,5 +28,8 @@ def get_func_global_vars(func):
 
 
 def inspect_function_scope(func):
-    scope = func.__globals__ | get_func_global_vars(func)
+    scope = {
+        **func.__globals__,
+        **get_func_global_vars(func),
+    }
     return scope

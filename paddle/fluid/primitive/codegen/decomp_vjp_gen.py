@@ -527,16 +527,16 @@ def gen(
             sparse_op['forward']['name'] += '_sp'
             if sparse_op.get('invoke') is not None:
                 sparse_op['invoke']['func'] += '_sp'
-    apis = [api | {'is_fwd': True} for api in fwd_apis]
+    apis = [{**api, **{'is_fwd': True}} for api in fwd_apis]
     apis = apis + [
-        api | {'is_fwd': False}
+        {**api, **{'is_fwd': False}}
         for api in revs + ir_revs + fused_revs + sparse_revs
     ]
     apis = [
         (
-            api | {'is_prim': True}
+            {**api, **{'is_prim': True}}
             if api['name'] in prims
-            else api | {'is_prim': False}
+            else {**api, **{'is_prim': False}}
         )
         for api in apis
     ]
@@ -547,7 +547,8 @@ def gen(
     process_optional_inplace_output_info(apis)
 
     apis = [
-        api | {'class_name': to_pascal_case(api["name"]) + "Op"} for api in apis
+        {**api, **{'class_name': to_pascal_case(api["name"]) + "Op"}}
+        for api in apis
     ]
 
     for item in apis:
