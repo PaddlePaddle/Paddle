@@ -10,10 +10,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 // disable numpy compile error
 #include <Python.h>
-// Avoid a problem with copysign defined in pyconfig.h on Windows.
-#ifdef copysign
-#undef copysign
-#endif
 
 #include <string>
 #include <vector>

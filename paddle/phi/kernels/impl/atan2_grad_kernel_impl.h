@@ -16,6 +16,7 @@
 
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/atan2_grad_kernel.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 
 namespace phi {
@@ -87,6 +88,20 @@ void Atan2GradKernel(const Context& ctx,
   auto x_data = x.data<T>();
   auto y_data = y.data<T>();
   auto out_grad_data = out_grad.data<T>();
+
+  if (out_grad.numel() == 0) {
+    ctx.template Alloc<T>(x_grad);
+    ctx.template Alloc<T>(y_grad);
+    if (x_grad && x_grad->numel() != 0) {
+      phi::Full<T, Context>(
+          ctx, phi::IntArray(common::vectorize(x_grad->dims())), 0, x_grad);
+    }
+    if (y_grad && y_grad->numel() != 0) {
+      phi::Full<T, Context>(
+          ctx, phi::IntArray(common::vectorize(y_grad->dims())), 0, y_grad);
+    }
+    return;
+  }
 
   auto* x_grad_data =
       x_grad ? ctx.template Alloc<T>(x_grad, size_t(x.numel() * sizeof(T)))

@@ -68,9 +68,11 @@ class TestTopkSPMDRule(unittest.TestCase):
         self.assertEqual(len(inferred_output_dist_attrs), 2)
 
         self.assertEqual(inferred_input_dist_attrs[0].dims_mapping, [0, -1, -1])
-        self.assertEqual(inferred_input_dist_attrs[0].dims_mapping, [0, -1, -1])
         self.assertEqual(
             inferred_output_dist_attrs[0].dims_mapping, [0, -1, -1]
+        )
+        self.assertEqual(
+            inferred_output_dist_attrs[1].dims_mapping, [0, -1, -1]
         )
 
     def test_topk_backward(self):
@@ -82,7 +84,7 @@ class TestTopkSPMDRule(unittest.TestCase):
         self.out_dist_tensor_spec.set_dims_mapping([-1, 1, -1])
         result_dist_attrs = self.rule.infer_backward(
             self.x_dist_tensor_spec,
-            self.out_dist_tensor_spec,
+            self.x_dist_tensor_spec,
             self.out_dist_tensor_spec,
             self.attrs['k'],
             self.attrs['axis'],
@@ -96,8 +98,8 @@ class TestTopkSPMDRule(unittest.TestCase):
         self.assertEqual(len(inferred_input_dist_attrs), 3)
         self.assertEqual(len(inferred_output_dist_attrs), 1)
         self.assertEqual(inferred_input_dist_attrs[0].dims_mapping, [0, -1, 1])
-        self.assertEqual(inferred_input_dist_attrs[0].dims_mapping, [0, -1, 1])
-        self.assertEqual(inferred_input_dist_attrs[0].dims_mapping, [0, -1, 1])
+        self.assertEqual(inferred_input_dist_attrs[1].dims_mapping, [0, -1, 1])
+        self.assertEqual(inferred_input_dist_attrs[2].dims_mapping, [0, -1, 1])
         self.assertEqual(inferred_output_dist_attrs[0].dims_mapping, [0, -1, 1])
 
 

@@ -100,7 +100,6 @@ from .variables import (
     MethodVariable,
     NullVariable,
     NumPyArrayVariable,
-    RangeVariable,
     SequenceIterVariable,
     SliceVariable,
     SymbolicVariable,
@@ -1226,84 +1225,6 @@ class OpcodeExecutorBase:
         assert len(keys) == map_size
         values = self.stack.pop_n(map_size)
         self.stack.push(self.build_map(keys, values))
-
-    def build_seq_unpack(self, instr: Instruction):
-        oparg = instr.arg
-        assert isinstance(oparg, int)
-        unpack_values = self.stack.pop_n(oparg)
-
-        retval = []
-        for item in unpack_values:
-            if not isinstance(
-                item, (TupleVariable, ListVariable, RangeVariable)
-            ):
-                raise BreakGraphError(
-                    UnsupportedOperationBreak(
-                        reason_str=f"{type(item)} not support unpack"
-                    )
-                )
-            retval.extend(item.get_iter().to_list())
-
-        if instr.opname in {
-            "BUILD_TUPLE_UNPACK_WITH_CALL",
-            "BUILD_TUPLE_UNPACK",
-        }:
-            retval = tuple(retval)
-
-        self.stack.push(
-            VariableFactory.from_value(
-                retval, self._graph, DummyTracker(unpack_values)
-            )
-        )
-
-    @call_break_graph_decorator(push_n=1)
-    def BUILD_TUPLE_UNPACK_WITH_CALL(self, instr: Instruction):
-        self.build_seq_unpack(instr)
-
-    @call_break_graph_decorator(push_n=1)
-    def BUILD_TUPLE_UNPACK(self, instr: Instruction):
-        self.build_seq_unpack(instr)
-
-    @call_break_graph_decorator(push_n=1)
-    def BUILD_LIST_UNPACK(self, instr: Instruction):
-        self.build_seq_unpack(instr)
-
-    def BUILD_MAP_UNPACK(self, instr: Instruction):
-        oparg = instr.arg
-        assert isinstance(oparg, int)
-        unpack_values = self.stack.pop_n(oparg)
-
-        retval = {}
-        for item in unpack_values:
-            assert item.get_py_type() is dict
-            retval.update(item.get_wrapped_items())
-
-        self.stack.push(
-            VariableFactory.from_value(
-                retval, self._graph, DummyTracker(unpack_values)
-            )
-        )
-
-    def BUILD_MAP_UNPACK_WITH_CALL(self, instr: Instruction):
-        oparg = instr.arg
-        assert isinstance(oparg, int)
-        unpack_values = self.stack.pop_n(oparg)
-
-        retval = {}
-        for item in unpack_values:
-            assert item.get_py_type() is dict
-            wrapped_item = item.get_wrapped_items()
-            if wrapped_item.items() & retval.items():
-                raise InnerError(
-                    "BUILD_MAP_UNPACK_WITH_CALL found repeated key."
-                )
-            retval.update(wrapped_item)
-
-        self.stack.push(
-            VariableFactory.from_value(
-                retval, self._graph, DummyTracker(unpack_values)
-            )
-        )
 
     def handle_super_init_without_args(self, fn, args, kwargs):
         if (
