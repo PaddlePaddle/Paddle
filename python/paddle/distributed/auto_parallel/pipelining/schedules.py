@@ -30,15 +30,16 @@ if TYPE_CHECKING:
     from .stage import _PipelineStageBase
 
 
-from .microbatch import (
-    TensorChunkSpec,
-    merge_chunks,
-    split_args_kwargs_into_chunks,
-)
-
 import paddle
 import paddle.distributed as dist
 from paddle import profiler
+
+from .microbatch import (
+    TensorChunkSpec,
+    _split_tensor,
+    merge_chunks,
+    split_args_kwargs_into_chunks,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -368,9 +369,7 @@ class PipelineScheduleSingle(_PipelineSchedule):
 
         # Split target into microbatches
         if target is not None:
-            targets_split = list(
-                paddle.tensor_split(target, self._n_microbatches)
-            )
+            targets_split = list(_split_tensor(target, self._n_microbatches))
         else:
             targets_split = None
 
@@ -760,9 +759,7 @@ class PipelineScheduleMulti(_PipelineSchedule):
         args_split, kwargs_split = self._split_inputs(args, kwargs)
         # Split target into microbatches
         if target is not None:
-            targets_split = list(
-                paddle.tensor_split(target, self._n_microbatches)
-            )
+            targets_split = list(_split_tensor(target, self._n_microbatches))
         else:
             targets_split = None
 

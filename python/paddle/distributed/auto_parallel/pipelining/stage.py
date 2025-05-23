@@ -19,6 +19,14 @@ from abc import ABC, abstractmethod
 from functools import partial
 from typing import TYPE_CHECKING, Any, Callable, Union
 
+import paddle
+import paddle.distributed as dist
+from paddle import nn
+from paddle.distributed.auto_parallel.api import (
+    dtensor_from_local,
+    dtensor_to_local,
+)
+
 from ._backward import stage_backward
 from .utils import (
     TensorMeta,
@@ -30,14 +38,6 @@ from .utils import (
     map_structure_only,
     validate_tensors_metadata,
     zero_initialize_with_meta,
-)
-
-import paddle
-import paddle.distributed as dist
-from paddle import nn
-from paddle.distributed.auto_parallel.api import (
-    dtensor_from_local,
-    dtensor_to_local,
 )
 
 if TYPE_CHECKING:
@@ -68,6 +68,27 @@ def _normalize_model_output_as_tuple(output: Any) -> tuple[Any]:
     # `act_send_info`
     output_tuple = output if type(output) is tuple else (output,)
     return output_tuple
+
+
+def _restore_placements_info(args, infos, curr_mesh):
+    if isinstance(args, paddle.Tensor) and infos.placements is not None:
+        # set the placements attribute of the Tensor
+        args = dtensor_from_local(args, curr_mesh, infos.placements)
+        # args = dist.shard_tensor(args, curr_mesh, infos.placements)
+        return args
+    elif isinstance(args, (list, tuple)):
+        # if args is list or tuple, handle each element recursively
+        return type(args)(
+            _restore_placements_info(a, i, curr_mesh)
+            for a, i in zip(args, infos)
+        )
+    elif isinstance(args, dict):
+        # if args is dict, recursively handle each key-value pair
+        for key in args:
+            _restore_placements_info(args[key], infos[key], curr_mesh)
+    else:
+        # return directly
+        return args
 
 
 class _RootArgPlaceholder:
@@ -114,7 +135,7 @@ def _make_tensor_from_meta(
     if not isinstance(example, TensorMeta):
         return example
     return paddle.empty(
-        example.shape,
+        example._local_shape if example._local_shape else example.shape,
         dtype=example.dtype,
     )
 
@@ -587,27 +608,7 @@ class _PipelineStageBase(ABC):
 
     def forward_maybe_with_nosync(self, *args, **kwargs):
         curr_mesh = get_stage_mesh(self.stage_index, self.group_size)
-
-        def restore_placements_info(args, infos):
-            if isinstance(args, paddle.Tensor) and infos.placements is not None:
-                # set the placements attribute of the Tensor
-                args = dtensor_from_local(args, curr_mesh, infos.placements)
-                return args
-            elif isinstance(args, (list, tuple)):
-                # if args is list or tuple, handle each element recursively
-                return type(args)(
-                    restore_placements_info(a, i) for a, i in zip(args, infos)
-                )
-            elif isinstance(args, dict):
-                # if args is dict, recursively handle each key-value pair
-                for key in args:
-                    restore_placements_info(args[key], infos[key])
-            else:
-                # return directly
-                return args
-
-        args = restore_placements_info(args, self.inputs_meta)
-
+        args = _restore_placements_info(args, self.inputs_meta, curr_mesh)
         out_val = self.sublayer(*args, **kwargs)
 
         return out_val
@@ -647,6 +648,11 @@ class _PipelineStageBase(ABC):
                 )
             else:
                 raise RuntimeError(f"Unknown backward type: {backward_type}")
+
+        curr_mesh = get_stage_mesh(self.stage_index, self.group_size)
+        bwd_kwargs["output_grads"] = _restore_placements_info(
+            bwd_kwargs["output_grads"], self.grads_meta, curr_mesh
+        )
 
         result = perform_backward(backward_type)()
         grads, param_groups = result
@@ -982,9 +988,7 @@ class PipelineStage(_PipelineStageBase):
 
             outputs = self.sublayer(*args, **kwargs)
             if self.has_backward:
-                flatten_input_tensors = flatten_args(args) + flatten_args(
-                    kwargs
-                )
+                flatten_input_tensors = flatten_args(args)
                 self.fwd_cache[0] = (
                     _normalize_model_output_as_tuple(outputs),  # stage_output
                     flatten_input_tensors,  # input_values
@@ -1128,7 +1132,6 @@ class PipelineStage(_PipelineStageBase):
         )
 
         paddle.autograd.backward(stage_output, grads, True)
-
 
         if (
             self.is_first

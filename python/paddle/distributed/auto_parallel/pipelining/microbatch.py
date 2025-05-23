@@ -18,6 +18,12 @@ import logging
 from typing import Any
 
 import paddle
+import paddle.distributed as dist
+from paddle.distributed import Replicate, Shard
+from paddle.distributed.auto_parallel.api import (
+    dtensor_from_local,
+    dtensor_to_local,
+)
 from paddle.utils import flatten, map_structure, pack_sequence_as
 
 logger = logging.getLogger(__name__)
@@ -25,6 +31,45 @@ logger = logging.getLogger(__name__)
 # Default chunking dimension is 0. This is used for the case where the user did
 # not specify a chunking dimension.
 DEFAULT_CHUNK_DIM = 0
+
+
+def _split_tensor(x, num_chunks, split_axis=0):
+    if not x.is_dist():
+        chunk_tensors = paddle.tensor_split(x, num_chunks, split_axis)
+    # dp_degree > 1 , placements of model input is [S(0), R, ...]
+    else:
+        mesh = x.process_mesh
+        placements = x.placements
+        x = dtensor_to_local(x, mesh, placements)
+        chunk_tensors = paddle.tensor_split(x, num_chunks, split_axis)
+        for i in range(num_chunks):
+            chunk_tensors[i] = dtensor_from_local(
+                chunk_tensors[i], mesh, placements
+            )
+    return chunk_tensors
+
+
+def _concat_tensor(chunk_tensors, axis=0):
+    chunk0 = chunk_tensors[0]
+    if not chunk0.is_dist():
+        out = paddle.concat(chunk_tensors, axis)
+
+    else:
+        # loss_fun(out, labels), placements of labels is [S(0), R, ...]
+        mesh = chunk0.process_mesh
+        placements = [Replicate() for _ in range(mesh.ndim)]
+        dp_index = mesh.dim_names.index("dp") if "dp" in mesh.dim_names else 0
+        placements[dp_index] = Shard(0)
+
+        for i in range(len(chunk_tensors)):
+            chunk_tensors[i] = dist.reshard(chunk_tensors[i], mesh, placements)
+
+            chunk_tensors[i] = dtensor_to_local(
+                chunk_tensors[i], mesh, placements
+            )
+        out = paddle.concat(chunk_tensors, axis)
+        out = dtensor_from_local(out, mesh, placements)
+    return out
 
 
 class TensorChunkSpec:
@@ -84,9 +129,7 @@ def _split_args_helper(
                         "Please adjust your num_chunks setting."
                     )
                 # split tensor v
-                chunk_tensors = paddle.tensor_split(
-                    v, num_chunks, chunk_v.split_axis
-                )
+                chunk_tensors = _split_tensor(v, num_chunks, chunk_v.split_axis)
 
                 shard_arg_flat.append(chunk_tensors)
             else:
@@ -239,7 +282,7 @@ def merge_chunks(
                     chunks_flat[chunk_idx][arg_idx]
                     for chunk_idx in range(len(chunks_flat))
                 ]
-                merged_arg = paddle.concat(
+                merged_arg = _concat_tensor(
                     arg_chunks_to_merge, axis=chunk_spec_of_arg.split_axis
                 )
             else:
