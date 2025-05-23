@@ -469,6 +469,17 @@ void MoeCombineGradInferMeta(const MetaTensor& x,
                              MetaTensor* grad_x,
                              MetaTensor* grad_combine_weights_helper);
 
+void MoeGateDispatchPermuteGradInferMeta(const MetaTensor& combine_weights,
+                                         const MetaTensor& scatter_index,
+                                         const MetaTensor& expert_id,
+                                         const MetaTensor& y_grad,
+                                         const MetaTensor& combine_weights_grad,
+                                         int64_t k,
+                                         int64_t capacity,
+                                         int64_t world_size,
+                                         MetaTensor* x_grad,
+                                         MetaTensor* gate_logtis_grad);
+
 void MultiDotGradInferMeta(const std::vector<const MetaTensor*>& x,
                            const MetaTensor& out_grad,
                            std::vector<MetaTensor*> x_grad);

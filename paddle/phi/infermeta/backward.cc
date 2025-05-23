@@ -1228,16 +1228,48 @@ void MoeCombineGradInferMeta(const MetaTensor& x,
   PADDLE_ENFORCE_EQ(
       x_dim.size(),
       2,
-      errors::InvalidArgument("Input X should have 2 dimensions"));
+      errors::InvalidArgument("The input X should have 2 dimensions"
+                              "But received X's dimension = %d",
+                              x_dim.size()));
   PADDLE_ENFORCE_EQ(
     (scatter_index.dtype() == phi::DataType::INT32),
     true,
     errors::InvalidArgument(
-        "The input scatter_index type should be int32"));
-  grad_x->set_dims(phi::make_ddim({x_dim[0],x_dim[1]}));
+        "The input scatter_index type should be int32"
+        "But received scatter_index type = %s",
+        scatter_index.dtype()));
+  grad_x->set_dims(common::make_ddim({x_dim[0],x_dim[1]}));
   grad_x->set_dtype(x.dtype());
-  grad_combine_weights_helper->set_dims(phi::make_ddim({combine_weights_shape[0], combine_weights_shape[1], x_dim[1]}));
+  grad_combine_weights_helper->set_dims(common::make_ddim({combine_weights_shape[0], combine_weights_shape[1], x_dim[1]}));
   grad_combine_weights_helper->set_dtype(x.dtype());
+}
+
+void MoeGateDispatchPermuteGradInferMeta(const MetaTensor& combine_weights,
+                                         const MetaTensor& scatter_index,
+                                         const MetaTensor& expert_id,
+                                         const MetaTensor& y_grad,
+                                         const MetaTensor& combine_weights_grad,
+                                         int64_t k,
+                                         int64_t capacity,
+                                         int64_t world_size,
+                                         MetaTensor* x_grad,
+                                         MetaTensor* gate_logtis_grad){
+
+  auto y_grad_dims = y_grad.dims();
+  PADDLE_ENFORCE_EQ(
+    y_grad_dims[1],
+    world_size,
+    common::errors::InvalidArgument("The second dimension of y_grad should be equal to world_size, but "
+                                    "received y_grad_dims[1] = %d, world_size = %d",
+                                    y_grad_dims[1], world_size));
+  int64_t num_local_experts = y_grad_dims[0];
+  int64_t num_experts = world_size * num_local_experts;
+  int64_t hidden_size = y_grad_dims[y_grad_dims.size()-1];
+  int64_t num_rows = scatter_index.dims()[1];
+  x_grad->set_dims({num_rows, hidden_size});
+  x_grad->set_dtype(y_grad.dtype());
+  gate_logtis_grad->set_dims({num_rows, num_experts});
+  gate_logtis_grad->set_dtype(phi::DataType::FLOAT32);
 }
 
 void MultiDotGradInferMeta(const std::vector<const MetaTensor*>& x,
