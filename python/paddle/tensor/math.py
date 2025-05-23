@@ -4371,13 +4371,15 @@ def cumsum_(
         flatten = True
     else:
         flatten = False
-    if dtype is not None and x.dtype != convert_np_dtype_to_dtype_(dtype):
-        x = cast_(x, dtype)
+
+    if dtype is not None:
+        if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
+            dtype = convert_np_dtype_to_dtype_(dtype)
 
     if in_dynamic_mode():
         if axis is None:
             axis = -1
-        return _C_ops.cumsum_(x, axis, flatten, False, False)
+        return _C_ops.cumsum_(x, axis, flatten, False, False, dtype)
 
 
 def cummax(

@@ -289,14 +289,19 @@ ThrustCumsumKernel(const Context& dev_ctx,
                    bool reverse,
                    bool exclusive) {}
 
-template <typename InT, typename OutT, typename Context, typename Op>
+template <typename InT,
+          typename OutT,
+          typename Context,
+          typename OpForInT,
+          typename OpForOutT>
 void ScanKernel(const Context& dev_ctx,
                 const DenseTensor& x,
                 int axis,
                 bool flatten,
                 bool exclusive,
                 bool reverse,
-                Op op,
+                OpForInT opInT,
+                OpForOutT opOutT,
                 DenseTensor* out) {
   OutT* out_data = dev_ctx.template Alloc<OutT>(out);
   if (out->numel() == 0) {
@@ -333,7 +338,7 @@ void ScanKernel(const Context& dev_ctx,
   if constexpr (std::is_same<InT, OutT>::value) {
     if (!std::is_same<InT, phi::dtype::float16>::value &&
         !std::is_same<InT, phi::dtype::bfloat16>::value &&
-        std::is_same<Op, cub::Sum>::value && size == out_dims[axis]) {
+        std::is_same<OpForInT, cub::Sum>::value && size == out_dims[axis]) {
       ThrustCumsumKernel<Context, InT>(
           dev_ctx, in_data, out_data, size, reverse, exclusive);
       return;
@@ -399,27 +404,18 @@ void ScanKernel(const Context& dev_ctx,
 
   // Do scan
   if (!transpose && !reverse) {
-    BlockScanKernel<InT, OutT, 128, 4, Op>
+    BlockScanKernel<InT, OutT, 128, 4, OpForInT>
         <<<scan_grid, 128, 0, dev_ctx.stream()>>>(
-            out_data, in_data, grid_size, scan_size, exclusive, op);
+            out_data, in_data, grid_size, scan_size, exclusive, opInT);
 
   } else {
-    // the data in next_in_data is of type OutT*. Therefore, the Op used for
-    // BlockScanKernel must be compatible with OutT.
-    using OpForOutT = typename std::conditional<
-        std::is_same<OutT, phi::dtype::complex<float>>::value ||
-            std::is_same<OutT, phi::dtype::complex<double>>::value,
-        ComplexSum,
-        cub::Sum>::type;
-    auto op_for_out_t_instance = OpForOutT();
-
     BlockScanKernel<OutT, OutT, 128, 4, OpForOutT>
         <<<scan_grid, 128, 0, dev_ctx.stream()>>>(next_out_data,
                                                   next_in_data,
                                                   grid_size,
                                                   scan_size,
                                                   exclusive,
-                                                  op_for_out_t_instance);
+                                                  opOutT);
   }
   swap_ptr(next_in_data, next_out_data);
 
@@ -463,14 +459,28 @@ struct CumsumKernelVisitor {
 
   template <typename OutT>
   void apply() const {
-    using Op = typename std::conditional<
+    using OpForInT = typename std::conditional<
         std::is_same<InT, phi::dtype::complex<float>>::value ||
             std::is_same<InT, phi::dtype::complex<double>>::value,
         ComplexSum,
         cub::Sum>::type;
-    auto op = Op();
-    ScanKernel<InT, OutT, DeviceContext, Op>(
-        dev_ctx_, x_, axis_scalar_, flatten_, exclusive_, reverse_, op, out_);
+
+    using OpForOutT = typename std::conditional<
+        std::is_same<OutT, phi::dtype::complex<float>>::value ||
+            std::is_same<OutT, phi::dtype::complex<double>>::value,
+        ComplexSum,
+        cub::Sum>::type;
+    auto opInT = OpForInT();
+    auto opOutT = OpForOutT();
+    ScanKernel<InT, OutT, DeviceContext, OpForInT, OpForOutT>(dev_ctx_,
+                                                              x_,
+                                                              axis_scalar_,
+                                                              flatten_,
+                                                              exclusive_,
+                                                              reverse_,
+                                                              opInT,
+                                                              opOutT,
+                                                              out_);
   }
 };
 
@@ -499,8 +509,8 @@ void LogcumsumexpKernel(const Context& dev_ctx,
                         DenseTensor* out) {
   using Op = LogAddExp;
   auto op = Op();
-  ScanKernel<T, T, Context, Op>(
-      dev_ctx, x, axis, flatten, exclusive, reverse, op, out);
+  ScanKernel<T, T, Context, Op, Op>(
+      dev_ctx, x, axis, flatten, exclusive, reverse, op, op, out);
 }
 
 }  // namespace phi
