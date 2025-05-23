@@ -267,6 +267,3 @@ PD_REGISTER_KERNEL(cal_aux_loss,
                    float,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}
-
-PD_REGISTER_KERNEL(
-    cal_aux_loss_grad, GPU, ALL_LAYOUT, phi::CalAuxLossGradKernel, float) {}

@@ -19,10 +19,10 @@ namespace phi {
 
 template <typename T, typename Context>
 void CalAuxLossGradKernel(const Context& dev_ctx,
-                          const DenseTensor& l_aux_loss_grad,
                           const DenseTensor& gate_prob,
                           const DenseTensor& seqlen_float,
                           const DenseTensor& ce,
+                          const DenseTensor& l_aux_loss_grad,
                           const int64_t num_experts,
                           const bool use_group,
                           const int64_t moe_k,

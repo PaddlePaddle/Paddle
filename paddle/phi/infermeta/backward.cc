@@ -1888,20 +1888,19 @@ void SetValueGradInferMeta(const MetaTensor& out_grad,
   }
 }
 
-void CalAuxLossGradInferMeta(const MetaTensor& l_aux_loss_grad,
-                             const MetaTensor& gate_prob,
+void CalAuxLossGradInferMeta(const MetaTensor& gate_prob,
                              const MetaTensor& seqlen_float,
                              const MetaTensor& ce,
+                             const MetaTensor& l_aux_loss_grad,
                              const int64_t num_experts,
                              const bool use_group,
                              const int64_t moe_k,
-                             MetaTensor* gate_prob_grad);
-{
+                             MetaTensor* gate_prob_grad) {
   auto gate_prob_dims = gate_prob.dims();
 
   PADDLE_ENFORCE_EQ(
       gate_prob.dtype(),
-      out_grad.dtype(),
+      l_aux_loss_grad.dtype(),
       errors::InvalidArgument(
           "The input out_grad type should be equal to gate_prob type"));
 
