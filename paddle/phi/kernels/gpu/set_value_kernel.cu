@@ -80,11 +80,13 @@ void SetTensorValueKernelV2(const Context& dev_ctx,
 
   if (product(phi::make_ddim(new_out_shape)) <= 0) {
     // 0-size tensor, no need to copy
+    out->ResetHolder(in.Holder());
+    out->ShareInplaceVersionCounterWith(in);
     return;
   }
 
   CheckIsDimsMatch(phi::make_ddim(new_out_shape), value.dims());
-
+  if (new_out_shape.empty()) new_out_shape.push_back(1);
   DenseTensor expand_tensor;
   if (value.numel() == 1) {
     // std::cout << "[set_value ]value.numel() == 1 " << std::endl;
@@ -101,8 +103,6 @@ void SetTensorValueKernelV2(const Context& dev_ctx,
     }
     if (value_dims.empty()) value_dims.push_back(1);
     value_tensor.Resize(phi::make_ddim(value_dims));
-
-    if (new_out_shape.empty()) new_out_shape.push_back(1);
 
     expand_tensor = Empty<T>(dev_ctx, IntArray{new_out_shape});
     ExpandKernel<T, Context>(
