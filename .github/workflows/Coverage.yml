@@ -277,6 +277,15 @@ jobs:
           CCACHE_LIMIT_MULTIPLE: 0.8
           FLAGS_PIR_OPTEST: "TRUE"
           ON_INFER: "ON"
+          WITH_LITE: "OFF"
+          TIMEOUT_DEBUG_HELP: "OFF"
+          WITH_INCREMENTAL_COVERAGE: "OFF"
+          CI_SKIP_CPP_TEST: "OFF"
+          WITH_ONNXRUNTIME: "OFF"
+          WITH_UCC: "ON"
+          WITH_PIP_CUDA_LIBRARIES: "OFF"
+          CTEST_OUTPUT_ON_FAILURE: 1
+          PADDLE_FRACTION_GPU_MEMORY_TO_USE: 0.15
           COVERAGE_FILE: ${{ github.workspace }}/build/python-coverage.data
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -322,6 +331,15 @@ jobs:
             -e CCACHE_LIMIT_MULTIPLE \
             -e FLAGS_PIR_OPTEST \
             -e ON_INFER \
+            -e WITH_LITE \
+            -e TIMEOUT_DEBUG_HELP \
+            -e CTEST_OUTPUT_ON_FAILURE \
+            -e WITH_INCREMENTAL_COVERAGE \
+            -e CI_SKIP_CPP_TEST \
+            -e WITH_ONNXRUNTIME \
+            -e WITH_UCC \
+            -e WITH_PIP_CUDA_LIBRARIES \
+            -e PADDLE_FRACTION_GPU_MEMORY_TO_USE \
             -e COVERAGE_FILE \
             -e GITHUB_TOKEN \
             -e GITHUB_API_TOKEN  \
@@ -331,6 +349,7 @@ jobs:
       - name: Download paddle.tar.gz and update test branch
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
+          ldconfig
           rm -rf * .[^.]*
           set -e
           echo "Downloading Paddle.tar.gz"
