@@ -28,7 +28,7 @@ void MoeGateDispatchGradKernel(const Context& dev_ctx,
                                const int64_t capacity,
                                const bool use_pad,
                                DenseTensor* x_grad,
-                               DenseTensor* gate_logtis_grad);
+                               DenseTensor* gate_logits_grad);
 
 template <typename T, typename Context>
 void moe_dispatch_bwd(const Context& dev_ctx,
@@ -38,7 +38,7 @@ void moe_dispatch_bwd(const Context& dev_ctx,
                       const DenseTensor& y_grad,  // [num_experts * capacity, h]
                       const DenseTensor& combine_weights_grad,  // [s, k]
                       const DenseTensor& x_grad,
-                      const DenseTensor& gate_logtis_grad,
+                      const DenseTensor& gate_logits_grad,
                       int64_t capacity,
                       bool use_all2all_permute = false,
                       int64_t world_size = -1,

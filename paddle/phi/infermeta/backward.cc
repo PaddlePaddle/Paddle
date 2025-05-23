@@ -1907,4 +1907,57 @@ void CalAuxLossGradInferMeta(const MetaTensor& gate_prob,
   gate_prob_grad->set_dims({gate_prob_dims});
   gate_prob_grad->set_dtype(gate_prob.dtype());
 }
+
+void MoeGateDispatchGradInferMeta(const MetaTensor& combine_weights,
+                                  const MetaTensor& scatter_index,
+                                  const MetaTensor& expert_id,
+                                  const MetaTensor& y_grad,
+                                  const MetaTensor& combine_weights_grad,
+                                  const int64_t k,
+                                  const int64_t capacity,
+                                  const bool use_pad,
+                                  MetaTensor* x_grad,
+                                  MetaTensor* gate_logits_grad) {
+  auto combine_weights_dims = combine_weights.dims();
+  auto scatter_index_dims = scatter_index.dims();
+  auto expert_id_dims = expert_id.dims();
+  auto y_grad_dims = y_grad.dims();
+  auto combine_weights_grad_dims = combine_weights_grad.dims();
+
+  PADDLE_ENFORCE_EQ(combine_weights_dims.size(),
+                    2,
+                    errors::InvalidArgument(
+                        "Input combine_weights should have 2 dimensions"));
+
+  PADDLE_ENFORCE_EQ(
+      scatter_index_dims.size(),
+      2,
+      errors::InvalidArgument("Input scatter_index should have 2 dimensions"));
+
+  PADDLE_ENFORCE_EQ(
+      expert_id_dims.size(),
+      2,
+      errors::InvalidArgument("Input expert_id should have 2 dimensions"));
+
+  PADDLE_ENFORCE_EQ(
+      y_grad_dims.size(),
+      2,
+      errors::InvalidArgument("Input y_grad should have 2 dimensions"));
+
+  PADDLE_ENFORCE_EQ(combine_weights_grad_dims.size(),
+                    2,
+                    errors::InvalidArgument(
+                        "Input combine_weights_grad should have 2 dimensions"));
+
+  int64_t num_experts = y_grad_dims[0] / capacity;
+  int64_t hidden_size = y_grad_dims[1];
+
+  int64_t num_rows = scatter_index_dims[1];
+
+  gate_logits_grad->set_dims(common::make_ddim({num_rows, num_experts}));
+  gate_logits_grad->set_dtype(phi::DataType::FLOAT32);
+
+  x_grad->set_dims(common::make_ddim({num_rows, hidden_size}));
+  x_grad->set_dtype(y_grad.dtype());
+}
 }  // namespace phi

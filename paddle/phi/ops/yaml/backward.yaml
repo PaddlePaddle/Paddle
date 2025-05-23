@@ -2256,6 +2256,16 @@
   kernel :
     func : mode_grad
 
+- backward_op : moe_gate_dispatch_grad
+  forward : moe_gate_dispatch (Tensor x, Tensor gate_logits, Tensor corr_bias, int64_t k, int64_t capacity, bool use_pad) -> Tensor(y), Tensor(combine_weights), Tensor(scatter_index), Tensor(expert_offset), Tensor(expert_id)
+  args : (Tensor combine_weights, Tensor scatter_index, Tensor expert_id, Tensor y_grad, Tensor combine_weights_grad, int64_t k, int64_t capacity, bool use_pad)
+  output : Tensor(x_grad), Tensor(gate_logits_grad)
+  infer_meta :
+    func : MoeGateDispatchGradInferMeta
+  kernel :
+    func : moe_gate_dispatch_grad
+    data_type : y_grad
+
 - backward_op : mp_allreduce_sum_grad
   forward : mp_allreduce_sum(Tensor x, int ring_id = 0) -> Tensor(out)
   args : (Tensor out_grad, int ring_id = 0)

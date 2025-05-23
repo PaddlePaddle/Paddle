@@ -14,13 +14,13 @@
 
 #pragma once
 
-#include <vector>
-
-#include "paddle/phi/include/kernels.h"
 #include "paddle/phi/kernels/moe_gate_dispatch_grad_kernel.h"
-
+#include <vector>
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/contiguous_kernel.h"
+#include "paddle/phi/kernels/fused_moe_bwd_op.h"
+#include "paddle/phi/kernels/transpose_kernel.h"
 
 namespace phi {
 
@@ -30,7 +30,7 @@ void apply_moe_dispatch_bwd(const T* y_grad,
                             const int* scatter_index,      // [s, k]
                             const float* combine_weights_grad,
                             const int* expert_id,  // [s, k]
-                            float* gate_logtis_grad,
+                            float* gate_logits_grad,
                             T* x_grad,
                             int64_t num_rows,
                             int64_t k,
@@ -58,7 +58,7 @@ void apply_moe_dispatch_bwd(const T* y_grad,
   topk_grad_with_mask_launcher<float>(combine_weights_grad,
                                       expert_id,
                                       combine_weights,
-                                      gate_logtis_grad,
+                                      gate_logits_grad,
                                       num_rows,
                                       k,
                                       num_experts,
@@ -73,7 +73,7 @@ void moe_dispatch_bwd(const Context& dev_ctx,
                       const DenseTensor& y_grad,  // [num_experts * capacity, h]
                       const DenseTensor& combine_weights_grad,  // [s, k]
                       const DenseTensor& x_grad,
-                      const DenseTensor& gate_logtis_grad,
+                      const DenseTensor& gate_logits_grad,
                       int64_t capacity,
                       bool use_all2all_permute,
                       int64_t world_size,
@@ -85,15 +85,15 @@ void moe_dispatch_bwd(const Context& dev_ctx,
 #else
   int64_t hidden_size = y_grad.dims()[1];
 #endif
-  int64_t num_experts = gate_logtis_grad.dims()[1];
+  int64_t num_experts = gate_logits_grad.dims()[1];
 
   apply_moe_dispatch_bwd<T>(y_grad.data<T>(),
                             combine_weights.data<float>(),
                             scatter_index.data<int>(),
                             combine_weights_grad.data<float>(),
                             expert_id.data<int>(),
-                            static_cast<float> gate_logtis_grad.data<float>(),
-                            static_cast<T> x_grad.data<T>(),
+                            const_cast<float*>(gate_logits_grad.data<float>()),
+                            const_cast<T*>(x_grad.data<T>()),
                             num_rows,
                             k,
                             hidden_size,
@@ -116,7 +116,7 @@ void MoeGateDispatchGradKernel(const Context& dev_ctx,
                                const int64_t capacity,
                                const bool use_pad,
                                DenseTensor* x_grad,
-                               DenseTensor* gate_logtis_grad) {
+                               DenseTensor* gate_logits_grad) {
   auto y_grad_dims = y_grad.dims();
   auto scatter_index_dims = scatter_index.dims();
 
@@ -140,7 +140,7 @@ void MoeGateDispatchGradKernel(const Context& dev_ctx,
   const DenseTensor t_scatter_index__ = t_scatter_index_;
 
   dev_ctx.template Alloc<T>(x_grad);
-  dev_ctx.template Alloc<float>(gate_logtis_grad);
+  dev_ctx.template Alloc<float>(gate_logits_grad);
 
   moe_dispatch_bwd<T, Context>(dev_ctx,
                                combine_weights,
@@ -149,7 +149,7 @@ void MoeGateDispatchGradKernel(const Context& dev_ctx,
                                y_grad,
                                combine_weights_grad,
                                *x_grad,
-                               *gate_logtis_grad,
+                               *gate_logits_grad,
                                capacity);
 }
 
