@@ -28,16 +28,9 @@ static void LerpGradFunction(const Context& ctx,
                              const DenseTensor& out_grad,
                              DenseTensor* x_grad,
                              DenseTensor* y_grad) {
-  bool size_0 = false;
-  if (x_grad && x_grad->numel() == 0) {
+  if ((x_grad && x_grad->numel() == 0) || (y_grad && y_grad->numel() == 0)) {
     ctx.template Alloc<T>(x_grad);
-    size_0 = true;
-  }
-  if (y_grad && y_grad->numel() == 0) {
     ctx.template Alloc<T>(y_grad);
-    size_0 = true;
-  }
-  if (size_0) {
     return;
   }
 
