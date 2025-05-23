@@ -12,4 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle
+
 from .facade_op import FacadeOp as FacadeOp
+
+AxprValue = paddle.base.libpaddle.pir.AxprValue
+
+del paddle

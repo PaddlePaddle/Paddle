@@ -13,7 +13,7 @@ class BlockEntries:
         self.axpr_lambda_json_str_local_id2registry_key = (
             [None] * len(local_id2axpr_lambda_json_str)
         )
-        self.AxprValue = paddle.base.libpaddle.pir.AxprValue
+        self.AxprValue = paddle.incubate.cc.ap.AxprValue
         self.ap = self.AxprValue.import_module("ap")
         self.axpr = self.AxprValue.import_module("axpr")
 
