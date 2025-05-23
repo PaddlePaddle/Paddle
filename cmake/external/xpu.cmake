@@ -356,17 +356,14 @@ if(WITH_XPU_XRE5)
     ${XPU_XBLAS_LIB}
     ${XPU_API_LIB}
     ${XPU_XFA_LIB}
-    ${XPU_XPUDNN_LIB})
+    ${XPU_XPUDNN_LIB}
+    ${XPU_ML_LIB})
 else()
   target_link_libraries(xpulib ${XPU_RT_LIB} ${XPU_API_LIB})
 endif()
 
 if(WITH_XPU_BKCL)
-  if(WITH_XPU_XRE5)
-    target_link_libraries(xpulib ${XPU_ML_LIB} ${XPU_BKCL_LIB})
-  else()
-    target_link_libraries(xpulib ${XPU_BKCL_LIB})
-  endif()
+  target_link_libraries(xpulib ${XPU_BKCL_LIB})
 endif()
 
 add_dependencies(xpulib ${XPU_PROJECT})
