@@ -16,7 +16,8 @@ limitations under the License. */
 #include <string>
 #include "cub/cub.cuh"
 #include "paddle/phi/kernels/funcs/math_cuda_utils.h"
-
+#include <math.h>  
+#include <cuda_runtime.h>
 namespace phi {
 
 static const float HALF_FLT_MAX = 65504.F;
