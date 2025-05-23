@@ -500,4 +500,85 @@ bool TensorDistAttr::is_partial(int64_t mesh_axis) const {
 
 void TensorDistAttr::set_skip_check_mesh(bool skip) { skip_check_mesh_ = skip; }
 
+bool TensorDistAttr::is_co_shard() const {
+  for (const auto& mesh_dims : dims_mapping_2d_) {
+    if (mesh_dims.size() > 1) {
+      return true;
+    }
+  }
+  return false;
+}
+
+TensorDistAttr::DimMapProxy& TensorDistAttr::DimMapProxy::operator=(
+    const std::vector<std::vector<int64_t>>& dims_mapping) {
+  dims_mapping_2d->resize(dims_mapping.size());
+  *dims_mapping_2d = dims_mapping;
+  return *this;
+}
+
+TensorDistAttr::DimMapProxy& TensorDistAttr::DimMapProxy::operator=(
+    const std::vector<int64_t>& dims_mapping) {
+  dims_mapping_1d = dims_mapping;
+  sync_2d_map();
+  VLOG(4) << "Set 1d dims_mapping, Sync 2d. 1d "
+          << auto_parallel::str_join(dims_mapping_1d) << " , 2d  "
+          << auto_parallel::str_join(*dims_mapping_2d);
+  return *this;
+}
+
+TensorDistAttr::DimMapProxy& TensorDistAttr::DimMapProxy::operator=(
+    const DimMapProxy& other) {
+  if (this == &other) {
+    return *this;
+  }
+  *dims_mapping_2d = (*other.dims_mapping_2d);
+  return *this;
+}
+
+bool TensorDistAttr::DimMapProxy::operator==(const DimMapProxy& other) {
+  return (*dims_mapping_2d) == (*other.dims_mapping_2d);
+}
+
+bool TensorDistAttr::DimMapProxy::operator!=(const DimMapProxy& other) {
+  return !this->operator==(other);
+}
+
+TensorDistAttr::DimMapProxy::operator const std::vector<std::vector<int64_t>>&()
+    const {
+  return *dims_mapping_2d;
+}
+
+TensorDistAttr::DimMapProxy::operator const std::vector<int64_t>&() const {
+  sync_1d_map();
+  VLOG(4) << "Get 1d dims_mapping, Sync 1d. 1d is "
+          << auto_parallel::str_join(dims_mapping_1d) << ", 2d is "
+          << auto_parallel::str_join(*dims_mapping_2d);
+  return dims_mapping_1d;
+}
+
+void TensorDistAttr::DimMapProxy::sync_1d_map() const {
+  dims_mapping_1d.resize(dims_mapping_2d->size());
+  for (size_t i = 0; i < dims_mapping_2d->size(); ++i) {
+    PADDLE_ENFORCE_LE(dims_mapping_2d->at(i).size(),
+                      1,
+                      "There are %d mesh dim sharded on tensor dim %d"
+                      "tensor has be sharded on more than one dim of mesh, you "
+                      "should call \"dim_mapping_2d()\"",
+                      dims_mapping_2d->at(i).size(),
+                      i);
+    dims_mapping_1d[i] =
+        (*dims_mapping_2d)[i].empty() ? -1 : (*dims_mapping_2d)[i][0];
+  }
+}
+
+void TensorDistAttr::DimMapProxy::sync_2d_map() {
+  dims_mapping_2d->resize(dims_mapping_1d.size());
+  for (size_t i = 0; i < dims_mapping_1d.size(); ++i) {
+    if (dims_mapping_1d.at(i) == -1) {
+      continue;
+    }
+    (*dims_mapping_2d)[i] = {dims_mapping_1d[i]};
+  }
+}
+
 }  // namespace phi::distributed

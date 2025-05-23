@@ -226,6 +226,8 @@ class TEST_API TensorDistAttr {
 
   bool skip_check_mesh() const { return skip_check_mesh_; }
 
+  bool is_co_shard() const;
+
  private:
   // delete it after all 1d vector dims_mapping_ have been upgraded to 2d.
   class DimMapProxy final {
@@ -234,72 +236,17 @@ class TEST_API TensorDistAttr {
         : dims_mapping_2d(dims_mapping_2d) {}
 
     DimMapProxy& operator=(
-        const std::vector<std::vector<int64_t>>& dims_mapping) {
-      dims_mapping_2d->resize(dims_mapping.size());
-      *dims_mapping_2d = dims_mapping;
-      return *this;
-    }
-
-    DimMapProxy& operator=(const std::vector<int64_t>& dims_mapping) {
-      dims_mapping_1d = dims_mapping;
-      sync_2d_map();
-      VLOG(4) << "Set 1d dims_mapping, Sync 2d. 1d "
-              << auto_parallel::str_join(dims_mapping_1d) << " , 2d  "
-              << auto_parallel::str_join(*dims_mapping_2d);
-      return *this;
-    }
-
-    DimMapProxy& operator=(const DimMapProxy& other) {
-      if (this == &other) {
-        return *this;
-      }
-      *dims_mapping_2d = (*other.dims_mapping_2d);
-      return *this;
-    }
-
-    bool operator==(const DimMapProxy& other) {
-      return (*dims_mapping_2d) == (*other.dims_mapping_2d);
-    }
-
-    bool operator!=(const DimMapProxy& other) {
-      return !this->operator==(other);
-    }
-
-    operator const std::vector<std::vector<int64_t>>&() const {
-      return *dims_mapping_2d;
-    }
-
-    operator const std::vector<int64_t>&() const {
-      sync_1d_map();
-      VLOG(4) << "Get 1d dims_mapping, Sync 1d. 1d "
-              << auto_parallel::str_join(dims_mapping_1d) << " , 2d  "
-              << auto_parallel::str_join(*dims_mapping_2d);
-      return dims_mapping_1d;
-    }
+        const std::vector<std::vector<int64_t>>& dims_mapping);
+    DimMapProxy& operator=(const std::vector<int64_t>& dims_mapping);
+    DimMapProxy& operator=(const DimMapProxy& other);
+    bool operator==(const DimMapProxy& other);
+    bool operator!=(const DimMapProxy& other);
+    operator const std::vector<std::vector<int64_t>>&() const;
+    operator const std::vector<int64_t>&() const;
 
    private:
-    void sync_1d_map() const {
-      dims_mapping_1d.resize(dims_mapping_2d->size());
-      for (size_t i = 0; i < dims_mapping_2d->size(); ++i) {
-        PADDLE_ENFORCE_LE(dims_mapping_2d->at(i).size(),
-                          1,
-                          "There are %d mesh dim sharded on tensor dim %d"  
-                          "tensor has be sharded on more than one dim of mesh", dims_mapping_2d->at(i).size(), i);
-        dims_mapping_1d[i] =
-            (*dims_mapping_2d)[i].empty() ? -1 : (*dims_mapping_2d)[i][0];
-      }
-    }
-
-    void sync_2d_map() {
-      dims_mapping_2d->resize(dims_mapping_1d.size());
-      for (size_t i = 0; i < dims_mapping_1d.size(); ++i) {
-        if (dims_mapping_1d.at(i) == -1) {
-          continue;
-        }
-        (*dims_mapping_2d)[i] = {dims_mapping_1d[i]};
-      }
-    }
-
+    void sync_1d_map() const;
+    void sync_2d_map();
     mutable std::vector<int64_t> dims_mapping_1d;
     std::vector<std::vector<int64_t>>* dims_mapping_2d;
   };

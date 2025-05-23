@@ -178,16 +178,15 @@ std::shared_ptr<DimTrans> make_split(const std::shared_ptr<DimTrans> dim,
 // that is flattened from input axes, return the leftmost
 // flattened input axis. For the split transformation,
 // only the leftmost split axis in output will return its input.
-std::shared_ptr<DimTrans> GetDimTrans(
+std::vector<std::shared_ptr<DimTrans>> GetDimTrans(
     const std::shared_ptr<DimTrans> dim_trans,
     const std::vector<int64_t>& input_shape,
     const std::vector<int64_t>& mesh_shape,
-    const std::vector<int64_t>& input_dims_mapping,
     const std::set<int64_t>& sharded_input_dims,
     std::vector<std::vector<bool>>* shardable,
     std::set<int64_t>* seen_dims) {
   DimTrans::Type type = dim_trans->type();
-  std::shared_ptr<DimTrans> ret_dim_trans;
+  std::vector<std::shared_ptr<DimTrans>> ret_dim_trans;
 
   if (type == DimTrans::Type::INPUTDIM) {
     std::shared_ptr<InputDim> inputdim =
@@ -196,47 +195,60 @@ std::shared_ptr<DimTrans> GetDimTrans(
     seen_dims->insert(dim);
 
     if (sharded_input_dims.count(dim) > 0) {
-      ret_dim_trans = dim_trans;
+      ret_dim_trans.push_back(dim_trans);
     }
   } else if (type == DimTrans::Type::FLATTEN) {
     std::shared_ptr<Flatten> flatten =
         std::dynamic_pointer_cast<Flatten>(dim_trans);
     const std::vector<std::shared_ptr<DimTrans>>& inputs = flatten->inputs();
-    int64_t nmesh = (*shardable)[0].size();  // NOLINT
-    for (int i = 1, n = static_cast<int>(inputs.size()); i < n; i++) {
+    // int64_t nmesh = (*shardable)[0].size();  // NOLINT
+    // for (int i = 1, n = static_cast<int>(inputs.size()); i < n; i++) {
+    //   std::shared_ptr<DimTrans> input = inputs[i];
+    //   if (input->type() == DimTrans::Type::INPUTDIM) {
+    //     std::shared_ptr<InputDim> inputdim =
+    //         std::dynamic_pointer_cast<InputDim>(input);
+    //     (*shardable)[inputdim->input_dim()].assign(nmesh, false);
+    //   }
+
+    //   GetDimTrans(input,
+    //               input_shape,
+    //               mesh_shape,
+    //               input_dims_mapping,
+    //               sharded_input_dims,
+    //               shardable,
+    //               seen_dims);
+    // }
+
+    // std::shared_ptr<DimTrans> dim0 = inputs[0];
+    // if (dim0->type() == DimTrans::Type::INPUTDIM) {
+    //   std::shared_ptr<InputDim> inputdim =
+    //       std::dynamic_pointer_cast<InputDim>(dim0);
+    //   if (sharded_input_dims.count(inputdim->input_dim()) > 0) {
+    //     ret_dim_trans.push_back(dim0);
+    //   }
+    // }
+
+    for (int i = 0, n = static_cast<int>(inputs.size()); i < n; ++i) {
       std::shared_ptr<DimTrans> input = inputs[i];
       if (input->type() == DimTrans::Type::INPUTDIM) {
         std::shared_ptr<InputDim> inputdim =
             std::dynamic_pointer_cast<InputDim>(input);
-        (*shardable)[inputdim->input_dim()].assign(nmesh, false);
-      }
-
-      GetDimTrans(input,
-                  input_shape,
-                  mesh_shape,
-                  input_dims_mapping,
-                  sharded_input_dims,
-                  shardable,
-                  seen_dims);
-    }
-
-    std::shared_ptr<DimTrans> dim0 = inputs[0];
-    if (dim0->type() == DimTrans::Type::INPUTDIM) {
-      std::shared_ptr<InputDim> inputdim =
-          std::dynamic_pointer_cast<InputDim>(dim0);
-      if (sharded_input_dims.count(inputdim->input_dim()) > 0) {
-        ret_dim_trans = dim0;
+        if (sharded_input_dims.count(inputdim->input_dim()) > 0) {
+          ret_dim_trans.push_back(inputdim);
+        } else {
+          break;
+        }
       }
     }
+
   } else if (type == DimTrans::Type::SPLIT) {
     std::shared_ptr<Split> split = std::dynamic_pointer_cast<Split>(dim_trans);
     std::shared_ptr<DimTrans> dim = GetDimTrans(split->input(),
                                                 input_shape,
                                                 mesh_shape,
-                                                input_dims_mapping,
                                                 sharded_input_dims,
                                                 shardable,
-                                                seen_dims);
+                                                seen_dims)[0];
     int64_t ret_size = split->local_split_shape_value();
 
     if (split->split_id() == 0) {
@@ -257,10 +269,9 @@ std::shared_ptr<DimTrans> GetDimTrans(
           (*shardable)[input_axis][imesh] = (ret_size % mesh_shape[imesh] == 0);
         }
       }
-      ret_dim_trans = dim;
+      ret_dim_trans.push_back(dim);
     }
   } else if (type == DimTrans::Type::SINGLETON) {
-    ret_dim_trans = nullptr;
   }
   return ret_dim_trans;
 }
@@ -285,9 +296,9 @@ void GetUsedInputDim(const std::shared_ptr<DimTrans> dim_trans,
   }
 }
 
-std::vector<std::vector<int64_t>> InferFromDimTrans(
-    const DistMetaTensor& input_spec,
-    const std::vector<std::shared_ptr<DimTrans>>& dim_trans) {
+std::tuple<std::vector<int64_t>, std::vector<std::vector<int64_t>>>
+InferFromDimTrans(const DistMetaTensor& input_spec,
+                  const std::vector<std::shared_ptr<DimTrans>>& dim_trans) {
   auto input_shape = phi::vectorize(input_spec.dims());
   // deal with reshape xshape in dynamic
   if (input_shape[0] == 0 &&
@@ -304,10 +315,10 @@ std::vector<std::vector<int64_t>> InferFromDimTrans(
   return InferFromDimTrans(input_spec, input_shape, dim_trans);
 }
 
-std::vector<std::vector<int64_t>> InferFromDimTrans(
-    const DistMetaTensor& input,
-    const std::vector<int64_t>& input_shape,
-    const std::vector<std::shared_ptr<DimTrans>>& dim_trans) {
+std::tuple<std::vector<int64_t>, std::vector<std::vector<int64_t>>>
+InferFromDimTrans(const DistMetaTensor& input,
+                  const std::vector<int64_t>& input_shape,
+                  const std::vector<std::shared_ptr<DimTrans>>& dim_trans) {
   const std::vector<int64_t>& input_dims_mapping =
       input.dist_attr().dims_mapping();
   const ProcessMesh& mesh = input.dist_attr().process_mesh();
@@ -341,21 +352,28 @@ std::vector<std::vector<int64_t>> InferFromDimTrans(
   // get the map from sharded input dimensions to output dimensions.
   std::vector<int64_t> dim_map_src2tgt(ndim, -1);
   for (int64_t i = 0, n = static_cast<int64_t>(dim_trans.size()); i < n; i++) {
-    std::shared_ptr<DimTrans> dim = GetDimTrans(dim_trans[i],
-                                                input_shape,
-                                                mesh_shape,
-                                                input_dims_mapping,
-                                                sharded_input_dims,
-                                                &shardable,
-                                                &seen_input_dims);
-    if (dim != nullptr && dim->type() == DimTrans::Type::INPUTDIM) {
-      std::shared_ptr<InputDim> inputdim =
-          std::dynamic_pointer_cast<InputDim>(dim);
-      dim_map_src2tgt[inputdim->input_dim()] = i;
+    std::vector<std::shared_ptr<DimTrans>> dims =
+        GetDimTrans(dim_trans[i],
+                    input_shape,
+                    mesh_shape,
+                    sharded_input_dims,
+                    &shardable,
+                    &seen_input_dims);
+    for (auto dim : dims) {
+      if (dim->type() == DimTrans::Type::INPUTDIM) {
+        std::shared_ptr<InputDim> inputdim =
+            std::dynamic_pointer_cast<InputDim>(dim);
+        dim_map_src2tgt[inputdim->input_dim()] = i;
+      }
     }
+    // if (dim != nullptr && dim->type() == DimTrans::Type::INPUTDIM) {
+    //   std::shared_ptr<InputDim> inputdim =
+    //       std::dynamic_pointer_cast<InputDim>(dim);
+    //   dim_map_src2tgt[inputdim->input_dim()] = i;
+    // }
   }
 
-  std::vector<int64_t> out_dims_mapping(dim_trans.size(), -1);
+  std::vector<std::vector<int64_t>> out_dims_mapping(dim_trans.size());
   std::vector<int64_t> new_input_dims_mapping(input_dims_mapping);
 
   // set output dims mapping with corresponding input dimensions.
@@ -364,7 +382,7 @@ std::vector<std::vector<int64_t>> InferFromDimTrans(
   for (int64_t i = 0; i < ndim; i++) {
     int64_t mesh_dim = input_dims_mapping[i];
     if (mesh_dim > -1 && shardable[i][mesh_dim] && dim_map_src2tgt[i] > -1) {
-      out_dims_mapping[dim_map_src2tgt[i]] = input_dims_mapping[i];
+      out_dims_mapping[dim_map_src2tgt[i]].push_back(input_dims_mapping[i]);
     } else {
       new_input_dims_mapping[i] = -1;
     }
