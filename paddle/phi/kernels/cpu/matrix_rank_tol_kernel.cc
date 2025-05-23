@@ -30,7 +30,6 @@
 #include "paddle/phi/kernels/scale_kernel.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
 #include "paddle/phi/kernels/where_kernel.h"
-
 namespace phi {
 
 template <typename T>
@@ -103,25 +102,13 @@ void MatrixRankTolKernel(const Context& dev_ctx,
   auto dim_out = out->dims();
   int rows = static_cast<int>(dim_x[dim_x.size() - 2]);
   int cols = static_cast<int>(dim_x[dim_x.size() - 1]);
-  PADDLE_ENFORCE_NE(
-      rows,
-      0,
-      errors::InvalidArgument("The input Tensor x's shape[-2] should not "
-                              "be 0, but received %s now.",
-                              dim_x));
-  PADDLE_ENFORCE_NE(
-      cols,
-      0,
-      errors::InvalidArgument("The input Tensor x's shape[-1] should not "
-                              "be 0, but received %s now.",
-                              dim_x));
+
   if (x.numel() == 0) {
-    std::vector<int64_t> out_dims_vec(dim_x.size() - 2);
-    for (int i = 0; i < dim_x.size() - 2; ++i) {
-      out_dims_vec[i] = dim_x[i];
-    }
-    out->Resize(phi::make_ddim(out_dims_vec));
     dev_ctx.template Alloc<int64_t>(out);
+    if (out && out->numel() != 0) {
+      phi::Full<int64_t, Context>(
+          dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+    }
     return;
   }
   int k = std::min(rows, cols);
@@ -223,28 +210,15 @@ void MatrixRankAtolRtolKernel(const Context& dev_ctx,
   auto dim_out = out->dims();
   int rows = static_cast<int>(dim_x[dim_x.size() - 2]);
   int cols = static_cast<int>(dim_x[dim_x.size() - 1]);
-  PADDLE_ENFORCE_NE(
-      rows,
-      0,
-      errors::InvalidArgument("The input Tensor x's shape[-2] should not "
-                              "be 0, but received %s now.",
-                              dim_x));
-  PADDLE_ENFORCE_NE(
-      cols,
-      0,
-      errors::InvalidArgument("The input Tensor x's shape[-1] should not "
-                              "be 0, but received %s now.",
-                              dim_x));
+
+  dev_ctx.template Alloc<int64_t>(out);
   if (x.numel() == 0) {
-    std::vector<int64_t> out_dims_vec(dim_x.size() - 2);
-    for (int i = 0; i < dim_x.size() - 2; ++i) {
-      out_dims_vec[i] = dim_x[i];
+    if (out && out->numel() != 0) {
+      phi::Full<int64_t, Context>(
+          dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
     }
-    out->Resize(phi::make_ddim(out_dims_vec));
-    dev_ctx.template Alloc<int64_t>(out);
     return;
   }
-  dev_ctx.template Alloc<int64_t>(out);
   int k = std::min(rows, cols);
   int batches = static_cast<int>(x.numel() / (rows * cols));
 

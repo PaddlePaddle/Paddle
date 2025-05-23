@@ -496,17 +496,17 @@ def enable_operator_stats_collection() -> None:
             >>> x = paddle.rand([10, 3, 32, 32])
 
             >>> paddle.amp.debugging.enable_operator_stats_collection()
-            >>> # AMP list including conv2d, elementwise_add, reshape2, cast (transfer_dtype)
+            >>> # AMP list including cast, conv2d, elementwise_add, reshape
             >>> with paddle.amp.auto_cast(enable=True, level='O2'):
             ...     out = conv(x)
             >>> # Print to the standard output.
             >>> paddle.amp.debugging.disable_operator_stats_collection()
             >>> # <------------------------------------------------------- op list -------------------------------------------------------->
             >>> # <--------------- Op Name ---------------- | -- FP16 Calls --- | -- BF16 Calls --- | --- FP32 Calls--- | -- Other Calls -->
+            >>> #   cast                                    |  1                |  0                |  2                |  0
             >>> #   conv2d                                  |  1                |  0                |  0                |  0
             >>> #   elementwise_add                         |  0                |  0                |  1                |  0
-            >>> #   reshape2                                |  0                |  0                |  1                |  0
-            >>> #   transfer_dtype                          |  1                |  0                |  2                |  0
+            >>> #   reshape                                 |  0                |  0                |  1                |  0
             >>> # <----------------------------------------------------- op count: 4 ------------------------------------------------------>
 
     """
@@ -533,17 +533,17 @@ def disable_operator_stats_collection() -> None:
             >>> x = paddle.rand([10, 3, 32, 32])
 
             >>> paddle.amp.debugging.enable_operator_stats_collection()
-            >>> # AMP list including conv2d, elementwise_add, reshape2, cast (transfer_dtype)
+            >>> # AMP list including cast, conv2d, elementwise_add, reshape
             >>> with paddle.amp.auto_cast(enable=True, level='O2'):
             ...     out = conv(x)
             >>> # Print to the standard output.
             >>> paddle.amp.debugging.disable_operator_stats_collection()
             >>> # <------------------------------------------------------- op list -------------------------------------------------------->
             >>> # <--------------- Op Name ---------------- | -- FP16 Calls --- | -- BF16 Calls --- | --- FP32 Calls--- | -- Other Calls -->
+            >>> #   cast                                    |  1                |  0                |  2                |  0
             >>> #   conv2d                                  |  1                |  0                |  0                |  0
             >>> #   elementwise_add                         |  0                |  0                |  1                |  0
-            >>> #   reshape2                                |  0                |  0                |  1                |  0
-            >>> #   transfer_dtype                          |  1                |  0                |  2                |  0
+            >>> #   reshape                                 |  0                |  0                |  1                |  0
             >>> # <----------------------------------------------------- op count: 4 ------------------------------------------------------>
 
     """
@@ -573,16 +573,16 @@ def collect_operator_stats() -> Generator[None, None, None]:
             >>> x = paddle.rand([10, 3, 32, 32])
 
             >>> with paddle.amp.debugging.collect_operator_stats():
-            ...     # AMP list including conv2d, elementwise_add, reshape2, cast (transfer_dtype)
+            ...     # AMP list including cast, conv2d, elementwise_add, reshape
             ...     with paddle.amp.auto_cast(enable=True, level='O2'):
             ...         out = conv(x)
             >>> # Print to the standard output.
             >>> # <------------------------------------------------------- op list -------------------------------------------------------->
             >>> # <--------------- Op Name ---------------- | -- FP16 Calls --- | -- BF16 Calls --- | --- FP32 Calls--- | -- Other Calls -->
+            >>> #   cast                                    |  1                |  0                |  2                |  0
             >>> #   conv2d                                  |  1                |  0                |  0                |  0
             >>> #   elementwise_add                         |  0                |  0                |  1                |  0
-            >>> #   reshape2                                |  0                |  0                |  1                |  0
-            >>> #   transfer_dtype                          |  1                |  0                |  2                |  0
+            >>> #   reshape                                 |  0                |  0                |  1                |  0
             >>> # <----------------------------------------------------- op count: 4 ------------------------------------------------------>
 
     """

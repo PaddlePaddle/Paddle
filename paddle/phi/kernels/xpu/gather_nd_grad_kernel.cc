@@ -93,9 +93,9 @@ void GatherNdGradKernel(const Context &ctx,
     index_shape.insert(index_shape.begin(), 1);
   }
   xpu::VectorParam<int64_t> x_vec = {
-      x_shape.data(), static_cast<int>(x_shape.size()), nullptr};
+      x_shape.data(), static_cast<int64_t>(x_shape.size()), nullptr};
 
-  int index_size = static_cast<int>(index.numel());
+  int64_t index_size = index.numel();
   if (index_type == phi::DataType::INT32) {
     auto index_data = const_cast<int *>(index.data<int>());
     xpu::VectorParam<int> index_vec{nullptr, index_size, index_data};

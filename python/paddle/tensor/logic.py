@@ -668,8 +668,8 @@ def greater_equal(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
         The output has no gradient.
 
     Args:
-        x (Tensor): First input to compare which is N-D tensor. The input data type should be bool, bfloat16, float16, float32, float64, uint8, int8, int16, int32, int64.
-        y (Tensor): Second input to compare which is N-D tensor. The input data type should be bool, bfloat16, float16, float32, float64, uint8, int8, int16, int32, int64.
+        x (Tensor): First input to compare which is N-D tensor. The input data type should be bool, bfloat16, float16, float32, float64, uint8, int8, int16, int32, int64, complex64, complex128.
+        y (Tensor): Second input to compare which is N-D tensor. The input data type should be bool, bfloat16, float16, float32, float64, uint8, int8, int16, int32, int64, complex64, complex128.
         name (str|None, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
     Returns:
@@ -704,6 +704,8 @@ def greater_equal(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
                 "int32",
                 "int64",
                 "uint16",
+                "complex64",
+                "complex128",
             ],
             "greater_equal",
         )
@@ -721,6 +723,8 @@ def greater_equal(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
                 "int32",
                 "int64",
                 "uint16",
+                "complex64",
+                "complex128",
             ],
             "greater_equal",
         )
@@ -758,8 +762,8 @@ def greater_than(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
         The output has no gradient.
 
     Args:
-        x (Tensor): First input to compare which is N-D tensor. The input data type should be bool, bfloat16, float16, float32, float64, uint8, int8, int16, int32, int64.
-        y (Tensor): Second input to compare which is N-D tensor. The input data type should be bool, bfloat16, float16, float32, float64, uint8, int8, int16, int32, int64.
+        x (Tensor): First input to compare which is N-D tensor. The input data type should be bool, bfloat16, float16, float32, float64, uint8, int8, int16, int32, int64, complex64, complex128.
+        y (Tensor): Second input to compare which is N-D tensor. The input data type should be bool, bfloat16, float16, float32, float64, uint8, int8, int16, int32, int64, complex64, complex128.
         name (str|None, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
     Returns:
@@ -794,6 +798,8 @@ def greater_than(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
                 "int32",
                 "int64",
                 "uint16",
+                "complex64",
+                "complex128",
             ],
             "greater_than",
         )
@@ -811,6 +817,8 @@ def greater_than(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
                 "int32",
                 "int64",
                 "uint16",
+                "complex64",
+                "complex128",
             ],
             "greater_than",
         )
@@ -848,8 +856,8 @@ def less_equal(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
         The output has no gradient.
 
     Args:
-        x (Tensor): First input to compare which is N-D tensor. The input data type should be bool, bfloat16, float16, float32, float64, uint8, int8, int16, int32, int64.
-        y (Tensor): Second input to compare which is N-D tensor. The input data type should be bool, bfloat16, float16, float32, float64, uint8, int8, int16, int32, int64.
+        x (Tensor): First input to compare which is N-D tensor. The input data type should be bool, bfloat16, float16, float32, float64, uint8, int8, int16, int32, int64, complex64, complex128.
+        y (Tensor): Second input to compare which is N-D tensor. The input data type should be bool, bfloat16, float16, float32, float64, uint8, int8, int16, int32, int64, complex64, complex128.
         name (str|None, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
 
@@ -885,6 +893,8 @@ def less_equal(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
                 "int32",
                 "int64",
                 "uint16",
+                "complex64",
+                "complex128",
             ],
             "less_equal",
         )
@@ -902,6 +912,8 @@ def less_equal(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
                 "int32",
                 "int64",
                 "uint16",
+                "complex64",
+                "complex128",
             ],
             "less_equal",
         )
@@ -939,8 +951,8 @@ def less_than(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
         The output has no gradient.
 
     Args:
-        x (Tensor): First input to compare which is N-D tensor. The input data type should be bool, bfloat16, float16, float32, float64, uint8, int8, int16, int32, int64.
-        y (Tensor): Second input to compare which is N-D tensor. The input data type should be bool, bfloat16, float16, float32, float64, uint8, int8, int16, int32, int64.
+        x (Tensor): First input to compare which is N-D tensor. The input data type should be bool, bfloat16, float16, float32, float64, uint8, int8, int16, int32, int64, complex64, complex128.
+        y (Tensor): Second input to compare which is N-D tensor. The input data type should be bool, bfloat16, float16, float32, float64, uint8, int8, int16, int32, int64, complex64, complex128.
         name (str|None, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
 
@@ -976,6 +988,8 @@ def less_than(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
                 "int32",
                 "int64",
                 "uint16",
+                "complex64",
+                "complex128",
             ],
             "less_than",
         )
@@ -993,6 +1007,8 @@ def less_than(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
                 "int32",
                 "int64",
                 "uint16",
+                "complex64",
+                "complex128",
             ],
             "less_than",
         )

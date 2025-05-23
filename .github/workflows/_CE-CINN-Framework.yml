@@ -1,0 +1,129 @@
+name: CE-CINN-Framework
+
+on:
+  workflow_call:
+    inputs:
+      docker_build_image:
+        type: string
+        required: true
+      can-skip:
+        type: string
+        required: false
+
+env:
+  PR_ID: ${{ github.event.pull_request.number }}
+  COMMIT_ID: ${{ github.event.pull_request.head.sha }}
+  work_dir: /paddle
+  PADDLE_ROOT: /paddle
+  TASK: paddle-CI-${{ github.event.pull_request.number }}-CE-CINN-Framework
+  ci_scripts: /paddle/ci
+  BRANCH: ${{ github.event.pull_request.base.ref }}
+  CI_name: ce-cinn-framework
+  no_proxy: "bcebos.com,apiin.im.baidu.com,gitee.com,aliyun.com,.baidu.com,.tuna.tsinghua.edu.cn"
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  cinn:
+    name: CINN
+    if: ${{ inputs.can-skip != 'true' }}
+    runs-on:
+      group: BD_BJ-V100
+    steps:
+      - name: Check docker image and run container
+        env:
+          CACHE_DIR: /home/data/cfs/.cache
+        run: |
+          container_name=${TASK}-${core_index}-$(date +%Y%m%d-%H%M%S)
+          echo "container_name=${container_name}" >> ${{ github.env }}
+          docker_image=${{ inputs.docker_build_image }}
+          docker container ls -a --filter "name=paddle-CI-*-api-benchmark-${core_index}*" --format "{{.ID}}" | xargs -r docker rm -f
+          docker container ls -a --filter "name=api_benchmark_ci_baseline_" --format "{{.ID}} {{.CreatedAt}}" | awk '$2 <= "'$(date -d '1 day ago' +'%Y-%m-%d')'" {print $1}' | xargs -r docker rm -f
+          docker run -d -t --gpus all --name ${container_name} --privileged --shm-size=128g \
+            -v "/home/data/cfs:/home/data/cfs" \
+            -v "/home/data/cfs/.cache:/root/.cache" \
+            -v "/home/data/cfs/.ccache:/root/.ccache" \
+            -v "/dev/shm:/dev/shm" \
+            -v ${{ github.workspace }}/../../..:${{ github.workspace }}/../../.. \
+            -v ${{ github.workspace }}:/paddle \
+            -e python \
+            -e core_index \
+            -e BRANCH \
+            -e PR_ID \
+            -e COMMIT_ID \
+            -e work_dir \
+            -e PADDLE_ROOT \
+            -e ci_scripts \
+            -e no_proxy \
+            -e CI_name \
+            -e CACHE_DIR \
+            -e GITHUB_API_TOKEN \
+            -w /paddle --network host ${docker_image}
+
+      - name: Download Paddle and PaddleTest
+        env:
+          work_dir: ${{ github.workspace }}
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
+          rm -rf * .[^.]*
+          echo "Downloading build.tar.gz"
+          wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/build/${PR_ID}/${COMMIT_ID}/build.tar.gz --no-check-certificate
+          echo "Extracting build.tar.gz"
+          git config --global --add safe.directory ${work_dir}
+          tar --use-compress-program="pzstd -1" -xpf build.tar.gz --strip-components=1
+          git submodule foreach "git config --global --add safe.directory \$toplevel/\$sm_path"
+          git checkout test
+          rm build.tar.gz
+          cd /
+          echo "Downloading PaddleTest.tar.gz"
+          wget -q --no-proxy https://xly-devops.bj.bcebos.com/PaddleTest/PaddleTest.tar.gz --no-check-certificate
+          echo "Extracting PaddleTest.tar.gz"
+          tar -zvxf PaddleTest.tar.gz 1>/dev/null 2>&1
+          '
+
+      - name: Check bypass
+        id: check-bypass
+        uses: ./.github/actions/check-bypass
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          workflow-name: ce-cinn
+
+      - name: Determine ci trigger
+        if: steps.check-bypass.outputs.can-skip != 'true'
+        env:
+          work_dir: ${{ github.workspace }}
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
+          source ${{ github.workspace }}/../../../proxy
+          source ${ci_scripts}/ce_cinn_diff.sh
+          if [ ${sum_num} -eq 0 ];then
+            echo "The modified files does not affect LayerCase in CE-CINN-Framework, so skip this ci."
+            echo "skip_ci=true" >> ${{ github.env }}
+          fi
+          '
+
+      - name: Run check
+        if: ${{ steps.check-bypass.outputs.can-skip != 'true' && env.skip_ci != 'true' }}
+        env:
+          work_dir: ${{ github.workspace }}
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
+          source ~/.bashrc
+          pip config set global.cache-dir "$CACHE_DIR/pip"
+          pip install /paddle/build/pr_whl/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl
+          cd /PaddleTest/framework/e2e/PaddleLT_new
+          pip install -r requirement.txt
+          source ./scene/set_ci_dy^dy2stcinn_train^dy2stcinn_eval_inputspec_env.sh
+          python support/dict_to_yml.py --filename apibm_config.yml --data_str "$(cat $CACHE_DIR/cinn_config)"
+          set -e
+          python run.py
+          exit $(head -n 1 "exit_code.txt")
+          '
+
+      - name: Terminate and delete the container
+        if: always()
+        run: |
+          sudo rm -rf * .[^.]*
+          docker rm -f ${{ env.container_name }}

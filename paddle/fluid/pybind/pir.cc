@@ -2916,6 +2916,7 @@ void BindIrPass(pybind11::module *m) {
   m->def("apply_pcc_pass", ApplyPccPass);
 
   m->def("apply_cinn_pass", ApplyCinnPass);
+  m->def("apply_pcc_pass", ApplyPccPass);
   m->def("check_infer_symbolic_if_need", CheckInferSymbolicIfNeed);
   m->def("infer_symbolic_shape_pass", InferSymbolicShapePass);
   m->def("apply_cse_pass", ApplyCommonSubexpressionEliminationPass);

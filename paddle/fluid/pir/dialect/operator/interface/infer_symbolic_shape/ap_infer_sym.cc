@@ -33,7 +33,7 @@ bool ApTrivialFusionBeginOpInferSymbolicShape(
   return true;
 #else
   PADDLE_THROW(phi::errors::Unimplemented(
-      "ap_facade is not implemented when cinn is not enabled."));
+      "ap_trivial_fusion_begin is not implemented when cinn is not enabled."));
   return false;
 #endif
 }
@@ -47,7 +47,7 @@ bool ApTrivialFusionEndOpInferSymbolicShape(
   return true;
 #else
   PADDLE_THROW(phi::errors::Unimplemented(
-      "ap_facade is not implemented when cinn is not enabled."));
+      "ap_trivial_fusion_end is not implemented when cinn is not enabled."));
   return false;
 #endif
 }
@@ -65,7 +65,13 @@ bool ApFacadeOpInferSymbolicShape(
 
 bool ApVariadicOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+#ifdef PADDLE_WITH_CINN
   return ap::dialect::PdOpApVariadicOpInferSymbolicShape(op, infer_context);
+#else
+  PADDLE_THROW(phi::errors::Unimplemented(
+      "ap_variadic is not implemented when cinn is not enabled."));
+  return false;
+#endif
 }
 
 }  // namespace paddle::dialect

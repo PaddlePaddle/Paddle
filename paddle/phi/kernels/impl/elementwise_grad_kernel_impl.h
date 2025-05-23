@@ -1379,8 +1379,7 @@ void HeavisideGradKernel(const Context& dev_ctx,
 template <typename T, typename MPType>
 HOSTDEVICE typename std::enable_if<std::is_integral<T>::value, T>::type
 compute_pow_grad_dx(T x, T y, T out, T dout) {
-  return dout * y *
-         std::pow(static_cast<double>(x), static_cast<double>(y - 1));
+  return dout * y * pow(static_cast<double>(x), static_cast<double>(y - 1));
 }
 template <typename T, typename MPType>
 HOSTDEVICE typename std::enable_if<!std::is_integral<T>::value, T>::type
@@ -1388,21 +1387,21 @@ compute_pow_grad_dx(T x, T y, T out, T dout) {
   MPType x_val = static_cast<MPType>(x);
   MPType y_val = static_cast<MPType>(y);
   return static_cast<T>(static_cast<MPType>(dout) * y_val *
-                        std::pow(x_val, y_val - 1));
+                        pow(x_val, y_val - 1));
 }
 template <typename T, typename MPType>
 HOSTDEVICE typename std::enable_if<std::is_integral<T>::value, T>::type
 compute_pow_grad_dy(T x, T y, T out, T dout) {
-  return dout * std::log(static_cast<double>(x)) *
-         std::pow(static_cast<double>(x), static_cast<double>(y));
+  return dout * log(static_cast<double>(x)) *
+         pow(static_cast<double>(x), static_cast<double>(y));
 }
 template <typename T, typename MPType>
 HOSTDEVICE typename std::enable_if<!std::is_integral<T>::value, T>::type
 compute_pow_grad_dy(T x, T y, T out, T dout) {
   MPType x_val = static_cast<MPType>(x);
   MPType y_val = static_cast<MPType>(y);
-  return static_cast<T>(static_cast<MPType>(dout) * std::log(x_val) *
-                        std::pow(x_val, y_val));
+  return static_cast<T>(static_cast<MPType>(dout) * log(x_val) *
+                        pow(x_val, y_val));
 }
 #else
 template <typename T, typename MPType>
@@ -1434,6 +1433,43 @@ struct PowGradDY {
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
     return compute_pow_grad_dy<T, MPType>(x, y, out, dout);
+  }
+};
+
+template <typename T>
+struct PowGradDX<phi::dtype::complex<T>> {
+  HOSTDEVICE phi::dtype::complex<T> operator()(
+      phi::dtype::complex<T> x,
+      phi::dtype::complex<T> y,
+      phi::dtype::complex<T> out,
+      phi::dtype::complex<T> dout) const {
+#if defined(__CUDA_ARCH__) || defined(__HIPCC__)
+    return conj(dout * y * pow(x, y - phi::dtype::complex<T>(1, 0)));
+#else
+    return conj(
+        dout * y *
+        static_cast<phi::dtype::complex<T>>(std::pow(
+            static_cast<std::complex<T>>(x),
+            static_cast<std::complex<T>>(y - phi::dtype::complex<T>(1, 0)))));
+#endif
+  }
+};
+
+template <typename T>
+struct PowGradDY<phi::dtype::complex<T>> {
+  HOSTDEVICE phi::dtype::complex<T> operator()(
+      phi::dtype::complex<T> x,
+      phi::dtype::complex<T> y,
+      phi::dtype::complex<T> out,
+      phi::dtype::complex<T> dout) const {
+#if defined(__CUDA_ARCH__) || defined(__HIPCC__)
+    return conj(dout * log(x) * pow(x, y));
+#else
+    return conj(dout * static_cast<phi::dtype::complex<T>>(
+                           std::log(static_cast<std::complex<T>>(x)) *
+                           std::pow(static_cast<std::complex<T>>(x),
+                                    static_cast<std::complex<T>>(y))));
+#endif
   }
 };
 

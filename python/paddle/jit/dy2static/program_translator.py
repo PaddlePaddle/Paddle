@@ -61,6 +61,7 @@ from .transformers import DygraphToStaticAst
 from .utils import (
     ALREADY_D2S,
     NO_SHAPE_VAR_TYPE,
+    TransformOptions,
     ast_to_func,
     backend_guard,
     cuda_pinned_tensors_move_to_excepted_place,
@@ -85,8 +86,6 @@ __all__ = []
 # For each traced function, we set `max_traced_program_count` = 10 to consider caching performance.
 # Once exceeding the threshold, we will raise warning to users to make sure the conversion is as expected.
 MAX_TRACED_PROGRAM_COUNT = 10
-
-CONVERSION_OPTIONS = "__jst_not_to_static"
 
 
 def synchronized(func):
@@ -252,12 +251,13 @@ def convert_to_static(function):
     if getattr(function, ALREADY_D2S, None):
         return function
 
-    # Return directly if decorated with @not_to_static and DO NOT Cache it
-    options = getattr(function, CONVERSION_OPTIONS, None)
+    # Return directly if decorated with @jit.marker.unified and DO NOT Cache it
     # or ignore paddle api
-    need_skip = (options is not None and options.not_convert) or is_paddle_func(
-        function
-    )
+    need_skip = (
+        not TransformOptions.check_fn_need_transform(
+            function, TransformOptions.ToStaticMode.AST
+        )
+    ) or is_paddle_func(function)
     if need_skip:
         return function.__func__ if inspect.ismethod(function) else function
 

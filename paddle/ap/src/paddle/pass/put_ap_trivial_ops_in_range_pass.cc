@@ -1,4 +1,4 @@
-// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -42,13 +42,16 @@ class PutApTrivialOpsInRangeHelper {
  public:
   void MatchAndRewrite(::pir::ModuleOp module_op) const {
     const auto& ret = TryMatchAndRewrite(module_op);
-    PADDLE_ENFORCE(!ret.HasError(),
-                   "PutApTrivialOpsInRangeHelper::MatchAndRewrite failed. "
-                   "\nTraceback (most recent call "
-                   "last):\n%s\n%s: %s. ",
-                   ret.GetError().CallStackToString(),
-                   ret.GetError().class_name(),
-                   ret.GetError().msg());
+    PADDLE_ENFORCE_EQ(
+        ret.HasError(),
+        false,
+        phi::errors::Fatal(
+            "PutApTrivialOpsInRangeHelper::MatchAndRewrite failed. "
+            "\nTraceback (most recent call "
+            "last):\n%s\n%s: %s. ",
+            ret.GetError().CallStackToString(),
+            ret.GetError().class_name(),
+            ret.GetError().msg()));
   }
 
  private:

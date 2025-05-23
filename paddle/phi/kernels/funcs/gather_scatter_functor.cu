@@ -210,7 +210,7 @@ __global__ void GatherScatterGPUKernel(tensor_t* self_data,
                                        bool include_self,
                                        const func_t& reduce_op,
                                        int* shared_mem) {
-  int tid = threadIdx.x + blockIdx.x * blockDim.x;
+  int64_t tid = threadIdx.x + static_cast<int64_t>(blockIdx.x) * blockDim.x;
   if (tid >= numel) return;
   if (include_self == false) {
     if (tid == 0) {

@@ -31,13 +31,13 @@ void MaskedSelectGradKernel(const Context& dev_ctx,
   auto* out_data =
       reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(x_grad));
 
-  auto mask_shape = common::vectorize<int>(mask.dims());
-  auto xshape = common::vectorize<int>(x_grad->dims());
+  auto mask_shape = common::vectorize<int64_t>(mask.dims());
+  auto xshape = common::vectorize<int64_t>(x_grad->dims());
   if (mask.dims().size() == 0) {
-    mask_shape = std::vector<int>({1});
+    mask_shape = std::vector<int64_t>({1});
   }
   if (x_grad->dims().size() == 0) {
-    xshape = std::vector<int>({1});
+    xshape = std::vector<int64_t>({1});
   }
 
   int r = xpu::masked_select_grad(dev_ctx.x_context(),

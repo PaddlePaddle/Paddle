@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifdef PADDLE_WITH_XPU
-
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/flatten2_kernel_impl.h"
@@ -32,5 +30,3 @@ PD_REGISTER_KERNEL(flatten2_grad,
                    int8_t,
                    uint8_t,
                    bool) {}
-
-#endif

@@ -39,24 +39,12 @@ void PReluGradKernel(const Context& dev_ctx,
   auto x_dim = x.dims();
   auto x_rank = x_dim.size();
 
-  std::vector<int> x_shape(x_rank);
+  std::vector<int64_t> x_shape(x_rank);
   if (x_rank == 0) {
-    x_shape = std::vector<int>({1});
+    x_shape = std::vector<int64_t>({1});
   } else {
     for (int i = 0; i < x_rank; i++) {
       x_shape[i] = x_dim[i];
-    }
-  }
-
-  auto alpha_dim = alpha.dims();
-  auto alpha_rank = alpha_dim.size();
-
-  std::vector<int> alpha_shape(alpha_rank);
-  if (alpha_rank == 0) {
-    alpha_shape = std::vector<int>({1});
-  } else {
-    for (int i = 0; i < x_rank; i++) {
-      alpha_shape[i] = alpha_dim[i];
     }
   }
 

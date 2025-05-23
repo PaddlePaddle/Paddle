@@ -15,10 +15,6 @@
 #pragma once
 
 #include <Python.h>
-// Avoid a problem with copysign defined in pyconfig.h on Windows.
-#ifdef copysign
-#undef copysign
-#endif
 
 #include <algorithm>
 #include "paddle/fluid/eager/api/all.h"
@@ -171,7 +167,7 @@ static int _PySlice_GetIndices(PySliceObject* r,
 }
 
 static void ParseIndex(const paddle::Tensor& tensor,
-                       PyObject* _index,
+                       PyObject* index,
                        std::vector<int64_t>* slice_axes,
                        std::vector<int>* slice_starts,
                        std::vector<int>* slice_ends,
@@ -183,14 +179,6 @@ static void ParseIndex(const paddle::Tensor& tensor,
                        std::vector<paddle::Tensor>* advanced_index,
                        bool* has_advanced_index,
                        bool* use_strided_slice) {
-  // NOTE(zhiqiu): PyTuple_Pack increases refcount.
-  PyObject* index = !PyTuple_Check(_index) ? PyTuple_Pack(1, _index) : _index;
-  DEFINE_PADDLE_SCOPE_GUARD([index, _index]() {
-    if (!PyTuple_Check(_index)) {
-      Py_DECREF(index);
-      VLOG(4) << "Call Py_DECREF";
-    }
-  });
   // for case 0-size tensor in slice
   PADDLE_ENFORCE_EQ(
       tensor.defined(),
@@ -199,7 +187,6 @@ static void ParseIndex(const paddle::Tensor& tensor,
   const auto& shape = tensor.dims();
   const int rank = shape.size();
   const int size = PyTuple_GET_SIZE(index);
-
   // Check Ellipsis is valid
   int specified_dims = 0;
   int ell_count = 0;
@@ -418,6 +405,25 @@ static paddle::Tensor getTensorWithBasicIndexing(
   return out;
 }
 
+inline static bool MaskedFillDispatching(
+    const paddle::Tensor& tensor,
+    const paddle::Tensor& value,
+    const std::vector<paddle::Tensor>& indices,
+    paddle::Tensor* mask_tensor) {
+  if (value.numel() != 1) return false;
+  int64_t num_ind = 0;
+  if ((indices)[0].dtype() != phi::DataType::BOOL) {
+    return false;
+  } else {
+    num_ind += (indices)[0].shape().size();
+  }
+  *mask_tensor = (indices)[0];
+  for (size_t i = num_ind; i < tensor.shape().size(); i++) {
+    *mask_tensor = unsqueeze_ad_func(*mask_tensor, {-1});
+  }
+  return true;
+}
+
 static paddle::Tensor dealWithAdvancedIndex(
     const paddle::Tensor& tensor,
     std::vector<int>* advanced_index_dim,
@@ -519,6 +525,12 @@ static paddle::Tensor getValueForBoolTensor(const paddle::Tensor& tensor,
   if (bool_index.shape().size() == tensor_shape.size()) {
     return masked_select_ad_func(tensor, bool_index);
   }
+
+  if (bool_index.shape().size() == 1) {
+    auto bool_2_idx = nonzero_ad_func(bool_index);
+    return gather_ad_func(tensor, bool_2_idx);
+  }
+
   auto bool_2_idx = nonzero_ad_func(bool_index);
   return gather_nd_ad_func(tensor, bool_2_idx);
 }

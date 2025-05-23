@@ -86,6 +86,13 @@ void SetValueImpl(const Context& dev_ctx,
   std::vector<int64_t> starts_local = starts.GetData();
   std::vector<int64_t> ends_local = ends.GetData();
   std::vector<int64_t> steps_local = steps.GetData();
+  if (starts_local.empty() && ends_local.empty() && steps_local.empty() &&
+      axes.empty() && decrease_axes.empty() && none_axes.empty() &&
+      value.numel() == 1) {
+    ExpandKernel<T, Context>(
+        dev_ctx, value, IntArray{phi::vectorize<int64_t>(in.dims())}, out);
+    return;
+  }
   phi::funcs::CheckAndUpdateSliceAttrs(
       in_dims, axes, &starts_local, &ends_local, &steps_local);
   auto slice_dims = phi::funcs::GetSliceDims(

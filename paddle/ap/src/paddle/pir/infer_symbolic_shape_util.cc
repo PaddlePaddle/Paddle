@@ -347,13 +347,16 @@ bool PdOpApVariadicOpInferSymbolicShape(
     pir::Operation* op, pir::InferSymbolicShapeContext* infer_context) {
   const auto& ret = TryPdOpApVariadicOpInferSymbolicShape(op, infer_context);
   bool success = !ret.HasError();
-  PADDLE_ENFORCE(success,
-                 "PdOpApVariadicOpInferSymbolicShape failed. \nTraceback (most "
-                 "recent call "
-                 "last):\n%s\n%s: %s. ",
-                 ret.GetError().CallStackToString(),
-                 ret.GetError().class_name(),
-                 ret.GetError().msg());
+  PADDLE_ENFORCE_EQ(
+      success,
+      true,
+      phi::errors::Fatal(
+          "PdOpApVariadicOpInferSymbolicShape failed. \nTraceback (most "
+          "recent call "
+          "last):\n%s\n%s: %s. ",
+          ret.GetError().CallStackToString(),
+          ret.GetError().class_name(),
+          ret.GetError().msg()));
   return success;
 }
 

@@ -72,6 +72,8 @@ _INFERMETA_NEED_META_CONFIG = {
     'AddNInferMeta',
     'ApVariadicInferMeta',
     'ApFacadeInferMeta',
+    'ApTrivialFusionBeginInferMeta',
+    'ApTrivialFusionEndInferMeta',
     'AddNTensorArrayInferMeta',
     'AttentionLstmInferMeta',
     'AucInferMeta',
