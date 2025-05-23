@@ -32,9 +32,23 @@ filter = __builtin__filter  # noqa: F821
 zip = __builtin__zip  # noqa: F821
 flat_map = __builtin__flat_map  # noqa: F821
 apply = __builtin__apply  # noqa: F821
+to_pure_function = __builtin__to_pure_function  # noqa: F821
 replace_or_trim_left_comma = __builtin__replace_or_trim_left_comma  # noqa: F821
+quoted = __builtin__quoted  # noqa: F821
 
 sorted = __builtin__sorted  # noqa: F821
 
 dirname = __builtin__dirname  # noqa: F821
 basename = __builtin__basename  # noqa: F821
+
+
+auto_immutable_value_registry_key = (
+    __builtin__auto_immutable_value_registry_key  # noqa: F821
+)
+is_immutable_value_registered = (
+    __builtin__is_immutable_value_registered  # noqa: F821
+)
+get_registered_immutable_value = (
+    __builtin__get_registered_immutable_value  # noqa: F821
+)
+register_immutable_value = __builtin__register_immutable_value  # noqa: F821

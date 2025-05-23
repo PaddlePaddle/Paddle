@@ -19,6 +19,7 @@
 #include "paddle/ap/include/axpr/builtin_functions.h"
 #include "paddle/ap/include/axpr/builtin_symbol.h"
 #include "paddle/ap/include/axpr/exception_method_class.h"
+#include "paddle/ap/include/axpr/immutable_registry.h"
 #include "paddle/ap/include/axpr/module_mgr_helper.h"
 #include "paddle/ap/include/fs/builtin_functions.h"
 
@@ -31,6 +32,7 @@ void VisitEachBuiltinFrameAttr(const YieldT& Yield) {
     Yield(k, v);
   }
   Yield("import", &ModuleMgrHelper<ValueT>::ImportModule);
+  Yield("__builtin__import", &ModuleMgrHelper<ValueT>::ImportModule);
   Yield("print", &Print);
   Yield("max", &Max);
   Yield("min", &Min);
@@ -48,7 +50,33 @@ void VisitEachBuiltinFrameAttr(const YieldT& Yield) {
   Yield("__builtin__dirname", &fs::DirName);
   Yield("__builtin__basename", &fs::BaseName);
 
-  Yield("__builtin__function_to_atomic_axpr", &FunctionToAtomicAxpr);
+  Yield("__builtin__function_to_axpr_atomic", &FunctionToAtomicAxpr);
+  Yield("__builtin__axpr_atomic_to_function", &AtomicAxprToFunction);
+  Yield("__builtin__axpr_json_str_to_axpr", &AxprJsonStrToAxpr);
+  Yield("__builtin__axpr_symbol", &AxprSymbol);
+  Yield("__builtin__axpr_none", &AxprNone);
+  Yield("__builtin__axpr_bool", &AxprBool);
+  Yield("__builtin__axpr_int", &AxprInt);
+  Yield("__builtin__axpr_float", &AxprFloat);
+  Yield("__builtin__axpr_str", &AxprStr);
+  Yield("__builtin__axpr_lambda", &AxprLambda);
+  Yield("__builtin__axpr_atomic", &AxprAtomic);
+  Yield("__builtin__axpr_call", &AxprCall);
+
+  Yield("__builtin__quoted", &Quoted);
+
+  Yield("__builtin__to_pure_function", &ToPureFunction);
+
+  Yield("__builtin__auto_immutable_value_registry_key",
+        &ApiAutoImmutableValueRegistryKey);
+
+  Yield("__builtin__is_immutable_value_registered",
+        &ApiIsImmutableValueRegistered);
+
+  Yield("__builtin__get_registered_immutable_value",
+        &ApiGetRegisteredImmutableValue);
+
+  Yield("__builtin__register_immutable_value", &ApiRegisterImmutableValue);
 
   auto YieldTwice = [&](const auto& name, const auto& value) {
     Yield(name, value);

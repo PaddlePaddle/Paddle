@@ -14,6 +14,11 @@
 
 import __builtin__
 
+
+def do_nothing():
+    pass
+
+
 DataType = __builtin__.DataType
 DataValue = __builtin__.DataValue
 PointerType = __builtin__.PointerType
@@ -34,7 +39,9 @@ filter = __builtin__.filter
 zip = __builtin__.zip
 flat_map = __builtin__.flat_map
 apply = __builtin__.apply
+to_pure_function = __builtin__.to_pure_function
 replace_or_trim_left_comma = __builtin__.replace_or_trim_left_comma
+quoted = __builtin__.quoted
 
 registry = __builtin__registry  # noqa: F821
 
@@ -42,3 +49,10 @@ sorted = __builtin__.sorted
 
 dirname = __builtin__.dirname
 basename = __builtin__.basename
+
+auto_immutable_value_registry_key = (
+    __builtin__.auto_immutable_value_registry_key
+)
+is_immutable_value_registered = __builtin__.is_immutable_value_registered
+get_registered_immutable_value = __builtin__.get_registered_immutable_value
+register_immutable_value = __builtin__.register_immutable_value

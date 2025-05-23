@@ -18,6 +18,7 @@
 #include <stdexcept>
 #include "paddle/ap/include/axpr/abstract_list.h"
 #include "paddle/ap/include/axpr/atomic_axpr_method_class.h"
+#include "paddle/ap/include/axpr/axpr_method_class.h"
 #include "paddle/ap/include/axpr/bool_helper.h"
 #include "paddle/ap/include/axpr/bool_int_double_helper.h"
 #include "paddle/ap/include/axpr/builtin_frame_util.h"
@@ -220,6 +221,18 @@ adt::Result<axpr::Value> ReplaceOrTrimLeftComma(
   }
 }
 
+adt::Result<axpr::Value> Quoted(const axpr::Value&,
+                                const std::vector<axpr::Value>& args) {
+  ADT_LET_CONST_REF(str, args.at(0).template CastTo<std::string>())
+      << adt::errors::TypeError{std::string() +
+                                "the argument 1 of 'quoted()' should be a str "
+                                "(not '" +
+                                axpr::GetTypeName(args.at(0)) + "')."};
+  std::ostringstream ss;
+  ss << std::quoted(str);
+  return ss.str();
+}
+
 adt::Result<axpr::Value> MakeRange(const axpr::Value&,
                                    const std::vector<axpr::Value>& args) {
   std::optional<int64_t> start;
@@ -415,6 +428,48 @@ Result<axpr::Value> Apply(axpr::InterpreterBase<axpr::Value>* interpreter,
         return adt::Continue{};
       }));
   return interpreter->InterpretCall(args.at(0), func_args);
+}
+
+namespace {
+
+Result<axpr::Value> ToPureFunctionImpl(const axpr::Value& func) {
+  using RetT = Result<axpr::Value>;
+  return func.Match(
+      [](const axpr::BuiltinFuncType<axpr::Value>& impl) -> RetT {
+        return impl;
+      },
+      [](const axpr::BuiltinHighOrderFuncType<axpr::Value>& impl) -> RetT {
+        return impl;
+      },
+      [](const axpr::Function<axpr::SerializableValue>& impl) -> RetT {
+        return impl;
+      },
+      [](const axpr::Closure<axpr::Value>& impl) -> RetT {
+        const auto& global_frame =
+            impl->environment->RecursivelyGetConstGlobalFrame();
+        return axpr::Function<axpr::SerializableValue>{impl->lambda,
+                                                       global_frame};
+      },
+      [&](const auto& impl) -> RetT {
+        return adt::errors::TypeError{[&] {
+          std::ostringstream ss;
+          ss << "the argument 1 of to_pure_function() should be of type "
+                "builtin_function|builtin_high_order_function|function|closure "
+                "(not "
+             << axpr::GetTypeName(func) << ")";
+          return ss.str();
+        }()};
+      });
+}
+
+}  // namespace
+
+Result<axpr::Value> ToPureFunction(const axpr::Value&,
+                                   const std::vector<axpr::Value>& args) {
+  ADT_CHECK(args.size() == 1) << adt::errors::TypeError{
+      std::string() + "to_pure_function() takes 1 arguments but " +
+      std::to_string(args.size()) + " were given."};
+  return ToPureFunctionImpl(args.at(0));
 }
 
 Result<axpr::Value> Length(axpr::InterpreterBase<axpr::Value>* interpreter,
@@ -630,6 +685,135 @@ Result<axpr::Value> FunctionToAtomicAxpr(const axpr::Value&,
       args.at(0).template CastTo<axpr::Function<axpr::SerializableValue>>());
   axpr::Atomic<axpr::CoreExpr> atomic{func->lambda};
   return axpr::GetAtomicAxprClass().New(atomic);
+}
+
+Result<axpr::Value> AtomicAxprToFunction(const axpr::Value&,
+                                         const std::vector<axpr::Value>& args) {
+  ADT_CHECK(args.size() == 1) << adt::errors::TypeError{
+      std::string() + "atomic_axpr_to_function() takes 1 arguments, but " +
+      std::to_string(args.size()) + " were given"};
+  ADT_LET_CONST_REF(atomic_expr,
+                    args.at(0).template CastTo<axpr::Atomic<axpr::CoreExpr>>());
+  ADT_LET_CONST_REF(
+      lambda, atomic_expr.template TryGet<axpr::Lambda<axpr::CoreExpr>>());
+  return axpr::Function<axpr::SerializableValue>{lambda, std::nullopt};
+}
+
+Result<axpr::Value> AxprJsonStrToAxpr(const axpr::Value&,
+                                      const std::vector<axpr::Value>& args) {
+  ADT_CHECK(args.size() == 1) << adt::errors::TypeError{
+      std::string() + "axpr_json_str_to_axpr() takes 1 arguments, but " +
+      std::to_string(args.size()) + " were given"};
+  ADT_LET_CONST_REF(json_str, args.at(0).template CastTo<std::string>());
+  ADT_LET_CONST_REF(anf_expr, axpr::MakeAnfExprFromJsonString(json_str));
+  const auto& core_expr = axpr::ConvertAnfExprToCoreExpr(anf_expr);
+  return axpr::GetAxprClass().New(core_expr);
+}
+
+Result<axpr::Value> AxprSymbol(const axpr::Value&,
+                               const std::vector<axpr::Value>& args) {
+  ADT_CHECK(args.size() == 1);
+  ADT_LET_CONST_REF(str, args.at(0).template CastTo<std::string>());
+  const auto& atomic_expr = axpr::AtomicExprBuilder<axpr::CoreExpr>{}.Var(str);
+  return axpr::GetAtomicAxprClass().New(atomic_expr);
+}
+
+Result<axpr::Value> AxprNone(const axpr::Value&,
+                             const std::vector<axpr::Value>& args) {
+  ADT_CHECK(args.size() == 0);
+  const auto& atomic_expr = axpr::AtomicExprBuilder<axpr::CoreExpr>{}.None();
+  return axpr::GetAtomicAxprClass().New(atomic_expr);
+}
+
+Result<axpr::Value> AxprBool(const axpr::Value&,
+                             const std::vector<axpr::Value>& args) {
+  ADT_CHECK(args.size() == 1);
+  ADT_LET_CONST_REF(data, args.at(0).template CastTo<bool>());
+  const auto& atomic_expr =
+      axpr::AtomicExprBuilder<axpr::CoreExpr>{}.Bool(data);
+  return axpr::GetAtomicAxprClass().New(atomic_expr);
+}
+
+Result<axpr::Value> AxprInt(const axpr::Value&,
+                            const std::vector<axpr::Value>& args) {
+  ADT_CHECK(args.size() == 1);
+  ADT_LET_CONST_REF(data, args.at(0).template CastTo<int64_t>());
+  const auto& atomic_expr =
+      axpr::AtomicExprBuilder<axpr::CoreExpr>{}.Int64(data);
+  return axpr::GetAtomicAxprClass().New(atomic_expr);
+}
+
+Result<axpr::Value> AxprFloat(const axpr::Value&,
+                              const std::vector<axpr::Value>& args) {
+  ADT_CHECK(args.size() == 1);
+  ADT_LET_CONST_REF(data, args.at(0).template CastTo<double>());
+  const auto& atomic_expr =
+      axpr::AtomicExprBuilder<axpr::CoreExpr>{}.Double(data);
+  return axpr::GetAtomicAxprClass().New(atomic_expr);
+}
+
+Result<axpr::Value> AxprStr(const axpr::Value&,
+                            const std::vector<axpr::Value>& args) {
+  ADT_CHECK(args.size() == 1);
+  ADT_LET_CONST_REF(data, args.at(0).template CastTo<std::string>());
+  const auto& atomic_expr =
+      axpr::AtomicExprBuilder<axpr::CoreExpr>{}.String(data);
+  return axpr::GetAtomicAxprClass().New(atomic_expr);
+}
+
+Result<axpr::Value> AxprLambda(const axpr::Value&,
+                               const std::vector<axpr::Value>& args) {
+  ADT_CHECK(args.size() == 2);
+  std::vector<axpr::tVar<std::string>> lambda_args;
+  {
+    ADT_LET_CONST_REF(arg_name_list,
+                      axpr::AbstractList<axpr::Value>::CastFrom(args.at(0)));
+    ADT_LET_CONST_REF(arg_name_list_size, arg_name_list.size());
+    lambda_args.reserve(arg_name_list_size);
+    for (int i = 0; i < arg_name_list_size; ++i) {
+      ADT_LET_CONST_REF(elt, arg_name_list.at(i));
+      ADT_LET_CONST_REF(arg_name, elt.template CastTo<std::string>());
+      lambda_args.emplace_back(axpr::tVar<std::string>{arg_name});
+    }
+  }
+  ADT_LET_CONST_REF(lambda_body, args.at(1).template CastTo<axpr::CoreExpr>());
+  const auto& atomic_expr = axpr::AtomicExprBuilder<axpr::CoreExpr>{}.Lambda(
+      lambda_args, lambda_body);
+  return axpr::GetAtomicAxprClass().New(atomic_expr);
+}
+
+Result<axpr::Value> AxprAtomic(const axpr::Value&,
+                               const std::vector<axpr::Value>& args) {
+  ADT_CHECK(args.size() == 1);
+  ADT_LET_CONST_REF(atomic,
+                    args.at(0).template CastTo<axpr::Atomic<axpr::CoreExpr>>());
+  const auto& core_expr = axpr::CoreExpr{atomic};
+  return axpr::GetAxprClass().New(core_expr);
+}
+
+Result<axpr::Value> AxprCall(const axpr::Value&,
+                             const std::vector<axpr::Value>& args) {
+  ADT_CHECK(args.size() == 3);
+  ADT_LET_CONST_REF(outer_func,
+                    args.at(0).template CastTo<axpr::Atomic<axpr::CoreExpr>>());
+  ADT_LET_CONST_REF(inner_func,
+                    args.at(1).template CastTo<axpr::Atomic<axpr::CoreExpr>>());
+  std::vector<axpr::Atomic<axpr::CoreExpr>> call_args;
+  {
+    ADT_LET_CONST_REF(atomic_list,
+                      axpr::AbstractList<axpr::Value>::CastFrom(args.at(2)));
+    ADT_LET_CONST_REF(atomic_list_size, atomic_list.size());
+    call_args.reserve(atomic_list_size);
+    for (int i = 0; i < atomic_list_size; ++i) {
+      ADT_LET_CONST_REF(elt, atomic_list.at(i));
+      ADT_LET_CONST_REF(elt_arg,
+                        elt.template CastTo<axpr::Atomic<axpr::CoreExpr>>());
+      call_args.emplace_back(elt_arg);
+    }
+  }
+  axpr::ComposedCallAtomic<axpr::CoreExpr> core_expr{
+      outer_func, inner_func, call_args};
+  return axpr::GetAxprClass().New(axpr::CoreExpr{core_expr});
 }
 
 }  // namespace ap::axpr

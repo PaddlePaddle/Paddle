@@ -1596,6 +1596,14 @@ void PirToPyCodeConverter::SaveIfFlagEnabled() const {
   });
 }
 
+std::string PirToPyCodeConverter::Convert() const {
+  ShapeAnalysisGetterT ShapeAnalysisGetter =
+      (dump_symbolic_shape_ ? GetShapeAnalysisFromManager
+                            : GetNullShapeAnalysis);
+  PirToPyCodeConverterHelper converter_helper(program_, ShapeAnalysisGetter);
+  return converter_helper.Convert();
+}
+
 void DumpExecProgram(const pir::Program& program,
                      const ::paddle::framework::Scope& _) {
   PirToPyCodeConverter(&program)

@@ -18,6 +18,7 @@
 #include "paddle/ap/include/axpr/anf_expr_util.h"
 #include "paddle/ap/include/axpr/attr_map.h"
 #include "paddle/ap/include/axpr/data_type.h"
+#include "paddle/ap/include/axpr/immutable_registry.h"
 #include "paddle/ap/include/axpr/interpreter.h"
 #include "paddle/ap/include/axpr/lambda_expr_builder.h"
 #include "paddle/ap/include/axpr/value.h"
@@ -87,17 +88,32 @@ template <typename RetT>
 using MakeT = adt::Result<RetT> (*)(const std::string& str);
 
 template <typename T, MakeT<T> Make>
-adt::Result<T> CacheResult(const std::string& serialized_attributes) {
+adt::Result<T> CacheResult(const std::string& x) {
   static std::unordered_map<std::string, adt::Result<T>> cache;
   static std::mutex mutex;
   std::unique_lock<std::mutex> lock(mutex);
-  auto iter = cache.find(serialized_attributes);
+  auto iter = cache.find(x);
   if (iter == cache.end()) {
-    iter =
-        cache.emplace(serialized_attributes, Make(serialized_attributes)).first;
+    iter = cache.emplace(x, Make(x)).first;
   }
   ADT_LET_CONST_REF(ret, iter->second);
   return ret;
+}
+
+template <MakeT<ap::axpr::Lambda<ap::axpr::CoreExpr>> Make>
+adt::Result<ap::axpr::Lambda<ap::axpr::CoreExpr>> TryGetGlobalImmutableLambda(
+    const std::string& x) {
+  ADT_LET_CONST_REF(is_key,
+                    ap::axpr::StartsWithImmutableValueRegistryKeyPrefix(x));
+  if (is_key) {
+    ADT_LET_CONST_REF(axpr_value, ap::axpr::GetRegisteredImmutableValue(x));
+    ADT_LET_CONST_REF(func,
+                      axpr_value.template CastTo<
+                          ap::axpr::Function<ap::axpr::SerializableValue>>());
+    return func->lambda;
+  } else {
+    return Make(x);
+  }
 }
 
 adt::Result<Lambda> MakeLambda(const std::string& serialized_attributes) {
@@ -114,7 +130,8 @@ adt::Result<Lambda> MakeLambda(const std::string& serialized_attributes) {
   return lambda;
 }
 
-constexpr auto CastToLambda = &CacheResult<Lambda, &MakeLambda>;
+constexpr auto CastToLambda =
+    &TryGetGlobalImmutableLambda<&CacheResult<Lambda, &MakeLambda>>;
 
 adt::Result<ap::axpr::AttrMap<ap::axpr::Value>> MakeAttrMap(
     const std::string& serialized_attributes) {
@@ -159,7 +176,8 @@ adt::Result<Lambda> MakeInferMetaLambda(
   return atomic.Get<ap::axpr::Lambda<ap::axpr::CoreExpr>>();
 }
 
-constexpr auto GetInferMetaLambda = &CacheResult<Lambda, &MakeInferMetaLambda>;
+constexpr auto GetInferMetaLambda =
+    &TryGetGlobalImmutableLambda<&CacheResult<Lambda, &MakeInferMetaLambda>>;
 
 adt::Result<adt::Ok> InferMetaByAxprHookImpl(
     const std::string& infer_meta_func_name,

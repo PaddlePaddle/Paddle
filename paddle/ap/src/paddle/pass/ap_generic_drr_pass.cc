@@ -21,6 +21,7 @@
 #include "paddle/ap/include/axpr/atomic.h"
 #include "paddle/ap/include/axpr/builtin_frame_util.h"
 #include "paddle/ap/include/axpr/builtin_serializable_attr_map_to_axpr_helper.h"
+#include "paddle/ap/include/axpr/core_expr_util.h"
 #include "paddle/ap/include/axpr/cps_interpreter.h"
 #include "paddle/ap/include/axpr/data_type_util.h"
 #include "paddle/ap/include/axpr/lambda_expr_builder.h"
@@ -917,7 +918,6 @@ struct ApRewriter {
       args.reserve(outputs.size());
       for (int i = 0; i < outputs.size(); ++i) {
         const auto& output = outputs.at(i);
-        auto& output_meta_var = ctx.Var("outputs").At(i);
         ADT_LET_CONST_REF(dim_exprs_ptr, GetShapeDimExprsPtrByValue(output));
         ADT_LET_CONST_REF(dim_expr_list_anf_expr,
                           ConstructDimExprListAnfExpr(
@@ -933,7 +933,7 @@ struct ApRewriter {
     ADT_LET_CONST_REF(
         anf_expr,
         lmbd.TryLambda({"infer_ctx", "inputs", "attrs"}, ConstructLambdaBody));
-    return anf_expr.DumpToJsonString();
+    return axpr::SimplifyTmpVarName(anf_expr).DumpToJsonString();
   }
 
   adt::Result<std::string> GetInferMetaLambdaStr(
@@ -961,7 +961,7 @@ struct ApRewriter {
     ap::axpr::LambdaExprBuilder lmbd;
     ADT_LET_CONST_REF(
         anf_expr, lmbd.TryLambda({"inputs", "outputs"}, ConstructLambdaBody));
-    return anf_expr.DumpToJsonString();
+    return axpr::SimplifyTmpVarName(anf_expr).DumpToJsonString();
   }
 
   adt::Result<pir::Type> GetPirDataType(pir::Value value) const {
@@ -1255,7 +1255,7 @@ struct ApRewriter {
       return data;
     };
     ADT_LET_CONST_REF(anf_expr, lmbd.TryLambda({}, ConstructLambdaBody));
-    return anf_expr.DumpToJsonString();
+    return axpr::SimplifyTmpVarName(anf_expr).DumpToJsonString();
   }
 
   struct SerializedCodeGenResult {
@@ -1366,7 +1366,9 @@ struct ApRewriter {
 
   adt::Result<AnfExpr> ConvertApKernelModuleToAnfExpr(
       const CodeModule& m) const {
-    return ap::code_module::ModuleToAxprHelper{}.ConvertModuleToAnfExpr(m);
+    ap::code_module::ModuleToAxprHelper helper{};
+    ADT_LET_CONST_REF(anf_expr, helper.ConvertModuleToAnfExpr(m));
+    return axpr::SimplifyTmpVarName(anf_expr);
   }
 
   adt::Result<std::string> GetKernelDispatchLambdaStr(
@@ -1374,7 +1376,7 @@ struct ApRewriter {
           kernel_dispatch_func) const {
     const auto& lambda = kernel_dispatch_func->lambda;
     ap::axpr::AnfExpr anf_expr = ap::axpr::ConvertCoreExprToAnfExpr(lambda);
-    return anf_expr.DumpToJsonString();
+    return axpr::SimplifyTmpVarName(anf_expr).DumpToJsonString();
   }
 
   adt::Result<pir::Value> MakeApPatternFusionOp(

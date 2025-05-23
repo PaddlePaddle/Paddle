@@ -43,6 +43,8 @@ class PirToPyCodeConverter {
 
   void SaveIfFlagEnabled() const;
 
+  std::string Convert() const;
+
  private:
   const pir::Program* program_;
   std::string file_name_;

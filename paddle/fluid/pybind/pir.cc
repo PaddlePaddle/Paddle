@@ -92,6 +92,8 @@
 #ifdef PADDLE_WITH_CINN
 #include "paddle/ap/include/paddle/hlir/op_dialect.h"
 #include "paddle/ap/include/paddle/pass/add_pcc_pass.h"
+#include "paddle/ap/include/paddle/utils/axpr_util.h"
+#include "paddle/ap/include/paddle/utils/pir_to_py_code_util.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/add_cinn_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/check_infer_symbolic_util.h"
@@ -2873,9 +2875,47 @@ std::shared_ptr<Program> ApplyFusedBnAddActPass(
   return program;
 }
 
+ap::paddle::AxprValue AxprValueCall(const ap::paddle::AxprValue &obj,
+                                    py::args args) {
+  std::vector<ap::paddle::AxprValue> axpr_args;
+  axpr_args.reserve(args.size());
+  for (const auto &arg : args) {
+    axpr_args.emplace_back(py::cast<ap::paddle::AxprValue>(arg));
+  }
+  return ap::paddle::AxprValueCall(obj, axpr_args);
+}
+
 void BindIrPass(pybind11::module *m) {
-  m->def("apply_cinn_pass", ApplyCinnPass);
+  py::class_<ap::paddle::AxprValue> axpr_value(*m, "AxprValue");
+  axpr_value.def(py::init(&ap::paddle::AxprValueFromBool));
+  axpr_value.def(py::init(&ap::paddle::AxprValueFromInt));
+  axpr_value.def(py::init(&ap::paddle::AxprValueFromFloat));
+  axpr_value.def(py::init(&ap::paddle::AxprValueFromStr));
+  axpr_value.def(py::init(&ap::paddle::AxprValueFromList));
+  axpr_value.def_static("none", &ap::paddle::AxprValueNone);
+  axpr_value.def_static("is_none", &ap::paddle::AxprValueIsNone);
+  axpr_value.def_static("is_bool", &ap::paddle::AxprValueIsBool);
+  axpr_value.def_static("is_int", &ap::paddle::AxprValueIsInt);
+  axpr_value.def_static("is_float", &ap::paddle::AxprValueIsFloat);
+  axpr_value.def_static("is_str", &ap::paddle::AxprValueIsStr);
+  axpr_value.def_static("is_list", &ap::paddle::AxprValueIsList);
+  axpr_value.def_static("to_bool", &ap::paddle::AxprValueToBool);
+  axpr_value.def_static("to_int", &ap::paddle::AxprValueToInt);
+  axpr_value.def_static("to_float", &ap::paddle::AxprValueToFloat);
+  axpr_value.def_static("to_str", &ap::paddle::AxprValueToStr);
+  axpr_value.def_static("to_list", &ap::paddle::AxprValueToList);
+  axpr_value.def_static("import_module", &ap::paddle::AxprValueImportModule);
+  axpr_value.def_static("type", &ap::paddle::AxprValueType);
+  axpr_value.def("__getattr__", &ap::paddle::AxprValueGetAttr);
+  axpr_value.def("__getitem__", &ap::paddle::AxprValueGetItem);
+  axpr_value.def("__call__", &AxprValueCall);
+  axpr_value.def("__str__", &ap::paddle::AxprValueStr);
+  axpr_value.def("__len__", &ap::paddle::AxprValueLen);
+
+  m->def("pir_program_to_py_code", ap::paddle::PirProgramToPyCode);
   m->def("apply_pcc_pass", ApplyPccPass);
+
+  m->def("apply_cinn_pass", ApplyCinnPass);
   m->def("check_infer_symbolic_if_need", CheckInferSymbolicIfNeed);
   m->def("infer_symbolic_shape_pass", InferSymbolicShapePass);
   m->def("apply_cse_pass", ApplyCommonSubexpressionEliminationPass);

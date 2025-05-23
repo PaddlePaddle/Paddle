@@ -66,7 +66,23 @@ adt::Result<ap::axpr::Lambda<ap::axpr::CoreExpr>> CacheCoreExpr(
   return iter->second;
 }
 
-constexpr MakeCoreExprT MakeOrGetCoreExpr = &CacheCoreExpr<&ConvertToCoreExpr>;
+template <MakeCoreExprT Make>
+adt::Result<axpr::Lambda<axpr::CoreExpr>> TryGetGlobalImmutableLambda(
+    const std::string& x) {
+  ADT_LET_CONST_REF(is_key, axpr::StartsWithImmutableValueRegistryKeyPrefix(x));
+  if (is_key) {
+    ADT_LET_CONST_REF(axpr_value, axpr::GetRegisteredImmutableValue(x));
+    ADT_LET_CONST_REF(
+        func,
+        axpr_value.template CastTo<axpr::Function<axpr::SerializableValue>>());
+    return func->lambda;
+  } else {
+    return Make(x);
+  }
+}
+
+constexpr MakeCoreExprT MakeOrGetCoreExpr =
+    &TryGetGlobalImmutableLambda<&CacheCoreExpr<&ConvertToCoreExpr>>;
 
 namespace kernel_dispatch {
 

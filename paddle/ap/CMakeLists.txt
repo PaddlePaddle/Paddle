@@ -66,7 +66,7 @@ cc_library(
   SRCS ${ap_reified_drr_srcs}
   DEPS ${AP_COMMON_DEPS} ${ap_reified_drr_deps})
 
-file(GLOB_RECURSE ap_pass_srcs "src/paddle/pass/*.cc")
+file(GLOB_RECURSE ap_pass_srcs "src/paddle/pass/*.cc" "src/paddle/utils/*.cc")
 set(ap_pass_deps axpr ap_hlir ap_drr ap_code_module ap_code_gen ap_reified_drr)
 cc_library(
   ap_pass

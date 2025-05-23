@@ -72,6 +72,21 @@ struct MethodClassImpl<ValueT, MutableOrderedDict<ValueT>> {
     return val;
   }
 
+  adt::Result<ValueT> SetItem(const Self& self, const ValueT& idx) {
+    return Method<ValueT>{self, &This::StaticSetItem};
+  }
+
+  static adt::Result<ValueT> StaticSetItem(
+      axpr::InterpreterBase<ValueT>* interpreter,
+      const ValueT& self_val,
+      const std::vector<ValueT>& args) {
+    ADT_LET_CONST_REF(self, self_val.template TryGet<Self>());
+    ADT_LET_CONST_REF(self_ptr, self.Mut());
+    ADT_CHECK(args.size() == 2);
+    ADT_RETURN_IF_ERR(self_ptr->Insert(interpreter, args.at(0), args.at(1)));
+    return adt::Nothing{};
+  }
+
   adt::Result<ValueT> GetAttr(const Self& self, const ValueT& attr_name_val) {
     ADT_LET_CONST_REF(attr_name, attr_name_val.template TryGet<std::string>());
     if (attr_name == "items") {

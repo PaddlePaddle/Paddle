@@ -97,7 +97,7 @@ class PyToAnfParser:
             assert isinstance(alias, ast.alias)
             name = alias.name
             asname = alias.asname if alias.asname is not None else name
-            self.Bind(asname, ["import", {"str": name}])
+            self.Bind(asname, ["__builtin__import", {"str": name}])
         return AtomicAnfExpr(None)
 
     def ParseClassDef(self, tree: ast.ClassDef):
@@ -361,7 +361,7 @@ class PyToAnfParser:
         else:
             msg = parser.Parse(expr.msg)
         exception = parser.BindToTmpVar(['AssertionError', msg.value])
-        raise_ret = parser.BindToTmpVar(['raise', exception.value])
+        raise_ret = parser.BindToTmpVar(['__builtin__raise', exception.value])
         false_value = AtomicAnfExpr(
             [
                 'lambda',

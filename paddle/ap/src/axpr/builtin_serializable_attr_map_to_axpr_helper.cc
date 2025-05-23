@@ -69,7 +69,7 @@ struct BuiltinSerializableAttrMapToAxprHelperImpl {
             -> adt::Result<AnfExpr> {
           const auto& lambda = function->lambda;
           const AnfExpr& anf_expr = ap::axpr::ConvertCoreExprToAnfExpr(lambda);
-          AnfExpr ret{ctx->Attr(anf_expr, "__function__")};
+          AnfExpr ret{ctx->Var("__builtin__to_pure_function").Call(anf_expr)};
           return ret;
         },
         [&](const axpr::BuiltinFuncVoidPtr& func) -> adt::Result<AnfExpr> {

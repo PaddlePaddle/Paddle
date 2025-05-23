@@ -41,6 +41,9 @@ adt::Result<axpr::Value> Print(InterpreterBase<axpr::Value>* interpreter,
 adt::Result<axpr::Value> ReplaceOrTrimLeftComma(
     const axpr::Value&, const std::vector<axpr::Value>& args);
 
+adt::Result<axpr::Value> Quoted(const axpr::Value&,
+                                const std::vector<axpr::Value>& args);
+
 adt::Result<axpr::Value> MakeRange(const axpr::Value&,
                                    const std::vector<axpr::Value>& args);
 
@@ -67,6 +70,9 @@ Result<axpr::Value> Map(axpr::InterpreterBase<axpr::Value>* interpreter,
 Result<axpr::Value> Apply(axpr::InterpreterBase<axpr::Value>* interpreter,
                           const axpr::Value&,
                           const std::vector<axpr::Value>& args);
+
+Result<axpr::Value> ToPureFunction(const axpr::Value&,
+                                   const std::vector<axpr::Value>& args);
 
 Result<axpr::Value> Length(axpr::InterpreterBase<axpr::Value>* interpreter,
                            const axpr::Value&,
@@ -102,5 +108,38 @@ Result<axpr::Value> SetAttr(axpr::InterpreterBase<axpr::Value>* interpreter,
 
 Result<axpr::Value> FunctionToAtomicAxpr(const axpr::Value&,
                                          const std::vector<axpr::Value>& args);
+
+Result<axpr::Value> AtomicAxprToFunction(const axpr::Value&,
+                                         const std::vector<axpr::Value>& args);
+
+Result<axpr::Value> AxprJsonStrToAxpr(const axpr::Value&,
+                                      const std::vector<axpr::Value>& args);
+
+Result<axpr::Value> AxprSymbol(const axpr::Value&,
+                               const std::vector<axpr::Value>& args);
+
+Result<axpr::Value> AxprNone(const axpr::Value&,
+                             const std::vector<axpr::Value>& args);
+
+Result<axpr::Value> AxprBool(const axpr::Value&,
+                             const std::vector<axpr::Value>& args);
+
+Result<axpr::Value> AxprInt(const axpr::Value&,
+                            const std::vector<axpr::Value>& args);
+
+Result<axpr::Value> AxprFloat(const axpr::Value&,
+                              const std::vector<axpr::Value>& args);
+
+Result<axpr::Value> AxprStr(const axpr::Value&,
+                            const std::vector<axpr::Value>& args);
+
+Result<axpr::Value> AxprLambda(const axpr::Value&,
+                               const std::vector<axpr::Value>& args);
+
+Result<axpr::Value> AxprAtomic(const axpr::Value&,
+                               const std::vector<axpr::Value>& args);
+
+Result<axpr::Value> AxprCall(const axpr::Value&,
+                             const std::vector<axpr::Value>& args);
 
 }  // namespace ap::axpr
