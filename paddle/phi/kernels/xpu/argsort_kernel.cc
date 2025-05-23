@@ -100,7 +100,7 @@ void ArgsortKernel(const Context& dev_ctx,
                    DenseTensor* indices) {
   if (input.numel() == 0) {
     phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(out->dims())), NAN, out);
+        dev_ctx, phi::IntArray(common::vectorize(output->dims())), NAN, output);
     return;
   }
 
