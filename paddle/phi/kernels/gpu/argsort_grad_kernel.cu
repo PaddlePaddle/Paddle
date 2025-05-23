@@ -158,9 +158,7 @@ void ArgsortGradKernel(const Context& dev_ctx,
   auto rank = in_dims.size();
   axis = (axis < 0) ? (in_dims.size() + axis) : axis;
   int64_t size = in_grad->numel();
-  if (size == 0) {
-    return;
-  }
+
   if (rank == 0) {
     phi::Copy<Context>(dev_ctx, out_grad, dev_ctx.GetPlace(), false, in_grad);
     return;
