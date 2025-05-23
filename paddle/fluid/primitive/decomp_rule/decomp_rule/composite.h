@@ -740,6 +740,31 @@ Tensor heaviside_decomp(const Tensor& x, const Tensor& y) {
 }
 
 template <typename T>
+Tensor masked_fill_decomp(const Tensor& x,
+                          const Tensor& mask,
+                          const Tensor& value) {
+  Tensor x_expand, mask_expand, value_expand;
+  if (has_dynamic_shape(x.shape()) || has_dynamic_shape(mask.shape())) {
+    Tensor x_shape =
+        backend::full_with_tensor<T>(shape64<T>(x), 0.0, x.dtype());
+    Tensor mask_shape =
+        backend::full_with_tensor<T>(shape64<T>(mask), 0.0, x.dtype());
+    Tensor broad_shape = shape64<T>(x_shape + mask_shape);
+    x_expand = expand<T>(x, broad_shape);
+    mask_expand = expand<T>(mask, broad_shape);
+    value_expand = expand<T>(value, broad_shape);
+  } else {
+    auto out_dims = phi::funcs::BroadcastTwoDims(x.dims(), mask.dims());
+    x_expand = expand<T>(x, phi::vectorize(out_dims));
+    mask_expand = expand<T>(mask, phi::vectorize(out_dims));
+    value_expand = expand<T>(value, phi::vectorize(out_dims));
+  }
+  Tensor mask_tmp = backend::logical_not<T>(mask_expand);
+  Tensor res = where<T>(mask_tmp, x_expand, value_expand);
+  return res;
+}
+
+template <typename T>
 Tensor leaky_relu_decomp(const Tensor& x, float negative_slope) {
   auto multiply_tmp = full_scalar<T>(negative_slope, x.dtype(), x.place()) * x;
   if (negative_slope < 1.0) {
