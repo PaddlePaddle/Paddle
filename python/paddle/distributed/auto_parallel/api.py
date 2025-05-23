@@ -3781,6 +3781,10 @@ class ShardDataloader:
         if is_dataset_splitted is True or shard_dims is None:
             self._dataloader = dataloader
             self.batch_size = dataloader.batch_sampler.batch_size
+        elif isinstance(dataloader.batch_sampler, DistributedBatchSampler):
+            self.batch_size = dataloader.batch_sampler.batch_size
+            self.batch_sampler = dataloader.batch_sampler
+            self._dataloader = dataloader
         else:
             self.batch_size = int(
                 dataloader.batch_sampler.batch_size / dp_world_size

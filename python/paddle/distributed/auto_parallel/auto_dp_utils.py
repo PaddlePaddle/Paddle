@@ -81,4 +81,8 @@ def _convert_fake_replicate_grad_to_partial(params_grads):
 
 
 def in_auto_dp_mode():
+    word_size = paddle.distributed.get_world_size()
+    if word_size <= 1:
+        return False
+
     return os.getenv("FLAGS_enable_auto_dp_comm") == "1"
