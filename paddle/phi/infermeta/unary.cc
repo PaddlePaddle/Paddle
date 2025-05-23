@@ -931,10 +931,10 @@ void DiagInferMeta(const MetaTensor& x,
   auto x_dims = x.dims();
 
   if (x_dims.size() <= 1) {
-    int64_t size_ = (x_dims.size() == 1UL ? x_dims[0] : 1) + std::abs(offset);
+    int64_t size_ = (x_dims.size() == 1ULL ? x_dims[0] : 1) + std::abs(offset);
     out->set_dims({size_, size_});
     out->set_dtype(x.dtype());
-  } else if (x_dims.size() == 2UL) {
+  } else if (x_dims.size() == 2ULL) {
     int64_t size_ = 0;
     if (offset >= 0) {
       // Note(LutaoChu): Do not use std::min here, otherwise the calculation
@@ -1617,7 +1617,7 @@ void FlattenInferMeta(const MetaTensor& x,
   }
 
   int64_t outer = 1;
-  std::vector<int32_t> out_shape;
+  std::vector<int64_t> out_shape;
   out_shape.reserve(in_dims_size - stop_axis + start_axis + 1);
 
   for (int i = 0; i < start_axis; ++i) {
@@ -2655,10 +2655,13 @@ void MaxPoolV2InferMeta(const MetaTensor& x,
                     false,
                     common::errors::InvalidArgument(
                         "max_pool2d_v2 op does not support adaptive."));
+  std::vector<int64_t> kernel_size_(kernel_size.begin(), kernel_size.end());
+  std::vector<int64_t> strides_(strides.begin(), strides.end());
+  std::vector<int64_t> paddings_(paddings.begin(), paddings.end());
   Pool2DInferMeta(x,
-                  kernel_size,
-                  strides,
-                  paddings,
+                  kernel_size_,
+                  strides_,
+                  paddings_,
                   false,
                   false,
                   data_format,
@@ -3383,8 +3386,8 @@ void PNormInferMeta(const MetaTensor& x,
 
 void Pool2DInferMeta(const MetaTensor& x,
                      const IntArray& kernel_size,
-                     const std::vector<int>& strides,
-                     const std::vector<int>& paddings,
+                     const std::vector<int64_t>& strides,
+                     const std::vector<int64_t>& paddings,
                      bool ceil_mode,
                      bool exclusive,
                      const std::string& data_format,
@@ -3410,8 +3413,8 @@ void Pool2DInferMeta(const MetaTensor& x,
     out->share_lod(x);
     out->set_dtype(x.dtype());
   } else {
-    std::vector<int> kernel_size_val(kernel_size.GetData().begin(),
-                                     kernel_size.GetData().end());
+    std::vector<int64_t> kernel_size_val(kernel_size.GetData().begin(),
+                                         kernel_size.GetData().end());
     PoolInferMeta(x,
                   kernel_size_val,
                   strides,
@@ -3468,9 +3471,9 @@ void SendV2InferMeta(const int peer, const int ring_id) {
 }
 
 void PoolInferMeta(const MetaTensor& x,
-                   const std::vector<int>& kernel_size,
-                   const std::vector<int>& strides,
-                   const std::vector<int>& paddings,
+                   const std::vector<int64_t>& kernel_size,
+                   const std::vector<int64_t>& strides,
+                   const std::vector<int64_t>& paddings,
                    bool ceil_mode,
                    bool exclusive,
                    const std::string& data_format,
@@ -3480,8 +3483,8 @@ void PoolInferMeta(const MetaTensor& x,
                    const std::string& padding_algorithm,
                    MetaTensor* out,
                    MetaConfig config) {
-  std::vector<int> paddings_ = paddings;
-  std::vector<int> kernel_size_ = kernel_size;
+  std::vector<int64_t> paddings_ = paddings;
+  std::vector<int64_t> kernel_size_ = kernel_size;
 
   auto x_dims = x.dims();
   PADDLE_ENFORCE_EQ(
@@ -3555,13 +3558,12 @@ void PoolInferMeta(const MetaTensor& x,
       if ((!config.is_runtime) && (data_dims[i] < 0)) {
         output_shape.push_back(data_dims[i]);
       } else {
-        output_shape.push_back(
-            funcs::PoolOutputSize(static_cast<int>(data_dims[i]),
-                                  kernel_size_[i],
-                                  paddings_[2 * i],
-                                  paddings_[2 * i + 1],
-                                  strides[i],
-                                  ceil_mode));
+        output_shape.push_back(funcs::PoolOutputSize(data_dims[i],
+                                                     kernel_size_[i],
+                                                     paddings_[2 * i],
+                                                     paddings_[2 * i + 1],
+                                                     strides[i],
+                                                     ceil_mode));
       }
     }
   }
@@ -4385,7 +4387,7 @@ void SplitInferMeta(const MetaTensor& x,
         axis_value == -1) {  // NOLINT
       out_dims = std::vector<phi::DDim>(
           sections_data.size(),
-          common::make_ddim(std::vector<int>(x.dims().size(), -1)));
+          common::make_ddim(std::vector<int64_t>(x.dims().size(), -1)));
     } else {
       out_dims = std::vector<phi::DDim>(sections_data.size(), x.dims());
     }
@@ -4408,7 +4410,7 @@ void SplitInferMeta(const MetaTensor& x,
     const int unknow_dim_val = -1;
     int unknow_dim_idx = -1;
     int num_of_unknow = 0;
-    int sum_of_section = 0;
+    int64_t sum_of_section = 0;
 
     for (int i = 0; i < static_cast<int>(sections_data.size()); ++i) {
       sections_vec.push_back(sections_data[i]);
@@ -4417,7 +4419,7 @@ void SplitInferMeta(const MetaTensor& x,
         num_of_unknow++;
         unknow_dim_idx = i;
       } else {
-        sum_of_section += static_cast<int>(sections_data[i]);
+        sum_of_section += static_cast<int64_t>(sections_data[i]);
       }
     }
 
@@ -5583,7 +5585,9 @@ void UnfoldInferMeta(const MetaTensor& x,
   std::vector<int> out_dims;
   out_dims.push_back(in_dims[0]);  // NOLINT
   int output_channels =
-      static_cast<int>(in_dims[1] * kernel_sizes[0] * kernel_sizes[1]);
+      in_dims[1] < 0
+          ? -1
+          : static_cast<int>(in_dims[1] * kernel_sizes[0] * kernel_sizes[1]);
   out_dims.push_back(output_channels);
 
   int output_height = phi::funcs::CalcOutputSize(static_cast<int>(in_dims[2]),

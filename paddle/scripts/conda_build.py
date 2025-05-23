@@ -57,7 +57,6 @@ requirements:
     - gast==0.3.3
     - Pillow
     - decorator
-    - astor
 """
 
         self.requirement_run_windows = r"""
@@ -68,7 +67,6 @@ requirements:
     - gast==0.3.3
     - Pillow
     - decorator
-    - astor
 """
         self.test = r"""
 test:

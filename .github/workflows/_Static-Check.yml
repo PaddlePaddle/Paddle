@@ -113,6 +113,7 @@ jobs:
           workflow-name: static-check
 
       - name: Static check
+        if: steps.check-bypass.outputs.can-skip != 'true'
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ${{ github.workspace }}/../../../proxy
@@ -120,6 +121,7 @@ jobs:
           '
 
       - name: Check api approval
+        if: steps.check-bypass.outputs.can-skip != 'true'
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ${{ github.workspace }}/../../../proxy

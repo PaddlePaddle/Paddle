@@ -117,7 +117,7 @@ symbol::ShapeOrDataDimExprs Pool2dRawInferSymbolicShape(
         op->attributes().at("strides").dyn_cast<pir::ArrayAttribute>();
     for (size_t i = 0; i < stride_attr.size(); i++) {
       res.emplace_back(
-          stride_attr.at(i).dyn_cast<pir::Int32Attribute>().data());
+          stride_attr.at(i).dyn_cast<pir::Int64Attribute>().data());
     }
     return res;
   }();
@@ -156,7 +156,7 @@ symbol::ShapeOrDataDimExprs Pool2dRawInferSymbolicShape(
         op->attributes().at("paddings").dyn_cast<pir::ArrayAttribute>();
     for (size_t i = 0; i < padding_attr.size(); i++) {
       paddings.emplace_back(
-          padding_attr.at(i).dyn_cast<pir::Int32Attribute>().data());
+          padding_attr.at(i).dyn_cast<pir::Int64Attribute>().data());
     }
     return GetRealPadding(paddings,
                           global_pooling,
@@ -2841,8 +2841,8 @@ bool Pool2dOpInferSymbolicShape(pir::Operation *op,
 
 bool Pool3dOpInferSymbolicShape(pir::Operation *op,
                                 pir::InferSymbolicShapeContext *infer_context) {
-  std::vector<int> kernel_size_ =
-      paddle::dialect::details::GetVectorAttr<int>(op, "kernel_size");
+  std::vector<int64_t> kernel_size_ =
+      paddle::dialect::details::GetVectorAttr<int64_t>(op, "kernel_size");
   std::vector<symbol::DimExpr> kernel_size;
   for (size_t i = 0; i < kernel_size_.size(); ++i) {
     kernel_size.push_back(symbol::DimExpr(kernel_size_[i]));
