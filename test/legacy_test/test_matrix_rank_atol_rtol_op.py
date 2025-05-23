@@ -610,7 +610,7 @@ class TestMatrixRankAtolRtolZeroSizeTensor(unittest.TestCase):
                 paddle.static.Program(), paddle.static.Program()
             ):
                 x_valid = paddle.static.data(
-                    name='x_valid', shape=[2, 0, 6, 6], dtype='float32'
+                    name='x_valid', shape=[2, 1, 6, 0], dtype='float32'
                 )
 
                 y_valid = paddle.linalg.matrix_rank(
@@ -619,7 +619,7 @@ class TestMatrixRankAtolRtolZeroSizeTensor(unittest.TestCase):
 
                 exe = paddle.static.Executor(place)
                 res_valid = exe.run(
-                    feed={'x_valid': np.zeros((2, 0, 6, 6), dtype='float32')},
+                    feed={'x_valid': np.zeros((2, 1, 6, 0), dtype='float32')},
                     fetch_list=[y_valid],
                 )
                 self.assertEqual(res_valid[0].shape, tuple(x_valid.shape[:-2]))
@@ -627,25 +627,21 @@ class TestMatrixRankAtolRtolZeroSizeTensor(unittest.TestCase):
     def _test_matrix_rank_dynamic(self, atol, rtol):
         with dygraph_guard():
             x_valid = paddle.full((2, 0, 6, 6), 1.0, dtype='float32')
-            x_invalid1 = paddle.full((0, 0), 1.0, dtype='float32')
-            x_invalid2 = paddle.full((2, 3, 0, 0), 1.0, dtype='float32')
-            self.assertRaises(
-                ValueError,
-                paddle.linalg.matrix_rank,
-                x_invalid1,
-                atol=atol,
-                rtol=rtol,
-            )
-            self.assertRaises(
-                ValueError,
-                paddle.linalg.matrix_rank,
-                x_invalid2,
-                atol=atol,
-                rtol=rtol,
-            )
+            x_valid1 = paddle.full((0, 0), 1.0, dtype='float32')
+            x_valid2 = paddle.full((2, 3, 0, 0), 1.0, dtype='float32')
 
             y_valid = paddle.linalg.matrix_rank(x_valid, atol=atol, rtol=rtol)
+            y_valid1 = paddle.linalg.matrix_rank(x_valid1, atol=atol, rtol=rtol)
+            y_valid2 = paddle.linalg.matrix_rank(x_valid2, atol=atol, rtol=rtol)
+
             self.assertEqual(y_valid.shape, x_valid.shape[:-2])
+            self.assertEqual(y_valid1.shape, x_valid1.shape[:-2])
+            self.assertEqual(y_valid2.shape, x_valid2.shape[:-2])
+
+            y_valid2_real = paddle.to_tensor(
+                np.zeros(x_valid2.shape[:-2]).astype(np.int64)
+            )
+            np.testing.assert_allclose(y_valid2, y_valid2_real, rtol=1e-05)
 
     def test_matrix_rank_tensor(self):
         atol = 0.2
