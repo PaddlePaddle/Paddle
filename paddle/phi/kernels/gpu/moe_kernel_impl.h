@@ -17,6 +17,7 @@ limitations under the License. */
 #include "cub/cub.cuh"
 #include "paddle/phi/kernels/funcs/math_cuda_utils.h"
 #include <math.h>  
+#include <cmath>
 #include <cuda_runtime.h>
 namespace phi {
 

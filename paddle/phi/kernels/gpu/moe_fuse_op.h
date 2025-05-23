@@ -2,7 +2,6 @@
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
 #include "paddle/common/exception.h"
 #include "paddle/phi/kernels/gpu/moe_kernel_impl.h"
-#include <math.h>
 
 template<typename T, int TPB>
 __launch_bounds__(TPB) __global__ void moe_top_k(const T*    inputs_after_softmax,
