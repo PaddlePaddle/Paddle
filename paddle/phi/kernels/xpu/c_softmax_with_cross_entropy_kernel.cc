@@ -332,7 +332,7 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::XPUContext, T> {
     PADDLE_THROW(common::errors::PreconditionNotMet(
         "PaddlePaddle is not compiled with DWITH_XPU_BKCL, please recompile "
         "with "
-        "DWITH_XPU_BKCL for using p_send_kernel."));
+        "DWITH_XPU_BKCL for using c_softmax_with_cross_entropy."));
 #endif
   }
 };
