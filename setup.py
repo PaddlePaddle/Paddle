@@ -1751,14 +1751,17 @@ def get_package_data_and_package_dir():
                     "$ORIGIN/../libs",
                 ]
                 fluid_core_path = "${PADDLE_BINARY_DIR}/python/paddle/base/${FLUID_CORE_NAME}.so"
+
                 # get existing rpath
                 existing_rpath = get_existing_rpath(fluid_core_path)
                 existing_paths = (
                     existing_rpath.split(":") if existing_rpath else []
                 )
+
                 # merge old and new paths and remove duplicates
                 new_paths = ":".join(path for path in nvidia_paths)
                 new_paths = new_paths.split(":")
+
                 merged_paths = []
                 for path in existing_paths + new_paths:
                     if path and path not in merged_paths:
