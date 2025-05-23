@@ -2100,18 +2100,6 @@
     data_type : softmax
   inplace : (softmax -> logits_grad)
 
-- backward_op : masked_fill_grad
-  forward : masked_fill (Tensor x, Tensor mask, Tensor value) -> Tensor(out)
-  args : (Tensor x, Tensor mask, Tensor value, Tensor out_grad)
-  output : Tensor(x_grad), Tensor(value_grad)
-  infer_meta :
-    func : GeneralBinaryGradInferMeta
-    param : [x, value]
-  kernel :
-    func : masked_fill_grad
-    param: [x, mask, value, out_grad]
-  inplace : (out_grad -> x_grad)
-
 - backward_op : masked_select_grad
   forward : masked_select (Tensor x, Tensor mask) -> Tensor(out)
   args : (Tensor x, Tensor mask, Tensor out_grad)
@@ -3926,3 +3914,13 @@
     param : [condition]
   composite: where_double_grad(condition, grad_x_grad, grad_y_grad, grad_out_grad)
   optional: grad_x_grad, grad_y_grad
+
+- backward_op: fused_rms_norm_grad
+  forward: fused_rms_norm (Tensor x, Tensor scale, float epsilon) -> Tensor(y), Tensor(mean), Tensor(invvar)
+  args: (Tensor x, Tensor scale, Tensor invvar, Tensor y_grad, float epsilon)
+  output: Tensor(x_grad), Tensor(scale_grad)
+  infer_meta:
+    func: FusedRMSNormGradInferMeta
+  kernel:
+    func: fused_rms_norm_grad
+    data_type: x

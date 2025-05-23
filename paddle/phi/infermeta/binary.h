@@ -529,11 +529,6 @@ void MaskedSelectInferMeta(const MetaTensor& x,
                            const MetaTensor& mask,
                            MetaTensor* out);
 
-void MaskedFillInferMeta(const MetaTensor& x,
-                         const MetaTensor& mask,
-                         const MetaTensor& value,
-                         MetaTensor* out);
-
 void MatmulInferMeta(const MetaTensor& x,
                      const MetaTensor& y,
                      bool trans_x,
@@ -791,4 +786,16 @@ void WeightDequantizeInferMeta(const MetaTensor& x,
                                const int32_t group_size,
                                MetaTensor* out);
 
+void FusedRMSNormInferMeta(const MetaTensor& x,
+                               const MetaTensor& scale,
+                               float epsilon,
+                               MetaTensor* y,
+                               MetaTensor* mean,
+                               MetaTensor* invvar);
+
+void IntBincountInferMeta(const MetaTensor& x,
+                          int64_t low,
+                          int64_t high,
+                          int64_t dtype,
+                          MetaTensor* out);
 }  // namespace phi

@@ -1887,4 +1887,24 @@ void SetValueGradInferMeta(const MetaTensor& out_grad,
     value_grad->share_lod(values);
   }
 }
+
+void FusedRMSNormGradInferMeta(const MetaTensor& x,
+                               const MetaTensor& dy,
+                               const MetaTensor& scale,
+                               const MetaTensor& invvar,
+                               float epsilon,
+                               MetaTensor* dx,
+                               MetaTensor* dscale) {
+  // dx: same shape, dtype, layout as x
+  dx->set_dims(x.dims());
+  dx->share_lod(x);
+  dx->set_dtype(x.dtype());
+  dx->set_layout(x.layout());
+
+  // dscale: same shape, dtype, layout as scale
+  dscale->set_dims(scale.dims());
+  dscale->share_lod(scale);
+  dscale->set_dtype(scale.dtype());
+  dscale->set_layout(scale.layout());
+}
 }  // namespace phi

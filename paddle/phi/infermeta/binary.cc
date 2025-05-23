@@ -2902,14 +2902,6 @@ void MaskedSelectInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
-void MaskedFillInferMeta(const MetaTensor& x,
-                         const MetaTensor& mask,
-                         const MetaTensor& value,
-                         MetaTensor* out) {
-  out->set_dims(x.dims());  // can not infer
-  out->set_dtype(x.dtype());
-}
-
 void MatmulInferMeta(const MetaTensor& x,
                      const MetaTensor& y,
                      bool trans_x,
@@ -4592,6 +4584,55 @@ void WeightDequantizeInferMeta(const MetaTensor& x,
   out->set_dtype(scale.dtype());
 }
 
+void FusedRMSNormInferMeta(const MetaTensor& x,
+                               const MetaTensor& scale,
+                               float epsilon,
+                               MetaTensor* y,
+                               MetaTensor* mean,
+                               MetaTensor* invvar) {
+  // Y: same shape, dtype, layout as X
+  y->set_dims(x.dims());
+  y->share_lod(x);
+  y->set_dtype(x.dtype());
+  y->set_layout(x.layout());
+
+  // mean & invvar: 1-D length = x.dims()[0]
+  int64_t rows = x.dims()[0];
+  mean->set_dims(DDim({rows}));
+  mean->share_lod(x);
+  mean->set_dtype(DataType::FLOAT32);
+  mean->set_layout(x.layout());
+
+  invvar->set_dims(DDim({rows}));
+  invvar->share_lod(x);
+  invvar->set_dtype(DataType::FLOAT32);
+  invvar->set_layout(x.layout());
+
+}
+
+void IntBincountInferMeta(const MetaTensor& x,
+                          int64_t low,
+                          int64_t high,
+                          int64_t dtype,
+                          MetaTensor* out) {
+  // 1D 输入检查
+  PADDLE_ENFORCE_EQ(
+      x.dims().size(), 1,
+      errors::InvalidArgument(
+          "The input 'x' of int_bincount must be a 1-D Tensor, but got %u-D.",
+          x.dims().size()));
+  // 计算 bin 数量
+  PADDLE_ENFORCE_GT(
+      high, low,
+      errors::InvalidArgument("Attr high (%d) must be > low (%d).", high, low));
+  int64_t bin_count = high - low + 1;
+
+  // 设置输出 shape
+  out->set_dims(phi::make_ddim({bin_count}));
+  // 输出 dtype 从属性 dtype 里取
+  out->set_dtype(static_cast<phi::DataType>(dtype));
+  // 不继承 lod
+}
 }  // namespace phi
 
 PD_REGISTER_INFER_META_FN(add_raw, phi::ElementwiseRawInferMeta);
