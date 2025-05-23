@@ -43,9 +43,9 @@ from .swiglu import swiglu
 from .variable_length_memory_efficient_attention import (
     variable_length_memory_efficient_attention,
 )
-from .moe_combine import moe_combine
-from .expand_modality_expert_id import expand_modality_expert_id
-from .moe_gate_dispatch_permute import moe_gate_dispatch_permute
+# from .moe_combine import moe_combine
+# from .expand_modality_expert_id import expand_modality_expert_id
+# from .moe_gate_dispatch_permute import moe_gate_dispatch_permute
 
 __all__ = [
     'fused_multi_head_attention',
@@ -65,6 +65,6 @@ __all__ = [
     "blha_get_max_len",
     "block_multihead_attention",
     "swiglu",
-    "moe_combine",
-    "expand_modality_expert_id",
+    # "moe_combine",
+    # "expand_modality_expert_id",
 ]
