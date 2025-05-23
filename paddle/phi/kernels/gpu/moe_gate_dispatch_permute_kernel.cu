@@ -13,11 +13,10 @@
 // limitations under the License.
 
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/gpu/moe_kernel_impl.h"
+#include "paddle/phi/kernels/gpu/moe_fuse_op.h"
 #include "paddle/phi/kernels/moe_gate_dispatch_permute_kernel.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/kernels/empty_kernel.h"
-#include "paddle/phi/kernels/gpu/moe_fuse_op.cuh"
 namespace phi {
 
 // --------      getWorkspaceSize      -------- //
