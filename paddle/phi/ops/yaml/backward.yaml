@@ -700,6 +700,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param: [x]
+    spmd_rule : CummaxGradInferSpmd
   kernel :
     func : cummax_grad
     data_type : out_grad
@@ -711,6 +712,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param: [x]
+    spmd_rule : CumminGradInferSpmd
   kernel :
     func : cummin_grad
     data_type : out_grad
@@ -1983,6 +1985,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param: [out]
+    spmd_rule : SoftmaxGradInferSpmd
   kernel :
     func : log_softmax_grad
     data_type : out_grad
