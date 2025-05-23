@@ -821,7 +821,7 @@ class TestWhereDygraphAPI(unittest.TestCase):
         np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
         data = np.array([True, True, False])
         with program_guard(Program(), Program()):
-            x = paddle.static.data(name='x', shape=[(-1)], dtype='bool')
+            x = paddle.static.data(name='x', shape=[-1], dtype='bool')
             if not paddle.framework.use_pir_api():
                 x.desc.set_need_check_feed(False)
             y = paddle.where(x)
