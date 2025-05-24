@@ -341,7 +341,7 @@ SpmdInfo BatchNormGradInferSpmd(const DistMetaTensor& x,
   std::string saved_mean_axes(1, '1');
   std::string saved_variance_axes(1, '1');
   std::string reserve_space_axes(1, '1');
-  std::string out_grad_axes(out_grad_ndim.'1');
+  std::string out_grad_axes(out_grad_ndim, '1');
 
   //  allow axis before begin_norm_axis be sharded
   for (int i = 0; i < x_ndim; ++i) {
