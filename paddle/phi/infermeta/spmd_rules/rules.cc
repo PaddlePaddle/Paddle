@@ -66,6 +66,10 @@ PD_REGISTER_SPMD_RULE(
     fused_rotary_position_embedding,
     PD_INFER_SPMD(phi::distributed::FusedRopeInferSpmd),
     PD_INFER_SPMD(phi::distributed::FusedRopeInferSpmdReverse));
+// batch_norm
+PD_REGISTER_SPMD_RULE(batch_norm,
+                      PD_INFER_SPMD(phi::distributed::BatchNormInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::BatchNormGradInferSpmd));
 
 // replicated rule /* for unittest */
 PD_REGISTER_SPMD_RULE(
