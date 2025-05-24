@@ -135,41 +135,33 @@ void AddGradKernel<phi::dtype::complex<float>, XPUContext>(
   // The current complex number implementation uses separate real/imaginary
   // parts,resulting in redundant operations and performance
   // penalties.Optimization should address this in future iterations.
-  DenseTensor x_real = Real<T, XPUContext>(dev_ctx, x);
-  DenseTensor x_imag = Imag<T, XPUContext>(dev_ctx, x);
-  DenseTensor y_real = Real<T, XPUContext>(dev_ctx, y);
-  DenseTensor y_imag = Imag<T, XPUContext>(dev_ctx, y);
   DenseTensor dout_real = Real<T, XPUContext>(dev_ctx, dout);
   DenseTensor dout_imag = Imag<T, XPUContext>(dev_ctx, dout);
 
   if (compute_dx || compute_dy) {
     DenseTensor dx_real, dx_imag, dy_real, dy_imag;
+    DenseTensor tmp_real, tmp_imag;
 
     if (compute_dx) {
-      dx_real.Resize(x_real.dims());
-      dx_imag.Resize(x_imag.dims());
-      dev_ctx.template Alloc<float>(&dx_real);
-      dev_ctx.template Alloc<float>(&dx_imag);
+      dx_real.Resize(dx->dims());
+      dx_imag.Resize(dx->dims());
     }
-
     if (compute_dy) {
-      dy_real.Resize(y_real.dims());
-      dy_imag.Resize(y_imag.dims());
-      dev_ctx.template Alloc<float>(&dy_real);
-      dev_ctx.template Alloc<float>(&dy_imag);
+      dy_real.Resize(dy->dims());
+      dy_imag.Resize(dy->dims());
     }
 
     AddGradKernel<float, XPUContext>(dev_ctx,
-                                     x_real,
-                                     y_real,
+                                     tmp_real,  // unused
+                                     tmp_imag,  // unused
                                      dout_real,
                                      axis,
                                      compute_dx ? &dx_real : nullptr,
                                      compute_dy ? &dy_real : nullptr);
 
     AddGradKernel<float, XPUContext>(dev_ctx,
-                                     x_imag,
-                                     y_imag,
+                                     tmp_real,  // unused
+                                     tmp_imag,  // unused
                                      dout_imag,
                                      axis,
                                      compute_dx ? &dx_imag : nullptr,
@@ -179,7 +171,6 @@ void AddGradKernel<phi::dtype::complex<float>, XPUContext>(
       dev_ctx.template Alloc<T>(dx);
       phi::ComplexKernel<float>(dev_ctx, dx_real, dx_imag, dx);
     }
-
     if (compute_dy) {
       dev_ctx.template Alloc<T>(dy);
       phi::ComplexKernel<float>(dev_ctx, dy_real, dy_imag, dy);

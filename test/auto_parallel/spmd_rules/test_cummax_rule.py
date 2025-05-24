@@ -20,10 +20,10 @@ from paddle.distributed.auto_parallel.static.dist_attribute import (
     TensorDistAttr,
 )
 from paddle.distributed.fleet import auto
-from paddle.framework import core
+from paddle.framework import convert_np_dtype_to_dtype_, core
 
 
-class TestTopkSPMDRule(unittest.TestCase):
+class TestCummaxSPMDRule(unittest.TestCase):
     def setUp(self):
         x_shape = [16, 16, 16]
         out_shape = [16, 2, 16]
@@ -40,24 +40,20 @@ class TestTopkSPMDRule(unittest.TestCase):
             out_shape, x_tensor_dist_attr
         )
 
-        self.rule = core.get_phi_spmd_rule("topk")
+        self.rule = core.get_phi_spmd_rule("cummax")
         self.attrs = OrderedDict()
-        self.attrs['k'] = 2
         self.attrs['axis'] = 1
-        self.attrs['largest'] = True
-        self.attrs['sorted'] = True
+        self.attrs['dtype'] = convert_np_dtype_to_dtype_("int64")
 
-    def test_topk_forward(self):
+    def test_cummax_forward(self):
         # axis = 1
         # [0, 1, -1] --> [0, -1, -1], [0, -1, -1]
         self.attrs['axis'] = 1
         self.x_dist_tensor_spec.set_dims_mapping([0, 1, -1])
         result_dist_attrs = self.rule.infer_forward(
             self.x_dist_tensor_spec,
-            self.attrs['k'],
             self.attrs['axis'],
-            self.attrs['largest'],
-            self.attrs['sorted'],
+            self.attrs['dtype'],
         )
 
         self.assertEqual(len(result_dist_attrs), 2)
@@ -75,7 +71,7 @@ class TestTopkSPMDRule(unittest.TestCase):
             inferred_output_dist_attrs[1].dims_mapping, [0, -1, -1]
         )
 
-    def test_topk_backward(self):
+    def test_cummax_backward(self):
         # axis = 1
         # [0, -1, 1], [0, -1, 1], [-1, 1, -1] --> [0, -1, 1], [0, -1, 1], [0, -1, 1], [0, -1, 1]
         self.attrs['axis'] = 1
@@ -86,10 +82,8 @@ class TestTopkSPMDRule(unittest.TestCase):
             self.x_dist_tensor_spec,
             self.x_dist_tensor_spec,
             self.out_dist_tensor_spec,
-            self.attrs['k'],
             self.attrs['axis'],
-            self.attrs['largest'],
-            self.attrs['sorted'],
+            self.attrs['dtype'],
         )
 
         self.assertEqual(len(result_dist_attrs), 2)
