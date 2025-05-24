@@ -781,6 +781,7 @@ class TestSumOpInt32(unittest.TestCase):
                 result = paddle.cumsum(x, axis=self.axis)
                 self.assertEqual(result.dtype, paddle.int64)
 
+
 def create_test_class(op_type, dtype, shape, axis):
     class Cls(unittest.TestCase):
         def test_zero_size(self):
