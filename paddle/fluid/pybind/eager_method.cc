@@ -1924,15 +1924,11 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
         ConvertAllInputsToDistTensor(
             mesh, self->tensor, transed_sub_tensor, value_tensor);
       }
-      if (transed_index.size() == 1 && value_tensor.numel() == 1 &&
-          transed_index[0].dtype() == phi::DataType::BOOL) {
-        for (size_t i = transed_index[0].shape().size();
-             i < tensor.shape().size();
-             i++) {
-          transed_index[0] = unsqueeze_ad_func(transed_index[0], {-1});
-        }
-        transed_sub_tensor = masked_fill__ad_func(
-            transed_sub_tensor, transed_index[0], value_tensor);
+      paddle::Tensor mask_tensor;
+      if (MaskedFillDispatching(
+              transed_sub_tensor, value_tensor, transed_index, &mask_tensor)) {
+        transed_sub_tensor =
+            masked_fill__ad_func(transed_sub_tensor, mask_tensor, value_tensor);
       } else {
         transed_sub_tensor =
             index_put__ad_func(transed_sub_tensor, transed_index, value_tensor);
