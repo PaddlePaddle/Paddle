@@ -15,7 +15,6 @@
 #pragma once
 
 #include "paddle/ap/include/adt/adt.h"
-#include "paddle/ap/include/axpr/builtin_frame_util.h"
 #include "paddle/ap/include/registry/registry_class.h"
 
 namespace ap::registry {
@@ -24,18 +23,6 @@ template <typename ValueT, typename DoEachT>
 void VisitEachBuiltinFrameAttr(const DoEachT& DoEach) {
   const auto& registry_class = MakeRegistryClass<ValueT>();
   DoEach(registry_class.Name(), ValueT{registry_class});
-}
-
-template <typename ValueT>
-axpr::AttrMap<ValueT> MakeBuiltinFrameAttrMap() {
-  axpr::AttrMap<ValueT> attr_map;
-  axpr::VisitEachBuiltinFrameAttr<ValueT>(
-      [&](const std::string& k, const ValueT& v) { attr_map->Set(k, v); });
-  VisitEachBuiltinFrameAttr<ValueT>([&](const std::string& k, const ValueT& v) {
-    attr_map->Set(k, v);
-    attr_map->Set(std::string("__builtin__") + k, v);
-  });
-  return attr_map;
 }
 
 }  // namespace ap::registry

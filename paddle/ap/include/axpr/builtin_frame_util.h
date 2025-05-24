@@ -22,6 +22,7 @@
 #include "paddle/ap/include/axpr/immutable_registry.h"
 #include "paddle/ap/include/axpr/module_mgr_helper.h"
 #include "paddle/ap/include/fs/builtin_functions.h"
+#include "paddle/ap/include/registry/builtin_frame_util.h"
 
 namespace ap::axpr {
 
@@ -90,6 +91,7 @@ void VisitEachBuiltinFrameAttr(const YieldT& Yield) {
   YieldTwice("filter", &Filter);
   YieldTwice("reduce", &Reduce);
   YieldTwice("zip", &Zip);
+  registry::VisitEachBuiltinFrameAttr<ValueT>(YieldTwice);
 }
 
 template <typename ValueT>

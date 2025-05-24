@@ -20,14 +20,14 @@
 #include <sstream>
 #include "paddle/ap/include/adt/adt.h"
 #include "paddle/ap/include/axpr/anf_expr_util.h"
+#include "paddle/ap/include/axpr/builtin_frame_util.h"
 #include "paddle/ap/include/axpr/function.h"
 #include "paddle/ap/include/axpr/interpreter.h"
+#include "paddle/ap/include/axpr/lambda_expr_builder.h"
 #include "paddle/ap/include/axpr/module_mgr.h"
 #include "paddle/ap/include/axpr/serializable_value.h"
 #include "paddle/ap/include/env/ap_path.h"
 #include "paddle/ap/include/fs/fs.h"
-#include "paddle/ap/include/registry/builtin_frame_util.h"
-#include "paddle/ap/include/registry/value.h"
 
 namespace ap::registry {
 
@@ -60,30 +60,26 @@ struct RegistryMgr {
   std::mutex mutex_;
 
   adt::Result<adt::Ok> Load(const std::string& filepath) {
-    ADT_LET_CONST_REF(file_content, GetFileContent(filepath));
-    if (file_content.empty()) {
-      return adt::Ok{};
-    }
-    ADT_LET_CONST_REF(anf_expr, axpr::MakeAnfExprFromJsonString(file_content));
-    const auto& core_expr = axpr::ConvertAnfExprToCoreExpr(anf_expr);
-    const auto& frame = axpr::Frame<axpr::SerializableValue>::Make(
-        axpr::ModuleMgr::Singleton()->circlable_ref_list(),
-        std::make_shared<axpr::AttrMapImpl<axpr::SerializableValue>>());
-    std::vector<axpr::tVar<std::string>> args{};
-    axpr::Lambda<axpr::CoreExpr> lambda{args, core_expr};
-    memory::Guard guard{};
-    axpr::Interpreter cps_expr_interpreter(
-        registry::MakeBuiltinFrameAttrMap<registry::Val>(),
-        guard.circlable_ref_list());
-    ADT_RETURN_IF_ERR(cps_expr_interpreter.InterpretModule(frame, lambda));
-    return adt::Ok{};
-  }
+    static axpr::Lambda<axpr::CoreExpr> import([] {
+      ap::axpr::LambdaExprBuilder lmd{};
+      const ap::axpr::AnfExpr anf_expr =
+          lmd.Lambda({"filepath"}, [&](auto& ctx) {
+            ctx.Var("__builtin__import").Call(ctx.None(), ctx.Var("filepath"));
+            return ctx.None();
+          });
+      const auto& core_expr = ap::axpr::ConvertAnfExprToCoreExpr(anf_expr);
+      const auto& atomic =
+          core_expr.Get<ap::axpr::Atomic<ap::axpr::CoreExpr>>();
+      return atomic.Get<ap::axpr::Lambda<ap::axpr::CoreExpr>>();
+    }());
 
-  adt::Result<std::string> GetFileContent(const std::string& filepath) {
-    std::ifstream ifs(filepath);
-    std::string content{std::istreambuf_iterator<char>(ifs),
-                        std::istreambuf_iterator<char>()};
-    return content;
+    ap::memory::Guard guard{};
+    ap::axpr::Interpreter interpreter(
+        axpr::MakeBuiltinFrameAttrMap<axpr::Value>(),
+        guard.circlable_ref_list());
+    ADT_RETURN_IF_ERR(
+        interpreter.Interpret(import, std::vector<axpr::Value>{filepath}));
+    return adt::Ok{};
   }
 
   template <typename YieldT>

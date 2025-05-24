@@ -181,14 +181,19 @@ def _ap_envs(ap_path, ap_workspace_dir):
     matmul_path = f"{os.path.dirname(paddle.__file__)}/apy/matmul_pass"
     old_ap_path = os.environ.get('AP_PATH')
     old_ap_workspace_dir = os.environ.get('AP_WORKSPACE_DIR')
-    os.environ['AP_PATH'] = (
-        f"{ap_sys_path}:{ap_path}:{matmul_path}:{old_ap_path if old_ap_path is not None else ''}"
-    )
+    apy_paths = [
+        ap_sys_path,
+        ap_path,
+        matmul_path,
+        *([old_ap_path] if old_ap_path is not None else []),
+    ]
+    os.environ['AP_PATH'] = ":".join(apy_paths)
     os.environ['AP_WORKSPACE_DIR'] = ap_workspace_dir
     old_flags = paddle.get_flags(['FLAGS_enable_ap'])
     flags = dict(old_flags)
     flags['FLAGS_enable_ap'] = True
     paddle.set_flags(flags)
+    _LoadModuleMains(apy_paths)
     yield
     if old_ap_path is not None:
         os.environ['AP_PATH'] = old_ap_path
@@ -199,6 +204,24 @@ def _ap_envs(ap_path, ap_workspace_dir):
     else:
         del os.environ['AP_WORKSPACE_DIR']
     paddle.set_flags(old_flags)
+
+
+def _LoadModuleMains(apy_paths):
+    for main_apy_file_path in _GetMainApyFilePaths(apy_paths):
+        _LoadModuleMain(main_apy_file_path)
+
+
+def _LoadModuleMain(main_apy_file_path):
+    AxprValue = paddle.incubate.cc.ap.AxprValue
+    ap = AxprValue.import_module("ap")
+    ap.import_by_file_path(AxprValue(main_apy_file_path))
+
+
+def _GetMainApyFilePaths(apy_paths):
+    for apy_path in apy_paths:
+        main_apy_file_path = f"{apy_path}/__main__.py.json"
+        if os.path.isfile(main_apy_file_path):
+            yield main_apy_file_path
 
 
 def _get_input_annotations(func):

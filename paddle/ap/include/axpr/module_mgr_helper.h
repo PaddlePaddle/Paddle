@@ -32,13 +32,31 @@ struct ModuleMgrHelper {
 
   adt::Result<ValueT> Import(InterpreterBase<ValueT>* interpreter,
                              const std::vector<ValueT>& args) {
-    ADT_CHECK(args.size() == 1);
-    ADT_LET_CONST_REF(module_name, args.at(0).template TryGet<std::string>());
+    std::optional<std::string> opt_module_name;
+    std::optional<std::string> opt_module_filepath;
+    ADT_CHECK(args.size() <= 2);
+    if (args.size() >= 1) {
+      if (args.at(0).template CastableTo<adt::Nothing>()) {
+        opt_module_name = std::nullopt;
+      } else {
+        ADT_LET_CONST_REF(module_name,
+                          args.at(0).template CastTo<std::string>());
+        opt_module_name = module_name;
+      }
+    }
+    if (args.size() >= 2) {
+      ADT_LET_CONST_REF(module_filepath,
+                        args.at(1).template CastTo<std::string>());
+      opt_module_filepath = module_filepath;
+    }
+    ADT_CHECK(opt_module_name.has_value() || opt_module_filepath.has_value());
     auto* module_mgr = ModuleMgr::Singleton();
-    const auto& opt_builtin_module =
-        module_mgr->OptGetBuiltinModule(module_name);
-    if (opt_builtin_module.has_value()) {
-      return opt_builtin_module.value();
+    if (opt_module_name.has_value()) {
+      const auto& opt_builtin_module =
+          module_mgr->OptGetBuiltinModule(opt_module_name.value());
+      if (opt_builtin_module.has_value()) {
+        return opt_builtin_module.value();
+      }
     }
     auto Init = [&](const Frame<SerializableValue>& frame,
                     const axpr::Lambda<axpr::CoreExpr>& lambda)
@@ -46,8 +64,9 @@ struct ModuleMgrHelper {
       ADT_RETURN_IF_ERR(interpreter->InterpretModule(frame, lambda));
       return adt::Ok{};
     };
-    ADT_LET_CONST_REF(frame,
-                      module_mgr->GetOrCreateByModuleName(module_name, Init));
+    ADT_LET_CONST_REF(
+        frame,
+        module_mgr->GetOrCreate(opt_module_name, opt_module_filepath, Init));
     ADT_LET_CONST_REF(frame_impl_obj, frame.shared_ptr());
     return axpr::AttrMap<SerializableValue>{frame_impl_obj};
   }

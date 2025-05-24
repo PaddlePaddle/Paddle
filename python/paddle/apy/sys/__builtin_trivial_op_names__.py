@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import ap
+
 
 def GetGroupedTrivialOpNames():
-    return [
+    lst = [
         "pd_op.sin",
         "pd_op.add",
         "pd_op.relu",
@@ -38,3 +40,16 @@ def GetGroupedTrivialOpNames():
         "pd_op.expand",
         "cinn_op.generate_shape",
     ]
+    sorted_registry_objects = ap.sorted(
+        ap.registry().customize_grouped_trivial_op_names.__get_valid_values__(),
+        lambda x: x.order_value,
+    )
+    functions = ap.map(lambda x: x.value, sorted_registry_objects)
+    nonlocal_box = ap.MutableList(lst)
+
+    def update_grouped_trivial_op_names(func):
+        nonlocal_box[0] = func(nonlocal_box[0])
+
+    ap.foreach(update_grouped_trivial_op_names, functions)
+    lst = nonlocal_box[0]
+    return lst

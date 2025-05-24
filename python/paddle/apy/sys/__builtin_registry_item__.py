@@ -18,15 +18,20 @@ import __builtin__
 class RegistryEntry:
 
     def __init__(self):
-        self.__tag_name__ = None
-        self.__nice__ = None
+        # list[RegistryObject]
         self.__values__ = __builtin__.MutableList()
         self.__child_register_item_name2value__ = (
             __builtin__.MutableOrderedDict()
         )
 
-    # tag_name: str
-    # nice: int
+    def __get_valid_values__(self):
+        # TODO(lixinqi)
+        # def IsValid(elt):
+        #     return elt.value != None
+        #
+        # return __builtin__.filter(IsValid, self.__values__)
+        return self.__values__
+
     def __getattr__(self, attrname):
         def contains():
             return self.__child_register_item_name2value__.contains(attrname)
@@ -41,17 +46,19 @@ class RegistryEntry:
 
         return find() if contains() else create()
 
-    def __call__(self, tag_name, nice):
-        registry_obj = RegistryObject(tag_name, nice)
+    # tag_name: str
+    # order_value: int
+    def __call__(self, tag_name, order_value):
+        registry_obj = RegistryObject(tag_name, order_value)
         self.__values__.append(registry_obj)
         return RegisterItemDecorator(registry_obj)
 
 
 class RegistryObject:
 
-    def __init__(self, tag_name, nice):
+    def __init__(self, tag_name, order_value):
         self.tag_name = tag_name
-        self.nice = nice
+        self.order_value = order_value
         self.value = None
 
 

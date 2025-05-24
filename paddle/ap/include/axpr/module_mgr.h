@@ -52,20 +52,34 @@ class ModuleMgr {
   }
 
   template <typename InitT>
-  adt::Result<Frame<SerializableValue>> GetOrCreateByModuleName(
-      const std::string& module_name, const InitT& Init) {
-    {
-      const auto& iter = module_name2const_global_frame_.find(module_name);
+  adt::Result<Frame<SerializableValue>> GetOrCreate(
+      const std::optional<std::string>& opt_module_name,
+      std::optional<std::string> opt_module_filepath,
+      const InitT& Init) {
+    if (opt_module_name.has_value()) {
+      const auto& iter =
+          module_name2const_global_frame_.find(opt_module_name.value());
       if (iter != module_name2const_global_frame_.end()) {
         return iter->second;
       }
     }
-    ADT_LET_CONST_REF(file_path, GetFilePathByModuleName(module_name))
-        << adt::errors::ModuleNotFoundError{
-               std::string() + "No module named '" + module_name + "'"};
-    ADT_LET_CONST_REF(frame, GetOrCreateByFilePath(file_path, Init));
-    ADT_CHECK(
-        module_name2const_global_frame_.emplace(module_name, frame).second);
+    if (!opt_module_filepath.has_value()) {
+      ADT_CHECK(opt_module_name.has_value());
+      ADT_LET_CONST_REF(file_path,
+                        GetFilePathByModuleName(opt_module_name.value()))
+          << adt::errors::ModuleNotFoundError{std::string() +
+                                              "No module named '" +
+                                              opt_module_name.value() + "'"};
+      opt_module_filepath = file_path;
+    }
+    ADT_CHECK(opt_module_filepath.has_value());
+    ADT_LET_CONST_REF(frame,
+                      GetOrCreateByFilePath(opt_module_filepath.value(), Init));
+    if (opt_module_name.has_value()) {
+      ADT_CHECK(module_name2const_global_frame_
+                    .emplace(opt_module_name.value(), frame)
+                    .second);
+    }
     return frame;
   }
 

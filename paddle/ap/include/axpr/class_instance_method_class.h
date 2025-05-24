@@ -73,12 +73,7 @@ struct MethodClassImpl<ValueT, ClassInstance<ValueT>> {
       return instance_attrs->Get(attr_name);
     }
     const auto& opt_func = GetClassAttr(self, attr_name);
-    ADT_CHECK(opt_func.has_value()) << adt::errors::AttributeError{
-        std::string() + "type object '" + self->type.class_attrs->class_name +
-        "' has no attribute '" + attr_name + "'"};
-    if (opt_func.has_value()) {
-      return opt_func.value();
-    }
+    if (opt_func.has_value()) return opt_func.value();
     const auto& opt_getter = GetClassAttr(self, "__getattr__");
     ADT_CHECK(opt_getter.has_value()) << adt::errors::AttributeError{
         std::string() + "type object '" + self->type.class_attrs->class_name +

@@ -14,11 +14,6 @@
 
 import __builtin__
 
-
-def do_nothing():
-    pass
-
-
 DataType = __builtin__.DataType
 DataValue = __builtin__.DataValue
 PointerType = __builtin__.PointerType
@@ -56,3 +51,11 @@ auto_immutable_value_registry_key = (
 is_immutable_value_registered = __builtin__.is_immutable_value_registered
 get_registered_immutable_value = __builtin__.get_registered_immutable_value
 register_immutable_value = __builtin__.register_immutable_value
+
+
+def do_nothing():
+    pass
+
+
+def import_by_file_path(file_path):
+    return __builtin__import(None, file_path)  # noqa: F821

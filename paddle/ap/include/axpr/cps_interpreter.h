@@ -21,7 +21,6 @@
 #include "paddle/ap/include/axpr/bool_helper.h"
 #include "paddle/ap/include/axpr/builtin_classes.h"
 #include "paddle/ap/include/axpr/builtin_environment.h"
-#include "paddle/ap/include/axpr/builtin_frame_util.h"
 #include "paddle/ap/include/axpr/builtin_functions.h"
 #include "paddle/ap/include/axpr/call_environment.h"
 #include "paddle/ap/include/axpr/const_global_environment.h"
