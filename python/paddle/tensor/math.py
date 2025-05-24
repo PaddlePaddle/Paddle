@@ -4723,18 +4723,21 @@ def cumprod(
     """
 
     if dtype is not None:
-        if x.dtype != convert_np_dtype_to_dtype_(dtype):
-            x = cast(x, dtype)
-    elif convert_dtype(x.dtype) in [
-        "bool",
-        "uint16",
-        "int8",
-        "int16",
-        "int32",
-        "uint8",
-    ]:
+        target_dtype = convert_np_dtype_to_dtype_(dtype)
+        if x.dtype != target_dtype:
+            x = cast(x, target_dtype)
+    else:
+        converted_x_dtype = convert_dtype(x.dtype)
         # use the default platform integer when integer dtype with a precision less than that of the default platform integer
-        x = cast(x, "int64")
+        if converted_x_dtype in {
+            "bool",
+            "uint16",
+            "int8",
+            "int16",
+            "int32",
+            "uint8",
+        }:
+            x = cast(x, "int64")
 
     if in_dynamic_or_pir_mode():
         return _C_ops.cumprod(x, dim, False, False)
