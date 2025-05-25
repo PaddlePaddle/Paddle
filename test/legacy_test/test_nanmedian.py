@@ -624,11 +624,14 @@ class TestNanmedianOp_ZeroSize(TestNanmedianFP16Op):
         self.public_python_api = paddle.nanmedian
         self.dtype = np.float32
         self.python_out_sig = ["Out"]
-        X = np.random.random((100, 0)).astype('float16')
+        X = np.random.random((100, 0)).astype('float32')
         Out = np.nanmedian(X)
         indices = np.zeros_like(Out, dtype='int64')
         self.inputs = {'X': X}
         self.outputs = {'Out': Out, 'MedianIndex': indices}
+
+    def test_check_output(self):
+        self.check_output(check_pir=True, equal_nan=True)
 
 
 @unittest.skipIf(
