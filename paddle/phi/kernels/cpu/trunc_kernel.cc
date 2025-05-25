@@ -28,9 +28,6 @@ void TruncKernel(const Context& dev_ctx,
   size_t numel = x.numel();
   const T* x_data = x.data<T>();
   T* out_data = dev_ctx.template Alloc<T>(out);
-  if (out && out->numel() == 0) {
-    return;
-  }
 
   for (size_t i = 0; i < numel; i++) {
     out_data[i] = trunc(x_data[i]);
