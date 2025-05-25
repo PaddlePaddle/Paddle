@@ -112,8 +112,6 @@ def convert_np_dtype_to_dtype_(np_dtype) -> DataType:
         DataType : The data type in Paddle.
 
     """
-    if isinstance(np_dtype, DataType):
-        return np_dtype
     # Convert the data type string to numpy data type.
     if isinstance(np_dtype, str) and np_dtype == "bfloat16":
         # since there is still no support for bfloat16 in NumPy,
