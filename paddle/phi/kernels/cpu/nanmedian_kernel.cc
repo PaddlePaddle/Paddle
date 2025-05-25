@@ -224,11 +224,11 @@ void NanmedianKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<int64_t>(median_index);
     if (out && out->numel() != 0) {
       phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+          dev_ctx, phi::IntArray(common::vectorize(out->dims())), NAN, out);
       phi::Full<int64_t, Context>(
           dev_ctx,
           phi::IntArray(common::vectorize(median_index->dims())),
-          0,
+          NAN,
           median_index);
     }
     return;
