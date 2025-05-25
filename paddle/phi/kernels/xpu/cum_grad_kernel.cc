@@ -37,7 +37,7 @@ void CumsumGradKernel(const Context& dev_ctx,
     x_grad->Resize(x_dims);
   }
   CumsumKernel<T, Context>(
-      dev_ctx, out_grad, axis, flatten, exclusive, !reverse, x_grad);
+      dev_ctx, out_grad, axis, flatten, exclusive, !reverse, x.dtype(), x_grad);
   if (flatten) {
     x_grad->Resize(x_dims);
   }
