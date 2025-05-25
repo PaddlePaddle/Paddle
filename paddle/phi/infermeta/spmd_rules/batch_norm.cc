@@ -416,7 +416,7 @@ SpmdInfo BatchNormGradInferSpmd(const DistMetaTensor& x,
       GetDimsMappingForAxes(saved_variance_axes, axis_to_dim_map));
   TensorDistAttr reserve_space_attr_dst =
       CopyTensorDistAttrForOutput(x_dist_attr_src);
-  std::vector reserve_space_dims_mapping = {-1};
+  std::vector<int64_t> reserve_space_dims_mapping = {-1};
   reserve_space_attr_dst.set_dims_mapping(reserve_space_dims_mapping);
   TensorDistAttr out_grad_attr_dst =
       CopyTensorDistAttrForOutput(x_dist_attr_src);
