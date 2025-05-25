@@ -33,8 +33,8 @@ void MaskedFillGradKernel(const Context& dev_ctx,
                           const DenseTensor& out_grad,
                           DenseTensor* x_grad,
                           DenseTensor* v_grad) {
-  auto x_grad_dims = x_grad->dims();
-  auto mask_dims = mask.dims();
+  const auto& x_grad_dims = x_grad->dims();
+  const auto& mask_dims = mask.dims();
   bool expand_x = false;
   auto expanded_size =
       common::vectorize(funcs::BroadcastTwoDims(x_grad_dims, mask_dims, -1));

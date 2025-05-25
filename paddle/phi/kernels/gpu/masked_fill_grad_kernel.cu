@@ -145,9 +145,9 @@ void MaskedFillGradKernel(const Context& dev_ctx,
     return;
   }
 
-  auto out_grad_dims = out_grad.dims();
-  auto x_grad_dims = x_grad->dims();
-  auto mask_dims = mask.dims();
+  const auto& out_grad_dims = out_grad.dims();
+  const auto& x_grad_dims = x_grad->dims();
+  const auto& mask_dims = mask.dims();
 
   DenseTensor mask_expand;
   DenseTensor x_grad_expand;

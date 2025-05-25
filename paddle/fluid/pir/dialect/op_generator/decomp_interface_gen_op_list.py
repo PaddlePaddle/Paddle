@@ -57,7 +57,6 @@ GENERATE_IMPL_DECOMP = [
     "lerp",
     "log_loss",
     "log_softmax",
-    "masked_fill",
     "mean",
     "mean_all",
     "meshgrid",

@@ -29,8 +29,8 @@ void MaskedFillKernel(const Context& dev_ctx,
                       const DenseTensor& mask,
                       const DenseTensor& value,
                       DenseTensor* out) {
-  auto x_dims = x.dims();
-  auto mask_dims = mask.dims();
+  const auto& x_dims = x.dims();
+  const auto& mask_dims = mask.dims();
 
   auto expanded_size =
       common::vectorize(phi::funcs::BroadcastTwoDims(x_dims, mask_dims, -1));
