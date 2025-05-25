@@ -6286,8 +6286,6 @@ void CalAuxLossInferMeta(const MetaTensor& gate_prob,
                          MetaTensor* ce) {
   auto gate_prob_dims = gate_prob.dims();
   auto dispatch_mask_dims = dispatch_mask.dims();
-  auto tokens_mask_dims = tokens_mask.dims();
-  auto dispatch_tokens_mask_dims = dispatch_tokens_mask.dims();
 
   PADDLE_ENFORCE_EQ(
       gate_prob_dims.size(),
@@ -6331,26 +6329,44 @@ void CalAuxLossInferMeta(const MetaTensor& gate_prob,
       phi::DataType::INT64,
       errors::InvalidArgument("The input dispatch_mask type should be INT64"));
 
-  PADDLE_ENFORCE_EQ(
-      tokens_mask_dims.size(),
-      1,
-      errors::InvalidArgument("Input tokens_mask should have 1 dimensions"));
+  if (tokens_mask) {
+    auto tokens_mask_dims = tokens_mask.dims();
+    PADDLE_ENFORCE_EQ(
+        tokens_mask_dims.size(),
+        1,
+        errors::InvalidArgument("Input tokens_mask should have 1 dimensions"));
 
-  PADDLE_ENFORCE_EQ(
-      tokens_mask.dtype(),
-      gate_prob.dtype(),
-      errors::InvalidArgument(
-          "The input tokens_mask type should be equal to gate_prob type"));
+    PADDLE_ENFORCE_EQ(
+        tokens_mask.dtype(),
+        gate_prob.dtype(),
+        errors::InvalidArgument(
+            "The input tokens_mask type should be equal to gate_prob type"));
 
-  PADDLE_ENFORCE_EQ(dispatch_tokens_mask_dims.size(),
-                    1,
-                    errors::InvalidArgument(
-                        "Input dispatch_tokens_mask should have 1 dimensions"));
+    PADDLE_ENFORCE_EQ(
+        tokens_mask_dims[0],
+        gate_prob_dims[0],
+        errors::InvalidArgument(
+            "The 0-th dimension of tokens_mask [%d] "
+            "must match that of the 0-th dimension of gate_prob [%d].",
+            tokens_mask_dims[0],
+            gate_prob_dims[0]));
+  }
 
-  PADDLE_ENFORCE_EQ(dispatch_tokens_mask.dtype(),
-                    phi::DataType::BOOL,
-                    errors::InvalidArgument(
-                        "The input dispatch_tokens_mask type should be BOOL"));
+  if (dispatch_tokens_mask) {
+    auto dispatch_tokens_mask_dims = dispatch_tokens_mask.dims();
+
+    PADDLE_ENFORCE_EQ(
+        dispatch_tokens_mask_dims.size(),
+        1,
+        errors::InvalidArgument(
+            "Input dispatch_tokens_mask should have 1 dimensions"));
+
+    PADDLE_ENFORCE_EQ(
+        dispatch_tokens_mask.dtype(),
+        phi::DataType::BOOL,
+        errors::InvalidArgument(
+            "The input dispatch_tokens_mask type should be BOOL"));
+  }
 
   l_aux_loss->set_dims({1});
   l_aux_loss->set_dtype(gate_prob.dtype());
@@ -6375,7 +6391,6 @@ void MoeGateDispatchInferMeta(const MetaTensor& x,
                               MetaTensor* expert_id) {
   auto x_dims = x.dims();
   auto gate_logits_dims = gate_logits.dims();
-  auto corr_bias_dims = corr_bias.dims();
 
   const int64_t num_rows = x_dims[0];
   const int64_t hidden_size = x_dims[1];
@@ -6408,26 +6423,29 @@ void MoeGateDispatchInferMeta(const MetaTensor& x,
                         gate_logits_dims[1],
                         k));
 
-  PADDLE_ENFORCE_EQ(
-      corr_bias.dtype(),
-      phi::DataType::FLOAT32,
-      errors::InvalidArgument(
-          "The dtype of rotary_tensor must be float32, but got %d",
-          corr_bias.dtype()));
+  if (corr_bias) {
+    auto corr_bias_dims = corr_bias.dims();
+    PADDLE_ENFORCE_EQ(
+        corr_bias.dtype(),
+        phi::DataType::FLOAT32,
+        errors::InvalidArgument(
+            "The dtype of rotary_tensor must be float32, but got %d",
+            corr_bias.dtype()));
 
-  PADDLE_ENFORCE_EQ(
-      corr_bias_dims.size(),
-      1,
-      errors::InvalidArgument("Input corr_bias should have 1 dimensions"));
+    PADDLE_ENFORCE_EQ(
+        corr_bias_dims.size(),
+        1,
+        errors::InvalidArgument("Input corr_bias should have 1 dimensions"));
 
-  PADDLE_ENFORCE_EQ(
-      corr_bias_dims[0],
-      gate_logits_dims[1],
-      errors::InvalidArgument(
-          "The 0-th dimension of x [%d] "
-          "must match that of the 0-th dimension gate_logits [%d].",
-          corr_bias_dims[0],
-          gate_logits_dims[1]));
+    PADDLE_ENFORCE_EQ(
+        corr_bias_dims[0],
+        gate_logits_dims[1],
+        errors::InvalidArgument(
+            "The 0-th dimension of x [%d] "
+            "must match that of the 0-th dimension gate_logits [%d].",
+            corr_bias_dims[0],
+            gate_logits_dims[1]));
+  }
 
   std::vector<int64_t> y_dims;
   if (use_pad) {

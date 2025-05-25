@@ -320,7 +320,7 @@ template <typename T, typename Context>
 void MoeGradDispatchKernel(const Context &dev_ctx,
                            const DenseTensor &x,
                            const DenseTensor &gate_logits,
-                           const DenseTensor &corr_bias,
+                           const paddle::optional<DenseTensor> &corr_bias,
                            const int64_t k,
                            const int64_t capacity,
                            const bool use_pad,
@@ -337,7 +337,6 @@ void MoeGradDispatchKernel(const Context &dev_ctx,
 
   auto x_dims = x.dims();
   auto gate_logits_dims = gate_logits.dims();
-  auto corr_bias_dims = corr_bias.dims();
 
   const int64_t num_rows = x_dims[0];
   const int64_t hidden_size = x_dims[1];

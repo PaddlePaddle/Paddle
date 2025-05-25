@@ -22,7 +22,7 @@ template <typename T, typename Context>
 void MoeGradDispatchKernel(const Context& dev_ctx,
                            const DenseTensor& x,
                            const DenseTensor& gate_logits,
-                           const DenseTensor& corr_bias,
+                           const paddle::optional<DenseTensor>& corr_bias,
                            const int64_t k,
                            const int64_t capacity,
                            const bool use_pad,

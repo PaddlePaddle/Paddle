@@ -204,8 +204,8 @@ template <typename T, typename Context>
 void CalAuxLossKernel(const Context& dev_ctx,
                       const DenseTensor& gate_prob,
                       const DenseTensor& dispatch_mask,
-                      const DenseTensor& tokens_mask,
-                      const DenseTensor& dispatch_tokens_mask,
+                      const paddle::optional<DenseTensor>& tokens_mask,
+                      const paddle::optional<DenseTensor>& dispatch_tokens_mask,
                       int64_t num_experts,
                       bool use_group,
                       int64_t moe_k,
@@ -215,38 +215,27 @@ void CalAuxLossKernel(const Context& dev_ctx,
                       DenseTensor* ce) {
   auto gate_prob_dims = gate_prob.dims();
   auto dispatch_mask_dims = dispatch_mask.dims();
-  auto dispatch_tokens_mask_dim = dispatch_tokens_mask.dims();
 
-  const T* gate_prob_data = gate_prob.data<T>();
-  const int64_t* dispatch_mask_data = dispatch_mask.data<int64_t>();
-  const T* tokens_mask_data = tokens_mask.data<T>();
-  const bool* dispatch_tokens_mask_data = dispatch_tokens_mask.data<bool>();
+  int64_t dispatch_tokens_mask_len = 0;
+  if (dispatch_tokens_mask) {
+    dispatch_tokens_mask_len = dispatch_tokens_mask.get_ptr()->dims()[0];
+  }
 
   T* l_aux_loss_data = dev_ctx.template Alloc<T>(l_aux_loss);
   T* seqlen_float_data = dev_ctx.template Alloc<T>(seqlen_float);
   T* ce_data = dev_ctx.template Alloc<T>(ce);
 
-  int64_t row_gate_prob = gate_prob_dims[0];
-  int64_t col_gate_prob = gate_prob_dims[1];
-
-  int64_t col_dispatch_mask = 0;
-  int64_t row_dispatch_mask = dispatch_mask_dims[0];
-  if (dispatch_mask_dims.size() > 1) {
-    col_dispatch_mask = dispatch_mask_dims[1];
-  } else {
-    col_dispatch_mask = 1;
-  }
-
-  int dispatch_tokens_mask_len = dispatch_tokens_mask_dim[0];
-
-  cal_aux_loss<T>(gate_prob_data,
-                  row_gate_prob,
-                  col_gate_prob,
-                  dispatch_mask_data,
-                  row_dispatch_mask,
-                  col_dispatch_mask,
-                  tokens_mask_data,
-                  dispatch_tokens_mask_data,
+  cal_aux_loss<T>(gate_prob.data<T>(),
+                  gate_prob_dims[0],
+                  gate_prob_dims[1],
+                  dispatch_mask.data<int64_t>(),
+                  dispatch_mask_dims[0],
+                  dispatch_mask_dims.size() > 1 ? dispatch_mask_dims[1]
+                                                : static_cast<int64_t>(1),
+                  tokens_mask ? tokens_mask.get_ptr()->data<T>() : nullptr,
+                  dispatch_tokens_mask
+                      ? dispatch_tokens_mask.get_ptr()->data<bool>()
+                      : nullptr,
                   dispatch_tokens_mask_len,
                   num_experts,
                   use_group,

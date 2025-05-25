@@ -13,7 +13,8 @@
 // limitations under the License.
 #pragma once
 
-#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
 
@@ -21,8 +22,8 @@ template <typename T, typename Context>
 void CalAuxLossKernel(const Context& dev_ctx,
                       const DenseTensor& gate_prob,
                       const DenseTensor& dispatch_mask,
-                      const DenseTensor& tokens_mask,
-                      const DenseTensor& dispatch_tokens_mask,
+                      const paddle::optional<DenseTensor>& tokens_mask,
+                      const paddle::optional<DenseTensor>& dispatch_tokens_mask,
                       int64_t num_experts,
                       bool use_group,
                       int64_t moe_k,
