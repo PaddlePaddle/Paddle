@@ -356,6 +356,11 @@ void NanmedianKernel(const Context& dev_ctx,
                      const std::string& mode,
                      DenseTensor* out,
                      DenseTensor* median_index) {
+  if (out && out->numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    dev_ctx.template Alloc<int64_t>(median_index);
+    return;
+  }
   DenseTensor tmp_x;
   auto rank = x.dims().size();
   if ((axes.size() == 0) || rank <= 1) {

@@ -617,6 +617,20 @@ class TestNanmedianFP16Op(OpTest):
         self.check_grad(['X'], 'Out', check_pir=True)
 
 
+class TestNanmedianOp_ZeroSize(TestNanmedianFP16Op):
+    def setUp(self):
+        self.op_type = "nanmedian"
+        self.python_api = paddle.nanmedian
+        self.public_python_api = paddle.nanmedian
+        self.dtype = np.float32
+        self.python_out_sig = ["Out"]
+        X = np.random.random((100, 0)).astype('float16')
+        Out = np.nanmedian(X)
+        indices = np.zeros_like(Out, dtype='int64')
+        self.inputs = {'X': X}
+        self.outputs = {'Out': Out, 'MedianIndex': indices}
+
+
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
