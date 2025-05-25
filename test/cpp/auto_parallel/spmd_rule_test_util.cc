@@ -55,7 +55,8 @@ void check_empty_dist_attr(const phi::distributed::ArgDistAttr& dist_attr,
   EXPECT_TRUE(
       paddle::holds_alternative<phi::distributed::TensorDistAttr>(dist_attr))
       << line;
-  EXPECT_EQ(paddle::get<0>(dist_attr), phi::distributed::TensorDistAttr());
+  EXPECT_EQ(paddle::get<phi::distributed::TensorDistAttr>(dist_attr),
+            phi::distributed::TensorDistAttr());
 }
 
 void check_partial_dims(const phi::distributed::ArgDistAttr& dist_attr,

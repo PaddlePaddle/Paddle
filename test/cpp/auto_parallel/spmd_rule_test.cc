@@ -3050,7 +3050,7 @@ TEST(RolAlign, Ctor) {
   EXPECT_EQ(backward_info.second.size(), 1UL);
   check_dim_mapping(backward_info.first[0], {-1, 1, -1, -1});
   check_dim_mapping(backward_info.first[1], {-1, -1});
-  check_empty_dist_attr(forward_info.first[2]);
+  check_empty_dist_attr(backward_info.first[2]);
   check_dim_mapping(backward_info.first[3], {-1, 1, -1, -1});
   check_dim_mapping(backward_info.first[0], {-1, 1, -1, -1});
   check_partial_dims(backward_info.first[0], {1});
