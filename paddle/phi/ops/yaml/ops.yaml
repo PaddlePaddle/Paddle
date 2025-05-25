@@ -2805,6 +2805,7 @@
   output : Tensor(y), Tensor(saved_mean), Tensor(saved_variance)
   infer_meta :
     func : InstanceNormInferMeta
+    spmd_rule : InstanceNormInferSpmd
   kernel :
     func : instance_norm
     data_type : x

@@ -531,7 +531,11 @@ PD_REGISTER_SPMD_RULE(
     layer_norm,
     PD_INFER_SPMD(phi::distributed::LayerNormInferSpmd),
     PD_INFER_SPMD(phi::distributed::LayerNormInferSpmdReverse));
-
+// instance_norm
+PD_REGISTER_SPMD_RULE(
+    instance_norm,
+    PD_INFER_SPMD(phi::distributed::InstanceNormInferSpmd),
+    PD_INFER_SPMD(phi::distributed::InstanceNormGradInferSpmd));
 // fused_rms_norm
 // NOTE(ZHIQIU): Temporally register fused_rms_norm rule,
 // this is not for rms_norm kernel, but for the custom kernel
