@@ -766,4 +766,9 @@ PD_REGISTER_SPMD_RULE(cummin,
 PD_REGISTER_SPMD_RULE(argsort,
                       PD_INFER_SPMD(phi::distributed::ArgSortInferSpmd),
                       PD_INFER_SPMD(phi::distributed::ArgSortGradInferSpmd));
+
+// roi_align
+PD_REGISTER_SPMD_RULE(roi_align,
+                      PD_INFER_SPMD(phi::distributed::RoiAlignInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::RoiAlignGradInferSpmd));
 }  // namespace phi::distributed

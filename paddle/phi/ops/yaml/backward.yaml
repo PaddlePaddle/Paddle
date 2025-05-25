@@ -2793,6 +2793,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : RoiAlignGradInferSpmd
   kernel :
     func : roi_align_grad
     data_type : boxes
