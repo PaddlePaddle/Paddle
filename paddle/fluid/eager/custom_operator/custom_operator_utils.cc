@@ -806,20 +806,20 @@ void run_custom_op_impl(const paddle::OpMetaInfo& op_info,
     std::vector<Tensor>* output_all = ctx.AllMutableOutput();
     for (size_t i = 0; i < output_all->size(); ++i) {
       auto& tensor = output_all->at(i);
-      if (tensor.initialized()) {
-        phi::distributed::TensorDistAttr dist_attr;
-        if (!spmd_info.second.empty()) {
-          dist_attr = PADDLE_GET_CONST(phi::distributed::TensorDistAttr,
-                                       spmd_info.second[i]);
-        } else {
-          std::vector<int64_t> shape = common::vectorize(output_dims[i]);
-          dist_attr.set_default_dims_mapping(shape);
-          dist_attr.set_process_mesh(current_process_mesh);
-        }
+      phi::distributed::TensorDistAttr dist_attr;
+      if (!spmd_info.second.empty()) {
+        dist_attr = PADDLE_GET_CONST(phi::distributed::TensorDistAttr,
+                                     spmd_info.second[i]);
+      } else {
+        std::vector<int64_t> shape = common::vectorize(output_dims[i]);
+        dist_attr.set_default_dims_mapping(shape);
+        dist_attr.set_process_mesh(current_process_mesh);
+      }
+      auto dense_tensor =
+          std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl());
+      if (dense_tensor != nullptr) {
         auto dist_t = std::make_shared<phi::distributed::DistTensor>(
-            std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl()),
-            output_dims[i],
-            dist_attr);
+            dense_tensor, output_dims[i], dist_attr);
         tensor.set_impl(dist_t);
       }
     }
