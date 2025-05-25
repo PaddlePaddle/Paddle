@@ -622,9 +622,9 @@ class TestNanmedianOp_ZeroSize(TestNanmedianFP16Op):
         self.op_type = "nanmedian"
         self.python_api = paddle.nanmedian
         self.public_python_api = paddle.nanmedian
-        self.dtype = np.float32
+        self.dtype = np.float64
         self.python_out_sig = ["Out"]
-        X = np.random.random((100, 0)).astype('float32')
+        X = np.random.random((100, 0)).astype('float64')
         Out = np.nanmedian(X)
         indices = np.zeros_like(Out, dtype='int64')
         self.inputs = {'X': X}
