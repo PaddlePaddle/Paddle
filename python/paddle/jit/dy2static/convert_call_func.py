@@ -37,12 +37,16 @@ from .convert_operators import (
 )
 from .logging_utils import TranslatorLogger
 from .program_translator import (
-    CONVERSION_OPTIONS,
     StaticFunction,
     convert_to_static,
     unwrap_decorators,
 )
-from .utils import is_builtin, is_paddle_func, patch_method_guard
+from .utils import (
+    TransformOptions,
+    is_builtin,
+    is_paddle_func,
+    patch_method_guard,
+)
 
 if TYPE_CHECKING:
     from types import ModuleType
@@ -51,31 +55,6 @@ __all__ = []
 
 
 translator_logger = TranslatorLogger()
-
-
-class ConversionOptions:
-    """
-    A container for conversion flags of a function in dynamic-to-static.
-
-    Attributes:
-        not_convert(bool): An attribute indicates that the function won't be converted in dynamic-to-static.
-
-    NOTE(liym27): More attributes and methods can be added in this class.
-    """
-
-    def __init__(self, not_convert=False):
-        self.not_convert = not_convert
-
-    def attach(self, func):
-        if inspect.ismethod(func):
-            func = func.__func__
-
-        if inspect.isfunction(func):
-            setattr(func, CONVERSION_OPTIONS, self)
-        else:
-            translator_logger.warn(
-                f"Only support @not_to_static to type(function) or type(method), but received {type(func)}"
-            )
 
 
 def builtin_modules():
@@ -259,8 +238,9 @@ def convert_call(func):
     # in this case, unwraps it into a raw method or function.
     _, func = unwrap_decorators(func)
 
-    options = getattr(func, CONVERSION_OPTIONS, None)
-    if options is not None and options.not_convert:
+    if not TransformOptions.check_fn_need_transform(
+        func, TransformOptions.ToStaticMode.AST
+    ):
         translator_logger.log(
             2,
             "%s is not converted when it is decorated by 'paddle.jit.not_to_static'.",

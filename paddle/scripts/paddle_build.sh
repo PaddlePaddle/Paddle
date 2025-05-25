@@ -4940,7 +4940,7 @@ function main() {
       cicheck_sot)
         check_run_sot_ci
         export WITH_SHARED_PHI=ON
-        PYTHON_VERSIONS=(3.13 3.8 3.9 3.10 3.11 3.12)
+        PYTHON_VERSIONS=(3.9 3.10 3.11 3.12 3.13)
         for PY_VERSION in ${PYTHON_VERSIONS[@]}; do
             ln -sf $(which python${PY_VERSION}) /usr/local/bin/python
             ln -sf $(which pip${PY_VERSION}) /usr/local/bin/pip

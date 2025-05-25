@@ -19,10 +19,10 @@
 
 namespace phi {
 
-template <typename T>
+template <typename T, typename IndexT>
 __global__ void WhereGradCUDAKernel(
-    const int N, const T* dout, const bool* cond, T* dx, T* dy) {
-  int idx = blockDim.x * blockIdx.x + threadIdx.x;
+    const IndexT N, const T* dout, const bool* cond, T* dx, T* dy) {
+  IndexT idx = blockDim.x * blockIdx.x + threadIdx.x;
   for (; idx < N; idx += blockDim.x * gridDim.x) {
     if (dx != nullptr) {
       dx[idx] = cond[idx] ? dout[idx] : static_cast<T>(0.);
@@ -50,9 +50,15 @@ void WhereGradKernel(const Context& ctx,
 
   auto stream = ctx.stream();
   auto config = backends::gpu::GetGpuLaunchConfig1D(ctx, numel);
-  WhereGradCUDAKernel<T>
-      <<<config.block_per_grid.x, config.thread_per_block.x, 0, stream>>>(
-          numel, dout, cond_data, dx, dy);
+  if (numel <= std::numeric_limits<int>::max()) {
+    WhereGradCUDAKernel<T, int>
+        <<<config.block_per_grid.x, config.thread_per_block.x, 0, stream>>>(
+            numel, dout, cond_data, dx, dy);
+  } else {
+    WhereGradCUDAKernel<T, int64_t>
+        <<<config.block_per_grid.x, config.thread_per_block.x, 0, stream>>>(
+            numel, dout, cond_data, dx, dy);
+  }
 }
 
 }  // namespace phi
