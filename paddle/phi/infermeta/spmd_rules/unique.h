@@ -20,12 +20,6 @@ limitations under the License. */
 namespace phi {
 namespace distributed {
 
-SpmdInfo UniqueInferSpmdBase(const DistMetaTensor& x,
-                             bool return_index,
-                             bool return_inverse,
-                             bool return_counts,
-                             const std::vector<int>& axis);
-
 SpmdInfo UniqueInferSpmd(const DistMetaTensor& x,
                          bool return_index,
                          bool return_inverse,
