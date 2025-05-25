@@ -4141,6 +4141,11 @@ class TestLog2_ZeroDim(TestLog2):
         self.shape = []
 
 
+class TestLog2_ZeroSize(TestLog2):
+    def init_shape(self):
+        self.shape = [2, 0]
+
+
 class TestLog2_Op_Int(unittest.TestCase):
     def test_api_int(self):
         paddle.disable_static()
@@ -4226,6 +4231,11 @@ class TestLog10_Complex128(TestLog10_Complex64):
 class TestLog10_ZeroDim(TestLog10):
     def init_shape(self):
         self.shape = []
+
+
+class TestLog10_ZeroSize(TestLog10):
+    def init_shape(self):
+        self.shape = [2, 0]
 
 
 class TestLog10_Op_Int(unittest.TestCase):
@@ -4388,6 +4398,11 @@ class TestLog1p_Op_Int(unittest.TestCase):
 class TestLog1p_ZeroDim(TestLog1p):
     def init_shape(self):
         self.shape = []
+
+
+class TestLog1p_ZeroSize(TestLog1p):
+    def init_shape(self):
+        self.shape = [2, 0]
 
 
 class TestLog1pAPI(unittest.TestCase):
