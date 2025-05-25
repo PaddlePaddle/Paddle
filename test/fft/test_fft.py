@@ -1934,47 +1934,59 @@ class TestIfftShift(unittest.TestCase):
             )
 
 
-def create_test_class(op_type, dtype, shape, axis):
-    class Cls(unittest.TestCase):
-        def test_zero_size(self):
-            paddle.disable_static()
-            import scipy  # noqa: F401
-
-            numpy_tensor_1 = np.random.rand(*shape).astype(dtype)
-            paddle_x = paddle.to_tensor(numpy_tensor_1)
-            paddle_x.stop_gradient = False
-
-            paddle_api = eval(f"paddle.fft.{op_type}")
-            paddle_out = paddle_api(
-                paddle_x, axes=axis
-            )  # Here the parameter is axes
-            numpy_api = eval(f"scipy.fft.{op_type}")
-            numpy_out = numpy_api(numpy_tensor_1, axes=axis)
-
+@place(DEVICES)
+@parameterize(
+    (TEST_CASE_NAME, 'x', 'axes', 'dtype'),
+    [
+        ('test_1d', np.random.randn(0), (0,), 'float64'),
+        (
+            'test_2d_odd_with_all_axes',
+            np.random.randn(5, 0) + 1j * np.random.randn(5, 0),
+            None,
+            'complex128',
+        ),
+    ],
+)
+class TestFftShift_ZeroSize(unittest.TestCase):
+    def test_fftshift(self):
+        """Test fftshift with norm condition"""
+        with paddle.base.dygraph.guard(self.place):
             np.testing.assert_allclose(
-                paddle_out.numpy(),
-                numpy_out,
-                1e-2,
-                1e-2,
-            )
-            np.testing.assert_allclose(
-                paddle_out.shape,
-                numpy_out.shape,
+                scipy.fft.fftshift(self.x, self.axes),
+                paddle.fft.fftshift(
+                    paddle.to_tensor(self.x), self.axes
+                ).numpy(),
+                rtol=RTOL.get(str(self.x.dtype)),
+                atol=ATOL.get(str(self.x.dtype)),
             )
 
-    cls_name = f"{op_type}{dtype}_0SizeTest"
-    Cls.__name__ = cls_name
-    globals()[cls_name] = Cls
 
+@place(DEVICES)
+@parameterize(
+    (TEST_CASE_NAME, 'x', 'axes'),
+    [
+        ('test_1d', np.random.randn(0), (0,), 'float64'),
+        (
+            'test_2d_odd_with_all_axes',
+            np.random.randn(5, 0) + 1j * np.random.randn(5, 0),
+            None,
+            'complex128',
+        ),
+    ],
+)
+class TestIfftShift_ZeroSize(unittest.TestCase):
+    def test_ifftshift(self):
+        """Test ifftshift with norm condition"""
+        with paddle.base.dygraph.guard(self.place):
+            np.testing.assert_allclose(
+                scipy.fft.ifftshift(self.x, self.axes),
+                paddle.fft.ifftshift(
+                    paddle.to_tensor(self.x), self.axes
+                ).numpy(),
+                rtol=RTOL.get(str(self.x.dtype)),
+                atol=ATOL.get(str(self.x.dtype)),
+            )
 
-op_list = [
-    ("fftshift", ("complex64", "complex128"), (0, -1)),
-    ("ifftshift", ("complex64", "complex128"), (0, -1)),
-]
-
-for op in op_list:
-    create_test_class(op[0], op[1][0], [3, 4, 0], op[2][0])
-    create_test_class(op[0], op[1][1], [3, 4, 0, 3, 4], op[2][1])
 
 if __name__ == '__main__':
     unittest.main()
