@@ -354,6 +354,21 @@ def _select_sdp_for_sdpa(query, key, attn_mask, dropout, is_causal) -> str:
     return "mem_efficient"
 
 
+def _convert_bool_mask_to_float(attn_mask, dtype, neg_inf=-float('inf')):
+    if attn_mask is None:
+        return None
+
+    # For boolean masks, convert True (allow attention) to 0.0, False (block attention) to neg_inf
+    if attn_mask.dtype == paddle.bool:
+        return paddle.where(
+            attn_mask,
+            paddle.to_tensor(0.0, dtype=dtype),
+            paddle.to_tensor(neg_inf, dtype=dtype),
+        )
+
+    return attn_mask
+
+
 @overload
 def flash_attention(
     query: Tensor,
@@ -1272,6 +1287,7 @@ def scaled_dot_product_attention(
         sdp_func_name = _select_sdp_for_sdpa(
             query, key, attn_mask, dropout_p, is_causal
         )
+        attn_mask = _convert_bool_mask_to_float(attn_mask, query.dtype)
         if sdp_func_name == "flash_attn":
             if in_dynamic_or_pir_mode():
                 fixed_seed_offset = None
