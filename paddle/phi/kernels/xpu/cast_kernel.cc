@@ -16,8 +16,24 @@
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/complex_kernel.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
+
+#ifdef PADDLE_WITH_XPU_FFT
+template <class T, class Context>
+static DenseTensor Fill(const Context& ctx,
+                        std::vector<int> shape,
+                        T fill_value) {
+  DenseTensor ret;
+  ret.Resize(common::make_ddim(shape));
+  ctx.template Alloc<T>(&ret);
+  funcs::SetConstant<Context, T>()(ctx, &ret, fill_value);
+  return ret;
+}
+#endif
+
 template <typename InT, typename OutT, typename Context>
 void CastXPUKernelImpl(const Context& dev_ctx,
                        const DenseTensor& x,
@@ -117,11 +133,49 @@ void CastKernel(const Context& dev_ctx,
     case DataType::INT16:
       CastXPUKernelImpl<T, int16_t, Context>(dev_ctx, x, out);
       break;
+#ifdef PADDLE_WITH_XPU_FFT
+    case DataType::COMPLEX64: {
+      if (x.numel() == 0) {
+        dev_ctx.template Alloc<T>(out);
+        return;
+      }
+      DenseTensor real;
+      real.Resize(x.dims());
+      CastXPUKernelImpl<T, float, Context>(dev_ctx, x, &real);
+      dev_ctx.template Alloc<T>(out);
+      DenseTensor imag = Fill<float, Context>(
+          dev_ctx, common::vectorize<int>(x.dims()), static_cast<float>(0.0));
+      phi::ComplexKernel<float>(dev_ctx, real, imag, out);
+      break;
+    }
+#endif
     default:
       PADDLE_THROW(common::errors::Unavailable(
           "Not supported cast %d -> %d", x.dtype(), out_dtype));
   }
 }
+#ifdef PADDLE_WITH_XPU_FFT
+template <>
+void CastKernel<phi::dtype::complex<float>, XPUContext>(
+    const XPUContext& dev_ctx,
+    const DenseTensor& x,
+    DataType out_dtype,
+    DenseTensor* out) {
+  using T = phi::dtype::complex<float>;
+  if (x.dtype() == out_dtype) {
+    if (x.dims() == phi::make_ddim({-1})) {
+      *out = x;
+      return;
+    }
+    if (!out->IsSharedWith(x)) {
+      phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+    }
+    return;
+  }
+  DenseTensor x_real = Real<T, XPUContext>(dev_ctx, x);
+  CastKernel<float, XPUContext>(dev_ctx, x_real, out_dtype, out);
+}
+#endif
 }  // namespace phi
 
 PD_REGISTER_KERNEL(cast,
@@ -133,6 +187,9 @@ PD_REGISTER_KERNEL(cast,
                    float,
                    phi::dtype::float16,
                    phi::dtype::bfloat16,
+#ifdef PADDLE_WITH_XPU_FFT
+                   phi::dtype::complex<float>,
+#endif
                    int64_t,
                    bool,
                    int8_t,

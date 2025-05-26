@@ -239,6 +239,13 @@ class TestBasicFasterGuard(unittest.TestCase):
         self.assertFalse(guard_object.check(1))
         self.assertFalse(guard_object.check("1"))
 
+    def test_is_dense_tensor_hold_allocation(self):
+        tensor = paddle.to_tensor([1, 2, 3])
+        guard = paddle.framework.core.IsNotDenseTensorHoldAllocationMatchGuard()
+        self.assertEqual(
+            guard.check(tensor), not tensor._is_dense_tensor_hold_allocation()
+        )
+
 
 class TestFasterGuardGroup(unittest.TestCase):
     def test_guard_group(self):
