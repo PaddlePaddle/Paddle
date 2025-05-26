@@ -19,6 +19,110 @@
 
 namespace phi {
 
+template <typename T>
+void cumsum_impl(const phi::XPUContext& dev_ctx,
+                 const phi::DenseTensor& x_,
+                 int axis_val,
+                 bool flatten_val,
+                 bool reverse_val,
+                 bool exclusive_val,
+                 phi::DenseTensor* out) {
+  using XPUType = typename XPUTypeTrait<T>::Type;
+  dev_ctx.template Alloc<T>(out);
+  if (out->numel() == 0) {
+    return;
+  }
+  if (x_.numel() == 1) {
+    int r = xpu::copy<XPUType>(dev_ctx.x_context(),
+                               reinterpret_cast<const XPUType*>(x_.data<T>()),
+                               reinterpret_cast<XPUType*>(out->data<T>()),
+                               x_.numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
+    return;
+  }
+
+  std::vector<int64_t> x_shape = common::vectorize<int64_t>(x_.dims());
+
+  if (flatten_val) {
+    x_shape = {x_.numel()};
+    axis_val = 0;
+  } else {
+    int x_rank = x_.dims().size();
+    PADDLE_ENFORCE_EQ(
+        axis_val < x_rank && axis_val >= (0 - x_rank),
+        true,
+        common::errors::OutOfRange(
+            "Attr(axis) is out of range, It's expected "
+            "to be in range of [-%d, %d). But received Attr(axis) = %d.",
+            x_rank,
+            x_rank,
+            axis_val));
+    if (axis_val < 0) {
+      axis_val += x_rank;
+    }
+  }
+
+  int r = xpu::cumsum<XPUType>(dev_ctx.x_context(),
+                               reinterpret_cast<const XPUType*>(x_.data<T>()),
+                               reinterpret_cast<XPUType*>(out->data<T>()),
+                               x_shape,
+                               reverse_val,
+                               exclusive_val,
+                               axis_val);
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "cumsum");
+}
+
+template <typename InT, typename Context>
+struct CumsumKernelVisitor {
+  const Context& dev_ctx_;
+  const DenseTensor& x_;
+  int axis_val_;
+  bool flatten_val_;
+  bool exclusive_val_;
+  bool reverse_val_;
+  DenseTensor* out_;
+
+  CumsumKernelVisitor(const Context& dev_ctx,
+                      const DenseTensor& x,
+                      int axis,
+                      bool flatten,
+                      bool exclusive,
+                      bool reverse,
+                      DenseTensor* out)
+      : dev_ctx_(dev_ctx),
+        x_(x),
+        axis_val_(axis),
+        flatten_val_(flatten),
+        exclusive_val_(exclusive),
+        reverse_val_(reverse),
+        out_(out) {}
+
+  template <typename OutT>
+  void apply() const {
+    DenseTensor x_casted;
+    x_casted.Resize(x_.dims());
+    dev_ctx_.template Alloc<OutT>(&x_casted);
+
+    using XPUInT = typename XPUTypeTrait<InT>::Type;
+    using XPUOutT = typename XPUTypeTrait<OutT>::Type;
+
+    int r_cast = xpu::cast<XPUInT, XPUOutT>(
+        dev_ctx_.x_context(),
+        reinterpret_cast<const XPUInT*>(x_.data<InT>()),
+        reinterpret_cast<XPUOutT*>(x_casted.data<OutT>(x_.place())),
+        x_.numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r_cast, "xpu::cast_in_visitor_failed");
+
+    cumsum_impl<OutT>(dev_ctx_,
+                      x_casted,
+                      axis_val_,
+                      flatten_val_,
+                      reverse_val_,
+                      exclusive_val_,
+                      out_);
+  }
+};
+
 template <typename T, typename Context>
 void CumsumKernel(const Context& dev_ctx,
                   const DenseTensor& x,
@@ -28,62 +132,14 @@ void CumsumKernel(const Context& dev_ctx,
                   bool reverse,
                   DataType dtype,
                   DenseTensor* out) {
-  using XPUType = typename XPUTypeTrait<T>::Type;
-  if (out && out->numel() == 0) {
-    dev_ctx.template Alloc<T>(out);
-    return;
-  }
-  dev_ctx.template Alloc<T>(out);
-  if (out->numel() == 0) {
-    return;
-  }
-  if (x.numel() == 1) {
-    int r = xpu::copy<XPUType>(dev_ctx.x_context(),
-                               reinterpret_cast<const XPUType*>(x.data<T>()),
-                               reinterpret_cast<XPUType*>(out->data<T>()),
-                               x.numel());
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
-    return;
-  }
-
-  // prepare for call xdnn api
-  std::vector<int64_t> x_shape = common::vectorize<int64_t>(x.dims());
-  int axis_as_int = axis.to<int>();
-
-  if (flatten) {
-    // flatten to 1-dim vector
-    x_shape = {x.numel()};
-    axis_as_int = 0;
+  if (out->dtype() == x.dtype()) {
+    cumsum_impl<T>(
+        dev_ctx, x, axis.to<int>(), flatten, reverse, exclusive, out);
   } else {
-    // not flatten
-    // check axis_as_int
-    auto out_dims = out->dims();
-
-    PADDLE_ENFORCE_EQ(
-        axis_as_int < out_dims.size() && axis_as_int >= (0 - out_dims.size()),
-        true,
-        common::errors::OutOfRange(
-            "Attr(axis) is out of range, It's expected "
-            "to be in range of [-%d, %d]. But received Attr(axis) = %d.",
-            out_dims.size(),
-            out_dims.size() - 1,
-            axis_as_int));
-    if (axis_as_int < 0) {
-      axis_as_int += out_dims.size();
-    }
+    CumsumKernelVisitor<T, Context> visitor(
+        dev_ctx, x, axis.to<int>(), flatten, exclusive, reverse, out);
+    phi::VisitDataType(out->dtype(), visitor);
   }
-
-  // template<typename T> DLL_EXPORT int cumsum(Context* ctx, const T* x, T*
-  // y, const std::vector<int>& xshape, bool reverse, bool exclusive, int
-  // axis);
-  int r = xpu::cumsum<XPUType>(dev_ctx.x_context(),
-                               reinterpret_cast<const XPUType*>(x.data<T>()),
-                               reinterpret_cast<XPUType*>(out->data<T>()),
-                               x_shape,
-                               reverse,
-                               exclusive,
-                               axis_as_int);
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "cumsum");
 }
 
 }  // namespace phi
