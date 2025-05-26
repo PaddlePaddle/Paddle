@@ -159,7 +159,7 @@ class TestImagOp(OpTest):
             )
 
 
-class TTestImagOpZeroSize1(TestImagOp):
+class TestImagOpZeroSize1(TestImagOp):
     def init_input_output(self):
         self.inputs = {
             'X': np.random.random(0).astype(self.dtype)
