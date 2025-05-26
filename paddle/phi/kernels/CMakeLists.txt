@@ -237,7 +237,8 @@ if(WITH_ROCM)
     "gpu/matrix_rank_tol_kernel.cu"
     "gpu/svd_kernel.cu"
     "gpu/cuda_gemm_kernel.cu"
-    "gpu/int_bincount.cu")
+    "gpu/int_bincount.cu"
+    "gpu/layer_norm_cuda_kernel.cu")
 endif()
 
 # Remove AP kernel when CINN is not enabled.

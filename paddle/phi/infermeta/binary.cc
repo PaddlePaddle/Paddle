@@ -4592,6 +4592,20 @@ void WeightDequantizeInferMeta(const MetaTensor& x,
   out->set_dtype(scale.dtype());
 }
 
+void FusedRMSNormInferMeta(const MetaTensor &x,
+              const MetaTensor &scale,
+              float epsilon,
+              MetaTensor* y,
+              MetaTensor* invvar){
+  // Y: same shape, dtype, layout as X
+  y->set_dims(x.dims());
+  y->set_dtype(x.dtype());
+  // mean & invvar: 1-D length = x.dims()[0]
+  int64_t rows = x.dims()[0];
+  invvar->set_dims(DDim({rows}));
+  invvar->set_dtype(DataType::FLOAT32);
+}
+
 }  // namespace phi
 
 PD_REGISTER_INFER_META_FN(add_raw, phi::ElementwiseRawInferMeta);

@@ -6273,5 +6273,6 @@ void TopPSamplingInferMeta(const MetaTensor& x,
   }
 }
 
+
 }  // namespace phi
 PD_REGISTER_INFER_META_FN(batch_norm_infer, phi::BatchNormInferInferMeta);

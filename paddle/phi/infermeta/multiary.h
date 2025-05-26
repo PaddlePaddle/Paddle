@@ -1284,4 +1284,6 @@ void TopPSamplingInferMeta(const MetaTensor& x,
                            MetaTensor* topk_scores,
                            MetaTensor* topk_ids);
 
+
+
 }  // namespace phi

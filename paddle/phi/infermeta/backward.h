@@ -680,4 +680,13 @@ void SetValueGradInferMeta(const MetaTensor& out_grad,
                            MetaTensor* x_grad,
                            MetaTensor* value_grad);
 
+void FusedRMSNormGradInferMeta(const MetaTensor &x,
+              const MetaTensor &scale,
+              const MetaTensor &invvar,
+              const MetaTensor &dy,
+              float epsilon,
+              MetaTensor* grad_x,
+              MetaTensor* grad_scale);
+
+
 }  // namespace phi
