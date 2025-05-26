@@ -160,7 +160,7 @@ def avx_supported():
 
         # http://en.wikipedia.org/wiki/CPUID#EAX.3D1:_Processor_Info_and_Feature_Bits
         # mov eax,0x1; cpuid; mov cx, ax; ret
-        code_str = b"\xB8\x01\x00\x00\x00\x0f\xa2\x89\xC8\xC3"
+        code_str = b"\xb8\x01\x00\x00\x00\x0f\xa2\x89\xc8\xc3"
         avx_bit = 28
         retval = 0
         try:

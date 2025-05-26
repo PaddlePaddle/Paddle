@@ -76,7 +76,7 @@ class DebugMode(Enum):
 
 
 def check_layer_numerics(
-    func: Callable[_InputT, _RetT]
+    func: Callable[_InputT, _RetT],
 ) -> Callable[_InputT, _RetT]:
     """
     This decorator is used to check the numerical values of the layer's input and output data.
