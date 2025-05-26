@@ -878,7 +878,9 @@ class BuiltinVariable(FunctionVariable):
                 # so we can directly raise SotErrorBase.
                 raise
             except Exception as e:
-                raise SotCapturedExceptionFactory.create(origin_exc=e) from e
+                raise SotCapturedExceptionFactory.create(
+                    origin_exc=e, tracked_args=[args, kwargs]
+                ) from e
 
         if ENV_SOT_ALLOW_DYNAMIC_SHAPE.get() and any(
             isinstance(var, SymbolicVariable)

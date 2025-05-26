@@ -490,8 +490,9 @@ class VariableCreator(metaclass=Singleton):
         return self.var_cache[var_feature_name]
 
     def infer_meta(self, func, *args, **kwargs):
-        with paddle.base.framework._dygraph_guard(None), UniqueNameGuard(
-            self.var_name_generator
+        with (
+            paddle.base.framework._dygraph_guard(None),
+            UniqueNameGuard(self.var_name_generator),
         ):
             if func is paddle.distributed.shard_tensor:
                 args, kwargs = (

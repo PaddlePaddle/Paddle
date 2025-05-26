@@ -31,7 +31,7 @@ class TestErfinvOp(OpTest):
         self.op_type = "erfinv"
         self.python_api = paddle.erfinv
         self.init_dtype()
-        self.shape = [11, 17]
+        self.init_shape()
         self.x = np.random.uniform(-1, 1, size=self.shape).astype(self.dtype)
         self.res_ref = erfinv(self.x).astype(self.dtype)
         self.grad_out = np.ones(self.shape, self.dtype)
@@ -40,6 +40,9 @@ class TestErfinvOp(OpTest):
         )
         self.inputs = {'X': self.x}
         self.outputs = {'Out': self.res_ref}
+
+    def init_shape(self):
+        self.shape = [11, 17]
 
     def init_dtype(self):
         self.dtype = np.float64
@@ -60,6 +63,11 @@ class TestErfinvOp(OpTest):
 class TestErfinvFP64Op(TestErfinvOp):
     def init_dtype(self):
         self.dtype = np.float64
+
+
+class TestErfinvOp_ZeroSize(TestErfinvOp):
+    def init_shape(self):
+        self.shape = [0, 17]
 
 
 class TestErfinvAPIOp(unittest.TestCase):
