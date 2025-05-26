@@ -42,15 +42,11 @@ function(cinn_cc_library TARGET_NAME)
     endif()
   endif()
 
-  if((NOT ("${TARGET_NAME}" STREQUAL "cinn_gtest_main"))
-     AND (NOT ("${TARGET_NAME}" STREQUAL "utils"))
-     AND (NOT ("${TARGET_NAME}" STREQUAL "lib")))
+  if((NOT ("${TARGET_NAME}" STREQUAL "utils")) AND (NOT ("${TARGET_NAME}"
+                                                         STREQUAL "lib")))
     target_link_libraries(${TARGET_NAME} Threads::Threads)
 
-  endif(
-    (NOT ("${TARGET_NAME}" STREQUAL "cinn_gtest_main"))
-    AND (NOT ("${TARGET_NAME}" STREQUAL "utils"))
-    AND (NOT ("${TARGET_NAME}" STREQUAL "lib")))
+  endif()
 endfunction()
 
 list(APPEND CMAKE_CTEST_ARGUMENTS)
@@ -73,10 +69,13 @@ function(cinn_cc_test TARGET_NAME)
     add_executable(${TARGET_NAME} ${cinn_cc_test_SRCS})
     get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
     target_link_libraries(${TARGET_NAME} ${os_dependency_modules}
-                          cinn_gtest_main gtest glog ${cinn_cc_test_DEPS})
-    add_dependencies(${TARGET_NAME} cinn_gtest_main gtest glog
+                          paddle_gtest_main gtest glog ${cinn_cc_test_DEPS})
+    if(WITH_SHARED_PHI)
+      target_link_libraries(${TARGET_NAME} -Wl,--as-needed phi_core phi_gpu
+                            -Wl,--no-as-needed)
+    endif()
+    add_dependencies(${TARGET_NAME} paddle_gtest_main gtest glog
                      ${cinn_cc_test_DEPS})
-
     add_test(
       NAME ${TARGET_NAME}
       COMMAND ${TARGET_NAME} "${cinn_cc_test_ARGS}"
@@ -159,13 +158,18 @@ function(cinn_nv_test TARGET_NAME)
     target_link_libraries(
       ${TARGET_NAME}
       ${cinn_nv_test_DEPS}
-      cinn_gtest_main
+      paddle_gtest_main
       gtest
       ${os_dependency_modules}
       ${CUDNN_LIBRARY}
       ${CUBLAS_LIBRARIES}
       ${CUDA_LIBRARIES})
-    add_dependencies(${TARGET_NAME} ${cinn_nv_test_DEPS} cinn_gtest_main gtest)
+    if(WITH_SHARED_PHI)
+      target_link_libraries(${TARGET_NAME} -Wl,--as-needed phi_core phi_gpu
+                            -Wl,--no-as-needed)
+    endif()
+    add_dependencies(${TARGET_NAME} ${cinn_nv_test_DEPS} paddle_gtest_main
+                     gtest)
     common_link(${TARGET_NAME})
     add_test(
       NAME ${TARGET_NAME}

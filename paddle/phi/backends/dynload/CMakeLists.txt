@@ -1,7 +1,4 @@
 set(DYNLOAD_COMMON_SRCS dynamic_loader.cc warpctc.cc warprnnt.cc lapack.cc)
-if(WITH_ASCEND_CL)
-  list(REMOVE_ITEM DYNLOAD_COMMON_SRCS warprnnt.cc)
-endif()
 list(
   APPEND
   CUDA_SRCS

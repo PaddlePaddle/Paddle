@@ -70,10 +70,6 @@ if(WITH_GPU)
   list(APPEND PHI_DEPS external_error_proto)
 endif()
 
-if(WITH_ASCEND_CL)
-  list(APPEND PHI_DEPS npu_hccl)
-endif()
-
 if(WITH_FLASHATTN)
   list(APPEND PHI_DEPS flashattn)
 endif()
