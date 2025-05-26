@@ -1793,6 +1793,15 @@
   backward : expand_as_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
+- op : expand_modality_expert_id
+  args : (Tensor expert_id, int64_t num_expert_per_modality, int64_t group_size, int64_t modality_offset, bool is_group_expert)
+  output : Tensor(expert_id_out)
+  infer_meta :
+    func : ExpandModalityExpertIdInferMeta
+  kernel :
+    func : expand_modality_expert_id
+    data_type : expert_id
+
 - op : expm1
   args : (Tensor x)
   output : Tensor(out)
@@ -3597,6 +3606,27 @@
     func : mode
   backward : mode_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
+
+- op : moe_combine
+  args : (Tensor x, Tensor combine_weights, Tensor scatter_index)
+  output : Tensor(y)
+  infer_meta :
+    func : MoeCombineInferMeta
+  kernel :
+    func : moe_combine
+    data_type : x
+  backward : moe_combine_grad
+
+- op : moe_gate_dispatch_permute
+  args : (Tensor x, Tensor gate_logits, Tensor corr_bias, int64_t k, int64_t capacity, int64_t world_size)
+  output : Tensor(y), Tensor(combine_weights), Tensor(scatter_index), Tensor(expert_offset), Tensor(expert_id)
+  infer_meta :
+    func : MoeGateDispatchPermuteInferMeta
+  kernel :
+    func : moe_gate_dispatch_permute
+    data_type : x
+  optional : corr_bias
+  # backward : moe_gate_dispatch_permute_grad
 
 - op : momentum_
   args : (Tensor param, Tensor grad, Tensor velocity, Tensor learning_rate, Tensor master_param, float mu, bool use_nesterov = false, str regularization_method = "", float regularization_coeff = 0.0f, bool multi_precision = false, float rescale_grad = 1.0f)

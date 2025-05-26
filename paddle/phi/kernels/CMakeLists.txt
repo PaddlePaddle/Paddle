@@ -228,6 +228,10 @@ if(WITH_ROCM)
   list(
     REMOVE_ITEM
     kernel_gpu
+    "gpu/moe_gate_dispatch_permute_kernel.cu"
+    "gpu/expand_modality_expert_id_kernel.cu"
+    "gpu/moe_combine_kernel.cu"
+    "gpu/moe_combine_grad_kernel.cu"
     "gpu/affine_grid_grad_kernel.cu"
     "gpu/apply_per_channel_scale_kernel.cu"
     "gpu/calc_reduced_attn_kernel.cu"

@@ -1365,6 +1365,35 @@ void ExpandInferMeta(const MetaTensor& x,
 #undef EXPAND_MAX_RANK_SUPPORTED
 }
 
+void ExpandModalityExpertIdInferMeta(const MetaTensor& expert_id,
+                                     int64_t num_expert_per_modality,
+                                     int64_t group_size,
+                                     int64_t modality_offset,
+                                     bool is_group_expert,
+                                     MetaTensor* expert_id_out){
+  auto expert_id_dims = expert_id.dims();
+  PADDLE_ENFORCE_EQ(
+      expert_id_dims.size(),
+      2,
+      common::errors::InvalidArgument(
+          "The input expert_id's dimensions size should be 2. But received "
+          "expert_id's dimensions size=[%d],  expert_id's dimensions=[%s].",
+          expert_id_dims.size(),
+          expert_id_dims));
+  PADDLE_ENFORCE_EQ(
+    expert_id.dtype() == DataType::INT32 || expert_id.dtype() == DataType::INT64,
+    true,
+    common::errors::InvalidArgument(
+      "The dtype of expert_id should be INT32 or INT64. But received"
+      "dtype=%s.",
+      DataTypeToString(expert_id.dtype())));
+
+  int64_t seqlen = expert_id_dims[0];
+  int64_t k = expert_id_dims[1];
+  expert_id_out->set_dims(common::make_ddim({seqlen, k}));
+  expert_id_out->set_dtype(expert_id.dtype());
+}
+
 void FakeChannelWiseQuantizeAbsMaxInferMeta(const MetaTensor& x,
                                             int bit_length,
                                             int round_type,

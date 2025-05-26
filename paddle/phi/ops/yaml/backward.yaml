@@ -2262,6 +2262,15 @@
   kernel :
     func : mode_grad
 
+- backward_op : moe_combine_grad
+  forward : moe_combine (Tensor x, Tensor combine_weights, Tensor scatter_index) -> Tensor(y)
+  args : (Tensor x, Tensor combine_weights, Tensor scatter_index, Tensor y_grad)
+  output : Tensor(x_grad), Tensor(combine_weights_grad)
+  infer_meta :
+    func : MoeCombineGradInferMeta
+  kernel :
+    func : moe_combine_grad
+
 - backward_op : mp_allreduce_sum_grad
   forward : mp_allreduce_sum(Tensor x, int ring_id = 0) -> Tensor(out)
   args : (Tensor out_grad, int ring_id = 0)

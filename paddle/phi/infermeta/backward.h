@@ -462,6 +462,13 @@ void MemoryEfficientAttentionGradInferMeta(const MetaTensor& query,
                                            MetaTensor* value_grad,
                                            MetaTensor* bias_grad);
 
+void MoeCombineGradInferMeta(const MetaTensor& x,
+                             const MetaTensor& combine_weights,
+                             const MetaTensor& scatter_index,
+                             const MetaTensor& grad_y,
+                             MetaTensor* grad_x,
+                             MetaTensor* grad_combine_weights_helper);
+
 void MultiDotGradInferMeta(const std::vector<const MetaTensor*>& x,
                            const MetaTensor& out_grad,
                            std::vector<MetaTensor*> x_grad);

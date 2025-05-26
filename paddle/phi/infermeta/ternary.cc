@@ -1612,6 +1612,125 @@ void MultiClassNMSInferMeta(const MetaTensor& bboxes,
   nms_rois_num->set_dtype(DataType::INT32);
 }
 
+void MoeCombineInferMeta(const MetaTensor& x,
+                         const MetaTensor& combine_weights,
+                         const MetaTensor& scatter_index,
+                         MetaTensor* y){
+  auto x_dim = x.dims();
+  auto combine_weights_shape = combine_weights.dims();
+  PADDLE_ENFORCE_EQ(
+      x_dim.size(),
+      2,
+      common::errors::InvalidArgument("The dimensions of Input(x) must be 1, but "
+                                      "received dimensions of"
+                                      "Input(x) is [%d]",
+                                      x_dim.size()));
+  // maybe there is more conditions here....
+  y->set_dims(phi::make_ddim({combine_weights_shape[0], x_dim[1]}));
+  y->set_dtype(x.dtype());
+}
+
+void MoeGateDispatchPermuteInferMeta(const MetaTensor& x,
+                                     const MetaTensor& gate_logits,
+                                     const MetaTensor& corr_bias,
+                                     int64_t k,
+                                     int64_t capacity,
+                                     int64_t world_size,
+                                     MetaTensor* y,
+                                     MetaTensor* combine_weights,
+                                     MetaTensor* scatter_index,
+                                     MetaTensor* expert_offset,
+                                     MetaTensor* expert_id){
+  auto x_dims = x.dims();
+  PADDLE_ENFORCE_EQ(
+      x_dims.size(),
+      2,
+      common::errors::InvalidArgument("The dimensions of Input(x) must be 2, but "
+                                      "received dimensions of"
+                                      "Input(x) is [%d]",
+                                      x_dims.size()));
+  auto gate_logits_dims= gate_logits.dims();
+  PADDLE_ENFORCE_EQ(
+      gate_logits_dims.size(),
+      2,
+      common::errors::InvalidArgument("The dimensions of Input(gate_logits) must be 2, but "
+                                      "received dimensions of"
+                                      "Input(gate_logits) is [%d]",
+                                      gate_logits_dims.size()));
+  PADDLE_ENFORCE_EQ(
+      gate_logits_dims[0],
+      x_dims[0],
+      common::errors::InvalidArgument(
+          "The first dimensions of Input(gate_logits) must be equal to the first "
+          "dimension of Input(x), but received Input(gate_logits) shape is [%d],"
+          "Input(x) shape is [%d]",
+          gate_logits_dims[0],
+          x_dims[0]));
+  PADDLE_ENFORCE_EQ(
+      gate_logits_dims[1] % world_size,
+      0,
+      common::errors::InvalidArgument(
+          "The number of experts (the second dimension of Input(gate_logits)) must be divisible by world_size, but received "
+          "num_experts = %d, world_size = %d",
+          gate_logits_dims[1],
+          world_size));
+
+  PADDLE_ENFORCE_GE(
+      gate_logits_dims[1],
+      k,
+      common::errors::InvalidArgument(
+          "The number of experts ((the second dimension of Input(gate_logits))) must be greater than or equal to k, but received "
+          "num_experts = %d, k = %d",
+          gate_logits_dims[1],
+          k));
+  
+  PADDLE_ENFORCE_EQ(
+      gate_logits.dtype(),
+      phi::DataType::FLOAT32,
+      common::errors::InvalidArgument(
+          "The dtype of Input(gate_logits) must be FLOAT32, but received %s",
+          gate_logits.dtype()));
+
+  if(corr_bias){
+    auto corr_bias_dims = corr_bias.dims();
+    PADDLE_ENFORCE_EQ(
+        corr_bias_dims.size(),
+        1,
+        common::errors::InvalidArgument(
+            "The dimensions of Input(corr_bias) must be 1, but received "
+            "dimensions of Input(corr_bias) is [%d]",
+            corr_bias_dims.size()));
+    PADDLE_ENFORCE_EQ(
+        corr_bias_dims[0],
+        x_dims[0],
+        common::errors::InvalidArgument(
+            "The dimensions of Input(corr_bias) must be equal to the first "
+            "dimension of Input(x), but received Input(corr_bias) first dimension is [%d],"
+            "Input(x) first dimension is [%d]",
+            corr_bias_dims[0],
+            x_dims[0]));
+    PADDLE_ENFORCE_EQ(
+        corr_bias.dtype(),
+        paddle::DataType::FLOAT32,
+        common::errors::InvalidArgument(
+            "The dtype of Input(corr_bias) must be FLOAT32, but received %s",
+            corr_bias.dtype()));
+  }
+  int64_t num_experts = gate_logits_dims[1];
+  int64_t num_local_experts = num_experts / world_size;
+  int64_t num_rows = x_dims[0];
+  y->set_dims({num_local_experts, world_size, capacity, x_dims[1]});
+  y->set_dtype(x.dtype());
+  combine_weights->set_dims({num_rows, k});
+  combine_weights->set_dtype(phi::DataType::FLOAT32);
+  scatter_index->set_dims({k, num_rows});
+  scatter_index->set_dtype(phi::DataType::INT32);
+  expert_offset->set_dims({num_experts});
+  expert_offset->set_dtype(phi::DataType::INT64);
+  expert_id->set_dims({num_rows, k});
+  expert_id->set_dtype(phi::DataType::INT32);
+}
+
 void MovingAverageAbsMaxScaleInferMeta(const MetaTensor& x,
                                        const MetaTensor& in_accum,
                                        const MetaTensor& in_state,
