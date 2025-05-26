@@ -534,7 +534,7 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
         )
 
         # Set prefix of forward_api_name to avoid conflicts
-        prefix = self.namespace.strip("::")
+        prefix = self.namespace.removeprefix("::").removesuffix("::")
         forward_api_name_prefix = "" if prefix == "" else prefix + "_"
 
         # Generate Python-C Function Registration

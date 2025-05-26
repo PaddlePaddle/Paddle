@@ -256,6 +256,33 @@ class TestMaskedFillAPIBroadcast5(TestMaskedFillAPI):
         self.scalar_value = True
 
 
+class TestMaskedFillAPIBroadcast6(TestMaskedFillAPI):
+    def init(self):
+        self.x_shape = (1, 1)
+        self.mask_shape = (40, 40)
+        self.dtype = "float32"
+        self.scalar_value = True
+
+
+class TestMaskedFillAPIBroadcast7(TestMaskedFillAPI):
+    def init(self):
+        self.x_shape = (15,)
+        self.mask_shape = (40, 1)
+        self.dtype = "float32"
+        self.scalar_value = True
+
+
+class TestMaskedFillAPIBroadcast8(TestMaskedFillAPI):
+    def init(self):
+        self.x_shape = (3, 1, 1)
+        self.mask_shape = (
+            120,
+            40,
+        )
+        self.dtype = "float32"
+        self.scalar_value = True
+
+
 @unittest.skipIf(
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )

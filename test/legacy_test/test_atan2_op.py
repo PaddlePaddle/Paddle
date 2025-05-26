@@ -161,8 +161,8 @@ class TestAtan2BF16OP(OpTest):
         self.public_python_api = paddle.atan2
         self.dtype = np.uint16
         self.check_cinn = True
-        x1 = np.random.uniform(-1, -0.1, [15, 17]).astype('float32')
-        x2 = np.random.uniform(0.1, 1, [15, 17]).astype('float32')
+        x1 = np.random.uniform(-1, -0.1, [15, 17]).astype('float64')
+        x2 = np.random.uniform(0.1, 1, [15, 17]).astype('float64')
         out = np.arctan2(x1, x2)
 
         self.inputs = {
@@ -208,8 +208,20 @@ class TestAtan2Broadcasting(unittest.TestCase):
 
         if place is None:  # Dygraph mode
             with paddle.base.dygraph.guard():
-                tensors = [paddle.to_tensor(inp) for inp in inputs]
+                tensors = [
+                    paddle.to_tensor(inp, stop_gradient=False) for inp in inputs
+                ]
                 result = paddle.atan2(tensors[0], tensors[1])
+                loss = paddle.sum(result)
+                loss.backward()
+
+                np.testing.assert_allclose(
+                    tensors[0].shape, tensors[0].grad.shape, rtol=1e-05
+                )
+                np.testing.assert_allclose(
+                    tensors[1].shape, tensors[1].grad.shape, rtol=1e-05
+                )
+
         else:  # Static mode
             with paddle.static.program_guard(paddle.static.Program()):
                 data_tensors = [

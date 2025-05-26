@@ -631,12 +631,12 @@ Dispatcher.register(
 )
 
 
-def register_exception(exc):
-    @Dispatcher.register_decorator(exc)
+def register_exception(exc_type: type[Exception]):
+    @Dispatcher.register_decorator(exc_type)
     def builtin_exception_dispatcher(*args) -> int:
+        exc = exc_type(*args)
         return ExceptionVariable(
             exc,
-            *args,
             graph=Dispatcher.graph,
             tracker=DummyTracker([]),
         )
@@ -1524,7 +1524,7 @@ Dispatcher.register(
 
 
 # `operator.eq` of `ExceptionVariable` dispatch
-def exception_variable_equal(left, right):
+def exception_variable_equal(left: ExceptionVariable, right: ExceptionVariable):
     result = (left is right) or (left.get_py_value() == right.get_py_value())
     return VariableFactory.from_value(
         result,
@@ -1623,10 +1623,11 @@ Dispatcher.register(
 Dispatcher.register(
     operator_exception_match,
     ("BuiltinVariable | ExceptionVariable", "BuiltinVariable | TupleVariable"),
-    lambda exc_instance, expected_exc_types: ConstantVariable.wrap_literal(
+    lambda exc_instance, expected_exc_types: ConstantVariable(
         ExceptionVariable.check_if_exception_matches(
             exc_instance, expected_exc_types
         ),
         exc_instance.graph,
+        DummyTracker([exc_instance, expected_exc_types]),
     ),
 )
