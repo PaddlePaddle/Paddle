@@ -152,9 +152,7 @@ class DummyDistribution(paddle.distribution.Distribution):
 
 
 @param.place(config.DEVICES)
-@param.param_cls(
-    (param.TEST_CASE_NAME, 'p', 'q'), [('test-dispatch-exception')]
-)
+@param.param_cls((param.TEST_CASE_NAME, 'p', 'q'), ['test-dispatch-exception'])
 class TestDispatch(unittest.TestCase):
     def setUp(self):
         self.mp = paddle.static.Program()

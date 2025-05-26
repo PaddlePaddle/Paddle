@@ -882,10 +882,11 @@ class Optimizer:
                 if param_lr == 1.0:
                     return self._global_learning_rate()
                 else:
-                    with paddle.static.default_main_program()._lr_schedule_guard(
-                        is_with_opt=True
-                    ), framework.name_scope(
-                        'scale_with_param_lr'
+                    with (
+                        paddle.static.default_main_program()._lr_schedule_guard(
+                            is_with_opt=True
+                        ),
+                        framework.name_scope('scale_with_param_lr'),
                     ):
                         return self._global_learning_rate() * param_lr
         else:
@@ -1293,9 +1294,12 @@ class Optimizer:
                     ):
                         param_grad_list.append(param_and_grad[0])
                         param_grad_list.append(param_and_grad[1])
-                with param_grad_list[0].block.program._optimized_guard(
-                    param_grad_list
-                ), name_scope("optimizer"):
+                with (
+                    param_grad_list[0].block.program._optimized_guard(
+                        param_grad_list
+                    ),
+                    name_scope("optimizer"),
+                ):
                     device = self._get_device_for_param(param_grad_list[0].name)
                     with device_guard(device):
                         self._append_optimize_multi_tensor_op(
@@ -1387,9 +1391,12 @@ class Optimizer:
                 for param_and_grad in parameters_and_grads:
                     if param_and_grad[1] is None:
                         continue
-                    with param_and_grad[0].block.program._optimized_guard(
-                        param_and_grad
-                    ), name_scope("optimizer"):
+                    with (
+                        param_and_grad[0].block.program._optimized_guard(
+                            param_and_grad
+                        ),
+                        name_scope("optimizer"),
+                    ):
                         if param_and_grad[0].stop_gradient is False:
                             device = self._get_device_for_param(
                                 param_and_grad[0].name
