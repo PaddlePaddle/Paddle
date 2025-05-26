@@ -54,7 +54,7 @@ void MvGradKernel(const Context &dev_ctx,
     }
     if (dvec) {
       dev_ctx.template Alloc<T>(dvec);
-      if (dx->numel() > 0) {
+      if (dvec->numel() > 0) {
         phi::Full<T, Context>(dev_ctx,
                               phi::IntArray(common::vectorize(dvec->dims())),
                               static_cast<T>(0),
