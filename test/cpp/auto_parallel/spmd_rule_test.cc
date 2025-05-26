@@ -440,7 +440,7 @@ TEST(GroupNorm, Ctor) {
           x, scale, bias, epsilon, groups, data_format);
   size_t input_size = 3;
   size_t output_size = 3;
-  EXPECT_EQ(forward_info.size(), input_size);
+  EXPECT_EQ(forward_info.first.size(), input_size);
   EXPECT_EQ(forward_info.second.size(), output_size);
   check_dim_mapping(forward_info.first[0], {0, -1, -1, -1});
   check_dim_mapping(forward_info.first[1], {-1});
