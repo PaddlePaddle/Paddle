@@ -2515,6 +2515,7 @@
   output : Tensor(y), Tensor(mean), Tensor(variance)
   infer_meta :
     func : GroupNormInferMeta
+    spmd_rule : GroupNormInferSpmd
   kernel :
     func : group_norm
   optional : scale, bias
