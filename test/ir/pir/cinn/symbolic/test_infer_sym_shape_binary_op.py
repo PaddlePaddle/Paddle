@@ -80,7 +80,7 @@ class ExpandAsOpInferSymbolicShapeTest(TestBase):
         self.x = paddle.ones(self.x_shape)
         self.y = paddle.ones(self.y_shape)
 
-        self.expected = ['shape[S0, S1], data[NULL]']
+        self.expected = ['shape[S1, S2], data[NULL]']
 
     def test_eval_symbolic(self):
         net = ExpandAsNet()
