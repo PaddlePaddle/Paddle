@@ -12,10 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-import os
 
 import paddle
 import paddle.distributed as dist
+
+_enable_auto_dp_mode = False
 
 
 def _fake_replicate_grad_to_partial(grad, partial_axis):
@@ -85,4 +86,10 @@ def in_auto_dp_mode():
     if word_size <= 1:
         return False
 
-    return os.getenv("FLAGS_enable_auto_dp_comm") == "1"
+    global _enable_auto_dp_mode
+    return _enable_auto_dp_mode
+
+
+def _enable_auto_dp():
+    global _enable_auto_dp_mode
+    _enable_auto_dp_mode = True
