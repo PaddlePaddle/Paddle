@@ -228,10 +228,10 @@ SpmdInfo InstanceNormGradInferSpmd(const DistMetaTensor& x,
       GetDimsMappingForAxes(x_grad_axes, axis_to_dim_map));
   TensorDistAttr scale_grad_dist_attr =
       CopyTensorDistAttrForOutput(scale.dist_attr());
-  scale_grad_dist_attr_dst.set_dims_mapping({-1});
+  scale_grad_dist_attr.set_dims_mapping({-1});
   TensorDistAttr bias_grad_dist_attr =
       CopyTensorDistAttrForOutput(scale.dist_attr());
-  bias_grad_dist_attr_dst.set_dims_mapping({-1});
+  bias_grad_dist_attr.set_dims_mapping({-1});
 
   // Step2.3: update input dims mapping
   TensorDistAttr x_dist_attr_dst = CopyTensorDistAttrForOutput(x_dist_attr_src);
