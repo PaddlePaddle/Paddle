@@ -728,8 +728,9 @@ class TestSliceAPI(unittest.TestCase):
             np.testing.assert_array_equal(res_7, input[-1, 0:100, :, 2:-1])
 
     def test_pir(self):
-        with paddle.pir_utils.IrGuard(), paddle.static.program_guard(
-            paddle.static.Program()
+        with (
+            paddle.pir_utils.IrGuard(),
+            paddle.static.program_guard(paddle.static.Program()),
         ):
             input = np.random.random([3, 4, 5, 6]).astype("float64")
             minus_1 = paddle.tensor.fill_constant([], "int32", -1)
@@ -797,8 +798,9 @@ class TestSliceAPI(unittest.TestCase):
             np.testing.assert_array_equal(res, input[:, :, 2:3, :])
 
     def test_negative_axis_static(self):
-        with paddle_static_guard(), paddle.static.program_guard(
-            paddle.static.Program()
+        with (
+            paddle_static_guard(),
+            paddle.static.program_guard(paddle.static.Program()),
         ):
             input = np.random.random([3, 4, 5, 6]).astype("float64")
             x = paddle.static.data(
@@ -825,8 +827,9 @@ class TestSliceAPI(unittest.TestCase):
             np.testing.assert_array_equal(res, input[:, :, 2:3, :])
 
     def test_negative_axis_pir(self):
-        with paddle.pir_utils.IrGuard(), paddle.static.program_guard(
-            paddle.static.Program()
+        with (
+            paddle.pir_utils.IrGuard(),
+            paddle.static.program_guard(paddle.static.Program()),
         ):
             input = np.random.random([3, 4, 5, 6]).astype("float64")
             x = paddle.static.data(
