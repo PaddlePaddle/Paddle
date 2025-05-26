@@ -926,6 +926,10 @@ static void parse_attr(PyObject *obj,
     auto attr =
         CastPyArg2Float(obj, infer_spmd_string, static_cast<ssize_t>(arg_pos));
     ctx->EmplaceBackAttr(attr);
+  } else if (PyObject_CheckDataType(obj)) {
+    auto attr = CastPyArg2DataType(
+        obj, infer_spmd_string, static_cast<ssize_t>(arg_pos));
+    ctx->EmplaceBackAttr(attr);
   } else {  // TODO(ljz) support other types
     PADDLE_THROW(common::errors::InvalidArgument(
         "%s(): argument (position %d) must be "

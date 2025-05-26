@@ -29,6 +29,10 @@ void AngleGradKernel(const Context& dev_ctx,
   auto* dout_data = out_grad.data<phi::dtype::Real<T>>();
   auto* x_data = x.data<T>();
   x_grad->Resize(out_grad.dims());
+  if (x_grad->numel() == 0) {
+    dev_ctx.template Alloc<T>(x_grad);
+    return;
+  }
   auto* dx_data = dev_ctx.template Alloc<T>(x_grad);
 
   phi::funcs::ForRange<Context> for_range(dev_ctx, numel);
