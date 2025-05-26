@@ -38,6 +38,11 @@ __global__ void GPUMaskedFillKernel(const T* input,
                                     const int64_t batch_size,
                                     T* output) {
   int64_t idx = (blockIdx.x * blockDim.x + threadIdx.x);
+
+  if (idx >= (input_len / VecSize)) {
+    return;
+  }
+
   int64_t vec_idx = idx * VecSize;
   int64_t mask_idx = vec_idx / batch_size;
   using VecType = kps::details::VectorType<T, VecSize>;
@@ -135,8 +140,8 @@ void MaskedFillKernel(const Context& dev_ctx,
     return;
   }
 
-  auto x_dims = x.dims();
-  auto mask_dims = mask.dims();
+  const auto& x_dims = x.dims();
+  const auto& mask_dims = mask.dims();
 
   auto expanded_size =
       common::vectorize(phi::funcs::BroadcastTwoDims(x_dims, mask_dims, -1));
@@ -169,8 +174,6 @@ void MaskedFillKernel(const Context& dev_ctx,
 
   out->Resize(expanded_dims);
 
-  auto input_dim = x_expand.dims();
-  auto mask_dim = mask_expand.dims();
   GPUMaskedFill<T>(dev_ctx, x_expand, mask_expand, value, out);
 }
 
