@@ -41,4 +41,4 @@ def expand_modality_expert_id(
       'is_group_expert': is_group_expert
     }
     helper.append_op(type='expand_modality_expert_id', inputs=inputs, attrs=attrs, outputs={'expert_id_out': expert_id_out})
-    return y
+    return expert_id_out
