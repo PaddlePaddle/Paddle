@@ -272,14 +272,14 @@ TEST(InstanceNorm, Ctor) {
       phi::distributed::InstanceNormInferSpmd(x, scale, bias, epsilon);
   size_t input_size = 3;
   size_t output_size = 3;
-  EXPECT_EQ(inferred_dist_attrs.first.size(), input_size);
-  EXPECT_EQ(inferred_dist_attrs.second.size(), output_size);
-  check_dim_mapping(inferred_dist_attrs.first[0], {-1, 0, -1, -1});
-  check_dim_mapping(inferred_dist_attrs.first[1], {-1});
-  check_dim_mapping(inferred_dist_attrs.first[2], {-1});
-  check_dim_mapping(inferred_dist_attrs.second[0], {-1, 0, -1, -1});
-  check_dim_mapping(inferred_dist_attrs.second[1], {-1, 0});
-  check_dim_mapping(inferred_dist_attrs.second[2], {-1, 0});
+  EXPECT_EQ(forward_info.size(), input_size);
+  EXPECT_EQ(forward_info.second.size(), output_size);
+  check_dim_mapping(forward_info.first[0], {-1, 0, -1, -1});
+  check_dim_mapping(forward_info.first[1], {-1});
+  check_dim_mapping(forward_info.first[2], {-1});
+  check_dim_mapping(forward_info.second[0], {-1, 0, -1, -1});
+  check_dim_mapping(forward_info.second[1], {-1, 0});
+  check_dim_mapping(forward_info.second[2], {-1, 0});
   VLOG(4) << "test forward done.";
 
   // Test backward.
@@ -300,16 +300,16 @@ TEST(InstanceNorm, Ctor) {
           x, scale, saved_mean, saved_variance, y_grad, epsilon);
   input_size = 5;
   output_size = 3;
-  EXPECT_EQ(inferred_dist_attrs.first.size(), input_size);
-  EXPECT_EQ(inferred_dist_attrs.second.size(), output_size);
-  check_dim_mapping(inferred_dist_attrs.first[0], {-1, 0, -1, -1});
-  check_dim_mapping(inferred_dist_attrs.first[1], {-1});
-  check_dim_mapping(inferred_dist_attrs.first[2], {-1, 0});
-  check_dim_mapping(inferred_dist_attrs.first[3], {-1, 0});
-  check_dim_mapping(inferred_dist_attrs.first[4], {-1, 0, -1, -1});
-  check_dim_mapping(inferred_dist_attrs.second[0], {-1, 0, -1, -1});
-  check_dim_mapping(inferred_dist_attrs.second[1], {-1});
-  check_dim_mapping(inferred_dist_attrs.second[2], {-1});
+  EXPECT_EQ(backward_info.first.size(), input_size);
+  EXPECT_EQ(backward_info.second.size(), output_size);
+  check_dim_mapping(backward_info.first[0], {-1, 0, -1, -1});
+  check_dim_mapping(backward_info.first[1], {-1});
+  check_dim_mapping(backward_info.first[2], {-1, 0});
+  check_dim_mapping(backward_info.first[3], {-1, 0});
+  check_dim_mapping(backward_info.first[4], {-1, 0, -1, -1});
+  check_dim_mapping(backward_info.second[0], {-1, 0, -1, -1});
+  check_dim_mapping(backward_info.second[1], {-1});
+  check_dim_mapping(backward_info.second[2], {-1});
   VLOG(4) << "test backward done.";
 }
 TEST(LayerNormSPMDRule, Ctor) {
