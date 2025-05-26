@@ -3777,12 +3777,13 @@ DDim StrictReduceInferDim(const MetaTensor& x,
   for (int i = 0; i < x_rank; ++i) {
     uint32_t bit = 1U << i;
     if (reduce_all || (axis_bitmap & bit)) {
-      if (x.dims().at(i) == 0) {
-        PADDLE_THROW(common::errors::InvalidArgument(
-            "Cannot perform reduction along an axis (%d) that has a size of "
-            "0. ",
-            i));
-      }
+      PADDLE_ENFORCE_NE(
+          x.dims().at(i),
+          0,
+          common::errors::InvalidArgument(
+              "Cannot perform reduction along an axis (%d) that has a size of "
+              "0. ",
+              i))
       if (keep_dim) {
         out_dim_vector.push_back(1);
       }
