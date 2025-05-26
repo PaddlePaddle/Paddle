@@ -28,7 +28,7 @@ using phi::distributed::auto_parallel::str_join;
 SpmdInfo InstanceNormInferSpmd(const DistMetaTensor& x,
                                const DistMetaTensor& scale,
                                const DistMetaTensor& bias,
-                               float epsilon = 1e-5) {
+                               float epsilon) {
   // Step0: verify input args based on layer_norm logic
   auto x_shape = common::vectorize(x.dims());
   auto scale_shape = common::vectorize(scale.dims());
@@ -143,7 +143,7 @@ SpmdInfo InstanceNormGradInferSpmd(const DistMetaTensor& x,
                                    const DistMetaTensor& saved_mean,
                                    const DistMetaTensor& saved_variance,
                                    const DistMetaTensor& y_grad,
-                                   float epsilon = 1e-5) {
+                                   float epsilon) {
   // Step0: verify input args based on layer_norm logic
   auto x_shape = common::vectorize(x.dims());
   auto scale_shape = common::vectorize(scale.dims());
