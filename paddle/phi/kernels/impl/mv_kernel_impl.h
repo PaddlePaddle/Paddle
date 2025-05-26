@@ -29,6 +29,9 @@ void MvKernel(const Context& dev_ctx,
   const T* x_data = x.data<T>();
   const T* vec_data = vec.data<T>();
   T* out_data = dev_ctx.template Alloc<T>(out);
+  if (out && out->numel() == 0) {
+    return;
+  }
 
   auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
 

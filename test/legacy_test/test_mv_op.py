@@ -39,6 +39,12 @@ class TestMVOp(OpTest):
         self.vec = np.random.random(100).astype("float64")
 
 
+class TestMVOp_ZeroSize(TestMVOp):
+    def init_config(self):
+        self.x = np.random.random((0, 100)).astype("float64")
+        self.vec = np.random.random(100).astype("float64")
+
+
 class TestMVAPI(unittest.TestCase):
     def test_dygraph_api_out(self):
         paddle.disable_static()
