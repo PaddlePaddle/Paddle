@@ -6,10 +6,6 @@ if(WITH_CINN)
   else()
     set(PACKAGE_NAME "cinn")
   endif()
-  set(SETUP_LOG_FILE "setup.py.log")
-  configure_file(${CMAKE_CURRENT_SOURCE_DIR}/setup_cinn.py.in
-                 ${CMAKE_CURRENT_BINARY_DIR}/setup_cinn.py)
-
   if(NOT PYTHON_EXECUTABLE)
     find_package(PythonInterp ${PY_VERSION} REQUIRED)
     find_package(PythonLibs ${PY_VERSION} REQUIRED)
@@ -33,8 +29,6 @@ elseif(WITH_IPU)
 else()
   set(PACKAGE_NAME "paddlepaddle")
 endif()
-
-set(SETUP_LOG_FILE "setup.py.log")
 
 set(FLUID_CORE_NAME "libpaddle")
 
