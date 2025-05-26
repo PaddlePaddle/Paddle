@@ -19,7 +19,7 @@ from typing import TYPE_CHECKING
 from .info_collector import BreakGraphReasonInfo
 
 if TYPE_CHECKING:
-    from collections import Any
+    from ..opcode_translator.executor.variables.base import VariableBase
 
 
 class BreakGraphReasonBase:
@@ -379,7 +379,6 @@ class SotCapturedStopIteration(SotCapturedOSError): ...
 
 
 class SotCapturedExceptionFactory:
-
     # This dictionary maps common built-in Python Exception types to their corresponding SotCapturedException
     # types, preserving the original exception hierarchy for proper inheritance behavior.
     # Reference: https://docs.python.org/3/library/exceptions.html#exception-hierarchy
@@ -416,7 +415,6 @@ class SotCapturedExceptionFactory:
         cls,
         exc_type: type[Exception],
     ) -> type[SotCapturedException]:
-
         if isinstance(exc_type, type) and issubclass(
             exc_type, SotCapturedException
         ):
@@ -432,30 +430,22 @@ class SotCapturedExceptionFactory:
     @classmethod
     def create(
         cls,
-        origin_exc: Exception | None = None,
-        exc_type: type[Exception] | None = None,
-        args: list[Any] | tuple[Any] | None = None,
-        context: Exception | None = None,
-        cause: Exception | None = None,
-        suppress_context: bool | None = None,
-        traceback: None = None,
+        origin_exc: Exception,
+        tracked_args: list[VariableBase] | None = None,
     ) -> SotCapturedException:
         # transform an Exception to SotCapturedException
-        args = args or []
-
-        if origin_exc is not None:
-            exc_type = origin_exc.__class__
-            args = origin_exc.args
-            context = origin_exc.__context__
-            cause = origin_exc.__cause__
-            suppress_context = origin_exc.__suppress_context__
-            traceback = origin_exc.__traceback__
+        exc_type = origin_exc.__class__
 
         new_exc_type = cls.get(exc_type)
-        new_exc = new_exc_type(*args)
-        new_exc.__cause__ = cause
-        new_exc.__context__ = context
-        new_exc.__suppress_context__ = suppress_context
-        new_exc.__traceback__ = traceback
+        new_exc = new_exc_type(*origin_exc.args)
+        new_exc.__cause__ = origin_exc.__cause__
+        new_exc.__context__ = origin_exc.__context__
+        new_exc.__suppress_context__ = origin_exc.__suppress_context__
+        new_exc.__traceback__ = origin_exc.__traceback__
+
+        # Propagating Exception Parameters through SotCapturedException
+        if tracked_args is None:
+            tracked_args = []
+        new_exc.tracked_args = tracked_args
 
         return new_exc

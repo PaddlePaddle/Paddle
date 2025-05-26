@@ -675,8 +675,9 @@ def fn_bind_inputs(
     **kwargs: Any,
 ):
     # temparay clear the fn.__signature__ to avoid signature check error
-    with signature_clear_guard(fn, "__signature__"), signature_clear_guard(
-        fn, "__wrapped__"
+    with (
+        signature_clear_guard(fn, "__signature__"),
+        signature_clear_guard(fn, "__wrapped__"),
     ):
         sig = inspect.signature(fn)
         bound_args = sig.bind(*args, **kwargs)
