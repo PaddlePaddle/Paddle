@@ -64,6 +64,9 @@ void PadGradKernel<phi::dtype::complex<float>, XPUContext>(
     pad_right.push_back(-paddings[i * 2 + 1]);
   }
 
+  // The current complex number implementation uses separate real/imaginary
+  // parts,resulting in redundant operations and performance
+  // penalties.Optimization should address this in future iterations.
   DenseTensor real_out, imag_out;
   real_out.Resize(d_x->dims());
   imag_out.Resize(d_x->dims());
