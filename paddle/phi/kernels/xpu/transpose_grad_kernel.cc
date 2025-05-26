@@ -118,7 +118,6 @@ void TransposeGradKernel<phi::dtype::complex<float>, XPUContext>(
   phi::ComplexKernel<float>(dev_ctx, real_out, imag_out, x_grad);
 }
 #endif
-
 }  // namespace phi
 
 PD_REGISTER_KERNEL(transpose_grad,

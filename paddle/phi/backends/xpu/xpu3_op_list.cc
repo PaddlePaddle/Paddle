@@ -1055,6 +1055,9 @@ XPUOpMap& get_kl3_ops() {
                      phi::DataType::INT32,
                      phi::DataType::INT16,
                      phi::DataType::INT64,
+#ifdef PADDLE_WITH_XPU_FFT
+                     phi::DataType::COMPLEX64,
+#endif
                      phi::DataType::BFLOAT16,
                      phi::DataType::FLOAT16})},
       {"pad_grad",
@@ -1062,6 +1065,9 @@ XPUOpMap& get_kl3_ops() {
                      phi::DataType::INT32,
                      phi::DataType::INT16,
                      phi::DataType::INT64,
+#ifdef PADDLE_WITH_XPU_FFT
+                     phi::DataType::COMPLEX64,
+#endif
                      phi::DataType::BFLOAT16,
                      phi::DataType::FLOAT16})},
       {"pixel_shuffle", XPUKernelSet({phi::DataType::FLOAT32})},
