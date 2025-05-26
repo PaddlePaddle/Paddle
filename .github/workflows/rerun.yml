@@ -264,11 +264,11 @@ jobs:
           JOB_NAME: 'CE-Framework / Test'
 
       - name: Rerun Api-Benchmark
-        if: ${{ contains(github.event.comment.body, 'api-bm') }}
+        if: ${{ contains(github.event.comment.body, 'api-benchmark') }}
         uses: ./.github/actions/rerun-workflow
         with:
           PR_ID: ${{ github.event.issue.number }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OWNER: ${{ github.repository_owner }}
           REPO: ${{ github.event.repository.name }}
-          JOB_NAME: 'Api-Benchmark / Check bypass for inference / Check bypass'
+          JOB_NAME: 'Api-Benchmark / Check bypass for Api-Benchmark / Check bypass'

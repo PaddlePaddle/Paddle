@@ -1827,7 +1827,9 @@ class _ShardOptimizer(Optimizer):
             params_grads = self._tensor_fusion(params_grads)
         else:
             # Fuse the communication of gradients prior to the optimization operation in the dynamic mode.
-            if paddle.in_dynamic_mode():
+            if paddle.in_dynamic_mode() and isinstance(
+                self._shard_fn, ShardingStage1
+            ):
                 # Get fuse optimization flag.
                 def get_env(flag_name):
                     if os.getenv(flag_name) in ['True', 'true', '1']:
