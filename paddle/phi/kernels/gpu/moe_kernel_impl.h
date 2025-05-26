@@ -30,19 +30,19 @@ static inline size_t AlignTo16(const size_t& input) {
 
 class CubKeyValueSorter {
  public:
-  CubKeyValueSorter();
+  inline CubKeyValueSorter();
 
-  CubKeyValueSorter(cudaStream_t stream = 0);
+  inline CubKeyValueSorter(cudaStream_t stream = 0);
 
-  explicit CubKeyValueSorter(const int num_experts);
+  inline explicit CubKeyValueSorter(const int num_experts);
 
-  void update_num_experts(const int num_experts);
+  inline void update_num_experts(const int num_experts);
 
-  size_t getWorkspaceSize(const size_t num_key_value_pairs,
+  inline size_t getWorkspaceSize(const size_t num_key_value_pairs,
                           bool descending = false);
 
   template <typename KeyT>
-  void run(void* workspace,
+  inline void run(void* workspace,
            const size_t workspace_size,
            const KeyT* keys_in,
            KeyT* keys_out,
@@ -154,7 +154,7 @@ void CubKeyValueSorter::run(void* workspace,
 }
 
 template <>
-void CubKeyValueSorter::run(void* workspace,
+inline void CubKeyValueSorter::run(void* workspace,
                             const size_t workspace_size,
                             const __nv_bfloat16* keys_in,
                             __nv_bfloat16* keys_out,

@@ -274,6 +274,23 @@ void MoeCombineInferMeta(const MetaTensor& x,
                          const MetaTensor& scatter_index,
                          MetaTensor* y);
 
+void MoeGateDispatchPartialNoSoftmaxTopKInferMeta(const MetaTensor& x,
+                                                  const MetaTensor& combine_weights,
+                                                  const MetaTensor& expert_id,
+                                                  int64_t k,
+                                                  int64_t capacity,
+                                                  int64_t num_experts,
+                                                  bool use_pad,
+                                                  int64_t expert_start_index,
+                                                  int64_t expert_end_index,
+                                                  bool reverse_token_drop,
+                                                  MetaTensor* y,
+                                                  MetaTensor* combine_weights_out,
+                                                  MetaTensor* scatter_index,
+                                                  MetaTensor* scatter_index_rev,
+                                                  MetaTensor* expert_offset,
+                                                  MetaTensor* expert_nums_local);
+
 void MoeGateDispatchPermuteInferMeta(const MetaTensor& x,
                                      const MetaTensor& gate_logits,
                                      const MetaTensor& corr_bias,
