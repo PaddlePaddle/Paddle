@@ -31,20 +31,12 @@ static void LerpGradFunction(const Context& ctx,
                              DenseTensor* y_grad) {
   if (out_grad.numel() == 0) {
     if (x_grad) {
-      if (x_grad->numel() == 0) {
-        ctx.template Alloc<T>(x_grad);
-      } else {
-        phi::Full<T, Context>(
-            ctx, phi::IntArray(common::vectorize(x_grad->dims())), 0, x_grad);
-      }
+      phi::Full<T, Context>(
+          ctx, phi::IntArray(common::vectorize(x_grad->dims())), 0, x_grad);
     }
     if (y_grad) {
-      if (y_grad->numel() == 0) {
-        ctx.template Alloc<T>(y_grad);
-      } else {
-        phi::Full<T, Context>(
-            ctx, phi::IntArray(common::vectorize(y_grad->dims())), 0, y_grad);
-      }
+      phi::Full<T, Context>(
+          ctx, phi::IntArray(common::vectorize(y_grad->dims())), 0, y_grad);
     }
     return;
   }
