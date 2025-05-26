@@ -192,6 +192,14 @@ class TestFP16Case6(TestClipOp):
         )
 
 
+class TestCase_ZeroSize(TestClipOp):
+    def initTestCase(self):
+        self.dtype = np.float32
+        self.shape = (4, 0, 16)
+        self.max = 0.5
+        self.min = 0.5
+
+
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),

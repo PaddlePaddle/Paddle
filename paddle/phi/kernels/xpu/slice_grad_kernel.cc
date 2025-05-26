@@ -17,6 +17,7 @@
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/complex_kernel.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/slice_utils.h"
 
 namespace phi {
@@ -33,7 +34,17 @@ void SliceGradKernel(const Context& ctx,
                      DenseTensor* input_grad) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   ctx.template Alloc<T>(input_grad);
-
+  if (input_grad->numel() == 0) {
+    return;
+  }
+  if (out_grad.numel() == 0) {
+    phi::Full<T, XPUContext>(
+        ctx,
+        phi::IntArray(common::vectorize(input_grad->dims())),
+        T(0),
+        input_grad);
+    return;
+  }
   // Get the accurate attribute value of starts and ends
   std::vector<int64_t> starts = starts_t.GetData();
   std::vector<int64_t> ends = ends_t.GetData();
@@ -50,16 +61,14 @@ void SliceGradKernel(const Context& ctx,
     int64_t end = in_dims[i];
     int64_t axis = cnt < static_cast<int64_t>(axes.size()) ? axes[cnt] : -1;
     if (axis == i) {
-      start = starts[cnt];
-      if (start < 0) {
-        start = (start + in_dims[i]);
-      }
-      start = std::max(start, static_cast<int64_t>(0));
-      end = ends[cnt];
-      if (end < 0) {
-        end = (end + in_dims[i]);
-      }
-      end = std::min(end, in_dims[i]);
+      bool zero_dim = false;
+      funcs::normalize_interval(starts[cnt],
+                                ends[cnt],
+                                static_cast<int64_t>(1),
+                                in_dims[i],
+                                &start,
+                                &end,
+                                &zero_dim);
       cnt++;
     }
 
@@ -93,6 +102,17 @@ void SliceGradKernel<phi::dtype::complex<float>, XPUContext>(
     DenseTensor* input_grad) {
   using T = phi::dtype::complex<float>;
   ctx.template Alloc<T>(input_grad);
+  if (input_grad->numel() == 0) {
+    return;
+  }
+  if (out_grad.numel() == 0) {
+    phi::Full<T, XPUContext>(
+        ctx,
+        phi::IntArray(common::vectorize(input_grad->dims())),
+        T(0),
+        input_grad);
+    return;
+  }
 
   // Get the accurate attribute value of starts and ends
   std::vector<int64_t> starts = starts_t.GetData();
@@ -110,16 +130,14 @@ void SliceGradKernel<phi::dtype::complex<float>, XPUContext>(
     int64_t end = in_dims[i];
     int64_t axis = cnt < static_cast<int64_t>(axes.size()) ? axes[cnt] : -1;
     if (axis == i) {
-      start = starts[cnt];
-      if (start < 0) {
-        start = (start + in_dims[i]);
-      }
-      start = std::max(start, static_cast<int64_t>(0));
-      end = ends[cnt];
-      if (end < 0) {
-        end = (end + in_dims[i]);
-      }
-      end = std::min(end, in_dims[i]);
+      bool zero_dim = false;
+      funcs::normalize_interval(starts[cnt],
+                                ends[cnt],
+                                static_cast<int64_t>(1),
+                                in_dims[i],
+                                &start,
+                                &end,
+                                &zero_dim);
       cnt++;
     }
 
