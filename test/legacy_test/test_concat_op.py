@@ -1056,8 +1056,11 @@ class TestConcatOpErrorWithPir(unittest.TestCase):
             paddle.concat([])
 
     def test_empty_inputs_static(self):
-        with IrGuard(), paddle.base.program_guard(
-            paddle.base.Program(), paddle.base.Program()
+        with (
+            IrGuard(),
+            paddle.base.program_guard(
+                paddle.base.Program(), paddle.base.Program()
+            ),
         ):
             with self.assertRaisesRegex(ValueError, "but got empty list"):
                 paddle.concat([], axis=0)

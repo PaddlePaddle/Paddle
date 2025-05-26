@@ -30,7 +30,7 @@ jobs:
     name: Check bypass for Api-Benchmark
     uses: ./.github/workflows/check-bypass.yml
     with:
-      workflow-name: 'api-bm'
+      workflow-name: 'api-benchmark'
     secrets:
       github-token: ${{ secrets.GITHUB_TOKEN }}
 
