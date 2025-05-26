@@ -89,13 +89,8 @@ class TestMultiplyGradComp(unittest.TestCase):
         exe.run(sp)
         return exe.run(
             program=mp,
-            feed={
-                **{
-                    f'primal{i}': primal
-                    for i, primal in enumerate(self.primals)
-                },
-                **{f'cotangent{i}': co for i, co in enumerate(self.cotangents)},
-            },
+            feed={f'primal{i}': primal for i, primal in enumerate(self.primals)}
+            | {f'cotangent{i}': co for i, co in enumerate(self.cotangents)},
             fetch_list=[g for g in grads if g is not None],
         )
 
