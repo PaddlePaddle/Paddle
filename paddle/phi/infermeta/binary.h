@@ -401,6 +401,11 @@ void GatherNdInferMeta(const MetaTensor& x,
                        const MetaTensor& index,
                        MetaTensor* out);
 
+void IndexElementwiseInferMeta(const MetaTensor& x,
+                               const std::vector<const MetaTensor*>& index,
+                               const std::vector<int64_t>& index_dims,
+                               MetaTensor* out);
+
 void GatherTreeMeta(const MetaTensor& ids,
                     const MetaTensor& parents,
                     MetaTensor* out);

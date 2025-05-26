@@ -532,7 +532,20 @@ static paddle::Tensor getValueForBoolTensor(const paddle::Tensor& tensor,
   }
 
   auto bool_2_idx = nonzero_ad_func(bool_index);
+#ifdef PADDLE_WITH_CUDA
+  std::vector<paddle::Tensor> indices;
+  for (int j = 0; j < bool_2_idx.shape()[1]; ++j) {
+    paddle::Tensor sliced_tensor =
+        slice_ad_func(bool_2_idx, {1}, {j}, {j + 1}, {1}, {});
+    indices.emplace_back(sliced_tensor);
+  }
+  auto index_dims_vec = common::vectorize<int64_t>(bool_index.dims());
+
+  return index_elementwise_ad_func(tensor, indices, index_dims_vec);
+#else
+
   return gather_nd_ad_func(tensor, bool_2_idx);
+#endif
 }
 
 static void ParseBoolAndBroadcastIndices(
