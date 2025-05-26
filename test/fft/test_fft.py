@@ -16,6 +16,7 @@ import sys
 import unittest
 
 import numpy as np
+import scipy
 import scipy.fft
 
 import paddle
@@ -1960,6 +1961,16 @@ class TestFftShift_ZeroSize(unittest.TestCase):
                 atol=ATOL.get(str(self.x.dtype)),
             )
 
+    def test_grad_shape(self):
+        with paddle.base.dygraph.guard(self.place):
+            x = paddle.to_tensor(self.x, stop_gradient=False)
+            y = paddle.fft.fftshift(x, self.axes)
+            loss = paddle.sum(y)
+            loss.backward()
+            np.testing.assert_equal(
+                x.grad.shape, self.x.shape, "Grad shape mismatch"
+            )
+
 
 @place(DEVICES)
 @parameterize(
@@ -1985,6 +1996,16 @@ class TestIfftShift_ZeroSize(unittest.TestCase):
                 ).numpy(),
                 rtol=RTOL.get(str(self.x.dtype)),
                 atol=ATOL.get(str(self.x.dtype)),
+            )
+
+    def test_grad_shape(self):
+        with paddle.base.dygraph.guard(self.place):
+            x = paddle.to_tensor(self.x, stop_gradient=False)
+            y = paddle.fft.ifftshift(x, self.axes)
+            loss = paddle.sum(y)
+            loss.backward()
+            np.testing.assert_equal(
+                x.grad.shape, self.x.shape, "Grad shape mismatch"
             )
 
 
