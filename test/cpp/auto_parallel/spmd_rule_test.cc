@@ -230,7 +230,88 @@ TEST(MatmulSPMDRule, Ctor) {
   check_partial_dims(inferred_dist_attrs.second[0], {0});
   VLOG(4) << "test11 done." << std::endl << std::endl << std::endl;
 }
+TEST(InstanceNorm, Ctor) {
+  // build input data class
+  std::vector<int64_t> x_shape = {64, 64, 64, 64};  // N,C,H,W
+  std::vector<int64_t> scale_shape = {64};
+  std::vector<int64_t> bias_shape = {64};
+  std::vector<int64_t> mean_and_variance_shape = {64, 64};
+  std::vector<int64_t> mesh_shape = {2, 3};
+  std::vector<int64_t> process_ids = {0, 1, 2, 3, 4, 5};
+  std::vector<std::string> dim_names = {"x", "y"};
+  ProcessMesh process_mesh(mesh_shape, process_ids, dim_names);
 
+  TensorDistAttr x_dist_attr = TensorDistAttr();
+  x_dist_attr.set_process_mesh(process_mesh);
+  x_dist_attr.set_dims_mapping(std::vector<int64_t>({0, 1, -1, -1}));
+  x_dist_attr.set_dynamic_dims(std::vector<bool>({false, false, false, false}));
+
+  TensorDistAttr scale_dist_attr = TensorDistAttr();
+  scale_dist_attr.set_process_mesh(process_mesh);
+  scale_dist_attr.set_dims_mapping(std::vector<int64_t>({-1}));
+  scale_dist_attr.set_dynamic_dims(std::vector<bool>({false}));
+
+  TensorDistAttr bias_dist_attr = TensorDistAttr();
+  bias_dist_attr.set_process_mesh(process_mesh);
+  bias_dist_attr.set_dims_mapping(std::vector<int64_t>({-1}));
+  bias_dist_attr.set_dynamic_dims(std::vector<bool>({false}));
+
+  float epsilon = 1e-5;
+  // Test forward.
+  // [-1,0, 1, -1], [-1], [-1] --> [-1,0, -1, -1], [-1,0], [-1,0]
+
+  x_dist_attr.set_dims_mapping({-1, 0, 1, -1});
+  scale_dist_attr.set_dims_mapping({-1});
+  bias_dist_attr.set_dims_mapping({-1});
+  phi::distributed::DistMetaTensor x(common::make_ddim(x_shape), x_dist_attr);
+  phi::distributed::DistMetaTensor scale(common::make_ddim(scale_shape),
+                                         scale_dist_attr);
+  phi::distributed::DistMetaTensor bias(common::make_ddim(bias_shape),
+                                        bias_dist_attr);
+  phi::distributed::SpmdInfo forward_info =
+      phi::distributed::InstanceNormInferSpmd(x, scale, bias, epsilon);
+  size_t input_size = 3;
+  size_t output_size = 3;
+  EXPECT_EQ(inferred_dist_attrs.first.size(), input_size);
+  EXPECT_EQ(inferred_dist_attrs.second.size(), output_size);
+  check_dim_mapping(inferred_dist_attrs.first[0], {-1, 0, -1, -1});
+  check_dim_mapping(inferred_dist_attrs.first[1], {-1});
+  check_dim_mapping(inferred_dist_attrs.first[2], {-1});
+  check_dim_mapping(inferred_dist_attrs.second[0], {-1, 0, -1, -1});
+  check_dim_mapping(inferred_dist_attrs.second[1], {-1, 0});
+  check_dim_mapping(inferred_dist_attrs.second[2], {-1, 0});
+  VLOG(4) << "test forward done.";
+
+  // Test backward.
+  // [-1,0, 1, -1], [-1], [-1,-1], [-1,-1], [-1,0, 1, -1]
+  TensorDistAttr mean_and_variance_dist_attr = TensorDistAttr();
+  mean_and_variance_dist_attr.set_process_mesh(process_mesh);
+  mean_and_variance_dist_attr.set_dims_mapping(std::vector<int64_t>({-1, -1}));
+  mean_and_variance_dist_attr.set_dynamic_dims(
+      std::vector<bool>({false, false}));
+  phi::distributed::DistMetaTensor y_grad(common::make_ddim(x_shape),
+                                          x_dist_attr);
+  phi::distributed::DistMetaTensor saved_mean(
+      common::make_ddim(mean_and_variance_shape), mean_and_variance_dist_attr);
+  phi::distributed::DistMetaTensor saved_variance(
+      common::make_ddim(mean_and_variance_shape), mean_and_variance_dist_attr);
+  phi::distributed::SpmdInfo backward_info =
+      phi::distributed::InstanceNormGradInferSpmd(
+          x, scale, saved_mean, saved_variance, y_grad, epsilon);
+  input_size = 5;
+  output_size = 3;
+  EXPECT_EQ(inferred_dist_attrs.first.size(), input_size);
+  EXPECT_EQ(inferred_dist_attrs.second.size(), output_size);
+  check_dim_mapping(inferred_dist_attrs.first[0], {-1, 0, -1, -1});
+  check_dim_mapping(inferred_dist_attrs.first[1], {-1});
+  check_dim_mapping(inferred_dist_attrs.first[2], {-1, 0});
+  check_dim_mapping(inferred_dist_attrs.first[3], {-1, 0});
+  check_dim_mapping(inferred_dist_attrs.first[4], {-1, 0, -1, -1});
+  check_dim_mapping(inferred_dist_attrs.second[0], {-1, 0, -1, -1});
+  check_dim_mapping(inferred_dist_attrs.second[1], {-1});
+  check_dim_mapping(inferred_dist_attrs.second[2], {-1});
+  VLOG(4) << "test backward done.";
+}
 TEST(LayerNormSPMDRule, Ctor) {
   // build input data class
   std::vector<int64_t> x_shape = {64, 32, 1024};
