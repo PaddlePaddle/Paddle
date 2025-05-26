@@ -1607,6 +1607,9 @@ XPUOpMap& get_kl3_ops() {
        XPUKernelSet({phi::DataType::FLOAT32,
                      phi::DataType::FLOAT16,
                      phi::DataType::BFLOAT16,
+#ifdef PADDLE_WITH_XPU_FFT
+                     phi::DataType::COMPLEX64,
+#endif
                      phi::DataType::INT64,
                      phi::DataType::INT32,
                      phi::DataType::BOOL})},
@@ -1614,6 +1617,9 @@ XPUOpMap& get_kl3_ops() {
        XPUKernelSet({phi::DataType::FLOAT32,
                      phi::DataType::FLOAT16,
                      phi::DataType::BFLOAT16,
+#ifdef PADDLE_WITH_XPU_FFT
+                     phi::DataType::COMPLEX64,
+#endif
                      phi::DataType::INT64,
                      phi::DataType::INT32,
                      phi::DataType::BOOL})},
