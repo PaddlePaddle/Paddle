@@ -109,6 +109,7 @@ class TestCumsumOp(unittest.TestCase):
         paddle.enable_static()
 
     def test_cpu_static(self):
+        paddle.enable_static()
         self.run_static()
 
     def test_gpu_dygraph(self):
