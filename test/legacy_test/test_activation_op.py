@@ -4051,6 +4051,11 @@ class TestLog_ZeroDim(TestLog):
         self.shape = []
 
 
+class TestLog_ZeroSize(TestLog):
+    def init_shape(self):
+        self.shape = [0, 2]
+
+
 class TestLog2(TestActivation):
     def setUp(self):
         self.op_type = "log2"
