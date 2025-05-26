@@ -28,9 +28,9 @@ void PoolGradRawKernel(const Context& ctx,
                        const DenseTensor& x,
                        const DenseTensor& out,
                        const DenseTensor& dout,
-                       const std::vector<int>& kernel_size,
-                       const std::vector<int>& strides,
-                       const std::vector<int>& paddings,
+                       const std::vector<int64_t>& kernel_size,
+                       const std::vector<int64_t>& strides,
+                       const std::vector<int64_t>& paddings,
                        bool exclusive,
                        const std::string& data_format,
                        const std::string& pooling_type,
@@ -40,8 +40,8 @@ void PoolGradRawKernel(const Context& ctx,
                        const float norm_type,
                        DenseTensor* dx) {
   const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
-  std::vector<int> paddings_ = paddings;
-  std::vector<int> kernel_size_ = kernel_size;
+  std::vector<int64_t> paddings_ = paddings;
+  std::vector<int64_t> kernel_size_ = kernel_size;
 
   // update paddings
   auto x_dims = x.dims();
@@ -225,17 +225,13 @@ void Pool2dGradKernel(const Context& ctx,
                       bool adaptive,
                       const std::string& padding_algorithm,
                       DenseTensor* dx) {
-  std::vector<int> kernel_size_val(kernel_size.GetData().begin(),
-                                   kernel_size.GetData().end());
-  std::vector<int> strides_val(strides.begin(), strides.end());
-  std::vector<int> paddings_val(paddings.begin(), paddings.end());
   PoolGradRawKernel<T, Context>(ctx,
                                 x,
                                 out,
                                 dout,
-                                kernel_size_val,
-                                strides_val,
-                                paddings_val,
+                                kernel_size.GetData(),
+                                strides,
+                                paddings,
                                 exclusive,
                                 data_format,
                                 pooling_type,
@@ -263,17 +259,13 @@ void LPPool2dGradKernel(const Context& ctx,
                         const std::string& padding_algorithm,
                         const float norm_type,
                         DenseTensor* dx) {
-  std::vector<int> kernel_size_val(kernel_size.GetData().begin(),
-                                   kernel_size.GetData().end());
-  std::vector<int> strides_val(strides.begin(), strides.end());
-  std::vector<int> paddings_val(paddings.begin(), paddings.end());
   PoolGradRawKernel<T, Context>(ctx,
                                 x,
                                 out,
                                 dout,
-                                kernel_size_val,
-                                strides_val,
-                                paddings_val,
+                                kernel_size.GetData(),
+                                strides,
+                                paddings,
                                 exclusive,
                                 data_format,
                                 pooling_type,
@@ -358,16 +350,13 @@ void Pool3dGradKernel(const Context& ctx,
                       bool adaptive,
                       const std::string& padding_algorithm,
                       DenseTensor* dx) {
-  std::vector<int> kernel_size_val(kernel_size.begin(), kernel_size.end());
-  std::vector<int> strides_val(strides.begin(), strides.end());
-  std::vector<int> paddings_val(paddings.begin(), paddings.end());
   PoolGradRawKernel<T, Context>(ctx,
                                 x,
                                 out,
                                 dout,
-                                kernel_size_val,
-                                strides_val,
-                                paddings_val,
+                                kernel_size,
+                                strides,
+                                paddings,
                                 exclusive,
                                 data_format,
                                 pooling_type,

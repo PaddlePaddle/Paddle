@@ -326,10 +326,10 @@ std::shared_ptr<OpStrategy> StrategyForScaleSymbolic(
 
               Expr cast_scale = should_upscale_fp32
                                     ? Expr(scale)
-                                    : ir::Cast::Make(A->type(), Expr(scale));
+                                    : common::cast(Expr(scale), A->type());
               Expr cast_bias = should_upscale_fp32
                                    ? Expr(bias)
-                                   : ir::Cast::Make(A->type(), Expr(bias));
+                                   : common::cast(Expr(bias), A->type());
               Expr add_result;
               if (scale == 1.0f) {
                 if (bias == 0.0f) {
