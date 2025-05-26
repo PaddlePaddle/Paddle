@@ -361,6 +361,15 @@
     param: [softmax, label, loss_grad, ignore_index, rank, nranks]
   inplace : (softmax -> logits_grad)
 
+- backward_op : cal_aux_loss_grad
+  forward : cal_aux_loss (Tensor gate_prob, Tensor dispatch_mask, Tensor tokens_mask, Tensor dispatch_tokens_mask, int64_t num_experts, bool use_group, int64_t moe_k, float clip_min) -> Tensor(l_aux_loss), Tensor(seqlen_float), Tensor(ce)
+  args : ( Tensor gate_prob,  Tensor seqlen_float, Tensor ce, Tensor l_aux_loss_grad, int64_t num_experts, bool use_group, int64_t moe_k)
+  output : Tensor(gate_prob_grad)
+  infer_meta :
+    func : CalAuxLossGradInferMeta
+  kernel :
+    func : cal_aux_loss_grad
+
 - backward_op : cast_grad
   forward : cast (Tensor x, DataType dtype) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)
