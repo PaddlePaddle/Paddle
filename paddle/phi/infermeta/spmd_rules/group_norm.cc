@@ -44,19 +44,110 @@ SpmdInfo GroupNormInferSpmd(const DistMetaTensor& x,
   std::vector<int64_t> scale_dims_mapping = scale.dist_attr().dims_mapping();
   std::vector<int64_t> bias_dims_mapping = bias.dist_attr().dims_mapping();
 
+  PADDLE_ENFORCE_GE(
+      x_ndim,
+      3,
+      common::errors::InvalidArgument(
+          "The ndim of x in group_norm should grater than 2, but got [%d].",
+          x_ndim));
+
+  PADDLE_ENFORCE_LE(
+      x_ndim,
+      5,
+      common::errors::InvalidArgument(
+          "The ndim of x in group_norm should be less than 6 , but got [%d].",
+          x_ndim));
   PADDLE_ENFORCE_EQ(
       scale_ndim,
       1,
       common::errors::InvalidArgument(
-          "The ndim of scale in layer_norm should be 1, but got [%d].",
+          "The ndim of scale in group_norm should be 1, but got [%d].",
           scale_ndim));
 
   PADDLE_ENFORCE_EQ(
       bias_ndim,
       1,
       common::errors::InvalidArgument(
-          "The ndim of bias in layer_norm should be 1, but got [%d].",
+          "The ndim of bias in group_norm should be 1, but got [%d].",
           bias_ndim));
+  // Step1: Build Einsum Notation
+  // Only N axis can be sharded.
+  std::string alphabet = "ijklmnopqrstuvwxyz";
+  std::string x_axes(x_ndim, '1');
+  std::string mean_axes(1, '1');
+  std::string variance_axes(1, '1');
+  for (int i = 0; i < x_ndim; ++i) {
+    x_axes[i] = alphabet[i];
+  }
+  mean_axes[0] = x_axes[0];
+  variance_axes[0] = x_axes[0];
+  // x_axes[0] = alphabet[0];
+  std::string scale_axes(1, x_axes[1]);  // C axis
+  std::string bias_axes(1, x_axes[1]);
+  // get output notation
+  std::string out_axes = x_axes;
+
+  // Step2: Sharding Propagation
+  // Step2.1: merge input sharding
+  std::fill(x_dims_mapping.begin() + 1, x_dims_mapping.end(), -1);
+  std::unordered_map<std::string, int64_t> axis_to_dim_map =
+      ShardingMergeForTensors({{x_axes, x_dims_mapping}});
+
+  // Step2.2: infer output dims mapping
+  TensorDistAttr out_dist_attr = CopyTensorDistAttrForOutput(x_dist_attr_src);
+  TensorDistAttr mean_dist_attr = CopyTensorDistAttrForOutput(x_dist_attr_src);
+  TensorDistAttr variance_dist_attr =
+      CopyTensorDistAttrForOutput(x_dist_attr_src);
+  out_dist_attr.set_dims_mapping(
+      GetDimsMappingForAxes(out_axes, axis_to_dim_map));
+  mean_dist_attr.set_dims_mapping(
+      GetDimsMappingForAxes(mean_axes, axis_to_dim_map));
+  variance_dist_attr.set_dims_mapping(
+      GetDimsMappingForAxes(variance_axes, axis_to_dim_map));
+
+  // Step2.3: update input dims mapping
+  TensorDistAttr x_dist_attr_dst = CopyTensorDistAttrForOutput(x_dist_attr_src);
+  TensorDistAttr scale_dist_attr_dst =
+      CopyTensorDistAttrForOutput(scale.dist_attr());
+  TensorDistAttr bias_dist_attr_dst =
+      CopyTensorDistAttrForOutput(bias.dist_attr());
+  x_dist_attr_dst.set_dims_mapping(x_dims_mapping);
+
+  scale_dist_attr_dst.set_dims_mapping({-1});
+  bias_dist_attr_dst.set_dims_mapping({-1});
+
+  // Step2.4.  handle input and out tensor partial
+  // GroupNorm not support
+  VLOG(4) << "GroupNormInferSpmd:";
+  VLOG(4) << "shape size of x: 3~5";
+  VLOG(4) << "Einsum Notation: " << x_axes << "," << scale_axes << ","
+          << bias_axes << "-->" << out_axes << "," << mean_axes << ","
+          << variance_axes;
+  VLOG(4) << "X"
+          << " shape: [" << str_join(x_shape) << "] "
+          << "src_dims_mapping: [" << str_join(x_dist_attr_src.dims_mapping())
+          << "] "
+          << "dst_dims_mapping: [" << str_join(x_dims_mapping) << "]";
+  VLOG(4) << "Scale"
+          << " shape: [" << str_join(scale_shape) << "] "
+          << "src_dims_mapping: [" << str_join(scale_dims_mapping) << "] "
+          << "dst_dims_mapping: ["
+          << str_join(scale_dist_attr_dst.dims_mapping()) << "]";
+  VLOG(4) << "Bias"
+          << " shape: [" << str_join(bias_shape) << "] "
+          << "src_dims_mapping: [" << str_join(bias_dims_mapping) << "] "
+          << "dst_dims_mapping: ["
+          << str_join(bias_dist_attr_dst.dims_mapping()) << "]";
+  VLOG(4) << "Out dims mapping: [" << str_join(out_dist_attr.dims_mapping())
+          << "]";
+  VLOG(4) << "Mean dims mapping: [" << str_join(mean_dist_attr.dims_mapping())
+          << "]";
+  VLOG(4) << "Variance dims mapping: ["
+          << str_join(variance_dist_attr.dims_mapping()) << "]";
+  VLOG(4) << std::endl;
+
+  return {{x_dist_attr_dst, scale_dist_attr_dst, bias_dist_attr_dst},
+          {out_dist_attr, mean_dist_attr, variance_dist_attr}};
 }
 
 SpmdInfo GroupNormGradInferSpmd(const DistMetaTensor& x,
@@ -68,5 +159,204 @@ SpmdInfo GroupNormGradInferSpmd(const DistMetaTensor& x,
                                 const DistMetaTensor y_grad,
                                 float epsilon,
                                 int groups,
-                                std::string data_format) {}
+                                std::string data_format) {
+  // Step0: verify input args based on group_norm logic
+  auto x_shape = common::vectorize(x.dims());
+  auto scale_shape = common::vectorize(scale.dims());
+  auto bias_shape = common::vectorize(bias.dims());
+  auto y_shape = common::vectorize(y.dims());
+  auto mean_shape = common::vectorize(scale.dims());
+  auto variance_shape = common::vectorize(bias.dims());
+  auto y_grad_shape = common::vectorize(bias.dims());
+  int x_ndim = static_cast<int>(x_shape.size());
+  int scale_ndim = static_cast<int>(scale_shape.size());
+  int bias_ndim = static_cast<int>(bias_shape.size());
+  int y_ndim = static_cast<int>(y_shape.size());
+  int mean_ndim = static_cast<int>(mean_shape.size());
+  int variance_ndim = static_cast<int>(variance_shape.size());
+  int y_grad_ndim = static_cast<int>(y_grad_shape.size());
+  TensorDistAttr x_dist_attr_src = x.dist_attr();
+  std::vector<int64_t> x_dims_mapping = x_dist_attr_src.dims_mapping();
+  std::vector<int64_t> scale_dims_mapping = scale.dist_attr().dims_mapping();
+  std::vector<int64_t> bias_dims_mapping = bias.dist_attr().dims_mapping();
+  std::vector<int64_t> y_dims_mapping = scale.dist_attr().dims_mapping();
+  std::vector<int64_t> mean_dims_mapping = bias.dist_attr().dims_mapping();
+  std::vector<int64_t> variance_dims_mapping = scale.dist_attr().dims_mapping();
+  std::vector<int64_t> y_grad_dims_mapping = bias.dist_attr().dims_mapping();
+
+  PADDLE_ENFORCE_GE(
+      x_ndim,
+      3,
+      common::errors::InvalidArgument(
+          "The ndim of x in group_norm should grater than 2, but got [%d].",
+          x_ndim));
+
+  PADDLE_ENFORCE_LE(
+      x_ndim,
+      5,
+      common::errors::InvalidArgument(
+          "The ndim of x in group_norm should be less than 6 , but got [%d].",
+          x_ndim));
+  PADDLE_ENFORCE_EQ(x_ndim,
+                    y_ndim,
+                    common::errors::InvalidArgument(
+                        "The ndim of x and y in group_norm should be equal, "
+                        "but got x:[%d] and y[%d] .",
+                        x_ndim,
+                        y_ndim));
+  PADDLE_ENFORCE_EQ(
+      x_ndim,
+      y_grad_ndim,
+      common::errors::InvalidArgument(
+          "The ndim of x and y_grad in group_norm should be equal, "
+          "but got x:[%d] and y_grad[%d] .",
+          x_ndim,
+          y_grad_ndim));
+  PADDLE_ENFORCE_EQ(
+      scale_ndim,
+      1,
+      common::errors::InvalidArgument(
+          "The ndim of scale in group_norm should be 1, but got [%d].",
+          scale_ndim));
+
+  PADDLE_ENFORCE_EQ(
+      bias_ndim,
+      1,
+      common::errors::InvalidArgument(
+          "The ndim of bias in group_norm should be 1, but got [%d].",
+          bias_ndim));
+  PADDLE_ENFORCE_EQ(
+      mean_ndim,
+      1,
+      common::errors::InvalidArgument(
+          "The ndim of mean in group_norm should be 1, but got [%d].",
+          mean_ndim));
+  PADDLE_ENFORCE_EQ(
+      variance_ndim,
+      1,
+      common::errors::InvalidArgument(
+          "The ndim of variance in group_norm should be 1, but got [%d].",
+          variance_ndim));
+
+  // Step1: Build Einsum Notation
+  // Only N axis can be sharded.
+  std::string alphabet = "ijklmnopqrstuvwxyz";
+  // input
+  std::string x_axes(x_ndim, '1');
+  std::string scale_axes(1, x_axes[1]);  // C axis
+  std::string bias_axes(1, x_axes[1]);
+  std::string y_axes(y_ndim, '1');
+  std::string mean_axes(1, x_axes[0]);
+  std::string variance_axes(1, x_axes[0]);
+  std::string y_grad_axes(y_grad_ndim, '1');
+
+  for (int i = 0; i < x_ndim; ++i) {
+    x_axes[i] = alphabet[i];
+    y_axes[i] = alphabet[i];
+    y_grad_axes[i] = alphabet[i];
+  }
+  // output
+  std::string x_grad_axes = x_axes;
+  std::string scale_grad_axes(1, x_axes[1]);  // C axis
+  std::string bias_grad_axes(1, x_axes[1]);
+  // Step2: Sharding Propagation
+  // Step2.1: merge input sharding
+  std::fill(x_dims_mapping.begin() + 1, x_dims_mapping.end(), -1);
+  std::unordered_map<std::string, int64_t> axis_to_dim_map =
+      ShardingMergeForTensors({{x_axes, x_dims_mapping}});
+
+  // Step2.2: infer output dims mapping
+  TensorDistAttr x_grad_dist_attr =
+      CopyTensorDistAttrForOutput(x_dist_attr_src);
+  TensorDistAttr scale_grad_dist_attr =
+      CopyTensorDistAttrForOutput(scale.dist_attr());
+  TensorDistAttr bias_grad_dist_attr =
+      CopyTensorDistAttrForOutput(bias.dist_attr());
+  x_grad_dist_attr.set_dims_mapping(
+      GetDimsMappingForAxes(x_grad_axes, axis_to_dim_map));
+  scale_grad_dist_attr.set_dims_mapping({-1});
+  bias_grad_dist_attr.set_dims_mapping({-1});
+
+  // Step2.3: update input dims mapping
+  TensorDistAttr x_dist_attr_dst = CopyTensorDistAttrForOutput(x_dist_attr_src);
+  TensorDistAttr scale_dist_attr_dst =
+      CopyTensorDistAttrForOutput(scale.dist_attr());
+  TensorDistAttr bias_dist_attr_dst =
+      CopyTensorDistAttrForOutput(bias.dist_attr());
+  TensorDistAttr y_dist_attr_dst = CopyTensorDistAttrForOutput(y.dist_attr());
+  TensorDistAttr mean_dist_attr_dst =
+      CopyTensorDistAttrForOutput(mean.dist_attr());
+  TensorDistAttr variance_dist_attr_dst =
+      CopyTensorDistAttrForOutput(variance.dist_attr());
+  TensorDistAttr y_grad_dist_attr_dst =
+      CopyTensorDistAttrForOutput(y_grad.dist_attr());
+  x_dist_attr_dst.set_dims_mapping(x_dims_mapping);
+  y_dist_attr_dst.set_dims_mapping(x_dims_mapping);
+  y_grad_dist_attr_dst.set_dims_mapping(x_dims_mapping);
+  mean_dist_attr_dst.set_dims_mapping({-1});
+  variance_dist_attr_dst.set_dims_mapping({-1});
+  scale_dist_attr_dst.set_dims_mapping({-1});
+  bias_dist_attr_dst.set_dims_mapping({-1});
+
+  // Step2.4.  handle input and out tensor partial
+  // GroupNorm not support
+  VLOG(4) << "GroupNormInferSpmd:";
+  VLOG(4) << "shape size of x: 3~5";
+  VLOG(4) << "Einsum Notation: " << x_axes << "," << scale_axes << ","
+          << bias_axes << y_axes << "," << mean_axes << "," << variance_axes
+          << "," << y_grad_axes << "-->" << x_grad_axes << ","
+          << scale_grad_axes << "," << bias_grad_axes;
+  VLOG(4) << "X"
+          << " shape: [" << str_join(x_shape) << "] "
+          << "src_dims_mapping: [" << str_join(x_dist_attr_src.dims_mapping())
+          << "] "
+          << "dst_dims_mapping: [" << str_join(x_dims_mapping) << "]";
+  VLOG(4) << "Scale"
+          << " shape: [" << str_join(scale_shape) << "] "
+          << "src_dims_mapping: [" << str_join(scale_dims_mapping) << "] "
+          << "dst_dims_mapping: ["
+          << str_join(scale_dist_attr_dst.dims_mapping()) << "]";
+  VLOG(4) << "Bias"
+          << " shape: [" << str_join(bias_shape) << "] "
+          << "src_dims_mapping: [" << str_join(bias_dims_mapping) << "] "
+          << "dst_dims_mapping: ["
+          << str_join(bias_dist_attr_dst.dims_mapping()) << "]";
+  VLOG(4) << "Y"
+          << " shape: [" << str_join(y_shape) << "] "
+          << "src_dims_mapping: [" << str_join(y_dims_mapping) << "] "
+          << "dst_dims_mapping: [" << str_join(y_dist_attr_dst.dims_mapping())
+          << "]";
+  VLOG(4) << "Mean"
+          << " shape: [" << str_join(mean_shape) << "] "
+          << "src_dims_mapping: [" << str_join(mean_dims_mapping) << "] "
+          << "dst_dims_mapping: ["
+          << str_join(mean_dist_attr_dst.dims_mapping()) << "]";
+  VLOG(4) << "Variance"
+          << " shape: [" << str_join(variance_shape) << "] "
+          << "src_dims_mapping: [" << str_join(variance_dims_mapping) << "] "
+          << "dst_dims_mapping: ["
+          << str_join(variance_dist_attr_dst.dims_mapping()) << "]";
+  VLOG(4) << "Y_grad"
+          << " shape: [" << str_join(y_grad_shape) << "] "
+          << "src_dims_mapping: [" << str_join(y_grad_dims_mapping) << "] "
+          << "dst_dims_mapping: ["
+          << str_join(y_grad_dist_attr_dst.dims_mapping()) << "]";
+
+  VLOG(4) << "X_grad dims mapping: ["
+          << str_join(x_grad_dist_attr.dims_mapping()) << "]";
+  VLOG(4) << "Scale_grad dims mapping: ["
+          << str_join(scale_grad_dist_attr.dims_mapping()) << "]";
+  VLOG(4) << "Bias_grad dims mapping: ["
+          << str_join(bias_grad_dist_attr.dims_mapping()) << "]";
+  VLOG(4) << std::endl;
+
+  return {{x_dist_attr_dst,
+           scale_dist_attr_dst,
+           bias_dist_attr_dst,
+           y_dist_attr_dst,
+           mean_dist_attr_dst,
+           variance_dist_attr_dst,
+           y_grad_dist_attr_dst},
+          {x_grad_dist_attr, scale_grad_dist_attr, bias_grad_dist_attr}};
+}
 }  // namespace phi::distributed
