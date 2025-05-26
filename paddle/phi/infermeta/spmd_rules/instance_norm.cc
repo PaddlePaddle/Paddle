@@ -29,7 +29,7 @@ SpmdInfo InstanceNormInferSpmd(const DistMetaTensor& x,
                                const DistMetaTensor& scale,
                                const DistMetaTensor& bias,
                                float epsilon) {
-  // Step0: verify input args based on layer_norm logic
+  // Step0: verify input args based on instance_norm logic
   auto x_shape = common::vectorize(x.dims());
   auto scale_shape = common::vectorize(scale.dims());
   auto bias_shape = common::vectorize(bias.dims());
@@ -144,7 +144,7 @@ SpmdInfo InstanceNormGradInferSpmd(const DistMetaTensor& x,
                                    const DistMetaTensor& saved_variance,
                                    const DistMetaTensor& y_grad,
                                    float epsilon) {
-  // Step0: verify input args based on layer_norm logic
+  // Step0: verify input args based on instance_norm logic
   auto x_shape = common::vectorize(x.dims());
   auto scale_shape = common::vectorize(scale.dims());
   auto saved_mean_shape = common::vectorize(saved_mean.dims());
