@@ -438,9 +438,7 @@ def ParseYamlInplaceInfo(string):
     inplace_map = {}
     for pair in string.split(","):
         pair = pair.strip()
-        pair = pair.removeprefix("(")
-
-        pair = pair.removesuffix(")")
+        pair = pair.removeprefix("(").removesuffix(")")
 
         key = pair.split("->")[0].strip()
         val = pair.split("->")[1].strip()
