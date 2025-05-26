@@ -103,9 +103,7 @@ void ArgsortKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<int64_t>(indices);
     return;
   }
-  if (output && output->numel() == 0) {
-    return;
-  }
+
   axis = (axis < 0) ? (in_dims.size() + axis) : axis;
   T* out_data = dev_ctx.template Alloc<T>(output);
 

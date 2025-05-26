@@ -62,10 +62,6 @@ void ArgsortGradKernel(const Context& dev_ctx,
   auto rank = input.dims().size();
   axis = (axis < 0) ? (in_dims.size() + axis) : axis;
   dev_ctx.template Alloc<T>(in_grad);
-  if (in_grad && in_grad->numel() == 0) {
-    dev_ctx.template Alloc<T>(in_grad);
-    return;
-  }
   auto dxt = EigenVector<T>::Flatten(*in_grad);
   auto& place = *dev_ctx.eigen_device();
   dxt.device(place) = dxt.constant(static_cast<T>(0));
