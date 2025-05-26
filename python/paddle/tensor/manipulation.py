@@ -3509,6 +3509,8 @@ def unique_consecutive(
         )
         outs = [out]
         if return_inverse:
+            if inverse.shape != x.shape:
+                inverse = inverse.reshape(x.shape)
             outs.append(inverse)
         if return_counts:
             outs.append(counts)
@@ -3546,6 +3548,8 @@ def unique_consecutive(
         outputs = {"Out": out, "Index": inverse, "Counts": counts}
         outs = [out]
         if return_inverse:
+            if inverse.shape != x.shape:
+                inverse = inverse.reshape(x.shape)
             outs.append(inverse)
         if return_counts:
             outs.append(counts)
