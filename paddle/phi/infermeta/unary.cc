@@ -3783,7 +3783,7 @@ DDim StrictReduceInferDim(const MetaTensor& x,
           common::errors::InvalidArgument(
               "Cannot perform reduction along an axis (%d) that has a size of "
               "0. ",
-              i))
+              i));
       if (keep_dim) {
         out_dim_vector.push_back(1);
       }
