@@ -16,6 +16,7 @@
 
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 
 namespace phi {
@@ -41,6 +42,23 @@ void MvGradKernel(const Context &dev_ctx,
   auto dout = out_grad;
   auto dx = x_grad;
   auto dvec = vec_grad;
+  if (out_grad.numel() == 0) {
+    if (dx) {
+      dev_ctx.template Alloc<T>(dx);
+      if (dx->numel() > 0) {
+        phi::Full<T, Context>(
+            dev_ctx, phi::IntArray(common::vectorize(dx->dims())), 0, dx);
+      }
+    }
+    if (dvec) {
+      dev_ctx.template Alloc<T>(dvec);
+      if (dx->numel() > 0) {
+        phi::Full<T, Context>(
+            dev_ctx, phi::IntArray(common::vectorize(dvec->dims())), 0, dvec);
+      }
+    }
+    return;
+  }
 
   auto dim_x = x.dims();
   int m = dim_x[0];
