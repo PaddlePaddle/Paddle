@@ -411,16 +411,11 @@ class TestFlashAttentionWithMaskAPI(unittest.TestCase):
         np.testing.assert_allclose(out.numpy(), out_, rtol=5e-03, atol=1e-03)
 
 
-@unittest.skipIf(
-    not is_flashattn_supported(),
-    "core is not compiled with CUDA and cuda version need larger than or equal to 11.4"
-    "and device's compute capability must be 7.5 or 8.x",
-)
-class TestFlashAttentionWithBoolMaskAPI(unittest.TestCase):
+class TestAttentionWithBoolMask(unittest.TestCase):
     def setUp(self):
-        self.place = paddle.CUDAPlace(0)
+        self.place = paddle.CPUPlace()
         self.shape = (2, 128, 8, 32)
-        self.dtype = 'float16'
+        self.dtype = 'float32'  # 修改为float32
         self.dropout = 0.0
         self.causal = False
 
@@ -469,6 +464,49 @@ class TestFlashAttentionWithBoolMaskAPI(unittest.TestCase):
         out_.backward()
 
         np.testing.assert_allclose(out.numpy(), out_, rtol=5e-03, atol=1e-03)
+
+    def test_dot_scale_product_none_mask(self):
+        # test with mask=None
+        paddle.disable_static()
+
+        query = np.random.random(self.shape)
+        key = np.random.random(self.shape)
+        value = np.random.random(self.shape)
+
+        q = paddle.to_tensor(
+            query, place=self.place, dtype=self.dtype, stop_gradient=False
+        )
+        k = paddle.to_tensor(
+            key, place=self.place, dtype=self.dtype, stop_gradient=False
+        )
+        v = paddle.to_tensor(
+            value, place=self.place, dtype=self.dtype, stop_gradient=False
+        )
+
+        q_ = paddle.to_tensor(
+            query, place=self.place, dtype=self.dtype, stop_gradient=False
+        )
+        k_ = paddle.to_tensor(
+            key, place=self.place, dtype=self.dtype, stop_gradient=False
+        )
+        v_ = paddle.to_tensor(
+            value, place=self.place, dtype=self.dtype, stop_gradient=False
+        )
+
+        m = None
+
+        out = scaled_dot_product_attention(
+            q, k, v, m, self.dropout, self.causal
+        )
+
+        out_ = attention_naive(q_, k_, v_, self.causal)
+
+        out.backward()
+        out_.backward()
+
+        np.testing.assert_allclose(
+            out.numpy(), out_.numpy(), rtol=5e-03, atol=1e-03
+        )
 
 
 class TestFlashAttentionAPITest1(TestFlashAttentionAPI):
