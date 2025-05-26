@@ -110,9 +110,10 @@ class HybridParallelNet(nn.Layer):
 
 
 def get_hybrid_parallel_model(train_program, start_program):
-    with static.program_guard(
-        train_program, start_program
-    ), utils.unique_name.guard():
+    with (
+        static.program_guard(train_program, start_program),
+        utils.unique_name.guard(),
+    ):
         batch_size = BATCH_SIZE
         hidden_size = HIDDEN_SIZE
         sequence_len = SEQ_LEN

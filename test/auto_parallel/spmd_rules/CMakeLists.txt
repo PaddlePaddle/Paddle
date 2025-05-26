@@ -48,6 +48,8 @@ if(WITH_DISTRIBUTE)
     py_test_modules(test_add_n_rule MODULES test_add_n_rule)
     py_test_modules(test_mean_all_rule MODULES test_mean_all_rule)
     py_test_modules(test_argmin_rule MODULES test_argmin_rule)
+    py_test_modules(test_cummax_rule MODULES test_cummax_rule)
+    py_test_modules(test_cummin_rule MODULES test_cummin_rule)
     py_test_modules(test_argsort_rule MODULES test_argsort_rule)
   endif()
   # End of unittests WITH single card WITHOUT timeout
