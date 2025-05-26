@@ -188,7 +188,7 @@ T** GetDevicePointerArray(const Context& ctx,
                           phi::Allocator::AllocationPtr* holder_ptr) {
   PADDLE_ENFORCE_NOT_NULL(
       holder_ptr,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "hold_ptr should be provided when calling GetDevicePointerArray."));
   std::vector<const T*> h_indices_v(indices_v.size());
   for (size_t i = 0; i < indices_v.size(); ++i) {

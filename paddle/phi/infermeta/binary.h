@@ -534,6 +534,11 @@ void MaskedSelectInferMeta(const MetaTensor& x,
                            const MetaTensor& mask,
                            MetaTensor* out);
 
+void MaskedFillInferMeta(const MetaTensor& x,
+                         const MetaTensor& mask,
+                         const MetaTensor& value,
+                         MetaTensor* out);
+
 void MatmulInferMeta(const MetaTensor& x,
                      const MetaTensor& y,
                      bool trans_x,

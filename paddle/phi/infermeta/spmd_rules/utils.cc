@@ -560,7 +560,7 @@ TensorDistAttr ReduceGradBroadCastDims(const TensorDistAttr& input,
 
 TensorDistAttr ReduceGradBroadCastDims(int64_t input_dims,
                                        const TensorDistAttr& grad) {
-  TensorDistAttr input;
+  TensorDistAttr input = CopyTensorDistAttrForOutput(grad);
   std::vector<int64_t> dim_mapping(input_dims, -1);
   input.set_dims_mapping(dim_mapping);
   return ReduceGradBroadCastDims(input, grad);

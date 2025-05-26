@@ -100,6 +100,15 @@ __device__ inline float FN_FP32(rcp)(float x) {
   asm("rcp.approx.ftz.f32 %0, %1;" : "=f"(res) : "f"(x));
   return res;
 }
+__device__ inline float FN_FP32(tanh_approx)(float x) {
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 750
+  float res;
+  asm("tanh.approx.f32 %0, %1;" : "=f"(res) : "f"(x));
+  return res;
+#else
+  return tanh(x);
+#endif
+}
 
 // *************************************************************** //
 // float64 unary and binary operator
@@ -426,7 +435,7 @@ __device__ inline bfloat16 FN_BF16(erf)(bfloat16 x) { return bfloat16(FN_FP32(er
 __device__ inline bfloat16 FN_BF16(tan)(bfloat16 x) { return bfloat16(FN_FP32(tan)(static_cast<float>(x))); }
 __device__ inline bfloat16 FN_BF16(sinh)(bfloat16 x) { return bfloat16(FN_FP32(sinh)(static_cast<float>(x))); }
 __device__ inline bfloat16 FN_BF16(cosh)(bfloat16 x) { return bfloat16(FN_FP32(cosh)(static_cast<float>(x))); }
-__device__ inline bfloat16 FN_BF16(tanh)(bfloat16 x) { return bfloat16(FN_FP32(tanh)(static_cast<float>(x))); }
+__device__ inline bfloat16 FN_BF16(tanh)(bfloat16 x) { return bfloat16(FN_FP32(tanh_approx)(static_cast<float>(x))); }
 __device__ inline bfloat16 FN_BF16(asin)(bfloat16 x) { return bfloat16(FN_FP32(asin)(static_cast<float>(x))); }
 __device__ inline bfloat16 FN_BF16(acos)(bfloat16 x) { return bfloat16(FN_FP32(acos)(static_cast<float>(x))); }
 __device__ inline bfloat16 FN_BF16(atan)(bfloat16 x) { return bfloat16(FN_FP32(atan)(static_cast<float>(x))); }
@@ -480,7 +489,7 @@ __device__ inline float16 FN_FP16(erf)(float16 x) { return float16(FN_FP32(erf)(
 __device__ inline float16 FN_FP16(tan)(float16 x) { return float16(FN_FP32(tan)(static_cast<float>(x))); }
 __device__ inline float16 FN_FP16(sinh)(float16 x) { return float16(FN_FP32(sinh)(static_cast<float>(x))); }
 __device__ inline float16 FN_FP16(cosh)(float16 x) { return float16(FN_FP32(cosh)(static_cast<float>(x))); }
-__device__ inline float16 FN_FP16(tanh)(float16 x) { return float16(FN_FP32(tanh)(static_cast<float>(x))); }
+__device__ inline float16 FN_FP16(tanh)(float16 x) { return float16(FN_FP32(tanh_approx)(static_cast<float>(x))); }
 __device__ inline float16 FN_FP16(asin)(float16 x) { return float16(FN_FP32(asin)(static_cast<float>(x))); }
 __device__ inline float16 FN_FP16(acos)(float16 x) { return float16(FN_FP32(acos)(static_cast<float>(x))); }
 __device__ inline float16 FN_FP16(atan)(float16 x) { return float16(FN_FP32(atan)(static_cast<float>(x))); }

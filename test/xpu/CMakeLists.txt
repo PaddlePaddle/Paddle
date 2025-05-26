@@ -31,6 +31,7 @@ endforeach()
 
 set_tests_properties(test_conv2d_op_xpu PROPERTIES TIMEOUT 120)
 set_tests_properties(test_mul_op_xpu PROPERTIES TIMEOUT 120)
+set_tests_properties(test_slice_op_xpu PROPERTIES TIMEOUT 40)
 set_tests_properties(test_matmul_v2_op_xpu PROPERTIES TIMEOUT 900)
 set_tests_properties(test_collective_identity_xpu
                      PROPERTIES LABELS "RUN_TYPE=DIST_KUNLUN")

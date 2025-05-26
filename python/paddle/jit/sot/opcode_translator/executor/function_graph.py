@@ -35,7 +35,7 @@ from .....utils.layers_utils import NotSupportedTensorArgumentError
 from ...infer_meta import (
     InferMetaCache,
     LayerInferMetaCache,
-    MetaInfo,
+    MetaInfoOrNull,
     ast_infer_meta,
 )
 from ...profiler import EventGuard, event_register
@@ -54,9 +54,9 @@ from ...utils import (
     NameGenerator,
     SIRToCodeMap,
     SotUndefinedVar,
+    already_unified_in_dynamic_and_static_graph,
     inner_error_default_handler,
     is_inplace_api,
-    is_paddle_api,
     log,
     log_do,
     map_if,
@@ -549,7 +549,7 @@ class FunctionGraph:
         Args:
             func: paddle api
         """
-        assert is_paddle_api(func)
+        assert already_unified_in_dynamic_and_static_graph(func)
         log(3, f"call paddle.api : {func.__name__}", "\n")
 
         def message_handler(*args, **kwargs):
@@ -833,7 +833,7 @@ class FunctionGraph:
             tracker = DummyTracker(list(args) + list(kwargs.values()))
         outputs = map_if(
             out_metas,
-            pred=lambda x: isinstance(x, MetaInfo),
+            pred=lambda x: isinstance(x, MetaInfoOrNull),
             true_fn=lambda x: var_cls(
                 x,
                 self,
