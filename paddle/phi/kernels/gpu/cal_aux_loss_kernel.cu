@@ -44,6 +44,8 @@ __global__ void cal_aux_loss_kernel(
   extern __shared__ int64_t aux_loss_shared[];
   static __shared__ float shared_float[1];
 
+  float scale_val = 1.f;
+
   // 算seqlen_float
   float seqlen_float_f = 0.f;
   if (dispatch_tokens_mask) {
@@ -56,6 +58,26 @@ __global__ void cal_aux_loss_kernel(
     }
     seqlen_float_f =
         phi::funcs::BlockReduceSum<float>(local_seqlen_float_f, 0xFFFFFFFF);
+
+    // 算scale_val
+    if (tokens_mask && row_gate_prob != dispatch_tokens_mask_len) {
+      float sum_tokens_mask = 0.f;
+      float local_sum_tokens_mask = 0.f;
+      int64_t num_k = (row_gate_prob + blockDim.x - 1) / blockDim.x;
+      for (int64_t k = 0; k < num_k; ++k) {
+        if (k * blockDim.x + threadIdx.x >= row_gate_prob) continue;
+        T mask = tokens_mask[k * blockDim.x + threadIdx.x];
+        local_sum_tokens_mask += static_cast<float>(mask);
+      }
+      sum_tokens_mask =
+          phi::funcs::BlockReduceSum<float>(local_sum_tokens_mask, 0xFFFFFFFF);
+      if (threadIdx.x == 0) {
+        shared_float[0] = seqlen_float_f / max(sum_tokens_mask, clip_min);
+      }
+      __syncthreads();
+      scale_val = shared_float[0];
+    }
+
   } else if (tokens_mask) {
     float local_seqlen_float_f = 0.f;
     int64_t num_k = (row_gate_prob + blockDim.x - 1) / blockDim.x;
@@ -105,26 +127,6 @@ __global__ void cal_aux_loss_kernel(
       aux_loss_shared[threadIdx.x] =
           static_cast<int64_t>(dispatch_mask[threadIdx.x]);
     }
-  }
-
-  // 算scale_val
-  float scale_val = 1.f;
-  if (tokens_mask) {
-    float sum_tokens_mask = 0.f;
-    float local_sum_tokens_mask = 0.f;
-    int64_t num_k = (row_gate_prob + blockDim.x - 1) / blockDim.x;
-    for (int64_t k = 0; k < num_k; ++k) {
-      if (k * blockDim.x + threadIdx.x >= row_gate_prob) continue;
-      T mask = tokens_mask[k * blockDim.x + threadIdx.x];
-      local_sum_tokens_mask += static_cast<float>(mask);
-    }
-    sum_tokens_mask =
-        phi::funcs::BlockReduceSum<float>(local_sum_tokens_mask, 0xFFFFFFFF);
-    if (threadIdx.x == 0) {
-      shared_float[0] = seqlen_float_f / max(sum_tokens_mask, clip_min);
-    }
-    __syncthreads();
-    scale_val = shared_float[0];
   }
 
   // 算me和l_aux
