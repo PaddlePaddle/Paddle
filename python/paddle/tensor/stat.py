@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import warnings
 from typing import TYPE_CHECKING, Literal
 
 from typing_extensions import TypeAlias, overload
@@ -29,7 +30,6 @@ from ..base.data_feeder import check_type, check_variable_and_dtype
 from ..common_ops_import import Variable
 from ..framework import LayerHelper, core
 from .math import _get_reduce_axis_with_tensor
-from .search import where
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -204,7 +204,9 @@ def var(
     n = n.astype(dtype)
     if unbiased:
         one_const = paddle.ones([], x.dtype)
-        n = where(n > one_const, n - 1.0, one_const)
+        if paddle.in_dynamic_mode() and n <= one_const:
+            warnings.warn("Degrees of freedom is <= 0.", stacklevel=2)
+        n = n - 1.0
     n.stop_gradient = True
     out /= n
     if out.dtype != x.dtype:

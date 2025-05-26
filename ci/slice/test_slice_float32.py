@@ -697,9 +697,9 @@ def main():
             S,
             ", B = ",
             B,
-            ", score <2 : ",
+            ", score <=2 : ",
             B2,
-            ", score > 3 : ",
+            ", score >2 : ",
             Bother,
         )
 
