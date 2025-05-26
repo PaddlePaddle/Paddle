@@ -87,4 +87,4 @@ def cal_aux_loss(
     helper.append_op(
         type='cal_aux_loss', inputs=inputs, attrs=attrs, outputs=outputs
     )
-    return l_aux_loss
+    return l_aux_loss, seqlen_float, ce

@@ -64,4 +64,4 @@ def build_src_rank_and_local_expert_id(
         attrs=attrs,
         outputs=outputs,
     )
-    return vector
+    return vector, local_expert_id
