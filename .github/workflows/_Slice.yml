@@ -72,8 +72,8 @@ jobs:
           mkdir -p ${{ github.workspace }}/../../../.cache/pip
           source ${{ github.workspace }}/../../../proxy
           python3.10 -m pip config set global.cache-dir ${{ github.workspace }}/../../../.cache/pip
-          python3.10 -m pip install torch==2.6.0 torchvision==0.21.0 torchaudio==2.6.0 --index-url https://download.pytorch.org/whl/cu118
           python3.10 -m pip install $wheel_link
+          python3.10 -m pip install torch==2.6.0 torchvision==0.21.0 torchaudio==2.6.0 --index-url https://download.pytorch.org/whl/cu118
           python3.10 test_slice_float32.py
           '
 

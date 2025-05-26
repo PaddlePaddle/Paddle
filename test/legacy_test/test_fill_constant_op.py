@@ -430,8 +430,11 @@ class TestFillConstantImperative(unittest.TestCase):
 class TestFillConstantOpError(unittest.TestCase):
 
     def test_errors1(self):
-        with paddle_static_guard(), paddle.static.program_guard(
-            paddle.static.Program(), paddle.static.Program()
+        with (
+            paddle_static_guard(),
+            paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ),
         ):
             # for ci coverage
             x1 = paddle.static.data(name='x1', shape=[-1, 1], dtype="int16")
@@ -463,8 +466,11 @@ class TestFillConstantOpError(unittest.TestCase):
             )
 
     def test_errors2(self):
-        with paddle_static_guard(), paddle.static.program_guard(
-            paddle.static.Program(), paddle.static.Program()
+        with (
+            paddle_static_guard(),
+            paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ),
         ):
             # The argument dtype of fill_constant_op must be one of bool, float16,
             # float32, float64, uint8, int16, int32 or int64

@@ -326,8 +326,8 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
  * x: the input SparseCooTensor, shape is (N, D, H, W, C)
  * kernel: the weight data, shape is (D, H, W, C, OC)
  * out: the output SparseCooTensor, shape is (N, D, H, W, OC)
- * rulebook: return rulebook if key is not vailed else return nullptr
- * counter: return counter if key is not vailed else return nullptr
+ * rulebook: return rulebook if key is not valid else return nullptr
+ * counter: return counter if key is not valid else return nullptr
  **/
 template <typename T, typename Context>
 void Conv3dCooKernel(const Context& dev_ctx,

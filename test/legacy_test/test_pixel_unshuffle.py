@@ -83,8 +83,9 @@ class TestPixelUnshuffleOp(OpTest):
         self.op_type = "pixel_unshuffle"
         self.python_api = pixel_unshuffle_wrapper
         self.init_dtype()
+        self.init_shape()
         self.init_data_format()
-        n, c, h, w = 2, 1, 12, 12
+        n, c, h, w = self.shape
 
         if self.format == "NCHW":
             shape = [n, c, h, w]
@@ -102,6 +103,9 @@ class TestPixelUnshuffleOp(OpTest):
             "downscale_factor": down_factor,
             "data_format": self.format,
         }
+
+    def init_shape(self):
+        self.shape = [2, 1, 12, 12]
 
     def init_dtype(self):
         self.dtype = np.float64
@@ -134,6 +138,11 @@ class TestChannelLast(TestPixelUnshuffleOp):
 class TestPixelUnshuffleFP16Op(TestPixelUnshuffleOp):
     def init_dtype(self):
         self.dtype = np.float16
+
+
+class TestPixelUnshuffleOp_ZeroSize(TestPixelUnshuffleOp):
+    def init_shape(self):
+        self.shape = [2, 0, 0, 12]
 
 
 @unittest.skipIf(
