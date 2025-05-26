@@ -1,7 +1,7 @@
 [tool.black]
 line-length = 80
 skip-string-normalization = true
-target-version = ["py38", "py39", "py310", "py311", "py312"]
+target-version = ["py39", "py310", "py311", "py312", "py313"]
 extend-exclude = '''
 (
     third_party/.+      # Exclude third_party directory
@@ -178,7 +178,7 @@ known-first-party = ["paddle"]
 "test/dygraph_to_static/seq2seq_dygraph_model.py" = ["RUF005"]
 
 [tool.mypy]
-python_version = "3.8"
+python_version = "3.9"
 cache_dir = ".mypy_cache"
 # Miscellaneous strictness flags
 allow_redefinition = true

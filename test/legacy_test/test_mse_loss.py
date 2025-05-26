@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from utils import dygraph_guard
 
 import paddle
 from paddle import base
@@ -78,6 +79,14 @@ class TestMseInvalidInput(unittest.TestCase):
             loss = paddle.nn.functional.mse_loss(input, label)
 
         self.assertRaises(TypeError, test_invalid_label)
+
+        def test_invalid_tuple_input():
+            with dygraph_guard():
+                input = paddle.randn(shape=[256, 3], dtype='float32')
+                label = [256, 3]
+                loss = paddle.nn.functional.mse_loss((input,), label)
+
+        self.assertRaises(ValueError, test_invalid_tuple_input)
 
 
 class TestNNMseLoss(unittest.TestCase):
