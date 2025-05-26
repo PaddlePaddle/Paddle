@@ -5692,4 +5692,4 @@
   kernel:
     func: fused_rms_norm
     data_type: x
-  # backward: fused_rms_norm_grad
+  backward: fused_rms_norm_grad

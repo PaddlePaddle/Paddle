@@ -67,14 +67,14 @@ void RMSLnBwd(const Context& ctx,
               const DenseTensor &invvar,
               const DenseTensor &dy,
               float epsilon,
-              DenseTensor* grad_x,
-              DenseTensor* grad_scale) {
+              DenseTensor* x_grad,
+              DenseTensor* scale_grad) {
   int rows, cols;
   const auto &x_shape = x.dims();
   rows = x_shape[0];
   cols = x_shape[1];
-  *grad_x = phi::EmptyLike<T, Context>(ctx, x);
-  *grad_scale = phi::EmptyLike<T, Context>(ctx, scale);
+  *x_grad = phi::EmptyLike<T, Context>(ctx, x);
+  *scale_grad = phi::EmptyLike<T, Context>(ctx, scale);
 
   cuda_rms_norm_gradient<T, Context>(
                           ctx,
@@ -85,8 +85,8 @@ void RMSLnBwd(const Context& ctx,
                            rows,
                            cols,
                            epsilon,
-                           grad_x,
-                           grad_scale
+                           x_grad,
+                           scale_grad
                            );
 }
 

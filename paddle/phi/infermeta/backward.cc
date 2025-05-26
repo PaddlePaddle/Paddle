@@ -1893,12 +1893,12 @@ void FusedRMSNormGradInferMeta(const MetaTensor &x,
               const MetaTensor &invvar,
               const MetaTensor &dy,
               float epsilon,
-              MetaTensor* grad_x,
-              MetaTensor* grad_scale){
+              MetaTensor* x_grad,
+              MetaTensor* scale_grad){
 
-  grad_x->set_dims(x.dims());
-  grad_x->set_dtype(x.dtype());
-  grad_scale->set_dims(scale.dims());
-  grad_scale->set_dtype(scale.dtype());
+  x_grad->set_dims(x.dims());
+  x_grad->set_dtype(x.dtype());
+  scale_grad->set_dims(scale.dims());
+  scale_grad->set_dtype(scale.dtype());
 }
 }  // namespace phi
