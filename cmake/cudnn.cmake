@@ -14,6 +14,7 @@ find_path(
   CUDNN_INCLUDE_DIR cudnn.h
   PATHS ${CUDNN_ROOT} ${CUDNN_ROOT}/include $ENV{CUDNN_ROOT}
         $ENV{CUDNN_ROOT}/include ${CUDA_TOOLKIT_INCLUDE}
+        /usr/local/lib/python${PY_VERSION}/dist-packages/nvidia/cudnn/include/
   NO_DEFAULT_PATH)
 
 get_filename_component(__libpath_hist ${CUDA_CUDART_LIBRARY} PATH)
@@ -43,6 +44,9 @@ set(CUDNN_LIB_NAME "")
 
 if(LINUX)
   set(CUDNN_LIB_NAME "libcudnn.so")
+  if(${CUDA_VERSION} GREATER_EQUAL 12.6)
+    set(CUDNN_LIB_NAME "libcudnn.so.9")
+  endif()
 endif()
 
 if(WIN32)
@@ -58,6 +62,7 @@ find_library(
   CUDNN_LIBRARY
   NAMES ${CUDNN_LIB_NAME} # libcudnn_static.a
   PATHS ${CUDNN_CHECK_LIBRARY_DIRS} ${CUDNN_INCLUDE_DIR} ${__libpath_hist}
+        /usr/local/lib/python${PY_VERSION}/dist-packages/nvidia/cudnn/lib/
   NO_DEFAULT_PATH
   DOC "Path to cuDNN library.")
 

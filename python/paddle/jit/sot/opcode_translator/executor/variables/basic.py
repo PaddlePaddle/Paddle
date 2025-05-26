@@ -526,7 +526,10 @@ class TensorVariable(VariableBase):
         meta = self.origin_meta
         if meta.is_null():
             return [
-                # TODO: Implement uninitialized tensor guard
+                paddle.framework.core.GuardNode(
+                    paddle.framework.core.IsNotDenseTensorHoldAllocationMatchGuard(),
+                    [expr_node],
+                ),
             ]
         meta = meta.unwrap_unsafe()
         return [

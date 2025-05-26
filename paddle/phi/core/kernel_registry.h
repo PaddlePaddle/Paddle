@@ -1308,6 +1308,41 @@ struct KernelRegistrar {
  * Used to register a instantiated kernel function
  * for all backend with one template argument.
  */
+#if (defined(PADDLE_WITH_CUSTOM_DEVICE) && defined(PADDLE_WITH_CUDA))
+#define PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(                        \
+    kernel_name, layout, meta_kernel_fn)                                 \
+  template decltype(meta_kernel_fn<::phi::CustomContext>)                \
+      meta_kernel_fn<::phi::CustomContext>;                              \
+  static void                                                            \
+      __FAKE_PD_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout( \
+          const ::phi::KernelKey kernel_key UNUSED,                      \
+          ::phi::Kernel* kernel UNUSED)
+
+#define PD_CUSTOM_KERNEL_REGISTER_FOR_ALL_DTYPE(                             \
+    kernel_name, backend, layout, meta_kernel_fn)                            \
+  PD_STATIC_ASSERT_GLOBAL_NAMESPACE(                                         \
+      PD_REGISTER_nt_kernel_ns_check_##kernel_name##_##layout,               \
+      "PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE must be called in global "   \
+      "namespace.");                                                         \
+  static void __PD_KERNEL_args_def_FN_##kernel_name##_##layout(              \
+      const ::phi::KernelKey& kernel_key, ::phi::Kernel* kernel);            \
+  static const ::phi::KernelRegistrar                                        \
+      __reg_phi_kernel_##kernel_name##_##backend##_##layout(                 \
+          ::phi::RegType::OUTER,                                             \
+          #kernel_name,                                                      \
+          #backend,                                                          \
+          DATA_LAYOUT(layout),                                               \
+          ::phi::KernelArgsParseFunctor<                                     \
+              decltype(&meta_kernel_fn<::phi::CustomContext>)>::Parse,       \
+          &__PD_KERNEL_args_def_FN_##kernel_name##_##layout,                 \
+          PHI_KERNEL(meta_kernel_fn<::phi::CustomContext>),                  \
+          PHI_VARIADIC_KERNEL(meta_kernel_fn<::phi::CustomContext>));        \
+  TEST_API int TouchKernelSymbolFor_##kernel_name##_##backend##_##layout() { \
+    return 0;                                                                \
+  }                                                                          \
+  void __PD_KERNEL_args_def_FN_##kernel_name##_##layout(                     \
+      const ::phi::KernelKey& kernel_key UNUSED, ::phi::Kernel* kernel UNUSED)
+#else
 #define PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(                  \
     kernel_name, layout, meta_kernel_fn)                           \
   _PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(::phi::RegType::INNER, \
@@ -1315,6 +1350,7 @@ struct KernelRegistrar {
                                             layout,                \
                                             meta_kernel_fn,        \
                                             BACKEND_LIST)
+#endif
 
 #define PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM(    \
     kernel_name, layout, meta_kernel_fn)                           \

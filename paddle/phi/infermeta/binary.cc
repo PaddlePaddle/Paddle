@@ -2902,6 +2902,14 @@ void MaskedSelectInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
+void MaskedFillInferMeta(const MetaTensor& x,
+                         const MetaTensor& mask,
+                         const MetaTensor& value,
+                         MetaTensor* out) {
+  out->set_dims(x.dims());  // can not infer
+  out->set_dtype(x.dtype());
+}
+
 void MatmulInferMeta(const MetaTensor& x,
                      const MetaTensor& y,
                      bool trans_x,

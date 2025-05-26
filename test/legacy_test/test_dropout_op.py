@@ -2146,8 +2146,10 @@ class TestPirCompositeDropout(unittest.TestCase):
         rev_actual = []
         mps = []
         for place in self.places:
-            with paddle.pir_utils.IrGuard(), static_guard(), scope_guard(
-                Scope()
+            with (
+                paddle.pir_utils.IrGuard(),
+                static_guard(),
+                scope_guard(Scope()),
             ):
                 core._set_prim_backward_enabled(True)
                 core._set_prim_forward_enabled(False)

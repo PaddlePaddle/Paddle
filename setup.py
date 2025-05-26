@@ -43,9 +43,9 @@ version_detail = sys.version_info
 version = str(version_detail[0]) + '.' + str(version_detail[1])
 env_version = os.getenv("PY_VERSION", None)
 
-if version_detail < (3, 8):
+if version_detail < (3, 9):
     raise RuntimeError(
-        f"Paddle only supports Python version >= 3.8 now,"
+        f"Paddle only supports Python version >= 3.9 now,"
         f"you are using Python {python_version}"
     )
 elif env_version is None:
@@ -1041,7 +1041,7 @@ def get_setup_requires():
         setup_requires = (
             f.read().splitlines()
         )  # Specify the dependencies to install
-    if sys.version_info >= (3, 8):
+    if sys.version_info >= (3, 9):
         setup_requires_tmp = []
         for setup_requires_i in setup_requires:
             if (
@@ -1052,6 +1052,8 @@ def get_setup_requires():
                 or '<"3.7"' in setup_requires_i
                 or '<="3.7"' in setup_requires_i
                 or '<"3.8"' in setup_requires_i
+                or '<="3.8"' in setup_requires_i
+                or '<"3.9"' in setup_requires_i
                 or setup_requires_i.strip().endswith('[build]')
             ):
                 continue
@@ -1061,7 +1063,7 @@ def get_setup_requires():
         return setup_requires
     else:
         raise RuntimeError(
-            "please check your python version,Paddle only support Python version>=3.8 now"
+            "please check your python version, Paddle only support Python version>=3.9 now"
         )
 
 
@@ -1270,6 +1272,41 @@ def get_paddle_extra_install_requirements():
     return paddle_cuda_requires, paddle_tensorrt_requires
 
 
+def build_cutlass3_src_code():
+    target_path = f"{paddle_binary_dir}/python/paddle/apy/matmul_pass/matmul/cutlass-3.7.0"
+    if not os.path.exists(target_path):
+        os.mkdir(target_path)
+    try:
+        cmd = ['git', 'rev-parse', 'HEAD']
+        git_commit = (
+            subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                cwd=f"{paddle_source_dir}/third_party/cutlass",
+            )
+            .communicate()[0]
+            .strip()
+        )
+    except:
+        git_commit = 'Unknown'
+        raise Exception("obtain commit id of third_party cutlass failed")
+    commit_id = str(git_commit.decode())
+    command = (
+        'cd '
+        + f'{paddle_source_dir}/third_party/cutlass && '
+        + 'git checkout v3.7.0 && '
+        + 'cp '
+        + f'{paddle_source_dir}/third_party/cutlass/tools -r '
+        + f'{target_path} && '
+        + 'cp '
+        + f'{paddle_source_dir}/third_party/cutlass/include -r '
+        + f'{target_path} && '
+        + f'git checkout {commit_id}'
+    )
+    if os.system(command) != 0:
+        raise Exception(f"copy cutlass-3.7.0 failed, command: {command}")
+
+
 def get_cinn_config_jsons():
     from pathlib import Path
 
@@ -1285,6 +1322,20 @@ def get_cinn_config_jsons():
         json = json[prefix_len:]
         json_path_list += [json]
     return json_path_list
+
+
+def get_apy_files():
+    from pathlib import Path
+
+    apy_path = env_dict.get("PADDLE_BINARY_DIR") + '/python/paddle/apy/'
+    prefix_len = len(apy_path)
+    p = Path(apy_path)
+    file_list = []
+    for path in p.rglob('*'):
+        if path.is_file():
+            relative_path = str(path)[prefix_len:]
+            file_list.append(relative_path)
+    return file_list
 
 
 def get_typing_libs_packages(paddle_binary_dir):
@@ -1357,6 +1408,14 @@ def get_package_data_and_package_dir():
     json_path_list = get_cinn_config_jsons()
     for json in json_path_list:
         package_data['paddle.cinn_config'] += [json]
+
+    if env_dict.get("WITH_CINN") == 'ON':
+        build_cutlass3_src_code()
+
+    package_data['paddle.apy'] = []
+    file_path_list = get_apy_files()
+    for file in file_path_list:
+        package_data['paddle.apy'] += [file]
 
     if 'develop' in sys.argv:
         package_dir = {'': 'python'}
@@ -2153,6 +2212,9 @@ def get_setup_parameters():
         'paddle.distributed.ps',
         'paddle.distributed.ps.utils',
         'paddle.incubate',
+        'paddle.incubate.cc.ap',
+        'paddle.incubate.cc.tools',
+        'paddle.apy',
         'paddle.incubate.autograd',
         'paddle.incubate.optimizer',
         'paddle.incubate.checkpoint',
@@ -2643,7 +2705,6 @@ def main():
             'Intended Audience :: Science/Research',
             'License :: OSI Approved :: Apache Software License',
             'Programming Language :: C++',
-            'Programming Language :: Python :: 3.8',
             'Programming Language :: Python :: 3.9',
             'Programming Language :: Python :: 3.10',
             'Programming Language :: Python :: 3.11',

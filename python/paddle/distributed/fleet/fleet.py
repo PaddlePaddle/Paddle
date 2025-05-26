@@ -111,7 +111,7 @@ def apply_ir_passes(
 
 
 def _inited_runtime_handler_(
-    func: Callable[_InputT, _RetT]
+    func: Callable[_InputT, _RetT],
 ) -> Callable[_InputT, _RetT]:
     def __impl__(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
         cls = args[0]
@@ -125,7 +125,7 @@ def _inited_runtime_handler_(
 
 
 def _is_non_distributed_check_(
-    func: Callable[_InputT, _RetT]
+    func: Callable[_InputT, _RetT],
 ) -> Callable[_InputT, _RetT]:
     def __impl__(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
         cls = args[0]
