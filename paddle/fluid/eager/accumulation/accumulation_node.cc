@@ -35,7 +35,7 @@ static void CopyOrAddTensor(paddle::Tensor* tensor,
     VLOG(3) << "Move Tensor ptr: " << t.impl();
     *tensor = t;
   } else {
-    if (!tensor->defined() || !tensor->has_allocation()) {
+    if (!tensor->defined() || !tensor->initialized()) {
       // Simply copy tensor->impl
       VLOG(3) << "Move Tensor ptr: " << t.impl();
       *tensor = t;
