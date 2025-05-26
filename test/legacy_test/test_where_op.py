@@ -151,7 +151,7 @@ class TestWhereOp_ZeroSize(TestWhereOp):
     def init_config(self):
         self.x = np.random.uniform((-5), 5, (60, 0)).astype('float64')
         self.y = np.random.uniform((-5), 5, (60, 1)).astype('float64')
-        self.cond = np.ones((60, 1)).astype('bool')
+        self.cond = np.ones((60, 0)).astype('bool')
 
 
 class TestWhereAPI(unittest.TestCase):
