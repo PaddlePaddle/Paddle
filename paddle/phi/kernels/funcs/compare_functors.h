@@ -26,11 +26,49 @@ namespace funcs {
     }                                                            \
   };
 
+#define COMPARE_COMPLEX_FUNCTOR(func_name, op)                              \
+  template <typename T>                                                     \
+  struct func_name<phi::dtype::complex<T>> {                                \
+    HOSTDEVICE bool operator()(const phi::dtype::complex<T> a,              \
+                               const phi::dtype::complex<T> b) const {      \
+      if (isnan(a.real) || isnan(a.imag) || isnan(b.real) || isnan(b.imag)) \
+        return false;                                                       \
+      T ar = a.real;                                                        \
+      T br = b.real;                                                        \
+      T ai = a.imag;                                                        \
+      T bi = b.imag;                                                        \
+      return (ar op br) || (ar == br && ai op bi);                          \
+    }                                                                       \
+  };
+
+#define COMPARE_COMPLEX_EQUAL_FUNCTOR(func_name, op_equal, op)              \
+  template <typename T>                                                     \
+  struct func_name<phi::dtype::complex<T>> {                                \
+    HOSTDEVICE bool operator()(const phi::dtype::complex<T> a,              \
+                               const phi::dtype::complex<T> b) const {      \
+      if (isnan(a.real) || isnan(a.imag) || isnan(b.real) || isnan(b.imag)) \
+        return false;                                                       \
+      T ar = a.real;                                                        \
+      T br = b.real;                                                        \
+      T ai = a.imag;                                                        \
+      T bi = b.imag;                                                        \
+      return (ar op br) || (ar == br && ai op_equal bi);                    \
+    }                                                                       \
+  };
+
 COMPARE_FUNCTOR(LessThanFunctor, <)
 COMPARE_FUNCTOR(LessEqualFunctor, <=)
 COMPARE_FUNCTOR(GreaterThanFunctor, >)
 COMPARE_FUNCTOR(GreaterEqualFunctor, >=)
+
+COMPARE_COMPLEX_FUNCTOR(LessThanFunctor, <)
+COMPARE_COMPLEX_FUNCTOR(GreaterThanFunctor, >)
+COMPARE_COMPLEX_EQUAL_FUNCTOR(LessEqualFunctor, <=, <)
+COMPARE_COMPLEX_EQUAL_FUNCTOR(GreaterEqualFunctor, >=, >)
+
 #undef COMPARE_FUNCTOR
+#undef COMPARE_COMPLEX_FUNCTOR
+#undef COMPARE_COMPLEX_EQUAL_FUNCTOR
 
 template <typename InT, typename OutT = bool>
 struct EqualFunctor {

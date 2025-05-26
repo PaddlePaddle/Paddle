@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
-#ifdef PADDLE_WITH_XPU
 #include <algorithm>
 #include <string>
 #include <tuple>
@@ -218,4 +217,3 @@ void XPUElementwiseGrad(const XPUContext& dev_ctx,
 }
 
 }  // namespace phi
-#endif

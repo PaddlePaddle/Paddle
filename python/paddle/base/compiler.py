@@ -135,7 +135,7 @@ class CompiledProgram:
         program_or_graph (Graph|Program): This argument is the Program or Graph
             being executed.
         build_strategy(BuildStrategy): This argument is used to compile the
-            program or graph with the specified options, such as operators' fusion
+            program or graph with the specified options, such as operator's fusion
             in the computational graph and memory optimization during the execution
             of the computational graph. For more information about build_strategy,
             please refer to :code:`paddle.static.BuildStrategy`. The default is None.
@@ -276,8 +276,7 @@ class CompiledProgram:
             assert (
                 self._build_strategy.reduce_strategy
                 == BuildStrategy.ReduceStrategy.AllReduce
-            ), "DGC \
-                only can be used for AllReduce BuildStrategy."
+            ), "DGC only can be used for AllReduce BuildStrategy."
 
             # DGC doesn't support fuse for now, close fuse.
             self._build_strategy.fuse_all_reduce_ops = False
@@ -586,7 +585,7 @@ class IpuDynamicPatcher:
 
 class IpuStrategy:
     """
-    Help users precisely control the graph building in :code:`paddle.static.IpuCompiledProgram` .
+    Help users precisely control the graph building in :code:`paddle.static.IpuCompiledProgram`.
 
     Returns:
         The IpuStrategy instance.

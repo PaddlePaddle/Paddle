@@ -191,6 +191,11 @@ class TestGetitemDygraphAdvancedIndex(unittest.TestCase):
             x[np.array([0, 1, 0]), np.array([3, 2, 4])],
             y[paddle.to_tensor([0, 1, 0]), paddle.to_tensor([3, 2, 4])],
         )
+        # case 5:
+        # [5, 6, 7, 8, 9]
+        self.accuracy_check(
+            x[np.ones([], dtype=np.int64)], y[paddle.to_tensor(1)]
+        )
 
 
 class TestGetitemDygraphCombinedIndex(unittest.TestCase):

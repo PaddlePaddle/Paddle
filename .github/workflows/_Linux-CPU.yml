@@ -2,10 +2,12 @@ name: Linux-CPU
 
 on:
   workflow_call:
+    inputs:
+      docker_cpu_image:
+        type: string
+        required: true
 
 env:
-  dockerfile: Dockerfile.cuda9_cudnn7_gcc48_py35_centos6
-  docker_image: 3d2fa88da0da
   PR_ID: ${{ github.event.pull_request.number }}
   COMMIT_ID: ${{ github.event.pull_request.head.sha }}
   work_dir: /paddle
@@ -50,6 +52,7 @@ jobs:
         run: |
           container_name=${TASK}-$(date +%Y%m%d-%H%M%S)
           echo "container_name=${container_name}" >> ${{ github.env }}
+          docker_image=${{ inputs.docker_cpu_image }}
           docker run -d -t --name ${container_name} \
             -v "/home/data/cfs:/home/data/cfs" \
             -v "/home/data/cfs/.cache/python35-cpu:/root/.cache" \

@@ -287,7 +287,7 @@ bool LaunchContiguousCazeOneKernel(
     const phi::Array<int64_t, phi::DDim::kMaxRank + 1>& input_stride,
     const phi::Array<int64_t, phi::DDim::kMaxRank + 1>& input_dims,
     int rank,
-    int numel,
+    int64_t numel,
     T* output_data) {
   dim3 grid(1, 1, 1), block(1, 1, 1);
   phi::Array<int64_t, 6> cur_input_dims;
@@ -427,7 +427,7 @@ void LaunchContiguousDefaultKernel(
     const phi::Array<int64_t, phi::DDim::kMaxRank + 1>& input_stride,
     const phi::Array<int64_t, phi::DDim::kMaxRank + 1>& input_dims,
     int rank,
-    int numel,
+    int64_t numel,
     T* output_data) {
   int64_t block = 512;
   int64_t grid = (numel + block - 1) / block;

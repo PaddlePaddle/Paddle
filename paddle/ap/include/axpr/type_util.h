@@ -98,6 +98,7 @@ AttrMap<ValueT> GetObjectTypeName2Type() {
                                               OrderedDict<ValueT>,
                                               MutableOrderedDict<ValueT>,
                                               AttrMap<axpr::SerializableValue>,
+                                              AttrMap<ValueT>,
                                               ValueImplTypes...>::Call(&object);
   return object;
 }

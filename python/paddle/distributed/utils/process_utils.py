@@ -52,7 +52,7 @@ def _get_cpu_info(numa_id):
                 break
         return cpus
     except Exception as e:
-        logger.warn(f"_get_cpu_info failed, reason:{e}")
+        logger.warning(f"_get_cpu_info failed, reason:{e}")
         return None
 
 
@@ -123,7 +123,7 @@ def _get_gpu_numa_info(gpu_id):
         numa_id = output.strip().split()[-1]
         return numa_id
     except Exception as e:
-        logger.warn(f"_get_cpu_info failed, reason:{e}")
+        logger.warning(f"_get_cpu_info failed, reason:{e}")
         return None
 
 
@@ -148,31 +148,31 @@ def set_affinity_gpu():
     set affinity for gpu
     """
     if not _has_nvidia_smi():
-        logger.warn(
+        logger.warning(
             "nvidia-smi is not available, set_affinity is aborted, plz check your environment."
         )
         return FAIL_CODE
     local_rank = max(int(os.getenv("PADDLE_LOCAL_RANK", "0")), 0)
     device_id = _get_gpu_device(local_rank)
     if device_id is None:
-        logger.warn(
+        logger.warning(
             "Failed to get device id from cuda_visible_devices, set_affinity is aborted, plz check your environment."
         )
         return FAIL_CODE
     numa_id = _get_gpu_numa_info(device_id)
     if numa_id is None:
-        logger.warn(
+        logger.warning(
             "Failed to get numa info, set_affinity is aborted, plz check your environment."
         )
         return FAIL_CODE
     if numa_id == "N/A":
-        logger.warn(
+        logger.warning(
             "nvidia-smi topo return numa id as N/A, set_affinity is aborted, plz check your environment. (Notice: This is expected behavior when executed on single numa node environment)"
         )
         return FAIL_CODE
     affinity_mask = _get_cpu_info(numa_id)
     if affinity_mask is None:
-        logger.warn(
+        logger.warning(
             "Failed to get cpu info, set_affinity is aborted, plz check your environment."
         )
         return FAIL_CODE
@@ -189,14 +189,14 @@ def set_affinity_xpu():
     set affinity for xpu
     """
     if not _has_xpu_smi():
-        logger.warn(
+        logger.warning(
             "xpu-smi is not available, set_affinity is aborted, plz check your environment."
         )
         return FAIL_CODE
     local_rank = max(int(os.getenv("PADDLE_LOCAL_RANK", "0")), 0)
     device_id = _get_xpu_device(local_rank)
     if device_id is None:
-        logger.warn(
+        logger.warning(
             "Failed to get device id, set_affinity is aborted, plz check your environment."
         )
         return FAIL_CODE
@@ -216,5 +216,5 @@ def set_affinity():
         return set_affinity_xpu()
     else:
         # TODO(@gexiao): supports other devices if needed
-        logger.warn("Currently set_affinity only supports gpu env.")
+        logger.warning("Currently set_affinity only supports gpu env.")
         return FAIL_CODE

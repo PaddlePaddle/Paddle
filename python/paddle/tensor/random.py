@@ -817,7 +817,7 @@ def standard_normal(
             If ``shape`` is a list or tuple, each element of it should be integer or 0-D Tensor with shape [].
             If ``shape`` is an Tensor, it should be an 1-D Tensor which represents a list.
         dtype (str|np.dtype|paddle.dtype|None, optional): The data type of the output Tensor.
-            Supported data types: float32, float64, complex64, complex128.
+            Supported data types: float16, bfloat16, float32, float64, complex64, complex128.
             Default is None, use global default dtype (see ``get_default_dtype``
             for details).
         name (str|None, optional): Name for the operation (optional, default is None).
@@ -914,7 +914,7 @@ def randn(
             If ``shape`` is a list or tuple, each element of it should be integer or 0-D Tensor with shape [].
             If ``shape`` is an Tensor, it should be an 1-D Tensor which represents a list.
         dtype (str|np.dtype|paddle.dtype|None, optional): The data type of the output Tensor.
-            Supported data types: float32, float64, complex64, complex128.
+            Supported data types: float16, bfloat16, float32, float64, complex64, complex128.
             Default is None, use global default dtype (see ``get_default_dtype``
             for details).
         name (str|None, optional): Name for the operation (optional, default is None).
@@ -990,10 +990,9 @@ def randn_like(
 
     Args:
         x (Tensor): The input multi-dimensional tensor which specifies shape. The dtype of ``x``
-            can be float16, float32, float64.
+            can be float16, bfloat16, float32, float64, complex64, complex128.
         dtype (str|np.dtype|paddle.dtype|None, optional): The data type of the
-            output tensor. Supported data types: float16,
-            float32, float64. If ``dtype`` is None, the data type is the
+            output tensor. Supported data types: float16, bfloat16, float32, float64, complex64, complex128. If ``dtype`` is None, the data type is the
             same as x's data type. Default is None.
         name (str|None, optional): The default value is None.  Normally there is no
             need for user to set this property.  For more information, please

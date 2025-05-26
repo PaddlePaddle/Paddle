@@ -36,6 +36,10 @@ class DimVar:
         self.max = max
 
 
+# alias
+Dim = DimVar
+
+
 # Usage:
 #   T = paddle.incubate.cc.typing.DTypeVar("T", "bfloat16", "float32")
 class DTypeVar:
@@ -46,6 +50,10 @@ class DTypeVar:
             assert isinstance(candidate, str)
         self.name = str
         self.candidates = candidates
+
+
+# alias
+DType = DTypeVar
 
 
 # Usage:

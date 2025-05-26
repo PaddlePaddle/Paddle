@@ -249,6 +249,149 @@ class TestElementwisePowGradOpInt(unittest.TestCase):
                 np.testing.assert_array_equal(y.gradient(), self.grad_y)
 
 
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    "Skip XPU for complex dtype is not fully supported",
+)
+class TestElementwisePowComplexOp(OpTest):
+    def setUp(self):
+        self.op_type = "elementwise_pow"
+        self.python_api = paddle.pow
+        self.public_python_api = paddle.pow
+        self.prim_op_type = "prim"
+        self._check_cinn = True
+
+        self.inputs = {
+            'X': np.array([1 + 2j, 3 + 4j, 5 + 6j], dtype=np.complex128),
+            'Y': np.array([2.0, 3.0, 4.0], dtype=np.float64),
+        }
+        self.outputs = {'Out': np.power(self.inputs['X'], self.inputs['Y'])}
+
+    def _get_places(self):
+        places = [base.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(base.CUDAPlace(0))
+        return places
+
+    def test_check_output(self):
+
+        self.check_output(check_pir=True, check_symbol_infer=False)
+
+    def test_check_grad_normal(self):
+        self.check_grad(
+            ['X', 'Y'],
+            'Out',
+            check_pir=True,
+        )
+
+
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    "Skip XPU for complex dtype is not fully supported",
+)
+class TestElementwisePowComplexOp1(TestElementwisePowComplexOp):
+    def setUp(self):
+        self.op_type = "elementwise_pow"
+        self.python_api = paddle.pow
+        self.public_python_api = paddle.pow
+        self.prim_op_type = "prim"
+        self._check_cinn = True
+
+        real_part = np.random.uniform(-5, 5, size=(3, 4))
+        imag_part = np.random.uniform(-5, 5, size=(3, 4))
+        self.inputs = {
+            'X': real_part + 1j * imag_part,
+            'Y': np.random.uniform(1, 5, size=(3, 4)),
+        }
+        self.outputs = {'Out': np.power(self.inputs['X'], self.inputs['Y'])}
+
+
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    "Skip XPU for complex dtype is not fully supported",
+)
+class TestElementwisePowComplexOp2(TestElementwisePowComplexOp):
+    def setUp(self):
+        self.op_type = "elementwise_pow"
+        self.python_api = paddle.pow
+        self.public_python_api = paddle.pow
+        self.prim_op_type = "prim"
+        self._check_cinn = True
+
+        real_part = np.random.uniform(-5, 5, size=(20, 50))
+        imag_part = np.random.uniform(-5, 5, size=(20, 50))
+        self.inputs = {
+            'X': real_part + 1j * imag_part,
+            'Y': np.random.uniform(1, 5, size=(20, 50)),
+        }
+        self.outputs = {'Out': np.power(self.inputs['X'], self.inputs['Y'])}
+
+
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    "Skip XPU for complex dtype is not fully supported",
+)
+class TestElementwisePowComplexOp3(TestElementwisePowComplexOp):
+    def setUp(self):
+        self.op_type = "elementwise_pow"
+        self.python_api = paddle.pow
+        self.public_python_api = paddle.pow
+        self.prim_op_type = "prim"
+        self._check_cinn = True
+
+        real_part = np.random.uniform(-5, 5, size=(3, 5, 3))
+        imag_part = np.random.uniform(-5, 5, size=(3, 5, 3))
+        self.inputs = {
+            'X': real_part + 1j * imag_part,
+            'Y': np.random.uniform(1, 5, size=(3, 5, 3)),
+        }
+        self.outputs = {'Out': np.power(self.inputs['X'], self.inputs['Y'])}
+
+
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    "Skip XPU for complex dtype is not fully supported",
+)
+class TestElementwisePowComplexOp4(TestElementwisePowComplexOp):
+    def setUp(self):
+        self.op_type = "elementwise_pow"
+        self.python_api = paddle.pow
+        self.public_python_api = paddle.pow
+        self.prim_op_type = "prim"
+        self._check_cinn = True
+
+        real_part = np.random.uniform(-5, 5, size=(3, 5, 3))
+        imag_part = np.random.uniform(-5, 5, size=(3, 5, 3))
+        self.inputs = {
+            'X': real_part + 1j * imag_part,
+            'Y': real_part + 1j * imag_part,
+        }
+        self.outputs = {'Out': np.power(self.inputs['X'], self.inputs['Y'])}
+
+
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    "Skip XPU for complex dtype is not fully supported",
+)
+class TestElementwisePowComplexOp5(TestElementwisePowComplexOp):
+    def setUp(self):
+        self.op_type = "elementwise_pow"
+        self.python_api = paddle.pow
+        self.public_python_api = paddle.pow
+        self.prim_op_type = "prim"
+        self._check_cinn = True
+
+        x_real_part = np.random.uniform(-5, 5, size=(5, 3))
+        x_imag_part = np.random.uniform(-5, 5, size=(5, 3))
+        y_real_part = np.random.uniform(-5, 5, size=(3, 5, 3))
+        y_imag_part = np.random.uniform(-5, 5, size=(3, 5, 3))
+        self.inputs = {
+            'X': x_real_part + 1j * x_imag_part,
+            'Y': y_real_part + 1j * y_imag_part,
+        }
+        self.outputs = {'Out': np.power(self.inputs['X'], self.inputs['Y'])}
+
+
 class TestElementwisePowOpFP16(OpTest):
     def setUp(self):
         self.op_type = "elementwise_pow"

@@ -847,7 +847,7 @@ ir::LoweredFunc OpLowererImpl::GenerateInferShapeFunc(
 }
 bool IsOpDeniedOnCpu(::pir::Operation* op) {
   // no op is denied after the support for composite reduce on cpu
-  static std::set<std::string> banned_ops = {};
+  static std::set<std::string> banned_ops = {"cinn_op.arange"};
   return banned_ops.count(op->name());
 }
 ir::Expr OpLowererImpl::LowerX86(const OpLoweringGroupPtr& group,
