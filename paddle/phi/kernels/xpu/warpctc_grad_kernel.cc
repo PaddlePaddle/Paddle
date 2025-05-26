@@ -37,9 +37,9 @@ void WarpctcGradKernel(const Context& dev_ctx,
         "XPU only support logits_length is_initialized"));
   }
 
-  int max_seq_length = warpctcgrad.dims()[0];  // Tmax
-  int num_sequences = warpctcgrad.dims()[1];   // B
-  int seq_width = warpctcgrad.dims()[2];       // D
+  int64_t max_seq_length = warpctcgrad.dims()[0];  // Tmax
+  int64_t num_sequences = warpctcgrad.dims()[1];   // B
+  int64_t seq_width = warpctcgrad.dims()[2];       // D
   auto* logits_length_ptr = logits_length.get_ptr();
 
   int r = xpu::ctc_loss_grad<T, int64_t>(dev_ctx.x_context(),

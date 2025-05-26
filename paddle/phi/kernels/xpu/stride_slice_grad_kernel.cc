@@ -39,20 +39,20 @@ void StridedSliceRawGradKernel(const Context& dev_ctx,
   auto ends_ = ends.GetData();
   auto strides_ = strides.GetData();
 
-  std::vector<int> xshape;
-  std::vector<int> starts_in(in_dims.size(), 0);
-  std::vector<int> ends_in;
-  std::vector<int> strides_in(in_dims.size(), 1);
+  std::vector<int64_t> xshape;
+  std::vector<int64_t> starts_in(in_dims.size(), 0);
+  std::vector<int64_t> ends_in;
+  std::vector<int64_t> strides_in(in_dims.size(), 1);
 
   for (int i = 0; i < in_dims.size(); ++i) {
     xshape.emplace_back(in_dims[i]);
     ends_in.emplace_back(in_dims[i]);
   }
-  int num = axes.size();
+  int64_t num = axes.size();
 
-  for (int i = 0; i < num; ++i) {
-    int cur_axe = axes[i];
-    int st = starts_[i];
+  for (int64_t i = 0; i < num; ++i) {
+    int64_t cur_axe = axes[i];
+    int64_t st = starts_[i];
     if (st > xshape[cur_axe]) {
       st = xshape[cur_axe];
     }
@@ -61,7 +61,7 @@ void StridedSliceRawGradKernel(const Context& dev_ctx,
     }
     starts_in[cur_axe] = st;
 
-    int end = ends_[i];
+    int64_t end = ends_[i];
     if (end > xshape[cur_axe]) {
       end = xshape[cur_axe];
     }
@@ -102,7 +102,7 @@ void StridedSliceRawGradKernel(const Context& dev_ctx,
 
     // step 1: set all value to 0
 
-    // int constant(Context* ctx, T* x, int len, T val)
+    // int constant(Context* ctx, T* x, int64_t len, T val)
     int r = xpu::constant(
         dev_ctx.x_context(), x_transpose, x.numel(), static_cast<XPUType>(0));
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
@@ -112,7 +112,7 @@ void StridedSliceRawGradKernel(const Context& dev_ctx,
      * if starts from 0: [1 2 3 4 5 0 0 0 0 0]
      * if starts from 1: [0 0 0 0 0 1 2 3 4 5]
      */
-    int offset = 0;
+    int64_t offset = 0;
     if (starts_in.back() == 1) {
       offset = x.numel() / 2;
     }

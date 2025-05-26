@@ -166,7 +166,7 @@ void SetValueImpl(const Context& dev_ctx,
     strides_indices[i] = 1;
   }
   for (size_t i = 0; i < axes.size(); i++) {
-    int axis_index = axes[i];
+    int64_t axis_index = axes[i];
     starts_indices[axis_index] = starts_local[i];
     ends_indices[axis_index] = ends_local[i];
     strides_indices[axis_index] = steps_local[i];
@@ -393,12 +393,12 @@ void SetValueKernel(const Context& dev_ctx,
                     const std::vector<Scalar>& values,
                     DenseTensor* out) {
   // avoid using vector<T> if T is bool or phi::dtype::float16
-  int value_size = sizeof(T);
-  int values_size = values.size();
-  int values_length = values_size * value_size;
+  size_t value_size = sizeof(T);
+  size_t values_size = values.size();
+  size_t values_length = values_size * value_size;
   std::vector<uint8_t> assign_values(values_length);
   uint8_t* value_data_uint8_cpu = assign_values.data();
-  for (int i = 0; i < values_size; i++) {
+  for (size_t i = 0; i < values_size; i++) {
     T value = values[i].to<T>();
     memcpy(value_data_uint8_cpu + i * value_size, &value, value_size);
   }

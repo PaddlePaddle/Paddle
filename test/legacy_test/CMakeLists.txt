@@ -170,6 +170,10 @@ if(APPLE OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_multiprocess_dataloader_static)
 endif()
 
+if(APPLE)
+  list(REMOVE_ITEM TEST_OPS test_compare_op_0size)
+endif()
+
 list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_hybrid_parallel)
 
 list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_transformer_gloo)

@@ -487,6 +487,9 @@ void BindAutoParallel(py::module *m) {
                        py::arg("memo"))
                    .def(py::self == py::self)   // NOLINT
                    .def(py::self != py::self);  // NOLINT
+  Shard.def("__reduce__", [Shard](const phi::distributed::Shard &self) {
+    return py::make_tuple(Shard, py::make_tuple(self.get_dim()));
+  });
 
   auto Replicate =
       py::class_<phi::distributed::Replicate,
@@ -522,6 +525,10 @@ void BindAutoParallel(py::module *m) {
               py::arg("memo"))
           .def(py::self == py::self)   // NOLINT
           .def(py::self != py::self);  // NOLINT
+  Replicate.def("__reduce__",
+                [Replicate](const phi::distributed::Replicate &self) {
+                  return py::make_tuple(Replicate, py::make_tuple());
+                });
 
   auto Partial =
       py::class_<phi::distributed::Partial,
@@ -562,6 +569,9 @@ void BindAutoParallel(py::module *m) {
               py::arg("memo"))
           .def(py::self == py::self)   // NOLINT
           .def(py::self != py::self);  // NOLINT
+  Partial.def("__reduce__", [Partial](const phi::distributed::Partial &self) {
+    return py::make_tuple(Partial, py::make_tuple(self.get_reduce_type()));
+  });
 
   g_placement_shard_pytype = reinterpret_cast<PyTypeObject *>(Shard.ptr());
   g_placement_replicated_pytype =
@@ -915,6 +925,10 @@ static void parse_attr(PyObject *obj,
   } else if (PyFloat_Check(obj)) {
     auto attr =
         CastPyArg2Float(obj, infer_spmd_string, static_cast<ssize_t>(arg_pos));
+    ctx->EmplaceBackAttr(attr);
+  } else if (PyObject_CheckDataType(obj)) {
+    auto attr = CastPyArg2DataType(
+        obj, infer_spmd_string, static_cast<ssize_t>(arg_pos));
     ctx->EmplaceBackAttr(attr);
   } else {  // TODO(ljz) support other types
     PADDLE_THROW(common::errors::InvalidArgument(

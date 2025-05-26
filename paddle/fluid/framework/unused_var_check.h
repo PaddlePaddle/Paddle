@@ -29,7 +29,6 @@ class Scope;
 
 std::unordered_set<std::string>* GetThreadLocalUsedVarNameSet();
 
-void LogVarUsageIfUnusedVarCheckEnabled(const std::string& name);
 void CheckUnusedVar(const OperatorBase& op, const Scope& scope);
 
 }  // namespace framework

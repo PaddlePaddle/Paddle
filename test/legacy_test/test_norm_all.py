@@ -16,6 +16,7 @@ import unittest
 
 import numpy as np
 from op_test import OpTest, convert_float_to_uint16
+from utils import static_guard
 
 import paddle
 from paddle import _C_ops, base
@@ -180,6 +181,49 @@ class TestFrobeniusNormOp2(TestFrobeniusNormOp):
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', check_pir=True)
+
+
+class TestFrobeniusNormOpZeroSize(TestFrobeniusNormOp):
+    def init_test_case(self):
+        self.shape = [0, 20, 3]
+        self.axis = (1, 2)
+        self.keepdim = False
+
+    def init_dtype(self):
+        self.dtype = "float32"
+
+    def test_check_output(self):
+        places = (
+            [paddle.CPUPlace(), paddle.CUDAPlace(0)]
+            if core.is_compiled_with_cuda()
+            else [paddle.CPUPlace()]
+        )
+        for place in places:
+            self.check_output_with_place(place)
+
+    def test_check_grad(self):
+        pass
+
+
+class TestFrobeniusNormOpZeroSize2(TestFrobeniusNormOpZeroSize):
+    def init_test_case(self):
+        self.shape = [3, 0, 3]
+        self.axis = (1, 2)
+        self.keepdim = False
+
+
+class TestFrobeniusNormOpZeroSize3(TestFrobeniusNormOpZeroSize):
+    def init_test_case(self):
+        self.shape = [0, 20, 3]
+        self.axis = (0, 2)
+        self.keepdim = False
+
+
+class TestFrobeniusNormOpZeroSize4(TestFrobeniusNormOpZeroSize):
+    def init_test_case(self):
+        self.shape = [0, 20, 3]
+        self.axis = (0, -1)
+        self.keepdim = False
 
 
 class TestPnormOp(OpTest):
@@ -690,364 +734,365 @@ def check_linalg_vector_dygraph(
 
 class API_NormTest(unittest.TestCase):
     def test_basic(self):
-        keep_dims = {False, True}
-        for keep in keep_dims:
-            check_fro_static(
-                self,
-                p='fro',
-                axis=[-2, -1],
-                shape_x=[2, 3, 4],
-                dtype="float32",
-                keep_dim=keep,
-            )
-            check_fro_static(
-                self,
-                p='fro',
-                axis=[0, 1],
-                shape_x=[2, 3, 4],
-                dtype="float64",
-                keep_dim=keep,
-                check_dim=True,
-            )
-            check_nuc_static(
-                self,
-                p='nuc',
-                axis=[0, 1],
-                shape_x=[2, 3, 4],
-                dtype='float64',
-                keep_dim=keep,
-                check_dim=True,
-            )
-            check_linalg_norm_static(
-                self,
-                p=2,
-                axis=None,
-                shape_x=[3, 4],
-                dtype="float32",
-                keep_dim=keep,
-            )
-            check_linalg_norm_static(
-                self,
-                p=2,
-                axis=1,
-                shape_x=[3, 4],
-                dtype="float64",
-                keep_dim=keep,
-                check_dim=True,
-            )
-            check_linalg_norm_static(
-                self,
-                p=np.inf,
-                axis=0,
-                shape_x=[2, 3, 4],
-                dtype="float32",
-                keep_dim=keep,
-                check_dim=True,
-            )
-            check_linalg_norm_static(
-                self,
-                p=np.inf,
-                axis=None,
-                shape_x=[2, 3, 4],
-                dtype="float32",
-                keep_dim=keep,
-            )
-            check_linalg_norm_static(
-                self,
-                p=-np.inf,
-                axis=0,
-                shape_x=[2, 3, 4],
-                dtype="float64",
-                keep_dim=keep,
-                check_dim=True,
-            )
-            check_linalg_norm_static(
-                self,
-                p=-np.inf,
-                axis=None,
-                shape_x=[2, 3, 4],
-                dtype="float64",
-                keep_dim=keep,
-            )
-            check_linalg_norm_static(
-                self,
-                p=0,
-                axis=1,
-                shape_x=[3, 4],
-                dtype="float64",
-                keep_dim=keep,
-                check_dim=True,
-            )
+        with static_guard():
+            keep_dims = {False, True}
+            for keep in keep_dims:
+                check_fro_static(
+                    self,
+                    p='fro',
+                    axis=[-2, -1],
+                    shape_x=[2, 3, 4],
+                    dtype="float32",
+                    keep_dim=keep,
+                )
+                check_fro_static(
+                    self,
+                    p='fro',
+                    axis=[0, 1],
+                    shape_x=[2, 3, 4],
+                    dtype="float64",
+                    keep_dim=keep,
+                    check_dim=True,
+                )
+                check_nuc_static(
+                    self,
+                    p='nuc',
+                    axis=[0, 1],
+                    shape_x=[2, 3, 4],
+                    dtype='float64',
+                    keep_dim=keep,
+                    check_dim=True,
+                )
+                check_linalg_norm_static(
+                    self,
+                    p=2,
+                    axis=None,
+                    shape_x=[3, 4],
+                    dtype="float32",
+                    keep_dim=keep,
+                )
+                check_linalg_norm_static(
+                    self,
+                    p=2,
+                    axis=1,
+                    shape_x=[3, 4],
+                    dtype="float64",
+                    keep_dim=keep,
+                    check_dim=True,
+                )
+                check_linalg_norm_static(
+                    self,
+                    p=np.inf,
+                    axis=0,
+                    shape_x=[2, 3, 4],
+                    dtype="float32",
+                    keep_dim=keep,
+                    check_dim=True,
+                )
+                check_linalg_norm_static(
+                    self,
+                    p=np.inf,
+                    axis=None,
+                    shape_x=[2, 3, 4],
+                    dtype="float32",
+                    keep_dim=keep,
+                )
+                check_linalg_norm_static(
+                    self,
+                    p=-np.inf,
+                    axis=0,
+                    shape_x=[2, 3, 4],
+                    dtype="float64",
+                    keep_dim=keep,
+                    check_dim=True,
+                )
+                check_linalg_norm_static(
+                    self,
+                    p=-np.inf,
+                    axis=None,
+                    shape_x=[2, 3, 4],
+                    dtype="float64",
+                    keep_dim=keep,
+                )
+                check_linalg_norm_static(
+                    self,
+                    p=0,
+                    axis=1,
+                    shape_x=[3, 4],
+                    dtype="float64",
+                    keep_dim=keep,
+                    check_dim=True,
+                )
 
-            check_linalg_norm_static(
-                self,
-                p=1,
-                axis=1,
-                shape_x=[3, 4],
-                dtype="float64",
-                keep_dim=keep,
-                check_dim=True,
-            )
-            check_linalg_norm_static(
-                self,
-                p=0,
-                axis=None,
-                shape_x=[3, 4],
-                dtype="float64",
-                keep_dim=keep,
-                check_dim=True,
-            )
-            check_linalg_norm_static(
-                self,
-                p=2,
-                axis=[0, 1],
-                shape_x=[2, 3, 4],
-                dtype="float64",
-                keep_dim=keep,
-                check_dim=True,
-            )
-            check_linalg_norm_static(
-                self,
-                p=2,
-                axis=-1,
-                shape_x=[2, 3, 4],
-                dtype="float64",
-                keep_dim=keep,
-                check_dim=True,
-            )
-            check_linalg_norm_static(
-                self,
-                p=1,
-                axis=[0, 1],
-                shape_x=[2, 3, 4],
-                dtype="float64",
-                keep_dim=keep,
-                check_dim=True,
-            )
-            check_linalg_norm_static(
-                self,
-                p=np.inf,
-                axis=[0, 1],
-                shape_x=[2, 3, 4],
-                dtype="float64",
-                keep_dim=keep,
-                check_dim=True,
-            )
-            check_linalg_norm_static(
-                self,
-                p=-np.inf,
-                axis=[0, 1],
-                shape_x=[2, 3, 4],
-                dtype="float64",
-                keep_dim=keep,
-                check_dim=True,
-            )
+                check_linalg_norm_static(
+                    self,
+                    p=1,
+                    axis=1,
+                    shape_x=[3, 4],
+                    dtype="float64",
+                    keep_dim=keep,
+                    check_dim=True,
+                )
+                check_linalg_norm_static(
+                    self,
+                    p=0,
+                    axis=None,
+                    shape_x=[3, 4],
+                    dtype="float64",
+                    keep_dim=keep,
+                    check_dim=True,
+                )
+                check_linalg_norm_static(
+                    self,
+                    p=2,
+                    axis=[0, 1],
+                    shape_x=[2, 3, 4],
+                    dtype="float64",
+                    keep_dim=keep,
+                    check_dim=True,
+                )
+                check_linalg_norm_static(
+                    self,
+                    p=2,
+                    axis=-1,
+                    shape_x=[2, 3, 4],
+                    dtype="float64",
+                    keep_dim=keep,
+                    check_dim=True,
+                )
+                check_linalg_norm_static(
+                    self,
+                    p=1,
+                    axis=[0, 1],
+                    shape_x=[2, 3, 4],
+                    dtype="float64",
+                    keep_dim=keep,
+                    check_dim=True,
+                )
+                check_linalg_norm_static(
+                    self,
+                    p=np.inf,
+                    axis=[0, 1],
+                    shape_x=[2, 3, 4],
+                    dtype="float64",
+                    keep_dim=keep,
+                    check_dim=True,
+                )
+                check_linalg_norm_static(
+                    self,
+                    p=-np.inf,
+                    axis=[0, 1],
+                    shape_x=[2, 3, 4],
+                    dtype="float64",
+                    keep_dim=keep,
+                    check_dim=True,
+                )
 
-            check_linalg_vector_static(
-                self,
-                p=2,
-                axis=None,
-                shape_x=[3, 4],
-                dtype="float32",
-                keep_dim=keep,
-            )
-            check_linalg_vector_static(
-                self,
-                p=4,
-                axis=1,
-                shape_x=[3, 4],
-                dtype="float64",
-                keep_dim=keep,
-                check_dim=True,
-            )
-            check_linalg_vector_static(
-                self,
-                p=np.inf,
-                axis=0,
-                shape_x=[2, 3, 4],
-                dtype="float32",
-                keep_dim=keep,
-                check_dim=True,
-            )
-            check_linalg_vector_static(
-                self,
-                p=np.inf,
-                axis=None,
-                shape_x=[2, 3, 4],
-                dtype="float32",
-                keep_dim=keep,
-            )
-            check_linalg_vector_static(
-                self,
-                p=-np.inf,
-                axis=0,
-                shape_x=[2, 3, 4],
-                dtype="float64",
-                keep_dim=keep,
-                check_dim=True,
-            )
-            check_linalg_vector_static(
-                self,
-                p=-np.inf,
-                axis=None,
-                shape_x=[2, 3, 4],
-                dtype="float64",
-                keep_dim=keep,
-            )
-            check_linalg_vector_static(
-                self,
-                p=0,
-                axis=1,
-                shape_x=[3, 4],
-                dtype="float64",
-                keep_dim=keep,
-                check_dim=True,
-            )
+                check_linalg_vector_static(
+                    self,
+                    p=2,
+                    axis=None,
+                    shape_x=[3, 4],
+                    dtype="float32",
+                    keep_dim=keep,
+                )
+                check_linalg_vector_static(
+                    self,
+                    p=4,
+                    axis=1,
+                    shape_x=[3, 4],
+                    dtype="float64",
+                    keep_dim=keep,
+                    check_dim=True,
+                )
+                check_linalg_vector_static(
+                    self,
+                    p=np.inf,
+                    axis=0,
+                    shape_x=[2, 3, 4],
+                    dtype="float32",
+                    keep_dim=keep,
+                    check_dim=True,
+                )
+                check_linalg_vector_static(
+                    self,
+                    p=np.inf,
+                    axis=None,
+                    shape_x=[2, 3, 4],
+                    dtype="float32",
+                    keep_dim=keep,
+                )
+                check_linalg_vector_static(
+                    self,
+                    p=-np.inf,
+                    axis=0,
+                    shape_x=[2, 3, 4],
+                    dtype="float64",
+                    keep_dim=keep,
+                    check_dim=True,
+                )
+                check_linalg_vector_static(
+                    self,
+                    p=-np.inf,
+                    axis=None,
+                    shape_x=[2, 3, 4],
+                    dtype="float64",
+                    keep_dim=keep,
+                )
+                check_linalg_vector_static(
+                    self,
+                    p=0,
+                    axis=1,
+                    shape_x=[3, 4],
+                    dtype="float64",
+                    keep_dim=keep,
+                    check_dim=True,
+                )
 
-            check_linalg_vector_static(
-                self,
-                p=1,
-                axis=1,
-                shape_x=[3, 4],
-                dtype="float64",
-                keep_dim=keep,
-                check_dim=True,
-            )
-            check_linalg_vector_static(
-                self,
-                p=0,
-                axis=None,
-                shape_x=[3, 4],
-                dtype="float64",
-                keep_dim=keep,
-                check_dim=True,
-            )
-            check_linalg_vector_static(
-                self,
-                p=2,
-                axis=[0, 1],
-                shape_x=[2, 3, 4],
-                dtype="float64",
-                keep_dim=keep,
-                check_dim=True,
-            )
-            check_linalg_vector_static(
-                self,
-                p=2,
-                axis=-1,
-                shape_x=[2, 3, 4],
-                dtype="float64",
-                keep_dim=keep,
-                check_dim=True,
-            )
-            check_linalg_vector_static(
-                self,
-                p=1,
-                axis=[0, 1],
-                shape_x=[2, 3, 4, 5],
-                dtype="float64",
-                keep_dim=keep,
-                check_dim=True,
-            )
-            check_linalg_vector_static(
-                self,
-                p=np.inf,
-                axis=[0, 1],
-                shape_x=[2, 3, 4],
-                dtype="float64",
-                keep_dim=keep,
-                check_dim=True,
-            )
-            check_linalg_vector_static(
-                self,
-                p=-np.inf,
-                axis=[0, 1, 2],
-                shape_x=[2, 3, 4],
-                dtype="float64",
-                keep_dim=keep,
-                check_dim=True,
-            )
-            check_linalg_vector_static(
-                self,
-                p=2,
-                axis=None,
-                shape_x=[],
-                dtype="float64",
-                keep_dim=keep,
-                check_dim=True,
-            )
-            check_linalg_vector_static(
-                self,
-                p=np.inf,
-                axis=None,
-                shape_x=[],
-                dtype="complex64",
-                keep_dim=keep,
-                check_dim=True,
-            )
-            check_linalg_vector_static(
-                self,
-                p=-np.inf,
-                axis=[0, 1, 2, 3],
-                shape_x=[1, 14, 5, 14],
-                dtype="complex128",
-                keep_dim=keep,
-                check_dim=True,
-            )
-            check_linalg_vector_static(
-                self,
-                p=np.inf,
-                axis=2,
-                shape_x=[1, 14, 5, 14],
-                dtype="complex128",
-                keep_dim=keep,
-                check_dim=True,
-            )
-            check_linalg_vector_static(
-                self,
-                p=0,
-                axis=[1, 3],
-                shape_x=[1, 14, 5, 14],
-                dtype="complex128",
-                keep_dim=keep,
-                check_dim=True,
-            )
-            check_linalg_matrix_static(
-                self,
-                p=-np.inf,
-                axis=[0, 1],
-                shape_x=[2, 3, 4],
-                dtype="float64",
-                keep_dim=keep,
-                check_dim=True,
-            )
-            check_linalg_matrix_static(
-                self,
-                p='fro',
-                axis=[0, 1],
-                shape_x=[2, 3, 4],
-                dtype="float64",
-                keep_dim=keep,
-                check_dim=True,
-            )
-            check_linalg_matrix_static(
-                self,
-                p='nuc',
-                axis=[0, 1],
-                shape_x=[2, 3, 4],
-                dtype="float64",
-                keep_dim=keep,
-                check_dim=True,
-            )
-            check_linalg_matrix_static(
-                self,
-                p=-2,
-                axis=[1, 2],
-                shape_x=[2, 3, 4, 5],
-                dtype="float64",
-                keep_dim=keep,
-                check_dim=True,
-            )
+                check_linalg_vector_static(
+                    self,
+                    p=1,
+                    axis=1,
+                    shape_x=[3, 4],
+                    dtype="float64",
+                    keep_dim=keep,
+                    check_dim=True,
+                )
+                check_linalg_vector_static(
+                    self,
+                    p=0,
+                    axis=None,
+                    shape_x=[3, 4],
+                    dtype="float64",
+                    keep_dim=keep,
+                    check_dim=True,
+                )
+                check_linalg_vector_static(
+                    self,
+                    p=2,
+                    axis=[0, 1],
+                    shape_x=[2, 3, 4],
+                    dtype="float64",
+                    keep_dim=keep,
+                    check_dim=True,
+                )
+                check_linalg_vector_static(
+                    self,
+                    p=2,
+                    axis=-1,
+                    shape_x=[2, 3, 4],
+                    dtype="float64",
+                    keep_dim=keep,
+                    check_dim=True,
+                )
+                check_linalg_vector_static(
+                    self,
+                    p=1,
+                    axis=[0, 1],
+                    shape_x=[2, 3, 4, 5],
+                    dtype="float64",
+                    keep_dim=keep,
+                    check_dim=True,
+                )
+                check_linalg_vector_static(
+                    self,
+                    p=np.inf,
+                    axis=[0, 1],
+                    shape_x=[2, 3, 4],
+                    dtype="float64",
+                    keep_dim=keep,
+                    check_dim=True,
+                )
+                check_linalg_vector_static(
+                    self,
+                    p=-np.inf,
+                    axis=[0, 1, 2],
+                    shape_x=[2, 3, 4],
+                    dtype="float64",
+                    keep_dim=keep,
+                    check_dim=True,
+                )
+                check_linalg_vector_static(
+                    self,
+                    p=2,
+                    axis=None,
+                    shape_x=[],
+                    dtype="float64",
+                    keep_dim=keep,
+                    check_dim=True,
+                )
+                check_linalg_vector_static(
+                    self,
+                    p=np.inf,
+                    axis=None,
+                    shape_x=[],
+                    dtype="complex64",
+                    keep_dim=keep,
+                    check_dim=True,
+                )
+                check_linalg_vector_static(
+                    self,
+                    p=-np.inf,
+                    axis=[0, 1, 2, 3],
+                    shape_x=[1, 14, 5, 14],
+                    dtype="complex128",
+                    keep_dim=keep,
+                    check_dim=True,
+                )
+                check_linalg_vector_static(
+                    self,
+                    p=np.inf,
+                    axis=2,
+                    shape_x=[1, 14, 5, 14],
+                    dtype="complex128",
+                    keep_dim=keep,
+                    check_dim=True,
+                )
+                check_linalg_vector_static(
+                    self,
+                    p=0,
+                    axis=[1, 3],
+                    shape_x=[1, 14, 5, 14],
+                    dtype="complex128",
+                    keep_dim=keep,
+                    check_dim=True,
+                )
+                check_linalg_matrix_static(
+                    self,
+                    p=-np.inf,
+                    axis=[0, 1],
+                    shape_x=[2, 3, 4],
+                    dtype="float64",
+                    keep_dim=keep,
+                    check_dim=True,
+                )
+                check_linalg_matrix_static(
+                    self,
+                    p='fro',
+                    axis=[0, 1],
+                    shape_x=[2, 3, 4],
+                    dtype="float64",
+                    keep_dim=keep,
+                    check_dim=True,
+                )
+                check_linalg_matrix_static(
+                    self,
+                    p='nuc',
+                    axis=[0, 1],
+                    shape_x=[2, 3, 4],
+                    dtype="float64",
+                    keep_dim=keep,
+                    check_dim=True,
+                )
+                check_linalg_matrix_static(
+                    self,
+                    p=-2,
+                    axis=[1, 2],
+                    shape_x=[2, 3, 4, 5],
+                    dtype="float64",
+                    keep_dim=keep,
+                    check_dim=True,
+                )
 
     def test_dygraph(self):
         paddle.disable_static()
