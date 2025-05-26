@@ -21,17 +21,15 @@ namespace phi {
 namespace distributed {
 
 SpmdInfo InstanceNormInferSpmd(const DistMetaTensor& x,
-                            const DistMetaTensor& scale,
-                            const DistMetaTensor& bias,
-                            float epsilon=1e-5
-                        );
+                               const DistMetaTensor& scale,
+                               const DistMetaTensor& bias,
+                               float epsilon = 1e-5);
 
 SpmdInfo InstanceNormGradInferSpmd(const DistMetaTensor& x,
-                                const DistMetaTensor& scale,
-                                const DistMetaTensor& saved_mean,
-                                const DistMetaTensor& saved_variance,
-                                const DistMetaTensor& y_grad,
-                                float epsilon = 1e-5
-                                );
-}
-}
+                                   const DistMetaTensor& scale,
+                                   const DistMetaTensor& saved_mean,
+                                   const DistMetaTensor& saved_variance,
+                                   const DistMetaTensor& y_grad,
+                                   float epsilon = 1e-5);
+}  // namespace distributed
+}  // namespace phi
