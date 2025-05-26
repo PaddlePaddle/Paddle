@@ -119,3 +119,7 @@ class ApiSubtractTest(unittest.TestCase):
         res = paddle.subtract(b, c)
         res = res.numpy()
         np.testing.assert_allclose(res, self.np_expected4, rtol=1e-05)
+
+
+if __name__ == "__main__":
+    unittest.main()

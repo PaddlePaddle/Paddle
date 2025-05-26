@@ -139,6 +139,7 @@ endfunction()
 
 if(WITH_TESTING)
   if(WITH_CINN)
+    add_subdirectory(ap)
     add_subdirectory(cinn)
   endif()
   # The following unittests only run in PR-CI-CINN

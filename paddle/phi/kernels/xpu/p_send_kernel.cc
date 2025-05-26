@@ -43,8 +43,9 @@ void PSendKernel(const Context& dev_ctx,
   }
   comm_ctx->Send(x, x.numel(), peer, stream);
 #else
-  PADDLE_THROW(errors::PreconditionNotMet(
-      "PaddlePaddle should compile with DWITH_XPU_BKCL."));
+  PADDLE_THROW(common::errors::PreconditionNotMet(
+      "PaddlePaddle is not compiled with DWITH_XPU_BKCL, please recompile with "
+      "DWITH_XPU_BKCL for using p_send_kernel."));
 #endif
 }
 
@@ -65,8 +66,9 @@ void PSendArrayKernel(const Context& dev_ctx,
             << common::product(x.dims()) << " to " << peer;
   }
 #else
-  PADDLE_THROW(errors::PreconditionNotMet(
-      "PaddlePaddle should compile with DWITH_XPU_BKCL."));
+  PADDLE_THROW(common::errors::PreconditionNotMet(
+      "PaddlePaddle is not compiled with DWITH_XPU_BKCL, please recompile with "
+      "DWITH_XPU_BKCL for using p_send_kernel."));
 #endif
 }
 
