@@ -32,7 +32,7 @@ static void LerpGradFunction(const Context& ctx,
   if (out_grad.numel() == 0) {
     if (x_grad) {
       if (x_grad->numel() == 0) {
-        dev_ctx.template Alloc<T>(x_grad);
+        ctx.template Alloc<T>(x_grad);
       } else {
         phi::Full<T, Context>(
             ctx, phi::IntArray(common::vectorize(x_grad->dims())), 0, x_grad);
@@ -40,7 +40,7 @@ static void LerpGradFunction(const Context& ctx,
     }
     if (y_grad) {
       if (y_grad->numel() == 0) {
-        dev_ctx.template Alloc<T>(y_grad);
+        ctx.template Alloc<T>(y_grad);
       } else {
         phi::Full<T, Context>(
             ctx, phi::IntArray(common::vectorize(y_grad->dims())), 0, y_grad);
