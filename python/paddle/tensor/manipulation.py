@@ -6478,7 +6478,6 @@ def masked_fill_(
         mask = paddle.cast(mask, "bool")
 
     x = _C_ops.masked_fill_(x, mask, value)
-
     return x
 
 
