@@ -78,10 +78,11 @@ void BuildSrcRankAndLocalExpertIdKernel(
   const int64_t* expert_num_global_tensor_data =
       expert_num_global_tensor.data<int64_t>();
 
-  T* src_rank_data = dev_ctx.template Alloc<T>(src_rank);
-  T* local_expert_id_data = dev_ctx.template Alloc<T>(local_expert_id);
+  // Hard coded as ernie-core did.
+  int* src_rank_data = dev_ctx.template Alloc<int>(src_rank);
+  int* local_expert_id_data = dev_ctx.template Alloc<int>(local_expert_id);
 
-  build_srcrank_and_local_expert_id<T, int64_t>(src_rank_data,
+  build_srcrank_and_local_expert_id<int, int64_t>(src_rank_data,
                                                 local_expert_id_data,
                                                 expert_num_global_tensor_data,
                                                 token_num,
@@ -92,8 +93,9 @@ void BuildSrcRankAndLocalExpertIdKernel(
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(build_srcrank_and_local_expert_id,
+PD_REGISTER_KERNEL(build_src_rank_and_local_expert_id,
                    GPU,
                    ALL_LAYOUT,
                    phi::BuildSrcRankAndLocalExpertIdKernel,
-                   float) {}
+                   int32_t,
+                   int64_t) {}
