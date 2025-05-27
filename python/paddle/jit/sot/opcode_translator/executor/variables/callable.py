@@ -21,7 +21,7 @@ import itertools
 import operator
 import sys
 import types
-from functools import reduce
+from functools import partial, reduce
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -1233,4 +1233,37 @@ class NamedTupleClassVariable(ClassVariable):
     def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
         if is_namedtuple_class(value):
             return NamedTupleClassVariable(value, graph, tracker)
+        return None
+
+
+class PartialVariable(CallableVariable):
+    def __init__(
+        self,
+        value: partial,
+        graph: FunctionGraph,
+        tracker: Tracker,
+    ):
+        super().__init__(graph, tracker)
+        self.value = value
+
+    def get_py_value(self, allow_tensor=False):
+        return self.value
+
+    def get_py_type(self):
+        return partial
+
+    def call_function(self, /, *args, **kwargs):
+        from ..function_graph import convert_to_py_value
+
+        obj = self.value(
+            *convert_to_py_value(args),
+            **convert_to_py_value(kwargs),
+        )
+        return VariableFactory.from_value(
+            obj, self.graph, CreateLayerTracker(self, args, kwargs)
+        )
+
+    def from_value(value: partial, graph: FunctionGraph, tracker: Tracker):
+        if isinstance(value, partial):
+            return PartialVariable(value, graph, tracker)
         return None

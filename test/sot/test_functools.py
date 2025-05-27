@@ -54,6 +54,28 @@ def try_reduce_iter(fn, var, init=None):
     return ans
 
 
+def partial_temp_add(a, b, c=1, d=2):
+    return a + b + c + d
+
+
+class PartialTempClassA:
+    def __init__(self, a, b, c=1, d=2):
+        self._sum = a + b + c + d
+
+
+def partial_with_function(*args, **kwargs):
+    partial_func = functools.partial(partial_temp_add, 1)
+    out = partial_func(*args, **kwargs)
+    return out
+
+
+def partial_with_class(*args, **kwargs):
+
+    partial_cls = functools.partial(PartialTempClassA, 1)
+    partial_ins = partial_cls(*args, **kwargs)
+    return partial_ins._sum
+
+
 @check_no_breakgraph
 def try_reduce_iter_failed(fn, var):
     it = iter(var)
@@ -96,6 +118,14 @@ class TestFunctools(TestCaseBase):
 
     def test_reduce_with_builtin_fn(self):
         self.assert_results(try_reduce, operator.add, [2, 5, 8])
+
+    def test_partial_with_function(self):
+        self.assert_results(partial_with_function, 2, c=4, d=6)
+        self.assert_results(partial_with_function, 100, d=333)
+
+    def test_partial_with_class(self):
+        self.assert_results(partial_with_function, 1, c=2, d=3)
+        self.assert_results(partial_with_function, 2, d=3)
 
 
 if __name__ == "__main__":
