@@ -28,7 +28,7 @@ __all__ = []
 def wrap_decorator(
     decorator_func: Callable[
         [Callable[_InputT, _RetT1]], Callable[_InputT, _RetT2]
-    ]
+    ],
 ) -> Callable[[Callable[_InputT, _RetT1]], Callable[_InputT, _RetT2]]:
     @decorator.decorator
     def __impl__(

@@ -141,11 +141,16 @@ class TestElementwiseFminOp(OpTest):
         # If x and y have the same value, the min() is not differentiable.
         # So we generate test data by the following method
         # to avoid them being too close to each other.
-        x = np.random.uniform(0.1, 1, [13, 17]).astype("float64")
-        sgn = np.random.choice([-1, 1], [13, 17]).astype("float64")
-        y = x + sgn * np.random.uniform(0.1, 1, [13, 17]).astype("float64")
+        self.init_shape()
+        x = np.random.uniform(0.1, 1, self.shape).astype("float64")
+        sgn = np.random.choice([-1, 1], self.shape).astype("float64")
+        y = x + sgn * np.random.uniform(0.1, 1, self.shape).astype("float64")
         self.inputs = {'X': x, 'Y': y}
         self.outputs = {'Out': np.fmin(self.inputs['X'], self.inputs['Y'])}
+
+    def init_shape(self):
+        """init_shape"""
+        self.shape = [13, 17]
 
     def test_check_output(self):
         """test_check_output"""
@@ -286,6 +291,16 @@ class TestFminBF16OP(OpTest):
         self.check_grad_with_place(
             place, ['X', 'Y'], 'Out', check_pir=True, check_prim_pir=True
         )
+
+
+class TestElementwiseFminOpZeroSize(TestElementwiseFminOp):
+    def init_shape(self):
+        self.shape = [0, 9]
+
+
+class TestElementwiseFminOpZeroSize1(TestElementwiseFminOp):
+    def init_shape(self):
+        self.shape = [9, 0]
 
 
 if __name__ == "__main__":
