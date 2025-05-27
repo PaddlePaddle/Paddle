@@ -11,14 +11,14 @@ outputs:
   can-skip:
     description: "Whether the workflow can be skipped."
     value: false
-
+    
 runs:
   using: "composite"
   steps:
     - id: check-bypass
       name: Check Bypass
       env:
-        CI_TEAM_MEMBERS: '["SigureMo", "risemeup1", "tianshuo78520a", "0x3878f", "swgu98", "luotao1", "XieYunshen"]'
+        CI_TEAM_MEMBERS: '["SigureMo", "risemeup1", "tianshuo78520a", "0x3878f", "swg98", "luotao1", "XieYunshen"]'
       uses: PFCCLab/ci-bypass@v1
       with:
         github-token: ${{ inputs.github-token }}
