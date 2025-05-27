@@ -689,8 +689,7 @@ class PythonCGenerator(GeneratorBase):
         python_c_functions_str = self.python_c_functions_str
 
         if namespace != "":
-            if namespace.endswith("::"):
-                namespace = namespace[:-2]
+            namespace = namespace.removesuffix("::")
             self.python_c_functions_str = NAMESPACE_WRAPPER_TEMPLATE.format(
                 namespace, python_c_functions_str
             )
