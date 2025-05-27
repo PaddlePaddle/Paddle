@@ -16,7 +16,7 @@ import unittest
 
 import numpy as np
 from op_test import OpTest, convert_float_to_uint16
-from utils import static_guard
+from utils import dygraph_guard, static_guard
 
 import paddle
 from paddle import _C_ops, base
