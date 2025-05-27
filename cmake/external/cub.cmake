@@ -32,6 +32,12 @@ if(${CMAKE_CUDA_COMPILER_VERSION} EQUAL 11.8)
   include_directories(${cub_patches})
 endif()
 
+if(NOT WITH_GPU)
+  set(CUB_TAG 1.8.0)
+  execute_process(COMMAND git --git-dir=${CUB_SOURCE_DIR}/.git
+                          --work-tree=${CUB_SOURCE_DIR} checkout ${CUB_TAG})
+endif()
+
 set(CUB_INCLUDE_DIR ${CUB_SOURCE_DIR})
 message("CUB_INCLUDE_DIR is ${CUB_INCLUDE_DIR}")
 include_directories(${CUB_INCLUDE_DIR})
