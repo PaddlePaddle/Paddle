@@ -98,12 +98,6 @@ void ArgsortKernel(const Context& dev_ctx,
                    bool stable,
                    DenseTensor* output,
                    DenseTensor* indices) {
-  if (input.numel() == 0) {
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(output->dims())), NAN, output);
-    return;
-  }
-
   auto in_dims = input.dims();
   auto rank = in_dims.size();
   axis = (axis < 0) ? (in_dims.size() + axis) : axis;

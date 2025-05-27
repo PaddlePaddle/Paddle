@@ -163,9 +163,7 @@ void ArgsortGradKernel(const Context& dev_ctx,
     phi::Copy<Context>(dev_ctx, out_grad, dev_ctx.GetPlace(), false, in_grad);
     return;
   }
-  if (in_grad && in_grad->numel() == 0) {
-    return;
-  }
+
   // Parallel acceleration when the input size is equal to the length of the
   // 'axis' dimension.
   // Compared to 'special case for full sort' below, the gradient calculation
