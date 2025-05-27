@@ -58,6 +58,49 @@ def moe_ops_partial_nosoftmaxtopk(
         outputs=outputs,
         attrs=attrs,
     )
-    return (y, combine_weights_out, scatter_index, scatter_index_rev, expert_offset, expert_nums_local)
+    return y, combine_weights_out, scatter_index, scatter_index_rev, expert_offset, expert_nums_local
 
-   
+
+
+import paddle
+import numpy as np
+
+# 假设自定义算子已经在 Paddle 环境中注册
+# 创建一些假数据
+num_rows = 4
+feature_dim = 8
+num_experts = 3
+k = 2
+capacity = 5
+
+# 输入张量
+x = paddle.to_tensor(np.random.rand(num_rows, feature_dim).astype('float32'), stop_gradient=False)
+
+# 合并权重张量
+combine_weights = paddle.to_tensor(np.random.rand(num_rows, k).astype('float32'), stop_gradient=False)
+
+# 专家ID张量
+expert_id = paddle.to_tensor(np.random.randint(0, num_experts, size=(num_rows, k)).astype('int32'), stop_gradient=False)
+
+print("x type:", x.dtype)
+print("combine_weights type:", combine_weights.dtype)
+print("expert_id type:", expert_id.dtype)
+# 其他参数
+use_pad = True
+expert_start_index = 0
+expert_end_index = num_experts
+reverse_token_drop = False
+
+# 调用自定义算子
+y, combine_weights_out, scatter_index, scatter_index_rev, expert_offset, expert_nums_local = moe_ops_partial_nosoftmaxtopk(
+    x=x,
+    combine_weights=combine_weights,
+    expert_id=expert_id,
+    k=k,
+    capacity=capacity,
+    num_experts=num_experts,
+    use_pad=use_pad,
+    expert_start_index=expert_start_index,
+    expert_end_index=expert_end_index,
+    reverse_token_drop=reverse_token_drop
+)   

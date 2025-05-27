@@ -24,6 +24,7 @@
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/slice_kernel.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/gpu/moe_kernel_impl.h"
 
 namespace phi {
@@ -470,6 +471,7 @@ void MoeGateDispatchPartialNoSoftMaxTopkKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<int32_t>(scatter_index_rev);
   dev_ctx.template Alloc<int64_t>(expert_offset);
   dev_ctx.template Alloc<int64_t>(expert_nums_local);
+  dev_ctx.template Alloc<float>(combine_weights_out);
   phi::Copy(dev_ctx, combine_weights, dev_ctx.GetPlace(), false, combine_weights_out);
   const auto &x_shape = x.dims();
   int64_t num_rows = x_shape[0];
@@ -498,13 +500,11 @@ void MoeGateDispatchPartialNoSoftMaxTopkKernel(const Context& dev_ctx,
                             );
   if(use_pad){
     // scatter_index_rev = scatter_index_rev.slice(0, num_experts_diff * capacity);
-    *scatter_index_rev = phi::Slice<T, Context>(dev_ctx, *scatter_index_rev, {0}, {0}, {num_experts_diff * capacity});
+    *scatter_index_rev = phi::Slice<int32_t, Context>(dev_ctx, *scatter_index_rev, {0}, {0}, {num_experts_diff * capacity});
   }else{
     if (expert_offset_host.back() > 0){
-      // y = y.slice(0, expert_offset_host.back());
       // scatter_index_rev = scatter_index_rev.slice(0, expert_offset_host.back());
-      *y = phi::Slice<T, Context>(dev_ctx, *y, {0}, {0}, {expert_offset_host.back()});
-      *scatter_index_rev = phi::Slice<T, Context>(dev_ctx, *scatter_index_rev, {0}, {0}, {expert_offset_host.back()});
+      *scatter_index_rev = phi::Slice<int32_t, Context>(dev_ctx, *scatter_index_rev, {0}, {0}, {expert_offset_host.back()});
     }else{
       *y = phi::Empty<T, Context>(dev_ctx, {1, x_shape[1]});
       *scatter_index_rev = phi::Empty<int32_t, Context>(dev_ctx, {}); //special treatment

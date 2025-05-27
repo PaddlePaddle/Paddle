@@ -1737,7 +1737,9 @@ expert_offset->set_dims({num_experts});
 expert_offset->set_dtype(phi::DataType::INT64);
 expert_nums_local->set_dims({num_experts});
 expert_nums_local->set_dtype(phi::DataType::INT64);
-combine_weights_out->share_meta(combine_weights);
+combine_weights_out->set_dims(combine_weights_dims);
+combine_weights_out->set_dtype(combine_weights.dtype());
+// combine_weights_out->share_meta(combine_weights);
 }
 
 void MoeGateDispatchPermuteInferMeta(const MetaTensor& x,

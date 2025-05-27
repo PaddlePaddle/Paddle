@@ -3610,7 +3610,8 @@
   kernel :
     func : moe_gate_dispatch_partial_nosoftmaxtopk
     data_type : x
-  inplace : (combine_weights -> combine_weights_out)
+  # inplace : (combine_weights -> combine_weights_out)
+  backward : moe_gate_dispatch_partial_nosoftmaxtopk_grad
 
 - op : moe_gate_dispatch_permute
   args : (Tensor x, Tensor gate_logits, Tensor corr_bias, int64_t k, int64_t capacity, int64_t world_size)

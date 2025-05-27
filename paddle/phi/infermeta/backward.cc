@@ -1240,6 +1240,60 @@ void MoeCombineGradInferMeta(const MetaTensor& x,
   grad_combine_weights_helper->set_dtype(x.dtype());
 }
 
+void MoeGateDispatchPartialNoSoftmaxTopkGradInferMeta(const MetaTensor& combine_weights_out,
+                                                      const MetaTensor& scatter_index,
+                                                      const MetaTensor& scatter_index_rev,
+                                                      const MetaTensor& expert_offset,
+                                                      const MetaTensor& expert_offset_local,
+                                                      const MetaTensor& y_grad,
+                                                      const MetaTensor& combine_weights_out_grad,
+                                                      int64_t k,
+                                                      int64_t capacity,
+                                                      bool use_pad,
+                                                      int64_t expert_start_index,
+                                                      int64_t expert_end_index,
+                                                      MetaTensor* x_grad,
+                                                      MetaTensor* combine_weights_grad){
+  printf("check infer\n");
+  printf("combine shape: %d, scatter shape: %d\n", combine_weights_out.dims().size(), scatter_index.dims().size());
+  printf("sizeof(combine_weights_out): %d\n", sizeof(combine_weights_out));
+  printf("sizeof(y_grad): %d\n", sizeof(y_grad)); 
+  printf("sizeof combine_weights_out_grad: %d\n", sizeof(combine_weights_out_grad));
+  // printf("size of combine_weights_out_grad: %d\n", combine_weights_out_grad.size());
+  printf("combine_weights_out_grad shape: %d\n", combine_weights_out_grad.dims().size());
+  int64_t num_experts = expert_offset.dims()[0];
+  int64_t hidden_size = y_grad.dims()[1];
+  int64_t num_rows = scatter_index.dims()[1];
+  PADDLE_ENFORCE_GT(
+    num_experts, 
+    0,
+    common::errors::InvalidArgument("Input num_experts should be greater than 0"));
+  PADDLE_ENFORCE_EQ(
+    (expert_offset.dtype()==phi::DataType::INT64),
+    true,
+    common::errors::InvalidArgument("Input expert_offset type should be int64"));
+  if(use_pad){
+    PADDLE_ENFORCE_GE(
+        num_experts,
+        y_grad.dims()[0] / capacity,
+        common::errors::InvalidArgument(
+            "Number of experts should be greater than or equal to y_grad.dims()[0]/capacity"));
+  } else {
+    PADDLE_ENFORCE_GT(y_grad.dims()[0],
+                    0,
+                    common::errors::InvalidArgument("Input y_grad.dims()[0] should be greater than 0"));
+  }
+  printf("y_grad shape: %d", y_grad.dims().size());
+  printf("combine_weights_out_grad shape: %d, y_grad shape: %d", combine_weights_out_grad.dims().size(), y_grad.dims().size());
+  printf("allocate combine_weights_grad\n");
+  combine_weights_grad->set_dims(combine_weights_out_grad.dims());
+  combine_weights_grad->set_dtype(phi::DataType::FLOAT32);
+  printf("allocate x_grad\n");
+  x_grad->set_dims({num_rows, hidden_size});
+  x_grad->set_dtype(y_grad.dtype());
+  printf("check infer over\n");
+}
+
 void MultiDotGradInferMeta(const std::vector<const MetaTensor*>& x,
                            const MetaTensor& out_grad,
                            std::vector<MetaTensor*> x_grad) {
