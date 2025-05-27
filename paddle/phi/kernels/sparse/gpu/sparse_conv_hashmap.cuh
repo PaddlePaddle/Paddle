@@ -310,7 +310,11 @@ void build_sparse_conv_kmap(
     // need to put kernel_sizes and strides to GPU
     auto kernel_sizes_tensor = phi::Empty<int32_t>(dev_ctx, {3});
     auto strides_tensor = phi::Empty<int32_t>(dev_ctx, {3});
-    set_kernel_sizes_and_strides_tensor<<<1, 32, 0, dev_ctx.stream()>>>(kernel_sizes_tensor.data<int32_t>(), strides_tensor.data<int32_t>(), kernel_sizes[0], kernel_sizes[1], kernel_sizes[2], strides[0], strides[1], strides[2]);
+    if (is2D) {
+      set_kernel_sizes_and_strides_tensor<<<1, 32, 0, dev_ctx.stream()>>>(kernel_sizes_tensor.data<int32_t>(), strides_tensor.data<int32_t>(), kernel_sizes[0], kernel_sizes[1], 0, strides[0], strides[1], 0);
+    } else {
+      set_kernel_sizes_and_strides_tensor<<<1, 32, 0, dev_ctx.stream()>>>(kernel_sizes_tensor.data<int32_t>(), strides_tensor.data<int32_t>(), kernel_sizes[0], kernel_sizes[1], kernel_sizes[2], strides[0], strides[1], strides[2]);
+    }
     hashmap.lookup_coords(
         dev_ctx, *(out_kmap_cache_ptr->coords), kernel_sizes_tensor.data<int32_t>(), strides_tensor.data<int32_t>(), kernel_volume, out_kmap_cache_ptr->out_in_map);
 
