@@ -94,6 +94,7 @@ jobs:
             -e CCACHE_LIMIT_MULTIPLE \
             -e ci_scripts \
             -e WITH_AVX \
+            -e IF_KUNLUN3 \
             -e no_proxy \
             -e GITHUB_API_TOKEN \
             -e CI_name \
@@ -254,6 +255,7 @@ jobs:
             -e CCACHE_LIMIT_MULTIPLE \
             -e ci_scripts \
             -e WITH_AVX \
+            -e IF_KUNLUN3 \
             -e no_proxy \
             -e GITHUB_API_TOKEN \
             -e FLAGS_use_stride_kernel \
