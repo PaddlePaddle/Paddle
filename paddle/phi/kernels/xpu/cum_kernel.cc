@@ -109,7 +109,7 @@ struct CumsumKernelVisitor {
     int r_cast = xpu::cast<XPUInT, XPUOutT>(
         dev_ctx_.x_context(),
         reinterpret_cast<const XPUInT*>(x_.data<InT>()),
-        reinterpret_cast<XPUOutT*>(x_casted.data<OutT>(x_.place())),
+        reinterpret_cast<XPUOutT*>(x_casted.data<OutT>()),
         x_.numel());
     PADDLE_ENFORCE_XDNN_SUCCESS(r_cast, "xpu::cast_in_visitor_failed");
 
