@@ -23,7 +23,7 @@ import sys
 import traceback
 from dataclasses import dataclass
 from functools import cached_property, lru_cache
-from typing import TYPE_CHECKING, Any, Callable, Literal, Protocol
+from typing import TYPE_CHECKING, Any, Callable, Literal
 
 from typing_extensions import TypeAlias, get_overloads
 
@@ -44,25 +44,6 @@ MemberType: TypeAlias = Literal[
     "attribute",
     "method",
 ]
-
-
-class AnnoConverter(Protocol):
-    """
-    convert bad annotation, e.g.:
-
-    "Literal[('raise', 'wrap', 'clip')]" -> "Literal['raise', 'wrap', 'clip']"
-    """
-
-    def convert(self, input: str) -> str: ...
-
-
-class LiteralConverter(AnnoConverter):
-    pattern = re.compile(
-        r"(?P<lit_start>Literal\[)\((?P<content>.*?)\)(?P<lit_end>\])"
-    )
-
-    def convert(self, input: str) -> str:
-        return self.pattern.sub(r'\g<lit_start>\g<content>\g<lit_end>', input)
 
 
 @dataclass
@@ -87,8 +68,6 @@ def _slot_pattern(slot_name: str) -> re.Pattern:
 
 
 class TensorGen:
-    _converters: list[AnnoConverter] = [LiteralConverter()]
-
     def __init__(self, template: str = '', prefix: str = 'tensor'):
         self._template = template
         self._template_codes: list[tuple[int, int, str]] = []
@@ -279,9 +258,6 @@ class TensorGen:
         _template.append(template[start:])
 
         _content = header + ''.join(_template)
-
-        for converter in cls._converters:
-            _content = converter.convert(_content)
 
         return _content
 

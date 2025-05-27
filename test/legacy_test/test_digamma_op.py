@@ -32,15 +32,18 @@ class TestDigammaOp(OpTest):
         self.op_type = 'digamma'
         self.python_api = paddle.digamma
         self.init_dtype_type()
-        shape = (5, 32)
-        data = np.random.random(shape).astype(self.dtype) + 1
+        self.init_shape()
+        data = np.random.random(self.shape).astype(self.dtype) + 1
         self.inputs = {'X': data}
-        result = np.ones(shape).astype(self.dtype)
+        result = np.ones(self.shape).astype(self.dtype)
         result = psi(data)
         self.outputs = {'Out': result}
 
     def init_dtype_type(self):
         self.dtype = np.float64
+
+    def init_shape(self):
+        self.shape = (5, 32)
 
     def test_check_output(self):
         self.check_output(check_pir=True, check_symbol_infer=False)
@@ -60,6 +63,11 @@ class TestDigammaOpFp32(TestDigammaOp):
 class TestDigammaFP16Op(TestDigammaOp):
     def init_dtype_type(self):
         self.dtype = np.float16
+
+
+class TestDigammaOp_ZeroSize(TestDigammaOp):
+    def init_shape(self):
+        self.shape = (5, 0)
 
 
 @unittest.skipIf(

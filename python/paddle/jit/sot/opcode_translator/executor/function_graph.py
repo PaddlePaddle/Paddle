@@ -23,7 +23,7 @@ from contextlib import contextmanager
 from copy import deepcopy
 from enum import Enum
 from functools import reduce
-from typing import TYPE_CHECKING, Any, Callable, Tuple, Union
+from typing import TYPE_CHECKING, Any, Callable, Union
 
 from typing_extensions import TypeAlias, TypeGuard
 
@@ -107,9 +107,9 @@ if TYPE_CHECKING:
     ]
 
 
-CompileGraphResult: TypeAlias = Tuple[
+CompileGraphResult: TypeAlias = tuple[
     Callable[..., Any],
-    Tuple[
+    tuple[
         StatementIR,
         OrderedSet[Union[TensorVariable, SymbolicVariable]],
         OrderedSet[Union[TensorVariable, SymbolicVariable]],
