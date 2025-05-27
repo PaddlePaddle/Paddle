@@ -23,21 +23,21 @@
 
 namespace phi {
 
-template <typename T, typename Context, typename ShapeType>
-void ExpandAsKernelImpl(const Context& ctx,
-                        const DenseTensor& x,
-                        const paddle::optional<DenseTensor>& y,
-                        const std::vector<ShapeType>& target_shape_t,
-                        DenseTensor* out) {
-  std::vector<ShapeType> target_shape = target_shape_t;
+template <typename T, typename Context>
+void ExpandAsKernel(const Context& ctx,
+                    const DenseTensor& x,
+                    const paddle::optional<DenseTensor>& y,
+                    const std::vector<int64_t>& target_shape_t,
+                    DenseTensor* out) {
+  std::vector<int64_t> target_shape = target_shape_t;
 
   if (y.get_ptr()) {
-    target_shape = phi::vectorize<ShapeType>(y.get_ptr()->dims());
+    target_shape = phi::vectorize<int64_t>(y.get_ptr()->dims());
   }
 
   int rank = x.dims().size();
   int target_rank = static_cast<int>(target_shape.size());
-  auto vec_in_dims = common::vectorize<ShapeType>(x.dims());
+  auto vec_in_dims = common::vectorize<int64_t>(x.dims());
 
   unsigned int diff = target_rank - rank;
   vec_in_dims.insert(vec_in_dims.begin(), diff, 1);
@@ -78,34 +78,6 @@ void ExpandAsKernelImpl(const Context& ctx,
   }
 
   ExpandKernel<T, Context>(ctx, x, target_shape, out);
-}
-
-static inline std::vector<int> convert_to_int_vec(std::vector<int64_t> a) {
-  std::vector<int> ret;
-  for (size_t i = 0; i < a.size(); i++) {
-    ret.emplace_back(static_cast<int>(a[i]));
-  }
-
-  return ret;
-}
-
-template <typename T, typename Context>
-void ExpandAsKernel(const Context& ctx,
-                    const DenseTensor& x,
-                    const paddle::optional<DenseTensor>& y,
-                    const std::vector<int64_t>& target_shape_t,
-                    DenseTensor* out) {
-  bool use_int64 =
-      std::any_of(target_shape_t.begin(), target_shape_t.end(), [](int64_t v) {
-        return v > static_cast<int64_t>(std::numeric_limits<int32_t>::max());
-      });
-
-  if (use_int64) {
-    ExpandAsKernelImpl<T, Context, int64_t>(ctx, x, y, target_shape_t, out);
-  } else {
-    ExpandAsKernelImpl<T, Context, int32_t>(
-        ctx, x, y, convert_to_int_vec(target_shape_t), out);
-  }
 }
 
 }  // namespace phi
