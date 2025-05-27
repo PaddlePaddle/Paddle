@@ -31,22 +31,16 @@ void WhereGradKernel(const Context& ctx,
   auto* dout = out_grad.data<T>();
   if (out_grad.numel() == 0) {
     if (x_grad) {
-      ctx.template Alloc<T>(x_grad);
-      if (x_grad->numel() > 0) {
-        phi::Full<T, Context>(ctx,
-                              phi::IntArray(common::vectorize(x_grad->dims())),
-                              static_cast<T>(0),
-                              x_grad);
-      }
+      phi::Full<T, Context>(ctx,
+                            phi::IntArray(common::vectorize(x_grad->dims())),
+                            static_cast<T>(0),
+                            x_grad);
     }
     if (y_grad) {
-      ctx.template Alloc<T>(y_grad);
-      if (y_grad->numel() > 0) {
-        phi::Full<T, Context>(ctx,
-                              phi::IntArray(common::vectorize(y_grad->dims())),
-                              static_cast<T>(0),
-                              y_grad);
-      }
+      phi::Full<T, Context>(ctx,
+                            phi::IntArray(common::vectorize(y_grad->dims())),
+                            static_cast<T>(0),
+                            y_grad);
     }
     return;
   }
