@@ -191,6 +191,7 @@ class TestCartesianProd_ZeroSize(unittest.TestCase):
             a = paddle.to_tensor(self.a_np)
             a.stop_gradient = False
             b = paddle.to_tensor(self.b_np)
+            b.stop_gradient = False
 
             out = paddle.cartesian_prod([a, b])
             loss = paddle.sum(out)
