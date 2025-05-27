@@ -184,6 +184,19 @@ class TestCartesianProd_ZeroSize(unittest.TestCase):
             )
             np.testing.assert_allclose(ref_res, pd_res)
 
+    def test_grad(self):
+        paddle.disable_static()
+        for place in self.place:
+            paddle.device.set_device(place)
+            a = paddle.to_tensor(self.a_np)
+            a.stop_gradient = False
+            b = paddle.to_tensor(self.b_np)
+
+            out = paddle.cartesian_prod([a, b])
+            loss = paddle.sum(out)
+            loss.backward()
+            np.testing.assert_allclose(a.grad.shape, a.shape)
+
 
 class TestCartesianProdErrors(unittest.TestCase):
     def test_errors(self):
