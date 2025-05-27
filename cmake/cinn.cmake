@@ -96,16 +96,8 @@ if(WITH_GPU)
                                          REQUIRED)
   find_library(CUBLAS libcublas.so HINTS ${CUDA_TOOLKIT_ROOT_DIR}/lib64
                                          /usr/lib /usr/lib64 REQUIRED)
-  if(${CUDA_VERSION} GREATER_EQUAL 12.6)
-    find_library(
-      CUDNN libcudnn.so.9
-      HINTS ${CUDA_TOOLKIT_ROOT_DIR}/lib64 /usr/lib /usr/lib64
-            /usr/local/lib/python${PY_VERSION}/dist-packages/nvidia/cudnn/lib/
-            REQUIRED)
-  else()
-    find_library(CUDNN libcudnn.so HINTS ${CUDA_TOOLKIT_ROOT_DIR}/lib64
-                                         /usr/lib /usr/lib64 REQUIRED)
-  endif()
+  find_library(CUDNN libcudnn.so HINTS ${CUDA_TOOLKIT_ROOT_DIR}/lib64 /usr/lib
+                                       /usr/lib64 REQUIRED)
   find_library(CURAND libcurand.so HINTS ${CUDA_TOOLKIT_ROOT_DIR}/lib64
                                          /usr/lib /usr/lib64 REQUIRED)
   find_library(CUSOLVER libcusolver.so HINTS ${CUDA_TOOLKIT_ROOT_DIR}/lib64

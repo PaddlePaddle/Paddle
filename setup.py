@@ -1589,10 +1589,8 @@ def get_package_data_and_package_dir():
             package_data['paddle.libs'] += ['bfloat16.h']
 
         if env_dict.get("CMAKE_BUILD_TYPE") == 'Release' and os.name != 'nt':
-            PY_VERSION = env_dict.get("PY_VERSION")
-            nvidia_cudnn_so_path = f'/usr/local/lib/python{PY_VERSION}/dist-packages/nvidia/cudnn/lib'
             command = (
-                f"patchelf --set-rpath '{nvidia_cudnn_so_path}:$ORIGIN/../../nvidia/cuda_nvrtc/lib/:$ORIGIN/../../nvidia/cuda_runtime/lib/:$ORIGIN/../../nvidia/cublas/lib/:$ORIGIN/../../nvidia/cudnn/lib/:$ORIGIN/../../nvidia/curand/lib/:$ORIGIN/../../nvidia/cusolver/lib/:$ORIGIN/../../nvidia/nvtx/lib/:$ORIGIN/' {libs_path}/"
+                f"patchelf --set-rpath '$ORIGIN/../../nvidia/cuda_nvrtc/lib/:$ORIGIN/../../nvidia/cuda_runtime/lib/:$ORIGIN/../../nvidia/cublas/lib/:$ORIGIN/../../nvidia/cudnn/lib/:$ORIGIN/../../nvidia/curand/lib/:$ORIGIN/../../nvidia/cusolver/lib/:$ORIGIN/../../nvidia/nvtx/lib/:$ORIGIN/' {libs_path}/"
                 + env_dict.get("CINN_LIB_NAME")
             )
             if os.system(command) != 0:
