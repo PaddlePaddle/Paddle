@@ -179,8 +179,6 @@ std::vector<paddle::Tensor> RunBackward(
           std::make_unique<GradTensorHolder>(grad_node->InputMeta());
     }
 
-    // copy grad tensor since we should totally run grad without affect forward
-    // value
     if (!grad_tensors.empty() &&
         (grad_tensors[i].defined() && grad_tensors[i].has_allocation())) {
       PADDLE_ENFORCE(
@@ -192,9 +190,13 @@ std::vector<paddle::Tensor> RunBackward(
       // Feed given tensor if it's provided
       VLOG(3) << "Fill grad input tensor " << i << "with give grad tensor";
 
-      // Deep copy
-      node_input_buffers_dict[grad_node]->CopyValueFromTensor(
-          input_info.first, input_info.second, grad_tensors[i]);
+      // Share buffer with given grad_tensor
+      paddle::small_vector<std::vector<paddle::Tensor>, kSlotSmallVectorSize>
+          inputs_grad_tensors;
+      inputs_grad_tensors.push_back({grad_tensors[i]});
+      auto grad_holder = GradTensorHolder(std::move(inputs_grad_tensors));
+      node_input_buffers_dict[grad_node] =
+          std::make_unique<GradTensorHolder>(grad_holder);
     } else {
       VLOG(3) << "Fill grad input tensor " << i << " with 1.0";
       // Initialize tensor with 1.0
