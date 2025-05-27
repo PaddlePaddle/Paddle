@@ -2052,6 +2052,7 @@
   kernel :
     func : flashmask_attention_v2
     data_type : q
+  backward : flashmask_attention_v2_grad
 
 - op : flatten
   args : (Tensor x, int start_axis = 1, int stop_axis = 1)
