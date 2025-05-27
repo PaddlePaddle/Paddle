@@ -12,7 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#if defined(PADDLE_WITH_XPU_XFT)
 #include <xft/xdnn_plugin.h>
+#endif
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
 #ifdef PADDLE_WITH_XPU_XRE5
@@ -30,6 +32,7 @@ void WeightOnlyLinearKernel(const Context& dev_ctx,
                             const int32_t arch,
                             const int32_t group_size,
                             DenseTensor* out) {
+#if defined(PADDLE_WITH_XPU_XFT)
   using XPUType = typename XPUTypeTrait<T>::Type;
   int64_t n = weight.dims()[0];
   int64_t k = weight.dims()[1];
@@ -130,6 +133,11 @@ void WeightOnlyLinearKernel(const Context& dev_ctx,
   } else {
     PD_THROW("unsupported weight_dtype: ", weight_dtype);
   }
+#else
+  PADDLE_THROW(common::errors::Unimplemented(
+      "weight_quantize is not supported since it's not "
+      "compiled with XPU_XFT"));
+#endif
 }
 }  // namespace phi
 
