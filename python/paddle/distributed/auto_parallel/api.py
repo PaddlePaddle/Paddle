@@ -1517,7 +1517,9 @@ class _ShardOptimizer(Optimizer):
 
                 return fuse_comm
 
-            param_group_len = len(self.fuse_param_view[i])
+            param_group_len = (
+                len(self.fuse_param_view[i]) * self.gradient_accumulation_steps
+            )
             for name, view in self.fuse_param_view[i].items():
                 view['param']._register_backward_hook(
                     fuse_comm_hook_func(
@@ -1827,7 +1829,9 @@ class _ShardOptimizer(Optimizer):
             params_grads = self._tensor_fusion(params_grads)
         else:
             # Fuse the communication of gradients prior to the optimization operation in the dynamic mode.
-            if paddle.in_dynamic_mode():
+            if paddle.in_dynamic_mode() and isinstance(
+                self._shard_fn, ShardingStage1
+            ):
                 # Get fuse optimization flag.
                 def get_env(flag_name):
                     if os.getenv(flag_name) in ['True', 'true', '1']:

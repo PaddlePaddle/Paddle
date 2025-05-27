@@ -481,18 +481,30 @@ template <typename T, typename Context>
 void IsfiniteKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     DenseTensor* out) {
+  if (out && out->numel() == 0) {
+    dev_ctx.template Alloc<bool>(out);
+    return;
+  }
   IsfiniteFunctor<Context, T>()(dev_ctx, x, out);
 }
 template <typename T, typename Context>
 void IsinfKernel(const Context& dev_ctx,
                  const DenseTensor& x,
                  DenseTensor* out) {
+  if (out && out->numel() == 0) {
+    dev_ctx.template Alloc<bool>(out);
+    return;
+  }
   IsinfFunctor<Context, T>()(dev_ctx, x, out);
 }
 template <typename T, typename Context>
 void IsnanKernel(const Context& dev_ctx,
                  const DenseTensor& x,
                  DenseTensor* out) {
+  if (out && out->numel() == 0) {
+    dev_ctx.template Alloc<bool>(out);
+    return;
+  }
   IsnanFunctor<Context, T>()(dev_ctx, x, out);
 }
 }  // namespace phi

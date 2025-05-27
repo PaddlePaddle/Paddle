@@ -58,6 +58,7 @@ jobs:
           CCACHE_DIR: /root/.ccache
           CCACHE_MAXSIZE: 150G
           CCACHE_LIMIT_MULTIPLE: 0.8
+          IF_KUNLUN3: "ON"
           GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           home_dir: ${{ github.workspace }}/../../../..
         run: |
@@ -93,6 +94,7 @@ jobs:
             -e CCACHE_LIMIT_MULTIPLE \
             -e ci_scripts \
             -e WITH_AVX \
+            -e IF_KUNLUN3 \
             -e no_proxy \
             -e GITHUB_API_TOKEN \
             -e CI_name \
@@ -212,6 +214,7 @@ jobs:
           CCACHE_DIR: /root/.ccache
           CCACHE_MAXSIZE: 150G
           CCACHE_LIMIT_MULTIPLE: 0.8
+          IF_KUNLUN3: "ON"
           GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           home_dir: ${{ github.workspace }}/../../../..
           FLAGS_use_stride_kernel: "0"
@@ -252,6 +255,7 @@ jobs:
             -e CCACHE_LIMIT_MULTIPLE \
             -e ci_scripts \
             -e WITH_AVX \
+            -e IF_KUNLUN3 \
             -e no_proxy \
             -e GITHUB_API_TOKEN \
             -e FLAGS_use_stride_kernel \

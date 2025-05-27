@@ -22,6 +22,7 @@ from dataclasses import dataclass
 from typing import Callable
 
 import paddle
+from paddle.incubate.cc.tools import apy_to_axpr_json
 from paddle.static import InputSpec
 
 from . import typing as pct
@@ -71,6 +72,9 @@ def _compile(
     target_framework='paddle',
     compile_engine='PCC',
 ):
+    assert ap_path is not None
+    ap_root_path = f"{os.path.dirname(paddle.__file__)}/apy"
+    apy_to_axpr_json.PyToAxpr(ap_root_path)(ap_root_path)
     assert not train, "only support inference now"
     os.makedirs(ap_workspace_dir, exist_ok=True)
     build_strategy = paddle.static.BuildStrategy()
@@ -136,10 +140,11 @@ class InputSpecMakeCtx:
 @contextmanager
 def _ap_envs(ap_path, ap_workspace_dir):
     ap_sys_path = f"{os.path.dirname(paddle.__file__)}/apy/sys"
+    matmul_path = f"{os.path.dirname(paddle.__file__)}/apy/matmul_pass"
     old_ap_path = os.environ.get('AP_PATH')
     old_ap_workspace_dir = os.environ.get('AP_WORKSPACE_DIR')
     os.environ['AP_PATH'] = (
-        f"{ap_sys_path}:{ap_path}:{old_ap_path if old_ap_path is not None else ''}"
+        f"{ap_sys_path}:{ap_path}:{matmul_path}:{old_ap_path if old_ap_path is not None else ''}"
     )
     os.environ['AP_WORKSPACE_DIR'] = ap_workspace_dir
     old_flags = paddle.get_flags(['FLAGS_enable_ap'])

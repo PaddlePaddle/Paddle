@@ -928,6 +928,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param: [x]
+    spmd_rule : CeluInfoSpmd
   kernel :
     func : celu
   backward : celu_grad
@@ -1276,6 +1277,7 @@
   output : Tensor(out), Tensor(indices)
   infer_meta :
     func : CumWithIndicesInferMeta
+    spmd_rule : CummaxInferSpmd
   kernel :
     func : cummax
     data_type : x
@@ -1287,6 +1289,7 @@
   output : Tensor(out), Tensor(indices)
   infer_meta :
     func : CumWithIndicesInferMeta
+    spmd_rule : CumminInferSpmd
   kernel :
     func : cummin
     data_type : x
@@ -1656,6 +1659,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : EluInfoSpmd
   kernel :
     func : elu
   inplace : (x -> out)
@@ -3114,6 +3118,7 @@
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMetaCheckAxis
+    spmd_rule : SoftmaxInferSpmd
   kernel :
     func : log_softmax
     data_type : x
@@ -3192,6 +3197,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : LogitInfoSpmd
   kernel :
     func : logit
   inplace: (x -> out)
@@ -3247,7 +3253,7 @@
   traits : paddle::dialect::ForwardOnlyTrait
 
 - op : lp_pool2d
-  args : (Tensor x, IntArray kernel_size, int[] strides = {1,1}, int[] paddings = {0,0}, bool ceil_mode = false, bool exclusive = true, str data_format = "NCHW", str pooling_type = "", bool global_pooling = false, bool adaptive = false, str padding_algorithm = "EXPLICIT", float norm_type = 0.0f)
+  args : (Tensor x, IntArray kernel_size, int64_t[] strides = {1,1}, int64_t[] paddings = {0,0}, bool ceil_mode = false, bool exclusive = true, str data_format = "NCHW", str pooling_type = "", bool global_pooling = false, bool adaptive = false, str padding_algorithm = "EXPLICIT", float norm_type = 0.0f)
   output : Tensor(out)
   infer_meta :
     func : Pool2DInferMeta
@@ -3329,6 +3335,18 @@
     func : margin_cross_entropy
     data_type : logits
   backward : margin_cross_entropy_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+
+- op : masked_fill
+  args : (Tensor x, Tensor mask, Tensor value)
+  output : Tensor (out)
+  inplace: (x -> out)
+  infer_meta :
+    func : MaskedFillInferMeta
+  kernel :
+    func : masked_fill
+    data_type : x
+  backward : masked_fill_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : masked_multihead_attention_
@@ -3421,7 +3439,7 @@
   args : (Tensor x, IntArray axis={}, bool keepdim=false)
   output : Tensor(out)
   infer_meta :
-    func : ReduceIntArrayAxisInferMeta
+    func : StrictReduceIntArrayAxisInferMeta
     spmd_rule: ReductionMaxInferSpmdDynamic
   kernel :
     func : max
@@ -3563,6 +3581,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : MishInfoSpmd
   kernel :
     func : mish
   backward : mish_grad
@@ -3735,6 +3754,7 @@
   output : Tensor(out)
   infer_meta :
     func : NonZeroInferMeta
+    spmd_rule : NonZeroInferSpmd
   kernel :
     func : nonzero
     data_type: condition
@@ -3919,7 +3939,7 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : pool2d
-  args : (Tensor x, IntArray kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm)
+  args : (Tensor x, IntArray kernel_size, int64_t[] strides, int64_t[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm)
   output : Tensor(out)
   infer_meta :
     func : Pool2DInferMeta
@@ -3931,7 +3951,7 @@
   interfaces : paddle::dialect::LayoutTransformationInterface, paddle::dialect::InferSymbolicShapeInterface
 
 - op : pool3d
-  args : (Tensor x, int[] kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm)
+  args : (Tensor x, int64_t[] kernel_size, int64_t[] strides, int64_t[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm)
   output : Tensor(out)
   infer_meta :
     func : PoolInferMeta
@@ -4376,6 +4396,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : RoundInfoSpmd
   kernel :
     func : round
   inplace : (x -> out)
@@ -4490,6 +4511,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : SeluInfoSpmd
   kernel :
     func : selu
   backward : selu_grad
@@ -4776,6 +4798,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : SoftplusInfoSpmd
   kernel :
     func : softplus
   backward : softplus_grad
@@ -4788,6 +4811,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : SoftshrinkInfoSpmd
   kernel :
     func : softshrink
   backward : softshrink_grad
@@ -4945,6 +4969,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : StanhInfoSpmd
   kernel :
     func : stanh
   backward : stanh_grad
@@ -5143,6 +5168,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : ThresholdedReluInfoSpmd
   kernel :
     func : thresholded_relu
   inplace: (x -> out)

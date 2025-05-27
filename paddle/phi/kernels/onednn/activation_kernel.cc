@@ -83,6 +83,10 @@ struct OneDNNActivationFunc : public funcs::BaseActivationFunctor<T> {
                   float alpha,
                   float beta,
                   DenseTensor* out) const {
+    if (out && out->numel() == 0) {
+      dev_ctx.template Alloc<T>(out);
+      return;
+    }
     EltwiseForward<T>(dev_ctx, x, alpha, beta, out, algorithm);
   }
 };

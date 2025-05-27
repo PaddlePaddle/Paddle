@@ -24,7 +24,6 @@ from contextlib import contextmanager
 from enum import Flag, auto
 from functools import wraps
 from pathlib import Path
-from typing import Tuple
 
 from typing_extensions import TypeAlias
 
@@ -111,7 +110,7 @@ class BackendMode(Flag):
         return self.name.lower()
 
 
-ModeTuple: TypeAlias = Tuple[ToStaticMode, IrMode, BackendMode]
+ModeTuple: TypeAlias = tuple[ToStaticMode, IrMode, BackendMode]
 DEFAULT_TO_STATIC_MODE = (
     ToStaticMode.AST | ToStaticMode.SOT | ToStaticMode.SOT_MGS10
 )

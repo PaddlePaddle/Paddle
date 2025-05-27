@@ -70,7 +70,7 @@ void LuSolveKernel(const Context& dev_ctx,
     PADDLE_ENFORCE_EQ(
         info,
         0,
-        phi::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "LU solve failed with error code %d. Check if matrix is singular.",
             info));
   }
