@@ -110,8 +110,8 @@ class TestNextafterOP(OpTest):
         self.dtype = np.float64
 
     def init_shape(self):
-        self.x_shape = [2]
-        self.y_shape = [2]
+        self.x_shape = (2,)
+        self.y_shape = (2,)
 
 
 class TestNextafterOPFP32(TestNextafterOP):
@@ -124,8 +124,8 @@ class TestNextafterOPFP32Case1(TestNextafterOP):
         self.dtype = np.float32
 
     def init_shape(self):
-        self.x_shape = []
-        self.y_shape = [2, 3, 4, 5]
+        self.x_shape = (5,)
+        self.y_shape = (2, 3, 4, 5)
 
 
 class TestNextafterOPFP32Case2(TestNextafterOP):
@@ -133,20 +133,20 @@ class TestNextafterOPFP32Case2(TestNextafterOP):
         self.dtype = np.float32
 
     def init_shape(self):
-        self.x_shape = [2, 3, 4, 5]
-        self.y_shape = [1]
+        self.x_shape = (2, 3, 4, 5)
+        self.y_shape = (1,)
 
 
 class TestNextafterOPCase1(TestNextafterOP):
     def init_shape(self):
-        self.x_shape = []
-        self.y_shape = [2, 3, 4, 5]
+        self.x_shape = (5,)
+        self.y_shape = (2, 3, 4, 5)
 
 
 class TestNextafterOPCase2(TestNextafterOP):
     def init_shape(self):
-        self.x_shape = [2, 3, 4, 5]
-        self.y_shape = [1]
+        self.x_shape = (2, 3, 4, 5)
+        self.y_shape = (1,)
 
 
 if __name__ == "__main__":
