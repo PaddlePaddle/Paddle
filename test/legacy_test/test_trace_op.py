@@ -60,6 +60,20 @@ class TestTraceOpCase2(TestTraceOp):
         self.case = np.random.randn(2, 20, 2, 3).astype('float32')
         self.inputs = {'Input': self.case}
         self.attrs = {'offset': -5, 'axis1': 1, 'axis2': -1}
+        self.__class__.exist_check_grad = True
+        self.target = np.trace(
+            self.inputs['Input'],
+            offset=self.attrs['offset'],
+            axis1=self.attrs['axis1'],
+            axis2=self.attrs['axis2'],
+        )
+
+
+class TestTraceOpCase3(TestTraceOp):
+    def init_config(self):
+        self.case = np.random.randn(0, 3, 2).astype('float64')
+        self.inputs = {'Input': self.case}
+        self.attrs = {'offset': -1, 'axis1': 2, 'axis2': -2}
         self.target = np.trace(
             self.inputs['Input'],
             offset=self.attrs['offset'],
