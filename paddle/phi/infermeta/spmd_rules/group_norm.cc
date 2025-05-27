@@ -31,7 +31,7 @@ SpmdInfo GroupNormInferSpmd(const DistMetaTensor& x,
                             const DistMetaTensor& bias,
                             float epsilon,
                             int groups,
-                            std::string data_format) {
+                            const std::string& data_format) {
   // Step0: verify input args based on group_norm logic
   auto x_shape = common::vectorize(x.dims());
   auto scale_shape = common::vectorize(scale.dims());
@@ -159,7 +159,7 @@ SpmdInfo GroupNormGradInferSpmd(const DistMetaTensor& x,
                                 const DistMetaTensor y_grad,
                                 float epsilon,
                                 int groups,
-                                std::string data_format) {
+                                const std::string& data_format) {
   // Step0: verify input args based on group_norm logic
   auto x_shape = common::vectorize(x.dims());
   auto scale_shape = common::vectorize(scale.dims());
