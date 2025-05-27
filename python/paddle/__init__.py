@@ -786,6 +786,8 @@ nan = math.nan
 pi = math.pi
 e = math.e
 
+from .api_tracer import api_tracer_guard, api_tracer_start, api_tracer_stop
+
 __all__ = [
     'block_diag',
     'iinfo',
@@ -1230,14 +1232,17 @@ __all__ = [
     'nan',
     'pi',
     'e',
+    'api_tracer_start',
+    'api_tracer_stop',
+    'api_tracer_guard',
 ]
 
 import os
 
 FLAGS_trace_api = os.environ.get("FLAGS_trace_api", None)
 if FLAGS_trace_api is not None and FLAGS_trace_api != "":
-    from .api_tracer import start_api_tracer
+    from .api_tracer import api_tracer_init
 
     api_path = FLAGS_trace_api.split(",")[0]
     save_config_path = FLAGS_trace_api.split(",")[1]
-    start_api_tracer(api_path, save_config_path)
+    api_tracer_init(api_path, save_config_path)

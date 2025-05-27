@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import contextlib
 import math
 
 import numpy as np
@@ -24,12 +25,21 @@ class HookAPIMap:
 
 class ConfigDump:
     def __init__(self):
+        self.open = False
         pass
+
+    def open(self):
+        self.open = True
+
+    def close(self):
+        self.open = False
 
     def open_file(self, path):
         self.file = open(path, "a+")
 
     def dump_config(self, api, input_args, input_kwargs, outputs):
+        if not self.open:
+            return
         result = api + "("
         for value in input_args:
             tmp = self.dump_item_str(api, value)
@@ -197,7 +207,7 @@ def wrapped_api(api_name):
     return api_template
 
 
-def start_api_tracer(api_path, save_config_path):
+def api_tracer_init(api_path, save_config_path):
     import paddle
 
     print(paddle.__version__)
@@ -212,6 +222,24 @@ def start_api_tracer(api_path, save_config_path):
             setattr(HookAPIMap, api, getattr(eval(parent_package), method_name))
             setattr(eval(parent_package), method_name, wrapped_api(api))
         except Exception as err:
-            print("[api_tracer error] : start_api_tracer ", api, str(err))
+            print("[api_tracer error] : api_tracer_init ", api, str(err))
 
     config_dump.open_file(save_config_path)
+
+
+def api_tracer_start():
+    config_dump.open()
+
+
+def api_tracer_stop():
+    config_dump.close()
+
+
+@contextlib.contextmanager
+def api_tracer_guard():
+    api_tracer_start()
+
+    try:
+        yield
+    finally:
+        api_tracer_stop()

@@ -12,9 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .api_tracer import start_api_tracer
+from .api_tracer import (
+    api_tracer_guard,
+    api_tracer_init,
+    api_tracer_start,
+    api_tracer_stop,
+)
 
 __all__ = [
     'api_tracer',
-    'start_api_tracer',
+    'api_tracer_init',
+    'api_tracer_start',
+    'api_tracer_stop',
+    'api_tracer_guard',
 ]
