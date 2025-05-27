@@ -33,10 +33,6 @@ void FrobeniusNormKernel(const Context& ctx,
     return;
   }
   reduce_all = recompute_reduce_all(x, axis.GetData(), reduce_all);
-  if (x.numel() == 0) {
-    ctx.template Alloc<T>(out);
-    return;
-  }
   Reduce<Context, T, funcs::FrobeniusNormFunctor>(
       ctx, x, reduce_all, axis.GetData(), keep_dim, x.dtype(), out);
 }

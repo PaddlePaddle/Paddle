@@ -30,10 +30,6 @@ void FrobeniusNormGradKernel(const Context& ctx,
                              bool reduce_all,
                              DenseTensor* dx) {
   reduce_all = recompute_reduce_all(x, axis.GetData(), reduce_all);
-  if (x.numel() == 0) {
-    ctx.template Alloc<T>(dx);
-    return;
-  }
   ReduceGradKernel<Context, T, funcs::FrobeniusNormGradFunctor>(
       ctx, x, out, dout, axis.GetData(), keep_dim, reduce_all, dx);
 }
