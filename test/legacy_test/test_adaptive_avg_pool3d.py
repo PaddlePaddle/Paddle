@@ -61,6 +61,9 @@ def adaptive_pool3d_forward(
         if data_format == 'NCDHW'
         else np.zeros((N, D_out, H_out, W_out, C))
     )
+    if x.size == 0:
+        return out
+
     for k in range(D_out):
         d_start = adaptive_start_index(k, D, output_size[0])
         d_end = adaptive_end_index(k, D, output_size[0])
@@ -370,6 +373,46 @@ class TestAdaptiveAvgPool3DClassAPI(unittest.TestCase):
             np.testing.assert_allclose(
                 out_5.numpy(), self.res_5_np, rtol=1e-5, atol=1e-8
             )
+
+
+class TestAdaptiveAvgPool3DAPI_ZeroSize(unittest.TestCase):
+    def setUp(self):
+        self.x_np = np.random.random([0, 3, 5, 7, 7]).astype("float32")
+        self.res_1_np = adaptive_pool3d_forward(
+            x=self.x_np, output_size=[3, 3, 3], pool_type="avg"
+        )
+
+    def test_dynamic_graph(self):
+        for use_cuda in (
+            [False, True] if core.is_compiled_with_cuda() else [False]
+        ):
+            place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
+            paddle.disable_static(place=place)
+            x = paddle.to_tensor(self.x_np)
+
+            out_1 = paddle.nn.functional.adaptive_avg_pool3d(
+                x=x, output_size=[3, 3, 3]
+            )
+
+            np.testing.assert_allclose(
+                out_1.numpy(), self.res_1_np, rtol=1e-5, atol=1e-8
+            )
+
+    def test_grad(self):
+        for use_cuda in (
+            [False, True] if core.is_compiled_with_cuda() else [False]
+        ):
+            place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
+            paddle.disable_static(place=place)
+            x = paddle.to_tensor(self.x_np)
+            x.stop_gradient = False
+
+            out_1 = paddle.nn.functional.adaptive_avg_pool3d(
+                x=x, output_size=[3, 3, 3]
+            )
+            loss = paddle.sum(out_1)
+            loss.backward()
+            np.testing.assert_allclose(x.grad.shape, x.shape)
 
 
 if __name__ == '__main__':
