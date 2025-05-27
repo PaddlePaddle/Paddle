@@ -901,6 +901,7 @@
   kernel :
     func : cal_aux_loss
     data_type : gate_prob
+  optional: tokens_mask, dispatch_tokens_mask
   backward : cal_aux_loss_grad
 
 - op : calc_reduced_attn_scores
@@ -3610,6 +3611,7 @@
   kernel :
     func : moe_gate_dispatch
     data_type : x
+  optional : corr_bias
   backward : moe_gate_dispatch_grad
 
 - op : momentum_
