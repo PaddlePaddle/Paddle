@@ -86,8 +86,7 @@ void SumRawKernel(const Context& dev_ctx,
     }
     out->Resize(phi::make_ddim(out_dims));
     dev_ctx.template Alloc<T>(out);
-    FullKernel<T, Context>(
-        dev_ctx, out_dims, 0, phi::CppTypeToDataType<T>::Type(), out);
+    FullKernel<T, Context>(dev_ctx, out_dims, 0, out_dtype, out);
     return;
   }
   phi::Reduce<CPUContext, T, phi::funcs::SumFunctor>(

@@ -24,6 +24,7 @@ from paddle.tensorrt.converter_utils import (
     trt_sum,
 )
 from paddle.tensorrt.register import converter_registry
+from paddle.tensorrt.util import support_fp32_mix_precision
 
 
 @converter_registry.register("pd_op.matmul", trt_version="trt_version_ge=8.0")
@@ -65,6 +66,7 @@ def matmul_converter(network, paddle_op, inputs):
     out = network.add_matrix_multiply(
         lhs_val, self_matrix_op, rhs_val, other_matrix_op
     )
+    support_fp32_mix_precision(paddle_op.name(), out)
     set_layer_name(out, paddle_op)
     return out.get_output(0)
 

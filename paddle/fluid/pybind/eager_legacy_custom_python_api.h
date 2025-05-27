@@ -43,8 +43,7 @@ static PyObject *eager_api_run_program(PyObject *self,  // TOREMOVE
       Out = GetTensorPtrListFromArgs("run_program", "Out", args, 2, true, mesh);
     }
     framework::AttributeMap attrs;
-    // TODO(zengjinle): support CUDA Graph on eager mode
-    ConstructAttrMapFromPyArgs(
+    ConstructAttrMapForLegacyRunProgram(
         "run_program", args, 5, PyTuple_GET_SIZE(args), attrs);
 
     tstate = PyEval_SaveThread();

@@ -144,7 +144,7 @@
 #include "paddle/pir/include/pass/pass_registry.h"
 
 COMMON_DECLARE_bool(pir_apply_inplace_pass);
-COMMON_DECLARE_bool(enable_auto_layout_pass);
+COMMON_DECLARE_bool(enable_auto_layout_pass_in_inference);
 namespace paddle {
 namespace {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -193,7 +193,7 @@ void UpdatePrivateDeviceContext(InferGPUContext *gpu_context,
   gpu_context->SetRuntimeVersion(gpu_resource->GetGpuRuntimeVersion());
   VLOG(1) << "thread id is " << std::this_thread::get_id() << ", stream id is "
           << reinterpret_cast<void *>(gpu_resource->GetStream())
-          << ", allotor ptr is "
+          << ", allocator ptr is "
           << reinterpret_cast<void *>(
                  memory::allocation::AllocatorFacade::Instance()
                      .GetAllocator(place_, gpu_resource->GetStream())
@@ -947,7 +947,7 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
 
         if (config_.enable_gpu_mixed_) {
           AddAutoMixedPrecisionPass(fused_op_pm);
-          if (FLAGS_enable_auto_layout_pass) {
+          if (FLAGS_enable_auto_layout_pass_in_inference) {
             AddAutoLayoutPasses(fused_op_pm);
           } else {
             fused_op_pm.AddPass(
@@ -1093,7 +1093,7 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
     if (config_.save_optimized_model_) {
       std::string optimized_model =
           GetOptimizedModelPath() + "/" + "_optimized.json";
-      pir::WriteModule(*pir_program_, optimized_model, 1, true, false, true);
+      pir::WriteModule(*pir_program_, optimized_model);
       LOG(INFO) << "Optimized model saved to " << optimized_model;
       SaveOrLoadPirParameters(true);
     }
@@ -1107,7 +1107,7 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
       AddAutoMixedPrecisionPass(basic_pass_pm);
     }
   }
-  if (FLAGS_enable_auto_layout_pass) {
+  if (FLAGS_enable_auto_layout_pass_in_inference) {
     AddAutoLayoutPasses(basic_pass_pm);
   } else {
     auto transfer_layout_pass = ::pir::CreateTransferLayoutPass();
@@ -1128,10 +1128,17 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
   }
   auto params_sync_among_devices_pass =
       ::pir::CreateParamsSyncAmongDevicesPass();
+  int64_t params = 0;
+  for (auto op : pir_program_.get()->block()->ops()) {
+    if (op->isa<::pir::ParameterOp>()) {
+      params += 1;
+    }
+  }
   if (std::find(config_.deleted_passes_.begin(),
                 config_.deleted_passes_.end(),
                 params_sync_among_devices_pass->name()) ==
-      config_.deleted_passes_.end()) {
+          config_.deleted_passes_.end() &&
+      params > 0) {
     params_sync_among_devices_pass->SetNotOwned(pir::Pass::kPlaceAttr, &place_);
     params_sync_among_devices_pass->SetNotOwned(pir::Pass::kParamScopeAttr,
                                                 sub_scope_);
@@ -1343,7 +1350,7 @@ bool AnalysisPredictor::SaveOrLoadPirParameters(bool for_save) {
           std::min(num_threads, filter_param_names.size() / chunk_size);
       size_t remain_size = filter_param_names.size() % num_threads;
       VLOG(4) << "Start Load with multi-thread: " << num_threads
-              << " chund size: " << chunk_size;
+              << " chunk size: " << chunk_size;
 
       std::vector<std::future<std::vector<phi::DenseTensor *>>> futures;
 
@@ -1369,11 +1376,16 @@ bool AnalysisPredictor::SaveOrLoadPirParameters(bool for_save) {
       }
 
     } else {
-      pir::LoadCombineFunction(config_.params_file(),
-                               filter_param_names,
-                               &tensor_out,
-                               false,
-                               place_);
+      if (std::filesystem::exists(config_.params_file())) {
+        pir::LoadCombineFunction(config_.params_file(),
+                                 filter_param_names,
+                                 &tensor_out,
+                                 false,
+                                 place_);
+      } else {
+        LOG(WARNING) << "【Pir Load】Parameter Path not exists: "
+                     << config_.params_file();
+      }
     }
   }
   return true;
@@ -1389,7 +1401,7 @@ bool AnalysisPredictor::PreparePirProgram() {
       common::errors::Fatal("Here, pir_program must be a nullptr!"));
 
   pir_program_ = std::make_shared<pir::Program>(pir::IrContext::Instance());
-  pir::ReadModule(config_.prog_file(), pir_program_.get(), 1 /*pir_version*/);
+  pir::ReadModule(config_.prog_file(), pir_program_.get());
   if (!SaveOrLoadPirParameters(false)) {
     return false;
   }
@@ -2379,6 +2391,14 @@ CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
         }
         if (std::getenv("FLAGS_cache_inference_while_scope") == nullptr) {
           SetGflag("cache_inference_while_scope", "1");
+        }
+        std::string model_path = config.prog_file();
+        if (!model_path.empty()) {
+          std::string model_dir = model_path.substr(0, model_path.rfind('.'));
+          SetGflag("trt_engine_serialized_path", model_dir.c_str());
+        } else if (!config.model_dir().empty()) {
+          std::string model_dir = config.model_dir();
+          SetGflag("trt_engine_serialized_path", model_dir.c_str());
         }
       });
 

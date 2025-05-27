@@ -214,7 +214,7 @@ class Momentum(Optimizer):
             self._param_dict = self._create_multi_tensor_dict()
             self._velocity_dict = self._create_multi_tensor_dict()
             self._master_weight_dict = self._create_multi_tensor_dict()
-            self._master_weight_dict['FP32_LODTensor'] = None
+            self._master_weight_dict['FP32_DenseTensor'] = None
             self._regularization_method_dict = self._create_multi_tensor_dict()
             self._regularization_coeff_dict = self._create_multi_tensor_dict()
 
@@ -386,38 +386,38 @@ class Momentum(Optimizer):
                     regularization_method = ""
                     regularization_coeff = 0.0
             if param.dtype == paddle.float32:
-                self._param_dict['FP32_LODTensor'][param_group_idx].append(
+                self._param_dict['FP32_DenseTensor'][param_group_idx].append(
                     param
                 )
-                self._velocity_dict['FP32_LODTensor'][param_group_idx].append(
+                self._velocity_dict['FP32_DenseTensor'][param_group_idx].append(
                     velocity_acc
                 )
                 # fp32 no master weight
-                self._regularization_method_dict['FP32_LODTensor'][
+                self._regularization_method_dict['FP32_DenseTensor'][
                     param_group_idx
                 ].append(regularization_method)
-                self._regularization_coeff_dict['FP32_LODTensor'][
+                self._regularization_coeff_dict['FP32_DenseTensor'][
                     param_group_idx
                 ].append(regularization_coeff)
             elif self._is_dtype_fp16_or_bf16(param.dtype):
-                self._param_dict['FP16_LODTensor'][param_group_idx].append(
+                self._param_dict['FP16_DenseTensor'][param_group_idx].append(
                     param
                 )
-                self._velocity_dict['FP16_LODTensor'][param_group_idx].append(
+                self._velocity_dict['FP16_DenseTensor'][param_group_idx].append(
                     velocity_acc
                 )
                 if self._multi_precision:
-                    self._master_weight_dict['FP16_LODTensor'][
+                    self._master_weight_dict['FP16_DenseTensor'][
                         param_group_idx
                     ].append(self._master_weights[param.name])
                 else:
-                    self._master_weight_dict['FP16_LODTensor'][
+                    self._master_weight_dict['FP16_DenseTensor'][
                         param_group_idx
                     ] = None
-                self._regularization_method_dict['FP16_LODTensor'][
+                self._regularization_method_dict['FP16_DenseTensor'][
                     param_group_idx
                 ].append(regularization_method)
-                self._regularization_coeff_dict['FP16_LODTensor'][
+                self._regularization_coeff_dict['FP16_DenseTensor'][
                     param_group_idx
                 ].append(regularization_coeff)
             else:
@@ -436,8 +436,8 @@ class Momentum(Optimizer):
         """
         assert isinstance(target_block, framework.Block)
 
-        grad_dict = {'FP32_LODTensor': [], 'FP16_LODTensor': []}
-        lr_dict = {'FP32_LODTensor': [], 'FP16_LODTensor': []}
+        grad_dict = {'FP32_DenseTensor': [], 'FP16_DenseTensor': []}
+        lr_dict = {'FP32_DenseTensor': [], 'FP16_DenseTensor': []}
 
         if isinstance(parameters_and_grads, list):
             for param_and_grad in parameters_and_grads:
@@ -449,17 +449,17 @@ class Momentum(Optimizer):
                         and param_and_grad[1].type
                         == core.VarDesc.VarType.DENSE_TENSOR
                     ):
-                        grad_dict['FP32_LODTensor'].append(param_and_grad[1])
+                        grad_dict['FP32_DenseTensor'].append(param_and_grad[1])
                         lr = self._create_param_lr(param_and_grad)
-                        lr_dict['FP32_LODTensor'].append(lr)
+                        lr_dict['FP32_DenseTensor'].append(lr)
                     elif (
                         self._is_dtype_fp16_or_bf16(param_and_grad[0].dtype)
                         and param_and_grad[1].type
                         == core.VarDesc.VarType.DENSE_TENSOR
                     ):
-                        grad_dict['FP16_LODTensor'].append(param_and_grad[1])
+                        grad_dict['FP16_DenseTensor'].append(param_and_grad[1])
                         lr = self._create_param_lr(param_and_grad)
-                        lr_dict['FP16_LODTensor'].append(lr)
+                        lr_dict['FP16_DenseTensor'].append(lr)
         else:
             for param_and_grad in parameters_and_grads['params']:
                 if param_and_grad[1] is None:
@@ -480,22 +480,24 @@ class Momentum(Optimizer):
                         and param_and_grad[1].type
                         == core.VarDesc.VarType.DENSE_TENSOR
                     ):
-                        grad_dict['FP32_LODTensor'].append(param_and_grad[1])
+                        grad_dict['FP32_DenseTensor'].append(param_and_grad[1])
                         lr = self._create_param_lr(param_and_grad)
-                        lr_dict['FP32_LODTensor'].append(lr)
+                        lr_dict['FP32_DenseTensor'].append(lr)
                     elif (
                         self._is_dtype_fp16_or_bf16(param_and_grad[0].dtype)
                         and param_and_grad[1].type
                         == core.VarDesc.VarType.DENSE_TENSOR
                     ):
-                        grad_dict['FP16_LODTensor'].append(param_and_grad[1])
+                        grad_dict['FP16_DenseTensor'].append(param_and_grad[1])
                         lr = self._create_param_lr(param_and_grad)
-                        lr_dict['FP16_LODTensor'].append(lr)
+                        lr_dict['FP16_DenseTensor'].append(lr)
 
-        multi_tensor_list = ['FP32_LODTensor', 'FP16_LODTensor']
+        multi_tensor_list = ['FP32_DenseTensor', 'FP16_DenseTensor']
         for key in multi_tensor_list:
             if len(self._param_dict[key][param_group_idx]) > 0:
-                find_master = self._multi_precision and key == 'FP16_LODTensor'
+                find_master = (
+                    self._multi_precision and key == 'FP16_DenseTensor'
+                )
 
                 master_weight = self._master_weight_dict[key]
                 master_weight = (

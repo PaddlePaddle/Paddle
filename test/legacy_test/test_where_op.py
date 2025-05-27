@@ -70,6 +70,30 @@ class TestWhereFP16OP(TestWhereOp):
 
 
 @unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    "Skip complex due to lack of mean support",
+)
+class TestWhereOpComplex64(TestWhereOp):
+    def init_config(self):
+        self.dtype = np.complex64
+        self.x = np.random.uniform((-5), 5, (60, 2)).astype(self.dtype)
+        self.y = np.random.uniform((-5), 5, (60, 2)).astype(self.dtype)
+        self.cond = np.ones((60, 2)).astype('bool')
+
+
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    "Skip complex due to lack of mean support",
+)
+class TestWhereOpComplex128(TestWhereOp):
+    def init_config(self):
+        self.dtype = np.complex128
+        self.x = np.random.uniform((-5), 5, (60, 2)).astype(self.dtype)
+        self.y = np.random.uniform((-5), 5, (60, 2)).astype(self.dtype)
+        self.cond = np.ones((60, 2)).astype('bool')
+
+
+@unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
     "core is not compiled with CUDA and not support the bfloat16",
@@ -221,8 +245,11 @@ class TestWhereAPI(unittest.TestCase):
     def test_pir_api(self, use_cuda=False):
         for x_stop_gradient in [False, True]:
             for y_stop_gradient in [False, True]:
-                with paddle.pir_utils.IrGuard(), paddle.static.program_guard(
-                    paddle.static.Program(), paddle.static.Program()
+                with (
+                    paddle.pir_utils.IrGuard(),
+                    paddle.static.program_guard(
+                        paddle.static.Program(), paddle.static.Program()
+                    ),
                 ):
                     cond = paddle.static.data(
                         name='cond', shape=self.shape, dtype='bool'
@@ -797,7 +824,7 @@ class TestWhereDygraphAPI(unittest.TestCase):
         np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
         data = np.array([True, True, False])
         with program_guard(Program(), Program()):
-            x = paddle.static.data(name='x', shape=[(-1)], dtype='bool')
+            x = paddle.static.data(name='x', shape=[-1], dtype='bool')
             if not paddle.framework.use_pir_api():
                 x.desc.set_need_check_feed(False)
             y = paddle.where(x)

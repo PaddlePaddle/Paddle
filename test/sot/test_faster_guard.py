@@ -148,6 +148,43 @@ class TestBasicFasterGuard(unittest.TestCase):
             guard_numpy_bool_dtype.check(np.array(1, dtype=np.bool_))
         )
 
+    def test_numpu_array_shape_match_guard(self):
+        np_array = np.array([1, 2])
+        guard_numpy_array_shape = (
+            paddle.framework.core.NumPyArrayShapeMatchGuard(np_array.shape)
+        )
+        self.assertTrue(guard_numpy_array_shape.check(np_array))
+        self.assertTrue(
+            guard_numpy_array_shape.check(np.array([1, 2], dtype=np.int32))
+        )
+        self.assertTrue(guard_numpy_array_shape.check(np.array([3, 4])))
+        self.assertTrue(
+            guard_numpy_array_shape.check(np.array([3, 4], dtype=np.float32))
+        )
+        self.assertFalse(guard_numpy_array_shape.check(np.array([[1], [2]])))
+        self.assertFalse(guard_numpy_array_shape.check(np.array([1, 2, 3])))
+
+        np_array = np.array([1, None])
+        guard_numpy_array_shape = (
+            paddle.framework.core.NumPyArrayShapeMatchGuard(np_array.shape)
+        )
+        self.assertTrue(guard_numpy_array_shape.check(np_array))
+        self.assertTrue(guard_numpy_array_shape.check(np.array([2, 3])))
+        self.assertFalse(guard_numpy_array_shape.check(np.array([2, 3, 4])))
+
+        np_array = np.array(1)
+        guard_numpy_array_shape = (
+            paddle.framework.core.NumPyArrayShapeMatchGuard(np_array.shape)
+        )
+        self.assertTrue(guard_numpy_array_shape.check(np_array))
+        self.assertTrue(
+            guard_numpy_array_shape.check(np.array(2, dtype=np.int32))
+        )
+        self.assertTrue(
+            guard_numpy_array_shape.check(np.array(3, dtype=np.float32))
+        )
+        self.assertFalse(guard_numpy_array_shape.check(np.array([1])))
+
     def test_numpy_array_match_guard(self):
         np_array = paddle.framework.core.NumPyArrayValueMatchGuard(
             np.array([1, 2, 3])
@@ -201,6 +238,13 @@ class TestBasicFasterGuard(unittest.TestCase):
         self.assertFalse(guard_object.check(lambda x: x == 1))
         self.assertFalse(guard_object.check(1))
         self.assertFalse(guard_object.check("1"))
+
+    def test_is_dense_tensor_hold_allocation(self):
+        tensor = paddle.to_tensor([1, 2, 3])
+        guard = paddle.framework.core.IsNotDenseTensorHoldAllocationMatchGuard()
+        self.assertEqual(
+            guard.check(tensor), not tensor._is_dense_tensor_hold_allocation()
+        )
 
 
 class TestFasterGuardGroup(unittest.TestCase):

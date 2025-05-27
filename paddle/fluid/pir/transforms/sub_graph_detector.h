@@ -36,7 +36,9 @@ std::vector<GroupOpsVec> DetectSubGraphs(pir::Block* block,
                                          const OpClassifier& classifier);
 
 std::vector<pir::Value> AnalysisOutputs(const GroupOpsVec& group_ops);
-void ReplaceWithGroupOp(pir::Block* block, const GroupOpsVec& group_ops);
+void ReplaceWithGroupOp(pir::Block* block,
+                        const GroupOpsVec& group_ops,
+                        bool at_least_one_output = true);
 
 pir::Operation* FindInsertPoint(const GroupOpsVec& group_ops,
                                 const std::vector<pir::Value>& outputs);

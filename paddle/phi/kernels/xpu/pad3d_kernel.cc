@@ -52,11 +52,11 @@ void Pad3dKernel(const Context& dev_ctx,
 
   T* out_data = dev_ctx.template Alloc<T>(out);
 
-  const int num = in_dims[0];  // n
-  int channels = in_dims[1];   // c
-  int in_depth = in_dims[2];   // xd
-  int in_height = in_dims[3];  // xh
-  int in_width = in_dims[4];   // xw
+  const int64_t num = in_dims[0];  // n
+  int64_t channels = in_dims[1];   // c
+  int64_t in_depth = in_dims[2];   // xd
+  int64_t in_height = in_dims[3];  // xh
+  int64_t in_width = in_dims[4];   // xw
   if (data_format == "NDHWC") {
     channels = in_dims[4];   // c
     in_depth = in_dims[1];   // xd
@@ -134,7 +134,7 @@ void Pad3dKernel(const Context& dev_ctx,
                           "or replicate padding mode."));
   }
 
-  std::vector<int> pads_xpu(6);
+  std::vector<int64_t> pads_xpu(6);
   pads_xpu[0] = pads[4];  // pf
   pads_xpu[1] = pads[5];  // pb
   pads_xpu[2] = pads[2];  // pt

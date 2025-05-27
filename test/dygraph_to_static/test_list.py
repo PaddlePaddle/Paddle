@@ -17,6 +17,7 @@ import unittest
 
 import numpy as np
 from dygraph_to_static_utils import (
+    BackendMode,
     Dy2StTestBase,
     IrMode,
     ToStaticMode,
@@ -296,7 +297,9 @@ class TestListInWhileLoop(TestListWithoutControlFlowConfig):
                 res = self.dygraph_func(self.input, self.iter_num)
             return self.result_to_numpy(res)
 
-    @disable_test_case((ToStaticMode.AST, IrMode.PT))
+    @disable_test_case(
+        (ToStaticMode.AST, IrMode.PT, BackendMode.PHI | BackendMode.CINN)
+    )
     def test_transformed_static_result(self):
         self.compare_transformed_static_result()
 

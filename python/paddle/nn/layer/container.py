@@ -21,12 +21,12 @@ from typing import Any
 
 from typing_extensions import Self
 
+import paddle
+from paddle import Tensor
+
 from ...base.dygraph.base import param_guard
 from ...base.framework import Parameter
 from .layers import Layer
-
-if typing.TYPE_CHECKING:
-    from paddle import Tensor
 
 __all__ = []
 
@@ -490,8 +490,11 @@ class ParameterList(Layer):
             return self._parameters[str(idx)]
 
     def __setitem__(self, idx: int, param: Tensor) -> None:
-        assert isinstance(param, Parameter)
-        setattr(self, str(idx), param)
+        if not isinstance(param, (Parameter, Tensor)):
+            raise TypeError(
+                f"param should be 'Parameter' or 'Tensor', but received {type(param)}"
+            )
+        paddle.assign(param, getattr(self, str(idx)))
 
     def __len__(self) -> int:
         return len(self._parameters)

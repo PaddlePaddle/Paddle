@@ -22,6 +22,7 @@ from test_prim_sub_graph_backward_dynamic_shape import (
 )
 
 import paddle
+from paddle.base import core
 
 
 def kron_net(x, y):
@@ -535,6 +536,10 @@ class TestPrimMatmulWithGrad5(TestPrimTwoWithGrad):
         self.tol = 1e-5
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda() and not core.is_compiled_with_xpu(),
+    "CPU will timeout.",
+)
 class TestPrimMaxWithGrad1(TestPrimBaseWithGrad):
     def setUp(self):
         np.random.seed(2024)
@@ -548,6 +553,10 @@ class TestPrimMaxWithGrad1(TestPrimBaseWithGrad):
         self.tol = 1e-6
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda() and not core.is_compiled_with_xpu(),
+    "CPU will timeout.",
+)
 class TestPrimMaxWithGrad2(TestPrimBaseWithGrad):
     def setUp(self):
         np.random.seed(2024)
@@ -561,6 +570,10 @@ class TestPrimMaxWithGrad2(TestPrimBaseWithGrad):
         self.tol = 1e-6
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda() and not core.is_compiled_with_xpu(),
+    "CPU will timeout.",
+)
 class TestPrimMaxWithGrad3(TestPrimBaseWithGrad):
     def setUp(self):
         np.random.seed(2024)
@@ -574,6 +587,10 @@ class TestPrimMaxWithGrad3(TestPrimBaseWithGrad):
         self.tol = 1e-6
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda() and not core.is_compiled_with_xpu(),
+    "CPU will timeout.",
+)
 class TestPrimMaxWithGrad4(TestPrimBaseWithGrad):
     def setUp(self):
         np.random.seed(2024)
@@ -587,6 +604,10 @@ class TestPrimMaxWithGrad4(TestPrimBaseWithGrad):
         self.tol = 1e-6
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda() and not core.is_compiled_with_xpu(),
+    "CPU will timeout.",
+)
 class TestPrimMaxWithGrad5(TestPrimBaseWithGrad):
     def setUp(self):
         np.random.seed(2024)
@@ -600,6 +621,10 @@ class TestPrimMaxWithGrad5(TestPrimBaseWithGrad):
         self.tol = 1e-6
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda() and not core.is_compiled_with_xpu(),
+    "CPU will timeout.",
+)
 class TestPrimMaxWithGrad6(TestPrimBaseWithGrad):
     def setUp(self):
         np.random.seed(2024)
@@ -613,6 +638,10 @@ class TestPrimMaxWithGrad6(TestPrimBaseWithGrad):
         self.tol = 1e-6
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda() and not core.is_compiled_with_xpu(),
+    "CPU will timeout.",
+)
 class TestPrimMaxWithGrad7(TestPrimBaseWithGrad):
     def setUp(self):
         np.random.seed(2024)

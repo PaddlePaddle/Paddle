@@ -227,7 +227,7 @@ class InnerOverlapLinear(paddle.autograd.PyLayer):
             dx = paddle.matmul(
                 dy, paddle.cast(weight, dtype=dy.dtype), transpose_y=True
             )
-        op_type = _get_reduce_op(ReduceOp.SUM, "_c_identity")
+        op_type = _get_reduce_op(ReduceOp.SUM)
         task = ctx.model_parallel_group.process_group.all_reduce(
             dx, op_type, sync_op=False
         )

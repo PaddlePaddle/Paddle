@@ -13,10 +13,6 @@
 // limitations under the License.
 
 #include <Python.h>
-// Avoid a problem with copysign defined in pyconfig.h on Windows.
-#ifdef copysign
-#undef copysign
-#endif
 
 #include <algorithm>
 #include <cctype>
@@ -70,7 +66,6 @@
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/phi/core/memory/allocation/cuda_ipc_allocator.h"
 #endif
-#include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/init.h"
 #include "paddle/fluid/platform/profiler/event_python.h"

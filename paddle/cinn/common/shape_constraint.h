@@ -14,11 +14,13 @@
 #pragma once
 #include <unordered_set>
 #include <vector>
+#include "paddle/cinn/common/dim_expr_converter.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_base.h"
 #include "paddle/cinn/ir/utils/ir_compare.h"
 #include "paddle/common/union_find_set.h"
 #include "paddle/pir/include/dialect/shape/utils/dim_expr.h"
+#include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 namespace cinn {
 namespace common {
 
@@ -40,13 +42,42 @@ class ShapeConstraintManager {
  public:
   // Returns a singleton object.
   static ShapeConstraintManager& Instance();
+  // Initialize the ShapeConstraintManager with CINN frontend
+  // ConstraintsManager.
+  void Init(const symbol::ConstraintsManager& constraint);
   // Initialize the ShapeConstraintManager with the DimExpr UnionFindSet.
-  void Init(const ::common::UnionFindSet<symbol::DimExpr>& equal_dim_exprs);
+  void InitEqualExprs(
+      const ::common::UnionFindSet<symbol::DimExpr>& equal_dim_exprs);
   // Initialize the ShapeConstraintManager with the IndexExpr UnionFindSet.
-  void Init(const ::common::UnionFindSet<ir::IndexExpr, IndexExprDirectCompare>&
-                equal_exprs);
+  void InitEqualExprs(
+      const ::common::UnionFindSet<ir::IndexExpr, IndexExprDirectCompare>&
+          equal_exprs);
+
+  // Broadcast DimExpr: All parameters need to build edges between each other.
+  // Other DimExpr: Only build edges between them.
+  // e.g.
+  //  1. Broadcastable[ Broadcast(S0, S1), Broadcast(S2, S3) ]
+  //   ===>
+  //    {S0: {S1, S2, S3},
+  //     S1: {S0, S2, S3},
+  //     S2: {S0, S1, S3},
+  //     S3: {S0, S1, S2}}
+  //  2. Broadcastable[ S0, S1 ]
+  //   ===>
+  //    {S0: {S1},
+  //     S1: {S0}}
+  //  3. Broadcastable[ S0, Broadcast(S1, S2) ]
+  //   ===>
+  //    {S0: {S1, S2},
+  //     S1: {S0, S2},
+  //     S2: {S0, S1}}
+  void InitBroadcastableExprs(
+      const std::unordered_set<symbol::Broadcastable<symbol::DimExpr>>&
+          broadcastable_dim_exprs);
   // Returns whether lhs and rhs are equal in the DimExpr UnionFindSet.
   bool IsEqual(const ir::IndexExpr& lhs, const ir::IndexExpr& rhs);
+  bool IsBroadcastable(const ir::IndexExpr& lhs, const ir::IndexExpr& rhs);
+  bool IsBroadcastable(const std::vector<ir::IndexExpr>& vec);
 
   friend std::ostream& operator<<(
       std::ostream& os, const ShapeConstraintManager& constraints_manager);
@@ -54,6 +85,37 @@ class ShapeConstraintManager {
  private:
   ::common::UnionFindSet<symbol::DimExpr> equal_dim_exprs_;
   ::common::UnionFindSet<ir::IndexExpr, IndexExprDirectCompare> equal_exprs_;
+
+  // Since broadcast relationships are not conductive, `Bidirectional Adjacency
+  // Map` are used to store broadcast relationships. The edge between nodes
+  // indicates that the two nodes are broadcastable.
+  class BroadcastMap {
+   public:
+    void AddEdge(const ir::IndexExpr& lhs, const ir::IndexExpr& rhs) {
+      broadcastable_exprs_[lhs].insert(rhs);
+      broadcastable_exprs_[rhs].insert(lhs);
+    }
+    void AddEdge(const symbol::DimExpr& lhs, const symbol::DimExpr& rhs) {
+      DimExprConverter cvt;
+      auto lhs_ = cvt.ConvertToIrExpr(lhs);
+      auto rhs_ = cvt.ConvertToIrExpr(rhs);
+      broadcastable_exprs_[lhs_].insert(rhs_);
+      broadcastable_exprs_[rhs_].insert(lhs_);
+    }
+    bool HasEdge(const ir::IndexExpr& lhs, const ir::IndexExpr& rhs) {
+      return broadcastable_exprs_.count(lhs) &&
+             broadcastable_exprs_.at(lhs).count(rhs);
+    }
+    const std::unordered_map<ir::IndexExpr, std::unordered_set<ir::IndexExpr>>&
+    GetBroadcastableExprs() const {
+      return broadcastable_exprs_;
+    }
+
+   private:
+    std::unordered_map<ir::IndexExpr, std::unordered_set<ir::IndexExpr>>
+        broadcastable_exprs_;
+  };
+  BroadcastMap broadcastable_exprs_;
   ShapeConstraintManager() = default;
   ~ShapeConstraintManager() = default;
   ShapeConstraintManager(const ShapeConstraintManager&) = delete;

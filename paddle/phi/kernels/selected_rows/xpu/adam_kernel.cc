@@ -57,7 +57,7 @@ void AdamDenseParamSparseGradKernel(
   PADDLE_ENFORCE_NE(
       amsgrad,
       true,
-      phi::errors::Unimplemented("Operation amsgrad is not supported yet."));
+      common::errors::Unimplemented("Operation amsgrad is not supported yet."));
 
   using XPUType = typename XPUTypeTrait<T>::Type;
   xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());

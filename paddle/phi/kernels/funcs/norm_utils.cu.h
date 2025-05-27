@@ -753,14 +753,14 @@ void SetLaunchConfigInfoForChannelLast(const Context &ctx,
                                        dim3 *block,
                                        dim3 *grid) {
   const int MAX_GRID_SIZE = 128;
-  const int WARP_SIZE = 32;
+  const int64_t WARP_SIZE = 32;
 
   int block_x = std::min(phi::funcs::details::GetLastPow2(C), WARP_SIZE);
   int block_y = std::min(phi::funcs::details::GetLastPow2(N * H * W * D / 16),
-                         block_size / block_x);
+                         static_cast<int64_t>(block_size / block_x));
   if (block_x * block_y != block_size) {
-    block_x =
-        std::min(phi::funcs::details::GetLastPow2(C), block_size / block_y);
+    block_x = std::min(phi::funcs::details::GetLastPow2(C),
+                       static_cast<int64_t>(block_size / block_y));
   }
   int grid_x = (C + block_x - 1) / block_x;
   int grid_y = std::min((N * H * W * D + block_y * 16 - 1) / (block_y * 16),

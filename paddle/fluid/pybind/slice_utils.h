@@ -15,10 +15,6 @@
 #pragma once
 
 #include <Python.h>
-// Avoid a problem with copysign defined in pyconfig.h on Windows.
-#ifdef copysign
-#undef copysign
-#endif
 
 #include <algorithm>
 #include "paddle/fluid/eager/api/all.h"
@@ -61,63 +57,6 @@ inline T GetDenseTensorValue(const phi::DenseTensor* x) {
   }
   return value;
 }
-
-template <typename T>
-inline void CheckTensorIndexValue(const paddle::Tensor& x,
-                                  const int64_t dim_len) {
-  // skip check if strides are not all 1
-  for (auto i = 0; i < x.strides().size(); i++) {
-    if (x.strides()[i] != 1) {
-      return;
-    }
-  }
-  T value = static_cast<T>(0);
-  int64_t x_numel = x.numel();
-  if (!(x.place().GetType() == phi::AllocationType::CPU)) {
-    auto ten = (*static_cast<phi::DenseTensor*>(x.impl().get()));
-    phi::DenseTensor cpu_x;
-    framework::TensorCopy(ten, phi::CPUPlace(), &cpu_x);
-#if defined(PADDLE_WITH_CUSTOM_DEVICE)
-    phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
-    const phi::DeviceContext* dev_ctx = pool.Get(x.place());
-    dev_ctx->Wait();
-#endif
-    for (int i = 0; i < x_numel; i++) {
-      value = cpu_x.data<T>()[i];
-      PADDLE_ENFORCE_EQ(
-          -dim_len <= value && value < dim_len,
-          true,
-          common::errors::OutOfRange(
-              "The index is out of bounds, "
-              "please check whether the dimensions of index and "
-              "input meet the requirements. It should "
-              "be less than [%ld] and greater than or equal to [%ld], but "
-              "received [%ld]",
-              dim_len,
-              -dim_len,
-              value));
-    }
-
-  } else {
-    for (int i = 0; i < x_numel; i++) {
-      value = x.data<T>()[i];
-      PADDLE_ENFORCE_EQ(
-          -dim_len <= value && value < dim_len,
-          true,
-          common::errors::OutOfRange(
-              "The index is out of bounds, "
-              "please check whether the dimensions of index and "
-              "input meet the requirements. It should "
-              "be less than [%ld] and greater than or equal to [%ld], but "
-              "received [%ld]",
-              dim_len,
-              -dim_len,
-              value));
-    }
-  }
-  return;
-}
-
 static Py_ssize_t GetSliceIndexFromPyObject(PyObject* obj);
 // Slice related methods
 static bool PyCheckInteger(PyObject* obj) {
@@ -228,7 +167,7 @@ static int _PySlice_GetIndices(PySliceObject* r,
 }
 
 static void ParseIndex(const paddle::Tensor& tensor,
-                       PyObject* _index,
+                       PyObject* index,
                        std::vector<int64_t>* slice_axes,
                        std::vector<int>* slice_starts,
                        std::vector<int>* slice_ends,
@@ -240,14 +179,6 @@ static void ParseIndex(const paddle::Tensor& tensor,
                        std::vector<paddle::Tensor>* advanced_index,
                        bool* has_advanced_index,
                        bool* use_strided_slice) {
-  // NOTE(zhiqiu): PyTuple_Pack increases refcount.
-  PyObject* index = !PyTuple_Check(_index) ? PyTuple_Pack(1, _index) : _index;
-  DEFINE_PADDLE_SCOPE_GUARD([index, _index]() {
-    if (!PyTuple_Check(_index)) {
-      Py_DECREF(index);
-      VLOG(4) << "Call Py_DECREF";
-    }
-  });
   // for case 0-size tensor in slice
   PADDLE_ENFORCE_EQ(
       tensor.defined(),
@@ -256,7 +187,6 @@ static void ParseIndex(const paddle::Tensor& tensor,
   const auto& shape = tensor.dims();
   const int rank = shape.size();
   const int size = PyTuple_GET_SIZE(index);
-
   // Check Ellipsis is valid
   int specified_dims = 0;
   int ell_count = 0;
@@ -390,21 +320,6 @@ static void ParseIndex(const paddle::Tensor& tensor,
                                 slice_tensor.shape()[0],
                                 dim_len,
                                 current_dim));
-        } else if (slice_tensor.dtype() == phi::DataType::INT64 ||
-                   slice_tensor.dtype() == phi::DataType::INT32) {
-          // check if current slice_tensor is valid
-          PADDLE_ENFORCE_EQ(
-              current_dim + 1 <= rank,
-              true,
-              common::errors::InvalidArgument(
-                  "Too many indices (%d) for tensor of dimension %d.",
-                  current_dim + 1,
-                  rank));
-          if (slice_tensor.dtype() == phi::DataType::INT32) {
-            CheckTensorIndexValue<int32_t>(slice_tensor, dim_len);
-          } else if (slice_tensor.dtype() == phi::DataType::INT64) {
-            CheckTensorIndexValue<int64_t>(slice_tensor, dim_len);
-          }
         }
         *has_advanced_index = true;
         advanced_index->push_back(std::move(slice_tensor));
@@ -488,6 +403,25 @@ static paddle::Tensor getTensorWithBasicIndexing(
     out = unsqueeze_ad_func(out, *none_axes);
   }
   return out;
+}
+
+inline static bool MaskedFillDispatching(
+    const paddle::Tensor& tensor,
+    const paddle::Tensor& value,
+    const std::vector<paddle::Tensor>& indices,
+    paddle::Tensor* mask_tensor) {
+  if (indices.size() != 1 || value.numel() != 1) return false;
+  int64_t num_ind = 0;
+  if ((indices)[0].dtype() != phi::DataType::BOOL) {
+    return false;
+  } else {
+    num_ind += (indices)[0].shape().size();
+  }
+  *mask_tensor = (indices)[0];
+  for (size_t i = num_ind; i < tensor.shape().size(); i++) {
+    *mask_tensor = unsqueeze_ad_func(*mask_tensor, {-1});
+  }
+  return true;
 }
 
 static paddle::Tensor dealWithAdvancedIndex(
@@ -591,6 +525,12 @@ static paddle::Tensor getValueForBoolTensor(const paddle::Tensor& tensor,
   if (bool_index.shape().size() == tensor_shape.size()) {
     return masked_select_ad_func(tensor, bool_index);
   }
+
+  if (bool_index.shape().size() == 1) {
+    auto bool_2_idx = nonzero_ad_func(bool_index);
+    return gather_ad_func(tensor, bool_2_idx);
+  }
+
   auto bool_2_idx = nonzero_ad_func(bool_index);
   return gather_nd_ad_func(tensor, bool_2_idx);
 }

@@ -14,7 +14,6 @@
 
 #include "paddle/cinn/runtime/cuda/cuda_util.h"
 
-#include <absl/container/flat_hash_map.h>
 #include <cublas_v2.h>
 #include <cuda_runtime.h>
 #include <curand.h>
@@ -37,6 +36,7 @@
 #include "paddle/cinn/utils/profiler.h"
 #include "paddle/cinn/utils/timer.h"
 #include "paddle/common/enforce.h"
+#include "paddle/utils/flat_hash_map.h"
 
 namespace cinn {
 namespace runtime {
@@ -690,7 +690,7 @@ class ConvAlgoMap {
 
  private:
   ConvAlgoMap() {}
-  absl::flat_hash_map<std::string, int> algo_map_;
+  paddle::flat_hash_map<std::string, int> algo_map_;
 };
 
 cudnnDataType_t convert_to_cudnn_dtype(void *v_args, int num_args) {
@@ -898,10 +898,6 @@ void cinn_call_cudnn_conv2d_forward(void *v_args,
     conv_algo_map.InsertAlgo(hash_key, static_cast<int>(algo_perf.algo));
   }
 
-  if (GetCinnCudnnDeterministic()) {
-    algo = static_cast<cudnnConvolutionFwdAlgo_t>(1);
-  }
-
   size_t workspace_size = 0;
   CUDNN_CALL(cudnnGetConvolutionForwardWorkspaceSize(
       handle, x_desc, w_desc, conv_desc, y_desc, algo, &workspace_size));
@@ -1053,10 +1049,6 @@ void cinn_call_cudnn_conv2d_backward_data(void *v_args,
 
     algo = algo_perf.algo;
     conv_algo_map.InsertAlgo(hash_key, static_cast<int>(algo_perf.algo));
-  }
-
-  if (GetCinnCudnnDeterministic()) {
-    algo = CUDNN_CONVOLUTION_BWD_DATA_ALGO_1;
   }
 
   size_t workspace_size = 0;
@@ -1213,10 +1205,6 @@ void cinn_call_cudnn_conv2d_backward_filter(void *v_args,
     algo_map.InsertAlgo(hash_key, static_cast<int>(algo_perf.algo));
   }
 
-  if (GetCinnCudnnDeterministic()) {
-    algo = CUDNN_CONVOLUTION_BWD_FILTER_ALGO_1;
-  }
-
   size_t workspace_size = 0;
   CUDNN_CALL(cudnnGetConvolutionBackwardFilterWorkspaceSize(
       handle, x_desc, y_desc, conv_desc, w_desc, algo, &workspace_size));
@@ -1297,10 +1285,6 @@ void cinn_call_cudnn_pool2d_forward(void *v_args,
   cudnnPoolingMode_t pool_mode = static_cast<cudnnPoolingMode_t>(mode);
   cudnnTensorFormat_t tensor_format = static_cast<cudnnTensorFormat_t>(format);
   cudnnDataType_t data_type = convert_to_cudnn_dtype(v_args, num_args);
-
-  if (GetCinnCudnnDeterministic() && pool_mode == CUDNN_POOLING_MAX) {
-    pool_mode = CUDNN_POOLING_MAX_DETERMINISTIC;
-  }
 
   std::string hash_key =
       "pool2d forward, layout=" + debug_cudnn_tensor_format(tensor_format) +
@@ -1397,10 +1381,6 @@ void cinn_call_cudnn_pool2d_backward(void *v_args,
   cudnnPoolingMode_t pool_mode = static_cast<cudnnPoolingMode_t>(mode);
   cudnnTensorFormat_t tensor_format = static_cast<cudnnTensorFormat_t>(format);
   cudnnDataType_t data_type = convert_to_cudnn_dtype(v_args, num_args);
-
-  if (GetCinnCudnnDeterministic() && pool_mode == CUDNN_POOLING_MAX) {
-    pool_mode = CUDNN_POOLING_MAX_DETERMINISTIC;
-  }
 
   std::string hash_key =
       "pool2d backward, layout=" + debug_cudnn_tensor_format(tensor_format) +
@@ -2342,7 +2322,7 @@ cudnnDataType_t convert_to_cudnn_dtype(cinn_buffer_t *input) {
     PADDLE_THROW(::common::errors::InvalidArgument(ss.str())); \
   }
 
-void cinn_gpu_cudnn_conv2d(const absl::flat_hash_map<std::string, int> &attr,
+void cinn_gpu_cudnn_conv2d(const paddle::flat_hash_map<std::string, int> &attr,
                            cinn_buffer_t *x,
                            cinn_buffer_t *w,
                            cinn_buffer_t *y,
@@ -2456,10 +2436,6 @@ void cinn_gpu_cudnn_conv2d(const absl::flat_hash_map<std::string, int> &attr,
     conv_algo_map.InsertAlgo(hash_key, static_cast<int>(algo_perf.algo));
   }
 
-  if (GetCinnCudnnDeterministic()) {
-    algo = static_cast<cudnnConvolutionFwdAlgo_t>(1);
-  }
-
   size_t ws_size = 0;
   CUDNN_CALL(cudnnGetConvolutionForwardWorkspaceSize(
       handle, x_desc, w_desc, conv_desc, y_desc, algo, &ws_size));
@@ -2504,7 +2480,7 @@ void cinn_gpu_cudnn_conv2d(const absl::flat_hash_map<std::string, int> &attr,
 }
 
 void cinn_gpu_cudnn_conv2d_backward_data(
-    const absl::flat_hash_map<std::string, int> &attr,
+    const paddle::flat_hash_map<std::string, int> &attr,
     cinn_buffer_t *w,
     cinn_buffer_t *dy,
     cinn_buffer_t *dx,
@@ -2610,10 +2586,6 @@ void cinn_gpu_cudnn_conv2d_backward_data(
     conv_algo_map.InsertAlgo(hash_key, static_cast<int>(algo_perf.algo));
   }
 
-  if (GetCinnCudnnDeterministic()) {
-    algo = CUDNN_CONVOLUTION_BWD_DATA_ALGO_1;
-  }
-
   size_t ws_size = 0;
   CUDNN_CALL(cudnnGetConvolutionBackwardDataWorkspaceSize(
       handle, w_desc, y_desc, conv_desc, x_desc, algo, &ws_size));
@@ -2658,7 +2630,7 @@ void cinn_gpu_cudnn_conv2d_backward_data(
 }
 
 void cinn_gpu_cudnn_conv2d_backward_filter(
-    const absl::flat_hash_map<std::string, int> &attr,
+    const paddle::flat_hash_map<std::string, int> &attr,
     cinn_buffer_t *x,
     cinn_buffer_t *dy,
     cinn_buffer_t *dw,
@@ -2762,10 +2734,6 @@ void cinn_gpu_cudnn_conv2d_backward_filter(
 
     algo = algo_perf.algo;
     algo_map.InsertAlgo(hash_key, static_cast<int>(algo_perf.algo));
-  }
-
-  if (GetCinnCudnnDeterministic()) {
-    algo = CUDNN_CONVOLUTION_BWD_FILTER_ALGO_1;
   }
 
   size_t ws_size = 0;

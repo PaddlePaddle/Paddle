@@ -27,15 +27,15 @@ template <typename T>
 __global__ void Cross(const T* x,
                       const T* y,
                       T* out,
-                      const int stride,
-                      const int N,
-                      phi::funcs::IndexCalculator index_calculator) {
-  CUDA_KERNEL_LOOP(i, N) {
-    int offset = index_calculator(i);
+                      const int64_t stride,
+                      const int64_t N,
+                      phi::funcs::IndexCalculator<int64_t> index_calculator) {
+  CUDA_KERNEL_LOOP_TYPE(i, N, int64_t) {
+    int64_t offset = index_calculator(i);
 
-    auto pos0 = offset + 0 * stride;
-    auto pos1 = offset + 1 * stride;
-    auto pos2 = offset + 2 * stride;
+    int64_t pos0 = offset + 0 * stride;
+    int64_t pos1 = offset + 1 * stride;
+    int64_t pos2 = offset + 2 * stride;
 
     using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
 
@@ -106,10 +106,10 @@ void CrossKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<T>(output);
     return;
   }
-  std::vector<int> cal_dims;
-  std::vector<int> left_strides;
-  std::vector<int> full_strides;
-  std::vector<int> merged_dims;
+  std::vector<int64_t> cal_dims;
+  std::vector<int64_t> left_strides;
+  std::vector<int64_t> full_strides;
+  std::vector<int64_t> merged_dims;
 
   for (int i = 0; i < dim; i++) {
     if (i == 0) {
@@ -128,7 +128,7 @@ void CrossKernel(const Context& dev_ctx,
     }
   }
 
-  int full_dim = 1;
+  int64_t full_dim = 1;
   for (int i = 0; i < merged_dims.size(); i++) {
     full_strides.insert(full_strides.begin(), full_dim);
     full_dim *= merged_dims[merged_dims.size() - i - 1];
@@ -137,7 +137,7 @@ void CrossKernel(const Context& dev_ctx,
     }
     cal_dims.push_back(i);
   }
-  int left_dim = 1;
+  int64_t left_dim = 1;
   for (int i = merged_dims.size() - 1; i >= 0; i--) {
     if (i == merge_axis) {
       continue;
@@ -149,13 +149,13 @@ void CrossKernel(const Context& dev_ctx,
   const auto* input_x_data = input_x.data<T>();
   const auto* input_y_data = input_y.data<T>();
   auto* out_data = dev_ctx.template Alloc<T>(out);
-  auto index_calculator = phi::funcs::IndexCalculator(
-      merged_dims.size() - 1, cal_dims, left_strides, full_strides);
 
   int64_t numel = x.numel();
   backends::gpu::GpuLaunchConfig config =
       backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel / 3);
 
+  auto index_calculator = phi::funcs::IndexCalculator<int64_t>(
+      merged_dims.size() - 1, cal_dims, left_strides, full_strides);
   Cross<<<config.block_per_grid,
           config.thread_per_block,
           0,
@@ -163,7 +163,7 @@ void CrossKernel(const Context& dev_ctx,
                               input_y_data,
                               out_data,
                               full_strides[merge_axis],
-                              numel / 3,
+                              static_cast<int64_t>(numel / 3),
                               index_calculator);
 }
 }  // namespace phi

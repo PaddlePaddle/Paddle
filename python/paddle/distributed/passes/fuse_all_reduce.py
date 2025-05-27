@@ -148,7 +148,6 @@ def has_same_attrs(op1, op2, attr_names):
 def filter_all_collective_op_indices(block):
     # NOTE: should add more collective ops
     all_collective_ops = {
-        "c_allreduce_sum",
         "c_broadcast",
         "broadcast",
         "all_gather",

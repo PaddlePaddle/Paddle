@@ -233,14 +233,8 @@ class Pipeline1F1BPass(PipelinePassBase):
 
     def is_comm_op_valid_to_overlap(self, op):
         return (
-            (
-                op.type == "c_allreduce_sum"
-                or (
-                    op.type == "all_reduce"
-                    and op.attr("reduce_type")
-                    == paddle.distributed.ReduceOp.SUM
-                )
-            )
+            op.type == "all_reduce"
+            and op.attr("reduce_type") == paddle.distributed.ReduceOp.SUM
             and op.dist_attr.execution_stream
             == AutoParallelStreamType.CALC_STREAM.value
         )

@@ -12,11 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/common/macros.h"
 #include "paddle/cinn/ir/ir_analyzer/ir_analyzer.h"
 #include "paddle/cinn/ir/schedule/impl/ir_schedule.h"
-#include "paddle/cinn/runtime/intrinsic.h"
-#include "paddle/common/enforce.h"
+#include "paddle/cinn/lang/compute.h"
 /** \brief A macro that guards the beginning of each implementation of schedule
  */
 #define CINN_IR_SCHEDULE_BEGIN() try {
@@ -87,6 +85,17 @@ struct CacheReadRewriter : public ir::IRMutator<> {
   Expr cur_block_;
   std::vector<Expr> parent_loops_;
 };
+
+Tensor MakeCacheTensor(const Tensor& tensor, const std::string& memory_type) {
+  std::string cache_name =
+      common::UniqName(tensor->name + "_" + memory_type + "_temp_buffer");
+  Tensor cache_tensor = lang::Compute(
+      tensor->shape,
+      [=](const std::vector<Expr>& dims) { return tensor(dims); },
+      cache_name);
+  cache_tensor->WithBuffer(memory_type);
+  return cache_tensor;
+}
 
 Expr MakeCacheBlock(const Expr& block,
                     const std::vector<Expr>& loops,

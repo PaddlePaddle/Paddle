@@ -22,6 +22,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : abs_grad
     data_type : x
@@ -58,6 +59,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : acos_grad
   inplace : (out_grad -> x_grad)
@@ -70,6 +72,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : acosh_grad
   inplace : (out_grad -> x_grad)
@@ -154,6 +157,7 @@
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule : ArgSortGradInferSpmd
     param : [x]
   kernel :
     func : argsort_grad
@@ -189,6 +193,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : asin_grad
   inplace : (out_grad -> x_grad)
@@ -200,6 +205,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : asinh_grad
   inplace : (out_grad -> x_grad)
@@ -211,6 +217,7 @@
   infer_meta :
     func : GeneralBinaryGradInferMeta
     param : [x, y]
+    spmd_rule : ElementwiseBinaryGradInferSpmd
   kernel :
     func : atan2_grad
 
@@ -221,6 +228,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : atan_grad
   inplace : (out_grad -> x_grad)
@@ -232,6 +240,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : atanh_grad
   inplace : (out_grad -> x_grad)
@@ -350,6 +359,7 @@
     func: c_softmax_with_cross_entropy_grad
     data_type: loss_grad
     param: [softmax, label, loss_grad, ignore_index, rank, nranks]
+  inplace : (softmax -> logits_grad)
 
 - backward_op : cast_grad
   forward : cast (Tensor x, DataType dtype) -> Tensor(out)
@@ -366,6 +376,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param: [out_grad]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : ceil_grad
   inplace : (out_grad -> x_grad)
@@ -388,6 +399,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param: [x]
+    spmd_rule : CeluGradInfoSpmd
   kernel :
     func : celu_grad
   backward : celu_double_grad
@@ -631,6 +643,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : cosh_grad
   inplace : (out_grad -> x_grad)
@@ -687,6 +700,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param: [x]
+    spmd_rule : CummaxGradInferSpmd
   kernel :
     func : cummax_grad
     data_type : out_grad
@@ -698,6 +712,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param: [x]
+    spmd_rule : CumminGradInferSpmd
   kernel :
     func : cummin_grad
     data_type : out_grad
@@ -910,6 +925,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : EluGradInfoSpmd
   kernel :
     func : elu_grad
   backward : elu_double_grad
@@ -934,6 +950,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : erf_grad
     data_type : out_grad
@@ -946,6 +963,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [out]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : erfinv_grad
 
@@ -1013,6 +1031,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [out]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : expm1_grad
   inplace : (out_grad -> x_grad)
@@ -1208,6 +1227,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param: [out_grad]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : floor_grad
   composite : floor_grad(out_grad, x_grad)
@@ -1220,6 +1240,7 @@
   infer_meta :
     func : GeneralBinaryGradInferMeta
     param: [x, y]
+    spmd_rule : ElementwiseBinaryGradInferSpmd
   kernel :
     func : fmax_grad
     data_type : out_grad
@@ -1231,6 +1252,7 @@
   infer_meta :
     func : GeneralBinaryGradInferMeta
     param: [x, y]
+    spmd_rule : ElementwiseBinaryGradInferSpmd
   kernel :
     func : fmin_grad
     data_type : out_grad
@@ -1865,6 +1887,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param: [x]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : lgamma_grad
 
@@ -1890,6 +1913,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : log10_grad
   inplace : (out_grad -> x_grad)
@@ -1901,6 +1925,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : log1p_grad
   inplace : (out_grad -> x_grad)
@@ -1912,6 +1937,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : log2_grad
   inplace : (out_grad -> x_grad)
@@ -1935,6 +1961,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : log_grad
   backward : log_double_grad
@@ -1958,6 +1985,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param: [out]
+    spmd_rule : SoftmaxGradInferSpmd
   kernel :
     func : log_softmax_grad
     data_type : out_grad
@@ -1979,6 +2007,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : LogitGradInfoSpmd
   kernel :
     func : logit_grad
 
@@ -1989,6 +2018,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : logsigmoid_grad
   inplace : (out_grad -> x_grad)
@@ -2005,8 +2035,8 @@
     func : logsumexp_grad
 
 - backward_op : lp_pool2d_grad
-  forward : lp_pool2d(Tensor x, IntArray kernel_size, int[] strides = {1,1}, int[] paddings = {0,0}, bool ceil_mode = false, bool exclusive = true, str data_format = "NCHW", str pooling_type = "", bool global_pooling = false, bool adaptive = false, str padding_algorithm = "EXPLICIT", float norm_type = 0.0f) -> Tensor(out)
-  args : (Tensor x, Tensor out, Tensor out_grad, IntArray kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm, float norm_type)
+  forward : lp_pool2d(Tensor x, IntArray kernel_size, int64_t[] strides = {1,1}, int64_t[] paddings = {0,0}, bool ceil_mode = false, bool exclusive = true, str data_format = "NCHW", str pooling_type = "", bool global_pooling = false, bool adaptive = false, str padding_algorithm = "EXPLICIT", float norm_type = 0.0f) -> Tensor(out)
+  args : (Tensor x, Tensor out, Tensor out_grad, IntArray kernel_size, int64_t[] strides, int64_t[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm, float norm_type)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta
@@ -2072,6 +2102,19 @@
     func : margin_cross_entropy_grad
     data_type : softmax
   inplace : (softmax -> logits_grad)
+
+- backward_op : masked_fill_grad
+  forward : masked_fill (Tensor x, Tensor mask, Tensor value) -> Tensor(out)
+  args : (Tensor x, Tensor mask, Tensor value, Tensor out_grad)
+  output : Tensor(x_grad), Tensor(value_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param : [x, value]
+  kernel :
+    func : masked_fill_grad
+    param: [x, mask, value, out_grad]
+  inplace : (out_grad -> x_grad)
+  composite : masked_fill_grad(x, mask, value, out_grad, x_grad, value_grad)
 
 - backward_op : masked_select_grad
   forward : masked_select (Tensor x, Tensor mask) -> Tensor(out)
@@ -2152,6 +2195,7 @@
   infer_meta :
     func : UnchangedExceptLayoutInferMeta
     param: [x]
+    spmd_rule : MeanAllGradInferSpmd
   kernel :
     func : mean_all_grad
     data_type: out_grad
@@ -2204,6 +2248,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : MishGradInfoSpmd
   kernel :
     func : mish_grad
   inplace : (out_grad -> x_grad)
@@ -2414,6 +2459,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [out_grad]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : poisson_grad
 
@@ -2428,8 +2474,8 @@
     func : polygamma_grad
 
 - backward_op : pool2d_double_grad
-  forward : pool2d_grad(Tensor x, Tensor out, Tensor grad_out, IntArray kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm) -> Tensor(grad_x)
-  args : (Tensor x, Tensor grad_x_grad, IntArray kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm)
+  forward : pool2d_grad(Tensor x, Tensor out, Tensor grad_out, IntArray kernel_size, int64_t[] strides, int64_t[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm) -> Tensor(grad_x)
+  args : (Tensor x, Tensor grad_x_grad, IntArray kernel_size, int64_t[] strides, int64_t[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm)
   output : Tensor(grad_out_grad)
   infer_meta :
     func : Pool2DInferMeta
@@ -2440,8 +2486,8 @@
   no_need_buffer : x
 
 - backward_op : pool2d_grad
-  forward : pool2d(Tensor x, IntArray kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm) -> Tensor(out)
-  args : (Tensor x, Tensor out, Tensor out_grad, IntArray kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm)
+  forward : pool2d(Tensor x, IntArray kernel_size, int64_t[] strides, int64_t[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm) -> Tensor(out)
+  args : (Tensor x, Tensor out, Tensor out_grad, IntArray kernel_size, int64_t[] strides, int64_t[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta
@@ -2453,8 +2499,8 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - backward_op : pool3d_grad
-  forward : pool3d(Tensor x, int[] kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm) -> Tensor(out)
-  args : (Tensor x, Tensor out, Tensor out_grad, int[] kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm)
+  forward : pool3d(Tensor x, int64_t[] kernel_size, int64_t[] strides, int64_t[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm) -> Tensor(out)
+  args : (Tensor x, Tensor out, Tensor out_grad, int64_t[] kernel_size, int64_t[] strides, int64_t[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta
@@ -2538,6 +2584,16 @@
     data_type : x
   optional : boxes_num
 
+- backward_op : put_along_axis_double_grad
+  forward : put_along_axis_grad (Tensor arr, Tensor indices, Tensor values, Tensor out, Tensor grad_out, int axis, str reduce, bool include_self) -> Tensor(grad_arr), Tensor(grad_values)
+  args : (Tensor arr, Tensor indices, Tensor values, Tensor grad_values_grad, Tensor grad_arr_grad, int axis, str reduce, bool include_self)
+  output : Tensor(grad_out_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [arr]
+  optional : grad_values_grad, grad_arr_grad
+  composite : put_along_axis_double_grad(arr, indices, values, grad_values_grad, grad_arr_grad, axis, reduce, include_self, grad_out_grad)
+
 - backward_op : put_along_axis_grad
   forward : put_along_axis (Tensor arr, Tensor indices, Tensor values, int axis, str reduce = "assign", bool include_self = true) -> Tensor(out)
   args : (Tensor arr, Tensor indices, Tensor values, Tensor out, Tensor out_grad, int axis, str reduce, bool include_self)
@@ -2547,6 +2603,7 @@
     param : [arr, indices]
   kernel :
     func : put_along_axis_grad
+  backward: put_along_axis_double_grad
 
 - backward_op : qr_grad
   forward : qr (Tensor x, str mode = "reduced") -> Tensor(q), Tensor(r)
@@ -2586,6 +2643,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [out]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : reciprocal_grad
   inplace : (out_grad -> x_grad)
@@ -2774,6 +2832,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param: [out_grad]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : round_grad
   inplace : (out_grad -> x_grad)
@@ -2864,6 +2923,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [out]
+    spmd_rule : SeluGradInfoSpmd
   kernel :
     func : selu_grad
     data_type : out
@@ -3066,6 +3126,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : sinh_grad
   inplace : (out_grad -> x_grad)
@@ -3119,6 +3180,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : SoftplusGradInfoSpmd
   kernel :
     func : softplus_grad
   backward : softplus_double_grad
@@ -3131,6 +3193,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : SoftshrinkGradInfoSpmd
   kernel :
     func : softshrink_grad
   inplace : (out_grad -> x_grad)
@@ -3142,6 +3205,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : softsign_grad
   inplace : (out_grad -> x_grad)
@@ -3198,6 +3262,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [out]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : sqrt_grad
   composite : sqrt_grad(out, out_grad, x_grad)
@@ -3288,6 +3353,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : StanhGradInfoSpmd
   kernel :
     func : stanh_grad
 
@@ -3363,6 +3429,7 @@
   infer_meta :
     func : GeneralUnaryGradInferMeta
     param : [x]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : swish_grad
   inplace : (out_grad -> x_grad)
@@ -3406,6 +3473,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : tan_grad
   inplace : (out_grad -> x_grad)
@@ -3430,6 +3498,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [out]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : tanh_grad
   composite : tanh_grad(out, out_grad, x_grad)
@@ -3443,6 +3512,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : tanh_shrink_grad
   inplace : (out_grad -> x_grad)
@@ -3478,6 +3548,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : ThresholdedReluGradInfoSpmd
   kernel :
     func : thresholded_relu_grad
   inplace : (out_grad -> x_grad)
@@ -3489,6 +3560,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule: TopkGradInferSpmdDynamic
   kernel :
     func : topk_grad
     data_type : out_grad
@@ -3587,6 +3659,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [out_grad]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : trunc_grad
 

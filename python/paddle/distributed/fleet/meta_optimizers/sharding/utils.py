@@ -119,15 +119,11 @@ def check_allreduce_sum(block, shard, sharding_ring_id, dp_ring_id=-1):
     for idx, op in enumerate(block.ops):
         # sharding use both allreduce and reduce to sync grad
         if (
-            op.type == "c_allreduce_sum"
-            or (
-                op.type == "reduce"
-                and op.desc.attr("reduce_type") == dist.ReduceOp.SUM
-            )
-            or (
-                op.type == "all_reduce"
-                and op.desc.attr("reduce_type") == dist.ReduceOp.SUM
-            )
+            op.type == "reduce"
+            and op.desc.attr("reduce_type") == dist.ReduceOp.SUM
+        ) or (
+            op.type == "all_reduce"
+            and op.desc.attr("reduce_type") == dist.ReduceOp.SUM
         ):
             if not op.all_attrs()["use_calc_stream"]:
                 ring_id = op.desc.attr("ring_id")
@@ -168,15 +164,11 @@ def check_allreduce_sum(block, shard, sharding_ring_id, dp_ring_id=-1):
                     dp_grads_status[var_name] = 1
         # check sharding allreduce and  reduce but skip megatron allreduce
         elif (
-            op.type == "c_allreduce_sum"
-            or (
-                op.type == "all_reduce"
-                and op.desc.attr("reduce_type") == dist.ReduceOp.SUM
-            )
-            or (
-                op.type == "reduce"
-                and op.desc.attr("reduce_type") == dist.ReduceOp.SUM
-            )
+            op.type == "all_reduce"
+            and op.desc.attr("reduce_type") == dist.ReduceOp.SUM
+        ) or (
+            op.type == "reduce"
+            and op.desc.attr("reduce_type") == dist.ReduceOp.SUM
         ):
             if not op.all_attrs()["use_calc_stream"]:
                 var_name = op.desc.input_arg_names()[0]
@@ -943,7 +935,7 @@ def comm_analyse(main_program):
             broadcast_vars[var_name] = (
                 get_var_size(block.var(var_name)) * 1024.0
             )
-        elif op.type == "c_allreduce_sum" or (
+        elif (
             op.type == "all_reduce"
             and op.desc.attr("reduce_type") == dist.ReduceOp.SUM
         ):

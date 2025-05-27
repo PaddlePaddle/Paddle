@@ -79,9 +79,9 @@ class SideEffects:
         assert len(self.data_id_to_proxy.values()) == len(
             state.proxy_versions
         ), "proxy_versions length not match"
-        assert len(self.mutable_variables) == len(
-            state.mutable_attrs
-        ), "mutable_attrs length not match"
+        assert sum(
+            len(var.mutable_attrs) for var in self.mutable_variables
+        ) == len(state.mutable_attrs), "mutable_attrs length not match"
 
         for proxy, version in zip(
             self.data_id_to_proxy.values(), state.proxy_versions

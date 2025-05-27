@@ -366,8 +366,11 @@ def check_run_big_shape_test():
 @contextlib.contextmanager
 def xpu_matmul_quant_type_guard(dtype):
     # only fp32 is supported now
-    assert dtype == "float"
-    env_name = "XPU_PADDLE_FC_FLOAT"
+    assert dtype in ["float", "int16"]
+    if dtype == "float":
+        env_name = "XPU_PADDLE_FC_FLOAT"
+    elif dtype == "int16":
+        env_name = "XPU_PADDLE_FC_INT16"
     origin_env = os.getenv(env_name)
     os.environ[env_name] = "1"
     yield

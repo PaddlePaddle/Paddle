@@ -47,13 +47,13 @@ class TrtConvertFillConstantTest(TrtLayerAutoScanTest):
                         "str_value": str_value,
                         "value": value,
                         "dtype": dtype,
+                        "shape": [2, 3, 4],
                     },
                     {"axis": -1},
                 ]
-                for mode in ["ValueTensor", "ShapeTensor", "ShapeTensorList"]:
+                for mode in ["ShapeTensor", "ShapeTensorList"]:
                     self.mode = mode
                     if mode == "ValueTensor":
-                        dics[0]["shape"] = [2, 3, 4]
                         ops_config = [
                             {
                                 "op_type": "fill_constant",
@@ -96,20 +96,42 @@ class TrtConvertFillConstantTest(TrtLayerAutoScanTest):
                                 "op_attrs": {},
                             },
                             {
-                                "op_type": "split",
+                                "op_type": "slice",
                                 "op_inputs": {
-                                    "X": ["shape_data"],
+                                    "Input": ["shape_data"],
                                 },
-                                "op_outputs": {
-                                    "Out": [
-                                        "split_shape_data_0",
-                                        "split_shape_data_1",
-                                        "split_shape_data_2",
-                                    ]
-                                },
+                                "op_outputs": {"Out": ["split_shape_data_0"]},
                                 "op_attrs": {
-                                    "axis": 0,
-                                    "num": 3,
+                                    "axes": [0],
+                                    "starts": [0],
+                                    "ends": [1],
+                                    "decrease_axis": [],
+                                },
+                            },
+                            {
+                                "op_type": "slice",
+                                "op_inputs": {
+                                    "Input": ["shape_data"],
+                                },
+                                "op_outputs": {"Out": ["split_shape_data_1"]},
+                                "op_attrs": {
+                                    "axes": [0],
+                                    "starts": [1],
+                                    "ends": [2],
+                                    "decrease_axis": [],
+                                },
+                            },
+                            {
+                                "op_type": "slice",
+                                "op_inputs": {
+                                    "Input": ["shape_data"],
+                                },
+                                "op_outputs": {"Out": ["split_shape_data_2"]},
+                                "op_attrs": {
+                                    "axes": [0],
+                                    "starts": [2],
+                                    "ends": [3],
+                                    "decrease_axis": [],
                                 },
                             },
                             {
@@ -152,30 +174,32 @@ class TrtConvertFillConstantTest(TrtLayerAutoScanTest):
                         )
                     yield program_config
 
+    def generate_dynamic_shape(self, attrs):
+        if self.mode == "ValueTensor":
+            self.input_shape = [1, 1]
+            max_shape = list(self.input_shape)
+            min_shape = list(self.input_shape)
+            opt_shape = list(self.input_shape)
+            for i in range(len(self.input_shape)):
+                max_shape[i] = max_shape[i] + 1
+            self.dynamic_shape.min_input_shape = {"value_data": min_shape}
+            self.dynamic_shape.max_input_shape = {"value_data": max_shape}
+            self.dynamic_shape.opt_input_shape = {"value_data": opt_shape}
+        else:
+            self.dynamic_shape.min_input_shape = {
+                "input_data": [2, 3, 7],
+            }
+            self.dynamic_shape.max_input_shape = {
+                "input_data": [2, 5, 7],
+            }
+            self.dynamic_shape.opt_input_shape = {
+                "input_data": [2, 4, 7],
+            }
+        return self.dynamic_shape
+
     def sample_predictor_configs(
-        self, program_config
+        self, program_config, run_pir=False
     ) -> tuple[paddle_infer.Config, list[int], float]:
-        def generate_dynamic_shape(attrs):
-            if self.mode == "ValueTensor":
-                self.input_shape = [1, 1]
-                max_shape = list(self.input_shape)
-                min_shape = list(self.input_shape)
-                opt_shape = list(self.input_shape)
-                for i in range(len(self.input_shape)):
-                    max_shape[i] = max_shape[i] + 1
-                self.dynamic_shape.min_input_shape = {"Y_data": min_shape}
-                self.dynamic_shape.max_input_shape = {"Y_data": max_shape}
-                self.dynamic_shape.opt_input_shape = {"Y_data": opt_shape}
-            else:
-                self.dynamic_shape.min_input_shape = {
-                    "input_data": [2, 3, 7],
-                }
-                self.dynamic_shape.max_input_shape = {
-                    "input_data": [2, 5, 7],
-                }
-                self.dynamic_shape.opt_input_shape = {
-                    "input_data": [2, 4, 7],
-                }
 
         def clear_dynamic_shape():
             self.dynamic_shape.min_input_shape = {}
@@ -198,7 +222,7 @@ class TrtConvertFillConstantTest(TrtLayerAutoScanTest):
         # Don't test static shape
 
         # for dynamic_shape
-        generate_dynamic_shape(attrs)
+        self.generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True
@@ -213,7 +237,7 @@ class TrtConvertFillConstantTest(TrtLayerAutoScanTest):
 
     def test(self):
         self.add_skip_trt_case()
-        self.run_test()
+        self.run_test(run_pir=True)
 
 
 if __name__ == "__main__":

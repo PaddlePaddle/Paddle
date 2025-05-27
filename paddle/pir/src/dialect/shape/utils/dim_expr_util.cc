@@ -246,7 +246,7 @@ struct IsListLhsBeforeListRhsStruct {
       if (lhs_operands->at(i) == rhs_operands->at(i)) continue;
       return IsLhsBeforeRhs(lhs_operands->at(i), rhs_operands->at(i));
     }
-    return true;
+    return false;
   }
 };
 
@@ -1255,6 +1255,9 @@ void DoPass(bool* rewritten, DimExpr* expr) {
 }
 
 DimExpr Simplify(const DimExpr& expr) {
+  if (expr.isa<std::int64_t>() || expr.isa<std::string>()) {
+    return expr;
+  }
   DimExpr ret = expr;
   for (bool keep_rewrite = true; keep_rewrite;) {
     keep_rewrite = false;

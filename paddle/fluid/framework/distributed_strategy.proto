@@ -92,6 +92,7 @@ message PpConfig {
     optional bool enable_offload_queue = 11 [ default = false ];
     optional bool enable_dynamic_shape = 12 [ default = false ];
     optional bool use_dualpipev = 13 [ default = false ];
+    optional bool forward_backward_overlap_scheduler = 14 [ default = false ];
 }
 
 message DygraphShardingConfig {
@@ -117,6 +118,7 @@ message HybridConfig {
   optional PpConfig pp_configs = 7;
   optional DygraphShardingConfig sharding_configs = 8;
   optional bool enable_optimizer_timer = 9 [ default = false ];
+  optional bool split_norm_comm = 10 [ default = false ];
 }
 
 message AMPConfig {

@@ -14,8 +14,6 @@
 
 #include "paddle/cinn/hlir/pe/nn.h"
 
-#include <absl/container/flat_hash_map.h>
-
 #include <functional>
 #include <numeric>
 #include <string>
@@ -32,6 +30,7 @@
 #include "paddle/cinn/lang/compute.h"
 #include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/common/enforce.h"
+#include "paddle/utils/flat_hash_map.h"
 namespace cinn {
 namespace hlir {
 namespace pe {
@@ -492,7 +491,7 @@ std::vector<ir::Tensor> Conv2d_NCHW_5D(const ir::Tensor &input,
   Expr c_in = optim::ArithSimplify(shape_input[1]);
   Expr c_filter = optim::ArithSimplify(shape_weights[1]);
   Expr c_out = optim::ArithSimplify(shape_weights[0]);
-  absl::flat_hash_map<std::string, int> conv2d_factors;
+  paddle::flat_hash_map<std::string, int> conv2d_factors;
   int oc = c_out.as_int32();
   int ic = c_in.as_int32();
   int fc_size = c_filter.as_int32();

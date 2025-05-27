@@ -19,8 +19,8 @@ from dygraph_to_static_utils import (
     Dy2StTestBase,
     static_guard,
     test_ast_only,
-    test_legacy_and_pt,
     test_pir_only,
+    test_pt_only,
 )
 
 import paddle
@@ -165,7 +165,7 @@ class TestLenWithSelectedRows(Dy2StTestBase):
         )
 
     @test_ast_only
-    @test_legacy_and_pt
+    @test_pt_only
     def test_len_legacy(self):
         with static_guard():
             (

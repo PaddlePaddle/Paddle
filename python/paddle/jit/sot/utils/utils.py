@@ -23,12 +23,14 @@ import types
 import weakref
 from collections import OrderedDict
 from contextlib import contextmanager
+from functools import lru_cache
 from typing import TYPE_CHECKING, Any, Callable, TypeVar
 from weakref import WeakValueDictionary
 
 import numpy as np
 
 import paddle
+from paddle.jit.dy2static.utils import TransformOptions
 from paddle.utils import flatten, map_structure
 
 from .envs import (
@@ -127,6 +129,17 @@ class ResumeFnNameFactory(metaclass=Singleton):
         return name
 
 
+class SIRToCodeMap(metaclass=Singleton):
+    def __init__(self):
+        self._map = {}
+
+    def register(self, sir, code):
+        self._map[sir.name] = code
+
+    def get(self, sir):
+        return self._map.get(sir.name)
+
+
 def log(level, *args):
     cur_level = ENV_SOT_LOG_LEVEL.get()
     if level <= cur_level:
@@ -147,6 +160,11 @@ def log_format(level, str, *args):
 
 def log_enabled(level):
     return level <= ENV_SOT_LOG_LEVEL.get()
+
+
+@lru_cache
+def log_once(msg):
+    print(msg, flush=True)
 
 
 def no_eval_frame(func):
@@ -177,6 +195,14 @@ def is_paddle_api(func):
     ):  # paddle.Tensor should not be wrapped, but how about other situations?
         return False
     return in_paddle_module(func) or func in paddle_api_list
+
+
+def already_unified_in_dynamic_and_static_graph(fn):
+    if is_paddle_api(fn):
+        return True
+    return not TransformOptions.check_fn_need_transform(
+        fn, TransformOptions.ToStaticMode.SOT
+    )
 
 
 def is_builtin_fn(fn):
@@ -212,6 +238,17 @@ def in_paddle_module(func):
 
 def is_break_graph_api(func):
     return func in break_graph_set
+
+
+def is_namedtuple_class(cls):
+    if not inspect.isclass(cls):
+        return False
+    if not issubclass(cls, tuple):
+        return False
+    # The signature created by nametuple function
+    namedtuple_attrs = {"_make", "_asdict", "_fields", "_replace"}
+    cls_attrs = set(dir(cls))
+    return namedtuple_attrs.issubset(cls_attrs)
 
 
 def map_if(

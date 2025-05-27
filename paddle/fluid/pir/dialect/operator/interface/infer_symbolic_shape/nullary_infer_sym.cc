@@ -56,9 +56,9 @@ bool ArangeOpInferSymbolicShape(pir::Operation *op,
     const auto &end = end_shape_or_data.data()->at(0);
     const auto &step = step_shape_or_data.data()->at(0);
     std::vector<symbol::DimExpr> out_dims;
-    // TODO(lanxianghit, jiahy0825): here should be ceil((end - start) / step),
-    // but DimExpr doesn't support ceil and float now
-    out_dims.emplace_back((end - start) / step);
+    // Use ceiling div to avoid incorrect shape calculation
+    // introduced by rounded division
+    out_dims.emplace_back((end - start + step - 1) / step);
     return symbol::ShapeOrDataDimExprs{
         symbol::TensorShapeOrDataDimExprs(out_dims)};
   }();
@@ -193,11 +193,23 @@ bool DataOpInferSymbolicShape(pir::Operation *op,
         value.type().dyn_cast<pir::DenseTensorType>();
     const auto &dims = tensor_type.dims();
     if (dims.size() == 0) return true;
-    if (dims.size() != 1) return false;
-    if (dims[0] >= 1 && dims[0] <= ::common::DDim::kMaxRank) {
-      return true;
+    if (dims.size() == 1) {
+      if (dims[0] >= 1 && dims[0] <= ::common::DDim::kMaxRank) {
+        return true;
+      }
+      return false;
     }
-    return false;
+    if (common::contain_unknown_dim(dims)) return false;
+    if (common::product(dims) > ::common::DDim::kMaxRank) return false;
+
+    // only one dim is greater than one, and the other dims are 1
+    int gt_one_dim_count = 0;
+    for (int i = 0; i < dims.size(); ++i) {
+      if (dims[i] > 1) {
+        gt_one_dim_count++;
+      }
+    }
+    return gt_one_dim_count <= 1;
   };
 
   auto IsIntType = [&](pir::Value value) {

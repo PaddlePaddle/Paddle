@@ -49,6 +49,9 @@ SpmdInfo ReductionMaxInferSpmdDynamic(const DistMetaTensor& x,
                                       const IntArray& axis,
                                       bool keep_dim);
 
+SpmdInfo ReductionMinInferSpmdDynamic(const DistMetaTensor& x,
+                                      const IntArray& axis,
+                                      bool keep_dim);
 SpmdInfo ReductionAllInferSpmdDynamic(const DistMetaTensor& x,
                                       const IntArray& axis,
                                       bool keep_dim);

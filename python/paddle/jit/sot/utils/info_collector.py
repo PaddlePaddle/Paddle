@@ -391,7 +391,9 @@ class SubGraphInfo(InfoBase):
         self.sir_name = sir_name
 
     def __str__(self):
-        return f"[SIR Name]: {self.sir_name}   [OpNum]: {self.op_num}\n{self.graph}"
+        return (
+            f"[SIR Name] {self.sir_name}   [OpNum] {self.op_num}\n{self.graph}"
+        )
 
     @classmethod
     def summary(cls, history: list[Self]) -> str:
@@ -406,12 +408,12 @@ class SubGraphInfo(InfoBase):
         if need_details:
             details = "\n".join(
                 [
-                    f"[SubGraphIdx]: {idx}   {info}"
+                    f"[SubGraphIdx] {idx}   {info}"
                     for idx, info in enumerate(map(str, history))
                 ]
             )
 
-        summary = f"[Number of subgraph]: {num_of_subgraph} [Sum of opnum]: {sum_of_op_num}"
+        summary = f"[Number of subgraph] {num_of_subgraph} [Sum of opnum] {sum_of_op_num}"
 
         return f"{summary}\n{details}"
 

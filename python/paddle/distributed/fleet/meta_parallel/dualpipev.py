@@ -150,9 +150,7 @@ class DualPipeVParallel(PipelineParallel):
         inputs = self._get_forward_inputs(micro_datasets, phase, acc_id)
 
         if self.overlapped_forward_backward:
-            schedule_chunk = self._layers.forward(
-                inputs, chunk_id=phase, overlap_schedule_mode=True
-            )
+            schedule_chunk = self._layers.get_schedule_chunk(chunk_id=phase)
             outputs = schedule_chunk.forward(inputs)
         else:
             schedule_chunk = None
@@ -300,9 +298,7 @@ class DualPipeVParallel(PipelineParallel):
             )
 
         # forward & backward
-        forward_chunk = self._layers.forward(
-            None, chunk_id=forward_phase, overlap_schedule_mode=True
-        )
+        forward_chunk = self._layers.get_schedule_chunk(chunk_id=forward_phase)
         backward_chunk = self.schedule_chunks[backward_phase][backward_acc_id]
         forward_outputs, forward_loss, backward_input_grads = (
             self._layers.overlapped_forward_backward(

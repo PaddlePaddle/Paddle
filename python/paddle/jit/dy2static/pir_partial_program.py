@@ -35,6 +35,7 @@ from .logging_utils import TranslatorLogger
 from .utils import (
     RETURN_NO_VALUE_MAGIC_NUM,
     Backend,
+    TimeCounter,
     auto_layout_is_enabled,
     backend_guard,
     cse_is_enabled,
@@ -722,6 +723,8 @@ class PartialProgramLayer:
         self._backend = kwargs.get('backend', Backend.PHI)
         self._grad_var_names = {}
 
+        self._compile_time_counter = TimeCounter()
+
     def __call__(self, inputs):
         """
         Execute static graph by Interpreter and Return dynamic Tensors.
@@ -730,6 +733,7 @@ class PartialProgramLayer:
         out_vars = self._prepare_outputs()
         attrs = self._prepare_attributes(in_sot_mode=False)
         inputs = self._valid_vars(in_vars)
+
         _C_ops.run_program(
             inputs,
             self._valid_vars(self._params),
@@ -737,7 +741,8 @@ class PartialProgramLayer:
             self._create_scope_vec(
                 cache_key=(
                     hash_with_seed(
-                        self.program_id, self._calc_input_places_hash(inputs)
+                        self.program_id,
+                        self._calc_input_places_hash(inputs),
                     )
                 ),
                 use_scope_cache=True,
@@ -754,6 +759,7 @@ class PartialProgramLayer:
         out_vars = self._prepare_outputs()
         attrs = self._prepare_attributes(in_sot_mode=True)
         inputs = self._valid_vars(inputs)
+
         _C_ops.run_program(
             inputs,
             self._valid_vars(self._params),
@@ -761,7 +767,8 @@ class PartialProgramLayer:
             self._create_scope_vec(
                 cache_key=(
                     hash_with_seed(
-                        self.program_id, self._calc_input_places_hash(inputs)
+                        self.program_id,
+                        self._calc_input_places_hash(inputs),
                     )
                 ),
                 use_scope_cache=True,
@@ -812,19 +819,28 @@ class PartialProgramLayer:
         if is_infer_mode:
 
             def pass_fn(forward_program, backward_program, program_name_attr):
-                apply_general_passes(
-                    forward_program,
-                    enable_cse=cse_is_enabled(),
-                    enable_delete_assert_op=self._backend.is_cinn(),
-                )
                 # if-else pass
                 if self._backend.is_cinn():
+                    apply_general_passes(
+                        forward_program,
+                        enable_cse=cse_is_enabled(),
+                        enable_delete_assert_op=self._backend.is_cinn(),
+                    )
                     paddle.base.libpaddle.pir.bind_symbolic_constraints(
                         forward_program, self._constraints
                     )
                     paddle.base.libpaddle.pir.apply_cinn_pass(forward_program)
-
+                elif self._backend.is_pcc():
+                    paddle.base.libpaddle.pir.bind_symbolic_constraints(
+                        forward_program, self._constraints
+                    )
+                    paddle.base.libpaddle.pir.apply_pcc_pass(forward_program)
                 else:
+                    apply_general_passes(
+                        forward_program,
+                        enable_cse=cse_is_enabled(),
+                        enable_delete_assert_op=self._backend.is_cinn(),
+                    )
                     paddle.base.libpaddle.pir.check_infer_symbolic_if_need(
                         forward_program
                     )
@@ -833,7 +849,7 @@ class PartialProgramLayer:
 
             # TODO(xiongkun) who to transfer the pruning program?
             infer_program = self.origin_runnable_program.clone()
-            if auto_layout_is_enabled():
+            if auto_layout_is_enabled() and self._backend.is_cinn():
                 pm = paddle.pir.PassManager(2)
                 pm.add_pass("auto_layout_pass", {})
                 pm.run(infer_program.program)
@@ -848,7 +864,7 @@ class PartialProgramLayer:
             train_program.apply_dist_pass_for_origin_program()
 
             # Author(liujinnan): auto_layout_pass should be applied to the original_program, before append backward. So we put it here.
-            if auto_layout_is_enabled():
+            if auto_layout_is_enabled() and self._backend.is_cinn():
                 pm = paddle.pir.PassManager(2)
                 pm.add_pass("auto_layout_pass", {})
                 pm.run(train_program.program)
@@ -926,7 +942,11 @@ class PartialProgramLayer:
                         forward_program, backward_program
                     )
                     paddle.base.libpaddle.pir.apply_cinn_pass(backward_program)
-
+                elif self._backend.is_pcc():
+                    paddle.base.libpaddle.pir.bind_symbolic_constraints(
+                        forward_program, self._constraints
+                    )
+                    paddle.base.libpaddle.pir.apply_pcc_pass(forward_program)
                 else:
                     paddle.base.libpaddle.pir.check_infer_symbolic_if_need(
                         forward_program
@@ -967,12 +987,12 @@ class PartialProgramLayer:
 
     @cached_property
     def train_program(self) -> RunnableProgram:
-        with backend_guard(self._backend):
+        with backend_guard(self._backend), self._compile_time_counter.record():
             return self._create_program()
 
     @cached_property
     def infer_program(self) -> RunnableProgram:
-        with backend_guard(self._backend):
+        with backend_guard(self._backend), self._compile_time_counter.record():
             return self._create_program(is_infer_mode=True)
 
     def _verify_program(self, main_program, outputs):

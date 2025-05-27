@@ -55,8 +55,16 @@ struct CompositeTypes : public std::vector<common::Type> {
     this->reserve(2);
   }
 
+  bool operator==(const CompositeTypes& other) const {
+    if (this->type != other.type || other.size() != this->size()) return false;
+    for (size_t i = 0; i < other.size(); i++) {
+      if (this->at(i) != other.at(i)) return false;
+    }
+    return true;
+  }
+
   void Print() const {
-    VLOG(4) << "[CompositeTypes]: ";
+    VLOG(4) << "[CompositeTypes]: " << static_cast<int>(this->type);
     for (auto _t : *this) {
       VLOG(4) << _t;
     }
@@ -87,24 +95,36 @@ CompositeTypes GetArgReduceUnderlyingType(const ir::Expr& expr) {
 
 void SetInitValue(Store store_stmt,
                   common::Type new_type,
-                  const CompositeTypes& comp_type) {
+                  const CompositeTypes& comp_type,
+                  std::string prefix = "") {
+  // prefix: if target is x86, we can not call constructor for POD struct
+  // the intrinsic function for creating struct is usually "create_" + typename
   ir::Expr init_value = store_stmt->value();
+  auto call_op = init_value.As<ir::Call>();
+  // if the type is already a call
+  if (call_op != nullptr) {
+    call_op->set_type(new_type);
+    if (call_op->name.find("argidx_") == 0 ||
+        call_op->name.find("welford_") == 0) {
+      call_op->name = prefix + call_op->name;
+    }
+    return;
+  }
   if (comp_type.type == ReduceType::kVariance) {
     store_stmt->set_value(ir::Call::Make(new_type,
-                                         new_type.customized_type(),
+                                         prefix + new_type.customized_type(),
                                          {init_value, init_value, init_value},
                                          {},
                                          ir::CallType::Intrinsic));
   } else if (comp_type.type == ReduceType::kArgmax ||
              comp_type.type == ReduceType::kArgmin) {
-    ir::Expr index_init = ir::Expr(INT_MAX);
+    ir::Expr index_init = ir::Expr(0);
     index_init->set_type(common::Int(32));
     if (comp_type.at(1).is_int(64)) {
-      index_init = ir::Expr(INT64_MAX);
       index_init->set_type(common::Int(64));
     }
     store_stmt->set_value(ir::Call::Make(new_type,
-                                         new_type.customized_type(),
+                                         prefix + new_type.customized_type(),
                                          {init_value, index_init},
                                          {},
                                          ir::CallType::Intrinsic));
@@ -114,37 +134,136 @@ void SetInitValue(Store store_stmt,
   }
 }
 
-template <typename StmtType>
-std::set<ir::Buffer> CollectReduceBuffers(const BlockRef& body) {
-  std::set<ir::Buffer> buffers;
+/**
+ * This function resolves undefined argidx type, for example:
+ * \code
+ * spatial inner loop (argidx type defined)
+ *    tensor_0[...] = cinn_argmax(tensor_1[...], argidx_f32_i64(tensor_2[...],
+ * index))
+ *
+ * follow up cross thread reduce (argidx type undefined)
+ *    tensor_3[...] = cinn_argmax(tensor_4[...], tensor_5[...])
+ * \endcode
+ * In the above undefined case, we can not extract value type, since both
+ * tensors (4 and 5) in the arguments will be of index type, which lefts the
+ * argidx type undefined. So this function basically checks whether tensor_5 is
+ * in the typed_buffers map. Since cross thread reduction usually follows
+ * spatial inner loop reduction, so normally, tensor_0 and tensor_5 will
+ * normally be the same in one reduce block. and since tensor_0's type is
+ * defined, we can use it to resolve tensor_5 (and thus, the undefined
+ * tensor_3)'s type.
+ */
+std::map<ir::Buffer, CompositeTypes> ResolveUndefinedArgIdxType(
+    std::map<ir::Buffer, CompositeTypes>&& typed_buffers,
+    std::vector<Store>&& stores) {
+  for (const auto& store_stmt : stores) {
+    if (auto call_stmt = store_stmt->value().As<ir::Call>()) {
+      if (call_stmt->name != hlir::pe::kArgmaxFuncName &&
+          call_stmt->name != hlir::pe::kArgminFuncName)
+        continue;
+      auto load_stmt = call_stmt->read_args[1].As<ir::Load>();
+      PADDLE_ENFORCE_NOT_NULL(load_stmt,
+                              ::common::errors::PreconditionNotMet(
+                                  "Non-spatial inner loop arg reduce func call "
+                                  "second argument must be load."));
+      auto it = typed_buffers.find(load_stmt->tensor.as_tensor()->buffer);
+      PADDLE_ENFORCE_NE(it,
+                        typed_buffers.end(),
+                        ::common::errors::PreconditionNotMet(
+                            "Referenced buffer '%s' should be defined.",
+                            load_stmt->tensor.as_tensor()->buffer->name));
+      auto composite_type = it->second;
+      typed_buffers.emplace(store_stmt->tensor().as_tensor()->buffer,
+                            composite_type);
+    }
+  }
+  return typed_buffers;
+}
 
+std::map<ir::Buffer, CompositeTypes> CollectTypedReduceBuffers(
+    const BlockRef& body, std::vector<Store>* arg_stores) {
+  std::map<ir::Buffer, CompositeTypes> typed_buffers;
   const auto VisitFn = [&](const StmtRef& stmt) {
-    if (!stmt.isa<StmtType>()) return;
-    StmtType store_stmt = stmt.as<StmtType>();
+    if (!stmt.isa<Store>()) return;
+    Store store_stmt = stmt.as<Store>();
     if (GetReduceType(store_stmt->value()) != ReduceType::kNone) {
-      buffers.insert(store_stmt->tensor().as_tensor()->buffer);
+      auto it = typed_buffers.find(store_stmt->tensor().as_tensor()->buffer);
+      if (it == typed_buffers.end()) {
+        auto composite_type = GetArgReduceUnderlyingType(store_stmt->value());
+        if (composite_type.type == ReduceType::kNone) {
+          arg_stores->emplace_back(store_stmt);
+        } else {
+          // defined composite type can be immediately stored
+          typed_buffers.emplace(store_stmt->tensor().as_tensor()->buffer,
+                                composite_type);
+        }
+      } else {
+        // check whether we will have conflicted store types
+        PADDLE_ENFORCE_EQ(
+            it->second == GetArgReduceUnderlyingType(store_stmt->value()),
+            true,
+            ::common::errors::PreconditionNotMet(
+                "Composite type conflict detected in the buffer map."));
+      }
     }
   };
 
   ir::stmt::Visit(body, VisitFn, [](auto) {});
-  return buffers;
+  return typed_buffers;
 }
 
-CompositeTypes DetermineReduceType(const BlockRef& body) {
-  CompositeTypes composite_reduce;
-
-  // the blockref can only have one unique reduce type
-  const auto VisitFn = [&composite_reduce](const StmtRef& stmt) {
-    // to stop recursive visit: (1) rtype is defined
-    // (2) stmt is not a Store stmt
-    if (composite_reduce.type != ReduceType::kNone || !stmt.isa<Store>())
-      return;
+void ReplaceOutputBufferX86(
+    const BlockRef& body,
+    const std::set<ir::Buffer>& out_buffer_map,
+    const std::map<ir::Buffer, CompositeTypes>& typed_buffers) {
+  // re-route the reduce_init buffer to the local staging buffer
+  // and set the type for the buffers correctly
+  struct BufferRelationRecorder {
+    Store reduce_init;
+    Store write_back;
+  };
+  std::map<ir::Buffer, BufferRelationRecorder> buffer_relations;
+  for (auto buffer : out_buffer_map) {
+    buffer_relations.emplace(buffer, BufferRelationRecorder());
+  }
+  const auto VisitFn = [&](const StmtRef& stmt) {
+    if (!stmt.isa<Store>()) return;
     Store store_stmt = stmt.as<Store>();
-    composite_reduce = GetArgReduceUnderlyingType(store_stmt->value());
+
+    auto* tensor = store_stmt->tensor().as_tensor();
+    auto& buffer = tensor->buffer;
+    auto buffer_it = buffer_relations.find(buffer);
+    // check whether the buffer is related to output args
+    if (buffer_it == buffer_relations.end()) return;
+    if (ir::IsReduceInitTensorName(tensor->name)) {
+      buffer_it->second.reduce_init = store_stmt;
+    } else {
+      buffer_it->second.write_back = store_stmt;
+    }
   };
 
   ir::stmt::Visit(body, VisitFn, [](auto) {});
-  return composite_reduce;
+
+  for (auto& [_, buffer_rel] : buffer_relations) {
+    // both should be defined
+    if (!buffer_rel.reduce_init.defined() || !buffer_rel.write_back.defined())
+      continue;
+    auto wb_value = buffer_rel.write_back->value();
+    if (auto load_node = wb_value.As<ir::Load>()) {
+      auto wb_load_buffer = load_node->tensor.as_tensor()->buffer;
+      auto wb_load_it = typed_buffers.find(wb_load_buffer);
+      PADDLE_ENFORCE_NE(wb_load_it,
+                        typed_buffers.end(),
+                        ::common::errors::Fatal(
+                            "Buffer '%s' should be defined in typed_buffers.",
+                            wb_load_buffer->name));
+      // set the buffer of the reduce_init to write back buffer
+      ir::Expr new_tensor =
+          ir::ir_utils::IRCopy(buffer_rel.reduce_init->tensor());
+      new_tensor.as_tensor()->buffer = wb_load_buffer;
+      buffer_rel.reduce_init->set_tensor(new_tensor);
+    }
+  }
 }
 
 Store GetStoreOfSchedule(const Schedule& stmt) {
@@ -302,9 +421,10 @@ struct StageReduceResultMutator : public ir::stmt::StmtMutator<> {
 };
 
 struct LoadTypeMutator : public ir::IRMutator<> {
-  explicit LoadTypeMutator(const std::map<ir::Buffer, ir::Type>& buffer2type,
-                           const CompositeTypes& ctype)
-      : buffer2type_(buffer2type), comp_type_(ctype) {}
+  explicit LoadTypeMutator(
+      const std::map<ir::Buffer, std::pair<ir::Type, CompositeTypes>>&
+          buffer2type)
+      : buffer2type_(buffer2type) {}
 
   void operator()(ir::Expr* expr) { ir::IRMutator<>::Visit(expr, expr); }
 
@@ -315,10 +435,11 @@ struct LoadTypeMutator : public ir::IRMutator<> {
     auto& buffer = node->tensor.as_tensor()->buffer;
     auto it = buffer2type_.find(buffer);
     if (it != buffer2type_.end()) {
-      ir::Type new_type = GetCompositeReduceType(it->second, comp_type_);
+      const auto& [buffer_type, composite_type] = it->second;
+      ir::Type new_type = GetCompositeReduceType(buffer_type, composite_type);
       node->tensor.as_tensor()->set_type(new_type);
       buffer->dtype = new_type;
-      *expr = ir::Cast::Make(it->second, *expr);
+      *expr = ir::Cast::Make(buffer_type, *expr);
     }
   }
 
@@ -348,25 +469,26 @@ struct LoadTypeMutator : public ir::IRMutator<> {
     }
   }
 
-  const std::map<ir::Buffer, ir::Type>& buffer2type_;
-  const CompositeTypes& comp_type_;
+  const std::map<ir::Buffer, std::pair<ir::Type, CompositeTypes>>& buffer2type_;
 };
 
 void SetBufferType(ir::LoweredFunc func,
-                   const std::set<ir::Buffer>& buffers,
-                   const CompositeTypes& composite_type) {
-  // Make a map from the buffers to their element types, otherwise it's hard to
-  // know a buffer's original type.
-  std::map<ir::Buffer, ir::Type> buffer2type;
-  for (auto& buffer : buffers) {
-    buffer2type.emplace(buffer, buffer->dtype);
+                   const std::map<ir::Buffer, CompositeTypes>& typed_buffers,
+                   bool is_x86_arch) {
+  // Make a map from the buffers to their element and composite reduce types,
+  // otherwise it's hard to know a buffer's original type. The original type
+  // must be known to perform casting (back) in LoadTypeMutator::Visit()
+  std::map<ir::Buffer, std::pair<ir::Type, CompositeTypes>> buffer2type;
+  for (auto& [buffer, reduce_type] : typed_buffers) {
+    buffer2type.emplace(buffer, std::make_pair(buffer->dtype, reduce_type));
   }
 
   // Set function's temp_bufs type
   for (auto& buffer : func->temp_bufs) {
     auto it = buffer2type.find(buffer);
     if (it != buffer2type.end()) {
-      buffer->dtype = GetCompositeReduceType(it->second, composite_type);
+      const auto& [buffer_type, composite_type] = it->second;
+      buffer->dtype = GetCompositeReduceType(buffer_type, composite_type);
     }
   }
 
@@ -380,19 +502,21 @@ void SetBufferType(ir::LoweredFunc func,
     auto it = buffer2type.find(buffer);
     if (it != buffer2type.end()) {
       ir::Expr new_tensor = ir::ir_utils::IRCopy(store_stmt->tensor());
-      ir::Type new_type = GetCompositeReduceType(it->second, composite_type);
+      const auto& [buffer_type, composite_type] = it->second;
+      ir::Type new_type = GetCompositeReduceType(buffer_type, composite_type);
       new_tensor.as_tensor()->set_type(new_type);
       new_tensor.as_tensor()->buffer->dtype = new_type;
       store_stmt->set_tensor(new_tensor);
-
-      if (ir::IsReduceInitTensorName(tensor->name)) {
-        SetInitValue(store_stmt, new_type, composite_type);
+      stmt->set_type(new_type);
+      if (ir::IsReduceInitTensorName(new_tensor.as_tensor()->name)) {
+        std::string call_prefix = is_x86_arch ? "create_" : "";
+        SetInitValue(store_stmt, new_type, composite_type, call_prefix);
       }
     }
 
     // Set load buffer type
     ir::Expr new_value = ir::ir_utils::IRCopy(store_stmt->value());
-    LoadTypeMutator load_type_mutator(buffer2type, composite_type);
+    LoadTypeMutator load_type_mutator(buffer2type);
     load_type_mutator(&new_value);
     store_stmt->set_value(new_value);
   };
@@ -435,12 +559,72 @@ struct ReduceExternCallMutator : public ir::IRMutator<> {
   }
 };
 
-void ReplaceReduceExternCall(const BlockRef& body) {
+struct ReduceExternCallMutatorX86 : public ir::IRMutator<> {
+  // unlike non x86 counterpart, we do not replace the call
+  // by a arithmetic IR node, but instead call x86-exclusive funcs
+  void operator()(ir::Expr* expr) { ir::IRMutator<>::Visit(expr, expr); }
+
+ private:
+  void Visit(const ir::Call* op, ir::Expr* expr) override {
+    ir::IRMutator<>::Visit(op, expr);
+    auto reduce_type_ = GetReduceType(*expr);
+    if (reduce_type_ == ReduceType::kNone) return;
+    ir::Expr lhs = op->read_args[0];
+    ir::Expr rhs = op->read_args[1];
+    std::string lhs_type = lhs.type().to_string();
+    if (lhs.type() != rhs.type()) {
+      if (auto call_op = rhs.As<ir::Call>()) {
+        // for argidx type, avoid redundant type casting, but this is ugly
+        if (call_op->name.find("argidx") == 0) {
+          call_op->name = "create_" + call_op->name;
+          rhs->set_type(lhs.type());
+        }
+      } else {
+        // welford pod type call create function on x86
+        ir::Expr m2_init(0.f), weight_init(1.f);
+        if (lhs_type == "welford_fp64") {
+          m2_init->set_type(common::F64());
+          weight_init->set_type(common::F64());
+        }
+        rhs = ir::Call::Make(lhs.type(),
+                             "create_" + lhs_type,
+                             {rhs, m2_init, weight_init},
+                             {},
+                             ir::CallType::Intrinsic);
+      }
+    }
+    std::string call_prefix = "";
+    switch (reduce_type_) {
+      case ReduceType::kVariance:
+        call_prefix = "sum_";
+        break;
+      case ReduceType::kArgmax:
+        call_prefix = "max_";
+        break;
+      case ReduceType::kArgmin:
+        call_prefix = "min_";
+        break;
+      default:
+        break;
+    }
+    *expr = ir::Call::Make(lhs.type(),
+                           call_prefix + lhs_type,
+                           {lhs, rhs},
+                           {},
+                           ir::CallType::Intrinsic);
+  }
+};
+
+void ReplaceReduceExternCall(const BlockRef& body, bool is_x86_arch = false) {
   const auto VisitFn = [&](StmtRef stmt) {
     if (!stmt.isa<Store>()) return;
     Store store_stmt = stmt.as<Store>();
     ir::Expr new_value = ir::ir_utils::IRCopy(store_stmt->value());
-    ReduceExternCallMutator()(&new_value);
+    if (is_x86_arch) {
+      ReduceExternCallMutatorX86()(&new_value);
+    } else {
+      ReduceExternCallMutator()(&new_value);
+    }
     store_stmt->set_value(new_value);
   };
 
@@ -463,26 +647,58 @@ LogicalResult RealizeCompositeReducePass::Run(ir::LoweredFunc func) {
   StageReduceResultMutator mutator(func);
   mutator(body);
 
-  auto composite_type = DetermineReduceType(body);
-  if (composite_type.type == ReduceType::kNone) {
+  // Step 2. Collect buffers that are used for reduce computation.
+  std::vector<Store> arg_stores;
+  auto typed_buffers = CollectTypedReduceBuffers(body, &arg_stores);
+  if (typed_buffers.empty()) {
+    // not a composite reduce func
     return LogicalResult::success();
   }
+  typed_buffers = ResolveUndefinedArgIdxType(std::move(typed_buffers),
+                                             std::move(arg_stores));
 
-  // Step 2. Collect buffers that are used for reduce computation.
-  std::set<ir::Buffer> buffers = CollectReduceBuffers<Store>(body);
-
+  bool is_x86_arch = false;
+  target_.arch.Match(
+      [&](std::variant<common::X86Arch>) {
+        /**
+         * trace the CPU buffer for reduce init. For x86 pass, schedule pass
+         * will not be applied, therefore, the reduce_init buffer will be the
+         * same as the output buffer, which leads to incorrect buffer type and
+         * op type for codegen
+         *
+         * (1) we first extract the buffer for each output arg
+         * (2) find all stores to the corresponding output buffer, this op is
+         * prior to the output type cast, for x86 IR, reduce_init and the
+         * writing back op uses the same buffer (output tensor buffer). (3)
+         * create a mapping. if the buffer of a store (the value of the store)
+         * is in the typed_buffer, we try finding the reduce_init related op,
+         * and change the the buffer and op type of the reduce_init
+         */
+        is_x86_arch = true;
+        std::set<ir::Buffer> output_buffers;
+        for (auto& arg : func->args) {
+          if (!arg.is_output()) continue;
+          output_buffers.emplace(arg.buffer_arg());
+        }
+        ReplaceOutputBufferX86(body, output_buffers, typed_buffers);
+      },
+      [&](std::variant<common::NVGPUArch,
+                       common::HygonDCUArchHIP,
+                       common::HygonDCUArchSYCL,
+                       common::ARMArch,
+                       common::UnknownArch>) {});
   // Step 3. Change the data type of buffers to the corresponding type.
-  SetBufferType(func, buffers, composite_type);
+  SetBufferType(func, typed_buffers, is_x86_arch);
 
-  // Step 4. Replace the `cinn_reduce_variance` calls to `operator+` in order to
-  //   reuse the cross-thread/block reduction templates.
-  ReplaceReduceExternCall(body);
+  // Step 4. Replace the `cinn_reduce_variance` and `cinn_argmax` calls
+  // in order to reuse the cross-thread/block reduction templates.
+  ReplaceReduceExternCall(body, is_x86_arch);
 
   return LogicalResult::success();
 }
 
-std::unique_ptr<FuncPass> CreateRealizeCompositeReducePass() {
-  return std::make_unique<RealizeCompositeReducePass>();
+std::unique_ptr<FuncPass> CreateRealizeCompositeReducePass(Target target) {
+  return std::make_unique<RealizeCompositeReducePass>(target);
 }
 
 }  // namespace optim

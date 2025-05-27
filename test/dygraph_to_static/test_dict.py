@@ -139,7 +139,7 @@ class TestNetWithDict(Dy2StTestBase):
             return ret.numpy()
 
     def test_ast_to_func(self):
-        self.assertTrue((self._run_dygraph() == self._run_static()).all())
+        np.testing.assert_allclose(self._run_dygraph(), self._run_static())
 
 
 # Tests for dict pop
@@ -227,13 +227,7 @@ class TestDictPop3(TestNetWithDict):
             return ret.numpy()
 
     def test_ast_to_func(self):
-        dygraph_result = self._run_dygraph()
-        static_result = self._run_static()
-
-        self.assertTrue(
-            (dygraph_result == static_result).all(),
-            msg=f"dygraph result: {dygraph_result}\nstatic result: {static_result}",
-        )
+        np.testing.assert_allclose(self._run_dygraph(), self._run_static())
 
 
 class TestDictCmpInFor(Dy2StTestBase):

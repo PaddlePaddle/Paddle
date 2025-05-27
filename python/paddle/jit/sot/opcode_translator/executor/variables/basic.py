@@ -25,13 +25,46 @@ import numpy as np
 import paddle
 from paddle._typing import unreached
 from paddle.framework import core
+from paddle.pir.core import _PADDLE_PIR_DTYPE_2_NUMPY_DTYPE
 
 from ....infer_meta import (
     DistInfo,
     MetaInfo,
+    MetaInfoOrNull,
 )
 from ....symbolic.statement_ir import Symbol
-from ....symbolic_shape import (
+from ....symbolic_shape.constraints import (
+    AddConstraintNode,
+    BitwiseAndConstraintNode,
+    BitwiseLShiftConstraintNode,
+    BitwiseNotConstraintNode,
+    BitwiseOrConstraintNode,
+    BitwiseRShiftConstraintNode,
+    BitwiseXorConstraintNode,
+    ConstantConstraintNode,
+    ConstraintNode,
+    EqualConstraintNode,
+    FloorDivConstraintNode,
+    GreaterEqualConstraintNode,
+    GreaterThanConstraintNode,
+    LessEqualConstraintNode,
+    LessThanConstraintNode,
+    LogicalNotConstraintNode,
+    LogicalToBoolConstraintNode,
+    ModConstraintNode,
+    MulConstraintNode,
+    NegativeConstraintNode,
+    NotEqualConstraintNode,
+    PowConstraintNode,
+    SubConstraintNode,
+    SymbolicConstraintNode,
+    TrueDivConstraintNode,
+)
+from ....symbolic_shape.operators import (
+    symbolic_not,
+    symbolic_to_bool,
+)
+from ....symbolic_shape.symbolic_value import (
     SymbolicBool,
     SymbolicFloat,
     SymbolicInt,
@@ -41,11 +74,13 @@ from ....utils import (
     ENV_SOT_ALLOW_DYNAMIC_SHAPE,
     BreakGraphError,
     BuiltinFunctionBreak,
+    ConditionalFallbackError,
     ConstTypes,
     DataDependencyDynamicShapeBreak,
     DataDependencyOperationBreak,
     FallbackError,
     NameGenerator,
+    SotCapturedExceptionFactory,
     UnsupportedOperationBreak,
     get_tensor_methods,
     log,
@@ -53,7 +88,6 @@ from ....utils import (
 )
 from ....utils.envs import ENV_SOT_BREAK_GRAPH_ON_GET_SYMBOLIC_VALUE
 from ....utils.exceptions import (
-    HasNoAttributeError,
     InnerError,
     UnsupportedPaddleAPIBreak,
 )
@@ -67,6 +101,7 @@ from ..guard import (
     StringifiedExpression,
     check_faster_guard,
     check_guard,
+    object_equal_faster_guard,
     object_equal_stringified_guard,
     stringify_pyobject,
     union_free_vars,
@@ -80,15 +115,24 @@ from ..tracker import (
     GetItemTracker,
     GetIterTracker,
     GlobalTracker,
+    LocalTracker,
     SymbolicOperationTracker,
     Tracker,
 )
 from .base import VariableBase, VariableFactory
 
 if TYPE_CHECKING:
+    import numpy.typing as npt
+    from typing_extensions import TypeAlias
+
     from ..function_graph import FunctionGraph
     from ..pycode_generator import PyCodeGen
-    from .callable import ClassVariable, FunctionVariable
+    from .callable import BuiltinVariable, ClassVariable, FunctionVariable
+    from .container import TupleVariable
+
+    SymbolicConstraint: TypeAlias = tuple[
+        ConstraintNode, dict[str, "SymbolicVariable"]
+    ]
 
 
 FP_DTYPE_ABBRS = {
@@ -119,15 +163,6 @@ DTYPE_ABBRS = {
     **INT_DTYPE_ABBRS,
     core.DataType.BOOL: "bool",
 }
-
-STATIC_DIM_FREQ_THRESHOLD = 5
-
-
-def method_to_reverse_method(method_name: str) -> str | None:
-    if not method_name.startswith("__") or not method_name.endswith("__"):
-        return None
-    name = method_name[2:-2]
-    return f"__r{name}__"
 
 
 class ConstantVariable(VariableBase):
@@ -302,6 +337,22 @@ class TensorDtypeVariable(DataVariable):
     def __init__(self, value, graph, tracker):
         super().__init__(value, graph, tracker)
 
+    @check_faster_guard
+    def make_faster_guard(self) -> list[paddle.framework.core.GuardNodeBase]:
+        if isinstance(self.tracker, GetAttrTracker) and isinstance(
+            self.tracker.obj, TensorVariable
+        ):
+            expr_node = self.tracker.obj.tracker.guard_tree_expr_node()
+            assert paddle.framework.use_pir_api(), "Only support PIR"
+            return [
+                paddle.framework.core.GuardNode(
+                    paddle.framework.core.DtypeMatchGuard(self.value),
+                    [expr_node],
+                )
+            ]
+        else:
+            return object_equal_faster_guard(self)
+
     @check_guard
     def make_stringified_guard(self) -> list[StringifiedExpression]:
         if isinstance(self.tracker, GetAttrTracker) and isinstance(
@@ -315,10 +366,10 @@ class TensorDtypeVariable(DataVariable):
             if not paddle.framework.use_pir_api():
                 return [
                     StringifiedExpression(
-                        f"MetaInfo.from_tensor({{}}).dtype == {dtype_str}",
+                        f"MetaInfoOrNull.from_tensor({{}}).unwrap_unsafe().dtype == {dtype_str}",
                         [tensor_value_tracer],
                         union_free_vars(
-                            {"MetaInfo": MetaInfo},
+                            {"MetaInfoOrNull": MetaInfoOrNull},
                             tensor_value_tracer.free_vars,
                             dtype_free_vars,
                         ),
@@ -368,7 +419,7 @@ class TensorVariable(VariableBase):
     TensorVariable is a subclass of VariableBase used to wrap a Variable of the tensor type.
 
     Args:
-        tensor (paddle.Tensor | MetaInfo): The tensor to be wrapped.
+        tensor (paddle.Tensor | MetaInfoOrNull): The tensor to be wrapped.
         graph (FunctionGraph): The FunctionGraph object that this variable is associated with.
         tracker (Tracker): The Tracker object that tracks the information of this variable.
     """
@@ -378,7 +429,7 @@ class TensorVariable(VariableBase):
 
     def __init__(
         self,
-        meta: MetaInfo,
+        meta: MetaInfoOrNull,
         graph: FunctionGraph,
         tracker: Tracker,
     ):
@@ -423,13 +474,13 @@ class TensorVariable(VariableBase):
         return dynamic_axes
 
     def __len__(self):
-        if isinstance(self.meta.shape[0], SymbolicInt):
+        if isinstance(self.meta.unwrap_or_breakgraph().shape[0], SymbolicInt):
             raise BreakGraphError(
                 DataDependencyDynamicShapeBreak(
                     "length of tensor variable with first dimension is dynamic shape causes graph break."
                 )
             )
-        return self.meta.shape[0]
+        return self.meta.unwrap_or_breakgraph().shape[0]
 
     def get_py_value(self, allow_tensor=False):
         if allow_tensor:
@@ -469,29 +520,48 @@ class TensorVariable(VariableBase):
         codegen.gen_load_fast(self.out_var_name)
 
     @check_faster_guard
-    def make_faster_guard(self) -> list[paddle.framework.core.GuardNode]:
+    def make_faster_guard(self) -> list[paddle.framework.core.GuardNodeBase]:
         assert paddle.framework.use_pir_api(), "Only support PIR"
         expr_node = self.tracker.guard_tree_expr_node()
         meta = self.origin_meta
+        if meta.is_null():
+            return [
+                paddle.framework.core.GuardNode(
+                    paddle.framework.core.IsNotDenseTensorHoldAllocationMatchGuard(),
+                    [expr_node],
+                ),
+            ]
+        meta = meta.unwrap_unsafe()
         return [
             # Check shape
             paddle.framework.core.GuardNode(
                 paddle.framework.core.ShapeMatchGuard(meta.shape),
-                expr_node,
+                [expr_node],
             ),
             # Check dtype
             paddle.framework.core.GuardNode(
                 paddle.framework.core.DtypeMatchGuard(meta.dtype),
-                expr_node,
+                [expr_node],
             ),
             # Check stop_gradient
             paddle.framework.core.GuardNode(
                 paddle.framework.core.ValueMatchGuard(meta.stop_gradient),
-                paddle.framework.core.AttributeExprNode(
-                    expr_node, "stop_gradient"
-                ),
+                [
+                    paddle.framework.core.AttributeExprNode(
+                        expr_node, "stop_gradient"
+                    )
+                ],
             ),
-            # TODO(zrr1999): add dist_info check
+            # Check dist info
+            paddle.framework.core.TensorDistMetaMatchGuardNode(
+                meta.dist_info,
+                [
+                    expr_node,
+                    paddle.framework.core.ExternVarExprNode(
+                        "___dist_info_from_tensor", DistInfo.from_tensor
+                    ),
+                ],
+            ),
         ]
 
     @check_guard
@@ -500,16 +570,19 @@ class TensorVariable(VariableBase):
 
         # TODO(cleanup-legacy-ir): Remove this branch after we remove legacy IR
         if not paddle.framework.use_pir_api():
-            if ENV_SOT_ALLOW_DYNAMIC_SHAPE.get():
-                str_left_expr = f"MetaInfo.from_tensor({{}}, dynamic_axes={self.meta.dynamic_axes}).guard_str()"
+            if (
+                ENV_SOT_ALLOW_DYNAMIC_SHAPE.get()
+                and not self.origin_meta.is_null()
+            ):
+                str_left_expr = f"MetaInfoOrNull.from_tensor({{}}, dynamic_axes={self.meta.unwrap_unsafe().dynamic_axes}).guard_str()"
             else:
-                str_left_expr = "MetaInfo.from_tensor({}).guard_str()"
+                str_left_expr = "MetaInfoOrNull.from_tensor({}).guard_str()"
             return [
                 StringifiedExpression(
                     f"{str_left_expr} == '{self.origin_meta.guard_str()}'",
                     [frame_value_tracer],
                     union_free_vars(
-                        {"MetaInfo": MetaInfo},
+                        {"MetaInfoOrNull": MetaInfoOrNull},
                         frame_value_tracer.free_vars,
                     ),
                 )
@@ -517,6 +590,15 @@ class TensorVariable(VariableBase):
 
         # A quick check path for PIR, we don't need dtype conversion for AMP in PIR
         meta = self.origin_meta
+        if meta.is_null():
+            return [
+                StringifiedExpression(
+                    "not {}._is_dense_tensor_hold_allocation()",
+                    [frame_value_tracer],
+                    union_free_vars(frame_value_tracer.free_vars),
+                )
+            ]
+        meta = meta.unwrap_unsafe()
         dtype_str, dtype_free_vars = stringify_pyobject(meta.dtype)
         guards = [
             # Check rank
@@ -535,7 +617,7 @@ class TensorVariable(VariableBase):
                     )
                     if not isinstance(meta.shape[i], SymbolicInt)
                     else StringifiedExpression(
-                        f"{{}}.shape[{i}] >= 2",
+                        f"{{}}.shape[{i}] >= 1",
                         [frame_value_tracer],
                         union_free_vars(frame_value_tracer.free_vars),
                     )
@@ -556,13 +638,13 @@ class TensorVariable(VariableBase):
             ),
             # Check whether this tensor is distributed
             StringifiedExpression(
-                f"{{}}.is_dist() is {(self.meta.dist_info is not None)!r}",
+                f"{{}}.is_dist() is {(meta.dist_info is not None)!r}",
                 [frame_value_tracer],
                 union_free_vars(frame_value_tracer.free_vars),
             ),
         ]
-        if self.meta.dist_info is not None:
-            tensor_dist_info = self.meta.dist_info
+        if meta.dist_info is not None:
+            tensor_dist_info = meta.dist_info
             guards.extend(
                 [
                     # check mesh shape
@@ -624,15 +706,20 @@ class TensorVariable(VariableBase):
 
     @property
     def main_info(self) -> dict[str, Any]:
-        dtype = self.meta.dtype
+        if self.meta.is_null():
+            return {
+                "meta": "null",
+            }
+        meta = self.meta.unwrap_unsafe()
+        dtype = meta.dtype
         if isinstance(dtype, paddle.core.VarDesc.VarType):
             dtype = paddle.pir.core.vartype_to_datatype[dtype]
         return {
-            "shape": self.meta.shape,
+            "shape": meta.shape,
             "dtype": DTYPE_ABBRS[dtype],
-            "stop_gradient": self.meta.stop_gradient,
+            "stop_gradient": meta.stop_gradient,
             "var_name": self.var_name,
-            "dist_info": self.meta.dist_info,
+            "dist_info": meta.dist_info,
         }
 
     def getitem(self, key):
@@ -656,7 +743,9 @@ class TensorVariable(VariableBase):
         """
         from .container import ListVariable
 
-        perm = list(range(len(self.meta.shape) - 1, -1, -1))
+        perm = list(
+            range(len(self.meta.unwrap_or_breakgraph().shape) - 1, -1, -1)
+        )
         perm_var = ListVariable(perm, self.graph, tracker=ConstTracker(perm))
         out = self.graph.call_paddle_api(paddle.transpose, self, perm_var)
         return out
@@ -668,12 +757,12 @@ class TensorVariable(VariableBase):
         """
         from .container import ListVariable
 
-        if len(self.meta.shape) < 2:
+        if len(self.meta.unwrap_or_breakgraph().shape) < 2:
             raise ValueError(
                 f"Variable.ndim({self.ndim}) is required to be greater than or equal to 2."
             )
 
-        perm = list(range(len(self.meta.shape)))
+        perm = list(range(len(self.meta.unwrap_or_breakgraph().shape)))
         perm[-1], perm[-2] = perm[-2], perm[-1]
         perm_var = ListVariable(perm, self.graph, tracker=DummyTracker([self]))
         out = self.graph.call_paddle_api(paddle.transpose, self, perm_var)
@@ -685,7 +774,9 @@ class TensorVariable(VariableBase):
         Return a ConstantVariable object that represents the number of dimensions of the wrapped value of this TensorVariable.
         """
         return ConstantVariable(
-            len(self.meta.shape), self.graph, DummyTracker([self])
+            len(self.meta.unwrap_or_breakgraph().shape),
+            self.graph,
+            DummyTracker([self]),
         )
 
     @tensor_property
@@ -695,15 +786,17 @@ class TensorVariable(VariableBase):
         """
         from .callable import BuiltinVariable
 
-        if not self.meta.is_dynamic_shape():
-            n_elements = reduce(operator.mul, self.meta.shape, 1)
+        meta = self.meta.unwrap_or_breakgraph()
+
+        if not meta.is_dynamic_shape():
+            n_elements = reduce(operator.mul, meta.shape, 1)
             return ConstantVariable(
                 n_elements, self.graph, DummyTracker([self])
             )
         if not ENV_SOT_ALLOW_DYNAMIC_SHAPE.get():
             raise BreakGraphError(
                 DataDependencyDynamicShapeBreak(
-                    f"Getting size for a dynamic shape tensor causes graph break. shape = {self.meta.shape}"
+                    f"Getting size for a dynamic shape tensor causes graph break. shape = {meta.shape}"
                 )
             )
         return reduce(
@@ -714,24 +807,23 @@ class TensorVariable(VariableBase):
 
     @tensor_property
     def shape(self):
-        if (
-            not ENV_SOT_ALLOW_DYNAMIC_SHAPE.get()
-            and self.meta.is_dynamic_shape()
-        ):
+        meta = self.meta.unwrap_or_breakgraph()
+        if not ENV_SOT_ALLOW_DYNAMIC_SHAPE.get() and meta.is_dynamic_shape():
             raise BreakGraphError(
                 DataDependencyDynamicShapeBreak(
-                    f"Getting shape for a dynamic shape tensor causes graph break. shape = {self.meta.shape}"
+                    f"Getting shape for a dynamic shape tensor causes graph break. shape = {meta.shape}"
                 )
             )
         from .container import ListVariable
 
         tracker = GetAttrTracker(self, "shape")
-        return ListVariable(self.meta.shape, self.graph, tracker=tracker)
+        return ListVariable(meta.shape, self.graph, tracker=tracker)
 
     def len(self):
-        if len(self.meta.shape) == 0:
+        meta = self.meta.unwrap_or_breakgraph()
+        if len(meta.shape) == 0:
             raise InnerError("len() of a 0-D tensor is wrong")
-        first_dim = self.meta.shape[0]
+        first_dim = meta.shape[0]
         if not isinstance(first_dim, SymbolicInt):
             return ConstantVariable(first_dim, self.graph, DummyTracker([self]))
         if not ENV_SOT_ALLOW_DYNAMIC_SHAPE.get():
@@ -746,21 +838,21 @@ class TensorVariable(VariableBase):
         return ConstantVariable(True, self.graph, DummyTracker([self]))
 
     def is_complex(self):
-        dtype = self.meta.dtype
+        dtype = self.meta.unwrap_or_breakgraph().dtype
         if isinstance(dtype, paddle.core.VarDesc.VarType):
             dtype = paddle.pir.core.vartype_to_datatype[dtype]
         is_cp_dtype = dtype in CP_DTYPE_ABBRS
         return ConstantVariable(is_cp_dtype, self.graph, DummyTracker([self]))
 
     def is_integer(self):
-        dtype = self.meta.dtype
+        dtype = self.meta.unwrap_or_breakgraph().dtype
         if isinstance(dtype, paddle.core.VarDesc.VarType):
             dtype = paddle.pir.core.vartype_to_datatype[dtype]
         is_int_dtype = dtype in INT_DTYPE_ABBRS
         return ConstantVariable(is_int_dtype, self.graph, DummyTracker([self]))
 
     def is_floating_point(self):
-        dtype = self.meta.dtype
+        dtype = self.meta.unwrap_or_breakgraph().dtype
         if isinstance(dtype, paddle.core.VarDesc.VarType):
             dtype = paddle.pir.core.vartype_to_datatype[dtype]
         is_fp_dtype = dtype in FP_DTYPE_ABBRS
@@ -779,10 +871,13 @@ class TensorVariable(VariableBase):
             "is_integer": paddle.is_integer,
             "is_floating_point": paddle.is_floating_point,
         }
-        if name in ["name", "place", "type"] and self.meta.is_inner_var():
+        if (
+            name in ["name", "place", "type"]
+            and self.meta.unwrap_or_breakgraph().is_inner_var()
+        ):
             raise BreakGraphError(
                 DataDependencyOperationBreak(
-                    f"{self.meta.name} is a middle tensor. Not support to get {name} property."
+                    f"{self.meta.unwrap_or_breakgraph().name} is a middle tensor. Not support to get {name} property."
                 )
             )
         if name in [
@@ -794,7 +889,7 @@ class TensorVariable(VariableBase):
             "place",
         ]:
             return VariableFactory.from_value(
-                getattr(self.meta, name),
+                getattr(self.meta.unwrap_or_breakgraph(), name),
                 self.graph,
                 tracker=GetAttrTracker(self, name),
             )
@@ -838,9 +933,9 @@ class TensorVariable(VariableBase):
 
     @VariableFactory.register_from_value()
     def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
-        if isinstance(value, (paddle.Tensor, MetaInfo)):
+        if isinstance(value, (paddle.Tensor, MetaInfoOrNull)):
             value = (
-                MetaInfo.from_tensor(value)
+                MetaInfoOrNull.from_tensor(value)
                 if isinstance(value, paddle.Tensor)
                 else value
             )
@@ -848,7 +943,12 @@ class TensorVariable(VariableBase):
         return None
 
 
-def get_symbolic_from_meta(meta: MetaInfo) -> SymbolicValue:
+def get_symbolic_from_meta(meta_or_null: MetaInfoOrNull) -> SymbolicValue:
+    if meta_or_null.is_null():
+        raise InnerError(
+            f"get_symbolic_from_meta() got {meta_or_null}. Only MetaInfo is supported."
+        )
+    meta = meta_or_null.unwrap_unsafe()
     if meta.dtype in [paddle.bool]:
         value = SymbolicBool()
     elif meta.dtype in [
@@ -878,25 +978,28 @@ class SymbolicVariable(VariableBase):
     SymbolicVariable is a subclass of VariableBase used to wrap a symbolic value.
 
     Args:
-        value_or_meta (SymbolicInt | MetaInfo): The symbolic value  to be wrapped or metadata.
+        value_or_meta (SymbolicInt | MetaInfoOrNull): The symbolic value  to be wrapped or metadata.
         graph (FunctionGraph): The FunctionGraph object that this variable is associated with.
         tracker (Tracker): The Tracker object that tracks the information of this variable.
     """
 
     var_name_generator = NameGenerator("symint_")
     value: SymbolicValue
-    mutable_attrs = ["need_guard_value"]
+    mutable_attrs = ["need_guard_value", "constraints"]
 
     def __init__(
         self,
-        value_or_meta: SymbolicInt | MetaInfo,
+        value_or_meta: SymbolicInt | MetaInfoOrNull,
         graph: FunctionGraph,
         tracker: Tracker,
     ):
         super().__init__(graph, tracker)
         self.var_name = self.var_name_generator.next()
-        if isinstance(value_or_meta, MetaInfo):
-            assert len(value_or_meta.shape) == 0
+        if isinstance(value_or_meta, MetaInfoOrNull):
+            assert (
+                not value_or_meta.is_null()
+            ), "MetaInfoOrNull should not be null"
+            assert len(value_or_meta.unwrap_unsafe().shape) == 0
             self.value = get_symbolic_from_meta(value_or_meta)
             self.meta = value_or_meta
         else:
@@ -906,9 +1009,35 @@ class SymbolicVariable(VariableBase):
             self.value = value_or_meta
             self.meta = MetaInfo(
                 [], paddle.int64, True, self.var_name, False, None, None
-            )
+            ).wrap()
         self.need_guard_value = False
         self.graph.side_effects.record_mutable_variable(self)
+        self.constraints: list[SymbolicConstraint] = []
+        if self.value.is_backed():
+            # The inherent constraint of the symbolic variable is that it must be greater than or equal to 2.
+            self.add_constraint(
+                (
+                    GreaterEqualConstraintNode(
+                        SymbolicConstraintNode(self.var_name),
+                        ConstantConstraintNode(1),
+                    ),
+                    {self.var_name: self},
+                )
+            )
+
+    def add_constraint(self, constraint: SymbolicConstraint):
+        constraint_node, constraint_extern_vars = constraint
+        for extern_var in constraint_extern_vars.values():
+            assert isinstance(
+                extern_var, SymbolicVariable
+            ), f"SymbolicVariable.add_constraint() got {extern_var}."
+            assert (
+                extern_var.value.is_backed()
+            ), "Only backed symbol is supported."
+            assert (
+                extern_var.tracker.is_traceable()
+            ), "Only traceable symbol is supported."
+        self.constraints.append(constraint)
 
     def to_constant(self):
         from ..executor_cache import (
@@ -968,6 +1097,132 @@ class SymbolicVariable(VariableBase):
         ), f"SymbolicVariable.get_py_value() should return bool, int or float, but got {type(value)}"
         return value
 
+    def get_example_value(
+        self, allow_tensor: bool = False
+    ) -> bool | int | float:
+        if self.value.is_backed():
+            return self.value.get_example_value()
+        inputs = self.tracker.inputs
+        input_values = []
+        for input in inputs:
+            if isinstance(input, ConstantVariable):
+                input_values.append(input.get_py_value())
+            elif isinstance(input, SymbolicVariable):
+                input_values.append(input.get_example_value())
+            else:
+                raise BreakGraphError(
+                    DataDependencyOperationBreak(
+                        f"SymbolicVariable.get_example_value() got {input}. May be a symbol from a inner tensor."
+                    )
+                )
+        if not isinstance(self.tracker, SymbolicOperationTracker):
+            raise BreakGraphError(
+                DataDependencyOperationBreak(
+                    f"SymbolicVariable.get_example_value() got {self.tracker}. May be a symbol from a inner tensor."
+                )
+            )
+        value = self.tracker.op(*input_values)
+        assert isinstance(
+            value, (bool, int, float)
+        ), f"SymbolicVariable.get_example_value() should return bool, int or float, but got {type(value)}"
+        return value
+
+    def create_constraint_tree(
+        self,
+    ) -> tuple[ConstraintNode, dict[str, SymbolicVariable]]:
+        tracker = self.tracker
+        if not isinstance(tracker, SymbolicOperationTracker):
+            return SymbolicConstraintNode(self.var_name), {self.var_name: self}
+        input_nodes = []
+        extern_vars = {}
+        num_sym = 0
+        for input in tracker.inputs:
+            assert isinstance(
+                input, (ConstantVariable, SymbolicVariable)
+            ), f"SymbolicVariable.create_constraint_tree() got {input}."
+            if isinstance(input, ConstantVariable):
+                input_nodes.append(ConstantConstraintNode(input.get_py_value()))
+            else:
+                num_sym += 1
+                input_node, input_extern_vars = input.create_constraint_tree()
+                input_nodes.append(input_node)
+                extern_vars.update(input_extern_vars)
+
+        # TODO(SigureMo): use a better way to dispatch constraint node
+        # Arithmetic operations
+        if tracker.op is operator.neg:
+            assert len(input_nodes) == 1
+            return NegativeConstraintNode(input_nodes[0]), extern_vars
+        elif tracker.op is operator.invert:
+            assert len(input_nodes) == 1
+            return BitwiseNotConstraintNode(input_nodes[0]), extern_vars
+        elif tracker.op is operator.add:
+            assert len(input_nodes) == 2
+            return AddConstraintNode(*input_nodes), extern_vars
+        elif tracker.op is operator.sub:
+            assert len(input_nodes) == 2
+            return SubConstraintNode(*input_nodes), extern_vars
+        elif tracker.op is operator.mul:
+            assert len(input_nodes) == 2
+            return MulConstraintNode(*input_nodes), extern_vars
+        elif tracker.op is operator.truediv:
+            assert len(input_nodes) == 2
+            return TrueDivConstraintNode(*input_nodes), extern_vars
+        elif tracker.op is operator.floordiv:
+            assert len(input_nodes) == 2
+            return FloorDivConstraintNode(*input_nodes), extern_vars
+        elif tracker.op is operator.mod:
+            assert len(input_nodes) == 2
+            return ModConstraintNode(*input_nodes), extern_vars
+        elif tracker.op is operator.pow:
+            assert len(input_nodes) == 2
+            return PowConstraintNode(*input_nodes), extern_vars
+        elif tracker.op is operator.and_:
+            assert len(input_nodes) == 2
+            return BitwiseAndConstraintNode(*input_nodes), extern_vars
+        elif tracker.op is operator.lshift:
+            assert len(input_nodes) == 2
+            return BitwiseLShiftConstraintNode(*input_nodes), extern_vars
+        elif tracker.op is operator.rshift:
+            assert len(input_nodes) == 2
+            return BitwiseRShiftConstraintNode(*input_nodes), extern_vars
+        elif tracker.op is operator.or_:
+            assert len(input_nodes) == 2
+            return BitwiseOrConstraintNode(*input_nodes), extern_vars
+        elif tracker.op is operator.xor:
+            assert len(input_nodes) == 2
+            return BitwiseXorConstraintNode(*input_nodes), extern_vars
+        # Logical operations
+        elif tracker.op is symbolic_to_bool:
+            assert len(input_nodes) == 1
+            return (
+                LogicalToBoolConstraintNode(input_nodes[0]),
+                extern_vars,
+            )
+        elif tracker.op is symbolic_not:
+            assert len(input_nodes) == 1
+            return LogicalNotConstraintNode(input_nodes[0]), extern_vars
+        elif tracker.op is operator.eq:
+            assert len(input_nodes) == 2
+            return EqualConstraintNode(*input_nodes), extern_vars
+        elif tracker.op is operator.ne:
+            assert len(input_nodes) == 2
+            return NotEqualConstraintNode(*input_nodes), extern_vars
+        elif tracker.op is operator.le:
+            assert len(input_nodes) == 2
+            return LessEqualConstraintNode(*input_nodes), extern_vars
+        elif tracker.op is operator.lt:
+            assert len(input_nodes) == 2
+            return LessThanConstraintNode(*input_nodes), extern_vars
+        elif tracker.op is operator.ge:
+            assert len(input_nodes) == 2
+            return GreaterEqualConstraintNode(*input_nodes), extern_vars
+        elif tracker.op is operator.gt:
+            assert len(input_nodes) == 2
+            return GreaterThanConstraintNode(*input_nodes), extern_vars
+        else:
+            raise InnerError(f"Unsupported symbolic operation {tracker.op}.")
+
     def get_py_type(self):
         if isinstance(self.value, int):
             return int
@@ -1007,12 +1262,51 @@ class SymbolicVariable(VariableBase):
     def _reconstruct(self, codegen: PyCodeGen):
         codegen.gen_load_fast(self.out_var_name)
         codegen.gen_load_method("item")
-        codegen.gen_call_method(0)  # TODO
+        codegen.gen_call_method(0)
+
+    @check_faster_guard
+    def make_faster_guard(self) -> list[paddle.framework.core.GuardNodeBase]:
+        assert ENV_SOT_ALLOW_DYNAMIC_SHAPE.get()
+        from ..executor_cache import OpcodeExecutorCache
+
+        expr_node = self.tracker.guard_tree_expr_node()
+        frame_value_tracer = self.tracker.trace_value_from_frame()
+        # TODO(zrr1999): symbolic_inputs need frame_value_tracer.inlined_expr
+        symbolic_inputs = OpcodeExecutorCache().get_symbolic_inputs(
+            self.graph.pycode_gen._origin_code
+        )
+        assert frame_value_tracer.inlined_expr in symbolic_inputs
+
+        if self.need_guard_value:
+            log(3, f"Need guard value for {self} in {expr_node}\n")
+            return super().make_faster_guard()
+        constraint_guards: list[paddle.framework.core.GuardNodeBase] = []
+        for constraint in self.constraints:
+            constraint_node, constraint_extern_vars = constraint
+            extern_vars = {
+                var_name: var.tracker.guard_tree_expr_node()
+                for var_name, var in constraint_extern_vars.items()
+            }
+            constraint_guards.append(
+                paddle.framework.core.ExprGuardNode(
+                    constraint_node.create_guard_node(extern_vars)
+                )
+            )
+        guards = [
+            paddle.framework.core.GuardNode(
+                paddle.core.TypeMatchGuard(self.get_py_type()),
+                [expr_node],
+            ),
+            *constraint_guards,
+        ]
+        return guards
 
     @check_guard
     def make_stringified_guard(self) -> list[StringifiedExpression]:
         assert ENV_SOT_ALLOW_DYNAMIC_SHAPE.get()
         from ..executor_cache import OpcodeExecutorCache
+
+        # NOTE(zrr1999): SymbolicVariable is not supported in faster guard mode
 
         frame_value_tracer = self.tracker.trace_value_from_frame()
         symbolic_inputs = OpcodeExecutorCache().get_symbolic_inputs(
@@ -1022,7 +1316,18 @@ class SymbolicVariable(VariableBase):
         assert frame_value_tracer.inlined_expr in symbolic_inputs
 
         if self.need_guard_value:
+            log(3, f"Need guard value for {self} in {frame_value_tracer}\n")
             return super().make_stringified_guard()
+        constraint_guards = []
+        for constraint in self.constraints:
+            constraint_node, constraint_extern_vars = constraint
+            extern_vars = {
+                var_name: var.tracker.trace_value_from_frame()
+                for var_name, var in constraint_extern_vars.items()
+            }
+            constraint_guards.append(
+                constraint_node.create_guard_expr(extern_vars)
+            )
         guards = [
             FasterStringifiedExpression(
                 f"id(type({{}})) == {id(self.get_py_type())}",
@@ -1030,12 +1335,7 @@ class SymbolicVariable(VariableBase):
                 [frame_value_tracer],
                 union_free_vars(frame_value_tracer.free_vars),
             ),
-            # TODO: replace it with FasterStringifiedExpression
-            StringifiedExpression(
-                "{} >= 2",
-                [frame_value_tracer],
-                union_free_vars(frame_value_tracer.free_vars),
-            ),
+            *constraint_guards,
         ]
         return guards
 
@@ -1044,10 +1344,7 @@ class SymbolicVariable(VariableBase):
         value: Any,
         tracker: Tracker,
         symbolic_inputs: dict[str, dict[int, int] | None],
-    ):
-        # The behavior specializes for 0 and 1, so we just ignore them here.
-        if value < 2:
-            return False
+    ) -> bool | None:
         tracker_expr = tracker.trace_value_from_frame().inlined_expr
         symbolic_inputs.setdefault(tracker_expr, {})
         if tracker_expr in symbolic_inputs:
@@ -1056,7 +1353,9 @@ class SymbolicVariable(VariableBase):
                 return False
             symbolic_input.setdefault(value, 0)
             symbolic_input[value] += 1
-            if symbolic_input[value] >= STATIC_DIM_FREQ_THRESHOLD:
+            if value == 0:
+                return None  # Fallback to dygraph
+            if value < 1:  # Specialize 0 and 1
                 return False
             if len(symbolic_input.keys()) > 1:
                 return True
@@ -1080,6 +1379,15 @@ class SymbolicVariable(VariableBase):
         tensor_var = dim_tracker.container.tracker.obj
         shape_idx = dim_tracker.key
         return tensor_var, shape_idx
+
+    @staticmethod
+    def has_local_leaf(tracker: Tracker) -> bool:
+        if isinstance(tracker, LocalTracker):
+            return True
+        return any(
+            SymbolicVariable.has_local_leaf(input.tracker)
+            for input in tracker.inputs
+        )
 
     @VariableFactory.register_from_value(successor="ConstantVariable")
     def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
@@ -1111,6 +1419,8 @@ class SymbolicVariable(VariableBase):
             return None
         if not tracker.is_traceable():
             return None
+        if not SymbolicVariable.has_local_leaf(tracker):
+            return None
 
         from ..executor_cache import OpcodeExecutorCache
 
@@ -1118,9 +1428,21 @@ class SymbolicVariable(VariableBase):
             graph.pycode_gen._origin_code
         )
 
-        if SymbolicVariable.should_create_symbolic_variable(
+        should_create_sym = SymbolicVariable.should_create_symbolic_variable(
             value, tracker, symbolic_inputs
+        )
+        if (
+            should_create_sym is None
+            and SymbolicVariable.find_tensor_shape_source(tracker) is not None
         ):
+            graph.add_global_guarded_variable(
+                ConstantVariable(value, graph, tracker)
+            )
+            raise ConditionalFallbackError(
+                "Fallback graph since input has 0 size Tensor",
+                disable_eval_frame=True,
+            )
+        elif should_create_sym:
             return SymbolicVariable(SymbolicInt(value), graph, tracker)
         return None
 
@@ -1128,7 +1450,7 @@ class SymbolicVariable(VariableBase):
 class ParameterVariable(TensorVariable):
     def __init__(
         self,
-        meta: MetaInfo,
+        meta: MetaInfoOrNull,
         graph: FunctionGraph,
         tracker: Tracker,
     ):
@@ -1137,7 +1459,7 @@ class ParameterVariable(TensorVariable):
     @VariableFactory.register_from_value(successor="TensorVariable")
     def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
         if isinstance(value, (paddle.base.framework.EagerParamBase)):
-            value = MetaInfo.from_tensor(value)
+            value = MetaInfoOrNull.from_tensor(value)
             return ParameterVariable(value, graph, tracker)
         return None
 
@@ -1153,6 +1475,7 @@ class ObjectVariable(VariableBase):
     """
 
     make_stringified_guard = object_equal_stringified_guard
+    make_faster_guard = object_equal_faster_guard
 
     def __init__(self, obj, graph, tracker):
         super().__init__(graph, tracker)
@@ -1229,9 +1552,7 @@ class SuperVariable(VariableBase):
                 attr = attr.bind(self.obj, name)
             return attr
 
-        raise HasNoAttributeError(
-            f"{self.obj.__class__.__name__} {self} has no attribute {name}"
-        )
+        return super().getattr(name)
 
     @VariableFactory.register_from_value()
     def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
@@ -1280,12 +1601,25 @@ class SliceVariable(VariableBase):
             self.getattr("step").get_py_value(),
         )
 
+    @check_faster_guard
+    def make_faster_guard(self) -> list[paddle.framework.core.GuardNodeBase]:
+        expr_node = self.tracker.guard_tree_expr_node()
+        return [
+            paddle.framework.core.GuardNode(
+                paddle.framework.core.TypeMatchGuard(slice),
+                [expr_node],
+            ),
+            *self.getattr("start").make_faster_guard(),
+            *self.getattr("stop").make_faster_guard(),
+            *self.getattr("step").make_faster_guard(),
+        ]
+
     @check_guard
     def make_stringified_guard(self) -> list[StringifiedExpression]:
         frame_value_tracer = self.tracker.trace_value_from_frame()
         result = [
             FasterStringifiedExpression(
-                "id(type({{}})) == id(slice)",
+                f"id(type({{}})) == {id(slice)}",
                 paddle.framework.core.TypeMatchGuard(slice),
                 [frame_value_tracer],
                 frame_value_tracer.free_vars,
@@ -1363,6 +1697,7 @@ class ModuleVariable(VariableBase):
 
     # Happened in a inline import statement.
     make_stringified_guard = object_equal_stringified_guard
+    make_faster_guard = object_equal_faster_guard
 
 
 class DygraphTracerVariable(VariableBase):
@@ -1373,6 +1708,10 @@ class DygraphTracerVariable(VariableBase):
 
     def get_py_value(self, allow_tensor=False):
         return self.value
+
+    @check_faster_guard
+    def make_faster_guard(self) -> list[paddle.framework.core.GuardNodeBase]:
+        return []
 
     @check_guard
     def make_stringified_guard(self) -> list[StringifiedExpression]:
@@ -1391,9 +1730,9 @@ class DygraphTracerVariable(VariableBase):
         return None
 
 
-class NumpyVariable(VariableBase):
+class NumPyVariable(VariableBase):
     """
-    NumpyVariable is a subclass of VariableBase used to wrap a Variable of the numpy type.
+    NumPyVariable is a subclass of VariableBase used to wrap a Variable of the numpy type.
 
     Args:
         value: The numpy value to be wrapped.
@@ -1423,19 +1762,19 @@ class NumpyVariable(VariableBase):
 
     @staticmethod
     def format_number(number: np.number):
-        return f"{NumpyVariable.format_dtype(number.dtype)}({number.item()})"
+        return f"{NumPyVariable.format_dtype(number.dtype)}({number.item()})"
+
+    @check_faster_guard
+    def make_faster_guard(self) -> list[paddle.framework.core.GuardNodeBase]:
+        raise NotImplementedError(
+            f"{self.__class__.__name__}.make_faster_guard is not implemented"
+        )
 
     def make_stringified_guard(self) -> None:
         raise NotImplementedError
 
-    @VariableFactory.register_from_value()
-    def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
-        if isinstance(value, np.ndarray):
-            return NumpyArrayVariable(value, graph, tracker)
-        return None
 
-
-class NumpyNumberVariable(NumpyVariable):
+class NumPyNumberVariable(NumPyVariable):
     def _reconstruct(self, codegen: PyCodeGen):
         np_type = self.get_py_type()
         type_id = f"___np_{np_type.__name__}"
@@ -1452,12 +1791,30 @@ class NumpyNumberVariable(NumpyVariable):
             np.number.item, self.graph, GetAttrTracker(self, name)
         ).bind(self, name)
 
+    @check_faster_guard
+    def make_faster_guard(self) -> list[paddle.framework.core.GuardNodeBase]:
+        expr_node = self.tracker.guard_tree_expr_node()
+        dtype_guard = paddle.framework.core.GuardNode(
+            paddle.framework.core.NumPyDtypeMatchGuard(
+                self.get_py_value().dtype
+            ),
+            [expr_node],
+        )
+
+        return [
+            dtype_guard,
+            paddle.framework.core.GuardNode(
+                paddle.framework.core.ValueMatchGuard(self.get_py_value()),
+                [expr_node],
+            ),
+        ]
+
     @check_guard
     def make_stringified_guard(self) -> list[StringifiedExpression]:
         frame_value_tracer = self.tracker.trace_value_from_frame()
 
         dtype_guard = FasterStringifiedExpression(
-            f"{{}}.dtype == {NumpyVariable.format_dtype(self.get_py_value().dtype)}",
+            f"{{}}.dtype == {NumPyVariable.format_dtype(self.get_py_value().dtype)}",
             paddle.framework.core.NumPyDtypeMatchGuard(
                 self.get_py_value().dtype
             ),
@@ -1468,7 +1825,7 @@ class NumpyNumberVariable(NumpyVariable):
         return [
             dtype_guard,
             FasterStringifiedExpression(
-                f"{{}} == {NumpyVariable.format_number(self.get_py_value())}",
+                f"{{}} == {NumPyVariable.format_number(self.get_py_value())}",
                 paddle.framework.core.ValueMatchGuard(self.get_py_value()),
                 [frame_value_tracer],
                 union_free_vars(frame_value_tracer.free_vars, {"np": np}),
@@ -1478,46 +1835,147 @@ class NumpyNumberVariable(NumpyVariable):
     @VariableFactory.register_from_value()
     def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
         if isinstance(value, np.number):
-            return NumpyNumberVariable(value, graph, tracker)
+            return NumPyNumberVariable(value, graph, tracker)
         return None
 
 
-class NumpyBoolVariable(NumpyNumberVariable):
+class NumPyBoolVariable(NumPyNumberVariable):
     @VariableFactory.register_from_value()
     def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
         if isinstance(value, np.bool_):
-            return NumpyBoolVariable(value, graph, tracker)
+            return NumPyBoolVariable(value, graph, tracker)
         return None
 
 
-class NumpyArrayVariable(NumpyVariable):
+class NumPyArrayVariable(NumPyVariable):
+    var_name_generator = NameGenerator("np_var_")
+    value: npt.NDArray[Any]
+    mutable_attrs: list[str] = ["meta"]
+
+    def __init__(
+        self,
+        value_or_meta: npt.NDArray[Any] | MetaInfoOrNull,
+        graph: FunctionGraph,
+        tracker: Tracker,
+    ):
+        super().__init__(None, graph, tracker)
+        self.var_name = self.var_name_generator.next()
+        self.graph.side_effects.record_mutable_variable(self)
+
+        if isinstance(value_or_meta, MetaInfoOrNull):
+            # TODO(wangmingkai02): self.value
+            self.value = None
+            self.meta = value_or_meta
+        else:
+            self.value = value_or_meta
+            self.meta = MetaInfoOrNull.from_numpy(self.value)
+
+    def __len__(self):
+        meta = self.meta.unwrap_unsafe()
+        if isinstance(meta.shape[0], SymbolicInt):
+            raise BreakGraphError(
+                DataDependencyDynamicShapeBreak(
+                    "length of NumPy array Variable with first dimension is dynamic shape causes graph break."
+                )
+            )
+        return meta.shape[0]
+
+    def get_py_type(self):
+        return np.ndarray
+
+    def get_py_value(self, allow_tensor=False) -> Any:
+        raise BreakGraphError(
+            UnsupportedOperationBreak(
+                reason_str="NumPyArrayVariable doesn't support get_py_value operation."
+            )
+        )
+
+    def get_symbol(self) -> Symbol:
+        return Symbol(self.var_name)
+
+    def get_iter(self):
+        from .iter import SequenceIterVariable
+
+        return SequenceIterVariable(self, self.graph, GetIterTracker(self))
+
+    @VariableFactory.register_from_value()
+    def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
+        if isinstance(value, np.ndarray):
+            return NumPyArrayVariable(value, graph, tracker)
+        return None
+
+    @property
+    def out_var_name(self):
+        return f"{self.graph.OUT_VAR_PREFIX}{self.var_name}"
+
+    def _reconstruct(self, codegen: PyCodeGen):
+        codegen.gen_load_fast(self.out_var_name)
+        codegen.gen_load_method("numpy")
+        codegen.gen_call_method(0)
+
+    @check_faster_guard
+    def make_faster_guard(self) -> list[paddle.framework.core.GuardNodeBase]:
+        meta = self.meta.unwrap_unsafe()
+        expr_node = self.tracker.guard_tree_expr_node()
+        type_guard = paddle.framework.core.GuardNode(
+            paddle.framework.core.TypeMatchGuard(self.get_py_type()),
+            [expr_node],
+        )
+        dtype_guard = paddle.framework.core.GuardNode(
+            paddle.framework.core.NumPyDtypeMatchGuard(
+                np.dtype(_PADDLE_PIR_DTYPE_2_NUMPY_DTYPE[meta.dtype])
+            ),
+            [expr_node],
+        )
+        shape_guard = paddle.framework.core.GuardNode(
+            paddle.framework.core.NumPyArrayShapeMatchGuard(meta.shape),
+            [expr_node],
+        )
+        return [type_guard, dtype_guard, shape_guard]
+
     @check_guard
     def make_stringified_guard(self) -> list[StringifiedExpression]:
         frame_value_tracer = self.tracker.trace_value_from_frame()
-        obj_free_var_name = f"__{self.id}"
+        meta = self.meta.unwrap_unsafe()
 
         dtype_guard = FasterStringifiedExpression(
-            f"{{}}.dtype == {NumpyVariable.format_dtype(self.get_py_value().dtype)}",
+            f"{{}}.dtype == {NumPyVariable.format_dtype(np.dtype(_PADDLE_PIR_DTYPE_2_NUMPY_DTYPE[meta.dtype]))}",
             paddle.framework.core.NumPyDtypeMatchGuard(
-                self.get_py_value().dtype
+                np.dtype(_PADDLE_PIR_DTYPE_2_NUMPY_DTYPE[meta.dtype])
             ),
             [frame_value_tracer],
             union_free_vars(frame_value_tracer.free_vars, {"np": np}),
         )
 
         return [
-            dtype_guard,
             FasterStringifiedExpression(
-                f"({{}} == {obj_free_var_name}).all()",
-                paddle.framework.core.NumPyArrayValueMatchGuard(
-                    self.get_py_value()
-                ),
+                f"id(type({{}})) == {id(self.get_py_type())}",
+                paddle.core.TypeMatchGuard(self.get_py_type()),
                 [frame_value_tracer],
-                union_free_vars(
-                    frame_value_tracer.free_vars,
-                    {obj_free_var_name: self.get_py_value()},
-                ),
+                union_free_vars(frame_value_tracer.free_vars),
             ),
+            dtype_guard,
+            StringifiedExpression(
+                f"len({{}}.shape) == {len(meta.shape)}",
+                [frame_value_tracer],
+                union_free_vars(frame_value_tracer.free_vars),
+            ),
+            *[
+                (
+                    StringifiedExpression(
+                        f"{{}}.shape[{i}] == {meta.shape[i]}",
+                        [frame_value_tracer],
+                        union_free_vars(frame_value_tracer.free_vars),
+                    )
+                    if not isinstance(meta.shape[i], SymbolicInt)
+                    else StringifiedExpression(
+                        f"{{}}.shape[{i}] >= 1",
+                        [frame_value_tracer],
+                        union_free_vars(frame_value_tracer.free_vars),
+                    )
+                )
+                for i in range(len(meta.shape))
+            ],
         ]
 
 
@@ -1648,18 +2106,18 @@ class GlobalVariable(VariableBase):
     def get(self, key):
         if isinstance(key, VariableBase):
             raise InnerError(
-                f"[{self.__class__.__name__}]: received {key} to get value."
+                f"[{self.__class__.__name__}] received {key} to get value."
             )
         return self.proxy.get(key)
 
     def set(self, key, value):
         if isinstance(key, VariableBase):
             raise InnerError(
-                f"[{self.__class__.__name__}]: received {key} as key."
+                f"[{self.__class__.__name__}] received {key} as key."
             )
         if not isinstance(value, VariableBase):
             raise InnerError(
-                f"[{self.__class__.__name__}]: received {value} to set value."
+                f"[{self.__class__.__name__}] received {value} to set value."
             )
         self.proxy.set(key, value)
         self.graph.side_effects.record_proxy_variable(self)
@@ -1681,7 +2139,7 @@ class FunctionGlobalVariable(GlobalVariable):
         self.fn = fn
 
     def proxy_getter(self, proxy: MutableDictLikeData, key: Any):
-        from ..opcode_inline_executor import FunctionGlobalTracker
+        from ..tracker import FunctionGlobalTracker
 
         if key not in proxy.original_data:
             return MutableDictLikeData.Empty()
@@ -1690,3 +2148,172 @@ class FunctionGlobalVariable(GlobalVariable):
             self.graph,
             tracker=FunctionGlobalTracker(self.fn, key),
         )
+
+
+class ExceptionVariable(VariableBase):
+    # The ExceptionVariable corresponds to the Exception class in Python
+    mutable_attrs = [
+        "__context__",
+        "__cause__",
+        "__suppress_context__",
+        "__traceback__",
+    ]
+
+    def __init__(
+        self,
+        exc: Exception,
+        graph: FunctionGraph = None,
+        tracker: Tracker = None,
+    ) -> None:
+        super().__init__(graph=graph, tracker=tracker)
+
+        self.exc = exc
+        self.exc_type = exc.__class__
+        self.args_variables = VariableFactory.from_value(
+            exc.args, graph=graph, tracker=GetAttrTracker(self, "args")
+        )
+
+        self.__context__ = VariableFactory.from_value(
+            self.exc.__context__,
+            graph=graph,
+            tracker=GetAttrTracker(self, "__context__"),
+        )
+
+        # raise ... from ...
+        self.__cause__ = VariableFactory.from_value(
+            self.exc.__cause__,
+            graph=graph,
+            tracker=GetAttrTracker(self, "__cause__"),
+        )
+
+        self.__suppress_context__ = VariableFactory.from_value(
+            self.exc.__suppress_context__,
+            graph=graph,
+            tracker=GetAttrTracker(self, "__suppress_context__"),
+        )
+
+        # NOTE: Currently, since our primary goal is to trace the network structure of variables,
+        # __traceback__ is always set to None.
+        self.__traceback__ = ConstantVariable.wrap_literal(None, self.graph)
+
+        self.graph.side_effects.record_mutable_variable(self)
+
+    def get_py_type(self):
+        return self.exc_type
+
+    def get_py_value(self):
+        return self.exc
+
+    @property
+    def main_info(self) -> dict[str, Any]:
+        return {
+            "exception": self.exc,
+        }
+
+    def setattr(self, key: str, value):
+        # TODO(DrRyanHuang): Add UserDefinedException to __context__ and __cause__
+        # TODO(DrRyanHuang): Do users also manually set exception attributes, and should we change FallbackError/InnerError to TypeError?
+        if key == "__context__":
+            if (
+                isinstance(value, ConstantVariable)
+                and value.get_py_value() is None
+            ) or isinstance(
+                value,
+                ExceptionVariable,
+            ):
+                self.__context__ = value
+            else:
+                raise FallbackError(
+                    f"`__context__` must be an ExceptionVariable, bug got {type(value)}:{value}"
+                )
+        elif key == "__cause__":
+            if (
+                isinstance(value, ConstantVariable)
+                and value.get_py_value() is None
+            ) or isinstance(
+                value,
+                ExceptionVariable,
+            ):
+                self.__cause__ = value
+                self.__suppress_context__ = ConstantVariable.wrap_literal(
+                    True, self.graph
+                )
+            else:
+                raise FallbackError(
+                    "exception cause must be None or derive from BaseException"
+                )
+        elif key == "__suppress_context__":
+            if isinstance(value, ConstantVariable) and isinstance(
+                value.get_py_value(), bool
+            ):
+                self.__suppress_context__ = value
+            else:
+                raise FallbackError("Type of __suppress_context__ must be bool")
+        elif key == "__traceback__":
+            if (
+                isinstance(value, ConstantVariable)
+                and value.get_py_value() is None
+            ):
+                self.__traceback__ = value
+            else:
+                raise FallbackError(
+                    "Currently, SOT doesn't record information of __traceback__"
+                )
+        else:
+            raise InnerError(f"ExceptionVariable don't need attribute {key}")
+
+    def getattr(self, name: str, default=None) -> VariableBase:
+        if name == "__traceback__":
+            return ConstantVariable.wrap_literal(None, self.graph)
+
+        if name == "args":
+            return self.args_variables
+
+        return super().getattr(name, default)
+
+    @classmethod
+    def check_if_exception_matches(
+        cls,
+        exc_instance: BuiltinVariable | ExceptionVariable,
+        expected_exc_types: BuiltinVariable | TupleVariable,
+    ):
+        """
+        try: exc_instance except: expected_exc_types
+        """
+        from .callable import BuiltinVariable
+        from .container import TupleVariable
+
+        if isinstance(expected_exc_types, TupleVariable):
+            expected_types = expected_exc_types.get_wrapped_items()
+        else:
+            expected_types = [
+                expected_exc_types,
+            ]
+        for expected_type in expected_types:
+            if not isinstance(expected_type, BuiltinVariable):
+                raise FallbackError(
+                    f"`except ...` requires a BuiltinVariable as the exception type, but received: {expected_type}."
+                )
+            # Exception -> SotCapturedException
+            expected_type_exception = SotCapturedExceptionFactory.get(
+                expected_type.get_py_value()
+            )
+            if isinstance(exc_instance, ExceptionVariable) and issubclass(
+                exc_instance.exc_type,
+                expected_type_exception,
+            ):
+                return True
+            elif isinstance(exc_instance, BuiltinVariable) and issubclass(
+                exc_instance.get_py_value(), expected_type_exception
+            ):
+                return True
+        return False
+
+    @VariableFactory.register_from_value()
+    def from_value(value: Exception, graph: FunctionGraph, tracker: Tracker):
+        if isinstance(value, Exception):
+            exception_var = ExceptionVariable(
+                value, graph=graph, tracker=tracker
+            )
+            return exception_var
+        return None

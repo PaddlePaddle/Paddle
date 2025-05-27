@@ -24,7 +24,7 @@
 namespace paddle {
 namespace dialect {
 
-const char *TensorRTEngineOp::attributes_name[16] = {
+const char *TensorRTEngineOp::attributes_name[17] = {
     "engine_serialized_data",
     "workspace_size",
     "allow_build_at_runtime",
@@ -41,7 +41,7 @@ const char *TensorRTEngineOp::attributes_name[16] = {
     "refit_params_path",
     "refit_param_names",
     "refit_param_names2trt_names",
-};
+    "use_cuda_graph"};
 
 OpInfoTuple TensorRTEngineOp::GetOpInfo() {
   std::vector<paddle::dialect::OpInputInfo> inputs = {
@@ -79,6 +79,8 @@ OpInfoTuple TensorRTEngineOp::GetOpInfo() {
           "opt_input_shape_vector", "pir::ArrayAttribute", ""),
       paddle::dialect::OpAttributeInfo(
           "converter_debug_info", "pir::StrAttribute", ""),
+      paddle::dialect::OpAttributeInfo(
+          "use_cuda_graph", "pir::BoolAttribute", ""),
       paddle::dialect::OpAttributeInfo(
           "refit_params_path", "pir::StrAttribute", ""),
       paddle::dialect::OpAttributeInfo(
@@ -149,6 +151,9 @@ void TensorRTEngineOp::Build(pir::Builder &builder,             // NOLINT
   pir::Attribute attr_allow_build_at_runtime = pir::BoolAttribute::get(
       pir::IrContext::Instance(), trt_params.allow_build_at_runtime);
   argument.AddAttribute("allow_build_at_runtime", attr_allow_build_at_runtime);
+  pir::Attribute attr_use_cuda_graph = pir::BoolAttribute::get(
+      pir::IrContext::Instance(), trt_params.use_cuda_graph);
+  argument.AddAttribute("use_cuda_graph", attr_use_cuda_graph);
 
   std::vector<pir::Attribute> refit_param_names_attrs;
   for (const auto &name : trt_params.refit_param_names) {
@@ -289,6 +294,7 @@ void TensorRTEngineOp::VerifySig() {
     VERIFY_ATTRIBUTE(pir::ArrayAttribute, max_input_shape_vector);
     VERIFY_ATTRIBUTE(pir::ArrayAttribute, opt_input_shape_vector);
     VERIFY_ATTRIBUTE(pir::StrAttribute, converter_debug_info);
+    VERIFY_ATTRIBUTE(pir::BoolAttribute, use_cuda_graph);
     VERIFY_ATTRIBUTE(pir::StrAttribute, refit_params_path);
     VERIFY_ATTRIBUTE(pir::ArrayAttribute, refit_param_names);
     VERIFY_ATTRIBUTE(pir::ArrayAttribute, refit_param_names2trt_names);

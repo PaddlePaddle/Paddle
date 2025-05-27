@@ -944,9 +944,7 @@ def save(
 
         if isinstance(obj, paddle.static.Program):
             if in_pir_mode():
-                paddle.core.serialize_pir_program(
-                    obj, path, 1, True, False, True
-                )
+                paddle.core.serialize_pir_program(obj, path)
             else:
                 obj.desc.flush()
                 with _open_file_buffer(path, "wb") as f:
@@ -1255,9 +1253,7 @@ def load(path: str | BytesIO, **configs: Unpack[_LoadOptions]) -> Any:
                     try:
                         if in_pir_mode():
                             program = paddle.static.Program()
-                            paddle.core.deserialize_pir_program(
-                                path, program, 1
-                            )
+                            paddle.core.deserialize_pir_program(path, program)
                             return program
                         with _open_file_buffer(path, "rb") as f:
                             program_desc_str = f.read()

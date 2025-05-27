@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #pragma once
-#include <absl/container/flat_hash_map.h>
 
 #include <set>
 #include <string>
@@ -25,7 +24,7 @@
 #include "paddle/cinn/ir/ir_base.h"
 #include "paddle/cinn/ir/tensor.h"
 #include "paddle/cinn/poly/stage.h"
-
+#include "paddle/utils/flat_hash_map.h"
 namespace cinn {
 namespace ast_gen_ius {
 
@@ -103,7 +102,7 @@ class TensorGroup {
    * Allocate buffers for Tensors in TensorGroup, it handles the shared memory
    * using Union-Find set algorithm.
    */
-  absl::flat_hash_map<std::string, ir::Tensor> AllocateBuffers();
+  paddle::flat_hash_map<std::string, ir::Tensor> AllocateBuffers();
 
   /**
    * Returns tensors in topological order and remove those args
@@ -118,7 +117,7 @@ class TensorGroup {
   std::set<std::string> output_tensor_names_;
 
   /** collection of all tensors in this TensorGroup */
-  absl::flat_hash_map<std::string, ir::Tensor> name_to_tensor_;
+  paddle::flat_hash_map<std::string, ir::Tensor> name_to_tensor_;
 
   /** Stores vector of tensor names, which the key tensor depends on */
   std::unordered_map<std::string, std::unordered_set<std::string>> ctrl_dep_;

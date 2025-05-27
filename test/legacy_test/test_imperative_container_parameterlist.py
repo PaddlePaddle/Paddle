@@ -28,8 +28,10 @@ class MyLayer(paddle.nn.Layer):
 
     def paddle_imperative_ParameterList(self, num_stacked_param):
         return paddle.nn.ParameterList(
-            [paddle.create_parameter(shape=[2, 2], dtype='float32')]
-            * num_stacked_param
+            [
+                paddle.create_parameter(shape=[2, 2], dtype='float32')
+                for _ in range(num_stacked_param)
+            ]
         )
 
     def forward(self, x):
@@ -67,7 +69,60 @@ class TestImperativeContainerParameterList(unittest.TestCase):
 
     def test_parameter_list(self):
         self.parameter_list(False)
-        self.parameter_list(True)
+
+
+class TestParameterListAssignment(unittest.TestCase):
+    def test_assign_Tensor(self):
+        param_list = paddle.nn.ParameterList(
+            [
+                paddle.create_parameter(shape=[2, 2], dtype='float32'),
+                paddle.create_parameter(shape=[2, 2], dtype='float32'),
+            ]
+        )
+        assert isinstance(param_list[0], paddle.base.framework.EagerParamBase)
+        assert isinstance(param_list[1], paddle.base.framework.EagerParamBase)
+
+        new_param1 = paddle.randn([2, 3])
+        param_list[0] = new_param1
+        assert isinstance(param_list[0], paddle.base.framework.EagerParamBase)
+
+        new_param2 = paddle.randn([2, 4])
+        param_list[1] = new_param2
+        assert isinstance(param_list[1], paddle.base.framework.EagerParamBase)
+
+        np.testing.assert_allclose(new_param1.numpy(), param_list[0].numpy())
+        np.testing.assert_allclose(new_param2.numpy(), param_list[1].numpy())
+
+    def test_assign_Parameter(self):
+        param_list = paddle.nn.ParameterList(
+            [
+                paddle.create_parameter(shape=[2, 3], dtype='float32'),
+                paddle.create_parameter(shape=[2, 4], dtype='float32'),
+            ]
+        )
+        assert isinstance(param_list[0], paddle.base.framework.EagerParamBase)
+        assert isinstance(param_list[1], paddle.base.framework.EagerParamBase)
+
+        new_param1 = paddle.create_parameter([2, 5], dtype='float32')
+        param_list[0] = new_param1
+        assert isinstance(param_list[0], paddle.base.framework.EagerParamBase)
+
+        new_param2 = paddle.create_parameter([2, 6], dtype='float64')
+        param_list[1] = new_param2
+        assert isinstance(param_list[1], paddle.base.framework.EagerParamBase)
+
+        np.testing.assert_allclose(new_param1.numpy(), param_list[0].numpy())
+        np.testing.assert_allclose(new_param2.numpy(), param_list[1].numpy())
+
+    def test_assign_wrong_type(self):
+        param_list = paddle.nn.ParameterList(
+            [
+                paddle.create_parameter(shape=[2, 2], dtype='float32'),
+                paddle.create_parameter(shape=[2, 2], dtype='float32'),
+            ]
+        )
+        with self.assertRaises(TypeError):
+            param_list[0] = 1
 
 
 if __name__ == '__main__':

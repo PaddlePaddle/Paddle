@@ -449,6 +449,7 @@ class TensorRTEngine {
 
   const std::string& refit_params_path() { return params_.refit_params_path; }
   bool use_dla() { return params_.use_dla; }
+  bool use_cuda_graph() { return params_.use_cuda_graph; }
   bool with_interleaved() { return params_.with_interleaved; }
   const std::string& tensorrt_transformer_posid() {
     return params_.tensorrt_transformer_posid;

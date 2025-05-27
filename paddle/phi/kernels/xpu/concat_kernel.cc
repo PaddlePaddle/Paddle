@@ -90,13 +90,13 @@ void ConcatKernel(const Context& dev_ctx,
     }
   }
 
-  std::vector<std::vector<int>> xdims_list;
+  std::vector<std::vector<int64_t>> xdims_list;
   std::vector<const XPUType*> ptrs;
   for (unsigned int i = 0; i < x.size(); ++i) {
     if (x[i] && x[i]->numel() > 0) {
       ptrs.push_back(reinterpret_cast<const XPUType*>(x[i]->data<T>()));
       int size = x[i]->dims().size();
-      std::vector<int> tmp_dims(size);
+      std::vector<int64_t> tmp_dims(size);
       for (int j = 0; j < size; ++j) {
         tmp_dims[j] = x[i]->dims()[j];
       }

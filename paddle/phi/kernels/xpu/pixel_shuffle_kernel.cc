@@ -28,6 +28,9 @@ void PixelShuffleKernel(const Context& ctx,
 
   const T* x_ptr = x.data<T>();
   T* y_ptr = ctx.template Alloc<T>(out);
+  if (out && out->numel() == 0) {
+    return;
+  }
 
   bool is_nchw = data_format == "NCHW";
 

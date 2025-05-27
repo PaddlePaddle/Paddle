@@ -89,7 +89,7 @@ std::vector<pir::CINNKernelInfo> PirCompiler::Build(
           ::pir::ShapeAnalysisManager::Instance().Get(
               group_compilation_contexts[index].GetGroup()->GetParentProgram());
       cinn::common::ShapeConstraintManager::Instance().Init(
-          shape_analysis_manager.constraints_manager().equals());
+          shape_analysis_manager.constraints_manager());
       runtime::SetArchDevice(target_, device_id);
       compilation_results[index] = Compile(&group_compilation_contexts[index]);
     };
@@ -126,7 +126,7 @@ std::shared_ptr<pir::CompilationResult> PirCompiler::Compile(
             ::pir::ShapeAnalysisManager::Instance().Get(
                 switch_group_ctxs[index].GetGroup()->GetParentProgram());
         cinn::common::ShapeConstraintManager::Instance().Init(
-            shape_analysis_manager.constraints_manager().equals());
+            shape_analysis_manager.constraints_manager());
         CompilationTask lowering_task(&switch_group_ctxs[index]);
         lowering_task.Lowering();
       };

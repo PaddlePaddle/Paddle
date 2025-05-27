@@ -90,7 +90,7 @@ class TrtConvertLogicalTest(TrtLayerAutoScanTest):
 
                     yield program_config
 
-    def generate_dynamic_shape(self):
+    def generate_dynamic_shape(self, attrs):
         if self.dims == 2:
             self.dynamic_shape.min_input_shape = {
                 "input_data1": [2, 16],
@@ -167,7 +167,7 @@ class TrtConvertLogicalTest(TrtLayerAutoScanTest):
         ), (1e-3, 1e-3)
 
         # for dynamic_shape
-        self.generate_dynamic_shape()
+        self.generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         program_config.set_input_type(np.float32)
         yield self.create_inference_config(), generate_trt_nodes_num(
@@ -238,7 +238,7 @@ class TrtConvertCompareTest(TrtLayerAutoScanTest):
 
                     yield program_config
 
-    def generate_dynamic_shape(self):
+    def generate_dynamic_shape(self, attrs):
         if self.dims == 2:
             self.dynamic_shape.min_input_shape = {
                 "input_data1": [2, 16],
@@ -315,7 +315,7 @@ class TrtConvertCompareTest(TrtLayerAutoScanTest):
         ), (1e-3, 1e-3)
 
         # for dynamic_shape
-        self.generate_dynamic_shape()
+        self.generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         program_config.set_input_type(np.float32)
         yield self.create_inference_config(), generate_trt_nodes_num(
@@ -401,7 +401,7 @@ class TrtConvertLessEqualTest(TrtLayerAutoScanTest):
 
                     yield program_config
 
-    def generate_dynamic_shape(self):
+    def generate_dynamic_shape(self, attrs):
         if self.dims == 2:
             self.dynamic_shape.min_input_shape = {
                 "input_data1": [2, 16],
@@ -482,7 +482,7 @@ class TrtConvertLessEqualTest(TrtLayerAutoScanTest):
         ), (1e-3, 1e-3)
 
         # for dynamic_shape
-        self.generate_dynamic_shape()
+        self.generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         program_config.set_input_type(np.float32)
         yield self.create_inference_config(), generate_trt_nodes_num(
@@ -568,7 +568,7 @@ class TrtConvertGreaterEqualTest(TrtLayerAutoScanTest):
 
                     yield program_config
 
-    def generate_dynamic_shape(self):
+    def generate_dynamic_shape(self, attrs):
         if self.dims == 2:
             self.dynamic_shape.min_input_shape = {
                 "input_data1": [2, 16],
@@ -649,7 +649,7 @@ class TrtConvertGreaterEqualTest(TrtLayerAutoScanTest):
         ), (1e-3, 1e-3)
 
         # for dynamic_shape
-        self.generate_dynamic_shape()
+        self.generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         program_config.set_input_type(np.float32)
         yield self.create_inference_config(), generate_trt_nodes_num(
@@ -708,7 +708,7 @@ class TrtConvertCompareSkipTest(TrtLayerAutoScanTest):
 
                 yield program_config
 
-    def generate_dynamic_shape(self):
+    def generate_dynamic_shape(self, attrs):
         if self.dims == 2:
             shape_data = [2, 16]
         if self.dims == 3:
@@ -761,7 +761,7 @@ class TrtConvertCompareSkipTest(TrtLayerAutoScanTest):
         ), (1e-3, 1e-3)
 
         # for dynamic_shape
-        self.generate_dynamic_shape()
+        self.generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True

@@ -557,6 +557,10 @@ struct IndexExpr : public IrNodeRef {
    * Level3: Simplify with boundary.
    *   e.g. x % S0 ==> x if x < S0
    *        x / S0 ==> 0 if x < S0
+   * Level4: Simplify with broadcast constraint.
+   *   e.g. x % cinn_max(cinn_max(cinn_max(S0, S10), S20), S30))
+   *          % cinn_max(S10, S30) ==> x % cinn_max(S10, S30),
+   *        if broadcastable(S0, S10, S20, S30).
    *
    * Note: Because IndexExpr is generated in order, Short operand is at the
    * end of the expression, so Level1 is usually used.
@@ -565,7 +569,8 @@ struct IndexExpr : public IrNodeRef {
     kLevel0 = 0,  // TODO(liujinnan): Only constant folding is performed
     kLevel1 = 1,
     kLevel2 = 2,
-    kLevel3 = 3  // Top level, simplify
+    kLevel3 = 3,
+    kLevel4 = 4
   };
 
   enum class IndexType {

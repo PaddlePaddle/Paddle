@@ -136,24 +136,15 @@ void AsyncWorkQueue::AddTask(const OpFuncType& op_func_type,
 }
 
 bool IsCommunicationOp(const OperatorBase* op) {
-  if (op->HasAttr("ring_id")) {
-    return true;
-  }
-  return false;
+  return op->HasAttr("ring_id");
 }
 
 bool IsCommunicationOp(const Instruction& instr) {
-  if (!instr.OpBaseValid()) {
-    return false;
-  }
-  return IsCommunicationOp(instr.OpBase());
+  return instr.OpBaseValid() && IsCommunicationOp(instr.OpBase());
 }
 
 bool IsCommunicationOp(const ::pir::Operation* op) {
-  if (op->attributes().count("ring_id") != 0) {
-    return true;
-  }
-  return false;
+  return op->attributes().count("ring_id") != 0;
 }
 
 bool IsCpuOp(const Instruction& instr) {

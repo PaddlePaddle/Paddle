@@ -131,7 +131,7 @@ class TrtConvertSkipLayernormTest(TrtLayerAutoScanTest):
 
                         yield program_config
 
-    def generate_dynamic_shape(self):
+    def generate_dynamic_shape(self, attrs):
         self.dynamic_shape.min_input_shape = {
             "inputX_data": [4, 128, 768],
             "inputY_data": [4, 128, 768],
@@ -177,7 +177,7 @@ class TrtConvertSkipLayernormTest(TrtLayerAutoScanTest):
             ), 1e-2  # atol=1e-2 while rtol is 1e-8
 
         # just support dynamic_shape
-        self.generate_dynamic_shape()
+        self.generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True

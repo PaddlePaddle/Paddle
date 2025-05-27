@@ -13,10 +13,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include <Python.h>
-// Avoid a problem with copysign defined in pyconfig.h on Windows.
-#ifdef copysign
-#undef copysign
-#endif
 
 #include <algorithm>
 #include <cctype>
@@ -69,7 +65,6 @@ limitations under the License. */
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/phi/core/memory/allocation/cuda_ipc_allocator.h"
 #endif
-#include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/init.h"
 #include "paddle/fluid/platform/profiler/event_python.h"
@@ -1200,6 +1195,8 @@ void BindTensor(pybind11::module &m) {  // NOLINT
              self.unsafe_mutable_value()->ShareDataNoCheckWith(src.value());
              return self;
            })
+      .def("_numel",
+           [](DistTensor &self) -> int64_t { return self.value().numel(); })
       .def("_share_data_with",
            [](DistTensor &self, const DistTensor &src) {
              self.unsafe_set_dims(src.dims());

@@ -60,6 +60,20 @@ class TestInverseOpBatched(TestInverseOp):
         self.python_api = paddle.tensor.math.inverse
 
 
+class TestInverseOpZeroSize(TestInverseOp):
+    def config(self):
+        self.matrix_shape = [0, 0]
+        self.dtype = "float64"
+        self.python_api = paddle.tensor.math.inverse
+
+
+class TestInverseOpBatchedZeroSize(TestInverseOp):
+    def config(self):
+        self.matrix_shape = [7, 0, 0]
+        self.dtype = "float64"
+        self.python_api = paddle.tensor.math.inverse
+
+
 class TestInverseOpLarge(TestInverseOp):
     def config(self):
         self.matrix_shape = [32, 32]

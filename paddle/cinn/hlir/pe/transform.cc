@@ -987,7 +987,7 @@ std::vector<Tensor> MulMKL(const Tensor& A,
 void GetLayoutTransformInfo(
     const ir::Layout& src_layout,
     const ir::Layout& dst_layout,
-    absl::flat_hash_map<int, std::vector<int>>* split_index_map) {
+    paddle::flat_hash_map<int, std::vector<int>>* split_index_map) {
   PADDLE_ENFORCE_GT(
       dst_layout.ndims(),
       src_layout.ndims(),
@@ -1041,7 +1041,7 @@ std::vector<Expr> InferShapeLayoutTransform(
     const std::vector<Expr>& input_shapes,
     const ir::Layout& old_layout,
     const ir::Layout& new_layout,
-    absl::flat_hash_map<int, std::vector<int>>* split_index_map) {
+    paddle::flat_hash_map<int, std::vector<int>>* split_index_map) {
   int src_dim = old_layout.ndims();
   int dst_dim = new_layout.ndims();
   std::vector<Expr> output_shape(dst_dim);
@@ -1132,7 +1132,7 @@ ir::Tensor LayoutTransform(const Tensor& input,
                     4U,
                     ::common::errors::InvalidArgument(
                         "dst_layout size should be larger than 4"));
-  absl::flat_hash_map<int, std::vector<int>> split_index_map;
+  paddle::flat_hash_map<int, std::vector<int>> split_index_map;
   // transform shape
   int offset = 'A' - 'a';
   ir::Layout old_layout(src_layout);

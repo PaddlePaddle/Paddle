@@ -17,11 +17,13 @@ import unittest
 
 import numpy as np
 from dygraph_to_static_utils import (
+    BackendMode,
     Dy2StTestBase,
     IrMode,
     ToStaticMode,
     disable_test_case,
     enable_to_static_guard,
+    test_phi_only,
 )
 
 import paddle
@@ -103,7 +105,9 @@ class TestTensorCopyToCUDAWithWarningOnGPU(Dy2StTestBase):
         )
         return x1.place, x2.place, x2.numpy()
 
-    @disable_test_case((ToStaticMode.SOT_MGS10, IrMode.PIR))
+    @disable_test_case(
+        (ToStaticMode.SOT_MGS10, IrMode.PIR, BackendMode.PHI | BackendMode.CINN)
+    )
     def test_with_warning_on_gpu(self):
         if not paddle.is_compiled_with_cuda():
             return
@@ -136,6 +140,7 @@ class TestTensorCopyToCPUWithComputeOnDefaultGPU(Dy2StTestBase):
         x2 = paddle.jit.to_static(tensor_copy_to_cpu_with_compute)(x1)
         return x1.place, x2.place, x2.numpy()
 
+    @test_phi_only
     def test_tensor_cpu_with_compute_on_default_gpu(self):
         if not paddle.is_compiled_with_cuda():
             return

@@ -529,6 +529,11 @@ void MaskedSelectInferMeta(const MetaTensor& x,
                            const MetaTensor& mask,
                            MetaTensor* out);
 
+void MaskedFillInferMeta(const MetaTensor& x,
+                         const MetaTensor& mask,
+                         const MetaTensor& value,
+                         MetaTensor* out);
+
 void MatmulInferMeta(const MetaTensor& x,
                      const MetaTensor& y,
                      bool trans_x,
@@ -783,7 +788,6 @@ void Unpool3dInferMeta(const MetaTensor& x,
 void WeightDequantizeInferMeta(const MetaTensor& x,
                                const MetaTensor& scale,
                                const std::string& algo,
-                               DataType out_dtype,
                                const int32_t group_size,
                                MetaTensor* out);
 

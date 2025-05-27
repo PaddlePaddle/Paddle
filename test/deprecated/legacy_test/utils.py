@@ -85,9 +85,6 @@ def _is_equal_program(prog1, prog2):
             if var1.dtype != var2.dtype:
                 return False
 
-            if var1.lod_level != var2.lod_level:
-                return False
-
             if var1.persistable != var2.persistable:
                 return False
 

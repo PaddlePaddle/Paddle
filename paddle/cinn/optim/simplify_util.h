@@ -324,5 +324,21 @@ std::optional<std::unordered_map<std::string, ir::IndexExpr>> MatchPattern(
  * \return `IndexExpr` after simplification.
  */
 ir::IndexExpr BoundSimplify(const ir::IndexExpr &expr);
+
+/*!
+ * \brief Simplify IndexExpr with broadcastable information.
+ * For example:
+ *        x % cinn_max(cinn_max(cinn_max(S0, S10), S20), S30))
+ *          % cinn_max(S10, S30) ==> x % cinn_max(S10, S30),
+ *        if broadcastable(S0, S10, S20, S30).
+ * Note: The following conditions must be met:
+ * 1. Two consecutive modular operations.
+ * 2. The first modulus is broadcastable.
+ * 3. The second modulus is a subset of the first modulus.
+ *
+ * \param expr The `IndexExpr` to be simplified.
+ * \return `IndexExpr` after simplification.
+ */
+ir::IndexExpr BroadcastSimplify(const ir::IndexExpr &expr);
 }  // namespace optim
 }  // namespace cinn

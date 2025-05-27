@@ -409,5 +409,50 @@ const Target &DefaultTarget() {
 #endif
 }
 
+bool GetSupportsCooperativeLaunchImpl(UnknownArch) {
+  LOG(FATAL)
+      << "The target is not GPU! Cannot get supports cooperative launch.";
+}
+
+bool GetSupportsCooperativeLaunchImpl(X86Arch) {
+  LOG(FATAL)
+      << "The target is not GPU! Cannot get supports cooperative launch.";
+}
+
+bool GetSupportsCooperativeLaunchImpl(ARMArch) {
+  LOG(FATAL)
+      << "The target is not GPU! Cannot get supports cooperative launch.";
+}
+
+bool GetSupportsCooperativeLaunchImpl(NVGPUArch) {
+  int supportsCoopLaunch = 0;
+#ifdef CINN_WITH_CUDA
+  cudaDeviceGetAttribute(&supportsCoopLaunch, cudaDevAttrCooperativeLaunch, 0);
+#endif
+  return supportsCoopLaunch != 0;
+}
+
+bool GetSupportsCooperativeLaunchImpl(HygonDCUArchHIP) {
+  CINN_NOT_IMPLEMENTED
+  LOG(FATAL)
+      << "The target is not GPU! Cannot get supports cooperative launch.";
+}
+
+bool GetSupportsCooperativeLaunchImpl(HygonDCUArchSYCL) {
+  CINN_NOT_IMPLEMENTED
+  LOG(FATAL)
+      << "The target is not GPU! Cannot get supports cooperative launch.";
+}
+
+bool GetSupportsCooperativeLaunch(Arch arch) {
+  return std::visit(
+      [](const auto &impl) { return GetSupportsCooperativeLaunchImpl(impl); },
+      arch.variant());
+}
+
+bool Target::get_supports_cooperative_launch() const {
+  return GetSupportsCooperativeLaunch(arch);
+}
+
 }  // namespace common
 }  // namespace cinn

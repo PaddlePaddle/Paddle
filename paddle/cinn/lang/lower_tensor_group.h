@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #pragma once
-#include <absl/container/flat_hash_map.h>
 
 #include <iostream>
 #include <map>
@@ -37,6 +36,7 @@
 #include "paddle/cinn/optim/transform_gpu_forloop.h"
 #include "paddle/cinn/optim/transform_polyfor_to_for.h"
 #include "paddle/cinn/poly/ast_gen.h"
+#include "paddle/utils/flat_hash_map.h"
 
 namespace cinn {
 namespace lang {

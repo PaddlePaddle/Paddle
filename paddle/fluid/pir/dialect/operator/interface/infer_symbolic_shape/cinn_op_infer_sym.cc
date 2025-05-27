@@ -260,6 +260,16 @@ bool ReduceSumOpInferSymbolicShape(
   return ReduceInferSymbolicShape(op, infer_context);
 }
 
+bool ArgminOpInferSymbolicShape(pir::Operation *op,
+                                pir::InferSymbolicShapeContext *infer_context) {
+  return ReduceInferSymbolicShape(op, infer_context);
+}
+
+bool ArgmaxOpInferSymbolicShape(pir::Operation *op,
+                                pir::InferSymbolicShapeContext *infer_context) {
+  return ReduceInferSymbolicShape(op, infer_context);
+}
+
 bool ReshapeOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   std::vector<int> shape =

@@ -33,13 +33,13 @@ void WhereGradKernel(const Context& ctx,
   if (x_grad != nullptr) {
     auto* dx = ctx.template Alloc<T>(x_grad);
     for (int i = 0; i < numel; i++) {
-      dx[i] = dout[i] * (cond_data[i] ? 1. : 0.);
+      dx[i] = cond_data[i] ? dout[i] : T{};
     }
   }
   if (y_grad != nullptr) {
     auto* dy = ctx.template Alloc<T>(y_grad);
     for (int i = 0; i < numel; i++) {
-      dy[i] = dout[i] * (cond_data[i] ? 0. : 1.);
+      dy[i] = cond_data[i] ? T{} : dout[i];
     }
   }
 }
@@ -54,4 +54,6 @@ PD_REGISTER_KERNEL(where_grad,
                    double,
                    int,
                    int64_t,
-                   bool) {}
+                   bool,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

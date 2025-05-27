@@ -144,5 +144,17 @@ class TestStringSlice(TestCaseBase):
         self.assert_results(string_slice, x)
 
 
+@check_no_breakgraph
+def tensor_slice_as_input(x: slice):
+    tensor = paddle.to_tensor([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+    return tensor[x]
+
+
+class TestSliceAsInput(TestCaseBase):
+    def test_slice_as_input(self):
+        x = slice(2, 7, 2)
+        self.assert_results(tensor_slice_as_input, x)
+
+
 if __name__ == "__main__":
     unittest.main()

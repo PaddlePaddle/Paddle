@@ -71,9 +71,9 @@ void Dropout(xpu::Context *xpu_ctx,
              T *mask,
              T *y,
              const XPUDropoutParam &param,
-             int len) {
+             int64_t len) {
   using XPUType = typename XPUTypeTrait<T>::Type;
-  int r = XPU_SUCCESS;
+  int r = 0;
   if (param.dropout_prob == 0.0f) {
     r = xpu::copy(xpu_ctx,
                   reinterpret_cast<const XPUType *>(x),
@@ -123,7 +123,7 @@ void DropoutGrad(xpu::Context *xpu_ctx,
                  const T *mask,
                  T *dx,
                  const XPUDropoutParam &param,
-                 int len) {
+                 int64_t len) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   if (param.dropout_prob == 0.0f) {
     int r = xpu::copy(xpu_ctx,

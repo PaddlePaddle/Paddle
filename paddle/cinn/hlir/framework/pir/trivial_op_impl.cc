@@ -607,8 +607,7 @@ std::shared_ptr<FusionGroupInfo> GetFusionGroupInfo(
   }
 
   if (FLAGS_cinn_enable_grid_reduce) {
-    group_info->can_apply_grid_reduce =
-        GetCanApplyGridReduce(op_compute_bodies, group_info->reduce_axis);
+    group_info->can_apply_grid_reduce = true;
   }
 
   if (FLAGS_cinn_enable_vectorize) {

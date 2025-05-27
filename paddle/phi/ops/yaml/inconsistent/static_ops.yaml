@@ -148,24 +148,6 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
   traits : paddle::dialect::ForwardOnlyTrait
 
-- op : distributed_lookup_table
-  args : (Tensor[] ids, Tensor w, int table_id = 0, bool is_distributed = false, str lookup_table_version = "lookup_table", int64_t padding_idx = -1, DataType dtype = DataType::FLOAT32, bool is_test = false)
-  output : Tensor[](outputs){ids.size()}
-  infer_meta :
-    func : DistributeLookupTableInferMeta
-  kernel :
-    func : distributed_lookup_table
-    data_type : dtype
-
-- op : distributed_push_sparse
-  args : (Tensor[] ids, Tensor[] shows, Tensor[] clicks, int table_id = 0, int size = 8, bool is_distributed = false, str push_sparse_version = "push_sparse", int64_t padding_idx = -1, DataType dtype=DataType::FLOAT32, bool is_test = false, bool use_cvm_op = false)
-  output : Tensor[](output){ids.size()}
-  infer_meta :
-    func : DistributedPushSparseInferMeta
-  kernel :
-    func: distributed_push_sparse
-    data_type : dtype
-
 - op : divide
   args : (Tensor x, Tensor y)
   output : Tensor(out)
@@ -538,7 +520,8 @@
   args : (Tensor x, IntArray axis={}, bool keepdim=false)
   output : Tensor(out)
   infer_meta :
-    func : ReduceIntArrayAxisInferMeta
+    func : StrictReduceIntArrayAxisInferMeta
+    spmd_rule : ReductionMinInferSpmdDynamic
   kernel :
     func : min
   backward : min_grad
@@ -702,17 +685,6 @@
     func: seed
   traits : pir::SideEffectTrait
   interfaces : paddle::dialect::InferSymbolicShapeInterface
-
-- op : send_and_recv
-  args : (Tensor[] x, str message_name, str[] send_var_name, str[] recv_var_name, int trainer_id = 0, str mode="forward", str[] endpoints={"127.0.0.1:6164"}, str[] next_endpoints={"127.0.0.1:6164"}, str[] previous_endpoints={"127.0.0.1:6164"})
-  output : Tensor[](out){x.size()}
-  infer_meta :
-    func : UnchangedVectorInferMeta
-    param : [x]
-  kernel :
-    func : send_and_recv
-    param : [x, message_name, mode, send_var_name, recv_var_name, trainer_id, endpoints, next_endpoints, previous_endpoints]
-  inplace: (x -> out)
 
 - op : send_v2
   args : (Tensor x, int ring_id = 0, int peer = 0, bool use_calc_stream = false, bool dynamic_shape = false)

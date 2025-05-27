@@ -45,9 +45,8 @@ void ConcatGradKernel(const Context& dev_ctx,
   // get output tensor that the name is not kEmptyVarName
   std::vector<DenseTensor*> outputs;
   for (size_t j = 0; j < outs.size(); ++j) {
-    if (outs[j] && outs[j]->numel() != 0UL) {
+    if (outs[j]) {
       dev_ctx.template Alloc<T>(outs[j]);
-
       outputs.push_back(outs[j]);
     } else {
       outputs.push_back(nullptr);

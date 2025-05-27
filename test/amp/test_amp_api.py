@@ -456,7 +456,7 @@ class TestDy2STWithSetValue(AmpTestBase):
 
         func = SimpleModelIncludeSetValue()
         func = paddle.amp.decorate(func, level='O2')
-        func = paddle.jit.to_static(func, full_graph=True)
+        func = paddle.jit.to_static(func, full_graph=True, backend=None)
         input = paddle.randn((2, 3))
 
         with paddle.amp.auto_cast(level='O2', use_promote=False):
@@ -481,7 +481,7 @@ class TestDy2STWithSetValue(AmpTestBase):
         with pir_dygraph_guard():
             func = SimpleModelIncludeSetValue()
             func = paddle.amp.decorate(func, level='O2')
-            func = paddle.jit.to_static(func, full_graph=True)
+            func = paddle.jit.to_static(func, full_graph=True, backend=None)
             input = paddle.randn((2, 3))
 
             paddle.amp.debugging.enable_operator_stats_collection()

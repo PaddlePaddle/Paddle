@@ -29,6 +29,9 @@ struct EngineParams {
   // The max memory size the engine uses.
   int64_t max_workspace_size;
 
+  // Enable cuda graph
+  bool use_cuda_graph{false};
+
   // The precision of engine.
   phi::DataType precision{phi::DataType::FLOAT32};
 

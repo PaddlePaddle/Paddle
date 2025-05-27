@@ -288,6 +288,7 @@ void combine(cudaDataType_t type,
 // Internode low-latency kernels
 namespace internode_ll {
 
+void barrier_all(cudaStream_t stream);
 void clean_low_latency_buffer(int* clean_0,
                               int num_clean_int_0,
                               int* clean_1,
@@ -304,6 +305,7 @@ void dispatch(void* packed_recv_x,
               void* rdma_x,
               const void* x,
               const int64_t* topk_idx,
+              const float* expertwise_scale,
               int* next_clean,
               int num_next_clean_int,
               int num_tokens,

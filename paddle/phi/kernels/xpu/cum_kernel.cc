@@ -28,6 +28,10 @@ void CumsumKernel(const Context& dev_ctx,
                   bool reverse,
                   DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
+  if (out && out->numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   dev_ctx.template Alloc<T>(out);
 
   if (x.numel() == 1) {
@@ -40,12 +44,12 @@ void CumsumKernel(const Context& dev_ctx,
   }
 
   // prepare for call xdnn api
-  std::vector<int> x_shape = common::vectorize<int>(x.dims());
+  std::vector<int64_t> x_shape = common::vectorize<int64_t>(x.dims());
   int axis_as_int = axis.to<int>();
 
   if (flatten) {
     // flatten to 1-dim vector
-    x_shape = {static_cast<int>(x.numel())};
+    x_shape = {x.numel()};
     axis_as_int = 0;
   } else {
     // not flatten

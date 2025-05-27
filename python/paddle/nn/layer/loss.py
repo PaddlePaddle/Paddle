@@ -2413,7 +2413,7 @@ class AdaptiveLogSoftmaxWithLoss(Layer):
     For :attr:`div_value` is used to compute the size of each additional cluster, which is given as follow:
 
     .. math::
-        \lfloor \frac{\text{in\_features}}{\text{div\_value}^{idx}} \rfloor
+        \left \lfloor \frac{\texttt{in_features}}{\texttt{div_value}^{idx}} \right \rfloor
 
     where :math:`idx` is the cluster index (with clusters for less frequent words having larger indices, and indices starting from :math:`1`).
 

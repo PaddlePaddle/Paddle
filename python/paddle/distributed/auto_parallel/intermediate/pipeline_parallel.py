@@ -221,7 +221,7 @@ class PipelineParallel(ParallelModel):
             new_args = []
             new_kwargs = {}
 
-            def rshard_not_mesh_match_tensor(arg):
+            def reshard_not_mesh_match_tensor(arg):
                 cur_pp_mesh = self.get_mesh(pp_idx)
                 if (
                     arg is not None
@@ -237,10 +237,10 @@ class PipelineParallel(ParallelModel):
                 return arg
 
             for arg in args:
-                new_args.append(rshard_not_mesh_match_tensor(arg))
+                new_args.append(reshard_not_mesh_match_tensor(arg))
 
             for key, arg in kwargs.items():
-                new_kwargs[key] = rshard_not_mesh_match_tensor(arg)
+                new_kwargs[key] = reshard_not_mesh_match_tensor(arg)
 
             return (tuple(new_args), new_kwargs)
 

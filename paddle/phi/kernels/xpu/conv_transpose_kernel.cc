@@ -27,21 +27,6 @@ namespace xpudnn = baidu::xpu::xpudnn;
 #endif
 namespace phi {
 
-// target_len == 2 || target_len == 4
-inline std::vector<int> vector_extend(const std::vector<int>& src,
-                                      int target_len) {
-  if (target_len == 2 && src.size() == 1) {
-    return {src[0], src[0]};
-  }
-  if (target_len == 4 && src.size() == 1) {
-    return {src[0], src[0], src[0], src[0]};
-  }
-  if (target_len == 4 && src.size() == 2) {
-    return {src[0], src[0], src[1], src[1]};
-  }
-  return src;
-}
-
 template <typename T, typename Context>
 void Conv2dTransposeKernel(const Context& ctx,
                            const DenseTensor& x,
@@ -83,11 +68,11 @@ void Conv2dTransposeKernel(const Context& ctx,
                            strides_,
                            ksize);
 
-  const int64_t batch_size = static_cast<int64_t>(x.dims()[0]);
-  const int64_t img_yc = static_cast<int64_t>(x.dims()[1]);
-  const int64_t img_xc = static_cast<int64_t>(out->dims()[1]);
-  const int64_t img_xh = static_cast<int64_t>(out->dims()[2]);
-  const int64_t img_xw = static_cast<int64_t>(out->dims()[3]);
+  const int64_t batch_size = x.dims()[0];
+  const int64_t img_yc = x.dims()[1];
+  const int64_t img_xc = out->dims()[1];
+  const int64_t img_xh = out->dims()[2];
+  const int64_t img_xw = out->dims()[3];
 
   int fc_calc_type = FCCalcType<XPUType>();
   if (fc_calc_type == XPUFCCalcType::FC_INT32) {
@@ -223,17 +208,25 @@ void Conv2dTransposeKernel(const Context& ctx,
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv2d_transpose_fusion_v2");
   }
 #else
-  std::vector<int> ksize = common::vectorize<int>(filter_data_dims);
-  std::vector<int> paddings_ = paddings;
-  std::vector<int> dilations_ = dilations;
-  UpdatePaddingAndDilation(
-      &paddings_, &dilations_, padding_algorithm, in_data_dims, strides, ksize);
+  std::vector<int64_t> ksize = common::vectorize<int64_t>(filter_data_dims);
+  std::vector<int64_t> strides_ =
+      std::vector<int64_t>(strides.begin(), strides.end());
+  std::vector<int64_t> paddings_ =
+      std::vector<int64_t>(paddings.begin(), paddings.end());
+  std::vector<int64_t> dilations_ =
+      std::vector<int64_t>(dilations.begin(), dilations.end());
+  UpdatePaddingAndDilation(&paddings_,
+                           &dilations_,
+                           padding_algorithm,
+                           in_data_dims,
+                           strides_,
+                           ksize);
 
-  const int batch_size = static_cast<int>(x.dims()[0]);
-  const int img_yc = static_cast<int>(x.dims()[1]);
-  const int img_xc = static_cast<int>(out->dims()[1]);
-  const int img_xh = static_cast<int>(out->dims()[2]);
-  const int img_xw = static_cast<int>(out->dims()[3]);
+  const int64_t batch_size = x.dims()[0];
+  const int64_t img_yc = x.dims()[1];
+  const int64_t img_xc = out->dims()[1];
+  const int64_t img_xh = out->dims()[2];
+  const int64_t img_xw = out->dims()[3];
 
   int fc_calc_type = FCCalcType<XPUType>();
   if (fc_calc_type == XPUFCCalcType::FC_INT32) {
@@ -306,8 +299,8 @@ void Conv2dTransposeKernel(const Context& ctx,
     } else {
       // xpu::conv2d_transpose_v2 do not support int_with_ll now
       // use xpu::conv2d_transpose
-      int img_yh = static_cast<int>(x.dims()[2]);
-      int img_yw = static_cast<int>(x.dims()[3]);
+      int64_t img_yh = x.dims()[2];
+      int64_t img_yw = x.dims()[3];
       int r = xpu::conv2d_transpose<float, float, float, int_with_ll_t>(
           ctx.x_context(),
           x.data<float>(),

@@ -146,11 +146,6 @@ CINN_REGISTER_HELPER(cuda_intrinsics_reduce) {
 
 #undef REGISTER_GRID_REDUCE_FUNC_IMPL
 
-  REGISTER_FACKED_EXTERN_FUNC_HELPER(cinn_grid_reduce_update_semaphore, target)
-      .SetRetType<bool>()
-      .AddInputType<int *>()
-      .End();
-
 #define REGISTER_BLOCK_SHUFFLE_FUNC_IMPL(REDUCE_TYPE, DTYPE)              \
   REGISTER_FACKED_EXTERN_FUNC_HELPER(block_shuffle_##REDUCE_TYPE, target) \
       .SetRetType<DTYPE>()                                                \

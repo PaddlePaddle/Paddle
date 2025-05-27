@@ -63,25 +63,25 @@ class TestGuardTree(unittest.TestCase):
             node_expr_const_1 = paddle.framework.core.ConstantExprNode(1)
 
             node_guard_x_type_match_int = paddle.framework.core.GuardNode(
-                guard_int, node_expr_x
+                guard_int, [node_expr_x]
             )
             node_guard_x_eq_1 = paddle.framework.core.GuardNode(
-                guard_eq, node_expr_x
+                guard_eq, [node_expr_x]
             )
             node_guard_y_type_match_int = paddle.framework.core.GuardNode(
-                guard_int, node_expr_y
+                guard_int, [node_expr_y]
             )
             node_guard_y_type_match_tensor = paddle.framework.core.GuardNode(
-                guard_tensor, node_expr_y
+                guard_tensor, [node_expr_y]
             )
             node_guard_y_tensor_shape = paddle.framework.core.GuardNode(
-                guard_tensor_shape_eq, node_expr_y_shape
+                guard_tensor_shape_eq, [node_expr_y_shape]
             )
             node_guard_z_type_match_tensor = paddle.framework.core.GuardNode(
-                guard_tensor, node_expr_z
+                guard_tensor, [node_expr_z]
             )
             node_guard_1_eq_1 = paddle.framework.core.GuardNode(
-                guard_eq, node_expr_const_1
+                guard_eq, [node_expr_const_1]
             )
 
             guard_tree = paddle.framework.core.GuardTree(

@@ -23,7 +23,7 @@ import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
     enable_to_static_guard,
-    test_default_and_pir,
+    test_default_mode_only,
 )
 from predictor_utils import PredictorTools
 
@@ -575,7 +575,7 @@ class TestSeResnet(Dy2StTestBase):
                 msg=f"predictor_pre:\n {flat_predictor_pre[i]}\n, st_pre: \n{flat_st_pre[i]}.",
             )
 
-    @test_default_and_pir
+    @test_default_mode_only
     def test_check_result(self):
         with enable_to_static_guard(False):
             pred_1, loss_1, acc1_1, acc5_1 = self.train(

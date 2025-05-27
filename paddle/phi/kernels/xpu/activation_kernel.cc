@@ -72,7 +72,7 @@ int xpu_activation_func(
     const Context& dev_ctx,
     const DenseTensor& x,
     DenseTensor* out,
-    std::function<int(xpu::Context*, const XPUType*, XPUType*, int)> func) {
+    std::function<int(xpu::Context*, const XPUType*, XPUType*, int64_t)> func) {
   int r = func(dev_ctx.x_context(),
                reinterpret_cast<const XPUType*>(x.data<T>()),
                reinterpret_cast<XPUType*>(out->data<T>()),
@@ -85,8 +85,8 @@ int xpu_activation_func_with_max_x_y(
     const Context& dev_ctx,
     const DenseTensor& x,
     DenseTensor* out,
-    std::function<
-        int(xpu::Context*, const XPUType*, XPUType*, int, const float*, float*)>
+    std::function<int(
+        xpu::Context*, const XPUType*, XPUType*, int64_t, const float*, float*)>
         func) {
   // does not support "const float* max_x, float* max_y" now
   int r = func(dev_ctx.x_context(),
@@ -106,7 +106,7 @@ int xpu_activation_1attr_func(const Context& dev_ctx,
                               std::function<int(xpu::Context*,
                                                 const XPUType*,
                                                 XPUType*,
-                                                int,
+                                                int64_t,
                                                 float,
                                                 const float*,
                                                 float*)> func) {
@@ -130,7 +130,7 @@ int xpu_activation_2attr_func(const Context& dev_ctx,
                               std::function<int(xpu::Context*,
                                                 const XPUType*,
                                                 XPUType*,
-                                                int,
+                                                int64_t,
                                                 float,
                                                 float,
                                                 const float*,
@@ -641,8 +641,13 @@ PD_REGISTER_KERNEL(silu,
                    phi::dtype::bfloat16) {}
 PD_REGISTER_KERNEL(
     elu, XPU, ALL_LAYOUT, phi::EluKernel, float, phi::dtype::float16) {}
-PD_REGISTER_KERNEL(
-    sigmoid, XPU, ALL_LAYOUT, phi::SigmoidKernel, float, phi::dtype::float16) {}
+PD_REGISTER_KERNEL(sigmoid,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::SigmoidKernel,
+                   float,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 PD_REGISTER_KERNEL(swish,
                    XPU,
                    ALL_LAYOUT,
@@ -676,8 +681,13 @@ PD_REGISTER_KERNEL(sqrt,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}
 
-PD_REGISTER_KERNEL(
-    tanh, XPU, ALL_LAYOUT, phi::TanhKernel, float, phi::dtype::float16) {}
+PD_REGISTER_KERNEL(tanh,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::TanhKernel,
+                   float,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 
 PD_REGISTER_KERNEL(square,
                    XPU,

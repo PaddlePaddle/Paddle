@@ -654,6 +654,6 @@ def istft(
     out = out / window_envelop
 
     if x_rank == 2:
-        out.squeeze_(0)
+        out = paddle.squeeze(out, axis=0)
 
     return out

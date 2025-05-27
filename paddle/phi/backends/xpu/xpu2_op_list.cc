@@ -1220,7 +1220,7 @@ XPUOpMap& get_kl2_ops() {
                      phi::DataType::FLOAT32})},
       {"warpctc_grad", XPUKernelSet({phi::DataType::FLOAT32})},
       {"warpctc", XPUKernelSet({phi::DataType::FLOAT32})},
-      {"weight_only_linear_xpu",
+      {"weight_only_linear",
        XPUKernelSet({phi::DataType::FLOAT16, phi::DataType::BFLOAT16})},
       {"where_index",
        XPUKernelSet({phi::DataType::INT32,

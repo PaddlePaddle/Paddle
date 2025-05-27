@@ -63,144 +63,12 @@ CINN_REGISTER_HELPER(hip_intrinsics_reduce) {
   MACRO(min_fp16, float16, ##__VA_ARGS__)
 #endif
 
-#define REGISTER_WARP_REDUCE_FUNC_IMPL(REDUCE_TYPE, DTYPE)                   \
-  REGISTER_FACKED_EXTERN_FUNC_HELPER(cinn_warp_reduce_##REDUCE_TYPE, target) \
-      .SetRetType<DTYPE>()                                                   \
-      .AddInputType<cinn_buffer_t *>()                                       \
-      .AddInputType<int>()                                                   \
-      .AddInputType<int>()                                                   \
-      .End();
-
-  EXPAND_REDUCE_INT32_REGISTER_MARCO(REGISTER_WARP_REDUCE_FUNC_IMPL)
-  EXPAND_REDUCE_INT64_REGISTER_MARCO(REGISTER_WARP_REDUCE_FUNC_IMPL)
-  EXPAND_REDUCE_FP32_REGISTER_MACRO(REGISTER_WARP_REDUCE_FUNC_IMPL)
-  EXPAND_REDUCE_FP64_REGISTER_MACRO(REGISTER_WARP_REDUCE_FUNC_IMPL)
-  EXPAND_REDUCE_BOOL_REGISTER_MACRO(REGISTER_WARP_REDUCE_FUNC_IMPL)
-
-#ifdef CINN_HIP_BF16
-  EXPAND_REDUCE_BF16_REGISTER_MACRO(REGISTER_WARP_REDUCE_FUNC_IMPL)
-#endif
-
-#ifdef CINN_HIP_FP16
-  EXPAND_REDUCE_FP16_REGISTER_MACRO(REGISTER_WARP_REDUCE_FUNC_IMPL)
-#endif
-
-#undef REGISTER_WARP_REDUCE_FUNC_IMPL
-
-  REGISTER_FACKED_EXTERN_FUNC_HELPER(cinn_warp_reduce_avg_fp32, target)
-      .SetRetType<float>()
-      .AddInputType<cinn_buffer_t *>()
-      .AddInputType<int>()
-      .AddInputType<int>()
-      .End();
-
-#define REGISTER_BLOCK_REDUCE_INTERNAL_FUNC_IMPL(REDUCE_TYPE, DTYPE) \
-  REGISTER_FACKED_EXTERN_FUNC_HELPER(                                \
-      cinn_block_reduce_##REDUCE_TYPE##_internal, target)            \
-      .SetRetType<DTYPE>()                                           \
-      .AddInputType<DTYPE>()                                         \
-      .End();
-
-  EXPAND_REDUCE_INT32_REGISTER_MARCO(REGISTER_BLOCK_REDUCE_INTERNAL_FUNC_IMPL)
-  EXPAND_REDUCE_INT64_REGISTER_MARCO(REGISTER_BLOCK_REDUCE_INTERNAL_FUNC_IMPL)
-  EXPAND_REDUCE_FP32_REGISTER_MACRO(REGISTER_BLOCK_REDUCE_INTERNAL_FUNC_IMPL)
-  EXPAND_REDUCE_FP64_REGISTER_MACRO(REGISTER_BLOCK_REDUCE_INTERNAL_FUNC_IMPL)
-  EXPAND_REDUCE_BOOL_REGISTER_MACRO(REGISTER_BLOCK_REDUCE_INTERNAL_FUNC_IMPL)
-
-#ifdef CINN_HIP_BF16
-  EXPAND_REDUCE_BF16_REGISTER_MACRO(REGISTER_BLOCK_REDUCE_INTERNAL_FUNC_IMPL)
-#endif
-
-#ifdef CINN_HIP_FP16
-  EXPAND_REDUCE_FP16_REGISTER_MACRO(REGISTER_BLOCK_REDUCE_INTERNAL_FUNC_IMPL)
-#endif
-
-#undef REGISTER_BLOCK_REDUCE_INTERNAL_FUNC_IMPL
-
-#define REGISTER_BLOCK_REDUCE_INTERNAL_FUNC_IMPL(REDUCE_TYPE, DTYPE) \
-  REGISTER_FACKED_EXTERN_FUNC_HELPER(                                \
-      cinn_block_reduce_##REDUCE_TYPE##_internal_shm, target)        \
-      .SetRetType<DTYPE>()                                           \
-      .AddInputType<DTYPE>()                                         \
-      .AddInputType<cinn_buffer_t *>()                               \
-      .End();
-
-  EXPAND_REDUCE_INT32_REGISTER_MARCO(REGISTER_BLOCK_REDUCE_INTERNAL_FUNC_IMPL)
-  EXPAND_REDUCE_INT64_REGISTER_MARCO(REGISTER_BLOCK_REDUCE_INTERNAL_FUNC_IMPL)
-  EXPAND_REDUCE_FP32_REGISTER_MACRO(REGISTER_BLOCK_REDUCE_INTERNAL_FUNC_IMPL)
-  EXPAND_REDUCE_FP64_REGISTER_MACRO(REGISTER_BLOCK_REDUCE_INTERNAL_FUNC_IMPL)
-  EXPAND_REDUCE_BOOL_REGISTER_MACRO(REGISTER_BLOCK_REDUCE_INTERNAL_FUNC_IMPL)
-
-#ifdef CINN_HIP_BF16
-  EXPAND_REDUCE_BF16_REGISTER_MACRO(REGISTER_BLOCK_REDUCE_INTERNAL_FUNC_IMPL)
-#endif
-
-#ifdef CINN_HIP_FP16
-  EXPAND_REDUCE_FP16_REGISTER_MACRO(REGISTER_BLOCK_REDUCE_INTERNAL_FUNC_IMPL)
-#endif
-
-#undef REGISTER_BLOCK_REDUCE_INTERNAL_FUNC_IMPL
-
-#define REGISTER_BLOCK_REDUCE_INTERNAL_FUNC_IMPL(REDUCE_TYPE, DTYPE)  \
-  REGISTER_FACKED_EXTERN_FUNC_HELPER(                                 \
-      cinn_partial_block_reduce_##REDUCE_TYPE##_internal_shm, target) \
-      .SetRetType<DTYPE>()                                            \
-      .AddInputType<DTYPE>()                                          \
-      .AddInputType<cinn_buffer_t *>()                                \
-      .End();
-  EXPAND_REDUCE_INT32_REGISTER_MARCO(REGISTER_BLOCK_REDUCE_INTERNAL_FUNC_IMPL)
-  EXPAND_REDUCE_INT64_REGISTER_MARCO(REGISTER_BLOCK_REDUCE_INTERNAL_FUNC_IMPL)
-  EXPAND_REDUCE_FP32_REGISTER_MACRO(REGISTER_BLOCK_REDUCE_INTERNAL_FUNC_IMPL)
-  EXPAND_REDUCE_FP64_REGISTER_MACRO(REGISTER_BLOCK_REDUCE_INTERNAL_FUNC_IMPL)
-  EXPAND_REDUCE_BOOL_REGISTER_MACRO(REGISTER_BLOCK_REDUCE_INTERNAL_FUNC_IMPL)
-
-#ifdef CINN_HIP_BF16
-  EXPAND_REDUCE_BF16_REGISTER_MACRO(REGISTER_BLOCK_REDUCE_INTERNAL_FUNC_IMPL)
-#endif
-
-#ifdef CINN_HIP_FP16
-  EXPAND_REDUCE_FP16_REGISTER_MACRO(REGISTER_BLOCK_REDUCE_INTERNAL_FUNC_IMPL)
-#endif
-
-#undef REGISTER_BLOCK_REDUCE_INTERNAL_FUNC_IMPL
-
-#define REGISTER_DISCRETE_REDUCE_INTERNAL_FUNC_IMPL(REDUCE_TYPE, DTYPE) \
-  REGISTER_FACKED_EXTERN_FUNC_HELPER(                                   \
-      cinn_discrete_reduce_##REDUCE_TYPE##_internal_shm, target)        \
-      .SetRetType<DTYPE>()                                              \
-      .AddInputType<DTYPE>()                                            \
-      .AddInputType<cinn_buffer_t *>()                                  \
-      .End();
-
-  EXPAND_REDUCE_INT32_REGISTER_MARCO(
-      REGISTER_DISCRETE_REDUCE_INTERNAL_FUNC_IMPL)
-  EXPAND_REDUCE_INT64_REGISTER_MARCO(
-      REGISTER_DISCRETE_REDUCE_INTERNAL_FUNC_IMPL)
-  EXPAND_REDUCE_FP32_REGISTER_MACRO(REGISTER_DISCRETE_REDUCE_INTERNAL_FUNC_IMPL)
-  EXPAND_REDUCE_FP64_REGISTER_MACRO(REGISTER_DISCRETE_REDUCE_INTERNAL_FUNC_IMPL)
-  EXPAND_REDUCE_BOOL_REGISTER_MACRO(REGISTER_DISCRETE_REDUCE_INTERNAL_FUNC_IMPL)
-
-#ifdef CINN_HIP_BF16
-  EXPAND_REDUCE_BF16_REGISTER_MACRO(REGISTER_DISCRETE_REDUCE_INTERNAL_FUNC_IMPL)
-#endif
-
-#ifdef CINN_HIP_FP16
-  EXPAND_REDUCE_FP16_REGISTER_MACRO(REGISTER_DISCRETE_REDUCE_INTERNAL_FUNC_IMPL)
-#endif
-
-#undef REGISTER_DISCRETE_REDUCE_INTERNAL_FUNC_IMPL
-
-  REGISTER_FACKED_EXTERN_FUNC_HELPER(cinn_grid_reduce_update_semaphore, target)
-      .SetRetType<bool>()
-      .AddInputType<int *>()
-      .End();
-
 #define REGISTER_BLOCK_REDUCE_FUNC_IMPL(REDUCE_TYPE, DTYPE)                   \
   REGISTER_FACKED_EXTERN_FUNC_HELPER(cinn_block_reduce_##REDUCE_TYPE, target) \
       .SetRetType<DTYPE>()                                                    \
+      .AddInputType<DTYPE>()                                                  \
       .AddInputType<cinn_buffer_t *>()                                        \
-      .AddInputType<int>()                                                    \
-      .AddInputType<int>()                                                    \
+      .AddInputType<bool>()                                                   \
       .End();
 
   EXPAND_REDUCE_INT32_REGISTER_MARCO(REGISTER_BLOCK_REDUCE_FUNC_IMPL)
@@ -218,6 +86,35 @@ CINN_REGISTER_HELPER(hip_intrinsics_reduce) {
 #endif
 
 #undef REGISTER_BLOCK_REDUCE_FUNC_IMPL
+
+#define REGISTER_DISCRETE_REDUCE_FUNC_IMPL(REDUCE_TYPE, DTYPE)           \
+  REGISTER_FACKED_EXTERN_FUNC_HELPER(cinn_discrete_reduce_##REDUCE_TYPE, \
+                                     target)                             \
+      .SetRetType<DTYPE>()                                               \
+      .AddInputType<DTYPE>()                                             \
+      .AddInputType<cinn_buffer_t *>()                                   \
+      .End();
+
+  EXPAND_REDUCE_INT32_REGISTER_MARCO(REGISTER_DISCRETE_REDUCE_FUNC_IMPL)
+  EXPAND_REDUCE_INT64_REGISTER_MARCO(REGISTER_DISCRETE_REDUCE_FUNC_IMPL)
+  EXPAND_REDUCE_FP32_REGISTER_MACRO(REGISTER_DISCRETE_REDUCE_FUNC_IMPL)
+  EXPAND_REDUCE_FP64_REGISTER_MACRO(REGISTER_DISCRETE_REDUCE_FUNC_IMPL)
+  EXPAND_REDUCE_BOOL_REGISTER_MACRO(REGISTER_DISCRETE_REDUCE_FUNC_IMPL)
+
+#ifdef CINN_HIP_BF16
+  EXPAND_REDUCE_BF16_REGISTER_MACRO(REGISTER_DISCRETE_REDUCE_FUNC_IMPL)
+#endif
+
+#ifdef CINN_HIP_FP16
+  EXPAND_REDUCE_FP16_REGISTER_MACRO(REGISTER_DISCRETE_REDUCE_FUNC_IMPL)
+#endif
+
+#undef REGISTER_DISCRETE_REDUCE_FUNC_IMPL
+
+  REGISTER_FACKED_EXTERN_FUNC_HELPER(cinn_grid_reduce_update_semaphore, target)
+      .SetRetType<bool>()
+      .AddInputType<int *>()
+      .End();
 
 #define REGISTER_BLOCK_SHUFFLE_FUNC_IMPL(REDUCE_TYPE, DTYPE)              \
   REGISTER_FACKED_EXTERN_FUNC_HELPER(block_shuffle_##REDUCE_TYPE, target) \

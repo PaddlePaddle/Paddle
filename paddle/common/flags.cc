@@ -791,6 +791,18 @@ PHI_DEFINE_EXPORTED_string(tracer_onednn_ops_off,
                            "List of OneDNN operation types to be turned off");
 
 /**
+ * Performance related FLAG
+ * Name: engine_serialized_path
+ * Since Version: 2.0.0
+ * Value Range: string, default=./
+ * Example:
+ * Note: Path to directory where engine serialized files are stored.
+ */
+PHI_DEFINE_EXPORTED_string(trt_engine_serialized_path,
+                           "./",
+                           "Path to directory of engine serialized files");
+
+/**
  * Debug related FLAG
  * Name: check_kernel_launch
  * Since Version: 2.1.0
@@ -1090,6 +1102,17 @@ PHI_DEFINE_EXPORTED_string(
     "",
     "File path of predefined input dynamic dimension specification.");
 
+/*
+ * CINN related FLAG
+ * Name: FLAGS_cinn_debug
+ * Since Version: 3.0
+ * Value Range: bool, default=false
+ * Example: FLAGS_cinn_debug=true would enable debug log for CINN.
+ */
+PHI_DEFINE_EXPORTED_bool(cinn_debug,
+                         false,
+                         "Whether to enable debug log for CINN.");
+
 #endif
 
 /*
@@ -1380,6 +1403,16 @@ PHI_DEFINE_EXPORTED_bool(enable_fusion_result_check,
                          "Whether enable fusion result check in cinn.");
 
 /**
+ * CINN all horizontal groups merge FLAG
+ * Name: FLAGS_merge_all_horizontal_groups
+ * Since Version: 3.0
+ * Value Range: bool, default=false
+ */
+PHI_DEFINE_EXPORTED_bool(merge_all_horizontal_groups,
+                         false,
+                         "Whether enable merge all horizontal groups in cinn.");
+
+/**
  * Conv Search cache max number related FLAG
  * Name: FLAGS_search_cache_max_number
  * Since Version: 2.3.0
@@ -1408,14 +1441,28 @@ PHI_DEFINE_EXPORTED_bool(
  * Performance related FLAG
  * Name: enable_auto_layout_pass
  * Since Version: 3.0.0
- * Value Range: bool, default=false
+ * Value Range: bool, default=true
  * Example:
  * Note: If True, using AutoLayoutInsertPass and AutuLayoutSimplifyPass by
  * default
  */
 PHI_DEFINE_EXPORTED_bool(enable_auto_layout_pass,
-                         false,
+                         true,
                          "Whether enable auto_layout_pass.");
+
+/**
+ * Performance related FLAG
+ * Name: enable_auto_layout_pass_in_inference
+ * Since Version: 3.0.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: This is a temporary flag, When enabled by default in the inference
+ * process, this flag will be removed and enabled or disabled by the
+ * `enable_auto_layout_pass` flag.
+ */
+PHI_DEFINE_EXPORTED_bool(enable_auto_layout_pass_in_inference,
+                         false,
+                         "Whether enable auto_layout_pass_in_inference.");
 
 /**
  * JitLayer related FLAG
@@ -1577,6 +1624,29 @@ PHI_DEFINE_EXPORTED_bool(logging_trunc_pir_py_code,
 PHI_DEFINE_EXPORTED_bool(logging_pir_py_code_dump_symbolic_dims,
                          false,
                          "whether dump symbolic dims into pir py code.");
+
+/**
+ * Enable Abstract Pass
+ * Name: enable_ap
+ * Since Version: 3.0.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: If True, abstract pass will be enabled to optimize performance.
+ */
+PHI_DEFINE_EXPORTED_bool(enable_ap, false, "whether enable abstract pass.");
+
+/**
+ * Enable Classic fused_gemm_epilogue when Abstract Pass is enabled.
+ * Name: ap_enable_classic_gemm_epilogue
+ * Since Version: 3.0.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: If True, classic fused_gemm_epilogue will be enabled.
+ */
+PHI_DEFINE_EXPORTED_bool(ap_enable_classic_gemm_epilogue,
+                         false,
+                         "whether enable classic fused_gemm_epilogue when "
+                         "abstract pass is enabled.");
 
 PHI_DEFINE_EXPORTED_bool(
     pir_interpreter_record_stream_for_gc_cache,

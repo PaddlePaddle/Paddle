@@ -106,7 +106,8 @@ struct DivideFunctor {
  public:
   HOSTDEVICE inline DivideFunctor() { n_inv = static_cast<MPType>(1.0f); }
 
-  HOSTDEVICE explicit inline DivideFunctor(int n) : n_inv((MPType)(1.0 / n)) {}
+  HOSTDEVICE explicit inline DivideFunctor(int64_t n)
+      : n_inv((MPType)(1.0 / n)) {}
 
   HOSTDEVICE inline Ty operator()(const Tx x) const {
     return static_cast<Ty>(static_cast<MPType>(x) * n_inv);

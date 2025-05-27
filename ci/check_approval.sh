@@ -91,6 +91,15 @@ for API_FILE in ${API_FILES[*]}; do
   fi
 done
 
+CI_OLD_SCRIPTS_PADDLE_BUILD=$(git diff --name-only upstream/$BRANCH | grep -E "paddle/scripts/paddle_build.*")
+CI_OLD_SCRIPTS_COVERAGE=$(git diff --name-only upstream/$BRANCH | grep -E "tools/coverage")
+CI_OLD_SCRIPTS_TOOLS=$(git diff --name-only upstream/$BRANCH | grep -E "tools" | grep "check_")
+
+if [ -n "$CI_OLD_SCRIPTS_PADDLE_BUILD" ] || [ -n "$CI_OLD_SCRIPTS_COVERAGE" ] || [ -n "$CI_OLD_SCRIPTS_TOOLS" ]; then
+    echo_line="You must have one RD (tianshuo78520a, swgu98) approval for the old CI scripts.\n"
+    check_approval 1 tianshuo78520a swgu98
+fi
+
 DEPS_PHI_IN_IR=`git diff --name-only upstream/$BRANCH | grep -E "paddle/pir/" | grep "CMakeList" |xargs -r git diff -U0 upstream/$BRANCH --| grep "^\+" | grep "phi" || true`
 echo "DEPS_PHI_IN_IR:${DEPS_PHI_IN_IR}"
 if [ "${DEPS_PHI_IN_IR}" ] && [ "${DEPS_PHI_IN_IR}" != "" ]; then
@@ -135,6 +144,22 @@ IF_USE_FESETROUND=`echo $CPP_FILE_ADDED_LINES | grep -B5 --no-group-separator "f
 if [[ ${IF_USE_FESETROUND} ]]; then
     echo_line="You must have one RD (zyfncg(Recommend), SigureMo, phlrain) approval for using fesetround, which may affect all floating-point precision calculations in the same process.\n"
     check_approval 1 zyfncg SigureMo phlrain
+fi
+
+INFERMETA_FILES_ADDED_LINES=$(git diff -U0 upstream/$BRANCH -- 'paddle/phi/infermeta/' |grep "^+")
+IF_ADD_METACONFIG=`echo $INFERMETA_FILES_ADDED_LINES | grep -B5 --no-group-separator "MetaConfig" || true`
+HAS_MODIFIED_OP_BUILD_GEN_SCRIPT=`git diff --name-only upstream/$BRANCH -- 'paddle/fluid/pir/dialect/op_generator/op_build_gen.py'`
+if [ -n "${IF_ADD_METACONFIG}" ] && [ -z "${HAS_MODIFIED_OP_BUILD_GEN_SCRIPT}" ]; then
+    echo_line="If your added infermeta file contains MetaConfig, you must update _INFERMETA_NEED_META_CONFIG in op_build_gen.py synchronously.\n"
+    echo_line=${echo_line}"If you believe this is a false positive, please request one of the RD (SigureMo(Recommend), zyfncg, zhangbo9674) approval for the changes.\n"
+    check_approval 1 SigureMo zyfncg zhangbo9674
+fi
+
+CINN_FILES_ADDED_LINES=$(git diff -U0 upstream/$BRANCH -- 'paddle/cinn/' |grep "^+")
+IF_ADD_LOG_INFO=`echo $CINN_FILES_ADDED_LINES | grep -B5 --no-group-separator "LOG(INFO)" || true`
+if [[ ${IF_ADD_LOG_INFO} ]]; then
+    echo_line="You must have one RD (SigureMo(Recommend), zyfncg) approval for using LOG(INFO), which may make user confused. Recommend to move it under if (FLAGS_cinn_debug)\n"
+    check_approval 1 SigureMo zyfncg
 fi
 
 HAS_DEFINE_FLAG=`git diff -U0 upstream/$BRANCH |grep -o -m 1 "DEFINE_int32" |grep -o -m 1 "DEFINE_bool" | grep -o -m 1 "DEFINE_string" || true`

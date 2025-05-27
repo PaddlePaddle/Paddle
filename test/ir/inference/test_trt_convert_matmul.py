@@ -109,7 +109,7 @@ class TrtConvertMatmulTest_static(TrtLayerAutoScanTest):
         yield self.create_inference_config(), (1, 3), 1e-3
 
     def test(self):
-        self.run_test()
+        self.run_test(run_pir=True)
 
 
 class TrtConvertMatmulTest_dynamic(TrtLayerAutoScanTest):

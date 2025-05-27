@@ -442,7 +442,6 @@ void WeightDequantizeKernel(const Context& dev_ctx,
                             const DenseTensor& x,
                             const DenseTensor& scale,
                             const std::string& algo,
-                            DataType out_dtype,
                             int32_t group_size,
                             DenseTensor* out) {
 #if defined(PADDLE_WITH_CUTLASS)

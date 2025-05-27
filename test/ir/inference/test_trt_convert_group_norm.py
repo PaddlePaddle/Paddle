@@ -138,7 +138,6 @@ class TrtConvertGroupNormTest(TrtLayerAutoScanTest):
             yield self.create_inference_config(), generate_trt_nodes_num(
                 attrs, False
             ), 1e-5
-
         # for dynamic_shape
         self.generate_dynamic_shape()
         self.trt_param.workspace_size = 2013265920

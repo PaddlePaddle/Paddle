@@ -111,6 +111,16 @@ class TestTranspose(unittest.TestCase):
 
         self.eval(func, [x, y])
 
+    def test_slice_021(self):
+        def func(x):
+            x1 = x[:, :48].transpose([0, 2, 1])
+            x2 = x.transpose([0, 2, 1])[:, :, 48:]
+            return x1 + x2
+
+        x = paddle.uniform([64, 96, 128])
+
+        self.eval(func, [x])
+
     def test_slice_reshape_021(self):
         def func(x, y):
             x = x[:, 64:192]

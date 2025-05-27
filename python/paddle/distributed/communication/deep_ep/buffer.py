@@ -736,6 +736,9 @@ class Buffer:
         )
         return combined_x, combined_topk_weights, EventOverlap(event)
 
+    def barrier_all(self):
+        self.runtime.barrier_all()
+
     def clean_low_latency_buffer(
         self,
         num_max_dispatch_tokens_per_rank: int,
@@ -762,6 +765,7 @@ class Buffer:
         self,
         x: paddle.Tensor,
         topk_idx: paddle.Tensor,
+        expertwise_scale: paddle.Tensor,
         num_max_dispatch_tokens_per_rank: int,
         num_experts: int,
         use_fp8: bool = True,
@@ -820,6 +824,7 @@ class Buffer:
         ) = self.runtime.low_latency_dispatch(
             x,
             topk_idx,
+            expertwise_scale,
             num_max_dispatch_tokens_per_rank,
             num_experts,
             use_fp8,
