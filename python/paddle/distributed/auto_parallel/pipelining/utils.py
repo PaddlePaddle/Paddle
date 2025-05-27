@@ -19,6 +19,9 @@ from typing import Any, Callable, Dict, List, Tuple, Union
 
 import paddle
 from paddle.distributed import fleet
+from paddle.distributed.auto_parallel.api import (
+    dtensor_from_local,
+)
 from paddle.utils import map_structure
 
 logger = logging.getLogger(__name__)
@@ -38,9 +41,11 @@ def _detach_and_keep_grad(x):
 
 def _zero_initialize_with_meta(meta, mesh):
     assert isinstance(meta, TensorMeta)
-    x = paddle.zeros(meta.shape, dtype=meta.dtype)
+    x = paddle.zeros(
+        meta._local_shape if meta._local_shape else meta.shape, dtype=meta.dtype
+    )
     if meta.placements:
-        x = paddle.distributed.shard_tensor(x, mesh, meta.placements)
+        x = dtensor_from_local(x, mesh, meta.placements)
     return x
 
 
@@ -52,7 +57,8 @@ def _flatten_args(args):
 
     def extract_tensor_args(a):
         nonlocal flat_args
-        flat_args.append(a)
+        if isinstance(a, paddle.Tensor):
+            flat_args.append(a)
         return a
 
     paddle.utils.map_structure(
@@ -109,12 +115,17 @@ def _map_structure_only(
 
 class TensorMeta:
     def __init__(self, tensor: paddle.Tensor):
-        self.shape = tensor.shape
+        if tensor.is_dist():
+            self.shape = tensor.shape
+            self._local_shape = tensor._local_shape
+        else:
+            self.shape = tensor.shape
+            self._local_shape = None
         self.dtype = tensor.dtype
         self.placements = None if not tensor.is_dist() else tensor.placements
 
     def __repr__(self):
-        return f"TensorMeta(shape={self.shape}, dtype={self.dtype}, placements={self.placements})"
+        return f"TensorMeta(global_shape={self.shape},local_shape={self._local_shape}, dtype={self.dtype}, placements={self.placements})"
 
 
 def _get_pp_mesh(pp_idx=0, pp_dim_names="pp"):

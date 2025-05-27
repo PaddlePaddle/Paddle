@@ -46,6 +46,29 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+def _restore_placements_info(args, infos, curr_mesh):
+    if isinstance(args, paddle.Tensor) and infos.placements is not None:
+        # set the placements attribute of the Tensor
+        if args.is_dist():
+            return args
+        else:
+            args = dtensor_from_local(args, curr_mesh, infos.placements)
+        return args
+    elif isinstance(args, (list, tuple)):
+        # if args is list or tuple, handle each element recursively
+        return type(args)(
+            _restore_placements_info(a, i, curr_mesh)
+            for a, i in zip(args, infos)
+        )
+    elif isinstance(args, dict):
+        # if args is dict, recursively handle each key-value pair
+        for key in args:
+            _restore_placements_info(args[key], infos[key], curr_mesh)
+    else:
+        # return directly
+        return args
+
+
 def _normalize_model_output_as_tuple(output: Any) -> tuple[Any]:
     """[Note: pipeline model output type]
 
@@ -112,7 +135,7 @@ def _make_tensor_from_meta(
     Create a real dense tensor from a tensor.
     """
     return paddle.empty(
-        example.shape,
+        example._local_shape if example._local_shape else example.shape,
         dtype=example.dtype,
     )
 
@@ -586,27 +609,7 @@ class _PipelineStageBase(ABC):
     def forward_maybe_with_nosync(self, *args, **kwargs):
         curr_mesh = _get_stage_mesh(self.stage_index, self.group_size)
 
-        def restore_placements_info(args, infos):
-            if isinstance(args, paddle.Tensor) and infos.placements is not None:
-                # set the placements attribute of the Tensor
-                args = dtensor_from_local(args, curr_mesh, infos.placements)
-                return args
-            elif isinstance(args, (list, tuple)):
-                # if args is list or tuple, handle each element recursively
-                return type(args)(
-                    restore_placements_info(a, i) for a, i in zip(args, infos)
-                )
-            elif isinstance(args, dict):
-                # if args is dict, recursively handle each key-value pair
-                return {
-                    key: restore_placements_info(args[key], infos[key])
-                    for key in args
-                }
-            else:
-                # return directly
-                return args
-
-        args = restore_placements_info(args, self.inputs_meta)
+        args = _restore_placements_info(args, self.inputs_meta, curr_mesh)
 
         out_val = self.sublayer(*args, **kwargs)
 
@@ -648,6 +651,10 @@ class _PipelineStageBase(ABC):
             else:
                 raise RuntimeError(f"Unknown backward type: {backward_type}")
 
+        curr_mesh = _get_stage_mesh(self.stage_index, self.group_size)
+        bwd_kwargs["output_grads"] = _restore_placements_info(
+            bwd_kwargs["output_grads"], self.grads_meta, curr_mesh
+        )
         result = perform_backward(backward_type)()
         grads, param_groups = result
         return grads, param_groups
@@ -877,7 +884,6 @@ class PipelineStage(_PipelineStageBase):
                 if isinstance(input_args, TensorMeta)
                 else input_args
             )
-
             assert (
                 output_args is not None
             ), "If passing input_args, also pass output_args to override shape inference"
@@ -979,7 +985,7 @@ class PipelineStage(_PipelineStageBase):
             logger.debug(
                 "Shape inference: stage %s running forward", self.stage_index
             )
-            if self.has_backward:
+            if self.has_backward and not self.is_first:
 
                 def requires_grad(x):
                     x.stop_gradient = False
@@ -1109,7 +1115,14 @@ class PipelineStage(_PipelineStageBase):
                 "Shape inference: stage %s skipping recv, because shape info passed in via `grads`",
                 self.stage_index,
             )
-            grads = (None,)
+
+            grads = _map_structure_only(
+                paddle.Tensor, paddle.zeros_like, stage_output
+            )
+            last_output_grads_meta = tuple(
+                map_structure(lambda x: TensorMeta(x), grads)
+            )
+            grads = last_output_grads_meta
 
         else:
             objects = [None]
@@ -1137,9 +1150,10 @@ class PipelineStage(_PipelineStageBase):
         paddle.autograd.backward(stage_output, grads, True)
 
         # output is the grad meta for input_values(list)
-        output_meta = tuple(
-            map_structure(lambda x: TensorMeta(x.grad), input_values)
-        )
+        if not self.is_first:
+            output_meta = tuple(
+                map_structure(lambda x: TensorMeta(x.grad), input_values)
+            )
 
         if (
             self.is_first
