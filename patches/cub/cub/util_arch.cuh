@@ -37,9 +37,6 @@
 #include <cub/util_namespace.cuh>
 #include <cub/util_macro.cuh>
 
-// Legacy include; this functionality used to be defined in here.
-#include <cub/detail/detect_cuda_runtime.cuh>
-
 CUB_NAMESPACE_BEGIN
 
 #ifndef DOXYGEN_SHOULD_SKIP_THIS    // Do not document
