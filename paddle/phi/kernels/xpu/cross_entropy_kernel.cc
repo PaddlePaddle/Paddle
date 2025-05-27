@@ -45,7 +45,7 @@ void CrossEntropyWithSoftmaxKernel(const Context& dev_ctx,
   auto softmax_data = reinterpret_cast<XPUType*>(softmax->data<T>());
   auto loss_data = reinterpret_cast<XPUType*>(loss->data<T>());
 
-  int r = XPU_SUCCESS;
+  int r = 0;
   xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
   if (!use_softmax) {
     // For cross entropy only cases, logits are outputs of softmax

@@ -34,7 +34,7 @@ void FusedAttentionKernel(const Context &dev_ctx,
                           const paddle::optional<DenseTensor> &out_linear_bias,
                           const paddle::optional<DenseTensor> &ln_scale_2,
                           const paddle::optional<DenseTensor> &ln_bias_2,
-                          int num_heads,
+                          int num_heads_,  // unused
                           bool transpose_qkv_wb,
                           bool pre_layer_norm,
                           float epsilon,
@@ -118,11 +118,11 @@ void FusedAttentionKernel(const Context &dev_ctx,
   const auto input_x_dims = x.dims();
   const auto qkv_w_dims = qkv_weight.dims();
 
-  int batch_size = input_x_dims[0];
-  int seq_len = input_x_dims[1];
-  int embed_dims = input_x_dims[2];
-  num_heads = qkv_w_dims[1];
-  int head_dims = qkv_w_dims[2];
+  int64_t batch_size = input_x_dims[0];
+  int64_t seq_len = input_x_dims[1];
+  int64_t embed_dims = input_x_dims[2];
+  int64_t num_heads = qkv_w_dims[1];
+  int64_t head_dims = qkv_w_dims[2];
 
   // 输入指针
   const XPUTypeT *input_x_ptr = reinterpret_cast<const XPUTypeT *>(x.data<T>());
@@ -205,14 +205,14 @@ void FusedAttentionKernel(const Context &dev_ctx,
   XPUTypeT *qkv_ptr = NULL;  // qkv[batch_size, num_heads, seq_len, head_dims]
   XPUTypeT *linear_out_ptr = NULL;  // x4, x5 [batch_size, seq_len, embed_dims]
 
-  int temp_size_1 = batch_size * seq_len * 3 * num_heads * head_dims;
-  int temp_size_2 = batch_size * num_heads * seq_len * seq_len;
-  int temp_size_3 = batch_size * num_heads * seq_len * head_dims;
-  int temp_size_4 = batch_size * seq_len * embed_dims;
+  int64_t temp_size_1 = batch_size * seq_len * 3 * num_heads * head_dims;
+  int64_t temp_size_2 = batch_size * num_heads * seq_len * seq_len;
+  int64_t temp_size_3 = batch_size * num_heads * seq_len * head_dims;
+  int64_t temp_size_4 = batch_size * seq_len * embed_dims;
 
-  std::vector<int> temp_vec = {
+  std::vector<int64_t> temp_vec = {
       temp_size_1, temp_size_2, temp_size_3, temp_size_4};
-  std::sort(temp_vec.begin(), temp_vec.end(), std::greater<int>());
+  std::sort(temp_vec.begin(), temp_vec.end(), std::greater<int64_t>());
   XPUTypeT *max_gm_ptr = RAII_GUARD.alloc<XPUTypeT>(temp_vec[0]);
   PADDLE_ENFORCE_XDNN_NOT_NULL(max_gm_ptr);
   qkv_before_transpose_ptr = max_gm_ptr;
@@ -287,16 +287,16 @@ void FusedAttentionKernel(const Context &dev_ctx,
 
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "transpose");
 
-  int qkv_every_size = batch_size * seq_len * num_heads * head_dims;
+  int64_t qkv_every_size = batch_size * seq_len * num_heads * head_dims;
   {
     float alpha = 1.0 / sqrt(head_dims);
-    r = scale(xpu_ctx,
-              qkv_transpose_out_ptr,
-              qkv_transpose_out_ptr,
-              qkv_every_size,
-              false,
-              alpha,
-              0.0f);
+    r = xpu::scale(xpu_ctx,
+                   qkv_transpose_out_ptr,
+                   qkv_transpose_out_ptr,
+                   qkv_every_size,
+                   false,
+                   alpha,
+                   0.0f);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "scale");
   }
 

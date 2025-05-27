@@ -20,7 +20,6 @@
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/distributed/check/nccl_dynamic_check.h"
 #include "paddle/phi/core/distributed/check/static_check.h"
-#include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/distributed/comm_task_manager.h"
 #include "paddle/phi/core/distributed/nccl_comm_task.h"
 #include "paddle/phi/core/distributed/nccl_tools.h"
@@ -146,7 +145,9 @@ ProcessGroupNCCL::ProcessGroupNCCL(
       place_to_group_key_(),
       pg_timeout_(timeout),
       nccl_comm_init_option_(nccl_comm_init_option),
-      allocation_stream_pairs_() {
+      allocation_stream_pairs_(),
+      place_to_p2p_opts_(),
+      create_count_(0) {
   LOG(INFO) << "ProcessGroupNCCL pg_timeout_ " << pg_timeout_;
   LOG(INFO) << "ProcessGroupNCCL nccl_comm_init_option_ "
             << nccl_comm_init_option_;
@@ -948,9 +949,37 @@ void ProcessGroupNCCL::CreateNCCLEnvCache(const Place& place,
       platform::DeviceEvent(place, platform::GenerateDeviceEventFlag()));
   place_to_calc_ctx_.emplace(place_key, calc_ctx);
   place_to_comm_ctx_.emplace(place_key, std::move(comm_ctx));
+  place_to_p2p_opts_.emplace(place_key, std::move(p2p_opts));
 
   for (size_t i = 0; i < s_group_call_counter; ++i) {
     NCCL_CHECK(phi::dynload::ncclGroupStart());
+  }
+}
+
+void ProcessGroupNCCL::Shutdown() {
+  for (size_t i = 0; i < s_group_call_counter; ++i) {
+    NCCL_CHECK(phi::dynload::ncclGroupEnd());
+  }
+
+  for (auto key_iter = place_to_group_key_.begin();
+       key_iter != place_to_group_key_.end();
+       ++key_iter) {
+    std::string store_key = key_iter->second;
+    auto nccl_comm_ctx = this->GetCommContext(&store_key);
+    nccl_comm_ctx->DestroyNCCLComm();
+  }
+}
+
+void ProcessGroupNCCL::Restart() {
+  for (auto key_iter = place_to_group_key_.begin();
+       key_iter != place_to_group_key_.end();
+       ++key_iter) {
+    std::string place_key = key_iter->first;
+    std::string store_key = key_iter->second;
+    phi::distributed::P2POption p2p_opts = place_to_p2p_opts_.at(place_key);
+    phi::distributed::CommContextManager::RecreateNCCLComm(
+        store_, store_key, rank_, std::to_string(create_count_), &p2p_opts);
+    create_count_++;
   }
 }
 

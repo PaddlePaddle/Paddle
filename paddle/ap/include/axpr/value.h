@@ -51,7 +51,7 @@ namespace ap::axpr {
 
 using adt::Nothing;
 
-template <typename ValueT, typename... Ts>
+template <typename ValueT>
 using ValueBase = std::variant<Type<Nothing,
                                     bool,
                                     int64_t,
@@ -78,8 +78,7 @@ using ValueBase = std::variant<Type<Nothing,
                                     Method<ValueT>,
                                     builtin_symbol::Symbol,
                                     BuiltinFuncType<ValueT>,
-                                    BuiltinHighOrderFuncType<ValueT>,
-                                    Ts...>,
+                                    BuiltinHighOrderFuncType<ValueT>>,
                                Nothing,
                                bool,
                                int64_t,
@@ -106,8 +105,7 @@ using ValueBase = std::variant<Type<Nothing,
                                Method<ValueT>,
                                builtin_symbol::Symbol,
                                BuiltinFuncType<ValueT>,
-                               BuiltinHighOrderFuncType<ValueT>,
-                               Ts...>;
+                               BuiltinHighOrderFuncType<ValueT>>;
 template <typename ValueT>
 ValueT GetType(const ValueT& value) {
   return value.Match(

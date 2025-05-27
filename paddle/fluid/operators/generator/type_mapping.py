@@ -27,6 +27,7 @@ attr_types_map = {
     # special types
     'IntArray': 'const IntArray&',
     'Scalar': 'const Scalar&',
+    'ScalarType': 'const Scalar&',
     'Scalar(bool)': 'const Scalar&',
     'Scalar(int)': 'const Scalar&',
     'Scalar(int64_t)': 'const Scalar&',
@@ -56,6 +57,7 @@ opmaker_attr_types_map = {
     # special types
     'IntArray': 'std::vector<int64_t>',
     'Scalar': 'float',
+    'ScalarType': 'Scalar',
     'Scalar(bool)': 'bool',
     'Scalar(int)': 'int',
     'Scalar(int64_t)': 'int64_t',

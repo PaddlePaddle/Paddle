@@ -1181,6 +1181,63 @@ EOF
     set -x
 }
 
+function generate_api_spec() {
+    set -e
+    spec_kind=$2
+    if [ "$spec_kind" != "PR" ] && [ "$spec_kind" != "DEV" ]; then
+        echo "Not supported $2"
+        exit 1
+    fi
+    if [ "$spec_kind" == "DEV" ]; then
+        git checkout $BRANCH
+    fi
+    REQUIREMENTS_PATH=${PADDLE_ROOT}/python/requirements.txt
+    PRINT_SIGNATURES_SCRIPT_PATH=${PADDLE_ROOT}/tools/print_signatures.py
+
+    mkdir -p ${PADDLE_ROOT}/build/.check_api_workspace
+    cd ${PADDLE_ROOT}/build/.check_api_workspace
+    virtualenv -p `which python` .${spec_kind}_env
+    source .${spec_kind}_env/bin/activate
+    pip install -r $REQUIREMENTS_PATH
+
+    if [ -d "${PADDLE_ROOT}/build/python/dist/" ]; then
+        pip install ${PADDLE_ROOT}/build/python/dist/*whl
+    elif [ -d "${PADDLE_ROOT}/dist/" ];then
+        pip install ${PADDLE_ROOT}/dist/*whl
+        mkdir ${PADDLE_ROOT}/build/python/dist/ && mv  ${PADDLE_ROOT}/dist/*whl  ${PADDLE_ROOT}/build/python/dist/
+    fi
+    spec_path=${PADDLE_ROOT}/paddle/fluid/API_${spec_kind}.spec
+    python ${PRINT_SIGNATURES_SCRIPT_PATH} paddle > $spec_path
+    python ${PRINT_SIGNATURES_SCRIPT_PATH} --show-fields="args,varargs,varkw,defaults,kwonlyargs,kwonlydefaults" paddle > ${spec_path}.api
+    python ${PRINT_SIGNATURES_SCRIPT_PATH} --show-fields="annotations" paddle > ${spec_path}.annotations
+    python ${PRINT_SIGNATURES_SCRIPT_PATH} --show-fields="document" paddle > ${spec_path}.doc
+
+    # used to log op_register data_type
+    op_type_path=${PADDLE_ROOT}/paddle/fluid/OP_TYPE_${spec_kind}.spec
+    python ${PADDLE_ROOT}/tools/check_op_register_type.py > $op_type_path
+
+    # used to log op_register data_type
+    op_type_path=${PADDLE_ROOT}/paddle/fluid/OP_KERNEL_DTYPE_${spec_kind}.spec
+    python ${PADDLE_ROOT}/tools/check_op_kernel_same_dtypes.py > $op_type_path
+
+    # print all ops desc in dict to op_desc_path
+    op_desc_path=${PADDLE_ROOT}/paddle/fluid/OP_DESC_${spec_kind}.spec
+    python ${PADDLE_ROOT}/tools/print_op_desc.py > $op_desc_path
+
+    # print api and the md5 of source code of the api.
+    api_source_md5_path=${PADDLE_ROOT}/paddle/fluid/API_${spec_kind}.source.md5
+    python ${PADDLE_ROOT}/tools/count_api_without_core_ops.py -p paddle > $api_source_md5_path
+
+    python ${PADDLE_ROOT}/tools/diff_use_default_grad_op_maker.py \
+        ${PADDLE_ROOT}/paddle/fluid/op_use_default_grad_maker_${spec_kind}.spec
+
+    deactivate
+
+    cd ${PADDLE_ROOT}/build
+    rm -rf ${PADDLE_ROOT}/build/.check_api_workspace
+    git checkout test
+}
+
 function check_excode() {
     if [[ $EXCODE -eq 0 ]];then
         echo "Congratulations!  Your PR passed the paddle-build."

@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/ap/include/paddle/pir/pass_manager_method_class.h"
+#include "paddle/pir/include/pass/pass_registry.h"
 
 namespace ap::paddle {
 
@@ -32,18 +33,33 @@ struct PirPassManagerMethodClass {
   static adt::Result<axpr::Value> AddPass(
       const axpr::Value& self_val, const std::vector<axpr::Value>& args) {
     ADT_CHECK(args.size() == 1);
-    if (args.at(0).template Has<adt::Nothing>()) {
-      return self_val;
-    }
+
     ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
-    ADT_LET_CONST_REF(pass, args.at(0).template CastTo<ap::paddle::Pass>())
-        << adt::errors::TypeError{std::string() +
-                                  "PirPassManager.add_pass() failed. the "
-                                  "argument 1 should be a PirPass (not a " +
-                                  axpr::GetTypeName(args.at(0)) + ")."};
-    ADT_CHECK(pass->pir_pass != nullptr)
-        << adt::errors::TypeError{std::string() + "PirPass being used."};
-    self->pir_pass_manager->AddPass(std::move(pass.shared_ptr()->pir_pass));
+    if (args.at(0).template Has<adt::Nothing>()) {
+      // Do Nothing
+    } else if (args.at(0).template CastableTo<ap::paddle::Pass>()) {
+      ADT_LET_CONST_REF(pass, args.at(0).template CastTo<ap::paddle::Pass>())
+          << adt::errors::TypeError{std::string() +
+                                    "PirPassManager.add_pass() failed. the "
+                                    "argument 1 should be a PirPass (not a " +
+                                    axpr::GetTypeName(args.at(0)) + ")."};
+      ADT_CHECK(pass->pir_pass != nullptr)
+          << adt::errors::TypeError{std::string() + "PirPass being used."};
+      self->pir_pass_manager->AddPass(std::move(pass.shared_ptr()->pir_pass));
+    } else if (args.at(0).template CastableTo<std::string>()) {
+      ADT_LET_CONST_REF(pass_name, args.at(0).template CastTo<std::string>());
+      try {
+        auto pass = pir::PassRegistry::Instance().Get(pass_name);
+        self->pir_pass_manager->AddPass(std::move(pass));
+      } catch (const std::exception& e) {
+        return adt::errors::InvalidArgumentError{
+            std::string() + "no pass found. pass-name: " + pass_name};
+      }
+    } else {
+      return adt::errors::NotImplementedError{
+          std::string() +
+          "the argument 1 of add_pass() should be a PirPass or str."};
+    }
     return self_val;
   }
 

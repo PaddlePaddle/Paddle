@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/ap/src/paddle/pass/op_factory.h"
-#include "paddle/ap/include/paddle/pir/manual_op.h"
+#include "paddle/ap/include/paddle/hlir/manual_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
@@ -33,6 +33,17 @@ adt::Result<pir::Operation*> ConstructPdOpSum(
   attrs["dtype"] = ::paddle::dialect::DataTypeAttribute::get(
       pir::IrContext::Instance(), phi::DataType::UNDEFINED);
   auto op = builder->Build<::paddle::dialect::SumOp>(inputs.at(0), attrs);
+  return op;
+}
+
+adt::Result<pir::Operation*> ConstructAddOp(
+    pir::Builder* builder,
+    const std::vector<pir::Value>& inputs,
+    const pir::AttributeMap& attrs) {
+  ADT_CHECK(inputs.size() == 2) << adt::errors::TypeError{
+      std::string() + "'ap_op.add' op takes 2 arguments, but " +
+      std::to_string(inputs.size()) + " were given"};
+  auto op = builder->Build<ap::dialect::AddOp>(inputs.at(0), inputs.at(1));
   return op;
 }
 
@@ -184,6 +195,10 @@ adt::Result<std::optional<pir::Operation*>> CreateOperation(
   }
   if (op_name == "builtin.shadow_output") {
     ADT_LET_CONST_REF(ret, ConstructShadowOutputOp(builder, inputs, attrs));
+    return ret;
+  }
+  if (op_name == "ap_op.add") {
+    ADT_LET_CONST_REF(ret, ConstructAddOp(builder, inputs, attrs));
     return ret;
   }
   if (op_name == "ap_op.up_spider") {

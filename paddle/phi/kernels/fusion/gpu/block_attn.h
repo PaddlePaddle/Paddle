@@ -1250,9 +1250,16 @@ inline size_t gqa_smem_size_in_bytes(const Block_AttN_params<T> &params,
                                                     decltype(load_func),   \
                                                     decltype(store_func)>; \
   if (smem_sz > 0xc000) {                                                  \
-    hipFuncSetAttribute((const void *)kernel_fn,                           \
-                        hipFuncAttributeMaxDynamicSharedMemorySize,        \
-                        smem_sz);                                          \
+    hipError_t result =                                                    \
+        hipFuncSetAttribute((const void *)kernel_fn,                       \
+                            hipFuncAttributeMaxDynamicSharedMemorySize,    \
+                            smem_sz);                                      \
+    if (result != hipSuccess) {                                            \
+      result = hipGetLastError();                                          \
+      PADDLE_THROW(::common::errors::Unavailable(                          \
+          " hipFuncSetAttribute() returned error %s",                      \
+          hipGetErrorString(result)));                                     \
+    }                                                                      \
   }                                                                        \
   dim3 grid(params.q_num_head, params.batch_size);                         \
   kernel_fn<<<grid, THDS_PER_BLOCK, smem_sz, stream>>>(                    \
@@ -1291,9 +1298,16 @@ inline size_t gqa_smem_size_in_bytes(const Block_AttN_params<T> &params,
                                  decltype(load_func),                       \
                                  decltype(store_func)>;                     \
   if (smem_sz > 0xc000) {                                                   \
-    hipFuncSetAttribute((const void *)kernel_fn,                            \
-                        hipFuncAttributeMaxDynamicSharedMemorySize,         \
-                        smem_sz);                                           \
+    hipError_t result =                                                     \
+        hipFuncSetAttribute((const void *)kernel_fn,                        \
+                            hipFuncAttributeMaxDynamicSharedMemorySize,     \
+                            smem_sz);                                       \
+    if (result != hipSuccess) {                                             \
+      result = hipGetLastError();                                           \
+      PADDLE_THROW(::common::errors::Unavailable(                           \
+          " hipFuncSetAttribute() returned error %s",                       \
+          hipGetErrorString(result)));                                      \
+    }                                                                       \
   }                                                                         \
   dim3 grid(params.kv_num_head *GQA_NUM_SUB_PARTITIONS, params.batch_size); \
   kernel_fn<<<grid, THDS_PER_BLOCK, smem_sz, stream>>>(                     \
@@ -1325,8 +1339,14 @@ inline size_t gqa_smem_size_in_bytes(const Block_AttN_params<T> &params,
                                                     decltype(load_func),   \
                                                     decltype(store_func)>; \
   if (smem_sz > 0xc000) {                                                  \
-    cudaFuncSetAttribute(                                                  \
+    cudaError_t result = cudaFuncSetAttribute(                             \
         kernel_fn, cudaFuncAttributeMaxDynamicSharedMemorySize, smem_sz);  \
+    if (result != cudaSuccess) {                                           \
+      result = cudaGetLastError();                                         \
+      PADDLE_THROW(::common::errors::Unavailable(                          \
+          " cudaFuncSetAttribute() returned error %s",                     \
+          cudaGetErrorString(result)));                                    \
+    }                                                                      \
   }                                                                        \
   dim3 grid(params.q_num_head, params.batch_size);                         \
   kernel_fn<<<grid, THDS_PER_BLOCK, smem_sz, stream>>>(                    \
@@ -1365,8 +1385,14 @@ inline size_t gqa_smem_size_in_bytes(const Block_AttN_params<T> &params,
                                  decltype(load_func),                       \
                                  decltype(store_func)>;                     \
   if (smem_sz > 0xc000) {                                                   \
-    cudaFuncSetAttribute(                                                   \
+    cudaError_t result = cudaFuncSetAttribute(                              \
         kernel_fn, cudaFuncAttributeMaxDynamicSharedMemorySize, smem_sz);   \
+    if (result != cudaSuccess) {                                            \
+      result = cudaGetLastError();                                          \
+      PADDLE_THROW(::common::errors::Unavailable(                           \
+          " cudaFuncSetAttribute() returned error %s",                      \
+          cudaGetErrorString(result)));                                     \
+    }                                                                       \
   }                                                                         \
   dim3 grid(params.kv_num_head *GQA_NUM_SUB_PARTITIONS, params.batch_size); \
   kernel_fn<<<grid, THDS_PER_BLOCK, smem_sz, stream>>>(                     \

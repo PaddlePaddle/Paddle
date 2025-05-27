@@ -44,15 +44,12 @@ jobs:
     with:
       docker_inference_image: ${{ needs.build-docker.outputs.docker_inference_image }}
 
-  coverage:
-    name: Coverage
-    uses: ./.github/workflows/_Coverage.yml
-    needs: clone
-
   cpu:
     name: Linux-CPU
     uses: ./.github/workflows/_Linux-CPU.yml
-    needs: clone
+    needs: build-docker
+    with:
+      docker_cpu_image: ${{ needs.build-docker.outputs.docker_cpu_image }}
 
   npu:
     name: Linux-NPU
@@ -62,4 +59,53 @@ jobs:
   distribute:
     name: Distribute-stable
     uses: ./.github/workflows/_Distribute-stable.yml
-    needs: clone
+    needs: build-docker
+    with:
+      docker_distribute_image: ${{ needs.build-docker.outputs.docker_distribute_image }}
+
+  build:
+    name: Linux-build
+    uses: ./.github/workflows/_Linux-build.yml
+    needs: build-docker
+    with:
+      docker_build_image: ${{ needs.build-docker.outputs.docker_build_image }}
+
+  static-check:
+    name: Static-Check
+    uses: ./.github/workflows/_Static-Check.yml
+    needs: [build-docker, build]
+    with:
+      can-skip: ${{ needs.build.outputs.can-skip }}
+      docker_build_image: ${{ needs.build-docker.outputs.docker_build_image }}
+
+  ce-framework:
+    name: CE-Framework
+    uses: ./.github/workflows/_CE-Framework.yml
+    needs: [build-docker, build]
+    with:
+      can-skip: ${{ needs.build.outputs.can-skip }}
+      docker_build_image: ${{ needs.build-docker.outputs.docker_build_image }}
+
+  ce-cinn-framework:
+    name: CE-CINN-Framework
+    uses: ./.github/workflows/_CE-CINN-Framework.yml
+    needs: [build-docker, build]
+    with:
+      can-skip: ${{ needs.build.outputs.can-skip }}
+      docker_build_image: ${{ needs.build-docker.outputs.docker_build_image }}
+
+  api-benchmark:
+    name: Api-Benchmark
+    uses: ./.github/workflows/_Api-Benchmark.yml
+    needs: [build-docker, build]
+    with:
+      can-skip: ${{ needs.build.outputs.can-skip }}
+      docker_build_image: ${{ needs.build-docker.outputs.docker_build_image }}
+
+  slice:
+    name: Slice
+    uses: ./.github/workflows/_Slice.yml
+    needs: [build-docker, build]
+    with:
+      can-skip: ${{ needs.build.outputs.can-skip }}
+      docker_build_image: ${{ needs.build-docker.outputs.docker_build_image }}

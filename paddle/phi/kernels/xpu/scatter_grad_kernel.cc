@@ -58,7 +58,7 @@ void ScatterGradKernel(const Context &ctx,
     x_grad_shape.push_back(out_dims[i]);
   }
 
-  int index_size = index.numel();
+  int64_t index_size = index.numel();
 
   int r;
   if (index_type == phi::DataType::INT32) {

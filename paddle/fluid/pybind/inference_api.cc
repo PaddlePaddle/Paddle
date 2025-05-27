@@ -592,6 +592,9 @@ void BindInferenceApi(py::module *m) {
   m->def("create_predictor",
          [](const paddle_infer::Config &config)
              -> std::unique_ptr<paddle_infer::Predictor> {
+#ifndef PADDLE_NO_PYTHON
+           pybind11::gil_scoped_release release;
+#endif
            auto pred = std::make_unique<paddle_infer::Predictor>(config);
            return pred;
          });

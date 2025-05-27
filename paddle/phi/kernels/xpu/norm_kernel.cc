@@ -33,7 +33,7 @@ void NormKernel(const Context& ctx,
   ctx.template Alloc<T>(out);
   ctx.template Alloc<T>(norm);
 
-  std::vector<int> xshape;
+  std::vector<int64_t> xshape;
   auto x_dims = x.dims();
   auto x_dims_size = x_dims.size();
   xshape.resize(x_dims_size);
@@ -57,7 +57,7 @@ void NormKernel(const Context& ctx,
                         x_dims_size));
 
   for (int i = 0; i < x_dims_size; i++) {
-    xshape[i] = static_cast<int>(x_dims[i]);
+    xshape[i] = x_dims[i];
   }
 
   int r = xpu::l2_norm(ctx.x_context(),

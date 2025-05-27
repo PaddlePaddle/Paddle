@@ -33,13 +33,13 @@ void FlashAttnKernelBase(
     const paddle::optional<DenseTensor>& fixed_seed_offset,
     const paddle::optional<DenseTensor>& attn_mask,
     const paddle::optional<DenseTensor>& startend_row_indices,
-    const int batch_size,
+    const int64_t batch_size,
     const Scalar& max_seqlen_q_,
     const Scalar& max_seqlen_k_,
-    const int num_heads,
-    const int num_heads_k,
-    const int head_size,
-    const int head_size_v,
+    const int64_t num_heads,
+    const int64_t num_heads_k,
+    const int64_t head_size,
+    const int64_t head_size_v,
     float scale,
     float dropout,
     bool causal,
@@ -268,11 +268,11 @@ void FlashAttnUnpaddedKernel(
   // q, k, v [batch_size * seq_len, num_heads, head_dim]
   std::vector<int64_t> dims = common::vectorize(q.dims());
 
-  const int batch_size = cu_seqlens_q.numel() - 1;
-  const int num_heads = dims[1];
-  const int head_size = dims[2];
-  const int num_heads_k = k.dims()[1];
-  const int head_size_v = v.dims()[2];
+  const int64_t batch_size = cu_seqlens_q.numel() - 1;
+  const int64_t num_heads = dims[1];
+  const int64_t head_size = dims[2];
+  const int64_t num_heads_k = k.dims()[1];
+  const int64_t head_size_v = v.dims()[2];
 #ifndef PADDLE_WITH_XPU_XRE5
   // lod info, only support qlod == klod
   std::vector<int> qlod_vec(batch_size + 1, 0);

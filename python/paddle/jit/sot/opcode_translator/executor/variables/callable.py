@@ -14,7 +14,6 @@
 
 from __future__ import annotations
 
-import collections
 import dis
 import functools
 import inspect
@@ -39,16 +38,17 @@ from ....utils import (
     ENV_SOT_EXPORT,
     ENV_SOT_TRACE_NUMPY,
     NUMPY_API_SUPPORTED_DICT,
+    already_unified_in_dynamic_and_static_graph,
     get_numpy_ufuncs,
     get_obj_stable_repr,
     get_static_function,
+    hashable,
     is_break_graph_api,
     is_break_graph_tensor_methods,
     is_builtin_fn,
     is_directly_run_api,
     is_namedtuple_class,
     is_not_supported_paddle_layer,
-    is_paddle_api,
     log,
     log_do,
     magic_method_builtin_dispatch,
@@ -64,8 +64,10 @@ from ....utils.exceptions import (
     InnerError,
     OtherInlineCallBreak,
     PsdbBreakReason,
+    SotCapturedException,
+    SotCapturedExceptionFactory,
     SotErrorBase,
-    UnsupportedNumpyAPIBreak,
+    UnsupportedNumPyAPIBreak,
     UnsupportedOperationBreak,
     UnsupportedPaddleAPIBreak,
 )
@@ -97,7 +99,7 @@ from .base import (
 )
 from .basic import (
     ConstantVariable,
-    NumpyNumberVariable,
+    NumPyNumberVariable,
     ObjectVariable,
     PrintStmtVariable,
     SliceVariable,
@@ -276,6 +278,8 @@ class UserDefinedFunctionVariable(FunctionVariable):
                 f"Inline Call: {inline_executor.vframe.code.co_name}, file {inline_executor.vframe.code.co_filename}, line {int(inline_executor.vframe.code.co_firstlineno)}"
             ):
                 output = inline_executor.inline_call()
+        except (SotCapturedException, InnerError) as e:
+            raise e
         except SotErrorBase as error:
             self.graph.restore_memo(checkpoint)
             filename = self.value.__code__.co_filename
@@ -357,7 +361,9 @@ class PaddleApiVariable(FunctionVariable):
         successor="UserDefinedFunctionVariable"
     )
     def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
-        if callable(value) and is_paddle_api(value):
+        if callable(value) and already_unified_in_dynamic_and_static_graph(
+            value
+        ):
             return PaddleApiVariable(value, graph, tracker)
         return None
 
@@ -371,9 +377,9 @@ class PaddleApiVariable(FunctionVariable):
     make_faster_guard = object_equal_faster_guard
 
 
-class NumpyApiVariable(FunctionVariable):
+class NumPyApiVariable(FunctionVariable):
     """
-    NumpyApiVariable is a subclass of FunctionVariable used to wrap a numpy API function.
+    NumPyApiVariable is a subclass of FunctionVariable used to wrap a numpy API function.
 
     Args:
         fn (Callable[..., Any]): The numpy API to be wrapped.
@@ -391,12 +397,12 @@ class NumpyApiVariable(FunctionVariable):
     def call_function(self, /, *args, **kwargs):
         # TODO(wangmingkai02): judge whether this is a break api
         if all(
-            isinstance(arg, (ConstantVariable, NumpyNumberVariable))
+            isinstance(arg, (ConstantVariable, NumPyNumberVariable))
             for arg in args
         ):
             if any(
                 self.value in ufuncs
-                for ufuncs in NumpyApiVariable._get_numpy_ufuncs()
+                for ufuncs in NumPyApiVariable._get_numpy_ufuncs()
             ):
                 vars = list(args)
                 var_py_values = [var.get_py_value() for var in vars]
@@ -410,7 +416,7 @@ class NumpyApiVariable(FunctionVariable):
                 NUMPY_API_SUPPORTED_DICT[self.value], *args, **kwargs
             )
         raise BreakGraphError(
-            UnsupportedNumpyAPIBreak(fn_name=self.value.__name__)
+            UnsupportedNumPyAPIBreak(fn_name=self.value.__name__)
         )
 
     @classmethod
@@ -424,16 +430,16 @@ class NumpyApiVariable(FunctionVariable):
         # TODO(wangmingkai02): support other numpy api.
         if (
             ENV_SOT_TRACE_NUMPY.get()
-            and isinstance(value, collections.abc.Hashable)
+            and hashable(value)
             and (
                 value in NUMPY_API_SUPPORTED_DICT
                 or any(
                     value in ufuncs
-                    for ufuncs in NumpyApiVariable._get_numpy_ufuncs()
+                    for ufuncs in NumPyApiVariable._get_numpy_ufuncs()
                 )
             )
         ):
-            return NumpyApiVariable(value, graph, tracker)
+            return NumPyApiVariable(value, graph, tracker)
         return None
 
     @property
@@ -865,7 +871,16 @@ class BuiltinVariable(FunctionVariable):
         handler = Dispatcher.dispatch(self.value, *args, **kwargs)
 
         if handler is not None:
-            return handler(*args, **kwargs)
+            try:
+                return handler(*args, **kwargs)
+            except SotErrorBase as e:
+                # NOTE: BuiltinVariable.call_function cat not raise SotCapturedException,
+                # so we can directly raise SotErrorBase.
+                raise
+            except Exception as e:
+                raise SotCapturedExceptionFactory.create(
+                    origin_exc=e, tracked_args=[args, kwargs]
+                ) from e
 
         if ENV_SOT_ALLOW_DYNAMIC_SHAPE.get() and any(
             isinstance(var, SymbolicVariable)

@@ -18,8 +18,12 @@
 
 namespace phi {
 
-inline void GetDims(
-    const phi::DDim& dim, int axis, int* m, int* t, int* n, bool asvector) {
+inline void GetDims(const phi::DDim& dim,
+                    int axis,
+                    int64_t* m,
+                    int64_t* t,
+                    int64_t* n,
+                    bool asvector) {
   *m = 1;
   *n = 1;
   *t = dim[axis];
@@ -51,9 +55,9 @@ void PNormKernel(const Context& dev_ctx,
   std::vector<int64_t> r_dim;
   std::vector<int64_t> x_dim;
   std::vector<int64_t> y_dim;
-  int m = 1;
-  int n = 1;
-  int t = 1;
+  int64_t m = 1;
+  int64_t n = 1;
+  int64_t t = 1;
   GetDims(xdim, axis, &m, &t, &n, asvector);
 
   for (int i = 0; i < xdim.size(); i++) {

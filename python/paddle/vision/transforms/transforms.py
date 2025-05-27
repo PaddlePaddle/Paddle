@@ -387,7 +387,7 @@ class ToTensor(BaseTransform[_InputT, "Tensor"]):
             >>> img_arr = ((paddle.rand((4, 5, 3)) * 255.).astype('uint8')).numpy()
             >>> fake_img = Image.fromarray(img_arr)
             >>> transform = T.ToTensor()
-            >>> tensor = transform(fake_img)  # type: ignore[call-overload]
+            >>> tensor = transform(fake_img)
             >>> print(tensor.shape)
             [3, 4, 5]
             >>> print(tensor.dtype)
@@ -457,11 +457,11 @@ class Resize(BaseTransform[_InputT, _RetT]):
 
             >>> fake_img = Image.fromarray((np.random.rand(256, 300, 3) * 255.).astype(np.uint8))
             >>> transform = Resize(size=224)
-            >>> converted_img = transform(fake_img) # type: ignore[call-overload]
+            >>> converted_img = transform(fake_img)
             >>> print(converted_img.size)
             (262, 224)
             >>> transform = Resize(size=(200,150))
-            >>> converted_img = transform(fake_img) # type: ignore[call-overload]
+            >>> converted_img = transform(fake_img)
             >>> print(converted_img.size)
             (150, 200)
     """
@@ -530,7 +530,7 @@ class RandomResizedCrop(BaseTransform[_InputT, _RetT]):
 
             >>> transform = RandomResizedCrop(224)
             >>> fake_img = Image.fromarray((np.random.rand(300, 320, 3) * 255.).astype(np.uint8))
-            >>> fake_img = transform(fake_img)  # type: ignore[call-overload]
+            >>> fake_img = transform(fake_img)
             >>> print(fake_img.size)
             (224, 224)
 
@@ -736,7 +736,7 @@ class CenterCrop(BaseTransform[_InputT, _RetT]):
 
             >>> transform = CenterCrop(224)
             >>> fake_img = Image.fromarray((np.random.rand(300, 320, 3) * 255.).astype(np.uint8))
-            >>> fake_img = transform(fake_img)  # type: ignore[call-overload]
+            >>> fake_img = transform(fake_img)
             >>> print(fake_img.size)
             (224, 224)
 
@@ -918,7 +918,7 @@ class Normalize(BaseTransform[_InputT, _RetT]):
             ...                         data_format='HWC')
             ...
             >>> fake_img = paddle.rand([300,320,3]).numpy() * 255.
-            >>> fake_img = normalize(fake_img)  # type: ignore[call-overload]
+            >>> fake_img = normalize(fake_img)
             >>> print(fake_img.shape)
             (300, 320, 3)
             >>> print(fake_img.max(), fake_img.min())
@@ -985,7 +985,7 @@ class Transpose(BaseTransform[_InputT, _RetT]):
 
             >>> transform = Transpose()
             >>> fake_img = Image.fromarray((np.random.rand(300, 320, 3) * 255.).astype(np.uint8))
-            >>> fake_img = transform(fake_img)  # type: ignore[call-overload]
+            >>> fake_img = transform(fake_img)
             >>> print(fake_img.shape)
             (3, 300, 320)
 
@@ -1042,7 +1042,7 @@ class BrightnessTransform(BaseTransform[_InputT, _RetT]):
             >>> print(fake_img.load()[1,1]) # type: ignore[index]
             (60, 169, 34)
             >>> # doctest: +SKIP('random sample in Brightness function')
-            >>> fake_img = transform(fake_img) # type: ignore[call-overload]
+            >>> fake_img = transform(fake_img)
             >>> print(fake_img.load()[1,1])
             (68, 192, 38)
 
@@ -1089,7 +1089,7 @@ class ContrastTransform(BaseTransform[_InputT, _RetT]):
 
             >>> transform = ContrastTransform(0.4)
             >>> fake_img = Image.fromarray((np.random.rand(224, 224, 3) * 255.).astype(np.uint8))
-            >>> fake_img = transform(fake_img)  # type: ignore[call-overload]
+            >>> fake_img = transform(fake_img)
             >>> print(fake_img.size)
             (224, 224)
 
@@ -1138,7 +1138,7 @@ class SaturationTransform(BaseTransform[_InputT, _RetT]):
 
             >>> transform = SaturationTransform(0.4)
             >>> fake_img = Image.fromarray((np.random.rand(224, 224, 3) * 255.).astype(np.uint8))
-            >>> fake_img = transform(fake_img)  # type: ignore[call-overload]
+            >>> fake_img = transform(fake_img)
             >>> print(fake_img.size)
             (224, 224)
     """
@@ -1184,7 +1184,7 @@ class HueTransform(BaseTransform[_InputT, _RetT]):
 
             >>> transform = HueTransform(0.4)
             >>> fake_img = Image.fromarray((np.random.rand(224, 224, 3) * 255.).astype(np.uint8))
-            >>> fake_img = transform(fake_img)  # type: ignore[call-overload]
+            >>> fake_img = transform(fake_img)
             >>> print(fake_img.size)
             (224, 224)
 
@@ -1239,7 +1239,7 @@ class ColorJitter(BaseTransform[_InputT, _RetT]):
 
             >>> transform = ColorJitter(0.4, 0.4, 0.4, 0.4)
             >>> fake_img = Image.fromarray((np.random.rand(224, 224, 3) * 255.).astype(np.uint8))
-            >>> fake_img = transform(fake_img)  # type: ignore[call-overload]
+            >>> fake_img = transform(fake_img)
             >>> print(fake_img.size)
             (224, 224)
 
@@ -1480,7 +1480,7 @@ class Pad(BaseTransform[_InputT, _RetT]):
 
             >>> transform = Pad(2)
             >>> fake_img = Image.fromarray((np.random.rand(224, 224, 3) * 255.).astype(np.uint8))
-            >>> fake_img = transform(fake_img)  # type: ignore[call-overload]
+            >>> fake_img = transform(fake_img)
             >>> print(fake_img.size)
             (228, 228)
     """
@@ -1778,7 +1778,7 @@ class RandomRotation(BaseTransform[_InputT, _RetT]):
 
             >>> transform = RandomRotation(90)
             >>> fake_img = Image.fromarray((np.random.rand(200, 150, 3) * 255.).astype(np.uint8))
-            >>> fake_img = transform(fake_img)  # type: ignore[call-overload]
+            >>> fake_img = transform(fake_img)
             >>> print(fake_img.size)
             (150, 200)
     """
@@ -2012,7 +2012,7 @@ class Grayscale(BaseTransform[_InputT, _RetT]):
 
             >>> transform = Grayscale()
             >>> fake_img = Image.fromarray((np.random.rand(224, 224, 3) * 255.).astype(np.uint8))
-            >>> fake_img = transform(fake_img)  # type: ignore[call-overload]
+            >>> fake_img = transform(fake_img)
             >>> print(np.array(fake_img).shape)
             (224, 224)
     """

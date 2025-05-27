@@ -45,8 +45,9 @@ class TesBackward_1(unittest.TestCase):
         pir_program = get_ir_program_0()
         input = pir_program.global_block().ops[-1].operand(0).source()
         tanh_out = pir_program.global_block().ops[-1].result(0)
-        with paddle.pir_utils.IrGuard(), paddle.pir.core.program_guard(
-            pir_program
+        with (
+            paddle.pir_utils.IrGuard(),
+            paddle.pir.core.program_guard(pir_program),
         ):
             out = paddle.mean(tanh_out)
             out2 = paddle.mean(tanh_out)
@@ -70,8 +71,9 @@ class TesBackward_1(unittest.TestCase):
         pir_program = get_ir_program_0()
         input = pir_program.global_block().ops[-1].operand(0).source()
         tanh_out = pir_program.global_block().ops[-1].result(0)
-        with paddle.pir_utils.IrGuard(), paddle.pir.core.program_guard(
-            pir_program
+        with (
+            paddle.pir_utils.IrGuard(),
+            paddle.pir.core.program_guard(pir_program),
         ):
             out = paddle.mean(tanh_out)
             input_grad = grad(out, input)
@@ -96,8 +98,9 @@ class TesBackward_1(unittest.TestCase):
         pir_program = get_ir_program_0()
         input = pir_program.global_block().ops[-1].operand(0).source()
         tanh_out = pir_program.global_block().ops[-1].result(0)
-        with paddle.pir_utils.IrGuard(), paddle.pir.core.program_guard(
-            pir_program
+        with (
+            paddle.pir_utils.IrGuard(),
+            paddle.pir.core.program_guard(pir_program),
         ):
             out = paddle.mean(tanh_out)
             input_grad = grad(out, input, no_grad_vars=[input])
@@ -110,8 +113,9 @@ class TesBackward_1(unittest.TestCase):
         pir_program = get_ir_program_0()
         input = pir_program.global_block().ops[-1].operand(0).source()
         tanh_out = pir_program.global_block().ops[-1].result(0)
-        with paddle.pir_utils.IrGuard(), paddle.pir.core.program_guard(
-            pir_program
+        with (
+            paddle.pir_utils.IrGuard(),
+            paddle.pir.core.program_guard(pir_program),
         ):
             out = paddle.split(tanh_out, [2, 2], 0)
             input_grad = grad(out, input)
@@ -159,8 +163,9 @@ class TesBackward_2(unittest.TestCase):
         input_x = pir_program.global_block().ops[-3].operand(0).source()
 
         add_out = pir_program.global_block().ops[-1].result(0)
-        with paddle.pir_utils.IrGuard(), paddle.pir.core.program_guard(
-            pir_program
+        with (
+            paddle.pir_utils.IrGuard(),
+            paddle.pir.core.program_guard(pir_program),
         ):
             out = paddle.mean(add_out)
             input_grad = grad(out, input_x)
@@ -180,8 +185,9 @@ class TesBackward_2(unittest.TestCase):
         input_x = pir_program.global_block().ops[-3].operand(0).source()
 
         add_out = pir_program.global_block().ops[-1].result(0)
-        with paddle.pir_utils.IrGuard(), paddle.pir.core.program_guard(
-            pir_program
+        with (
+            paddle.pir_utils.IrGuard(),
+            paddle.pir.core.program_guard(pir_program),
         ):
             out = paddle.concat([add_out, add_out])
             input_grad = grad(out, input_x)
@@ -231,8 +237,9 @@ class TestBackward_3(unittest.TestCase):
         pir_program = get_ir_program_2()
         x = pir_program.global_block().ops[-1].operand(0).source()
         sum_x = pir_program.global_block().ops[-1].result(0)
-        with paddle.pir_utils.IrGuard(), paddle.pir.core.program_guard(
-            pir_program
+        with (
+            paddle.pir_utils.IrGuard(),
+            paddle.pir.core.program_guard(pir_program),
         ):
             norm = paddle.tensor.fill_constant(
                 shape=[],

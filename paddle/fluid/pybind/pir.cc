@@ -90,6 +90,8 @@
 #include "pybind11/stl.h"
 
 #ifdef PADDLE_WITH_CINN
+#include "paddle/ap/include/paddle/hlir/op_dialect.h"
+#include "paddle/ap/include/paddle/pass/add_pcc_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/add_cinn_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/check_infer_symbolic_util.h"
@@ -2754,6 +2756,7 @@ void ApplyCinnPass(Program &program) {  // NOLINT
     pir::IrContext *ctx = pir::IrContext::Instance();
     ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
     ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
+    ctx->GetOrRegisterDialect<ap::dialect::OperatorDialect>();
     ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
     auto pass_manager = std::make_shared<pir::PassManager>(ctx);
     if (FLAGS_print_ir && VLOG_IS_ON(4)) {
@@ -2766,6 +2769,32 @@ void ApplyCinnPass(Program &program) {  // NOLINT
     return pass_manager;
   };
   cinn::dialect::ir::ApplyCinnPass(&program, CreatePassManager);
+#else
+  PADDLE_THROW(common::errors::Unimplemented(
+      "Currently we only support CINN Pass for Pir under @to_static, please "
+      "compile PaddlePaddle with CINN"));
+#endif
+}
+
+void ApplyPccPass(Program &program) {  // NOLINT
+#ifdef PADDLE_WITH_CINN
+  auto CreatePassManager = [&]() -> std::shared_ptr<pir::PassManager> {
+    pir::IrContext *ctx = pir::IrContext::Instance();
+    ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+    ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
+    ctx->GetOrRegisterDialect<ap::dialect::OperatorDialect>();
+    ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
+    auto pass_manager = std::make_shared<pir::PassManager>(ctx);
+    if (FLAGS_print_ir && VLOG_IS_ON(4)) {
+      pass_manager->EnableIRPrinting();
+    }
+    auto &shape_analysis = pir::ShapeAnalysisManager::Instance().Get(&program);
+    pass_manager->SetValueReplacedHook([&](pir::Value from, pir::Value to) {
+      shape_analysis.ShareShapeOrData(from, to);
+    });
+    return pass_manager;
+  };
+  ap::paddle::ApplyPccPass(&program, CreatePassManager);
 #else
   PADDLE_THROW(common::errors::Unimplemented(
       "Currently we only support CINN Pass for Pir under @to_static, please "
@@ -2846,6 +2875,7 @@ std::shared_ptr<Program> ApplyFusedBnAddActPass(
 
 void BindIrPass(pybind11::module *m) {
   m->def("apply_cinn_pass", ApplyCinnPass);
+  m->def("apply_pcc_pass", ApplyPccPass);
   m->def("check_infer_symbolic_if_need", CheckInferSymbolicIfNeed);
   m->def("infer_symbolic_shape_pass", InferSymbolicShapePass);
   m->def("apply_cse_pass", ApplyCommonSubexpressionEliminationPass);
