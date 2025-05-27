@@ -116,8 +116,7 @@ void NextafterKernel(const Context& dev_ctx,
   auto y_dims = y.dims();
   if (x_dims.size() >= y_dims.size()) {
     funcs::ElementwiseCompute<funcs::NextafterFunctor<T>, T>(
-        dev_ctx, x, y, funcs
-        : NextafterFunctor<T>(), out);
+        dev_ctx, x, y, funcs ::NextafterFunctor<T>(), out);
   } else {
     funcs::ElementwiseCompute<funcs::InverseNextafterFunctor<T>, T>(
         dev_ctx, x, y, funcs::InverseNextafterFunctor<T>(), out);
