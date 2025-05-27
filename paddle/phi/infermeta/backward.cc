@@ -1253,7 +1253,7 @@ void MoeGateDispatchPermuteGradInferMeta(const MetaTensor& combine_weights,
                                          int64_t capacity,
                                          int64_t world_size,
                                          MetaTensor* x_grad,
-                                         MetaTensor* gate_logtis_grad){
+                                         MetaTensor* gate_logits_grad){
 
   auto y_grad_dims = y_grad.dims();
   PADDLE_ENFORCE_EQ(
@@ -1268,8 +1268,8 @@ void MoeGateDispatchPermuteGradInferMeta(const MetaTensor& combine_weights,
   int64_t num_rows = scatter_index.dims()[1];
   x_grad->set_dims({num_rows, hidden_size});
   x_grad->set_dtype(y_grad.dtype());
-  gate_logtis_grad->set_dims({num_rows, num_experts});
-  gate_logtis_grad->set_dtype(phi::DataType::FLOAT32);
+  gate_logits_grad->set_dims({num_rows, num_experts});
+  gate_logits_grad->set_dtype(phi::DataType::FLOAT32);
 }
 
 void MultiDotGradInferMeta(const std::vector<const MetaTensor*>& x,

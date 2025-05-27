@@ -27,5 +27,5 @@ void MoeGateDispatchGradKernel(const Context& dev_ctx,
                                int64_t capacity,
                                int64_t world_size,
                                DenseTensor* x_grad,
-                               DenseTensor* gate_logtis_grad);
+                               DenseTensor* gate_logits_grad);
 }  // namespace phi
