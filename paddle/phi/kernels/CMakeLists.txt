@@ -229,6 +229,7 @@ if(WITH_ROCM)
     REMOVE_ITEM
     kernel_gpu
     "gpu/moe_ops_partial_nosoftmaxtopk_kernel.cu"
+    "gpu/moe_gate_dispatch_permute_kernel_grad.cu"
     "gpu/moe_gate_dispatch_permute_kernel.cu"
     "gpu/expand_modality_expert_id_kernel.cu"
     "gpu/moe_combine_kernel.cu"

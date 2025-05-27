@@ -1,3 +1,17 @@
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #pragma once
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
 #include "paddle/common/exception.h"
@@ -238,4 +252,59 @@ void gather_with_mask_launcher(const T* dy, // [s*k, d]
                                                   num_local_experts);
       }
     }
+}
+
+template<typename T>
+__global__ void topk_grad_with_mask(const T* dy, // [s, k]
+                                    const int* topk_idx, // [s, k]
+                                    const T* combine_weights, // [s, k]
+                                    T* dx, // [s, e]
+                                    int64_t num_rows, // s
+                                    int64_t k, // k
+                                    int64_t num_experts // e
+                                    ){
+    // init dx to zero
+    for (int i = blockIdx.x; i < num_rows; i+=gridDim.x){
+        int base_grad = i * num_experts;
+        for (int j = threadIdx.x; j < num_experts; j+=blockDim.x){
+            dx[base_grad + j] = static_cast<T>(0);
+        }
+        __syncthreads();
+        int base_index = i * k;
+        for (int j = threadIdx.x; j < k; j+=blockDim.x){
+            int64_t idx = topk_idx[base_index + j];
+            if (combine_weights[base_index + j] > static_cast<T>(0)){
+               dx[base_grad + idx] = dy[base_index + j];
+            }
+        }
+    }
+}
+
+
+// y=zero_part(topk(x)) 的反向过程
+// x:  [s,e]
+// dy: [s,k]
+// X: [s, e] -(topk)-> Y:[s, k] - (越界设置为0)-> conbine_weights: [s, k] 
+template<typename T>
+void topk_grad_with_mask_launcher(
+        const T* dy, // [s, k]
+        const int* topk_idx, // [s, k]
+        const T* combine_weights, // [s, k]
+        T* dx, // [s, e]
+        int64_t num_rows, // s
+        int64_t k, // k
+        int64_t num_experts, // e
+        cudaStream_t stream){
+
+    int blocks = num_rows;
+    int threads = 1024;
+
+    topk_grad_with_mask<T><<<blocks, threads, 0, stream>>>(dy, 
+                                                            topk_idx,
+                                                            combine_weights,
+                                                            dx,
+                                                            num_rows,
+                                                            k,
+                                                            num_experts
+                                                            );
 }
