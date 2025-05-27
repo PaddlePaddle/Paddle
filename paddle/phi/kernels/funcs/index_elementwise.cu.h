@@ -133,16 +133,18 @@ struct OffsetCalculator {
 
 template <typename T>
 std::array<int64_t, DDim::kMaxRank> ComputeStrides(
-    const std::vector<int64_t>& index_dims) {
-  const int rank = index_dims.size();
+    const phi::DenseTensor& input, const size_t index_dims_size) {
+  const auto& input_strides = input.strides();
+  const size_t element_size_bytes = sizeof(T);
+
   std::array<int64_t, DDim::kMaxRank> strides{};
 
-  if (rank >= 1) {
-    strides[rank - 1] = index_dims[rank - 1] * sizeof(T);
-  }
-
-  for (int i = rank - 2; i >= 0; --i) {
-    strides[i] = index_dims[i] * strides[i + 1];
+  for (int i = 0; i < index_dims_size; ++i) {
+    if (i < input_strides.size()) {
+      strides[i] = input_strides[i] * element_size_bytes;
+    } else {
+      strides[i] = 0;
+    }
   }
 
   return strides;
@@ -235,7 +237,7 @@ void IndexElementwiseKernel(const phi::GPUContext& ctx,
                             DenseTensor* output) {
   auto num_indices = index_dims.size();
 
-  auto index_stride = ComputeStrides<T>(index_dims);
+  auto index_stride = ComputeStrides<T>(input, num_indices);
   auto index_ptrs = GetIndexDataPtrs<IndexT>(index);
 
   auto sizes = std::array<int64_t, DDim::kMaxRank>{};
