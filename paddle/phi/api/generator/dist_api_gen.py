@@ -1912,6 +1912,11 @@ class DistForwardAPI(ForwardAPI):
                         )
                     )
                 else:
+                    if (
+                        self.kernel['func'][0] == 'fused_linear_param_grad_add'
+                        and i == 1
+                    ):
+                        set_out_dist_attr_code += "\n    if (has_bias)"
                     set_out_dist_attr_code += (
                         SET_SINGLE_OUT_REPLICATED_DIST_ATTR_TEMPLATE.format(
                             out_name

@@ -2,15 +2,18 @@ name: PR-CI-SOT
 
 on:
   workflow_call:
+    inputs:
+      docker_cpu_image:
+        type: string
+        required: true
 
 env:
-  dockerfile: Dockerfile.cuda9_cudnn7_gcc48_py35_centos6
-  docker_image: 077ca344c322
   PR_ID: ${{ github.event.pull_request.number }}
   COMMIT_ID: ${{ github.event.pull_request.head.sha }}
   TASK: paddle-CI-${{ github.event.pull_request.number }}-sot
   ci_scripts: /paddle/ci
   CI_name: sot
+  no_proxy: "bcebos.com,apiin.im.baidu.com,gitee.com,aliyun.com,.baidu.com,.tuna.tsinghua.edu.cn"
 
 defaults:
   run:
@@ -21,7 +24,7 @@ jobs:
     name: Check bypass for SOT
     uses: ./.github/workflows/check-bypass.yml
     with:
-      workflow-name: 'sot'
+      workflow-name: "sot"
     secrets:
       github-token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -34,7 +37,7 @@ jobs:
 
     steps:
       # sudo usermod -aG docker $USER
-      - name: Check docker image and run container
+      - name: run container
         env:
           BRANCH: ${{ github.base_ref }}
           work_dir: /paddle
@@ -57,9 +60,10 @@ jobs:
           WITH_AVX: "OFF"
           CCACHE_DIR: "/root/.ccache/sot"
         run: |
-          # bash ${{ github.workspace }}/paddle/scripts/paddle_build/check_docker_image.sh
+          set -x
           container_name=${TASK}-$(date +%s)
           echo "container_name=${container_name}" >> ${{ github.env }}
+          docker_image=${{ inputs.docker_cpu_image }}
           docker run -d -t --name ${container_name} \
             -v "/home/data/cfs:/home/data/cfs" \
             -v "/home/data/cfs/.cache:/root/.cache" \
@@ -92,9 +96,10 @@ jobs:
             -e ci_scripts \
             -e WITH_AVX \
             -e CCACHE_DIR \
+            -e no_proxy \
             -w /paddle --network host ${docker_image}
 
-      - name: Download paddle.tar.gz and merge $BRANCH
+      - name: Download paddle.tar.gz and merge target branch
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           rm -rf * .[^.]*
@@ -123,34 +128,6 @@ jobs:
           bash ${ci_scripts}/determine_sot_ci_trigger.sh
           determine_excode=$?
           echo "determine_excode=$determine_excode" >> ${{ github.env }}
-          '
-
-      - name: Build with python3.8
-        env:
-          work_dir: ${{ github.workspace }}
-          PADDLE_ROOT: ${{ github.workspace }}
-        if: ${{ env.determine_excode == 0 }}
-        run: |
-          docker exec -t ${{ env.container_name }} /bin/bash -c '
-          export PY_VERSION=3.8
-          source ${{ github.workspace }}/../../../proxy
-          bash ${ci_scripts}/run_setup.sh bdist_wheel
-          EXCODE=$?
-          exit $EXCODE
-          '
-
-      - name: Test with python3.8
-        env:
-          work_dir: ${{ github.workspace }}
-          PADDLE_ROOT: ${{ github.workspace }}
-        if: ${{ env.determine_excode == 0 }}
-        run: |
-          docker exec -t ${{ env.container_name }} /bin/bash -c '
-          source ${{ github.workspace }}/../../../proxy
-          bash ${ci_scripts}/run_sot_test.sh 3.8
-          EXCODE=$?
-          rm -rf ${PADDLE_ROOT}/build/CMakeCache.txt
-          exit $EXCODE
           '
 
       - name: Build with python3.9

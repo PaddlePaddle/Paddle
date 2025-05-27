@@ -200,6 +200,7 @@ struct IRCopyVisitor : public ir::IRVisitorRequireReImpl<Expr>,
     n->name = op->name;
     n->is_reduce_axis = op->is_reduce_axis;
     n->is_symbolic_constant = op->is_symbolic_constant;
+    n->is_let_symbol = op->is_let_symbol;
     n->set_type(op->type());
 
     if (op->lower_bound.defined()) {

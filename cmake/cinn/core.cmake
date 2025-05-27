@@ -234,7 +234,7 @@ function(cinn_merge_static_libs TARGET_NAME)
 
   if(APPLE) # Use OSX's libtool to merge archives
     # Make the generated dummy source file depended on all static input
-    # libs. If input lib changes,the source file is touched
+    # libs. If input lib changes, the source file is touched
     # which causes the desired effect (relink).
     add_custom_command(
       OUTPUT ${target_SRCS}
@@ -283,7 +283,7 @@ function(cinn_merge_static_libs TARGET_NAME)
     endforeach()
 
     # Make the generated dummy source file depended on all static input
-    # libs. If input lib changes,the source file is touched
+    # libs. If input lib changes, the source file is touched
     # which causes the desired effect (relink).
     add_custom_command(
       OUTPUT ${target_SRCS}
@@ -310,7 +310,7 @@ function(cinn_merge_static_libs TARGET_NAME)
 
     # windows do not support gcc/nvcc combined compiling. Use msvc lib.exe to merge libs.
     # Make the generated dummy source file depended on all static input
-    # libs. If input lib changes,the source file is touched
+    # libs. If input lib changes, the source file is touched
     # which causes the desired effect (relink).
     add_custom_command(
       OUTPUT ${target_SRCS}

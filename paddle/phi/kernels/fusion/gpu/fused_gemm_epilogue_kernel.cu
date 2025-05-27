@@ -74,6 +74,10 @@ void FusedGemmEpilogueKernel(const Context& dev_ctx,
                              const std::string& activation,
                              DenseTensor* out,
                              DenseTensor* reserve_space) {
+  if (out->numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
 #if defined(PADDLE_WITH_CUDA) && CUDA_VERSION < 11060
   PADDLE_THROW(common::errors::Unimplemented(
       "The fused_gemm_epilogue operator only support CUDA 11.6 "

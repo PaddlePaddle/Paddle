@@ -26,6 +26,14 @@ limitations under the License. */
 namespace phi {
 namespace funcs {
 
+/**
+ * Fast division : Replace division in CUDA with multiplication to improve
+ * kernel performance.
+ * 1. Complete the division calculation on the CPU, and record the calculation
+ *    results by using the divider and shift_val.
+ * 2. Set the divisor on the GPU through Div() to complete the calculation.
+ */
+template <typename IndexT>
 struct FastDivMod {
   // 1st value represents the result of input number divides by recorded divisor
   // 2nd value represents the result of input number modulo by recorded divisor
@@ -64,31 +72,46 @@ struct FastDivMod {
   uint32_t multiplier;
 };
 
-template <typename IndexT>
-struct GeneralDivMod {
- public:
-  explicit GeneralDivMod(IndexT d) { divmoder = phi::funcs::FastDivMod(d); }
-  __device__ inline phi::funcs::FastDivMod::DivModT div_mod(IndexT val) {
-    return divmoder.Divmod(val);
-  }
-
-  phi::funcs::FastDivMod divmoder;
-};
-
 template <>
-struct GeneralDivMod<int64_t> {
- public:
-  using DivModT = phi::AlignedVector<int64_t, 2>;
+struct FastDivMod<int64_t> {
+  using DivModT = phi::AlignedVector<uint64_t, 2>;
 
-  explicit GeneralDivMod(int64_t d) { divisor = d; }
-  __device__ inline DivModT div_mod(int64_t val) {
-    DivModT data;
-    data[0] = val / divisor;
-    data[1] = val - data[0] * divisor;
-    return data;
+  FastDivMod() {}
+  HOSTDEVICE FastDivMod(uint64_t d) : divisor(d) {
+    for (shift_val = 0; shift_val < 64; ++shift_val) {
+      uint64_t shift_limit = uint64_t(1) << shift_val;
+      if (shift_limit >= divisor) break;
+    }
+
+    // quotient = ((uint128_t)n_hi << 64) / d
+    uint64_t quotient = 0;
+    uint64_t n_hi = (uint64_t(1) << shift_val) - d, n_lo = 0;
+    for (int i = 63; i >= 0; --i) {
+      uint64_t d_hi = i == 0 ? 0 : d >> (64 - i);
+      uint64_t d_lo = d << i;
+      if (n_hi == 0 && n_lo == 0) break;
+      if ((d_hi < n_hi) || (d_hi <= n_hi && d_lo <= n_lo)) {
+        quotient |= uint64_t(1) << i;
+        n_hi -= d_hi + (d_lo > n_lo);
+        n_lo -= d_lo;
+      }
+    }
+    multiplier = quotient + 1;
   }
 
-  int64_t divisor;
+  __device__ __forceinline__ uint64_t Div(uint64_t n) const {
+    uint64_t t = __umul64hi(n, multiplier);
+    return (t + n) >> shift_val;
+  }
+
+  __device__ __forceinline__ DivModT Divmod(uint64_t n) const {
+    uint64_t q = Div(n);
+    return {q, n - q * divisor};
+  }
+
+  int shift_val;
+  uint64_t divisor;
+  uint64_t multiplier;
 };
 
 }  // namespace funcs

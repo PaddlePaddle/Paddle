@@ -1,0 +1,254 @@
+name: CE-Framework
+
+on:
+  workflow_call:
+    inputs:
+      docker_build_image:
+        type: string
+        required: true
+      can-skip:
+        type: string
+        required: false
+
+env:
+  PR_ID: ${{ github.event.pull_request.number }}
+  COMMIT_ID: ${{ github.event.pull_request.head.sha }}
+  work_dir: /paddle
+  PADDLE_ROOT: /paddle
+  ci_scripts: /paddle/ci
+  BRANCH: ${{ github.event.pull_request.base.ref }}
+  TASK: paddle-CI-${{ github.event.pull_request.number }}-CE-Framework
+  CI_name: ce-framework
+  no_proxy: "bcebos.com,apiin.im.baidu.com,gitee.com,aliyun.com,.baidu.com,.tuna.tsinghua.edu.cn"
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  whl:
+    name: Whl
+    if: ${{ inputs.can-skip != 'true' }}
+    runs-on: ubuntu-latest
+    env:
+      TASK: paddle-CI-${{ github.event.pull_request.number }}-CE-Framework-whl
+    steps:
+      - name: Download build.tar.gz
+        run: |
+          rm -rf * .[^.]*
+          echo "Downloading build.tar.gz"
+          wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/build/${PR_ID}/${COMMIT_ID}/build.tar.gz --no-check-certificate
+          echo "Extracting build.tar.gz"
+          # git config --global --add safe.directory ${work_dir}
+          tar --use-compress-program="pzstd -1" -xpf build.tar.gz --strip-components=1
+          # git submodule foreach "git config --global --add safe.directory \$toplevel/\$sm_path"
+          rm build.tar.gz
+
+      - name: Check bypass
+        id: check-bypass
+        uses: ./.github/actions/check-bypass
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          workflow-name: ce-whl
+
+      - name: Check whl size
+        if: steps.check-bypass.outputs.can-skip != 'true'
+        env:
+          PADDLE_ROOT: ${{ github.workspace }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          bash ci/check_whl_size.sh
+
+  infer:
+    name: Infer
+    if: ${{ inputs.can-skip != 'true' }}
+    runs-on:
+      group: BD_BJ-V100
+    env:
+      TASK: paddle-CI-${{ github.event.pull_request.number }}-CE-Framework-infer
+    steps:
+      - name: Check docker image and run container
+        env:
+          CACHE_DIR: /home/data/cfs/.cache
+          FLAGS_enable_eager_mode: 1
+        run: |
+          container_name=${TASK}-${core_index}-$(date +%Y%m%d-%H%M%S)
+          echo "container_name=${container_name}" >> ${{ github.env }}
+          docker_image=${{ inputs.docker_build_image }}
+          docker run -d -t --gpus all --name ${container_name} --privileged --shm-size=128g \
+            -v "/home/data/cfs:/home/data/cfs" \
+            -v "/home/data/cfs/.cache:/root/.cache" \
+            -v "/home/data/cfs/.ccache:/root/.ccache" \
+            -v "/dev/shm:/dev/shm" \
+            -v ${{ github.workspace }}/../../..:${{ github.workspace }}/../../.. \
+            -v ${{ github.workspace }}:/paddle \
+            -e BRANCH \
+            -e PR_ID \
+            -e COMMIT_ID \
+            -e work_dir \
+            -e PADDLE_ROOT \
+            -e ci_scripts \
+            -e no_proxy \
+            -e CI_name \
+            -e CACHE_DIR \
+            -e FLAGS_enable_eager_mode \
+            -w /paddle --network host ${docker_image}
+
+      - name: Download Paddle and PaddleTest
+        env:
+          work_dir: ${{ github.workspace }}
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
+          rm -rf * .[^.]*
+          echo "Downloading build.tar.gz"
+          wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/build/${PR_ID}/${COMMIT_ID}/build.tar.gz --no-check-certificate
+          echo "Extracting build.tar.gz"
+          git config --global --add safe.directory ${work_dir}
+          tar --use-compress-program="pzstd -1" -xpf build.tar.gz --strip-components=1
+          git submodule foreach "git config --global --add safe.directory \$toplevel/\$sm_path"
+          rm build.tar.gz
+          cd /
+          cp /paddle/build/pr_whl/*.whl .
+          echo "Downloading PaddleTest.tar.gz"
+          wget -q --no-proxy https://xly-devops.bj.bcebos.com/PaddleTest/PaddleTest.tar.gz --no-check-certificate
+          echo "Extracting PaddleTest.tar.gz"
+          tar -zvxf PaddleTest.tar.gz 1>/dev/null 2>&1
+          '
+
+      - name: Check bypass
+        id: check-bypass
+        uses: ./.github/actions/check-bypass
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          workflow-name: ce-infer
+
+      - name: Install paddle and dependencies
+        if: steps.check-bypass.outputs.can-skip != 'true'
+        env:
+          work_dir: ${{ github.workspace }}
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
+          mkdir run_env
+          ln -s $(which python3.10) run_env/python
+          ln -s $(which pip3.10) run_env/pip
+          export PATH=$(pwd)/run_env:${PATH}
+          pip config set global.cache-dir "$CACHE_DIR/pip"
+          pip config set global.index-url https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple
+          python -m pip install pip --upgrade
+          pip install /paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl
+          pip install -r /PaddleTest/inference/python_api_test/requirements.txt
+          '
+
+      - name: Check
+        if: steps.check-bypass.outputs.can-skip != 'true'
+        env:
+          work_dir: ${{ github.workspace }}
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
+          export PATH=$(pwd)/run_env:${PATH}
+          cd /PaddleTest/inference/python_api_test
+          bash parallel_run.sh 2
+          '
+
+      - name: Terminate and delete the container
+        if: always()
+        run: |
+          sudo rm -rf * .[^.]*
+          docker rm -f ${{ env.container_name }}
+
+  test:
+    name: Test
+    if: ${{ inputs.can-skip != 'true' }}
+    runs-on:
+      group: BD_BJ-V100
+    env:
+      TASK: paddle-CI-${{ github.event.pull_request.number }}-CE-Framework-test
+    steps:
+      - name: Check docker image and run container
+        env:
+          CACHE_DIR: /home/data/cfs/.cache
+          FLAGS_enable_eager_mode: 1
+        run: |
+          container_name=${TASK}-${core_index}-$(date +%Y%m%d-%H%M%S)
+          echo "container_name=${container_name}" >> ${{ github.env }}
+          docker_image=${{ inputs.docker_build_image }}
+          docker run -d -t --gpus all --name ${container_name} --privileged --shm-size=128g \
+            -v "/home/data/cfs:/home/data/cfs" \
+            -v "/home/data/cfs/.cache:/root/.cache" \
+            -v "/home/data/cfs/.ccache:/root/.ccache" \
+            -v "/dev/shm:/dev/shm" \
+            -v ${{ github.workspace }}/../../..:${{ github.workspace }}/../../.. \
+            -v ${{ github.workspace }}:/paddle \
+            -e BRANCH \
+            -e PR_ID \
+            -e COMMIT_ID \
+            -e work_dir \
+            -e PADDLE_ROOT \
+            -e ci_scripts \
+            -e no_proxy \
+            -e CI_name \
+            -e CACHE_DIR \
+            -e FLAGS_enable_eager_mode \
+            -w /paddle --network host ${docker_image}
+
+      - name: Download Paddle and PaddleTest
+        env:
+          work_dir: ${{ github.workspace }}
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
+          rm -rf * .[^.]*
+          echo "Downloading build.tar.gz"
+          wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/build/${PR_ID}/${COMMIT_ID}/build.tar.gz --no-check-certificate
+          echo "Extracting build.tar.gz"
+          git config --global --add safe.directory ${work_dir}
+          tar --use-compress-program="pzstd -1" -xpf build.tar.gz --strip-components=1
+          git submodule foreach "git config --global --add safe.directory \$toplevel/\$sm_path"
+          rm build.tar.gz
+          cd /
+          cp /paddle/build/pr_whl/*.whl .
+          echo "Downloading PaddleTest.tar.gz"
+          wget -q --no-proxy https://xly-devops.bj.bcebos.com/PaddleTest/PaddleTest.tar.gz --no-check-certificate
+          echo "Extracting PaddleTest.tar.gz"
+          tar -zvxf PaddleTest.tar.gz 1>/dev/null 2>&1
+          '
+
+      - name: Check bypass
+        id: check-bypass
+        uses: ./.github/actions/check-bypass
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          workflow-name: ce-test
+
+      - name: Install paddle and dependencies
+        if: steps.check-bypass.outputs.can-skip != 'true'
+        env:
+          work_dir: ${{ github.workspace }}
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
+          mkdir run_env
+          ln -s $(which python3.10) run_env/python
+          ln -s $(which pip3.10) run_env/pip
+          export PATH=$(pwd)/run_env:${PATH}
+          pip config set global.cache-dir "/home/data/cfs/.cache/pip"
+          pip config set global.index-url https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple
+          pip install sympy
+          pip install /paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl
+          '
+
+      - name: Check
+        if: steps.check-bypass.outputs.can-skip != 'true'
+        env:
+          work_dir: ${{ github.workspace }}
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
+          export PATH=$(pwd)/run_env:${PATH}
+          cd /PaddleTest/framework/api
+          rm ./device/test_cuda_get_device_capability.py
+          bash run_paddle_ci.sh
+          '
+
+      - name: Terminate and delete the container
+        if: always()
+        run: |
+          sudo rm -rf * .[^.]*
+          docker rm -f ${{ env.container_name }}

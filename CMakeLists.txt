@@ -56,6 +56,7 @@ option(WITH_XPU_KP "Compile PaddlePaddle with BAIDU XPU compiler " OFF)
 option(WITH_XPU_XFT "Compile PaddlePaddle with BAIDU XPU-XFT" OFF)
 option(WITH_XPU_PLUGIN "Compile PaddlePaddle with BAIDU XPU plugin" OFF)
 option(WITH_XPU_XRE5 "Compile PaddlePaddle with BAIDU XPU XRE 5" OFF)
+option(WITH_XPU_FFT "Compile PaddlePaddle with BAIDU XPU FFT" OFF)
 option(WITH_WIN_DUMP_DBG "Compile with windows core dump debug mode" OFF)
 option(WITH_ROCM "Compile PaddlePaddle with ROCM platform" OFF)
 option(WITH_IPU "Compile PaddlePaddle with Graphcore IPU" OFF)
@@ -65,7 +66,7 @@ option(WITH_SETUP_INSTALL "Compile PaddlePaddle with setup.py" OFF)
 option(WITH_SHARED_PHI "Compile PaddlePaddle with SHARED LIB of PHI" ON)
 option(CINN_WITH_CUDNN "Compile CINN with CUDNN support" ON)
 option(WITH_PIP_CUDA_LIBRARIES
-       "Paddle uses the CUDA library provided by NVIDIA" OFF)
+       "Paddle uses the CUDA library provided by NVIDIA" ON)
 option(WITH_PIP_TENSORRT "Paddle uses the tensorrt provided by NVIDIA" OFF)
 option(WITH_NIGHTLY_BUILD
        "Compile nightly paddle whl package of the develop branch" OFF)
@@ -94,6 +95,9 @@ if(WITH_GPU AND WITH_XPU_XFT)
 endif()
 if(WITH_GPU AND WITH_XPU_XRE5)
   message(FATAL_ERROR "Error when compile GPU and XPU-XRE5 at the same time")
+endif()
+if(WITH_GPU AND WITH_XPU_FFT)
+  message(FATAL_ERROR "Error when compile GPU and XPU-FFT at the same time")
 endif()
 if(WITH_GPU AND WITH_ROCM)
   message(FATAL_ERROR "Error when compile CUDA and ROCM at the same time")
@@ -476,6 +480,14 @@ if(NOT WITH_XPU AND WITH_XPU_XRE5)
   set(WITH_XPU_XRE5
       OFF
       CACHE STRING "Disable XRE5 when compiling without XPU" FORCE)
+endif()
+
+if(NOT WITH_XPU AND WITH_XPU_FFT)
+  message((WARNING
+           "Disable FFT when compiling without XPU. Force WITH_XPU_FFT=OFF"))
+  set(WITH_XPU_FFT
+      OFF
+      CACHE STRING "Disable FFT when compiling without XPU" FORCE)
 endif()
 
 if(WITH_NCCL)

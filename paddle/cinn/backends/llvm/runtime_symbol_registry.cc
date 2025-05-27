@@ -14,10 +14,10 @@
 
 #include "paddle/cinn/backends/llvm/runtime_symbol_registry.h"
 
-#include <absl/strings/string_view.h>
 #include <glog/raw_logging.h>
 
 #include <iostream>
+#include <string_view>
 
 #include "paddle/cinn/runtime/flags.h"
 #include "paddle/common/enforce.h"
@@ -32,7 +32,7 @@ RuntimeSymbols &GlobalSymbolRegistry::Global() {
   return symbols;
 }
 
-void *RuntimeSymbols::Lookup(absl::string_view name) const {
+void *RuntimeSymbols::Lookup(std::string_view name) const {
   std::lock_guard<std::mutex> lock(mu_);
   auto it = symbols_.find(std::string(name));
   if (it != symbols_.end()) {

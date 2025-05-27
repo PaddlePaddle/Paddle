@@ -18,5 +18,11 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/svd_grad_kernel_impl.h"
 
-PD_REGISTER_KERNEL(
-    svd_grad, GPU, ALL_LAYOUT, phi::SvdGradKernel, float, double) {}
+PD_REGISTER_KERNEL(svd_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::SvdGradKernel,
+                   float,
+                   double,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

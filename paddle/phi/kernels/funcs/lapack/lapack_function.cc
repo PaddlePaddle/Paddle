@@ -538,8 +538,10 @@ void lapackSvd<double>(char jobz,
                        int ldvt,
                        double *work,
                        int lwork,
+                       double *rwork,
                        int *iwork,
                        int *info) {
+  (void)rwork;  // unused
   dynload::dgesdd_(
       &jobz, &m, &n, a, &lda, s, u, &ldu, vt, &ldvt, work, &lwork, iwork, info);
 }
@@ -557,10 +559,80 @@ void lapackSvd<float>(char jobz,
                       int ldvt,
                       float *work,
                       int lwork,
+                      float *rwork,
                       int *iwork,
                       int *info) {
+  (void)rwork;  // unused
   dynload::sgesdd_(
       &jobz, &m, &n, a, &lda, s, u, &ldu, vt, &ldvt, work, &lwork, iwork, info);
+}
+
+template <>
+void lapackSvd<phi::dtype::complex<double>, double>(
+    char jobz,
+    int m,
+    int n,
+    phi::dtype::complex<double> *a,
+    int lda,
+    double *s,
+    phi::dtype::complex<double> *u,
+    int ldu,
+    phi::dtype::complex<double> *vt,
+    int ldvt,
+    phi::dtype::complex<double> *work,
+    int lwork,
+    double *rwork,
+    int *iwork,
+    int *info) {
+  dynload::zgesdd_(&jobz,
+                   &m,
+                   &n,
+                   reinterpret_cast<std::complex<double> *>(a),
+                   &lda,
+                   reinterpret_cast<std::complex<double> *>(s),
+                   reinterpret_cast<std::complex<double> *>(u),
+                   &ldu,
+                   reinterpret_cast<std::complex<double> *>(vt),
+                   &ldvt,
+                   reinterpret_cast<std::complex<double> *>(work),
+                   &lwork,
+                   rwork,
+                   iwork,
+                   info);
+}
+
+template <>
+void lapackSvd<phi::dtype::complex<float>, float>(
+    char jobz,
+    int m,
+    int n,
+    phi::dtype::complex<float> *a,
+    int lda,
+    float *s,
+    phi::dtype::complex<float> *u,
+    int ldu,
+    phi::dtype::complex<float> *vt,
+    int ldvt,
+    phi::dtype::complex<float> *work,
+    int lwork,
+    float *rwork,
+    int *iwork,
+    int *info) {
+  dynload::cgesdd_(&jobz,
+                   &m,
+                   &n,
+                   reinterpret_cast<std::complex<float> *>(a),
+                   &lda,
+                   reinterpret_cast<std::complex<float> *>(s),
+                   reinterpret_cast<std::complex<float> *>(u),
+                   &ldu,
+                   reinterpret_cast<std::complex<float> *>(vt),
+                   &ldvt,
+                   reinterpret_cast<std::complex<float> *>(work),
+                   &lwork,
+                   rwork,
+                   iwork,
+                   info);
 }
 
 }  // namespace phi::funcs

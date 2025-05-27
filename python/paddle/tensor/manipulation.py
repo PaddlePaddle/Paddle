@@ -6417,9 +6417,50 @@ def masked_fill(
     if np.isscalar(value):
         value = paddle.full([], value, x.dtype)
 
-    mask = paddle.logical_not(mask)
-    out = paddle.where(mask, x, value)
-    return out
+    if mask.dtype != "bool":
+        mask = paddle.cast(mask, "bool")
+
+    if in_dynamic_or_pir_mode():
+        out = _C_ops.masked_fill(x, mask, value)
+        return out
+    else:
+        check_variable_and_dtype(
+            x,
+            'x',
+            [
+                'bool',
+                'float16',
+                'bfloat16',
+                'float32',
+                'float64',
+                'int16',
+                'int32',
+                'int64',
+                'int8',
+                'unit8',
+                'complex64',
+                'complex128',
+            ],
+            'masked_fill',
+        )
+        check_variable_and_dtype(
+            mask,
+            'mask',
+            ['bool'],
+            'masked_fill',
+        )
+        helper = LayerHelper("masked_fill", **locals())
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        helper.append_op(
+            type='masked_fill',
+            inputs={
+                'x': x,
+                'mask': mask,
+                'value': value,
+            },
+            outputs={'out': out},
+        )
+        return out
 
 
 @inplace_apis_in_dygraph_only
@@ -6433,9 +6474,11 @@ def masked_fill_(
     if np.isscalar(value):
         value = paddle.full([], value, x.dtype)
 
-    mask = paddle.logical_not(mask)
-    out = paddle.where_(mask, x, value)
-    return out
+    if mask.dtype != "bool":
+        mask = paddle.cast(mask, "bool")
+
+    x = _C_ops.masked_fill_(x, mask, value)
+    return x
 
 
 @overload
@@ -6558,7 +6601,11 @@ def take_along_axis(
         arr = paddle.broadcast_to(arr, broadcast_shape)
     else:
         for i in range(len(arr.shape)):
-            if i != axis and arr.shape[i] < indices.shape[i]:
+            if (
+                i != axis
+                and arr.shape[i] != -1
+                and arr.shape[i] < indices.shape[i]
+            ):
                 raise RuntimeError(
                     f"Size does not match at dimension {i} expected index {indices.shape} to be smaller than self {arr.shape} apart from dimension {axis}"
                 )

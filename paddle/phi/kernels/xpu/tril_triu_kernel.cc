@@ -27,21 +27,21 @@ void TrilTriuKernel(const Context& ctx,
                     DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   ctx.template Alloc<T>(out);
-  auto xshape = common::vectorize<int>(x.dims());
+  auto xshape = common::vectorize<int64_t>(x.dims());
   int r = 0;
   if (lower) {
     r = xpu::tril(ctx.x_context(),
                   reinterpret_cast<const XPUType*>(x.data<T>()),
                   reinterpret_cast<XPUType*>(out->data<T>()),
                   xshape,
-                  diagonal);
+                  static_cast<int64_t>(diagonal));
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "tril_op");
   } else {
     r = xpu::triu(ctx.x_context(),
                   reinterpret_cast<const XPUType*>(x.data<T>()),
                   reinterpret_cast<XPUType*>(out->data<T>()),
                   xshape,
-                  diagonal);
+                  static_cast<int64_t>(diagonal));
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "triu_op");
   }
 }

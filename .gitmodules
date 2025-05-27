@@ -98,10 +98,6 @@
 	path = third_party/rocksdb
 	url = https://github.com/Thunderbrook/rocksdb
 	ignore = dirty
-[submodule "third_party/absl"]
-	path = third_party/absl
-	url = https://github.com/abseil/abseil-cpp.git
-	ignore = dirty
 [submodule "third_party/jitify"]
 	path = third_party/jitify
 	url = https://github.com/NVIDIA/jitify.git

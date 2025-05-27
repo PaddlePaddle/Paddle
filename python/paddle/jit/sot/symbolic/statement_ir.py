@@ -12,22 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""
-THIS FILE IS PRIVATE !!
-
-use interface in symbolic_context.py first.
-"""
 from __future__ import annotations
 
 import functools
 import weakref
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any, Callable, TypeVar
 
 import paddle
 from paddle.jit.utils import OrderedSet
 from paddle.utils import flatten, map_structure
 
 from ..utils import NameGenerator, Singleton, flatten_extend, get_api_fullname
+
+if TYPE_CHECKING:
+    from contextlib import AbstractContextManager
+
+
+_StatementContextT = TypeVar("_StatementContextT", bound="StatementContext")
 
 
 class Reference:  # to unify weak_ref and strong_ref
@@ -71,6 +72,53 @@ class Symbol:
         return Symbol(self.name)
 
 
+class StatementContext: ...
+
+
+class StatementContextRegistry:
+
+    _ctx_map: dict[
+        type[Any],
+        Callable[[Any], AbstractContextManager[None]],
+    ] = {}
+
+    @classmethod
+    def register_context_guard(
+        cls,
+        ctx_cls: type[_StatementContextT],
+        handler: Callable[[_StatementContextT], AbstractContextManager[None]],
+    ):
+        """
+        Register a context handler for the given context.
+        """
+        if ctx_cls in cls._ctx_map:
+            raise ValueError(f"Context {ctx_cls} is already registered.")
+        cls._ctx_map[ctx_cls] = handler
+
+    @classmethod
+    def register_context(
+        cls,
+        handler: Callable[[_StatementContextT], AbstractContextManager[None]],
+    ):
+        def decorator(ctx_cls: type[_StatementContextT]):
+            cls.register_context_guard(ctx_cls, handler)
+            return ctx_cls
+
+        return decorator
+
+    @classmethod
+    def get_context_guard(
+        cls,
+        ctx_cls: type[_StatementContextT],
+    ) -> Callable[[_StatementContextT], AbstractContextManager[None]]:
+        """
+        Get the context handler for the given context.
+        """
+        if ctx_cls not in cls._ctx_map:
+            raise ValueError(f"Context {ctx_cls} is not registered.")
+        return cls._ctx_map[ctx_cls]
+
+
 class Statement:
     """
     Statement is used to represent a sentence of code for building the neural network model,
@@ -86,12 +134,14 @@ class Statement:
         name: str,
         inputs: list[Symbol],
         outputs: list[Symbol],
+        contexts: list[StatementContext],
         stacks: list[str],
     ):
         assert type in ["call", "api", "method", "layer", "AST"]
         self.name = name
         self.inputs = inputs  # (list of Symbols, dict of Symbols)
         self.outputs = outputs  # list of Symbol | PythonObj
+        self.contexts = contexts  # list of StatementContext
         self.stmt_stack = (
             stacks  # a list of string to record the source code callstack.
         )
@@ -119,9 +169,10 @@ class CallStatement(Statement):
         name: str,
         inputs: list[Symbol],
         outputs: list[Symbol],
+        contexts: list[StatementContext],
         stacks: list[str],
     ):
-        super().__init__("call", name, inputs, outputs, stacks)
+        super().__init__("call", name, inputs, outputs, contexts, stacks)
         self.sir_name = name
 
 
@@ -131,12 +182,13 @@ class ApiStatement(Statement):
         api: Callable,
         inputs: list[Symbol],
         outputs: list[Symbol],
+        contexts: list[StatementContext],
         stacks: list[str],
     ):
         fullname = get_api_fullname(api)
         if fullname is None:
             fullname = "paddle." + api.__name__
-        super().__init__("api", fullname, inputs, outputs, stacks)
+        super().__init__("api", fullname, inputs, outputs, contexts, stacks)
         self.api = api
 
 
@@ -146,9 +198,10 @@ class MethodStatement(Statement):
         name: str,
         inputs: list[Symbol],
         outputs: list[Symbol],
+        contexts: list[StatementContext],
         stacks: list[str],
     ):
-        super().__init__("method", name, inputs, outputs, stacks)
+        super().__init__("method", name, inputs, outputs, contexts, stacks)
         self.method = name
 
 
@@ -158,6 +211,7 @@ class LayerStatement(Statement):
         layer: Reference,  # Reference of paddle.nn.Layer
         inputs: list[Symbol],
         outputs: list[Symbol],
+        contexts: list[StatementContext],
         stacks: list[str],
     ):
         if isinstance(layer, Reference):
@@ -169,6 +223,7 @@ class LayerStatement(Statement):
             name,
             inputs,
             outputs,
+            contexts,
             stacks,
         )
         self.layer = layer
@@ -180,6 +235,7 @@ class ASTStatement(Statement):
         static_function,
         inputs: list[Symbol],
         outputs: list[Symbol],
+        contexts: list[StatementContext],
         stacks: list[str],
     ):
         # this dygraph_function always has attr __code__, which is checked before
@@ -189,6 +245,7 @@ class ASTStatement(Statement):
             dygraph_func.__code__.co_name,
             inputs,
             outputs,
+            contexts,
             stacks,
         )
         converted_func = paddle.jit.dy2static.convert_to_static(dygraph_func)

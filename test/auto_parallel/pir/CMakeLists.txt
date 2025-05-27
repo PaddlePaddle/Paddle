@@ -19,6 +19,7 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_mlp MODULES test_mlp ENVS FLAGS_enable_pir_api=1)
   py_test_modules(test_local_layer MODULES test_local_layer ENVS
                   FLAGS_enable_pir_api=1)
+  py_test_modules(test_local_map MODULES test_local_map)
   py_test_modules(
     test_semi_auto_parallel_dist_to_static_pir MODULES
     test_semi_auto_parallel_dist_to_static_pir ENVS FLAGS_enable_pir_api=1)

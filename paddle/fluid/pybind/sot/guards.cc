@@ -23,21 +23,53 @@ limitations under the License. */
 #include <object.h>
 #include "pybind11/numpy.h"
 
-#if !defined(PyObject_CallOneArg) && !PY_3_9_PLUS
-static inline PyObject* PyObject_CallOneArg(PyObject* func, PyObject* arg) {
-  return PyObject_CallFunctionObjArgs(func, arg, NULL);
-}
-#endif
-
 #if !PY_3_10_PLUS
 #define Py_IsNone(x) ((x) == Py_None)
 #endif
 
-#define HANDLE_NULL_VALUE(value) \
-  if ((value) == NULL) {         \
-    PyErr_Clear();               \
-    return false;                \
+// check if the tensor is null, tensor is std::optional<paddle::Tensor>
+#define HANDLE_NULL_TENSOR(tensor) \
+  {                                \
+    if (!tensor) {                 \
+      return false;                \
+    }                              \
   }
+
+// check if the value is null and decref it
+#define HANDLE_NULL_VALUE_DECREF(value) \
+  {                                     \
+    if ((value) == NULL) {              \
+      Py_DECREF(value);                 \
+      PyErr_Clear();                    \
+      return false;                     \
+    }                                   \
+  }
+
+// check if the value is null
+#define HANDLE_NULL_VALUE(value) \
+  {                              \
+    if ((value) == NULL) {       \
+      PyErr_Clear();             \
+      return false;              \
+    }                            \
+  }
+
+template <typename T>
+static inline bool check_shape(
+    const std::vector<std::optional<int64_t>>& expected,
+    int ndim,
+    const T& actual_shape) {
+  if (expected.size() != static_cast<size_t>(ndim)) {
+    return false;
+  }
+  for (size_t i = 0; i < expected.size(); ++i) {
+    if (!expected[i] || actual_shape[i] < 1) continue;
+    if (actual_shape[i] != expected[i].value()) {
+      return false;
+    }
+  }
+  return true;
+}
 
 static inline bool PyObject_Equal(PyObject* a, PyObject* b) {
   if (a == b) {
@@ -106,9 +138,7 @@ bool LengthMatchGuard::check(PyObject* value) {
 
 bool DtypeMatchGuard::check(PyObject* value) {
   auto tensor = GetTensorFromPyObject(value);
-  if (!tensor) {
-    return false;
-  }
+  HANDLE_NULL_TENSOR(tensor);
   auto dtype = tensor->type();
   return phi::TransToProtoVarType(dtype) == expected_;
 }
@@ -116,19 +146,9 @@ bool DtypeMatchGuard::check(PyObject* value) {
 bool ShapeMatchGuard::check(PyObject* value) {
   HANDLE_NULL_VALUE(value);
   auto tensor = GetTensorFromPyObject(value);
-  if (!tensor) {
-    return false;
-  }
+  HANDLE_NULL_TENSOR(tensor);
   auto shape = tensor->shape();
-  if (shape.size() != expected_.size()) {
-    return false;
-  }
-  for (size_t i = 0; i < shape.size(); ++i) {
-    if (expected_[i] && shape[i] != *expected_[i]) {
-      return false;
-    }
-  }
-  return true;
+  return check_shape<std::vector<int64_t>>(expected_, shape.size(), shape);
 }
 
 bool AttributeMatchGuard::check(PyObject* value) {
@@ -176,6 +196,16 @@ bool NumPyArrayValueMatchGuard::check(PyObject* value) {
       .cast<bool>();
 }
 
+bool NumPyArrayShapeMatchGuard::check(PyObject* value) {
+  py::array array = py::reinterpret_borrow<py::array>(value);
+  if (!array) {
+    return false;
+  }
+  int ndim = array.ndim();
+  const Py_ssize_t* shape = array.shape();
+  return check_shape<const Py_ssize_t*>(expected_, ndim, shape);
+}
+
 bool WeakRefMatchGuard::check(PyObject* value) {
   if (value == nullptr || expected_ == nullptr || Py_IsNone(expected_)) {
     return false;
@@ -199,6 +229,42 @@ bool WeakRefMatchGuard::check(PyObject* value) {
 #else
   return PyObject_Equal(value, PyWeakref_GetObject(expected_));
 #endif
+}
+
+bool IsNotDenseTensorHoldAllocationMatchGuard::check(PyObject* value) {
+  auto tensor = GetTensorFromPyObject(value);
+  HANDLE_NULL_TENSOR(tensor);
+
+  if (!tensor->defined() ||
+      (!tensor->is_dense_tensor() && !tensor->is_dist_tensor()))
+    return true;
+
+  PyObject* method =
+      PyObject_GetAttrString(value, "_is_dense_tensor_hold_allocation");
+  if (!method) {
+    PyErr_Print();
+    return false;
+  }
+
+  if (!PyCallable_Check(method)) {
+    Py_DECREF(method);
+    PyErr_SetString(PyExc_TypeError, "Attribute is not callable");
+    return false;
+  }
+
+  PyObject* result = PyObject_CallOneArg(method, value);
+  Py_DECREF(method);
+  if (result == nullptr) {
+    PyErr_Print();
+    return false;
+  }
+  int truthy = PyObject_IsTrue(result);
+  Py_DECREF(result);
+  if (truthy == -1) {
+    PyErr_Print();
+    return false;
+  }
+  return !static_cast<bool>(truthy);
 }
 
 PyObject* ConstantExprNode::eval(FrameProxy* frame) { return value_ptr_; }
@@ -254,29 +320,171 @@ std::string ItemExprNode::stringify(int indent) {
   return ss.str();
 }
 
-std::optional<int> GuardNode::lookup(FrameProxy* frame) {
-  // TODO(zrr1999): support multiple exprs
-  auto expr = exprs.back();
-  auto value = expr->eval(frame);
-  if (guard->check(value)) {
-    if (return_cache_index.has_value()) {
-      return return_cache_index.value();
+PyObject* BinaryExprNode::eval(FrameProxy* frame) {
+  PyObject* lhs = lhs_->eval(frame);
+  PyObject* rhs = rhs_->eval(frame);
+
+  if (!lhs || !rhs) {
+    PyErr_Clear();
+    return Py_False;
+  }
+
+  PyObject* result = nullptr;
+  if (op_type_ == OpType::COMPARE) {
+    int bool_result = PyObject_RichCompareBool(lhs, rhs, op_code_);
+    if (bool_result == -1) {
+      PyErr_Clear();
+      return Py_False;
     }
-    for (auto& next_guard_node : next_guard_nodes) {
-      auto ret = next_guard_node->lookup(frame);
-      if (ret.has_value()) {
-        return ret.value();
-      }
+    result = bool_result ? Py_True : Py_False;
+  } else {
+    PyNumberMethods* nb = Py_TYPE(lhs)->tp_as_number;
+    if (nb == nullptr) {
+      PyErr_SetString(PyExc_TypeError,
+                      "Object does not support number operations");
+      return Py_False;
+    }
+
+    switch (op_code_) {
+      case 0:  // +
+        result = nb->nb_add(lhs, rhs);
+        break;
+      case 1:  // -
+        result = nb->nb_subtract(lhs, rhs);
+        break;
+      case 2:  // *
+        result = nb->nb_multiply(lhs, rhs);
+        break;
+      case 3:  // /
+        result = nb->nb_true_divide(lhs, rhs);
+        break;
+      case 4:  // //
+        result = nb->nb_floor_divide(lhs, rhs);
+        break;
+      case 5:  // %
+        result = nb->nb_remainder(lhs, rhs);
+        break;
+      case 6:  // **
+        result = nb->nb_power(lhs, rhs, nullptr);
+        break;
+      case 7:  // <<
+        result = nb->nb_lshift(lhs, rhs);
+        break;
+      case 8:  // >>
+        result = nb->nb_rshift(lhs, rhs);
+        break;
+      case 9:  // &
+        result = nb->nb_and(lhs, rhs);
+        break;
+      case 10:  // |
+        result = nb->nb_or(lhs, rhs);
+        break;
+      case 11:  // ^
+        result = nb->nb_xor(lhs, rhs);
+        break;
+      default:
+        PyErr_SetString(PyExc_TypeError, "Unsupported operation");
+        return Py_False;
+    }
+
+    if (result == nullptr) {
+      PyErr_Clear();
+      return Py_False;
+    }
+  }
+
+  return result;
+}
+
+std::string BinaryExprNode::stringify(int indent) {
+  std::stringstream ss;
+  ss << lhs_->stringify() << " " << op_str_ << " " << rhs_->stringify();
+  return ss.str();
+}
+
+std::optional<int> GuardNodeBase::lookup_next(FrameProxy* frame) {
+  if (return_cache_index.has_value()) {
+    return return_cache_index.value();
+  }
+  for (auto& next_guard_node : next_guard_nodes) {
+    auto ret = next_guard_node->lookup(frame);
+    if (ret.has_value()) {
+      return ret.value();
     }
   }
   return std::nullopt;
 }
-std::string GuardNode::stringify(int indent) {
-  std::stringstream ss;
+
+bool TensorDistMetaMatchGuardNode::check(std::array<PyObject*, 2> values) {
+  PyObject* expr = values[0];
+  HANDLE_NULL_VALUE(expr);
+
+  auto tensor = GetTensorFromPyObject(expr);
+  HANDLE_NULL_TENSOR(tensor);
+
+  if (tensor->is_dist_tensor() == false && is_dist_ == false) return true;
+  if (tensor->is_dist_tensor() != is_dist_) {
+    return false;
+  }
+
+  PyObject* dist_info_from_tensor_func = values[1];
+  HANDLE_NULL_VALUE(dist_info_from_tensor_func);
+
+  PyObject* dist_info = PyObject_CallOneArg(dist_info_from_tensor_func, expr);
+  HANDLE_NULL_VALUE_DECREF(dist_info);
+
+  PyObject* mesh = PyObject_GetAttrString(dist_info, "mesh");
+  HANDLE_NULL_VALUE_DECREF(mesh);
+
+  PyObject* mesh_shape = PyObject_GetAttrString(mesh, "shape");
+  HANDLE_NULL_VALUE_DECREF(mesh_shape);
+  PyObject* process_ids = PyObject_GetAttrString(mesh, "process_ids");
+  HANDLE_NULL_VALUE_DECREF(process_ids);
+  PyObject* dims_mapping = PyObject_GetAttrString(dist_info, "dims_mapping");
+  HANDLE_NULL_VALUE_DECREF(dims_mapping);
+  PyObject* local_shape = PyObject_GetAttrString(dist_info, "local_shape");
+  HANDLE_NULL_VALUE_DECREF(local_shape);
+
+  if (py::handle(mesh_shape).cast<std::vector<int>>() != mesh_shape_expected_ ||
+      py::handle(process_ids).cast<std::vector<int>>() !=
+          mesh_process_ids_expected_.value() ||
+      !PyObject_Equal(dims_mapping, dims_mapping_expected_.value()) ||
+      !PyObject_Equal(local_shape, local_shape_expected_.value())) {
+    Py_DECREF(mesh);
+    Py_DECREF(mesh_shape);
+    Py_DECREF(process_ids);
+    Py_DECREF(dims_mapping);
+    Py_DECREF(local_shape);
+    PyErr_Clear();
+    return false;
+  }
+
+  Py_DECREF(mesh);
+  Py_DECREF(mesh_shape);
+  Py_DECREF(process_ids);
+  Py_DECREF(dims_mapping);
+  Py_DECREF(local_shape);
+  return true;
+}
+
+bool LegacyGuardNode::check(std::array<PyObject*, 1> values) {
   // TODO(zrr1999): support multiple exprs
-  auto expr = exprs.back();
-  ss << std::string(indent, ' ') << guard->get_guard_name();
-  ss << "(" << exprs.back()->stringify() << ")";
+  PyObject* value = values[0];
+  HANDLE_NULL_VALUE(value);
+  return guard->check(value);
+}
+
+std::optional<int> ExprGuardNode::lookup(FrameProxy* frame) {
+  auto value = expr->eval(frame);
+  if (PyObject_IsTrue(value)) {
+    return lookup_next(frame);
+  }
+  return std::nullopt;
+}
+std::string ExprGuardNode::stringify(int indent) {
+  std::stringstream ss;
+  ss << std::string(indent, ' ');
+  ss << "(" << expr->stringify() << ")";
   if (!next_guard_nodes.empty()) {
     ss << " |" << std::endl;
     for (auto& next_guard_node : next_guard_nodes) {
@@ -287,12 +495,22 @@ std::string GuardNode::stringify(int indent) {
   return ss.str();
 }
 
+std::optional<int> DummyGuardNode::lookup(FrameProxy* frame) {
+  if (return_true_) {
+    return lookup_next(frame);
+  }
+  return std::nullopt;
+}
+std::string DummyGuardNode::stringify(int indent) {
+  return std::string(indent, ' ') + "DummyGuard(" +
+         (return_true_ ? "True" : "False") + ")";
+}
+
 void GuardTree::add_guard_chain(
-    const std::vector<std::shared_ptr<GuardNode>>& guard_chain) {
+    const std::vector<std::shared_ptr<GuardNodeBase>>& guard_chain) {
   if (guard_chain.empty()) {
-    // TODO(zrr1999): empty guard nodes means that some
-    // tracker.make_faster_guard is not implemented.
-    return;
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Empty guard chain, please check the guard chain"));
   }
   for (size_t i = 1; i < guard_chain.size(); ++i) {
     guard_chain[i - 1]->next_guard_nodes.push_back(guard_chain[i]);
@@ -318,6 +536,68 @@ std::string GuardTree::stringify() {
     }
     ss << guard_nodes_[i]->stringify();
   }
+  return ss.str();
+}
+
+std::vector<std::shared_ptr<GuardNodeBase>> GuardTree::get_guard_nodes() const {
+  return guard_nodes_;
+}
+
+PyObject* UnaryExprNode::eval(FrameProxy* frame) {
+  PyObject* value = expr_->eval(frame);
+  if (!value) {
+    PyErr_Clear();
+    return Py_False;
+  }
+
+  PyObject* result = nullptr;
+  if (op_type_ == OpType::NUMBER) {
+    PyNumberMethods* nb = Py_TYPE(value)->tp_as_number;
+    if (nb == nullptr) {
+      PyErr_SetString(PyExc_TypeError,
+                      "Object does not support number operations");
+      return Py_False;
+    }
+
+    switch (op_code_) {
+      case 0:  // +
+        result = nb->nb_positive(value);
+        break;
+      case 1:  // -
+        result = nb->nb_negative(value);
+        break;
+      case 2:  // ~
+        result = nb->nb_invert(value);
+        break;
+      default:
+        PyErr_SetString(PyExc_TypeError, "Unsupported operation");
+        return Py_False;
+    }
+  } else {  // LOGICAL
+    switch (op_code_) {
+      case 0:  // not or !
+        result = PyObject_IsTrue(value) ? Py_False : Py_True;
+        break;
+      case 1:  // bool
+        result = PyObject_IsTrue(value) ? Py_True : Py_False;
+        break;
+      default:
+        PyErr_SetString(PyExc_TypeError, "Unsupported operation");
+        return Py_False;
+    }
+  }
+
+  if (result == nullptr) {
+    PyErr_Clear();
+    return Py_False;
+  }
+
+  return result;
+}
+
+std::string UnaryExprNode::stringify(int indent) {
+  std::stringstream ss;
+  ss << op_str_ << "(" << expr_->stringify() << ")";
   return ss.str();
 }
 

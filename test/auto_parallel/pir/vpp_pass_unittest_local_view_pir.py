@@ -53,15 +53,11 @@ def is_optimize_op(op):
     return False
 
 
-class CustomLayer(dist.LocalLayer):
-    def __init__(self, out_dist_attrs, grad_dist_attrs):
-        super().__init__(out_dist_attrs, grad_dist_attrs)
-
-    def forward(self, input):
-        input += 0.1
-        input -= 0.3
-        input *= 0.5
-        return input
+def customFunction(input):
+    input += 0.1
+    input -= 0.3
+    input *= 0.5
+    return input
 
 
 class MyLinear(nn.Layer):
@@ -95,8 +91,8 @@ class MyLinear(nn.Layer):
             [dist.Replicate()],
             stop_gradient=False,
         )
-        self.custom_local_layer = CustomLayer(
-            [(mesh, [dist.Replicate()])], [(mesh, [dist.Replicate()])]
+        self.custom_local_layer = dist.local_map(
+            customFunction, [[dist.Replicate()]], [[dist.Replicate()]], mesh
         )
 
     def forward(self, input):

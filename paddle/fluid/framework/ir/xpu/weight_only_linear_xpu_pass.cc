@@ -222,8 +222,10 @@ void PermuteINT8WeightOnlyPass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, common::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);
-
-  ApplyPermuteINT8WeightOnly(graph);
+  auto version = phi::backends::xpu::get_xpu_version(-1);
+  if (version == phi::backends::xpu::XPUVersion::XPU2) {
+    ApplyPermuteINT8WeightOnly(graph);
+  }
 }
 
 }  // namespace ir
