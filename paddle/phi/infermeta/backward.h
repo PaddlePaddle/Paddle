@@ -707,4 +707,11 @@ void MoeGateDispatchGradInferMeta(const MetaTensor& combine_weights,
                                   MetaTensor* x_grad,
                                   MetaTensor* gate_logits_grad);
 
+void FusedRMSNormGradInferMeta(const MetaTensor &x,
+              const MetaTensor &scale,
+              const MetaTensor &invvar,
+              const MetaTensor &dy,
+              float epsilon,
+              MetaTensor* x_grad,
+              MetaTensor* scale_grad);
 }  // namespace phi

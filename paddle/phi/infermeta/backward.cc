@@ -1982,5 +1982,17 @@ void MoeGateDispatchGradInferMeta(const MetaTensor& combine_weights,
 
   x_grad->set_dims(common::make_ddim({num_rows, hidden_size}));
   x_grad->set_dtype(y_grad.dtype());
+void FusedRMSNormGradInferMeta(const MetaTensor &x,
+              const MetaTensor &scale,
+              const MetaTensor &invvar,
+              const MetaTensor &dy,
+              float epsilon,
+              MetaTensor* x_grad,
+              MetaTensor* scale_grad){
+
+  x_grad->set_dims(x.dims());
+  x_grad->set_dtype(x.dtype());
+  scale_grad->set_dims(scale.dims());
+  scale_grad->set_dtype(scale.dtype());
 }
 }  // namespace phi

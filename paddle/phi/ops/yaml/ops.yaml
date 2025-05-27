@@ -5727,3 +5727,22 @@
      data_type: numbers
   interfaces : paddle::dialect::InferSymbolicShapeInterface
   traits : paddle::dialect::ForwardOnlyTrait
+
+- op: int_bincount
+  args: (Tensor x, int low, int high, int dtype)
+  output: Tensor(out)
+  infer_meta:
+    func: IntBincountInferMeta
+  kernel:
+    func: int_bincount
+    data_type: x
+
+- op: fused_rms_norm
+  args: (Tensor x, Tensor scale, float epsilon)
+  output: Tensor(y), Tensor(invvar)
+  infer_meta:
+    func: FusedRMSNormInferMeta
+  kernel:
+    func: fused_rms_norm
+    data_type: x
+  backward: fused_rms_norm_grad

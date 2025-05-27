@@ -790,5 +790,11 @@ void WeightDequantizeInferMeta(const MetaTensor& x,
                                const std::string& algo,
                                const int32_t group_size,
                                MetaTensor* out);
+void FusedRMSNormInferMeta(const MetaTensor &x,
+              const MetaTensor &scale,
+              float epsilon,
+              MetaTensor* y,
+              MetaTensor* invvar);
+
 
 }  // namespace phi
