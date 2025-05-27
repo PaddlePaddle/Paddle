@@ -25,7 +25,7 @@ jobs:
     name: Check bypass for DCU
     uses: ./.github/workflows/check-bypass.yml
     with:
-      workflow-name: 'dcu'
+      workflow-name: 'dcu-build'
     secrets:
       github-token: ${{ secrets.GITHUB_TOKEN }}
 
