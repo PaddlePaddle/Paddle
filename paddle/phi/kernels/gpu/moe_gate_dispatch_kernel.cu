@@ -20,6 +20,7 @@
 namespace phi {
 
 // --------      getWorkspaceSize      -------- //
+namespace {
 template <typename KeyT>
 size_t getWorkspaceSize(const int num_rows,
                         const int hidden_size,
@@ -56,6 +57,8 @@ size_t getWorkspaceSize(const int num_rows,
   // "<<total_ws_bytes<<std::endl;
   return total_ws_bytes;
 }
+} // namespace 
+
 
 template <typename T, typename Context>
 void apply_moe_dispatch_fwd(const Context &dev_ctx,

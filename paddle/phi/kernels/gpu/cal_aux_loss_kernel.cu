@@ -219,13 +219,26 @@ void CalAuxLossKernel(const Context& dev_ctx,
   auto dispatch_mask_dims = dispatch_mask.dims();
 
   int64_t dispatch_tokens_mask_len = 0;
+  auto dispatch_tokens_mask_ptr = dispatch_tokens_mask.get_ptr();
   if (dispatch_tokens_mask) {
-    dispatch_tokens_mask_len = dispatch_tokens_mask.get_ptr()->dims()[0];
+      const auto mask_dims = dispatch_tokens_mask_ptr->dims();
+      const auto dim_size = mask_dims.size();
+      const bool is_not_zero_size = (dim_size > 0);
+      if (is_not_zero_size) {
+          dispatch_tokens_mask_len = dispatch_tokens_mask_ptr->dims()[0];
+      } else {
+          dispatch_tokens_mask_len = 0;
+      }
   }
 
+  /*
   T* l_aux_loss_data = dev_ctx.template Alloc<T>(l_aux_loss);
   T* seqlen_float_data = dev_ctx.template Alloc<T>(seqlen_float);
   T* ce_data = dev_ctx.template Alloc<T>(ce);
+  */
+  dev_ctx.template Alloc<T>(l_aux_loss);
+  dev_ctx.template Alloc<T>(seqlen_float);
+  dev_ctx.template Alloc<T>(ce);
 
   cal_aux_loss<T>(gate_prob.data<T>(),
                   gate_prob_dims[0],
@@ -243,9 +256,9 @@ void CalAuxLossKernel(const Context& dev_ctx,
                   use_group,
                   moe_k,
                   clip_min,
-                  l_aux_loss_data,
-                  seqlen_float_data,
-                  ce_data,
+                  l_aux_loss->data<T>(),
+                  seqlen_float->data<T>(),
+                  ce->data<T>(),
                   dev_ctx.stream());
 }
 

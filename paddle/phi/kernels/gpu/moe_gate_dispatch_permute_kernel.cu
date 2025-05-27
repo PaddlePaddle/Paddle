@@ -19,6 +19,7 @@
 #include "paddle/phi/kernels/empty_kernel.h"
 namespace phi {
 
+namespace {
 // --------      getWorkspaceSize      -------- //
 template <typename KeyT>
 size_t getWorkspaceSize(const int num_rows,
@@ -49,6 +50,7 @@ size_t getWorkspaceSize(const int num_rows,
   // std::cout<<"sorter_ws_size_bytes = "<<sorter_ws_size_bytes  << "  num_moe_inputs = "<<num_moe_inputs<<", total_ws_bytes = "<<total_ws_bytes<<std::endl;
   return total_ws_bytes;
 }
+} // namespace 
 
 template <typename T, typename Context>
 void apply_moe_dispatch_fwd(const Context& dev_ctx,

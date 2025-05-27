@@ -6368,10 +6368,10 @@ void CalAuxLossInferMeta(const MetaTensor& gate_prob,
             "The input dispatch_tokens_mask type should be BOOL"));
   }
 
-  l_aux_loss->set_dims({1});
+  l_aux_loss->set_dims(phi::make_ddim({}));
   l_aux_loss->set_dtype(gate_prob.dtype());
 
-  seqlen_floats->set_dims({1});
+  seqlen_floats->set_dims(phi::make_ddim({}));
   seqlen_floats->set_dtype(gate_prob.dtype());
 
   ce->set_dims({gate_prob_dims[1]});
@@ -6393,7 +6393,6 @@ void MoeGateDispatchInferMeta(const MetaTensor& x,
   auto gate_logits_dims = gate_logits.dims();
 
   const int64_t num_rows = x_dims[0];
-  const int64_t hidden_size = x_dims[1];
   const int64_t num_experts = gate_logits_dims[1];
 
   PADDLE_ENFORCE_EQ(

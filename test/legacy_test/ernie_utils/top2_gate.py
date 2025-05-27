@@ -17,6 +17,7 @@ from paddle import nn
 from paddle.utils import unique_name
 from paddle.nn.clip import _squared_l2_norm
 from paddle.distributed import fleet
+from paddle.incubate.nn.functional import cal_aux_loss
 
 
 try:
@@ -41,64 +42,8 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
-class CalOrthogonalLossOptEachWeightFunctor(paddle.autograd.PyLayer):
-    """CalOrthogonalLossOptEachWeightFunctor"""
-
-    @staticmethod
-    def forward(ctx, gate_weight, moe_k, use_group, eps=1e-12):
-        """forward"""
-        if gate_weight.dtype != paddle.float32:
-            gate_weight = gate_weight.astype(paddle.float32)
-        (
-            orthogonal_loss,
-            wnorm,
-            weight_scale,
-            normed_weight,
-            weight_matmul,
-        ) = moe_router_loss_ops.cal_orthogonal_loss_opt_each_weight(gate_weight, moe_k, use_group, eps)
-        ctx.save_for_backward(gate_weight, wnorm, weight_scale, normed_weight, weight_matmul)
-        ctx.moe_k = moe_k
-        ctx.use_group = use_group
-        ctx.eps = eps
-        return orthogonal_loss
-
-    @staticmethod
-    def backward(ctx, out_grad):
-        """backward"""
-        gate_weight, wnorm, weight_scale, normed_weight, weight_matmul = ctx.saved_tensor()
-        if gate_weight.stop_gradient:
-            return None
-        moe_k = ctx.moe_k
-        use_group = ctx.use_group
-        eps = ctx.eps
-        return moe_router_loss_ops.cal_orthogonal_loss_opt_each_weight_grad(
-            out_grad, wnorm, weight_scale, normed_weight, weight_matmul, moe_k, use_group, eps
-        )
 
 
-class CalZLossFunctor(paddle.autograd.PyLayer):
-    """CalZLossFunctor"""
-
-    @staticmethod
-    def forward(ctx, logits, loss_mask=None, clip_min=1e-6):
-        """forward"""
-        if loss_mask is not None:
-            assert loss_mask.stop_gradient
-        loss, max_logits, safe_sumexp, logsumexp_per_token = moe_router_loss_ops.cal_z_loss(logits, loss_mask, clip_min)
-        ctx.save_for_backward(logits, loss_mask, max_logits, safe_sumexp, logsumexp_per_token)
-        ctx.clip_min = clip_min
-        return loss
-
-    @staticmethod
-    def backward(ctx, out_grad):
-        """backward"""
-        logits, loss_mask, max_logits, safe_sumexp, logsumexp_per_token = ctx.saved_tensor()
-        if logits.stop_gradient:
-            return None
-        clip_min = ctx.clip_min
-        return moe_router_loss_ops.cal_z_loss_grad(
-            out_grad, logits, loss_mask, max_logits, safe_sumexp, logsumexp_per_token, clip_min
-        )
 
 
 class CalAuxLossFunctor(paddle.autograd.PyLayer):
@@ -111,59 +56,30 @@ class CalAuxLossFunctor(paddle.autograd.PyLayer):
         """forward"""
         if tokens_mask is not None and tokens_mask.dtype != gate_prob.dtype:
             tokens_mask = tokens_mask.astype(gate_prob.dtype)
-        loss, seqlen_float, ce = moe_router_loss_ops.cal_aux_loss(
+        loss, seqlen_float, ce = cal_aux_loss(
             gate_prob, dispatch_mask, tokens_mask, dispatch_tokens_mask, num_experts, use_group, moe_k, clip_min
         )
+        '''
         ctx.save_for_backward(gate_prob, seqlen_float, ce)
         ctx.num_experts = num_experts
         ctx.use_group = use_group
         ctx.moe_k = moe_k
+        '''
         return loss
 
     @staticmethod
     def backward(ctx, out_grad):
         """backward"""
+        '''
         gate_prob, seqlen_float, ce = ctx.saved_tensor()
         num_experts = ctx.num_experts
         use_group = ctx.use_group
         moe_k = ctx.moe_k
-        return moe_router_loss_ops.cal_aux_loss_grad(
+        from paddle import _C_ops
+        return _C_ops.cal_aux_loss_grad(
             out_grad, gate_prob, seqlen_float, ce, num_experts, use_group, moe_k
         )
-
-
-def cal_orthogonal_loss_opt_each_weight_func(weight, moe_k, use_group, eps, xpu_matmul=None, training=True):
-    """cal_orthogonal_loss_opt_each_weight_func"""
-    weight = weight.transpose([1, 0]).contiguous()  # transpose weight here
-    wnorm = weight.norm(axis=1)
-    weight = weight / paddle.maximum(wnorm, eps).unsqueeze(1)
-
-    if use_group:
-        weight = weight.reshape([moe_k, -1, weight.shape[1]])  # [K, E/K, H]
-        eye_matrix = paddle.eye(weight.shape[1], dtype=weight.dtype).unsqueeze(0)
-    else:
-        eye_matrix = paddle.eye(weight.shape[0], dtype=weight.dtype)
-
-    if False:
-        weight_matmul = xpu_matmul(weight, weight, transpose_y=True, training=training)
-    else:
-        weight_matmul = paddle.matmul(weight, weight, transpose_y=True)
-
-    orthogonal_loss = weight_matmul - eye_matrix
-    orthogonal_loss = _squared_l2_norm(orthogonal_loss) / orthogonal_loss.size
-    return orthogonal_loss
-
-
-def cal_z_loss_func(logits, loss_mask):
-    """cal_z_loss_func"""
-    # l_zloss = logits.exp().sum(1).log().square().mean()
-    if loss_mask is not None:
-        loss_mask = loss_mask.astype(logits.dtype)
-        l_zloss = (logits.logsumexp(1).square() * loss_mask).sum() / paddle.clip(loss_mask.sum(), min=1e-6)
-    else:
-        l_zloss = logits.logsumexp(1).square().mean()
-    # TODO group_experts 分group计算zloss
-    return l_zloss
+        '''
 
 
 def cal_aux_loss_func(
@@ -192,7 +108,6 @@ def cal_aux_loss_func(
     else:
         seqlen_float = gate_prob.numel().astype(gate_prob.dtype) / num_experts
     seqlen_float = paddle.clip(seqlen_float, min=1e-6)
-
     if len(dispatch_mask.shape) == 2:
         dispatch_mask = dispatch_mask.sum(0)
     ce = dispatch_mask.astype(gate_prob.dtype).detach() / seqlen_float
@@ -211,11 +126,9 @@ def cal_aux_loss_func(
     l_aux = paddle.sum(me * ce) * num_experts
     if use_group:
         l_aux = l_aux / moe_k
-    '''
     if scale is not None:
         # 前向用局部me, 反向用全局me
         l_aux = l_aux + (scale - 1) * l_aux.detach()
-    '''
     return l_aux
 
 
@@ -827,61 +740,6 @@ class Top2Gate(nn.Layer):
                 self.group if self.global_aux_loss else None,
             )
 
-    def _cal_z_loss(self, logits, loss_mask=None):
-        """
-        计算 Z 损失。
-
-        Args:
-            logits (torch.Tensor): Logits Tensor，形状为 [batch_size, num_classes]。
-
-        Returns:
-            torch.Tensor: Z 损失 Tensor，形状为 []。
-
-        """
-        if (
-            (moe_router_loss_ops is not None)
-            and (loss_mask is None or len(loss_mask.shape) == 1)
-            and (logits.dtype == paddle.float32)
-        ):
-            return CalZLossFunctor.apply(logits, loss_mask)
-        else:
-            return cal_z_loss_func(logits, loss_mask)
-
-    def _cal_orthogonal_loss_opt_each_weight(self, weight, use_group):
-        """
-        gate正交loss(优化版)
-        """
-        if weight.dtype != paddle.float32:
-            weight = weight.astype(paddle.float32)
-
-        if (moe_router_loss_ops is not None) and (weight.dtype == paddle.float32):
-            return CalOrthogonalLossOptEachWeightFunctor.apply(weight, self.config.moe_k, use_group)
-        else:
-            return cal_orthogonal_loss_opt_each_weight_func(
-                weight, self.config.moe_k, use_group, self.eps, self.xpu_matmul, self.training
-            )
-
-    def _cal_orthogonal_loss(self, weight_id=None, use_group=None):
-        """
-        gate正交Loss
-        """
-        if use_group is None:
-            use_group = self.config.moe_group_experts and self.config.moe_group_orthogonal_loss
-
-        if weight_id is not None:
-            if weight_id == 0:
-                w_ = self.weight
-            else:
-                assert self.config.multimodel_experts
-                w_ = getattr(self, f"weight_{weight_id}")
-            return self._cal_orthogonal_loss_opt_each_weight(w_, use_group)
-
-        orthogonal_loss = self._cal_orthogonal_loss_opt_each_weight(self.weight, use_group)
-        if self.config.multimodel_experts:
-            for i in range(1, len(self.config.moe_num_experts)):
-                w_ = getattr(self, f"weight_{i}")
-                orthogonal_loss += self._cal_orthogonal_loss_opt_each_weight(w_, use_group=False)
-        return orthogonal_loss
 
 
 class TopKGateFused(Top2Gate):

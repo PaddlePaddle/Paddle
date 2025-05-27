@@ -418,6 +418,9 @@ std::shared_ptr<phi::DenseTensor> PrepareData(
         out = Trans2Contiguous(out);
         return std::make_shared<phi::DenseTensor>(std::move(out));
       }
+      VLOG(6) << "tensor_in: "<< tensor_in;
+      auto tmp = std::static_pointer_cast<phi::DenseTensor>(tensor_in);
+      VLOG(6) << "tensor_in.size(): " << tmp->dims();
       return std::static_pointer_cast<phi::DenseTensor>(tensor_in);
     }
     phi::DenseTensor out = TransformData(
