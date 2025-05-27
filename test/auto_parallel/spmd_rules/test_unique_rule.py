@@ -27,7 +27,6 @@ class TestUniqueSPMDRule(unittest.TestCase):
     def setUp(self):
         self.rule = core.get_phi_spmd_rule("unique")
         x_shape = [4, 8]
-        out_shape = []
         process_mesh = auto.ProcessMesh(mesh=[[0, 1], [2, 3]])
 
         x_tensor_dist_attr = TensorDistAttr()
@@ -44,28 +43,28 @@ class TestUniqueSPMDRule(unittest.TestCase):
     def test_infer_forward(self):
         # return_index=True, return_inverse=True, return_counts=True, axis={}
         # [0, -1] --> [-1,-1], [-1], [-1], [-1], [-1]
-        # self.x_dist_tensor_spec.set_dims_mapping([0, -1])
-        # result_dist_attrs = self.rule.infer_forward(
-        #     self.x_dist_tensor_spec,
-        #     self.attrs["return_index"],
-        #     self.attrs["return_inverse"],
-        #     self.attrs["return_counts"],
-        #     self.attrs["axis"],
-        #     self.attrs['dtype'],
-        # )
+        self.x_dist_tensor_spec.set_dims_mapping([0, -1])
+        result_dist_attrs = self.rule.infer_forward(
+            self.x_dist_tensor_spec,
+            self.attrs["return_index"],
+            self.attrs["return_inverse"],
+            self.attrs["return_counts"],
+            self.attrs["axis"],
+            self.attrs['dtype'],
+        )
 
-        # self.assertEqual(len(result_dist_attrs), 2)
-        # inferred_input_dist_attrs = result_dist_attrs[0]
-        # inferred_output_dist_attrs = result_dist_attrs[1]
+        self.assertEqual(len(result_dist_attrs), 2)
+        inferred_input_dist_attrs = result_dist_attrs[0]
+        inferred_output_dist_attrs = result_dist_attrs[1]
 
-        # self.assertEqual(len(inferred_input_dist_attrs), 1)
-        # self.assertEqual(len(inferred_output_dist_attrs), 4)
+        self.assertEqual(len(inferred_input_dist_attrs), 1)
+        self.assertEqual(len(inferred_output_dist_attrs), 4)
 
-        # self.assertEqual(inferred_input_dist_attrs[0].dims_mapping, [-1, -1])
-        # self.assertEqual(inferred_output_dist_attrs[0].dims_mapping, [-1])
-        # self.assertEqual(inferred_output_dist_attrs[1].dims_mapping, [-1])
-        # self.assertEqual(inferred_output_dist_attrs[2].dims_mapping, [-1])
-        # self.assertEqual(inferred_output_dist_attrs[3].dims_mapping, [-1])
+        self.assertEqual(inferred_input_dist_attrs[0].dims_mapping, [-1, -1])
+        self.assertEqual(inferred_output_dist_attrs[0].dims_mapping, [-1])
+        self.assertEqual(inferred_output_dist_attrs[1].dims_mapping, [-1])
+        self.assertEqual(inferred_output_dist_attrs[2].dims_mapping, [-1])
+        self.assertEqual(inferred_output_dist_attrs[3].dims_mapping, [-1])
 
         # return_index=True, return_inverse=True, return_counts=True, axis={0}
         # [0, -1] --> [-1,-1], [-1，-1], [-1], [-1], [-1]
