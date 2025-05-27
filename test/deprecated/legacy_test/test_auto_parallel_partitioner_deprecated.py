@@ -321,9 +321,10 @@ class MLPLayer(nn.Layer):
 
 
 def mlp_pretrain_forward(train_program, start_program):
-    with static.program_guard(
-        train_program, start_program
-    ), utils.unique_name.guard():
+    with (
+        static.program_guard(train_program, start_program),
+        utils.unique_name.guard(),
+    ):
         batch_size = 4
         hidden_size = 1024
         sequence_len = 512
@@ -703,9 +704,10 @@ class AttentionLayer(nn.Layer):
 
 
 def attn_pretrain_forward(train_program, start_program):
-    with static.program_guard(
-        train_program, start_program
-    ), utils.unique_name.guard():
+    with (
+        static.program_guard(train_program, start_program),
+        utils.unique_name.guard(),
+    ):
         batch_size = 4
         hidden_size = 1024
         sequence_len = 512
@@ -1202,9 +1204,10 @@ class DecoderLayer(nn.Layer):
 
 
 def decoder_pretrain_forward(train_program, start_program):
-    with static.program_guard(
-        train_program, start_program
-    ), utils.unique_name.guard():
+    with (
+        static.program_guard(train_program, start_program),
+        utils.unique_name.guard(),
+    ):
         batch_size = 4
         hidden_size = 1024
         sequence_len = 512

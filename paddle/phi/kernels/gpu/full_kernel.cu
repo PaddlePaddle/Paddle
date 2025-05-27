@@ -69,7 +69,7 @@ void FullLikeKernel(const Context& dev_ctx,
   // This function has no input, so the inputs.size() == 0. Use kUnary, but the
   // data will not be loaded in the kernel because the number of parameters in
   // the operator is 0
-  int numel = out->numel();
+  int64_t numel = out->numel();
 
   if (!std::is_same<T, phi::dtype::complex<float>>::value &&
       !std::is_same<T, phi::dtype::complex<double>>::value) {

@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import sys
 import unittest
 
 from test_case_base import (
@@ -19,10 +18,731 @@ from test_case_base import (
 )
 
 import paddle
+from paddle.jit.sot import symbolic_translate
+from paddle.jit.sot.opcode_translator.executor.opcode_executor import (
+    ALREADY_SUPPORTED_EXCEPTION,
+)
 from paddle.jit.sot.psdb import check_no_breakgraph
 from paddle.jit.sot.utils import strict_mode_guard
 
-NOT_ALLOW_FALLBACK = sys.version_info < (3, 11) and sys.version_info >= (3, 9)
+NOT_ALLOW_FALLBACK = ALREADY_SUPPORTED_EXCEPTION
+
+
+class TestRaiseVarargs(TestCaseBase):
+    # test `RAISE_VARARGS`
+
+    @staticmethod
+    @check_no_breakgraph
+    def argc_equal_to_0_wo_exception(x):
+        try:
+            x += 1
+            # In CPython, `RuntimeError` will be triggered at this point.
+            # SOT have setup the exception stack and raise the exception manually.
+            # This function is designed to test scenarios involving only the `raise` statement.
+            raise  # Bare `raise` statement is not inside an exception handler # noqa: PLE0704
+            x /= 2
+        except RuntimeError:
+            x -= 3
+        x *= 4
+        return x
+
+    @staticmethod
+    @check_no_breakgraph
+    def argc_equal_to_0_zero_div_err(x):
+        x += 1
+        try:
+            try:
+                x += 2
+                result = 10 / 0
+            except ZeroDivisionError:
+                x += 3
+                raise  # RAISE_VARARGS(0)
+        except:
+            x += 4
+        return x + 5
+
+    @staticmethod
+    @check_no_breakgraph
+    def argc_equal_to_0_simulating_zero_div_err(x):
+        x += 1
+        try:
+            try:
+                x += 2
+                raise ZeroDivisionError("")
+            except ZeroDivisionError:
+                x += 3
+                raise  # RAISE_VARARGS(0)
+        except:
+            x += 4
+        return x + 5
+
+    @staticmethod
+    @check_no_breakgraph
+    def argc_equal_to_1(x):
+        x += 1
+        try:
+            try:
+                x += 2
+            except:
+                x += 3
+            else:
+                x += 4
+                raise NotImplementedError  # RAISE_VARARGS(1)
+                x += 5
+        except:
+            x += 6
+        return x + 7
+
+    @staticmethod
+    @check_no_breakgraph
+    def argc_equal_to_2(x):
+        x -= 10
+        try:
+            try:
+                x -= 300
+            finally:
+                x -= 400
+                raise ValueError from None  # RAISE_VARARGS(2)
+        except ValueError:
+            x -= 500
+
+        return x - 600
+
+    @staticmethod
+    @check_no_breakgraph
+    def argc_equal_to_1_2(x):
+        try:
+            x += 1
+            try:
+                x /= 2
+                raise NameError  # RAISE_VARARGS(1)
+                x *= 3
+            except NameError as e:
+                x -= 4
+                raise TimeoutError("TESTING") from e  # RAISE_VARARGS(2)
+        except:
+            x /= 5
+        return x + 6
+
+    @staticmethod
+    @check_no_breakgraph
+    def argc_equal_to_1_0(x):
+        try:
+            try:
+                x -= 1
+                raise ValueError("TESTING")  # RAISE_VARARGS(1)
+                x += 2
+            except NotImplementedError:
+                x /= 3
+                raise  # RAISE_VARARGS(0)
+        except (KeyError, IndexError):
+            x *= 4
+        except ValueError:
+            x += 5
+        return x
+
+    @strict_mode_guard(NOT_ALLOW_FALLBACK)
+    def test_RAISE_VARARGS_argc(self):
+        self.assert_results(
+            self.argc_equal_to_0_wo_exception, paddle.to_tensor(0.01)
+        )
+        self.assert_results(
+            self.argc_equal_to_0_zero_div_err, paddle.to_tensor(0.02)
+        )
+        self.assert_results(
+            self.argc_equal_to_0_simulating_zero_div_err, paddle.to_tensor(0.03)
+        )
+        self.assert_results(self.argc_equal_to_1, paddle.to_tensor(0.04))
+        self.assert_results(self.argc_equal_to_2, paddle.to_tensor(0.05))
+        self.assert_results(self.argc_equal_to_1_2, paddle.to_tensor(0.06))
+        self.assert_results(self.argc_equal_to_1_0, paddle.to_tensor(0.07))
+
+
+class TestException(TestCaseBase):
+    @staticmethod
+    def create_builtin_exception(x):
+        def identity(e):
+            return e
+
+        x += 1
+        value_error = ValueError()
+        identity(value_error)
+        x += 2
+        type_error = TypeError("")
+        identity(type_error)
+        x += 3
+        key_error = KeyError("")
+        identity(key_error)
+        x += 4
+        exception = Exception("")
+        identity(exception)
+        x += 5
+        unicode_translate_error = UnicodeTranslateError("", -1, -1, "")
+        identity(unicode_translate_error)
+        x += 6
+        return x
+
+    @staticmethod
+    def create_user_defined_exception(x):
+        # TODO: Need to support user-defined exception
+        return x
+
+    @check_no_breakgraph
+    @strict_mode_guard(NOT_ALLOW_FALLBACK)
+    def test_dispatch(self):
+        self.assert_results(
+            self.create_builtin_exception, paddle.to_tensor(111.0)
+        )
+        self.assert_results(
+            self.create_user_defined_exception, paddle.to_tensor(222.0)
+        )
+
+
+class TestTryExcept(TestCaseBase):
+    # try ... except ...
+    # ---------------- test raising exception directly ----------------
+    @staticmethod
+    def raise_value_error_obj():
+        raise ValueError("Test whether raising `ValueError`")
+
+    @staticmethod
+    def raise_value_error_cls():
+        raise ValueError
+
+    @staticmethod
+    def raise_asserterror(x):
+        assert x, "Test AssertionError"
+
+    # Since the exceptions are not handled, fallback is permitted.
+    @strict_mode_guard(False)
+    def test_exception_raising(self):
+        with self.assertRaisesRegex(
+            ValueError, "Test whether raising `ValueError`"
+        ):
+            symbolic_translate(self.raise_value_error_obj)()
+
+        with self.assertRaisesRegex(ValueError, ""):
+            symbolic_translate(self.raise_value_error_cls)()
+
+        with self.assertRaisesRegex(AssertionError, "Test AssertionError"):
+            symbolic_translate(self.raise_asserterror)(False)
+
+        with self.assertRaisesRegex(AssertionError, "Test AssertionError"):
+            symbolic_translate(self.raise_asserterror)(paddle.to_tensor(0))
+
+    # ---------------- without error ----------------
+    @staticmethod
+    @check_no_breakgraph
+    def try_except_wo_error(x):
+        try:
+            x = x + 1
+        except:
+            x = x * 2
+        return x
+
+    @staticmethod
+    @check_no_breakgraph
+    def try_except_exception_wo_error(x):
+        try:
+            x = x + 1
+        except Exception:
+            x = x * 2
+        return x
+
+    @staticmethod
+    @check_no_breakgraph
+    def try_except_exception_as_e_wo_error(x):
+        try:
+            x = x + 1
+        except Exception as e:
+            x = x * 2
+        return x
+
+    # ---------------- with error ----------------
+    @staticmethod
+    @check_no_breakgraph
+    def try_except_with_error_obj(x):
+        y = x + 3
+        try:
+            x = x + 1
+            raise ValueError(f"{__class__.__name__}")
+            x = x * 3
+        except:
+            y = x * 2
+        return y
+
+    @staticmethod
+    @check_no_breakgraph
+    def try_except_with_error_cls(x):
+        y = x + 3
+        try:
+            x = x + 1
+            raise ValueError
+            x = x * 3
+        except:
+            y = x * 2
+        return y
+
+    @staticmethod
+    @check_no_breakgraph
+    def try_except_exception_with_error(x):
+        # test `JUMP_IF_NOT_EXC_MATCH`
+        x = x + 3
+        try:
+            x = x + 1
+            raise ValueError("TESTING!")
+            x = x * 3
+        except Exception:
+            x = x * 2
+        return x
+
+    @staticmethod
+    @check_no_breakgraph
+    def try_except_exception_as_e_with_error(x):
+        # test `JUMP_IF_NOT_EXC_MATCH`
+        y = x + 3
+        try:
+            x = x + 1
+            raise ValueError("TESTING!")
+            x = x * 3
+        except ValueError as e:
+            y = x * 2
+        return y
+
+    @staticmethod
+    @check_no_breakgraph
+    def try_except_exception_as_e_with_error_tuple(x):
+        # test `JUMP_IF_NOT_EXC_MATCH`
+        y = x + 3
+        try:
+            x = x + 1
+            raise ValueError("TESTING!")
+            x = x * 3
+        except (ValueError, KeyError, NotImplementedError) as e:
+            y = x * 2
+        return y
+
+    @staticmethod
+    @check_no_breakgraph
+    def try_except_exception_as_e_with_unmatched_error(x):
+        # test `JUMP_IF_NOT_EXC_MATCH`
+        y = x + 3
+        try:
+            x = x + 1
+            raise ValueError("TESTING!")
+            x = x * 3
+        except KeyError as e:
+            y = x * 2
+        return y + 3
+
+    @staticmethod
+    @check_no_breakgraph
+    def try_except_exception_as_e_with_matched_error_reraise(x):
+        # test `JUMP_IF_NOT_EXC_MATCH`
+        y = x + 3
+        try:
+            x = x + 1
+            raise IndexError("TESTING!")
+            x = x * 3
+        except IndexError as e:
+            y = x * 2
+            raise LookupError("TESTING!")
+        return y + 3
+
+    @strict_mode_guard(NOT_ALLOW_FALLBACK)
+    def test_try_except(self):
+        self.assert_results(self.try_except_wo_error, paddle.to_tensor(2))
+        self.assert_results(
+            self.try_except_exception_wo_error, paddle.to_tensor(3)
+        )
+        self.assert_results(
+            self.try_except_exception_as_e_wo_error, paddle.to_tensor(4)
+        )
+        self.assert_results(self.try_except_with_error_obj, paddle.to_tensor(5))
+        self.assert_results(self.try_except_with_error_cls, paddle.to_tensor(6))
+        self.assert_results(
+            self.try_except_exception_with_error, paddle.to_tensor(7)
+        )
+        self.assert_results(
+            self.try_except_exception_as_e_with_error, paddle.to_tensor(8)
+        )
+        self.assert_results(
+            self.try_except_exception_as_e_with_error_tuple, paddle.to_tensor(9)
+        )
+
+    @strict_mode_guard(False)
+    def test_error(self):
+        # RERAISE
+        self.assert_exceptions(
+            ValueError,
+            "TESTING!",
+            self.try_except_exception_as_e_with_unmatched_error,
+            paddle.to_tensor(0.001),
+        )
+
+        self.assert_exceptions(
+            LookupError,
+            "TESTING!",
+            self.try_except_exception_as_e_with_matched_error_reraise,
+            paddle.to_tensor(0.001),
+        )
+
+
+class TestTryFinally(TestCaseBase):
+    # try ... finally ...
+    # ---------------- without error ----------------
+    @staticmethod
+    @check_no_breakgraph
+    def try_finally_wo_error(x):
+        try:
+            x = 1 + x
+        finally:
+            x *= 2
+        return x
+
+    # ---------------- with error ----------------
+    @staticmethod
+    @check_no_breakgraph
+    def try_finally_with_error_but_return_in_finally(x):
+        # RERAISE
+        try:
+            x = 3 + x
+            raise NotImplementedError("TESTING!")
+            x = 300 + x
+        finally:
+            x *= 2
+            # `return` inside `finally` blocks cause exceptions to be silenced
+            return x  # noqa: B012
+
+    @staticmethod
+    def try_finally_with_error(x):
+        # RERAISE
+        try:
+            x = 3 + x
+            raise NotImplementedError("TESTING!")
+            x = 300 + x
+        finally:
+            x *= 2
+        return x
+
+    @staticmethod
+    def try_finally_with_error_in_finally(x):
+        # RERAISE
+        try:
+            x = 3 + x
+            return x
+        finally:
+            x *= 2
+            raise TimeoutError("TESTING!")
+            x = 300 + x
+        return x
+
+    @strict_mode_guard(NOT_ALLOW_FALLBACK)
+    def test_try_finally(self):
+        self.assert_results(self.try_finally_wo_error, paddle.to_tensor(14))
+        self.assert_results(
+            self.try_finally_with_error_but_return_in_finally,
+            paddle.to_tensor(15),
+        )
+
+    @strict_mode_guard(False)
+    def test_error(self):
+        # RERAISE
+        self.assert_exceptions(
+            NotImplementedError,
+            "TESTING!",
+            self.try_finally_with_error,
+            paddle.to_tensor(16),
+        )
+        self.assert_exceptions(
+            TimeoutError,
+            "TESTING!",
+            self.try_finally_with_error_in_finally,
+            paddle.to_tensor(17),
+        )
+
+
+class TestTryExceptElse(TestCaseBase):
+    # try ... except ... else
+    # `else` is useful for code that must be executed if the try clause does not raise an exception.
+
+    # ---------------- without error ----------------
+    @staticmethod
+    def try_except_else(x):
+        try:
+            x += 1
+        except:
+            x += 2
+        else:
+            x += 3
+        return x
+
+    # ---------------- with error ----------------
+    @staticmethod
+    def try_except_else_except_with_matched_error(x):
+        try:
+            x += 4
+            raise ValueError
+        except ValueError:
+            x += 5
+        else:
+            x += 6
+        return x
+
+    @staticmethod
+    @strict_mode_guard(False)
+    def try_except_else_except_with_mismatched_error(x):
+        try:
+            x += 4
+            raise TimeoutError
+        except KeyError:
+            x += 5
+        else:
+            x += 6
+        return x
+
+    @staticmethod
+    def try_except_else_error_in_except(x):
+        try:
+            x += 4
+        except KeyError:
+            x += 5
+            raise ValueError
+        else:
+            x += 6
+        return x
+
+    @staticmethod
+    @strict_mode_guard(False)
+    def try_except_else_error_in_else(x):
+        try:
+            x += 4
+        except KeyError:
+            x += 5
+        else:
+            x += 6
+            raise ValueError("Testing!")
+        return x
+
+    @strict_mode_guard(NOT_ALLOW_FALLBACK)
+    def test_try_except_else(self):
+        # self.assert_results(self.try_except_else, paddle.to_tensor(14))
+        self.assert_results(
+            self.try_except_else_except_with_matched_error, paddle.to_tensor(15)
+        )
+        # self.assert_results(
+        #     self.try_except_else_error_in_except, paddle.to_tensor(16)
+        # )
+
+    @strict_mode_guard(NOT_ALLOW_FALLBACK)
+    def test_error(self):
+        # RERAISE
+        self.assert_exceptions(
+            TimeoutError,
+            "",
+            self.try_except_else_except_with_mismatched_error,
+            paddle.to_tensor(0.001),
+        )
+        self.assert_exceptions(
+            ValueError,
+            "Testing!",
+            self.try_except_else_error_in_else,
+            paddle.to_tensor(0.002),
+        )
+
+
+class TestTryExceptFinally(TestCaseBase):
+    # try ... except ... finally
+    # ---------------- without error ----------------
+    @staticmethod
+    def try_except_finally(x):
+        try:
+            x -= 1
+        except:
+            x -= 2
+        finally:
+            x -= 3
+        return x
+
+    # ---------------- without error ----------------
+    @staticmethod
+    def try_except_finally_with_matched_exception(x):
+        try:
+            x -= 1
+            raise ValueError
+        except:
+            x -= 2
+        finally:
+            x -= 3
+        return x
+
+    @staticmethod
+    @strict_mode_guard(False)
+    def try_except_finally_with_mismatched_exception(x):
+        try:
+            x -= 1
+            raise ValueError("TESTING")
+        except AttributeError:
+            x -= 2
+        finally:
+            x -= 3
+        return x
+
+    @staticmethod
+    def try_except_finally_in_except(x):
+        try:
+            x -= 1
+        except AttributeError:
+            x -= 2
+            raise ValueError
+        finally:
+            x -= 3
+        return x
+
+    @staticmethod
+    @strict_mode_guard(False)
+    def try_except_finally_in_finally(x):
+        try:
+            x -= 1
+        except AttributeError:
+            x -= 2
+        finally:
+            x -= 3
+            raise ValueError
+        return x
+
+    @strict_mode_guard(NOT_ALLOW_FALLBACK)
+    def test_try_except_finally(self):
+        self.assert_results(self.try_except_finally, paddle.to_tensor([0.11]))
+        self.assert_results(
+            self.try_except_finally_with_matched_exception,
+            paddle.to_tensor([0.22]),
+        )
+        self.assert_results(
+            self.try_except_finally_in_except,
+            paddle.to_tensor([0.33]),
+        )
+
+    @strict_mode_guard(NOT_ALLOW_FALLBACK)
+    def test_error(self):
+        # RERAISE
+        self.assert_exceptions(
+            ValueError,
+            "TESTING",
+            self.try_except_finally_with_mismatched_exception,
+            paddle.to_tensor(0.001),
+        )
+
+        self.assert_exceptions(
+            ValueError,
+            "",
+            self.try_except_finally_in_finally,
+            paddle.to_tensor(0.001),
+        )
+
+
+class TestTryExceptElseFinally(TestCaseBase):
+    # try ... except ... else ... finally
+    # ---------------- without error ----------------
+    @staticmethod
+    def try_except_else_finally(x):
+        try:
+            x -= 1
+        except:
+            x -= 2
+        else:
+            x -= 3
+        finally:
+            x -= 4
+        return x
+
+    # ---------------- with error ----------------
+    @staticmethod
+    def try_except_else_finally_with_matched_exception(x):
+        try:
+            x -= 1
+            raise ValueError
+        except ValueError:
+            x -= 2
+        else:
+            x -= 3
+        finally:
+            x -= 4
+        return x
+
+    @staticmethod
+    @strict_mode_guard(False)
+    def try_except_else_finally_with_mismatched_exception(x):
+        try:
+            x -= 1
+            raise SystemError("TESTING")
+        except NotImplementedError:
+            x -= 2
+        else:
+            x -= 3
+        finally:
+            x -= 4
+        return x
+
+    @staticmethod
+    @strict_mode_guard(False)
+    def try_except_else_finally_with_exception_in_else(x):
+        try:
+            x -= 1
+        except NotImplementedError:
+            x -= 2
+        else:
+            x -= 3
+            raise ModuleNotFoundError("TESTING")
+        finally:
+            x -= 4
+        return x
+
+    @staticmethod
+    @strict_mode_guard(False)
+    def try_except_else_finally_with_exception_in_finally(x):
+        try:
+            x -= 1
+        except NotImplementedError:
+            x -= 2
+        else:
+            x -= 3
+        finally:
+            x -= 4
+            raise SyntaxError("TESTING")
+        return x
+
+    @strict_mode_guard(NOT_ALLOW_FALLBACK)
+    def test_try_except_finally(self):
+        self.assert_results(
+            self.try_except_else_finally, paddle.to_tensor([0.11])
+        )
+        self.assert_results(
+            self.try_except_else_finally_with_matched_exception,
+            paddle.to_tensor([0.22]),
+        )
+
+    @strict_mode_guard(NOT_ALLOW_FALLBACK)
+    def test_error(self):
+        # RERAISE
+        self.assert_exceptions(
+            SystemError,
+            "TESTING",
+            self.try_except_else_finally_with_mismatched_exception,
+            paddle.to_tensor(0.001),
+        )
+        self.assert_exceptions(
+            ModuleNotFoundError,
+            "TESTING",
+            self.try_except_else_finally_with_exception_in_else,
+            paddle.to_tensor(0.001),
+        )
+        self.assert_exceptions(
+            SyntaxError,
+            "TESTING",
+            self.try_except_else_finally_with_exception_in_finally,
+            paddle.to_tensor(0.001),
+        )
 
 
 class TestNestingCase(TestCaseBase):
@@ -207,6 +927,21 @@ class TestAssertException(TestCaseBase):
             return x
 
         self.assert_results(try_assert_except, paddle.to_tensor(10))
+
+
+class TestGuard(TestCaseBase):
+    @strict_mode_guard(False)
+    @check_no_breakgraph
+    def test_guard_run(self):
+        def fn():
+            try:
+                paddle.jit.sot.psdb.breakgraph()
+                raise ValueError
+            except ValueError:
+                return True
+            return False
+
+        self.assert_results(fn)
 
 
 if __name__ == "__main__":

@@ -1277,6 +1277,7 @@
   output : Tensor(out), Tensor(indices)
   infer_meta :
     func : CumWithIndicesInferMeta
+    spmd_rule : CummaxInferSpmd
   kernel :
     func : cummax
     data_type : x
@@ -1288,6 +1289,7 @@
   output : Tensor(out), Tensor(indices)
   infer_meta :
     func : CumWithIndicesInferMeta
+    spmd_rule : CumminInferSpmd
   kernel :
     func : cummin
     data_type : x
@@ -3116,6 +3118,7 @@
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMetaCheckAxis
+    spmd_rule : SoftmaxInferSpmd
   kernel :
     func : log_softmax
     data_type : x
@@ -3332,6 +3335,18 @@
     func : margin_cross_entropy
     data_type : logits
   backward : margin_cross_entropy_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+
+- op : masked_fill
+  args : (Tensor x, Tensor mask, Tensor value)
+  output : Tensor (out)
+  inplace: (x -> out)
+  infer_meta :
+    func : MaskedFillInferMeta
+  kernel :
+    func : masked_fill
+    data_type : x
+  backward : masked_fill_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : masked_multihead_attention_
