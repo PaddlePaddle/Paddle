@@ -261,7 +261,7 @@ class TestCumprodAPI(unittest.TestCase):
 
     def setUp(self):
         paddle.enable_static()
-        self.target_shape = None
+        self.target_dtype = None
         self.init_dtype()
         self.x = (np.random.rand(2, 3, 10, 10) + 0.5).astype(self.dtype)
         self.place = []
@@ -282,10 +282,10 @@ class TestCumprodAPI(unittest.TestCase):
         def run(place):
             with paddle.static.program_guard(paddle.static.Program()):
                 x = paddle.static.data('X', self.shape, dtype=self.dtype)
-                out = paddle.cumprod(x, -2, self.target_shape)
+                out = paddle.cumprod(x, -2, self.target_dtype)
                 exe = paddle.static.Executor(place)
                 res = exe.run(feed={'X': self.x}, fetch_list=[out])
-            out_ref = np.cumprod(self.x, -2, self.target_shape)
+            out_ref = np.cumprod(self.x, -2, self.target_dtype)
 
             for r in res:
                 np.testing.assert_allclose(out_ref, r, rtol=1e-05)
@@ -298,8 +298,8 @@ class TestCumprodAPI(unittest.TestCase):
         def run(place):
             paddle.disable_static(place)
             x = paddle.to_tensor(self.x)
-            out = paddle.cumprod(x, 1, self.target_shape)
-            out_ref = np.cumprod(self.x, 1, self.target_shape)
+            out = paddle.cumprod(x, 1, self.target_dtype)
+            out_ref = np.cumprod(self.x, 1, self.target_dtype)
             np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
             paddle.enable_static()
 
@@ -329,7 +329,7 @@ class TestCumprodAPICase4(TestCumprodAPI):
     def init_dtype(self):
         self.dtype = 'float32'
         self.shape = [2, 3, 10, 10]
-        self.target_shape = 'float64'
+        self.target_dtype = 'float64'
 
 
 # test function.
