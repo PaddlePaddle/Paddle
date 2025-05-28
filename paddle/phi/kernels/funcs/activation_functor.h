@@ -3366,13 +3366,14 @@ struct CudaLogitGradFunctor : public BaseActivationFunctor<T> {
   // logit(x)' = 1/(x*(1-x))
   __device__ __forceinline__ T operator()(const T dout, const T arg_x) const {
     MT x = static_cast<MT>(arg_x);
+    MT dx;
     if (!eps) {
-      MT dx = (x < zero || x > one) ? static_cast<T>(NAN)
-                                    : (static_cast<MT>(dout) / (x * (one - x)));
+      dx = (x < zero || x > one) ? static_cast<T>(NAN)
+                                 : (static_cast<MT>(dout) / (x * (one - x)));
     } else {
-      MT dx = (x < static_cast<MT>(eps) || x > one - static_cast<MT>(eps))
-                  ? zero
-                  : (static_cast<MT>(dout) / (x * (one - x)));
+      dx = (x < static_cast<MT>(eps) || x > one - static_cast<MT>(eps))
+               ? zero
+               : (static_cast<MT>(dout) / (x * (one - x)));
     }
     return static_cast<T>(dx);
   }
