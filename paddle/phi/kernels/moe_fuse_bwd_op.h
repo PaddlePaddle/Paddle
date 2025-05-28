@@ -15,7 +15,7 @@
 #pragma once
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
 #include "paddle/common/exception.h"
-#include "paddle/phi/kernels/gpu/moe_kernel_impl.h"
+#include "paddle/phi/kernels/moe_kernel_impl.h"
 
 
 template<typename T, int64_t vec_size>

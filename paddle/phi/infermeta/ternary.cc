@@ -1723,7 +1723,7 @@ void MoeGateDispatchPartialNoSoftmaxTopKInferMeta(const MetaTensor& x,
       common::errors::InvalidArgument(
           "The dtype of Input(combine_weights) must be FLOAT32, but received %s",
           combine_weights.dtype()));
-int64_t num_experts_diff = expert_end_index - expert_start_index;
+//int64_t num_experts_diff = expert_end_index - expert_start_index;
 int64_t num_rows = x_dims[0];
 // if (use_pad)
 //   y->set_dims({num_experts_diff * capacity, x_dims[1]}) ;

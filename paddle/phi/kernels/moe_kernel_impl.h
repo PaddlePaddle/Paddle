@@ -1,8 +1,11 @@
-/* Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
     http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -10,12 +13,13 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include <cuda_runtime.h>
-#include <math.h>
-#include <cmath>
 #include <string>
 #include "cub/cub.cuh"
 #include "paddle/phi/kernels/funcs/math_cuda_utils.h"
+#include <math.h>  
+#include <cmath>
+#include <cuda_runtime.h>
+#include <sstream>
 namespace phi {
 
 static const float HALF_FLT_MAX = 65504.F;
@@ -27,19 +31,19 @@ static inline size_t AlignTo16(const size_t& input) {
 
 class CubKeyValueSorter {
  public:
-  CubKeyValueSorter();
+  inline CubKeyValueSorter();
 
-  explicit CubKeyValueSorter(cudaStream_t stream = 0);
+  inline CubKeyValueSorter(cudaStream_t stream = 0);
 
-  explicit CubKeyValueSorter(const int num_experts);
+  inline explicit CubKeyValueSorter(const int num_experts);
 
-  void update_num_experts(const int num_experts);
+  inline void update_num_experts(const int num_experts);
 
-  size_t getWorkspaceSize(const size_t num_key_value_pairs,
+  inline size_t getWorkspaceSize(const size_t num_key_value_pairs,
                           bool descending = false);
 
   template <typename KeyT>
-  void run(void* workspace,
+  inline void run(void* workspace,
            const size_t workspace_size,
            const KeyT* keys_in,
            KeyT* keys_out,
@@ -55,6 +59,55 @@ class CubKeyValueSorter {
   int num_bits_;
   cudaStream_t stream_;
 };
+
+
+// ===== CUB Sorting things =====
+CubKeyValueSorter::CubKeyValueSorter()
+    : num_experts_(0), num_bits_(sizeof(int) * 8) {}
+
+CubKeyValueSorter::CubKeyValueSorter(cudaStream_t stream)
+      : num_experts_(0), num_bits_(sizeof(int) * 8), stream_(stream) {}
+
+CubKeyValueSorter::CubKeyValueSorter(const int num_experts)
+    : num_experts_(num_experts),
+      num_bits_(static_cast<int>(log2(num_experts)) + 1) {}
+
+void CubKeyValueSorter::update_num_experts(const int num_experts) {
+  num_experts_ = num_experts;
+  num_bits_ = static_cast<int>(log2(num_experts)) + 3; //额外增加 3 位用于标记 topk的位置
+}
+
+size_t CubKeyValueSorter::getWorkspaceSize(const size_t num_key_value_pairs,
+                                           bool descending) {
+  num_key_value_pairs_ = num_key_value_pairs;
+  size_t required_storage = 0;
+  int* null_int = nullptr;
+  if (descending) {
+    cub::DeviceRadixSort::SortPairsDescending(NULL,
+                                              required_storage,
+                                              null_int,
+                                              null_int,
+                                              null_int,
+                                              null_int,
+                                              num_key_value_pairs,
+                                              0,
+                                              32,
+                                              stream_);
+  } else {
+    cub::DeviceRadixSort::SortPairs(NULL,
+                                    required_storage,
+                                    null_int,
+                                    null_int,
+                                    null_int,
+                                    null_int,
+                                    num_key_value_pairs,
+                                    0,
+                                    num_bits_,
+                                    stream_);
+  }
+  return required_storage;
+}
+
 
 template <typename KeyT>
 inline void CubKeyValueSorter::run(void* workspace,
@@ -425,8 +478,8 @@ __global__ void paddingKernel(T* output1,
                               const int batch_size,
                               const int max_seq_len,
                               const int num_experts) {
-  const bool IS_FP16 = std::is_same<T, phi::dtype::float16>::value;
-  const T MIN_T_VAL = (IS_FP16) ? (T)HALF_FLT_MIN : (T)FLT_MIN;
+  const bool IS_FP32 = std::is_same<T, float>::value;
+  const T MIN_T_VAL = (!IS_FP32) ? (T)HALF_FLT_MIN : (T)FLT_MIN;
   int offset1 = blockIdx.x * num_tokens;
   int offset2 = blockIdx.x * batch_size * max_seq_len;
   for (int i = 0; i < batch_size; i++) {

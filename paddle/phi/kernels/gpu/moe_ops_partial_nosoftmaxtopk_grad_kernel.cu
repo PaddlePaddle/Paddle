@@ -19,7 +19,7 @@
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
 #include "paddle/phi/kernels/contiguous_kernel.h"
-#include "paddle/phi/kernels/gpu/moe_fuse_bwd_op.h"
+#include "paddle/phi/kernels/moe_fuse_bwd_op.h"
 #include <thrust/host_vector.h>
 #include <thrust/device_vector.h>
 

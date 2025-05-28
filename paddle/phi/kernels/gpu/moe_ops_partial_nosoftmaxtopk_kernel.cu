@@ -19,13 +19,13 @@
  *     with minor changes. */
 
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/gpu/moe_fuse_op.h"
+#include "paddle/phi/kernels/moe_fuse_op.h"
 #include "paddle/phi/kernels/moe_ops_partial_nosoftmaxtopk_kernel.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/slice_kernel.h"
 #include "paddle/phi/core/tensor_utils.h"
-#include "paddle/phi/kernels/gpu/moe_kernel_impl.h"
+#include "paddle/phi/kernels/moe_kernel_impl.h"
 
 namespace phi {
 
@@ -44,7 +44,7 @@ namespace phi {
 //   static constexpr int ALIGNMENT = 16;
 //   return ALIGNMENT * ((input + ALIGNMENT - 1) / ALIGNMENT);
 // }
-
+namespace{
 // --------      getWorkspaceSize      -------- //
 template <typename KeyT>
 size_t getWorkspaceSize(const int num_rows,
@@ -87,6 +87,7 @@ size_t getWorkspaceSize(const int num_rows,
   total_ws_bytes += bytes_for_intermediate_and_sorting; // intermediate (fc1) output + cub sorting workspace
   // std::cout<<"buf_size --"<< buf_size<<"   "<<interbuf_size<< "   "<<padded_experts<< "    "<<num_moe_inputs<<  "  "<<total_ws_bytes<< "   "<< bytes_for_fc1_result<< "   "<<sorter_ws_size_bytes  << "  "<<std::endl;
   return total_ws_bytes;
+}
 }
 
 template <typename T, typename Context>
