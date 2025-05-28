@@ -15,7 +15,7 @@
 #include "paddle/cinn/ir/group_schedule/config/group_tile_util.h"
 #include "paddle/cinn/hlir/framework/pir/trivial_op_impl.h"
 #include "paddle/cinn/ir/ir_analyzer/ir_analyzer.h"
-
+#include "paddle/cinn/ir/schedule/impl/ir_schedule.h"
 namespace cinn {
 
 using hlir::framework::pir::trivial_fusion_detail::GetAllForIters;
@@ -206,37 +206,139 @@ bool CheckBroadcastTensorIsContinuous(
 }
 
 // 检查常量是否是 2/4 的整数倍（满足 float2/float4 对齐）
-bool IsAlignedConstant(const ir::Expr& expr, int alignment = 4) {
-  if (!expr.is_constant()) return false;
-  int value = expr.get_constant();
+bool IsAlignedConstant(int value, int alignment = 4) {
   return (value % alignment) == 0;
 }
 
-// 检查表达式是否是线性组合（如 C3*j + k）
-bool IsLinearOffsetExpr(const ir::Expr& expr, const ir::Var& outer_iter, const ir::Var& inner_iter, const std::unordered_map<ir::Var, ir::Expr>& iter_var2value) {
-  VLOG(6) << "YUHAN!!! IsLinearOffsetExpr " << expr;
-  // 简化后的表达式必须是 `outer*a + inner*b + c` 且 a、b 为常量
-  ir::Expr simplified = optim::ArithSimplify(expr);
-  if (auto terms = simplified.As<ir::Add>()) {
-    VLOG(6) << "YUHAN!!! IsLinearOffsetExpr " << simplified << " outer_iter is " << outer_iter << " inner_iter is " << inner_iter;
-    // 处理加法表达式（如 j*C3 + k）
-    if (terms->a().As<ir::Mul>() && terms->a().As<ir::Mul>()->b().is_constant()) {
-      if (!terms->a().As<ir::Mul>()->a().is_var() || !terms->b().is_var()) {
-        return false;
-      }
-      ir::Var iter_var_j = terms->a().As<ir::Mul>()->a().as_var_ref();
-      ir::Var iter_var_k = terms->b().as_var_ref();
-      if (!iter_var2value.count(iter_var_j) || !iter_var2value.count(iter_var_k)) {
-        VLOG(6) << "YUHAN!! Inside IsLinearOffsetExpr iter_var not found in iter_var2value: " << iter_var_j << " vs " << iter_var_k;
-        return false;
-      }
-      ir::Expr iter_value_j = iter_var2value.at(iter_var_j);
-      ir::Expr iter_value_k = iter_var2value.at(iter_var_k);
-      return iter_value_j.as_var_ref() == outer_iter &&
-             iter_value_k.as_var_ref() == inner_iter;
-    }
+// 辅助函数：递归提取加法表达式的所有项
+void ExtractAddTerms(const ir::Expr& expr, std::vector<ir::Expr>* terms) {
+  if (expr.As<ir::Add>()) {
+    ExtractAddTerms(expr.As<ir::Add>()->a(), terms);
+    ExtractAddTerms(expr.As<ir::Add>()->b(), terms);
+  } else {
+    terms->push_back(expr);
   }
-  return false;
+}
+
+// 检查表达式是否是线性组合（如 j*C3 + k + C4）
+bool IsLinearOffsetExpr(
+    const ir::Expr& expr,
+    const ir::Var& outer_iter,
+    const ir::Var& inner_iter,
+    const std::unordered_map<ir::Var, ir::Expr>& iter_var2value,
+    bool *has_outer = nullptr,    // 是否找到 outer_iter（j）
+    bool *has_inner = nullptr,    // 是否找到 inner_iter（k）
+    bool *has_constant = nullptr, // 是否找到常量项（C4）
+    int *outer_coeff = nullptr,       // outer_iter 的系数（C3）
+    int *constant_term = nullptr     // 常量项的值（C4）
+) {
+  VLOG(6) << "YUHAN!!! IsLinearOffsetExpr? " << expr;
+  VLOG(6) << "YUHAN!!! outer_iter " << outer_iter;
+  VLOG(6) << "YUHAN!!! inner_iter " << inner_iter;
+
+  // 1. 简化表达式
+  std::vector<Var> replaced;
+  std::vector<Expr> candidates;
+  for (auto iter : iter_var2value) {
+    replaced.push_back(iter.first);
+    candidates.push_back(iter.second);
+  }
+  ir::Expr simplified = expr;
+  ReplaceExpr(&simplified, replaced, candidates);
+  VLOG(6) << "YUHAN!!! IsLinearOffsetExpr simplified " << simplified;
+  simplified = optim::ArithSimplify(expr, IndexExpr::OptLevel::kLevel3);
+  VLOG(6) << "YUHAN!!! IsLinearOffsetExpr simplified after ArithSimplify " << simplified;
+
+  // 2. 提取所有加法项（支持嵌套加法结构）
+  std::vector<ir::Expr> terms;
+  ExtractAddTerms(simplified, &terms);  // 递归提取加法项
+
+  for (const ir::Expr& term : terms) {
+    VLOG(6) << "YUHAN!!! IsLinearOffsetExpr: work on term " << term;
+    // 情况1：term 是 j*C3 乘法项）
+    if (term.As<ir::Mul>() && term.As<ir::Mul>()->b().is_constant()) {
+      ir::Expr var = term.As<ir::Mul>()->a();
+      ir::Expr coeff = term.As<ir::Mul>()->b();
+      VLOG(6) << "YUHAN!!! Condition 1 Found var: " << var << " YUHAN!!! "<< iter_var2value.count(var.as_var_ref()) << " YUHAN!!! " << outer_iter;
+      if (var.is_var() && iter_var2value.count(var.as_var_ref())) {
+        ir::Expr iter_value = iter_var2value.at(var.as_var_ref());
+        if (iter_value.is_var() && iter_value.as_var_ref() == outer_iter) {
+          *has_outer = true;
+          *outer_coeff = coeff.get_constant();
+          continue;
+        }
+      } else if (var.is_var() && !iter_var2value.count(var.as_var_ref()) && var.as_var_ref() == outer_iter) { // i0_43, i1_39 = axis.bind(i, ((j * 128) + j_0))
+        VLOG(6) << "YUHAN!!! Condition 1 Found var new bind Condition: " << var;
+        *has_outer = true;
+        *outer_coeff = coeff.get_constant();
+        continue;
+      }
+    }
+
+    // 情况2：term 是 k（变量项）
+    if (term.is_var() && iter_var2value.count(term.as_var_ref())) {
+      ir::Expr iter_value = iter_var2value.at(term.as_var_ref());
+      VLOG(6) << "YUHAN!!! Condition 2 Found iter_value: " << iter_value;
+      if (iter_value.is_var() && iter_value.as_var_ref() == inner_iter) {
+        *has_inner = true;
+        continue;
+      } else if (!iter_value.is_var()) {
+        /* iter_value 不是变量，而是一个表达式，例如：
+        serial for (i, 0ll, 32768ll)
+        {
+            serial for (j_1, 0, 16)
+            {
+                serial for (j_2, 0, 128)
+                {
+                    ScheduleBlock(var_45)
+                    {
+                        i0_88, i1_80 = axis.bind(i, ((j_1 * 128) + j_2))
+                        {
+                            var_45[i0_88, i1_80];
+                        }
+                    }
+                }
+            }
+        }
+        */
+        VLOG(6) << "YUHAN!!! Condition 2 Found iter_value is an expr: " << iter_value;
+        if (IsLinearOffsetExpr(iter_value, outer_iter, inner_iter, iter_var2value, has_outer, has_inner, has_constant, outer_coeff, constant_term)) {
+          VLOG(6) << "YUHAN!!! Condition 2 Found iter_value is Linear combo: " << iter_value;
+          continue;
+        }
+      }
+    } else if (term.is_var() && !iter_var2value.count(term.as_var_ref()) && term.as_var_ref() == inner_iter) { // i0_43, i1_39 = axis.bind(i, ((j * 128) + j_0))
+      VLOG(6) << "YUHAN!!! Condition 2 Found iter_value new bind Condition: " << term; // may be outer_iter!!
+      *has_inner = true;
+      continue;
+    }
+
+    // 情况3：term 是常量 C4
+    if (term.is_constant()) {
+      *has_constant = true;
+      *constant_term = term.get_constant();
+      VLOG(6) << "YUHAN!!! Condition 3 Found constant: " << term.get_constant();
+      continue;
+    }
+
+    // 其他情况：非法项
+    return false;
+  }
+
+  // // 必须包含 outer_iter 和 inner_iter
+  // if (!has_outer || !has_inner) {
+  //   VLOG(6) << "YUHAN!!! Missing outer or inner iter in linear combo";
+  //   return false;
+  // }
+
+  // 调试输出
+  VLOG(6) << "YUHAN!!! Found linear combo: "
+          << *outer_coeff << "*" << outer_iter << " + " << inner_iter;
+  if (*has_constant) {
+    VLOG(6) << " + " << *constant_term;
+  }
+
+  return true;
 }
 
 bool CheckTensorIsContinuous(
@@ -247,26 +349,37 @@ bool CheckTensorIsContinuous(
   if (indices.size() == for_iters.size()) {
     for (int i = 0; i < indices.size(); ++i) {
       ir::Expr index = indices[i];
-      index = optim::ArithSimplify(index);
+      std::vector<Var> replaced;
+      std::vector<Expr> candidates;
+      for (auto iter : iter_var2value) {
+        replaced.push_back(iter.first);
+        candidates.push_back(iter.second);
+      }
+      ReplaceExpr(&index, replaced, candidates);
+      index = optim::ArithSimplify(index, IndexExpr::OptLevel::kLevel3);
       VLOG(6) << "YUHAN!! Inside CheckTensorIsContinuous index is " << index;
       if (!index.is_var()) {
         VLOG(6) << "YUHAN!! Inside CheckTensorIsContinuous index is not a var: " << index;
         return false;
       }
-      ir::Var iter_var = index.as_var_ref();
-      if (!iter_var2value.count(iter_var)) {
-        VLOG(6) << "YUHAN!! Inside CheckTensorIsContinuous iter_var not found in iter_var2value: " << iter_var;
+      if (for_iters[i] != index.as_var_ref()) {
+        VLOG(6) << "YUHAN!! Inside CheckTensorIsContinuous for_iters[" << i << "] != index.as_var_ref(): " << for_iters[i] << " vs " << index.as_var_ref();
         return false;
       }
-      ir::Expr iter_value = iter_var2value.at(iter_var);
-      if (!iter_value.as_var()) {
-        VLOG(6) << "YUHAN!! Inside CheckTensorIsContinuous iter_value is not a var: " << iter_value;
-        return false;
-      }
-      if (for_iters[i] != iter_value.as_var_ref()) {
-        VLOG(6) << "YUHAN!! Inside CheckTensorIsContinuous for_iters[" << i << "] != iter_value.as_var_ref(): " << for_iters[i] << " vs " << iter_value.as_var_ref();
-        return false;
-      }
+      // ir::Var iter_var = index.as_var_ref();
+      // if (!iter_var2value.count(iter_var)) {
+      //   VLOG(6) << "YUHAN!! Inside CheckTensorIsContinuous iter_var not found in iter_var2value: " << iter_var;
+      //   return false;
+      // }
+      // ir::Expr iter_value = iter_var2value.at(iter_var);
+      // if (!iter_value.as_var()) {
+      //   VLOG(6) << "YUHAN!! Inside CheckTensorIsContinuous iter_value is not a var: " << iter_value;
+      //   return false;
+      // }
+      // if (for_iters[i] != iter_value.as_var_ref()) {
+      //   VLOG(6) << "YUHAN!! Inside CheckTensorIsContinuous for_iters[" << i << "] != iter_value.as_var_ref(): " << for_iters[i] << " vs " << iter_value.as_var_ref();
+      //   return false;
+      // }
     }
     return true;
   } else {
@@ -285,56 +398,77 @@ bool CheckTensorIsContinuous(
     // 检查前 N-1 维是否直接对应循环变量（如 A[i][...] 中的 i）
     for (int i = 0; i < indices.size() - 1; ++i) {
       ir::Expr index = indices[i];
-      index = optim::ArithSimplify(index);
+      std::vector<Var> replaced;
+      std::vector<Expr> candidates;
+      for (auto iter : iter_var2value) {
+        replaced.push_back(iter.first);
+        candidates.push_back(iter.second);
+      }
+      ReplaceExpr(&index, replaced, candidates);
+      index = optim::ArithSimplify(index, IndexExpr::OptLevel::kLevel3);
       VLOG(6) << "YUHAN!! Inside CheckTensorIsContinuous index is " << index;
       if (!index.is_var()) {
         VLOG(6) << "YUHAN!! Inside CheckTensorIsContinuous index is not a var: " << index;
         return false;
       }
-      ir::Var iter_var = index.as_var_ref();
-      if (!iter_var2value.count(iter_var)) {
-        VLOG(6) << "YUHAN!! Inside CheckTensorIsContinuous iter_var not found in iter_var2value: " << iter_var;
+      if (for_iters[i] != index.as_var_ref()) {
+        VLOG(6) << "YUHAN!! Inside CheckTensorIsContinuous for_iters[" << i << "] != index.as_var_ref(): " << for_iters[i] << " vs " << index.as_var_ref();
         return false;
       }
-      ir::Expr iter_value = iter_var2value.at(iter_var);
-      if (!iter_value.as_var()) {
-        VLOG(6) << "YUHAN!! Inside CheckTensorIsContinuous iter_value is not a var: " << iter_value;
-        return false;
-      }
-      if (for_iters[i] != iter_value.as_var_ref()) {
-        VLOG(6) << "YUHAN!! Inside CheckTensorIsContinuous for_iters[" << i << "] != iter_value.as_var_ref(): " << for_iters[i] << " vs " << iter_value.as_var_ref();
-        return false;
-      }
+      // ir::Var iter_var = index.as_var_ref();
+      // if (!iter_var2value.count(iter_var)) {
+      //   VLOG(6) << "YUHAN!! Inside CheckTensorIsContinuous iter_var not found in iter_var2value: " << iter_var;
+      //   return false;
+      // }
+      // ir::Expr iter_value = iter_var2value.at(iter_var);
+      // if (!iter_value.as_var()) {
+      //   VLOG(6) << "YUHAN!! Inside CheckTensorIsContinuous iter_value is not a var: " << iter_value;
+      //   return false;
+      // }
+      // if (for_iters[i] != iter_value.as_var_ref()) {
+      //   VLOG(6) << "YUHAN!! Inside CheckTensorIsContinuous for_iters[" << i << "] != iter_value.as_var_ref(): " << for_iters[i] << " vs " << iter_value.as_var_ref();
+      //   return false;
+      // }
+      
     }
 
     // 检查最后一维的偏移表达式（如 j*C3 + k + C4）
     ir::Expr offset_expr = indices.back();
-    offset_expr = optim::ArithSimplify(offset_expr);
-    if (!IsLinearOffsetExpr(offset_expr, for_iters[for_iters.size() - 2], for_iters.back(), iter_var2value)) {
+    std::vector<Var> replaced;
+    std::vector<Expr> candidates;
+    for (auto iter : iter_var2value) {
+      replaced.push_back(iter.first);
+      candidates.push_back(iter.second);
+    }
+    ReplaceExpr(&offset_expr, replaced, candidates);
+    VLOG(6) << "YUHAN!!! IsLinearOffsetExpr simplified2 " << offset_expr;
+    offset_expr = optim::ArithSimplify(offset_expr, IndexExpr::OptLevel::kLevel3);
+    VLOG(6) << "YUHAN!!! IsLinearOffsetExpr simplified2 after ArithSimplify " << offset_expr;
+    // 检查线性组合结构
+    bool has_outer = false;    // 是否找到 outer_iter（j）
+    bool has_inner = false;    // 是否找到 inner_iter（k）
+    bool has_constant = false; // 是否找到常量项（C4）
+    int outer_coeff = 1;       // outer_iter 的系数（C3）
+    int constant_term = 0;     // 常量项的值（C4）
+    if (!IsLinearOffsetExpr(offset_expr, for_iters[for_iters.size() - 2], for_iters.back(), iter_var2value,
+                            &has_outer, &has_inner, &has_constant, &outer_coeff, &constant_term)) {
       VLOG(6) << "YUHAN!! Offset expr is not linear: " << offset_expr;
       return false;
     }
 
-    // 提取线性表达式中的常量系数（如 C3）
-    ir::Expr coeff_expr = offset_expr.As<ir::Add>()->a().As<ir::Mul>()->b();
-    if (!coeff_expr.is_constant()) {
-      VLOG(6) << "YUHAN!! Coefficient is not constant: " << coeff_expr;
-      return false;
-    }
-
     // 条件2：C3 和 C4 必须是 2/4 的整数倍
-    if (!IsAlignedConstant(coeff_expr)) { // TODO
+    if (!IsAlignedConstant(outer_coeff, 2) && !IsAlignedConstant(outer_coeff) &&
+        !IsAlignedConstant(constant_term, 2) && !IsAlignedConstant(constant_term) ) {
       VLOG(6) << "YUHAN!! Coefficient not aligned (required 2/4 multiple)";
       return false;
     }
 
     // 条件3：检查越界（假设已知张量形状为 shape[]）
-    int64_t C3 = coeff_expr.get_constant();
     const ir::_Var_* var_ptr = for_iters.back().get();
     ir::Expr ub = var_ptr->upper_bound;
     ir::Expr lb = var_ptr->lower_bound;
-    if (lb.get_constant() != 0 || C3 != ub.get_constant()) {
-      VLOG(6) << "YUHAN!! ub.get_constant() is" << ub.get_constant() << ", C3 is" << C3;
+    if (lb.get_constant() != 0 || outer_coeff != ub.get_constant()) {
+      VLOG(6) << "YUHAN!! ub.get_constant() is" << ub.get_constant() << ", C3 is" << outer_coeff;
       return false;
     }
     // if (C3 * (/* C2 */) + (/* C3 */) >= inner_dim_size) {
