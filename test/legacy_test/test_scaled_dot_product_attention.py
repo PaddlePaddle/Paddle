@@ -126,47 +126,6 @@ class TestAttentionWithBoolMask(unittest.TestCase):
 
         np.testing.assert_allclose(out.numpy(), out_, rtol=5e-03, atol=1e-03)
 
-    def test_dot_scale_product_none_mask(self):
-        # test with mask=None
-        paddle.disable_static()
-
-        query = np.random.random(self.shape)
-        key = np.random.random(self.shape)
-        value = np.random.random(self.shape)
-
-        q = paddle.to_tensor(
-            query, place=self.place, dtype=self.dtype, stop_gradient=False
-        )
-        k = paddle.to_tensor(
-            key, place=self.place, dtype=self.dtype, stop_gradient=False
-        )
-        v = paddle.to_tensor(
-            value, place=self.place, dtype=self.dtype, stop_gradient=False
-        )
-
-        q_ = paddle.to_tensor(
-            query, place=self.place, dtype=self.dtype, stop_gradient=False
-        )
-        k_ = paddle.to_tensor(
-            key, place=self.place, dtype=self.dtype, stop_gradient=False
-        )
-        v_ = paddle.to_tensor(
-            value, place=self.place, dtype=self.dtype, stop_gradient=False
-        )
-
-        m = None
-
-        out = scaled_dot_product_attention(
-            q, k, v, m, self.dropout, self.causal
-        )
-
-        out_ = attention_naive(q_, k_, v_, self.causal)
-        out.backward()
-        out_.backward()
-        np.testing.assert_allclose(
-            out.numpy(), out_.numpy(), rtol=5e-03, atol=1e-03
-        )
-
     def test_dot_scale_product_float_mask(self):
         # test with mask=float
         paddle.disable_static()

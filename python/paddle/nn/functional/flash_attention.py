@@ -355,9 +355,6 @@ def _select_sdp_for_sdpa(query, key, attn_mask, dropout, is_causal) -> str:
 
 
 def _convert_bool_mask_to_float(attn_mask, dtype, neg_inf=-float('inf')):
-    if attn_mask is None:
-        return None
-
     # For boolean masks, convert True (allow attention) to 0.0, False (block attention) to neg_inf
     if attn_mask.dtype == paddle.bool:
         return paddle.where(
