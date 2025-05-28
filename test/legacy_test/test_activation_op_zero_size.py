@@ -28,9 +28,13 @@ from test_activation_op import (
     TestExpFp32_Prim,
     TestExpm1,
     TestFloor,
+    TestHardSwish,
+    TestLeakyRelu,
     TestLogSigmoid,
     TestReciprocal,
     TestRelu,
+    TestRelu6,
+    TestRound,
     TestRsqrt,
     TestSigmoid,
     TestSilu,
@@ -39,6 +43,7 @@ from test_activation_op import (
     TestSoftsign,
     TestSqrt,
     TestSquare,
+    TestSwish,
     TestTan,
     TestTanh,
     TestTanhshrink,
@@ -100,6 +105,11 @@ create_test_zero_size_class(TestFloor)
 create_test_zero_size_class(TestCeil)
 create_test_zero_size_class(TestExpFp32_Prim)
 create_test_zero_size_class(TestExpm1)
+create_test_zero_size_class(TestLeakyRelu)
+create_test_zero_size_class(TestRelu6)
+create_test_zero_size_class(TestRound)
+create_test_zero_size_class(TestHardSwish)
+create_test_zero_size_class(TestSwish)
 
 if __name__ == "__main__":
     unittest.main()
