@@ -41,15 +41,25 @@ def logit_grad(x, eps=1e-8):
         tmp_x = np.select(
             [x < eps, x > (1.0 - eps)], [x * 0.0, x * 0.0], default=-1.0
         )
+        x_1 = 1.0 - x
+        _x = np.select([tmp_x == -1.0], [np.reciprocal(x * x_1)], default=0.0)
     else:
         tmp_x = np.select(
             [x < 0.0, x > 1.0],
             [np.array(np.nan, dtype=x.dtype), np.array(np.nan, dtype=x.dtype)],
             default=-1.0,
         )
-    x_1 = 1.0 - x
-    _x = np.select([tmp_x == -1.0], [np.reciprocal(x * x_1)], default=0.0)
-    dout = np.full_like(x, fill_value=1.0 / _x.size)
+        x_1 = 1.0 - x
+        _x = np.select(
+            [tmp_x == -1.0],
+            [np.reciprocal(x * x_1)],
+            default=np.array(np.nan, dtype=x.dtype),
+        )
+
+    if _x.size == 0:
+        dout = np.full_like(x, fill_value=0.0)
+    else:
+        dout = np.full_like(x, fill_value=1.0 / _x.size)
     dx = dout * _x
     return dx
 
@@ -72,16 +82,11 @@ class TestLogitOp(OpTest):
         self.eps = 1e-8
 
     def test_check_output(self):
-        self.check_output(
-            check_pir=True, check_symbol_infer=False, equal_nan=True
-        )
+        self.check_output(check_pir=True, check_symbol_infer=False)
 
     def test_check_grad(self):
         self.check_grad(
-            ['X'],
-            ['Out'],
-            user_defined_grads=[self.x_grad],
-            check_pir=True,
+            ['X'], ['Out'], user_defined_grads=[self.x_grad], check_pir=True
         )
 
 
@@ -92,7 +97,7 @@ class TestLogitOpFp32(TestLogitOp):
         self.eps = 1e-8
 
     def test_check_output(self):
-        self.check_output(check_pir=True, equal_nan=True)
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
         self.check_grad(
@@ -107,7 +112,7 @@ class TestLogitOpFp16(TestLogitOp):
         self.eps = 1e-8
 
     def test_check_output(self):
-        self.check_output(check_pir=True, equal_nan=True)
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
         self.check_grad(
@@ -141,7 +146,7 @@ class TestLogitOpBf16(OpTest):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             self.check_output_with_place(
-                place, check_pir=True, check_symbol_infer=False, equal_nan=True
+                place, check_pir=True, check_symbol_infer=False
             )
 
     def test_check_grad(self):
@@ -160,7 +165,7 @@ class TestLogitShape(TestLogitOp):
     def set_attrs(self):
         self.dtype = np.float64
         self.shape = [2, 60]
-        self.eps = 0.0
+        self.eps = 1e-8
 
 
 class TestLogitEps(TestLogitOp):
@@ -170,10 +175,21 @@ class TestLogitEps(TestLogitOp):
         self.eps = 1e-8
 
 
+class TestLogit_ZeroSize(TestLogitOp):
+    def set_attrs(self):
+        self.dtype = np.float64
+        self.shape = [2, 0]
+        self.eps = 1e-8
+
+
 class TestLogitAPI(unittest.TestCase):
-    def setUp(self):
+    def init_data(self):
         self.x_shape = [120]
-        self.x = np.random.uniform(0.0, 1.0, self.x_shape).astype(np.float32)
+        self.x_dtype = "float32"
+
+    def setUp(self):
+        self.init_data()
+        self.x = np.random.uniform(-1.0, 1.0, self.x_shape).astype(self.x_dtype)
         self.place = (
             paddle.CUDAPlace(0)
             if paddle.base.core.is_compiled_with_cuda()
@@ -184,22 +200,38 @@ class TestLogitAPI(unittest.TestCase):
         ref_out = logit(self.x, eps)
         # test static api
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.static.data(name='x', shape=self.x_shape)
+            x = paddle.static.data(
+                name='x', shape=self.x_shape, dtype=self.x_dtype
+            )
             y = paddle.logit(x, eps)
             exe = paddle.static.Executor(self.place)
             out = exe.run(feed={'x': self.x}, fetch_list=[y])
         np.testing.assert_allclose(out[0], ref_out, rtol=1e-05)
         # test dygrapg api
         paddle.disable_static()
-        x = paddle.to_tensor(self.x)
+        x = paddle.to_tensor(self.x, dtype=self.x_dtype)
         y = paddle.logit(x, eps)
         np.testing.assert_allclose(y.numpy(), ref_out, rtol=1e-05)
+        paddle.enable_static()
+
+    def check_api_grad(self, eps=1e-8):
+        ref_grad = logit_grad(self.x, eps)
+        numpy_tensor = np.ones(self.x_shape).astype(self.x_dtype)
+        # test dygrapg api
+        paddle.disable_static()
+        paddle_outgrad = paddle.to_tensor(numpy_tensor / numpy_tensor.size)
+        x = paddle.to_tensor(self.x, dtype=self.x_dtype)
+        x.stop_gradient = False
+        y = paddle.logit(x, eps)
+        x_grad = paddle.grad([y], [x], [paddle_outgrad])
+        np.testing.assert_allclose(x_grad[0].numpy(), ref_grad, rtol=1e-05)
         paddle.enable_static()
 
     def test_check_api(self):
         paddle.enable_static()
         for eps in [1e-6, 0.0]:
             self.check_api(eps)
+            self.check_api_grad(eps)
 
     def test_errors(self):
         paddle.enable_static()
@@ -209,6 +241,18 @@ class TestLogitAPI(unittest.TestCase):
 
             x = paddle.static.data(name='X2', shape=[100], dtype='float32')
             self.assertRaises(TypeError, paddle.logit, x, dtype='int32')
+
+
+class TestLogitAPICase1(unittest.TestCase):
+    def init_data(self):
+        self.x_shape = [120]
+        self.x_dtype = "float64"
+
+
+class TestLogitAPICase2(unittest.TestCase):
+    def init_data(self):
+        self.x_shape = [120]
+        self.x_dtype = "float16"
 
 
 if __name__ == "__main__":
