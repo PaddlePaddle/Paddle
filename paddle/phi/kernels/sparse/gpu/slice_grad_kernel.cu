@@ -223,9 +223,9 @@ void SliceCsrGrad2D(const Context& dev_ctx,
                                                    0);
 }
 
-__global__ void GetCsrInputCrowsPart1CudaKernl(const int64_t n_rows,
-                                               const int64_t dim0_idx,
-                                               int64_t* dx_crows_data) {
+__global__ void GetCsrInputCrowsPart1CudaKernel(const int64_t n_rows,
+                                                const int64_t dim0_idx,
+                                                int64_t* dx_crows_data) {
   CUDA_KERNEL_LOOP_TYPE(j, n_rows + 1, int64_t) {
     dx_crows_data[dim0_idx * (n_rows + 1) + j] = 0;
   }
@@ -270,10 +270,10 @@ void SliceCsrGrad3D(const Context& dev_ctx,
   for (int64_t i = 0; i < dim0; ++i) {
     if (i < starts[0] || i >= ends[0]) {
       config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, n_rows + 1, 1);
-      GetCsrInputCrowsPart1CudaKernl<<<config.block_per_grid.x,
-                                       config.thread_per_block.x,
-                                       0,
-                                       dev_ctx.stream()>>>(
+      GetCsrInputCrowsPart1CudaKernel<<<config.block_per_grid.x,
+                                        config.thread_per_block.x,
+                                        0,
+                                        dev_ctx.stream()>>>(
           n_rows, i, dx_crows_data);
     } else {
       int64_t dx_crows_offset = i * (n_rows + 1);

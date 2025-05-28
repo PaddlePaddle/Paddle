@@ -91,6 +91,7 @@ prim_white_list = [
     "take_along_axis_double_grad",
     "index_add_double_grad",
     "acos_double_grad",
+    "put_along_axis_double_grad",
 ]
 
 # white ops list whose kernel can automatically do type promotion.
@@ -3316,8 +3317,7 @@ class DygraphForwardAndNodesGenerator(GeneratorBase):
                     backward_api_contents = next_grad_api_contents
 
         if len(namespace) > 0:
-            if namespace.endswith("::"):
-                namespace = namespace[:-2]
+            namespace = namespace.removesuffix("::")
             self.forward_definition_str = NAMESPACE_WRAPPER_TEMPLATE.format(
                 namespace, self.forward_definition_str
             )

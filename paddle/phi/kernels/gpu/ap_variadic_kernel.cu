@@ -28,27 +28,27 @@ void AllocateOutTensors(const Context& dev_ctx,
                         const std::vector<DenseTensor*>& outs) {
   for (auto* out : outs) {
     auto out_dtype = ap::axpr::GetDataTypeFromPhiDataType(out->dtype());
-    PADDLE_ENFORCE_EQ(
-        out_dtype.HasOkValue(),
-        true,
-        phi::errors::InvalidArgument("GetDataTypeFromPhiDataType() failed !"));
+    PADDLE_ENFORCE_EQ(out_dtype.HasOkValue(),
+                      true,
+                      common::errors::InvalidArgument(
+                          "GetDataTypeFromPhiDataType() failed !"));
 
     out_dtype.GetOkValue().Match(
         [&](const ap::axpr::CppDataType<ap::adt::Undefined>&) {
-          PADDLE_THROW(
-              phi::errors::InvalidArgument("allocate not support undefined !"));
+          PADDLE_THROW(common::errors::InvalidArgument(
+              "allocate not support undefined !"));
         },
         [&](const ap::axpr::CppDataType<uint64_t>&) {
-          PADDLE_THROW(
-              phi::errors::InvalidArgument("allocate not support uint64_t !"));
+          PADDLE_THROW(common::errors::InvalidArgument(
+              "allocate not support uint64_t !"));
         },
         [&](const ap::axpr::CppDataType<uint32_t>&) {
-          PADDLE_THROW(
-              phi::errors::InvalidArgument("allocate not support uint32_t !"));
+          PADDLE_THROW(common::errors::InvalidArgument(
+              "allocate not support uint32_t !"));
         },
         [&](const ap::axpr::CppDataType<uint16_t>&) {
-          PADDLE_THROW(
-              phi::errors::InvalidArgument("allocate not support uint16_t !"));
+          PADDLE_THROW(common::errors::InvalidArgument(
+              "allocate not support uint16_t !"));
         },
         [&](const auto& impl) {
           using tensor_type = typename std::decay_t<decltype(impl)>::type;
@@ -71,13 +71,13 @@ void ApVariadicKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_GT(
       xs.size(),
       0,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "At least 1 input is required. current number out uts: // %d",
           xs.size()));
   PADDLE_ENFORCE_GT(
       outs.size(),
       0,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "num_outputs must be greater than 1. current _outputs: // %d",
           outs.size()));
 
@@ -94,13 +94,14 @@ void ApVariadicKernel(const Context& dev_ctx,
                                             kernel_dispatch_lambda,
                                             kernel_dispatch_const_data_lambda,
                                             outs);
-  PADDLE_ENFORCE_EQ(ret.HasError(),
-                    false,
-                    phi::errors::Fatal("ap_variadic failed. \nTraceback (most "
-                                       "recent call last):\n%s\n%s: %s. ",
-                                       ret.GetError().CallStackToString(),
-                                       ret.GetError().class_name(),
-                                       ret.GetError().msg()));
+  PADDLE_ENFORCE_EQ(
+      ret.HasError(),
+      false,
+      common::errors::Fatal("ap_variadic failed. \nTraceback (most "
+                            "recent call last):\n%s\n%s: %s. ",
+                            ret.GetError().CallStackToString(),
+                            ret.GetError().class_name(),
+                            ret.GetError().msg()));
 }
 
 }  // namespace phi
