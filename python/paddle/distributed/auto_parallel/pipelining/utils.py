@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Callable, Dict, List, Tuple, Union
+from typing import Any, Callable, Union
 
 import paddle
 from paddle.distributed import fleet
@@ -99,7 +99,7 @@ def _validate_tensors_metadata(
         )
 
 
-NestedStruct = Union[List[Any], Tuple[Any, ...], Dict[Any, Any]]
+NestedStruct = Union[list[Any], tuple[Any, ...], dict[Any, Any]]
 
 
 def _map_structure_only(
