@@ -34,6 +34,7 @@ enum GemmDataType {
   _FLOAT,
   _HALF,
   _NVBFLOAT16,
+  _INT16,
   _INT8,
   _INT4,
 };
@@ -51,6 +52,8 @@ constexpr GemmDataType getGemmDataType() {
     return GemmDataType::_HALF;
   } else if constexpr (std::is_same<T, __nv_bfloat16>::value) {
     return GemmDataType::_NVBFLOAT16;
+  } else if constexpr (std::is_same<T, uint16_t>::value) {
+    return GemmDataType::_INT16;
   } else if constexpr (std::is_same<T, uint8_t>::value) {
     return GemmDataType::_INT8;
   } else if constexpr (std::is_same<T, cutlass::uint4b_t>::value) {

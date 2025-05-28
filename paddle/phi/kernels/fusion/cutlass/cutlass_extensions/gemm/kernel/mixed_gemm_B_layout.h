@@ -136,6 +136,26 @@ struct LayoutDetailsB<
   using Operator = cutlass::arch::OpMultiplyAddDequantizeInterleavedBToA;
 };
 
+template <typename Arch>
+struct LayoutDetailsB<
+    uint16_t,
+    Arch,
+    typename platform::enable_if<Arch::kMinComputeCapability >= 75>::type> {
+  static constexpr int ThreadblockK = 64;
+
+ private:
+  static constexpr int ElementsPerCacheLine =
+      128 * 8 / sizeof_bits<uint16_t>::value;
+  static constexpr int ColumnsInterleaved = ElementsPerCacheLine / ThreadblockK;
+
+ public:
+  using Layout =
+      layout::ColumnMajorTileInterleave<ThreadblockK, ColumnsInterleaved>;
+  static constexpr int ElementsPerAccess =
+      128 / cutlass::sizeof_bits<int16_t>::value;
+  using Operator = cutlass::arch::OpMultiplyAddDequantizeInterleavedBToA;
+};
+
 }  // namespace kernel
 }  // namespace gemm
 }  // namespace cutlass
