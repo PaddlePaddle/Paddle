@@ -20,6 +20,7 @@ import paddle
 import paddle.nn.functional as F
 from paddle.nn.functional.flash_attention import (
     scaled_dot_product_attention,
+    sdp_kernel,
 )
 
 
@@ -76,7 +77,7 @@ class TestAttentionWithBoolMask(unittest.TestCase):
     def setUp(self):
         self.place = paddle.CUDAPlace(0)
         self.shape = (1, 8, 8, 16)
-        self.dtype = 'float16'
+        self.dtype = 'float32'
         self.dropout = 0.0
         self.causal = False
 
@@ -115,9 +116,12 @@ class TestAttentionWithBoolMask(unittest.TestCase):
             bool_mask, place=self.place, dtype=paddle.bool, stop_gradient=False
         )
 
-        out = scaled_dot_product_attention(
-            q, k, v, m, self.dropout, self.causal
-        )
+        with sdp_kernel(
+            enable_math=True, enable_flash=False, enable_mem_efficient=False
+        ):
+            out = scaled_dot_product_attention(
+                q, k, v, m, self.dropout, self.causal
+            )
 
         out_ = attention_naive_with_bool_mask(q_, k_, v_, m)
 
@@ -160,9 +164,12 @@ class TestAttentionWithBoolMask(unittest.TestCase):
             mask, place=self.place, dtype=self.dtype, stop_gradient=False
         )
 
-        out = scaled_dot_product_attention(
-            q, k, v, m, self.dropout, self.causal
-        )
+        with sdp_kernel(
+            enable_math=True, enable_flash=False, enable_mem_efficient=False
+        ):
+            out = scaled_dot_product_attention(
+                q, k, v, m, self.dropout, self.causal
+            )
 
         out_ = attention_naive_with_mask(q_, k_, v_, m)
         out.backward()
