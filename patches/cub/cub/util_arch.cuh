@@ -37,6 +37,29 @@
 #include <cub/util_namespace.cuh>
 #include <cub/util_macro.cuh>
 
+/**
+ * \def CUB_NAMESPACE_BEGIN
+ * This macro is used to open a `cub::` namespace block, along with any
+ * enclosing namespaces requested by CUB_WRAPPED_NAMESPACE, etc.
+ * This macro is defined by CUB and may not be overridden.
+ */
+#define CUB_NAMESPACE_BEGIN                                                 \
+  CUB_NS_PREFIX                                                             \
+  namespace cub                                                             \
+  {
+
+
+/**
+ * \def CUB_NAMESPACE_END
+ * This macro is used to close a `cub::` namespace block, along with any
+ * enclosing namespaces requested by CUB_WRAPPED_NAMESPACE, etc.
+ * This macro is defined by CUB and may not be overridden.
+ */
+#define CUB_NAMESPACE_END                                                   \
+  } /* end namespace cub */                                                 \
+  CUB_NS_POSTFIX
+
+
 CUB_NAMESPACE_BEGIN
 
 #ifndef DOXYGEN_SHOULD_SKIP_THIS    // Do not document
