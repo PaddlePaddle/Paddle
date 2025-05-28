@@ -114,7 +114,7 @@ class XPUTestElementwiseMulOp(XPUOpTestWrapper):
             self.y = self.gen_data_depend_on_dtype([13, 17])
 
         def init_input_output(self):
-            if self.dtype == np.uint16:
+            if self.dtype == np.uint16 and self.x.size > 0 and self.y.size > 0:
                 self.x = convert_float_to_uint16(self.x)
                 self.y = convert_float_to_uint16(self.y)
             else:
@@ -206,17 +206,17 @@ class XPUTestElementwiseMulOp(XPUOpTestWrapper):
             self.x = self.gen_data_depend_on_dtype([30, 3, 1, 5])
             self.y = self.gen_data_depend_on_dtype([30, 1, 4, 1])
 
-    class TestElementwiseMulComplexOpZeroSize1(ElementwiseMulOp):
+    class TestElementwiseMulZeroSize1(ElementwiseMulOp):
         def init_data(self):
             self.x = self.gen_data_depend_on_dtype([0, 2, 3])
             self.y = self.gen_data_depend_on_dtype([0, 1, 1])
 
-    class TestElementwiseMulComplexOpZeroSize2(ElementwiseMulOp):
+    class TestElementwiseMulZeroSize2(ElementwiseMulOp):
         def init_data(self):
             self.x = self.gen_data_depend_on_dtype([2, 0, 3])
             self.y = self.gen_data_depend_on_dtype([1, 0, 1])
 
-    class TestElementwiseMulComplexOpZeroSize3(ElementwiseMulOp):
+    class TestElementwiseMulZeroSize3(ElementwiseMulOp):
         def init_data(self):
             self.x = self.gen_data_depend_on_dtype([2, 0, 0])
             self.y = self.gen_data_depend_on_dtype([1, 0, 0])
@@ -300,7 +300,7 @@ if 'complex64' in support_types:
         def test_check_output(self):
             if paddle.is_compiled_with_xpu():
                 place = paddle.XPUPlace(0)
-                self.check_output_with_place(place, check_dygraph=False)
+                self.check_output_with_place(place)
 
         def test_check_grad_normal(self):
             if paddle.is_compiled_with_xpu():
@@ -309,7 +309,6 @@ if 'complex64' in support_types:
                     place,
                     ['X', 'Y'],
                     'Out',
-                    check_dygraph=False,
                 )
 
         def test_check_grad_ignore_x(self):
@@ -320,7 +319,6 @@ if 'complex64' in support_types:
                     ['Y'],
                     'Out',
                     no_grad_set=set("X"),
-                    check_dygraph=False,
                 )
 
         def test_check_grad_ignore_y(self):
@@ -331,7 +329,6 @@ if 'complex64' in support_types:
                     ['X'],
                     'Out',
                     no_grad_set=set('Y'),
-                    check_dygraph=False,
                 )
 
     class TestElementwiseMulComplexOp_broadcast_0(ElementwiseMulComplexOp):
