@@ -146,9 +146,10 @@ def check_backward_correctness(layer_cls):
             input, paddle.to_tensor(input_neg), k, capacity
         )
 
-        flattened[i] = (output_pos.numpy() - output_neg.numpy()).sum() / (
-            2 * epsilon
+        grad_value = paddle.to_tensor(
+            (output_pos.numpy() - output_neg.numpy()).sum() / (2 * epsilon)
         )
+        flattened[i] = grad_value
 
     flattened = flattened.reshape(gate_prob.shape)
 

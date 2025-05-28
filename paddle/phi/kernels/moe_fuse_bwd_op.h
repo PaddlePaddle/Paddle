@@ -17,6 +17,7 @@
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
 #include "paddle/phi/kernels/moe_kernel_impl.h"
 
+#ifdef PADDLE_WITH_CUDA
 template <typename T, int64_t vec_size>
 __global__ void gather_with_mask_permute_kernel(
     const T* dy,                   // [s*k, d]
@@ -309,3 +310,4 @@ void topk_grad_with_mask_launcher(const T* dy,               // [s, k]
   topk_grad_with_mask<T><<<blocks, threads, 0, stream>>>(
       dy, topk_idx, combine_weights, dx, num_rows, k, num_experts);
 }
+#endif

@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#ifdef PADDLE_WITH_CUDA
 #include <cuda_runtime.h>
 #include <math.h>
 #include <cmath>
@@ -644,3 +645,5 @@ __global__ void initialize_moe_routing_kernel(
 }
 
 }  // namespace phi
+
+#endif
