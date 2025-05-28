@@ -493,6 +493,20 @@ static paddle::Tensor dealWithAdvancedIndex(
   return transed_tensor;
 }
 
+inline std::vector<int64_t> ComputeIndexStrides(const paddle::Tensor& input,
+                                                const size_t index_dims_size) {
+  const auto& input_strides = input.strides();
+  size_t element_size_bytes = phi::SizeOf(input.dtype());
+  std::vector<int64_t> strides(index_dims_size, 0);
+  const size_t min_size =
+      std::min(static_cast<size_t>(input_strides.size()), index_dims_size);
+  for (size_t i = 0; i < min_size; ++i) {
+    strides[i] = input_strides[i] * element_size_bytes;
+  }
+
+  return strides;
+}
+
 static paddle::Tensor getValueForBoolTensor(const paddle::Tensor& tensor,
                                             const paddle::Tensor& bool_index) {
   PADDLE_ENFORCE(bool_index.shape().size() <= tensor.shape().size(),
@@ -540,8 +554,10 @@ static paddle::Tensor getValueForBoolTensor(const paddle::Tensor& tensor,
     indices.emplace_back(sliced_tensor);
   }
   auto index_dims_vec = common::vectorize<int64_t>(bool_index.dims());
+  auto index_stride = ComputeIndexStrides(tensor, index_dims_vec.size());
 
-  return index_elementwise_ad_func(tensor, indices, index_dims_vec);
+  return index_elementwise_ad_func(
+      tensor, indices, index_dims_vec, index_stride);
 #else
 
   return gather_nd_ad_func(tensor, bool_2_idx);

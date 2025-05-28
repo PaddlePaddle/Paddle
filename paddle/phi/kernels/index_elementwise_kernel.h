@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,6 +24,7 @@ void IndexElementwiseKernel(const Context &ctx,
                             const DenseTensor &x,
                             const std::vector<const DenseTensor *> &index,
                             const std::vector<int64_t> &index_dims,
+                            const std::vector<int64_t> &index_stride,
                             DenseTensor *out);
 
 }  // namespace phi

@@ -2149,9 +2149,9 @@ void GatherNdInferMeta(const MetaTensor& x,
 void IndexElementwiseInferMeta(const MetaTensor& x,
                                const std::vector<const MetaTensor*>& index,
                                const std::vector<int64_t>& index_dims,
+                               const std::vector<int64_t>& index_stride,
                                MetaTensor* out) {
   const auto& x_dims = x.dims();
-  // auto index_dims = index.dims();
 
   PADDLE_ENFORCE_LE(
       index_dims.size(),

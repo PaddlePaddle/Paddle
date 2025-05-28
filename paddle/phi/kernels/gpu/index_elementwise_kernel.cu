@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,6 +25,7 @@ void IndexElementwiseKernel(const Context& ctx,
                             const DenseTensor& x,
                             const std::vector<const DenseTensor*>& index,
                             const std::vector<int64_t>& index_dims,
+                            const std::vector<int64_t>& index_stride,
                             DenseTensor* out) {
   const auto& index_type = index[0]->dtype();
   PADDLE_ENFORCE_EQ(
@@ -48,10 +49,11 @@ void IndexElementwiseKernel(const Context& ctx,
   ctx.template Alloc<T>(out);
 
   if (index_type == phi::DataType::INT32) {
-    phi::funcs::IndexElementwiseKernel<T, int>(ctx, x, index, index_dims, out);
+    phi::funcs::IndexElementwiseKernel<T, int>(
+        ctx, x, index, index_dims, index_stride, out);
   } else if (index_type == phi::DataType::INT64) {
     phi::funcs::IndexElementwiseKernel<T, int64_t>(
-        ctx, x, index, index_dims, out);
+        ctx, x, index, index_dims, index_stride, out);
   }
 }
 

@@ -1,4 +1,4 @@
-/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -38,7 +38,6 @@ constexpr int MAX_DIMS = 25;
 #endif
 
 static constexpr int launch_bound2 = 4;
-
 static constexpr int launch_size_nd = 128;
 
 template <int nt, int vt, typename func_t>
@@ -92,8 +91,9 @@ struct OffsetCalculator {
                    const int64_t* const* strides,
                    const int64_t* element_sizes = nullptr)
       : dims(dims) {
-    PADDLE_ENFORCE(
-        dims <= MAX_DIMS, "tensor has too many (>", MAX_DIMS, ") dims");
+    PADDLE_ENFORCE(dims <= MAX_DIMS,
+                   "The number of dimensions (%d) exceeds MAX_DIMS.",
+                   dims);
     for (int i = 0; i < dims; i++) {
       sizes_[i] = IntDivider<index_t>(sizes[i]);
       for (int arg = 0; arg < NARGS; arg++) {
@@ -131,25 +131,6 @@ struct OffsetCalculator {
   stride_t strides_[MAX_DIMS][std::max<int>(NARGS, 1)];
 };
 
-template <typename T>
-std::array<int64_t, DDim::kMaxRank> ComputeStrides(
-    const phi::DenseTensor& input, const size_t index_dims_size) {
-  const auto& input_strides = input.strides();
-  const size_t element_size_bytes = sizeof(T);
-
-  std::array<int64_t, DDim::kMaxRank> strides{};
-
-  for (int i = 0; i < index_dims_size; ++i) {
-    if (i < input_strides.size()) {
-      strides[i] = input_strides[i] * element_size_bytes;
-    } else {
-      strides[i] = 0;
-    }
-  }
-
-  return strides;
-}
-
 template <typename IndexT>
 std::array<char*, DDim::kMaxRank> GetIndexDataPtrs(
     const std::vector<const DenseTensor*> index) {
@@ -157,15 +138,16 @@ std::array<char*, DDim::kMaxRank> GetIndexDataPtrs(
 
   PADDLE_ENFORCE_LE(index.size(),
                     DDim::kMaxRank,
-                    "The number of index tensors exceeds the maximum rank.");
+                    "The rank of the index tensor must be less than or "
+                    "equal to DDim::kMaxRank.");
 
   for (size_t i = 0; i < index.size(); ++i) {
     const IndexT* p_index = index[i]->data<IndexT>();
 
     PADDLE_ENFORCE(p_index != nullptr,
-                   "The pointer p_index is nullptr, "
-                   "please check whether the index tensor is valid and "
-                   "its data is correctly initialized.");
+                   "The pointer p_index must not be nullptr. "
+                   "Please ensure the index tensor is valid and its data "
+                   "is correctly initialized.");
 
     index_ptrs[i] = reinterpret_cast<char*>(const_cast<IndexT*>(p_index));
   }
@@ -234,10 +216,10 @@ void IndexElementwiseKernel(const phi::GPUContext& ctx,
                             const DenseTensor& input,
                             const std::vector<const DenseTensor*> index,
                             const std::vector<int64_t>& index_dims,
+                            const std::vector<int64_t>& index_stride,
                             DenseTensor* output) {
   auto num_indices = index_dims.size();
 
-  auto index_stride = ComputeStrides<T>(input, num_indices);
   auto index_ptrs = GetIndexDataPtrs<IndexT>(index);
 
   auto sizes = std::array<int64_t, DDim::kMaxRank>{};
@@ -252,7 +234,9 @@ void IndexElementwiseKernel(const phi::GPUContext& ctx,
 
   const int64_t N = output->numel();
   PADDLE_ENFORCE(N >= 0 && N <= std::numeric_limits<int32_t>::max(),
-                 "N >= 0 && N <= std::numeric_limits<int32_t>::max()");
+
+                 "Output numel be in the range [0, "
+                 "std::numeric_limits<int32_t>::max()]");
   constexpr int nt = launch_size_nd;
   constexpr int vt = launch_bound2;
   const dim3 block(nt);

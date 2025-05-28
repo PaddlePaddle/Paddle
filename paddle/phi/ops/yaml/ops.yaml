@@ -2754,7 +2754,7 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
 
 - op : index_elementwise
-  args : (Tensor x, Tensor[] index, int64_t[] index_dims)
+  args : (Tensor x, Tensor[] index, int64_t[] index_dims, int64_t[] index_stride)
   output : Tensor (out)
   infer_meta :
     func : IndexElementwiseInferMeta
