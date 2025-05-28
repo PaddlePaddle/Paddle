@@ -340,15 +340,15 @@ void ElementwiseDivGrad(const GPUContext &dev_ctx,
                         DenseTensor *dy,
                         int axis = -1) {
   const auto place = dev_ctx.GetPlace();
-  if (dx->numel() == 0) {
+  if (dx != nullptr && dx->numel() == 0) {
     dev_ctx.Alloc<T>(dx);
   }
 
-  if (dy->numel() == 0) {
+  if (dy != nullptr && dy->numel() == 0) {
     dev_ctx.Alloc<T>(dy);
   }
 
-  bool need_dx = (dx != nullptr) && (dy->numel() != 0);
+  bool need_dx = (dx != nullptr) && (dx->numel() != 0);
   bool need_dy = (dy != nullptr) && (dy->numel() != 0);
   if (need_dx && need_dy) {
     std::vector<const DenseTensor *> ins = {&dout, &out, &y};
@@ -387,15 +387,15 @@ void ElementwiseMulGrad(const GPUContext &dev_ctx,
                         int axis) {
   const auto place = dev_ctx.GetPlace();
 
-  if (dx->numel() == 0) {
+  if (dx != nullptr && dx->numel() == 0) {
     dev_ctx.Alloc<T>(dx);
   }
 
-  if (dy->numel() == 0) {
+  if (dy != nullptr && dy->numel() == 0) {
     dev_ctx.Alloc<T>(dy);
   }
 
-  bool need_dx = (dx != nullptr) && (dy->numel() != 0);
+  bool need_dx = (dx != nullptr) && (dx->numel() != 0);
   bool need_dy = (dy != nullptr) && (dy->numel() != 0);
   if (need_dy && need_dy) {
     std::vector<const DenseTensor *> ins = {&dout, &y, &x};
