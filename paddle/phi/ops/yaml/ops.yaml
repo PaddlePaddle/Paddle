@@ -3637,6 +3637,17 @@
     data_type : x
   backward : moe_combine_grad
 
+- op : moe_gate_dispatch_partial_nosoftmaxtopk
+  args : (Tensor x, Tensor combine_weights, Tensor expert_id, int64_t k, int64_t capacity, int64_t num_experts, bool use_pad, int64_t expert_start_index, int64_t expert_end_index, bool reverse_token_drop)
+  output : Tensor(y), Tensor(combine_weights_out), Tensor(scatter_index), Tensor(scatter_index_rev), Tensor(expert_offset), Tensor(expert_nums_local)
+  infer_meta :
+    func : MoeGateDispatchPartialNoSoftmaxTopKInferMeta
+  kernel :
+    func : moe_gate_dispatch_partial_nosoftmaxtopk
+    data_type : x
+  # inplace : (combine_weights -> combine_weights_out)
+  backward : moe_gate_dispatch_partial_nosoftmaxtopk_grad
+
 - op : moe_gate_dispatch_permute
   args : (Tensor x, Tensor gate_logits, Tensor corr_bias, int64_t k, int64_t capacity, int64_t world_size)
   output : Tensor(y), Tensor(combine_weights), Tensor(scatter_index), Tensor(expert_offset), Tensor(expert_id)
@@ -3646,7 +3657,7 @@
     func : moe_gate_dispatch_permute
     data_type : x
   optional : corr_bias
-  # backward : moe_gate_dispatch_permute_grad
+  backward : moe_gate_dispatch_permute_grad
 
 - op : momentum_
   args : (Tensor param, Tensor grad, Tensor velocity, Tensor learning_rate, Tensor master_param, float mu, bool use_nesterov = false, str regularization_method = "", float regularization_coeff = 0.0f, bool multi_precision = false, float rescale_grad = 1.0f)
