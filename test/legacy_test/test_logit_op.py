@@ -24,15 +24,29 @@ np.random.seed(10)
 
 
 def logit(x, eps):
-    x_min = np.minimum(x, 1.0 - eps)
-    x_max = np.maximum(x_min, eps)
-    return np.log(x_max / (1.0 - x_max))
+    if eps:
+        x_min = np.minimum(x, 1.0 - eps)
+        x_max = np.maximum(x_min, eps)
+        return np.log(x_max / (1.0 - x_max))
+    else:
+        return np.where(
+            (x < 0.0) | (x > 1.0),
+            np.array(np.nan, dtype=x.dtype),
+            np.log(x / (1.0 - x)),
+        )
 
 
 def logit_grad(x, eps=1e-8):
-    tmp_x = np.select(
-        [x < eps, x > (1.0 - eps)], [x * 0.0, x * 0.0], default=-1.0
-    )
+    if eps:
+        tmp_x = np.select(
+            [x < eps, x > (1.0 - eps)], [x * 0.0, x * 0.0], default=-1.0
+        )
+    else:
+        tmp_x = np.select(
+            [x < 0.0, x > 1.0],
+            [np.array(np.nan, dtype=x.dtype), np.array(np.nan, dtype=x.dtype)],
+            default=-1.0,
+        )
     x_1 = 1.0 - x
     _x = np.select([tmp_x == -1.0], [np.reciprocal(x * x_1)], default=0.0)
     dout = np.full_like(x, fill_value=1.0 / _x.size)
@@ -58,11 +72,16 @@ class TestLogitOp(OpTest):
         self.eps = 1e-8
 
     def test_check_output(self):
-        self.check_output(check_pir=True, check_symbol_infer=False)
+        self.check_output(
+            check_pir=True, check_symbol_infer=False, equal_nan=True
+        )
 
     def test_check_grad(self):
         self.check_grad(
-            ['X'], ['Out'], user_defined_grads=[self.x_grad], check_pir=True
+            ['X'],
+            ['Out'],
+            user_defined_grads=[self.x_grad],
+            check_pir=True,
         )
 
 
@@ -73,7 +92,7 @@ class TestLogitOpFp32(TestLogitOp):
         self.eps = 1e-8
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, equal_nan=True)
 
     def test_check_grad(self):
         self.check_grad(
@@ -88,7 +107,7 @@ class TestLogitOpFp16(TestLogitOp):
         self.eps = 1e-8
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, equal_nan=True)
 
     def test_check_grad(self):
         self.check_grad(
@@ -122,7 +141,7 @@ class TestLogitOpBf16(OpTest):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             self.check_output_with_place(
-                place, check_pir=True, check_symbol_infer=False
+                place, check_pir=True, check_symbol_infer=False, equal_nan=True
             )
 
     def test_check_grad(self):
@@ -141,7 +160,7 @@ class TestLogitShape(TestLogitOp):
     def set_attrs(self):
         self.dtype = np.float64
         self.shape = [2, 60]
-        self.eps = 1e-8
+        self.eps = 0.0
 
 
 class TestLogitEps(TestLogitOp):
@@ -173,7 +192,7 @@ class TestLogitAPI(unittest.TestCase):
         # test dygrapg api
         paddle.disable_static()
         x = paddle.to_tensor(self.x)
-        y = paddle.logit(x, 1e-8)
+        y = paddle.logit(x, eps)
         np.testing.assert_allclose(y.numpy(), ref_out, rtol=1e-05)
         paddle.enable_static()
 
