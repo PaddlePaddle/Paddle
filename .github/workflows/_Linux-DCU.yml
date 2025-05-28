@@ -57,7 +57,6 @@ jobs:
           GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           home_dir: ${{ github.workspace }}/../../../..
         run: |
-          set -x
           container_name=${TASK}-$(date +%Y%m%d-%H%M%S)
           echo "container_name=${container_name}" >> ${{ github.env }}
           docker run --ulimit nofile=102400:102400 -d -t --name ${container_name} \
@@ -120,10 +119,11 @@ jobs:
           work_dir: ${{ github.workspace }}
           PADDLE_ROOT: ${{ github.workspace }}
         run: |
+          set -x
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ${{ github.workspace }}/../../../proxy
           source /opt/dtk-24.04.1/env.sh
-          bash ${ci_scripts}/run_setup.sh bdist_wheel
+          bash -x ${ci_scripts}/run_setup.sh bdist_wheel
           EXCODE=$?
           python -m pip install bce-python-sdk==0.8.74
           rm -rf `find . -name "*.a"`
