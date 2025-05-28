@@ -167,6 +167,30 @@ class TestSplitOp_AxisTensor(OpTest):
         self.check_grad(['X'], ['out0', 'out1', 'out2'], check_pir=True)
 
 
+class TestSplitOpZeroSize(TestSplitOp_AxisTensor):
+    def init_data(self):
+        self.x = np.random.random((0, 1, 6)).astype(self.dtype)
+        self.axis = 2
+        self.sections = []
+        self.num = 3
+        self.indices_or_sections = 3
+
+    def test_check_output(self):
+        self.check_output(check_pir=False)
+
+    def test_check_grad(self):
+        self.check_grad(['X'], ['out0', 'out1', 'out2'], check_pir=True)
+
+
+class TestSplitOpZeroSize1(TestSplitOpZeroSize):
+    def init_data(self):
+        self.x = np.random.random((8, 0, 9)).astype(self.dtype)
+        self.axis = 2
+        self.sections = [2, 2, 5]
+        self.num = 3
+        self.indices_or_sections = [2, 4]
+
+
 # attr(sections) is list containing Tensor
 class TestSplitOp_SectionsTensor(OpTest):
     def setUp(self):
@@ -739,6 +763,67 @@ class API_TestEmptySplit(unittest.TestCase):
                     5,
                     5,
                 ],
+            )
+        np.testing.assert_allclose(ex_x0, x0_out, rtol=1e-05)
+        np.testing.assert_allclose(ex_x1, x1_out, rtol=1e-05)
+        np.testing.assert_allclose(ex_x2, x2_out, rtol=1e-05)
+
+
+class API_TestSplitZeroSize(unittest.TestCase):
+    def test_case1(self):
+        with base.dygraph.guard():
+            input_1 = np.random.random([3, 0, 6]).astype("float32")
+            input = paddle.to_tensor(input_1)
+            x0, x1, x2 = paddle.split(input, num_or_sections=[3, 0, 3], axis=-1)
+            x0_out = x0.numpy()
+            x1_out = x1.numpy()
+            x2_out = x2.numpy()
+            ex_x0, ex_x1, ex_x2 = np.split(
+                input_1,
+                [3, 3],
+                axis=-1,
+            )
+        np.testing.assert_allclose(ex_x0, x0_out, rtol=1e-05)
+        np.testing.assert_allclose(ex_x1, x1_out, rtol=1e-05)
+        np.testing.assert_allclose(ex_x2, x2_out, rtol=1e-05)
+
+    def test_case2(self):
+        with base.dygraph.guard():
+            input_1 = np.random.random([9, 0, 0]).astype("float32")
+            input = paddle.to_tensor(input_1, stop_gradient=False)
+            (
+                x0,
+                x1,
+                x2,
+            ) = paddle.split(input, num_or_sections=3, axis=0)
+            x0_out = x0.numpy()
+            x1_out = x1.numpy()
+            x2_out = x2.numpy()
+            ex_x0, ex_x1, ex_x2 = np.split(
+                input_1,
+                3,
+                axis=0,
+            )
+        np.testing.assert_allclose(ex_x0, x0_out, rtol=1e-05)
+        np.testing.assert_allclose(ex_x1, x1_out, rtol=1e-05)
+        np.testing.assert_allclose(ex_x2, x2_out, rtol=1e-05)
+
+    def test_case3(self):
+        with base.dygraph.guard():
+            input_1 = np.random.random([9, 0, 0]).astype("float32")
+            input = paddle.to_tensor(input_1)
+            (
+                x0,
+                x1,
+                x2,
+            ) = paddle.split(input, num_or_sections=3, axis=1)
+            x0_out = x0.numpy()
+            x1_out = x1.numpy()
+            x2_out = x2.numpy()
+            ex_x0, ex_x1, ex_x2 = np.split(
+                input_1,
+                3,
+                axis=1,
             )
         np.testing.assert_allclose(ex_x0, x0_out, rtol=1e-05)
         np.testing.assert_allclose(ex_x1, x1_out, rtol=1e-05)

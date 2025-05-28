@@ -45,6 +45,7 @@ void ConcatKernel(const Context& dev_ctx,
   phi::DDim out_dims = phi::funcs::ComputeAndCheckShape(true, x_dims, axis);
   out->Resize(out_dims);
   dev_ctx.template Alloc<T>(out);
+  if (out->numel() == 0) return;
 
   // If axis is 0, the lod of the output is not the same as inputs.
   if (axis == 0 && !x[0]->lod().empty()) {
