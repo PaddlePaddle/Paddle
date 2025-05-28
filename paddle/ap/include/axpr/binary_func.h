@@ -23,6 +23,7 @@ namespace ap::axpr {
   _(Sub, -)                         \
   _(Mul, *)                         \
   _(Div, /)                         \
+  _(FloorDiv, /)                    \
   _(Mod, %)                         \
   _(EQ, ==)                         \
   _(NE, !=)                         \

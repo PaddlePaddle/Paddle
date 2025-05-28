@@ -14,8 +14,12 @@
 from __future__ import annotations
 
 import traceback
+from typing import TYPE_CHECKING
 
 from .info_collector import BreakGraphReasonInfo
+
+if TYPE_CHECKING:
+    from ..opcode_translator.executor.variables.base import VariableBase
 
 
 class BreakGraphReasonBase:
@@ -102,6 +106,25 @@ class UnsupportedPaddleAPIBreak(UnsupportedOperationBreak):
         )
 
 
+class UnsupportedNumPyAPIBreak(UnsupportedOperationBreak):
+    def __init__(
+        self,
+        *,
+        fn_name=None,
+        reason_str=None,
+        file_path="",
+        line_number=-1,
+    ):
+        if reason_str is None:
+            reason_str = f"Not support NumPy API: {fn_name}"
+
+        super().__init__(
+            reason_str=reason_str,
+            file_path=file_path,
+            line_number=line_number,
+        )
+
+
 class BuiltinFunctionBreak(UnsupportedOperationBreak):
     """Break reason for unsupported built-in function calls.
 
@@ -167,6 +190,18 @@ class InferMetaBreak(BreakGraphReasonBase):
     """Break reason during meta information inference phase."""
 
     pass
+
+
+class NullMetaBreak(BreakGraphReasonBase):
+    def __init__(
+        self,
+        *,
+        file_path="",
+        line_number=-1,
+    ):
+        super().__init__(
+            "Access attribute from null meta", file_path, line_number
+        )
 
 
 class SotErrorBase(Exception):
@@ -259,3 +294,158 @@ class SotExtraInfo:
         )
         setattr(err, SotExtraInfo.SOT_EXTRA_INFO_ATTR_NAME, info)
         return info
+
+
+class SotCapturedException(SotErrorBase):
+    # Represents an exception encountered during bytecode execution simulation.
+    # This exception is used by SOT to handle Python exceptions by mapping them to
+    # SotCapturedException for consistent exception handling in the simulation process.
+    ...
+
+
+class SotCapturedLookupError(SotCapturedException): ...
+
+
+class SotCapturedIndexError(SotCapturedLookupError): ...
+
+
+class SotCapturedKeyError(SotCapturedLookupError): ...
+
+
+class SotCapturedArithmeticError(SotCapturedException): ...
+
+
+class SotCapturedFloatingPointError(SotCapturedArithmeticError): ...
+
+
+class SotCapturedOverflowError(SotCapturedArithmeticError): ...
+
+
+class SotCapturedZeroDivisionError(SotCapturedArithmeticError): ...
+
+
+class SotCapturedImportError(SotCapturedException): ...
+
+
+class SotCapturedModuleNotFoundError(SotCapturedImportError): ...
+
+
+class SotCapturedRuntimeError(SotCapturedException): ...
+
+
+class SotCapturedNotImplementedError(SotCapturedRuntimeError): ...
+
+
+class SotCapturedRecursionError(SotCapturedRuntimeError): ...
+
+
+class SotCapturedNameError(SotCapturedException): ...
+
+
+class SotCapturedUnboundLocalError(SotCapturedNameError): ...
+
+
+class SotCapturedSyntaxError(SotCapturedException): ...
+
+
+class SotCapturedIndentationError(SotCapturedSyntaxError): ...
+
+
+class SotCapturedTabError(SotCapturedIndentationError): ...
+
+
+class SotCapturedOSError(SotCapturedException): ...
+
+
+class SotCapturedFileExistsError(SotCapturedOSError): ...
+
+
+class SotCapturedFileNotFoundError(SotCapturedOSError): ...
+
+
+class SotCapturedIsADirectoryError(SotCapturedOSError): ...
+
+
+class SotCapturedNotADirectoryError(SotCapturedOSError): ...
+
+
+class SotCapturedPermissionError(SotCapturedOSError): ...
+
+
+class SotCapturedTimeoutError(SotCapturedOSError): ...
+
+
+class SotCapturedStopIteration(SotCapturedOSError): ...
+
+
+class SotCapturedExceptionFactory:
+    # This dictionary maps common built-in Python Exception types to their corresponding SotCapturedException
+    # types, preserving the original exception hierarchy for proper inheritance behavior.
+    # Reference: https://docs.python.org/3/library/exceptions.html#exception-hierarchy
+    MAPPING = {
+        Exception: SotCapturedException,
+        LookupError: SotCapturedLookupError,
+        IndexError: SotCapturedIndexError,
+        KeyError: SotCapturedKeyError,
+        ArithmeticError: SotCapturedArithmeticError,
+        FloatingPointError: SotCapturedFloatingPointError,
+        OverflowError: SotCapturedOverflowError,
+        ZeroDivisionError: SotCapturedZeroDivisionError,
+        ImportError: SotCapturedImportError,
+        ModuleNotFoundError: SotCapturedModuleNotFoundError,
+        RuntimeError: SotCapturedRuntimeError,
+        NotImplementedError: SotCapturedNotImplementedError,
+        NameError: SotCapturedNameError,
+        UnboundLocalError: SotCapturedUnboundLocalError,
+        SyntaxError: SotCapturedSyntaxError,
+        IndentationError: SotCapturedIndentationError,
+        TabError: SotCapturedTabError,
+        OSError: SotCapturedOSError,
+        FileExistsError: SotCapturedFileExistsError,
+        FileNotFoundError: SotCapturedFileNotFoundError,
+        IsADirectoryError: SotCapturedIsADirectoryError,
+        NotADirectoryError: SotCapturedNotADirectoryError,
+        PermissionError: SotCapturedPermissionError,
+        TimeoutError: SotCapturedTimeoutError,
+        StopIteration: SotCapturedStopIteration,
+    }
+
+    @classmethod
+    def get(
+        cls,
+        exc_type: type[Exception],
+    ) -> type[SotCapturedException]:
+        if isinstance(exc_type, type) and issubclass(
+            exc_type, SotCapturedException
+        ):
+            return exc_type
+
+        if exc_type not in cls.MAPPING:
+            name = getattr(exc_type, "__name__", str(exc_type))
+            cls.MAPPING[exc_type] = type(
+                f"SotCaptured{name}", (SotCapturedException,), {}
+            )
+        return cls.MAPPING[exc_type]
+
+    @classmethod
+    def create(
+        cls,
+        origin_exc: Exception,
+        tracked_args: list[VariableBase] | None = None,
+    ) -> SotCapturedException:
+        # transform an Exception to SotCapturedException
+        exc_type = origin_exc.__class__
+
+        new_exc_type = cls.get(exc_type)
+        new_exc = new_exc_type(*origin_exc.args)
+        new_exc.__cause__ = origin_exc.__cause__
+        new_exc.__context__ = origin_exc.__context__
+        new_exc.__suppress_context__ = origin_exc.__suppress_context__
+        new_exc.__traceback__ = origin_exc.__traceback__
+
+        # Propagating Exception Parameters through SotCapturedException
+        if tracked_args is None:
+            tracked_args = []
+        new_exc.tracked_args = tracked_args
+
+        return new_exc

@@ -23,12 +23,6 @@ limitations under the License. */
 #include <object.h>
 #include "pybind11/numpy.h"
 
-#if !defined(PyObject_CallOneArg) && !PY_3_9_PLUS
-static inline PyObject* PyObject_CallOneArg(PyObject* func, PyObject* arg) {
-  return PyObject_CallFunctionObjArgs(func, arg, NULL);
-}
-#endif
-
 #if !PY_3_10_PLUS
 #define Py_IsNone(x) ((x) == Py_None)
 #endif
@@ -59,6 +53,23 @@ static inline PyObject* PyObject_CallOneArg(PyObject* func, PyObject* arg) {
       return false;              \
     }                            \
   }
+
+template <typename T>
+static inline bool check_shape(
+    const std::vector<std::optional<int64_t>>& expected,
+    int ndim,
+    const T& actual_shape) {
+  if (expected.size() != static_cast<size_t>(ndim)) {
+    return false;
+  }
+  for (size_t i = 0; i < expected.size(); ++i) {
+    if (!expected[i] || actual_shape[i] < 1) continue;
+    if (actual_shape[i] != expected[i].value()) {
+      return false;
+    }
+  }
+  return true;
+}
 
 static inline bool PyObject_Equal(PyObject* a, PyObject* b) {
   if (a == b) {
@@ -137,15 +148,7 @@ bool ShapeMatchGuard::check(PyObject* value) {
   auto tensor = GetTensorFromPyObject(value);
   HANDLE_NULL_TENSOR(tensor);
   auto shape = tensor->shape();
-  if (shape.size() != expected_.size()) {
-    return false;
-  }
-  for (size_t i = 0; i < shape.size(); ++i) {
-    if (expected_[i] && shape[i] != *expected_[i]) {
-      return false;
-    }
-  }
-  return true;
+  return check_shape<std::vector<int64_t>>(expected_, shape.size(), shape);
 }
 
 bool AttributeMatchGuard::check(PyObject* value) {
@@ -193,6 +196,16 @@ bool NumPyArrayValueMatchGuard::check(PyObject* value) {
       .cast<bool>();
 }
 
+bool NumPyArrayShapeMatchGuard::check(PyObject* value) {
+  py::array array = py::reinterpret_borrow<py::array>(value);
+  if (!array) {
+    return false;
+  }
+  int ndim = array.ndim();
+  const Py_ssize_t* shape = array.shape();
+  return check_shape<const Py_ssize_t*>(expected_, ndim, shape);
+}
+
 bool WeakRefMatchGuard::check(PyObject* value) {
   if (value == nullptr || expected_ == nullptr || Py_IsNone(expected_)) {
     return false;
@@ -218,58 +231,40 @@ bool WeakRefMatchGuard::check(PyObject* value) {
 #endif
 }
 
-bool TensorDistMetaMatchGuard::check(PyObject* value) {
-  HANDLE_NULL_VALUE(value);
-
-  PyObject* expr = PyTuple_GetItem(value, 0);
-  HANDLE_NULL_VALUE(expr);
-
-  auto tensor = GetTensorFromPyObject(expr);
+bool IsNotDenseTensorHoldAllocationMatchGuard::check(PyObject* value) {
+  auto tensor = GetTensorFromPyObject(value);
   HANDLE_NULL_TENSOR(tensor);
 
-  if (tensor->is_dist_tensor() == false && is_dist_ == false) return true;
-  if (tensor->is_dist_tensor() != is_dist_) {
+  if (!tensor->defined() ||
+      (!tensor->is_dense_tensor() && !tensor->is_dist_tensor()))
+    return true;
+
+  PyObject* method =
+      PyObject_GetAttrString(value, "_is_dense_tensor_hold_allocation");
+  if (!method) {
+    PyErr_Print();
     return false;
   }
 
-  PyObject* dist_info_from_tensor_func = PyTuple_GetItem(value, 1);
-  HANDLE_NULL_VALUE(dist_info_from_tensor_func);
-
-  PyObject* dist_info = PyObject_CallOneArg(dist_info_from_tensor_func, expr);
-  HANDLE_NULL_VALUE_DECREF(dist_info);
-
-  PyObject* mesh = PyObject_GetAttrString(dist_info, "mesh");
-  HANDLE_NULL_VALUE_DECREF(mesh);
-
-  PyObject* mesh_shape = PyObject_GetAttrString(mesh, "shape");
-  HANDLE_NULL_VALUE_DECREF(mesh_shape);
-  PyObject* process_ids = PyObject_GetAttrString(mesh, "process_ids");
-  HANDLE_NULL_VALUE_DECREF(process_ids);
-  PyObject* dims_mapping = PyObject_GetAttrString(dist_info, "dims_mapping");
-  HANDLE_NULL_VALUE_DECREF(dims_mapping);
-  PyObject* local_shape = PyObject_GetAttrString(dist_info, "local_shape");
-  HANDLE_NULL_VALUE_DECREF(local_shape);
-
-  if (py::handle(mesh_shape).cast<std::vector<int>>() != mesh_shape_expected_ ||
-      py::handle(process_ids).cast<std::vector<int>>() !=
-          mesh_process_ids_expected_.value() ||
-      !PyObject_Equal(dims_mapping, dims_mapping_expected_.value()) ||
-      !PyObject_Equal(local_shape, local_shape_expected_.value())) {
-    Py_DECREF(mesh);
-    Py_DECREF(mesh_shape);
-    Py_DECREF(process_ids);
-    Py_DECREF(dims_mapping);
-    Py_DECREF(local_shape);
-    PyErr_Clear();
+  if (!PyCallable_Check(method)) {
+    Py_DECREF(method);
+    PyErr_SetString(PyExc_TypeError, "Attribute is not callable");
     return false;
   }
 
-  Py_DECREF(mesh);
-  Py_DECREF(mesh_shape);
-  Py_DECREF(process_ids);
-  Py_DECREF(dims_mapping);
-  Py_DECREF(local_shape);
-  return true;
+  PyObject* result = PyObject_CallOneArg(method, value);
+  Py_DECREF(method);
+  if (result == nullptr) {
+    PyErr_Print();
+    return false;
+  }
+  int truthy = PyObject_IsTrue(result);
+  Py_DECREF(result);
+  if (truthy == -1) {
+    PyErr_Print();
+    return false;
+  }
+  return !static_cast<bool>(truthy);
 }
 
 PyObject* ConstantExprNode::eval(FrameProxy* frame) { return value_ptr_; }
@@ -407,86 +402,89 @@ std::string BinaryExprNode::stringify(int indent) {
   return ss.str();
 }
 
-std::optional<int> GuardNode::lookup(FrameProxy* frame) {
-  // TODO(zrr1999): support multiple exprs
-  PyObject* value = [this, frame]() {
-    if (exprs.size() == 1) {
-      PyObject* v = exprs.back()->eval(frame);
-      if (v) {
-        // TODO(dev): DECREF v.
-        Py_INCREF(v);
-      }
-      return v;
-    }
-    auto values = std::vector<PyObject*>(exprs.size());
-    for (size_t i = 0; i < exprs.size(); ++i) {
-      values[i] = exprs[i]->eval(frame);
-      if (values[i]) {
-        Py_INCREF(values[i]);
-      }
-    }
-    auto packed_value = PyTuple_New(exprs.size());
-    for (size_t i = 0; i < exprs.size(); ++i) {
-      PyTuple_SetItem(packed_value, i, values[i]);
-    }
-    return packed_value;
-  }();
-
-  if (guard->check(value)) {
-    // TODO(zrr1999): To extract the reusable code, we need to add a new method
-    // to GuardNodeBase<N>
-    if (return_cache_index.has_value()) {
-      Py_DECREF(value);
-      return return_cache_index.value();
-    }
-    for (auto& next_guard_node : next_guard_nodes) {
-      auto ret = next_guard_node->lookup(frame);
-      if (ret.has_value()) {
-        Py_DECREF(value);
-        return ret.value();
-      }
+std::optional<int> GuardNodeBase::lookup_next(FrameProxy* frame) {
+  if (return_cache_index.has_value()) {
+    return return_cache_index.value();
+  }
+  for (auto& next_guard_node : next_guard_nodes) {
+    auto ret = next_guard_node->lookup(frame);
+    if (ret.has_value()) {
+      return ret.value();
     }
   }
   return std::nullopt;
 }
-std::string GuardNode::stringify(int indent) {
-  std::stringstream ss;
-  // TODO(zrr1999): support multiple exprs
-  auto expr = exprs.back();
-  ss << std::string(indent, ' ') << guard->get_guard_name();
-  ss << "(" << exprs.back()->stringify() << ")";
-  if (!next_guard_nodes.empty()) {
-    ss << " |" << std::endl;
-    for (auto& next_guard_node : next_guard_nodes) {
-      ss << std::string(indent + 2, ' ');
-      ss << next_guard_node->stringify(indent + 2) << std::endl;
-    }
+
+bool TensorDistMetaMatchGuardNode::check(std::array<PyObject*, 2> values) {
+  PyObject* expr = values[0];
+  HANDLE_NULL_VALUE(expr);
+
+  auto tensor = GetTensorFromPyObject(expr);
+  HANDLE_NULL_TENSOR(tensor);
+
+  if (tensor->is_dist_tensor() == false && is_dist_ == false) return true;
+  if (tensor->is_dist_tensor() != is_dist_) {
+    return false;
   }
-  return ss.str();
+
+  PyObject* dist_info_from_tensor_func = values[1];
+  HANDLE_NULL_VALUE(dist_info_from_tensor_func);
+
+  PyObject* dist_info = PyObject_CallOneArg(dist_info_from_tensor_func, expr);
+  HANDLE_NULL_VALUE_DECREF(dist_info);
+
+  PyObject* mesh = PyObject_GetAttrString(dist_info, "mesh");
+  HANDLE_NULL_VALUE_DECREF(mesh);
+
+  PyObject* mesh_shape = PyObject_GetAttrString(mesh, "shape");
+  HANDLE_NULL_VALUE_DECREF(mesh_shape);
+  PyObject* process_ids = PyObject_GetAttrString(mesh, "process_ids");
+  HANDLE_NULL_VALUE_DECREF(process_ids);
+  PyObject* dims_mapping = PyObject_GetAttrString(dist_info, "dims_mapping");
+  HANDLE_NULL_VALUE_DECREF(dims_mapping);
+  PyObject* local_shape = PyObject_GetAttrString(dist_info, "local_shape");
+  HANDLE_NULL_VALUE_DECREF(local_shape);
+
+  if (py::handle(mesh_shape).cast<std::vector<int>>() != mesh_shape_expected_ ||
+      py::handle(process_ids).cast<std::vector<int>>() !=
+          mesh_process_ids_expected_.value() ||
+      !PyObject_Equal(dims_mapping, dims_mapping_expected_.value()) ||
+      !PyObject_Equal(local_shape, local_shape_expected_.value())) {
+    Py_DECREF(mesh);
+    Py_DECREF(mesh_shape);
+    Py_DECREF(process_ids);
+    Py_DECREF(dims_mapping);
+    Py_DECREF(local_shape);
+    PyErr_Clear();
+    return false;
+  }
+
+  Py_DECREF(mesh);
+  Py_DECREF(mesh_shape);
+  Py_DECREF(process_ids);
+  Py_DECREF(dims_mapping);
+  Py_DECREF(local_shape);
+  return true;
+}
+
+bool LegacyGuardNode::check(std::array<PyObject*, 1> values) {
+  // TODO(zrr1999): support multiple exprs
+  PyObject* value = values[0];
+  HANDLE_NULL_VALUE(value);
+  return guard->check(value);
 }
 
 std::optional<int> ExprGuardNode::lookup(FrameProxy* frame) {
-  auto expr = expr_;
   auto value = expr->eval(frame);
   if (PyObject_IsTrue(value)) {
-    // TODO(zrr1999): To extract the reusable code, we need to add a new method
-    // to GuardNodeBase<N>
-    if (return_cache_index.has_value()) {
-      return return_cache_index.value();
-    }
-    for (auto& next_guard_node : next_guard_nodes) {
-      auto ret = next_guard_node->lookup(frame);
-      if (ret.has_value()) {
-        return ret.value();
-      }
-    }
+    return lookup_next(frame);
   }
   return std::nullopt;
 }
 std::string ExprGuardNode::stringify(int indent) {
   std::stringstream ss;
   ss << std::string(indent, ' ');
-  ss << "(" << expr_->stringify() << ")";
+  ss << "(" << expr->stringify() << ")";
   if (!next_guard_nodes.empty()) {
     ss << " |" << std::endl;
     for (auto& next_guard_node : next_guard_nodes) {
@@ -499,17 +497,7 @@ std::string ExprGuardNode::stringify(int indent) {
 
 std::optional<int> DummyGuardNode::lookup(FrameProxy* frame) {
   if (return_true_) {
-    // TODO(zrr1999): To extract the reusable code, we need to add a new method
-    // to GuardNodeBase
-    if (return_cache_index.has_value()) {
-      return return_cache_index.value();
-    }
-    for (auto& next_guard_node : next_guard_nodes) {
-      auto ret = next_guard_node->lookup(frame);
-      if (ret.has_value()) {
-        return ret.value();
-      }
-    }
+    return lookup_next(frame);
   }
   return std::nullopt;
 }

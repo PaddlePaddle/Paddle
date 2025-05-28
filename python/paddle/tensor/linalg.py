@@ -2949,7 +2949,7 @@ def svd(
         x (Tensor): The input tensor. Its shape should be `[..., N, M]`,
             where `...` is zero or more batch dimensions. N and M can be arbitrary
             positive number. Note that if x is singular matrices, the grad is numerical
-            instable. The data type of x should be float32 or float64.
+            instable. The data type of x should be float32, float64, complex64 or complex128.
         full_matrices (bool, optional): A flag to control the behavior of svd.
             If full_matrices = True, svd op will compute full U and V matrices,
             which means shape of U is `[..., N, N]`, shape of V is `[..., M, M]`. K = min(M, N).
@@ -2997,7 +2997,9 @@ def svd(
     if in_dynamic_or_pir_mode():
         return _C_ops.svd(x, full_matrices)
     else:
-        check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'svd')
+        check_variable_and_dtype(
+            x, 'dtype', ['float32', 'float64', 'complex64', 'complex128'], 'svd'
+        )
         check_type(full_matrices, 'full_matrices', bool, 'svd')
         helper = LayerHelper('svd', **locals())
         u = helper.create_variable_for_type_inference(dtype=x.dtype)

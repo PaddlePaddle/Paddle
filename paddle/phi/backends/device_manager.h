@@ -46,13 +46,13 @@ class Device final {
       const stream::Stream::Flag& flag = stream::Stream::Flag::kDefaultFlag);
 
   // ! Destroys an asynchronous stream.
-  void DestroyStream(stream::Stream* stream);
+  void DestroyStream(stream::stream_t stream);
 
   // ! Waits for stream tasks to complete.
-  void SynchronizeStream(const stream::Stream* stream);
+  void SynchronizeStream(stream::stream_t stream);
 
   // ! Queries an asynchronous stream for completion status.
-  bool QueryStream(const stream::Stream* stream);
+  bool QueryStream(stream::stream_t stream);
 
   // ! Add a callback to a compute stream.
   void AddCallback(stream::Stream* stream, stream::Stream::Callback* callback);
@@ -116,7 +116,7 @@ class Device final {
   // Blas
   // ! y = alpha * x + beta * y
   template <typename T>
-  void BlasAXPBY(const stream::Stream& stream,
+  void BlasAXPBY(const stream::stream_t& stream,
                  size_t numel,
                  float alpha,
                  const T* x,
@@ -169,6 +169,26 @@ class DeviceManager {
 
   static size_t GetExtraPaddingSize(const Place& place);
 
+  static size_t GetComputeCapability(const Place& place);
+
+  static size_t GetRuntimeVersion(const Place& place);
+
+  static size_t GetDriverVersion(const Place& place);
+
+  static size_t GetMultiProcessors(const Place& place);
+
+  static size_t GetMaxThreadsPerMultiProcessor(const Place& place);
+
+  static size_t GetMaxThreadsPerBlock(const Place& place);
+
+  static std::array<unsigned int, 3> GetMaxGridDimSize(const Place& place);
+
+  static void* InitEigenDevice(const Place& place,
+                               phi::stream::stream_t stream,
+                               phi::Allocator* allocator);
+
+  static void DestroyEigenDevice(const Place& place, void* eigen_device);
+
   static void MemoryStats(const Place& place, size_t* total, size_t* free);
 
   static size_t GetDeviceCount(const std::string& device_type);
@@ -197,7 +217,7 @@ class DeviceManager {
                            phi::DataType data_type,
                            size_t root,
                            const ccl::CCLComm& ccl_comm,
-                           const stream::Stream& stream);
+                           const stream::stream_t& stream);
   static void CCLAllReduce(const std::string& device_type,
                            void* in_data,
                            void* out_data,
@@ -205,7 +225,7 @@ class DeviceManager {
                            phi::DataType data_type,
                            ccl::CCLReduceOp reduce_op,
                            const ccl::CCLComm& ccl_comm,
-                           const stream::Stream& stream);
+                           const stream::stream_t& stream);
   static void CCLReduce(const std::string& device_type,
                         void* in_data,
                         void* out_data,
@@ -214,14 +234,14 @@ class DeviceManager {
                         ccl::CCLReduceOp reduce_op,
                         size_t root_id,
                         const ccl::CCLComm& ccl_comm,
-                        const stream::Stream& stream);
+                        const stream::stream_t& stream);
   static void CCLAllGather(const std::string& device_type,
                            void* in_data,
                            void* out_data,
                            size_t num,
                            phi::DataType data_type,
                            const ccl::CCLComm& ccl_comm,
-                           const stream::Stream& stream);
+                           const stream::stream_t& stream);
   static void CCLReduceScatter(const std::string& device_type,
                                void* in_data,
                                void* out_data,
@@ -229,7 +249,7 @@ class DeviceManager {
                                phi::DataType data_type,
                                ccl::CCLReduceOp op,
                                const ccl::CCLComm& ccl_comm,
-                               const stream::Stream& stream);
+                               const stream::stream_t& stream);
   static void CCLGroupStart(const std::string& device_type);
   static void CCLGroupEnd(const std::string& device_type);
   static void CCLSend(const std::string& device_type,
@@ -238,14 +258,14 @@ class DeviceManager {
                       phi::DataType data_type,
                       size_t dst_rank,
                       const ccl::CCLComm& ccl_comm,
-                      const stream::Stream& stream);
+                      const stream::stream_t& stream);
   static void CCLRecv(const std::string& device_type,
                       void* recvbuf,
                       size_t num,
                       phi::DataType data_type,
                       size_t src_rank,
                       const ccl::CCLComm& ccl_comm,
-                      const stream::Stream& stream);
+                      const stream::stream_t& stream);
 
   static void CCLAllToAll(const std::string& device_type,
                           const void** send_buf,
@@ -257,7 +277,7 @@ class DeviceManager {
                           size_t rank,
                           size_t nranks,
                           const ccl::CCLComm& comm,
-                          const stream::Stream& stream);
+                          const stream::stream_t& stream);
   // profiler
   static void ProfilerInitialize(const std::string& dev_type,
                                  phi::TraceEventCollector* collector,

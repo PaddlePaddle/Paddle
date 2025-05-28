@@ -41,6 +41,9 @@ struct ErfinvFunctor<bfloat16> {
 template <typename T, typename Context>
 void ErfinvKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
   ctx.template Alloc<T>(out);
+  if (out && out->numel() == 0) {
+    return;
+  }
   std::vector<const DenseTensor*> ins = {&x};
   std::vector<DenseTensor*> outs = {out};
   phi::funcs::ElementwiseKernel<T>(ctx, ins, &outs, ErfinvFunctor<T>());

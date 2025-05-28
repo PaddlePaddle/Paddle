@@ -33,5 +33,7 @@ PD_REGISTER_KERNEL(concat_grad,
                    int16_t,
                    uint8_t,
                    phi::dtype::float16,
+                   phi::dtype::float8_e4m3fn,
+                   phi::dtype::float8_e5m2,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}

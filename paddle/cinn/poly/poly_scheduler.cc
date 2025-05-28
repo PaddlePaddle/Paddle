@@ -186,11 +186,11 @@ bool IsBetween(const cinn::common::GraphNode* x,
 
 std::vector<Group> TopoSortGroups(std::vector<Group>& groups) {  // NOLINT
   // collect indegree.
-  absl::flat_hash_map<Group*, int> group_indegree;
+  paddle::flat_hash_map<Group*, int> group_indegree;
   std::vector<Group*> start_groups;
   std::deque<Group*> queue;
   std::vector<Group> group_order;
-  absl::flat_hash_map<std::string, Group*> node2group;
+  paddle::flat_hash_map<std::string, Group*> node2group;
   for (int i = 0; i < groups.size(); i++) {
     Group* group = &groups[i];
     int in_degree = 0;
@@ -263,7 +263,7 @@ std::vector<Group> NaivePartitionGraph(cinn::common::Graph* graph) {
   }
 
   // process compute_at
-  absl::flat_hash_map<const cinn::common::GraphNode*, uint32_t>
+  paddle::flat_hash_map<const cinn::common::GraphNode*, uint32_t>
       node2score;  // record each node's score for sorting.
   int score = 0;
   for (auto* n : nodes_in_order) {
@@ -298,8 +298,8 @@ std::vector<Group> NaivePartitionGraph(cinn::common::Graph* graph) {
     }
   }
   // generate final groups.
-  absl::flat_hash_map<DataFlowGraphNode* /*ancestor*/,
-                      std::vector<DataFlowGraphNode*>>
+  paddle::flat_hash_map<DataFlowGraphNode* /*ancestor*/,
+                        std::vector<DataFlowGraphNode*>>
       clusters;
   for (auto* n : nodes_in_order) {
     auto* node = n->safe_as<DataFlowGraphNode>();

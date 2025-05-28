@@ -20,8 +20,6 @@ from collections import OrderedDict
 import numpy as np
 
 import paddle
-import paddle.distributed as dist
-from paddle.jit.sot.infer_meta import DistInfo
 
 
 class TestBasicFasterGuard(unittest.TestCase):
@@ -150,6 +148,43 @@ class TestBasicFasterGuard(unittest.TestCase):
             guard_numpy_bool_dtype.check(np.array(1, dtype=np.bool_))
         )
 
+    def test_numpu_array_shape_match_guard(self):
+        np_array = np.array([1, 2])
+        guard_numpy_array_shape = (
+            paddle.framework.core.NumPyArrayShapeMatchGuard(np_array.shape)
+        )
+        self.assertTrue(guard_numpy_array_shape.check(np_array))
+        self.assertTrue(
+            guard_numpy_array_shape.check(np.array([1, 2], dtype=np.int32))
+        )
+        self.assertTrue(guard_numpy_array_shape.check(np.array([3, 4])))
+        self.assertTrue(
+            guard_numpy_array_shape.check(np.array([3, 4], dtype=np.float32))
+        )
+        self.assertFalse(guard_numpy_array_shape.check(np.array([[1], [2]])))
+        self.assertFalse(guard_numpy_array_shape.check(np.array([1, 2, 3])))
+
+        np_array = np.array([1, None])
+        guard_numpy_array_shape = (
+            paddle.framework.core.NumPyArrayShapeMatchGuard(np_array.shape)
+        )
+        self.assertTrue(guard_numpy_array_shape.check(np_array))
+        self.assertTrue(guard_numpy_array_shape.check(np.array([2, 3])))
+        self.assertFalse(guard_numpy_array_shape.check(np.array([2, 3, 4])))
+
+        np_array = np.array(1)
+        guard_numpy_array_shape = (
+            paddle.framework.core.NumPyArrayShapeMatchGuard(np_array.shape)
+        )
+        self.assertTrue(guard_numpy_array_shape.check(np_array))
+        self.assertTrue(
+            guard_numpy_array_shape.check(np.array(2, dtype=np.int32))
+        )
+        self.assertTrue(
+            guard_numpy_array_shape.check(np.array(3, dtype=np.float32))
+        )
+        self.assertFalse(guard_numpy_array_shape.check(np.array([1])))
+
     def test_numpy_array_match_guard(self):
         np_array = paddle.framework.core.NumPyArrayValueMatchGuard(
             np.array([1, 2, 3])
@@ -204,34 +239,12 @@ class TestBasicFasterGuard(unittest.TestCase):
         self.assertFalse(guard_object.check(1))
         self.assertFalse(guard_object.check("1"))
 
-    @unittest.skipIf(
-        not paddle.is_compiled_with_distribute(),
-        reason='Not compiled with distribute.',
-    )
-    def test_tensor_dist_meta_guard(self):
-        x = paddle.ones([2, 2])
-        y = paddle.ones([1, 2])
-        x.stop_gradient = False
-        y.stop_gradient = False
-        mesh1 = dist.ProcessMesh([0, 1], dim_names=['x'])
-        mesh2 = dist.ProcessMesh([0, 1], dim_names=['y'])
-        dist_x1 = dist.shard_tensor(
-            x, mesh1, [dist.Replicate()], stop_gradient=False
+    def test_is_dense_tensor_hold_allocation(self):
+        tensor = paddle.to_tensor([1, 2, 3])
+        guard = paddle.framework.core.IsNotDenseTensorHoldAllocationMatchGuard()
+        self.assertEqual(
+            guard.check(tensor), not tensor._is_dense_tensor_hold_allocation()
         )
-        dist_y1 = dist.shard_tensor(
-            y, mesh2, [dist.Replicate()], stop_gradient=False
-        )
-        guard_tensor_is_dist = paddle.framework.core.TensorDistMetaMatchGuard(
-            DistInfo.from_tensor(dist_x1)
-        )
-        self.assertTrue(
-            guard_tensor_is_dist.check((dist_x1, DistInfo.from_tensor))
-        )
-        self.assertFalse(
-            guard_tensor_is_dist.check((dist_y1, DistInfo.from_tensor))
-        )
-        self.assertFalse(guard_tensor_is_dist.check((x, DistInfo.from_tensor)))
-        self.assertFalse(guard_tensor_is_dist.check((y, DistInfo.from_tensor)))
 
 
 class TestFasterGuardGroup(unittest.TestCase):

@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/impl/expand_kernel_impl.h"
@@ -54,6 +55,15 @@ void ExpandGradKernel(const Context& ctx,
                       DenseTensor* in_grad) {
   auto expand_shape = shape.GetData();
   auto x_dims = x.dims();
+  if (x.numel() == 0 || out_grad.numel() == 0 ||
+      (in_grad && in_grad->numel() == 0)) {
+    ctx.template Alloc<T>(in_grad);
+    if (in_grad->numel() != 0) {
+      phi::Full<T, Context>(
+          ctx, phi::IntArray(common::vectorize(in_grad->dims())), 0, in_grad);
+    }
+    return;
+  }
 
   if (in_grad->dims() == out_grad.dims()) {
     phi::Copy(ctx, out_grad, ctx.GetPlace(), false, in_grad);

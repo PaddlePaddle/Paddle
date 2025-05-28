@@ -13,13 +13,10 @@
 # limitations under the License.
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import (
     TYPE_CHECKING,
     Any,
-    Dict,
-    List,
-    Sequence,
-    Tuple,
     TypeVar,
     Union,
 )
@@ -43,17 +40,17 @@ _TensorIndexItem: TypeAlias = Union[
 ]
 TensorIndex: TypeAlias = Union[
     _TensorIndexItem,
-    Tuple[_TensorIndexItem, ...],
-    List[_TensorIndexItem],
+    tuple[_TensorIndexItem, ...],
+    list[_TensorIndexItem],
 ]
 
 
 _T = TypeVar("_T")
 
 NestedSequence = Union[_T, Sequence["NestedSequence[_T]"]]
-NestedList = Union[_T, List["NestedList[_T]"]]
+NestedList = Union[_T, list["NestedList[_T]"]]
 NestedStructure = Union[
-    _T, Dict[str, "NestedStructure[_T]"], Sequence["NestedStructure[_T]"]
+    _T, dict[str, "NestedStructure[_T]"], Sequence["NestedStructure[_T]"]
 ]
 NumericSequence = Sequence[Numeric]
 NestedNumericSequence: TypeAlias = NestedSequence[Numeric]

@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import gc
 import traceback
-from typing import TYPE_CHECKING, List, Tuple
+from typing import TYPE_CHECKING
 
 import paddle
 from paddle.base.dygraph.base import sot_simulation_mode_guard
@@ -34,6 +34,7 @@ from ...utils import (
     InfoCollector,
     InnerError,
     Singleton,
+    SotCapturedException,
     is_strict_mode,
     log,
     log_do,
@@ -48,10 +49,10 @@ from .virtual_frame import VirtualFrame
 if TYPE_CHECKING:
     import types
 
-GuardedFunction = Tuple[CustomCode, Guard]
-GuardedFunctions = List[GuardedFunction]
-GuardChain = List[paddle.framework.core.GuardNodeBase]
-GuardChainList = List[GuardChain]
+GuardedFunction = tuple[CustomCode, Guard]
+GuardedFunctions = list[GuardedFunction]
+GuardChain = list[paddle.framework.core.GuardNodeBase]
+GuardChainList = list[GuardChain]
 
 dummy_guard: Guard = lambda frame: True
 dummy_guard.expr = "lambda frame: True"
@@ -408,6 +409,9 @@ def start_translate(
             guard,
             guard_chain,
         )
+    except SotCapturedException as e:
+        dummy_guard_chain: GuardChain = [paddle.framework.core.DummyGuardNode()]
+        return (CustomCode(None, True), dummy_guard, dummy_guard_chain)
     except Exception as e:
         raise InnerError(OpcodeExecutorBase.error_message_summary(e)) from e
     finally:

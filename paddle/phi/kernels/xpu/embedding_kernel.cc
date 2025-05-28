@@ -44,17 +44,10 @@ void EmbeddingKernel(const Context &ctx,
   auto *table = table_t->data<T>();
   auto *output = dev_ctx.template Alloc<T>(output_t);
 
-  PADDLE_ENFORCE_EQ(
-      ids_numel <= std::numeric_limits<int32_t>::max(),
-      true,
-      common::errors::OutOfRange(
-          "Number of ids greater than int32_t::max , please check "
-          "number of ids in LookupTableV2XPUKernel."));
+  int64_t ym = ids_numel;
 
-  int ym = static_cast<int>(ids_numel);
-
-  size_t xm = table_t->dims()[0];
-  size_t n = table_t->dims()[1];
+  int64_t xm = table_t->dims()[0];
+  int64_t n = table_t->dims()[1];
 
   int r;
   xpu::ctx_guard RAII_GUARD(ctx.x_context());

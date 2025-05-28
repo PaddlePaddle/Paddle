@@ -129,11 +129,11 @@ std::shared_ptr<framework::OpStrategy> StrategyForOneHot(
 
   for (auto& iter : attrs.attr_store) {
     if (iter.first == "depth") {
-      depth = absl::get<int>(iter.second);
+      depth = std::get<int>(iter.second);
     } else if (iter.first == "axis") {
-      axis = absl::get<int>(iter.second);
+      axis = std::get<int>(iter.second);
     } else if (iter.first == "dtype") {
-      dtype = absl::get<std::string>(iter.second);
+      dtype = std::get<std::string>(iter.second);
     }
   }
 

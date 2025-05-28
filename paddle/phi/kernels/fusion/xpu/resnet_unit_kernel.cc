@@ -85,20 +85,20 @@ void ResNetUnitXPUKernel(const Context &dev_ctx,
   std::vector<XPUType *> conv_y_list = {
       reinterpret_cast<XPUType *>(dev_ctx.template Alloc<T>(conv_out_x))};
 
-  std::vector<std::vector<int>> x_shape_list = {
-      common::vectorize<int>(input_x->dims())};
+  std::vector<std::vector<int64_t>> x_shape_list = {
+      common::vectorize<int64_t>(input_x->dims())};
 
-  auto filter_x_shape = common::vectorize<int>(filter_x->dims());
-  std::vector<int> ksize = {filter_x_shape[2], filter_x_shape[3]};
+  auto filter_x_shape = common::vectorize<int64_t>(filter_x->dims());
+  std::vector<int64_t> ksize = {filter_x_shape[2], filter_x_shape[3]};
   if (!is_nchw) {
     ksize[0] = filter_x_shape[1];
     ksize[1] = filter_x_shape[2];
   }
-  std::vector<int> strides = {stride, stride};
-  std::vector<std::vector<int>> ksize_list = {ksize};
-  std::vector<std::vector<int>> stride_list = {strides};
-  std::vector<int> paddings = {padding, padding};
-  std::vector<int> dilations = {dilation, dilation};
+  std::vector<int64_t> strides = {stride, stride};
+  std::vector<std::vector<int64_t>> ksize_list = {ksize};
+  std::vector<std::vector<int64_t>> stride_list = {strides};
+  std::vector<int64_t> paddings = {padding, padding};
+  std::vector<int64_t> dilations = {dilation, dilation};
   std::vector<const float *> scale_list = {scale_x->data<float>()};
   std::vector<const float *> bias_list = {bias_x->data<float>()};
   std::vector<float *> batch_mean_list = {
@@ -126,10 +126,10 @@ void ResNetUnitXPUKernel(const Context &dev_ctx,
     conv_y_list.push_back(
         reinterpret_cast<XPUType *>(dev_ctx.template Alloc<T>(conv_out_z)));
 
-    x_shape_list.push_back(common::vectorize<int>(input_z->dims()));
+    x_shape_list.push_back(common::vectorize<int64_t>(input_z->dims()));
 
-    auto filter_z_shape = common::vectorize<int>(filter_z->dims());
-    std::vector<int> ksize_z = {filter_z_shape[2], filter_z_shape[3]};
+    auto filter_z_shape = common::vectorize<int64_t>(filter_z->dims());
+    std::vector<int64_t> ksize_z = {filter_z_shape[2], filter_z_shape[3]};
     if (!is_nchw) {
       ksize_z[0] = filter_z_shape[1];
       ksize_z[1] = filter_z_shape[2];
@@ -147,7 +147,7 @@ void ResNetUnitXPUKernel(const Context &dev_ctx,
   } else {
     if (fuse_add) {
       const phi::DenseTensor *input_z = z_in.get_ptr();
-      auto input_z_shape = common::vectorize<int>(input_z->dims());
+      auto input_z_shape = common::vectorize<int64_t>(input_z->dims());
       x_list.push_back(reinterpret_cast<const XPUType *>(input_z->data<T>()));
       x_shape_list.push_back(input_z_shape);
       x_maxlist.push_back(nullptr);

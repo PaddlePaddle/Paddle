@@ -116,7 +116,7 @@ void InterpolateGradKernel(
   x_grad->Resize(dim_grad);
   dev_ctx.template Alloc<T>(x_grad);
 
-  int r = XPU_SUCCESS;
+  int r = 0;
   r = xpu::constant<T>(dev_ctx.x_context(),
                        x_grad->data<T>(),
                        x_grad->numel(),

@@ -221,7 +221,7 @@ CollectSubstituteDimExprMap(
 
 std::unordered_map<::pir::Value, symbol::ShapeOrDataDimExprs>
 CreateGroupShapeOrDataExprs(
-    const OpLoweringGroupPtr& group,
+    OpLoweringGroupPtr group,
     pir::ShapeConstraintIRAnalysis& global_shape_analysis) {  // NOLINT
   const auto& dim_expr_map = group->substitute_dimexpr_map();
   std::unordered_map<::pir::Value, symbol::ShapeOrDataDimExprs> value2shape;
@@ -251,6 +251,25 @@ CreateGroupShapeOrDataExprs(
   // TODO(Hongqing-work): try to get global constraints
   for (auto* op : group->ops()) {
     InferSymbolicShapeForOperation(op, &local_shape_analysis);
+  }
+
+  // Add shape constraints after infer.
+  auto& mut_substitute_dimexpr_map = group->mut_substitute_dimexpr_map();
+  for (auto* op : group->ops()) {
+    for (const auto& op_result : op->results()) {
+      auto global_result_shape =
+          global_shape_analysis.GetShapeOrDataForValue(op_result).shape();
+      auto local_result_shape =
+          local_shape_analysis.GetShapeOrDataForValue(op_result).shape();
+      if (global_result_shape.size() != local_result_shape.size()) continue;
+      for (size_t i = 0; i < global_result_shape.size(); ++i) {
+        if (global_result_shape[i] != local_result_shape[i] &&
+            !global_result_shape[i].isa<std::int64_t>()) {
+          mut_substitute_dimexpr_map[global_result_shape[i]] =
+              local_result_shape[i];
+        }
+      }
+    }
   }
 
   // process the result values of each op.

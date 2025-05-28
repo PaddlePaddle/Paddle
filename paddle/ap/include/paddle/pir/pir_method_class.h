@@ -22,6 +22,7 @@
 #include "paddle/ap/include/paddle/phi/place_method_class.h"
 #include "paddle/ap/include/paddle/pir/attribute_method_class.h"
 #include "paddle/ap/include/paddle/pir/pir.h"
+#include "paddle/ap/include/paddle/pir/shape_or_data_method_class.h"
 #include "paddle/ap/include/paddle/pir/type_method_class.h"
 
 namespace ap::paddle {

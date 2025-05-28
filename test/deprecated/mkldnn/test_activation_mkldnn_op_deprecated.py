@@ -222,6 +222,26 @@ class TestMKLDNNAbsDim2(TestAbs):
         self.dtype = np.float32
 
 
+class TestMKLDNNAbsZeroSize(TestAbs):
+    def setUp(self):
+        super().setUp()
+        self.check_pir_onednn = True
+        self.attrs = {"use_mkldnn": True}
+
+    def init_shape(self):
+        self.shape = [0, 12, 0]
+
+
+class TestMKLDNNAbsZeroSize1(TestMKLDNNAbsZeroSize):
+    def setUp(self):
+        super().setUp()
+        self.check_pir_onednn = True
+        self.attrs = {"use_mkldnn": True}
+
+    def init_shape(self):
+        self.shape = [0, 12, 0]
+
+
 class TestMKLDNNAbs_ZeroDim(TestAbs_ZeroDim):
     def setUp(self):
         super().setUp()

@@ -42,7 +42,7 @@ def inline_call_ast(x, y):
     return z + a
 
 
-class TestNumpyAdd(TestCaseBase):
+class TestNumPyAdd(TestCaseBase):
     @with_control_flow_guard(True)
     def test_full_graph_ast(self):
         x = paddle.to_tensor([2])

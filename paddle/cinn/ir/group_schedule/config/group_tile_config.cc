@@ -308,7 +308,7 @@ inline bool CheckThreadDimensionCanVectorize(int threads,
                                              int nums,
                                              int factor) {
   const int deal_elements_in_warp = threads * factor;
-  if (nums % deal_elements_in_warp == 0) {
+  if (nums == deal_elements_in_warp) {
     return true;
   }
   return false;

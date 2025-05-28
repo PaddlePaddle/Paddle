@@ -771,10 +771,10 @@ std::optional<bool> SingleIntervalIntSet::ProveSuperSet(
 
 ir::Expr EnhancedSimplifyModExpr(
     ir::Expr e,
-    const absl::flat_hash_map<std::string, CasInterval>& var_intervals) {
+    const paddle::flat_hash_map<std::string, CasInterval>& var_intervals) {
   struct Mutator : public ir::IRMutator<ir::Expr*> {
     explicit Mutator(
-        const absl::flat_hash_map<std::string, CasInterval>& var_intervals)
+        const paddle::flat_hash_map<std::string, CasInterval>& var_intervals)
         : var_intervals_(var_intervals), analyzer_(var_intervals_) {}
 
     void operator()(ir::Expr* expr) { Visit(expr); }
@@ -789,7 +789,7 @@ ir::Expr EnhancedSimplifyModExpr(
     }
 
    private:
-    const absl::flat_hash_map<std::string, CasInterval>& var_intervals_;
+    const paddle::flat_hash_map<std::string, CasInterval>& var_intervals_;
     SymbolicExprAnalyzer analyzer_;
   };
 

@@ -27,6 +27,7 @@ from ..meta_parallel.parallel_layers.random import get_rng_state_tracker
 from ..meta_parallel.pp_utils import utils
 from .recompute import (
     check_recompute_necessary,
+    custom_state_manager,
     detach_variable,
     switch_rng_state_tracker,
 )
@@ -101,6 +102,8 @@ class _HPRecomputeFunction(PyLayer):
         mp_group,
         offload,
         partition,
+        custom_get_state_func,
+        custom_set_state_func,
         *args,
         **kwargs,
     ):
@@ -114,6 +117,9 @@ class _HPRecomputeFunction(PyLayer):
         ctx.fwd_rng_state_tracker = get_rng_state_tracker().get_states_tracker()
         ctx.fwd_numpy_state = np.random.get_state()
         ctx.fwd_random_state = random.getstate()
+        ctx.fwd_custom_state = custom_get_state_func()
+        ctx.custom_get_state_func = custom_get_state_func
+        ctx.custom_set_state_func = custom_set_state_func
 
         # save config info
         ctx.mp_group = mp_group
@@ -223,6 +229,9 @@ class _HPRecomputeFunction(PyLayer):
                 ctx.fwd_rng_state_tracker,
                 ctx.fwd_numpy_state,
                 ctx.fwd_random_state,
+                ctx.fwd_custom_state,
+                ctx.custom_get_state_func,
+                ctx.custom_set_state_func,
             ):
                 if ctx.is_fw_autocast:
                     with paddle.amp.auto_cast(
@@ -307,9 +316,25 @@ def recompute_hybrid(
     if framework._dygraph_tracer()._has_grad:
         check_recompute_necessary(args)
 
+    if custom_state_manager.custom_get_state_func is None:
+        assert custom_state_manager.custom_set_state_func is None
+        custom_get_state_func = lambda x=None: None
+        custom_set_state_func = lambda x=None: None
+    else:
+        custom_get_state_func = custom_state_manager.custom_get_state_func
+        custom_set_state_func = custom_state_manager.custom_set_state_func
+
     all_outputs = []
     _HPRecomputeFunction.apply(
-        function, all_outputs, mp_group, offload, partition, *args, **kwargs
+        function,
+        all_outputs,
+        mp_group,
+        offload,
+        partition,
+        custom_get_state_func,
+        custom_set_state_func,
+        *args,
+        **kwargs,
     )
 
     if len(all_outputs) == 1:

@@ -132,6 +132,7 @@ jobs:
             -e FLAGS_npu_storage_format \
             -e TEST_IMPORTANT \
             -e PADDLE_BRANCH \
+            -e CI_name \
             -w /paddle --network host ${docker_image} /bin/bash
 
       - name: Install Paddle-CPU
@@ -171,7 +172,7 @@ jobs:
           cd Paddle
           git submodule foreach "git config --global --add safe.directory \$toplevel/\$sm_path"
           cd ..
-          bash backends/npu/tools/pr_ci_npu.sh;EXCODE=$?
+          bash backends/npu/tools/pr_ci_npu.sh
           '
 
       - name: Terminate and delete the container

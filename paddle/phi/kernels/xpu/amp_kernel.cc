@@ -67,7 +67,7 @@ void UpdateLossScalingKernel(const Context& dev_ctx,
   for (size_t i = 0; i < xs.size(); ++i) {
     auto* out = outs[i];
     T* out_data = dev_ctx.template Alloc<T>(out);
-    int num = out->numel();
+    int64_t num = out->numel();
     if (cpu_found_inf_data) {
       VLOG(1) << "-- UpdateLossScaling: Find infinite grads. --";
       int r = 0;

@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import os
 from contextlib import contextmanager
-from typing import Dict, List
 
 import paddle
 from paddle.utils.environments import (
@@ -28,7 +27,7 @@ from paddle.utils.environments import (
 )
 
 
-class PEP508LikeEnvironmentVariable(EnvironmentVariable[Dict[str, List[str]]]):
+class PEP508LikeEnvironmentVariable(EnvironmentVariable[dict[str, list[str]]]):
     """
     Environment variable parser following PEP 508 extras specification syntax.
     https://peps.python.org/pep-0508/
@@ -150,6 +149,7 @@ ENV_SOT_CE_DEBUG_MODE = BooleanEnvironmentVariable("SOT_CE_DEBUG_MODE", False)
 ENV_SOT_FORCE_FALLBACK_SIR_IDS = StringEnvironmentVariable(
     "SOT_FORCE_FALLBACK_SIR_IDS", ""
 )
+ENV_SOT_TRACE_NUMPY = BooleanEnvironmentVariable("ENV_SOT_TRACE_NUMPY", True)
 
 
 def update_ce_flags():

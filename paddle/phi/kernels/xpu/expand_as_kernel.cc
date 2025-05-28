@@ -24,11 +24,11 @@ namespace phi {
 template <typename Context, typename T>
 void ExpandAs(const Context& context,
               const DenseTensor& x,
-              const std::vector<int>& target_shape,
+              const std::vector<int64_t>& target_shape_,
               DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
-  auto in_dims = x.dims();
-  auto vec_in_dims = common::vectorize<int>(in_dims);
+  auto vec_in_dims = common::vectorize<int64_t>(x.dims());
+  std::vector<int64_t> target_shape(target_shape_.begin(), target_shape_.end());
   auto diff = target_shape.size() - vec_in_dims.size();
   vec_in_dims.insert(vec_in_dims.begin(), diff, 1);
   for (size_t i = 0; i < vec_in_dims.size(); ++i) {
@@ -65,9 +65,9 @@ void ExpandAs(const Context& context,
   out->Resize(out_dims);
   context.template Alloc<T>(out);
   auto& x_shape = vec_in_dims;
-  auto out_shape = common::vectorize<int>(out_dims);
+  auto out_shape = common::vectorize<int64_t>(out_dims);
 
-  int r = XPU_SUCCESS;
+  int r = 0;
 
   if (std::is_same<T, bool>::value) {
     auto x_data = reinterpret_cast<const int8_t*>(x.data<T>());
@@ -87,7 +87,7 @@ template <typename T, typename Context>
 void ExpandAsKernel(const Context& ctx,
                     const DenseTensor& x,
                     const paddle::optional<DenseTensor>& y,
-                    const std::vector<int>& target_shape,
+                    const std::vector<int64_t>& target_shape,
                     DenseTensor* out) {
   auto rank = x.dims().size();
   auto target_rank = target_shape.size();

@@ -152,5 +152,26 @@ class TestI0eOp(OpTest):
         )
 
 
+class TestI0eOp_ZeroSize(OpTest):
+    def setUp(self) -> None:
+        self.__class__.op_type = "i0e"
+        self.op_type = "i0e"
+        self.python_api = paddle.i0e
+        self.init_config()
+        x = np.random.randn(3, 4, 0)
+        self.inputs = {'x': x.astype(self.dtype)}
+        self.attrs = {}
+        self.outputs = {'out': special.i0e(x)}
+
+    def init_config(self):
+        self.dtype = np.float32
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['x'], 'out')
+
+
 if __name__ == "__main__":
     unittest.main()

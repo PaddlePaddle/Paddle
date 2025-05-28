@@ -791,6 +791,18 @@ PHI_DEFINE_EXPORTED_string(tracer_onednn_ops_off,
                            "List of OneDNN operation types to be turned off");
 
 /**
+ * Performance related FLAG
+ * Name: engine_serialized_path
+ * Since Version: 2.0.0
+ * Value Range: string, default=./
+ * Example:
+ * Note: Path to directory where engine serialized files are stored.
+ */
+PHI_DEFINE_EXPORTED_string(trt_engine_serialized_path,
+                           "./",
+                           "Path to directory of engine serialized files");
+
+/**
  * Debug related FLAG
  * Name: check_kernel_launch
  * Since Version: 2.1.0
@@ -1389,6 +1401,16 @@ PHI_DEFINE_EXPORTED_bool(enable_fusion_fallback,
 PHI_DEFINE_EXPORTED_bool(enable_fusion_result_check,
                          false,
                          "Whether enable fusion result check in cinn.");
+
+/**
+ * CINN all horizontal groups merge FLAG
+ * Name: FLAGS_merge_all_horizontal_groups
+ * Since Version: 3.0
+ * Value Range: bool, default=false
+ */
+PHI_DEFINE_EXPORTED_bool(merge_all_horizontal_groups,
+                         false,
+                         "Whether enable merge all horizontal groups in cinn.");
 
 /**
  * Conv Search cache max number related FLAG
