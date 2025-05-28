@@ -225,6 +225,14 @@ std::vector<paddle::Tensor> RunBackward(
   std::unordered_map<GradNodeBase*, int> node_in_degree_map =
       getInDegreeMap(queue);
 
+  std::deque<GradNodeBase*> ready_queue;
+  for (GradNodeBase* item : queue) {
+    if (!node_in_degree_map.count(item)) {
+      ready_queue.push_back(item);
+    }
+  }
+  queue = ready_queue;
+
   std::list<GradNodeBase*> force_sequential_nodes_forward_queue =
       egr::Controller::Instance().GetForceSequentialNodes();
   std::deque<GradNodeBase*> force_sequential_nodes_queue;
@@ -256,10 +264,6 @@ std::vector<paddle::Tensor> RunBackward(
     GradNodeBase* node = queue.front();
     VLOG(3) << "Preparing GradNode:" << node->name() << " addr:" << node;
     try {
-      if (queue.size() > 1 && node_in_degree_map[node] != 0) {
-        queue.pop_front();
-        continue;
-      }
       queue.pop_front();
 
       // Run node: This is where Hook happens

@@ -45,8 +45,9 @@ class TestChannelShuffleOp(OpTest):
     def setUp(self):
         self.op_type = "channel_shuffle"
         self.init_dtype()
+        self.init_shape()
         self.init_data_format()
-        n, c, h, w = 2, 9, 4, 4
+        n, c, h, w = self.shape
         self.python_api = paddle.nn.functional.channel_shuffle
 
         if self.format == "NCHW":
@@ -62,6 +63,9 @@ class TestChannelShuffleOp(OpTest):
         self.inputs = {'X': x}
         self.outputs = {'Out': npresult}
         self.attrs = {'groups': groups, "data_format": self.format}
+
+    def init_shape(self):
+        self.shape = [2, 9, 4, 4]
 
     def init_dtype(self):
         self.dtype = 'float64'
@@ -79,6 +83,11 @@ class TestChannelShuffleOp(OpTest):
 class TestChannelLast(TestChannelShuffleOp):
     def init_data_format(self):
         self.format = "NHWC"
+
+
+class TestChannelLast_ZeroSize(TestChannelShuffleOp):
+    def init_shape(self):
+        self.shape = [2, 9, 0, 4]
 
 
 class TestChannelShuffleAPI(unittest.TestCase):
