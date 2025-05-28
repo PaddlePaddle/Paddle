@@ -6417,6 +6417,9 @@ def masked_fill(
     if np.isscalar(value):
         value = paddle.full([], value, x.dtype)
 
+    if mask.dtype != "bool":
+        mask = paddle.cast(mask, "bool")
+
     if in_dynamic_or_pir_mode():
         out = _C_ops.masked_fill(x, mask, value)
         return out
@@ -6470,6 +6473,9 @@ def masked_fill_(
     """
     if np.isscalar(value):
         value = paddle.full([], value, x.dtype)
+
+    if mask.dtype != "bool":
+        mask = paddle.cast(mask, "bool")
 
     x = _C_ops.masked_fill_(x, mask, value)
     return x

@@ -53,6 +53,7 @@ jobs:
           CUDA_VERSION:
           CUDNN_VERSION:
           WITH_XPU_BKCL: "ON"
+          WITH_XPU_FFT: "ON"
           WITH_XPU_XRE5: "ON"
           CACHE_DIR: /root/.cache
           CCACHE_DIR: /root/.ccache
@@ -86,6 +87,7 @@ jobs:
             -e CUDA_VERSION \
             -e CUDNN_VERSION \
             -e WITH_XPU_BKCL \
+            -e WITH_XPU_FFT \
             -e WITH_XPU_XRE5 \
             -e WITH_INFERENCE_API_TEST \
             -e CACHE_DIR \

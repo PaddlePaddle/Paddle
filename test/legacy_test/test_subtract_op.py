@@ -44,8 +44,12 @@ class ApiSubtractTest(unittest.TestCase):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
         ):
-            data_x = paddle.static.data("x", shape=[10, 15], dtype="float32")
-            data_y = paddle.static.data("y", shape=[10, 15], dtype="float32")
+            data_x = paddle.static.data(
+                "x", shape=self.input_x.shape, dtype="float32"
+            )
+            data_y = paddle.static.data(
+                "y", shape=self.input_y.shape, dtype="float32"
+            )
             result_max = paddle.subtract(data_x, data_y)
             exe = paddle.static.Executor(self.place)
             (res,) = exe.run(
@@ -57,8 +61,12 @@ class ApiSubtractTest(unittest.TestCase):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
         ):
-            data_x = paddle.static.data("x", shape=[10, 15], dtype="float32")
-            data_z = paddle.static.data("z", shape=[15], dtype="float32")
+            data_x = paddle.static.data(
+                "x", shape=self.input_x.shape, dtype="float32"
+            )
+            data_z = paddle.static.data(
+                "z", shape=self.input_z.shape, dtype="float32"
+            )
             result_max = paddle.subtract(data_x, data_z)
             exe = paddle.static.Executor(self.place)
             (res,) = exe.run(
@@ -70,8 +78,12 @@ class ApiSubtractTest(unittest.TestCase):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
         ):
-            data_a = paddle.static.data("a", shape=[3], dtype="int64")
-            data_c = paddle.static.data("c", shape=[3], dtype="int64")
+            data_a = paddle.static.data(
+                "a", shape=self.input_a.shape, dtype="int64"
+            )
+            data_c = paddle.static.data(
+                "c", shape=self.input_b.shape, dtype="int64"
+            )
             result_max = paddle.subtract(data_a, data_c)
             exe = paddle.static.Executor(self.place)
             (res,) = exe.run(
@@ -83,8 +95,12 @@ class ApiSubtractTest(unittest.TestCase):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
         ):
-            data_b = paddle.static.data("b", shape=[3], dtype="int64")
-            data_c = paddle.static.data("c", shape=[3], dtype="int64")
+            data_b = paddle.static.data(
+                "b", shape=self.input_b.shape, dtype="int64"
+            )
+            data_c = paddle.static.data(
+                "c", shape=self.input_c.shape, dtype="int64"
+            )
             result_max = paddle.subtract(data_b, data_c)
             exe = paddle.static.Executor(self.place)
             (res,) = exe.run(
@@ -121,5 +137,26 @@ class ApiSubtractTest(unittest.TestCase):
         np.testing.assert_allclose(res, self.np_expected4, rtol=1e-05)
 
 
+class ApiSubtractTestZeroSize(ApiSubtractTest):
+    def setUp(self):
+        if core.is_compiled_with_cuda():
+            self.place = core.CUDAPlace(0)
+        else:
+            self.place = core.CPUPlace()
+
+        self.input_x = np.random.rand(0, 15).astype("float32")
+        self.input_y = np.random.rand(1, 15).astype("float32")
+        self.input_z = np.random.rand(15).astype("float32")
+        self.input_a = np.random.rand(3).astype('int64')
+        self.input_b = np.random.rand(3).astype('int64')
+        self.input_c = np.random.rand(3).astype('int64')
+
+        self.np_expected1 = np.subtract(self.input_x, self.input_y)
+        self.np_expected2 = np.subtract(self.input_x, self.input_z)
+        self.np_expected3 = np.subtract(self.input_a, self.input_c)
+        self.np_expected4 = np.subtract(self.input_b, self.input_c)
+
+
 if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()

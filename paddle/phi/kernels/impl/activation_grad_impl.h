@@ -56,6 +56,9 @@ void ActivationGradImpl(const Context& dev_ctx,
   }
 
   dev_ctx.template Alloc<T>(dX);
+  if (dX->numel() == 0) {
+    return;
+  }
   auto dout = phi::EigenVector<T>::Flatten(
       GET_DATA_SAFELY(dOut, "Input", "Out@GRAD", "ActivationGrad"));
   auto out = phi::EigenVector<T>::Flatten(
