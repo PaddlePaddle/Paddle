@@ -15,9 +15,11 @@
 source $(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/utils.sh
 init
 
-export PATH=/usr/local/bin:${PATH}
-ln -sf $(which python${PY_VERSION}) /usr/local/bin/python
-ln -sf $(which pip${PY_VERSION}) /usr/local/bin/pip
+if [ -z "${WITH_ROCM}" ] || [ "${WITH_ROCM}" = "OFF" ]; then
+    export PATH=/usr/local/bin:${PATH}
+    ln -sf $(which python${PY_VERSION}) /usr/local/bin/python
+    ln -sf $(which pip${PY_VERSION}) /usr/local/bin/pip
+fi
 echo "::group::Installing zstd"
 apt install zstd -y
 echo "::endgroup::"
