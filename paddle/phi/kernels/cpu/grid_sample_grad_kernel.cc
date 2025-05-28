@@ -16,9 +16,9 @@
 
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cpu/grid_sample_utils.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
-
 namespace phi {
 
 template <typename T>
