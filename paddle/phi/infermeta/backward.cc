@@ -1258,13 +1258,6 @@ void MoeGateDispatchPartialNoSoftmaxTopkGradInferMeta(const MetaTensor& combine_
                                                       int64_t expert_end_index,
                                                       MetaTensor* x_grad,
                                                       MetaTensor* combine_weights_grad){
-  printf("check infer\n");
-  printf("combine shape: %d, scatter shape: %d\n", combine_weights_out.dims().size(), scatter_index.dims().size());
-  printf("sizeof(combine_weights_out): %d\n", sizeof(combine_weights_out));
-  printf("sizeof(y_grad): %d\n", sizeof(y_grad)); 
-  printf("sizeof combine_weights_out_grad: %d\n", sizeof(combine_weights_out_grad));
-  // printf("size of combine_weights_out_grad: %d\n", combine_weights_out_grad.size());
-  printf("combine_weights_out_grad shape: %d\n", combine_weights_out_grad.dims().size());
   int64_t num_experts = expert_offset.dims()[0];
   int64_t hidden_size = y_grad.dims()[1];
   int64_t num_rows = scatter_index.dims()[1];
