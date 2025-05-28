@@ -52,7 +52,7 @@ from .int_bincount import int_bincount
 from .fused_rms_norm_ext import fused_rms_norm_ext
 from .moe_gate_dispatch import moe_gate_dispatch
 from .moe_gate_dispatch_permute import moe_gate_dispatch_permute
-from .moe_ops_partial_nosoftmaxtopk import moe_gate_dispatch_partial_nosoftmaxtopk
+from .moe_gate_dispatch_partial_nosoftmaxtopk import moe_gate_dispatch_partial_nosoftmaxtopk
 
 __all__ = [
     'fused_multi_head_attention',

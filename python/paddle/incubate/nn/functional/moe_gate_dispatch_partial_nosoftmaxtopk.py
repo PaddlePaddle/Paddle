@@ -8,7 +8,7 @@ from paddle.base.layer_helper import LayerHelper
 if TYPE_CHECKING:
     from paddle import Tensor
 
-def moe_ops_partial_nosoftmaxtopk(
+def moe_gate_dispatch_partial_nosoftmaxtopk(
     x: Tensor,
     combine_weights: Tensor,
     expert_id: Tensor,
@@ -23,7 +23,7 @@ def moe_ops_partial_nosoftmaxtopk(
 ) -> tuple[Tensor, Tensor, Tensor, Tensor, Tensor, Tensor]:
     if in_dynamic_or_pir_mode():
         return _C_ops.moe_gate_dispatch_partial_nosoftmaxtopk(x, combine_weights, expert_id, k, capacity, num_experts, use_pad, expert_start_index, expert_end_index, reverse_token_drop)
-    helper = LayerHelper("moe_ops_partial_nosoftmaxtopk", **locals())
+    helper = LayerHelper("moe_gate_dispatch_partial_nosoftmaxtopk", **locals())
     y = helper.create_variable_for_type_inference(dtype=x.dtype)
     combine_weights_out = helper.create_variable_for_type_inference(dtype=combine_weights.dtype)
     scatter_index = helper.create_variable_for_type_inference(dtype='int32')
@@ -53,7 +53,7 @@ def moe_ops_partial_nosoftmaxtopk(
         "reverse_token_drop": reverse_token_drop,
     }
     helper.append_op(
-        type="moe_ops_partial_nosoftmaxtopk",
+        type="moe_gate_dispatch_partial_nosoftmaxtopk",
         inputs=inputs,
         outputs=outputs,
         attrs=attrs,
