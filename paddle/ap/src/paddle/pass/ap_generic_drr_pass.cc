@@ -823,6 +823,8 @@ struct ApRewriter {
     const auto& kernel_dispatch_func = code_gen_result->kernel_dispatch_func;
     const auto& kernel_dispatch_const_data =
         code_gen_result->kernel_dispatch_const_data;
+    ADT_LET_CONST_REF(infer_symbolic_lambda_str,
+                      GetInferSymbolicLambdaStr(res_ptn_ir_op, match_ctx));
     ADT_LET_CONST_REF(infer_meta_lambda_str,
                       GetInferMetaLambdaStr(res_ptn_ir_op, match_ctx));
     ADT_LET_CONST_REF(kernel_dispatch_lambda_str,
@@ -839,6 +841,7 @@ struct ApRewriter {
                               combined_value,
                               num_outputs,
                               code_gen_lambda_str,
+                              infer_symbolic_lambda_str,
                               infer_meta_lambda_str,
                               kernel_dispatch_lambda_str,
                               kernel_dispatch_const_data_lambda_str));
@@ -850,12 +853,48 @@ struct ApRewriter {
     return adt::Ok{};
   }
 
-  struct InputDimIndex {
+  struct InputShapeDimIndex {
     int input_idx;
     int tensor_axis;
+
+    bool operator==(const InputShapeDimIndex& other) const {
+      return other.input_idx == this->input_idx &&
+             other.tensor_axis == this->tensor_axis;
+    }
   };
 
   struct OpInferMetaCtx {
+    std::unordered_map<symbol::DimExpr, InputShapeDimIndex>
+        dim_expr2in_dim_index;
+    mutable std::unordered_map<symbol::DimExpr, AnfExpr> dim_expr2anf_expr;
+  };
+
+  struct InputDataDimIndex {
+    int input_idx;
+    int tensor_axis;
+
+    bool operator==(const InputDataDimIndex& other) const {
+      return other.input_idx == this->input_idx &&
+             other.tensor_axis == this->tensor_axis;
+    }
+  };
+
+  using InputDimIndexImpl = std::variant<InputShapeDimIndex, InputDataDimIndex>;
+  struct InputDimIndex : public InputDimIndexImpl {
+    using InputDimIndexImpl::InputDimIndexImpl;
+    ADT_DEFINE_VARIANT_METHODS(InputDimIndexImpl);
+
+    int64_t input_idx() const {
+      return Match([](const auto& impl) -> int64_t { return impl.input_idx; });
+    }
+
+    int64_t tensor_axis() const {
+      return Match(
+          [](const auto& impl) -> int64_t { return impl.tensor_axis; });
+    }
+  };
+
+  struct OpInferSymbolicCtx {
     std::unordered_map<symbol::DimExpr, InputDimIndex> dim_expr2in_dim_index;
     mutable std::unordered_map<symbol::DimExpr, AnfExpr> dim_expr2anf_expr;
   };
@@ -864,6 +903,38 @@ struct ApRewriter {
     std::vector<symbol::DimExpr> shape;
     pir::Type dtype;
   };
+
+  adt::Result<std::string> GetInferSymbolicLambdaStr(
+      const DrrPackedIrOp& res_ptn_ir_op,
+      const GraphMatchCtx& match_ctx) const {
+    ADT_LET_CONST_REF(infer_symbolic_ctx,
+                      GetOpInferSymbolicCtx(res_ptn_ir_op, match_ctx));
+    ADT_LET_CONST_REF(outputs, GetOpOutputPirValues(res_ptn_ir_op, match_ctx));
+    auto ConstructLambdaBody =
+        [&](ap::axpr::LetContext& ctx) -> adt::Result<AnfExpr> {
+      ctx.Var("pir") = ctx.Var("import").Call(ctx.String("pir"));
+      std::vector<AnfExpr> args;
+      args.reserve(outputs.size());
+      for (int i = 0; i < outputs.size(); ++i) {
+        const auto& output = outputs.at(i);
+        auto& output_meta_var = ctx.Var("outputs").At(i);
+        ADT_LET_CONST_REF(dim_exprs_ptr, GetShapeDimExprsPtrByValue(output));
+        ADT_LET_CONST_REF(dim_expr_list_anf_expr,
+                          ConstructDimExprListAnfExpr(
+                              &ctx, infer_symbolic_ctx, *dim_exprs_ptr));
+        const auto& tensor_shape_or_data = ctx.Var("pir")
+                                               .Attr("s_tensor_shape_or_data")
+                                               .Call(dim_expr_list_anf_expr);
+        args.push_back(static_cast<AnfExpr>(tensor_shape_or_data));
+      }
+      return ctx.Var(axpr::kBuiltinList()).Apply(args);
+    };
+    ap::axpr::LambdaExprBuilder lmbd;
+    ADT_LET_CONST_REF(
+        anf_expr,
+        lmbd.TryLambda({"infer_ctx", "inputs", "attrs"}, ConstructLambdaBody));
+    return anf_expr.DumpToJsonString();
+  }
 
   adt::Result<std::string> GetInferMetaLambdaStr(
       const DrrPackedIrOp& res_ptn_ir_op,
@@ -909,6 +980,35 @@ struct ApRewriter {
     return GetMatchedPirOutputsOfRestPtnPackedIrOp(res_ptn_ir_op, match_ctx);
   }
 
+  adt::Result<OpInferSymbolicCtx> GetOpInferSymbolicCtx(
+      const DrrPackedIrOp& res_ptn_ir_op,
+      const GraphMatchCtx& match_ctx) const {
+    ADT_LET_CONST_REF(
+        inputs,
+        GetMatchedPirInputsOfRestPtnPackedIrOp(res_ptn_ir_op, match_ctx));
+    OpInferSymbolicCtx infer_symbolic_ctx{};
+    auto* map = &infer_symbolic_ctx.dim_expr2in_dim_index;
+    for (int in_idx = 0; in_idx < inputs.size(); ++in_idx) {
+      pir::Value input = inputs.at(in_idx);
+      ADT_LET_CONST_REF(shape_or_data_ptr,
+                        GetShapeOrDataDimExprsPtrByValue(input));
+      if (shape_or_data_ptr->data().has_value()) {
+        const auto& dim_exprs = shape_or_data_ptr->data().value();
+        for (int axis = 0; axis < dim_exprs.size(); ++axis) {
+          const auto& dim_expr = dim_exprs.at(axis);
+          map->emplace(dim_expr, InputDataDimIndex{in_idx, axis});
+        }
+      } else {
+        const auto& dim_exprs = shape_or_data_ptr->shape();
+        for (int axis = 0; axis < dim_exprs.size(); ++axis) {
+          const auto& dim_expr = dim_exprs.at(axis);
+          map->emplace(dim_expr, InputShapeDimIndex{in_idx, axis});
+        }
+      }
+    }
+    return infer_symbolic_ctx;
+  }
+
   adt::Result<OpInferMetaCtx> GetOpInferMetaCtx(
       const DrrPackedIrOp& res_ptn_ir_op,
       const GraphMatchCtx& match_ctx) const {
@@ -923,7 +1023,7 @@ struct ApRewriter {
       for (int tensor_axis = 0; tensor_axis < dim_exprs_ptr->size();
            ++tensor_axis) {
         const auto& dim_expr = dim_exprs_ptr->at(tensor_axis);
-        map->emplace(dim_expr, InputDimIndex{in_idx, tensor_axis});
+        map->emplace(dim_expr, InputShapeDimIndex{in_idx, tensor_axis});
       }
     }
     return infer_meta_ctx;
@@ -948,6 +1048,25 @@ struct ApRewriter {
         });
   }
 
+  adt::Result<const symbol::TensorShapeOrDataDimExprs*>
+  GetShapeOrDataDimExprsPtrByValue(pir::Value value) const {
+    auto* op = value.defining_op();
+    ADT_CHECK(op != nullptr);
+    auto* program = op->GetParentProgram();
+    auto& shape_analysis = ::pir::ShapeAnalysisManager::Instance().Get(program);
+    const auto& shape_or_data = shape_analysis.GetShapeOrDataForValue(value);
+    using RetT = adt::Result<const symbol::TensorShapeOrDataDimExprs*>;
+    return shape_or_data.Match(
+        [&](const symbol::TensorShapeOrDataDimExprs& impl) -> RetT {
+          return &impl;
+        },
+        [&](const auto&) -> RetT {
+          return adt::errors::TypeError{
+              "GetShapeDimExprsPtrByValue only support "
+              "TensorShapeOrDataDimExprs."};
+        });
+  }
+
   adt::Result<AnfExpr> ConstructDtype(ap::axpr::LetContext* ctx,
                                       const OpInferMetaCtx& infer_meta_ctx,
                                       pir::Type type) const {
@@ -959,6 +1078,20 @@ struct ApRewriter {
       return adt::errors::TypeError{
           "failed to cast from pir data type to phi data type."};
     }
+  }
+
+  adt::Result<AnfExpr> ConstructDimExprListAnfExpr(
+      ap::axpr::LetContext* ctx,
+      const OpInferSymbolicCtx& infer_symbolic_ctx,
+      const std::vector<symbol::DimExpr>& dim_exprs) const {
+    std::vector<AnfExpr> args;
+    for (const auto& dim_expr : dim_exprs) {
+      ADT_LET_CONST_REF(
+          dim_expr_anf,
+          ConstructDimExprAnfExprSymbolic(ctx, infer_symbolic_ctx, dim_expr));
+      args.emplace_back(dim_expr_anf);
+    }
+    return ctx->Var(ap::axpr::kBuiltinList()).Apply(args);
   }
 
   adt::Result<AnfExpr> ConstructDDims(
@@ -973,13 +1106,56 @@ struct ApRewriter {
         anf_dims.emplace_back(anf_dim_expr.GetOkValue());
       } else if (anf_dim_expr.GetError()
                      .template Has<adt::errors::MismatchError>()) {
-        // TODO(lixinqi): anf_dims.emplace_back(AnfExpr{ctx->Int64(-1)});
-        return anf_dim_expr.GetError();
+        anf_dims.emplace_back(AnfExpr{ctx->Int64(-1)});
       } else {
         return anf_dim_expr.GetError();
       }
     }
-    return ctx->Call(ap::axpr::kBuiltinList(), anf_dims);
+    return ctx->Apply(ap::axpr::kBuiltinList(), anf_dims);
+  }
+
+  adt::Result<AnfExpr> ConstructDimExprAnfExprSymbolic(
+      ap::axpr::LetContext* ctx,
+      const OpInferSymbolicCtx& infer_symbolic_ctx,
+      const symbol::DimExpr& dim_expr) const {
+    if (dim_expr.Has<int64_t>()) return ctx->Int64(dim_expr.Get<int64_t>());
+    const auto& from_input = ConstructDimExprAnfExprByInputsSybmolic(
+        ctx, infer_symbolic_ctx, dim_expr);
+    if (from_input.HasOkValue()) return from_input.GetOkValue();
+    return dim_expr.Match(
+        [&](const symbol::Add<symbol::DimExpr>& impl) -> adt::Result<AnfExpr> {
+          return adt::errors::NotImplementedError{
+              "symbol::Add<symbol::DimExpr> not implemented."};
+        },
+        [&](const symbol::Negative<symbol::DimExpr>& impl)
+            -> adt::Result<AnfExpr> {
+          return adt::errors::NotImplementedError{
+              "symbol::Negative<symbol::DimExpr> not implemented."};
+        },
+        [&](const symbol::Mul<symbol::DimExpr>& impl) -> adt::Result<AnfExpr> {
+          return adt::errors::NotImplementedError{
+              "symbol::Mul<symbol::DimExpr> not implemented."};
+        },
+        [&](const symbol::Div<symbol::DimExpr>& impl) -> adt::Result<AnfExpr> {
+          return adt::errors::NotImplementedError{
+              "symbol::Div<symbol::DimExpr> not implemented."};
+        },
+        [&](const symbol::Max<symbol::DimExpr>& impl) -> adt::Result<AnfExpr> {
+          return adt::errors::NotImplementedError{
+              "symbol::Max<symbol::DimExpr> not implemented."};
+        },
+        [&](const symbol::Min<symbol::DimExpr>& impl) -> adt::Result<AnfExpr> {
+          return adt::errors::NotImplementedError{
+              "symbol::Min<symbol::DimExpr> not implemented."};
+        },
+        [&](const symbol::Broadcast<symbol::DimExpr>& impl)
+            -> adt::Result<AnfExpr> {
+          return adt::errors::NotImplementedError{
+              "symbol::Broadcast<symbol::DimExpr> not implemented."};
+        },
+        [&](const auto&) -> adt::Result<AnfExpr> {
+          return adt::errors::NotImplementedError{"unknown dim_expr type"};
+        });
   }
 
   adt::Result<AnfExpr> ConstructDDimDimExpr(
@@ -991,6 +1167,25 @@ struct ApRewriter {
         [&](const auto&) -> adt::Result<AnfExpr> {
           return ConstructDDimDimExprByInputs(ctx, infer_meta_ctx, dim_expr);
         });
+  }
+
+  adt::Result<AnfExpr> ConstructDimExprAnfExprByInputsSybmolic(
+      ap::axpr::LetContext* ctx,
+      const OpInferSymbolicCtx& infer_symbolic_ctx,
+      const symbol::DimExpr& dim_expr) const {
+    const auto& idx_iter =
+        infer_symbolic_ctx.dim_expr2in_dim_index.find(dim_expr);
+    if (idx_iter == infer_symbolic_ctx.dim_expr2in_dim_index.end()) {
+      return adt::errors::MismatchError{};
+    }
+    auto anf_expr_iter = infer_symbolic_ctx.dim_expr2anf_expr.find(dim_expr);
+    if (anf_expr_iter == infer_symbolic_ctx.dim_expr2anf_expr.end()) {
+      const auto& in_dim =
+          ConstructInDimExprAnfExprSymbolic(ctx, idx_iter->second);
+      anf_expr_iter =
+          infer_symbolic_ctx.dim_expr2anf_expr.emplace(dim_expr, in_dim).first;
+    }
+    return anf_expr_iter->second;
   }
 
   adt::Result<AnfExpr> ConstructDDimDimExprByInputs(
@@ -1010,8 +1205,32 @@ struct ApRewriter {
     return anf_expr_iter->second;
   }
 
+  AnfExpr ConstructInDimExprAnfExprSymbolic(ap::axpr::LetContext* ctx,
+                                            const InputDimIndex& idx) const {
+    auto GetShapeLambda = []() -> AnfExpr {
+      axpr::LambdaExprBuilder lmd;
+      return lmd.Lambda({"shape", "data"}, [&](auto& lambda_ctx) {
+        return lambda_ctx.Var("shape");
+      });
+    };
+    auto GetDataLambda = []() -> AnfExpr {
+      axpr::LambdaExprBuilder lmd;
+      return lmd.Lambda({"shape", "data"}, [&](auto& lambda_ctx) {
+        return lambda_ctx.Var("data");
+      });
+    };
+    const AnfExpr getter = idx.Match(
+        [&](const InputShapeDimIndex&) -> AnfExpr { return GetShapeLambda(); },
+        [&](const InputDataDimIndex&) -> AnfExpr { return GetDataLambda(); });
+    std::map<std::string, AnfExpr> kwargs{{"s_tensor_shape_or_data", getter}};
+    return ctx->Var("inputs")
+        .At(idx.input_idx())
+        .At(idx.tensor_axis())
+        .Apply(kwargs);
+  }
+
   AnfExpr ConstructInDimExpr(ap::axpr::LetContext* ctx,
-                             const InputDimIndex& idx) const {
+                             const InputShapeDimIndex& idx) const {
     return static_cast<AnfExpr>(
         ctx->Var("inputs").At(idx.input_idx).Attr("dims").At(idx.tensor_axis));
   }
@@ -1163,6 +1382,7 @@ struct ApRewriter {
       pir::Value input,
       std::size_t num_outputs,
       const std::string& code_gen_lambda_str,
+      const std::string& infer_symbolic_lambda_str,
       const std::string& infer_meta_lambda_str,
       const std::string& kernel_dispatch_lambda_str,
       const std::string& kernel_dispatch_const_data_lambda_str) const {
@@ -1170,6 +1390,7 @@ struct ApRewriter {
         input,
         num_outputs,
         code_gen_lambda_str,
+        infer_symbolic_lambda_str,
         infer_meta_lambda_str,
         kernel_dispatch_lambda_str,
         kernel_dispatch_const_data_lambda_str);

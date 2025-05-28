@@ -284,10 +284,10 @@ void CommonForwardBroadcastCPU(const DenseTensor &x,
   std::vector<int64_t> index_array(max_dim, 0);
   const T *x_data = x.data<T>();
   const T *y_data = y.data<T>();
-  PADDLE_ENFORCE_NOT_NULL(
-      x_data, errors::InvalidArgument("The input X should not be empty."));
-  PADDLE_ENFORCE_NOT_NULL(
-      y_data, errors::InvalidArgument("The input Y should not be empty."));
+  if (z && z->numel() == 0) {
+    ctx.Alloc<OutType>(z);
+    return;
+  }
   OutType *out_data = ctx.Alloc<OutType>(z);
 
   const int64_t out_size = std::accumulate(out_dims_array,
@@ -373,6 +373,9 @@ void ElementwiseCompute(const CPUContext &dev_ctx,
                         DenseTensor *z,
                         int axis = -1) {
   dev_ctx.Alloc<OutType>(z);
+  if (z && z->numel() == 0) {
+    return;
+  }
   auto x_dims = x.dims();
   auto y_dims = y.dims();
   bool is_xsize_larger = true;

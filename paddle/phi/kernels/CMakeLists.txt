@@ -325,8 +325,14 @@ if(WITH_XPU)
     file(GLOB_RECURSE kernel_xpu_cc "${CMAKE_CURRENT_BINARY_DIR}/*.cc")
     collect_generated_srcs(kernels_srcs SRCS ${kernel_xpu_cc})
     set(kernel_cc "")
-
   endif()
+
+  # The kernel related to xpufft must have WITH_XPU_FFT enabled.
+  if(NOT WITH_XPU_FFT)
+    list(REMOVE_ITEM kernel_xpu "xpu/complex_kernel.cc"
+         "xpu/complex_grad_kernel.cc")
+  endif()
+
   collect_srcs(kernels_srcs SRCS ${kernel_xpu})
   kernel_declare("${kernel_xpu}")
   kernel_declare("${kernel_xpu_kps}")

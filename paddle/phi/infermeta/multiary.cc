@@ -474,6 +474,7 @@ void AddNInferMeta(const std::vector<const MetaTensor*>& x,
 void ApVariadicInferMeta(const std::vector<const MetaTensor*>& xs,
                          int num_outputs,
                          const std::string& code_module_lambda,
+                         const std::string& infer_symbolic_lambda,
                          const std::string& infer_meta_lambda,
                          const std::string& kernel_dispatch_lambda,
                          const std::string& kernel_dispatch_const_data_lambda,
@@ -485,14 +486,14 @@ void ApVariadicInferMeta(const std::vector<const MetaTensor*>& xs,
   PADDLE_ENFORCE_EQ(
       ret.HasError(),
       false,
-      phi::errors::Fatal(
+      common::errors::Fatal(
           "ApVariadicInferMeta failed. \nTraceback (most recent call "
           "last):\n%s\n%s: %s. ",
           ret.GetError().CallStackToString(),
           ret.GetError().class_name(),
           ret.GetError().msg()));
 #else
-  PADDLE_THROW(phi::errors::Unimplemented(
+  PADDLE_THROW(common::errors::Unimplemented(
       "ap_variadic is not implemented when cinn is not enabled."));
 #endif
 }
@@ -511,14 +512,14 @@ void ApFacadeInferMeta(
   const auto& ret = helper.InferMetaByAxprHook(
       xs, infer_meta_func_name, serialized_attributes, outs);
   PADDLE_ENFORCE(!ret.HasError(),
-                 phi::errors::Fatal(
+                 common::errors::Fatal(
                      "ApFacadeInferMeta failed. \nTraceback (most recent call "
                      "last):\n%s\n%s: %s. ",
                      ret.GetError().CallStackToString(),
                      ret.GetError().class_name(),
                      ret.GetError().msg()));
 #else
-  PADDLE_THROW(phi::errors::Unimplemented(
+  PADDLE_THROW(common::errors::Unimplemented(
       "ap_facade is not implemented when cinn is not enabled."));
 #endif
 }

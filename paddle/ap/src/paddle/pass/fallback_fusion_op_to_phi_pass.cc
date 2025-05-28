@@ -39,20 +39,20 @@ namespace adt = ap::adt;
 
 namespace {
 
-template <bool parent_must_be_fusion_op>
-class FallbackFusionOpToPhiPattern
-    : public pir::OpRewritePattern<::cinn::dialect::FusionOp> {
+template <typename ContainerOp, bool parent_must_be_container_op>
+class FallbackContainerOpToPhiPattern
+    : public pir::OpRewritePattern<ContainerOp> {
  public:
-  using pir::OpRewritePattern<::cinn::dialect::FusionOp>::OpRewritePattern;
+  using pir::OpRewritePattern<ContainerOp>::OpRewritePattern;
 
-  bool MatchAndRewrite(::cinn::dialect::FusionOp fusion_op,
+  bool MatchAndRewrite(ContainerOp container_op,
                        pir::PatternRewriter& rewriter) const override {
-    const auto& ret = TryMatchAndRewrite(fusion_op, &rewriter);
+    const auto& ret = TryMatchAndRewrite(container_op, &rewriter);
     PADDLE_ENFORCE_EQ(
         ret.HasError(),
         false,
         phi::errors::Fatal(
-            "FallbackFusionOpToPhiPattern::MatchAndRewrite failed. "
+            "FallbackContainerOpToPhiPattern::MatchAndRewrite failed. "
             "\nTraceback (most recent call "
             "last):\n%s\n%s: %s. ",
             ret.GetError().CallStackToString(),
@@ -61,39 +61,39 @@ class FallbackFusionOpToPhiPattern
     return ret.GetOkValue();
   }
 
-  adt::Result<bool> TryMatchAndRewrite(::cinn::dialect::FusionOp fusion_op,
+  adt::Result<bool> TryMatchAndRewrite(ContainerOp container_op,
                                        pir::PatternRewriter* rewriter) const {
-    auto* mut_block = fusion_op->GetParent();
-    if constexpr (parent_must_be_fusion_op) {
-      if (!fusion_op->GetParentOp()->isa<::cinn::dialect::FusionOp>())
+    auto* mut_block = container_op->GetParent();
+    if constexpr (parent_must_be_container_op) {
+      if (!container_op->GetParentOp()->template isa<ContainerOp>())
         return false;
     }
     pir::IrMapping ir_mapping{};
-    for (pir::Value free_value : pir::GetUsedExternalValue(*fusion_op)) {
+    for (pir::Value free_value : pir::GetUsedExternalValue(*container_op)) {
       ir_mapping.Add(free_value, free_value);
     }
     std::vector<pir::Value> yield_inputs{};
     {
-      yield_inputs.reserve(fusion_op->num_results());
+      yield_inputs.reserve(container_op->num_results());
       auto clone_options = pir::CloneOptions(true, true, true);
-      for (auto& op : *fusion_op.block()) {
-        if (op.isa<pir::YieldOp>()) {
+      for (auto& op : *container_op.block()) {
+        if (op.template isa<pir::YieldOp>()) {
           yield_inputs = op.operands_source();
         } else {
           rewriter->Insert(op.Clone(ir_mapping, clone_options));
         }
       }
     }
-    for (int i = 0; i < fusion_op->num_results(); ++i) {
-      rewriter->ReplaceAllUsesWith(fusion_op->result(i),
+    for (int i = 0; i < container_op->num_results(); ++i) {
+      rewriter->ReplaceAllUsesWith(container_op->result(i),
                                    ir_mapping.Lookup(yield_inputs.at(i)));
     }
-    rewriter->EraseOp(fusion_op);
+    rewriter->EraseOp(container_op);
     return true;
   }
 };
 
-template <bool parent_must_be_fusion_op>
+template <bool parent_must_be_container_op>
 class FallbackFusionOpToPhiPass : public pir::PatternRewritePass {
  public:
   FallbackFusionOpToPhiPass()
@@ -101,7 +101,24 @@ class FallbackFusionOpToPhiPass : public pir::PatternRewritePass {
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext* context) override {
     pir::RewritePatternSet ps(context);
-    ps.Add<FallbackFusionOpToPhiPattern<parent_must_be_fusion_op>>(context);
+    ps.Add<FallbackContainerOpToPhiPattern<::cinn::dialect::FusionOp,
+                                           parent_must_be_container_op>>(
+        context);
+    return ps;
+  }
+};
+
+template <bool parent_must_be_container_op>
+class FallbackGroupOpToPhiPass : public pir::PatternRewritePass {
+ public:
+  FallbackGroupOpToPhiPass()
+      : pir::PatternRewritePass("fallback_group_op_to_phi_pass", 1) {}
+
+  pir::RewritePatternSet InitializePatterns(pir::IrContext* context) override {
+    pir::RewritePatternSet ps(context);
+    ps.Add<FallbackContainerOpToPhiPattern<::cinn::dialect::GroupOp,
+                                           parent_must_be_container_op>>(
+        context);
     return ps;
   }
 };
@@ -110,12 +127,12 @@ class FallbackFusionOpToPhiPass : public pir::PatternRewritePass {
 
 std::unique_ptr<::pir::Pass> CreateFallbackFusionOpToPhiPass() {
   return std::make_unique<
-      FallbackFusionOpToPhiPass</*parent_must_be_fusion_op=*/false>>();
+      FallbackFusionOpToPhiPass</*parent_must_be_container_op=*/false>>();
 }
 
 std::unique_ptr<::pir::Pass> CreateFallbackNestedFusionOpToPhiPass() {
   return std::make_unique<
-      FallbackFusionOpToPhiPass</*parent_must_be_fusion_op=*/true>>();
+      FallbackFusionOpToPhiPass</*parent_must_be_container_op=*/true>>();
 }
 
 }  // namespace ap::paddle

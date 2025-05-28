@@ -301,7 +301,7 @@ class CompileSIRCache(Cache, metaclass=Singleton):
         self,
         builder: StatementIRBuilder,
         sir_name: str,
-        input_spec: tuple[InputSpec, ...],
+        input_spec: tuple[InputSpec | None, ...],
         **kwargs,
     ):
         """
@@ -324,7 +324,7 @@ class CompileSIRCache(Cache, metaclass=Singleton):
         self,
         builder: StatementIRBuilder,
         sir_name: str,
-        input_spec: tuple[InputSpec, ...],
+        input_spec: tuple[InputSpec | None, ...],
         **kwargs,
     ):
         """

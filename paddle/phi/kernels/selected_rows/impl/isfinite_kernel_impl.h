@@ -23,6 +23,10 @@ namespace phi {
   template <typename T, typename Context>                             \
   void isfinite##SR(                                                  \
       const Context& ctx, const SelectedRows& x, SelectedRows* out) { \
+    if (out && out->numel() == 0) {                                   \
+      ctx.template Alloc<bool>(out);                                  \
+      return;                                                         \
+    }                                                                 \
     ctx.template Alloc<bool>(out);                                    \
     Isinf##Kernel<T, Context>(ctx, x.value(), out->mutable_value());  \
   }

@@ -1,0 +1,52 @@
+op_patches:
+  - op_name : pd_op.lp_pool2d
+    actions:
+      - action : modify_attr
+        object : strides
+        type : pir::ArrayAttribute
+        default :
+          - type: pir::Int64Attribute
+          - type: pir::Int64Attribute
+      - action : modify_attr
+        object : paddings
+        type : pir::ArrayAttribute
+        default :
+          - type: pir::Int64Attribute
+          - type: pir::Int64Attribute
+  - op_name : pd_op.pool2d
+    actions:
+      - action : modify_attr
+        object : strides
+        type : pir::ArrayAttribute
+        default :
+          - type: pir::Int64Attribute
+          - type: pir::Int64Attribute
+      - action : modify_attr
+        object : paddings
+        type : pir::ArrayAttribute
+        default :
+          - type: pir::Int64Attribute
+          - type: pir::Int64Attribute
+  - op_name : pd_op.pool3d
+    actions:
+      - action : modify_attr
+        object : kernel_size
+        type : pir::ArrayAttribute
+        default :
+          - type: pir::Int64Attribute
+          - type: pir::Int64Attribute
+          - type: pir::Int64Attribute
+      - action : modify_attr
+        object : strides
+        type : pir::ArrayAttribute
+        default :
+          - type: pir::Int64Attribute
+          - type: pir::Int64Attribute
+          - type: pir::Int64Attribute
+      - action : modify_attr
+        object : paddings
+        type : pir::ArrayAttribute
+        default :
+          - type: pir::Int64Attribute
+          - type: pir::Int64Attribute
+          - type: pir::Int64Attribute

@@ -752,4 +752,18 @@ PD_REGISTER_SPMD_RULE(nonzero,
 
 // add_n
 PD_REGISTER_SPMD_RULE(add_n, PD_INFER_SPMD(phi::distributed::AddNInferSpmd));
+
+// cummax
+PD_REGISTER_SPMD_RULE(cummax,
+                      PD_INFER_SPMD(phi::distributed::CummaxInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::CummaxGradInferSpmd));
+// cummin
+PD_REGISTER_SPMD_RULE(cummin,
+                      PD_INFER_SPMD(phi::distributed::CumminInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::CumminGradInferSpmd));
+
+// argsort
+PD_REGISTER_SPMD_RULE(argsort,
+                      PD_INFER_SPMD(phi::distributed::ArgSortInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::ArgSortGradInferSpmd));
 }  // namespace phi::distributed

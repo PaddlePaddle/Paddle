@@ -790,6 +790,17 @@ class ClipGradByGlobalNorm(ClipGradBase):
             global_norm_var.append(global_norm_var_fp64)
 
         global_norm_var = async_add_n(global_norm_var)
+
+        if self.should_comm_on_shard_dim and hasattr(self, 'sharding_group'):
+            paddle.distributed.all_reduce(
+                global_norm_var._local_value(), group=self.sharding_group
+            ).wait()
+
+        if self.should_comm_on_shard_dim and hasattr(self, 'mp_group'):
+            paddle.distributed.all_reduce(
+                global_norm_var._local_value(), group=self.mp_group
+            ).wait()
+
         global_norm_var = paddle.sqrt(global_norm_var)
         max_global_norm = paddle.full(
             shape=[1], dtype=sum_dtype, fill_value=self.clip_norm
@@ -1480,8 +1491,9 @@ def append_gradient_clip_ops(param_grads):
     for p, g in param_grads:
         if g is None:
             continue
-        with p.block.program._optimized_guard([p, g]), framework.name_scope(
-            'gradient_clip'
+        with (
+            p.block.program._optimized_guard([p, g]),
+            framework.name_scope('gradient_clip'),
         ):
             clip_attr = getattr(p, 'gradient_clip_attr', None)
             if clip_attr is None:
@@ -1498,8 +1510,9 @@ def append_gradient_clip_ops(param_grads):
     for p, g in param_grads:
         if g is None:
             continue
-        with p.block.program._optimized_guard([p, g]), framework.name_scope(
-            'gradient_clip'
+        with (
+            p.block.program._optimized_guard([p, g]),
+            framework.name_scope('gradient_clip'),
         ):
             param, new_grad = clip_attr._create_operators(param=p, grad=g)
             param_new_grad_name_dict[param.name] = new_grad.name

@@ -65,7 +65,9 @@ class TestArange(unittest.TestCase):
 
     def test_broadcast_tensor(self):
         def func():
-            return paddle.arange(1, 2) + paddle.arange(end=32769)
+            a = paddle.arange(1, 2, dtype="int32")
+            b = paddle.arange(end=32769)
+            return (a * 3).astype("int64") + b
 
         self.eval(func, [])
 
