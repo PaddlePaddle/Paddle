@@ -173,7 +173,7 @@ function(cinn_nv_test TARGET_NAME)
       target_link_libraries(${TARGET_NAME} -Wl,--as-needed phi_core phi_gpu
                             -Wl,--no-as-needed)
     endif()
-    add_dependencies(${TARGET_NAME} ${cinn_nv_test_DEPS} paddlec_gtest_main
+    add_dependencies(${TARGET_NAME} ${cinn_nv_test_DEPS} paddle_gtest_main
                      gtest)
     common_link(${TARGET_NAME})
     add_test(
