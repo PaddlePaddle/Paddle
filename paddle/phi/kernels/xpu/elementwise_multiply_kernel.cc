@@ -33,6 +33,10 @@ void MultiplyKernel(const Context& dev_ctx,
                     const DenseTensor& y,
                     DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
+  if (out->numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   auto f = [](xpu::Context* ctx,
               const XPUType* x,
               const XPUType* y,
@@ -53,6 +57,10 @@ void MultiplyKernel<phi::dtype::complex<float>, XPUContext>(
     const DenseTensor& y,
     DenseTensor* out) {
   using T = phi::dtype::complex<float>;
+  if (out->numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   // The current complex number implementation uses separate real/imaginary
   // parts,resulting in redundant operations and performance
   // penalties.Optimization should address this in future iterations.

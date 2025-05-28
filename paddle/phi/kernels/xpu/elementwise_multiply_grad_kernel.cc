@@ -24,6 +24,7 @@
 #include "paddle/phi/kernels/elementwise_multiply_kernel.h"
 #include "paddle/phi/kernels/elementwise_subtract_kernel.h"
 #include "paddle/phi/kernels/expand_grad_kernel.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/xpu/elementwise.h"
 
@@ -38,6 +39,25 @@ void MultiplyGradKernel(const Context& dev_ctx,
                         DenseTensor* dx,
                         DenseTensor* dy) {
   using XPUType = typename XPUTypeTrait<T>::Type;
+  if (dout.numel() == 0) {
+    if (dx) {
+      if (dx->numel() == 0) {
+        dev_ctx.template Alloc<T>(dx);
+      } else {
+        phi::Full<T, Context>(
+            dev_ctx, phi::IntArray(common::vectorize(dx->dims())), 0, dx);
+      }
+    }
+    if (dy) {
+      if (dy->numel() == 0) {
+        dev_ctx.template Alloc<T>(dy);
+      } else {
+        phi::Full<T, Context>(
+            dev_ctx, phi::IntArray(common::vectorize(dy->dims())), 0, dy);
+      }
+    }
+    return;
+  }
   funcs::ElementwiseGradPreProcess(dout, dx);
   auto f = [](xpu::Context* ctx,
               const XPUType* x,
@@ -66,6 +86,25 @@ void MultiplyGradKernel<phi::dtype::complex<float>, XPUContext>(
     DenseTensor* dx,
     DenseTensor* dy) {
   using T = phi::dtype::complex<float>;
+  if (dout.numel() == 0) {
+    if (dx) {
+      if (dx->numel() == 0) {
+        dev_ctx.template Alloc<T>(dx);
+      } else {
+        phi::Full<T, XPUContext>(
+            dev_ctx, phi::IntArray(common::vectorize(dx->dims())), T(0), dx);
+      }
+    }
+    if (dy) {
+      if (dy->numel() == 0) {
+        dev_ctx.template Alloc<T>(dy);
+      } else {
+        phi::Full<T, XPUContext>(
+            dev_ctx, phi::IntArray(common::vectorize(dy->dims())), T(0), dy);
+      }
+    }
+    return;
+  }
   funcs::ElementwiseGradPreProcess(dout, dx);
   // The current complex number implementation uses separate real/imaginary
   // parts,resulting in redundant operations and performance
