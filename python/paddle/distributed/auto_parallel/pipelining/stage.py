@@ -998,6 +998,10 @@ class PipelineStage(_PipelineStageBase):
                 flatten_input_tensors = _flatten_args(args) + _flatten_args(
                     kwargs
                 )
+                # cache the forward outputs for backward, so remove tensor that stop_gradient = True
+                flatten_input_tensors = [
+                    x for x in flatten_input_tensors if not x.stop_gradient
+                ]
                 self.fwd_cache[0] = (
                     _normalize_model_output_as_tuple(outputs),  # stage_output
                     flatten_input_tensors,  # input_values
