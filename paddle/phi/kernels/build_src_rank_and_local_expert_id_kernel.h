@@ -16,14 +16,12 @@
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
-
 template <typename T, typename Context>
-void BuildSrcRankAndLocalExpertIdInferMeta(
+void BuildSrcRankAndLocalExpertIdKernel(
     const Context& dev_ctx,
     const DenseTensor& expert_num_global_tensor,
     const std::vector<int64_t>& expert_num_global,
     int64_t num_local_experts,
     DenseTensor* src_rank,
     DenseTensor* local_expert_id);
-
 }  // namespace phi
