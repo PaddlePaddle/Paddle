@@ -12,7 +12,6 @@ from paddle.incubate.nn.functional import moe_gate_dispatch_partial_nosoftmaxtop
 
 
 def test_moe_dispatch_partial_nosoftmaxtopk_nonepad_op():
-    import moe_ops_partial_nosoftmaxtopk
 
     s, d, e = 4, 100, 8
     k, cap = 4, 3
@@ -137,7 +136,6 @@ def test_moe_dispatch_partial_nosoftmaxtopk_nonepad_op():
 
 
 def test_moe_ops_partial_nosoftmaxtopk_w_reverse_token_drop():
-    import moe_ops_partial_nosoftmaxtopk
 
     S, E, D = 3, 4, 3
     k = 2
@@ -162,7 +160,6 @@ def test_moe_ops_partial_nosoftmaxtopk_w_reverse_token_drop():
 
 
 def test_moe_ops_partial_nosoftmax_topk_empty_output():
-    import moe_ops_partial_nosoftmaxtopk
 
     S, E, D = 3, 4, 3
     k = 2

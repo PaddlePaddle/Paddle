@@ -66,8 +66,8 @@ def test_moe_combine(x_numpy, combine_weights_numpy, scatter_index_numpy, grad_n
     grad = paddle.to_tensor(grad_numpy).cast("float32")
 
     y = GateCombine.apply(x, combine_weights, scatter_index)
-    #paddle.autograd.backward([y], [grad], True)
-    grad.backward()
+    paddle.autograd.backward([y], [grad], True)
+    #grad.backward()
     return [x.grad, combine_weights.grad, y]
 
 

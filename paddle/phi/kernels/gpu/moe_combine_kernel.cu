@@ -1,6 +1,7 @@
 #include "paddle/phi/kernels/moe_combine_kernel.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 
 namespace phi {
 
@@ -91,6 +92,7 @@ void moe_combine_fwd(const Context& dev_ctx,
                         DenseTensor* y) {
     dev_ctx.template Alloc<T>(y);  // T cannot support phi::dtype::float8 very
                                    // well, maybe replaced with x.dtype();
+    phi::Full<T, Context>(dev_ctx, phi::IntArray(common::vectorize(y->dims())), 0, y);
     auto combine_weights_shape = combine_weights.dims();
     auto x_shape = x.dims();
     moe_combine_fwd<T, Context>(dev_ctx,

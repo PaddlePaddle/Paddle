@@ -110,7 +110,6 @@ void MoeGateDispatchPartialNoSoftMaxTopkGradKernel(const Context& dev_ctx,
                                                   int64_t expert_end_index,
                                                   DenseTensor* x_grad,
                                                   DenseTensor* combine_weights_grad){
-  printf("MoeGateDispatchPartialNoSoftMaxTopkGradKernel begin\n");
   dev_ctx.template Alloc<T>(x_grad);
   dev_ctx.template Alloc<float>(combine_weights_grad);
   // DenseTensor t_scatter_index;

@@ -218,7 +218,6 @@ class GateCombine(PyLayer):
 
     @staticmethod
     def backward(ctx, grad_y, *_):
-        '''
         """
         Input:
             grad_y:  [seqlen, hidden_size]
@@ -243,10 +242,9 @@ class GateCombine(PyLayer):
         # grad_combine_weight_helper is the same shape with grad x [seqlen * K, dim]
         # reduce the hidden shape
         # TODO: implement reduce in cuda ops
-        #grad_combine_weight = grad_combine_weight_helper.sum(-1)
-        #return grad_x, grad_combine_weight.reshape(ctx.combine_weights.shape), None
-        return grad_x, grad_combine_weight_helper
-        '''
+        grad_combine_weight = grad_combine_weight_helper.sum(-1)
+        return grad_x, grad_combine_weight.reshape(ctx.combine_weights.shape), None
+        #return grad_x, grad_combine_weight_helper
 
 
 

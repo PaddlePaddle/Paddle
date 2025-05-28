@@ -1,6 +1,7 @@
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/moe_combine_grad_kernel.h"
+#include "paddle/phi/kernels/full_kernel.h"
 namespace phi {
 
 template <typename T>
@@ -129,6 +130,8 @@ void MoeCombineGradKernel(const Context& dev_ctx,
                           DenseTensor* grad_combine_weights_helper) {
   dev_ctx.template Alloc<T>(grad_x);
   dev_ctx.template Alloc<T>(grad_combine_weights_helper);
+  phi::Full<T, Context>(dev_ctx, phi::IntArray(common::vectorize(grad_x->dims())), 0, grad_x);
+  phi::Full<T, Context>(dev_ctx, phi::IntArray(common::vectorize(grad_combine_weights_helper->dims())), 0, grad_combine_weights_helper);
   auto x_shape = x.dims();
   auto combine_weights_shape = combine_weights.dims();
   moe_combine_bwd<T, Context>(dev_ctx,
