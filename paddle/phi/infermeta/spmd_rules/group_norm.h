@@ -19,14 +19,22 @@ limitations under the License. */
 
 namespace phi {
 namespace distributed {
-
+SpmdInfo GroupNormInferSpmdBase(const DistMetaTensor& x,
+                                const DistMetaTensor& scale,
+                                const DistMetaTensor& bias);
 SpmdInfo GroupNormInferSpmd(const DistMetaTensor& x,
                             const DistMetaTensor& scale,
                             const DistMetaTensor& bias,
                             float epsilon = 1e-5,
                             int groups = -1,
                             const std::string& data_format = "NCHW");
-
+SpmdInfo GroupNormGradInferSpmdBase(const DistMetaTensor& x,
+                                    const DistMetaTensor& scale,
+                                    const DistMetaTensor& bias,
+                                    const DistMetaTensor& y,
+                                    const DistMetaTensor& mean,
+                                    const DistMetaTensor& variance,
+                                    const DistMetaTensor y_grad);
 SpmdInfo GroupNormGradInferSpmd(const DistMetaTensor& x,
                                 const DistMetaTensor& scale,
                                 const DistMetaTensor& bias,

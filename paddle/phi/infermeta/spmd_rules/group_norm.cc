@@ -26,12 +26,10 @@ namespace phi::distributed {
 using phi::distributed::auto_parallel::str_join;
 // Tensor x support  "NCL", "NCHW", "NCDHW", "NLC", "NHWC", "NDHWC".
 // default:"NCHW"
-SpmdInfo GroupNormInferSpmd(const DistMetaTensor& x,
-                            const DistMetaTensor& scale,
-                            const DistMetaTensor& bias,
-                            float epsilon,
-                            int groups,
-                            const std::string& data_format) {
+
+SpmdInfo GroupNormInferSpmdBase(const DistMetaTensor& x,
+                                const DistMetaTensor& scale,
+                                const DistMetaTensor& bias) {
   // Step0: verify input args based on group_norm logic
   auto x_shape = common::vectorize(x.dims());
   auto scale_shape = common::vectorize(scale.dims());
@@ -149,17 +147,22 @@ SpmdInfo GroupNormInferSpmd(const DistMetaTensor& x,
   return {{x_dist_attr_dst, scale_dist_attr_dst, bias_dist_attr_dst},
           {out_dist_attr, mean_dist_attr, variance_dist_attr}};
 }
+SpmdInfo GroupNormInferSpmd(const DistMetaTensor& x,
+                            const DistMetaTensor& scale,
+                            const DistMetaTensor& bias,
+                            float epsilon,
+                            int groups,
+                            const std::string& data_format) {
+  return GroupNormInferSpmdBase(x, scale, bias);
+}
 
-SpmdInfo GroupNormGradInferSpmd(const DistMetaTensor& x,
-                                const DistMetaTensor& scale,
-                                const DistMetaTensor& bias,
-                                const DistMetaTensor& y,
-                                const DistMetaTensor& mean,
-                                const DistMetaTensor& variance,
-                                const DistMetaTensor y_grad,
-                                float epsilon,
-                                int groups,
-                                const std::string& data_format) {
+SpmdInfo GroupNormGradInferSpmdBase(const DistMetaTensor& x,
+                                    const DistMetaTensor& scale,
+                                    const DistMetaTensor& bias,
+                                    const DistMetaTensor& y,
+                                    const DistMetaTensor& mean,
+                                    const DistMetaTensor& variance,
+                                    const DistMetaTensor y_grad) {
   // Step0: verify input args based on group_norm logic
   auto x_shape = common::vectorize(x.dims());
   auto scale_shape = common::vectorize(scale.dims());
@@ -358,5 +361,17 @@ SpmdInfo GroupNormGradInferSpmd(const DistMetaTensor& x,
            variance_dist_attr_dst,
            y_grad_dist_attr_dst},
           {x_grad_dist_attr, scale_grad_dist_attr, bias_grad_dist_attr}};
+}
+SpmdInfo GroupNormGradInferSpmd(const DistMetaTensor& x,
+                                const DistMetaTensor& scale,
+                                const DistMetaTensor& bias,
+                                const DistMetaTensor& y,
+                                const DistMetaTensor& mean,
+                                const DistMetaTensor& variance,
+                                const DistMetaTensor y_grad,
+                                float epsilon,
+                                int groups,
+                                const std::string& data_format) {
+  return GroupNormGradInferSpmdBase(x, scale, bias, y, mean, variance, y_grad);
 }
 }  // namespace phi::distributed

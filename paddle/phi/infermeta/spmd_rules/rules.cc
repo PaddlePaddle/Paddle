@@ -746,9 +746,10 @@ PD_REGISTER_SPMD_RULE(pad,
                       PD_INFER_SPMD(phi::distributed::PadGradInferSpmd));
 
 // group_norm
-PD_REGISTER_SPMD_RULE(group_norm,
-                      PD_INFER_SPMD(phi::distributed::GroupNormInferSpmd),
-                      PD_INFER_SPMD(phi::distributed::GroupNormGradInferSpmd));
+PD_REGISTER_SPMD_RULE(
+    group_norm,
+    PD_INFER_SPMD(phi::distributed::GroupNormInferSpmdBase),
+    PD_INFER_SPMD(phi::distributed::GroupNormGradInferSpmdBase));
 // nonzero
 PD_REGISTER_SPMD_RULE(nonzero,
                       PD_INFER_SPMD(phi::distributed::NonZeroInferSpmd),
