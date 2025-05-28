@@ -16,7 +16,7 @@ exclude = [
     "./python/paddle/utils/gast/**",
 ]
 line-length = 80
-target-version = "py38"
+target-version = "py39"
 
 [tool.ruff.format]
 # Prevent change to double quotes by some users use ruff format

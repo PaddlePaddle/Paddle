@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import pickle
 import tarfile
-from typing import TYPE_CHECKING, Any, Literal, Tuple
+from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
 import numpy.typing as npt
@@ -51,7 +51,7 @@ MODE_FLAG_MAP = {
 }
 
 
-class Cifar10(Dataset[Tuple["_ImageDataType", "npt.NDArray[Any]"]]):
+class Cifar10(Dataset[tuple["_ImageDataType", "npt.NDArray[Any]"]]):
     """
     Implementation of `Cifar-10 <https://www.cs.toronto.edu/~kriz/cifar.html>`_
     dataset, which has 10 categories.
