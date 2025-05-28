@@ -23,12 +23,6 @@ limitations under the License. */
 #include <object.h>
 #include "pybind11/numpy.h"
 
-#if !defined(PyObject_CallOneArg) && !PY_3_9_PLUS
-static inline PyObject* PyObject_CallOneArg(PyObject* func, PyObject* arg) {
-  return PyObject_CallFunctionObjArgs(func, arg, NULL);
-}
-#endif
-
 #if !PY_3_10_PLUS
 #define Py_IsNone(x) ((x) == Py_None)
 #endif
@@ -235,6 +229,42 @@ bool WeakRefMatchGuard::check(PyObject* value) {
 #else
   return PyObject_Equal(value, PyWeakref_GetObject(expected_));
 #endif
+}
+
+bool IsNotDenseTensorHoldAllocationMatchGuard::check(PyObject* value) {
+  auto tensor = GetTensorFromPyObject(value);
+  HANDLE_NULL_TENSOR(tensor);
+
+  if (!tensor->defined() ||
+      (!tensor->is_dense_tensor() && !tensor->is_dist_tensor()))
+    return true;
+
+  PyObject* method =
+      PyObject_GetAttrString(value, "_is_dense_tensor_hold_allocation");
+  if (!method) {
+    PyErr_Print();
+    return false;
+  }
+
+  if (!PyCallable_Check(method)) {
+    Py_DECREF(method);
+    PyErr_SetString(PyExc_TypeError, "Attribute is not callable");
+    return false;
+  }
+
+  PyObject* result = PyObject_CallOneArg(method, value);
+  Py_DECREF(method);
+  if (result == nullptr) {
+    PyErr_Print();
+    return false;
+  }
+  int truthy = PyObject_IsTrue(result);
+  Py_DECREF(result);
+  if (truthy == -1) {
+    PyErr_Print();
+    return false;
+  }
+  return !static_cast<bool>(truthy);
 }
 
 PyObject* ConstantExprNode::eval(FrameProxy* frame) { return value_ptr_; }

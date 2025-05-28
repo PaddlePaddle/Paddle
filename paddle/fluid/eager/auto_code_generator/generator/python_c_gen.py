@@ -289,11 +289,6 @@ PYTHON_C_H_TEMPLATE = """
 
 #include <Python.h>
 
-// Avoid a problem with copysign defined in pyconfig.h on Windows.
-#ifdef copysign
-#undef copysign
-#endif
-
 namespace paddle {{
 namespace pybind {{
 
@@ -539,7 +534,7 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
         )
 
         # Set prefix of forward_api_name to avoid conflicts
-        prefix = self.namespace.strip("::")
+        prefix = self.namespace.removeprefix("::").removesuffix("::")
         forward_api_name_prefix = "" if prefix == "" else prefix + "_"
 
         # Generate Python-C Function Registration
@@ -694,8 +689,7 @@ class PythonCGenerator(GeneratorBase):
         python_c_functions_str = self.python_c_functions_str
 
         if namespace != "":
-            if namespace.endswith("::"):
-                namespace = namespace[:-2]
+            namespace = namespace.removesuffix("::")
             self.python_c_functions_str = NAMESPACE_WRAPPER_TEMPLATE.format(
                 namespace, python_c_functions_str
             )
