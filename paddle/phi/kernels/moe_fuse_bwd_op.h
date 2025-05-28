@@ -17,7 +17,7 @@
 #include "paddle/common/exception.h"
 #include "paddle/phi/kernels/moe_kernel_impl.h"
 
-
+p/
 template<typename T, int64_t vec_size>
 __global__ void gather_with_mask_permute_kernel(const T* dy, // [s*k, d]
                                 const int* scatter_index, // [s, k]

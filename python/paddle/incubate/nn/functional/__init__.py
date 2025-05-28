@@ -50,6 +50,9 @@ from .cal_aux_loss import cal_aux_loss
 from .build_src_rank_and_local_expert_id import build_src_rank_and_local_expert_id
 from .int_bincount import int_bincount
 from .fused_rms_norm_ext import fused_rms_norm_ext
+from .moe_gate_dispatch import moe_gate_dispatch
+from .moe_gate_dispatch_permute import moe_gate_dispatch_permute
+from .moe_ops_partial_nosoftmaxtopk import moe_gate_dispatch_partial_nosoftmaxtopk
 
 __all__ = [
     'fused_multi_head_attention',
@@ -75,4 +78,8 @@ __all__ = [
     "build_src_rank_and_local_expert_id"
     "int_bincount",
     "fused_rms_norm_ext",
+    "moe_gate_dispatch",
+    "moe_gate_dispatch_permute",
+    "moe_gate_dispatch_partial_nosoftmaxtopk",
+
 ]
