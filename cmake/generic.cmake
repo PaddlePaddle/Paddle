@@ -599,8 +599,9 @@ function(paddle_test_build TARGET_NAME)
       target_link_libraries(${TARGET_NAME} ${PYTHON_LIBRARIES})
     endif()
     if(WITH_CINN)
-      target_link_libraries(${TARGET_NAME} $<TARGET_LINKER_FILE:cinnapi>
-                            cinn_transforms)
+      target_link_libraries(${TARGET_NAME} -Wl,--as-needed cinnapi
+                            -Wl,--no-as-needed)
+      target_link_libraries(${TARGET_NAME} cinn_transforms)
       add_dependencies(${TARGET_NAME} cinnapi)
     endif()
     if(WITH_XPU)
