@@ -64,6 +64,10 @@ DATA_CASES_UNIQUE_BF16 = [
     },
 ]
 
+DATA_CASES_ZERO_SIZE = [
+    {'x_data': np.random.randn(8, 0), 'test_x_data': np.random.randn(4, 0)},
+    {'x_data': np.random.randn(8, 0), 'test_x_data': np.random.randn(4, 1)},
+]
 
 DATA_TYPE = ['float32', 'float64', 'int32', 'int64']
 
@@ -318,6 +322,14 @@ class TestIsInBF16(unittest.TestCase):
             invert=True,
             use_gpu=True,
         )
+
+
+class TestIsIn_ZeroSize(unittest.TestCase):
+    def test_without_gpu(self):
+        test(DATA_CASES_ZERO_SIZE, DATA_TYPE)
+
+    def test_with_gpu(self):
+        test(DATA_CASES_ZERO_SIZE, DATA_TYPE, use_gpu=True)
 
 
 if __name__ == '__main__':

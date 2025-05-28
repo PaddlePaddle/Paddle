@@ -1278,10 +1278,6 @@ paddle::optional<paddle::Tensor> GetOptionalTensorFromArgs(
     const phi::distributed::ProcessMesh* mesh) {
   PyObject* obj = PyTuple_GET_ITEM(args, arg_idx);
 
-  if (PyTuple_Check(obj)) {
-    obj = PyTuple_GET_ITEM(obj, 0);
-  }
-
   if (obj == nullptr || obj == Py_None) {
     if (!dispensable) {
       PADDLE_THROW(common::errors::InvalidArgument(
@@ -1610,10 +1606,6 @@ paddle::Tensor* GetTensorPtrFromArgs(const std::string& op_type,
                                      ssize_t arg_idx,
                                      bool dispensable) {
   PyObject* obj = PyTuple_GET_ITEM(args, arg_idx);
-
-  if (PyTuple_Check(obj)) {
-    obj = PyTuple_GET_ITEM(obj, 0);
-  }
 
   if (obj == nullptr || obj == Py_None) {
     if (!dispensable) {

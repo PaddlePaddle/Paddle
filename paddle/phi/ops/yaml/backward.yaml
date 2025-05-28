@@ -2114,6 +2114,7 @@
     func : masked_fill_grad
     param: [x, mask, value, out_grad]
   inplace : (out_grad -> x_grad)
+  composite : masked_fill_grad(x, mask, value, out_grad, x_grad, value_grad)
 
 - backward_op : masked_select_grad
   forward : masked_select (Tensor x, Tensor mask) -> Tensor(out)

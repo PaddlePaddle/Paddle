@@ -524,14 +524,18 @@ def _recompute_without_reentrant(
                             ):
                                 function(*args, **kwargs)
             else:
-                with paddle.set_grad_enabled(True), paddle.amp.auto_cast(
-                    enable=is_fw_autocast,
-                    custom_white_list=amp_white_list,
-                    custom_black_list=amp_black_list,
-                    level=amp_level,
-                    dtype=amp_dtype,
-                ), paddle.autograd.saved_tensors_hooks(
-                    inner_pack, inner_unpack
+                with (
+                    paddle.set_grad_enabled(True),
+                    paddle.amp.auto_cast(
+                        enable=is_fw_autocast,
+                        custom_white_list=amp_white_list,
+                        custom_black_list=amp_black_list,
+                        level=amp_level,
+                        dtype=amp_dtype,
+                    ),
+                    paddle.autograd.saved_tensors_hooks(
+                        inner_pack, inner_unpack
+                    ),
                 ):
                     function(*args, **kwargs)
 
