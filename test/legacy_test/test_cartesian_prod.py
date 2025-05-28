@@ -167,8 +167,6 @@ class TestCartesianProd_ZeroSize(unittest.TestCase):
                 ref_res = np.array(list(product(self.a_np, self.b_np))).reshape(
                     [0, 2]
                 )
-                print(pd_res)
-                print(ref_res.shape)
                 np.testing.assert_allclose(ref_res, pd_res[0])
 
     def test_dygraph(self):
