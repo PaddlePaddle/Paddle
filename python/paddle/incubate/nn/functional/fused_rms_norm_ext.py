@@ -1,9 +1,10 @@
 # File: python/paddle/incubate/nn/functional/layer_norm_cuda.py
-from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.data_feeder import convert_dtype
 import paddle
+from paddle.base.framework import in_dynamic_or_pir_mode
+from paddle.base.layer_helper import LayerHelper
+from paddle import _C_ops
 
-def fused_rms_norm_ext(x, scale, bias=None, epsilon=1e-5, name=None):
+def fused_rms_norm_ext(x, scale, epsilon=1e-5, name=None):
     """
     Applies Layer Normalization over the last dimension of the input tensor using CUDA implementation.
     Args:
@@ -17,6 +18,10 @@ def fused_rms_norm_ext(x, scale, bias=None, epsilon=1e-5, name=None):
         mean (Tensor): Tensor of shape [rows], the mean of each row.
         invvar (Tensor): Tensor of shape [rows], the inverse standard deviation of each row.
     """
+    if in_dynamic_or_pir_mode():
+        return _C_ops.fused_rms_norm(
+            x,scale,epsilon
+        )
     helper = LayerHelper('fused_rms_norm', **locals())
     dtype = convert_dtype(x.dtype)
     y = helper.create_variable_for_type_inference(dtype)

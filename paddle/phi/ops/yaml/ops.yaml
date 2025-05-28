@@ -5729,7 +5729,7 @@
   traits : paddle::dialect::ForwardOnlyTrait
 
 - op: int_bincount
-  args: (Tensor x, int low, int high, int dtype)
+  args: (Tensor x, int64_t low, int64_t high, int64_t dtype)
   output: Tensor(out)
   infer_meta:
     func: IntBincountInferMeta

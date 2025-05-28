@@ -63,8 +63,8 @@ void IntBincount(const Context& ctx, const DenseTensor &x, int64_t low, int64_t 
   int64_t bins_width = high - low;
   PD_CHECK(bins_width + 1 < std::numeric_limits<int>::max());
 
-  auto bins_dtype = TransToPhiDataType(out_dtype);
-  DenseTensor bins = phi::Empty<T>(ctx, {bins_width});
+  auto bins_dtype = TransToDataType(out_dtype);
+
 
   // auto x_dytpe = x.dtype();
   auto low_v = static_cast<T>(low);
@@ -72,18 +72,21 @@ void IntBincount(const Context& ctx, const DenseTensor &x, int64_t low, int64_t 
   PD_CHECK(static_cast<int64_t>(low_v) == low);
   PD_CHECK(static_cast<int64_t>(high_v) == high);
   const auto *x_data = x.data<T>();
-  void *bins_data = bins.data();
   int64_t n = x.numel();
   if (bins_dtype == phi::DataType::INT32) {
-    IntBincountImpl<T, uint32_t, Context>(ctx, x_data, n, low_v, high_v, static_cast<uint32_t *>(bins_data)); 
+    ctx.template Alloc<int32_t>(out);
+    uint32_t *out_ptr = static_cast<uint32_t*>(out->data());
+    IntBincountImpl<T, uint32_t, Context>(ctx, x_data, n, low_v, high_v, out_ptr); 
   } else if (bins_dtype == phi::DataType::INT64) {
     using ULLI = unsigned long long int;
+    ctx.template Alloc<int64_t>(out);
     static_assert(sizeof(int64_t) == sizeof(ULLI)); 
-    IntBincountImpl<T, ULLI, Context>(ctx, x_data, n, low_v, high_v, static_cast<ULLI *>(bins_data));
+    // WARNING: unsafe type cast used in original impl.
+    ULLI* out_ptr = static_cast<ULLI*> (out->data());
+    IntBincountImpl<T, ULLI, Context>(ctx, x_data, n, low_v, high_v, out_ptr);
   } else {
     PD_THROW("Only support INT32 and INT64, but got %s", bins_dtype);
   }
-  out = &bins;
 }
 } // namespace phi
 

@@ -1011,7 +1011,6 @@ void HostRMSNormGradient(  const Context& ctx,
     const int nshared2 = nshared2_a > nshared2_b ? nshared2_a : nshared2_b;
     auto place = input.place();
     DenseTensor part_grad_gamma = phi::Empty<float, Context>(ctx, {part_size, n2});
-
     cuComputePartGradGammaBeta<<<blocks2, threads2, nshared2, stream>>>(
         dout,
         input.data<T>(),
