@@ -16,7 +16,6 @@ import argparse
 import re
 from collections import defaultdict
 
-# 初始化分类统计字典
 gpu_time_categories = {
     "within_1%": 0,
     "increase_1_to_5%": 0,
@@ -33,17 +32,16 @@ total_time_categories = {
     "decrease_above_5%": 0,
 }
 
-# 设置命令行参数解析
-parser = argparse.ArgumentParser(description="分析日志文件中的时间变化")
-parser.add_argument('file_name', type=str, help='日志文件的名称')
+parser = argparse.ArgumentParser(
+    description="Analyze time changes in log files"
+)
+parser.add_argument('file_name', type=str, help='The name of the log file')
 args = parser.parse_args()
 
-# 正则表达式匹配模式
 gpu_time_pattern = re.compile(r"GPU time change: ([\d.-]*)")
 total_time_pattern = re.compile(r"Total time change: ([\d.-]+)%")
 error_pattern = re.compile(r'Check speed result with case "(.*?)"')
 
-# 读取日志文件
 gpu_time_lines = 0
 error_cases = defaultdict(int)
 
