@@ -26,6 +26,7 @@
 #include "paddle/phi/kernels/slice_kernel.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/moe_kernel_impl.h"
+#include "paddle/phi/kernels/full_kernel.h"
 
 namespace phi {
 
@@ -392,6 +393,7 @@ void apply_moe_dispatch_fwd(
       y->Resize({expert_offset_host.back(), x.dims()[1]});
       dev_ctx.template Alloc<T>(y);
   }
+  phi::Full<T, Context>(dev_ctx, phi::IntArray(common::vectorize(y->dims())), 0, y);
   copy_unpermuted_to_permuted_kernelLauncher(x.data<T>(), 
     y->data<T>(), //out
     scatter_index_rev, //padded_out_to_unpermuted_input
@@ -473,6 +475,11 @@ void MoeGateDispatchPartialNoSoftMaxTopkKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<int64_t>(expert_offset);
   dev_ctx.template Alloc<int64_t>(expert_nums_local);
   dev_ctx.template Alloc<float>(combine_weights_out);
+  phi::Full<int32_t, Context>(dev_ctx, phi::IntArray(common::vectorize(scatter_index->dims())), 0, scatter_index);
+  phi::Full<int32_t, Context>(dev_ctx, phi::IntArray(common::vectorize(scatter_index_rev->dims())), 0, scatter_index_rev);
+  phi::Full<int64_t, Context>(dev_ctx, phi::IntArray(common::vectorize(expert_offset->dims())), 0, expert_offset);
+  phi::Full<int64_t, Context>(dev_ctx, phi::IntArray(common::vectorize(expert_nums_local->dims())), 0, expert_nums_local);
+  phi::Full<float, Context>(dev_ctx, phi::IntArray(common::vectorize(combine_weights_out->dims())), 0, combine_weights_out);
   phi::Copy(dev_ctx, combine_weights, dev_ctx.GetPlace(), false, combine_weights_out);
   const auto &x_shape = x.dims();
   int64_t num_rows = x_shape[0];

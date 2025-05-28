@@ -1280,15 +1280,10 @@ void MoeGateDispatchPartialNoSoftmaxTopkGradInferMeta(const MetaTensor& combine_
                     0,
                     common::errors::InvalidArgument("Input y_grad.dims()[0] should be greater than 0"));
   }
-  printf("y_grad shape: %d", y_grad.dims().size());
-  printf("combine_weights_out_grad shape: %d, y_grad shape: %d", combine_weights_out_grad.dims().size(), y_grad.dims().size());
-  printf("allocate combine_weights_grad\n");
   combine_weights_grad->set_dims(combine_weights_out_grad.dims());
   combine_weights_grad->set_dtype(phi::DataType::FLOAT32);
-  printf("allocate x_grad\n");
   x_grad->set_dims({num_rows, hidden_size});
   x_grad->set_dtype(y_grad.dtype());
-  printf("check infer over\n");
 }
 
 void MoeGateDispatchPermuteGradInferMeta(const MetaTensor& combine_weights,

@@ -22,6 +22,7 @@
 #include "paddle/phi/kernels/moe_fuse_bwd_op.h"
 #include <thrust/host_vector.h>
 #include <thrust/device_vector.h>
+#include "paddle/phi/kernels/full_kernel.h"
 
 namespace phi{
 
@@ -112,6 +113,7 @@ void MoeGateDispatchPartialNoSoftMaxTopkGradKernel(const Context& dev_ctx,
                                                   DenseTensor* combine_weights_grad){
   dev_ctx.template Alloc<T>(x_grad);
   dev_ctx.template Alloc<float>(combine_weights_grad);
+  phi::Full<float, Context>(dev_ctx, phi::IntArray(common::vectorize(combine_weights_grad->dims())), 0, combine_weights_grad);
   // DenseTensor t_scatter_index;
   // printf("check pass\n");
   // phi::Transpose<int, Context>(dev_ctx, scatter_index, {1,0}, &t_scatter_index);
@@ -119,7 +121,6 @@ void MoeGateDispatchPartialNoSoftMaxTopkGradKernel(const Context& dev_ctx,
   // phi::ContiguousKernel<int, Context>(dev_ctx, t_scatter_index, &t_scatter_index_out);
   // t_scatter_index = t_scatter_index_out;
   // int64_t num_experts = expert_offset.dims()[0];
-  printf("dive into moe_dispatch_bwd\n");
   // moe_dispatch_bwd<T, Context>(dev_ctx,
   //                 combine_weights_out,
   //                 t_scatter_index,

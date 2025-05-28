@@ -166,6 +166,7 @@ def test_moe_ops_partial_nosoftmax_topk_empty_output():
     capacity = 2
     x = (paddle.arange(S) + 1).unsqueeze(-1).expand([S, D]).astype("bfloat16")
     cw = paddle.randn([S, k])
+    paddle.device.synchronize()
     eid = paddle.to_tensor([[0, 1], [0, 1], [0, 2]], dtype="int32")  # 1  # 2  # 3
     (
         y,
