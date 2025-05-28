@@ -221,7 +221,7 @@ void TensorAdd(const VarType& src, VarType* dst) {
         phi::DeviceContextPool::Instance().Get(place));          \
     phi::stream::Stream stream(place, ctx->stream());            \
     auto device = phi::DeviceManager::GetDeviceWithPlace(place); \
-    device->BlasAXPBY<T>(stream,                                 \
+    device->BlasAXPBY<T>(stream.raw_stream(),                    \
                          static_cast<size_t>(numel),             \
                          1.,                                     \
                          src_tensor.data<T>(),                   \
