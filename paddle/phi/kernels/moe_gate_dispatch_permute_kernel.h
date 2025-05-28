@@ -25,8 +25,8 @@ void MoEDispatchPermuteKernel(const Context& dev_ctx,
                               int64_t capacity,
                               int64_t world_size,
                               DenseTensor* y,
-                              DenseTensor* combine_weights, 
-                              DenseTensor* scatter_index, 
-                              DenseTensor* expert_offset, 
+                              DenseTensor* combine_weights,
+                              DenseTensor* scatter_index,
+                              DenseTensor* expert_offset,
                               DenseTensor* expert_id);
 }  // namespace phi

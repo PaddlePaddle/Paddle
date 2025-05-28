@@ -1615,131 +1615,133 @@ void MultiClassNMSInferMeta(const MetaTensor& bboxes,
 void MoeCombineInferMeta(const MetaTensor& x,
                          const MetaTensor& combine_weights,
                          const MetaTensor& scatter_index,
-                         MetaTensor* y){
+                         MetaTensor* y) {
   auto x_dim = x.dims();
   auto combine_weights_shape = combine_weights.dims();
-  PADDLE_ENFORCE_EQ(
-      x_dim.size(),
-      2,
-      common::errors::InvalidArgument("The dimensions of Input(x) must be 1, but "
-                                      "received dimensions of"
-                                      "Input(x) is [%d]",
-                                      x_dim.size()));
+  PADDLE_ENFORCE_EQ(x_dim.size(),
+                    2,
+                    common::errors::InvalidArgument(
+                        "The dimensions of Input(x) must be 1, but "
+                        "received dimensions of"
+                        "Input(x) is [%d]",
+                        x_dim.size()));
   // maybe there is more conditions here....
   y->set_dims(phi::make_ddim({combine_weights_shape[0], x_dim[1]}));
   y->set_dtype(x.dtype());
 }
 
-void MoeGateDispatchPartialNoSoftmaxTopKInferMeta(const MetaTensor& x,
-                                                  const MetaTensor& combine_weights,
-                                                  const MetaTensor& expert_id,
-                                                  int64_t k,
-                                                  int64_t capacity,
-                                                  int64_t num_experts,
-                                                  bool use_pad,
-                                                  int64_t expert_start_index,
-                                                  int64_t expert_end_index,
-                                                  bool reverse_token_drop,
-                                                  MetaTensor* y,
-                                                  MetaTensor* combine_weights_out,
-                                                  MetaTensor* scatter_index,
-                                                  MetaTensor* scatter_index_rev,
-                                                  MetaTensor* expert_offset,
-                                                  MetaTensor* expert_nums_local){
+void MoeGateDispatchPartialNoSoftmaxTopKInferMeta(
+    const MetaTensor& x,
+    const MetaTensor& combine_weights,
+    const MetaTensor& expert_id,
+    int64_t k,
+    int64_t capacity,
+    int64_t num_experts,
+    bool use_pad,
+    int64_t expert_start_index,
+    int64_t expert_end_index,
+    bool reverse_token_drop,
+    MetaTensor* y,
+    MetaTensor* combine_weights_out,
+    MetaTensor* scatter_index,
+    MetaTensor* scatter_index_rev,
+    MetaTensor* expert_offset,
+    MetaTensor* expert_nums_local) {
   auto x_dims = x.dims();
-  PADDLE_ENFORCE_EQ(
-      x_dims.size(),
-      2,
-      common::errors::InvalidArgument("The dimensions of Input(x) must be 2, but "
-                                      "received dimensions of"
-                                      "Input(x) is [%d]",
-                                      x_dims.size()));
+  PADDLE_ENFORCE_EQ(x_dims.size(),
+                    2,
+                    common::errors::InvalidArgument(
+                        "The dimensions of Input(x) must be 2, but "
+                        "received dimensions of"
+                        "Input(x) is [%d]",
+                        x_dims.size()));
   auto combine_weights_dims = combine_weights.dims();
   PADDLE_ENFORCE_EQ(
       combine_weights_dims.size(),
       2,
-      common::errors::InvalidArgument("The dimensions of Input(combine_weights) must be 2, but "
-                                      "received dimensions of"
-                                      "Input(combine_weights) is [%d]",
-                                      combine_weights_dims.size()));
-  PADDLE_ENFORCE_EQ(
-      combine_weights_dims[0],
-      x_dims[0],
       common::errors::InvalidArgument(
-          "The first dimensions of Input(combine_weights) must be equal to the first "
-          "dimension of Input(x), but received Input(combine_weights) shape is [%d],"
-          "Input(x) shape is [%d]",
-          combine_weights_dims[0],
-          x_dims[0]));
-  PADDLE_ENFORCE_GT(
-      expert_end_index,
-      expert_start_index,
-      common::errors::InvalidArgument(
-          "expert_end_index must be greater than expert_start_index, but received "
-          "expert_end_index = %d, expert_start_index = %d",
-          expert_end_index,
-          expert_start_index));
+          "The dimensions of Input(combine_weights) must be 2, but "
+          "received dimensions of"
+          "Input(combine_weights) is [%d]",
+          combine_weights_dims.size()));
+  PADDLE_ENFORCE_EQ(combine_weights_dims[0],
+                    x_dims[0],
+                    common::errors::InvalidArgument(
+                        "The first dimensions of Input(combine_weights) must "
+                        "be equal to the first "
+                        "dimension of Input(x), but received "
+                        "Input(combine_weights) shape is [%d],"
+                        "Input(x) shape is [%d]",
+                        combine_weights_dims[0],
+                        x_dims[0]));
+  PADDLE_ENFORCE_GT(expert_end_index,
+                    expert_start_index,
+                    common::errors::InvalidArgument(
+                        "expert_end_index must be greater than "
+                        "expert_start_index, but received "
+                        "expert_end_index = %d, expert_start_index = %d",
+                        expert_end_index,
+                        expert_start_index));
   PADDLE_ENFORCE_EQ(
       combine_weights.dtype(),
       phi::DataType::FLOAT32,
-      common::errors::InvalidArgument(
-          "The dtype of Input(combine_weights) must be FLOAT32, but received %s",
-          combine_weights.dtype()));
+      common::errors::InvalidArgument("The dtype of Input(combine_weights) "
+                                      "must be FLOAT32, but received %s",
+                                      combine_weights.dtype()));
   PADDLE_ENFORCE_EQ(
       expert_id.dtype(),
       phi::DataType::INT32,
       common::errors::InvalidArgument(
           "The dtype of Input(expert_id) must be INT32, but received %s",
           expert_id.dtype()));
-  PADDLE_ENFORCE_GT(
-      k,
-      0,
-      common::errors::InvalidArgument(
-          "k must be greater than 0, but received k = %d",
-          k));
+  PADDLE_ENFORCE_GT(k,
+                    0,
+                    common::errors::InvalidArgument(
+                        "k must be greater than 0, but received k = %d", k));
   PADDLE_ENFORCE_GT(
       x_dims[0],
       0,
       common::errors::InvalidArgument(
           "num_rows must be greater than 0, but received num_rows = %d",
           x_dims[0]));
-  PADDLE_ENFORCE_GE(
-      num_experts,
-      k,
-      common::errors::InvalidArgument(
-          "num_experts must be greater than or equal to k, but received num_experts = %d, k = %d",
-          num_experts,
-          k));
+  PADDLE_ENFORCE_GE(num_experts,
+                    k,
+                    common::errors::InvalidArgument(
+                        "num_experts must be greater than or equal to k, but "
+                        "received num_experts = %d, k = %d",
+                        num_experts,
+                        k));
   PADDLE_ENFORCE_EQ(
       !reverse_token_drop || !use_pad,
       true,
       common::errors::InvalidArgument(
-          "use_pad must be false when reverse_token_drop is true, but received use_pad = %d, reverse_token_drop = %d",
+          "use_pad must be false when reverse_token_drop is true, but received "
+          "use_pad = %d, reverse_token_drop = %d",
           use_pad,
           reverse_token_drop));
   PADDLE_ENFORCE_EQ(
       combine_weights.dtype(),
       phi::DataType::FLOAT32,
-      common::errors::InvalidArgument(
-          "The dtype of Input(combine_weights) must be FLOAT32, but received %s",
-          combine_weights.dtype()));
-//int64_t num_experts_diff = expert_end_index - expert_start_index;
-int64_t num_rows = x_dims[0];
-// if (use_pad)
-//   y->set_dims({num_experts_diff * capacity, x_dims[1]}) ;
-y->set_dims({-1, x_dims[1]});
-y->set_dtype(x.dtype());
-scatter_index->set_dims({k, num_rows});
-scatter_index->set_dtype(phi::DataType::INT32);
-scatter_index_rev->set_dims({num_experts*capacity});
-scatter_index_rev->set_dtype(phi::DataType::INT32);
-expert_offset->set_dims({num_experts});
-expert_offset->set_dtype(phi::DataType::INT64);
-expert_nums_local->set_dims({num_experts});
-expert_nums_local->set_dtype(phi::DataType::INT64);
-combine_weights_out->set_dims(combine_weights_dims);
-combine_weights_out->set_dtype(combine_weights.dtype());
-// combine_weights_out->share_meta(combine_weights);
+      common::errors::InvalidArgument("The dtype of Input(combine_weights) "
+                                      "must be FLOAT32, but received %s",
+                                      combine_weights.dtype()));
+  // int64_t num_experts_diff = expert_end_index - expert_start_index;
+  int64_t num_rows = x_dims[0];
+  // if (use_pad)
+  //   y->set_dims({num_experts_diff * capacity, x_dims[1]}) ;
+  y->set_dims({-1, x_dims[1]});
+  y->set_dtype(x.dtype());
+  scatter_index->set_dims({k, num_rows});
+  scatter_index->set_dtype(phi::DataType::INT32);
+  scatter_index_rev->set_dims({num_experts * capacity});
+  scatter_index_rev->set_dtype(phi::DataType::INT32);
+  expert_offset->set_dims({num_experts});
+  expert_offset->set_dtype(phi::DataType::INT64);
+  expert_nums_local->set_dims({num_experts});
+  expert_nums_local->set_dtype(phi::DataType::INT64);
+  combine_weights_out->set_dims(combine_weights_dims);
+  combine_weights_out->set_dtype(combine_weights.dtype());
+  // combine_weights_out->share_meta(combine_weights);
 }
 
 void MoeGateDispatchPermuteInferMeta(const MetaTensor& x,
@@ -1752,50 +1754,53 @@ void MoeGateDispatchPermuteInferMeta(const MetaTensor& x,
                                      MetaTensor* combine_weights,
                                      MetaTensor* scatter_index,
                                      MetaTensor* expert_offset,
-                                     MetaTensor* expert_id){
+                                     MetaTensor* expert_id) {
   auto x_dims = x.dims();
-  PADDLE_ENFORCE_EQ(
-      x_dims.size(),
-      2,
-      common::errors::InvalidArgument("The dimensions of Input(x) must be 2, but "
-                                      "received dimensions of"
-                                      "Input(x) is [%d]",
-                                      x_dims.size()));
-  auto gate_logits_dims= gate_logits.dims();
-  PADDLE_ENFORCE_EQ(
-      gate_logits_dims.size(),
-      2,
-      common::errors::InvalidArgument("The dimensions of Input(gate_logits) must be 2, but "
-                                      "received dimensions of"
-                                      "Input(gate_logits) is [%d]",
-                                      gate_logits_dims.size()));
-  PADDLE_ENFORCE_EQ(
-      gate_logits_dims[0],
-      x_dims[0],
-      common::errors::InvalidArgument(
-          "The first dimensions of Input(gate_logits) must be equal to the first "
-          "dimension of Input(x), but received Input(gate_logits) shape is [%d],"
-          "Input(x) shape is [%d]",
-          gate_logits_dims[0],
-          x_dims[0]));
+  PADDLE_ENFORCE_EQ(x_dims.size(),
+                    2,
+                    common::errors::InvalidArgument(
+                        "The dimensions of Input(x) must be 2, but "
+                        "received dimensions of"
+                        "Input(x) is [%d]",
+                        x_dims.size()));
+  auto gate_logits_dims = gate_logits.dims();
+  PADDLE_ENFORCE_EQ(gate_logits_dims.size(),
+                    2,
+                    common::errors::InvalidArgument(
+                        "The dimensions of Input(gate_logits) must be 2, but "
+                        "received dimensions of"
+                        "Input(gate_logits) is [%d]",
+                        gate_logits_dims.size()));
+  PADDLE_ENFORCE_EQ(gate_logits_dims[0],
+                    x_dims[0],
+                    common::errors::InvalidArgument(
+                        "The first dimensions of Input(gate_logits) must be "
+                        "equal to the first "
+                        "dimension of Input(x), but received "
+                        "Input(gate_logits) shape is [%d],"
+                        "Input(x) shape is [%d]",
+                        gate_logits_dims[0],
+                        x_dims[0]));
   PADDLE_ENFORCE_EQ(
       gate_logits_dims[1] % world_size,
       0,
       common::errors::InvalidArgument(
-          "The number of experts (the second dimension of Input(gate_logits)) must be divisible by world_size, but received "
+          "The number of experts (the second dimension of Input(gate_logits)) "
+          "must be divisible by world_size, but received "
           "num_experts = %d, world_size = %d",
           gate_logits_dims[1],
           world_size));
 
-  PADDLE_ENFORCE_GE(
-      gate_logits_dims[1],
-      k,
-      common::errors::InvalidArgument(
-          "The number of experts ((the second dimension of Input(gate_logits))) must be greater than or equal to k, but received "
-          "num_experts = %d, k = %d",
-          gate_logits_dims[1],
-          k));
-  
+  PADDLE_ENFORCE_GE(gate_logits_dims[1],
+                    k,
+                    common::errors::InvalidArgument(
+                        "The number of experts ((the second dimension of "
+                        "Input(gate_logits))) must be greater than or equal to "
+                        "k, but received "
+                        "num_experts = %d, k = %d",
+                        gate_logits_dims[1],
+                        k));
+
   PADDLE_ENFORCE_EQ(
       gate_logits.dtype(),
       phi::DataType::FLOAT32,
@@ -1803,7 +1808,7 @@ void MoeGateDispatchPermuteInferMeta(const MetaTensor& x,
           "The dtype of Input(gate_logits) must be FLOAT32, but received %s",
           gate_logits.dtype()));
 
-  if(corr_bias){
+  if (corr_bias) {
     auto corr_bias_dims = corr_bias.dims();
     PADDLE_ENFORCE_EQ(
         corr_bias_dims.size(),
@@ -1817,7 +1822,8 @@ void MoeGateDispatchPermuteInferMeta(const MetaTensor& x,
         x_dims[0],
         common::errors::InvalidArgument(
             "The dimensions of Input(corr_bias) must be equal to the first "
-            "dimension of Input(x), but received Input(corr_bias) first dimension is [%d],"
+            "dimension of Input(x), but received Input(corr_bias) first "
+            "dimension is [%d],"
             "Input(x) first dimension is [%d]",
             corr_bias_dims[0],
             x_dims[0]));

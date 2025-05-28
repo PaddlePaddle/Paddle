@@ -221,14 +221,14 @@ void CalAuxLossKernel(const Context& dev_ctx,
   int64_t dispatch_tokens_mask_len = 0;
   auto dispatch_tokens_mask_ptr = dispatch_tokens_mask.get_ptr();
   if (dispatch_tokens_mask) {
-      const auto mask_dims = dispatch_tokens_mask_ptr->dims();
-      const auto dim_size = mask_dims.size();
-      const bool is_not_zero_size = (dim_size > 0);
-      if (is_not_zero_size) {
-          dispatch_tokens_mask_len = dispatch_tokens_mask_ptr->dims()[0];
-      } else {
-          dispatch_tokens_mask_len = 0;
-      }
+    const auto mask_dims = dispatch_tokens_mask_ptr->dims();
+    const auto dim_size = mask_dims.size();
+    const bool is_not_zero_size = (dim_size > 0);
+    if (is_not_zero_size) {
+      dispatch_tokens_mask_len = dispatch_tokens_mask_ptr->dims()[0];
+    } else {
+      dispatch_tokens_mask_len = 0;
+    }
   }
 
   /*

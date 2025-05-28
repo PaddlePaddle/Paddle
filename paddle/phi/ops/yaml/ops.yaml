@@ -3647,7 +3647,7 @@
     data_type : x
   optional : corr_bias
   backward : moe_gate_dispatch_grad
-  
+
 - op : moe_gate_dispatch_partial_nosoftmaxtopk
   args : (Tensor x, Tensor combine_weights, Tensor expert_id, int64_t k, int64_t capacity, int64_t num_experts, bool use_pad, int64_t expert_start_index, int64_t expert_end_index, bool reverse_token_drop)
   output : Tensor(y), Tensor(combine_weights_out), Tensor(scatter_index), Tensor(scatter_index_rev), Tensor(expert_offset), Tensor(expert_nums_local)
@@ -5739,16 +5739,15 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
   traits : paddle::dialect::ForwardOnlyTrait
 
-- op: number_count
-  args: (Tensor numbers, int upper_range)
-  output: Tensor(out)
+- op: fused_rms_norm
+  args: (Tensor x, Tensor scale, float epsilon)
+  output: Tensor(y), Tensor(invvar)
   infer_meta:
-     func: NumberCountInferMeta
+    func: FusedRMSNormInferMeta
   kernel:
-     func: number_count
-     data_type: numbers
-  interfaces : paddle::dialect::InferSymbolicShapeInterface
-  traits : paddle::dialect::ForwardOnlyTrait
+    func: fused_rms_norm
+    data_type: x
+  backward: fused_rms_norm_grad
 
 - op: int_bincount
   args: (Tensor x, int64_t low, int64_t high, int64_t dtype)
@@ -5759,12 +5758,13 @@
     func: int_bincount
     data_type: x
 
-- op: fused_rms_norm
-  args: (Tensor x, Tensor scale, float epsilon)
-  output: Tensor(y), Tensor(invvar)
+- op: number_count
+  args: (Tensor numbers, int upper_range)
+  output: Tensor(out)
   infer_meta:
-    func: FusedRMSNormInferMeta
+     func: NumberCountInferMeta
   kernel:
-    func: fused_rms_norm
-    data_type: x
-  backward: fused_rms_norm_grad
+     func: number_count
+     data_type: numbers
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+  traits : paddle::dialect::ForwardOnlyTrait

@@ -1,5 +1,5 @@
+// NOLINT
 /* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -13,13 +13,13 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <cuda_runtime.h>
+#include <math.h>
+#include <cmath>
+#include <sstream>
 #include <string>
 #include "cub/cub.cuh"
 #include "paddle/phi/kernels/funcs/math_cuda_utils.h"
-#include <math.h>  
-#include <cmath>
-#include <cuda_runtime.h>
-#include <sstream>
 namespace phi {
 
 static const float HALF_FLT_MAX = 65504.F;
@@ -33,25 +33,25 @@ class CubKeyValueSorter {
  public:
   inline CubKeyValueSorter();
 
-  inline CubKeyValueSorter(cudaStream_t stream = 0);
+  inline CubKeyValueSorter(cudaStream_t stream = 0);  // NOLINT
 
   inline explicit CubKeyValueSorter(const int num_experts);
 
   inline void update_num_experts(const int num_experts);
 
   inline size_t getWorkspaceSize(const size_t num_key_value_pairs,
-                          bool descending = false);
+                                 bool descending = false);
 
   template <typename KeyT>
   inline void run(void* workspace,
-           const size_t workspace_size,
-           const KeyT* keys_in,
-           KeyT* keys_out,
-           const int* values_in,
-           int* values_out,
-           const size_t num_key_value_pairs,
-           bool descending,
-           cudaStream_t stream);
+                  const size_t workspace_size,
+                  const KeyT* keys_in,
+                  KeyT* keys_out,
+                  const int* values_in,
+                  int* values_out,
+                  const size_t num_key_value_pairs,
+                  bool descending,
+                  cudaStream_t stream);
 
  private:
   size_t num_key_value_pairs_;
@@ -60,13 +60,12 @@ class CubKeyValueSorter {
   cudaStream_t stream_;
 };
 
-
 // ===== CUB Sorting things =====
 CubKeyValueSorter::CubKeyValueSorter()
     : num_experts_(0), num_bits_(sizeof(int) * 8) {}
 
 CubKeyValueSorter::CubKeyValueSorter(cudaStream_t stream)
-      : num_experts_(0), num_bits_(sizeof(int) * 8), stream_(stream) {}
+    : num_experts_(0), num_bits_(sizeof(int) * 8), stream_(stream) {}
 
 CubKeyValueSorter::CubKeyValueSorter(const int num_experts)
     : num_experts_(num_experts),
@@ -74,7 +73,8 @@ CubKeyValueSorter::CubKeyValueSorter(const int num_experts)
 
 void CubKeyValueSorter::update_num_experts(const int num_experts) {
   num_experts_ = num_experts;
-  num_bits_ = static_cast<int>(log2(num_experts)) + 3; //额外增加 3 位用于标记 topk的位置
+  num_bits_ = static_cast<int>(log2(num_experts)) +
+              3;  // 额外增加 3 位用于标记 topk的位置
 }
 
 size_t CubKeyValueSorter::getWorkspaceSize(const size_t num_key_value_pairs,
@@ -108,17 +108,16 @@ size_t CubKeyValueSorter::getWorkspaceSize(const size_t num_key_value_pairs,
   return required_storage;
 }
 
-
 template <typename KeyT>
 inline void CubKeyValueSorter::run(void* workspace,
-                            const size_t workspace_size,
-                            const KeyT* keys_in,
-                            KeyT* keys_out,
-                            const int* values_in,
-                            int* values_out,
-                            const size_t num_key_value_pairs,
-                            bool descending,
-                            cudaStream_t stream) {
+                                   const size_t workspace_size,
+                                   const KeyT* keys_in,
+                                   KeyT* keys_out,
+                                   const int* values_in,
+                                   int* values_out,
+                                   const size_t num_key_value_pairs,
+                                   bool descending,
+                                   cudaStream_t stream) {
   size_t expected_ws_size = getWorkspaceSize(num_key_value_pairs);
   size_t actual_ws_size = workspace_size;
 
@@ -158,14 +157,14 @@ inline void CubKeyValueSorter::run(void* workspace,
 
 template <>
 inline void CubKeyValueSorter::run(void* workspace,
-                            const size_t workspace_size,
-                            const __nv_bfloat16* keys_in,
-                            __nv_bfloat16* keys_out,
-                            const int* values_in,
-                            int* values_out,
-                            const size_t num_key_value_pairs,
-                            bool descending,
-                            cudaStream_t stream) {}
+                                   const size_t workspace_size,
+                                   const __nv_bfloat16* keys_in,
+                                   __nv_bfloat16* keys_out,
+                                   const int* values_in,
+                                   int* values_out,
+                                   const size_t num_key_value_pairs,
+                                   bool descending,
+                                   cudaStream_t stream) {}
 
 // CubKeyValueSorter sorter_(stream);
 

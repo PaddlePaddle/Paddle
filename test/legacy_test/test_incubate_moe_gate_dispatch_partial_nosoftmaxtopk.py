@@ -1,14 +1,25 @@
+# ruff: noqa: C419
+# Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import unittest
-import sys
-from functools import partial
-import numpy as np
-from collections import namedtuple
 
 import paddle
-from paddle.autograd import PyLayer
-import paddle.nn.functional as F
-from ernie_utils.moe_layer_uneven import GateDispatch
-from paddle.incubate.nn.functional import moe_gate_dispatch_partial_nosoftmaxtopk, moe_gate_dispatch
+from paddle.incubate.nn.functional import (
+    moe_gate_dispatch,
+    moe_gate_dispatch_partial_nosoftmaxtopk,
+)
 
 
 def test_moe_dispatch_partial_nosoftmaxtopk_nonepad_op():
@@ -22,7 +33,10 @@ def test_moe_dispatch_partial_nosoftmaxtopk_nonepad_op():
     x = paddle.arange(1, s + 1).unsqueeze(-1).expand([s, d]).astype("bfloat16")
     x_ = x.clone().detach()
 
-    t = ((paddle.arange(0, e)).unsqueeze(0) + paddle.arange(0, -s, -1).unsqueeze(-1)) % e
+    t = (
+        (paddle.arange(0, e)).unsqueeze(0)
+        + paddle.arange(0, -s, -1).unsqueeze(-1)
+    ) % e
     gate_logits = (1 / (t + 1)).astype("float32")
     # gate_logits = F.softmax(paddle.randn([s,e]),-1).astype('float32')
     gate_logits_ = gate_logits.clone().detach()
@@ -76,13 +90,15 @@ def test_moe_dispatch_partial_nosoftmaxtopk_nonepad_op():
     comm_sum = paddle.stack(comm).sum(0)
     ys_sum = paddle.concat(ys)
 
-    y_, combine_weihgts_, scatter_index_, expert_offset_, expert_id_ = moe_gate_dispatch(
-        x_,
-        gate_logits_,
-        None,
-        k=k,
-        capacity=cap,
-        use_pad=True,  # k  # cap
+    y_, combine_weihgts_, scatter_index_, expert_offset_, expert_id_ = (
+        moe_gate_dispatch(
+            x_,
+            gate_logits_,
+            None,
+            k=k,
+            capacity=cap,
+            use_pad=True,  # k  # cap
+        )
     )
     valid_y = y_.sum(-1) > 0.0
     y_2 = y_[valid_y].squeeze()
@@ -103,12 +119,19 @@ def test_moe_dispatch_partial_nosoftmaxtopk_nonepad_op():
     """
     )
 
-    print(f"<<< begin backward>>>")
+    print("<<< begin backward>>>")
 
-    assert combine_weihgts_.shape == combine_weihgts.shape, (combine_weihgts_.shape, combine_weihgts.shape)
+    assert combine_weihgts_.shape == combine_weihgts.shape, (
+        combine_weihgts_.shape,
+        combine_weihgts.shape,
+    )
 
-    dysum, dcombine_weights_sum = paddle.ones_like(ys_sum), paddle.randn(comm_sum.shape).astype(comm_sum.dtype)
-    dy_, dcombine_weights_ = paddle.ones_like(y_), paddle.ones_like(combine_weihgts_)
+    dysum, dcombine_weights_sum = paddle.ones_like(ys_sum), paddle.randn(
+        comm_sum.shape
+    ).astype(comm_sum.dtype)
+    dy_, dcombine_weights_ = paddle.ones_like(y_), paddle.ones_like(
+        combine_weihgts_
+    )
     dy_[~valid_y] = 0
 
     y_shapes = [len(y) for y in ys]
@@ -133,8 +156,6 @@ def test_moe_dispatch_partial_nosoftmaxtopk_nonepad_op():
     )
 
 
-
-
 def test_moe_ops_partial_nosoftmaxtopk_w_reverse_token_drop():
 
     S, E, D = 3, 4, 3
@@ -142,7 +163,9 @@ def test_moe_ops_partial_nosoftmaxtopk_w_reverse_token_drop():
     capacity = 2
     x = (paddle.arange(S) + 1).unsqueeze(-1).expand([S, D]).astype("bfloat16")
     cw = paddle.randn([S, k])
-    eid = paddle.to_tensor([[0, 1], [0, 1], [0, 2]], dtype="int32")  # 1  # 2  # 3
+    eid = paddle.to_tensor(
+        [[0, 1], [0, 1], [0, 2]], dtype="int32"
+    )  # 1  # 2  # 3
     (
         y,
         cw_,
@@ -167,7 +190,9 @@ def test_moe_ops_partial_nosoftmax_topk_empty_output():
     x = (paddle.arange(S) + 1).unsqueeze(-1).expand([S, D]).astype("bfloat16")
     cw = paddle.randn([S, k])
     paddle.device.synchronize()
-    eid = paddle.to_tensor([[0, 1], [0, 1], [0, 2]], dtype="int32")  # 1  # 2  # 3
+    eid = paddle.to_tensor(
+        [[0, 1], [0, 1], [0, 2]], dtype="int32"
+    )  # 1  # 2  # 3
     (
         y,
         cw_,

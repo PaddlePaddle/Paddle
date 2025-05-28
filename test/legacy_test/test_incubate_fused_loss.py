@@ -1,27 +1,30 @@
-import os
+# Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import logging
 import unittest
 
-from op_test import convert_float_to_uint16
-import random
-import paddle.nn.functional as F
-
-import paddle
 import numpy as np
-import random
-import logging
-
-import paddle
-from paddle.nn.clip import _squared_l2_norm
-
 from ernie_utils.top2_gate import (
-    CalAuxLossFunctor,
     cal_aux_loss_func,
 )
+
+import paddle
+import paddle.nn.functional as F
 from paddle.incubate.nn.functional import cal_aux_loss
-from ernie_utils.moe_layer import fuse_logging
 
 logger = logging.getLogger(__name__)
-
 
 
 class TestFusedCalculateAuxLoss(unittest.TestCase):
@@ -48,19 +51,40 @@ class TestFusedCalculateAuxLoss(unittest.TestCase):
         input_for_test.stop_gradient = False
 
         loss_ref = cal_aux_loss_func(
-            input_for_ref, dispatch_mask_for_ref, tokens_mask, dispatch_tokens_mask, num_experts, use_group, moe_k
+            input_for_ref,
+            dispatch_mask_for_ref,
+            tokens_mask,
+            dispatch_tokens_mask,
+            num_experts,
+            use_group,
+            moe_k,
         )
-        loss,_,_= cal_aux_loss(
-            input_for_test, dispatch_mask_for_test, tokens_mask, dispatch_tokens_mask, num_experts, use_group, moe_k, 1e-6)
+        loss, _, _ = cal_aux_loss(
+            input_for_test,
+            dispatch_mask_for_test,
+            tokens_mask,
+            dispatch_tokens_mask,
+            num_experts,
+            use_group,
+            moe_k,
+            1e-6,
+        )
         loss_ref.backward()
         loss.backward()
 
         np.testing.assert_equal(loss.shape, loss_ref.shape)
         np.testing.assert_equal(loss.dtype, loss_ref.dtype)
-        np.testing.assert_equal(input_for_ref.grad.shape, input_for_test.grad.shape)
-        np.testing.assert_equal(input_for_ref.grad.dtype, input_for_test.grad.dtype)
+        np.testing.assert_equal(
+            input_for_ref.grad.shape, input_for_test.grad.shape
+        )
+        np.testing.assert_equal(
+            input_for_ref.grad.dtype, input_for_test.grad.dtype
+        )
         np.testing.assert_allclose(
-            loss.astype("float32").numpy(), loss_ref.astype("float32").numpy(), atol=self.atol, rtol=self.rtol
+            loss.astype("float32").numpy(),
+            loss_ref.astype("float32").numpy(),
+            atol=self.atol,
+            rtol=self.rtol,
         )
         np.testing.assert_allclose(
             input_for_test.grad.astype("float32").numpy(),
@@ -81,16 +105,30 @@ class TestFusedCalculateAuxLoss(unittest.TestCase):
                 for use_dispatch_tokens_mask in [True, False]:
                     paddle.seed(48)
                     gate_prob = paddle.randn([seq_len, expert_num])
-                    dispatch_mask = paddle.randint(0, seq_len, [expert_num]).astype("int64")
-                    tokens_mask = paddle.randint(0, 1, [seq_len]).astype(gate_prob.dtype) if use_tokens_mask else None
+                    dispatch_mask = paddle.randint(
+                        0, seq_len, [expert_num]
+                    ).astype("int64")
+                    tokens_mask = (
+                        paddle.randint(0, 1, [seq_len]).astype(gate_prob.dtype)
+                        if use_tokens_mask
+                        else None
+                    )
                     dispatch_tokens_mask = (
-                        paddle.randint(0, 1, [seq_len * 2]).astype("bool") if use_dispatch_tokens_mask else None
+                        paddle.randint(0, 1, [seq_len * 2]).astype("bool")
+                        if use_dispatch_tokens_mask
+                        else None
                     )
                     self.run_and_check(
-                        gate_prob, dispatch_mask, tokens_mask, dispatch_tokens_mask, g_num_experts, moe_k, use_group
+                        gate_prob,
+                        dispatch_mask,
+                        tokens_mask,
+                        dispatch_tokens_mask,
+                        g_num_experts,
+                        moe_k,
+                        use_group,
                     )
 
-    def test_trival_cases(self):
+    def test_trivial_cases(self):
         self.run_single_case(seq_len=1, expert_num=1)
         self.run_single_case(seq_len=3, expert_num=2)
         self.run_single_case(seq_len=13, expert_num=3)
@@ -114,17 +152,31 @@ class TestFusedCalculateAuxLoss(unittest.TestCase):
         self.run_single_case(seq_len=256 * 1024, expert_num=48)
         self.run_single_case(seq_len=512 * 1024, expert_num=128)
 
-    def run_special_case(self, global_seq_len, seq_len, global_expert_num, expert_num, moe_k):
+    def run_special_case(
+        self, global_seq_len, seq_len, global_expert_num, expert_num, moe_k
+    ):
         for use_group in [True, False]:
             paddle.seed(48)
             seq_len = 4096
             expert_num = 48
             gate_prob = F.softmax(paddle.randn([seq_len, expert_num]), axis=-1)
-            dispatch_mask = paddle.randint(0, seq_len, [seq_len, expert_num]).astype("int64")
-            tokens_mask = paddle.randint(0, 1, [seq_len]).astype(gate_prob.dtype)
-            dispatch_tokens_mask = paddle.randint(0, 1, [global_seq_len]).astype("bool")
+            dispatch_mask = paddle.randint(
+                0, seq_len, [seq_len, expert_num]
+            ).astype("int64")
+            tokens_mask = paddle.randint(0, 1, [seq_len]).astype(
+                gate_prob.dtype
+            )
+            dispatch_tokens_mask = paddle.randint(
+                0, 1, [global_seq_len]
+            ).astype("bool")
             self.run_and_check(
-                gate_prob, dispatch_mask, tokens_mask, dispatch_tokens_mask, global_expert_num, moe_k, use_group
+                gate_prob,
+                dispatch_mask,
+                tokens_mask,
+                dispatch_tokens_mask,
+                global_expert_num,
+                moe_k,
+                use_group,
             )
 
     def test_special_cases(self):

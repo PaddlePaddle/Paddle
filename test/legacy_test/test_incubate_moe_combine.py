@@ -1,17 +1,27 @@
+# Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import os
+import random
 import unittest
 
 import numpy as np
-from op_test import convert_float_to_uint16
-import random
-import paddle.nn.functional as F
-
-import paddle
-from paddle import base
-from paddle.base import core
-from paddle.incubate.nn.functional import moe_combine
 from ernie_utils.moe_layer_uneven import GateCombine
 
+import paddle
+import paddle.nn.functional as F
+from paddle.incubate.nn.functional import moe_combine
 
 os.environ["FLAGS_flash_attn_version"] = "v1"
 os.environ["FLAGS_cudnn_deterministic"] = "1"
@@ -37,7 +47,9 @@ def combining(x, combine_weights, scatter_index, hard_gate=False):
     return y
 
 
-def baseline_result(x_numpy, combine_weights_numpy, scatter_index_numpy, grad_numpy):
+def baseline_result(
+    x_numpy, combine_weights_numpy, scatter_index_numpy, grad_numpy
+):
     """baseline_result"""
     scatter_index = paddle.to_tensor(scatter_index_numpy)
     x = paddle.to_tensor(x_numpy).cast("float32")
@@ -54,7 +66,9 @@ def baseline_result(x_numpy, combine_weights_numpy, scatter_index_numpy, grad_nu
     return [x.grad, combine_weights.grad, y]
 
 
-def test_moe_combine(x_numpy, combine_weights_numpy, scatter_index_numpy, grad_numpy):
+def test_moe_combine(
+    x_numpy, combine_weights_numpy, scatter_index_numpy, grad_numpy
+):
     """baseline_result"""
     x = paddle.to_tensor(x_numpy).cast("float32")
     x.stop_gradient = False
@@ -67,7 +81,7 @@ def test_moe_combine(x_numpy, combine_weights_numpy, scatter_index_numpy, grad_n
 
     y = GateCombine.apply(x, combine_weights, scatter_index)
     paddle.autograd.backward([y], [grad], True)
-    #grad.backward()
+    # grad.backward()
     return [x.grad, combine_weights.grad, y]
 
 
@@ -78,7 +92,9 @@ def gen_test_case(S, K, Dim, capacity_factor, seed=1234):
     paddle.seed(seed)
     x_numpy = np.random.rand(int(S * capacity_factor), Dim).astype(np.float32)
     combine_weights_numpy = np.random.rand(S, K).astype(np.float32)
-    scatter_index_numpy = np.random.permutation(max(x_numpy.shape[0], S * K))[: S * K].astype("int64")
+    scatter_index_numpy = np.random.permutation(max(x_numpy.shape[0], S * K))[
+        : S * K
+    ].astype("int64")
     scatter_index_numpy = scatter_index_numpy.reshape([S, K])
 
     combine_weights_numpy[scatter_index_numpy >= x_numpy.shape[0]] = 0
@@ -90,9 +106,14 @@ def gen_test_case(S, K, Dim, capacity_factor, seed=1234):
 def testing(test_case):
     """testing"""
     [bl_x_grad, bl_combine_weights_grad, bl_y] = baseline_result(*test_case)
-    [fused_x_grad, fused_combine_weights_grad, fused_y] = test_moe_combine(*test_case)
+    [fused_x_grad, fused_combine_weights_grad, fused_y] = test_moe_combine(
+        *test_case
+    )
     np.testing.assert_allclose(
-        fused_y.astype("float32").numpy(), bl_y.astype("float32").numpy(), err_msg="fwd precision not pass", rtol=1e-6
+        fused_y.astype("float32").numpy(),
+        bl_y.astype("float32").numpy(),
+        err_msg="fwd precision not pass",
+        rtol=1e-6,
     )
     np.testing.assert_allclose(
         fused_x_grad.astype("float32").numpy(),
@@ -105,6 +126,7 @@ def testing(test_case):
         bl_combine_weights_grad.astype("float32").numpy(),
         rtol=1e-6,
     )
+
 
 class TestFused(unittest.TestCase):
     @unittest.skipIf(moe_combine is None, "test_moe_combine not installed")
@@ -170,6 +192,7 @@ class TestFused(unittest.TestCase):
 
         """
         testing(gen_test_case(S=1024, K=8, Dim=4096, capacity_factor=2))
+
 
 if __name__ == "__main__":
 

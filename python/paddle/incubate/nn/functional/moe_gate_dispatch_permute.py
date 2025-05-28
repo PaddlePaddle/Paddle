@@ -1,6 +1,21 @@
+# Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from __future__ import annotations
-from typing import TYPE_CHECKING, Optional
-import paddle
+
+from typing import TYPE_CHECKING
+
 from paddle import _C_ops
 from paddle.base.framework import in_dynamic_or_pir_mode
 from paddle.base.layer_helper import LayerHelper
@@ -8,14 +23,15 @@ from paddle.base.layer_helper import LayerHelper
 if TYPE_CHECKING:
     from paddle import Tensor
 
+
 def moe_gate_dispatch_permute(
-    x: Tensor, 
-    gate_logits: Tensor, 
-    corr_bias: Tensor, 
-    k: int, 
-    capacity: int, 
+    x: Tensor,
+    gate_logits: Tensor,
+    corr_bias: Tensor,
+    k: int,
+    capacity: int,
     world_size: int,
-    name: str | None = None
+    name: str | None = None,
 ) -> tuple[Tensor, Tensor, Tensor, Tensor, Tensor]:
     """
     Dispatch and permute for Mixture of Experts (MoE).
@@ -38,7 +54,9 @@ def moe_gate_dispatch_permute(
         - expert_id: IDs of selected experts for each position.
     """
     if in_dynamic_or_pir_mode():
-        return _C_ops.moe_gate_dispatch_permute(x, gate_logits, corr_bias, k, capacity, world_size)
+        return _C_ops.moe_gate_dispatch_permute(
+            x, gate_logits, corr_bias, k, capacity, world_size
+        )
 
     helper = LayerHelper('moe_gate_dispatch_permute', **locals())
     y = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -50,7 +68,7 @@ def moe_gate_dispatch_permute(
     inputs = {
         'x': x,
         'gate_logits': gate_logits,
-        'corr_bias': corr_bias if corr_bias is not None else None
+        'corr_bias': corr_bias if corr_bias is not None else None,
     }
     attrs = {'k': k, 'capacity': capacity, 'world_size': world_size}
     outputs = {
@@ -58,11 +76,17 @@ def moe_gate_dispatch_permute(
         'combine_weights': combine_weights,
         'scatter_index': scatter_index,
         'expert_offset': expert_offset,
-        'expert_id': expert_id
+        'expert_id': expert_id,
     }
 
-    helper.append_op(type='moe_gate_dispatch_permute', inputs=inputs, outputs=outputs, attrs=attrs)
+    helper.append_op(
+        type='moe_gate_dispatch_permute',
+        inputs=inputs,
+        outputs=outputs,
+        attrs=attrs,
+    )
     return y, combine_weights, scatter_index, expert_offset, expert_id
+
 
 # # 定义输入参数
 # num_rows = 10  # 示例行数
@@ -87,11 +111,11 @@ def moe_gate_dispatch_permute(
 
 # # 调用封装的API
 # y, combine_weights, scatter_index, expert_offset, expert_id = moe_gate_dispatch_permute(
-#     x=x, 
-#     gate_logits=gate_logits, 
-#     corr_bias=corr_bias, 
-#     k=k, 
-#     capacity=capacity, 
+#     x=x,
+#     gate_logits=gate_logits,
+#     corr_bias=corr_bias,
+#     k=k,
+#     capacity=capacity,
 #     world_size=world_size
 # )
 

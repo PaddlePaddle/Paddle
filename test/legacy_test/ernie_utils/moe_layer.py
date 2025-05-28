@@ -1,31 +1,34 @@
+# ruff: noqa: FA100
 # !/usr/bin/env python3
+
+# Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """_summary_
 
 Returns:
     _type_: _description_
 """
-from typing import Any, Tuple, List, Optional, Callable
 import logging
 from collections import namedtuple
-from functools import partial
-import inspect
-import numpy as np
+from typing import List, Optional
 
 import paddle
-from paddle import framework
-from paddle import nn
-from paddle.distributed.communication import stream
-import paddle.nn.functional as F
-
-from paddle.autograd import PyLayer
-from paddle.distributed.communication.group import Group
-from paddle.distributed.fleet.utils import recompute
-from paddle.distributed import fleet
-
 import paddle.distributed as dist
-from paddle import Tensor
-
-
+from paddle import nn
+from paddle.distributed import fleet
+from paddle.distributed.communication.group import Group
 
 try:
     from src.utils.misc import global_training_logs
@@ -57,7 +60,10 @@ try:
     import moe_ops
 except ImportError:
     moe_ops = None
-    logger.warning("`moe-ops` not found, run " "`python3  src/ernie_core/ops/moe/setup.py  install` to install")
+    logger.warning(
+        "`moe-ops` not found, run "
+        "`python3  src/ernie_core/ops/moe/setup.py  install` to install"
+    )
 
 GateOutput = namedtuple(
     "GateOutput",
@@ -67,6 +73,7 @@ GateOutput = namedtuple(
         "logits",
     ],
 )
+
 
 class MOELayer(nn.Layer):
     """MOELayer module which implements MixtureOfExperts as described in Gshard_.
@@ -139,11 +146,15 @@ class MOELayer(nn.Layer):
         self.use_correction_bias = moe_statics is not None
         self.moe_statics = moe_statics
         if self.use_correction_bias:
-            logger.info(f"using correction bias, aux-coef:{self.gate.config.moe_aux_loss_lambda}")
+            logger.info(
+                f"using correction bias, aux-coef:{self.gate.config.moe_aux_loss_lambda}"
+            )
             assert self.gate.config.moe_use_aux_free
 
         self.is_mp_moe = (
-            hasattr(fleet.fleet, "_hcg") and group is fleet.get_hybrid_communicate_group().get_model_parallel_group()
+            hasattr(fleet.fleet, "_hcg")
+            and group
+            is fleet.get_hybrid_communicate_group().get_model_parallel_group()
         )
         is_dummy_moe = dist.get_world_size(group) == 1
 
@@ -163,29 +174,45 @@ class MOELayer(nn.Layer):
             self.rank = 0
 
         self.num_local_experts = len(self.experts)
-        self.dispatch_by_task = hasattr(self.gate, "dispatch_by_task") and self.gate.dispatch_by_task
+        self.dispatch_by_task = (
+            hasattr(self.gate, "dispatch_by_task")
+            and self.gate.dispatch_by_task
+        )
 
         if self.dispatch_by_task:
-            assert 0, f"no supported, checkout earylier code"
+            assert 0, "no supported, checkout earylier code"
             assert self.num_local_experts == 1
 
+        ''' dummy skip
         if enable_bpr:
-            logger.info(f"using BPR")
+            logger.info("using BPR")
             prepost_process_buffer = {}
-            self.input_preprocess = partial(bpr_preprocess, buffer=prepost_process_buffer)
-            self.output_postprocess = partial(bpr_postprocess, buffer=prepost_process_buffer)
+            self.input_preprocess = partial(
+                bpr_preprocess, buffer=prepost_process_buffer
+            )
+            self.output_postprocess = partial(
+                bpr_postprocess, buffer=prepost_process_buffer
+            )
         else:
             self.input_preprocess = self.output_postprocess = None
+        '''
+        self.input_preprocess = self.output_postprocess = None
         self.group_experts = group_experts
         self.config = self.gate.config
         self.zero = paddle.to_tensor(0, dtype=paddle.float32)
 
         self._rr_moe_gate_dispatch = None
         self._rr_moe_combine = None
-        if self.config.use_recompute and self.config.skip_recompute_ops.get("moe_gate_dispatch", False):
+        ''' dummy skip
+        if self.config.use_recompute and self.config.skip_recompute_ops.get(
+            "moe_gate_dispatch", False
+        ):
             self._rr_moe_gate_dispatch = RefinedRcomputeMoEGateDispatch()
-        if self.config.use_recompute and self.config.skip_recompute_ops.get("moe_combine", False):
+        if self.config.use_recompute and self.config.skip_recompute_ops.get(
+            "moe_combine", False
+        ):
             self._rr_moe_combine = RefinedRcomputeMoECombine()
+        '''
 
 
 def fuse_logging(gate_logits, combine_weights, token_type_ids):
@@ -199,9 +226,17 @@ def fuse_logging(gate_logits, combine_weights, token_type_ids):
                 gate_expert_per_token_type_0,
                 gate_expert_per_token_type_1,
                 gate_experts_per_token,
-            ) = moe_router_loss_ops.cal_gate_experts_per_token_info(combine_weights, token_type_ids)
+            ) = moe_router_loss_ops.cal_gate_experts_per_token_info(
+                combine_weights, token_type_ids
+            )
         else:
-            gate_experts_per_token = paddle.count_nonzero(combine_weights) / (gate_logits.shape[0])
+            gate_experts_per_token = paddle.count_nonzero(combine_weights) / (
+                gate_logits.shape[0]
+            )
 
-        return gate_expert_per_token_type_0, gate_expert_per_token_type_1, gate_experts_per_token, ce
-
+        return (
+            gate_expert_per_token_type_0,
+            gate_expert_per_token_type_1,
+            gate_experts_per_token,
+            ce,
+        )

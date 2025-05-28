@@ -1,24 +1,38 @@
+# ruff: noqa: FA100
 # !/usr/bin/env python3
+
+# Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """
 top2gate
 """
 
 
-from typing import Tuple
-from functools import partial
 import logging
+from functools import partial
+from typing import Tuple
+
 import numpy as np
-import math
+
 import paddle
-from paddle import Tensor
 import paddle.distributed as dist
 import paddle.nn.functional as F
-from paddle import nn
-from paddle.utils import unique_name
-from paddle.nn.clip import _squared_l2_norm
+from paddle import Tensor, nn
 from paddle.distributed import fleet
 from paddle.incubate.nn.functional import cal_aux_loss
-
+from paddle.utils import unique_name
 
 try:
     from src.utils.misc import global_training_logs
@@ -42,22 +56,33 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
-
-
-
-
 class CalAuxLossFunctor(paddle.autograd.PyLayer):
     """CalAuxLossFunctor"""
 
     @staticmethod
     def forward(
-        ctx, gate_prob, dispatch_mask, tokens_mask, dispatch_tokens_mask, num_experts, use_group, moe_k, clip_min=1e-6
+        ctx,
+        gate_prob,
+        dispatch_mask,
+        tokens_mask,
+        dispatch_tokens_mask,
+        num_experts,
+        use_group,
+        moe_k,
+        clip_min=1e-6,
     ):
         """forward"""
         if tokens_mask is not None and tokens_mask.dtype != gate_prob.dtype:
             tokens_mask = tokens_mask.astype(gate_prob.dtype)
         loss, seqlen_float, ce = cal_aux_loss(
-            gate_prob, dispatch_mask, tokens_mask, dispatch_tokens_mask, num_experts, use_group, moe_k, clip_min
+            gate_prob,
+            dispatch_mask,
+            tokens_mask,
+            dispatch_tokens_mask,
+            num_experts,
+            use_group,
+            moe_k,
+            clip_min,
         )
         '''
         ctx.save_for_backward(gate_prob, seqlen_float, ce)
@@ -101,7 +126,10 @@ def cal_aux_loss_func(
     scale = None
     if dispatch_tokens_mask is not None:
         seqlen_float = dispatch_tokens_mask.astype(gate_prob.dtype).sum()
-        if tokens_mask is not None and gate_prob.shape[0] != dispatch_tokens_mask.shape[0]:
+        if (
+            tokens_mask is not None
+            and gate_prob.shape[0] != dispatch_tokens_mask.shape[0]
+        ):
             scale = seqlen_float / paddle.clip(tokens_mask.sum(), min=1e-6)
     elif tokens_mask is not None:
         seqlen_float = tokens_mask.sum()
@@ -150,7 +178,9 @@ def masked_fill(x, mask, value):
 
 
 @paddle.no_grad()
-def compute_optimal_transport(M, r, c, lam=1.0, epsilon=1e-8, max_iters: int = 10):
+def compute_optimal_transport(
+    M, r, c, lam=1.0, epsilon=1e-8, max_iters: int = 10
+):
     """
     Computes the optimal transport matrix and Slinkhorn distance using the
     Sinkhorn-Knopp algorithm
@@ -201,7 +231,9 @@ class FusedGateDetachMatmul(paddle.autograd.PyLayer):
         """
         ctx.dtype = paddle.float32
         ctx.save_for_backward(x, w)
-        return F.linear(cast_if_needed(x, ctx.dtype), cast_if_needed(w, ctx.dtype))
+        return F.linear(
+            cast_if_needed(x, ctx.dtype), cast_if_needed(w, ctx.dtype)
+        )
 
     @staticmethod
     def backward(ctx, y_grad):
@@ -210,7 +242,13 @@ class FusedGateDetachMatmul(paddle.autograd.PyLayer):
         """
         x, w = ctx.saved_tensor()
         assert ctx.dtype == y_grad.dtype, "dtype not match"
-        x_g, w_g = matmul_bwd(cast_if_needed(x, ctx.dtype), cast_if_needed(w, ctx.dtype), y_grad, False, False)
+        x_g, w_g = matmul_bwd(
+            cast_if_needed(x, ctx.dtype),
+            cast_if_needed(w, ctx.dtype),
+            y_grad,
+            False,
+            False,
+        )
         return cast_if_needed(x_g, x.dtype), cast_if_needed(w_g, w.dtype)
 
 
@@ -269,7 +307,9 @@ class Top2Gate(nn.Layer):
         self.model_dim = config.hidden_size
         self.num_experts = config.moe_num_experts
         self.num_experts_tensor = (
-            sum(config.moe_num_experts) if config.multimodel_experts else config.moe_num_experts
+            sum(config.moe_num_experts)
+            if config.multimodel_experts
+            else config.moe_num_experts
         )  # paddle.to_tensor(config.moe_num_experts, dtype="float32").sum()
 
         self.cap = config.moe_capacity
@@ -299,15 +339,23 @@ class Top2Gate(nn.Layer):
         self.norm_gate_logits = config.moe_norm_gate_logits
         self.one = paddle.ones([], dtype="float32")
 
-        self.moe_aux_loss_lambda = paddle.to_tensor(config.moe_aux_loss_lambda, dtype="float32")
-        self.moe_z_loss_lambda = paddle.to_tensor(config.moe_z_loss_lambda, dtype="float32")
-        self.moe_orthogonal_loss_lambda = paddle.to_tensor(config.moe_orthogonal_loss_lambda, dtype="float32")
+        self.moe_aux_loss_lambda = paddle.to_tensor(
+            config.moe_aux_loss_lambda, dtype="float32"
+        )
+        self.moe_z_loss_lambda = paddle.to_tensor(
+            config.moe_z_loss_lambda, dtype="float32"
+        )
+        self.moe_orthogonal_loss_lambda = paddle.to_tensor(
+            config.moe_orthogonal_loss_lambda, dtype="float32"
+        )
         if self.moe_aux_loss_lambda.ndim == 0:
             self.moe_aux_loss_lambda = self.moe_aux_loss_lambda.unsqueeze(0)
         if self.moe_z_loss_lambda.ndim == 0:
             self.moe_z_loss_lambda = self.moe_z_loss_lambda.unsqueeze(0)
         if self.moe_orthogonal_loss_lambda.ndim == 0:
-            self.moe_orthogonal_loss_lambda = self.moe_orthogonal_loss_lambda.unsqueeze(0)
+            self.moe_orthogonal_loss_lambda = (
+                self.moe_orthogonal_loss_lambda.unsqueeze(0)
+            )
 
         self.experts_type_ids = None
         if config.moe_orthogonal_loss_lambda:
@@ -316,8 +364,9 @@ class Top2Gate(nn.Layer):
                 sharding_configs = strategy.hybrid_configs["sharding_configs"]
                 pp_config = strategy.hybrid_configs["pp_configs"]
                 assert (
-                    not sharding_configs.comm_overlap and not pp_config.sharding_comm_overlap
-                ), f"orthogonal loss will cause twice gradient accumulate, will break pp/sharding overlap"
+                    not sharding_configs.comm_overlap
+                    and not pp_config.sharding_comm_overlap
+                ), "orthogonal loss will cause twice gradient accumulate, will break pp/sharding overlap"
 
         self.eps = paddle.to_tensor([1e-12], dtype="float32")
         if config.multimodel_experts:
@@ -325,13 +374,19 @@ class Top2Gate(nn.Layer):
                 self.num_experts_list = []
                 self.experts_type_mask = []
                 # hard-gate + group_experts 需要对gate_logits不同部分分开计算
-                experts_ids = paddle.zeros([sum(self.num_experts)], dtype="int64").reshape([config.moe_world_size, -1])
+                experts_ids = paddle.zeros(
+                    [sum(self.num_experts)], dtype="int64"
+                ).reshape([config.moe_world_size, -1])
                 offset = 0
                 for i, expert_num in enumerate(self.num_experts):
-                    experts_ids[:, offset : offset + expert_num // config.moe_world_size] = i
+                    experts_ids[
+                        :, offset : offset + expert_num // config.moe_world_size
+                    ] = i
                     offset += expert_num // config.moe_world_size
                 self.experts_type_ids = experts_ids.reshape([-1])
-                logger.info(f"use moe_use_hard_gate, experts_ids: {self.experts_type_ids}")
+                logger.info(
+                    f"use moe_use_hard_gate, experts_ids: {self.experts_type_ids}"
+                )
                 for i, expert_num in enumerate(self.num_experts):
                     self.experts_type_mask.append(
                         self.experts_type_ids == i,
@@ -339,7 +394,9 @@ class Top2Gate(nn.Layer):
                     self.num_experts_list.append(expert_num)
             else:
                 # 非group_experts, 依赖token_type_bias实现hard-gate能力。
-                assert not config.moe_group_experts, "group_experts must use hard_gate when multimodel_experts is True"
+                assert (
+                    not config.moe_group_experts
+                ), "group_experts must use hard_gate when multimodel_experts is True"
         else:
             self.num_experts_list = [self.num_experts]
         if gate_weight is not None:
@@ -350,7 +407,7 @@ class Top2Gate(nn.Layer):
             logger.info("moe use gate_weight from outside")
             # 强制在amp下任使用fp32精度
             self._cast_to_low_precision = False  # 兼容develop分支paddle
-            self._cast_to_low_precison = False
+            self._cast_to_low_precision = False
         else:
             self._create_gate_parameter()
         logger.info(
@@ -372,34 +429,50 @@ class Top2Gate(nn.Layer):
         """
         if self.config.multimodel_experts:
             # support setting lambda for each expert group
-            self.moe_z_loss_lambda = self.moe_z_loss_lambda.expand(len(self.num_experts))
-            self.moe_aux_loss_lambda = self.moe_aux_loss_lambda.expand(len(self.num_experts))
-            self.moe_orthogonal_loss_lambda = self.moe_orthogonal_loss_lambda.expand(len(self.num_experts))
+            self.moe_z_loss_lambda = self.moe_z_loss_lambda.expand(
+                len(self.num_experts)
+            )
+            self.moe_aux_loss_lambda = self.moe_aux_loss_lambda.expand(
+                len(self.num_experts)
+            )
+            self.moe_orthogonal_loss_lambda = (
+                self.moe_orthogonal_loss_lambda.expand(len(self.num_experts))
+            )
 
             for i, num_experts in enumerate(self.num_experts):
                 if i == 1:
-                    with paddle.utils.unique_name.guard(f"mm_gate_{self.layer_idx}_"):
+                    with paddle.utils.unique_name.guard(
+                        f"mm_gate_{self.layer_idx}_"
+                    ):
                         p = self.create_parameter(
                             shape=[self.model_dim, num_experts],
                             dtype="float32",
-                            attr=paddle.ParamAttr(name=unique_name.generate("moe_gate")),
+                            attr=paddle.ParamAttr(
+                                name=unique_name.generate("moe_gate")
+                            ),
                         )
                 else:
                     p = self.create_parameter(
                         shape=[self.model_dim, num_experts],
                         dtype="float32",
-                        attr=paddle.ParamAttr(name=unique_name.generate("moe_gate")),
+                        attr=paddle.ParamAttr(
+                            name=unique_name.generate("moe_gate")
+                        ),
                     )
                 p.expert_type = f"expert_type_{i}"
                 self.add_parameter(
-                    "weight" if i == 0 else f"weight_{i}",  # 为了对齐原 state-dict，第一个 gate-weight 不改名.
+                    (
+                        "weight" if i == 0 else f"weight_{i}"
+                    ),  # 为了对齐原 state-dict，第一个 gate-weight 不改名.
                     p,
                 )
         else:
             self.weight = self.create_parameter(
                 shape=[self.model_dim, self.num_experts],
                 dtype="float32",
-                attr=paddle.ParamAttr(name=unique_name.generate("moe_gate")),  # 特殊处理，有利于热启 dense-ckpt
+                attr=paddle.ParamAttr(
+                    name=unique_name.generate("moe_gate")
+                ),  # 特殊处理，有利于热启 dense-ckpt
             )
             logger.info(f"moe-Gate, {self.weight}")
 
@@ -408,20 +481,28 @@ class Top2Gate(nn.Layer):
                 assert (
                     not self.config.moe_use_hard_gate
                 ), "multimodel_experts with hard_gate is not support token_type_bias."
-            num_experts = sum(self.num_experts) if self.config.multimodel_experts else self.num_experts
-            bias_type_num = len(self.num_experts) if self.config.multimodel_experts else 1
+            num_experts = (
+                sum(self.num_experts)
+                if self.config.multimodel_experts
+                else self.num_experts
+            )
+            bias_type_num = (
+                len(self.num_experts) if self.config.multimodel_experts else 1
+            )
             self.bias = self.create_parameter(
                 shape=[bias_type_num, num_experts],
                 dtype="float32",
                 attr=paddle.ParamAttr(
                     name=unique_name.generate("moe_gate_bias"),
-                    initializer=paddle.nn.initializer.Assign(np.zeros([bias_type_num, num_experts])),
+                    initializer=paddle.nn.initializer.Assign(
+                        np.zeros([bias_type_num, num_experts])
+                    ),
                 ),  # 特殊处理，有利于热启 dense-ckpt
             )
             logger.info(f"using token type bias, bias: {self.bias},")
         # 强制在amp下任使用fp32精度
         self._cast_to_low_precision = False  # 兼容develop分支paddle
-        self._cast_to_low_precison = False
+        self._cast_to_low_precision = False
 
     def get_gate_weight(self, transform_weight):
         """
@@ -432,7 +513,11 @@ class Top2Gate(nn.Layer):
             return self.weight
         if not transform_weight:
             return paddle.concat(
-                [getattr(self, "weight" if i == 0 else f"weight_{i}") for i in range(len(self.num_experts))], -1
+                [
+                    getattr(self, "weight" if i == 0 else f"weight_{i}")
+                    for i in range(len(self.num_experts))
+                ],
+                -1,
             )
         weight = paddle.zeros(
             [
@@ -444,9 +529,13 @@ class Top2Gate(nn.Layer):
         )
         offset = 0
         for i, num_experts in enumerate(self.num_experts):
-            weight[:, :, offset : offset + num_experts // self.config.moe_world_size] = getattr(
-                self, "weight" if i == 0 else f"weight_{i}"
-            ).reshape([self.model_dim, self.config.moe_world_size, -1])
+            weight[
+                :,
+                :,
+                offset : offset + num_experts // self.config.moe_world_size,
+            ] = getattr(self, "weight" if i == 0 else f"weight_{i}").reshape(
+                [self.model_dim, self.config.moe_world_size, -1]
+            )
             offset += num_experts // self.config.moe_world_size
         weight = weight.reshape([self.model_dim, -1])
 
@@ -464,12 +553,16 @@ class Top2Gate(nn.Layer):
             input: paddle.Tensor[Seq, Dim], hidden-states of layer
             token_type_ids: paddle.Tensor[Seqw], token_type_ids of input
             transform_weight: bool, when using multimodal experts, perform `self.get_gate_weight` if specified
-        Retruns:
+        Returns:
             paddle.Tensor [Seq, Expert, Capacity]: float32, combine weights
             paddle.Tensor [Seq, Expert, Capacity]: bool, dispatch mask
             Tuple[paddle.Tensor]: `GateOutput`
         """
-        num_experts = sum(self.num_experts) if self.config.multimodel_experts else self.num_experts
+        num_experts = (
+            sum(self.num_experts)
+            if self.config.multimodel_experts
+            else self.num_experts
+        )
         orig_dtype = input.dtype
         weight = self.get_gate_weight(transform_weight)
         with paddle.amp.auto_cast(False):
@@ -482,7 +575,9 @@ class Top2Gate(nn.Layer):
                     training=self.training,
                 )
             else:
-                logits = gate_detach_matmul(input, weight, self.fuse_gate_detach_matmul)
+                logits = gate_detach_matmul(
+                    input, weight, self.fuse_gate_detach_matmul
+                )
 
             if self.use_token_type_bias:
                 assert token_type_ids is not None
@@ -506,13 +601,24 @@ class Top2Gate(nn.Layer):
             router_loss.stop_gradient = False
 
         combine_weights = combine_weights.cast(orig_dtype)
-        return capacity, dispatch_mask, combine_weights, scatter_index, router_loss, logits
+        return (
+            capacity,
+            dispatch_mask,
+            combine_weights,
+            scatter_index,
+            router_loss,
+            logits,
+        )
 
     def get_capacity(self, num_tokens, cap_factor=None):
         """
-        return capcity
+        return capacity
         """
-        num_experts = sum(self.num_experts) if self.config.multimodel_experts else self.num_experts
+        num_experts = (
+            sum(self.num_experts)
+            if self.config.multimodel_experts
+            else self.num_experts
+        )
         if cap_factor is not None:
             cap = cap_factor
         else:
@@ -524,7 +630,9 @@ class Top2Gate(nn.Layer):
                 cap = self.cap[1]
         # capacity = 2S/E
         capacity = int(cap * num_tokens // num_experts)
-        assert capacity > 0, f"requires capacity to >= 0. cap={cap}, num_tokens={num_tokens}"
+        assert (
+            capacity > 0
+        ), f"requires capacity to >= 0. cap={cap}, num_tokens={num_tokens}"
         return capacity
 
     def top2_gating(self, logits, cap=None, correction_bias=None):
@@ -555,11 +663,19 @@ class Top2Gate(nn.Layer):
         capacity = self.get_capacity(logits.shape[0], cap)
 
         # Create a mask for 1st's expert per token
-        score_for_argmax = gates + correction_bias.unsqueeze(0) if correction_bias is not None else gates
+        score_for_argmax = (
+            gates + correction_bias.unsqueeze(0)
+            if correction_bias is not None
+            else gates
+        )
         indices1_s = paddle.argmax(score_for_argmax, axis=1)
-        mask1 = F.one_hot(indices1_s, num_classes=num_experts).cast(paddle.int64)  # [0,1]
+        mask1 = F.one_hot(indices1_s, num_classes=num_experts).cast(
+            paddle.int64
+        )  # [0,1]
 
-        l_aux = self._cal_aux_loss(gates, mask1.sum(axis=0), self.num_experts_tensor)
+        l_aux = self._cal_aux_loss(
+            gates, mask1.sum(axis=0), self.num_experts_tensor
+        )
         # Create a mask for 2nd's expert per token using Gumbel-max trick
         # https://timvieira.github.io/blog/post/2014/07/31/gumbel-max-trick/
         if self.training and not self.no_jitter:
@@ -574,9 +690,13 @@ class Top2Gate(nn.Layer):
         else:
             logits_w_noise = logits
 
-        logits_except1 = masked_fill(logits_w_noise, mask1.cast(paddle.bool), float("-inf"))
+        logits_except1 = masked_fill(
+            logits_w_noise, mask1.cast(paddle.bool), float("-inf")
+        )
         score_for_argmax = (
-            self.act(logits_except1) + correction_bias.unsqueeze(0) if correction_bias is not None else logits_except1
+            self.act(logits_except1) + correction_bias.unsqueeze(0)
+            if correction_bias is not None
+            else logits_except1
         )
         indices2_s_original = paddle.argmax(score_for_argmax, axis=1)
 
@@ -588,17 +708,25 @@ class Top2Gate(nn.Layer):
             c = paddle.maximum(c, paddle.zeros_like(c))
             c /= c.sum()
 
-            pi, _ = compute_optimal_transport(-logits_except1.cast("float32").detach(), r, c, lam=self.sinkhorn_temp)
+            pi, _ = compute_optimal_transport(
+                -logits_except1.cast("float32").detach(),
+                r,
+                c,
+                lam=self.sinkhorn_temp,
+            )
             pi = masked_fill(pi, mask1.cast(paddle.bool), float("-inf"))
             indices2_s = paddle.argmax(pi, axis=1)
         else:
             indices2_s = indices2_s_original
 
-
-        mask2 = F.one_hot(indices2_s, num_classes=self.num_experts).cast(paddle.int64)
+        mask2 = F.one_hot(indices2_s, num_classes=self.num_experts).cast(
+            paddle.int64
+        )
 
         # Compute locations in capacity buffer
-        locations1 = paddle.cumsum(mask1, axis=0) - 1  # [0,1,1,0,1,0,0] -> [0,0,0,0,1,1,1,]
+        locations1 = (
+            paddle.cumsum(mask1, axis=0) - 1
+        )  # [0,1,1,0,1,0,0] -> [0,0,0,0,1,1,1,]
         locations2 = paddle.cumsum(mask2, axis=0) - 1
         # Update 2nd's location by accounting for locations of 1st
         locations2 += paddle.sum(mask1, axis=0, keepdim=True)
@@ -659,7 +787,13 @@ class Top2Gate(nn.Layer):
         )
 
     def _cal_aux_loss(
-        self, gate_prob, dispatch_mask, num_experts=None, use_group=None, tokens_mask=None, dispatch_tokens_mask=None
+        self,
+        gate_prob,
+        dispatch_mask,
+        num_experts=None,
+        use_group=None,
+        tokens_mask=None,
+        dispatch_tokens_mask=None,
     ):
         """
         计算辅助损失
@@ -680,16 +814,24 @@ class Top2Gate(nn.Layer):
             if tokens_mask is not None:
                 gate_prob_this_modality = gate_prob[tokens_mask.astype("bool")]
                 if gate_prob_this_modality.shape[0]:
-                    _, top_idx = gate_prob_this_modality.topk(k=self.config.moe_k, axis=-1)
+                    _, top_idx = gate_prob_this_modality.topk(
+                        k=self.config.moe_k, axis=-1
+                    )
                     if int_bincount is not None:
-                        dispatch_mask = int_bincount(top_idx, 0, gate_prob.shape[-1], paddle.int64)
-                    else:
-                        mask = paddle.zeros_like(gate_prob_this_modality).put_along_axis(
-                            top_idx, paddle.to_tensor(1.0), axis=1
+                        dispatch_mask = int_bincount(
+                            top_idx, 0, gate_prob.shape[-1], paddle.int64
                         )
-                        dispatch_mask = paddle.sum(mask.cast(paddle.int64), axis=0)
+                    else:
+                        mask = paddle.zeros_like(
+                            gate_prob_this_modality
+                        ).put_along_axis(top_idx, paddle.to_tensor(1.0), axis=1)
+                        dispatch_mask = paddle.sum(
+                            mask.cast(paddle.int64), axis=0
+                        )
                 else:
-                    dispatch_mask = paddle.zeros(gate_prob.shape[-1], dtype="int64")
+                    dispatch_mask = paddle.zeros(
+                        gate_prob.shape[-1], dtype="int64"
+                    )
                 dist.stream.all_reduce(
                     dispatch_mask,
                     group=self.group,
@@ -698,9 +840,13 @@ class Top2Gate(nn.Layer):
             else:
                 _, top_idx = gate_prob.topk(k=self.config.moe_k, axis=-1)
                 if int_bincount is not None:
-                    dispatch_mask = int_bincount(top_idx, 0, gate_prob.shape[-1], paddle.int64)
+                    dispatch_mask = int_bincount(
+                        top_idx, 0, gate_prob.shape[-1], paddle.int64
+                    )
                 else:
-                    mask = paddle.zeros_like(gate_prob).put_along_axis(top_idx, paddle.to_tensor(1.0), axis=1)
+                    mask = paddle.zeros_like(gate_prob).put_along_axis(
+                        top_idx, paddle.to_tensor(1.0), axis=1
+                    )
                     dispatch_mask = paddle.sum(mask.cast(paddle.int64), axis=0)
 
         if num_experts is None:
@@ -711,7 +857,10 @@ class Top2Gate(nn.Layer):
         if (
             moe_router_loss_ops is not None
             and (tokens_mask is None or len(tokens_mask.shape) == 1)
-            and (tokens_mask is None or tokens_mask.shape[0] == gate_prob.shape[0])
+            and (
+                tokens_mask is None
+                or tokens_mask.shape[0] == gate_prob.shape[0]
+            )
             and (gate_prob.shape[0] >= gate_prob.shape[1])
             and (not self.global_aux_loss)
             and (gate_prob.dtype == paddle.float32)
@@ -741,7 +890,6 @@ class Top2Gate(nn.Layer):
             )
 
 
-
 class TopKGateFused(Top2Gate):
     """doc"""
 
@@ -756,7 +904,7 @@ class TopKGateFused(Top2Gate):
             input: paddle.Tensor, hidden-states of layer
             token_type_ids: paddle.Tensor[Seqw], token_type_ids of input
             transform_weight: bool, when using multimodal experts, perform `self.get_gate_weight` if specified
-        Retruns:
+        Returns:
             paddle.Tensor [Seq, Expert, Capacity]: float32, combine weights
             paddle.Tensor [Seq, Expert, Capacity]: bool, dispatch mask
             Tuple[paddle.Tensor]: `GateOutput`
@@ -773,7 +921,9 @@ class TopKGateFused(Top2Gate):
                     training=self.training,
                 )
             else:
-                logits = gate_detach_matmul(input, weight, self.fuse_gate_detach_matmul)
+                logits = gate_detach_matmul(
+                    input, weight, self.fuse_gate_detach_matmul
+                )
             if self.use_token_type_bias:
                 assert token_type_ids is not None
                 assert (
@@ -786,19 +936,26 @@ class TopKGateFused(Top2Gate):
             router_loss = paddle.zeros([1], dtype="float32")
             router_loss.stop_gradient = False
 
-
         return logits, capacity, router_loss
 
 
 class DeepEPTop2Gate(TopKGateFused):
     """DeepEPTop2Gate"""
 
-    def forward(self, input, transform_weight=True, global_gate_mask=None, input_ids=None):
+    def forward(
+        self,
+        input,
+        transform_weight=True,
+        global_gate_mask=None,
+        input_ids=None,
+    ):
         """forward"""
 
         weight = self.get_gate_weight(transform_weight)
         with paddle.amp.auto_cast(False):
-            logits = gate_detach_matmul(input, weight, self.fuse_gate_detach_matmul)
+            logits = gate_detach_matmul(
+                input, weight, self.fuse_gate_detach_matmul
+            )
 
         if global_gate_mask is not None:
             logits = logits + global_gate_mask
@@ -820,10 +977,14 @@ class DeepEPTop2Gate(TopKGateFused):
             paddle.Tensor: The value of auxiliary loss.
 
         """
-        assert len(gates.shape) == 2, "gates.shape must be [sequence_lengh, num_experts]"
+        assert (
+            len(gates.shape) == 2
+        ), "gates.shape must be [sequence_length, num_experts]"
         if input_ids is not None:
             # has_padding = (input_ids == 0).any()
-            assert input_ids.shape[0] == gates.shape[0], f"check input_ids shape {input_ids.shape}"
+            assert (
+                input_ids.shape[0] == gates.shape[0]
+            ), f"check input_ids shape {input_ids.shape}"
             valid_mask = (input_ids != 0).astype(paddle.float32)
             seqlen_float = valid_mask.sum().item()
             gates = gates * valid_mask.unsqueeze(-1)
@@ -866,5 +1027,9 @@ class DeepEPTop2Gate(TopKGateFused):
             Paddle.Tensor: orthogonal loss
         """
         weight = F.normalize(self.weight, axis=0)
-        orthogonal_loss = paddle.mean(paddle.square(paddle.matmul(weight.T, weight) - paddle.eye(self.num_experts)))
+        orthogonal_loss = paddle.mean(
+            paddle.square(
+                paddle.matmul(weight.T, weight) - paddle.eye(self.num_experts)
+            )
+        )
         return orthogonal_loss

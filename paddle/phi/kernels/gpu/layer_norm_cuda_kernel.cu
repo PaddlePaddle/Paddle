@@ -37,13 +37,13 @@ static void GetRowsCols(const std::vector<int64_t> &shape,
   *p_cols = cols;
 }
 
-template<typename T, typename Context>
-void RMSLnFwd(const Context& ctx,
+template <typename T, typename Context>
+void RMSLnFwd(const Context &ctx,
               const DenseTensor &x,
               const DenseTensor &scale,
               float epsilon,
-              DenseTensor* y,
-              DenseTensor* invvar) {
+              DenseTensor *y,
+              DenseTensor *invvar) {
   const auto &scale_shape = scale.dims();
   const auto &x_shape = x.dims();
   PD_CHECK(scale_shape.size() == 1);
@@ -54,21 +54,21 @@ void RMSLnFwd(const Context& ctx,
   cols = x_shape[1];
   // GetRowsCols(x_shape, &rows, &cols);
 
-  *y = phi::EmptyLike<T,Context>(ctx, x);
+  *y = phi::EmptyLike<T, Context>(ctx, x);
   *invvar = phi::Empty<float, Context>(ctx, {rows});
 
   cuda_rms_norm<T, Context>(ctx, x, scale, rows, cols, epsilon, y, invvar);
 }
 
-template<typename T, typename Context>
-void RMSLnBwd(const Context& ctx,
+template <typename T, typename Context>
+void RMSLnBwd(const Context &ctx,
               const DenseTensor &x,
               const DenseTensor &scale,
               const DenseTensor &invvar,
               const DenseTensor &y_grad,
               float epsilon,
-              DenseTensor* x_grad,
-              DenseTensor* scale_grad) {
+              DenseTensor *x_grad,
+              DenseTensor *scale_grad) {
   int rows, cols;
   const auto &x_shape = x.dims();
   rows = x_shape[0];
@@ -76,32 +76,13 @@ void RMSLnBwd(const Context& ctx,
   ctx.template Alloc<T>(x_grad);
   ctx.template Alloc<T>(scale_grad);
   cuda_rms_norm_gradient<T, Context>(
-                          ctx,
-                           x,
-                           scale,
-                           invvar,
-                           y_grad,
-                           rows,
-                           cols,
-                           epsilon,
-                           x_grad,
-                           scale_grad
-                           );
+      ctx, x, scale, invvar, y_grad, rows, cols, epsilon, x_grad, scale_grad);
 }
 
-} // namespace phi
+}  // namespace phi
 
+PD_REGISTER_KERNEL(
+    fused_rms_norm, GPU, ALL_LAYOUT, phi::RMSLnFwd, float, double) {}
 
-PD_REGISTER_KERNEL(fused_rms_norm,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::RMSLnFwd,
-                   float,
-                   double) {}
-
-PD_REGISTER_KERNEL(fused_rms_norm_grad,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::RMSLnBwd,
-                   float,
-                   double) {}
+PD_REGISTER_KERNEL(
+    fused_rms_norm_grad, GPU, ALL_LAYOUT, phi::RMSLnBwd, float, double) {}

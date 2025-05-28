@@ -1370,7 +1370,7 @@ void ExpandModalityExpertIdInferMeta(const MetaTensor& expert_id,
                                      int64_t group_size,
                                      int64_t modality_offset,
                                      bool is_group_expert,
-                                     MetaTensor* expert_id_out){
+                                     MetaTensor* expert_id_out) {
   auto expert_id_dims = expert_id.dims();
   PADDLE_ENFORCE_EQ(
       expert_id_dims.size(),
@@ -1381,12 +1381,13 @@ void ExpandModalityExpertIdInferMeta(const MetaTensor& expert_id,
           expert_id_dims.size(),
           expert_id_dims));
   PADDLE_ENFORCE_EQ(
-    expert_id.dtype() == DataType::INT32 || expert_id.dtype() == DataType::INT64,
-    true,
-    common::errors::InvalidArgument(
-      "The dtype of expert_id should be INT32 or INT64. But received"
-      "dtype=%s.",
-      DataTypeToString(expert_id.dtype())));
+      expert_id.dtype() == DataType::INT32 ||
+          expert_id.dtype() == DataType::INT64,
+      true,
+      common::errors::InvalidArgument(
+          "The dtype of expert_id should be INT32 or INT64. But received"
+          "dtype=%s.",
+          DataTypeToString(expert_id.dtype())));
 
   int64_t seqlen = expert_id_dims[0];
   int64_t k = expert_id_dims[1];
@@ -6221,19 +6222,20 @@ void IntBincountInferMeta(const MetaTensor& x,
                           int64_t dtype,
                           MetaTensor* out) {
   PADDLE_ENFORCE_EQ(
-      x.dims().size(), 1,
+      x.dims().size(),
+      1,
       errors::InvalidArgument(
           "The input 'x' of int_bincount must be a 1-D Tensor, but got %u-D.",
           x.dims().size()));
   PADDLE_ENFORCE_GT(
-      high, low,
+      high,
+      low,
       errors::InvalidArgument("Attr high (%d) must be > low (%d).", high, low));
   int64_t bin_count = high - low + 1;
 
   out->set_dims(phi::make_ddim({bin_count}));
   out->set_dtype(x.dtype());
 }
-
 
 }  // namespace phi
 

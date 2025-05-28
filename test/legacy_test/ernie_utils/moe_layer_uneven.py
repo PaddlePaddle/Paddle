@@ -1,33 +1,34 @@
 # !/usr/bin/env python3
+
+# Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """
 moe
 """
 
-from ast import Import
-from operator import le
-from typing import TYPE_CHECKING, Any, Optional, Tuple, Union, cast, List
-import logging
-import sys
 import inspect
-from collections import defaultdict, namedtuple, Counter
+import logging
+from collections import namedtuple
 
-import numpy as np
 import paddle
 from paddle import _C_ops
-from paddle import nn
-from paddle.distributed.communication import stream
-
 from paddle.autograd import PyLayer
-from paddle.distributed.communication.group import Group
-from paddle.distributed.fleet.utils import recompute
-import paddle.distributed as dist
-from paddle import Tensor
-from paddle.nn import functional as F
-from paddle.distributed import fleet
-
 
 # from ernie_core.models.moe.moe_layer import _AllToAll
-from .top2_gate import TopKGateFused
+from paddle.incubate.nn.functional import moe_gate_dispatch
+from paddle.nn import functional as F
 
 try:
     from src.utils.misc import global_training_logs
@@ -48,8 +49,10 @@ GateOutput = namedtuple(
 
 if False:
     try:
-        from paddle_xpu_nn import moe_combine as xpu_moe_combine
-        from paddle_xpu_nn import moe_combine_bwd as xpu_moe_combine_bwd
+        from paddle_xpu_nn import (
+            moe_combine as xpu_moe_combine,
+            moe_combine_bwd as xpu_moe_combine_bwd,
+        )
     except ImportError:
         xpu_moe_combine = None
         xpu_moe_combine_bwd = None
@@ -59,9 +62,10 @@ else:
         from paddle.incubate.nn.functional import moe_combine
     except ImportError:
         moe_combine = None
-        logger.warning("`moe-combine` not found, run " "`python3  src/ernie_core/ops/moe/setup.py  install` to install")
-
-
+        logger.warning(
+            "`moe-combine` not found, run "
+            "`python3  src/ernie_core/ops/moe/setup.py  install` to install"
+        )
 
 
 def average_grad(x, y, dy, eps=1e-12):
@@ -74,10 +78,14 @@ def average_grad(x, y, dy, eps=1e-12):
     maskpos = (xsum == 0.0).expand_as(x)
 
     xsum_square = xsum.square()  # [s,1]
-    left = paddle.triu(paddle.tril((1 / xsum).unsqueeze(-1).expand([s, k, k])))  # aka diag-emb [s,k,k]
+    left = paddle.triu(
+        paddle.tril((1 / xsum).unsqueeze(-1).expand([s, k, k]))
+    )  # aka diag-emb [s,k,k]
     right = (-x / xsum_square).unsqueeze(-1).expand([s, k, k])
     dydx = left + right
-    dx = paddle.matmul(dy.unsqueeze(-2).cast(dydx.dtype), dydx).squeeze(-2)  # [s,1,k] @[s,k,k] -> [s,1,k]
+    dx = paddle.matmul(dy.unsqueeze(-2).cast(dydx.dtype), dydx).squeeze(
+        -2
+    )  # [s,1,k] @[s,k,k] -> [s,1,k]
     dx = paddle.where(maskpos, paddle.zeros_like(dx), dx)
     return dx
 
@@ -100,12 +108,18 @@ def average_grad_bi(x, y, dy, eps=1e-12):
     s, k = x.shape
     assert k == 2, k
     xsum = paddle.clip(x.sum(axis=-1, keepdim=True), min=eps)  # [s,1]
-    dydx = x.flip(axis=1).unsqueeze(-2).tile([1, 2, 1]) * mask.cast(x.dtype) / xsum.square().unsqueeze(-1)
-    dx = paddle.matmul(dy.unsqueeze(-2).cast(dydx.dtype), dydx).squeeze(-2)  # [s,1,k] @[s,k,k] -> [s,1,k]
+    dydx = (
+        x.flip(axis=1).unsqueeze(-2).tile([1, 2, 1])
+        * mask.cast(x.dtype)
+        / xsum.square().unsqueeze(-1)
+    )
+    dx = paddle.matmul(dy.unsqueeze(-2).cast(dydx.dtype), dydx).squeeze(
+        -2
+    )  # [s,1,k] @[s,k,k] -> [s,1,k]
     return dx
 
 
-def topk_grad(x, dy, indicies):
+def topk_grad(x, dy, indices):
     """
     TODO: fuse 这坨 shit
     y=gather(topk(x)) 的反向过程
@@ -117,8 +131,8 @@ def topk_grad(x, dy, indicies):
     dx = paddle.scatter_nd(
         paddle.stack(
             [
-                paddle.arange(s).repeat_interleave(k).cast(indicies.dtype),
-                indicies.reshape([-1]),
+                paddle.arange(s).repeat_interleave(k).cast(indices.dtype),
+                indices.reshape([-1]),
             ],
             -1,
         ),
@@ -153,12 +167,19 @@ class GateDispatch(PyLayer):
         ctx.eps = eps
         ctx.capacity = capacity
         ctx.gate_prob = gate_prob
-        if "corr_bias" in inspect.signature(moe_ops.moe_gate_dispatch).parameters:
+        if "corr_bias" in inspect.signature(moe_gate_dispatch).parameters:
             compat_args = (None,)
         else:
             compat_args = ()
-        y, combine_weights, scatter_index, expert_offset, expert_id = moe_ops.moe_gate_dispatch(
-            x, gate_prob, *compat_args, k=k, capacity=capacity, use_pad=use_pad
+        y, combine_weights, scatter_index, expert_offset, expert_id = (
+            moe_gate_dispatch(
+                x,
+                gate_prob,
+                *compat_args,
+                k=k,
+                capacity=capacity,
+                use_pad=use_pad,
+            )
         )
         ctx.combine_weights = combine_weights
         scatter_index = scatter_index.transpose([1, 0])  # [k,s] ->[s,k]
@@ -182,7 +203,9 @@ class GateDispatch(PyLayer):
         s, k = ctx.combine_weights.shape
         grad = F.embedding(ctx.scatter_index, dy)  # [s, k,d]
         mask = (ctx.combine_weights > 0.0).astype(grad.dtype)  # [s,k]
-        dx = paddle.matmul(mask.unsqueeze(1), grad).squeeze(1)  # [s,1,k] @ [s,k,d] -> [s,1,d]
+        dx = paddle.matmul(mask.unsqueeze(1), grad).squeeze(
+            1
+        )  # [s,1,k] @ [s,k,d] -> [s,1,d]
         if ctx.gate_prob.stop_gradient:
             return dx, None
 
@@ -243,10 +266,12 @@ class GateCombine(PyLayer):
         # reduce the hidden shape
         # TODO: implement reduce in cuda ops
         grad_combine_weight = grad_combine_weight_helper.sum(-1)
-        return grad_x, grad_combine_weight.reshape(ctx.combine_weights.shape), None
-        #return grad_x, grad_combine_weight_helper
-
-
+        return (
+            grad_x,
+            grad_combine_weight.reshape(ctx.combine_weights.shape),
+            None,
+        )
+        # return grad_x, grad_combine_weight_helper
 
 
 def combining(x, combine_weights, scatter_index, hard_gate=False):
@@ -265,4 +290,3 @@ def combining(x, combine_weights, scatter_index, hard_gate=False):
     ret = GateCombine.apply(x, combine_weights, scatter_index)
     ret.stop_gradient = False
     return ret
-

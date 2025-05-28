@@ -1,6 +1,20 @@
+// Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#include "paddle/phi/kernels/moe_combine_grad_kernel.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/moe_combine_grad_kernel.h"
 #include "paddle/phi/kernels/full_kernel.h"
 namespace phi {
 
@@ -109,16 +123,17 @@ void moe_combine_bwd(const Context& dev_ctx,
                      const int64_t k,
                      const int64_t seqlen,
                      const int64_t hidden_size) {
-  apply_moe_combine_bwd<T>(x.data<T>(),
-                        combine_weights.data<T>(),
-                        scatter_index.data<int>(),
-                        grad_y.data<T>(),
-                        const_cast<T*>(grad_x->data<T>()),
-                        const_cast<T*>(grad_combine_weights_helper->data<T>()),
-                        k,
-                        seqlen,
-                        hidden_size,
-                        dev_ctx.stream());
+  apply_moe_combine_bwd<T>(
+      x.data<T>(),
+      combine_weights.data<T>(),
+      scatter_index.data<int>(),
+      grad_y.data<T>(),
+      const_cast<T*>(grad_x->data<T>()),
+      const_cast<T*>(grad_combine_weights_helper->data<T>()),
+      k,
+      seqlen,
+      hidden_size,
+      dev_ctx.stream());
 }
 template <typename T, typename Context>
 void MoeCombineGradKernel(const Context& dev_ctx,
@@ -130,8 +145,13 @@ void MoeCombineGradKernel(const Context& dev_ctx,
                           DenseTensor* grad_combine_weights_helper) {
   dev_ctx.template Alloc<T>(grad_x);
   dev_ctx.template Alloc<T>(grad_combine_weights_helper);
-  phi::Full<T, Context>(dev_ctx, phi::IntArray(common::vectorize(grad_x->dims())), 0, grad_x);
-  phi::Full<T, Context>(dev_ctx, phi::IntArray(common::vectorize(grad_combine_weights_helper->dims())), 0, grad_combine_weights_helper);
+  phi::Full<T, Context>(
+      dev_ctx, phi::IntArray(common::vectorize(grad_x->dims())), 0, grad_x);
+  phi::Full<T, Context>(
+      dev_ctx,
+      phi::IntArray(common::vectorize(grad_combine_weights_helper->dims())),
+      0,
+      grad_combine_weights_helper);
   auto x_shape = x.dims();
   auto combine_weights_shape = combine_weights.dims();
   moe_combine_bwd<T, Context>(dev_ctx,

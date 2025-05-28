@@ -1011,7 +1011,7 @@ void BuildSrcRankAndLocalExpertIdInferMeta(
     int64_t num_local_experts,
     MetaTensor* src_rank,
     MetaTensor* local_expert_id);
-    
+
 void IntBincountInferMeta(const MetaTensor& x,
                           int64_t low,
                           int64_t high,

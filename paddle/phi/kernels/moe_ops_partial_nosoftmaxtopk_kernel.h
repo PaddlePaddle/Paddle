@@ -15,24 +15,25 @@
 #pragma once
 #include "paddle/phi/core/dense_tensor.h"
 
-namespace phi{
+namespace phi {
 template <typename T, typename Context>
-void MoeGateDispatchPartialNoSoftMaxTopkKernel(const Context& dev_ctx,
-                                               const DenseTensor& x,
-                                               const DenseTensor& combine_weights,
-                                               const DenseTensor& expert_id,
-                                               int64_t k,
-                                               int64_t capacity,
-                                               int64_t num_experts,
-                                               bool use_pad,
-                                               int64_t expert_start_index,
-                                               int64_t expert_end_index,
-                                               bool reverse_token_drop,
-                                               DenseTensor* y,
-                                               DenseTensor* combine_weights_out,
-                                               DenseTensor* scatter_index,
-                                               DenseTensor* scatter_index_rev,
-                                               DenseTensor* expert_offset,
-                                               DenseTensor* expert_nums_local);
+void MoeGateDispatchPartialNoSoftMaxTopkKernel(
+    const Context& dev_ctx,
+    const DenseTensor& x,
+    const DenseTensor& combine_weights,
+    const DenseTensor& expert_id,
+    int64_t k,
+    int64_t capacity,
+    int64_t num_experts,
+    bool use_pad,
+    int64_t expert_start_index,
+    int64_t expert_end_index,
+    bool reverse_token_drop,
+    DenseTensor* y,
+    DenseTensor* combine_weights_out,
+    DenseTensor* scatter_index,
+    DenseTensor* scatter_index_rev,
+    DenseTensor* expert_offset,
+    DenseTensor* expert_nums_local);
 
 }  // namespace phi

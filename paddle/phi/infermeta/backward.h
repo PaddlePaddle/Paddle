@@ -468,22 +468,26 @@ void MoeCombineGradInferMeta(const MetaTensor& x,
                              const MetaTensor& grad_y,
                              MetaTensor* grad_x,
                              MetaTensor* grad_combine_weights_helper);
-//Tensor combine_weights_out, Tensor scatter_index, Tensor scatter_index_rev, Tensor expert_offset, Tensor expert_offset_local, Tensor y_grad, Tensor combine_weights_out_grad, int64_t k, int64_t capacity, bool use_pad, int64_t expert_start_index, int64_t expert_end_index)
-// output : Tensor(x_grad), Tensor(combine_weights_grad)
-void MoeGateDispatchPartialNoSoftmaxTopkGradInferMeta(const MetaTensor& combine_weights_out,
-                                                      const MetaTensor& scatter_index,
-                                                      const MetaTensor& scatter_index_rev,
-                                                      const MetaTensor& expert_offset,
-                                                      const MetaTensor& expert_offset_local,
-                                                      const MetaTensor& y_grad,
-                                                      const MetaTensor& combine_weights_out_grad,
-                                                      int64_t k,
-                                                      int64_t capacity,
-                                                      bool use_pad,
-                                                      int64_t expert_start_index,
-                                                      int64_t expert_end_index,
-                                                      MetaTensor* x_grad,
-                                                      MetaTensor* combine_weights_grad);
+// Tensor combine_weights_out, Tensor scatter_index, Tensor scatter_index_rev,
+// Tensor expert_offset, Tensor expert_offset_local, Tensor y_grad, Tensor
+// combine_weights_out_grad, int64_t k, int64_t capacity, bool use_pad, int64_t
+// expert_start_index, int64_t expert_end_index)
+//  output : Tensor(x_grad), Tensor(combine_weights_grad)
+void MoeGateDispatchPartialNoSoftmaxTopkGradInferMeta(
+    const MetaTensor& combine_weights_out,
+    const MetaTensor& scatter_index,
+    const MetaTensor& scatter_index_rev,
+    const MetaTensor& expert_offset,
+    const MetaTensor& expert_offset_local,
+    const MetaTensor& y_grad,
+    const MetaTensor& combine_weights_out_grad,
+    int64_t k,
+    int64_t capacity,
+    bool use_pad,
+    int64_t expert_start_index,
+    int64_t expert_end_index,
+    MetaTensor* x_grad,
+    MetaTensor* combine_weights_grad);
 
 void MoeGateDispatchPermuteGradInferMeta(const MetaTensor& combine_weights,
                                          const MetaTensor& scatter_index,
@@ -734,11 +738,11 @@ void MoeGateDispatchGradInferMeta(const MetaTensor& combine_weights,
                                   MetaTensor* x_grad,
                                   MetaTensor* gate_logits_grad);
 
-void FusedRMSNormGradInferMeta(const MetaTensor &x,
-              const MetaTensor &scale,
-              const MetaTensor &invvar,
-              const MetaTensor &dy,
-              float epsilon,
-              MetaTensor* x_grad,
-              MetaTensor* scale_grad);
+void FusedRMSNormGradInferMeta(const MetaTensor& x,
+                               const MetaTensor& scale,
+                               const MetaTensor& invvar,
+                               const MetaTensor& dy,
+                               float epsilon,
+                               MetaTensor* x_grad,
+                               MetaTensor* scale_grad);
 }  // namespace phi

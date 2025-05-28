@@ -81,12 +81,12 @@ void BuildSrcRankAndLocalExpertIdKernel(
   int* local_expert_id_data = dev_ctx.template Alloc<int>(local_expert_id);
 
   build_srcrank_and_local_expert_id<int, int64_t>(src_rank_data,
-                                                local_expert_id_data,
-                                                expert_num_global_tensor_data,
-                                                token_num,
-                                                expert_num_global.size(),
-                                                num_local_experts,
-                                                dev_ctx.stream());
+                                                  local_expert_id_data,
+                                                  expert_num_global_tensor_data,
+                                                  token_num,
+                                                  expert_num_global.size(),
+                                                  num_local_experts,
+                                                  dev_ctx.stream());
 }
 
 }  // namespace phi

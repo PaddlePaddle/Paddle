@@ -1,3 +1,17 @@
+// Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #pragma once
 #include <thrust/adjacent_difference.h>  // 包含常用的 thrust 算法
 #include <thrust/device_vector.h>
@@ -453,9 +467,9 @@ void initialize_moe_routing_permute_kernelLauncher(
 
 template <typename T>
 void compute_global_expert_offset(
-    const T* expert_id,      //[len]
-    T* sort_buffer,          //[len]
-    int64_t* expert_offset,  //[num_experts]
+    const T* expert_id,      // [len]
+    T* sort_buffer,          // [len]
+    int64_t* expert_offset,  // [num_experts]
     const int64_t len,
     const int64_t num_experts,
     const int64_t capacity,
@@ -534,8 +548,8 @@ void modify_and_mask_expert_id_launcher(const T* expert_id,
 
 template <typename T>
 void compute_local_expert_offset(
-    const T* sorted_expert_id,  //[len]
-    int64_t* expert_offset,     //[num_experts]
+    const T* sorted_expert_id,  // [len]
+    int64_t* expert_offset,     // [num_experts]
     int64_t* expert_num,
     const int64_t len,
     const int64_t num_experts,
@@ -553,7 +567,7 @@ void compute_local_expert_offset(
 
   compute_total_rows_before_expert_kernel<T><<<blocks, threads, 0, stream>>>(
       sorted_expert_id, len, num_experts, expert_offset);
-  // 不考虑 capcity 影响
+  // 不考虑 capacity 影响
   thrust::adjacent_difference(
       exec_policy, offset_ptr, offset_ptr + num_experts, expert_num_ptr);
 }
@@ -563,7 +577,7 @@ __global__ void cal_expert_size_and_filter(T* expert_id,
                                            const int64_t* expert_offset,
                                            int64_t len,
                                            int64_t num_experts,
-                                           int64_t capcity,
+                                           int64_t capacity,
                                            int64_t expert_start_index,
                                            int64_t expert_end_index,
                                            bool reverse) {
@@ -582,11 +596,11 @@ __global__ void cal_expert_size_and_filter(T* expert_id,
     }
   }
   if (reverse) {
-    if (((off - 1) - idx) >= capcity) {
+    if (((off - 1) - idx) >= capacity) {
       expert_id[idx] = num_experts;
     }
   } else {
-    if ((idx - off) >= capcity) {
+    if ((idx - off) >= capacity) {
       expert_id[idx] = num_experts;
     }
   }
@@ -597,7 +611,7 @@ void cal_expert_size_and_filter_launcher(T* expert_id,
                                          const int64_t* expert_offset,
                                          int64_t len,
                                          int64_t num_experts,
-                                         int64_t capcity,
+                                         int64_t capacity,
                                          int64_t expert_start_index,
                                          int64_t expert_end_index,
                                          bool reverse,
@@ -610,7 +624,7 @@ void cal_expert_size_and_filter_launcher(T* expert_id,
                                        expert_offset,
                                        len,
                                        num_experts,
-                                       capcity,
+                                       capacity,
                                        expert_start_index,
                                        expert_end_index,
                                        reverse);

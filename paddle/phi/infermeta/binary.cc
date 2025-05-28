@@ -4592,11 +4592,11 @@ void WeightDequantizeInferMeta(const MetaTensor& x,
   out->set_dtype(scale.dtype());
 }
 
-void FusedRMSNormInferMeta(const MetaTensor &x,
-              const MetaTensor &scale,
-              float epsilon,
-              MetaTensor* y,
-              MetaTensor* invvar){
+void FusedRMSNormInferMeta(const MetaTensor& x,
+                           const MetaTensor& scale,
+                           float epsilon,
+                           MetaTensor* y,
+                           MetaTensor* invvar) {
   // Y: same shape, dtype, layout as X
   y->set_dims(x.dims());
   y->set_dtype(x.dtype());

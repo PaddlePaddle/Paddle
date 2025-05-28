@@ -1,5 +1,20 @@
-# -*- coding: utf-8 -*-
+# ruff: noqa: FA100
 # !/usr/bin/env python3
+
+# Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """
 @author: kebo
 @contact: kebo01@baidu.com
@@ -13,29 +28,16 @@
 
 
 """
-from typing import Any, Tuple, List, Dict, Optional, Callable
-import itertools
-from collections import defaultdict
-import logging
 import contextlib
-import numpy as np
-import inspect
+import logging
+from typing import List, Optional
 
 import paddle
-import paddle.distributed as dist
-from paddle.distributed import fleet
-from paddle import framework
-import paddle.nn.functional as F
 from paddle import nn
-from paddle.autograd import PyLayer
-from paddle.distributed.communication.group import _get_global_group
-from paddle.distributed.fleet.utils import recompute
 from paddle.distributed.communication.group import Group
-
-from .top2_gate import TopKGateFused, compute_optimal_transport
-from paddle.incubate.tensor.manipulation import async_offload, async_reload
 from paddle.incubate.nn.functional import expand_modality_expert_id
-from .moe_layer import MOELayer, fuse_logging
+
+from .moe_layer import MOELayer
 
 try:
     from src.utils.misc import global_training_logs
@@ -98,7 +100,7 @@ class MOEAllGatherLayer(MOELayer):
             group_experts,
             moe_statics,
         )
-    
+
 
 class MOEAllGatherLayerV2(MOEAllGatherLayer):
     """_summary_
@@ -125,7 +127,7 @@ class MOEAllGatherLayerV2(MOEAllGatherLayer):
         use_expert_out_alltoall=True,  #
         use_expert_alltoall_overlap=False,
         use_padding=True,
-        dense_token_type=3,  # considerd as dense tokens (no moe)
+        dense_token_type=3,  # considered as dense tokens (no moe)
         moe_statics=None,
     ):
         super().__init__(
@@ -158,22 +160,28 @@ class MOEAllGatherLayerV2(MOEAllGatherLayer):
         self.use_expert_out_alltoall = use_expert_out_alltoall
         self.use_expert_alltoall_overlap = use_expert_alltoall_overlap
         logger.info(
-            f"uisng MOEAllGatherLayerV2, use_expert_out_alltoall={use_expert_out_alltoall}, "
+            f"using MOEAllGatherLayerV2, use_expert_out_alltoall={use_expert_out_alltoall}, "
             f"use_padding={use_padding}, use_expert_alltoall_overlap={use_expert_alltoall_overlap} "
             f"enable_reverse_token_drop={self.enable_reverse_token_drop}"
         )
         self.two = paddle.to_tensor(2, dtype=paddle.float32)
         self.zero = paddle.to_tensor(0, dtype=paddle.float32)
- 
-    def fused_gate_logits_process_fused(self, gate_logits_lm, gate_logits_mm, token_type_ids):
+
+    def fused_gate_logits_process_fused(
+        self, gate_logits_lm, gate_logits_mm, token_type_ids
+    ):
         """process gatelogits w/ moe utils"""
-        #top_k = 1 if isinstance(self.gate, SinkHornGateFused) else self.k
+        # top_k = 1 if isinstance(self.gate, SinkHornGateFused) else self.k
         top_k = self.k
-        num_expert_per_rank_per_modality = gate_logits_lm.shape[-1] // self.config.moe_world_size
+        num_expert_per_rank_per_modality = (
+            gate_logits_lm.shape[-1] // self.config.moe_world_size
+        )
         group_size = gate_logits_lm.shape[-1] // top_k
         if self.group_experts:
             assert not self.use_correction_bias
-            gate_logits_lm = gate_logits_lm.reshape([gate_logits_lm.shape[0], top_k, -1])
+            gate_logits_lm = gate_logits_lm.reshape(
+                [gate_logits_lm.shape[0], top_k, -1]
+            )
             prob_lm = self.gate.act(gate_logits_lm)
             prob_lm_ = prob_lm
             weight_lm, expert_id_lm = prob_lm_.topk(k=1, axis=-1)
@@ -183,38 +191,59 @@ class MOEAllGatherLayerV2(MOEAllGatherLayer):
         else:
             prob_lm = self.gate.act(gate_logits_lm)
             if self.use_correction_bias:
-                prob_lm_ = prob_lm + self.moe_statics.e_score_correction_bias[0].detach()
+                prob_lm_ = (
+                    prob_lm
+                    + self.moe_statics.e_score_correction_bias[0].detach()
+                )
             else:
                 prob_lm_ = prob_lm
             weight_lm, expert_id_lm = prob_lm_.topk(k=top_k, axis=-1)
 
         if self.use_correction_bias:
-            batch_idx = paddle.arange(prob_lm_.shape[0]).unsqueeze(-1).expand_as(expert_id_lm)
+            batch_idx = (
+                paddle.arange(prob_lm_.shape[0])
+                .unsqueeze(-1)
+                .expand_as(expert_id_lm)
+            )
             weight_lm = prob_lm[batch_idx, expert_id_lm]  # use correct bias
 
         # num_expert_per_modality == 0 时只执行 group-expert expand，不执行 multimodal-expand
         expert_id_lm = expand_modality_expert_id(
             expert_id_lm,
-            num_expert_per_modality=num_expert_per_rank_per_modality
-            if (token_type_ids is not None and gate_logits_mm is not None)
-            else 0,
+            num_expert_per_modality=(
+                num_expert_per_rank_per_modality
+                if (token_type_ids is not None and gate_logits_mm is not None)
+                else 0
+            ),
             group_size=group_size,
             modality_offset=0,
             is_group_expert=self.group_experts,
         )
         expert_id_lm = expert_id_lm.reshape(weight_lm.shape)
-        lm_weight_and_expert_id = paddle.concat([weight_lm, expert_id_lm.astype("float32")], -1)
+        lm_weight_and_expert_id = paddle.concat(
+            [weight_lm, expert_id_lm.astype("float32")], -1
+        )
         if token_type_ids is None or gate_logits_mm is None:
-            return lm_weight_and_expert_id, prob_lm.reshape([prob_lm.shape[0], -1]), None
+            return (
+                lm_weight_and_expert_id,
+                prob_lm.reshape([prob_lm.shape[0], -1]),
+                None,
+            )
 
         prob_mm = self.gate.act(gate_logits_mm)
         if self.use_correction_bias:
-            prob_mm_ = prob_mm + self.moe_statics.e_score_correction_bias[1].detach()
+            prob_mm_ = (
+                prob_mm + self.moe_statics.e_score_correction_bias[1].detach()
+            )
         else:
             prob_mm_ = prob_mm
         weight_mm, expert_id_mm = prob_mm_.topk(k=top_k, axis=-1)
         if self.use_correction_bias:
-            batch_idx = paddle.arange(prob_lm_.shape[0]).unsqueeze(-1).expand_as(expert_id_lm)
+            batch_idx = (
+                paddle.arange(prob_lm_.shape[0])
+                .unsqueeze(-1)
+                .expand_as(expert_id_lm)
+            )
             weight_mm = prob_mm[batch_idx, expert_id_mm]  # use correct bias
 
         expert_id_mm = expand_modality_expert_id(
@@ -225,12 +254,16 @@ class MOEAllGatherLayerV2(MOEAllGatherLayer):
             is_group_expert=False,
         )
         expert_id_mm = expert_id_mm.reshape(weight_mm.shape)
-        mm_weight_and_expert_id = paddle.concat([weight_mm, expert_id_mm.astype("float32")], -1)
+        mm_weight_and_expert_id = paddle.concat(
+            [weight_mm, expert_id_mm.astype("float32")], -1
+        )
         weight_and_expert = paddle.where(
             (token_type_ids == 0).unsqueeze(-1),
             lm_weight_and_expert_id,
             mm_weight_and_expert_id,
         )
-        return weight_and_expert, prob_lm.reshape([prob_lm.shape[0], -1]), prob_mm
-
-   
+        return (
+            weight_and_expert,
+            prob_lm.reshape([prob_lm.shape[0], -1]),
+            prob_mm,
+        )

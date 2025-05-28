@@ -1,3 +1,4 @@
+// NOLINT
 // Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,8 +17,8 @@
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/empty_kernel.h"
-#include "paddle/phi/kernels/moe_fuse_op.h"
 #include "paddle/phi/kernels/full_kernel.h"
+#include "paddle/phi/kernels/moe_fuse_op.h"
 namespace phi {
 
 // --------      getWorkspaceSize      -------- //
@@ -29,7 +30,8 @@ size_t getWorkspaceSize(const int num_rows,
                         const int num_experts,
                         const int k,
                         //  const int max_seq_len,
-                        phi::CubKeyValueSorter &sorter) {
+                        phi::CubKeyValueSorter &sorter  // NOLINT
+) {
   // const int buf_size = AlignTo16(k * num_rows * hidden_size);
   // const int interbuf_size = AlignTo16(k * num_rows * inter_size);
   // const int padded_experts = AlignTo16(num_experts);
@@ -58,8 +60,7 @@ size_t getWorkspaceSize(const int num_rows,
   // "<<total_ws_bytes<<std::endl;
   return total_ws_bytes;
 }
-} // namespace 
-
+}  // namespace
 
 template <typename T, typename Context>
 void apply_moe_dispatch_fwd(const Context &dev_ctx,
@@ -339,7 +340,8 @@ void MoeGradDispatchKernel(const Context &dev_ctx,
   dev_ctx.template Alloc<float>(combine_weights);
   dev_ctx.template Alloc<T>(y);
 
-  phi::Full<T, Context>(dev_ctx, phi::IntArray(common::vectorize(y->dims())), 0, y);
+  phi::Full<T, Context>(
+      dev_ctx, phi::IntArray(common::vectorize(y->dims())), 0, y);
   auto x_dims = x.dims();
   auto gate_logits_dims = gate_logits.dims();
 

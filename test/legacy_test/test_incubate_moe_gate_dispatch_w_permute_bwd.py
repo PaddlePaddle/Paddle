@@ -1,17 +1,29 @@
 # !/usr/bin/env python3
-import os
-import sys
+
+# Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import unittest
-import contextlib
 
 import numpy as np
-import random
-import time
+
 import paddle
-from paddle import _C_ops
-from paddle.autograd import PyLayer
 import paddle.nn.functional as F
-from paddle.incubate.nn.functional import moe_gate_dispatch, moe_gate_dispatch_permute
+from paddle.incubate.nn.functional import (
+    moe_gate_dispatch,
+    moe_gate_dispatch_permute,
+)
 
 batch_size = 4
 hidden_size = 2
@@ -24,16 +36,18 @@ world_size = 2
 
 class TestLayer(paddle.nn.Layer):
     def forward(self, x, gate_prob, k, capacity):
-        y, combine_weights, scatter_index, expert_offset, expert_id = moe_gate_dispatch(
-            x, gate_prob, None, k, capacity, True
+        y, combine_weights, scatter_index, expert_offset, expert_id = (
+            moe_gate_dispatch(x, gate_prob, None, k, capacity, True)
         )
         return y, combine_weights, scatter_index, expert_offset, expert_id
 
 
 class TestLayerPermute(paddle.nn.Layer):
     def forward(self, x, gate_prob, k, capacity):
-        y, combine_weights, scatter_index, expert_offset, expert_id = moe_gate_dispatch_permute(
-            x, gate_prob, None, k, capacity, world_size=world_size
+        y, combine_weights, scatter_index, expert_offset, expert_id = (
+            moe_gate_dispatch_permute(
+                x, gate_prob, None, k, capacity, world_size=world_size
+            )
         )
         return y, combine_weights, scatter_index, expert_offset, expert_id
 
@@ -54,7 +68,9 @@ def check_backward_correctness(layer_cls):
     input.stop_gradient = False
     gate_prob.stop_gradient = False
 
-    output, combine_weights, scatter_index, expert_offset, expert_id = layer(input, gate_prob, k, capacity)
+    output, combine_weights, scatter_index, expert_offset, expert_id = layer(
+        input, gate_prob, k, capacity
+    )
 
     print(f"output: {output}")
     print(f"combine_weights: {combine_weights}")
@@ -85,8 +101,12 @@ def check_backward_correctness(layer_cls):
         input_pos.flat[i] += epsilon
         input_neg.flat[i] -= epsilon
 
-        output_pos, _, _, _, _ = layer(paddle.to_tensor(input_pos), gate_prob, k, capacity)
-        output_neg, _, _, _, _ = layer(paddle.to_tensor(input_neg), gate_prob, k, capacity)
+        output_pos, _, _, _, _ = layer(
+            paddle.to_tensor(input_pos), gate_prob, k, capacity
+        )
+        output_neg, _, _, _, _ = layer(
+            paddle.to_tensor(input_neg), gate_prob, k, capacity
+        )
 
         '''
         flattened[i] = (output_pos.astype("float32").numpy() - output_neg.astype("float32").numpy()).sum() / (
@@ -94,14 +114,17 @@ def check_backward_correctness(layer_cls):
         )
         '''
         grad_value = (output_pos - output_neg).sum() / (2 * epsilon)
-        flattened[i] = grad_value 
+        flattened[i] = grad_value
 
     flattened = flattened.reshape(input.shape)
 
     print(f"input gradient: {input.grad}")
     print(f"numerical gradient: {flattened}")
     np.testing.assert_allclose(
-        input.grad.astype("float32").numpy(), flattened.astype("float32").numpy(), rtol=1e-5, atol=0
+        input.grad.astype("float32").numpy(),
+        flattened.astype("float32").numpy(),
+        rtol=1e-5,
+        atol=0,
     )
 
     # 数值估算 gate_prob
@@ -116,17 +139,26 @@ def check_backward_correctness(layer_cls):
         input_pos.flat[i] += epsilon
         input_neg.flat[i] -= epsilon
 
-        _, output_pos, _, _, _ = layer(input, paddle.to_tensor(input_pos), k, capacity)
-        _, output_neg, _, _, _ = layer(input, paddle.to_tensor(input_neg), k, capacity)
+        _, output_pos, _, _, _ = layer(
+            input, paddle.to_tensor(input_pos), k, capacity
+        )
+        _, output_neg, _, _, _ = layer(
+            input, paddle.to_tensor(input_neg), k, capacity
+        )
 
-        flattened[i] = (output_pos.numpy() - output_neg.numpy()).sum() / (2 * epsilon)
+        flattened[i] = (output_pos.numpy() - output_neg.numpy()).sum() / (
+            2 * epsilon
+        )
 
     flattened = flattened.reshape(gate_prob.shape)
 
     print(f"gate_prob gradient: {gate_prob.grad}")
     print(f"numerical gradient: {flattened}")
     np.testing.assert_allclose(
-        gate_prob.grad.astype("float32").numpy(), flattened.astype("float32").numpy(), rtol=1e-4, atol=0
+        gate_prob.grad.astype("float32").numpy(),
+        flattened.astype("float32").numpy(),
+        rtol=1e-4,
+        atol=0,
     )
 
 

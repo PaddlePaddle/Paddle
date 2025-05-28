@@ -1,8 +1,23 @@
+# Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 # File: python/paddle/incubate/nn/functional/layer_norm_cuda.py
-import paddle
+from paddle import _C_ops
+from paddle.base.data_feeder import convert_dtype
 from paddle.base.framework import in_dynamic_or_pir_mode
 from paddle.base.layer_helper import LayerHelper
-from paddle import _C_ops
+
 
 def fused_rms_norm_ext(x, scale, epsilon=1e-5, name=None):
     """
@@ -19,9 +34,7 @@ def fused_rms_norm_ext(x, scale, epsilon=1e-5, name=None):
         invvar (Tensor): Tensor of shape [rows], the inverse standard deviation of each row.
     """
     if in_dynamic_or_pir_mode():
-        return _C_ops.fused_rms_norm(
-            x,scale,epsilon
-        )
+        return _C_ops.fused_rms_norm(x, scale, epsilon)
     helper = LayerHelper('fused_rms_norm', **locals())
     dtype = convert_dtype(x.dtype)
     y = helper.create_variable_for_type_inference(dtype)
@@ -33,6 +46,6 @@ def fused_rms_norm_ext(x, scale, epsilon=1e-5, name=None):
         type='fused_rms_norm',
         inputs=inputs,
         outputs={'y': y, 'invvar': invvar},
-        attrs={'epsilon': epsilon}
+        attrs={'epsilon': epsilon},
     )
     return y, invvar

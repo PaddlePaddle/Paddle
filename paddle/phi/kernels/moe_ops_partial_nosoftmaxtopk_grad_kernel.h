@@ -15,22 +15,23 @@
 #pragma once
 #include "paddle/phi/core/dense_tensor.h"
 
-namespace phi{
+namespace phi {
 template <typename T, typename Context>
-void MoeGateDispatchPartialNoSoftMaxTopkGradKernel(const Context& dev_ctx,
-                                                   const DenseTensor& combine_weights_out,
-                                                   const DenseTensor& scatter_index,
-                                                   const DenseTensor& scatter_index_rev,
-                                                   const DenseTensor& expert_offset,
-                                                   const DenseTensor& expert_offset_local,
-                                                   const DenseTensor& y_grad,
-                                                   const DenseTensor& combine_weights_out_grad,
-                                                   int64_t k,
-                                                   int64_t capacity,
-                                                   bool use_pad,
-                                                   int64_t expert_start_index,
-                                                   int64_t expert_end_index,
-                                                   DenseTensor* x_grad,
-                                                   DenseTensor* combine_weights_grad);
+void MoeGateDispatchPartialNoSoftMaxTopkGradKernel(
+    const Context& dev_ctx,
+    const DenseTensor& combine_weights_out,
+    const DenseTensor& scatter_index,
+    const DenseTensor& scatter_index_rev,
+    const DenseTensor& expert_offset,
+    const DenseTensor& expert_offset_local,
+    const DenseTensor& y_grad,
+    const DenseTensor& combine_weights_out_grad,
+    int64_t k,
+    int64_t capacity,
+    bool use_pad,
+    int64_t expert_start_index,
+    int64_t expert_end_index,
+    DenseTensor* x_grad,
+    DenseTensor* combine_weights_grad);
 
 }  // namespace phi
