@@ -13,6 +13,7 @@ from collections import defaultdict, namedtuple, Counter
 
 import numpy as np
 import paddle
+from paddle import _C_ops
 from paddle import nn
 from paddle.distributed.communication import stream
 
@@ -55,25 +56,12 @@ if False:
         logger.warning("`xpu moe combine` not found")
 else:
     try:
-        import moe_ops
-    except ImportError:
-        moe_ops = None
-        logger.warning("`moe-ops` not found, run " "`python3  src/ernie_core/ops/moe/setup.py  install` to install")
-
-    try:
-        import moe_combine
+        from paddle.incubate.nn.functional import moe_combine
     except ImportError:
         moe_combine = None
         logger.warning("`moe-combine` not found, run " "`python3  src/ernie_core/ops/moe/setup.py  install` to install")
 
 
-try:
-    import moe_ops_no_softmaxtopk
-except ImportError:
-    moe_ops_no_softmaxtopk = None
-    logger.warning(
-        "moe-ops-no-softmaxtopk` not found, run " "`python3  src/ernie_core/ops/moe/setup.py  install` to install"
-    )
 
 
 def average_grad(x, y, dy, eps=1e-12):
@@ -225,11 +213,12 @@ class GateCombine(PyLayer):
             return xpu_moe_combine(x, combine_weights, scatter_index)
         else:
             assert moe_combine is not None
-            ret = moe_combine.moe_combine(x, combine_weights, scatter_index)
+            ret = moe_combine(x, combine_weights, scatter_index)
             return ret
 
     @staticmethod
     def backward(ctx, grad_y, *_):
+        '''
         """
         Input:
             grad_y:  [seqlen, hidden_size]
@@ -248,14 +237,16 @@ class GateCombine(PyLayer):
             )
         else:
             assert moe_combine is not None
-            grad_x, grad_combine_weight_helper = moe_combine.moe_combine_bwd(
+            grad_x, grad_combine_weight_helper = _C_ops.moe_combine_grad(
                 ctx.x, ctx.combine_weights, ctx.scatter_index, grad_y
             )
         # grad_combine_weight_helper is the same shape with grad x [seqlen * K, dim]
         # reduce the hidden shape
         # TODO: implement reduce in cuda ops
-        grad_combine_weight = grad_combine_weight_helper.sum(-1)
-        return grad_x, grad_combine_weight.reshape(ctx.combine_weights.shape), None
+        #grad_combine_weight = grad_combine_weight_helper.sum(-1)
+        #return grad_x, grad_combine_weight.reshape(ctx.combine_weights.shape), None
+        return grad_x, grad_combine_weight_helper
+        '''
 
 
 

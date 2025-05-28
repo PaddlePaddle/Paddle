@@ -17,6 +17,7 @@
 #include "paddle/phi/kernels/moe_gate_dispatch_permute_kernel.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/kernels/empty_kernel.h"
+#include "paddle/phi/kernels/full_kernel.h"
 namespace phi {
 
 namespace {
@@ -304,6 +305,7 @@ void MoEDispatchPermuteKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<int>(scatter_index);
   dev_ctx.template Alloc<float>(combine_weights);
   dev_ctx.template Alloc<T>(y);
+  phi::Full<T, Context>(dev_ctx, phi::IntArray(common::vectorize(y->dims())), 0, y);
   const auto &x_shape = x.dims();
   const auto &gate_logits_shape = gate_logits.dims();
   int64_t num_rows = x_shape[0];

@@ -34,17 +34,13 @@ from paddle.distributed.communication.group import Group
 
 from .top2_gate import TopKGateFused, compute_optimal_transport
 from paddle.incubate.tensor.manipulation import async_offload, async_reload
-
+from paddle.incubate.nn.functional import expand_modality_expert_id
 from .moe_layer import MOELayer, fuse_logging
 
 try:
     from src.utils.misc import global_training_logs
 except ModuleNotFoundError:
     global_training_logs = {}  # 没有erniebot的环境下无法打印 debug 量
-try:
-    import moe_router_loss_ops
-except ImportError:
-    moe_router_loss_ops = None
 
 
 def profile(_):
@@ -61,32 +57,8 @@ if False:
         xpu_moe_gate_dispatch = None
         logger.warning("`xpu moe dispatch` not found")
 else:
-    try:
-        import moe_ops
-    except ImportError:
-        moe_ops = None
-        logger.warning("`moe-ops` not found, run " "`python3  src/ernie_core/ops/moe/setup.py  install` to install")
-    try:
-        import moe_ops_partial
-    except ImportError:
-        moe_ops_partial = None
-        logger.warning(
-            "`moe-ops-partial` not found, run " "`python3  src/ernie_core/ops/moe/setup.py  install` to install"
-        )
-    try:
-        import moe_ops_partial_nosoftmaxtopk
-    except ImportError:
-        moe_ops_partial_nosoftmaxtopk = None
-        logger.warning(
-            "`moe-ops-partial-nosoftmaxtopk` not found, run "
-            "`python3  src/ernie_core/ops/moe/setup.py  install` to install"
-        )
+    pass
 
-    try:
-        import moe_utils
-    except ImportError:
-        moe_utils = None
-        logger.warning("`moe_utils` not found, run " "`python3  src/ernie_core/ops/moe/setup.py  install` to install")
 
 class MOEAllGatherLayer(MOELayer):
     """_summary_
@@ -221,7 +193,7 @@ class MOEAllGatherLayerV2(MOEAllGatherLayer):
             weight_lm = prob_lm[batch_idx, expert_id_lm]  # use correct bias
 
         # num_expert_per_modality == 0 时只执行 group-expert expand，不执行 multimodal-expand
-        expert_id_lm = moe_utils.expand_modality_expert_id(
+        expert_id_lm = expand_modality_expert_id(
             expert_id_lm,
             num_expert_per_modality=num_expert_per_rank_per_modality
             if (token_type_ids is not None and gate_logits_mm is not None)
@@ -245,7 +217,7 @@ class MOEAllGatherLayerV2(MOEAllGatherLayer):
             batch_idx = paddle.arange(prob_lm_.shape[0]).unsqueeze(-1).expand_as(expert_id_lm)
             weight_mm = prob_mm[batch_idx, expert_id_mm]  # use correct bias
 
-        expert_id_mm = moe_utils.expand_modality_expert_id(
+        expert_id_mm = expand_modality_expert_id(
             expert_id_mm,
             num_expert_per_modality=num_expert_per_rank_per_modality,
             group_size=group_size,

@@ -17,6 +17,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/moe_fuse_op.h"
+#include "paddle/phi/kernels/full_kernel.h"
 namespace phi {
 
 // --------      getWorkspaceSize      -------- //
@@ -338,6 +339,7 @@ void MoeGradDispatchKernel(const Context &dev_ctx,
   dev_ctx.template Alloc<float>(combine_weights);
   dev_ctx.template Alloc<T>(y);
 
+  phi::Full<T, Context>(dev_ctx, phi::IntArray(common::vectorize(y->dims())), 0, y);
   auto x_dims = x.dims();
   auto gate_logits_dims = gate_logits.dims();
 
