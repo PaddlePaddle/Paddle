@@ -49,8 +49,9 @@
 #include <array>
 #include <cassert>
 
-CUB_NAMESPACE_BEGIN
 
+namespace cub
+{
 
 /**
  * \addtogroup UtilMgmt
@@ -117,4 +118,4 @@ CUB_RUNTIME_FUNCTION inline cudaError_t DebugSyncStream(cudaStream_t stream)
 
 #endif/** @} */       // end group UtilMgmt
 
-CUB_NAMESPACE_END
+} /* end namespace cub */
