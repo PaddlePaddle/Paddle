@@ -1263,6 +1263,7 @@ class PartialVariable(CallableVariable):
             obj, self.graph, CreateLayerTracker(self, args, kwargs)
         )
 
+    @VariableFactory.register_from_value()
     def from_value(value: partial, graph: FunctionGraph, tracker: Tracker):
         if isinstance(value, partial):
             return PartialVariable(value, graph, tracker)
