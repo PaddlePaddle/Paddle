@@ -29,6 +29,9 @@ void ActivationXPUImpl(const Context& dev_ctx,
   PADDLE_ENFORCE_NOT_NULL(out,
                           errors::NotFound("Output Out should not be nullptr"));
   dev_ctx.template Alloc<T>(out);
+  if (out->numel() == 0) {
+    return;
+  }
   functor(dev_ctx, x, out);
 }
 

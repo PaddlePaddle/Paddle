@@ -1817,7 +1817,7 @@ void CEmbeddingInferMeta(const MetaTensor& weight,
 
 void ExpandAsInferMeta(const MetaTensor& x,
                        const MetaTensor& y,
-                       const std::vector<int>& target_shape,
+                       const std::vector<int64_t>& target_shape,
                        MetaTensor* out) {
 #define MAX_RANK_SUPPORTED 8
   auto x_dims = x.dims();

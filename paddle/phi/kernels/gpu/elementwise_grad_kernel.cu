@@ -40,6 +40,23 @@ void SubtractGradKernel(const Context& dev_ctx,
                         DenseTensor* dy) {
   // skip out
   auto* out = &dout;
+  if (dout.numel() == 0) {
+    if (dx) {
+      dev_ctx.template Alloc<T>(dx);
+      if (dx->numel() != 0) {
+        phi::Full<T, Context>(
+            dev_ctx, phi::IntArray(common::vectorize(dx->dims())), 0, dx);
+      }
+    }
+    if (dy) {
+      dev_ctx.template Alloc<T>(dy);
+      if (dy->numel() != 0) {
+        phi::Full<T, Context>(
+            dev_ctx, phi::IntArray(common::vectorize(dy->dims())), 0, dy);
+      }
+    }
+    return;
+  }
   if (dx != nullptr && dy != nullptr && (dx->dims() == dy->dims())) {
     elementwise_sub_grad<T>(dev_ctx, x, y, *out, dout, dx, dy);
   } else {

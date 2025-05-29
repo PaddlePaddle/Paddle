@@ -207,6 +207,52 @@ def create_test_fp16_class(parent):
             )
 
 
+class TestSumOp3D0size(TestSumOp3Dim):
+
+    def test_check_output(self):
+        self.check_output(check_pir=True, check_pir_onednn=True)
+
+    def calc_gradient(self):
+        x = self.inputs["X"]
+        grad = np.ones(x.shape, dtype=x.dtype)
+        return (grad,)
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['X'],
+            'Out',
+            user_defined_grads=self.calc_gradient(),
+            check_prim=True,
+            check_prim_pir=True,
+            check_pir=True,
+            check_pir_onednn=True,
+        )
+
+
+class TestSumOp3D0size1(TestSumOp3D0size):
+    def init_input(self):
+        self.x = np.random.uniform(0, 0.1, (5, 0, 10)).astype(self.dtype)
+
+    def init_attrs(self):
+        self.attrs = {'dim': (0, 1, 2)}
+
+
+class TestSumOp3D0size2(TestSumOp3D0size):
+    def init_input(self):
+        self.x = np.random.uniform(0, 0.1, (0, 6, 10)).astype(self.dtype)
+
+    def init_attrs(self):
+        self.attrs = {'dim': (0, 1, 2)}
+
+
+class TestSumOp3D0size3(TestSumOp3D0size):
+    def init_input(self):
+        self.x = np.random.uniform(0, 0.1, (4, 6, 0)).astype(self.dtype)
+
+    def init_attrs(self):
+        self.attrs = {'dim': (0, 1, 2)}
+
+
 create_test_fp16_class(TestSumOp)
 create_test_fp16_class(TestSumOp_ZeroDim)
 create_test_fp16_class(TestSumOp5D)

@@ -35,6 +35,9 @@ void ActivationGradXPUImpl(const Context& dev_ctx,
     out = d_out;  // fake out
   }
   dev_ctx.template Alloc<T>(d_x);
+  if (d_x->numel() == 0) {
+    return;
+  }
   functor(dev_ctx, x, out, d_out, d_x);
 }
 
