@@ -47,7 +47,7 @@ class TestMVOp_ZeroSize1(TestMVOp):
 
 class TestMVOp_ZeroSize2(TestMVOp):
     def init_config(self):
-        self.x = np.random.random((10, 0)).astype("float64")
+        self.x = np.random.random((100, 0)).astype("float64")
         self.vec = np.random.random(0).astype("float64")
 
 
