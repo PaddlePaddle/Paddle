@@ -94,7 +94,7 @@ class ReduceMin {
 static ReduceMin reduce_min;
 
 __global__ void CudaMemsetAsync(int* dest, int value, size_t size) {
-  int tid = threadIdx.x + blockIdx.x * blockDim.x;
+  int64_t tid = threadIdx.x + blockIdx.x * blockDim.x;
   if (tid * sizeof(int) >= size) return;
   dest[tid] = value;
 }
@@ -117,7 +117,7 @@ __global__ void ScatterAssignGPUKernel(tensor_t* self_data,
                                        int64_t numel_data,
                                        const func_t& reduce_op,
                                        int* thread_ids) {
-  int tid = threadIdx.x + blockIdx.x * blockDim.x;
+  int64_t tid = threadIdx.x + blockIdx.x * blockDim.x;
   if (tid >= numel) return;
   int64_t i, j, k;  // The i, j, k here is the index of the 3 layers loop
                     // squeezed from the N layers loop.
@@ -264,7 +264,7 @@ __global__ void ScatterMeanGPUKernel(tensor_t* self_data,
                                      bool include_self,
                                      const func_t& reduce_op,
                                      int* shared_mem) {
-  int tid = threadIdx.x + blockIdx.x * blockDim.x;
+  int64_t tid = threadIdx.x + blockIdx.x * blockDim.x;
   if (tid >= numel) return;
 
   int64_t i, j, k;  // The i, j, k here is the index of the 3 layers loop
@@ -561,7 +561,7 @@ __global__ void ScatterInputGradGPUKernel(tensor_t* grad_data,
                                           int64_t outer_dim_size_data,
                                           int64_t numel,
                                           int64_t numel_data) {
-  int tid = threadIdx.x + blockIdx.x * blockDim.x;
+  int64_t tid = threadIdx.x + blockIdx.x * blockDim.x;
   if (tid >= numel) return;
   int64_t i, j, k;
   i = tid / (select_dim_size * outer_dim_size);
@@ -632,7 +632,7 @@ __global__ void ScatterMulInputGradGPUKernel(tensor_t* grad_data,
                                              int64_t numel,
                                              int64_t numel_grad,
                                              int* thread_ids) {
-  int tid = threadIdx.x + blockIdx.x * blockDim.x;
+  int64_t tid = threadIdx.x + blockIdx.x * blockDim.x;
   if (tid >= numel) return;
   int64_t i, j, k;
   i = tid / (select_dim_size * outer_dim_size);
@@ -668,7 +668,7 @@ __global__ void ScatterMinMaxInputGradGPUKernel(tensor_t* grad_data,
                                                 int64_t numel_grad,
                                                 const std::string& reduce,
                                                 int* shared_mem) {
-  int tid = threadIdx.x + blockIdx.x * blockDim.x;
+  int64_t tid = threadIdx.x + blockIdx.x * blockDim.x;
   if (tid >= numel) return;
   int64_t i, j, k;
   i = tid / (select_dim_size * outer_dim_size);
@@ -791,7 +791,7 @@ __global__ void ScatterMeanInputGradGPUKernel(tensor_t* grad_data,
                                               int64_t numel,
                                               int64_t numel_grad,
                                               int* shared_mem) {
-  int tid = threadIdx.x + blockIdx.x * blockDim.x;
+  int64_t tid = threadIdx.x + blockIdx.x * blockDim.x;
   if (tid >= numel) return;
   int64_t i, j, k;
   i = tid / (select_dim_size * outer_dim_size);
@@ -882,7 +882,7 @@ __global__ void ScatterValueGradGPUKernel(tensor_t* grad_data,
                                           int64_t numel,
                                           int64_t numel_data,
                                           int* thread_ids) {
-  int tid = threadIdx.x + blockIdx.x * blockDim.x;
+  int64_t tid = threadIdx.x + blockIdx.x * blockDim.x;
   if (tid >= numel) return;
 
   int64_t i, j, k;
@@ -976,7 +976,7 @@ __global__ void ScatterMeanValueGradGPUKernel(tensor_t* grad_data,
                                               int64_t numel,
                                               int64_t numel_self,
                                               int* shared_mem) {
-  int tid = threadIdx.x + blockIdx.x * blockDim.x;
+  int64_t tid = threadIdx.x + blockIdx.x * blockDim.x;
   if (tid >= numel) return;
 
   int64_t i, j, k;
@@ -1010,7 +1010,7 @@ __global__ void ScatterAddValueGradGPUKernel(tensor_t* grad_data,
                                              int64_t outer_dim_size_self,
                                              int64_t outer_dim_size_grad,
                                              int64_t numel) {
-  int tid = threadIdx.x + blockIdx.x * blockDim.x;
+  int64_t tid = threadIdx.x + blockIdx.x * blockDim.x;
   if (tid >= numel) return;
   int64_t i, j, k;
   i = tid / (select_dim_size * outer_dim_size);
@@ -1123,7 +1123,7 @@ __global__ void ScatterMulValueGradGPUKernel(tensor_t* grad_data,
                                              int64_t outer_dim_size_self,
                                              int64_t outer_dim_size_grad,
                                              int64_t numel) {
-  int tid = threadIdx.x + blockIdx.x * blockDim.x;
+  int64_t tid = threadIdx.x + blockIdx.x * blockDim.x;
   if (tid >= numel) return;
   int64_t i, j, k;
   i = tid / (select_dim_size * outer_dim_size);
@@ -1158,7 +1158,7 @@ __global__ void ScatterMinMaxValueGradGPUKernel(tensor_t* grad_data,
                                                 int64_t numel_self,
                                                 bool include_self,
                                                 int* shared_mem) {
-  int tid = threadIdx.x + blockIdx.x * blockDim.x;
+  int64_t tid = threadIdx.x + blockIdx.x * blockDim.x;
   if (tid >= numel) return;
   int64_t i, j, k;
   i = tid / (select_dim_size * outer_dim_size);
