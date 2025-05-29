@@ -282,7 +282,7 @@ struct Buffer {
                       int num_max_dispatch_tokens_per_rank,
                       int num_experts,
                       bool async,
-                      bool return_recv_hook);
+                      bool return_recv_hook, bool use_fp8);
 #endif  // PADDLE_WITH_NVSHMEM
 
   std::tuple<paddle::Tensor,
@@ -366,7 +366,7 @@ struct Buffer {
                           int num_max_dispatch_tokens_per_rank,
                           int num_experts,
                           bool async,
-                          bool return_recv_hook);
+                          bool return_recv_hook, bool use_fp8);
 
   std::tuple<paddle::Tensor,
              std::optional<paddle::Tensor>,

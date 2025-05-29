@@ -863,6 +863,7 @@ class Buffer:
         handle: tuple,
         async_finish: bool = False,
         return_recv_hook: bool = False,
+        use_fp8: bool = False,
     ) -> tuple[paddle.Tensor, EventOverlap, Callable]:
         """
         A low-latency implementation for combining tokens (reduce **with weights**) with IBGDA.
@@ -907,6 +908,7 @@ class Buffer:
             num_experts,
             async_finish,
             return_recv_hook,
+            use_fp8,
         )
         tensors_to_record = (
             x,

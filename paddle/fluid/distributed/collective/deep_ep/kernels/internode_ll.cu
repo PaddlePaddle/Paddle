@@ -595,7 +595,8 @@ __global__ __launch_bounds__(
                     int rank,
                     int num_ranks,
                     int phases,
-                    bool zero_copy) {
+                    bool zero_copy,
+                    bool use_fp8) {
   const auto sm_id = static_cast<int>(blockIdx.x);
   const auto num_sms = static_cast<int>(gridDim.x);
   const auto thread_id = static_cast<int>(threadIdx.x);
@@ -605,6 +606,15 @@ __global__ __launch_bounds__(
   const auto warp_group_id = warp_id / kNumWarpsPerGroup;
   const auto sub_warp_id = warp_id % kNumWarpsPerGroup;
   const auto responsible_expert_idx = sm_id * kNumWarpGroups + warp_group_id;
+
+
+  // FP8 staffs
+  constexpr int kNumPerChannels = 128;
+  constexpr float kFP8Margin = 1e-4, kFP8Amax = 448,
+                  kFP8AmaxInv = 1.0f / 448.0f;
+  const int num_scales = kHidden / kNumPerChannels;
+  constexpr int kNumElemsPerRead = sizeof(int4) / sizeof(nv_bfloat16);
+
 
   // Data type staffs
   constexpr int kNumElemsPerInt4 = sizeof(int4) / sizeof(nv_bfloat16);
@@ -683,7 +693,47 @@ __global__ __launch_bounds__(
                            st_na_global);
       } else {
         const auto buf_int4_ptr = reinterpret_cast<int4*>(buf_ptr);
-        if (!zero_copy)
+
+        if (use_fp8){
+          // 在这里将其量化一下吧！
+          const auto buf_int2_ptr = reinterpret_cast<int2*>(buf_ptr);
+
+          const auto rdma_x_scales = reinterpret_cast<float*>(reinterpret_cast<uint8_t*>(buf_ptr) + kHidden);
+
+          for (int ii = lane_id; ii < hidden_bf16_int4; ii += 32) {
+            
+            auto int4_value = x_int4[ii];
+            // Calculate local amax
+            auto bf16_values = reinterpret_cast<nv_bfloat16*>(&int4_value);
+            float fp32_values[kNumElemsPerRead];
+            float amax = kFP8Margin, scale, scale_inv;
+  #pragma unroll
+            for (int j = 0; j < kNumElemsPerRead; ++j) {
+              fp32_values[j] = static_cast<float>(bf16_values[j]);
+              amax = fmaxf(amax, fabsf(fp32_values[j]));
+            }
+
+            amax = half_warp_reduce_max(amax), scale = kFP8Amax / amax,
+            scale_inv = amax * kFP8AmaxInv;
+            if (lane_id == 0 || lane_id == 16)
+              rdma_x_scales[ii * kNumElemsPerRead / 128] = scale_inv;
+
+            int2 int2_value;
+            auto fp8x2_values =
+                reinterpret_cast<__nv_fp8x2_storage_t*>(&int2_value);
+  #pragma unroll
+            for (int j = 0; j < kNumElemsPerRead; j += 2) {
+              float2 fp32x2 = {fp32_values[j] * scale,
+                              fp32_values[j + 1] * scale};
+              fp8x2_values[j / 2] =
+                  __nv_cvt_float2_to_fp8x2(fp32x2, __NV_SATFINITE, __NV_E4M3);
+            }
+
+            buf_int2_ptr[ii] = int2_value;
+          }
+        }
+
+        if (!zero_copy && !use_fp8)
           UNROLLED_WARP_COPY(7,
                              lane_id,
                              hidden_bf16_int4,
@@ -693,7 +743,7 @@ __global__ __launch_bounds__(
                              st_na_global);
         nvshmemi_ibgda_put_nbi_warp(dst_ptr,
                                     buf_ptr,
-                                    hidden * sizeof(nv_bfloat16),
+                                    hidden + (use_fp8 ? num_scales * 4 : hidden),
                                     dst_rank,
                                     local_expert_idx,
                                     lane_id,
@@ -764,9 +814,23 @@ LOW_LATENCY_COMBINE_RECV:
               reinterpret_cast<const uint8_t*>(rdma_buffer_type + 4);
 
           // Reduce
-          auto x_vec = ld_nc_global(
-              reinterpret_cast<const int4*>(rdma_buffer_row) + g_id);
-          const auto x_bf16 = reinterpret_cast<nv_bfloat16*>(&x_vec);
+          nv_bfloat16 x_bf16[kNumElemsPerRead];
+          const bool not_quantized = reg_topk_idx[i] / num_local_experts == rank;
+
+          if (not_quantized || !use_fp8) {
+            *(reinterpret_cast<int4*>(&x_bf16)) = ld_nc_global(
+                reinterpret_cast<const int4*>(rdma_buffer_row) + g_id);
+          } else {
+            auto x_int2 = ld_nc_global(
+              reinterpret_cast<const int2*>(rdma_buffer_row) + g_id);
+            const auto x_fp8 = reinterpret_cast<__nv_fp8_e4m3*>(&x_int2);
+            const float scale = (reinterpret_cast<const float*>(rdma_buffer_row + kHidden))[g_id * kNumElemsPerRead / 128];
+#pragma unroll
+            for (int j = 0; j < kNumElemsPerInt4; ++j) {
+                x_bf16[j] = static_cast<nv_bfloat16>(static_cast<float>(x_fp8[j]) * scale);
+            }
+          }
+
 #pragma unroll
           for (int j = 0; j < kNumElemsPerInt4; ++j)
             combined_values[j] +=
@@ -805,7 +869,7 @@ void combine(void* combined_x,
              int num_ranks,
              void* workspace,
              cudaStream_t stream,
-             int phases) {
+             int phases, bool use_fp8) {
   constexpr int kNumWarpsPerGroup = 10;
   constexpr int kNumWarpGroups = 3;
   constexpr int kNumMaxTopk = 9;
@@ -844,7 +908,7 @@ void combine(void* combined_x,
                   rank,                                                  \
                   num_ranks,                                             \
                   phases,                                                \
-                  false);                                                \
+                  false, use_fp8);                                                \
   }                                                                      \
   break
 

@@ -1812,7 +1812,7 @@ Buffer::low_latency_combine(const deep_ep::detail::Tensor& x,
                             int num_max_dispatch_tokens_per_rank,
                             int num_experts,
                             bool async,
-                            bool return_recv_hook) {
+                            bool return_recv_hook, bool use_fp8) {
   EP_HOST_ASSERT(low_latency_mode);
 
   // Tensor checks
@@ -1886,7 +1886,7 @@ Buffer::low_latency_combine(const deep_ep::detail::Tensor& x,
                           num_ranks,
                           workspace,
                           launch_stream,
-                          phases);
+                          phases,use_fp8);
   };
   launcher(return_recv_hook
                ? LOW_LATENCY_SEND_PHASE
@@ -2205,7 +2205,7 @@ Buffer::low_latency_combine_api(const paddle::Tensor& x,
                                 int num_max_dispatch_tokens_per_rank,
                                 int num_experts,
                                 bool async,
-                                bool return_recv_hook) {
+                                bool return_recv_hook, bool use_fp8) {
 #ifdef PADDLE_WITH_NVSHMEM
   const auto& x_ = ConvertPaddleTensorToDetailTensor(x);
   const auto& topk_idx_ = ConvertPaddleTensorToDetailTensor(topk_idx);
@@ -2221,7 +2221,7 @@ Buffer::low_latency_combine_api(const paddle::Tensor& x,
                                  num_max_dispatch_tokens_per_rank,
                                  num_experts,
                                  async,
-                                 return_recv_hook);
+                                 return_recv_hook, use_fp8);
 
   auto combined_x_ = ConvertDetailTensorToPaddleTensor(std::get<0>(res));
   const auto& event = std::get<1>(res);
