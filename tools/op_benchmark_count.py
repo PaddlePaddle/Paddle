@@ -19,7 +19,8 @@ from collections import defaultdict
 gpu_time_categories = {
     "within_1%": 0,
     "increase_1_to_5%": 0,
-    "increase_above_5%": 0,
+    "increase_above_5_to_10%": 0,
+    "increase_above_10%": 0,
     "decrease_1_to_5%": 0,
     "decrease_above_5%": 0,
 }
@@ -27,7 +28,8 @@ gpu_time_categories = {
 total_time_categories = {
     "within_1%": 0,
     "increase_1_to_5%": 0,
-    "increase_above_5%": 0,
+    "increase_above_5_to_10%": 0,
+    "increase_above_10%": 0,
     "decrease_1_to_5%": 0,
     "decrease_above_5%": 0,
 }
@@ -60,8 +62,10 @@ with open(args.file_name, 'r') as file:
                     gpu_time_categories["within_1%"] += 1
                 elif 1 <= gpu_time_change < 5:
                     gpu_time_categories["increase_1_to_5%"] += 1
-                elif gpu_time_change >= 5:
-                    gpu_time_categories["increase_above_5%"] += 1
+                elif 5 <= gpu_time_change < 10:
+                    gpu_time_categories["increase_above_5_to_10%"] += 1
+                elif gpu_time_change >= 10:
+                    gpu_time_categories["increase_above_10%"] += 1
                 elif -5 < gpu_time_change <= -1:
                     gpu_time_categories["decrease_1_to_5%"] += 1
                 elif gpu_time_change <= -5:
@@ -76,8 +80,10 @@ with open(args.file_name, 'r') as file:
                     total_time_categories["within_1%"] += 1
                 elif 1 <= total_time_change < 5:
                     total_time_categories["increase_1_to_5%"] += 1
-                elif total_time_change >= 5:
-                    total_time_categories["increase_above_5%"] += 1
+                elif 5 <= total_time_change < 10:
+                    total_time_categories["increase_above_5_to_10%"] += 1
+                elif total_time_change >= 10:
+                    total_time_categories["increase_above_10%"] += 1
                 elif -5 < total_time_change <= -1:
                     total_time_categories["decrease_1_to_5%"] += 1
                 elif total_time_change <= -5:
@@ -110,3 +116,6 @@ unique_errors = len(error_cases)
 print(f"\nError Cases Total: {total_errors}")
 print(f"Error Lines Percentage: {error_percentage:.2f}%")
 print(f"Unique Error OP: {unique_errors}\n")
+
+for case, count in error_cases.items():
+    print(f"OP '{case}': {count} occurrences")
