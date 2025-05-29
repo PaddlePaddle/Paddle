@@ -166,6 +166,7 @@ void KthvalueKernel(const Context& dev_ctx,
         dev_ctx, phi::IntArray(common::vectorize(output->dims())), NAN, output);
     phi::Full<int64_t, Context>(
         dev_ctx, phi::IntArray(common::vectorize(indices->dims())), 0, indices);
+    return;
   }
 
   const auto& in_dims = x.dims();
