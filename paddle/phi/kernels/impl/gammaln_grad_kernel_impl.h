@@ -81,6 +81,10 @@ void GammalnGradKernel(const Context& dev_ctx,
                        const DenseTensor& d_out,
                        DenseTensor* d_x) {
   auto numel = d_out.numel();
+  if (d_x && d_x->numel() == 0) {
+    dev_ctx.template Alloc<T>(d_x);
+    return;
+  }
   auto* dout_data = d_out.data<T>();
   auto* x_data = x.data<T>();
   auto* dx_data =

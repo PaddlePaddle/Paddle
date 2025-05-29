@@ -240,12 +240,18 @@ void SearchsortedKernel(const Context& ctx,
                         DenseTensor* out) {
   if (out_int32) {
     ctx.template Alloc<int>(out);
+    if (out && out->numel() == 0) {
+      return;
+    }
     int* out_data = out->data<int>();
     SearchSortedFunctor<Context, T, int> functor(
         ctx, &sorted_sequence, &value, right, out_data);
     VisitDataTypeForSearchSorted(value.dtype(), functor);
   } else {
     ctx.template Alloc<int64_t>(out);
+    if (out && out->numel() == 0) {
+      return;
+    }
     int64_t* out_data = out->data<int64_t>();
     SearchSortedFunctor<Context, T, int64_t> functor(
         ctx, &sorted_sequence, &value, right, out_data);

@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 
@@ -28,6 +29,18 @@ static void LerpGradFunction(const Context& ctx,
                              const DenseTensor& out_grad,
                              DenseTensor* x_grad,
                              DenseTensor* y_grad) {
+  if (out_grad.numel() == 0) {
+    if (x_grad) {
+      phi::Full<T, Context>(
+          ctx, phi::IntArray(common::vectorize(x_grad->dims())), 0, x_grad);
+    }
+    if (y_grad) {
+      phi::Full<T, Context>(
+          ctx, phi::IntArray(common::vectorize(y_grad->dims())), 0, y_grad);
+    }
+    return;
+  }
+
   auto& w = weight;
   auto& dout = out_grad;
   auto* dx = x_grad;

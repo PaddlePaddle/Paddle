@@ -84,8 +84,7 @@ def get_info_file_lines(info_file, diff_file):
             if line.startswith('SF:'):
                 current_file = line.lstrip('SF:')
 
-                if current_file.startswith('/paddle/'):
-                    current_file = current_file[len('/paddle/') :]
+                current_file = current_file.removeprefix('/paddle/')
 
                 current_lines = diff_file_lines.get(current_file, [])
 

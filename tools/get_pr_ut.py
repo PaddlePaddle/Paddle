@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-""" For the PR that only modified the unit test, get cases in pull request. """
+"""For the PR that only modified the unit test, get cases in pull request."""
 
 import json
 import os
