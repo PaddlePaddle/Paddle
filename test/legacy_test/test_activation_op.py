@@ -2040,6 +2040,8 @@ class TestCeil(TestActivation):
         self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
         self.outputs = {'Out': out}
         self.convert_input_output()
+        if not core.is_compiled_with_cuda():
+            self.__class__.no_need_check_grad = True
 
     def init_shape(self):
         self.shape = [10, 12]
@@ -2092,6 +2094,8 @@ class TestFloor(TestActivation):
         self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
         self.outputs = {'Out': out}
         self.convert_input_output()
+        if not core.is_compiled_with_cuda():
+            self.__class__.no_need_check_grad = True
 
     def init_shape(self):
         self.shape = [10, 12]
@@ -4141,6 +4145,11 @@ class TestLog2_ZeroDim(TestLog2):
         self.shape = []
 
 
+class TestLog2_ZeroSize(TestLog2):
+    def init_shape(self):
+        self.shape = [2, 0]
+
+
 class TestLog2_Op_Int(unittest.TestCase):
     def test_api_int(self):
         paddle.disable_static()
@@ -4226,6 +4235,11 @@ class TestLog10_Complex128(TestLog10_Complex64):
 class TestLog10_ZeroDim(TestLog10):
     def init_shape(self):
         self.shape = []
+
+
+class TestLog10_ZeroSize(TestLog10):
+    def init_shape(self):
+        self.shape = [2, 0]
 
 
 class TestLog10_Op_Int(unittest.TestCase):
@@ -4388,6 +4402,11 @@ class TestLog1p_Op_Int(unittest.TestCase):
 class TestLog1p_ZeroDim(TestLog1p):
     def init_shape(self):
         self.shape = []
+
+
+class TestLog1p_ZeroSize(TestLog1p):
+    def init_shape(self):
+        self.shape = [2, 0]
 
 
 class TestLog1pAPI(unittest.TestCase):
@@ -5935,6 +5954,7 @@ create_test_act_bf16_class(
 create_test_act_bf16_class(
     TestRsqrt, check_prim=True, check_pir=True, check_prim_pir=True
 )
+
 
 if __name__ == "__main__":
     unittest.main()

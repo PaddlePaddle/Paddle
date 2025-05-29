@@ -35,8 +35,12 @@ class TestLerp(OpTest):
         self.init_shape()
         self.init_xyshape()
         self.init_wshape()
-        x = np.arange(1.0, 101.0).astype(self.dtype).reshape(self.xshape)
-        y = np.full(100, 10.0).astype(self.dtype).reshape(self.yshape)
+        if 0 in self.shape:
+            x = np.random.rand(*self.xshape).astype(self.dtype)
+            y = np.random.rand(*self.yshape).astype(self.dtype)
+        else:
+            x = np.arange(1.0, 101.0).astype(self.dtype).reshape(self.xshape)
+            y = np.full(100, 10.0).astype(self.dtype).reshape(self.yshape)
         w = np.random.random(self.wshape).astype(self.dtype)
         self.inputs = {'X': x, 'Y': y, 'Weight': w}
         self.outputs = {'Out': x + w * (y - x)}
@@ -92,6 +96,11 @@ class TestLerpWithDim6Fp16(TestLerp):
 
     def init_dtype(self):
         self.dtype = np.float16
+
+
+class TestLerp_ZeroSize(TestLerp):
+    def init_shape(self):
+        self.shape = [2, 0]
 
 
 class TestLerpWihFp16BroadXY(TestLerp):

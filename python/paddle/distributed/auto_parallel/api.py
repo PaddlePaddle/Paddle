@@ -1534,7 +1534,9 @@ class _ShardOptimizer(Optimizer):
 
                 return fuse_comm
 
-            param_group_len = len(self.fuse_param_view[i])
+            param_group_len = (
+                len(self.fuse_param_view[i]) * self.gradient_accumulation_steps
+            )
             for name, view in self.fuse_param_view[i].items():
                 view['param']._register_backward_hook(
                     fuse_comm_hook_func(
@@ -2051,11 +2053,6 @@ class ShardingStage1(_ShardingStageBase):
 
         if key == "grad" and in_auto_dp_mode():
             tensor = self._reshard_fake_replicate_grad_to_partial(tensor)
-
-        if 'beta' not in key:
-            placements = get_placement_with_sharding(param, self._sharding_axis)
-        else:
-            placements = [dist.Replicate() for _ in param.process_mesh.shape]
 
         return self._apply_placement(tensor, param, placements)
 

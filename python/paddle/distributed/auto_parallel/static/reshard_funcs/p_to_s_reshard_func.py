@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 import paddle
 import paddle.distributed as dist
 from paddle.distributed.utils.stream_utils import ExecutionStreamType
