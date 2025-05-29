@@ -74,7 +74,6 @@ from .variables import (
     MapVariable,
     NumPyArrayVariable,
     NumPyVariable,
-    PartialVariable,
     RangeVariable,
     SliceVariable,
     SuperVariable,
@@ -1632,20 +1631,3 @@ Dispatcher.register(
         DummyTracker([exc_instance, expected_exc_types]),
     ),
 )
-
-
-@Dispatcher.register_decorator(partial)
-def partial_dispatcher(
-    _callable: CallableVariable, *args: VariableBase, **kwargs: VariableBase
-):
-    from .function_graph import convert_to_py_value
-
-    obj = convert_to_py_value(_callable)(
-        *convert_to_py_value(args),
-        **convert_to_py_value(kwargs),
-    )
-    return PartialVariable(
-        obj,
-        graph=Dispatcher.graph,
-        tracker=DummyTracker([_callable, args, kwargs]),
-    )

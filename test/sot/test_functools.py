@@ -16,7 +16,9 @@ import functools
 import operator
 import unittest
 
-from test_case_base import TestCaseBase
+from test_case_base import (
+    TestCaseBase,
+)
 
 import paddle
 from paddle.jit.sot.psdb import check_no_breakgraph
@@ -54,26 +56,52 @@ def try_reduce_iter(fn, var, init=None):
     return ans
 
 
-def partial_temp_add(a, b, c=1, d=2):
-    return a + b + c + d
+def add(a, b, c, d=2, e=3, f=4):
+    return a, b, c, d, e, f
 
 
-class PartialTempClassA:
-    def __init__(self, a, b, c=1, d=2):
-        self._sum = a + b + c + d
-
-
-def partial_with_function(*args, **kwargs):
-    partial_func = functools.partial(partial_temp_add, 1)
-    out = partial_func(*args, **kwargs)
+@check_no_breakgraph
+def simple_partial(x=1):
+    partial_func = functools.partial(add, x)
+    out = partial_func(2, 3)
     return out
 
 
-def partial_with_class(*args, **kwargs):
+@check_no_breakgraph
+def simple_partial_with_two_args(x=1):
+    partial_func = functools.partial(add, x, 2)
+    out = partial_func(3)
+    return out
 
-    partial_cls = functools.partial(PartialTempClassA, 1)
-    partial_ins = partial_cls(*args, **kwargs)
-    return partial_ins._sum
+
+@check_no_breakgraph
+def simple_partial_with_n_args(x=1):
+    partial_func = functools.partial(add, x, 2, 3, 4, 5, 6)
+    out = partial_func()
+    return out
+
+
+@check_no_breakgraph
+def simple_partial_with_n_args_kwargs():
+    partial_func = functools.partial(add, 1, 2, d=2)
+    out = partial_func(paddle.to_tensor(3), e=7)
+    return out
+
+
+@check_no_breakgraph
+def simple_partial_with_n_args_same_kwargs():
+    partial_func = functools.partial(add, 1, 2, e=2)
+    out = partial_func(3, e=7)
+    return out
+
+
+# NOTE(DrRyanHuang): Currently, SOT does not support tensor bind yet
+# because this case is not common enough.
+# We could create a PartialClassVariable to prevent breakgraph.
+def simple_partial_with_tensor_bind():
+    partial_func = functools.partial(add, 1, paddle.to_tensor(2.0), e=2)
+    out = partial_func(3, e=7)
+    return out
 
 
 @check_no_breakgraph
@@ -119,13 +147,24 @@ class TestFunctools(TestCaseBase):
     def test_reduce_with_builtin_fn(self):
         self.assert_results(try_reduce, operator.add, [2, 5, 8])
 
-    def test_partial_with_function(self):
-        self.assert_results(partial_with_function, 2, c=4, d=6)
-        self.assert_results(partial_with_function, 100, d=333)
+    def test_simple_partial(self):
+        self.assert_results(simple_partial, 1)
+        self.assert_results(simple_partial, 2)
 
-    def test_partial_with_class(self):
-        self.assert_results(partial_with_function, 1, c=2, d=3)
-        self.assert_results(partial_with_function, 2, d=3)
+    def test_simple_partial_with_two_argsn(self):
+        self.assert_results(simple_partial_with_two_args)
+
+    def test_simple_partial_with_n_args(self):
+        self.assert_results(simple_partial_with_n_args)
+
+    def test_simple_partial_with_n_args_kwargs(self):
+        self.assert_results(simple_partial_with_n_args_kwargs)
+
+    def test_simple_partial_with_n_args_same_kwargs(self):
+        self.assert_results(simple_partial_with_n_args_same_kwargs)
+
+    def test_simple_partial_with_tensor_bind(self):
+        self.assert_results(simple_partial_with_tensor_bind)
 
 
 if __name__ == "__main__":
