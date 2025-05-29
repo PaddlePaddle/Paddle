@@ -2940,6 +2940,62 @@ TEST(ArgSortInferSpmd, Ctor) {
           << std::endl;
 }
 
+TEST(Unique, Ctor) {
+  std::vector<int64_t> mesh_shape = {2, 2};
+  std::vector<int64_t> process_ids = {0, 1, 2, 3};
+  std::vector<std::string> dim_names = {"x", "y"};
+  ProcessMesh process_mesh(mesh_shape, process_ids, dim_names);
+  bool return_index = true;
+  bool return_inverse = true;
+  bool return_counts = true;
+  std::vector<int> axis = {};
+
+  // test forward
+  // return_index=True, return_inverse=True, return_counts=True, axis={}
+  // [0, -1] --> [-1,-1], [-1], [-1], [-1], [-1]
+  auto x_dist_attr = TensorDistAttr();
+  x_dist_attr.set_process_mesh(process_mesh);
+  x_dist_attr.set_dims_mapping({0, -1});
+  x_dist_attr.set_dynamic_dims({false, false});
+  phi::distributed::DistMetaTensor x =
+      phi::distributed::DistMetaTensor(common::make_ddim({4, 8}), x_dist_attr);
+
+  phi::distributed::SpmdInfo forward_info =
+      phi::distributed::UniqueInferSpmd(x,
+                                        return_index,
+                                        return_inverse,
+                                        return_counts,
+                                        axis,
+                                        phi::DataType::FLOAT32);
+
+  EXPECT_EQ(forward_info.first.size(), 1UL);
+  EXPECT_EQ(forward_info.second.size(), 4UL);
+
+  check_dim_mapping(forward_info.first[0], {-1, -1});
+  check_dim_mapping(forward_info.second[0], {-1});
+  check_dim_mapping(forward_info.second[1], {-1});
+  check_dim_mapping(forward_info.second[2], {-1});
+  check_dim_mapping(forward_info.second[3], {-1});
+
+  // return_index=True, return_inverse=True, return_counts=True, axis={0}
+  // [0, -1] --> [-1, -1], [-1, -1], [-1], [-1], [-1]
+  axis = {0};
+  forward_info = phi::distributed::UniqueInferSpmd(x,
+                                                   return_index,
+                                                   return_inverse,
+                                                   return_counts,
+                                                   axis,
+                                                   phi::DataType::FLOAT32);
+
+  EXPECT_EQ(forward_info.first.size(), 1UL);
+  EXPECT_EQ(forward_info.second.size(), 4UL);
+
+  check_dim_mapping(forward_info.first[0], {-1, -1});
+  check_dim_mapping(forward_info.second[0], {-1, -1});
+  check_dim_mapping(forward_info.second[1], {-1});
+  check_dim_mapping(forward_info.second[2], {-1});
+  check_dim_mapping(forward_info.second[3], {-1});
+}
 }  // namespace auto_parallel
 }  // namespace distributed
 }  // namespace paddle

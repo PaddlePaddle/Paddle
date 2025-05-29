@@ -16,7 +16,7 @@
 
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/kernel_registry.h"
-
+#include "paddle/phi/kernels/full_kernel.h"
 namespace phi {
 
 template <typename T, typename IndexT>
@@ -44,7 +44,21 @@ void WhereGradKernel(const Context& ctx,
   const bool* cond_data = condition.data<bool>();
   auto numel = condition.numel();
   auto* dout = out_grad.data<T>();
-
+  if (out_grad.numel() == 0) {
+    if (x_grad) {
+      phi::Full<T, Context>(ctx,
+                            phi::IntArray(common::vectorize(x_grad->dims())),
+                            static_cast<T>(0),
+                            x_grad);
+    }
+    if (y_grad) {
+      phi::Full<T, Context>(ctx,
+                            phi::IntArray(common::vectorize(y_grad->dims())),
+                            static_cast<T>(0),
+                            y_grad);
+    }
+    return;
+  }
   T* dx = (x_grad != nullptr) ? ctx.template Alloc<T>(x_grad) : nullptr;
   T* dy = (y_grad != nullptr) ? ctx.template Alloc<T>(y_grad) : nullptr;
 

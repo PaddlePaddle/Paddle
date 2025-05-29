@@ -116,6 +116,10 @@ struct OneDNNActivationGradFunc : public funcs::BaseActivationFunctor<T> {
                   float alpha,
                   float beta,
                   DenseTensor* dx) const {
+    if (dx && dx->numel() == 0) {
+      dev_ctx.template Alloc<T>(dx);
+      return;
+    }
     eltwise_grad<T>(dev_ctx, x, dout, alpha, beta, dx, algorithm);
   }
 };
@@ -128,6 +132,10 @@ struct OneDNNActivationGradUseOutFunc : public funcs::BaseActivationFunctor<T> {
                   float alpha,
                   float beta,
                   DenseTensor* dx) const {
+    if (dx && dx->numel() == 0) {
+      dev_ctx.template Alloc<T>(dx);
+      return;
+    }
     eltwise_grad_use_out<T>(dev_ctx, out, dout, alpha, beta, dx, algorithm);
   }
 };

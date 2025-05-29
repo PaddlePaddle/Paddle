@@ -616,6 +616,19 @@ void ReduceIntArrayAxisInferMeta(const MetaTensor& x,
                                  MetaTensor* out,
                                  MetaConfig config = MetaConfig());
 
+void StrictReduceIntArrayAxisInferMetaBase(const MetaTensor& x,
+                                           const IntArray& axis,
+                                           bool keep_dim,
+                                           bool reduce_all,
+                                           MetaTensor* out,
+                                           MetaConfig config = MetaConfig());
+
+void StrictReduceIntArrayAxisInferMeta(const MetaTensor& x,
+                                       const IntArray& axis,
+                                       bool keep_dim,
+                                       MetaTensor* out,
+                                       MetaConfig config = MetaConfig());
+
 void ReduceScatterInferMeta(const MetaTensor& x, int nranks, MetaTensor* out);
 
 void RepeatInterleaveInferMeta(const MetaTensor& x,
