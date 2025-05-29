@@ -16,9 +16,9 @@
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
-
 namespace phi {
 template <typename T, typename Type>
 static void getKthvalue(Type input_height,
@@ -80,6 +80,12 @@ void KthvalueKernel(const Context& dev_ctx,
                     bool keepdim,
                     DenseTensor* output,
                     DenseTensor* indices) {
+  if (x.numel() == 0) {
+    phi::Full<T, Context>(
+        ctx, phi::IntArray(common::vectorize(output->dims())), NAN, output);
+    phi::Full<int64_t, Context>(
+        ctx, phi::IntArray(common::vectorize(output->dims())), 0, output);
+  }
   const auto& in_dims = x.dims();
   if (axis < 0) axis += in_dims.size();
 
