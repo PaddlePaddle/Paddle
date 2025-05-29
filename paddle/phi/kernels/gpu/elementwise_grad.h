@@ -397,7 +397,7 @@ void ElementwiseMulGrad(const GPUContext &dev_ctx,
 
   bool need_dx = (dx != nullptr) && (dx->numel() != 0);
   bool need_dy = (dy != nullptr) && (dy->numel() != 0);
-  if (need_dy && need_dy) {
+  if (need_dx && need_dy) {
     std::vector<const DenseTensor *> ins = {&dout, &y, &x};
     GetGradXAndYOut<T>(dev_ctx,
                        place,
