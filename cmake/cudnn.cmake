@@ -12,8 +12,12 @@ endif()
 
 find_path(
   CUDNN_INCLUDE_DIR cudnn.h
-  PATHS ${CUDNN_ROOT} ${CUDNN_ROOT}/include $ENV{CUDNN_ROOT}
-        $ENV{CUDNN_ROOT}/include ${CUDA_TOOLKIT_INCLUDE}
+  PATHS ${CUDNN_ROOT}
+        ${CUDNN_ROOT}/include
+        ${CUDNN_ROOT}/include/${TARGET_ARCH}-linux-gnu
+        $ENV{CUDNN_ROOT}
+        $ENV{CUDNN_ROOT}/include
+        ${CUDA_TOOLKIT_INCLUDE}
         /usr/local/lib/python${PY_VERSION}/dist-packages/nvidia/cudnn/include/
   NO_DEFAULT_PATH)
 
