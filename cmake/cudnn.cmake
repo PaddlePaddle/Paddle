@@ -10,6 +10,11 @@ else()
       CACHE PATH "CUDNN ROOT")
 endif()
 
+set(TARGET_ARCH "x86_64")
+if(NOT ${CMAKE_SYSTEM_PROCESSOR})
+  set(TARGET_ARCH ${CMAKE_SYSTEM_PROCESSOR})
+endif()
+
 find_path(
   CUDNN_INCLUDE_DIR cudnn.h
   PATHS ${CUDNN_ROOT}
@@ -22,11 +27,6 @@ find_path(
   NO_DEFAULT_PATH)
 
 get_filename_component(__libpath_hist ${CUDA_CUDART_LIBRARY} PATH)
-
-set(TARGET_ARCH "x86_64")
-if(NOT ${CMAKE_SYSTEM_PROCESSOR})
-  set(TARGET_ARCH ${CMAKE_SYSTEM_PROCESSOR})
-endif()
 
 list(
   APPEND
