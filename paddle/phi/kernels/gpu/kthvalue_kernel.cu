@@ -162,9 +162,9 @@ void KthvalueKernel(const Context& dev_ctx,
                     DenseTensor* indices) {
   if (x.numel() == 0) {
     phi::Full<T, Context>(
-        ctx, phi::IntArray(common::vectorize(output->dims())), NAN, output);
+        dev_ctx, phi::IntArray(common::vectorize(output->dims())), NAN, output);
     phi::Full<int64_t, Context>(
-        ctx, phi::IntArray(common::vectorize(output->dims())), 0, output);
+        dev_ctx, phi::IntArray(common::vectorize(indices->dims())), 0, indices);
   }
 
   const auto& in_dims = x.dims();
