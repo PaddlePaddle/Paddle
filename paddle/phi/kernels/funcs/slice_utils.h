@@ -336,6 +336,67 @@ inline DDim GetDecreasedDims(const DDim slice_dims,
 }
 
 template <typename T = int64_t>
+inline void GetDecreasedDimsAndStrides(const std::vector<T> slice_dims,
+                                       const std::vector<T> slice_strides,
+                                       const std::vector<T>& decrease_axes,
+                                       const std::vector<T>& none_axes,
+                                       std::vector<T>* new_dims,
+                                       std::vector<T>* new_strides,
+                                       std::vector<T>* infer_flags = nullptr) {
+  std::vector<uint8_t> decrease_flag(slice_dims.size(), 0);
+
+  if (none_axes.size() > 0) {
+    size_t none_axes_cur = 0, decrease_axes_cur = 0;
+    for (int i = 0; i < slice_dims.size(); ++i) {
+      while (none_axes_cur < none_axes.size() &&
+             none_axes[none_axes_cur] <= i) {
+        new_dims->push_back(1);
+        new_strides->push_back(slice_strides[i]);
+        none_axes_cur++;
+      }
+      if (decrease_axes_cur < decrease_axes.size() &&
+          decrease_axes[decrease_axes_cur] == i) {
+        decrease_axes_cur++;
+      } else {
+        new_dims->push_back(slice_dims[i]);
+        new_strides->push_back(slice_strides[i]);
+      }
+    }
+    while (none_axes_cur < none_axes.size()) {
+      new_dims->push_back(1);
+      new_strides->push_back(slice_strides[-1]);
+      none_axes_cur++;
+    }
+  } else if (decrease_axes.size() > 0) {
+    for (size_t i = 0; i < decrease_axes.size(); ++i) {
+      T axis = decrease_axes[i];
+      decrease_flag[axis] = 1;
+      if (infer_flags && (*infer_flags)[i] != -1) {
+        PADDLE_ENFORCE_EQ(slice_dims[axis],
+                          1,
+                          common::errors::InvalidArgument(
+                              "Decrease dim should be 1, but now received %d",
+                              slice_dims[axis]));
+      }
+    }
+
+    for (int i = 0; i < slice_dims.size(); ++i) {
+      if (decrease_flag[i] == 0) {
+        new_dims->push_back(slice_dims[i]);
+        new_strides->push_back(slice_strides[i]);
+      }
+    }
+  } else {
+    for (int i = 0; i < slice_dims.size(); ++i) {
+      new_dims->push_back(slice_dims[i]);
+      new_strides->push_back(slice_strides[i]);
+    }
+  }
+
+  return;
+}
+
+template <typename T = int64_t>
 inline void CheckAndUpdateSparseSliceAttrs(const DDim in_dims,
                                            std::vector<T>* axes,
                                            std::vector<T>* starts,

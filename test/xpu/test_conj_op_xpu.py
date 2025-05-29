@@ -88,56 +88,56 @@ class XPUTestConjOp(XPUOpTestWrapper):
 
 
 support_types = get_xpu_op_support_types('conj')
-for stype in support_types:
+real_types = [t for t in support_types if t != 'complex64']
+for stype in real_types:
     create_test_class(globals(), XPUTestConjOp, stype)
 
+if 'complex64' in support_types:
 
-class TestConjComplexOp(XPUOpTest):
-    def setUp(self):
-        self.op_type = "conj"
-        self.python_api = paddle.tensor.conj
-        self.init_dtype_type()
-        self.init_input()
-        self.inputs = {'X': self.x}
-        out = np.conj(self.x)
-        self.outputs = {'Out': out}
+    class TestConjComplexOp(XPUOpTest):
+        def setUp(self):
+            self.op_type = "conj"
+            self.python_api = paddle.tensor.conj
+            self.init_dtype_type()
+            self.init_input()
+            self.inputs = {'X': self.x}
+            out = np.conj(self.x)
+            self.outputs = {'Out': out}
 
-    def init_dtype_type(self):
-        self.dtype = np.complex64
+        def init_dtype_type(self):
+            self.dtype = np.complex64
 
-    def init_input(self):
-        self.x = (
-            np.random.random((12, 14)) + 1j * np.random.random((12, 14))
-        ).astype(self.dtype)
+        def init_input(self):
+            self.x = (
+                np.random.random((12, 14)) + 1j * np.random.random((12, 14))
+            ).astype(self.dtype)
 
-    def test_check_output(self):
-        if paddle.is_compiled_with_xpu():
-            place = paddle.XPUPlace(0)
-            self.check_output_with_place(place)
+        def test_check_output(self):
+            if paddle.is_compiled_with_xpu():
+                place = paddle.XPUPlace(0)
+                self.check_output_with_place(place)
 
-    def test_check_grad(self):
-        if paddle.is_compiled_with_xpu():
-            place = paddle.XPUPlace(0)
-            self.check_grad_with_place(
-                place,
-                ['X'],
-                'Out',
-            )
+        def test_check_grad(self):
+            if paddle.is_compiled_with_xpu():
+                place = paddle.XPUPlace(0)
+                self.check_grad_with_place(
+                    place,
+                    ['X'],
+                    'Out',
+                )
 
+    class TestConjComplexOp1(TestConjComplexOp):
+        def init_input(self):
+            self.x = (
+                np.random.random([2, 20, 2, 3])
+                + 1j * np.random.random([2, 20, 2, 3])
+            ).astype(self.dtype)
 
-class TestConjComplexOp1(TestConjComplexOp):
-    def init_input(self):
-        self.x = (
-            np.random.random([2, 20, 2, 3])
-            + 1j * np.random.random([2, 20, 2, 3])
-        ).astype(self.dtype)
-
-
-class TestConjComplexOp2(TestConjComplexOp):
-    def init_input(self):
-        self.x = (
-            np.random.random([2, 2, 3]) + 1j * np.random.random([2, 2, 3])
-        ).astype(self.dtype)
+    class TestConjComplexOp2(TestConjComplexOp):
+        def init_input(self):
+            self.x = (
+                np.random.random([2, 2, 3]) + 1j * np.random.random([2, 2, 3])
+            ).astype(self.dtype)
 
 
 if __name__ == "__main__":

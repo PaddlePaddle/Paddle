@@ -500,7 +500,7 @@ void AdamwDenseKernel(
   PADDLE_ENFORCE_NE(
       amsgrad,
       true,
-      phi::errors::Unimplemented("Operation amsgrad is not supported yet."));
+      common::errors::Unimplemented("Operation amsgrad is not supported yet."));
 
   auto dev_version =
       phi::backends::xpu::get_xpu_version(dev_ctx.GetPlace().GetDeviceId());

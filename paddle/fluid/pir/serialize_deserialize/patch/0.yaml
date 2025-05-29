@@ -50,3 +50,10 @@ op_patches:
           - type: pir::Int64Attribute
           - type: pir::Int64Attribute
           - type: pir::Int64Attribute
+  - op_name : pd_op.expand_as
+    actions:
+      - action : modify_attr
+        object : target_shape
+        type : pir::ArrayAttribute
+        default :
+          - type: pir::Int64Attribute
