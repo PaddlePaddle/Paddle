@@ -1,4 +1,4 @@
-name: Linux-XPU
+name: Linux-DCU
 
 on:
   workflow_call:
@@ -38,7 +38,7 @@ jobs:
     runs-on:
       group: HK-CPU
     steps:
-      - name: Check docker image and run  container
+      - name: Check docker image and run container
         env:
           WITH_ROCM: "ON"
           WITH_RCCL: "ON"
@@ -193,6 +193,7 @@ jobs:
           WITH_RCCL: "ON"
           WITH_AVX: "ON"
           WITH_MKL: "ON"
+          IF_DCU: "ON"
           GIT_PR_ID: ${{ github.event.pull_request.number }}
           PADDLE_VERSION: 0.0.0
           WITH_TESTING: "ON"
@@ -214,8 +215,8 @@ jobs:
             -v /ssd1/cibuild/.ccache:/root/.ccache \
             -v ${{ github.workspace }}/../../..:${{ github.workspace }}/../../.. \
             -v ${{ github.workspace }}:/paddle \
-            --device ${XPU_CODE_1} \
-            --device ${XPU_CODE_2} \
+            --device=/dev/kfd --device=/dev/dri \
+   .        --device=/dev/mkfd --group-add video \
             --shm-size=32g \
             -e BRANCH \
             -e PR_ID \
@@ -226,6 +227,8 @@ jobs:
             -e WITH_RCCL \
             -e WITH_AVX \
             -e WITH_MKL \
+            -e IF_DCU \
+            -e WITH_RCCL \
             -e CMAKE_BUILD_TYPE \
             -e GIT_PR_ID \
             -e PADDLE_VERSION \

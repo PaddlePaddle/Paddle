@@ -249,6 +249,25 @@ function determine_kunlun_runner() {
     # rm -rf * .[^.]* .??*
 }
 
+function determine_dcu_runner() {
+    runner_name=$1
+
+    if [[ $runner_name == "pddle-1" ]]; then
+        echo "HIP_VISIBLE_DEVICES=0,1" >> $GITHUB_ENV
+    elif [[ $runner_name == "paddle-2" ]]; then
+        echo "HIP_VISIBLE_DEVICES=2,3" >> $GITHUB_ENV
+    elif [[ $runner_name == "paddle-3" ]]; then
+        echo "HIP_VISIBLE_DEVICES=4,5" >> $GITHUB_ENV
+    elif [[ $runner_name == "paddle-4" ]]; then
+        echo "HIP_VISIBLE_DEVICES=6,7" >> $GITHUB_ENV
+    else
+        echo "Unknown runner name: $runner_name"
+        exit 1
+    fi
+    cd $GITHUB_WORKSPACE
+    # rm -rf * .[^.]* .??*
+}
+
 function determine_npu_runner() {
     runner_name=$1
     if [[ $runner_name == "paddle-1" ]]; then
