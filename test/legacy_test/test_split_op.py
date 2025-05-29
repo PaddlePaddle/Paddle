@@ -142,10 +142,12 @@ class TestSplitOp_AxisTensor(OpTest):
             'X': self.x,
             'AxisTensor': np.array([self.axis]).astype("int32"),
         }
-        self.attrs = {'sections': self.sections, 'num': self.num}
-
+        self.init_attrs()
         out = np.split(self.x, self.indices_or_sections, self.axis)
         self.outputs = {'Out': [(f'out{i}', out[i]) for i in range(len(out))]}
+
+    def init_attrs(self):
+        self.attrs = {'sections': self.sections, 'num': self.num}
 
     def init_data(self):
         self.x = np.random.random((4, 5, 6)).astype(self.dtype)
@@ -171,9 +173,11 @@ class TestSplitOpZeroSize(TestSplitOp_AxisTensor):
     def init_data(self):
         self.x = np.random.random((0, 1, 6)).astype(self.dtype)
         self.axis = 2
-        self.sections = []
-        self.num = 3
+        self.sections = [2, 2, 2]
         self.indices_or_sections = 3
+
+    def init_attrs(self):
+        self.attrs = {'sections': self.sections, 'axis': self.axis}
 
     def test_check_output(self):
         self.check_output(check_pir=True, check_symbol_infer=False)
@@ -187,7 +191,6 @@ class TestSplitOpZeroSize1(TestSplitOpZeroSize):
         self.x = np.random.random((8, 0, 9)).astype(self.dtype)
         self.axis = 2
         self.sections = [1, 4, 4]
-        self.num = 3
         self.indices_or_sections = [1, 5]
 
 
@@ -195,9 +198,16 @@ class TestSplitOpZeroSize2(TestSplitOpZeroSize):
     def init_data(self):
         self.x = np.random.random((5, 0, 12)).astype(self.dtype)
         self.axis = 2
-        self.sections = [4, 4, 4]
-        self.num = 3
-        self.indices_or_sections = [4, 8]
+        self.sections = [6, 0, 6]
+        self.indices_or_sections = [6, 6]
+
+
+class TestSplitOpZeroSize3(TestSplitOpZeroSize):
+    def init_data(self):
+        self.x = np.random.random((5, 0, 12)).astype(self.dtype)
+        self.axis = 1
+        self.sections = [6, 0, 6]
+        self.indices_or_sections = [6, 6]
 
 
 # attr(sections) is list containing Tensor
