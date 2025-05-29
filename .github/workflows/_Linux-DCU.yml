@@ -215,8 +215,10 @@ jobs:
             -v /ssd1/cibuild/.ccache:/root/.ccache \
             -v ${{ github.workspace }}/../../..:${{ github.workspace }}/../../.. \
             -v ${{ github.workspace }}:/paddle \
-            --device=/dev/kfd --device=/dev/dri \
-   .        --device=/dev/mkfd --group-add video \
+            --device=/dev/kfd \
+            --device=/dev/dri \
+            --device=/dev/mkfd \
+            --group-add video \
             --shm-size=32g \
             -e BRANCH \
             -e PR_ID \
