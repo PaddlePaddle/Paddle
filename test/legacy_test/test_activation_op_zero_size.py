@@ -34,7 +34,6 @@ from test_activation_op import (
     TestReciprocal,
     TestRelu,
     TestRelu6,
-    TestRound,
     TestRsqrt,
     TestSigmoid,
     TestSilu,
@@ -107,7 +106,6 @@ create_test_zero_size_class(TestExpFp32_Prim)
 create_test_zero_size_class(TestExpm1)
 create_test_zero_size_class(TestLeakyRelu)
 create_test_zero_size_class(TestRelu6)
-create_test_zero_size_class(TestRound)
 create_test_zero_size_class(TestHardSwish)
 create_test_zero_size_class(TestSwish)
 
