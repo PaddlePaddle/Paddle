@@ -71,6 +71,11 @@ void NextafterKernel(const Context& ctx,
                      const DenseTensor& x,
                      const DenseTensor& y,
                      DenseTensor* out) {
+  if (x.numel() == 0 || y.numel() == 0) {
+    ctx.template Alloc<typename NextafterOut<T>::type>(out);
+    return;
+  }
+
   auto* out_data = ctx.template Alloc<T>(out);
   auto x_data = x.data<T>();
   auto y_data = y.data<T>();
