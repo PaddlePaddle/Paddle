@@ -2227,6 +2227,7 @@ def cosine_similarity(
             [ 0.97689527,  0.99996042, -0.55138415])
 
     """
+    x1, x2 = paddle.broadcast_tensors([x1, x2])
     w12 = sum(paddle.multiply(x1, x2), axis=axis)
     w1 = sum(paddle.multiply(x1, x1), axis=axis)
     w2 = sum(paddle.multiply(x2, x2), axis=axis)
