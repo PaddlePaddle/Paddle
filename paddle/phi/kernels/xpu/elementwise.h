@@ -198,9 +198,9 @@ void XPUElementwiseGrad(const XPUContext& dev_ctx,
     dy_data = dev_ctx.template Alloc<T>(dy);
   }
   if (dz.numel() == 0) {
-    phi::Full<T, Context>(
+    phi::Full<T, XPUContext>(
         dev_ctx, phi::IntArray(common::vectorize(dx->dims())), 0, dx);
-    phi::Full<T, Context>(
+    phi::Full<T, XPUContext>(
         dev_ctx, phi::IntArray(common::vectorize(dy->dims())), 0, dy);
     return;
   }
