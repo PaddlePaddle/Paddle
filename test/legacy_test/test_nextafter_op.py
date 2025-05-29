@@ -114,5 +114,31 @@ class TestNextafterOPFP32(TestNextafterOP):
         self.dtype = np.float32
 
 
+class TestNextafterOPZeroDim1(TestNextafterOP):
+    def setUp(self):
+        self.op_type = "nextafter"
+        self.python_api = paddle.nextafter
+        self.init_dtype()
+
+        x = np.random.rand(0, 3, 2).astype(self.dtype)
+        y = np.random.rand(0, 3, 2).astype(self.dtype)
+        out = np.nextafter(x, y)
+        self.inputs = {'x': x, 'y': y}
+        self.outputs = {'out': out}
+
+
+class TestNextafterOPZeroDim2(TestNextafterOP):
+    def setUp(self):
+        self.op_type = "nextafter"
+        self.python_api = paddle.nextafter
+        self.init_dtype()
+
+        x = np.random.rand(4, 0, 2).astype(self.dtype)
+        y = np.random.rand(4, 0, 2).astype(self.dtype)
+        out = np.nextafter(x, y)
+        self.inputs = {'x': x, 'y': y}
+        self.outputs = {'out': out}
+
+
 if __name__ == "__main__":
     unittest.main()
