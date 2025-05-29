@@ -375,5 +375,40 @@ class TestLogcumsumexpBF16Op(OpTest):
         )
 
 
+def create_test_class(op_type, dtype, shape, axis):
+    class Cls(unittest.TestCase):
+        def test_zero_size(self):
+            paddle.disable_static()
+            numpy_tensor_1 = np.random.rand(*shape).astype(dtype)
+            paddle_x = paddle.to_tensor(numpy_tensor_1)
+            paddle_x.stop_gradient = False
+
+            paddle_api = eval(f"paddle.{op_type}")
+            paddle_out = paddle_api(paddle_x, axis=axis)
+            numpy_out = np.log(
+                np.cumsum(np.exp(numpy_tensor_1), axis=axis)
+            )  # Numpy does not have logcumsumexp
+
+            np.testing.assert_allclose(
+                paddle_out.numpy(),
+                numpy_out,
+                1e-2,
+                1e-2,
+            )
+            np.testing.assert_allclose(
+                paddle_out.shape,
+                numpy_out.shape,
+            )
+
+    cls_name = f"{op_type}{dtype}_0SizeTest"
+    Cls.__name__ = cls_name
+    globals()[cls_name] = Cls
+
+
+create_test_class("logcumsumexp", "float32", [3, 4, 0], 0)
+create_test_class("logcumsumexp", "float64", [3, 4, 0, 3, 4], -2)
+create_test_class("logcumsumexp", "int32", [3, 4, 0], 0)
+create_test_class("logcumsumexp", "int64", [3, 4, 0, 3, 4], -1)
+
 if __name__ == '__main__':
     unittest.main()

@@ -10,17 +10,12 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/pybind/eager_utils.h"
-#include <Python.h>
-#include "paddle/common/exception.h"
-#include "paddle/pir/include/core/value.h"
-// Avoid a problem with copysign defined in pyconfig.h on Windows.
-#ifdef copysign
-#undef copysign
-#endif
 
+#include <Python.h>
 #include <string>
 #include <vector>
 
+#include "paddle/common/exception.h"
 #include "paddle/common/flags.h"
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/eager/api/all.h"
@@ -49,6 +44,7 @@ limitations under the License. */
 #include "paddle/phi/core/memory/allocation/allocator.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/pir/include/core/attribute.h"
+#include "paddle/pir/include/core/value.h"
 
 COMMON_DECLARE_bool(check_nan_inf);
 COMMON_DECLARE_int32(check_nan_inf_level);
@@ -1282,10 +1278,6 @@ paddle::optional<paddle::Tensor> GetOptionalTensorFromArgs(
     const phi::distributed::ProcessMesh* mesh) {
   PyObject* obj = PyTuple_GET_ITEM(args, arg_idx);
 
-  if (PyTuple_Check(obj)) {
-    obj = PyTuple_GET_ITEM(obj, 0);
-  }
-
   if (obj == nullptr || obj == Py_None) {
     if (!dispensable) {
       PADDLE_THROW(common::errors::InvalidArgument(
@@ -1326,10 +1318,6 @@ static paddle::Tensor& GetTensorFromPyObject(const std::string& op_type,
                                              PyObject* obj,
                                              ssize_t arg_idx,
                                              bool dispensable) {
-  if (PyTuple_Check(obj)) {
-    obj = PyTuple_GET_ITEM(obj, 0);
-  }
-
   if (obj == nullptr || obj == Py_None) {
     if (!dispensable) {
       PADDLE_THROW(common::errors::InvalidArgument(
@@ -1618,10 +1606,6 @@ paddle::Tensor* GetTensorPtrFromArgs(const std::string& op_type,
                                      ssize_t arg_idx,
                                      bool dispensable) {
   PyObject* obj = PyTuple_GET_ITEM(args, arg_idx);
-
-  if (PyTuple_Check(obj)) {
-    obj = PyTuple_GET_ITEM(obj, 0);
-  }
 
   if (obj == nullptr || obj == Py_None) {
     if (!dispensable) {

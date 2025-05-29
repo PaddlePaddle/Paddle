@@ -26,6 +26,9 @@ void AbsGradKernel(const Context& ctx,
                    const DenseTensor& dout,
                    DenseTensor* dx) {
   ctx.template Alloc<T>(dx);
+  if (dx && dx->numel() == 0) {
+    return;
+  }
   using XPUType = typename XPUTypeTrait<T>::Type;
   int r = xpu::abs_grad(ctx.x_context(),
                         reinterpret_cast<const XPUType*>(x.data<T>()),

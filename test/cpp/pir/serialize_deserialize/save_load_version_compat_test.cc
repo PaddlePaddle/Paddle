@@ -138,7 +138,7 @@ TEST(save_load_version_compat, attribute_patch_test1) {
 
   // Save the program into file
   pir::WriteModule(
-      program, "./test_save_load", /*pir_version*/ 1, true, false, true);
+      program, "./test_save_load", true, false, true, /*pir_version*/ 1);
   // Load the program from file
   pir::Program new_program(ctx);
   ReadModuleForTest("./test_save_load", &new_program, 2);
@@ -244,7 +244,7 @@ TEST(save_load_version_compat, op_patch_test1) {
   program.block()->push_back(op2);
 
   pir::WriteModule(
-      program, "./test_save_load", /*pir_version*/ 1, true, false, true);
+      program, "./test_save_load", true, false, true, /*pir_version*/ 1);
   // Load the program from file
   pir::Program new_program(ctx);
   ReadModuleForTest("./test_save_load", &new_program, 2);
@@ -299,7 +299,7 @@ TEST(save_load_version_compat, op_patch_test2) {
   block->push_back(op2);
 
   pir::WriteModule(
-      program, "./test_save_load", /*pir_version*/ 1, true, false, true);
+      program, "./test_save_load", true, false, true, /*pir_version*/ 1);
   // Load the program from file
   pir::Program new_program(ctx);
   ReadModuleForTest("./test_save_load", &new_program, 2);
@@ -341,7 +341,7 @@ TEST(save_load_version_compat, op_patch_test3) {
   block->push_back(op2);
 
   pir::WriteModule(
-      program, "./test_save_load", /*pir_version*/ 1, true, false, true);
+      program, "./test_save_load", true, false, true, /*pir_version*/ 1);
   // Load the program from file
   pir::Program new_program(ctx);
   ReadModuleForTest("./test_save_load", &new_program, 2);

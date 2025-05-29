@@ -104,7 +104,7 @@ void GlobalGatherKernel(const Context& dev_ctx,
                                     x->dtype(),
                                     j,
                                     comm->GetXcclComm(),
-                                    *stream);
+                                    stream->raw_stream());
       }
     }
     for (auto j = 0; j < nranks; ++j) {
@@ -119,7 +119,7 @@ void GlobalGatherKernel(const Context& dev_ctx,
               x->dtype(),
               j,
               comm->GetXcclComm(),
-              *stream);
+              stream->raw_stream());
         } else {
           phi::DeviceManager::GetDeviceWithPlace(place)->MemoryCopyD2D(
               reinterpret_cast<void*>(recv_buf + expert_ptr[idx] * in_feat),
@@ -139,7 +139,7 @@ void GlobalGatherKernel(const Context& dev_ctx,
                                     x->dtype(),
                                     j,
                                     comm->GetXcclComm(),
-                                    *stream);
+                                    stream->raw_stream());
       }
     }
   }

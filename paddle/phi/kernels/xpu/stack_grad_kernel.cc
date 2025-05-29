@@ -62,7 +62,7 @@ void StackGradKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_LE(
       needed_slices,
       n_slices,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Number of valid slices (%ld) exceeds out_grad's dimension (%ld) "
           "along axis %d in stack_grad kernel. Mismatch between forward and "
           "backward shapes.",

@@ -338,9 +338,10 @@ class Adamax(Optimizer):
                         )
                         _C_ops.scale_(beta1_pow_acc, self._beta1, 0.0, True)
                 else:
-                    with param.block.program._optimized_guard(
-                        [param, grad]
-                    ), name_scope('adamax'):
+                    with (
+                        param.block.program._optimized_guard([param, grad]),
+                        name_scope('adamax'),
+                    ):
                         beta1_pow_acc = self._get_accumulator_master(
                             self._beta1_pow_acc_str, param
                         )
@@ -368,9 +369,10 @@ class Adamax(Optimizer):
                         )
                         beta1_pow_acc.copy_(tmp, False)
                 else:
-                    with param.block.program._optimized_guard(
-                        [param, grad]
-                    ), name_scope('adamax'):
+                    with (
+                        param.block.program._optimized_guard([param, grad]),
+                        name_scope('adamax'),
+                    ):
                         beta1_pow_acc = self._get_accumulator_master(
                             self._beta1_pow_acc_str, param
                         )

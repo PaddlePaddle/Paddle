@@ -722,7 +722,7 @@ class TestModelFunction(unittest.TestCase):
             print(params_info)
 
             model.summary(input_size=(20))
-            model.summary(input_size=[(20)])
+            model.summary(input_size=[20])
             model.summary(input_size=(20), dtype='float32')
 
     def test_summary_non_tensor(self):
