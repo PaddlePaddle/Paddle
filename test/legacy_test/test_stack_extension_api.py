@@ -258,14 +258,25 @@ class TestHStack(BaseTest, BaseCases):
             )
 
 
-class TestHStackZeroDim(BaseTest, BaseCases):
+class TestHStackZeroDim1(BaseTest, BaseCases):
     def setUp(self):
         self.func_paddle = paddle.hstack
         self.func_numpy = np.hstack
 
     def test_mix_ndim(self):
-        d0 = generate_data([], count=0, dtype='float64')
-        d1 = generate_data([1], count=0, dtype='float64')
+        d0 = generate_data([], count=1, dtype='float64')
+        d1 = generate_data([], count=1, dtype='float64')
+        self._test_all(rearrange_data(d0, d1))
+
+
+class TestHStackZeroDim2(BaseTest, BaseCases):
+    def setUp(self):
+        self.func_paddle = paddle.hstack
+        self.func_numpy = np.hstack
+
+    def test_mix_ndim(self):
+        d0 = generate_data([1], count=1, dtype='float64')
+        d1 = generate_data([1], count=1, dtype='float64')
         self._test_all(rearrange_data(d0, d1))
 
 
