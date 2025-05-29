@@ -170,7 +170,7 @@ SpmdInfo GroupNormGradInferSpmdBase(const DistMetaTensor& x,
   auto y_shape = common::vectorize(y.dims());
   auto mean_shape = common::vectorize(scale.dims());
   auto variance_shape = common::vectorize(bias.dims());
-  auto y_grad_shape = common::vectorize(bias.dims());
+  auto y_grad_shape = common::vectorize(y_grad.dims());
   int x_ndim = static_cast<int>(x_shape.size());
   int scale_ndim = static_cast<int>(scale_shape.size());
   int bias_ndim = static_cast<int>(bias_shape.size());
