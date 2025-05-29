@@ -23,6 +23,7 @@
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
 #include "paddle/phi/kernels/moe_kernel_impl.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 template <typename T, int TPB>
 __launch_bounds__(TPB) __global__

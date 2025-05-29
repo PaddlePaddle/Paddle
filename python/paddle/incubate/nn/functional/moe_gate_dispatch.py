@@ -38,19 +38,19 @@ def moe_gate_dispatch(
 ) -> Tensor:
     """
     Args:
-        x,
-        gate_logits,
-        corr_bias,
-        k,
-        capacity,
-        use_pad
+        x:
+        gate_logits:
+        corr_bias:
+        k:
+        capacity:
+        use_pad:
 
     Returns:
-        y,
-        combine_weights,
-        scatter_index,
-        expert_offset,
-        expert_id
+        y:
+        combine_weights:
+        scatter_index:
+        expert_offset:
+        expert_id:
     """
     if in_dynamic_or_pir_mode():
         return _C_ops.moe_gate_dispatch(
