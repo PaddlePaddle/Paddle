@@ -181,8 +181,9 @@ jobs:
 
       - name: Determine the runner
         run: |
+          set -x
           runner_name=`(echo $PWD|awk -F '/' '{print $3}')`
-          echo $runner_name
+          echo 111,$runner_name
           source ${ci_scripts_runner}/utils.sh
           determine_dcu_runner ${runner_name}
 
