@@ -41,6 +41,11 @@ __global__ void GPUMaskedFillGradKernel(const T* out_grad,
                                         const int64_t batch_size,
                                         T* x_grad) {
   int64_t idx = (blockIdx.x * blockDim.x + threadIdx.x);
+
+  if (idx >= (input_len / VecSize)) {
+    return;
+  }
+
   int64_t vec_idx = idx * VecSize;
   int64_t mask_idx = vec_idx / batch_size;
   using VecType = kps::details::VectorType<T, VecSize>;

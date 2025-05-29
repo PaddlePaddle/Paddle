@@ -3713,6 +3713,89 @@ DDim ReduceInferDim(const MetaTensor& x,
   return out_dim;
 }
 
+DDim StrictReduceInferDim(const MetaTensor& x,
+                          const std::vector<int64_t>& axis,
+                          bool keep_dim,
+                          bool reduce_all) {
+  const int x_rank = x.dims().size();
+  uint32_t axis_bitmap = 0;
+
+  for (size_t i = 0; i < axis.size(); ++i) {
+    int64_t formatted_idx = axis[i];
+    if (x_rank == 0) {
+      PADDLE_ENFORCE_EQ(
+          axis[i] == 0 || axis[i] == -1,
+          true,
+          common::errors::InvalidArgument(
+              "When input 0D Tensor, the axis can only be -1, 0, None or []"));
+      formatted_idx = 0;
+    } else {
+      PADDLE_ENFORCE_LT(
+          axis[i],
+          x_rank,
+          errors::InvalidArgument(
+              "The reduce dim index %d should be in the "
+              "range [ -dimension(X), dimension(X) ) "
+              "which dimension = %d. But received dim index = %d.",
+              i,
+              x_rank,
+              axis[i]));
+      PADDLE_ENFORCE_GE(
+          axis[i],
+          -x_rank,
+          errors::InvalidArgument(
+              "The reduce dim index %d should be in the "
+              "range [ -dimension(X), dimension(X) )  "
+              "which dimension = %d. But received dim index = %d.",
+              i,
+              x_rank,
+              axis[i]));
+      if (axis[i] < 0) {
+        formatted_idx += x_rank;
+      }
+    }
+
+    uint32_t bit = 1U << formatted_idx;
+    PADDLE_ENFORCE_EQ(axis_bitmap & bit,
+                      0,
+                      common::errors::InvalidArgument(
+                          "Axis contains duplicate dimensions. Dimension %d "
+                          "appears more than once in axis.",
+                          formatted_idx));
+    axis_bitmap |= bit;
+  }
+
+  bool full_dim = true;
+  if (axis.size() > 0) {
+    uint32_t all_bits = (1U << x_rank) - 1;
+    full_dim = (axis_bitmap == all_bits);
+  }
+  bool empty_dim = axis.size() == 0;
+  reduce_all = reduce_all || full_dim || empty_dim;
+
+  std::vector<int64_t> out_dim_vector;
+  for (int i = 0; i < x_rank; ++i) {
+    uint32_t bit = 1U << i;
+    if (reduce_all || (axis_bitmap & bit)) {
+      PADDLE_ENFORCE_NE(
+          x.dims().at(i),
+          0,
+          common::errors::InvalidArgument(
+              "Cannot perform reduction along an axis (%d) that has a size of "
+              "0. ",
+              i));
+      if (keep_dim) {
+        out_dim_vector.push_back(1);
+      }
+    } else {
+      out_dim_vector.push_back(x.dims().at(i));
+    }
+  }
+
+  DDim out_dim = common::make_ddim(out_dim_vector);
+  return out_dim;
+}
+
 void ReduceInferMetaBase(const MetaTensor& x,
                          const std::vector<int64_t>& axis,
                          bool keep_dim,
@@ -3802,6 +3885,36 @@ void ReduceIntArrayAxisInferMeta(const MetaTensor& x,
     reduce_all = true;
   }
   ReduceIntArrayAxisInferMetaBase(x, axis, keep_dim, reduce_all, out, config);
+}
+
+void StrictReduceIntArrayAxisInferMetaBase(const MetaTensor& x,
+                                           const IntArray& axis,
+                                           bool keep_dim,
+                                           bool reduce_all,
+                                           MetaTensor* out,
+                                           MetaConfig config) {
+  DDim out_dim;
+  if (config.is_runtime || !axis.FromTensor()) {
+    out_dim = StrictReduceInferDim(x, axis.GetData(), keep_dim, reduce_all);
+  } else {
+    out_dim = ReduceInferDimForIntArrayAxis(x, axis, keep_dim, reduce_all);
+  }
+  out->set_dims(out_dim);
+  out->set_dtype(x.dtype());
+  out->set_layout(x.layout());
+}
+
+void StrictReduceIntArrayAxisInferMeta(const MetaTensor& x,
+                                       const IntArray& axis,
+                                       bool keep_dim,
+                                       MetaTensor* out,
+                                       MetaConfig config) {
+  bool reduce_all = false;
+  if (axis.size() == 0) {
+    reduce_all = true;
+  }
+  StrictReduceIntArrayAxisInferMetaBase(
+      x, axis, keep_dim, reduce_all, out, config);
 }
 
 void ReduceScatterInferMeta(const MetaTensor& x, int nranks, MetaTensor* out) {

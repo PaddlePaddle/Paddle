@@ -26,6 +26,9 @@ namespace phi {
 template <typename T, typename Context>
 void ErfinvKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
   ctx.template Alloc<T>(out);
+  if (out && out->numel() == 0) {
+    return;
+  }
   auto eigen_in = EigenVector<T>::Flatten(x);
   auto eigen_out = EigenVector<T>::Flatten(*out);
   auto& place = *ctx.eigen_device();
