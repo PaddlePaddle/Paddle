@@ -543,8 +543,7 @@ def _set_prim_backward_blacklist(*args):
     for item in ops:
         if not isinstance(item, str):
             raise TypeError("All items in set must be strings.")
-        if item.startswith("pd_op."):
-            item = item[6:]
+        item = item.removeprefix("pd_op.")
         prim_config["backward_blacklist"].add(item)
         new_ops.add(item)
     _set_bwd_prim_blacklist(new_ops)

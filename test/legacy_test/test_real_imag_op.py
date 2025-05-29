@@ -275,7 +275,25 @@ class TestImagAPI(TestRealAPI):
             self.places.append(paddle.CPUPlace())
         if paddle.is_compiled_with_cuda():
             self.places.append(paddle.CUDAPlace(0))
+        self.init_shape()
+
+    def init_shape(self):
         self._shape = [2, 20, 2, 3]
+
+
+class TestImagAPIZeroSize(TestImagAPI):
+    def init_shape(self):
+        self._shape = [2, 0, 2, 3]
+
+
+class TestImagAPIZeroSize1(TestImagAPI):
+    def init_shape(self):
+        self._shape = [2, 0, 0, 3]
+
+
+class TestImagAPIZeroSize2(TestImagAPI):
+    def init_shape(self):
+        self._shape = [0, 0, 0, 0]
 
 
 if __name__ == "__main__":

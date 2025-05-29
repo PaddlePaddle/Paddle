@@ -1517,7 +1517,9 @@ class _ShardOptimizer(Optimizer):
 
                 return fuse_comm
 
-            param_group_len = len(self.fuse_param_view[i])
+            param_group_len = (
+                len(self.fuse_param_view[i]) * self.gradient_accumulation_steps
+            )
             for name, view in self.fuse_param_view[i].items():
                 view['param']._register_backward_hook(
                     fuse_comm_hook_func(

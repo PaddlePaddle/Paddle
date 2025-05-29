@@ -135,8 +135,98 @@ class XPUTestXPUTransposeOp(XPUOpTestWrapper):
 
 
 support_types = get_xpu_op_support_types('transpose')
-for stype in support_types:
+real_types = [t for t in support_types if t != 'complex64']
+for stype in real_types:
     create_test_class(globals(), XPUTestXPUTransposeOp, stype)
+
+if 'complex64' in support_types:
+
+    class TestXPUTransposeComplexOp(XPUTestXPUTransposeOp.TestXPUTransposeOp):
+        def setUp(self):
+            self.init_op_type()
+            self.initTestCase()
+            self.dtype = np.complex64
+            self.use_xpu = True
+            self.use_mkldnn = False
+            self.inputs = {
+                'X': (
+                    np.random.random(self.shape)
+                    + 1j * np.random.random(self.shape)
+                ).astype(self.dtype)
+            }
+            self.attrs = {
+                'axis': list(self.axis),
+                'use_mkldnn': False,
+                'use_xpu': True,
+            }
+            self.outputs = {
+                'XShape': (
+                    np.random.random(self.shape)
+                    + 1j * np.random.random(self.shape)
+                ).astype(self.dtype),
+                'Out': self.inputs['X'].transpose(self.axis),
+            }
+
+    class TestComplexCase_ZeroDim(TestXPUTransposeComplexOp):
+        def initTestCase(self):
+            self.shape = ()
+            self.axis = ()
+
+    class TestComplexCase0(TestXPUTransposeComplexOp):
+        def initTestCase(self):
+            self.shape = (100,)
+            self.axis = (0,)
+
+    class TestComplexCase1(TestXPUTransposeComplexOp):
+        def initTestCase(self):
+            self.shape = (3, 4, 10)
+            self.axis = (0, 2, 1)
+
+    class TestComplexCase2(TestXPUTransposeComplexOp):
+        def initTestCase(self):
+            self.shape = (2, 3, 4, 5)
+            self.axis = (0, 2, 3, 1)
+
+    class TestComplexCase3(TestXPUTransposeComplexOp):
+        def initTestCase(self):
+            self.shape = (2, 3, 4, 5, 6)
+            self.axis = (4, 2, 3, 1, 0)
+
+    class TestComplexCase4(TestXPUTransposeComplexOp):
+        def initTestCase(self):
+            self.shape = (2, 3, 4, 5, 6, 1)
+            self.axis = (4, 2, 3, 1, 0, 5)
+
+    class TestComplexCase5(TestXPUTransposeComplexOp):
+        def initTestCase(self):
+            self.shape = (2, 16, 96)
+            self.axis = (0, 2, 1)
+
+    class TesComplexCase6(TestXPUTransposeComplexOp):
+        def initTestCase(self):
+            self.shape = (2, 10, 12, 16)
+            self.axis = (3, 1, 2, 0)
+
+    class TestComplexCase7(TestXPUTransposeComplexOp):
+        def initTestCase(self):
+            self.shape = (2, 10, 2, 16)
+            self.axis = (0, 1, 3, 2)
+
+    class TestComplexCase8(TestXPUTransposeComplexOp):
+        def initTestCase(self):
+            self.shape = (2, 3, 2, 3, 2, 4, 3, 3)
+            self.axis = (0, 1, 3, 2, 4, 5, 6, 7)
+
+    class TestComplexCase9(TestXPUTransposeComplexOp):
+        def initTestCase(self):
+            self.shape = (2, 3, 2, 3, 2, 4, 3, 3)
+            self.axis = (6, 1, 3, 5, 0, 2, 4, 7)
+
+    class TestComplexCase10(TestXPUTransposeComplexOp):
+        def initTestCase(self):
+            self.shape = (200, 3, 2)
+            self.axis = (-1, 1, -3)
+
 
 if __name__ == "__main__":
     unittest.main()

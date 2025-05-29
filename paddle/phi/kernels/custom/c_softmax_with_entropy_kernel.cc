@@ -69,7 +69,7 @@ void CSoftmaxWithEntropyKernel(const Context& dev_ctx,
                                    logits_2d_max->dtype(),
                                    phi::ccl::CCLReduceOp::MAX,
                                    comm->GetXcclComm(),
-                                   stream);
+                                   stream.raw_stream());
 
   // step 2, obtain logit - logit_max
   auto logits_2d_sub_max = paddle::experimental::clip(
@@ -112,7 +112,7 @@ void CSoftmaxWithEntropyKernel(const Context& dev_ctx,
                                    predicted_logits->dtype(),
                                    phi::ccl::CCLReduceOp::SUM,
                                    comm->GetXcclComm(),
-                                   stream);
+                                   stream.raw_stream());
 
   // step 4, obtain exp(logit)
   auto softmax_2d_tensor = logits_2d_sub_max.exp();
@@ -130,7 +130,7 @@ void CSoftmaxWithEntropyKernel(const Context& dev_ctx,
                                    sum_exp_logits->dtype(),
                                    phi::ccl::CCLReduceOp::SUM,
                                    comm->GetXcclComm(),
-                                   stream);
+                                   stream.raw_stream());
 
   auto softmax_out = softmax_2d_tensor.divide(
       paddle::experimental::reshape(sum_exp_logits_tensor, {N, 1}));
