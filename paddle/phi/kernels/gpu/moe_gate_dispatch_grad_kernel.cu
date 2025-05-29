@@ -19,7 +19,7 @@
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/contiguous_kernel.h"
-#include "paddle/phi/kernels/fused_moe_bwd_op.h"
+#include "paddle/phi/kernels/moe_fuse_bwd_op.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
 
 namespace phi {

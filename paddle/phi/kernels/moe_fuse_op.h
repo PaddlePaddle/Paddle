@@ -25,6 +25,8 @@
 #include "paddle/phi/kernels/moe_kernel_impl.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
+namespace phi{
+
 template <typename T, int TPB>
 __launch_bounds__(TPB) __global__
     void moe_top_k(const T* inputs_after_softmax,
@@ -812,3 +814,4 @@ void copy_unpermuted_to_permuted_kernelLauncher(
                                          num_cols);
   }
 }
+} // namespace phi
