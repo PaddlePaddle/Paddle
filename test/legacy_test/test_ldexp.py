@@ -130,6 +130,21 @@ class TestLdexpAPIWithDynamic(unittest.TestCase):
             check_dtype(res, np.float32)
             np.testing.assert_allclose(res, np.ldexp(x, y))
 
+            # test 0-d
+            dims = (np.random.randint(10),)
+            x = (np.random.rand(*dims) * 10).astype(np.float64)
+            y = (np.random.randint(-10, 10, dims)).astype(np.int32)
+            res = _run_ldexp_dynamic(x, y, place)
+            check_dtype(res, np.float64)
+            np.testing.assert_allclose(res, np.ldexp(x, y))
+
+            dims = (np.random.randint(10),)
+            x = (np.random.randint(-10, 10, dims)).astype(np.int32)
+            y = (np.random.randint(-10, 10, dims)).astype(np.int32)
+            res = _run_ldexp_dynamic(x, y, place)
+            check_dtype(res, np.float32)
+            np.testing.assert_allclose(res, np.ldexp(x, y))
+
             # test broadcast
             dims = (
                 np.random.randint(1, 10),
