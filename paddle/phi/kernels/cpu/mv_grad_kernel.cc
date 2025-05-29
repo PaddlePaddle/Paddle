@@ -33,22 +33,16 @@ void MvGradKernel(const Context& dev_ctx,
   auto dvec = vec_grad;
   if (out_grad.numel() == 0) {
     if (dx) {
-      dev_ctx.template Alloc<T>(dx);
-      if (dx->numel() > 0) {
-        phi::Full<T, Context>(dev_ctx,
-                              phi::IntArray(common::vectorize(dx->dims())),
-                              static_cast<T>(0),
-                              dx);
-      }
+      phi::Full<T, Context>(dev_ctx,
+                            phi::IntArray(common::vectorize(dx->dims())),
+                            static_cast<T>(0),
+                            dx);
     }
     if (dvec) {
-      dev_ctx.template Alloc<T>(dvec);
-      if (dvec->numel() > 0) {
-        phi::Full<T, Context>(dev_ctx,
-                              phi::IntArray(common::vectorize(dvec->dims())),
-                              static_cast<T>(0),
-                              dvec);
-      }
+      phi::Full<T, Context>(dev_ctx,
+                            phi::IntArray(common::vectorize(dvec->dims())),
+                            static_cast<T>(0),
+                            dvec);
     }
     return;
   }
