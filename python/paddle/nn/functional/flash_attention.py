@@ -1273,7 +1273,7 @@ def scaled_dot_product_attention(
             query, key, attn_mask, dropout_p, is_causal
         )
         if attn_mask.dtype == paddle.bool:
-            paddle.where(
+            attn_mask = paddle.where(
                 attn_mask,
                 paddle.to_tensor(0.0, dtype=query.dtype),
                 paddle.to_tensor(-float('inf'), dtype=query.dtype),
