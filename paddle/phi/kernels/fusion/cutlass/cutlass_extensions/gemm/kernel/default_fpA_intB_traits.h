@@ -158,6 +158,35 @@ struct MixedGemmArchTraits<
   using Operator = typename LayoutDetails::Operator;
 };
 
+// ======================= Hopper Traits ==============================
+template <typename TypeA, typename TypeB>
+struct MixedGemmArchTraits<
+    TypeA,
+    TypeB,
+    cutlass::arch::Sm90,
+    typename cutlass::platform::enable_if<
+        cutlass::platform::is_same<TypeA, cutlass::half_t>::value ||
+        cutlass::platform::is_same<TypeA, cutlass::bfloat16_t>::value>::type> {
+ private:
+  using LayoutDetails = LayoutDetailsB<TypeB, cutlass::arch::Sm90>;
+
+ public:
+  static constexpr int ThreadblockK = LayoutDetails::ThreadblockK;
+
+  using OperatorClass = cutlass::arch::OpClassTensorOp;
+  using AccType = float;
+  using LayoutB = typename LayoutDetails::Layout;
+
+  static constexpr int ElementsPerAccessA =
+      128 / cutlass::sizeof_bits<TypeA>::value;
+  static constexpr int ElementsPerAccessB = LayoutDetails::ElementsPerAccess;
+  static constexpr int ElementsPerAccessC =
+      128 / cutlass::sizeof_bits<TypeA>::value;
+  using InstructionShape = cutlass::gemm::GemmShape<16, 8, 16>;
+
+  using Operator = typename LayoutDetails::Operator;
+};
+
 }  // namespace kernel
 }  // namespace gemm
 }  // namespace cutlass
