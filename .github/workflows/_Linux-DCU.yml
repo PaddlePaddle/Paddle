@@ -255,8 +255,8 @@ jobs:
         run: |
           set -x
           sudo mkdir -p /run/user/0
-          source /opt/dtk-24.04.1/env.sh
           docker exec -t ${{ env.container_name }} /bin/bash -c '
+          source /opt/dtk-24.04.1/env.sh
           bash -x ${ci_scripts}/dcu_test.sh
           '
 
