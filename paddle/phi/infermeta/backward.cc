@@ -1747,8 +1747,8 @@ void UnStackGradInferMeta(const std::vector<const MetaTensor*>& out_grad,
                         rank));
   if (axis < 0) axis += (rank + 1);
 
-  auto vec = common::vectorize<int>(input_dims[0]);
-  vec.insert(vec.begin() + axis, static_cast<int>(input_dims.size()));
+  auto vec = common::vectorize<int64_t>(input_dims[0]);
+  vec.insert(vec.begin() + axis, static_cast<int64_t>(input_dims.size()));
   x_grad->set_dims(common::make_ddim(vec));
   x_grad->set_dtype(out_grad[0]->dtype());
 }

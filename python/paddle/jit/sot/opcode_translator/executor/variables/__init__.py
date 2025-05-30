@@ -50,6 +50,7 @@ from .callable import (  # noqa: F401
     NumPyApiVariable,
     PaddleApiVariable,
     PaddleLayerVariable,
+    PartialVariable,
     UserCodeVariable,
     UserDefinedFunctionVariable,
     UserDefinedGeneratorFunctionVariable,
