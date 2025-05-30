@@ -146,15 +146,15 @@ static void exec_plan(const FFTConfig& config,
           forward ? CUFFT_FORWARD : CUFFT_INVERSE));
       return;
     case FFTTransformType::C2R:
-      PADDLE_ENFORCE_FFT_SUCCESS(phi::dynload::cufftExecC2R(
-          plan,
-          reinterpret_cast<cuFloatComplex*>(in_data),
-          reinterpret_cast<cuFloatComplex*>(out_data)));
+      PADDLE_ENFORCE_FFT_SUCCESS(
+          phi::dynload::cufftExecC2R(plan,
+                                     reinterpret_cast<cuFloatComplex*>(in_data),
+                                     reinterpret_cast<float*>(out_data)));
       return;
     case FFTTransformType::R2C:
       PADDLE_ENFORCE_FFT_SUCCESS(phi::dynload::cufftExecR2C(
           plan,
-          reinterpret_cast<cuFloatComplex*>(in_data),
+          reinterpret_cast<float*>(in_data),
           reinterpret_cast<cuFloatComplex*>(out_data)));
       return;
   }
