@@ -332,9 +332,9 @@ class RingConv2d(paddle.autograd.PyLayer):
             idx_w_kernel = 3
         elif data_format == "NHWC":
             # input_size: (N, H, W, C)
-            # kernel_size: (KernelH, KernelW, InChannels, OutChannels)
+            # kernel_size: (OutChannels, InChannels/Groups, KernelH, KernelW)
             idx_w_input = 2
-            idx_w_kernel = 1
+            idx_w_kernel = 3
         else:
             raise ValueError(
                 f"Unsupported data_format '{data_format}'. Expected 'NCHW' or 'NHWC'."
@@ -449,7 +449,10 @@ class RingConv2d(paddle.autograd.PyLayer):
             data_format,
         )
 
-        if padding[-1] == 0:
+        mesh_axis_name, conv_tp_group = _get_conv_tp_group(
+            x_mesh, x_placements, data_format
+        )
+        if padding[1] == 0 or len(conv_tp_group) <= 1:
             final_local_results = paddle._C_ops.conv2d(
                 x,
                 weight,
@@ -466,7 +469,7 @@ class RingConv2d(paddle.autograd.PyLayer):
                 kernel_width_dim_idx = 3
                 output_width_dim_idx = 3
             elif data_format == "NHWC":
-                kernel_width_dim_idx = 1
+                kernel_width_dim_idx = 3
                 output_width_dim_idx = 2
             else:
                 raise ValueError(
@@ -479,9 +482,6 @@ class RingConv2d(paddle.autograd.PyLayer):
             right_halo_width = kernel_total_halo_span - left_halo_width
             assert left_halo_width + right_halo_width == kernel_total_halo_span
 
-            mesh_axis_name, conv_tp_group = _get_conv_tp_group(
-                x_mesh, x_placements, data_format
-            )
             ctx.mesh_axis_name = mesh_axis_name
             rank_idx = conv_tp_group.index(rank)
             next_rank = conv_tp_group[(rank_idx + 1) % len(conv_tp_group)]
@@ -610,14 +610,13 @@ class RingConv2d(paddle.autograd.PyLayer):
         grad_weight = None
         grad_bias = None
 
-        if padding[1] == 0:
+        _, conv_tp_group = _get_conv_tp_group(x_mesh, x_placements, data_format)
+
+        if padding[1] == 0 or len(conv_tp_group) <= 1:
             grad_x, grad_weight = paddle._C_ops.conv2d_grad(
                 x, weight, grad_out, *conv_attrs
             )
         else:
-            _, conv_tp_group = _get_conv_tp_group(
-                x_mesh, x_placements, data_format
-            )
             rank_idx = conv_tp_group.index(current_rank)
             next_rank = conv_tp_group[(rank_idx + 1) % len(conv_tp_group)]
             prev_rank = conv_tp_group[(rank_idx - 1) % len(conv_tp_group)]
@@ -641,28 +640,28 @@ class RingConv2d(paddle.autograd.PyLayer):
 
             # Step 2: Pad `grad_out` to match the output shape of conv on augmented input
             padding_w = padding[1]
-
-            if current_rank == conv_tp_group[0]:
-                grad_out_padded = F.pad(
-                    grad_out,
-                    [0, padding_w],
-                    mode="constant",
-                    value=0.0,
-                )
-            elif current_rank == conv_tp_group[-1]:
-                grad_out_padded = F.pad(
-                    grad_out,
-                    [padding_w, 0],
-                    mode="constant",
-                    value=0.0,
-                )
+            if data_format == "NCHW":
+                if current_rank == conv_tp_group[0]:
+                    padding_list = [0, padding_w]
+                elif current_rank == conv_tp_group[-1]:
+                    padding_list = [padding_w, 0]
+                else:
+                    padding_list = [padding_w, padding_w]
             else:
-                grad_out_padded = F.pad(
-                    grad_out,
-                    [padding_w, padding_w],
-                    mode="constant",
-                    value=0.0,
-                )
+                if current_rank == conv_tp_group[0]:
+                    padding_list = [0, padding_w, 0, 0]
+                elif current_rank == conv_tp_group[-1]:
+                    padding_list = [padding_w, 0, 0, 0]
+                else:
+                    padding_list = [padding_w, padding_w, 0, 0]
+
+            grad_out_padded = F.pad(
+                grad_out,
+                padding_list,
+                mode="constant",
+                value=0.0,
+                data_format=data_format,
+            )
 
             # Step 3: Local backward computation using augmented/padded tensors
             # `padding` here is the original conv padding from forward.
