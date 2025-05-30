@@ -18,6 +18,7 @@
 
 #pragma once
 
+#include <cstdint>
 #include "paddle/fluid/distributed/collective/deep_ep/kernels/exception.cuh"
 
 #define UNROLLED_WARP_COPY(UNROLL_FACTOR, LANE_ID, N, DST, SRC, LD_FUNC, ST_FUNC) \
