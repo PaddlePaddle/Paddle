@@ -34,6 +34,9 @@ void TruncGradKernel(const Context& dev_ctx,
                      DenseTensor* in_grad) {
   const auto* out_grad_data = out_grad.data<T>();
   T* in_grad_data = dev_ctx.template Alloc<T>(in_grad);
+  if (out_grad.numel() == 0) {
+    return;
+  }
 
   int64_t numel = out_grad.numel();
 
