@@ -37,9 +37,9 @@ void PriorBoxKernel(const Context& ctx,
                     DenseTensor* var) {
   if (input.numel() == 0 || image.numel() == 0) {
     phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+        ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
     phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(var->dims())), 0, var);
+        ctx, phi::IntArray(common::vectorize(var->dims())), 0, var);
     return;
   }
 
