@@ -92,7 +92,7 @@ class TestLogsumexpAPI_ZeroSize(unittest.TestCase):
         self.y = np.random.uniform(-1, 1, self.yshape).astype(self.dtype)
         out_ref = ref_logaddexp(self.x, self.y)
 
-        # paddle.disable_static(self.place)
+        paddle.disable_static(self.place)
         x = paddle.to_tensor(self.x)
         y = paddle.to_tensor(self.y)
         x.stop_gradient = False
