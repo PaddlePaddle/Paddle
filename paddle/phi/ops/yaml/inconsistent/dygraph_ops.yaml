@@ -381,6 +381,7 @@
   output : Tensor(out), Tensor(indices), Tensor(inverse), Tensor(counts)
   infer_meta :
     func : UniqueInferMeta
+    spmd_rule : UniqueInferSpmd
   kernel :
     func : unique
     data_type : x

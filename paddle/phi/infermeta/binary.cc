@@ -96,7 +96,9 @@ void AllValueCompareInferMeta(const MetaTensor& x,
                               const MetaTensor& y,
                               MetaTensor* out,
                               MetaConfig config) {
-  detail::BinarySameInputDimsCheck(x, y, config);
+  if (x.numel() != 0 && y.numel() != 0) {
+    detail::BinarySameInputDimsCheck(x, y, config);
+  }
   out->set_dims(common::make_ddim({}));
   out->set_dtype(DataType::BOOL);
 }
@@ -1817,7 +1819,7 @@ void CEmbeddingInferMeta(const MetaTensor& weight,
 
 void ExpandAsInferMeta(const MetaTensor& x,
                        const MetaTensor& y,
-                       const std::vector<int>& target_shape,
+                       const std::vector<int64_t>& target_shape,
                        MetaTensor* out) {
 #define MAX_RANK_SUPPORTED 8
   auto x_dims = x.dims();

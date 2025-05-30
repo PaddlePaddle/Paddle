@@ -6075,7 +6075,7 @@ void UnStackInferMeta(const MetaTensor& x,
             x_dim[axis],
             num));
   }
-  auto vec = common::vectorize<int>(x_dim);
+  auto vec = common::vectorize<int64_t>(x_dim);
   vec.erase(vec.begin() + axis);
   for (size_t i = 0; i < output_count; i++) {
     outs[i]->set_dims(common::make_ddim(vec));
