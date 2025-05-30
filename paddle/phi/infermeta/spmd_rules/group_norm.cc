@@ -168,8 +168,8 @@ SpmdInfo GroupNormGradInferSpmdBase(const DistMetaTensor& x,
   auto scale_shape = common::vectorize(scale.dims());
   auto bias_shape = common::vectorize(bias.dims());
   auto y_shape = common::vectorize(y.dims());
-  auto mean_shape = common::vectorize(scale.dims());
-  auto variance_shape = common::vectorize(bias.dims());
+  auto mean_shape = common::vectorize(mean.dims());
+  auto variance_shape = common::vectorize(variance.dims());
   auto y_grad_shape = common::vectorize(y_grad.dims());
   int x_ndim = static_cast<int>(x_shape.size());
   int scale_ndim = static_cast<int>(scale_shape.size());
@@ -296,8 +296,10 @@ SpmdInfo GroupNormGradInferSpmdBase(const DistMetaTensor& x,
   x_dist_attr_dst.set_dims_mapping(x_dims_mapping);
   y_dist_attr_dst.set_dims_mapping(x_dims_mapping);
   y_grad_dist_attr_dst.set_dims_mapping(x_dims_mapping);
-  mean_dist_attr_dst.set_dims_mapping({-1});
-  variance_dist_attr_dst.set_dims_mapping({-1});
+  mean_dist_attr_dst.set_dims_mapping(
+      GetDimsMappingForAxes(mean_axes, axis_to_dim_map));
+  variance_dist_attr_dst.set_dims_mapping(
+      GetDimsMappingForAxes(variance_axes, axis_to_dim_map));
   scale_dist_attr_dst.set_dims_mapping({-1});
   bias_dist_attr_dst.set_dims_mapping({-1});
 
