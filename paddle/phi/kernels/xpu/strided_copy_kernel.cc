@@ -164,6 +164,8 @@ void StridedCopyKernel<phi::dtype::complex<float>, XPUContext>(
   const DenseTensor real = Real<T, XPUContext>(dev_ctx, input);
   const DenseTensor imag = Imag<T, XPUContext>(dev_ctx, input);
   DenseTensor real_out, imag_out;
+  real_out.Resize(out->dims());
+  imag_out.Resize(out->dims());
   StridedCopyKernel<float, XPUContext>(
       dev_ctx, real, dims, out_stride, offset, &real_out);
   StridedCopyKernel<float, XPUContext>(

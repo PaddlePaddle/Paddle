@@ -33,7 +33,7 @@ namespace phi {
 namespace funcs {
 namespace detail {
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #if CUDA_VERSION < 10000
 // Note that the max plan number for CUDA version < 10 has to be 1023
 // due to a bug that fails on the 1024th plan
