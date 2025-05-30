@@ -36,6 +36,7 @@ class TestCosineSimilarityAPI(unittest.TestCase):
             self.places.append(paddle.CUDAPlace(0))
 
     def _get_numpy_out(self, x1, x2, axis=1, eps=1e-8):
+        x1, x2 = np.broadcast_arrays(x1, x2)
         w12 = np.sum(x1 * x2, axis=axis)
         w1 = np.sum(x1 * x1, axis=axis)
         w2 = np.sum(x2 * x2, axis=axis)
