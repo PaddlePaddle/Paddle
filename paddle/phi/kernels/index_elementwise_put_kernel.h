@@ -18,12 +18,15 @@
 #include "paddle/phi/core/tensor_array.h"
 
 namespace phi {
-
 template <typename T, typename Context>
-void IndexElementwiseKernel(const Context &ctx,
-                            const DenseTensor &x,
-                            const std::vector<const DenseTensor *> &index,
-                            const std::vector<int64_t> &index_dims,
-                            DenseTensor *out);
+void IndexElementwisePutKernel(const Context& ctx,
+                               const DenseTensor& input,
+                               const DenseTensor& value,
+                               const std::vector<const DenseTensor*>& index,
+                               const std::vector<int64_t>& input_dims,
+                               const std::vector<int64_t>& input_strides,
+                               const std::vector<int64_t>& index_dims,
+                               const std::vector<int64_t>& index_strides,
+                               DenseTensor* out);
 
 }  // namespace phi

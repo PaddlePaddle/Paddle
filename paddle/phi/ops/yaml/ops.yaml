@@ -2753,14 +2753,15 @@
   backward : index_add_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
 
-- op : index_elementwise
-  args : (Tensor x, Tensor[] index, int64_t[] index_dims)
+- op : index_elementwise_put
+  args : (Tensor x, Tensor value, Tensor[] index, int64_t[] input_dims, int64_t[] input_strides, int64_t[] index_dims, int64_t[] index_strides)
   output : Tensor (out)
   infer_meta :
-    func : IndexElementwiseInferMeta
+    func : IndexElementwisePutInferMeta
   kernel :
-    func : index_elementwise
+    func : index_elementwise_put
     data_type : x
+  inplace : (x -> out)
   # backward : index_elementwise_grad
   # interfaces : paddle::dialect::InferSymbolicShapeInterface
   traits : paddle::dialect::ForwardOnlyTrait
