@@ -95,6 +95,17 @@ BINARY_OPS = INPLACE_BINARY_OPS | NON_INPLACE_BINARY_OPS
 UNARY_OPS = set(UNARY_OPS_TO_MAGIC_NAMES.keys())
 
 
+# operator.pow operator.ipow, 当底数为0且指数为负数时，会引发ZeroDivisionError
+NEED_GUARD_ZERO_DIVISION_ERROR_OPS: list[BinaryOp] = [
+    operator.floordiv,
+    operator.truediv,
+    operator.mod,
+    operator.ifloordiv,
+    operator.itruediv,
+    operator.imod,
+]
+
+
 @dataclass
 class MagicMethod:
     name: str
