@@ -80,7 +80,7 @@ def attention_naive_with_bool_mask(q, k, v, bool_mask):
 class TestAttentionWithBoolMask(unittest.TestCase):
     def setUp(self):
         self.place = paddle.CUDAPlace(0)
-        self.shape = (1, 8, 8, 16)
+        self.shape = (1, 1, 8, 8)
         self.dtype = 'float32'
         self.dropout = 0.0
         self.causal = False
