@@ -180,20 +180,19 @@ inline std::vector<T> get_new_data_from_tensor(
 }
 
 #if defined(__NVCC__) || defined(__HIPCC__)
-using phi::kps::details::FastDivMod;
 
 struct FastDivModForInterpolate {
  public:
-  FastDivMod channels_div;
-  FastDivMod output_w_div;
-  FastDivMod output_wc_div;
+  FastDivMod<int> channels_div;
+  FastDivMod<int> output_w_div;
+  FastDivMod<int> output_wc_div;
 
   explicit HOSTDEVICE FastDivModForInterpolate(const int channels,
                                                const int output_w,
                                                const int output_wc)
-      : channels_div(FastDivMod(channels)),
-        output_w_div(FastDivMod(output_w)),
-        output_wc_div(FastDivMod(output_wc)) {}
+      : channels_div(channels),
+        output_w_div(output_w),
+        output_wc_div(output_wc) {}
 };
 
 #endif

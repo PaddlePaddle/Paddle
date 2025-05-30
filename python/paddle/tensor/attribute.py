@@ -83,11 +83,11 @@ def shape(input: Tensor) -> Tensor:
                 input.shape = [3, 2]
 
     Args:
-        input (Variable): The input can be N-D Tensor or SelectedRows with data type bool, bfloat16, float16, float32, float64, int32, int64.
+        input (Tensor): The input can be N-D Tensor or SelectedRows with data type bool, bfloat16, float16, float32, float64, int32, int64.
                           If input variable is type of SelectedRows, returns the shape of it's inner tensor.
 
     Returns:
-        Variable (Tensor): The shape of the input variable.
+        Tensor: The shape of the input variable.
 
     Examples:
         .. code-block:: python
@@ -102,11 +102,11 @@ def shape(input: Tensor) -> Tensor:
             >>> exe = paddle.static.Executor(paddle.CPUPlace())
             >>> exe.run(paddle.static.default_startup_program())
 
-            >>> img = np.ones((3, 100, 100)).astype(np.float32) # type: ignore[var-annotated]
+            >>> img = np.ones((3, 100, 100)).astype(np.float32)
 
-            >>> res = exe.run(paddle.static.default_main_program(), feed={'x':img}, fetch_list=[output])
+            >>> res = exe.run(paddle.static.default_main_program(), feed={'x': img}, fetch_list=[output])
             >>> print(res)
-            [array([  3, 100, 100], dtype=int32)]
+            [array([  3, 100, 100], dtype=int64)]
     """
     if in_dynamic_or_pir_mode():
         out = _C_ops.shape64(input)  # type: ignore

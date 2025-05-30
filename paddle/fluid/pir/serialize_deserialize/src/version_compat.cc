@@ -247,6 +247,23 @@ void PatchBuilder::ApplyAttrPatches(const std::string& attr_name,
     if (item.contains(NEW_NAME)) {
       name = item[NEW_NAME].get<std::string>();
     } else {
+      if (item.contains(ATTR_TYPE) && item[ATTR_TYPE] != nullptr) {
+        auto patch_item = item[ATTR_TYPE];
+        if (patch_item.contains(DATA) && patch_item[DATA].is_array()) {
+          auto data = patch_item[DATA][0];
+          if (!data.contains(DATA)) {
+            std::string data_name = data[ID].get<std::string>();
+            auto json_data = json->at(ATTR_TYPE);
+            for (size_t i = 0; i < json_data.at(DATA).size(); i++) {
+              auto json_item = json_data.at(DATA).at(i);
+              json_item.at(ID) = data_name;
+              json_data.at(DATA).at(i) = json_item;
+            }
+            json->at(ATTR_TYPE) = json_data;
+            continue;
+          }
+        }
+      }
       json->merge_patch(item);
     }
   }

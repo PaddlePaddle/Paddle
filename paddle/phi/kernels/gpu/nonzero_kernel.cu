@@ -84,6 +84,10 @@ void RestrictNonZeroKernel(const Context &dev_ctx,
                            DenseTensor *out) {
   DenseTensor in_data;
   auto dims = condition.dims();
+  if (condition.numel() == 0) {
+    dev_ctx.template Alloc<int64_t>(out);
+    return;
+  }
 
   using Functor = IndexFunctor<T, int64_t, int64_t>;
   Functor index_functor{dims};

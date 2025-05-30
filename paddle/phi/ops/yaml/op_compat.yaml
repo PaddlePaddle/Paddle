@@ -3018,7 +3018,7 @@
     out : Out
 
 - op : put_along_axis
-  backward : put_along_axis_grad
+  backward : put_along_axis_grad, put_along_axis_double_grad
   inputs :
     {arr : Input, indices : Index, values : Value}
   outputs :

@@ -21,26 +21,8 @@
 #include <cstring>
 #include <iostream>
 #include <limits>
+#include "paddle/common/backend_header.h"
 #include "paddle/common/hostdevice.h"
-
-#ifdef PADDLE_WITH_CUDA
-#include <cuda.h>
-#endif
-
-#if defined(__CUDACC__) && CUDA_VERSION >= 11000
-#define PADDLE_CUDA_BF16
-#include <cuda_bf16.h>
-#endif
-
-#ifndef PADDLE_WITH_HIP
-#if !defined(_WIN32)
-#define PADDLE_ALIGN(x) __attribute__((aligned(x)))
-#else
-#define PADDLE_ALIGN(x) __declspec(align(x))
-#endif
-#else
-#define PADDLE_ALIGN(x)
-#endif
 
 namespace phi {
 namespace dtype {

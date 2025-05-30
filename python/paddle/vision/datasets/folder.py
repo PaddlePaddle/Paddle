@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Callable, List, Literal, Tuple
+from typing import TYPE_CHECKING, Any, Callable, Literal
 
 from typing_extensions import TypeAlias
 
@@ -89,7 +89,7 @@ def make_dataset(dir, class_to_idx, extensions, is_valid_file=None):
     return images
 
 
-class DatasetFolder(Dataset[Tuple["_ImageDataType", int]]):
+class DatasetFolder(Dataset[tuple["_ImageDataType", int]]):
     """A generic data loader where the samples are arranged in this way:
 
     .. code-block:: text
@@ -341,7 +341,7 @@ def default_loader(path):
         return pil_loader(path)
 
 
-class ImageFolder(Dataset[List["_ImageDataType"]]):
+class ImageFolder(Dataset[list["_ImageDataType"]]):
     """A generic data loader where the samples are arranged in this way:
 
     .. code-block:: text

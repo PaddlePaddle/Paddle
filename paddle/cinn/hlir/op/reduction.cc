@@ -60,15 +60,15 @@ std::shared_ptr<OpStrategy> StrategyForReduceSymbolic(
   auto ndim = inputs[0]->shape.size();
   if (attrs.attr_store.count("axis")) {
     reduce_axes = [&] {
-      if (absl::holds_alternative<std::vector<int64_t>>(
+      if (std::holds_alternative<std::vector<int64_t>>(
               attrs.attr_store.at("axis"))) {
         const auto &dim_attr =
-            absl::get<std::vector<int64_t>>(attrs.attr_store.at("axis"));
+            std::get<std::vector<int64_t>>(attrs.attr_store.at("axis"));
         return std::vector<int>(dim_attr.begin(), dim_attr.end());
-      } else if (absl::holds_alternative<std::vector<int>>(
+      } else if (std::holds_alternative<std::vector<int>>(
                      attrs.attr_store.at("axis"))) {
-        return absl::get<std::vector<int>>(attrs.attr_store.at("axis"));
-      } else if (absl::holds_alternative<bool>(attrs.attr_store.at("axis"))) {
+        return std::get<std::vector<int>>(attrs.attr_store.at("axis"));
+      } else if (std::holds_alternative<bool>(attrs.attr_store.at("axis"))) {
         return std::vector<int>{};
       } else {
         PADDLE_THROW(::common::errors::InvalidArgument(
@@ -113,7 +113,7 @@ std::shared_ptr<OpStrategy> StrategyForReduceSymbolic(
 
   bool keepdim = false;
   if (attrs.attr_store.count("keepdim")) {
-    keepdim = absl::get<bool>(attrs.attr_store.at("keepdim"));
+    keepdim = std::get<bool>(attrs.attr_store.at("keepdim"));
   }
 
   framework::CINNCompute reduction_compute([=](lang::Args args,

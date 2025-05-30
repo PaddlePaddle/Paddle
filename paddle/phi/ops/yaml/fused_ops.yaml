@@ -388,6 +388,7 @@
   output : Tensor(dweight_out), Tensor(dbias_out)
   infer_meta:
     func : FusedLinearParamGradAddInferMeta
+    spmd_rule : FusedLinearParamGradAddInferSpmd
   optional : dweight, dbias
   kernel:
     func : fused_linear_param_grad_add

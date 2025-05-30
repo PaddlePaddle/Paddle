@@ -17,6 +17,11 @@ endif()
 set(COMMON_LIB
     "${CMAKE_CURRENT_BINARY_DIR}/${COMMON_NAME}"
     CACHE FILEPATH "COMMON Library" FORCE)
+if(WIN32)
+  set(COMMON_LINK
+      "${CMAKE_CURRENT_BINARY_DIR}/common.lib"
+      CACHE FILEPATH "COMMON Import Library" FORCE)
+endif()
 
 set(COMMON_BUILD_TYPE
     SHARED

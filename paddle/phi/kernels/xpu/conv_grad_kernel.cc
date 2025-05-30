@@ -238,7 +238,7 @@ void Conv3DGradKernel(const Context& dev_ctx,
   UpdatePaddingAndDilation<int64_t>(
       &paddings, &dilations, padding_algorithm, in_data_dims, strides, ksize);
 
-  int batch_size = input.dims()[0];
+  int64_t batch_size = input.dims()[0];
   int64_t img_c = input.dims()[1];
   int64_t img_d = input.dims()[2];
   int64_t img_h = input.dims()[3];

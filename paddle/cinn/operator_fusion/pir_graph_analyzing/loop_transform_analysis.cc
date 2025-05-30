@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/cinn/operator_fusion/pir_graph_analyzing/loop_transform_analysis.h"
-
+#include <deque>
 namespace cinn::fusion {
 
 bool HasUnsupportedTransform(const AxisTransformRoute& route) {

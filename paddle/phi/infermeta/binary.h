@@ -348,7 +348,7 @@ void CEmbeddingInferMeta(const MetaTensor& weight,
 
 void ExpandAsInferMeta(const MetaTensor& x,
                        const MetaTensor& y,
-                       const std::vector<int>& target_shape,
+                       const std::vector<int64_t>& target_shape,
                        MetaTensor* out);
 
 void FakeDequantizeMaxAbsInferMeta(const MetaTensor& x,
@@ -528,6 +528,11 @@ void MarginCrossEntropyInferMeta(const MetaTensor& logits,
 void MaskedSelectInferMeta(const MetaTensor& x,
                            const MetaTensor& mask,
                            MetaTensor* out);
+
+void MaskedFillInferMeta(const MetaTensor& x,
+                         const MetaTensor& mask,
+                         const MetaTensor& value,
+                         MetaTensor* out);
 
 void MatmulInferMeta(const MetaTensor& x,
                      const MetaTensor& y,

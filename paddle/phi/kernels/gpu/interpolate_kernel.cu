@@ -26,7 +26,6 @@
 #include "paddle/phi/kernels/primitive/datamover_primitives.h"
 
 namespace phi {
-using phi::kps::details::FastDivMod;
 
 template <typename T>
 __forceinline__ __device__ void PreCalculatorForLinearInterpInputIndex(

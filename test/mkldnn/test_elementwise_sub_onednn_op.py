@@ -343,6 +343,32 @@ class TestBf16Broadcasting(TestBf16):
 '''
 
 
+class TestOneDNNElementwiseSubOpZeroSize(TestOneDNNElementwiseSubOp):
+    def init_input_output(self):
+        self.x = np.random.uniform(0.1, 1, [0, 17]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [1, 17]).astype(self.dtype)
+        self.out = np.subtract(self.x, self.y)
+
+    def test_check_grad_ignore_x(self):
+        self.check_grad_with_place(
+            core.CPUPlace(),
+            ["Y"],
+            "Out",
+            check_pir_onednn=True,
+        )
+
+    def test_check_grad_ignore_y(self):
+        self.check_grad_with_place(
+            core.CPUPlace(),
+            ["X"],
+            "Out",
+            check_pir_onednn=True,
+        )
+
+    def if_check_prim(self):
+        self.check_prim = True
+
+
 if __name__ == '__main__':
     enable_static()
     unittest.main()

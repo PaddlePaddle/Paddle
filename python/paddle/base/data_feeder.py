@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 import struct
-from typing import TYPE_CHECKING, Any, Tuple, Union
+from typing import TYPE_CHECKING, Any, Union
 
 import numpy as np
 
@@ -41,7 +41,7 @@ if TYPE_CHECKING:
     from paddle._typing import DTypeLike, ShapeLike
     from paddle._typing.dtype_like import _DTypeLiteral
 
-    _ClassInfo: TypeAlias = Union[type[Any], Tuple["_ClassInfo", ...]]
+    _ClassInfo: TypeAlias = Union[type[Any], tuple["_ClassInfo", ...]]
 
 __all__ = []
 

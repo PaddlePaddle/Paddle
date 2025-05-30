@@ -19,7 +19,7 @@ import numpy
 import paddle
 
 
-class TestFoldAssignValueOps(unittest.TestCase):
+class TestFoldOutputDataDerivableOpss(unittest.TestCase):
     def setUp(self):
         pass
 
@@ -33,13 +33,43 @@ class TestFoldAssignValueOps(unittest.TestCase):
         )()
         numpy.testing.assert_allclose(dy_out, st_out, atol=1e-6, rtol=1e-6)
 
-    def test_eval(self):
+    def test_case1(self):
         def func():
             x = paddle.full(shape=[2, 2], fill_value=0, dtype="int64")
             values = numpy.array([1, 2, 3, 4], dtype=numpy.int64)
             o = paddle.assign(values, x)
             o = paddle.cast(o, dtype="int32")
             return o
+
+        self.compare_result(func)
+
+    def test_case2(self):
+        def func():
+            x = paddle.randint(0, 10, shape=[4], dtype="int32")
+            x = x + 1
+            o = paddle.assign([1, 2, 3, 4], x)
+            o = paddle.cast(o, dtype="int32")
+            return o
+
+        self.compare_result(func)
+
+    def test_case3(self):
+        # fold to a assign_value op
+        def func():
+            x = paddle.full(shape=[6], fill_value=0, dtype="int64")
+            o = paddle.assign([1, 1, 2, 2, 3, 4], x)
+            o = paddle.unique_consecutive(o)
+            return o
+
+        self.compare_result(func)
+
+    def test_case4(self):
+        # fold to a full op
+        def func():
+            x = paddle.full(shape=[5], fill_value=0, dtype="int64")
+            x = paddle.assign([1, 1, 1, 1, 1], x)
+            x = paddle.unique_consecutive(x)
+            return x
 
         self.compare_result(func)
 

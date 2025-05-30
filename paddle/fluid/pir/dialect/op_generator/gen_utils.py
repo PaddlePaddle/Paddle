@@ -24,6 +24,7 @@ def to_pascal_case(s):
 attr_types_map = {
     'IntArray': ['paddle::dialect::IntArrayAttribute', 'IntArray'],
     'Scalar': ['paddle::dialect::ScalarAttribute', 'Scalar'],
+    'ScalarType': ['paddle::dialect::ScalarAttribute', 'Scalar'],
     'Scalar(int)': ['paddle::dialect::ScalarAttribute', 'Scalar'],
     'Scalar(int64_t)': ['paddle::dialect::ScalarAttribute', 'Scalar'],
     'Scalar(float)': ['paddle::dialect::ScalarAttribute', 'Scalar'],

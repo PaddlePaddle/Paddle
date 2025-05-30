@@ -157,7 +157,6 @@ cinn_cc_library(
   param_proto
   schedule_desc_proto
   tile_config_proto
-  absl
   isl
   ginac
   op_fusion
@@ -216,7 +215,6 @@ function(gen_cinncore LINKTYPE)
     param_proto
     schedule_desc_proto
     tile_config_proto
-    absl
     isl
     ginac
     op_fusion

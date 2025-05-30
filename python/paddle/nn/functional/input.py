@@ -178,7 +178,7 @@ def embedding(
     with embedding size.
 
     Note:
-        The id in :attr:`x` must satisfy :math:`0 =< id < weight.shape[0]` ,
+        The id in :attr:`x` must satisfy :math:`0 <= id < weight.shape[0]` ,
         otherwise the program will throw an exception and exit.
 
     .. code-block:: text
@@ -225,7 +225,7 @@ def embedding(
            None by default.
 
     Returns:
-        Tensor, Embedding Tensor  mapped by x. The data type is the same as :attr:`weight`.
+        Tensor, Embedding Tensor mapped by x. The data type is the same as :attr:`weight`.
 
     Examples:
 

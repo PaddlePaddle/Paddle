@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <absl/types/variant.h>
 #include <pybind11/functional.h>
+#include <variant>
 
 #include <memory>
 
@@ -102,7 +102,7 @@ void BindCompute(py::module *m) {
              const std::string &,
              const std::vector<ir::Expr> &,
              const std::map<std::string,
-                            absl::variant<int, float, bool, std::string>> &>(
+                            std::variant<int, float, bool, std::string>> &>(
              &lang::CallExtern));
 }
 
@@ -169,13 +169,13 @@ class PlaceholderWrapper {
   DEFINE_PLACEHOLDER(float32, float); \
   DEFINE_PLACEHOLDER(float64, double)
 
-  PlaceholderWrapper(absl::string_view dtype,
+  PlaceholderWrapper(std::string_view dtype,
                      const std::string &name,
                      const std::vector<int> &shape) {
     INIT_PLACEHOLDER;
   }
 
-  PlaceholderWrapper(absl::string_view dtype,
+  PlaceholderWrapper(std::string_view dtype,
                      const std::string &name,
                      const std::vector<ir::Expr> &shape) {
     INIT_PLACEHOLDER;
@@ -184,39 +184,39 @@ class PlaceholderWrapper {
 #undef DEFINE_PLACEHOLDER
 
   ir::Type type() const {
-    return absl::visit([](auto &v) { return v->type(); }, placeholder_);
+    return std::visit([](auto &v) { return v->type(); }, placeholder_);
   }
 
   ir::Tensor tensor() const {
-    return absl::visit([](auto &v) { return v->tensor(); }, placeholder_);
+    return std::visit([](auto &v) { return v->tensor(); }, placeholder_);
   }
 
   ir::Expr operator()(ir::Expr a) const {
-    return absl::visit([&](auto &v) { return (*v)(a); }, placeholder_);
+    return std::visit([&](auto &v) { return (*v)(a); }, placeholder_);
   }
 
   ir::Expr operator()(ir::Expr a, ir::Expr b) const {
-    return absl::visit([&](auto &v) { return (*v)(a, b); }, placeholder_);
+    return std::visit([&](auto &v) { return (*v)(a, b); }, placeholder_);
   }
 
   ir::Expr operator()(ir::Expr a, ir::Expr b, ir::Expr c) const {
-    return absl::visit([&](auto &v) { return (*v)(a, b, c); }, placeholder_);
+    return std::visit([&](auto &v) { return (*v)(a, b, c); }, placeholder_);
   }
 
   ir::Expr operator()(const std::vector<ir::Expr> &indices) const {
-    return absl::visit([&](auto &v) { return (*v)(indices); }, placeholder_);
+    return std::visit([&](auto &v) { return (*v)(indices); }, placeholder_);
   }
 
   operator ir::Tensor() {
-    return absl::visit([&](auto &v) { return ir::Tensor(*v); }, placeholder_);
+    return std::visit([&](auto &v) { return ir::Tensor(*v); }, placeholder_);
   }
   operator ir::Expr() {
-    return absl::visit([&](auto &v) { return ir::Expr(*v); }, placeholder_);
+    return std::visit([&](auto &v) { return ir::Expr(*v); }, placeholder_);
   }
 
  private:
   template <typename... Ts>
-  using PlaceholderVariant = absl::variant<std::unique_ptr<Placeholder<Ts>>...>;
+  using PlaceholderVariant = std::variant<std::unique_ptr<Placeholder<Ts>>...>;
 
   PlaceholderVariant<int, int64_t, float, double> placeholder_;
 };
@@ -224,10 +224,10 @@ class PlaceholderWrapper {
 void BindPlaceholder(py::module *m) {
   py::class_<PlaceholderWrapper> placeholder(*m, "Placeholder");
   placeholder
-      .def(py::init<absl::string_view,
+      .def(py::init<std::string_view,
                     const std::string &,
                     const std::vector<int> &>())
-      .def(py::init<absl::string_view,
+      .def(py::init<std::string_view,
                     const std::string &,
                     const std::vector<ir::Expr> &>())
       .def("type", &PlaceholderWrapper::type)

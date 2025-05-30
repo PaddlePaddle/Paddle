@@ -261,8 +261,8 @@ std::vector<ir::Argument> LowerImpl::GenFuncArgForSplitKernel(
 std::vector<Tensor> LowerImpl::CollectTemporaryTensors() {
   // a temporary should be in the comp_graph but not contained in the
   // tensor_args.
-  absl::flat_hash_map<std::string, Tensor> tensor_arg_map = GenTensorArgMap();
-  absl::flat_hash_map<std::string, Tensor> temp_tensor_map;
+  paddle::flat_hash_map<std::string, Tensor> tensor_arg_map = GenTensorArgMap();
+  paddle::flat_hash_map<std::string, Tensor> temp_tensor_map;
 
   for (auto* node : compu_graph_->nodes()) {
     auto* cnode = node->safe_as<CompuGraphNode>();
@@ -284,16 +284,16 @@ std::vector<Tensor> LowerImpl::CollectTemporaryTensors() {
   return temp_tensors;
 }
 
-absl::flat_hash_map<std::string, Tensor> LowerImpl::GenTensorArgMap() {
-  absl::flat_hash_map<std::string, Tensor> map;
+paddle::flat_hash_map<std::string, Tensor> LowerImpl::GenTensorArgMap() {
+  paddle::flat_hash_map<std::string, Tensor> map;
   for (auto& t : tensor_args_) {
     map[t->name] = t;
   }
   return map;
 }
 
-absl::flat_hash_map<std::string, Tensor> LowerImpl::GenAllTensorMap() {
-  absl::flat_hash_map<std::string, Tensor> map;
+paddle::flat_hash_map<std::string, Tensor> LowerImpl::GenAllTensorMap() {
+  paddle::flat_hash_map<std::string, Tensor> map;
   for (auto& t : CollectAllTensors()) {
     map[t->name] = t;
   }

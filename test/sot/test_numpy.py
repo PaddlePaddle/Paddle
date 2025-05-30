@@ -65,7 +65,7 @@ def numpy_bool(x: np.number):
     return bool(x == 1)
 
 
-class TestNumpy(TestCaseBase):
+class TestNumPy(TestCaseBase):
     @strict_mode_guard(False)
     def test_numpy_add(self):
         x = paddle.to_tensor([2])

@@ -42,19 +42,20 @@ void GroupNormKernel(const Context& dev_ctx,
   const auto scale_ptr = scale.get_ptr();
   const auto bias_ptr = bias.get_ptr();
 
-  const auto x_dims = common::vectorize<int>(x.dims());
-  const int N = x_dims[0];
+  const auto x_dims = common::vectorize<int64_t>(x.dims());
+  const int64_t N = x_dims[0];
   const bool channel_first =
       data_layout == DataLayout::kNCHW || data_layout == DataLayout::kNCDHW;
-  const int C = (channel_first ? x_dims[1] : x_dims[x_dims.size() - 1]);
-  const int L =
-      (channel_first
-           ? std::accumulate(
-                 x_dims.begin() + 2, x_dims.end(), 1, std::multiplies<int>())
-           : std::accumulate(x_dims.begin() + 1,
-                             x_dims.end() - 1,
-                             1,
-                             std::multiplies<int>()));
+  const int64_t C = (channel_first ? x_dims[1] : x_dims[x_dims.size() - 1]);
+  const int64_t L =
+      (channel_first ? std::accumulate(x_dims.begin() + 2,
+                                       x_dims.end(),
+                                       1,
+                                       std::multiplies<int64_t>())
+                     : std::accumulate(x_dims.begin() + 1,
+                                       x_dims.end() - 1,
+                                       1,
+                                       std::multiplies<int64_t>()));
 
   dev_ctx.template Alloc<T>(y);
   dev_ctx.template Alloc<float>(mean);

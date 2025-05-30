@@ -21,7 +21,6 @@ import numpy as np
 import paddle
 
 from . import core, unique_name
-from .data_feeder import convert_dtype
 from .framework import (
     Variable,
     _current_expected_place,
@@ -368,7 +367,7 @@ class LayerHelperBase:
         if not dtype:
             dtype = self.__dtype
         if isinstance(dtype, core.DataType):
-            dtype = convert_dtype(dtype)
+            dtype = paddle.pir.core.datatype_to_vartype[dtype]
         if is_bias:
             suffix = 'b'
             default_initializer = (
@@ -449,6 +448,8 @@ class LayerHelperBase:
             )
         else:
             if in_pir_mode():
+                if isinstance(dtype, core.VarDesc.VarType):
+                    dtype = paddle.pir.core.vartype_to_datatype[dtype]
                 return paddle.pir.core.create_parameter(
                     dtype=dtype,
                     shape=shape,

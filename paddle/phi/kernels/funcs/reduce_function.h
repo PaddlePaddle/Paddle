@@ -129,6 +129,7 @@ static inline int64_t GetLastPow2(int64_t n) {
   n |= (n >> 4);
   n |= (n >> 8);
   n |= (n >> 16);
+  n |= (n >> 32);
   return std::max(static_cast<int64_t>(1), n - (n >> 1));
 }
 
@@ -283,11 +284,6 @@ struct ReduceConfig {
 
     // step4: set the block and grid for launch kernel
     SetBlockDim();
-
-#ifndef PADDLE_WITH_XPU_KP
-    // step5: limit the grid to prevent thead overflow
-    phi::backends::gpu::LimitGridDim(dev_ctx, &grid);
-#endif  // PADDLE_WITH_XPU_KP
   }
 
 #ifndef PADDLE_WITH_XPU_KP
@@ -461,14 +457,14 @@ struct ReduceConfig {
     //    necessary, it should reduce in block y.
     //    The number of output for one block is blockDim.x;
     int64_t block_x, block_y;
-    int64_t grid_num, reduce_num_per_thread;
+    int64_t grid_x, reduce_num_per_thread;
     if (reduce_last_dim) {
       block_x = GetBlockDim(reduce_num);
       block_y = GetBlockDim(left_num);
       block_dim->x = block_x;
       block_dim->y = std::min(
           block_y, static_cast<int64_t>(max_num_threads / block_dim->x));
-      grid_num = details::CeilingDiv(left_num, block_dim->y);
+      grid_x = details::CeilingDiv(left_num, block_dim->y);
       reduce_num_per_thread = details::CeilingDiv(reduce_num, block_dim->x);
     } else {
       block_x = GetBlockDim(left_num);
@@ -478,13 +474,15 @@ struct ReduceConfig {
           block_y, static_cast<int64_t>(max_num_threads / block_dim->x));
       block_dim->x = std::min(
           block_x, static_cast<int64_t>(max_num_threads / block_dim->y));
-      grid_num = details::CeilingDiv(left_num, block_dim->x);
+      grid_x = details::CeilingDiv(left_num, block_dim->x);
       reduce_num_per_thread = details::CeilingDiv(reduce_num, block_dim->y);
     }
     int64_t device_id = phi::backends::gpu::GetCurrentDeviceId();
     int64_t max_mp = phi::backends::gpu::GetGPUMultiProcessors(device_id);
     int64_t max_threads_per_mp =
         phi::backends::gpu::GetGPUMaxThreadsPerMultiProcessor(device_id);
+    std::array<uint32_t, 3> max_grid_dim =
+        phi::backends::gpu::GetGpuMaxGridDimSize(device_id);
     int64_t max_threads = max_threads_per_mp * max_mp;
     int64_t num_threads = block_dim->x * block_dim->y;
     int64_t max_num_blocks = max_threads / num_threads;
@@ -502,11 +500,12 @@ struct ReduceConfig {
         details::CeilingDiv(reduce_num_per_thread, min_reduce_num_per_thread);
     int64_t input_split_num_2 =
         details::CeilingDiv(reduce_num_per_thread, max_reduce_num_per_thread);
-    int64_t input_split_num_3 = details::CeilingDiv(max_num_blocks, grid_num);
+    int64_t input_split_num_3 = details::CeilingDiv(max_num_blocks, grid_x);
+    int64_t grid_y = std::max(std::min(input_split_num_1, input_split_num_3),
+                              input_split_num_2);
 
-    grid_dim->x = grid_num;
-    grid_dim->y = std::max(std::min(input_split_num_1, input_split_num_3),
-                           input_split_num_2);
+    grid_dim->x = std::min(grid_x, static_cast<int64_t>(max_grid_dim[0]));
+    grid_dim->y = std::min(grid_y, static_cast<int64_t>(max_grid_dim[1]));
     // if grid.y > 1, we need launch reduce kernel again.
     if (grid_dim->y > 1) {
       should_reduce_again = true;
@@ -523,17 +522,24 @@ struct ReduceConfig {
     int64_t grid_z = left_num / last_dim_num;
     left_num = last_dim_num;
     grid_dim->z = grid_z;
-    int64_t device_id = phi::backends::gpu::GetCurrentDeviceId();
-    int64_t max_mp = phi::backends::gpu::GetGPUMultiProcessors(device_id);
-    int64_t max_threads_per_mp =
-        phi::backends::gpu::GetGPUMaxThreadsPerMultiProcessor(device_id);
-    int64_t max_threads = max_threads_per_mp * max_mp;
-    // init
-    int64_t num_block = (max_threads / left_num);
+
+    // Set gridDim.x and blockDim.x
+    int device_id = phi::backends::gpu::GetCurrentDeviceId();
+    std::array<uint32_t, 3> max_grid_dim =
+        phi::backends::gpu::GetGpuMaxGridDimSize(device_id);
     block_dim->x = GetBlockDim(left_num);
-    grid_dim->x = details::CeilingDiv(left_num, block_dim->x);
+    grid_dim->x = std::min(details::CeilingDiv(left_num, block_dim->x),
+                           static_cast<int64_t>(max_grid_dim[0]));
+
+    int max_mp = phi::backends::gpu::GetGPUMultiProcessors(device_id);
+    int max_threads_per_mp =
+        phi::backends::gpu::GetGPUMaxThreadsPerMultiProcessor(device_id);
+    int max_threads = max_threads_per_mp * max_mp;
+    int64_t num_block =
+        std::min(max_threads / left_num, static_cast<int64_t>(max_grid_dim[1]));
     blocking_size = reduce_num;
 
+    // Set blocking_size and gridDim.y
     if (num_block > 1 && reduce_num >= REDUCE_SPLIT_BOUNDARY) {
       blocking_size = details::GetLastPow2(reduce_num / num_block);
       if (blocking_size <= 1) {

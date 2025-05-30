@@ -57,6 +57,9 @@ void ActivationGradGPUImpl(const Context& dev_ctx,
   }
 
   dev_ctx.template Alloc<T>(d_x);
+  if (d_x->numel() == 0) {
+    return;
+  }
 
   std::vector<const DenseTensor*> ins = {d_out};
   std::vector<DenseTensor*> outs = {d_x};
@@ -547,12 +550,23 @@ PD_REGISTER_KERNEL(log_double_grad,
 PD_REGISTER_ACTIVATION_GRAD_KERNEL_WITH_COMPLEX(hardswish_grad,
                                                 HardSwishGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(swish_grad, SwishGradKernel)
-PD_REGISTER_ACTIVATION_GRAD_KERNEL(round_grad, RoundGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(floor_grad, FloorGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(ceil_grad, CeilGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(celu_grad, CeluGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(celu_double_grad, CeluDoubleGradKernel)
 
+PD_REGISTER_KERNEL(round_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::RoundGradKernel,
+                   int,
+                   int64_t,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
 PD_REGISTER_KERNEL(pow_grad,
                    GPU,
                    ALL_LAYOUT,

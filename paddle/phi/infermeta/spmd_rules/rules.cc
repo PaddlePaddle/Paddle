@@ -85,6 +85,10 @@ PD_REGISTER_SPMD_RULE(
 
 // elementwise unary rule
 PD_REGISTER_SPMD_RULE(
+    abs,
+    PD_INFER_SPMD(phi::distributed::ElementwiseUnaryInferSpmd),
+    PD_INFER_SPMD(phi::distributed::ElementwiseUnaryInferSpmdReverse));
+PD_REGISTER_SPMD_RULE(
     assign,
     PD_INFER_SPMD(phi::distributed::ElementwiseUnaryInferSpmd),
     PD_INFER_SPMD(phi::distributed::ElementwiseUnaryInferSpmdReverse));
@@ -517,6 +521,11 @@ PD_REGISTER_SPMD_RULE(
     PD_INFER_SPMD(phi::distributed::ReductionInferSpmd),
     PD_INFER_SPMD(phi::distributed::ReductionInferSpmdReverse));
 
+// mean_all
+PD_REGISTER_SPMD_RULE(mean_all,
+                      PD_INFER_SPMD(phi::distributed::MeanAllInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::MeanAllGradInferSpmd));
+
 // layer_norm
 PD_REGISTER_SPMD_RULE(
     layer_norm,
@@ -699,11 +708,24 @@ PD_REGISTER_SPMD_RULE(cumsum,
                       PD_INFER_SPMD(phi::distributed::CumSumInferSpmd),
                       PD_INFER_SPMD(phi::distributed::CumSumInferSpmdReverse));
 
+// unique
+PD_REGISTER_SPMD_RULE(unique, PD_INFER_SPMD(phi::distributed::UniqueInferSpmd));
+
+// argmin
+PD_REGISTER_SPMD_RULE(
+    argmin,
+    PD_INFER_SPMD(phi::distributed::ArgMinInferSpmdBase),
+    PD_INFER_SPMD(phi::distributed::ArgMinInferSpmdReverseBase));
 // argmax
 PD_REGISTER_SPMD_RULE(
     argmax,
     PD_INFER_SPMD(phi::distributed::ArgMaxInferSpmdBase),
     PD_INFER_SPMD(phi::distributed::ArgMaxInferSpmdReverseBase));
+
+// topk
+PD_REGISTER_SPMD_RULE(topk,
+                      PD_INFER_SPMD(phi::distributed::TopkInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::TopkGradInferSpmd));
 
 // unbind
 PD_REGISTER_SPMD_RULE(unbind,
@@ -733,4 +755,18 @@ PD_REGISTER_SPMD_RULE(nonzero,
 
 // add_n
 PD_REGISTER_SPMD_RULE(add_n, PD_INFER_SPMD(phi::distributed::AddNInferSpmd));
+
+// cummax
+PD_REGISTER_SPMD_RULE(cummax,
+                      PD_INFER_SPMD(phi::distributed::CummaxInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::CummaxGradInferSpmd));
+// cummin
+PD_REGISTER_SPMD_RULE(cummin,
+                      PD_INFER_SPMD(phi::distributed::CumminInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::CumminGradInferSpmd));
+
+// argsort
+PD_REGISTER_SPMD_RULE(argsort,
+                      PD_INFER_SPMD(phi::distributed::ArgSortInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::ArgSortGradInferSpmd));
 }  // namespace phi::distributed
