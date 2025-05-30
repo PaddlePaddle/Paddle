@@ -477,6 +477,17 @@ if(NOT WITH_GPU
    OR APPLE)
   list(REMOVE_ITEM TEST_OPS test_build_strategy_fusion_group_pass)
   list(REMOVE_ITEM TEST_OPS test_sparse_conv_igemm_op)
+  list(REMOVE_ITEM 
+       TEST_OPS
+       test_incubate_build_src_rank_and_local_expert_id
+       test_incubate_expand_modality_expert_id
+       test_incubate_fused_loss
+       test_incubate_fused_rmsnorm_ext
+       test_incubate_int_bincount
+       test_incubate_moe_combine
+       test_incubate_moe_gate_dispatch_partial_nosoftmaxtopk
+       test_incubate_moe_gate_dispatch_w_permute_bwd
+       test_incubate_moe_gate_dispatch_w_permute)
 endif()
 
 if(NOT WITH_CUDNN_FRONTEND)
