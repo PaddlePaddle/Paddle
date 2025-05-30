@@ -1215,7 +1215,7 @@ struct LogitGradFunctor {
     // logit(x)' = 1/(x*(1-x))
     dx.device(d) =
         (x < static_cast<T>(eps) || x > static_cast<T>(1.0 - eps))
-            .select(p.constant(static_cast<T>(0)),
+            .select(p.constant(static_cast<T>(NAN)),
                     dout * (static_cast<T>(1) / ((static_cast<T>(1) - x) * x)));
   }
 };
@@ -3352,6 +3352,7 @@ struct CudaLogitGradFunctor : public BaseActivationFunctor<T> {
   float eps;
   MT zero = static_cast<MT>(0.0f);
   MT one = static_cast<MT>(1.0f);
+  MT nan = static_cast<MT>(NAN);
 
   typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
     return {{"eps", &eps}};
@@ -3360,7 +3361,7 @@ struct CudaLogitGradFunctor : public BaseActivationFunctor<T> {
   __device__ __forceinline__ T operator()(const T dout, const T arg_x) const {
     MT x = static_cast<MT>(arg_x);
     MT dx = (x < static_cast<MT>(eps) || x > one - static_cast<MT>(eps))
-                ? zero
+                ? nan
                 : (static_cast<MT>(dout) / (x * (one - x)));
     return static_cast<T>(dx);
   }
