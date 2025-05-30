@@ -43,7 +43,7 @@ jobs:
     steps:
       - name: Determine the runner
         run: |
-          docker_image=${{ needs.build-docker.outputs.docker_build_image }}
+          docker_image=${{ inputs.docker_build_image }}
           echo "docker_image=${docker_image}" >> $GITHUB_ENV
           docker run -i --rm -v ${{ github.workspace }}:/paddle -w /paddle $docker_image /bin/bash -c 'rm -rf * .[^.]*'
           cp -r /home/PTSTools .
