@@ -95,5 +95,6 @@ PD_REGISTER_KERNEL(build_src_rank_and_local_expert_id,
                    GPU,
                    ALL_LAYOUT,
                    phi::BuildSrcRankAndLocalExpertIdKernel,
+                   int,
                    int32_t,
                    int64_t) {}

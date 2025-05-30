@@ -46,9 +46,9 @@ file(
 
 if(APPLE OR WIN32)
   list(REMOVE_ITEM kernel_cu "fusion/gpu/fusion_group_kernel.cu")
+  list(REMOVE_ITEM kernel_cu "sparse/gpu/conv_kernel_igemm.cu")
   list(REMOVE_ITEM 
-       kernel_cu 
-       "sparse/gpu/conv_kernel_igemm.cu"
+       kernel_gpu
        "gpu/moe_ops_partial_nosoftmaxtopk_kernel.cu"
        "gpu/moe_ops_partial_nosoftmaxtopk_grad_kernel.cu"
        "gpu/moe_gate_dispatch_permute_grad_kernel.cu"

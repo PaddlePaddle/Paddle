@@ -269,5 +269,6 @@ PD_REGISTER_KERNEL(cal_aux_loss,
                    ALL_LAYOUT,
                    phi::CalAuxLossKernel,
                    float,
+                   double,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}

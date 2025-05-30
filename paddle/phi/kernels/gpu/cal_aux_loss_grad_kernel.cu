@@ -107,5 +107,11 @@ void CalAuxLossGradKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    cal_aux_loss_grad, GPU, ALL_LAYOUT, phi::CalAuxLossGradKernel, float) {}
+PD_REGISTER_KERNEL(cal_aux_loss_grad, 
+                   GPU,
+                   ALL_LAYOUT, 
+                   phi::CalAuxLossGradKernel, 
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
