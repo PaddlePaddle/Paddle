@@ -4520,23 +4520,23 @@ void SplitInferMeta(const MetaTensor& x,
   } else {
     auto input_axis_dim = x.dims().at(axis_value);
     std::vector<int64_t> sections_vec;
-    const int unknow_dim_val = -1;
-    int unknow_dim_idx = -1;
-    int num_of_unknow = 0;
+    const int unknown_dim_val = -1;
+    int unknown_dim_idx = -1;
+    int num_of_unknown = 0;
     int64_t sum_of_section = 0;
 
     for (int i = 0; i < static_cast<int>(sections_data.size()); ++i) {
       sections_vec.push_back(sections_data[i]);
 
-      if (sections_data[i] == unknow_dim_val) {
-        num_of_unknow++;
-        unknow_dim_idx = i;
+      if (sections_data[i] == unknown_dim_val) {
+        num_of_unknown++;
+        unknown_dim_idx = i;
       } else {
         sum_of_section += static_cast<int64_t>(sections_data[i]);
       }
     }
 
-    PADDLE_ENFORCE_LE(num_of_unknow,
+    PADDLE_ENFORCE_LE(num_of_unknown,
                       1,
                       common::errors::InvalidArgument(
                           "Only one dimension value of Attr(num_or_sections) "
@@ -4544,7 +4544,7 @@ void SplitInferMeta(const MetaTensor& x,
                           "But received Attr(num_or_sections) = [%s].",
                           common::make_ddim(sections_data)));
 
-    if (unknow_dim_idx != -1) {
+    if (unknown_dim_idx != -1) {
       // for example, input shape = [4 ,5], axis = 1, sections = [2, 3, -1].
       // input_axis_dim = 5, sum_of_sections = 5.
       // the following check will fail.
@@ -4561,7 +4561,7 @@ void SplitInferMeta(const MetaTensor& x,
               x.dims(),
               axis_value));
 
-      sections_vec[unknow_dim_idx] = input_axis_dim - sum_of_section;
+      sections_vec[unknown_dim_idx] = input_axis_dim - sum_of_section;
     } else {
       PADDLE_ENFORCE_EQ(
           sum_of_section,
