@@ -260,14 +260,14 @@ class TestHStack(BaseTest, BaseCases):
 
 class TestHStackZeroDim1(TestHStack):
     def test_mix_ndim(self):
-        d0 = generate_data([], count=1, dtype='float64')
+        d0 = generate_data([1], count=1, dtype='float64')
         d1 = generate_data([], count=1, dtype='float64')
         self._test_all(rearrange_data(d0, d1))
 
 
 class TestHStackZeroDim2(TestHStack):
     def test_mix_ndim(self):
-        d0 = generate_data([1], count=1, dtype='float64')
+        d0 = generate_data([], count=1, dtype='float64')
         d1 = generate_data([1], count=1, dtype='float64')
         self._test_all(rearrange_data(d0, d1))
 
