@@ -1781,7 +1781,7 @@
   backward : expand_grad
 
 - op : expand_as
-  args : (Tensor x, Tensor y, int[] target_shape = {})
+  args : (Tensor x, Tensor y, int64_t[] target_shape = {})
   output : Tensor(out)
   infer_meta :
     func : ExpandAsInferMeta
