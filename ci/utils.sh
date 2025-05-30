@@ -252,7 +252,7 @@ function determine_kunlun_runner() {
 function determine_dcu_runner() {
     runner_name=$1
 
-    if [[ $runner_name == "pddle-1" ]]; then
+    if [[ $runner_name == "paddle-1" ]]; then
         echo "HIP_VISIBLE_DEVICES=0,1" >> $GITHUB_ENV
     elif [[ $runner_name == "paddle-2" ]]; then
         echo "HIP_VISIBLE_DEVICES=2,3" >> $GITHUB_ENV
