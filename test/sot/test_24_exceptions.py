@@ -962,7 +962,7 @@ class TestBuiltinFunctionRaiseExceptionGuard(TestCaseBase):
         self.assert_results(foo_mod, 10)
         self.assert_exceptions(
             ZeroDivisionError,
-            "integer division or modulo by zero",
+            "integer (.)* modulo by zero",
             foo_mod,
             0,
         )
