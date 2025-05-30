@@ -101,6 +101,14 @@ class TestRepeatInterleaveOp2(OpTest):
         self.check_grad(['X'], 'Out', check_pir=True)
 
 
+class TestRepeatInterleaveOp_ZeroSize(TestRepeatInterleaveOp2):
+    def init_dtype_type(self):
+        self.dim = 1
+        self.x_type = np.float64
+        self.x_shape = (8, 0, 5)
+        self.index_size = self.x_shape[self.dim]
+
+
 class TestIndexSelectAPI(unittest.TestCase):
     def input_data(self):
         self.data_zero_dim_x = np.array(0.5).astype('float32')
