@@ -55,9 +55,6 @@ inplace_check_blacklist = {"assign_out_"}
 
 # Black Ops list that's NO NEED to apply code generation
 black_ops_list = [
-    "conv2d",
-    "conv2d_grad",
-    "conv2d_grad_grad",
     "add_n",
     "add_n_grad",
     "sync_batch_norm_",
@@ -67,6 +64,8 @@ black_ops_list = [
     "pull_sparse_v2_grad",
     "push_gpups_sparse",
 ]
+
+only_backward_ops_list = ["conv2d"]
 
 
 # white ops list whose kernel can be deleted after performance analysis
@@ -3248,10 +3247,14 @@ class DygraphForwardAndNodesGenerator(GeneratorBase):
         for forward_api_contents in true_forward_api_list:
             if forward_api_contents[op_string] in black_ops_list:
                 continue
-            if op_string == 'backward_op' and (
-                forward_api_contents[op_string].endswith(
-                    ('double_grad', 'triple_grad', 'grad_grad')
+            if (
+                op_string == 'backward_op'
+                and (
+                    forward_api_contents[op_string].endswith(
+                        ('double_grad', 'triple_grad', 'grad_grad')
+                    )
                 )
+                and "conv2d" not in forward_api_contents[op_string]
             ):
                 continue
 
@@ -3264,21 +3267,22 @@ class DygraphForwardAndNodesGenerator(GeneratorBase):
                     forward_api_contents
                 )
 
-            # Generate Dygraph Forward Function
-            function_generator = DygraphForwardFunctionGenerator(
-                forward_api_contents,
-                backward_api_contents,
-                forward_apis_dict,
-                namespace,
-            )
-            function_generator.run(grad_flag)
+            if forward_api_contents[op_string] not in only_backward_ops_list:
+                # Generate Dygraph Forward Function
+                function_generator = DygraphForwardFunctionGenerator(
+                    forward_api_contents,
+                    backward_api_contents,
+                    forward_apis_dict,
+                    namespace,
+                )
+                function_generator.run(grad_flag)
 
-            self.forward_definition_str += (
-                function_generator.forward_definition_str + "\n"
-            )
-            self.forward_declaration_str += (
-                function_generator.forward_declaration_str + "\n"
-            )
+                self.forward_definition_str += (
+                    function_generator.forward_definition_str + "\n"
+                )
+                self.forward_declaration_str += (
+                    function_generator.forward_declaration_str + "\n"
+                )
 
             if not grad_flag:
                 # Generate Dygraph GradNode Function
