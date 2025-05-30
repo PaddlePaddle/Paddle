@@ -73,6 +73,10 @@ def attention_naive_with_bool_mask(q, k, v, bool_mask):
     return paddle.transpose(o, [0, 2, 1, 3])
 
 
+@unittest.skipIf(
+    not paddle.is_compiled_with_cuda(),
+    "CUDA is not available, this test requires GPU support.",
+)
 class TestAttentionWithBoolMask(unittest.TestCase):
     def setUp(self):
         self.place = paddle.CUDAPlace(0)
