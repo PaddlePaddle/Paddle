@@ -253,9 +253,11 @@ jobs:
 
       - name: Run test
         run: |
+          set -x
           sudo mkdir -p /run/user/0
+          source /opt/dtk-24.04.1/env.sh
           docker exec -t ${{ env.container_name }} /bin/bash -c '
-          bash ${ci_scripts}/dcu_test.sh
+          bash -x ${ci_scripts}/dcu_test.sh
           '
 
       - name: Terminate and delete the container
