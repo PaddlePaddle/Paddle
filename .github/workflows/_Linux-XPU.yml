@@ -164,9 +164,8 @@ jobs:
       - name: Terminate and delete the container
         if: always()
         run: |
-          sudo rm -rf * .[^.]*
-          docker stop ${container_name}
-          docker rm ${container_name}
+          docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'
+          docker rm -f ${container_name}
 
   test:
     name: Test
@@ -270,5 +269,4 @@ jobs:
         run: |
           sudo mkdir -p /run/user/0
           sudo rm -rf * .[^.]*
-          docker stop ${container_name}
-          docker rm ${container_name}
+          docker rm -f ${container_name}

@@ -35,7 +35,7 @@ jobs:
     steps:
       - name: Download paddle.tar.gz and update test branch
         run: |
-          sudo rm -rf * .[^.]*
+          docker run -i --rm -v ${{ github.workspace }}:/paddle -w /paddle $docker_image /bin/bash -c 'rm -rf * .[^.]*'
           source ~/.bashrc
           set -e
           echo "Downloading Paddle.tar.gz"
