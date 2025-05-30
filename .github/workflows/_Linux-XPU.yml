@@ -123,6 +123,8 @@ jobs:
           git checkout test
           echo "Pull upstream develop or target branch"
           git pull upstream $BRANCH --no-edit
+          apt install zstd -y
+          sleep 3d
           '
 
       - name: Run build
