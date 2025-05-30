@@ -23,10 +23,16 @@ from test_activation_op import (
     TestAtan,
     TestAtanh,
     TestCeil,
+    TestCELU,
     TestCos,
     TestCosh,
+    TestELU,
     TestFloor,
+    TestHardShrink,
+    TestHardSigmoid,
+    TestHardtanhAPI,
     TestLogSigmoid,
+    TestMish,
     TestReciprocal,
     TestRelu,
     TestRsqrt,
@@ -34,12 +40,16 @@ from test_activation_op import (
     TestSilu,
     TestSin,
     TestSinh,
+    TestSoftplus,
+    TestSoftshrink,
     TestSoftsign,
     TestSqrt,
     TestSquare,
+    TestSTanh,
     TestTan,
     TestTanh,
     TestTanhshrink,
+    TestThresholdedRelu,
 )
 
 
@@ -96,6 +106,21 @@ create_test_zero_size_class(TestSigmoid)
 create_test_zero_size_class(TestLogSigmoid)
 create_test_zero_size_class(TestFloor)
 create_test_zero_size_class(TestCeil)
+
+create_test_zero_size_class(TestELU)
+create_test_zero_size_class(TestCELU)
+create_test_zero_size_class(TestHardShrink)
+create_test_zero_size_class(TestHardSigmoid)
+create_test_zero_size_class(TestMish)
+create_test_zero_size_class(TestSoftplus)
+create_test_zero_size_class(TestSoftshrink)
+create_test_zero_size_class(TestSTanh)
+create_test_zero_size_class(TestThresholdedRelu)
+
+
+class TestHardtanhAPIZeroSize(TestHardtanhAPI):
+    def init_shape(self):
+        self.x_shape = [12, 0]
 
 
 if __name__ == "__main__":

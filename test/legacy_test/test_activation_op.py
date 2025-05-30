@@ -1496,12 +1496,16 @@ class TestHardtanhAPI(unittest.TestCase):
     # test paddle.nn.Hardtanh, paddle.nn.functional.hardtanh
     def setUp(self):
         np.random.seed(1024)
-        self.x_np = np.random.uniform(-3, 3, [10, 12]).astype('float32')
+        self.init_shape()
+        self.x_np = np.random.uniform(-3, 3, self.x_shape).astype('float32')
         self.place = (
             paddle.CUDAPlace(0)
             if paddle.is_compiled_with_cuda()
             else paddle.CPUPlace()
         )
+
+    def init_shape(self):
+        self.x_shape = [10, 12]
 
     def test_static_api(self):
         with static_guard():
