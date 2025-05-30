@@ -19,6 +19,7 @@ import functools
 import inspect
 import itertools
 import operator
+import random
 import sys
 import types
 from functools import partial, reduce
@@ -325,8 +326,6 @@ class UserDefinedFunctionVariable(FunctionVariable):
 
     @staticmethod
     def __is_random_function(value) -> bool:
-        import random
-
         return value.__qualname__ in [
             f"{random._inst.__class__.__name__}.{name}"
             for name in dir(random._inst)

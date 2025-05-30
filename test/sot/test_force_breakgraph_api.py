@@ -25,14 +25,14 @@ from paddle.jit.sot import symbolic_translate
 
 def fn_randint(x):
     x = x + 1
-    x = random.randint(0, 100)
+    x = x + random.randint(0, 100)
     x = x + 2
     return x
 
 
 def fn_random(x):
     x = x + 3
-    x = random.random()
+    x = x + random.random()
     x = x + 4
     return x
 
