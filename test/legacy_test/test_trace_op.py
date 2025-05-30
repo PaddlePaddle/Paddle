@@ -84,7 +84,7 @@ class TestTraceOpCase3(TestTraceOp):
 
 class TestTraceOpCase4(TestTraceOp):
     def init_config(self):
-        self.case = np.random.randn(2, 3, 2).astype('float64')
+        self.case = np.random.randn(2, 30, 3).astype('float64')
         self.inputs = {'Input': self.case}
         self.attrs = {'offset': -1, 'axis1': 2, 'axis2': -2}
         self.target = np.trace(
