@@ -22,7 +22,7 @@ function parallel_test_base_hybrid() {
     ========================================
 EOF
 
-set +x
+#set +x
         ut_startTime_s=`date +%s`
         test_cases=$(ctest -N -V)        # get all test cases
         get_quickly_disable_ut||disable_ut_quickly='disable_ut'   # indicate whether the case was in quickly disable list
