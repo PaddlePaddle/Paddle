@@ -477,6 +477,13 @@ if(NOT WITH_GPU
    OR APPLE)
   list(REMOVE_ITEM TEST_OPS test_build_strategy_fusion_group_pass)
   list(REMOVE_ITEM TEST_OPS test_sparse_conv_igemm_op)
+endif()
+
+# if win32 or APPLE or NOT WITH_GPU or CUDA_ARCH_NAME==Volta, skip some op test
+if(NOT WITH_GPU
+   OR WIN32
+   OR APPLE
+   OR (${CUDA_ARCH_NAME} STREQUAL "Volta"))
   list(REMOVE_ITEM 
        TEST_OPS
        test_incubate_build_src_rank_and_local_expert_id
