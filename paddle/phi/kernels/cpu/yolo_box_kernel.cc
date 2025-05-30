@@ -35,6 +35,12 @@ void YoloBoxKernel(const Context& dev_ctx,
                    float iou_aware_factor,
                    DenseTensor* boxes,
                    DenseTensor* scores) {
+  if (x.numel() == 0 || img_size.numel() == 0) {
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+    return;
+  }
+
   auto* input = &x;
   auto* imgsize = &img_size;
   float scale = scale_x_y;

@@ -16,6 +16,7 @@
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/yolo_box_util.h"
 
 namespace phi {
@@ -34,6 +35,12 @@ void YoloBoxKernel(const Context& dev_ctx,
                    float iou_aware_factor,
                    DenseTensor* boxes,
                    DenseTensor* scores) {
+  if (x.numel() == 0 || img_size.numel() == 0) {
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+    return;
+  }
+
   using XPUType = typename XPUTypeTrait<T>::Type;
   int r = 0;
   auto* input = &x;
