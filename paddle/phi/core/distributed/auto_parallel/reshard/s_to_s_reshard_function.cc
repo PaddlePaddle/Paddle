@@ -54,6 +54,10 @@ void SToSReshardFunction::Eval(phi::DeviceContext* dev_ctx,
   VLOG(3) << "Call " << Name();
   const auto& in_process_mesh = in.dist_attr().process_mesh();
   const auto& in_process_ids = in_process_mesh.process_ids();
+  if (in_process_ids.size() == 1) {
+    *out = in;
+    return;
+  }
   auto dtype = in.dtype();
   const auto& logical_ddim = in.dims();
   int64_t nranks = static_cast<int64_t>(in_process_ids.size());
