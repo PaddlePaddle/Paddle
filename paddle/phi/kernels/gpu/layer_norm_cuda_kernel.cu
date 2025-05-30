@@ -82,7 +82,7 @@ void RMSLnBwd(const Context &ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    fused_rms_norm, GPU, ALL_LAYOUT, phi::RMSLnFwd, float, double) {}
+    fused_rms_norm_ext, GPU, ALL_LAYOUT, phi::RMSLnFwd, float, double) {}
 
 PD_REGISTER_KERNEL(
-    fused_rms_norm_grad, GPU, ALL_LAYOUT, phi::RMSLnBwd, float, double) {}
+    fused_rms_norm_ext_grad, GPU, ALL_LAYOUT, phi::RMSLnBwd, float, double) {}

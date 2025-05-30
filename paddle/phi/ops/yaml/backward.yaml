@@ -3871,14 +3871,14 @@
     func: check_model_nan_inf
     data_type: out_grad
 
-- backward_op: fused_rms_norm_grad
-  forward: fused_rms_norm (Tensor x, Tensor scale, float epsilon) -> Tensor(y), Tensor(invvar)
+- backward_op: fused_rms_norm_ext_grad
+  forward: fused_rms_norm_ext (Tensor x, Tensor scale, float epsilon) -> Tensor(y), Tensor(invvar)
   args: (Tensor x, Tensor scale,Tensor invvar, Tensor y_grad, float epsilon)
   output: Tensor(x_grad), Tensor(scale_grad)
   infer_meta:
     func: FusedRMSNormGradInferMeta
   kernel:
-    func: fused_rms_norm_grad
+    func: fused_rms_norm_ext_grad
 
 - backward_op: im2sequence_grad
   forward: im2sequence (Tensor x, Tensor y, int[] kernels, int[] strides = {1, 1}, int[] paddings

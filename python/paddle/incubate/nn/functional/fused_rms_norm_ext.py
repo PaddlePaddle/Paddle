@@ -34,8 +34,8 @@ def fused_rms_norm_ext(x, scale, epsilon=1e-5, name=None):
         invvar (Tensor): Tensor of shape [rows], the inverse standard deviation of each row.
     """
     if in_dynamic_or_pir_mode():
-        return _C_ops.fused_rms_norm(x, scale, epsilon)
-    helper = LayerHelper('fused_rms_norm', **locals())
+        return _C_ops.fused_rms_norm_ext(x, scale, epsilon)
+    helper = LayerHelper('fused_rms_norm_ext', **locals())
     dtype = convert_dtype(x.dtype)
     y = helper.create_variable_for_type_inference(dtype)
     invvar = helper.create_variable_for_type_inference('float32')
@@ -43,7 +43,7 @@ def fused_rms_norm_ext(x, scale, epsilon=1e-5, name=None):
     inputs = {'x': x, 'scale': scale}
 
     helper.append_op(
-        type='fused_rms_norm',
+        type='fused_rms_norm_ext',
         inputs=inputs,
         outputs={'y': y, 'invvar': invvar},
         attrs={'epsilon': epsilon},
