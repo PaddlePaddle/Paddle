@@ -96,7 +96,9 @@ void AllValueCompareInferMeta(const MetaTensor& x,
                               const MetaTensor& y,
                               MetaTensor* out,
                               MetaConfig config) {
-  detail::BinarySameInputDimsCheck(x, y, config);
+  if (x.numel() != 0 && y.numel() != 0) {
+    detail::BinarySameInputDimsCheck(x, y, config);
+  }
   out->set_dims(common::make_ddim({}));
   out->set_dtype(DataType::BOOL);
 }

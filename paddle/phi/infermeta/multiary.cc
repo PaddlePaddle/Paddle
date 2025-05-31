@@ -5673,7 +5673,8 @@ void WhereInferMeta(const MetaTensor& condition,
           x_dims.size()));
   size_t cond_dims_size = static_cast<size_t>(cond_dims.size());
   for (size_t i = 0; i < cond_dims_size; ++i) {
-    if (cond_dims[i] == -1 || x_dims[i] == -1) {
+    if (cond_dims[i] == -1 || x_dims[i] == -1 || cond_dims[i] == 0 ||
+        x_dims[i] == 0) {
       continue;
     }
     PADDLE_ENFORCE_EQ(
@@ -5696,7 +5697,8 @@ void WhereInferMeta(const MetaTensor& condition,
                         y_dims.size()));
   size_t x_dims_size = static_cast<size_t>(x_dims.size());
   for (size_t i = 0; i < x_dims_size; ++i) {
-    if (x_dims[i] == -1 || y_dims[i] == -1) {
+    if (x_dims[i] == -1 || y_dims[i] == -1 || x_dims[i] == 0 ||
+        y_dims[i] == 0) {
       continue;
     }
     PADDLE_ENFORCE_EQ(
