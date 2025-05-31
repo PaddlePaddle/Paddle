@@ -115,13 +115,15 @@ _supported_float_dtype_ = [
     VarDesc.VarType.FP64,
 ]
 
-_supported_int_like_types_lt_int64 = {
-    DataType.BOOL,
-    DataType.INT8,
-    DataType.INT16,
-    DataType.INT32,
-    DataType.UINT8,
-}
+_supported_int_like_types_lt_int64 = frozenset(
+    {
+        DataType.BOOL,
+        DataType.INT8,
+        DataType.INT16,
+        DataType.INT32,
+        DataType.UINT8,
+    }
+)
 
 
 def _get_reduce_axis(axis, x):
@@ -4737,7 +4739,7 @@ def cumprod(
     else:
         if x.dtype in _supported_int_like_types_lt_int64:
             # use the default platform integer when integer dtype with a precision less than that of the default platform integer
-            x = cast(x, "int64")
+            x = cast(x, DataType.INT64)
 
     if in_dynamic_or_pir_mode():
         return _C_ops.cumprod(x, dim, False, False)
