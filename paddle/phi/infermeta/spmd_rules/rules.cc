@@ -68,8 +68,11 @@ PD_REGISTER_SPMD_RULE(
     PD_INFER_SPMD(phi::distributed::FusedRopeInferSpmdReverse));
 // batch_norm
 PD_REGISTER_SPMD_RULE(batch_norm,
-                      PD_INFER_SPMD(phi::distributed::BatchNormInferSpmd),
-                      PD_INFER_SPMD(phi::distributed::BatchNormGradInferSpmd));
+                      PD_INFER_SPMD(phi::distributed::BatchNormInferSpmdBase));
+
+// sync_batch_norm
+PD_REGISTER_SPMD_RULE(sync_batch_norm_,
+                      PD_INFER_SPMD(phi::distributed::BatchNormInferSpmdBase));
 
 // replicated rule /* for unittest */
 PD_REGISTER_SPMD_RULE(

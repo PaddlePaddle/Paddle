@@ -5056,6 +5056,7 @@
   output : Tensor(out), Tensor(mean_out), Tensor(variance_out), Tensor(saved_mean), Tensor(saved_variance), Tensor(reserve_space)
   infer_meta :
     func : BatchNormInferMeta
+    spmd_rule : SyncBatchNormInferSpmd
   kernel :
     func : sync_batch_norm
     data_type : x

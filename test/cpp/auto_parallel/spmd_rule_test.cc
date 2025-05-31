@@ -2610,14 +2610,13 @@ TEST(BatchNorm, Ctor) {
   std::vector<int64_t> process_ids = {0, 1, 2, 3};
   std::vector<std::string> dim_names = {"x", "y"};
   ProcessMesh process_mesh(mesh_shape, process_ids, dim_names);
-  phi::Scalar k(2);
 
   // test forward
-  // data_format = NHWC
-  // [0, -1, -1, 1],[-1],[-1],[-1],[-1] ->[-1 , -1, -1, 1],[1],[1],[1],[1],[1]
+  // data_format = NCHW
+  // [0, 1, -1, -1],[-1],[-1],[-1],[-1] ->[-1 , 1, -1, -1],[1],[1],[1],[1],[-1]
   auto x_dist_attr = TensorDistAttr();
   x_dist_attr.set_process_mesh(process_mesh);
-  x_dist_attr.set_dims_mapping({0, -1, -1, 1});
+  x_dist_attr.set_dims_mapping({0, 1, -1, -1});
   x_dist_attr.set_dynamic_dims({false, false, false, false});
   auto one_dim_dist_attr = TensorDistAttr();
   one_dim_dist_attr.set_process_mesh(process_mesh);
@@ -2643,30 +2642,58 @@ TEST(BatchNorm, Ctor) {
                                            false,
                                            0.9,
                                            0.1,
-                                           "NHWC",
+                                           "NCHW",
                                            false,
                                            false);
 
   EXPECT_EQ(forward_info.first.size(), 5UL);
   EXPECT_EQ(forward_info.second.size(), 6UL);
-  check_dim_mapping(forward_info.first[0], {-1, -1, -1, 1});
+  check_dim_mapping(forward_info.first[0], {-1, 1, -1, -1});
   check_dim_mapping(forward_info.first[1], {1});
   check_dim_mapping(forward_info.first[2], {1});
-  check_dim_mapping(forward_info.first[3], {1});
-  check_dim_mapping(forward_info.first[4], {1});
-  check_dim_mapping(forward_info.second[0], {-1, -1, -1, 1});
+  check_dim_mapping(forward_info.first[3], {-1});
+  check_dim_mapping(forward_info.first[4], {-1});
+  check_dim_mapping(forward_info.second[0], {-1, 1, -1, -1});
   check_dim_mapping(forward_info.second[1], {1});
   check_dim_mapping(forward_info.second[2], {1});
   check_dim_mapping(forward_info.second[3], {1});
   check_dim_mapping(forward_info.second[4], {1});
-  check_dim_mapping(forward_info.second[5], {1});
+  check_dim_mapping(forward_info.second[5], {-1});
+
+  phi::distributed::SpmdInfo forward_info_sync =
+      phi::distributed::SyncBatchNormInferSpmd(x,
+                                               mean,
+                                               variance,
+                                               scale,
+                                               bias,
+                                               false,
+                                               0.9,
+                                               0.1,
+                                               "NCHW",
+                                               false,
+                                               false);
+
+  EXPECT_EQ(forward_info_sync.first.size(), 5UL);
+  EXPECT_EQ(forward_info_sync.second.size(), 6UL);
+  check_dim_mapping(forward_info_sync.first[0], {-1, 1, -1, -1});
+  check_dim_mapping(forward_info_sync.first[1], {1});
+  check_dim_mapping(forward_info_sync.first[2], {1});
+  check_dim_mapping(forward_info_sync.first[3], {-1});
+  check_dim_mapping(forward_info_sync.first[4], {-1});
+  check_dim_mapping(forward_info_sync.second[0], {-1, 1, -1, -1});
+  check_dim_mapping(forward_info_sync.second[1], {1});
+  check_dim_mapping(forward_info_sync.second[2], {1});
+  check_dim_mapping(forward_info_sync.second[3], {1});
+  check_dim_mapping(forward_info_sync.second[4], {1});
+  check_dim_mapping(forward_info_sync.second[5], {-1});
   // test backward
-  // data_format = NHWC
-  // [0, -1, -1, 1],[-1],[-1],[-1],[-1],[-1],[-1],[-1],[0,1,-1,-1]
-  // ->[-1,-1,-1,1],[1],[1]
+  // data_format = NCHW
+  // [0, 1, -1, -1],[-1],[-1],[-1],[-1],[-1],[-1],[-1],[0, 1, -1, -1]
+  // ->[-1,1,-1,-1],[-1],[-1]
+  // dst_input: [-1, 1, -1, -1],[-1],[-1],[1],[1],[1],[1],[-1],[-1, 1, -1, -1]
   auto x_dist_attr = TensorDistAttr();
   x_dist_attr.set_process_mesh(process_mesh);
-  x_dist_attr.set_dims_mapping({0, -1, -1, 1});
+  x_dist_attr.set_dims_mapping({0, 1, -1, -1});
   x_dist_attr.set_dynamic_dims({false, false, false, false});
   auto out_grad_dist_attr = TensorDistAttr();
   out_grad_dist_attr.set_process_mesh(process_mesh);
@@ -2695,7 +2722,7 @@ TEST(BatchNorm, Ctor) {
   phi::distributed::DistMetaTensor reserve_space =
       phi::distributed::DistMetaTensor(common::make_ddim({16}),
                                        one_dim_dist_attr);
-  phi::distributed::SpmdInfo forward_info =
+  phi::distributed::SpmdInfo backward_info =
       phi::distributed::BatchNormGradInferSpmd(x,
                                                scale,
                                                bias,
@@ -2707,26 +2734,55 @@ TEST(BatchNorm, Ctor) {
                                                out_grad,
                                                0.9,
                                                0.1,
-                                               "NHWC",
+                                               "NCHW",
                                                false,
                                                false,
                                                false);
 
-  EXPECT_EQ(forward_info.first.size(), 9UL);
-  EXPECT_EQ(forward_info.second.size(), 3UL);
-  check_dim_mapping(forward_info.first[0], {-1, -1, -1, 1});
-  check_dim_mapping(forward_info.first[1], {1});
-  check_dim_mapping(forward_info.first[2], {1});
-  check_dim_mapping(forward_info.first[3], {1});
-  check_dim_mapping(forward_info.first[4], {1});
-  check_dim_mapping(forward_info.first[5], {1});
-  check_dim_mapping(forward_info.first[6], {1});
-  check_dim_mapping(forward_info.first[7], {1});
-  check_dim_mapping(forward_info.first[8], {-1, -1, -1, 1});
+  EXPECT_EQ(backward_info.first.size(), 9UL);
+  EXPECT_EQ(backward_info.second.size(), 3UL);
+  check_dim_mapping(backward_info.first[0], {-1, 1, -1, -1});
+  check_dim_mapping(backward_info.first[1], {-1});
+  check_dim_mapping(backward_info.first[2], {-1});
+  check_dim_mapping(backward_info.first[3], {1});
+  check_dim_mapping(backward_info.first[4], {1});
+  check_dim_mapping(backward_info.first[5], {1});
+  check_dim_mapping(backward_info.first[6], {1});
+  check_dim_mapping(backward_info.first[7], {-1});
+  check_dim_mapping(backward_info.first[8], {-1, 1, -1, -1});
 
-  check_dim_mapping(forward_info.second[0], {-1, -1, -1, 1});
-  check_dim_mapping(forward_info.second[1], {1});
-  check_dim_mapping(forward_info.second[2], {1});
+  check_dim_mapping(backward_info.second[0], {-1, 1, -1, -1});
+  check_dim_mapping(backward_info.second[1], {-1});
+  check_dim_mapping(backward_info.second[2], {-1});
+
+  phi::distributed::SpmdInfo backward_info_sync =
+      phi::distributed::SyncBatchNormGradInferSpmd(x,
+                                                   scale,
+                                                   bias,
+                                                   saved_mean,
+                                                   saved_variance,
+                                                   reserve_space,
+                                                   out_grad,
+                                                   0.9,
+                                                   0.1,
+                                                   "NCHW",
+                                                   false,
+                                                   false,
+                                                   false);
+
+  EXPECT_EQ(backward_info_sync.first.size(), 7UL);
+  EXPECT_EQ(backward_info_sync.second.size(), 3UL);
+  check_dim_mapping(backward_info_sync.first[0], {-1, 1, -1, -1});
+  check_dim_mapping(backward_info_sync.first[1], {-1});
+  check_dim_mapping(backward_info_sync.first[2], {-1});
+  check_dim_mapping(backward_info_sync.first[3], {1});
+  check_dim_mapping(backward_info_sync.first[4], {1});
+  check_dim_mapping(backward_info_sync.first[5], {-1});
+  check_dim_mapping(backward_info_sync.first[6], {-1, 1, -1, -1});
+
+  check_dim_mapping(backward_info_sync.second[0], {-1, 1, -1, -1});
+  check_dim_mapping(backward_info_sync.second[1], {-1});
+  check_dim_mapping(backward_info_sync.second[2], {-1});
 }
 TEST(Topk, Ctor) {
   std::vector<int64_t> mesh_shape = {2, 2};

@@ -23,17 +23,11 @@
 #include "paddle/phi/infermeta/spmd_rules/utils.h"
 
 namespace phi::distributed {
-SpmdInfo BatchNormInferSpmd(const DistMetaTensor& x,
-                            const DistMetaTensor& mean,
-                            const DistMetaTensor& variance,
-                            const DistMetaTensor& scale,
-                            const DistMetaTensor& bias,
-                            const bool is_test,
-                            const float momentum,
-                            const float epsilon,
-                            const std::string data_format,
-                            const bool use_global_stats,
-                            const bool trainable_statistics) {
+SpmdInfo BatchNormInferSpmdBase(const DistMetaTensor& x,
+                                const DistMetaTensor& mean,
+                                const DistMetaTensor& variance,
+                                const DistMetaTensor& scale,
+                                const DistMetaTensor& bias) {
   // Step0: verify input args based on batch_norm logic
   auto x_shape = common::vectorize(x.dims());
   auto mean_shape = common::vectorize(mean.dims());
@@ -53,11 +47,18 @@ SpmdInfo BatchNormInferSpmd(const DistMetaTensor& x,
   std::vector<int64_t> scale_dims_mapping = scale.dist_attr().dims_mapping();
   std::vector<int64_t> bias_dims_mapping = bias.dist_attr().dims_mapping();
 
-  PADDLE_ENFORCE_EQ(
+  PADDLE_ENFORCE_GE(
       x_ndim,
-      4,
+      2,
       common::errors::InvalidArgument(
-          "The ndim of x in batch_norm should be 4, but got [%d].", x_ndim));
+          "The ndim of x in batch_norm should be greater than 1, but got [%d].",
+          x_ndim));
+  PADDLE_ENFORCE_LE(
+      x_ndim,
+      5,
+      common::errors::InvalidArgument(
+          "The ndim of x in batch_norm should be less than 6, but got [%d].",
+          x_ndim));
 
   PADDLE_ENFORCE_EQ(
       mean_ndim,
@@ -93,26 +94,13 @@ SpmdInfo BatchNormInferSpmd(const DistMetaTensor& x,
   // get input notation
   // The mean and variance was flatten at C axis
   std::string x_axes(x_ndim, '1');
-  std::string mean_axes(1, '1');
-  std::string variance_axes(1, '1');
-  std::string scale_axes(1, '1');
-  std::string bias_axes(1, '1');
-
-  //  allow axis before begin_norm_axis be sharded
   for (int i = 0; i < x_ndim; ++i) {
     x_axes[i] = alphabet[i];
   }
-  if (data_format == "NHWC") {
-    mean_axes[0] = x_axes[3];
-    variance_axes[0] = x_axes[3];
-    scale_axes[0] = x_axes[3];
-    bias_axes[0] = x_axes[3];
-  } else {  // NCHW
-    mean_axes[0] = x_axes[1];
-    variance_axes[0] = x_axes[1];
-    scale_axes[0] = x_axes[1];
-    bias_axes[0] = x_axes[1];
-  }
+  std::string mean_axes(1, x_axes[0]);
+  std::string variance_axes(1, x_axes[0]);
+  std::string scale_axes(1, x_axes[1]);
+  std::string bias_axes(1, x_axes[1]);
 
   // get output notation
   std::string out_axes = x_axes;
@@ -120,28 +108,24 @@ SpmdInfo BatchNormInferSpmd(const DistMetaTensor& x,
   // Step2: Sharding Propagation
   // Step2.1: merge input sharding
   // Only C axis can be shard.
-  if (data_format == "NHWC") {
-    for (int i = 0; i < x_ndim - 1; ++i) {
-      x_dims_mapping[i] = -1;
-    }
+  auto c_dim = x_dims_mapping[1];  // type: "NC"、"NCL"、"NCHW" and "NCDHW"
 
-  } else {  // NCHW
-    x_dims_mapping[0] = -1;
-    x_dims_mapping[2] = -1;
-    x_dims_mapping[3] = -1;
+  for (int i = 0; i < x_ndim; ++i) {
+    x_dims_mapping[i] = -1;
   }
+  x_dims_mapping[1] = c_dim;
   std::unordered_map<std::string, int64_t> axis_to_dim_map =
       ShardingMergeForTensors({{x_axes, x_dims_mapping}});
 
   // Step2.2: infer output dims mapping
   TensorDistAttr out_dist_attr = CopyTensorDistAttrForOutput(x_dist_attr_src);
-  TensorDistAttr mean_dist_attr = CopyTensorDistAttrForOutput(x_dist_attr_src);
+  TensorDistAttr mean_dist_attr = CopyTensorDistAttrForOutput(mean.dist_attr());
   TensorDistAttr variance_dist_attr =
-      CopyTensorDistAttrForOutput(x_dist_attr_src);
+      CopyTensorDistAttrForOutput(variance.dist_attr());
   TensorDistAttr saved_mean_dist_attr =
-      CopyTensorDistAttrForOutput(x_dist_attr_src);
+      CopyTensorDistAttrForOutput(mean.dist_attr());
   TensorDistAttr saved_variance_dist_attr =
-      CopyTensorDistAttrForOutput(x_dist_attr_src);
+      CopyTensorDistAttrForOutput(variance.dist_attr());
   TensorDistAttr reserve_space_dist_attr =
       CopyTensorDistAttrForOutput(x_dist_attr_src);
   out_dist_attr.set_dims_mapping(
@@ -154,9 +138,7 @@ SpmdInfo BatchNormInferSpmd(const DistMetaTensor& x,
       GetDimsMappingForAxes(mean_axes, axis_to_dim_map));
   saved_variance_dist_attr.set_dims_mapping(
       GetDimsMappingForAxes(variance_axes, axis_to_dim_map));
-  std::vector<int64_t> reserve_space_dims_mapping(1);
-  reserve_space_dims_mapping[0] = -1;
-  reserve_space_dist_attr.set_dims_mapping(reserve_space_dims_mapping);
+  reserve_space_dist_attr.set_dims_mapping({-1});
 
   // Step2.3: update input dims mapping
   // mean, variance, mean_out, variance_out and
@@ -169,10 +151,8 @@ SpmdInfo BatchNormInferSpmd(const DistMetaTensor& x,
       CopyTensorDistAttrForOutput(mean.dist_attr());
   TensorDistAttr variance_dist_attr_dst =
       CopyTensorDistAttrForOutput(variance.dist_attr());
-  scale_dist_attr_dst.set_dims_mapping(
-      GetDimsMappingForAxes(scale_axes, axis_to_dim_map));
-  bias_dist_attr_dst.set_dims_mapping(
-      GetDimsMappingForAxes(bias_axes, axis_to_dim_map));
+  scale_dist_attr_dst.set_dims_mapping({-1});
+  bias_dist_attr_dst.set_dims_mapping({-1});
   variance_dist_attr_dst.set_dims_mapping(
       GetDimsMappingForAxes(variance_axes, axis_to_dim_map));
   mean_dist_attr_dst.set_dims_mapping(
@@ -235,22 +215,28 @@ SpmdInfo BatchNormInferSpmd(const DistMetaTensor& x,
            saved_variance_dist_attr,
            reserve_space_dist_attr}};
 }
-
-SpmdInfo BatchNormGradInferSpmd(const DistMetaTensor& x,
-                                const DistMetaTensor& scale,
-                                const DistMetaTensor& bias,
-                                const DistMetaTensor& mean_out,
-                                const DistMetaTensor& variance_out,
-                                const DistMetaTensor& saved_mean,
-                                const DistMetaTensor& saved_variance,
-                                const DistMetaTensor& reserve_space,
-                                const DistMetaTensor& out_grad,
-                                const float momentum,
-                                const float epsilon,
-                                const std::string data_format,
-                                const bool is_test,
-                                const bool use_global_stats,
-                                const bool trainable_statistics) {
+SpmdInfo BatchNormInferSpmd(const DistMetaTensor& x,
+                            const DistMetaTensor& mean,
+                            const DistMetaTensor& variance,
+                            const DistMetaTensor& scale,
+                            const DistMetaTensor& bias,
+                            const bool is_test,
+                            const float momentum,
+                            const float epsilon,
+                            const std::string data_format,
+                            const bool use_global_stats,
+                            const bool trainable_statistics) {
+  return BatchNormInferSpmdBase(x, mean, variance, scale, bias);
+}
+SpmdInfo BatchNormGradInferSpmdBase(const DistMetaTensor& x,
+                                    const DistMetaTensor& scale,
+                                    const DistMetaTensor& bias,
+                                    const DistMetaTensor& mean_out,
+                                    const DistMetaTensor& variance_out,
+                                    const DistMetaTensor& saved_mean,
+                                    const DistMetaTensor& saved_variance,
+                                    const DistMetaTensor& reserve_space,
+                                    const DistMetaTensor& out_grad) {
   auto x_shape = common::vectorize(x.dims());
   auto scale_shape = common::vectorize(scale.dims());
   auto bias_shape = common::vectorize(bias.dims());
@@ -271,17 +257,26 @@ SpmdInfo BatchNormGradInferSpmd(const DistMetaTensor& x,
   int out_grad_ndim = static_cast<int>(out_grad_shape.size());
   TensorDistAttr x_dist_attr_src = x.dist_attr();
   std::vector<int64_t> x_dims_mapping = x_dist_attr_src.dims_mapping();
-  PADDLE_ENFORCE_EQ(
+
+  PADDLE_ENFORCE_GE(
       x_ndim,
-      4,
+      2,
       common::errors::InvalidArgument(
-          "The ndim of x in batch_norm should be 4, but got [%d].", x_ndim));
-  PADDLE_ENFORCE_EQ(
-      out_grad_ndim,
-      4,
+          "The ndim of x in batch_norm should be greater than 1, but got [%d].",
+          x_ndim));
+  PADDLE_ENFORCE_LE(
+      x_ndim,
+      5,
       common::errors::InvalidArgument(
-          "The ndim of out_grad in batch_norm should be 4, but got [%d].",
-          out_grad_ndim));
+          "The ndim of x in batch_norm should be less than 6, but got [%d].",
+          x_ndim));
+  PADDLE_ENFORCE_EQ(out_grad_ndim,
+                    x_ndim,
+                    common::errors::InvalidArgument(
+                        "The ndim of out_grad in batch_norm should be equal "
+                        "with x, but got out_grad:[%d] and x:[%d].",
+                        out_grad_ndim,
+                        x_ndim));
   PADDLE_ENFORCE_EQ(
       mean_out_ndim,
       1,
@@ -334,47 +329,28 @@ SpmdInfo BatchNormGradInferSpmd(const DistMetaTensor& x,
   // get input notation
   // The mean and variance was flatten at C axis
   std::string x_axes(x_ndim, '1');
-  std::string mean_out_axes(1, '1');
-  std::string variance_out_axes(1, '1');
-  std::string scale_axes(1, '1');
-  std::string bias_axes(1, '1');
-  std::string saved_mean_axes(1, '1');
-  std::string saved_variance_axes(1, '1');
-  std::string reserve_space_axes(1, '1');
   std::string out_grad_axes(out_grad_ndim, '1');
 
-  //  allow axis before begin_norm_axis be sharded
   for (int i = 0; i < x_ndim; ++i) {
     x_axes[i] = alphabet[i];
     out_grad_axes[i] = alphabet[i];
   }
-  if (data_format == "NHWC") {
-    mean_out_axes[0] = x_axes[3];
-    variance_out_axes[0] = x_axes[3];
-    scale_axes[0] = x_axes[3];
-    bias_axes[0] = x_axes[3];
-    saved_mean_axes[0] = x_axes[3];
-    saved_variance_axes[0] = x_axes[3];
-    reserve_space_axes[0] = x_axes[3];
-  } else {  // NCHW
-    mean_out_axes[0] = x_axes[1];
-    variance_out_axes[0] = x_axes[1];
-    scale_axes[0] = x_axes[1];
-    bias_axes[0] = x_axes[1];
-    saved_mean_axes[0] = x_axes[1];
-    saved_variance_axes[0] = x_axes[1];
-    reserve_space_axes[0] = x_axes[1];
-  }
+  std::string mean_out_axes(1, x_axes[0]);
+  std::string variance_out_axes(1, x_axes[0]);
+  std::string scale_axes(1, x_axes[1]);
+  std::string bias_axes(1, x_axes[1]);
+  std::string saved_mean_axes(1, x_axes[0]);
+  std::string saved_variance_axes(1, x_axes[0]);
+  std::string reserve_space_axes(1, x_axes[1]);
 
-  if (data_format == "NHWC") {
-    for (int i = 0; i < x_ndim - 1; ++i) {
-      x_dims_mapping[i] = -1;
-    }
-  } else {  // NCHW
-    x_dims_mapping[0] = -1;
-    x_dims_mapping[2] = -1;
-    x_dims_mapping[3] = -1;
+  auto c_dim = x_dims_mapping[1];  // Only C axis can be sharded. ndim Type:
+                                   // "NC"、"NCL"、"NCHW" and "NCDHW"
+
+  for (int i = 0; i < x_ndim; ++i) {
+    x_dims_mapping[i] = -1;
   }
+  x_dims_mapping[1] = c_dim;
+
   std::unordered_map<std::string, int64_t> axis_to_dim_map =
       ShardingMergeForTensors({{x_axes, x_dims_mapping}});
   // infer output spmdinfo
@@ -382,11 +358,11 @@ SpmdInfo BatchNormGradInferSpmd(const DistMetaTensor& x,
       CopyTensorDistAttrForOutput(x_dist_attr_src);
   x_grad_dist_attr.set_dims_mapping(x_dims_mapping);
   TensorDistAttr scale_grad_dist_attr =
-      CopyTensorDistAttrForOutput(x_dist_attr_src);
+      CopyTensorDistAttrForOutput(scale.dist_attr());
   scale_grad_dist_attr.set_dims_mapping(
       GetDimsMappingForAxes(scale_axes, axis_to_dim_map));
   TensorDistAttr bias_grad_dist_attr =
-      CopyTensorDistAttrForOutput(x_dist_attr_src);
+      CopyTensorDistAttrForOutput(bias.dist_attr());
   bias_grad_dist_attr.set_dims_mapping(
       GetDimsMappingForAxes(bias_axes, axis_to_dim_map));
   // infer input spmdinfo
@@ -416,8 +392,7 @@ SpmdInfo BatchNormGradInferSpmd(const DistMetaTensor& x,
       GetDimsMappingForAxes(saved_variance_axes, axis_to_dim_map));
   TensorDistAttr reserve_space_attr_dst =
       CopyTensorDistAttrForOutput(x_dist_attr_src);
-  std::vector<int64_t> reserve_space_dims_mapping = {-1};
-  reserve_space_attr_dst.set_dims_mapping(reserve_space_dims_mapping);
+  reserve_space_attr_dst.set_dims_mapping({-1});
   TensorDistAttr out_grad_attr_dst =
       CopyTensorDistAttrForOutput(x_dist_attr_src);
   out_grad_attr_dst.set_dims_mapping(
@@ -495,6 +470,254 @@ SpmdInfo BatchNormGradInferSpmd(const DistMetaTensor& x,
            bias_attr_dst,
            mean_out_attr_dst,
            variance_out_attr_dst,
+           saved_mean_attr_dst,
+           saved_variance_attr_dst,
+           reserve_space_attr_dst,
+           out_grad_attr_dst},
+          {x_grad_dist_attr, scale_grad_dist_attr, bias_grad_dist_attr}};
+}
+SpmdInfo BatchNormGradInferSpmd(const DistMetaTensor& x,
+                                const DistMetaTensor& scale,
+                                const DistMetaTensor& bias,
+                                const DistMetaTensor& mean_out,
+                                const DistMetaTensor& variance_out,
+                                const DistMetaTensor& saved_mean,
+                                const DistMetaTensor& saved_variance,
+                                const DistMetaTensor& reserve_space,
+                                const DistMetaTensor& out_grad,
+                                const float momentum,
+                                const float epsilon,
+                                const std::string data_format,
+                                const bool is_test,
+                                const bool use_global_stats,
+                                const bool trainable_statistics) {
+  return BatchNormGradInferSpmdBase(x,
+                                    scale,
+                                    bias,
+                                    mean_out,
+                                    variance_out,
+                                    saved_mean,
+                                    saved_variance,
+                                    reserve_space,
+                                    out_grad);
+}
+
+SpmdInfo SyncBatchNormInferSpmd(const DistMetaTensor& x,
+                                const DistMetaTensor& mean,
+                                const DistMetaTensor& variance,
+                                const DistMetaTensor& scale,
+                                const DistMetaTensor& bias,
+                                const bool is_test,
+                                const float momentum,
+                                const float epsilon,
+                                const std::string data_format,
+                                const bool use_global_stats,
+                                const bool trainable_statistics) {
+  return BatchNormInferSpmdBase(x, mean, variance, scale, bias);
+}
+SpmdInfo SyncBatchNormGradInferSpmd(const DistMetaTensor& x,
+                                    const DistMetaTensor& scale,
+                                    const DistMetaTensor& bias,
+                                    const DistMetaTensor& saved_mean,
+                                    const DistMetaTensor& saved_variance,
+                                    const DistMetaTensor& reserve_space,
+                                    const DistMetaTensor& out_grad,
+                                    const float momentum,
+                                    const float epsilon,
+                                    const std::string data_format,
+                                    const bool is_test,
+                                    const bool use_global_stats,
+                                    const bool trainable_statistics) {
+  auto x_shape = common::vectorize(x.dims());
+  auto scale_shape = common::vectorize(scale.dims());
+  auto bias_shape = common::vectorize(bias.dims());
+  auto saved_mean_shape = common::vectorize(saved_mean.dims());
+  auto saved_variance_shape = common::vectorize(saved_variance.dims());
+  auto reserve_space_shape = common::vectorize(reserve_space.dims());
+  auto out_grad_shape = common::vectorize(out_grad.dims());
+  int x_ndim = static_cast<int>(x_shape.size());
+  int scale_ndim = static_cast<int>(scale_shape.size());
+  int bias_ndim = static_cast<int>(bias_shape.size());
+  int saved_mean_ndim = static_cast<int>(saved_mean_shape.size());
+  int saved_variance_ndim = static_cast<int>(saved_variance_shape.size());
+  int reserve_space_ndim = static_cast<int>(reserve_space_shape.size());
+  int out_grad_ndim = static_cast<int>(out_grad_shape.size());
+  TensorDistAttr x_dist_attr_src = x.dist_attr();
+  std::vector<int64_t> x_dims_mapping = x_dist_attr_src.dims_mapping();
+
+  PADDLE_ENFORCE_GE(
+      x_ndim,
+      2,
+      common::errors::InvalidArgument(
+          "The ndim of x in batch_norm should be greater than 1, but got [%d].",
+          x_ndim));
+  PADDLE_ENFORCE_LE(
+      x_ndim,
+      5,
+      common::errors::InvalidArgument(
+          "The ndim of x in batch_norm should be less than 6, but got [%d].",
+          x_ndim));
+  PADDLE_ENFORCE_EQ(out_grad_ndim,
+                    x_ndim,
+                    common::errors::InvalidArgument(
+                        "The ndim of out_grad in batch_norm should be equal "
+                        "with x, but got out_grad:[%d] and x:[%d].",
+                        out_grad_ndim,
+                        x_ndim));
+  PADDLE_ENFORCE_EQ(
+      scale_ndim,
+      1,
+      common::errors::InvalidArgument(
+          "The ndim of scale in batch_norm should be 1, but got [%d].",
+          scale_ndim));
+
+  PADDLE_ENFORCE_EQ(
+      bias_ndim,
+      1,
+      common::errors::InvalidArgument(
+          "The ndim of bias in batch_norm should be 1, but got [%d].",
+          bias_ndim));
+  PADDLE_ENFORCE_EQ(
+      saved_mean_ndim,
+      1,
+      common::errors::InvalidArgument(
+          "The ndim of saved_mean in batch_norm should be 1, but got [%d].",
+          saved_mean_ndim));
+
+  PADDLE_ENFORCE_EQ(
+      saved_variance_ndim,
+      1,
+      common::errors::InvalidArgument(
+          "The ndim of saved_variance in batch_norm should be 1, but got [%d].",
+          saved_variance_ndim));
+
+  PADDLE_ENFORCE_EQ(
+      reserve_space_ndim,
+      1,
+      common::errors::InvalidArgument("The ndim of reserve_space_ndim in "
+                                      "batch_norm should be 1, but got [%d].",
+                                      reserve_space_ndim));
+
+  std::string alphabet = "ijklmnopqrstuvwxyz";
+  // get input notation
+  // The mean and variance was flatten at C axis
+  std::string x_axes(x_ndim, '1');
+  std::string out_grad_axes(out_grad_ndim, '1');
+
+  for (int i = 0; i < x_ndim; ++i) {
+    x_axes[i] = alphabet[i];
+    out_grad_axes[i] = alphabet[i];
+  }
+  std::string scale_axes(1, x_axes[1]);
+  std::string bias_axes(1, x_axes[1]);
+  std::string saved_mean_axes(1, x_axes[0]);
+  std::string saved_variance_axes(1, x_axes[0]);
+  std::string reserve_space_axes(1, x_axes[1]);
+
+  auto c_dim = x_dims_mapping[1];  // Only C axis can be sharded. ndim Type:
+                                   // "NC"、"NCL"、"NCHW" and "NCDHW"
+
+  for (int i = 0; i < x_ndim; ++i) {
+    x_dims_mapping[i] = -1;
+  }
+  x_dims_mapping[1] = c_dim;
+
+  std::unordered_map<std::string, int64_t> axis_to_dim_map =
+      ShardingMergeForTensors({{x_axes, x_dims_mapping}});
+  // infer output spmdinfo
+  TensorDistAttr x_grad_dist_attr =
+      CopyTensorDistAttrForOutput(x_dist_attr_src);
+  x_grad_dist_attr.set_dims_mapping(x_dims_mapping);
+  TensorDistAttr scale_grad_dist_attr =
+      CopyTensorDistAttrForOutput(scale.dist_attr());
+  scale_grad_dist_attr.set_dims_mapping(
+      GetDimsMappingForAxes(scale_axes, axis_to_dim_map));
+  TensorDistAttr bias_grad_dist_attr =
+      CopyTensorDistAttrForOutput(bias.dist_attr());
+  bias_grad_dist_attr.set_dims_mapping(
+      GetDimsMappingForAxes(bias_axes, axis_to_dim_map));
+  // infer input spmdinfo
+  TensorDistAttr x_dist_attr_dst = CopyTensorDistAttrForOutput(x_dist_attr_src);
+  x_dist_attr_dst.set_dims_mapping(x_dims_mapping);
+  TensorDistAttr scale_attr_dst = CopyTensorDistAttrForOutput(x_dist_attr_src);
+  scale_attr_dst.set_dims_mapping(
+      GetDimsMappingForAxes(scale_axes, axis_to_dim_map));
+  TensorDistAttr bias_attr_dst = CopyTensorDistAttrForOutput(x_dist_attr_src);
+  bias_attr_dst.set_dims_mapping(
+      GetDimsMappingForAxes(bias_axes, axis_to_dim_map));
+  TensorDistAttr saved_mean_attr_dst =
+      CopyTensorDistAttrForOutput(x_dist_attr_src);
+  saved_mean_attr_dst.set_dims_mapping(
+      GetDimsMappingForAxes(saved_mean_axes, axis_to_dim_map));
+  TensorDistAttr saved_variance_attr_dst =
+      CopyTensorDistAttrForOutput(x_dist_attr_src);
+  saved_variance_attr_dst.set_dims_mapping(
+      GetDimsMappingForAxes(saved_variance_axes, axis_to_dim_map));
+  TensorDistAttr reserve_space_attr_dst =
+      CopyTensorDistAttrForOutput(x_dist_attr_src);
+  reserve_space_attr_dst.set_dims_mapping({-1});
+  TensorDistAttr out_grad_attr_dst =
+      CopyTensorDistAttrForOutput(x_dist_attr_src);
+  out_grad_attr_dst.set_dims_mapping(
+      GetDimsMappingForAxes(out_grad_axes, axis_to_dim_map));
+
+  VLOG(4) << "SyncBatchNormGradInferSpmd:";
+  VLOG(4) << "Einsum Notation: " << x_axes << scale_axes << "," << bias_axes
+          << "," << saved_mean_axes << "," << saved_variance_axes << ","
+          << "-->" << reserve_space_axes << "," << out_grad_axes;
+  VLOG(4) << "X"
+          << " shape: [" << str_join(x_shape) << "] "
+          << "src_dims_mapping: [" << str_join(x_dist_attr_src.dims_mapping())
+          << "] "
+          << "dst_dims_mapping: [" << str_join(x_dims_mapping) << "]";
+  VLOG(4) << "Scale"
+          << " shape: [" << str_join(scale_shape) << "] "
+          << "src_dims_mapping: [" << str_join(scale.dist_attr().dims_mapping())
+          << "] "
+          << "dst_dims_mapping: [" << str_join(scale_attr_dst.dims_mapping())
+          << "]";
+  VLOG(4) << "Bias"
+          << " shape: [" << str_join(bias_shape) << "] "
+          << "src_dims_mapping: [" << str_join(bias.dist_attr().dims_mapping())
+          << "] "
+          << "dst_dims_mapping: [" << str_join(bias_attr_dst.dims_mapping())
+          << "]";
+  VLOG(4) << "Saved_mean"
+          << " shape: [" << str_join(saved_mean_shape) << "] "
+          << "src_dims_mapping: ["
+          << str_join(saved_mean.dist_attr().dims_mapping()) << "] "
+          << "dst_dims_mapping: ["
+          << str_join(saved_mean_attr_dst.dims_mapping()) << "]";
+  VLOG(4) << "Saved_variance"
+          << " shape: [" << str_join(saved_variance_shape) << "] "
+          << "src_dims_mapping: ["
+          << str_join(saved_variance.dist_attr().dims_mapping()) << "] "
+          << "dst_dims_mapping: ["
+          << str_join(saved_variance_attr_dst.dims_mapping()) << "]";
+  VLOG(4) << "Reserve_space"
+          << " shape: [" << str_join(reserve_space_shape) << "] "
+          << "src_dims_mapping: ["
+          << str_join(reserve_space.dist_attr().dims_mapping()) << "] "
+          << "dst_dims_mapping: ["
+          << str_join(reserve_space_attr_dst.dims_mapping()) << "]";
+  VLOG(4) << "Out_grad"
+          << " shape: [" << str_join(out_grad_shape) << "] "
+          << "src_dims_mapping: ["
+          << str_join(out_grad.dist_attr().dims_mapping()) << "] "
+          << "dst_dims_mapping: [" << str_join(out_grad_attr_dst.dims_mapping())
+          << "]";
+
+  VLOG(4) << "Out dims mapping: [" << str_join(x_grad_dist_attr.dims_mapping())
+          << "]";
+  VLOG(4) << "Scale_grad dims mapping: ["
+          << str_join(scale_grad_dist_attr.dims_mapping()) << "]";
+  VLOG(4) << "Bias_grad dims mapping: ["
+          << str_join(bias_grad_dist_attr.dims_mapping()) << "]";
+  VLOG(4) << std::endl;
+
+  return {{x_dist_attr_dst,
+           scale_attr_dst,
+           bias_attr_dst,
            saved_mean_attr_dst,
            saved_variance_attr_dst,
            reserve_space_attr_dst,

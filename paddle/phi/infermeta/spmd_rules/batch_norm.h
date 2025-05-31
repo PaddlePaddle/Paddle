@@ -20,6 +20,11 @@ limitations under the License. */
 
 namespace phi {
 namespace distributed {
+SpmdInfo BatchNormInferSpmdBase(const DistMetaTensor& x,
+                                const DistMetaTensor& mean,
+                                const DistMetaTensor& variance,
+                                const DistMetaTensor& scale,
+                                const DistMetaTensor& bias);
 SpmdInfo BatchNormInferSpmd(const DistMetaTensor& x,
                             const DistMetaTensor& mean,
                             const DistMetaTensor& variance,
@@ -31,7 +36,15 @@ SpmdInfo BatchNormInferSpmd(const DistMetaTensor& x,
                             const std::string data_format,
                             const bool use_global_stats,
                             const bool trainable_statistics);
-
+SpmdInfo BatchNormGradInferSpmdBase(const DistMetaTensor& x,
+                                    const DistMetaTensor& scale,
+                                    const DistMetaTensor& bias,
+                                    const DistMetaTensor& mean_out,
+                                    const DistMetaTensor& variance_out,
+                                    const DistMetaTensor& saved_mean,
+                                    const DistMetaTensor& saved_variance,
+                                    const DistMetaTensor& reserve_space,
+                                    const DistMetaTensor& out_grad);
 SpmdInfo BatchNormGradInferSpmd(const DistMetaTensor& x,
                                 const DistMetaTensor& scale,
                                 const DistMetaTensor& bias,
@@ -45,6 +58,17 @@ SpmdInfo BatchNormGradInferSpmd(const DistMetaTensor& x,
                                 const float epsilon,
                                 const std::string data_format,
                                 const bool is_test,
+                                const bool use_global_stats,
+                                const bool trainable_statistics);
+SpmdInfo SyncBatchNormInferSpmd(const DistMetaTensor& x,
+                                const DistMetaTensor& mean,
+                                const DistMetaTensor& variance,
+                                const DistMetaTensor& scale,
+                                const DistMetaTensor& bias,
+                                const bool is_test,
+                                const float momentum,
+                                const float epsilon,
+                                const std::string data_format,
                                 const bool use_global_stats,
                                 const bool trainable_statistics);
 
