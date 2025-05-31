@@ -4732,14 +4732,17 @@ def cumprod(
 
     """
 
-    if dtype is not None:
-        target_dtype = convert_np_dtype_to_dtype_(dtype)
-        if x.dtype != target_dtype:
-            x = cast(x, target_dtype)
-    else:
-        if x.dtype in _supported_int_like_types_lt_int64:
+    origin_shape = x.shape
+    if dtype is None:
+        if origin_shape in _supported_int_like_types_lt_int64:
             # use the default platform integer when integer dtype with a precision less than that of the default platform integer
-            x = cast(x, DataType.INT64)
+            return _C_ops.cumprod(
+                _C_ops.cast(x, DataType.INT64), dim, False, False
+            )
+    else:
+        target_dtype = convert_np_dtype_to_dtype_(dtype)
+        if origin_shape != target_dtype:
+            x = cast(x, target_dtype)
 
     if in_dynamic_or_pir_mode():
         return _C_ops.cumprod(x, dim, False, False)
