@@ -34,6 +34,11 @@ void ExpandAsKernel(const Context& ctx,
   if (y.get_ptr()) {
     target_shape = phi::vectorize<int64_t>(y.get_ptr()->dims());
   }
+  int64_t target_numel = common::product(common::make_ddim(target_shape));
+  if (target_numel == 0) {
+    ctx.template Alloc<T>(out);
+    return;
+  }
 
   int rank = x.dims().size();
   int target_rank = static_cast<int>(target_shape.size());
