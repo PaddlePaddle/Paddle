@@ -17,7 +17,6 @@
 #include <algorithm>
 #include <vector>
 
-#include "glog/logging.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #define MAX_RANK_SUPPORTED 8
@@ -100,6 +99,10 @@ void ExpandAsKernel(const Context& ctx,
                     const paddle::optional<DenseTensor>& y,
                     const std::vector<int64_t>& target_shape,
                     DenseTensor* out) {
+  if (out && out->numel() == 0) {
+    ctx.template Alloc<T>(out);
+    return;
+  }
   auto rank = x.dims().size();
   auto target_rank = target_shape.size();
   PADDLE_ENFORCE_GE(target_rank,
@@ -134,13 +137,6 @@ void ExpandAsKernel(const Context& ctx,
       }
       break;
     }
-  }
-  int64_t target_numel = common::product(common::make_ddim(real_target_shape));
-  VLOG(0) << "Target shape: " << common::make_ddim(real_target_shape)
-          << ", target numel: " << target_numel;
-  if (target_numel == 0) {
-    ctx.template Alloc<T>(out);
-    return;
   }
 
   switch (target_rank) {

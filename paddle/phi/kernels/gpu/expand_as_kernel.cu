@@ -29,15 +29,15 @@ void ExpandAsKernel(const Context& ctx,
                     const paddle::optional<DenseTensor>& y,
                     const std::vector<int64_t>& target_shape_t,
                     DenseTensor* out) {
+  if (out && out->numel() == 0) {
+    ctx.template Alloc<T>(out);
+    return;
+  }
+
   std::vector<int64_t> target_shape = target_shape_t;
 
   if (y.get_ptr()) {
     target_shape = phi::vectorize<int64_t>(y.get_ptr()->dims());
-  }
-  int64_t target_numel = common::product(common::make_ddim(target_shape));
-  if (target_numel == 0) {
-    ctx.template Alloc<T>(out);
-    return;
   }
 
   int rank = x.dims().size();
