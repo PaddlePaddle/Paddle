@@ -176,6 +176,27 @@ class TestPool1D_API_ZeroSize(unittest.TestCase):
             )
             np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
+    def check_adaptive_avg_static_results(self, place):
+        paddle.enable_static()
+        with base.program_guard(base.Program(), base.Program()):
+            input = paddle.static.data(
+                name="input", shape=[0, 3, 32], dtype="float32"
+            )
+            result = F.adaptive_avg_pool1d(input, output_size=16)
+
+            input_np = np.random.random([0, 3, 32]).astype("float32")
+            result_np = avg_pool1D_forward_naive(
+                input_np, ksize=[16], strides=[2], paddings=[0], adaptive=True
+            )
+
+            exe = base.Executor(place)
+            fetches = exe.run(
+                base.default_main_program(),
+                feed={"input": input_np},
+                fetch_list=[result],
+            )
+            np.testing.assert_allclose(fetches[0], result_np, rtol=1e-05)
+
     def check_grad(self, place):
         with base.dygraph.guard(place):
             input_np = np.random.random([0, 3, 32]).astype("float32")
@@ -189,6 +210,7 @@ class TestPool1D_API_ZeroSize(unittest.TestCase):
     def test_adaptive_avg_pool1d(self):
         for place in self.places:
             self.check_adaptive_avg_dygraph_results(place)
+            self.check_adaptive_avg_static_results(place)
             self.check_grad(place)
 
 
