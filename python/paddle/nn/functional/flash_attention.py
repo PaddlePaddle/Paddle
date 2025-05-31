@@ -434,15 +434,15 @@ def flash_attention(
         query(Tensor): The query tensor in the Attention module.
                         4-D tensor with shape:
                         [batch_size, seq_len, num_heads, head_dim].
-                        The dtype can be float61 or bfloat16.
+                        The dtype can be float16 or bfloat16.
         key(Tensor): The key tensor in the Attention module.
                         4-D tensor with shape:
                         [batch_size, seq_len, num_heads, head_dim].
-                        The dtype can be float61 or bfloat16.
+                        The dtype can be float16 or bfloat16.
         value(Tensor): The value tensor in the Attention module.
                         4-D tensor with shape:
                         [batch_size, seq_len, num_heads, head_dim].
-                        The dtype can be float61 or bfloat16.
+                        The dtype can be float16 or bfloat16.
         dropout(float): The dropout ratio.
         causal(bool): Whether enable causal mode.
         return_softmax(bool): Whether to return softmax.
@@ -621,6 +621,157 @@ def flash_attention(
                 return_softmax=return_softmax,
                 training=training,
             )
+
+
+@overload
+def flash_attention_v3_varlen(
+    query: Tensor,
+    key: Tensor,
+    value: Tensor,
+    cu_seqlens_q: Tensor,
+    cu_seqlens_k: Tensor,
+    dropout: float = ...,
+    causal: bool = ...,
+    return_softmax: Literal[False] = ...,
+    *,
+    fixed_seed_offset: Tensor | None = ...,
+    rng_name: str = ...,
+    training: bool = ...,
+    softmax_scale: float | None = ...,
+    max_seqlen_q: int = ...,
+    max_seqlen_k: int = ...,
+    name: str | None = ...,
+) -> tuple[Tensor, None]: ...
+
+
+@overload
+def flash_attention_v3_varlen(
+    query: Tensor,
+    key: Tensor,
+    value: Tensor,
+    cu_seqlens_q: Tensor,
+    cu_seqlens_k: Tensor,
+    dropout: float = ...,
+    causal: bool = ...,
+    return_softmax: Literal[True] = ...,
+    *,
+    fixed_seed_offset: Tensor | None = ...,
+    rng_name: str = ...,
+    training: bool = ...,
+    softmax_scale: float | None = ...,
+    max_seqlen_q: int = ...,
+    max_seqlen_k: int = ...,
+    name: str | None = ...,
+) -> tuple[Tensor, Tensor]: ...
+
+
+def flash_attention_v3_varlen(
+    query,
+    key,
+    value,
+    cu_seqlens_q,
+    cu_seqlens_k,
+    dropout=0.0,
+    causal=False,
+    return_softmax=False,
+    *,
+    fixed_seed_offset=None,
+    rng_name="",
+    training=True,
+    softmax_scale=None,
+    max_seqlen_q=0,
+    max_seqlen_k=0,
+    name=None,
+):
+    r"""
+    The equation is:
+
+    .. math::
+
+        result=softmax(\frac{ Q * K^T }{\sqrt{d}}) * V
+
+    where : ``Q``, ``K``, and ``V`` represent the three input parameters of the attention module.
+    The dimensions of the three parameters are the same.
+    ``d`` represents the size of the last dimension of the three parameters.
+    This is the varlen version of flash attention.
+
+    Warning:
+        This API is only support inputs with dtype float16 and bfloat16.
+
+    Args:
+        query(Tensor): The query tensor in the Attention module.
+                        3-D tensor with shape:
+                        [token_num, num_heads, head_dim].
+                        The dtype can be float16 or bfloat16.
+        key(Tensor): The key tensor in the Attention module.
+                        3-D tensor with shape:
+                        [token_num, num_heads, head_dim].
+                        The dtype can be float16 or bfloat16.
+        value(Tensor): The value tensor in the Attention module.
+                        3-D tensor with shape:
+                        [token_num, num_heads, head_dim].
+                        The dtype can be float16 or bfloat16.
+        cu_seqlens_q(Tensor): The cumulative sequence lengths of the sequences in the batch,
+                        used to index query.
+        cu_seqlens_k(Tensor): The cumulative sequence lengths of the sequences in the batch,
+                        used to index key and value.
+        dropout(float): The dropout ratio.
+        causal(bool): Whether enable causal mode.
+        return_softmax(bool): Whether to return softmax.
+        fixed_seed_offset(Tensor|None, optional): With fixed seed, offset for dropout mask.
+        rng_name(str): The name to select Generator.
+        training(bool): Whether it is in the training phase.
+        softmax_scale(float): The softmax scale of the attention.
+        max_seqlen_q(int): Maximum sequence length of query in the batch. Note it's the padding length, not the max actual seqlen.
+        max_seqlen_k(int): Maximum sequence length of key/value in the batch.
+        name(str|None, optional): The default value is None. Normally there is no need for user
+                        to set this property. For more information, please refer to
+                        :ref:`api_guide_Name`.
+
+    Returns:
+        out(Tensor): The attention tensor. 3-D tensor with shape: [token_num, num_heads, head_dim]. The dtype can be float16 or bfloat16.
+        softmax(Tensor): The softmax tensor. None if return_softmax is False.
+
+    Examples:
+        .. code-block:: python
+
+            >>> # doctest: +SKIP('flash_attn_v3 need H100 compile')
+            >>> import paddle
+
+            >>> paddle.seed(2023)
+            >>> q = paddle.rand((10, 2, 128), dtype="bfloat16")
+            >>> cu_seqlens_q = paddle.to_tensor([0, 10], dtype="int32")
+            >>> max_seq_len_q = 10
+
+            >>> output = paddle.nn.functional.flash_attention.flash_attention_v3_varlen(q, q, q, cu_seqlens_q, cu_seqlens_q, max_seqlen_q=max_seq_len_q, max_seqlen_k=max_seq_len_q, causal=True)
+            >>> # doctest: -SKIP
+
+    """
+    if softmax_scale is None:
+        softmax_scale = query.shape[-1] ** (-0.5)
+    out, softmax_lse = _C_ops.flash_attn_v3_varlen(
+        query,
+        key,
+        value,
+        cu_seqlens_q,
+        cu_seqlens_k,
+        None,  # q_v_
+        None,  # q_descale_
+        None,  # k_descale_
+        None,  # v_descale_
+        softmax_scale,
+        causal,
+        -1,  # window_size_left
+        -1,  # window_size_right
+        0.0,  # softcap
+        1,  # num_splits
+        False,  # manual_set_pack_gqa
+        False,  # pack_gqa_
+        0,  # sm_margin,
+        max_seqlen_q,
+        max_seqlen_k,
+    )
+    return out, softmax_lse  # return_softmax
 
 
 @overload
@@ -912,15 +1063,15 @@ def flash_attn_unpadded(
         query(Tensor): The query tensor in the Attention module.
                         3-D tensor with shape:
                         [total_seq_len, num_heads, head_dim].
-                        The dtype can be float61 or bfloat16.
+                        The dtype can be float16 or bfloat16.
         key(Tensor): The key tensor in the Attention module.
                         3-D tensor with shape:
                         [total_seq_len, num_heads, head_dim].
-                        The dtype can be float61 or bfloat16.
+                        The dtype can be float16 or bfloat16.
         value(Tensor): The value tensor in the Attention module.
                         3-D tensor with shape:
                         [total_seq_len, num_heads, head_dim].
-                        The dtype can be float61 or bfloat16.
+                        The dtype can be float16 or bfloat16.
         cu_seqlens_q(Tensor): The cumulative sequence lengths of the sequences in the batch,
                         used to index query.
         cu_seqlens_k(Tensor): The cumulative sequence lengths of the sequences in the batch,

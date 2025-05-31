@@ -16,6 +16,7 @@
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
 #include "paddle/phi/kernels/funcs/concat_funcs.h"
 
@@ -51,6 +52,11 @@ void ConcatGradKernel(const Context& dev_ctx,
       dev_ctx.template Alloc<T>(outs[j]);
       ptrs[j] = reinterpret_cast<XPUType*>(outs[j]->data<T>());
     }
+  }
+  // if the out_grad.numel() == 0 ,the all x and x_grad must be zero size
+  // tensor, so just return
+  if (out_grad.numel() == 0) {
+    return;
   }
   PADDLE_ENFORCE_GE(axis,
                     0,
