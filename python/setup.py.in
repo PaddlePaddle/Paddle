@@ -1026,8 +1026,8 @@ json_path_list = get_cinn_config_jsons()
 for json in json_path_list:
     package_data['paddle.cinn_config'] += [json]
 
-if '${WITH_CINN}' == 'ON':
-    build_cutlass3_src_code()
+# if '${WITH_CINN}' == 'ON':
+#     build_cutlass3_src_code()
 
 package_data['paddle.apy'] = []
 file_path_list = get_apy_files()

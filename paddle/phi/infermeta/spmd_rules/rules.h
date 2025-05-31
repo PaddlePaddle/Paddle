@@ -75,5 +75,6 @@ limitations under the License. */
 #include "paddle/phi/infermeta/spmd_rules/transpose.h"
 #include "paddle/phi/infermeta/spmd_rules/triu.h"
 #include "paddle/phi/infermeta/spmd_rules/unbind.h"
+#include "paddle/phi/infermeta/spmd_rules/unique.h"
 #include "paddle/phi/infermeta/spmd_rules/unsqueeze.h"
 #include "paddle/phi/infermeta/spmd_rules/where.h"
