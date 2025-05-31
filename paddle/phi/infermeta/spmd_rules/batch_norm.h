@@ -71,6 +71,19 @@ SpmdInfo SyncBatchNormInferSpmd(const DistMetaTensor& x,
                                 const std::string data_format,
                                 const bool use_global_stats,
                                 const bool trainable_statistics);
+SpmdInfo SyncBatchNormGradInferSpmd(const DistMetaTensor& x,
+                                    const DistMetaTensor& scale,
+                                    const DistMetaTensor& bias,
+                                    const DistMetaTensor& saved_mean,
+                                    const DistMetaTensor& saved_variance,
+                                    const DistMetaTensor& reserve_space,
+                                    const DistMetaTensor& out_grad,
+                                    const float momentum,
+                                    const float epsilon,
+                                    const std::string data_format,
+                                    const bool is_test,
+                                    const bool use_global_stats,
+                                    const bool trainable_statistics);
 
 }  // namespace distributed
 }  // namespace phi
