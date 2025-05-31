@@ -19,14 +19,16 @@
 
 namespace phi {
 template <typename T, typename Context>
-void IndexElementwisePutKernel(const Context& ctx,
-                               const DenseTensor& input,
-                               const std::vector<const DenseTensor*>& index,
-                               const DenseTensor& value,
-                               const std::vector<int64_t>& input_dims,
-                               const std::vector<int64_t>& input_strides,
-                               const std::vector<int64_t>& index_dims,
-                               const std::vector<int64_t>& index_strides,
-                               DenseTensor* out);
+void IndexElementwisePutGradKernel(const Context& ctx,
+                                   const DenseTensor& input,
+                                   const std::vector<const DenseTensor*>& index,
+                                   const DenseTensor& value,
+                                   const DenseTensor& out_grad,
+                                   const std::vector<int64_t>& input_dims,
+                                   const std::vector<int64_t>& input_strides,
+                                   const std::vector<int64_t>& index_dims,
+                                   const std::vector<int64_t>& index_strides,
+                                   DenseTensor* x_grad,
+                                   DenseTensor* value_grad);
 
 }  // namespace phi

@@ -2147,8 +2147,8 @@ void GatherNdInferMeta(const MetaTensor& x,
 }
 
 void IndexElementwisePutInferMeta(const MetaTensor& x,
-                                  const MetaTensor& value,
                                   const std::vector<const MetaTensor*>& index,
+                                  const MetaTensor& value,
                                   const std::vector<int64_t>& input_dims,
                                   const std::vector<int64_t>& input_strides,
                                   const std::vector<int64_t>& index_dims,
