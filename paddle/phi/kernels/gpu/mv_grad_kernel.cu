@@ -42,7 +42,7 @@ void MvGradKernel(const Context &dev_ctx,
   auto dout = out_grad;
   auto dx = x_grad;
   auto dvec = vec_grad;
-  if (out_grad.numel() == 0) {
+  if (x.numel() == 0 || vec.numel() == 0) {
     if (dx) {
       phi::Full<T, Context>(dev_ctx,
                             phi::IntArray(common::vectorize(dx->dims())),
