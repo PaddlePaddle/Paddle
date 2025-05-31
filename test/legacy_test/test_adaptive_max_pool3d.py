@@ -402,10 +402,10 @@ class TestAdaptiveMaxPool3D_ZeroSize(unittest.TestCase):
             paddle.disable_static(place=place)
             x = paddle.to_tensor(self.x_np)
             x.stop_gradient = False
-            out_1, _ = paddle.nn.functional.adaptive_max_pool3d(
-                x=x, output_size=[3, 3, 3], return_mask=True
+            out_1 = paddle.nn.functional.adaptive_max_pool3d(
+                x=x, output_size=[3, 3, 3]
             )
-            loss = paddle.sum(out_1).astype("float32")
+            loss = paddle.sum(out_1)
             loss.backward()
             np.testing.assert_allclose(x.grad.shape, x.shape)
 

@@ -315,10 +315,14 @@ void MaxPool2dWithIndexKernel(const Context& ctx,
                               DenseTensor* out,
                               DenseTensor* mask) {
   if (x.numel() == 0) {
-    phi::Full<T, Context>(
-        ctx, phi::IntArray(common::vectorize(out->dims())), NAN, out);
-    phi::Full<int, Context>(
-        ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+    if (out) {
+      phi::Full<T, Context>(
+          ctx, phi::IntArray(common::vectorize(out->dims())), NAN, out);
+    }
+    if (mask) {
+      phi::Full<int, Context>(
+          ctx, phi::IntArray(common::vectorize(mask->dims())), 0, mask);
+    }
     return;
   }
   using XPUType = typename XPUTypeTrait<T>::Type;

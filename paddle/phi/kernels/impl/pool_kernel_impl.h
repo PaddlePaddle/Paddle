@@ -228,10 +228,14 @@ void MaxPoolWithIndexRawKernel(const Context& ctx,
                                DenseTensor* out,
                                DenseTensor* mask) {
   if (x.numel() == 0) {
-    phi::Full<T1, Context>(
-        ctx, phi::IntArray(common::vectorize(out->dims())), NAN, out);
-    phi::Full<T2, Context>(
-        ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+    if (out) {
+      phi::Full<T1, Context>(
+          ctx, phi::IntArray(common::vectorize(out->dims())), NAN, out);
+    }
+    if (mask) {
+      phi::Full<T2, Context>(
+          ctx, phi::IntArray(common::vectorize(mask->dims())), 0, mask);
+    }
     return;
   }
 

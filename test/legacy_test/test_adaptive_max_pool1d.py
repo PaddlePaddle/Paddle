@@ -204,9 +204,7 @@ class TestPool1D_API_ZeroSize(unittest.TestCase):
             input_np = np.random.random([0, 3, 32]).astype("float32")
             input = paddle.to_tensor(input_np)
             input.stop_gradient = False
-            result, _ = F.adaptive_max_pool1d(
-                input, output_size=16, return_mask=True
-            )
+            result = F.adaptive_max_pool1d(input, output_size=16)
             loss = paddle.sum(result)
             loss.backward()
             np.testing.assert_allclose(input.grad.shape, input.shape)
