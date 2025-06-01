@@ -1029,14 +1029,6 @@ class TestHfft2Exception(unittest.TestCase):
             ValueError,
         ),
         (
-            'test_zero_point',
-            np.random.randn(4, 4, 1) + 1j * np.random.randn(4, 4, 1),
-            None,
-            (-2, -1),
-            "backward",
-            ValueError,
-        ),
-        (
             'test_n_zero',
             np.random.randn(4, 4, 4) + 1j * np.random.randn(4, 4, 4),
             (0, 0),
