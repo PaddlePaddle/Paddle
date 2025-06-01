@@ -343,6 +343,11 @@ void RoiPoolInferMeta(const MetaTensor& x,
                       MetaTensor* out,
                       MetaTensor* arg_max);
 
+void ScatterAddInferMeta(const MetaTensor& x,
+                         const MetaTensor& index,
+                         const MetaTensor& updates,
+                         MetaTensor* out);
+
 void ScatterInferMeta(const MetaTensor& x,
                       const MetaTensor& index,
                       const MetaTensor& updates,

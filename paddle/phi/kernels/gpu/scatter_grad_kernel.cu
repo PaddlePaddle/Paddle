@@ -45,12 +45,11 @@ void ScatterGradKernel(const Context &ctx,
 
   if (x_grad) {
     phi::Copy(ctx, out_grad, ctx.GetPlace(), false, x_grad);
-    if (overwrite) {
-      if (index_type == phi::DataType::INT32) {
-        phi::funcs::GPUScatterGradForX<T, int32_t>(ctx, index, x_grad);
-      } else {
-        phi::funcs::GPUScatterGradForX<T, int64_t>(ctx, index, x_grad);
-      }
+
+    if (index_type == phi::DataType::INT32) {
+      phi::funcs::GPUScatterGradForX<T, int32_t>(ctx, index, x_grad);
+    } else {
+      phi::funcs::GPUScatterGradForX<T, int64_t>(ctx, index, x_grad);
     }
   }
 
