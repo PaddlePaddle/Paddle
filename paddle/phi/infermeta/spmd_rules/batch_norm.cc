@@ -97,8 +97,8 @@ SpmdInfo BatchNormInferSpmdBase(const DistMetaTensor& x,
   for (int i = 0; i < x_ndim; ++i) {
     x_axes[i] = alphabet[i];
   }
-  std::string mean_axes(1, x_axes[0]);
-  std::string variance_axes(1, x_axes[0]);
+  std::string mean_axes(1, x_axes[1]);
+  std::string variance_axes(1, x_axes[1]);
   std::string scale_axes(1, x_axes[1]);
   std::string bias_axes(1, x_axes[1]);
 
@@ -335,12 +335,12 @@ SpmdInfo BatchNormGradInferSpmdBase(const DistMetaTensor& x,
     x_axes[i] = alphabet[i];
     out_grad_axes[i] = alphabet[i];
   }
-  std::string mean_out_axes(1, x_axes[0]);
-  std::string variance_out_axes(1, x_axes[0]);
+  std::string mean_out_axes(1, x_axes[1]);
+  std::string variance_out_axes(1, x_axes[1]);
   std::string scale_axes(1, x_axes[1]);
   std::string bias_axes(1, x_axes[1]);
-  std::string saved_mean_axes(1, x_axes[0]);
-  std::string saved_variance_axes(1, x_axes[0]);
+  std::string saved_mean_axes(1, x_axes[1]);
+  std::string saved_variance_axes(1, x_axes[1]);
   std::string reserve_space_axes(1, x_axes[1]);
 
   auto c_dim = x_dims_mapping[1];  // Only C axis can be sharded. ndim Type:
@@ -359,12 +359,10 @@ SpmdInfo BatchNormGradInferSpmdBase(const DistMetaTensor& x,
   x_grad_dist_attr.set_dims_mapping(x_dims_mapping);
   TensorDistAttr scale_grad_dist_attr =
       CopyTensorDistAttrForOutput(scale.dist_attr());
-  scale_grad_dist_attr.set_dims_mapping(
-      GetDimsMappingForAxes(scale_axes, axis_to_dim_map));
+  scale_grad_dist_attr.set_dims_mapping({-1});
   TensorDistAttr bias_grad_dist_attr =
       CopyTensorDistAttrForOutput(bias.dist_attr());
-  bias_grad_dist_attr.set_dims_mapping(
-      GetDimsMappingForAxes(bias_axes, axis_to_dim_map));
+  bias_grad_dist_attr.set_dims_mapping({-1});
   // infer input spmdinfo
   TensorDistAttr x_dist_attr_dst = CopyTensorDistAttrForOutput(x_dist_attr_src);
   x_dist_attr_dst.set_dims_mapping(x_dims_mapping);
@@ -377,11 +375,9 @@ SpmdInfo BatchNormGradInferSpmdBase(const DistMetaTensor& x,
   variance_out_attr_dst.set_dims_mapping(
       GetDimsMappingForAxes(variance_out_axes, axis_to_dim_map));
   TensorDistAttr scale_attr_dst = CopyTensorDistAttrForOutput(x_dist_attr_src);
-  scale_attr_dst.set_dims_mapping(
-      GetDimsMappingForAxes(scale_axes, axis_to_dim_map));
+  scale_attr_dst.set_dims_mapping({-1});
   TensorDistAttr bias_attr_dst = CopyTensorDistAttrForOutput(x_dist_attr_src);
-  bias_attr_dst.set_dims_mapping(
-      GetDimsMappingForAxes(bias_axes, axis_to_dim_map));
+  bias_attr_dst.set_dims_mapping({-1});
   TensorDistAttr saved_mean_attr_dst =
       CopyTensorDistAttrForOutput(x_dist_attr_src);
   saved_mean_attr_dst.set_dims_mapping(
