@@ -4384,6 +4384,7 @@
   inplace : (x -> out)
   backward : scatter_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+  no_need_buffer: x, updates
 
 - op : scatter_nd_add
   args : (Tensor x, Tensor index, Tensor updates)
