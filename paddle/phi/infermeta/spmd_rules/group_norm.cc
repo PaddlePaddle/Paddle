@@ -72,22 +72,22 @@ SpmdInfo GroupNormInferSpmdBase(const DistMetaTensor& x,
   // Only N axis can be sharded.
   std::string alphabet = "ijklmnopqrstuvwxyz";
   std::string x_axes(x_ndim, '1');
-  std::string mean_axes(1, '1');
-  std::string variance_axes(1, '1');
   for (int i = 0; i < x_ndim; ++i) {
     x_axes[i] = alphabet[i];
   }
-  mean_axes[0] = x_axes[0];
-  variance_axes[0] = x_axes[0];
+  std::string mean_axes(1, x_axes[0]);
+  std::string variance_axes(1, x_axes[0]);
   // x_axes[0] = alphabet[0];
-  std::string scale_axes(1, x_axes[1]);  // C axis
-  std::string bias_axes(1, x_axes[1]);
+  std::string scale_axes(1, x_axes[0]);
+  std::string bias_axes(1, x_axes[0]);
   // get output notation
   std::string out_axes = x_axes;
 
   // Step2: Sharding Propagation
   // Step2.1: merge input sharding
-  std::fill(x_dims_mapping.begin() + 1, x_dims_mapping.end(), -1);
+  for (int i = 1; i < x_ndim; ++i) {
+    x_dims_mapping[i] = -1;
+  }
   std::unordered_map<std::string, int64_t> axis_to_dim_map =
       ShardingMergeForTensors({{x_axes, x_dims_mapping}});
 
@@ -246,11 +246,7 @@ SpmdInfo GroupNormGradInferSpmdBase(const DistMetaTensor& x,
   std::string alphabet = "ijklmnopqrstuvwxyz";
   // input
   std::string x_axes(x_ndim, '1');
-  std::string scale_axes(1, x_axes[1]);  // C axis
-  std::string bias_axes(1, x_axes[1]);
   std::string y_axes(y_ndim, '1');
-  std::string mean_axes(1, x_axes[0]);
-  std::string variance_axes(1, x_axes[0]);
   std::string y_grad_axes(y_grad_ndim, '1');
 
   for (int i = 0; i < x_ndim; ++i) {
@@ -258,13 +254,19 @@ SpmdInfo GroupNormGradInferSpmdBase(const DistMetaTensor& x,
     y_axes[i] = alphabet[i];
     y_grad_axes[i] = alphabet[i];
   }
+  std::string scale_axes(1, x_axes[0]);
+  std::string bias_axes(1, x_axes[0]);
+  std::string mean_axes(1, x_axes[0]);
+  std::string variance_axes(1, x_axes[0]);
   // output
   std::string x_grad_axes = x_axes;
-  std::string scale_grad_axes(1, x_axes[1]);  // C axis
-  std::string bias_grad_axes(1, x_axes[1]);
+  std::string scale_grad_axes(1, x_axes[0]);  // C axis
+  std::string bias_grad_axes(1, x_axes[0]);
   // Step2: Sharding Propagation
   // Step2.1: merge input sharding
-  std::fill(x_dims_mapping.begin() + 1, x_dims_mapping.end(), -1);
+  for (int i = 1; i < x_ndim; ++i) {
+    x_dims_mapping[i] = -1;
+  }
   std::unordered_map<std::string, int64_t> axis_to_dim_map =
       ShardingMergeForTensors({{x_axes, x_dims_mapping}});
 
@@ -303,8 +305,6 @@ SpmdInfo GroupNormGradInferSpmdBase(const DistMetaTensor& x,
   scale_dist_attr_dst.set_dims_mapping({-1});
   bias_dist_attr_dst.set_dims_mapping({-1});
 
-  // Step2.4.  handle input and out tensor partial
-  // GroupNorm not support
   VLOG(4) << "GroupNormInferSpmd:";
   VLOG(4) << "shape size of x: 3~5";
   VLOG(4) << "Einsum Notation: " << x_axes << "," << scale_axes << ","
