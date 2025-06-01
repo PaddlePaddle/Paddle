@@ -35,7 +35,7 @@ void FFTC2CKernel(const Context& ctx,
   ctx.template Alloc<T>(out);
   if (x.numel() == 0) {
     phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+        ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
     return;
   }
   const auto norm_type = funcs::get_norm_from_string(normalization, forward);
@@ -55,7 +55,7 @@ void FFTC2RKernel(const Context& ctx,
   ctx.template Alloc<R>(out);
   if (x.numel() == 0) {
     phi::Full<R, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+        ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
     return;
   }
   const auto norm_type = funcs::get_norm_from_string(normalization, forward);
@@ -75,7 +75,7 @@ void FFTR2CKernel(const Context& ctx,
   ctx.template Alloc<C>(out);
   if (x.numel() == 0) {
     phi::Full<C, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+        ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
     return;
   }
   auto norm_type = funcs::get_norm_from_string(normalization, forward);
