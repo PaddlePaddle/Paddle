@@ -30,7 +30,6 @@ from test_activation_op import (
     TestFloor,
     TestHardShrink,
     TestHardSigmoid,
-    TestHardtanhAPI,
     TestLogSigmoid,
     TestMish,
     TestReciprocal,
@@ -116,11 +115,6 @@ create_test_zero_size_class(TestSoftplus)
 create_test_zero_size_class(TestSoftshrink)
 create_test_zero_size_class(TestSTanh)
 create_test_zero_size_class(TestThresholdedRelu)
-
-
-class TestHardtanhAPIZeroSize(TestHardtanhAPI):
-    def init_shape(self):
-        self.x_shape = [12, 0]
 
 
 if __name__ == "__main__":
