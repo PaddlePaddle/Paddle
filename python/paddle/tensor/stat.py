@@ -209,7 +209,7 @@ def var(
         n = n - 1.0
     n.stop_gradient = True
     out /= n
-    if x.numel() == 0:
+    if paddle.numel(x) == 0:
         out_nan = paddle.full_like(out, paddle.nan)
         out_nan.stop_gradient = out.stop_gradient
         out = out_nan
