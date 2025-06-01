@@ -50,17 +50,17 @@ void Device::CreateStream(stream::Stream* stream,
   impl_->CreateStream(dev_id_, stream, priority, flag);
 }
 
-void Device::DestroyStream(stream::Stream* stream) {
+void Device::DestroyStream(stream::stream_t stream) {
   CheckInitialized();
   impl_->DestroyStream(dev_id_, stream);
 }
 
-void Device::SynchronizeStream(const stream::Stream* stream) {
+void Device::SynchronizeStream(stream::stream_t stream) {
   CheckInitialized();
   impl_->SynchronizeStream(dev_id_, stream);
 }
 
-bool Device::QueryStream(const stream::Stream* stream) {
+bool Device::QueryStream(stream::stream_t stream) {
   CheckInitialized();
   return impl_->QueryStream(dev_id_, stream);
 }
@@ -172,7 +172,7 @@ void Device::MemorySet(void* ptr, uint8_t value, size_t size) {
 }
 
 template <typename T>
-void Device::BlasAXPBY(const stream::Stream& stream,
+void Device::BlasAXPBY(const stream::stream_t& stream,
                        size_t numel,
                        float alpha,
                        const T* x,
@@ -189,57 +189,57 @@ void Device::BlasAXPBY(const stream::Stream& stream,
                    reinterpret_cast<void*>(y));
 }
 
-template void Device::BlasAXPBY<paddle::float16>(const stream::Stream& stream,
+template void Device::BlasAXPBY<paddle::float16>(const stream::stream_t& stream,
                                                  size_t numel,
                                                  float alpha,
                                                  const paddle::float16* x,
                                                  float beta,
                                                  paddle::float16* y);
-template void Device::BlasAXPBY<float>(const stream::Stream& stream,
+template void Device::BlasAXPBY<float>(const stream::stream_t& stream,
                                        size_t numel,
                                        float alpha,
                                        const float* x,
                                        float beta,
                                        float* y);
-template void Device::BlasAXPBY<double>(const stream::Stream& stream,
+template void Device::BlasAXPBY<double>(const stream::stream_t& stream,
                                         size_t numel,
                                         float alpha,
                                         const double* x,
                                         float beta,
                                         double* y);
-template void Device::BlasAXPBY<int8_t>(const stream::Stream& stream,
+template void Device::BlasAXPBY<int8_t>(const stream::stream_t& stream,
                                         size_t numel,
                                         float alpha,
                                         const int8_t* x,
                                         float beta,
                                         int8_t* y);
-template void Device::BlasAXPBY<int16_t>(const stream::Stream& stream,
+template void Device::BlasAXPBY<int16_t>(const stream::stream_t& stream,
                                          size_t numel,
                                          float alpha,
                                          const int16_t* x,
                                          float beta,
                                          int16_t* y);
-template void Device::BlasAXPBY<int32_t>(const stream::Stream& stream,
+template void Device::BlasAXPBY<int32_t>(const stream::stream_t& stream,
                                          size_t numel,
                                          float alpha,
                                          const int32_t* x,
                                          float beta,
                                          int32_t* y);
-template void Device::BlasAXPBY<int64_t>(const stream::Stream& stream,
+template void Device::BlasAXPBY<int64_t>(const stream::stream_t& stream,
                                          size_t numel,
                                          float alpha,
                                          const int64_t* x,
                                          float beta,
                                          int64_t* y);
 template void Device::BlasAXPBY<phi::dtype::complex<float>>(
-    const stream::Stream& stream,
+    const stream::stream_t& stream,
     size_t numel,
     float alpha,
     const phi::dtype::complex<float>* x,
     float beta,
     phi::dtype::complex<float>* y);
 template void Device::BlasAXPBY<phi::dtype::complex<double>>(
-    const stream::Stream& stream,
+    const stream::stream_t& stream,
     size_t numel,
     float alpha,
     const phi::dtype::complex<double>* x,
@@ -608,7 +608,7 @@ void DeviceManager::CCLBroadcast(const std::string& device_type,
                                  phi::DataType data_type,
                                  size_t root_id,
                                  const ccl::CCLComm& ccl_comm,
-                                 const stream::Stream& stream) {
+                                 const stream::stream_t& stream) {
   auto dev_impl = GetDeviceInterfaceWithType(device_type);
   dev_impl->CCLBroadcast(data, num, data_type, root_id, ccl_comm, stream);
 }
@@ -620,7 +620,7 @@ void DeviceManager::CCLAllReduce(const std::string& device_type,
                                  phi::DataType data_type,
                                  ccl::CCLReduceOp reduce_op,
                                  const ccl::CCLComm& ccl_comm,
-                                 const stream::Stream& stream) {
+                                 const stream::stream_t& stream) {
   auto dev_impl = GetDeviceInterfaceWithType(device_type);
   dev_impl->CCLAllReduce(
       in_data, out_data, num, data_type, reduce_op, ccl_comm, stream);
@@ -634,7 +634,7 @@ void DeviceManager::CCLReduce(const std::string& device_type,
                               ccl::CCLReduceOp reduce_op,
                               size_t root_id,
                               const ccl::CCLComm& ccl_comm,
-                              const stream::Stream& stream) {
+                              const stream::stream_t& stream) {
   auto dev_impl = GetDeviceInterfaceWithType(device_type);
   dev_impl->CCLReduce(
       in_data, out_data, num, data_type, reduce_op, root_id, ccl_comm, stream);
@@ -646,7 +646,7 @@ void DeviceManager::CCLAllGather(const std::string& device_type,
                                  size_t num,
                                  phi::DataType data_type,
                                  const ccl::CCLComm& ccl_comm,
-                                 const stream::Stream& stream) {
+                                 const stream::stream_t& stream) {
   auto dev_impl = GetDeviceInterfaceWithType(device_type);
   dev_impl->CCLAllGather(in_data, out_data, num, data_type, ccl_comm, stream);
 }
@@ -658,7 +658,7 @@ void DeviceManager::CCLReduceScatter(const std::string& device_type,
                                      phi::DataType data_type,
                                      ccl::CCLReduceOp op,
                                      const ccl::CCLComm& ccl_comm,
-                                     const stream::Stream& stream) {
+                                     const stream::stream_t& stream) {
   auto dev_impl = GetDeviceInterfaceWithType(device_type);
   dev_impl->CCLReduceScatter(
       in_data, out_data, num, data_type, op, ccl_comm, stream);
@@ -680,7 +680,7 @@ void DeviceManager::CCLSend(const std::string& device_type,
                             phi::DataType data_type,
                             size_t dst_rank,
                             const ccl::CCLComm& ccl_comm,
-                            const stream::Stream& stream) {
+                            const stream::stream_t& stream) {
   auto dev_impl = GetDeviceInterfaceWithType(device_type);
   dev_impl->CCLSend(sendbuf, num, data_type, dst_rank, ccl_comm, stream);
 }
@@ -691,7 +691,7 @@ void DeviceManager::CCLRecv(const std::string& device_type,
                             phi::DataType data_type,
                             size_t src_rank,
                             const ccl::CCLComm& ccl_comm,
-                            const stream::Stream& stream) {
+                            const stream::stream_t& stream) {
   auto dev_impl = GetDeviceInterfaceWithType(device_type);
   dev_impl->CCLRecv(recvbuf, num, data_type, src_rank, ccl_comm, stream);
 }
@@ -706,7 +706,7 @@ void DeviceManager::CCLAllToAll(const std::string& device_type,
                                 size_t rank,
                                 size_t nranks,
                                 const ccl::CCLComm& comm,
-                                const stream::Stream& stream) {
+                                const stream::stream_t& stream) {
   auto dev_impl = GetDeviceInterfaceWithType(device_type);
   dev_impl->CCLAllToAll(send_buf,
                         send_count,
