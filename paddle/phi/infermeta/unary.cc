@@ -1470,7 +1470,7 @@ void FFTC2CInferMeta(const MetaTensor& x,
   if (config.is_runtime) {
     const phi::DDim x_dim = x.dims();
     for (auto axis : axes) {
-      PADDLE_ENFORCE_GT(x_dim[axis],
+      PADDLE_ENFORCE_GE(x_dim[axis],
                         0,
                         common::errors::InvalidArgument(
                             "Invalid fft n-point (%d).", x_dim[axis]));
@@ -1497,7 +1497,7 @@ void FFTC2RInferMeta(const MetaTensor& x,
   if (config.is_runtime) {
     size_t signal_dims = axes.size();
     for (size_t i = 0; i < signal_dims - 1; i++) {
-      PADDLE_ENFORCE_GT(x_dim[axes[i]],
+      PADDLE_ENFORCE_GE(x_dim[axes[i]],
                         0,
                         common::errors::InvalidArgument(
                             "Invalid fft n-point (%d).", x_dim[axes[i]]));
@@ -1513,7 +1513,7 @@ void FFTC2RInferMeta(const MetaTensor& x,
   } else if (config.is_runtime) {
     const int64_t input_last_dim_size = x_dim[last_fft_axis];
     const int64_t fft_n_point = (input_last_dim_size - 1) * 2;
-    PADDLE_ENFORCE_GT(fft_n_point,
+    PADDLE_ENFORCE_GE(fft_n_point,
                       0,
                       common::errors::InvalidArgument(
                           "Invalid fft n-point (%d).", fft_n_point));
@@ -1542,7 +1542,7 @@ void FFTR2CInferMeta(const MetaTensor& x,
   // they might be -1 to indicate unknown size ar compile time
   if (config.is_runtime) {
     for (auto axis : axes) {
-      PADDLE_ENFORCE_GT(x_dim[axis],
+      PADDLE_ENFORCE_GE(x_dim[axis],
                         0,
                         common::errors::InvalidArgument(
                             "Invalid fft n-point (%d).", x_dim[axis]));
