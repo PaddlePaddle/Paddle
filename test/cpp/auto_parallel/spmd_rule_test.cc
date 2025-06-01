@@ -2691,28 +2691,20 @@ TEST(BatchNorm, Ctor) {
   // [0, 1, -1, -1],[-1],[-1],[-1],[-1],[-1],[-1],[-1],[0, 1, -1, -1]
   // ->[-1,1,-1,-1],[-1],[-1]
   // dst_input: [-1, 1, -1, -1],[-1],[-1],[1],[1],[1],[1],[-1],[-1, 1, -1, -1]
-  auto x_dist_attr = TensorDistAttr();
-  x_dist_attr.set_process_mesh(process_mesh);
-  x_dist_attr.set_dims_mapping({0, 1, -1, -1});
-  x_dist_attr.set_dynamic_dims({false, false, false, false});
-  auto out_grad_dist_attr = TensorDistAttr();
-  out_grad_dist_attr.set_process_mesh(process_mesh);
-  out_grad_dist_attr.set_dims_mapping({0, 1, -1, -1});
-  out_grad_dist_attr.set_dynamic_dims({false, false, false, false});
 
-  phi::distributed::DistMetaTensor x = phi::distributed::DistMetaTensor(
-      common::make_ddim({16, 16, 16, 16}), x_dist_attr);
+  x = phi::distributed::DistMetaTensor(common::make_ddim({16, 16, 16, 16}),
+                                       x_dist_attr);
   phi::distributed::DistMetaTensor out_grad = phi::distributed::DistMetaTensor(
-      common::make_ddim({16, 16, 16, 16}), out_grad_dist_attr);
+      common::make_ddim({16, 16, 16, 16}), x_dist_attr);
   phi::distributed::DistMetaTensor mean_out = phi::distributed::DistMetaTensor(
       common::make_ddim({16}), one_dim_dist_attr);
   phi::distributed::DistMetaTensor variance_out =
       phi::distributed::DistMetaTensor(common::make_ddim({16}),
                                        one_dim_dist_attr);
-  phi::distributed::DistMetaTensor scale = phi::distributed::DistMetaTensor(
-      common::make_ddim({16}), one_dim_dist_attr);
-  phi::distributed::DistMetaTensor bias =
-      phi::distributed::DistMetaTensor(common::make_ddim({16}), bias_dist_attr);
+  scale = phi::distributed::DistMetaTensor(common::make_ddim({16}),
+                                           one_dim_dist_attr);
+  bias = phi::distributed::DistMetaTensor(common::make_ddim({16}),
+                                          one_dim_dist_attr);
   phi::distributed::DistMetaTensor saved_mean =
       phi::distributed::DistMetaTensor(common::make_ddim({16}),
                                        one_dim_dist_attr);
