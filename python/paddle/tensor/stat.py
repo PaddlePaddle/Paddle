@@ -210,9 +210,7 @@ def var(
     n.stop_gradient = True
     out /= n
     if x.numel() == 0:
-        out_nan = paddle.full_like(out, paddle.nan)
-        out_nan.stop_gradient = out.stop_gradient
-        out = out_nan
+        out = paddle.full_like(out, paddle.nan)
     if out.dtype != x.dtype:
         return out.astype(x.dtype)
     return out
