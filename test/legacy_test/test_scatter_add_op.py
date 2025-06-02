@@ -267,5 +267,23 @@ class TestScatterAPI(unittest.TestCase):
         np.testing.assert_array_equal(dy_out, test_pir_static_graph())
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(),
+    "core is not compiled with CUDA",
+)
+class TestScatterAddInplace(unittest.TestCase):
+    def test_api_dygraph(self):
+        def run(place):
+            paddle.disable_static(place)
+            x = paddle.to_tensor([[1.0, 2.0], [3.0, 4.0]])
+            index = paddle.to_tensor([0, 1])
+            updates = paddle.to_tensor([[1.0, 1.0], [1.0, 1.0]])
+            target = paddle.scatter_add(x, index, updates)
+            paddle.scatter_add_(x, index, updates)
+            np.testing.assert_array_equal(target.numpy(), x.numpy())
+
+        run(paddle.CUDAPlace(0))
+
+
 if __name__ == '__main__':
     unittest.main()
