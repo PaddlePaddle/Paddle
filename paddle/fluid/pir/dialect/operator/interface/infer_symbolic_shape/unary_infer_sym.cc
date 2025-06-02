@@ -2322,7 +2322,7 @@ bool NanmedianOpInferSymbolicShape(
     return false;
   };
   bool size_0 = false;
-  for (int i = 0; i < x_shape.size(); i++) {
+  for (size_t i = 0; i < x_shape.size(); i++) {
     if (IsZero(x_shape.at(i))) {
       size_0 = true;
       break;
