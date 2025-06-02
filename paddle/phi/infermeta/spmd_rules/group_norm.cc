@@ -306,7 +306,7 @@ SpmdInfo GroupNormGradInferSpmdBase(const DistMetaTensor& x,
   bias_dist_attr_dst.set_dims_mapping({-1});
 
   std::vector<int64_t> partial_on_dims;
-  const auto& dim_mapping = x_dist_attr.dims_mapping();
+  const auto& dim_mapping = x_dims_mapping;
   for (int i = 0; i < x_ndim; ++i) {
     auto mapping = dim_mapping[i];
     if (mapping != -1) {
