@@ -408,6 +408,18 @@ void FractionalMaxPoolRawKernel(const Context& ctx,
                                 bool return_mask,
                                 DenseTensor* out,
                                 DenseTensor* mask) {
+  if (x.numel() == 0) {
+    if (out) {
+      phi::Full<T1, Context>(
+          ctx, phi::IntArray(common::vectorize(out->dims())), NAN, out);
+    }
+    if (mask) {
+      phi::Full<T2, Context>(
+          ctx, phi::IntArray(common::vectorize(mask->dims())), 0, mask);
+    }
+    return;
+  }
+
   std::vector<int> output_size_ = output_size;
 
   switch (output_size_.size()) {

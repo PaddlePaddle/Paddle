@@ -409,6 +409,10 @@ void FractionalMaxPoolGradRawKernel(const Context& ctx,
                                     float random_u,
                                     bool return_mask,
                                     DenseTensor* dx) {
+  if (dx && dx->numel() == 0) {
+    ctx.template Alloc<T1>(dx);
+    return;
+  }
   std::vector<int> output_size_ = output_size;
 
   if (dx) {
