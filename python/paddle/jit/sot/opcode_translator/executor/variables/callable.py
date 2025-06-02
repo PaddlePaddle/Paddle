@@ -21,7 +21,7 @@ import itertools
 import operator
 import sys
 import types
-from functools import reduce
+from functools import partial, reduce
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -1118,7 +1118,9 @@ class ClassVariable(CallableVariable):
         # do not have init function
         if self.value.__init__ is object.__init__:
             return VariableFactory.from_value(
-                new_object, self.graph, DummyTracker([self])
+                new_object,
+                self.graph,
+                DummyTracker([self, *args, *kwargs.values()]),
             )
 
         if not hasattr(self.value.__init__, "__code__"):
@@ -1138,7 +1140,7 @@ class ClassVariable(CallableVariable):
         new_object_variable = VariableFactory.from_value(
             new_object,
             self.graph,
-            DummyTracker([self, *list(args), *list(kwargs.values())]),
+            DummyTracker([self, *args, *kwargs.values()]),
         )
         fn_var(new_object_variable, *args, **kwargs)
         return new_object_variable
@@ -1233,4 +1235,49 @@ class NamedTupleClassVariable(ClassVariable):
     def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
         if is_namedtuple_class(value):
             return NamedTupleClassVariable(value, graph, tracker)
+        return None
+
+
+class PartialVariable(CallableVariable):
+    def __init__(
+        self,
+        value: partial,
+        graph: FunctionGraph,
+        tracker: Tracker,
+    ):
+        super().__init__(graph, tracker)
+        self.value = value
+
+    def get_py_value(self, allow_tensor=False):
+        return self.value
+
+    def get_py_type(self):
+        return partial
+
+    def call_function(self, /, *call_args, **call_kwargs):
+        func_variable = VariableFactory.from_value(
+            self.value.func, self.graph, GetAttrTracker(self, "func")
+        )
+        partial_args = VariableFactory.from_value(
+            self.value.args, self.graph, GetAttrTracker(self, "args")
+        )
+        partial_keywords = VariableFactory.from_value(
+            self.value.keywords, self.graph, GetAttrTracker(self, "keywords")
+        )
+        assert isinstance(func_variable, CallableVariable)
+
+        partial_keywords.get_wrapped_items().update(call_kwargs)
+
+        out = func_variable(
+            *partial_args.get_wrapped_items(),
+            *call_args,
+            **(partial_keywords.get_wrapped_items() | call_kwargs),
+        )
+
+        return out
+
+    @VariableFactory.register_from_value()
+    def from_value(value: partial, graph: FunctionGraph, tracker: Tracker):
+        if isinstance(value, partial):
+            return PartialVariable(value, graph, tracker)
         return None
