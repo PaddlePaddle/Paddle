@@ -16,7 +16,7 @@
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
-
+#include "paddle/phi/kernels/full_kernel.h"
 namespace phi {
 template <typename T, typename Context>
 void PReluGradKernel(const Context& dev_ctx,
@@ -28,7 +28,16 @@ void PReluGradKernel(const Context& dev_ctx,
                      DenseTensor* x_grad,
                      DenseTensor* alpha_grad) {
   using XPUType = typename XPUTypeTrait<T>::Type;
-
+  if (x_grad->numel() == 0) {
+    dev_ctx.template Alloc<T>(x_grad);
+    if (alpha_grad) {
+      phi::Full<T, Context>(
+          dev_ctx,
+          phi::IntArray(common::vectorize(alpha_grad->dims())),
+          0,
+          alpha_grad);
+    }
+  }
   const T* x_ptr = x.data<T>();
   const T* alpha_ptr = alpha.data<T>();
   const T* out_grad_ptr = out_grad.data<T>();
