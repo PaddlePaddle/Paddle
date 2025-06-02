@@ -68,7 +68,6 @@ class TestLogitOp(OpTest):
             ['X'],
             ['Out'],
             user_defined_grads=[self.x_grad],
-            max_relative_error=0.01,
             check_pir=True,
         )
 
