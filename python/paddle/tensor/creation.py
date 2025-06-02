@@ -763,7 +763,18 @@ def _to_tensor_non_static(
                 data = data.astype("int64")
 
     if dtype:
-        data = _handle_np_dtype(data, dtype)
+        if convert_dtype(dtype) == 'uint16' and 'bfloat16' in str(dtype):
+            tensor = core.eager.Tensor(
+                value=data,
+                place=place,
+                persistable=False,
+                zero_copy=False,
+                name=None,
+                stop_gradient=stop_gradient,
+            )
+            return tensor.astype(dtype)
+        else:
+            data = _handle_np_dtype(data, dtype)
 
     if isinstance(data, np.ndarray):
         return core.eager.Tensor(
