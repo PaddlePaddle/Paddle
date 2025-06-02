@@ -305,6 +305,16 @@ SpmdInfo GroupNormGradInferSpmdBase(const DistMetaTensor& x,
   scale_dist_attr_dst.set_dims_mapping({-1});
   bias_dist_attr_dst.set_dims_mapping({-1});
 
+  std::vector<int64_t> partial_on_dims;
+  const auto& dim_mapping = x_dist_attr.dims_mapping();
+  for (int i = 0; i < begin_norm_axis; ++i) {
+    auto mapping = dim_mapping[i];
+    if (mapping != -1) {
+      partial_on_dims.push_back(mapping);
+    }
+  }
+  x_grad_dist_attr.set_partial_status(partial_on_dims);
+
   VLOG(4) << "GroupNormInferSpmd:";
   VLOG(4) << "shape size of x: 3~5";
   VLOG(4) << "Einsum Notation: " << x_axes << "," << scale_axes << ","
