@@ -1931,7 +1931,8 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
             masked_fill__ad_func(transed_sub_tensor, mask_tensor, value_tensor);
       } else {
 #ifdef PADDLE_WITH_CUDA
-        if (transed_index.size() == 1 && value_tensor.numel() == 1) {
+        if (!out_is_view && transed_index.size() == 1 &&
+            value_tensor.numel() == 1) {
           transed_index = expand_outplace(transed_index);
           while (transed_index.size() <
                  static_cast<size_t>(transed_sub_tensor.dims().size())) {
