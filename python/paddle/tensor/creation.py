@@ -763,7 +763,11 @@ def _to_tensor_non_static(
                 data = data.astype("int64")
 
     if dtype:
-        if convert_dtype(dtype) == 'uint16' and 'bfloat16' in str(dtype):
+        if (
+            convert_dtype(dtype) == 'uint16'
+            and 'bfloat16' in str(dtype)
+            and isinstance(data, np.ndarray)
+        ):
             tensor = core.eager.Tensor(
                 value=data,
                 place=place,
@@ -772,7 +776,9 @@ def _to_tensor_non_static(
                 name=None,
                 stop_gradient=stop_gradient,
             )
-            return tensor.astype(dtype)
+            tensor = tensor.detach().astype(dtype)
+            tensor.stop_gradient = stop_gradient
+            return tensor
         else:
             data = _handle_np_dtype(data, dtype)
 

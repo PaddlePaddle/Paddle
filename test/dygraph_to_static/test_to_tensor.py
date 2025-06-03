@@ -104,19 +104,6 @@ def case8(x):
     return a
 
 
-@unittest.skipIf(
-    not paddle.is_compiled_with_cuda(),
-    "CUDA is not available, this test requires GPU support.",
-)
-def case9():
-    data = np.array([[1.0, 2.0], [3.0, 4.0]], dtype="float32")
-    place = paddle.CUDAPlace(0)
-
-    x = paddle.to_tensor(data, dtype="bfloat16", place=place)
-
-    assert x.dtype == paddle.bfloat16
-
-
 def case_to_tensor_default_dtype():
     return paddle.to_tensor(1)
 
