@@ -38,8 +38,13 @@ class TestCosineSimilarityAPI(unittest.TestCase):
     def _get_numpy_out(self, x1, x2, axis=1, eps=1e-8):
         bs = np.broadcast_shapes([x1.shape[axis]], [x2.shape[axis]])
         w12 = np.sum(x1 * x2, axis=axis)
-        w1 = np.sum(x1 * x1, axis=axis) * (bs[0] / x1.shape[axis])
-        w2 = np.sum(x2 * x2, axis=axis) * (bs[0] / x2.shape[axis])
+        w1 = np.sum(x1 * x1, axis=axis)
+        w2 = np.sum(x2 * x2, axis=axis)
+        m1, m2 = bs[0] / x1.shape[axis], bs[0] / x2.shape[axis]
+        if m1 != 1:
+            w1 = w1 * m1
+        if m2 != 1:
+            w2 = w2 * m2
         n12 = np.sqrt(np.clip(w1 * w2, eps * eps, None))
         cos_sim = w12 / n12
         return cos_sim
