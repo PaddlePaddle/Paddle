@@ -331,7 +331,7 @@ class TestConv3dSPMDRule(unittest.TestCase):
     def test_conv3d_ncdhw_infer_backward(self):
         # backward setup
         input_shape = [2, 4, 8, 8, 8]
-        self.data_format = "NDHWC"
+        self.data_format = "NCDHW"
         filter_shape = [10, 4, 3, 3, 3]
         output_shape = [2, 10, 6, 6, 6]
         process_mesh = auto.ProcessMesh(
@@ -413,7 +413,7 @@ class TestConv3dSPMDRule(unittest.TestCase):
 
         # case 2:
         # Output: NMDoutHoutWout[0, 1, -1, -1, -1] partial_dim=[2]--->
-        # input: NCDinHinWin[0, -1, -1, -1, -1], filter: MCDkHkWk[1, -1, -1, -1, -1]
+        # input: NCDinHinWin[0, 2, -1, -1, -1], filter: MCDkHkWk[1, 2, -1, -1, -1]
         # input_grad: NCDinHinWin[0, 2, -1, -1, -1], filter_grad: MCDkHkWk[1, 2, -1, -1, -1]
         output_tensor_dist_attr._set_partial_dims([2])
         self.output_dist_tensor_spec = DistTensorSpec(
