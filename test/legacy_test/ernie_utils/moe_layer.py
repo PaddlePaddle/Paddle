@@ -20,16 +20,19 @@
 Returns:
     _type_: _description_
 """
+from __future__ import annotations
+
 import logging
 from collections import namedtuple
-from typing import List, Optional
+from typing import TYPE_CHECKING
 
 import paddle
 import paddle.distributed as dist
 from paddle import nn
 from paddle.distributed import fleet
-from paddle.distributed.communication.group import Group
 
+if TYPE_CHECKING:
+    from paddle.distributed.communication.group import Group
 try:
     from src.utils.misc import global_training_logs
 except ModuleNotFoundError:
@@ -103,9 +106,9 @@ class MOELayer(nn.Layer):
     def __init__(
         self,
         gate: nn.Layer,
-        experts: List[nn.Layer],
+        experts: list[nn.Layer],
         layer_idx,
-        shared_experts: Optional[List[nn.Layer]] = None,
+        shared_experts: list[nn.Layer] | None = None,
         group: Group = None,
         recompute=False,
         enable_logging: bool = False,

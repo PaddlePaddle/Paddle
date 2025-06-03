@@ -19,10 +19,10 @@
 top2gate
 """
 
+from __future__ import annotations
 
 import logging
 from functools import partial
-from typing import Tuple
 
 import numpy as np
 
@@ -547,7 +547,7 @@ class Top2Gate(nn.Layer):
         token_type_ids: Tensor = None,
         transform_weight: bool = True,  # [seq]
         correction_bias: Tensor = None,  # [seq]
-    ) -> Tuple[Tensor, Tensor, Tensor]:  # type: ignore
+    ) -> tuple[Tensor, Tensor, Tensor]:  # type: ignore
         """
         Args:
             input: paddle.Tensor[Seq, Dim], hidden-states of layer
@@ -898,7 +898,7 @@ class TopKGateFused(Top2Gate):
         input: Tensor,
         token_type_ids=None,
         transform_weight=True,
-    ) -> Tuple[Tensor, Tensor, Tensor]:  # type: ignore
+    ) -> tuple[Tensor, Tensor, Tensor]:  # type: ignore
         """
         Args:
             input: paddle.Tensor, hidden-states of layer

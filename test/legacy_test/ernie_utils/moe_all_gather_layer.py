@@ -28,13 +28,14 @@
 
 
 """
+
+from __future__ import annotations
+
 import contextlib
 import logging
-from typing import List, Optional
 
 import paddle
 from paddle import nn
-from paddle.distributed.communication.group import Group
 from paddle.incubate.nn.functional import expand_modality_expert_id
 
 from .moe_layer import MOELayer
@@ -43,6 +44,10 @@ try:
     from src.utils.misc import global_training_logs
 except ModuleNotFoundError:
     global_training_logs = {}  # 没有erniebot的环境下无法打印 debug 量
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from paddle.distributed.communication.group import Group
 
 
 def profile(_):
@@ -72,10 +77,10 @@ class MOEAllGatherLayer(MOELayer):
     def __init__(
         self,
         gate: nn.Layer,
-        experts: List[nn.Layer],
+        experts: list[nn.Layer],
         layer_idx,
-        shared_experts: Optional[List[nn.Layer]] = None,
-        dense_experts: Optional[List[nn.Layer]] = None,  # no use
+        shared_experts: list[nn.Layer] | None = None,
+        dense_experts: list[nn.Layer] | None = None,  # no use
         group: Group = None,
         recompute=False,
         enable_logging: bool = False,
@@ -112,10 +117,10 @@ class MOEAllGatherLayerV2(MOEAllGatherLayer):
     def __init__(
         self,
         gate: nn.Layer,
-        experts: List[nn.Layer],
+        experts: list[nn.Layer],
         layer_idx,
-        shared_experts: Optional[List[nn.Layer]] = None,
-        dense_experts: Optional[List[nn.Layer]] = None,
+        shared_experts: list[nn.Layer] | None = None,
+        dense_experts: list[nn.Layer] | None = None,
         group: Group = None,
         recompute=False,
         enable_logging: bool = False,

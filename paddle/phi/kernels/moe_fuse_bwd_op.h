@@ -17,7 +17,7 @@
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
 #include "paddle/phi/kernels/moe_kernel_impl.h"
 
-namespace phi{
+namespace phi {
 
 #ifdef PADDLE_WITH_CUDA
 template <typename T, int64_t vec_size>
@@ -314,4 +314,4 @@ void topk_grad_with_mask_launcher(const T* dy,               // [s, k]
 }
 #endif
 
-} // namepsace phi
+}  // namespace phi
