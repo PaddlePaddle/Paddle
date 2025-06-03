@@ -20,6 +20,7 @@
 #include "paddle/cinn/runtime/sycl/sycl_backend_api.h"
 #include "paddle/cinn/runtime/sycl/sycl_module.h"
 #include "paddle/cinn/utils/profiler.h"
+#include <hip/hip_runtime.h>
 
 namespace cinn {
 namespace runtime {
@@ -38,6 +39,7 @@ SYCLModule::SYCLModule(const std::string& source_code,
 SYCLModule::~SYCLModule() { VLOG(3) << "destructor for SYCLModule"; }
 
 void* SYCLModule::GetFunction(const std::string& func_name) {
+  std::lock_guard<std::mutex> lock(mutex_);
   if (so_handler_ == nullptr) {
     so_handler_ = dlopen(shared_library_.c_str(), RTLD_NOW | RTLD_GLOBAL);
   }
