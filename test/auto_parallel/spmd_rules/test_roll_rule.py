@@ -46,33 +46,30 @@ class TestRollSPMDRule(unittest.TestCase):
         self.attrs['axis'] = []
 
     def test_roll_forward(self):
-        # TODO(ooooo): Temporarily don't test it in python.It's tested in spmd_rule_test.
-        # Maybe use the default parameters to avoid pass empty list to cpp
+        # axis = [], shifts = [1]
+        # [0, 1, -1] --> [-1, -1, -1], [-1, -1, -1]
+        self.attrs['axis'] = []
+        self.attrs['shifts'] = [1]
+        self.x_dist_tensor_spec.set_dims_mapping([0, 1, -1])
+        result_dist_attrs = self.rule.infer_forward(
+            self.x_dist_tensor_spec,
+            self.attrs['shifts'],
+            self.attrs['axis'],
+        )
 
-        # # axis = [], shifts = [1]
-        # # [0, 1, -1] --> [-1, -1, -1], [-1, -1, -1]
-        # self.attrs['axis'] = []
-        # self.attrs['shifts'] = [1]
-        # self.x_dist_tensor_spec.set_dims_mapping([0, 1, -1])
-        # result_dist_attrs = self.rule.infer_forward(
-        #     self.x_dist_tensor_spec,
-        #     self.attrs['shifts'],
-        #     self.attrs['axis'],
-        # )
+        self.assertEqual(len(result_dist_attrs), 2)
+        inferred_input_dist_attrs = result_dist_attrs[0]
+        inferred_output_dist_attrs = result_dist_attrs[1]
 
-        # self.assertEqual(len(result_dist_attrs), 2)
-        # inferred_input_dist_attrs = result_dist_attrs[0]
-        # inferred_output_dist_attrs = result_dist_attrs[1]
+        self.assertEqual(len(inferred_input_dist_attrs), 1)
+        self.assertEqual(len(inferred_output_dist_attrs), 1)
 
-        # self.assertEqual(len(inferred_input_dist_attrs), 1)
-        # self.assertEqual(len(inferred_output_dist_attrs), 1)
-
-        # self.assertEqual(
-        #     inferred_input_dist_attrs[0].dims_mapping, [-1, -1, -1]
-        # )
-        # self.assertEqual(
-        #     inferred_output_dist_attrs[0].dims_mapping, [-1, -1, -1]
-        # )
+        self.assertEqual(
+            inferred_input_dist_attrs[0].dims_mapping, [-1, -1, -1]
+        )
+        self.assertEqual(
+            inferred_output_dist_attrs[0].dims_mapping, [-1, -1, -1]
+        )
 
         # axis = [0, 2], shifts = [1, 2]
         # [0, 1, -1] --> [-1, 1, -1], [-1, 1, -1]
@@ -98,36 +95,33 @@ class TestRollSPMDRule(unittest.TestCase):
         )
 
     def test_roll_backward(self):
-        # TODO(ooooo): Temporarily don't test it in python.It's tested in spmd_rule_test.
-        # Maybe use the default parameters to avoid pass empty list to cpp
+        # axis = [], shifts = [1]
+        # [-1, -1, -1], [0, 1, -1] --> [-1, -1, -1], [-1, -1, -1], [-1, -1, -1]
+        self.attrs['axis'] = []
+        self.attrs['shifts'] = [1]
+        self.x_dist_tensor_spec.set_dims_mapping([-1, -1, -1])
+        self.out_grad_dist_tensor_spec.set_dims_mapping([0, 1, -1])
+        result_dist_attrs = self.rule.infer_backward(
+            self.x_dist_tensor_spec,
+            self.out_grad_dist_tensor_spec,
+            self.attrs['shifts'],
+            self.attrs['axis'],
+        )
 
-        # # axis = [], shifts = [1]
-        # # [-1, -1, -1], [0, 1, -1] --> [-1, -1, -1], [-1, -1, -1], [-1, -1, -1]
-        # self.attrs['axis'] = []
-        # self.attrs['shifts'] = [1]
-        # self.x_dist_tensor_spec.set_dims_mapping([-1, -1, -1])
-        # self.out_grad_dist_tensor_spec.set_dims_mapping([0, 1, -1])
-        # result_dist_attrs = self.rule.infer_backward(
-        #     self.x_dist_tensor_spec,
-        #     self.out_grad_dist_tensor_spec,
-        #     self.attrs['shifts'],
-        #     self.attrs['axis'],
-        # )
-
-        # self.assertEqual(len(result_dist_attrs), 2)
-        # inferred_input_dist_attrs = result_dist_attrs[0]
-        # inferred_output_dist_attrs = result_dist_attrs[1]
-        # self.assertEqual(len(inferred_input_dist_attrs), 2)
-        # self.assertEqual(len(inferred_output_dist_attrs), 1)
-        # self.assertEqual(
-        #     inferred_input_dist_attrs[0].dims_mapping, [-1, -1, -1]
-        # )
-        # self.assertEqual(
-        #     inferred_input_dist_attrs[1].dims_mapping, [-1, -1, -1]
-        # )
-        # self.assertEqual(
-        #     inferred_output_dist_attrs[0].dims_mapping, [-1, -1, -1]
-        # )
+        self.assertEqual(len(result_dist_attrs), 2)
+        inferred_input_dist_attrs = result_dist_attrs[0]
+        inferred_output_dist_attrs = result_dist_attrs[1]
+        self.assertEqual(len(inferred_input_dist_attrs), 2)
+        self.assertEqual(len(inferred_output_dist_attrs), 1)
+        self.assertEqual(
+            inferred_input_dist_attrs[0].dims_mapping, [-1, -1, -1]
+        )
+        self.assertEqual(
+            inferred_input_dist_attrs[1].dims_mapping, [-1, -1, -1]
+        )
+        self.assertEqual(
+            inferred_output_dist_attrs[0].dims_mapping, [-1, -1, -1]
+        )
 
         # axis = [0, 2], shifts = [1, 2]
         # [-1, -1, -1], [0, 1, -1] --> [-1, 1, -1], [-1, 1, -1], [-1, 1, -1]
