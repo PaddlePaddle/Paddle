@@ -19,6 +19,7 @@ import functools
 import inspect
 import itertools
 import operator
+import random
 import sys
 import types
 from functools import partial, reduce
@@ -69,6 +70,7 @@ from ....utils.exceptions import (
     SotErrorBase,
     UnsupportedNumPyAPIBreak,
     UnsupportedOperationBreak,
+    UnsupportedRandomAPIBreak,
 )
 from ....utils.paddle_api_config import (
     break_graph_functions,
@@ -280,6 +282,10 @@ class UserDefinedFunctionVariable(FunctionVariable):
         return None
 
     def call_function(self, /, *args, **kwargs) -> VariableBase:
+        if UserDefinedFunctionVariable.__is_random_function(self.value):
+            raise BreakGraphError(
+                UnsupportedRandomAPIBreak(fn_name=self.value.__name__)
+            )
         from ..opcode_inline_executor import OpcodeInlineExecutor
 
         result = self.handle_psdb_function(*args, **kwargs)
@@ -347,6 +353,13 @@ class UserDefinedFunctionVariable(FunctionVariable):
         return {
             "name": self.value.__name__,
         }
+
+    @staticmethod
+    def __is_random_function(value) -> bool:
+        return value.__qualname__ in [
+            f"{random._inst.__class__.__name__}.{name}"
+            for name in dir(random._inst)
+        ]
 
 
 class UserCodeVariable(FunctionVariable):
