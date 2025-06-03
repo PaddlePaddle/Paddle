@@ -43,7 +43,6 @@ from ....utils import (
     get_obj_stable_repr,
     get_static_function,
     hashable,
-    is_break_graph_api,
     is_break_graph_tensor_methods,
     is_builtin_fn,
     is_directly_run_api,
@@ -61,6 +60,7 @@ from ....utils.exceptions import (
     DataDependencyOperationBreak,
     FallbackError,
     FallbackInlineCallBreak,
+    ForceBreak,
     InnerError,
     OtherInlineCallBreak,
     PsdbBreakReason,
@@ -69,7 +69,6 @@ from ....utils.exceptions import (
     SotErrorBase,
     UnsupportedNumPyAPIBreak,
     UnsupportedOperationBreak,
-    UnsupportedPaddleAPIBreak,
 )
 from ....utils.paddle_api_config import (
     break_graph_functions,
@@ -149,15 +148,12 @@ class CallableVariable(VariableBase):
 
 
 class ForceBreakCallableVariable(CallableVariable):
-    def __init__(self, callable, graph: FunctionGraph, tracker: Tracker):
+    def __init__(self, name: str, graph: FunctionGraph, tracker: Tracker):
         super().__init__(graph, tracker)
+        self.name = name
 
     def call_function(self, /, *args, **kwargs) -> VariableBase:
-        raise BreakGraphError(
-            UnsupportedOperationBreak(
-                reason_str="ForceBreakCallableVariable is called."
-            )
-        )
+        raise BreakGraphError(ForceBreak(reason_str=f"Force run {self.name}"))
 
     def get_py_value(self, allow_tensor=False):
         return self.value
@@ -168,9 +164,13 @@ class ForceBreakCallableVariable(CallableVariable):
             isinstance(value, paddle.nn.Layer)
             and value.__class__ in break_graph_layer_classes
         ):
-            return ForceBreakCallableVariable(value, graph, tracker)
+            return ForceBreakCallableVariable(
+                f"Layer({value.__class__.__name__})", graph, tracker
+            )
         elif hashable(value) and value in break_graph_functions:
-            return ForceBreakCallableVariable(value, graph, tracker)
+            return ForceBreakCallableVariable(
+                get_obj_stable_repr(value), graph, tracker
+            )
         return None
 
 
@@ -381,10 +381,6 @@ class PaddleApiVariable(FunctionVariable):
         super().__init__(fn, graph, tracker)
 
     def call_function(self, /, *args, **kwargs):
-        if is_break_graph_api(self.value):
-            raise BreakGraphError(
-                UnsupportedPaddleAPIBreak(fn_name=self.value.__name__)
-            )
         return self.graph.call_paddle_api(self.value, *args, **kwargs)
 
     @VariableFactory.register_from_value(
