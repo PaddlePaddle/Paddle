@@ -985,7 +985,7 @@ Dispatcher.register(
 # VariableBase
 @Dispatcher.register_decorator(operator.is_)
 def is_func(var: VariableBase, other: VariableBase):
-    if var.get_py_type() != other.get_py_type():
+    if var.get_py_type() is not other.get_py_type():
         return ConstantVariable(False, var.graph, DummyTracker([var, other]))
     return ConstantVariable(
         True,
