@@ -88,17 +88,26 @@ inline static DataType promoteTypes(DataType x, DataType y) {
 // Migrated from operator overloading
 static std::unordered_set<std::string> support_promotion_ops = {
     "add",
+    "elementwise_add",
     "subtract",
+    "elementwise_sub",
+    "multiply",
+    "elementwise_mul",
+    "elementwise_mod",
+    "remainder",
     "divide",
+    "elementwise_div",
+    "truediv",
     "floor_divide",
+    "pow",
     "elementwise_pow",
-    "where",
     "equal",
     "not_equal",
     "less_than",
     "less_equal",
     "greater_than",
     "greater_equal",
+    "where",
     "logical_and",
     "logical_or",
     "logical_xor",
@@ -106,7 +115,6 @@ static std::unordered_set<std::string> support_promotion_ops = {
     "fmin",
     "maximum",
     "minimum",
-    "remainder",
     "huber_loss",
     "nextafter",
     "atan2",
@@ -210,7 +218,8 @@ inline bool NeedTypePromotion(
     const std::vector<int64_t>& x_shape = std::vector<int64_t>(),
     const std::vector<int64_t>& y_shape = std::vector<int64_t>()) {
   if (x_dtype == y_dtype) {
-    if (op_name == "divide" || op_name == "divide_") {
+    if (op_name == "divide" || op_name == "divide_" ||
+        op_name == "elementwise_div") {
       if (is_support_int(x_dtype) && is_support_int(y_dtype)) {
         return true;
       }
