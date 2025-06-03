@@ -50,10 +50,10 @@ def _restore_placements_info(args, infos, curr_mesh):
     if isinstance(args, paddle.Tensor) and infos.placements is not None:
         # set the placements attribute of the Tensor
         if args.is_dist():
-            return args
+            return _detach_and_requires_grad(args)
         else:
             args = dtensor_from_local(args, curr_mesh, infos.placements)
-        return args
+        return _detach_and_requires_grad(args)
     elif isinstance(args, (list, tuple)):
         # if args is list or tuple, handle each element recursively
         return type(args)(
@@ -613,7 +613,7 @@ class _PipelineStageBase(ABC):
 
         out_val = self.sublayer(*args, **kwargs)
 
-        return out_val
+        return out_val, input_args
 
     def backward_maybe_with_nosync(
         self, backward_type, bwd_kwargs: dict, last_backward=False
@@ -687,7 +687,7 @@ class _PipelineStageBase(ABC):
 
         # Compute forward
         try:
-            output = self.forward_maybe_with_nosync(
+            output, input_args = self.forward_maybe_with_nosync(
                 *composite_args, **composite_kwargs
             )
 
@@ -706,7 +706,7 @@ class _PipelineStageBase(ABC):
         self.output_chunks.append(output)
 
         # Save activations and inputs for backward
-        flat_args = _flatten_args(composite_args)
+        flat_args = _flatten_args(input_args)
         flat_kwargs = _flatten_args(composite_kwargs)
         flatten_input_tensors = flat_args + flat_kwargs
         self.fwd_cache[fwd_chunk_id] = (
@@ -1150,8 +1150,8 @@ class PipelineStage(_PipelineStageBase):
         grads = _map_structure_only(
             TensorMeta, zero_initialize_with_meta_, grads
         )
-
-        paddle.autograd.backward(stage_output, grads, True)
+        with paddle.amp.auto_cast(enable=False):
+            paddle.autograd.backward(stage_output, grads, True)
 
         # output is the grad meta for input_values(list)
         if not self.is_first:
@@ -1184,14 +1184,15 @@ class PipelineStage(_PipelineStageBase):
 
         self.chunks = num_microbatches
 
+        grads: tuple[Any, ...] = ()
+        if self.grads_meta is None:
+            self._shape_inference_bwd()
+        
         for mb_index in range(num_microbatches):
             # `grad_recv_info` is a mirror of `act_send_info`
             self.grad_recv_info[mb_index] = self._create_grad_recv_info(
                 self.act_send_info
             )
-        grads: tuple[Any, ...] = ()
-        if self.grads_meta is None:
-            self._shape_inference_bwd()
 
         assert self.grads_meta is not None
         # clear backward_state
@@ -1211,7 +1212,7 @@ class PipelineStage(_PipelineStageBase):
                     _RecvInfo(
                         f"recv_grad_for_{self.stage_index}_from_{dst_list[0]}",
                         dst_list[0],
-                        _make_tensor_from_meta(self.get_outputs_meta()[idx]),
+                        _make_tensor_from_meta(self.grads_meta[idx]),
                     )
                     for idx, dst_list in act_send_info.items()
                 ]
