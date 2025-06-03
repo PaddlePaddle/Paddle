@@ -122,7 +122,7 @@ class SYCLBackendAPI final : public BackendAPI {
   int now_device_id = 0;
   // whether the BackendAPI is initialized.
   bool initialized_{false};
-  hipDevice_t device_;Add commentMore actions
+  hipDevice_t device_;
   hipCtx_t context_;
   
 };
