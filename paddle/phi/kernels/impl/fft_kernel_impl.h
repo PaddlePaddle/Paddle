@@ -34,6 +34,13 @@ void FFTC2CKernel(const Context& ctx,
                   DenseTensor* out) {
   ctx.template Alloc<T>(out);
   if (x.numel() == 0) {
+    /*
+    This will return 0:
+    >>> scipy.fft.fft2(np.random.random([3, 0, 1, 2]), s=(1, 2), axes=(0, 1),
+norm='backward') array([[[[0.-0.j, 0.-0.j]],
+
+        [[0.-0.j, 0.-0.j]]]])
+    */
     phi::Full<T, Context>(
         ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
     return;
