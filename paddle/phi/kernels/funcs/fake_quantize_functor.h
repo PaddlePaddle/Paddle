@@ -19,7 +19,6 @@ limitations under the License. */
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/common/transform.h"
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/impl/clip_kernel_impl.h"
 

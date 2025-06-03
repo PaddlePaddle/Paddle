@@ -35,7 +35,10 @@ def logit_grad(x, eps=1e-8):
     )
     x_1 = 1.0 - x
     _x = np.select([tmp_x == -1.0], [np.reciprocal(x * x_1)], default=0.0)
-    dout = np.full_like(x, fill_value=1.0 / _x.size)
+    if _x.size == 0:
+        dout = np.full_like(x, fill_value=0.0)
+    else:
+        dout = np.full_like(x, fill_value=1.0 / _x.size)
     dx = dout * _x
     return dx
 
@@ -148,6 +151,13 @@ class TestLogitEps(TestLogitOp):
     def set_attrs(self):
         self.dtype = np.float32
         self.shape = [120]
+        self.eps = 1e-8
+
+
+class TestLogit_ZeroSize(TestLogitOp):
+    def set_attrs(self):
+        self.dtype = np.float64
+        self.shape = [2, 0]
         self.eps = 1e-8
 
 

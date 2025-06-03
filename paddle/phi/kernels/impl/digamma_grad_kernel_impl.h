@@ -48,6 +48,9 @@ void DigammaGradKernel(const Context& ctx,
                        const DenseTensor& out_grad,
                        DenseTensor* x_grad) {
   ctx.template Alloc<T>(x_grad);
+  if (x_grad && x_grad->numel() == 0) {
+    return;
+  }
 
   auto* dout_data = out_grad.data<T>();
   auto* x_data = x.data<T>();

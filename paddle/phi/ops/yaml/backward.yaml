@@ -992,8 +992,8 @@
   composite : exp_grad(out, out_grad, x_grad)
 
 - backward_op : expand_as_grad
-  forward : expand_as (Tensor x, Tensor y, int[] target_shape = {}) -> Tensor(out)
-  args : (Tensor x, Tensor out_grad, int[] target_shape)
+  forward : expand_as (Tensor x, Tensor y, int64_t[] target_shape = {}) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, int64_t[] target_shape)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta
@@ -2114,6 +2114,7 @@
     func : masked_fill_grad
     param: [x, mask, value, out_grad]
   inplace : (out_grad -> x_grad)
+  composite : masked_fill_grad(x, mask, value, out_grad, x_grad, value_grad)
 
 - backward_op : masked_select_grad
   forward : masked_select (Tensor x, Tensor mask) -> Tensor(out)

@@ -16,6 +16,7 @@ import sys
 import unittest
 
 import numpy as np
+import scipy
 import scipy.fft
 
 import paddle
@@ -1931,6 +1932,80 @@ class TestIfftShift(unittest.TestCase):
                 ).numpy(),
                 rtol=RTOL.get(str(self.x.dtype)),
                 atol=ATOL.get(str(self.x.dtype)),
+            )
+
+
+@place(DEVICES)
+@parameterize(
+    (TEST_CASE_NAME, 'x', 'axes', 'dtype'),
+    [
+        ('test_1d', np.random.randn(0), (0,), 'float64'),
+        (
+            'test_2d_odd_with_all_axes',
+            np.random.randn(5, 0) + 1j * np.random.randn(5, 0),
+            None,
+            'complex128',
+        ),
+    ],
+)
+class TestFftShift_ZeroSize(unittest.TestCase):
+    def test_fftshift(self):
+        """Test fftshift with norm condition"""
+        with paddle.base.dygraph.guard(self.place):
+            np.testing.assert_allclose(
+                scipy.fft.fftshift(self.x, self.axes),
+                paddle.fft.fftshift(
+                    paddle.to_tensor(self.x), self.axes
+                ).numpy(),
+                rtol=RTOL.get(str(self.x.dtype)),
+                atol=ATOL.get(str(self.x.dtype)),
+            )
+
+    def test_grad_shape(self):
+        with paddle.base.dygraph.guard(self.place):
+            x = paddle.to_tensor(self.x, stop_gradient=False)
+            y = paddle.fft.fftshift(x, self.axes)
+            loss = paddle.sum(y)
+            loss.backward()
+            np.testing.assert_equal(
+                x.grad.shape, self.x.shape, "Grad shape mismatch"
+            )
+
+
+@place(DEVICES)
+@parameterize(
+    (TEST_CASE_NAME, 'x', 'axes'),
+    [
+        ('test_1d', np.random.randn(0), (0,), 'float64'),
+        (
+            'test_2d_odd_with_all_axes',
+            np.random.randn(5, 0) + 1j * np.random.randn(5, 0),
+            None,
+            'complex128',
+        ),
+    ],
+)
+class TestIfftShift_ZeroSize(unittest.TestCase):
+    def test_ifftshift(self):
+        """Test ifftshift with norm condition"""
+        with paddle.base.dygraph.guard(self.place):
+            np.testing.assert_allclose(
+                scipy.fft.ifftshift(self.x, self.axes),
+                paddle.fft.ifftshift(
+                    paddle.to_tensor(self.x), self.axes
+                ).numpy(),
+                rtol=RTOL.get(str(self.x.dtype)),
+                atol=ATOL.get(str(self.x.dtype)),
+            )
+
+    def test_grad_shape(self):
+        with paddle.base.dygraph.guard(self.place):
+            x = paddle.to_tensor(self.x, stop_gradient=False)
+            y = paddle.fft.ifftshift(x, self.axes)
+            loss = paddle.sum(y)
+            loss.backward()
+            np.testing.assert_equal(
+                x.grad.shape, self.x.shape, "Grad shape mismatch"
             )
 
 

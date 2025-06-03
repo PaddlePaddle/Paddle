@@ -30,6 +30,9 @@ void ChannelShuffleKernel(const Context& dev_ctx,
                           DenseTensor* out) {
   auto* in = &x;
   dev_ctx.template Alloc<T>(out);
+  if (out && out->numel() == 0) {
+    return;
+  }
   bool channel_last = (data_format == "NHWC");
   const auto& in_dims = in->dims();
   const auto& o_dims = out->dims();

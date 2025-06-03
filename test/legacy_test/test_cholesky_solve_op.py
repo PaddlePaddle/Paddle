@@ -282,5 +282,63 @@ class TestCholeskySolveOpError(unittest.TestCase):
             self.assertRaises(ValueError, paddle.linalg.cholesky_solve, x7, y7)
 
 
+# API function test
+class TestCholeskySolveAPIZeroSize(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.place = [paddle.CPUPlace()]
+        self.dtype = "float64"
+        self.upper = True
+        if core.is_compiled_with_cuda():
+            self.place.append(paddle.CUDAPlace(0))
+        self.init_shape()
+
+    def init_shape(self):
+        self.x_shape = [10, 0]
+        self.y_shape = [10, 10]
+        self.expected_shape = [10, 0]
+        # test in dynamic mode
+
+    def test_dygraph(self):
+        def run(place):
+            paddle.disable_static(place)
+            x_np = np.random.random(self.x_shape).astype(self.dtype)
+            y_np = np.random.random(self.y_shape).astype(self.dtype)
+
+            x = paddle.to_tensor(x_np, stop_gradient=False)
+            y = paddle.to_tensor(y_np, stop_gradient=False)
+            z = paddle.linalg.cholesky_solve(x, y, upper=self.upper)
+            loss = paddle.sum(z)
+            loss.backward()
+
+            self.assertEqual(z.shape, self.expected_shape)
+            self.assertEqual(x.shape, x.grad.shape)
+            self.assertEqual(y.shape, y.grad.shape)
+
+        for idx, place in enumerate(self.place):
+            run(place)
+
+
+class TestCholeskySolveAPIZeroSize1(TestCholeskySolveAPIZeroSize):
+    def init_shape(self):
+        self.x_shape = [0, 6]
+        self.y_shape = [0, 0]
+        self.expected_shape = [0, 6]
+
+
+class TestCholeskySolveAPIZeroSize2(TestCholeskySolveAPIZeroSize):
+    def init_shape(self):
+        self.x_shape = [1, 10, 6]
+        self.y_shape = [0, 10, 10]
+        self.expected_shape = [0, 10, 6]
+
+
+class TestCholeskySolveAPIZeroSize3(TestCholeskySolveAPIZeroSize):
+    def init_shape(self):
+        self.x_shape = [0, 0, 0]
+        self.y_shape = [0, 0, 0]
+        self.expected_shape = [0, 0, 0]
+
+
 if __name__ == "__main__":
     unittest.main()
