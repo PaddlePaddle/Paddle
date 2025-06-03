@@ -13,6 +13,8 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/empty_kernel.h"
+#include "paddle/phi/kernels/expand_kernel.h"
 #include "paddle/phi/kernels/funcs/strided_copy_kernel.cu.h"
 
 namespace phi {
@@ -1175,24 +1177,22 @@ bool LaunchContiguous2StridedCaseOneKernel(
   return true;
 }
 
-template <typename T, size_t OUT_RANK>
+template <typename T, int VecSize, typename OFFSET_T = int64_t>
 __global__ void Contiguous2StridedDefaultFunc(
     const T* input_data,
     T* output_data,
+    OFFSET_T* offset_data,
     Array<int64_t, phi::DDim::kMaxRank + 1> output_stride,
     Array<int64_t, phi::DDim::kMaxRank + 1> dims,
     const int64_t numel) {
-  int64_t gid = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t gid = (blockIdx.x * blockDim.x + threadIdx.x) * VecSize;
 #pragma unroll
-  for (int64_t i = gid; i < numel; i += blockDim.x * gridDim.x) {
-    int64_t output_offset = 0;
-    int64_t index_tmp = i;
-#pragma unroll
-    for (int dim = OUT_RANK - 1; dim >= 0; --dim) {
-      output_offset += (index_tmp % dims[dim]) * output_stride[dim];
-      index_tmp = index_tmp / dims[dim];
-    }
-    output_data[output_offset] = input_data[i];
+  for (int64_t i = gid; i < numel; i += blockDim.x * gridDim.x * VecSize) {
+    int64_t output_offset = offset_data[i];
+    using VecType = kps::details::VectorType<T, VecSize>;
+    const VecType* src = reinterpret_cast<const VecType*>(&input_data[i]);
+    VecType* dst = reinterpret_cast<VecType*>(&output_data[output_offset]);
+    *dst = *src;
   }
 }
 
@@ -1205,46 +1205,36 @@ void LaunchContiguous2StridedDefaultKernel(
     const phi::Array<int64_t, phi::DDim::kMaxRank + 1>& dims,
     int rank,
     int64_t numel) {
-  int64_t block = 512;
-  int64_t grid = (numel + block - 1) / block;
+  // int64_t block = 512;
+  // int64_t grid = (numel + block - 1) / block;
+  int VecSize = 4;
+  VecSize = std::min(phi::GetVectorizedSize<T>(input_data), VecSize);
+  VecSize = std::min(phi::GetVectorizedSize<T>(output_data), VecSize);
+  while (VecSize > 1 && numel % VecSize != 0) {
+    VecSize /= 2;
+  }
 
-  switch (rank) {
-    case 1:
-      Contiguous2StridedDefaultFunc<T, 1><<<grid, block, 0, dev_ctx.stream()>>>(
-          input_data, output_data, output_stride, dims, numel);
-      break;
-    case 2:
-      Contiguous2StridedDefaultFunc<T, 2><<<grid, block, 0, dev_ctx.stream()>>>(
-          input_data, output_data, output_stride, dims, numel);
-      break;
-    case 3:
-      Contiguous2StridedDefaultFunc<T, 3><<<grid, block, 0, dev_ctx.stream()>>>(
-          input_data, output_data, output_stride, dims, numel);
-      break;
-    case 4:
-      Contiguous2StridedDefaultFunc<T, 4><<<grid, block, 0, dev_ctx.stream()>>>(
-          input_data, output_data, output_stride, dims, numel);
-      break;
-    case 5:
-      Contiguous2StridedDefaultFunc<T, 5><<<grid, block, 0, dev_ctx.stream()>>>(
-          input_data, output_data, output_stride, dims, numel);
-      break;
-    case 6:
-      Contiguous2StridedDefaultFunc<T, 6><<<grid, block, 0, dev_ctx.stream()>>>(
-          input_data, output_data, output_stride, dims, numel);
-      break;
-    case 7:
-      Contiguous2StridedDefaultFunc<T, 7><<<grid, block, 0, dev_ctx.stream()>>>(
-          input_data, output_data, output_stride, dims, numel);
-      break;
-    case 8:
-      Contiguous2StridedDefaultFunc<T, 8><<<grid, block, 0, dev_ctx.stream()>>>(
-          input_data, output_data, output_stride, dims, numel);
-      break;
-    case 9:
-      Contiguous2StridedDefaultFunc<T, 9><<<grid, block, 0, dev_ctx.stream()>>>(
-          input_data, output_data, output_stride, dims, numel);
-      break;
+  constexpr int loop_count = 4;
+  auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
+      dev_ctx, numel, VecSize * loop_count);
+  auto& grid = config.block_per_grid;
+  auto& block = config.thread_per_block;
+
+  DenseTensor offset;
+  GetOutOffset<Context>(dev_ctx, output_stride, dims, numel, rank, &offset);
+  int64_t* offset_data = offset.data<int64_t>();
+
+  switch (VecSize) {
+#define CASE_VEC_SIZE(__Sz)                                                    \
+  case __Sz:                                                                   \
+    Contiguous2StridedDefaultFunc<T, __Sz>                                     \
+        <<<grid, block, 0, dev_ctx.stream()>>>(                                \
+            input_data, output_data, offset_data, output_stride, dims, numel); \
+    break
+    CASE_VEC_SIZE(4);
+    CASE_VEC_SIZE(2);
+    CASE_VEC_SIZE(1);
+#undef CASE_VEC_SIZE
     default:
       PADDLE_THROW(common::errors::InvalidArgument(
           "The rank of input should be less than 9, but received %d.", rank));
@@ -1278,14 +1268,48 @@ void StridedCopyKernel(const Context& dev_ctx,
   }
 
   const T* input_data = input.data<T>();
+  int VecSize = 4;
+  VecSize = std::min(phi::GetVectorizedSize<T>(input_data), VecSize);
+  VecSize = std::min(phi::GetVectorizedSize<T>(output_data), VecSize);
+  while (VecSize > 1 && numel % VecSize != 0) {
+    VecSize /= 2;
+  }
+
+  while (VecSize > 1 && output_dims[meta.dims.size() - 1] % VecSize != 0) {
+    VecSize /= 2;
+  }
+
+  if (output_stride[meta.dims.size() - 1] != 1) {
+    VecSize = 1;
+  }
+
   if (input.dims() != out->dims() && input.numel() == 1) {
-    StrideCopyDiffDimKernel<T, Context>(dev_ctx,
-                                        input_data,
-                                        output_data,
-                                        output_stride,
-                                        output_dims,
-                                        rank,
-                                        numel);
+    DenseTensor vec_input = Empty<T>(dev_ctx, IntArray{VecSize});
+    ExpandKernel<T, Context>(dev_ctx, input, IntArray{VecSize}, &vec_input);
+    const T* vec_input_data = vec_input.data<T>();
+    cudaDeviceSynchronize();
+    cudaError_t err = cudaGetLastError();
+    if (err != cudaSuccess) {
+      printf("111 CUDA Error: %s\n", cudaGetErrorString(err));
+    }
+    switch (VecSize) {
+#define CASE_VECSIZE(__Sz)                                    \
+  case __Sz:                                                  \
+    StrideCopyDiffDimKernel<T, Context, __Sz>(dev_ctx,        \
+                                              vec_input_data, \
+                                              output_data,    \
+                                              output_stride,  \
+                                              output_dims,    \
+                                              rank,           \
+                                              numel);         \
+    break;
+      CASE_VECSIZE(1);
+      CASE_VECSIZE(2);
+      CASE_VECSIZE(4);
+#undef CASE_VECSIZE
+      default:
+        PADDLE_THROW(common::errors::InvalidArgument("xxxxxxx"));
+    }
     return;
   }
   PADDLE_ENFORCE_EQ(input.dims(),
