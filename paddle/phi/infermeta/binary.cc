@@ -28,6 +28,7 @@ limitations under the License. */
 #include "paddle/phi/infermeta/unary.h"
 #include "paddle/phi/kernels/cpu/conv_util.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
+#include "paddle/phi/kernels/funcs/common_infer_shape_functions.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 #include "paddle/phi/kernels/funcs/correlation_funcs.h"
 
@@ -95,7 +96,9 @@ void AllValueCompareInferMeta(const MetaTensor& x,
                               const MetaTensor& y,
                               MetaTensor* out,
                               MetaConfig config) {
-  detail::BinarySameInputDimsCheck(x, y, config);
+  if (x.numel() != 0 && y.numel() != 0) {
+    detail::BinarySameInputDimsCheck(x, y, config);
+  }
   out->set_dims(common::make_ddim({}));
   out->set_dtype(DataType::BOOL);
 }
@@ -1816,7 +1819,7 @@ void CEmbeddingInferMeta(const MetaTensor& weight,
 
 void ExpandAsInferMeta(const MetaTensor& x,
                        const MetaTensor& y,
-                       const std::vector<int>& target_shape,
+                       const std::vector<int64_t>& target_shape,
                        MetaTensor* out) {
 #define MAX_RANK_SUPPORTED 8
   auto x_dims = x.dims();
@@ -2899,6 +2902,17 @@ void MaskedSelectInferMeta(const MetaTensor& x,
                            const MetaTensor& mask,
                            MetaTensor* out) {
   out->set_dims({-1});  // can not infer
+  out->set_dtype(x.dtype());
+}
+
+void MaskedFillInferMeta(const MetaTensor& x,
+                         const MetaTensor& mask,
+                         const MetaTensor& value,
+                         MetaTensor* out) {
+  auto x_dims = x.dims();
+  auto mask_dims = mask.dims();
+  auto expanded_dims = phi::funcs::BroadcastTwoDims(x_dims, mask_dims, -1);
+  out->set_dims(expanded_dims);
   out->set_dtype(x.dtype());
 }
 

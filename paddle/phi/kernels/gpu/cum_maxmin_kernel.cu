@@ -226,6 +226,11 @@ void ScanWithIndicesKernel(const Context& dev_ctx,
                            T1 init,
                            DenseTensor* out,
                            DenseTensor* indices) {
+  if (out && out->numel() == 0) {
+    dev_ctx.template Alloc<T1>(out);
+    dev_ctx.template Alloc<T2>(indices);
+    return;
+  }
   dev_ctx.template Alloc<T1>(out);
   dev_ctx.template Alloc<T2>(indices);
   // For 0D Tensor

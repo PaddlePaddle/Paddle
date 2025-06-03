@@ -147,6 +147,13 @@ class TestWhereOp3(TestWhereOp):
         self.cond = np.array(np.random.randint(2, size=(20, 2, 4)), dtype=bool)
 
 
+class TestWhereOp_ZeroSize(TestWhereOp):
+    def init_config(self):
+        self.x = np.random.uniform((-5), 5, (60, 0)).astype('float64')
+        self.y = np.random.uniform((-5), 5, (60, 0)).astype('float64')
+        self.cond = np.ones((60, 0)).astype('bool')
+
+
 class TestWhereAPI(unittest.TestCase):
     def setUp(self):
         self.init_data()
@@ -245,8 +252,11 @@ class TestWhereAPI(unittest.TestCase):
     def test_pir_api(self, use_cuda=False):
         for x_stop_gradient in [False, True]:
             for y_stop_gradient in [False, True]:
-                with paddle.pir_utils.IrGuard(), paddle.static.program_guard(
-                    paddle.static.Program(), paddle.static.Program()
+                with (
+                    paddle.pir_utils.IrGuard(),
+                    paddle.static.program_guard(
+                        paddle.static.Program(), paddle.static.Program()
+                    ),
                 ):
                     cond = paddle.static.data(
                         name='cond', shape=self.shape, dtype='bool'
@@ -821,7 +831,7 @@ class TestWhereDygraphAPI(unittest.TestCase):
         np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
         data = np.array([True, True, False])
         with program_guard(Program(), Program()):
-            x = paddle.static.data(name='x', shape=[(-1)], dtype='bool')
+            x = paddle.static.data(name='x', shape=[-1], dtype='bool')
             if not paddle.framework.use_pir_api():
                 x.desc.set_need_check_feed(False)
             y = paddle.where(x)

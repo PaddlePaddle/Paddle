@@ -3,7 +3,6 @@ numpy>=1.21
 protobuf>=3.20.2
 Pillow
 decorator
-astor
 opt_einsum==3.3.0
 networkx
 typing_extensions

@@ -28,6 +28,9 @@ void PixelShuffleGradKernel(const Context& ctx,
 
   const T* x_ptr = out_grad.data<T>();
   T* y_ptr = ctx.template Alloc<T>(x_grad);
+  if (x_grad && x_grad->numel() == 0) {
+    return;
+  }
 
   bool is_nchw = data_format == "NCHW";
 

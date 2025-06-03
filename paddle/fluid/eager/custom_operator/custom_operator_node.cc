@@ -373,6 +373,10 @@ RunCustomOpNode::operator()(paddle::small_vector<std::vector<paddle::Tensor>,
     grad_node->SetAttrs(attrs);
   }
 
+  if (HasNodePostHook()) {
+    outs = ApplyNodePostHooks(outs, hooked_grads);
+  }
+
   return outs;
 }
 
@@ -457,6 +461,10 @@ RunCustomOpDoubleGradNode::operator()(
   for (size_t i = 0; i < ctx.OutputRange().size(); ++i) {
     auto output_pair = ctx.OutputRangeAt(i);
     outs[i] = ctx.OutputsBetween(output_pair.first, output_pair.second);
+  }
+
+  if (HasNodePostHook()) {
+    outs = ApplyNodePostHooks(outs, hooked_grads);
   }
 
   return outs;

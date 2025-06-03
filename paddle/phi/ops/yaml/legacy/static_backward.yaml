@@ -112,6 +112,17 @@
     data_type : out_grad
   no_need_buffer : weight
 
+- backward_op : expand_as_grad
+  forward : expand_as (Tensor x, Tensor y, int[] target_shape = {}) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, int[] target_shape)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : expand_as_grad
+  no_need_buffer : x
+
 - backward_op : exponential__grad
   forward : exponential_ (Tensor x, float lam=1.0f) -> Tensor(out)
   args : (Tensor out_grad)

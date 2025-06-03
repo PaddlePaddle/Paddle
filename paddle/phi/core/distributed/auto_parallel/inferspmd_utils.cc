@@ -66,6 +66,7 @@ AttrType InferSpmdContext::AttrAt(size_t idx) const {
 template float InferSpmdContext::AttrAt(size_t idx) const;
 template int InferSpmdContext::AttrAt(size_t idx) const;
 template int64_t InferSpmdContext::AttrAt(size_t idx) const;
+template DataType InferSpmdContext::AttrAt(size_t idx) const;
 
 template <>
 bool InferSpmdContext::AttrAt(size_t idx) const {
@@ -91,6 +92,9 @@ std::vector<int> InferSpmdContext::AttrAt(size_t idx) const {
     if (attr.type() == typeid(std::vector<bool>)) {
       std::vector<bool> val = PADDLE_GET_CONST(std::vector<bool>, attr);
       return std::vector<int>(val.begin(), val.end());
+    } else if (attr.type() == typeid(std::vector<int64_t>) &&
+               paddle::get<std::vector<int64_t>>(attr).empty()) {
+      return std::vector<int>();
     } else {
       return paddle::get<std::vector<int>>(attr);
     }

@@ -11,10 +11,6 @@ limitations under the License. */
 #pragma once
 
 #include <Python.h>
-// Avoid a problem with copysign defined in pyconfig.h on Windows.
-#ifdef copysign
-#undef copysign
-#endif
 
 #include "paddle/fluid/eager/hooks.h"
 #include "paddle/fluid/eager/pylayer/py_layer_node.h"

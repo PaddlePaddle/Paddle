@@ -514,7 +514,8 @@ void Copy<phi::Place, phi::XPUPinnedPlace>(phi::Place dst_place,
 
 #endif
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
+    !defined(PADDLE_WITH_CUSTOM_DEVICE)
 static constexpr size_t kMaxGpuAsyncCopyBytes = 64 * 1024;  // 64K
 
 #ifdef PADDLE_WITH_HIP
