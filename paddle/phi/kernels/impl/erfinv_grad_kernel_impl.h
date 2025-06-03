@@ -25,6 +25,9 @@ void ErfinvGradKernel(const Context& ctx,
                       const DenseTensor& out_grad,
                       DenseTensor* x_grad) {
   ctx.template Alloc<T>(x_grad);
+  if (x_grad && x_grad->numel() == 0) {
+    return;
+  }
   auto eigen_out = EigenVector<T>::Flatten(out);
   auto eigen_dout = EigenVector<T>::Flatten(out_grad);
   auto eigen_dx = EigenVector<T>::Flatten(*x_grad);

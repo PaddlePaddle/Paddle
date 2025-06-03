@@ -30,6 +30,9 @@ void WhereKernel(const Context& ctx,
   const XPUType* x_data = reinterpret_cast<const XPUType*>(x.data<T>());
   const XPUType* y_data = reinterpret_cast<const XPUType*>(y.data<T>());
   XPUType* out_data = reinterpret_cast<XPUType*>(ctx.template Alloc<T>(out));
+  if (out && out->numel() == 0) {
+    return;
+  }
 
   auto cond_dims = common::vectorize<int64_t>(condition.dims());
   auto x_dims = common::vectorize<int64_t>(x.dims());

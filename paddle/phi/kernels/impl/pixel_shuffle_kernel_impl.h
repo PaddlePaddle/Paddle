@@ -30,6 +30,10 @@ void PixelShuffleKernel(const Context& ctx,
                         DenseTensor* out) {
   auto* in = &x;
   ctx.template Alloc<T>(out);
+  if (out && out->numel() == 0) {
+    return;
+  }
+
   int factor = upscale_factor;
   bool channel_last = (data_format == "NHWC");
   const auto& in_dims = in->dims();
