@@ -185,8 +185,8 @@ struct PirProgramMethodClass {
     adt::List<axpr::Value> lst;
     lst->reserve(shape_ptr->size());
     for (const auto& dim_expr : *shape_ptr) {
-      axpr::BuiltinClassInstance<axpr::Value> instance{
-          axpr::GetDimExprClass<axpr::Value>(), dim_expr};
+      axpr::BuiltinClassInstance<axpr::Value> instance{axpr::GetDimExprClass(),
+                                                       dim_expr};
       lst->emplace_back(instance);
     }
     return lst;

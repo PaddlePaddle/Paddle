@@ -26,7 +26,6 @@ SerializableAttrMap = __builtin__.SerializableAttrMap
 
 _raise = __builtin__._raise
 
-foreach = __builtin__.foreach
 range = __builtin__.range
 map = __builtin__.map
 reduce = __builtin__.reduce
@@ -59,3 +58,7 @@ def do_nothing():
 
 def import_by_file_path(file_path):
     return __builtin__import(None, file_path)  # noqa: F821
+
+
+def foreach(lst):
+    return lambda f: __builtin__.foreach(f, lst)

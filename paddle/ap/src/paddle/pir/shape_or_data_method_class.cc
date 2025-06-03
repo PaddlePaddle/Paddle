@@ -44,13 +44,13 @@ adt::Result<adt::List<axpr::Value>> GetConstructorArgsImpl(
   adt::List<axpr::Value> shape{};
   shape->reserve(impl.shape().size());
   for (const auto& dim_expr : impl.shape()) {
-    shape->emplace_back(axpr::GetDimExprClass<axpr::Value>().New(dim_expr));
+    shape->emplace_back(axpr::GetDimExprClass().New(dim_expr));
   }
   if (impl.data().has_value()) {
     adt::List<axpr::Value> data{};
     data->reserve(impl.data().value().size());
     for (const auto& dim_expr : impl.data().value()) {
-      data->emplace_back(axpr::GetDimExprClass<axpr::Value>().New(dim_expr));
+      data->emplace_back(axpr::GetDimExprClass().New(dim_expr));
     }
     return adt::List<axpr::Value>{axpr::Value{shape}, axpr::Value{data}};
   } else {

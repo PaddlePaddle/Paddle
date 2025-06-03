@@ -31,7 +31,7 @@ void VisitEachBuiltinFrameClass(const DoEachT& DoEach) {
   DoEach(code_module::GetPackageClass());
   DoEach(code_module::GetFuncDeclareClass());
   DoEach(code_module::GetCodeModuleClass());
-  DoEach(axpr::GetDimExprClass<ValueT>());
+  DoEach(axpr::GetDimExprClass());
   DoEach(GetCodeGenResultClass());
 }
 

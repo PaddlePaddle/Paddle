@@ -22,7 +22,6 @@
 
 namespace ap::axpr {
 
-template <typename ValueT>
-axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> GetDimExprClass();
+axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>> GetDimExprClass();
 
 }  // namespace ap::axpr

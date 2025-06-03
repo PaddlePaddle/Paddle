@@ -35,7 +35,7 @@ adt::Result<axpr::Value> Max(const axpr::Value& self_val,
   symbol::DimExpr ret{symbol::Max<symbol::DimExpr>{
       symbol::List<symbol::DimExpr>{lhs, rhs},
   }};
-  return axpr::GetDimExprClass<axpr::Value>().New(symbol::SimplifyDimExpr(ret));
+  return axpr::GetDimExprClass().New(symbol::SimplifyDimExpr(ret));
 }
 
 adt::Result<axpr::Value> Min(const axpr::Value& self_val,
@@ -48,7 +48,7 @@ adt::Result<axpr::Value> Min(const axpr::Value& self_val,
   symbol::DimExpr ret{symbol::Min<symbol::DimExpr>{
       symbol::List<symbol::DimExpr>{lhs, rhs},
   }};
-  return axpr::GetDimExprClass<axpr::Value>().New(symbol::SimplifyDimExpr(ret));
+  return axpr::GetDimExprClass().New(symbol::SimplifyDimExpr(ret));
 }
 
 adt::Result<axpr::Value> Broadcast(const axpr::Value& self_val,
@@ -61,7 +61,7 @@ adt::Result<axpr::Value> Broadcast(const axpr::Value& self_val,
   symbol::DimExpr ret{symbol::Broadcast<symbol::DimExpr>{
       symbol::List<symbol::DimExpr>{lhs, rhs},
   }};
-  return axpr::GetDimExprClass<axpr::Value>().New(symbol::SimplifyDimExpr(ret));
+  return axpr::GetDimExprClass().New(symbol::SimplifyDimExpr(ret));
 }
 
 adt::Result<axpr::Value> NewSymbolicName(const axpr::Value& self_val,

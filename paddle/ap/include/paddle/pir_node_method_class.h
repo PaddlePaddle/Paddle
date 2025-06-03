@@ -79,8 +79,8 @@ struct NativeIrValueMethodClass {
     adt::List<ValueT> lst;
     lst->reserve(shape_ptr->size());
     for (const auto& dim_expr : *shape_ptr) {
-      axpr::BuiltinClassInstance<ValueT> instance{
-          axpr::GetDimExprClass<ValueT>(), dim_expr};
+      axpr::BuiltinClassInstance<ValueT> instance{axpr::GetDimExprClass(),
+                                                  dim_expr};
       lst->emplace_back(instance);
     }
     return lst;
@@ -188,8 +188,8 @@ struct RefIrValueMethodClass {
     adt::List<ValueT> lst;
     lst->reserve(shape_ptr->size());
     for (const auto& dim_expr : *shape_ptr) {
-      axpr::BuiltinClassInstance<ValueT> instance{
-          axpr::GetDimExprClass<ValueT>(), dim_expr};
+      axpr::BuiltinClassInstance<ValueT> instance{axpr::GetDimExprClass(),
+                                                  dim_expr};
       lst->emplace_back(instance);
     }
     return lst;

@@ -39,6 +39,14 @@ def GetGroupedTrivialOpNames():
         "cinn_op.broadcast",
         "pd_op.expand",
         "cinn_op.generate_shape",
+        "pd_op.full_int_array",
+        "pd_op.reshape",
+        "pd_op.slice",
+        "pd_op.assign_value_",
+        "pd_op.bitwise_and",
+        "pd_op.unsqueeze",
+        "pd_op.scale",
+        "pd_op.bitwise_right_shift",
     ]
     sorted_registry_objects = ap.sorted(
         ap.registry().customize_grouped_trivial_op_names.__get_valid_values__(),
@@ -47,9 +55,9 @@ def GetGroupedTrivialOpNames():
     functions = ap.map(lambda x: x.value, sorted_registry_objects)
     nonlocal_box = ap.MutableList(lst)
 
-    def update_grouped_trivial_op_names(func):
+    @ap.foreach(functions)
+    def do_each(func):
         nonlocal_box[0] = func(nonlocal_box[0])
 
-    ap.foreach(update_grouped_trivial_op_names, functions)
     lst = nonlocal_box[0]
     return lst

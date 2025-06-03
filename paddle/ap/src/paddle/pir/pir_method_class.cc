@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/ap/include/paddle/pir/pir_method_class.h"
+#include "paddle/ap/include/axpr/dim_expr_method_class.h"
 #include "paddle/ap/include/axpr/module_mgr.h"
 #include "paddle/ap/include/paddle/pir_node.h"
 
@@ -40,6 +41,8 @@ void DefineMethods(Builder* m) {
   FOR_EACH_PIR_ALTERNATIVE_TYPE(DEF_MAKE_TYPE);
 #undef DEF_MAKE_TYPE
   ForEachShapeOrDataMaker(
+      [&](const auto& name, const auto& value) { m->Def(name, value); });
+  axpr::ForEachDimExprMaker(
       [&](const auto& name, const auto& value) { m->Def(name, value); });
 }
 

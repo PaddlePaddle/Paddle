@@ -34,7 +34,7 @@ struct DimExprKernelArgIdImpl {
 
   template <typename ValueT>
   adt::Result<ValueT> CastData() const {
-    axpr::BuiltinClassInstance<ValueT> instance{axpr::GetDimExprClass<ValueT>(),
+    axpr::BuiltinClassInstance<ValueT> instance{axpr::GetDimExprClass(),
                                                 this->dim_expr};
     return ValueT{instance};
   }
