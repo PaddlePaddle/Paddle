@@ -1838,6 +1838,25 @@ void IndexPutGradInferMeta(const MetaTensor& x,
   }
 }
 
+void IndexElementwisePutGradInferMeta(
+    const MetaTensor& x,
+    const std::vector<const MetaTensor*>& index,
+    const MetaTensor& value,
+    const MetaTensor& out_grad,
+    const std::vector<int64_t>& input_dims,
+    const std::vector<int64_t>& input_strides,
+    const std::vector<int64_t>& index_dims,
+    const std::vector<int64_t>& index_strides,
+    MetaTensor* x_grad,
+    MetaTensor* value_grad) {
+  if (x_grad) {
+    x_grad->share_meta(x);
+  }
+  if (value_grad) {
+    value_grad->share_meta(value);
+  }
+}
+
 void FusedRopeGradInferMeta(const MetaTensor& sin,
                             const MetaTensor& cos,
                             const MetaTensor& position_ids,
