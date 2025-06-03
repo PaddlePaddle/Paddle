@@ -635,6 +635,103 @@ class SequenceParallelDisable(PlanBase):
         )
 
 
+class ConvParallel(PlanBase):
+    """
+    A strategy for enabling spatial parallelism on ``paddle.nn.Conv2D`` layers
+    by sharding the input tensor along its Width (W) dimension.
+
+    When this ``ConvParallel`` configuration is applied to a ``Conv2D`` layer,
+    the layer's input tensor will have its width dimension split across devices
+    in the model parallel group. This can help reduce memory usage from activations,
+    especially when dealing with inputs that have a large width.
+
+    To enable width-wise input sharding correctly, make sure your `Conv2D` layer
+    satisfies the following conditions along the width dimension:
+
+    - **Dilation** must be set to `1`.
+    - **If no width padding is used:**
+        - The input width must be evenly divisible by the stride width.
+        - The stride width must be equal to the kernel width.
+    - **If width padding is used:**
+        - The stride width must be `1`.
+        - The total input width must be at least half the kernel width.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> import paddle.nn as nn
+            >>> import paddle.distributed as dist
+
+            >>> class SimpleConvNet(nn.Layer):
+            ...     def __init__(self, data_format="NCHW"):
+            ...         super().__init__()
+            ...         self.conv1 = nn.Conv2D(
+            ...             3, 8, kernel_size=3, padding=1, data_format=data_format
+            ...         )
+            ...         self.relu = nn.ReLU()
+            ...     def forward(self, x):
+            ...         x = self.conv1(x)
+            ...         return self.relu(x)
+            ...
+            >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+            >>> model = SimpleConvNet(data_format="NCHW")
+            >>> mp_config = {
+            ...    "parallelize_plan": {
+            ...        "conv1": dist.ConvParallel()
+            ...     }
+            ... }
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+
+    def conv_parallel_start(self, process_mesh, data_format):
+        def start(layer, input, output=None):
+            if data_format == "NCHW":
+                shard_w_dim = 3
+            elif data_format == "NHWC":
+                shard_w_dim = 2
+            else:
+                raise ValueError(
+                    f"Unsupported data_format: {data_format}. "
+                    "Only NCHW and NHWC are supported."
+                )
+
+            if isinstance(input, tuple):
+                x = input[0]
+            else:
+                x = input
+
+            placements = x.placements
+            mp_index = process_mesh.dim_names.index('mp')
+
+            if placements is None:
+                placements = [
+                    dist.Replicate() for _ in range(len(process_mesh.shape))
+                ]
+
+            if placements[mp_index] == dist.Shard(shard_w_dim):
+                return input
+
+            placements[mp_index] = dist.Shard(shard_w_dim)
+            x = dist.shard_tensor(x, process_mesh, placements)
+            if isinstance(input, tuple):
+                input = list(input)
+                input[0] = x
+                input = tuple(input)
+            else:
+                input = x
+            return input
+
+        return start
+
+    def apply(self, layer, process_mesh, shard_param_list):
+        layer.register_forward_pre_hook(
+            self.conv_parallel_start(process_mesh, layer._data_format)
+        )
+
+
 class TensorParallel(ParallelModel):
     def __init__(self, model, parallelize_plan=None):
         super().__init__(model)
