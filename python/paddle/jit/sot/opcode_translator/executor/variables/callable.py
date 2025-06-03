@@ -71,6 +71,10 @@ from ....utils.exceptions import (
     UnsupportedOperationBreak,
     UnsupportedPaddleAPIBreak,
 )
+from ....utils.paddle_api_config import (
+    break_graph_functions,
+    break_graph_layer_classes,
+)
 from ..dispatcher import Dispatcher
 from ..guard import (
     FasterStringifiedExpression,
@@ -142,6 +146,32 @@ class CallableVariable(VariableBase):
 
     def call_function(self, /, *args, **kwargs):
         raise NotImplementedError("call_function is not implemented.")
+
+
+class ForceBreakCallableVariable(CallableVariable):
+    def __init__(self, callable, graph: FunctionGraph, tracker: Tracker):
+        super().__init__(graph, tracker)
+
+    def call_function(self, /, *args, **kwargs) -> VariableBase:
+        raise BreakGraphError(
+            UnsupportedOperationBreak(
+                reason_str="ForceBreakCallableVariable is called."
+            )
+        )
+
+    def get_py_value(self, allow_tensor=False):
+        return self.value
+
+    @VariableFactory.register_from_value()
+    def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
+        if (
+            isinstance(value, paddle.nn.Layer)
+            and value.__class__ in break_graph_layer_classes
+        ):
+            return ForceBreakCallableVariable(value, graph, tracker)
+        elif hashable(value) and value in break_graph_functions:
+            return ForceBreakCallableVariable(value, graph, tracker)
+        return None
 
 
 class FunctionVariable(CallableVariable):

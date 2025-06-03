@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import inspect
 from typing import (
     Callable,
     Protocol,
@@ -24,6 +25,8 @@ from typing import (
 from typing_extensions import (
     ParamSpec,
 )
+
+import paddle
 
 from .dy2static.utils import (
     TransformOptions,
@@ -123,3 +126,24 @@ def unified(
     if fn is None:
         return lambda fn: _mark_as_unified(fn, for_sot=for_sot, for_ast=for_ast)
     return _mark_as_unified(fn, for_sot=for_sot, for_ast=for_ast)
+
+
+def force_dynamic(
+    fn: Callable[_InputT, _RetT] | type[paddle.nn.Layer] | None = None,
+) -> Callable[_InputT, _RetT]:
+    """
+    Mark a function or paddle.nn.Layer to be executed in dynamic mode, it will
+    break the graph and prevent it from being converted to static mode.
+    """
+    from paddle.jit import sot
+
+    if inspect.isclass(fn) and issubclass(fn, paddle.nn.Layer):
+        sot.utils.paddle_api_config.add_break_graph_layer_class(fn)
+        return fn
+    if inspect.isfunction(fn):
+        sot.utils.paddle_api_config.add_break_graph_function(fn)
+        return fn
+
+    raise TypeError(
+        f"Expected a callable or paddle.nn.Layer, but got {type(fn).__name__}."
+    )
