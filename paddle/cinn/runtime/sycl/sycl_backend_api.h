@@ -118,7 +118,7 @@ class SYCLBackendAPI final : public BackendAPI {
   // all queues in all devices
   std::vector<std::vector<::sycl::queue*>> queues;
   // now_device_id, change by set_device()
-  int now_device_id = -1;
+  int now_device_id = 0;
   // whether the BackendAPI is initialized.
   bool initialized_{false};
 };

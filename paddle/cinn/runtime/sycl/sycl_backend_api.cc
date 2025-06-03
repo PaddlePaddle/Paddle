@@ -105,23 +105,23 @@ int SYCLBackendAPI::get_device_property(DeviceProperty device_property,
 
   switch (device_property) {
     case DeviceProperty::MaxBlockDimX: {
-      ::sycl::_V1::id<3> max_work_item_sizes =
+      ::sycl::id<3> max_work_item_sizes =
           this->devices[index]
-              .get_info<::sycl::_V1::info::device::max_work_item_sizes<3>>();
+              .get_info<::sycl::info::device::max_work_item_sizes>();
       rv = max_work_item_sizes[0];
       break;
     }
     case DeviceProperty::MaxBlockDimY: {
-      ::sycl::_V1::id<3> max_work_item_sizes =
+      ::sycl::id<3> max_work_item_sizes =
           this->devices[index]
-              .get_info<::sycl::_V1::info::device::max_work_item_sizes<3>>();
+              .get_info<::sycl::info::device::max_work_item_sizes>();
       rv = max_work_item_sizes[1];
       break;
     }
     case DeviceProperty::MaxBlockDimZ: {
-      ::sycl::_V1::id<3> max_work_item_sizes =
+      ::sycl::id<3> max_work_item_sizes =
           this->devices[index]
-              .get_info<::sycl::_V1::info::device::max_work_item_sizes<3>>();
+              .get_info<::sycl::info::device::max_work_item_sizes>();
       rv = max_work_item_sizes[2];
       break;
     }
@@ -276,9 +276,9 @@ std::array<int, 3> SYCLBackendAPI::get_max_block_dims(
     std::optional<int> device_id) {
   std::array<int, 3> kMaxBlockDims;
   int index = device_id.value_or(this->now_device_id);
-  ::sycl::_V1::id<3> max_work_item_sizes =
+  ::sycl::id<3> max_work_item_sizes =
       this->devices[index]
-          .get_info<::sycl::_V1::info::device::max_work_item_sizes<3>>();
+          .get_info<::sycl::info::device::max_work_item_sizes>();
   kMaxBlockDims = std::array<int, 3>{
       max_work_item_sizes[2], max_work_item_sizes[1], max_work_item_sizes[0]};
   return kMaxBlockDims;
