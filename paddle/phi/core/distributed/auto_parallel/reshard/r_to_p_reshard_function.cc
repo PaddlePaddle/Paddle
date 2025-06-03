@@ -50,7 +50,7 @@ void RToPReshardFunction::Eval(phi::DeviceContext* dev_ctx,
   VLOG(3) << "Call " << Name();
   const auto& in_process_ids = in.dist_attr().process_mesh().process_ids();
   if (in_process_ids.size() == 1) {
-    *out = in;
+    SetValue(out, in.value());
     return;
   }
   const auto& out_process_mesh = out_dist_attr.process_mesh();
