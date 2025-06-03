@@ -166,8 +166,8 @@ def rpc_sync(
     timeout: int = _DEFAULT_RPC_TIMEOUT,
 ) -> _RetT:
     """
-    Make a blocking RPC call to run function ``fn`` on worker ``to``. Warning: All RPC API should 
-    only be used internally within a secure network environment and must not be accessible via 
+    Make a blocking RPC call to run function ``fn`` on worker ``to``. Warning: All RPC API should
+    only be used internally within a secure network environment and must not be accessible via
     the public internet.
 
     Args:
@@ -214,7 +214,7 @@ def rpc_async(
     timeout: int = _DEFAULT_RPC_TIMEOUT,
 ) -> _FutureWrapper[_RetT]:
     """
-    Make a non-blocking RPC call to run function ``fn`` on worker ``to``. Warning: All RPC API should 
+    Make a non-blocking RPC call to run function ``fn`` on worker ``to``. Warning: All RPC API should
     only be used internally within a secure network environment and must not be accessible via the public internet.
 
     Args:
@@ -310,7 +310,7 @@ def shutdown() -> None:
     """
     Perform a shutdown of the RPC agent, stop the worker and destroy the agent.
     This will block until all local and remote RPC processes reach this method
-    and wait for all outstanding work to complete. Warning: All RPC API should 
+    and wait for all outstanding work to complete. Warning: All RPC API should
     only be used internally within a secure network environment and must not be
     accessible via the public internet.
 
@@ -341,8 +341,8 @@ def shutdown() -> None:
 
 def get_worker_info(name: str) -> WorkerInfo:
     """
-    Get worker information by worker name. Warning: All RPC API should 
-    only be used internally within a secure network environment and must 
+    Get worker information by worker name. Warning: All RPC API should
+    only be used internally within a secure network environment and must
     not be accessible via the public internet.
 
     Args:
@@ -373,8 +373,8 @@ def get_worker_info(name: str) -> WorkerInfo:
 
 def get_all_worker_infos() -> list[WorkerInfo]:
     """
-    Get all worker information. Warning: All RPC API should only be used 
-    internally within a secure network environment and must not be 
+    Get all worker information. Warning: All RPC API should only be used
+    internally within a secure network environment and must not be
     accessible via the public internet.
 
     Returns:
@@ -402,7 +402,7 @@ def get_all_worker_infos() -> list[WorkerInfo]:
 
 def get_current_worker_info() -> WorkerInfo:
     """
-    Get current worker information. Warning: All RPC API should only be used internally 
+    Get current worker information. Warning: All RPC API should only be used internally
     within a secure network environment and must not be accessible via the public internet.
 
     Returns:
