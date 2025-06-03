@@ -19,7 +19,6 @@
 #include <vector>
 #include "cub/device/device_histogram.cuh"
 #include "paddle/common/flags.h"
-#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/kernels/empty_kernel.h"  // NOLINT
 

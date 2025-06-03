@@ -13,17 +13,8 @@
 // limitations under the License.
 
 #pragma once
-#include <cstdint>
-#include <vector>
-#include "cub/device/device_histogram.cuh"
-#include "paddle/common/flags.h"
-#include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/utils/data_type.h"
-#include "paddle/phi/kernels/empty_kernel.h"  // NOLINT
 
-#include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/backends/gpu/gpu_launch_config.h"
-#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
 
