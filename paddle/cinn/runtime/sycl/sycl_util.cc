@@ -23,7 +23,7 @@
 #include "paddle/cinn/utils/profiler.h"
 #include "paddle/common/enforce.h"
 #ifdef CINN_WITH_HIP
-#include<hip/hip_runtime.h>
+#include <hip/hip_runtime.h>
 #endif
 
 namespace cinn {
@@ -40,7 +40,7 @@ void cinn_call_sycl_kernel(void *kernel_fn,
                            int block_y,
                            int block_z,
                            int shared_memory_bytes,
-                           void* stream) {
+                           void *stream) {
   VLOG(3) << "cinn_call_sycl_kernel, grid_dim={" << grid_x << ", " << grid_y
           << ", " << grid_z << "}, block_dim={" << block_x << ", " << block_y
           << ", " << block_z << "}, num_args=" << num_args;
@@ -87,11 +87,8 @@ void infer_shape_set_value(int row, int col, int64_t value, int64_t **v) {
   v[row][col] = value;
 }
 
-void cinn_call_sycl_memset(void *v_args,
-                           int num_args,
-                           int value,
-                           size_t count,
-                           void* stream ) {
+void cinn_call_sycl_memset(
+    void *v_args, int num_args, int value, size_t count, void *stream) {
   PADDLE_ENFORCE_EQ(num_args,
                     1,
                     ::common::errors::PreconditionNotMet(
@@ -111,7 +108,10 @@ void cinn_call_sycl_memset(void *v_args,
   SYCL_CALL(Queue->memset(output, value, count));
 }
 
-void cinn_call_sycl_memcpy(void *v_args, int num_args, size_t count, void* stream) {
+void cinn_call_sycl_memcpy(void *v_args,
+                           int num_args,
+                           size_t count,
+                           void *stream) {
   PADDLE_ENFORCE_EQ(
       num_args,
       2,
