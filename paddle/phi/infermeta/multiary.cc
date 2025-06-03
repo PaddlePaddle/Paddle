@@ -6275,5 +6275,109 @@ void TopPSamplingInferMeta(const MetaTensor& x,
   }
 }
 
+void MoeUnzipInferMeta(const MetaTensor& X,
+                       const MetaTensor& XScale,
+                       const MetaTensor& expert_routemap_topk,
+                       const MetaTensor& expert_prob_topk,
+                       const Scalar& max_tokens_per_expert,
+                       int topk,
+                       int num_experts,
+                       MetaTensor* X_unzipped,
+                       MetaTensor* zipped_expertwise_rowmap,
+                       MetaTensor* token_prob_unzipped,
+                       MetaTensor* XScale_unzipped) {
+  auto x_dim = X.dims();
+  auto xscale_dim = XScale.dims();
+  auto expert_routemap_topk_dim = expert_routemap_topk.dims();
+  auto expert_prob_topk_dim = expert_prob_topk.dims();
+
+  PADDLE_ENFORCE_EQ(
+      x_dim.size(),
+      2,
+      errors::InvalidArgument("Input X should have 2 dimensions"));
+
+  PADDLE_ENFORCE_EQ(
+      (X.dtype() == phi::DataType::BFLOAT16 ||
+       X.dtype() == phi::DataType::FLOAT8_E4M3FN),
+      true,
+      errors::InvalidArgument(
+          "The input X type should be bfloat16 or float8_e4mefn"));
+
+  PADDLE_ENFORCE_EQ(
+      xscale_dim.size(),
+      2,
+      errors::InvalidArgument("Input XScale should have 2 dimensions"));
+
+  PADDLE_ENFORCE_EQ(
+      XScale.dtype(),
+      phi::DataType::FLOAT32,
+      errors::InvalidArgument("The input XScale type should be float32"));
+
+  PADDLE_ENFORCE_EQ(expert_routemap_topk_dim.size(),
+                    2,
+                    errors::InvalidArgument(
+                        "Input expert_routemap_topk should have 2 dimensions"));
+
+  PADDLE_ENFORCE_EQ(expert_routemap_topk.dtype(),
+                    phi::DataType::INT32,
+                    errors::InvalidArgument(
+                        "The input expert_routemap_topk type should be int32"));
+
+  PADDLE_ENFORCE_EQ(expert_prob_topk_dim.size(),
+                    2,
+                    errors::InvalidArgument(
+                        "Input expert_prob_topk should have 2 dimensions"));
+  PADDLE_ENFORCE_EQ(
+      (expert_prob_topk.dtype() == phi::DataType::BFLOAT16 ||
+       expert_prob_topk.dtype() == phi::DataType::FLOAT32),
+      true,
+      errors::InvalidArgument(
+          "The input expert_prob_topk type should be float32 or bfloat16"));
+
+  PADDLE_ENFORCE_EQ(
+      x_dim[0],
+      xscale_dim[0],
+      errors::InvalidArgument("The 0-th dimension (seqlen) of X [%d] "
+                              "must match that of XScale [%d].",
+                              x_dim[0],
+                              xscale_dim[0]));
+
+  PADDLE_ENFORCE_EQ(
+      x_dim[0],
+      expert_routemap_topk_dim[0],
+      errors::InvalidArgument("The 0-th dimension (seqlen) of X [%d] "
+                              "must match that of expert_routemap_topk [%d].",
+                              x_dim[0],
+                              expert_routemap_topk_dim[0]));
+
+  PADDLE_ENFORCE_EQ(
+      x_dim[0],
+      expert_prob_topk_dim[0],
+      errors::InvalidArgument("The 0-th dimension (seqlen) of X [%d] "
+                              "must match that of expert_prob_topk [%d].",
+                              x_dim[0],
+                              expert_prob_topk_dim[0]));
+
+  PADDLE_ENFORCE_EQ((x_dim[1] + 127) / 128,
+                    xscale_dim[1],
+                    errors::InvalidArgument(
+                        "The 1st dimension (token scale count) of XScale [%d] "
+                        "must match ceil(X' token length [%d] + 127) / 128).",
+                        xscale_dim[1],
+                        x_dim[1]));
+
+  X_unzipped->set_dims({-1, x_dim[1]});  // can not infer
+  X_unzipped->set_dtype(X.dtype());
+
+  zipped_expertwise_rowmap->set_dims(phi::make_ddim({x_dim[0], num_experts}));
+  zipped_expertwise_rowmap->set_dtype(phi::DataType::INT32);
+
+  token_prob_unzipped->set_dims({-1, 1});  // can not infer
+  token_prob_unzipped->set_dtype(expert_prob_topk.dtype());
+
+  XScale_unzipped->set_dims({-1, xscale_dim[1]});  // can not infer
+  XScale_unzipped->set_dtype(XScale.dtype());
+}
+
 }  // namespace phi
 PD_REGISTER_INFER_META_FN(batch_norm_infer, phi::BatchNormInferInferMeta);

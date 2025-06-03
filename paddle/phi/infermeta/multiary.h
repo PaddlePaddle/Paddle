@@ -1284,4 +1284,16 @@ void TopPSamplingInferMeta(const MetaTensor& x,
                            MetaTensor* topk_scores,
                            MetaTensor* topk_ids);
 
+void MoeUnzipInferMeta(const MetaTensor& X,
+                       const MetaTensor& XScale,
+                       const MetaTensor& expert_routemap_topk,
+                       const MetaTensor& expert_prob_topk,
+                       const Scalar& max_tokens_per_expert,
+                       int topk,
+                       int num_experts,
+                       MetaTensor* X_unzipped,
+                       MetaTensor* zipped_expertwise_rowmap,
+                       MetaTensor* token_prob_unzipped,
+                       MetaTensor* XScale_unzipped);
+
 }  // namespace phi
