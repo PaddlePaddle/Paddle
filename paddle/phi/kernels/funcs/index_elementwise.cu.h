@@ -1,4 +1,4 @@
-/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -32,11 +32,7 @@ limitations under the License. */
 namespace phi {
 namespace funcs {
 
-#ifdef PADDLE_WITH_HIP
-constexpr int MAX_DIMS = 16;
-#else
-constexpr int MAX_DIMS = 25;
-#endif
+constexpr int MAX_DIMS = 9;
 
 static constexpr int launch_bound2 = 4;
 
@@ -93,8 +89,11 @@ struct OffsetCalculator {
                    const int64_t* const* strides,
                    const int64_t* element_sizes = nullptr)
       : dims(dims) {
-    PADDLE_ENFORCE(
-        dims <= MAX_DIMS, "tensor has too many (>", MAX_DIMS, ") dims");
+    PADDLE_ENFORCE_LE(
+        dims,
+        MAX_DIMS,
+        common::errors::InvalidArgument(
+            "Tensor has too many dims. Maximum dim is d%.", MAX_DIMS));
     for (int i = 0; i < dims; i++) {
       sizes_[i] = IntDivider<index_t>(sizes[i]);
       for (int arg = 0; arg < NARGS; arg++) {
@@ -151,10 +150,12 @@ std::array<char*, DDim::kMaxRank> GetIndexDataPtrs(
   for (size_t i = 0; i < index.size(); ++i) {
     const IndexT* p_index = index[i]->data<IndexT>();
 
-    PADDLE_ENFORCE(p_index != nullptr,
-                   "The pointer p_index is nullptr, "
-                   "please check whether the index tensor is valid and "
-                   "its data is correctly initialized.");
+    PADDLE_ENFORCE_NOT_NULL(
+        p_index,
+        ::common::errors::InvalidArgument(
+            "The pointer p_index is nullptr, "
+            "please check whether the index tensor is valid and "
+            "its data is correctly initialized."));
 
     index_ptrs[i] = reinterpret_cast<char*>(const_cast<IndexT*>(p_index));
   }
