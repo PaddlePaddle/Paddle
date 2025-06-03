@@ -169,7 +169,7 @@ SpmdInfo RmsNormGradInferSpmd(const DistMetaTensor& x,
       BuildRmsNormGradEinsum(x_shape.size());
   // Don't align on mp mesh.
   AlignDimsSharding(
-      &dist_attrs, shapes, annotations, {1}, align_annotation, true);
+      &dist_attrs, shapes, annotations, {1}, align_annotation, false);
   auto x_dist_attr_dst = dist_attrs[0];
   auto invvar_dist_attr_dst = dist_attrs[1];
   auto out_grad_dist_attr_dst = dist_attrs[2];
