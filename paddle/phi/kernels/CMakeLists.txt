@@ -47,22 +47,23 @@ file(
 if(APPLE OR WIN32)
   list(REMOVE_ITEM kernel_cu "fusion/gpu/fusion_group_kernel.cu")
   list(REMOVE_ITEM kernel_cu "sparse/gpu/conv_kernel_igemm.cu")
-  list(REMOVE_ITEM 
-       kernel_gpu
-       "gpu/moe_ops_partial_nosoftmaxtopk_kernel.cu"
-       "gpu/moe_ops_partial_nosoftmaxtopk_grad_kernel.cu"
-       "gpu/moe_gate_dispatch_permute_grad_kernel.cu"
-       "gpu/moe_gate_dispatch_permute_kernel.cu"
-       "gpu/expand_modality_expert_id_kernel.cu"
-       "gpu/moe_combine_kernel.cu"
-       "gpu/moe_combine_grad_kernel.cu"
-       "gpu/cal_aux_loss_kernel.cu"
-       "gpu/cal_aux_loss_grad_kernel.cu"
-       "gpu/build_src_rank_and_local_expert_id_kernel.cu"
-       "gpu/moe_gate_dispatch_kernel.cu"
-       "gpu/moe_gate_dispatch_grad_kernel.cu"
-       "gpu/int_bincount.cu"
-       "gpu/layer_norm_cuda_kernel.cu")
+  list(
+    REMOVE_ITEM
+    kernel_gpu
+    "gpu/moe_ops_partial_nosoftmaxtopk_kernel.cu"
+    "gpu/moe_ops_partial_nosoftmaxtopk_grad_kernel.cu"
+    "gpu/moe_gate_dispatch_permute_grad_kernel.cu"
+    "gpu/moe_gate_dispatch_permute_kernel.cu"
+    "gpu/expand_modality_expert_id_kernel.cu"
+    "gpu/moe_combine_kernel.cu"
+    "gpu/moe_combine_grad_kernel.cu"
+    "gpu/cal_aux_loss_kernel.cu"
+    "gpu/cal_aux_loss_grad_kernel.cu"
+    "gpu/build_src_rank_and_local_expert_id_kernel.cu"
+    "gpu/moe_gate_dispatch_kernel.cu"
+    "gpu/moe_gate_dispatch_grad_kernel.cu"
+    "gpu/int_bincount.cu"
+    "gpu/layer_norm_cuda_kernel.cu")
 endif()
 
 if(NOT WITH_DGC)
