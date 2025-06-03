@@ -54,6 +54,10 @@ void ElementwiseKernel(const OneDNNContext& dev_ctx,
                        const DenseTensor& y,
                        int axis,
                        DenseTensor* out) {
+  if (out->numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   const auto& onednn_engine = dev_ctx.GetEngine();
 
   auto* non_const_x = &x;

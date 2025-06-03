@@ -104,7 +104,7 @@ void GlobalScatterKernel(const Context& dev_ctx,
             x->dtype(),
             j,
             comm->GetXcclComm(),
-            *stream);
+            stream->raw_stream());
         recv_ptr += cpu_global_count_data[idx];
       }
     }
@@ -120,7 +120,7 @@ void GlobalScatterKernel(const Context& dev_ctx,
               x->dtype(),
               j,
               comm->GetXcclComm(),
-              *stream);
+              stream->raw_stream());
         }
       }
     }
@@ -142,7 +142,7 @@ void GlobalScatterKernel(const Context& dev_ctx,
             x->dtype(),
             j,
             comm->GetXcclComm(),
-            *stream);
+            stream->raw_stream());
         recv_ptr += cpu_global_count_data[idx];
       }
     }

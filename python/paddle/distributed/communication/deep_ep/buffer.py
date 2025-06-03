@@ -108,7 +108,8 @@ class Buffer:
             # Enable IBGDA for the low latency mode, which refers to "no package forwarding between NVLink and RDMA"
             if low_latency_mode:
                 assert num_qps_per_rank > 0
-                os.environ['NVSHMEM_DISABLE_P2P'] = '1'
+                if not os.getenv("NVSHMEM_DISABLE_P2P"):
+                    os.environ['NVSHMEM_DISABLE_P2P'] = '1'
                 os.environ['NVSHMEM_IB_ENABLE_IBGDA'] = '1'
                 os.environ['NVSHMEM_IBGDA_NIC_HANDLER'] = 'gpu'
                 os.environ['NVSHMEM_IBGDA_NUM_RC_PER_PE'] = (

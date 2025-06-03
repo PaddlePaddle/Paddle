@@ -712,8 +712,8 @@ def get_paddle_extra_install_requirements():
             cuda_major_version = match.group(1)
         except Exception as e:
             raise ValueError("CUDA not found")
-
-        paddle_cuda_requires = PADDLE_CUDA_INSTALL_REQUIREMENTS[cuda_major_version].split("|")
+        if cuda_major_version in PADDLE_CUDA_INSTALL_REQUIREMENTS:
+            paddle_cuda_requires = PADDLE_CUDA_INSTALL_REQUIREMENTS[cuda_major_version].split("|")
 
     if '@WITH_PIP_TENSORRT@' == 'ON':
         version_str = get_tensorrt_version()
@@ -1026,8 +1026,8 @@ json_path_list = get_cinn_config_jsons()
 for json in json_path_list:
     package_data['paddle.cinn_config'] += [json]
 
-#if '${WITH_CINN}' == 'ON':
-#    build_cutlass3_src_code()
+# if '${WITH_CINN}' == 'ON':
+#     build_cutlass3_src_code()
 
 package_data['paddle.apy'] = []
 file_path_list = get_apy_files()
