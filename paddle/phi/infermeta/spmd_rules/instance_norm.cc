@@ -23,7 +23,8 @@ limitations under the License. */
 
 namespace phi::distributed {
 using phi::distributed::auto_parallel::str_join;
-// The input tensor shape is [N,C,H,W], the shape of scale and bias is [C]
+// The input tensor shape is “NC", "NCL", "NCHW" or "NCDHW", the shape of scale
+// and bias is [C]
 //  only N,C axis can be sharded.
 SpmdInfo InstanceNormInferSpmd(const DistMetaTensor& x,
                                const DistMetaTensor& scale,
@@ -40,11 +41,18 @@ SpmdInfo InstanceNormInferSpmd(const DistMetaTensor& x,
   std::vector<int64_t> x_dims_mapping = x_dist_attr_src.dims_mapping();
   std::vector<int64_t> scale_dims_mapping = scale.dist_attr().dims_mapping();
   std::vector<int64_t> bias_dims_mapping = bias.dist_attr().dims_mapping();
-  PADDLE_ENFORCE_EQ(
+  PADDLE_ENFORCE_GE(
       x_ndim,
-      4,
+      2,
       common::errors::InvalidArgument(
-          "The ndim of x in instance_norm should be 4, but got [%d].", x_ndim));
+          "The ndim of x in instance_norm should greater than 1, but got [%d].",
+          x_ndim));
+  PADDLE_ENFORCE_LE(
+      x_ndim,
+      5,
+      common::errors::InvalidArgument(
+          "The ndim of x in instance_norm should less than 6, but got [%d].",
+          x_ndim));
   PADDLE_ENFORCE_EQ(
       scale_ndim,
       1,
@@ -163,17 +171,24 @@ SpmdInfo InstanceNormGradInferSpmd(const DistMetaTensor& x,
   std::vector<int64_t> saved_variance_dims_mapping =
       saved_variance.dist_attr().dims_mapping();
   std::vector<int64_t> y_grad_dims_mapping = y_grad.dist_attr().dims_mapping();
-  PADDLE_ENFORCE_EQ(
+  PADDLE_ENFORCE_GE(
       x_ndim,
-      4,
+      2,
       common::errors::InvalidArgument(
-          "The ndim of x in instance_norm should be 4, but got [%d].", x_ndim));
+          "The ndim of x in instance_norm should greater than 1, but got [%d].",
+          x_ndim));
+  PADDLE_ENFORCE_LE(
+      x_ndim,
+      5,
+      common::errors::InvalidArgument(
+          "The ndim of x in instance_norm should less than 6, but got [%d].",
+          x_ndim));
   PADDLE_ENFORCE_EQ(
       y_grad_ndim,
-      4,
-      common::errors::InvalidArgument(
-          "The ndim of y_grad in instance_norm should be 4, but got [%d].",
-          y_grad));
+      x_ndim,
+      common::errors::InvalidArgument("The ndim of y_grad in instance_norm "
+                                      "should be equal with x, but got [%d].",
+                                      y_grad));
   PADDLE_ENFORCE_EQ(
       scale_ndim,
       1,
@@ -251,6 +266,17 @@ SpmdInfo InstanceNormGradInferSpmd(const DistMetaTensor& x,
       CopyTensorDistAttrForOutput(scale.dist_attr());
   scale_dist_attr_dst.set_dims_mapping({-1});
 
+  // Mark partial status
+  std::vector<int64_t> partial_on_dims;
+  const auto& dim_mapping = x_dims_mapping;
+  for (int i = 0; i < 2; ++i) {
+    auto mapping = dim_mapping[i];
+    if (mapping != -1) {
+      partial_on_dims.push_back(mapping);
+    }
+  }
+  scale_grad_dist_attr.set_partial_status(partial_on_dims);
+  bias_grad_dist_attr.set_partial_status(partial_on_dims);
   VLOG(4) << "InstanceNormGradInferSpmd:";
   VLOG(4) << "data type: [N,C,H,W]";
   VLOG(4) << "Einsum Notation: " << x_axes << "," << scale_axes << ","
