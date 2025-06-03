@@ -258,11 +258,10 @@ def monkey_patch_tensor():
                         self.value().process_mesh,
                         self.value().placements,
                     )
-                self.value().get_tensor().set(value.get_tensor())
+
+                self.value().set_tensor(value)
                 return
-            self.value().get_tensor().set(
-                value, framework._current_expected_place()
-            )
+            self.value().set_tensor(value)
 
     @framework.dygraph_only
     def backward(
