@@ -95,25 +95,7 @@ void SYCLBackendAPI::set_device(int device_id) {
   this->now_device_id = device_id;
 }
 
-::sycl::queue* SYCLBackendAPI::get_now_queue(void* raw_stream) {Add commentMore actions
-  if (this->queues[now_device_id].size() == 0) {
-    int current_device_id;
-    hipGetDevice(&current_device_id);
-    hipSetDevice(current_device_id);
-    hipDeviceGet(&device_, current_device_id);
-    hipCtxGetCurrent(&context_);
-    hipDevicePrimaryCtxRetain(&context_, device_);
-  
-    ::sycl::backend_input_t<::sycl::backend::ext_oneapi_hip, ::sycl::context> InteropContextInput{context_};
-    ::sycl::context InteropContext = ::sycl::make_context<::sycl::backend::ext_oneapi_hip>(InteropContextInput);
- 
-    hipStream_t hipStream = static_cast<hipStream_t>(raw_stream);
-    auto Q =  new ::sycl::queue(::sycl::make_queue<::sycl::backend::ext_oneapi_hip>(
-        hipStream, InteropContext));
-    this->queues[now_device_id].push_back(Q);
-    }
-    return this->now_device_id; 
-}
+int SYCLBackendAPI::get_device() { return this->now_device_id; }
 
 int SYCLBackendAPI::get_device_property(DeviceProperty device_property,
                                         std::optional<int> device_id) {
@@ -256,7 +238,23 @@ void SYCLBackendAPI::stream_sync(void* stream) {
   SYCL_CALL(static_cast<::sycl::queue*>(stream)->wait_and_throw());
 }
 
-::sycl::queue* SYCLBackendAPI::get_now_queue() {
+::sycl::queue* SYCLBackendAPI::get_now_queue(void* raw_stream) {
+  if (this->queues[now_device_id].size() == 0) {
+    int current_device_id;
+    hipGetDevice(&current_device_id);
+    hipSetDevice(current_device_id);
+    hipDeviceGet(&device_, current_device_id);
+    hipCtxGetCurrent(&context_);
+    hipDevicePrimaryCtxRetain(&context_, device_);
+  
+    ::sycl::backend_input_t<::sycl::backend::ext_oneapi_hip, ::sycl::context> InteropContextInput{context_};
+    ::sycl::context InteropContext = ::sycl::make_context<::sycl::backend::ext_oneapi_hip>(InteropContextInput);
+ 
+    hipStream_t hipStream = static_cast<hipStream_t>(raw_stream);
+    auto Q =  new ::sycl::queue(::sycl::make_queue<::sycl::backend::ext_oneapi_hip>(
+        hipStream, InteropContext));
+    this->queues[now_device_id].push_back(Q);
+    }
   return this->queues[now_device_id][0];
 }
 
