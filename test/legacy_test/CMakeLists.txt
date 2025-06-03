@@ -479,11 +479,12 @@ if(NOT WITH_GPU
   list(REMOVE_ITEM TEST_OPS test_sparse_conv_igemm_op)
 endif()
 
-# if win32 or APPLE or NOT WITH_GPU or CUDA_ARCH_NAME==Volta, skip some op test
+# New Op only supported by CUDA>=12.0 and Linux, CUDA_ARCH_NAME==Volta, skip some op test
 if(NOT WITH_GPU
    OR WIN32
    OR APPLE
-   OR (${CUDA_ARCH_NAME} STREQUAL "Volta"))
+   OR (${CUDA_ARCH_NAME} STREQUAL "Volta")
+   OR ((WITH_GPU) AND (CUDA_VERSION VERSION_LESS 12.0)))
   list(
     REMOVE_ITEM
     TEST_OPS
