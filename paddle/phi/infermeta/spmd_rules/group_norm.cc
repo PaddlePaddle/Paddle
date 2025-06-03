@@ -313,7 +313,8 @@ SpmdInfo GroupNormGradInferSpmdBase(const DistMetaTensor& x,
       partial_on_dims.push_back(mapping);
     }
   }
-  x_grad_dist_attr.set_partial_status(partial_on_dims);
+  scale_grad_dist_attr.set_partial_status(partial_on_dims);
+  bias_grad_dist_attr.set_partial_status(partial_on_dims);
 
   VLOG(4) << "GroupNormInferSpmd:";
   VLOG(4) << "shape size of x: 3~5";
