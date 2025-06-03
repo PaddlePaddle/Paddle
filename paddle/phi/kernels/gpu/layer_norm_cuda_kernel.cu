@@ -20,7 +20,7 @@
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/layer_norm_cuda_kernel.h"  // NOLINT
+#include "paddle/phi/kernels/gpu/layer_norm_cuda_kernel.h"  // NOLINT
 
 namespace phi {
 // #define CHECK_CUDA(x) PD_CHECK(!x.is_cpu(), #x " must be a CUDA tensor")
