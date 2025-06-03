@@ -51,8 +51,10 @@ type_promote_white_list = {
     "huber_loss": ["input", "label"],
     "nextafter": ["x", "y"],
     "atan2": ["x", "y"],
-    "multiply": ["x", "y"],
     "copysign": ["x", "y"],
+    "cross": ["x", "y"],
+    "matmul": ["x", "y"],
+    "multiply": ["x", "y"],
 }
 
 type_promote_inplace_white_list = {

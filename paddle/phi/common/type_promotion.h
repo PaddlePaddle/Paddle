@@ -87,13 +87,33 @@ inline static DataType promoteTypes(DataType x, DataType y) {
 
 // Migrated from operator overloading
 static std::unordered_set<std::string> support_promotion_ops = {
-    "add",       "elementwise_add", "subtract",        "elementwise_sub",
-    "multiply",  "elementwise_mul", "elementwise_mod", "remainder",
-    "divide",    "elementwise_div", "truediv",         "floor_divide",
-    "pow",       "elementwise_pow", "equal",           "not_equal",
-    "less_than", "less_equal",      "greater_than",    "greater_equal",
+    "add",
+    "subtract",
+    "divide",
+    "floor_divide",
+    "elementwise_pow",
+    "where",
+    "equal",
+    "not_equal",
+    "less_than",
+    "less_equal",
+    "greater_than",
+    "greater_equal",
+    "logical_and",
+    "logical_or",
+    "logical_xor",
+    "fmax",
+    "fmin",
+    "maximum",
+    "minimum",
+    "remainder",
+    "huber_loss",
+    "nextafter",
+    "atan2",
     "copysign",
-};
+    "cross",
+    "matmul",
+    "multiply"};
 
 static std::unordered_set<std::string> support_autocast_ops = {
     "acos",       "acosh",  "asin",         "asinh",   "atan",      "atanh",
@@ -148,8 +168,7 @@ inline phi::DataType GetPromoteDtype(
     const DataType& y_dtype,
     const std::vector<int64_t>& x_shape = std::vector<int64_t>(),
     const std::vector<int64_t>& y_shape = std::vector<int64_t>()) {
-  if (op_name == "divide" || op_name == "divide_" ||
-      op_name == "elementwise_div") {
+  if (op_name == "divide" || op_name == "divide_") {
     if (is_support_int(x_dtype) && is_support_int(y_dtype)) {
       return DataType::FLOAT32;
     }
