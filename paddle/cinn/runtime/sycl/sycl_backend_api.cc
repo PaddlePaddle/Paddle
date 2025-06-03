@@ -246,15 +246,19 @@ void SYCLBackendAPI::stream_sync(void* stream) {
     hipDeviceGet(&device_, current_device_id);
     hipCtxGetCurrent(&context_);
     hipDevicePrimaryCtxRetain(&context_, device_);
-  
-    ::sycl::backend_input_t<::sycl::backend::ext_oneapi_hip, ::sycl::context> InteropContextInput{context_};
-    ::sycl::context InteropContext = ::sycl::make_context<::sycl::backend::ext_oneapi_hip>(InteropContextInput);
- 
+
+    ::sycl::backend_input_t<::sycl::backend::ext_oneapi_hip, ::sycl::context>
+        InteropContextInput{context_};
+    ::sycl::context InteropContext =
+        ::sycl::make_context<::sycl::backend::ext_oneapi_hip>(
+            InteropContextInput);
+
     hipStream_t hipStream = static_cast<hipStream_t>(raw_stream);
-    auto Q =  new ::sycl::queue(::sycl::make_queue<::sycl::backend::ext_oneapi_hip>(
-        hipStream, InteropContext));
+    auto Q =
+        new ::sycl::queue(::sycl::make_queue<::sycl::backend::ext_oneapi_hip>(
+            hipStream, InteropContext));
     this->queues[now_device_id].push_back(Q);
-    }
+  }
   return this->queues[now_device_id][0];
 }
 

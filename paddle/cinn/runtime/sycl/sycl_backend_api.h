@@ -15,12 +15,13 @@
 #pragma once
 
 #include <sycl/sycl.hpp>
+
+#include <hip/hip_runtime.h>
 #include <vector>
 #include "paddle/cinn/common/macros.h"
 #include "paddle/cinn/common/target.h"
 #include "paddle/cinn/runtime/backend_api.h"
 #include "paddle/common/enforce.h"
-#include <hip/hip_runtime.h>
 using cinn::common::Arch;
 
 namespace cinn {
@@ -124,7 +125,6 @@ class SYCLBackendAPI final : public BackendAPI {
   bool initialized_{false};
   hipDevice_t device_;
   hipCtx_t context_;
-  
 };
 }  // namespace sycl
 }  // namespace runtime

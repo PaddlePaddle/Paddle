@@ -51,10 +51,10 @@ class Compiler {
   std::string prefix_dir = "./source";
   std::string cxx_compile_options =
       "-std=c++17 -fPIC -shared -w -ldl -fbracket-depth=1030";  // set 1030 for
-                                                             // constant op,
-                                                             // default max
-                                                             // bracket-depth
-                                                             // = 256";
+                                                                // constant op,
+                                                                // default max
+                                                                // bracket-depth
+                                                                // = 256";
   std::string device_arch_options;
   int compile_num = 0;
   std::string source_file_path;

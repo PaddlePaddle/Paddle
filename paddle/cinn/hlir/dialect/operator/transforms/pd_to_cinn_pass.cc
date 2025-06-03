@@ -1425,7 +1425,7 @@ pir::RewritePatternSet PdOpToCinnOpPass::InitializePatterns(
   pir::RewritePatternSet ps(context);
   ps.Add<ScaleOpPattern>(
       context);  // NOTE, scale op pattern should before AddBroadcastTo
-#ifndef CINN_WITH_SYCL 
+#ifndef CINN_WITH_SYCL
   ps.Add<SumOpPattern>(context);
   ps.Add<ReduceMinMaxOpPattern<paddle::dialect::MinOp,
                                cinn::dialect::ReduceMinOp>>(context);
