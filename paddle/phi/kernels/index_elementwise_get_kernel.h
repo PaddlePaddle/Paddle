@@ -20,11 +20,13 @@
 namespace phi {
 
 template <typename T, typename Context>
-void IndexElementwiseKernel(const Context &ctx,
-                            const DenseTensor &x,
-                            const std::vector<const DenseTensor *> &index,
-                            const std::vector<int64_t> &index_dims,
-                            const std::vector<int64_t> &index_stride,
-                            DenseTensor *out);
+void IndexElementwiseGetKernel(const Context &ctx,
+                               const DenseTensor &x,
+                               const std::vector<const DenseTensor *> &index,
+                               const std::vector<int64_t> &input_dims,
+                               const std::vector<int64_t> &input_strides,
+                               const std::vector<int64_t> &index_dims,
+                               const std::vector<int64_t> &index_stride,
+                               DenseTensor *out);
 
 }  // namespace phi

@@ -2146,11 +2146,13 @@ void GatherNdInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
-void IndexElementwiseInferMeta(const MetaTensor& x,
-                               const std::vector<const MetaTensor*>& index,
-                               const std::vector<int64_t>& index_dims,
-                               const std::vector<int64_t>& index_stride,
-                               MetaTensor* out) {
+void IndexElementwiseGetInferMeta(const MetaTensor& x,
+                                  const std::vector<const MetaTensor*>& index,
+                                  const std::vector<int64_t>& input_dims,
+                                  const std::vector<int64_t>& input_strides,
+                                  const std::vector<int64_t>& index_dims,
+                                  const std::vector<int64_t>& index_stride,
+                                  MetaTensor* out) {
   const auto& x_dims = x.dims();
 
   PADDLE_ENFORCE_LE(
