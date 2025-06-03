@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+#ifdef PADDLE_WITH_CUDA
 #include <thrust/adjacent_difference.h>  // 包含常用的 thrust 算法
 #include <thrust/device_vector.h>
 #include <thrust/host_vector.h>
@@ -815,3 +816,4 @@ void copy_unpermuted_to_permuted_kernelLauncher(
   }
 }
 }  // namespace phi
+#endif
