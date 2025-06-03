@@ -50,7 +50,7 @@ class Compiler {
   std::string compiler_path = SYCL_CXX_COMPILER;
   std::string prefix_dir = "./source";
   std::string cxx_compile_options =
-      "-std=c++17 -fPIC -shared -ldl -fbracket-depth=1030";  // set 1030 for
+      "-std=c++17 -fPIC -shared -w -ldl -fbracket-depth=1030";  // set 1030 for
                                                              // constant op,
                                                              // default max
                                                              // bracket-depth
