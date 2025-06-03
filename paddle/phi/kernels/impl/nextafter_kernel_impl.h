@@ -72,7 +72,7 @@ void NextafterKernel(const Context& ctx,
                      const DenseTensor& y,
                      DenseTensor* out) {
   if (x.numel() == 0 || y.numel() == 0) {
-    ctx.template Alloc<typename NextafterOut<T>::type>(out);
+    ctx.template Alloc<T>(out);
     return;
   }
 
