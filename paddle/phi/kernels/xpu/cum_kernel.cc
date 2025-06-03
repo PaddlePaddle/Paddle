@@ -72,56 +72,36 @@ void cumsum_impl(const phi::XPUContext& dev_ctx,
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "cumsum");
 }
 
-template <typename InT, typename Context>
-struct CumsumKernelVisitor {
-  const Context& dev_ctx_;
-  const DenseTensor& x_;
-  int axis_val_;
-  bool flatten_val_;
-  bool exclusive_val_;
-  bool reverse_val_;
-  DenseTensor* out_;
+template <typename InT, typename OutT>
+void cast_and_cumsum(const phi::XPUContext& dev_ctx,
+                     const phi::DenseTensor& x,
+                     int axis_val,
+                     bool flatten_val,
+                     bool reverse_val,
+                     bool exclusive_val,
+                     phi::DenseTensor* out) {
+  DenseTensor x_casted;
+  x_casted.Resize(x.dims());
+  dev_ctx.template Alloc<OutT>(&x_casted);
 
-  CumsumKernelVisitor(const Context& dev_ctx,
-                      const DenseTensor& x,
-                      int axis,
-                      bool flatten,
-                      bool exclusive,
-                      bool reverse,
-                      DenseTensor* out)
-      : dev_ctx_(dev_ctx),
-        x_(x),
-        axis_val_(axis),
-        flatten_val_(flatten),
-        exclusive_val_(exclusive),
-        reverse_val_(reverse),
-        out_(out) {}
+  using XPUInT = typename XPUTypeTrait<InT>::Type;
+  using XPUOutT = typename XPUTypeTrait<OutT>::Type;
 
-  template <typename OutT>
-  void apply() const {
-    DenseTensor x_casted;
-    x_casted.Resize(x_.dims());
-    dev_ctx_.template Alloc<OutT>(&x_casted);
+  int r_cast = xpu::cast<XPUInT, XPUOutT>(
+      dev_ctx.x_context(),
+      reinterpret_cast<const XPUInT*>(x.data<InT>()),
+      reinterpret_cast<XPUOutT*>(x_casted.data<OutT>()),
+      x.numel());
+  PADDLE_ENFORCE_XDNN_SUCCESS(r_cast, "cast");
 
-    using XPUInT = typename XPUTypeTrait<InT>::Type;
-    using XPUOutT = typename XPUTypeTrait<OutT>::Type;
-
-    int r_cast = xpu::cast<XPUInT, XPUOutT>(
-        dev_ctx_.x_context(),
-        reinterpret_cast<const XPUInT*>(x_.data<InT>()),
-        reinterpret_cast<XPUOutT*>(x_casted.data<OutT>()),
-        x_.numel());
-    PADDLE_ENFORCE_XDNN_SUCCESS(r_cast, "xpu::cast_in_visitor_failed");
-
-    cumsum_impl<OutT>(dev_ctx_,
-                      x_casted,
-                      axis_val_,
-                      flatten_val_,
-                      reverse_val_,
-                      exclusive_val_,
-                      out_);
-  }
-};
+  cumsum_impl<OutT>(dev_ctx,
+                    x_casted,
+                    axis_val,
+                    flatten_val,
+                    reverse_val,
+                    exclusive_val,
+                    out);
+}
 
 template <typename T, typename Context>
 void CumsumKernel(const Context& dev_ctx,
@@ -132,13 +112,29 @@ void CumsumKernel(const Context& dev_ctx,
                   bool reverse,
                   DataType dtype,
                   DenseTensor* out) {
+  int axis_val = axis.to<int>();
+
   if (out->dtype() == x.dtype()) {
-    cumsum_impl<T>(
-        dev_ctx, x, axis.to<int>(), flatten, reverse, exclusive, out);
+    cumsum_impl<T>(dev_ctx, x, axis_val, flatten, reverse, exclusive, out);
   } else {
-    CumsumKernelVisitor<T, Context> visitor(
-        dev_ctx, x, axis.to<int>(), flatten, exclusive, reverse, out);
-    phi::VisitDataType(out->dtype(), visitor);
+    DataType out_dtype = out->dtype();
+
+    if (out_dtype == DataType::FLOAT32) {
+      cast_and_cumsum<T, float>(
+          dev_ctx, x, axis_val, flatten, reverse, exclusive, out);
+    } else if (out_dtype == DataType::INT32) {
+      cast_and_cumsum<T, int>(
+          dev_ctx, x, axis_val, flatten, reverse, exclusive, out);
+    } else if (out_dtype == DataType::INT64) {
+      cast_and_cumsum<T, int64_t>(
+          dev_ctx, x, axis_val, flatten, reverse, exclusive, out);
+    } else if (out_dtype == DataType::FLOAT16) {
+      cast_and_cumsum<T, phi::dtype::float16>(
+          dev_ctx, x, axis_val, flatten, reverse, exclusive, out);
+    } else if (out_dtype == DataType::BFLOAT16) {
+      cast_and_cumsum<T, phi::dtype::bfloat16>(
+          dev_ctx, x, axis_val, flatten, reverse, exclusive, out);
+    }
   }
 }
 
