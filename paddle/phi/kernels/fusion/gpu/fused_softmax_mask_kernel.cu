@@ -26,7 +26,7 @@ template <typename T, typename MT, int pow2_index>
 __global__ void SoftmaxMaskFuseGPUKernel(const T* x_data,
                                          const MT* mask_data,
                                          T* y_data,
-                                         int batch_count,
+                                         int64_t batch_count,
                                          int key_seq_len) {
   // the forward gpu kernel
   constexpr int next_pow2 = 1 << pow2_index;
@@ -35,26 +35,32 @@ __global__ void SoftmaxMaskFuseGPUKernel(const T* x_data,
   constexpr int kLocalBatchSize = (next_pow2 <= 128) ? 2 : 1;
   constexpr int kOneLoadingCounts = 4;
 
-  int data_first_idx =
-      (blockDim.y *
-           (blockIdx.x + gridDim.x * (blockIdx.y + gridDim.y * blockIdx.z)) +
+  int64_t data_first_idx =
+      (blockDim.y * (blockIdx.x +
+                     static_cast<int64_t>(gridDim.x) *
+                         (blockIdx.y + static_cast<int64_t>(gridDim.y) *
+                                           static_cast<int64_t>(blockIdx.z))) +
        threadIdx.y) *
       kLocalBatchSize;
 
-  int mask_fist_idx =
-      (blockDim.y * (blockIdx.x + gridDim.x * blockIdx.z) + threadIdx.y) *
+  int64_t mask_fist_idx =
+      (blockDim.y * (blockIdx.x + static_cast<int64_t>(gridDim.x) *
+                                      static_cast<int64_t>(blockIdx.z)) +
+       threadIdx.y) *
       kLocalBatchSize;
 
   // batch_count might not be a multiple of kLocalBatchSize. Check how
   // many batches have to computed within this WARP.
-  int local_batches = batch_count - data_first_idx;
+  int64_t local_batches = batch_count - data_first_idx;
   if (local_batches > kLocalBatchSize) local_batches = kLocalBatchSize;
 
   // might be many batches per warp. compute the index within the batch
   int local_idx = threadIdx.x;
 
-  int x_offset = data_first_idx * key_seq_len + kOneLoadingCounts * local_idx;
-  int mask_offset = mask_fist_idx * key_seq_len + kOneLoadingCounts * local_idx;
+  int64_t x_offset =
+      data_first_idx * key_seq_len + kOneLoadingCounts * local_idx;
+  int64_t mask_offset =
+      mask_fist_idx * key_seq_len + kOneLoadingCounts * local_idx;
   x_data += x_offset;
   mask_data += mask_offset;
   y_data += x_offset;
@@ -205,7 +211,7 @@ void FusedSoftmaxMaskKernel(const Context& dev_ctx,
 
   int pow2_index = get_pow2(key_seq_len);
   const int next_pow2 = 1 << pow2_index;
-  int batch_count = batches * attn_heads * query_seq_len;
+  int64_t batch_count = batches * attn_heads * query_seq_len;
   int warp_size = (next_pow2 < WARP_SIZE) ? next_pow2 : WARP_SIZE;
   int batches_per_warp = (next_pow2 <= 128) ? 2 : 1;
   // use 128 threads per block to maximum gpu utilization
