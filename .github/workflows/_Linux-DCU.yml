@@ -253,7 +253,6 @@ jobs:
 
       - name: Run test
         run: |
-          set -x
           sudo mkdir -p /run/user/0
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           export PATH=/usr/local/bin:${PATH}
