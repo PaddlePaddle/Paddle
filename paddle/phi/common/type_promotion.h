@@ -121,7 +121,7 @@ static std::unordered_set<std::string> support_promotion_ops = {
     "copysign",
     "cross",
     "matmul",
-    "multiply"};
+};
 
 static std::unordered_set<std::string> support_autocast_ops = {
     "acos",       "acosh",  "asin",         "asinh",   "atan",      "atanh",
@@ -176,7 +176,8 @@ inline phi::DataType GetPromoteDtype(
     const DataType& y_dtype,
     const std::vector<int64_t>& x_shape = std::vector<int64_t>(),
     const std::vector<int64_t>& y_shape = std::vector<int64_t>()) {
-  if (op_name == "divide" || op_name == "divide_") {
+  if (op_name == "divide" || op_name == "divide_" ||
+      op_name == "elementwise_div") {
     if (is_support_int(x_dtype) && is_support_int(y_dtype)) {
       return DataType::FLOAT32;
     }
@@ -218,8 +219,7 @@ inline bool NeedTypePromotion(
     const std::vector<int64_t>& x_shape = std::vector<int64_t>(),
     const std::vector<int64_t>& y_shape = std::vector<int64_t>()) {
   if (x_dtype == y_dtype) {
-    if (op_name == "divide" || op_name == "divide_" ||
-        op_name == "elementwise_div") {
+    if (op_name == "divide" || op_name == "divide_") {
       if (is_support_int(x_dtype) && is_support_int(y_dtype)) {
         return true;
       }
