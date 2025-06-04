@@ -136,7 +136,7 @@ template <class Func>
 inline GPU(Error_t) GetNumBlocks(Func func,
                                  int32_t block_size,
                                  size_t dynamic_smem_size,
-                                 int32_t max_blocks,
+                                 int64_t max_blocks,
                                  int32_t waves,
                                  int* num_blocks) {
   int dev;
@@ -161,7 +161,7 @@ inline GPU(Error_t) GetNumBlocks(Func func,
         &max_active_blocks, func, block_size, dynamic_smem_size);
   }
   *num_blocks = std::max<int>(
-      1, std::min<int32_t>(max_blocks, sm_count * max_active_blocks * waves));
+      1, std::min<int64_t>(max_blocks, sm_count * max_active_blocks * waves));
   return GPU(Success);
 }
 
@@ -202,11 +202,11 @@ struct alignas(sizeof(T) * N) Pack {
 template <typename SRC, typename DST>
 struct DirectLoad {
   using LoadType = DST;
-  DirectLoad(const SRC* src, int32_t row_size) : src(src), row_size(row_size) {}
+  DirectLoad(const SRC* src, int64_t row_size) : src(src), row_size(row_size) {}
   template <int N>
-  __device__ void load(DST* dst, int32_t row, int32_t col) const {
+  __device__ void load(DST* dst, int64_t row, int64_t col) const {
     Pack<SRC, N> pack;
-    const int32_t offset = (row * row_size + col) / N;
+    const int64_t offset = (row * row_size + col) / N;
     pack = *(reinterpret_cast<const Pack<SRC, N>*>(src) + offset);
 #pragma unroll
     for (int i = 0; i < N; ++i) {
@@ -214,7 +214,7 @@ struct DirectLoad {
     }
   }
   const SRC* src;
-  int32_t row_size;
+  int64_t row_size;
 };
 
 template <typename SRC, typename DST>
@@ -224,18 +224,18 @@ struct ResidualAddBiasLoad {
                       const SRC* residual,
                       const SRC* bias,
                       SRC* residual_out,
-                      int32_t row_size)
+                      int64_t row_size)
       : src(src),
         residual(residual),
         bias(bias),
         residual_out(residual_out),
         row_size(row_size) {}
   template <int N>
-  __device__ void load(DST* dst, int32_t row, int32_t col) const {
+  __device__ void load(DST* dst, int64_t row, int64_t col) const {
     Pack<SRC, N> src_pack;
     Pack<SRC, N> residual_pack;
     Pack<SRC, N> bias_pack;
-    const int32_t offset = (row * row_size + col) / N;
+    const int64_t offset = (row * row_size + col) / N;
 
     src_pack = *(reinterpret_cast<const Pack<SRC, N>*>(src) + offset);
     residual_pack = *(reinterpret_cast<const Pack<SRC, N>*>(residual) + offset);
@@ -264,16 +264,16 @@ struct ResidualAddBiasLoad {
   const SRC* residual;
   const SRC* bias;
   SRC* residual_out;
-  int32_t row_size;
+  int64_t row_size;
 };
 
 template <typename SRC, typename DST>
 struct DirectStore {
-  DirectStore(DST* dst, int32_t row_size) : dst(dst), row_size(row_size) {}
+  DirectStore(DST* dst, int64_t row_size) : dst(dst), row_size(row_size) {}
   template <int N>
-  __device__ void store(const SRC* src, int32_t row, int32_t col) {
+  __device__ void store(const SRC* src, int64_t row, int64_t col) {
     Pack<DST, N> pack;
-    const int32_t offset = (row * row_size + col) / N;
+    const int64_t offset = (row * row_size + col) / N;
 #pragma unroll
     for (int i = 0; i < N; ++i) {
       pack.elem[i] = static_cast<DST>(src[i]);
@@ -281,7 +281,7 @@ struct DirectStore {
     *(reinterpret_cast<Pack<DST, N>*>(dst) + offset) = pack;
   }
   DST* dst;
-  int32_t row_size;
+  int64_t row_size;
 };
 
 template <typename T>
@@ -427,8 +427,8 @@ template <typename LOAD,
 __global__ void __launch_bounds__(block_size)
     RmsNormBlockSMemImpl(LOAD load,
                          STORE store,
-                         const int32_t rows,
-                         const int32_t cols,
+                         const int64_t rows,
+                         const int64_t cols,
                          const float epsilon,
                          ComputeType col_divisor,
                          float* inv_var_data) {
@@ -438,7 +438,7 @@ __global__ void __launch_bounds__(block_size)
   const int tid = threadIdx.x;
   assert(cols % kPackSize == 0);
   const int num_packs = static_cast<int>(cols) / kPackSize;
-  for (int32_t row = blockIdx.x; row < rows; row += gridDim.x) {
+  for (int64_t row = blockIdx.x; row < rows; row += gridDim.x) {
     ComputeType thread_sum_square = 0;
     for (int pack_id = tid; pack_id < num_packs; pack_id += block_size) {
       LoadType pack[kPackSize];
@@ -483,8 +483,8 @@ inline GPU(Error_t) LaunchRmsNormBlockSMemImpl(GPU(Stream_t) stream,
                                                LOAD load,
                                                STORE store,
                                                int smem,
-                                               const int32_t rows,
-                                               const int32_t cols,
+                                               const int64_t rows,
+                                               const int64_t cols,
                                                const float epsilon,
                                                ComputeType col_divisor,
                                                float* inv_var_data) {
@@ -540,8 +540,8 @@ inline GPU(Error_t)
     TryDispatchRmsNormBlockSMemImplBlockSize(GPU(Stream_t) stream,
                                              LOAD load,
                                              STORE store,
-                                             const int32_t rows,
-                                             const int32_t cols,
+                                             const int64_t rows,
+                                             const int64_t cols,
                                              const float epsilon,
                                              ComputeType col_divisor,
                                              bool* success,
@@ -769,8 +769,8 @@ struct TryDispatchRmsNormBlockSMemImplPackSize {
   operator()(GPU(Stream_t) stream,
              LOAD load,
              STORE store,
-             const int32_t rows,
-             const int32_t cols,
+             const int64_t rows,
+             const int64_t cols,
              const float epsilon,
              ComputeType col_divisor,
              bool* success,
@@ -824,8 +824,8 @@ template <typename LOAD, typename STORE, typename ComputeType>
 inline GPU(Error_t) TryDispatchRmsNormBlockSMemImpl(GPU(Stream_t) stream,
                                                     LOAD load,
                                                     STORE store,
-                                                    const int32_t rows,
-                                                    const int32_t cols,
+                                                    const int64_t rows,
+                                                    const int64_t cols,
                                                     const float epsilon,
                                                     ComputeType col_divisor,
                                                     bool* success,
@@ -848,8 +848,8 @@ inline typename std::enable_if<!std::is_same<ComputeType, double>::value,
 DispatchRmsNorm(GPU(Stream_t) stream,
                 LOAD load,
                 STORE store,
-                const int32_t rows,
-                const int32_t cols,
+                const int64_t rows,
+                const int64_t cols,
                 const float epsilon,
                 float* inv_var_data) {
   const ComputeType col_divisor = 1.0f / cols;
@@ -882,7 +882,7 @@ struct SkipLoadAndStoreResidual {
                            const SRC* skip,
                            SRC* residual_bias_out,
                            float alpha,
-                           int32_t row_size)
+                           int64_t row_size)
       : src(src),
         bias(bias),
         skip(skip),
@@ -890,14 +890,14 @@ struct SkipLoadAndStoreResidual {
         alpha(alpha),
         row_size(row_size) {}
   template <int N>
-  __device__ void load(DST* dst, int32_t row, int32_t col) const {
+  __device__ void load(DST* dst, int64_t row, int64_t col) const {
     Pack<SRC, N> src_pack;
     Pack<SRC, N> bias_pack;
     Pack<SRC, N> skip_pack;
     Pack<DST, N> residual_out_pack;
 
-    const int32_t offset = (row * row_size + col) / N;
-    const int32_t bias_offset = col / N;
+    const int64_t offset = (row * row_size + col) / N;
+    const int64_t bias_offset = col / N;
     src_pack = *(reinterpret_cast<const Pack<SRC, N>*>(src) + offset);
     bias_pack = *(reinterpret_cast<const Pack<SRC, N>*>(bias) + bias_offset);
     skip_pack = *(reinterpret_cast<const Pack<SRC, N>*>(skip) + offset);
@@ -919,20 +919,20 @@ struct SkipLoadAndStoreResidual {
   const SRC* skip;
   SRC* residual_bias_out;
   float alpha;
-  int32_t row_size;
+  int64_t row_size;
 };
 
 template <typename SRC, typename DST>
 struct AffineStore {
-  AffineStore(DST* y, int32_t row_size, const DST* gamma, const DST* beta)
+  AffineStore(DST* y, int64_t row_size, const DST* gamma, const DST* beta)
       : y(y), row_size(row_size), gamma(gamma), beta(beta) {}
   template <int N>
-  __device__ void store(const SRC* src, int32_t row, int32_t col) {
+  __device__ void store(const SRC* src, int64_t row, int64_t col) {
     Pack<DST, N> y_pack;
     Pack<DST, N> gamma_pack;
     Pack<DST, N> beta_pack;
-    const int32_t offset = (row * row_size + col) / N;
-    const int32_t gamma_offset = col / N;
+    const int64_t offset = (row * row_size + col) / N;
+    const int64_t gamma_offset = col / N;
     gamma_pack = *(reinterpret_cast<const Pack<DST, N>*>(gamma) + gamma_offset);
 
     // Author(Zhengzekang): Bias maybe optional.
@@ -956,7 +956,7 @@ struct AffineStore {
     *(reinterpret_cast<Pack<DST, N>*>(y) + offset) = y_pack;
   }
   DST* y;
-  int32_t row_size;
+  int64_t row_size;
   const DST* gamma;
   const DST* beta;
 };
@@ -1132,8 +1132,8 @@ void RmsNormKernel(const Context& dev_ctx,
     inv_var_data = dev_ctx.template Alloc<float>(inv_var);
   }
 
-  int32_t rows = 1;
-  int32_t cols = 1;
+  int64_t rows = 1;
+  int64_t cols = 1;
   for (int i = 0; i < begin_norm_axis; i++) {
     rows *= x.dims()[i];
   }
