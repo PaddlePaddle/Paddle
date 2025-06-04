@@ -36,6 +36,9 @@ def test_sharding_parallel():
     group_ranks = group.ranks
     hcg_group_ranks = hcg_group.ranks
     assert set(group_ranks) == set(hcg_group_ranks)
+    group_id = group.id
+    hcg_group_id = hcg_group.id
+    assert group_id == hcg_group_id
 
 
 if __name__ == "__main__":

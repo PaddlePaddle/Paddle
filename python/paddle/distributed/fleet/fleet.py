@@ -213,6 +213,7 @@ class Fleet:
         self._runtime_handle = None
         self._util = None
         self._context = {}
+        self._hcg = None
         self.user_defined_optimizer: Optimizer = paddle.optimizer.Optimizer(0.0)
 
     def init(

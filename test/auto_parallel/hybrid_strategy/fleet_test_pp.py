@@ -17,7 +17,6 @@ from paddle.distributed import fleet
 
 
 def test_pp_parallel():
-    # 初始化fleet策略
     dist_strategy = fleet.DistributedStrategy()
     dist_strategy.hybrid_configs = {
         "dp_degree": 1,
@@ -26,19 +25,19 @@ def test_pp_parallel():
     }
     fleet.init(is_collective=True, strategy=dist_strategy)
 
-    # 创建ProcessMesh
     mesh = dist.ProcessMesh([0, 1], dim_names=["pp"])
 
     hcg = fleet.get_hybrid_communicate_group()
 
-    # 获取并验证通信组
     group = mesh.get_group(dim_name="pp")
     hcg_group = hcg.get_pipe_parallel_group()
 
-    # 比较通信组的进程列表
     group_ranks = group.ranks
     hcg_group_ranks = hcg_group.ranks
     assert set(group_ranks) == set(hcg_group_ranks)
+    group_id = group.id
+    hcg_group_id = hcg_group.id
+    assert group_id == hcg_group_id
 
 
 if __name__ == "__main__":
