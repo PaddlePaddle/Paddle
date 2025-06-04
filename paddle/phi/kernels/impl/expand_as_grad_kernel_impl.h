@@ -50,6 +50,8 @@ void ExpandAsGradKernel(const Context& context,
                         DenseTensor* in_grad) {
   auto x_dims = x.dims();
   auto out_grad_dims = out_grad.dims();
+  std::vector<int64_t> real_target_shape =
+      phi::vectorize<int64_t>(out_grad_dims);
 
   if (in_grad->dims() == out_grad_dims) {
     phi::Copy(context, out_grad, context.GetPlace(), false, in_grad);
@@ -57,11 +59,11 @@ void ExpandAsGradKernel(const Context& context,
   }
 
   auto vec_in_dims = common::vectorize<int64_t>(x_dims);
-  auto diff = out_grad_dims.size() - vec_in_dims.size();
+  auto diff = real_target_shape.size() - vec_in_dims.size();
   vec_in_dims.insert(vec_in_dims.begin(), diff, 1);
   std::vector<int64_t> repeat_times(vec_in_dims.size());
   for (size_t i = 0; i < vec_in_dims.size(); ++i) {
-    repeat_times[i] = out_grad_dims[i] / vec_in_dims[i];
+    repeat_times[i] = real_target_shape[i] / vec_in_dims[i];
   }
   std::vector<int64_t> reshape_dims_vec;
   std::vector<int> reduce_dims_vec;
