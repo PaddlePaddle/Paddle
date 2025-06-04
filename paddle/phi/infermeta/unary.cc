@@ -2854,6 +2854,11 @@ void NanmedianInferMeta(const MetaTensor& x,
   }
   median_index->set_dtype(DataType::INT64);
   median_index->set_dims(make_ddim(median_dim));
+
+  if (x.numel() == 0) {
+    out->set_dims(make_ddim({}));
+    median_index->set_dims(make_ddim({}));
+  }
 }
 
 void NMSInferMeta(const MetaTensor& x, float threshold, MetaTensor* out) {

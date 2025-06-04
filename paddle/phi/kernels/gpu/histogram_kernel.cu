@@ -16,6 +16,7 @@
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/funcs/functors.h"
@@ -28,7 +29,7 @@ namespace phi {
 using IndexType = int64_t;
 using phi::PADDLE_CUDA_NUM_THREADS;
 
-inline int GET_BLOCKS(const int N) {
+inline int64_t GET_BLOCKS(const int64_t N) {
   return (N + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS;
 }
 
@@ -46,18 +47,18 @@ __device__ static IndexType GetBin(T input_value,
 template <typename T, typename IndexType, typename Out_T>
 __global__ void KernelHistogram(const T* input,
                                 const T* weight,
-                                const int total_elements,
+                                const int64_t total_elements,
                                 const int64_t nbins,
                                 const T* min_value,
                                 const T* max_value,
                                 Out_T* output) {
   extern __shared__ float buf_hist[];
-  for (int i = threadIdx.x; i < nbins; i += blockDim.x) {
+  for (int64_t i = threadIdx.x; i < nbins; i += blockDim.x) {
     buf_hist[i] = 0;
   }
   __syncthreads();
 
-  CUDA_KERNEL_LOOP(input_index, total_elements) {
+  CUDA_KERNEL_LOOP_TYPE(input_index, total_elements, IndexType) {
     // const IndexType input_index = threadIdx.x + blockIdx.x * blockDim.x;
     const auto input_value = input[input_index];
     if (input_value >= *min_value && input_value <= *max_value) {
@@ -69,23 +70,23 @@ __global__ void KernelHistogram(const T* input,
   }
   __syncthreads();
 
-  for (int i = threadIdx.x; i < nbins; i += blockDim.x) {
+  for (int64_t i = threadIdx.x; i < nbins; i += blockDim.x) {
     phi::CudaAtomicAdd(&output[i], buf_hist[i]);
   }
 }
 
 template <typename T>
 __global__ void KernelMinMax(const T* input,
-                             const int numel,
-                             const int block_num,
+                             const int64_t numel,
+                             const int64_t block_num,
                              T* min_ptr,
                              T* max_ptr) {
-  int64_t index = threadIdx.x + blockIdx.x * blockDim.x;
+  int64_t index = threadIdx.x + blockIdx.x * static_cast<int64_t>(blockDim.x);
   int64_t i = index;
   T min_value = static_cast<T>(i < numel ? input[i] : input[0]);
   T max_value = static_cast<T>(i < numel ? input[i] : input[0]);
 
-  for (; i < numel; i += blockDim.x * gridDim.x) {
+  for (; i < numel; i += blockDim.x * static_cast<int64_t>(gridDim.x)) {
     T value = static_cast<T>(input[i]);
     min_value = value < min_value ? value : min_value;
     max_value = value > max_value ? value : max_value;
@@ -106,9 +107,11 @@ __global__ void KernelMinMax(const T* input,
       min_value = min_ptr[0];
       max_value = max_ptr[0];
       for (int64_t i = 1; i < block_num; i++) {
-        min_ptr[0] = min_ptr[i] < min_value ? min_ptr[i] : min_value;
-        max_ptr[0] = max_ptr[i] > max_value ? max_ptr[i] : max_value;
+        min_value = min_ptr[i] < min_value ? min_ptr[i] : min_value;
+        max_value = max_ptr[i] > max_value ? max_ptr[i] : max_value;
       }
+      min_ptr[0] = min_value;
+      max_ptr[0] = max_value;
       if (min_ptr[0] == max_ptr[0]) {
         min_ptr[0] = min_ptr[0] - 1;
         max_ptr[0] = max_ptr[0] + 1;
@@ -128,13 +131,6 @@ __global__ void KernelMinMax(const T min_value,
   }
 }
 
-__global__ void KernelMul(float* data, float* scale, int64_t numel) {
-  size_t index = threadIdx.x + blockIdx.x * blockDim.x;
-  if (index < numel) {
-    data[index] /= *scale;
-  }
-}
-
 template <typename T, typename Context>
 void HistogramKernel(const Context& dev_ctx,
                      const DenseTensor& input,
@@ -149,7 +145,7 @@ void HistogramKernel(const Context& dev_ctx,
   auto& maxval = max;
 
   const T* input_data = input.data<T>();
-  const int input_numel = input.numel();
+  const int64_t input_numel = input.numel();
   auto weight_data = weight.get_ptr() ? weight.get_ptr()->data<T>() : nullptr;
 
   if (input_data == nullptr) return;
@@ -157,26 +153,33 @@ void HistogramKernel(const Context& dev_ctx,
   T output_min = static_cast<T>(minval);
   T output_max = static_cast<T>(maxval);
   DenseTensor min_max;
-  int block_num = GET_BLOCKS(input_numel);
+  int64_t block_num = GET_BLOCKS(input_numel);
+  block_num = std::min(
+      block_num, static_cast<int64_t>(dev_ctx.GetCUDAMaxGridDimSize()[0]));
   min_max.Resize({2 * block_num});
   auto* min_block_ptr = dev_ctx.template Alloc<T>(&min_max);
   auto* max_block_ptr = min_block_ptr + block_num;
   if (min == max) {
-    KernelMinMax<T><<<GET_BLOCKS(input_numel),
-                      PADDLE_CUDA_NUM_THREADS,
-                      0,
-                      dev_ctx.stream()>>>(
-        input_data, input_numel, block_num, min_block_ptr, max_block_ptr);
+    KernelMinMax<T>
+        <<<block_num, PADDLE_CUDA_NUM_THREADS, 0, dev_ctx.stream()>>>(
+            input_data, input_numel, block_num, min_block_ptr, max_block_ptr);
+    // copy min max value from GPU to CPU
+    phi::memory_utils::Copy(phi::CPUPlace(),
+                            &output_min,
+                            min_max.place(),
+                            min_block_ptr,
+                            sizeof(T),
+                            dev_ctx.stream());
+    phi::memory_utils::Copy(phi::CPUPlace(),
+                            &output_max,
+                            min_max.place(),
+                            max_block_ptr,
+                            sizeof(T),
+                            dev_ctx.stream());
   } else {
     KernelMinMax<T><<<1, 1, 0, dev_ctx.stream()>>>(
         output_min, output_max, min_block_ptr, max_block_ptr);
   }
-
-  // copy min max value from GPU to CPU
-  std::vector<T> min_max_vec;
-  phi::TensorToVector(min_max, dev_ctx, &min_max_vec);
-  output_min = min_max_vec[0];
-  output_max = min_max_vec[1];
 
   // check if out of range
   double range =
@@ -212,46 +215,48 @@ void HistogramKernel(const Context& dev_ctx,
 
   auto stream = dev_ctx.stream();
 
-  if (!density && !weight_data) {
+  if (!density && weight_data == nullptr) {
     int64_t* out_data = dev_ctx.template Alloc<int64_t>(output);
     phi::funcs::SetConstant<Context, int64_t>()(dev_ctx, output, 0);
-    KernelHistogram<T, IndexType, int64_t><<<GET_BLOCKS(input_numel),
-                                             PADDLE_CUDA_NUM_THREADS,
-                                             nbins * sizeof(int64_t),
-                                             stream>>>(input_data,
-                                                       weight_data,
-                                                       input_numel,
-                                                       nbins,
-                                                       min_block_ptr,
-                                                       max_block_ptr,
-                                                       out_data);
-    return;
-
+    KernelHistogram<T, IndexType, int64_t>
+        <<<block_num, PADDLE_CUDA_NUM_THREADS, nbins * sizeof(float), stream>>>(
+            input_data,
+            weight_data,
+            input_numel,
+            nbins,
+            min_block_ptr,
+            max_block_ptr,
+            out_data);
   } else {
     float* out_data = dev_ctx.template Alloc<float>(output);
     phi::funcs::SetConstant<Context, float>()(
         dev_ctx, output, static_cast<float>(0));
-    KernelHistogram<T, IndexType, float><<<GET_BLOCKS(input_numel),
-                                           PADDLE_CUDA_NUM_THREADS,
-                                           nbins * sizeof(int64_t),
-                                           stream>>>(input_data,
-                                                     weight_data,
-                                                     input_numel,
-                                                     nbins,
-                                                     min_block_ptr,
-                                                     max_block_ptr,
-                                                     out_data);
+    KernelHistogram<T, IndexType, float>
+        <<<block_num, PADDLE_CUDA_NUM_THREADS, nbins * sizeof(float), stream>>>(
+            input_data,
+            weight_data,
+            input_numel,
+            nbins,
+            min_block_ptr,
+            max_block_ptr,
+            out_data);
     if (density) {
       DenseTensor sum = phi::Sum<float, Context>(
           dev_ctx, *output, phi::IntArray({0}), phi::DataType::FLOAT32, false);
+      float sum_cpu;
+      phi::memory_utils::Copy(phi::CPUPlace(),
+                              &sum_cpu,
+                              sum.place(),
+                              sum.data<float>(),
+                              sizeof(float),
+                              dev_ctx.stream());
       float gap = static_cast<float>(nbins) /
                   static_cast<float>(output_max - output_min);
       std::vector<const DenseTensor*> ins = {output};
       std::vector<DenseTensor*> outs = {output};
-      auto functor = phi::funcs::ScaleFunctor<float>(gap);
+      float scale = gap / sum_cpu;
+      auto functor = phi::funcs::ScaleFunctor<float>(scale);
       phi::funcs::ElementwiseKernel<float>(dev_ctx, ins, &outs, functor);
-      KernelMul<<<GET_BLOCKS(static_cast<int>(bins)),
-                  PADDLE_CUDA_NUM_THREADS>>>(out_data, sum.data<float>(), bins);
     }
   }
 }
