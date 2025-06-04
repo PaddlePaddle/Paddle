@@ -29,6 +29,7 @@ typedef SSIZE_T ssize_t;
 #include "paddle/fluid/eager/hooks.h"
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/framework/convert_utils.h"
+#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/pybind/eager_utils.h"
@@ -1395,6 +1396,61 @@ static PyObject* tensor_method_get_underline_tensor(TensorObject* self,
   } else {
     RETURN_PY_NONE
   }
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+static PyObject* tensor_method_set_underline_tensor(TensorObject* self,
+                                                    PyObject* args,
+                                                    PyObject* kwargs) {
+  EAGER_TRY
+  auto& value = GetTensorFromArgs("set_tensor", "value", args, 0, false);
+  if (!value.defined()) {
+    PADDLE_THROW(
+        common::errors::Unavailable("The `set_tensor()` method of (Dist)Tensor "
+                                    "get a non initialized src value"));
+  } else if (value.is_dense_tensor()) {
+    auto* src_tensor = static_cast<phi::DenseTensor*>(value.impl().get());
+    if (self->tensor.is_dense_tensor()) {
+      auto* dst_tensor =
+          static_cast<phi::DenseTensor*>(self->tensor.impl().get());
+      framework::TensorCopy(*src_tensor, dst_tensor->place(), dst_tensor);
+    } else {
+      PADDLE_THROW(common::errors::Unavailable(
+          "The `set_tensor()` method of non DenseTensor get a DenseTensor src "
+          "value"));
+    }
+
+  } else if (value.is_dist_tensor()) {
+#ifdef PADDLE_WITH_DISTRIBUTE
+    auto* src_tensor =
+        static_cast<phi::distributed::DistTensor*>(value.impl().get());
+    if (self->tensor.is_dist_tensor()) {
+      auto* dst_tensor =
+          static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get());
+      framework::TensorCopy(*(src_tensor->unsafe_mutable_value()),
+                            dst_tensor->place(),
+                            dst_tensor->unsafe_mutable_value());
+
+      // TensorCopyFrom(dst_tensor->unsafe_mutable_value(),
+      // *(src_tensor->unsafe_mutable_value()), dst_tensor->place(), -1);
+    } else {
+      PADDLE_THROW(
+          common::errors::Unavailable("The `set_tensor()` method of non "
+                                      "DistTensor get a DistTensor src value"));
+    }
+#else
+    PADDLE_THROW(common::errors::Unavailable(
+        "The `set_tensor()` method of (Dist)Tensor is not supported in the "
+        "current PaddlePaddle, please recompile and installPaddlePaddle "
+        "with the option of `WITH_DISTRIBUTE=ON`."));
+#endif
+
+  } else {
+    PADDLE_THROW(common::errors::Unavailable(
+        "The `set_tensor()` method of (Dist)Tensor get a non "
+        "DenseTensor/DistTensor src value"));
+  }
+  RETURN_PY_NONE
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
@@ -3641,6 +3697,10 @@ PyMethodDef variable_methods[] = {  // NOLINT
      nullptr},
     {"_get_tensor_from_selected_rows",
      (PyCFunction)(void (*)())tensor_method__get_tensor_from_selected_rows,
+     METH_VARARGS | METH_KEYWORDS,
+     nullptr},
+    {"set_tensor",
+     (PyCFunction)(void (*)())tensor_method_set_underline_tensor,
      METH_VARARGS | METH_KEYWORDS,
      nullptr},
     {"_getitem_dygraph",

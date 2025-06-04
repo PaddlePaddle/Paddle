@@ -694,6 +694,12 @@ static PyObject *static_api_run_custom_op(PyObject *self,
       argument.AddAttribute(
           attr_name_and_type[0],
           pir::FloatAttribute::get(pir::IrContext::Instance(), float_attr));
+    } else if (attr_type_str == "double") {
+      double double_attr = CastPyArg2AttrDouble(obj, attr_start_idx + i);
+      custom_attrs.push_back(double_attr);  // NOLINT
+      argument.AddAttribute(
+          attr_name_and_type[0],
+          pir::DoubleAttribute::get(pir::IrContext::Instance(), double_attr));
     } else if (attr_type_str == "int64_t") {
       int64_t long_attr = CastPyArg2AttrLong(obj, attr_start_idx + i);
       custom_attrs.push_back(long_attr);  // NOLINT
@@ -761,7 +767,7 @@ static PyObject *static_api_run_custom_op(PyObject *self,
     } else {
       PADDLE_THROW(common::errors::Unimplemented(
           "Unsupported `%s` type value as custom attribute now. "
-          "Supported data types include `bool`, `int`, `float`, "
+          "Supported data types include `bool`, `int`, `float`, `double`, "
           "`int64_t`, `std::string`, `std::vector<int>`, "
           "`std::vector<float>`, `std::vector<int64_t>`, "
           "`std::vector<std::string>`, Please check whether "

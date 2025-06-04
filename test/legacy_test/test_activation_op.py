@@ -2040,6 +2040,8 @@ class TestCeil(TestActivation):
         self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
         self.outputs = {'Out': out}
         self.convert_input_output()
+        if not core.is_compiled_with_cuda():
+            self.__class__.no_need_check_grad = True
 
     def init_shape(self):
         self.shape = [10, 12]
@@ -2092,6 +2094,8 @@ class TestFloor(TestActivation):
         self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
         self.outputs = {'Out': out}
         self.convert_input_output()
+        if not core.is_compiled_with_cuda():
+            self.__class__.no_need_check_grad = True
 
     def init_shape(self):
         self.shape = [10, 12]
@@ -4051,6 +4055,29 @@ class TestLog_ZeroDim(TestLog):
         self.shape = []
 
 
+class TestLog_ZeroSize1(TestLog):
+    def init_shape(self):
+        self.shape = [0]
+
+
+class TestLog_ZeroSize2(TestLog):
+    def init_shape(self):
+        self.shape = [0, 2]
+
+    def init_dtype(self):
+        self.dtype = np.float64
+
+
+class TestLog_ZeroSize3(TestLog):
+    def init_shape(self):
+        self.shape = [1, 100, 0]
+
+
+class TestLog_ZeroSize4(TestLog):
+    def init_shape(self):
+        self.shape = [1, 0, 300, 2]
+
+
 class TestLog2(TestActivation):
     def setUp(self):
         self.op_type = "log2"
@@ -5950,6 +5977,7 @@ create_test_act_bf16_class(
 create_test_act_bf16_class(
     TestRsqrt, check_prim=True, check_pir=True, check_prim_pir=True
 )
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -1066,6 +1066,46 @@ class TestConcatOpErrorWithPir(unittest.TestCase):
                 paddle.concat([], axis=0)
 
 
+class TestConcatOpZeroSize1(TestConcatOp):
+    def init_test_data(self):
+        self.x0 = np.random.random((2, 0, 4, 5)).astype(self.dtype)
+        self.x1 = np.random.random((2, 3, 4, 5)).astype(self.dtype)
+        self.x2 = np.random.random((2, 3, 4, 5)).astype(self.dtype)
+        self.axis = 1
+
+
+class TestConcatOpZeroSize2(TestConcatOp):
+    def init_test_data(self):
+        self.x0 = np.random.random((2, 0, 1, 5)).astype(self.dtype)
+        self.x1 = np.random.random((2, 0, 2, 5)).astype(self.dtype)
+        self.x2 = np.random.random((2, 0, 4, 5)).astype(self.dtype)
+        self.axis = 2
+
+
+class TestConcatOpZeroSize3(TestConcatOp):
+    def init_test_data(self):
+        self.x0 = np.random.random((0, 0, 0, 0)).astype(self.dtype)
+        self.x1 = np.random.random((0, 0, 0, 0)).astype(self.dtype)
+        self.x2 = np.random.random((0, 0, 0, 0)).astype(self.dtype)
+        self.axis = 2
+
+
+class TestConcatOpZeroSize4(TestConcatOp):
+    def init_test_data(self):
+        self.x0 = np.random.random((0, 1, 2, 3)).astype(self.dtype)
+        self.x1 = np.random.random((0, 1, 2, 3)).astype(self.dtype)
+        self.x2 = np.random.random((0, 1, 2, 3)).astype(self.dtype)
+        self.axis = 2
+
+
+class TestConcatOpZeroSize5(TestConcatOp):
+    def init_test_data(self):
+        self.x0 = np.random.random((0, 1, 2, 3)).astype(self.dtype)
+        self.x1 = np.random.random((0, 1, 2, 3)).astype(self.dtype)
+        self.x2 = np.random.random((0, 1, 2, 3)).astype(self.dtype)
+        self.axis = 2
+
+
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()

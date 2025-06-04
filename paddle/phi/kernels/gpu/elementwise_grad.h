@@ -18,11 +18,11 @@ limitations under the License. */
 
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/elementwise_grad_base.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
-
 namespace phi {
 
 template <typename T>
@@ -376,6 +376,26 @@ void ElementwiseMulGrad(const GPUContext &dev_ctx,
                         DenseTensor *dy,
                         int axis) {
   const auto place = dev_ctx.GetPlace();
+
+  if (dout.numel() == 0) {
+    if (dx) {
+      if (dx->numel() == 0) {
+        dev_ctx.template Alloc<T>(dx);
+      } else {
+        phi::Full<T, GPUContext>(
+            dev_ctx, phi::IntArray(common::vectorize(dx->dims())), 0, dx);
+      }
+    }
+    if (dy) {
+      if (dy->numel() == 0) {
+        dev_ctx.template Alloc<T>(dy);
+      } else {
+        phi::Full<T, GPUContext>(
+            dev_ctx, phi::IntArray(common::vectorize(dy->dims())), 0, dy);
+      }
+    }
+    return;
+  }
 
   if (dx != nullptr && dy != nullptr) {
     std::vector<const DenseTensor *> ins = {&dout, &y, &x};
