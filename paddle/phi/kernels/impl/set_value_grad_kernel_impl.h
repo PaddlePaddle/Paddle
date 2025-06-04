@@ -48,7 +48,16 @@ inline void GetOffsets(const DDim& big_dim,
 }
 
 template <typename T, typename Context, size_t RANK>
-void SetValueGradImpl(const Context& dev_ctx, const DenseTensor& out_grad, std::vector<int64_t>& starts_local, \\NOLINT std::vector<int64_t>& ends_local, \\NOLINT std::vector<int64_t>& steps_local, \\NOLINT const std::vector<int64_t>& axes, const std::vector<int64_t>& decrease_axes, const std::vector<int64_t>& none_axes UNUSED, DenseTensor* x_grad, DenseTensor* value_grad) {
+void SetValueGradImpl(const Context& dev_ctx,
+                      const DenseTensor& out_grad,
+                      std::vector<int64_t>& starts_local,  // NOLINT
+                      std::vector<int64_t>& ends_local,    // NOLINT
+                      std::vector<int64_t>& steps_local,   // NOLINT
+                      const std::vector<int64_t>& axes,
+                      const std::vector<int64_t>& decrease_axes,
+                      const std::vector<int64_t>& none_axes UNUSED,
+                      DenseTensor* x_grad,
+                      DenseTensor* value_grad) {
   PADDLE_ENFORCE_EQ(
       out_grad.IsInitialized(),
       true,
