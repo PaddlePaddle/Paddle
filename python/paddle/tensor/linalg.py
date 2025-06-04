@@ -773,10 +773,8 @@ def matrix_norm(
         Auxiliary function for matrix_norm
         Computes the permutation that moves the two given dimensions to the back
         """
-        pos_dim0 = dim0 % dimn
-        pos_dim1 = dim1 % dimn
-        ret = [i for i in range(dimn) if i != pos_dim0 and i != pos_dim1]
-        ret.extend((pos_dim0, pos_dim1))
+        ret = [i for i in range(dimn) if i != dim0 and i != dim1]
+        ret.extend((dim0, dim1))
         return ret
 
     def _inverse_permutation(perm):
@@ -963,8 +961,7 @@ def matrix_norm(
                     )
                 return result
             else:  # 1,-1,inf,-inf
-                rank = len(x.shape)
-                dim0, dim1 = (d % rank for d in axis)
+                dim0, dim1 = axis
                 if abs_ord == np.float64("inf"):
                     dim0, dim1 = dim1, dim0
                 if not keepdim and (dim0 < dim1):
@@ -1059,8 +1056,7 @@ def matrix_norm(
             return reduce_out
 
         else:
-            rank = len(x.shape)
-            dim0, dim1 = (d % rank for d in axis)
+            dim0, dim1 = axis
             if abs_ord == np.float64("inf"):
                 dim0, dim1 = dim1, dim0
             if not keepdim and (dim0 < dim1):
@@ -1107,9 +1103,9 @@ def matrix_norm(
 
     if isinstance(axis, list) and len(axis) == 2:
         if p == "fro":
-            out = frobenius_norm(x, dim=axis, keepdim=keepdim, name=name)
+            return frobenius_norm(x, dim=axis, keepdim=keepdim, name=name)
         elif p == "nuc":
-            out = nuclear_norm(x, axis=axis, keepdim=keepdim, name=name)
+            return nuclear_norm(x, axis=axis, keepdim=keepdim, name=name)
         elif (
             p == np.inf
             or p == -np.inf
@@ -1118,17 +1114,13 @@ def matrix_norm(
             or p == 2
             or p == -2
         ):
-            out = p_matrix_norm(
+            return p_matrix_norm(
                 x, porder=p, axis=axis, keepdim=keepdim, name=name
             )
         else:
             raise ValueError(
                 f"just support p value 'fro','nuc',1,-1,inf,-inf,2,-2 if axis is 2D, found {p}"
             )
-        if x.dtype == paddle.complex64 or x.dtype == paddle.complex128:
-            real_dtype = "float32" if x.dtype == paddle.complex64 else "float64"
-            out = cast(out, real_dtype)
-        return out
 
     else:
         raise ValueError(
