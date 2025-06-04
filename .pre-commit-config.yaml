@@ -56,13 +56,13 @@ repos:
         args: [--force-exclude]
   # For Python files
   - repo: https://github.com/psf/black-pre-commit-mirror
-    rev: 24.8.0
+    rev: 25.1.0
     hooks:
       - id: black
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.11.11
     hooks:
-      - id: ruff
+      - id: ruff-check
         args: [--fix, --exit-non-zero-on-fix, --no-cache]
   # For C++ files
   - repo: local

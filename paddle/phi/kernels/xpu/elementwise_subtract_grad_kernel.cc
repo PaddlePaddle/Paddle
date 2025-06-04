@@ -16,6 +16,7 @@ limitations under the License. */
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/backends/xpu/xpu_header.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/xpu/elementwise.h"
 
 namespace phi {
@@ -28,6 +29,24 @@ void SubtractGradKernel(const Context& dev_ctx,
                         DenseTensor* dx,
                         DenseTensor* dy) {
   using XPUType = typename XPUTypeTrait<T>::Type;
+
+  if (dout.numel() == 0) {
+    if (dx) {
+      dev_ctx.template Alloc<T>(dx);
+      if (dx->numel() != 0) {
+        phi::Full<T, Context>(
+            dev_ctx, phi::IntArray(common::vectorize(dx->dims())), 0, dx);
+      }
+    }
+    if (dy) {
+      dev_ctx.template Alloc<T>(dy);
+      if (dy->numel() != 0) {
+        phi::Full<T, Context>(
+            dev_ctx, phi::IntArray(common::vectorize(dy->dims())), 0, dy);
+      }
+    }
+    return;
+  }
 
   auto f = [](xpu::Context* ctx,
               const XPUType* x,

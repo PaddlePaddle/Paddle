@@ -312,6 +312,10 @@ void GridSampleKernel(const Context& dev_ctx,
                       const std::string& padding_mode,
                       bool align_corners,
                       DenseTensor* out) {
+  if (out && out->numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   if (x.dims().size() == 4) {
     const int n = static_cast<int>(grid.dims()[0]);
     const int out_h = static_cast<int>(grid.dims()[1]);

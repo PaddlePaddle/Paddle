@@ -708,6 +708,9 @@ PD_REGISTER_SPMD_RULE(cumsum,
                       PD_INFER_SPMD(phi::distributed::CumSumInferSpmd),
                       PD_INFER_SPMD(phi::distributed::CumSumInferSpmdReverse));
 
+// unique
+PD_REGISTER_SPMD_RULE(unique, PD_INFER_SPMD(phi::distributed::UniqueInferSpmd));
+
 // argmin
 PD_REGISTER_SPMD_RULE(
     argmin,
@@ -773,4 +776,9 @@ PD_REGISTER_SPMD_RULE(
     PD_INFER_SPMD(phi::distributed::IndexSelectInferSpmd),
     PD_INFER_SPMD(phi::distributed::IndexSelectGradInferSpmd));
 
+// put_along_axis
+PD_REGISTER_SPMD_RULE(
+    put_along_axis,
+    PD_INFER_SPMD(phi::distributed::PutAlongAxisInferSpmd),
+    PD_INFER_SPMD(phi::distributed::PutAlongAxisGradInferSpmd));
 }  // namespace phi::distributed

@@ -479,7 +479,10 @@ function cmake_base() {
         -DWITH_IPU=${WITH_IPU:-OFF}
         -DWITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF}
         -DWITH_XPU_BKCL=${WITH_XPU_BKCL:-OFF}
+        -DWITH_XPU_XHPC=${WITH_XPU_XHPC:-OFF}
+        -DWITH_XPU_XFT=${WITH_XPU_XFT:-OFF}
         -DWITH_XPU_XRE5=${WITH_XPU_XRE5:-OFF}
+        -DWITH_XPU_FFT=${WITH_XPU_FFT:-OFF}
         -DWITH_ARM=${WITH_ARM:-OFF}
         -DWITH_STRIP=${WITH_STRIP:-ON}
         -DON_INFER=${ON_INFER:-OFF}
@@ -531,6 +534,9 @@ EOF
         -DWITH_IPU=${WITH_IPU:-OFF} \
         -DXPU_SDK_ROOT=${XPU_SDK_ROOT:-""} \
         -DWITH_XPU_BKCL=${WITH_XPU_BKCL:-OFF} \
+        -DWITH_XPU_XHPC=${WITH_XPU_XHPC:-OFF} \
+        -DWITH_XPU_XFT=${WITH_XPU_XFT:-OFF} \
+        -DWITH_XPU_FFT=${WITH_XPU_FFT:-OFF} \
         -DWITH_ARM=${WITH_ARM:-OFF} \
         -DWITH_STRIP=${WITH_STRIP:-ON} \
         -DON_INFER=${ON_INFER:-OFF} \

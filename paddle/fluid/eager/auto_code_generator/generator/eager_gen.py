@@ -3317,8 +3317,7 @@ class DygraphForwardAndNodesGenerator(GeneratorBase):
                     backward_api_contents = next_grad_api_contents
 
         if len(namespace) > 0:
-            if namespace.endswith("::"):
-                namespace = namespace[:-2]
+            namespace = namespace.removesuffix("::")
             self.forward_definition_str = NAMESPACE_WRAPPER_TEMPLATE.format(
                 namespace, self.forward_definition_str
             )

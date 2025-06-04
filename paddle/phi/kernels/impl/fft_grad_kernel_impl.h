@@ -38,6 +38,9 @@ void FFTC2CGradKernel(const Context& ctx,
                       bool forward,
                       DenseTensor* x_grad) {
   ctx.template Alloc<T>(x_grad);
+  if (x_grad && x_grad->numel() == 0) {
+    return;
+  }
   auto norm_type = funcs::get_norm_from_string(normalization, forward);
   funcs::FFTC2CFunctor<Context, T, T> fft_c2c_func;
   fft_c2c_func(ctx, out_grad, x_grad, axes, norm_type, !forward);
@@ -55,6 +58,10 @@ void FFTR2CGradKernel(const Context& ctx,
   using R = typename T::value_type;
   DenseTensor complex_x_grad = EmptyLike<T>(ctx, x);
   ctx.template Alloc<R>(x_grad);
+  if (x_grad && x_grad->numel() == 0) {
+    return;
+  }
+
   auto norm_type = funcs::get_norm_from_string(normalization, forward);
   funcs::FFTC2CFunctor<Context, T, T> fft_c2c_func;
 
@@ -85,6 +92,10 @@ void FFTC2RGradKernel(const Context& ctx,
                       DenseTensor* x_grad) {
   using C = phi::dtype::complex<T>;
   ctx.template Alloc<C>(x_grad);
+  if (x_grad && x_grad->numel() == 0) {
+    return;
+  }
+
   auto norm_type = funcs::get_norm_from_string(normalization, forward);
 
   funcs::FFTR2CFunctor<Context, T, C> fft_r2c_func;
