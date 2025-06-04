@@ -80,6 +80,10 @@ void cast_and_cumsum(const phi::XPUContext& dev_ctx,
                      bool reverse_val,
                      bool exclusive_val,
                      phi::DenseTensor* out) {
+  if (x.numel() == 0) {
+    dev_ctx.template Alloc<OutT>(out);
+    return;
+  }
   DenseTensor x_casted;
   x_casted.Resize(x.dims());
   dev_ctx.template Alloc<OutT>(&x_casted);
@@ -113,12 +117,10 @@ void CumsumKernel(const Context& dev_ctx,
                   DataType dtype,
                   DenseTensor* out) {
   int axis_val = axis.to<int>();
-
-  if (out->dtype() == x.dtype()) {
+  DataType out_dtype = out->dtype();
+  if (out_dtype == x.dtype()) {
     cumsum_impl<T>(dev_ctx, x, axis_val, flatten, reverse, exclusive, out);
   } else {
-    DataType out_dtype = out->dtype();
-
     if (out_dtype == DataType::FLOAT32) {
       cast_and_cumsum<T, float>(
           dev_ctx, x, axis_val, flatten, reverse, exclusive, out);
