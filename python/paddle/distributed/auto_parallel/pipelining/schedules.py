@@ -354,6 +354,8 @@ class PipelineScheduleSingle(_PipelineSchedule):
 
         if self._has_backward:
             self._stage._prepare_backward_infra(self._n_microbatches, loss)
+
+        self._stage.clear_grads()
         self._stage_initialized = True
 
     def step(self, *args, target=None, losses: list | None = None, **kwargs):
@@ -762,6 +764,9 @@ class PipelineScheduleMulti(_PipelineSchedule):
                     stage_reverse._prepare_backward_infra(
                         self._n_microbatches, None
                     )
+
+        for stage in self._stages:
+            stage.clear_grads()
 
         self._stages_initialized = True
 

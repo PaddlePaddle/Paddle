@@ -548,6 +548,13 @@ class _PipelineStageBase(ABC):
                     )
         return ops
 
+    def clear_grads(self) -> None:
+        """
+        Clear grads of the stage.
+        """
+        for param in self.sublayer.parameters():
+            param.clear_grad()
+
     def clear_runtime_states(self) -> None:
         """
         Clear runtime states of the stage.
@@ -1123,7 +1130,7 @@ class PipelineStage(_PipelineStageBase):
                 self.stage_index,
             )
             stage_output = loss
-            grads = paddle.zeros_like(stage_output)
+            grads = None
         elif (
             self.stage_index_to_group_rank[self.stage_index + 1]
             == self.group_rank
