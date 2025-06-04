@@ -89,6 +89,10 @@ void TemporalShiftGradKernel(const Context& dev_ctx,
                              float shift_ratio,
                              const std::string& data_format_str,
                              DenseTensor* x_grad) {
+  if (x_grad && x_grad->numel() == 0) {
+    dev_ctx.template Alloc<T>(x_grad);
+    return;
+  }
   auto* input_grad = x_grad;
   auto* output_grad = &out_grad;
   int t = seg_num;

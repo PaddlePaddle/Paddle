@@ -852,6 +852,8 @@ set_tests_properties(test_imperative_transformer_sorted_gradient
 set_tests_properties(test_imperative_optimizer PROPERTIES TIMEOUT 250)
 set_tests_properties(test_imperative_optimizer_v2 PROPERTIES TIMEOUT 250)
 set_tests_properties(test_activation_op PROPERTIES TIMEOUT 270)
+set_tests_properties(test_activation_op_zero_size PROPERTIES TIMEOUT 200)
+
 set_tests_properties(test_normal PROPERTIES TIMEOUT 120)
 set_tests_properties(test_cyclic_cifar_dataset PROPERTIES TIMEOUT 120)
 set_tests_properties(test_fused_elemwise_activation_op PROPERTIES TIMEOUT 270)

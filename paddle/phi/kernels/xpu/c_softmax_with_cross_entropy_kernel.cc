@@ -143,6 +143,7 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::XPUContext, T> {
                   int nranks,
                   DenseTensor* softmax,
                   DenseTensor* loss) {
+#if defined(PADDLE_WITH_XPU_BKCL)
     using XPUType = typename XPUTypeTrait<T>::Type;
     const phi::DenseTensor* logits = &logits_in;
     const phi::DenseTensor* labels = &label_in;
@@ -327,6 +328,12 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::XPUContext, T> {
     // 将label和ignore_index相同的那些loss，置为0
     FixLossAccordingToIgnoreIndex<T>(
         dev_ctx, labels, &predicted_logits, loss, N, ignore_index);
+#else
+    PADDLE_THROW(common::errors::PreconditionNotMet(
+        "PaddlePaddle is not compiled with DWITH_XPU_BKCL, please recompile "
+        "with "
+        "DWITH_XPU_BKCL for using c_softmax_with_cross_entropy."));
+#endif
   }
 };
 

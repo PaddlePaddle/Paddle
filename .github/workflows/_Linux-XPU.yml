@@ -53,12 +53,13 @@ jobs:
           CUDA_VERSION:
           CUDNN_VERSION:
           WITH_XPU_BKCL: "ON"
+          WITH_XPU_FFT: "ON"
           WITH_XPU_XRE5: "ON"
           CACHE_DIR: /root/.cache
           CCACHE_DIR: /root/.ccache
           CCACHE_MAXSIZE: 150G
           CCACHE_LIMIT_MULTIPLE: 0.8
-          IF_KUNLUN3: "ON"
+          IF_KUNLUN3: "OFF"
           GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           home_dir: ${{ github.workspace }}/../../../..
         run: |
@@ -86,6 +87,7 @@ jobs:
             -e CUDA_VERSION \
             -e CUDNN_VERSION \
             -e WITH_XPU_BKCL \
+            -e WITH_XPU_FFT \
             -e WITH_XPU_XRE5 \
             -e WITH_INFERENCE_API_TEST \
             -e CACHE_DIR \
@@ -214,7 +216,7 @@ jobs:
           CCACHE_DIR: /root/.ccache
           CCACHE_MAXSIZE: 150G
           CCACHE_LIMIT_MULTIPLE: 0.8
-          IF_KUNLUN3: "ON"
+          IF_KUNLUN3: "OFF"
           GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           home_dir: ${{ github.workspace }}/../../../..
           FLAGS_use_stride_kernel: "0"

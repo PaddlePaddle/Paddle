@@ -14,6 +14,7 @@
 
 #include <limits>
 #include <set>
+
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -210,57 +211,12 @@ void SumRawKernel(const Context& dev_ctx,
     out_dtype = out->dtype();
   }
   if (x.numel() == 0) {
-    auto x_dims = x.dims();
-    std::vector<int> out_dims;
-    if (reduce_all) {
-      if (keep_dim) {
-        out_dims.resize(x_dims.size(), 1);
-      } else {
-        out_dims = std::vector<int>();
-      }
-    } else {
-      std::set<int> reduce_dims;
-      auto dims_vec = dims.GetData();
-      for (auto dim : dims_vec) {
-        PADDLE_ENFORCE_GE(dim,
-                          -x_dims.size(),
-                          common::errors::InvalidArgument(
-                              "The dimension index is out of range, "
-                              "expected index >= %d, but received %d.",
-                              -x_dims.size(),
-                              dim));
-        PADDLE_ENFORCE_LT(dim,
-                          x_dims.size(),
-                          common::errors::InvalidArgument(
-                              "The dimension index is out of range, "
-                              "expected index < %d, but received %d.",
-                              x_dims.size(),
-                              dim));
-        if (dim < 0) {
-          dim += x_dims.size();
-        }
-        reduce_dims.insert(dim);
-      }
-      if (keep_dim) {
-        out_dims.resize(x_dims.size());
-        for (int i = 0; i < x_dims.size(); ++i) {
-          if (reduce_dims.count(i)) {
-            out_dims[i] = 1;
-          } else {
-            out_dims[i] = x_dims[i];
-          }
-        }
-      } else {
-        for (int i = 0; i < x_dims.size(); ++i) {
-          if (!reduce_dims.count(i)) {
-            out_dims.push_back(x_dims[i]);
-          }
-        }
-      }
-    }
-    out->Resize(phi::make_ddim(out_dims));
     dev_ctx.template Alloc<T>(out);
-    FullKernel<T, Context>(dev_ctx, out_dims, 0, out_dtype, out);
+    FullKernel<T, Context>(dev_ctx,
+                           phi::IntArray(common::vectorize(out->dims())),
+                           0,
+                           out_dtype,
+                           out);
     return;
   }
 
