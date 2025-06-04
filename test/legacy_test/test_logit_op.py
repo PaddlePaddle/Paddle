@@ -265,7 +265,8 @@ class TestLogitAPI_NAN_Val(unittest.TestCase):
         for place in self.place:
             _test_nan_val_with_place(place)
 
-            class TestLogitAPICase1(unittest.TestCase):
+
+class TestLogitAPICase1(unittest.TestCase):
     def init_data(self):
         self.x_shape = [120]
         self.x_dtype = "float64"
@@ -275,6 +276,7 @@ class TestLogitAPICase2(unittest.TestCase):
     def init_data(self):
         self.x_shape = [120]
         self.x_dtype = "float16"
+
 
 if __name__ == "__main__":
     unittest.main()
