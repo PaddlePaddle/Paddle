@@ -42,7 +42,6 @@ void SetTensorValueKernelV2(const Context& dev_ctx,
                             const std::vector<int64_t>& decrease_axes,
                             const std::vector<int64_t>& none_axes,
                             DenseTensor* out) {
-  // auto t1 = std::chrono::high_resolution_clock::now();
   auto in_dims = in.dims();
   auto meta = in.meta();
   std::vector<int64_t> starts_local = starts.GetData();
@@ -53,7 +52,6 @@ void SetTensorValueKernelV2(const Context& dev_ctx,
 
   std::vector<int64_t> output_dims = common::vectorize<int64_t>(in.dims());
   std::vector<int64_t> output_stride = common::vectorize<int64_t>(in.strides());
-
   int64_t output_offset = static_cast<int64_t>(in.offset());
   for (size_t i = 0; i < axes.size(); ++i) {
     int64_t axis_size = in.dims()[axes[i]];
@@ -88,7 +86,6 @@ void SetTensorValueKernelV2(const Context& dev_ctx,
   }
 
   CheckIsDimsMatch(phi::make_ddim(new_out_shape), value.dims());
-  // auto t2 = std::chrono::high_resolution_clock::now();
   if (new_out_shape.empty()) new_out_shape.push_back(1);
   DenseTensor expand_tensor;
   if (value.numel() == 1) {
@@ -109,7 +106,6 @@ void SetTensorValueKernelV2(const Context& dev_ctx,
     ExpandKernel<T, Context>(
         dev_ctx, value_tensor, IntArray{new_out_shape}, &expand_tensor);
   }
-  // auto t3 = std::chrono::high_resolution_clock::now();
 
   out->ResetHolder(in.Holder());
   out->ShareInplaceVersionCounterWith(in);
@@ -120,15 +116,6 @@ void SetTensorValueKernelV2(const Context& dev_ctx,
                                 output_offset,
                                 out);
   out->set_meta(meta);
-  // auto t4 = std::chrono::high_resolution_clock::now();
-  // auto duration4 = std::chrono::duration_cast<std::chrono::microseconds>(t4 -
-  // t3); auto duration3 =
-  // std::chrono::duration_cast<std::chrono::microseconds>(t3 - t2); auto
-  // duration2 = std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1);
-  //   std::cout << "维度计算: " << duration2.count() << " 微秒" << std::endl;
-  //   std::cout << "expand tensor: " << duration3.count() << " 微秒" <<
-  //   std::endl; std::cout << "stride copy: " << duration4.count() << " 微秒"
-  //   << std::endl;
 }
 
 template <typename T, typename Context>
@@ -143,7 +130,6 @@ void SetValueKernelV2(const Context& dev_ctx,
                       const std::vector<int64_t>& shape,
                       const std::vector<Scalar>& values,
                       DenseTensor* out) {
-  // auto t1 = std::chrono::high_resolution_clock::now();
   std::vector<T> assign_values;
   assign_values.reserve(values.size());
   for (const auto& val : values) {
@@ -169,7 +155,6 @@ void SetValueKernelV2(const Context& dev_ctx,
   DenseTensor value_tensor = Empty<T>(dev_ctx, shape);
   phi::TensorFromVector(assign_values, dev_ctx, &value_tensor);
   value_tensor.Resize(common::make_ddim(shape));
-  // auto start = std::chrono::high_resolution_clock::now();
   SetTensorValueKernelV2<T, Context>(dev_ctx,
                                      in,
                                      value_tensor,
@@ -180,10 +165,6 @@ void SetValueKernelV2(const Context& dev_ctx,
                                      decrease_axes,
                                      none_axes,
                                      out);
-  // auto end = std::chrono::high_resolution_clock::now();
-  // auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end -
-  // start); std::cout << "SetTensorValueKernelV2: " << duration.count() << "
-  // 微秒" << std::endl;
 }
 
 }  // namespace phi

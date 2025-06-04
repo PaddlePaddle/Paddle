@@ -286,69 +286,24 @@ bool LaunchStridedCopyCaseOneKernel(
           cur_dims,
           dims[rank - 1] * dims[rank - 2]);
       break;
-    case 3:
-      StridedCopyCaseOneFunc<T, 3><<<grid, block, 0, dev_ctx.stream()>>>(
-          input_data,
-          input_stride,
-          output_data,
-          output_stride,
-          cur_dims,
-          dims[rank - 1] * dims[rank - 2] * dims[rank - 3]);
-      break;
-    case 4:
-      StridedCopyCaseOneFunc<T, 4><<<grid, block, 0, dev_ctx.stream()>>>(
-          input_data,
-          input_stride,
-          output_data,
-          output_stride,
-          cur_dims,
-          dims[rank - 1] * dims[rank - 2] * dims[rank - 3]);
-      break;
-    case 5:
-      StridedCopyCaseOneFunc<T, 5><<<grid, block, 0, dev_ctx.stream()>>>(
-          input_data,
-          input_stride,
-          output_data,
-          output_stride,
-          cur_dims,
-          dims[rank - 1] * dims[rank - 2] * dims[rank - 3]);
-      break;
-    case 6:
-      StridedCopyCaseOneFunc<T, 6><<<grid, block, 0, dev_ctx.stream()>>>(
-          input_data,
-          input_stride,
-          output_data,
-          output_stride,
-          cur_dims,
-          dims[rank - 1] * dims[rank - 2] * dims[rank - 3]);
-      break;
-    case 7:
-      StridedCopyCaseOneFunc<T, 7><<<grid, block, 0, dev_ctx.stream()>>>(
-          input_data,
-          input_stride,
-          output_data,
-          output_stride,
-          cur_dims,
-          dims[rank - 1] * dims[rank - 2] * dims[rank - 3]);
-      break;
-    case 8:
-      StridedCopyCaseOneFunc<T, 8><<<grid, block, 0, dev_ctx.stream()>>>(
-          input_data,
-          input_stride,
-          output_data,
-          output_stride,
-          cur_dims,
-          dims[rank - 1] * dims[rank - 2] * dims[rank - 3]);
-      break;
-    case 9:
-      StridedCopyCaseOneFunc<T, 9><<<grid, block, 0, dev_ctx.stream()>>>(
-          input_data,
-          input_stride,
-          output_data,
-          output_stride,
-          cur_dims,
-          dims[rank - 1] * dims[rank - 2] * dims[rank - 3]);
-      break;
+#define CASE_RANK(__Rk)                                                    \
+  case __Rk:                                                               \
+    StridedCopyCaseOneFunc<T, __Rk><<<grid, block, 0, dev_ctx.stream()>>>( \
+        input_data,                                                        \
+        input_stride,                                                      \
+        output_data,                                                       \
+        output_stride,                                                     \
+        cur_dims,                                                          \
+        dims[rank - 1] * dims[rank - 2] * dims[rank - 3]);                 \
+    break;
+      CASE_RANK(3);
+      CASE_RANK(4);
+      CASE_RANK(5);
+      CASE_RANK(6);
+      CASE_RANK(7);
+      CASE_RANK(8);
+      CASE_RANK(9);
+#undef CASE_RANK
     default:
       PADDLE_THROW(common::errors::InvalidArgument(
           "The rank of input should be less than 9, but received %d.", rank));
@@ -400,42 +355,21 @@ void LaunchStridedCopyDefaultKernel(
   int64_t grid = (numel + block - 1) / block;
 
   switch (rank) {
-    case 1:
-      StridedCopyDefaultFunc<T, 1><<<grid, block, 0, dev_ctx.stream()>>>(
-          input_data, input_stride, output_data, output_stride, dims, numel);
-      break;
-    case 2:
-      StridedCopyDefaultFunc<T, 2><<<grid, block, 0, dev_ctx.stream()>>>(
-          input_data, input_stride, output_data, output_stride, dims, numel);
-      break;
-    case 3:
-      StridedCopyDefaultFunc<T, 3><<<grid, block, 0, dev_ctx.stream()>>>(
-          input_data, input_stride, output_data, output_stride, dims, numel);
-      break;
-    case 4:
-      StridedCopyDefaultFunc<T, 4><<<grid, block, 0, dev_ctx.stream()>>>(
-          input_data, input_stride, output_data, output_stride, dims, numel);
-      break;
-    case 5:
-      StridedCopyDefaultFunc<T, 5><<<grid, block, 0, dev_ctx.stream()>>>(
-          input_data, input_stride, output_data, output_stride, dims, numel);
-      break;
-    case 6:
-      StridedCopyDefaultFunc<T, 6><<<grid, block, 0, dev_ctx.stream()>>>(
-          input_data, input_stride, output_data, output_stride, dims, numel);
-      break;
-    case 7:
-      StridedCopyDefaultFunc<T, 7><<<grid, block, 0, dev_ctx.stream()>>>(
-          input_data, input_stride, output_data, output_stride, dims, numel);
-      break;
-    case 8:
-      StridedCopyDefaultFunc<T, 8><<<grid, block, 0, dev_ctx.stream()>>>(
-          input_data, input_stride, output_data, output_stride, dims, numel);
-      break;
-    case 9:
-      StridedCopyDefaultFunc<T, 9><<<grid, block, 0, dev_ctx.stream()>>>(
-          input_data, input_stride, output_data, output_stride, dims, numel);
-      break;
+#define CASE_RANK(__Rk)                                                     \
+  case __Rk:                                                                \
+    StridedCopyDefaultFunc<T, __Rk><<<grid, block, 0, dev_ctx.stream()>>>(  \
+        input_data, input_stride, output_data, output_stride, dims, numel); \
+    break;
+    CASE_RANK(1);
+    CASE_RANK(2);
+    CASE_RANK(3);
+    CASE_RANK(4);
+    CASE_RANK(5);
+    CASE_RANK(6);
+    CASE_RANK(7);
+    CASE_RANK(8);
+    CASE_RANK(9);
+#undef CASE_RANK
     default:
       PADDLE_THROW(common::errors::InvalidArgument(
           "The rank of input should be less than 9, but received %d.", rank));
@@ -511,36 +445,19 @@ bool LaunchStrided2ContiguousCaseZeroKernel(
   }
 
   switch (rank) {
-    case 1:
-      Strided2ContiguousCaseZeroFunc<T, 1>
-          <<<grid, block, 0, dev_ctx.stream()>>>(
-              input_data, input_stride, output_data);
-      break;
-    case 2:
-      Strided2ContiguousCaseZeroFunc<T, 2>
-          <<<grid, block, 0, dev_ctx.stream()>>>(
-              input_data, input_stride, output_data);
-      break;
-    case 3:
-      Strided2ContiguousCaseZeroFunc<T, 3>
-          <<<grid, block, 0, dev_ctx.stream()>>>(
-              input_data, input_stride, output_data);
-      break;
-    case 4:
-      Strided2ContiguousCaseZeroFunc<T, 4>
-          <<<grid, block, 0, dev_ctx.stream()>>>(
-              input_data, input_stride, output_data);
-      break;
-    case 5:
-      Strided2ContiguousCaseZeroFunc<T, 5>
-          <<<grid, block, 0, dev_ctx.stream()>>>(
-              input_data, input_stride, output_data);
-      break;
-    case 6:
-      Strided2ContiguousCaseZeroFunc<T, 6>
-          <<<grid, block, 0, dev_ctx.stream()>>>(
-              input_data, input_stride, output_data);
-      break;
+#define CASE_RANK(__Rk)                             \
+  case __Rk:                                        \
+    Strided2ContiguousCaseZeroFunc<T, __Rk>         \
+        <<<grid, block, 0, dev_ctx.stream()>>>(     \
+            input_data, input_stride, output_data); \
+    break
+    CASE_RANK(1);
+    CASE_RANK(2);
+    CASE_RANK(3);
+    CASE_RANK(4);
+    CASE_RANK(5);
+    CASE_RANK(6);
+#undef CASE_RANK
   }
 
   return true;
@@ -707,62 +624,24 @@ bool LaunchStrided2ContiguousCaseOneKernel(
           cur_dims,
           dims[rank - 1] * dims[rank - 2]);
       break;
-    case 3:
-      Strided2ContiguousCaseOneFunc<T, 3><<<grid, block, 0, dev_ctx.stream()>>>(
-          input_data,
-          input_stride,
-          output_data,
-          cur_dims,
-          dims[rank - 1] * dims[rank - 2] * dims[rank - 3]);
-      break;
-    case 4:
-      Strided2ContiguousCaseOneFunc<T, 4><<<grid, block, 0, dev_ctx.stream()>>>(
-          input_data,
-          input_stride,
-          output_data,
-          cur_dims,
-          dims[rank - 1] * dims[rank - 2] * dims[rank - 3]);
-      break;
-    case 5:
-      Strided2ContiguousCaseOneFunc<T, 5><<<grid, block, 0, dev_ctx.stream()>>>(
-          input_data,
-          input_stride,
-          output_data,
-          cur_dims,
-          dims[rank - 1] * dims[rank - 2] * dims[rank - 3]);
-      break;
-    case 6:
-      Strided2ContiguousCaseOneFunc<T, 6><<<grid, block, 0, dev_ctx.stream()>>>(
-          input_data,
-          input_stride,
-          output_data,
-          cur_dims,
-          dims[rank - 1] * dims[rank - 2] * dims[rank - 3]);
-      break;
-    case 7:
-      Strided2ContiguousCaseOneFunc<T, 7><<<grid, block, 0, dev_ctx.stream()>>>(
-          input_data,
-          input_stride,
-          output_data,
-          cur_dims,
-          dims[rank - 1] * dims[rank - 2] * dims[rank - 3]);
-      break;
-    case 8:
-      Strided2ContiguousCaseOneFunc<T, 8><<<grid, block, 0, dev_ctx.stream()>>>(
-          input_data,
-          input_stride,
-          output_data,
-          cur_dims,
-          dims[rank - 1] * dims[rank - 2] * dims[rank - 3]);
-      break;
-    case 9:
-      Strided2ContiguousCaseOneFunc<T, 9><<<grid, block, 0, dev_ctx.stream()>>>(
-          input_data,
-          input_stride,
-          output_data,
-          cur_dims,
-          dims[rank - 1] * dims[rank - 2] * dims[rank - 3]);
-      break;
+#define CASE_RANK(__Rk)                                        \
+  case __Rk:                                                   \
+    Strided2ContiguousCaseOneFunc<T, __Rk>                     \
+        <<<grid, block, 0, dev_ctx.stream()>>>(                \
+            input_data,                                        \
+            input_stride,                                      \
+            output_data,                                       \
+            cur_dims,                                          \
+            dims[rank - 1] * dims[rank - 2] * dims[rank - 3]); \
+    break
+      CASE_RANK(3);
+      CASE_RANK(4);
+      CASE_RANK(5);
+      CASE_RANK(6);
+      CASE_RANK(7);
+      CASE_RANK(8);
+      CASE_RANK(9);
+#undef CASE_RANK
     default:
       PADDLE_THROW(common::errors::InvalidArgument(
           "The rank of input should be less than 9, but received %d.", rank));
@@ -805,436 +684,22 @@ void LaunchStrided2ContiguousDefaultKernel(
   int64_t grid = (numel + block - 1) / block;
 
   switch (rank) {
-    case 1:
-      Strided2ContiguousDefaultFunc<T, 1><<<grid, block, 0, dev_ctx.stream()>>>(
-          input_data, input_stride, output_data, dims, numel);
-      break;
-    case 2:
-      Strided2ContiguousDefaultFunc<T, 2><<<grid, block, 0, dev_ctx.stream()>>>(
-          input_data, input_stride, output_data, dims, numel);
-      break;
-    case 3:
-      Strided2ContiguousDefaultFunc<T, 3><<<grid, block, 0, dev_ctx.stream()>>>(
-          input_data, input_stride, output_data, dims, numel);
-      break;
-    case 4:
-      Strided2ContiguousDefaultFunc<T, 4><<<grid, block, 0, dev_ctx.stream()>>>(
-          input_data, input_stride, output_data, dims, numel);
-      break;
-    case 5:
-      Strided2ContiguousDefaultFunc<T, 5><<<grid, block, 0, dev_ctx.stream()>>>(
-          input_data, input_stride, output_data, dims, numel);
-      break;
-    case 6:
-      Strided2ContiguousDefaultFunc<T, 6><<<grid, block, 0, dev_ctx.stream()>>>(
-          input_data, input_stride, output_data, dims, numel);
-      break;
-    case 7:
-      Strided2ContiguousDefaultFunc<T, 7><<<grid, block, 0, dev_ctx.stream()>>>(
-          input_data, input_stride, output_data, dims, numel);
-      break;
-    case 8:
-      Strided2ContiguousDefaultFunc<T, 8><<<grid, block, 0, dev_ctx.stream()>>>(
-          input_data, input_stride, output_data, dims, numel);
-      break;
-    case 9:
-      Strided2ContiguousDefaultFunc<T, 9><<<grid, block, 0, dev_ctx.stream()>>>(
-          input_data, input_stride, output_data, dims, numel);
-      break;
-    default:
-      PADDLE_THROW(common::errors::InvalidArgument(
-          "The rank of input should be less than 9, but received %d.", rank));
-  }
-}
-
-template <typename T, size_t RANK>
-__global__ void Contiguous2StridedCaseZeroFunc(
-    const T* input_data,
-    T* output_data,
-    phi::Array<int64_t, phi::DDim::kMaxRank + 1> output_stride) {
-  int64_t input_offset = (blockIdx.z * gridDim.y * gridDim.x +
-                          blockIdx.y * gridDim.x + blockIdx.x) *
-                             blockDim.z * blockDim.y * blockDim.x +
-                         threadIdx.z * blockDim.y * blockDim.x +
-                         threadIdx.y * blockDim.x + threadIdx.x;
-  int64_t output_offset = 0;
-
-  int64_t coordinate[6] = {threadIdx.x,
-                           threadIdx.y,
-                           threadIdx.z,
-                           blockIdx.x,
-                           blockIdx.y,
-                           blockIdx.z};
-
-#pragma unroll
-  for (int dim = RANK - 1; dim >= 0; --dim) {
-    output_offset += coordinate[RANK - 1 - dim] * output_stride[dim];
-  }
-
-  output_data[output_offset] = input_data[input_offset];
-}
-
-template <typename T, typename Context>
-bool LaunchContiguous2StridedCaseZeroKernel(
-    const Context& dev_ctx,
-    const T* input_data,
-    T* output_data,
-    const phi::Array<int64_t, phi::DDim::kMaxRank + 1>& output_stride,
-    const phi::Array<int64_t, phi::DDim::kMaxRank + 1>& dims,
-    int rank) {
-  if (rank > 6) {
-    return false;
-  }
-
-  dim3 grid(1, 1, 1), block(1, 1, 1);
-
-  if (rank >= 1) {
-    block.x = dims[rank - 1];
-  }
-
-  if (rank >= 2) {
-    block.y = dims[rank - 2];
-  }
-
-  if (rank >= 3) {
-    block.z = dims[rank - 3];
-  }
-
-  if (rank >= 4) {
-    grid.x = dims[rank - 4];
-  }
-
-  if (rank >= 5) {
-    grid.y = dims[rank - 5];
-  }
-
-  if (rank >= 6) {
-    grid.z = dims[rank - 6];
-  }
-
-  if (!VerifyStridedCopyThreadConfigurationParameters(block, grid)) {
-    return false;
-  }
-
-  switch (rank) {
-    case 1:
-      Contiguous2StridedCaseZeroFunc<T, 1>
-          <<<grid, block, 0, dev_ctx.stream()>>>(
-              input_data, output_data, output_stride);
-      break;
-    case 2:
-      Contiguous2StridedCaseZeroFunc<T, 2>
-          <<<grid, block, 0, dev_ctx.stream()>>>(
-              input_data, output_data, output_stride);
-      break;
-    case 3:
-      Contiguous2StridedCaseZeroFunc<T, 3>
-          <<<grid, block, 0, dev_ctx.stream()>>>(
-              input_data, output_data, output_stride);
-      break;
-    case 4:
-      Contiguous2StridedCaseZeroFunc<T, 4>
-          <<<grid, block, 0, dev_ctx.stream()>>>(
-              input_data, output_data, output_stride);
-      break;
-    case 5:
-      Contiguous2StridedCaseZeroFunc<T, 5>
-          <<<grid, block, 0, dev_ctx.stream()>>>(
-              input_data, output_data, output_stride);
-      break;
-    case 6:
-      Contiguous2StridedCaseZeroFunc<T, 6>
-          <<<grid, block, 0, dev_ctx.stream()>>>(
-              input_data, output_data, output_stride);
-      break;
-  }
-
-  return true;
-}
-
-template <typename T, size_t N>
-__global__ void Contiguous2StridedCaseOneFunc(
-    const T* input_data,
-    T* out_data,
-    phi::Array<int64_t, phi::DDim::kMaxRank + 1> output_stride,
-    phi::Array<int64_t, 6> dims,
-    const int64_t x_max) {
-  int64_t x = blockIdx.x * blockDim.x + threadIdx.x;
-  if (x < x_max) {
-    int64_t input_offset = (blockIdx.z * gridDim.y + blockIdx.y) * x_max + x;
-    int64_t output_offset = 0;
-
-    int64_t reg_dims[6] = {
-        dims[0], dims[1], dims[2], dims[3], dims[4], dims[5]};
-    int64_t coordinate[phi::DDim::kMaxRank + 1];
-
-    switch (N) {
-      case 1:
-        coordinate[0] = x % reg_dims[0];
-        break;
-      case 2:
-        coordinate[0] = x % reg_dims[0];
-        coordinate[1] = x / reg_dims[0] % reg_dims[1];
-        break;
-      case 3:
-        coordinate[0] = x % reg_dims[0];
-        coordinate[1] = x / reg_dims[0] % reg_dims[1];
-        coordinate[2] = x / (reg_dims[0] * reg_dims[1]);
-        break;
-      case 4:
-        coordinate[0] = x % reg_dims[0];
-        coordinate[1] = x / reg_dims[0] % reg_dims[1];
-        coordinate[2] = x / (reg_dims[0] * reg_dims[1]);
-        coordinate[3] = blockIdx.y % reg_dims[2];
-        break;
-      case 5:
-        coordinate[0] = x % reg_dims[0];
-        coordinate[1] = x / reg_dims[0] % reg_dims[1];
-        coordinate[2] = x / (reg_dims[0] * reg_dims[1]);
-        coordinate[3] = blockIdx.y % reg_dims[2];
-        coordinate[4] = blockIdx.y / reg_dims[2] % reg_dims[3];
-        break;
-      case 6:
-        coordinate[0] = x % reg_dims[0];
-        coordinate[1] = x / reg_dims[0] % reg_dims[1];
-        coordinate[2] = x / (reg_dims[0] * reg_dims[1]);
-        coordinate[3] = blockIdx.y % reg_dims[2];
-        coordinate[4] = blockIdx.y / reg_dims[2] % reg_dims[3];
-        coordinate[5] = blockIdx.y / (reg_dims[2] * reg_dims[3]);
-        break;
-      case 7:
-        coordinate[0] = x % reg_dims[0];
-        coordinate[1] = x / reg_dims[0] % reg_dims[1];
-        coordinate[2] = x / (reg_dims[0] * reg_dims[1]);
-        coordinate[3] = blockIdx.y % reg_dims[2];
-        coordinate[4] = blockIdx.y / reg_dims[2] % reg_dims[3];
-        coordinate[5] = blockIdx.y / (reg_dims[2] * reg_dims[3]);
-        coordinate[6] = blockIdx.z % reg_dims[4];
-        break;
-      case 8:
-        coordinate[0] = x % reg_dims[0];
-        coordinate[1] = x / reg_dims[0] % reg_dims[1];
-        coordinate[2] = x / (reg_dims[0] * reg_dims[1]);
-        coordinate[3] = blockIdx.y % reg_dims[2];
-        coordinate[4] = blockIdx.y / reg_dims[2] % reg_dims[3];
-        coordinate[5] = blockIdx.y / (reg_dims[2] * reg_dims[3]);
-        coordinate[6] = blockIdx.z % reg_dims[4];
-        coordinate[7] = blockIdx.z / reg_dims[4] % reg_dims[5];
-        break;
-      case 9:
-        coordinate[0] = x % reg_dims[0];
-        coordinate[1] = x / reg_dims[0] % reg_dims[1];
-        coordinate[2] = x / (reg_dims[0] * reg_dims[1]);
-        coordinate[3] = blockIdx.y % reg_dims[2];
-        coordinate[4] = blockIdx.y / reg_dims[2] % reg_dims[3];
-        coordinate[5] = blockIdx.y / (reg_dims[2] * reg_dims[3]);
-        coordinate[6] = blockIdx.z % reg_dims[4];
-        coordinate[7] = blockIdx.z / reg_dims[4] % reg_dims[5];
-        coordinate[8] = blockIdx.z / (reg_dims[4] * reg_dims[5]);
-        break;
-    }
-
-#pragma unroll
-    for (int dim = N - 1; dim >= 0; --dim) {
-      output_offset += coordinate[N - 1 - dim] * output_stride[dim];
-    }
-
-    out_data[output_offset] = input_data[input_offset];
-  }
-}
-
-template <typename T, typename Context>
-bool LaunchContiguous2StridedCaseOneKernel(
-    const Context& dev_ctx,
-    const T* input_data,
-    T* output_data,
-    const phi::Array<int64_t, phi::DDim::kMaxRank + 1>& output_stride,
-    const phi::Array<int64_t, phi::DDim::kMaxRank + 1>& dims,
-    int rank,
-    int64_t numel) {
-  dim3 grid(1, 1, 1), block(1, 1, 1);
-  phi::Array<int64_t, 6> cur_dims;
-  block.x = 512;
-
-  if (rank >= 1) {
-    grid.x = (numel + block.x - 1) / block.x;
-    cur_dims[0] = dims[rank - 1];
-  }
-
-  if (rank >= 2) {
-    cur_dims[1] = dims[rank - 2];
-  }
-
-  if (rank >= 4) {
-    grid.x = (dims[rank - 1] * dims[rank - 2] * dims[rank - 3] + block.x - 1) /
-             block.x;
-    grid.y = dims[rank - 4];
-    cur_dims[2] = dims[rank - 4];
-  }
-
-  if (rank >= 5) {
-    grid.y = dims[rank - 4] * dims[rank - 5];
-    cur_dims[2] = dims[rank - 4];
-    cur_dims[3] = dims[rank - 5];
-  }
-
-  if (rank >= 6) {
-    grid.y = dims[rank - 4] * dims[rank - 5] * dims[rank - 6];
-  }
-
-  if (rank >= 7) {
-    grid.z = dims[rank - 7];
-    cur_dims[4] = dims[rank - 7];
-  }
-
-  if (rank >= 8) {
-    grid.z = dims[rank - 7] * dims[rank - 8];
-    cur_dims[5] = dims[rank - 8];
-  }
-
-  if (rank >= 9) {
-    grid.z = dims[rank - 7] * dims[rank - 8] * dims[rank - 9];
-  }
-
-  if (!VerifyStridedCopyThreadConfigurationParameters(block, grid)) {
-    return false;
-  }
-
-  switch (rank) {
-    case 1:
-      Contiguous2StridedCaseOneFunc<T, 1><<<grid, block, 0, dev_ctx.stream()>>>(
-          input_data, output_data, output_stride, cur_dims, dims[rank - 1]);
-      break;
-    case 2:
-      Contiguous2StridedCaseOneFunc<T, 2><<<grid, block, 0, dev_ctx.stream()>>>(
-          input_data,
-          output_data,
-          output_stride,
-          cur_dims,
-          dims[rank - 1] * dims[rank - 2]);
-      break;
-    case 3:
-      Contiguous2StridedCaseOneFunc<T, 3><<<grid, block, 0, dev_ctx.stream()>>>(
-          input_data,
-          output_data,
-          output_stride,
-          cur_dims,
-          dims[rank - 1] * dims[rank - 2] * dims[rank - 3]);
-      break;
-    case 4:
-      Contiguous2StridedCaseOneFunc<T, 4><<<grid, block, 0, dev_ctx.stream()>>>(
-          input_data,
-          output_data,
-          output_stride,
-          cur_dims,
-          dims[rank - 1] * dims[rank - 2] * dims[rank - 3]);
-      break;
-    case 5:
-      Contiguous2StridedCaseOneFunc<T, 5><<<grid, block, 0, dev_ctx.stream()>>>(
-          input_data,
-          output_data,
-          output_stride,
-          cur_dims,
-          dims[rank - 1] * dims[rank - 2] * dims[rank - 3]);
-      break;
-    case 6:
-      Contiguous2StridedCaseOneFunc<T, 6><<<grid, block, 0, dev_ctx.stream()>>>(
-          input_data,
-          output_data,
-          output_stride,
-          cur_dims,
-          dims[rank - 1] * dims[rank - 2] * dims[rank - 3]);
-      break;
-    case 7:
-      Contiguous2StridedCaseOneFunc<T, 7><<<grid, block, 0, dev_ctx.stream()>>>(
-          input_data,
-          output_data,
-          output_stride,
-          cur_dims,
-          dims[rank - 1] * dims[rank - 2] * dims[rank - 3]);
-      break;
-    case 8:
-      Contiguous2StridedCaseOneFunc<T, 8><<<grid, block, 0, dev_ctx.stream()>>>(
-          input_data,
-          output_data,
-          output_stride,
-          cur_dims,
-          dims[rank - 1] * dims[rank - 2] * dims[rank - 3]);
-      break;
-    case 9:
-      Contiguous2StridedCaseOneFunc<T, 9><<<grid, block, 0, dev_ctx.stream()>>>(
-          input_data,
-          output_data,
-          output_stride,
-          cur_dims,
-          dims[rank - 1] * dims[rank - 2] * dims[rank - 3]);
-      break;
-    default:
-      PADDLE_THROW(common::errors::InvalidArgument(
-          "The rank of input should be less than 9, but received %d.", rank));
-  }
-
-  return true;
-}
-
-template <typename T, int VecSize, typename OFFSET_T = int64_t>
-__global__ void Contiguous2StridedDefaultFunc(
-    const T* input_data,
-    T* output_data,
-    OFFSET_T* offset_data,
-    Array<int64_t, phi::DDim::kMaxRank + 1> output_stride,
-    Array<int64_t, phi::DDim::kMaxRank + 1> dims,
-    const int64_t numel) {
-  int64_t gid = (blockIdx.x * blockDim.x + threadIdx.x) * VecSize;
-#pragma unroll
-  for (int64_t i = gid; i < numel; i += blockDim.x * gridDim.x * VecSize) {
-    int64_t output_offset = offset_data[i];
-    using VecType = kps::details::VectorType<T, VecSize>;
-    const VecType* src = reinterpret_cast<const VecType*>(&input_data[i]);
-    VecType* dst = reinterpret_cast<VecType*>(&output_data[output_offset]);
-    *dst = *src;
-  }
-}
-
-template <typename T, typename Context>
-void LaunchContiguous2StridedDefaultKernel(
-    const Context& dev_ctx,
-    const T* input_data,
-    T* output_data,
-    const phi::Array<int64_t, phi::DDim::kMaxRank + 1>& output_stride,
-    const phi::Array<int64_t, phi::DDim::kMaxRank + 1>& dims,
-    int rank,
-    int64_t numel) {
-  // int64_t block = 512;
-  // int64_t grid = (numel + block - 1) / block;
-  int VecSize = 4;
-  VecSize = std::min(phi::GetVectorizedSize<T>(input_data), VecSize);
-  VecSize = std::min(phi::GetVectorizedSize<T>(output_data), VecSize);
-  while (VecSize > 1 && numel % VecSize != 0) {
-    VecSize /= 2;
-  }
-
-  constexpr int loop_count = 4;
-  auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
-      dev_ctx, numel, VecSize * loop_count);
-  auto& grid = config.block_per_grid;
-  auto& block = config.thread_per_block;
-
-  DenseTensor offset;
-  GetOutOffset<Context>(dev_ctx, output_stride, dims, numel, rank, &offset);
-  int64_t* offset_data = offset.data<int64_t>();
-
-  switch (VecSize) {
-#define CASE_VEC_SIZE(__Sz)                                                    \
-  case __Sz:                                                                   \
-    Contiguous2StridedDefaultFunc<T, __Sz>                                     \
-        <<<grid, block, 0, dev_ctx.stream()>>>(                                \
-            input_data, output_data, offset_data, output_stride, dims, numel); \
+#define CASE_RANK(__Rk)                                          \
+  case __Rk:                                                     \
+    Strided2ContiguousDefaultFunc<T, __Rk>                       \
+        <<<grid, block, 0, dev_ctx.stream()>>>(                  \
+            input_data, input_stride, output_data, dims, numel); \
     break
-    CASE_VEC_SIZE(4);
-    CASE_VEC_SIZE(2);
-    CASE_VEC_SIZE(1);
-#undef CASE_VEC_SIZE
+    CASE_RANK(1);
+    CASE_RANK(2);
+    CASE_RANK(3);
+    CASE_RANK(4);
+    CASE_RANK(5);
+    CASE_RANK(6);
+    CASE_RANK(7);
+    CASE_RANK(8);
+    CASE_RANK(9);
+#undef CASE_RANK
     default:
       PADDLE_THROW(common::errors::InvalidArgument(
           "The rank of input should be less than 9, but received %d.", rank));
@@ -1268,6 +733,8 @@ void StridedCopyKernel(const Context& dev_ctx,
   }
 
   const T* input_data = input.data<T>();
+
+  // count vecsize
   int VecSize = 4;
   VecSize = std::min(phi::GetVectorizedSize<T>(input_data), VecSize);
   VecSize = std::min(phi::GetVectorizedSize<T>(output_data), VecSize);
@@ -1287,11 +754,7 @@ void StridedCopyKernel(const Context& dev_ctx,
     DenseTensor vec_input = Empty<T>(dev_ctx, IntArray{VecSize});
     ExpandKernel<T, Context>(dev_ctx, input, IntArray{VecSize}, &vec_input);
     const T* vec_input_data = vec_input.data<T>();
-    cudaDeviceSynchronize();
-    cudaError_t err = cudaGetLastError();
-    if (err != cudaSuccess) {
-      printf("111 CUDA Error: %s\n", cudaGetErrorString(err));
-    }
+
     switch (VecSize) {
 #define CASE_VECSIZE(__Sz)                                    \
   case __Sz:                                                  \
@@ -1308,7 +771,8 @@ void StridedCopyKernel(const Context& dev_ctx,
       CASE_VECSIZE(4);
 #undef CASE_VECSIZE
       default:
-        PADDLE_THROW(common::errors::InvalidArgument("xxxxxxx"));
+        PADDLE_THROW(common::errors::InvalidArgument(
+            "unsurport vecsize %d for StrideCopyDiffDimKernel", VecSize));
     }
     return;
   }
@@ -1354,23 +818,38 @@ void StridedCopyKernel(const Context& dev_ctx,
                                                            input_data,
                                                            output_data,
                                                            output_stride,
-                                                           input_dims,
-                                                           rank)) {
+                                                           output_dims,
+                                                           rank,
+                                                           false)) {
     } else if (LaunchContiguous2StridedCaseOneKernel<T, Context>(dev_ctx,
                                                                  input_data,
                                                                  output_data,
                                                                  output_stride,
-                                                                 input_dims,
+                                                                 output_dims,
                                                                  rank,
-                                                                 numel)) {
+                                                                 numel,
+                                                                 false)) {
     } else {
-      LaunchContiguous2StridedDefaultKernel<T, Context>(dev_ctx,
-                                                        input_data,
-                                                        output_data,
-                                                        output_stride,
-                                                        input_dims,
-                                                        rank,
-                                                        numel);
+      switch (VecSize) {
+#define CASE_VECSIZE(__Sz)                                                 \
+  case __Sz:                                                               \
+    LaunchContiguous2StridedDefaultKernel<T, Context, __Sz>(dev_ctx,       \
+                                                            input_data,    \
+                                                            output_data,   \
+                                                            output_stride, \
+                                                            output_dims,   \
+                                                            rank,          \
+                                                            numel,         \
+                                                            false);        \
+    break;
+        CASE_VECSIZE(1);
+        CASE_VECSIZE(2);
+        CASE_VECSIZE(4);
+#undef CASE_VECSIZE
+        default:
+          PADDLE_THROW(common::errors::InvalidArgument(
+              "unsurport vecsize %d for StrideCopyDiffDimKernel", VecSize));
+      }
     }
   } else if (out->meta().is_contiguous()) {
     if (LaunchStrided2ContiguousCaseZeroKernel<T, Context>(
