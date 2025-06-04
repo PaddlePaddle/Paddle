@@ -626,7 +626,6 @@ void FlashAttnV3GradKernel(const Context &ctx,
   v_padded = v;
   out_padded = out;
   out_grad_padded = out_grad;
-
   FlashAttnV3GradBaseKernel<T, Context>(ctx,
                                         out_grad_padded,
                                         q,
