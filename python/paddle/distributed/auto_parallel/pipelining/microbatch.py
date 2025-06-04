@@ -38,10 +38,34 @@ def _split_tensor(x, num_chunks, split_axis=0):
         chunk_tensors = paddle.tensor_split(x, num_chunks, split_axis)
     # dp_degree > 1 , placements of model input is [S(0), R, ...]
     else:
+        if dist.in_auto_parallel_align_mode():
+
+            def _reorder_data_for_align(num_chunks):
+                nonlocal x
+                assert x.placements[0] == dist.Shard(
+                    0
+                ), "inputs should be placed on S(0)."
+
+                shardings = x.process_mesh.shape[0]
+
+                assert x.shape[0] == shardings * num_chunks
+
+                target_index = [0] * (shardings * num_chunks)
+                for s_id in range(shardings):
+                    for c_id in range(num_chunks):
+                        target_index[s_id * num_chunks + c_id] = (
+                            s_id + c_id * shardings
+                        )
+                print("target index", target_index)
+                tmp = x[target_index]
+                x = dist.reshard(tmp, x.process_mesh, x.placements)
+
+            _reorder_data_for_align(num_chunks)
+
         mesh = x.process_mesh
         placements = x.placements
-        x = dtensor_to_local(x, mesh, placements)
-        chunk_tensors = paddle.tensor_split(x, num_chunks, split_axis)
+        dense_x = dtensor_to_local(x, mesh, placements)
+        chunk_tensors = paddle.tensor_split(dense_x, num_chunks, split_axis)
         for i in range(num_chunks):
             chunk_tensors[i] = dtensor_from_local(
                 chunk_tensors[i], mesh, placements
