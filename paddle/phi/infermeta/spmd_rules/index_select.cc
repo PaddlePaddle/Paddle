@@ -58,11 +58,11 @@ SpmdInfo IndexSelectInferSpmd(const DistMetaTensor& x,
                 << ". Replicating the index tensor.";
         index_mesh_dim = -1;
         index_dims_mapping[0] = -1;
-        index_dist_attr_dst.set_dims_mapping(index_dims_mapping);
       }
     }
   }
   out_dims_mapping[axis] = index_mesh_dim;
+  index_dist_attr_dst.set_dims_mapping(index_dims_mapping);
   TensorDistAttr out_dist_attr_dst =
       CopyTensorDistAttrForOutput(x_dist_attr_src);
   out_dist_attr_dst.set_dims_mapping(out_dims_mapping);

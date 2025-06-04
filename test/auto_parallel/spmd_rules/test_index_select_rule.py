@@ -23,7 +23,7 @@ from paddle.distributed.fleet import auto
 from paddle.framework import core
 
 
-class TestElementwiseSPMDRule(unittest.TestCase):
+class TestIndexSelectSPMDRule(unittest.TestCase):
     def setUp(self):
         x_shape = [4, 8, 16]
         index_shape = [3]
