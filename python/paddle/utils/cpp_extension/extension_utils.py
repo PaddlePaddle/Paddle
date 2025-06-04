@@ -80,8 +80,8 @@ CLANG_COMPILE_FLAGS = [
     '-O3',
     '-arch',
     'x86_64',
-    #'-arch',
-    #'arm64',
+    '-arch',
+    'arm64',
 ]
 CLANG_LINK_FLAGS = [
     '-dynamiclib',
