@@ -21,6 +21,8 @@ from typing import TYPE_CHECKING, Any, SupportsIndex, Union
 import numpy as np
 
 import paddle
+from paddle.distributed import fleet
+from paddle.distributed.collective import _get_group_map
 from paddle.distributed.communication.group import is_initialized
 from paddle.framework import core
 
@@ -390,8 +392,32 @@ class ProcessMesh(core.ProcessMesh):
                     f"{dim_name} not in the dimension names {self._dim_names}"
                 )
             else:
-                pg = paddle.distributed.new_group(self._process_ids)
-                return pg
+                if hasattr(fleet, '_hcg') and fleet._hcg is not None:
+                    hcg = fleet.get_hybrid_communicate_group()
+                    if hcg is not None:
+
+                        parallel_group_map = {
+                            "pp": hcg.get_pipe_parallel_group,
+                            "dp": hcg.get_data_parallel_group,
+                            "mp": hcg.get_model_parallel_group,
+                            "sep": hcg.get_sep_parallel_group,
+                            "sharding": hcg.get_sharding_parallel_group,
+                        }
+
+                        if dim_name not in parallel_group_map:
+                            raise ValueError(
+                                f"{dim_name} is not a valid dim name."
+                            )
+
+                        return parallel_group_map[dim_name]()
+                existing_group = None
+                group_map = _get_group_map()
+                for group in group_map.values():
+                    if set(group.ranks) == set(self._process_ids):
+                        existing_group = group
+                if existing_group is not None:
+                    return existing_group
+                return paddle.distributed.new_group(self._process_ids)
         else:
             if dim_name not in self._dim_names:
                 raise ValueError(
