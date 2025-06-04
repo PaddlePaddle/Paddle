@@ -19,9 +19,10 @@ import functools
 import inspect
 import itertools
 import operator
+import random
 import sys
 import types
-from functools import reduce
+from functools import partial, reduce
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -38,6 +39,7 @@ from ....utils import (
     ENV_SOT_EXPORT,
     ENV_SOT_TRACE_NUMPY,
     NUMPY_API_SUPPORTED_DICT,
+    already_unified_in_dynamic_and_static_graph,
     get_numpy_ufuncs,
     get_obj_stable_repr,
     get_static_function,
@@ -48,7 +50,6 @@ from ....utils import (
     is_directly_run_api,
     is_namedtuple_class,
     is_not_supported_paddle_layer,
-    is_paddle_api,
     log,
     log_do,
     magic_method_builtin_dispatch,
@@ -64,10 +65,13 @@ from ....utils.exceptions import (
     InnerError,
     OtherInlineCallBreak,
     PsdbBreakReason,
+    SotCapturedException,
+    SotCapturedExceptionFactory,
     SotErrorBase,
     UnsupportedNumPyAPIBreak,
     UnsupportedOperationBreak,
     UnsupportedPaddleAPIBreak,
+    UnsupportedRandomAPIBreak,
 )
 from ..dispatcher import Dispatcher
 from ..guard import (
@@ -248,6 +252,10 @@ class UserDefinedFunctionVariable(FunctionVariable):
         return None
 
     def call_function(self, /, *args, **kwargs) -> VariableBase:
+        if UserDefinedFunctionVariable.__is_random_function(self.value):
+            raise BreakGraphError(
+                UnsupportedRandomAPIBreak(fn_name=self.value.__name__)
+            )
         from ..opcode_inline_executor import OpcodeInlineExecutor
 
         result = self.handle_psdb_function(*args, **kwargs)
@@ -276,6 +284,8 @@ class UserDefinedFunctionVariable(FunctionVariable):
                 f"Inline Call: {inline_executor.vframe.code.co_name}, file {inline_executor.vframe.code.co_filename}, line {int(inline_executor.vframe.code.co_firstlineno)}"
             ):
                 output = inline_executor.inline_call()
+        except (SotCapturedException, InnerError) as e:
+            raise e
         except SotErrorBase as error:
             self.graph.restore_memo(checkpoint)
             filename = self.value.__code__.co_filename
@@ -313,6 +323,13 @@ class UserDefinedFunctionVariable(FunctionVariable):
         return {
             "name": self.value.__name__,
         }
+
+    @staticmethod
+    def __is_random_function(value) -> bool:
+        return value.__qualname__ in [
+            f"{random._inst.__class__.__name__}.{name}"
+            for name in dir(random._inst)
+        ]
 
 
 class UserCodeVariable(FunctionVariable):
@@ -357,7 +374,9 @@ class PaddleApiVariable(FunctionVariable):
         successor="UserDefinedFunctionVariable"
     )
     def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
-        if callable(value) and is_paddle_api(value):
+        if callable(value) and already_unified_in_dynamic_and_static_graph(
+            value
+        ):
             return PaddleApiVariable(value, graph, tracker)
         return None
 
@@ -865,7 +884,16 @@ class BuiltinVariable(FunctionVariable):
         handler = Dispatcher.dispatch(self.value, *args, **kwargs)
 
         if handler is not None:
-            return handler(*args, **kwargs)
+            try:
+                return handler(*args, **kwargs)
+            except SotErrorBase as e:
+                # NOTE: BuiltinVariable.call_function cat not raise SotCapturedException,
+                # so we can directly raise SotErrorBase.
+                raise
+            except Exception as e:
+                raise SotCapturedExceptionFactory.create(
+                    origin_exc=e, tracked_args=[args, kwargs]
+                ) from e
 
         if ENV_SOT_ALLOW_DYNAMIC_SHAPE.get() and any(
             isinstance(var, SymbolicVariable)
@@ -1103,7 +1131,9 @@ class ClassVariable(CallableVariable):
         # do not have init function
         if self.value.__init__ is object.__init__:
             return VariableFactory.from_value(
-                new_object, self.graph, DummyTracker([self])
+                new_object,
+                self.graph,
+                DummyTracker([self, *args, *kwargs.values()]),
             )
 
         if not hasattr(self.value.__init__, "__code__"):
@@ -1123,7 +1153,7 @@ class ClassVariable(CallableVariable):
         new_object_variable = VariableFactory.from_value(
             new_object,
             self.graph,
-            DummyTracker([self, *list(args), *list(kwargs.values())]),
+            DummyTracker([self, *args, *kwargs.values()]),
         )
         fn_var(new_object_variable, *args, **kwargs)
         return new_object_variable
@@ -1218,4 +1248,49 @@ class NamedTupleClassVariable(ClassVariable):
     def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
         if is_namedtuple_class(value):
             return NamedTupleClassVariable(value, graph, tracker)
+        return None
+
+
+class PartialVariable(CallableVariable):
+    def __init__(
+        self,
+        value: partial,
+        graph: FunctionGraph,
+        tracker: Tracker,
+    ):
+        super().__init__(graph, tracker)
+        self.value = value
+
+    def get_py_value(self, allow_tensor=False):
+        return self.value
+
+    def get_py_type(self):
+        return partial
+
+    def call_function(self, /, *call_args, **call_kwargs):
+        func_variable = VariableFactory.from_value(
+            self.value.func, self.graph, GetAttrTracker(self, "func")
+        )
+        partial_args = VariableFactory.from_value(
+            self.value.args, self.graph, GetAttrTracker(self, "args")
+        )
+        partial_keywords = VariableFactory.from_value(
+            self.value.keywords, self.graph, GetAttrTracker(self, "keywords")
+        )
+        assert isinstance(func_variable, CallableVariable)
+
+        partial_keywords.get_wrapped_items().update(call_kwargs)
+
+        out = func_variable(
+            *partial_args.get_wrapped_items(),
+            *call_args,
+            **(partial_keywords.get_wrapped_items() | call_kwargs),
+        )
+
+        return out
+
+    @VariableFactory.register_from_value()
+    def from_value(value: partial, graph: FunctionGraph, tracker: Tracker):
+        if isinstance(value, partial):
+            return PartialVariable(value, graph, tracker)
         return None

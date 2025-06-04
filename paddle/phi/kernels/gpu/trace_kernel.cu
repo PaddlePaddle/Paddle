@@ -30,6 +30,9 @@ void TraceKernel(const Context& ctx,
                  int axis2,
                  DenseTensor* out) {
   T* out_data = ctx.template Alloc<T>(out);
+  if (out && out->numel() == 0) {
+    return;
+  }
   auto diag = funcs::Diagonal<T, Context>(ctx, &x, offset, axis1, axis2);
   if (diag.numel() > 0) {
     std::vector<int> reduce_dims;

@@ -801,6 +801,13 @@ struct ElementwiseHeavisideFunctor {
   }
 };
 
+template <typename T>
+struct ElementwiseInverseHeavisideFunctor {
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
+    return b == static_cast<T>(0) ? a : static_cast<T>(b > static_cast<T>(0));
+  }
+};
+
 template <typename T, typename Enable = void>
 struct FloorDivideFunctor {
   inline HOSTDEVICE T operator()(const T a, const T b) const {
@@ -1072,6 +1079,32 @@ struct ElementwiseInversePowFunctor {
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   inline HOSTDEVICE T operator()(const T a, const T b) const {
     return compute_pow<T, MPType>(b, a);
+  }
+};
+
+template <typename T>
+struct ElementwisePowFunctor<ComplexType<T>> {
+  inline HOSTDEVICE ComplexType<T> operator()(const ComplexType<T> a,
+                                              const ComplexType<T> b) const {
+#if defined(__CUDA_ARCH__) || defined(__HIPCC__)
+    return pow(a, b);
+#else
+    return std::pow(static_cast<std::complex<T>>(a),
+                    static_cast<std::complex<T>>(b));
+#endif
+  }
+};
+
+template <typename T>
+struct ElementwiseInversePowFunctor<ComplexType<T>> {
+  inline HOSTDEVICE ComplexType<T> operator()(const ComplexType<T> a,
+                                              const ComplexType<T> b) const {
+#if defined(__CUDA_ARCH__) || defined(__HIPCC__)
+    return pow(a, b);
+#else
+    return std::pow(static_cast<std::complex<T>>(b),
+                    static_cast<std::complex<T>>(a));
+#endif
   }
 };
 

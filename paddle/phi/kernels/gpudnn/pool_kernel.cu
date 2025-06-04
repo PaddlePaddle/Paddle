@@ -16,18 +16,20 @@ limitations under the License. */
 
 #include "paddle/phi/backends/gpu/gpu_dnn.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/pooling.h"
 #include "paddle/phi/kernels/gpudnn/pool_gpudnn.h"
+#include "paddle/phi/kernels/impl/pool_kernel_impl.h"
 
 namespace phi {
 
 template <typename T, typename Context>
 void PoolRawGPUDNNKernel(const Context& ctx,
                          const DenseTensor& x,
-                         const std::vector<int>& kernel_size,
-                         const std::vector<int>& strides,
-                         const std::vector<int>& paddings,
+                         const std::vector<int64_t>& kernel_size,
+                         const std::vector<int64_t>& strides,
+                         const std::vector<int64_t>& paddings,
                          bool exclusive,
                          const std::string& data_format,
                          const std::string& pooling_type,
@@ -35,16 +37,39 @@ void PoolRawGPUDNNKernel(const Context& ctx,
                          bool adaptive,
                          const std::string& padding_algorithm,
                          DenseTensor* out) {
+  if (x.numel() == 0) {
+    phi::Full<T, Context>(
+        ctx, phi::IntArray(common::vectorize(out->dims())), NAN, out);
+    return;
+  }
   PADDLE_ENFORCE_EQ(
       ctx.GetPlace().GetType() == phi::AllocationType::GPU,
       true,
       errors::InvalidArgument("Pool operator CUDA kernel must use CUDAPlace "
                               "rather than CPUPlace."));
 
+  if (x.numel() > std::numeric_limits<int>::max()) {
+    PoolRawKernel<T, GPUContext>(ctx,
+                                 x,
+                                 kernel_size,
+                                 strides,
+                                 paddings,
+                                 exclusive,
+                                 data_format,
+                                 pooling_type,
+                                 global_pooling,
+                                 adaptive,
+                                 padding_algorithm,
+                                 0,
+                                 out);
+    return;
+  }
+
   const DenseTensor* input = &x;
   DenseTensor* output = out;
-  std::vector<int> paddings_ = paddings;
-  std::vector<int> kernel_size_ = kernel_size;
+  std::vector<int> kernel_size_(kernel_size.begin(), kernel_size.end());
+  std::vector<int> strides_(strides.begin(), strides.end());
+  std::vector<int> paddings_(paddings.begin(), paddings.end());
 
   ctx.template Alloc<T>(output);
 
@@ -63,7 +88,7 @@ void PoolRawGPUDNNKernel(const Context& ctx,
                        adaptive,
                        padding_algorithm,
                        data_dims,
-                       strides,
+                       strides_,
                        kernel_size_);
   if (data_dims.size() * 2 == static_cast<int>(paddings_.size())) {
     for (int i = 0; i < data_dims.size(); ++i) {
@@ -171,10 +196,10 @@ void PoolRawGPUDNNKernel(const Context& ctx,
 
 #ifdef PADDLE_WITH_HIP
   miopenPoolingDescriptor_t cudnn_pool_desc =
-      pool_desc.descriptor(pooling_mode, kernel_size_, paddings_, strides);
+      pool_desc.descriptor(pooling_mode, kernel_size_, paddings_, strides_);
 #else
   cudnnPoolingDescriptor_t cudnn_pool_desc =
-      pool_desc.descriptor(pooling_mode, kernel_size_, paddings_, strides);
+      pool_desc.descriptor(pooling_mode, kernel_size_, paddings_, strides_);
 #endif
 
   // ------------------- cudnn pool algorithm ---------------------
@@ -231,8 +256,8 @@ template <typename T, typename Context>
 void Pool2dGPUDNNKernel(const Context& ctx,
                         const DenseTensor& x,
                         const IntArray& kernel_size,
-                        const std::vector<int>& strides,
-                        const std::vector<int>& paddings,
+                        const std::vector<int64_t>& strides,
+                        const std::vector<int64_t>& paddings,
                         bool ceil_mode,
                         bool exclusive,
                         const std::string& data_format,
@@ -241,11 +266,9 @@ void Pool2dGPUDNNKernel(const Context& ctx,
                         bool adaptive,
                         const std::string& padding_algorithm,
                         DenseTensor* out) {
-  std::vector<int> kernel_size_val(kernel_size.GetData().begin(),
-                                   kernel_size.GetData().end());
   PoolRawGPUDNNKernel<T, Context>(ctx,
                                   x,
-                                  kernel_size_val,
+                                  kernel_size.GetData(),
                                   strides,
                                   paddings,
                                   exclusive,
@@ -260,9 +283,9 @@ void Pool2dGPUDNNKernel(const Context& ctx,
 template <typename T, typename Context>
 void Pool3dGPUDNNKernel(const Context& ctx,
                         const DenseTensor& x,
-                        const std::vector<int>& kernel_size,
-                        const std::vector<int>& strides,
-                        const std::vector<int>& paddings,
+                        const std::vector<int64_t>& kernel_size,
+                        const std::vector<int64_t>& strides,
+                        const std::vector<int64_t>& paddings,
                         bool ceil_mode,
                         bool exclusive,
                         const std::string& data_format,

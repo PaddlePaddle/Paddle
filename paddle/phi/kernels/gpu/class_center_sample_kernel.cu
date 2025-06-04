@@ -41,11 +41,13 @@ namespace cub = hipcub;
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
-#define CUDA_KERNEL_LOOP(i, n)                            \
-  for (int32_t i = blockIdx.x * blockDim.x + threadIdx.x, \
-               step = blockDim.x * gridDim.x;             \
-       i < (n);                                           \
+#define CUDA_KERNEL_LOOP_TYPE(i, n, index_type)              \
+  for (index_type i = blockIdx.x * blockDim.x + threadIdx.x, \
+                  step = blockDim.x * gridDim.x;             \
+       i < (n);                                              \
        i += step)
+
+#define CUDA_KERNEL_LOOP(i, n) CUDA_KERNEL_LOOP_TYPE(i, n, int32_t)
 
 static constexpr int kNumCUDAThreads = 512;
 static constexpr int kNumMaximumNumBlocks = 4096;

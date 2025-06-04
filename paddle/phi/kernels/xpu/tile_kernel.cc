@@ -76,10 +76,10 @@ void TileKernel(const Context& dev_ctx,
   }
   auto vec_in_dims = common::vectorize<int64_t>(in_dims);
   if (repeat_times.size() < vec_in_dims.size()) {
-    int diff = vec_in_dims.size() - repeat_times.size();
+    size_t diff = vec_in_dims.size() - repeat_times.size();
     repeat_times.insert(repeat_times.begin(), diff, 1);
   } else {
-    int diff = repeat_times.size() - vec_in_dims.size();
+    size_t diff = repeat_times.size() - vec_in_dims.size();
     vec_in_dims.insert(vec_in_dims.begin(), diff, 1);
   }
   PADDLE_ENFORCE_EQ(

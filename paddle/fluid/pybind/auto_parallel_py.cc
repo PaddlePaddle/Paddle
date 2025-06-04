@@ -926,6 +926,14 @@ static void parse_attr(PyObject *obj,
     auto attr =
         CastPyArg2Float(obj, infer_spmd_string, static_cast<ssize_t>(arg_pos));
     ctx->EmplaceBackAttr(attr);
+  } else if (PyObject_CheckDataType(obj)) {
+    auto attr = CastPyArg2DataType(
+        obj, infer_spmd_string, static_cast<ssize_t>(arg_pos));
+    ctx->EmplaceBackAttr(attr);
+  } else if (PyUnicode_Check(obj)) {
+    auto attr =
+        CastPyArg2String(obj, infer_spmd_string, static_cast<ssize_t>(arg_pos));
+    ctx->EmplaceBackAttr(attr);
   } else {  // TODO(ljz) support other types
     PADDLE_THROW(common::errors::InvalidArgument(
         "%s(): argument (position %d) must be "
@@ -940,6 +948,11 @@ static void parse_single_pyobject(PyObject *obj,
                                   phi::distributed::InferSpmdContext *ctx,
                                   const size_t arg_pos) {
   if (PyList_Check(obj)) {  // list inputs, spmd not allow tuple inputs
+    Py_ssize_t list_size = PyList_Size(obj);
+    if (list_size == 0) {
+      ctx->EmplaceBackAttr(std::vector<int64_t>());
+      return;
+    }
     PyObject *first_item = PyList_GetItem(obj, 0);
     if (PyObject_TypeCheck(first_item, g_dist_tensor_spec_pytype)) {
       parse_tensors(obj, ctx, arg_pos);

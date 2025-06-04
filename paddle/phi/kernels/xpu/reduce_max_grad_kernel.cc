@@ -53,7 +53,7 @@ void ReduceMaxGradKernel(const Context& dev_ctx,
   }
   std::vector<int64_t> ydims(input_dim_size);
   std::vector<int64_t> xdims((input_dim_size));
-  std::set<int> dims_set(true_dims.begin(), true_dims.end());
+  std::set<int64_t> dims_set(true_dims.begin(), true_dims.end());
   for (auto i = 0; i < input_dim_size; i++) {
     xdims[i] = x.dims()[i];
     if (dims_set.find(i) != dims_set.end() || reduce_all) {

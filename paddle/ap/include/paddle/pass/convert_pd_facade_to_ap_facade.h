@@ -30,12 +30,10 @@ struct Value;
 
 }
 
-namespace cinn {
-namespace dialect {
-namespace ir {
+namespace ap {
+namespace paddle {
 
 std::unique_ptr<::pir::Pass> CreateConvertPdFacadeToApFacadePass();
 
-}  // namespace ir
-}  // namespace dialect
-}  // namespace cinn
+}  // namespace paddle
+}  // namespace ap

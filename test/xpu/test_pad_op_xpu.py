@@ -212,8 +212,54 @@ class XPUTestPadOp(XPUOpTestWrapper):
 
 
 support_types = get_xpu_op_support_types("pad")
-for stype in support_types:
+real_types = [t for t in support_types if t != 'complex64']
+for stype in real_types:
     create_test_class(globals(), XPUTestPadOp, stype)
+
+if 'complex64' in support_types:
+
+    class TestPadComplexOp(XPUTestPadOp.TestPadOp):
+        def init_dtype(self):
+            self.dtype = np.complex64
+
+        def init_data(self):
+            self.inputs = {
+                'X': (
+                    np.random.random(self.shape)
+                    + 1j * np.random.random(self.shape)
+                ).astype(self.dtype)
+            }
+            self.outputs = {
+                'Out': np.pad(
+                    self.inputs['X'],
+                    self.paddings,
+                    mode='constant',
+                    constant_values=self.pad_value,
+                )
+            }
+            self.attrs = {
+                'paddings': list(np.array(self.paddings).flatten()),
+                'pad_value': self.pad_value,
+            }
+
+    class TestComplexCase1(TestPadComplexOp):
+        def init_test_case(self):
+            self.shape = (2, 3, 4, 5)
+            self.paddings = [(0, 1), (2, 3), (2, 1), (1, 1)]
+            self.pad_value = 0.5
+
+    class TestComplexCase2(TestPadComplexOp):
+        def init_test_case(self):
+            self.shape = (5, 5, 5)
+            self.paddings = [(0, 0), (0, 0), (1, 2)]
+            self.pad_value = 1.0
+
+    class TestComplexCase3(TestPadComplexOp):
+        def init_test_case(self):
+            self.shape = 100
+            self.paddings = [(0, 1)]
+            self.pad_value = 0.9
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -22,7 +22,7 @@ template <typename T, typename Context>
 void ExpandAsGradKernel(const Context& ctx,
                         const DenseTensor& x,
                         const DenseTensor& out_grad,
-                        const std::vector<int>& target_shape,
+                        const std::vector<int64_t>& target_shape,
                         DenseTensor* in_grad);
 
 }  // namespace phi

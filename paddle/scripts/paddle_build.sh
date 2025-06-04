@@ -2603,15 +2603,12 @@ set +x
             echo "Training Resnet50 completed!"
 
             #inference Reset50
-            IFS=',' read -ra DEVICES <<< "$CUDA_VISIBLE_DEVICES"
-            echo ${DEVICES[0]}
-
             echo "Starting to predict ResNet50 model..."
             python main.py -c paddlex/configs/modules/image_classification/ResNet50.yaml \
                 -o Global.mode=predict \
                 -o Predict.model_dir="./resnet50_output/best_model/inference" \
                 -o Predict.input="https://paddle-model-ecology.bj.bcebos.com/paddlex/imgs/demo_image/general_image_classification_001.jpg" \
-                -o Global.device="xpu:${DEVICES[0]}"
+                -o Global.device="xpu:0"
             echo "Predicting Resnet50 completed!"
             cd ..
             export FLAGS_enable_pir_api=1
@@ -3355,12 +3352,6 @@ function nv_test() {
 }
 
 
-function enable_unused_var_check() {
-    # NOTE(zhiqiu): Set FLAGS_enable_unused_var_check=1 here to enable unused_var_check,
-    # which checks if an operator has unused input variable(s).
-    # Currently, use it in coverage CI job.
-    export FLAGS_enable_unused_var_check=1
-}
 function check_coverage_added_ut() {
     # NOTE(risemeup1):The step of checking added test can be placed on the cpu machine to save gpu resources
     bash $PADDLE_ROOT/tools/check_added_ut.sh
@@ -4829,13 +4820,11 @@ function main() {
       cicheck)
         cmake_gen ${PYTHON_ABI:-""}
         build ${parallel_number}
-        enable_unused_var_check
         parallel_test
         ;;
       cicheck_coverage)
         check_diff_file_for_coverage
         run_setup ${PYTHON_ABI:-""} install ${parallel_number}
-        enable_unused_var_check
         parallel_test
         check_coverage
         ;;
@@ -4843,7 +4832,6 @@ function main() {
         check_diff_file_for_coverage
         export ON_INFER=ON PADDLE_CUDA_INSTALL_REQUIREMENTS=ON
         run_setup ${PYTHON_ABI:-""} bdist_wheel ${parallel_number}
-        enable_unused_var_check
         check_coverage_added_ut
         check_coverage_build
         clean_build_files
@@ -4949,7 +4937,7 @@ function main() {
       cicheck_sot)
         check_run_sot_ci
         export WITH_SHARED_PHI=ON
-        PYTHON_VERSIONS=(3.13 3.8 3.9 3.10 3.11 3.12)
+        PYTHON_VERSIONS=(3.9 3.10 3.11 3.12 3.13)
         for PY_VERSION in ${PYTHON_VERSIONS[@]}; do
             ln -sf $(which python${PY_VERSION}) /usr/local/bin/python
             ln -sf $(which pip${PY_VERSION}) /usr/local/bin/pip

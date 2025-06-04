@@ -61,6 +61,37 @@ class TestConjOp(OpTest):
         )
 
 
+class TestConjOpZeroSize1(TestConjOp):
+    def init_input_output(self):
+        x = (np.random.random((0, 14)) + 1j * np.random.random((0, 14))).astype(
+            self.dtype
+        )
+        out = np.conj(x)
+
+        self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
+        self.outputs = {'Out': out}
+
+
+class TestConjOpZeroSize2(TestConjOp):
+    def init_input_output(self):
+        x = (
+            np.random.random((2, 0, 14)) + 1j * np.random.random((2, 0, 14))
+        ).astype(self.dtype)
+        out = np.conj(x)
+
+        self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
+        self.outputs = {'Out': out}
+
+
+class TestConjOpZeroSize3(TestConjOp):
+    def init_input_output(self):
+        x = (np.random.random(0) + 1j * np.random.random(0)).astype(self.dtype)
+        out = np.conj(x)
+
+        self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
+        self.outputs = {'Out': out}
+
+
 class TestComplexConjOp(unittest.TestCase):
     def setUp(self):
         self._dtypes = ["float32", "float64"]

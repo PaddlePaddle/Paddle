@@ -137,6 +137,10 @@ class LetContext : public AtomicExprBuilder<AnfExpr> {
     return Apply(f.name(), args, kwargs);
   }
 
+  AnfExpr Apply(const LetVar& f, const std::map<std::string, AnfExpr>& kwargs) {
+    return Apply(f.name(), std::vector<AnfExpr>{}, kwargs);
+  }
+
   AnfExpr Apply(const std::string& f,
                 const std::vector<AnfExpr>& args,
                 const std::map<std::string, AnfExpr>& kwargs) {

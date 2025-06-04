@@ -16,13 +16,13 @@
 
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/kernel_registry.h"
-
+#include "paddle/phi/kernels/full_kernel.h"
 namespace phi {
 
-template <typename T>
+template <typename T, typename IndexT>
 __global__ void WhereGradCUDAKernel(
-    const int N, const T* dout, const bool* cond, T* dx, T* dy) {
-  int idx = blockDim.x * blockIdx.x + threadIdx.x;
+    const IndexT N, const T* dout, const bool* cond, T* dx, T* dy) {
+  IndexT idx = blockDim.x * blockIdx.x + threadIdx.x;
   for (; idx < N; idx += blockDim.x * gridDim.x) {
     if (dx != nullptr) {
       dx[idx] = cond[idx] ? dout[idx] : static_cast<T>(0.);
@@ -44,15 +44,35 @@ void WhereGradKernel(const Context& ctx,
   const bool* cond_data = condition.data<bool>();
   auto numel = condition.numel();
   auto* dout = out_grad.data<T>();
-
+  if (out_grad.numel() == 0) {
+    if (x_grad) {
+      phi::Full<T, Context>(ctx,
+                            phi::IntArray(common::vectorize(x_grad->dims())),
+                            static_cast<T>(0),
+                            x_grad);
+    }
+    if (y_grad) {
+      phi::Full<T, Context>(ctx,
+                            phi::IntArray(common::vectorize(y_grad->dims())),
+                            static_cast<T>(0),
+                            y_grad);
+    }
+    return;
+  }
   T* dx = (x_grad != nullptr) ? ctx.template Alloc<T>(x_grad) : nullptr;
   T* dy = (y_grad != nullptr) ? ctx.template Alloc<T>(y_grad) : nullptr;
 
   auto stream = ctx.stream();
   auto config = backends::gpu::GetGpuLaunchConfig1D(ctx, numel);
-  WhereGradCUDAKernel<T>
-      <<<config.block_per_grid.x, config.thread_per_block.x, 0, stream>>>(
-          numel, dout, cond_data, dx, dy);
+  if (numel <= std::numeric_limits<int>::max()) {
+    WhereGradCUDAKernel<T, int>
+        <<<config.block_per_grid.x, config.thread_per_block.x, 0, stream>>>(
+            numel, dout, cond_data, dx, dy);
+  } else {
+    WhereGradCUDAKernel<T, int64_t>
+        <<<config.block_per_grid.x, config.thread_per_block.x, 0, stream>>>(
+            numel, dout, cond_data, dx, dy);
+  }
 }
 
 }  // namespace phi

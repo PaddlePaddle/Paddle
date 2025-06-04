@@ -401,14 +401,14 @@ void OperationFactory::RegisterManualOpCreator() {
                             common::errors::InvalidArgument(
                                 "'strides' Attribute is expected for "
                                 "Pool2dOp. "));
-          std::vector<int> strides;
+          std::vector<int64_t> strides;
           for (size_t i = 0;
                i < attrs.at("strides").dyn_cast<pir::ArrayAttribute>().size();
                i++) {
             strides.push_back(attrs.at("strides")
                                   .dyn_cast<pir::ArrayAttribute>()
                                   .at(i)
-                                  .dyn_cast<pir::Int32Attribute>()
+                                  .dyn_cast<pir::Int64Attribute>()
                                   .data());
           }
 
@@ -417,14 +417,14 @@ void OperationFactory::RegisterManualOpCreator() {
                             common::errors::InvalidArgument(
                                 "'paddings' Attribute is expected for "
                                 "Pool2dOp. "));
-          std::vector<int> paddings;
+          std::vector<int64_t> paddings;
           for (size_t i = 0;
                i < attrs.at("paddings").dyn_cast<pir::ArrayAttribute>().size();
                i++) {
             paddings.push_back(attrs.at("paddings")
                                    .dyn_cast<pir::ArrayAttribute>()
                                    .at(i)
-                                   .dyn_cast<pir::Int32Attribute>()
+                                   .dyn_cast<pir::Int64Attribute>()
                                    .data());
           }
 

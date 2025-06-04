@@ -41,7 +41,7 @@ void SoftmaxKernel(const Context& dev_ctx,
     return;
   }
 
-  std::vector<int> x_dims;
+  std::vector<int64_t> x_dims;
   for (int i = 0; i < rank; i++) {
     x_dims.push_back(x.dims()[i]);
   }
@@ -63,14 +63,14 @@ void SoftmaxKernel(const Context& dev_ctx,
                               clip_x_data_l3,
                               reinterpret_cast<XPUType*>(out->data<T>()),
                               x_dims,
-                              calc_axis);
+                              static_cast<int64_t>(calc_axis));
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "softmax");
   } else {
     r = xpu::softmax<XPUType>(dev_ctx.x_context(),
                               reinterpret_cast<const XPUType*>(x.data<T>()),
                               reinterpret_cast<XPUType*>(out->data<T>()),
                               x_dims,
-                              calc_axis);
+                              static_cast<int64_t>(calc_axis));
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "softmax");
   }
 }

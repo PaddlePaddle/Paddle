@@ -23,12 +23,11 @@ from paddle.incubate.autograd import primapi, utils
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
-    from typing import Tuple
 
     from paddle import Tensor
     from paddle._typing import TensorOrTensors
 
-    _OutputT = TypeVar("_OutputT", Tensor, Tuple[Tensor, ...])
+    _OutputT = TypeVar("_OutputT", Tensor, tuple[Tensor, ...])
 
 
 @overload

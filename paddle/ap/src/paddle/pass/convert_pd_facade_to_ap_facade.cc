@@ -29,18 +29,18 @@
 #include "paddle/pir/include/core/builtin_type.h"
 #include "paddle/pir/include/pass/pass_registry.h"
 
-namespace cinn::dialect::ir {
+namespace ap::paddle {
 
 namespace adt = ap::adt;
 
 namespace {
 
 class ConvertPdFacadeToApFacadePattern
-    : public pir::OpRewritePattern<paddle::dialect::ApFacadeOp> {
+    : public pir::OpRewritePattern<::paddle::dialect::ApFacadeOp> {
  public:
-  using pir::OpRewritePattern<paddle::dialect::ApFacadeOp>::OpRewritePattern;
+  using pir::OpRewritePattern<::paddle::dialect::ApFacadeOp>::OpRewritePattern;
 
-  bool MatchAndRewrite(paddle::dialect::ApFacadeOp pd_facade_op,
+  bool MatchAndRewrite(::paddle::dialect::ApFacadeOp pd_facade_op,
                        pir::PatternRewriter& rewriter) const override {
     const auto& ret = TryMatchAndRewrite(pd_facade_op, &rewriter);
     PADDLE_ENFORCE_EQ(
@@ -56,8 +56,9 @@ class ConvertPdFacadeToApFacadePattern
     return ret.GetOkValue();
   }
 
-  adt::Result<bool> TryMatchAndRewrite(paddle::dialect::ApFacadeOp pd_facade_op,
-                                       pir::PatternRewriter* rewriter) const {
+  adt::Result<bool> TryMatchAndRewrite(
+      ::paddle::dialect::ApFacadeOp pd_facade_op,
+      pir::PatternRewriter* rewriter) const {
     std::vector<pir::Value> inputs{};
     pir::Operation* upstream_op = nullptr;
     if (pd_facade_op->operand_source(0)) {
@@ -93,7 +94,7 @@ class ConvertPdFacadeToApFacadePattern
   }
 
   adt::Result<pir::AttributeMap> GetFacadeOpAttributes(
-      paddle::dialect::ApFacadeOp pd_facade_op) const {
+      ::paddle::dialect::ApFacadeOp pd_facade_op) const {
     ADT_LET_CONST_REF(serialized_attributes,
                       GetFacadeOpSerializedAttributes(pd_facade_op));
     ADT_LET_CONST_REF(lambda, CastStrToLambda(serialized_attributes));
@@ -102,7 +103,7 @@ class ConvertPdFacadeToApFacadePattern
   }
 
   adt::Result<std::string> GetFacadeOpSerializedAttributes(
-      paddle::dialect::ApFacadeOp op) const {
+      ::paddle::dialect::ApFacadeOp op) const {
     const auto& iter = op->attributes().find("serialized_attributes");
     ADT_CHECK(iter != op->attributes().end());
     ADT_CHECK(iter->second.template isa<pir::StrAttribute>());
@@ -132,7 +133,7 @@ class ConvertPdFacadeToApFacadePattern
   }
 
   adt::Result<pir::AttributeMap> CastToPirAttributeMap(
-      paddle::dialect::ApFacadeOp pd_facade_op,
+      ::paddle::dialect::ApFacadeOp pd_facade_op,
       const ap::axpr::AttrMap<ap::axpr::Value>& attr_map,
       const std::string& serialized_attributes) const {
     pir::AttributeMap attributes{};
@@ -180,4 +181,4 @@ std::unique_ptr<::pir::Pass> CreateConvertPdFacadeToApFacadePass() {
   return std::make_unique<ConvertPdFacadeToApFacadePass>();
 }
 
-}  // namespace cinn::dialect::ir
+}  // namespace ap::paddle
