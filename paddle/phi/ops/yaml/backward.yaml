@@ -992,8 +992,8 @@
   composite : exp_grad(out, out_grad, x_grad)
 
 - backward_op : expand_as_grad
-  forward : expand_as (Tensor x, Tensor y, int[] target_shape = {}) -> Tensor(out)
-  args : (Tensor x, Tensor out_grad, int[] target_shape)
+  forward : expand_as (Tensor x, Tensor y, int64_t[] target_shape = {}) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, int64_t[] target_shape)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta
@@ -2116,6 +2116,7 @@
     func : masked_fill_grad
     param: [x, mask, value, out_grad]
   inplace : (out_grad -> x_grad)
+  composite : masked_fill_grad(x, mask, value, out_grad, x_grad, value_grad)
 
 - backward_op : masked_select_grad
   forward : masked_select (Tensor x, Tensor mask) -> Tensor(out)
@@ -2602,6 +2603,7 @@
   infer_meta :
     func : GeneralBinaryGradInferMeta
     param : [arr, indices]
+    spmd_rule : PutAlongAxisGradInferSpmd
   kernel :
     func : put_along_axis_grad
   backward: put_along_axis_double_grad
@@ -2705,6 +2707,12 @@
   kernel :
     func : renorm_grad
 
+- backward_op : repeat_interleave_double_grad
+  forward : repeat_interleave_grad(Tensor x, Tensor grad_out, int repeats, int axis) -> Tensor(grad_x)
+  args : (Tensor grad_x_grad, int repeats, int axis)
+  output : Tensor(grad_out_grad)
+  invoke: repeat_interleave(grad_x_grad, repeats, axis)
+
 - backward_op : repeat_interleave_grad
   forward : repeat_interleave(Tensor x, int repeats, int axis) -> Tensor(out)
   args : (Tensor x, Tensor out_grad, int repeats, int axis)
@@ -2714,6 +2722,13 @@
     param : [x]
   kernel :
     func : repeat_interleave_grad
+  backward: repeat_interleave_double_grad
+
+- backward_op : repeat_interleave_with_tensor_index_double_grad
+  forward : repeat_interleave_with_tensor_index_grad(Tensor x, Tensor repeats, Tensor grad_out, int axis) -> Tensor(grad_x)
+  args : (Tensor repeats, Tensor grad_x_grad, int axis)
+  output : Tensor(grad_out_grad)
+  invoke: repeat_interleave_with_tensor_index(grad_x_grad, repeats, axis)
 
 - backward_op : repeat_interleave_with_tensor_index_grad
   forward : repeat_interleave_with_tensor_index(Tensor x, Tensor repeats, int axis) -> Tensor(out)
@@ -2725,6 +2740,7 @@
   kernel :
     func : repeat_interleave_with_tensor_index_grad
     data_type : x
+  backward: repeat_interleave_with_tensor_index_double_grad
 
 - backward_op : reshape_double_grad
   forward : reshape_grad (Tensor x, Tensor grad_out) -> Tensor(grad_x)

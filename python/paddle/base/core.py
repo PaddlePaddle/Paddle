@@ -160,7 +160,7 @@ def avx_supported():
 
         # http://en.wikipedia.org/wiki/CPUID#EAX.3D1:_Processor_Info_and_Feature_Bits
         # mov eax,0x1; cpuid; mov cx, ax; ret
-        code_str = b"\xB8\x01\x00\x00\x00\x0f\xa2\x89\xC8\xC3"
+        code_str = b"\xb8\x01\x00\x00\x00\x0f\xa2\x89\xc8\xc3"
         avx_bit = 28
         retval = 0
         try:
@@ -543,8 +543,7 @@ def _set_prim_backward_blacklist(*args):
     for item in ops:
         if not isinstance(item, str):
             raise TypeError("All items in set must be strings.")
-        if item.startswith("pd_op."):
-            item = item[6:]
+        item = item.removeprefix("pd_op.")
         prim_config["backward_blacklist"].add(item)
         new_ops.add(item)
     _set_bwd_prim_blacklist(new_ops)

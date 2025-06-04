@@ -17,8 +17,8 @@
 #include "paddle/common/macros.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/pooling.h"
-
 namespace phi {
 template <typename T, typename Context>
 void Pool2dKernel(const Context& ctx,
@@ -34,6 +34,11 @@ void Pool2dKernel(const Context& ctx,
                   bool adaptive,
                   const std::string& padding_algorithm,
                   DenseTensor* out) {
+  if (x.numel() == 0) {
+    phi::Full<T, Context>(
+        ctx, phi::IntArray(common::vectorize(out->dims())), NAN, out);
+    return;
+  }
   using XPUType = typename XPUTypeTrait<T>::Type;
 
   std::vector<int64_t> kernel_size(kernel_size_t.GetData().begin(),
@@ -169,6 +174,11 @@ void Pool3dKernel(const Context& ctx,
                   bool adaptive,
                   const std::string& padding_algorithm,
                   DenseTensor* out) {
+  if (x.numel() == 0) {
+    phi::Full<T, Context>(
+        ctx, phi::IntArray(common::vectorize(out->dims())), NAN, out);
+    return;
+  }
   using XPUType = typename XPUTypeTrait<T>::Type;
 
   const bool channel_last = data_format == "NDHWC";
@@ -304,6 +314,17 @@ void MaxPool2dWithIndexKernel(const Context& ctx,
                               bool ceil_mode UNUSED,
                               DenseTensor* out,
                               DenseTensor* mask) {
+  if (x.numel() == 0) {
+    if (out) {
+      phi::Full<T, Context>(
+          ctx, phi::IntArray(common::vectorize(out->dims())), NAN, out);
+    }
+    if (mask) {
+      phi::Full<int, Context>(
+          ctx, phi::IntArray(common::vectorize(mask->dims())), 0, mask);
+    }
+    return;
+  }
   using XPUType = typename XPUTypeTrait<T>::Type;
 
   ctx.template Alloc<int>(mask);

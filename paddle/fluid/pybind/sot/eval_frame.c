@@ -22,11 +22,6 @@ limitations under the License. */
 
 #include <Python.h>
 
-#if PY_3_8_PLUS && !PY_3_9_PLUS
-#define Py_BUILD_CORE  // internal/pycore_pymem.h need this macro
-#include <internal/pycore_pystate.h>
-#undef Py_BUILD_CORE
-#endif
 #if !PY_3_11_PLUS
 #include <code.h>
 #endif
@@ -65,14 +60,10 @@ inline static void eval_frame_callback_set(PyObject *obj) {
 inline static PyObject *eval_frame_default(PyThreadState *tstate,
                                            FrameObject *frame,
                                            int throw_flag) {
-#if PY_3_9_PLUS
   if (tstate == NULL) {
     tstate = PyThreadState_GET();
   }
   return _PyEval_EvalFrameDefault(tstate, frame, throw_flag);
-#else
-  return _PyEval_EvalFrameDefault(frame, throw_flag);
-#endif
 }
 
 #if PY_3_11_PLUS
@@ -364,9 +355,9 @@ static PyObject *_custom_eval_frame(PyThreadState *tstate,
   return out;
 }
 
-static PyObject *_custom_eval_frame_shim(PyThreadState *tstate,
-                                         FrameObject *frame,
-                                         int throw_flag) {
+static PyObject *custom_eval_frame_shim(PyThreadState *tstate,
+                                        FrameObject *frame,
+                                        int throw_flag) {
   PyObject *callback = eval_frame_callback_get();
 
   if (callback == Py_None) {
@@ -376,19 +367,6 @@ static PyObject *_custom_eval_frame_shim(PyThreadState *tstate,
   return _custom_eval_frame(tstate, frame, throw_flag, callback);
 }
 
-#if PY_3_9_PLUS
-static PyObject *custom_eval_frame_shim(PyThreadState *tstate,
-                                        FrameObject *frame,
-                                        int throw_flag) {
-  return _custom_eval_frame_shim(tstate, frame, throw_flag);
-}
-#else
-static PyObject *custom_eval_frame_shim(FrameObject *frame, int throw_flag) {
-  PyThreadState *tstate = PyThreadState_GET();
-  return _custom_eval_frame_shim(tstate, frame, throw_flag);
-}
-#endif
-
 static PyObject *set_eval_frame(PyObject *new_callback, PyThreadState *tstate) {
   // Change the eval frame callback and return the old one
   //  - None: disables: disable custom callback.
@@ -396,34 +374,21 @@ static PyObject *set_eval_frame(PyObject *new_callback, PyThreadState *tstate) {
   //  NOTE: Cache is not supported now
   PyObject *old_callback = eval_frame_callback_get();
 
-#if PY_3_9_PLUS
   _PyFrameEvalFunction old_eval_frame =
       _PyInterpreterState_GetEvalFrameFunc(tstate->interp);
-#else
-  // Function pointer.
-  _PyFrameEvalFunction old_eval_frame = tstate->interp->eval_frame;
-#endif
 
   // NOTE: multi-threading is not supported now
   if (old_callback != Py_None && new_callback == Py_None) {
     if (old_eval_frame != &_PyEval_EvalFrameDefault) {
       // VLOG(7) << "set _PyEval_EvalFrameDefault";
-#if PY_3_9_PLUS
       _PyInterpreterState_SetEvalFrameFunc(tstate->interp,
                                            &_PyEval_EvalFrameDefault);
-#else
-      tstate->interp->eval_frame = &_PyEval_EvalFrameDefault;
-#endif
     }
   } else if (old_callback == Py_None && new_callback != Py_None) {
     if (old_eval_frame != &custom_eval_frame_shim) {
       // VLOG(7) << "set custom_eval_frame_shim";
-#if PY_3_9_PLUS
       _PyInterpreterState_SetEvalFrameFunc(tstate->interp,
                                            &custom_eval_frame_shim);
-#else
-      tstate->interp->eval_frame = &custom_eval_frame_shim;
-#endif
     }
   }
 

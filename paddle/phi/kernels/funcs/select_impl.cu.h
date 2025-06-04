@@ -400,7 +400,35 @@ void SelectKernel(const KPDevice &dev_ctx,
   phi::CPUPlace cpu_place = phi::CPUPlace();
 
   // 1.1 get stored data num of per block
-  const int kVecSize = 4;
+  int kVecSize = 4;
+  kVecSize = std::min(phi::GetVectorizedSize(&condition), kVecSize);
+  if (in_data.numel() > 0) {
+    kVecSize = std::min(phi::GetVectorizedSize(&in_data), kVecSize);
+  } else {
+    kVecSize = 1;
+  }
+  while (kVecSize > 1 && numel % kVecSize != 0) {
+    kVecSize /= 2;
+  }
+#define CALL_GET_BLOCK_COUNT_KERNEL(kVecSize)                          \
+  case kVecSize:                                                       \
+    GetBlockCountKernel<MT, CT, kVecSize><<<grid, block, 0, stream>>>( \
+        cond_data, count_data, numel, main_offset);                    \
+    break;
+
+#define CALL_SELECT_KERNEL(kVecSize)                               \
+  case kVecSize:                                                   \
+    SelectKernel<MT, InT, CT, OutT, Functor, kVecSize, SelectData> \
+        <<<grid, block, 0, stream>>>(out_data,                     \
+                                     cond_data,                    \
+                                     in_data_ptr,                  \
+                                     cumsum_data,                  \
+                                     func,                         \
+                                     numel,                        \
+                                     main_offset,                  \
+                                     rank);                        \
+    break;
+
 #ifdef PADDLE_WITH_XPU_KP
   int block = 64;
   auto stream = dev_ctx.x_context()->xpu_stream;
@@ -422,8 +450,16 @@ void SelectKernel(const KPDevice &dev_ctx,
   DenseTensor count_mem = phi::Empty<CT, KPDevice>(dev_ctx, dims_array);
   CT *count_data = count_mem.data<CT>();
   // 1.3 launch CountKernl
-  GetBlockCountKernel<MT, CT, kVecSize>
-      <<<grid, block, 0, stream>>>(cond_data, count_data, numel, main_offset);
+  switch (kVecSize) {
+    CALL_GET_BLOCK_COUNT_KERNEL(4)
+    CALL_GET_BLOCK_COUNT_KERNEL(2)
+    CALL_GET_BLOCK_COUNT_KERNEL(1)
+    default:
+      PADDLE_THROW(common::errors::Unimplemented(
+          "Unsupported vectorized size: %d", kVecSize));
+      break;
+  }
+
   // 2.1 alloc cumsum data for CoutBlock prefix
   DenseTensor cumsum_mem = phi::Empty<CT, KPDevice>(dev_ctx, dims_array);
   CT *cumsum_data = cumsum_mem.data<CT>();
@@ -459,15 +495,17 @@ void SelectKernel(const KPDevice &dev_ctx,
   auto out_data = dev_ctx.template Alloc<OutT>(out);
   // 3.2 get true data's index according to cond_data and cumsum_data
   if (total_true_num <= 0) return;
-  SelectKernel<MT, InT, CT, OutT, Functor, kVecSize, SelectData>
-      <<<grid, block, 0, stream>>>(out_data,
-                                   cond_data,
-                                   in_data_ptr,
-                                   cumsum_data,
-                                   func,
-                                   numel,
-                                   main_offset,
-                                   rank);
+  switch (kVecSize) {
+    CALL_SELECT_KERNEL(4)
+    CALL_SELECT_KERNEL(2)
+    CALL_SELECT_KERNEL(1)
+    default:
+      PADDLE_THROW(common::errors::Unimplemented(
+          "Unsupported vectorized size: %d", kVecSize));
+      break;
+  }
+#undef CALL_GET_BLOCK_COUNT_KERNEL
+#undef CALL_SELECT_KERNEL
 }
 
 // SelectData = 1 then masked_select; SelectData = 0 then where_index
