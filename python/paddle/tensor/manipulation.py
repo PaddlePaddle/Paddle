@@ -5277,6 +5277,20 @@ def atleast_1d(*inputs, name=None):
             [123]), Tensor(shape=[1, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[1.23000002]])]
     """
+    if len(inputs) == 1 and isinstance(inputs[0], list):
+        if all(
+            isinstance(
+                item,
+                (
+                    paddle.Tensor,
+                    paddle.base.framework.Variable,
+                    paddle.base.libpaddle.pir.Value,
+                ),
+            )
+            for item in inputs[0]
+        ):
+            inputs = inputs[0]
+
     out = []
     for input in inputs:
         if not isinstance(
@@ -5366,6 +5380,20 @@ def atleast_2d(*inputs, name=None):
             [[123]]), Tensor(shape=[1, 1, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[[1.23000002]]])]
     """
+    if len(inputs) == 1 and isinstance(inputs[0], list):
+        if all(
+            isinstance(
+                item,
+                (
+                    paddle.Tensor,
+                    paddle.base.framework.Variable,
+                    paddle.base.libpaddle.pir.Value,
+                ),
+            )
+            for item in inputs[0]
+        ):
+            inputs = inputs[0]
+
     out = []
     for input in inputs:
         if not isinstance(
@@ -5444,6 +5472,20 @@ def atleast_3d(*inputs, name=None):
             [[[123]]]), Tensor(shape=[1, 1, 1, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[[[1.23000002]]]])]
     """
+    if len(inputs) == 1 and isinstance(inputs[0], list):
+        if all(
+            isinstance(
+                item,
+                (
+                    paddle.Tensor,
+                    paddle.base.framework.Variable,
+                    paddle.base.libpaddle.pir.Value,
+                ),
+            )
+            for item in inputs[0]
+        ):
+            inputs = inputs[0]
+
     out = []
     for input in inputs:
         if not isinstance(
