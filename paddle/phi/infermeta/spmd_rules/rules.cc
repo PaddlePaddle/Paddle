@@ -770,6 +770,12 @@ PD_REGISTER_SPMD_RULE(argsort,
                       PD_INFER_SPMD(phi::distributed::ArgSortInferSpmd),
                       PD_INFER_SPMD(phi::distributed::ArgSortGradInferSpmd));
 
+// put_along_axis
+PD_REGISTER_SPMD_RULE(
+    put_along_axis,
+    PD_INFER_SPMD(phi::distributed::PutAlongAxisInferSpmd),
+    PD_INFER_SPMD(phi::distributed::PutAlongAxisGradInferSpmd));
+
 // roi_align
 PD_REGISTER_SPMD_RULE(roi_align,
                       PD_INFER_SPMD(phi::distributed::RoiAlignInferSpmd),

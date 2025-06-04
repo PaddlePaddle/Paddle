@@ -127,6 +127,19 @@ std::vector<int64_t> InferSpmdContext::AttrAt(size_t idx) const {
   }
 }
 
+template <>
+std::string InferSpmdContext::AttrAt(size_t idx) const {
+  try {
+    auto attr = attrs_.at(idx);
+    return PADDLE_GET_CONST(std::string, attr);
+  } catch (paddle::bad_variant_access const& e) {
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "Attribute cast error in InferSpmd Context, the input attr type is "
+        "`%s`, but the expected attribute type is `std::string`.",
+        attrs_.at(idx).type().name()));
+  }
+}
+
 const Attribute& InferSpmdContext::AttrAt(size_t idx) const {
   return attrs_.at(idx);
 }

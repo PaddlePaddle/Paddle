@@ -28,6 +28,7 @@ void CEmbeddingGradKernel(const Context& dev_ctx,
                           const DenseTensor& out_grad,
                           int64_t start_index,
                           DenseTensor* w_grad) {
+#if defined(PADDLE_WITH_XPU_BKCL)
   w_grad->Resize(w.dims());
   dev_ctx.Alloc(w_grad, w.dtype());
   T* table_grad_data = static_cast<T*>(w_grad->data());
@@ -77,6 +78,11 @@ void CEmbeddingGradKernel(const Context& dev_ctx,
         "XPU c_embedding ids only support int32 or int64."));
   }
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "embedding_grad");
+#else
+  PADDLE_THROW(common::errors::PreconditionNotMet(
+      "PaddlePaddle is not compiled with DWITH_XPU_BKCL, please recompile with "
+      "DWITH_XPU_BKCL for using c_embedding_grad."));
+#endif
 }
 
 }  // namespace phi
