@@ -394,6 +394,17 @@ SpmdInfo BatchNormGradInferSpmdBase(const DistMetaTensor& x,
   out_grad_attr_dst.set_dims_mapping(
       GetDimsMappingForAxes(out_grad_axes, axis_to_dim_map));
 
+  // partial grad dim
+  std::vector<int64_t> partial_on_dims;
+  for (int i = 0; i < x_ndim; ++i) {
+    auto mapping = x_dims_mapping[i];
+    if (mapping != -1) {
+      partial_on_dims.push_back(mapping);
+    }
+  }
+  scale_grad_dist_attr.set_partial_status(partial_on_dims);
+  bias_grad_dist_attr.set_partial_status(partial_on_dims);
+
   VLOG(4) << "BatchNormGradInferSpmd:";
   VLOG(4) << "Einsum Notation: " << x_axes << scale_axes << "," << bias_axes
           << "," << mean_out_axes << "," << variance_out_axes << ","
