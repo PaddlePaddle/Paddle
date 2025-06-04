@@ -437,7 +437,11 @@ class TensorVariable(VariableBase):
         self.value = None
         self.meta = meta
         dynamic_axes: list[int] = []
-        if ENV_SOT_ALLOW_DYNAMIC_SHAPE.get() and self.tracker.is_traceable():
+        if (
+            ENV_SOT_ALLOW_DYNAMIC_SHAPE.get()
+            and self.tracker.is_traceable()
+            and not self.meta.is_null()
+        ):
             dynamic_axes = self.analyse_dynamic_axes(tracker)
         self.var_name = TensorVariable.var_name_generator.next()
         self.graph.side_effects.record_mutable_variable(self)
