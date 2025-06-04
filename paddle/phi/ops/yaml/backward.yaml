@@ -1672,6 +1672,18 @@
   inplace : (out_grad -> x_grad)
   backward : index_add_double_grad
 
+- backward_op : index_elementwise_get_grad
+  forward : index_elementwise_get (Tensor x, Tensor[] index, int64_t[] input_dims, int64_t[] input_strides, int64_t[] index_dims, int64_t[] index_stride) -> Tensor(out)
+  args : (Tensor x, Tensor[] index, Tensor out_grad, int64_t[] input_dims, int64_t[] input_strides, int64_t[] index_dims, int64_t[] index_stride)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : IndexElementwiseGetGradInferMeta
+  kernel :
+    func : index_elementwise_get_grad
+    data_type : out_grad
+  data_transform :
+    skip_transform : index
+
 - backward_op : index_put_double_grad
   forward : index_put_grad (Tensor x, Tensor[] indices, Tensor value, Tensor grad_out, bool accumulate=false) -> Tensor(grad_x), Tensor(grad_value)
   args : (Tensor x, Tensor[] indices, Tensor value, Tensor grad_x_grad, Tensor grad_value_grad, bool accumulate=false)

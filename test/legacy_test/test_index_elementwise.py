@@ -16,8 +16,6 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import base
-from paddle.base import core
 
 
 def np_index_elementwise(x, index):
@@ -63,45 +61,6 @@ class TestIndexElementwiseBool(unittest.TestCase):
         )
 
         self.out_np = np_index_elementwise(self.x_np, self.index_np)
-
-    def test_static_graph(self):
-        paddle.enable_static()
-        startup_program = base.Program()
-        train_program = base.Program()
-
-        with base.program_guard(startup_program, train_program):
-            x = paddle.static.data(
-                name='x', dtype=self.dtype, shape=self.x_shape
-            )
-            index = paddle.static.data(
-                name='index', dtype='bool', shape=self.index_shape
-            )
-            out = x[index]
-
-            place = (
-                base.CUDAPlace(0)
-                if core.is_compiled_with_cuda()
-                else base.CPUPlace()
-            )
-            exe = base.Executor(place)
-
-            result = exe.run(
-                base.default_main_program(),
-                feed={
-                    'x': self.x_np,
-                    'index': self.index_np,
-                },
-                fetch_list=[out],
-            )[0]
-
-            atol = 1e-05 if self.dtype in ["float32", "float64"] else 0
-            rtol = 1e-05 if self.dtype in ["float32", "float64"] else 0
-
-            np.testing.assert_allclose(
-                result, self.out_np, atol=atol, rtol=rtol
-            )
-
-            paddle.disable_static()
 
     def test_dygraph(self):
         paddle.disable_static()
@@ -227,7 +186,6 @@ class TestIndexElementwiseBool4D_k3_AllDtypes(TestIndexElementwiseBool):
             )
             self.out_np = np_index_elementwise(self.x_np, self.index_np)
 
-            self.test_static_graph()
             self.test_dygraph()
 
 

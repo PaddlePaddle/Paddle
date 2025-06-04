@@ -36,6 +36,7 @@ constexpr int MAX_DIMS = 16;
 #else
 constexpr int MAX_DIMS = 25;
 #endif
+constexpr int MAX_DIMS = 9;
 
 static constexpr int launch_bound2 = 4;
 static constexpr int launch_size_nd = 128;
@@ -91,9 +92,11 @@ struct OffsetCalculator {
                    const int64_t* const* strides,
                    const int64_t* element_sizes = nullptr)
       : dims(dims) {
-    PADDLE_ENFORCE(dims <= MAX_DIMS,
-                   "The number of dimensions (%d) exceeds MAX_DIMS.",
-                   dims);
+    PADDLE_ENFORCE_LE(
+        dims,
+        MAX_DIMS,
+        common::errors::InvalidArgument(
+            "Tensor has too many dims. Maximum dim is d%.", MAX_DIMS));
     for (int i = 0; i < dims; i++) {
       sizes_[i] = IntDivider<index_t>(sizes[i]);
       for (int arg = 0; arg < NARGS; arg++) {
@@ -144,10 +147,12 @@ std::array<char*, DDim::kMaxRank> GetIndexDataPtrs(
   for (size_t i = 0; i < index.size(); ++i) {
     const IndexT* p_index = index[i]->data<IndexT>();
 
-    PADDLE_ENFORCE(p_index != nullptr,
-                   "The pointer p_index must not be nullptr. "
-                   "Please ensure the index tensor is valid and its data "
-                   "is correctly initialized.");
+    PADDLE_ENFORCE_NOT_NULL(
+        p_index,
+        ::common::errors::InvalidArgument(
+            "The pointer p_index is nullptr, "
+            "please check whether the index tensor is valid and "
+            "its data is correctly initialized."));
 
     index_ptrs[i] = reinterpret_cast<char*>(const_cast<IndexT*>(p_index));
   }

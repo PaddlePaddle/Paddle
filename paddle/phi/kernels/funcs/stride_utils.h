@@ -197,9 +197,10 @@ static inline void reorder_dimensions(const std::vector<int64_t> stride_size,
   permute_dimensions<N>(stride_size, perm_, strides_array, shape_);
 }
 
-std::vector<int64_t> compatible_stride(const std::vector<int64_t>* shape_,
-                                       const int64_t ndim,
-                                       const int64_t element_size) {
+static inline std::vector<int64_t> compatible_stride(
+    const std::vector<int64_t>* shape_,
+    const int64_t ndim,
+    const int64_t element_size) {
   std::vector<int64_t> stride;
   int64_t next_stride = element_size;
 

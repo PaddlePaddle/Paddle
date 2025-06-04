@@ -680,4 +680,14 @@ void SetValueGradInferMeta(const MetaTensor& out_grad,
                            MetaTensor* x_grad,
                            MetaTensor* value_grad);
 
+void IndexElementwiseGetGradInferMeta(
+    const MetaTensor& x,
+    const std::vector<const MetaTensor*>& index,
+    const MetaTensor& out_grad,
+    const std::vector<int64_t>& input_dims,
+    const std::vector<int64_t>& input_strides,
+    const std::vector<int64_t>& index_dims,
+    const std::vector<int64_t>& index_strides,
+    MetaTensor* x_grad);
+
 }  // namespace phi

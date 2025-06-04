@@ -1887,4 +1887,18 @@ void SetValueGradInferMeta(const MetaTensor& out_grad,
     value_grad->share_lod(values);
   }
 }
+
+void IndexElementwiseGetGradInferMeta(
+    const MetaTensor& x,
+    const std::vector<const MetaTensor*>& index,
+    const MetaTensor& out_grad,
+    const std::vector<int64_t>& input_dims,
+    const std::vector<int64_t>& input_strides,
+    const std::vector<int64_t>& index_dims,
+    const std::vector<int64_t>& index_strides,
+    MetaTensor* x_grad) {
+  if (x_grad) {
+    x_grad->share_meta(x);
+  }
+}
 }  // namespace phi
