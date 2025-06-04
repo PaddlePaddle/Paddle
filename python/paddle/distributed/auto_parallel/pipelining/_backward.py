@@ -15,7 +15,10 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Iterator
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
 import paddle
 
@@ -114,9 +117,10 @@ def stage_backward(
         extract_tensors_with_grads(
             stage_output, output_grads, extract_tensors_with_grads
         )
-        paddle.autograd.backward(
-            stage_output_tensors, grad_tensors=output_grad_tensors  # type: ignore[arg-type]
-        )
+        with paddle.amp.auto_cast(enable=False):
+            paddle.autograd.backward(
+                stage_output_tensors, grad_tensors=output_grad_tensors  # type: ignore[arg-type]
+            )
 
         # Extract gradients wrt the input values
         grad_inputs: list[paddle.Tensor | None] = []

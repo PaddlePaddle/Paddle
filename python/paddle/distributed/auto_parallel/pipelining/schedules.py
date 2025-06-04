@@ -30,15 +30,16 @@ if TYPE_CHECKING:
     from .stage import _PipelineStageBase
 
 
-from microbatch import (
-    TensorChunkSpec,
-    merge_chunks,
-    split_args_kwargs_into_chunks,
-)
-
 import paddle
 import paddle.distributed as dist
 from paddle import profiler
+
+from .microbatch import (
+    TensorChunkSpec,
+    _split_tensor,
+    merge_chunks,
+    split_args_kwargs_into_chunks,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -342,10 +343,17 @@ class PipelineScheduleSingle(_PipelineSchedule):
         self._stage.has_backward = self._has_backward
         self._stage_initialized = False
 
-    def _initialize_stage(self, args, kwargs):
-        self._stage._prepare_forward_infra(self._n_microbatches, args, kwargs)
+    def _initialize_stage(self, args, kwargs, labels):
+        next_stage_args = self._stage._prepare_forward_infra(
+            self._n_microbatches, args, kwargs
+        )
+
+        loss = None
+        if self._stage.is_last:
+            loss = self._loss_fn(next_stage_args[0], labels)
+
         if self._has_backward:
-            self._stage._prepare_backward_infra(self._n_microbatches)
+            self._stage._prepare_backward_infra(self._n_microbatches, loss)
         self._stage_initialized = True
 
     def step(self, *args, target=None, losses: list | None = None, **kwargs):
@@ -368,9 +376,7 @@ class PipelineScheduleSingle(_PipelineSchedule):
 
         # Split target into microbatches
         if target is not None:
-            targets_split = list(
-                paddle.tensor_split(target, self._n_microbatches)
-            )
+            targets_split = list(_split_tensor(target, self._n_microbatches))
         else:
             targets_split = None
 
@@ -445,7 +451,10 @@ class ScheduleGPipe(PipelineScheduleSingle):
         )
 
         if not self._stage_initialized:
-            self._initialize_stage(arg_mbs[0], kwarg_mbs[0])
+            if target_mbs is not None:
+                self._initialize_stage(arg_mbs[0], kwarg_mbs[0], target_mbs[0])
+            else:
+                self._initialize_stage(arg_mbs[0], kwarg_mbs[0], None)
 
         # Delay send waits
         fwd_sends_to_wait: list[dist.Work] = []
@@ -536,7 +545,10 @@ class Schedule1F1B(PipelineScheduleSingle):
         )
 
         if not self._stage_initialized:
-            self._initialize_stage(arg_mbs[0], kwarg_mbs[0])
+            if target_mbs is not None:
+                self._initialize_stage(arg_mbs[0], kwarg_mbs[0], target_mbs[0])
+            else:
+                self._initialize_stage(arg_mbs[0], kwarg_mbs[0], None)
 
         # Last stage has 1 warmup, second-to-last 2 warmups, ...
         # first stage `num_stages` warmups
@@ -721,7 +733,7 @@ class PipelineScheduleMulti(_PipelineSchedule):
                 "Simply stop passing it, and everything should still work fine."
             )
 
-    def _initialize_stages(self, args: tuple[Any, ...], kwargs):
+    def _initialize_stages(self, args: tuple[Any, ...], kwargs, labels):
         # may be 'none' value (if this stage sends its output shapes to the next stage via P2P)
         # or real value (if this stage and next stage are on the same device)
         next_stage_args: tuple[Any, ...] = ()
@@ -735,9 +747,21 @@ class PipelineScheduleMulti(_PipelineSchedule):
                     self._n_microbatches, next_stage_args, kwargs
                 )
 
+        loss = None
+        last_stage = self._stages[-1]
+        if last_stage.is_last:
+            loss = self._loss_fn(next_stage_args[0], labels)
+
         if self._has_backward:
             for stage_reverse in reversed(self._stages):
-                stage_reverse._prepare_backward_infra(self._n_microbatches)
+                if stage_reverse.is_last:
+                    stage_reverse._prepare_backward_infra(
+                        self._n_microbatches, loss
+                    )
+                else:
+                    stage_reverse._prepare_backward_infra(
+                        self._n_microbatches, None
+                    )
 
         self._stages_initialized = True
 
@@ -761,9 +785,7 @@ class PipelineScheduleMulti(_PipelineSchedule):
 
         # Split target into microbatches
         if target is not None:
-            targets_split = list(
-                paddle.tensor_split(target, self._n_microbatches)
-            )
+            targets_split = list(_split_tensor(target, self._n_microbatches))
         else:
             targets_split = None
 
@@ -792,7 +814,10 @@ class PipelineScheduleMulti(_PipelineSchedule):
         )
 
         if not self._stages_initialized:
-            self._initialize_stages(arg_mbs[0], kwarg_mbs[0])
+            if target_mbs is not None:
+                self._initialize_stages(arg_mbs[0], kwarg_mbs[0], target_mbs[0])
+            else:
+                self._initialize_stages(arg_mbs[0], kwarg_mbs[0], None)
 
         # Based on the plan in Step 1 created in __init__:
         # 2. Perform communication based on the pipeline_order
