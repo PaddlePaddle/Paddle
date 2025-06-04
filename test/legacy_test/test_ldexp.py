@@ -245,7 +245,7 @@ class TestLdexpAPI_ZeroSize(unittest.TestCase):
                 res = paddle.ldexp(x_, y_)
                 np.testing.assert_allclose(res, np.ldexp(x, y))
 
-                loss = res
+                loss = paddle.sum(res)
                 loss.backward()
                 np.testing.assert_allclose(x_.grad.shape, x_.shape)
 
