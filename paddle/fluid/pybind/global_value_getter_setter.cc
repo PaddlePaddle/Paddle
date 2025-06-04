@@ -199,6 +199,7 @@ class PYBIND11_HIDDEN GlobalVarGetterSetterRegistry {
   }
 
   bool IsPublic(const std::string &name) const {
+    RegisterGlobalVarGetterSetter();
     return var_infos_.count(name) > 0 && var_infos_.at(name).is_public;
   }
 
@@ -292,9 +293,16 @@ struct RegisterGetterSetterVisitor {
 };
 
 static void RegisterGlobalVarGetterSetter() {
+  static std::unordered_set<std::string> registered_flags;
   const auto &flag_map = phi::GetExportedFlagInfoMap();
   for (const auto &pair : flag_map) {
     const std::string &name = pair.second.name;
+
+    if (registered_flags.count(name)) {
+      continue;
+    }
+    registered_flags.insert(name);
+
     bool is_writable = pair.second.is_writable;
     void *value_ptr = pair.second.value_ptr;
     const auto &default_value = pair.second.default_value;
