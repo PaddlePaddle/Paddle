@@ -66,6 +66,44 @@ class TestElementwiseSPMDRule(unittest.TestCase):
         )
         self.assertFalse(inferred_output_dist_attrs[0]._is_partial())
 
+        # [-1, 0, -1], [0], axis=0 -> [-1, 0, -1], [-1], [-1, 0, -1]
+        self.x_spec.set_dims_mapping([-1, 0, -1])
+        self.index_spec.set_dims_mapping([0])
+        self.attrs["axis"] = 0
+        result_dist_attrs = self.rule.infer_forward(
+            self.x_spec,
+            self.index_spec,
+            self.attrs['axis'],
+        )
+        self.assertEqual(len(result_dist_attrs), 2)
+        inferred_input_dist_attrs = result_dist_attrs[0]
+        inferred_output_dist_attrs = result_dist_attrs[1]
+        self.assertEqual(len(inferred_input_dist_attrs), 2)
+        self.assertEqual(len(inferred_output_dist_attrs), 1)
+        self.assertEqual(inferred_input_dist_attrs[0].dims_mapping, [-1, 0, -1])
+        self.assertEqual(inferred_input_dist_attrs[1].dims_mapping, [-1])
+        self.assertEqual(
+            inferred_output_dist_attrs[0].dims_mapping, [-1, 0, -1]
+        )
+
+        # [-1, 1, -1], [0], axis=0 -> [-1, 1, -1], [0], [0, 1, -1]
+        self.x_spec.set_dims_mapping([-1, 1, -1])
+        self.index_spec.set_dims_mapping([0])
+        self.attrs["axis"] = 0
+        result_dist_attrs = self.rule.infer_forward(
+            self.x_spec,
+            self.index_spec,
+            self.attrs['axis'],
+        )
+        self.assertEqual(len(result_dist_attrs), 2)
+        inferred_input_dist_attrs = result_dist_attrs[0]
+        inferred_output_dist_attrs = result_dist_attrs[1]
+        self.assertEqual(len(inferred_input_dist_attrs), 2)
+        self.assertEqual(len(inferred_output_dist_attrs), 1)
+        self.assertEqual(inferred_input_dist_attrs[0].dims_mapping, [-1, 1, -1])
+        self.assertEqual(inferred_input_dist_attrs[1].dims_mapping, [0])
+        self.assertEqual(inferred_output_dist_attrs[0].dims_mapping, [0, 1, -1])
+
     def test_index_select_backward(self):
         # [-1, -1, -1], [0], [-1, 0, -1], axis=1 --> [-1, -1, -1], [0], [-1, 0, -1], [-1, -1, -1](partial on axis=1 with 0)
         self.out_grad_spec = DistTensorSpec(self.x_spec)
@@ -94,6 +132,35 @@ class TestElementwiseSPMDRule(unittest.TestCase):
         self.assertEqual(inferred_input_dist_attrs[2].dims_mapping, [-1, 0, -1])
         self.assertEqual(
             inferred_output_dist_attrs[0].dims_mapping, [-1, -1, -1]
+        )
+        self.assertEqual(inferred_output_dist_attrs[0]._is_partial(), True)
+        self.assertEqual(inferred_output_dist_attrs[0]._partial_dims(), {0})
+
+        # [1, -1, -1], [0], [1, 0, -1], axis=1 -> [1, -1, -1], [0], [1, 0, -1], [1, -1, -1](partial on axis=1 with mesh_dim 0)
+        self.x_spec.set_dims_mapping([1, -1, -1])
+        self.x_spec.shape = [3, 4, 2]
+        self.index_spec.set_dims_mapping([0])
+        self.out_grad_spec = DistTensorSpec(self.x_spec)
+        self.out_grad_spec.shape = [3, 4, 2]
+        self.out_grad_spec.set_dims_mapping([1, 0, -1])
+        self.attrs["axis"] = 1
+
+        result_dist_attrs = self.rule.infer_backward(
+            self.x_spec,
+            self.index_spec,
+            self.out_grad_spec,
+            self.attrs['axis'],
+        )
+        self.assertEqual(len(result_dist_attrs), 2)
+        inferred_input_dist_attrs = result_dist_attrs[0]
+        inferred_output_dist_attrs = result_dist_attrs[1]
+        self.assertEqual(len(inferred_input_dist_attrs), 3)
+        self.assertEqual(len(inferred_output_dist_attrs), 1)
+        self.assertEqual(inferred_input_dist_attrs[0].dims_mapping, [1, -1, -1])
+        self.assertEqual(inferred_input_dist_attrs[1].dims_mapping, [0])
+        self.assertEqual(inferred_input_dist_attrs[2].dims_mapping, [1, 0, -1])
+        self.assertEqual(
+            inferred_output_dist_attrs[0].dims_mapping, [1, -1, -1]
         )
         self.assertEqual(inferred_output_dist_attrs[0]._is_partial(), True)
         self.assertEqual(inferred_output_dist_attrs[0]._partial_dims(), {0})

@@ -39,35 +39,33 @@ SpmdInfo IndexSelectInferSpmd(const DistMetaTensor& x,
           x_ndim,
           axis));
 
-  // Step1: Build Einsum Notation
-  std::string alphabet = "abcdefghijlmnopqrstuvwxyz";
-  std::string x_axes = GetBroadcastAxes(x_ndim, x_ndim, alphabet);
-  std::string index_axes = "k";
-  std::string out_axes = x_axes;
-  out_axes[axis] = 'k';
-
-  // Step2: Sharding Propagation
-  // Step2.1: Merge input shardings
-  std::vector<int64_t> x_dims_mapping_dst(x_dims_mapping_src);
-  x_dims_mapping_dst[axis] = -1;
-  std::vector<int64_t> index_dims_mapping_dst(index_dims_mapping_src);
-  std::unordered_map<std::string, int64_t> axis_to_dim_map =
-      ShardingMergeForTensors(
-          {{x_axes, x_dims_mapping_dst}, {index_axes, index_dims_mapping_dst}});
-
   TensorDistAttr x_dist_attr_dst = CopyTensorDistAttrForOutput(x_dist_attr_src);
-  x_dist_attr_dst.set_dims_mapping(x_dims_mapping_dst);
-
   TensorDistAttr index_dist_attr_dst =
       CopyTensorDistAttrForOutput(index_dist_attr_src);
-  index_dist_attr_dst.set_dims_mapping(index_dims_mapping_dst);
+  std::vector<int64_t> x_dims_mapping = x_dims_mapping_src;
+  std::vector<int64_t> index_dims_mapping = index_dims_mapping_src;
+  x_dims_mapping[axis] = -1;
+  x_dist_attr_dst.set_dims_mapping(x_dims_mapping);
 
-  // Step2.2: Infer output dims mapping
-  std::vector<int64_t> out_dims_mapping_dst =
-      GetDimsMappingForAxes(out_axes, axis_to_dim_map);
+  std::vector<int64_t> out_dims_mapping(x_ndim, -1);
+  int64_t index_mesh_dim = index_dims_mapping[0];
+  for (int i = 0; i < x_ndim; ++i) {
+    if (i != axis) {
+      out_dims_mapping[i] = x_dims_mapping[i];
+      // input shared usually more useful than index shared
+      if (index_mesh_dim != -1 && out_dims_mapping[i] == index_mesh_dim) {
+        VLOG(4) << "Conflict detected on mesh dim " << index_mesh_dim
+                << ". Replicating the index tensor.";
+        index_mesh_dim = -1;
+        index_dims_mapping[0] = -1;
+        index_dist_attr_dst.set_dims_mapping(index_dims_mapping);
+      }
+    }
+  }
+  out_dims_mapping[axis] = index_mesh_dim;
   TensorDistAttr out_dist_attr_dst =
       CopyTensorDistAttrForOutput(x_dist_attr_src);
-  out_dist_attr_dst.set_dims_mapping(out_dims_mapping_dst);
+  out_dist_attr_dst.set_dims_mapping(out_dims_mapping);
 
   VLOG(4) << "IndexSelectInferSpmd: Done.";
   LOG_SPMD_INPUT(x);
@@ -98,45 +96,19 @@ SpmdInfo IndexSelectGradInferSpmd(const DistMetaTensor& x,
                         "must be the same.",
                         x_ndim,
                         out_grad_ndim));
-
-  std::string alphabet = "abcdefghijlmnopqrstuvwxyz";
-  std::string x_axes = GetBroadcastAxes(x_ndim, x_ndim, alphabet);
-  std::string index_axes = "k";
-  std::string out_grad_axes = x_axes;
-  out_grad_axes[axis] = 'k';
-
-  std::vector<int64_t> x_dims_mapping_dst(x_dims_mapping_src);
-  x_dims_mapping_dst[axis] = -1;
-  std::vector<int64_t> index_dims_mapping_dst(index_dims_mapping_src);
-  std::vector<int64_t> out_grad_dims_mapping_dst(out_grad_dims_mapping_src);
-
-  std::unordered_map<std::string, int64_t> axis_to_dim_map =
-      ShardingMergeForTensors({{x_axes, x_dims_mapping_dst},
-                               {index_axes, index_dims_mapping_dst},
-                               {out_grad_axes, out_grad_dims_mapping_dst}});
-
-  x_dims_mapping_dst = GetDimsMappingForAxes(x_axes, axis_to_dim_map);
-  out_grad_dims_mapping_dst =
-      GetDimsMappingForAxes(out_grad_axes, axis_to_dim_map);
-  index_dims_mapping_dst = GetDimsMappingForAxes(index_axes, axis_to_dim_map);
-
-  TensorDistAttr x_grad_dist_attr_dst =
-      CopyTensorDistAttrForOutput(x_dist_attr_src);
-  TensorDistAttr x_dist_attr_dst = CopyTensorDistAttrForOutput(x_dist_attr_src);
-  TensorDistAttr index_dist_attr_dst =
-      CopyTensorDistAttrForOutput(index_dist_attr_src);
+  // now use forward spmd rule to reduce complexity without actual cost eval.
+  SpmdInfo fwd_spmd_info = IndexSelectInferSpmd(x, index, axis);
+  TensorDistAttr x_dist_attr_dst = paddle::get<0>(fwd_spmd_info.first[0]);
+  TensorDistAttr index_dist_attr_dst = paddle::get<0>(fwd_spmd_info.first[1]);
   TensorDistAttr out_grad_dist_attr_dst =
-      CopyTensorDistAttrForOutput(out_grad_dist_attr_src);
+      paddle::get<0>(fwd_spmd_info.second[0]);
 
-  x_grad_dist_attr_dst.set_dims_mapping(x_dims_mapping_dst);
-  x_dist_attr_dst.set_dims_mapping(x_dims_mapping_dst);
-  index_dist_attr_dst.set_dims_mapping(index_dims_mapping_dst);
-  out_grad_dist_attr_dst.set_dims_mapping(out_grad_dims_mapping_dst);
-
-  // Handle partial if index and out_grad[axis] are sharded.
-  if (index_dims_mapping_dst[0] != -1) {
-    std::vector<int64_t> partial_dims(1, index_dims_mapping_dst[0]);
+  TensorDistAttr x_grad_dist_attr_dst = x_dist_attr_dst;
+  x_grad_dist_attr_dst.clean_partial_status();
+  if (index_dist_attr_dst.dims_mapping()[0] != -1) {
+    std::vector<int64_t> partial_dims(1, index_dist_attr_dst.dims_mapping()[0]);
     x_grad_dist_attr_dst.set_partial_status(partial_dims);
+    VLOG(4) << "x_grad is marked as partial on mesh dim: " << partial_dims[0];
   }
 
   VLOG(4) << "IndexSelectGradInferSpmd: Done.";
