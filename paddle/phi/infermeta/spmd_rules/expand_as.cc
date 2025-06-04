@@ -44,7 +44,7 @@ std::tuple<TensorDistAttr, TensorDistAttr> AlignExpandAsDistAttrs(
 
 SpmdInfo ExpandAsInferSpmd(const DistMetaTensor& x,
                            const DistMetaTensor& y,
-                           const std::vector<int>& target_shape) {
+                           const std::vector<int64_t>& target_shape) {
   auto [x_dist_attr, y_dist_attr] = AlignExpandAsDistAttrs(x, y);
   return {{x_dist_attr, y_dist_attr}, {y_dist_attr}};
 }
@@ -52,14 +52,14 @@ SpmdInfo ExpandAsInferSpmd(const DistMetaTensor& x,
 SpmdInfo ExpandAsInferSpmdReverse(const DistMetaTensor& x,
                                   const DistMetaTensor& y,
                                   const DistMetaTensor& output,
-                                  const std::vector<int>& target_shape) {
+                                  const std::vector<int64_t>& target_shape) {
   auto [x_dist_attr, y_dist_attr] = AlignExpandAsDistAttrs(x, output);
   return {{x_dist_attr, y_dist_attr}, {y_dist_attr}};
 }
 
 SpmdInfo ExpandAsGradInferSpmd(const DistMetaTensor& x,
                                const DistMetaTensor& out_grad,
-                               const std::vector<int>& target_shape) {
+                               const std::vector<int64_t>& target_shape) {
   auto [x_dist_attr, y_dist_attr] = AlignExpandAsDistAttrs(x, out_grad);
   const auto& x_dims_mapping = x_dist_attr.dims_mapping();
   const auto& y_dims_mapping = y_dist_attr.dims_mapping();

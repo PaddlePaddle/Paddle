@@ -23,16 +23,16 @@ namespace phi {
 namespace distributed {
 SpmdInfo ExpandAsInferSpmd(const DistMetaTensor& x,
                            const DistMetaTensor& y,
-                           const std::vector<int>& target_shape);
+                           const std::vector<int64_t>& target_shape);
 
 SpmdInfo ExpandAsInferSpmdReverse(const DistMetaTensor& x,
                                   const DistMetaTensor& y,
                                   const DistMetaTensor& output,
-                                  const std::vector<int>& target_shape);
+                                  const std::vector<int64_t>& target_shape);
 
 SpmdInfo ExpandAsGradInferSpmd(const DistMetaTensor& x,
                                const DistMetaTensor& out_grad,
-                               const std::vector<int>& target_shape);
+                               const std::vector<int64_t>& target_shape);
 
 }  // namespace distributed
 }  // namespace phi

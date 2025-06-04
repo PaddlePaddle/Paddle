@@ -21,7 +21,7 @@ namespace auto_parallel {
 TEST(ExpandAsInferSpmd, Ctor) {
   // Sharding along axes besides softmax axis.
   std::vector<int64_t> x_shape = {1, 48};
-  std::vector<int> y_shape = {2, 32, 48};
+  std::vector<int64_t> y_shape = {2, 32, 48};
 
   std::vector<int64_t> mesh_shape = {2, 3};
   std::vector<int64_t> process_ids = {0, 1, 2, 3, 4, 5};
