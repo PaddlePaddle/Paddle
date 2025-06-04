@@ -38,6 +38,9 @@ void WhereKernel(const Context& ctx,
   std::vector<const DenseTensor*> ins = {&condition, &x, &y};
   std::vector<DenseTensor*> outs = {out};
   ctx.template Alloc<T>(out);
+  if (out && out->numel() == 0) {
+    return;
+  }
 
   CondFunctor<T> func;
   funcs::ElementwiseKernel<T, CondFunctor<T>, 1>(ctx, ins, &outs, func);

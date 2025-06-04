@@ -708,6 +708,9 @@ PD_REGISTER_SPMD_RULE(cumsum,
                       PD_INFER_SPMD(phi::distributed::CumSumInferSpmd),
                       PD_INFER_SPMD(phi::distributed::CumSumInferSpmdReverse));
 
+// unique
+PD_REGISTER_SPMD_RULE(unique, PD_INFER_SPMD(phi::distributed::UniqueInferSpmd));
+
 // argmin
 PD_REGISTER_SPMD_RULE(
     argmin,

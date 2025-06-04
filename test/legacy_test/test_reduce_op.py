@@ -207,6 +207,70 @@ def create_test_fp16_class(parent):
             )
 
 
+def create_test_fp16_class_cpu(parent):
+    class TestSumOpFp16CPU(parent):
+        def init_dtype(self):
+            self.dtype = np.float16
+
+        def test_check_output(self):
+            self.check_output(check_pir=True, rtol=1e-2, atol=1e-2)
+
+        def test_check_grad(self):
+            self.check_grad(
+                ['X'],
+                'Out',
+                check_prim=True,
+                check_prim_pir=True,
+                check_pir=True,
+            )
+
+
+class TestSumOp3D0size(TestSumOp3Dim):
+
+    def test_check_output(self):
+        self.check_output(check_pir=True, check_pir_onednn=True)
+
+    def calc_gradient(self):
+        x = self.inputs["X"]
+        grad = np.ones(x.shape, dtype=x.dtype)
+        return (grad,)
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['X'],
+            'Out',
+            user_defined_grads=self.calc_gradient(),
+            check_prim=True,
+            check_prim_pir=True,
+            check_pir=True,
+            check_pir_onednn=True,
+        )
+
+
+class TestSumOp3D0size1(TestSumOp3D0size):
+    def init_input(self):
+        self.x = np.random.uniform(0, 0.1, (5, 0, 10)).astype(self.dtype)
+
+    def init_attrs(self):
+        self.attrs = {'dim': (0, 1, 2)}
+
+
+class TestSumOp3D0size2(TestSumOp3D0size):
+    def init_input(self):
+        self.x = np.random.uniform(0, 0.1, (0, 6, 10)).astype(self.dtype)
+
+    def init_attrs(self):
+        self.attrs = {'dim': (0, 1, 2)}
+
+
+class TestSumOp3D0size3(TestSumOp3D0size):
+    def init_input(self):
+        self.x = np.random.uniform(0, 0.1, (4, 6, 0)).astype(self.dtype)
+
+    def init_attrs(self):
+        self.attrs = {'dim': (0, 1, 2)}
+
+
 create_test_fp16_class(TestSumOp)
 create_test_fp16_class(TestSumOp_ZeroDim)
 create_test_fp16_class(TestSumOp5D)
@@ -214,6 +278,14 @@ create_test_fp16_class(TestSumOp6D)
 create_test_fp16_class(TestSumOp8D)
 create_test_fp16_class(TestSumOp_withInt)
 create_test_fp16_class(TestSumOp3Dim)
+
+create_test_fp16_class_cpu(TestSumOp)
+create_test_fp16_class_cpu(TestSumOp_ZeroDim)
+create_test_fp16_class_cpu(TestSumOp5D)
+create_test_fp16_class_cpu(TestSumOp6D)
+create_test_fp16_class_cpu(TestSumOp8D)
+create_test_fp16_class_cpu(TestSumOp_withInt)
+create_test_fp16_class_cpu(TestSumOp3Dim)
 
 
 def create_test_bf16_class(parent):

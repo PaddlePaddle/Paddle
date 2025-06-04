@@ -2307,7 +2307,9 @@ void group_norm_grad(const Tensor& x,
       auto tmp1 = out_grad_data * (x_data - mean_new) * sqrt_var_1;
 
       auto scale_grad_tmp = reshape<T>(
-          tmp1.sum(reduce_axis_except_channel, scale->dtype(), false), {-1});
+          tmp1.sum(reduce_axis_except_channel, x_data.dtype(), false), {-1});
+      scale_grad_tmp = ConvertToOrig<T>(scale_grad_tmp, scale->dtype());
+
       set_output<T>(scale_grad_tmp, scale_grad);
     }
   }
@@ -2315,7 +2317,8 @@ void group_norm_grad(const Tensor& x,
   if (bias_grad) {
     if (bias) {
       auto bias_grad_tmp =
-          out_grad_data.sum(reduce_axis_except_channel, bias->dtype(), false);
+          out_grad_data.sum(reduce_axis_except_channel, x_data.dtype(), false);
+      bias_grad_tmp = ConvertToOrig<T>(bias_grad_tmp, bias->dtype());
 
       set_output<T>(reshape<T>(bias_grad_tmp, {-1}), bias_grad);
     }

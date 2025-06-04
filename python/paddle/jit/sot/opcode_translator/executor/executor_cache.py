@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import gc
 import traceback
-from typing import TYPE_CHECKING, List, Tuple
+from typing import TYPE_CHECKING
 
 import paddle
 from paddle.base.dygraph.base import sot_simulation_mode_guard
@@ -49,10 +49,10 @@ from .virtual_frame import VirtualFrame
 if TYPE_CHECKING:
     import types
 
-GuardedFunction = Tuple[CustomCode, Guard]
-GuardedFunctions = List[GuardedFunction]
-GuardChain = List[paddle.framework.core.GuardNodeBase]
-GuardChainList = List[GuardChain]
+GuardedFunction = tuple[CustomCode, Guard]
+GuardedFunctions = list[GuardedFunction]
+GuardChain = list[paddle.framework.core.GuardNodeBase]
+GuardChainList = list[GuardChain]
 
 dummy_guard: Guard = lambda frame: True
 dummy_guard.expr = "lambda frame: True"

@@ -773,9 +773,10 @@ class GPTPretrainingCriterion(nn.Layer):
 
 
 def gpt_pretrain_forward(train_program, startup_program):
-    with static.program_guard(
-        train_program, startup_program
-    ), utils.unique_name.guard():
+    with (
+        static.program_guard(train_program, startup_program),
+        utils.unique_name.guard(),
+    ):
         batch_size = 16
         sequence_len = 512
         input_ids = static.data(
