@@ -618,18 +618,20 @@ void FlashAttnV3GradKernel(const Context &ctx,
   const int64_t h_k = k.dims()[2];
   const int64_t d_q = q.dims()[3];
   const int64_t d_v = v.dims()[3];
-  PADDLE_ENFORCE_EQ(v.dims()[v.dims().size() - 1],
-                    out.dims()[out.dims().size() - 1],
-                    common::errors::InvalidArgument(
-                        "head_dim_v and head_dim_o must be equal"));
-  PADDLE_ENFORCE_EQ(v.dims()[v.dims().size() - 2],
-                    out.dims()[out.dims().size() - 2],
-                    common::errors::InvalidArgument(
-                        "num_heads_v and num_heads_o must be equal"));
-  PADDLE_ENFORCE_EQ(
-      v.dims()[v.dims().size() - 3],
-      out.dims()[out.dims().size() - 3],
-      common::errors::InvalidArgument("seqlen_v and seqlen_o must be equal"));
+  if (q.dims()[q.dims().size() - 1] > v.dims()[v.dims().size() - 1]) {
+    PADDLE_ENFORCE_EQ(v.dims()[v.dims().size() - 1],
+                      out.dims()[out.dims().size() - 1],
+                      common::errors::InvalidArgument(
+                          "head_dim_v and head_dim_o must be equal"));
+    PADDLE_ENFORCE_EQ(v.dims()[v.dims().size() - 2],
+                      out.dims()[out.dims().size() - 2],
+                      common::errors::InvalidArgument(
+                          "num_heads_v and num_heads_o must be equal"));
+    PADDLE_ENFORCE_EQ(
+        v.dims()[v.dims().size() - 3],
+        out.dims()[out.dims().size() - 3],
+        common::errors::InvalidArgument("seqlen_v and seqlen_o must be equal"));
+  }
   FlashAttnV3GradBaseKernel<T, Context>(ctx,
                                         out_grad,
                                         q,
