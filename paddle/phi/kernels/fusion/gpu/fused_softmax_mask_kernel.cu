@@ -21,12 +21,24 @@
 namespace phi {
 namespace fusion {
 
+#define LAUNCH_SOFTMAX_MASK_FUSE_GPU_KERNEL(T, MT, pow2_index) \
+  SoftmaxMaskFuseGPUKernel<T, MT, pow2_index>                  \
+      <<<blocks, threads, 0, stream>>>(x_data,                 \
+                                       mask_data,              \
+                                       y_data,                 \
+                                       batch_count,            \
+                                       attn_heads,             \
+                                       query_seqs,             \
+                                       key_seq_len);
+
 // T == fp16
 template <typename T, typename MT, int pow2_index>
 __global__ void SoftmaxMaskFuseGPUKernel(const T* x_data,
                                          const MT* mask_data,
                                          T* y_data,
                                          int64_t batch_count,
+                                         int64_t attn_heads,
+                                         int64_t query_seqs,
                                          int key_seq_len) {
   // the forward gpu kernel
   constexpr int next_pow2 = 1 << pow2_index;
@@ -35,17 +47,26 @@ __global__ void SoftmaxMaskFuseGPUKernel(const T* x_data,
   constexpr int kLocalBatchSize = (next_pow2 <= 128) ? 2 : 1;
   constexpr int kOneLoadingCounts = 4;
 
+  int64_t blockInGrid = blockIdx.x;
+
+  int64_t indexInMaskDim0 = blockInGrid / (attn_heads * query_seqs);
+  int64_t indexInMaskDim2 = blockInGrid % (query_seqs);
+
   int64_t data_first_idx =
-      (blockDim.y * (blockIdx.x +
-                     static_cast<int64_t>(gridDim.x) *
-                         (blockIdx.y + static_cast<int64_t>(gridDim.y) *
-                                           static_cast<int64_t>(blockIdx.z))) +
-       threadIdx.y) *
-      kLocalBatchSize;
+      (blockDim.y * (blockInGrid) + threadIdx.y) * kLocalBatchSize;
+
+  // The original implementation was like this
+  // int64_t mask_fist_idx =
+  //     (blockDim.y * (blockIdx.x + gridDim.x * blockIdx.z) + threadIdx.y) *
+  //     kLocalBatchSize;
+  // The mapping relationship is as follows：
+  // query_seqs <-> gridDim.x
+  // attn_heads <-> gridDim.y
+  // indexInMaskDim0 <-> blockIdx.z
+  // indexInMaskDim2 <-> blockIdx.x
 
   int64_t mask_fist_idx =
-      (blockDim.y * (blockIdx.x + static_cast<int64_t>(gridDim.x) *
-                                      static_cast<int64_t>(blockIdx.z)) +
+      (blockDim.y * (indexInMaskDim2 + query_seqs * indexInMaskDim0) +
        threadIdx.y) *
       kLocalBatchSize;
 
@@ -148,7 +169,6 @@ __global__ void SoftmaxMaskFuseGPUKernel(const T* x_data,
     }
   }
 }
-
 // T only supports fp16
 // leave as template only for future update
 template <typename T, typename Context>
@@ -228,47 +248,43 @@ void FusedSoftmaxMaskKernel(const Context& dev_ctx,
           "the number of batches per block is %d.",
           query_seq_len,
           batches_per_block));
-  dim3 blocks(query_seq_len / batches_per_block, attn_heads, batches);
-  dim3 threads(warp_size, warps_per_block, 1);
 
+  // The original implementation was like this:
+  // dim3 blocks(query_seq_len / batches_per_block, attn_heads, batches);
+  // If attn_heads or batches beyond 65535, it will cause CUDA error 9
+  int64_t total_blocks = batch_count / batches_per_block;
+  dim3 blocks(total_blocks);
+  int64_t query_seqs = query_seq_len / batches_per_block;
+  dim3 threads(warp_size, warps_per_block, 1);
   if (mask.dtype() == x.dtype()) {
     auto* mask_data = mask.data<T>();
     switch (pow2_index) {
       case 5:  // 32
-        SoftmaxMaskFuseGPUKernel<T, T, 5><<<blocks, threads, 0, stream>>>(
-            x_data, mask_data, y_data, batch_count, key_seq_len);
+        LAUNCH_SOFTMAX_MASK_FUSE_GPU_KERNEL(T, T, 5)
         break;
       case 6:  // 64
-        SoftmaxMaskFuseGPUKernel<T, T, 6><<<blocks, threads, 0, stream>>>(
-            x_data, mask_data, y_data, batch_count, key_seq_len);
+        LAUNCH_SOFTMAX_MASK_FUSE_GPU_KERNEL(T, T, 6)
         break;
       case 7:  // 128
-        SoftmaxMaskFuseGPUKernel<T, T, 7><<<blocks, threads, 0, stream>>>(
-            x_data, mask_data, y_data, batch_count, key_seq_len);
+        LAUNCH_SOFTMAX_MASK_FUSE_GPU_KERNEL(T, T, 7)
         break;
       case 8:  // 256
-        SoftmaxMaskFuseGPUKernel<T, T, 8><<<blocks, threads, 0, stream>>>(
-            x_data, mask_data, y_data, batch_count, key_seq_len);
+        LAUNCH_SOFTMAX_MASK_FUSE_GPU_KERNEL(T, T, 8)
         break;
       case 9:  // 512
-        SoftmaxMaskFuseGPUKernel<T, T, 9><<<blocks, threads, 0, stream>>>(
-            x_data, mask_data, y_data, batch_count, key_seq_len);
+        LAUNCH_SOFTMAX_MASK_FUSE_GPU_KERNEL(T, T, 9)
         break;
       case 10:  // 1024
-        SoftmaxMaskFuseGPUKernel<T, T, 10><<<blocks, threads, 0, stream>>>(
-            x_data, mask_data, y_data, batch_count, key_seq_len);
+        LAUNCH_SOFTMAX_MASK_FUSE_GPU_KERNEL(T, T, 10)
         break;
       case 11:  // 2048
-        SoftmaxMaskFuseGPUKernel<T, T, 11><<<blocks, threads, 0, stream>>>(
-            x_data, mask_data, y_data, batch_count, key_seq_len);
+        LAUNCH_SOFTMAX_MASK_FUSE_GPU_KERNEL(T, T, 11)
         break;
       case 12:  // 4096
-        SoftmaxMaskFuseGPUKernel<T, T, 12><<<blocks, threads, 0, stream>>>(
-            x_data, mask_data, y_data, batch_count, key_seq_len);
+        LAUNCH_SOFTMAX_MASK_FUSE_GPU_KERNEL(T, T, 12)
         break;
       case 13:  // 8192
-        SoftmaxMaskFuseGPUKernel<T, T, 13><<<blocks, threads, 0, stream>>>(
-            x_data, mask_data, y_data, batch_count, key_seq_len);
+        LAUNCH_SOFTMAX_MASK_FUSE_GPU_KERNEL(T, T, 13)
         break;
       default:
         break;
@@ -277,40 +293,31 @@ void FusedSoftmaxMaskKernel(const Context& dev_ctx,
     auto* mask_data = mask.data<float>();
     switch (pow2_index) {
       case 5:  // 32
-        SoftmaxMaskFuseGPUKernel<T, float, 5><<<blocks, threads, 0, stream>>>(
-            x_data, mask_data, y_data, batch_count, key_seq_len);
+        LAUNCH_SOFTMAX_MASK_FUSE_GPU_KERNEL(T, float, 5)
         break;
       case 6:  // 64
-        SoftmaxMaskFuseGPUKernel<T, float, 6><<<blocks, threads, 0, stream>>>(
-            x_data, mask_data, y_data, batch_count, key_seq_len);
+        LAUNCH_SOFTMAX_MASK_FUSE_GPU_KERNEL(T, float, 6)
         break;
       case 7:  // 128
-        SoftmaxMaskFuseGPUKernel<T, float, 7><<<blocks, threads, 0, stream>>>(
-            x_data, mask_data, y_data, batch_count, key_seq_len);
+        LAUNCH_SOFTMAX_MASK_FUSE_GPU_KERNEL(T, float, 7)
         break;
       case 8:  // 256
-        SoftmaxMaskFuseGPUKernel<T, float, 8><<<blocks, threads, 0, stream>>>(
-            x_data, mask_data, y_data, batch_count, key_seq_len);
+        LAUNCH_SOFTMAX_MASK_FUSE_GPU_KERNEL(T, float, 8)
         break;
       case 9:  // 512
-        SoftmaxMaskFuseGPUKernel<T, float, 9><<<blocks, threads, 0, stream>>>(
-            x_data, mask_data, y_data, batch_count, key_seq_len);
+        LAUNCH_SOFTMAX_MASK_FUSE_GPU_KERNEL(T, float, 9)
         break;
       case 10:  // 1024
-        SoftmaxMaskFuseGPUKernel<T, float, 10><<<blocks, threads, 0, stream>>>(
-            x_data, mask_data, y_data, batch_count, key_seq_len);
+        LAUNCH_SOFTMAX_MASK_FUSE_GPU_KERNEL(T, float, 10)
         break;
       case 11:  // 2048
-        SoftmaxMaskFuseGPUKernel<T, float, 11><<<blocks, threads, 0, stream>>>(
-            x_data, mask_data, y_data, batch_count, key_seq_len);
+        LAUNCH_SOFTMAX_MASK_FUSE_GPU_KERNEL(T, float, 11)
         break;
       case 12:  // 4096
-        SoftmaxMaskFuseGPUKernel<T, float, 12><<<blocks, threads, 0, stream>>>(
-            x_data, mask_data, y_data, batch_count, key_seq_len);
+        LAUNCH_SOFTMAX_MASK_FUSE_GPU_KERNEL(T, float, 12)
         break;
       case 13:  // 8192
-        SoftmaxMaskFuseGPUKernel<T, float, 13><<<blocks, threads, 0, stream>>>(
-            x_data, mask_data, y_data, batch_count, key_seq_len);
+        LAUNCH_SOFTMAX_MASK_FUSE_GPU_KERNEL(T, float, 13)
         break;
       default:
         break;
