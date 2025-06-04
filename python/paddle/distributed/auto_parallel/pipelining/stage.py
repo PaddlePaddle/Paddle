@@ -613,7 +613,7 @@ class _PipelineStageBase(ABC):
 
         out_val = self.sublayer(*args, **kwargs)
 
-        return out_val, input_args
+        return out_val, args
 
     def backward_maybe_with_nosync(
         self, backward_type, bwd_kwargs: dict, last_backward=False
@@ -1187,7 +1187,7 @@ class PipelineStage(_PipelineStageBase):
         grads: tuple[Any, ...] = ()
         if self.grads_meta is None:
             self._shape_inference_bwd()
-        
+
         for mb_index in range(num_microbatches):
             # `grad_recv_info` is a mirror of `act_send_info`
             self.grad_recv_info[mb_index] = self._create_grad_recv_info(
