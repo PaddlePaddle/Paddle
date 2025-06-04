@@ -62,8 +62,8 @@ void SetTensorValueKernelV2(const Context& dev_ctx,
 
     auto out_dim =
         (std::abs(ends_local[i] - starts_local[i]) + step_size - 1) / step_size;
-    output_offset += static_cast<int>(starts_local[i] * output_stride[axes[i]] *
-                                      SizeOf(out->dtype()));
+    output_offset += static_cast<int64_t>(
+        starts_local[i] * output_stride[axes[i]] * SizeOf(out->dtype()));
     output_dims[axes[i]] = out_dim;
     output_stride[axes[i]] *= steps_local[i];
   }
