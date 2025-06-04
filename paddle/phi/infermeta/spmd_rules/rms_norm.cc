@@ -96,8 +96,6 @@ SpmdInfo RmsNormInferSpmdReverse(const DistMetaTensor& x,
     x_axes[i] = alphabet[i];
     variance_axes[i] = alphabet[i];
   }
-  x_axes[1] = '1';
-  variance_axes[1] = '1';
   auto out_axes = x_axes;
   std::string scale_axes(1, x_axes[x_ndim - 1]);
 
@@ -137,10 +135,6 @@ std::tuple<std::vector<std::string>, std::string> BuildRmsNormGradEinsum(
   std::string x_notation = alphabet.substr(0, input_rank);
   std::string variance_notation = x_notation.substr(0, input_rank - 1);
   std::string align_notation = x_notation.substr(0, input_rank - 1);
-  x_notation[1] = '1';
-  variance_notation[1] = '1';
-  align_notation =
-      align_notation.substr(0, 1) + align_notation.substr(2, input_rank - 1);
   return {{x_notation, variance_notation, x_notation}, align_notation};
 }
 
@@ -173,6 +167,10 @@ SpmdInfo RmsNormGradInferSpmd(const DistMetaTensor& x,
   std::string align_annotation;
   std::tie(annotations, align_annotation) =
       BuildRmsNormGradEinsum(x_shape.size());
+  // Partial status is not supported.
+  for (auto& dist_attr : dist_attrs) {
+    dist_attr.clean_partial_status();
+  }
   AlignDimsSharding(
       &dist_attrs, shapes, annotations, {}, align_annotation, false);
   auto x_dist_attr_dst = dist_attrs[0];
