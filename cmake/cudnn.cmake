@@ -10,19 +10,23 @@ else()
       CACHE PATH "CUDNN ROOT")
 endif()
 
-find_path(
-  CUDNN_INCLUDE_DIR cudnn.h
-  PATHS ${CUDNN_ROOT} ${CUDNN_ROOT}/include $ENV{CUDNN_ROOT}
-        $ENV{CUDNN_ROOT}/include ${CUDA_TOOLKIT_INCLUDE}
-        /usr/local/lib/python${PY_VERSION}/dist-packages/nvidia/cudnn/include/
-  NO_DEFAULT_PATH)
-
-get_filename_component(__libpath_hist ${CUDA_CUDART_LIBRARY} PATH)
-
 set(TARGET_ARCH "x86_64")
 if(NOT ${CMAKE_SYSTEM_PROCESSOR})
   set(TARGET_ARCH ${CMAKE_SYSTEM_PROCESSOR})
 endif()
+
+find_path(
+  CUDNN_INCLUDE_DIR cudnn.h
+  PATHS ${CUDNN_ROOT}
+        ${CUDNN_ROOT}/include
+        ${CUDNN_ROOT}/include/${TARGET_ARCH}-linux-gnu
+        $ENV{CUDNN_ROOT}
+        $ENV{CUDNN_ROOT}/include
+        ${CUDA_TOOLKIT_INCLUDE}
+        /usr/local/lib/python${PY_VERSION}/dist-packages/nvidia/cudnn/include/
+  NO_DEFAULT_PATH)
+
+get_filename_component(__libpath_hist ${CUDA_CUDART_LIBRARY} PATH)
 
 list(
   APPEND
