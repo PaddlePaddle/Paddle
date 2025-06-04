@@ -623,30 +623,10 @@ void FlashAttnV3GradKernel(const Context &ctx,
   const int64_t h_k = k.dims()[2];
   const int64_t d_q = q.dims()[3];
   const int64_t d_v = v.dims()[3];
-  if (q.dims()[q.dims().size() - 1] > v.dims()[v.dims().size() - 1]) {
-    PADDLE_ENFORCE_EQ(v.dims()[v.dims().size() - 1],
-                      out.dims()[out.dims().size() - 1],
-                      common::errors::InvalidArgument(
-                          "head_dim_v and head_dim_o must be equal"));
-    PADDLE_ENFORCE_EQ(v.dims()[v.dims().size() - 2],
-                      out.dims()[out.dims().size() - 2],
-                      common::errors::InvalidArgument(
-                          "num_heads_v and num_heads_o must be equal"));
-    PADDLE_ENFORCE_EQ(
-        v.dims()[v.dims().size() - 3],
-        out.dims()[out.dims().size() - 3],
-        common::errors::InvalidArgument("seqlen_v and seqlen_o must be equal"));
-    DenseTensor padding = Empty<T, Context>(ctx, {b, s_k, h_k, d_q - d_v});
-    funcs::SetConstant<Context, T> set_zero;
-    set_zero(ctx, &padding, T{0});
-    v_padded = v;
-    out_padded = out;
-    out_grad_padded = out_grad;
-  } else {
-    v_padded = v;
-    out_padded = out;
-    out_grad_padded = out_grad;
-  }
+  v_padded = v;
+  out_padded = out;
+  out_grad_padded = out_grad;
+
   FlashAttnV3GradBaseKernel<T, Context>(ctx,
                                         out_grad_padded,
                                         q,
@@ -678,12 +658,7 @@ void FlashAttnV3GradKernel(const Context &ctx,
                                         &dq_accum,
                                         &dk_accum,
                                         &dv_accum);
-
-  if (q.dims()[q.dims().size() - 1] > v.dims()[v.dims().size() - 1]) {
-    *dv = dv_padded;
-  } else {
-    *dv = dv_padded;
-  }
+  *dv = dv_padded;
 #else
   RaiseNotSupportedError();
 #endif
