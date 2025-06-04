@@ -6282,6 +6282,28 @@ void ArrayPopInferMeta(const MetaTensor& array,
   out->set_dtype(array.dtype());
 }
 
+void BuildSrcRankAndLocalExpertIdInferMeta(
+    const MetaTensor& expert_num_global_tensor,
+    const std::vector<int64_t>& expert_num_global,
+    int64_t num_local_experts,
+    MetaTensor* src_rank,
+    MetaTensor* local_expert_id) {
+  int64_t token_num =
+      std::accumulate(expert_num_global.begin(), expert_num_global.end(), 0);
+
+  PADDLE_ENFORCE_EQ(
+      expert_num_global_tensor.dtype(),
+      phi::DataType::INT64,
+      errors::InvalidArgument(
+          "The input expert_num_global_tensor type should be INT64"));
+
+  src_rank->set_dims({token_num});
+  src_rank->set_dtype(DataType::INT32);
+
+  local_expert_id->set_dims({token_num});
+  local_expert_id->set_dtype(DataType::INT32);
+}
+
 }  // namespace phi
 
 PD_REGISTER_INFER_META_FN(flatten, phi::FlattenInferMeta);

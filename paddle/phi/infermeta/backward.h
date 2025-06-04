@@ -680,4 +680,24 @@ void SetValueGradInferMeta(const MetaTensor& out_grad,
                            MetaTensor* x_grad,
                            MetaTensor* value_grad);
 
+void CalAuxLossGradInferMeta(const MetaTensor& gate_prob,
+                             const MetaTensor& seqlen_float,
+                             const MetaTensor& ce,
+                             const MetaTensor& l_aux_loss_grad,
+                             const int64_t num_experts,
+                             const bool use_group,
+                             const int64_t moe_k,
+                             MetaTensor* gate_prob_grad);
+
+void MoeGateDispatchGradInferMeta(const MetaTensor& combine_weights,
+                                  const MetaTensor& scatter_index,
+                                  const MetaTensor& expert_id,
+                                  const MetaTensor& y_grad,
+                                  const MetaTensor& combine_weights_grad,
+                                  const int64_t k,
+                                  const int64_t capacity,
+                                  const bool use_pad,
+                                  MetaTensor* x_grad,
+                                  MetaTensor* gate_logits_grad);
+
 }  // namespace phi
