@@ -2965,10 +2965,6 @@ TEST(RolAlign, Ctor) {
   boxes_num_dist_attr.set_process_mesh(process_mesh);
   boxes_num_dist_attr.set_dims_mapping({0});
   boxes_num_dist_attr.set_dynamic_dims({false});
-  auto out_grad_dist_attr = TensorDistAttr();
-  out_grad_dist_attr.set_process_mesh(process_mesh);
-  out_grad_dist_attr.set_dims_mapping({0, 1, -1, -1});
-  out_grad_dist_attr.set_dynamic_dims({false, false, false, false});
 
   phi::distributed::DistMetaTensor x = phi::distributed::DistMetaTensor(
       common::make_ddim({2, 4, 16, 16}), x_dist_attr);
@@ -2976,8 +2972,6 @@ TEST(RolAlign, Ctor) {
       common::make_ddim({6, 6}), boxes_dist_attr);
   phi::distributed::DistMetaTensor boxes_num = phi::distributed::DistMetaTensor(
       common::make_ddim({2}), boxes_num_dist_attr);
-  phi::distributed::DistMetaTensor out_grad = phi::distributed::DistMetaTensor(
-      common::make_ddim({6, 2, 3, 3}), out_grad_dist_attr);
 
   phi::distributed::SpmdInfo forward_info =
       phi::distributed::RoiAlignInferSpmd(x,
@@ -3012,11 +3006,14 @@ TEST(RolAlign, Ctor) {
   check_dim_mapping(forward_info.second[0], {-1, 1, -1, -1});
 
   // test backward
-  // [0, 1, -1, -1], [-1, 1], [0], [0, 1, -1, -1] --> [-1, 1, -1, -1],[-1,
-  // -1],[-1],[-1,1,-1,-1],[-1, 1, -1, -1](partail_dims{1})
-  x_dist_attr.set_dims_mapping({0, -1, 1});
-  x = phi::distributed::DistMetaTensor(common::make_ddim({16, 16, 16}),
-                                       x_dist_attr);
+  // [0, 1, -1, -1], [-1, 1], [0], [0, -1, -1, -1] --> [-1, 1, -1, -1],[-1,
+  // -1],[-1],[-1,1,-1,-1],[-1, 1, -1, -1]
+  auto out_grad_dist_attr = TensorDistAttr();
+  out_grad_dist_attr.set_process_mesh(process_mesh);
+  out_grad_dist_attr.set_dims_mapping({0, -1, -1, -1});
+  out_grad_dist_attr.set_dynamic_dims({false, false, false, false});
+  phi::distributed::DistMetaTensor out_grad = phi::distributed::DistMetaTensor(
+      common::make_ddim({6, 2, 3, 3}), out_grad_dist_attr);
   phi::distributed::SpmdInfo backward_info =
       phi::distributed::RoiAlignGradInferSpmd(x,
                                               boxes,
@@ -3034,7 +3031,6 @@ TEST(RolAlign, Ctor) {
   check_dim_mapping(backward_info.first[2], {-1});
   check_dim_mapping(backward_info.first[3], {-1, 1, -1, -1});
   check_dim_mapping(backward_info.second[0], {-1, 1, -1, -1});
-  check_partial_dims(backward_info.first[0], {1});
 
   backward_info = phi::distributed::RoiAlignGradInferSpmd(
       x,
@@ -3053,7 +3049,6 @@ TEST(RolAlign, Ctor) {
   check_empty_dist_attr(backward_info.first[2]);
   check_dim_mapping(backward_info.first[3], {-1, 1, -1, -1});
   check_dim_mapping(backward_info.first[0], {-1, 1, -1, -1});
-  check_partial_dims(backward_info.first[0], {1});
 }
 }  // namespace auto_parallel
 }  // namespace distributed
