@@ -113,9 +113,7 @@ class TestRoiAlignSPMDRule(unittest.TestCase):
             inferred_input_dist_attrs[0].dims_mapping, [-1, 1, -1, -1]
         )
         self.assertEqual(inferred_input_dist_attrs[1].dims_mapping, [-1, -1])
-        self.assertEqual(
-            inferred_input_dist_attrs[2].dims_mapping, TensorDistAttr()
-        )
+        self.assertEqual(inferred_input_dist_attrs[2], TensorDistAttr())
         self.assertEqual(
             inferred_output_dist_attrs[0].dims_mapping, [-1, 1, -1, -1]
         )
