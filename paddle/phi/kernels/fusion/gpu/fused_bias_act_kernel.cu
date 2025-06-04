@@ -236,8 +236,8 @@ void DispatchComputeImpl(const Context &dev_ctx,
                          const DenseTensor &x,
                          const DenseTensor *bias,
                          const std::string &act_method,
-                         int rows,
-                         int cols,
+                         int64_t rows,
+                         int64_t cols,
                          const float quant_scale,
                          const int quant_round_type,
                          const float quant_max_bound,
@@ -499,7 +499,6 @@ void FusedBiasActKernel(const Context &dev_ctx,
           quant_min_bound,
           out,
           typename DispatchDtypeTrait<phi::dtype::bfloat16>::FuncVersion{});
-
     } else if (compute_dtype == "fp16") {
       DispatchWithDtype<phi::dtype::float16, Context>(
           dev_ctx,
