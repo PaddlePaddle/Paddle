@@ -125,6 +125,25 @@ class UnsupportedNumPyAPIBreak(UnsupportedOperationBreak):
         )
 
 
+class UnsupportedRandomAPIBreak(UnsupportedOperationBreak):
+    def __init__(
+        self,
+        *,
+        fn_name=None,
+        reason_str=None,
+        file_path="",
+        line_number=-1,
+    ):
+        if reason_str is None:
+            reason_str = f"Random function {fn_name} is not supported."
+
+        super().__init__(
+            reason_str=reason_str,
+            file_path=file_path,
+            line_number=line_number,
+        )
+
+
 class BuiltinFunctionBreak(UnsupportedOperationBreak):
     """Break reason for unsupported built-in function calls.
 

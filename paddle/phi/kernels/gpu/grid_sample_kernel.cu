@@ -323,6 +323,10 @@ void GridSampleKernel(const Context& dev_ctx,
                       const std::string& padding_mode,
                       bool align_corners,
                       DenseTensor* out) {
+  if (out && out->numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   PaddingMode enum_padding_mode;
   Mode enum_mode;
   if (padding_mode == "border") {
