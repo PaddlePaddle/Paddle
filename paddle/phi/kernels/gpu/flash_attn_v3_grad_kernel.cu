@@ -611,11 +611,6 @@ void FlashAttnV3GradKernel(const Context &ctx,
   DenseTensor dq_accum;
   DenseTensor dk_accum;
   DenseTensor dv_accum;
-  // TODO(umiswing): remove padding in mla
-  DenseTensor v_padded;
-  DenseTensor out_padded;
-  DenseTensor out_grad_padded;
-  DenseTensor dv_padded;
   const int64_t b = q.dims()[0];
   const int64_t s_q = q.dims()[1];
   const int64_t s_k = k.dims()[1];
@@ -623,15 +618,24 @@ void FlashAttnV3GradKernel(const Context &ctx,
   const int64_t h_k = k.dims()[2];
   const int64_t d_q = q.dims()[3];
   const int64_t d_v = v.dims()[3];
-  v_padded = v;
-  out_padded = out;
-  out_grad_padded = out_grad;
+  PADDLE_ENFORCE_EQ(v.dims()[v.dims().size() - 1],
+                    out.dims()[out.dims().size() - 1],
+                    common::errors::InvalidArgument(
+                        "head_dim_v and head_dim_o must be equal"));
+  PADDLE_ENFORCE_EQ(v.dims()[v.dims().size() - 2],
+                    out.dims()[out.dims().size() - 2],
+                    common::errors::InvalidArgument(
+                        "num_heads_v and num_heads_o must be equal"));
+  PADDLE_ENFORCE_EQ(
+      v.dims()[v.dims().size() - 3],
+      out.dims()[out.dims().size() - 3],
+      common::errors::InvalidArgument("seqlen_v and seqlen_o must be equal"));
   FlashAttnV3GradBaseKernel<T, Context>(ctx,
-                                        out_grad_padded,
+                                        out_grad,
                                         q,
                                         k,
-                                        v_padded,
-                                        out_padded,
+                                        v,
+                                        out,
                                         softmax_lse,
                                         paddle::none,
                                         paddle::none,
@@ -651,13 +655,12 @@ void FlashAttnV3GradKernel(const Context &ctx,
                                         sm_margin,
                                         dq,
                                         dk,
-                                        &dv_padded,
+                                        &dv,
                                         &softmax_d,
                                         &softmax_lse_log2,
                                         &dq_accum,
                                         &dk_accum,
                                         &dv_accum);
-  *dv = dv_padded;
 #else
   RaiseNotSupportedError();
 #endif
