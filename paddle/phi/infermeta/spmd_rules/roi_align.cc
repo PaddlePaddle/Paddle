@@ -50,7 +50,7 @@ SpmdInfo RoiAlignInferSpmd(const DistMetaTensor& x,
   out_dist_attr_dst.set_dims_mapping(x_dims_mapping_dst);
   if (boxes_num.initialized()) {
     EXTRACT_SHAPE_AND_DIST_ATTR(boxes_num);
-    boxes_dims_mapping_dst = {-1};
+    boxes_num_dims_mapping_dst = {-1};
     boxes_num_dist_attr_dst =
         CopyTensorDistAttrForOutput(boxes_num_dist_attr_src);
     boxes_num_dist_attr_dst.set_dims_mapping(boxes_num_dims_mapping_dst);
@@ -63,7 +63,6 @@ SpmdInfo RoiAlignInferSpmd(const DistMetaTensor& x,
     return {{x_dist_attr_dst, boxes_dist_attr_dst, boxes_num_dist_attr_dst},
             {out_dist_attr_dst}};
   } else {
-    boxes_dims_mapping_dst = {};
     boxes_num_dist_attr_dst = TensorDistAttr();
     VLOG(4) << "RoiAlignInferSpmd: Done.";
     LOG_SPMD_INPUT(x);
@@ -101,6 +100,7 @@ SpmdInfo RoiAlignGradInferSpmd(const DistMetaTensor& x,
   TensorDistAttr out_grad_dist_attr_dst =
       CopyTensorDistAttrForOutput(out_grad_dist_attr_src);
   x_dist_attr_dst.set_dims_mapping(x_dims_mapping_dst);
+  x_grad_attr_dst.set_dims_mapping(x_dims_mapping_dst);
   boxes_dist_attr_dst.set_dims_mapping(boxes_dims_mapping_dst);
   out_grad_dist_attr_dst.set_dims_mapping(out_grad_dims_mapping_dst);
 
@@ -115,6 +115,7 @@ SpmdInfo RoiAlignGradInferSpmd(const DistMetaTensor& x,
     VLOG(4) << "RoiAlignGradInferSpmd: Done.";
     LOG_SPMD_INPUT(x);
     LOG_SPMD_INPUT(boxes);
+    LOG_SPMD_INPUT(boxes_num);
     LOG_SPMD_INPUT(out_grad);
     LOG_SPMD_OUTPUT(x_grad_attr_dst);
 
@@ -124,7 +125,6 @@ SpmdInfo RoiAlignGradInferSpmd(const DistMetaTensor& x,
              out_grad_dist_attr_dst},
             {x_grad_attr_dst}};
   } else {
-    boxes_num_dims_mapping_dst = {};
     boxes_num_dist_attr_dst = TensorDistAttr();
     VLOG(4) << "RoiAlignGradInferSpmd: Done.";
     LOG_SPMD_INPUT(x);
