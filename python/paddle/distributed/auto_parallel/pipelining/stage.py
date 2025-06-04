@@ -1123,7 +1123,7 @@ class PipelineStage(_PipelineStageBase):
                 self.stage_index,
             )
             stage_output = loss
-            grads = None
+            grads = paddle.zeros_like(stage_output)
         elif (
             self.stage_index_to_group_rank[self.stage_index + 1]
             == self.group_rank
