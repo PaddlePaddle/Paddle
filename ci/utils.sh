@@ -678,7 +678,7 @@ function case_count(){
 EOF
     testcases=$1
     num=$(echo $testcases|grep -o '\^'|wc -l)
-    if (( $2 == -1 )); then
+    if [[ "$2" == "-1" ]]; then
         echo "exclusive TestCases count is $num"
         echo "ipipe_log_param_Exclusive_TestCases_Count: $num" >> ${PADDLE_ROOT}/build/build_summary.txt
     else
