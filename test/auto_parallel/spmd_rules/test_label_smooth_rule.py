@@ -56,7 +56,7 @@ class TestLabelSmoothSPMDRule(unittest.TestCase):
         self.attrs = OrderedDict()
         self.attrs['epsilon'] = 0.1
 
-    def test_topk_forward(self):
+    def test_label_smooth_forward(self):
         # [0, 1, -1], [Fake] --> [0, 1, -1], [Fake], [0, 1, -1]
         self.label_dist_tensor_spec.set_dims_mapping([0, 1, -1])
 
@@ -96,7 +96,7 @@ class TestLabelSmoothSPMDRule(unittest.TestCase):
         self.assertEqual(inferred_input_dist_attrs[1].dims_mapping, [-1, -1])
         self.assertEqual(inferred_output_dist_attrs[0].dims_mapping, [0, 1, -1])
 
-    def test_topk_backward(self):
+    def test_label_smooth_backward(self):
         # [0, -1, 1] --> [0, -1, 1], [0, -1, 1]
         self.out_dist_tensor_spec.set_dims_mapping([0, -1, 1])
         result_dist_attrs = self.rule.infer_backward(
