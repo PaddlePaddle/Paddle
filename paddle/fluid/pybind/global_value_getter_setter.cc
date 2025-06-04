@@ -48,6 +48,8 @@ namespace paddle::pybind {
 
 namespace py = pybind11;
 
+static void RegisterGlobalVarGetterSetter(py::module *m);
+
 class PYBIND11_HIDDEN GlobalVarGetterSetterRegistry {
   DISABLE_COPY_AND_ASSIGN(GlobalVarGetterSetterRegistry);
 
@@ -219,8 +221,6 @@ class PYBIND11_HIDDEN GlobalVarGetterSetterRegistry {
 };
 
 GlobalVarGetterSetterRegistry GlobalVarGetterSetterRegistry::instance_;
-
-static void RegisterGlobalVarGetterSetter();
 
 void BindGlobalValueGetterSetter(pybind11::module *module) {
   RegisterGlobalVarGetterSetter();
