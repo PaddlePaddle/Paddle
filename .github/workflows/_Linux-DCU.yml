@@ -71,7 +71,7 @@ jobs:
             -e PADDLE_ROOT \
             -e WITH_ROCM \
             -e WITH_RCCL \
-            -e WITH_TENSORRTL \
+            -e WITH_TENSORRT \
             -e WITH_AVX \
             -e WITH_MKL \
             -e GIT_PR_ID \
