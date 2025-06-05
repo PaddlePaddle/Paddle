@@ -46,7 +46,7 @@ DenseTensor TrilTriu(const Context& dev_ctx,
   DenseTensor dense_out;
   MetaTensor meta_out(&dense_out);
   TrilTriuInferMeta(x, diagonal, lower, &meta_out);
-  TrilTriuKernel<T, Context>(ctx, x, diagonal, lower, &dense_out);
+  TrilTriuKernel<T, Context>(dev_ctx, x, diagonal, lower, &dense_out);
   return dense_out;
 }
 
