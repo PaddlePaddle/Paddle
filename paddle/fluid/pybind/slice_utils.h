@@ -102,7 +102,9 @@ static inline std::vector<paddle::Tensor> expand_outplace(
 }
 
 struct AdvancedIndex {
-  AdvancedIndex(paddle::Tensor src, std::vector<paddle::Tensor> indices);
+  AdvancedIndex(paddle::Tensor src,
+                std::vector<paddle::Tensor> indices,
+                bool bool_case);
 
   paddle::Tensor src;
   std::vector<paddle::Tensor> indices;
@@ -112,6 +114,7 @@ struct AdvancedIndex {
   std::vector<int64_t> src_strides;
   int64_t dims_before;
   int64_t dims_after;
+  bool bool_case;
 };
 
 inline static void restride_src(std::vector<int64_t>* shape,
@@ -142,7 +145,8 @@ inline static paddle::Tensor reshape_indexer(paddle::Tensor* index,
 }
 
 inline AdvancedIndex::AdvancedIndex(paddle::Tensor src,
-                                    std::vector<paddle::Tensor> indices_list) {
+                                    std::vector<paddle::Tensor> indices_list,
+                                    bool bool_case = false) {
   uint32_t element_size_bytes = phi::SizeOf(src.dtype());
   int64_t dims_before = 0, dims_after = 0, dims_indexed = 0;
   std::vector<int64_t> shape_vec = common::vectorize<int64_t>(src.dims());
@@ -161,7 +165,8 @@ inline AdvancedIndex::AdvancedIndex(paddle::Tensor src,
     } else {
       dims_indexed++;
       replacement_shape = common::vectorize<int64_t>(indices_list[dim].dims());
-      if (!replacement_shape.empty() && replacement_shape.back() == 1) {
+      if (bool_case && !replacement_shape.empty() &&
+          replacement_shape.back() == 1) {
         replacement_shape.pop_back();
       }
 
@@ -711,7 +716,7 @@ static paddle::Tensor getValueForBoolTensor(const paddle::Tensor& tensor,
   auto bool_2_idx = nonzero_ad_func(bool_index);
 #ifdef PADDLE_WITH_CUDA
   auto indices = PrepareIndices(tensor, bool_2_idx, bool_index);
-  AdvancedIndex ad = AdvancedIndex(tensor, indices);
+  AdvancedIndex ad = AdvancedIndex(tensor, indices, true);
 
   return index_elementwise_get_ad_func(tensor,
                                        ad.indices,
