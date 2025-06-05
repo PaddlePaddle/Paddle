@@ -749,10 +749,8 @@ void StridedCopyKernel(const Context& dev_ctx,
   if (output_stride[meta.dims.size() - 1] != 1) {
     VecSize = 1;
   }
-  // std::cout << "input.dims() " << input.dims() << "out->dims() " <<
-  // out->dims() << " input.numel() " << input.numel() << std::endl;
+
   if (input.dims() != out->dims() && input.numel() == 1) {
-    // std::cout << "%%%%%%%%%%%%%%%%" << std::endl;
     DenseTensor vec_input = Empty<T>(dev_ctx, IntArray{VecSize});
     ExpandKernel<T, Context>(dev_ctx, input, IntArray{VecSize}, &vec_input);
     const T* vec_input_data = vec_input.data<T>();
@@ -833,7 +831,6 @@ void StridedCopyKernel(const Context& dev_ctx,
                                                                  numel,
                                                                  false)) {
     } else {
-      // std::cout << " 333 default kernel" << std::endl;
       switch (VecSize) {
 #define CASE_VECSIZE(__Sz)                                                 \
   case __Sz:                                                               \

@@ -118,7 +118,7 @@ __global__ void Contiguous2StridedCaseOneFunc(
   }
 }
 
-template <typename T, size_t N, int VecSize>
+template <typename T, size_t N>
 __global__ void Contiguous2StridedCaseOneDiffDimFunc(
     const T* input_data,
     T* out_data,
@@ -208,7 +208,7 @@ __global__ void Contiguous2StridedCaseOneDiffDimFunc(
   }
 }
 
-template <typename T, typename Context, int VecSize>
+template <typename T, typename Context>
 bool LaunchContiguous2StridedCaseOneKernel(
     const Context& dev_ctx,
     const T* input_data,
@@ -265,7 +265,6 @@ bool LaunchContiguous2StridedCaseOneKernel(
   if (!VerifyStridedCopyThreadConfigurationParameters(block, grid)) {
     return false;
   }
-  // << "*** one case" << std::endl;
 
   if (diff_dims) {
     switch (rank) {
@@ -445,7 +444,7 @@ bool LaunchContiguous2StridedCaseZeroKernel(
   if (!VerifyStridedCopyThreadConfigurationParameters(block, grid)) {
     return false;
   }
-  // std::cout << "*** zero kernel " << std::endl;
+
   if (diff_dims) {
     switch (rank) {
 #define CASE_RANK(__Rk)                              \
@@ -756,7 +755,6 @@ if (LaunchContiguous2StridedCaseZeroKernel<T, Context>(dev_ctx,
           "unsurport vecsize %d for StrideCopyDiffDimKernel", VecSize));
   }
   //}
-  return;
 }
 
 }  // namespace phi
