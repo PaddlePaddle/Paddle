@@ -2148,6 +2148,18 @@ void GatherNdInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
+void IndexElementwisePutInferMeta(const MetaTensor& x,
+                                  const std::vector<const MetaTensor*>& index,
+                                  const MetaTensor& value,
+                                  const std::vector<int64_t>& input_dims,
+                                  const std::vector<int64_t>& input_strides,
+                                  const std::vector<int64_t>& index_dims,
+                                  const std::vector<int64_t>& index_strides,
+                                  MetaTensor* out) {
+  out->set_dims(x.dims());
+  out->set_dtype(x.dtype());
+}
+
 void GatherTreeMeta(const MetaTensor& ids,
                     const MetaTensor& parents,
                     MetaTensor* out) {
@@ -4596,6 +4608,20 @@ void WeightDequantizeInferMeta(const MetaTensor& x,
   int k = static_cast<int>(real_channel_shape);
   out->set_dims(common::make_ddim({n, k}));
   out->set_dtype(scale.dtype());
+}
+
+void FusedRMSNormInferMeta(const MetaTensor& x,
+                           const MetaTensor& scale,
+                           float epsilon,
+                           MetaTensor* y,
+                           MetaTensor* invvar) {
+  // Y: same shape, dtype, layout as X
+  y->set_dims(x.dims());
+  y->set_dtype(x.dtype());
+  // mean & invvar: 1-D length = x.dims()[0]
+  int64_t rows = x.dims()[0];
+  invvar->set_dims(DDim({rows}));
+  invvar->set_dtype(DataType::FLOAT32);
 }
 
 }  // namespace phi

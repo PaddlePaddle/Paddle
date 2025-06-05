@@ -26,6 +26,7 @@ void CSplitKernel(const Context& dev_ctx,
                   int nranks,
                   bool use_model_parallel,
                   DenseTensor* out) {
+#if defined(PADDLE_WITH_XPU_BKCL)
   using XPUType = typename XPUTypeTrait<T>::Type;
 
   PADDLE_ENFORCE_GE(rank,
@@ -73,6 +74,11 @@ void CSplitKernel(const Context& dev_ctx,
                         split_list,
                         axis);
   PADDLE_ENFORCE_XDNN_SUCCESS(ret, "split");
+#else
+  PADDLE_THROW(common::errors::PreconditionNotMet(
+      "PaddlePaddle is not compiled with DWITH_XPU_BKCL, please recompile with "
+      "DWITH_XPU_BKCL for using p_send_kernel."));
+#endif
 }
 }  // namespace phi
 
