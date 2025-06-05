@@ -201,7 +201,9 @@ class PYBIND11_HIDDEN GlobalVarGetterSetterRegistry {
   }
 
   bool IsPublic(const std::string &name) const {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
     RegisterGlobalVarGetterSetter();
+#endif
     return var_infos_.count(name) > 0 && var_infos_.at(name).is_public;
   }
 
@@ -291,7 +293,7 @@ struct RegisterGetterSetterVisitor {
   bool is_writable_;
   void *value_ptr_;
 };
-
+#ifdef PADDLE_WITH_CUSTOMD_DEVICE
 static void RegisterGlobalVarGetterSetter() {
   static std::unordered_set<std::string> registered_flags;
   const auto &flag_map = phi::GetExportedFlagInfoMap();
@@ -311,5 +313,18 @@ static void RegisterGlobalVarGetterSetter() {
     paddle::visit(visitor, default_value);
   }
 }
-
+#else
+static void RegisterGlobalVarGetterSetter() {
+  const auto &flag_map = phi::GetExportedFlagInfoMap();
+  for (const auto &pair : flag_map) {
+    const std::string &name = pair.second.name;
+    bool is_writable = pair.second.is_writable;
+    void *value_ptr = pair.second.value_ptr;
+    const auto &default_value = pair.second.default_value;
+    RegisterGetterSetterVisitor visitor(
+        "FLAGS_" + name, is_writable, value_ptr);
+    paddle::visit(visitor, default_value);
+  }
+}
+#endif
 }  // namespace paddle::pybind
