@@ -767,7 +767,7 @@ def _to_tensor_non_static(
 
     if isinstance(data, np.ndarray):
         if (
-            data.dtype != np.bool
+            data.dtype.kind != 'b'
             and data.size == 1
             and (
                 isinstance(place, core.CUDAPlace)
