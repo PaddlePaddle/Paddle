@@ -106,3 +106,6 @@ class WeightQuantizeW4a8TestCase(unittest.TestCase):
     def run_test(self):
         out = weight_quantize(self.weight, algo="w4a8")[0]
         np.allclose(np.array(ref_out), out.astype("int32").numpy(), atol=1e-2)
+
+if __name__ == '__main__':
+    unittest.main()
