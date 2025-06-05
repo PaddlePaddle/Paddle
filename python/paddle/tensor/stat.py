@@ -215,12 +215,8 @@ def var(
         out_nan.stop_gradient = out.stop_gradient
         return out_nan
 
-    if paddle.in_dynamic_mode() and paddle.numel(x) == 0:
+    if 0 in x.shape:
         out = _replace_nan(out)
-    if not paddle.in_dynamic_mode():
-        out = paddle.static.nn.cond(
-            paddle.numel(x) == 0, lambda: _replace_nan(out), lambda: out
-        )
     if out.dtype != x.dtype:
         return out.astype(x.dtype)
     return out
