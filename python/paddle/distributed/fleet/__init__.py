@@ -53,6 +53,7 @@ __all__ = [
 ]
 
 fleet = Fleet()
+_hybrid_communicate_group_is_None = fleet._hybrid_communicate_group_is_None
 _final_strategy = fleet._final_strategy
 _get_applied_meta_list = fleet._get_applied_meta_list
 _get_applied_graph_list = fleet._get_applied_graph_list

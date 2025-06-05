@@ -392,21 +392,24 @@ class ProcessMesh(core.ProcessMesh):
                     f"{dim_name} not in the dimension names {self._dim_names}"
                 )
             else:
-                hcg = fleet.get_hybrid_communicate_group()
-                if hcg is not None:
+                if not fleet._hybrid_communicate_group_is_None():
+                    hcg = fleet.get_hybrid_communicate_group()
+                    if hcg is not None:
 
-                    parallel_group_map = {
-                        "pp": hcg.get_pipe_parallel_group,
-                        "dp": hcg.get_data_parallel_group,
-                        "mp": hcg.get_model_parallel_group,
-                        "sep": hcg.get_sep_parallel_group,
-                        "sharding": hcg.get_sharding_parallel_group,
-                    }
+                        parallel_group_map = {
+                            "pp": hcg.get_pipe_parallel_group,
+                            "dp": hcg.get_data_parallel_group,
+                            "mp": hcg.get_model_parallel_group,
+                            "sep": hcg.get_sep_parallel_group,
+                            "sharding": hcg.get_sharding_parallel_group,
+                        }
 
-                    if dim_name not in parallel_group_map:
-                        raise ValueError(f"{dim_name} is not a valid dim name.")
+                        if dim_name not in parallel_group_map:
+                            raise ValueError(
+                                f"{dim_name} is not a valid dim name."
+                            )
 
-                    return parallel_group_map[dim_name]()
+                        return parallel_group_map[dim_name]()
                 existing_group = None
                 group_map = _get_group_map()
                 for group in group_map.values():
