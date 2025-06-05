@@ -19,6 +19,7 @@ import functools
 import inspect
 import itertools
 import operator
+import random
 import sys
 import types
 from functools import partial, reduce
@@ -43,7 +44,6 @@ from ....utils import (
     get_obj_stable_repr,
     get_static_function,
     hashable,
-    is_break_graph_api,
     is_break_graph_tensor_methods,
     is_builtin_fn,
     is_directly_run_api,
@@ -61,6 +61,7 @@ from ....utils.exceptions import (
     DataDependencyOperationBreak,
     FallbackError,
     FallbackInlineCallBreak,
+    ForceBreak,
     InnerError,
     OtherInlineCallBreak,
     PsdbBreakReason,
@@ -69,7 +70,11 @@ from ....utils.exceptions import (
     SotErrorBase,
     UnsupportedNumPyAPIBreak,
     UnsupportedOperationBreak,
-    UnsupportedPaddleAPIBreak,
+    UnsupportedRandomAPIBreak,
+)
+from ....utils.paddle_api_config import (
+    break_graph_functions,
+    break_graph_layer_classes,
 )
 from ..dispatcher import Dispatcher
 from ..guard import (
@@ -142,6 +147,33 @@ class CallableVariable(VariableBase):
 
     def call_function(self, /, *args, **kwargs):
         raise NotImplementedError("call_function is not implemented.")
+
+
+class ForceBreakCallableVariable(CallableVariable):
+    def __init__(self, name: str, graph: FunctionGraph, tracker: Tracker):
+        super().__init__(graph, tracker)
+        self.name = name
+
+    def call_function(self, /, *args, **kwargs) -> VariableBase:
+        raise BreakGraphError(ForceBreak(reason_str=f"Force run {self.name}"))
+
+    def get_py_value(self, allow_tensor=False):
+        return self.value
+
+    @VariableFactory.register_from_value()
+    def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
+        if (
+            isinstance(value, paddle.nn.Layer)
+            and value.__class__ in break_graph_layer_classes
+        ):
+            return ForceBreakCallableVariable(
+                f"Layer({value.__class__.__name__})", graph, tracker
+            )
+        elif hashable(value) and value in break_graph_functions:
+            return ForceBreakCallableVariable(
+                get_obj_stable_repr(value), graph, tracker
+            )
+        return None
 
 
 class FunctionVariable(CallableVariable):
@@ -250,6 +282,10 @@ class UserDefinedFunctionVariable(FunctionVariable):
         return None
 
     def call_function(self, /, *args, **kwargs) -> VariableBase:
+        if UserDefinedFunctionVariable.__is_random_function(self.value):
+            raise BreakGraphError(
+                UnsupportedRandomAPIBreak(fn_name=self.value.__name__)
+            )
         from ..opcode_inline_executor import OpcodeInlineExecutor
 
         result = self.handle_psdb_function(*args, **kwargs)
@@ -318,6 +354,13 @@ class UserDefinedFunctionVariable(FunctionVariable):
             "name": self.value.__name__,
         }
 
+    @staticmethod
+    def __is_random_function(value) -> bool:
+        return value.__qualname__ in [
+            f"{random._inst.__class__.__name__}.{name}"
+            for name in dir(random._inst)
+        ]
+
 
 class UserCodeVariable(FunctionVariable):
     """
@@ -351,10 +394,6 @@ class PaddleApiVariable(FunctionVariable):
         super().__init__(fn, graph, tracker)
 
     def call_function(self, /, *args, **kwargs):
-        if is_break_graph_api(self.value):
-            raise BreakGraphError(
-                UnsupportedPaddleAPIBreak(fn_name=self.value.__name__)
-            )
         return self.graph.call_paddle_api(self.value, *args, **kwargs)
 
     @VariableFactory.register_from_value(

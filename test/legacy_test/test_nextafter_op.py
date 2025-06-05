@@ -95,9 +95,10 @@ class TestNextafterOP(OpTest):
         self.op_type = "nextafter"
         self.python_api = paddle.nextafter
         self.init_dtype()
+        self.init_shape()
 
-        x = np.array([1, 2]).astype(self.dtype)
-        y = np.array([2, 1]).astype(self.dtype)
+        x = np.random.rand(*self.x_shape).astype(self.dtype)
+        y = np.random.rand(*self.y_shape).astype(self.dtype)
         out = np.nextafter(x, y)
         self.inputs = {'x': x, 'y': y}
         self.outputs = {'out': out}
@@ -108,10 +109,44 @@ class TestNextafterOP(OpTest):
     def init_dtype(self):
         self.dtype = np.float64
 
+    def init_shape(self):
+        self.x_shape = (2,)
+        self.y_shape = (2,)
+
 
 class TestNextafterOPFP32(TestNextafterOP):
     def init_dtype(self):
         self.dtype = np.float32
+
+
+class TestNextafterOPFP32Case1(TestNextafterOP):
+    def init_dtype(self):
+        self.dtype = np.float32
+
+    def init_shape(self):
+        self.x_shape = (5,)
+        self.y_shape = (2, 3, 4, 5)
+
+
+class TestNextafterOPFP32Case2(TestNextafterOP):
+    def init_dtype(self):
+        self.dtype = np.float32
+
+    def init_shape(self):
+        self.x_shape = (2, 3, 4, 5)
+        self.y_shape = (1,)
+
+
+class TestNextafterOPCase1(TestNextafterOP):
+    def init_shape(self):
+        self.x_shape = (5,)
+        self.y_shape = (2, 3, 4, 5)
+
+
+class TestNextafterOPCase2(TestNextafterOP):
+    def init_shape(self):
+        self.x_shape = (2, 3, 4, 5)
+        self.y_shape = (1,)
 
 
 if __name__ == "__main__":

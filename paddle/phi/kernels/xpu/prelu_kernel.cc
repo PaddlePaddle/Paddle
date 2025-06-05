@@ -35,25 +35,37 @@ void PReluKernel(const Context& dev_ctx,
   auto x_dim = x.dims();
   auto x_rank = x_dim.size();
   std::vector<int64_t> x_shape(x_rank);
-
   if (x_rank == 0) {
     x_shape = std::vector<int64_t>({1});
   } else {
-    for (int i = 0; i < x_rank; i++) {
-      x_shape[i] = x_dim[i];
-    }
+    x_shape = common::vectorize<int64_t>(x_dim);
   }
 
-  auto alpha_dim = alpha.dims();
-  auto alpha_rank = alpha_dim.size();
-  std::vector<int64_t> alpha_shape(x_rank, 1);  // same size with x_shape
+  // mode = 0: channel_nchw, xshape = {n, c, h, w}, alpha_shape = {c}
+  // mode = 1, channel_nhwc, xshape = {n, h, w, c}, alpha_shape = {c}
+  // mode = 2, elementwise, deprecated in Paddle 2.x
+  // mode = 3, alpha_shape = {} or {1}
 
-  if (x_rank == 0) {
-    alpha_shape = std::vector<int64_t>({1});
-  } else {
-    for (int i = 0; i < alpha_rank; i++) {
-      alpha_shape[i] = alpha_dim[i];
+  int xpu_mode = 0;
+
+  if (mode == "channel") {
+    if (data_format == "NCHW") {
+      xpu_mode = 0;
+      if (x_rank == 2) {  // special case for NC shape, use channel last mode
+        xpu_mode = 1;
+      }
+    } else {  // NHWC, channel last
+      xpu_mode = 1;
     }
+  } else if (mode == "element") {
+    xpu_mode = 2;
+  } else if (mode == "all") {
+    xpu_mode = 3;
+  } else {
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "Expected mode of prelu kernel is 'channel' or 'all', But got "
+        "unsupported mode: %s.",
+        mode));
   }
 
   int r = xpu::prelu(dev_ctx.x_context(),
@@ -61,7 +73,7 @@ void PReluKernel(const Context& dev_ctx,
                      reinterpret_cast<const XPUType*>(alpha_ptr),
                      reinterpret_cast<XPUType*>(y_ptr),
                      x_shape,
-                     alpha_shape);
+                     xpu_mode);
 
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "prelu");
 }
