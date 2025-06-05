@@ -228,6 +228,20 @@ SpmdInfo BatchNormInferSpmd(const DistMetaTensor& x,
                             const bool trainable_statistics) {
   return BatchNormInferSpmdBase(x, mean, variance, scale, bias);
 }
+
+SpmdInfo SyncBatchNormInferSpmd(const DistMetaTensor& x,
+                                const DistMetaTensor& mean,
+                                const DistMetaTensor& variance,
+                                const DistMetaTensor& scale,
+                                const DistMetaTensor& bias,
+                                const bool is_test,
+                                const float momentum,
+                                const float epsilon,
+                                const std::string data_format,
+                                const bool use_global_stats,
+                                const bool trainable_statistics) {
+  return BatchNormInferSpmdBase(x, mean, variance, scale, bias);
+}
 SpmdInfo BatchNormGradInferSpmdBase(const DistMetaTensor& x,
                                     const DistMetaTensor& scale,
                                     const DistMetaTensor& bias,
@@ -509,19 +523,6 @@ SpmdInfo BatchNormGradInferSpmd(const DistMetaTensor& x,
                                     out_grad);
 }
 
-SpmdInfo SyncBatchNormInferSpmd(const DistMetaTensor& x,
-                                const DistMetaTensor& mean,
-                                const DistMetaTensor& variance,
-                                const DistMetaTensor& scale,
-                                const DistMetaTensor& bias,
-                                const bool is_test,
-                                const float momentum,
-                                const float epsilon,
-                                const std::string data_format,
-                                const bool use_global_stats,
-                                const bool trainable_statistics) {
-  return BatchNormInferSpmdBase(x, mean, variance, scale, bias);
-}
 SpmdInfo SyncBatchNormGradInferSpmd(const DistMetaTensor& x,
                                     const DistMetaTensor& scale,
                                     const DistMetaTensor& bias,
@@ -617,8 +618,8 @@ SpmdInfo SyncBatchNormGradInferSpmd(const DistMetaTensor& x,
   }
   std::string scale_axes(1, x_axes[1]);
   std::string bias_axes(1, x_axes[1]);
-  std::string saved_mean_axes(1, x_axes[0]);
-  std::string saved_variance_axes(1, x_axes[0]);
+  std::string saved_mean_axes(1, x_axes[1]);
+  std::string saved_variance_axes(1, x_axes[1]);
   std::string reserve_space_axes(1, x_axes[1]);
 
   auto c_dim = x_dims_mapping[1];  // Only C axis can be sharded. ndim Type:
