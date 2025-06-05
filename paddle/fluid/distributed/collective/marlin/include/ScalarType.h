@@ -17,6 +17,10 @@
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/enforce.h"
 
+#include <optional>
+#include <variant>
+
+
 namespace deep_ep::detail {
 
 //
@@ -59,7 +63,7 @@ class ScalarType {
   // IEEE 754 compliant floating point type
   static constexpr ScalarType float_IEEE754(uint8_t exponent,
                                             uint8_t mantissa) {
-    PADDLE_ENFORCE(mantissa > 0 && exponent > 0);
+    // PADDLE_ENFORCE(mantissa > 0 && exponent > 0);
     return ScalarType(exponent, mantissa, true, 0, false, NAN_IEEE_754);
   }
 
@@ -67,11 +71,11 @@ class ScalarType {
   static constexpr ScalarType float_(uint8_t exponent, uint8_t mantissa,
                                      bool finite_values_only,
                                      NanRepr nan_repr) {
-    PADDLE_ENFORCE(nan_repr < NAN_REPR_ID_MAX, "Invalid NanRepr");
-    PADDLE_ENFORCE(mantissa > 0 && exponent > 0);
-    PADDLE_ENFORCE(nan_repr != NAN_IEEE_754,
-                "use `float_IEEE754` constructor for floating point types that "
-                "follow IEEE 754 conventions");
+    // PADDLE_ENFORCE(nan_repr < NAN_REPR_ID_MAX, "Invalid NanRepr");
+    // PADDLE_ENFORCE(mantissa > 0 && exponent > 0);
+    // PADDLE_ENFORCE(nan_repr != NAN_IEEE_754,
+    //             "use `float_IEEE754` constructor for floating point types that "
+    //             "follow IEEE 754 conventions");
     return ScalarType(exponent, mantissa, true, 0, finite_values_only,
                       nan_repr);
   }
@@ -318,47 +322,45 @@ class ScalarType {
   }
 };
 
-using ScalarTypeId = ScalarType::Id;
+using ScalarTypeId = deep_ep::detail::ScalarType::Id;
 
 // "rust style" names generally following:
 //   https://github.com/pytorch/pytorch/blob/6d9f74f0af54751311f0dd71f7e5c01a93260ab3/torch/csrc/api/include/torch/types.h#L60-L70
-static inline constexpr auto kS4 = ScalarType::int_(4);
-static inline constexpr auto kU4 = ScalarType::uint(4);
-static inline constexpr auto kU4B8 = ScalarType::uint(4, 8);
-static inline constexpr auto kS8 = ScalarType::int_(8);
-static inline constexpr auto kU8 = ScalarType::uint(8);
-static inline constexpr auto kU8B128 = ScalarType::uint(8, 128);
+static inline constexpr auto kS4 = deep_ep::detail::ScalarType::int_(4);
+static inline constexpr auto kU4 = deep_ep::detail::ScalarType::uint(4);
+static inline constexpr auto kU4B8 = deep_ep::detail::ScalarType::uint(4, 8);
+static inline constexpr auto kS8 = deep_ep::detail::ScalarType::int_(8);
+static inline constexpr auto kU8 = deep_ep::detail::ScalarType::uint(8);
+static inline constexpr auto kU8B128 = deep_ep::detail::ScalarType::uint(8, 128);
 
 static inline constexpr auto kFE2M1f =
-    ScalarType::float_(2, 1, true, ScalarType::NAN_NONE);
+    deep_ep::detail::ScalarType::float_(2, 1, true, deep_ep::detail::ScalarType::NAN_NONE);
 static inline constexpr auto kFE3M2f =
-    ScalarType::float_(3, 2, true, ScalarType::NAN_NONE);
+    deep_ep::detail::ScalarType::float_(3, 2, true, deep_ep::detail::ScalarType::NAN_NONE);
 static inline constexpr auto kFE4M3fn =
-    ScalarType::float_(4, 3, true, ScalarType::NAN_EXTD_RANGE_MAX_MIN);
-static inline constexpr auto kFE5M2 = ScalarType::float_IEEE754(5, 2);
-static inline constexpr auto kFE8M7 = ScalarType::float_IEEE754(8, 7);
-static inline constexpr auto kFE5M10 = ScalarType::float_IEEE754(5, 10);
+    deep_ep::detail::ScalarType::float_(4, 3, true, deep_ep::detail::ScalarType::NAN_EXTD_RANGE_MAX_MIN);
+static inline constexpr auto kFE5M2 = deep_ep::detail::ScalarType::float_IEEE754(5, 2);
+static inline constexpr auto kFE8M7 = deep_ep::detail::ScalarType::float_IEEE754(8, 7);
+static inline constexpr auto kFE5M10 = deep_ep::detail::ScalarType::float_IEEE754(5, 10);
 
 // // Fixed width style names, generally following:
 // //  https://github.com/pytorch/pytorch/blob/6d9f74f0af54751311f0dd71f7e5c01a93260ab3/torch/csrc/api/include/torch/types.h#L47-L57
-static inline constexpr auto kInt4 = kS4;
-static inline constexpr auto kUint4 = kU4;
-static inline constexpr auto kUint4b8 = kU4B8;
-static inline constexpr auto kInt8 = kS8;
-static inline constexpr auto kUint8 = kU8;
-static inline constexpr auto kUint8b128 = kU8B128;
-
-static inline constexpr auto kFloat4_e2m1f = kFE2M1f;
-static inline constexpr auto kFloat6_e3m2f = kFE3M2f;
-static inline constexpr auto kFloat8_e5m2 = kFE5M2;
-static inline constexpr auto kFloat16_e8m7 = kFE8M7;
-static inline constexpr auto kFloat16_e5m10 = kFE5M10;
+constexpr auto kInt4 = kS4;
+constexpr auto kUint4 = kU4;
+constexpr auto kUint4b8 = kU4B8;
+constexpr auto kInt8 = kS8;
+constexpr auto kUint8 = kU8;
+constexpr auto kUint8b128 = kU8B128;
+constexpr auto kFloat4_e2m1f = kFE2M1f;
+constexpr auto kFloat6_e3m2f = kFE3M2f;
+constexpr auto kFloat8_e5m2 = kFE5M2;
+constexpr auto kFloat16_e8m7 = kFE8M7;
+constexpr auto kFloat16_e5m10 = kFE5M10;
 
 // colloquial names
-static inline constexpr auto kHalf = kFE5M10;
-static inline constexpr auto kFloat16 = kHalf;
-
-static inline constexpr auto kFloat16Id = kFloat16.id();
+constexpr auto kHalf = kFE5M10;
+constexpr auto kFloat16 = kHalf;
+constexpr auto kFloat16Id = kFloat16.id();
 
 constexpr auto kInt32 = phi::DataType::INT32;
 constexpr auto kInt64 = phi::DataType::INT64;
@@ -368,4 +370,4 @@ constexpr auto kBFloat16 = phi::DataType::BFLOAT16;
 constexpr auto kFloat32 = phi::DataType::FLOAT32;
 constexpr auto kByte = phi::DataType::INT8;
 
-};  // namespace vllm
+};  // namespace detail
