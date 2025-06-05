@@ -30,6 +30,7 @@
 #include "paddle/phi/kernels/impl/set_value_kernel_impl.h"
 #include "paddle/phi/kernels/strided_copy_kernel.h"
 namespace phi {
+
 template <typename T, typename Context>
 void SetTensorValueKernelV2(const Context& dev_ctx,
                             const DenseTensor& in,
@@ -67,7 +68,6 @@ void SetTensorValueKernelV2(const Context& dev_ctx,
     output_dims[axes[i]] = out_dim;
     output_stride[axes[i]] *= steps_local[i];
   }
-
   // generate new shape
   std::vector<int64_t> new_out_shape;
   std::vector<int64_t> new_out_stride;
@@ -79,27 +79,33 @@ void SetTensorValueKernelV2(const Context& dev_ctx,
                                     &new_out_stride);
 
   if (product(phi::make_ddim(new_out_shape)) <= 0) {
+    // 0-size tensor, no need to copy
     out->ResetHolder(in.Holder());
     out->ShareInplaceVersionCounterWith(in);
     return;
   }
 
   CheckIsDimsMatch(phi::make_ddim(new_out_shape), value.dims());
-  auto value_dims = phi::vectorize<int64_t>(value.dims());
-  DenseTensor value_tensor = Empty<T>(dev_ctx, IntArray{value_dims});
-  value_tensor = value;
-  auto it = value_dims.begin();
-  while (it != value_dims.end() && *it == 1) {
-    it = value_dims.erase(it);
-  }
-  if (value_dims.empty()) value_dims.push_back(1);
-  value_tensor.Resize(phi::make_ddim(value_dims));
-
   if (new_out_shape.empty()) new_out_shape.push_back(1);
+  DenseTensor expand_tensor;
+  if (value.numel() == 1) {
+    expand_tensor = value;
+    expand_tensor.Resize(phi::make_ddim({1}));
+  } else {
+    auto value_dims = phi::vectorize<int64_t>(value.dims());
+    DenseTensor value_tensor = Empty<T>(dev_ctx, IntArray{value_dims});
+    value_tensor = value;
+    auto it = value_dims.begin();
+    while (it != value_dims.end() && *it == 1) {
+      it = value_dims.erase(it);
+    }
+    if (value_dims.empty()) value_dims.push_back(1);
+    value_tensor.Resize(phi::make_ddim(value_dims));
 
-  DenseTensor expand_tensor = Empty<T>(dev_ctx, IntArray{new_out_shape});
-  ExpandKernel<T, Context>(
-      dev_ctx, value_tensor, IntArray{new_out_shape}, &expand_tensor);
+    expand_tensor = Empty<T>(dev_ctx, IntArray{new_out_shape});
+    ExpandKernel<T, Context>(
+        dev_ctx, value_tensor, IntArray{new_out_shape}, &expand_tensor);
+  }
 
   out->ResetHolder(in.Holder());
   out->ShareInplaceVersionCounterWith(in);
@@ -124,7 +130,6 @@ void SetValueKernelV2(const Context& dev_ctx,
                       const std::vector<int64_t>& shape,
                       const std::vector<Scalar>& values,
                       DenseTensor* out) {
-  // auto t1 = std::chrono::high_resolution_clock::now();
   std::vector<T> assign_values;
   assign_values.reserve(values.size());
   for (const auto& val : values) {
@@ -150,7 +155,6 @@ void SetValueKernelV2(const Context& dev_ctx,
   DenseTensor value_tensor = Empty<T>(dev_ctx, shape);
   phi::TensorFromVector(assign_values, dev_ctx, &value_tensor);
   value_tensor.Resize(common::make_ddim(shape));
-
   SetTensorValueKernelV2<T, Context>(dev_ctx,
                                      in,
                                      value_tensor,

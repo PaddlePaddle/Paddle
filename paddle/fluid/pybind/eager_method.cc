@@ -1986,8 +1986,35 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
         transed_sub_tensor =
             masked_fill__ad_func(transed_sub_tensor, mask_tensor, value_tensor);
       } else {
+#ifdef PADDLE_WITH_CUDA
+        // TODO(czy): remove in the future
+        if (transed_sub_tensor.is_gpu() && !out_is_view &&
+            transed_index.size() == 1 && value_tensor.numel() == 1) {
+          transed_index = expand_outplace(transed_index);
+          while (transed_index.size() <
+                 static_cast<size_t>(transed_sub_tensor.dims().size())) {
+            transed_index.emplace_back(empty_ad_func(
+                {}, transed_index[0].dtype(), transed_index[0].place()));
+          }
+
+          AdvancedIndex ad = AdvancedIndex(transed_sub_tensor, transed_index);
+          transed_sub_tensor =
+              index_elementwise_put__ad_func(transed_sub_tensor,
+                                             ad.indices,
+                                             value_tensor,
+                                             ad.src_sizes,
+                                             ad.src_strides,
+                                             ad.indexed_sizes,
+                                             ad.indexed_strides);
+
+        } else {
+          transed_sub_tensor = index_put__ad_func(
+              transed_sub_tensor, transed_index, value_tensor);
+        }
+#else
         transed_sub_tensor =
             index_put__ad_func(transed_sub_tensor, transed_index, value_tensor);
+#endif
       }
       if (out_is_view) {
         // NOTE(zoooo0820): if out_is_view is true, it is a case of
