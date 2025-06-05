@@ -1,5 +1,4 @@
-// NOLINT
-// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,14 +18,13 @@
  *     https://github.com/NVIDIA/apex
  *     with minor changes. */
 
-#include "paddle/phi/kernels/moe_ops_partial_nosoftmaxtopk_kernel.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/full_kernel.h"
-#include "paddle/phi/kernels/moe_fuse_op.h"
-#include "paddle/phi/kernels/moe_kernel_impl.h"
+#include "paddle/phi/kernels/legacy/gpu/moe_fuse_op.h"
 #include "paddle/phi/kernels/slice_kernel.h"
 
 namespace phi {

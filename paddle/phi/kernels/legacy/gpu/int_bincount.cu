@@ -1,4 +1,3 @@
-// NOLINT
 // Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,11 +13,11 @@
 // limitations under the License.
 
 // #include "paddle/extension.h"
-#include "paddle/phi/kernels/int_bincount.h"  // NOLINT
 #include <cstdint>
 #include <vector>
 #include "cub/device/device_histogram.cuh"
 #include "paddle/common/flags.h"
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/kernels/empty_kernel.h"  // NOLINT
 

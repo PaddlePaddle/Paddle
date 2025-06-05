@@ -1,6 +1,8 @@
 # This file is designed for backward C++ operators associated with
 # the operator in ops.yaml.
 
+################################################# deprecated #####################################################################
+
 - backward_op : abs_double_grad
   forward : abs_grad (Tensor x, Tensor grad_out) -> Tensor(grad_x)
   args : (Tensor x, Tensor grad_x_grad)
@@ -2283,6 +2285,12 @@
     param: [x]
   kernel :
     func : mode_grad
+  no_need_buffer : x
+- backward_op : mp_allreduce_sum_grad
+  forward : mp_allreduce_sum(Tensor x, int ring_id = 0) -> Tensor(out)
+  args : (Tensor out_grad, int ring_id = 0)
+  output : Tensor(x_grad)
+  invoke : c_identity(out_grad, ring_id, false, false)
 
 - backward_op : moe_combine_grad
   forward : moe_combine (Tensor x, Tensor combine_weights, Tensor scatter_index) -> Tensor(y)
@@ -2322,12 +2330,6 @@
   kernel :
     func : moe_gate_dispatch_permute_grad
     data_type : y_grad
-
-- backward_op : mp_allreduce_sum_grad
-  forward : mp_allreduce_sum(Tensor x, int ring_id = 0) -> Tensor(out)
-  args : (Tensor out_grad, int ring_id = 0)
-  output : Tensor(x_grad)
-  invoke : c_identity(out_grad, ring_id, false, false)
 
 - backward_op : multi_dot_grad
   forward : multi_dot (Tensor[] x) -> Tensor(out)

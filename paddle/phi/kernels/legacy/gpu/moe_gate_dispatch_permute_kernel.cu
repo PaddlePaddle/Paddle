@@ -1,5 +1,4 @@
-// NOLINT
-// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/moe_gate_dispatch_permute_kernel.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/full_kernel.h"
-#include "paddle/phi/kernels/moe_fuse_op.h"
+#include "paddle/phi/kernels/legacy/gpu/moe_fuse_op.h"
 namespace phi {
 
 namespace {
