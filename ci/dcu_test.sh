@@ -15,60 +15,6 @@
 source $(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/utils.sh
 init
 
-function parallel_test_base_hybrid() {
-    cat <<EOF
-    ========================================
-    Running unit hybrid tests ...
-    ========================================
-EOF
-
-set +x
-        ut_startTime_s=`date +%s`
-        test_cases=$(ctest -N -V)        # get all test cases
-        get_quickly_disable_ut||disable_ut_quickly='disable_ut'   # indicate whether the case was in quickly disable list
-        while read -r line; do
-            if [[ "$line" == "" ]]; then
-                continue
-            fi
-                matchstr=$(echo $line|grep -oEi 'Test[ \t]+#') || true
-                if [[ "$matchstr" == "" ]]; then
-                    # Any test case with LABELS property would be parse here
-                    # RUN_TYPE=HYBRID mean the case would run in HYBRID CI.
-                    is_hybrid=$(echo "$line"|grep -oEi "RUN_TYPE=HYBRID") || true
-                    continue
-                fi
-                testcase=$(echo "$line"|grep -oEi "\w+$")
-                if [[ "$is_hybrid" != "" ]]; then
-                    if [[ "$eight_cards_tests" == "" ]]; then
-                        eight_cards_tests="^$testcase$"
-                    else
-                        eight_cards_tests="$eight_cards_tests|^$testcase$"
-                    fi
-                fi
-                is_hybrid=''
-                matchstr=''
-                testcase=''
-        done <<< "$test_cases";
-        card_test "$eight_cards_tests" -1 1
-
-set -x
-
-        ut_endTime_s=`date +%s`
-        echo "HYBRID testCase Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
-        if [[ "$EXIT_CODE" != "0" ]]; then
-            rm -f $tmp_dir/*
-            echo "Summary Failed Tests... "
-            echo "========================================"
-            echo "The following tests FAILED: "
-            echo "${failuretest}" | sort -u
-            exit 8;
-        fi
-
-    ut_total_endTime_s=`date +%s`
-    echo "TestCases Total Time: $[ $ut_total_endTime_s - $ut_total_startTime_s ]s"
-    echo "ipipe_log_param_TestCases_Total_Time: $[ $ut_total_endTime_s - $ut_total_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
-}
-
 
 function hybrid_paddlex() {
     # PaddleX test
@@ -133,7 +79,7 @@ function main(){
     run_hybrid_ci=${1:-"false"}
     ut_total_startTime_s=`date +%s`
 
-    parallel_test_base_hybrid
+    parallel_test_base_gpu_test
 
     ut_total_endTime_s=`date +%s`
     echo "TestCases Total Time: $[ $ut_total_endTime_s - $ut_total_startTime_s ]s"
