@@ -435,17 +435,35 @@ void DispatchWithDtype(const Context &dev_ctx,
   }
   if (shift.get_ptr() != nullptr) {
     const auto &shift_dims = shift->dims();
-    PADDLE_ENFORCE_EQ(shift_dims,
-                      x_dims,
+    PADDLE_ENFORCE_EQ(shift_dims.size(),
+                      1,
                       common::errors::InvalidArgument(
-                          "The shift must have the same shape as input x."));
+                          "The shift must be a 1D tensor, but got %dD tensor.",
+                          shift_dims.size()));
+    PADDLE_ENFORCE_EQ(
+        shift_dims[0],
+        x_dims[x_dims.size() - 1],
+        common::errors::InvalidArgument(
+            "The shift length must be equal to the last dimension of input x. "
+            "Expected %d, but got %d.",
+            x_dims[x_dims.size() - 1],
+            shift_dims[0]));
   }
   if (smooth.get_ptr() != nullptr) {
     const auto &smooth_dims = smooth->dims();
-    PADDLE_ENFORCE_EQ(smooth_dims,
-                      x_dims,
+    PADDLE_ENFORCE_EQ(smooth_dims.size(),
+                      1,
                       common::errors::InvalidArgument(
-                          "The smooth must have the same shape as input x."));
+                          "The smooth must be a 1D tensor, but got %dD tensor.",
+                          smooth_dims.size()));
+    PADDLE_ENFORCE_EQ(
+        smooth_dims[0],
+        x_dims[x_dims.size() - 1],
+        common::errors::InvalidArgument(
+            "The smooth length must be equal to the last dimension of input x. "
+            "Expected %d, but got %d.",
+            x_dims[x_dims.size() - 1],
+            smooth_dims[0]));
   }
 
   auto *bias_p = bias.get_ptr();
