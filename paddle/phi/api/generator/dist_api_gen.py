@@ -1814,9 +1814,13 @@ class DistForwardAPI(ForwardAPI):
                     kernel_args_type_list.append('const phi::Scalar&')
                     arg = 'phi::Scalar(' + arg + ')'
                 else:
-                    kernel_args_type_list.append(
-                        self.attrs['attr_info'][arg][0]
-                    )
+                    # calculate local_shape for expand_as
+                    if self.infer_meta['local_shape'] is not None:
+                        arg = "local_shape"
+                    else:
+                        kernel_args_type_list.append(
+                            self.attrs['attr_info'][arg][0]
+                        )
                 input_args.append(arg)
             elif isinstance(arg, bool):
                 input_args.append(str(arg).lower())

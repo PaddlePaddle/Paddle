@@ -1806,6 +1806,7 @@
   infer_meta :
     func : ExpandAsInferMeta
     local_shape: out
+    spmd_rule : ExpandAsInferSpmd
   kernel :
     func : expand_as
     data_type : x
