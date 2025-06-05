@@ -484,7 +484,7 @@ class DistBackwardAPI(DistForwardAPI, BackwardAPI):
             )
         )
         infer_meta_code = self.generate_infer_meta_code()
-        kernel_call_code = self.generate_kernel_call_code()
+        kernel_call_code = self.generate_kernel_call_code(is_forward=False)
         fallback_code = self.generate_fallback_code()
         reshard_output_code = self.generate_reshard_output_code()
         return_code = self.generate_return_code()
