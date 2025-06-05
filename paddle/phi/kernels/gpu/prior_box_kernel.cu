@@ -21,6 +21,7 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/kernels/full_kernel.h"
 
 namespace phi {
 
@@ -122,6 +123,14 @@ void PriorBoxKernel(const Context& ctx,
                     bool min_max_aspect_ratios_order,
                     DenseTensor* out,
                     DenseTensor* var) {
+  if (input.numel() == 0 || image.numel() == 0) {
+    phi::Full<T, Context>(
+        ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+    phi::Full<T, Context>(
+        ctx, phi::IntArray(common::vectorize(var->dims())), 0, var);
+    return;
+  }
+
   std::vector<float> new_aspect_ratios;
   ExpandAspectRatios(aspect_ratios, flip, &new_aspect_ratios);
 

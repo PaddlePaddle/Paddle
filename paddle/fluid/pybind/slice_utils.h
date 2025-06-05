@@ -672,5 +672,150 @@ static paddle::Tensor dealWithValues(const paddle::Tensor& tensor,
   return value_tensor;
 }
 
+static inline common::DDim infer_size_symdimvector(common::DDim a,
+                                                   common::DDim b) {
+  // Use ptrdiff_t to ensure signed comparison.
+  auto dimsA = a.size();
+  auto dimsB = b.size();
+  auto ndim = dimsA > dimsB ? dimsA : dimsB;
+  common::DDim expandedSizes = common::make_ddim(std::vector<int64_t>(ndim, 0));
+
+  for (int64_t i = ndim - 1; i >= 0; --i) {
+    int64_t offset = ndim - 1 - i;
+    int64_t dimA = dimsA - 1 - offset;
+    int64_t dimB = dimsB - 1 - offset;
+    auto sizeA = (dimA >= 0) ? a[dimA] : 1;
+    auto sizeB = (dimB >= 0) ? b[dimB] : 1;
+
+    PADDLE_ENFORCE_EQ(
+        sizeA == sizeB || sizeA == 1 || sizeB == 1,
+        true,
+        common::errors::Fatal("The size of tensor a (",
+                              sizeA,
+                              ") must match the size of tensor b (",
+                              sizeB,
+                              ") at non-singleton dimension ",
+                              i));
+
+    // 1s map to the other size (even 0).
+    expandedSizes[i] = sizeA == 1 ? sizeB : sizeA;
+  }
+
+  return expandedSizes;
+}
+
+static inline std::vector<paddle::Tensor> expand_outplace(
+    std::vector<paddle::Tensor> to_expand) {
+  // expands a list of Tensors; ignores undefined (null) tensors
+  bool first = true;
+  common::DDim sizes;
+  for (size_t i = 0; i < to_expand.size(); i++) {
+    if (!to_expand[i].initialized()) {
+      continue;
+    } else if (first) {
+      sizes = to_expand[i].dims();
+      first = false;
+    } else {
+      sizes = infer_size_symdimvector(sizes, to_expand[i].dims());
+    }
+  }
+
+  std::vector<paddle::Tensor> result(to_expand.size());
+  for (size_t i = 0; i < to_expand.size(); i++) {
+    if (!to_expand[i].initialized()) {
+      continue;
+    } else if (to_expand[i].dims() == sizes) {
+      result[i] = to_expand[i];
+    } else {
+      result[i] =
+          expand_ad_func(to_expand[i], common::vectorize<int64_t>(sizes));
+    }
+  }
+  return result;
+}
+
+struct AdvancedIndex {
+  AdvancedIndex(paddle::Tensor src, std::vector<paddle::Tensor> indices);
+
+  paddle::Tensor src;
+  std::vector<paddle::Tensor> indices;
+  std::vector<int64_t> indexed_sizes;
+  std::vector<int64_t> indexed_strides;
+  std::vector<int64_t> src_sizes;
+  std::vector<int64_t> src_strides;
+  int64_t dims_before;
+  int64_t dims_after;
+};
+
+inline static void restride_src(std::vector<int64_t>* shape,
+                                std::vector<int64_t>* strides,
+                                int64_t dims_before,
+                                int64_t dims_indexed,
+                                std::vector<int64_t> replacement_shape) {
+  int64_t end = dims_before + dims_indexed;
+  shape->erase(shape->begin() + dims_before, shape->begin() + end);
+  strides->erase(strides->begin() + dims_before, strides->begin() + end);
+  shape->insert(shape->begin() + dims_before,
+                replacement_shape.begin(),
+                replacement_shape.end());
+  strides->insert(strides->begin() + dims_before, replacement_shape.size(), 0);
+}
+
+// move to cuda kernel
+inline static paddle::Tensor reshape_indexer(paddle::Tensor* index,
+                                             int64_t dims_before,
+                                             int64_t dims_after) {
+  auto orig_shape = common::vectorize<int64_t>(index->dims());
+  auto shape = std::vector<int64_t>{};
+  shape.insert(shape.end(), dims_before, 1);
+  shape.insert(shape.end(), orig_shape.begin(), orig_shape.end());
+  shape.insert(shape.end(), dims_after, 1);
+  *index = reshape_ad_func(*index, shape);
+  return *index;
+}
+
+inline AdvancedIndex::AdvancedIndex(paddle::Tensor src,
+                                    std::vector<paddle::Tensor> indices_list) {
+  uint32_t element_size_bytes = phi::SizeOf(src.dtype());
+  int64_t dims_before = 0, dims_after = 0, dims_indexed = 0;
+  std::vector<int64_t> shape_vec = common::vectorize<int64_t>(src.dims());
+  std::vector<int64_t> stride_vec = common::vectorize<int64_t>(src.strides());
+  std::vector<int64_t> replacement_shape;
+  std::vector<int64_t> idx_shape_vec = {};
+  std::vector<int64_t> idx_stride_vec = {};
+
+  for (size_t dim = 0; dim < indices_list.size(); dim++) {
+    if (!indices_list[dim].defined() || indices_list[dim].dims().size() == 0) {
+      if (dims_indexed == 0) {
+        dims_before++;
+      } else {
+        dims_after++;
+      }
+    } else {
+      dims_indexed++;
+      replacement_shape = common::vectorize<int64_t>(indices_list[dim].dims());
+      idx_shape_vec.push_back(shape_vec[dim]);
+      idx_stride_vec.push_back(stride_vec[dim] * element_size_bytes);
+    }
+  }
+
+  this->dims_before = dims_before;
+  this->dims_after = dims_after;
+  restride_src(
+      &shape_vec, &stride_vec, dims_before, dims_indexed, replacement_shape);
+  this->src_sizes = shape_vec;
+  this->src_strides = stride_vec;
+
+  this->indexed_sizes = idx_shape_vec;
+  this->indexed_strides = idx_stride_vec;
+
+  // use dims_before and dims_after / move to cuda kernel
+  for (auto& index : indices_list) {
+    if (index.defined() && index.dims().size() > 0) {
+      this->indices.push_back(reshape_indexer(&index, dims_before, dims_after));
+    }
+  }
+}
+
 }  // namespace pybind
 }  // namespace paddle

@@ -58,6 +58,7 @@ limitations under the License. */
 #include "paddle/phi/infermeta/spmd_rules/p_norm.h"
 #include "paddle/phi/infermeta/spmd_rules/pad.h"
 #include "paddle/phi/infermeta/spmd_rules/pow.h"
+#include "paddle/phi/infermeta/spmd_rules/put_along_axis.h"
 #include "paddle/phi/infermeta/spmd_rules/reduction.h"
 #include "paddle/phi/infermeta/spmd_rules/replicated.h"
 #include "paddle/phi/infermeta/spmd_rules/reshape.h"

@@ -82,6 +82,19 @@ class TestTraceOpCase3(TestTraceOp):
         )
 
 
+class TestTraceOpCase4(TestTraceOp):
+    def init_config(self):
+        self.case = np.random.randn(2, 30, 3).astype('float64')
+        self.inputs = {'Input': self.case}
+        self.attrs = {'offset': -1, 'axis1': 2, 'axis2': -2}
+        self.target = np.trace(
+            self.inputs['Input'],
+            offset=self.attrs['offset'],
+            axis1=self.attrs['axis1'],
+            axis2=self.attrs['axis2'],
+        )
+
+
 class TestTraceFP16Op1(TestTraceOp):
     def init_config(self):
         self.dtype = np.float16
