@@ -330,7 +330,7 @@ static PyObject* tensor__add__method(TensorObject* self,
   }
 
   return ToPyObject(ret);
-  EAGER_CATCH_AND_THROW_RETURN_NULL
+  EAGER_CATCH_AND_THROW_RETURN_NOT_IMPLEMENTED
 }
 
 static PyObject* tensor__sub__method(TensorObject* self,
@@ -625,7 +625,7 @@ static PyObject* tensor__mul__method(TensorObject* self,
   }
 
   return ToPyObject(ret);
-  EAGER_CATCH_AND_THROW_RETURN_NULL
+  EAGER_CATCH_AND_THROW_RETURN_NOT_IMPLEMENTED
 }
 
 static PyObject* tensor__div__method(TensorObject* self,
