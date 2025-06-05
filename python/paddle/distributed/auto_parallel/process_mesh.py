@@ -392,7 +392,7 @@ class ProcessMesh(core.ProcessMesh):
                     f"{dim_name} not in the dimension names {self._dim_names}"
                 )
             else:
-                if not fleet._hybrid_communicate_group_is_None():
+                if hasattr(fleet.fleet, "_hcg"):
                     hcg = fleet.get_hybrid_communicate_group()
                     if hcg is not None:
 

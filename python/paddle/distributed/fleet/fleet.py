@@ -212,7 +212,6 @@ class Fleet:
         self._is_collective = False
         self._runtime_handle = None
         self._util = None
-        self._hcg = None
         self._context = {}
         self.user_defined_optimizer: Optimizer = paddle.optimizer.Optimizer(0.0)
 
@@ -740,9 +739,6 @@ class Fleet:
     def get_hybrid_communicate_group(self) -> HybridCommunicateGroup:
         assert self._hcg is not None
         return self._hcg
-
-    def _hybrid_communicate_group_is_None(self) -> bool:
-        return self._hcg is None
 
     def get_hybrid_parallel_topology(self) -> CommunicateTopology:
         assert self._topology is not None
