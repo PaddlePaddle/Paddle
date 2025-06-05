@@ -290,6 +290,8 @@ set_property(TARGET shared_xpuapi PROPERTY IMPORTED_LOCATION "${XPU_API_LIB}")
 # for cc_library(xxx SRCS xxx.c DEPS xpulib)
 generate_dummy_static_lib(LIB_NAME "xpulib" GENERATOR "xpu.cmake")
 
+unset(WITH_XPU_XFT)
+unset(WITH_XPU_XFT CACHE)
 if(WITH_XPU_XFT)
   message(STATUS "Compile with XPU XFT!")
   add_definitions(-DPADDLE_WITH_XPU_XFT)
