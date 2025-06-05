@@ -50,10 +50,10 @@ def _restore_placements_info(args, infos, curr_mesh):
     if isinstance(args, paddle.Tensor) and infos.placements is not None:
         # set the placements attribute of the Tensor
         if args.is_dist():
-            return args
+            return _detach_and_requires_grad(args)
         else:
             args = dtensor_from_local(args, curr_mesh, infos.placements)
-        return args
+        return _detach_and_requires_grad(args)
     elif isinstance(args, (list, tuple)):
         # if args is list or tuple, handle each element recursively
         return type(args)(
@@ -305,7 +305,9 @@ class _PipelineStageBase(ABC):
     ) -> tuple[Any, ...]:
         raise NotImplementedError
 
-    def _prepare_backward_infra(self, num_microbatches: int) -> tuple[Any, ...]:
+    def _prepare_backward_infra(
+        self, num_microbatches: int, loss=None
+    ) -> tuple[Any, ...]:
         raise NotImplementedError
 
     @abstractmethod
@@ -546,6 +548,13 @@ class _PipelineStageBase(ABC):
                     )
         return ops
 
+    def clear_grads(self) -> None:
+        """
+        Clear grads of the stage.
+        """
+        for param in self.sublayer.parameters():
+            param.clear_grad()
+
     def clear_runtime_states(self) -> None:
         """
         Clear runtime states of the stage.
@@ -613,7 +622,7 @@ class _PipelineStageBase(ABC):
 
         out_val = self.sublayer(*args, **kwargs)
 
-        return out_val
+        return out_val, args
 
     def backward_maybe_with_nosync(
         self, backward_type, bwd_kwargs: dict, last_backward=False
@@ -687,7 +696,7 @@ class _PipelineStageBase(ABC):
 
         # Compute forward
         try:
-            output = self.forward_maybe_with_nosync(
+            output, input_args = self.forward_maybe_with_nosync(
                 *composite_args, **composite_kwargs
             )
 
@@ -706,7 +715,7 @@ class _PipelineStageBase(ABC):
         self.output_chunks.append(output)
 
         # Save activations and inputs for backward
-        flat_args = _flatten_args(composite_args)
+        flat_args = _flatten_args(input_args)
         flat_kwargs = _flatten_args(composite_kwargs)
         flatten_input_tensors = flat_args + flat_kwargs
         self.fwd_cache[fwd_chunk_id] = (
@@ -884,6 +893,7 @@ class PipelineStage(_PipelineStageBase):
                 if isinstance(input_args, TensorMeta)
                 else input_args
             )
+
             assert (
                 output_args is not None
             ), "If passing input_args, also pass output_args to override shape inference"
@@ -935,12 +945,7 @@ class PipelineStage(_PipelineStageBase):
 
         # We skip recv communication if we're the first stage, but also if the previous stage is on the same rank
         # and can pass its output shapes in as args instead of using send/recv.
-        if (
-            self.is_first
-            # if not first stage, then check if prev stage is on the same rank
-            or self.stage_index_to_group_rank[self.stage_index - 1]
-            == self.group_rank
-        ):
+        if self.is_first:
             logger.debug(
                 "Shape inference: stage %s skipping recv, because shape info passed in via `args`",
                 self.stage_index,
@@ -950,6 +955,11 @@ class PipelineStage(_PipelineStageBase):
                 lambda x: TensorMeta(x),
                 args,
             )
+        elif (
+            self.stage_index_to_group_rank[self.stage_index - 1]
+            == self.group_rank
+        ):
+            raise NotImplementedError
         else:
             assert (
                 len(args) == 0
@@ -1024,19 +1034,21 @@ class PipelineStage(_PipelineStageBase):
         # 1. Usually: use send/recv communication to pass the output
         # 2. Special case: for V-schedules, 2 'adjacent' stages (e.g. stage 3, 4 in an 8-stage 4-rank V)
         #    pass their shape info via return value and function args rather than send/recv.
-        if (
-            self.is_last
-            # if not last stage, then check if next stage is on the same rank
-            or self.stage_index_to_group_rank[self.stage_index + 1]
-            == self.group_rank
-        ):
+        if self.is_last:
             # Case (2) above: pass shape info via return value and caller passes it as args to next stage's
             # _shape_inference call
             logger.debug(
                 "Shape inference: stage %s skipping send to next stage",
                 self.stage_index,
             )
-
+            # keep the origin output of the last stage for backward
+            return outputs
+            # if not last stage, then check if next stage is on the same rank
+        elif (
+            self.stage_index_to_group_rank[self.stage_index + 1]
+            == self.group_rank
+        ):
+            raise NotImplementedError
         else:
             # Case (1): send shapes via send operation, and ensure not to return it to the caller
             logger.debug(
@@ -1107,27 +1119,23 @@ class PipelineStage(_PipelineStageBase):
 
     def _shape_inference_bwd(
         self,
+        loss=None,
     ):
         assert self.fwd_cache is not None
         stage_output, input_values = self.fwd_cache.pop(0)
-        if (
-            self.is_last
-            or self.stage_index_to_group_rank[self.stage_index + 1]
-            == self.group_rank
-        ):
+        if self.is_last:
+            assert loss is not None, "loss cannot be none during backward"
             logger.debug(
                 "Shape inference: stage %s skipping recv, because shape info passed in via `grads`",
                 self.stage_index,
             )
-
-            grads = _map_structure_only(
-                paddle.Tensor, paddle.zeros_like, stage_output
-            )
-            last_output_grads_meta = tuple(
-                map_structure(lambda x: TensorMeta(x), grads)
-            )
-            grads = last_output_grads_meta
-
+            stage_output = loss
+            grads = None
+        elif (
+            self.stage_index_to_group_rank[self.stage_index + 1]
+            == self.group_rank
+        ):
+            raise NotImplementedError
         else:
             objects = [None]
             logger.debug(
@@ -1140,18 +1148,18 @@ class PipelineStage(_PipelineStageBase):
             assert isinstance(recv_grads, tuple), type(recv_grads)
             grads = recv_grads
 
-        self.grads_meta = grads
+            self.grads_meta = grads
 
-        # zero-initialize tensors only for inference backward meta-info
-        zero_initialize_with_meta_ = partial(
-            _zero_initialize_with_meta,
-            mesh=_get_stage_mesh(self.stage_index, self.group_size),
-        )
-        grads = _map_structure_only(
-            TensorMeta, zero_initialize_with_meta_, grads
-        )
-
-        paddle.autograd.backward(stage_output, grads, True)
+            # zero-initialize tensors only for inference backward meta-info
+            zero_initialize_with_meta_ = partial(
+                _zero_initialize_with_meta,
+                mesh=_get_stage_mesh(self.stage_index, self.group_size),
+            )
+            grads = _map_structure_only(
+                TensorMeta, zero_initialize_with_meta_, grads
+            )
+        with paddle.amp.auto_cast(enable=False):
+            paddle.autograd.backward(stage_output, grads, True)
 
         # output is the grad meta for input_values(list)
         if not self.is_first:
@@ -1159,16 +1167,16 @@ class PipelineStage(_PipelineStageBase):
                 map_structure(lambda x: TensorMeta(x.grad), input_values)
             )
 
-        if (
-            self.is_first
-            # if not last stage, then check if previous stage is on the same rank
-            or self.stage_index_to_group_rank[self.stage_index - 1]
-            == self.group_rank
-        ):
+        if self.is_first:
             logger.debug(
                 "Shape inference: stage %s skipping send to previous stage",
                 self.stage_index,
             )
+        elif (
+            self.stage_index_to_group_rank[self.stage_index - 1]
+            == self.group_rank
+        ):
+            raise NotImplementedError
         else:
             logger.debug(
                 "Shape inference: stage %s sending to stage %s",
@@ -1179,21 +1187,28 @@ class PipelineStage(_PipelineStageBase):
                 [output_meta], dst=self.prev_rank, group=self.group
             )
 
-    def _prepare_backward_infra(self, num_microbatches: int) -> tuple[Any, ...]:
+    def _prepare_backward_infra(
+        self, num_microbatches: int, loss=None
+    ) -> tuple[Any, ...]:
         assert self.has_backward is not None
 
         self.chunks = num_microbatches
 
+        grads: tuple[Any, ...] = ()
+        if self.grads_meta is None:
+            if self.is_last:
+                self._shape_inference_bwd(loss)
+            else:
+                self._shape_inference_bwd()
         for mb_index in range(num_microbatches):
             # `grad_recv_info` is a mirror of `act_send_info`
             self.grad_recv_info[mb_index] = self._create_grad_recv_info(
                 self.act_send_info
             )
-        grads: tuple[Any, ...] = ()
-        if self.grads_meta is None:
-            self._shape_inference_bwd()
 
-        assert self.grads_meta is not None
+        # the last stage does not need recv grads from other rank
+        if not self.is_last:
+            assert self.grads_meta is not None
         # clear backward_state
         self.clear_runtime_states()
         return grads
@@ -1211,7 +1226,7 @@ class PipelineStage(_PipelineStageBase):
                     _RecvInfo(
                         f"recv_grad_for_{self.stage_index}_from_{dst_list[0]}",
                         dst_list[0],
-                        _make_tensor_from_meta(self.get_outputs_meta()[idx]),
+                        _make_tensor_from_meta(self.grads_meta[idx]),
                     )
                     for idx, dst_list in act_send_info.items()
                 ]
