@@ -43,6 +43,7 @@ jobs:
           WITH_ROCM: "ON"
           WITH_RCCL: "ON"
           WITH_TENSORRT: "OFF"
+          ON_INFER: "OFF"
           WITH_AVX: "ON"
           WITH_MKL: "ON"
           GIT_PR_ID: ${{ github.event.pull_request.number }}
@@ -72,6 +73,7 @@ jobs:
             -e WITH_ROCM \
             -e WITH_RCCL \
             -e WITH_TENSORRT \
+            -e ON_INFER \
             -e WITH_AVX \
             -e WITH_MKL \
             -e GIT_PR_ID \
