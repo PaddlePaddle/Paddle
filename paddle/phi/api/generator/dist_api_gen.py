@@ -1755,7 +1755,7 @@ class DistForwardAPI(ForwardAPI):
 
         return output_decl_code + infer_meta_code
 
-    def generate_kernel_call_code(self) -> str:
+    def generate_kernel_call_code(self, is_forward=True) -> str:
         dense_input_trans_map = {
             'const Tensor&': 'const phi::DenseTensor&',
             'const std::vector<Tensor>&': 'const std::vector<const phi::DenseTensor*>&',
@@ -1818,7 +1818,10 @@ class DistForwardAPI(ForwardAPI):
                         self.attrs['attr_info'][arg][0]
                     )
                     # calculate local_shape for expand_as
-                    if self.infer_meta['local_shape'] is not None:
+                    if (
+                        is_forward
+                        and self.infer_meta['local_shape'] is not None
+                    ):
                         arg = "local_shape"
                 input_args.append(arg)
             elif isinstance(arg, bool):
