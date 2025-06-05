@@ -51,6 +51,11 @@ void TrilKernel(const Context& ctx,
                 const DenseTensor& x,
                 int diagonal,
                 DenseTensor* out) {
+  if (out && out->numel() == 0) {
+    ctx.template Alloc<T>(out);
+    return;
+  }
+
   TrilTriuKernel<T, Context>(ctx, x, diagonal, true, out);
 }
 
@@ -59,6 +64,11 @@ void TriuKernel(const Context& ctx,
                 const DenseTensor& x,
                 int diagonal,
                 DenseTensor* out) {
+  if (out && out->numel() == 0) {
+    ctx.template Alloc<T>(out);
+    return;
+  }
+
   TrilTriuKernel<T, Context>(ctx, x, diagonal, false, out);
 }
 

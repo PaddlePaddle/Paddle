@@ -1,4 +1,4 @@
-// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -279,7 +279,6 @@ static inline void coalesce_dimensions(const int64_t ndim,
     }
   }
   (*shape_).resize(prev_dim + 1);
-
   for (int64_t i = 0; i < N; i++) {
     (*stride_size)[i] = shape_->size();
   }

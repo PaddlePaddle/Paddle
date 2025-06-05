@@ -7900,8 +7900,8 @@ def ldexp(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
         out_dtype = DataType.FLOAT64
     else:
         out_dtype = paddle.get_default_dtype()
-    x = paddle.cast(x, dtype=out_dtype)
-    y = paddle.cast(y, dtype=out_dtype)
+    x = x.astype(dtype=out_dtype)
+    y = y.astype(dtype=out_dtype)
     two = paddle.to_tensor(2, dtype=out_dtype)
     return paddle.multiply(x, paddle.pow(two, y))
 

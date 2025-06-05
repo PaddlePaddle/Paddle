@@ -151,30 +151,29 @@ class CustomDevice : public DeviceInterface {
     stream->set_stream(c_stream);
   }
 
-  void DestroyStream(size_t dev_id, stream::Stream* stream) override {
+  void DestroyStream(size_t dev_id, stream::stream_t stream) override {
     if (pimpl_->destroy_stream) {
       const auto device = &devices_pool[dev_id];
-      PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->destroy_stream(
-          device, reinterpret_cast<C_Stream>(stream->raw_stream())));
+      PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
+          pimpl_->destroy_stream(device, reinterpret_cast<C_Stream>(stream)));
     }
   }
 
-  void SynchronizeStream(size_t dev_id, const stream::Stream* stream) override {
+  void SynchronizeStream(size_t dev_id, stream::stream_t stream) override {
     if (pimpl_->synchronize_stream) {
       const auto device = &devices_pool[dev_id];
       PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->synchronize_stream(
-          device, reinterpret_cast<C_Stream>(stream->raw_stream())));
+          device, reinterpret_cast<C_Stream>(stream)));
     }
   }
 
-  bool QueryStream(size_t dev_id, const stream::Stream* stream) override {
+  bool QueryStream(size_t dev_id, stream::stream_t stream) override {
     if (!pimpl_->query_stream) {
       SynchronizeStream(dev_id, stream);
       return true;
     } else {
       const auto device = &devices_pool[dev_id];
-      return pimpl_->query_stream(
-                 device, reinterpret_cast<C_Stream>(stream->raw_stream())) ==
+      return pimpl_->query_stream(device, reinterpret_cast<C_Stream>(stream)) ==
              C_SUCCESS;
     }
   }
@@ -732,16 +731,16 @@ class CustomDevice : public DeviceInterface {
                     phi::DataType data_type,
                     ccl::CCLReduceOp op,
                     const ccl::CCLComm& comm,
-                    const stream::Stream& stream) override {
+                    const stream::stream_t& stream) override {
     CHECK_PTR(pimpl_->xccl_all_reduce);
-    PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->xccl_all_reduce(
-        send_buf,
-        recv_buf,
-        count,
-        ToCDataType(data_type),
-        ToXCCLReduceOp(op),
-        reinterpret_cast<C_CCLComm>(comm),
-        reinterpret_cast<C_Stream>(stream.raw_stream())));
+    PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
+        pimpl_->xccl_all_reduce(send_buf,
+                                recv_buf,
+                                count,
+                                ToCDataType(data_type),
+                                ToXCCLReduceOp(op),
+                                reinterpret_cast<C_CCLComm>(comm),
+                                reinterpret_cast<C_Stream>(stream)));
   }
 
   void CCLBroadcast(void* buf,
@@ -749,15 +748,15 @@ class CustomDevice : public DeviceInterface {
                     phi::DataType data_type,
                     size_t root,
                     const ccl::CCLComm& comm,
-                    const stream::Stream& stream) override {
+                    const stream::stream_t& stream) override {
     CHECK_PTR(pimpl_->xccl_broadcast);
-    PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->xccl_broadcast(
-        buf,
-        count,
-        ToCDataType(data_type),
-        root,
-        reinterpret_cast<C_CCLComm>(comm),
-        reinterpret_cast<C_Stream>(stream.raw_stream())));
+    PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
+        pimpl_->xccl_broadcast(buf,
+                               count,
+                               ToCDataType(data_type),
+                               root,
+                               reinterpret_cast<C_CCLComm>(comm),
+                               reinterpret_cast<C_Stream>(stream)));
   }
 
   void CCLReduce(void* in_data,
@@ -767,7 +766,7 @@ class CustomDevice : public DeviceInterface {
                  ccl::CCLReduceOp reduce_op,
                  size_t root_id,
                  const ccl::CCLComm& comm,
-                 const stream::Stream& stream) override {
+                 const stream::stream_t& stream) override {
     CHECK_PTR(pimpl_->xccl_reduce);
     PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
         pimpl_->xccl_reduce(in_data,
@@ -777,7 +776,7 @@ class CustomDevice : public DeviceInterface {
                             ToXCCLReduceOp(reduce_op),
                             root_id,
                             reinterpret_cast<C_CCLComm>(comm),
-                            reinterpret_cast<C_Stream>(stream.raw_stream())));
+                            reinterpret_cast<C_Stream>(stream)));
   }
 
   void CCLAllGather(void* send_buf,
@@ -785,15 +784,15 @@ class CustomDevice : public DeviceInterface {
                     size_t count,
                     phi::DataType data_type,
                     const ccl::CCLComm& comm,
-                    const stream::Stream& stream) override {
+                    const stream::stream_t& stream) override {
     CHECK_PTR(pimpl_->xccl_all_gather);
-    PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->xccl_all_gather(
-        send_buf,
-        recv_buf,
-        count,
-        ToCDataType(data_type),
-        reinterpret_cast<C_CCLComm>(comm),
-        reinterpret_cast<C_Stream>(stream.raw_stream())));
+    PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
+        pimpl_->xccl_all_gather(send_buf,
+                                recv_buf,
+                                count,
+                                ToCDataType(data_type),
+                                reinterpret_cast<C_CCLComm>(comm),
+                                reinterpret_cast<C_Stream>(stream)));
   }
 
   void CCLReduceScatter(void* send_buf,
@@ -802,16 +801,16 @@ class CustomDevice : public DeviceInterface {
                         phi::DataType data_type,
                         ccl::CCLReduceOp reduce_op,
                         const ccl::CCLComm& comm,
-                        const stream::Stream& stream) override {
+                        const stream::stream_t& stream) override {
     CHECK_PTR(pimpl_->xccl_reduce_scatter);
-    PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->xccl_reduce_scatter(
-        send_buf,
-        recv_buf,
-        count,
-        ToCDataType(data_type),
-        ToXCCLReduceOp(reduce_op),
-        reinterpret_cast<C_CCLComm>(comm),
-        reinterpret_cast<C_Stream>(stream.raw_stream())));
+    PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
+        pimpl_->xccl_reduce_scatter(send_buf,
+                                    recv_buf,
+                                    count,
+                                    ToCDataType(data_type),
+                                    ToXCCLReduceOp(reduce_op),
+                                    reinterpret_cast<C_CCLComm>(comm),
+                                    reinterpret_cast<C_Stream>(stream)));
   }
 
   void CCLGroupStart() override {
@@ -831,7 +830,7 @@ class CustomDevice : public DeviceInterface {
                phi::DataType data_type,
                size_t dest_rank,
                const ccl::CCLComm& comm,
-               const stream::Stream& stream) override {
+               const stream::stream_t& stream) override {
     CHECK_PTR(pimpl_->xccl_send);
     PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
         pimpl_->xccl_send(send_buf,
@@ -839,7 +838,7 @@ class CustomDevice : public DeviceInterface {
                           ToCDataType(data_type),
                           dest_rank,
                           reinterpret_cast<C_CCLComm>(comm),
-                          reinterpret_cast<C_Stream>(stream.raw_stream())));
+                          reinterpret_cast<C_Stream>(stream)));
   }
 
   void CCLRecv(void* recv_buf,
@@ -847,7 +846,7 @@ class CustomDevice : public DeviceInterface {
                phi::DataType data_type,
                size_t src_rank,
                const ccl::CCLComm& comm,
-               const stream::Stream& stream) override {
+               const stream::stream_t& stream) override {
     CHECK_PTR(pimpl_->xccl_recv);
     PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
         pimpl_->xccl_recv(recv_buf,
@@ -855,7 +854,7 @@ class CustomDevice : public DeviceInterface {
                           ToCDataType(data_type),
                           src_rank,
                           reinterpret_cast<C_CCLComm>(comm),
-                          reinterpret_cast<C_Stream>(stream.raw_stream())));
+                          reinterpret_cast<C_Stream>(stream)));
   }
 
   void CCLAllToAll(const void** send_buf,
@@ -867,24 +866,24 @@ class CustomDevice : public DeviceInterface {
                    size_t rank,
                    size_t nranks,
                    const ccl::CCLComm& comm,
-                   const stream::Stream& stream) override {
+                   const stream::stream_t& stream) override {
     if (pimpl_->xccl_all_to_all) {
       std::vector<C_DataType> c_send_dtype, c_recv_dtype;
       for (size_t i = 0; i < nranks; ++i) {
         c_send_dtype.push_back(ToCDataType(send_dtype[i]));
         c_recv_dtype.push_back(ToCDataType(recv_dtype[i]));
       }
-      PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->xccl_all_to_all(
-          send_buf,
-          send_count,
-          c_send_dtype.data(),
-          recv_buf,
-          recv_count,
-          c_recv_dtype.data(),
-          rank,
-          nranks,
-          reinterpret_cast<C_CCLComm>(comm),
-          reinterpret_cast<C_Stream>(stream.raw_stream())));
+      PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
+          pimpl_->xccl_all_to_all(send_buf,
+                                  send_count,
+                                  c_send_dtype.data(),
+                                  recv_buf,
+                                  recv_count,
+                                  c_recv_dtype.data(),
+                                  rank,
+                                  nranks,
+                                  reinterpret_cast<C_CCLComm>(comm),
+                                  reinterpret_cast<C_Stream>(stream)));
     } else if (pimpl_->xccl_send && pimpl_->xccl_recv) {
       // NOTE(wangran16): fallback to send and recv, while avoiding some devices
       // not supporting asynchronous send and recv.
@@ -895,24 +894,26 @@ class CustomDevice : public DeviceInterface {
                               ToCDataType(recv_dtype[i]),
                               i,
                               reinterpret_cast<C_CCLComm>(comm),
-                              reinterpret_cast<C_Stream>(stream.raw_stream())));
+                              reinterpret_cast<C_Stream>(stream)));
       }
       for (size_t i = 0; i < nranks; ++i) {
         if (i != rank) {
-          PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->xccl_send(
-              const_cast<void*>(send_buf[i]),
-              send_count[i],
-              ToCDataType(send_dtype[i]),
-              i,
-              reinterpret_cast<C_CCLComm>(comm),
-              reinterpret_cast<C_Stream>(stream.raw_stream())));
+          PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
+              pimpl_->xccl_send(const_cast<void*>(send_buf[i]),
+                                send_count[i],
+                                ToCDataType(send_dtype[i]),
+                                i,
+                                reinterpret_cast<C_CCLComm>(comm),
+                                reinterpret_cast<C_Stream>(stream)));
         }
       }
+      const phi::stream::Stream stream_wrapper(
+          Place(AllocationType::CUSTOM, Type()), stream);
       MemoryCopyD2D(rank,
                     recv_buf[rank],
                     send_buf[rank],
                     send_count[rank] * phi::SizeOf(send_dtype[rank]),
-                    &stream);
+                    &stream_wrapper);
       for (size_t i = rank + 1; i < nranks; ++i) {
         PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
             pimpl_->xccl_recv(recv_buf[i],
@@ -920,7 +921,7 @@ class CustomDevice : public DeviceInterface {
                               ToCDataType(recv_dtype[i]),
                               i,
                               reinterpret_cast<C_CCLComm>(comm),
-                              reinterpret_cast<C_Stream>(stream.raw_stream())));
+                              reinterpret_cast<C_Stream>(stream)));
       }
     } else {
       PADDLE_THROW(common::errors::Unavailable(
@@ -929,7 +930,7 @@ class CustomDevice : public DeviceInterface {
   }
 
   void BlasAXPBY(size_t dev_id,
-                 const stream::Stream& stream,
+                 const stream::stream_t& stream,
                  phi::DataType dtype,
                  size_t numel,
                  float alpha,
@@ -940,7 +941,7 @@ class CustomDevice : public DeviceInterface {
     const auto device = &devices_pool[dev_id];
     PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
         pimpl_->blas_axpby(device,
-                           reinterpret_cast<C_Stream>(stream.raw_stream()),
+                           reinterpret_cast<C_Stream>(stream),
                            ToCDataType(dtype),
                            numel,
                            alpha,

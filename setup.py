@@ -1410,8 +1410,8 @@ def get_package_data_and_package_dir():
     for json in json_path_list:
         package_data['paddle.cinn_config'] += [json]
 
-    if env_dict.get("WITH_CINN") == 'ON':
-        build_cutlass3_src_code()
+    # if env_dict.get("WITH_CINN") == 'ON':
+    #     build_cutlass3_src_code()
 
     package_data['paddle.apy'] = []
     file_path_list = get_apy_files()
@@ -2259,6 +2259,7 @@ def get_setup_parameters():
         'paddle.distributed.fleet.meta_parallel.parallel_layers',
         'paddle.distributed.auto_parallel',
         'paddle.distributed.auto_parallel.intermediate',
+        'paddle.distributed.auto_parallel.pipelining',
         'paddle.distributed.auto_parallel.dygraph',
         'paddle.distributed.auto_parallel.static',
         'paddle.distributed.auto_parallel.static.operators',

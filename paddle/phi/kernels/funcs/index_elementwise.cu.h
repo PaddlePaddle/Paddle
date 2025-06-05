@@ -26,19 +26,16 @@ limitations under the License. */
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/stride_utils.h"
 #include "paddle/phi/kernels/primitive/kernel_primitives.h"
 
 namespace phi {
 namespace funcs {
 
-#ifdef PADDLE_WITH_HIP
-constexpr int MAX_DIMS = 16;
-#else
-constexpr int MAX_DIMS = 25;
-#endif
 constexpr int MAX_DIMS = 9;
 
 static constexpr int launch_bound2 = 4;
+
 static constexpr int launch_size_nd = 128;
 
 template <int nt, int vt, typename func_t>
@@ -134,6 +131,13 @@ struct OffsetCalculator {
   stride_t strides_[MAX_DIMS][std::max<int>(NARGS, 1)];
 };
 
+template <int N, bool signed_strides = false>
+static OffsetCalculator<N, uint32_t, signed_strides> make_offset_calculator_put(
+    std::vector<int64_t> desired_shape, std::array<int64_t*, N> strides_array) {
+  return OffsetCalculator<N, uint32_t, signed_strides>(
+      desired_shape.size(), desired_shape.data(), strides_array.data());
+}
+
 template <typename IndexT>
 std::array<char*, DDim::kMaxRank> GetIndexDataPtrs(
     const std::vector<const DenseTensor*> index) {
@@ -141,8 +145,7 @@ std::array<char*, DDim::kMaxRank> GetIndexDataPtrs(
 
   PADDLE_ENFORCE_LE(index.size(),
                     DDim::kMaxRank,
-                    "The rank of the index tensor must be less than or "
-                    "equal to DDim::kMaxRank.");
+                    "The number of index tensors exceeds the maximum rank.");
 
   for (size_t i = 0; i < index.size(); ++i) {
     const IndexT* p_index = index[i]->data<IndexT>();

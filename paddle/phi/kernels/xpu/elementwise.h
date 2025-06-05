@@ -22,8 +22,8 @@ limitations under the License. */
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "xpu/refactor/math.h"
-
 namespace phi {
 
 template <typename T, typename XPUType>
@@ -112,6 +112,9 @@ void XPUElementwise(const XPUContext& dev_ctx,
                                       const std::vector<int64_t>&,
                                       const std::vector<int64_t>&)> func) {
   dev_ctx.template Alloc<T>(z);
+  if (z->numel() == 0) {
+    return;
+  }
   const DDim& x_dims = x.dims();
   const DDim& y_dims = y.dims();
 
@@ -193,6 +196,13 @@ void XPUElementwiseGrad(const XPUContext& dev_ctx,
   }
   if (dy) {
     dy_data = dev_ctx.template Alloc<T>(dy);
+  }
+  if (dz.numel() == 0) {
+    phi::Full<T, XPUContext>(
+        dev_ctx, phi::IntArray(common::vectorize(dx->dims())), 0, dx);
+    phi::Full<T, XPUContext>(
+        dev_ctx, phi::IntArray(common::vectorize(dy->dims())), 0, dy);
+    return;
   }
 
   // use [1] to replace [], because xpu not support []

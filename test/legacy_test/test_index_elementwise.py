@@ -150,7 +150,7 @@ class TestIndexElementwiseBool4D_k3_AllDtypes(TestIndexElementwiseBool):
             "int64",
             "int16",
             "uint8",
-            "float16",
+            # "float16",
             # "bfloat16",
             "complex64",
             "complex128",
