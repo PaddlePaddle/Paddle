@@ -791,6 +791,17 @@ class AllocatorFacadePrivate {
     }
   }
 
+  void EraseStream(std::shared_ptr<phi::Allocation> allocation,
+                   phi::stream::stream_t stream) {
+    if (auto stream_safe_cuda_allocation =
+            std::dynamic_pointer_cast<StreamSafeCustomDeviceAllocation>(
+                allocation)) {
+      stream_safe_cuda_allocation->EraseStream(stream);
+    } else {
+      VLOG(6) << "EraseStream for a non-StreamSafeCUDAAllocation";
+    }
+  }
+
   phi::stream::stream_t GetStream(
       const std::shared_ptr<phi::Allocation>& allocation) const {
     const std::shared_ptr<StreamSafeCustomDeviceAllocation>
@@ -1787,11 +1798,17 @@ AllocationPtr AllocatorFacade::Alloc(const phi::Place& place,
 bool AllocatorFacade::InSameStream(
     const std::shared_ptr<phi::Allocation>& allocation,
     const phi::Stream& stream) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
+    !defined(PADDLE_WITH_CUSTOM_DEVICE)
   gpuStream_t s = reinterpret_cast<gpuStream_t>(stream.id());  // NOLINT
   return s == GetStream(allocation);
+#elif defined(PADDLE_WITH_CUSTOM_DEVICE)
+  phi::stream::stream_t s =
+      reinterpret_cast<phi::stream::stream_t>(stream.id());  // NOLINT
+  return s == GetStream(allocation);
 #else
-  PADDLE_THROW(common::errors::PreconditionNotMet("Not compiled with GPU."));
+  PADDLE_THROW(common::errors::PreconditionNotMet(
+      "Not compiled with GPU or CUDA backend."));
 #endif
 }
 
@@ -1944,6 +1961,11 @@ uint64_t AllocatorFacade::Release(const phi::CustomPlace& place,
 bool AllocatorFacade::RecordStream(std::shared_ptr<phi::Allocation> allocation,
                                    phi::stream::stream_t stream) {
   return GetPrivate()->RecordStream(allocation, stream);
+}
+
+void AllocatorFacade::EraseStream(std::shared_ptr<phi::Allocation> allocation,
+                                  phi::stream::stream_t stream) {
+  GetPrivate()->EraseStream(allocation, stream);
 }
 
 const std::shared_ptr<Allocator>& AllocatorFacade::GetAllocator(

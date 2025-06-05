@@ -14,7 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set +ex
+set +e
+set -x
 
 [ -z "$PADDLE_ROOT" ] && PADDLE_ROOT=$(cd $(dirname ${BASH_SOURCE[0]})/.. && pwd)
 
@@ -94,35 +95,21 @@ function load_CHANGE_OP_FILES_by_header_file {
 # Load op files that PR changes
 function load_CHANGE_OP_FILES {
   LOG "[INFO] run function load_CHANGE_OP_FILES"
-  local sub_dir change_file
-  # TODO(Avin0323): Need to filter the files added by the new OP.
-  for change_file in $(git diff --name-only develop)
-  do
-    # match directory limit
-    [[ "$change_file" =~ "paddle/fluid/operators/" ]] || [[ "$change_file" =~ "paddle/phi/kernels/" ]]  || continue
-    # match file name limit
-    if [[ "$change_file" =~ "_op.cu" || "$change_file" =~ "_kernel.cu" || "$change_file" =~ "_kernel_gpudnn.cu" ]]
-    then
-      # match cu file directory limit
-      match_cu_file_directory $change_file || continue
-      LOG "[INFO] Found \"${change_file}\" changed."
-      CHANGE_OP_FILES[${#CHANGE_OP_FILES[@]}]="$change_file"
-    elif [[ "$change_file" =~ ".h" ]]
-    then
-      match_h_file_directory $change_file || continue
-      LOG "[INFO] Found \"${change_file}\" changed, keep searching."
-      INCLUDE_SEARCH_MAP[${change_file}]="searched"
-      load_CHANGE_OP_FILES_by_header_file $change_file
+  file_patterns=("_op.cu" "_kernel.cu" "_kernel_gpudnn.cu")
+  directories=("paddle/fluid/operators" "paddle/phi/kernels")
+  for dir in "${directories[@]}"; do
+    if [ -d "$dir" ]; then
+        for pattern in "${file_patterns[@]}"; do
+            while IFS= read -r file; do
+                match_cu_file_directory $file || continue
+                LOG "[INFO] Found \"${file}\"."
+                CHANGE_OP_FILES+=("$file")
+            done < <(find "$dir" -type f -name "*$pattern" 2>/dev/null)
+        done
+    else
+        echo "Directory $dir does not exist."
     fi
   done
-  if [ ${#CHANGE_OP_FILES[@]} -eq 0 ]; then
-    LOG "[INFO] Uninstall PaddlePaddle ..."
-    pip uninstall -y paddlepaddle paddlepaddle_gpu
-    LOG "[INFO] Install PaddlePaddle ..."
-    pip install build/pr_whl/*.whl
-    collect_kernel_registry_info
-    LOG "[INFO] No op to test, skip this ci." && exit 0
-  fi
 }
 
 # Clone benchmark repo
@@ -233,7 +220,7 @@ function check_op_benchmark_result {
   local logs_dir api_info_file check_status_code
   # default 3 times
   [ -z "${RETRY_TIMES}" ] && RETRY_TIMES=3
-  logs_dir=$(pwd)/logs-test_pr
+  logs_dir=$(pwd)/logs-pr_whl
   api_info_file=$(pwd)/api_info.txt
   for retry_time in $(seq 0 ${RETRY_TIMES})
   do
@@ -255,7 +242,7 @@ function check_op_benchmark_result {
     # check current result and update the file to benchmark test
     python ${PADDLE_ROOT}/tools/check_op_benchmark_result.py \
         --develop_logs_dir $(pwd)/logs-dev_whl \
-        --pr_logs_dir $(pwd)/logs-test_pr \
+        --pr_logs_dir $(pwd)/logs-pr_whl \
         --api_info_file ${api_info_file}
     check_status_code=$?
     # TODO(Avin0323): retry only if the performance check fails
@@ -315,24 +302,5 @@ function gpu_op_benchmark {
   exit 0
 }
 
-
-# The PR will pass quickly when get approval from specific person.
-set +x
-approval_line=$(curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000)
-if [ -n "${approval_line}" ]; then
-  APPROVALS=$(echo ${approval_line} | python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 Xreki zhangting2020)
-  LOG "[INFO] current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
-  if [ "${APPROVALS}" == "TRUE" ]; then
-    LOG "[INFO] ==================================="
-    LOG "[INFO] current pr ${GIT_PR_ID} has got approvals. So, Pass CI directly!"
-    LOG "[INFO] ==================================="
-    exit 0
-  fi
-fi
-
-case $1 in
-  run_op_benchmark)
-    prepare_env
-    gpu_op_benchmark
-  ;;
-esac
+prepare_env
+gpu_op_benchmark

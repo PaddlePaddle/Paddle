@@ -23,6 +23,7 @@ from test_infer_sym_shape_utils import (
 )
 
 import paddle
+from paddle import _C_ops
 from paddle.static import InputSpec
 
 sys.path.append(dirname(dirname(__file__)))
@@ -65,6 +66,35 @@ class EmbeddingOpInferSymbolicShapeTest(TestBase):
         )
         out = net(self.x)
         return out
+
+
+class ExpandAsNet(paddle.nn.Layer):
+    def __init__(self, target_shape):
+        super().__init__()
+        self.target_shape = target_shape
+
+    def forward(self, x):
+        return _C_ops.expand_as(x, None, self.target_shape)
+
+
+class ExpandAsOpInferSymbolicShapeTest(TestBase):
+    def prepare_data(self):
+        self.target_shape = [10, 3]
+
+        self.expected = ['shape[10, 3], data[NULL]']
+
+    def test_eval_symbolic(self):
+        net = ExpandAsNet(self.target_shape)
+        input_spec = [
+            InputSpec(shape=[None, 1], dtype='float32'),  # x
+        ]
+        net = apply_to_static(net, False, input_spec)
+        net.eval()
+
+        check_infer_results(
+            net, input_spec, 'builtin.shadow_output', self.expected
+        )
+        return True
 
 
 class KronNet(paddle.nn.Layer):

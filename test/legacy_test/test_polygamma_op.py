@@ -217,5 +217,25 @@ class TestPolygammaOp(OpTest):
         )
 
 
+class TestPolygammaOp_ZeroSize(TestPolygammaOp):
+
+    def init_config(self):
+        self.dtype = np.float64
+        self.order = 1
+        rand_case = np.random.randn(0).astype(self.dtype)
+        int_case = np.random.randint(low=1, high=100, size=0).astype(self.dtype)
+        self.case = np.concatenate([rand_case, int_case])
+        self.inputs = {'x': self.case}
+        self.attrs = {'n': self.order}
+        self.target = ref_polygamma(self.inputs['x'], self.order)
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['x'],
+            'out',
+            check_pir=True,
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
