@@ -35,7 +35,7 @@ from .auto_parallel.api import (
     ShardingStage3,
     Strategy,
     dtensor_from_fn,
-    enable_auto_dp,
+    enable_auto_dp,  # noqa: F401
     in_auto_parallel_align_mode,  # noqa: F401
     reshard,
     shard_dataloader,
@@ -217,5 +217,4 @@ __all__ = [
     "set_mesh",
     "get_mesh",
     "to_distributed",
-    "enable_auto_dp",
 ]
