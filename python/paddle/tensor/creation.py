@@ -774,7 +774,7 @@ def _to_tensor_non_static(
                 or (isinstance(place, core.Place) and place.is_gpu_place())
             )
         ):
-            ret = paddle.full([], data.reshape([1])[0], data.dtype)
+            ret = paddle.full(data.shape, data.reshape([1])[0], data.dtype)
             ret.stop_gradient = stop_gradient
             return ret
         else:
