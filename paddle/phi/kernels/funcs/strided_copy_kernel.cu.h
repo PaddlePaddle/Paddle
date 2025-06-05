@@ -1,6 +1,6 @@
 /* Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
 Licensed under the Apache License, Version 2.0 (the "License");
-you may nint64_t use this file except in compliance with the License.
+you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
     http://www.apache.org/licenses/LICENSE-2.0
 Unless required by applicable law or agreed to in writing, software
@@ -118,7 +118,7 @@ __global__ void Contiguous2StridedCaseOneFunc(
   }
 }
 
-template <typename T, size_t N>
+template <typename T, size_t N, int VecSize>
 __global__ void Contiguous2StridedCaseOneDiffDimFunc(
     const T* input_data,
     T* out_data,
@@ -208,7 +208,7 @@ __global__ void Contiguous2StridedCaseOneDiffDimFunc(
   }
 }
 
-template <typename T, typename Context>
+template <typename T, typename Context, int VecSize>
 bool LaunchContiguous2StridedCaseOneKernel(
     const Context& dev_ctx,
     const T* input_data,
@@ -265,6 +265,7 @@ bool LaunchContiguous2StridedCaseOneKernel(
   if (!VerifyStridedCopyThreadConfigurationParameters(block, grid)) {
     return false;
   }
+  // << "*** one case" << std::endl;
 
   if (diff_dims) {
     switch (rank) {
@@ -444,6 +445,7 @@ bool LaunchContiguous2StridedCaseZeroKernel(
   if (!VerifyStridedCopyThreadConfigurationParameters(block, grid)) {
     return false;
   }
+  // std::cout << "*** zero kernel " << std::endl;
   if (diff_dims) {
     switch (rank) {
 #define CASE_RANK(__Rk)                              \
@@ -547,8 +549,11 @@ void LaunchContiguous2StridedDefaultKernel(
     int rank,
     int64_t numel,
     bool diff_dims) {
-  int64_t block = 512;
-  int64_t grid = (numel + block - 1) / block;
+  constexpr int loop_count = 4;
+  auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
+      dev_ctx, numel, VecSize * loop_count);
+  auto& grid = config.block_per_grid;
+  auto& block = config.thread_per_block;
 
   if (diff_dims) {
     if (VecSize == 4) {
@@ -711,60 +716,46 @@ void StrideCopyDiffDimKernel(
     const phi::Array<int64_t, phi::DDim::kMaxRank + 1>& output_dims,
     int rank,
     int numel) {
-  if (LaunchContiguous2StridedCaseZeroKernel<T, Context>(dev_ctx,
-                                                         input_data,
-                                                         output_data,
-                                                         output_stride,
-                                                         output_dims,
-                                                         rank,
-                                                         true)) {
-  } else if (LaunchContiguous2StridedCaseOneKernel<T, Context>(dev_ctx,
-                                                               input_data,
-                                                               output_data,
-                                                               output_stride,
-                                                               output_dims,
-                                                               rank,
-                                                               numel,
-                                                               true)) {
-  } else {
-    switch (VecSize) {
-      case 1:
-        LaunchContiguous2StridedDefaultKernel<T, Context, 1>(dev_ctx,
-                                                             input_data,
-                                                             output_data,
-                                                             output_stride,
-                                                             output_dims,
-                                                             rank,
-                                                             numel,
-                                                             true);
-
-        break;
-      case 2:
-        LaunchContiguous2StridedDefaultKernel<T, Context, 2>(dev_ctx,
-                                                             input_data,
-                                                             output_data,
-                                                             output_stride,
-                                                             output_dims,
-                                                             rank,
-                                                             numel,
-                                                             true);
-        break;
-      case 4:
-        LaunchContiguous2StridedDefaultKernel<T, Context, 4>(dev_ctx,
-                                                             input_data,
-                                                             output_data,
-                                                             output_stride,
-                                                             output_dims,
-                                                             rank,
-                                                             numel,
-                                                             true);
-        break;
-
-      default:
-        PADDLE_THROW(common::errors::InvalidArgument(
-            "unsurport vecsize %d for StrideCopyDiffDimKernel", VecSize));
-    }
+  /*
+if (LaunchContiguous2StridedCaseZeroKernel<T, Context>(dev_ctx,
+                                                     input_data,
+                                                     output_data,
+                                                     output_stride,
+                                                     output_dims,
+                                                     rank,
+                                                     true)) {
+} else if (LaunchContiguous2StridedCaseOneKernel<T, Context>(dev_ctx,
+                                                           input_data,
+                                                           output_data,
+                                                           output_stride,
+                                                           output_dims,
+                                                           rank,
+                                                           numel,
+                                                           true)) {
+} else {
+*/
+  // std::cout << " *** default kernel" << std::endl;
+  switch (VecSize) {
+#define CASE_VECSIZE(__Sz)                                                 \
+  case __Sz:                                                               \
+    LaunchContiguous2StridedDefaultKernel<T, Context, __Sz>(dev_ctx,       \
+                                                            input_data,    \
+                                                            output_data,   \
+                                                            output_stride, \
+                                                            output_dims,   \
+                                                            rank,          \
+                                                            numel,         \
+                                                            true);         \
+    break;
+    CASE_VECSIZE(1);
+    CASE_VECSIZE(2);
+    CASE_VECSIZE(4);
+#undef CASE_VECSIZE
+    default:
+      PADDLE_THROW(common::errors::InvalidArgument(
+          "unsurport vecsize %d for StrideCopyDiffDimKernel", VecSize));
   }
+  //}
   return;
 }
 
