@@ -19,7 +19,7 @@
 
 namespace phi {
 template <typename T, typename Context>
-void ScatterNdAddKernel(const Context &ctx,
+void ScatterNdAddKernel(const Context &dev_ctx,
                         const DenseTensor &x,
                         const DenseTensor &index,
                         const DenseTensor &updates,
@@ -27,8 +27,8 @@ void ScatterNdAddKernel(const Context &ctx,
   const T *x_ptr = x.data<T>();
   const T *updates_ptr = updates.data<T>();
 
-  T *out_ptr = ctx.template Alloc<T>(out);
-  int r = xpu::copy(ctx.x_context(), x_ptr, out_ptr, x.numel());
+  T *out_ptr = dev_ctx.template Alloc<T>(out);
+  int r = xpu::copy(dev_ctx.x_context(), x_ptr, out_ptr, x.numel());
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
 
   if (updates.numel() == 0) return;
@@ -41,7 +41,7 @@ void ScatterNdAddKernel(const Context &ctx,
                                   index.dims(), 0, index_dims_size - 1));
 
     for (int64_t i = 0; i < loop_time; i++) {
-      r = xpu::broadcast_add<T>(ctx.x_context(),
+      r = xpu::broadcast_add<T>(dev_ctx.x_context(),
                                 updates_ptr + out->numel() * i,
                                 out_ptr,
                                 out_ptr,
@@ -77,7 +77,7 @@ void ScatterNdAddKernel(const Context &ctx,
   if (index_type == phi::DataType::INT32) {
     auto index_data = const_cast<int *>(index.data<int>());
     xpu::VectorParam<int> index_vec{nullptr, index_size, index_data};
-    r = xpu::scatter_nd<T, int>(ctx.x_context(),
+    r = xpu::scatter_nd<T, int>(dev_ctx.x_context(),
                                 nullptr,
                                 updates_ptr,
                                 out_ptr,
@@ -88,7 +88,7 @@ void ScatterNdAddKernel(const Context &ctx,
   } else {
     auto index_data = const_cast<int64_t *>(index.data<int64_t>());
     xpu::VectorParam<int64_t> index_vec{nullptr, index_size, index_data};
-    r = xpu::scatter_nd<T, int64_t>(ctx.x_context(),
+    r = xpu::scatter_nd<T, int64_t>(dev_ctx.x_context(),
                                     nullptr,
                                     updates_ptr,
                                     out_ptr,

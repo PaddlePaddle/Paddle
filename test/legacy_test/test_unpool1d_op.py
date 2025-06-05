@@ -273,5 +273,44 @@ class TestUnpool1DOpAPI_static(unittest.TestCase):
                 )
 
 
+class TestUnpool1DOpAPI_ZeroSize(unittest.TestCase):
+    def test_case(self):
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not paddle.base.core.is_compiled_with_cuda()
+        ):
+            places.append(paddle.CPUPlace())
+        if paddle.base.core.is_compiled_with_cuda():
+            places.append(paddle.CUDAPlace(0))
+        for place in places:
+            paddle.disable_static()
+            input_data = np.random.random([1, 3, 0])
+            input_x = paddle.to_tensor(input_data)
+            input_x.stop_gradient = False
+            output, indices = F.max_pool1d(
+                input_x, kernel_size=2, stride=2, return_mask=True
+            )
+            output_unpool = F.max_unpool1d(
+                output,
+                indices,
+                kernel_size=2,
+                stride=2,
+                output_size=tuple(input_x.shape),
+            )
+            expected_output_unpool = unpool1dmax_forward_naive(
+                output.numpy(), indices.numpy(), [2], [2], [0], [0]
+            )
+            np.testing.assert_allclose(
+                output_unpool.numpy(), expected_output_unpool, rtol=1e-05
+            )
+
+            loss = paddle.sum(output_unpool)
+            loss.backward()
+            np.testing.assert_allclose(input_x.grad.shape, input_x.shape)
+        paddle.enable_static()
+
+
 if __name__ == '__main__':
     unittest.main()
