@@ -766,9 +766,13 @@ def _to_tensor_non_static(
         data = _handle_np_dtype(data, dtype)
 
     if isinstance(data, np.ndarray):
-        if data.size == 1 and (
-            isinstance(place, core.CUDAPlace)
-            or (isinstance(place, core.Place) and place.is_gpu_place())
+        if (
+            data.dtype != np.bool
+            and data.size == 1
+            and (
+                isinstance(place, core.CUDAPlace)
+                or (isinstance(place, core.Place) and place.is_gpu_place())
+            )
         ):
             ret = paddle.full([], data.reshape([1])[0], data.dtype)
             ret.stop_gradient = stop_gradient
