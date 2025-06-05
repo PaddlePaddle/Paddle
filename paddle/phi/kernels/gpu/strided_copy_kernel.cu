@@ -814,7 +814,6 @@ void StridedCopyKernel(const Context& dev_ctx,
   }
 
   if (input.meta().is_contiguous()) {
-    // std::cout << "&&&&&&&&&&&&&&&" << std::endl;
     if (LaunchContiguous2StridedCaseZeroKernel<T, Context>(dev_ctx,
                                                            input_data,
                                                            output_data,
