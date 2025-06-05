@@ -1174,5 +1174,56 @@ struct InverseCopySignFunctor {
   }
 };
 
+template <typename T, typename Enable = void>
+struct NextafterFunctor {
+  inline HOSTDEVICE T operator()(const T x, const T y) const {
+    return static_cast<T>(
+        std::nextafter(static_cast<float>(x), static_cast<float>(y)));
+  }
+};
+
+template <typename T>
+struct NextafterFunctor<
+    T,
+    typename std::enable_if_t<std::is_same<T, double>::value>> {
+  inline HOSTDEVICE T operator()(const T x, const T y) const {
+    return std::nextafter(x, y);
+  }
+};
+
+template <typename T>
+struct NextafterFunctor<T,
+                        typename std::enable_if_t<std::is_integral<T>::value>> {
+  inline HOSTDEVICE double operator()(const T x, const T y) const {
+    return std::nextafter(static_cast<double>(x), static_cast<double>(y));
+  }
+};
+
+template <typename T, typename Enable = void>
+struct InverseNextafterFunctor {
+  inline HOSTDEVICE T operator()(const T x, const T y) const {
+    return static_cast<T>(
+        std::nextafter(static_cast<float>(y), static_cast<float>(x)));
+  }
+};
+
+template <typename T>
+struct InverseNextafterFunctor<
+    T,
+    typename std::enable_if_t<std::is_same<T, double>::value>> {
+  inline HOSTDEVICE T operator()(const T x, const T y) const {
+    return std::nextafter(y, x);
+  }
+};
+
+template <typename T>
+struct InverseNextafterFunctor<
+    T,
+    typename std::enable_if_t<std::is_integral<T>::value>> {
+  inline HOSTDEVICE double operator()(const T x, const T y) const {
+    return std::nextafter(static_cast<double>(y), static_cast<double>(x));
+  }
+};
+
 }  // namespace funcs
 }  // namespace phi
