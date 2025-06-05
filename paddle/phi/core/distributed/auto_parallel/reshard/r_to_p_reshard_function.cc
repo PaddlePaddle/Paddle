@@ -51,6 +51,7 @@ void RToPReshardFunction::Eval(phi::DeviceContext* dev_ctx,
   const auto& in_process_ids = in.dist_attr().process_mesh().process_ids();
   if (in_process_ids.size() == 1) {
     SetValue(out, in.value());
+    SetDistProps(out, in.dims(), out_dist_attr);
     return;
   }
   const auto& out_process_mesh = out_dist_attr.process_mesh();

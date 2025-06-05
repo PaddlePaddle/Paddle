@@ -37,10 +37,6 @@ void ReshardSToRWithPadding(DeviceContext* dev_ctx,
                             int64_t padding_nums,
                             DenseTensor* out) {
   int64_t num_of_process = process_ids.size();
-  if (num_of_process == 1) {
-    *out = in;
-    return;
-  }
   auto dtype = in.dtype();
 
   // For balanced split to replicate, we need to do all gather first.
@@ -115,6 +111,7 @@ void SToRReshardFunction::Eval(DeviceContext* dev_ctx,
   const auto& in_process_ids = in_process_mesh.process_ids();
   if (in_process_ids.size() == 1) {
     SetValue(out, in.value());
+    SetDistProps(out, in.dims(), out_dist_attr);
     return;
   }
 

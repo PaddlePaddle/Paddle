@@ -123,6 +123,7 @@ void PToSReshardFunction::Eval(DeviceContext* dev_ctx,
   int64_t num_of_process = in_process_mesh.size();
   if (num_of_process == 1) {
     SetValue(out, in.value());
+    SetDistProps(out, in.dims(), out_dist_attr);
     return;
   }
   int64_t num_of_padding = in.dims()[out_split_axis] % num_of_process;
