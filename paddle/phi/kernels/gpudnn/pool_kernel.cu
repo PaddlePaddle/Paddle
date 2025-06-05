@@ -16,10 +16,10 @@ limitations under the License. */
 
 #include "paddle/phi/backends/gpu/gpu_dnn.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/pooling.h"
 #include "paddle/phi/kernels/gpudnn/pool_gpudnn.h"
-
 #include "paddle/phi/kernels/impl/pool_kernel_impl.h"
 
 namespace phi {
@@ -37,6 +37,11 @@ void PoolRawGPUDNNKernel(const Context& ctx,
                          bool adaptive,
                          const std::string& padding_algorithm,
                          DenseTensor* out) {
+  if (x.numel() == 0) {
+    phi::Full<T, Context>(
+        ctx, phi::IntArray(common::vectorize(out->dims())), NAN, out);
+    return;
+  }
   PADDLE_ENFORCE_EQ(
       ctx.GetPlace().GetType() == phi::AllocationType::GPU,
       true,

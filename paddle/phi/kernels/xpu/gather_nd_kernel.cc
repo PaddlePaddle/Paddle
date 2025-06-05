@@ -20,12 +20,12 @@
 namespace phi {
 
 template <typename T, typename Context>
-void GatherNdKernel(const Context &ctx,
+void GatherNdKernel(const Context &dev_ctx,
                     const DenseTensor &x,
                     const DenseTensor &index,
                     DenseTensor *out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
-  ctx.template Alloc<T>(out);
+  dev_ctx.template Alloc<T>(out);
 
   if (x.numel() == 0 || out->numel() == 0) return;
   if (index.dims()[0] == 0 && index.numel() == 0) return;
@@ -54,9 +54,9 @@ void GatherNdKernel(const Context &ctx,
             remain_numel,
             y_numel));
 
-    // int broadcast(Context* ctx, const T* x, T* y, const std::vector<int64_t>&
-    // xshape, const std::vector<int64_t>& yshape)
-    int r = xpu::broadcast(ctx.x_context(),
+    // int broadcast(Context* dev_ctx, const T* x, T* y, const
+    // std::vector<int64_t>& xshape, const std::vector<int64_t>& yshape)
+    int r = xpu::broadcast(dev_ctx.x_context(),
                            reinterpret_cast<const XPUType *>(x.data<T>()),
                            reinterpret_cast<XPUType *>(out->data<T>()),
                            {1, x_numel},
@@ -89,7 +89,7 @@ void GatherNdKernel(const Context &ctx,
 #ifndef PADDLE_WITH_XPU_PLUGIN
   if (index_type == DataType::INT32) {
     ret = xpu::gather_nd<XPUType, int>(
-        ctx.x_context(),
+        dev_ctx.x_context(),
         reinterpret_cast<const XPUType *>(x.data<T>()),
         index.data<int>(),
         reinterpret_cast<XPUType *>(out->data<T>()),
@@ -97,7 +97,7 @@ void GatherNdKernel(const Context &ctx,
         index_shape);
   } else {
     ret = xpu::gather_nd<XPUType, int64_t>(
-        ctx.x_context(),
+        dev_ctx.x_context(),
         reinterpret_cast<const XPUType *>(x.data<T>()),
         index.data<int64_t>(),
         reinterpret_cast<XPUType *>(out->data<T>()),
@@ -108,7 +108,7 @@ void GatherNdKernel(const Context &ctx,
 #else
   if (index_type == DataType::INT32) {
     ret = xpu::plugin::fast_gather_nd<XPUType, int>(
-        ctx.x_context(),
+        dev_ctx.x_context(),
         reinterpret_cast<const XPUType *>(x.data<T>()),
         index.data<int>(),
         reinterpret_cast<XPUType *>(out->data<T>()),
@@ -116,7 +116,7 @@ void GatherNdKernel(const Context &ctx,
         index_shape);
   } else {
     ret = xpu::plugin::fast_gather_nd<XPUType, int64_t>(
-        ctx.x_context(),
+        dev_ctx.x_context(),
         reinterpret_cast<const XPUType *>(x.data<T>()),
         index.data<int64_t>(),
         reinterpret_cast<XPUType *>(out->data<T>()),

@@ -30,7 +30,11 @@ struct DigammaFunctor {
   HOSTDEVICE void operator()(int64_t idx) const {
     using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
     const MPType mp_input = static_cast<MPType>(input_[idx]);
-    output_[idx] = static_cast<T>(Eigen::numext::digamma(mp_input));
+    MPType eigen_out = Eigen::numext::digamma(mp_input);
+    constexpr MPType mp_inf = std::numeric_limits<MPType>::infinity();
+    MPType mp_out =
+        mp_input == 0 ? (std::signbit(mp_input) ? mp_inf : -mp_inf) : eigen_out;
+    output_[idx] = static_cast<T>(mp_out);
   }
 
  private:
