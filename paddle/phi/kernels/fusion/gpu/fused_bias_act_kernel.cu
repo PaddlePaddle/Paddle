@@ -398,6 +398,56 @@ void DispatchWithDtype(const Context &dev_ctx,
                        float quant_min_bound,
                        DenseTensor *out,
                        NormalVersion) {
+  const auto &x_dims = x.dims();
+  if (bias.get_ptr() != nullptr) {
+    const auto &bias_dims = bias->dims();
+    PADDLE_ENFORCE_EQ(bias_dims.size(),
+                      1,
+                      common::errors::InvalidArgument(
+                          "The bias must be a 1D tensor, but got %dD tensor.",
+                          bias_dims.size()));
+    PADDLE_ENFORCE_EQ(
+        bias_dims[0],
+        x_dims[x_dims.size() - 1],
+        common::errors::InvalidArgument(
+            "The bias length must be equal to the last dimension of input x. "
+            "Expected %d, but got %d.",
+            x_dims[x_dims.size() - 1],
+            bias_dims[0]));
+  }
+
+  if (dequant_scales.get_ptr() != nullptr) {
+    const auto &scales_dims = dequant_scales->dims();
+    PADDLE_ENFORCE_EQ(
+        scales_dims.size(),
+        1,
+        common::errors::InvalidArgument(
+            "The dequant_scales must be a 1D tensor, but got %dD tensor.",
+            scales_dims.size()));
+    PADDLE_ENFORCE_EQ(scales_dims[0],
+                      x_dims[x_dims.size() - 1],
+                      common::errors::InvalidArgument(
+                          "The dequant_scales length must be equal to the last "
+                          "dimension of input x. "
+                          "Expected %d, but got %d.",
+                          x_dims[x_dims.size() - 1],
+                          scales_dims[0]));
+  }
+  if (shift.get_ptr() != nullptr) {
+    const auto &shift_dims = shift->dims();
+    PADDLE_ENFORCE_EQ(shift_dims,
+                      x_dims,
+                      common::errors::InvalidArgument(
+                          "The shift must have the same shape as input x."));
+  }
+  if (smooth.get_ptr() != nullptr) {
+    const auto &smooth_dims = smooth->dims();
+    PADDLE_ENFORCE_EQ(smooth_dims,
+                      x_dims,
+                      common::errors::InvalidArgument(
+                          "The smooth must have the same shape as input x."));
+  }
+
   auto *bias_p = bias.get_ptr();
   auto *dequant_scales_p = dequant_scales.get_ptr();
   auto *shift_p = shift.get_ptr();
