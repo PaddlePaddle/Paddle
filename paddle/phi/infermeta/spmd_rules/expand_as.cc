@@ -60,7 +60,10 @@ std::tuple<TensorDistAttr, TensorDistAttr> AlignExpandAsDistAttrsWithShape(
   TensorDistAttr out_dist_attr_dst =
       CopyTensorDistAttrForOutput(x_dist_attr_src);
   out_dist_attr_dst.set_dims_mapping(out_dims_mapping);
-  LOG_SPMD_INPUT(x);
+  VLOG(4) << "x";
+  VLOG(4) << "shape: [" << str_join(x_shape) << "] "
+          << "src_dist_attr: [" << x_dist_attr_src.to_string() << "] "
+          << "dst_dist_attr: [" << x_dist_attr_src.to_string() << "]";
   LOG_SPMD_OUTPUT(out_dist_attr_dst);
   return {{x_dist_attr_src}, {out_dist_attr_dst}};
 }
