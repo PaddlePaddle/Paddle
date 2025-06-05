@@ -293,7 +293,7 @@ struct RegisterGetterSetterVisitor {
   bool is_writable_;
   void *value_ptr_;
 };
-#ifdef PADDLE_WITH_CUSTOMD_DEVICE
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
 static void RegisterGlobalVarGetterSetter() {
   static std::unordered_set<std::string> registered_flags;
   const auto &flag_map = phi::GetExportedFlagInfoMap();
