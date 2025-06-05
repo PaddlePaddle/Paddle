@@ -40,7 +40,6 @@ void TopkGradKernel(const Context& dev_ctx,
   if (axis < 0) {
     axis += in_dims.size();
   }
-  const int& raw_height = in_dims[axis];
 
   // allocate the cuda memory for the x_grad
   T* x_grad_data = dev_ctx.template Alloc<T>(x_grad);
@@ -52,11 +51,11 @@ void TopkGradKernel(const Context& dev_ctx,
     return;
   }
 
-  int pre, n, post;
+  int64_t pre, n, post;
   phi::funcs::GetDims(in_dims, axis, &pre, &n, &post);
 
   // calculate the block and grid num
-  auto ComputeBlockSize = [](int col) {
+  auto ComputeBlockSize = [](int64_t col) {
     if (col > 512)
       return 1024;
     else if (col > 256 && col <= 512)
@@ -70,7 +69,7 @@ void TopkGradKernel(const Context& dev_ctx,
   };
   int block_size = ComputeBlockSize(post * k);
   int max_threads = dev_ctx.GetMaxPhysicalThreadCount();
-  const int max_blocks = std::max(((max_threads - 1) / block_size + 1), 1);
+  const int64_t max_blocks = std::max(((max_threads - 1) / block_size + 1), 1);
   int grid_size = std::min(max_blocks, pre);
 
   // launch the cuda kernel to assign the grad

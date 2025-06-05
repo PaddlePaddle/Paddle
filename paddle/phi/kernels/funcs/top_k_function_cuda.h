@@ -91,7 +91,7 @@ namespace funcs {
 using Tensor = phi::DenseTensor;
 
 inline void GetDims(
-    const phi::DDim& dim, int axis, int* pre, int* n, int* post) {
+    const phi::DDim& dim, int axis, int64_t* pre, int64_t* n, int64_t* post) {
   *pre = 1;
   *post = 1;
   *n = dim[axis];
@@ -243,8 +243,8 @@ __device__ __forceinline__ void GetTopK(Pair<T> topk[],
 template <typename T, int BlockSize>
 __device__ __forceinline__ void GetTopK(Pair<T> topk[],
                                         const T* src,
-                                        int idx,
-                                        int dim,
+                                        int64_t idx,
+                                        int64_t dim,
                                         const Pair<T>& max,
                                         int beam_size,
                                         const bool& largest) {
@@ -276,7 +276,7 @@ __device__ __forceinline__ void ThreadGetTopK(Pair<T> topk[],
                                               bool* firstStep,
                                               bool* is_empty,
                                               Pair<T>* max,
-                                              int dim,
+                                              int64_t dim,
                                               const int tid,
                                               bool largest) {
   if (*beam > 0) {
@@ -413,17 +413,17 @@ __global__ void KeMatrixTopK(T* output,
                              int output_stride,
                              int64_t* indices,
                              const T* src,
-                             int lds,
-                             int dim,
+                             int64_t lds,
+                             int64_t dim,
                              int k,
                              int grid_dim,
-                             int num,
+                             int64_t num,
                              bool largest = true) {
   const int tid = threadIdx.x;
   const int wid = tid / WARP_SIZE;
   const int lane = tid % WARP_SIZE;
   const int bid = blockIdx.x;
-  for (int i = bid; i < num; i += grid_dim) {
+  for (int64_t i = bid; i < num; i += grid_dim) {
     int top_num = k;
     __shared__ Pair<T> shared_max[BlockSize / WARP_SIZE];
     T* out = output + i * output_stride;
@@ -1014,19 +1014,19 @@ template <typename T>
 __global__ void AssignGradWithAxis(const T* grad_out,
                                    const int64_t* indices,
                                    T* grad_in,
-                                   int pre,
-                                   int post,
-                                   int raw_height,
+                                   int64_t pre,
+                                   int64_t post,
+                                   int64_t raw_height,
                                    int k) {
   // raw_height is the length of topk axis
-  for (int i = blockIdx.x; i < pre; i += gridDim.x) {
-    int base_index = i * post * k;
-    int base_grad = i * post * raw_height;
+  for (int64_t i = blockIdx.x; i < pre; i += gridDim.x) {
+    int64_t base_index = i * post * k;
+    int64_t base_grad = i * post * raw_height;
     for (int j = threadIdx.x; j < raw_height * post; j += blockDim.x) {
       grad_in[base_grad + j] = static_cast<T>(0);
     }
     __syncthreads();
-    for (int j = threadIdx.x; j < k * post; j += blockDim.x) {
+    for (int64_t j = threadIdx.x; j < k * post; j += blockDim.x) {
       int64_t idx_ij = indices[base_index + j];
       int64_t in_ij = base_grad + (idx_ij * post) + (j % post);
       grad_in[in_ij] = grad_out[base_index + j];
