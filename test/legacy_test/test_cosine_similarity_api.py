@@ -151,6 +151,25 @@ class TestCosineSimilarityAPI(unittest.TestCase):
 
         np.testing.assert_allclose(y.numpy(), np_out, rtol=1e-05)
 
+    def test_dygraph_5(self):
+        paddle.disable_static()
+
+        shape1 = [23, 1, 10]
+        shape2 = [23, 12, 1]
+        axis = 2
+        eps = 1e-6
+        np.random.seed(1)
+        np_x1 = np.random.rand(*shape1).astype(np.float32)
+        np_x2 = np.random.rand(*shape2).astype(np.float32)
+        np_out = self._get_numpy_out(np_x1, np_x2, axis=axis, eps=eps)
+
+        cos_sim_func = nn.CosineSimilarity(axis=axis, eps=eps)
+        tensor_x1 = paddle.to_tensor(np_x1)
+        tensor_x2 = paddle.to_tensor(np_x2)
+        y = cos_sim_func(tensor_x1, tensor_x2)
+
+        np.testing.assert_allclose(y.numpy(), np_out, rtol=1e-05)
+
 
 if __name__ == '__main__':
     unittest.main()
