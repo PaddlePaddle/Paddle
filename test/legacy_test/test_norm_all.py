@@ -1170,6 +1170,38 @@ class API_NormTest(unittest.TestCase):
                     complex_dtype="complex128",
                     keep_dim=keep,
                 )
+                check_linalg_matrix_complex_static(
+                    self,
+                    p="fro",
+                    axis=[-2, -1],
+                    shape_x=[0, 1, 2, 1],
+                    complex_dtype="complex64",
+                    keep_dim=keep,
+                )
+                check_linalg_matrix_complex_static(
+                    self,
+                    p="fro",
+                    axis=[-2, -1],
+                    shape_x=[0, 1, 2, 1],
+                    complex_dtype="complex128",
+                    keep_dim=keep,
+                )
+                check_linalg_matrix_complex_static(
+                    self,
+                    p="nuc",
+                    axis=[-2, -1],
+                    shape_x=[0, 1, 2, 1],
+                    complex_dtype="complex64",
+                    keep_dim=keep,
+                )
+                check_linalg_matrix_complex_static(
+                    self,
+                    p="nuc",
+                    axis=[-2, -1],
+                    shape_x=[0, 1, 2, 1],
+                    complex_dtype="complex128",
+                    keep_dim=keep,
+                )
 
     def test_dygraph(self):
         paddle.disable_static()
@@ -1572,6 +1604,38 @@ class API_NormTest(unittest.TestCase):
             check_linalg_matrix_complex_dygraph(
                 self,
                 p=np.inf,
+                axis=[-2, -1],
+                shape_x=[0, 1, 2, 1],
+                complex_dtype="complex128",
+                keep_dim=keep,
+            )
+            check_linalg_matrix_complex_dygraph(
+                self,
+                p="fro",
+                axis=[-2, -1],
+                shape_x=[0, 1, 2, 1],
+                complex_dtype="complex64",
+                keep_dim=keep,
+            )
+            check_linalg_matrix_complex_dygraph(
+                self,
+                p="fro",
+                axis=[-2, -1],
+                shape_x=[0, 1, 2, 1],
+                complex_dtype="complex128",
+                keep_dim=keep,
+            )
+            check_linalg_matrix_complex_dygraph(
+                self,
+                p="nuc",
+                axis=[-2, -1],
+                shape_x=[0, 1, 2, 1],
+                complex_dtype="complex64",
+                keep_dim=keep,
+            )
+            check_linalg_matrix_complex_dygraph(
+                self,
+                p="nuc",
                 axis=[-2, -1],
                 shape_x=[0, 1, 2, 1],
                 complex_dtype="complex128",
