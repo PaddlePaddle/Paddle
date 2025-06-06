@@ -716,7 +716,7 @@ def matrix_norm(
     Calculate the p-order matrix norm for certain  dimension of Tensor `input`.
 
     Args:
-        x (Tensor): Tensor, data type float32, float64, complex64, complex128.
+        x (Tensor): Tensor, data type float32, float64.
         p (int|float|string, optional): Default 'fro'.
         axis (int|list|tuple, optional): The axis is a list(int)/tuple(int) with two elements. Default last two dimensions.
         keepdim (bool, optional): Whether keep the dimensions as the `input`, Default False.
@@ -804,6 +804,7 @@ def matrix_norm(
             raise ValueError(
                 "The dim of frobenius norm op should be None or two elements list!"
             )
+
         if in_dynamic_or_pir_mode():
             if dim is None:
                 return _C_ops.frobenius_norm(input, [], keepdim, True)
@@ -813,10 +814,7 @@ def matrix_norm(
             if dim is None:
                 attrs['reduce_all'] = True
             check_variable_and_dtype(
-                input,
-                'input',
-                ['float32', 'float64', 'complex64', 'complex128'],
-                'frobenius_norm',
+                input, 'input', ['float32', 'float64'], 'frobenius_norm'
             )
 
             helper = LayerHelper('frobenius_norm', **locals())
@@ -841,7 +839,7 @@ def matrix_norm(
         """
         The nuclear norm OP is to calculate the nuclear norm of certain two dimensions of Tensor `input`.
         Args:
-          input (Variable): Tensor, data type float32, float64, complex64, complex128.
+          input (Variable): Tensor, data type float32, float64.
           axis (list): Two dimensions.
           keepdim (bool, optional): Whether keep the dimensions as the `input`, Default False.
           name (str|None, optional): The default value is None. Normally there is no need for
@@ -864,10 +862,7 @@ def matrix_norm(
         attrs = {'axis': axis, 'keepdim': keepdim}
 
         check_variable_and_dtype(
-            input,
-            'input',
-            ['float32', 'float64', 'complex64', 'complex128'],
-            'nuclear_norm',
+            input, 'input', ['float32', 'float64'], 'nuclear_norm'
         )
 
         block = LayerHelper('nuclear_norm', **locals())
@@ -942,7 +937,7 @@ def matrix_norm(
         """
         Calculate the p-order matrix norm for certain  dimension of Tensor `input`.
         Args:
-          input (Variable): Tensor, data type float32, float64, complex64, complex128.
+          input (Variable): Tensor, data type float32, float64.
           porder (int|float,str): p in ['fro', 'nuc', ±1, ±2, ±inf] Default 1.
           axis (list): Two dimensions.
           keepdim (bool, optional): Whether keep the dimensions as the `input`, Default False.
@@ -983,14 +978,7 @@ def matrix_norm(
         check_variable_and_dtype(
             input,
             'input',
-            [
-                'float16',
-                'uint16',
-                'float32',
-                'float64',
-                'complex64',
-                'complex128',
-            ],
+            ['float16', 'uint16', 'float32', 'float64'],
             'p_matrix_norm',
         )
 
@@ -1119,13 +1107,7 @@ def matrix_norm(
 
     if isinstance(axis, list) and len(axis) == 2:
         if p == "fro":
-            out = frobenius_norm(x, dim=axis, keepdim=keepdim, name=name)
-            if x.dtype == paddle.complex64 or x.dtype == paddle.complex128:
-                real_dtype = (
-                    "float32" if x.dtype == paddle.complex64 else "float64"
-                )
-                out = cast(out, real_dtype)
-            return out
+            return frobenius_norm(x, dim=axis, keepdim=keepdim, name=name)
         elif p == "nuc":
             return nuclear_norm(x, axis=axis, keepdim=keepdim, name=name)
         elif (
