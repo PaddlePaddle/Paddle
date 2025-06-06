@@ -277,7 +277,7 @@ def monkey_patch_tensor():
         retain_graph: bool = False,
     ) -> None:
         """
-        Run backward of current Graph which starts from current Tensor.a
+        Run backward of current Graph which starts from current Tensor.
 
         The new gradient will accumulate on previous gradient.
 

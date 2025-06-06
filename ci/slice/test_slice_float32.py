@@ -44,7 +44,14 @@ def convert_numpy(frame_name, data, cuda_device_num=0):
 
 
 def set_item_bench(
-    n, index, n_repeat, n_warmup, score_list, cuda_device_num=0, dtype="float32"
+    n,
+    index,
+    n_repeat,
+    n_warmup,
+    score_list,
+    cuda_device_num=0,
+    dtype="float32",
+    is_tensor=False,
 ):
 
     x = paddle.to_tensor(
@@ -67,15 +74,21 @@ def set_item_bench(
         index_p = convert_numpy("paddle", index, cuda_device_num=0)
     else:
         index_p = index
+
+    if is_tensor:
+        x_value = paddle.full(x[index_p].shape, 0.5, paddle_type[dtype])
+    else:
+        x_value = 0.5
+
     paddle.device.synchronize()
     # warmup
     for _ in range(n_warmup):
-        x[index_p] = 0.5
+        x[index_p] = x_value
     paddle.device.synchronize()
     for i in range(n_repeat):
         cpu_start = time.perf_counter_ns()
         start_event[i].record()
-        x[index_p] = 0.5
+        x[index_p] = x_value
         end_event[i].record()
         paddle.device.synchronize()
         cpu_end = time.perf_counter_ns()
@@ -101,16 +114,24 @@ def set_item_bench(
         index_t = convert_numpy("torch", index)
     else:
         index_t = index
+
+    if is_tensor:
+        y_value = torch.full(
+            y[index_t].shape, 0.5, device=f"cuda:{cuda_device_num}"
+        )
+    else:
+        y_value = 0.5
+
     torch.cuda.synchronize()
     # warmup
     for _ in range(n_warmup):
-        y[index_t] = 0.5
+        y[index_t] = y_value
     torch.cuda.synchronize()
 
     for i in range(n_repeat):
         start_event[i].record()
         cpu_start = time.perf_counter_ns()
-        y[index_t] = 0.5
+        y[index_t] = y_value
         end_event[i].record()
         torch.cuda.synchronize()
         cpu_end = time.perf_counter_ns()
@@ -241,7 +262,14 @@ def get_item_bench(
 
 
 def set_item_grad_bench(
-    n, index, n_repeat, n_warmup, score_list, cuda_device_num=0, dtype="float32"
+    n,
+    index,
+    n_repeat,
+    n_warmup,
+    score_list,
+    cuda_device_num=0,
+    dtype="float32",
+    is_tensor=False,
 ):
     x = paddle.to_tensor(
         n, dtype=paddle_type[dtype], place=paddle.CUDAPlace(cuda_device_num)
@@ -267,17 +295,24 @@ def set_item_grad_bench(
         index_p = convert_numpy("paddle", index)
     else:
         index_p = index
+
+    if is_tensor:
+        x_value = paddle.full(x[index_p].shape, 0.5, paddle_type[dtype])
+    else:
+        x_value = 0.5
+
     paddle.device.synchronize()
     # forward
     paddle_z = x * 1
-    paddle_z[index_p] = 0.5
+    paddle_z[index_p] = x_value
     # backward
     grad_outputs = paddle.ones_like(paddle_z)
     # warmup
     for _ in range(n_warmup):
-        grad_x = paddle.grad(
+        grad_x_ = paddle.grad(
             [paddle_z], [x], grad_outputs=grad_outputs, allow_unused=True
         )
+
     paddle.device.synchronize()
     for i in range(n_repeat):
         cpu_start = time.perf_counter_ns()
@@ -309,17 +344,28 @@ def set_item_grad_bench(
         index_t = convert_numpy("torch", index)
     else:
         index_t = index
+    if is_tensor:
+        y_value = torch.full(
+            y[index_t].shape,
+            0.5,
+            device=f"cuda:{cuda_device_num}",
+        )
+        y_value.stop_gradient = False
+    else:
+        y_value = 0.5
+
     torch.cuda.synchronize()
     # forward
     torch_z = y * 1
-    torch_z[index_t] = 0.5
+    torch_z[index_t] = y_value
     # backward
     grad_outputs = torch.ones_like(torch_z, device=f"cuda:{cuda_device_num}")
     # warmup
     for _ in range(n_warmup):
-        grad_y = torch.autograd.grad(
+        grad_y_ = torch.autograd.grad(
             [torch_z], [y], grad_outputs=grad_outputs, retain_graph=True
         )
+
     torch.cuda.synchronize()
 
     for i in range(n_repeat):
@@ -341,9 +387,9 @@ def set_item_grad_bench(
     cpu_exec_times = torch.tensor(cpu_exec_times, dtype=torch_type[dtype])
     torch_gpu = (torch.mean(gpu_exec_times) * 1000).cpu().numpy().item()
     torch_cpu = (cpu_exec_times / n_repeat).cpu().numpy().item()
-    for i in range(len(grad_x)):
+    for i in range(len(grad_x_)):
         np.testing.assert_allclose(
-            grad_x[i].cpu().numpy(), grad_y[i].cpu().numpy()
+            grad_x_[i].cpu().numpy(), grad_y_[i].cpu().numpy()
         )
 
     print(
@@ -471,12 +517,17 @@ def get_item_grad_bench(
 
 
 def test_dtype(
-    first_index_dict, second_index_dict, n_repeat, n_warmup, dtype="float32"
+    first_index_dict,
+    second_index_dict,
+    n_repeat,
+    n_warmup,
+    dtype="float32",
+    is_tensor=False,
 ):
     print("========== test ", dtype, " =============")
     get_item_score = []
-    set_item_score = []
     get_item_grad_score = []
+    set_item_score = []
     set_item_grad_score = []
     for key in first_index_dict:
         index_list = first_index_dict[key]
@@ -487,24 +538,26 @@ def test_dtype(
         for index in index_list:
             i += 1
             print("index = ", str(index))
-            get_item_bench(
-                n,
-                index,
-                n_repeat,
-                n_warmup,
-                get_item_score,
-                cuda_device_num=cuda_device_num,
-                dtype=dtype,
-            )
-            get_item_grad_bench(
-                n,
-                index,
-                n_repeat,
-                n_warmup,
-                get_item_grad_score,
-                cuda_device_num=cuda_device_num,
-                dtype=dtype,
-            )
+            if not is_tensor:
+                get_item_bench(
+                    n,
+                    index,
+                    n_repeat,
+                    n_warmup,
+                    get_item_score,
+                    cuda_device_num=cuda_device_num,
+                    dtype=dtype,
+                )
+                get_item_grad_bench(
+                    n,
+                    index,
+                    n_repeat,
+                    n_warmup,
+                    get_item_grad_score,
+                    cuda_device_num=cuda_device_num,
+                    dtype=dtype,
+                )
+
             set_item_bench(
                 n,
                 index,
@@ -513,6 +566,7 @@ def test_dtype(
                 set_item_score,
                 cuda_device_num=cuda_device_num,
                 dtype=dtype,
+                is_tensor=is_tensor,
             )
             if key == "combined" and i == 3:
                 continue
@@ -524,6 +578,7 @@ def test_dtype(
                 set_item_grad_score,
                 cuda_device_num=cuda_device_num,
                 dtype=dtype,
+                is_tensor=is_tensor,
             )
             print(" ")
 
@@ -534,24 +589,25 @@ def test_dtype(
         print("x.shape = ", n.shape)
         for index in index_list:
             print("index = ", str(index))
-            get_item_bench(
-                n,
-                index,
-                n_repeat,
-                n_warmup,
-                get_item_score,
-                cuda_device_num=cuda_device_num,
-                dtype=dtype,
-            )
-            get_item_grad_bench(
-                n,
-                index,
-                n_repeat,
-                n_warmup,
-                get_item_grad_score,
-                cuda_device_num=cuda_device_num,
-                dtype=dtype,
-            )
+            if not is_tensor:
+                get_item_bench(
+                    n,
+                    index,
+                    n_repeat,
+                    n_warmup,
+                    get_item_score,
+                    cuda_device_num=cuda_device_num,
+                    dtype=dtype,
+                )
+                get_item_grad_bench(
+                    n,
+                    index,
+                    n_repeat,
+                    n_warmup,
+                    get_item_grad_score,
+                    cuda_device_num=cuda_device_num,
+                    dtype=dtype,
+                )
 
             set_item_bench(
                 n,
@@ -561,6 +617,7 @@ def test_dtype(
                 set_item_score,
                 cuda_device_num=cuda_device_num,
                 dtype=dtype,
+                is_tensor=is_tensor,
             )
             set_item_grad_bench(
                 n,
@@ -570,6 +627,7 @@ def test_dtype(
                 set_item_grad_score,
                 cuda_device_num=cuda_device_num,
                 dtype=dtype,
+                is_tensor=is_tensor,
             )
             print(" ")
     score_lists = [
@@ -737,12 +795,20 @@ def main():
         ]
     }
 
-    n_repeat = 80
-    n_warmup = 5
+    n_repeat = 1
+    n_warmup = 1
 
     print(" n_repeat = ", n_repeat)
     print(" n_warmup = ", n_warmup)
 
+    test_dtype(
+        first_index_dict,
+        second_index_dict,
+        n_repeat,
+        n_warmup,
+        dtype="float32",
+        is_tensor=True,
+    )
     test_dtype(
         first_index_dict, second_index_dict, n_repeat, n_warmup, dtype="float32"
     )
