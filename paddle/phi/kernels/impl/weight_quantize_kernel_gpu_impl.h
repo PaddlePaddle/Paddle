@@ -434,4 +434,75 @@ void weight_quant_gpu(const GPUContext& dev_ctx,
   }
 }
 
+// pack int8 weight to 2int4 int one int8
+__global__ void weight_permute_transpose_interleave_kernel_w4a8(
+    const int8_t* input_data_ptr,
+    int8_t* output_data_ptr,
+    int numel,
+    int total_k,
+    int total_n) {
+  const int interleave = 4;
+  const int interleave_group = 64;
+  const int permute_group = 32;
+
+  for (int block_n = blockIdx.x; block_n < total_n / interleave;
+       block_n += gridDim.x) {
+    const int8_t* src_ptr = input_data_ptr + block_n * interleave;
+    int8_t* dst_ptr = output_data_ptr + block_n * interleave * total_k / 2;
+
+    for (int block_k = threadIdx.y; block_k < total_k / interleave_group;
+         block_k += blockDim.y) {
+      const int8_t* src_ptr_1 = src_ptr + block_k * interleave_group * total_n;
+      int8_t* dst_ptr_1 = dst_ptr + block_k * interleave_group * interleave / 2;
+
+      int tid_div_16 = threadIdx.x / 16;
+      int tid_mod_16 = threadIdx.x % 16;
+
+      int src_offset = (tid_div_16 * permute_group + tid_mod_16) * total_n;
+
+#pragma unroll
+      for (int idx = 0; idx < interleave; idx++) {
+        const int8_t* src_ptr_2 = src_ptr_1 + idx;
+        int8_t* dst_ptr_2 = dst_ptr_1 + idx * interleave_group / 2;
+
+        int8_t tmp0 = src_ptr_2[src_offset];
+        int8_t tmp1 = src_ptr_2[src_offset + permute_group / 2 * total_n];
+
+        int8_t packed_val = (tmp0 & 0x0f) | ((tmp1 & 0x0f) << 4);
+
+        int dst_offset = threadIdx.x;
+        dst_ptr_2[dst_offset] = packed_val;
+      }
+    }
+  }
+}
+
+template <typename GPUContext>
+void weight_permute_gpu_w4a8(const GPUContext& dev_ctx,
+                             const int8_t* input_data,
+                             int8_t* output_data,
+                             const std::vector<int>& shape,
+                             const int32_t arch,
+                             const std::string& algo) {
+  auto total_k = shape[0];
+  auto total_n = shape[1];
+  auto numel = total_k * total_n;
+  auto gpu_config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel, 1);
+  int grid_size = gpu_config.GetGridSize();
+  int block_size = gpu_config.GetBlockSize();
+  VLOG(2) << "weight_permute_gpu: total_k = " << total_k
+          << "total_n = " << total_n << "grid size = " << grid_size
+          << " block size = " << block_size;
+  if (arch > 70) {
+    if (algo == "w4a8") {
+      dim3 block_dim(32, block_size / 32);
+      weight_permute_transpose_interleave_kernel_w4a8<<<grid_size, block_dim>>>(
+          input_data, output_data, numel, total_k, total_n);
+    }
+  } else {
+    phi::errors::Unimplemented(
+        "The algo %s support need arch > 70, but got algo = %d.", algo, arch);
+  }
+}
+
 }  // namespace phi
