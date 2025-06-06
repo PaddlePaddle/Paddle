@@ -344,7 +344,6 @@ inline void GetDecreasedDimsAndStrides(const std::vector<T> slice_dims,
                                        std::vector<T>* new_strides,
                                        std::vector<T>* infer_flags = nullptr) {
   std::vector<uint8_t> decrease_flag(slice_dims.size(), 0);
-
   if (none_axes.size() > 0) {
     size_t none_axes_cur = 0, decrease_axes_cur = 0;
     for (int i = 0; i < slice_dims.size(); ++i) {
@@ -364,7 +363,7 @@ inline void GetDecreasedDimsAndStrides(const std::vector<T> slice_dims,
     }
     while (none_axes_cur < none_axes.size()) {
       new_dims->push_back(1);
-      new_strides->push_back(slice_strides[-1]);
+      new_strides->push_back(slice_strides[slice_strides.size() - 1]);
       none_axes_cur++;
     }
   } else if (decrease_axes.size() > 0) {

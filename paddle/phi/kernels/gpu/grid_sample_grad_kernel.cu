@@ -19,6 +19,7 @@
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/gpu/grid_sample_utils.h"
 
@@ -572,6 +573,20 @@ void GridSampleGradKernel(const Context& dev_ctx,
                           bool align_corners,
                           DenseTensor* x_grad,
                           DenseTensor* grid_grad) {
+  if (out_grad.numel() == 0) {
+    if (x_grad) {
+      phi::Full<T, Context>(
+          dev_ctx, phi::IntArray(common::vectorize(x_grad->dims())), 0, x_grad);
+    }
+    if (grid_grad) {
+      phi::Full<T, Context>(dev_ctx,
+                            phi::IntArray(common::vectorize(grid_grad->dims())),
+                            0,
+                            grid_grad);
+    }
+    return;
+  }
+
   PaddingMode enum_padding_mode;
   Mode enum_mode;
   if (padding_mode == "border") {

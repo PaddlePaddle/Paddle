@@ -46,6 +46,11 @@ void PoolGradRawGPUDNNKernel(const Context& ctx,
       true,
       errors::InvalidArgument("Pool operator CUDA kernel must use CUDAPlace "
                               "rather than CPUPlace."));
+
+  if (dx && dx->numel() == 0) {
+    ctx.template Alloc<T>(dx);
+    return;
+  }
   auto run_cuda_kernel = [&]() {
     PoolGradRawKernel<T, GPUContext>(ctx,
                                      x,

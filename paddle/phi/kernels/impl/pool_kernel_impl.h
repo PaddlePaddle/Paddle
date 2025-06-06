@@ -17,6 +17,7 @@ limitations under the License. */
 #include <algorithm>
 
 #include "paddle/common/ddim.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/pooling.h"
 #include "paddle/phi/kernels/pool_kernel.h"
 
@@ -63,6 +64,11 @@ void PoolRawKernel(const Context& ctx,
                    const std::string& padding_algorithm,
                    const float norm_type,
                    DenseTensor* out) {
+  if (x.numel() == 0) {
+    phi::Full<T, Context>(
+        ctx, phi::IntArray(common::vectorize(out->dims())), NAN, out);
+    return;
+  }
   const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
   std::vector<int64_t> paddings_ = paddings;
   std::vector<int64_t> kernel_size_ = kernel_size;
@@ -221,6 +227,18 @@ void MaxPoolWithIndexRawKernel(const Context& ctx,
                                bool adaptive,
                                DenseTensor* out,
                                DenseTensor* mask) {
+  if (x.numel() == 0) {
+    if (out) {
+      phi::Full<T1, Context>(
+          ctx, phi::IntArray(common::vectorize(out->dims())), NAN, out);
+    }
+    if (mask) {
+      phi::Full<T2, Context>(
+          ctx, phi::IntArray(common::vectorize(mask->dims())), 0, mask);
+    }
+    return;
+  }
+
   std::vector<int> paddings_ = paddings;
   std::vector<int> kernel_size_ = kernel_size;
 
@@ -390,6 +408,18 @@ void FractionalMaxPoolRawKernel(const Context& ctx,
                                 bool return_mask,
                                 DenseTensor* out,
                                 DenseTensor* mask) {
+  if (x.numel() == 0) {
+    if (out) {
+      phi::Full<T1, Context>(
+          ctx, phi::IntArray(common::vectorize(out->dims())), NAN, out);
+    }
+    if (mask) {
+      phi::Full<T2, Context>(
+          ctx, phi::IntArray(common::vectorize(mask->dims())), 0, mask);
+    }
+    return;
+  }
+
   std::vector<int> output_size_ = output_size;
 
   switch (output_size_.size()) {

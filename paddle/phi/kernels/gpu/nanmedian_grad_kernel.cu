@@ -111,6 +111,10 @@ void NanmedianGradKernel(const Context& dev_ctx,
                          bool keepdim UNUSED,
                          const std::string& mode,
                          DenseTensor* x_grad) {
+  if (x_grad && x_grad->numel() == 0) {
+    dev_ctx.template Alloc<T>(x_grad);
+    return;
+  }
   DenseTensor tmp_x;
   auto rank = x.dims().size();
   if ((axes.size() == 0) || rank <= 1) {

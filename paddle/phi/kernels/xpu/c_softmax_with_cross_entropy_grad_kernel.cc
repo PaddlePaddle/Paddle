@@ -35,6 +35,7 @@ void CSoftmaxWithCrossEntropyGradKernel(const Context& dev_ctx,
                                         int rank,
                                         int nranks,
                                         DenseTensor* logits_grad) {
+#if defined(PADDLE_WITH_BKCL)
   using XPUType = typename XPUTypeTrait<T>::Type;
   const phi::DenseTensor* labels = &label_in;
   const phi::DenseTensor* loss_grad = &loss_grad_in;
@@ -78,6 +79,11 @@ void CSoftmaxWithCrossEntropyGradKernel(const Context& dev_ctx,
         ignore_index);
   }
   PADDLE_ENFORCE_XDNN_SUCCESS(ret, "mask_label_by_index_grad");
+#else
+  PADDLE_THROW(common::errors::PreconditionNotMet(
+      "PaddlePaddle is not compiled with DWITH_XPU_BKCL, please recompile with "
+      "DWITH_XPU_BKCL for using c_softmax_with_cross_entropy_grad."));
+#endif
 }
 
 }  // namespace phi

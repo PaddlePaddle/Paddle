@@ -45,7 +45,7 @@ void PSendKernel(const Context& dev_ctx,
 #else
   PADDLE_THROW(common::errors::PreconditionNotMet(
       "PaddlePaddle is not compiled with DWITH_XPU_BKCL, please recompile with "
-      "DWITH_XPU_BKCL for using p_send_kernel."));
+      "DWITH_XPU_BKCL for using p_send kernel."));
 #endif
 }
 
@@ -68,7 +68,7 @@ void PSendArrayKernel(const Context& dev_ctx,
 #else
   PADDLE_THROW(common::errors::PreconditionNotMet(
       "PaddlePaddle is not compiled with DWITH_XPU_BKCL, please recompile with "
-      "DWITH_XPU_BKCL for using p_send_kernel."));
+      "DWITH_XPU_BKCL for using p_send_array kernel."));
 #endif
 }
 

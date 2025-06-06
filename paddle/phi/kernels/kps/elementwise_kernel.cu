@@ -45,7 +45,6 @@ void MultiplyKernel(const Context& dev_ctx,
                     const DenseTensor& y,
                     DenseTensor* out) {
   if (x.numel() == 0 || y.numel() == 0) {
-    out->Resize(out->dims());
     dev_ctx.template Alloc<T>(out);
     return;
   }
@@ -58,7 +57,6 @@ void DivideKernel(const Context& dev_ctx,
                   const DenseTensor& y,
                   DenseTensor* out) {
   if (x.numel() == 0 || y.numel() == 0) {
-    out->Resize(out->dims());
     dev_ctx.template Alloc<T>(out);
     return;
   }
@@ -100,7 +98,6 @@ void AddKernel(const Context& dev_ctx,
                const DenseTensor& y,
                DenseTensor* out) {
   if (x.numel() == 0 || y.numel() == 0) {
-    out->Resize(out->dims());
     dev_ctx.template Alloc<T>(out);
     return;
   }
@@ -210,7 +207,6 @@ void NextafterKernel(const Context& dev_ctx,
   }
   std::vector<const DenseTensor*> inputs = {&x, &y};
   std::vector<DenseTensor*> outputs = {out};
-
   dev_ctx.template Alloc<T>(out);
   funcs::BroadcastKernel<T>(
       dev_ctx, inputs, &outputs, funcs::NextafterFunctor<T>());
@@ -289,6 +285,8 @@ PD_REGISTER_KERNEL(copysign,
                    double,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}
+PD_REGISTER_KERNEL(
+    nextafter, GPU, ALL_LAYOUT, phi::NextafterKernel, float, double) {}
 
 PD_REGISTER_KERNEL(
     nextafter, GPU, ALL_LAYOUT, phi::NextafterKernel, float, double) {}

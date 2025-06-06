@@ -141,6 +141,9 @@ void UnpoolKernel(const Context& dev_ctx,
                   const std::string& data_format,
                   DenseTensor* out) {
   T* output_data = dev_ctx.template Alloc<T>(out);
+  if (out->numel() == 0) {
+    return;
+  }
   if (output_data) {
     phi::funcs::SetConstant<Context, T> set_zero;
     set_zero(dev_ctx, out, static_cast<T>(0));
@@ -167,6 +170,9 @@ void Unpool3dKernel(const Context& dev_ctx,
                     const std::string& data_format,
                     DenseTensor* out) {
   T* output_data = dev_ctx.template Alloc<T>(out);
+  if (out->numel() == 0) {
+    return;
+  }
   if (output_data) {
     phi::funcs::SetConstant<Context, T> set_zero;
     set_zero(dev_ctx, out, static_cast<T>(0));
