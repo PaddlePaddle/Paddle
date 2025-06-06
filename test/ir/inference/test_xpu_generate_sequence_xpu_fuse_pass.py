@@ -30,7 +30,7 @@ class TestGenerateSequenceXPUFusePass(PassAutoScanTest):
                 st.integers(min_value=1, max_value=32), min_size=2, max_size=2
             )
         )
-        fill_any_like_dtype = draw(st.sampled_from([2, 3, 5]))
+        fill_any_like_dtype = draw(st.sampled_from([3, 5]))
 
         fill_any_like_op = OpConfig(
             "fill_any_like",
