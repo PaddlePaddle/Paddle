@@ -141,9 +141,10 @@ class CastLonglong2IntMutator : public ir::IRMutator<> {
     // min(min(S0, 1ll), 1ll) ==> min(min(S0, 1), 1)
     // min(V[S0, S1], 1ll)    ==> min(V[S0, S1], 1ll)
     // min(S0 + 1ll, 1ll)     ==> max(S0 + 1, 1)
-    // IndexType::kValid means expr only has +-*/%, Const, Symbol, Min, Max.
+    // min(V[0], S0)          ==> min((int32)V[0], S1)
+    // min(var_local, S0)     ==> min((int32)var_local, S0)
     // IsDynamic == true means expr has Symbol.
-    if (optim::VerifyIndex(*expr) == ir::IndexExpr::IndexType::kValid &&
+    if (optim::VerifyIndex(*expr) != ir::IndexExpr::IndexType::kInvalid &&
         expr->as_index().IsDynamic()) {
       ir::ElevateInt64ToInt32_((*expr)->operands);
     } else {
@@ -153,12 +154,26 @@ class CastLonglong2IntMutator : public ir::IRMutator<> {
   }
   void Visit(const ir::Max* op, Expr* expr) override {
     auto node = expr->As<ir::Max>();
-    if (optim::VerifyIndex(*expr) == ir::IndexExpr::IndexType::kValid &&
+    if (optim::VerifyIndex(*expr) != ir::IndexExpr::IndexType::kInvalid &&
         expr->as_index().IsDynamic()) {
       ir::ElevateInt64ToInt32_((*expr)->operands);
     } else {
       ir::IRMutator<>::Visit(&node->a(), &node->a());
       ir::IRMutator<>::Visit(&node->b(), &node->b());
+    }
+  }
+  void Visit(const ir::Call* op, Expr* expr) override {
+    auto node = expr->As<ir::Call>();
+    if (op->name == "CINN_ENTAIL_LOOP_CONDITION") {
+      // args of CINN_ENTAIL_LOOP_CONDITION is [loop_var, condition, stride],
+      // loop_var type is equal to stride type, so we only need to elevate
+      // condition and stride to int32.
+      ir::ElevateInt64ToInt32_(node->read_args[1]->operands);
+      ir::ElevateInt64ToInt32_(node->read_args[2]);
+    } else {
+      for (auto& expr : node->read_args) {
+        ir::IRMutator<>::Visit(&expr, &expr);
+      }
     }
   }
 };

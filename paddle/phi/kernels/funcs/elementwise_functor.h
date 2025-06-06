@@ -22,7 +22,7 @@ limitations under the License. */
 #include "paddle/phi/core/enforce.h"
 #if defined(__xpu__)
 #include <xpu/runtime.h>
-
+#include <type_traits>
 #include "xpu/kernel/math_xpu2.h"  // pow()
 #endif
 #include "paddle/phi/common/amp_type_traits.h"
@@ -467,9 +467,40 @@ struct MultiplyGradXYFunctor<ComplexType<InT>, ComplexType<OutT>> {
 };
 
 // Maximum
-template <typename T>
+template <typename T, typename Enable = void>
 struct MaximumFunctor {
   inline HOSTDEVICE T operator()(const T a, const T b) const {
+    if constexpr ((std::is_floating_point_v<T>)&&(
+                      !(std::is_same_v<T, int32_t> ||
+                        std::is_same_v<T, int64_t>))) {
+#if defined(__CUDACC__) || defined(__HIPCC__)
+      if (::isnan(a)) {
+        return a;
+      }
+      if (::isnan(b)) {
+        return b;
+      }
+#else
+      if (std::isnan(a)) {
+        return a;
+      }
+      if (std::isnan(b)) {
+        return b;
+      }
+#endif
+    }
+    return a > b ? a : b;
+  }
+};
+
+template <typename T>
+struct MaximumFunctor<
+    T,
+    typename std::enable_if<std::is_same_v<T, phi::dtype::bfloat16> ||
+                            std::is_same_v<T, phi::dtype::float16>>::type> {
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
+    if (phi::dtype::isnan(a)) return a;
+    if (phi::dtype::isnan(b)) return b;
     return a > b ? a : b;
   }
 };
@@ -509,12 +540,44 @@ struct MaxGradXYFunctor {
 };
 
 // Minimum
-template <typename T>
+template <typename T, typename Enable = void>
 struct MinimumFunctor {
   inline HOSTDEVICE T operator()(const T a, const T b) const {
+    if constexpr (std::is_floating_point_v<T> &&
+                  (!(std::is_same_v<T, int32_t> ||
+                     std::is_same_v<T, int64_t>))) {
+#if defined(__CUDACC__) || defined(__HIPCC__)
+      if (::isnan(a)) {
+        return a;
+      }
+      if (::isnan(b)) {
+        return b;
+      }
+#else
+      if (std::isnan(a)) {
+        return a;
+      }
+      if (std::isnan(b)) {
+        return b;
+      }
+#endif
+    }
     return a < b ? a : b;
   }
 };
+
+template <typename T>
+struct MinimumFunctor<
+    T,
+    typename std::enable_if<std::is_same_v<T, phi::dtype::bfloat16> ||
+                            std::is_same_v<T, phi::dtype::float16>>::type> {
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
+    if (phi::dtype::isnan(a)) return a;
+    if (phi::dtype::isnan(b)) return b;
+    return a < b ? a : b;
+  }
+};
+
 template <typename T>
 struct MinGradXFunctor {
   inline HOSTDEVICE T operator()(const T x, const T y, const T dout) const {
@@ -735,6 +798,13 @@ template <typename T>
 struct ElementwiseHeavisideFunctor {
   inline HOSTDEVICE T operator()(const T a, const T b) const {
     return a == static_cast<T>(0) ? b : static_cast<T>(a > static_cast<T>(0));
+  }
+};
+
+template <typename T>
+struct ElementwiseInverseHeavisideFunctor {
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
+    return b == static_cast<T>(0) ? a : static_cast<T>(b > static_cast<T>(0));
   }
 };
 
@@ -1012,6 +1082,32 @@ struct ElementwiseInversePowFunctor {
   }
 };
 
+template <typename T>
+struct ElementwisePowFunctor<ComplexType<T>> {
+  inline HOSTDEVICE ComplexType<T> operator()(const ComplexType<T> a,
+                                              const ComplexType<T> b) const {
+#if defined(__CUDA_ARCH__) || defined(__HIPCC__)
+    return pow(a, b);
+#else
+    return std::pow(static_cast<std::complex<T>>(a),
+                    static_cast<std::complex<T>>(b));
+#endif
+  }
+};
+
+template <typename T>
+struct ElementwiseInversePowFunctor<ComplexType<T>> {
+  inline HOSTDEVICE ComplexType<T> operator()(const ComplexType<T> a,
+                                              const ComplexType<T> b) const {
+#if defined(__CUDA_ARCH__) || defined(__HIPCC__)
+    return pow(a, b);
+#else
+    return std::pow(static_cast<std::complex<T>>(b),
+                    static_cast<std::complex<T>>(a));
+#endif
+  }
+};
+
 // copysign forward and grad functors
 template <typename T>
 inline HOSTDEVICE auto copysign_func(const T& a, const T& b) {
@@ -1075,6 +1171,57 @@ template <typename T>
 struct InverseCopySignFunctor {
   inline HOSTDEVICE T operator()(const T a, const T b) const {
     return copysign_func(b, a);
+  }
+};
+
+template <typename T, typename Enable = void>
+struct NextafterFunctor {
+  inline HOSTDEVICE T operator()(const T x, const T y) const {
+    return static_cast<T>(
+        std::nextafter(static_cast<float>(x), static_cast<float>(y)));
+  }
+};
+
+template <typename T>
+struct NextafterFunctor<
+    T,
+    typename std::enable_if_t<std::is_same<T, double>::value>> {
+  inline HOSTDEVICE T operator()(const T x, const T y) const {
+    return std::nextafter(x, y);
+  }
+};
+
+template <typename T>
+struct NextafterFunctor<T,
+                        typename std::enable_if_t<std::is_integral<T>::value>> {
+  inline HOSTDEVICE double operator()(const T x, const T y) const {
+    return std::nextafter(static_cast<double>(x), static_cast<double>(y));
+  }
+};
+
+template <typename T, typename Enable = void>
+struct InverseNextafterFunctor {
+  inline HOSTDEVICE T operator()(const T x, const T y) const {
+    return static_cast<T>(
+        std::nextafter(static_cast<float>(y), static_cast<float>(x)));
+  }
+};
+
+template <typename T>
+struct InverseNextafterFunctor<
+    T,
+    typename std::enable_if_t<std::is_same<T, double>::value>> {
+  inline HOSTDEVICE T operator()(const T x, const T y) const {
+    return std::nextafter(y, x);
+  }
+};
+
+template <typename T>
+struct InverseNextafterFunctor<
+    T,
+    typename std::enable_if_t<std::is_integral<T>::value>> {
+  inline HOSTDEVICE double operator()(const T x, const T y) const {
+    return std::nextafter(static_cast<double>(y), static_cast<double>(x));
   }
 };
 

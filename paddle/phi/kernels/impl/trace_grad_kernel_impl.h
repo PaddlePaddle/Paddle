@@ -88,6 +88,10 @@ void TraceGradKernel(const Context& ctx,
                      int axis1,
                      int axis2,
                      DenseTensor* in_grad) {
+  if (in_grad && in_grad->numel() == 0) {
+    ctx.template Alloc<T>(in_grad);
+    return;
+  }
   auto input_dims = in_grad->dims();
   auto input_stride = common::stride(input_dims);
   auto output_dims = out_grad.dims();
@@ -104,10 +108,10 @@ void TraceGradKernel(const Context& ctx,
   auto dim2 = axis2;
   auto dim1_ = dim1 < 0 ? input_dims.size() + dim1 : dim1;
   auto dim2_ = dim2 < 0 ? input_dims.size() + dim2 : dim2;
-  auto len1 = input_dims[std::min(dim1_, dim2_)];
-  auto len2 = input_dims[std::max(dim1_, dim2_)];
-  auto stride1 = input_stride[std::min(dim1_, dim2_)];
-  auto stride2 = input_stride[std::max(dim1_, dim2_)];
+  auto len1 = input_dims[dim1_];
+  auto len2 = input_dims[dim2_];
+  auto stride1 = input_stride[dim1_];
+  auto stride2 = input_stride[dim2_];
 
   int offset_stride = 0;
   if (offset >= 0) {

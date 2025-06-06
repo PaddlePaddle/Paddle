@@ -14,7 +14,6 @@
 
 #include "paddle/cinn/backends/llvm/execution_engine.h"
 
-#include <absl/strings/string_view.h>
 #include <llvm/ADT/Triple.h>
 #include <llvm/AsmParser/Parser.h>
 #include <llvm/Config/llvm-config.h>
@@ -52,6 +51,7 @@
 #include <memory>
 #include <mutex>  // NOLINT
 #include <string>
+#include <string_view>
 #include <utility>
 
 #include "paddle/cinn/backends/codegen_cuda_host.h"
@@ -265,7 +265,7 @@ void ExecutionEngine::ExportObject(const std::string &path) {
   fclose(of);
 }
 
-void *ExecutionEngine::Lookup(absl::string_view name) {
+void *ExecutionEngine::Lookup(std::string_view name) {
   utils::RecordEvent("ExecutionEngine Lookup", utils::EventType::kOrdinary);
   std::lock_guard<std::mutex> lock(mu_);
   if (auto symbol = jit_->lookup(AsStringRef(name))) {

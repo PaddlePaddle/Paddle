@@ -26,6 +26,9 @@ from paddle.base import core
 if sys.platform == 'win32':
     RTOL = {'float32': 1e-02, 'float64': 1e-04}
     ATOL = {'float32': 1e-02, 'float64': 1e-04}
+elif sys.platform == 'darwin':
+    RTOL = {'float32': 1e-06, 'float64': 1e-12}
+    ATOL = {'float32': 1e-06, 'float64': 1e-12}
 else:
     RTOL = {'float32': 1e-06, 'float64': 1e-15}
     ATOL = {'float32': 1e-06, 'float64': 1e-15}

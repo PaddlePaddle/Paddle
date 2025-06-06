@@ -48,7 +48,7 @@ void CBroadcastKernel(const Context& dev_ctx,
                                      dtype,
                                      root,
                                      comm->GetXcclComm(),
-                                     *stream);
+                                     stream->raw_stream());
     VLOG(3) << "rank " << comm->GetRank() << " invoke Bcast. sent "
             << x->numel();
     if (out != x) {
@@ -65,7 +65,7 @@ void CBroadcastKernel(const Context& dev_ctx,
                                      dtype,
                                      root,
                                      comm->GetXcclComm(),
-                                     *stream);
+                                     stream->raw_stream());
     VLOG(3) << "rank " << comm->GetRank() << " invoke Bcast. received "
             << common::product(out->dims());
   }

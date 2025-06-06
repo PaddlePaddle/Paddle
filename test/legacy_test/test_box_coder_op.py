@@ -482,6 +482,39 @@ class TestBoxCoderSupporttuple(unittest.TestCase):
         paddle.enable_static()
 
 
+class TestBoxCoderOp_ZeroSize(OpTest):
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
+    def setUp(self):
+        self.op_type = "box_coder"
+        self.python_api = paddle.vision.ops.box_coder
+        lod = [[1, 1, 1, 1, 1]]
+        prior_box = np.random.random((81, 4)).astype('float32')
+        prior_box_var = np.random.random((81, 4)).astype('float32')
+        target_box = np.random.random((0, 81, 4)).astype('float32')
+        code_type = "DecodeCenterSize"
+        box_normalized = False
+        output_box = batch_box_coder(
+            prior_box,
+            prior_box_var,
+            target_box,
+            lod[0],
+            code_type,
+            box_normalized,
+        )
+        self.inputs = {
+            'PriorBox': prior_box,
+            'PriorBoxVar': prior_box_var,
+            'TargetBox': target_box,
+        }
+        self.attrs = {
+            'code_type': 'decode_center_size',
+            'box_normalized': False,
+        }
+        self.outputs = {'OutputBox': output_box}
+
+
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()

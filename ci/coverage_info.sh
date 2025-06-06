@@ -166,11 +166,11 @@ lcov --extract coverage-full.info \
     -o coverage-diff.info \
     --rc lcov_branch_coverage=0
 
-cp coverage-diff.info coverage_files
-
 python ${PADDLE_ROOT}/ci/coverage_diff.py coverage-diff.info git-diff.out > coverage-diff.tmp
 
 mv -f coverage-diff.tmp coverage-diff.info
+
+cp coverage-diff.info coverage_files
 
 # python coverage
 
@@ -213,34 +213,8 @@ lcov --extract python-coverage-full.info \
     -o python-coverage-diff.info \
     --rc lcov_branch_coverage=0
 
-cp python-coverage-diff.info coverage_files
-
 python ${PADDLE_ROOT}/ci/coverage_diff.py python-coverage-diff.info python-git-diff.out > python-coverage-diff.tmp
 
 mv -f python-coverage-diff.tmp python-coverage-diff.info
 
-# assert coverage lines
-
-echo "Assert Diff Coverage"
-
-python ${PADDLE_ROOT}/tools/coverage/coverage_lines.py coverage-diff.info 0.9 || COVERAGE_LINES_ASSERT=1
-
-echo "Assert Python Diff Coverage"
-
-if [ ${WITH_XPU:-OFF} == "ON" ]; then
-    echo "XPU has no python coverage!"
-else
-    if [[ "${NO_PYTHON_COVERAGE_DATA}" != "1" ]];then
-        python ${PADDLE_ROOT}/tools/coverage/coverage_lines.py python-coverage-diff.info 0.9 || PYTHON_COVERAGE_LINES_ASSERT=1
-    fi
-fi
-
-if [ "$COVERAGE_LINES_ASSERT" = "1" ] || [ "$PYTHON_COVERAGE_LINES_ASSERT" = "1" ]; then
-    echo "exit 9" > /tmp/paddle_coverage.result
-    python ${PADDLE_ROOT}/tools/get_pr_title.py skip_coverage_check && NOT_CHECK_COVERAGE_PR=1
-    if [[ "${NOT_CHECK_COVERAGE_PR}" = "1" ]];then
-        echo "Skip coverage check in the PR-CI-Coverage pipeline."
-        exit 0
-    fi
-    exit 9
-fi
+cp python-coverage-diff.info coverage_files

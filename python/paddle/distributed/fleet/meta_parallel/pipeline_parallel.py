@@ -2760,6 +2760,9 @@ class PipelineParallelWithInterleave(PipelineParallel):
 
         # reset dynamic meta counter
         if self._dynamic_shape:
+            assert self._p2p_helper._dynamic_cnt == len(
+                self._p2p_helper._send_recv_meta_list
+            ), "p2p dynamic_cnt should equal to send_recv_meta_list"
             self._p2p_helper._dynamic_cnt = 0
 
         return train_loss
@@ -3358,6 +3361,13 @@ class VPPFhenBInBalancedMemory(PipelineParallelWithInterleaveFthenB):
         assert (
             backward_send_recv_buffer_queue.empty()
         ), "send_recv buffer should be empty"
+
+        # reset dynamic meta counter
+        if self._dynamic_shape:
+            assert self._p2p_helper._dynamic_cnt == len(
+                self._p2p_helper._send_recv_meta_list
+            ), "p2p dynamic_cnt should equal to send_recv_meta_list"
+            self._p2p_helper._dynamic_cnt = 0
 
         self._flush_records()
         self._sync_overlap_grads()

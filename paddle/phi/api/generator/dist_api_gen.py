@@ -1612,7 +1612,7 @@ class DistForwardAPI(ForwardAPI):
     def get_shape_type(self, attr_info):
         shape_type = "int"
         for name, info in attr_info.items():
-            if "IntArray" in info[0]:
+            if "IntArray" in info[0] or "int64_t" in info[0]:
                 shape_type = "int64_t"
         return shape_type
 
@@ -1912,6 +1912,11 @@ class DistForwardAPI(ForwardAPI):
                         )
                     )
                 else:
+                    if (
+                        self.kernel['func'][0] == 'fused_linear_param_grad_add'
+                        and i == 1
+                    ):
+                        set_out_dist_attr_code += "\n    if (has_bias)"
                     set_out_dist_attr_code += (
                         SET_SINGLE_OUT_REPLICATED_DIST_ATTR_TEMPLATE.format(
                             out_name

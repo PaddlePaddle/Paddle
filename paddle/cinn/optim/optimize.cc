@@ -72,10 +72,10 @@ ir::LoweredFunc Optimize(ir::LoweredFunc fn,
 
   {
     FuncPassManager func_pass_manager;
-    func_pass_manager.AddPass(CreateRealizeCompositeReducePass());
+    func_pass_manager.AddPass(CreateRealizeCompositeReducePass(target));
     func_pass_manager.AddPass(CreateReindexTransposeBufferPass());
     func_pass_manager.Run(copied);
-    VLOG(4) << "After Optimize CustomizedReduce and ReindexTransposeBuffer: "
+    VLOG(4) << "After Optimize CompositeReducePass and ReindexTransposeBuffer: "
             << copied;
   }
 
@@ -108,7 +108,6 @@ ir::LoweredFunc Optimize(ir::LoweredFunc fn,
 #endif
       },
       [&](std::variant<common::HygonDCUArchHIP, common::HygonDCUArchSYCL>) {
-#ifdef CINN_WITH_HIP
         ir::SetCudaAxisInfo(copied);
         if (remove_gpu_for_loops) {
           VLOG(4) << "Before removing GPU for loops:\n" << copied;
@@ -127,7 +126,6 @@ ir::LoweredFunc Optimize(ir::LoweredFunc fn,
         func_pass_manager.AddPass(CreateTransBufferWithDynamicShapePass());
         func_pass_manager.Run(copied);
         VLOG(10) << "After Optimize TransBufferWithDynamicShape:" << copied;
-#endif
       },
       [&](std::variant<common::UnknownArch, common::X86Arch, common::ARMArch>) {
       });
@@ -189,7 +187,10 @@ ir::LoweredFunc Optimize(ir::LoweredFunc fn,
 
   LowerIntrin(&copied->body, target);
   VLOG(10) << "After LowerIntrin:" << copied;
-
+  // re-compute buffer cast exprs since
+  // x86 codegen needs correct buffer types to generate
+  // symbol table
+  copied->PrepareBufferCastExprs(false);
   return copied;
 }
 

@@ -54,7 +54,7 @@ struct NodeAttr {
   /**
    * \brief The attributes stored as string in dictionary.
    */
-  absl::flat_hash_map<std::string, attr_t> attr_store;
+  paddle::flat_hash_map<std::string, attr_t> attr_store;
 };
 
 std::ostream& operator<<(std::ostream& os, const NodeAttr& node_attr);

@@ -95,11 +95,24 @@ CompositeTypes GetArgReduceUnderlyingType(const ir::Expr& expr) {
 
 void SetInitValue(Store store_stmt,
                   common::Type new_type,
-                  const CompositeTypes& comp_type) {
+                  const CompositeTypes& comp_type,
+                  std::string prefix = "") {
+  // prefix: if target is x86, we can not call constructor for POD struct
+  // the intrinsic function for creating struct is usually "create_" + typename
   ir::Expr init_value = store_stmt->value();
+  auto call_op = init_value.As<ir::Call>();
+  // if the type is already a call
+  if (call_op != nullptr) {
+    call_op->set_type(new_type);
+    if (call_op->name.find("argidx_") == 0 ||
+        call_op->name.find("welford_") == 0) {
+      call_op->name = prefix + call_op->name;
+    }
+    return;
+  }
   if (comp_type.type == ReduceType::kVariance) {
     store_stmt->set_value(ir::Call::Make(new_type,
-                                         new_type.customized_type(),
+                                         prefix + new_type.customized_type(),
                                          {init_value, init_value, init_value},
                                          {},
                                          ir::CallType::Intrinsic));
@@ -111,7 +124,7 @@ void SetInitValue(Store store_stmt,
       index_init->set_type(common::Int(64));
     }
     store_stmt->set_value(ir::Call::Make(new_type,
-                                         new_type.customized_type(),
+                                         prefix + new_type.customized_type(),
                                          {init_value, index_init},
                                          {},
                                          ir::CallType::Intrinsic));
@@ -197,6 +210,60 @@ std::map<ir::Buffer, CompositeTypes> CollectTypedReduceBuffers(
 
   ir::stmt::Visit(body, VisitFn, [](auto) {});
   return typed_buffers;
+}
+
+void ReplaceOutputBufferX86(
+    const BlockRef& body,
+    const std::set<ir::Buffer>& out_buffer_map,
+    const std::map<ir::Buffer, CompositeTypes>& typed_buffers) {
+  // re-route the reduce_init buffer to the local staging buffer
+  // and set the type for the buffers correctly
+  struct BufferRelationRecorder {
+    Store reduce_init;
+    Store write_back;
+  };
+  std::map<ir::Buffer, BufferRelationRecorder> buffer_relations;
+  for (auto buffer : out_buffer_map) {
+    buffer_relations.emplace(buffer, BufferRelationRecorder());
+  }
+  const auto VisitFn = [&](const StmtRef& stmt) {
+    if (!stmt.isa<Store>()) return;
+    Store store_stmt = stmt.as<Store>();
+
+    auto* tensor = store_stmt->tensor().as_tensor();
+    auto& buffer = tensor->buffer;
+    auto buffer_it = buffer_relations.find(buffer);
+    // check whether the buffer is related to output args
+    if (buffer_it == buffer_relations.end()) return;
+    if (ir::IsReduceInitTensorName(tensor->name)) {
+      buffer_it->second.reduce_init = store_stmt;
+    } else {
+      buffer_it->second.write_back = store_stmt;
+    }
+  };
+
+  ir::stmt::Visit(body, VisitFn, [](auto) {});
+
+  for (auto& [_, buffer_rel] : buffer_relations) {
+    // both should be defined
+    if (!buffer_rel.reduce_init.defined() || !buffer_rel.write_back.defined())
+      continue;
+    auto wb_value = buffer_rel.write_back->value();
+    if (auto load_node = wb_value.As<ir::Load>()) {
+      auto wb_load_buffer = load_node->tensor.as_tensor()->buffer;
+      auto wb_load_it = typed_buffers.find(wb_load_buffer);
+      PADDLE_ENFORCE_NE(wb_load_it,
+                        typed_buffers.end(),
+                        ::common::errors::Fatal(
+                            "Buffer '%s' should be defined in typed_buffers.",
+                            wb_load_buffer->name));
+      // set the buffer of the reduce_init to write back buffer
+      ir::Expr new_tensor =
+          ir::ir_utils::IRCopy(buffer_rel.reduce_init->tensor());
+      new_tensor.as_tensor()->buffer = wb_load_buffer;
+      buffer_rel.reduce_init->set_tensor(new_tensor);
+    }
+  }
 }
 
 Store GetStoreOfSchedule(const Schedule& stmt) {
@@ -406,7 +473,8 @@ struct LoadTypeMutator : public ir::IRMutator<> {
 };
 
 void SetBufferType(ir::LoweredFunc func,
-                   const std::map<ir::Buffer, CompositeTypes>& typed_buffers) {
+                   const std::map<ir::Buffer, CompositeTypes>& typed_buffers,
+                   bool is_x86_arch) {
   // Make a map from the buffers to their element and composite reduce types,
   // otherwise it's hard to know a buffer's original type. The original type
   // must be known to perform casting (back) in LoadTypeMutator::Visit()
@@ -439,9 +507,10 @@ void SetBufferType(ir::LoweredFunc func,
       new_tensor.as_tensor()->set_type(new_type);
       new_tensor.as_tensor()->buffer->dtype = new_type;
       store_stmt->set_tensor(new_tensor);
-
-      if (ir::IsReduceInitTensorName(tensor->name)) {
-        SetInitValue(store_stmt, new_type, composite_type);
+      stmt->set_type(new_type);
+      if (ir::IsReduceInitTensorName(new_tensor.as_tensor()->name)) {
+        std::string call_prefix = is_x86_arch ? "create_" : "";
+        SetInitValue(store_stmt, new_type, composite_type, call_prefix);
       }
     }
 
@@ -490,12 +559,72 @@ struct ReduceExternCallMutator : public ir::IRMutator<> {
   }
 };
 
-void ReplaceReduceExternCall(const BlockRef& body) {
+struct ReduceExternCallMutatorX86 : public ir::IRMutator<> {
+  // unlike non x86 counterpart, we do not replace the call
+  // by a arithmetic IR node, but instead call x86-exclusive funcs
+  void operator()(ir::Expr* expr) { ir::IRMutator<>::Visit(expr, expr); }
+
+ private:
+  void Visit(const ir::Call* op, ir::Expr* expr) override {
+    ir::IRMutator<>::Visit(op, expr);
+    auto reduce_type_ = GetReduceType(*expr);
+    if (reduce_type_ == ReduceType::kNone) return;
+    ir::Expr lhs = op->read_args[0];
+    ir::Expr rhs = op->read_args[1];
+    std::string lhs_type = lhs.type().to_string();
+    if (lhs.type() != rhs.type()) {
+      if (auto call_op = rhs.As<ir::Call>()) {
+        // for argidx type, avoid redundant type casting, but this is ugly
+        if (call_op->name.find("argidx") == 0) {
+          call_op->name = "create_" + call_op->name;
+          rhs->set_type(lhs.type());
+        }
+      } else {
+        // welford pod type call create function on x86
+        ir::Expr m2_init(0.f), weight_init(1.f);
+        if (lhs_type == "welford_fp64") {
+          m2_init->set_type(common::F64());
+          weight_init->set_type(common::F64());
+        }
+        rhs = ir::Call::Make(lhs.type(),
+                             "create_" + lhs_type,
+                             {rhs, m2_init, weight_init},
+                             {},
+                             ir::CallType::Intrinsic);
+      }
+    }
+    std::string call_prefix = "";
+    switch (reduce_type_) {
+      case ReduceType::kVariance:
+        call_prefix = "sum_";
+        break;
+      case ReduceType::kArgmax:
+        call_prefix = "max_";
+        break;
+      case ReduceType::kArgmin:
+        call_prefix = "min_";
+        break;
+      default:
+        break;
+    }
+    *expr = ir::Call::Make(lhs.type(),
+                           call_prefix + lhs_type,
+                           {lhs, rhs},
+                           {},
+                           ir::CallType::Intrinsic);
+  }
+};
+
+void ReplaceReduceExternCall(const BlockRef& body, bool is_x86_arch = false) {
   const auto VisitFn = [&](StmtRef stmt) {
     if (!stmt.isa<Store>()) return;
     Store store_stmt = stmt.as<Store>();
     ir::Expr new_value = ir::ir_utils::IRCopy(store_stmt->value());
-    ReduceExternCallMutator()(&new_value);
+    if (is_x86_arch) {
+      ReduceExternCallMutatorX86()(&new_value);
+    } else {
+      ReduceExternCallMutator()(&new_value);
+    }
     store_stmt->set_value(new_value);
   };
 
@@ -528,18 +657,48 @@ LogicalResult RealizeCompositeReducePass::Run(ir::LoweredFunc func) {
   typed_buffers = ResolveUndefinedArgIdxType(std::move(typed_buffers),
                                              std::move(arg_stores));
 
+  bool is_x86_arch = false;
+  target_.arch.Match(
+      [&](std::variant<common::X86Arch>) {
+        /**
+         * trace the CPU buffer for reduce init. For x86 pass, schedule pass
+         * will not be applied, therefore, the reduce_init buffer will be the
+         * same as the output buffer, which leads to incorrect buffer type and
+         * op type for codegen
+         *
+         * (1) we first extract the buffer for each output arg
+         * (2) find all stores to the corresponding output buffer, this op is
+         * prior to the output type cast, for x86 IR, reduce_init and the
+         * writing back op uses the same buffer (output tensor buffer). (3)
+         * create a mapping. if the buffer of a store (the value of the store)
+         * is in the typed_buffer, we try finding the reduce_init related op,
+         * and change the the buffer and op type of the reduce_init
+         */
+        is_x86_arch = true;
+        std::set<ir::Buffer> output_buffers;
+        for (auto& arg : func->args) {
+          if (!arg.is_output()) continue;
+          output_buffers.emplace(arg.buffer_arg());
+        }
+        ReplaceOutputBufferX86(body, output_buffers, typed_buffers);
+      },
+      [&](std::variant<common::NVGPUArch,
+                       common::HygonDCUArchHIP,
+                       common::HygonDCUArchSYCL,
+                       common::ARMArch,
+                       common::UnknownArch>) {});
   // Step 3. Change the data type of buffers to the corresponding type.
-  SetBufferType(func, typed_buffers);
+  SetBufferType(func, typed_buffers, is_x86_arch);
 
   // Step 4. Replace the `cinn_reduce_variance` and `cinn_argmax` calls
   // in order to reuse the cross-thread/block reduction templates.
-  ReplaceReduceExternCall(body);
+  ReplaceReduceExternCall(body, is_x86_arch);
 
   return LogicalResult::success();
 }
 
-std::unique_ptr<FuncPass> CreateRealizeCompositeReducePass() {
-  return std::make_unique<RealizeCompositeReducePass>();
+std::unique_ptr<FuncPass> CreateRealizeCompositeReducePass(Target target) {
+  return std::make_unique<RealizeCompositeReducePass>(target);
 }
 
 }  // namespace optim

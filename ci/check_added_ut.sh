@@ -13,6 +13,7 @@
 # limitations under the License.
 
 set +e
+unset GREP_OPTIONS
 
 SYSTEM=`uname -s`
 if [ -z ${BRANCH} ]; then

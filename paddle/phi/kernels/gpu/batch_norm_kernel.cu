@@ -1018,21 +1018,23 @@ void BatchNormKernel(const Context &ctx,
 
         if (x_dims.size() != 2 && compute_format == DataLayout::kNCHW) {
           // init block&grid config
-          int block_x =
-              std::min(phi::funcs::details::GetLastPow2(H * W * D), block_size);
-          int block_y = std::min(phi::funcs::details::GetLastPow2(C),
-                                 block_size / block_x);
+          int64_t block_x =
+              std::min(phi::funcs::details::GetLastPow2(H * W * D),
+                       static_cast<int64_t>(block_size));
+          int64_t block_y =
+              std::min(phi::funcs::details::GetLastPow2(C),
+                       static_cast<int64_t>(block_size / block_x));
 
           if (block_x * block_y != block_size) {
             block_x =
                 std::min(phi::funcs::details::GetLastPow2(N * H * W * D / 16),
-                         block_size / block_y);
+                         static_cast<int64_t>(block_size / block_y));
           }
 
-          int grid_x =
+          int64_t grid_x =
               std::min((N * H * W * D + block_x * 16 - 1) / (block_x * 16),
-                       MAX_GRID_SIZE);
-          int grid_y = (C + block_y - 1) / block_y;
+                       static_cast<int64_t>(MAX_GRID_SIZE));
+          int64_t grid_y = (C + block_y - 1) / block_y;
 
           block.x = block_x;
           block.y = block_y;
@@ -1081,19 +1083,20 @@ void BatchNormKernel(const Context &ctx,
               compute_inv_var_tensor.data<BatchNormParamType<T>>());
         } else {
           // init block&grid config
-          int block_x =
-              std::min(phi::funcs::details::GetLastPow2(C), WARP_SIZE);
-          int block_y =
-              std::min(phi::funcs::details::GetLastPow2(N * H * W * D / 16),
-                       block_size / block_x);
+          int64_t block_x = std::min(phi::funcs::details::GetLastPow2(C),
+                                     static_cast<int64_t>(WARP_SIZE));
+          int64_t block_y =
+              std::min(phi::funcs::details::GetLastPow2(
+                           static_cast<int64_t>(N) * H * W * D / 16),
+                       static_cast<int64_t>(block_size / block_x));
           if (block_x * block_y != block_size) {
             block_x = std::min(phi::funcs::details::GetLastPow2(C),
-                               block_size / block_y);
+                               static_cast<int64_t>(block_size / block_y));
           }
-          int grid_x = (C + block_x - 1) / block_x;
-          int grid_y =
+          int64_t grid_x = (C + block_x - 1) / block_x;
+          int64_t grid_y =
               std::min((N * H * W * D + block_y * 16 - 1) / (block_y * 16),
-                       MAX_GRID_SIZE);
+                       static_cast<int64_t>(MAX_GRID_SIZE));
 
           block.x = block_x;
           block.y = block_y;

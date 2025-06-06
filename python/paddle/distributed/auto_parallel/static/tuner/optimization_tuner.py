@@ -469,11 +469,14 @@ class OptimizationTuner:
         # TODO if any rank hang or fail, kill all processes
         self._logger.debug("Executing cmd:\n{} .".format(" ".join(cmd)))
         # new_process = subprocess.Popen(cmd, env=new_env)
-        with open(
-            os.path.join(trial_dir, "stdout.log" + str(self.rank)), "wb"
-        ) as out, open(
-            os.path.join(trial_dir, "stderr.log" + str(self.rank)), "wb"
-        ) as err:
+        with (
+            open(
+                os.path.join(trial_dir, "stdout.log" + str(self.rank)), "wb"
+            ) as out,
+            open(
+                os.path.join(trial_dir, "stderr.log" + str(self.rank)), "wb"
+            ) as err,
+        ):
             result = subprocess.Popen(cmd, stdout=out, stderr=err, env=new_env)
             result.wait()
             out.flush()

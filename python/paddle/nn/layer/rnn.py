@@ -1649,7 +1649,7 @@ class RNNBase(LayerList):
                     default_initializer=I.Constant(0.0),
                 )
             ]
-            # dropout state may also can be hided and avoid saving
+            # dropout state may also can be hid and avoid saving
             # should dropout state be persistable for static-graph
             if in_pir_mode():
                 self._dropout_state = paddle.pir.core.create_parameter(

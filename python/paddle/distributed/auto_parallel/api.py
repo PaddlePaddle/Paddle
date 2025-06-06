@@ -17,6 +17,7 @@ import copy
 import logging
 import os
 import warnings
+from collections import OrderedDict
 from types import MethodType
 from typing import TYPE_CHECKING, Any, Literal, TypedDict
 
@@ -58,6 +59,11 @@ from paddle.distributed.auto_parallel.static.utils import (
     split_param_func,
     to_list,
 )
+from paddle.distributed.fleet.utils.tensor_fusion_helper import (
+    align,
+    alignment,
+    get_current_device_type,
+)
 from paddle.framework import core
 from paddle.io.dataloader.batch_sampler import (
     DistributedBatchSampler,
@@ -65,9 +71,15 @@ from paddle.io.dataloader.batch_sampler import (
 )
 from paddle.optimizer import Optimizer
 
+from .auto_dp_utils import (
+    _enable_auto_dp,
+    _fake_replicate_grad_to_partial,
+    in_auto_dp_mode,
+)
 from .moe_utils import (
     _cal_local_shape,
     _dist_reshape,
+    _dtensor_from_local,
     _NdMeshAlltoAll,
     _reshard_mesh_shape,
     _specific_alltoall_dim,
@@ -79,7 +91,11 @@ from .placement_type import (
     to_placements,
 )
 from .random import determinate_rng, rng_state
-from .sharding import ShardingOptimizerStage1, get_placement_with_sharding
+from .sharding import (
+    ShardingOptimizerStage1,
+    get_mesh_comm_list,
+    get_placement_with_sharding,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
@@ -1061,6 +1077,29 @@ def shard_layer(
         )
 
 
+def is_dist_tensor(tensor) -> bool:
+    """
+    Check if an input is a dist_tensor in both dynamic and static modes.
+
+    Args:
+        tensor: The input to check
+
+    Returns:
+        bool: True if the input is a dist_tensor, False otherwise
+    """
+    if paddle.in_dynamic_mode():
+        return (
+            isinstance(tensor, paddle.Tensor)
+            and hasattr(tensor, 'is_dist')
+            and tensor.is_dist()
+        )
+    else:
+        return (
+            isinstance(tensor, paddle.base.libpaddle.pir.Value)
+            and tensor.dist_attr() is not None
+        )
+
+
 class _ShardOptimizer(Optimizer):
     def __init__(self, optimizer, shard_fn=None, gradient_accumulation_steps=1):
         assert (
@@ -1084,10 +1123,19 @@ class _ShardOptimizer(Optimizer):
             and isinstance(optimizer._grad_clip, paddle.nn.ClipGradByGlobalNorm)
         ):
             self._shard_clip = True
+
         self._shard_fn = shard_fn
         self._sharding_axis = None
         self._sharding_degree = None
         self.gradient_accumulation_steps = gradient_accumulation_steps
+
+        if self._shard_fn is None:
+            self._shard_fn = _ShardingStage0(0)
+
+        assert isinstance(
+            self._shard_fn,
+            (_ShardingStage0, ShardingStage1, ShardingStage2, ShardingStage3),
+        ), "shard_fn must be an instance of one of: _ShardingStage0, ShardingStage1, ShardingStage2, ShardingStage3"
 
         if isinstance(
             self._shard_fn, (ShardingStage1, ShardingStage2, ShardingStage3)
@@ -1095,15 +1143,26 @@ class _ShardOptimizer(Optimizer):
             self._set_and_check_sharding_prop_from_param()
             self._shard_fn._set_sharding_axis(self._sharding_axis)
 
-        # Invoke register hook for sharding stage 2 strategy
-        if isinstance(self._shard_fn, ShardingStage2):
-            for param in self._inner_opt._parameter_list:
-                self._shard_fn._register_hook_for_param_grad(param)
-
         # Invoke shard_parameter in sharding stage 3 strategy
         if isinstance(self._shard_fn, ShardingStage3):
             for param in self._inner_opt._parameter_list:
                 self._shard_fn._shard_parameter(param)
+
+        self.fuse_param_view = []
+        self.param_storage = []
+        self.grad_storage = []
+        self._sharding_group = None
+        self._mp_group = None
+        self.do_tensor_fusion_once = True
+        self._strategy = Strategy()
+        self.enable_tensor_fusion = os.getenv("FLAGS_enable_tensor_fusion") in [
+            "True",
+            "true",
+            "1",
+        ]
+        self.enable_sharding_overlap = os.getenv(
+            "FLAGS_enable_sharding_overlap"
+        ) in ["True", "true", "1"]
 
     def _set_and_check_sharding_prop_from_param(self):
         global_mesh = fleet.auto.get_mesh()
@@ -1158,12 +1217,19 @@ class _ShardOptimizer(Optimizer):
                 ), "The sharding degree of all parameters must be equal currently."
 
     def _shard_accumulator(self, param):
+        # Note (luchang): Some models may have parameters whose first dimension is 1,
+        # such as modulation parameters in DiT models. These parameters can not be sharded.
+        if param.shape[0] == 1:
+            return
+
         target_name = param.name
         if param.name in self._inner_opt._master_weights.keys():
             master_weight = self._inner_opt._master_weights[param.name]
             target_name = master_weight.name
             # shard the master weight
-            if self._shard_fn is not None:
+            if isinstance(
+                self._shard_fn, (ShardingStage1, ShardingStage2, ShardingStage3)
+            ):
                 self._inner_opt._master_weights[param.name] = (
                     self._shard_fn.shard_master_weight(param, master_weight)
                 )
@@ -1178,7 +1244,9 @@ class _ShardOptimizer(Optimizer):
             if paddle.in_dynamic_mode():
                 origin_accumulator_name = accumulator.name
 
-            if self._shard_fn is not None:
+            if isinstance(
+                self._shard_fn, (ShardingStage1, ShardingStage2, ShardingStage3)
+            ):
                 self._inner_opt._accumulators[key][target_name] = (
                     self._shard_fn(key, param, accumulator)
                 )
@@ -1230,23 +1298,43 @@ class _ShardOptimizer(Optimizer):
 
     def _finish_update(self, block, parameters_and_grads):
         self._inner_opt._finish_update(block, parameters_and_grads)
-        if isinstance(parameters_and_grads, list):
-            for p, _ in parameters_and_grads:
-                self._reset_placements(p)
+        if self.enable_tensor_fusion:
+            # zero the grad storage for add_ op in inplace_master_grad
+            for grad_storage in self.grad_storage:
+                grad_storage.zero_()
+                grad_storage.check_in = 0
+            if not self.enable_sharding_overlap:
+                for i in range(len(self.fuse_param_view)):
+                    shard_size = (
+                        self.param_storage[i]._numel()
+                        // self._sharding_group.nranks
+                    )
+                    begin = shard_size * max(self._sharding_group.rank, 0)
+                    end = begin + shard_size
+                    slice_buffer = paddle._C_ops.view_slice(
+                        self.param_storage[i], begin, end
+                    )
+                    self._sharding_group.process_group.all_gather(
+                        slice_buffer, self.param_storage[i]
+                    ).wait()
+
         else:
-            # reset the parameter and grad to right placements
-            for p, _ in parameters_and_grads['params']:
-                self._reset_placements(p)
+            if isinstance(parameters_and_grads, list):
+                for p, _ in parameters_and_grads:
+                    self._reset_placements(p)
+            else:
+                # reset the parameter and grad to right placements
+                for p, _ in parameters_and_grads['params']:
+                    self._reset_placements(p)
 
     def apply_gradients(self, params_grads):
         new_params_grads = []
-        if self._shard_fn is not None:
-            for param, grad in params_grads:
-                new_params_grads.append(
-                    (param, self._shard_fn("grad", param, grad))
-                )
-            return Optimizer.apply_gradients(self, new_params_grads)
-        return Optimizer.apply_gradients(self, params_grads)
+
+        for param, grad in params_grads:
+            new_params_grads.append(
+                (param, self._shard_fn("grad", param, grad))
+            )
+        return Optimizer.apply_gradients(self, new_params_grads)
 
     def state_dict(self):
         """
@@ -1386,7 +1474,279 @@ class _ShardOptimizer(Optimizer):
                     grad, grad.shape, grad_mesh, [dist.Replicate()]
                 )
             param_and_grad = (param_and_grad[0], grad)
-        return self._inner_opt._append_optimize_op(block, param_and_grad)
+        self._inner_opt._append_optimize_op(block, param_and_grad)
+        if self.enable_sharding_overlap:
+            # overlap all_gather with optimizer op
+            if hasattr(param_and_grad[0], 'last_idx'):
+                idx = param_and_grad[0].last_idx
+                shard_size = (
+                    self.param_storage[idx]._numel()
+                    // self._sharding_group.nranks
+                )
+                begin = shard_size * max(self._sharding_group.rank, 0)
+                end = begin + shard_size
+                slice_buffer = paddle._C_ops.view_slice(
+                    self.param_storage[idx], begin, end
+                )
+                task = paddle.distributed.all_gather(
+                    self.param_storage[idx],
+                    slice_buffer,
+                    group=self._sharding_group,
+                    sync_op=False,
+                )
+
+    def _reduce_scatter_gradients(self, grad_storage):
+        shard_size = grad_storage._numel() // self._sharding_group.nranks
+        begin = shard_size * max(self._sharding_group.rank, 0)
+        end = begin + shard_size
+        reduce_scattered = paddle._C_ops.view_slice(grad_storage, begin, end)
+        paddle.distributed.reduce_scatter(
+            reduce_scattered,
+            grad_storage,
+            op=paddle.distributed.ReduceOp.SUM,
+            group=self._sharding_group,
+            sync_op=False,
+        ).wait()
+
+    def _async_reduce_scatter(self):
+        for i in range(len(self.fuse_param_view)):
+            self._reduce_scatter_gradients(self.grad_storage[i])
+
+            def fuse_comm_hook_func(param_group_len, grad_storage, comm_group):
+                @paddle.autograd.no_grad()
+                def fuse_comm(*_):
+                    grad_storage.check_in += 1
+                    if grad_storage.check_in == param_group_len:
+                        shard_size = grad_storage._numel() // comm_group.nranks
+                        begin = shard_size * max(comm_group.rank, 0)
+                        end = begin + shard_size
+                        reduce_scattered = paddle._C_ops.view_slice(
+                            grad_storage, begin, end
+                        )
+                        task = paddle.distributed.reduce_scatter(
+                            reduce_scattered,
+                            grad_storage,
+                            op=paddle.distributed.ReduceOp.SUM,
+                            group=comm_group,
+                            sync_op=False,
+                        )
+                        grad_storage.comm_task = task
+
+                return fuse_comm
+
+            param_group_len = (
+                len(self.fuse_param_view[i]) * self.gradient_accumulation_steps
+            )
+            for name, view in self.fuse_param_view[i].items():
+                view['param']._register_backward_hook(
+                    fuse_comm_hook_func(
+                        param_group_len,
+                        self.grad_storage[i],
+                        self._sharding_group,
+                    )
+                )
+
+    def _build_fuse_param_view(
+        self,
+        params_and_grads,
+        sharding_degree,
+    ):
+        def get_padded_size(param):
+            size = np.prod(param._local_shape)
+            align_size = (
+                alignment[get_current_device_type()]
+                // align[param.dtype]
+                * sharding_degree
+            )
+            return ((size + align_size - 1) // align_size) * align_size
+
+        total_buffer_size = 0
+        param2index = {}
+        for param, _ in params_and_grads:
+            param2index[param.name] = total_buffer_size
+            total_buffer_size += get_padded_size(param)
+        param_buffer = paddle.zeros(
+            shape=[total_buffer_size], dtype=params_and_grads[0][0].dtype
+        )
+        grad_dtype = paddle.float32
+        grad_buffer = paddle.zeros(shape=[total_buffer_size], dtype=grad_dtype)
+        grad_buffer.check_in = 0
+        grad_buffer.comm_task = None
+
+        views = {}
+        for param, grad in params_and_grads:
+            padded_size = get_padded_size(param)
+            views[param.name] = {
+                'param': param,
+                'index': param2index[param.name],
+            }
+
+            index = param2index[param.name]
+            param_shape = param.shape
+            stop_gradient = param.stop_gradient
+            param.stop_gradient = True
+            param._local_value().flatten_()
+            paddle.assign(
+                param._local_value(),
+                param_buffer._slice(
+                    index,
+                    index + param._numel(),
+                ),
+            )
+            param.stop_gradient = stop_gradient
+            tmp_param = paddle._C_ops.view_slice(
+                param_buffer,
+                index,
+                index + param._numel(),
+            )
+            tmp_param.get_tensor()._set_dims(param._local_shape)
+            tmp_param = _dtensor_from_local(
+                tmp_param,
+                param.process_mesh,
+                param.placements,
+            )
+            param.get_tensor()._share_data_with(tmp_param.get_tensor())
+
+            paddle.assign(
+                grad._local_value(),
+                grad_buffer._slice(
+                    index,
+                    index + grad._local_value()._numel(),
+                ),
+            )
+            tmp_grad = paddle._C_ops.view_slice(
+                grad_buffer,
+                index,
+                index + grad._local_value()._numel(),
+            )
+            tmp_grad.get_tensor()._set_dims(grad._local_shape)
+            tmp_grad = _dtensor_from_local(
+                tmp_grad,
+                grad.process_mesh,
+                grad.placements,
+            )
+            param.main_grad = tmp_grad
+            grad.get_tensor()._clear()
+            paddle.device.cuda.empty_cache()
+
+        return (views, param_buffer, grad_buffer)
+
+    def _tensor_fusion(self, params_grads):
+        if self.do_tensor_fusion_once:
+            mesh = dist.auto_parallel.get_mesh()
+            shard_groups = get_mesh_comm_list(mesh, "dp")
+            for group in shard_groups:
+                comm_group = dist.new_group(sorted(group))
+                if dist.get_rank() in group:
+                    self._sharding_group = comm_group
+            if "mp" in mesh._dim_names:
+                mp_mesh_axis = mesh._dim_names.index("mp")
+                self._mp_degree = mesh._shape[mp_mesh_axis]
+                mp_groups = get_mesh_comm_list(mesh, "mp")
+                for group in mp_groups:
+                    comm_group = dist.new_group(sorted(group))
+                    if dist.get_rank() in group:
+                        self._mp_group = comm_group
+            self.do_tensor_fusion_once = False
+            parameters = [p_g[0] for p_g in params_grads]
+            comm_buffer_size_MB = self._strategy.sharding.comm_buffer_size_MB
+            if comm_buffer_size_MB < 0:
+                comm_buffer_size_MB = 256
+            group_size = comm_buffer_size_MB * 1024 * 1024
+            is_sparse_gradient = [False] * len(parameters)
+            shape_dict = {param.name: param.shape for param in parameters}
+            dense_params = [param._local_value() for param in parameters]
+
+            # group params according to comm_buffer_size_MB
+            group_indices = core.eager_assign_group_by_size(
+                dense_params, is_sparse_gradient, [group_size, group_size]
+            )
+            var_groups = OrderedDict()
+            for group_idx, indices in enumerate(group_indices):
+                for i in indices:
+                    var_groups.setdefault(group_idx, []).append(params_grads[i])
+
+            # create fuse_param_view, param_storage, grad_storage with groups
+            for group_idx, params_and_grads in var_groups.items():
+                (
+                    fuse_param_view,
+                    param_storage,
+                    grad_storage,
+                ) = self._build_fuse_param_view(
+                    params_and_grads,
+                    self._sharding_group.nranks,
+                )
+                self.fuse_param_view.append(fuse_param_view)
+                self.param_storage.append(param_storage)
+                self.grad_storage.append(grad_storage)
+
+            if self.enable_sharding_overlap:
+                self._async_reduce_scatter()
+
+            if self._inner_opt._grad_clip is not None:
+                self._inner_opt._grad_clip.should_comm_on_shard_dim = True
+                self._inner_opt._grad_clip.sharding_group = self._sharding_group
+                if "mp" in mesh._dim_names and self._mp_degree > 1:
+                    self._inner_opt._grad_clip.mp_group = self._mp_group
+
+        new_params = []
+        new_grads = []
+        for i in range(len(self.fuse_param_view)):
+            if not self.enable_sharding_overlap:
+                self._reduce_scatter_gradients(self.grad_storage[i])
+
+            for name, view in self.fuse_param_view[i].items():
+                param = view['param']
+                index = view['index']
+                shard_size = (
+                    self.param_storage[i]._numel()
+                    // self._sharding_group.nranks
+                )
+                rank_begin = shard_size * max(self._sharding_group.rank, 0)
+                rank_end = rank_begin + shard_size
+                param_begin = max(index, rank_begin)
+                param_end = min(index + param._numel(), rank_end)
+                if param_begin >= param_end:
+                    continue
+                # get new_param from param_storage
+                new_param = paddle._C_ops.view_slice(
+                    self.param_storage[i], param_begin, param_end
+                )
+                new_param = _dtensor_from_local(
+                    new_param,
+                    param.process_mesh,
+                    [dist.Replicate()],
+                )
+                new_param.name = name
+                new_param.stop_gradient = param.stop_gradient
+                new_param.need_clip = param.need_clip
+                new_param.persistable = True
+                new_param.trainable = param.trainable
+                new_param.stop_gradient = param.stop_gradient
+                new_param.optimize_attr = param.optimize_attr
+                new_param.regularizer = param.regularizer
+                new_param.do_model_average = param.do_model_average
+                new_param.is_distributed = param.is_distributed
+                new_params.append(new_param)
+
+                # get new_grad from grad_storage
+                new_grad = paddle._C_ops.view_slice(
+                    self.grad_storage[i], param_begin, param_end
+                )
+                new_grad = _dtensor_from_local(
+                    new_grad, param.process_mesh, [dist.Replicate()]
+                )
+                new_grads.append(new_grad)
+
+            if self.enable_sharding_overlap:
+                # last_idx marks the last param, start asyn comm
+                new_params[-1].last_idx = i
+                if self.grad_storage[i].comm_task is not None:
+                    self.grad_storage[i].comm_task.wait()
+
+        new_params_grads = list(zip(new_params, new_grads))
+
+        return new_params_grads
 
     def _fused_comm_before_apply_optimize(self, flags, params_grads):
         '''
@@ -1482,31 +1842,36 @@ class _ShardOptimizer(Optimizer):
     def _apply_optimize(
         self, loss, startup_program, params_grads, param_group_idx=0
     ):
-        # Fuse the communication of gradients prior to the optimization operation in the dynamic mode.
-        if paddle.in_dynamic_mode():
-            # Get fuse optimization flag.
-            def get_env(flag_name):
-                if os.getenv(flag_name) in ['True', 'true', '1']:
-                    return True
-                return False
+        if self.enable_tensor_fusion:
+            params_grads = self._tensor_fusion(params_grads)
+        else:
+            # Fuse the communication of gradients prior to the optimization operation in the dynamic mode.
+            if paddle.in_dynamic_mode() and isinstance(
+                self._shard_fn, ShardingStage1
+            ):
+                # Get fuse optimization flag.
+                def get_env(flag_name):
+                    if os.getenv(flag_name) in ['True', 'true', '1']:
+                        return True
+                    return False
 
-            # TODO: This optimization hasn't been verified on a wide range of models. Currently,
-            # it's controlled by a flag switch and will be removed later.
-            fuse_allreduce_in_opt = get_env("FLAGS_fuse_allreduce_in_opt")
-            fuse_reducescatter_in_opt = get_env(
-                "FLAGS_fuse_reducescatter_in_opt"
-            )
-            assert not (
-                fuse_allreduce_in_opt and fuse_reducescatter_in_opt
-            ), "The `FLAGS_fuse_allreduce_in_opt` switch and the `FLAGS_fuse_reducescatter_in_opt` switch cannot be turned on simultaneously."
-
-            if fuse_allreduce_in_opt or fuse_reducescatter_in_opt:
-                flags = {}
-                flags["fuse_allreduce"] = fuse_allreduce_in_opt
-                flags["fuse_reducescatter"] = fuse_reducescatter_in_opt
-                params_grads = self._fused_comm_before_apply_optimize(
-                    flags, params_grads
+                # TODO: This optimization hasn't been verified on a wide range of models. Currently,
+                # it's controlled by a flag switch and will be removed later.
+                fuse_allreduce_in_opt = get_env("FLAGS_fuse_allreduce_in_opt")
+                fuse_reducescatter_in_opt = get_env(
+                    "FLAGS_fuse_reducescatter_in_opt"
                 )
+                assert not (
+                    fuse_allreduce_in_opt and fuse_reducescatter_in_opt
+                ), "The `FLAGS_fuse_allreduce_in_opt` switch and the `FLAGS_fuse_reducescatter_in_opt` switch cannot be turned on simultaneously."
+
+                if fuse_allreduce_in_opt or fuse_reducescatter_in_opt:
+                    flags = {}
+                    flags["fuse_allreduce"] = fuse_allreduce_in_opt
+                    flags["fuse_reducescatter"] = fuse_reducescatter_in_opt
+                    params_grads = self._fused_comm_before_apply_optimize(
+                        flags, params_grads
+                    )
 
         return super()._apply_optimize(
             loss, startup_program, params_grads, param_group_idx
@@ -1540,7 +1905,12 @@ class _ShardingStageBase:
         self, param: Tensor, master_weight: Tensor
     ) -> Tensor:
         if param.is_dist():
-            placements = get_placement_with_sharding(param, self._sharding_axis)
+            if os.getenv("FLAGS_enable_tensor_fusion") in ["True", "true", "1"]:
+                placements = param.placements
+            else:
+                placements = get_placement_with_sharding(
+                    param, self._sharding_axis
+                )
             if isinstance(master_weight, pir.Value):
                 data_op = master_weight.get_defining_op()
                 assert (
@@ -1571,6 +1941,53 @@ class _ShardingStageBase:
                     placements=placements,
                 )
         return master_weight
+
+    def _init_dist_attr(self, tensor: Tensor, param: Tensor, placements: list):
+        dim_map, partial_status = to_dim_map(placements, len(tensor.shape))
+        dist_attr = paddle.base.libpaddle.pir.create_tensor_dist_attribute(
+            param.process_mesh, dim_map, partial_status
+        )
+        dist_type = paddle.base.libpaddle.pir.cvt_to_dist_type(
+            tensor.type(), dist_attr
+        )
+        tensor.set_type(dist_type)
+        op_dist_attr = paddle.base.libpaddle.pir.create_op_dist_attribute(
+            param.process_mesh, [], [dist_attr]
+        )
+        tensor.get_defining_op().dist_attr = op_dist_attr
+
+    def _apply_placement(
+        self, tensor: Tensor, param: Tensor, placements: list
+    ) -> Tensor:
+        if tensor.is_dist():
+            op = tensor.get_defining_op()
+            if op.name() == "pd_op.data":
+                self._init_dist_attr(tensor, param, placements)
+                return tensor
+            return dist.reshard(tensor, param.process_mesh, placements)
+
+        return shard_tensor(
+            tensor,
+            mesh=param.process_mesh,
+            placements=placements,
+        )
+
+    def _reshard_fake_replicate_grad_to_partial(self, grad: Tensor) -> Tensor:
+        return _fake_replicate_grad_to_partial(grad, self._sharding_axis)
+
+
+class _ShardingStage0(_ShardingStageBase):
+    def __init__(
+        self, sharding_mesh_dim: int | str, mesh: ProcessMesh | None = None
+    ) -> None:
+        super().__init__(mesh, sharding_mesh_dim)
+        self.sharding_axis = 0
+
+    def __call__(self, key: str, param: Tensor, tensor: Tensor) -> Tensor:
+        if key == "grad" and in_auto_dp_mode():
+            return self._reshard_fake_replicate_grad_to_partial(tensor)
+
+        return tensor
 
 
 class ShardingStage1(_ShardingStageBase):
@@ -1619,53 +2036,28 @@ class ShardingStage1(_ShardingStageBase):
     ) -> None:
         super().__init__(mesh, sharding_mesh_dim)
 
-    def __call__(self, key: str, param: Tensor, accumulator: Tensor) -> Tensor:
-        if param.is_dist():
-            # Only deal with momentum in optimizer, beta should be replicated cross param's mesh
-            if 'beta' not in key:
-                placements = get_placement_with_sharding(
-                    param, self._sharding_axis
-                )
-            else:
-                placements = [
-                    dist.Replicate()
-                    for _ in range(len(param.process_mesh.shape))
-                ]
+    def __call__(self, key: str, param: Tensor, tensor: Tensor) -> Tensor:
+        if not param.is_dist():
+            return tensor
 
-            if accumulator.is_dist():
-                if accumulator.get_defining_op().name() == "pd_op.data":
-                    dim_map, partial_status = (
-                        dist.auto_parallel.placement_type.to_dim_map(
-                            placements, len(accumulator.shape)
-                        )
-                    )
-                    dist_attr = (
-                        paddle.base.libpaddle.pir.create_tensor_dist_attribute(
-                            param.process_mesh, dim_map, partial_status
-                        )
-                    )
-                    dist_type = paddle.base.libpaddle.pir.cvt_to_dist_type(
-                        accumulator.type(), dist_attr
-                    )
-                    accumulator.set_type(dist_type)
-                    op_dist_attr = (
-                        paddle.base.libpaddle.pir.create_op_dist_attribute(
-                            param.process_mesh, [], [dist_attr]
-                        )
-                    )
-                    accumulator.get_defining_op().dist_attr = op_dist_attr
-                    return accumulator
-                return dist.reshard(accumulator, param.process_mesh, placements)
-            else:
-                return shard_tensor(
-                    accumulator,
-                    mesh=param.process_mesh,
-                    placements=placements,
-                )
-        return accumulator
+        # Only deal with momentum in optimizer, beta should be replicated cross param's mesh
+        if (
+            os.getenv("FLAGS_enable_tensor_fusion") not in ["True", "true", "1"]
+            and 'beta' not in key
+        ):
+            placements = get_placement_with_sharding(param, self._sharding_axis)
+        else:
+            placements = [
+                dist.Replicate() for _ in range(len(param.process_mesh.shape))
+            ]
+
+        if key == "grad" and in_auto_dp_mode():
+            tensor = self._reshard_fake_replicate_grad_to_partial(tensor)
+
+        return self._apply_placement(tensor, param, placements)
 
 
-class ShardingStage2(_ShardingStageBase):
+class ShardingStage2(ShardingStage1):
     """
     A builtin shard_fn for shard_optimizer interface, users can pass it to shard_optimizer to implement sharding optimization with stage 2.
 
@@ -1704,81 +2096,9 @@ class ShardingStage2(_ShardingStageBase):
             >>> # python -m paddle.distributed.launch --gpus=0,1 {test_case}.py
     """
 
-    def __init__(
-        self,
-        sharding_mesh_dim: int | str,
-        mesh: ProcessMesh | None = None,
-    ) -> None:
-        super().__init__(mesh, sharding_mesh_dim)
-
-    def __call__(self, key: str, param: Tensor, accumulator: Tensor) -> Tensor:
-        if param.is_dist():
-            # Only deal with momentum in optimizer, beta should be replicated cross param's mesh
-            if 'beta' not in key:
-                placements = get_placement_with_sharding(
-                    param, self._sharding_axis
-                )
-            else:
-                placements = [
-                    dist.Replicate()
-                    for _ in range(len(param.process_mesh.shape))
-                ]
-            if accumulator.is_dist():
-                if accumulator.get_defining_op().name() == "pd_op.data":
-                    dim_map, partial_status = (
-                        dist.auto_parallel.placement_type.to_dim_map(
-                            placements, len(accumulator.shape)
-                        )
-                    )
-                    dist_attr = (
-                        paddle.base.libpaddle.pir.create_tensor_dist_attribute(
-                            param.process_mesh, dim_map, partial_status
-                        )
-                    )
-                    dist_type = paddle.base.libpaddle.pir.cvt_to_dist_type(
-                        accumulator.type(), dist_attr
-                    )
-                    accumulator.set_type(dist_type)
-                    op_dist_attr = (
-                        paddle.base.libpaddle.pir.create_op_dist_attribute(
-                            param.process_mesh, [], [dist_attr]
-                        )
-                    )
-                    accumulator.get_defining_op().dist_attr = op_dist_attr
-                    return accumulator
-                return dist.reshard(accumulator, param.process_mesh, placements)
-            else:
-                return shard_tensor(
-                    accumulator,
-                    mesh=param.process_mesh,
-                    placements=placements,
-                )
-        return accumulator
-
-    @staticmethod
-    def _grad_hook(grad):
-        # do reshard only if the grad is dist tensor and in partial status
-        if grad.is_dist():
-            partial_mesh_axis = None
-            for mesh_axis, placement in enumerate(grad.placements):
-                if isinstance(placement, dist.Partial):
-                    partial_mesh_axis = mesh_axis
-            if partial_mesh_axis is not None:
-                new_placements = get_placement_with_sharding(
-                    grad, partial_mesh_axis
-                )
-                return reshard(grad, grad.process_mesh, new_placements)
-
-        return grad
-
-    def _register_hook_for_param_grad(self, param):
-        if param.is_dense() and self._mesh is not None:
-            placements = []
-            for _ in range(len(self._mesh.shape)):
-                placements.append(dist.Replicate())
-            param._to_dist_(placements, self._mesh)
-        if param.is_dist():
-            param.register_hook(ShardingStage2._grad_hook)
+    # Note(luchang): Due to reshard optimizations in Paddle where all-reduce + slicing is fused into reduce_scatter,
+    # the current behavior of ShardingStage2 is effectively the same as ShardingStage1.
+    pass
 
 
 class ShardingStage3(_ShardingStageBase):
@@ -1833,6 +2153,7 @@ class ShardingStage3(_ShardingStageBase):
             for _ in range(len(self._mesh.shape)):
                 placements.append(dist.Replicate())
             param._to_dist_(placements, self._mesh)
+
         if param.is_dist():
             new_placements = get_placement_with_sharding(
                 param, self._sharding_axis
@@ -1852,30 +2173,24 @@ class ShardingStage3(_ShardingStageBase):
             new_param = dist.reshard(param, param.process_mesh, new_placements)
             param.get_tensor()._share_data_with(new_param.get_tensor())
 
-    def __call__(self, key: str, param: Tensor, accumulator: Tensor) -> Tensor:
-        if param.is_dist():
-            # Only deal with momentum in optimizer, beta should be replicated cross param's mesh
-            if 'beta' not in key:
-                placements = param.placements
-                if all(
-                    isinstance(placement, dist.Replicate)
-                    for placement in placements
-                ):
-                    placements = get_placement_with_sharding(
-                        param, self._sharding_axis
-                    )
+    def __call__(self, key: str, param: Tensor, tensor: Tensor) -> Tensor:
+        if not param.is_dist():
+            return tensor
 
-            else:
-                placements = [
-                    dist.Replicate()
-                    for _ in range(len(param.process_mesh.shape))
-                ]
-            return shard_tensor(
-                accumulator,
-                mesh=param.process_mesh,
-                placements=placements,
+        if key == "grad" and in_auto_dp_mode():
+            raise RuntimeError(
+                "Sharding Stage 3 does not support auto dp mode yet."
             )
-        return accumulator
+
+        if 'beta' not in key:
+            placements = param.placements
+            if all(isinstance(p, dist.Replicate) for p in placements):
+                placements = get_placement_with_sharding(
+                    param, self._sharding_axis
+                )
+        else:
+            placements = [dist.Replicate() for _ in param.process_mesh.shape]
+        return self._apply_placement(tensor, param, placements)
 
 
 def shard_optimizer(
@@ -3459,6 +3774,10 @@ class ShardDataloader:
         if is_dataset_splitted is True or shard_dims is None:
             self._dataloader = dataloader
             self.batch_size = dataloader.batch_sampler.batch_size
+        elif isinstance(dataloader.batch_sampler, DistributedBatchSampler):
+            self.batch_size = dataloader.batch_sampler.batch_size
+            self.batch_sampler = dataloader.batch_sampler
+            self._dataloader = dataloader
         else:
             self.batch_size = int(
                 dataloader.batch_sampler.batch_size / dp_world_size
@@ -3553,7 +3872,7 @@ class ShardDataloader:
             if self._all_inputs_in_one_mesh
             else self._shard_dims[index]
         )
-        if shard_dim is not None:
+        if shard_dim is not None and not in_auto_dp_mode():
             placements = [dist.Shard(0)]
         else:
             placements = [dist.Replicate()]
@@ -3584,7 +3903,7 @@ class ShardDataloader:
 
         placements = []
         for i in range(length):
-            if shard_dims[i] is not None:
+            if shard_dims[i] is not None and not in_auto_dp_mode():
                 placement = [dist.Shard(0)]
             else:
                 placement = [dist.Replicate()]
@@ -3916,3 +4235,108 @@ def in_auto_parallel_align_mode():
     return paddle.base.framework.get_flags(
         "FLAGS_enable_auto_parallel_align_mode"
     )["FLAGS_enable_auto_parallel_align_mode"]
+
+
+def enable_auto_dp():
+    """
+    Enables an automated Data Parallel (DP) setup for auto-parallel training.
+
+    This function simplifies the process of implementing vanilla (standard) Data
+    Parallelism within the auto-parallel framework. By calling ``enable_auto_dp()``,
+    users can achieve data parallel training without needing to manually configure
+    ``paddle.distributed.shard_dataloader`` (or a similar distributed dataloader
+    interface) for DP-specific data sharding or distribution. This mode automates
+    the setup required for DP communication and data handling.
+
+    The function works by setting the related environment variable
+    to ``1``. This signals to the auto-parallel system that it should
+    automatically manage the data parallelism aspects of the training process
+    according to a predefined strategy.
+
+    A significant advantage of this automated DP mode is its inherent robustness
+    and ability to handle scenarios that can be challenging for manual or other
+    standard DP configurations. For instance, it is particularly effective for:
+
+    - Training models where input data may have non-uniform shapes across
+      different data parallel ranks (e.g., certain video generation models
+      like Wanx). In such cases, where traditional DP might lead to program
+      hangs due to shape mismatches during communication, this automated mode
+      employs strategies (like adjusting data representation and gradient
+      synchronization) to ensure smooth training.
+
+    In essence, ``enable_auto_dp()`` provides two key benefits:
+
+    1. **Simplified DP Setup:** Automates the configuration for basic data
+       parallelism, reducing manual setup effort (e.g., no need for manual
+       ``shard_dataloader`` DP configuration).
+    2. **Robustness for Complex Cases:** Effectively handles advanced scenarios
+       like non-uniform input shapes.
+
+    Note:
+        This function should typically be called at the very beginning of your
+        training script, prior to initializing Paddle's distributed environment
+        or any auto-parallel components. The underlying auto-parallel framework,
+        including its data loading and optimizer components, must be designed to
+        recognize and act upon the environment variable.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import numpy as np
+            >>> import paddle
+            >>> from paddle import nn
+            >>> import paddle.distributed as dist
+            >>> from paddle.io import Dataset, DataLoader
+
+            >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+            >>> dist.enable_auto_dp()
+
+            >>> BATCH_SIZE = 32
+            >>> CLASS_NUM = 10
+            >>> INPUT_DIM = 256
+            >>> STEPS = 100
+
+            >>> class RandomDataset(Dataset):  # type: ignore[type-arg]
+            ...     def __init__(self, num_samples):
+            ...         rank = dist.get_rank() if dist.get_world_size() > 1 else 0
+            ...         np.random.seed(42 + rank)
+            ...         self.num_samples = num_samples
+            ...     def __getitem__(self, idx):
+            ...         x = np.random.rand(INPUT_DIM).astype('float32')
+            ...         y = np.random.randint(0, CLASS_NUM, (1,)).astype('int64')
+            ...         return x, y
+            ...     def __len__(self):
+            ...         return self.num_samples
+
+            >>> class SimpleNet(nn.Layer):
+            ...     def __init__(self):
+            ...         super().__init__()
+            ...         self.net = nn.Sequential(
+            ...             nn.Linear(INPUT_DIM, 102400),
+            ...             nn.Linear(102400, INPUT_DIM),
+            ...             nn.Linear(INPUT_DIM, CLASS_NUM),
+            ...         )
+            ...     def forward(self, x):
+            ...         return self.net(x)
+
+            >>> model = SimpleNet()
+            >>> optimizer = paddle.optimizer.AdamW(learning_rate=1e-3, parameters=model.parameters())
+            >>> dataset = RandomDataset(num_samples=STEPS * BATCH_SIZE)
+            >>> loader = DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=False, drop_last=True)
+
+            >>> model.train()
+            >>> for step, (x, y) in enumerate(loader):
+            ...     y.stop_gradient = True
+            ...     loss = paddle.mean(model(x))
+            ...     loss.backward()
+            ...     optimizer.step()
+            ...     model.clear_gradients()
+            ...     if step % 5 == 0:
+            ...         print(f"[step {step}] loss: {loss.item():.4f}")
+
+            >>> # This case need to be executed in multi-card environment
+            >>> # export CUDA_VISIBLE_DEVICES=0,1
+            >>> # python -m paddle.distributed.launch {test_case}.py
+
+    """
+    _enable_auto_dp()

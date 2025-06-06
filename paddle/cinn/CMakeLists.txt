@@ -14,7 +14,7 @@ add_subdirectory(backends)
 add_subdirectory(lang)
 add_subdirectory(optim)
 add_subdirectory(hlir)
-add_subdirectory(pybind)
+# add_subdirectory(pybind)
 add_subdirectory(operator_fusion)
 
 # Download a model

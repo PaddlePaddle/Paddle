@@ -216,6 +216,185 @@ class TestMatrixPowerOpLarge2(TestMatrixPowerOp):
         self.n = 32
 
 
+class TestMatrixPowerOpZeroSize(TestMatrixPowerOp):
+    def config(self):
+        self.matrix_shape = [0, 0]
+        self.dtype = "float32"
+        self.n = 32
+
+
+class TestMatrixPowerOpZeroSize1(TestMatrixPowerOp):
+    def config(self):
+        self.matrix_shape = [0, 0]
+        self.dtype = "float32"
+        self.n = 0
+
+
+class TestMatrixPowerOpZeroSize2(TestMatrixPowerOp):
+    def config(self):
+        self.matrix_shape = [0, 0]
+        self.dtype = "float32"
+        self.n = -1
+
+
+class TestMatrixPowerOpBatchedZeroSize1(TestMatrixPowerOp):
+    def config(self):
+        self.matrix_shape = [2, 0, 4, 4]
+        self.dtype = "float32"
+        self.n = 4
+
+
+class TestMatrixPowerOpBatchedZeroSize2(TestMatrixPowerOp):
+    def config(self):
+        self.matrix_shape = [2, 0, 4, 4]
+        self.dtype = "float32"
+        self.n = 0
+
+
+class TestMatrixPowerOpBatchedZeroSize3(TestMatrixPowerOp):
+    def config(self):
+        self.matrix_shape = [2, 0, 4, 4]
+        self.dtype = "float32"
+        self.n = -1
+
+
+class TestMatrixPowerOpBatchedZeroSize4(TestMatrixPowerOp):
+    def config(self):
+        self.matrix_shape = [2, 6, 0, 0]
+        self.dtype = "float32"
+        self.n = 1
+
+
+class TestMatrixPowerOpBatchedZeroSize5(TestMatrixPowerOp):
+    def config(self):
+        self.matrix_shape = [2, 6, 0, 0]
+        self.dtype = "float32"
+        self.n = 0
+
+
+class TestMatrixPowerOpBatchedZeroSize6(TestMatrixPowerOp):
+    def config(self):
+        self.matrix_shape = [2, 6, 0, 0]
+        self.dtype = "float32"
+        self.n = -1
+
+
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    "Skip complex due to lack of mean support",
+)
+class TestMatrixPowerOpComplex64(TestMatrixPowerOp):
+    def config(self):
+        self.matrix_shape = [10, 10]
+        self.dtype = "complex64"
+        self.n = 2
+
+    def test_grad(self):
+        self.check_grad(["X"], "Out", max_relative_error=1e-2, check_pir=True)
+
+
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    "Skip complex due to lack of mean support",
+)
+class TestMatrixPowerOpBatchedComplex64(TestMatrixPowerOpComplex64):
+    def config(self):
+        self.matrix_shape = [2, 8, 4, 4]
+        self.dtype = "complex64"
+        self.n = 2
+
+
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    "Skip complex due to lack of mean support",
+)
+class TestMatrixPowerOpLarge1Complex64(TestMatrixPowerOpComplex64):
+    def config(self):
+        self.matrix_shape = [32, 32]
+        self.dtype = "complex64"
+        self.n = 2
+
+
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    "Skip complex due to lack of mean support",
+)
+class TestMatrixPowerOpLarge2Complex64(TestMatrixPowerOpComplex64):
+    def config(self):
+        self.matrix_shape = [10, 10]
+        self.dtype = "complex64"
+        self.n = 32
+
+
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    "Skip complex due to lack of mean support",
+)
+class TestMatrixPowerOpComplex64Minus(TestMatrixPowerOpComplex64):
+    def config(self):
+        self.matrix_shape = [10, 10]
+        self.dtype = "complex64"
+        self.n = -1
+
+
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    "Skip complex due to lack of mean support",
+)
+class TestMatrixPowerOpComplex128(TestMatrixPowerOp):
+    def config(self):
+        self.matrix_shape = [10, 10]
+        self.dtype = "complex128"
+        self.n = 2
+
+    def test_grad(self):
+        self.check_grad(["X"], "Out", max_relative_error=1e-2, check_pir=True)
+
+
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    "Skip complex due to lack of mean support",
+)
+class TestMatrixPowerOpBatchedComplex128(TestMatrixPowerOpComplex128):
+    def config(self):
+        self.matrix_shape = [2, 8, 4, 4]
+        self.dtype = "complex128"
+        self.n = 2
+
+
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    "Skip complex due to lack of mean support",
+)
+class TestMatrixPowerOpLarge1Complex128(TestMatrixPowerOpComplex128):
+    def config(self):
+        self.matrix_shape = [32, 32]
+        self.dtype = "complex128"
+        self.n = 2
+
+
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    "Skip complex due to lack of mean support",
+)
+class TestMatrixPowerOpLarge2Complex128(TestMatrixPowerOpComplex128):
+    def config(self):
+        self.matrix_shape = [10, 10]
+        self.dtype = "complex128"
+        self.n = 32
+
+
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    "Skip complex due to lack of mean support",
+)
+class TestMatrixPowerOpComplex128Minus(TestMatrixPowerOpComplex128):
+    def config(self):
+        self.matrix_shape = [10, 10]
+        self.dtype = "complex128"
+        self.n = -1
+
+
 class TestMatrixPowerOpFP32(TestMatrixPowerOp):
     def config(self):
         self.matrix_shape = [10, 10]
@@ -447,7 +626,7 @@ class TestMatrixPowerEmptyTensor(unittest.TestCase):
                 self.assertEqual(res[0].shape, (0, 0))
                 self.assertEqual(res[1].shape, (2, 3, 0, 0))
 
-    def _test_matrix_power_empty_dynamtic(self):
+    def _test_matrix_power_empty_dynamic(self):
         with dygraph_guard():
             x2 = paddle.full((0, 6), 1.0, dtype='float32')
             x3 = paddle.full((6, 0), 1.0, dtype='float32')
@@ -465,7 +644,7 @@ class TestMatrixPowerEmptyTensor(unittest.TestCase):
     def test_matrix_power_empty_tensor(self):
         for place in self._get_places():
             self._test_matrix_power_empty_static(place)
-        self._test_matrix_power_empty_dynamtic()
+        self._test_matrix_power_empty_dynamic()
 
 
 if __name__ == "__main__":

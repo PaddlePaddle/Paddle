@@ -641,6 +641,9 @@ void IrNode::convert_int32_to_int64() {
       }
     } else if (operand->node_type() == IrNodeTy::Load) {
       operand = ir::Cast::Make(type(), operand);
+    } else if (operand->node_type() == IrNodeTy::_Var_ &&
+               operand.as_var()->is_let_symbol) {
+      operand = ir::Cast::Make(type(), operand);
     }
   }
 }
@@ -675,6 +678,9 @@ void IrNode::convert_int64_to_int32() {
         operand->set_type(Int(32));
       }
     } else if (operand->node_type() == IrNodeTy::Load) {
+      operand = ir::Cast::Make(type(), operand);
+    } else if (operand->node_type() == IrNodeTy::_Var_ &&
+               operand.as_var()->is_let_symbol) {
       operand = ir::Cast::Make(type(), operand);
     }
   }
@@ -713,6 +719,9 @@ void TryElevateInt32ToInt64_(std::vector<Expr> &expr_vec) {  // NOLINT
         }
       } else if (expr->node_type() == IrNodeTy::Load) {
         expr = ir::Cast::Make(Int(64), expr);
+      } else if (expr->node_type() == IrNodeTy::_Var_ &&
+                 expr.as_var()->is_let_symbol) {
+        expr = ir::Cast::Make(Int(64), expr);
       }
     }
   }
@@ -747,6 +756,10 @@ void ElevateInt64ToInt32_(Expr &expr) {  // NOLINT
         expr->set_type(Int(32));
       }
     } else if (expr->node_type() == IrNodeTy::Load) {
+      expr = ir::Cast::Make(Int(32), expr);
+    } else if (expr->node_type() == IrNodeTy::_Var_ &&
+               expr.as_var()->is_let_symbol) {
+      // symbol of `let` op should be use cast to convert to int32.
       expr = ir::Cast::Make(Int(32), expr);
     }
   }

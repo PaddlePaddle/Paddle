@@ -47,11 +47,11 @@ void ReduceMeanGradKernel(const Context& dev_ctx,
   std::vector<int64_t> xdims = common::vectorize<int64_t>(x.dims());
   std::vector<int64_t> ydims = common::vectorize<int64_t>(out_grad.dims());
 
-  int reduce_numel = 1;
+  int64_t reduce_numel = 1;
   if (reduce_all) {
     reduce_dims.clear();
     for (size_t d = 0; d < xdims.size(); ++d) {
-      reduce_dims.push_back(static_cast<int>(d));
+      reduce_dims.push_back(d);
     }
   }
   for (auto& d : reduce_dims) {

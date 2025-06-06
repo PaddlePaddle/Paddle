@@ -158,6 +158,9 @@ void KronKernel(const Context &ctx,
                 const DenseTensor &y,
                 DenseTensor *out) {
   ctx.template Alloc<T>(out);
+  if (out && out->numel() == 0) {
+    return;
+  }
 
   int ndims = out->dims().size();
   DenseTensor xx = UnsqueezeTo(x, ndims);

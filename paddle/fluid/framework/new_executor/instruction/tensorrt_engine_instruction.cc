@@ -12,8 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/new_executor/instruction/tensorrt_engine_instruction.h"
+#include <filesystem>
+
 #include "paddle/fluid/framework/new_executor/instruction/instruction_util.h"
+#include "paddle/fluid/framework/new_executor/instruction/tensorrt_engine_instruction.h"
 #include "paddle/fluid/inference/analysis/helper.h"
 #include "paddle/fluid/pir/serialize_deserialize/include/interface.h"
 #include "paddle/fluid/platform/profiler/supplement_tracing.h"
@@ -22,6 +24,8 @@
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/platform/profiler/event_tracing.h"
 #include "paddle/phi/kernels/funcs/data_type_transform.h"
+
+COMMON_DECLARE_string(trt_engine_serialized_path);
 
 namespace paddle {
 namespace framework {
@@ -202,7 +206,15 @@ TensorRTEngineInstruction::TensorRTEngineInstruction(
              "===============";
   trt_engine_ = std::make_unique<paddle::platform::TensorRTEngine>(
       params, paddle::platform::NaiveLogger::Global());
-  auto engine_data = ReadBinaryFileToString(engine_serialized_path);
+  std::string engine_data;
+  try {
+    engine_data = ReadBinaryFileToString(engine_serialized_path);
+  } catch (const std::exception &e) {
+    std::filesystem::path path(engine_serialized_path);
+    std::string filename = path.filename().string();
+    std::string file_root = FLAGS_trt_engine_serialized_path;
+    engine_data = ReadBinaryFileToString(file_root + '/' + filename);
+  }
   trt_engine_->Deserialize(engine_data);
 
   size_t len = refit_param_names_.size();
@@ -850,9 +862,8 @@ std::string TensorRTEngineInstruction::ReadBinaryFileToString(
     const std::string &filePath) {
   std::ifstream inputFile(filePath, std::ios::binary);
 
-  if (!inputFile) {
-    throw std::runtime_error("Failed to open file: " + filePath);
-  }
+  PADDLE_ENFORCE(inputFile.is_open(),
+                 common::errors::NotFound("Failed to open file: %s", filePath));
 
   inputFile.seekg(0, std::ios::end);
   std::streamsize fileSize = inputFile.tellg();
@@ -860,9 +871,9 @@ std::string TensorRTEngineInstruction::ReadBinaryFileToString(
 
   std::string fileContent(static_cast<size_t>(fileSize), '\0');
 
-  if (!inputFile.read(&fileContent[0], fileSize)) {
-    throw std::runtime_error("Failed to read file: " + filePath);
-  }
+  PADDLE_ENFORCE(inputFile.read(&fileContent[0], fileSize).good(),
+                 common::errors::InvalidArgument(
+                     "Failed to read content from file: %s", filePath));
 
   return fileContent;
 }

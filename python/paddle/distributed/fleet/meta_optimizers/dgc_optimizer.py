@@ -428,9 +428,10 @@ class DGCMomentumOptimizer(Optimizer):
         sgd_op = None
         if table_param is not None:
             param_and_grad = [table_param, table_grad]
-            with table_param.block.program._optimized_guard(
-                param_and_grad
-            ), framework.name_scope("optimizer"):
+            with (
+                table_param.block.program._optimized_guard(param_and_grad),
+                framework.name_scope("optimizer"),
+            ):
                 self._create_global_learning_rate()
                 # create the optimize op
                 sgd_op = global_block.append_op(
@@ -543,10 +544,10 @@ class DGCOptimizer(MetaOptimizerBase):
 
         if self.user_defined_strategy.dgc:
             if not isinstance(self.inner_opt, Momentum):
-                logging.warn("dgc only works on Momentum optimizer")
+                logging.warning("dgc only works on Momentum optimizer")
                 return False
             if self.role_maker._worker_num() <= 1:
-                logging.warn("dgc only works on multi cards")
+                logging.warning("dgc only works on multi cards")
                 return False
 
             return True

@@ -2329,7 +2329,7 @@ def matrix_rank(
 
     Args:
         x (Tensor): The input tensor. Its shape should be `[..., m, n]`, where `...` is zero or more batch dimensions. If `x` is a batch
-            of matrices then the output has the same batch dimensions. The data type of `x` should be float32 or float64.
+            of matrices then the output has the same batch dimensions. The data type of `x` should be float32, float64, complex64 or complex128.
         tol (float|Tensor, optional): The tolerance value. If `tol` is not specified, and `sigma` is the largest singular value
             (or eigenvalues in absolute value), and `eps` is the epsilon value for the dtype of `x`, then `tol` is computed with formula
             `tol=sigma * max(m,n) * eps`. Note that if `x` is a batch of matrices, `tol` is computed this way for every batch. Default: None.
@@ -2363,6 +2363,12 @@ def matrix_rank(
              [1, 1, 1, 1]])
 
     """
+    target_dtype = (
+        paddle.float32
+        if x.dtype == paddle.complex64
+        else (paddle.float64 if x.dtype == paddle.complex128 else x.dtype)
+    )
+
     use_atol_rtol = False
     if (atol is not None) or (rtol is not None):
         if tol is not None:
@@ -2373,17 +2379,17 @@ def matrix_rank(
 
     if use_atol_rtol:
         if atol is None:
-            atol = full([], 0.0, x.dtype)
+            atol = full([], 0.0, target_dtype)
         if isinstance(atol, (float, int)):
-            atol = full([], atol, x.dtype)
-        if atol.dtype != x.dtype:
-            atol = cast(atol, x.dtype)
+            atol = full([], atol, target_dtype)
+        if atol.dtype != target_dtype:
+            atol = cast(atol, target_dtype)
 
         if rtol is not None:
             if isinstance(rtol, (float, int)):
-                rtol = full([], rtol, x.dtype)
-            if rtol.dtype != x.dtype:
-                rtol = cast(rtol, x.dtype)
+                rtol = full([], rtol, target_dtype)
+            if rtol.dtype != target_dtype:
+                rtol = cast(rtol, target_dtype)
 
             atol, rtol = paddle.broadcast_tensors([atol, rtol])
 
@@ -2393,7 +2399,10 @@ def matrix_rank(
             inputs = {}
             attrs = {}
             check_variable_and_dtype(
-                x, 'x', ['float32', 'float64'], 'matrix_rank_atol_rtol'
+                x,
+                'x',
+                ['float32', 'float64', 'complex64', 'complex128'],
+                'matrix_rank_atol_rtol',
             )
             inputs['x'] = x
             inputs['atol'] = atol
@@ -2413,8 +2422,8 @@ def matrix_rank(
     else:
         if in_dynamic_or_pir_mode():
             if isinstance(tol, (Variable, paddle.pir.Value)):
-                if tol.dtype != x.dtype:
-                    tol_tensor = cast(tol, x.dtype)
+                if tol.dtype != target_dtype:
+                    tol_tensor = cast(tol, target_dtype)
                 else:
                     tol_tensor = tol
                 use_default_tol = False
@@ -2433,15 +2442,18 @@ def matrix_rank(
             inputs = {}
             attrs = {}
             check_variable_and_dtype(
-                x, 'x', ['float32', 'float64'], 'matrix_rank'
+                x,
+                'x',
+                ['float32', 'float64', 'complex64', 'complex128'],
+                'matrix_rank',
             )
             inputs['X'] = x
             if tol is None:
                 attrs['use_default_tol'] = True
             elif isinstance(tol, Variable):
                 attrs['use_default_tol'] = False
-                if tol.dtype != x.dtype:
-                    inputs['TolTensor'] = cast(tol, x.dtype)
+                if tol.dtype != target_dtype:
+                    inputs['TolTensor'] = cast(tol, target_dtype)
                 else:
                     inputs['TolTensor'] = tol
             else:
@@ -2953,7 +2965,7 @@ def svd(
         x (Tensor): The input tensor. Its shape should be `[..., N, M]`,
             where `...` is zero or more batch dimensions. N and M can be arbitrary
             positive number. Note that if x is singular matrices, the grad is numerical
-            instable. The data type of x should be float32 or float64.
+            instable. The data type of x should be float32, float64, complex64 or complex128.
         full_matrices (bool, optional): A flag to control the behavior of svd.
             If full_matrices = True, svd op will compute full U and V matrices,
             which means shape of U is `[..., N, N]`, shape of V is `[..., M, M]`. K = min(M, N).
@@ -3001,7 +3013,9 @@ def svd(
     if in_dynamic_or_pir_mode():
         return _C_ops.svd(x, full_matrices)
     else:
-        check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'svd')
+        check_variable_and_dtype(
+            x, 'dtype', ['float32', 'float64', 'complex64', 'complex128'], 'svd'
+        )
         check_type(full_matrices, 'full_matrices', bool, 'svd')
         helper = LayerHelper('svd', **locals())
         u = helper.create_variable_for_type_inference(dtype=x.dtype)

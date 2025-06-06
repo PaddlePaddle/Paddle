@@ -1071,11 +1071,139 @@ void FlashAttnV3Kernel(const Context &ctx,
 #endif
 }
 
+template <typename T, typename Context>
+void FlashAttnV3VarLenKernel(const Context &ctx,
+                             const DenseTensor &q,
+                             const DenseTensor &k,
+                             const DenseTensor &v,
+                             const DenseTensor &cu_seqlens_q,
+                             const DenseTensor &cu_seqlens_k,
+                             const paddle::optional<DenseTensor> &q_v_,
+                             const paddle::optional<DenseTensor> &q_descale_,
+                             const paddle::optional<DenseTensor> &k_descale_,
+                             const paddle::optional<DenseTensor> &v_descale_,
+                             const float softmax_scale,
+                             bool is_causal,
+                             int window_size_left,
+                             int window_size_right,
+                             const float softcap,
+                             int num_splits,
+                             const bool manual_set_pack_gqa,
+                             const bool pack_gqa_,
+                             const int sm_margin,
+                             const int max_seqlen_q,
+                             const int max_seqlen_k,
+                             DenseTensor *out,
+                             DenseTensor *softmax_lse) {
+#ifdef PADDLE_WITH_FLASHATTN_V3
+  // umiswing: the following options have not been fully tested
+  PADDLE_ENFORCE_EQ(q_v_.is_initialized(),
+                    false,
+                    common::errors::InvalidArgument("q_v_ is not supported"));
+  PADDLE_ENFORCE_EQ(
+      q_descale_.is_initialized(),
+      false,
+      common::errors::InvalidArgument("q_descale_ is not supported"));
+  PADDLE_ENFORCE_EQ(
+      k_descale_.is_initialized(),
+      false,
+      common::errors::InvalidArgument("k_descale_ is not supported"));
+  PADDLE_ENFORCE_EQ(
+      v_descale_.is_initialized(),
+      false,
+      common::errors::InvalidArgument("v_descale_ is not supported"));
+  PADDLE_ENFORCE_EQ(
+      window_size_left,
+      -1,
+      common::errors::InvalidArgument("window_size is not supported, please "
+                                      "set window_size_left/right to -1"));
+  PADDLE_ENFORCE_EQ(
+      window_size_right,
+      -1,
+      common::errors::InvalidArgument("window_size is not supported, please "
+                                      "set window_size_left/right to -1"));
+  PADDLE_ENFORCE_EQ(softcap,
+                    0,
+                    common::errors::InvalidArgument(
+                        "softcap is not supported, please set softcap to 0"));
+  PADDLE_ENFORCE_EQ(
+      num_splits,
+      1,
+      common::errors::InvalidArgument(
+          "num_splits is not supported, please set num_splits to 1"));
+  PADDLE_ENFORCE_EQ(manual_set_pack_gqa,
+                    false,
+                    common::errors::InvalidArgument(
+                        "manual_set_pack_gqa is not supported, please set "
+                        "manual_set_pack_gqa to false"));
+  PADDLE_ENFORCE_EQ(
+      pack_gqa_,
+      false,
+      common::errors::InvalidArgument(
+          "pack_gqa_ is not supported, please set pack_gqa_ to false"));
+  PADDLE_ENFORCE_EQ(
+      sm_margin,
+      0,
+      common::errors::InvalidArgument(
+          "sm_margin is not supported, please set sm_margin to 0"));
+
+  DenseTensor out_accum;
+  DenseTensor softmax_lse_accum;
+  FlashAttnV3BaseKernel<T, Context>(ctx,
+                                    q,
+                                    k,
+                                    v,
+                                    paddle::none,  // k_new_
+                                    paddle::none,  // v_new_
+                                    q_v_,
+                                    paddle::none,  // out_
+                                    cu_seqlens_q,  // cu_seqlens_q_
+                                    cu_seqlens_k,  // cu_seqlens_k_
+                                    paddle::none,  // cu_seqlens_k_new_
+                                    paddle::none,  // seqused_q_
+                                    paddle::none,  // seqused_k_
+                                    paddle::none,  // page_table_
+                                    paddle::none,  // kv_batch_idx_
+                                    paddle::none,  // leftpad_k_
+                                    paddle::none,  // rotary_cos_
+                                    paddle::none,  // rotary_sin_
+                                    q_descale_,
+                                    k_descale_,
+                                    v_descale_,
+                                    paddle::none,  // scheduler_metadata
+                                    max_seqlen_q,  // max_seqlen_q_
+                                    max_seqlen_k,  // max_seqlen_k_
+                                    softmax_scale,
+                                    is_causal,
+                                    window_size_left,
+                                    window_size_right,
+                                    softcap,
+                                    true,  // is_rotary_interleaved
+                                    num_splits,
+                                    manual_set_pack_gqa,
+                                    pack_gqa_,
+                                    sm_margin,
+                                    out,
+                                    softmax_lse,
+                                    &out_accum,
+                                    &softmax_lse_accum);
+#else
+  RaiseNotSupportedError();
+#endif
+}
+
 }  // namespace phi
 
 PD_REGISTER_KERNEL(flash_attn_v3,
                    GPU,
                    ALL_LAYOUT,
                    phi::FlashAttnV3Kernel,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
+
+PD_REGISTER_KERNEL(flash_attn_v3_varlen,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::FlashAttnV3VarLenKernel,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}

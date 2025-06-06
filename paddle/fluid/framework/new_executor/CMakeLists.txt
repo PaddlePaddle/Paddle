@@ -48,6 +48,11 @@ if(WITH_CINN)
       ${DEVICE_EVENT_LIBS})
 endif()
 
+if(WITH_CUSTOM_DEVICE AND NOT WIN32)
+  set(standalone_executor_deps ${standalone_executor_deps}
+                               custom_engine_manager)
+endif()
+
 if(TENSORRT_FOUND AND WITH_TENSORRT)
   set(standalone_executor_deps ${standalone_executor_deps} trt_engine)
 endif()

@@ -368,9 +368,6 @@ void BindCinnRuntime(py::module *m) {
       .def("cinn_pod_value_to_void_p", &cinn_pod_value_to_void_p)
       .def("cinn_pod_value_to_buffer_p", &cinn_pod_value_to_buffer_p);
 
-  m->def("set_cinn_cudnn_deterministic",
-         &cinn::runtime::SetCinnCudnnDeterministic,
-         py::arg("state") = true);
   m->def("seed", &cinn::runtime::RandomSeed::GetOrSet, py::arg("seed") = 0);
   m->def("clear_seed", &cinn::runtime::RandomSeed::Clear);
 }

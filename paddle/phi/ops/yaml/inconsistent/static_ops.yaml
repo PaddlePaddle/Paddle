@@ -520,7 +520,8 @@
   args : (Tensor x, IntArray axis={}, bool keepdim=false)
   output : Tensor(out)
   infer_meta :
-    func : ReduceIntArrayAxisInferMeta
+    func : StrictReduceIntArrayAxisInferMeta
+    spmd_rule : ReductionMinInferSpmdDynamic
   kernel :
     func : min
   backward : min_grad
@@ -849,6 +850,7 @@
   optional : indices, counts
   infer_meta :
     func : UniqueRawInferMeta
+    spmd_rule : UniqueInferSpmdStatic
   kernel :
     func : unique
     data_type : x

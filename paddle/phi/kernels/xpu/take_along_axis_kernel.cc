@@ -62,7 +62,7 @@ void TakeAlongAxisKernel(const Context& dev_ctx,
   }
 
   using XPUType = typename XPUTypeTrait<T>::Type;
-  int r = XPU_SUCCESS;
+  int r = 0;
 #ifndef PADDLE_WITH_XPU_PLUGIN
   if (index_dtype == DataType::INT32) {
     r = xpu::gather<XPUType, int>(dev_ctx.x_context(),

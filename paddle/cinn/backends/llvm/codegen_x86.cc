@@ -14,7 +14,6 @@
 
 #include "paddle/cinn/backends/llvm/codegen_x86.h"
 
-#include <absl/container/flat_hash_map.h>
 #include <llvm/IR/LLVMContext.h>
 
 #include <algorithm>
@@ -31,6 +30,7 @@
 #include "paddle/cinn/ir/utils/ir_nodes_collector.h"
 #include "paddle/cinn/runtime/intrinsic.h"
 #include "paddle/common/enforce.h"
+#include "paddle/utils/flat_hash_map.h"
 namespace cinn::backends {
 
 CodeGenX86::CodeGenX86(llvm::Module* m,

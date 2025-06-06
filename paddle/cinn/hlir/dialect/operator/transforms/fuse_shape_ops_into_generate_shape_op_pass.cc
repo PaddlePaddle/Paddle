@@ -103,7 +103,11 @@ std::vector<pir::Value> FindSourceDenseTensorOfDimTensor(
       [&](pir::Value value, const std::function<void(pir::Value)>& Visit) {
         // find input dimension tensor;
         pir::Operation* owner = value.defining_op();
+
         if (owner == nullptr) return;
+        if (owner->name() == "cf.tuple_pop") {
+          return;
+        }
         for (auto input_value : pir::GetUsedExternalValue(*owner)) {
           Visit(input_value);
         }

@@ -85,7 +85,8 @@ void ConvKernel(const Context& dev_ctx,
   if (data_format == "NHWC") {
     filter_data_tmp = RAII_GUARD.alloc<XPUType>(filter.numel());
     PADDLE_ENFORCE_XDNN_NOT_NULL(filter_data_tmp);
-    std::vector<int> filter_shape = common::vectorize<int>(filter.dims());
+    std::vector<int64_t> filter_shape =
+        common::vectorize<int64_t>(filter.dims());
     int r = xpu::transpose<XPUType>(dev_ctx.x_context(),
                                     filter_data,
                                     filter_data_tmp,
@@ -228,7 +229,8 @@ void Conv3DKernel(const Context& dev_ctx,
   if (data_format == "NDHWC") {
     filter_data_tmp = RAII_GUARD.alloc<XPUType>(filter.numel());
     PADDLE_ENFORCE_XDNN_NOT_NULL(filter_data_tmp);
-    std::vector<int> filter_shape = common::vectorize<int>(filter.dims());
+    std::vector<int64_t> filter_shape =
+        common::vectorize<int64_t>(filter.dims());
     int r = xpu::transpose<XPUType>(dev_ctx.x_context(),
                                     filter_data,
                                     filter_data_tmp,

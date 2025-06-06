@@ -103,7 +103,7 @@ class SequenceIterVariable(IterVariable):
         self.graph.side_effects.record_mutable_variable(self)
 
     @check_faster_guard
-    def make_faster_guard(self) -> list[paddle.framework.core.GuardNode]:
+    def make_faster_guard(self) -> list[paddle.framework.core.GuardNodeBase]:
         return [
             guard
             for holded in self.holds
@@ -452,7 +452,7 @@ class UserDefinedIterVariable(IterVariable):
         )
 
     @check_faster_guard
-    def make_faster_guard(self) -> list[paddle.framework.core.GuardNode]:
+    def make_faster_guard(self) -> list[paddle.framework.core.GuardNodeBase]:
         return [
             guard
             for holded in self.holds

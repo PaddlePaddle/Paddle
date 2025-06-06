@@ -18,7 +18,9 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+import paddle
 from paddle import get_flags
+from paddle.base.framework import in_dygraph_mode
 
 from ...device import (
     get_cudnn_version,
@@ -738,6 +740,31 @@ class Conv2D(_ConvNd):
                 mode=self._padding_mode,
                 data_format=self._data_format,
             )
+
+        if (
+            in_dygraph_mode()
+            and x.is_dist()
+            and self._data_format in ["NCHW", "NHWC"]
+        ):
+            if self._data_format == "NCHW":
+                shard_axis = 3
+            elif self._data_format == "NHWC":
+                shard_axis = 2
+
+            for placement in x.placements:
+                if placement == paddle.distributed.Shard(shard_axis):
+                    return paddle.distributed.auto_parallel.ring_conv.RingConv2d.apply(
+                        x,
+                        self.weight,
+                        bias=self.bias,
+                        stride=self._stride,
+                        padding=self._updated_padding,
+                        padding_algorithm=self._padding_algorithm,
+                        dilation=self._dilation,
+                        groups=self._groups,
+                        data_format=self._data_format,
+                        channel_dim=self._channel_dim,
+                    )
 
         out = F.conv._conv_nd(
             x,

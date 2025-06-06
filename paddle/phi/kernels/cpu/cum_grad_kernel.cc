@@ -56,4 +56,6 @@ PD_REGISTER_KERNEL(cumsum_grad,
                    double,
                    int16_t,
                    int,
-                   int64_t) {}
+                   int64_t,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

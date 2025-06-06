@@ -38,9 +38,9 @@ class ConcatFunctor<XPUContext, T> {
     int num = input.size();
     auto input_dims = input[0].dims();
 
-    std::vector<std::vector<int>> xdims_list(num);
+    std::vector<std::vector<int64_t>> xdims_list(num);
     for (int i = 0; i < num; ++i) {
-      std::vector<int> tmp_dims(input_dims.size());
+      std::vector<int64_t> tmp_dims(input_dims.size());
       for (int j = 0; j < input_dims.size(); ++j) {
         tmp_dims[j] = input[i].dims()[j];
       }
@@ -89,9 +89,9 @@ class SplitFunctor<XPUContext, T> {
     if (input_dims.size() == 0) {
       input_dims = {1};
     }
-    std::vector<int> split_list(num);
-    std::vector<int> xdims_list(input_dims.size());
-    int total_length = 0;
+    std::vector<int64_t> split_list(num);
+    std::vector<int64_t> xdims_list(input_dims.size());
+    int64_t total_length = 0;
     for (int i = 0; i < num; ++i) {
       auto ins_i_dims = ins[i]->dims();
       // special for 0-dim shape

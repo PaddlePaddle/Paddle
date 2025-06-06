@@ -83,16 +83,10 @@ void LerpKernel(const Context& ctx,
                 const DenseTensor& y,
                 const DenseTensor& weight,
                 DenseTensor* out) {
-  PADDLE_ENFORCE_GT(
-      x.numel(),
-      0,
-      common::errors::InvalidArgument("LerpKernel's input x must not empty."));
-
-  PADDLE_ENFORCE_GT(
-      y.numel(),
-      0,
-      common::errors::InvalidArgument("LerpKernel's input y must not empty."));
-
+  if (out && out->numel() == 0) {
+    ctx.template Alloc<T>(out);
+    return;
+  }
   int rank = out->dims().size();
   PADDLE_ENFORCE_GE(
       rank,

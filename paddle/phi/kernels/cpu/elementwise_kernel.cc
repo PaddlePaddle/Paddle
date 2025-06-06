@@ -74,8 +74,15 @@ void HeavisideKernel(const Context& dev_ctx,
                      DenseTensor* out) {
   // allocate memory for out
   dev_ctx.template Alloc<T>(out);
-  funcs::ElementwiseCompute<funcs::ElementwiseHeavisideFunctor<T>, T>(
-      dev_ctx, x, y, funcs::ElementwiseHeavisideFunctor<T>(), out);
+  auto x_dims = x.dims();
+  auto y_dims = y.dims();
+  if (x_dims.size() >= y_dims.size()) {
+    funcs::ElementwiseCompute<funcs::ElementwiseHeavisideFunctor<T>, T>(
+        dev_ctx, x, y, funcs::ElementwiseHeavisideFunctor<T>(), out);
+  } else {
+    funcs::ElementwiseCompute<funcs::ElementwiseInverseHeavisideFunctor<T>, T>(
+        dev_ctx, x, y, funcs::ElementwiseInverseHeavisideFunctor<T>(), out);
+  }
 }
 
 template <typename T, typename Context>
@@ -83,6 +90,10 @@ void CopySignKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     const DenseTensor& y,
                     DenseTensor* out) {
+  if (out->numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   dev_ctx.template Alloc<T>(out);
   auto x_dims = x.dims();
   auto y_dims = y.dims();
@@ -92,6 +103,23 @@ void CopySignKernel(const Context& dev_ctx,
   } else {
     funcs::ElementwiseCompute<funcs::InverseCopySignFunctor<T>, T>(
         dev_ctx, x, y, funcs::InverseCopySignFunctor<T>(), out);
+  }
+}
+
+template <typename T, typename Context>
+void NextafterKernel(const Context& dev_ctx,
+                     const DenseTensor& x,
+                     const DenseTensor& y,
+                     DenseTensor* out) {
+  dev_ctx.template Alloc<T>(out);
+  auto x_dims = x.dims();
+  auto y_dims = y.dims();
+  if (x_dims.size() >= y_dims.size()) {
+    funcs::ElementwiseCompute<funcs::NextafterFunctor<T>, T>(
+        dev_ctx, x, y, funcs ::NextafterFunctor<T>(), out);
+  } else {
+    funcs::ElementwiseCompute<funcs::InverseNextafterFunctor<T>, T>(
+        dev_ctx, x, y, funcs::InverseNextafterFunctor<T>(), out);
   }
 }
 
@@ -156,7 +184,9 @@ PD_REGISTER_KERNEL(elementwise_pow,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
 PD_REGISTER_KERNEL(heaviside,
                    CPU,
                    ALL_LAYOUT,
@@ -180,3 +210,5 @@ PD_REGISTER_KERNEL(copysign,
                    double,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}
+PD_REGISTER_KERNEL(
+    nextafter, CPU, ALL_LAYOUT, phi::NextafterKernel, float, double) {}

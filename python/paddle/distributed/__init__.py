@@ -35,6 +35,7 @@ from .auto_parallel.api import (
     ShardingStage3,
     Strategy,
     dtensor_from_fn,
+    enable_auto_dp,  # noqa: F401
     in_auto_parallel_align_mode,  # noqa: F401
     reshard,
     shard_dataloader,
@@ -60,6 +61,7 @@ from .auto_parallel.intermediate.tensor_parallel import (
     SequenceParallelEnd,
 )
 from .auto_parallel.local_layer import LocalLayer
+from .auto_parallel.local_map import local_map
 from .auto_parallel.placement_type import (
     Partial,
     Replicate,
@@ -71,6 +73,8 @@ from .checkpoint.save_state_dict import save_state_dict
 from .collective import (
     is_available,
     new_group,
+    restart_process_group,
+    shutdown_process_group,
     split,
 )
 from .communication import (  # noqa: F401
@@ -93,11 +97,13 @@ from .communication import (  # noqa: F401
     is_initialized,
     isend,
     recv,
+    recv_object_list,
     reduce,
     reduce_scatter,
     scatter,
     scatter_object_list,
     send,
+    send_object_list,
     stream,
     wait,
 )
@@ -137,6 +143,8 @@ __all__ = [
     "broadcast_object_list",
     "ParallelEnv",
     "new_group",
+    "shutdown_process_group",
+    "restart_process_group",
     "init_parallel_env",
     "gloo_init_parallel_env",
     "gloo_barrier",
@@ -166,6 +174,8 @@ __all__ = [
     "destroy_process_group",
     "isend",
     "irecv",
+    "send_object_list",
+    "recv_object_list",
     "reduce_scatter",
     "is_available",
     "get_backend",
@@ -192,6 +202,7 @@ __all__ = [
     "Strategy",
     "DistModel",
     "LocalLayer",
+    "local_map",
     "unshard_dtensor",
     "parallelize",
     "SequenceParallelEnd",

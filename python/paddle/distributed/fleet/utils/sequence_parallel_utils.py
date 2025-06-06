@@ -501,6 +501,12 @@ class ColumnSequenceParallelLinear(Layer):
         else:
             self.bias = None
 
+        if self.weight.is_distributed:
+            self.weight.split_axis = 1
+
+        if has_bias and self.bias.is_distributed:
+            self.bias.split_axis = 0
+
         self.linear = F.linear
 
         if fuse_matmul_bias:
@@ -641,6 +647,9 @@ class RowSequenceParallelLinear(Layer):
                 mark_as_sequence_parallel_parameter(self.bias)
         else:
             self.bias = None
+
+        if self.weight.is_distributed:
+            self.weight.split_axis = 0
 
         self.linear = F.linear
 

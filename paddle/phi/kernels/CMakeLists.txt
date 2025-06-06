@@ -49,6 +49,29 @@ if(APPLE OR WIN32)
   list(REMOVE_ITEM kernel_cu "sparse/gpu/conv_kernel_igemm.cu")
 endif()
 
+# New Op only supported by CUDA>=12.0 and Linux
+if(((WITH_GPU) AND (CUDA_VERSION VERSION_LESS 12.0))
+   OR APPLE
+   OR WIN32)
+  list(
+    REMOVE_ITEM
+    kernel_gpu
+    "gpu/moe_ops_partial_nosoftmaxtopk_kernel.cu"
+    "gpu/moe_ops_partial_nosoftmaxtopk_grad_kernel.cu"
+    "gpu/moe_gate_dispatch_permute_grad_kernel.cu"
+    "gpu/moe_gate_dispatch_permute_kernel.cu"
+    "gpu/expand_modality_expert_id_kernel.cu"
+    "gpu/moe_combine_kernel.cu"
+    "gpu/moe_combine_grad_kernel.cu"
+    "gpu/cal_aux_loss_kernel.cu"
+    "gpu/cal_aux_loss_grad_kernel.cu"
+    "gpu/build_src_rank_and_local_expert_id_kernel.cu"
+    "gpu/moe_gate_dispatch_kernel.cu"
+    "gpu/moe_gate_dispatch_grad_kernel.cu"
+    "gpu/int_bincount.cu"
+    "gpu/layer_norm_cuda_kernel.cu")
+endif()
+
 if(NOT WITH_DGC)
   list(REMOVE_ITEM kernel_gpu "gpu/dgc_kernel.cu")
 endif()
@@ -228,7 +251,19 @@ if(WITH_ROCM)
   list(
     REMOVE_ITEM
     kernel_gpu
+    "gpu/moe_ops_partial_nosoftmaxtopk_kernel.cu"
+    "gpu/moe_ops_partial_nosoftmaxtopk_grad_kernel.cu"
+    "gpu/moe_gate_dispatch_permute_grad_kernel.cu"
+    "gpu/moe_gate_dispatch_permute_kernel.cu"
+    "gpu/expand_modality_expert_id_kernel.cu"
+    "gpu/moe_combine_kernel.cu"
+    "gpu/moe_combine_grad_kernel.cu"
     "gpu/affine_grid_grad_kernel.cu"
+    "gpu/cal_aux_loss_kernel.cu"
+    "gpu/cal_aux_loss_grad_kernel.cu"
+    "gpu/build_src_rank_and_local_expert_id_kernel.cu"
+    "gpu/moe_gate_dispatch_kernel.cu"
+    "gpu/moe_gate_dispatch_grad_kernel.cu"
     "gpu/apply_per_channel_scale_kernel.cu"
     "gpu/calc_reduced_attn_kernel.cu"
     "gpu/eigvalsh_kernel.cu"
@@ -236,7 +271,19 @@ if(WITH_ROCM)
     "gpu/matrix_rank_kernel.cu"
     "gpu/matrix_rank_tol_kernel.cu"
     "gpu/svd_kernel.cu"
-    "gpu/cuda_gemm_kernel.cu")
+    "gpu/cuda_gemm_kernel.cu"
+    "gpu/int_bincount.cu"
+    "gpu/layer_norm_cuda_kernel.cu")
+endif()
+
+# Remove AP kernel when CINN is not enabled.
+if(NOT WITH_CINN)
+  list(REMOVE_ITEM kernel_cu "gpu/ap_facade_kernel.cu"
+       "gpu/ap_trivial_fusion_begin_kernel.cu"
+       "gpu/ap_trivial_fusion_end_kernel.cu" "gpu/ap_variadic_kernel.cu")
+  list(REMOVE_ITEM kernel_gpu "gpu/ap_facade_kernel.cu"
+       "gpu/ap_trivial_fusion_begin_kernel.cu"
+       "gpu/ap_trivial_fusion_end_kernel.cu" "gpu/ap_variadic_kernel.cu")
 endif()
 
 set(cc_search_pattern
@@ -315,8 +362,14 @@ if(WITH_XPU)
     file(GLOB_RECURSE kernel_xpu_cc "${CMAKE_CURRENT_BINARY_DIR}/*.cc")
     collect_generated_srcs(kernels_srcs SRCS ${kernel_xpu_cc})
     set(kernel_cc "")
-
   endif()
+
+  # The kernel related to xpufft must have WITH_XPU_FFT enabled.
+  if(NOT WITH_XPU_FFT)
+    list(REMOVE_ITEM kernel_xpu "xpu/complex_kernel.cc"
+         "xpu/complex_grad_kernel.cc")
+  endif()
+
   collect_srcs(kernels_srcs SRCS ${kernel_xpu})
   kernel_declare("${kernel_xpu}")
   kernel_declare("${kernel_xpu_kps}")

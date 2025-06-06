@@ -30,6 +30,7 @@ from ..utils import (
     InfoCollector,
     NewSymbolHitRateInfo,
     Singleton,
+    SIRToCodeMap,
     StepInfoManager,
     SubGraphInfo,
     SubGraphRelationInfo,
@@ -43,7 +44,7 @@ from .interpreter import compile_sir
 if TYPE_CHECKING:
     from paddle.static import InputSpec, Program
 
-    from .symbolic_context import SymbolicTraceContext
+    from .builder import StatementIRBuilder
 
 
 def trace_back_frames():
@@ -90,7 +91,6 @@ class TensorIdAllocator(metaclass=Singleton):
         if not hasattr(tensor, self.TENSOR_ID_ATTR):
             setattr(tensor, self.TENSOR_ID_ATTR, self._id_generator())
         return getattr(tensor, self.TENSOR_ID_ATTR)
-        # return tensor._get_tensor_ptr()
 
 
 class FallbackWrapper:
@@ -228,6 +228,21 @@ class FallbackWrapper:
             self.SIR.name,
         )
 
+    def update_compile_time_info(self, SIR, partial_program_layer):
+        if not self.is_first_call:
+            return
+        from ..opcode_translator.executor.executor_cache import (
+            OpcodeExecutorCache,
+        )
+
+        code = SIRToCodeMap().get(SIR)
+        assert code is not None, f"Cannot find code for SIR: {SIR}"
+
+        OpcodeExecutorCache().compile_time_stats.setdefault(code, 0)
+        OpcodeExecutorCache().compile_time_stats[
+            code
+        ] += partial_program_layer._compile_time_counter.get_total_time()
+
     def __call__(self, *args, **kwargs):
         with EventGuard(f"FallbackWrapper: {self.SIR.name}"):
             if StepInfoManager().need_back_trace:
@@ -265,6 +280,7 @@ class FallbackWrapper:
             self.collect_new_symbol_hit_rate(args, outputs)
             self.collect_subgraph_relation(args, outputs, self.partial_program)
             self.collect_subgraph_info(self.concrete_program.main_program)
+            self.update_compile_time_info(self.SIR, self.partial_program)
             if ENV_SOT_EXPORT.get() != "" and not self.exported:
                 export(self.SIR, ENV_SOT_EXPORT.get())
                 self.exported = True
@@ -283,9 +299,9 @@ class CompileSIRCache(Cache, metaclass=Singleton):
 
     def key_fn(
         self,
-        context: SymbolicTraceContext,
+        builder: StatementIRBuilder,
         sir_name: str,
-        input_spec: tuple[InputSpec, ...],
+        input_spec: tuple[InputSpec | None, ...],
         **kwargs,
     ):
         """
@@ -299,16 +315,16 @@ class CompileSIRCache(Cache, metaclass=Singleton):
         Returns:
             The hash key of the SIR
         """
-        sir = context.get_sir(sir_name)
+        sir = builder.get_sir(sir_name)
         # NOTE(dev): Is str(sir) a heavy operation ?
         hash_key = hash((str(sir), *input_spec, kwargs['training']))
         return hash_key
 
     def value_fn(
         self,
-        context: SymbolicTraceContext,
+        builder: StatementIRBuilder,
         sir_name: str,
-        input_spec: tuple[InputSpec, ...],
+        input_spec: tuple[InputSpec | None, ...],
         **kwargs,
     ):
         """
@@ -326,12 +342,12 @@ class CompileSIRCache(Cache, metaclass=Singleton):
         backend = kwargs.get("backend", None)
         return FallbackWrapper(
             paddle.jit.to_static(
-                compile_sir(context, sir_name),
+                compile_sir(builder, sir_name),
                 input_spec=[input_spec],
                 build_strategy=build_strategy,
                 backend=backend,
                 full_graph=True,
             ),
-            context.get_sir(sir_name),
+            builder.get_sir(sir_name),
             is_training=kwargs['training'],
         )

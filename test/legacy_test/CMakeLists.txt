@@ -170,6 +170,10 @@ if(APPLE OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_multiprocess_dataloader_static)
 endif()
 
+if(APPLE)
+  list(REMOVE_ITEM TEST_OPS test_compare_op_0size)
+endif()
+
 list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_hybrid_parallel)
 
 list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_transformer_gloo)
@@ -473,6 +477,26 @@ if(NOT WITH_GPU
    OR APPLE)
   list(REMOVE_ITEM TEST_OPS test_build_strategy_fusion_group_pass)
   list(REMOVE_ITEM TEST_OPS test_sparse_conv_igemm_op)
+endif()
+
+# New Op only supported by CUDA>=12.0 and Linux, CUDA_ARCH_NAME==Volta, skip some op test
+if(NOT WITH_GPU
+   OR WIN32
+   OR APPLE
+   OR (${CUDA_ARCH_NAME} STREQUAL "Volta")
+   OR ((WITH_GPU) AND (CUDA_VERSION VERSION_LESS 12.0)))
+  list(
+    REMOVE_ITEM
+    TEST_OPS
+    test_incubate_build_src_rank_and_local_expert_id
+    test_incubate_expand_modality_expert_id
+    test_incubate_fused_loss
+    test_incubate_fused_rmsnorm_ext
+    test_incubate_int_bincount
+    test_incubate_moe_combine
+    test_incubate_moe_gate_dispatch_partial_nosoftmaxtopk
+    test_incubate_moe_gate_dispatch_w_permute_bwd
+    test_incubate_moe_gate_dispatch_w_permute)
 endif()
 
 if(NOT WITH_CUDNN_FRONTEND)
@@ -833,6 +857,7 @@ set_tests_properties(test_multiprocess_dataloader_iterable_dataset_static
 set_tests_properties(test_lstm_cudnn_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_stack_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_bilinear_interp_v2_op PROPERTIES TIMEOUT 120)
+set_tests_properties(test_interp_recompute_scale_factor PROPERTIES TIMEOUT 60)
 set_tests_properties(test_cond PROPERTIES TIMEOUT 240)
 set_tests_properties(test_norm_nn_grad PROPERTIES TIMEOUT 180)
 set_tests_properties(test_matrix_nms_op PROPERTIES TIMEOUT 120)
@@ -847,6 +872,8 @@ set_tests_properties(test_imperative_transformer_sorted_gradient
 set_tests_properties(test_imperative_optimizer PROPERTIES TIMEOUT 250)
 set_tests_properties(test_imperative_optimizer_v2 PROPERTIES TIMEOUT 250)
 set_tests_properties(test_activation_op PROPERTIES TIMEOUT 270)
+set_tests_properties(test_activation_op_zero_size PROPERTIES TIMEOUT 200)
+
 set_tests_properties(test_normal PROPERTIES TIMEOUT 120)
 set_tests_properties(test_cyclic_cifar_dataset PROPERTIES TIMEOUT 120)
 set_tests_properties(test_fused_elemwise_activation_op PROPERTIES TIMEOUT 270)

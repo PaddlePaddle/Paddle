@@ -16,6 +16,7 @@
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/fused_gemm_epilogue.h"
 
 namespace phi {
@@ -34,6 +35,21 @@ void FusedGemmEpilogueGradKernel(
     DenseTensor* x_grad,
     DenseTensor* y_grad,
     DenseTensor* bias_grad) {
+  if (x.numel() == 0) {
+    dev_ctx.template Alloc<T>(y_grad);
+    phi::FullKernel<T>(
+        dev_ctx, common::vectorize(y.dims()), 0.0, y.dtype(), y_grad);
+
+    if (bias_grad) {
+      dev_ctx.template Alloc<T>(bias_grad);
+      phi::FullKernel<T>(dev_ctx,
+                         common::vectorize(bias_grad->dims()),
+                         0.0,
+                         bias_grad->dtype(),
+                         bias_grad);
+    }
+    return;
+  }
 #if defined(PADDLE_WITH_CUDA) && CUDA_VERSION < 11060
   PADDLE_THROW(common::errors::Unimplemented(
       "The fused_gemm_epilogue operator only support CUDA 11.6 "

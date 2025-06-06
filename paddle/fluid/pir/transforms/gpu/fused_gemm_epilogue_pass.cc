@@ -41,6 +41,9 @@ class FusedLinearPattern
     if (pir::GetDataTypeFromValue(matmul.x()).isa<pir::Float32Type>()) {
       return false;
     }
+    if (pir::GetDataTypeFromValue(matmul.x()).isa<pir::Float64Type>()) {
+      return false;
+    }
 
     // The result of matmul can only be uniquely used by an add OP.
     if (matmul_out.use_count() != 1) {
@@ -108,6 +111,9 @@ class FusedLinearGradPattern
     // The datatype(without auto-promote) of matmul should not be float32 type,
     // which may cause performance issue in some cases.
     if (pir::GetDataTypeFromValue(matmul_grad.x()).isa<pir::Float32Type>()) {
+      return false;
+    }
+    if (pir::GetDataTypeFromValue(matmul_grad.x()).isa<pir::Float64Type>()) {
       return false;
     }
     paddle::dialect::AddGradOp add_grad;
@@ -189,6 +195,9 @@ class FusedLinearGradSinglePattern
     // The datatype(without auto-promote) of matmul should not be float32 type,
     // which may cause performance issue in some cases.
     if (pir::GetDataTypeFromValue(matmul_grad.x()).isa<pir::Float32Type>()) {
+      return false;
+    }
+    if (pir::GetDataTypeFromValue(matmul_grad.x()).isa<pir::Float64Type>()) {
       return false;
     }
     if (pir::GetShapeFromValue(matmul_grad->operand_source(1)).size() != 2) {

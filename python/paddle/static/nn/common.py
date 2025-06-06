@@ -3578,7 +3578,7 @@ def embedding(
             >>> exe = paddle.static.Executor(place)
             >>> exe.run(paddle.static.default_startup_program())
 
-            >>> x = np.array([[7, 2, 4, 5],[4, 3, 2, 9]], dtype=np.int64) # type: ignore[var-annotated]
+            >>> x = np.array([[7, 2, 4, 5],[4, 3, 2, 9]], dtype=np.int64)
             >>> out, = exe.run(paddle.static.default_main_program(), feed={'x':x}, fetch_list=[output])
             >>> print(out)
             [[[1. 1. 1.]
@@ -3943,8 +3943,9 @@ class ExponentialMovingAverage:
 
         self._ema_vars = {}
         for param, tmp in self._params_tmps:
-            with param.block.program._optimized_guard([param, tmp]), name_scope(
-                'moving_average'
+            with (
+                param.block.program._optimized_guard([param, tmp]),
+                name_scope('moving_average'),
             ):
                 self._ema_vars[param.name] = self._create_ema_vars(param)
 
@@ -4026,8 +4027,9 @@ class ExponentialMovingAverage:
         )
         param_master_emas = []
         for param, tmp in self._params_tmps:
-            with param.block.program._optimized_guard([param, tmp]), name_scope(
-                'moving_average'
+            with (
+                param.block.program._optimized_guard([param, tmp]),
+                name_scope('moving_average'),
             ):
                 param_ema = self._ema_vars[param.name]
                 if param.name + '.master' in self._ema_vars:

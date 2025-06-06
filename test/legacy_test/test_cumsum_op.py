@@ -212,6 +212,95 @@ class TestSumOp7(TestSumOp1):
         self.out = self.x.cumsum(axis=0)
 
 
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    "Skip XPU for complex dtype is not fully supported",
+)
+class TestSumComplexOp1(TestSumOp1):
+    def set_attrs_input_output(self):
+        self.attrs = {'axis': 2}
+        x_real = np.random.random((5, 6, 10)).astype(self.dtype_)
+        x_imag = np.random.random((5, 6, 10)).astype(self.dtype_)
+        self.x = x_real + 1j * x_imag
+        self.out = self.x.cumsum(axis=2)
+
+
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    "Skip XPU for complex dtype is not fully supported",
+)
+class TestSumComplexOp2(TestSumOp1):
+    def set_attrs_input_output(self):
+        self.attrs = {'axis': -1, 'reverse': True}
+        x_real = np.random.random((5, 6, 10)).astype(self.dtype_)
+        x_imag = np.random.random((5, 6, 10)).astype(self.dtype_)
+        self.x = x_real + 1j * x_imag
+        self.out = np.flip(np.flip(self.x, axis=2).cumsum(axis=2), axis=2)
+
+
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    "Skip XPU for complex dtype is not fully supported",
+)
+class TestSumComplexOp3(TestSumOp1):
+    def set_attrs_input_output(self):
+        self.attrs = {'axis': 1}
+        x_real = np.random.random((5, 6, 10)).astype(self.dtype_)
+        x_imag = np.random.random((5, 6, 10)).astype(self.dtype_)
+        self.x = x_real + 1j * x_imag
+        self.out = self.x.cumsum(axis=1)
+
+
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    "Skip XPU for complex dtype is not fully supported",
+)
+class TestSumComplexOp4(TestSumOp1):
+    def set_attrs_input_output(self):
+        self.attrs = {'axis': 0}
+        x_real = np.random.random((5, 6, 10)).astype(self.dtype_)
+        x_imag = np.random.random((5, 6, 10)).astype(self.dtype_)
+        self.x = x_real + 1j * x_imag
+        self.out = self.x.cumsum(axis=0)
+
+
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    "Skip XPU for complex dtype is not fully supported",
+)
+class TestSumComplexOp5(TestSumOp1):
+    def set_attrs_input_output(self):
+        x_real = np.random.random((5, 20)).astype(self.dtype_)
+        x_imag = np.random.random((5, 20)).astype(self.dtype_)
+        self.x = x_real + 1j * x_imag
+        self.out = self.x.cumsum(axis=1)
+
+
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    "Skip XPU for complex dtype is not fully supported",
+)
+class TestSumComplexOp6(TestSumOp1):
+    def set_attrs_input_output(self):
+        self.attrs = {'axis': -1, 'flatten': True}
+        x_real = np.random.random((5, 6, 5)).astype(self.dtype_)
+        x_imag = np.random.random((5, 6, 5)).astype(self.dtype_)
+        self.x = x_real + 1j * x_imag
+        self.out = self.x.cumsum()
+
+
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    "Skip XPU for complex dtype is not fully supported",
+)
+class TestSumComplexOp7(TestSumOp1):
+    def set_attrs_input_output(self):
+        x_real = np.random.random(100).astype(self.dtype_)
+        x_imag = np.random.random(100).astype(self.dtype_)
+        self.x = x_real + 1j * x_imag
+        self.out = self.x.cumsum(axis=0)
+
+
 class TestCumsumFP16(unittest.TestCase):
     def check_main(self, x_np, dtype):
         paddle.disable_static()
@@ -657,6 +746,40 @@ class TestCumSumOpFp16(unittest.TestCase):
                 out = exe.run(feed={'x': x_np}, fetch_list=[y1, y2, y3, y4])
             paddle.disable_static()
 
+
+def create_test_class(op_type, dtype, shape, axis):
+    class Cls(unittest.TestCase):
+        def test_zero_size(self):
+            paddle.disable_static()
+            numpy_tensor_1 = np.random.rand(*shape).astype(dtype)
+            paddle_x = paddle.to_tensor(numpy_tensor_1)
+            paddle_x.stop_gradient = False
+
+            paddle_api = eval(f"paddle.{op_type}")
+            paddle_out = paddle_api(paddle_x, axis=axis)
+            numpy_api = eval(f"np.{op_type}")
+            numpy_out = numpy_api(numpy_tensor_1, axis=axis)
+
+            np.testing.assert_allclose(
+                paddle_out.numpy(),
+                numpy_out,
+                1e-2,
+                1e-2,
+            )
+            np.testing.assert_allclose(
+                paddle_out.shape,
+                numpy_out.shape,
+            )
+
+    cls_name = f"{op_type}{dtype}_0SizeTest"
+    Cls.__name__ = cls_name
+    globals()[cls_name] = Cls
+
+
+create_test_class("cumsum", "float32", [3, 4, 0], 0)
+create_test_class("cumsum", "float64", [3, 4, 0, 3, 4], -2)
+create_test_class("cumsum", "int32", [3, 4, 0], 0)
+create_test_class("cumsum", "int64", [3, 4, 0, 3, 4], -1)
 
 if __name__ == '__main__':
     unittest.main()

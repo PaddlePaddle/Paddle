@@ -28,6 +28,7 @@ limitations under the License. */
 #include "paddle/phi/infermeta/unary.h"
 #include "paddle/phi/kernels/cpu/conv_util.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
+#include "paddle/phi/kernels/funcs/common_infer_shape_functions.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 #include "paddle/phi/kernels/funcs/correlation_funcs.h"
 
@@ -95,7 +96,9 @@ void AllValueCompareInferMeta(const MetaTensor& x,
                               const MetaTensor& y,
                               MetaTensor* out,
                               MetaConfig config) {
-  detail::BinarySameInputDimsCheck(x, y, config);
+  if (x.numel() != 0 && y.numel() != 0) {
+    detail::BinarySameInputDimsCheck(x, y, config);
+  }
   out->set_dims(common::make_ddim({}));
   out->set_dtype(DataType::BOOL);
 }
@@ -489,9 +492,9 @@ void CompareRawInferMeta(const MetaTensor& x,
   } else {
     int max_dim = std::max(dim_x.size(), dim_y.size());
     int axis = std::abs(dim_x.size() - dim_y.size());
-    std::vector<int> x_dims_array(max_dim);
-    std::vector<int> y_dims_array(max_dim);
-    std::vector<int> out_dims_array(max_dim);
+    std::vector<int64_t> x_dims_array(max_dim);
+    std::vector<int64_t> y_dims_array(max_dim);
+    std::vector<int64_t> out_dims_array(max_dim);
     funcs::GetBroadcastDimsArrays(dim_x,
                                   dim_y,
                                   x_dims_array.data(),
@@ -543,9 +546,9 @@ void ComplexInferMeta(const MetaTensor& x,
 
     // start align axis
     int axis = std::abs(x_dims.size() - y_dims.size());
-    std::vector<int> x_dims_array(max_dim);
-    std::vector<int> y_dims_array(max_dim);
-    std::vector<int> out_dims_array(max_dim);
+    std::vector<int64_t> x_dims_array(max_dim);
+    std::vector<int64_t> y_dims_array(max_dim);
+    std::vector<int64_t> out_dims_array(max_dim);
     phi::funcs::GetBroadcastDimsArrays(x_dims,
                                        y_dims,
                                        x_dims_array.data(),
@@ -1365,21 +1368,6 @@ void DistInferMeta(const MetaTensor& x,
                    const MetaTensor& y,
                    float p,
                    MetaTensor* out) {
-  auto x_dims = x.dims();
-  auto y_dims = y.dims();
-
-  PADDLE_ENFORCE_NE(common::product(x_dims),
-                    0,
-                    common::errors::InvalidArgument(
-                        "The Input(X) has not been initialized properly. The "
-                        "shape of Input(X) = [%s].",
-                        x_dims));
-  PADDLE_ENFORCE_NE(common::product(y_dims),
-                    0,
-                    common::errors::InvalidArgument(
-                        "The Input(Y) has not been initialized properly. The "
-                        "shape of Input(Y) = [%s].",
-                        y_dims));
   out->set_dims(common::make_ddim({}));
   out->set_dtype(x.dtype());
 }
@@ -1690,9 +1678,9 @@ void ElementwiseRawInferMeta(const MetaTensor& x,
                           axis));
     axis = (axis < 0 ? (std::abs(x_dims.size() - y_dims.size()) + axis + 1)
                      : axis);
-    std::vector<int> x_dims_array(max_dim);
-    std::vector<int> y_dims_array(max_dim);
-    std::vector<int> out_dims_array(max_dim);
+    std::vector<int64_t> x_dims_array(max_dim);
+    std::vector<int64_t> y_dims_array(max_dim);
+    std::vector<int64_t> out_dims_array(max_dim);
 
 #ifdef PADDLE_WITH_DNNL
     bool should_rotate =
@@ -1703,8 +1691,8 @@ void ElementwiseRawInferMeta(const MetaTensor& x,
     if (should_rotate) {
       // Pick bigger shape and rotate this one
       bool x_over_y = (common::product(x_dims) > common::product(y_dims));
-      auto vdims = x_over_y ? common::vectorize<int>(x_dims)
-                            : common::vectorize<int>(y_dims);
+      auto vdims = x_over_y ? common::vectorize<int64_t>(x_dims)
+                            : common::vectorize<int64_t>(y_dims);
       std::rotate(vdims.begin() + 1, vdims.begin() + 2, vdims.end());
       if (x_over_y) {
         x_dims = common::make_ddim(vdims);
@@ -1816,7 +1804,7 @@ void CEmbeddingInferMeta(const MetaTensor& weight,
 
 void ExpandAsInferMeta(const MetaTensor& x,
                        const MetaTensor& y,
-                       const std::vector<int>& target_shape,
+                       const std::vector<int64_t>& target_shape,
                        MetaTensor* out) {
 #define MAX_RANK_SUPPORTED 8
   auto x_dims = x.dims();
@@ -2142,6 +2130,18 @@ void GatherNdInferMeta(const MetaTensor& x,
 
   out->set_dims(common::make_ddim(result_dims));
   out->share_lod(x);
+  out->set_dtype(x.dtype());
+}
+
+void IndexElementwisePutInferMeta(const MetaTensor& x,
+                                  const std::vector<const MetaTensor*>& index,
+                                  const MetaTensor& value,
+                                  const std::vector<int64_t>& input_dims,
+                                  const std::vector<int64_t>& input_strides,
+                                  const std::vector<int64_t>& index_dims,
+                                  const std::vector<int64_t>& index_strides,
+                                  MetaTensor* out) {
+  out->set_dims(x.dims());
   out->set_dtype(x.dtype());
 }
 
@@ -2902,6 +2902,17 @@ void MaskedSelectInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
+void MaskedFillInferMeta(const MetaTensor& x,
+                         const MetaTensor& mask,
+                         const MetaTensor& value,
+                         MetaTensor* out) {
+  auto x_dims = x.dims();
+  auto mask_dims = mask.dims();
+  auto expanded_dims = phi::funcs::BroadcastTwoDims(x_dims, mask_dims, -1);
+  out->set_dims(expanded_dims);
+  out->set_dtype(x.dtype());
+}
+
 void MatmulInferMeta(const MetaTensor& x,
                      const MetaTensor& y,
                      bool trans_x,
@@ -3141,8 +3152,8 @@ void MatrixRankTolInferMeta(const MetaTensor& x,
                         "The dims of input must be greater than 2"));
 
   if (hermitian) {
-    int rows = static_cast<int>(dim_x[dim_x.size() - 2]);
-    int cols = static_cast<int>(dim_x[dim_x.size() - 1]);
+    int64_t rows = static_cast<int64_t>(dim_x[dim_x.size() - 2]);
+    int64_t cols = static_cast<int64_t>(dim_x[dim_x.size() - 1]);
     PADDLE_ENFORCE_EQ(rows,
                       cols,
                       common::errors::InvalidArgument(
@@ -3155,9 +3166,9 @@ void MatrixRankTolInferMeta(const MetaTensor& x,
   } else {
     int max_dim = std::max(dim_x_batch.size(), dim_tol.size());
     int axis = std::abs(dim_x_batch.size() - dim_tol.size());
-    std::vector<int> x_batch_dims_array(max_dim);
-    std::vector<int> tol_dims_array(max_dim);
-    std::vector<int> out_dims_array(max_dim);
+    std::vector<int64_t> x_batch_dims_array(max_dim);
+    std::vector<int64_t> tol_dims_array(max_dim);
+    std::vector<int64_t> out_dims_array(max_dim);
     phi::funcs::GetBroadcastDimsArrays(dim_x_batch,
                                        dim_tol,
                                        x_batch_dims_array.data(),
@@ -4582,6 +4593,20 @@ void WeightDequantizeInferMeta(const MetaTensor& x,
   int k = static_cast<int>(real_channel_shape);
   out->set_dims(common::make_ddim({n, k}));
   out->set_dtype(scale.dtype());
+}
+
+void FusedRMSNormInferMeta(const MetaTensor& x,
+                           const MetaTensor& scale,
+                           float epsilon,
+                           MetaTensor* y,
+                           MetaTensor* invvar) {
+  // Y: same shape, dtype, layout as X
+  y->set_dims(x.dims());
+  y->set_dtype(x.dtype());
+  // mean & invvar: 1-D length = x.dims()[0]
+  int64_t rows = x.dims()[0];
+  invvar->set_dims(DDim({rows}));
+  invvar->set_dtype(DataType::FLOAT32);
 }
 
 }  // namespace phi

@@ -2574,7 +2574,7 @@ class DistributedStrategy:
 
                 >>> # for initialize parallel env, only need to call
                 >>> paddle.distributed.init_parallel_env()
-                >>> # then the heterogenous context will be created.
+                >>> # then the heterogeneous context will be created.
 
         """
         return self.strategy.heter_ccl_mode

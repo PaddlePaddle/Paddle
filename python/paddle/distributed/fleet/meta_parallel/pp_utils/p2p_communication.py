@@ -763,6 +763,7 @@ class P2pHelper:
                 sync_recv=sync_recv,
                 send_recv_meta=self._send_recv_meta,
                 batch_p2p_comm=batch_p2p_comm,
+                dynamic_shape=self._dynamic_shape,
             )
             if self._dynamic_shape:
                 self._dynamic_cnt += 1
@@ -807,9 +808,6 @@ class P2pHelper:
         if _timers is not None:
             _timers("recv_backward").stop()
 
-        if self._dynamic_shape and need_increase_cnt:
-            self._dynamic_cnt += 1
-
         return output_tensor_grad
 
     def send_forward(
@@ -823,10 +821,6 @@ class P2pHelper:
         if _timers is not None:
             _timers("send_forward").start()
 
-        assert (
-            not self._dynamic_shape
-        ), "p2p_helper.send_forward function doesn't support dynamic_shape now"
-
         if not pp_last_stage:
             self._send_meta(output_tensor, skip_check_meta=skip_check_meta)
             _p2p_helper(
@@ -836,7 +830,11 @@ class P2pHelper:
                 recv_next=False,
                 send_recv_meta=self._send_recv_meta,
                 batch_p2p_comm=batch_p2p_comm,
+                dynamic_shape=self._dynamic_shape,
             )
+            if self._dynamic_shape:
+                self._dynamic_cnt += 1
+
         if _timers is not None:
             _timers("send_forward").stop()
 
@@ -847,11 +845,9 @@ class P2pHelper:
         if _timers is not None:
             _timers("send_backward").start()
 
-        assert (
-            not self._dynamic_shape
-        ), "p2p_helper.send_backward function doesn't support dynamic_shape now"
-
         if not pp_first_stage:
+            if self._dynamic_shape:
+                self._send_meta(input_tensor_grad, reverse=True)
             _p2p_helper(
                 tensor_send_next=None,
                 tensor_send_prev=input_tensor_grad,
@@ -859,7 +855,10 @@ class P2pHelper:
                 recv_next=False,
                 send_recv_meta=self._send_recv_meta,
                 batch_p2p_comm=batch_p2p_comm,
+                dynamic_shape=self._dynamic_shape,
             )
+            if self._dynamic_shape:
+                self._dynamic_cnt += 1
         if _timers is not None:
             _timers("send_backward").stop()
 

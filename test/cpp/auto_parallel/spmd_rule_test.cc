@@ -924,7 +924,30 @@ TEST(WhereRule, Ctor) {
   check_dim_mapping(inferred_dist_attrs.second[1], {-1});
   check_partial_dims(inferred_dist_attrs.second[1], {0});
 }
+TEST(ArgminRule, Ctor) {
+  std::vector<int64_t> mesh_shape = {2, 2};
+  std::vector<int64_t> process_ids = {0, 1, 2, 3};
+  std::vector<std::string> dim_names = {"x", "y"};
+  ProcessMesh process_mesh(mesh_shape, process_ids, dim_names);
 
+  // test forward
+  auto t_dist_attr = TensorDistAttr();
+  t_dist_attr.set_process_mesh(process_mesh);
+  t_dist_attr.set_dims_mapping({0, 1, -1});
+  t_dist_attr.set_dynamic_dims({false, false, false});
+  phi::distributed::DistMetaTensor x = phi::distributed::DistMetaTensor(
+      common::make_ddim({4, 6, 8}), t_dist_attr);
+  phi::Scalar axis(1);
+  bool keep_dim = false;
+  bool flatten = false;
+  phi::distributed::SpmdInfo forward_info =
+      phi::distributed::ArgMinInferSpmdDynamic(
+          x, axis, keep_dim, flatten, phi::DataType::FLOAT32);
+  check_dim_mapping(forward_info.first[0], {0, -1, -1});
+  check_partial_dims(forward_info.first[0], {});
+  check_dim_mapping(forward_info.second[0], {0, -1});
+  check_partial_dims(forward_info.second[0], {});
+}
 TEST(ReduceMaxRule, Ctor) {
   std::vector<int64_t> mesh_shape = {2};
   std::vector<int64_t> process_ids = {0, 1};
@@ -955,6 +978,27 @@ TEST(ReduceMaxRule, Ctor) {
   check_partial_dims(backward_info.first[1], {});
   check_dim_mapping(backward_info.second[0], {-1, -1, -1});
   check_partial_dims(backward_info.second[0], {});
+}
+
+TEST(ReduceMinRule, Ctor) {
+  std::vector<int64_t> mesh_shape = {2};
+  std::vector<int64_t> process_ids = {0, 1};
+  std::vector<std::string> dim_names = {"x"};
+  ProcessMesh process_mesh(mesh_shape, process_ids, dim_names);
+
+  // test forward
+  auto t_dist_attr = TensorDistAttr();
+  t_dist_attr.set_process_mesh(process_mesh);
+  t_dist_attr.set_dims_mapping({-1, 0, -1});
+  t_dist_attr.set_dynamic_dims({false, false, false});
+  phi::distributed::DistMetaTensor x = phi::distributed::DistMetaTensor(
+      common::make_ddim({4, 6, 8}), t_dist_attr);
+  phi::IntArray axis = {1};
+  bool keep_dim = false;
+  phi::distributed::SpmdInfo forward_info =
+      phi::distributed::ReductionMinInferSpmdDynamic(x, axis, keep_dim);
+  check_dim_mapping(forward_info.second[0], {-1, -1});
+  check_partial_dims(forward_info.second[0], {0});
 }
 
 TEST(ReduceAllRule, Ctor) {
@@ -1435,12 +1479,27 @@ TEST(ElementwiseUnaryLike, Ctor) {
     check_partial_dims(spmd_info.second[0], {});
   };
 
+  auto check_element_unary_like_backward = [&dims_mapping](auto& spmd_info) {
+    EXPECT_GT(spmd_info.first.size(), static_cast<size_t>(1));
+    EXPECT_EQ(spmd_info.second.size(), static_cast<size_t>(1));
+    for (auto& dim_mapping : spmd_info.first) {
+      check_dim_mapping(dim_mapping, dims_mapping);
+    }
+    check_dim_mapping(spmd_info.second[0], dims_mapping);
+    check_partial_dims(spmd_info.second[0], {});
+  };
+
   // cast
   auto input =
       phi::distributed::DistMetaTensor(common::make_ddim(shape), t_dist_attr);
   auto inferred_dist_attrs =
       phi::distributed::CastInferSpmd(input, phi::DataType::FLOAT32);
 
+  check_element_unary_like(inferred_dist_attrs);
+  // ElementwiseUnaryGradInferSpmd
+  input =
+      phi::distributed::DistMetaTensor(common::make_ddim(shape), t_dist_attr);
+  inferred_dist_attrs = phi::distributed::ElementwiseUnaryGradInferSpmd(input);
   check_element_unary_like(inferred_dist_attrs);
   // full like
   input =
@@ -1459,6 +1518,7 @@ TEST(ElementwiseUnaryLike, Ctor) {
   input =
       phi::distributed::DistMetaTensor(common::make_ddim(shape), t_dist_attr);
   inferred_dist_attrs = phi::distributed::PowGradInferSpmd(input, input, 2);
+  check_element_unary_like_backward(inferred_dist_attrs);
 
   // scale
   input =
@@ -1466,6 +1526,127 @@ TEST(ElementwiseUnaryLike, Ctor) {
   inferred_dist_attrs =
       phi::distributed::ScaleInferSpmd(input, 1.0, 1.0, false);
   check_element_unary_like(inferred_dist_attrs);
+
+  // round
+  input =
+      phi::distributed::DistMetaTensor(common::make_ddim(shape), t_dist_attr);
+  inferred_dist_attrs = phi::distributed::RoundInfoSpmd(input, 0);
+  check_element_unary_like(inferred_dist_attrs);
+
+  // mish
+  input =
+      phi::distributed::DistMetaTensor(common::make_ddim(shape), t_dist_attr);
+  inferred_dist_attrs = phi::distributed::MishInfoSpmd(input, 1.0);
+  check_element_unary_like(inferred_dist_attrs);
+
+  // mish backward
+  input =
+      phi::distributed::DistMetaTensor(common::make_ddim(shape), t_dist_attr);
+  inferred_dist_attrs = phi::distributed::MishGradInfoSpmd(input, input, 1.0);
+  check_element_unary_like_backward(inferred_dist_attrs);
+
+  // elu
+  input =
+      phi::distributed::DistMetaTensor(common::make_ddim(shape), t_dist_attr);
+  inferred_dist_attrs = phi::distributed::EluInfoSpmd(input, 1.0);
+  check_element_unary_like(inferred_dist_attrs);
+
+  // elu backward
+  input =
+      phi::distributed::DistMetaTensor(common::make_ddim(shape), t_dist_attr);
+  inferred_dist_attrs =
+      phi::distributed::EluGradInfoSpmd(input, input, input, 1.0);
+  check_element_unary_like_backward(inferred_dist_attrs);
+
+  // selu
+  input =
+      phi::distributed::DistMetaTensor(common::make_ddim(shape), t_dist_attr);
+  inferred_dist_attrs = phi::distributed::SeluInfoSpmd(input, 1.0, 1.0);
+  check_element_unary_like(inferred_dist_attrs);
+
+  // selu backward
+  input =
+      phi::distributed::DistMetaTensor(common::make_ddim(shape), t_dist_attr);
+  inferred_dist_attrs =
+      phi::distributed::SeluGradInfoSpmd(input, input, 1.0, 1.0);
+  check_element_unary_like_backward(inferred_dist_attrs);
+
+  // celu
+  input =
+      phi::distributed::DistMetaTensor(common::make_ddim(shape), t_dist_attr);
+  inferred_dist_attrs = phi::distributed::CeluInfoSpmd(input, 1.0);
+  check_element_unary_like(inferred_dist_attrs);
+
+  // celu backward
+  input =
+      phi::distributed::DistMetaTensor(common::make_ddim(shape), t_dist_attr);
+  inferred_dist_attrs = phi::distributed::CeluGradInfoSpmd(input, input, 1.0);
+  check_element_unary_like_backward(inferred_dist_attrs);
+
+  // stanh
+  input =
+      phi::distributed::DistMetaTensor(common::make_ddim(shape), t_dist_attr);
+  inferred_dist_attrs = phi::distributed::StanhInfoSpmd(input, 1.0, 1.0);
+  check_element_unary_like(inferred_dist_attrs);
+
+  // stanh backward
+  input =
+      phi::distributed::DistMetaTensor(common::make_ddim(shape), t_dist_attr);
+  inferred_dist_attrs =
+      phi::distributed::StanhGradInfoSpmd(input, input, 1.0, 1.0);
+  check_element_unary_like_backward(inferred_dist_attrs);
+
+  // softplus
+  input =
+      phi::distributed::DistMetaTensor(common::make_ddim(shape), t_dist_attr);
+  inferred_dist_attrs = phi::distributed::SoftplusInfoSpmd(input, 1.0, 1.0);
+  check_element_unary_like(inferred_dist_attrs);
+
+  // softplus backward
+  input =
+      phi::distributed::DistMetaTensor(common::make_ddim(shape), t_dist_attr);
+  inferred_dist_attrs =
+      phi::distributed::SoftplusGradInfoSpmd(input, input, 1.0, 1.0);
+  check_element_unary_like_backward(inferred_dist_attrs);
+
+  // softshrink
+  input =
+      phi::distributed::DistMetaTensor(common::make_ddim(shape), t_dist_attr);
+  inferred_dist_attrs = phi::distributed::SoftshrinkInfoSpmd(input, 1.0);
+  check_element_unary_like(inferred_dist_attrs);
+
+  // softshrink backward
+  input =
+      phi::distributed::DistMetaTensor(common::make_ddim(shape), t_dist_attr);
+  inferred_dist_attrs =
+      phi::distributed::SoftshrinkGradInfoSpmd(input, input, 1.0);
+  check_element_unary_like_backward(inferred_dist_attrs);
+
+  // thresholded_relu
+  input =
+      phi::distributed::DistMetaTensor(common::make_ddim(shape), t_dist_attr);
+  inferred_dist_attrs =
+      phi::distributed::ThresholdedReluInfoSpmd(input, 1.0, 1.0);
+  check_element_unary_like(inferred_dist_attrs);
+
+  // thresholded_relu backward
+  input =
+      phi::distributed::DistMetaTensor(common::make_ddim(shape), t_dist_attr);
+  inferred_dist_attrs =
+      phi::distributed::ThresholdedReluGradInfoSpmd(input, input, 1.0, 1.0);
+  check_element_unary_like_backward(inferred_dist_attrs);
+
+  // logit
+  input =
+      phi::distributed::DistMetaTensor(common::make_ddim(shape), t_dist_attr);
+  inferred_dist_attrs = phi::distributed::LogitInfoSpmd(input, 1.0);
+  check_element_unary_like(inferred_dist_attrs);
+
+  // logit backward
+  input =
+      phi::distributed::DistMetaTensor(common::make_ddim(shape), t_dist_attr);
+  inferred_dist_attrs = phi::distributed::LogitGradInfoSpmd(input, input, 1.0);
+  check_element_unary_like_backward(inferred_dist_attrs);
 }
 
 TEST(EmbeddingGradInferSpmd, Ctor) {
@@ -2382,6 +2563,493 @@ TEST(Dropout, Ctor) {
   check_dim_mapping(backward_info.second[0], {0, -1, -1});
 }
 
+TEST(MeanAll, Ctor) {
+  std::vector<int64_t> mesh_shape = {2, 2};
+  std::vector<int64_t> process_ids = {0, 1, 2, 3};
+  std::vector<std::string> dim_names = {"x", "y"};
+  ProcessMesh process_mesh(mesh_shape, process_ids, dim_names);
+
+  // test forward
+  // [0, -1] --> [], partial_on_dim:[0]
+  auto t_dist_attr = TensorDistAttr();
+  t_dist_attr.set_process_mesh(process_mesh);
+  t_dist_attr.set_dims_mapping({0, -1});
+  t_dist_attr.set_dynamic_dims({false, false});
+  phi::distributed::DistMetaTensor x =
+      phi::distributed::DistMetaTensor(common::make_ddim({4, 8}), t_dist_attr);
+  phi::distributed::SpmdInfo forward_info =
+      phi::distributed::MeanAllInferSpmd(x);
+
+  EXPECT_EQ(forward_info.first.size(), 1UL);
+  EXPECT_EQ(forward_info.second.size(), 1UL);
+
+  check_dim_mapping(forward_info.first[0], {0, -1});
+  check_dim_mapping(forward_info.second[0], {});
+  check_partial_dims(forward_info.second[0], {0});
+
+  // test backward
+  // [] --> [-1, -1], []
+  auto out_grad_dist_attr = TensorDistAttr();
+  out_grad_dist_attr.set_process_mesh(process_mesh);
+  out_grad_dist_attr.set_dims_mapping({});
+  out_grad_dist_attr.set_dynamic_dims({});
+  phi::distributed::DistMetaTensor out_grad = phi::distributed::DistMetaTensor(
+      common::make_ddim({}), out_grad_dist_attr);
+  phi::distributed::SpmdInfo backward_info =
+      phi::distributed::MeanAllGradInferSpmd(x, out_grad);
+
+  EXPECT_EQ(backward_info.first.size(), 2UL);
+  EXPECT_EQ(backward_info.second.size(), 1UL);
+
+  check_dim_mapping(backward_info.first[0], {-1, -1});
+  check_dim_mapping(backward_info.first[1], {});
+  check_dim_mapping(backward_info.second[0], {-1, -1});
+}
+TEST(Topk, Ctor) {
+  std::vector<int64_t> mesh_shape = {2, 2};
+  std::vector<int64_t> process_ids = {0, 1, 2, 3};
+  std::vector<std::string> dim_names = {"x", "y"};
+  ProcessMesh process_mesh(mesh_shape, process_ids, dim_names);
+  phi::Scalar k(2);
+
+  // test forward
+  // axis = 1
+  // [0, 1, -1] -> [0, -1, -1], [0, -1, -1]
+  auto x_dist_attr = TensorDistAttr();
+  x_dist_attr.set_process_mesh(process_mesh);
+  x_dist_attr.set_dims_mapping({0, 1, -1});
+  x_dist_attr.set_dynamic_dims({false, false, false});
+
+  phi::distributed::DistMetaTensor x = phi::distributed::DistMetaTensor(
+      common::make_ddim({16, 16, 16}), x_dist_attr);
+  phi::distributed::SpmdInfo forward_info =
+      phi::distributed::TopkInferSpmdDynamic(x, k, 1, true, true);
+
+  EXPECT_EQ(forward_info.first.size(), 1UL);
+  EXPECT_EQ(forward_info.second.size(), 2UL);
+  check_dim_mapping(forward_info.first[0], {0, -1, -1});
+  check_dim_mapping(forward_info.second[0], {0, -1, -1});
+  check_dim_mapping(forward_info.second[1], {0, -1, -1});
+
+  // test backward
+  // axis = 1
+  // [0, -1, 1], [0, -1, 1], [-1, 1, -1]-> [0, -1, 1], [0, -1, 1], [0, -1,
+  // 1], [0, -1, 1]
+  x_dist_attr.set_dims_mapping({0, -1, 1});
+  x = phi::distributed::DistMetaTensor(common::make_ddim({16, 16, 16}),
+                                       x_dist_attr);
+  auto out_grad_dist_attr = TensorDistAttr();
+  out_grad_dist_attr.set_process_mesh(process_mesh);
+  out_grad_dist_attr.set_dims_mapping({-1, 1, -1});
+  out_grad_dist_attr.set_dynamic_dims({false, false, false});
+  phi::distributed::DistMetaTensor out_grad = phi::distributed::DistMetaTensor(
+      common::make_ddim({16, 2, 16}), out_grad_dist_attr);
+  phi::distributed::SpmdInfo backward_info =
+      phi::distributed::TopkGradInferSpmdDynamic(
+          x, x, out_grad, k, 1, true, true);
+  EXPECT_EQ(backward_info.first.size(), 3UL);
+  EXPECT_EQ(backward_info.second.size(), 1UL);
+  check_dim_mapping(backward_info.first[0], {0, -1, 1});
+  check_dim_mapping(backward_info.first[1], {0, -1, 1});
+  check_dim_mapping(backward_info.first[2], {0, -1, 1});
+  check_dim_mapping(backward_info.second[0], {0, -1, 1});
+}
+
+TEST(Cummax, Ctor) {
+  std::vector<int64_t> mesh_shape = {2, 2};
+  std::vector<int64_t> process_ids = {0, 1, 2, 3};
+  std::vector<std::string> dim_names = {"x", "y"};
+  ProcessMesh process_mesh(mesh_shape, process_ids, dim_names);
+  int axis = 1;
+
+  // test forward
+  // axis = 1
+  // [0, 1, -1] -> [0, -1, -1], [0, -1, -1]
+  auto x_dist_attr = TensorDistAttr();
+  x_dist_attr.set_process_mesh(process_mesh);
+  x_dist_attr.set_dims_mapping({0, 1, -1});
+  x_dist_attr.set_dynamic_dims({false, false, false});
+
+  phi::distributed::DistMetaTensor x = phi::distributed::DistMetaTensor(
+      common::make_ddim({16, 16, 16}), x_dist_attr);
+  phi::distributed::SpmdInfo forward_info =
+      phi::distributed::CummaxInferSpmd(x, axis, phi::DataType::INT64);
+
+  EXPECT_EQ(forward_info.first.size(), 1UL);
+  EXPECT_EQ(forward_info.second.size(), 2UL);
+  check_dim_mapping(forward_info.first[0], {0, -1, -1});
+  check_dim_mapping(forward_info.second[0], {0, -1, -1});
+  check_dim_mapping(forward_info.second[1], {0, -1, -1});
+
+  // test backward
+  // axis = 1
+  // [0, -1, 1], [0, -1, 1], [-1, 1, -1]-> [0, -1, 1], [0, -1, 1], [0, -1,
+  // 1], [0, -1, 1]
+  x_dist_attr.set_dims_mapping({0, -1, 1});
+  x = phi::distributed::DistMetaTensor(common::make_ddim({16, 16, 16}),
+                                       x_dist_attr);
+  auto out_grad_dist_attr = TensorDistAttr();
+  out_grad_dist_attr.set_process_mesh(process_mesh);
+  out_grad_dist_attr.set_dims_mapping({-1, 1, -1});
+  out_grad_dist_attr.set_dynamic_dims({false, false, false});
+  phi::distributed::DistMetaTensor out_grad = phi::distributed::DistMetaTensor(
+      common::make_ddim({16, 16, 16}), out_grad_dist_attr);
+  phi::distributed::SpmdInfo backward_info =
+      phi::distributed::CummaxGradInferSpmd(
+          x, x, out_grad, axis, phi::DataType::INT64);
+  EXPECT_EQ(backward_info.first.size(), 3UL);
+  EXPECT_EQ(backward_info.second.size(), 1UL);
+  check_dim_mapping(backward_info.first[0], {0, -1, 1});
+  check_dim_mapping(backward_info.first[1], {0, -1, 1});
+  check_dim_mapping(backward_info.first[2], {0, -1, 1});
+  check_dim_mapping(backward_info.second[0], {0, -1, 1});
+}
+
+TEST(Cummin, Ctor) {
+  std::vector<int64_t> mesh_shape = {2, 2};
+  std::vector<int64_t> process_ids = {0, 1, 2, 3};
+  std::vector<std::string> dim_names = {"x", "y"};
+  ProcessMesh process_mesh(mesh_shape, process_ids, dim_names);
+  int axis = 1;
+
+  // test forward
+  // axis = 1
+  // [0, 1, -1] -> [0, -1, -1], [0, -1, -1]
+  auto x_dist_attr = TensorDistAttr();
+  x_dist_attr.set_process_mesh(process_mesh);
+  x_dist_attr.set_dims_mapping({0, 1, -1});
+  x_dist_attr.set_dynamic_dims({false, false, false});
+
+  phi::distributed::DistMetaTensor x = phi::distributed::DistMetaTensor(
+      common::make_ddim({16, 16, 16}), x_dist_attr);
+  phi::distributed::SpmdInfo forward_info =
+      phi::distributed::CumminInferSpmd(x, axis, phi::DataType::INT64);
+
+  EXPECT_EQ(forward_info.first.size(), 1UL);
+  EXPECT_EQ(forward_info.second.size(), 2UL);
+  check_dim_mapping(forward_info.first[0], {0, -1, -1});
+  check_dim_mapping(forward_info.second[0], {0, -1, -1});
+  check_dim_mapping(forward_info.second[1], {0, -1, -1});
+
+  // test backward
+  // axis = 1
+  // [0, -1, 1], [0, -1, 1], [-1, 1, -1]-> [0, -1, 1], [0, -1, 1], [0, -1,
+  // 1], [0, -1, 1]
+  x_dist_attr.set_dims_mapping({0, -1, 1});
+  x = phi::distributed::DistMetaTensor(common::make_ddim({16, 16, 16}),
+                                       x_dist_attr);
+  auto out_grad_dist_attr = TensorDistAttr();
+  out_grad_dist_attr.set_process_mesh(process_mesh);
+  out_grad_dist_attr.set_dims_mapping({-1, 1, -1});
+  out_grad_dist_attr.set_dynamic_dims({false, false, false});
+  phi::distributed::DistMetaTensor out_grad = phi::distributed::DistMetaTensor(
+      common::make_ddim({16, 16, 16}), out_grad_dist_attr);
+  phi::distributed::SpmdInfo backward_info =
+      phi::distributed::CumminGradInferSpmd(
+          x, x, out_grad, axis, phi::DataType::INT64);
+  EXPECT_EQ(backward_info.first.size(), 3UL);
+  EXPECT_EQ(backward_info.second.size(), 1UL);
+  check_dim_mapping(backward_info.first[0], {0, -1, 1});
+  check_dim_mapping(backward_info.first[1], {0, -1, 1});
+  check_dim_mapping(backward_info.first[2], {0, -1, 1});
+  check_dim_mapping(backward_info.second[0], {0, -1, 1});
+}
+TEST(ArgSortGradInferSpmd, Ctor) {
+  // Sharding along axes besides argsort axis.
+  std::vector<int64_t> x_shape = {16, 32, 48};
+  std::vector<int64_t> indices_shape = {16, 32, 48};
+  std::vector<int64_t> out_grad_shape = {16, 32, 48};
+
+  std::vector<int64_t> mesh_shape = {2, 3};
+  std::vector<int64_t> process_ids = {0, 1, 2, 3, 4, 5};
+  std::vector<std::string> dim_names = {"x", "y"};
+  ProcessMesh process_mesh(mesh_shape, process_ids, dim_names);
+
+  TensorDistAttr x_dist_attr = TensorDistAttr();
+  x_dist_attr.set_process_mesh(process_mesh);
+  x_dist_attr.set_dims_mapping(std::vector<int64_t>({0, 1, -1}));
+  x_dist_attr.set_dynamic_dims(std::vector<bool>({false, false, false}));
+
+  TensorDistAttr indices_dist_attr = TensorDistAttr();
+  indices_dist_attr.set_process_mesh(process_mesh);
+  indices_dist_attr.set_dims_mapping(std::vector<int64_t>({0, 1, -1}));
+  indices_dist_attr.set_dynamic_dims(std::vector<bool>({false, false, false}));
+
+  TensorDistAttr out_grad_dist_attr = TensorDistAttr();
+  out_grad_dist_attr.set_process_mesh(process_mesh);
+  out_grad_dist_attr.set_dims_mapping(std::vector<int64_t>({0, 1, -1}));
+  out_grad_dist_attr.set_dynamic_dims(std::vector<bool>({false, false, false}));
+
+  phi::distributed::DistMetaTensor x(phi::make_ddim(x_shape), x_dist_attr);
+  phi::distributed::DistMetaTensor indices(phi::make_ddim(x_shape),
+                                           indices_dist_attr);
+  phi::distributed::DistMetaTensor out_grad(phi::make_ddim(x_shape),
+                                            out_grad_dist_attr);
+  int axis = -1;
+
+  auto spmdinfo =
+      ArgSortGradInferSpmd(indices, x, out_grad, axis, false, false);
+
+  EXPECT_EQ(spmdinfo.first.size(), 3UL);
+  EXPECT_EQ(spmdinfo.second.size(), 1UL);
+
+  EXPECT_EQ(get_dims_mapping(spmdinfo.first[0]),
+            std::vector<int64_t>({0, 1, -1}));
+  EXPECT_EQ(get_dims_mapping(spmdinfo.first[1]),
+            std::vector<int64_t>({0, 1, -1}));
+  EXPECT_EQ(get_dims_mapping(spmdinfo.first[2]),
+            std::vector<int64_t>({0, 1, -1}));
+  EXPECT_EQ(get_dims_mapping(spmdinfo.second[0]),
+            std::vector<int64_t>({0, 1, -1}));
+  VLOG(4) << "Test ArgSortGradInferSpmd sharding on other axes." << std::endl
+          << std::endl
+          << std::endl;
+
+  // Sharding along argsort axis.
+  x_dist_attr.set_dims_mapping(std::vector<int64_t>({0, -1, 1}));
+  indices_dist_attr.set_dims_mapping(std::vector<int64_t>({0, -1, 1}));
+  out_grad_dist_attr.set_dims_mapping(std::vector<int64_t>({0, -1, 1}));
+  x = phi::distributed::DistMetaTensor(phi::make_ddim(x_shape), x_dist_attr);
+  indices = phi::distributed::DistMetaTensor(phi::make_ddim(x_shape),
+                                             indices_dist_attr);
+  out_grad = phi::distributed::DistMetaTensor(phi::make_ddim(x_shape),
+                                              out_grad_dist_attr);
+  axis = 2;
+
+  spmdinfo = ArgSortGradInferSpmd(indices, x, out_grad, axis, false, false);
+
+  EXPECT_EQ(spmdinfo.first.size(), 3UL);
+  EXPECT_EQ(spmdinfo.second.size(), 1UL);
+
+  EXPECT_EQ(get_dims_mapping(spmdinfo.first[0]),
+            std::vector<int64_t>({0, -1, -1}));
+  EXPECT_EQ(get_dims_mapping(spmdinfo.first[1]),
+            std::vector<int64_t>({0, -1, -1}));
+  EXPECT_EQ(get_dims_mapping(spmdinfo.first[2]),
+            std::vector<int64_t>({0, -1, -1}));
+  EXPECT_EQ(get_dims_mapping(spmdinfo.second[0]),
+            std::vector<int64_t>({0, -1, -1}));
+  VLOG(4) << "Test ArgSortGradInferSpmd sharding on softmax axis." << std::endl
+          << std::endl
+          << std::endl;
+
+  // Sharding on multi axes.
+  x_shape = {10, 32, 48, 24};
+  indices_shape = {10, 32, 48, 24};
+  out_grad_shape = {10, 32, 48, 24};
+  x_dist_attr.set_dims_mapping(std::vector<int64_t>({0, 1, -1, -1}));
+  indices_dist_attr.set_dims_mapping(std::vector<int64_t>({0, 1, -1, -1}));
+  out_grad_dist_attr.set_dims_mapping(std::vector<int64_t>({0, 1, -1, -1}));
+  x = phi::distributed::DistMetaTensor(phi::make_ddim(x_shape), x_dist_attr);
+  indices = phi::distributed::DistMetaTensor(phi::make_ddim(x_shape),
+                                             indices_dist_attr);
+  out_grad = phi::distributed::DistMetaTensor(phi::make_ddim(x_shape),
+                                              out_grad_dist_attr);
+  axis = 1;
+
+  spmdinfo = ArgSortGradInferSpmd(indices, x, out_grad, axis, false, false);
+
+  EXPECT_EQ(spmdinfo.first.size(), 3UL);
+  EXPECT_EQ(spmdinfo.second.size(), 1UL);
+
+  EXPECT_EQ(get_dims_mapping(spmdinfo.first[0]),
+            std::vector<int64_t>({0, -1, -1, -1}));
+  EXPECT_EQ(get_dims_mapping(spmdinfo.first[1]),
+            std::vector<int64_t>({0, -1, -1, -1}));
+  EXPECT_EQ(get_dims_mapping(spmdinfo.first[2]),
+            std::vector<int64_t>({0, -1, -1, -1}));
+  EXPECT_EQ(get_dims_mapping(spmdinfo.second[0]),
+            std::vector<int64_t>({0, -1, -1, -1}));
+  VLOG(4) << "Test ArgSortGradInferSpmd sharding on multi axes." << std::endl
+          << std::endl
+          << std::endl;
+}
+
+TEST(ArgSortInferSpmd, Ctor) {
+  // Sharding along axes besides argsort axis.
+  std::vector<int64_t> x_shape = {16, 32, 48};
+
+  std::vector<int64_t> mesh_shape = {2, 3};
+  std::vector<int64_t> process_ids = {0, 1, 2, 3, 4, 5};
+  std::vector<std::string> dim_names = {"x", "y"};
+  ProcessMesh process_mesh(mesh_shape, process_ids, dim_names);
+
+  TensorDistAttr x_dist_attr = TensorDistAttr();
+  x_dist_attr.set_process_mesh(process_mesh);
+  x_dist_attr.set_dims_mapping(std::vector<int64_t>({0, 1, -1}));
+  x_dist_attr.set_dynamic_dims(std::vector<bool>({false, false, false}));
+
+  phi::distributed::DistMetaTensor x(phi::make_ddim(x_shape), x_dist_attr);
+  int axis = -1;
+
+  auto spmdinfo = ArgSortInferSpmd(x, axis, false, false);
+
+  EXPECT_EQ(spmdinfo.first.size(), 1UL);
+  EXPECT_EQ(spmdinfo.second.size(), 2UL);
+
+  EXPECT_EQ(get_dims_mapping(spmdinfo.first[0]),
+            std::vector<int64_t>({0, 1, -1}));
+  EXPECT_EQ(get_dims_mapping(spmdinfo.second[0]),
+            std::vector<int64_t>({0, 1, -1}));
+  EXPECT_EQ(get_dims_mapping(spmdinfo.second[1]),
+            std::vector<int64_t>({0, 1, -1}));
+  VLOG(4) << "Test ArgSortGradInferSpmd sharding on other axes." << std::endl
+          << std::endl
+          << std::endl;
+
+  // Sharding along argsort axis.
+  x_dist_attr.set_dims_mapping(std::vector<int64_t>({0, -1, 1}));
+  x = phi::distributed::DistMetaTensor(phi::make_ddim(x_shape), x_dist_attr);
+  axis = 2;
+
+  spmdinfo = ArgSortInferSpmd(x, axis, false, false);
+
+  EXPECT_EQ(spmdinfo.first.size(), 1UL);
+  EXPECT_EQ(spmdinfo.second.size(), 2UL);
+
+  EXPECT_EQ(get_dims_mapping(spmdinfo.first[0]),
+            std::vector<int64_t>({0, -1, -1}));
+  EXPECT_EQ(get_dims_mapping(spmdinfo.second[0]),
+            std::vector<int64_t>({0, -1, -1}));
+  EXPECT_EQ(get_dims_mapping(spmdinfo.second[1]),
+            std::vector<int64_t>({0, -1, -1}));
+  VLOG(4) << "Test ArgSortGradInferSpmd sharding on softmax axis." << std::endl
+          << std::endl
+          << std::endl;
+
+  // Sharding on multi axes.
+  x_shape = {10, 32, 48, 24};
+  x_dist_attr.set_dims_mapping(std::vector<int64_t>({0, 1, -1, -1}));
+  x = phi::distributed::DistMetaTensor(phi::make_ddim(x_shape), x_dist_attr);
+
+  axis = 1;
+
+  spmdinfo = ArgSortInferSpmd(x, axis, false, false);
+
+  EXPECT_EQ(spmdinfo.first.size(), 1UL);
+  EXPECT_EQ(spmdinfo.second.size(), 2UL);
+
+  EXPECT_EQ(get_dims_mapping(spmdinfo.first[0]),
+            std::vector<int64_t>({0, -1, -1, -1}));
+  EXPECT_EQ(get_dims_mapping(spmdinfo.second[0]),
+            std::vector<int64_t>({0, -1, -1, -1}));
+  EXPECT_EQ(get_dims_mapping(spmdinfo.second[1]),
+            std::vector<int64_t>({0, -1, -1, -1}));
+  VLOG(4) << "Test ArgSortGradInferSpmd sharding on multi axes." << std::endl
+          << std::endl
+          << std::endl;
+}
+
+TEST(IndexSelect, Ctor) {
+  std::vector<int64_t> mesh_shape = {2, 3};
+  std::vector<int64_t> process_ids = {0, 1, 2, 3, 4, 5};
+  std::vector<std::string> dim_names = {"x", "y"};
+  ProcessMesh process_mesh(mesh_shape, process_ids, dim_names);
+  int axis = 1;
+
+  // test forward
+  // axis = 1
+  // [-1, -1, -1], [0] --> [-1, -1, -1], [0], [-1, 0, -1]
+  auto x_dist_attr = TensorDistAttr();
+  x_dist_attr.set_process_mesh(process_mesh);
+  x_dist_attr.set_dims_mapping({-1, -1, -1});
+  x_dist_attr.set_dynamic_dims({false, false, false});
+  phi::distributed::DistMetaTensor x = phi::distributed::DistMetaTensor(
+      common::make_ddim({16, 16, 16}), x_dist_attr);
+  auto index_dist_attr = TensorDistAttr();
+  index_dist_attr.set_process_mesh(process_mesh);
+  index_dist_attr.set_dims_mapping({0});
+  index_dist_attr.set_dynamic_dims({false, false, false});
+  phi::distributed::DistMetaTensor index =
+      phi::distributed::DistMetaTensor(common::make_ddim({3}), index_dist_attr);
+
+  phi::distributed::SpmdInfo forward_info =
+      phi::distributed::IndexSelectInferSpmd(x, index, axis);
+
+  EXPECT_EQ(forward_info.first.size(), 2UL);
+  EXPECT_EQ(forward_info.second.size(), 1UL);
+  check_dim_mapping(forward_info.first[0], {-1, -1, -1});
+  check_dim_mapping(forward_info.first[1], {0});
+  check_dim_mapping(forward_info.second[0], {-1, 0, -1});
+
+  // test backward
+  // axis = 1
+  // [-1, -1, -1], [0], [-1, 0, -1], axis=1 --> [-1, -1, -1], [0], [-1, 0, -1],
+  // [-1, -1, -1](partial on axis=1 with 0)
+  auto out_grad_dist_attr = TensorDistAttr();
+  out_grad_dist_attr.set_process_mesh(process_mesh);
+  out_grad_dist_attr.set_dims_mapping({-1, 0, -1});
+  out_grad_dist_attr.set_dynamic_dims({false, false, false});
+  phi::distributed::DistMetaTensor out_grad = phi::distributed::DistMetaTensor(
+      common::make_ddim({16, 3, 16}), out_grad_dist_attr);
+  phi::distributed::SpmdInfo backward_info =
+      phi::distributed::IndexSelectGradInferSpmd(x, index, out_grad, axis);
+  EXPECT_EQ(backward_info.first.size(), 3UL);
+  EXPECT_EQ(backward_info.second.size(), 1UL);
+  check_dim_mapping(backward_info.first[0], {-1, -1, -1});
+  check_dim_mapping(backward_info.first[1], {0});
+  check_dim_mapping(backward_info.first[2], {-1, 0, -1});
+  check_dim_mapping(backward_info.second[0], {-1, -1, -1});
+  EXPECT_EQ(is_partial(backward_info.second[0]), true);
+  check_partial_dims(backward_info.second[0], {0});
+}
+
+TEST(Unique, Ctor) {
+  std::vector<int64_t> mesh_shape = {2, 2};
+  std::vector<int64_t> process_ids = {0, 1, 2, 3};
+  std::vector<std::string> dim_names = {"x", "y"};
+  ProcessMesh process_mesh(mesh_shape, process_ids, dim_names);
+  bool return_index = true;
+  bool return_inverse = true;
+  bool return_counts = true;
+  std::vector<int> axis = {};
+
+  // test forward
+  // return_index=True, return_inverse=True, return_counts=True, axis={}
+  // [0, -1] --> [-1,-1], [-1], [-1], [-1], [-1]
+  auto x_dist_attr = TensorDistAttr();
+  x_dist_attr.set_process_mesh(process_mesh);
+  x_dist_attr.set_dims_mapping({0, -1});
+  x_dist_attr.set_dynamic_dims({false, false});
+  phi::distributed::DistMetaTensor x =
+      phi::distributed::DistMetaTensor(common::make_ddim({4, 8}), x_dist_attr);
+
+  phi::distributed::SpmdInfo forward_info =
+      phi::distributed::UniqueInferSpmd(x,
+                                        return_index,
+                                        return_inverse,
+                                        return_counts,
+                                        axis,
+                                        phi::DataType::FLOAT32);
+
+  EXPECT_EQ(forward_info.first.size(), 1UL);
+  EXPECT_EQ(forward_info.second.size(), 4UL);
+
+  check_dim_mapping(forward_info.first[0], {-1, -1});
+  check_dim_mapping(forward_info.second[0], {-1});
+  check_dim_mapping(forward_info.second[1], {-1});
+  check_dim_mapping(forward_info.second[2], {-1});
+  check_dim_mapping(forward_info.second[3], {-1});
+
+  // return_index=True, return_inverse=True, return_counts=True, axis={0}
+  // [0, -1] --> [-1, -1], [-1, -1], [-1], [-1], [-1]
+  axis = {0};
+  forward_info = phi::distributed::UniqueInferSpmd(x,
+                                                   return_index,
+                                                   return_inverse,
+                                                   return_counts,
+                                                   axis,
+                                                   phi::DataType::FLOAT32);
+
+  EXPECT_EQ(forward_info.first.size(), 1UL);
+  EXPECT_EQ(forward_info.second.size(), 4UL);
+
+  check_dim_mapping(forward_info.first[0], {-1, -1});
+  check_dim_mapping(forward_info.second[0], {-1, -1});
+  check_dim_mapping(forward_info.second[1], {-1});
+  check_dim_mapping(forward_info.second[2], {-1});
+  check_dim_mapping(forward_info.second[3], {-1});
+}
 }  // namespace auto_parallel
 }  // namespace distributed
 }  // namespace paddle
