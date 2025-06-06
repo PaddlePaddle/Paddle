@@ -263,12 +263,12 @@ def monkey_patch_tensor():
                 else:
                     self.value().get_tensor().set(value.get_tensor())
                 return
-            if isinstance(value, paddle.Tensor):
-                self.value().set_tensor(value)
-            else:
-                self.value().get_tensor().set(
-                    value, framework._current_expected_place()
-                )
+            # if isinstance(value, paddle.Tensor):
+            #     self.value().set_tensor(value)
+            # else:
+            self.value().get_tensor().set(
+                value, framework._current_expected_place()
+            )
 
     @framework.dygraph_only
     def backward(
