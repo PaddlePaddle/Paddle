@@ -5793,3 +5793,13 @@
      data_type: numbers
   interfaces : paddle::dialect::InferSymbolicShapeInterface
   traits : paddle::dialect::ForwardOnlyTrait
+
+
+- op: fused_spaq
+  args: (Tensor x, Tensor prob, bool using_pow2_scaling)
+  output: Tensor(out), Tensor(scale)
+  infer_meta:
+    func: FusedSpaqInferMeta
+  kernel:
+    func: fused_spad
+  optional: prob

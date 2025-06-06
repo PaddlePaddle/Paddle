@@ -804,5 +804,10 @@ void FusedRMSNormInferMeta(const MetaTensor& x,
                            float epsilon,
                            MetaTensor* y,
                            MetaTensor* invvar);
-
+                           
+void FusedSpaqInferMeta(const MetaTensor& x,
+                        const MetaTensor& prob,
+                        bool using_pow2_scaling,
+                        MetaTensor* out
+                        MetaTensor* scale);
 }  // namespace phi

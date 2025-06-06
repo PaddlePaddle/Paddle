@@ -4609,6 +4609,52 @@ void FusedRMSNormInferMeta(const MetaTensor& x,
   invvar->set_dtype(DataType::FLOAT32);
 }
 
+void FusedSpaq(const MetaTensor& x,
+               const MetaTensor& prob,
+               bool using_pow2_scaling,
+               MetaTensor* out,
+               MetaTensor* scale){
+  PADDLE_ENFORCE_EQ(x.dtype(),
+                    DataType::BFLOAT16,
+                    common::errors::InvalidArgument(
+                        "The dtype of Input(x) must be BFLOAT16, but received %s",
+                        x.dtype()));
+  if(prob){
+    PADDLE_ENFORCE_EQ(prob.dtype(),
+                  DataType::FLOAT32,
+                  common::errors::InvalidArgument(
+                      "The dtype of Input(prob) must be FLOAT32, but received %s",
+                      prob.dtype()));
+  }
+  int64_t rows=1;
+  for(int i = 0; i < x.dims().size()-1; ++i){
+    rows *=x.dims()[i];
+  }
+  int64_t cols=x.dims()[x.dims().size()-1];
+  PADDLE_ENFORCE_EQ(cols % 2,
+                    0,
+                    common::errors::InvalidArgument(
+                      "The last dim of Input(X) should be exactly divided "
+                      "by 2 , but got %d",
+                      cols));
+  if(prob){
+    PADDLE_ENFORCE_EQ(prob.dims()[0],
+                      rows,
+                      common::errors::InvalidArgument(
+                          "The first dim of Input(x) should be equal to the "
+                          "first dim of Input(prob) but got X.shape[0]: %d, "
+                          "prob.shape[0]: %d",
+                          rows,
+                          prob.dims()[0]));
+  }
+
+  out->set_dims(common::make_ddim({rows, cols / 2}));
+  out->set_dtype(DataType::FLOAT8_E4M3FN);
+
+  scale->set_dims(common::make_ddim({rows, ((cols / 2) + 127) / 128}));
+  scale->set_dtype(DataType::FLOAT32);
+}
+
 }  // namespace phi
 
 PD_REGISTER_INFER_META_FN(add_raw, phi::ElementwiseRawInferMeta);
