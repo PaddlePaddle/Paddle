@@ -72,8 +72,7 @@ function run_setup(){
                 export PYTHON_LIBRARY=/Library/Frameworks/Python.framework/Versions/3.9/lib/libpython3.9.dylib
                 pip3.9 install --user -r ${PADDLE_ROOT}/python/requirements.txt
             else
-		echo 123
-		pip3 install --user -r ${PADDLE_ROOT}/python/requirements.txt
+		exit 1
             fi
         elif [ "$PYTHON_ABI" == "cp310-cp310" ]; then
             if [ -d "/Library/Frameworks/Python.framework/Versions/3.10" ]; then
