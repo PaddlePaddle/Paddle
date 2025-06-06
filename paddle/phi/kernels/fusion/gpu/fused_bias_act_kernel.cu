@@ -441,8 +441,11 @@ void DispatchWithDtype(const Context &dev_ctx,
                       common::errors::InvalidArgument(
                           "The shift must be a 1D tensor, but got %dD tensor.",
                           shift_dims.size()));
-    int shift_dim = use_glu ? std::div(x_dims[x_dims.size() - 1], 2)
-                            : x_dims[x_dims.size() - 1];
+    int64_t shift_dim =
+        use_glu ? std::div(static_cast<int64_t>(x_dims[x_dims.size() - 1]),
+                           static_cast<int64_t>(2))
+                      .quot
+                : x_dims[x_dims.size() - 1];
     PADDLE_ENFORCE_EQ(
         shift_dims[0],
         shift_dim,
@@ -458,8 +461,11 @@ void DispatchWithDtype(const Context &dev_ctx,
                       common::errors::InvalidArgument(
                           "The smooth must be a 1D tensor, but got %dD tensor.",
                           smooth_dims.size()));
-    int smooth_dim = use_glu ? std::div(x_dims[x_dims.size() - 1], 2)
-                             : x_dims[x_dims.size() - 1];
+    int64_t smooth_dim =
+        use_glu ? std::div(static_cast<int64_t>(x_dims[x_dims.size() - 1]),
+                           static_cast<int64_t>(2))
+                      .quot
+                : x_dims[x_dims.size() - 1];
     PADDLE_ENFORCE_EQ(
         smooth_dims[0],
         smooth_dim,
