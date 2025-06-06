@@ -547,6 +547,11 @@ PD_REGISTER_SPMD_RULE(
     PD_INFER_SPMD(phi::distributed::FlashAttInferSpmdStatic),
     PD_INFER_SPMD(phi::distributed::FlashAttInferSpmdReverse));
 
+// fused gemm epilogue
+PD_REGISTER_SPMD_RULE(
+    fused_gemm_epilogue,
+    PD_INFER_SPMD(phi::distributed::FusedGemmEpilogueInferSpmd));
+
 // reshape rule
 PD_REGISTER_SPMD_RULE(reshape,
                       PD_INFER_SPMD(phi::distributed::ReshapeInferSpmd),
