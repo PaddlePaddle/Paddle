@@ -777,6 +777,7 @@ def matrix_norm(
         pos_dim1 = dim1 % dimn
         ret = [i for i in range(dimn) if i != pos_dim0 and i != pos_dim1]
         ret.extend((pos_dim0, pos_dim1))
+        return ret
 
     def _inverse_permutation(perm):
         """
