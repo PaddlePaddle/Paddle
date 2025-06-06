@@ -255,15 +255,14 @@ __global__ void merge_kernel(const T* A,
     if (idx >= total) return;
     size_t left = (idx > sizeB) ? idx - sizeB : 0;
     size_t right = (idx < sizeA) ? idx : sizeA;
-
     while (left < right) {
       size_t mid = (left + right) / 2;
       size_t b_idx = idx - mid;
 
       T A_mid, B_bidx;
       if (descending) {
-        A_mid = (mid >= sizeA) ? std::numeric_limits<T>::min() : A[mid];
-        B_bidx = (b_idx >= sizeB) ? std::numeric_limits<T>::min() : B[b_idx];
+        A_mid = (mid >= sizeA) ? std::numeric_limits<T>::lowest() : A[mid];
+        B_bidx = (b_idx >= sizeB) ? std::numeric_limits<T>::lowest() : B[b_idx];
       } else {
         A_mid = (mid >= sizeA) ? std::numeric_limits<T>::max() : A[mid];
         B_bidx = (b_idx >= sizeB) ? std::numeric_limits<T>::max() : B[b_idx];
