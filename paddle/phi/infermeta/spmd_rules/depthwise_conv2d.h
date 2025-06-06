@@ -29,8 +29,8 @@ SpmdInfo DepthwiseConv2dInferSpmd(
     const std::vector<int>& strides = {1, 1},
     const std::vector<int>& paddings = {0, 0},
     const std::string& padding_algorithm = "EXPLICIT",
-    const std::vector<int>& dilations = {1, 1},
     int groups = 1,
+    const std::vector<int>& dilations = {1, 1},
     const std::string& data_format = "NCHW");
 
 SpmdInfo DepthwiseConv2dGradInferSpmd(
@@ -40,8 +40,8 @@ SpmdInfo DepthwiseConv2dGradInferSpmd(
     const std::vector<int>& strides = {1, 1},
     const std::vector<int>& paddings = {0, 0},
     const std::string& padding_algorithm = "EXPLICIT",
-    const std::vector<int>& dilations = {1, 1},
     int groups = 1,
+    const std::vector<int>& dilations = {1, 1},
     const std::string& data_format = "NCHW");
 
 }  // namespace distributed

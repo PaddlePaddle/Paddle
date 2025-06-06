@@ -32,8 +32,8 @@ SpmdInfo DepthwiseConv2dInferSpmd(const DistMetaTensor& input,
                                   const std::vector<int>& strides,
                                   const std::vector<int>& paddings,
                                   const std::string& padding_algorithm,
-                                  const std::vector<int>& dilations,
                                   int groups,
+                                  const std::vector<int>& dilations,
                                   const std::string& data_format) {
   // Step0: verify input args based on depthwise_conv2d logic
   // input_dim: NCHinWin, filter_dim: M1HfWf, C = groups, M % groups == 0
@@ -109,7 +109,6 @@ SpmdInfo DepthwiseConv2dInferSpmd(const DistMetaTensor& input,
     input_dims_mapping[1] == -1;
   else
     input_dims_mapping[3] == -1;
-  filter_dims_mapping[1] == -1;
 
   // Step2: sharding propagation
   VLOG(4) << "step 2: sharding propagation";
@@ -156,8 +155,8 @@ SpmdInfo DepthwiseConv2dGradInferSpmd(const DistMetaTensor& input,
                                       const std::vector<int>& strides,
                                       const std::vector<int>& paddings,
                                       const std::string& padding_algorithm,
-                                      const std::vector<int>& dilations,
                                       int groups,
+                                      const std::vector<int>& dilations,
                                       const std::string& data_format) {
   auto input_dist_attr_src = input.dist_attr();
   auto filter_dist_attr_src = filter.dist_attr();
