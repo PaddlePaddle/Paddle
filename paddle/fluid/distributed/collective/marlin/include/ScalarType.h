@@ -20,7 +20,6 @@
 #include <optional>
 #include <variant>
 
-
 namespace deep_ep::detail {
 
 //
@@ -234,16 +233,16 @@ class ScalarType {
     if (is_floating_point()) {
       return {_floating_point_max()};
     } else {
-      PADDLE_ENFORCE(size_bits() < 64 || size_bits() == 64 && is_signed(),
-                  "Cannot represent max as a int64_t");
+      // PADDLE_ENFORCE(size_bits() < 64 || size_bits() == 64 && is_signed(),
+      //             "Cannot represent max as a int64_t");
       return {(int64_t(1) << mantissa) - 1};
     }
   }
 
   constexpr std::variant<int64_t, double> _raw_min() const {
     if (is_floating_point()) {
-      PADDLE_ENFORCE(is_signed(),
-                  "We currently assume all floating point types are signed");
+      // PADDLE_ENFORCE(is_signed(),
+      //             "We currently assume all floating point types are signed");
       constexpr uint64_t sign_bit_double = (uint64_t(1) << 63);
 
       double max = _floating_point_max();
@@ -251,8 +250,8 @@ class ScalarType {
       uint64_t min_raw = max_raw | sign_bit_double;
       return {*reinterpret_cast<double*>(&min_raw)};
     } else {
-      PADDLE_ENFORCE(!is_signed() || size_bits() <= 64,
-                  "Cannot represent min as a int64_t");
+      // PADDLE_ENFORCE(!is_signed() || size_bits() <= 64,
+      //             "Cannot represent min as a int64_t");
       if (is_signed()) {
         // set the top bit to 1 (i.e. INT64_MIN) and the rest to 0
         // then perform an arithmetic shift right to set all the bits above

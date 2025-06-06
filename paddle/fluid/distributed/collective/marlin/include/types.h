@@ -41,11 +41,14 @@ struct Tensor {
 
   decltype(auto) place() const { return raw_tensor_.place(); }
 
+  decltype(auto) numel() const { return raw_tensor_.numel(); }
+
   int64_t dim() const { return raw_tensor_.dims().size(); }
 
   bool is_contiguous() const { return true; }
 
   int64_t size(int64_t d) const { return raw_tensor_.dims().at(d); }
+  
 
   template <typename T>
   T *data_ptr() const {
@@ -72,9 +75,9 @@ struct Tensor {
   }
 
 
-  deep_ep::detail::ScalarType scalar_type() const {
-    return raw_tensor_.dtype();
-  }
+  // deep_ep::detail::ScalarType scalar_type() const {
+  //   return raw_tensor_.dtype();
+  // }
 
   int64_t element_size() const { return phi::SizeOf(raw_tensor_.dtype()); }
 };
