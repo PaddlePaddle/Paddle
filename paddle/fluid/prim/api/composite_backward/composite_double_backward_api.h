@@ -172,13 +172,8 @@ void masked_fill_double_grad(const Tensor& mask,
           mask,
           full<T>({}, 0, grad_x_grad.get().dtype(), grad_x_grad.get().place()));
     } else if (grad_value_grad) {
-      grad_out_grad_tmp =
-          masked_fill<T>(common::vectorize(grad_x_grad.get().dims()),
-                         0,
-                         grad_x_grad.get().dtype(),
-                         grad_x_grad.get().place(),
-                         mask,
-                         grad_value_grad.get());
+      PADDLE_THROW(common::errors::InvalidArgument(
+          "grad_x_grad can not be null in 'masked_fill_double_grad'"));
     }
     set_output<T>(grad_out_grad_tmp, grad_out_grad);
   }
