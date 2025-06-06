@@ -30,7 +30,7 @@ size_t FindPos(const std::vector<int64_t>& rows, int64_t value) {
 
 template <typename T>
 struct DenseAdagradFunctor<phi::CPUContext, T> {
-  void operator()(const phi::CPUContext& ctx,
+  void operator()(const phi::CPUContext& dev_ctx,
                   const DenseTensor& param_t,
                   const DenseTensor& grad_t,
                   const DenseTensor& moment_t,
@@ -41,8 +41,8 @@ struct DenseAdagradFunctor<phi::CPUContext, T> {
                   DenseTensor* param_out_tensor,
                   DenseTensor* moment_out_tensor,
                   DenseTensor* master_param_outs) {
-    ctx.template Alloc<T>(param_out_tensor);
-    ctx.template Alloc<T>(moment_out_tensor);
+    dev_ctx.template Alloc<T>(param_out_tensor);
+    dev_ctx.template Alloc<T>(moment_out_tensor);
 
     T epsilon = static_cast<T>(epsilon_t);
 

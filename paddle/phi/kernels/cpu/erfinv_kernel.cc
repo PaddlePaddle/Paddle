@@ -24,8 +24,10 @@
 namespace phi {
 
 template <typename T, typename Context>
-void ErfinvKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
-  ctx.template Alloc<T>(out);
+void ErfinvKernel(const Context& dev_ctx,
+                  const DenseTensor& x,
+                  DenseTensor* out) {
+  dev_ctx.template Alloc<T>(out);
   if (out && out->numel() == 0) {
     return;
   }

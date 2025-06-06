@@ -24,7 +24,7 @@
 
 namespace phi {
 template <typename Context, typename T, typename IndexT = int>
-void IndexAddInner(const Context& ctx,
+void IndexAddInner(const Context& dev_ctx,
                    DenseTensor* input,
                    const DenseTensor& index,
                    int axis,
@@ -38,11 +38,11 @@ void IndexAddInner(const Context& ctx,
 
   const IndexT* index_data = index.data<IndexT>();
 
-  ctx.template Alloc<T>(output);
+  dev_ctx.template Alloc<T>(output);
 
   // copy x to output.
   // todo(@limin29): inplace do not need copy.
-  phi::Copy(ctx, *input, ctx.GetPlace(), false, output);
+  phi::Copy(dev_ctx, *input, dev_ctx.GetPlace(), false, output);
 
   auto slice_size = 1;
   for (auto i = axis + 1; i < input_dim_size; i++) {

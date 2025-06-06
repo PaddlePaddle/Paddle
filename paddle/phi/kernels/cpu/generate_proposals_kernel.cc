@@ -35,13 +35,13 @@ static void AppendProposals(DenseTensor* dst,
 }
 
 template <class T>
-void ClipTiledBoxes(const phi::CPUContext& ctx,
+void ClipTiledBoxes(const phi::CPUContext& dev_ctx,
                     const DenseTensor& im_info,
                     const DenseTensor& input_boxes,
                     DenseTensor* out,
                     bool is_scale = true,
                     bool pixel_offset = true) {
-  T* out_data = ctx.template Alloc<T>(out);
+  T* out_data = dev_ctx.template Alloc<T>(out);
   const T* im_info_data = im_info.data<T>();
   const T* input_boxes_data = input_boxes.data<T>();
   T offset = pixel_offset ? static_cast<T>(1.0) : 0;
@@ -63,7 +63,7 @@ void ClipTiledBoxes(const phi::CPUContext& ctx,
 
 // Filter the box with small area
 template <class T>
-void FilterBoxes(const phi::CPUContext& ctx,
+void FilterBoxes(const phi::CPUContext& dev_ctx,
                  const DenseTensor* boxes,
                  float min_size,
                  const DenseTensor& im_info,
@@ -74,7 +74,7 @@ void FilterBoxes(const phi::CPUContext& ctx,
   const T* boxes_data = boxes->data<T>();
   keep->Resize(common::make_ddim({boxes->dims()[0]}));
   min_size = std::max(min_size, 1.0f);
-  int* keep_data = ctx.template Alloc<int>(keep);
+  int* keep_data = dev_ctx.template Alloc<int>(keep);
   T offset = pixel_offset ? static_cast<T>(1.0) : 0;
 
   int keep_len = 0;
@@ -104,13 +104,13 @@ void FilterBoxes(const phi::CPUContext& ctx,
 }
 
 template <class T>
-static void BoxCoder(const phi::CPUContext& ctx,
+static void BoxCoder(const phi::CPUContext& dev_ctx,
                      DenseTensor* all_anchors,
                      DenseTensor* bbox_deltas,
                      DenseTensor* variances,
                      DenseTensor* proposals,
                      const bool pixel_offset = true) {
-  T* proposals_data = ctx.template Alloc<T>(proposals);
+  T* proposals_data = dev_ctx.template Alloc<T>(proposals);
 
   int64_t row = all_anchors->dims()[0];
   int64_t len = all_anchors->dims()[1];
@@ -172,7 +172,7 @@ static void BoxCoder(const phi::CPUContext& ctx,
 
 template <typename T>
 std::pair<DenseTensor, DenseTensor> ProposalForOneImage(
-    const phi::CPUContext& ctx,
+    const phi::CPUContext& dev_ctx,
     const DenseTensor& im_shape_slice,
     const DenseTensor& anchors,
     const DenseTensor& variances,
@@ -189,7 +189,7 @@ std::pair<DenseTensor, DenseTensor> ProposalForOneImage(
   // Sort index
   DenseTensor index_t;
   index_t.Resize(common::make_ddim({scores_slice.numel()}));
-  int* index = ctx.template Alloc<int>(&index_t);
+  int* index = dev_ctx.template Alloc<int>(&index_t);
   for (int i = 0; i < scores_slice.numel(); ++i) {
     index[i] = i;
   }
@@ -207,77 +207,83 @@ std::pair<DenseTensor, DenseTensor> ProposalForOneImage(
 
   DenseTensor scores_sel, bbox_sel, anchor_sel, var_sel;
   scores_sel.Resize(common::make_ddim({index_t.numel(), 1}));
-  ctx.template Alloc<T>(&scores_sel);
+  dev_ctx.template Alloc<T>(&scores_sel);
 
   bbox_sel.Resize(common::make_ddim({index_t.numel(), 4}));
-  ctx.template Alloc<T>(&bbox_sel);
+  dev_ctx.template Alloc<T>(&bbox_sel);
 
   anchor_sel.Resize(common::make_ddim({index_t.numel(), 4}));
-  ctx.template Alloc<T>(&anchor_sel);
+  dev_ctx.template Alloc<T>(&anchor_sel);
 
   var_sel.Resize(common::make_ddim({index_t.numel(), 4}));
-  ctx.template Alloc<T>(&var_sel);
+  dev_ctx.template Alloc<T>(&var_sel);
 
-  phi::funcs::CPUGather<T>(ctx, scores_slice, index_t, &scores_sel);
-  phi::funcs::CPUGather<T>(ctx, bbox_deltas_slice, index_t, &bbox_sel);
-  phi::funcs::CPUGather<T>(ctx, anchors, index_t, &anchor_sel);
-  phi::funcs::CPUGather<T>(ctx, variances, index_t, &var_sel);
+  phi::funcs::CPUGather<T>(dev_ctx, scores_slice, index_t, &scores_sel);
+  phi::funcs::CPUGather<T>(dev_ctx, bbox_deltas_slice, index_t, &bbox_sel);
+  phi::funcs::CPUGather<T>(dev_ctx, anchors, index_t, &anchor_sel);
+  phi::funcs::CPUGather<T>(dev_ctx, variances, index_t, &var_sel);
 
   DenseTensor proposals;
   proposals.Resize(common::make_ddim({index_t.numel(), 4}));
-  ctx.template Alloc<T>(&proposals);
+  dev_ctx.template Alloc<T>(&proposals);
 
-  BoxCoder<T>(ctx, &anchor_sel, &bbox_sel, &var_sel, &proposals, pixel_offset);
+  BoxCoder<T>(
+      dev_ctx, &anchor_sel, &bbox_sel, &var_sel, &proposals, pixel_offset);
 
   ClipTiledBoxes<T>(
-      ctx, im_shape_slice, proposals, &proposals, false, pixel_offset);
+      dev_ctx, im_shape_slice, proposals, &proposals, false, pixel_offset);
 
   DenseTensor keep;
-  FilterBoxes<T>(
-      ctx, &proposals, min_size, im_shape_slice, false, &keep, pixel_offset);
+  FilterBoxes<T>(dev_ctx,
+                 &proposals,
+                 min_size,
+                 im_shape_slice,
+                 false,
+                 &keep,
+                 pixel_offset);
   // Handle the case when there is no keep index left
   if (keep.numel() == 0) {
     phi::funcs::SetConstant<phi::CPUContext, T> set_zero;
     bbox_sel.Resize(common::make_ddim({1, 4}));
-    ctx.template Alloc<T>(&bbox_sel);
-    set_zero(ctx, &bbox_sel, static_cast<T>(0));
+    dev_ctx.template Alloc<T>(&bbox_sel);
+    set_zero(dev_ctx, &bbox_sel, static_cast<T>(0));
     DenseTensor scores_filter;
     scores_filter.Resize(common::make_ddim({1, 1}));
-    ctx.template Alloc<T>(&scores_filter);
-    set_zero(ctx, &scores_filter, static_cast<T>(0));
+    dev_ctx.template Alloc<T>(&scores_filter);
+    set_zero(dev_ctx, &scores_filter, static_cast<T>(0));
     return std::make_pair(bbox_sel, scores_filter);
   }
 
   DenseTensor scores_filter;
   bbox_sel.Resize(common::make_ddim({keep.numel(), 4}));
-  ctx.template Alloc<T>(&bbox_sel);
+  dev_ctx.template Alloc<T>(&bbox_sel);
   scores_filter.Resize(common::make_ddim({keep.numel(), 1}));
-  ctx.template Alloc<T>(&scores_filter);
-  phi::funcs::CPUGather<T>(ctx, proposals, keep, &bbox_sel);
-  phi::funcs::CPUGather<T>(ctx, scores_sel, keep, &scores_filter);
+  dev_ctx.template Alloc<T>(&scores_filter);
+  phi::funcs::CPUGather<T>(dev_ctx, proposals, keep, &bbox_sel);
+  phi::funcs::CPUGather<T>(dev_ctx, scores_sel, keep, &scores_filter);
   if (nms_thresh <= 0) {
     return std::make_pair(bbox_sel, scores_filter);
   }
 
   DenseTensor keep_nms = phi::funcs::NMS<T>(
-      ctx, &bbox_sel, &scores_filter, nms_thresh, eta, pixel_offset);
+      dev_ctx, &bbox_sel, &scores_filter, nms_thresh, eta, pixel_offset);
 
   if (post_nms_top_n > 0 && post_nms_top_n < keep_nms.numel()) {
     keep_nms.Resize(common::make_ddim({post_nms_top_n}));
   }
 
   proposals.Resize(common::make_ddim({keep_nms.numel(), 4}));
-  ctx.template Alloc<T>(&proposals);
+  dev_ctx.template Alloc<T>(&proposals);
   scores_sel.Resize(common::make_ddim({keep_nms.numel(), 1}));
-  ctx.template Alloc<T>(&scores_sel);
-  phi::funcs::CPUGather<T>(ctx, bbox_sel, keep_nms, &proposals);
-  phi::funcs::CPUGather<T>(ctx, scores_filter, keep_nms, &scores_sel);
+  dev_ctx.template Alloc<T>(&scores_sel);
+  phi::funcs::CPUGather<T>(dev_ctx, bbox_sel, keep_nms, &proposals);
+  phi::funcs::CPUGather<T>(dev_ctx, scores_filter, keep_nms, &scores_sel);
 
   return std::make_pair(proposals, scores_sel);
 }
 
 template <typename T, typename Context>
-void GenerateProposalsKernel(const Context& ctx,
+void GenerateProposalsKernel(const Context& dev_ctx,
                              const DenseTensor& scores,
                              const DenseTensor& bbox_deltas,
                              const DenseTensor& im_shape,
@@ -304,22 +310,22 @@ void GenerateProposalsKernel(const Context& ctx,
   int64_t w_bbox = bbox_dim[3];
 
   rpn_rois->Resize(common::make_ddim({bbox_deltas.numel() / 4, 4}));
-  ctx.template Alloc<T>(rpn_rois);
+  dev_ctx.template Alloc<T>(rpn_rois);
 
   rpn_roi_probs->Resize(common::make_ddim({scores.numel(), 1}));
-  ctx.template Alloc<T>(rpn_roi_probs);
+  dev_ctx.template Alloc<T>(rpn_roi_probs);
 
   DenseTensor bbox_deltas_swap, scores_swap;
   bbox_deltas_swap.Resize(common::make_ddim({num, h_bbox, w_bbox, c_bbox}));
-  ctx.template Alloc<T>(&bbox_deltas_swap);
+  dev_ctx.template Alloc<T>(&bbox_deltas_swap);
 
   scores_swap.Resize(common::make_ddim({num, h_score, w_score, c_score}));
-  ctx.template Alloc<T>(&scores_swap);
+  dev_ctx.template Alloc<T>(&scores_swap);
 
   phi::funcs::Transpose<phi::CPUContext, T, 4> trans;
   std::vector<int> axis = {0, 2, 3, 1};
-  trans(ctx, bbox_deltas, &bbox_deltas_swap, axis);
-  trans(ctx, scores, &scores_swap, axis);
+  trans(dev_ctx, bbox_deltas, &bbox_deltas_swap, axis);
+  trans(dev_ctx, scores, &scores_swap, axis);
 
   phi::LegacyLoD lod;
   lod.resize(1);
@@ -342,7 +348,7 @@ void GenerateProposalsKernel(const Context& ctx,
     scores_slice.Resize(common::make_ddim({h_score * w_score * c_score, 1}));
 
     std::pair<DenseTensor, DenseTensor> tensor_pair =
-        ProposalForOneImage<T>(ctx,
+        ProposalForOneImage<T>(dev_ctx,
                                im_shape_slice,
                                tmp_anchors,
                                tmp_variances,
@@ -365,7 +371,7 @@ void GenerateProposalsKernel(const Context& ctx,
   }
   if (rpn_rois_num != nullptr) {
     rpn_rois_num->Resize(common::make_ddim({num}));
-    ctx.template Alloc<int>(rpn_rois_num);
+    dev_ctx.template Alloc<int>(rpn_rois_num);
     int* num_data = rpn_rois_num->data<int>();
     for (int i = 0; i < num; i++) {
       num_data[i] = tmp_num[i];

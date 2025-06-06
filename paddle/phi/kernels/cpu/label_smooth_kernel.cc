@@ -21,13 +21,13 @@
 namespace phi {
 
 template <typename T, typename Context>
-void LabelSmoothKernel(const Context& ctx,
+void LabelSmoothKernel(const Context& dev_ctx,
                        const DenseTensor& label,
                        const paddle::optional<DenseTensor>& prior_dist,
                        float epsilon,
                        DenseTensor* out) {
   auto label_dim = label.dims()[label.dims().size() - 1];
-  ctx.template Alloc<T>(out);
+  dev_ctx.template Alloc<T>(out);
   auto& dev = *ctx.eigen_device();
   if (label_dim != 0) {
     auto eigen_out = EigenVector<T>::Flatten(*out);

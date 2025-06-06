@@ -20,7 +20,7 @@
 namespace phi {
 template <typename T>
 struct RmsFunctor<T, phi::CPUContext> {
-  RmsFunctor(const phi::CPUContext &ctx,
+  RmsFunctor(const phi::CPUContext &dev_ctx,
              const DenseTensor &param,
              const DenseTensor &mean_square,
              const DenseTensor &grad,
