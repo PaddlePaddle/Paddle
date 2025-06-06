@@ -801,6 +801,13 @@ struct ElementwiseHeavisideFunctor {
   }
 };
 
+template <typename T>
+struct ElementwiseInverseHeavisideFunctor {
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
+    return b == static_cast<T>(0) ? a : static_cast<T>(b > static_cast<T>(0));
+  }
+};
+
 template <typename T, typename Enable = void>
 struct FloorDivideFunctor {
   inline HOSTDEVICE T operator()(const T a, const T b) const {
@@ -1164,6 +1171,57 @@ template <typename T>
 struct InverseCopySignFunctor {
   inline HOSTDEVICE T operator()(const T a, const T b) const {
     return copysign_func(b, a);
+  }
+};
+
+template <typename T, typename Enable = void>
+struct NextafterFunctor {
+  inline HOSTDEVICE T operator()(const T x, const T y) const {
+    return static_cast<T>(
+        std::nextafter(static_cast<float>(x), static_cast<float>(y)));
+  }
+};
+
+template <typename T>
+struct NextafterFunctor<
+    T,
+    typename std::enable_if_t<std::is_same<T, double>::value>> {
+  inline HOSTDEVICE T operator()(const T x, const T y) const {
+    return std::nextafter(x, y);
+  }
+};
+
+template <typename T>
+struct NextafterFunctor<T,
+                        typename std::enable_if_t<std::is_integral<T>::value>> {
+  inline HOSTDEVICE double operator()(const T x, const T y) const {
+    return std::nextafter(static_cast<double>(x), static_cast<double>(y));
+  }
+};
+
+template <typename T, typename Enable = void>
+struct InverseNextafterFunctor {
+  inline HOSTDEVICE T operator()(const T x, const T y) const {
+    return static_cast<T>(
+        std::nextafter(static_cast<float>(y), static_cast<float>(x)));
+  }
+};
+
+template <typename T>
+struct InverseNextafterFunctor<
+    T,
+    typename std::enable_if_t<std::is_same<T, double>::value>> {
+  inline HOSTDEVICE T operator()(const T x, const T y) const {
+    return std::nextafter(y, x);
+  }
+};
+
+template <typename T>
+struct InverseNextafterFunctor<
+    T,
+    typename std::enable_if_t<std::is_integral<T>::value>> {
+  inline HOSTDEVICE double operator()(const T x, const T y) const {
+    return std::nextafter(static_cast<double>(y), static_cast<double>(x));
   }
 };
 

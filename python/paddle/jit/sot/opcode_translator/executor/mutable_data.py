@@ -112,7 +112,7 @@ class MutationPermutate(Mutation):
 
 
 def record_mutation(
-    mutation_fn: Callable[Concatenate[MutableDataT, P], Mutation]
+    mutation_fn: Callable[Concatenate[MutableDataT, P], Mutation],
 ) -> Callable[Concatenate[MutableDataT, P], None]:
     def wrapper(self, *args: P.args, **kwargs: P.kwargs):
         mutation = mutation_fn(self, *args, **kwargs)

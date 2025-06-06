@@ -17,6 +17,7 @@ limitations under the License. */
 #include <algorithm>
 
 #include "paddle/common/ddim.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/pooling.h"
 #include "paddle/phi/kernels/pool_kernel.h"
 
@@ -52,9 +53,9 @@ inline int64_t GetReduceNum(const DenseTensor& input,
 template <typename T, typename Context>
 void PoolRawKernel(const Context& ctx,
                    const DenseTensor& x,
-                   const std::vector<int>& kernel_size,
-                   const std::vector<int>& strides,
-                   const std::vector<int>& paddings,
+                   const std::vector<int64_t>& kernel_size,
+                   const std::vector<int64_t>& strides,
+                   const std::vector<int64_t>& paddings,
                    bool exclusive,
                    const std::string& data_format,
                    const std::string& pooling_type,
@@ -63,9 +64,14 @@ void PoolRawKernel(const Context& ctx,
                    const std::string& padding_algorithm,
                    const float norm_type,
                    DenseTensor* out) {
+  if (x.numel() == 0) {
+    phi::Full<T, Context>(
+        ctx, phi::IntArray(common::vectorize(out->dims())), NAN, out);
+    return;
+  }
   const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
-  std::vector<int> paddings_ = paddings;
-  std::vector<int> kernel_size_ = kernel_size;
+  std::vector<int64_t> paddings_ = paddings;
+  std::vector<int64_t> kernel_size_ = kernel_size;
 
   // update paddings
   auto x_dims = x.dims();
@@ -221,6 +227,18 @@ void MaxPoolWithIndexRawKernel(const Context& ctx,
                                bool adaptive,
                                DenseTensor* out,
                                DenseTensor* mask) {
+  if (x.numel() == 0) {
+    if (out) {
+      phi::Full<T1, Context>(
+          ctx, phi::IntArray(common::vectorize(out->dims())), NAN, out);
+    }
+    if (mask) {
+      phi::Full<T2, Context>(
+          ctx, phi::IntArray(common::vectorize(mask->dims())), 0, mask);
+    }
+    return;
+  }
+
   std::vector<int> paddings_ = paddings;
   std::vector<int> kernel_size_ = kernel_size;
 
@@ -253,8 +271,8 @@ template <typename T, typename Context>
 void Pool2dKernel(const Context& ctx,
                   const DenseTensor& x,
                   const IntArray& kernel_size,
-                  const std::vector<int>& strides,
-                  const std::vector<int>& paddings,
+                  const std::vector<int64_t>& strides,
+                  const std::vector<int64_t>& paddings,
                   bool ceil_mode UNUSED,
                   bool exclusive,
                   const std::string& data_format,
@@ -263,11 +281,9 @@ void Pool2dKernel(const Context& ctx,
                   bool adaptive,
                   const std::string& padding_algorithm,
                   DenseTensor* out) {
-  std::vector<int> kernel_size_val(kernel_size.GetData().begin(),
-                                   kernel_size.GetData().end());
   PoolRawKernel<T, Context>(ctx,
                             x,
-                            kernel_size_val,
+                            kernel_size.GetData(),
                             strides,
                             paddings,
                             exclusive,
@@ -284,8 +300,8 @@ template <typename T, typename Context>
 void LPPool2dKernel(const Context& ctx,
                     const DenseTensor& x,
                     const IntArray& kernel_size,
-                    const std::vector<int>& strides,
-                    const std::vector<int>& paddings,
+                    const std::vector<int64_t>& strides,
+                    const std::vector<int64_t>& paddings,
                     bool ceil_mode UNUSED,
                     bool exclusive,
                     const std::string& data_format,
@@ -295,11 +311,9 @@ void LPPool2dKernel(const Context& ctx,
                     const std::string& padding_algorithm,
                     const float norm_type,
                     DenseTensor* out) {
-  std::vector<int> kernel_size_val(kernel_size.GetData().begin(),
-                                   kernel_size.GetData().end());
   PoolRawKernel<T, Context>(ctx,
                             x,
-                            kernel_size_val,
+                            kernel_size.GetData(),
                             strides,
                             paddings,
                             exclusive,
@@ -337,9 +351,9 @@ void MaxPool2dWithIndexKernel(const Context& ctx,
 template <typename T, typename Context>
 void Pool3dKernel(const Context& ctx,
                   const DenseTensor& x,
-                  const std::vector<int>& kernel_size,
-                  const std::vector<int>& strides,
-                  const std::vector<int>& paddings,
+                  const std::vector<int64_t>& kernel_size,
+                  const std::vector<int64_t>& strides,
+                  const std::vector<int64_t>& paddings,
                   bool ceil_mode UNUSED,
                   bool exclusive,
                   const std::string& data_format,
@@ -394,6 +408,18 @@ void FractionalMaxPoolRawKernel(const Context& ctx,
                                 bool return_mask,
                                 DenseTensor* out,
                                 DenseTensor* mask) {
+  if (x.numel() == 0) {
+    if (out) {
+      phi::Full<T1, Context>(
+          ctx, phi::IntArray(common::vectorize(out->dims())), NAN, out);
+    }
+    if (mask) {
+      phi::Full<T2, Context>(
+          ctx, phi::IntArray(common::vectorize(mask->dims())), 0, mask);
+    }
+    return;
+  }
+
   std::vector<int> output_size_ = output_size;
 
   switch (output_size_.size()) {

@@ -25,8 +25,8 @@ void Pool2dGradKernel(const Context& ctx,
                       const DenseTensor& out,
                       const DenseTensor& dout,
                       const IntArray& kernel_size_t,
-                      const std::vector<int>& strides_t,
-                      const std::vector<int>& paddings_t,
+                      const std::vector<int64_t>& strides_t,
+                      const std::vector<int64_t>& paddings_t,
                       bool ceil_mode,
                       bool exclusive,
                       const std::string& data_format,
@@ -36,7 +36,10 @@ void Pool2dGradKernel(const Context& ctx,
                       const std::string& padding_algorithm,
                       DenseTensor* dx) {
   using XPUType = typename XPUTypeTrait<T>::Type;
-
+  if (dx && dx->numel() == 0) {
+    ctx.template Alloc<T>(dx);
+    return;
+  }
   std::vector<int64_t> paddings(paddings_t.begin(), paddings_t.end());
   std::vector<int64_t> kernel_size(kernel_size_t.GetData().begin(),
                                    kernel_size_t.GetData().end());
@@ -184,9 +187,9 @@ void Pool3dGradKernel(const Context& ctx,
                       const DenseTensor& x,
                       const DenseTensor& out,
                       const DenseTensor& dout,
-                      const std::vector<int>& kernel_size_t,
-                      const std::vector<int>& strides_t,
-                      const std::vector<int>& paddings_t,
+                      const std::vector<int64_t>& kernel_size_t,
+                      const std::vector<int64_t>& strides_t,
+                      const std::vector<int64_t>& paddings_t,
                       bool ceil_mode,
                       bool exclusive,
                       const std::string& data_format,
@@ -196,6 +199,10 @@ void Pool3dGradKernel(const Context& ctx,
                       const std::string& padding_algorithm,
                       DenseTensor* dx) {
   using XPUType = typename XPUTypeTrait<T>::Type;
+  if (dx && dx->numel() == 0) {
+    ctx.template Alloc<T>(dx);
+    return;
+  }
   auto x_dims = x.dims();
   const bool channel_last = data_format == "NDHWC";
 
@@ -393,6 +400,9 @@ void MaxPool2dWithIndexGradKernel(const Context& ctx,
   using XPUType = typename XPUTypeTrait<T>::Type;
 
   ctx.template Alloc<T>(dx);
+  if (dx && dx->numel() == 0) {
+    return;
+  }
   auto input_grad = reinterpret_cast<XPUType*>(dx->data<T>());
   std::vector<int64_t> kernel_size(kernel_size_t.begin(), kernel_size_t.end());
   std::vector<int64_t> strides(strides_t.begin(), strides_t.end());

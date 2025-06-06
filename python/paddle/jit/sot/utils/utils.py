@@ -30,6 +30,7 @@ from weakref import WeakValueDictionary
 import numpy as np
 
 import paddle
+from paddle.jit.dy2static.utils import TransformOptions
 from paddle.utils import flatten, map_structure
 
 from .envs import (
@@ -37,7 +38,7 @@ from .envs import (
     ENV_STRICT_MODE,
 )
 from .paddle_api_config import (
-    break_graph_set,
+    break_graph_functions,
     paddle_api_list,
     paddle_api_module_prefix,
 )
@@ -196,6 +197,14 @@ def is_paddle_api(func):
     return in_paddle_module(func) or func in paddle_api_list
 
 
+def already_unified_in_dynamic_and_static_graph(fn):
+    if is_paddle_api(fn):
+        return True
+    return not TransformOptions.check_fn_need_transform(
+        fn, TransformOptions.ToStaticMode.SOT
+    )
+
+
 def is_builtin_fn(fn):
     special_builtin_fns = [weakref.ref]
     if fn in special_builtin_fns:
@@ -228,7 +237,7 @@ def in_paddle_module(func):
 
 
 def is_break_graph_api(func):
-    return func in break_graph_set
+    return func in break_graph_functions
 
 
 def is_namedtuple_class(cls):

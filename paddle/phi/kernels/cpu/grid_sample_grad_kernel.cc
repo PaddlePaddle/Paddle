@@ -16,9 +16,9 @@
 
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cpu/grid_sample_utils.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
-
 namespace phi {
 
 template <typename T>
@@ -653,12 +653,26 @@ template <typename T, typename Context>
 void GridSampleGradKernel(const Context& dev_ctx,
                           const DenseTensor& x,
                           const DenseTensor& grid,
-                          const DenseTensor& out_grid,
+                          const DenseTensor& out_grad,
                           const std::string& mode,
                           const std::string& padding_mode,
                           bool align_corners,
                           DenseTensor* x_grad,
                           DenseTensor* grid_grad) {
+  if (out_grad.numel() == 0) {
+    if (x_grad) {
+      phi::Full<T, Context>(
+          dev_ctx, phi::IntArray(common::vectorize(x_grad->dims())), 0, x_grad);
+    }
+    if (grid_grad) {
+      phi::Full<T, Context>(dev_ctx,
+                            phi::IntArray(common::vectorize(grid_grad->dims())),
+                            0,
+                            grid_grad);
+    }
+    return;
+  }
+
   if (x.dims().size() == 4) {
     const int n = static_cast<int>(grid.dims()[0]);
     const int out_h = static_cast<int>(grid.dims()[1]);
@@ -693,7 +707,7 @@ void GridSampleGradKernel(const Context& dev_ctx,
     if (mode == "bilinear") {
       GatherBilinearGrad<T>(dev_ctx,
                             x,
-                            out_grid,
+                            out_grad,
                             &grid_x,
                             &grid_y,
                             &grid_x_scale,
@@ -705,7 +719,7 @@ void GridSampleGradKernel(const Context& dev_ctx,
       auto grid_y_t = EigenTensor<T, 3>::From(grid_y);
       grid_x_t = grid_x_t.round();
       grid_y_t = grid_y_t.round();
-      GatherOutputGradToInputGrad<T>(out_grid, x_grad, grid_x, grid_y);
+      GatherOutputGradToInputGrad<T>(out_grad, x_grad, grid_x, grid_y);
     }
   } else {
     const int n = static_cast<int>(grid.dims()[0]);
@@ -746,7 +760,7 @@ void GridSampleGradKernel(const Context& dev_ctx,
     if (mode == "bilinear") {
       Gather3DBilinearGrad<T>(dev_ctx,
                               x,
-                              out_grid,
+                              out_grad,
                               &grid_x,
                               &grid_y,
                               &grid_z,
@@ -757,7 +771,7 @@ void GridSampleGradKernel(const Context& dev_ctx,
                               grid_grad);
     } else {
       Gather3DOutputGradToInputGrad<T>(
-          out_grid, x_grad, grid_x, grid_y, grid_z);
+          out_grad, x_grad, grid_x, grid_y, grid_z);
     }
   }
 }

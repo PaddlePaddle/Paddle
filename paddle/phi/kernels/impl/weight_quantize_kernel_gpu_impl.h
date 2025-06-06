@@ -32,13 +32,12 @@ __global__ void weight_permute_kernel_wint8(const int8_t* input_data_dev,
        linear_idx += blockDim.x * gridDim.x) {
     int k_id = linear_idx / total_n;
     int n_id = linear_idx % total_n;
-    constexpr int k_permute_const = 8;
     int k_mod_16 = k_id % 16;
-    int temp_k_expr_1 = k_mod_16 - k_mod_16 / 8 * 8;
-    int temp_k_expr_2 = k_mod_16 / 8;
-    int permute_kk = temp_k_expr_1 + temp_k_expr_2 +
-                     (temp_k_expr_2 + 1) % 2 * k_mod_16 * 2 / 2 +
-                     temp_k_expr_1 * temp_k_expr_2 + k_id / 16 * 16;
+
+    constexpr int map[16] = {
+        0, 2, 4, 6, 8, 10, 12, 14, 1, 3, 5, 7, 9, 11, 13, 15};
+    int permute_kk = map[k_mod_16] + k_id / 16 * 16;
+
     int permute_index = permute_kk % 64 + permute_kk / 64 * 128 +
                         64 * (n_id % 2) + total_k * 2 * (n_id / 2);
     uint8_t shift_quant_weight = static_cast<uint8_t>(
@@ -48,10 +47,6 @@ __global__ void weight_permute_kernel_wint8(const int8_t* input_data_dev,
   }
 }
 
-// from
-// 0 1 2 3 4 5 6 7...
-// to
-// 0 8 16 24 1 9 17 25...
 __global__ void weight_permute_kernel_wint4(const int8_t* input_data_dev,
                                             int8_t* output_data_dev,
                                             int numel,
@@ -62,35 +57,11 @@ __global__ void weight_permute_kernel_wint4(const int8_t* input_data_dev,
        linear_idx += blockDim.x * gridDim.x) {
     int k_id = linear_idx / total_n;
     int n_id = linear_idx % total_n;
-    constexpr int k_permute_const = 8;
-    int k_mod_8 = k_id % 8;
-    int temp_k_expr_1 = k_mod_8 - k_mod_8 / 4 * 4;
-    int temp_k_expr_2 = k_mod_8 / 4;
-    // we need int4 index like
-    // 0 8 16 24 1 9 17 25 2 10 18 26 3 11 19 27
-    // 4 12 20 28 5 13 21 29 6 14 22 30 7 15 23 31
-    // we can change it to
-    // 0 1 16 17 8 9 24 25 2 3 18 19 10 11 26 27
-    // 4 5 20 21 12 13 28 29 6 7 22 23 14 15 30 31
-    // 2 int4 pack to a int8
-    // 0 8 4 12 1 9 5 13 2 10 6 14 3 11 7 15
-    // find index of above list
-    // 0 4 8 12 2 6 10 14 1 5 9 13 3 7 11 15
-    // we know int8 index is
-    // 0 2 4 6 8 10 12 14 1 3 5 7 9 11 13 15
-    // change it to
-    // 0 2 4 6 1 3 5 7 8 10 12 14 9 11 13 15
-    // % 8 * 2
-    // 0 4 8 12 2 6 10 14 0 4 8 12 2 6 10 14
-    // add 1 for 0 4 8 12 2 6 10 14 [0 4 8 12 2 6 10 14]
-    // we get 0 4 8 12 2 6 10 14 1 5 9 13 3 7 11 15
-    // it change ori to 0 8 4 12...
-    // finally we do some bitwise operation to change int4index
-    int permute_kk = (temp_k_expr_1 + temp_k_expr_2 +
-                      (temp_k_expr_2 + 1) % 2 * k_mod_8 * 2 / 2 +
-                      temp_k_expr_1 * temp_k_expr_2) %
-                         8 * 2 +
-                     (k_id % 16) / 8 + k_id / 16 * 16;
+    // k_id is 8_bit index.
+    constexpr int map[16] = {
+        0, 4, 8, 12, 1, 5, 9, 13, 2, 6, 10, 14, 3, 7, 11, 15};
+
+    int permute_kk = map[k_id % 16] + k_id / 16 * 16;
     int permute_index = permute_kk % 32 + permute_kk / 32 * 128 +
                         32 * (n_id % 4) + total_k * 2 * (n_id / 4);
     int8_t shift_quant_weight = input_data_dev[linear_idx];
@@ -99,43 +70,28 @@ __global__ void weight_permute_kernel_wint4(const int8_t* input_data_dev,
   }
 }
 
-// bitwise operation
+// convetr 0,1,2,3,4,5,6,7 4bit -> 0,2,4,6,1,3,5,7
 __global__ void weight_interval_kernel_wint4(int8_t* output_data_dev,
                                              int numel) {
   constexpr int value_per_interval_thread = 4;
-  constexpr int pack_size = 2;
   for (int linear_idx =
            (blockIdx.x * blockDim.x + threadIdx.x) * value_per_interval_thread;
        linear_idx < numel;
        linear_idx += blockDim.x * gridDim.x * value_per_interval_thread) {
-    for (int pack = 0; pack < pack_size; ++pack) {
-      int8_t interval_weight_0 = output_data_dev[linear_idx + pack];
-      int8_t interval_weight_1 = output_data_dev[linear_idx + pack + 2];
+    uint32_t value = *reinterpret_cast<uint32_t*>(output_data_dev + linear_idx);
+    uint32_t result = 0;
 
-      uint8_t interval_weight_0_l =
-          static_cast<uint8_t>(interval_weight_0) & 0x0F;
-      uint8_t interval_weight_0_r =
-          static_cast<uint8_t>(interval_weight_0) >> 4;
-      uint8_t interval_weight_1_l =
-          static_cast<uint8_t>(interval_weight_1) & 0x0F;
-      uint8_t interval_weight_1_r =
-          static_cast<uint8_t>(interval_weight_1) >> 4;
+    constexpr int map[8] = {0, 2, 4, 6, 1, 3, 5, 7};
 
-      interval_weight_0_l = (interval_weight_0_l + 8) & 0x0F;
-      interval_weight_0_r = (interval_weight_0_r + 8) & 0x0F;
-      interval_weight_1_l = (interval_weight_1_l + 8) & 0x0F;
-      interval_weight_1_r = (interval_weight_1_r + 8) & 0x0F;
-
-      uint8_t new_interval_weight_0 =
-          interval_weight_0_l | (interval_weight_1_l << 4);
-      uint8_t new_interval_weight_1 =
-          interval_weight_0_r | (interval_weight_1_r << 4);
-
-      output_data_dev[linear_idx + pack] =
-          static_cast<int8_t>(new_interval_weight_0);
-      output_data_dev[linear_idx + pack + 2] =
-          static_cast<int8_t>(new_interval_weight_1);
+    for (int ii = 0; ii < 8; ii++) {
+      uint32_t tmp = value >> (map[ii] * 4);
+      tmp &= 0x0F;
+      tmp = (tmp + 8) & 0x0F;
+      tmp = tmp << (ii * 4);
+      result |= tmp;
     }
+
+    *reinterpret_cast<uint32_t*>(output_data_dev + linear_idx) = result;
   }
 }
 
@@ -475,6 +431,77 @@ void weight_quant_gpu(const GPUContext& dev_ctx,
   } else {
     per_channel_quant_gpu<T, kVectorSize><<<kGridSize, kBlockSize>>>(
         weight_data, quanted_weight_data, scale_data, total_k, vec_total_n);
+  }
+}
+
+// pack int8 weight to 2int4 int one int8
+__global__ void weight_permute_transpose_interleave_kernel_w4a8(
+    const int8_t* input_data_ptr,
+    int8_t* output_data_ptr,
+    int numel,
+    int total_k,
+    int total_n) {
+  const int interleave = 4;
+  const int interleave_group = 64;
+  const int permute_group = 32;
+
+  for (int block_n = blockIdx.x; block_n < total_n / interleave;
+       block_n += gridDim.x) {
+    const int8_t* src_ptr = input_data_ptr + block_n * interleave;
+    int8_t* dst_ptr = output_data_ptr + block_n * interleave * total_k / 2;
+
+    for (int block_k = threadIdx.y; block_k < total_k / interleave_group;
+         block_k += blockDim.y) {
+      const int8_t* src_ptr_1 = src_ptr + block_k * interleave_group * total_n;
+      int8_t* dst_ptr_1 = dst_ptr + block_k * interleave_group * interleave / 2;
+
+      int tid_div_16 = threadIdx.x / 16;
+      int tid_mod_16 = threadIdx.x % 16;
+
+      int src_offset = (tid_div_16 * permute_group + tid_mod_16) * total_n;
+
+#pragma unroll
+      for (int idx = 0; idx < interleave; idx++) {
+        const int8_t* src_ptr_2 = src_ptr_1 + idx;
+        int8_t* dst_ptr_2 = dst_ptr_1 + idx * interleave_group / 2;
+
+        int8_t tmp0 = src_ptr_2[src_offset];
+        int8_t tmp1 = src_ptr_2[src_offset + permute_group / 2 * total_n];
+
+        int8_t packed_val = (tmp0 & 0x0f) | ((tmp1 & 0x0f) << 4);
+
+        int dst_offset = threadIdx.x;
+        dst_ptr_2[dst_offset] = packed_val;
+      }
+    }
+  }
+}
+
+template <typename GPUContext>
+void weight_permute_gpu_w4a8(const GPUContext& dev_ctx,
+                             const int8_t* input_data,
+                             int8_t* output_data,
+                             const std::vector<int>& shape,
+                             const int32_t arch,
+                             const std::string& algo) {
+  auto total_k = shape[0];
+  auto total_n = shape[1];
+  auto numel = total_k * total_n;
+  auto gpu_config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel, 1);
+  int grid_size = gpu_config.GetGridSize();
+  int block_size = gpu_config.GetBlockSize();
+  VLOG(2) << "weight_permute_gpu: total_k = " << total_k
+          << "total_n = " << total_n << "grid size = " << grid_size
+          << " block size = " << block_size;
+  if (arch > 70) {
+    if (algo == "w4a8") {
+      dim3 block_dim(32, block_size / 32);
+      weight_permute_transpose_interleave_kernel_w4a8<<<grid_size, block_dim>>>(
+          input_data, output_data, numel, total_k, total_n);
+    }
+  } else {
+    phi::errors::Unimplemented(
+        "The algo %s support need arch > 70, but got algo = %d.", algo, arch);
   }
 }
 

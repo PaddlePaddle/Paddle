@@ -23,11 +23,11 @@
 namespace phi {
 
 template <typename T, typename Context>
-void Pool2dKernel(const Context& ctx,
+void Pool2dKernel(const Context& dev_ctx,
                   const DenseTensor& x,
                   const IntArray& kernel_size,
-                  const std::vector<int>& strides,
-                  const std::vector<int>& paddings,
+                  const std::vector<int64_t>& strides,
+                  const std::vector<int64_t>& paddings,
                   bool ceil_mode,
                   bool exclusive,
                   const std::string& data_format,
@@ -38,11 +38,11 @@ void Pool2dKernel(const Context& ctx,
                   DenseTensor* out);
 
 template <typename T, typename Context>
-void LPPool2dKernel(const Context& ctx,
+void LPPool2dKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     const IntArray& kernel_size,
-                    const std::vector<int>& strides,
-                    const std::vector<int>& paddings,
+                    const std::vector<int64_t>& strides,
+                    const std::vector<int64_t>& paddings,
                     bool ceil_mode,
                     bool exclusive,
                     const std::string& data_format,
@@ -54,11 +54,11 @@ void LPPool2dKernel(const Context& ctx,
                     DenseTensor* out);
 
 template <typename T, typename Context>
-void Pool2dGPUDNNKernel(const Context& ctx,
+void Pool2dGPUDNNKernel(const Context& dev_ctx,
                         const DenseTensor& x,
                         const IntArray& kernel_size,
-                        const std::vector<int>& strides,
-                        const std::vector<int>& paddings,
+                        const std::vector<int64_t>& strides,
+                        const std::vector<int64_t>& paddings,
                         bool ceil_mode,
                         bool exclusive,
                         const std::string& data_format,
@@ -69,7 +69,7 @@ void Pool2dGPUDNNKernel(const Context& ctx,
                         DenseTensor* out);
 
 template <typename T, typename Context>
-void MaxPool2dWithIndexKernel(const Context& ctx,
+void MaxPool2dWithIndexKernel(const Context& dev_ctx,
                               const DenseTensor& x,
                               const std::vector<int>& kernel_size,
                               const std::vector<int>& strides,
@@ -81,11 +81,11 @@ void MaxPool2dWithIndexKernel(const Context& ctx,
                               DenseTensor* mask);
 
 template <typename T, typename Context>
-void Pool3dKernel(const Context& ctx,
+void Pool3dKernel(const Context& dev_ctx,
                   const DenseTensor& x,
-                  const std::vector<int>& kernel_size,
-                  const std::vector<int>& strides,
-                  const std::vector<int>& paddings,
+                  const std::vector<int64_t>& kernel_size,
+                  const std::vector<int64_t>& strides,
+                  const std::vector<int64_t>& paddings,
                   bool ceil_mode,
                   bool exclusive,
                   const std::string& data_format,
@@ -96,11 +96,11 @@ void Pool3dKernel(const Context& ctx,
                   DenseTensor* out);
 
 template <typename T, typename Context>
-void Pool3dGPUDNNKernel(const Context& ctx,
+void Pool3dGPUDNNKernel(const Context& dev_ctx,
                         const DenseTensor& x,
-                        const std::vector<int>& kernel_size,
-                        const std::vector<int>& strides,
-                        const std::vector<int>& paddings,
+                        const std::vector<int64_t>& kernel_size,
+                        const std::vector<int64_t>& strides,
+                        const std::vector<int64_t>& paddings,
                         bool ceil_mode,
                         bool exclusive,
                         const std::string& data_format,
@@ -111,7 +111,7 @@ void Pool3dGPUDNNKernel(const Context& ctx,
                         DenseTensor* out);
 
 template <typename T, typename Context>
-void MaxPool3dWithIndexKernel(const Context& ctx,
+void MaxPool3dWithIndexKernel(const Context& dev_ctx,
                               const DenseTensor& x,
                               const std::vector<int>& kernel_size,
                               const std::vector<int>& strides,
@@ -123,7 +123,7 @@ void MaxPool3dWithIndexKernel(const Context& ctx,
                               DenseTensor* mask);
 
 template <typename T, typename Context>
-void FractionalMaxPool2dKernel(const Context& ctx,
+void FractionalMaxPool2dKernel(const Context& dev_ctx,
                                const DenseTensor& x,
                                const std::vector<int>& output_size,
                                const std::vector<int>& kernel_size,
@@ -133,7 +133,7 @@ void FractionalMaxPool2dKernel(const Context& ctx,
                                DenseTensor* mask);
 
 template <typename T, typename Context>
-void FractionalMaxPool3dKernel(const Context& ctx,
+void FractionalMaxPool3dKernel(const Context& dev_ctx,
                                const DenseTensor& x,
                                const std::vector<int>& output_size,
                                const std::vector<int>& kernel_size,

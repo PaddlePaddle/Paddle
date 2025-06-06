@@ -424,7 +424,6 @@ class TestMathOpPatchesPir(unittest.TestCase):
 
     # for logical compare
     def test_equal_and_nequal(self):
-
         def _test(x_np, y_np, input_dtype):
             paddle.disable_static()
             # TODO(gouzil): Open after deleting c++ logic
@@ -565,14 +564,8 @@ class TestMathOpPatchesPir(unittest.TestCase):
     def test_item(self):
         with paddle.pir_utils.IrGuard():
             x = paddle.static.data(name='x', shape=[3, 2, 1])
-            y = paddle.static.data(
-                name='y',
-                shape=[
-                    3,
-                ],
-            )
-            self.assertTrue(y.item().is_same(y))
-            with self.assertRaises(TypeError):
+            y = paddle.static.data(name='y', shape=[1])
+            with self.assertRaises(ValueError):
                 x.item()
 
     def test_place(self):

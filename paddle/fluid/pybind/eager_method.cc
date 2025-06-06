@@ -16,10 +16,6 @@ typedef SSIZE_T ssize_t;
 #endif
 
 #include <Python.h>
-// Avoid a problem with copysign defined in pyconfig.h on Windows.
-#ifdef copysign
-#undef copysign
-#endif
 
 #include <string>
 #include <unordered_map>
@@ -33,6 +29,7 @@ typedef SSIZE_T ssize_t;
 #include "paddle/fluid/eager/hooks.h"
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/framework/convert_utils.h"
+#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/pybind/eager_utils.h"
@@ -1402,6 +1399,61 @@ static PyObject* tensor_method_get_underline_tensor(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* tensor_method_set_underline_tensor(TensorObject* self,
+                                                    PyObject* args,
+                                                    PyObject* kwargs) {
+  EAGER_TRY
+  auto& value = GetTensorFromArgs("set_tensor", "value", args, 0, false);
+  if (!value.defined()) {
+    PADDLE_THROW(
+        common::errors::Unavailable("The `set_tensor()` method of (Dist)Tensor "
+                                    "get a non initialized src value"));
+  } else if (value.is_dense_tensor()) {
+    auto* src_tensor = static_cast<phi::DenseTensor*>(value.impl().get());
+    if (self->tensor.is_dense_tensor()) {
+      auto* dst_tensor =
+          static_cast<phi::DenseTensor*>(self->tensor.impl().get());
+      framework::TensorCopy(*src_tensor, dst_tensor->place(), dst_tensor);
+    } else {
+      PADDLE_THROW(common::errors::Unavailable(
+          "The `set_tensor()` method of non DenseTensor get a DenseTensor src "
+          "value"));
+    }
+
+  } else if (value.is_dist_tensor()) {
+#ifdef PADDLE_WITH_DISTRIBUTE
+    auto* src_tensor =
+        static_cast<phi::distributed::DistTensor*>(value.impl().get());
+    if (self->tensor.is_dist_tensor()) {
+      auto* dst_tensor =
+          static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get());
+      framework::TensorCopy(*(src_tensor->unsafe_mutable_value()),
+                            dst_tensor->place(),
+                            dst_tensor->unsafe_mutable_value());
+
+      // TensorCopyFrom(dst_tensor->unsafe_mutable_value(),
+      // *(src_tensor->unsafe_mutable_value()), dst_tensor->place(), -1);
+    } else {
+      PADDLE_THROW(
+          common::errors::Unavailable("The `set_tensor()` method of non "
+                                      "DistTensor get a DistTensor src value"));
+    }
+#else
+    PADDLE_THROW(common::errors::Unavailable(
+        "The `set_tensor()` method of (Dist)Tensor is not supported in the "
+        "current PaddlePaddle, please recompile and installPaddlePaddle "
+        "with the option of `WITH_DISTRIBUTE=ON`."));
+#endif
+
+  } else {
+    PADDLE_THROW(common::errors::Unavailable(
+        "The `set_tensor()` method of (Dist)Tensor get a non "
+        "DenseTensor/DistTensor src value"));
+  }
+  RETURN_PY_NONE
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 static PyObject* tensor_method_get_underline_selected_rows(TensorObject* self,
                                                            PyObject* args,
                                                            PyObject* kwargs) {
@@ -1928,18 +1980,41 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
         ConvertAllInputsToDistTensor(
             mesh, self->tensor, transed_sub_tensor, value_tensor);
       }
-      if (transed_index.size() == 1 &&
-          transed_index[0].dtype() == phi::DataType::BOOL &&
-          transed_index[0].shape().size() == self->tensor.shape().size() &&
-          value_tensor.numel() == 1) {
-        value_tensor = expand_ad_func(value_tensor, self->tensor.shape());
+      paddle::Tensor mask_tensor;
+      if (MaskedFillDispatching(
+              transed_sub_tensor, value_tensor, transed_index, &mask_tensor)) {
         transed_sub_tensor =
-            where__ad_func(logical_not_ad_func(transed_index[0]),
-                           transed_sub_tensor,
-                           value_tensor);
+            masked_fill__ad_func(transed_sub_tensor, mask_tensor, value_tensor);
       } else {
+#ifdef PADDLE_WITH_CUDA
+        // TODO(czy): remove in the future
+        if (transed_sub_tensor.is_gpu() && !out_is_view &&
+            transed_index.size() == 1 && value_tensor.numel() == 1) {
+          transed_index = expand_outplace(transed_index);
+          while (transed_index.size() <
+                 static_cast<size_t>(transed_sub_tensor.dims().size())) {
+            transed_index.emplace_back(empty_ad_func(
+                {}, transed_index[0].dtype(), transed_index[0].place()));
+          }
+
+          AdvancedIndex ad = AdvancedIndex(transed_sub_tensor, transed_index);
+          transed_sub_tensor =
+              index_elementwise_put__ad_func(transed_sub_tensor,
+                                             ad.indices,
+                                             value_tensor,
+                                             ad.src_sizes,
+                                             ad.src_strides,
+                                             ad.indexed_sizes,
+                                             ad.indexed_strides);
+
+        } else {
+          transed_sub_tensor = index_put__ad_func(
+              transed_sub_tensor, transed_index, value_tensor);
+        }
+#else
         transed_sub_tensor =
             index_put__ad_func(transed_sub_tensor, transed_index, value_tensor);
+#endif
       }
       if (out_is_view) {
         // NOTE(zoooo0820): if out_is_view is true, it is a case of
@@ -3649,6 +3724,10 @@ PyMethodDef variable_methods[] = {  // NOLINT
      nullptr},
     {"_get_tensor_from_selected_rows",
      (PyCFunction)(void (*)())tensor_method__get_tensor_from_selected_rows,
+     METH_VARARGS | METH_KEYWORDS,
+     nullptr},
+    {"set_tensor",
+     (PyCFunction)(void (*)())tensor_method_set_underline_tensor,
      METH_VARARGS | METH_KEYWORDS,
      nullptr},
     {"_getitem_dygraph",
