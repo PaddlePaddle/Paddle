@@ -1368,21 +1368,6 @@ void DistInferMeta(const MetaTensor& x,
                    const MetaTensor& y,
                    float p,
                    MetaTensor* out) {
-  auto x_dims = x.dims();
-  auto y_dims = y.dims();
-
-  PADDLE_ENFORCE_NE(common::product(x_dims),
-                    0,
-                    common::errors::InvalidArgument(
-                        "The Input(X) has not been initialized properly. The "
-                        "shape of Input(X) = [%s].",
-                        x_dims));
-  PADDLE_ENFORCE_NE(common::product(y_dims),
-                    0,
-                    common::errors::InvalidArgument(
-                        "The Input(Y) has not been initialized properly. The "
-                        "shape of Input(Y) = [%s].",
-                        y_dims));
   out->set_dims(common::make_ddim({}));
   out->set_dtype(x.dtype());
 }

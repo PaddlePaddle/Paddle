@@ -1745,6 +1745,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : IndexSelectGradInferSpmd
   kernel :
     func : index_select_grad
     data_type : out_grad
