@@ -109,9 +109,7 @@ class TestTPConv:
         mp_dim_index = mesh.dim_names.index("mp")
         input_placements[mp_dim_index] = dist.Shard(shard_axis_input)
 
-        sharded_input = dist.shard_tensor(
-            input_tensor, mesh, [dist.Shard(shard_axis_input)]
-        )
+        sharded_input = dist.shard_tensor(input_tensor, mesh, input_placements)
         output_ref = conv_layer(input_tensor)
         loss_ref = output_ref.mean()
         loss_ref.backward()
@@ -150,12 +148,48 @@ class TestTPConv:
         ):
             bias_grad_intermediate = dist_model.conv1.bias.grad.clone()
 
+        def compare_tensors(name, tensor1, tensor2):
+            np.testing.assert_allclose(
+                tensor1.numpy(), tensor2.numpy(), rtol=1e-8, atol=1e-8
+            )
+
         def compare_grads(name, grad1, grad2):
             np.testing.assert_allclose(
-                grad1.numpy(), grad2.numpy(), rtol=1e-6, atol=1e-7
+                grad1.numpy(), grad2.numpy(), rtol=1e-6, atol=1e-6
+            )
+
+        if data_format == "NCHW":
+            w_size = output_ref.shape[-1]
+        else:
+            w_size = output_ref.shape[-2]
+
+        if dist.get_rank() == 0:
+            start_index = 0
+            end_index = w_size // 2
+        else:
+            start_index = w_size // 2
+            end_index = w_size
+
+        if data_format == "NCHW":
+            compare_tensors(
+                "output",
+                output_ref[:, :, :, start_index:end_index],
+                output_intermediate._local_value(),
+            )
+        else:
+            compare_tensors(
+                "output",
+                output_ref[:, :, start_index:end_index, :],
+                output_intermediate._local_value(),
             )
 
         compare_grads("w", weight_grad_ref, weight_grad_intermediate)
+
+        if (
+            conv_layer.conv1.bias is not None
+            and conv_layer.conv1.bias.grad is not None
+        ):
+            compare_grads("b", bias_grad_ref, bias_grad_intermediate)
 
     def _test_conv_case(
         self,
@@ -211,9 +245,7 @@ class TestTPConv:
         mp_dim_index = mesh.dim_names.index("mp")
         input_placements[mp_dim_index] = dist.Shard(shard_axis_input)
 
-        sharded_input = dist.shard_tensor(
-            input_tensor, mesh, [dist.Shard(shard_axis_input)]
-        )
+        sharded_input = dist.shard_tensor(input_tensor, mesh, input_placements)
 
         output_sharded = conv_layer(sharded_input)
         loss_sharded = paddle.mean(output_sharded)
@@ -226,6 +258,36 @@ class TestTPConv:
         def compare_grads(name, grad1, grad2):
             np.testing.assert_allclose(
                 grad1.numpy(), grad2.numpy(), rtol=1e-6, atol=1e-7
+            )
+
+        def compare_tensors(name, tensor1, tensor2):
+            np.testing.assert_allclose(
+                tensor1.numpy(), tensor2.numpy(), rtol=1e-8, atol=1e-8
+            )
+
+        if data_format == "NCHW":
+            w_size = output_ref.shape[-1]
+        else:
+            w_size = output_ref.shape[-2]
+
+        if dist.get_rank() == 0:
+            start_index = 0
+            end_index = w_size // 2
+        else:
+            start_index = w_size // 2
+            end_index = w_size
+
+        if data_format == "NCHW":
+            compare_tensors(
+                "output",
+                output_ref[:, :, :, start_index:end_index],
+                output_sharded._local_value(),
+            )
+        else:
+            compare_tensors(
+                "output",
+                output_ref[:, :, start_index:end_index, :],
+                output_sharded._local_value(),
             )
 
         compare_grads("w", weight_grad_ref, weight_grad_shard)

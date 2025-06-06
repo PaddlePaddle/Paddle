@@ -183,7 +183,7 @@ def _ring_conv_halo_exchange(
             axis=width_dim_idx,
         )
 
-    return reconstructed_tensor
+    return reconstructed_tensor.contiguous()
 
 
 def _ring_conv_halo_aggregate(
@@ -314,7 +314,7 @@ def _ring_conv_halo_aggregate(
         ]
         target_slice_left.add_(buffer_for_gradient_from_left)
 
-    return processed_gradient_tensor
+    return processed_gradient_tensor.contiguous()
 
 
 class RingConv2d(paddle.autograd.PyLayer):
@@ -570,7 +570,7 @@ class RingConv2d(paddle.autograd.PyLayer):
             final_local_results, x_mesh, x_placements
         )
 
-        return final_local_results
+        return final_local_results.contiguous()
 
     @staticmethod
     def backward(ctx, grad_out):
@@ -709,10 +709,22 @@ class RingConv2d(paddle.autograd.PyLayer):
         grad_weight = dist.auto_parallel.api.dtensor_from_local(
             grad_weight, weight_mesh, weight_placements
         )
+        # do allreduce to get right grad_weight
+        grad_weight = dist.reshard(
+            grad_weight,
+            weight_mesh,
+            [dist.Replicate() for _ in range(len(weight_placements))],
+        )
 
         if bias is not None:
             grad_bias = dist.auto_parallel.api.dtensor_from_local(
                 grad_bias, bias_mesh, bias_placements
+            )
+            # do allreduce to get right grad_bias
+            grad_bias = dist.reshard(
+                grad_bias,
+                weight_mesh,
+                [dist.Replicate() for _ in range(len(bias_placements))],
             )
 
         if x_stop_gradient:
