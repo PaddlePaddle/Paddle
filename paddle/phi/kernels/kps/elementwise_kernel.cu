@@ -288,9 +288,6 @@ PD_REGISTER_KERNEL(copysign,
 PD_REGISTER_KERNEL(
     nextafter, GPU, ALL_LAYOUT, phi::NextafterKernel, float, double) {}
 
-PD_REGISTER_KERNEL(
-    nextafter, GPU, ALL_LAYOUT, phi::NextafterKernel, float, double) {}
-
 #endif
 
 #ifdef PADDLE_WITH_XPU_KP
