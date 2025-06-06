@@ -116,9 +116,8 @@ paddle_api_module_prefix = {
     "paddle.nn.functional",
 }
 
-break_graph_set = set()
-
-
+break_graph_functions = set()
+break_graph_layer_classes = set()
 break_graph_tensor_method = {
     'register_hook',
     'numpy',
@@ -139,8 +138,12 @@ def is_break_graph_tensor_methods(method_name):
     return method_name in break_graph_tensor_method
 
 
-def add_break_graph_apis(apis: list):
-    break_graph_set.update(apis)
+def add_break_graph_function(fn):
+    break_graph_functions.add(fn)
+
+
+def add_break_graph_layer_class(layer_class: type[paddle.nn.Layer]):
+    break_graph_layer_classes.add(layer_class)
 
 
 def is_directly_run_api(api):

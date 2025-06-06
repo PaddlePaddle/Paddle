@@ -2314,15 +2314,40 @@ bool NanmedianOpInferSymbolicShape(
   if (mode == "avg") {
     median_shape.emplace_back(2);
   }
-  infer_context->SetShapeOrDataForValue(
-      op->result(0),
-      symbol::ShapeOrDataDimExprs{
-          symbol::TensorShapeOrDataDimExprs(out_shape)});
-  infer_context->SetShapeOrDataForValue(
-      op->result(1),
-      symbol::ShapeOrDataDimExprs{
-          symbol::TensorShapeOrDataDimExprs(median_shape)});
 
+  const auto &IsZero = [&](const symbol::DimExpr &dim_expr) {
+    if (dim_expr.isa<int64_t>()) {
+      return dim_expr.dyn_cast<int64_t>() == static_cast<int64_t>(0);
+    }
+    return false;
+  };
+  bool size_0 = false;
+  for (size_t i = 0; i < x_shape.size(); i++) {
+    if (IsZero(x_shape.at(i))) {
+      size_0 = true;
+      break;
+    }
+  }
+  if (size_0) {
+    std::vector<symbol::DimExpr> x_numel_0_shape = {};
+    infer_context->SetShapeOrDataForValue(
+        op->result(0),
+        symbol::ShapeOrDataDimExprs{
+            symbol::TensorShapeOrDataDimExprs(x_numel_0_shape)});
+    infer_context->SetShapeOrDataForValue(
+        op->result(1),
+        symbol::ShapeOrDataDimExprs{
+            symbol::TensorShapeOrDataDimExprs(x_numel_0_shape)});
+  } else {
+    infer_context->SetShapeOrDataForValue(
+        op->result(0),
+        symbol::ShapeOrDataDimExprs{
+            symbol::TensorShapeOrDataDimExprs(out_shape)});
+    infer_context->SetShapeOrDataForValue(
+        op->result(1),
+        symbol::ShapeOrDataDimExprs{
+            symbol::TensorShapeOrDataDimExprs(median_shape)});
+  }
   return true;
 }
 

@@ -29,6 +29,10 @@ void RepeatInterleaveKernel(const Context& ctx,
                     0,
                     common::errors::InvalidArgument(
                         "repeats must grater than 0, but got %d", repeats));
+  if (out && out->numel() == 0) {
+    ctx.template Alloc<T>(out);
+    return;
+  }
   using XPUType = typename XPUTypeTrait<T>::Type;
 
   auto input_dim = x.dims();

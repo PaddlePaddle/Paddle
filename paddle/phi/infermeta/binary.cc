@@ -1368,21 +1368,6 @@ void DistInferMeta(const MetaTensor& x,
                    const MetaTensor& y,
                    float p,
                    MetaTensor* out) {
-  auto x_dims = x.dims();
-  auto y_dims = y.dims();
-
-  PADDLE_ENFORCE_NE(common::product(x_dims),
-                    0,
-                    common::errors::InvalidArgument(
-                        "The Input(X) has not been initialized properly. The "
-                        "shape of Input(X) = [%s].",
-                        x_dims));
-  PADDLE_ENFORCE_NE(common::product(y_dims),
-                    0,
-                    common::errors::InvalidArgument(
-                        "The Input(Y) has not been initialized properly. The "
-                        "shape of Input(Y) = [%s].",
-                        y_dims));
   out->set_dims(common::make_ddim({}));
   out->set_dtype(x.dtype());
 }
@@ -2145,6 +2130,18 @@ void GatherNdInferMeta(const MetaTensor& x,
 
   out->set_dims(common::make_ddim(result_dims));
   out->share_lod(x);
+  out->set_dtype(x.dtype());
+}
+
+void IndexElementwisePutInferMeta(const MetaTensor& x,
+                                  const std::vector<const MetaTensor*>& index,
+                                  const MetaTensor& value,
+                                  const std::vector<int64_t>& input_dims,
+                                  const std::vector<int64_t>& input_strides,
+                                  const std::vector<int64_t>& index_dims,
+                                  const std::vector<int64_t>& index_strides,
+                                  MetaTensor* out) {
+  out->set_dims(x.dims());
   out->set_dtype(x.dtype());
 }
 
@@ -4596,6 +4593,20 @@ void WeightDequantizeInferMeta(const MetaTensor& x,
   int k = static_cast<int>(real_channel_shape);
   out->set_dims(common::make_ddim({n, k}));
   out->set_dtype(scale.dtype());
+}
+
+void FusedRMSNormInferMeta(const MetaTensor& x,
+                           const MetaTensor& scale,
+                           float epsilon,
+                           MetaTensor* y,
+                           MetaTensor* invvar) {
+  // Y: same shape, dtype, layout as X
+  y->set_dims(x.dims());
+  y->set_dtype(x.dtype());
+  // mean & invvar: 1-D length = x.dims()[0]
+  int64_t rows = x.dims()[0];
+  invvar->set_dims(DDim({rows}));
+  invvar->set_dtype(DataType::FLOAT32);
 }
 
 }  // namespace phi

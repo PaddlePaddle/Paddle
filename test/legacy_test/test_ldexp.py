@@ -220,5 +220,35 @@ class TestLdexpError(unittest.TestCase):
         self.assertRaises(TypeError, paddle.ldexp, paddle.to_tensor(x), y)
 
 
+class TestLdexpAPI_ZeroSize(unittest.TestCase):
+    def setUp(self):
+        self.places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            self.places.append(paddle.CPUPlace())
+        if core.is_compiled_with_cuda():
+            self.places.append(paddle.CUDAPlace(0))
+
+    def test_ldexp_dynamic(self):
+        for place in self.places:
+            with paddle.base.dygraph.guard(place):
+                dims = [2, 0]
+                x = np.random.rand(*dims) * 10
+                y = (np.random.randint(-10, 10, dims)).astype(np.int32)
+                x_ = paddle.to_tensor(x)
+                y_ = paddle.to_tensor(y)
+                x_.stop_gradient = False
+                y_.stop_gradient = False
+                res = paddle.ldexp(x_, y_)
+                np.testing.assert_allclose(res, np.ldexp(x, y))
+
+                loss = paddle.sum(res)
+                loss.backward()
+                np.testing.assert_allclose(x_.grad.shape, x_.shape)
+
+
 if __name__ == '__main__':
     unittest.main()

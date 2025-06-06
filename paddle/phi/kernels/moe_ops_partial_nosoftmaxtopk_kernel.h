@@ -1,5 +1,4 @@
-
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,15 +13,27 @@
 // limitations under the License.
 
 #pragma once
-
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
-
 template <typename T, typename Context>
-void NextafterKernel(const Context& dev_ctx,
-                     const DenseTensor& x,
-                     const DenseTensor& y,
-                     DenseTensor* out);
+void MoeGateDispatchPartialNoSoftMaxTopkKernel(
+    const Context& dev_ctx,
+    const DenseTensor& x,
+    const DenseTensor& combine_weights,
+    const DenseTensor& expert_id,
+    int64_t k,
+    int64_t capacity,
+    int64_t num_experts,
+    bool use_pad,
+    int64_t expert_start_index,
+    int64_t expert_end_index,
+    bool reverse_token_drop,
+    DenseTensor* y,
+    DenseTensor* combine_weights_out,
+    DenseTensor* scatter_index,
+    DenseTensor* scatter_index_rev,
+    DenseTensor* expert_offset,
+    DenseTensor* expert_nums_local);
 
 }  // namespace phi
