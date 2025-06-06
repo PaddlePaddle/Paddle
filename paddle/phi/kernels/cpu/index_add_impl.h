@@ -87,7 +87,7 @@ void IndexAddInner(const Context& dev_ctx,
   auto add_value_tensor = EigenTensor<T, 3>::From(*add_value);
   auto output_tensor = EigenTensor<T, 3>::From(*output);
 
-  auto& place = *ctx.eigen_device();
+  auto& place = *dev_ctx.eigen_device();
   for (auto j = 0; j < index_size; j++) {
     IndexT index_value = index_data[j];
     if (index_value < 0) {

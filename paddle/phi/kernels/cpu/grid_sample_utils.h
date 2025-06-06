@@ -23,7 +23,7 @@ void Unnormalize(const CPUContext& dev_ctx,
                  DenseTensor* grid_slice,
                  const int max_val,  // height-1 or width-1
                  bool align_corners) {
-  auto& place = *ctx.eigen_device();
+  auto& place = *dev_ctx.eigen_device();
   auto grid_slice_t = EigenTensor<T, 3>::From(*grid_slice);
 
   if (!align_corners) {
@@ -41,7 +41,7 @@ void Unnormalize3D(const CPUContext& dev_ctx,
                    DenseTensor* grid_slice,
                    const int max_val,  // height-1 or width-1
                    bool align_corners) {
-  auto& place = *ctx.eigen_device();
+  auto& place = *dev_ctx.eigen_device();
   auto grid_slice_t = EigenTensor<T, 4>::From(*grid_slice);
 
   if (!align_corners) {
@@ -121,7 +121,7 @@ void AllNeighbors(const CPUContext& dev_ctx,
                   DenseTensor* v_en,
                   DenseTensor* v_ws,
                   DenseTensor* v_es) {  // values
-  auto& place = *ctx.eigen_device();
+  auto& place = *dev_ctx.eigen_device();
 
   const int c = input.dims()[1];
   const int n = grid_x->dims()[0];
@@ -254,7 +254,7 @@ void All3DNeighbors(const CPUContext& dev_ctx,
                     DenseTensor* v_ben,
                     DenseTensor* v_bws,
                     DenseTensor* v_bes) {  // values
-  auto& place = *ctx.eigen_device();
+  auto& place = *dev_ctx.eigen_device();
 
   const int c = input.dims()[1];
   const int n = grid_x->dims()[0];

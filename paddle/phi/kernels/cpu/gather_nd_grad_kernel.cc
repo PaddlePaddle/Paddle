@@ -29,7 +29,7 @@ void GatherNdGradKernel(const Context &dev_ctx,
                         DenseTensor *x_grad) {
   dev_ctx.template Alloc<T>(x_grad);
   auto dxt = phi::EigenVector<T>::Flatten(*x_grad);
-  auto &place = *ctx.eigen_device();
+  auto &place = *dev_ctx.eigen_device();
   dxt.device(place) = dxt.constant(static_cast<T>(0));
   if (out_grad.numel() == 0) return;
 

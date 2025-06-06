@@ -30,7 +30,7 @@ static inline void Clip(const CPUContext& dev_ctx,
                         const int max_val,  // height-1 or width-1
                         bool align_corners,
                         std::string padding_mode) {
-  auto& place = *ctx.eigen_device();
+  auto& place = *dev_ctx.eigen_device();
   auto grid_slice_t = EigenTensor<T, 3>::From(*grid_slice);
   if (padding_mode == "border") {
     grid_slice_t.device(place) = grid_slice_t.cwiseMax(static_cast<T>(0))
@@ -62,7 +62,7 @@ static inline void Clip3D(const CPUContext& dev_ctx,
                           const int max_val,  // height-1 or width-1
                           bool align_corners,
                           std::string padding_mode) {
-  auto& place = *ctx.eigen_device();
+  auto& place = *dev_ctx.eigen_device();
   auto grid_slice_t = EigenTensor<T, 4>::From(*grid_slice);
   if (padding_mode == "border") {
     grid_slice_t.device(place) = grid_slice_t.cwiseMax(static_cast<T>(0))
@@ -164,7 +164,7 @@ static void BilinearInter(const CPUContext& dev_ctx,
                           DenseTensor* grid_x,
                           DenseTensor* grid_y,
                           DenseTensor* out) {
-  auto& place = *ctx.eigen_device();
+  auto& place = *dev_ctx.eigen_device();
   const int n = static_cast<int>(grid_x->dims()[0]);
   const int out_h = static_cast<int>(grid_x->dims()[1]);
   const int out_w = static_cast<int>(grid_x->dims()[2]);
@@ -223,7 +223,7 @@ static void Bilinear3DInter(const CPUContext& dev_ctx,
                             DenseTensor* grid_y,
                             DenseTensor* grid_z,
                             DenseTensor* out) {
-  auto& place = *ctx.eigen_device();
+  auto& place = *dev_ctx.eigen_device();
   const int n = static_cast<int>(grid_x->dims()[0]);
   const int out_d = static_cast<int>(grid_x->dims()[1]);
   const int out_h = static_cast<int>(grid_x->dims()[2]);

@@ -31,7 +31,7 @@ void MultiplexGradKernel(const Context& dev_ctx,
     if (ins_grad[i]) {
       dev_ctx.template Alloc<T>(ins_grad[i]);
       auto t = phi::EigenVector<T>::Flatten(*ins_grad[i]);
-      t.device(*ctx.eigen_device()) = t.constant(static_cast<T>(0));
+      t.device(*dev_ctx.eigen_device()) = t.constant(static_cast<T>(0));
       idx = i;
     }
   }

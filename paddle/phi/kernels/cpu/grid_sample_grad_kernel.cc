@@ -28,7 +28,7 @@ static inline void ClipWithMask(const CPUContext& dev_ctx,
                                 std::string padding_mode,
                                 DenseTensor* grid_slice,
                                 DenseTensor* grid_scale) {
-  auto& place = *ctx.eigen_device();
+  auto& place = *dev_ctx.eigen_device();
   grid_scale->Resize(grid_slice->dims());
   dev_ctx.Alloc<T>(grid_scale);
 
@@ -89,7 +89,7 @@ static inline void ClipWithMask3D(const CPUContext& dev_ctx,
                                   std::string padding_mode,
                                   DenseTensor* grid_slice,
                                   DenseTensor* grid_scale) {
-  auto& place = *ctx.eigen_device();
+  auto& place = *dev_ctx.eigen_device();
   grid_scale->Resize(grid_slice->dims());
   dev_ctx.Alloc<T>(grid_scale);
 

@@ -28,7 +28,7 @@ void LabelSmoothKernel(const Context& dev_ctx,
                        DenseTensor* out) {
   auto label_dim = label.dims()[label.dims().size() - 1];
   dev_ctx.template Alloc<T>(out);
-  auto& dev = *ctx.eigen_device();
+  auto& dev = *dev_ctx.eigen_device();
   if (label_dim != 0) {
     auto eigen_out = EigenVector<T>::Flatten(*out);
     auto eigen_in = EigenVector<T>::Flatten(label);

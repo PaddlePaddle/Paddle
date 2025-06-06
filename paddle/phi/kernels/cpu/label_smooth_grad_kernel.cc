@@ -31,7 +31,7 @@ void LabelSmoothGradKernel(const Context& dev_ctx,
     auto d_out = EigenVector<T>::Flatten(out_grad);
     auto d_in = EigenVector<T>::Flatten(*label_grad);
 
-    auto& dev = *ctx.eigen_device();
+    auto& dev = *dev_ctx.eigen_device();
     d_in.device(dev) = static_cast<T>(1 - epsilon) * d_out;
   }
 }

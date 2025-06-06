@@ -114,7 +114,7 @@ void IndexSelectInner(const Context& dev_ctx,
   auto input_tensor = EigenTensor<T, 3>::From(*input);
   auto output_tensor = EigenTensor<T, 3>::From(*output);
 
-  auto& place = *ctx.eigen_device();
+  auto& place = *dev_ctx.eigen_device();
 
   for (auto j = 0; j < index_size; j++) {
     IndexT index_value = index_data[j];

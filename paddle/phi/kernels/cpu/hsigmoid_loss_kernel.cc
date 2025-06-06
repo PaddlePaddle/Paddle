@@ -59,7 +59,7 @@ void HSigmoidLossKernel(const Context& dev_ctx,
   // 0s can avoid out of path's loss.
   funcs::SetConstant<Context, T> zero;
   zero(dev_ctx, pre_out, static_cast<T>(0.0));
-  auto& place = *ctx.eigen_device();
+  auto& place = *dev_ctx.eigen_device();
   funcs::RowwiseSum<Context, T> row_sum;
 
   std::unique_ptr<phi::funcs::MatrixBitCodeFunctor<T>> bit_code;

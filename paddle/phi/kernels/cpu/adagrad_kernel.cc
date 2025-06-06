@@ -54,7 +54,7 @@ struct DenseAdagradFunctor<phi::CPUContext, T> {
 
     auto param_out = EigenVector<T>::Flatten(*param_out_tensor);
     auto moment_out = EigenVector<T>::Flatten(*moment_out_tensor);
-    auto place = *ctx.eigen_device();
+    auto place = *dev_ctx.eigen_device();
 
     moment_out.device(place) = moment + grad * grad;
     Eigen::DSizes<int, 1> m_dsize(static_cast<int>(moment_out_tensor->numel()));

@@ -145,7 +145,7 @@ void BroadcastTensorsGradKernel(const Context& dev_ctx,
       // reshape(dX_shape) -> dX
       auto dX = EigenVector<T>::Flatten(*output_tensor);
       auto dOut = EigenVector<T>::Flatten(*input_tensor);
-      auto& place = *ctx.eigen_device();
+      auto& place = *dev_ctx.eigen_device();
 
       // Expand ReduceSize and ReshapeSize into static values
       switch (reduce_size) {

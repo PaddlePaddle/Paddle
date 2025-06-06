@@ -84,7 +84,7 @@ inline void CompareAllKernelImpl(const Context& dev_ctx,
     }
     auto tmp_flat = EigenVector<bool>::Flatten(tmp);
     auto out_es = EigenScalar<bool>::From(*out);
-    auto& place = *ctx.eigen_device();
+    auto& place = *dev_ctx.eigen_device();
     auto reduce_dim = Eigen::array<int, 1>({{0}});
     out_es.device(place) = tmp_flat.all(reduce_dim);
   }

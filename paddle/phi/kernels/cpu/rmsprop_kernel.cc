@@ -62,7 +62,7 @@ struct RmsFunctor<T, phi::CPUContext> {
             "MeanSquare and MeanSquareOut must be the same Tensor"));
 
     auto &grad_tensor = grad;
-    auto &place = *ctx.eigen_device();
+    auto &place = *dev_ctx.eigen_device();
     auto lr_value = lr_tensor.data<T>()[0];
 
     auto p = EigenVector<T>::Flatten(p_tensor);
