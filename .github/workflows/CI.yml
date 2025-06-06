@@ -25,7 +25,7 @@ jobs:
     needs: clone
 
   mac:
-    name: PR-CI-Mac
+    name: Mac-CPU
     uses: ./.github/workflows/_Mac.yml
     needs: clone
 
