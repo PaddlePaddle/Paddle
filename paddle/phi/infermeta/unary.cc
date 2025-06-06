@@ -6362,6 +6362,64 @@ void IntBincountInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
+void FusedTransposeSpiltQuantInferMeta(const MetaTensor& x,
+                                       const IntArray& tokens_per_expert,  
+                                       bool pow_2_scales,
+                                       std::vector<MetaTensor*> outs,
+                                       std::vector<MetaTensor*> scales) {  
+  PADDLE_ENFORCE_EQ(x.dtype(),
+                    DataType::BFLOAT16,
+                    common::errors::InvalidArgument(
+                        "The dtype of Input(x) must be BFLOAT16, but received %s",
+                        x.dtype()));
+  
+  auto x_dims = x.dims();  
+  
+  PADDLE_ENFORCE_EQ(x_dims.size(),
+                    2,
+                    common::errors::InvalidArgument(
+                      "The dimensions of Input(x) must be 2, but "
+                      "received dimensions of "  
+                      "Input(x) is [%d]",
+                      x_dims.size()));
+  
+  const int64_t M = x_dims[0];
+  const int64_t N = x_dims[1];
+
+  auto tokens_list = tokens_per_expert.GetData();
+  const size_t num_experts = tokens_list.size();
+
+  int64_t sum_tokens = 0;
+  for(int i = 0; i < num_experts; ++i) {  
+    PADDLE_ENFORCE_EQ(tokens_list[i] % 128,  
+                      0,
+                      common::errors::InvalidArgument(
+                        "The number of tokens per expert must be aligned with 128. "  
+                        "But the current number of tokens for expert %d is [%d]",
+                        i, tokens_list[i]
+                      ));
+    sum_tokens += tokens_list[i];
+    outs[i]->set_dims(common::make_ddim({N, tokens_list[i]}));
+    outs[i]->set_dtype(DataType::FLOAT8_E4M3FN);
+    scales[i]->set_dims(common::make_ddim({tokens_list[i]/128, N}));
+    scales[i]->set_dtype(DataType::FLOAT32);  
+  }
+  
+  PADDLE_ENFORCE_EQ(sum_tokens,
+                    M,
+                    common::errors::InvalidArgument(
+                      "The sum of tokens does not match. "  
+                      "tokens list has %d tokens, but "  
+                      "Input(x) has %d tokens",
+                      sum_tokens, M)); 
+  
+  PADDLE_ENFORCE_EQ(N <= 65535 * 128,
+                    true,
+                    common::errors::InvalidArgument(
+                      "only supports K <= 65535 * 128"
+                    ));             
+}
+
 }  // namespace phi
 
 PD_REGISTER_INFER_META_FN(flatten, phi::FlattenInferMeta);
