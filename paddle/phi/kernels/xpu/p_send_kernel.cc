@@ -53,7 +53,7 @@ template <typename T, typename Context>
 void PSendArrayKernel(const Context& dev_ctx,
                       const TensorArray& x_array,
                       int peer) {
-#if defined(PADDLE_WITH_BKCL)
+#if defined(PADDLE_WITH_XPU_BKCL)
   auto comm_ctx =
       GetCommContext<Context, distributed::BKCLCommContext>(dev_ctx, peer);
   XPUStream stream = dev_ctx.stream();
