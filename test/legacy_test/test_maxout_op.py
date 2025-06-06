@@ -83,6 +83,11 @@ class TestMaxOutOpGroups(TestMaxOutOp):
         self.groups = 3
 
 
+class TestMaxOutOp_ZeroSize(TestMaxOutOp):
+    def set_attrs(self):
+        self.shape = [3, 0, 2, 4]
+
+
 class TestMaxoutAPI(unittest.TestCase):
     # test paddle.nn.Maxout, paddle.nn.functional.maxout
     def setUp(self):

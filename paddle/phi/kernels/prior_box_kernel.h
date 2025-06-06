@@ -19,7 +19,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void PriorBoxKernel(const Context& ctx,
+void PriorBoxKernel(const Context& dev_ctx,
                     const DenseTensor& input,
                     const DenseTensor& image,
                     const std::vector<float>& min_sizes,

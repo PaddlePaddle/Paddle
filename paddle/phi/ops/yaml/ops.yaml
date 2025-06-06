@@ -2806,6 +2806,7 @@
   output : Tensor(out)
   infer_meta :
     func : IndexSelectInferMeta
+    spmd_rule : IndexSelectInferSpmd
   kernel :
     func : index_select
     data_type : x
