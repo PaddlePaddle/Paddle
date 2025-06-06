@@ -309,7 +309,7 @@ def set_item_grad_bench(
     grad_outputs = paddle.ones_like(paddle_z)
     # warmup
     for _ in range(n_warmup):
-        grad_x_ = paddle.grad(
+        grad_x = paddle.grad(
             [paddle_z], [x], grad_outputs=grad_outputs, allow_unused=True
         )
 
@@ -362,7 +362,7 @@ def set_item_grad_bench(
     grad_outputs = torch.ones_like(torch_z, device=f"cuda:{cuda_device_num}")
     # warmup
     for _ in range(n_warmup):
-        grad_y_ = torch.autograd.grad(
+        grad_y = torch.autograd.grad(
             [torch_z], [y], grad_outputs=grad_outputs, retain_graph=True
         )
 
@@ -387,9 +387,9 @@ def set_item_grad_bench(
     cpu_exec_times = torch.tensor(cpu_exec_times, dtype=torch_type[dtype])
     torch_gpu = (torch.mean(gpu_exec_times) * 1000).cpu().numpy().item()
     torch_cpu = (cpu_exec_times / n_repeat).cpu().numpy().item()
-    for i in range(len(grad_x_)):
+    for i in range(len(grad_x)):
         np.testing.assert_allclose(
-            grad_x_[i].cpu().numpy(), grad_y_[i].cpu().numpy()
+            grad_x[i].cpu().numpy(), grad_y[i].cpu().numpy()
         )
 
     print(
@@ -524,7 +524,7 @@ def test_dtype(
     dtype="float32",
     is_tensor=False,
 ):
-    print("========== test ", dtype, " =============")
+    print("========== test ", dtype, " is_tensor ", is_tensor, "=============")
     get_item_score = []
     get_item_grad_score = []
     set_item_score = []
@@ -795,8 +795,8 @@ def main():
         ]
     }
 
-    n_repeat = 1
-    n_warmup = 1
+    n_repeat = 80
+    n_warmup = 5
 
     print(" n_repeat = ", n_repeat)
     print(" n_warmup = ", n_warmup)
