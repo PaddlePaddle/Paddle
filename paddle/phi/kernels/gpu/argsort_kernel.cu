@@ -245,7 +245,8 @@ __global__ void merge_kernel(const T* A,
                              const IndType* ids_A,
                              const IndType* ids_B,
                              T* out,
-                             IndType* out_ids) {
+                             IndType* out_ids,
+                             bool descending) {
   int64_t thread = blockDim.x * gridDim.x;
   int64_t num_per_thread = (sizeA + sizeB + thread) / thread;
   for (int offset = 0; offset < num_per_thread; offset++) {
@@ -259,10 +260,16 @@ __global__ void merge_kernel(const T* A,
       size_t mid = (left + right) / 2;
       size_t b_idx = idx - mid;
 
-      T A_mid = (mid >= sizeA) ? std::numeric_limits<T>::max() : A[mid];
-      T B_bidx = (b_idx >= sizeB) ? std::numeric_limits<T>::max() : B[b_idx];
+      T A_mid, B_bidx;
+      if (descending) {
+        A_mid = (mid >= sizeA) ? std::numeric_limits<T>::min() : A[mid];
+        B_bidx = (b_idx >= sizeB) ? std::numeric_limits<T>::min() : B[b_idx];
+      } else {
+        A_mid = (mid >= sizeA) ? std::numeric_limits<T>::max() : A[mid];
+        B_bidx = (b_idx >= sizeB) ? std::numeric_limits<T>::max() : B[b_idx];
+      }
 
-      if (A_mid <= B_bidx)
+      if (descending ? (A_mid >= B_bidx) : (A_mid <= B_bidx))
         left = mid + 1;
       else
         right = mid;
@@ -270,22 +277,23 @@ __global__ void merge_kernel(const T* A,
 
     size_t a_idx = left;
     size_t b_idx = idx - a_idx;
-    if (a_idx == sizeA) {
-      if (A[a_idx - 1] > B[b_idx]) {
-        out[idx] = A[a_idx - 1];
-        out_ids[idx] = ids_A[a_idx - 1];
+    if (a_idx >= sizeA) {
+      if (descending ? (A[sizeA - 1] < B[b_idx]) : (A[sizeA - 1] > B[b_idx])) {
+        out[idx] = A[sizeA - 1];
+        out_ids[idx] = ids_A[sizeA - 1];
       } else {
         out[idx] = B[b_idx];
         out_ids[idx] = ids_B[b_idx];
       }
-    } else if (b_idx == sizeB) {
+    } else if (b_idx >= sizeB) {
       out[idx] = A[a_idx];
-      out_ids[idx] = ids_A[b_idx];
+      out_ids[idx] = ids_A[a_idx];
     } else {
-      if (A[a_idx] <= B[b_idx]) {
+      if (descending ? (A[a_idx] >= B[b_idx]) : (A[a_idx] <= B[b_idx])) {
         out[idx] = A[a_idx];
         out_ids[idx] = ids_A[a_idx];
-      } else if (a_idx > 0 && A[a_idx - 1] > B[b_idx]) {
+      } else if (descending ? (a_idx > 0 && (A[a_idx - 1] < B[b_idx]))
+                            : (a_idx > 0 && (A[a_idx - 1] > B[b_idx]))) {
         out[idx] = A[a_idx - 1];
         out_ids[idx] = ids_A[a_idx - 1];
       } else {
@@ -342,7 +350,7 @@ void ArgsortKernel(const Context& dev_ctx,
     auto cu_stream = dev_ctx.stream();
     thrust::sequence(exec_policy, ids_data, ids_data + size);
     thrust::copy(exec_policy, in_data, in_data + size, out_data);
-    const int64_t per_number = 1 << 31 - 1;
+    const int64_t per_number = 5;
     int64_t start = 0;
     int64_t end = std::min(start + per_number, size);
     if (end == size) {
@@ -356,7 +364,7 @@ void ArgsortKernel(const Context& dev_ctx,
       cudaMalloc(reinterpret_cast<void**>(&temp_ids), size * sizeof(int64_t));
       while (start != size) {
         PerSort<T, int64_t>(
-            exec_policy, out_data, ids_data, start, end, stable, false);
+            exec_policy, out_data, ids_data, start, end, stable, descending);
         if (start != 0) {
           auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, end);
           merge_kernel<<<config.block_per_grid.x,
@@ -369,17 +377,14 @@ void ArgsortKernel(const Context& dev_ctx,
                                       ids_data,
                                       ids_data + start,
                                       temp_data,
-                                      temp_ids);
+                                      temp_ids,
+                                      descending);
           cudaDeviceSynchronize();
           thrust::copy(exec_policy, temp_ids, temp_ids + end, ids_data);
           thrust::copy(exec_policy, temp_data, temp_data + end, out_data);
         }
         start = end;
         end = std::min(start + per_number, size);
-      }
-      if (descending) {
-        thrust::reverse(exec_policy, out_data, out_data + size);
-        thrust::reverse(exec_policy, ids_data, ids_data + size);
       }
       cudaFree(temp_data);
       cudaFree(temp_ids);
