@@ -399,6 +399,7 @@ void DispatchWithDtype(const Context &dev_ctx,
                        DenseTensor *out,
                        NormalVersion) {
   const auto &x_dims = x.dims();
+  bool use_glu = (act_method == "geglu" || act_method == "swiglu");
   if (bias.get_ptr() != nullptr) {
     const auto &bias_dims = bias->dims();
     PADDLE_ENFORCE_EQ(bias_dims.size(),
@@ -440,14 +441,15 @@ void DispatchWithDtype(const Context &dev_ctx,
                       common::errors::InvalidArgument(
                           "The shift must be a 1D tensor, but got %dD tensor.",
                           shift_dims.size()));
+    int shift_dim = use_glu ? std::div(x_dims[x_dims.size() - 1], 2)
+                            : x_dims[x_dims.size() - 1];
     PADDLE_ENFORCE_EQ(
         shift_dims[0],
-        x_dims[x_dims.size() - 1],
-        common::errors::InvalidArgument(
-            "The shift length must be equal to the last dimension of input x. "
-            "Expected %d, but got %d.",
-            x_dims[x_dims.size() - 1],
-            shift_dims[0]));
+        shift_dim,
+        common::errors::InvalidArgument("The shift length invalid. "
+                                        "Expected %d, but got %d.",
+                                        shift_dim,
+                                        shift_dims[0]));
   }
   if (smooth.get_ptr() != nullptr) {
     const auto &smooth_dims = smooth->dims();
@@ -456,14 +458,15 @@ void DispatchWithDtype(const Context &dev_ctx,
                       common::errors::InvalidArgument(
                           "The smooth must be a 1D tensor, but got %dD tensor.",
                           smooth_dims.size()));
+    int smooth_dim = use_glu ? std::div(x_dims[x_dims.size() - 1], 2)
+                             : x_dims[x_dims.size() - 1];
     PADDLE_ENFORCE_EQ(
         smooth_dims[0],
-        x_dims[x_dims.size() - 1],
-        common::errors::InvalidArgument(
-            "The smooth length must be equal to the last dimension of input x. "
-            "Expected %d, but got %d.",
-            x_dims[x_dims.size() - 1],
-            smooth_dims[0]));
+        smooth_dim,
+        common::errors::InvalidArgument("The smooth length invalid. "
+                                        "Expected %d, but got %d.",
+                                        smooth_dim,
+                                        smooth_dims[0]));
   }
 
   auto *bias_p = bias.get_ptr();
