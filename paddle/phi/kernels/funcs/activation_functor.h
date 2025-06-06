@@ -3596,7 +3596,8 @@ struct CudaReciprocalGradFunctor : public BaseActivationFunctor<T> {
                                           const T arg_out) const {
     MPType dout = static_cast<MPType>(arg_dout);
     MPType out = static_cast<MPType>(arg_out);
-    return static_cast<T>(-dout * out * out);
+    return static_cast<T>(-dout *
+                          static_cast<MPType>(static_cast<T>(out * out)));
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() {
