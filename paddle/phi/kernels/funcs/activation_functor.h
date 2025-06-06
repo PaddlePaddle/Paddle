@@ -3592,9 +3592,10 @@ struct CudaReciprocalGradFunctor : public BaseActivationFunctor<T> {
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
 
   // dx = -dout * out^2
-  __device__ __forceinline__ T operator()(const T dout, const T out) const {
-    MPType dout = static_cast<MPType>(dout);
-    MPType out = static_cast<MPType>(out);
+  __device__ __forceinline__ T operator()(const T arg_dout,
+                                          const T arg_out) const {
+    MPType dout = static_cast<MPType>(arg_dout);
+    MPType out = static_cast<MPType>(arg_out);
     return static_cast<T>(-dout * out * out);
   }
 
