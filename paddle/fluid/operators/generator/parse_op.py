@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import os
 import argparse
 
 import yaml
@@ -28,7 +28,9 @@ def main(op_yaml_path, output_path, backward):
                 parse_op_entry(op, "backward_op" if backward else "op")
                 for op in ops
             ]
-
+    # 需要确保目录存在
+    output_dir = os.path.dirname(output_path)
+    os.makedirs(output_dir, exist_ok=True)  # 自动创建缺失目录
     with open(output_path, "wt") as f:
         yaml.safe_dump(ops, f, default_flow_style=None, sort_keys=False)
 
