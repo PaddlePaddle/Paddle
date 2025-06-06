@@ -548,21 +548,11 @@ void LaunchContiguous2StridedDefaultKernel(
     int rank,
     int64_t numel,
     bool diff_dims) {
-  /*
-  int64_t block = 512;
-  int64_t grid = (numel + block - 1) / block;
-
-  std::cout << "block = " << block << std::endl;
-  std::cout << "grid = " << grid << std::endl;
-  */
   constexpr int loop_count = 4;
   auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
       dev_ctx, numel, VecSize * loop_count);
   auto& grid = config.block_per_grid;
   auto& block = config.thread_per_block;
-
-  // std::cout << "block = " << int64_t(config.thread_per_block )<< std::endl;
-  // std::cout << "grid = " <<  int64_t(config.block_per_grid) << std::endl;
 
   if (diff_dims) {
     if (VecSize == 4) {
