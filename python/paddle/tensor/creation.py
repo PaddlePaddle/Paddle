@@ -774,9 +774,9 @@ def _to_tensor_non_static(
                 persistable=False,
                 zero_copy=False,
                 name=None,
-                stop_gradient=stop_gradient,
+                stop_gradient=True,
             )
-            tensor = tensor.detach().astype(dtype)
+            tensor = tensor.astype(dtype)
             tensor.stop_gradient = stop_gradient
             return tensor
         else:
