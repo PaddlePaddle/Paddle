@@ -101,6 +101,14 @@ class TestRepeatInterleaveOp2(OpTest):
         self.check_grad(['X'], 'Out', check_pir=True)
 
 
+class TestRepeatInterleaveOp_ZeroSize(TestRepeatInterleaveOp2):
+    def init_dtype_type(self):
+        self.dim = 1
+        self.x_type = np.float64
+        self.x_shape = (8, 0, 5)
+        self.index_size = self.x_shape[self.dim]
+
+
 class TestIndexSelectAPI(unittest.TestCase):
     def input_data(self):
         self.data_zero_dim_x = np.array(0.5).astype('float32')
@@ -315,6 +323,50 @@ class TestIndexSelectAPI(unittest.TestCase):
             self.data_zero_dim_x, self.data_zero_dim_index, axis=None
         )
         np.testing.assert_allclose(expect_out, np_z, rtol=1e-05)
+
+        # case 5 repeat_interleave_with_tensor_double_grad
+        with base.dygraph.guard():
+            x_pd = paddle.randn([40, 50])
+            x_pd.stop_gradient = False
+            axis = 1
+            repeats_pd = paddle.randint(1, 50, [x_pd.shape[axis]])
+
+            y_pd = paddle.repeat_interleave(x_pd, repeats_pd, axis)
+            dy_pd = paddle.randn_like(y_pd)
+            dy_pd.stop_gradient = False
+            g_pd = paddle.grad(y_pd, x_pd, dy_pd, create_graph=True)[0]
+
+            ddx_pd = paddle.randn_like(x_pd)
+            gg_pd = paddle.grad(g_pd, dy_pd, ddx_pd)[0]
+
+            np.testing.assert_allclose(
+                gg_pd.numpy(),
+                paddle.repeat_interleave(ddx_pd, repeats_pd, axis).numpy(),
+                1e-5,
+                1e-5,
+            )
+
+        # case 6 repeat_interleave_double_grad
+        with base.dygraph.guard():
+            x_pd = paddle.randn([40, 50])
+            x_pd.stop_gradient = False
+            axis = 1
+            repeats_pd = 4
+
+            y_pd = paddle.repeat_interleave(x_pd, repeats_pd, axis)
+            dy_pd = paddle.randn_like(y_pd)
+            dy_pd.stop_gradient = False
+            g_pd = paddle.grad(y_pd, x_pd, dy_pd, create_graph=True)[0]
+
+            ddx_pd = paddle.randn_like(x_pd)
+            gg_pd = paddle.grad(g_pd, dy_pd, ddx_pd)[0]
+
+            np.testing.assert_allclose(
+                gg_pd.numpy(),
+                paddle.repeat_interleave(ddx_pd, repeats_pd, axis).numpy(),
+                1e-5,
+                1e-5,
+            )
 
 
 if __name__ == '__main__':

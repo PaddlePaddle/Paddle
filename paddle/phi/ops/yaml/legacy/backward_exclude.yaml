@@ -13,6 +13,7 @@
 - disable_check_model_nan_inf_grad
 - dropout_grad
 - enable_check_model_nan_inf_grad
+- expand_as_grad
 # FIXME(dev): Remove flatten_grad after deprecate flatten_contiguous_range in old IR system.
 # flatten_grad is alias name of flatten_contiguous_range_grad.
 - flatten_grad

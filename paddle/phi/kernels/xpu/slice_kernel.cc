@@ -31,7 +31,10 @@ void SliceKernel(const Context& ctx,
                  const std::vector<int64_t>& decrease_axis,
                  DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
-
+  if (out->numel() == 0) {
+    ctx.template Alloc<T>(out);
+    return;
+  }
   // Step 1: Get the accurate attribute value of starts and ends
   std::vector<int64_t> starts = starts_t.GetData();
   std::vector<int64_t> ends = ends_t.GetData();
@@ -140,6 +143,10 @@ void SliceKernel<phi::dtype::complex<float>, XPUContext>(
     const std::vector<int64_t>& decrease_axis,
     DenseTensor* out) {
   using T = phi::dtype::complex<float>;
+  if (out->numel() == 0) {
+    ctx.template Alloc<T>(out);
+    return;
+  }
   // Step 1: Get the accurate attribute value of starts and ends
   std::vector<int64_t> starts = starts_t.GetData();
   std::vector<int64_t> ends = ends_t.GetData();

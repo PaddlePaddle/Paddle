@@ -35,6 +35,9 @@ void ActivationGradXPUImpl(const Context& dev_ctx,
     out = d_out;  // fake out
   }
   dev_ctx.template Alloc<T>(d_x);
+  if (d_x->numel() == 0) {
+    return;
+  }
   functor(dev_ctx, x, out, d_out, d_x);
 }
 
@@ -606,8 +609,19 @@ struct XPURsqrtGradFunctor : public funcs::BaseActivationFunctor<T> {
                   const DenseTensor* out,
                   const DenseTensor* dout,
                   DenseTensor* dx) const {
-    int r = xpu_activation_backward<Context, T, XPUType>(
-        dev_ctx, x, out, dout, dx, xpu::rsqrt_grad<XPUType>);
+    dev_ctx.template Alloc<T>(dx);
+    const XPUType* out_data = nullptr;
+    const XPUType* dout_data = nullptr;
+    if (out != nullptr) {
+      out_data = reinterpret_cast<const XPUType*>(out->data<T>());
+    }
+    if (dout != nullptr) {
+      dout_data = reinterpret_cast<const XPUType*>(dout->data<T>());
+    }
+    XPUType* dx_data = reinterpret_cast<XPUType*>(dx->data<T>());
+
+    int r = xpu::rsqrt_grad(
+        dev_ctx.x_context(), out_data, dout_data, dx_data, dx->numel());
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "rsqrt_grad");
   }
 };

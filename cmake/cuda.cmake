@@ -115,6 +115,7 @@ function(select_nvcc_arch_flags out_variable out_arch_bin)
       "Ampere"
       "Hopper"
       "All"
+      "Ada Lovelace"
       "Manual")
   set(archs_name_default "Auto")
   list(APPEND archs_names "Auto")

@@ -348,7 +348,7 @@ void CEmbeddingInferMeta(const MetaTensor& weight,
 
 void ExpandAsInferMeta(const MetaTensor& x,
                        const MetaTensor& y,
-                       const std::vector<int>& target_shape,
+                       const std::vector<int64_t>& target_shape,
                        MetaTensor* out);
 
 void FakeDequantizeMaxAbsInferMeta(const MetaTensor& x,
@@ -400,6 +400,15 @@ void GatherInferMeta(const MetaTensor& x,
 void GatherNdInferMeta(const MetaTensor& x,
                        const MetaTensor& index,
                        MetaTensor* out);
+
+void IndexElementwisePutInferMeta(const MetaTensor& x,
+                                  const std::vector<const MetaTensor*>& index,
+                                  const MetaTensor& value,
+                                  const std::vector<int64_t>& input_dims,
+                                  const std::vector<int64_t>& input_strides,
+                                  const std::vector<int64_t>& index_dims,
+                                  const std::vector<int64_t>& index_strides,
+                                  MetaTensor* out);
 
 void GatherTreeMeta(const MetaTensor& ids,
                     const MetaTensor& parents,
@@ -790,5 +799,10 @@ void WeightDequantizeInferMeta(const MetaTensor& x,
                                const std::string& algo,
                                const int32_t group_size,
                                MetaTensor* out);
+void FusedRMSNormInferMeta(const MetaTensor& x,
+                           const MetaTensor& scale,
+                           float epsilon,
+                           MetaTensor* y,
+                           MetaTensor* invvar);
 
 }  // namespace phi

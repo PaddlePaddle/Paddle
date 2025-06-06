@@ -43,6 +43,7 @@ from ...utils import (
 from ...utils.exceptions import InnerError
 from ...utils.magic_methods import (
     BINARY_OPS,
+    NEED_GUARD_ZERO_DIVISION_ERROR_OPS,
     UNARY_OPS,
     magic_method_builtin_dispatch,
     non_inplace_op_to_inplace_op,
@@ -85,6 +86,7 @@ from .variables import (
 )
 
 if TYPE_CHECKING:
+    from ...utils.magic_methods import BinaryOp
     from .variables import DataVariable, TensorVariable
 
 
@@ -631,12 +633,12 @@ Dispatcher.register(
 )
 
 
-def register_exception(exc):
-    @Dispatcher.register_decorator(exc)
+def register_exception(exc_type: type[Exception]):
+    @Dispatcher.register_decorator(exc_type)
     def builtin_exception_dispatcher(*args) -> int:
+        exc = exc_type(*args)
         return ExceptionVariable(
             exc,
-            *args,
             graph=Dispatcher.graph,
             tracker=DummyTracker([]),
         )
@@ -1036,6 +1038,23 @@ Dispatcher.register(
 )
 
 
+def apply_op_with_zero_division_check(
+    op: BinaryOp, lhs: VariableBase, rhs: VariableBase
+):
+
+    graph = lhs.graph
+    if op in NEED_GUARD_ZERO_DIVISION_ERROR_OPS:
+        call_eq = BuiltinVariable(operator.eq, graph, DanglingTracker())
+        zero = ConstantVariable.wrap_literal(0, graph)
+        rhs_eq_to_zero = call_eq(rhs, zero)
+        add_guard(rhs_eq_to_zero)
+    return VariableFactory.from_value(
+        op(lhs.get_py_value(), rhs.get_py_value()),
+        graph,
+        DummyTracker([lhs, rhs]),
+    )
+
+
 # Constant
 for unary_fn in UNARY_OPS:
     for magic_method in magic_method_builtin_dispatch(unary_fn):
@@ -1060,11 +1079,7 @@ for binary_fn in BINARY_OPS:
                 "ConstantVariable | NumPyNumberVariable",
             ),
             partial(
-                lambda fn, var, other: VariableFactory.from_value(
-                    fn(var.get_py_value(), other.get_py_value()),
-                    var.graph,
-                    tracker=DummyTracker([var, other]),
-                ),
+                apply_op_with_zero_division_check,
                 binary_fn,
             ),
         )
@@ -1524,7 +1539,7 @@ Dispatcher.register(
 
 
 # `operator.eq` of `ExceptionVariable` dispatch
-def exception_variable_equal(left, right):
+def exception_variable_equal(left: ExceptionVariable, right: ExceptionVariable):
     result = (left is right) or (left.get_py_value() == right.get_py_value())
     return VariableFactory.from_value(
         result,
@@ -1623,10 +1638,11 @@ Dispatcher.register(
 Dispatcher.register(
     operator_exception_match,
     ("BuiltinVariable | ExceptionVariable", "BuiltinVariable | TupleVariable"),
-    lambda exc_instance, expected_exc_types: ConstantVariable.wrap_literal(
+    lambda exc_instance, expected_exc_types: ConstantVariable(
         ExceptionVariable.check_if_exception_matches(
             exc_instance, expected_exc_types
         ),
         exc_instance.graph,
+        DummyTracker([exc_instance, expected_exc_types]),
     ),
 )

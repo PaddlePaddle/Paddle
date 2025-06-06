@@ -16,7 +16,7 @@
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
-
+#include "paddle/phi/kernels/full_kernel.h"
 namespace phi {
 
 template <typename T, typename Context>
@@ -28,6 +28,22 @@ void WhereGradKernel(const Context& ctx,
                      DenseTensor* x_grad,
                      DenseTensor* y_grad) {
   using XPUType = typename XPUTypeTrait<T>::Type;
+  if (out_grad.numel() == 0) {
+    if (x_grad) {
+      phi::Full<T, Context>(ctx,
+                            phi::IntArray(common::vectorize(x_grad->dims())),
+                            static_cast<T>(0),
+                            x_grad);
+    }
+    if (y_grad) {
+      phi::Full<T, Context>(ctx,
+                            phi::IntArray(common::vectorize(y_grad->dims())),
+                            static_cast<T>(0),
+                            y_grad);
+    }
+    return;
+  }
+
   const auto* cond_data = condition.data<bool>();
   auto* dout = out_grad.data<T>();
 
