@@ -27,7 +27,7 @@ if(UNIX
 endif()
 
 if(APPLE AND WITH_ARM)
-  set(CBLAS_TAG v0.3.13)
+  set(CBLAS_TAG v0.3.28)
 endif()
 
 if(WITH_MIPS)
