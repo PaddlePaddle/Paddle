@@ -93,6 +93,7 @@ class TestRoiAlignSPMDRule(unittest.TestCase):
             inferred_output_dist_attrs[0].dims_mapping, [-1, 1, -1, -1]
         )
 
+        # [0, 1, -1, -1], [-1, 1], Fake --> [-1, 1, -1, -1],[-1, -1], Fake ,[-1,1,-1,-1]
         result_dist_attrs = self.rule.infer_forward(
             self.x_dist_tensor_spec,
             self.boxes_dist_tensor_spec,
@@ -149,6 +150,7 @@ class TestRoiAlignSPMDRule(unittest.TestCase):
             inferred_output_dist_attrs[0].dims_mapping, [-1, 1, -1, -1]
         )
 
+        # [0, 1, -1, -1], [-1, 1], Fake, [0, -1, -1, -1] --> [-1, 1, -1, -1],[-1,-1],Fake,[-1,1,-1,-1],[-1, 1, -1, -1]
         result_dist_attrs = self.rule.infer_backward(
             self.x_dist_tensor_spec,
             self.boxes_dist_tensor_spec,

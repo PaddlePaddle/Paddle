@@ -55,23 +55,17 @@ SpmdInfo RoiAlignInferSpmd(const DistMetaTensor& x,
         CopyTensorDistAttrForOutput(boxes_num_dist_attr_src);
     boxes_num_dist_attr_dst.set_dims_mapping(boxes_num_dims_mapping_dst);
     VLOG(4) << "RoiAlignInferSpmd: Done.";
-    LOG_SPMD_INPUT(x);
-    LOG_SPMD_INPUT(boxes);
     LOG_SPMD_INPUT(boxes_num);
-    LOG_SPMD_OUTPUT(out_dist_attr_dst);
-
-    return {{x_dist_attr_dst, boxes_dist_attr_dst, boxes_num_dist_attr_dst},
-            {out_dist_attr_dst}};
   } else {
     boxes_num_dist_attr_dst = TensorDistAttr();
     VLOG(4) << "RoiAlignInferSpmd: Done.";
-    LOG_SPMD_INPUT(x);
-    LOG_SPMD_INPUT(boxes);
-    LOG_SPMD_OUTPUT(out_dist_attr_dst);
-
-    return {{x_dist_attr_dst, boxes_dist_attr_dst, boxes_num_dist_attr_dst},
-            {out_dist_attr_dst}};
   }
+  LOG_SPMD_INPUT(x);
+  LOG_SPMD_INPUT(boxes);
+  LOG_SPMD_OUTPUT(out_dist_attr_dst);
+
+  return {{x_dist_attr_dst, boxes_dist_attr_dst, boxes_num_dist_attr_dst},
+          {out_dist_attr_dst}};
 }
 
 SpmdInfo RoiAlignGradInferSpmd(const DistMetaTensor& x,
@@ -113,31 +107,21 @@ SpmdInfo RoiAlignGradInferSpmd(const DistMetaTensor& x,
         CopyTensorDistAttrForOutput(boxes_num_dist_attr_src);
     boxes_num_dist_attr_dst.set_dims_mapping(boxes_num_dims_mapping_dst);
     VLOG(4) << "RoiAlignGradInferSpmd: Done.";
-    LOG_SPMD_INPUT(x);
-    LOG_SPMD_INPUT(boxes);
     LOG_SPMD_INPUT(boxes_num);
-    LOG_SPMD_INPUT(out_grad);
-    LOG_SPMD_OUTPUT(x_grad_attr_dst);
-
-    return {{x_dist_attr_dst,
-             boxes_dist_attr_dst,
-             boxes_num_dist_attr_dst,
-             out_grad_dist_attr_dst},
-            {x_grad_attr_dst}};
   } else {
     boxes_num_dist_attr_dst = TensorDistAttr();
     VLOG(4) << "RoiAlignGradInferSpmd: Done.";
-    LOG_SPMD_INPUT(x);
-    LOG_SPMD_INPUT(boxes);
-    LOG_SPMD_INPUT(out_grad);
-    LOG_SPMD_OUTPUT(x_grad_attr_dst);
-
-    return {{x_dist_attr_dst,
-             boxes_dist_attr_dst,
-             boxes_num_dist_attr_dst,
-             out_grad_dist_attr_dst},
-            {x_grad_attr_dst}};
   }
+  LOG_SPMD_INPUT(x);
+  LOG_SPMD_INPUT(boxes);
+  LOG_SPMD_INPUT(out_grad);
+  LOG_SPMD_OUTPUT(x_grad_attr_dst);
+
+  return {{x_dist_attr_dst,
+           boxes_dist_attr_dst,
+           boxes_num_dist_attr_dst,
+           out_grad_dist_attr_dst},
+          {x_grad_attr_dst}};
 }
 
 }  // namespace distributed
