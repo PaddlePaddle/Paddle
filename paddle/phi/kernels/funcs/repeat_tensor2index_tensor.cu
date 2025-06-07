@@ -13,12 +13,11 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/funcs/repeat_tensor2index_tensor.h"
-#include <thrust/device_ptr.h>
-#include <thrust/scan.h>
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/kernels/funcs/exclusive_scan.h"
 #include "paddle/phi/kernels/primitive/kernel_primitives.h"
 
 namespace phi {
@@ -53,18 +52,17 @@ class RepeatsTensor2IndexTensorFunctor<phi::GPUContext, RepeatsT> {
     RepeatsT *prefix_ptr;
     cudaMalloc(&prefix_ptr, num_reps * sizeof(RepeatsT));
 
-    thrust::device_ptr<const RepeatsT> input_dev_ptr(repeats_ptr);
-    thrust::device_ptr<RepeatsT> output_dev_ptr(prefix_ptr);
-
     cudaStream_t stream = ctx.stream();
+    phi::funcs::
+        CubExclusiveScan<const RepeatsT *, RepeatsT *, cub::Sum, RepeatsT>(
+            repeats_ptr,
+            prefix_ptr,
+            num_reps,
+            static_cast<RepeatsT>(0),
+            cub::Sum(),
+            ctx);
 
-    thrust::exclusive_scan(thrust::cuda::par.on(stream),
-                           input_dev_ptr,
-                           input_dev_ptr + num_reps,
-                           output_dev_ptr);
-
-    // get last prefix and repeat to compute total size of index tensor because
-    // thrust::exclusive_scan does not return the last value
+    // get last prefix and repeat to compute total size of index tensor
     RepeatsT last_prefix = 0;
     RepeatsT last_repeat = 0;
     cudaMemcpyAsync(&last_prefix,
