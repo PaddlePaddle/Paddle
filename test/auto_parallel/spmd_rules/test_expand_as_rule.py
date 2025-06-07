@@ -33,11 +33,11 @@ class TestExpandAsSPMDRule(unittest.TestCase):
         x_tensor_dist_attr = TensorDistAttr()
         x_tensor_dist_attr.dims_mapping = [-1, -1]
         x_tensor_dist_attr.process_mesh = process_mesh
-        self.y_dist_tensor_spec = DistTensorSpec(x_shape, x_tensor_dist_attr)
+        self.x_dist_tensor_spec = DistTensorSpec(x_shape, x_tensor_dist_attr)
         y_tensor_dist_attr = TensorDistAttr()
         y_tensor_dist_attr.dims_mapping = [0, 1, -1]
         y_tensor_dist_attr.process_mesh = process_mesh
-        self.x_dist_tensor_spec = DistTensorSpec(y_shape, y_tensor_dist_attr)
+        self.y_dist_tensor_spec = DistTensorSpec(y_shape, y_tensor_dist_attr)
         out_tensor_dist_attr = TensorDistAttr()
         out_tensor_dist_attr.dims_mapping = [0, 1, -1]
         out_tensor_dist_attr.process_mesh = process_mesh
@@ -129,7 +129,7 @@ class TestExpandAsSPMDRule(unittest.TestCase):
         self.x_dist_tensor_spec.set_dims_mapping([-1, -1])
         result_dist_attrs = self.rule.infer_forward(
             self.x_dist_tensor_spec,
-            TensorDistAttr(),
+            DistTensorSpec(),
             self.attrs['target_shape'],
         )
         self.assertEqual(len(result_dist_attrs), 2)
@@ -148,7 +148,7 @@ class TestExpandAsSPMDRule(unittest.TestCase):
         self.x_dist_tensor_spec.set_dims_mapping([-1, 0])
         result_dist_attrs = self.rule.infer_forward(
             self.x_dist_tensor_spec,
-            TensorDistAttr(),
+            DistTensorSpec(),
             self.attrs['target_shape'],
         )
         self.assertEqual(len(result_dist_attrs), 2)
@@ -168,7 +168,7 @@ class TestExpandAsSPMDRule(unittest.TestCase):
         self.x_dist_tensor_spec.set_dims_mapping([0, -1, -1])
         result_dist_attrs = self.rule.infer_forward(
             self.x_dist_tensor_spec,
-            TensorDistAttr(),
+            DistTensorSpec(),
             self.attrs['target_shape'],
         )
         self.assertEqual(len(result_dist_attrs), 2)
@@ -188,7 +188,7 @@ class TestExpandAsSPMDRule(unittest.TestCase):
         self.x_dist_tensor_spec.set_dims_mapping([0, 1, -1])
         result_dist_attrs = self.rule.infer_forward(
             self.x_dist_tensor_spec,
-            TensorDistAttr(),
+            DistTensorSpec(),
             self.attrs['target_shape'],
         )
         self.assertEqual(len(result_dist_attrs), 2)
