@@ -1219,7 +1219,7 @@ bool UseCudnnSoftmax(const GPUContext& dev_ctx,
                      int64_t softmax_dim,
                      bool last_dim) {
   bool cudnn_available = dev_ctx.cudnn_handle();
-  if (!ctx.cudnn_handle()) {
+  if (!dev_ctx.cudnn_handle()) {
     if (std::is_same<T, phi::dtype::bfloat16>::value) {
 #if CUDNN_VERSION < 8100
       cudnn_available = false;
