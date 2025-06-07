@@ -19,7 +19,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void IntBincount(const Context& ctx,
+void IntBincount(const Context& dev_ctx,
                  const DenseTensor& x,
                  int64_t low,
                  int64_t high,

@@ -53,7 +53,7 @@ void PRecvKernel(const Context& dev_ctx,
 #else
   PADDLE_THROW(common::errors::PreconditionNotMet(
       "PaddlePaddle is not compiled with DWITH_XPU_BKCL, please recompile with "
-      "DWITH_XPU_BKCL for using p_recv_kernel."));
+      "DWITH_XPU_BKCL for using p_recv kernel."));
 #endif
 }
 
@@ -80,7 +80,7 @@ void PRecvArrayKernel(const Context& dev_ctx,
 #else
   PADDLE_THROW(common::errors::PreconditionNotMet(
       "PaddlePaddle is not compiled with DWITH_XPU_BKCL, please recompile with "
-      "DWITH_XPU_BKCL for using p_recv_kernel."));
+      "DWITH_XPU_BKCL for using p_recv_array kernel."));
 #endif
 }
 
