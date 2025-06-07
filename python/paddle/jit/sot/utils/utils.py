@@ -38,7 +38,7 @@ from .envs import (
     ENV_STRICT_MODE,
 )
 from .paddle_api_config import (
-    break_graph_set,
+    break_graph_functions,
     paddle_api_list,
     paddle_api_module_prefix,
 )
@@ -237,7 +237,7 @@ def in_paddle_module(func):
 
 
 def is_break_graph_api(func):
-    return func in break_graph_set
+    return func in break_graph_functions
 
 
 def is_namedtuple_class(cls):

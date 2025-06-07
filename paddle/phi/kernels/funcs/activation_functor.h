@@ -3375,6 +3375,7 @@ struct CudaLogitGradFunctor : public BaseActivationFunctor<T> {
                ? zero
                : (static_cast<MT>(dout) / (x * (one - x)));
     }
+
     return static_cast<T>(dx);
   }
   static constexpr ActBwdOpFwdDeps FwdDeps() {

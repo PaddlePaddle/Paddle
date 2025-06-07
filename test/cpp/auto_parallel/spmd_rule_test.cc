@@ -2940,6 +2940,60 @@ TEST(ArgSortInferSpmd, Ctor) {
           << std::endl;
 }
 
+TEST(IndexSelect, Ctor) {
+  std::vector<int64_t> mesh_shape = {2, 3};
+  std::vector<int64_t> process_ids = {0, 1, 2, 3, 4, 5};
+  std::vector<std::string> dim_names = {"x", "y"};
+  ProcessMesh process_mesh(mesh_shape, process_ids, dim_names);
+  int axis = 1;
+
+  // test forward
+  // axis = 1
+  // [-1, -1, -1], [0] --> [-1, -1, -1], [0], [-1, 0, -1]
+  auto x_dist_attr = TensorDistAttr();
+  x_dist_attr.set_process_mesh(process_mesh);
+  x_dist_attr.set_dims_mapping({-1, -1, -1});
+  x_dist_attr.set_dynamic_dims({false, false, false});
+  phi::distributed::DistMetaTensor x = phi::distributed::DistMetaTensor(
+      common::make_ddim({16, 16, 16}), x_dist_attr);
+  auto index_dist_attr = TensorDistAttr();
+  index_dist_attr.set_process_mesh(process_mesh);
+  index_dist_attr.set_dims_mapping({0});
+  index_dist_attr.set_dynamic_dims({false, false, false});
+  phi::distributed::DistMetaTensor index =
+      phi::distributed::DistMetaTensor(common::make_ddim({3}), index_dist_attr);
+
+  phi::distributed::SpmdInfo forward_info =
+      phi::distributed::IndexSelectInferSpmd(x, index, axis);
+
+  EXPECT_EQ(forward_info.first.size(), 2UL);
+  EXPECT_EQ(forward_info.second.size(), 1UL);
+  check_dim_mapping(forward_info.first[0], {-1, -1, -1});
+  check_dim_mapping(forward_info.first[1], {0});
+  check_dim_mapping(forward_info.second[0], {-1, 0, -1});
+
+  // test backward
+  // axis = 1
+  // [-1, -1, -1], [0], [-1, 0, -1], axis=1 --> [-1, -1, -1], [0], [-1, 0, -1],
+  // [-1, -1, -1](partial on axis=1 with 0)
+  auto out_grad_dist_attr = TensorDistAttr();
+  out_grad_dist_attr.set_process_mesh(process_mesh);
+  out_grad_dist_attr.set_dims_mapping({-1, 0, -1});
+  out_grad_dist_attr.set_dynamic_dims({false, false, false});
+  phi::distributed::DistMetaTensor out_grad = phi::distributed::DistMetaTensor(
+      common::make_ddim({16, 3, 16}), out_grad_dist_attr);
+  phi::distributed::SpmdInfo backward_info =
+      phi::distributed::IndexSelectGradInferSpmd(x, index, out_grad, axis);
+  EXPECT_EQ(backward_info.first.size(), 3UL);
+  EXPECT_EQ(backward_info.second.size(), 1UL);
+  check_dim_mapping(backward_info.first[0], {-1, -1, -1});
+  check_dim_mapping(backward_info.first[1], {0});
+  check_dim_mapping(backward_info.first[2], {-1, 0, -1});
+  check_dim_mapping(backward_info.second[0], {-1, -1, -1});
+  EXPECT_EQ(is_partial(backward_info.second[0]), true);
+  check_partial_dims(backward_info.second[0], {0});
+}
+
 TEST(Unique, Ctor) {
   std::vector<int64_t> mesh_shape = {2, 2};
   std::vector<int64_t> process_ids = {0, 1, 2, 3};

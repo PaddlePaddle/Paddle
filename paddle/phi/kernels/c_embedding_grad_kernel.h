@@ -18,7 +18,7 @@ limitations under the License. */
 
 namespace phi {
 template <typename T, typename Context>
-void CEmbeddingGradKernel(const Context& ctx,
+void CEmbeddingGradKernel(const Context& dev_ctx,
                           const DenseTensor& w,
                           const DenseTensor& ids,
                           const DenseTensor& out_grad,
