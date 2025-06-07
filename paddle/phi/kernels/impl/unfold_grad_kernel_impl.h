@@ -24,7 +24,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void UnfoldGradKernel(const Context& ctx,
+void UnfoldGradKernel(const Context& dev_ctx,
                       const DenseTensor& x UNUSED,
                       const DenseTensor& out_grad,
                       const std::vector<int>& kernel_sizes,
@@ -32,7 +32,7 @@ void UnfoldGradKernel(const Context& ctx,
                       const std::vector<int>& paddings,
                       const std::vector<int>& dilations,
                       DenseTensor* x_grad) {
-  ctx.template Alloc<T>(x_grad);
+  dev_ctx.template Alloc<T>(x_grad);
 
   if (!x_grad) return;
 
@@ -59,12 +59,13 @@ void UnfoldGradKernel(const Context& ctx,
   phi::funcs::Col2ImFunctor<phi::funcs::ColFormat::kCFO, Context, T> col2im;
 
   phi::funcs::SetConstant<Context, T> set_zero;
-  set_zero(ctx, x_grad, static_cast<T>(0));
+  set_zero(dev_ctx, x_grad, static_cast<T>(0));
   for (int i = 0; i < batch_size; i++) {
     DenseTensor out_grad_batch =
         out_grad.Slice(i, i + 1).Resize(out_matrix_shape);
     DenseTensor x_grad_batch = x_grad->Slice(i, i + 1).Resize(x_shape);
-    col2im(ctx, out_grad_batch, dilations, strides, paddings, &x_grad_batch);
+    col2im(
+        dev_ctx, out_grad_batch, dilations, strides, paddings, &x_grad_batch);
   }
 }
 
