@@ -73,6 +73,18 @@ TEST(ExpandInferSpmd, Ctor) {
   EXPECT_EQ(get_dims_mapping(spmdinfo3.first[1]),
             std::vector<int64_t>({-1, 1}));
   EXPECT_EQ(get_dims_mapping(spmdinfo3.second[0]), std::vector<int64_t>({1}));
+
+  // Test case backward 2: ExpandGrad with shape {2, 2, -1}
+  auto x4 = CreateDistMetaTensor({1, 8}, {-1, 1}, process_mesh);
+  auto out4 = CreateDistMetaTensor({2, 2, 8}, {-1, -1, 1}, process_mesh);
+  phi::IntArray shape4 = {2, 2, -1};
+  auto spmdinfo4 = ExpandGradInferSpmd(x4, out4, shape4);
+  EXPECT_EQ(get_dims_mapping(spmdinfo4.first[0]),
+            std::vector<int64_t>({-1, 1}));
+  EXPECT_EQ(get_dims_mapping(spmdinfo4.first[1]),
+            std::vector<int64_t>({-1, -1, 1}));
+  EXPECT_EQ(get_dims_mapping(spmdinfo4.second[0]),
+            std::vector<int64_t>({-1, -1, 1}));
 }
 
 }  // namespace auto_parallel
