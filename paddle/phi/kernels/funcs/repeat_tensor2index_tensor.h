@@ -14,40 +14,20 @@
 
 #pragma once
 #include <vector>
+
 #include "paddle/phi/core/dense_tensor.h"
+// #include "paddle/phi/kernels/funcs/repeat_tensor2index_tensor.h"
+
 namespace phi {
 namespace funcs {
-template <typename Context, typename RepeatsT = int>
-void RepeatsTensor2IndexTensor(const Context& ctx,
-                               const DenseTensor& repeats,
-                               DenseTensor* index) {
-  DenseTensor repeats_cpu_copy;
-  if (repeats.place().GetType() != phi::AllocationType::CPU) {
-    phi::Copy(ctx, repeats, phi::CPUPlace(), true, &repeats_cpu_copy);
-  }
-  const RepeatsT* repeats_data =
-      repeats.place().GetType() == phi::AllocationType::CPU
-          ? repeats.data<RepeatsT>()
-          : repeats_cpu_copy.data<RepeatsT>();
 
-  int64_t index_size = 0;
-  for (int i = 0; i < repeats.dims()[0]; i++) {
-    PADDLE_ENFORCE_GE(repeats_data[i],
-                      0,
-                      common::errors::InvalidArgument(
-                          "repeats must grater or equal than 0, but got %d",
-                          repeats_data[i]));
-    index_size += repeats_data[i];
-  }
-  std::vector<RepeatsT> index_vec(index_size);
-  int offset = 0;
-  for (int i = 0; i < repeats.dims()[0]; i++) {
-    std::fill_n(index_vec.begin() + offset, repeats_data[i], i);
-    offset += repeats_data[i];
-  }
-  index->Resize(common::make_ddim({index_size}));
+template <typename Context, typename RepeatsT>
+class RepeatsTensor2IndexTensorFunctor {
+ public:
+  void operator()(const Context &ctx,
+                  const DenseTensor &repeats,
+                  DenseTensor *index);
+};
 
-  phi::TensorFromVector<RepeatsT>(index_vec, ctx, index);
-}
 }  // namespace funcs
 }  // namespace phi
