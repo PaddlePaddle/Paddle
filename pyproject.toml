@@ -173,7 +173,7 @@ known-first-party = ["paddle"]
 "test/dygraph_to_static/test_lambda.py" = ["PLC3002"]
 # Ignore docstring in tensor.pyi
 "python/paddle/tensor/tensor.prototype.pyi" = ["PYI021", "PYI048"]
-# Temproray ignore some dy2st test case because SOT bug
+# Temporary ignore some dy2st test case because SOT bug
 # See https://github.com/PaddlePaddle/Paddle/pull/67344#discussion_r1714155671 for more details
 "test/dygraph_to_static/seq2seq_dygraph_model.py" = ["RUF005"]
 

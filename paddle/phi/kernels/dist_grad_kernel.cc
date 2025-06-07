@@ -19,6 +19,7 @@
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/elementwise_subtract_kernel.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/p_norm_grad_kernel.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
 #include "paddle/phi/kernels/scale_kernel.h"
@@ -53,6 +54,28 @@ void DistGradKernel(const Context& dev_ctx,
                     DenseTensor* x_grad,
                     DenseTensor* y_grad) {
   if ((!x_grad) && (!y_grad)) {
+    return;
+  }
+
+  if ((x_grad && x_grad->numel() == 0) || (y_grad && y_grad->numel() == 0)) {
+    if (x_grad) {
+      dev_ctx.template Alloc<T>(x_grad);
+      if (x_grad->numel() != 0) {
+        phi::Full<T, Context>(dev_ctx,
+                              phi::IntArray(common::vectorize(x_grad->dims())),
+                              0,
+                              x_grad);
+      }
+    }
+    if (y_grad) {
+      dev_ctx.template Alloc<T>(y_grad);
+      if (y_grad->numel() != 0) {
+        phi::Full<T, Context>(dev_ctx,
+                              phi::IntArray(common::vectorize(y_grad->dims())),
+                              0,
+                              y_grad);
+      }
+    }
     return;
   }
 

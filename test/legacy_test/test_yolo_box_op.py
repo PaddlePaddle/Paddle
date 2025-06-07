@@ -56,7 +56,13 @@ def YoloBox(x, img_size, attrs):
         (anchors[i], anchors[(i + 1)]) for i in range(0, len(anchors), 2)
     ]
     anchors_s = np.array(
-        [((an_w / input_w), (an_h / input_h)) for (an_w, an_h) in anchors]
+        [
+            (
+                (an_w / input_w if input_w > 0 else 0),
+                (an_h / input_h if input_h > 0 else 0),
+            )
+            for (an_w, an_h) in anchors
+        ]
     )
     anchor_w = anchors_s[:, 0:1].reshape((1, an_num, 1, 1))
     anchor_h = anchors_s[:, 1:2].reshape((1, an_num, 1, 1))
@@ -303,6 +309,23 @@ class TestYoloBoxOpHW(TestYoloBoxOp):
         self.downsample = 32
         self.clip_bbox = False
         self.x_shape = (self.batch_size, (an_num * (5 + self.class_num)), 13, 9)
+        self.imgsize_shape = (self.batch_size, 2)
+        self.scale_x_y = 1.0
+        self.iou_aware = False
+        self.iou_aware_factor = 0.5
+
+
+class TestYoloBoxOp_ZeroSize(TestYoloBoxOp):
+    def initTestCase(self):
+        self.__class__.op_type = "yolo_box"
+        self.anchors = [10, 13, 16, 30, 33, 23]
+        an_num = int(len(self.anchors) // 2)
+        self.batch_size = 32
+        self.class_num = 2
+        self.conf_thresh = 0.5
+        self.downsample = 32
+        self.clip_bbox = False
+        self.x_shape = (self.batch_size, (an_num * (5 + self.class_num)), 13, 0)
         self.imgsize_shape = (self.batch_size, 2)
         self.scale_x_y = 1.0
         self.iou_aware = False
