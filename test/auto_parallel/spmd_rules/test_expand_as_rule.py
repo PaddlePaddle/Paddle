@@ -82,7 +82,8 @@ class TestExpandAsSPMDRule(unittest.TestCase):
         self.assertEqual(len(inferred_input_dist_attrs), 2)
         self.assertEqual(len(inferred_output_dist_attrs), 1)
         self.assertEqual(inferred_input_dist_attrs[0].dims_mapping, [-1, 1])
-        self.assertEqual(inferred_input_dist_attrs[1].dims_mapping, [0, 1, 1])
+        self.assertEqual(inferred_input_dist_attrs[1].dims_mapping, [0, -1, 1])
+        self.assertEqual(inferred_output_dist_attrs[0].dims_mapping, [0, -1, 1])
 
         # [2, 1, 48], [2, 32, 48]
         # [0, -1, -1], [0, 1, -1] --> [0, -1, -1], [0, 1, -1], [0, 1, -1]
