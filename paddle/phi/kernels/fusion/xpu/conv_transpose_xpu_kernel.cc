@@ -20,7 +20,7 @@
 namespace phi {
 namespace fusion {
 template <typename T, typename Context>
-void Conv2dTransposeXPUKernel(const Context& ctx,
+void Conv2dTransposeXPUKernel(const Context& dev_ctx,
                               const DenseTensor& x,
                               const paddle::optional<DenseTensor>& x_max,
                               const DenseTensor& filter,
@@ -41,8 +41,8 @@ void Conv2dTransposeXPUKernel(const Context& ctx,
                               DenseTensor* out_max) {
   using XPUType = typename XPUTypeTrait<T>::Type;
 
-  ctx.template Alloc<T>(out);
-  ctx.template Alloc<float>(out_max);
+  dev_ctx.template Alloc<T>(out);
+  dev_ctx.template Alloc<float>(out_max);
   bool is_nchw;
   is_nchw = (data_format == "NHWC") ? false : true;
 
@@ -73,7 +73,7 @@ void Conv2dTransposeXPUKernel(const Context& ctx,
   auto filter_max_data = filter_max.data<float>();
 
   int r = xpu::conv2d_transpose_fusion_v2<XPUType, int16_t, XPUType, int16_t>(
-      ctx.x_context(),
+      dev_ctx.x_context(),
       reinterpret_cast<const XPUType*>(x.data<T>()),
       filter.data<int16_t>(),
       reinterpret_cast<XPUType*>(out->data<T>()),

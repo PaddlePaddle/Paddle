@@ -195,7 +195,7 @@ static inline void xpu_conv2d(xpu::Context *ctx,
   int64_t H = static_cast<int64_t>(input_shape[2]);
   int64_t W = static_cast<int64_t>(input_shape[3]);
 
-  int r = xpu::conv2d<T, T, T, int16_t>(ctx,
+  int r = xpu::conv2d<T, T, T, int16_t>(dev_ctx,
                                         input_data,
                                         filter_data,
                                         output_data,
