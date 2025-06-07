@@ -183,6 +183,32 @@ class TestFrobeniusNormOp2(TestFrobeniusNormOp):
         self.check_grad(['X'], 'Out', check_pir=True)
 
 
+class TestFrobeniusNormOp3(TestFrobeniusNormOp):
+    def init_test_case(self):
+        self.shape = [5, 5, 5]
+        self.axis = (0, 1)
+        self.keepdim = True
+
+    def init_dtype(self):
+        self.dtype = "complex64"
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', check_pir=True)
+
+
+class TestFrobeniusNormOp4(TestFrobeniusNormOp):
+    def init_test_case(self):
+        self.shape = [5, 5, 5, 2]
+        self.axis = (0, 1)
+        self.keepdim = True
+
+    def init_dtype(self):
+        self.dtype = "complex128"
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', check_pir=True)
+
+
 class TestFrobeniusNormOpZeroSize(TestFrobeniusNormOp):
     def init_test_case(self):
         self.shape = [0, 20, 3]
