@@ -72,13 +72,19 @@ def fused_matmul_bias(
     if bias is None:
         return matmul(x, y, transpose_x, transpose_y, name)
     if in_dynamic_mode():
-        # return _legacy_C_ops.fused_gemm_epilogue(
-        #     x, y, bias, 'trans_x', transpose_x, 'trans_y', transpose_y
-        # )
-        out, _ = _C_ops.fused_gemm_epilogue(
-            x, y, bias, transpose_x, transpose_y, "none"
-        )
-        return out
+        if (
+            x.process_mesh is None
+            and y.process_mesh is None
+            and bias.process_mesh is None
+        ):
+            return _legacy_C_ops.fused_gemm_epilogue(
+                x, y, bias, 'trans_x', transpose_x, 'trans_y', transpose_y
+            )
+        else:
+            out, _ = _C_ops.fused_gemm_epilogue(
+                x, y, bias, transpose_x, transpose_y, "none"
+            )
+            return out
     if in_pir_mode():
         out, _ = _C_ops.fused_gemm_epilogue(
             x, y, bias, transpose_x, transpose_y, "none"

@@ -14,10 +14,13 @@ limitations under the License. */
 
 #include "paddle/phi/infermeta/spmd_rules/fused_gemm_epilogue.h"
 #include "paddle/phi/infermeta/spmd_rules/matmul.h"
-#include "paddle/phi/infermeta/spmd_rules/utils.h"
 
 #include "glog/logging.h"
-#include "paddle/phi/core/enforce.h"
+
+#include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
+#include "paddle/phi/core/distributed/auto_parallel/inferspmd_utils.h"
+#include "paddle/phi/core/distributed/auto_parallel/utils.h"
+#include "paddle/phi/infermeta/spmd_rules/utils.h"
 
 namespace phi::distributed {
 
@@ -106,13 +109,11 @@ TensorDistAttr GetMatmulPartInferredDistAttr(
   dist_attr.set_dims_mapping(inferred_dims_mapping);
   return dist_attr;
 }
-
-SpmdInfo FusedGemmEpilogueInferSpmd(const DistMetaTensor& x,
-                                    const DistMetaTensor& y,
-                                    const DistMetaTensor& bias,
-                                    bool trans_x,
-                                    bool trans_y,
-                                    const std::string& activation) {
+SpmdInfo FusedGemmEpilogueInferSpmdBase(const DistMetaTensor& x,
+                                        const DistMetaTensor& y,
+                                        const DistMetaTensor& bias,
+                                        bool trans_x,
+                                        bool trans_y) {
   auto x_shape = common::vectorize(x.dims());
   int x_ndim = static_cast<int>(x_shape.size());
   TensorDistAttr x_dist_attr_src = x.dist_attr();
@@ -124,21 +125,32 @@ SpmdInfo FusedGemmEpilogueInferSpmd(const DistMetaTensor& x,
   auto bias_shape = common::vectorize(bias.dims());
   int bias_ndim = static_cast<int>(bias_shape.size());
   TensorDistAttr bias_dist_attr_src = bias.dist_attr();
-  std::vector<int64_t> bias_dims_mapping = bias_dist_attr_src.dims_mapping();
+  std::vector<int64_t> bias_dims_mapping_src =
+      bias_dist_attr_src.dims_mapping();
 
   auto matmul_spmd_info = MatmulInferSpmd(x, y, trans_x, trans_y);
 
   TensorDistAttr x_dist_attr_dst =
       PADDLE_GET_CONST(TensorDistAttr, matmul_spmd_info.first[0]);
+  VLOG(4) << "x_dist_attr_dst: " << x_dist_attr_dst;
   std::vector<int64_t> x_dims_mapping_dst = x_dist_attr_dst.dims_mapping();
   TensorDistAttr y_dist_attr_dst =
       PADDLE_GET_CONST(TensorDistAttr, matmul_spmd_info.first[1]);
+  VLOG(4) << "y_dist_attr_dst: " << y_dist_attr_dst;
   std::vector<int64_t> y_dims_mapping_dst = y_dist_attr_dst.dims_mapping();
   TensorDistAttr matmul_out_dist_attr_src =
       PADDLE_GET_CONST(TensorDistAttr, matmul_spmd_info.second[0]);
+  VLOG(4) << "matmul_out_dist_attr_src: " << matmul_out_dist_attr_src;
   std::vector<int64_t> matmul_out_dims_mapping_src =
       matmul_out_dist_attr_src.dims_mapping();
 
+  if (matmul_out_dist_attr_src.is_partial()) {
+    VLOG(4) << "matmul_out_dist_attr_src is is_partial:"
+            << matmul_out_dist_attr_src;
+    matmul_out_dist_attr_src.clean_partial_status();
+    VLOG(4) << "matmul_out_dist_attr_src clean partial status:"
+            << matmul_out_dist_attr_src;
+  }
   // Step0: Verify Input Args Based on Elementwise Logic
   PADDLE_ENFORCE_EQ(
       bias_ndim,
@@ -161,7 +173,7 @@ SpmdInfo FusedGemmEpilogueInferSpmd(const DistMetaTensor& x,
   // Step2.1: Merge input shardings
   std::unordered_map<std::string, int64_t> axis_to_dim_map =
       ShardingMergeForTensors({{matmul_out_axes, matmul_out_dims_mapping_src},
-                               {bias_axes, bias_dims_mapping}});
+                               {bias_axes, bias_dims_mapping_src}});
 
   // Step2.2: Infer output dims mapping from merged input dims mapping
   std::vector<int64_t> out_dims_mapping =
@@ -212,19 +224,32 @@ SpmdInfo FusedGemmEpilogueInferSpmd(const DistMetaTensor& x,
           << "src_dims_mapping: [" << str_join(y_dims_mapping_src) << "] "
           << "dst_dims_mapping: [" << str_join(y_dist_attr_dst.dims_mapping())
           << "]";
-  VLOG(4) << "matmul_out src_dims_mapping: ["
-          << str_join(matmul_out_dims_mapping_src) << "] "
-          << "matmul_out dst_dims_mapping: ["
+  VLOG(4) << "matmul_out: "
+          << "src_dims_mapping: [" << str_join(matmul_out_dims_mapping_src)
+          << "] "
+          << "dst_dims_mapping: ["
           << str_join(matmul_out_dist_attr_dst.dims_mapping()) << "]";
   VLOG(4) << "Input2 shape: [" << str_join(bias_shape) << "] "
-          << "src_dims_mapping: [" << str_join(bias_dims_mapping) << "] "
+          << "src_dims_mapping: [" << str_join(bias_dims_mapping_src) << "] "
           << "dst_dims_mapping: ["
           << str_join(bias_dist_attr_dst.dims_mapping()) << "]";
   VLOG(4) << "Output dims_mapping: [" + str_join(out_dims_mapping) + "]\n\n";
 
   TensorDistAttr out_reserve_dist_attr_dst =
       CopyTensorDistAttrForOutput(out_dist_attr);
+
+  VLOG(4) << "matmul_out_dst_dims_mapping" << matmul_out_dist_attr_dst;
+  VLOG(4) << "out_dist_attr: " << out_dist_attr << "\n\n";
+
   return {{x_dist_attr_dst, y_dist_attr_dst, bias_dist_attr_dst},
           {out_dist_attr, out_reserve_dist_attr_dst}};
+}
+SpmdInfo FusedGemmEpilogueInferSpmd(const DistMetaTensor& x,
+                                    const DistMetaTensor& y,
+                                    const DistMetaTensor& bias,
+                                    bool trans_x,
+                                    bool trans_y,
+                                    const std::string& activation) {
+  return FusedGemmEpilogueInferSpmdBase(x, y, bias, trans_x, trans_y);
 }
 }  // namespace phi::distributed

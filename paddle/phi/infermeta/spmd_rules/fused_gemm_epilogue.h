@@ -19,6 +19,11 @@ limitations under the License. */
 
 namespace phi {
 namespace distributed {
+SpmdInfo FusedGemmEpilogueInferSpmdBase(const DistMetaTensor& x,
+                                        const DistMetaTensor& y,
+                                        const DistMetaTensor& bias,
+                                        bool trans_x,
+                                        bool trans_y);
 SpmdInfo FusedGemmEpilogueInferSpmd(const DistMetaTensor& x,
                                     const DistMetaTensor& y,
                                     const DistMetaTensor& bias,

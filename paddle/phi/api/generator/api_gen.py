@@ -353,11 +353,21 @@ class ForwardAPI(BaseAPI):
                         )
 
                 else:
-                    output_create = (
-                        output_create
-                        + f"""
+                    if self.api == "fused_gemm_epilogue" and i == 1:
+                        output_create = (
+                            output_create
+                            + f"""
+  phi::DenseTensor* kernel_out_{i} = nullptr;
+  if (activation != "none") {{
+    {code_indent}  kernel_out_{i} = {set_out_func}({get_out_code});
+  }}"""
+                        )
+                    else:
+                        output_create = (
+                            output_create
+                            + f"""
 {code_indent}  auto kernel_out_{i} = {set_out_func}({get_out_code});"""
-                    )
+                        )
 
                 if (
                     not inplace_flag
