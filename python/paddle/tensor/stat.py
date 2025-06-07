@@ -209,6 +209,14 @@ def var(
         n = n - 1.0
     n.stop_gradient = True
     out /= n
+
+    def _replace_nan(out):
+        out_nan = paddle.full_like(out, paddle.nan)
+        out_nan.stop_gradient = out.stop_gradient
+        return out_nan
+
+    if 0 in x.shape:
+        out = _replace_nan(out)
     if out.dtype != x.dtype:
         return out.astype(x.dtype)
     return out

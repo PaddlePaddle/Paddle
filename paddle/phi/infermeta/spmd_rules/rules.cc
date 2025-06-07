@@ -770,6 +770,12 @@ PD_REGISTER_SPMD_RULE(argsort,
                       PD_INFER_SPMD(phi::distributed::ArgSortInferSpmd),
                       PD_INFER_SPMD(phi::distributed::ArgSortGradInferSpmd));
 
+// index_select
+PD_REGISTER_SPMD_RULE(
+    index_select,
+    PD_INFER_SPMD(phi::distributed::IndexSelectInferSpmd),
+    PD_INFER_SPMD(phi::distributed::IndexSelectGradInferSpmd));
+
 // put_along_axis
 PD_REGISTER_SPMD_RULE(
     put_along_axis,
