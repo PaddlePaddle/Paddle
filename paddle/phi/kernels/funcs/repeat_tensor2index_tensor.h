@@ -16,7 +16,6 @@
 #include <vector>
 
 #include "paddle/phi/core/dense_tensor.h"
-// #include "paddle/phi/kernels/funcs/repeat_tensor2index_tensor.h"
 
 namespace phi {
 namespace funcs {

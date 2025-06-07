@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -31,12 +31,11 @@ __global__ void fill_array_kernel(T *output,
                                   int64_t n) {
   T idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (idx < n) {
-    T start = prefix[idx];   // 当前数字的起始位置
-    T count = repeats[idx];  // 重复次数
+    T start = prefix[idx];
+    T count = repeats[idx];
 
-    // 将数字idx重复count次写入输出数组
     for (T j = 0; j < count; j++) {
-      output[start + j] = idx;  // 填充数字
+      output[start + j] = idx;
     }
   }
 }
@@ -50,6 +49,7 @@ class RepeatsTensor2IndexTensorFunctor<phi::GPUContext, RepeatsT> {
     const RepeatsT *repeats_ptr = repeats.data<RepeatsT>();
     int64_t num_reps = repeats.dims()[0];
 
+    // compute prefix sum of repeats to get start index of each repeat
     RepeatsT *prefix_ptr;
     cudaMalloc(&prefix_ptr, num_reps * sizeof(RepeatsT));
 
@@ -63,6 +63,8 @@ class RepeatsTensor2IndexTensorFunctor<phi::GPUContext, RepeatsT> {
                            input_dev_ptr + num_reps,
                            output_dev_ptr);
 
+    // get last prefix and repeat to compute total size of index tensor because
+    // thrust::exclusive_scan does not return the last value
     RepeatsT last_prefix = 0;
     RepeatsT last_repeat = 0;
     cudaMemcpyAsync(&last_prefix,
@@ -75,22 +77,20 @@ class RepeatsTensor2IndexTensorFunctor<phi::GPUContext, RepeatsT> {
                     sizeof(RepeatsT),
                     cudaMemcpyDeviceToHost,
                     stream);
-
     cudaStreamSynchronize(stream);
-
     int64_t total_size =
         static_cast<int64_t>(last_prefix) + static_cast<int64_t>(last_repeat);
 
     // resize & alloc index tensor
     index->Resize({total_size});
-    ctx.template Alloc<int64_t>(index);
-    RepeatsT *index_ptr = index->data<RepeatsT>();
+    ctx.template Alloc<RepeatsT>(index);
 
     if (total_size == 0) {
       cudaFree(prefix_ptr);
       return;
     }
 
+    RepeatsT *index_ptr = index->data<RepeatsT>();
     int block_size = 256;
     int grid_size = (num_reps + block_size - 1) / block_size;
     fill_array_kernel<<<grid_size, block_size, 0, stream>>>(
