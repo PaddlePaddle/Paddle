@@ -114,10 +114,17 @@ void WeightQuantizeKernel(const Context& dev_ctx,
                                 arch,
                                 algo);
 #endif
+  } else if (algo == "w4a8") {
+    weight_permute_gpu_w4a8<Context>(dev_ctx,
+                                     x.data<int8_t>(),
+                                     out->data<int8_t>(),
+                                     weight_shape,
+                                     arch,
+                                     algo);
   } else {
     PADDLE_FATAL(
         "The algo must be in ['weight_only_int8', 'weight_only_int4', "
-        "'llm.int8'], but got[%s]",
+        "'llm.int8', 'w4a8'], but got[%s]",
         algo);
   }
 }
@@ -128,4 +135,5 @@ PD_REGISTER_KERNEL(weight_quantize,
                    ALL_LAYOUT,
                    phi::WeightQuantizeKernel,
                    phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16,
+                   int8_t) {}

@@ -2091,4 +2091,18 @@ void FusedRMSNormGradInferMeta(const MetaTensor& x,
   scale_grad->set_dims(scale.dims());
   scale_grad->set_dtype(scale.dtype());
 }
+
+void IndexElementwiseGetGradInferMeta(
+    const MetaTensor& x,
+    const std::vector<const MetaTensor*>& index,
+    const MetaTensor& out_grad,
+    const std::vector<int64_t>& input_dims,
+    const std::vector<int64_t>& input_strides,
+    const std::vector<int64_t>& index_dims,
+    const std::vector<int64_t>& index_strides,
+    MetaTensor* x_grad) {
+  if (x_grad) {
+    x_grad->share_meta(x);
+  }
+}
 }  // namespace phi
