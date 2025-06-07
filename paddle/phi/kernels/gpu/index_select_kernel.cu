@@ -26,7 +26,7 @@ namespace phi {
 using phi::PADDLE_CUDA_NUM_THREADS;
 
 template <typename T, typename Context>
-void IndexSelectKernel(const Context& ctx,
+void IndexSelectKernel(const Context& dev_ctx,
                        const DenseTensor& x,
                        const DenseTensor& index,
                        int dim,
@@ -53,17 +53,17 @@ void IndexSelectKernel(const Context& ctx,
                         phi::DataType::INT64));
 
   auto* in_data = x.data<T>();
-  T* out_data = ctx.template Alloc<T>(output);
+  T* out_data = dev_ctx.template Alloc<T>(output);
 
   int64_t numel = output->numel();
   if (numel == 0) {
     return;
   }
-  auto stream = ctx.stream();
+  auto stream = dev_ctx.stream();
 
   unsigned int block_dim = PADDLE_CUDA_NUM_THREADS;
   dim3 grid_dim = dim3((numel + block_dim - 1) / block_dim);
-  phi::backends::gpu::LimitGridDim(ctx, &grid_dim);
+  phi::backends::gpu::LimitGridDim(dev_ctx, &grid_dim);
 
   if (index_type == phi::DataType::INT64) {
     const int64_t* index_data = index.data<int64_t>();

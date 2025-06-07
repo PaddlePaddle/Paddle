@@ -60,13 +60,13 @@ __global__ void IndexSampleGrad(const IndexT* index,
 }
 
 template <typename T, typename Context>
-void IndexSampleGradKernel(const Context& ctx,
+void IndexSampleGradKernel(const Context& dev_ctx,
                            const DenseTensor& x,
                            const DenseTensor& index,
                            const DenseTensor& out_grad,
                            DenseTensor* x_grad) {
   const T* output_grad_data = out_grad.data<T>();
-  T* input_grad_data = ctx.template Alloc<T>(x_grad);
+  T* input_grad_data = dev_ctx.template Alloc<T>(x_grad);
   auto index_type = index.dtype();
   bool index_type_match =
       index_type == DataType::INT32 || index_type == DataType::INT64;
@@ -79,7 +79,7 @@ void IndexSampleGradKernel(const Context& ctx,
                         DataTypeToString(DataType::INT32),
                         DataTypeToString(DataType::INT64)));
 
-  auto stream = reinterpret_cast<const phi::GPUContext&>(ctx).stream();
+  auto stream = reinterpret_cast<const phi::GPUContext&>(dev_ctx).stream();
   auto input_num = x.numel();
   auto input_dim = x.dims();
   auto index_dim = index.dims();
@@ -97,10 +97,10 @@ void IndexSampleGradKernel(const Context& ctx,
   dim3 block_dim(block_width, block_height);
   dim3 grid_dim((index_length + block_dim.x - 1) / block_dim.x,
                 (batch_size + block_dim.y - 1) / block_dim.y);
-  phi::backends::gpu::LimitGridDim(ctx, &grid_dim);
+  phi::backends::gpu::LimitGridDim(dev_ctx, &grid_dim);
 
   phi::funcs::SetConstant<Context, T> set_zero;
-  set_zero(ctx, x_grad, static_cast<T>(0));
+  set_zero(dev_ctx, x_grad, static_cast<T>(0));
 
   if (index_type == DataType::INT64) {
     const int64_t* index_data = index.data<int64_t>();

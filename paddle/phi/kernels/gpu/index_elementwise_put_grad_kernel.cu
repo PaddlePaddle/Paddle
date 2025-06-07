@@ -29,7 +29,7 @@ namespace phi {
 
 template <typename T, typename IndexT = int>
 void GPUIndexElementwisePutGradKernel(
-    const phi::GPUContext& ctx,
+    const phi::GPUContext& dev_ctx,
     const std::vector<const DenseTensor*>& index,
     const std::vector<int64_t>& input_dims,
     const std::vector<int64_t>& input_strides,
@@ -71,7 +71,7 @@ void GPUIndexElementwisePutGradKernel(
   constexpr int vt = 4;
   const dim3 block(nt);
   const dim3 grid((N + block.x * vt - 1) / (block.x * vt));
-  auto stream = ctx.stream();
+  auto stream = dev_ctx.stream();
 
   using dtype = funcs::OpaqueType<sizeof(T)>;
 
