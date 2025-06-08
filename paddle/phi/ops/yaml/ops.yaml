@@ -1719,6 +1719,7 @@
   infer_meta :
     func : CreateLikeInferMeta
     param : [x, dtype]
+    spmd_rule : EmptyLikeInferSpmd
   kernel :
     func : empty_like
     param : [x, dtype]

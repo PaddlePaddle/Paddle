@@ -1507,7 +1507,12 @@ TEST(ElementwiseUnaryLike, Ctor) {
   inferred_dist_attrs =
       phi::distributed::FullLikeInferSpmd(input, 1.0, phi::DataType::FLOAT32);
   check_element_unary_like(inferred_dist_attrs);
-
+  // empty like
+  input =
+      phi::distributed::DistMetaTensor(common::make_ddim(shape), t_dist_attr);
+  inferred_dist_attrs =
+      phi::distributed::EmptyLikeInferSpmd(input, phi::DataType::FLOAT32);
+  check_element_unary_like(inferred_dist_attrs);
   // pow
   input =
       phi::distributed::DistMetaTensor(common::make_ddim(shape), t_dist_attr);
