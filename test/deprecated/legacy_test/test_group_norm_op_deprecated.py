@@ -586,6 +586,7 @@ class TestGroupNormBF16Op_With_NHWC(TestGroupNormBF16Op):
         self.python_out_sig = ["Y"]
         self.data_format = "NHWC"
         self.prim_op_type = "comp"
+        self.channel_last = True
 
         self.dtype = np.uint16
         self.shape = (1, 3, 5, 512)

@@ -3133,7 +3133,7 @@
     repeats : Repeats
 
 - op : repeat_interleave
-  backward : repeat_interleave_grad
+  backward : repeat_interleave_grad, repeat_interleave_double_grad
   inputs :
     x : X
   outputs :
@@ -3142,7 +3142,7 @@
     {repeats : Repeats, axis : dim}
 
 - op : repeat_interleave_with_tensor_index
-  backward : repeat_interleave_with_tensor_index_grad
+  backward : repeat_interleave_with_tensor_index_grad, repeat_interleave_with_tensor_index_double_grad
   inputs :
     {x : X, repeats: RepeatTensor}
   outputs:

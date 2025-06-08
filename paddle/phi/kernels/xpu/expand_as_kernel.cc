@@ -24,7 +24,7 @@ namespace phi {
 template <typename Context, typename T>
 void ExpandAs(const Context& context,
               const DenseTensor& x,
-              const std::vector<int>& target_shape_,
+              const std::vector<int64_t>& target_shape_,
               DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   auto vec_in_dims = common::vectorize<int64_t>(x.dims());
@@ -87,7 +87,7 @@ template <typename T, typename Context>
 void ExpandAsKernel(const Context& ctx,
                     const DenseTensor& x,
                     const paddle::optional<DenseTensor>& y,
-                    const std::vector<int>& target_shape,
+                    const std::vector<int64_t>& target_shape,
                     DenseTensor* out) {
   auto rank = x.dims().size();
   auto target_rank = target_shape.size();

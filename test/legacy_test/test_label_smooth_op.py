@@ -173,6 +173,18 @@ class TestLabelSmoothBF16OpWithPriorDist3D(TestLabelSmoothBF16OPWithPriorDist):
         )
 
 
+class TestLabelSmoothOp_ZeroSize(TestLabelSmoothOp):
+    def config(self):
+        self.op_type = "label_smooth"
+        self.python_api = paddle.nn.functional.label_smooth
+        self.init_dtype()
+        self.epsilon = 0.1
+        batch_size, self.label_dim = 0, 12
+        self.label = np.zeros((batch_size, self.label_dim)).astype(self.dtype)
+        nonzero_index = np.random.randint(self.label_dim, size=(batch_size))
+        self.label[np.arange(batch_size), nonzero_index] = 1
+
+
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()

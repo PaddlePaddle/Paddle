@@ -14,9 +14,9 @@
 
 #pragma once
 
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/impl/kron_kernel_impl.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
-
 namespace phi {
 
 template <typename T>
@@ -266,6 +266,17 @@ void KronGradKernel(const Context &ctx,
                     const DenseTensor &out_grad,
                     DenseTensor *x_grad,
                     DenseTensor *y_grad) {
+  if (out_grad.numel() == 0) {
+    if (x_grad) {
+      phi::Full<T, Context>(
+          ctx, phi::IntArray(common::vectorize(x_grad->dims())), 0, x_grad);
+    }
+    if (y_grad) {
+      phi::Full<T, Context>(
+          ctx, phi::IntArray(common::vectorize(y_grad->dims())), 0, y_grad);
+    }
+    return;
+  }
   if (x_grad) {
     ctx.template Alloc<T>(x_grad);
   }

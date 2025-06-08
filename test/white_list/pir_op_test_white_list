@@ -1,6 +1,7 @@
 test_accuracy_op
 test_activation_bf16_mkldnn_op
 test_activation_op
+test_activation_op_zero_size
 test_adadelta_op
 test_adagrad_op
 test_adagrad_op_static_build

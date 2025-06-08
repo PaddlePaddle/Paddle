@@ -35,11 +35,14 @@ class TestGammalnOp(OpTest):
         self.op_type = 'gammaln'
         self.python_api = paddle.gammaln
         self.init_dtype_type()
-        self.shape = (3, 40)
+        self.init_shape()
         self.x = np.random.random(self.shape).astype(self.dtype) + 1
         self.inputs = {'x': self.x}
         out = ref_gammaln(self.x)
         self.outputs = {'out': out}
+
+    def init_shape(self):
+        self.shape = (3, 40)
 
     def init_dtype_type(self):
         self.dtype = np.float64
@@ -49,6 +52,21 @@ class TestGammalnOp(OpTest):
 
     def test_check_grad(self):
         self.check_grad(['x'], 'out', check_pir=True)
+
+
+class TestGammalnOpZeroSize(TestGammalnOp):
+    def init_shape(self):
+        self.shape = (0, 3, 40)
+
+
+class TestGammalnOpZeroSize1(TestGammalnOp):
+    def init_shape(self):
+        self.shape = (10, 3, 0, 1)
+
+
+class TestGammalnOpZeroSize2(TestGammalnOp):
+    def init_shape(self):
+        self.shape = (10, 0)
 
 
 class TestGammalnOpFp32(TestGammalnOp):

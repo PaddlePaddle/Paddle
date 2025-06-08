@@ -156,5 +156,23 @@ class TestBmmAPIError(unittest.TestCase):
         self.assertRaises(ValueError, paddle.bmm, x_data, y_data_wrong3)
 
 
+class TestBmmOp_ZeroSize(OpTest):
+    def setUp(self):
+        self.op_type = "bmm"
+        self.python_api = paddle.bmm
+        self.public_python_api = paddle.bmm
+        X = np.random.random((10, 0, 4)).astype("float64")
+        Y = np.random.random((10, 4, 5)).astype("float64")
+        self.inputs = {'X': X, 'Y': Y}
+        Out = np.matmul(X, Y)
+        self.outputs = {'Out': Out}
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
+    def test_checkout_grad(self):
+        self.check_grad(['X', 'Y'], 'Out', check_pir=True)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -106,6 +106,23 @@ void CopySignKernel(const Context& dev_ctx,
   }
 }
 
+template <typename T, typename Context>
+void NextafterKernel(const Context& dev_ctx,
+                     const DenseTensor& x,
+                     const DenseTensor& y,
+                     DenseTensor* out) {
+  dev_ctx.template Alloc<T>(out);
+  auto x_dims = x.dims();
+  auto y_dims = y.dims();
+  if (x_dims.size() >= y_dims.size()) {
+    funcs::ElementwiseCompute<funcs::NextafterFunctor<T>, T>(
+        dev_ctx, x, y, funcs ::NextafterFunctor<T>(), out);
+  } else {
+    funcs::ElementwiseCompute<funcs::InverseNextafterFunctor<T>, T>(
+        dev_ctx, x, y, funcs::InverseNextafterFunctor<T>(), out);
+  }
+}
+
 }  // namespace phi
 
 using complex64 = ::phi::dtype::complex<float>;
@@ -193,3 +210,5 @@ PD_REGISTER_KERNEL(copysign,
                    double,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}
+PD_REGISTER_KERNEL(
+    nextafter, CPU, ALL_LAYOUT, phi::NextafterKernel, float, double) {}

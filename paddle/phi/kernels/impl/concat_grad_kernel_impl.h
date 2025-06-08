@@ -14,6 +14,7 @@
 #pragma once
 
 #include "paddle/phi/kernels/concat_grad_kernel.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 #include "paddle/phi/kernels/funcs/concat_funcs.h"
 #include "paddle/phi/kernels/funcs/strided_memcpy.h"
@@ -51,6 +52,11 @@ void ConcatGradKernel(const Context& dev_ctx,
     } else {
       outputs.push_back(nullptr);
     }
+  }
+  // if the out_grad.numel() == 0 ,the all x and x_grad must be zero size
+  // tensor, so just return
+  if (out_grad.numel() == 0) {
+    return;
   }
 
   // Sometimes direct copies will be faster, this maybe need deeply analysis.
