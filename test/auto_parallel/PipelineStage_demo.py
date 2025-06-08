@@ -36,10 +36,13 @@ from paddle.distributed.auto_parallel.pipelining.stage import (
 )
 from paddle.distributed.auto_parallel.pipelining.utils import (
     PipeliningShapeError,
+    TensorMeta,
     _detach_and_keep_grad,
+    _friendly_debug_info,
     _get_stage_mesh,
     _validate_tensor_metadata,
     _validate_tensors_metadata,
+    _zero_initialize_with_meta,
 )
 from paddle.io import Dataset
 
@@ -199,34 +202,37 @@ class TestPipelineStage:
         )
         loss_fn = nn.MSELoss()
         dataset = RandomDataset(image_size=8, num_samples=100)
-
         losses = []
         num_iterations = 20
-
+        data0 = paddle.zeros([8], dtype='float32')
+        label0 = paddle.zeros([8], dtype='float32')
+        data0 = paddle.to_tensor(data0).unsqueeze(0)
+        label0 = paddle.to_tensor(label0).unsqueeze(0)
+        #  Prepare infrastructure
+        if self.rank == 0:
+            output = self.stage._prepare_forward_infra(
+                self.micro_batches,
+                (data0,),
+                {
+                    "debug_str": "test debug_str",
+                },
+            )
+        else:
+            output = self.stage._prepare_forward_infra(
+                self.micro_batches,
+                (),
+                {
+                    "debug_str": "test debug_str",
+                },
+            )
+        loss = None
+        if self.stage.is_last:
+            loss = loss_fn(output[0], label0)
+        self.stage._prepare_backward_infra(self.micro_batches, loss)
         for iter_idx in range(num_iterations):
             data, label = dataset[iter_idx]
             data = paddle.to_tensor(data).unsqueeze(0)
             label = paddle.to_tensor(label).unsqueeze(0)
-
-            #  Prepare infrastructure
-            if self.rank == 0:
-                self.stage._prepare_forward_infra(
-                    self.micro_batches,
-                    (data,),
-                    {
-                        "debug_str": "test debug_str",
-                    },
-                )
-            else:
-                self.stage._prepare_forward_infra(
-                    self.micro_batches,
-                    (),
-                    {
-                        "debug_str": "test debug_str",
-                    },
-                )
-            self.stage._prepare_backward_infra(self.micro_batches)
-
             # Forward pass
             fwd_sends_to_wait = []
 
@@ -259,7 +265,6 @@ class TestPipelineStage:
                 loss = loss_fn(output, label)
                 assert loss is not None
                 losses.append(loss.item())
-
             # Backward pass
             bwd_sends_to_wait = []
 
@@ -283,7 +288,7 @@ class TestPipelineStage:
             # Wait for all send operations to complete
             for work in bwd_sends_to_wait:
                 work.wait()
-
+            self.stage.clear_runtime_states()
             opt.step()
             opt.clear_grad()
 
@@ -480,6 +485,23 @@ class TestPipelineStage:
 
             assert x.grad is not None
             assert a.grad is None
+
+            # 5. Test TensorMeta and _zero_initialize_with_meta
+            tensor = paddle.ones([4, 8])
+            dist_tensor = dist.shard_tensor(tensor, self.mesh, [dist.Shard(0)])
+            tensor_meta = TensorMeta(dist_tensor)
+            assert tensor_meta.shape == [4, 8]
+            assert tensor_meta._local_shape == [2, 8]
+
+            zero_tensor = _zero_initialize_with_meta(tensor_meta, self.mesh)
+            assert zero_tensor.shape == [4, 8]
+            assert zero_tensor.is_dist()
+            assert zero_tensor.process_mesh == self.mesh
+            assert zero_tensor.placements == [dist.Shard(0)]
+
+            # 6. Test _friendly_debug_info
+            a = {"test the input is not a tensor": 1}
+            assert _friendly_debug_info(a) == str(a)
 
     def run_test(self):
         """Compare losses between three training methods"""
