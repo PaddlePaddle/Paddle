@@ -67,7 +67,7 @@ void AllReduceKernel(const Context& dev_ctx,
       // min to replace
       red_type = ncclMin;
       break;
-    case ReduceType::kRedAll:
+    case ReduceType::kRedAny:
       // NOTE(ooooo): There is no reduce_any type of ncclRedOp_t, just use
       // max to replace
       red_type = ncclMax;
