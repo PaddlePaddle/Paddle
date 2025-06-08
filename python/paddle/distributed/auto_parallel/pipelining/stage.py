@@ -548,13 +548,6 @@ class _PipelineStageBase(ABC):
                     )
         return ops
 
-    def clear_grads(self) -> None:
-        """
-        Clear grads of the stage.
-        """
-        for param in self.sublayer.parameters():
-            param.clear_grad()
-
     def clear_runtime_states(self) -> None:
         """
         Clear runtime states of the stage.
@@ -1211,6 +1204,9 @@ class PipelineStage(_PipelineStageBase):
             assert self.grads_meta is not None
         # clear backward_state
         self.clear_runtime_states()
+        # Clear grads of the stage.
+        for param in self.sublayer.parameters():
+            param.clear_grad()
         return grads
 
     def _create_grad_recv_info(
