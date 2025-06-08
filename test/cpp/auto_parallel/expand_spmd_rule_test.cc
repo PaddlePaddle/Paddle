@@ -97,7 +97,7 @@ TEST(ExpandInferSpmd, Ctor) {
             std::vector<int64_t>({-1, 0, 1}));
   EXPECT_EQ(get_dims_mapping(spmdinfo5.second[0]),
             std::vector<int64_t>({-1, 1}));
-  EXPECT_EQ(get_partial_dims(spmdinfo5.second[0]), std::vector<int64_t>({0}));
+  EXPECT_EQ(get_partial_dims(spmdinfo5.second[0]), std::set<int64_t>({0}));
 }
 
 }  // namespace auto_parallel
