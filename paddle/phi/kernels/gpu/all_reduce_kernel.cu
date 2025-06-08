@@ -67,6 +67,11 @@ void AllReduceKernel(const Context& dev_ctx,
       // min to replace
       red_type = ncclMin;
       break;
+    case ReduceType::kRedAll:
+      // NOTE(ooooo): There is no reduce_any type of ncclRedOp_t, just use
+      // sum to replace
+      red_type = ncclSum;
+      break;
   }
   comm_ctx->AllReduce(out, x, red_type, stream);
 #else
