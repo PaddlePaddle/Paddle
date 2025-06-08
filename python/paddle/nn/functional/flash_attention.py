@@ -66,12 +66,13 @@ def check_flash_head_dim_constraints(query, dropout_p=0.0):
 
     is_head_dim_gt192 = head_dim > 192
     is_head_dim_lte224 = head_dim <= 224
-    is_dropout = dropout_p > 0.0
+    # is_dropout = dropout_p > 0.0
 
     cond1 = is_head_dim_gt192 and is_head_dim_lte224
-    cond2 = head_dim > 224 and is_dropout
+    # cond2 = head_dim > 224 and is_dropout
 
-    if cond1 or cond2:
+    # if cond1 or cond2:
+    if cond1:
         return False
     return True
 
