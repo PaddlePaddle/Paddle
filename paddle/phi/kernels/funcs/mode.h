@@ -158,7 +158,7 @@ static void GetModebySort(const phi::GPUContext& dev_ctx,
 
   thrust::device_ptr<T> out_tensor_ptr(out_tensor);
   thrust::device_ptr<int64_t> indices_tensor_ptr(indices_tensor);
-  
+
   for (int64_t i = 0; i < num_rows; ++i) {
     T* begin = input_tmp_data + num_cols * i;
     T* end = input_tmp_data + num_cols * (i + 1);
@@ -172,7 +172,7 @@ static void GetModebySort(const phi::GPUContext& dev_ctx,
                                            begin + 1,
                                            0,
                                            thrust::plus<int>(),
-                                           thrust::not_equal_to<T>());                                  
+                                           thrust::not_equal_to<T>());           
     thrust::device_vector<T> keys_data(unique);
     thrust::device_vector<int64_t> cnts_data(unique);
     thrust::reduce_by_key(thrust::device,
