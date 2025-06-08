@@ -16,7 +16,6 @@ import itertools
 import os
 import weakref
 from collections import OrderedDict
-from paddle.utils import strtobool
 
 import numpy as np
 
@@ -27,6 +26,7 @@ from paddle.framework import (
     core,
 )
 from paddle.framework.recall_error import check_naninf
+from paddle.utils import strtobool
 
 from .log_util import logger
 
