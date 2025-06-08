@@ -23,23 +23,23 @@ namespace phi {
 
 template <typename T>
 #ifdef PADDLE_WITH_HIP
-void LSTMInferece(const bool &has_seq_length,
-                  const miopenHandle_t &handle,
+void LSTMInference(const bool &has_seq_length,
+                   const miopenHandle_t &handle,
 #else
-void LSTMInferece(const bool &has_seq_length,
-                  const cudnnHandle_t &handle,
+void LSTMInference(const bool &has_seq_length,
+                   const cudnnHandle_t &handle,
 #endif
-                  const int &seq_length,
-                  ScopedRNNBase *rnn,
-                  const T *x_data,
-                  const T *init_h_data,
-                  const T *init_c_data,
-                  const T *w_data,
-                  T *out_data,
-                  T *last_h_data,
-                  T *last_c_data,
-                  phi::DenseTensor *workspace_data,
-                  const size_t &workspace_size) {
+                   const int &seq_length,
+                   ScopedRNNBase *rnn,
+                   const T *x_data,
+                   const T *init_h_data,
+                   const T *init_c_data,
+                   const T *w_data,
+                   T *out_data,
+                   T *last_h_data,
+                   T *last_c_data,
+                   phi::DenseTensor *workspace_data,
+                   const size_t &workspace_size) {
 #if CUDNN_VERSION >= 90000
   PADDLE_ENFORCE_GPU_SUCCESS(
       phi::dynload::cudnnRNNForward(handle,
@@ -278,19 +278,19 @@ void CudnnLSTMKernel(
   auto *reserve_data = ctx.template Alloc<uint8_t>(reserve);
 
   if (is_test) {
-    LSTMInferece<T>(has_seq_length,
-                    handle,
-                    seq_length,
-                    &rnn,
-                    x_data,
-                    init_h_data,
-                    init_c_data,
-                    w_data,
-                    out_data,
-                    last_h_data,
-                    last_c_data,
-                    &workspace_data_,
-                    workspace_size);
+    LSTMInference<T>(has_seq_length,
+                     handle,
+                     seq_length,
+                     &rnn,
+                     x_data,
+                     init_h_data,
+                     init_c_data,
+                     w_data,
+                     out_data,
+                     last_h_data,
+                     last_c_data,
+                     &workspace_data_,
+                     workspace_size);
   } else {
 #if CUDNN_VERSION >= 90000
     PADDLE_ENFORCE_GPU_SUCCESS(
