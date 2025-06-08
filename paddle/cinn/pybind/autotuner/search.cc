@@ -20,6 +20,7 @@
 #include <ostream>
 
 #include "paddle/cinn/ir/group_schedule/search/measurer.h"
+#include "paddle/cinn/ir/group_schedule/search/operator.h"
 #include "paddle/common/enforce.h"
 
 
@@ -62,5 +63,31 @@ void BindSearch(pybind11::module *m) {
               LOG(INFO) << __PRETTY_FUNCTION__ << " | "<< "Pybind after run"; 
            }*/)
       .def("result", &Measurer::Result);
+
+  py::class_<Operator, std::shared_ptr<Operator>>(*m, "Operator")
+      .def(py::init(
+        [](std::shared_ptr<::pir::Program> program){
+            LOG(INFO) << "[Pybind::Operator] Pass-in Single Program: \n" << *program;
+            return std::make_shared<Operator>(program.get());
+        }))
+      .def(py::init(
+        [](std::shared_ptr<::pir::Program> main_program, std::shared_ptr<::pir::Program> startup_program){
+            std::flush(std::cout);
+            std::cout << "[Pybind::Operator] Pass-in Main Program: \n" << *main_program;
+            std::flush(std::cout);
+            std::cout << "[Pybind::Operator] Pass-in StartUp Program: \n" << *startup_program;
+            std::flush(std::cout);
+
+            return std::make_shared<Operator>(main_program.get(), startup_program.get());
+        }))
+      .def("compile", &Operator::Compile)
+      .def("run", &Operator::Run
+           /*[](Operator &self,
+              const std::unordered_map<std::string, std::vector<int64_t>> &input_name_and_shape,
+              int repeat) {
+              LOG(INFO) << __PRETTY_FUNCTION__ << " | "<< "Pybind before run";  
+              self.Run(input_name_and_shape, repeat);
+              LOG(INFO) << __PRETTY_FUNCTION__ << " | "<< "Pybind after run"; 
+           }*/);
 }
 }  // namespace cinn::pybind

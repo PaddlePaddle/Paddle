@@ -17,7 +17,8 @@ from paddle.base import core
 from .utils import *
 from .bench_func import (
     BaseBenchFunc,
-    WeightedBenchFunc
+    WeightedBenchFunc,
+    Operator
 )
 from .candidate_generator import (
     BaseCandidateGenerator,
@@ -27,9 +28,9 @@ from .candidate_generator import (
 from .candidate_searcher import (
     CandidateSearcher
 )
-from .ops_searcher import (
-    OpsSearcher
-)
+# from .ops_searcher import (
+#     OpsSearcher
+# )
 
 from .model_searcher import (
     ModelSearcher

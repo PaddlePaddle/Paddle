@@ -88,3 +88,22 @@ class WeightedBenchFunc(BaseBenchFunc):
         
         return self.measurer.result().avg_kernel_execute_time
 
+
+
+class Operator:
+    def __init__(
+        self,
+        program_bundle: Tuple[static.Program, static.Program, Tensor],
+        bucket_info: cinn.autotuner.tuner_config.BucketInfo,       # 算子输入变量的 shape 限制范围
+        candidate
+    ):
+        self.program_bundle = program_bundle
+        self.bucket_info = bucket_info
+        self.operator_prim = cinn.autotuner.search.Operator(program_bundle[0], program_bundle[1]) # , program_bundle[1]
+        cinn.autotuner.tuner_config._tuner_add_config_helper(candidate, self.bucket_info)
+        self.operator_prim.compile()
+
+    def __call__(self, input) -> float:
+        return self.operator_prim.run(input)
+
+

@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 import os
-import math
-import statistics
+import json
 from typing import *
 import logging, json
 import datetime
@@ -9,7 +8,7 @@ import datetime
 from paddle import static, Tensor
 from paddle.base.core import cinn
 # from paddle.cinn import common
-from .bench_func import WeightedBenchFunc
+from .bench_func import WeightedBenchFunc, Operator
 from .candidate_generator import BaseCandidateGenerator
 from .candidate_searcher import CandidateSearcher
 from .config import *
@@ -76,6 +75,13 @@ class ModelSearcher:
         
         return os.path.join(root_path, target_str, dirname, f"{filename}.csv")
 
+    def _intent(self, intent: int):
+        return " "* intent * 4
+    
+    def _print(self, output, intent: int, message: str):
+        output.write(self._intent(intent) + message + "\n")
+        output.flush()
+
     def _build_program(self, shape) -> Tuple[static.Program, static.Program, Tensor]:
         return self.program_builder(shape)
         
@@ -102,12 +108,15 @@ class ModelSearcher:
         return bucket_info
 
     def _write_bucket_info(self, output_file, bucket_info: cinn.autotuner.tuner_config.BucketInfo):
-        output_file.write(" { ")
+        self._print(output_file, 3, "\"shape\": {")
         for i, name in enumerate(self.shape_name):
             bucket = bucket_info.space[i]
-            output_file.write(f"{name}: {bucket.lower_bound}-{bucket.upper_bound} ")
-        output_file.write(" }\n")
-        output_file.flush()
+            self._print(output_file, 4, f"\"{name}\": [{bucket.lower_bound}, {bucket.upper_bound}]" + 
+                        ("," if i < len(self.shape_name) - 1 else ""))
+            # output_file.write(f"\"{name}\": [{bucket.lower_bound}, {bucket.upper_bound}],")
+        self._print(output_file, 3, "},")
+        # output_file.write(" }\n")
+        # output_file.flush()
 
     
     def _get_best_window_range(self, dimension_lower: int) -> Tuple[int, int]:
@@ -182,6 +191,7 @@ class ModelSearcher:
         # Baseline
         cinn.autotuner.tuner_config._env_set_tile_config_policy("default")
         baseline_score = bench_func([])
+        self._print(output_file, 3, f"\"baseline_score\": {baseline_score/graph_num},")
 
         # 寻找最佳性能
         cinn.autotuner.tuner_config._env_set_tile_config_policy("search")
@@ -197,15 +207,28 @@ class ModelSearcher:
         logging.info("=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=")
         
         # 写入CSV文件
-        output_file.write(f"baseline_score: {(baseline_score/ graph_num):.3f} \n")
-        output_file.write(f"best_score: {best_score:.3f} \n")
-        output_file.write(f"best_candidate: \n{best_candidate} \n")
-        output_file.write(f"=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n")
-        output_file.flush()
+        self._print(output_file, 3, f"\"best_score\": {best_score},")
+        self._print(output_file, 3, f"\"best_candidate\": {best_candidate}")
+        # output_file.write(f"baseline_score: {(baseline_score/ graph_num):.3f} \n")
+        # output_file.write(f"best_score: {best_score:.3f} \n")
+        # output_file.write(f"best_candidate: \n{best_candidate} \n")
+        # output_file.write(f"=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n")
+        # output_file.flush()
 
+    def set_search_option(self, option: SearchOption):
+        self.search_option = option
+        # 获取配置并打开输出文件
+        self.log_path = self._gen_log_file(self.search_option.target)
+
+    def get_log_path(self):
+        if hasattr(self, 'log_path'):
+            return self.log_path
+        else:
+            raise AttributeError("Log path not set. Please call set_search_option() first.")
+    
     def search(
         self, 
-        search_option: SearchOption
+        search_option: SearchOption = None
     ):
 
         # 配置常量
@@ -223,11 +246,13 @@ class ModelSearcher:
         #     ("S", "dynamic" if is_spatial_dynamic else "static"),
         #     ("R", "dynamic" if is_reduce_dynamic else "static")
         # ]
+        self.set_search_option(search_option)
+        # if search_option is not None:
+        #     search_option = self.search_option
+        # # 获取配置并打开输出文件
+        # log_path = self._gen_log_file(search_option.target)
         
-        # 获取配置并打开输出文件
-        log_path = self._gen_log_file(search_option.target)
-        
-        with open(log_path, 'a') as output_file:
+        with open(self.log_path, 'a') as output_file:
             # 测试主循环
             # outside `while` loop init
             
@@ -235,17 +260,61 @@ class ModelSearcher:
             # 静态维度（int）保持不变
             all_shapes = self._get_all_dynamic_ranges(self.shape)
             logging.info(f"all_shapes = {all_shapes}")
+            self._print(output_file, 0, "{")
+            self._print(output_file, 1, f"\"name\": \"{self.name}\",")
+            self._print(output_file, 1, f"\"device\": \"{self.search_option.target.arch_str()}_{self.search_option.target.device_name_str()}\",")
+            self._print(output_file, 1, f"\"record\": [")
 
-            for partitial_shape in all_shapes:
+            for i, partitial_shape in enumerate(all_shapes):
+                self._print(output_file, 2, f"{{")
                 self._search_window(
                     output_file=output_file,
                     shape=partitial_shape,
                     weights=[1.0] * len(partitial_shape),
                     graph_num=GRAPH_NUM,
                     sampling_prob=SAMPLING_PROB,
-                    num_measure_trials=search_option.num_measure_trials,
-                    repeats=search_option.repeat
+                    num_measure_trials=self.search_option.num_measure_trials,
+                    repeats=self.search_option.repeat
                 )
+                if i < len(all_shapes) - 1:
+                    self._print(output_file, 2, "},")
+                else:
+                    self._print(output_file, 2, "}")
+            self._print(output_file, 1, "]")
+            self._print(output_file, 0, "}")
+            # output_file.write("]}\n")
+        return self.log_path
+
+
+    def apply(self, search_log: str, shape: List[int|Tuple[int,int]]):
+        """
+        Apply the search log to the program builder.
+        This method should be implemented in subclasses.
+        """
+        # raise NotImplementedError("This method should be implemented in subclasses.")
+        cinn.autotuner.tuner_config._env_set_tile_config_policy("search")
+        with open(search_log, 'r') as f:
+            results = json.load(f)
+
+        operator_prim = None
+        best_candidate = None
+        shape
+        # for each shape result
+        for shape_result in results['record']:
+            if shape_result['shape'][1] < shape[1]:
+                continue
+            program_bundle = self._build_program(shape_result['shape'])
+            bucket_info = self._create_bucket(shape_result['shape'])
+            operator_prim = Operator(
+                self.name, 
+                program_bundle,
+                bucket_info, 
+                
+            )
+        best_candidate = candidate_join(self.candidate_generator.param_names(), shape_result['best_candidate'])
+        return operator_prim(best_candidate);
+
+
 
 if __name__ == "__main__":
     pass
