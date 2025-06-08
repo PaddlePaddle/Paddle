@@ -23,7 +23,6 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/axis_utils.h"
 #include "paddle/phi/kernels/primitive/kernel_primitives.h"
 
-// See Note [ Why still include the fluid headers? ]
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/backends/gpu/gpu_dnn.h"
 
