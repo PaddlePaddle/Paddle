@@ -171,8 +171,8 @@ __global__ void SoftmaxMaskFuseV2GPUKernel(const T* x_data,
                                            const MT* mask_data,
                                            T* y_data,
                                            int64_t batch_count,
-                                           u_int32_t attn_heads,
-                                           u_int32_t query_seqs,
+                                           uint32_t attn_heads,
+                                           uint32_t query_seqs,
                                            int key_seq_len) {
   // the forward gpu kernel
   constexpr int next_pow2 = 1 << pow2_index;
@@ -181,10 +181,10 @@ __global__ void SoftmaxMaskFuseV2GPUKernel(const T* x_data,
   constexpr int kLocalBatchSize = (next_pow2 <= 128) ? 2 : 1;
   constexpr int kOneLoadingCounts = 4;
 
-  u_int32_t blockInGrid = blockIdx.x;
+  uint32_t blockInGrid = blockIdx.x;
 
-  u_int32_t indexInMaskDim0 = blockInGrid / (attn_heads * query_seqs);
-  u_int32_t indexInMaskDim2 = blockInGrid % (query_seqs);
+  uint32_t indexInMaskDim0 = blockInGrid / (attn_heads * query_seqs);
+  uint32_t indexInMaskDim2 = blockInGrid % (query_seqs);
 
   int64_t data_first_idx =
       (blockDim.y * static_cast<int64_t>(blockInGrid) + threadIdx.y) *
