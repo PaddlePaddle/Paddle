@@ -43,7 +43,7 @@
 namespace phi {
 namespace funcs {
 
-static int ComputeBlockSize(int col) {
+static int64_t ComputeBlockSize(int64_t col) {
   if (col > 512)
     return 1024;
   else if (col > 256 && col <= 512)
@@ -57,7 +57,7 @@ static int ComputeBlockSize(int col) {
 }
 
 static inline void GetDims(
-    const phi::DDim& dim, int axis, int* pre, int* n, int* post) {
+    const phi::DDim& dim, int axis, int64_t* pre, int64_t* n, int64_t* post) {
   *pre = 1;
   *post = 1;
   *n = dim[axis];
@@ -158,7 +158,7 @@ static void GetModebySort(const phi::GPUContext& dev_ctx,
 
   thrust::device_ptr<T> out_tensor_ptr(out_tensor);
   thrust::device_ptr<int64_t> indices_tensor_ptr(indices_tensor);
-
+  
   for (int64_t i = 0; i < num_rows; ++i) {
     T* begin = input_tmp_data + num_cols * i;
     T* end = input_tmp_data + num_cols * (i + 1);
@@ -172,7 +172,7 @@ static void GetModebySort(const phi::GPUContext& dev_ctx,
                                            begin + 1,
                                            0,
                                            thrust::plus<int>(),
-                                           thrust::not_equal_to<T>());
+                                           thrust::not_equal_to<T>());                                  
     thrust::device_vector<T> keys_data(unique);
     thrust::device_vector<int64_t> cnts_data(unique);
     thrust::reduce_by_key(thrust::device,
