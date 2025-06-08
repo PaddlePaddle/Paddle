@@ -32,8 +32,8 @@ template <typename T, int pow2_index>
 __global__ void SoftmaxMaskFuseUpperTriangleGPUKernel(const T* src,
                                                       T* dst,
                                                       int64_t batch_count,
-                                                      u_int32_t GridDimX,
-                                                      u_int32_t GridDimY,
+                                                      uint32_t GridDimX,
+                                                      uint32_t GridDimY,
                                                       int64_t key_seq_len) {
   constexpr int next_pow2 = 1 << pow2_index;
   constexpr int warp_size = (next_pow2 < WARP_SIZE) ? next_pow2 : WARP_SIZE;
@@ -41,9 +41,9 @@ __global__ void SoftmaxMaskFuseUpperTriangleGPUKernel(const T* src,
   constexpr int kLocalBatchSize = (next_pow2 <= 128) ? 2 : 1;
   constexpr int kOneLoadingCounts = 4;
   int64_t key_seq_len_pow_2 = key_seq_len * key_seq_len;
-  u_int32_t blockInGrid = blockIdx.x;
-  u_int32_t blockIdX = blockInGrid / GridDimY;
-  u_int32_t blockIdY = blockInGrid % GridDimY;
+  uint32_t blockInGrid = blockIdx.x;
+  uint32_t blockIdX = blockInGrid / GridDimY;
+  uint32_t blockIdY = blockInGrid % GridDimY;
 
   int64_t first_idx =
       (static_cast<int64_t>(blockDim.y) * blockIdY + threadIdx.y) * GridDimX *
@@ -205,9 +205,9 @@ void FusedSoftmaxMaskFuseUpperTriangleKernel(const Context& dev_ctx,
   // it will cause CUDA error 9 (invalid configuration argument),
   // when (attn_mul_batch + batches_per_block) / batches_per_block beyond 65535.
 
-  u_int32_t GridDimX = query_seq_len;
-  u_int32_t GridDimY = (attn_mul_batch + batches_per_block) / batches_per_block;
-  u_int32_t totoal_blocks = GridDimX * GridDimY;
+  uint32_t GridDimX = query_seq_len;
+  uint32_t GridDimY = (attn_mul_batch + batches_per_block) / batches_per_block;
+  uint32_t totoal_blocks = GridDimX * GridDimY;
 
   dim3 blocks(totoal_blocks);
 
