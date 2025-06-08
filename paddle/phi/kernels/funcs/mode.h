@@ -172,7 +172,7 @@ static void GetModebySort(const phi::GPUContext& dev_ctx,
                                            begin + 1,
                                            0,
                                            thrust::plus<int>(),
-                                           thrust::not_equal_to<T>());       
+                                           thrust::not_equal_to<T>());
     thrust::device_vector<T> keys_data(unique);
     thrust::device_vector<int64_t> cnts_data(unique);
     thrust::reduce_by_key(thrust::device,
