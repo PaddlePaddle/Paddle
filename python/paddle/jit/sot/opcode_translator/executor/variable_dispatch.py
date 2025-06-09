@@ -988,7 +988,7 @@ def is_func(var: VariableBase, other: VariableBase):
     if var.get_py_type() is not other.get_py_type():
         return ConstantVariable(False, var.graph, DummyTracker([var, other]))
     return ConstantVariable(
-        True,
+        var.get_py_value() is other.get_py_value(),
         var.graph,
         DummyTracker([var, other]),
     )
