@@ -207,7 +207,7 @@ void ArgFullSort(const phi::GPUContext& ctx,
   }
 }
 template <typename T, typename IndType>
-void PerSort(const auto exec_policy,
+void PerSort(const thrust::cuda_cub::par_t::stream_attachment_type exec_policy,
              T* out_data,
              int64_t* ids_data,
              IndType start,
@@ -349,7 +349,7 @@ void ArgsortKernel(const Context& dev_ctx,
     auto cu_stream = dev_ctx.stream();
     thrust::sequence(exec_policy, ids_data, ids_data + size);
     thrust::copy(exec_policy, in_data, in_data + size, out_data);
-    const int64_t per_number = 1 << 31 - 1;
+    const int64_t per_number = (1 << 31) - 1;
     int64_t start = 0;
     int64_t end = std::min(start + per_number, size);
     if (end == size) {
@@ -357,10 +357,13 @@ void ArgsortKernel(const Context& dev_ctx,
           exec_policy, out_data, ids_data, start, end, stable, descending);
     } else {
       // Sorting the segments and then merging them
-      T* temp_data;
-      int64_t* temp_ids;
-      cudaMalloc(reinterpret_cast<void**>(&temp_data), size * sizeof(T));
-      cudaMalloc(reinterpret_cast<void**>(&temp_ids), size * sizeof(int64_t));
+      DenseTensor temp;
+      DenseTensor ids;
+      temp.Resize(in_dims);
+      ids.Resize(in_dims);
+      T* temp_data = dev_ctx.template Alloc<T>(&temp);
+      int64_t* temp_ids = dev_ctx.template Alloc<int64_t>(&ids);
+
       while (start != size) {
         PerSort<T, int64_t>(
             exec_policy, out_data, ids_data, start, end, stable, descending);
@@ -378,15 +381,12 @@ void ArgsortKernel(const Context& dev_ctx,
                                       temp_data,
                                       temp_ids,
                                       descending);
-          cudaDeviceSynchronize();
           thrust::copy(exec_policy, temp_ids, temp_ids + end, ids_data);
           thrust::copy(exec_policy, temp_data, temp_data + end, out_data);
         }
         start = end;
         end = std::min(start + per_number, size);
       }
-      cudaFree(temp_data);
-      cudaFree(temp_ids);
     }
     return;
   }
