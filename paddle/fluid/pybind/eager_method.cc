@@ -1632,54 +1632,40 @@ static PyObject* tensor__getitem_dygraph(TensorObject* self,
       //           << std::endl;
       // std::cout << "transed_index shape: " << transed_index[0].dims()
       //           << std::endl;
-      // transed_index = expand_outplace(transed_index);
+      transed_index = expand_outplace(transed_index);
       // std::cout << "transed_index shape 1: " << transed_index[0].dims()
       //           << std::endl;
 
-      // while (transed_index.size() <
-      //        static_cast<size_t>(transed_tensor.dims().size())) {
-      //   transed_index.emplace_back(empty_ad_func(
-      //       {}, transed_index[0].dtype(), transed_index[0].place()));
-      // }
+      while (transed_index.size() <
+             static_cast<size_t>(transed_tensor.dims().size())) {
+        transed_index.emplace_back(empty_ad_func(
+            {}, transed_index[0].dtype(), transed_index[0].place()));
+      }
       // std::cout << "transed_index shape 2: " << transed_index[0].dims()
       //           << std::endl;
 
-      // AdvancedIndex ad = AdvancedIndex(transed_tensor, transed_index);
-      // out = index_elementwise_get_ad_func(transed_tensor,
-      //                                     ad.indices,
-      //                                     ad.src_sizes,
-      //                                     ad.src_strides,
-      //                                     ad.indexed_sizes,
-      //                                     ad.indexed_strides);
-      // std::cout << "out shape: " << out.dims() << std::endl;
-      // out = reshape_ad_func(out, ad.src_sizes);
-      // paddle::Tensor flattened_tensor = transed_index[0].contiguous();
-      // std::cout << "flattened_tensor shape: " << flattened_tensor.dims()
-      //           << std::endl;
-      // flattened_tensor.reshape({-1});
-      paddle::Tensor flattened_tensor =
-          flatten_ad_func(transed_index[0], 0, -1);
-      // std::cout << "flattened_tensor shape 1: " << flattened_tensor.dims()
-      //           << std::endl;
-      out = gather_ad_func(transed_tensor, flattened_tensor);
+      AdvancedIndex ad = AdvancedIndex(transed_tensor, transed_index);
+      out = index_elementwise_get_ad_func(transed_tensor,
+                                          ad.indices,
+                                          ad.src_sizes,
+                                          ad.src_strides,
+                                          ad.indexed_sizes,
+                                          ad.indexed_strides);
       // std::cout << "out shape: " << out.dims() << std::endl;
 
-      std::vector<paddle::Tensor> transed_index_tmp =
-          expand_outplace(transed_index);
-      while (transed_index_tmp.size() <
-             static_cast<size_t>(transed_tensor.dims().size())) {
-        transed_index_tmp.emplace_back(empty_ad_func(
-            {}, transed_index_tmp[0].dtype(), transed_index_tmp[0].place()));
-      }
+      // paddle::Tensor flattened_tensor =
+      //     flatten_ad_func(transed_index[0], 0, -1);
 
-      // std::cout << "transed_index_tmp shape 2: " <<
-      // transed_index_tmp[0].dims()
-      //           << std::endl;
-      AdvancedIndex ad = AdvancedIndex(transed_tensor, transed_index_tmp);
-      // out.reshape(ad.src_sizes);
-      // std::cout << "out shape 1: " << out.dims() << std::endl;
+      // out = gather_ad_func(transed_tensor, flattened_tensor);
+      // std::vector<paddle::Tensor> transed_index_tmp =
+      //     expand_outplace(transed_index);
+      // while (transed_index_tmp.size() <
+      //        static_cast<size_t>(transed_tensor.dims().size())) {
+      //   transed_index_tmp.emplace_back(empty_ad_func(
+      //       {}, transed_index_tmp[0].dtype(), transed_index_tmp[0].place()));
+      // }
+      // AdvancedIndex ad = AdvancedIndex(transed_tensor, transed_index_tmp);
       // out = reshape_ad_func(out, ad.src_sizes);
-      out = reshape_ad_func(out, ad.src_sizes);
     }
   }
 
