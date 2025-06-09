@@ -97,9 +97,9 @@ def set_item_bench(
 
     gpu_exec_times = paddle.to_tensor(
         [s.elapsed_time(e) for s, e in zip(start_event, end_event)],
-        dtype=paddle_type[dtype],
+        dtype=paddle.float64,
     )
-    cpu_exec_times = paddle.to_tensor(cpu_exec_times, dtype=paddle_type[dtype])
+    cpu_exec_times = paddle.to_tensor(cpu_exec_times, dtype=paddle.float64)
 
     paddle_gpu = (paddle.mean(gpu_exec_times) * 1000).cpu().numpy().item()
     paddle_cpu = (cpu_exec_times / n_repeat).cpu().numpy().item()
@@ -140,9 +140,9 @@ def set_item_bench(
 
     gpu_exec_times = torch.tensor(
         [s.elapsed_time(e) for s, e in zip(start_event, end_event)],
-        dtype=torch_type[dtype],
+        dtype=torch.float64,
     )
-    cpu_exec_times = torch.tensor(cpu_exec_times, dtype=torch_type[dtype])
+    cpu_exec_times = torch.tensor(cpu_exec_times, dtype=torch.float64)
 
     torch_gpu = (torch.mean(gpu_exec_times) * 1000).cpu().numpy().item()
     torch_cpu = (cpu_exec_times / n_repeat).cpu().numpy().item()
@@ -206,9 +206,9 @@ def get_item_bench(
 
     gpu_exec_times = paddle.to_tensor(
         [s.elapsed_time(e) for s, e in zip(start_event, end_event)],
-        dtype=paddle_type[dtype],
+        dtype=paddle.float64,
     )
-    cpu_exec_times = paddle.to_tensor(cpu_exec_times, dtype=paddle_type[dtype])
+    cpu_exec_times = paddle.to_tensor(cpu_exec_times, dtype=paddle.float64)
 
     paddle_gpu = (paddle.mean(gpu_exec_times) * 1000).cpu().numpy().item()
     paddle_cpu = (cpu_exec_times / n_repeat).cpu().numpy().item()
@@ -241,9 +241,9 @@ def get_item_bench(
 
     gpu_exec_times = torch.tensor(
         [s.elapsed_time(e) for s, e in zip(start_event, end_event)],
-        dtype=torch_type[dtype],
+        dtype=torch.float64,
     )
-    cpu_exec_times = torch.tensor(cpu_exec_times, dtype=torch_type[dtype])
+    cpu_exec_times = torch.tensor(cpu_exec_times, dtype=torch.float64)
 
     torch_gpu = (torch.mean(gpu_exec_times) * 1000).cpu().numpy().item()
     torch_cpu = (cpu_exec_times / n_repeat).cpu().numpy().item()
@@ -328,9 +328,9 @@ def set_item_grad_bench(
 
     gpu_exec_times = paddle.to_tensor(
         [s.elapsed_time(e) for s, e in zip(start_event, end_event)],
-        dtype=paddle_type[dtype],
+        dtype=paddle.float64,
     )
-    cpu_exec_times = paddle.to_tensor(cpu_exec_times, dtype=paddle_type[dtype])
+    cpu_exec_times = paddle.to_tensor(cpu_exec_times, dtype=paddle.float64)
     paddle_gpu = (paddle.mean(gpu_exec_times) * 1000).cpu().numpy().item()
     paddle_cpu = (cpu_exec_times / n_repeat).cpu().numpy().item()
 
@@ -382,9 +382,9 @@ def set_item_grad_bench(
 
     gpu_exec_times = torch.tensor(
         [s.elapsed_time(e) for s, e in zip(start_event, end_event)],
-        dtype=torch_type[dtype],
+        dtype=torch.float64,
     )
-    cpu_exec_times = torch.tensor(cpu_exec_times, dtype=torch_type[dtype])
+    cpu_exec_times = torch.tensor(cpu_exec_times, dtype=torch.float64)
     torch_gpu = (torch.mean(gpu_exec_times) * 1000).cpu().numpy().item()
     torch_cpu = (cpu_exec_times / n_repeat).cpu().numpy().item()
     for i in range(len(grad_x)):
@@ -453,9 +453,9 @@ def get_item_grad_bench(
 
     gpu_exec_times = paddle.to_tensor(
         [s.elapsed_time(e) for s, e in zip(start_event, end_event)],
-        dtype=paddle_type[dtype],
+        dtype=paddle.float64,
     )
-    cpu_exec_times = paddle.to_tensor(cpu_exec_times, dtype=paddle_type[dtype])
+    cpu_exec_times = paddle.to_tensor(cpu_exec_times, dtype=paddle.float64)
     paddle_gpu = (paddle.mean(gpu_exec_times) * 1000).cpu().numpy().item()
     paddle_cpu = (cpu_exec_times / n_repeat).cpu().numpy().item()
 
@@ -495,9 +495,9 @@ def get_item_grad_bench(
 
     gpu_exec_times = torch.tensor(
         [s.elapsed_time(e) for s, e in zip(start_event, end_event)],
-        dtype=torch_type[dtype],
+        dtype=torch.float64,
     )
-    cpu_exec_times = torch.tensor(cpu_exec_times, dtype=torch_type[dtype])
+    cpu_exec_times = torch.tensor(cpu_exec_times, dtype=torch.float64)
 
     torch_gpu = (torch.mean(gpu_exec_times) * 1000).cpu().numpy().item()
     torch_cpu = (cpu_exec_times / n_repeat).cpu().numpy().item()
@@ -568,6 +568,7 @@ def test_dtype(
                 dtype=dtype,
                 is_tensor=is_tensor,
             )
+
             if key == "combined" and i == 3:
                 continue
             set_item_grad_bench(
@@ -802,6 +803,10 @@ def main():
     print(" n_warmup = ", n_warmup)
 
     test_dtype(
+        first_index_dict, second_index_dict, n_repeat, n_warmup, dtype="float32"
+    )
+    print()
+    test_dtype(
         first_index_dict,
         second_index_dict,
         n_repeat,
@@ -809,9 +814,7 @@ def main():
         dtype="float32",
         is_tensor=True,
     )
-    test_dtype(
-        first_index_dict, second_index_dict, n_repeat, n_warmup, dtype="float32"
-    )
+    print()
     test_dtype(
         first_index_dict, second_index_dict, n_repeat, n_warmup, dtype="float16"
     )
