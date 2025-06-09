@@ -1,57 +1,133 @@
 import numpy as np
 import paddle
 import paddle.incubate.nn.functional as F
-#import test_quant
+import unittest
 
-'''
-Swiglu Function:
-out = silu(x) * y when y is not None
-out = silu(xs[0]) * xs[1] when y is None, where xs = paddle.chunk(x, 2, axis=-1)
-'''
 
-def dequantize_fp8_to_bf16(fp8_tensor: paddle.Tensor, 
-                           scale: paddle.Tensor) -> paddle.Tensor:
-    expanded_scale = paddle.repeat_interleave(
-        scale, 
-        repeats=128, 
-        axis=-1
-    )
-    # 非规整情况，需要截断
-    expanded_scale = expanded_scale[:, :fp8_tensor.shape[-1]]
-    return (fp8_tensor.astype('float32') * expanded_scale)
+class TestFusedWeightedSwigluActQuant(unittest.TestCase):
+    """Test cases for paddle.fused_weighted_swiglu_act_quant function"""
+    
+    def setUp(self):
+        """Set up test fixtures before each test method."""
+        paddle.seed(42)
+        np.random.seed(42)
+    
+    def dequantize_fp8_to_bf16(self, fp8_tensor: paddle.Tensor, 
+                              scale: paddle.Tensor) -> paddle.Tensor:
+        """Helper function to dequantize fp8 tensor to bf16"""
+        expanded_scale = paddle.repeat_interleave(
+            scale,
+            repeats=128,
+            axis=-1
+        )
+        # Handle non-aligned cases by truncating
+        expanded_scale = expanded_scale[:, :fp8_tensor.shape[-1]]
+        return (fp8_tensor.astype('float32') * expanded_scale)
+    
+    def _test_single_case(self, height: int, width: int):
+        """Test single case with given height and width"""
+        # Generate test data
+        x = paddle.clip(
+            paddle.randn([height, width]).astype("bfloat16"), 
+            min=-50, 
+            max=50
+        )
+        prob = paddle.randn([height, 1]).astype("float32")
+        
+        # Compute golden result
+        golden_res = F.swiglu(x) * prob
+        
+        # Compute fused result
+        fused_res, fused_scales = paddle.nn.functional.fused_weighted_swiglu_act_quant(
+            x, prob, using_pow2_scaling=False
+        )
+        
+        # Dequantize fused result
+        dequantized_res = self.dequantize_fp8_to_bf16(fused_res, fused_scales)
+        
+        # Convert to numpy for comparison
+        golden_np = golden_res.astype("float32").numpy()
+        fused_np = dequantized_res.numpy()
+        
+        # Check for NaN values
+        nan_cnt_golden = np.sum(np.isnan(golden_np))
+        nan_cnt_fused = np.sum(np.isnan(fused_np))
+        
+        # Assert no NaN values
+        self.assertEqual(nan_cnt_golden, 0, 
+                        f"Golden result contains {nan_cnt_golden} NaN values")
+        self.assertEqual(nan_cnt_fused, 0, 
+                        f"Fused result contains {nan_cnt_fused} NaN values")
+        
+        # Assert numerical closeness
+        np.testing.assert_allclose(
+            golden_np, 
+            fused_np, 
+            rtol=0.01, 
+            atol=1,
+            err_msg=f"Results don't match for shape [{height}, {width}]"
+        )
+    
+    def test_width_4096_height_8192(self):
+        """Test case: width=4096, height=8192"""
+        self._test_single_case(height=8192, width=4096)
+    
+    def test_width_4096_height_16384(self):
+        """Test case: width=4096, height=16384"""
+        self._test_single_case(height=16384, width=4096)
+    
+    def test_width_4096_height_32768(self):
+        """Test case: width=4096, height=32768"""
+        self._test_single_case(height=32768, width=4096)
+    
+    def test_width_7168_height_8192(self):
+        """Test case: width=7168, height=8192"""
+        self._test_single_case(height=8192, width=7168)
+    
+    def test_width_7168_height_16384(self):
+        """Test case: width=7168, height=16384"""
+        self._test_single_case(height=16384, width=7168)
+    
+    def test_width_7168_height_32768(self):
+        """Test case: width=7168, height=32768"""
+        self._test_single_case(height=32768, width=7168)
+    
+    def test_all_combinations(self):
+        """Test all width and height combinations"""
+        widths = [4096, 7168]
+        heights = [8192, 16384, 32768]
+        
+        for width in widths:
+            for height in heights:
+                with self.subTest(width=width, height=height):
+                    self._test_single_case(height, width)
+    
+    def test_edge_cases(self):
+        """Test edge cases with smaller dimensions"""
+        # Test with smaller dimensions
+        small_cases = [
+            (128, 256),
+            (256, 512),
+            (512, 1024)
+        ]
+        
+        for height, width in small_cases:
+            with self.subTest(height=height, width=width):
+                self._test_single_case(height, width)
+    
+    def test_input_validation(self):
+        """Test input validation"""
+        # Test with invalid inputs
+        with self.assertRaises((ValueError, TypeError)):
+            # Test with mismatched dimensions
+            x = paddle.randn([100, 200]).astype("bfloat16")
+            prob = paddle.randn([150, 1]).astype("float32")  # Wrong height
+            paddle.nn.functional.fused_weighted_swiglu_act_quant(x, prob, using_pow2_scaling=False)
 
-def printany(te):
-    for i in range(te.shape[0]):
-        for j in range(te.shape[1]):
-            print(te[i][j], end=", ")
-        print()
-    print("-"*20)
 
-def verify():
-    for width in [4096,7168]:
-        for height in [8192, 16384, 32768]:
-            print("#"*60 + f" Testing width:{width}, height:{height} " + "#"*60)
-            x= paddle.clip(paddle.randn([height, width]).astype("bfloat16"), min=-50, max=50)
-            prob = paddle.randn([height, 1]).astype("float32")
-            np_results=[]
-            golden_res = F.swiglu(x) * prob 
-            fused_res, fused_scales = paddle.nn.functional.fused_weighted_swiglu_act_quant(x,prob, using_pow2_scaling=False)
-            np_results.append(golden_res.astype("float").numpy())
-            np_results.append(dequantize_fp8_to_bf16(fused_res, fused_scales).numpy())
-            nan_cnt_golden, nan_cnt_fused= np.sum(np.isnan(np_results[0])), np.sum(np.isnan(np_results[1]))
-            print(f"Nan count of Golden result: {nan_cnt_golden}; Nan count of Fused result: {nan_cnt_fused}")
-            try:
-                np.testing.assert_allclose(np_results[0], np_results[1], rtol=0.01, atol=1) #存在截断误差，atol=1，通常在1e-6
-                print("+++++++ Passed ++++++++")
-            except AssertionError as err:
-                print(err)
-            print(np_results[0])
-            print("_________")
-            print(np_results[1])
-                #compare_tensors(np_results[0], np_results[1])
-
-def run():
-    verify()
-
-if __name__ == "__main__":
-    run()
+if __name__ == '__main__':
+    # Set up test environment
+    paddle.device.set_device('cpu')  # or 'gpu' if available
+    
+    # Run tests
+    unittest.main(verbosity=2)
