@@ -67,7 +67,7 @@ __global__ void index_select_grad_init(T* input_grad, int64_t N) {
 #endif
 template <typename T, typename Context>
 void RepeatInterleaveWithTensorIndexGradKernel(
-    const Context& ctx,
+    const Context& dev_ctx,
     const DenseTensor& x,
     const DenseTensor& repeats_tensor,
     const DenseTensor& out_grad,
@@ -110,9 +110,9 @@ void RepeatInterleaveWithTensorIndexGradKernel(
   int64_t numel = x_grad->numel();
   int64_t out_nums = out_grad.numel();
   auto* out_grad_data = out_grad.data<T>();
-  ctx.template Alloc<T>(x_grad);
+  dev_ctx.template Alloc<T>(x_grad);
   auto* in_grad_data = x_grad->data<T>();
-  auto stream = ctx.stream();
+  auto stream = dev_ctx.stream();
   index_select_grad_init<T>
       <<<(numel + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS,
          PADDLE_CUDA_NUM_THREADS,
@@ -121,7 +121,7 @@ void RepeatInterleaveWithTensorIndexGradKernel(
 
   if (index_type == DataType::INT64) {
     phi::funcs::RepeatsTensor2IndexTensor<Context, int64_t>(
-        ctx, repeats_tensor, &index);
+        dev_ctx, repeats_tensor, &index);
     int64_t index_nums = index.numel();
 
     const int64_t* index_data = index.data<int64_t>();
@@ -138,7 +138,7 @@ void RepeatInterleaveWithTensorIndexGradKernel(
                      delta);
   } else {
     phi::funcs::RepeatsTensor2IndexTensor<Context, int>(
-        ctx, repeats_tensor, &index);
+        dev_ctx, repeats_tensor, &index);
     int64_t index_nums = index.numel();
 
     const int* index_data = index.data<int>();
@@ -158,14 +158,14 @@ void RepeatInterleaveWithTensorIndexGradKernel(
 }
 
 template <typename T, typename Context>
-void RepeatInterleaveGradKernel(const Context& ctx,
+void RepeatInterleaveGradKernel(const Context& dev_ctx,
                                 const DenseTensor& x,
                                 const DenseTensor& out_grad,
                                 int repeats,
                                 int dim,
                                 DenseTensor* x_grad) {
   if (x_grad && x_grad->numel() == 0) {
-    ctx.template Alloc<T>(x_grad);
+    dev_ctx.template Alloc<T>(x_grad);
     return;
   }
   auto input_dim = x_grad->dims();
@@ -183,9 +183,9 @@ void RepeatInterleaveGradKernel(const Context& ctx,
   int64_t numel = x_grad->numel();
   int64_t out_nums = out_grad.numel();
   auto* out_grad_data = out_grad.data<T>();
-  ctx.template Alloc<T>(x_grad);
+  dev_ctx.template Alloc<T>(x_grad);
   auto* in_grad_data = x_grad->data<T>();
-  auto stream = ctx.stream();
+  auto stream = dev_ctx.stream();
   index_select_grad_init<T>
       <<<(numel + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS,
          PADDLE_CUDA_NUM_THREADS,
@@ -197,7 +197,7 @@ void RepeatInterleaveGradKernel(const Context& ctx,
     std::fill_n(index_vec.begin() + i * repeats, repeats, i);
   }
   index.Resize(common::make_ddim({index_size}));
-  phi::TensorFromVector<int>(index_vec, ctx, &index);
+  phi::TensorFromVector<int>(index_vec, dev_ctx, &index);
 
   const int* index_data = index.data<int>();
   int64_t index_nums = index.numel();

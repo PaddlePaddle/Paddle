@@ -20,7 +20,7 @@
 namespace phi {
 
 template <typename T, typename TW, typename Context>
-void LayerNormKernelImpl(const Context& ctx,
+void LayerNormKernelImpl(const Context& dev_ctx,
                          const DenseTensor& x,
                          const paddle::optional<DenseTensor>& scale,
                          const paddle::optional<DenseTensor>& bias,
@@ -39,12 +39,12 @@ void LayerNormKernelImpl(const Context& ctx,
   const auto* x_data = x.data<T>();
   const auto* scale_data = scale.get_ptr() ? scale->data<TW>() : nullptr;
   const auto* bias_data = bias.get_ptr() ? bias->data<TW>() : nullptr;
-  xpu::ctx_guard RAII_GUARD(ctx.x_context());
-  auto* out_data = ctx.template Alloc<T>(out);
-  auto* mean_data = ctx.template Alloc<float>(mean);
-  auto* variance_data = ctx.template Alloc<float>(variance);
+  xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
+  auto* out_data = dev_ctx.template Alloc<T>(out);
+  auto* mean_data = dev_ctx.template Alloc<float>(mean);
+  auto* variance_data = dev_ctx.template Alloc<float>(variance);
 
-  int r = xpu::layer_norm(ctx.x_context(),
+  int r = xpu::layer_norm(dev_ctx.x_context(),
                           reinterpret_cast<const XPUType*>(x_data),
                           reinterpret_cast<XPUType*>(out_data),
                           left,
@@ -58,7 +58,7 @@ void LayerNormKernelImpl(const Context& ctx,
 }
 
 template <typename T, typename Context>
-void LayerNormKernel(const Context& ctx,
+void LayerNormKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      const paddle::optional<DenseTensor>& scale,
                      const paddle::optional<DenseTensor>& bias,
@@ -95,10 +95,10 @@ void LayerNormKernel(const Context& ctx,
 
   if (is_scale_bias_same_dtype_with_x) {
     LayerNormKernelImpl<T, T, Context>(
-        ctx, x, scale, bias, epsilon, begin_norm_axis, out, mean, variance);
+        dev_ctx, x, scale, bias, epsilon, begin_norm_axis, out, mean, variance);
   } else {
     LayerNormKernelImpl<T, float, Context>(
-        ctx, x, scale, bias, epsilon, begin_norm_axis, out, mean, variance);
+        dev_ctx, x, scale, bias, epsilon, begin_norm_axis, out, mean, variance);
   }
 }
 }  // namespace phi

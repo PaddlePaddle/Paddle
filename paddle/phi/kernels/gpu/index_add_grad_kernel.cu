@@ -27,7 +27,7 @@ namespace phi {
 using phi::PADDLE_CUDA_NUM_THREADS;
 
 template <typename T, typename Context>
-void IndexAddGradKernel(const Context& ctx,
+void IndexAddGradKernel(const Context& dev_ctx,
                         const DenseTensor& index,
                         const DenseTensor& add_value,
                         const DenseTensor& out_grad,
@@ -59,20 +59,20 @@ void IndexAddGradKernel(const Context& ctx,
   if (numel == 0) {
     return;
   }
-  auto stream = ctx.stream();
+  auto stream = dev_ctx.stream();
 
   // get x_grad: copy out_grad to x_grad.
   if (x_grad) {
-    phi::Copy(ctx, out_grad, ctx.GetPlace(), false, x_grad);
+    phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
   }
 
   // get add_value_grad: index_select(out_grad, index, axis)
   if (add_value_grad) {
     auto* output_grad_data = out_grad.data<T>();
-    auto* add_value_grad_data = ctx.template Alloc<T>(add_value_grad);
+    auto* add_value_grad_data = dev_ctx.template Alloc<T>(add_value_grad);
     unsigned int block_dim = PADDLE_CUDA_NUM_THREADS;
     dim3 grid_dim = dim3((numel + block_dim - 1) / block_dim);
-    phi::backends::gpu::LimitGridDim(ctx, &grid_dim);
+    phi::backends::gpu::LimitGridDim(dev_ctx, &grid_dim);
 
     if (index_type == phi::DataType::INT64) {
       const int64_t* index_data = index.data<int64_t>();
