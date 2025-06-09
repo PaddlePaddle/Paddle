@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/infermeta/spmd_rules/fused_gemm_epilogue.h"
-#include "paddle/phi/infermeta/spmd_rules/matmul.h"
 
 #include "glog/logging.h"
 
@@ -109,49 +108,56 @@ TensorDistAttr GetMatmulPartInferredDistAttr(
   dist_attr.set_dims_mapping(inferred_dims_mapping);
   return dist_attr;
 }
+void SetTensorDistAttrReplicated(TensorDistAttr* dist_attr, const int ndim) {
+  if (ndim >= 2) {
+    std::vector<int64_t> replicated_dims_mapping;
+    replicated_dims_mapping.reserve(ndim);
+    for (int i = 0; i < ndim; ++i) {
+      if (ndim - i > 2) {
+        replicated_dims_mapping.push_back(dist_attr->dims_mapping()[i]);
+      } else {
+        replicated_dims_mapping.push_back(-1);
+      }
+    }
+    dist_attr->set_dims_mapping(replicated_dims_mapping);
+  } else {
+    dist_attr->set_dims_mapping({-1});
+  }
+}
 SpmdInfo FusedGemmEpilogueInferSpmdBase(const DistMetaTensor& x,
                                         const DistMetaTensor& y,
                                         const DistMetaTensor& bias,
                                         bool trans_x,
                                         bool trans_y) {
-  auto x_shape = common::vectorize(x.dims());
-  int x_ndim = static_cast<int>(x_shape.size());
-  TensorDistAttr x_dist_attr_src = x.dist_attr();
-  std::vector<int64_t> x_dims_mapping_src = x_dist_attr_src.dims_mapping();
-  auto y_shape = common::vectorize(y.dims());
-  int y_ndim = static_cast<int>(y_shape.size());
-  TensorDistAttr y_dist_attr_src = y.dist_attr();
-  std::vector<int64_t> y_dims_mapping_src = y_dist_attr_src.dims_mapping();
-  auto bias_shape = common::vectorize(bias.dims());
-  int bias_ndim = static_cast<int>(bias_shape.size());
-  TensorDistAttr bias_dist_attr_src = bias.dist_attr();
-  std::vector<int64_t> bias_dims_mapping_src =
-      bias_dist_attr_src.dims_mapping();
+  // Step0: verify input args based on matmul logic
+  auto ori_x_shape = common::vectorize(x.dims());
+  auto ori_y_shape = common::vectorize(y.dims());
+  auto ori_bias_shape = common::vectorize(bias.dims());
+  int x_ndim = static_cast<int>(ori_x_shape.size());
+  int y_ndim = static_cast<int>(ori_y_shape.size());
+  int bias_ndim = static_cast<int>(ori_bias_shape.size());
+  const auto& x_dist_attr_src = x.dist_attr();
+  const auto& y_dist_attr_src = y.dist_attr();
+  const auto& bias_dist_attr_src = bias.dist_attr();
+  std::vector<int64_t> x_dims_mapping = x_dist_attr_src.dims_mapping();
+  std::vector<int64_t> y_dims_mapping = y_dist_attr_src.dims_mapping();
+  std::vector<int64_t> bias_dims_mapping = bias_dist_attr_src.dims_mapping();
 
-  auto matmul_spmd_info = MatmulInferSpmd(x, y, trans_x, trans_y);
+  PADDLE_ENFORCE_EQ(x_ndim,
+                    x_dims_mapping.size(),
+                    common::errors::InvalidArgument(
+                        "FusedGemmEpilogue, The Tensor X's rank [%d] and X's "
+                        "dims_mapping size [%d] are not matched.",
+                        x_ndim,
+                        x_dims_mapping.size()));
+  PADDLE_ENFORCE_EQ(y_ndim,
+                    y_dims_mapping.size(),
+                    common::errors::InvalidArgument(
+                        "FusedGemmEpilogue, The Tensor Y's rank [%d] and Y's "
+                        "dims_mapping size [%d] are not matched.",
+                        y_ndim,
+                        y_dims_mapping.size()));
 
-  TensorDistAttr x_dist_attr_dst =
-      PADDLE_GET_CONST(TensorDistAttr, matmul_spmd_info.first[0]);
-  VLOG(4) << "x_dist_attr_dst: " << x_dist_attr_dst;
-  std::vector<int64_t> x_dims_mapping_dst = x_dist_attr_dst.dims_mapping();
-  TensorDistAttr y_dist_attr_dst =
-      PADDLE_GET_CONST(TensorDistAttr, matmul_spmd_info.first[1]);
-  VLOG(4) << "y_dist_attr_dst: " << y_dist_attr_dst;
-  std::vector<int64_t> y_dims_mapping_dst = y_dist_attr_dst.dims_mapping();
-  TensorDistAttr matmul_out_dist_attr_src =
-      PADDLE_GET_CONST(TensorDistAttr, matmul_spmd_info.second[0]);
-  VLOG(4) << "matmul_out_dist_attr_src: " << matmul_out_dist_attr_src;
-  std::vector<int64_t> matmul_out_dims_mapping_src =
-      matmul_out_dist_attr_src.dims_mapping();
-
-  if (matmul_out_dist_attr_src.is_partial()) {
-    VLOG(4) << "matmul_out_dist_attr_src is is_partial:"
-            << matmul_out_dist_attr_src;
-    matmul_out_dist_attr_src.clean_partial_status();
-    VLOG(4) << "matmul_out_dist_attr_src clean partial status:"
-            << matmul_out_dist_attr_src;
-  }
-  // Step0: Verify Input Args Based on Elementwise Logic
   PADDLE_ENFORCE_EQ(
       bias_ndim,
       1,
@@ -159,90 +165,106 @@ SpmdInfo FusedGemmEpilogueInferSpmdBase(const DistMetaTensor& x,
           "FusedGemmEpilogue, The ndim of bias should be 1, but got [%d].",
           bias_ndim));
 
-  // Step1: Build Einsum Notation
-  std::string matmul_out_axes, bias_axes, out_axes;
-  std::string alphabet = "abcdefghijklmnopqrstuvwxyz";
+  VLOG(6) << "FusedGemmEpilogueSPMDRule InferForward Inputs: "
+          << "X shape: [" << str_join(ori_x_shape) << "], x_dims_mapping: ["
+          << str_join(x_dims_mapping) << "]; Y shape: ["
+          << str_join(ori_y_shape) << "], y_dims_mapping: ["
+          << str_join(y_dims_mapping) << "]; bias shape: ["
+          << str_join(ori_bias_shape) << "], bias_dims_mapping: ["
+          << str_join(bias_dims_mapping) << "]; trans_x: "
+          << "[" << (trans_x ? "true" : "false") << "]; "
+          << "trans_y: "
+          << "[" << (trans_y ? "true" : "false") << "]; ";
 
-  int matmul_out_ndim = std::max(x_ndim, y_ndim);
-  matmul_out_axes =
-      GetBroadcastAxes(matmul_out_ndim, matmul_out_ndim, alphabet);
-  bias_axes = GetBroadcastAxes(bias_ndim, matmul_out_ndim, alphabet);
-  out_axes = GetBroadcastAxes(matmul_out_ndim, matmul_out_ndim, alphabet);
+  // Step1: build Einsum Notation
+  std::string x_axes;
+  std::string y_axes;
+  std::string out_axes;
+  FillMatmulPartOperandNotation(x_ndim, y_ndim, &x_axes, &y_axes, &out_axes);
 
   // Step2: Sharding Propagation
-  // Step2.1: Merge input shardings
-  std::unordered_map<std::string, int64_t> axis_to_dim_map =
-      ShardingMergeForTensors({{matmul_out_axes, matmul_out_dims_mapping_src},
-                               {bias_axes, bias_dims_mapping_src}});
-
-  // Step2.2: Infer output dims mapping from merged input dims mapping
-  std::vector<int64_t> out_dims_mapping =
-      GetDimsMappingForAxes(out_axes, axis_to_dim_map);
-  TensorDistAttr out_dist_attr =
-      CopyTensorDistAttrForOutput(matmul_out_dist_attr_src);
-  out_dist_attr.set_dims_mapping(out_dims_mapping);
-
-  // Step2.3: Update inputs' dims mapping with merged one.
-  std::vector<int64_t> matmul_out_dims_mapping_dst =
-      GetDimsMappingForAxes(matmul_out_axes, axis_to_dim_map);
-  for (int64_t i = 0; i < matmul_out_ndim; ++i) {
-    if (matmul_out_dims_mapping_src[i] != matmul_out_dims_mapping_dst[i]) {
-      VLOG(4) << "matmul_out_dims_mapping_src and matmul_out_dims_mapping_dst "
-                 "is not equal"
-              << "Using MatmulInferSpmdReverse to ReInfer";
-      std::string x_axes;
-      std::string y_axes;
-      std::string out_reverse_axes;
-      FillMatmulPartOperandNotation(
-          x_ndim, y_ndim, &x_axes, &y_axes, &out_reverse_axes);
-      auto axis_to_dim_map_reverse = ShardingMergeForTensors(
-          {{out_reverse_axes, matmul_out_dims_mapping_dst}}, false);
-      x_dist_attr_dst = GetMatmulPartInferredDistAttr(
-          x_dist_attr_dst, x_shape, x_axes, axis_to_dim_map_reverse, trans_x);
-      y_dist_attr_dst = GetMatmulPartInferredDistAttr(
-          y_dist_attr_dst, y_shape, y_axes, axis_to_dim_map_reverse, trans_y);
-      break;
-    }
+  if (trans_x) {
+    PADDLE_ENFORCE_GE(
+        x_ndim,
+        2,
+        common::errors::InvalidArgument(
+            "FusedGemmEpilogue, When trans_x is True, the size of X "
+            "tensor should be greater than 2,  but got [%d].",
+            x_ndim));
+    std::iter_swap(x_dims_mapping.end() - 2, x_dims_mapping.end() - 1);
   }
+  if (trans_y) {
+    PADDLE_ENFORCE_GE(
+        y_ndim,
+        2,
+        common::errors::InvalidArgument(
+            "FusedGemmEpilogue, When trans_y is True, the size of Y "
+            "tensor should be greater than 2,  but got [%d].",
+            y_ndim));
+    std::iter_swap(y_dims_mapping.end() - 2, y_dims_mapping.end() - 1);
+  }
+  // Step2.1: Sharding Merge
+  std::pair<std::string, std::vector<int64_t>> x_pair(x_axes, x_dims_mapping);
+  std::pair<std::string, std::vector<int64_t>> y_pair(y_axes, y_dims_mapping);
+  auto axis_to_dim_map = ShardingMergeForTensors({x_pair, y_pair});
 
-  TensorDistAttr matmul_out_dist_attr_dst =
-      CopyTensorDistAttrForOutput(matmul_out_dist_attr_src);
-  matmul_out_dist_attr_dst.set_dims_mapping(
-      GetDimsMappingForAxes(matmul_out_axes, axis_to_dim_map));
+  // Step2.2: Infer Output's Dims Mapping.
+  TensorDistAttr output_dist_attr_dst =
+      CopyTensorDistAttrForOutput(x_dist_attr_src);
+  std::vector<int64_t> out_dims_mapping;
+  out_dims_mapping.reserve(out_axes.size());
+  for (size_t i = 0; i < out_axes.size(); ++i) {
+    out_dims_mapping.push_back(axis_to_dim_map[out_axes.substr(i, 1)]);
+  }
+  output_dist_attr_dst.set_dims_mapping(out_dims_mapping);
+
+  // Step2.3: Merge and get Inputs' New Dims Mapping.
+  auto x_shape = common::vectorize(x.dims());
+  auto y_shape = common::vectorize(y.dims());
+  if (trans_x) {
+    std::iter_swap(x_shape.end() - 2, x_shape.end() - 1);
+  }
+  if (trans_y) {
+    std::iter_swap(y_shape.end() - 2, y_shape.end() - 1);
+  }
+  TensorDistAttr x_dist_attr_dst = GetMatmulPartInferredDistAttr(
+      x_dist_attr_src, x_shape, x_axes, axis_to_dim_map, trans_x);
+  TensorDistAttr y_dist_attr_dst = GetMatmulPartInferredDistAttr(
+      y_dist_attr_src, y_shape, y_axes, axis_to_dim_map, trans_y);
   TensorDistAttr bias_dist_attr_dst =
       CopyTensorDistAttrForOutput(bias_dist_attr_src);
   bias_dist_attr_dst.set_dims_mapping(
-      GetDimsMappingForAxes(bias_axes, axis_to_dim_map));
+      {output_dist_attr_dst.dims_mapping().back()});
 
-  // Step3: Handle partial
-  VLOG(4) << "FusedGemmEpilogueSPMDRule InferForward:";
-  VLOG(4) << "Input0 shape: [" << str_join(x_shape) << "] "
-          << "src_dims_mapping: [" << str_join(x_dims_mapping_src) << "] "
-          << "dst_dims_mapping: [" << str_join(x_dist_attr_dst.dims_mapping())
-          << "]";
-  VLOG(4) << "Input1 shape: [" << str_join(y_shape) << "] "
-          << "src_dims_mapping: [" << str_join(y_dims_mapping_src) << "] "
-          << "dst_dims_mapping: [" << str_join(y_dist_attr_dst.dims_mapping())
-          << "]";
-  VLOG(4) << "matmul_out: "
-          << "src_dims_mapping: [" << str_join(matmul_out_dims_mapping_src)
-          << "] "
-          << "dst_dims_mapping: ["
-          << str_join(matmul_out_dist_attr_dst.dims_mapping()) << "]";
-  VLOG(4) << "Input2 shape: [" << str_join(bias_shape) << "] "
-          << "src_dims_mapping: [" << str_join(bias_dims_mapping_src) << "] "
-          << "dst_dims_mapping: ["
-          << str_join(bias_dist_attr_dst.dims_mapping()) << "]";
-  VLOG(4) << "Output dims_mapping: [" + str_join(out_dims_mapping) + "]\n\n";
+  // Step2.3: Handle Partial
+  // Step2.3.1 Output Partial
+  std::vector<int64_t> partial_on_dims =
+      ResoluteOutputPartialDimension(axis_to_dim_map, out_axes);
+  output_dist_attr_dst.set_partial_status(partial_on_dims);
 
-  TensorDistAttr out_reserve_dist_attr_dst =
-      CopyTensorDistAttrForOutput(out_dist_attr);
-
-  VLOG(4) << "matmul_out_dst_dims_mapping" << matmul_out_dist_attr_dst;
-  VLOG(4) << "out_dist_attr: " << out_dist_attr << "\n\n";
+  if (output_dist_attr_dst.is_partial()) {
+    VLOG(4) << "FusedGemmEpilogue not support partial output, force set output "
+               "to replicated.";
+    output_dist_attr_dst.clean_partial_status();
+    SetTensorDistAttrReplicated(&x_dist_attr_dst, x_ndim);
+    SetTensorDistAttrReplicated(&y_dist_attr_dst, y_ndim);
+    SetTensorDistAttrReplicated(&bias_dist_attr_dst, bias_ndim);
+    SetTensorDistAttrReplicated(&output_dist_attr_dst, out_axes.size());
+  }
+  TensorDistAttr output_reserve_dist_attr_dst =
+      CopyTensorDistAttrForOutput(output_dist_attr_dst);
+  VLOG(4) << "FusedGemmEpilogueSPMDRule InferForward: "
+          << "Einsum notation: [" << x_axes << "," << y_axes << " --> "
+          << out_axes << "+" << out_axes.back() << "]. " << std::endl;
+  LogInputDistAttr("X", ori_x_shape, x_dist_attr_src, x_dist_attr_dst);
+  LogInputDistAttr("Y", ori_y_shape, y_dist_attr_src, y_dist_attr_dst);
+  LogInputDistAttr(
+      "Bias", ori_bias_shape, bias_dist_attr_src, bias_dist_attr_dst);
+  LogOutputDistAttr("Output", output_dist_attr_dst);
+  VLOG(4) << std::endl;
 
   return {{x_dist_attr_dst, y_dist_attr_dst, bias_dist_attr_dst},
-          {out_dist_attr, out_reserve_dist_attr_dst}};
+          {output_dist_attr_dst, output_reserve_dist_attr_dst}};
 }
 SpmdInfo FusedGemmEpilogueInferSpmd(const DistMetaTensor& x,
                                     const DistMetaTensor& y,

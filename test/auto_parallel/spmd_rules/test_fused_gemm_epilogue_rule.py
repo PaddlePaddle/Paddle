@@ -53,7 +53,7 @@ class TestMatmulSPMDRule(unittest.TestCase):
     def test_fused_gemm_epilogue_infer_forward_bias_replicated(self):
         self.bias_dist_tensor_spec.set_dims_mapping([-1])
 
-        # test partial: mk[1, 0],kn[0, -1],bias[-1] --> mk[1, 0],kn[0, -1],bias[-1] = nm[1, -1] partial[0]
+        # has partial,force to replicate test partial: mk[1, 0],kn[0, -1],bias[-1] --> mk[1, 0],kn[0, -1],bias[-1] = nm[1, -1]
         self.x_dist_tensor_spec.set_dims_mapping([1, 0])
         self.y_dist_tensor_spec.set_dims_mapping([0, -1])
 
@@ -72,13 +72,13 @@ class TestMatmulSPMDRule(unittest.TestCase):
         self.assertEqual(len(inferred_input_dist_attrs), 3)
         self.assertEqual(len(inferred_output_dist_attrs), 2)
 
-        self.assertEqual(inferred_input_dist_attrs[0].dims_mapping, [1, 0])
-        self.assertEqual(inferred_input_dist_attrs[1].dims_mapping, [0, -1])
+        self.assertEqual(inferred_input_dist_attrs[0].dims_mapping, [-1, -1])
+        self.assertEqual(inferred_input_dist_attrs[1].dims_mapping, [-1, -1])
         self.assertEqual(inferred_input_dist_attrs[2].dims_mapping, [-1])
-        self.assertEqual(inferred_output_dist_attrs[0].dims_mapping, [1, -1])
+        self.assertEqual(inferred_output_dist_attrs[0].dims_mapping, [-1, -1])
         self.assertEqual(inferred_output_dist_attrs[0]._is_partial(), False)
 
-        # test row parallel: mk[1, -1],kn[-1, -1],bias[-1] --> mk[1, -1],kn[-1, -1],bias[-1] = nm[1, -1] partial[]
+        # test row parallel: mk[1, -1],kn[-1, -1],bias[-1] --> mk[1, -1],kn[-1, -1],bias[-1] = nm[1, -1]
         self.x_dist_tensor_spec.set_dims_mapping([1, -1])
         self.y_dist_tensor_spec.set_dims_mapping([-1, -1])
 
@@ -99,28 +99,7 @@ class TestMatmulSPMDRule(unittest.TestCase):
         self.assertEqual(inferred_output_dist_attrs[0].dims_mapping, [1, -1])
         self.assertEqual(inferred_output_dist_attrs[0]._is_partial(), False)
 
-        # test row parallel: mk[1, -1],kn[-1, -1],bias[-1] --> mk[1, -1],kn[-1, -1],bias[-1] = nm[1, -1] partial[]
-        self.x_dist_tensor_spec.set_dims_mapping([1, -1])
-        self.y_dist_tensor_spec.set_dims_mapping([-1, -1])
-
-        result_dist_attrs = self.rule.infer_forward(
-            self.x_dist_tensor_spec,
-            self.y_dist_tensor_spec,
-            self.bias_dist_tensor_spec,
-            False,
-            False,
-        )
-
-        inferred_input_dist_attrs = result_dist_attrs[0]
-        inferred_output_dist_attrs = result_dist_attrs[1]
-
-        self.assertEqual(inferred_input_dist_attrs[0].dims_mapping, [1, -1])
-        self.assertEqual(inferred_input_dist_attrs[1].dims_mapping, [-1, -1])
-        self.assertEqual(inferred_input_dist_attrs[2].dims_mapping, [-1])
-        self.assertEqual(inferred_output_dist_attrs[0].dims_mapping, [1, -1])
-        self.assertEqual(inferred_output_dist_attrs[0]._is_partial(), False)
-
-        # test n parallel: mk[-1, -1],kn[-1, 0],bias[-1] --> mk[-1, -1],kn[-1, 0],bias[0] = nm[-1, 0] partial[]
+        # test n parallel: mk[-1, -1],kn[-1, 0],bias[-1] --> mk[-1, -1],kn[-1, 0],bias[0] = nm[-1, 0]
         self.x_dist_tensor_spec.set_dims_mapping([-1, -1])
         self.y_dist_tensor_spec.set_dims_mapping([-1, 0])
 
@@ -141,7 +120,7 @@ class TestMatmulSPMDRule(unittest.TestCase):
         self.assertEqual(inferred_output_dist_attrs[0].dims_mapping, [-1, 0])
         self.assertEqual(inferred_output_dist_attrs[0]._is_partial(), False)
 
-        # test partial with propagation: mk[1, 0],kn[-1,-1],bias[-1] --> mk[1, 0],kn[0, -1],bias[-1] = nm[1, -1] partial[0]
+        # has partial,force to replicate test partial with propagation: mk[1, 0],kn[-1,-1],bias[-1] --> mk[1, 0],kn[0, -1],bias[-1] = nm[1, -1]
         self.x_dist_tensor_spec.set_dims_mapping([1, 0])
         self.y_dist_tensor_spec.set_dims_mapping([-1, -1])
         self.bias_dist_tensor_spec.set_dims_mapping([-1])
@@ -157,13 +136,13 @@ class TestMatmulSPMDRule(unittest.TestCase):
         inferred_input_dist_attrs = result_dist_attrs[0]
         inferred_output_dist_attrs = result_dist_attrs[1]
 
-        self.assertEqual(inferred_input_dist_attrs[0].dims_mapping, [1, 0])
-        self.assertEqual(inferred_input_dist_attrs[1].dims_mapping, [0, -1])
+        self.assertEqual(inferred_input_dist_attrs[0].dims_mapping, [-1, -1])
+        self.assertEqual(inferred_input_dist_attrs[1].dims_mapping, [-1, -1])
         self.assertEqual(inferred_input_dist_attrs[2].dims_mapping, [-1])
-        self.assertEqual(inferred_output_dist_attrs[0].dims_mapping, [1, -1])
+        self.assertEqual(inferred_output_dist_attrs[0].dims_mapping, [-1, -1])
         self.assertEqual(inferred_output_dist_attrs[0]._is_partial(), False)
 
-        # mk[-1,-1],kn[1,0],bias[-1] --> mk[-1, 1],kn[1, 0],bias[0] = nm[-1, 0] partial[1]
+        # has partial,force to replicate mk[-1,-1],kn[1,0],bias[-1] --> mk[-1, 1],kn[1, 0],bias[0] = nm[-1, 0]
         self.x_dist_tensor_spec.set_dims_mapping([-1, -1])
         self.y_dist_tensor_spec.set_dims_mapping([1, 0])
         self.bias_dist_tensor_spec.set_dims_mapping([-1])
@@ -179,15 +158,15 @@ class TestMatmulSPMDRule(unittest.TestCase):
         inferred_input_dist_attrs = result_dist_attrs[0]
         inferred_output_dist_attrs = result_dist_attrs[1]
 
-        self.assertEqual(inferred_input_dist_attrs[0].dims_mapping, [-1, 1])
-        self.assertEqual(inferred_input_dist_attrs[1].dims_mapping, [1, 0])
-        self.assertEqual(inferred_input_dist_attrs[2].dims_mapping, [0])
-        self.assertEqual(inferred_output_dist_attrs[0].dims_mapping, [-1, 0])
+        self.assertEqual(inferred_input_dist_attrs[0].dims_mapping, [-1, -1])
+        self.assertEqual(inferred_input_dist_attrs[1].dims_mapping, [-1, -1])
+        self.assertEqual(inferred_input_dist_attrs[2].dims_mapping, [-1])
+        self.assertEqual(inferred_output_dist_attrs[0].dims_mapping, [-1, -1])
         self.assertEqual(inferred_output_dist_attrs[0]._is_partial(), False)
 
-        # abcmk[1, 0, -1, -1],kn[-1, -1],bias[-1] --> abcmk[1, 0, -1, -1],kn[-1, -1],bias[-1] = abcmn[1, 0, -1, -1] partial[]
+        # abcmk[1, 0, -1, -1],kn[-1, -1],bias[-1] --> abcmk[1, 0, -1, -1],kn[-1, -1],bias[-1] = abcmn[1, 0, -1, -1]
         self.x_dist_tensor_spec.shape = [512, 48, 64, 32]
-        self.x_dist_tensor_spec.set_dims_mapping([0, 1, -1, -1])
+        self.x_dist_tensor_spec.set_dims_mapping([1, 0, -1, -1])
         self.y_dist_tensor_spec.set_dims_mapping([-1, -1])
 
         result_dist_attrs = self.rule.infer_forward(
@@ -200,16 +179,16 @@ class TestMatmulSPMDRule(unittest.TestCase):
         inferred_input_dist_attrs = result_dist_attrs[0]
         inferred_output_dist_attrs = result_dist_attrs[1]
         self.assertEqual(
-            inferred_input_dist_attrs[0].dims_mapping, [0, 1, -1, -1]
+            inferred_input_dist_attrs[0].dims_mapping, [1, 0, -1, -1]
         )
         self.assertEqual(inferred_input_dist_attrs[1].dims_mapping, [-1, -1])
         self.assertEqual(inferred_input_dist_attrs[2].dims_mapping, [-1])
         self.assertEqual(
-            inferred_output_dist_attrs[0].dims_mapping, [0, 1, -1, -1]
+            inferred_output_dist_attrs[0].dims_mapping, [1, 0, -1, -1]
         )
         self.assertEqual(inferred_output_dist_attrs[0]._is_partial(), False)
 
-        # abcmk[1, -1, -1, 0],kn[-1, -1],bias[-1] --> abcmk[1, -1, -1, 0],kn[0, -1],bias[-1] = abcmn[1,-1, -1, -1] partial[0]
+        # has partial,force to replicate abcmk[1, -1, -1, 0],kn[-1, -1],bias[-1] --> abcmk[1, -1, -1, 0],kn[0, -1],bias[-1] = abcmn[1,-1, -1, -1]
         self.x_dist_tensor_spec.set_dims_mapping([1, -1, -1, 0])
         self.y_dist_tensor_spec.set_dims_mapping([-1, -1])
 
@@ -224,16 +203,16 @@ class TestMatmulSPMDRule(unittest.TestCase):
         inferred_input_dist_attrs = result_dist_attrs[0]
         inferred_output_dist_attrs = result_dist_attrs[1]
         self.assertEqual(
-            inferred_input_dist_attrs[0].dims_mapping, [1, -1, -1, 0]
+            inferred_input_dist_attrs[0].dims_mapping, [1, -1, -1, -1]
         )
-        self.assertEqual(inferred_input_dist_attrs[1].dims_mapping, [0, -1])
+        self.assertEqual(inferred_input_dist_attrs[1].dims_mapping, [-1, -1])
         self.assertEqual(inferred_input_dist_attrs[2].dims_mapping, [-1])
         self.assertEqual(
             inferred_output_dist_attrs[0].dims_mapping, [1, -1, -1, -1]
         )
         self.assertEqual(inferred_output_dist_attrs[0]._is_partial(), False)
 
-        # trans_x = True, abcmk[1, -1, -1, 0], kn[-1, -1],bias[-1] --> abcmk[1, -1, -1, 0],kn[-1, -1],bias[-1] = abcmn[1, -1, 0, -1] partial[]
+        # trans_x = True, abcmk[1, -1, -1, 0], kn[-1, -1],bias[-1] --> abcmk[1, -1, -1, 0],kn[-1, -1],bias[-1] = abcmn[1, -1, 0, -1]
         self.x_dist_tensor_spec.set_dims_mapping([1, -1, -1, 0])
         self.y_dist_tensor_spec.set_dims_mapping([-1, -1])
 
@@ -257,7 +236,7 @@ class TestMatmulSPMDRule(unittest.TestCase):
         )
         self.assertEqual(inferred_output_dist_attrs[0]._is_partial(), False)
 
-        # trans_y = True, abcmk[-1, -1, -1, -1], kn[1, 0],bias[-1] --> abcmk[-1, -1, -1, 0],kn[1, 0],bias[1] = abcmn[-1, -1, -1, 1] partial[0]: done
+        # has partial,force to replicate trans_y = True, abcmk[-1, -1, -1, -1], kn[1, 0],bias[-1] --> abcmk[-1, -1, -1, 0],kn[1, 0],bias[1] = abcmn[-1, -1, -1, 1] partial[0]: done
         self.x_dist_tensor_spec.set_dims_mapping([-1, -1, -1, -1])
         self.y_dist_tensor_spec.set_dims_mapping([1, 0])
 
@@ -272,16 +251,16 @@ class TestMatmulSPMDRule(unittest.TestCase):
         inferred_input_dist_attrs = result_dist_attrs[0]
         inferred_output_dist_attrs = result_dist_attrs[1]
         self.assertEqual(
-            inferred_input_dist_attrs[0].dims_mapping, [-1, -1, -1, 0]
+            inferred_input_dist_attrs[0].dims_mapping, [-1, -1, -1, -1]
         )
-        self.assertEqual(inferred_input_dist_attrs[1].dims_mapping, [1, 0])
-        self.assertEqual(inferred_input_dist_attrs[2].dims_mapping, [1])
+        self.assertEqual(inferred_input_dist_attrs[1].dims_mapping, [-1, -1])
+        self.assertEqual(inferred_input_dist_attrs[2].dims_mapping, [-1])
         self.assertEqual(
-            inferred_output_dist_attrs[0].dims_mapping, [-1, -1, -1, 1]
+            inferred_output_dist_attrs[0].dims_mapping, [-1, -1, -1, -1]
         )
         self.assertEqual(inferred_output_dist_attrs[0]._is_partial(), False)
 
-        # trans_y = True, trans_x = True, abcmk[-1, -1, 0, 1], kn[1, 0],bias[-1] --> abcmk[-1, -1, 0, 1]],kn[-1, 0],bias[-1] = abcmn[-1, -1, 1, -1] partial[0]
+        # has partial,force to replicate trans_y = True, trans_x = True, abcmk[-1, -1, 0, 1], kn[1, 0],bias[-1] --> abcmk[-1, -1, 0, 1]],kn[-1, 0],bias[-1] = abcmn[-1, -1, 1, -1]
         # multiple mesh dim shard same tensor axis
         self.x_dist_tensor_spec.set_dims_mapping([-1, -1, 0, 1])
         self.y_dist_tensor_spec.set_dims_mapping([1, 0])
@@ -297,20 +276,200 @@ class TestMatmulSPMDRule(unittest.TestCase):
         inferred_input_dist_attrs = result_dist_attrs[0]
         inferred_output_dist_attrs = result_dist_attrs[1]
         self.assertEqual(
-            inferred_input_dist_attrs[0].dims_mapping, [-1, -1, 0, 1]
+            inferred_input_dist_attrs[0].dims_mapping, [-1, -1, -1, -1]
         )
-        self.assertEqual(inferred_input_dist_attrs[1].dims_mapping, [-1, 0])
+        self.assertEqual(inferred_input_dist_attrs[1].dims_mapping, [-1, -1])
         self.assertEqual(inferred_input_dist_attrs[2].dims_mapping, [-1])
         self.assertEqual(
-            inferred_output_dist_attrs[0].dims_mapping, [-1, -1, 1, -1]
+            inferred_output_dist_attrs[0].dims_mapping, [-1, -1, -1, -1]
         )
         self.assertEqual(inferred_output_dist_attrs[0]._is_partial(), False)
 
-    def bias_0():
-        pass
+    def test_fused_gemm_epilogue_infer_forward_bias_0(self):
+        self.bias_dist_tensor_spec.set_dims_mapping([0])
 
-    def bias_1():
-        pass
+        # test row parallel: mk[1, -1],kn[-1, -1],bias[0] --> mk[1, -1],kn[-1, -1],bias[-1] = nm[1, -1]
+        self.x_dist_tensor_spec.set_dims_mapping([1, -1])
+        self.y_dist_tensor_spec.set_dims_mapping([-1, -1])
+
+        result_dist_attrs = self.rule.infer_forward(
+            self.x_dist_tensor_spec,
+            self.y_dist_tensor_spec,
+            self.bias_dist_tensor_spec,
+            False,
+            False,
+        )
+
+        inferred_input_dist_attrs = result_dist_attrs[0]
+        inferred_output_dist_attrs = result_dist_attrs[1]
+
+        self.assertEqual(inferred_input_dist_attrs[0].dims_mapping, [1, -1])
+        self.assertEqual(inferred_input_dist_attrs[1].dims_mapping, [-1, -1])
+        self.assertEqual(inferred_input_dist_attrs[2].dims_mapping, [-1])
+        self.assertEqual(inferred_output_dist_attrs[0].dims_mapping, [1, -1])
+        self.assertEqual(inferred_output_dist_attrs[0]._is_partial(), False)
+
+        # test n parallel: mk[-1, -1],kn[-1, 0],bias[0] --> mk[-1, -1],kn[-1, 0],bias[0] = nm[-1, 0]
+        self.x_dist_tensor_spec.set_dims_mapping([-1, -1])
+        self.y_dist_tensor_spec.set_dims_mapping([-1, 0])
+
+        result_dist_attrs = self.rule.infer_forward(
+            self.x_dist_tensor_spec,
+            self.y_dist_tensor_spec,
+            self.bias_dist_tensor_spec,
+            False,
+            False,
+        )
+
+        inferred_input_dist_attrs = result_dist_attrs[0]
+        inferred_output_dist_attrs = result_dist_attrs[1]
+
+        self.assertEqual(inferred_input_dist_attrs[0].dims_mapping, [-1, -1])
+        self.assertEqual(inferred_input_dist_attrs[1].dims_mapping, [-1, 0])
+        self.assertEqual(inferred_input_dist_attrs[2].dims_mapping, [0])
+        self.assertEqual(inferred_output_dist_attrs[0].dims_mapping, [-1, 0])
+        self.assertEqual(inferred_output_dist_attrs[0]._is_partial(), False)
+
+        # abcmk[1, 0, -1, -1],kn[-1, -1],bias[0] --> abcmk[1, 0, -1, -1],kn[-1, -1],bias[-1] = abcmn[1, 0, -1, -1]
+        self.x_dist_tensor_spec.shape = [512, 48, 64, 32]
+        self.x_dist_tensor_spec.set_dims_mapping([1, 0, -1, -1])
+        self.y_dist_tensor_spec.set_dims_mapping([-1, -1])
+
+        result_dist_attrs = self.rule.infer_forward(
+            self.x_dist_tensor_spec,
+            self.y_dist_tensor_spec,
+            self.bias_dist_tensor_spec,
+            False,
+            False,
+        )
+        inferred_input_dist_attrs = result_dist_attrs[0]
+        inferred_output_dist_attrs = result_dist_attrs[1]
+        self.assertEqual(
+            inferred_input_dist_attrs[0].dims_mapping, [1, 0, -1, -1]
+        )
+        self.assertEqual(inferred_input_dist_attrs[1].dims_mapping, [-1, -1])
+        self.assertEqual(inferred_input_dist_attrs[2].dims_mapping, [-1])
+        self.assertEqual(
+            inferred_output_dist_attrs[0].dims_mapping, [1, 0, -1, -1]
+        )
+        self.assertEqual(inferred_output_dist_attrs[0]._is_partial(), False)
+
+        # trans_x = True, abcmk[1, -1, -1, 0], kn[-1, -1],bias[0] --> abcmk[1, -1, -1, 0],kn[-1, -1],bias[-1] = abcmn[1, -1, 0, -1]
+        self.x_dist_tensor_spec.set_dims_mapping([1, -1, -1, 0])
+        self.y_dist_tensor_spec.set_dims_mapping([-1, -1])
+
+        result_dist_attrs = self.rule.infer_forward(
+            self.x_dist_tensor_spec,
+            self.y_dist_tensor_spec,
+            self.bias_dist_tensor_spec,
+            True,
+            False,
+        )
+
+        inferred_input_dist_attrs = result_dist_attrs[0]
+        inferred_output_dist_attrs = result_dist_attrs[1]
+        self.assertEqual(
+            inferred_input_dist_attrs[0].dims_mapping, [1, -1, -1, 0]
+        )
+        self.assertEqual(inferred_input_dist_attrs[1].dims_mapping, [-1, -1])
+        self.assertEqual(inferred_input_dist_attrs[2].dims_mapping, [-1])
+        self.assertEqual(
+            inferred_output_dist_attrs[0].dims_mapping, [1, -1, 0, -1]
+        )
+        self.assertEqual(inferred_output_dist_attrs[0]._is_partial(), False)
+
+    def test_fused_gemm_epilogue_infer_forward_bias_1(self):
+        self.bias_dist_tensor_spec.set_dims_mapping([1])
+
+        # test row parallel: mk[1, -1],kn[-1, -1],bias[1] --> mk[1, -1],kn[-1, -1],bias[-1] = nm[1, -1]
+        self.x_dist_tensor_spec.set_dims_mapping([1, -1])
+        self.y_dist_tensor_spec.set_dims_mapping([-1, -1])
+
+        result_dist_attrs = self.rule.infer_forward(
+            self.x_dist_tensor_spec,
+            self.y_dist_tensor_spec,
+            self.bias_dist_tensor_spec,
+            False,
+            False,
+        )
+
+        inferred_input_dist_attrs = result_dist_attrs[0]
+        inferred_output_dist_attrs = result_dist_attrs[1]
+
+        self.assertEqual(inferred_input_dist_attrs[0].dims_mapping, [1, -1])
+        self.assertEqual(inferred_input_dist_attrs[1].dims_mapping, [-1, -1])
+        self.assertEqual(inferred_input_dist_attrs[2].dims_mapping, [-1])
+        self.assertEqual(inferred_output_dist_attrs[0].dims_mapping, [1, -1])
+        self.assertEqual(inferred_output_dist_attrs[0]._is_partial(), False)
+
+        # test n parallel: mk[-1, -1],kn[-1, 0],bias[1] --> mk[-1, -1],kn[-1, 0],bias[0] = nm[-1, 0]
+        self.x_dist_tensor_spec.set_dims_mapping([-1, -1])
+        self.y_dist_tensor_spec.set_dims_mapping([-1, 0])
+
+        result_dist_attrs = self.rule.infer_forward(
+            self.x_dist_tensor_spec,
+            self.y_dist_tensor_spec,
+            self.bias_dist_tensor_spec,
+            False,
+            False,
+        )
+
+        inferred_input_dist_attrs = result_dist_attrs[0]
+        inferred_output_dist_attrs = result_dist_attrs[1]
+
+        self.assertEqual(inferred_input_dist_attrs[0].dims_mapping, [-1, -1])
+        self.assertEqual(inferred_input_dist_attrs[1].dims_mapping, [-1, 0])
+        self.assertEqual(inferred_input_dist_attrs[2].dims_mapping, [0])
+        self.assertEqual(inferred_output_dist_attrs[0].dims_mapping, [-1, 0])
+        self.assertEqual(inferred_output_dist_attrs[0]._is_partial(), False)
+
+        # abcmk[1, 0, -1, -1],kn[-1, -1],bias[1] --> abcmk[1, 0, -1, -1],kn[-1, -1],bias[-1] = abcmn[1, 0, -1, -1]
+        self.x_dist_tensor_spec.shape = [512, 48, 64, 32]
+        self.x_dist_tensor_spec.set_dims_mapping([1, 0, -1, -1])
+        self.y_dist_tensor_spec.set_dims_mapping([-1, -1])
+
+        result_dist_attrs = self.rule.infer_forward(
+            self.x_dist_tensor_spec,
+            self.y_dist_tensor_spec,
+            self.bias_dist_tensor_spec,
+            False,
+            False,
+        )
+        inferred_input_dist_attrs = result_dist_attrs[0]
+        inferred_output_dist_attrs = result_dist_attrs[1]
+        self.assertEqual(
+            inferred_input_dist_attrs[0].dims_mapping, [1, 0, -1, -1]
+        )
+        self.assertEqual(inferred_input_dist_attrs[1].dims_mapping, [-1, -1])
+        self.assertEqual(inferred_input_dist_attrs[2].dims_mapping, [-1])
+        self.assertEqual(
+            inferred_output_dist_attrs[0].dims_mapping, [1, 0, -1, -1]
+        )
+        self.assertEqual(inferred_output_dist_attrs[0]._is_partial(), False)
+
+        # trans_x = True, abcmk[1, -1, -1, 0], kn[-1, -1],bias[1] --> abcmk[1, -1, -1, 0],kn[-1, -1],bias[-1] = abcmn[1, -1, 0, -1]
+        self.x_dist_tensor_spec.set_dims_mapping([1, -1, -1, 0])
+        self.y_dist_tensor_spec.set_dims_mapping([-1, -1])
+
+        result_dist_attrs = self.rule.infer_forward(
+            self.x_dist_tensor_spec,
+            self.y_dist_tensor_spec,
+            self.bias_dist_tensor_spec,
+            True,
+            False,
+        )
+
+        inferred_input_dist_attrs = result_dist_attrs[0]
+        inferred_output_dist_attrs = result_dist_attrs[1]
+        self.assertEqual(
+            inferred_input_dist_attrs[0].dims_mapping, [1, -1, -1, 0]
+        )
+        self.assertEqual(inferred_input_dist_attrs[1].dims_mapping, [-1, -1])
+        self.assertEqual(inferred_input_dist_attrs[2].dims_mapping, [-1])
+        self.assertEqual(
+            inferred_output_dist_attrs[0].dims_mapping, [1, -1, 0, -1]
+        )
+        self.assertEqual(inferred_output_dist_attrs[0]._is_partial(), False)
 
 
 if __name__ == "__main__":
