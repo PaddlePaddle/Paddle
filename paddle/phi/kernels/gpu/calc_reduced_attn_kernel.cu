@@ -25,7 +25,7 @@ struct CalcReducedAttnScoresParams : public FlashAttnParamsBase {
   bool return_softmax;
   DenseTensor* softmax;
 
-  CalcReducedAttnScoresParams(const GPUContext& ctx,
+  CalcReducedAttnScoresParams(const GPUContext& dev_ctx,
                               const int _batch_size,
                               const int64_t _max_seqlen_q,
                               const int64_t _max_seqlen_k,
@@ -51,7 +51,7 @@ struct CalcReducedAttnScoresParams : public FlashAttnParamsBase {
 #endif
 
 template <typename T, typename Context>
-void CalcReducedAttnScoresKernel(const Context& ctx,
+void CalcReducedAttnScoresKernel(const Context& dev_ctx,
                                  const DenseTensor& q,
                                  const DenseTensor& k,
                                  const DenseTensor& softmax_lse,
@@ -70,9 +70,9 @@ void CalcReducedAttnScoresKernel(const Context& ctx,
                         "[batch_size, seq_len, num_heads, head_dim]"));
 
   if (!reduced_scores->IsInitialized())
-    ctx.template Alloc<float>(reduced_scores);
+    dev_ctx.template Alloc<float>(reduced_scores);
   phi::funcs::SetConstant<Context, float> set_zero;
-  set_zero(ctx, reduced_scores, 0.0f);
+  set_zero(dev_ctx, reduced_scores, 0.0f);
   // q, k, v [batch_size, seq_len, num_heads, head_dim]
   const int64_t batch_size = q.dims()[0];
   const int64_t seqlen_q = q.dims()[1];
@@ -86,7 +86,7 @@ void CalcReducedAttnScoresKernel(const Context& ctx,
 
   using Params = CalcReducedAttnScoresParams;
 
-  Params params = Params(ctx,
+  Params params = Params(dev_ctx,
                          batch_size,
                          seqlen_q,
                          seqlen_k,
@@ -96,7 +96,7 @@ void CalcReducedAttnScoresKernel(const Context& ctx,
                          softmax_scale,
                          q.dtype());
 
-  cudaStream_t stream = ctx.stream();
+  cudaStream_t stream = dev_ctx.stream();
 
   bool succ =
       phi::dynload::calc_reduced_attn_scores(q.data(),

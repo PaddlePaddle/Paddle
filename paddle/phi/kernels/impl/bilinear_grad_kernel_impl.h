@@ -21,7 +21,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void BilinearGradKernel(const Context& ctx,
+void BilinearGradKernel(const Context& dev_ctx,
                         const DenseTensor& x,
                         const DenseTensor& y,
                         const DenseTensor& weight,
@@ -39,36 +39,36 @@ void BilinearGradKernel(const Context& ctx,
   auto x_mat = EigenMatrix<T>::From(x);
   auto y_mat = EigenMatrix<T>::From(y);
   auto dout_mat = EigenMatrix<T>::From(dout);
-  auto& place = *ctx.eigen_device();
+  auto& place = *dev_ctx.eigen_device();
   // Create the intermediate variable to calculate the Output(Y@Grad).
   DenseTensor x_scale;
   x_scale.Resize(common::make_ddim({batch_size, x_dim}));
-  ctx.template Alloc<T>(&x_scale);
+  dev_ctx.template Alloc<T>(&x_scale);
   auto x_scale_mat = EigenMatrix<T>::From(x_scale);
 
   // Create the intermediate variable to calculate the Output(X@Grad).
   DenseTensor y_scale;
   y_scale.Resize(common::make_ddim({batch_size, y_dim}));
-  ctx.template Alloc<T>(&y_scale);
+  dev_ctx.template Alloc<T>(&y_scale);
   auto y_scale_mat = EigenMatrix<T>::From(y_scale);
 
   funcs::SetConstant<Context, T> set_zero;
 
   if (dx) {
-    ctx.template Alloc<T>(dx);
-    set_zero(ctx, dx, static_cast<T>(0));
+    dev_ctx.template Alloc<T>(dx);
+    set_zero(dev_ctx, dx, static_cast<T>(0));
   }
 
   if (dy) {
-    ctx.template Alloc<T>(dy);
-    set_zero(ctx, dy, static_cast<T>(0));
+    dev_ctx.template Alloc<T>(dy);
+    set_zero(dev_ctx, dy, static_cast<T>(0));
   }
 
   if (dweight) {
-    ctx.template Alloc<T>(dweight);
+    dev_ctx.template Alloc<T>(dweight);
   }
 
-  auto blas = funcs::GetBlas<Context, T>(ctx);
+  auto blas = funcs::GetBlas<Context, T>(dev_ctx);
 
   // Calculate the Output(X@Grad) and Output(Y@Grad).
   if (dx || dy || dweight) {
@@ -135,7 +135,7 @@ void BilinearGradKernel(const Context& ctx,
 
   // calculate the gradient of Input(Bias).
   if (dbias) {
-    ctx.template Alloc<T>(dbias);
+    dev_ctx.template Alloc<T>(dbias);
     auto dbias_mat = EigenVector<T>::Flatten(*dbias);
     dbias_mat.device(place) = dout_mat.sum(Eigen::DSizes<int, 1>(0));
   }

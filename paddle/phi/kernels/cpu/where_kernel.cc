@@ -19,7 +19,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void WhereKernel(const Context& ctx,
+void WhereKernel(const Context& dev_ctx,
                  const DenseTensor& condition,
                  const DenseTensor& x,
                  const DenseTensor& y,
@@ -29,7 +29,7 @@ void WhereKernel(const Context& ctx,
   const T* y_data = y.data<T>();
   auto x_numel = x.numel();
 
-  T* out_data = ctx.template Alloc<T>(out);
+  T* out_data = dev_ctx.template Alloc<T>(out);
   if (out && out->numel() == 0) {
     return;
   }

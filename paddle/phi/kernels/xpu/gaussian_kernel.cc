@@ -21,7 +21,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void GaussianKernel(const Context& ctx,
+void GaussianKernel(const Context& dev_ctx,
                     const IntArray& shape,
                     float mean,
                     float std,
@@ -29,17 +29,17 @@ void GaussianKernel(const Context& ctx,
                     DataType dtype,
                     DenseTensor* out) {
   out->Resize(common::make_ddim(shape.GetData()));
-  T* data = ctx.template Alloc<T>(out);
+  T* data = dev_ctx.template Alloc<T>(out);
 
   if (out->numel() == 0) {
     return;
   }
 
   using XPUType = typename XPUTypeTrait<T>::Type;
-  int64_t real_seed = seed != 0 ? seed : ctx.GetGenerator()->Random64();
+  int64_t real_seed = seed != 0 ? seed : dev_ctx.GetGenerator()->Random64();
 
   // int normal(Context* ctx, T* x, T mean, T std, int64_t len, int64_t seed);
-  int r = xpu::normal_<XPUType>(ctx.x_context(),
+  int r = xpu::normal_<XPUType>(dev_ctx.x_context(),
                                 reinterpret_cast<XPUType*>(data),
                                 mean,
                                 std,

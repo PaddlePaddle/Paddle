@@ -35,7 +35,7 @@ def np_eigvals(a):
 
 class TestEigvalsOp(OpTest):
     def setUp(self):
-        np.random.seed(0)
+        np.random.seed(1)
         paddle.enable_static()
         self.python_api = paddle.linalg.eigvals
         self.op_type = "eigvals"

@@ -964,6 +964,15 @@ if (
 ):
     packages.extend(['paddle.distributed.communication.deep_ep'])
 
+if (
+    '@WITH_GPU@' == 'ON'
+    and tuple(map(int, '@CUDA_VERSION@'.split('.'))) >= (12, 9)
+    and '@COMPILED_CUDA_ARCHS@'.find("90") != -1
+):
+    packages.extend(['paddle.incubate.fp8.deep_gemm'])
+    packages.extend(['paddle.incubate.fp8.deep_gemm.jit'])
+    packages.extend(['paddle.incubate.fp8.deep_gemm.jit_kernels'])
+
 if '@WITH_TENSORRT@' =='ON':
     packages.extend([
         'paddle.tensorrt',
@@ -1388,9 +1397,20 @@ if '${WITH_GPU}' == 'ON' or '${WITH_ROCM}' == 'ON':
     # externalErrorMsg.pb for External Error message
     headers += list(find_files('*.pb', '${externalError_INCLUDE_DIR}'))
 
+
 if '${WITH_XPU}' == 'ON':
     headers += list(find_files('*.h', '@PADDLE_BINARY_DIR@/third_party/xpu/src/extern_xpu/xpu', recursive=True)) # xdnn api headers
     headers += list(find_files('*.hpp', '@PADDLE_BINARY_DIR@/third_party/xpu/src/extern_xpu/xpu', recursive=True)) # xre headers with .hpp extension
+
+if (
+    '@WITH_GPU@' == 'ON'
+    and tuple(map(int, '@CUDA_VERSION@'.split('.'))) >= (12, 9)
+    and '@COMPILED_CUDA_ARCHS@'.find("90") != -1
+):
+    headers += list(find_files('*.hpp', '@PADDLE_SOURCE_DIR@/paddle/fluid/fp8/deep_gemm/include/cute/', recursive=True))
+    headers += list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/fp8/deep_gemm/include/cutlass/', recursive=True))
+    headers += list(find_files('*.hpp', '@PADDLE_SOURCE_DIR@/paddle/fluid/fp8/deep_gemm/include/cutlass/', recursive=True))
+    headers += list(find_files('*.cuh', '@PADDLE_SOURCE_DIR@/paddle/fluid/fp8/deep_gemm/include/deep_gemm', recursive=True))
 
 headers += list(find_files('*.h', '${PYBIND_INCLUDE_DIR}', True)) # pybind headers
 
@@ -1400,10 +1420,8 @@ def get_header_install_dir(header):
     elif 'third_party' not in header:
         # paddle headers
         install_dir = re.sub('@PADDLE_SOURCE_DIR@/', '', header)
-        print('install_dir: ', install_dir)
         if 'fluid/jit' in install_dir:
             install_dir = re.sub('fluid/jit', 'jit', install_dir)
-            print('fluid/jit install_dir: ', install_dir)
     else:
         # third_party
         install_dir = re.sub('${THIRD_PARTY_PATH}', 'third_party', header)

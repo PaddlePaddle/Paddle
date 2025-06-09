@@ -197,6 +197,34 @@ static inline void reorder_dimensions(const std::vector<int64_t> stride_size,
   permute_dimensions<N>(stride_size, perm_, strides_array, shape_);
 }
 
+static inline std::vector<int64_t> compatible_stride(
+    const std::vector<int64_t>* shape_,
+    const int64_t ndim,
+    const int64_t element_size) {
+  std::vector<int64_t> stride;
+  int64_t next_stride = element_size;
+
+  for (int64_t dim = 0; dim < ndim; ++dim) {
+    stride.push_back(next_stride);
+    next_stride *= (*shape_)[dim];
+  }
+  return stride;
+}
+
+template <int N>
+static inline void allocate_or_resize_outputs(
+    const std::vector<int64_t>* shape_,
+    const int64_t element_size,
+    const int64_t ndim,
+    std::array<int64_t*, N>* strides_array) {
+  std::vector<int64_t> stride_bytes =
+      compatible_stride(shape_, ndim, static_cast<int64_t>(element_size));
+
+  if (strides_array && (*strides_array)[0]) {
+    std::copy(stride_bytes.begin(), stride_bytes.end(), (*strides_array)[0]);
+  }
+}
+
 template <int N>
 static inline void coalesce_dimensions(const int64_t ndim,
                                        std::array<int64_t*, N>* strides_array,
@@ -302,6 +330,65 @@ static inline void IndexPutStride(
     (*strides_array)[i] = strides_vec[i].data();
   }
   reorder_dimensions<N>(stride_size, desired_shape, strides_array);
+
+  coalesce_dimensions<N>(ndim, strides_array, &stride_size, desired_shape);
+
+  int num = 1;
+  for (int i = 0; i < desired_shape->size(); i++) {
+    num *= (*desired_shape)[i];
+  }
+  *numel = num;
+}
+
+template <int N>
+static inline void IndexGetStride(const std::vector<int64_t> output_dims,
+                                  const std::vector<int64_t> output_strides,
+                                  const int64_t output_elesize,
+                                  const std::vector<int64_t> input_dims,
+                                  const std::vector<int64_t> input_strides,
+                                  const int64_t input_elesize,
+                                  const std::vector<int64_t> index_dims,
+                                  const std::vector<int64_t> index_strides,
+                                  const int64_t index_elesize,
+                                  std::vector<int64_t>* desired_shape,
+                                  std::array<int64_t*, N>* strides_array,
+                                  int64_t* numel) {
+  int64_t index_size = 1;
+  int ndim = output_dims.size();
+
+  std::array<std::vector<int64_t>, N> strides_vec;
+  std::vector<int64_t> stride_size;
+
+  *desired_shape = compute_shapes({input_dims, output_dims, index_dims});
+
+  strides_vec[0] = compute_strides(input_dims,
+                                   input_strides,
+                                   input_elesize,
+                                   ndim,
+                                   desired_shape,
+                                   &stride_size);
+
+  strides_vec[1] = compute_strides(output_dims,
+                                   output_strides,
+                                   output_elesize,
+                                   ndim,
+                                   desired_shape,
+                                   &stride_size);
+
+  strides_vec[2] = compute_strides(index_dims,
+                                   index_strides,
+                                   index_elesize,
+                                   ndim,
+                                   desired_shape,
+                                   &stride_size);
+
+  for (size_t i = 0; i < N; i++) {
+    (*strides_array)[i] = strides_vec[i].data();
+  }
+  reorder_dimensions<N>(stride_size, desired_shape, strides_array);
+
+  allocate_or_resize_outputs<N>(
+      desired_shape, output_elesize, ndim, strides_array);
 
   coalesce_dimensions<N>(ndim, strides_array, &stride_size, desired_shape);
 

@@ -446,8 +446,12 @@ class PipelineLayer(nn.Layer):
         self.global_rank = dist.get_rank()
 
         if self._topo:
-            self._stage_id = self._topo.get_coord(self.global_rank).pipe
-            self._num_stages = self._topo.get_dim_size("pipe")
+            if hasattr(self._topo, "_parent_hcg"):
+                self._stage_id = self._topo._parent_hcg.stage_id
+                self._num_stages = self._topo._parent_hcg._pp_degree
+            else:
+                self._stage_id = self._topo.get_coord(self.global_rank).pipe
+                self._num_stages = self._topo.get_dim_size("pipe")
             if num_stages:
                 assert (
                     self._num_stages == num_stages
@@ -662,37 +666,25 @@ class PipelineLayer(nn.Layer):
                 f'Constructing shared comm for {comm_key} among pp stages {shared_stages}, '
                 f'this shared comm will communicate attrs: {shared_attrs}.'
             )
-            self._dp_degree = self._topo.get_dim('data')
-            self._mp_degree = self._topo.get_dim('model')
-            self._sharding_degree = self._topo.get_dim('sharding')
 
-            for dp in range(self._dp_degree):
-                for sharding in range(self._sharding_degree):
-                    for mp in range(self._mp_degree):
-                        shared_ranks = []
-                        for s in sorted(shared_stages):
-                            shared_ranks.append(
-                                self._topo.get_rank_from_stage(
-                                    self.global_rank,
-                                    pipe=s,
-                                    data=dp,
-                                    sharding=sharding,
-                                    model=mp,
-                                )
-                            )
+            if hasattr(self._topo, "_parent_hcg"):
+                topo = self._topo._parent_hcg._moe_topo
+            else:
+                topo = self._topo
+            pp_comm_list = topo.get_comm_list("pipe")
+            for comm in pp_comm_list:
+                shared_ranks = [comm[s] for s in sorted(shared_stages)]
 
-                        logger.info(
-                            f'Building comm group among {shared_ranks}.'
-                        )
-                        group = paddle.distributed.new_group(ranks=shared_ranks)
-                        if self.global_rank in shared_ranks:
-                            assert layer_name in self.shared_layers
-                            shared_comm[comm_key] = {
-                                'ranks': shared_ranks,
-                                'group': group,
-                                'weight_attr': shared_attrs,
-                                'layer': self.shared_layers[layer_name],
-                            }
+                logger.info(f"Building comm group among {shared_ranks}.")
+                group = paddle.distributed.new_group(ranks=shared_ranks)
+                if self.global_rank in shared_ranks:
+                    assert layer_name in self.shared_layers
+                    shared_comm[comm_key] = {
+                        "ranks": shared_ranks,
+                        "group": group,
+                        "weight_attr": comm_key_to_shared_attrs[comm_key],
+                        "layer": self.shared_layers[layer_name],
+                    }
         return shared_comm
 
     def _synchronize_shared_weights(self):

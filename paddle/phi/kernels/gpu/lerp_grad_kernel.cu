@@ -114,7 +114,7 @@ bool XYNeedReduce(const DenseTensor& x,
 }
 
 template <typename T, typename Context>
-void SwitchKernel(const Context& ctx,
+void SwitchKernel(const Context& dev_ctx,
                   const DenseTensor& weight,
                   const DenseTensor& out_grad,
                   const int64_t x_grad_size,
@@ -127,25 +127,26 @@ void SwitchKernel(const Context& ctx,
     const T* out_grad_data = out_grad.data<T>();
     const int64_t out_size = out_grad.numel();
     const int64_t weight_size = weight.numel();
-    auto gpu_config = phi::backends::gpu::GetGpuLaunchConfig1D(ctx, out_size);
+    auto gpu_config =
+        phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, out_size);
     LerpGradScalarKernelImpl<T><<<gpu_config.GetGridSize(),
                                   gpu_config.GetBlockSize(),
                                   0,
-                                  ctx.stream()>>>(weight_data,
-                                                  out_grad_data,
-                                                  x_grad_data,
-                                                  y_grad_data,
-                                                  out_size,
-                                                  x_grad_size,
-                                                  y_grad_size);
+                                  dev_ctx.stream()>>>(weight_data,
+                                                      out_grad_data,
+                                                      x_grad_data,
+                                                      y_grad_data,
+                                                      out_size,
+                                                      x_grad_size,
+                                                      y_grad_size);
   } else {
     //    broadcast weight with out_grad's dimensions
     const std::vector<const DenseTensor*> in_tensors = {&weight, &out_grad};
-    DenseTensor b_weight = phi::EmptyLike<T>(ctx, out_grad);
-    DenseTensor b_out = phi::EmptyLike<T>(ctx, out_grad);
+    DenseTensor b_weight = phi::EmptyLike<T>(dev_ctx, out_grad);
+    DenseTensor b_out = phi::EmptyLike<T>(dev_ctx, out_grad);
     std::vector<DenseTensor*> out_tensors = {&b_weight, &b_out};
 
-    phi::BroadcastTensorsKernel<T, Context>(ctx, in_tensors, out_tensors);
+    phi::BroadcastTensorsKernel<T, Context>(dev_ctx, in_tensors, out_tensors);
 
     const T* weight_data = b_weight.data<T>();
     const T* out_grad_data = b_out.data<T>();
@@ -155,18 +156,18 @@ void SwitchKernel(const Context& ctx,
     LerpGradKernelImpl<T><<<gpu_config.GetGridSize(),
                             gpu_config.GetBlockSize(),
                             0,
-                            ctx.stream()>>>(weight_data,
-                                            out_grad_data,
-                                            x_grad_data,
-                                            y_grad_data,
-                                            out_size,
-                                            x_grad_size,
-                                            y_grad_size);
+                            dev_ctx.stream()>>>(weight_data,
+                                                out_grad_data,
+                                                x_grad_data,
+                                                y_grad_data,
+                                                out_size,
+                                                x_grad_size,
+                                                y_grad_size);
   }
 }
 
 template <typename T, typename Context>
-void LerpGradKernel(const Context& ctx,
+void LerpGradKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     const DenseTensor& y,
                     const DenseTensor& weight,
@@ -177,11 +178,11 @@ void LerpGradKernel(const Context& ctx,
   if (out_grad.numel() == 0) {
     if (x_grad) {
       phi::Full<T, Context>(
-          ctx, phi::IntArray(common::vectorize(x_grad->dims())), 0, x_grad);
+          dev_ctx, phi::IntArray(common::vectorize(x_grad->dims())), 0, x_grad);
     }
     if (y_grad) {
       phi::Full<T, Context>(
-          ctx, phi::IntArray(common::vectorize(y_grad->dims())), 0, y_grad);
+          dev_ctx, phi::IntArray(common::vectorize(y_grad->dims())), 0, y_grad);
     }
     return;
   }
@@ -212,16 +213,16 @@ void LerpGradKernel(const Context& ctx,
     T* y_grad_data = NULL;
 
     if (x_grad) {
-      x_grad_data = ctx.template Alloc<T>(x_grad);
+      x_grad_data = dev_ctx.template Alloc<T>(x_grad);
       x_grad_size = x.numel();
     }
 
     if (y_grad) {
-      y_grad_data = ctx.template Alloc<T>(y_grad);
+      y_grad_data = dev_ctx.template Alloc<T>(y_grad);
       y_grad_size = y.numel();
     }
 
-    SwitchKernel<T, Context>(ctx,
+    SwitchKernel<T, Context>(dev_ctx,
                              weight,
                              out_grad,
                              x_grad_size,
@@ -237,16 +238,16 @@ void LerpGradKernel(const Context& ctx,
     T* y_grad_data = NULL;
 
     if (x_grad) {
-      x_grad_data = ctx.template Alloc<T>(&b_xgrad);
+      x_grad_data = dev_ctx.template Alloc<T>(&b_xgrad);
       x_grad_size = out.numel();
     }
 
     if (y_grad) {
-      y_grad_data = ctx.template Alloc<T>(&b_ygrad);
+      y_grad_data = dev_ctx.template Alloc<T>(&b_ygrad);
       y_grad_size = out.numel();
     }
 
-    SwitchKernel<T, Context>(ctx,
+    SwitchKernel<T, Context>(dev_ctx,
                              weight,
                              out_grad,
                              x_grad_size,
@@ -262,7 +263,7 @@ void LerpGradKernel(const Context& ctx,
                               -1);
       if (!reduce_axis_x.empty()) {
         phi::SumKernel<T, Context>(
-            ctx, b_xgrad, reduce_axis_x, b_xgrad.dtype(), false, x_grad);
+            dev_ctx, b_xgrad, reduce_axis_x, b_xgrad.dtype(), false, x_grad);
       } else {
         x_grad->ShareDataWith(b_xgrad);
       }
@@ -275,7 +276,7 @@ void LerpGradKernel(const Context& ctx,
                               -1);
       if (!reduce_axis_y.empty()) {
         phi::SumKernel<T, Context>(
-            ctx, b_ygrad, reduce_axis_y, b_ygrad.dtype(), false, y_grad);
+            dev_ctx, b_ygrad, reduce_axis_y, b_ygrad.dtype(), false, y_grad);
       } else {
         y_grad->ShareDataWith(b_ygrad);
       }

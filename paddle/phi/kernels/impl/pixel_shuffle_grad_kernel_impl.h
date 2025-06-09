@@ -23,14 +23,14 @@
 namespace phi {
 
 template <typename T, typename Context>
-void PixelShuffleGradKernel(const Context& ctx,
+void PixelShuffleGradKernel(const Context& dev_ctx,
                             const DenseTensor& out_grad,
                             int upscale_factor,
                             const std::string& data_format,
                             DenseTensor* x_grad) {
   auto* dout = &out_grad;
   auto* dx = x_grad;
-  ctx.template Alloc<T>(dx);
+  dev_ctx.template Alloc<T>(dx);
   if (dx && dx->numel() == 0) {
     return;
   }
@@ -54,7 +54,7 @@ void PixelShuffleGradKernel(const Context& ctx,
     o.Resize({do_dims[0], dx_dims[1], dx_dims[2], do_dims[3], factor, factor});
   }
   phi::funcs::Transpose<Context, T, 6> trans;
-  trans(ctx, t, &o, axis);
+  trans(dev_ctx, t, &o, axis);
   dx->Resize(dx_dims);
 }
 
