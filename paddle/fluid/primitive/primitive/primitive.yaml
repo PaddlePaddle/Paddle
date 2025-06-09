@@ -127,3 +127,4 @@
 - reduce_as
 - pow
 - variance
+- masked_fill
