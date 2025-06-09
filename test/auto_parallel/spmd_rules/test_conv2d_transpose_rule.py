@@ -51,8 +51,8 @@ class TestConv2dTransposeSPMDRule(unittest.TestCase):
 
         self.strides = [1, 1]
         self.paddings = [0, 0]
-        self.output_padding = []
-        self.output_size = []
+        self.output_padding = [0, 0]
+        self.output_size = [2, 6, 6, 6]
         self.padding_algorithm = "EXPLICIT"
         self.group = 1
         self.dilations = [1, 1]
@@ -242,7 +242,7 @@ class TestConv2dTransposeSPMDRule(unittest.TestCase):
 
     def test_conv2d_transpose_nhwc_infer_forward(self):
         # forward setup
-        input_shape = ([2, 8, 8, 4],)
+        input_shape = [2, 8, 8, 4]
         self.data_format = "NHWC"
         filter_shape = [4, 6, 3, 3]
         process_mesh = auto.ProcessMesh(
@@ -265,8 +265,8 @@ class TestConv2dTransposeSPMDRule(unittest.TestCase):
 
         self.strides = [1, 1]
         self.paddings = [0, 0]
-        self.output_padding = []
-        self.output_size = []
+        self.output_padding = [0, 0]
+        self.output_size = [2, 6, 6, 6]
         self.padding_algorithm = "EXPLICIT"
         self.group = 1
         self.dilations = [1, 1]
@@ -379,8 +379,8 @@ class TestConv2dTransposeSPMDRule(unittest.TestCase):
 
         self.strides = [1, 1]
         self.paddings = [0, 0]
-        self.output_padding = []
-        self.output_size = []
+        self.output_padding = [0, 0]
+        self.output_size = [2, 6, 6, 6]
         self.padding_algorithm = "EXPLICIT"
         self.group = 1
         self.dilations = [1, 1]
@@ -449,6 +449,8 @@ class TestConv2dTransposeSPMDRule(unittest.TestCase):
             self.output_dist_tensor_spec,
             self.strides,
             self.paddings,
+            self.output_padding,
+            self.output_size,
             self.padding_algorithm,
             self.group,
             self.dilations,
@@ -519,8 +521,8 @@ class TestConv2dTransposeSPMDRule(unittest.TestCase):
 
         self.strides = [1, 1]
         self.paddings = [0, 0]
-        self.output_padding = []
-        self.output_size = []
+        self.output_padding = [0, 0]
+        self.output_size = [2, 6, 6, 6]
         self.padding_algorithm = "EXPLICIT"
         self.group = 1
         self.dilations = [1, 1]
@@ -589,6 +591,8 @@ class TestConv2dTransposeSPMDRule(unittest.TestCase):
             self.output_dist_tensor_spec,
             self.strides,
             self.paddings,
+            self.output_padding,
+            self.output_size,
             self.padding_algorithm,
             self.group,
             self.dilations,

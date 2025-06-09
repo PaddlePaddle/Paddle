@@ -17,7 +17,6 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_meta_tensor.h"
 #include "paddle/phi/core/distributed/type_defs.h"
 
@@ -30,7 +29,7 @@ SpmdInfo Conv2dTransposeInferSpmd(
     const std::vector<int>& strides = {1, 1},
     const std::vector<int>& paddings = {0, 0},
     const std::vector<int>& output_padding = {},
-    const IntArray& output_size = {},
+    const std::vector<int64_t>& output_size = {},
     const std::string& padding_algorithm = "EXPLICIT",
     int groups = 1,
     const std::vector<int>& dilations = {1, 1},
@@ -43,7 +42,7 @@ SpmdInfo Conv2dTransposeGradInferSpmd(
     const std::vector<int>& strides = {1, 1},
     const std::vector<int>& paddings = {0, 0},
     const std::vector<int>& output_padding = {},
-    const IntArray& output_size = {},
+    const std::vector<int64_t>& output_size = {},
     const std::string& padding_algorithm = "EXPLICIT",
     int groups = 1,
     const std::vector<int>& dilations = {1, 1},
