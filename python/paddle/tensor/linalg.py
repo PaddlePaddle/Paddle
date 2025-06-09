@@ -2898,14 +2898,11 @@ def slogdet(x: Tensor, name: str | None = None) -> tuple[Tensor, Tensor]:
             >>> import paddle
             >>> paddle.seed(2023)
             >>> x = paddle.randn([3, 3, 3])
-            >>> sign_values, logabsdet_values = paddle.linalg.slogdet(x) # Updated example
-            >>> print("Sign:", sign_values)
-            >>> print("LogAbsDet:", logabsdet_values)
-            # Expected output would show two separate tensors
-            # Sign: Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
-            # [-1.,  1.,  1.])
-            # LogAbsDet: Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
-            # [0.25681755, -0.25061053, -0.10809582])
+            >>> A = paddle.linalg.slogdet(x) # Updated example
+            >>> print(A)
+            (Tensor(shape=[3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                [-1., -1., -1.]), Tensor(shape=[3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                [-1.39344728, -2.30671787, -2.53045821]))
 
     """
     if in_dynamic_or_pir_mode():

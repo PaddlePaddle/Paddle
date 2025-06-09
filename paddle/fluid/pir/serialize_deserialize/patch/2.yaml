@@ -57,3 +57,9 @@ op_patches:
         type : pir::ArrayAttribute
         default :
           - type: pir::Int64Attribute
+  - op_name : pd_op.slogdet
+    actions:
+      - action : add_output
+        object : 1
+        type : pir::DenseTensorType
+        default : [pir::Float32Type,[-1],"NCHW",[],0]
