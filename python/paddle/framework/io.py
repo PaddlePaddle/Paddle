@@ -1234,7 +1234,7 @@ def load(path: str | BytesIO, **configs: Unpack[_LoadOptions]) -> Any:
                             ]
 
                     else:
-                        for key, value in tensor_load_result.items:
+                        for key, value in tensor_load_result.items():
                             if _transformed_from_varbase(value):
                                 value[1].name = value[0]
                                 tensor_load_result[key] = value[1]
