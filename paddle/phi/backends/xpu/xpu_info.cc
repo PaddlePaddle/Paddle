@@ -237,7 +237,7 @@ int GetXPUDeviceUtilizationRate(int dev_id) {
   return dev_util.xpu;
 }
 
-int GetXPUDeviceTotalMemory(int dev_id) {
+int64_t GetXPUDeviceTotalMemory(int dev_id) {
   std::call_once(xpuml_init_flag, xpumlInit);
   if (dev_id == -1) {
     dev_id = GetXPUCurrentDeviceId();
@@ -249,10 +249,10 @@ int GetXPUDeviceTotalMemory(int dev_id) {
   xpumlMemory_t dev_mem_info;
   PADDLE_ENFORCE_XPUML_SUCCESS(
       xpumlDeviceGetMemoryInfo(dev_handle, &dev_mem_info));
-  return dev_mem_info.totalGlobalMemory / 1024 / 1024;  // MB
+  return dev_mem_info.totalGlobalMemory;  // with Byte
 }
 
-int GetXPUDeviceUsedMemory(int dev_id) {
+int64_t GetXPUDeviceUsedMemory(int dev_id) {
   std::call_once(xpuml_init_flag, xpumlInit);
   if (dev_id == -1) {
     dev_id = GetXPUCurrentDeviceId();
@@ -264,7 +264,7 @@ int GetXPUDeviceUsedMemory(int dev_id) {
   xpumlMemory_t dev_mem_info;
   PADDLE_ENFORCE_XPUML_SUCCESS(
       xpumlDeviceGetMemoryInfo(dev_handle, &dev_mem_info));
-  return dev_mem_info.usedGlobalMemory / 1024 / 1024;  // MB
+  return dev_mem_info.usedGlobalMemory;  // with Byte
 }
 
 XPUVersion get_xpu_version(int dev_id) {
