@@ -1076,6 +1076,47 @@ void softmax_grad(const Tensor& out,
 }
 
 template <typename T>
+void masked_fill_grad(const Tensor& x,
+                      const Tensor& mask,
+                      const Tensor& value,
+                      const Tensor& out_grad,
+                      Tensor* x_grad,
+                      Tensor* value_grad) {
+  auto x_grad_dims = x.dims();
+  auto mask_dims = mask.dims();
+  auto expanded_dims_vec = common::vectorize(
+      phi::funcs::BroadcastTwoDims(x_grad_dims, mask_dims, -1));
+  auto expanded_dims = common::make_ddim(expanded_dims_vec);
+
+  // expand mask to match x.shape
+  Tensor mask_expand;
+  if (mask_dims != x_grad_dims) {
+    mask_expand = expand<T>(mask, expanded_dims_vec);
+  } else {
+    mask_expand = mask;
+  }
+
+  if (x_grad) {
+    Tensor x_grad_tmp;
+    Tensor x_grad_expand = masked_fill<T>(
+        out_grad, mask_expand, full_scalar<T>(0, x.dtype(), x.place()));
+    if (x_grad_dims != expanded_dims) {
+      expand_grad<T>(x, x_grad_expand, expanded_dims_vec, &x_grad_tmp);
+    } else {
+      x_grad_tmp = x_grad_expand;
+    }
+
+    set_output<T>(x_grad_tmp, x_grad);
+  }
+
+  if (value_grad) {
+    auto value_grad_tmp = sum<T>(
+        cast<T>(mask_expand, out_grad.dtype()) * out_grad, {}, value.dtype());
+    set_output<T>(value_grad_tmp, value_grad);
+  }
+}
+
+template <typename T>
 void squeeze_grad(const Tensor& x,
                   const Tensor& out_grad,
                   const IntArray& axis,
