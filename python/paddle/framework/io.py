@@ -576,7 +576,7 @@ def _to_LodTensor(ndarray):
 
 def _tuple_to_tensor(obj, return_numpy):
     if return_numpy:
-        return obj[1]
+        return obj
     if in_dygraph_mode():
         t = paddle.to_tensor(obj[1])
         # This function does modify the name of return value.
@@ -1198,36 +1198,51 @@ def load(path: str | BytesIO, **configs: Unpack[_LoadOptions]) -> Any:
                 # TODO(weixin):If `obj` is any object, the judgment condition should be more precise.
                 if isinstance(load_result, dict):
                     load_result = _pack_loaded_dict(load_result)
+
+                    if "StructuredToParameterName@@" not in load_result:
+                        # paddle2.1 static.save/load
+                        load_result = _parse_load_result(load_result, True)
+
+                else:
+                    load_result = _parse_load_result(load_result, True)
+
+                if not config.return_numpy:
+                    tensor_load_result = {}
+                    for key, value in load_result.items():
+                        if isinstance(value, np.ndarray):
+                            tensor_load_result[key] = _ndarray_to_tensor(
+                                value, False
+                            )
+                        else:
+                            tensor_load_result[key] = value
+
                     # paddle2.0: paddle.save/load
                     if "StructuredToParameterName@@" in load_result:
                         for key, name in load_result[
                             "StructuredToParameterName@@"
                         ].items():
-                            if isinstance(load_result[key], np.ndarray):
-                                load_result[key] = _ndarray_to_tensor(
-                                    load_result[key], config.return_numpy
-                                )
-                                # default name is "generatedxxx" which is set in Tensor init, if not set
-                                if not config.return_numpy and getattr(
-                                    load_result[key], "name", ""
-                                ):
-                                    load_result[key].name = name
+                            # default name is "generatedxxx" which is set in Tensor init, if not set
+                            tensor_load_result[key].name = name
 
                         if (
                             not config.keep_name_table
-                            and "StructuredToParameterName@@" in load_result
+                            and "StructuredToParameterName@@"
+                            in tensor_load_result
                         ):
-                            del load_result["StructuredToParameterName@@"]
-                    else:
-                        # paddle2.1 static.save/load
-                        load_result = _parse_load_result(
-                            load_result, config.return_numpy
-                        )
+                            del tensor_load_result[
+                                "StructuredToParameterName@@"
+                            ]
 
+                    else:
+                        for key, value in tensor_load_result.items:
+                            if _transformed_from_varbase(value):
+                                value[1].name = value[0]
+                                tensor_load_result[key] = value[1]
+
+                    del load_result
+                    return tensor_load_result
                 else:
-                    load_result = _parse_load_result(
-                        load_result, config.return_numpy
-                    )
+                    return load_result
 
         except exception_type as msg_pickle:
             try:
