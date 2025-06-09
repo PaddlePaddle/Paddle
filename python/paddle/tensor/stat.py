@@ -215,7 +215,7 @@ def var(
         out_nan.stop_gradient = out.stop_gradient
         return out_nan
 
-    if 0 in x.shape:
+    if (0 in x.shape) or (len(x.shape) == 0 and unbiased):
         out = _replace_nan(out)
     if out.dtype != x.dtype:
         return out.astype(x.dtype)
