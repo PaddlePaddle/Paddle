@@ -83,11 +83,11 @@ void MaskedFillGradKernel(const Context& dev_ctx,
   }
 
   if (v_grad != nullptr) {
-    auto* dv = dev_ctx.template Alloc<T>(v_grad);
-    dv[0] = T(0);
+    auto* dv = dev_ctx.template Alloc<int64_t>(v_grad);
+    dv[0] = 0;
     for (int i = 0; i < numel; i++) {
       if (mask_data[i]) {
-        dv[0] += T(dout[i]);
+        dv[0]++;
       }
     }
   }
