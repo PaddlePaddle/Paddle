@@ -63,6 +63,9 @@ void ModeGradKernel(const Context& dev_ctx,
   T* x_grad_data = dev_ctx.template Alloc<T>(x_grad);
   const T* out_grad_data = out_grad.data<T>();
   const int64_t* indices_data = indices.data<int64_t>();
+  if (x_grad && x_grad->numel() == 0) {
+    return;
+  }
 
   // For 0D Tensor
   if (in_dims.size() == 0) {
