@@ -1,4 +1,4 @@
-string(FIND "${CUDA_ARCH_BIN}" "90" ARCH_BIN_CONTAINS_90)
+string(FIND "${COMPILED_CUDA_ARCHS}" "90" ARCH_BIN_CONTAINS_90)
 
 if(WITH_GPU AND (ARCH_BIN_CONTAINS_90 GREATER -1))
   message(STATUS "Enable DeepEP alltoall communication.")

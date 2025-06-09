@@ -24,14 +24,15 @@ template <typename T, typename Context>
 void ContiguousKernel(const Context& dev_ctx,
                       const DenseTensor& input,
                       DenseTensor* out) {
-  if (out->numel() == 0) {
-    dev_ctx.template Alloc<T>(out);
-    return;
-  }
   phi::DenseTensorMeta meta = input.meta();
   meta.strides = meta.calc_strides(meta.dims);
   meta.offset = 0;
   out->set_meta(meta);
+
+  if (out->numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
 
   // use XPUCopyTypeTrait to deal with double and int16_t copy instead of
   // XPUTypeTrait
@@ -59,14 +60,16 @@ template <>
 void ContiguousKernel<phi::dtype::complex<float>, XPUContext>(
     const XPUContext& dev_ctx, const DenseTensor& input, DenseTensor* out) {
   using T = phi::dtype::complex<float>;
-  if (out->numel() == 0) {
-    dev_ctx.template Alloc<T>(out);
-    return;
-  }
+
   phi::DenseTensorMeta meta = input.meta();
   meta.strides = meta.calc_strides(meta.dims);
   meta.offset = 0;
   out->set_meta(meta);
+
+  if (out->numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
 
   // The current complex number implementation uses separate real/imaginary
   // parts,resulting in redundant operations and performance

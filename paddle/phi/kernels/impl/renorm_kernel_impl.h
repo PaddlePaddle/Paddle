@@ -11,6 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+#pragma once
 
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
@@ -28,6 +29,9 @@ void RenormKernel(const Context& dev_ctx,
                   DenseTensor* out) {
   out->Resize(x.dims());
   dev_ctx.template Alloc<T>(out);
+  if (out && out->numel() == 0) {
+    return;
+  }
   auto x_ptr = x.template data<T>();
   auto numel = x.numel();
   int dim = axis;

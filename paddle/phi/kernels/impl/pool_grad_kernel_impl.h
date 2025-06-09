@@ -39,6 +39,10 @@ void PoolGradRawKernel(const Context& ctx,
                        const std::string& padding_algorithm,
                        const float norm_type,
                        DenseTensor* dx) {
+  if (dx && dx->numel() == 0) {
+    ctx.template Alloc<T>(dx);
+    return;
+  }
   const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
   std::vector<int64_t> paddings_ = paddings;
   std::vector<int64_t> kernel_size_ = kernel_size;
@@ -176,6 +180,10 @@ void MaxPoolWithIndexGradRawKernel(const Context& ctx,
                                    bool global_pooling,
                                    bool adaptive,
                                    DenseTensor* dx) {
+  if (dx && dx->numel() == 0) {
+    ctx.template Alloc<T1>(dx);
+    return;
+  }
   std::vector<int> paddings_ = paddings;
   std::vector<int> kernel_size_ = kernel_size;
 
@@ -401,6 +409,10 @@ void FractionalMaxPoolGradRawKernel(const Context& ctx,
                                     float random_u,
                                     bool return_mask,
                                     DenseTensor* dx) {
+  if (dx && dx->numel() == 0) {
+    ctx.template Alloc<T1>(dx);
+    return;
+  }
   std::vector<int> output_size_ = output_size;
 
   if (dx) {
