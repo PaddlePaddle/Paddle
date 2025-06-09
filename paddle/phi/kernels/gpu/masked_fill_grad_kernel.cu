@@ -23,6 +23,8 @@
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/kernels/cast_kernel.h"
+#include "paddle/phi/kernels/elementwise_multiply_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/expand_grad_kernel.h"
 #include "paddle/phi/kernels/expand_kernel.h"
@@ -145,7 +147,7 @@ void MaskedFillGradKernel(const Context& dev_ctx,
     }
     if (v_grad != nullptr) {
       v_grad->Resize({0});
-      dev_ctx.template Alloc<double>(v_grad);
+      dev_ctx.template Alloc<T>(v_grad);
     }
     return;
   }
@@ -171,16 +173,10 @@ void MaskedFillGradKernel(const Context& dev_ctx,
     }
 
     if (v_grad != nullptr) {
-      std::vector<int> mask_dims(mask.dims().size());
-      std::iota(mask_dims.begin(), mask_dims.end(), 0);
-      IntArray mask_axis(mask_dims);
-      SumKernel<T>(dev_ctx, mask, mask_axis, v_grad->dtype(), false, v_grad);
-      ScaleKernel<T>(dev_ctx,
-                     *v_grad,
-                     (out_grad.numel() / mask.numel()),
-                     0.0f,
-                     false,
-                     v_grad);
+      std::cout << (v_grad->dims()) << std::endl;
+      DenseTensor mask_cast = Cast<bool>(dev_ctx, mask, out_grad.dtype());
+      DenseTensor mul_result = Multiply<T>(dev_ctx, mask_cast, out_grad);
+      SumKernel<T>(dev_ctx, mul_result, {}, v_grad->dtype(), false, v_grad);
     }
     return;
   }
@@ -218,17 +214,11 @@ void MaskedFillGradKernel(const Context& dev_ctx,
   }
 
   if (v_grad != nullptr) {
-    std::vector<int> v_dims(mask_expand.dims().size());
-    std::iota(v_dims.begin(), v_dims.end(), 0);
-    IntArray v_axis(v_dims);
-    Tensor mask_expad_cast;
-    CastKernel<T>(mask_expand, out_grad->dtype(), &mask_expad_cast);
-    SumKernel<T>(dev_ctx,
-                 mask_expad_cast * out_grad,
-                 v_axis,
-                 v_grad->dtype(),
-                 false,
-                 v_grad);
+    DenseTensor mask_expand_cast =
+        Cast<bool>(dev_ctx, mask_expand, out_grad.dtype());
+    DenseTensor mul_result = Multiply<T>(dev_ctx, mask_expand_cast, out_grad);
+
+    SumKernel<T>(dev_ctx, mul_result, {}, v_grad->dtype(), false, v_grad);
   }
 }
 
@@ -242,10 +232,10 @@ PD_REGISTER_KERNEL(masked_fill_grad,
                    float,
                    double,
                    int,
-                   int8_t,
+                   //  int8_t,
+                   //  int16_t,
                    int64_t,
-                   int16_t,
-                   uint8_t,
+                   //  uint8_t,
                    phi::dtype::float16,
                    phi::dtype::bfloat16,
                    phi::dtype::complex<float>,
