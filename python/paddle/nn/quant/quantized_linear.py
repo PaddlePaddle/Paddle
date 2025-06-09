@@ -72,7 +72,7 @@ def weight_quantize(
     Args:
         x (Tensor): The input Tensor to be quantized, the data type is float16 or bfloat16.
         algo (str): The algo that is x will be apply, must be one of 'weight_only_int8',
-            'weight_only_int4' and 'llm.int8', default: 'weight_only_int8'.
+            'weight_only_int4', 'llm.int8' and 'w4a8', default: 'weight_only_int8'.
         arch (int): The compute arch for target device. For example, A100 is 80, v100 is 70, if you do not assign arch, we will get arch from your device, default: None.
         group_size (int): The group size for weight quantization. -1 stands for default per-channel mode. Currently only support 64 or 128.
 

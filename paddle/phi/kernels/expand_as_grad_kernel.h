@@ -19,7 +19,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void ExpandAsGradKernel(const Context& ctx,
+void ExpandAsGradKernel(const Context& dev_ctx,
                         const DenseTensor& x,
                         const DenseTensor& out_grad,
                         const std::vector<int64_t>& target_shape,

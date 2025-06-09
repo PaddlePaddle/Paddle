@@ -14,7 +14,8 @@
 
 // The file has been adapted from DeepSeek DeepEP project
 // Copyright (c) 2025 DeepSeek
-// Licensed under the MIT License - https://github.com/deepseek-ai/DeepEP/blob/main/LICENSE
+// Licensed under the MIT License -
+// https://github.com/deepseek-ai/DeepEP/blob/main/LICENSE
 
 #pragma once
 
@@ -27,7 +28,7 @@
 
 #define FINISHED_SUM_TAG 1024
 #define NUM_CPU_TIMEOUT_SECS 100
-#define NUM_TIMEOUT_CYCLES 200000000000ull // 200G cycles ~= 100s
+#define NUM_TIMEOUT_CYCLES 200000000000ull  // 200G cycles ~= 100s
 #define NUM_WAIT_NANOSECONDS 500
 
 #define LOW_LATENCY_SEND_PHASE 1
@@ -35,9 +36,12 @@
 
 // Make CLion CUDA indexing work
 #ifdef __CLION_IDE__
-#define __CUDA_ARCH__ 900 // NOLINT(*-reserved-identifier)
-#define __CUDACC_RDC__ // NOLINT(*-reserved-identifier)
-__host__ __device__ __forceinline__ void host_device_printf(const char* format, ...) { asm volatile("trap;"); }
+#define __CUDA_ARCH__ 900  // NOLINT(*-reserved-identifier)
+#define __CUDACC_RDC__     // NOLINT(*-reserved-identifier)
+__host__ __device__ __forceinline__ void host_device_printf(const char* format,
+                                                            ...) {
+  asm volatile("trap;");
+}
 #define printf host_device_printf
 #endif
 

@@ -57,11 +57,6 @@ void FusedBatchNormActGradKernel(const Context &dev_ctx,
 #if defined(PADDLE_WITH_CUDA) and CUDNN_VERSION >= 7401
   using CudnnDataType = phi::backends::gpu::CudnnDataType<T>;
   using BatchNormParamType = typename CudnnDataType::BatchNormParamType;
-  bool is_gpu_place = dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU;
-  PADDLE_ENFORCE_EQ(
-      is_gpu_place,
-      true,
-      common::errors::PreconditionNotMet("It must use CUDAPlace."));
   double epsilon1 = static_cast<double>(epsilon);
 
   const auto *d_y = &y_grad;

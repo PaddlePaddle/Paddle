@@ -49,6 +49,29 @@ if(APPLE OR WIN32)
   list(REMOVE_ITEM kernel_cu "sparse/gpu/conv_kernel_igemm.cu")
 endif()
 
+# New Op only supported by CUDA>=12.0 and Linux
+if(((WITH_GPU) AND (CUDA_VERSION VERSION_LESS 12.0))
+   OR APPLE
+   OR WIN32)
+  list(
+    REMOVE_ITEM
+    kernel_gpu
+    "gpu/moe_ops_partial_nosoftmaxtopk_kernel.cu"
+    "gpu/moe_ops_partial_nosoftmaxtopk_grad_kernel.cu"
+    "gpu/moe_gate_dispatch_permute_grad_kernel.cu"
+    "gpu/moe_gate_dispatch_permute_kernel.cu"
+    "gpu/expand_modality_expert_id_kernel.cu"
+    "gpu/moe_combine_kernel.cu"
+    "gpu/moe_combine_grad_kernel.cu"
+    "gpu/cal_aux_loss_kernel.cu"
+    "gpu/cal_aux_loss_grad_kernel.cu"
+    "gpu/build_src_rank_and_local_expert_id_kernel.cu"
+    "gpu/moe_gate_dispatch_kernel.cu"
+    "gpu/moe_gate_dispatch_grad_kernel.cu"
+    "gpu/int_bincount.cu"
+    "gpu/layer_norm_cuda_kernel.cu")
+endif()
+
 if(NOT WITH_DGC)
   list(REMOVE_ITEM kernel_gpu "gpu/dgc_kernel.cu")
 endif()
@@ -228,7 +251,19 @@ if(WITH_ROCM)
   list(
     REMOVE_ITEM
     kernel_gpu
+    "gpu/moe_ops_partial_nosoftmaxtopk_kernel.cu"
+    "gpu/moe_ops_partial_nosoftmaxtopk_grad_kernel.cu"
+    "gpu/moe_gate_dispatch_permute_grad_kernel.cu"
+    "gpu/moe_gate_dispatch_permute_kernel.cu"
+    "gpu/expand_modality_expert_id_kernel.cu"
+    "gpu/moe_combine_kernel.cu"
+    "gpu/moe_combine_grad_kernel.cu"
     "gpu/affine_grid_grad_kernel.cu"
+    "gpu/cal_aux_loss_kernel.cu"
+    "gpu/cal_aux_loss_grad_kernel.cu"
+    "gpu/build_src_rank_and_local_expert_id_kernel.cu"
+    "gpu/moe_gate_dispatch_kernel.cu"
+    "gpu/moe_gate_dispatch_grad_kernel.cu"
     "gpu/apply_per_channel_scale_kernel.cu"
     "gpu/calc_reduced_attn_kernel.cu"
     "gpu/eigvalsh_kernel.cu"
@@ -236,7 +271,9 @@ if(WITH_ROCM)
     "gpu/matrix_rank_kernel.cu"
     "gpu/matrix_rank_tol_kernel.cu"
     "gpu/svd_kernel.cu"
-    "gpu/cuda_gemm_kernel.cu")
+    "gpu/cuda_gemm_kernel.cu"
+    "gpu/int_bincount.cu"
+    "gpu/layer_norm_cuda_kernel.cu")
 endif()
 
 # Remove AP kernel when CINN is not enabled.

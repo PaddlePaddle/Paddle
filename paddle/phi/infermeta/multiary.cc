@@ -6275,5 +6275,201 @@ void TopPSamplingInferMeta(const MetaTensor& x,
   }
 }
 
+void CalAuxLossInferMeta(const MetaTensor& gate_prob,
+                         const MetaTensor& dispatch_mask,
+                         const MetaTensor& tokens_mask,
+                         const MetaTensor& dispatch_tokens_mask,
+                         const int64_t num_experts,
+                         const bool use_group,
+                         const int64_t moe_k,
+                         const float clip_min,
+                         MetaTensor* l_aux_loss,
+                         MetaTensor* seqlen_floats,
+                         MetaTensor* ce) {
+  auto gate_prob_dims = gate_prob.dims();
+  auto dispatch_mask_dims = dispatch_mask.dims();
+
+  PADDLE_ENFORCE_EQ(
+      gate_prob_dims.size(),
+      2,
+      errors::InvalidArgument("Input gate_prob_dims should have 2 dimensions"));
+
+  PADDLE_ENFORCE_EQ(gate_prob_dims[0] >= gate_prob_dims[1],
+                    true,
+                    errors::InvalidArgument(
+                        "The value of gate_prob_dims[0] should be greater than "
+                        "or equal to that of gate_prob_dims[1]."));
+
+  PADDLE_ENFORCE_EQ(
+      gate_prob_dims[1] <= 1024,
+      true,
+      errors::InvalidArgument(
+          "The value of gate_prob_dims[1] should be less than 1024."));
+
+  PADDLE_ENFORCE_EQ(
+      (dispatch_mask_dims.size() == 1) || (dispatch_mask_dims.size() == 2),
+      true,
+      errors::InvalidArgument(
+          "Input dispatch_mask_dims should have 1 or 2 dimensions"));
+
+  if (dispatch_mask_dims.size() == 1) {
+    PADDLE_ENFORCE_EQ(
+        dispatch_mask_dims[0],
+        gate_prob_dims[1],
+        errors::InvalidArgument("The value of dispatch_mask_shape.back() "
+                                "should be  equal to gate_prob_shape.back()."));
+  } else {
+    PADDLE_ENFORCE_EQ(
+        dispatch_mask_dims[1],
+        gate_prob_dims[1],
+        errors::InvalidArgument("The value of dispatch_mask_shape.back() "
+                                "should be  equal to gate_prob_shape.back()."));
+  }
+
+  PADDLE_ENFORCE_EQ(
+      dispatch_mask.dtype(),
+      phi::DataType::INT64,
+      errors::InvalidArgument("The input dispatch_mask type should be INT64"));
+
+  if (tokens_mask) {
+    auto tokens_mask_dims = tokens_mask.dims();
+    PADDLE_ENFORCE_EQ(
+        tokens_mask_dims.size(),
+        1,
+        errors::InvalidArgument("Input tokens_mask should have 1 dimensions"));
+
+    PADDLE_ENFORCE_EQ(
+        tokens_mask.dtype(),
+        gate_prob.dtype(),
+        errors::InvalidArgument(
+            "The input tokens_mask type should be equal to gate_prob type"));
+
+    PADDLE_ENFORCE_EQ(
+        tokens_mask_dims[0],
+        gate_prob_dims[0],
+        errors::InvalidArgument(
+            "The 0-th dimension of tokens_mask [%d] "
+            "must match that of the 0-th dimension of gate_prob [%d].",
+            tokens_mask_dims[0],
+            gate_prob_dims[0]));
+  }
+
+  if (dispatch_tokens_mask) {
+    auto dispatch_tokens_mask_dims = dispatch_tokens_mask.dims();
+
+    PADDLE_ENFORCE_EQ(
+        dispatch_tokens_mask_dims.size(),
+        1,
+        errors::InvalidArgument(
+            "Input dispatch_tokens_mask should have 1 dimensions"));
+
+    PADDLE_ENFORCE_EQ(
+        dispatch_tokens_mask.dtype(),
+        phi::DataType::BOOL,
+        errors::InvalidArgument(
+            "The input dispatch_tokens_mask type should be BOOL"));
+  }
+
+  l_aux_loss->set_dims(phi::make_ddim({}));
+  l_aux_loss->set_dtype(gate_prob.dtype());
+
+  seqlen_floats->set_dims(phi::make_ddim({}));
+  seqlen_floats->set_dtype(gate_prob.dtype());
+
+  ce->set_dims({gate_prob_dims[1]});
+  ce->set_dtype(gate_prob.dtype());
+}
+
+void MoeGateDispatchInferMeta(const MetaTensor& x,
+                              const MetaTensor& gate_logits,
+                              const MetaTensor& corr_bias,
+                              const int64_t k,
+                              const int64_t capacity,
+                              const bool use_pad,
+                              MetaTensor* y,
+                              MetaTensor* combine_weights,
+                              MetaTensor* scatter_index,
+                              MetaTensor* expert_offset,
+                              MetaTensor* expert_id) {
+  auto x_dims = x.dims();
+  auto gate_logits_dims = gate_logits.dims();
+
+  const int64_t num_rows = x_dims[0];
+  const int64_t num_experts = gate_logits_dims[1];
+
+  PADDLE_ENFORCE_EQ(
+      x_dims.size(),
+      2,
+      errors::InvalidArgument("Input x should have 2 dimensions"));
+
+  PADDLE_ENFORCE_EQ(
+      gate_logits_dims.size(),
+      2,
+      errors::InvalidArgument("Input gate_logits should have 2 dimensions"));
+
+  PADDLE_ENFORCE_EQ(
+      x_dims[0],
+      gate_logits_dims[0],
+      errors::InvalidArgument(
+          "The 0-th dimension of x [%d] "
+          "must match that of the 0-th dimension gate_logits [%d].",
+          x_dims[0],
+          gate_logits_dims[0]));
+
+  PADDLE_ENFORCE_EQ(gate_logits_dims[1] >= k,
+                    true,
+                    errors::InvalidArgument(
+                        "The 1-th dimension of gate_logits [%d] "
+                        "must be greater than or equal to that of k [%d].",
+                        gate_logits_dims[1],
+                        k));
+
+  if (corr_bias) {
+    auto corr_bias_dims = corr_bias.dims();
+    PADDLE_ENFORCE_EQ(
+        corr_bias.dtype(),
+        phi::DataType::FLOAT32,
+        errors::InvalidArgument(
+            "The dtype of rotary_tensor must be float32, but got %d",
+            corr_bias.dtype()));
+
+    PADDLE_ENFORCE_EQ(
+        corr_bias_dims.size(),
+        1,
+        errors::InvalidArgument("Input corr_bias should have 1 dimensions"));
+
+    PADDLE_ENFORCE_EQ(
+        corr_bias_dims[0],
+        gate_logits_dims[1],
+        errors::InvalidArgument(
+            "The 0-th dimension of x [%d] "
+            "must match that of the 0-th dimension gate_logits [%d].",
+            corr_bias_dims[0],
+            gate_logits_dims[1]));
+  }
+
+  std::vector<int64_t> y_dims;
+  if (use_pad) {
+    y_dims = {num_experts * capacity, x_dims[1]};
+  } else {
+    y_dims = {num_rows * k, x_dims[1]};
+  }
+
+  y->set_dims(common::make_ddim(y_dims));
+  y->set_dtype(x.dtype());
+
+  combine_weights->set_dims(common::make_ddim({num_rows, k}));
+  combine_weights->set_dtype(phi::DataType::FLOAT32);
+
+  scatter_index->set_dims(common::make_ddim({k, num_rows}));
+  scatter_index->set_dtype(phi::DataType::INT32);
+
+  expert_offset->set_dims(common::make_ddim({num_experts}));
+  expert_offset->set_dtype(phi::DataType::INT64);
+
+  expert_id->set_dims(common::make_ddim({num_rows, k}));
+  expert_id->set_dtype(phi::DataType::INT32);
+}
+
 }  // namespace phi
 PD_REGISTER_INFER_META_FN(batch_norm_infer, phi::BatchNormInferInferMeta);

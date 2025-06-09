@@ -95,7 +95,7 @@ void ExpandAs(const Context& context,
 }
 
 template <typename T, typename Context>
-void ExpandAsKernel(const Context& ctx,
+void ExpandAsKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     const paddle::optional<DenseTensor>& y,
                     const std::vector<int64_t>& target_shape,
@@ -138,31 +138,31 @@ void ExpandAsKernel(const Context& ctx,
 
   switch (target_rank) {
     case 0:
-      ExpandAs<Context, T, 0>(ctx, x, real_target_shape, out);
+      ExpandAs<Context, T, 0>(dev_ctx, x, real_target_shape, out);
       break;
     case 1:
-      ExpandAs<Context, T, 1>(ctx, x, real_target_shape, out);
+      ExpandAs<Context, T, 1>(dev_ctx, x, real_target_shape, out);
       break;
     case 2:
-      ExpandAs<Context, T, 2>(ctx, x, real_target_shape, out);
+      ExpandAs<Context, T, 2>(dev_ctx, x, real_target_shape, out);
       break;
     case 3:
-      ExpandAs<Context, T, 3>(ctx, x, real_target_shape, out);
+      ExpandAs<Context, T, 3>(dev_ctx, x, real_target_shape, out);
       break;
     case 4:
-      ExpandAs<Context, T, 4>(ctx, x, real_target_shape, out);
+      ExpandAs<Context, T, 4>(dev_ctx, x, real_target_shape, out);
       break;
     case 5:
-      ExpandAs<Context, T, 5>(ctx, x, real_target_shape, out);
+      ExpandAs<Context, T, 5>(dev_ctx, x, real_target_shape, out);
       break;
     case 6:
-      ExpandAs<Context, T, 6>(ctx, x, real_target_shape, out);
+      ExpandAs<Context, T, 6>(dev_ctx, x, real_target_shape, out);
       break;
     case 7:
-      ExpandAs<Context, T, 7>(ctx, x, real_target_shape, out);
+      ExpandAs<Context, T, 7>(dev_ctx, x, real_target_shape, out);
       break;
     case 8:
-      ExpandAs<Context, T, 8>(ctx, x, real_target_shape, out);
+      ExpandAs<Context, T, 8>(dev_ctx, x, real_target_shape, out);
       break;
   }
 }
