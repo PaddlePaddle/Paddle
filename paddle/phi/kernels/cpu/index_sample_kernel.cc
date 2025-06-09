@@ -83,11 +83,11 @@ void IndexSampleInner(const Context &context,
 }
 
 template <typename T, typename Context>
-void IndexSampleKernel(const Context &ctx,
+void IndexSampleKernel(const Context &dev_ctx,
                        const DenseTensor &x,
                        const DenseTensor &index,
                        DenseTensor *out) {
-  ctx.template Alloc<T>(out);
+  dev_ctx.template Alloc<T>(out);
   auto index_type = index.dtype();
   bool index_type_match =
       index_type == DataType::INT32 || index_type == DataType::INT64;
@@ -100,9 +100,9 @@ void IndexSampleKernel(const Context &ctx,
                         DataTypeToString(DataType::INT32),
                         DataTypeToString(DataType::INT64)));
   if (index_type == DataType::INT32) {
-    IndexSampleInner<T, Context, int>(ctx, x, index, out);
+    IndexSampleInner<T, Context, int>(dev_ctx, x, index, out);
   } else if (index_type == DataType::INT64) {
-    IndexSampleInner<T, Context, int64_t>(ctx, x, index, out);
+    IndexSampleInner<T, Context, int64_t>(dev_ctx, x, index, out);
   }
 }
 

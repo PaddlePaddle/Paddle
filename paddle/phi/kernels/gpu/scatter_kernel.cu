@@ -23,13 +23,13 @@
 namespace phi {
 
 template <typename T, typename Context>
-void ScatterKernel(const Context &ctx,
+void ScatterKernel(const Context &dev_ctx,
                    const DenseTensor &x,
                    const DenseTensor &index,
                    const DenseTensor &updates,
                    bool overwrite,
                    DenseTensor *out) {
-  phi::Copy(ctx, x, ctx.GetPlace(), false, out);
+  phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
   // use template class to support int32_t and int64_t
   auto index_type = index.dtype();
   bool index_type_match =
@@ -44,10 +44,10 @@ void ScatterKernel(const Context &ctx,
                         phi::DataType::INT64));
   if (index_type == phi::DataType::INT32) {
     phi::funcs::GPUScatterAssign<T, int32_t>(
-        ctx, updates, index, out, overwrite);
+        dev_ctx, updates, index, out, overwrite);
   } else {
     phi::funcs::GPUScatterAssign<T, int64_t>(
-        ctx, updates, index, out, overwrite);
+        dev_ctx, updates, index, out, overwrite);
   }
 }
 

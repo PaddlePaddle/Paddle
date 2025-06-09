@@ -110,7 +110,7 @@ static __global__ void FillIndex(T* indices, T num_rows, T num_cols) {
             "Argsort temp storage size is %d, but should be greater than 0.", \
             temp_size));                                                      \
     temp_storage.Resize({temp_size});                                         \
-    ctx.template Alloc<uint8_t>(&temp_storage);                               \
+    dev_ctx.template Alloc<uint8_t>(&temp_storage);                           \
     PADDLE_ENFORCE_GPU_SUCCESS(                                               \
         func(temp_storage.data<uint8_t>(), temp_storage_bytes, __VA_ARGS__)); \
   }
@@ -124,14 +124,14 @@ static __global__ void FillIndex(T* indices, T num_rows, T num_cols) {
 // Sort by flag descending, True: descending. False: Ascending.
 // Default is false.
 template <typename T, typename IndType>
-void ArgFullSort(const phi::GPUContext& ctx,
+void ArgFullSort(const phi::GPUContext& dev_ctx,
                  const DenseTensor* input,
                  DenseTensor* output,
                  DenseTensor* indices,
                  const int64_t num_rows,
                  const int64_t num_cols,
                  const bool descending) {
-  auto cu_stream = ctx.stream();
+  auto cu_stream = dev_ctx.stream();
   auto ComputeBlockSize = [](IndType col) {
     if (col > 512)
       return 1024;
@@ -143,7 +143,7 @@ void ArgFullSort(const phi::GPUContext& ctx,
       return 128;
   };
   const int block_size = ComputeBlockSize(num_cols);
-  const int64_t maxGridDimX = ctx.GetCUDAMaxGridDimSize()[0];
+  const int64_t maxGridDimX = dev_ctx.GetCUDAMaxGridDimSize()[0];
 
   const T* inp = input->data<T>();
   IndType* sorted_indices_ptr = indices->data<IndType>();
@@ -181,7 +181,7 @@ void ArgFullSort(const phi::GPUContext& ctx,
       ind_ptr = input_indices.data<IndType>();
     } else {
       input_indices.Resize({n_segments, segment_size});
-      ind_ptr = ctx.template Alloc<IndType>(&input_indices);
+      ind_ptr = dev_ctx.template Alloc<IndType>(&input_indices);
     }
     const int64_t grid_size = std::min(n_segments, maxGridDimX);
     // Init a index array

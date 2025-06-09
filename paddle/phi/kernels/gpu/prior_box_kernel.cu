@@ -108,7 +108,7 @@ __global__ void SetVariance(T* out,
 }
 
 template <typename T, typename Context>
-void PriorBoxKernel(const Context& ctx,
+void PriorBoxKernel(const Context& dev_ctx,
                     const DenseTensor& input,
                     const DenseTensor& image,
                     const std::vector<float>& min_sizes,
@@ -125,9 +125,9 @@ void PriorBoxKernel(const Context& ctx,
                     DenseTensor* var) {
   if (input.numel() == 0 || image.numel() == 0) {
     phi::Full<T, Context>(
-        ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+        dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
     phi::Full<T, Context>(
-        ctx, phi::IntArray(common::vectorize(var->dims())), 0, var);
+        dev_ctx, phi::IntArray(common::vectorize(var->dims())), 0, var);
     return;
   }
 
@@ -163,21 +163,21 @@ void PriorBoxKernel(const Context& ctx,
   int block = 512;
   int grid = (box_num + block - 1) / block;
 
-  auto stream = ctx.stream();
+  auto stream = dev_ctx.stream();
 
-  ctx.template Alloc<T>(out);
-  ctx.template Alloc<T>(var);
+  dev_ctx.template Alloc<T>(out);
+  dev_ctx.template Alloc<T>(var);
 
   DenseTensor r;
-  phi::TensorFromVector(new_aspect_ratios, ctx, &r);
+  phi::TensorFromVector(new_aspect_ratios, dev_ctx, &r);
 
   DenseTensor min;
-  phi::TensorFromVector(min_sizes, ctx, &min);
+  phi::TensorFromVector(min_sizes, dev_ctx, &min);
 
   T* max_data = nullptr;
   DenseTensor max;
   if (max_sizes.size() > 0) {
-    phi::TensorFromVector(max_sizes, ctx, &max);
+    phi::TensorFromVector(max_sizes, dev_ctx, &max);
     max_data = max.data<T>();
   }
 
@@ -198,7 +198,7 @@ void PriorBoxKernel(const Context& ctx,
                                              min_max_aspect_ratios_order);
 
   DenseTensor v;
-  phi::TensorFromVector(variances, ctx, &v);
+  phi::TensorFromVector(variances, dev_ctx, &v);
   grid = (box_num * 4 + block - 1) / block;
   SetVariance<T><<<grid, block, 0, stream>>>(
       var->data<T>(), v.data<T>(), variances.size(), box_num * 4);

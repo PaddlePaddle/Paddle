@@ -68,18 +68,18 @@ inline void CheckLapackEigResult(const int info, const std::string& name) {
 
 template <typename T, typename Context>
 typename std::enable_if<std::is_floating_point<T>::value>::type LapackEigvals(
-    const Context& ctx,
+    const Context& dev_ctx,
     const DenseTensor& input,
     DenseTensor* output,
     DenseTensor* work,
     DenseTensor* rwork /*unused*/) {
   DenseTensor a;  // will be overwritten when lapackEig exit
-  Copy(ctx, input, input.place(), /*blocking=*/true, &a);
+  Copy(dev_ctx, input, input.place(), /*blocking=*/true, &a);
 
   DenseTensor w;
   int64_t n_dim = input.dims()[1];
   w.Resize(common::make_ddim({n_dim << 1}));
-  T* w_data = ctx.template Alloc<T>(&w);
+  T* w_data = dev_ctx.template Alloc<T>(&w);
 
   int64_t work_mem = static_cast<int64_t>(work->memory_size());
   int64_t required_work_mem = 3 * n_dim * sizeof(T);
@@ -115,7 +115,7 @@ typename std::enable_if<std::is_floating_point<T>::value>::type LapackEigvals(
   }
   CheckLapackEigResult(info, name);
 
-  funcs::ForRange<Context> for_range(ctx, n_dim);
+  funcs::ForRange<Context> for_range(dev_ctx, n_dim);
   funcs::RealImagToComplexFunctor<PaddleCType<T>> functor(
       w_data, w_data + n_dim, output->template data<PaddleCType<T>>(), n_dim);
   for_range(functor);
@@ -124,13 +124,13 @@ typename std::enable_if<std::is_floating_point<T>::value>::type LapackEigvals(
 template <typename T, typename Context>
 typename std::enable_if<std::is_same<T, dtype::complex<float>>::value ||
                         std::is_same<T, dtype::complex<double>>::value>::type
-LapackEigvals(const Context& ctx,
+LapackEigvals(const Context& dev_ctx,
               const DenseTensor& input,
               DenseTensor* output,
               DenseTensor* work,
               DenseTensor* rwork) {
   DenseTensor a;  // will be overwritten when lapackEig exit
-  Copy(ctx, input, input.place(), /*blocking=*/true, &a);
+  Copy(dev_ctx, input, input.place(), /*blocking=*/true, &a);
 
   int64_t work_mem = static_cast<int64_t>(work->memory_size());
   int64_t n_dim = input.dims()[1];
@@ -202,8 +202,10 @@ void SpiltBatchSquareMatrix(const DenseTensor& input,
 }
 
 template <typename T, typename Context>
-void EigvalsKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
-  ctx.template Alloc<PaddleCType<T>>(out);
+void EigvalsKernel(const Context& dev_ctx,
+                   const DenseTensor& x,
+                   DenseTensor* out) {
+  dev_ctx.template Alloc<PaddleCType<T>>(out);
 
   std::vector<DenseTensor> x_matrices;
   SpiltBatchSquareMatrix(x, /*->*/ &x_matrices);
@@ -236,16 +238,16 @@ void EigvalsKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
   DenseTensor work, rwork;
 
   work.Resize(common::make_ddim({lwork}));
-  ctx.template Alloc<T>(&work);
+  dev_ctx.template Alloc<T>(&work);
 
   if (IsComplexType(x.dtype())) {
     rwork.Resize(common::make_ddim({n_dim << 1}));
-    ctx.template Alloc<dtype::Real<T>>(&rwork);
+    dev_ctx.template Alloc<dtype::Real<T>>(&rwork);
   }
 
   for (int64_t i = 0; i < n_batch; ++i) {
     LapackEigvals<T, Context>(
-        ctx, x_matrices[i], &out_vectors[i], &work, &rwork);
+        dev_ctx, x_matrices[i], &out_vectors[i], &work, &rwork);
   }
   out->Resize(out_dims);
 }
