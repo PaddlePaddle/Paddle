@@ -4642,6 +4642,7 @@ void FusedRMSNormInferMeta(const MetaTensor& x,
   invvar->set_dtype(DataType::FLOAT32);
 }
 
+
 void FusedWeightedSwigluActQuantInferMeta(const MetaTensor& x,
                const MetaTensor& prob,
                bool using_pow2_scaling,
