@@ -2007,9 +2007,14 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
       } else {
 #ifdef PADDLE_WITH_CUDA
         // TODO(czy): remove in the future
-        if (transed_sub_tensor.is_gpu() && !out_is_view &&
-            transed_index.size() == 1 && value_tensor.numel() == 1) {
+        if (transed_sub_tensor.is_gpu() && value_tensor.numel() == 1) {
           transed_index = expand_outplace(transed_index);
+          for (int i = 0; i < pos_of_new_dim; ++i) {
+            transed_index.insert(
+                transed_index.begin(),
+                empty_ad_func(
+                    {}, transed_index[0].dtype(), transed_index[0].place()));
+          }
           while (transed_index.size() <
                  static_cast<size_t>(transed_sub_tensor.dims().size())) {
             transed_index.emplace_back(empty_ad_func(
@@ -2018,7 +2023,7 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
 
           AdvancedIndex ad = AdvancedIndex(transed_sub_tensor, transed_index);
           transed_sub_tensor =
-              index_elementwise_put__ad_func(transed_sub_tensor,
+              index_elementwise_put__ad_func(sub_tensor,
                                              ad.indices,
                                              value_tensor,
                                              ad.src_sizes,

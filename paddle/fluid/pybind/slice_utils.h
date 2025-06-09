@@ -117,11 +117,13 @@ struct AdvancedIndex {
   bool bool_case;
 };
 
-inline static void restride_src(std::vector<int64_t>* shape,
-                                std::vector<int64_t>* strides,
-                                int64_t dims_before,
-                                int64_t dims_indexed,
-                                std::vector<int64_t> replacement_shape) {
+inline static paddle::Tensor restride_src(
+    paddle::Tensor src,
+    std::vector<int64_t>* shape,
+    std::vector<int64_t>* strides,
+    int64_t dims_before,
+    int64_t dims_indexed,
+    std::vector<int64_t> replacement_shape) {
   int64_t end = dims_before + dims_indexed;
   shape->erase(shape->begin() + dims_before, shape->begin() + end);
   strides->erase(strides->begin() + dims_before, strides->begin() + end);
@@ -129,6 +131,7 @@ inline static void restride_src(std::vector<int64_t>* shape,
                 replacement_shape.begin(),
                 replacement_shape.end());
   strides->insert(strides->begin() + dims_before, replacement_shape.size(), 0);
+  return as_strided_ad_func(src, *shape, *strides);
 }
 
 // move to cuda kernel
@@ -177,8 +180,12 @@ inline AdvancedIndex::AdvancedIndex(paddle::Tensor src,
 
   this->dims_before = dims_before;
   this->dims_after = dims_after;
-  restride_src(
-      &shape_vec, &stride_vec, dims_before, dims_indexed, replacement_shape);
+  this->src = restride_src(src,
+                           &shape_vec,
+                           &stride_vec,
+                           dims_before,
+                           dims_indexed,
+                           replacement_shape);
   this->src_sizes = shape_vec;
   this->src_strides = stride_vec;
 
@@ -631,7 +638,11 @@ static paddle::Tensor dealWithAdvancedIndex(
     transed_tensor = tensor;
   } else {
     *out_is_view = true;
-    transed_tensor = transpose_ad_func(tensor, *trans_dim);
+    if (!is_for_setitem || *pos_of_new_dim == 0) {  // getitem to be removed
+      transed_tensor = transpose_ad_func(tensor, *trans_dim);
+    } else {
+      transed_tensor = tensor;
+    }
   }
 
   if (is_for_setitem) {
