@@ -224,12 +224,6 @@ class TestSumOp7(TestSumOp1):
         self.out = self.x.cumsum(axis=0)
 
 
-class TestSumOp8(TestSumOp1):
-    def set_attrs_input_output(self):
-        self.x = np.random.random(1).astype(self.dtype_)
-        self.out = self.x.cumsum(axis=0)
-
-
 @unittest.skipIf(
     core.is_compiled_with_xpu(),
     "Skip XPU for complex dtype is not fully supported",
@@ -767,14 +761,17 @@ class TestCumSumOpFp16(unittest.TestCase):
 
 class TestSumOpInt32(unittest.TestCase):
     def setUp(self):
-        self.shape = [2, 3, 4]
         self.axis = 0
         self.input_dtype = 'int32'
 
     def test_dygraph(self):
         with dygraph_guard():
-            x = paddle.ones(shape=self.shape, dtype=self.input_dtype)
+            x = paddle.ones(shape=[2, 3, 4], dtype=self.input_dtype)
             result = paddle.cumsum(x, axis=self.axis)
+            self.assertEqual(result.dtype, paddle.int64)
+
+            x1 = paddle.ones(shape=[1], dtype=self.input_dtype)
+            result1 = paddle.cumsum(x, axis=self.axis)
             self.assertEqual(result.dtype, paddle.int64)
 
     def test_static(self):
@@ -783,9 +780,15 @@ class TestSumOpInt32(unittest.TestCase):
                 paddle.static.Program(), paddle.static.Program()
             ):
                 x = paddle.static.data(
-                    name='x', shape=self.shape, dtype=self.input_dtype
+                    name='x', shape=[2, 3, 4], dtype=self.input_dtype
                 )
                 result = paddle.cumsum(x, axis=self.axis)
+                self.assertEqual(result.dtype, paddle.int64)
+
+                x1 = paddle.static.data(
+                    name='x', shape=[1], dtype=self.input_dtype
+                )
+                result1 = paddle.cumsum(x, axis=self.axis)
                 self.assertEqual(result.dtype, paddle.int64)
 
 
