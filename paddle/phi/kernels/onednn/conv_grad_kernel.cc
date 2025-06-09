@@ -51,10 +51,6 @@ void ConvGradKernel(const Context& dev_ctx,
                     const std::string& data_format,
                     DenseTensor* input_grad,
                     DenseTensor* filter_grad) {
-  PADDLE_ENFORCE_EQ(dev_ctx.GetPlace().GetType(),
-                    AllocationType::CPU,
-                    common::errors::PreconditionNotMet(
-                        "Operator oneDNN ConvGrad must use CPUPlace"));
   const auto& onednn_engine = dev_ctx.GetEngine();
 
   bool is_test = dev_ctx.HasDnnAttr("is_test")

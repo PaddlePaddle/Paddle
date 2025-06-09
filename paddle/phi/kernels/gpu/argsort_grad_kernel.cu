@@ -89,13 +89,13 @@ static __global__ void FillGrad(const T* dO,
 }
 
 template <typename T, typename IndType>
-void ArgFullAssign(const phi::GPUContext& ctx,
+void ArgFullAssign(const phi::GPUContext& dev_ctx,
                    const DenseTensor* dO,
                    const DenseTensor* indices,
                    DenseTensor* dX,
                    const IndType num_rows,
                    const IndType num_cols) {
-  auto cu_stream = ctx.stream();
+  auto cu_stream = dev_ctx.stream();
 
   auto ComputeBlockSize = [](IndType col) {
     if (col > 512)
@@ -112,7 +112,7 @@ void ArgFullAssign(const phi::GPUContext& ctx,
 
   int block_size = ComputeBlockSize(num_cols);
 
-  int maxGridDimX = ctx.GetCUDAMaxGridDimSize()[0];
+  int maxGridDimX = dev_ctx.GetCUDAMaxGridDimSize()[0];
   // actually, int num_rows < max_grid_size
   int grid_size = num_rows < maxGridDimX ? num_rows : maxGridDimX;
   FillGrad<<<grid_size, block_size, 0, cu_stream>>>(dO->data<T>(),
@@ -123,16 +123,16 @@ void ArgFullAssign(const phi::GPUContext& ctx,
 }
 
 template <typename T>
-void ArgFlattenAssign(const phi::GPUContext& ctx,
+void ArgFlattenAssign(const phi::GPUContext& dev_ctx,
                       const DenseTensor* dO,
                       const DenseTensor* indices,
                       int64_t size,
                       DenseTensor* dX) {
-  auto cu_stream = ctx.stream();
+  auto cu_stream = dev_ctx.stream();
 
   const int64_t block_size =
-      std::min(size, static_cast<int64_t>(ctx.GetMaxThreadsPerBlock()));
-  int64_t max_threads = ctx.GetMaxPhysicalThreadCount();
+      std::min(size, static_cast<int64_t>(dev_ctx.GetMaxThreadsPerBlock()));
+  int64_t max_threads = dev_ctx.GetMaxPhysicalThreadCount();
   const int64_t max_blocks =
       std::max(((max_threads - 1) / block_size + 1), static_cast<int64_t>(1));
   const int64_t grid_size =

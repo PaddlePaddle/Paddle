@@ -53,8 +53,12 @@ std::vector<phi::DataType> IntBincountInferDType(phi::DataType x_dtype,
 }
 
 template <typename T, typename BinsT, typename Context>
-void IntBincountImpl(
-    const Context &ctx, const T *x, int64_t n, T min_v, T max_v, BinsT *bins) {
+void IntBincountImpl(const Context &dev_ctx,
+                     const T *x,
+                     int64_t n,
+                     T min_v,
+                     T max_v,
+                     BinsT *bins) {
   DenseTensor workspace;
   void *workspace_ptr = nullptr;
   size_t workspace_size = 0;
@@ -62,7 +66,7 @@ void IntBincountImpl(
   for (int i = 0; i < 2; ++i) {
     if (workspace_size > 0) {
       workspace =
-          phi::Empty<uint8_t>(ctx, {static_cast<int64_t>(workspace_size)});
+          phi::Empty<uint8_t>(dev_ctx, {static_cast<int64_t>(workspace_size)});
       workspace_ptr = workspace.data();
     }
     auto err = cub::DeviceHistogram::HistogramEven(workspace_ptr,
@@ -73,7 +77,7 @@ void IntBincountImpl(
                                                    min_v,
                                                    max_v,
                                                    n,
-                                                   ctx.stream());
+                                                   dev_ctx.stream());
     PD_CHECK(
         err == cudaSuccess, "HistogramEven error: %s", cudaGetErrorString(err));
   }
@@ -81,7 +85,7 @@ void IntBincountImpl(
 
 // T is x's input type and out_dtype is in args
 template <typename T, typename Context>
-void IntBincount(const Context &ctx,
+void IntBincount(const Context &dev_ctx,
                  const DenseTensor &x,
                  int64_t low,
                  int64_t high,
@@ -101,17 +105,18 @@ void IntBincount(const Context &ctx,
   const auto *x_data = x.data<T>();
   int64_t n = x.numel();
   if (bins_dtype == phi::DataType::INT32) {
-    ctx.template Alloc<int32_t>(out);
+    dev_ctx.template Alloc<int32_t>(out);
     uint32_t *out_ptr = static_cast<uint32_t *>(out->data());
     IntBincountImpl<T, uint32_t, Context>(
-        ctx, x_data, n, low_v, high_v, out_ptr);
+        dev_ctx, x_data, n, low_v, high_v, out_ptr);
   } else if (bins_dtype == phi::DataType::INT64) {
     using ULLI = unsigned long long int;  // NOLINT
-    ctx.template Alloc<int64_t>(out);
+    dev_ctx.template Alloc<int64_t>(out);
     static_assert(sizeof(int64_t) == sizeof(ULLI));
     // WARNING: unsafe type cast used in original impl.
     ULLI *out_ptr = static_cast<ULLI *>(out->data());
-    IntBincountImpl<T, ULLI, Context>(ctx, x_data, n, low_v, high_v, out_ptr);
+    IntBincountImpl<T, ULLI, Context>(
+        dev_ctx, x_data, n, low_v, high_v, out_ptr);
   } else {
     PD_THROW("Only support INT32 and INT64, but got %s", bins_dtype);
   }
