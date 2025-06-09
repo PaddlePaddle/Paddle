@@ -1509,6 +1509,14 @@ void RowConvGradInferMeta(const MetaTensor& out_grad,
   }
 }
 
+void ScatterAddGradInferMeta(const MetaTensor& index,
+                             const MetaTensor& updates,
+                             const MetaTensor& out_grad,
+                             MetaTensor* x_grad,
+                             MetaTensor* updates_grad) {
+  ScatterGradInferMeta(index, updates, out_grad, false, x_grad, updates_grad);
+}
+
 void ScatterGradInferMeta(const MetaTensor& index,
                           const MetaTensor& updates,
                           const MetaTensor& out_grad,

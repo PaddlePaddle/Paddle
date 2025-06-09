@@ -50,15 +50,16 @@ static inline Array<T, ElementCount> VectorToArray(const VectorLikeType& vec) {
   return ret;
 }
 }  // namespace details
+template <typename IndexType>
 struct IndexCalculator {
   IndexCalculator(int dim,
-                  const std::vector<int>& cal_dims,
-                  const std::vector<int>& cal_strides,
-                  const std::vector<int>& full_strides)
+                  const std::vector<int64_t>& cal_dims,
+                  const std::vector<int64_t>& cal_strides,
+                  const std::vector<int64_t>& full_strides)
       : dim(dim) {
-    dims = details::VectorToArray<int, kMaxRank>(cal_dims);
-    strides = details::VectorToArray<int, kMaxRank>(full_strides);
-    reduce_strides = details::VectorToArray<int, kMaxRank>(cal_strides);
+    dims = details::VectorToArray<int64_t, kMaxRank>(cal_dims);
+    strides = details::VectorToArray<int64_t, kMaxRank>(full_strides);
+    reduce_strides = details::VectorToArray<int64_t, kMaxRank>(cal_strides);
 #ifndef PADDLE_WITH_XPU_KP
     std::vector<kps::details::FastDivMod> cal_divmoders;
     // fast divmod
@@ -70,9 +71,9 @@ struct IndexCalculator {
 #endif
   }
 
-  __device__ inline int operator()(int offset) const {
+  __device__ inline IndexType operator()(IndexType offset) const {
 #ifdef PADDLE_WITH_XPU_KP
-    int index = 0;
+    IndexType index = 0;
 #pragma unroll
     for (int i = 0; i < kMaxRank; ++i) {
       if (i == dim) {
@@ -83,7 +84,7 @@ struct IndexCalculator {
     }
     return index;
 #else
-    int index = 0;
+    IndexType index = 0;
 #pragma unroll
     for (int i = 0; i < kMaxRank; ++i) {
       if (i == dim) {
@@ -98,9 +99,9 @@ struct IndexCalculator {
   }
 
   int dim;
-  Array<int, kMaxRank> dims;
-  Array<int, kMaxRank> strides;
-  Array<int, kMaxRank> reduce_strides;
+  Array<int64_t, kMaxRank> dims;
+  Array<int64_t, kMaxRank> strides;
+  Array<int64_t, kMaxRank> reduce_strides;
 #ifndef PADDLE_WITH_XPU_KP
   Array<kps::details::FastDivMod, kMaxRank> divmoders;
 #endif

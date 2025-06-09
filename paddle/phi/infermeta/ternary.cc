@@ -1919,6 +1919,13 @@ void RoiPoolInferMeta(const MetaTensor& x,
   arg_max->set_dtype(DataType::INT64);
 }
 
+void ScatterAddInferMeta(const MetaTensor& x,
+                         const MetaTensor& index,
+                         const MetaTensor& updates,
+                         MetaTensor* out) {
+  ScatterInferMeta(x, index, updates, false, out);
+}
+
 void ScatterInferMeta(const MetaTensor& x,
                       const MetaTensor& index,
                       const MetaTensor& updates,

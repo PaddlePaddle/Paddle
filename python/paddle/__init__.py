@@ -333,6 +333,8 @@ from .tensor.manipulation import (
     row_stack,
     scatter,
     scatter_,
+    scatter_add,  # noqa: F401
+    scatter_add_,  # noqa: F401
     scatter_nd,
     scatter_nd_add,
     select_scatter,

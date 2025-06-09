@@ -89,7 +89,8 @@ struct ForRange<phi::GPUContext> {
     if (grid_size == 1) {
       ForRangeElemwiseOpGridIsOne<<<1, block_size, 0, dev_ctx_.stream()>>>(
           func);
-    } else if (limit_ > std::numeric_limits<unsigned int>::max()) {
+    } else if (block_size * grid_size >
+               std::numeric_limits<unsigned int>::max()) {
       ForRangeElemwiseOpLargeSize<<<grid_size,
                                     block_size,
                                     0,

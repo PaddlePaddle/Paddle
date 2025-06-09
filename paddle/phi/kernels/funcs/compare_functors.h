@@ -42,7 +42,7 @@ struct EqualFunctor {
       if (isinf(static_cast<float>(a)) || isinf(static_cast<float>(b))) {
         return static_cast<OutT>(a == b);
       }
-      return static_cast<OutT>(fabs(static_cast<double>(a - b)) < 1e-8);
+      return static_cast<OutT>(fabs(static_cast<double>(a - b)) < 1e-15);
     } else {
       return static_cast<OutT>(a == b);
     }
@@ -65,9 +65,9 @@ struct EqualFunctor<phi::dtype::complex<T>> {
         isinf(static_cast<float>(b.imag))) {
       return static_cast<bool>(a.real == b.real && a.imag == b.imag);
     }
-    return static_cast<bool>(fabs(static_cast<double>(a.real - b.real)) <
-                                 1e-8 &&
-                             fabs(static_cast<double>(a.imag - b.imag)) < 1e-8);
+    return static_cast<bool>(
+        fabs(static_cast<double>(a.real - b.real)) < 1e-15 &&
+        fabs(static_cast<double>(a.imag - b.imag)) < 1e-15);
   }
 };
 

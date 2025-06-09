@@ -4385,6 +4385,17 @@
   backward : scatter_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
+- op : scatter_add
+  args : (Tensor x, Tensor index, Tensor updates)
+  output : Tensor(out)
+  infer_meta :
+    func : ScatterAddInferMeta
+  kernel :
+    func : scatter_add
+    data_type : x
+  inplace : (x -> out)
+  backward : scatter_add_grad
+
 - op : scatter_nd_add
   args : (Tensor x, Tensor index, Tensor updates)
   output : Tensor

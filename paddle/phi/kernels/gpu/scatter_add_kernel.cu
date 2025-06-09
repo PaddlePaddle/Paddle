@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/scatter_kernel.h"
+#include "paddle/phi/kernels/scatter_add_kernel.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/bfloat16.h"
@@ -23,12 +23,11 @@
 namespace phi {
 
 template <typename T, typename Context>
-void ScatterKernel(const Context &ctx,
-                   const DenseTensor &x,
-                   const DenseTensor &index,
-                   const DenseTensor &updates,
-                   bool overwrite,
-                   DenseTensor *out) {
+void ScatterAddKernel(const Context &ctx,
+                      const DenseTensor &x,
+                      const DenseTensor &index,
+                      const DenseTensor &updates,
+                      DenseTensor *out) {
   phi::Copy(ctx, x, ctx.GetPlace(), false, out);
   // use template class to support int32_t and int64_t
   auto index_type = index.dtype();
@@ -44,19 +43,19 @@ void ScatterKernel(const Context &ctx,
                         phi::DataType::INT64));
   if (index_type == phi::DataType::INT32) {
     phi::funcs::GPUScatterAssign<T, int32_t>(
-        ctx, updates, index, out, overwrite, /*need_init_zero=*/true);
+        ctx, updates, index, out, false, /*need_init_zero=*/false);
   } else {
     phi::funcs::GPUScatterAssign<T, int64_t>(
-        ctx, updates, index, out, overwrite, /*need_init_zero=*/true);
+        ctx, updates, index, out, false, /*need_init_zero=*/false);
   }
 }
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(scatter,
+PD_REGISTER_KERNEL(scatter_add,
                    GPU,
                    ALL_LAYOUT,
-                   phi::ScatterKernel,
+                   phi::ScatterAddKernel,
                    float,
                    double,
                    int,

@@ -55,6 +55,11 @@ void NonZeroKernel(const Context& dev_ctx,
   auto dims = condition.dims();
   const int rank = dims.size();
 
+  if (numel == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
+
   std::vector<int64_t> true_index;
   for (auto i = 0; i < numel; i++) {
     if (static_cast<bool>(cond_data[i])) {
