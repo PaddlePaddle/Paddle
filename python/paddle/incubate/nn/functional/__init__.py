@@ -47,7 +47,6 @@ from .fused_transformer import (
     fused_multi_head_attention,
     fused_multi_transformer,
 )
-from .fused_spaq import fused_spaq
 from .int_bincount import int_bincount
 from .masked_multihead_attention import masked_multihead_attention
 from .moe_combine import moe_combine
@@ -71,7 +70,6 @@ __all__ = [
     'fused_bias_dropout_residual_layer_norm',
     'fused_dropout_add',
     'fused_rotary_position_embedding',
-    "fused_spaq",
     'variable_length_memory_efficient_attention',
     "fused_rms_norm",
     "fused_layer_norm",
