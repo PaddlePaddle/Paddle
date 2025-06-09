@@ -118,6 +118,10 @@ struct VectorTypeStorage : public TypeStorage {
 
   explicit VectorTypeStorage(const ParamKey& key) {
     data_ = reinterpret_cast<Type*>(malloc(key.size() * sizeof(Type)));
+    if (data_ == nullptr) {
+      fprintf(stderr, "malloc failed for data_ (size = %zu)\n", key.size() * sizeof(Type));
+      exit(EXIT_FAILURE);
+    }
     memcpy(reinterpret_cast<void*>(data_),
            reinterpret_cast<const void*>(key.data()),
            key.size() * sizeof(Type));
