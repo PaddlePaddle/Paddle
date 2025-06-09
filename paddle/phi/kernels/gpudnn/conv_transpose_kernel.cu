@@ -32,6 +32,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/gpudnn/conv_miopen_helper.h"
 #else
 #include "paddle/phi/backends/gpu/cuda/cudnn_helper.h"
+#include "paddle/phi/backends/gpu/cuda/cudnn_workspace_helper.h"
 #include "paddle/phi/kernels/gpudnn/conv_cudnn_v7.h"
 #endif
 
@@ -200,6 +201,9 @@ void ConvTransposeRawGPUDNNKernel(const Context& ctx,
   bool deterministic = FLAGS_cudnn_deterministic;
 
   auto dtype = phi::backends::gpu::CudnnDataType<T>::type;
+  CUDNN_ENFORCE_TENSOR_SIZE_SUPPORTED(transformed_x);
+  CUDNN_ENFORCE_TENSOR_SIZE_SUPPORTED(filter);
+  CUDNN_ENFORCE_TENSOR_SIZE_SUPPORTED(transformed_out);
   // ------------------- cudnn descriptors ---------------------
   ConvArgs args{handle,
                 &transformed_out,

@@ -34,6 +34,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/gpudnn/conv_miopen_helper.h"
 #else
 #include "paddle/phi/backends/gpu/cuda/cudnn_helper.h"
+#include "paddle/phi/backends/gpu/cuda/cudnn_workspace_helper.h"
 #include "paddle/phi/kernels/gpudnn/conv_cudnn_v7.h"
 #endif
 
@@ -176,6 +177,9 @@ void ConvTransposeGradRawGPUDNNKernel(const Context& ctx,
   auto dtype = phi::backends::gpu::CudnnDataType<T>::type;
   auto handle = ctx.cudnn_handle();
 
+  CUDNN_ENFORCE_TENSOR_SIZE_SUPPORTED(transformed_dout);
+  CUDNN_ENFORCE_TENSOR_SIZE_SUPPORTED(filter);
+  CUDNN_ENFORCE_TENSOR_SIZE_SUPPORTED(x_transpose);
   ConvArgs args1{handle,
                  &transformed_dout,
                  &filter,
