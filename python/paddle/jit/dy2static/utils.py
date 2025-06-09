@@ -29,7 +29,7 @@ import time
 import types
 import warnings
 from contextlib import contextmanager
-from dataclasses import is_dataclass
+from dataclasses import fields, is_dataclass
 from enum import Enum, Flag, auto
 from importlib.machinery import SourceFileLoader
 from typing import TYPE_CHECKING, Any
@@ -304,14 +304,12 @@ def make_hashable(x, error_msg=None):
         return tuple(map(make_hashable, x))
 
     if _is_dataclass_instance(x):
-        return tuple(
-            map(
+        return (
+            type(x).__name__,
+            *map(
                 make_hashable,
-                [
-                    getattr(x, field_name)
-                    for field_name in x.__dataclass_fields__
-                ],
-            )
+                [getattr(x, field.name) for field in fields(x)],
+            ),
         )
 
     try:
