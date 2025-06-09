@@ -4633,6 +4633,20 @@ void FusedRMSNormInferMeta(const MetaTensor& x,
                            float epsilon,
                            MetaTensor* y,
                            MetaTensor* invvar) {
+  auto x_shape = x.dims();
+  auto scale_shape = scale.dims();
+  PADDLE_ENFORCE_EQ(scale_shape.size(),
+                    1,
+                    common::errors::InvalidArgument(
+                        "The scale tensor must be 1D, but got[%d]",
+                        scale_shape.size()));
+  PADDLE_ENFORCE_EQ(scale_shape[0],
+                    x_shape[x_shape.size() - 1],
+                    common::errors::InvalidArgument(
+                        "The scale tensor's shape must be equal to the last "
+                        "dimension of x tensor, but got [%d] not equal to [%d]",
+                        scale_shape[0],
+                        x_shape[x_shape.size() - 1]));
   // Y: same shape, dtype, layout as X
   y->set_dims(x.dims());
   y->set_dtype(x.dtype());

@@ -13,7 +13,6 @@
 // limitations under the License.
 #include <cassert>
 #include <vector>
-#include "paddle/common/exception.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/empty_kernel.h"  // NOLINT
 
@@ -23,7 +22,6 @@
 #include "paddle/phi/kernels/gpu/layer_norm_cuda_kernel.h"  // NOLINT
 
 namespace phi {
-// #define CHECK_CUDA(x) PD_CHECK(!x.is_cpu(), #x " must be a CUDA tensor")
 
 static void GetRowsCols(const std::vector<int64_t> &shape,
                         int *p_rows,
@@ -45,18 +43,10 @@ void RMSLnFwd(const Context &dev_ctx,
               DenseTensor *y,
               DenseTensor *invvar) {
   const auto &scale_shape = scale.dims();
-  const auto &x_shape = x.dims();
-  PD_CHECK(scale_shape.size() == 1);
-  PD_CHECK(scale_shape[0] == x_shape[x_shape.size() - 1]);
-
   int rows, cols;
-  rows = x_shape[0];
-  cols = x_shape[1];
-  // GetRowsCols(x_shape, &rows, &cols);
-
-  *y = phi::EmptyLike<T, Context>(dev_ctx, x);
-  *invvar = phi::Empty<float, Context>(dev_ctx, {rows});
-
+  GetRowsCols(common::vectorize(x.dims()), &rows, &cols);
+  dev_ctx.template Alloc<T>(y);
+  dev_ctx.template Alloc<float>(invvar);
   cuda_rms_norm<T, Context>(dev_ctx, x, scale, rows, cols, epsilon, y, invvar);
 }
 
@@ -70,9 +60,7 @@ void RMSLnBwd(const Context &dev_ctx,
               DenseTensor *x_grad,
               DenseTensor *scale_grad) {
   int rows, cols;
-  const auto &x_shape = x.dims();
-  rows = x_shape[0];
-  cols = x_shape[1];
+  GetRowsCols(common::vectorize(x.dims()), &rows, &cols);
   dev_ctx.template Alloc<T>(x_grad);
   dev_ctx.template Alloc<T>(scale_grad);
   cuda_rms_norm_gradient<T, Context>(dev_ctx,
@@ -85,6 +73,7 @@ void RMSLnBwd(const Context &dev_ctx,
                                      epsilon,
                                      x_grad,
                                      scale_grad);
+  printf("kernel over\n");
 }
 
 }  // namespace phi
