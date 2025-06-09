@@ -443,13 +443,16 @@ void compareTwoTensor(const T1* pred,
   FILE* fd = nullptr;
   if (filename != "") {
     fd = fopen(filename.c_str(), "w");
-    fprintf(fd,
-            "| %10s | %10s | %10s | %10s | \n",
-            "pred",
-            "ref",
-            "abs_diff",
-            "rel_diff(%)");
+    if (fd != nullptr) {
+      fprintf(fd,
+              "| %10s | %10s | %10s | %10s | \n",
+              "pred",
+              "ref",
+              "abs_diff",
+              "rel_diff(%)");
+    }
   }
+
 
   if (print_size > 0) {
     VLOG(2) << "  id |   pred  |   ref   |abs diff | rel diff (%) |";
