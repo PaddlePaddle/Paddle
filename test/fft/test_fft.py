@@ -1029,14 +1029,6 @@ class TestHfft2Exception(unittest.TestCase):
             ValueError,
         ),
         (
-            'test_zero_point',
-            np.random.randn(4, 4, 1) + 1j * np.random.randn(4, 4, 1),
-            None,
-            (-2, -1),
-            "backward",
-            ValueError,
-        ),
-        (
             'test_n_zero',
             np.random.randn(4, 4, 4) + 1j * np.random.randn(4, 4, 4),
             (0, 0),
@@ -2002,6 +1994,246 @@ class TestIfftShift_ZeroSize(unittest.TestCase):
         with paddle.base.dygraph.guard(self.place):
             x = paddle.to_tensor(self.x, stop_gradient=False)
             y = paddle.fft.ifftshift(x, self.axes)
+            loss = paddle.sum(y)
+            loss.backward()
+            np.testing.assert_equal(
+                x.grad.shape, self.x.shape, "Grad shape mismatch"
+            )
+
+
+@place(DEVICES)
+@parameterize(
+    (TEST_CASE_NAME, 'x', 'n', 'axis', 'norm'),
+    [
+        ('test_x', np.random.randn(3, 3, 0, 2), (1, 2), (0, 1), 'backward'),
+    ],
+)
+class TestFft2_ZeroSize(unittest.TestCase):
+    def test_fft2(self):
+        with paddle.base.dygraph.guard(self.place):
+            np.testing.assert_allclose(
+                scipy.fft.fft2(self.x, self.n, self.axis, self.norm),
+                paddle.fft.fft2(
+                    paddle.to_tensor(self.x), self.n, self.axis, self.norm
+                ),
+                rtol=RTOL.get(str(self.x.dtype)),
+                atol=ATOL.get(str(self.x.dtype)),
+            )
+
+    def test_grad_shape(self):
+        with paddle.base.dygraph.guard(self.place):
+            x = paddle.to_tensor(self.x, stop_gradient=False)
+            y = paddle.fft.fft2(x, self.n, self.axis, self.norm)
+            loss = paddle.sum(y)
+            loss.backward()
+            np.testing.assert_equal(
+                x.grad.shape, self.x.shape, "Grad shape mismatch"
+            )
+
+
+@place(DEVICES)
+@parameterize(
+    (TEST_CASE_NAME, 'x', 'n', 'axis', 'norm'),
+    [
+        ('test_x', np.random.randn(4, 0, 6), (2, 4), None, 'backward'),
+    ],
+)
+class TestFftn_ZeroSize(unittest.TestCase):
+    def test_fftn(self):
+        with paddle.base.dygraph.guard(self.place):
+            np.testing.assert_allclose(
+                scipy.fft.fftn(self.x, self.n, self.axis, self.norm),
+                paddle.fft.fftn(
+                    paddle.to_tensor(self.x), self.n, self.axis, self.norm
+                ),
+                rtol=RTOL.get(str(self.x.dtype)),
+                atol=ATOL.get(str(self.x.dtype)),
+            )
+
+    def test_grad_shape(self):
+        with paddle.base.dygraph.guard(self.place):
+            x = paddle.to_tensor(self.x, stop_gradient=False)
+            y = paddle.fft.fftn(x, self.n, self.axis, self.norm)
+            loss = paddle.sum(y)
+            loss.backward()
+            np.testing.assert_equal(
+                x.grad.shape, self.x.shape, "Grad shape mismatch"
+            )
+
+
+@place(DEVICES)
+@parameterize(
+    (TEST_CASE_NAME, 'x', 'n', 'axis', 'norm'),
+    [
+        ('test_x', np.random.randn(3, 3, 0, 2), (1, 2), (0, 1), 'backward'),
+    ],
+)
+class TestIfft2_ZeroSize(unittest.TestCase):
+    def test_ifft2(self):
+        with paddle.base.dygraph.guard(self.place):
+            np.testing.assert_allclose(
+                scipy.fft.ifft2(self.x, self.n, self.axis, self.norm),
+                paddle.fft.ifft2(
+                    paddle.to_tensor(self.x), self.n, self.axis, self.norm
+                ),
+                rtol=RTOL.get(str(self.x.dtype)),
+                atol=ATOL.get(str(self.x.dtype)),
+            )
+
+    def test_grad_shape(self):
+        with paddle.base.dygraph.guard(self.place):
+            x = paddle.to_tensor(self.x, stop_gradient=False)
+            y = paddle.fft.ifft2(x, self.n, self.axis, self.norm)
+            loss = paddle.sum(y)
+            loss.backward()
+            np.testing.assert_equal(
+                x.grad.shape, self.x.shape, "Grad shape mismatch"
+            )
+
+
+@place(DEVICES)
+@parameterize(
+    (TEST_CASE_NAME, 'x', 'n', 'axis', 'norm'),
+    [
+        ('test_x', np.random.randn(4, 0, 6), (2, 4), None, 'backward'),
+    ],
+)
+class TestIfftn_ZeroSize(unittest.TestCase):
+    def test_ifftn(self):
+        with paddle.base.dygraph.guard(self.place):
+            np.testing.assert_allclose(
+                scipy.fft.ifftn(self.x, self.n, self.axis, self.norm),
+                paddle.fft.ifftn(
+                    paddle.to_tensor(self.x), self.n, self.axis, self.norm
+                ),
+                rtol=RTOL.get(str(self.x.dtype)),
+                atol=ATOL.get(str(self.x.dtype)),
+            )
+
+    def test_grad_shape(self):
+        with paddle.base.dygraph.guard(self.place):
+            x = paddle.to_tensor(self.x, stop_gradient=False)
+            y = paddle.fft.ifftn(x, self.n, self.axis, self.norm)
+            loss = paddle.sum(y)
+            loss.backward()
+            np.testing.assert_equal(
+                x.grad.shape, self.x.shape, "Grad shape mismatch"
+            )
+
+
+@place(DEVICES)
+@parameterize(
+    (TEST_CASE_NAME, 'x', 'n', 'axis', 'norm'),
+    [
+        ('test_x', np.random.randn(3, 3, 0, 2), None, (0, 1), 'backward'),
+    ],
+)
+class TestIhfft2_ZeroSize(unittest.TestCase):
+    def test_ihfft2(self):
+        with paddle.base.dygraph.guard(self.place):
+            np.testing.assert_allclose(
+                scipy.fft.ihfft2(self.x, self.n, self.axis, self.norm),
+                paddle.fft.ihfft2(
+                    paddle.to_tensor(self.x), self.n, self.axis, self.norm
+                ),
+                rtol=RTOL.get(str(self.x.dtype)),
+                atol=ATOL.get(str(self.x.dtype)),
+            )
+
+    def test_grad_shape(self):
+        with paddle.base.dygraph.guard(self.place):
+            x = paddle.to_tensor(self.x, stop_gradient=False)
+            y = paddle.fft.ihfft2(x, self.n, self.axis, self.norm)
+            loss = paddle.sum(y)
+            loss.backward()
+            np.testing.assert_equal(
+                x.grad.shape, self.x.shape, "Grad shape mismatch"
+            )
+
+
+@place(DEVICES)
+@parameterize(
+    (TEST_CASE_NAME, 'x', 'n', 'axis', 'norm'),
+    [
+        ('test_x', np.random.randn(4, 0, 6), (2, 4), None, 'backward'),
+    ],
+)
+class TestIhfftn_ZeroSize(unittest.TestCase):
+    def test_ihfftn(self):
+        with paddle.base.dygraph.guard(self.place):
+            np.testing.assert_allclose(
+                scipy.fft.ihfftn(self.x, self.n, self.axis, self.norm),
+                paddle.fft.ihfftn(
+                    paddle.to_tensor(self.x), self.n, self.axis, self.norm
+                ),
+                rtol=RTOL.get(str(self.x.dtype)),
+                atol=ATOL.get(str(self.x.dtype)),
+            )
+
+    def test_grad_shape(self):
+        with paddle.base.dygraph.guard(self.place):
+            x = paddle.to_tensor(self.x, stop_gradient=False)
+            y = paddle.fft.ihfftn(x, self.n, self.axis, self.norm)
+            loss = paddle.sum(y)
+            loss.backward()
+            np.testing.assert_equal(
+                x.grad.shape, self.x.shape, "Grad shape mismatch"
+            )
+
+
+@place(DEVICES)
+@parameterize(
+    (TEST_CASE_NAME, 'x', 'n', 'axis', 'norm'),
+    [
+        ('test_x', np.random.randn(3, 3, 0, 2), None, (0, 1), 'backward'),
+    ],
+)
+class TestRfft2_ZeroSize(unittest.TestCase):
+    def test_rfft2(self):
+        with paddle.base.dygraph.guard(self.place):
+            np.testing.assert_allclose(
+                scipy.fft.rfft2(self.x, self.n, self.axis, self.norm),
+                paddle.fft.rfft2(
+                    paddle.to_tensor(self.x), self.n, self.axis, self.norm
+                ),
+                rtol=RTOL.get(str(self.x.dtype)),
+                atol=ATOL.get(str(self.x.dtype)),
+            )
+
+    def test_grad_shape(self):
+        with paddle.base.dygraph.guard(self.place):
+            x = paddle.to_tensor(self.x, stop_gradient=False)
+            y = paddle.fft.rfft2(x, self.n, self.axis, self.norm)
+            loss = paddle.sum(y)
+            loss.backward()
+            np.testing.assert_equal(
+                x.grad.shape, self.x.shape, "Grad shape mismatch"
+            )
+
+
+@place(DEVICES)
+@parameterize(
+    (TEST_CASE_NAME, 'x', 'n', 'axis', 'norm'),
+    [
+        ('test_x', np.random.randn(4, 0, 6), (2, 4), None, 'backward'),
+    ],
+)
+class TestRfftn_ZeroSize(unittest.TestCase):
+    def test_rfftn(self):
+        with paddle.base.dygraph.guard(self.place):
+            np.testing.assert_allclose(
+                scipy.fft.rfftn(self.x, self.n, self.axis, self.norm),
+                paddle.fft.rfftn(
+                    paddle.to_tensor(self.x), self.n, self.axis, self.norm
+                ),
+                rtol=RTOL.get(str(self.x.dtype)),
+                atol=ATOL.get(str(self.x.dtype)),
+            )
+
+    def test_grad_shape(self):
+        with paddle.base.dygraph.guard(self.place):
+            x = paddle.to_tensor(self.x, stop_gradient=False)
+            y = paddle.fft.rfftn(x, self.n, self.axis, self.norm)
             loss = paddle.sum(y)
             loss.backward()
             np.testing.assert_equal(

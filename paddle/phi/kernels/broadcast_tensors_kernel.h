@@ -21,7 +21,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void BroadcastTensorsKernel(const Context& ctx,
+void BroadcastTensorsKernel(const Context& dev_ctx,
                             const std::vector<const DenseTensor*>& x,
                             std::vector<DenseTensor*> out);
 
