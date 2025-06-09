@@ -31,6 +31,7 @@ import numpy as np
 import paddle
 from paddle import _legacy_C_ops, framework
 from paddle.distributed.collective import (
+    NCCL_COMM_TYPE,
     Group,
     _default_group_name,
     _get_group_map_by_name,
@@ -1153,6 +1154,7 @@ def init_parallel_env() -> Group:
             world_size,
             _default_group_name,
             pg_options=None,
+            nccl_commtype=NCCL_COMM_TYPE.AG.value,
         )
         ranks = list(range(world_size))
         group = Group(rank, 0, ranks, pg=pg, name=_default_group_name)

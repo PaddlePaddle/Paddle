@@ -124,7 +124,7 @@ class ProcessGroup {
 
   virtual void EagerConnect() {}
 
-  virtual void EagerConnectRingExchange() {}
+  virtual void EagerConnectRingExchange(int nccl_commtype = -1) {}
 
   // without stream APIs
   virtual std::shared_ptr<ProcessGroup::Task> AllGather(
