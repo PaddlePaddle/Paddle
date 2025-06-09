@@ -85,6 +85,72 @@ struct SegmentOffsetIter {
   int num_cols_;
 };
 
+template <typename T, typename IndType>
+__global__ void merge_kernel(const T* A,
+                             size_t sizeA,
+                             const T* B,
+                             size_t sizeB,
+                             const IndType* ids_A,
+                             const IndType* ids_B,
+                             T* out,
+                             IndType* out_ids,
+                             bool descending) {
+  int64_t thread = blockDim.x * gridDim.x;
+  int64_t num_per_thread = (sizeA + sizeB + thread) / thread;
+  for (int offset = 0; offset < num_per_thread; offset++) {
+    size_t idx = blockIdx.x * blockDim.x + threadIdx.x + offset * thread;
+    size_t total = sizeA + sizeB;
+    if (idx >= total) return;
+    size_t left = (idx > sizeB) ? idx - sizeB : 0;
+    size_t right = (idx < sizeA) ? idx : sizeA;
+    while (left < right) {
+      size_t mid = (left + right) / 2;
+      size_t b_idx = idx - mid;
+
+      T A_mid, B_bidx;
+      if (descending) {
+        A_mid = (mid >= sizeA) ? std::numeric_limits<T>::lowest() : A[mid];
+        B_bidx = (b_idx >= sizeB) ? std::numeric_limits<T>::lowest() : B[b_idx];
+      } else {
+        A_mid = (mid >= sizeA) ? std::numeric_limits<T>::max() : A[mid];
+        B_bidx = (b_idx >= sizeB) ? std::numeric_limits<T>::max() : B[b_idx];
+      }
+
+      if (descending ? (A_mid >= B_bidx) : (A_mid <= B_bidx))
+        left = mid + 1;
+      else
+        right = mid;
+    }
+
+    size_t a_idx = left;
+    size_t b_idx = idx - a_idx;
+    if (a_idx >= sizeA) {
+      if (descending ? (A[sizeA - 1] < B[b_idx]) : (A[sizeA - 1] > B[b_idx])) {
+        out[idx] = A[sizeA - 1];
+        out_ids[idx] = ids_A[sizeA - 1];
+      } else {
+        out[idx] = B[b_idx];
+        out_ids[idx] = ids_B[b_idx];
+      }
+    } else if (b_idx >= sizeB) {
+      out[idx] = A[a_idx];
+      out_ids[idx] = ids_A[a_idx];
+    } else {
+      if (descending ? (A[a_idx] >= B[b_idx]) : (A[a_idx] <= B[b_idx])) {
+        out[idx] = A[a_idx];
+        out_ids[idx] = ids_A[a_idx];
+      } else if (descending ? (a_idx > 0 && (A[a_idx - 1] < B[b_idx]))
+                            : (a_idx > 0 && (A[a_idx - 1] > B[b_idx]))) {
+        out[idx] = A[a_idx - 1];
+        out_ids[idx] = ids_A[a_idx - 1];
+      } else {
+        out[idx] = B[b_idx];
+        out_ids[idx] = ids_B[b_idx];
+      }
+    }
+  }
+}
+
 template <typename T>
 static __global__ void FillIndex(T* indices, T num_rows, T num_cols) {
   int col_id = threadIdx.x;
@@ -234,72 +300,6 @@ void PerSort(const thrust::cuda_cub::par_t::stream_attachment_type exec_policy,
       thrust::reverse(exec_policy, ids_data + start, ids_data + end);
     }
     return;
-  }
-}
-
-template <typename T, typename IndType>
-__global__ void merge_kernel(const T* A,
-                             size_t sizeA,
-                             const T* B,
-                             size_t sizeB,
-                             const IndType* ids_A,
-                             const IndType* ids_B,
-                             T* out,
-                             IndType* out_ids,
-                             bool descending) {
-  int64_t thread = blockDim.x * gridDim.x;
-  int64_t num_per_thread = (sizeA + sizeB + thread) / thread;
-  for (int offset = 0; offset < num_per_thread; offset++) {
-    size_t idx = blockIdx.x * blockDim.x + threadIdx.x + offset * thread;
-    size_t total = sizeA + sizeB;
-    if (idx >= total) return;
-    size_t left = (idx > sizeB) ? idx - sizeB : 0;
-    size_t right = (idx < sizeA) ? idx : sizeA;
-    while (left < right) {
-      size_t mid = (left + right) / 2;
-      size_t b_idx = idx - mid;
-
-      T A_mid, B_bidx;
-      if (descending) {
-        A_mid = (mid >= sizeA) ? std::numeric_limits<T>::lowest() : A[mid];
-        B_bidx = (b_idx >= sizeB) ? std::numeric_limits<T>::lowest() : B[b_idx];
-      } else {
-        A_mid = (mid >= sizeA) ? std::numeric_limits<T>::max() : A[mid];
-        B_bidx = (b_idx >= sizeB) ? std::numeric_limits<T>::max() : B[b_idx];
-      }
-
-      if (descending ? (A_mid >= B_bidx) : (A_mid <= B_bidx))
-        left = mid + 1;
-      else
-        right = mid;
-    }
-
-    size_t a_idx = left;
-    size_t b_idx = idx - a_idx;
-    if (a_idx >= sizeA) {
-      if (descending ? (A[sizeA - 1] < B[b_idx]) : (A[sizeA - 1] > B[b_idx])) {
-        out[idx] = A[sizeA - 1];
-        out_ids[idx] = ids_A[sizeA - 1];
-      } else {
-        out[idx] = B[b_idx];
-        out_ids[idx] = ids_B[b_idx];
-      }
-    } else if (b_idx >= sizeB) {
-      out[idx] = A[a_idx];
-      out_ids[idx] = ids_A[a_idx];
-    } else {
-      if (descending ? (A[a_idx] >= B[b_idx]) : (A[a_idx] <= B[b_idx])) {
-        out[idx] = A[a_idx];
-        out_ids[idx] = ids_A[a_idx];
-      } else if (descending ? (a_idx > 0 && (A[a_idx - 1] < B[b_idx]))
-                            : (a_idx > 0 && (A[a_idx - 1] > B[b_idx]))) {
-        out[idx] = A[a_idx - 1];
-        out_ids[idx] = ids_A[a_idx - 1];
-      } else {
-        out[idx] = B[b_idx];
-        out_ids[idx] = ids_B[b_idx];
-      }
-    }
   }
 }
 
