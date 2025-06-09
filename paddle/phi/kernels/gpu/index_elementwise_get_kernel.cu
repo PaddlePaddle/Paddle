@@ -60,9 +60,10 @@ void GPUIndexElementwiseGetKernel(const phi::GPUContext& ctx,
                            &numel);
 
   const int64_t* template_stride = strides_array[2];
-  PADDLE_ENFORCE(
-      template_stride != nullptr,
-      "strides_array[2] should not be nullptr in GPUIndexElementwiseGetKernel");
+  PADDLE_ENFORCE_NOT_NULL(
+      template_stride,
+      common::errors::InvalidArgument("strides_array[2] must not be nullptr in "
+                                      "GPUIndexElementwiseGetKernel"));
 
   size_t stride_size = desired_shape.size();
   std::vector<std::vector<int64_t>> strides_vector;
@@ -87,9 +88,12 @@ void GPUIndexElementwiseGetKernel(const phi::GPUContext& ctx,
       desired_shape.size(), desired_shape.data(), strides_vector);
 
   const int64_t N = output->numel();
-  PADDLE_ENFORCE(N >= 0 && N <= std::numeric_limits<int32_t>::max(),
-                 "Output numel be in the range [0, "
-                 "std::numeric_limits<int32_t>::max()]");
+  PADDLE_ENFORCE_GE(
+      N, 0, common::errors::InvalidArgument("Output numel must >= 0"));
+  PADDLE_ENFORCE_LE(
+      N,
+      std::numeric_limits<int32_t>::max(),
+      common::errors::InvalidArgument("Output numel must <= INT32_MAX"));
   constexpr int nt = 128;
   constexpr int vt = 4;
   const dim3 block(nt);
@@ -112,8 +116,10 @@ void GPUIndexElementwiseGetKernel(const phi::GPUContext& ctx,
         for (int i = 0; i < num_indices; i++) {
           int64_t index =
               *reinterpret_cast<int64_t*>(index_ptrs[i] + offsets[2]);
-          PADDLE_ENFORCE(-sizes[i] <= index && index < sizes[i],
-                         "index out of bounds");
+          PADDLE_ENFORCE(-sizes[i] <= index,
+                         "index is less than the lower bound");
+          PADDLE_ENFORCE(index < sizes[i],
+                         "index is greater than or equal to the upper bound");
           if (index < 0) {
             index += sizes[i];
           }
@@ -145,11 +151,10 @@ void IndexElementwiseGetKernel(const Context& ctx,
           phi::DataType::INT32,
           phi::DataType::INT64));
 
-  size_t total_nonzero = index[0]->numel();
   auto out_dims = out->dims();
   if (out_dims.size() > 0) {
-    out_dims[0] = total_nonzero;
-    out->Resize(out_dims);
+    std::vector<int64_t> output_dims(input_dims);
+    out->Resize(phi::make_ddim(output_dims));
   }
 
   ctx.template Alloc<T>(out);
