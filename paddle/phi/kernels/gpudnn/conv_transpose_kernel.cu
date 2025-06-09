@@ -201,9 +201,6 @@ void ConvTransposeRawGPUDNNKernel(const Context& ctx,
   bool deterministic = FLAGS_cudnn_deterministic;
 
   auto dtype = phi::backends::gpu::CudnnDataType<T>::type;
-  CUDNN_ENFORCE_TENSOR_SIZE_SUPPORTED(transformed_x);
-  CUDNN_ENFORCE_TENSOR_SIZE_SUPPORTED(filter);
-  CUDNN_ENFORCE_TENSOR_SIZE_SUPPORTED(transformed_out);
   // ------------------- cudnn descriptors ---------------------
   ConvArgs args{handle,
                 &transformed_out,
@@ -232,6 +229,9 @@ void ConvTransposeRawGPUDNNKernel(const Context& ctx,
   bwd_result.algo =
       search::Find<T>(args, false, deterministic, workspace_size, ctx);
 #else
+  CUDNN_ENFORCE_TENSOR_SIZE_SUPPORTED(transformed_x);
+  CUDNN_ENFORCE_TENSOR_SIZE_SUPPORTED(filter);
+  CUDNN_ENFORCE_TENSOR_SIZE_SUPPORTED(transformed_out);
   SearchResult<cudnnConvolutionBwdDataAlgo_t> bwd_result;
   using search = SearchAlgorithm<ConvKind::kBackwardData>;
   bwd_result = search::Find<T>(ctx, args, false, deterministic, false);

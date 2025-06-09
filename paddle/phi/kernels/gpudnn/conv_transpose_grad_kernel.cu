@@ -177,9 +177,6 @@ void ConvTransposeGradRawGPUDNNKernel(const Context& ctx,
   auto dtype = phi::backends::gpu::CudnnDataType<T>::type;
   auto handle = ctx.cudnn_handle();
 
-  CUDNN_ENFORCE_TENSOR_SIZE_SUPPORTED(transformed_dout);
-  CUDNN_ENFORCE_TENSOR_SIZE_SUPPORTED(filter);
-  CUDNN_ENFORCE_TENSOR_SIZE_SUPPORTED(x_transpose);
   ConvArgs args1{handle,
                  &transformed_dout,
                  &filter,
@@ -205,6 +202,9 @@ void ConvTransposeGradRawGPUDNNKernel(const Context& ctx,
   SearchResult<miopenConvFwdAlgorithm_t> fwd_result;
   SearchResult<miopenConvBwdWeightsAlgorithm_t> filter_result;
 #else
+  CUDNN_ENFORCE_TENSOR_SIZE_SUPPORTED(transformed_dout);
+  CUDNN_ENFORCE_TENSOR_SIZE_SUPPORTED(filter);
+  CUDNN_ENFORCE_TENSOR_SIZE_SUPPORTED(x_transpose);
   SearchResult<cudnnConvolutionFwdAlgo_t> fwd_result;
   SearchResult<cudnnConvolutionBwdFilterAlgo_t> filter_result;
 #endif
