@@ -236,8 +236,8 @@ void DispatchComputeImpl(const Context &dev_ctx,
                          const DenseTensor &x,
                          const DenseTensor *bias,
                          const std::string &act_method,
-                         int rows,
-                         int cols,
+                         int64_t rows,
+                         int64_t cols,
                          const float quant_scale,
                          const int quant_round_type,
                          const float quant_max_bound,
@@ -398,6 +398,83 @@ void DispatchWithDtype(const Context &dev_ctx,
                        float quant_min_bound,
                        DenseTensor *out,
                        NormalVersion) {
+  const auto &x_dims = x.dims();
+  bool use_glu = (act_method == "geglu" || act_method == "swiglu");
+  if (bias.get_ptr() != nullptr) {
+    const auto &bias_dims = bias->dims();
+    PADDLE_ENFORCE_EQ(bias_dims.size(),
+                      1,
+                      common::errors::InvalidArgument(
+                          "The bias must be a 1D tensor, but got %dD tensor.",
+                          bias_dims.size()));
+    PADDLE_ENFORCE_EQ(
+        bias_dims[0],
+        x_dims[x_dims.size() - 1],
+        common::errors::InvalidArgument(
+            "The bias length must be equal to the last dimension of input x. "
+            "Expected %d, but got %d.",
+            x_dims[x_dims.size() - 1],
+            bias_dims[0]));
+  }
+
+  if (dequant_scales.get_ptr() != nullptr) {
+    const auto &scales_dims = dequant_scales->dims();
+    PADDLE_ENFORCE_EQ(
+        scales_dims.size(),
+        1,
+        common::errors::InvalidArgument(
+            "The dequant_scales must be a 1D tensor, but got %dD tensor.",
+            scales_dims.size()));
+    PADDLE_ENFORCE_EQ(scales_dims[0],
+                      x_dims[x_dims.size() - 1],
+                      common::errors::InvalidArgument(
+                          "The dequant_scales length must be equal to the last "
+                          "dimension of input x. "
+                          "Expected %d, but got %d.",
+                          x_dims[x_dims.size() - 1],
+                          scales_dims[0]));
+  }
+  if (shift.get_ptr() != nullptr) {
+    const auto &shift_dims = shift->dims();
+    PADDLE_ENFORCE_EQ(shift_dims.size(),
+                      1,
+                      common::errors::InvalidArgument(
+                          "The shift must be a 1D tensor, but got %dD tensor.",
+                          shift_dims.size()));
+    int64_t shift_dim =
+        use_glu ? std::div(static_cast<int64_t>(x_dims[x_dims.size() - 1]),
+                           static_cast<int64_t>(2))
+                      .quot
+                : x_dims[x_dims.size() - 1];
+    PADDLE_ENFORCE_EQ(
+        shift_dims[0],
+        shift_dim,
+        common::errors::InvalidArgument("The shift length invalid. "
+                                        "Expected %d, but got %d.",
+                                        shift_dim,
+                                        shift_dims[0]));
+  }
+  if (smooth.get_ptr() != nullptr) {
+    const auto &smooth_dims = smooth->dims();
+    PADDLE_ENFORCE_EQ(smooth_dims.size(),
+                      1,
+                      common::errors::InvalidArgument(
+                          "The smooth must be a 1D tensor, but got %dD tensor.",
+                          smooth_dims.size()));
+    int64_t smooth_dim =
+        use_glu ? std::div(static_cast<int64_t>(x_dims[x_dims.size() - 1]),
+                           static_cast<int64_t>(2))
+                      .quot
+                : x_dims[x_dims.size() - 1];
+    PADDLE_ENFORCE_EQ(
+        smooth_dims[0],
+        smooth_dim,
+        common::errors::InvalidArgument("The smooth length invalid. "
+                                        "Expected %d, but got %d.",
+                                        smooth_dim,
+                                        smooth_dims[0]));
+  }
+
   auto *bias_p = bias.get_ptr();
   auto *dequant_scales_p = dequant_scales.get_ptr();
   auto *shift_p = shift.get_ptr();
@@ -499,7 +576,6 @@ void FusedBiasActKernel(const Context &dev_ctx,
           quant_min_bound,
           out,
           typename DispatchDtypeTrait<phi::dtype::bfloat16>::FuncVersion{});
-
     } else if (compute_dtype == "fp16") {
       DispatchWithDtype<phi::dtype::float16, Context>(
           dev_ctx,

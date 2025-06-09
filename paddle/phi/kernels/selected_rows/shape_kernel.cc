@@ -24,17 +24,17 @@ limitations under the License. */
 namespace phi::sr {
 
 template <typename T, typename Context>
-void ShapeKernel(const Context& ctx,
+void ShapeKernel(const Context& dev_ctx,
                  const SelectedRows& input,
                  DenseTensor* out) {
-  phi::ShapeKernel<T, Context>(ctx, input.value(), out);
+  phi::ShapeKernel<T, Context>(dev_ctx, input.value(), out);
 }
 
 template <typename T, typename Context>
-void Shape64Kernel(const Context& ctx,
+void Shape64Kernel(const Context& dev_ctx,
                    const SelectedRows& input,
                    DenseTensor* out) {
-  phi::Shape64Kernel<T, Context>(ctx, input.value(), out);
+  phi::Shape64Kernel<T, Context>(dev_ctx, input.value(), out);
 }
 
 }  // namespace phi::sr

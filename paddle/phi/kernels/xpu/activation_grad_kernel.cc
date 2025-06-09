@@ -690,6 +690,9 @@ void ExpGradKernel(const Context& dev_ctx,
                    DenseTensor* dx) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   dev_ctx.template Alloc<T>(dx);
+  if (dx && dx->numel() == 0) {
+    return;
+  }
   const XPUType* y_data = reinterpret_cast<const XPUType*>(out.data<T>());
   const XPUType* y_grad = reinterpret_cast<const XPUType*>(dout.data<T>());
   XPUType* x_grad = reinterpret_cast<XPUType*>(dx->data<T>());
