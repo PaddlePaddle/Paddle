@@ -8,7 +8,7 @@ env:
   COMMIT_ID: ${{ github.event.pull_request.head.sha }}
   BRANCH: ${{ github.event.pull_request.base.ref }}
   work_dir: ${{ github.workspace }}
-  PADDLE_ROOT: "${{ github.workspace }}/Paddle/Paddle/Paddle"
+  PADDLE_ROOT: "${{ github.workspace }}/Paddle"
   MACOSX_DEPLOYMENT_TARGET: 10.11
   PADDLE_DEV_NAME: "paddlepaddle/paddle:dev"
   PADDLE_VERSION: 0.0.0
@@ -50,10 +50,14 @@ jobs:
         run: |
           set -x
           cd ${work_dir}
+          pwd
+          ls
           [ -d "${work_dir}/Paddle" ] && rm -rf ${work_dir}/Paddle
           [ -f "${work_dir}/Paddle.tar.gz" ] && rm -rf ${work_dir}/Paddle.tar.gz
           wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/Paddle/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
           tar xf Paddle.tar.gz && cd Paddle
+          pwd
+          echo 123
 
           git config --global user.name "PaddleCI"
           git config --global user.email "paddle_ci@example.com"
