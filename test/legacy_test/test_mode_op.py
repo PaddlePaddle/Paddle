@@ -268,7 +268,7 @@ class TestModeZeroError(unittest.TestCase):
             def test_0_size():
                 array = np.array([], dtype=np.float32)
                 x = paddle.to_tensor(np.reshape(array, [0, 0]), dtype='float32')
-                paddle.mode(x, axis=0)
+                paddle.mode(x, axis=0, keepdim=True)
 
             self.assertRaises(ValueError, test_0_size)
 
