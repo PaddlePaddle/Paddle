@@ -21,7 +21,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void FillDiagonalTensorGradKernel(const Context& ctx,
+void FillDiagonalTensorGradKernel(const Context& dev_ctx,
                                   const DenseTensor& out_grad,
                                   int64_t offset,
                                   int dim1,
@@ -30,7 +30,7 @@ void FillDiagonalTensorGradKernel(const Context& ctx,
   int matrows = 1;
 
   if (x_grad) {
-    auto* data = ctx.template Alloc<T>(x_grad);
+    auto* data = dev_ctx.template Alloc<T>(x_grad);
 
     auto dx_dims = x_grad->dims();
     for (int i = 0; i < dx_dims.size(); i++) {
@@ -52,7 +52,7 @@ void FillDiagonalTensorGradKernel(const Context& ctx,
                matdim.data());
 
     auto size = x_grad->numel();
-    phi::Copy(ctx, out_grad, ctx.GetPlace(), false, x_grad);
+    phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
 
     for (int64_t i = 0; i < new_dims[0]; i += 1) {
       auto sumoff = matdim[i] + offset;

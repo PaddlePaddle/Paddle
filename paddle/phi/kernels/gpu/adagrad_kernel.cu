@@ -57,7 +57,7 @@ __global__ void AdagradGPUKernel(const T* param,
 
 template <typename T>
 struct DenseAdagradFunctor<phi::GPUContext, T> {
-  void operator()(const phi::GPUContext& ctx,
+  void operator()(const phi::GPUContext& dev_ctx,
                   const DenseTensor& param_t,
                   const DenseTensor& grad_t,
                   const DenseTensor& moment_t,
@@ -69,21 +69,22 @@ struct DenseAdagradFunctor<phi::GPUContext, T> {
                   DenseTensor* moment_out_tensor,
                   DenseTensor* master_param_outs) {
     using MPDType = typename phi::dtype::template MPTypeTrait<T>::Type;
-    T* param_out_data = ctx.template Alloc<T>(param_out_tensor);
-    MPDType* moment_out_data = ctx.template Alloc<MPDType>(moment_out_tensor);
+    T* param_out_data = dev_ctx.template Alloc<T>(param_out_tensor);
+    MPDType* moment_out_data =
+        dev_ctx.template Alloc<MPDType>(moment_out_tensor);
     const MPDType* master_in_data =
         multi_precision ? master_param->data<MPDType>() : nullptr;
     MPDType* master_out_data =
-        multi_precision ? ctx.template Alloc<MPDType>(master_param_outs)
+        multi_precision ? dev_ctx.template Alloc<MPDType>(master_param_outs)
                         : nullptr;
 
     MPDType epsilon = static_cast<MPDType>(epsilon_t);
 
     int numel = param_t.numel();
-    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(ctx, numel, 1);
+    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel, 1);
     int grid = config.block_per_grid.x;
     int block = config.thread_per_block.x;
-    auto stream = ctx.stream();
+    auto stream = dev_ctx.stream();
     AdagradGPUKernel<T, MPDType>
         <<<block, grid, 0, stream>>>(param_t.data<T>(),
                                      grad_t.data<T>(),

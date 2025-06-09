@@ -165,58 +165,16 @@ std::array<char*, DDim::kMaxRank> GetIndexDataPtrs(
 
 template <int N, bool signed_strides = false>
 static OffsetCalculator<N, uint32_t, signed_strides> make_offset_calculator(
-    const DenseTensor& output,
-    const DenseTensor& input,
-    const std::vector<const DenseTensor*> index) {
-  int ndim = output.dims().size();
-  const int64_t* shape = output.dims().Get();
-  std::vector<int64_t> shape_vec(shape, shape + ndim);
-  std::reverse(shape_vec.begin(), shape_vec.end());
-  const int64_t* desired_shape = shape_vec.data();
-
-  std::vector<std::vector<int64_t>> strides;
-  std::vector<const DenseTensor*> tensors = {&output, &input};
-
-  for (const auto& idx_tensor : index) {
-    tensors.push_back(idx_tensor);
-  }
-
-  for (const auto& tensor : tensors) {
-    std::vector<int64_t> stride_bytes(ndim, 0);
-    const auto& original_shape = tensor->dims();
-    const auto& original_strides = tensor->strides();
-    int64_t element_size_in_bytes = phi::SizeOf(tensor->dtype());
-    int offset = ndim - original_shape.size();
-
-    if (tensor == &input) {
-      stride_bytes[ndim - 1] = element_size_in_bytes;
-    } else {
-      if (offset > 0) {
-        stride_bytes.resize(ndim, 0);
-      } else {
-        stride_bytes.resize(ndim);
-      }
-
-      for (int i = 0; i < original_shape.size(); ++i) {
-        if (original_shape[i] == 1 && shape[offset + i] != 1) {
-          stride_bytes[offset + i] = 0;
-        } else {
-          stride_bytes[offset + i] =
-              original_strides[i] * element_size_in_bytes;
-        }
-      }
-    }
-    std::reverse(stride_bytes.begin(), stride_bytes.end());
-    strides.push_back(stride_bytes);
-  }
-
+    int ndim,
+    const int64_t* shape,
+    const std::vector<std::vector<int64_t>>& strides) {
   std::array<const int64_t*, N> strides_array;
   for (int i = 0; i < N; ++i) {
     strides_array[i] = strides[i].data();
   }
 
   return OffsetCalculator<N, uint32_t, signed_strides>(
-      ndim, desired_shape, strides_array.data());
+      ndim, shape, strides_array.data());
 }
 
 }  // namespace funcs

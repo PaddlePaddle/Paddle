@@ -25,7 +25,7 @@ namespace phi {
 
 template <typename T, typename Context>
 void RepeatInterleaveWithTensorIndexGradKernel(
-    const Context& ctx,
+    const Context& dev_ctx,
     const DenseTensor& x UNUSED,
     const DenseTensor& repeats_tensor,
     const DenseTensor& out_grad,
@@ -62,25 +62,26 @@ void RepeatInterleaveWithTensorIndexGradKernel(
   phi::DeviceContextPool::Instance().Get(repeats_tensor.place());
   if (index_type == phi::DataType::INT32) {
     phi::funcs::RepeatsTensor2IndexTensor<Context, int>(
-        ctx, repeats_tensor, &index);
-    IndexSelectGradInner<Context, T, int>(ctx, out_grad, index, x_grad, dim);
+        dev_ctx, repeats_tensor, &index);
+    IndexSelectGradInner<Context, T, int>(
+        dev_ctx, out_grad, index, x_grad, dim);
   } else if (index_type == phi::DataType::INT64) {
     phi::funcs::RepeatsTensor2IndexTensor<Context, int64_t>(
-        ctx, repeats_tensor, &index);
+        dev_ctx, repeats_tensor, &index);
     IndexSelectGradInner<Context, T, int64_t>(
-        ctx, out_grad, index, x_grad, dim);
+        dev_ctx, out_grad, index, x_grad, dim);
   }
 }
 
 template <typename T, typename Context>
-void RepeatInterleaveGradKernel(const Context& ctx,
+void RepeatInterleaveGradKernel(const Context& dev_ctx,
                                 const DenseTensor& x UNUSED,
                                 const DenseTensor& out_grad,
                                 int repeats,
                                 int dim,
                                 DenseTensor* x_grad) {
   if (x_grad && x_grad->numel() == 0) {
-    ctx.template Alloc<T>(x_grad);
+    dev_ctx.template Alloc<T>(x_grad);
     return;
   }
   auto input_dim = x_grad->dims();
@@ -95,9 +96,10 @@ void RepeatInterleaveGradKernel(const Context& ctx,
     std::fill_n(index_vec.begin() + i * repeats, repeats, i);
   }
   index.Resize(common::make_ddim({index_size}));
-  phi::TensorFromVector<int>(index_vec, ctx, &index);
+  phi::TensorFromVector<int>(index_vec, dev_ctx, &index);
   const DenseTensor index_copy = index;
-  IndexSelectGradInner<Context, T, int>(ctx, out_grad, index_copy, x_grad, dim);
+  IndexSelectGradInner<Context, T, int>(
+      dev_ctx, out_grad, index_copy, x_grad, dim);
 }
 }  // namespace phi
 
