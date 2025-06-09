@@ -30,6 +30,8 @@ void FillDiagonalKernel(const Context& ctx,
   T temp_var = static_cast<T>(value);
 
   T* out_data = ctx.template Alloc<T>(out);
+  if (out && out->numel() == 0) return;
+
   phi::Copy(ctx, x, ctx.GetPlace(), false, out);
 
   auto out_dims = out->dims();

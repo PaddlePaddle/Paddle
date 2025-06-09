@@ -28,6 +28,7 @@ void FillDiagonalGradKernel(const Context& ctx,
                             DenseTensor* x_grad) {
   if (x_grad) {
     T* data = ctx.template Alloc<T>(x_grad);
+    if (x_grad->numel() == 0) return;
     phi::Copy(ctx, out_grad, ctx.GetPlace(), false, x_grad);
 
     auto dx_dims = x_grad->dims();

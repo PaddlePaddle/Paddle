@@ -50,6 +50,10 @@ void FillDiagonalKernel(const Context& ctx,
                         int offset,
                         bool wrap,
                         DenseTensor* out) {
+  if (out && out->numel() == 0) {
+    ctx.template Alloc<T>(out);
+    return;
+  }
   const int64_t kMaxBlockDim = 512;
   phi::Copy(ctx, x, ctx.GetPlace(), false, out);
 
