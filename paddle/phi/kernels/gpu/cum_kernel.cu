@@ -33,6 +33,7 @@ namespace cub = hipcub;
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/cast_kernel.h"
 
 namespace phi {
 
@@ -310,7 +311,7 @@ void ScanKernel(const Context& dev_ctx,
   // For 0D Tensor
   if (out->numel() == 1) {
     auto raw_dims = out->dims();
-    phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+    CastKernel<InT, Context>(dev_ctx, x, out->dtype(), out);
     out->Resize(raw_dims);
     return;
   }
