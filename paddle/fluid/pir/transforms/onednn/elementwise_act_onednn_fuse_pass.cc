@@ -54,7 +54,7 @@ class ElementwiseActivationFusePattern : public paddle::drr::DrrPatternBase {
     return elementwise_type_ + activation_name_ + "FusePattern";
   }
 
-  uint32_t benefit() const override { return level_; }
+  size_t benefit() const override { return level_; }
 
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
@@ -149,7 +149,7 @@ class ElementwiseGeluFusePattern : public paddle::drr::DrrPatternBase {
     return elementwise_type_ + "GeluFusePattern";
   }
 
-  uint32_t benefit() const override { return level_; }
+  size_t benefit() const override { return level_; }
 
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
@@ -207,7 +207,7 @@ class ElementwiseClipFusePattern : public paddle::drr::DrrPatternBase {
     return elementwise_type_ + "ClipFusePattern";
   }
 
-  uint32_t benefit() const override { return level_; }
+  size_t benefit() const override { return level_; }
 
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();

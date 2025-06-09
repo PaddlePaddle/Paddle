@@ -51,7 +51,7 @@ class ConvActivationFusePattern : public paddle::drr::DrrPatternBase {
            "FusePattern";
   }
 
-  uint32_t benefit() const override { return activation_count_; }
+  size_t benefit() const override { return activation_count_; }
 
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();

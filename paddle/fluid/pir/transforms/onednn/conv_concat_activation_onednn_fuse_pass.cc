@@ -53,7 +53,7 @@ class NConvConcatActivationFusePattern : public paddle::drr::DrrPatternBase {
            std::to_string(fused_level_) + activation_name_ + "Pattern";
   }
 
-  uint32_t benefit() const override { return benefit_; }
+  size_t benefit() const override { return benefit_; }
 
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
@@ -306,7 +306,7 @@ class NConvConcatHardSigmoidFusePattern : public paddle::drr::DrrPatternBase {
            std::to_string(fused_level_) + "HardSigmoidPattern";
   }
 
-  uint32_t benefit() const override { return concat_count_; }
+  size_t benefit() const override { return concat_count_; }
 
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
@@ -525,7 +525,7 @@ class NConvConcatGeluFusePattern : public paddle::drr::DrrPatternBase {
            std::to_string(fused_level_) + "GeluPattern";
   }
 
-  uint32_t benefit() const override { return concat_count_; }
+  size_t benefit() const override { return concat_count_; }
 
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
@@ -750,7 +750,7 @@ class NConvConcatClipFusePattern : public paddle::drr::DrrPatternBase {
            std::to_string(fused_level_) + "ClipPattern";
   }
 
-  uint32_t benefit() const override { return concat_count_; }
+  size_t benefit() const override { return concat_count_; }
 
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();

@@ -36,7 +36,9 @@ class NTransposeFlattenConcatFusePattern : public paddle::drr::DrrPatternBase {
            std::to_string(transpose_flatten_count_);
   }
 
-  uint32_t benefit() const override { return transpose_flatten_count_; }
+
+  size_t benefit() const override { return transpose_flatten_count_; }
+
 
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
