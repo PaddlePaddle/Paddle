@@ -36,9 +36,6 @@ void SigmoidCrossEntropyWithLogitsKernel(
     int ignore_index,
     DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
-  PADDLE_ENFORCE_EQ(x.place().GetType() == phi::AllocationType::XPU,
-                    true,
-                    errors::Unavailable("This kernel only runs on XPU."));
 
   dev_ctx.template Alloc<T>(out);
   xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());

@@ -16,7 +16,7 @@ limitations under the License. */
 namespace phi {
 
 template <typename T, typename Context>
-void SequencePoolKernel(const Context& ctx,
+void SequencePoolKernel(const Context& dev_ctx,
                         const DenseTensor& x,
                         bool is_test,
                         const std::string& pooltype,
@@ -60,18 +60,18 @@ void SequencePoolKernel(const Context& ctx,
   }
   dims[0] = lod[lod_level - 1].size() - 1;
   out->Resize({dims});
-  ctx.template Alloc<T>(out);
+  dev_ctx.template Alloc<T>(out);
   phi::DenseTensor* index = nullptr;
 
   // Do not create index buffer for inference mode
   if (pooltype == "MAX" &&
-      (is_test == false || (ctx.GetPlace() == phi::CPUPlace()) == false)) {
+      (is_test == false || (dev_ctx.GetPlace() == phi::CPUPlace()) == false)) {
     index = max_index;
     index->Resize({dims});
-    ctx.template Alloc<int32_t>(index);
+    dev_ctx.template Alloc<int32_t>(index);
   }
   phi::funcs::SequencePoolFunctor<Context, T> pool;
-  pool(ctx, pooltype, pad_value_, x, out, is_test, index);
+  pool(dev_ctx, pooltype, pad_value_, x, out, is_test, index);
 }
 
 }  // namespace phi

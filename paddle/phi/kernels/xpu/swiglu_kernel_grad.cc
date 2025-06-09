@@ -27,7 +27,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void SwiGluGradKernel(const Context& ctx,
+void SwiGluGradKernel(const Context& dev_ctx,
                       const DenseTensor& x,
                       const paddle::optional<DenseTensor>& y,
                       const DenseTensor& dz,
@@ -36,7 +36,7 @@ void SwiGluGradKernel(const Context& ctx,
   using XPUType = typename XPUTypeTrait<T>::Type;
   const auto* x_data = x.data<T>();
   const auto* dz_data = dz.data<T>();
-  auto* dx_data = ctx.template Alloc<T>(dx);
+  auto* dx_data = dev_ctx.template Alloc<T>(dx);
   const auto& dims = x.dims();
   int64_t axis = dims.size() - 1;
   auto dims_vec = common::vectorize<int64_t>(dims);
@@ -47,7 +47,7 @@ void SwiGluGradKernel(const Context& ctx,
     const auto& y_tensor = y.get();
     const auto& y_dims = y_tensor.dims();
     const auto* y_data = y_tensor.data<T>();
-    auto* dy_data = ctx.template Alloc<T>(dy);
+    auto* dy_data = dev_ctx.template Alloc<T>(dy);
     y_ptr = reinterpret_cast<const XPUType*>(y_data);
     dy_ptr = reinterpret_cast<XPUType*>(dy_data);
     PADDLE_ENFORCE_EQ(y_dims,
@@ -58,7 +58,7 @@ void SwiGluGradKernel(const Context& ctx,
                           y_dims,
                           dims));
   }
-  int ret = xpu::swiglu_grad(ctx.x_context(),
+  int ret = xpu::swiglu_grad(dev_ctx.x_context(),
                              reinterpret_cast<const XPUType*>(x_data),
                              reinterpret_cast<const XPUType*>(dz_data),
                              reinterpret_cast<XPUType*>(dx_data),

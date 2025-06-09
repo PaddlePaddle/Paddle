@@ -134,6 +134,19 @@ class TestDiagonalOpCase5(TestDiagonalOp):
         )
 
 
+class TestDiagonalOp_ZeroSize(TestDiagonalOp):
+    def init_config(self):
+        self.case = np.random.randn(0, 2, 4, 4).astype(self.dtype)
+        self.inputs = {'Input': self.case}
+        self.attrs = {'offset': -2, 'axis1': 0, 'axis2': 3}
+        self.target = np.diagonal(
+            self.inputs['Input'],
+            offset=self.attrs['offset'],
+            axis1=self.attrs['axis1'],
+            axis2=self.attrs['axis2'],
+        )
+
+
 class TestDiagonalAPI(unittest.TestCase):
     def setUp(self):
         self.shape = [10, 3, 4]
