@@ -5795,11 +5795,11 @@
   traits : paddle::dialect::ForwardOnlyTrait
 
 
-- op: fused_spaq
+- op: fused_weighted_swiglu_act_quant
   args: (Tensor x, Tensor prob, bool using_pow2_scaling)
   output: Tensor(out), Tensor(scale)
   infer_meta:
-    func: FusedSpaqInferMeta
+    func: FusedWeightedSwigluActQuantInferMeta
   kernel:
-    func: fused_spad
+    func: fused_weighted_swiglu_act_quant
   optional: prob

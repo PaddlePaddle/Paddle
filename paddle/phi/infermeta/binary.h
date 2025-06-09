@@ -805,9 +805,9 @@ void FusedRMSNormInferMeta(const MetaTensor& x,
                            MetaTensor* y,
                            MetaTensor* invvar);
                            
-void FusedSpaqInferMeta(const MetaTensor& x,
+void FusedWeightedSwigluActQuantInferMeta(const MetaTensor& x,
                         const MetaTensor& prob,
                         bool using_pow2_scaling,
-                        MetaTensor* out
+                        MetaTensor* out,
                         MetaTensor* scale);
 }  // namespace phi
