@@ -50,6 +50,7 @@ def fused_rms_norm_ext(x, scale, epsilon=1e-5, name=None):
     )
     return y, invvar
 
+
 def rms_norm_paddle(x, scale, bias=None, epsilon=1e-5):
     # 计算均方根
     variance = paddle.mean(paddle.square(x), axis=-1, keepdim=True)
@@ -66,15 +67,17 @@ def rms_norm_paddle(x, scale, bias=None, epsilon=1e-5):
     # 返回归一化后的张量、均值（RMS Norm 中为0）和逆标准差
     return y, (1.0 / rms).squeeze(-1)
 
-import paddle
+
 import numpy as np
+
+import paddle
+
 paddle.seed(42)
 
 # 生成测试数据
 batch_size, seq_len, hidden_size = 2, 3, 4
 x_np = np.random.randn(batch_size, seq_len, hidden_size).astype('float32')
 weight_np = np.random.randn(hidden_size).astype('float32')
-
 
 
 # 转换为各框架的 tensor
@@ -88,9 +91,9 @@ weight_ops.stop_gradient = False
 # 前向计算
 y_paddle, invvar_paddle = rms_norm_paddle(x_paddle, weight_paddle)
 y_ops, invvar_ops = fused_rms_norm_ext(x_ops, weight_ops)
-loss_paddle = paddle.mean(y_paddle)+paddle.mean(invvar_paddle)
+loss_paddle = paddle.mean(y_paddle) + paddle.mean(invvar_paddle)
 y_paddle.backward()
-loss_ops = paddle.mean(y_ops)+paddle.mean(invvar_ops)
+loss_ops = paddle.mean(y_ops) + paddle.mean(invvar_ops)
 y_ops.backward()
 paddle.device.synchronize()
 

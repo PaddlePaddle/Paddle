@@ -887,7 +887,7 @@ __global__ void cuComputeGradInput(const V* __restrict__ dout,
     // prevent race where buf is written again before reads are done
     __syncthreads();
   }
-  if(blockDim.x == 0 && threadIdx.x == 0){
+  if (blockDim.x == 0 && threadIdx.x == 0) {
     printf("grad input: %f", *grad_input);
   }
 }
