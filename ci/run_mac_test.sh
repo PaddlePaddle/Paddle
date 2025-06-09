@@ -206,7 +206,7 @@ EOF
                                     retry_unittests_regular="$retry_unittests_regular|^$line$"
                                 fi
                             done
-			find $tmp_dir -type f -delete
+			find $tmp_dir -delete
                         failed_test_lists=''
                         ctest -R "($retry_unittests_regular)" --output-on-failure -j 4 | tee $tmpfile
                         collect_failed_tests
