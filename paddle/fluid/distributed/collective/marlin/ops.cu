@@ -198,7 +198,7 @@ int get_scales_cache_size(thread_config_t const& th_config, int prob_m,
   if (cache_scales_chunk) {
     int load_groups =
         tb_groups * pipe_stages * 2;     // Chunk size is 2x pipeline over dim K
-    load_groups = max(load_groups, 32);  // We load at least 32 scale groups
+    load_groups = std::max(load_groups, 32);  // We load at least 32 scale groups
     return load_groups * tb_n * 2;
   } else {
     int tb_scales = tb_groups * tb_n * 2;
@@ -239,7 +239,7 @@ int get_kernel_cache_size(thread_config_t const& th_config, bool m_block_size_8,
       sh_zp_size = sh_s_size / 2;
   }
 
-  int total_size = max(sh_b_size, sh_red_size) + sh_a_size + sh_s_size +
+  int total_size = std::max(sh_b_size, sh_red_size) + sh_a_size + sh_s_size +
                    sh_zp_size + sh_g_idx_size + sh_block_meta_size;
 
   return total_size;
@@ -472,10 +472,10 @@ exec_config_t determine_exec_config(const deep_ep::detail::ScalarType& q_type, i
     } else {
       cudaFuncAttributes attr;
       cudaFuncGetAttributes(&attr, kernel);
-      int reg_size = max(attr.numRegs, 1) * th_config.num_threads * 4;
-      int allow_count = min(device_max_reg_size / reg_size,
+      int reg_size = std::max(attr.numRegs, 1) * th_config.num_threads * 4;
+      int allow_count = std::min(device_max_reg_size / reg_size,
                             max_shared_mem / (cache_size + 1024));
-      allow_count = max(min(allow_count, 4), 1);
+      allow_count = std::max(std::min(allow_count, 4), 1);
       if (allow_count > count) {
         count = allow_count;
         exec_cfg = {count, th_config};
@@ -785,7 +785,7 @@ deep_ep::detail::Tensor moe_wna16_marlin_gemm(
   //     torch::TensorOptions().dtype(deep_ep::detail::kFloat).device(a.device());
   if (use_fp32_reduce && !use_atomic_add) {
     // max num of threadblocks is sms * 4
-    long max_c_tmp_size = min(
+    long max_c_tmp_size = std::min(
         (long)size_n * sorted_token_ids.size(0),
         (long)sms * 4 * moe_block_size * MARLIN_NAMESPACE_NAME::max_thread_n);
     if (moe_block_size == 8) max_c_tmp_size *= 2;
@@ -926,7 +926,7 @@ deep_ep::detail::Tensor moe_wna16_marlin_gemm(
               MARLIN_NAMESPACE_NAME::min_thread_n);
 
   int max_n_tiles = size_n / MARLIN_NAMESPACE_NAME::min_thread_n;
-  int min_workspace_size = min(
+  int min_workspace_size = std::min(
       max_n_tiles * (int)(sorted_token_ids.size(0) / moe_block_size), sms * 4);
   PADDLE_ENFORCE(workspace.numel() >= min_workspace_size,
               "workspace.numel = ", workspace.numel(),
