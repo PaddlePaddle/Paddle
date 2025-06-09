@@ -8,7 +8,7 @@ env:
   COMMIT_ID: ${{ github.event.pull_request.head.sha }}
   BRANCH: ${{ github.event.pull_request.base.ref }}
   work_dir: ${{ github.workspace }}
-  PADDLE_ROOT: "${{ github.workspace }}/Paddle"
+  PADDLE_ROOT: "${{ github.workspace }}/Paddle/Paddle/Paddle"
   MACOSX_DEPLOYMENT_TARGET: 10.11
   PADDLE_DEV_NAME: "paddlepaddle/paddle:dev"
   PADDLE_VERSION: 0.0.0
