@@ -5805,7 +5805,7 @@
   traits : paddle::dialect::ForwardOnlyTrait
 
 - op: fused_transpose_split_quant
-  args: (Tensor x, IntArray tokens_per_expert, bool pow_2_scales)
+  args: (Tensor x, IntArray tokens_per_expert, bool pow_2_scales=false)
   output: Tensor[](out){tokens_per_expert.size()}, Tensor[](scales){tokens_per_expert.size()}
   infer_meta:
       func: FusedTransposeSpiltQuantInferMeta
