@@ -31,6 +31,10 @@ void IndexSelectKernel(const Context& ctx,
                        const DenseTensor& index,
                        int dim,
                        DenseTensor* output) {
+  if (output && output->numel() == 0) {
+    ctx.template Alloc<T>(output);
+    return;
+  }
   auto input_dim = x.dims();
   auto output_dim = output->dims();
   dim = dim >= 0 ? dim : dim + input_dim.size();
@@ -56,9 +60,6 @@ void IndexSelectKernel(const Context& ctx,
   T* out_data = ctx.template Alloc<T>(output);
 
   int64_t numel = output->numel();
-  if (numel == 0) {
-    return;
-  }
   auto stream = ctx.stream();
 
   unsigned int block_dim = PADDLE_CUDA_NUM_THREADS;
