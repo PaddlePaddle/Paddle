@@ -273,7 +273,8 @@ void ArgFullSort(const phi::GPUContext& dev_ctx,
   }
 }
 template <typename T, typename IndType>
-void PerSort(T* out_data,
+void PerSort(const phi::GPUContext& dev_ctx,
+             T* out_data,
              int64_t* ids_data,
              IndType start,
              IndType end,
@@ -357,7 +358,8 @@ void ArgsortKernel(const Context& dev_ctx,
     int64_t start = 0;
     int64_t end = std::min(start + per_number, size);
     if (end == size) {
-      PerSort<T, int64_t>(out_data, ids_data, start, end, stable, descending);
+      PerSort<T, int64_t>(
+          dev_ctx, out_data, ids_data, start, end, stable, descending);
     } else {
       // Sorting the segments and then merging them
       DenseTensor temp;
@@ -368,7 +370,8 @@ void ArgsortKernel(const Context& dev_ctx,
       int64_t* temp_ids = dev_ctx.template Alloc<int64_t>(&ids);
 
       while (start != size) {
-        PerSort<T, int64_t>(out_data, ids_data, start, end, stable, descending);
+        PerSort<T, int64_t>(
+            dev_ctx, out_data, ids_data, start, end, stable, descending);
         if (start != 0) {
           auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, end);
           merge_kernel<<<config.block_per_grid.x,
