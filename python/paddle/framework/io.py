@@ -1208,21 +1208,27 @@ def load(path: str | BytesIO, **configs: Unpack[_LoadOptions]) -> Any:
 
                 if not config.return_numpy:
                     tensor_load_result = {}
-                    for key, value in load_result.items():
+                    for key in list(load_result.keys()):
+                        value = load_result[key]
                         if isinstance(value, np.ndarray):
                             tensor_load_result[key] = _ndarray_to_tensor(
                                 value, False
                             )
                         else:
                             tensor_load_result[key] = value
-
+                        # add this can decrease load memory but can't fix the bug
+                        # del load_result[key]
+                    del load_result
                     # paddle2.0: paddle.save/load
-                    if "StructuredToParameterName@@" in load_result:
-                        for key, name in load_result[
+                    if "StructuredToParameterName@@" in tensor_load_result:
+                        for key, name in tensor_load_result[
                             "StructuredToParameterName@@"
                         ].items():
                             # default name is "generatedxxx" which is set in Tensor init, if not set
-                            tensor_load_result[key].name = name
+                            if isinstance(
+                                tensor_load_result[key], paddle.Tensor
+                            ):
+                                tensor_load_result[key].name = name
 
                         if (
                             not config.keep_name_table
@@ -1239,7 +1245,6 @@ def load(path: str | BytesIO, **configs: Unpack[_LoadOptions]) -> Any:
                                 value[1].name = value[0]
                                 tensor_load_result[key] = value[1]
 
-                    del load_result
                     return tensor_load_result
                 else:
                     return load_result
