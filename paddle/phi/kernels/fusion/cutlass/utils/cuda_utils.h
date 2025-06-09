@@ -54,8 +54,7 @@ namespace phi {
 
 typedef struct __align__(4) {
   half x, y, z, w;
-}
-half4;
+} half4;
 
 /* **************************** type definition ***************************** */
 
@@ -443,12 +442,14 @@ void compareTwoTensor(const T1* pred,
   FILE* fd = nullptr;
   if (filename != "") {
     fd = fopen(filename.c_str(), "w");
-    fprintf(fd,
-            "| %10s | %10s | %10s | %10s | \n",
-            "pred",
-            "ref",
-            "abs_diff",
-            "rel_diff(%)");
+    if (fd != nullptr) {
+      fprintf(fd,
+              "| %10s | %10s | %10s | %10s | \n",
+              "pred",
+              "ref",
+              "abs_diff",
+              "rel_diff(%)");
+    }
   }
 
   if (print_size > 0) {
