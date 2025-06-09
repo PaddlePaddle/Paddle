@@ -247,15 +247,12 @@ class TestPowerAPI_ZeroSize(unittest.TestCase):
             self.places.append('gpu')
 
     def _test_power(self, shape):
-        """test_power."""
         np.random.seed(7)
         for place in self.places:
-            # test 1-d float tensor ** float scalar
             dims = shape
             x = (np.random.rand(*dims) * 10).astype(np.float64)
             y = np.random.rand() * 10
             paddle.disable_static()
-            # Set device
             paddle.set_device(place)
             x_ = paddle.to_tensor(x)
             x_.stop_gradient = False
