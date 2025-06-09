@@ -354,7 +354,7 @@ void ArgsortKernel(const Context& dev_ctx,
     auto cu_stream = dev_ctx.stream();
     thrust::sequence(exec_policy, ids_data, ids_data + size);
     thrust::copy(exec_policy, in_data, in_data + size, out_data);
-    const int64_t per_number = (1 << 31) - 1;
+    const int64_t per_number = (1LL << 31 << 31) - 1;
     int64_t start = 0;
     int64_t end = std::min(start + per_number, size);
     if (end == size) {
