@@ -251,7 +251,8 @@ class XCCLComm {
   virtual int rank() const = 0;
   virtual int device_id() const = 0;
   virtual phi::ccl::CCLComm comm() const = 0;
-  virtual std::shared_ptr<phi::stream::Stream> stream() const = 0;
+  virtual phi::stream::stream_t stream() const = 0;
+  virtual std::shared_ptr<phi::stream::Stream> GetStream() const = 0;
   virtual std::shared_ptr<phi::event::Event> compute_event() const = 0;
   virtual std::shared_ptr<phi::event::Event> comm_event() const = 0;
   virtual phi::CustomContext* dev_context() const = 0;

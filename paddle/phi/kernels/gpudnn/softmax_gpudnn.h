@@ -23,7 +23,6 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/axis_utils.h"
 #include "paddle/phi/kernels/primitive/kernel_primitives.h"
 
-// See Note [ Why still include the fluid headers? ]
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/backends/gpu/gpu_dnn.h"
 
@@ -1257,7 +1256,7 @@ void SoftmaxForwardCUDAKernelDriverImpl(const GPUContext& dev_ctx,
       int warp_size = (dim_ceil < 32) ? dim_ceil : 32;
       int batches_per_warp = (dim_ceil <= 32) ? 2 : 1;
 
-      // use 128 threads per block to maximimize gpu utilization
+      // use 128 threads per block to maximize gpu utilization
       constexpr int threads_per_block = 128;
 
       int warps_per_block = (threads_per_block / warp_size);

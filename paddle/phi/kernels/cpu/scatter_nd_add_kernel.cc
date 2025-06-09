@@ -22,13 +22,13 @@
 namespace phi {
 
 template <typename T, typename Context>
-void ScatterNdAddKernel(const Context &ctx,
+void ScatterNdAddKernel(const Context &dev_ctx,
                         const DenseTensor &x,
                         const DenseTensor &index,
                         const DenseTensor &updates,
                         DenseTensor *out) {
   // In place output: Out = X
-  Copy(ctx, x, ctx.GetPlace(), true, out);
+  Copy(dev_ctx, x, dev_ctx.GetPlace(), true, out);
   const auto &index_type = index.dtype();
   bool index_type_match =
       index_type == phi::DataType::INT32 || index_type == phi::DataType::INT64;
@@ -42,9 +42,9 @@ void ScatterNdAddKernel(const Context &ctx,
                         phi::DataType::INT64));
 
   if (index_type == phi::DataType::INT32) {
-    phi::funcs::ScatterNdAdd<T, int32_t>(ctx, updates, index, out);
+    phi::funcs::ScatterNdAdd<T, int32_t>(dev_ctx, updates, index, out);
   } else {
-    phi::funcs::ScatterNdAdd<T, int64_t>(ctx, updates, index, out);
+    phi::funcs::ScatterNdAdd<T, int64_t>(dev_ctx, updates, index, out);
   }
 }
 

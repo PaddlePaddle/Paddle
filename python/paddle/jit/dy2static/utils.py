@@ -29,7 +29,7 @@ import time
 import types
 import warnings
 from contextlib import contextmanager
-from enum import Enum, auto
+from enum import Enum, Flag, auto
 from importlib.machinery import SourceFileLoader
 from typing import TYPE_CHECKING, Any
 
@@ -113,6 +113,44 @@ class Backend(Enum):
 
     def is_phi(self):
         return self == Backend.PHI
+
+
+class TransformOptions:
+
+    class ToStaticMode(Flag):
+        SOT = auto()
+        AST = auto()
+
+        @classmethod
+        def Nil(cls):
+            return cls(0)
+
+    TRANSFORM_OPTIONS_ATTR_NAME = "___jit_transform_options___"
+
+    def __init__(self, skip_transform_mode: ToStaticMode = ToStaticMode.Nil()):
+        self.skip_transform_mode = skip_transform_mode
+
+    def attach(self, fn):
+        if inspect.ismethod(fn):
+            fn = fn.__func__
+
+        if inspect.isfunction(fn):
+            setattr(fn, TransformOptions.TRANSFORM_OPTIONS_ATTR_NAME, self)
+        else:
+            warnings.warn(
+                f"Only support @jit.marker.unified to type(function) or type(method), but received {type(fn)}"
+            )
+
+    def need_transform(self, mode: ToStaticMode):
+        return not (self.skip_transform_mode & mode)
+
+    @staticmethod
+    def check_fn_need_transform(fn, mode: ToStaticMode):
+        if not hasattr(fn, TransformOptions.TRANSFORM_OPTIONS_ATTR_NAME):
+            return True
+        return getattr(
+            fn, TransformOptions.TRANSFORM_OPTIONS_ATTR_NAME
+        ).need_transform(mode)
 
 
 class TimeCounter:

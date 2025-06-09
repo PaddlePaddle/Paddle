@@ -29,6 +29,7 @@
 #include "paddle/fluid/distributed/collective/deep_ep/kernels/exception.cuh"
 #include "paddle/fluid/distributed/collective/deep_ep/kernels/ibgda_device.cuh"
 #include "paddle/fluid/distributed/collective/deep_ep/kernels/launch.cuh"
+#include "paddle/phi/kernels/funcs/aligned_vector.h"
 
 namespace deep_ep {
 
@@ -89,6 +90,7 @@ __global__ __launch_bounds__(
                      void* rdma_x,
                      const void* x,
                      const int64_t* topk_idx,
+                     const float* expertwise_scale,
                      int* atomic_counter_per_expert,
                      int* atomic_finish_counter_per_expert,
                      int* next_clean,
@@ -110,21 +112,28 @@ __global__ __launch_bounds__(
   const auto sub_warp_id = warp_id % kNumWarpsPerGroup;
   const auto responsible_expert_idx = sm_id * kNumWarpGroups + warp_group_id;
 
+  const bool use_expertwise_scale = expertwise_scale;
+
   // FP8 staffs
   constexpr int kNumPerChannels = 128;
   constexpr float kFP8Margin = 1e-4, kFP8Amax = 448,
                   kFP8AmaxInv = 1.0f / 448.0f;
   const int num_scales = kHidden / kNumPerChannels;
-  const size_t hidden_bytes =
+  size_t hidden_bytes =
       kHidden * (kUseFP8 ? sizeof(__nv_fp8_storage_t) : sizeof(nv_bfloat16));
+
+  if (use_expertwise_scale) hidden_bytes = kHidden;
+
   const size_t hidden_int4 = hidden_bytes / sizeof(int4);
 
   // Message package: hidden data, FP8 scales, index at source
   // NOTES: currently we have 3 reserved int fields for future use
   using vec_t = typename std::conditional<kUseFP8, int2, int4>::type;
-  const size_t num_bytes_per_msg =
+  size_t num_bytes_per_msg =
       sizeof(int4) + (kUseFP8 ? (kHidden + num_scales * sizeof(float))
                               : (kHidden * sizeof(nv_bfloat16)));
+  if (use_expertwise_scale) num_bytes_per_msg = sizeof(int4) + kHidden;
+
   const size_t num_int4_per_msg = num_bytes_per_msg / sizeof(int4);
   EP_DEVICE_ASSERT(num_bytes_per_msg % sizeof(int4) == 0);
 
@@ -150,8 +159,16 @@ __global__ __launch_bounds__(
       const auto x_int4 =
           reinterpret_cast<const int4*>(x) + token_idx * hidden_bf16_int4;
 
-      const auto rdma_x_src_idx = reinterpret_cast<int*>(
+      auto rdma_x_src_idx = reinterpret_cast<int*>(
           reinterpret_cast<uint8_t*>(rdma_x) + token_idx * num_bytes_per_msg);
+
+      if (use_expertwise_scale) {
+        // Each token needs to be quantified into different int8 data based on
+        // the experts it is dispatched to
+        rdma_x_src_idx = reinterpret_cast<int*>(
+            reinterpret_cast<uint8_t*>(rdma_x) +
+            (warp_id + token_idx * num_topk) * num_bytes_per_msg);
+      }
       const auto rdma_x_vec = reinterpret_cast<vec_t*>(
           reinterpret_cast<uint8_t*>(rdma_x_src_idx) + sizeof(int4));
       const auto rdma_x_scales = reinterpret_cast<float*>(
@@ -164,9 +181,46 @@ __global__ __launch_bounds__(
                              : -1;
       thread_id == 0 ? (*rdma_x_src_idx = token_idx) : 0;
 
+      if (use_expertwise_scale) {
+        if (warp_id < num_topk) {
+          lane_id == 0 ? (*rdma_x_src_idx = token_idx) : 0;
+        }
+      }
+      // Note(zkk)
+      // create a run_deepep_loop, so I need not modify Deepep's code any more.
+      int run_deepep_loop = 1;
+      if (use_expertwise_scale) {
+        run_deepep_loop = 0;
+        for (int ii = 0; ii < num_topk; ii++) {
+          int tmp_id = topk_idx[ii + token_idx * num_topk];
+          float scale = expertwise_scale[tmp_id];
+
+          for (int i = thread_id; i < hidden_bf16_int4; i += num_threads) {
+            auto int4_value = __ldg(x_int4 + i);
+            auto bf16_values = reinterpret_cast<nv_bfloat16*>(&int4_value);
+            int2 int2_value;
+            phi::AlignedVector<int8_t, 8> res_vec;
+            const float max_bound = 127.f;
+            const float min_bound = -127.f;
+            for (int j = 0; j < 8; j++) {
+              float quant_value =
+                  max_bound * scale * static_cast<float>(bf16_values[j]);
+              quant_value = quant_value > max_bound ? max_bound : quant_value;
+              quant_value = quant_value < min_bound ? min_bound : quant_value;
+              res_vec[j] = static_cast<int8_t>(round(quant_value));
+            }
+            phi::Store(res_vec,
+                       reinterpret_cast<int8_t*>(rdma_x) +
+                           (ii + token_idx * num_topk) * num_bytes_per_msg +
+                           sizeof(int4) + i * sizeof(res_vec));
+          }
+        }
+      }
+
 // FP8 cast
 #pragma unroll
-      for (int i = thread_id; i < hidden_bf16_int4; i += num_threads) {
+      for (int i = thread_id; i < hidden_bf16_int4 * run_deepep_loop;
+           i += num_threads) {
         // Read
         auto int4_value = __ldg(x_int4 + i);
 
@@ -225,13 +279,33 @@ __global__ __launch_bounds__(
             rank * num_max_dispatch_tokens_per_rank * num_bytes_per_msg +
             slot_idx * num_bytes_per_msg;
         if (dst_rank != rank) {
-          nvshmemi_ibgda_put_nbi_warp(dst_ptr,
-                                      src_ptr,
-                                      num_bytes_per_msg,
-                                      dst_rank,
-                                      dst_expert_local_idx,
-                                      lane_id,
-                                      slot_idx);
+          void* peer_base_addr = reinterpret_cast<void*>(
+              __ldg(reinterpret_cast<const uint64_t*>(
+                        nvshmemi_device_state_d.peer_heap_base_p2p) +
+                    dst_rank));
+          if (peer_base_addr) {
+            char* req_rptr_actual =
+                reinterpret_cast<char*>(peer_base_addr) +
+                (reinterpret_cast<char*>(dst_ptr) -
+                 reinterpret_cast<char*>(nvshmemi_device_state_d.heap_base));
+            const auto* src_int4_ptr = reinterpret_cast<const int4*>(src_ptr);
+            const auto* dst_int4_ptr = reinterpret_cast<int4*>(req_rptr_actual);
+            UNROLLED_WARP_COPY(8,
+                               lane_id,
+                               num_int4_per_msg,
+                               dst_int4_ptr,
+                               src_int4_ptr,
+                               ld_nc_global,
+                               st_na_global);
+          } else {
+            nvshmemi_ibgda_put_nbi_warp(dst_ptr,
+                                        src_ptr,
+                                        num_bytes_per_msg,
+                                        dst_rank,
+                                        dst_expert_local_idx,
+                                        lane_id,
+                                        slot_idx);
+          }
         } else {
           // NOTES: only 2 load iterations for 7K hidden with 8 unrolls
           const auto* src_int4_ptr = reinterpret_cast<const int4*>(src_ptr);
@@ -313,11 +387,24 @@ __global__ __launch_bounds__(
                              responsible_expert_idx) != FINISHED_SUM_TAG * 2) {
     }
     if (dst_rank != rank) {
-      nvshmemi_ibgda_amo_nonfetch_add(
-          rdma_recv_count + dst_expert_local_idx * num_ranks + rank,
-          -num_tokens_sent - 1,
-          dst_rank,
-          dst_expert_local_idx);
+      void* peer_base_addr = reinterpret_cast<void*>(
+          __ldg(reinterpret_cast<const uint64_t*>(
+                    nvshmemi_device_state_d.peer_heap_base_p2p) +
+                dst_rank));
+      if (peer_base_addr) {  // P2P enabled
+        int* rptr_actual = reinterpret_cast<int*>(
+            reinterpret_cast<char*>(peer_base_addr) +
+            (reinterpret_cast<char*>(rdma_recv_count +
+                                     dst_expert_local_idx * num_ranks + rank) -
+             reinterpret_cast<char*>(nvshmemi_device_state_d.heap_base)));
+        st_na_release(rptr_actual, -num_tokens_sent - 1);
+      } else {
+        nvshmemi_ibgda_amo_nonfetch_add(
+            rdma_recv_count + dst_expert_local_idx * num_ranks + rank,
+            -num_tokens_sent - 1,
+            dst_rank,
+            dst_expert_local_idx);
+      }
     } else {
       st_na_release(rdma_recv_count + dst_expert_local_idx * num_ranks + rank,
                     -num_tokens_sent - 1);
@@ -446,6 +533,7 @@ void dispatch(void* packed_recv_x,
               void* rdma_x,
               const void* x,
               const int64_t* topk_idx,
+              const float* expertwise_scale,
               int* next_clean,
               int num_next_clean_int,
               int num_tokens,
@@ -494,6 +582,7 @@ void dispatch(void* packed_recv_x,
                   rdma_x,                                                     \
                   x,                                                          \
                   topk_idx,                                                   \
+                  expertwise_scale,                                           \
                   atomic_counter_per_expert,                                  \
                   atomic_finish_counter_per_expert,                           \
                   next_clean,                                                 \
@@ -635,13 +724,32 @@ __global__ __launch_bounds__(
                              x_int4,
                              ld_nc_global,
                              st_na_global);
-        nvshmemi_ibgda_put_nbi_warp(dst_ptr,
-                                    buf_ptr,
-                                    hidden * sizeof(nv_bfloat16),
-                                    dst_rank,
-                                    local_expert_idx,
-                                    lane_id,
-                                    token_idx - offset);
+        void* peer_base_addr = reinterpret_cast<void*>(
+            __ldg(reinterpret_cast<const uint64_t*>(
+                      nvshmemi_device_state_d.peer_heap_base_p2p) +
+                  dst_rank));
+        if (peer_base_addr) {
+          char* req_rptr_actual =
+              reinterpret_cast<char*>(peer_base_addr) +
+              (reinterpret_cast<char*>(dst_ptr) -
+               reinterpret_cast<char*>(nvshmemi_device_state_d.heap_base));
+          const auto dst_int4_ptr = reinterpret_cast<int4*>(req_rptr_actual);
+          UNROLLED_WARP_COPY(7,
+                             lane_id,
+                             hidden_bf16_int4,
+                             dst_int4_ptr,
+                             x_int4,
+                             ld_nc_global,
+                             st_na_global);
+        } else {
+          nvshmemi_ibgda_put_nbi_warp(dst_ptr,
+                                      buf_ptr,
+                                      hidden * sizeof(nv_bfloat16),
+                                      dst_rank,
+                                      local_expert_idx,
+                                      lane_id,
+                                      token_idx - offset);
+        }
       }
     }
 
@@ -654,8 +762,22 @@ __global__ __launch_bounds__(
       while (ld_acquire_global(atomic_clean_flag) == 0) {
       }
       if (dst_rank != rank) {
-        nvshmemi_ibgda_amo_nonfetch_add(
-            rdma_recv_flag + global_expert_idx, 1, dst_rank, local_expert_idx);
+        void* peer_base_addr = reinterpret_cast<void*>(
+            __ldg(reinterpret_cast<const uint64_t*>(
+                      nvshmemi_device_state_d.peer_heap_base_p2p) +
+                  dst_rank));
+        if (peer_base_addr) {
+          int* req_rptr_actual = reinterpret_cast<int*>(
+              reinterpret_cast<char*>(peer_base_addr) +
+              (reinterpret_cast<char*>(rdma_recv_flag + global_expert_idx) -
+               reinterpret_cast<char*>(nvshmemi_device_state_d.heap_base)));
+          st_na_release(req_rptr_actual, 1);
+        } else {
+          nvshmemi_ibgda_amo_nonfetch_add(rdma_recv_flag + global_expert_idx,
+                                          1,
+                                          dst_rank,
+                                          local_expert_idx);
+        }
       } else {
         st_na_release(rdma_recv_flag + global_expert_idx, 1);
       }

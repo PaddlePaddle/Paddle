@@ -21,7 +21,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void IndexSelectKernel(const Context& ctx,
+void IndexSelectKernel(const Context& dev_ctx,
                        const DenseTensor& x,
                        const DenseTensor& index,
                        int dim,
@@ -44,9 +44,9 @@ void IndexSelectKernel(const Context& ctx,
                         phi::DataType::INT64));
 
   if (index_type == phi::DataType::INT32) {
-    IndexSelectInner<Context, T, int>(ctx, &inputs, index, output, dim);
+    IndexSelectInner<Context, T, int>(dev_ctx, &inputs, index, output, dim);
   } else if (index_type == phi::DataType::INT64) {
-    IndexSelectInner<Context, T, int64_t>(ctx, &inputs, index, output, dim);
+    IndexSelectInner<Context, T, int64_t>(dev_ctx, &inputs, index, output, dim);
   }
 }
 

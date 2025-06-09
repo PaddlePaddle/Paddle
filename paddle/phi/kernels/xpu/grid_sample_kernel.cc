@@ -28,6 +28,10 @@ void GridSampleKernel(const Context& dev_ctx,
                       const std::string& padding_mode,
                       bool align_corners,
                       DenseTensor* out) {
+  if (out && out->numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   // attrs
   // paddle.nn.functional.grid_sample(x, grid, mode='bilinear',
   // padding_mode='zeros', align_corners=True, name=None)

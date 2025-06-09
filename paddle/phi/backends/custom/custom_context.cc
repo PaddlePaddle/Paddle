@@ -28,12 +28,11 @@ struct CustomContext::Impl {
   explicit Impl(const CustomPlace& place) : place_(place) {}
 
   ~Impl() {
-    phi::DeviceGuard guard(place_);
-    if (owned_) {
+    if (owned_ && eigen_device_) {
       DeviceManager::DestroyEigenDevice(place_, eigen_device_);
     }
     if (stream_owned_ && stream_) {
-      stream_->Destroy();
+      stream_ = nullptr;
     }
   }
 
@@ -86,7 +85,6 @@ struct CustomContext::Impl {
   std::shared_ptr<phi::stream::Stream> GetStream() const { return stream_; }
 
   void SetStream(std::shared_ptr<phi::stream::Stream> stream) {
-    stream_owned_ = true;
     stream_ = stream;
   }
 

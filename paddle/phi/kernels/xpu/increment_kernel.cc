@@ -21,7 +21,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void IncrementKernel(const Context& ctx,
+void IncrementKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      float value,
                      DenseTensor* out) {
@@ -32,20 +32,20 @@ void IncrementKernel(const Context& ctx,
                         "input tensor x's numel should be EXACTLY 1."));
 
   const T* x_data = x.data<T>();
-  T* out_data = ctx.template Alloc<T>(out);
+  T* out_data = dev_ctx.template Alloc<T>(out);
 
   // allocation for "value" on xpu
   T value_as_t = static_cast<T>(value);
-  xpu::ctx_guard RAII_GUARD(ctx.x_context());
+  xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
   T* value_xpu = RAII_GUARD.alloc_l3_or_gm<T>(1);
-  memory_utils::Copy(ctx.GetPlace(),
+  memory_utils::Copy(dev_ctx.GetPlace(),
                      value_xpu,
                      phi::CPUPlace(),
                      reinterpret_cast<void*>(&value_as_t),
                      sizeof(T));
 
   // int add(Context* ctx, const T* x, const T* y, T* z, int64_t len);
-  int ret = xpu::add(ctx.x_context(), x_data, value_xpu, out_data, 1);
+  int ret = xpu::add(dev_ctx.x_context(), x_data, value_xpu, out_data, 1);
   PADDLE_ENFORCE_XDNN_SUCCESS(ret, "add");
 }
 

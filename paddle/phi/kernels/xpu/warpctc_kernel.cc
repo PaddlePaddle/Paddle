@@ -115,7 +115,7 @@ void WarpctcKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(warpctcgrad);
   T* warpctcgrad_data = warpctcgrad->data<T>();
 
-  int sm_workspace, lm_workspace;
+  int64_t sm_workspace, lm_workspace;
   int64_t max_S = 2 * max_target_seq_length + 1;
   if (warpctcgrad_data == nullptr) {
     sm_workspace = sizeof(T) * sequence_width +
