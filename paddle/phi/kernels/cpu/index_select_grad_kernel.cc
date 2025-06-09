@@ -31,7 +31,7 @@ void IndexSelectGradKernel(const Context& dev_ctx,
   // x [3, 4], index [5, 0], out [5, 0]
   if (out_grad.numel() == 0) {
     phi::Full<T, Context>(
-        ctx, phi::IntArray(common::vectorize(x.dims())), 0, x_grad);
+        dev_ctx, phi::IntArray(common::vectorize(x.dims())), 0, x_grad);
     return;
   }
   if (dim < 0) {

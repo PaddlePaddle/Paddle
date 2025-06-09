@@ -27,7 +27,7 @@ void IndexSelectKernel(const Context& dev_ctx,
                        int dim,
                        DenseTensor* output) {
   if (output && output->numel() == 0) {
-    ctx.template Alloc<T>(output);
+    dev_ctx.template Alloc<T>(output);
     return;
   }
   auto inputs = x;
