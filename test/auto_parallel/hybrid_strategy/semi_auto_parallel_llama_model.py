@@ -141,22 +141,42 @@ class LlamaAttentionAuto(nn.Layer):
             self.q_proj.weight = dist.shard_tensor(
                 self.q_proj.weight,
                 get_mesh(self.ipp),
-                [dist.Replicate(), dist.Shard(1), dist.Replicate()] if self.config.context_parallel_degree > 1 or self.config.sep_parallel_degree > 1 else [dist.Replicate(), dist.Shard(1)],
+                (
+                    [dist.Replicate(), dist.Shard(1), dist.Replicate()]
+                    if self.config.context_parallel_degree > 1
+                    or self.config.sep_parallel_degree > 1
+                    else [dist.Replicate(), dist.Shard(1)]
+                ),
             )
             self.k_proj.weight = dist.shard_tensor(
                 self.k_proj.weight,
                 get_mesh(self.ipp),
-                [dist.Replicate(), dist.Shard(1), dist.Replicate()] if self.config.context_parallel_degree > 1 or self.config.sep_parallel_degree > 1 else [dist.Replicate(), dist.Shard(1)],
+                (
+                    [dist.Replicate(), dist.Shard(1), dist.Replicate()]
+                    if self.config.context_parallel_degree > 1
+                    or self.config.sep_parallel_degree > 1
+                    else [dist.Replicate(), dist.Shard(1)]
+                ),
             )
             self.v_proj.weight = dist.shard_tensor(
                 self.v_proj.weight,
                 get_mesh(self.ipp),
-                [dist.Replicate(), dist.Shard(1), dist.Replicate()] if self.config.context_parallel_degree > 1 or self.config.sep_parallel_degree > 1 else [dist.Replicate(), dist.Shard(1)],
+                (
+                    [dist.Replicate(), dist.Shard(1), dist.Replicate()]
+                    if self.config.context_parallel_degree > 1
+                    or self.config.sep_parallel_degree > 1
+                    else [dist.Replicate(), dist.Shard(1)]
+                ),
             )
             self.o_proj.weight = dist.shard_tensor(
                 self.o_proj.weight,
                 get_mesh(self.ipp),
-                [dist.Replicate(), dist.Shard(0), dist.Replicate()] if self.config.context_parallel_degree > 1 or self.config.sep_parallel_degree > 1 else [dist.Replicate(), dist.Shard(0)],
+                (
+                    [dist.Replicate(), dist.Shard(0), dist.Replicate()]
+                    if self.config.context_parallel_degree > 1
+                    or self.config.sep_parallel_degree > 1
+                    else [dist.Replicate(), dist.Shard(0)]
+                ),
             )
 
         if config.rope:
@@ -197,7 +217,12 @@ class LlamaAttentionAuto(nn.Layer):
             hidden_states = dist.reshard(
                 hidden_states,
                 get_mesh(self.ipp),
-                [dist.Shard(1), dist.Replicate(), dist.Replicate()] if self.config.context_parallel_degree > 1 or self.config.sep_parallel_degree > 1 else [dist.Shard(1), dist.Replicate()],
+                (
+                    [dist.Shard(1), dist.Replicate(), dist.Replicate()]
+                    if self.config.context_parallel_degree > 1
+                    or self.config.sep_parallel_degree > 1
+                    else [dist.Shard(1), dist.Replicate()]
+                ),
             )
 
         query_states = self.q_proj(hidden_states).reshape(
@@ -215,23 +240,22 @@ class LlamaAttentionAuto(nn.Layer):
             placements = query_states.placements
             cp_index = process_mesh.dim_names.index('sep')
             print(f'query_states:{query_states}')
-            assert placements[cp_index] == dist.Shard(1), f"arg {query_states} must be sharded in sequence dimension."
+            assert placements[cp_index] == dist.Shard(
+                1
+            ), f"arg {query_states} must be sharded in sequence dimension."
             placements[cp_index] = dist.Shard(2)
             query_states = dist.reshard(
-                                query_states,
-                                get_mesh(self.ipp),
-                                placements)
+                query_states, get_mesh(self.ipp), placements
+            )
             print(f'query_states after resharding:{query_states}')
             print(f'key_states:{key_states}')
             key_states = dist.reshard(
-                                key_states,
-                                get_mesh(self.ipp),
-                                placements)
+                key_states, get_mesh(self.ipp), placements
+            )
             print(f'key_states after resharding:{key_states}')
             value_states = dist.reshard(
-                                value_states,
-                                get_mesh(self.ipp),
-                                placements)
+                value_states, get_mesh(self.ipp), placements
+            )
             print(f'value_states after resharding:{value_states}')
 
         if self.config.sequence_parallel:
@@ -343,7 +367,12 @@ class LlamaMLPAuto(nn.Layer):
         self.gate_proj.weight = dist.shard_tensor(
             self.gate_proj.weight,
             get_mesh(self.ipp),
-            [dist.Replicate(), dist.Shard(1), dist.Replicate()] if self.config.context_parallel_degree > 1 or self.config.sep_parallel_degree > 1 else [dist.Replicate(), dist.Shard(1)],
+            (
+                [dist.Replicate(), dist.Shard(1), dist.Replicate()]
+                if self.config.context_parallel_degree > 1
+                or self.config.sep_parallel_degree > 1
+                else [dist.Replicate(), dist.Shard(1)]
+            ),
         )
 
         self.up_proj = nn.Linear(
@@ -352,7 +381,12 @@ class LlamaMLPAuto(nn.Layer):
         self.up_proj.weight = dist.shard_tensor(
             self.up_proj.weight,
             get_mesh(self.ipp),
-            [dist.Replicate(), dist.Shard(1), dist.Replicate()] if self.config.context_parallel_degree > 1 or self.config.sep_parallel_degree > 1 else [dist.Replicate(), dist.Shard(1)],
+            (
+                [dist.Replicate(), dist.Shard(1), dist.Replicate()]
+                if self.config.context_parallel_degree > 1
+                or self.config.sep_parallel_degree > 1
+                else [dist.Replicate(), dist.Shard(1)]
+            ),
         )
 
         self.down_proj = nn.Linear(
@@ -361,7 +395,12 @@ class LlamaMLPAuto(nn.Layer):
         self.down_proj.weight = dist.shard_tensor(
             self.down_proj.weight,
             get_mesh(self.ipp),
-            [dist.Replicate(), dist.Shard(0), dist.Replicate()] if self.config.context_parallel_degree > 1 or self.config.sep_parallel_degree > 1 else [dist.Replicate(), dist.Shard(0)],
+            (
+                [dist.Replicate(), dist.Shard(0), dist.Replicate()]
+                if self.config.context_parallel_degree > 1
+                or self.config.sep_parallel_degree > 1
+                else [dist.Replicate(), dist.Shard(0)]
+            ),
         )
 
     def forward(self, x):
@@ -468,7 +507,12 @@ class LlamaDecoderLayerAuto(nn.Layer):
             hidden_states = dist.reshard(
                 hidden_states,
                 get_mesh(self.ipp),
-                [dist.Shard(1), dist.Replicate(), dist.Replicate()] if self.config.context_parallel_degree > 1 or self.config.sep_parallel_degree > 1 else [dist.Shard(1), dist.Replicate()]
+                (
+                    [dist.Shard(1), dist.Replicate(), dist.Replicate()]
+                    if self.config.context_parallel_degree > 1
+                    or self.config.sep_parallel_degree > 1
+                    else [dist.Shard(1), dist.Replicate()]
+                ),
             )
         hidden_states = self.mlp(hidden_states)
 
@@ -476,8 +520,12 @@ class LlamaDecoderLayerAuto(nn.Layer):
             hidden_states = dist.reshard(
                 hidden_states,
                 get_mesh(self.ipp),
-                [dist.Shard(1), dist.Shard(0), dist.Replicate()] if self.config.context_parallel_degree > 1 or self.config.sep_parallel_degree > 1 else [dist.Shard(1), dist.Shard(0)]
-
+                (
+                    [dist.Shard(1), dist.Shard(0), dist.Replicate()]
+                    if self.config.context_parallel_degree > 1
+                    or self.config.sep_parallel_degree > 1
+                    else [dist.Shard(1), dist.Shard(0)]
+                ),
             )
 
         hidden_states = residual + hidden_states
@@ -512,7 +560,12 @@ class LlamaModelAuto(nn.Layer):
             self.embed_tokens.weight = dist.shard_tensor(
                 self.embed_tokens.weight,
                 get_mesh(0),
-                [dist.Replicate(), dist.Shard(1), dist.Replicate()] if self.config.context_parallel_degree > 1 or self.config.sep_parallel_degree > 1 else [dist.Replicate(), dist.Shard(1)]
+                (
+                    [dist.Replicate(), dist.Shard(1), dist.Replicate()]
+                    if self.config.context_parallel_degree > 1
+                    or self.config.sep_parallel_degree > 1
+                    else [dist.Replicate(), dist.Shard(1)]
+                ),
             )
 
         def get_layer_pp_info(layer_index):
@@ -544,8 +597,11 @@ class LlamaModelAuto(nn.Layer):
         self.gradient_checkpointing = False
 
         self.placements = None
-        if self.config.context_parallel_degree > 1 or self.config.sep_parallel_degree > 1:
-            #only [dp,sep],no mp
+        if (
+            self.config.context_parallel_degree > 1
+            or self.config.sep_parallel_degree > 1
+        ):
+            # only [dp,sep],no mp
             self.placements = (
                 [dist.Shard(1), dist.Shard(1)]
                 if self.config.sequence_parallel
@@ -833,11 +889,12 @@ class LlamaPretrainingCriterionAuto(paddle.nn.Layer):
         prediction_scores1 = dist.reshard(
             prediction_scores,
             get_mesh(-1),
-            [dist.Replicate() for _ in range(len(get_mesh(-1)._shape))]
+            [dist.Replicate() for _ in range(len(get_mesh(-1)._shape))],
         )
         masked_lm_labels1 = dist.reshard(
-            masked_lm_labels, get_mesh(-1), 
-            [dist.Replicate() for _ in range(len(get_mesh(-1)._shape))]
+            masked_lm_labels,
+            get_mesh(-1),
+            [dist.Replicate() for _ in range(len(get_mesh(-1)._shape))],
         )
 
         # Force entropy same kernel
@@ -851,7 +908,10 @@ class LlamaPretrainingCriterionAuto(paddle.nn.Layer):
                 prediction_scores1.astype("float32"),
                 masked_lm_labels1.unsqueeze(2),
             )
-        if self.config.context_parallel_degree > 1 or self.config.sep_parallel_degree > 1:
+        if (
+            self.config.context_parallel_degree > 1
+            or self.config.sep_parallel_degree > 1
+        ):
             # print(f'masked_lm_loss:{masked_lm_loss}')
             masked_lm_loss = dist.reshard(
                 masked_lm_loss,
@@ -866,26 +926,36 @@ class LlamaPretrainingCriterionAuto(paddle.nn.Layer):
         loss = paddle.mean(masked_lm_loss)
         return loss
 
+
 def split_sequence_dim(inputs):
     if inputs is None:
         return inputs
     placements = inputs.placements
     process_mesh = inputs.process_mesh
-    sep_index = process_mesh.dim_names.index('sep')  # get the axis for the split
+    sep_index = process_mesh.dim_names.index(
+        'sep'
+    )  # get the axis for the split
     sep_degree = process_mesh.shape[sep_index]
-    print(f'sep_degree:{sep_degree}, process_mesh:{process_mesh}, placements:{placements}')
+    print(
+        f'sep_degree:{sep_degree}, process_mesh:{process_mesh}, placements:{placements}'
+    )
     if sep_degree > 1:
         print(f'input:{type(inputs)}, is_dist: {inputs.is_dist()}')
         assert inputs.is_dist(), "Input tensor must be a distributed tensor."
         print(f'tensor:{inputs}')
-        assert len(inputs.shape) == 2, f"input_ids should be [batch_size, seq_len], but got {inputs.shape}"
+        assert (
+            len(inputs.shape) == 2
+        ), f"input_ids should be [batch_size, seq_len], but got {inputs.shape}"
         _, seq_len = inputs.shape
-        assert seq_len % sep_degree == 0, f"sequence length {seq_len} must be divisible by cp degree {cp_degree}"
+        assert (
+            seq_len % sep_degree == 0
+        ), f"sequence length {seq_len} must be divisible by cp degree {sep_degree}"
         # split sequence dim
         placements[sep_index] = dist.Shard(1)
         split_input = dist.reshard(inputs, process_mesh, placements)
         # print(f'split_input:{split_input}')
     return split_input
+
 
 def split_sequence_dim_load_balance(inputs):
     if inputs is None:
@@ -896,14 +966,16 @@ def split_sequence_dim_load_balance(inputs):
     cp_degree = process_mesh.shape[cp_index]
     if cp_degree > 1:
         # split
-        sliced_datas = paddle.split(inputs, num_or_sections=cp_degree * 2, axis=-1)
-        #resort [q0,q1,q2,q3] -> [q0,q3,q1,q2]
+        sliced_datas = paddle.split(
+            inputs, num_or_sections=cp_degree * 2, axis=-1
+        )
+        # resort [q0,q1,q2,q3] -> [q0,q3,q1,q2]
         indices = []
         for i in range(cp_degree):
             indices.append(i)
             indices.append(cp_degree * 2 - 1 - i)
         reorder_indices = indices
-        reordered = [sliced_datas[i] for i in reorder_indices]      
+        reordered = [sliced_datas[i] for i in reorder_indices]
         print(f'reorder_indices:{reorder_indices}')
         reordered_tensor = paddle.concat(reordered, axis=-1)
         print(f'reordered_tensor:{reordered_tensor}')
@@ -972,8 +1044,7 @@ class LlamaForCausalLMAuto(nn.Layer):
         # if labels is None，means we need full output, instead of tensor_parallel_output
         if self.config.sequence_parallel:
             hidden_states = dist.reshard(
-                hidden_states, get_mesh(-1), 
-                [dist.Shard(1), dist.Replicate()]
+                hidden_states, get_mesh(-1), [dist.Shard(1), dist.Replicate()]
             )
             # [S, B, H] -> [B, S, H]
             hidden_states = paddle.transpose(hidden_states, [1, 0, 2])
@@ -1125,28 +1196,31 @@ def scaled_dot_product_attention(
             if alibi is not None:
                 alibi = alibi.reshape([bsz, num_heads, 1, -1])
                 attention_mask = attention_mask.cast(alibi.dtype) + alibi
-            print(f'before flash attention')
+            print('before flash attention')
             attn_output = F.scaled_dot_product_attention(
                 query_states,
                 key_states,
                 value_states,
                 attn_mask=attention_mask,
                 is_causal=attention_mask is None,
-                backward='p2p' if self.config.context_parallel_degree > 1 else None,
+                backward=(
+                    'p2p' if config.context_parallel_degree > 1 else None
+                ),
             )
             attn_weights = None
 
         if config.sep_parallel_degree > 1:
             print(f'attn_output:{attn_output}')
             attn_output = dist.reshard(
-                            attn_output,
-                            get_mesh(ipp),
-                            [dist.Replicate(), dist.Shard(1)])
+                attn_output, get_mesh(ipp), [dist.Replicate(), dist.Shard(1)]
+            )
             print(f'attn_output after reshard:{attn_output}')
-            print(f'bs:{bsz}, q_len:{q_len}, head_dim:{head_dim}, num_heads:{num_heads}')
+            print(
+                f'bs:{bsz}, q_len:{q_len}, head_dim:{head_dim}, num_heads:{num_heads}'
+            )
             q_len = q_len // config.sep_parallel_degree
             num_heads = num_heads * config.sep_parallel_degree
-        
+
         if sequence_parallel:
             attn_output = attn_output.reshape(
                 [bsz * q_len, head_dim * num_heads]

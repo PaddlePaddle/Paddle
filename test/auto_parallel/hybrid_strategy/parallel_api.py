@@ -171,7 +171,9 @@ class TestParallelAPI:
             self.sequence_parallel = True
 
         if self.sep > 1:
-            assert self.context_parallel == True or self.sep_parallel == True, f"when sep > 1, context_parallel or sep_parallel should be true"
+            assert (
+                self.context_parallel is True or self.sep_parallel is True
+            ), "when sep > 1, context_parallel or sep_parallel should be true"
         num_hidden_layers = os.getenv("num_hidden_layers")
         if num_hidden_layers:
             self.config.num_hidden_layers = int(num_hidden_layers)
@@ -190,7 +192,12 @@ class TestParallelAPI:
         self.init_dist_env()
 
     def init_dist_env(self):
-        mesh_dims = [("dp", self.dp), ("pp", self.pp), ("mp", self.mp), ("sep", self.sep)]
+        mesh_dims = [
+            ("dp", self.dp),
+            ("pp", self.pp),
+            ("mp", self.mp),
+            ("sep", self.sep),
+        ]
         if self.pp * self.mp == 1:
             mesh_dims = [("dp", self.dp)]
         dim_names = [mesh_dim[0] for mesh_dim in mesh_dims]
@@ -208,34 +215,36 @@ class TestParallelAPI:
         for name, sub_layer in layer.named_sublayers():
             if len(sub_layer.sublayers()) == 0:
                 if 'q_proj' in name or 'k_proj' in name or 'v_proj' in name:
-                    print(f'name:{name}, sub_layer.weight.placements:{sub_layer.weight.placements}')
+                    print(
+                        f'name:{name}, sub_layer.weight.placements:{sub_layer.weight.placements}'
+                    )
                     assert sub_layer.weight.placements == [
                         dist.Replicate(),
                         dist.Shard(1),
-                        dist.Replicate(), #cp
+                        dist.Replicate(),  # cp
                     ]
                     assert sub_layer.bias.placements == [
                         dist.Replicate(),
                         dist.Shard(0),
-                        dist.Replicate(), #cp
+                        dist.Replicate(),  # cp
                     ]
                     if self.test_lora:
                         assert sub_layer.lora_B.placements == [
                             dist.Replicate(),
                             dist.Shard(1),
-                            dist.Replicate(), #cp
+                            dist.Replicate(),  # cp
                         ]
                 if 'gate_proj' in name or 'up_proj' in name:
                     assert sub_layer.weight.placements == [
                         dist.Replicate(),
                         dist.Shard(1),
-                        dist.Replicate(), #cp
+                        dist.Replicate(),  # cp
                     ]
                     if self.test_lora:
                         assert sub_layer.lora_B.placements == [
                             dist.Replicate(),
                             dist.Shard(1),
-                            dist.Replicate(), #cp
+                            dist.Replicate(),  # cp
                         ]
                 if (
                     'embed_tokens' in name or 'lm_head' in name
@@ -243,32 +252,32 @@ class TestParallelAPI:
                     assert sub_layer.weight.placements == [
                         dist.Replicate(),
                         dist.Shard(1),
-                        dist.Replicate(), #cp
+                        dist.Replicate(),  # cp
                     ]
                 if 'o_proj' in name:
                     assert sub_layer.weight.placements == [
                         dist.Replicate(),
                         dist.Shard(0),
-                        dist.Replicate(), #cp
+                        dist.Replicate(),  # cp
                     ], f'{name} , {sub_layer.weight.name} , {sub_layer.weight}'
                     if self.test_lora:
                         assert sub_layer.lora_A.placements == [
                             dist.Replicate(),
                             dist.Shard(0),
-                            dist.Replicate(), #cp
+                            dist.Replicate(),  # cp
                         ]
                     # assert sub_layer.bias.placements is None
                 if 'down_proj' in name:
                     assert sub_layer.weight.placements == [
                         dist.Replicate(),
                         dist.Shard(0),
-                        dist.Replicate(), #cp
+                        dist.Replicate(),  # cp
                     ]
                     if self.test_lora:
                         assert sub_layer.lora_A.placements == [
                             dist.Replicate(),
                             dist.Shard(0),
-                            dist.Replicate(), #cp
+                            dist.Replicate(),  # cp
                         ]
 
     def check_lora(self, layer):
@@ -401,7 +410,9 @@ class TestParallelAPI:
                     )
                 update_plan = {
                     f"{prefix}llama": dist.ContextParallelBegin(backend=bck),
-                    f"{prefix}llama.layers.*.self_attn.sdpa": dist.ContextParallel(backend=bck),
+                    f"{prefix}llama.layers.*.self_attn.sdpa": dist.ContextParallel(
+                        backend=bck
+                    ),
                     f"{prefix}loss_func": dist.ContextParallelEnd(backend=bck),
                 }
                 plan.update(update_plan)

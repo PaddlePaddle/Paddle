@@ -125,7 +125,7 @@ class TestLlamaAuto:
             self.strategy.gradient_merge.avg = False
 
         self.config.recompute = False
-        
+
         self.config.tensor_parallel_degree = self.mp
         self.config.pipeline_parallel_degree = self.pp
         self.config.context_parallel_degree = 1
@@ -136,7 +136,10 @@ class TestLlamaAuto:
             self.config.sep_parallel_degree = self.sep
         if self.sep > 1:
             # only one of the context_parallel and sep_parallel can be True
-            assert self.config.sep_parallel_degree != self.config.context_parallel_degree, f"only one of the context_parallel and sep_parallel can be True, but get context_parallel_degree = {self.config.context_parallel_degree} and sep_parallel_degree = {self.config.sep_parallel_degree}, please check your env"
+            assert (
+                self.config.sep_parallel_degree
+                != self.config.context_parallel_degree
+            ), f"only one of the context_parallel and sep_parallel can be True, but get context_parallel_degree = {self.config.context_parallel_degree} and sep_parallel_degree = {self.config.sep_parallel_degree}, please check your env"
 
         self.run_step = 10
         self.run_step_dy2static = (
@@ -301,7 +304,11 @@ class TestLlamaAuto:
         train_dataset = RandomDataset(self.config.seq_length)
         train_sampler = BatchSampler(
             train_dataset,
-            batch_size=4 * self.gradient_accumulation_steps if self.sep > 1 else 2 * self.gradient_accumulation_steps,
+            batch_size=(
+                4 * self.gradient_accumulation_steps
+                if self.sep > 1
+                else 2 * self.gradient_accumulation_steps
+            ),
             shuffle=False,
             drop_last=True,
         )

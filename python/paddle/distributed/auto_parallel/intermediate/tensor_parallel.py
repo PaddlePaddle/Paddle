@@ -16,7 +16,6 @@ from __future__ import annotations
 import logging
 import re
 from typing import TYPE_CHECKING
-import itertools
 
 import paddle
 import paddle.distributed as dist
@@ -777,12 +776,12 @@ class ContextParallelBegin(PlanBase):
     This will work for Layer that calls like whole-llama Layer which is the first layer in the network.
 
     Users can set backend='p2p/all2all' for different context parallel strategys.
-    
+
     backend='p2p' will use Ring FlashAttention strategy which segments input by balance in the sequence dimension before whole-llama Layer.
     backend='all2all' will use Deepspeed Ulysses strategy(Paddle SegmentParallel strategy) which segments input in the sequence dimension before whole-llama Layer.
 
     Note:
-       
+
 
     Args:
         backend (string): select strategy for context parallel, now support 'p2p' and 'all2all'.
@@ -830,7 +829,7 @@ class ContextParallelBegin(PlanBase):
             ...         k = self.k(input)
             ...         v = self.v(input)
             ...         return self.sdpa(q, k, v)
-            >>> class LlamaLayer(paddle.nn.Layer): 
+            >>> class LlamaLayer(paddle.nn.Layer):
             ...     def __init__(self):
             ...         super().__init__()
             ...         self.attention = AttentionLayer()
@@ -860,7 +859,7 @@ class ContextParallelBegin(PlanBase):
             ... }
     """
 
-    def __init__(self, backend: string = 'p2p') -> None:
+    def __init__(self, backend: str = 'p2p') -> None:
         super().__init__()
         self.backend = backend
 
@@ -872,17 +871,29 @@ class ContextParallelBegin(PlanBase):
             # check input_ids
             all_args = []
             for input_tensor in args:
-                print(f'input:{type(input_tensor)}, is_dist: {input_tensor.is_dist()}')
-                assert input_tensor.is_dist(), "Input tensor must be a distributed tensor."
-                assert len(input_tensor.shape) == 2, f"input_ids should be [batch_size, seq_len], but got {input_tensor.shape}"
+                print(
+                    f'input:{type(input_tensor)}, is_dist: {input_tensor.is_dist()}'
+                )
+                assert (
+                    input_tensor.is_dist()
+                ), "Input tensor must be a distributed tensor."
+                assert (
+                    len(input_tensor.shape) == 2
+                ), f"input_ids should be [batch_size, seq_len], but got {input_tensor.shape}"
                 _, seq_len = input_tensor.shape
-                assert seq_len % cp_degree == 0, f"sequence length {seq_len} must be divisible by cp degree {cp_degree}"
+                assert (
+                    seq_len % cp_degree == 0
+                ), f"sequence length {seq_len} must be divisible by cp degree {cp_degree}"
                 placements = input_tensor.placements
                 if placements is None:
-                    placements = [dist.Replicate() for _ in range(len(process_mesh.shape))]
+                    placements = [
+                        dist.Replicate() for _ in range(len(process_mesh.shape))
+                    ]
                 # split sequence dim
                 placements[cp_index] = dist.Shard(1)
-                reshard_input = dist.reshard(input_tensor, process_mesh, placements)
+                reshard_input = dist.reshard(
+                    input_tensor, process_mesh, placements
+                )
                 all_args.append(reshard_input)
             new_args = tuple(all_args)
             return new_args
@@ -895,19 +906,31 @@ class ContextParallelBegin(PlanBase):
             cp_degree = process_mesh.shape[cp_index]
             print(f'cp_index:{cp_index}, cp_degree: {cp_degree}')
             print(f'args:{type(args)}')
-            all_args =[]
+            all_args = []
             for input_tensor in args:
                 # check input_ids
-                print(f'arg:{type(input_tensor)}, is_dist: {input_tensor.is_dist()}')
-                assert input_tensor.is_dist(), "Input tensor must be a distributed tensor."
-                assert len(input_tensor.shape) == 2, f"input_ids should be [batch_size, seq_len], but got {x.shape}"
+                print(
+                    f'arg:{type(input_tensor)}, is_dist: {input_tensor.is_dist()}'
+                )
+                assert (
+                    input_tensor.is_dist()
+                ), "Input tensor must be a distributed tensor."
+                assert (
+                    len(input_tensor.shape) == 2
+                ), f"input_ids should be [batch_size, seq_len], but got {input_tensor.shape}"
                 placements = input_tensor.placements
                 if placements is None:
-                    placements = [dist.Replicate() for _ in range(len(process_mesh.shape))]
-                assert placements[cp_index] == dist.Replicate(), "Input tensor must be a replicated tensor in cp mesh."
+                    placements = [
+                        dist.Replicate() for _ in range(len(process_mesh.shape))
+                    ]
+                assert (
+                    placements[cp_index] == dist.Replicate()
+                ), "Input tensor must be a replicated tensor in cp mesh."
                 # split
-                sliced_datas = paddle.split(input_tensor, num_or_sections=cp_degree * 2, axis=-1)
-                #resort input, [q0,q1,q2,q3] -> [q0,q3,q1,q2]
+                sliced_datas = paddle.split(
+                    input_tensor, num_or_sections=cp_degree * 2, axis=-1
+                )
+                # resort input, [q0,q1,q2,q3] -> [q0,q3,q1,q2]
                 indices = []
                 for i in range(cp_degree):
                     indices.append(i)
@@ -917,25 +940,32 @@ class ContextParallelBegin(PlanBase):
                 reordered_tensor = paddle.concat(reordered, axis=-1)
                 # reshard sequence dim
                 placements[cp_index] = dist.Shard(1)
-                reshard_input = dist.reshard(reordered_tensor, process_mesh, placements)
+                reshard_input = dist.reshard(
+                    reordered_tensor, process_mesh, placements
+                )
                 all_args.append(reshard_input)
             new_args = tuple(all_args)
-    
+
             return new_args
-            
+
         return p2p_split_input
 
-    
     def apply(self, layer, process_mesh, shard_param_list):
         print(f'layer:{layer}')
         if self.backend == 'all2all':
             # Deepspeed Ulysses
-            layer.register_forward_pre_hook(self.all2all_split_input_pre_hook(process_mesh))
+            layer.register_forward_pre_hook(
+                self.all2all_split_input_pre_hook(process_mesh)
+            )
         elif self.backend == 'p2p':
             # Ring FlashAttention
-            layer.register_forward_pre_hook(self.p2p_split_input_pre_hook(process_mesh))
+            layer.register_forward_pre_hook(
+                self.p2p_split_input_pre_hook(process_mesh)
+            )
         else:
-            logging.warning(f'{self.backend} is not supported backend for context parallel')
+            logging.warning(
+                f'{self.backend} is not supported backend for context parallel'
+            )
 
 
 class ContextParallel(PlanBase):
@@ -946,12 +976,12 @@ class ContextParallel(PlanBase):
     This will work for Layer that calls paddle.nn.functional.scaled_dot_product_attention).
 
     Users can set backend='p2p/all2all' for different context parallel strategys.
-    
+
     backend='p2p' will use Ring FlashAttention strategy which segments q/k/v in the sequence dimension and communicates k/v between ranks.
     backend='all2all' will use Deepspeed Ulysses strategy(Paddle SegmentParallel strategy) which inserts all2all before and after sdpa compute.
 
     Note:
-       
+
 
     Args:
         backend (string): select strategy for context parallel, now support 'p2p' and 'all2all'.
@@ -999,7 +1029,7 @@ class ContextParallel(PlanBase):
             ...         k = self.k(input)
             ...         v = self.v(input)
             ...         return self.sdpa(q, k, v)
-            >>> class LlamaLayer(paddle.nn.Layer): 
+            >>> class LlamaLayer(paddle.nn.Layer):
             ...     def __init__(self):
             ...         super().__init__()
             ...         self.attention = AttentionLayer()
@@ -1029,7 +1059,7 @@ class ContextParallel(PlanBase):
             ... }
     """
 
-    def __init__(self, backend: string = 'p2p') -> None:
+    def __init__(self, backend: str = 'p2p') -> None:
         super().__init__()
         self.backend = backend
 
@@ -1045,7 +1075,9 @@ class ContextParallel(PlanBase):
                 assert arg.is_dist(), f"arg {arg} must be a distributed tensor."
                 assert len(arg.shape) == 3 or len(arg.shape) == 4
                 placements = arg.placements
-                assert placements[cp_index] == dist.Shard(1), f"arg {arg} must be sharded in sequence dimension."
+                assert placements[cp_index] == dist.Shard(
+                    1
+                ), f"arg {arg} must be sharded in sequence dimension."
                 # reshard [batch_size，seq_len/sep，num_head，head_dim] -> [batch_size，seq_len，num_head/sep，head_dim]
                 placements[cp_index] = dist.Shard(2)
                 target_arg = dist.reshard(arg, process_mesh, placements)
@@ -1061,9 +1093,13 @@ class ContextParallel(PlanBase):
             cp_degree = process_mesh.shape[cp_index]
             print(f'cp_index:{cp_index}, cp_degree: {cp_degree}')
             placements = output.placements
-            assert output.is_dist(), f"output {output} must be a distributed tensor."
+            assert (
+                output.is_dist()
+            ), f"output {output} must be a distributed tensor."
             assert len(output.shape) == 4 or len(output.shape) == 3
-            assert placements[cp_index] == dist.Shard(2), f"output {output} must be Shard(2) in sequence dimension."
+            assert placements[cp_index] == dist.Shard(
+                2
+            ), f"output {output} must be Shard(2) in sequence dimension."
             # reshard [batch_size，seq_len，num_head/seq，head_dim]  ->  [batch_size，seq_len/sep，num_head，head_dim]
             placements[cp_index] = dist.Shard(1)
             target_output = dist.reshard(output, process_mesh, placements)
@@ -1079,31 +1115,43 @@ class ContextParallel(PlanBase):
             print(f'args:{type(args)},   kwargs:{kwargs.values()}')
             for arg in args:
                 # check q k v
-                assert arg.is_dist(), "Input tensor must be a distributed tensor."
+                assert (
+                    arg.is_dist()
+                ), "Input tensor must be a distributed tensor."
                 assert len(arg.shape) == 3 or len(arg.shape) == 4
                 placements = arg.placements
-                assert placements[cp_index] == dist.Shard(1), f"arg {arg} must be Shard(1) in sequence dimension."
+                assert placements[cp_index] == dist.Shard(
+                    1
+                ), f"arg {arg} must be Shard(1) in sequence dimension."
             # edit kwarg backend to 'p2p'
             new_kwargs = kwargs
             print(f'before new_kwargs:{new_kwargs}')
             new_kwargs['backend'] = 'p2p'
             print(f'new_kwargs:{new_kwargs}')
             return args, new_kwargs
-            
+
         return input_hook
-    
+
     def apply(self, layer, process_mesh, shard_param_list):
         print(f'layer:{layer}')
         if self.backend == 'all2all':
             # Deepspeed Ulysses
-            layer.register_forward_pre_hook(self.all2all_reshard_pre_hook(process_mesh))
-            layer.register_forward_post_hook(self.all2all_reshard_post_hook(process_mesh))
+            layer.register_forward_pre_hook(
+                self.all2all_reshard_pre_hook(process_mesh)
+            )
+            layer.register_forward_post_hook(
+                self.all2all_reshard_post_hook(process_mesh)
+            )
         elif self.backend == 'p2p':
             # Ring FlashAttention
-            layer.register_forward_pre_hook(self.p2p_reshard_pre_hook(process_mesh), with_kwargs=True)
+            layer.register_forward_pre_hook(
+                self.p2p_reshard_pre_hook(process_mesh), with_kwargs=True
+            )
         else:
-            logging.warning(f'{self.backend} is not supported backend for context parallel')
-        
+            logging.warning(
+                f'{self.backend} is not supported backend for context parallel'
+            )
+
 
 class ContextParallelEnd(PlanBase):
     """
@@ -1116,7 +1164,7 @@ class ContextParallelEnd(PlanBase):
 
     Args:
         backend (string): select strategy for context parallel, now support 'p2p' and 'all2all'.
-    
+
     Examples:
         .. code-block:: python
 
@@ -1160,7 +1208,7 @@ class ContextParallelEnd(PlanBase):
             ...         k = self.k(input)
             ...         v = self.v(input)
             ...         return self.sdpa(q, k, v)
-            >>> class LlamaLayer(paddle.nn.Layer): 
+            >>> class LlamaLayer(paddle.nn.Layer):
             ...     def __init__(self):
             ...         super().__init__()
             ...         self.attention = AttentionLayer()
@@ -1190,7 +1238,7 @@ class ContextParallelEnd(PlanBase):
             ... }
     """
 
-    def __init__(self, backend: string = 'p2p') -> None:
+    def __init__(self, backend: str = 'p2p') -> None:
         super().__init__()
         self.backend = backend
 
@@ -1199,14 +1247,21 @@ class ContextParallelEnd(PlanBase):
             cp_index = process_mesh.dim_names.index('sep')
             cp_degree = process_mesh.shape[cp_index]
             placements = output.placements
-            assert output.is_dist(), f"output {output} must be a distributed tensor."
+            assert (
+                output.is_dist()
+            ), f"output {output} must be a distributed tensor."
             placements[cp_index] = dist.Replicate()
             target_output = dist.reshard(output, process_mesh, placements)
             return target_output
+
         return reshard_hook
 
     def apply(self, layer, process_mesh, shard_param_list):
         if self.backend == 'all2all' or self.backend == 'p2p':
-            layer.register_forward_post_hook(self.reshard_post_hook(process_mesh))
+            layer.register_forward_post_hook(
+                self.reshard_post_hook(process_mesh)
+            )
         else:
-            logging.warning(f'{self.backend} is not supported backend for context parallel')
+            logging.warning(
+                f'{self.backend} is not supported backend for context parallel'
+            )

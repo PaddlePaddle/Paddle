@@ -43,7 +43,6 @@ class TestSemiAutoParallelLlamaACCTest(test_base.CommunicationTestDistBase):
                 "semi_auto_llama_acc_align.py",
                 user_defined_envs=envs,
             )
-    
 
     def test_simple_net_hybrid_strategy_acc_grad_merge(self):
         _default_envs = {
@@ -66,6 +65,8 @@ class TestSemiAutoParallelLlamaACCTest(test_base.CommunicationTestDistBase):
                 "semi_auto_llama_acc_align.py",
                 user_defined_envs=envs,
             )
+
+
 class TestSemiAutoParallelLlamaCPTest(test_base.CommunicationTestDistBase):
     def setUp(self):
         super().setUp(num_of_devices=8, timeout=200, nnode=1)
@@ -93,6 +94,7 @@ class TestSemiAutoParallelLlamaCPTest(test_base.CommunicationTestDistBase):
                 "semi_auto_llama_acc_align.py",
                 user_defined_envs=envs,
             )
+
 
 # class TestSemiAutoParallelLlamaSEPTest(test_base.CommunicationTestDistBase):
 #     def setUp(self):

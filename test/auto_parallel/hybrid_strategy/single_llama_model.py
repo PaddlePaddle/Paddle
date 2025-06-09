@@ -16,15 +16,18 @@ import paddle
 import paddle.distributed as dist
 import paddle.nn.functional as F
 from paddle import nn
-from paddle.nn.functional.flash_attention import _math_attention
+
 
 class SDPALayer(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
 
     def forward(self, query, key, value, **kwargs):
-        out = paddle.nn.functional.scaled_dot_product_attention(query, key, value, **kwargs)
+        out = paddle.nn.functional.scaled_dot_product_attention(
+            query, key, value, **kwargs
+        )
         return out
+
 
 class LlamaAttention(nn.Layer):
     def __init__(self, config):

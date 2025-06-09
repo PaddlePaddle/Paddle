@@ -52,6 +52,9 @@ from .auto_parallel.intermediate.parallelize import parallelize
 from .auto_parallel.intermediate.pipeline_parallel import SplitPoint
 from .auto_parallel.intermediate.tensor_parallel import (
     ColWiseParallel,
+    ContextParallel,
+    ContextParallelBegin,
+    ContextParallelEnd,
     PrepareLayerInput,
     PrepareLayerOutput,
     RowWiseParallel,
@@ -59,9 +62,6 @@ from .auto_parallel.intermediate.tensor_parallel import (
     SequenceParallelDisable,
     SequenceParallelEnable,
     SequenceParallelEnd,
-    ContextParallelBegin,
-    ContextParallel,
-    ContextParallelEnd,
 )
 from .auto_parallel.local_layer import LocalLayer
 from .auto_parallel.local_map import local_map
@@ -220,4 +220,7 @@ __all__ = [
     "set_mesh",
     "get_mesh",
     "to_distributed",
+    "ContextParallel",
+    "ContextParallelBegin",
+    "ContextParallelEnd",
 ]

@@ -86,6 +86,7 @@ def get_unique_process_mesh_map():
     global _g_unique_process_mesh_map
     return _g_unique_process_mesh_map
 
+
 def init_group_by_process_mesh(dim_names):
     global _g_group_map
     if dim_names is None:
@@ -97,11 +98,13 @@ def init_group_by_process_mesh(dim_names):
         _g_group_map[dim_name] = {}
         # print(f'{dim_name} set groups: {_g_group_map[dim_name]}')
 
+
 def get_group_map_by_dim_name(dim_name):
     global _g_group_map
     if dim_name not in _g_group_map:
-        raise RuntimeError("No group found for dim_name %s" % dim_name)
+        raise RuntimeError(f'No group found for dim_name {dim_name}')
     return _g_group_map[dim_name]
+
 
 class ProcessMesh(core.ProcessMesh):
     """
@@ -378,14 +381,11 @@ class ProcessMesh(core.ProcessMesh):
         sub_mesh = ProcessMesh(reorder_mesh[:, col_idx], [dim_name])
         return sub_mesh
 
-
     def _get_group(
         self,
         dim_name: str | None = None,
     ) -> paddle.distributed.communication.group.Group:
-        """
-
-        """
+        """ """
         assert is_initialized(), (
             "When you want to get a group from the ProcessMesh."
             " Call paddle.distributed.init_parallel_env first "
@@ -400,17 +400,18 @@ class ProcessMesh(core.ProcessMesh):
         )
         curr_rank = paddle.distributed.get_rank()
         groups = get_group_map_by_dim_name(dim_name)
-        
+
         for rank in self._process_ids:
             col_idx = np.argmax(reorder_mesh == rank) % reorder_mesh.shape[-1]
             if col_idx in groups:
                 continue
             pg = paddle.distributed.new_group(reorder_mesh[:, col_idx])
             groups[col_idx] = pg
-        
-        cur_col_idx = np.argmax(reorder_mesh == curr_rank) % reorder_mesh.shape[-1]
+
+        cur_col_idx = (
+            np.argmax(reorder_mesh == curr_rank) % reorder_mesh.shape[-1]
+        )
         return groups[cur_col_idx]
-        
 
     def get_group(
         self,
