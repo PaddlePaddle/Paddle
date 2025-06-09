@@ -76,7 +76,8 @@ void ModeGradKernel(const Context& dev_ctx,
   // calculate the block and grid num
   int64_t block_size = funcs::ComputeBlockSize(post);
   int64_t max_threads = dev_ctx.GetMaxPhysicalThreadCount();
-  const int64_t max_blocks = std::max(((max_threads - 1) / block_size + 1), static_cast<int64_t>(1));
+  const int64_t max_blocks =
+      std::max(((max_threads - 1) / block_size + 1), static_cast<int64_t>(1));
   int64_t grid_size = std::min(max_blocks, pre);
   AssignGradWithAxis<T><<<grid_size, block_size, 64 * 4, dev_ctx.stream()>>>(
       out_grad_data, indices_data, x_grad_data, pre, post, n, 1);
