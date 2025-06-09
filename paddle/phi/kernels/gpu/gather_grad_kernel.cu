@@ -34,7 +34,6 @@ void GatherGradKernel(const Context& dev_ctx,
   if (axis_v < 0) {
     axis_v += static_cast<int>(x.dims().size());
   }
-
   if (axis_v != 0) {
     if (index_type == DataType::INT32) {
       phi::funcs::GatherV2GradCUDAFunction<T, int32_t>(
@@ -45,7 +44,6 @@ void GatherGradKernel(const Context& dev_ctx,
     }
     return;
   }
-
   dev_ctx.template Alloc<T>(x_grad);
   auto dxt = EigenVector<T>::Flatten(*x_grad);
   auto& place = *dev_ctx.eigen_device();
