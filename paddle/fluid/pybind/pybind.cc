@@ -134,6 +134,8 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/common_infer_shape_functions.h"
 #include "paddle/utils/none.h"
 
+#include "paddle/fluid/pybind/moe_wna16_marlin_api.h"
+
 #ifdef PADDLE_WITH_DISTRIBUTE
 #include "paddle/fluid/pybind/deep_ep_api.h"
 #include "paddle/fluid/pybind/dist_api.h"
@@ -3581,5 +3583,6 @@ All parameter, weight, gradient are variables in Paddle.
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_DEEP_EP)
   BindDeepEPApi(&m);
 #endif
+  BindMoeWna16MarlinApi(&m);
 }
 }  // namespace paddle::pybind

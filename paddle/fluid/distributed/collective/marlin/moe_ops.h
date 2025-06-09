@@ -1,17 +1,38 @@
 #pragma once
-
-#include <torch/all.h>
-
-#ifndef USE_ROCM
-torch::Tensor moe_wna16_gemm(torch::Tensor input, torch::Tensor output,
-                             torch::Tensor b_qweight, torch::Tensor b_scales,
-                             std::optional<torch::Tensor> b_qzeros,
-                             std::optional<torch::Tensor> topk_weights,
-                             torch::Tensor sorted_token_ids,
-                             torch::Tensor expert_ids,
-                             torch::Tensor num_tokens_post_pad, int64_t top_k,
-                             int64_t BLOCK_SIZE_M, int64_t BLOCK_SIZE_N,
-                             int64_t BLOCK_SIZE_K, int64_t bit);
+#ifndef MARLIN_NAMESPACE_NAME
+  #define MARLIN_NAMESPACE_NAME marlin_moe_wna16
 #endif
 
-bool moe_permute_unpermute_supported();
+#include "paddle/phi/core/enforce.h"
+#include "paddle/fluid/distributed/collective/marlin/kernels/kernel.h"
+#include "paddle/fluid/distributed/collective/marlin/include/types.h"
+#include "paddle/phi/api/include/api.h"
+
+#ifndef USE_ROCM
+paddle::Tensor moe_wna16_marlin_gemm_api(
+    const paddle::Tensor& a,
+    const std::optional<paddle::Tensor>& c_or_none,
+    const paddle::Tensor& b_q_weight,
+    const paddle::Tensor& b_scales,
+    const std::optional<paddle::Tensor>& global_scale_or_none,
+    const std::optional<paddle::Tensor>& b_zeros_or_none,
+    const std::optional<paddle::Tensor>& g_idx_or_none,
+    const std::optional<paddle::Tensor>& perm_or_none,
+    const paddle::Tensor& workspace,
+    const paddle::Tensor& sorted_token_ids,
+    const paddle::Tensor& expert_ids,
+    const paddle::Tensor& num_tokens_past_padded,
+    const paddle::Tensor& topk_weights,
+    int64_t moe_block_size,
+    int64_t top_k,
+    bool mul_topk_weights,
+    bool is_ep,
+    const deep_ep::detail::ScalarTypeId& b_q_type_id,
+    int64_t size_m,
+    int64_t size_n,
+    int64_t size_k,
+    bool is_k_full,
+    bool use_atomic_add,
+    bool use_fp32_reduce,
+    bool is_zp_float);
+#endif

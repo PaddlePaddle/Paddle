@@ -163,6 +163,11 @@ if(WITH_DISTRIBUTE)
   endif()
 endif()
 
+if(WITH_GPU)
+  set(PYBIND_DEPS ${PYBIND_DEPS} marlin)
+  set(PYBIND_SRCS ${PYBIND_SRCS} moe_wna16_marlin_api.cc)
+endif()
+
 if(NOT WITH_SHARED_IR)
   # Note: We want to compile pir source into paddle.so directly, because
   # we can't get all pir symbols when link pir static lib

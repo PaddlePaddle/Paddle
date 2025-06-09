@@ -25,9 +25,11 @@
 #include "paddle/phi/core/enforce.h"
 #include "paddle/fluid/distributed/collective/marlin/kernels/kernel.h"
 #include "paddle/fluid/distributed/collective/marlin/include/types.h"
+#include "paddle/fluid/distributed/collective/marlin/moe_ops.h"
 #include "paddle/phi/api/include/api.h"
 
-// #include "core/registration.h"
+#include <cuda_runtime.h>
+#include <algorithm>
 
 #define STATIC_ASSERT_SCALAR_TYPE_VALID(scalar_t)               \
   static_assert(std::is_same<scalar_t, half>::value ||          \
@@ -65,8 +67,8 @@ deep_ep::detail::Tensor moe_wna16_marlin_gemm(
     deep_ep::detail::ScalarTypeId const& b_q_type_id, int64_t size_m, int64_t size_n,
     int64_t size_k, bool is_k_full, bool use_atomic_add, bool use_fp32_reduce,
     bool is_zp_float) {
-  TORCH_CHECK_NOT_IMPLEMENTED(false,
-                              "marlin_gemm(..) requires CUDA_ARCH >= 8.0");
+  // TORCH_CHECK_NOT_IMPLEMENTED(false,
+  //                             "marlin_gemm(..) requires CUDA_ARCH >= 8.0");
   return torch::empty({1, 1});
 }
 
@@ -666,6 +668,30 @@ deep_ep::detail::Tensor ConvertPaddleTensorToDetailTensor(
   return res;
 }
 
+paddle::Tensor ConvertDetailTensorToPaddleTensor(
+    const deep_ep::detail::Tensor& tensor) {
+  return tensor.raw_tensor();
+}
+
+std::optional<deep_ep::detail::Tensor>
+ConvertOptionalPaddleTensorToDetailTensor(
+    const std::optional<paddle::Tensor>& tensor) {
+  std::optional<deep_ep::detail::Tensor> res;
+  if (tensor.has_value()) {
+    res = ConvertPaddleTensorToDetailTensor(tensor.value());
+  }
+  return res;
+}
+
+std::optional<paddle::Tensor> ConvertOptionalDetailTensorToPaddleTensor(
+    const std::optional<deep_ep::detail::Tensor>& tensor) {
+  std::optional<paddle::Tensor> res;
+  if (tensor.has_value()) {
+    res = ConvertDetailTensorToPaddleTensor(tensor.value());
+  }
+  return res;
+}
+
 deep_ep::detail::Tensor moe_wna16_marlin_gemm(
     deep_ep::detail::Tensor& a, std::optional<deep_ep::detail::Tensor> const& c_or_none,
     deep_ep::detail::Tensor& b_q_weight, deep_ep::detail::Tensor& b_scales,
@@ -953,9 +979,80 @@ deep_ep::detail::Tensor moe_wna16_marlin_gemm(
 
   return c;
 }
+paddle::Tensor moe_wna16_marlin_gemm_api(
+    const paddle::Tensor& a,
+    const std::optional<paddle::Tensor>& c_or_none,
+    const paddle::Tensor& b_q_weight,
+    const paddle::Tensor& b_scales,
+    const std::optional<paddle::Tensor>& global_scale_or_none,
+    const std::optional<paddle::Tensor>& b_zeros_or_none,
+    const std::optional<paddle::Tensor>& g_idx_or_none,
+    const std::optional<paddle::Tensor>& perm_or_none,
+    const paddle::Tensor& workspace,
+    const paddle::Tensor& sorted_token_ids,
+    const paddle::Tensor& expert_ids,
+    const paddle::Tensor& num_tokens_past_padded,
+    const paddle::Tensor& topk_weights,
+    int64_t moe_block_size,
+    int64_t top_k,
+    bool mul_topk_weights,
+    bool is_ep,
+    const int64_t& b_q_type_id,
+    int64_t size_m,
+    int64_t size_n,
+    int64_t size_k,
+    bool is_k_full,
+    bool use_atomic_add,
+    bool use_fp32_reduce,
+    bool is_zp_float) {
 
+  auto a_ = ConvertPaddleTensorToDetailTensor(a);
+  auto b_q_weight_ = ConvertPaddleTensorToDetailTensor(b_q_weight);
+  auto b_scales_   = ConvertPaddleTensorToDetailTensor(b_scales);
+  auto workspace_  = ConvertPaddleTensorToDetailTensor(workspace);
+  auto sorted_token_ids_    = ConvertPaddleTensorToDetailTensor(sorted_token_ids);
+  auto expert_ids_          = ConvertPaddleTensorToDetailTensor(expert_ids);
+  auto num_tokens_padded_   = ConvertPaddleTensorToDetailTensor(num_tokens_past_padded);
+  auto topk_weights_        = ConvertPaddleTensorToDetailTensor(topk_weights);
+
+  std::optional<deep_ep::detail::Tensor> c_opt_ =
+      ConvertOptionalPaddleTensorToDetailTensor(c_or_none);
+  std::optional<deep_ep::detail::Tensor> global_scale_opt_ =
+      ConvertOptionalPaddleTensorToDetailTensor(global_scale_or_none);
+  std::optional<deep_ep::detail::Tensor> b_zeros_opt_ =
+      ConvertOptionalPaddleTensorToDetailTensor(b_zeros_or_none);
+  std::optional<deep_ep::detail::Tensor> g_idx_opt_ =
+      ConvertOptionalPaddleTensorToDetailTensor(g_idx_or_none);
+  std::optional<deep_ep::detail::Tensor> perm_opt_ =
+      ConvertOptionalPaddleTensorToDetailTensor(perm_or_none);
+
+  deep_ep::detail::Tensor out_detail = moe_wna16_marlin_gemm(
+      a_,
+      c_opt_,
+      b_q_weight_,
+      b_scales_,
+      global_scale_opt_,
+      b_zeros_opt_,
+      g_idx_opt_,
+      perm_opt_,
+      workspace_,
+      sorted_token_ids_,
+      expert_ids_,
+      num_tokens_padded_,
+      topk_weights_,
+      moe_block_size,
+      top_k,
+      mul_topk_weights,
+      is_ep,
+      static_cast<deep_ep::detail::ScalarTypeId>(b_q_type_id),
+      size_m,
+      size_n,
+      size_k,
+      is_k_full,
+      use_atomic_add,
+      use_fp32_reduce,
+      is_zp_float);
+
+  return ConvertDetailTensorToPaddleTensor(out_detail);
+}
 #endif
-
-// TORCH_LIBRARY_IMPL_EXPAND(TORCH_EXTENSION_NAME, CUDA, m) {
-//   m.impl("moe_wna16_marlin_gemm", &moe_wna16_marlin_gemm);
-// }
