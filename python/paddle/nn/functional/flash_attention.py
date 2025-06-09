@@ -533,6 +533,7 @@ def flash_attention(
                     not training,
                     rng_name,
                 )
+                print(f'result_attention:{result_attention.shape}, query shape:{query.shape}')
                 return result_attention, (
                     result_softmax if return_softmax else None
                 )
@@ -1361,6 +1362,7 @@ def scaled_dot_product_attention(
     is_causal: bool = False,
     training: bool = True,
     name: str | None = None,
+    backend: str | None = None,
 ) -> Tensor:
     r"""
     The equation is:
@@ -1413,7 +1415,18 @@ def scaled_dot_product_attention(
             >>> print(output)
             >>> # doctest: -SKIP
     """
-
+    if backend == 'p2p' and isinstance(query, paddle.Tensor) and isinstance(key, paddle.Tensor) and isinstance(value, paddle.Tensor):
+        # ring attention for auto_parallel mode
+        out = paddle.distributed.auto_parallel.ring_attention.RingFlashAttention.apply(
+            query,
+            key,
+            value,
+            attn_mask,
+            dropout_p,
+            is_causal,
+        )
+        
+        return out
     if attn_mask is None:
         # downgraded to ordinary flash attention implementation
         out, _ = flash_attention(query, key, value, dropout_p, is_causal)

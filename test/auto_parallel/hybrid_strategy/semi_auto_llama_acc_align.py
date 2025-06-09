@@ -90,6 +90,7 @@ class TestLlamaAuto:
         self.dp = int(os.getenv("dp"))
         self.mp = int(os.getenv("mp"))
         self.pp = int(os.getenv("pp"))
+        self.sep = int(os.getenv("sep", "1"))
         if os.getenv("use_sp") == "true":
             self.config.sequence_parallel = True
 
@@ -124,7 +125,18 @@ class TestLlamaAuto:
             self.strategy.gradient_merge.avg = False
 
         self.config.recompute = False
+        
+        self.config.tensor_parallel_degree = self.mp
+        self.config.pipeline_parallel_degree = self.pp
+        self.config.context_parallel_degree = 1
         self.config.sep_parallel_degree = 1
+        if os.getenv("context_parallel", "false") == "true":
+            self.config.context_parallel_degree = self.sep
+        if os.getenv("sep_parallel", "false") == "true":
+            self.config.sep_parallel_degree = self.sep
+        if self.sep > 1:
+            # only one of the context_parallel and sep_parallel can be True
+            assert self.config.sep_parallel_degree != self.config.context_parallel_degree, f"only one of the context_parallel and sep_parallel can be True, but get context_parallel_degree = {self.config.context_parallel_degree} and sep_parallel_degree = {self.config.sep_parallel_degree}, please check your env"
 
         self.run_step = 10
         self.run_step_dy2static = (
@@ -154,7 +166,7 @@ class TestLlamaAuto:
         train_dataset = RandomDataset(self.config.seq_length)
         train_sampler = BatchSampler(
             train_dataset,
-            batch_size=2,
+            batch_size=4 if self.sep > 1 else 2,
             shuffle=True,
             drop_last=True,
         )
@@ -198,11 +210,12 @@ class TestLlamaAuto:
         return losses
 
     def init_dist_env(self):
-        order = ["dp", "pp", "mp"]
+        order = ["dp", "pp", "mp", "sep"]
         dp_degree = self.dp
         mp_degree = self.mp
         pp_degree = self.pp
-        degree = [dp_degree, pp_degree, mp_degree]
+        sep_degree = self.sep
+        degree = [dp_degree, pp_degree, mp_degree, sep_degree]
         mesh_dims = list(filter(lambda x: x[1] > 1, list(zip(order, degree))))
         if not mesh_dims:
             mesh_dims = [("dp", 1)]
@@ -229,7 +242,7 @@ class TestLlamaAuto:
         train_dataset = RandomDataset(self.config.seq_length)
         train_sampler = BatchSampler(
             train_dataset,
-            batch_size=2,
+            batch_size=4 if self.sep > 1 else 2,
             shuffle=False,
             drop_last=True,
         )
@@ -258,6 +271,7 @@ class TestLlamaAuto:
 
             tr_loss_step.backward()
             tr_loss_add += tr_loss_step
+            print(f'step {step} tr_loss_add: {tr_loss_add}')
 
             if int(dist.get_rank()) in [2, 3, 6, 7]:
                 assert tr_loss_step._is_initialized()
@@ -287,7 +301,7 @@ class TestLlamaAuto:
         train_dataset = RandomDataset(self.config.seq_length)
         train_sampler = BatchSampler(
             train_dataset,
-            batch_size=2 * self.gradient_accumulation_steps,
+            batch_size=4 * self.gradient_accumulation_steps if self.sep > 1 else 2 * self.gradient_accumulation_steps,
             shuffle=False,
             drop_last=True,
         )
@@ -337,6 +351,8 @@ class TestLlamaAuto:
         self.init_dist_env()
         if self.gradient_accumulation_steps > 1:
             dy_losses = self.run_dynamic()
+            if self.sep > 1:
+                return
             self.init_dist_env()
             st_losses = self.run_dy2static()
             if int(dist.get_rank()) in [2, 3, 6, 7]:
@@ -344,6 +360,8 @@ class TestLlamaAuto:
 
         else:
             dy_losses = self.run_llama(to_static=0)
+            if self.sep > 1:
+                return
             self.init_dist_env()
             st_losses = self.run_llama(to_static=1)
             assert len(dy_losses) == len(st_losses)

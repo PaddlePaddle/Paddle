@@ -59,6 +59,9 @@ from .auto_parallel.intermediate.tensor_parallel import (
     SequenceParallelDisable,
     SequenceParallelEnable,
     SequenceParallelEnd,
+    ContextParallelBegin,
+    ContextParallel,
+    ContextParallelEnd,
 )
 from .auto_parallel.local_layer import LocalLayer
 from .auto_parallel.local_map import local_map

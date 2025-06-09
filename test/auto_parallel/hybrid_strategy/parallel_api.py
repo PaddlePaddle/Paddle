@@ -139,6 +139,7 @@ class TestParallelAPI:
         self.dp = int(os.getenv("dp"))
         self.mp = int(os.getenv("mp"))
         self.pp = int(os.getenv("pp"))
+        self.sep = int(os.getenv("sep", "1"))
         if os.getenv("use_lazy_init") == "true":
             self.config.use_lazy_init = True
         self.gradient_accumulation_steps = int(os.getenv("acc_step"))
@@ -159,10 +160,18 @@ class TestParallelAPI:
         self.sequence_parallel = False
         if os.getenv("sequence_parallel") == "true":
             self.sequence_parallel = True
+        self.context_parallel = False
+        if os.getenv("context_parallel", "false") == "true":
+            self.context_parallel = True
+        self.sep_parallel = False
+        if os.getenv("sep_parallel", "false") == "true":
+            self.sep_parallel = True
         self.prepare_input_output = False
         if os.getenv("prepare_input_output") == "true":
             self.sequence_parallel = True
 
+        if self.sep > 1:
+            assert self.context_parallel == True or self.sep_parallel == True, f"when sep > 1, context_parallel or sep_parallel should be true"
         num_hidden_layers = os.getenv("num_hidden_layers")
         if num_hidden_layers:
             self.config.num_hidden_layers = int(num_hidden_layers)
@@ -181,7 +190,7 @@ class TestParallelAPI:
         self.init_dist_env()
 
     def init_dist_env(self):
-        mesh_dims = [("dp", self.dp), ("pp", self.pp), ("mp", self.mp)]
+        mesh_dims = [("dp", self.dp), ("pp", self.pp), ("mp", self.mp), ("sep", self.sep)]
         if self.pp * self.mp == 1:
             mesh_dims = [("dp", self.dp)]
         dim_names = [mesh_dim[0] for mesh_dim in mesh_dims]
@@ -190,6 +199,7 @@ class TestParallelAPI:
             0, reduce(lambda x, y: x * y, mesh_shape, 1)
         ).reshape(mesh_shape)
         global_mesh = dist.ProcessMesh(mesh_arr, dim_names)
+        print(f'global_mesh:{global_mesh}')
         dist.auto_parallel.set_mesh(global_mesh)
 
     def check_mp(self, layer):
@@ -198,28 +208,34 @@ class TestParallelAPI:
         for name, sub_layer in layer.named_sublayers():
             if len(sub_layer.sublayers()) == 0:
                 if 'q_proj' in name or 'k_proj' in name or 'v_proj' in name:
+                    print(f'name:{name}, sub_layer.weight.placements:{sub_layer.weight.placements}')
                     assert sub_layer.weight.placements == [
                         dist.Replicate(),
                         dist.Shard(1),
+                        dist.Replicate(), #cp
                     ]
                     assert sub_layer.bias.placements == [
                         dist.Replicate(),
                         dist.Shard(0),
+                        dist.Replicate(), #cp
                     ]
                     if self.test_lora:
                         assert sub_layer.lora_B.placements == [
                             dist.Replicate(),
                             dist.Shard(1),
+                            dist.Replicate(), #cp
                         ]
                 if 'gate_proj' in name or 'up_proj' in name:
                     assert sub_layer.weight.placements == [
                         dist.Replicate(),
                         dist.Shard(1),
+                        dist.Replicate(), #cp
                     ]
                     if self.test_lora:
                         assert sub_layer.lora_B.placements == [
                             dist.Replicate(),
                             dist.Shard(1),
+                            dist.Replicate(), #cp
                         ]
                 if (
                     'embed_tokens' in name or 'lm_head' in name
@@ -227,27 +243,32 @@ class TestParallelAPI:
                     assert sub_layer.weight.placements == [
                         dist.Replicate(),
                         dist.Shard(1),
+                        dist.Replicate(), #cp
                     ]
                 if 'o_proj' in name:
                     assert sub_layer.weight.placements == [
                         dist.Replicate(),
                         dist.Shard(0),
+                        dist.Replicate(), #cp
                     ], f'{name} , {sub_layer.weight.name} , {sub_layer.weight}'
                     if self.test_lora:
                         assert sub_layer.lora_A.placements == [
                             dist.Replicate(),
                             dist.Shard(0),
+                            dist.Replicate(), #cp
                         ]
                     # assert sub_layer.bias.placements is None
                 if 'down_proj' in name:
                     assert sub_layer.weight.placements == [
                         dist.Replicate(),
                         dist.Shard(0),
+                        dist.Replicate(), #cp
                     ]
                     if self.test_lora:
                         assert sub_layer.lora_A.placements == [
                             dist.Replicate(),
                             dist.Shard(0),
+                            dist.Replicate(), #cp
                         ]
 
     def check_lora(self, layer):
@@ -368,6 +389,22 @@ class TestParallelAPI:
                         f"{prefix}lm_head.weight": dist.ColWiseParallel(),
                         f"{prefix}lm_head": dist.SequenceParallelEnd(),
                     }
+            if self.sep > 1:
+                bck = 'p2p'
+                if self.context_parallel is True:
+                    bck = 'p2p'
+                elif self.sep_parallel is True:
+                    bck = 'all2all'
+                else:
+                    logging.error(
+                        f"when sep > 1, should set context_parallel or sep_parallel, but got sep_parallel={self.sep_parallel}, context_parallel={self.context_parallel}"
+                    )
+                update_plan = {
+                    f"{prefix}llama": dist.ContextParallelBegin(backend=bck),
+                    f"{prefix}llama.layers.*.self_attn.sdpa": dist.ContextParallel(backend=bck),
+                    f"{prefix}loss_func": dist.ContextParallelEnd(backend=bck),
+                }
+                plan.update(update_plan)
             mp_config = {'parallelize_plan': plan}
 
         lr_scheduler = paddle.optimizer.lr.LinearWarmup(
@@ -549,7 +586,9 @@ class TestParallelAPI:
 
     def run_test_cases(self):
         self.run_llama(0)
-        self.run_llama(1)
+        if self.sep == 1:
+            # sep now only support dynamic mode
+            self.run_llama(1)
 
 
 if __name__ == '__main__':

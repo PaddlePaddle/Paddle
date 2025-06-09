@@ -27,5 +27,6 @@ from .random import parallel_manual_seed  # noqa: F401
 from .ring_conv import RingConv2d  # noqa: F401
 from .static.engine import Engine  # noqa: F401
 from .strategy import Strategy  # noqa: F401
+from .ring_attention import RingFlashAttention  # noqa: F401
 
 __all__ = []
