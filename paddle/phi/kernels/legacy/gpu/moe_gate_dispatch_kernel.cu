@@ -1,5 +1,4 @@
-// NOLINT
-// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,16 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/moe_gate_dispatch_permute_kernel.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/full_kernel.h"
-#include "paddle/phi/kernels/moe_fuse_op.h"
+#include "paddle/phi/kernels/legacy/gpu/moe_fuse_op.h"
 namespace phi {
 
-namespace {
 // --------      getWorkspaceSize      -------- //
+namespace {
 template <typename KeyT>
 size_t getWorkspaceSize(const int num_rows,
                         const int hidden_size,
@@ -322,31 +321,33 @@ void moe_dispatch_fwd(const Context &dev_ctx,
 }
 
 template <typename T, typename Context>
-void MoEDispatchPermuteKernel(const Context &dev_ctx,
-                              const DenseTensor &x,
-                              const DenseTensor &gate_logits,
-                              const paddle::optional<DenseTensor> &corr_bias,
-                              int64_t k,
-                              int64_t capacity,
-                              int64_t world_size,
-                              DenseTensor *y,
-                              DenseTensor *combine_weights,
-                              DenseTensor *scatter_index,
-                              DenseTensor *expert_offset,
-                              DenseTensor *expert_id) {
+void MoeGradDispatchKernel(const Context &dev_ctx,
+                           const DenseTensor &x,
+                           const DenseTensor &gate_logits,
+                           const paddle::optional<DenseTensor> &corr_bias,
+                           const int64_t k,
+                           const int64_t capacity,
+                           const bool use_pad,
+                           DenseTensor *y,
+                           DenseTensor *combine_weights,
+                           DenseTensor *scatter_index,
+                           DenseTensor *expert_offset,
+                           DenseTensor *expert_id) {
   dev_ctx.template Alloc<int>(expert_id);
   dev_ctx.template Alloc<int64_t>(expert_offset);
   dev_ctx.template Alloc<int>(scatter_index);
   dev_ctx.template Alloc<float>(combine_weights);
   dev_ctx.template Alloc<T>(y);
+
   phi::Full<T, Context>(
       dev_ctx, phi::IntArray(common::vectorize(y->dims())), 0, y);
-  const auto &x_shape = x.dims();
-  const auto &gate_logits_shape = gate_logits.dims();
-  int64_t num_rows = x_shape[0];
-  int64_t hidden_size = x_shape[1];
-  int64_t num_experts = gate_logits_shape[1];
-  int64_t num_local_experts = num_experts / world_size;
+  auto x_dims = x.dims();
+  auto gate_logits_dims = gate_logits.dims();
+
+  const int64_t num_rows = x_dims[0];
+  const int64_t hidden_size = x_dims[1];
+  const int64_t num_experts = gate_logits_dims[1];
+
   moe_dispatch_fwd<T, Context>(dev_ctx,
                                x,
                                gate_logits,
@@ -361,17 +362,15 @@ void MoEDispatchPermuteKernel(const Context &dev_ctx,
                                *scatter_index,
                                *expert_offset,
                                *expert_id,
-                               true, /*use_pad*/
-                               true, /*use_all2all_permute*/
-                               world_size,
-                               num_local_experts);
+                               use_pad);
 }
+
 }  // namespace phi
 
-PD_REGISTER_KERNEL(moe_gate_dispatch_permute,
+PD_REGISTER_KERNEL(moe_gate_dispatch,
                    GPU,
                    ALL_LAYOUT,
-                   phi::MoEDispatchPermuteKernel,
+                   phi::MoeGradDispatchKernel,
                    float,
                    double,
                    phi::dtype::float16,

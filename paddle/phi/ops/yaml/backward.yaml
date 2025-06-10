@@ -2904,6 +2904,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : RollGradInferSpmdDynamic
   kernel :
     func : roll_grad
     data_type : x
