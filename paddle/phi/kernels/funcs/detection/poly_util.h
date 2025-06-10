@@ -76,8 +76,9 @@ void Array2Poly(const T* box,
   (*poly).contour->vertex =
       (phi::funcs::gpc_vertex*)malloc(sizeof(phi::funcs::gpc_vertex) * pts_num);
   if ((*poly).contour->vertex == nullptr) {
-      fprintf(stderr, "malloc failed for contour->vertex (pts_num = %zu)\n", pts_num);
-      exit(EXIT_FAILURE);
+    fprintf(
+        stderr, "malloc failed for contour->vertex (pts_num = %zu)\n", pts_num);
+    exit(EXIT_FAILURE);
   }
   for (size_t i = 0; i < pts_num; ++i) {
     (*poly).contour->vertex[i].x = box[2 * i];
@@ -102,8 +103,9 @@ void PointVec2Poly(const std::vector<Point_<T>>& vec,
   (*poly).contour->vertex =
       (phi::funcs::gpc_vertex*)malloc(sizeof(phi::funcs::gpc_vertex) * pts_num);
   if ((*poly).contour->vertex == nullptr) {
-      fprintf(stderr, "malloc failed for contour->vertex (pts_num = %zu)\n", pts_num);
-      exit(EXIT_FAILURE);
+    fprintf(
+        stderr, "malloc failed for contour->vertex (pts_num = %zu)\n", pts_num);
+    exit(EXIT_FAILURE);
   }
   for (size_t i = 0; i < pts_num; ++i) {
     (*poly).contour->vertex[i].x = vec[i].x;

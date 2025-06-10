@@ -54,8 +54,8 @@ repos:
     hooks:
       - id: typos
         args: [--force-exclude]
-  # For Python files
   - repo: https://github.com/psf/black-pre-commit-mirror
+    # For Python files
     rev: 25.1.0
     hooks:
       - id: black
@@ -64,32 +64,36 @@ repos:
     hooks:
       - id: ruff-check
         args: [--fix, --exit-non-zero-on-fix, --no-cache]
-  # For C++ files
   - repo: local
+    # For C++ files
     hooks:
       - id: clang-format
         name: clang-format
         description: Format files with ClangFormat.
-        entry: bash ./tools/codestyle/clang_format.sh -i
+        entry: clang-format
         language: system
-        files: \.(c|cc|cxx|cpp|cu|h|cuh|hpp|hxx|xpu|kps)$
+        args: ["-i"]
+        files: \.(cc|cpp|cu|cuh|h|hpp|hxx|xpu|kps)$
+
   - repo: local
     hooks:
       - id: cpplint-cpp-source
         name: cpplint
         description: Check C++ code style using cpplint.py.
-        entry: bash ./tools/codestyle/cpplint_pre_commit.sh
+        entry: python -m cpplint
         language: system
-        files: \.(cc|cxx|cpp|cu|h|hpp|hxx)$
         args:
           - --extensions=cc,cxx,cpp,cu,cuh,h,hpp,hxx,kps
           - --filter=-readability/fn_size,-build/include_what_you_use,-build/c++11,-whitespace/parens
           - --quiet
-        # Exclude third-party libraries
+        files: \.(cc|cxx|cpp|cu|cuh|h|hpp|hxx|kps)$
         exclude: |
           (?x)^(
             paddle/utils/flat_hash_map\.h
-          )$
+          )
+
+
+
   - repo: local
     hooks:
       - id: clang-tidy
@@ -123,8 +127,8 @@ repos:
           - -extra-arg=-Wno-defaulted-function-deleted
           - -extra-arg=-Wno-delete-non-abstract-non-virtual-dtor
           - -extra-arg=-Wno-return-type-c-linkage
-  # For CMake files
   - repo: local
+    # For CMake files
     hooks:
       - id: auto-generate-cmakelists
         name: auto-generate-cmakelists
@@ -152,8 +156,8 @@ repos:
           (?x)^(
             cmake/external/onnxruntime.cmake
           )$
-  # For YAML files
   - repo: https://github.com/PFCCLab/yamlfmt-pre-commit-mirror.git
+    # For YAML files
     rev: v0.16.0
     hooks:
       - id: yamlfmt
@@ -163,8 +167,8 @@ repos:
             \.pre-commit-config\.yaml|
             \.yamlfmt
           )
-  # Others
   - repo: local
+    # Others
     hooks:
       - id: sort-txt-file
         name: sort-txt-file
