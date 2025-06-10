@@ -75,7 +75,7 @@ import paddle
 paddle.seed(42)
 
 # 生成测试数据
-batch_size, seq_len, hidden_size = 2, 3, 4
+batch_size, seq_len, hidden_size = 16, 32, 4
 x_np = np.random.randn(batch_size, seq_len, hidden_size).astype('float32')
 weight_np = np.random.randn(hidden_size).astype('float32')
 
@@ -83,19 +83,19 @@ weight_np = np.random.randn(hidden_size).astype('float32')
 # 转换为各框架的 tensor
 x_paddle = paddle.to_tensor(x_np, stop_gradient=False)
 weight_paddle = paddle.to_tensor(weight_np, stop_gradient=False)
-x_ops = x_paddle.clone()
+x_ops = x_paddle.clone().detach()
 x_ops.stop_gradient = False
-weight_ops = weight_paddle.clone()
+weight_ops = weight_paddle.clone().detach()
 weight_ops.stop_gradient = False
 
 # 前向计算
 y_paddle, invvar_paddle = rms_norm_paddle(x_paddle, weight_paddle)
 y_ops, invvar_ops = fused_rms_norm_ext(x_ops, weight_ops)
-loss_paddle = paddle.mean(y_paddle) + paddle.mean(invvar_paddle)
-y_paddle.backward()
-loss_ops = paddle.mean(y_ops) + paddle.mean(invvar_ops)
-y_ops.backward()
-paddle.device.synchronize()
+loss_ops = paddle.mean(y_ops)
+loss_ops.backward()
+loss_paddle = paddle.mean(y_paddle)
+loss_paddle.backward()
+# paddle.device.synchronize()
 
 # print(y_paddle.numpy())
 # print(".......")
