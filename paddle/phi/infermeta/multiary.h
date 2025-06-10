@@ -534,6 +534,19 @@ void FusedLayerNormInferMeta(const MetaTensor& x,
                              MetaTensor* variance,
                              MetaConfig config = MetaConfig());
 
+void FusedMoePermuteInferMeta(const MetaTensor& X,
+                              const MetaTensor& XScale,
+                              const MetaTensor& expert_routemap_topk,
+                              const MetaTensor& expert_prob_topk,
+                              const int& topk,
+                              const int& num_experts,
+                              const std::vector<int>& tokens_per_expert,
+                              const int padding_multiplex,
+                              MetaTensor* X_unzipped,
+                              MetaTensor* zipped_expertwise_rowmap,
+                              MetaTensor* token_prob_unzipped,
+                              MetaTensor* XScale_unzipped);
+
 void FusedLinearParamGradAddInferMeta(const MetaTensor& x,
                                       const MetaTensor& dout,
                                       const MetaTensor& dweight,

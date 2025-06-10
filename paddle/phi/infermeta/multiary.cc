@@ -5966,6 +5966,58 @@ void FusedConvInferMeta(const MetaTensor& input,
                 config);
 }
 
+void FusedMoePermuteInferMeta(const MetaTensor& X,
+                              const MetaTensor& XScale,
+                              const MetaTensor& expert_routemap_topk,
+                              const MetaTensor& expert_prob_topk,
+                              const int& topk,
+                              const int& num_experts,
+                              const std::vector<int>& tokens_per_expert,
+                              const int padding_multiplex,
+                              MetaTensor* X_unzipped,
+                              MetaTensor* zipped_expertwise_rowmap,
+                              MetaTensor* token_prob_unzipped,
+                              MetaTensor* XScale_unzipped) {
+  PADDLE_ENFORCE_EQ(
+      X.dims().size(),
+      2,
+      common::errors::InvalidArgument("Input X's dims should be 2, but got %u.",
+                                      X.dims().size()));
+  PADDLE_ENFORCE_EQ(X.dtype() == phi::DataType::BFLOAT16 ||
+                        X.dtype() == phi::DataType::FLOAT8_E4M3FN,
+                    true,
+                    common::errors::InvalidArgument(
+                        "Input X's dtype should be BFLOAT16 or FLOAT8_E4M3FN"));
+  PADDLE_ENFORCE_EQ(expert_routemap_topk.dtype() == phi::DataType::INT32 true,
+                    common::errors::InvalidArgument(
+                        "Input expert_routemap_topk's dtype should be INT32"));
+  PADDLE_ENFORCE_EQ(
+      expert_prob_topk.dtype() == phi::DataType::BFLOAT16 ||
+          expert_prob_topk.dtype() == phi::DataType::FLOAT32 true,
+      common::errors::InvalidArgument(
+          "Input expert_prob_topk's dtype should be BFLOAT16 or FLOAT32"));
+  if (XScale) {
+    PADDLE_ENFORCE_EQ(XScale->dtype(),
+                      phi::DataType::FLOAT32,
+                      common::errors::InvalidArgument(
+                          "Input XScale's dtype should be FLOAT32"));
+    const int quanted_cols = XScale.dims()[1];
+    XScale_unzipped->set_dims({-1, quanted_cols});
+    XScale_unzipped->set_dtype(XScale.dtype());
+  } else {
+    XScale_unzipped->set_dims({0});
+    XScale_unzipped->set_dtype(phi::DataType::FLOAT32);
+  }
+  const int rows = X.dims()[0];
+  const int cols = X.dims()[1];
+  X_unzipped->set_dims({-1, cols});
+  X_unzipped->set_dtype(X.dtype());
+  zipped_expertwise_rowmap->set_dims({rows, num_experts});
+  zipped_expertwise_rowmap->set_dtype(phi::DataType::INT32);
+  token_prob_unzipped->set_dims({-1});
+  token_prob_unzipped->set_dtype(expert_prob_topk.dtype());
+}
+
 void FusedRopeInferMeta(const MetaTensor& q,
                         const MetaTensor& k,
                         const MetaTensor& v,
