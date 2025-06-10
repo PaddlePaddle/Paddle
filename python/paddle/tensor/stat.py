@@ -215,8 +215,10 @@ def var(
         out_nan.stop_gradient = out.stop_gradient
         return out_nan
 
-    if (0 in x.shape) or (len(x.shape) == 0 and unbiased):
+    if 0 in x.shape:
         out = _replace_nan(out)
+    if len(x.shape) == 0 and not unbiased:
+        out = paddle.to_tensor(0, stop_gradient=out.stop_gradient)
     if out.dtype != x.dtype:
         return out.astype(x.dtype)
     return out
