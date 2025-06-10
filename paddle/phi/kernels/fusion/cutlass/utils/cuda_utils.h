@@ -54,7 +54,8 @@ namespace phi {
 
 typedef struct __align__(4) {
   half x, y, z, w;
-} half4;
+}
+half4;
 
 /* **************************** type definition ***************************** */
 
