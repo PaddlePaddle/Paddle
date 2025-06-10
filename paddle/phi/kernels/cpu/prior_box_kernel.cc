@@ -20,7 +20,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void PriorBoxKernel(const Context& ctx,
+void PriorBoxKernel(const Context& dev_ctx,
                     const DenseTensor& input,
                     const DenseTensor& image,
                     const std::vector<float>& min_sizes,
@@ -37,9 +37,9 @@ void PriorBoxKernel(const Context& ctx,
                     DenseTensor* var) {
   if (input.numel() == 0 || image.numel() == 0) {
     phi::Full<T, Context>(
-        ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+        dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
     phi::Full<T, Context>(
-        ctx, phi::IntArray(common::vectorize(var->dims())), 0, var);
+        dev_ctx, phi::IntArray(common::vectorize(var->dims())), 0, var);
     return;
   }
 
@@ -71,8 +71,8 @@ void PriorBoxKernel(const Context& ctx,
     num_priors += static_cast<int>(max_sizes.size());
   }
 
-  ctx.template Alloc<T>(out);
-  ctx.template Alloc<T>(var);
+  dev_ctx.template Alloc<T>(out);
+  dev_ctx.template Alloc<T>(var);
 
   T* b_t = out->data<T>();
   for (int h = 0; h < feature_height; ++h) {
@@ -147,7 +147,7 @@ void PriorBoxKernel(const Context& ctx,
 
   DenseTensor var_t;
   var_t.Resize(common::make_ddim({1, static_cast<int>(variances.size())}));
-  ctx.template Alloc<T>(&var_t);
+  dev_ctx.template Alloc<T>(&var_t);
   auto var_et = EigenTensor<T, 2>::From(var_t);
 
 #ifdef PADDLE_WITH_MKLML

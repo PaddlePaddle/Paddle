@@ -21,16 +21,16 @@
 namespace phi {
 
 template <typename T, typename Context>
-void AbsGradKernel(const Context& ctx,
+void AbsGradKernel(const Context& dev_ctx,
                    const DenseTensor& x,
                    const DenseTensor& dout,
                    DenseTensor* dx) {
-  ctx.template Alloc<T>(dx);
+  dev_ctx.template Alloc<T>(dx);
   if (dx && dx->numel() == 0) {
     return;
   }
   using XPUType = typename XPUTypeTrait<T>::Type;
-  int r = xpu::abs_grad(ctx.x_context(),
+  int r = xpu::abs_grad(dev_ctx.x_context(),
                         reinterpret_cast<const XPUType*>(x.data<T>()),
                         reinterpret_cast<const XPUType*>(dout.data<T>()),
                         reinterpret_cast<const XPUType*>(dout.data<T>()),

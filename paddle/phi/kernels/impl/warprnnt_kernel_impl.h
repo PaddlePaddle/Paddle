@@ -104,7 +104,7 @@ class WarpRNNTFunctor {
    * If gradient is nullptr, it only computes the rnnt loss,
    * or computes both rnnt loss and gradient.
    *
-   * \param ctx               execution context of this functor
+   * \param dev_ctx           execution context of this functor
    * \param input             batch matrix of input probabilities, in
    *                          (B, Tmax, Umax, D), (row-major) format
    * \param gradient          batch matrix of gradient, with the same shape as

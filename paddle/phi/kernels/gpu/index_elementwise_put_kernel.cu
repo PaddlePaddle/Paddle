@@ -23,7 +23,7 @@
 namespace phi {
 
 template <typename T, typename IndexT = int>
-void GPUIndexElementwisePutKernel(const phi::GPUContext& ctx,
+void GPUIndexElementwisePutKernel(const phi::GPUContext& dev_ctx,
                                   const DenseTensor& input,
                                   const DenseTensor& value,
                                   const std::vector<const DenseTensor*>& index,
@@ -70,7 +70,7 @@ void GPUIndexElementwisePutKernel(const phi::GPUContext& ctx,
   constexpr int vt = 4;
   const dim3 block(nt);
   const dim3 grid((N + block.x * vt - 1) / (block.x * vt));
-  auto stream = ctx.stream();
+  auto stream = dev_ctx.stream();
 
   using dtype = funcs::OpaqueType<sizeof(T)>;
 
@@ -101,7 +101,7 @@ void GPUIndexElementwisePutKernel(const phi::GPUContext& ctx,
 }
 
 template <typename T, typename Context>
-void IndexElementwisePutKernel(const Context& ctx,
+void IndexElementwisePutKernel(const Context& dev_ctx,
                                const DenseTensor& x,
                                const std::vector<const DenseTensor*>& index,
                                const DenseTensor& value,
@@ -122,10 +122,10 @@ void IndexElementwisePutKernel(const Context& ctx,
           phi::DataType::INT64));
 
   if (out->numel() == 0) return;
-  ctx.template Alloc<T>(out);
+  dev_ctx.template Alloc<T>(out);
 
   if (index_type == phi::DataType::INT32) {
-    GPUIndexElementwisePutKernel<T, int>(ctx,
+    GPUIndexElementwisePutKernel<T, int>(dev_ctx,
                                          x,
                                          value,
                                          index,
@@ -135,7 +135,7 @@ void IndexElementwisePutKernel(const Context& ctx,
                                          index_strides,
                                          out);
   } else if (index_type == phi::DataType::INT64) {
-    GPUIndexElementwisePutKernel<T, int64_t>(ctx,
+    GPUIndexElementwisePutKernel<T, int64_t>(dev_ctx,
                                              x,
                                              value,
                                              index,
