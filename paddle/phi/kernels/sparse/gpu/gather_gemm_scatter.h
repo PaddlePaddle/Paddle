@@ -34,7 +34,7 @@ template <int ComputeCapability,
           typename Output,
           typename IntT>
 void GatherGemmScatterDriver(
-    const phi::GPUContext& ctx,
+    const phi::GPUContext& dev_ctx,
     const size_t key,
     const Input* const a,
     const Input* const b,
@@ -63,7 +63,7 @@ void GatherGemmScatterDriver(
                                       in_type,                                \
                                       out_type,                               \
                                       int32_t>(                               \
-      const phi::GPUContext& ctx,                                             \
+      const phi::GPUContext& dev_ctx,                                         \
       const size_t key,                                                       \
       const in_type* const a,                                                 \
       const in_type* const b,                                                 \
@@ -82,11 +82,11 @@ void GatherGemmScatterDriver(
         autotune::MakeGatherGemmScatterTuner<transpose_a, transpose_b>(       \
             kernels[0]);                                                      \
     for (auto i = 1; i < kernels.size(); i++) tuner->AddCallBack(kernels[i]); \
-    tuner->Run(ctx,                                                           \
+    tuner->Run(dev_ctx,                                                       \
                key,                                                           \
                alpha,                                                         \
                beta,                                                          \
-               ctx,                                                           \
+               dev_ctx,                                                       \
                a,                                                             \
                b,                                                             \
                c,                                                             \
