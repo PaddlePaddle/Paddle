@@ -226,6 +226,7 @@ class TestSumOp7(TestSumOp1):
 
 class TestSumOp8(TestSumOp1):
     def set_attrs_input_output(self):
+        self.attrs = {'axis': 0}
         self.x = np.random.random((4, 8, 6)).astype(self.dtype_)
         self.out = self.x.cumsum(axis=0)
 
