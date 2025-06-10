@@ -26,8 +26,8 @@ def fused_transpose_split_quant(x, tokens_per_expert, pow_2_scales=False):
     tokens_per_expert = [int(t) for t in tokens_per_expert]
     
     for i, tokens in enumerate(tokens_per_expert):
-        if tokens <= 0:
-            raise ValueError(f"tokens_per_expert[{i}] must be positive, but got {tokens}")
+        if tokens < 0:
+            raise ValueError(f"tokens_per_expert[{i}] must be non-negative, but got {tokens}")
         if tokens % 128 != 0:
             raise ValueError(f"tokens_per_expert[{i}] must be divisible by 128, but got {tokens}")
     

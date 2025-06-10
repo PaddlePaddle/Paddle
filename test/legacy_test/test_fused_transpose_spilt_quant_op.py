@@ -1,140 +1,60 @@
-
-
-import numpy as np
 import paddle
-import paddle.nn.functional as F
+import numpy as np
 
 
-def restore_transpose_split_quant(outs, scales):
-    """恢复原始数据用于验证"""
- 
-    outs_float32 = [out.astype('float32') for out in outs]
-    
+def fused_transpose_split_quant_ref(x, tokens_per_expert, pow_2_scales):
+    shape = x.shape
+    x = x.reshape([shape[0]//128, 128, shape[1]])
+    amax = x.astype('float32').abs().max(axis=1)
 
-    concatenated_out = paddle.concat(outs_float32, axis=1)  # [K, total_tokens]
-    transposed_out = concatenated_out.transpose([1, 0])     # [total_tokens, K]
-    
+    scale = 448.0 / amax
+    if pow_2_scales:
+        _, exp = paddle.frexp(scale)
+        scale = paddle.ldexp(paddle.to_tensor([1.0]), exp - 1)
+    scale = paddle.where(amax == 0, 1.0, scale)
 
-    concatenated_scale = paddle.concat(scales, axis=0)      # [total_groups, K]
-    expanded_scale = paddle.repeat_interleave(
-        concatenated_scale, repeats=128, axis=0
-    )  # [total_tokens, K]
-    
+    out = x * scale.unsqueeze(1)
+    out = out.reshape(shape).astype('float8_e4m3fn')
+    out = out.transpose([1, 0]).split(tokens_per_expert, axis=1)
 
-    return transposed_out * expanded_scale
+    scale = paddle.reciprocal(scale)
+    scale = scale.split([t // 128 for t in tokens_per_expert], axis=0)
+    return out, scale
 
 
 def test_fused_transpose_split_quant(tokens_per_expert, seq_len, pow_2_scales):
-    
-    print(f"Testing: tokens_per_expert={tokens_per_expert}, seq_len={seq_len}, pow_2_scales={pow_2_scales}")
-    
+    print(tokens_per_expert, seq_len, pow_2_scales)
 
-    valid_tokens = [t for t in tokens_per_expert if t > 0]
-    
-    if not valid_tokens or seq_len == 0:
-        print("  → Skipping empty case")
-        return
-    
-  
-    x = paddle.randn([sum(valid_tokens), seq_len], dtype='bfloat16')
+    x = paddle.randn([sum(tokens_per_expert), seq_len], dtype='bfloat16')
     x = paddle.clip(x, min=-50, max=50)
-    
-    try:
 
-        outs, scales = F.fused_transpose_split_quant(
-            x, valid_tokens, pow_2_scales=pow_2_scales
-        )
-        
-   
-        assert len(outs) == len(valid_tokens), f"Expected {len(valid_tokens)} outputs, got {len(outs)}"
-        assert len(scales) == len(valid_tokens), f"Expected {len(valid_tokens)} scales, got {len(scales)}"
-        
+    out, scale = paddle.nn.functional.fused_transpose_split_quant(x, tokens_per_expert, pow_2_scales)
 
-        for i, tokens in enumerate(valid_tokens):
-            expected_out_shape = [seq_len, tokens]
-            expected_scale_shape = [tokens // 128, seq_len]
-            
-            assert list(outs[i].shape) == expected_out_shape, \
-                f"Output {i} shape mismatch: expected {expected_out_shape}, got {list(outs[i].shape)}"
-            assert list(scales[i].shape) == expected_scale_shape, \
-                f"Scale {i} shape mismatch: expected {expected_scale_shape}, got {list(scales[i].shape)}"
-            
+    out_ref, scale_ref = fused_transpose_split_quant_ref(x, tokens_per_expert, pow_2_scales)
 
-            assert outs[i].dtype == paddle.float8_e4m3fn, f"Output {i} dtype should be float8_e4m3fn"
-            assert scales[i].dtype == paddle.float32, f"Scale {i} dtype should be float32"
-        
+    for t, t_ref in zip(out, out_ref):
+        np.testing.assert_allclose(t.astype('float32'), t_ref.astype('float32'))
 
-        x_restored = restore_transpose_split_quant(outs, scales)
-        x_float32 = x.astype('float32')
-        
-        np.testing.assert_allclose(
-            x_float32.numpy(), x_restored.numpy(), 
-            rtol=0.02, atol=0.5,
-            err_msg=f"Numerical accuracy test failed for tokens={valid_tokens}, seq_len={seq_len}"
-        )
-        
-        print("  ✓ PASSED")
-        
-    except Exception as e:
-        print(f"  ✗ FAILED: {e}")
-        raise
+    for t, t_ref in zip(scale, scale_ref):
+        np.testing.assert_allclose(t, t_ref)
 
 
-def run_all_tests():
-    print("=" * 60)
-    print("Testing fused_transpose_split_quant with new API")
-    print("=" * 60)
-    
-    paddle.seed(42)
-    np.random.seed(42)
-    
-
-    if paddle.is_compiled_with_cuda():
-        paddle.device.set_device('gpu:0')
-        print("Using GPU for testing")
-    else:
-        paddle.device.set_device('cpu')
-        print("Using CPU for testing")
-    
-    test_cases = [
- 
-        ([128, 256], 1024, False),
-        ([128, 256], 1024, True),
-        
-
-        ([128], 1, False),
-        ([128], 1, True),
-        
-
-        ([3*128, 4*128, 5*128], 233, False),
-        ([3*128, 4*128, 5*128], 233, True),
-        
-   
-        ([24*128, 128, 50*128, 16*128], 2162, True),
-        ([7*128, 29*128, 3*128, 128*128, 13*128], 4000, False),
-        
- 
-        ([18*128, 5*128, 24*128, 128, 6*128, 27*128, 7*128], 7168, True),
-    ]
-    
-    success_count = 0
-    total_count = len(test_cases)
-    
-    for tokens_per_expert, seq_len, pow_2_scales in test_cases:
-        try:
-            test_fused_transpose_split_quant(tokens_per_expert, seq_len, pow_2_scales)
-            success_count += 1
-        except Exception as e:
-            print(f"Test failed: {e}")
-    
-    print("\n" + "=" * 60)
-    print(f"Test Results: {success_count}/{total_count} tests passed")
-    if success_count == total_count:
-        print("🎉 All tests passed!")
-    else:
-        print(f"❌ {total_count - success_count} tests failed")
-    print("=" * 60)
+def run():
+    test_fused_transpose_split_quant([0, 0], 1024, False)
+    test_fused_transpose_split_quant([128, 2*128], 0, True)
+    test_fused_transpose_split_quant([128], 1, False)
+    test_fused_transpose_split_quant([0, 128, 0, 2*128], 127, True)
+    test_fused_transpose_split_quant([3*128, 4*128, 5*128], 233, False)
+    test_fused_transpose_split_quant(
+        [24*128, 128, 50*128, 16*128], 2162, True
+    )
+    test_fused_transpose_split_quant(
+        [7*128, 29*128, 3*128, 128*128, 13*128], 4000, False
+    )
+    test_fused_transpose_split_quant(
+        [18*128, 5*128, 24*128, 128, 6*128, 0, 27*128, 7*128], 7168, True
+    )
 
 
 if __name__ == '__main__':
-    run_all_tests()
+    run()

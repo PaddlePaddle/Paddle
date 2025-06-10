@@ -6417,12 +6417,6 @@ void FusedTransposeSplitQuantInferMeta(const MetaTensor& x,
   for(size_t i = 0; i < num_experts; ++i) {  // 使用 size_t 避免类型不匹配
     const int64_t tokens = tokens_list[i];
     
-    // 验证 tokens 为正数
-    PADDLE_ENFORCE_GT(tokens,
-                      0,
-                      common::errors::InvalidArgument(
-                        "tokens_per_expert[%d] must be positive, but got %d",
-                        i, tokens));
     
     // 验证 tokens 是 128 的倍数
     PADDLE_ENFORCE_EQ(tokens % 128,  
