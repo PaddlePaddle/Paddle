@@ -204,14 +204,14 @@ struct EmbeddingWithScaledGradientGradCUDAFunctor {
 };
 
 template <typename T, typename Context>
-void EmbeddingWithScaledGradientGradKernel(const Context& ctx,
+void EmbeddingWithScaledGradientGradKernel(const Context& dev_ctx,
                                            const DenseTensor& input,
                                            const DenseTensor& weight,
                                            const DenseTensor& out_grad,
                                            int64_t padding_idx,
                                            DenseTensor* weight_grad) {
   EmbeddingWithScaledGradientGradCUDAFunctor<T, Context> functor(
-      ctx, input, weight, out_grad, padding_idx, weight_grad);
+      dev_ctx, input, weight, out_grad, padding_idx, weight_grad);
   if (input.dtype() == phi::DataType::INT32) {
     functor.template apply<int>();
   } else if (input.dtype() == phi::DataType::INT64) {

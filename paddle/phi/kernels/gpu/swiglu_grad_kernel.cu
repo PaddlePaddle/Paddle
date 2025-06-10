@@ -107,7 +107,7 @@ __global__ void SwiGLUGradCUDAKernel(const T *__restrict__ x,
 }
 
 template <typename T, typename Context>
-void SwiGLUGradKernelImpl(const Context &ctx,
+void SwiGLUGradKernelImpl(const Context &dev_ctx,
                           const T *x,
                           const T *y,
                           const T *dz,
@@ -127,13 +127,15 @@ void SwiGLUGradKernelImpl(const Context &ctx,
     vec_size = std::min(vec_size, phi::GetVectorizedSize<T>(dy));
   }
 
-#define PD_LAUNCH_SWIGLU_GRAD_CUDA_KERNEL_BASE(                                \
-    __vec_size, __is_combine, __has_dx, __has_dy)                              \
-  case __vec_size: {                                                           \
-    SwiGLUGradCUDAKernel<T, __vec_size, __is_combine, __has_dx, __has_dy>      \
-        <<<config.block_per_grid, config.thread_per_block, 0, ctx.stream()>>>( \
-            x, y, dz, dx, dy, m, n);                                           \
-    break;                                                                     \
+#define PD_LAUNCH_SWIGLU_GRAD_CUDA_KERNEL_BASE(                           \
+    __vec_size, __is_combine, __has_dx, __has_dy)                         \
+  case __vec_size: {                                                      \
+    SwiGLUGradCUDAKernel<T, __vec_size, __is_combine, __has_dx, __has_dy> \
+        <<<config.block_per_grid,                                         \
+           config.thread_per_block,                                       \
+           0,                                                             \
+           dev_ctx.stream()>>>(x, y, dz, dx, dy, m, n);                   \
+    break;                                                                \
   }
 
 #define PD_LAUNCH_SWIGLU_GRAD_CUDA_KERNEL(__is_combine, __has_dx, __has_dy) \
@@ -154,7 +156,7 @@ void SwiGLUGradKernelImpl(const Context &ctx,
 
   if (y) {
     auto config =
-        phi::backends::gpu::GetGpuLaunchConfig1D(ctx, m * n, vec_size);
+        phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, m * n, vec_size);
     if (dx) {
       if (dy) {
         PD_LAUNCH_SWIGLU_GRAD_CUDA_KERNEL(false, true, true);
@@ -179,7 +181,7 @@ void SwiGLUGradKernelImpl(const Context &ctx,
     y = x + n;
     dy = dx + n;
     auto config =
-        phi::backends::gpu::GetGpuLaunchConfig1D(ctx, m * n / vec_size, 1);
+        phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, m * n / vec_size, 1);
     PD_LAUNCH_SWIGLU_GRAD_CUDA_KERNEL(true, true, true);
   }
 }

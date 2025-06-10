@@ -25,12 +25,12 @@ using Array4 = Eigen::DSizes<int64_t, 4>;
 using Array5 = Eigen::DSizes<int64_t, 5>;
 
 template <typename T>
-static inline void Clip(const CPUContext& ctx,
+static inline void Clip(const CPUContext& dev_ctx,
                         DenseTensor* grid_slice,
                         const int max_val,  // height-1 or width-1
                         bool align_corners,
                         std::string padding_mode) {
-  auto& place = *ctx.eigen_device();
+  auto& place = *dev_ctx.eigen_device();
   auto grid_slice_t = EigenTensor<T, 3>::From(*grid_slice);
   if (padding_mode == "border") {
     grid_slice_t.device(place) = grid_slice_t.cwiseMax(static_cast<T>(0))
@@ -57,12 +57,12 @@ static inline void Clip(const CPUContext& ctx,
 }
 
 template <typename T>
-static inline void Clip3D(const CPUContext& ctx,
+static inline void Clip3D(const CPUContext& dev_ctx,
                           DenseTensor* grid_slice,
                           const int max_val,  // height-1 or width-1
                           bool align_corners,
                           std::string padding_mode) {
-  auto& place = *ctx.eigen_device();
+  auto& place = *dev_ctx.eigen_device();
   auto grid_slice_t = EigenTensor<T, 4>::From(*grid_slice);
   if (padding_mode == "border") {
     grid_slice_t.device(place) = grid_slice_t.cwiseMax(static_cast<T>(0))
@@ -89,7 +89,7 @@ static inline void Clip3D(const CPUContext& ctx,
 }
 
 template <typename T>
-static void CalcGridLocations(const CPUContext& ctx,
+static void CalcGridLocations(const CPUContext& dev_ctx,
                               const DenseTensor& grid,
                               const int in_h,
                               const int in_w,
@@ -104,23 +104,23 @@ static void CalcGridLocations(const CPUContext& ctx,
   // split grid with shape (n, h, w, 2) into (x, y) by the 3rd Dim
   grid_x->Resize({n, out_h, out_w});
   grid_y->Resize({n, out_h, out_w});
-  T* grid_x_data = ctx.Alloc<T>(grid_x);
-  T* grid_y_data = ctx.Alloc<T>(grid_y);
+  T* grid_x_data = dev_ctx.Alloc<T>(grid_x);
+  T* grid_y_data = dev_ctx.Alloc<T>(grid_y);
   const T* grid_data = grid.data<T>();
   for (int i = 0; i < n * out_h * out_w; i++) {
     grid_x_data[i] = grid_data[2 * i];
     grid_y_data[i] = grid_data[(2 * i) + 1];
   }
 
-  Unnormalize<T>(ctx, grid_x, in_w - 1, align_corners);
-  Unnormalize<T>(ctx, grid_y, in_h - 1, align_corners);
+  Unnormalize<T>(dev_ctx, grid_x, in_w - 1, align_corners);
+  Unnormalize<T>(dev_ctx, grid_y, in_h - 1, align_corners);
 
-  Clip<T>(ctx, grid_x, in_w - 1, align_corners, padding_mode);
-  Clip<T>(ctx, grid_y, in_h - 1, align_corners, padding_mode);
+  Clip<T>(dev_ctx, grid_x, in_w - 1, align_corners, padding_mode);
+  Clip<T>(dev_ctx, grid_y, in_h - 1, align_corners, padding_mode);
 }
 
 template <typename T>
-static void Calc3DGridLocations(const CPUContext& ctx,
+static void Calc3DGridLocations(const CPUContext& dev_ctx,
                                 const DenseTensor& grid,
                                 const int in_d,
                                 const int in_h,
@@ -139,9 +139,9 @@ static void Calc3DGridLocations(const CPUContext& ctx,
   grid_x->Resize({n, out_d, out_h, out_w});
   grid_y->Resize({n, out_d, out_h, out_w});
   grid_z->Resize({n, out_d, out_h, out_w});
-  T* grid_x_data = ctx.Alloc<T>(grid_x);
-  T* grid_y_data = ctx.Alloc<T>(grid_y);
-  T* grid_z_data = ctx.Alloc<T>(grid_z);
+  T* grid_x_data = dev_ctx.Alloc<T>(grid_x);
+  T* grid_y_data = dev_ctx.Alloc<T>(grid_y);
+  T* grid_z_data = dev_ctx.Alloc<T>(grid_z);
   const T* grid_data = grid.data<T>();
   for (int i = 0; i < n * out_d * out_h * out_w; i++) {
     grid_x_data[i] = grid_data[3 * i];
@@ -149,22 +149,22 @@ static void Calc3DGridLocations(const CPUContext& ctx,
     grid_z_data[i] = grid_data[(3 * i) + 2];
   }
 
-  Unnormalize3D<T>(ctx, grid_x, in_w - 1, align_corners);
-  Unnormalize3D<T>(ctx, grid_y, in_h - 1, align_corners);
-  Unnormalize3D<T>(ctx, grid_z, in_d - 1, align_corners);
+  Unnormalize3D<T>(dev_ctx, grid_x, in_w - 1, align_corners);
+  Unnormalize3D<T>(dev_ctx, grid_y, in_h - 1, align_corners);
+  Unnormalize3D<T>(dev_ctx, grid_z, in_d - 1, align_corners);
 
-  Clip3D<T>(ctx, grid_x, in_w - 1, align_corners, padding_mode);
-  Clip3D<T>(ctx, grid_y, in_h - 1, align_corners, padding_mode);
-  Clip3D<T>(ctx, grid_z, in_d - 1, align_corners, padding_mode);
+  Clip3D<T>(dev_ctx, grid_x, in_w - 1, align_corners, padding_mode);
+  Clip3D<T>(dev_ctx, grid_y, in_h - 1, align_corners, padding_mode);
+  Clip3D<T>(dev_ctx, grid_z, in_d - 1, align_corners, padding_mode);
 }
 
 template <typename T>
-static void BilinearInter(const CPUContext& ctx,
+static void BilinearInter(const CPUContext& dev_ctx,
                           const DenseTensor& input,
                           DenseTensor* grid_x,
                           DenseTensor* grid_y,
                           DenseTensor* out) {
-  auto& place = *ctx.eigen_device();
+  auto& place = *dev_ctx.eigen_device();
   const int n = static_cast<int>(grid_x->dims()[0]);
   const int out_h = static_cast<int>(grid_x->dims()[1]);
   const int out_w = static_cast<int>(grid_x->dims()[2]);
@@ -174,7 +174,7 @@ static void BilinearInter(const CPUContext& ctx,
   DenseTensor d_w, d_e, d_n, d_s;
   DenseTensor v_wn, v_en, v_ws, v_es;
 
-  AllNeighbors<T>(ctx,
+  AllNeighbors<T>(dev_ctx,
                   input,
                   grid_x,
                   grid_y,
@@ -217,13 +217,13 @@ static void BilinearInter(const CPUContext& ctx,
 }
 
 template <typename T>
-static void Bilinear3DInter(const CPUContext& ctx,
+static void Bilinear3DInter(const CPUContext& dev_ctx,
                             const DenseTensor& input,
                             DenseTensor* grid_x,
                             DenseTensor* grid_y,
                             DenseTensor* grid_z,
                             DenseTensor* out) {
-  auto& place = *ctx.eigen_device();
+  auto& place = *dev_ctx.eigen_device();
   const int n = static_cast<int>(grid_x->dims()[0]);
   const int out_d = static_cast<int>(grid_x->dims()[1]);
   const int out_h = static_cast<int>(grid_x->dims()[2]);
@@ -237,7 +237,7 @@ static void Bilinear3DInter(const CPUContext& ctx,
   DenseTensor d_w, d_e, d_n, d_s, d_t, d_b;
   DenseTensor v_twn, v_ten, v_tws, v_tes, v_bwn, v_ben, v_bws, v_bes;
 
-  All3DNeighbors<T>(ctx,
+  All3DNeighbors<T>(dev_ctx,
                     input,
                     grid_x,
                     grid_y,

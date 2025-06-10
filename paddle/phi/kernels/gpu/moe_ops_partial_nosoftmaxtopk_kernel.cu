@@ -221,7 +221,7 @@ void apply_moe_dispatch_fwd(
                     });
 
 #ifdef DEBUG_MOE_OP
-  // phi::CastKernel<float>(ctx, expert_scales_tensor_float,
+  // phi::CastKernel<float>(dev_ctx, expert_scales_tensor_float,
   // expert_scales_tensor.dtype(), &expert_scales_tensor);
   print_to_screen1(
       combine_weights, 8, 16, std::string("expert_scales_float after topk"));

@@ -20,7 +20,7 @@
 
 namespace phi {
 template <typename T, typename Context>
-void Pool2dGradKernel(const Context& ctx,
+void Pool2dGradKernel(const Context& dev_ctx,
                       const DenseTensor& x,
                       const DenseTensor& out,
                       const DenseTensor& dout,
@@ -37,7 +37,7 @@ void Pool2dGradKernel(const Context& ctx,
                       DenseTensor* dx) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   if (dx && dx->numel() == 0) {
-    ctx.template Alloc<T>(dx);
+    dev_ctx.template Alloc<T>(dx);
     return;
   }
   std::vector<int64_t> paddings(paddings_t.begin(), paddings_t.end());
@@ -96,13 +96,13 @@ void Pool2dGradKernel(const Context& ctx,
     paddings[3] += (in_w_ceil - in_w);
   }
 
-  ctx.template Alloc<T>(dx);
+  dev_ctx.template Alloc<T>(dx);
   const int* index_data = nullptr;
   int r = 0;
   if (adaptive) {
     if (pooling_type == "max") {
       r = xpu::adaptive_max_pool2d_grad<XPUType>(
-          ctx.x_context(),
+          dev_ctx.x_context(),
           reinterpret_cast<const XPUType*>(x.data<T>()),
           reinterpret_cast<const XPUType*>(out.data<T>()),
           index_data,
@@ -118,7 +118,7 @@ void Pool2dGradKernel(const Context& ctx,
 
     } else if (pooling_type == "avg") {
       r = xpu::adaptive_avg_pool2d_grad<XPUType>(
-          ctx.x_context(),
+          dev_ctx.x_context(),
           reinterpret_cast<const XPUType*>(dout.data<T>()),
           reinterpret_cast<XPUType*>(dx->data<T>()),
           n,
@@ -144,7 +144,7 @@ void Pool2dGradKernel(const Context& ctx,
     if (pooling_type == "max") {
       // TODO(zhanghuan05) to bind max_pool2d_grad_indices xpu api
       r = xpu::max_pool2d_grad<XPUType>(
-          ctx.x_context(),
+          dev_ctx.x_context(),
           reinterpret_cast<const XPUType*>(x.data<T>()),
           reinterpret_cast<const XPUType*>(out.data<T>()),
           index_data,
@@ -160,7 +160,7 @@ void Pool2dGradKernel(const Context& ctx,
           true);
     } else if (pooling_type == "avg") {
       r = xpu::avg_pool2d_grad<XPUType>(
-          ctx.x_context(),
+          dev_ctx.x_context(),
           reinterpret_cast<const XPUType*>(x.data<T>()),
           reinterpret_cast<const XPUType*>(out.data<T>()),
           reinterpret_cast<const XPUType*>(dout.data<T>()),
@@ -183,7 +183,7 @@ void Pool2dGradKernel(const Context& ctx,
 }
 
 template <typename T, typename Context>
-void Pool3dGradKernel(const Context& ctx,
+void Pool3dGradKernel(const Context& dev_ctx,
                       const DenseTensor& x,
                       const DenseTensor& out,
                       const DenseTensor& dout,
@@ -200,7 +200,7 @@ void Pool3dGradKernel(const Context& ctx,
                       DenseTensor* dx) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   if (dx && dx->numel() == 0) {
-    ctx.template Alloc<T>(dx);
+    dev_ctx.template Alloc<T>(dx);
     return;
   }
   auto x_dims = x.dims();
@@ -258,14 +258,14 @@ void Pool3dGradKernel(const Context& ctx,
     funcs::UpdateKernelSize(&kernel_size, data_dims);
   }
 
-  ctx.template Alloc<T>(dx);
+  dev_ctx.template Alloc<T>(dx);
   const int* index_data = nullptr;
   int r = 0;
 
   if (adaptive) {
     if (pooling_type == "max") {
       r = xpu::adaptive_max_pool3d_grad<XPUType>(
-          ctx.x_context(),
+          dev_ctx.x_context(),
           reinterpret_cast<const XPUType*>(x.data<T>()),
           reinterpret_cast<const XPUType*>(out.data<T>()),
           index_data,
@@ -284,10 +284,10 @@ void Pool3dGradKernel(const Context& ctx,
     } else if (pooling_type == "avg") {
       if (out_d == 1 && out_h == 1 && out_w == 1 &&
           std::is_same<T, float>::value) {
-        xpu::ctx_guard RAII_GUARD(ctx.x_context());
+        xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
         float scale = 1.0 / (in_d * in_h * in_w);
         float* scaled_dy = RAII_GUARD.alloc_l3_or_gm<float>(n * c);
-        r = xpu::scale(ctx.x_context(),
+        r = xpu::scale(dev_ctx.x_context(),
                        dout.data<float>(),
                        scaled_dy,
                        n * c,
@@ -296,7 +296,7 @@ void Pool3dGradKernel(const Context& ctx,
                        0.0f);
         PADDLE_ENFORCE_XDNN_SUCCESS(r, "scale");
 
-        r = xpu::broadcast(ctx.x_context(),
+        r = xpu::broadcast(dev_ctx.x_context(),
                            scaled_dy,
                            dx->data<float>(),
                            {n, c, 1LL, 1LL, 1LL},
@@ -307,7 +307,7 @@ void Pool3dGradKernel(const Context& ctx,
       }
 
       r = xpu::adaptive_avg_pool3d_grad<XPUType>(
-          ctx.x_context(),
+          dev_ctx.x_context(),
           reinterpret_cast<const XPUType*>(dout.data<T>()),
           reinterpret_cast<XPUType*>(dx->data<T>()),
           n,
@@ -330,7 +330,7 @@ void Pool3dGradKernel(const Context& ctx,
       if (kernel_size[0] == 1 && kernel_size.size() == 3 &&
           strides.size() == 3 && paddings.size() == 6) {
         r = xpu::max_pool2d_grad<XPUType>(
-            ctx.x_context(),
+            dev_ctx.x_context(),
             reinterpret_cast<const XPUType*>(x.data<T>()),
             reinterpret_cast<const XPUType*>(out.data<T>()),
             index_data,
@@ -346,7 +346,7 @@ void Pool3dGradKernel(const Context& ctx,
             !channel_last);
       } else {
         r = xpu::max_pool3d_grad<XPUType>(
-            ctx.x_context(),
+            dev_ctx.x_context(),
             reinterpret_cast<const XPUType*>(x.data<T>()),
             reinterpret_cast<const XPUType*>(out.data<T>()),
             index_data,
@@ -364,7 +364,7 @@ void Pool3dGradKernel(const Context& ctx,
       }
     } else if (pooling_type == "avg") {
       r = xpu::avg_pool3d_grad<XPUType>(
-          ctx.x_context(),
+          dev_ctx.x_context(),
           reinterpret_cast<const XPUType*>(dout.data<T>()),
           reinterpret_cast<XPUType*>(dx->data<T>()),
           n,
@@ -386,7 +386,7 @@ void Pool3dGradKernel(const Context& ctx,
 }
 
 template <typename T, typename Context>
-void MaxPool2dWithIndexGradKernel(const Context& ctx,
+void MaxPool2dWithIndexGradKernel(const Context& dev_ctx,
                                   const DenseTensor& x,
                                   const DenseTensor& mask,
                                   const DenseTensor& dout,
@@ -399,7 +399,7 @@ void MaxPool2dWithIndexGradKernel(const Context& ctx,
                                   DenseTensor* dx) {
   using XPUType = typename XPUTypeTrait<T>::Type;
 
-  ctx.template Alloc<T>(dx);
+  dev_ctx.template Alloc<T>(dx);
   if (dx && dx->numel() == 0) {
     return;
   }
@@ -434,7 +434,7 @@ void MaxPool2dWithIndexGradKernel(const Context& ctx,
 
   int r = 0;
   // pass a nullptr as input to XDNN is fine as long as index_data exists
-  r = xpu::max_pool2d_grad<XPUType>(ctx.x_context(),
+  r = xpu::max_pool2d_grad<XPUType>(dev_ctx.x_context(),
                                     /*input*/ nullptr,
                                     /*output*/ nullptr,
                                     index_data,

@@ -84,7 +84,7 @@ void apply_moe_dispatch_fwd(const Context &dev_ctx,
                             cudaStream_t stream) {
   phi::CubKeyValueSorter sorter(stream);
   // phi::funcs::SetConstant<phi::GPUContext, bool> zero;
-  // zero(ctx, &finished_tensor, false);
+  // zero(dev_ctx, &finished_tensor, false);
 
   DenseTensor xpanded_source_row_to_expanded_dest_row_tensor =
       phi::Empty<int, Context>(dev_ctx, IntArray({num_rows, k}));
@@ -164,7 +164,7 @@ void apply_moe_dispatch_fwd(const Context &dev_ctx,
                                             stream);
 
 #ifdef DEBUG_MOE_OP
-  // phi::CastKernel<float>(ctx, expert_scales_tensor_float,
+  // phi::CastKernel<float>(dev_ctx, expert_scales_tensor_float,
   // expert_scales_tensor.dtype(), &expert_scales_tensor);
   print_to_screen1(
       combine_weights, 8, 16, std::string("expert_scales_float after topk"));
