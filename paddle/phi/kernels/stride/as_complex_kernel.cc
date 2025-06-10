@@ -37,7 +37,7 @@ void AsComplexStridedKernel(const Context& dev_ctx,
       1,
       common::errors::InvalidArgument(
           "Expected the stride of last dimension of input(X) to be 1."
-          "But received %d. This means that the last dimension of the"
+          "But received %d. This means that the last dimension of the "
           "Tensor(x) is not continuous and cannot be as_complex directly."
           "You can call x.contiguous() to make the Tensor(x) contiguous first.",
           x.strides()[x.strides().size() - 1]));

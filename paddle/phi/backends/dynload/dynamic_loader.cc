@@ -190,7 +190,7 @@ static inline void* GetDsoHandleFromSpecificPath(const std::string& spec_path,
                                                  const std::string& dso_name,
                                                  int dynload_flags) {
   void* dso_handle = nullptr;
-  if (!spec_path.empty()) {
+  if (!spec_path.empty() || !dso_name.empty()) {
     // search xxx.so from custom path
     VLOG(3) << "Try to find library: " << dso_name
             << " from specific path: " << spec_path;

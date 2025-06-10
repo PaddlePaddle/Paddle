@@ -24,7 +24,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void MultiClassNMSKernel(const Context& ctx,
+void MultiClassNMSKernel(const Context& dev_ctx,
                          const DenseTensor& bboxes,
                          const DenseTensor& scores,
                          const paddle::optional<DenseTensor>& rois_num,
@@ -63,8 +63,8 @@ void MultiClassNMSKernel(const Context& ctx,
       phi::DenseTensor rois_num_host;
       rois_num_host.Resize(rois_num.get_ptr()->dims());
       if (rois_num.get_ptr()->dtype() == phi::DataType::INT64) {
-        ctx.template HostAlloc<int64_t>(&rois_num_host);
-        phi::Copy(ctx,
+        dev_ctx.template HostAlloc<int64_t>(&rois_num_host);
+        phi::Copy(dev_ctx,
                   *rois_num.get_ptr(),
                   rois_num_host.place(),
                   false,
@@ -75,8 +75,8 @@ void MultiClassNMSKernel(const Context& ctx,
           boxes_count += rois_num_host.data<int64_t>()[i];
         }
       } else if (rois_num.get_ptr()->dtype() == phi::DataType::INT32) {
-        ctx.template HostAlloc<int>(&rois_num_host);
-        phi::Copy(ctx,
+        dev_ctx.template HostAlloc<int>(&rois_num_host);
+        phi::Copy(dev_ctx,
                   *rois_num.get_ptr(),
                   rois_num_host.place(),
                   false,
@@ -123,26 +123,26 @@ void MultiClassNMSKernel(const Context& ctx,
   std::vector<size_t> batch_starts;
   int r = 0;
   r = xpu::multiclass_nms<T, int>(
-      ctx.x_context(),   // ctx
-      bboxes_data,       // const T* bboxes
-      scores_data,       // const T* scores
-      rois_num_vec,      // const std::vector<int64_t>& rois_num
-      outs_vec_,         // std::vector<T>& out
-      out_index_vec_,    // std::vector<TID>& out_index
-      batch_starts,      // std::vector<size_t>& accumulated_det_num
-      n,                 // int64_t n
-      b,                 // int64_t b
-      class_num,         // int64_t class_num
-      out_dim,           // int64_t out_dim
-      nums_top_k,        // int64_t nms_topk
-      score_threshold,   // float score_threshold
-      keep_top_k,        // int64_t keep_top_k
-      nms_threshold,     // float nms_threshold
-      background_label,  // int64_t background_label
-      normalized,        // bool normalized
-      nms_eta,           // float nms_eta
-      return_index,      // bool return_index
-      is_lod);           // bool is_lod
+      dev_ctx.x_context(),  // dev_ctx
+      bboxes_data,          // const T* bboxes
+      scores_data,          // const T* scores
+      rois_num_vec,         // const std::vector<int64_t>& rois_num
+      outs_vec_,            // std::vector<T>& out
+      out_index_vec_,       // std::vector<TID>& out_index
+      batch_starts,         // std::vector<size_t>& accumulated_det_num
+      n,                    // int64_t n
+      b,                    // int64_t b
+      class_num,            // int64_t class_num
+      out_dim,              // int64_t out_dim
+      nums_top_k,           // int64_t nms_topk
+      score_threshold,      // float score_threshold
+      keep_top_k,           // int64_t keep_top_k
+      nms_threshold,        // float nms_threshold
+      background_label,     // int64_t background_label
+      normalized,           // bool normalized
+      nms_eta,              // float nms_eta
+      return_index,         // bool return_index
+      is_lod);              // bool is_lod
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "multiclass_nms");
   uint64_t num_kept = batch_starts.back();
 
@@ -152,44 +152,44 @@ void MultiClassNMSKernel(const Context& ctx,
       // zeros to it
       // caution: results may differ between cpu and xpu due to this operation
       out->Resize({1, out_dim});
-      ctx.template Alloc<T>(out);
+      dev_ctx.template Alloc<T>(out);
       T* out_ptr = out->template data<T>();
       std::vector<T> temp_value(out_dim, 0.0f);
-      memory_utils::Copy(ctx.GetPlace(),
+      memory_utils::Copy(dev_ctx.GetPlace(),
                          out_ptr,
                          phi::CPUPlace(),
                          temp_value.data(),
                          1 * out_dim * sizeof(T));
 
       index->Resize({1, 1});
-      ctx.template Alloc<int>(index);
+      dev_ctx.template Alloc<int>(index);
       int* out_index_ptr = index->template data<int>();
       std::vector<int> temp_idx(1, 0);
-      memory_utils::Copy(ctx.GetPlace(),
+      memory_utils::Copy(dev_ctx.GetPlace(),
                          out_index_ptr,
                          phi::CPUPlace(),
                          temp_idx.data(),
                          1 * sizeof(int));
     } else {
       out->Resize({1, 1});
-      T* od = ctx.template Alloc<T>(out);
+      T* od = dev_ctx.template Alloc<T>(out);
       od[0] = -1;
       batch_starts = {0, 1};
     }
   } else {
     out->Resize({static_cast<int64_t>(num_kept), out_dim});
-    ctx.template Alloc<T>(out);
+    dev_ctx.template Alloc<T>(out);
     T* out_ptr = out->template data<T>();
-    memory_utils::Copy(ctx.GetPlace(),
+    memory_utils::Copy(dev_ctx.GetPlace(),
                        out_ptr,
                        phi::CPUPlace(),
                        outs_vec_.data(),
                        num_kept * out_dim * sizeof(T));
     if (return_index) {
       index->Resize({static_cast<int64_t>(num_kept), 1});
-      ctx.template Alloc<int>(index);
+      dev_ctx.template Alloc<int>(index);
       int* out_index_ptr = index->template data<int>();
-      memory_utils::Copy(ctx.GetPlace(),
+      memory_utils::Copy(dev_ctx.GetPlace(),
                          out_index_ptr,
                          phi::CPUPlace(),
                          out_index_vec_.data(),
@@ -199,17 +199,18 @@ void MultiClassNMSKernel(const Context& ctx,
 
   if (return_rois_num) {
     nms_rois_num->Resize({n});
-    ctx.template Alloc<int>(nms_rois_num);
+    dev_ctx.template Alloc<int>(nms_rois_num);
 
     DenseTensor nms_rois_num_cpu;
     nms_rois_num_cpu.Resize({nms_rois_num->numel()});
-    ctx.template HostAlloc<int>(&nms_rois_num_cpu);
+    dev_ctx.template HostAlloc<int>(&nms_rois_num_cpu);
     int* nms_rois_num_cpu_data = nms_rois_num_cpu.data<int>();
 
     for (int64_t i = 1; i <= n; i++) {
       nms_rois_num_cpu_data[i - 1] = batch_starts[i] - batch_starts[i - 1];
     }
-    phi::Copy(ctx, nms_rois_num_cpu, nms_rois_num->place(), true, nms_rois_num);
+    phi::Copy(
+        dev_ctx, nms_rois_num_cpu, nms_rois_num->place(), true, nms_rois_num);
   }
   LegacyLoD lod;
   if (num_kept == 0) {

@@ -28,7 +28,7 @@ namespace phi {
  * @param  out   A Tensor filled with random binary number
  */
 template <typename T, typename Context>
-void BernoulliKernel(const Context& ctx,
+void BernoulliKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      DenseTensor* out);
 

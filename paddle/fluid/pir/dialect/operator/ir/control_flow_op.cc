@@ -1003,13 +1003,13 @@ bool WhileOp::InferSymbolicShape(
     auto yield_input_data_opt = yield_input_shape_or_data.data();
     auto input_data_opt =
         infer_context->GetShapeOrDataForValue(body_args[i]).data();
-    bool const_data_not_euqal =
+    bool const_data_not_equal =
         is_all_const_data(yield_input_data_opt) &&
         (!is_all_const_data(input_data_opt) ||
          is_all_const_data(input_data_opt) &&
              yield_input_data_opt.value() != input_data_opt.value());
     auto result_shape_or_data =
-        const_data_not_euqal
+        const_data_not_equal
             ? symbol::TensorShapeOrDataDimExprs(
                   yield_input_shape_or_data.shape(),
                   creat_new_data(yield_input_data_opt.value().size()))

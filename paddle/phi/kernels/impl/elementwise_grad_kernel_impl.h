@@ -1522,6 +1522,21 @@ void ElementwisePowGradKernel(const Context& dev_ctx,
                               const DenseTensor& dout,
                               DenseTensor* dx,
                               DenseTensor* dy) {
+  if (dout.numel() == 0) {
+    if (dx) {
+      phi::Full<T, Context>(dev_ctx,
+                            phi::IntArray(common::vectorize(x.dims())),
+                            static_cast<T>(0),
+                            dx);
+    }
+    if (dy) {
+      phi::Full<T, Context>(dev_ctx,
+                            phi::IntArray(common::vectorize(y.dims())),
+                            static_cast<T>(0),
+                            dy);
+    }
+    return;
+  }
   funcs::ElementwiseGradPreProcess(dout, dx);
   int axis = -1;
   phi::funcs::ElemwiseGradCompute<Context, T, PowGradDX<T>, PowGradDY<T>>(
