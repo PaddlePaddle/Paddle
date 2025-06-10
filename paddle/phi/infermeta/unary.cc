@@ -6362,11 +6362,12 @@ void IntBincountInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
-void FusedTransposeSpiltQuantInferMeta(const MetaTensor& x,
+void FusedTransposeSplitQuantInferMeta(const MetaTensor& x,
                                        const IntArray& tokens_per_expert,  
                                        bool pow_2_scales,
                                        std::vector<MetaTensor*> outs,
                                        std::vector<MetaTensor*> scales) {  
+  // 检查输入数据类型
   PADDLE_ENFORCE_EQ(x.dtype(),
                     DataType::BFLOAT16,
                     common::errors::InvalidArgument(
@@ -6375,6 +6376,7 @@ void FusedTransposeSpiltQuantInferMeta(const MetaTensor& x,
   
   auto x_dims = x.dims();  
   
+  // 检查输入维度
   PADDLE_ENFORCE_EQ(x_dims.size(),
                     2,
                     common::errors::InvalidArgument(
@@ -6386,38 +6388,78 @@ void FusedTransposeSpiltQuantInferMeta(const MetaTensor& x,
   const int64_t M = x_dims[0];
   const int64_t N = x_dims[1];
 
+  // 获取 tokens_per_expert 数据
   auto tokens_list = tokens_per_expert.GetData();
   const size_t num_experts = tokens_list.size();
 
+  // 验证 experts 数量不为空
+  PADDLE_ENFORCE_GT(num_experts,
+                    0,
+                    common::errors::InvalidArgument(
+                      "tokens_per_expert cannot be empty"));
+
+  // 验证输出容器大小
+  PADDLE_ENFORCE_EQ(outs.size(),
+                    num_experts,
+                    common::errors::InvalidArgument(
+                      "Size of outs (%d) must equal size of tokens_per_expert (%d)",
+                      outs.size(),
+                      num_experts));
+
+  PADDLE_ENFORCE_EQ(scales.size(),
+                    num_experts,
+                    common::errors::InvalidArgument(
+                      "Size of scales (%d) must equal size of tokens_per_expert (%d)",
+                      scales.size(),
+                      num_experts));
+
   int64_t sum_tokens = 0;
-  for(int i = 0; i < num_experts; ++i) {  
-    PADDLE_ENFORCE_EQ(tokens_list[i] % 128,  
+  for(size_t i = 0; i < num_experts; ++i) {  // 使用 size_t 避免类型不匹配
+    const int64_t tokens = tokens_list[i];
+    
+    // 验证 tokens 为正数
+    PADDLE_ENFORCE_GT(tokens,
                       0,
                       common::errors::InvalidArgument(
-                        "The number of tokens per expert must be aligned with 128. "  
-                        "But the current number of tokens for expert %d is [%d]",
-                        i, tokens_list[i]
-                      ));
-    sum_tokens += tokens_list[i];
-    outs[i]->set_dims(common::make_ddim({N, tokens_list[i]}));
-    outs[i]->set_dtype(DataType::FLOAT8_E4M3FN);
-    scales[i]->set_dims(common::make_ddim({tokens_list[i]/128, N}));
-    scales[i]->set_dtype(DataType::FLOAT32);  
+                        "tokens_per_expert[%d] must be positive, but got %d",
+                        i, tokens));
+    
+    // 验证 tokens 是 128 的倍数
+    PADDLE_ENFORCE_EQ(tokens % 128,  
+                      0,
+                      common::errors::InvalidArgument(
+                        "tokens_per_expert[%d] (%d) must be divisible by 128",
+                        i, tokens));
+    
+    sum_tokens += tokens;
+    
+    // 设置输出张量的维度和数据类型
+    if (outs[i] != nullptr) {
+      outs[i]->set_dims(common::make_ddim({N, tokens}));
+      outs[i]->set_dtype(DataType::FLOAT8_E4M3FN);
+      outs[i]->set_layout(x.layout());
+    }
+    
+    if (scales[i] != nullptr) {
+      scales[i]->set_dims(common::make_ddim({tokens/128, N}));
+      scales[i]->set_dtype(DataType::FLOAT32);
+      scales[i]->set_layout(x.layout());
+    }
   }
   
+  // 验证 tokens 总数匹配
   PADDLE_ENFORCE_EQ(sum_tokens,
                     M,
                     common::errors::InvalidArgument(
-                      "The sum of tokens does not match. "  
-                      "tokens list has %d tokens, but "  
-                      "Input(x) has %d tokens",
+                      "Sum of tokens_per_expert (%d) must equal x.shape[0] (%d)",
                       sum_tokens, M)); 
   
-  PADDLE_ENFORCE_EQ(N <= 65535 * 128,
-                    true,
+  // 验证 N 的大小限制 (修复逻辑错误)
+  PADDLE_ENFORCE_LE(N,
+                    65535LL * 128,
                     common::errors::InvalidArgument(
-                      "only supports K <= 65535 * 128"
-                    ));             
+                      "x.shape[1] (%d) must be <= %d",
+                      N, 65535 * 128));             
 }
 
 }  // namespace phi

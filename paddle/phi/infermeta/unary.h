@@ -1031,7 +1031,7 @@ void IntBincountInferMeta(const MetaTensor& x,
                           int64_t dtype,
                           MetaTensor* out);
 
-void FusedTransposeSpiltQuantInferMeta(const MetaTensor& x,
+void FusedTransposeSplitQuantInferMeta(const MetaTensor& x,
                                        const IntArray& tokens_per_expert,
                                        bool pow_2_scales,
                                        std::vector<MetaTensor*> outs,

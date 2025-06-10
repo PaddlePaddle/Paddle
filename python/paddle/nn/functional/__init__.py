@@ -167,6 +167,7 @@ from .vision import (
     pixel_shuffle,
     pixel_unshuffle,
 )
+from .fused_transpose_split_quant import fused_transpose_split_quant
 
 __all__ = [
     'celu',
@@ -217,6 +218,7 @@ __all__ = [
     'dropout3d',
     'alpha_dropout',
     'feature_alpha_dropout',
+    'fused_transpose_split_quant',
     'label_smooth',
     'linear',
     'pad',

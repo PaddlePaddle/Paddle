@@ -38,7 +38,6 @@ from .fused_matmul_bias import (
     fused_linear_activation,
     fused_matmul_bias,
 )
-from .fused_transpose_spilt_quant import fused_transpose_spilt_quant
 from .fused_rms_norm import fused_rms_norm
 from .fused_rms_norm_ext import fused_rms_norm_ext
 from .fused_rotary_position_embedding import fused_rotary_position_embedding
@@ -70,7 +69,6 @@ __all__ = [
     'fused_linear_activation',
     'fused_bias_dropout_residual_layer_norm',
     'fused_dropout_add',
-    'fused_transpose_spilt_quant',
     'fused_rotary_position_embedding',
     'variable_length_memory_efficient_attention',
     "fused_rms_norm",
