@@ -4055,6 +4055,29 @@ class TestLog_ZeroDim(TestLog):
         self.shape = []
 
 
+class TestLog_ZeroSize1(TestLog):
+    def init_shape(self):
+        self.shape = [0]
+
+
+class TestLog_ZeroSize2(TestLog):
+    def init_shape(self):
+        self.shape = [0, 2]
+
+    def init_dtype(self):
+        self.dtype = np.float64
+
+
+class TestLog_ZeroSize3(TestLog):
+    def init_shape(self):
+        self.shape = [1, 100, 0]
+
+
+class TestLog_ZeroSize4(TestLog):
+    def init_shape(self):
+        self.shape = [1, 0, 300, 2]
+
+
 class TestLog2(TestActivation):
     def setUp(self):
         self.op_type = "log2"

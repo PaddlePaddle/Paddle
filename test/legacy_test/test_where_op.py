@@ -147,6 +147,13 @@ class TestWhereOp3(TestWhereOp):
         self.cond = np.array(np.random.randint(2, size=(20, 2, 4)), dtype=bool)
 
 
+class TestWhereOp_ZeroSize(TestWhereOp):
+    def init_config(self):
+        self.x = np.random.uniform((-5), 5, (60, 0)).astype('float64')
+        self.y = np.random.uniform((-5), 5, (60, 0)).astype('float64')
+        self.cond = np.ones((60, 0)).astype('bool')
+
+
 class TestWhereAPI(unittest.TestCase):
     def setUp(self):
         self.init_data()

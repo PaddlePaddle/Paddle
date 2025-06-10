@@ -25,18 +25,18 @@ template <typename T,
           typename Context,
           typename Functor,
           typename InverseFunctor>
-inline void CompareKernelImpl(const Context& ctx,
+inline void CompareKernelImpl(const Context& dev_ctx,
                               const DenseTensor& x,
                               const DenseTensor& y,
                               int axis,
                               DenseTensor* out) {
-  ctx.template Alloc<bool>(out);
+  dev_ctx.template Alloc<bool>(out);
   if (x.dims().size() >= y.dims().size()) {
     funcs::ElementwiseCompute<Functor, T, bool>(
-        ctx, x, y, Functor(), out, axis);
+        dev_ctx, x, y, Functor(), out, axis);
   } else {
     funcs::ElementwiseCompute<InverseFunctor, T, bool>(
-        ctx, x, y, InverseFunctor(), out, axis);
+        dev_ctx, x, y, InverseFunctor(), out, axis);
   }
 }
 
@@ -44,47 +44,47 @@ template <typename T,
           typename Context,
           typename Functor,
           typename InverseFunctor>
-inline void InplaceCompareKernelImpl(const Context& ctx,
+inline void InplaceCompareKernelImpl(const Context& dev_ctx,
                                      const DenseTensor& x,
                                      const DenseTensor& y,
                                      int axis,
                                      DenseTensor* out) {
   auto x_origin = x;
   out->set_type(phi::DataType::BOOL);
-  ctx.template Alloc<bool>(out);
+  dev_ctx.template Alloc<bool>(out);
   if (x_origin.dims().size() >= y.dims().size()) {
     funcs::ElementwiseCompute<Functor, T, bool>(
-        ctx, x_origin, y, Functor(), out, axis);
+        dev_ctx, x_origin, y, Functor(), out, axis);
   } else {
     funcs::ElementwiseCompute<InverseFunctor, T, bool>(
-        ctx, x_origin, y, InverseFunctor(), out, axis);
+        dev_ctx, x_origin, y, InverseFunctor(), out, axis);
   }
 }
 
 template <typename T, typename Context, typename Functor>
-inline void CompareAllKernelImpl(const Context& ctx,
+inline void CompareAllKernelImpl(const Context& dev_ctx,
                                  const DenseTensor& x,
                                  const DenseTensor& y,
                                  DenseTensor* out) {
-  bool* out_data = ctx.template Alloc<bool>(out);
+  bool* out_data = dev_ctx.template Alloc<bool>(out);
 
   if (x.dims() != y.dims()) {
     out_data[0] = false;
   } else {
     DenseTensor tmp;
     tmp.Resize(x.dims());
-    ctx.template Alloc<bool>(&tmp);
+    dev_ctx.template Alloc<bool>(&tmp);
 
     if (x.numel() == 1 && y.numel() == 1) {
       bool* tmp_data = tmp.data<bool>();
       tmp_data[0] = Functor()(x.data<T>()[0], y.data<T>()[0]);
     } else {
       funcs::ElementwiseCompute<Functor, T, bool>(
-          ctx, x, y, Functor(), &tmp, 0);
+          dev_ctx, x, y, Functor(), &tmp, 0);
     }
     auto tmp_flat = EigenVector<bool>::Flatten(tmp);
     auto out_es = EigenScalar<bool>::From(*out);
-    auto& place = *ctx.eigen_device();
+    auto& place = *dev_ctx.eigen_device();
     auto reduce_dim = Eigen::array<int, 1>({{0}});
     out_es.device(place) = tmp_flat.all(reduce_dim);
   }

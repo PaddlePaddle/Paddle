@@ -14,9 +14,9 @@
 
 #pragma once
 
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/impl/kron_kernel_impl.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
-
 namespace phi {
 
 template <typename T>
@@ -260,17 +260,28 @@ struct KronGradOpFunctor {
 };
 
 template <typename T, typename Context>
-void KronGradKernel(const Context &ctx,
+void KronGradKernel(const Context &dev_ctx,
                     const DenseTensor &x,
                     const DenseTensor &y,
                     const DenseTensor &out_grad,
                     DenseTensor *x_grad,
                     DenseTensor *y_grad) {
+  if (out_grad.numel() == 0) {
+    if (x_grad) {
+      phi::Full<T, Context>(
+          dev_ctx, phi::IntArray(common::vectorize(x_grad->dims())), 0, x_grad);
+    }
+    if (y_grad) {
+      phi::Full<T, Context>(
+          dev_ctx, phi::IntArray(common::vectorize(y_grad->dims())), 0, y_grad);
+    }
+    return;
+  }
   if (x_grad) {
-    ctx.template Alloc<T>(x_grad);
+    dev_ctx.template Alloc<T>(x_grad);
   }
   if (y_grad) {
-    ctx.template Alloc<T>(y_grad);
+    dev_ctx.template Alloc<T>(y_grad);
   }
 
   int ndims = out_grad.dims().size();
@@ -292,7 +303,7 @@ void KronGradKernel(const Context &ctx,
   }
 
   KronGradOpFunctor<Context, T> func;
-  func(ctx, out_grad, xx, yy, pdxx, pdyy);
+  func(dev_ctx, out_grad, xx, yy, pdxx, pdyy);
 }
 
 }  // namespace phi

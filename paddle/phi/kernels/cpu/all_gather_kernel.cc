@@ -71,7 +71,7 @@ void AllGatherKernel(const phi::CustomContext& dev_ctx,
       errors::InvalidArgument(
           "nranks: %s should equal to %s", nranks, comm_ctx->GetSize()));
 
-  comm_ctx->AllGather(out, x, *dev_ctx.GetStream());
+  comm_ctx->AllGather(out, x, dev_ctx.stream());
 }
 #endif
 }  // namespace phi

@@ -47,7 +47,7 @@ void BarrierKernel(const Context& dev_ctx,
                                    in->dtype(),
                                    phi::ccl::CCLReduceOp::SUM,
                                    comm->GetXcclComm(),
-                                   *stream);
+                                   stream->raw_stream());
 }
 }  // namespace phi
 

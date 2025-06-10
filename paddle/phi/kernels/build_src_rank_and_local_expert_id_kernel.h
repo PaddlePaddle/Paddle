@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -11,12 +11,17 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+#pragma once
 
-#include "paddle/phi/kernels/nextafter_kernel.h"
+#include "paddle/phi/core/dense_tensor.h"
 
-#include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/impl/nextafter_kernel_impl.h"
-
-PD_REGISTER_KERNEL(
-    nextafter, CPU, ALL_LAYOUT, phi::NextafterKernel, float, double) {}
+namespace phi {
+template <typename T, typename Context>
+void BuildSrcRankAndLocalExpertIdKernel(
+    const Context& dev_ctx,
+    const DenseTensor& expert_num_global_tensor,
+    const std::vector<int64_t>& expert_num_global,
+    int64_t num_local_experts,
+    DenseTensor* src_rank,
+    DenseTensor* local_expert_id);
+}  // namespace phi
