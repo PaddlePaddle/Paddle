@@ -1,26 +1,10 @@
-enable_language(CUDA)
+set(MARLIN_KERNEL_SRCS kernels/kernel_fp16_ku4.cu gptq_marlin/kernel_fp16_ku4.cu)
+nv_library(marlin_kernels SRCS ${MARLIN_KERNEL_SRCS})
 
-set(CUDA_SRCS ops.cu)
-add_subdirectory(kernels)
-
-cc_library(
+nv_library(
   marlin
-  CUDA_SRCS ${CUDA_SRCS}
-  DEPS phi common kernels_lib)
+  SRCS ops.cu
+  DEPS phi common marlin_kernels)
 
-target_include_directories(marlin
-  PUBLIC
-    ${CMAKE_CURRENT_SOURCE_DIR}
-)
-
-set_target_properties(marlin PROPERTIES
-  CXX_STANDARD_REQUIRED ON
-  CUDA_STANDARD_REQUIRED ON
-  CXX_STANDARD 17
-  CUDA_STANDARD 17
-  CUDA_SEPARABLE_COMPILATION ON
-  CUDA_SEPARABLE_COMPILATION ON
-)
-
-# Link CPP and CUDA together
-target_compile_options(marlin PRIVATE -Wno-reorder)
+set_target_properties(marlin PROPERTIES CUDA_SEPARABLE_COMPILATION OFF)
+target_compile_options(marlin PRIVATE -Wno-reorder -Wno-unused-variable)

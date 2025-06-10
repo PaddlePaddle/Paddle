@@ -27,7 +27,7 @@ namespace paddle::pybind {
 void BindMoeWna16MarlinApi(pybind11::module *m) {
 m->def(
     "moe_wna16_marlin_gemm",
-    &deep_ep::detail::moe_wna16_marlin_gemm_api,
+    &moe_wna16_marlin_gemm_api,
     py::arg("a"),
     py::arg("c_or_none") = std::nullopt,
     py::arg("b_q_weight"),

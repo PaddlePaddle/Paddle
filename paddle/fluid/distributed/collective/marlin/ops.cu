@@ -28,6 +28,8 @@
 #include "paddle/fluid/distributed/collective/marlin/moe_ops.h"
 #include "paddle/phi/api/include/api.h"
 
+#include <cuda.h>
+#include <cuda_fp16.h>
 #include <cuda_runtime.h>
 #include <algorithm>
 
@@ -471,7 +473,7 @@ exec_config_t determine_exec_config(const deep_ep::detail::ScalarType& q_type, i
       break;
     } else {
       cudaFuncAttributes attr;
-      cudaFuncGetAttributes(&attr, kernel);
+      cudaFuncGetAttributes(&attr, reinterpret_cast<const void*>(kernel));
       int reg_size = std::max(attr.numRegs, 1) * th_config.num_threads * 4;
       int allow_count = std::min(device_max_reg_size / reg_size,
                             max_shared_mem / (cache_size + 1024));
@@ -648,7 +650,7 @@ void marlin_mm(const void* A, const void* B, void* C, void* C_tmp, void* s,
                 ", num_bits = ", num_bits);
   }
 
-  cudaFuncSetAttribute(kernel, cudaFuncAttributeMaxDynamicSharedMemorySize,
+  cudaFuncSetAttribute(reinterpret_cast<const void*>(kernel), cudaFuncAttributeMaxDynamicSharedMemorySize,
                        max_shared_mem);
   // avoid ">>>" being formatted to "> > >"
   // clang-format off
