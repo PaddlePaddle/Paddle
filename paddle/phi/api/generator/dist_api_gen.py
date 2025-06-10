@@ -563,21 +563,22 @@ CALCULATE_LOCAL_SHAPE_TEMPLATE = """
       auto out_shape = {out_name}->dims();
       std::vector<{dtype}> local_shape;
       const auto& out_dist_attr = {out_dist_attr};
+      const auto& mesh_shape = out_dist_attr.process_mesh().shape();
       for (int i = 0; i < out_shape.size(); i++) {{
-        const auto& dims_mapping = out_dist_attr.dims_mapping_2d();
-        const auto& mesh_shape = out_dist_attr.process_mesh().shape();
-        if (out_dist_attr.dims_mapping()[i] >= 0) {{
+        const auto& dims = out_dist_attr.dims_mapping_2d()[i];
+        if (dims.size() > 0) {{
           {dtype} shape_i = out_shape[i];
-          for (auto dim : dims_mapping[i]) {
-            num_split *= mesh_shape[dim];
-          }
+          int64_t num_shard = 1;
+          for (auto dim : dims) {{
+            num_shard *= mesh_shape[dim];
+          }}
           // TODO: Support aliquant condition.
-          PADDLE_ENFORCE(shape_i % mesh_dim == 0,
+          PADDLE_ENFORCE(shape_i % num_shard == 0,
                 common::errors::InvalidArgument(
                     "{op_name} only support local shape dim is divisible "
                     "by the mesh dim, however local_shape[%lld] is %lld "
-                    "and shard mesh dims is %lld.", i, shape_i, mesh_dim));
-          local_shape.push_back(shape_i / mesh_dim);
+                    "and shard mesh dims is %lld.", i, shape_i, num_shard));
+          local_shape.push_back(shape_i / num_shard);
         }} else {{
           local_shape.push_back(out_shape[i]);
         }}

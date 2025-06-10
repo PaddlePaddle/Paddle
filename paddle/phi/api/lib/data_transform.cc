@@ -738,11 +738,6 @@ std::shared_ptr<phi::distributed::DistTensor> ReshardApiInputToKernelInput(
   if (tensor_in) {
     phi::distributed::DistTensor* dist_tensor =
         static_cast<phi::distributed::DistTensor*>(tensor_in.get());
-    VLOG(4) << "src dist attr " << dist_tensor->dist_attr();
-    VLOG(4) << "target dist attr " << tensor_dist_attr;
-    VLOG(4) << "if need reshard "
-            << ReshardIsNeededWithPartial(dist_tensor->dist_attr(),
-                                          tensor_dist_attr);
     if (ReshardIsNeededWithPartial(dist_tensor->dist_attr(),
                                    tensor_dist_attr)) {
       auto argument_name = (arg_name.empty() ? "tensor" : arg_name);
