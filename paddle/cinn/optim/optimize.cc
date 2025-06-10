@@ -64,7 +64,6 @@ ir::LoweredFunc Optimize(ir::LoweredFunc fn,
   auto copied = ir::ir_utils::IRCopy(fn);
   if (!copied->body.As<ir::Block>()) return copied;
 
-  ReplaceConstParamToInteger(&copied->body);
   // Simplify already contains CastSimplify
   Simplify(&copied->body);
   EliminateInvariantLoop(&copied->body);
