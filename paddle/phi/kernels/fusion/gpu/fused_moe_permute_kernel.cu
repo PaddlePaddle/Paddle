@@ -12,8 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/fusion/gpu/fused_moe_permute.h"
-#include <typeinfo>
+#include "paddle/phi/kernels/fused_moe_permute_kernel.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/full_kernel.h"
@@ -232,18 +231,22 @@ void dispatch_tokens_unzip_stable(const DenseTensor &X,
 }
 
 template <typename T, typename Context>
-void tokens_unzip_stable(const Context &dev_ctx,
-                         const DenseTensor &X,
-                         const paddle::optional<DenseTensor> &XScale,
-                         const DenseTensor &expert_routemap_topk,
-                         const DenseTensor &expert_prob_topk,
-                         const int &topk,
-                         const int &num_experts,
-                         const std::vector<int> &tokens_per_expert,
-                         const int padding_multiplex DenseTensor *X_unzipped,
-                         DenseTensor *zipped_expertwise_rowmap,
-                         DenseTensor *token_prob_unzipped,
-                         DenseTensor *XScale_unzipped) {
+void FusedMoePermuteKernel(const Context &dev_ctx,
+                           const DenseTensor &X,
+                           const paddle::optional<DenseTensor> &XScale,
+                           const DenseTensor &expert_routemap_topk,
+                           const DenseTensor &expert_prob_topk,
+                           const int &topk,
+                           const int &num_experts,
+                           const std::vector<int> &tokens_per_expert,
+                           const int padding_multiplex,
+                           DenseTensor *X_unzipped,
+                           DenseTensor *zipped_expertwise_rowmap,
+                           DenseTensor *token_prob_unzipped,
+                           DenseTensor *XScale_unzipped) {
+  const int rows = X.shape()[0];
+  const int cols = X.shape()[1];
+  const int quanted_cols = (XScale) ? XScale->shape()[1] : 0;
   /*
   const int max_tokens_per_expert =
       ((max_tokens_per_expert_in + 127) / 128) * 128;
@@ -271,67 +274,64 @@ void tokens_unzip_stable(const Context &dev_ctx,
     const int quanted_cols = Scale->dims()[1];
     XScale_unzipped->Resize({output_rows, quanted_cols});
   }
-
   // ------------------------ 缓冲区初始化（适配padding）----------------
-  if (X.dtype() == paddle::DataType::BFLOAT16) {
+  if (X.dtype() == phi::DataType::BFLOAT16) {
+    dev_ctx.template Alloc<phi::dtype::BFLOAT16>(X_unzipped);
     auto X_unzipped_ptr =
-        reinterpret_cast<void *>(X_unzipped.data<phi::bfloat16>());
+        reinterpret_cast<void *>(X_unzipped->data<phi::dtype::bfloat16>());
     cudaMemsetAsync(X_unzipped_ptr,
                     0,
                     sizeof(phi::bfloat16) * output_rows * cols,
-                    X.stream());
-  } else if (X.dtype() == paddle::DataType::FLOAT8_E4M3FN) {
+                    dev_ctx.stream());
+  } else if (X.dtype() == phi::DataType::FLOAT8_E4M3FN) {
     auto X_unzipped_ptr =
-        reinterpret_cast<void *>(X_unzipped.data<phi::float8_e4m3fn>());
+        reinterpret_cast<void *>(X_unzipped->data<phi::dtype::float8_e4m3fn>());
     cudaMemsetAsync(X_unzipped_ptr,
                     0,
                     sizeof(phi::float8_e4m3fn) * output_rows * cols,
-                    X.stream());
+                    dev_ctx.stream());
   }
   if (XScale) {
     auto XScale_unzipped_ptr =
-        reinterpret_cast<void *>(XScale_unzipped.data<float>());
+        reinterpret_cast<void *>(XScale_unzipped->data<float>());
     cudaMemsetAsync(XScale_unzipped_ptr,
                     0,
                     sizeof(float) * output_rows * quanted_cols,
-                    XScale_unzipped.stream());
+                    dev_ctx.stream());
   }
-  if (expert_prob_topk.dtype() == paddle::DataType::BFLOAT16) {
-    auto token_prob_unzipped_ptr =
-        reinterpret_cast<void *>(token_prob_unzipped.data<phi::bfloat16>());
+  if (expert_prob_topk.dtype() == phi::DataType::BFLOAT16) {
+    auto token_prob_unzipped_ptr = reinterpret_cast<void *>(
+        token_prob_unzipped.data<phi::dtype::bfloat16>());
     cudaMemsetAsync(token_prob_unzipped_ptr,
                     0,
                     sizeof(phi::bfloat16) * output_rows,
-                    token_prob_unzipped.stream());
-  } else if (expert_prob_topk.dtype() == paddle::DataType::FLOAT32) {
+                    dev_ctx.stream());
+  } else if (expert_prob_topk.dtype() == phi::DataType::FLOAT32) {
     auto token_prob_unzipped_ptr =
         reinterpret_cast<void *>(token_prob_unzipped.data<float>());
     cudaMemsetAsync(token_prob_unzipped_ptr,
                     0,
                     sizeof(float) * output_rows,
-                    token_prob_unzipped.stream());
+                    dev_ctx.stream());
   }
   // ------------ 前缀和辅助数组相关逻辑，“推”式block通信 -------------------
+  // 设置为非法值CUMSUM_INVALID_TAG，用于线程块等待时使用
   const int cumsum_blocknum =
       (rows + CUMSUM_BLOCK_SIZE - 1) / CUMSUM_BLOCK_SIZE;
-  auto global_expertwise_block_cumsum = paddle::empty(
-      {cumsum_blocknum + 1, num_experts}, paddle::DataType::INT32, X.place());
-  auto global_expertwise_block_cumsum_ptr =
-      reinterpret_cast<void *>(global_expertwise_block_cumsum.data<int>());
-  // 设置为非法值CUMSUM_INVALID_TAG，用于线程块等待时使用
-  cudaMemsetAsync(global_expertwise_block_cumsum_ptr,
-                  CUMSUM_INVALID_TAG,
-                  sizeof(int) * (cumsum_blocknum + 1) * num_experts,
-                  global_expertwise_block_cumsum.stream());
+  DenseTensor *global_expertwise_block_cumsum;
+  phi::Full<int, Context>(dev_ctx,
+                          phi::IntArray({cumsum_blocknum + 1, num_experts}),
+                          CUMSUM_INVALID_TAG,
+                          global_expertwise_block_cumsum);
   dispatch_tokens_unzip_stable(X,
                                expert_routemap_topk,
                                expert_prob_topk,
                                XScale,
                                expert_offset,
-                               X_unzipped,
-                               zipped_expertwise_rowmap,
-                               token_prob_unzipped,
-                               XScale_unzipped,
+                               *X_unzipped,
+                               *zipped_expertwise_rowmap,
+                               *token_prob_unzipped,
+                               *XScale_unzipped,
                                global_expertwise_block_cumsum,
                                rows,
                                cols,
@@ -341,3 +341,12 @@ void tokens_unzip_stable(const Context &dev_ctx,
 }
 
 }  // namespace phi
+
+PD_REGISTER_KERNEL(fused_moe_permute,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::FusedMoePermuteKernel,
+                   float,
+                   double,
+                   phi::dtype::bfloat16,
+                   phi::dtype::float8_e4m3fn) {}

@@ -2361,6 +2361,16 @@
   backward : fused_bn_add_activation_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
+- op : fused_moe_permute
+  args : (Tensor X, Tensor XScale, Tensor expert_routemap, Tensor expert_prob_topk, int topk, int num_experts, int[] tokens_per_experts, int padding_multiplex)
+  output : Tensor(X_unzipoed), Tensor(zipped_expertwise_rowmap), Tensor(token_prob_unzipped), Tensor(XScale_unzipped)
+  infer_meta:
+    func : FusedMoePermuteInferMeta
+  kernel :
+    func : fused_moe_permute
+    data_type : X
+  optional : XScale
+
 - op : fused_softmax_mask
   args : (Tensor x, Tensor mask)
   output : Tensor(out)
