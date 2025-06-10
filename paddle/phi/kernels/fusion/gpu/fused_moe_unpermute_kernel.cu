@@ -12,14 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/fusion/gpu/fused_moe_permute_utils.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
+// #include "paddle/phi/kernels/fused_moe_unpermute_kernel.h"
+#include "paddle/phi/kernels/gpu/fused_moe_permute_utils.h"
 
+namespace phi {
+namespace fusion {
 #ifndef MAX_NUM_EXPERTS
 #define MAX_NUM_EXPERTS 8
 #endif
-
-namespace phi {
-
 template <bool MP = true>
 __global__ void tokens_zip_kernel(
     const phi::bfloat16 *__restrict__ unzipped_tokens_in,
@@ -278,64 +281,14 @@ __global__ void tokens_zip_kernel(
   }
 }
 
-__global__ void tokens_zip_kernel(
-    const float *__restrict__ unzipped_tokens,
-    const int *__restrict__ zipped_expertwise_rowmap,
-    const int *__restrict__ expert_routemap_topk,
-    const float *__restrict__ unzipped_token_probs,
-    float *__restrict__ zipped_tokens,
-    float *__restrict__ zipped_probs_topk,
-    const int total_zipped_tokens_num,
-    const int token_length,
-    const int num_experts,
-    const int topk) {
-  const int this_row = blockIdx.x;
-  if (this_row >= total_zipped_tokens_num) return;
-  int local_row_fetchlist[MAX_NUM_EXPERTS];
-
-// -------------------------初始化任务表 ------------------------
-#pragma unroll
-  for (int expert = 0; expert < num_experts; ++expert) {
-    const int fetch_row =
-        zipped_expertwise_rowmap[this_row * num_experts + expert];
-    local_row_fetchlist[expert] = fetch_row;
-  }
-
-#pragma unroll
-  for (int k = 0; k < topk; ++k) {
-    const int expert_idx = expert_routemap_topk[this_row * topk + k];
-    if (expert_idx < 0) [[likely]]
-      continue;
-    const int expert_fetch_row = local_row_fetchlist[expert_idx];
-    zipped_probs_topk[this_row * topk + k] =
-        unzipped_token_probs[expert_fetch_row];
-  }
-
-  const int thread_stride = blockDim.x;
-
-  // ------------------------ 手动混合精度 ---------------------------------
-  // 齐整区域向量化搬移
-  for (int x_offset = threadIdx.x; x_offset < token_length;
-       x_offset += thread_stride) {
-    float sum = 0.0f;
-#pragma unroll
-    for (int expert = 0; expert < num_experts; ++expert) {
-      const int fetch_row = local_row_fetchlist[expert];
-      if (fetch_row < 0) continue;
-      // 手动类型提升
-      sum += unzipped_tokens[(int64_t)fetch_row * (int64_t)token_length +
-                             x_offset];
-    }
-    zipped_tokens[(int64_t)this_row * (int64_t)token_length + x_offset] = sum;
-  }
-}
-
-void dispatch_tokens_zip(const paddle::Tensor &unzipped_tokens,
-                         const paddle::Tensor &zipped_expertwise_rowmap,
-                         const paddle::Tensor &expert_routemap_topk,
-                         const paddle::Tensor &unzipped_token_probs,
-                         paddle::Tensor &zipped_tokens,
-                         paddle::Tensor &zipped_probs_topk,
+template<typename T, typename Context>
+void dispatch_tokens_zip(Context& dev_ctx,
+                         const DenseTensor &unzipped_tokens,
+                         const DenseTensor &zipped_expertwise_rowmap,
+                         const DenseTensor &expert_routemap_topk,
+                         const DenseTensor &unzipped_token_probs,
+                         DenseTensor &zipped_tokens,
+                         DenseTensor &zipped_probs_topk,
                          const int total_zipped_tokens_num,
                          const int num_experts,
                          const int token_length,
@@ -348,7 +301,7 @@ void dispatch_tokens_zip(const paddle::Tensor &unzipped_tokens,
 
   if (unzipped_tokens.dtype() == paddle::DataType::BFLOAT16) {
     if (zipped_probs_topk.dtype() == paddle::DataType::FLOAT32) {
-      tokens_zip_kernel<<<grid, block, 0, unzipped_tokens.stream()>>>(
+      tokens_zip_kernel<<<grid, block, 0, dev_ctx.stream()>>>(
           unzipped_tokens.data<phi::bfloat16>(),
           zipped_expertwise_rowmap.data<int>(),
           expert_routemap_topk.data<int>(),
@@ -359,81 +312,62 @@ void dispatch_tokens_zip(const paddle::Tensor &unzipped_tokens,
           token_length,
           num_experts,
           topk);
-    } else if (zipped_probs_topk.dtype() == paddle::DataType::BFLOAT16) {
-      tokens_zip_kernel<<<grid, block, 0, unzipped_tokens.stream()>>>(
-          unzipped_tokens.data<phi::bfloat16>(),
-          zipped_expertwise_rowmap.data<int>(),
-          expert_routemap_topk.data<int>(),
-          unzipped_token_probs.data<phi::bfloat16>(),
-          zipped_tokens.data<phi::bfloat16>(),
-          zipped_probs_topk.data<phi::bfloat16>(),
-          total_zipped_tokens_num,
-          token_length,
-          num_experts,
-          topk);
     }
-  } else if (unzipped_tokens.dtype() == paddle::DataType::FLOAT32) {
-    tokens_zip_kernel<<<grid, block, 0, unzipped_tokens.stream()>>>(
-        unzipped_tokens.data<float>(),
-        zipped_expertwise_rowmap.data<int>(),
-        expert_routemap_topk.data<int>(),
-        unzipped_token_probs.data<float>(),
-        zipped_tokens.data<float>(),
-        zipped_probs_topk.data<float>(),
-        total_zipped_tokens_num,
-        token_length,
-        num_experts,
-        topk);
   }
 }
 
 template <typename T, typename Context>
-void tokens_zip(const Context &dev_ctx,
+void FusedMoeUnpermuteKernel(const Context &dev_ctx,
                 const DenseTensor &unzipped_tokens,
                 const DenseTensor &zipped_expertwise_rowmap,
                 const DenseTensor &expert_routemap_topk,
                 const DenseTensor &unzipped_token_probs,
                 const int &total_zipped_tokens_num,
-                const int &num_experts DenseTensor *zipped_tokens,
+                const int &num_experts,
+                DenseTensor *zipped_tokens,
                 DenseTensor *zipped_probs_topk) {
-  const int rows = unzipped_tokens.shape()[0];       // seqlen
-  const int cols = unzipped_tokens.shape()[1];       // 一般为7168
-  const int topk = expert_routemap_topk.shape()[1];  // 一般为8
-  // ----------------------- 0初始化 zipped_probs_topk ------------------
-  if (unzipped_token_probs.dtype() == phi::DataType::FLOAT32) {
-    void *zipped_probs_topk_ptr =
-        reinterpret_cast<void *>(zipped_probs_topk.data<float>());
-    cudaMemsetAsync(zipped_probs_topk_ptr,
-                    0,
-                    sizeof(float) * total_zipped_tokens_num * topk,
-                    unzipped_token_devprobs.stream());
-  } else if (unzipped_token_probs.dtype() == paddle::DataType::BFLOAT16) {
-    void *zipped_probs_topk_ptr =
-        reinterpret_cast<void *>(zipped_probs_topk.data<phi::bfloat16>());
-    cudaMemsetAsync(zipped_probs_topk_ptr,
-                    0,
-                    sizeof(phi::bfloat16) * total_zipped_tokens_num * topk,
-                    unzipped_token_probs.stream());
-  }
+  // const int rows = unzipped_tokens.dims()[0]; 
+  // const int cols = unzipped_tokens.dims()[1];
+  // const int topk = expert_routemap_topk.dims()[1];
+  // // ----------------------- 0初始化 zipped_probs_topk ------------------
+  // dev_ctx.template Alloc<phi::dtype::bfloat16>(zipped_tokens);
+  // if (unzipped_token_probs.dtype() == phi::DataType::FLOAT32) {
+  //   dev_ctx.template Alloc<float>(zipped_probs_topk);
+  //   void *zipped_probs_topk_ptr =
+  //       reinterpret_cast<void *>(zipped_probs_topk->data<float>());
+  //   // cudaMemsetAsync(zipped_probs_topk_ptr,
+  //   //                 0,
+  //   //                 sizeof(float) * total_zipped_tokens_num * topk,
+  //   //                 dev_ctx.stream());
+  // } else if (unzipped_token_probs.dtype() == phi::DataType::BFLOAT16) {
+  //   dev_ctx.template Alloc<phi::dtype::bfloat16>(zipped_probs_topk);
+  //   void *zipped_probs_topk_ptr =
+  //       reinterpret_cast<void *>(zipped_probs_topk->data<phi::bfloat16>());
+    // cudaMemsetAsync(zipped_probs_topk_ptr,
+    //                 0,
+    //                 sizeof(phi::bfloat16) * total_zipped_tokens_num * topk,
+    //                 dev_ctx.stream());
+  // }
 
-  dispatch_tokens_zip(unzipped_tokens,
-                      zipped_expertwise_rowmap,
-                      expert_routemap_topk,
-                      unzipped_token_probs,
-                      zipped_tokens,
-                      zipped_probs_topk,
-                      total_zipped_tokens_num,
-                      num_experts,
-                      cols,
-                      topk);
+  // dispatch_tokens_zip<T, Context>(dev_ctx,
+  //                     unzipped_tokens,
+  //                     zipped_expertwise_rowmap,
+  //                     expert_routemap_topk,
+  //                     unzipped_token_probs,
+  //                     zipped_tokens,
+  //                     zipped_probs_topk,
+  //                     total_zipped_tokens_num,
+  //                     num_experts,
+  //                     cols,
+  //                     topk);
+}
 }
 }  // namespace phi
 
 PD_REGISTER_KERNEL(fused_moe_unpermute,
                    GPU,
                    ALL_LAYOUT,
-                   phi::FusedMo,
+                   phi::fusion::FusedMoeUnpermuteKernel,
                    float,
-                   double,
                    phi::dtype::bfloat16,
                    phi::dtype::float8_e4m3fn) {}

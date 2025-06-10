@@ -2372,7 +2372,7 @@
   optional : XScale
 
 - op : fused_moe_unpermute
-  args : (Tensor unzipped_tokens, Tensor zipped_expertwise_rowmap, Tensor expert_routemap_topk, Tensor unzipped_token_probs, int total_zipped_tokens_num, int num_experts
+  args : (Tensor unzipped_tokens, Tensor zipped_expertwise_rowmap, Tensor expert_routemap_topk, Tensor unzipped_token_probs, int total_zipped_tokens_num, int num_experts)
   output : Tensor(zipped_tokens), Tensor(zipped_probs_topk)
   infer_meta :
     func : FusedMoeUnpermuteInferMeta

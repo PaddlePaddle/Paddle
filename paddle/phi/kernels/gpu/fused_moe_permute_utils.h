@@ -23,6 +23,7 @@
 
 #include "paddle/phi/kernels/funcs/math_cuda_utils.h"
 
+namespace phi {
 // 简单的类型提取
 template <paddle::DataType DType>
 struct TypeMap;
@@ -104,3 +105,4 @@ __device__ __forceinline__ void vectorized_memcpy(const T* src,
     }
   }
 }
+}  //namespace phi
