@@ -167,6 +167,12 @@ class TestAngleAPI(unittest.TestCase):
         np.testing.assert_allclose(self.out, out_np, rtol=1e-05)
 
 
+class TestAngleAPIWithNan(TestAngleAPI):
+    def setUp(self):
+        self.x = np.array([np.nan, 1j * np.inf, np.inf, 1j * np.nan, 1])
+        self.out = np.angle(self.x)
+
+
 class TestZeroSize(unittest.TestCase):
     def setUp(self):
         self.x = np.random.randn(2, 0) + 1j * np.random.randn(2, 0)
