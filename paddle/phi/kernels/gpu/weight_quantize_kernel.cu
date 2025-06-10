@@ -116,8 +116,8 @@ void WeightQuantizeKernel(const Context& dev_ctx,
 #endif
   } else if (algo == "w4a8") {
     weight_permute_gpu_w4a8<Context>(dev_ctx,
-                                     x.data<int8_t>(),
-                                     out->data<int8_t>(),
+                                     x.data<uint8_t>(),
+                                     out->data<uint8_t>(),
                                      weight_shape,
                                      arch,
                                      algo);
