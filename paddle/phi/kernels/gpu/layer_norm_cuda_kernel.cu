@@ -46,6 +46,7 @@ void RMSLnFwd(const Context &dev_ctx,
   int rows, cols;
   GetRowsCols(common::vectorize(x.dims()), &rows, &cols);
   dev_ctx.template Alloc<T>(y);
+  invvar->Resize({rows});
   dev_ctx.template Alloc<float>(invvar);
   cuda_rms_norm<T, Context>(dev_ctx, x, scale, rows, cols, epsilon, y, invvar);
 }
@@ -73,7 +74,6 @@ void RMSLnBwd(const Context &dev_ctx,
                                      epsilon,
                                      x_grad,
                                      scale_grad);
-  printf("kernel over\n");
 }
 
 }  // namespace phi

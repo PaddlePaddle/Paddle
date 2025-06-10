@@ -4652,7 +4652,7 @@ void FusedRMSNormInferMeta(const MetaTensor& x,
   y->set_dtype(x.dtype());
   // mean & invvar: 1-D length = x.dims()[0]
   int64_t rows = x.dims()[0];
-  invvar->set_dims(DDim({rows}));
+  invvar->set_dims(DDim({-1}));
   invvar->set_dtype(DataType::FLOAT32);
 }
 
