@@ -136,4 +136,4 @@ PD_REGISTER_KERNEL(weight_quantize,
                    phi::WeightQuantizeKernel,
                    phi::dtype::float16,
                    phi::dtype::bfloat16,
-                   int8_t) {}
+                   uint8_t) {}
