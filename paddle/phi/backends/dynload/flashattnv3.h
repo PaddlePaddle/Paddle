@@ -217,6 +217,14 @@ FLASHATTN_V3_HANDLE_ROUTINE(skip_scheduler_metadata_computation)
 FLASHATTN_V3_HANDLE_ROUTINE(arch)
 FLASHATTN_V3_HANDLE_ROUTINE(num_sm)
 
+FLASHATTN_V3_HANDLE_ROUTINE(h_flashmask)
+FLASHATTN_V3_HANDLE_ROUTINE(h_h_flashmask_ratio)
+FLASHATTN_V3_HANDLE_ROUTINE(lt_start_ptr)
+FLASHATTN_V3_HANDLE_ROUTINE(lt_end_ptr)
+FLASHATTN_V3_HANDLE_ROUTINE(ut_start_ptr)
+FLASHATTN_V3_HANDLE_ROUTINE(ut_end_ptr)
+FLASHATTN_V3_HANDLE_ROUTINE(flashmask_maxmin_ptr)
+
 #define FLASHATTN_V3_BWD_HANDLE_ROUTINE(type, member)                  \
   DECLARE_DYNAMIC_LOAD_FLASHATTN_V3_WRAP(fa3_bwd_params_get_##member); \
   DECLARE_DYNAMIC_LOAD_FLASHATTN_V3_WRAP(fa3_bwd_params_set_##member);

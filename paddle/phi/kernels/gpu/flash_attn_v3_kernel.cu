@@ -76,6 +76,7 @@ void FlashAttnV3BaseKernel(
     const paddle::optional<DenseTensor> &k_descale_,  // (b, h_k)
     const paddle::optional<DenseTensor> &v_descale_,  // (b, h_k)
     const paddle::optional<DenseTensor> &scheduler_metadata_,  // (b + 1)
+    const paddle::optional<DenseTensor> &startend_row_indices_,
     const int
         max_seqlen_q_,  // if max_seqlen_q_ is set to 0, it indicates that it is
                         // uninitialized and should not be referenced
@@ -893,6 +894,108 @@ void FlashAttnV3BaseKernel(
           "This flash attention build does not support appending KV."));
 #endif
 
+  // flashmask
+  bool const is_flashmask = startend_row_indices_.is_initialized();
+  DenseTensor startend_row_indices;
+  if (is_flashmask) startend_row_indices = startend_row_indices_.get();
+  DenseTensor flashmask_maxmin, lt_start_row_indices, lt_end_row_indices,
+      ut_start_row_indices, ut_end_row_indices;
+  if (is_flashmask) {
+    PADDLE_ENFORCE_EQ(
+        startend_row_indices.dims().size(),
+        4,
+        common::errors::InvalidArgument(
+            "flashmask_attention receive startend_row_indices with dim "
+            "[batch_size, num_heads,seq_len, mask_bounds]"));
+    PADDLE_ENFORCE_EQ(startend_row_indices.dims()[3] == 1 ||
+                          startend_row_indices.dims()[3] == 2 ||
+                          startend_row_indices.dims()[3] == 4,
+                      true,
+                      common::errors::InvalidArgument(
+                          "flashmask_attention startend_row_indices "
+                          "mask_bounds must in [1,2,4]"));
+
+    auto flashmask_maxmin_shape = startend_row_indices.dims();
+    // TODO(umiswing): refine this block constraint (kBlockN % 32), since some
+    // of kBlockN is not divisible by 32 flashmask_maxmin_shape[2] =
+    // (flashmask_maxmin_shape[2] + 31) / 32 * 8;
+    flashmask_maxmin_shape[2] = (flashmask_maxmin_shape[2] + 31) / 32;
+    flashmask_maxmin_shape[3] = 8;
+
+    flashmask_maxmin.set_type(phi::DataType::INT32);
+    flashmask_maxmin.Resize(flashmask_maxmin_shape);
+    ctx.template Alloc<int32_t>(&flashmask_maxmin);
+
+    lt_start_row_indices =
+        phi::Slice<int32_t>(ctx, startend_row_indices, {3}, {0}, {1});
+    if (startend_row_indices.dims()[3] == 2) {
+      if (!is_causal) {
+        ut_end_row_indices =
+            phi::Slice<int32_t>(ctx, startend_row_indices, {3}, {1}, {2});
+      } else {
+        lt_end_row_indices =
+            phi::Slice<int32_t>(ctx, startend_row_indices, {3}, {1}, {2});
+      }
+    } else if (startend_row_indices.dims()[3] == 4) {
+      ut_end_row_indices =
+          phi::Slice<int32_t>(ctx, startend_row_indices, {3}, {3}, {4});
+      lt_end_row_indices =
+          phi::Slice<int32_t>(ctx, startend_row_indices, {3}, {1}, {2});
+      ut_start_row_indices =
+          phi::Slice<int32_t>(ctx, startend_row_indices, {3}, {2}, {3});
+    }
+  }
+
+  if (is_flashmask) {
+    if (lt_start_row_indices.initialized())
+      dynload::fa3_fwd_params_set_lt_start_ptr(
+          params_handle,
+          const_cast<int32_t *>(lt_start_row_indices.data<int32_t>()));
+    else
+      dynload::fa3_fwd_params_set_lt_start_ptr(params_handle, nullptr);
+
+    if (lt_end_row_indices.initialized())
+      dynload::fa3_fwd_params_set_lt_end_ptr(
+          params_handle,
+          const_cast<int32_t *>(lt_end_row_indices.data<int32_t>()));
+    else
+      dynload::fa3_fwd_params_set_lt_end_ptr(params_handle, nullptr);
+
+    if (ut_start_row_indices.initialized())
+      dynload::fa3_fwd_params_set_ut_start_ptr(
+          params_handle,
+          const_cast<int32_t *>(ut_start_row_indices.data<int32_t>()));
+    else
+      dynload::fa3_fwd_params_set_ut_start_ptr(params_handle, nullptr);
+
+    if (ut_end_row_indices.initialized())
+      dynload::fa3_fwd_params_set_ut_end_ptr(
+          params_handle,
+          const_cast<int32_t *>(ut_end_row_indices.data<int32_t>()));
+    else
+      dynload::fa3_fwd_params_set_ut_end_ptr(params_handle, nullptr);
+
+    if (flashmask_maxmin.initialized())
+      dynload::fa3_fwd_params_set_flashmask_maxmin_ptr(
+          params_handle,
+          const_cast<int32_t *>(flashmask_maxmin.data<int32_t>()));
+    else
+      dynload::fa3_fwd_params_set_flashmask_maxmin_ptr(params_handle, nullptr);
+
+    dynload::fa3_fwd_params_set_h_flashmask(params_handle,
+                                            startend_row_indices.dims()[1]);
+    dynload::fa3_fwd_params_set_h_h_flashmask_ratio(
+        params_handle, head_size / startend_row_indices.dims()[1]);
+  } else {
+    dynload::fa3_fwd_params_set_lt_start_ptr(params_handle, nullptr);
+    dynload::fa3_fwd_params_set_lt_end_ptr(params_handle, nullptr);
+    dynload::fa3_fwd_params_set_ut_start_ptr(params_handle, nullptr);
+    dynload::fa3_fwd_params_set_ut_end_ptr(params_handle, nullptr);
+    dynload::fa3_fwd_params_set_flashmask_maxmin_ptr(params_handle, nullptr);
+    dynload::fa3_fwd_params_set_h_flashmask(params_handle, 0);
+    dynload::fa3_fwd_params_set_h_h_flashmask_ratio(params_handle, 0);
+  }
+
   if (total_q > 0 &&
       (total_k + dynload::fa3_fwd_params_get_total_knew(params_handle)) > 0 &&
       num_heads_k > 0) {
@@ -1050,6 +1153,7 @@ void FlashAttnV3Kernel(const Context &ctx,
                                     k_descale_,
                                     v_descale_,
                                     paddle::none,  // scheduler_metadata
+                                    paddle::none,  // startend_row_indices
                                     0,             // max_seqlen_q_
                                     0,             // max_seqlen_k_
                                     softmax_scale,
@@ -1174,6 +1278,7 @@ void FlashAttnVarlenV3Kernel(const Context &ctx,
                                     k_descale,
                                     v_descale,
                                     paddle::none,  // scheduler_metadata
+                                    paddle::none,  // startend_row_indices
                                     max_seqlen_q,  // max_seqlen_q_
                                     max_seqlen_k,  // max_seqlen_k_
                                     softmax_scale,
@@ -1186,6 +1291,64 @@ void FlashAttnVarlenV3Kernel(const Context &ctx,
                                     manual_set_pack_gqa,
                                     pack_gqa,
                                     sm_margin,
+                                    out,
+                                    softmax_lse,
+                                    &out_accum,
+                                    &softmax_lse_accum);
+
+#else
+  RaiseNotSupportedError();
+#endif
+}
+
+template <typename T, typename Context>
+void FlashMaskV2Kernel(const Context &ctx,
+                       const DenseTensor &q,
+                       const DenseTensor &k,
+                       const DenseTensor &v,
+                       const DenseTensor &startend_row_indices,
+                       const float softmax_scale,
+                       bool is_causal,
+                       DenseTensor *out,
+                       DenseTensor *softmax_lse) {
+#ifdef PADDLE_WITH_FLASHATTN_V3
+  DenseTensor out_accum;
+  DenseTensor softmax_lse_accum;
+  FlashAttnV3BaseKernel<T, Context>(ctx,
+                                    q,
+                                    k,
+                                    v,
+                                    paddle::none,  // k_new_
+                                    paddle::none,  // v_new_
+                                    paddle::none,  // q_v_
+                                    paddle::none,  // out_
+                                    paddle::none,  // cu_seqlens_q_
+                                    paddle::none,  // cu_seqlens_k_
+                                    paddle::none,  // cu_seqlens_k_new_
+                                    paddle::none,  // seqused_q_
+                                    paddle::none,  // seqused_k_
+                                    paddle::none,  // page_table_
+                                    paddle::none,  // kv_batch_idx_
+                                    paddle::none,  // leftpad_k_
+                                    paddle::none,  // rotary_cos_
+                                    paddle::none,  // rotary_sin_
+                                    paddle::none,  // q_descale_
+                                    paddle::none,  // k_descale_
+                                    paddle::none,  // v_descale_
+                                    paddle::none,  // scheduler_metadata_
+                                    startend_row_indices,
+                                    0,  // max_seqlen_q_
+                                    0,  // max_seqlen_k_
+                                    softmax_scale,
+                                    is_causal,
+                                    -1,        // window_size_left
+                                    -1,        // window_size_right
+                                    float{0},  // softcap
+                                    true,      // is_rotary_interleaved
+                                    1,         // num_splits
+                                    false,     // manual_set_pack_gqa
+                                    false,     // pack_gqa_
+                                    0,         // sm_margin
                                     out,
                                     softmax_lse,
                                     &out_accum,
@@ -1209,5 +1372,12 @@ PD_REGISTER_KERNEL(flash_attn_varlen_v3,
                    GPU,
                    ALL_LAYOUT,
                    phi::FlashAttnVarlenV3Kernel,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
+
+PD_REGISTER_KERNEL(flashmask_attention_v2,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::FlashMaskV2Kernel,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}
