@@ -743,20 +743,13 @@ def _to_tensor_non_static(
                         else 'complex128'
                     )
                 if convert_dtype(default_type) != convert_dtype(data.dtype):
-                    if convert_dtype(default_type) in ['uint16']:
-                        dtype = 'bfloat16'
-                    else:
-                        data = data.astype(convert_dtype(default_type))
+                    dtype = default_type
             # Windows default type is 'int32', while Linux/Mac is 'int64'. Unify they.
             if data.dtype in ['int32']:
                 data = data.astype("int64")
 
-    if dtype:
-        if (
-            convert_dtype(dtype) == 'uint16'
-            and 'bfloat16' in str(dtype)
-            and isinstance(data, np.ndarray)
-        ):
+    if dtype and convert_dtype(dtype) != convert_dtype(data.dtype):
+        if convert_dtype(dtype) == 'uint16':
             tensor = core.eager.Tensor(
                 value=data,
                 place=place,
@@ -769,8 +762,7 @@ def _to_tensor_non_static(
             tensor.stop_gradient = stop_gradient
             return tensor
         else:
-            if convert_dtype(dtype) != convert_dtype(data.dtype):
-                data = data.astype(convert_dtype(dtype))
+            data = data.astype(convert_dtype(dtype))
 
     if isinstance(data, np.ndarray):
         return core.eager.Tensor(
