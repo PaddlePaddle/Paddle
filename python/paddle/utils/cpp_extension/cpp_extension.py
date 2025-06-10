@@ -819,6 +819,19 @@ class BuildExtension(build_ext):
                     op_name, so_name=so_name, so_path=so_path
                 )
 
+    def _clean_intermediate_files(self):
+        for ext in self.extensions:
+            build_dir = os.path.dirname(self.get_ext_fullpath(ext.name))
+            for root, _, files in os.walk(build_dir):
+                for file in files:
+                    if file.endswith(".cu.o") or file.endswith('.o'):
+                        os.remove(os.path.join(root, file))
+                        print(f"Removed: {os.path.join(root, file)}")
+
+    def run(self):
+        super().run()
+        self._clean_intermediate_files()
+
 
 class EasyInstallCommand(easy_install):
     """

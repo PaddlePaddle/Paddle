@@ -495,6 +495,9 @@ void ConvCudnnKernel(const Context& dev_ctx,
                  : phi::backends::gpu::DataLayout::kNCDHW;
   }
 
+  CUDNN_ENFORCE_TENSOR_SIZE_SUPPORTED(transformed_input);
+  CUDNN_ENFORCE_TENSOR_SIZE_SUPPORTED(transformed_filter_channel);
+  CUDNN_ENFORCE_TENSOR_SIZE_SUPPORTED(transformed_output);
 #ifdef PADDLE_WITH_CUDNN_FRONTEND
   if (dynload::IsCudnnFrontendEnabled() && (groups == 1))
     ConvCudnnKernelImplV8<T>(&transformed_input,
