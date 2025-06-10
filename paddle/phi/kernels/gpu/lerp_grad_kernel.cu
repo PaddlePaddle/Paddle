@@ -127,6 +127,7 @@ void SwitchKernel(const Context& dev_ctx,
     const T* out_grad_data = out_grad.data<T>();
     const int64_t out_size = out_grad.numel();
     const int64_t weight_size = weight.numel();
+
     auto gpu_config =
         phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, out_size);
     LerpGradScalarKernelImpl<T><<<gpu_config.GetGridSize(),
