@@ -162,7 +162,7 @@ class TestMaxMinAmaxAminAPI_AxisWithOne3(TestMaxMinAmaxAminAPI):
         self.x_np = np.random.randn(1, 1, 10).astype(np.float32)
         self.shape = [1, 1, 10]
         self.dtype = 'float32'
-        self.axis = [0, 1]
+        self.axis = (0, 1)
         self.keepdim = False
 
 
