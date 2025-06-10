@@ -94,6 +94,7 @@ from .flash_attention import (
     scaled_dot_product_attention,
     sdp_kernel,  # noqa: F401
 )
+from .fused_transpose_split_quant import fused_transpose_split_quant
 from .input import (
     embedding,
     embedding_renorm_,  # noqa: F401
@@ -167,7 +168,6 @@ from .vision import (
     pixel_shuffle,
     pixel_unshuffle,
 )
-from .fused_transpose_split_quant import fused_transpose_split_quant
 
 __all__ = [
     'celu',

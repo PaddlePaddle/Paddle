@@ -1,9 +1,22 @@
+// Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
-
-#include "quant_utils.h"
+#include "paddle/phi/kernels/fusion/gpu/quant_utils.h"
 
 namespace phi {
 
@@ -196,15 +209,14 @@ __global__ void __launch_bounds__(1024)
       out_ptrs[expert_idx], off_m, tokens_per_expert[expert_idx], shm, K);
 }
 
-
-
 template <typename T, typename Context>
-void FusedTransposeSplitQuantKernel(const Context& dev_ctx,
-                                    const DenseTensor& x,
-                                    const std::vector<int64_t>& tokens_per_expert,
-                                    bool pow_2_scales,
-                                    std::vector<DenseTensor*> outs,
-                                    std::vector<DenseTensor*> scales) {
+void FusedTransposeSplitQuantKernel(
+    const Context& dev_ctx,
+    const DenseTensor& x,
+    const std::vector<int64_t>& tokens_per_expert,
+    bool pow_2_scales,
+    std::vector<DenseTensor*> outs,
+    std::vector<DenseTensor*> scales) {
   auto x_dims = x.dims();
   const int64_t M = x_dims[0];
   const int64_t K = x_dims[1];
@@ -226,23 +238,27 @@ void FusedTransposeSplitQuantKernel(const Context& dev_ctx,
   DenseTensor meta_cpu;
   meta_cpu.Resize({static_cast<int64_t>(num_experts * 3)});
   dev_ctx.template HostAlloc<int64_t>(&meta_cpu);
-  
+
   int64_t* meta_ptr = meta_cpu.data<int64_t>();
-  
+
   for (size_t i = 0; i < num_experts; i++) {
     meta_ptr[i] = tokens_per_expert[i];
   }
-  
+
   for (size_t i = 0; i < num_experts; i++) {
-    meta_ptr[num_experts + i] = outs[i] != nullptr ? 
-        reinterpret_cast<int64_t>(outs[i]->data<phi::dtype::float8_e4m3fn>()) : 0;
+    meta_ptr[num_experts + i] =
+        outs[i] != nullptr ? reinterpret_cast<int64_t>(
+                                 outs[i]->data<phi::dtype::float8_e4m3fn>())
+                           : 0;
   }
-  
+
   for (size_t i = 0; i < num_experts; i++) {
-    meta_ptr[num_experts * 2 + i] = scales[i] != nullptr ?
-        reinterpret_cast<int64_t>(scales[i]->data<float>()) : 0;
+    meta_ptr[num_experts * 2 + i] =
+        scales[i] != nullptr
+            ? reinterpret_cast<int64_t>(scales[i]->data<float>())
+            : 0;
   }
-  
+
   DenseTensor meta_gpu;
   phi::Copy(dev_ctx, meta_cpu, dev_ctx.GetPlace(), false, &meta_gpu);
 
@@ -251,13 +267,14 @@ void FusedTransposeSplitQuantKernel(const Context& dev_ctx,
   dim3 grid(M / 128, (K + 127) / 128);
   dim3 block(32, 32);
 
-#define LAUNCH_KERNEL(POW_2_SCALES, VEC_SIZE)                                \
-  FusedTransposeSplitQuantKernel<phi::dtype::float8_e4m3fn, POW_2_SCALES, VEC_SIZE> \
-      <<<grid, block, 0, stream>>>(                                          \
-          x.data<phi::dtype::bfloat16>(),                                     \
-          meta_gpu.data<int64_t>(),                                           \
-          num_experts,                                                        \
-          K);
+#define LAUNCH_KERNEL(POW_2_SCALES, VEC_SIZE)                      \
+  FusedTransposeSplitQuantKernel<phi::dtype::float8_e4m3fn,        \
+                                 POW_2_SCALES,                     \
+                                 VEC_SIZE>                         \
+      <<<grid, block, 0, stream>>>(x.data<phi::dtype::bfloat16>(), \
+                                   meta_gpu.data<int64_t>(),       \
+                                   num_experts,                    \
+                                   K);
 
 #define LAUNCH_KERNEL_PARTIAL(VEC_SIZE) \
   if (pow_2_scales) {                   \
