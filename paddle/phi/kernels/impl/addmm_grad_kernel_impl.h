@@ -20,6 +20,7 @@ limitations under the License. */
 
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/kernels/addmm_grad_kernel.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
@@ -66,6 +67,24 @@ void AddmmGradKernel(const Context& dev_ctx,
                      DenseTensor* input_grad,
                      DenseTensor* x_grad,
                      DenseTensor* y_grad) {
+  if (out_grad.numel() == 0) {
+    if (input_grad) {
+      phi::Full<T, Context>(
+          dev_ctx,
+          phi::IntArray(common::vectorize(input_grad->dims())),
+          0,
+          input_grad);
+    }
+    if (x_grad) {
+      phi::Full<T, Context>(
+          dev_ctx, phi::IntArray(common::vectorize(x_grad->dims())), 0, x_grad);
+    }
+    if (y_grad) {
+      phi::Full<T, Context>(
+          dev_ctx, phi::IntArray(common::vectorize(y_grad->dims())), 0, y_grad);
+    }
+    return;
+  }
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   bool is_float16_or_bfloat16 = false;
   if (std::is_same<T, phi::dtype::float16>::value ||
@@ -165,6 +184,18 @@ void AddmmGradKernel(const Context& dev_ctx,
     if (input.dims().size() == 1) {
       input_grad->Resize(input.dims());
     }
+  }
+  if (x_grad && x_grad->numel() == 0) {
+    dev_ctx.template Alloc<T>(x_grad);
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(y_grad->dims())), 0, y_grad);
+    return;
+  }
+  if (y_grad && y_grad->numel() == 0) {
+    dev_ctx.template Alloc<T>(y_grad);
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(x_grad->dims())), 0, x_grad);
+    return;
   }
   if (x_grad) {
     dev_ctx.template Alloc<T>(x_grad);
