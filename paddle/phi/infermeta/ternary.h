@@ -455,4 +455,11 @@ void TdmSamplerInferMeta(const MetaTensor& x,
                          MetaTensor* mask,
                          MetaConfig config = MetaConfig());
 
+void FusedSwigluWeightedBwdInferMeta(const MetaTensor& o1,
+                                   const MetaTensor& do2_s,
+                                   const MetaTensor& unzipped_probs,
+                                   MetaTensor* do1,
+                                   MetaTensor* probs_grad,
+                                   MetaTensor* o2_s);
+
 }  // namespace phi

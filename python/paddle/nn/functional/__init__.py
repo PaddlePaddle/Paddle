@@ -169,6 +169,7 @@ from .vision import (
 )
 from .fused_weighted_swiglu_act_quant import fused_weighted_swiglu_act_quant
 from .fused_act_dequant import fused_act_dequant
+from .fused_swiglu_weighted_bwd import fused_swiglu_weighted_bwd
 
 __all__ = [
     'celu',
@@ -302,4 +303,5 @@ __all__ = [
     'group_norm',
     'fused_weighted_swiglu_act_quant',
     'fused_act_dequant',
+    'fused_swiglu_weighted_bwd',
 ]

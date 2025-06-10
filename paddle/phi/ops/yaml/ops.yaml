@@ -5824,3 +5824,12 @@
   kernel: 
     func: fused_act_dequant
     data_type: x
+
+- op: fused_swiglu_weighted_bwd
+  args: (Tensor o1, Tensor do2_s, Tensor unzipped_probs)
+  output: Tensor(do1), Tensor(probs_grad), Tensor(o2_s)
+  infer_meta:
+    func: FusedSwigluWeightedBwdInferMeta
+  kernel:
+    func: fused_swiglu_weighted_bwd
+    data_type: o1
