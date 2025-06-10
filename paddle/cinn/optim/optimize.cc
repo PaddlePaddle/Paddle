@@ -36,7 +36,6 @@
 #include "paddle/cinn/optim/rearrange_load_instruction_pass.h"
 #include "paddle/cinn/optim/reindex_transpose_buffer_pass.h"
 #include "paddle/cinn/optim/remove_schedule_block_pass.h"
-#include "paddle/cinn/optim/replace_const_param_to_integer.h"
 #include "paddle/cinn/optim/replace_cross_block_reduction.h"
 #include "paddle/cinn/optim/replace_cross_thread_reduction.h"
 #include "paddle/cinn/optim/trans_buffer_with_dynamic_shape.h"
