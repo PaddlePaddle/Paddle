@@ -168,6 +168,7 @@ from .vision import (
     pixel_unshuffle,
 )
 from .fused_weighted_swiglu_act_quant import fused_weighted_swiglu_act_quant
+from .fused_act_dequant import fused_act_dequant
 
 __all__ = [
     'celu',
@@ -300,4 +301,5 @@ __all__ = [
     'flash_attn_varlen_qkvpacked',
     'group_norm',
     'fused_weighted_swiglu_act_quant',
+    'fused_act_dequant',
 ]

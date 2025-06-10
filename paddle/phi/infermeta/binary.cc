@@ -4689,6 +4689,52 @@ void FusedWeightedSwigluActQuantInferMeta(const MetaTensor& x,
   scale->set_dtype(DataType::FLOAT32);
 }
 
+void FusedActDequantInferMeta(const MetaTensor& x,
+                              const MetaTensor& Xscale,
+                              MetaTensor* out) {
+  auto x_dims = x.dims();
+  auto x_scale_dims = Xscale.dims();
+
+  PADDLE_ENFORCE_EQ(
+    x.dtype(),
+    phi::DataType::FLOAT8_E4M3FN,
+    phi::errors::InvalidArgument(
+        "The data type of X should be FLOAT8_E4M3FN, but received %s.",
+        x.dtype()));
+  
+  PADDLE_ENFORCE_EQ(
+      Xscale.dtype(),
+      phi::DataType::FLOAT32,
+      phi::errors::InvalidArgument(
+          "The data type of X_scale should be FLOAT32, but received %s.",
+          Xscale.dtype()));
+
+  PADDLE_ENFORCE_EQ(
+      x_dims.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "The input X should be a 2D tensor, but received %dD.",
+          x_dims.size()));
+
+  int64_t rows = x_dims[0];
+  int64_t cols = x_dims[1];
+  
+  PADDLE_ENFORCE_GT(
+      rows,
+      0,
+      phi::errors::InvalidArgument("The rows of X should be positive, but received %d.", rows));
+  
+  PADDLE_ENFORCE_GT(
+      cols,
+      0,
+      phi::errors::InvalidArgument("The cols of X should be positive, but received %d.", cols));
+
+  out->set_dims(x_dims);  
+  out->set_dtype(phi::DataType::BFLOAT16);  
+  out->set_layout(x.layout());  
+
+}
+
 }  // namespace phi
 
 PD_REGISTER_INFER_META_FN(add_raw, phi::ElementwiseRawInferMeta);

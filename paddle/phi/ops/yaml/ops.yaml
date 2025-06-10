@@ -5816,3 +5816,11 @@
   optional: prob
 
 
+- op: fused_act_dequant
+  args: (Tensor x, Tensor Xscale)
+  output: Tensor(out)
+  infer_meta:
+    func: FusedActDequantInferMeta
+  kernel: 
+    func: fused_act_dequant
+    data_type: x
