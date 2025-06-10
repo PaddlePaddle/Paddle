@@ -23,7 +23,6 @@ from paddle.incubate.nn.functional import (
 
 
 def test_moe_dispatch_partial_nosoftmaxtopk_nonepad_op():
-
     s, d, e = 4, 100, 8
     k, cap = 4, 3
     local_expert_num = 2

@@ -61,6 +61,11 @@ void MoeGateDispatchPartialNoSoftMaxTopkKernel(
   dev_ctx.template Alloc<int64_t>(expert_offset);
   dev_ctx.template Alloc<int64_t>(expert_nums_local);
   dev_ctx.template Alloc<float>(combine_weights_out);
+
+  int64_t num_experts_diff = expert_end_index - expert_start_index;
+  y->Resize({num_experts_diff * capacity, x.dims()[1]});
+  dev_ctx.template Alloc<T>(y);
+
   phi::Full<int32_t, Context>(
       dev_ctx,
       phi::IntArray(common::vectorize(scatter_index->dims())),
@@ -86,6 +91,8 @@ void MoeGateDispatchPartialNoSoftMaxTopkKernel(
       phi::IntArray(common::vectorize(combine_weights_out->dims())),
       0,
       combine_weights_out);
+  phi::Full<T, Context>(
+      dev_ctx, phi::IntArray(common::vectorize(y->dims())), 0, y);
 
   int r = xpu::copy(dev_ctx.x_context(),
                     combine_weights.data<float>(),
@@ -98,7 +105,6 @@ void MoeGateDispatchPartialNoSoftMaxTopkKernel(
   int64_t hidden_size = x_shape[1];
 
   std::vector<int64_t> expert_offset_host(num_experts);
-  int64_t num_experts_diff = expert_end_index - expert_start_index;
   using XPUDataType = typename XPUTypeTrait<T>::Type;
 
   r = xpu::moe_gate_dispatch_partial_nosoftmaxtopk(
@@ -130,6 +136,19 @@ void MoeGateDispatchPartialNoSoftMaxTopkKernel(
         dev_ctx, *scatter_index_rev, {0}, {0}, {num_experts_diff * capacity});
   } else {
     if (expert_offset_host.back() > 0) {
+      int64_t maximum_num_tokens = y->dims()[0];
+      int64_t actual_num_tokens = expert_offset_host.back();
+      PADDLE_ENFORCE_GE(
+          maximum_num_tokens,
+          actual_num_tokens,
+          ::common::errors::PreconditionNotMet(
+              "maximum number of tokens must be >= number of actual "
+              "tokens, but got %ld < %ld",
+              maximum_num_tokens,
+              actual_num_tokens));
+
+      y->Resize({expert_offset_host.back(), x.dims()[1]});
+
       // scatter_index_rev = scatter_index_rev.slice(0,
       // expert_offset_host.back());
       *scatter_index_rev = phi::Slice<int32_t, Context>(
