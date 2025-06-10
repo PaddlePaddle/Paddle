@@ -437,34 +437,35 @@ void weight_quant_gpu(const GPUContext& dev_ctx,
 __global__ void weight_permute_transpose_interleave_kernel_w4a8(
     const int8_t* input_data_ptr,
     int8_t* output_data_ptr,
-    int numel,
-    int total_k,
-    int total_n) {
-  // every 4 k-direction 4bit is packed to 2 int8, so here / 4.
-  numel = numel / 4;
+    int original_k,
+    int original_n) {
+  // every 2 k-direction 8bit , ie 4 k-direction 4bit,
+  // is packed to 2 int8, and assigned to a new new_index.
+  // so here / 4.
+  int numel = original_k * original_n / 4;
   for (int linear_idx = blockIdx.x * blockDim.x + threadIdx.x;
        linear_idx < numel;
        linear_idx += blockDim.x * gridDim.x) {
-    const int k_group_id = linear_idx / total_n;
-    const int n_id = linear_idx % total_n;
+    const int k_group_id = linear_idx / original_n;
+    const int n_id = linear_idx % original_n;
 
     uint16_t res = 0;
-    for (int j = 0; j < 4; j++) {
-      const int k_id = k_group_id * 4 + j;
-      uint16_t val = input_data_ptr[k_id * total_n + n_id];
-      val = val & 0x0F;
-      val = val << (j * 4);
+    for (int j = 0; j < 2; j++) {
+      const int k_id = k_group_id * 2 + j;
+      uint16_t val = input_data_ptr[k_id * original_n + n_id];
+      val = val & 0xFF;
+      val = val << (j * 8);
       res |= val;
     }
 
     constexpr int map[8] = {0, 2, 4, 6, 1, 3, 5, 7};
     // remember output(in 16 bit granularity)'shape is
-    // [16,               4,              total_k/64,        total_n/4]
+    // [16,               4,              original_k/64,     original_n/4]
     // index is :
     // [k_group_id % 16,  n_id % 4,       k_group_id/16,     n_id/4]
     const int32_t new_index = map[k_group_id % 8] + k_group_id % 16 / 8 * 8 +
                               (n_id % 4) * 16 + k_group_id / 16 * (16 * 4) +
-                              n_id / 4 * (total_k);
+                              n_id / 4 * (original_k);
 
     reinterpret_cast<uint16_t*>(output_data_ptr)[new_index] = res;
   }
@@ -496,22 +497,21 @@ void weight_permute_gpu_w4a8(const GPUContext& dev_ctx,
                              const std::vector<int>& shape,
                              const int32_t arch,
                              const std::string& algo) {
-  auto total_k = shape[0];
-  auto total_n = shape[1];
-  auto numel = total_k * total_n;
-  auto gpu_config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel, 1);
+  auto original_k = shape[0] * 2;
+  auto original_n = shape[1];
+  auto original_numel = original_k * original_n;
+  auto gpu_config =
+      phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, original_numel, 1);
   int grid_size = gpu_config.GetGridSize();
-  int block_size = gpu_config.GetBlockSize();
-  VLOG(2) << "weight_permute_gpu: total_k = " << total_k
-          << "total_n = " << total_n << "grid size = " << grid_size
-          << " block size = " << block_size;
+  VLOG(2) << "weight_permute_gpu: original_k = " << original_k
+          << "original_n = " << original_n << "grid size = " << grid_size;
   if (arch > 70) {
     if (algo == "w4a8") {
       dim3 block_dim(128);
       weight_permute_transpose_interleave_kernel_w4a8<<<grid_size, block_dim>>>(
-          input_data, output_data, numel, total_k, total_n);
+          input_data, output_data, original_k, original_n);
       w4a8_inplace_permute<<<grid_size, block_dim>>>(
-          reinterpret_cast<uint32_t*>(output_data), numel / 8);
+          reinterpret_cast<uint32_t*>(output_data), original_numel / 8);
     }
   } else {
     phi::errors::Unimplemented(
