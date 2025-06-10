@@ -46,7 +46,7 @@ class TestFusedRMSNorm(unittest.TestCase):
             y = y + bias.reshape([1, -1])
 
         # 返回归一化后的张量、均值（RMS Norm 中为0）和逆标准差
-        return y, (1.0 / rms).squeeze(-1)
+        return y, paddle.flatten(1.0 / rms)
 
     def test_2d_input(self):
         # 测试 2D 输入
