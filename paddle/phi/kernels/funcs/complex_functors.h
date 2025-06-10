@@ -355,6 +355,15 @@ struct ConjFunctor<T, DisableComplex<T>> {
 template <typename T, typename Enable = void>
 struct AngleFunctor;
 
+template <typename T>
+HOSTDEVICE bool is_nan(const T& value) {
+  if constexpr (std::is_same_v<T, double> || std::is_same_v<T, float>) {
+    return std::isnan(value);
+  } else {
+    return phi::dtype::isnan(value);
+  }
+}
+
 // angel function for complex
 template <typename T>
 struct AngleFunctor<T, phi::funcs::Complex<T, dtype::Real<T>>> {
@@ -377,7 +386,7 @@ struct AngleFunctor<T, phi::funcs::NoComplex<T, dtype::Real<T>>> {
       : input_(input), output_(output), numel_(numel) {}
 
   HOSTDEVICE void operator()(int64_t idx) const {
-    if (std::isnan(input_[idx])) {
+    if (is_nan(input_[idx])) {
       output_[idx] = input_[idx];
       return;
     }
