@@ -21,6 +21,7 @@ limitations under the License. */
 
 #pragma GCC diagnostic ignored "-Wattributes"
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
+#include "paddle/fluid/eager/activation_offloader.h"
 #include "paddle/fluid/eager/api/all.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/pylayer/py_layer_node.h"
@@ -41,6 +42,8 @@ limitations under the License. */
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
 
 using egr::ConvertToDistTensor;
+
+PHI_DECLARE_int64(offload_retry_times);
 
 namespace paddle::pybind {
 
@@ -80,11 +83,13 @@ PyObject* PyLayerNew(PyTypeObject* type, PyObject* args, PyObject* kwargs) {
   PyObject* obj = type->tp_alloc(type, 0);
   if (obj) {
     auto v = reinterpret_cast<PyLayerObject*>(obj);
+    v->container = nullptr;
     v->materialize_grads = true;
     v->container_be_packed = false;
     new (&v->grad_node) std::weak_ptr<egr::GradNodePyLayer>();
     new (&v->forward_input_tensor_is_duplicable) std::vector<bool>();
     new (&v->forward_output_tensor_is_duplicable) std::vector<bool>();
+    new (&v->reload_functors) std::vector<egr::ReloadFunctor>();
   }
   return obj;
 }
@@ -103,6 +108,7 @@ static void PyLayerDealloc(PyLayerObject* self) {
   self->unpack_hook = nullptr;
   self->forward_input_tensor_is_duplicable.~vector();
   self->forward_output_tensor_is_duplicable.~vector();
+  self->reload_functors.~vector();
   Py_TYPE(self)->tp_free(reinterpret_cast<PyObject*>(self));
 }
 
@@ -128,6 +134,49 @@ PyObject* new_tensor_with_impl(paddle::Tensor* tensor) {
         common::errors::Fatal("tp_alloc return null, can not new a PyObject."));
   }
   return obj;
+}
+
+template <typename Callback>
+static void GetTensorWithCallbackRecursively(PyObject* obj,
+                                             const Callback& callback) {
+  if (obj == nullptr || obj == Py_None) {
+    return;
+  } else if (paddle::pybind::PyCheckTensor(obj)) {
+    const auto& tensor =
+        reinterpret_cast<paddle::pybind::TensorObject*>(obj)->tensor;
+    callback(tensor);
+  } else if (PyTuple_Check(obj)) {
+    Py_ssize_t n = PyTuple_GET_SIZE(obj);
+    for (Py_ssize_t i = 0; i < n; ++i) {
+      auto* item = PyTuple_GET_ITEM(obj, i);
+      GetTensorWithCallbackRecursively(item, callback);
+    }
+  } else if (PyList_Check(obj)) {
+    Py_ssize_t n = PyList_GET_SIZE(obj);
+    for (Py_ssize_t i = 0; i < n; ++i) {
+      auto* item = PyList_GET_ITEM(obj, i);
+      GetTensorWithCallbackRecursively(item, callback);
+    }
+  }
+}
+
+static void PyLayerAddOffloadActivation(PyLayerObject* ctx) {
+  PADDLE_ENFORCE_NOT_NULL(
+      ctx,
+      phi::errors::InvalidArgument("PyLayerObject should not be nullptr."));
+  if (ctx->container_be_packed) {
+    VLOG(10) << "Return directly because of packed value";
+    return;
+  }
+
+  auto add_functor = [ctx](const paddle::Tensor& t) {
+    auto reload_functor = egr::ActivationOffloader::Instance()->Add(t);
+    if (const auto* rf_ptr = reload_functor.get_ptr()) {
+      ctx->reload_functors.push_back(*rf_ptr);
+    }
+  };
+
+  GetTensorWithCallbackRecursively(ctx->container, add_functor);
 }
 
 PyObject* pylayer_method_apply(PyObject* cls,
@@ -443,6 +492,7 @@ PyObject* pylayer_method_apply(PyObject* cls,
   }
   VLOG(6) << "PyLayer forward function finish...";
 
+  bool has_grad = false;
   if (require_any_grad && trace_backward) {
     auto non_differentiable = GetTensorsFromPyObject(ctx->non_differentiable);
     for (size_t i = 0; i < outputs_autograd_meta.size(); i++) {
@@ -475,6 +525,7 @@ PyObject* pylayer_method_apply(PyObject* cls,
         std::make_shared<egr::GradNodePyLayer>(reinterpret_cast<PyObject*>(ctx),
                                                outputs_autograd_meta.size(),
                                                inputs_autograd_meta.size());
+    has_grad = true;
     ctx->grad_node = grad_node;
 
     if (ctx->materialize_grads) {
@@ -524,6 +575,10 @@ PyObject* pylayer_method_apply(PyObject* cls,
   Py_XDECREF(kwargs_value_list);
   Py_XDECREF(backward_function);
   Py_XDECREF(forward_fn);
+
+  if (has_grad && FLAGS_offload_retry_times > 0) {
+    PyLayerAddOffloadActivation(ctx);
+  }
   Py_XDECREF(ctx);
 
   return outputs;
