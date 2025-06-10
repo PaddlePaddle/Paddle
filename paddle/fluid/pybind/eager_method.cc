@@ -1625,7 +1625,23 @@ static PyObject* tensor__getitem_dygraph(TensorObject* self,
           mesh, transed_tensor, transed_advanced_index_tensor);
     }
 
-    out = gather_nd_ad_func(transed_tensor, transed_advanced_index_tensor);
+    if (transed_index.size() > 1) {
+      out = gather_nd_ad_func(transed_tensor, transed_advanced_index_tensor);
+    } else {
+      paddle::Tensor flattened_tensor =
+          flatten_ad_func(transed_index[0], 0, -1);
+
+      out = gather_ad_func(transed_tensor, flattened_tensor);
+      std::vector<paddle::Tensor> transed_index_tmp =
+          expand_outplace(transed_index);
+      while (transed_index_tmp.size() <
+             static_cast<size_t>(transed_tensor.dims().size())) {
+        transed_index_tmp.emplace_back(empty_ad_func(
+            {}, transed_index_tmp[0].dtype(), transed_index_tmp[0].place()));
+      }
+      AdvancedIndex ad = AdvancedIndex(transed_tensor, transed_index_tmp);
+      out = reshape_ad_func(out, ad.src_sizes);
+    }
   }
 
   if (pos_of_new_dim != 0) {
