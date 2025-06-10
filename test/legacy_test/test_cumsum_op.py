@@ -224,6 +224,12 @@ class TestSumOp7(TestSumOp1):
         self.out = self.x.cumsum(axis=0)
 
 
+class TestSumOp8(TestSumOp1):
+    def set_attrs_input_output(self):
+        self.x = np.random.random((4, 8, 6)).astype(self.dtype_)
+        self.out = self.x.cumsum(axis=0)
+
+
 @unittest.skipIf(
     core.is_compiled_with_xpu(),
     "Skip XPU for complex dtype is not fully supported",
