@@ -24,5 +24,6 @@ class TestReshardRToS(test_base.CommunicationTestDistBase):
     def test_reshard_r_to_s(self):
         self.run_test_case("co_shard.py")
 
+
 if __name__ == "__main__":
     unittest.main()
