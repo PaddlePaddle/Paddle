@@ -24,7 +24,7 @@ limitations under the License. */
 namespace phi {
 
 template <typename T, typename Context>
-void PoolGradRawKernel(const Context& ctx,
+void PoolGradRawKernel(const Context& dev_ctx,
                        const DenseTensor& x,
                        const DenseTensor& out,
                        const DenseTensor& dout,
@@ -39,6 +39,10 @@ void PoolGradRawKernel(const Context& ctx,
                        const std::string& padding_algorithm,
                        const float norm_type,
                        DenseTensor* dx) {
+  if (dx && dx->numel() == 0) {
+    dev_ctx.template Alloc<T>(dx);
+    return;
+  }
   const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
   std::vector<int64_t> paddings_ = paddings;
   std::vector<int64_t> kernel_size_ = kernel_size;
@@ -69,9 +73,9 @@ void PoolGradRawKernel(const Context& ctx,
   }
 
   if (dx) {
-    ctx.template Alloc<T>(dx);
+    dev_ctx.template Alloc<T>(dx);
     funcs::SetConstant<Context, T> set_constant;
-    set_constant(ctx, dx, static_cast<T>(0.0));
+    set_constant(dev_ctx, dx, static_cast<T>(0.0));
 
     std::string true_type;
     if (norm_type == INFINITY)
@@ -83,7 +87,7 @@ void PoolGradRawKernel(const Context& ctx,
       case 2: {
         if (true_type == "max") {
           funcs::MaxPool2dGradFunctor<Context, T> pool2d_backward;
-          pool2d_backward(ctx,
+          pool2d_backward(dev_ctx,
                           x,
                           out,
                           dout,
@@ -96,7 +100,7 @@ void PoolGradRawKernel(const Context& ctx,
           funcs::Pool2dGradFunctor<Context, funcs::AvgPoolGrad<T>, T>
               pool2d_backward;
           funcs::AvgPoolGrad<T> pool_process;
-          pool2d_backward(ctx,
+          pool2d_backward(dev_ctx,
                           x,
                           out,
                           dout,
@@ -113,7 +117,7 @@ void PoolGradRawKernel(const Context& ctx,
               pool2d_backward;
           funcs::LPPoolGrad<T> pool_process;
           pool_process.setNormType(norm_type);
-          pool2d_backward(ctx,
+          pool2d_backward(dev_ctx,
                           x,
                           out,
                           dout,
@@ -130,7 +134,7 @@ void PoolGradRawKernel(const Context& ctx,
       case 3: {
         if (pooling_type == "max") {
           funcs::MaxPool3dGradFunctor<Context, T> pool3d_backward;
-          pool3d_backward(ctx,
+          pool3d_backward(dev_ctx,
                           x,
                           out,
                           dout,
@@ -143,7 +147,7 @@ void PoolGradRawKernel(const Context& ctx,
           funcs::Pool3dGradFunctor<Context, funcs::AvgPoolGrad<T>, T>
               pool3d_backward;
           funcs::AvgPoolGrad<T> pool_process;
-          pool3d_backward(ctx,
+          pool3d_backward(dev_ctx,
                           x,
                           out,
                           dout,
@@ -166,7 +170,7 @@ void PoolGradRawKernel(const Context& ctx,
 }
 
 template <typename Context, typename T1, typename T2 = int>
-void MaxPoolWithIndexGradRawKernel(const Context& ctx,
+void MaxPoolWithIndexGradRawKernel(const Context& dev_ctx,
                                    const DenseTensor& x UNUSED,
                                    const DenseTensor& mask,
                                    const DenseTensor& dout,
@@ -176,6 +180,10 @@ void MaxPoolWithIndexGradRawKernel(const Context& ctx,
                                    bool global_pooling,
                                    bool adaptive,
                                    DenseTensor* dx) {
+  if (dx && dx->numel() == 0) {
+    dev_ctx.template Alloc<T1>(dx);
+    return;
+  }
   std::vector<int> paddings_ = paddings;
   std::vector<int> kernel_size_ = kernel_size;
 
@@ -187,19 +195,31 @@ void MaxPoolWithIndexGradRawKernel(const Context& ctx,
   }
 
   if (dx) {
-    ctx.template Alloc<T1>(dx);
-    funcs::set_constant(ctx, dx, static_cast<T1>(0));
+    dev_ctx.template Alloc<T1>(dx);
+    funcs::set_constant(dev_ctx, dx, static_cast<T1>(0));
 
     switch (kernel_size_.size()) {
       case 2: {
         funcs::MaxPool2dWithIndexGradFunctor<Context, T1, T2> pool2d_backward;
-        pool2d_backward(
-            ctx, dout, mask, kernel_size_, strides, paddings_, adaptive, dx);
+        pool2d_backward(dev_ctx,
+                        dout,
+                        mask,
+                        kernel_size_,
+                        strides,
+                        paddings_,
+                        adaptive,
+                        dx);
       } break;
       case 3: {
         funcs::MaxPool3dWithIndexGradFunctor<Context, T1, T2> pool3d_backward;
-        pool3d_backward(
-            ctx, dout, mask, kernel_size_, strides, paddings_, adaptive, dx);
+        pool3d_backward(dev_ctx,
+                        dout,
+                        mask,
+                        kernel_size_,
+                        strides,
+                        paddings_,
+                        adaptive,
+                        dx);
       } break;
       default: {
         PADDLE_THROW(
@@ -210,7 +230,7 @@ void MaxPoolWithIndexGradRawKernel(const Context& ctx,
 }
 
 template <typename T, typename Context>
-void Pool2dGradKernel(const Context& ctx,
+void Pool2dGradKernel(const Context& dev_ctx,
                       const DenseTensor& x,
                       const DenseTensor& out,
                       const DenseTensor& dout,
@@ -225,7 +245,7 @@ void Pool2dGradKernel(const Context& ctx,
                       bool adaptive,
                       const std::string& padding_algorithm,
                       DenseTensor* dx) {
-  PoolGradRawKernel<T, Context>(ctx,
+  PoolGradRawKernel<T, Context>(dev_ctx,
                                 x,
                                 out,
                                 dout,
@@ -243,7 +263,7 @@ void Pool2dGradKernel(const Context& ctx,
 }
 
 template <typename T, typename Context>
-void LPPool2dGradKernel(const Context& ctx,
+void LPPool2dGradKernel(const Context& dev_ctx,
                         const DenseTensor& x,
                         const DenseTensor& out,
                         const DenseTensor& dout,
@@ -259,7 +279,7 @@ void LPPool2dGradKernel(const Context& ctx,
                         const std::string& padding_algorithm,
                         const float norm_type,
                         DenseTensor* dx) {
-  PoolGradRawKernel<T, Context>(ctx,
+  PoolGradRawKernel<T, Context>(dev_ctx,
                                 x,
                                 out,
                                 dout,
@@ -277,7 +297,7 @@ void LPPool2dGradKernel(const Context& ctx,
 }
 
 template <typename T, typename Context>
-void Pool2dDoubleGradKernel(const Context& ctx,
+void Pool2dDoubleGradKernel(const Context& dev_ctx,
                             const DenseTensor& x,
                             const IntArray& kernel_size,
                             const std::vector<int64_t>& strides,
@@ -294,7 +314,7 @@ void Pool2dDoubleGradKernel(const Context& ctx,
     PADDLE_THROW(
         errors::InvalidArgument("Pool op grad grad only supports avgpool."));
   } else {
-    Pool2dKernel<T, Context>(ctx,
+    Pool2dKernel<T, Context>(dev_ctx,
                              x,
                              kernel_size,
                              strides,
@@ -311,7 +331,7 @@ void Pool2dDoubleGradKernel(const Context& ctx,
 }
 
 template <typename T, typename Context>
-void MaxPool2dWithIndexGradKernel(const Context& ctx,
+void MaxPool2dWithIndexGradKernel(const Context& dev_ctx,
                                   const DenseTensor& x,
                                   const DenseTensor& mask,
                                   const DenseTensor& dout,
@@ -322,7 +342,7 @@ void MaxPool2dWithIndexGradKernel(const Context& ctx,
                                   bool adaptive,
                                   bool ceil_mode UNUSED,
                                   DenseTensor* dx) {
-  MaxPoolWithIndexGradRawKernel<Context, T>(ctx,
+  MaxPoolWithIndexGradRawKernel<Context, T>(dev_ctx,
                                             x,
                                             mask,
                                             dout,
@@ -335,7 +355,7 @@ void MaxPool2dWithIndexGradKernel(const Context& ctx,
 }
 
 template <typename T, typename Context>
-void Pool3dGradKernel(const Context& ctx,
+void Pool3dGradKernel(const Context& dev_ctx,
                       const DenseTensor& x,
                       const DenseTensor& out,
                       const DenseTensor& dout,
@@ -350,7 +370,7 @@ void Pool3dGradKernel(const Context& ctx,
                       bool adaptive,
                       const std::string& padding_algorithm,
                       DenseTensor* dx) {
-  PoolGradRawKernel<T, Context>(ctx,
+  PoolGradRawKernel<T, Context>(dev_ctx,
                                 x,
                                 out,
                                 dout,
@@ -368,7 +388,7 @@ void Pool3dGradKernel(const Context& ctx,
 }
 
 template <typename T, typename Context>
-void MaxPool3dWithIndexGradKernel(const Context& ctx,
+void MaxPool3dWithIndexGradKernel(const Context& dev_ctx,
                                   const DenseTensor& x,
                                   const DenseTensor& mask,
                                   const DenseTensor& dout,
@@ -379,7 +399,7 @@ void MaxPool3dWithIndexGradKernel(const Context& ctx,
                                   bool adaptive,
                                   bool ceil_mode UNUSED,
                                   DenseTensor* dx) {
-  MaxPoolWithIndexGradRawKernel<Context, T>(ctx,
+  MaxPoolWithIndexGradRawKernel<Context, T>(dev_ctx,
                                             x,
                                             mask,
                                             dout,
@@ -392,7 +412,7 @@ void MaxPool3dWithIndexGradKernel(const Context& ctx,
 }
 
 template <typename Context, typename T1, typename T2 = int>
-void FractionalMaxPoolGradRawKernel(const Context& ctx,
+void FractionalMaxPoolGradRawKernel(const Context& dev_ctx,
                                     const DenseTensor& x UNUSED,
                                     const DenseTensor& mask,
                                     const DenseTensor& dout,
@@ -401,16 +421,20 @@ void FractionalMaxPoolGradRawKernel(const Context& ctx,
                                     float random_u,
                                     bool return_mask,
                                     DenseTensor* dx) {
+  if (dx && dx->numel() == 0) {
+    dev_ctx.template Alloc<T1>(dx);
+    return;
+  }
   std::vector<int> output_size_ = output_size;
 
   if (dx) {
-    ctx.template Alloc<T1>(dx);
-    funcs::set_constant(ctx, dx, 0);
+    dev_ctx.template Alloc<T1>(dx);
+    funcs::set_constant(dev_ctx, dx, 0);
 
     switch (output_size_.size()) {
       case 2: {
         funcs::FractionalMaxPool2dGradFunctor<Context, T1, T2> pool2d_backward;
-        pool2d_backward(ctx,
+        pool2d_backward(dev_ctx,
                         dout,
                         mask,
                         output_size,
@@ -421,7 +445,7 @@ void FractionalMaxPoolGradRawKernel(const Context& ctx,
       } break;
       case 3: {
         funcs::FractionalMaxPool3dGradFunctor<Context, T1, T2> pool3d_backward;
-        pool3d_backward(ctx,
+        pool3d_backward(dev_ctx,
                         dout,
                         mask,
                         output_size,
@@ -439,7 +463,7 @@ void FractionalMaxPoolGradRawKernel(const Context& ctx,
 }
 
 template <typename T, typename Context>
-void FractionalMaxPool2dGradKernel(const Context& ctx,
+void FractionalMaxPool2dGradKernel(const Context& dev_ctx,
                                    const DenseTensor& x,
                                    const DenseTensor& mask,
                                    const DenseTensor& dout,
@@ -448,12 +472,19 @@ void FractionalMaxPool2dGradKernel(const Context& ctx,
                                    float random_u,
                                    bool return_mask,
                                    DenseTensor* dx) {
-  FractionalMaxPoolGradRawKernel<Context, T>(
-      ctx, x, mask, dout, output_size, kernel_size, random_u, return_mask, dx);
+  FractionalMaxPoolGradRawKernel<Context, T>(dev_ctx,
+                                             x,
+                                             mask,
+                                             dout,
+                                             output_size,
+                                             kernel_size,
+                                             random_u,
+                                             return_mask,
+                                             dx);
 }
 
 template <typename T, typename Context>
-void FractionalMaxPool3dGradKernel(const Context& ctx,
+void FractionalMaxPool3dGradKernel(const Context& dev_ctx,
                                    const DenseTensor& x,
                                    const DenseTensor& mask,
                                    const DenseTensor& dout,
@@ -462,8 +493,15 @@ void FractionalMaxPool3dGradKernel(const Context& ctx,
                                    float random_u,
                                    bool return_mask,
                                    DenseTensor* dx) {
-  FractionalMaxPoolGradRawKernel<Context, T>(
-      ctx, x, mask, dout, output_size, kernel_size, random_u, return_mask, dx);
+  FractionalMaxPoolGradRawKernel<Context, T>(dev_ctx,
+                                             x,
+                                             mask,
+                                             dout,
+                                             output_size,
+                                             kernel_size,
+                                             random_u,
+                                             return_mask,
+                                             dx);
 }
 
 }  // namespace phi

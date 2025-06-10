@@ -944,5 +944,29 @@ class TestGuard(TestCaseBase):
         self.assert_results(fn)
 
 
+class TestBuiltinFunctionRaiseExceptionGuard(TestCaseBase):
+    def test_guard_run(self):
+        def foo_floordiv(x):
+            1 / x
+
+        def foo_mod(x):
+            2 % x
+
+        self.assert_results(foo_floordiv, 1)
+        self.assert_exceptions(
+            ZeroDivisionError,
+            "division by zero",
+            foo_floordiv,
+            0,
+        )
+        self.assert_results(foo_mod, 10)
+        self.assert_exceptions(
+            ZeroDivisionError,
+            "integer (.)*modulo by zero",
+            foo_mod,
+            0,
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

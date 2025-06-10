@@ -279,13 +279,33 @@ __global__ __launch_bounds__(
             rank * num_max_dispatch_tokens_per_rank * num_bytes_per_msg +
             slot_idx * num_bytes_per_msg;
         if (dst_rank != rank) {
-          nvshmemi_ibgda_put_nbi_warp(dst_ptr,
-                                      src_ptr,
-                                      num_bytes_per_msg,
-                                      dst_rank,
-                                      dst_expert_local_idx,
-                                      lane_id,
-                                      slot_idx);
+          void* peer_base_addr = reinterpret_cast<void*>(
+              __ldg(reinterpret_cast<const uint64_t*>(
+                        nvshmemi_device_state_d.peer_heap_base_p2p) +
+                    dst_rank));
+          if (peer_base_addr) {
+            char* req_rptr_actual =
+                reinterpret_cast<char*>(peer_base_addr) +
+                (reinterpret_cast<char*>(dst_ptr) -
+                 reinterpret_cast<char*>(nvshmemi_device_state_d.heap_base));
+            const auto* src_int4_ptr = reinterpret_cast<const int4*>(src_ptr);
+            const auto* dst_int4_ptr = reinterpret_cast<int4*>(req_rptr_actual);
+            UNROLLED_WARP_COPY(8,
+                               lane_id,
+                               num_int4_per_msg,
+                               dst_int4_ptr,
+                               src_int4_ptr,
+                               ld_nc_global,
+                               st_na_global);
+          } else {
+            nvshmemi_ibgda_put_nbi_warp(dst_ptr,
+                                        src_ptr,
+                                        num_bytes_per_msg,
+                                        dst_rank,
+                                        dst_expert_local_idx,
+                                        lane_id,
+                                        slot_idx);
+          }
         } else {
           // NOTES: only 2 load iterations for 7K hidden with 8 unrolls
           const auto* src_int4_ptr = reinterpret_cast<const int4*>(src_ptr);
@@ -367,11 +387,24 @@ __global__ __launch_bounds__(
                              responsible_expert_idx) != FINISHED_SUM_TAG * 2) {
     }
     if (dst_rank != rank) {
-      nvshmemi_ibgda_amo_nonfetch_add(
-          rdma_recv_count + dst_expert_local_idx * num_ranks + rank,
-          -num_tokens_sent - 1,
-          dst_rank,
-          dst_expert_local_idx);
+      void* peer_base_addr = reinterpret_cast<void*>(
+          __ldg(reinterpret_cast<const uint64_t*>(
+                    nvshmemi_device_state_d.peer_heap_base_p2p) +
+                dst_rank));
+      if (peer_base_addr) {  // P2P enabled
+        int* rptr_actual = reinterpret_cast<int*>(
+            reinterpret_cast<char*>(peer_base_addr) +
+            (reinterpret_cast<char*>(rdma_recv_count +
+                                     dst_expert_local_idx * num_ranks + rank) -
+             reinterpret_cast<char*>(nvshmemi_device_state_d.heap_base)));
+        st_na_release(rptr_actual, -num_tokens_sent - 1);
+      } else {
+        nvshmemi_ibgda_amo_nonfetch_add(
+            rdma_recv_count + dst_expert_local_idx * num_ranks + rank,
+            -num_tokens_sent - 1,
+            dst_rank,
+            dst_expert_local_idx);
+      }
     } else {
       st_na_release(rdma_recv_count + dst_expert_local_idx * num_ranks + rank,
                     -num_tokens_sent - 1);
@@ -691,13 +724,32 @@ __global__ __launch_bounds__(
                              x_int4,
                              ld_nc_global,
                              st_na_global);
-        nvshmemi_ibgda_put_nbi_warp(dst_ptr,
-                                    buf_ptr,
-                                    hidden * sizeof(nv_bfloat16),
-                                    dst_rank,
-                                    local_expert_idx,
-                                    lane_id,
-                                    token_idx - offset);
+        void* peer_base_addr = reinterpret_cast<void*>(
+            __ldg(reinterpret_cast<const uint64_t*>(
+                      nvshmemi_device_state_d.peer_heap_base_p2p) +
+                  dst_rank));
+        if (peer_base_addr) {
+          char* req_rptr_actual =
+              reinterpret_cast<char*>(peer_base_addr) +
+              (reinterpret_cast<char*>(dst_ptr) -
+               reinterpret_cast<char*>(nvshmemi_device_state_d.heap_base));
+          const auto dst_int4_ptr = reinterpret_cast<int4*>(req_rptr_actual);
+          UNROLLED_WARP_COPY(7,
+                             lane_id,
+                             hidden_bf16_int4,
+                             dst_int4_ptr,
+                             x_int4,
+                             ld_nc_global,
+                             st_na_global);
+        } else {
+          nvshmemi_ibgda_put_nbi_warp(dst_ptr,
+                                      buf_ptr,
+                                      hidden * sizeof(nv_bfloat16),
+                                      dst_rank,
+                                      local_expert_idx,
+                                      lane_id,
+                                      token_idx - offset);
+        }
       }
     }
 
@@ -710,8 +762,22 @@ __global__ __launch_bounds__(
       while (ld_acquire_global(atomic_clean_flag) == 0) {
       }
       if (dst_rank != rank) {
-        nvshmemi_ibgda_amo_nonfetch_add(
-            rdma_recv_flag + global_expert_idx, 1, dst_rank, local_expert_idx);
+        void* peer_base_addr = reinterpret_cast<void*>(
+            __ldg(reinterpret_cast<const uint64_t*>(
+                      nvshmemi_device_state_d.peer_heap_base_p2p) +
+                  dst_rank));
+        if (peer_base_addr) {
+          int* req_rptr_actual = reinterpret_cast<int*>(
+              reinterpret_cast<char*>(peer_base_addr) +
+              (reinterpret_cast<char*>(rdma_recv_flag + global_expert_idx) -
+               reinterpret_cast<char*>(nvshmemi_device_state_d.heap_base)));
+          st_na_release(req_rptr_actual, 1);
+        } else {
+          nvshmemi_ibgda_amo_nonfetch_add(rdma_recv_flag + global_expert_idx,
+                                          1,
+                                          dst_rank,
+                                          local_expert_idx);
+        }
       } else {
         st_na_release(rdma_recv_flag + global_expert_idx, 1);
       }

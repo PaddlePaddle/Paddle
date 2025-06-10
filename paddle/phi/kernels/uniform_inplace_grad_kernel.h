@@ -19,7 +19,7 @@ limitations under the License. */
 namespace phi {
 
 template <typename T, typename Context>
-void UniformInplaceGradKernel(const Context& ctx,
+void UniformInplaceGradKernel(const Context& dev_ctx,
                               const DenseTensor& out_grad,
                               float min,
                               float max,

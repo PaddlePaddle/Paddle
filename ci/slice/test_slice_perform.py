@@ -23,6 +23,9 @@ import paddle
 
 cuda_device_num = 0
 
+torch_type = {"float32": torch.float32, "float16": torch.float16}
+paddle_type = {"float32": paddle.float32, "float16": paddle.float16}
+
 
 def convert_numpy(frame_name, data, cuda_device_num=0):
     if isinstance(data, np.ndarray):
@@ -40,12 +43,23 @@ def convert_numpy(frame_name, data, cuda_device_num=0):
         return data
 
 
-def set_item_bench(n, index, n_repeat, n_warmup, score_list, cuda_device_num=0):
+def set_item_bench(
+    n,
+    index,
+    n_repeat,
+    n_warmup,
+    score_list,
+    cuda_device_num=0,
+    dtype="float32",
+    is_tensor=False,
+):
 
     x = paddle.to_tensor(
-        n, dtype="float32", place=paddle.CUDAPlace(cuda_device_num)
+        n, dtype=paddle_type[dtype], place=paddle.CUDAPlace(cuda_device_num)
     )
-    y = torch.tensor(n, dtype=torch.float32, device=f"cuda:{cuda_device_num}")
+    y = torch.tensor(
+        n, dtype=torch_type[dtype], device=f"cuda:{cuda_device_num}"
+    )
 
     paddle.device.synchronize()
     start_event = [
@@ -60,15 +74,21 @@ def set_item_bench(n, index, n_repeat, n_warmup, score_list, cuda_device_num=0):
         index_p = convert_numpy("paddle", index, cuda_device_num=0)
     else:
         index_p = index
+
+    if is_tensor:
+        x_value = paddle.full(x[index_p].shape, 0.5, paddle_type[dtype])
+    else:
+        x_value = 0.5
+
     paddle.device.synchronize()
     # warmup
     for _ in range(n_warmup):
-        x[index_p] = 0.5
+        x[index_p] = x_value
     paddle.device.synchronize()
     for i in range(n_repeat):
         cpu_start = time.perf_counter_ns()
         start_event[i].record()
-        x[index_p] = 0.5
+        x[index_p] = x_value
         end_event[i].record()
         paddle.device.synchronize()
         cpu_end = time.perf_counter_ns()
@@ -77,9 +97,9 @@ def set_item_bench(n, index, n_repeat, n_warmup, score_list, cuda_device_num=0):
 
     gpu_exec_times = paddle.to_tensor(
         [s.elapsed_time(e) for s, e in zip(start_event, end_event)],
-        dtype=paddle.float32,
+        dtype=paddle.float64,
     )
-    cpu_exec_times = paddle.to_tensor(cpu_exec_times, dtype=paddle.float32)
+    cpu_exec_times = paddle.to_tensor(cpu_exec_times, dtype=paddle.float64)
 
     paddle_gpu = (paddle.mean(gpu_exec_times) * 1000).cpu().numpy().item()
     paddle_cpu = (cpu_exec_times / n_repeat).cpu().numpy().item()
@@ -94,16 +114,24 @@ def set_item_bench(n, index, n_repeat, n_warmup, score_list, cuda_device_num=0):
         index_t = convert_numpy("torch", index)
     else:
         index_t = index
+
+    if is_tensor:
+        y_value = torch.full(
+            y[index_t].shape, 0.5, device=f"cuda:{cuda_device_num}"
+        )
+    else:
+        y_value = 0.5
+
     torch.cuda.synchronize()
     # warmup
     for _ in range(n_warmup):
-        y[index_t] = 0.5
+        y[index_t] = y_value
     torch.cuda.synchronize()
 
     for i in range(n_repeat):
         start_event[i].record()
         cpu_start = time.perf_counter_ns()
-        y[index_t] = 0.5
+        y[index_t] = y_value
         end_event[i].record()
         torch.cuda.synchronize()
         cpu_end = time.perf_counter_ns()
@@ -112,13 +140,16 @@ def set_item_bench(n, index, n_repeat, n_warmup, score_list, cuda_device_num=0):
 
     gpu_exec_times = torch.tensor(
         [s.elapsed_time(e) for s, e in zip(start_event, end_event)],
-        dtype=torch.float32,
+        dtype=torch.float64,
     )
-    cpu_exec_times = torch.tensor(cpu_exec_times, dtype=torch.float32)
+    cpu_exec_times = torch.tensor(cpu_exec_times, dtype=torch.float64)
 
     torch_gpu = (torch.mean(gpu_exec_times) * 1000).cpu().numpy().item()
     torch_cpu = (cpu_exec_times / n_repeat).cpu().numpy().item()
+    np_x = x.cpu().numpy()
+    np_y = y.cpu().numpy()
 
+    np.testing.assert_allclose(np_x, np_y)
     print(
         f"set_item (scalar) paddle_gpu: {paddle_gpu:.2f} us torch_gpu: {torch_gpu:.2f} us P/T GPU score: {paddle_gpu / torch_gpu:.2f}) "
     )
@@ -126,22 +157,22 @@ def set_item_bench(n, index, n_repeat, n_warmup, score_list, cuda_device_num=0):
         f"set_item (scalar) paddle_cpu: {paddle_cpu:.2f} us torch_cpu: {torch_cpu:.2f} us P/T CPU score: {paddle_cpu / torch_cpu:.2f}) "
     )
     score_list.append(paddle_cpu / torch_cpu)
-    np_x = x.cpu().numpy()
-    np_y = y.cpu().numpy()
-
-    np.testing.assert_allclose(np_x, np_y)
 
 
-def get_item_bench(n, index, n_repeat, n_warmup, score_list, cuda_device_num=0):
+def get_item_bench(
+    n, index, n_repeat, n_warmup, score_list, cuda_device_num=0, dtype="float32"
+):
     x = paddle.to_tensor(
-        n, dtype="float32", place=paddle.CUDAPlace(cuda_device_num)
+        n, dtype=paddle_type[dtype], place=paddle.CUDAPlace(cuda_device_num)
     )
-    y = torch.tensor(n, dtype=torch.float32, device=f"cuda:{cuda_device_num}")
+    y = torch.tensor(
+        n, dtype=torch_type[dtype], device=f"cuda:{cuda_device_num}"
+    )
     paddle_z = paddle.to_tensor(
-        n, dtype="float32", place=paddle.CUDAPlace(cuda_device_num)
+        n, dtype=paddle_type[dtype], place=paddle.CUDAPlace(cuda_device_num)
     )
     torch_z = torch.tensor(
-        n, dtype=torch.float32, device=f"cuda:{cuda_device_num}"
+        n, dtype=torch_type[dtype], device=f"cuda:{cuda_device_num}"
     )
 
     paddle.device.synchronize()
@@ -175,9 +206,9 @@ def get_item_bench(n, index, n_repeat, n_warmup, score_list, cuda_device_num=0):
 
     gpu_exec_times = paddle.to_tensor(
         [s.elapsed_time(e) for s, e in zip(start_event, end_event)],
-        dtype=paddle.float32,
+        dtype=paddle.float64,
     )
-    cpu_exec_times = paddle.to_tensor(cpu_exec_times, dtype=paddle.float32)
+    cpu_exec_times = paddle.to_tensor(cpu_exec_times, dtype=paddle.float64)
 
     paddle_gpu = (paddle.mean(gpu_exec_times) * 1000).cpu().numpy().item()
     paddle_cpu = (cpu_exec_times / n_repeat).cpu().numpy().item()
@@ -210,12 +241,16 @@ def get_item_bench(n, index, n_repeat, n_warmup, score_list, cuda_device_num=0):
 
     gpu_exec_times = torch.tensor(
         [s.elapsed_time(e) for s, e in zip(start_event, end_event)],
-        dtype=torch.float32,
+        dtype=torch.float64,
     )
-    cpu_exec_times = torch.tensor(cpu_exec_times, dtype=torch.float32)
+    cpu_exec_times = torch.tensor(cpu_exec_times, dtype=torch.float64)
 
     torch_gpu = (torch.mean(gpu_exec_times) * 1000).cpu().numpy().item()
     torch_cpu = (cpu_exec_times / n_repeat).cpu().numpy().item()
+
+    np_x = x.cpu().numpy()
+    np_y = y.cpu().numpy()
+    np.testing.assert_allclose(np_x, np_y)
 
     print(
         f"get_item paddle_gpu: {paddle_gpu:.2f} us, torch_gpu: {torch_gpu:.2f} us, Paddle/Torch GPU score: {paddle_gpu / torch_gpu:.2f}) "
@@ -224,22 +259,25 @@ def get_item_bench(n, index, n_repeat, n_warmup, score_list, cuda_device_num=0):
         f"get_item paddle_cpu: {paddle_cpu:.2f} us, torch_cpu: {torch_cpu:.2f} us, Paddle/Torch CPU score: {paddle_cpu / torch_cpu:.2f}) "
     )
     score_list.append(paddle_cpu / torch_cpu)
-    np_x = x.cpu().numpy()
-    np_y = y.cpu().numpy()
-
-    np.testing.assert_allclose(np_x, np_y)
 
 
 def set_item_grad_bench(
-    n, index, n_repeat, n_warmup, score_list, cuda_device_num=0
+    n,
+    index,
+    n_repeat,
+    n_warmup,
+    score_list,
+    cuda_device_num=0,
+    dtype="float32",
+    is_tensor=False,
 ):
     x = paddle.to_tensor(
-        n, dtype="float32", place=paddle.CUDAPlace(cuda_device_num)
+        n, dtype=paddle_type[dtype], place=paddle.CUDAPlace(cuda_device_num)
     )
     x.stop_gradient = False
     y = torch.tensor(
         n,
-        dtype=torch.float32,
+        dtype=torch_type[dtype],
         device=f"cuda:{cuda_device_num}",
         requires_grad=True,
     )
@@ -257,10 +295,16 @@ def set_item_grad_bench(
         index_p = convert_numpy("paddle", index)
     else:
         index_p = index
+
+    if is_tensor:
+        x_value = paddle.full(x[index_p].shape, 0.5, paddle_type[dtype])
+    else:
+        x_value = 0.5
+
     paddle.device.synchronize()
     # forward
     paddle_z = x * 1
-    paddle_z[index_p] = 0.5
+    paddle_z[index_p] = x_value
     # backward
     grad_outputs = paddle.ones_like(paddle_z)
     # warmup
@@ -268,6 +312,7 @@ def set_item_grad_bench(
         grad_x = paddle.grad(
             [paddle_z], [x], grad_outputs=grad_outputs, allow_unused=True
         )
+
     paddle.device.synchronize()
     for i in range(n_repeat):
         cpu_start = time.perf_counter_ns()
@@ -283,9 +328,9 @@ def set_item_grad_bench(
 
     gpu_exec_times = paddle.to_tensor(
         [s.elapsed_time(e) for s, e in zip(start_event, end_event)],
-        dtype=paddle.float32,
+        dtype=paddle.float64,
     )
-    cpu_exec_times = paddle.to_tensor(cpu_exec_times, dtype=paddle.float32)
+    cpu_exec_times = paddle.to_tensor(cpu_exec_times, dtype=paddle.float64)
     paddle_gpu = (paddle.mean(gpu_exec_times) * 1000).cpu().numpy().item()
     paddle_cpu = (cpu_exec_times / n_repeat).cpu().numpy().item()
 
@@ -299,10 +344,20 @@ def set_item_grad_bench(
         index_t = convert_numpy("torch", index)
     else:
         index_t = index
+    if is_tensor:
+        y_value = torch.full(
+            y[index_t].shape,
+            0.5,
+            device=f"cuda:{cuda_device_num}",
+        )
+        y_value.stop_gradient = False
+    else:
+        y_value = 0.5
+
     torch.cuda.synchronize()
     # forward
     torch_z = y * 1
-    torch_z[index_t] = 0.5
+    torch_z[index_t] = y_value
     # backward
     grad_outputs = torch.ones_like(torch_z, device=f"cuda:{cuda_device_num}")
     # warmup
@@ -310,6 +365,7 @@ def set_item_grad_bench(
         grad_y = torch.autograd.grad(
             [torch_z], [y], grad_outputs=grad_outputs, retain_graph=True
         )
+
     torch.cuda.synchronize()
 
     for i in range(n_repeat):
@@ -326,11 +382,15 @@ def set_item_grad_bench(
 
     gpu_exec_times = torch.tensor(
         [s.elapsed_time(e) for s, e in zip(start_event, end_event)],
-        dtype=torch.float32,
+        dtype=torch.float64,
     )
-    cpu_exec_times = torch.tensor(cpu_exec_times, dtype=torch.float32)
+    cpu_exec_times = torch.tensor(cpu_exec_times, dtype=torch.float64)
     torch_gpu = (torch.mean(gpu_exec_times) * 1000).cpu().numpy().item()
     torch_cpu = (cpu_exec_times / n_repeat).cpu().numpy().item()
+    for i in range(len(grad_x)):
+        np.testing.assert_allclose(
+            grad_x[i].cpu().numpy(), grad_y[i].cpu().numpy()
+        )
 
     print(
         f"set_item_grad paddle_gpu: {paddle_gpu:.2f} us, torch_gpu: {torch_gpu:.2f} us, Paddle/Torch GPU score: {paddle_gpu / torch_gpu:.2f}) "
@@ -339,22 +399,18 @@ def set_item_grad_bench(
         f"set_item_grad paddle_cpu: {paddle_cpu:.2f} us, torch_cpu: {torch_cpu:.2f} us, Paddle/Torch CPU score: {paddle_cpu / torch_cpu:.2f}) "
     )
     score_list.append(paddle_cpu / torch_cpu)
-    for i in range(len(grad_x)):
-        np.testing.assert_allclose(
-            grad_x[i].cpu().numpy(), grad_y[i].cpu().numpy()
-        )
 
 
 def get_item_grad_bench(
-    n, index, n_repeat, n_warmup, score_list, cuda_device_num=0
+    n, index, n_repeat, n_warmup, score_list, cuda_device_num=0, dtype="float32"
 ):
     x = paddle.to_tensor(
-        n, dtype="float32", place=paddle.CUDAPlace(cuda_device_num)
+        n, dtype=paddle_type[dtype], place=paddle.CUDAPlace(cuda_device_num)
     )
     x.stop_gradient = False
     y = torch.tensor(
         n,
-        dtype=torch.float32,
+        dtype=torch_type[dtype],
         device=f"cuda:{cuda_device_num}",
         requires_grad=True,
     )
@@ -397,9 +453,9 @@ def get_item_grad_bench(
 
     gpu_exec_times = paddle.to_tensor(
         [s.elapsed_time(e) for s, e in zip(start_event, end_event)],
-        dtype=paddle.float32,
+        dtype=paddle.float64,
     )
-    cpu_exec_times = paddle.to_tensor(cpu_exec_times, dtype=paddle.float32)
+    cpu_exec_times = paddle.to_tensor(cpu_exec_times, dtype=paddle.float64)
     paddle_gpu = (paddle.mean(gpu_exec_times) * 1000).cpu().numpy().item()
     paddle_cpu = (cpu_exec_times / n_repeat).cpu().numpy().item()
 
@@ -439,12 +495,17 @@ def get_item_grad_bench(
 
     gpu_exec_times = torch.tensor(
         [s.elapsed_time(e) for s, e in zip(start_event, end_event)],
-        dtype=torch.float32,
+        dtype=torch.float64,
     )
-    cpu_exec_times = torch.tensor(cpu_exec_times, dtype=torch.float32)
+    cpu_exec_times = torch.tensor(cpu_exec_times, dtype=torch.float64)
 
     torch_gpu = (torch.mean(gpu_exec_times) * 1000).cpu().numpy().item()
     torch_cpu = (cpu_exec_times / n_repeat).cpu().numpy().item()
+
+    for i in range(len(grad_x)):
+        np.testing.assert_allclose(
+            grad_x[i].cpu().numpy(), grad_y[i].cpu().numpy()
+        )
 
     print(
         f"get_item_grad paddle_gpu: {paddle_gpu:.2f} us, torch_gpu: {torch_gpu:.2f} us, Paddle/Torch GPU score: {paddle_gpu / torch_gpu:.2f}) "
@@ -453,10 +514,184 @@ def get_item_grad_bench(
         f"get_item_grad paddle_cpu: {paddle_cpu:.2f} us, torch_cpu: {torch_cpu:.2f} us, Paddle/Torch CPU score: {paddle_cpu / torch_cpu:.2f}) "
     )
     score_list.append(paddle_cpu / torch_cpu)
-    for i in range(len(grad_x)):
-        np.testing.assert_allclose(
-            grad_x[i].cpu().numpy(), grad_y[i].cpu().numpy()
+
+
+def test_dtype(
+    first_index_dict,
+    second_index_dict,
+    n_repeat,
+    n_warmup,
+    dtype="float32",
+    is_tensor=False,
+):
+    print("========== test ", dtype, " is_tensor ", is_tensor, "=============")
+    get_item_score = []
+    get_item_grad_score = []
+    set_item_score = []
+    set_item_grad_score = []
+    for key in first_index_dict:
+        index_list = first_index_dict[key]
+        print(key, " case :")
+        n = np.random.randn(108, 64, 12288).astype(dtype)
+        print("x.shape = ", n.shape)
+        i = 0
+        for index in index_list:
+            i += 1
+            print("index = ", str(index))
+            if not is_tensor:
+                get_item_bench(
+                    n,
+                    index,
+                    n_repeat,
+                    n_warmup,
+                    get_item_score,
+                    cuda_device_num=cuda_device_num,
+                    dtype=dtype,
+                )
+                get_item_grad_bench(
+                    n,
+                    index,
+                    n_repeat,
+                    n_warmup,
+                    get_item_grad_score,
+                    cuda_device_num=cuda_device_num,
+                    dtype=dtype,
+                )
+
+            set_item_bench(
+                n,
+                index,
+                n_repeat,
+                n_warmup,
+                set_item_score,
+                cuda_device_num=cuda_device_num,
+                dtype=dtype,
+                is_tensor=is_tensor,
+            )
+
+            if key == "combined" and i == 3:
+                continue
+            set_item_grad_bench(
+                n,
+                index,
+                n_repeat,
+                n_warmup,
+                set_item_grad_score,
+                cuda_device_num=cuda_device_num,
+                dtype=dtype,
+                is_tensor=is_tensor,
+            )
+            print(" ")
+
+    for key in second_index_dict:
+        index_list = second_index_dict[key]
+        print(key, " case :")
+        n = np.random.randn(108, 64, 12288, 3).astype(dtype)
+        print("x.shape = ", n.shape)
+        for index in index_list:
+            print("index = ", str(index))
+            if not is_tensor:
+                get_item_bench(
+                    n,
+                    index,
+                    n_repeat,
+                    n_warmup,
+                    get_item_score,
+                    cuda_device_num=cuda_device_num,
+                    dtype=dtype,
+                )
+                get_item_grad_bench(
+                    n,
+                    index,
+                    n_repeat,
+                    n_warmup,
+                    get_item_grad_score,
+                    cuda_device_num=cuda_device_num,
+                    dtype=dtype,
+                )
+
+            set_item_bench(
+                n,
+                index,
+                n_repeat,
+                n_warmup,
+                set_item_score,
+                cuda_device_num=cuda_device_num,
+                dtype=dtype,
+                is_tensor=is_tensor,
+            )
+            set_item_grad_bench(
+                n,
+                index,
+                n_repeat,
+                n_warmup,
+                set_item_grad_score,
+                cuda_device_num=cuda_device_num,
+                dtype=dtype,
+                is_tensor=is_tensor,
+            )
+            print(" ")
+    score_lists = [
+        get_item_score,
+        set_item_score,
+        get_item_grad_score,
+        set_item_grad_score,
+    ]
+    name_list = [
+        "get_item_score",
+        "set_item_score",
+        "get_item_grad_score",
+        "set_item_grad_score",
+    ]
+
+    for name, score_list in zip(name_list, score_lists):
+        G = 0
+        S = 0
+        B = 0
+        B2 = 0
+        Bother = 0
+        for item in score_list:
+            if item <= 0.90:
+                G += 1
+            elif item > 0.9 and item <= 1.1:
+                S += 1
+            else:
+                B += 1
+                if item <= 2:
+                    B2 += 1
+                else:
+                    Bother += 1
+        print(
+            name,
+            "total_case = ",
+            G + S + B,
+            ", G = ",
+            G,
+            ", S = ",
+            S,
+            ", B = ",
+            B,
+            ", score <=2 : ",
+            B2,
+            ", score >2 : ",
+            Bother,
         )
+
+    forward_score_list = get_item_score + set_item_score
+    backward_score_list = get_item_grad_score + set_item_grad_score
+
+    total_score = 0
+    for score in forward_score_list:
+        total_score += score
+    forward_avg_score = total_score / len(forward_score_list)
+
+    total_score = 0
+    for score in backward_score_list:
+        total_score += score
+    backward_avg_score = total_score / len(backward_score_list)
+
+    print("forward_avg_score = ", forward_avg_score)
+    print("backward_avg_score = ", backward_avg_score)
 
 
 def main():
@@ -561,163 +796,28 @@ def main():
         ]
     }
 
-    n_repeat = 100
+    n_repeat = 80
     n_warmup = 5
-    get_item_score = []
-    set_item_score = []
-    get_item_grad_score = []
-    set_item_grad_score = []
 
     print(" n_repeat = ", n_repeat)
     print(" n_warmup = ", n_warmup)
 
-    for key in first_index_dict:
-        index_list = first_index_dict[key]
-        print(key, " case :")
-        n = np.random.randn(108, 64, 12288).astype("float32")
-        print("x.shape = ", n.shape)
-        i = 0
-        for index in index_list:
-            i += 1
-            print("index = ", str(index))
-            get_item_bench(
-                n,
-                index,
-                n_repeat,
-                n_warmup,
-                get_item_score,
-                cuda_device_num=cuda_device_num,
-            )
-            get_item_grad_bench(
-                n,
-                index,
-                n_repeat,
-                n_warmup,
-                get_item_grad_score,
-                cuda_device_num=cuda_device_num,
-            )
-            set_item_bench(
-                n,
-                index,
-                n_repeat,
-                n_warmup,
-                set_item_score,
-                cuda_device_num=cuda_device_num,
-            )
-            if key == "combined" and i == 3:
-                continue
-            set_item_grad_bench(
-                n,
-                index,
-                n_repeat,
-                n_warmup,
-                set_item_grad_score,
-                cuda_device_num=cuda_device_num,
-            )
-            print(" ")
-
-    for key in second_index_dict:
-        index_list = second_index_dict[key]
-        print(key, " case :")
-        n = np.random.randn(108, 64, 12288, 3).astype("float32")
-        print("x.shape = ", n.shape)
-        for index in index_list:
-            print("index = ", str(index))
-            get_item_bench(
-                n,
-                index,
-                n_repeat,
-                n_warmup,
-                get_item_score,
-                cuda_device_num=cuda_device_num,
-            )
-            get_item_grad_bench(
-                n,
-                index,
-                n_repeat,
-                n_warmup,
-                get_item_grad_score,
-                cuda_device_num=cuda_device_num,
-            )
-
-            set_item_bench(
-                n,
-                index,
-                n_repeat,
-                n_warmup,
-                set_item_score,
-                cuda_device_num=cuda_device_num,
-            )
-            set_item_grad_bench(
-                n,
-                index,
-                n_repeat,
-                n_warmup,
-                set_item_grad_score,
-                cuda_device_num=cuda_device_num,
-            )
-            print(" ")
-    score_lists = [
-        get_item_score,
-        set_item_score,
-        get_item_grad_score,
-        set_item_grad_score,
-    ]
-    name_list = [
-        "get_item_score",
-        "set_item_score",
-        "get_item_grad_score",
-        "set_item_grad_score",
-    ]
-
-    for name, score_list in zip(name_list, score_lists):
-        G = 0
-        S = 0
-        B = 0
-        B2 = 0
-        Bother = 0
-        for item in score_list:
-            if item <= 0.90:
-                G += 1
-            elif item > 0.9 and item <= 1.1:
-                S += 1
-            else:
-                B += 1
-                if item <= 2:
-                    B2 += 1
-                else:
-                    Bother += 1
-        print(
-            name,
-            "total_case = ",
-            G + S + B,
-            ", G = ",
-            G,
-            ", S = ",
-            S,
-            ", B = ",
-            B,
-            ", score <=2 : ",
-            B2,
-            ", score >2 : ",
-            Bother,
-        )
-
-    forward_score_list = get_item_score + set_item_score
-    backward_score_list = get_item_grad_score + set_item_grad_score
-
-    total_score = 0
-    for score in forward_score_list:
-        total_score += score
-    forward_avg_score = total_score / len(forward_score_list)
-
-    total_score = 0
-    for score in backward_score_list:
-        total_score += score
-    backward_avg_score = total_score / len(backward_score_list)
-
-    print("forward_avg_score = ", forward_avg_score)
-    print("backward_avg_score = ", backward_avg_score)
+    test_dtype(
+        first_index_dict, second_index_dict, n_repeat, n_warmup, dtype="float32"
+    )
+    print()
+    test_dtype(
+        first_index_dict,
+        second_index_dict,
+        n_repeat,
+        n_warmup,
+        dtype="float32",
+        is_tensor=True,
+    )
+    print()
+    test_dtype(
+        first_index_dict, second_index_dict, n_repeat, n_warmup, dtype="float16"
+    )
 
 
 if __name__ == "__main__":

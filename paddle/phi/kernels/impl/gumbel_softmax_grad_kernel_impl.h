@@ -23,7 +23,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void GumbelSoftmaxGradKernel(const Context& ctx,
+void GumbelSoftmaxGradKernel(const Context& dev_ctx,
                              const DenseTensor& out,
                              const DenseTensor& dout,
                              int axis,
@@ -33,14 +33,14 @@ void GumbelSoftmaxGradKernel(const Context& ctx,
   int axis_dim = dx->dims()[axis];
   // allocate memory on device.
 
-  ctx.template Alloc<T>(dx);
+  dev_ctx.template Alloc<T>(dx);
   if (dx->numel() == 0) {
     return;
   }
 
   // For 0D Tensor
   if (rank == 0) {
-    phi::funcs::set_constant(ctx, dx, static_cast<T>(0.0));
+    phi::funcs::set_constant(dev_ctx, dx, static_cast<T>(0.0));
     return;
   }
 
@@ -51,7 +51,7 @@ void GumbelSoftmaxGradKernel(const Context& ctx,
   out_2d.Resize({size_to_axis, size_from_axis});
   dout_2d.Resize({size_to_axis, size_from_axis});
   phi::funcs::SoftmaxGradFunctor<Context, T>()(
-      ctx, axis_dim, &out_2d, &dout_2d, &dx_2d);
+      dev_ctx, axis_dim, &out_2d, &dout_2d, &dx_2d);
 }
 
 }  // namespace phi
