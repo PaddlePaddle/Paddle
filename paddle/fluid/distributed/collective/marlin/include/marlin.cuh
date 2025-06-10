@@ -53,7 +53,7 @@ constexpr int div_ceil(int a, int b) { return (a + b - 1) / b; }
 
 #if defined(__CUDA_ARCH__) && __CUDA_ARCH__ < 800
 // No support for async
-#else
+#elif defined(__CUDA_ARCH__)
 
 __device__ inline void cp_async4_pred(void* smem_ptr, const void* glob_ptr,
                                       bool pred = true) {

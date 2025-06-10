@@ -16,7 +16,7 @@
 #include "pybind11/functional.h"
 #include "pybind11/stl.h"
 
-#include "paddle/fluid/distributed/collective/marlin/ops.cu"
+#include "paddle/fluid/distributed/collective/marlin/moe_ops.h"
 #include "paddle/fluid/pybind/moe_wna16_marlin_api.h"
 #include "paddle/utils/pybind.h"
 

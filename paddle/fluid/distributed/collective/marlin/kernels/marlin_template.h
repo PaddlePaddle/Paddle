@@ -25,7 +25,7 @@
 // #include "paddle/fluid/distributed/collective/marlin/include/types.h"
 
 #include "paddle/fluid/distributed/collective/marlin/include/marlin.cuh"
-#include "paddle/fluid/distributed/collective/marlin/gptq_marlin/marlin_dtypes.cuh"
+#include "paddle/fluid/distributed/collective/marlin/include/marlin_dtypes.cuh"
 #include "paddle/fluid/distributed/collective/marlin/gptq_marlin/dequant.h"
 #include "paddle/fluid/distributed/collective/marlin/include/types.h"
 

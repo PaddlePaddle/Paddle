@@ -1,4 +1,9 @@
-set(MARLIN_KERNEL_SRCS kernels/kernel_fp16_ku4.cu gptq_marlin/kernel_fp16_ku4.cu)
+set(MARLIN_KERNEL_SRCS 
+  kernels/kernel_fp16_ku4.cu 
+  kernels/kernel_bf16_ku4.cu
+  gptq_marlin/kernel_fp16_ku4.cu
+  gptq_marlin/kernel_bf16_ku4.cu)
+  
 nv_library(marlin_kernels SRCS ${MARLIN_KERNEL_SRCS})
 
 nv_library(
