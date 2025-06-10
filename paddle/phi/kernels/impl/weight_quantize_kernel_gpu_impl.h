@@ -435,8 +435,8 @@ void weight_quant_gpu(const GPUContext& dev_ctx,
 }
 
 __global__ void weight_permute_transpose_interleave_kernel_w4a8(
-    const uint8_t* input_data_ptr,
-    uint8_t* output_data_ptr,
+    const int8_t* input_data_ptr,
+    int8_t* output_data_ptr,
     int original_k,
     int original_n) {
   // every 2 k-direction 8bit , ie 4 k-direction 4bit,
@@ -492,8 +492,8 @@ __global__ void w4a8_inplace_permute(uint32_t* output_data_ptr, int numel) {
 
 template <typename GPUContext>
 void weight_permute_gpu_w4a8(const GPUContext& dev_ctx,
-                             const uint8_t* input_data,
-                             uint8_t* output_data,
+                             const int8_t* input_data,
+                             int8_t* output_data,
                              const std::vector<int>& shape,
                              const int32_t arch,
                              const std::string& algo) {
