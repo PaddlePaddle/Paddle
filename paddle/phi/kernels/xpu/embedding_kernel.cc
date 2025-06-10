@@ -20,7 +20,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void EmbeddingKernel(const Context &ctx,
+void EmbeddingKernel(const Context &dev_ctx,
                      const DenseTensor &inputx,
                      const DenseTensor &weight,
                      int64_t padding_idx,
@@ -39,7 +39,6 @@ void EmbeddingKernel(const Context &ctx,
   int64_t ids_numel = ids_t->numel();
 
   auto *table_t = &weight;
-  auto &dev_ctx = ctx;
 
   auto *table = table_t->data<T>();
   auto *output = dev_ctx.template Alloc<T>(output_t);
@@ -50,7 +49,7 @@ void EmbeddingKernel(const Context &ctx,
   int64_t n = table_t->dims()[1];
 
   int r;
-  xpu::ctx_guard RAII_GUARD(ctx.x_context());
+  xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
   if (ids_t->dtype() == phi::DataType::INT64) {
 #ifndef PADDLE_WITH_XPU_PLUGIN
     r = xpu::paddle_embedding<XPUType, int64_t>(
@@ -77,7 +76,7 @@ void EmbeddingKernel(const Context &ctx,
 #ifndef PADDLE_WITH_XPU_PLUGIN
     int64_t *ids_tt = RAII_GUARD.alloc_l3_or_gm<int64_t>(ids_t->numel());
     r = xpu::cast<int32_t, int64_t>(
-        ctx.x_context(), ids_t->data<int>(), ids_tt, ids_t->numel());
+        dev_ctx.x_context(), ids_t->data<int>(), ids_tt, ids_t->numel());
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
     const int64_t *ids = reinterpret_cast<const int64_t *>(ids_tt);
     r = xpu::paddle_embedding<XPUType>(dev_ctx.x_context(),

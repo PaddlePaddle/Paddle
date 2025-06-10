@@ -28,6 +28,10 @@ void ReshapeGradKernel(const Context& dev_ctx,
                        const DenseTensor& x,
                        const DenseTensor& out_grad,
                        DenseTensor* x_grad) {
+  if (x_grad->numel() == 0) {
+    dev_ctx.Alloc(x_grad, x_grad->dtype());
+    return;
+  }
   // NOTE: [Why not to use x.dims() ?]
   // Because inplace strategy is different between old IR and PIR,
   // we need fix it into x.dims() after cleaning old IR system.

@@ -483,8 +483,10 @@ endif()
 if(NOT WITH_GPU
    OR WIN32
    OR APPLE
-   OR (${CUDA_ARCH_NAME} STREQUAL "Volta")
-   OR ((WITH_GPU) AND (CUDA_VERSION VERSION_LESS 12.0)))
+   OR WITH_ROCM
+   OR (${CUDA_ARCH_NAME} STREQUAL "Volta") # Affects the accuracy of op tests
+   OR ((WITH_GPU) AND (CUDA_VERSION VERSION_LESS 12.0))
+)# Restrict the use of older versions of CUB
   list(
     REMOVE_ITEM
     TEST_OPS

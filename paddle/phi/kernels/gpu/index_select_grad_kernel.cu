@@ -52,14 +52,14 @@ __global__ void index_select_grad_cuda_kernel(const T* output_grad,
 }
 
 template <typename T, typename Context>
-void IndexSelectGradKernel(const Context& ctx,
+void IndexSelectGradKernel(const Context& dev_ctx,
                            const DenseTensor& x,
                            const DenseTensor& index,
                            const DenseTensor& out_grad,
                            int dim,
                            DenseTensor* x_grad) {
   auto* output_grad_data = out_grad.data<T>();
-  auto* in_grad_data = ctx.template Alloc<T>(x_grad);
+  auto* in_grad_data = dev_ctx.template Alloc<T>(x_grad);
 
   auto input_dim = x_grad->dims();
   auto output_dim = out_grad.dims();
@@ -88,14 +88,14 @@ void IndexSelectGradKernel(const Context& ctx,
   int64_t index_nums = index.numel();
   int64_t out_nums = out_grad.numel();
 
-  auto stream = ctx.stream();
+  auto stream = dev_ctx.stream();
 
   unsigned int block_dim = PADDLE_CUDA_NUM_THREADS;
   dim3 grid_dim = dim3((out_nums + block_dim - 1) / block_dim);
-  phi::backends::gpu::LimitGridDim(ctx, &grid_dim);
+  phi::backends::gpu::LimitGridDim(dev_ctx, &grid_dim);
 
   phi::funcs::SetConstant<phi::GPUContext, T> index_select_grad_init;
-  index_select_grad_init(ctx, x_grad, static_cast<T>(0));
+  index_select_grad_init(dev_ctx, x_grad, static_cast<T>(0));
 
   if (FLAGS_cudnn_deterministic) {
     VLOG(2) << "Run grad kernel of index_select with single thread.";

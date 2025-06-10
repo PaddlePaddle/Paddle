@@ -13,17 +13,21 @@
 // limitations under the License.
 
 #pragma once
+
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/tensor_array.h"
 
 namespace phi {
 
 template <typename T, typename Context>
-void ExpandModalityExpertIDKernel(const Context& dev_ctx,
-                                  const DenseTensor& expert_id,
-                                  int64_t num_expert_per_modality,
-                                  int64_t group_size,
-                                  int64_t modality_offset,
-                                  bool is_group_expert,
-                                  DenseTensor* expert_id_out);
+void IndexElementwiseGetGradKernel(const Context& ctx,
+                                   const DenseTensor& x,
+                                   const std::vector<const DenseTensor*>& index,
+                                   const DenseTensor& out_grad,
+                                   const std::vector<int64_t>& input_dims,
+                                   const std::vector<int64_t>& input_strides,
+                                   const std::vector<int64_t>& index_dims,
+                                   const std::vector<int64_t>& index_strides,
+                                   DenseTensor* x_grad);
 
 }  // namespace phi

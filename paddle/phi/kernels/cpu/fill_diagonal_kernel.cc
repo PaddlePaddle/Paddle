@@ -21,7 +21,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void FillDiagonalKernel(const Context& ctx,
+void FillDiagonalKernel(const Context& dev_ctx,
                         const DenseTensor& x,
                         float value,
                         int offset,
@@ -29,10 +29,10 @@ void FillDiagonalKernel(const Context& ctx,
                         DenseTensor* out) {
   T temp_var = static_cast<T>(value);
 
-  T* out_data = ctx.template Alloc<T>(out);
+  T* out_data = dev_ctx.template Alloc<T>(out);
   if (out && out->numel() == 0) return;
 
-  phi::Copy(ctx, x, ctx.GetPlace(), false, out);
+  phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
 
   auto out_dims = out->dims();
   auto strides = funcs::CalStride(out_dims);

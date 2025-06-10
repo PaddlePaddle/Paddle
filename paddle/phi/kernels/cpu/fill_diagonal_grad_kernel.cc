@@ -20,16 +20,16 @@
 namespace phi {
 
 template <typename T, typename Context>
-void FillDiagonalGradKernel(const Context& ctx,
+void FillDiagonalGradKernel(const Context& dev_ctx,
                             const DenseTensor& out_grad,
                             float value UNUSED,
                             int offset,
                             bool wrap,
                             DenseTensor* x_grad) {
   if (x_grad) {
-    T* data = ctx.template Alloc<T>(x_grad);
+    T* data = dev_ctx.template Alloc<T>(x_grad);
     if (x_grad->numel() == 0) return;
-    phi::Copy(ctx, out_grad, ctx.GetPlace(), false, x_grad);
+    phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
 
     auto dx_dims = x_grad->dims();
     auto strides = funcs::CalStride(dx_dims);

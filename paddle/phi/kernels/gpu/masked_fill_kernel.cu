@@ -64,7 +64,7 @@ __global__ void GPUMaskedFillKernel(const T* input,
 }
 
 template <typename T>
-void DispatchMaskFillKernel(const phi::GPUContext& ctx,
+void DispatchMaskFillKernel(const phi::GPUContext& dev_ctx,
                             const T* input,
                             const bool* mask,
                             const T* value,
@@ -73,7 +73,7 @@ void DispatchMaskFillKernel(const phi::GPUContext& ctx,
                             T* output,
                             int vec_size,
                             const phi::backends::gpu::GpuLaunchConfig& config) {
-  auto stream = ctx.stream();
+  auto stream = dev_ctx.stream();
   if (vec_size == 4) {
     GPUMaskedFillKernel<T, 4>
         <<<config.block_per_grid, config.thread_per_block, 0, stream>>>(
@@ -93,14 +93,14 @@ void DispatchMaskFillKernel(const phi::GPUContext& ctx,
 }
 
 template <typename T>
-void GPUMaskedFill(const phi::GPUContext& ctx,
+void GPUMaskedFill(const phi::GPUContext& dev_ctx,
                    const DenseTensor& input,
                    const DenseTensor& mask,
                    const DenseTensor& value,
                    DenseTensor* output) {
   const T* input_data = input.data<T>();
   const bool* mask_data = mask.data<bool>();
-  ctx.template Alloc<T>(output);
+  dev_ctx.template Alloc<T>(output);
   T* output_data = output->data<T>();
   const T* value_data = value.data<T>();
   int64_t input_len = input.numel();
@@ -115,9 +115,9 @@ void GPUMaskedFill(const phi::GPUContext& ctx,
   }
 
   auto config =
-      phi::backends::gpu::GetGpuLaunchConfig1D(ctx, input_len, vec_size);
+      phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, input_len, vec_size);
 
-  DispatchMaskFillKernel<T>(ctx,
+  DispatchMaskFillKernel<T>(dev_ctx,
                             input_data,
                             mask_data,
                             value_data,

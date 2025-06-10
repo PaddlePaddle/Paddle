@@ -1,4 +1,4 @@
-// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,10 +13,9 @@
 // limitations under the License.
 
 #pragma once
-#ifdef PADDLE_WITH_CUDA
 #include "paddle/common/exception.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
-#include "paddle/phi/kernels/moe_kernel_impl.h"
+#include "paddle/phi/kernels/legacy/gpu/moe_kernel_impl.h"
 
 namespace phi {
 
@@ -314,4 +313,3 @@ void topk_grad_with_mask_launcher(const T* dy,               // [s, k]
 }
 
 }  // namespace phi
-#endif
