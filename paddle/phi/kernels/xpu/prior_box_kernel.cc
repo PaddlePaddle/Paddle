@@ -22,7 +22,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void PriorBoxKernel(const Context& ctx,
+void PriorBoxKernel(const Context& dev_ctx,
                     const DenseTensor& input,
                     const DenseTensor& image,
                     const std::vector<float>& min_sizes,
@@ -39,9 +39,9 @@ void PriorBoxKernel(const Context& ctx,
                     DenseTensor* var) {
   if (input.numel() == 0 || image.numel() == 0) {
     phi::Full<T, Context>(
-        ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+        dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
     phi::Full<T, Context>(
-        ctx, phi::IntArray(common::vectorize(var->dims())), 0, var);
+        dev_ctx, phi::IntArray(common::vectorize(var->dims())), 0, var);
     return;
   }
 
@@ -72,8 +72,8 @@ void PriorBoxKernel(const Context& ctx,
     num_priors += max_sizes.size();
   }
 
-  ctx.template Alloc<T>(out);
-  ctx.template Alloc<T>(var);
+  dev_ctx.template Alloc<T>(out);
+  dev_ctx.template Alloc<T>(var);
 
   auto boxes_data = out->data<T>();
   auto var_data = var->data<T>();
@@ -86,7 +86,7 @@ void PriorBoxKernel(const Context& ctx,
   xpu::VectorParam<float> max_sizes_param{
       max_sizes.data(), static_cast<int64_t>(max_sizes.size()), nullptr};
 
-  int ret = xpu::gen_prior_box(ctx.x_context(),
+  int ret = xpu::gen_prior_box(dev_ctx.x_context(),
                                boxes_data,
                                aspect_ratios_param,
                                min_sizes_param,
@@ -108,7 +108,7 @@ void PriorBoxKernel(const Context& ctx,
   for (int64_t i = 0; i < box_num; ++i) {
     std::copy(variances.begin(), variances.end(), var_cpu.begin() + i * vlen);
   }
-  ctx.Wait();
+  dev_ctx.Wait();
   PADDLE_ENFORCE_XPU_SUCCESS(xpu_memcpy(var_data,
                                         var_cpu.data(),
                                         var_cpu.size() * sizeof(T),

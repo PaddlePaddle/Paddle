@@ -20,7 +20,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void IndexSampleKernel(const Context& ctx,
+void IndexSampleKernel(const Context& dev_ctx,
                        const DenseTensor& x,
                        const DenseTensor& index,
                        DenseTensor* out) {
@@ -45,7 +45,7 @@ void IndexSampleKernel(const Context& ctx,
   int64_t index_length = index_dim[1];
 
   const T* in_data = x.data<T>();
-  T* out_data = ctx.template Alloc<T>(out);
+  T* out_data = dev_ctx.template Alloc<T>(out);
 
   // template<typename T, typename TID> DLL_EXPORT int gather_element(Context*
   // ctx, const T* x, const TID* index, T* y, const std::vector<int64_t>&
@@ -54,7 +54,7 @@ void IndexSampleKernel(const Context& ctx,
   if (index_type == DataType::INT64) {
     const int64_t* index_data = index.data<int64_t>();
     int r =
-        xpu::gather<XPUType, int64_t>(ctx.x_context(),
+        xpu::gather<XPUType, int64_t>(dev_ctx.x_context(),
                                       reinterpret_cast<const XPUType*>(in_data),
                                       index_data,
                                       reinterpret_cast<XPUType*>(out_data),
@@ -65,7 +65,7 @@ void IndexSampleKernel(const Context& ctx,
   } else if (index_type == DataType::INT32) {
     const int* index_data = index.data<int>();
     int r =
-        xpu::gather<XPUType, int32_t>(ctx.x_context(),
+        xpu::gather<XPUType, int32_t>(dev_ctx.x_context(),
                                       reinterpret_cast<const XPUType*>(in_data),
                                       index_data,
                                       reinterpret_cast<XPUType*>(out_data),

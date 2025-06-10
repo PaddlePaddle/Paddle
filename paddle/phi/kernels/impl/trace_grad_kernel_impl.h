@@ -81,7 +81,7 @@ struct TraceGradFunctor {
 };
 
 template <typename T, typename Context>
-void TraceGradKernel(const Context& ctx,
+void TraceGradKernel(const Context& dev_ctx,
                      const DenseTensor& x UNUSED,
                      const DenseTensor& out_grad,
                      int offset,
@@ -89,7 +89,7 @@ void TraceGradKernel(const Context& ctx,
                      int axis2,
                      DenseTensor* in_grad) {
   if (in_grad && in_grad->numel() == 0) {
-    ctx.template Alloc<T>(in_grad);
+    dev_ctx.template Alloc<T>(in_grad);
     return;
   }
   auto input_dims = in_grad->dims();
@@ -99,11 +99,11 @@ void TraceGradKernel(const Context& ctx,
                                                : common::stride(output_dims);
 
   auto* out_data = out_grad.data<T>();
-  T* x_data = ctx.template Alloc<T>(in_grad);
+  T* x_data = dev_ctx.template Alloc<T>(in_grad);
 
   phi::funcs::SetConstant<Context, T> set_zero;
 
-  set_zero(ctx, in_grad, static_cast<T>(0.0));
+  set_zero(dev_ctx, in_grad, static_cast<T>(0.0));
   auto dim1 = axis1;
   auto dim2 = axis2;
   auto dim1_ = dim1 < 0 ? input_dims.size() + dim1 : dim1;
@@ -135,7 +135,7 @@ void TraceGradKernel(const Context& ctx,
     const auto* input_arr = input_stride.Get();
 #endif
 
-    phi::funcs::ForRange<Context> for_range(ctx, in_grad->numel());
+    phi::funcs::ForRange<Context> for_range(dev_ctx, in_grad->numel());
     TraceGradFunctor<T> functor(out_data,
                                 output_arr,
                                 input_arr,

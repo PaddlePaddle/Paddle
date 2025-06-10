@@ -27,7 +27,7 @@
 namespace phi {
 
 template <typename Context, typename T, typename IndexT>
-void CalculateXEGradForMinMax(const Context& ctx,
+void CalculateXEGradForMinMax(const Context& dev_ctx,
                               const T* out_grad,
                               const T* x_data,
                               const T* e_data,
@@ -49,8 +49,8 @@ void CalculateXEGradForMinMax(const Context& ctx,
   }
 
   int64_t out_len = bcast_info.out_len;
-  const int ntx = FindNumThreads(out_len, ctx.GetMaxThreadsPerBlock());
-  const int nty = ctx.GetMaxThreadsPerBlock() / ntx;
+  const int ntx = FindNumThreads(out_len, dev_ctx.GetMaxThreadsPerBlock());
+  const int nty = dev_ctx.GetMaxThreadsPerBlock() / ntx;
   const int nbx = (out_len + ntx - 1) / ntx;
   const int nby = FindNumBlocks('y', (index_size + nty - 1) / nty);
   const dim3 grid(nbx, nby);
@@ -58,7 +58,7 @@ void CalculateXEGradForMinMax(const Context& ctx,
 
   if (message_op == "ADD") {
     ManipulateMinMaxGradCUDAKernelForAdd<T, IndexT>
-        <<<grid, block, 0, ctx.stream()>>>(
+        <<<grid, block, 0, dev_ctx.stream()>>>(
             x_data,
             e_data,
             out_data,
@@ -76,7 +76,7 @@ void CalculateXEGradForMinMax(const Context& ctx,
             bcast_info.use_bcast);
   } else if (message_op == "MUL") {
     ManipulateMinMaxGradCUDAKernelForMul<T, IndexT>
-        <<<grid, block, 0, ctx.stream()>>>(
+        <<<grid, block, 0, dev_ctx.stream()>>>(
             x_data,
             e_data,
             out_data,
@@ -96,7 +96,7 @@ void CalculateXEGradForMinMax(const Context& ctx,
 }
 
 template <typename Context, typename T, typename IndexT>
-void CalculateXGrad(const Context& ctx,
+void CalculateXGrad(const Context& dev_ctx,
                     const T* out_grad,
                     const T* x_data,
                     const T* e_data,
@@ -115,7 +115,7 @@ void CalculateXGrad(const Context& ctx,
                     const DenseTensor* out = nullptr) {
   int block = 1024;
   int64_t n = slice_size * index_size;
-  int max_grid_dimx = ctx.GetCUDAMaxGridDimSize()[0];
+  int max_grid_dimx = dev_ctx.GetCUDAMaxGridDimSize()[0];
   int64_t grid_tmp = (n + block - 1) / block;
   int64_t grid = grid_tmp < max_grid_dimx ? grid_tmp : max_grid_dimx;
   std::vector<int64_t> reduce_idx;
@@ -127,32 +127,32 @@ void CalculateXGrad(const Context& ctx,
         GraphSendRecvCUDAKernel<T,
                                 IndexT,
                                 GraphSendRecvSumCUDAFunctor<T, IndexT>>
-            <<<grid, block, 0, ctx.stream()>>>(out_grad,
-                                               d_index,
-                                               s_index,
-                                               x_grad,
-                                               index_size,
-                                               slice_size,
-                                               functor);
+            <<<grid, block, 0, dev_ctx.stream()>>>(out_grad,
+                                                   d_index,
+                                                   s_index,
+                                                   x_grad,
+                                                   index_size,
+                                                   slice_size,
+                                                   functor);
       } else {
         const auto& bcast_info = phi::CalcBCastInfo(out_grad_dims, e_dims);
         DenseTensor x_grad_v2 =
-            phi::EmptyLike<T, Context>(ctx, out_grad_tensor);
-        phi::funcs::SetConstant<Context, T>()(ctx, &x_grad_v2, T(0));
+            phi::EmptyLike<T, Context>(dev_ctx, out_grad_tensor);
+        phi::funcs::SetConstant<Context, T>()(dev_ctx, &x_grad_v2, T(0));
         T* x_grad_v2_data = x_grad_v2.data<T>();
         GraphSendRecvCUDAKernel<T,
                                 IndexT,
                                 GraphSendRecvSumCUDAFunctor<T, IndexT>>
-            <<<grid, block, 0, ctx.stream()>>>(out_grad,
-                                               d_index,
-                                               s_index,
-                                               x_grad_v2_data,
-                                               index_size,
-                                               bcast_info.out_len,
-                                               functor);
+            <<<grid, block, 0, dev_ctx.stream()>>>(out_grad,
+                                                   d_index,
+                                                   s_index,
+                                                   x_grad_v2_data,
+                                                   index_size,
+                                                   bcast_info.out_len,
+                                                   functor);
         // Run reduce_sum
         DenseTensor x_grad_out =
-            phi::Sum<T, Context>(ctx,
+            phi::Sum<T, Context>(dev_ctx,
                                  x_grad_v2,
                                  phi::IntArray(reduce_idx),
                                  phi::CppTypeToDataType<T>::Type(),
@@ -167,7 +167,7 @@ void CalculateXGrad(const Context& ctx,
                         x_grad_out.data<T>(),
                         x_grad_out.numel() * sizeof(T),
                         cudaMemcpyDeviceToDevice,
-                        ctx.stream());
+                        dev_ctx.stream());
 #endif
       }
     } else if (message_op == "MUL") {
@@ -177,8 +177,8 @@ void CalculateXGrad(const Context& ctx,
         CopyBCastOff(bcast_info, &l_bcastoff, &r_bcastoff);
       }
       int64_t out_len = bcast_info.out_len;
-      const int ntx = FindNumThreads(out_len, ctx.GetMaxThreadsPerBlock());
-      const int nty = ctx.GetMaxThreadsPerBlock() / ntx;
+      const int ntx = FindNumThreads(out_len, dev_ctx.GetMaxThreadsPerBlock());
+      const int nty = dev_ctx.GetMaxThreadsPerBlock() / ntx;
       const int nbx = (out_len + ntx - 1) / ntx;
       const int nby = FindNumBlocks('y', (index_size + nty - 1) / nty);
       const dim3 grid_(nbx, nby);
@@ -190,7 +190,7 @@ void CalculateXGrad(const Context& ctx,
                                   IndexT,
                                   GraphSendUERecvSumCUDAFunctor<T>,
                                   funcs::MultiplyFunctor<T>>
-            <<<grid_, block_, 0, ctx.stream()>>>(
+            <<<grid_, block_, 0, dev_ctx.stream()>>>(
                 out_grad,
                 e_data,
                 d_index,
@@ -207,14 +207,14 @@ void CalculateXGrad(const Context& ctx,
                 sum_functor);
       } else {
         DenseTensor x_grad_v2 =
-            phi::EmptyLike<T, Context>(ctx, out_grad_tensor);
-        phi::funcs::SetConstant<Context, T>()(ctx, &x_grad_v2, T(0));
+            phi::EmptyLike<T, Context>(dev_ctx, out_grad_tensor);
+        phi::funcs::SetConstant<Context, T>()(dev_ctx, &x_grad_v2, T(0));
         T* x_grad_v2_data = x_grad_v2.data<T>();
         GraphSendUERecvCUDAKernel<T,
                                   IndexT,
                                   GraphSendUERecvSumCUDAFunctor<T>,
                                   funcs::MultiplyFunctor<T>>
-            <<<grid_, block_, 0, ctx.stream()>>>(
+            <<<grid_, block_, 0, dev_ctx.stream()>>>(
                 out_grad,
                 e_data,
                 d_index,
@@ -230,7 +230,7 @@ void CalculateXGrad(const Context& ctx,
                 mul_functor,
                 sum_functor);
         DenseTensor x_grad_out =
-            phi::Sum<T, Context>(ctx,
+            phi::Sum<T, Context>(dev_ctx,
                                  x_grad_v2,
                                  phi::IntArray(reduce_idx),
                                  phi::CppTypeToDataType<T>::Type(),
@@ -245,7 +245,7 @@ void CalculateXGrad(const Context& ctx,
                         x_grad_out.data<T>(),
                         x_grad_out.numel() * sizeof(T),
                         cudaMemcpyDeviceToDevice,
-                        ctx.stream());
+                        dev_ctx.stream());
 #endif
       }
     }
@@ -254,30 +254,30 @@ void CalculateXGrad(const Context& ctx,
     if (message_op == "ADD") {
       if (!reduce) {
         ManipulateMeanGradCUDAKernel<T, IndexT>
-            <<<grid, block, 0, ctx.stream()>>>(out_grad,
-                                               d_index,
-                                               s_index,
-                                               x_grad,
-                                               index_size,
-                                               slice_size,
-                                               s_count);
+            <<<grid, block, 0, dev_ctx.stream()>>>(out_grad,
+                                                   d_index,
+                                                   s_index,
+                                                   x_grad,
+                                                   index_size,
+                                                   slice_size,
+                                                   s_count);
       } else {
         const auto& bcast_info = phi::CalcBCastInfo(out_grad_dims, e_dims);
         DenseTensor x_grad_v2 =
-            phi::EmptyLike<T, Context>(ctx, out_grad_tensor);
-        phi::funcs::SetConstant<Context, T>()(ctx, &x_grad_v2, T(0));
+            phi::EmptyLike<T, Context>(dev_ctx, out_grad_tensor);
+        phi::funcs::SetConstant<Context, T>()(dev_ctx, &x_grad_v2, T(0));
         T* x_grad_v2_data = x_grad_v2.data<T>();
         ManipulateMeanGradCUDAKernel<T, IndexT>
-            <<<grid, block, 0, ctx.stream()>>>(out_grad,
-                                               d_index,
-                                               s_index,
-                                               x_grad_v2_data,
-                                               index_size,
-                                               bcast_info.out_len,
-                                               s_count);
+            <<<grid, block, 0, dev_ctx.stream()>>>(out_grad,
+                                                   d_index,
+                                                   s_index,
+                                                   x_grad_v2_data,
+                                                   index_size,
+                                                   bcast_info.out_len,
+                                                   s_count);
         // Run reduce_sum
         DenseTensor x_grad_out =
-            phi::Sum<T, Context>(ctx,
+            phi::Sum<T, Context>(dev_ctx,
                                  x_grad_v2,
                                  phi::IntArray(reduce_idx),
                                  phi::CppTypeToDataType<T>::Type(),
@@ -292,7 +292,7 @@ void CalculateXGrad(const Context& ctx,
                         x_grad_out.data<T>(),
                         x_grad_out.numel() * sizeof(T),
                         cudaMemcpyDeviceToDevice,
-                        ctx.stream());
+                        dev_ctx.stream());
 #endif
       }
     } else if (message_op == "MUL") {
@@ -302,15 +302,15 @@ void CalculateXGrad(const Context& ctx,
         CopyBCastOff(bcast_info, &l_bcastoff, &r_bcastoff);
       }
       int64_t out_len = bcast_info.out_len;
-      const int ntx = FindNumThreads(out_len, ctx.GetMaxThreadsPerBlock());
-      const int nty = ctx.GetMaxThreadsPerBlock() / ntx;
+      const int ntx = FindNumThreads(out_len, dev_ctx.GetMaxThreadsPerBlock());
+      const int nty = dev_ctx.GetMaxThreadsPerBlock() / ntx;
       const int nbx = (out_len + ntx - 1) / ntx;
       const int nby = FindNumBlocks('y', (index_size + nty - 1) / nty);
       const dim3 grid_(nbx, nby);
       const dim3 block_(ntx, nty);
       if (!reduce) {
         ManipulateMeanGradCUDAKernelForMulX<T, IndexT>
-            <<<grid_, block_, 0, ctx.stream()>>>(
+            <<<grid_, block_, 0, dev_ctx.stream()>>>(
                 out_grad,
                 e_data,
                 d_index,
@@ -326,11 +326,11 @@ void CalculateXGrad(const Context& ctx,
                 bcast_info.use_bcast);
       } else {
         DenseTensor x_grad_v2 =
-            phi::EmptyLike<T, Context>(ctx, out_grad_tensor);
-        phi::funcs::SetConstant<Context, T>()(ctx, &x_grad_v2, T(0));
+            phi::EmptyLike<T, Context>(dev_ctx, out_grad_tensor);
+        phi::funcs::SetConstant<Context, T>()(dev_ctx, &x_grad_v2, T(0));
         T* x_grad_v2_data = x_grad_v2.data<T>();
         ManipulateMeanGradCUDAKernelForMulX<T, IndexT>
-            <<<grid_, block_, 0, ctx.stream()>>>(
+            <<<grid_, block_, 0, dev_ctx.stream()>>>(
                 out_grad,
                 e_data,
                 d_index,
@@ -346,7 +346,7 @@ void CalculateXGrad(const Context& ctx,
                 bcast_info.use_bcast);
         // Run reduce_sum
         DenseTensor x_grad_out =
-            phi::Sum<T, Context>(ctx,
+            phi::Sum<T, Context>(dev_ctx,
                                  x_grad_v2,
                                  phi::IntArray(reduce_idx),
                                  phi::CppTypeToDataType<T>::Type(),
@@ -362,7 +362,7 @@ void CalculateXGrad(const Context& ctx,
                         x_grad_out.data<T>(),
                         x_grad_out.numel() * sizeof(T),
                         cudaMemcpyDeviceToDevice,
-                        ctx.stream());
+                        dev_ctx.stream());
 #endif
       }
     }
@@ -370,7 +370,7 @@ void CalculateXGrad(const Context& ctx,
 }
 
 template <typename Context, typename T, typename IndexT>
-void CalculateEGrad(const Context& ctx,
+void CalculateEGrad(const Context& dev_ctx,
                     const T* out_grad,
                     const T* x_data,
                     const T* e_data,
@@ -389,8 +389,8 @@ void CalculateEGrad(const Context& ctx,
     CopyBCastOff(bcast_info, &l_bcastoff, &r_bcastoff);
   }
   int64_t out_len = bcast_info.out_len;
-  const int ntx = FindNumThreads(out_len, ctx.GetMaxThreadsPerBlock());
-  const int nty = ctx.GetMaxThreadsPerBlock() / ntx;
+  const int ntx = FindNumThreads(out_len, dev_ctx.GetMaxThreadsPerBlock());
+  const int nty = dev_ctx.GetMaxThreadsPerBlock() / ntx;
   const int nbx = (out_len + ntx - 1) / ntx;
   const int nby = FindNumBlocks('y', (index_size + nty - 1) / nty);
   const dim3 grid(nbx, nby);
@@ -398,7 +398,7 @@ void CalculateEGrad(const Context& ctx,
   if (reduce_op == "SUM") {
     if (message_op == "ADD") {
       ManipulateSumGradCUDAKernelForAddE<T, IndexT>
-          <<<grid, block, 0, ctx.stream()>>>(
+          <<<grid, block, 0, dev_ctx.stream()>>>(
               out_grad,
               d_index,
               thrust::raw_pointer_cast(r_bcastoff.data()),
@@ -409,7 +409,7 @@ void CalculateEGrad(const Context& ctx,
               bcast_info.use_bcast);
     } else if (message_op == "MUL") {
       ManipulateSumGradCUDAKernelForMulE<T, IndexT>
-          <<<grid, block, 0, ctx.stream()>>>(
+          <<<grid, block, 0, dev_ctx.stream()>>>(
               x_data,
               out_grad,
               s_index,
@@ -427,7 +427,7 @@ void CalculateEGrad(const Context& ctx,
     const int* s_count = dst_count->data<int>();
     if (message_op == "ADD") {
       ManipulateMeanGradCUDAKernelForAddE<T, IndexT>
-          <<<grid, block, 0, ctx.stream()>>>(
+          <<<grid, block, 0, dev_ctx.stream()>>>(
               out_grad,
               d_index,
               s_count,
@@ -439,7 +439,7 @@ void CalculateEGrad(const Context& ctx,
               bcast_info.use_bcast);
     } else if (message_op == "MUL") {
       ManipulateMeanGradCUDAKernelForMulE<T, IndexT>
-          <<<grid, block, 0, ctx.stream()>>>(
+          <<<grid, block, 0, dev_ctx.stream()>>>(
               x_data,
               out_grad,
               s_index,
@@ -459,7 +459,7 @@ void CalculateEGrad(const Context& ctx,
 
 template <typename Context, typename T, typename IndexT>
 void GraphSendUERecvGradOpCUDAKernelLaunchHelper(
-    const Context& ctx,
+    const Context& dev_ctx,
     const DenseTensor& out_grad,
     const DenseTensor& x,
     const DenseTensor& e,
@@ -473,9 +473,9 @@ void GraphSendUERecvGradOpCUDAKernelLaunchHelper(
     const DenseTensor* out = nullptr) {
   const int& index_size = dst_index.dims()[0];
 
-  ctx.template Alloc<T>(x_grad);
+  dev_ctx.template Alloc<T>(x_grad);
   T* x_grad_data = x_grad->data<T>();
-  ctx.template Alloc<T>(e_grad);
+  dev_ctx.template Alloc<T>(e_grad);
   T* e_grad_data = e_grad->data<T>();
   const auto& x_dims = x.dims();
   const auto& e_dims = e.dims();
@@ -494,8 +494,8 @@ void GraphSendUERecvGradOpCUDAKernelLaunchHelper(
   hipMemset(x_grad_data, 0, memset_bytes_x);
   hipMemset(e_grad_data, 0, memset_bytes_e);
 #else
-  cudaMemsetAsync(x_grad_data, 0, memset_bytes_x, ctx.stream());
-  cudaMemsetAsync(e_grad_data, 0, memset_bytes_e, ctx.stream());
+  cudaMemsetAsync(x_grad_data, 0, memset_bytes_x, dev_ctx.stream());
+  cudaMemsetAsync(e_grad_data, 0, memset_bytes_e, dev_ctx.stream());
 #endif
 
   if (index_size == 0) return;
@@ -507,7 +507,7 @@ void GraphSendUERecvGradOpCUDAKernelLaunchHelper(
   const IndexT* d_index = dst_index.data<IndexT>();
 
   if (reduce_op == "SUM" || reduce_op == "MEAN") {
-    CalculateXGrad<Context, T, IndexT>(ctx,
+    CalculateXGrad<Context, T, IndexT>(dev_ctx,
                                        out_grad_data,
                                        x_data,
                                        e_data,
@@ -524,7 +524,7 @@ void GraphSendUERecvGradOpCUDAKernelLaunchHelper(
                                        out_grad,
                                        dst_count,
                                        out);
-    CalculateEGrad<Context, T, IndexT>(ctx,
+    CalculateEGrad<Context, T, IndexT>(dev_ctx,
                                        out_grad_data,
                                        x_data,
                                        e_data,
@@ -538,7 +538,7 @@ void GraphSendUERecvGradOpCUDAKernelLaunchHelper(
                                        e_grad_data,
                                        dst_count);
   } else if (reduce_op == "MIN" || reduce_op == "MAX") {
-    CalculateXEGradForMinMax<Context, T, IndexT>(ctx,
+    CalculateXEGradForMinMax<Context, T, IndexT>(dev_ctx,
                                                  out_grad_data,
                                                  x_data,
                                                  e_data,
@@ -556,7 +556,7 @@ void GraphSendUERecvGradOpCUDAKernelLaunchHelper(
 }
 
 template <typename T, typename Context>
-void SendUERecvGradKernel(const Context& ctx,
+void SendUERecvGradKernel(const Context& dev_ctx,
                           const DenseTensor& x,
                           const DenseTensor& y,
                           const DenseTensor& src_index,
@@ -571,7 +571,7 @@ void SendUERecvGradKernel(const Context& ctx,
   auto index_type = src_index.dtype();
   if (index_type == phi::DataType::INT32) {
     GraphSendUERecvGradOpCUDAKernelLaunchHelper<Context, T, int32_t>(
-        ctx,
+        dev_ctx,
         out_grad,
         x,
         y,
@@ -585,7 +585,7 @@ void SendUERecvGradKernel(const Context& ctx,
         out.get_ptr());
   } else if (index_type == phi::DataType::INT64) {
     GraphSendUERecvGradOpCUDAKernelLaunchHelper<Context, T, int64_t>(
-        ctx,
+        dev_ctx,
         out_grad,
         x,
         y,

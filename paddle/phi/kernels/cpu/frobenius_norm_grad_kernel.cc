@@ -22,4 +22,6 @@ PD_REGISTER_KERNEL(frobenius_norm_grad,
                    ALL_LAYOUT,
                    phi::FrobeniusNormGradKernel,
                    float,
-                   double) {}
+                   double,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

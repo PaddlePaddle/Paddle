@@ -1413,7 +1413,17 @@ static PyObject* tensor_method_set_underline_tensor(TensorObject* self,
     if (self->tensor.is_dense_tensor()) {
       auto* dst_tensor =
           static_cast<phi::DenseTensor*>(self->tensor.impl().get());
-      framework::TensorCopy(*src_tensor, dst_tensor->place(), dst_tensor);
+      if (dst_tensor->place().GetType() != phi::AllocationType::UNDEFINED) {
+        framework::TensorCopy(*src_tensor, dst_tensor->place(), dst_tensor);
+      } else if (src_tensor->place().GetType() !=
+                 phi::AllocationType::UNDEFINED) {
+        framework::TensorCopy(*src_tensor, src_tensor->place(), dst_tensor);
+      } else {
+        PADDLE_THROW(common::errors::Unavailable(
+            "The `set_tensor()` method of (Dist)Tensor get a src value with "
+            "undefined place"));
+      }
+
     } else {
       PADDLE_THROW(common::errors::Unavailable(
           "The `set_tensor()` method of non DenseTensor get a DenseTensor src "
@@ -1427,12 +1437,21 @@ static PyObject* tensor_method_set_underline_tensor(TensorObject* self,
     if (self->tensor.is_dist_tensor()) {
       auto* dst_tensor =
           static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get());
-      framework::TensorCopy(*(src_tensor->unsafe_mutable_value()),
-                            dst_tensor->place(),
-                            dst_tensor->unsafe_mutable_value());
+      if (dst_tensor->place().GetType() != phi::AllocationType::UNDEFINED) {
+        framework::TensorCopy(*(src_tensor->unsafe_mutable_value()),
+                              dst_tensor->place(),
+                              dst_tensor->unsafe_mutable_value());
+      } else if (src_tensor->place().GetType() !=
+                 phi::AllocationType::UNDEFINED) {
+        framework::TensorCopy(*(src_tensor->unsafe_mutable_value()),
+                              src_tensor->place(),
+                              dst_tensor->unsafe_mutable_value());
+      } else {
+        PADDLE_THROW(common::errors::Unavailable(
+            "The `set_tensor()` method of (Dist)Tensor get a src value with "
+            "undefined place"));
+      }
 
-      // TensorCopyFrom(dst_tensor->unsafe_mutable_value(),
-      // *(src_tensor->unsafe_mutable_value()), dst_tensor->place(), -1);
     } else {
       PADDLE_THROW(
           common::errors::Unavailable("The `set_tensor()` method of non "
