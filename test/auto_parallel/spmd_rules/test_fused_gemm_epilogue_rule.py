@@ -383,7 +383,7 @@ class TestMatmulSPMDRule(unittest.TestCase):
         self.y_dist_tensor_spec.set_dims_mapping([1])
         self.bias_dist_tensor_spec.set_dims_mapping([-1])
 
-        with self.assertRaises(RuntimeError):
+        with self.assertRaises(ValueError):
             result_dist_attrs = self.rule.infer_forward(
                 self.x_dist_tensor_spec,
                 self.y_dist_tensor_spec,
