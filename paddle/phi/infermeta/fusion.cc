@@ -3922,6 +3922,108 @@ void FusionSeqExpandConcatFCInferMeta(const std::vector<const MetaTensor*>& x,
   out->share_lod(*x[0]);
 }
 
+std::tuple<int64_t, int64_t, int64_t> FusedStackQuantCommonCheck(
+    const std::vector<const MetaTensor*>& x) {
+  PADDLE_ENFORCE_GT(x.size(),
+                    0UL,
+                    common::errors::InvalidArgument(
+                        "Number of Inputs(x) must be larger than 0, but"
+                        " received value is:%d.",
+                        x.size()));
+  int64_t N = x.size();
+  for (int i = 0; i < N; ++i) {
+    PADDLE_ENFORCE_EQ(
+        x[i]->dtype(),
+        DataType::BFLOAT16,
+        common::errors::InvalidArgument(
+            "input must be bfloat16, but received dtype: %s", x[i]->dtype()));
+  }
+  auto input_dims = x[0]->dims();
+  PADDLE_ENFORCE_EQ(
+      input_dims.size(),
+      2U,
+      common::errors::InvalidArgument(
+          "input must be 2-D, but received dims: %s", input_dims.to_str()));
+  int64_t M = input_dims[0];
+  int64_t K = input_dims[1];
+  for (int i = 1; i < N; ++i) {
+    input_dims = x[i]->dims();
+    PADDLE_ENFORCE_EQ(input_dims.size(),
+                      2U,
+                      common::errors::InvalidArgument(
+                          "input must be 2-D, but received input[%d] dims: %s",
+                          i,
+                          input_dims.to_str()));
+    PADDLE_ENFORCE_EQ(
+        input_dims[0],
+        M,
+        common::errors::InvalidArgument(
+            "input [%d] must be shape %d, %d, but received dims: %s",
+            i,
+            M,
+            K,
+            input_dims.to_str()));
+    PADDLE_ENFORCE_EQ(
+        input_dims[1],
+        K,
+        common::errors::InvalidArgument(
+            "input [%d] must be shape %d, %d, but received dims: %s",
+            i,
+            M,
+            K,
+            input_dims.to_str()));
+  }
+  PADDLE_ENFORCE_LE(N,
+                    65535,
+                    common::errors::InvalidArgument(
+                        "The batch size (N) must be no larger than 65535."));
+  PADDLE_ENFORCE_EQ(M % 128,
+                    0,
+                    common::errors::InvalidArgument(
+                        "The upper dim (M) must be multiple of 128."));
+  PADDLE_ENFORCE_EQ(K % 128,
+                    0,
+                    common::errors::InvalidArgument(
+                        "The lower dim (K) must be multiple of 128."));
+  return {N, M, K};
+}
+
+void FusedStackTransposeQuantInferMeta(const std::vector<const MetaTensor*>& x,
+                                       MetaTensor* out,
+                                       MetaTensor* scale) {
+  int64_t N, M, K;
+  std::tie(N, M, K) = FusedStackQuantCommonCheck(x);
+
+  std::vector<int64_t> out_shape = {N * K, M};
+  std::vector<int64_t> scale_shape = {N * K / 128, M / 128};
+  out->set_dims(common::make_ddim(out_shape));
+  scale->set_dims(common::make_ddim(scale_shape));
+  out->set_dtype(DataType::FLOAT8_E4M3FN);
+  scale->set_dtype(DataType::FLOAT32);
+  out->share_lod(*x.at(0));
+  scale->share_lod(*x.at(0));
+  out->set_layout(x.at(0)->layout());
+  scale->set_layout(x.at(0)->layout());
+}
+
+void FusedStackQuantInferMeta(const std::vector<const MetaTensor*>& x,
+                              MetaTensor* out,
+                              MetaTensor* scale) {
+  int64_t N, M, K;
+  std::tie(N, M, K) = FusedStackQuantCommonCheck(x);
+
+  std::vector<int64_t> out_shape = {N * M, K};
+  std::vector<int64_t> scale_shape = {N * M / 128, K / 128};
+  out->set_dims(common::make_ddim(out_shape));
+  scale->set_dims(common::make_ddim(scale_shape));
+  out->set_dtype(DataType::FLOAT8_E4M3FN);
+  scale->set_dtype(DataType::FLOAT32);
+  out->share_lod(*x.at(0));
+  scale->share_lod(*x.at(0));
+  out->set_layout(x.at(0)->layout());
+  scale->set_layout(x.at(0)->layout());
+}
+
 // Current constraint is appropriate for GemmEpilogueOp but relaxed for FcOp
 void FCInferMeta(const MetaTensor& input,
                  const MetaTensor& w,

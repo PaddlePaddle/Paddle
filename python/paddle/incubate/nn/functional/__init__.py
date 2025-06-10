@@ -25,6 +25,7 @@ from .build_src_rank_and_local_expert_id import (
 )
 from .cal_aux_loss import cal_aux_loss
 from .expand_modality_expert_id import expand_modality_expert_id
+from .fp8 import fused_stack_transpose_quant
 from .fused_bias_act import fused_bias_act
 from .fused_dot_product_attention import (
     cudnn_flash_attention,
