@@ -14,8 +14,8 @@
 
 #pragma once
 
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
-
 namespace phi {
 
 template <typename T, typename Context>
@@ -29,6 +29,17 @@ void MvKernel(const Context& dev_ctx,
   const T* x_data = x.data<T>();
   const T* vec_data = vec.data<T>();
   T* out_data = dev_ctx.template Alloc<T>(out);
+  if (out && out->numel() == 0) {
+    return;
+  }
+  // x.shape [10, 0], vec.shape [0], out.shape [10]
+  if (vec.numel() == 0) {
+    phi::Full<T, Context>(dev_ctx,
+                          phi::IntArray(common::vectorize(out->dims())),
+                          static_cast<T>(0),
+                          out);
+    return;
+  }
 
   auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
 

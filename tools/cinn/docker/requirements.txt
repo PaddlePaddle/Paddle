@@ -8,5 +8,4 @@ gast==0.3.3 ; platform_system == "Windows"
 Pillow
 six
 decorator==4.4.2
-astor
 xgboost

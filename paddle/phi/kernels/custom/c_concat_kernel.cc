@@ -95,7 +95,7 @@ void CConcatKernel(const Context& dev_ctx,
         send_numel,
         x->dtype(),
         comm->GetXcclComm(),
-        stream);
+        stream.raw_stream());
   }
   std::vector<phi::DenseTensor> inputs;
   int axis = x->dims().size() - 1;

@@ -1,0 +1,64 @@
+# A image for building paddle binaries
+# Use cuda devel base image for both cpu and gpu environment
+# When you modify it, please be aware of cudnn-runtime version
+ARG CUDA_VERSION=11.8
+ARG CUDA_PADDLE=cu118
+ARG BASE_TARGET=cuda${CUDA_VERSION}
+
+FROM nvidia/cuda:11.8.0-devel-ubuntu22.04 as base
+MAINTAINER PaddlePaddle Authors <paddle-dev@baidu.com>
+
+
+# ENV variables
+ARG WITH_GPU
+ARG WITH_AVX
+ARG PYTHON_VERSION=3.10
+
+ENV WITH_GPU=${WITH_GPU:-ON}
+ENV WITH_AVX=${WITH_AVX:-ON}
+ENV DEBIAN_FRONTEND=noninteractive
+ENV LD_LIBRARY_PATH=/usr/local/cuda-${CUDA_VERSION}/targets/x86_64-linux/lib:$LD_LIBRARY_PATH
+
+ENV HOME /root
+
+RUN apt-get update --allow-unauthenticated && \
+    apt-get install -y --no-install-recommends \
+      git \
+      vim \
+      curl \
+      wget \
+      make \
+      libssl-dev \
+      autoconf \
+      automake \
+      libtool \
+      python${PYTHON_VERSION} \
+      python${PYTHON_VERSION}-dev \
+      python3-pip && \
+    ln -sf /usr/bin/python3 /usr/bin/python && \
+    rm -rf /var/lib/apt/lists/*
+
+WORKDIR /home
+RUN wget -q https://cmake.org/files/v3.18/cmake-3.18.0-Linux-x86_64.tar.gz && \
+    tar -zxf cmake-3.18.0-Linux-x86_64.tar.gz && \
+    rm cmake-3.18.0-Linux-x86_64.tar.gz && \
+    rm -rf /home/cmake-3.18.0-Linux-x86_64/doc /home/cmake-3.18.0-Linux-x86_64/man
+
+ENV PATH=/home/cmake-3.18.0-Linux-x86_64/bin:$PATH
+
+
+ARG TMP_DIR=patchelf_tmp
+RUN rm -rf "$TMP_DIR" && git clone -b 0.15.0 https://github.com/NixOS/patchelf "$TMP_DIR" && \
+    cd "$TMP_DIR" && ./bootstrap.sh && \
+    ./configure && make && make install && \
+    cd .. && rm -rf "$TMP_DIR"
+
+RUN wget -q https://paddle-ci.gz.bcebos.com/ccache-4.8.2.tar.gz && \
+    tar xf ccache-4.8.2.tar.gz && mkdir /usr/local/ccache-4.8.2 && cd ccache-4.8.2 && \
+    mkdir build && cd build && \
+    cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local/ccache-4.8.2 .. && \
+    make -j8 && make install && \
+    ln -s /usr/local/ccache-4.8.2/bin/ccache /usr/local/bin/ccache && \
+    cd ../../ && rm -rf ccache-4.8.2.tar.gz && rm -rf ccache-4.8.2
+
+RUN python -m pip install --no-cache-dir paddlepaddle-gpu==3.0.0 -i https://www.paddlepaddle.org.cn/packages/stable/cu118/

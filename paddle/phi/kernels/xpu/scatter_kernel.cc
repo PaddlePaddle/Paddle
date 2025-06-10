@@ -21,7 +21,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void ScatterKernel(const Context &ctx,
+void ScatterKernel(const Context &dev_ctx,
                    const DenseTensor &x,
                    const DenseTensor &index,
                    const DenseTensor &updates,
@@ -31,8 +31,8 @@ void ScatterKernel(const Context &ctx,
   out->Resize(x.dims());
   auto *x_data = reinterpret_cast<const XPUTypeT *>(x.data<T>());
   auto *updates_data = reinterpret_cast<const XPUTypeT *>(updates.data<T>());
-  auto *out_data = reinterpret_cast<XPUTypeT *>(ctx.template Alloc<T>(out));
-  int ret = xpu::copy(ctx.x_context(), x_data, out_data, x.numel());
+  auto *out_data = reinterpret_cast<XPUTypeT *>(dev_ctx.template Alloc<T>(out));
+  int ret = xpu::copy(dev_ctx.x_context(), x_data, out_data, x.numel());
   PADDLE_ENFORCE_XDNN_SUCCESS(ret, "copy");
   // Apply ScatterUpdate: Out[index] = Updates[:]
   const auto &index_type = index.dtype();
@@ -81,14 +81,14 @@ void ScatterKernel(const Context &ctx,
   int64_t dim1 = common::product(common::slice_ddim(x_dims, 1, x_dims.size()));
 
   DenseTensor indices_cpu(index.type());
-  phi::Copy(ctx, index, phi::CPUPlace(), true, &indices_cpu);
+  phi::Copy(dev_ctx, index, phi::CPUPlace(), true, &indices_cpu);
 
   int r = 0;
   if (index_type == phi::DataType::INT32) {
     auto index_data = const_cast<int *>(index.data<int>());
     xpu::VectorParam<int> indices{
         indices_cpu.data<int>(), index_size, index_data};
-    r = xpu::scatter(ctx.x_context(),
+    r = xpu::scatter(dev_ctx.x_context(),
                      updates_data,
                      out_data,
                      indices,
@@ -99,7 +99,7 @@ void ScatterKernel(const Context &ctx,
     auto index_data = const_cast<int64_t *>(index.data<int64_t>());
     xpu::VectorParam<int64_t> indices{
         indices_cpu.data<int64_t>(), index_size, index_data};
-    r = xpu::scatter(ctx.x_context(),
+    r = xpu::scatter(dev_ctx.x_context(),
                      updates_data,
                      out_data,
                      indices,

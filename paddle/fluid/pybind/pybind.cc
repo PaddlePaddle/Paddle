@@ -13,12 +13,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include <Python.h>
-#include "paddle/fluid/eager/grad_node_info.h"
-
-// Avoid a problem with copysign defined in pyconfig.h on Windows.
-#ifdef copysign
-#undef copysign
-#endif
 
 #include <algorithm>
 #include <cctype>
@@ -37,6 +31,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/common/ddim.h"
+#include "paddle/fluid/eager/grad_node_info.h"
 #include "paddle/fluid/framework/compiled_program.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/custom_operator.h"
@@ -1270,6 +1265,19 @@ PYBIND11_MODULE(libpaddle, m) {
                     platform::BeginCUDAGraphCapture(
                         place, static_cast<paddle::gpuStreamCaptureMode>(mode));
                   })
+      .def_static(
+          "begin_capture_with_pool_id",
+          [](phi::GPUPlace place, int mode, std::optional<int64_t> pool_id) {
+            if (pool_id.has_value()) {
+              platform::BeginCUDAGraphCapture(
+                  place,
+                  static_cast<paddle::gpuStreamCaptureMode>(mode),
+                  pool_id.value());
+            } else {
+              platform::BeginCUDAGraphCapture(
+                  place, static_cast<paddle::gpuStreamCaptureMode>(mode));
+            }
+          })
       .def_static("end_capture", &platform::EndCUDAGraphCapture)
       .def_static("gen_new_memory_pool_id",
                   &phi::backends::gpu::CUDAGraph::UniqueMemoryPoolID)

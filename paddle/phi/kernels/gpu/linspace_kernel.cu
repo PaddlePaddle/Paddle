@@ -43,26 +43,27 @@ __global__ void LinspaceSpecialKernel(T start, T* out) {
 }
 
 template <typename T, typename Context>
-T GetValueOfExpectedType(const Context& ctx, const DenseTensor& x) {
+T GetValueOfExpectedType(const Context& dev_ctx, const DenseTensor& x) {
   switch (x.dtype()) {
     case DataType::FLOAT32:
-      return static_cast<T>(GetValue<float, Context>(ctx, x));
+      return static_cast<T>(GetValue<float, Context>(dev_ctx, x));
     case DataType::FLOAT64:
-      return static_cast<T>(GetValue<double, Context>(ctx, x));
+      return static_cast<T>(GetValue<double, Context>(dev_ctx, x));
     case DataType::INT32:
-      return static_cast<T>(GetValue<int32_t, Context>(ctx, x));
+      return static_cast<T>(GetValue<int32_t, Context>(dev_ctx, x));
     case DataType::INT64:
-      return static_cast<T>(GetValue<int64_t, Context>(ctx, x));
+      return static_cast<T>(GetValue<int64_t, Context>(dev_ctx, x));
     case DataType::FLOAT16:
-      return static_cast<T>(GetValue<phi::dtype::float16, Context>(ctx, x));
+      return static_cast<T>(GetValue<phi::dtype::float16, Context>(dev_ctx, x));
     case DataType::BFLOAT16:
-      return static_cast<T>(GetValue<phi::dtype::bfloat16, Context>(ctx, x));
+      return static_cast<T>(
+          GetValue<phi::dtype::bfloat16, Context>(dev_ctx, x));
     case DataType::BOOL:
-      return static_cast<T>(GetValue<bool, Context>(ctx, x));
+      return static_cast<T>(GetValue<bool, Context>(dev_ctx, x));
     case DataType::INT16:
-      return static_cast<T>(GetValue<int16_t, Context>(ctx, x));
+      return static_cast<T>(GetValue<int16_t, Context>(dev_ctx, x));
     case DataType::UINT8:
-      return static_cast<T>(GetValue<uint8_t, Context>(ctx, x));
+      return static_cast<T>(GetValue<uint8_t, Context>(dev_ctx, x));
     default:
       PADDLE_THROW(common::errors::Unimplemented(
           "Data type (%s) is not supported when casting data type.",
@@ -71,15 +72,15 @@ T GetValueOfExpectedType(const Context& ctx, const DenseTensor& x) {
 }
 
 template <typename T, typename Context>
-void LinspaceKernel(const Context& ctx,
+void LinspaceKernel(const Context& dev_ctx,
                     const DenseTensor& start,
                     const DenseTensor& stop,
                     const DenseTensor& number,
                     DataType dtype,
                     DenseTensor* out) {
-  T start_value = GetValueOfExpectedType<T, Context>(ctx, start);
-  T stop_value = GetValueOfExpectedType<T, Context>(ctx, stop);
-  int64_t num = GetValueOfExpectedType<int64_t, Context>(ctx, number);
+  T start_value = GetValueOfExpectedType<T, Context>(dev_ctx, start);
+  T stop_value = GetValueOfExpectedType<T, Context>(dev_ctx, stop);
+  int64_t num = GetValueOfExpectedType<int64_t, Context>(dev_ctx, number);
   PADDLE_ENFORCE_GE(num,
                     0,
                     common::errors::InvalidArgument(
@@ -88,11 +89,11 @@ void LinspaceKernel(const Context& ctx,
                         num));
 
   out->Resize(common::make_ddim({num}));
-  T* out_data = ctx.template Alloc<T>(out);
+  T* out_data = dev_ctx.template Alloc<T>(out);
   if (num == 0) {
     return;
   }
-  auto stream = ctx.stream();
+  auto stream = dev_ctx.stream();
   if (num != 1) {
     int block = 512;
     int grid = (num + block - 1) / block;
