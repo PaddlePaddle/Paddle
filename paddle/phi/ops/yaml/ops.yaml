@@ -2371,6 +2371,15 @@
     data_type : X
   optional : XScale
 
+- op : fused_moe_unpermute
+  args : (Tensor unzipped_tokens, Tensor zipped_expertwise_rowmap, Tensor expert_routemap_topk, Tensor unzipped_token_probs, int total_zipped_tokens_num, int num_experts
+  output : Tensor(zipped_tokens), Tensor(zipped_probs_topk)
+  infer_meta :
+    func : FusedMoeUnpermuteInferMeta
+  kernel :
+    func : fused_moe_unpermute
+    data_type : unzipped_tokens
+
 - op : fused_softmax_mask
   args : (Tensor x, Tensor mask)
   output : Tensor(out)
