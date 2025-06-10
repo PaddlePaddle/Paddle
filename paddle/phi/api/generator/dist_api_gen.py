@@ -564,10 +564,13 @@ CALCULATE_LOCAL_SHAPE_TEMPLATE = """
       std::vector<{dtype}> local_shape;
       const auto& out_dist_attr = {out_dist_attr};
       for (int i = 0; i < out_shape.size(); i++) {{
+        const auto& dims_mapping = out_dist_attr.dims_mapping_2d();
+        const auto& mesh_shape = out_dist_attr.process_mesh().shape();
         if (out_dist_attr.dims_mapping()[i] >= 0) {{
           {dtype} shape_i = out_shape[i];
-          int64_t dim = out_dist_attr.dims_mapping()[i];
-          int64_t mesh_dim = out_dist_attr.process_mesh().shape()[dim];
+          for (auto dim : dims_mapping[i]) {
+            num_split *= mesh_shape[dim];
+          }
           // TODO: Support aliquant condition.
           PADDLE_ENFORCE(shape_i % mesh_dim == 0,
                 common::errors::InvalidArgument(

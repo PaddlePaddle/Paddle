@@ -701,7 +701,7 @@ static bool ReshardIsNeededWithPartial(
     const phi::distributed::TensorDistAttr& in_dist_attr,
     const phi::distributed::TensorDistAttr& out_dist_attr) {
   return (in_dist_attr.process_mesh() != out_dist_attr.process_mesh() ||
-          in_dist_attr.dims_mapping() != out_dist_attr.dims_mapping() ||
+          in_dist_attr.dims_mapping_2d() != out_dist_attr.dims_mapping_2d() ||
           in_dist_attr.partial_status() != out_dist_attr.partial_status());
 }
 
@@ -709,7 +709,7 @@ static bool ReshardIsNeeded(
     const phi::distributed::TensorDistAttr& in_dist_attr,
     const phi::distributed::TensorDistAttr& out_dist_attr) {
   return (in_dist_attr.process_mesh() != out_dist_attr.process_mesh() ||
-          in_dist_attr.dims_mapping() != out_dist_attr.dims_mapping());
+          in_dist_attr.dims_mapping_2d() != out_dist_attr.dims_mapping_2d());
 }
 
 std::string ReshardDebugInfo(
@@ -738,6 +738,11 @@ std::shared_ptr<phi::distributed::DistTensor> ReshardApiInputToKernelInput(
   if (tensor_in) {
     phi::distributed::DistTensor* dist_tensor =
         static_cast<phi::distributed::DistTensor*>(tensor_in.get());
+    VLOG(4) << "src dist attr " << dist_tensor->dist_attr();
+    VLOG(4) << "target dist attr " << tensor_dist_attr;
+    VLOG(4) << "if need reshard "
+            << ReshardIsNeededWithPartial(dist_tensor->dist_attr(),
+                                          tensor_dist_attr);
     if (ReshardIsNeededWithPartial(dist_tensor->dist_attr(),
                                    tensor_dist_attr)) {
       auto argument_name = (arg_name.empty() ? "tensor" : arg_name);

@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/common/flags.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/type_traits.h"
+#include "paddle/phi/core/distributed/auto_parallel/utils.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/core/utils/data_type.h"
@@ -2151,6 +2152,9 @@ static phi::DDim ValidateShape(const std::vector<int64_t> shape,
   std::vector<int64_t> output_shape(shape.size(), 0);
   int64_t capacity = 1;
   int unk_dim_idx = -1;
+  VLOG(4) << "input shape = "
+          << distributed::auto_parallel::str_join(in_dims_vec);
+  VLOG(4) << "target shape = " << distributed::auto_parallel::str_join(shape);
 
   for (size_t i = 0; i < shape.size(); ++i) {
     if (shape[i] == -1) {
