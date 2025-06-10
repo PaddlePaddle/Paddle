@@ -37,9 +37,10 @@ void FillMatmulPartOperandNotation(const int x_ndim,
   // Handle 4 different matmul cases in Paddle
   // vector * vector = scala
   if (x_ndim == 1 && y_ndim == 1) {
-    *x_axes = "k";
-    *y_axes = "k";
-    *out_axes = "";
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "FusedGemmEpilogue, Receive Unsupported x_ndim [%d] and y_ndim [%d].",
+        x_ndim,
+        y_ndim));
     // vector * batched matrix
   } else if (x_ndim == 1 && y_ndim > 1) {
     *x_axes = "k";
@@ -70,7 +71,7 @@ void FillMatmulPartOperandNotation(const int x_ndim,
     }
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
-        "MatmulSPMDRule Receive Unsupported x_dim [%d] and y_dim [%d].",
+        "FusedGemmEpilogue, Receive Unsupported x_ndim [%d] and y_ndim [%d].",
         x_ndim,
         y_ndim));
   }
