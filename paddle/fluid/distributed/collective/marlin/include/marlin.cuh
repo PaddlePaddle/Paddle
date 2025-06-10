@@ -10,7 +10,7 @@
 #include <iostream>
 
 #ifndef MARLIN_NAMESPACE_NAME
-  #define MARLIN_NAMESPACE_NAME marlin
+  #define MARLIN_NAMESPACE_NAME marlin_moe_wna16
 #endif
 
 namespace MARLIN_NAMESPACE_NAME {
@@ -51,9 +51,8 @@ using I4 = Vec<int, 4>;
 
 constexpr int div_ceil(int a, int b) { return (a + b - 1) / b; }
 
-#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ < 800
-// No support for async
-#elif defined(__CUDA_ARCH__)
+
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 800
 
 __device__ inline void cp_async4_pred(void* smem_ptr, const void* glob_ptr,
                                       bool pred = true) {
@@ -86,6 +85,14 @@ template <int n>
 __device__ inline void cp_async_wait() {
   asm volatile("cp.async.wait_group %0;\n" ::"n"(n));
 }
+#else
+
+inline void cp_async4_pred(void*, const void*, bool = true) {}
+inline void cp_async4(void*, const void*) {}
+inline void cp_async_fence() {}
+template <int n>
+inline void cp_async_wait() {}
+
 
 #endif
 

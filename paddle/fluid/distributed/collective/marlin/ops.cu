@@ -412,15 +412,15 @@ MarlinFuncPtr get_marlin_kernel(const deep_ep::detail::ScalarType q_type,
   }
 
   COMMON_GET_IF(deep_ep::detail::kU4)
-  COMMON_GET_IF(deep_ep::detail::kU4B8)
-  COMMON_GET_IF(deep_ep::detail::kU8B128)
+  // COMMON_GET_IF(deep_ep::detail::kU4B8)
+  // COMMON_GET_IF(deep_ep::detail::kU8B128)
 
-  BIGGROUP_GET_IF(deep_ep::detail::kFE4M3fn)
+  // BIGGROUP_GET_IF(deep_ep::detail::kFE4M3fn)
 
-  FP4_GET_IF(deep_ep::detail::kFE2M1f)
+  // FP4_GET_IF(deep_ep::detail::kFE2M1f)
 
-  ACT_GET_IF(deep_ep::detail::kU4B8)
-  ACT_GET_IF(deep_ep::detail::kU8B128)
+  // ACT_GET_IF(deep_ep::detail::kU4B8)
+  // ACT_GET_IF(deep_ep::detail::kU8B128)
 
   return kernel;
 }
@@ -944,7 +944,7 @@ deep_ep::detail::Tensor moe_wna16_marlin_gemm(
       scales_ptr = b_scales.data_ptr<phi::dtype::float16>(); // half
     }
 
-    MARLIN_NAMESPACE_NAME::marlin_mm<phi::dtype::float16>(
+    MARLIN_NAMESPACE_NAME::marlin_mm<half>(
         a.data_ptr<phi::dtype::float16>(), b_q_weight.data_ptr(), c.data_ptr<phi::dtype::float16>(),
         c_tmp.data_ptr<float>(), scales_ptr, global_scale.data_ptr<phi::dtype::float16>(),
         b_zeros.data_ptr(), g_idx.data_ptr(), perm.data_ptr(),
@@ -955,7 +955,8 @@ deep_ep::detail::Tensor moe_wna16_marlin_gemm(
         is_k_full, has_zp, num_groups, group_size, dev,
         0, thread_k, thread_n, sms,
         use_atomic_add, use_fp32_reduce, is_zp_float);
-  } else if (a.dtype() == deep_ep::detail::kBFloat16) {
+  } 
+  else if (a.dtype() == deep_ep::detail::kBFloat16) {
     void* scales_ptr;
     if (b_q_type == deep_ep::detail::kFE2M1f) {
       scales_ptr = b_scales.data_ptr<phi::dtype::float8_e4m3fn>();
@@ -974,7 +975,8 @@ deep_ep::detail::Tensor moe_wna16_marlin_gemm(
         workspace.data_ptr(), b_q_type, has_act_order, is_k_full, has_zp,
         num_groups, group_size, dev, 0,
         thread_k, thread_n, sms, use_atomic_add, use_fp32_reduce, is_zp_float);
-  } else {
+  } 
+  else {
     PADDLE_ENFORCE(false,
                 "moe_wna16_marlin_gemm only supports bfloat16 and float16");
   }

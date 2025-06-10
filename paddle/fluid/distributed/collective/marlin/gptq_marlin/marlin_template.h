@@ -20,7 +20,7 @@
  */
 
 #ifndef MARLIN_NAMESPACE_NAME
-  #define MARLIN_NAMESPACE_NAME marlin
+  #define MARLIN_NAMESPACE_NAME marlin_moe_wna16
 #endif
 
 #include "dequant.h"
