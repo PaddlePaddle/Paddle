@@ -232,29 +232,29 @@ void VisitDataTypeForSearchSorted(DataType type, Visitor visitor) {
 }
 
 template <typename T, typename Context>
-void SearchsortedKernel(const Context& ctx,
+void SearchsortedKernel(const Context& dev_ctx,
                         const DenseTensor& sorted_sequence,
                         const DenseTensor& value,
                         bool out_int32,
                         bool right,
                         DenseTensor* out) {
   if (out_int32) {
-    ctx.template Alloc<int>(out);
+    dev_ctx.template Alloc<int>(out);
     if (out && out->numel() == 0) {
       return;
     }
     int* out_data = out->data<int>();
     SearchSortedFunctor<Context, T, int> functor(
-        ctx, &sorted_sequence, &value, right, out_data);
+        dev_ctx, &sorted_sequence, &value, right, out_data);
     VisitDataTypeForSearchSorted(value.dtype(), functor);
   } else {
-    ctx.template Alloc<int64_t>(out);
+    dev_ctx.template Alloc<int64_t>(out);
     if (out && out->numel() == 0) {
       return;
     }
     int64_t* out_data = out->data<int64_t>();
     SearchSortedFunctor<Context, T, int64_t> functor(
-        ctx, &sorted_sequence, &value, right, out_data);
+        dev_ctx, &sorted_sequence, &value, right, out_data);
     VisitDataTypeForSearchSorted(value.dtype(), functor);
   }
 }

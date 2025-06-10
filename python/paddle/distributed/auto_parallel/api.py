@@ -1537,6 +1537,10 @@ class _ShardOptimizer(Optimizer):
             param_group_len = (
                 len(self.fuse_param_view[i]) * self.gradient_accumulation_steps
             )
+            if "pp" in fleet.auto.get_mesh().dim_names:
+                param_group_len = (
+                    param_group_len * fleet.auto.get_mesh().get_dim_size("pp")
+                )
             for name, view in self.fuse_param_view[i].items():
                 view['param']._register_backward_hook(
                     fuse_comm_hook_func(
