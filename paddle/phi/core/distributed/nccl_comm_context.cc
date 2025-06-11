@@ -33,18 +33,20 @@ NCCLCommContext::NCCLCommContext(int rank,
                                  int size,
                                  ncclUniqueId nccl_id,
                                  int nccl_comm_init_option,
-                                 int nccl_commtype)
+                                 int comm_group_type)
     : CommContext(rank, size),
       nccl_version_(0),
       nccl_comm_(nullptr),
       nranks(size_),
       myrank(rank_),
       param(nccl_comm_init_option) {
-  this->CreateNCCLComm(nccl_id, nccl_commtype);
+  this->CreateNCCLComm(nccl_id, comm_group_type);
   NCCL_CHECK(phi::dynload::ncclGetVersion(&nccl_version_));
 }
 
-void NCCLCommContext::CreateNCCLComm(ncclUniqueId nccl_id, int nccl_commtype) {
+void NCCLCommContext::CreateNCCLComm(ncclUniqueId nccl_id,
+                                     int comm_group_type) {
+  VLOG(3) << "comm_group_type " << comm_group_type;
   if (param > 0 && phi::dynload::ncclCommInitRank2.IsValid()) {
     LOG(WARNING) << "Creating modified qp with ncclCommInitRank2.";
     NCCL_CHECK(phi::dynload::ncclCommInitRank2(
@@ -53,11 +55,13 @@ void NCCLCommContext::CreateNCCLComm(ncclUniqueId nccl_id, int nccl_commtype) {
     if (param > 0) {
       LOG(WARNING) << "ncclCommInitRank2 is not supported.";
     }
-    NCCL_CHECK(
-        // phi::dynload::ncclCommInitRank(&nccl_comm_, nranks, nccl_id,
-        // myrank));
-        phi::dynload::ncclCommInitRankMemOpt(
-            &nccl_comm_, nranks, nccl_id, myrank, nccl_commtype));
+    if (!phi::dynload::ncclCommInitRankMemOpt.IsValid()) {
+      NCCL_CHECK(
+          phi::dynload::ncclCommInitRank(&nccl_comm_, nranks, nccl_id, myrank));
+    } else {
+      NCCL_CHECK(phi::dynload::ncclCommInitRankMemOpt(
+          &nccl_comm_, nranks, nccl_id, myrank, comm_group_type));
+    }
   }
 }
 

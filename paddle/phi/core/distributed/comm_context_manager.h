@@ -83,7 +83,7 @@ class CommContextManager {
                                     const std::string& hash_key = "",
                                     const P2POption* opt = nullptr,
                                     int nccl_comm_init_option = 0,
-                                    int nccl_commtype = -1);
+                                    int comm_group_type = -1);
   static void RecreateNCCLComm(const std::shared_ptr<Store>& store,
                                const std::string& unique_comm_key,
                                int rank,

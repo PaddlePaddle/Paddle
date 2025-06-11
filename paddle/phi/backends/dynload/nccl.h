@@ -28,6 +28,8 @@ ncclResult_t ncclCommInitRank2(ncclComm_t* newcomm,
                                ncclUniqueId commId,
                                int myrank,
                                int param);
+ncclResult_t ncclCommInitRankMemOpt(
+    ncclComm_t* comm, int nranks, ncclUniqueId commId, int rank, int commType);
 #ifdef __cplusplus
 }
 #endif

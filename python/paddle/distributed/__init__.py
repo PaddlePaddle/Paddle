@@ -71,7 +71,7 @@ from .auto_parallel.process_mesh import ProcessMesh
 from .checkpoint.load_state_dict import load_state_dict
 from .checkpoint.save_state_dict import save_state_dict
 from .collective import (
-    NCCL_COMM_TYPE,
+    COMM_GROUP_TYPE,
     is_available,
     new_group,
     restart_process_group,
@@ -218,5 +218,5 @@ __all__ = [
     "set_mesh",
     "get_mesh",
     "to_distributed",
-    "NCCL_COMM_TYPE",
+    "COMM_GROUP_TYPE",
 ]

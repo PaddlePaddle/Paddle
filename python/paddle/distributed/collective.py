@@ -47,24 +47,23 @@ from .fleet.layers.mpu.mp_ops import (  # noqa: F401
 )
 
 
-class NCCL_COMM_TYPE(IntEnum):
+class COMM_GROUP_TYPE(IntEnum):
     UNDEF = -1
     TP = 0
     PP = 1
     DP = 2
     EP = 3
     SP = 4
-    MP = 5
+    PP_EXCHANGE = 9
+    SHARDING = 10
+    SEP = 12
+    DP_SEP = 14
+    PP_MP = 15
+    SHARDING_CHECK = 11
+    DP_CHECK = 13
     INTRA = 6
     AG = 7
     HG = 8
-    PP_EAGER = 9
-    SHARDING = 10
-    SHARDING_CHECK = 11
-    SEP = 12
-    CHECK = 13
-    DP_SEP = 14
-    PP_MP = 15
 
 
 if TYPE_CHECKING:
@@ -179,7 +178,7 @@ def _new_process_group_impl(
     pg_options,
     group_id=0,
     nccl_comm_init_option=0,
-    nccl_commtype=-1,
+    comm_group_type=-1,
 ):
     pg = None
     genv = _get_global_env()
@@ -194,7 +193,7 @@ def _new_process_group_impl(
             group_id,
             genv.pg_timeout,
             nccl_comm_init_option,
-            nccl_commtype,
+            comm_group_type,
         )
     elif backend == "xccl":
         pg = core.ProcessGroupCustom.create(
@@ -230,7 +229,7 @@ def new_group(
     backend: Literal['nccl'] | None = None,
     timeout: datetime.timedelta = _default_timeout,
     nccl_comm_init_option: int = 0,
-    nccl_commtype: int = -1,
+    comm_group_type: int = -1,
 ) -> Group:
     """
 
@@ -286,7 +285,7 @@ def new_group(
                 pg_options=None,
                 group_id=gid,
                 nccl_comm_init_option=nccl_comm_init_option,
-                nccl_commtype=nccl_commtype,
+                comm_group_type=comm_group_type,
             )
         else:
             rank = -1

@@ -72,7 +72,7 @@ void CommContextManager::CreateNCCLCommContext(
     const std::string& hash_key,
     const P2POption* p2p_opt,
     int nccl_comm_init_option,
-    int nccl_commtype) {
+    int comm_group_type) {
   auto& comm_context_manager = CommContextManager::GetInstance();
   if (comm_context_manager.Has(unique_comm_key)) {
     return;
@@ -102,7 +102,7 @@ void CommContextManager::CreateNCCLCommContext(
           << ", unique_key: " << unique_key
           << ", nccl_id: " << SerializeNCCLUniqueId(nccl_id);
   auto nccl_comm_context = std::make_unique<NCCLCommContext>(
-      rank, size, nccl_id, nccl_comm_init_option, nccl_commtype);
+      rank, size, nccl_id, nccl_comm_init_option, comm_group_type);
   if (CommContextManager::device_id != -1) {
     std::unique_ptr<phi::GPUContext> dev_ctx(
         new phi::GPUContext(phi::GPUPlace(CommContextManager::device_id)));

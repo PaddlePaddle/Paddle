@@ -79,7 +79,7 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
       int gid,
       int64_t timeout,
       int nccl_comm_init_option,
-      int nccl_commtype = -1);
+      int comm_group_type = -1);
 
   ProcessGroupNCCL(const std::shared_ptr<phi::distributed::Store>& store,
                    int rank,
@@ -87,7 +87,7 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
                    int gid,
                    int64_t timeout = 30 * 60 * 1000,
                    int nccl_comm_init_option = 0,
-                   int nccl_commtype = -1);
+                   int comm_group_type = -1);
   ~ProcessGroupNCCL();
 
   std::string GetBackendName() const override { return "NCCL"; }
@@ -213,7 +213,7 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
                           const std::string& store_key,
                           CommType comm_type,
                           int p2p_rank = 0,
-                          int nccl_commtype = -1);
+                          int comm_group_type = -1);
 
   void SyncCalcStream(const Place& place, const std::string& place_key);
 
@@ -264,7 +264,7 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
 
   void EagerConnect();
 
-  void EagerConnectRingExchange(int nccl_commtype = -1);
+  void EagerConnectRingExchange(int comm_group_type = -1);
 
  private:
   std::shared_ptr<phi::distributed::Store> store_;
@@ -298,7 +298,7 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
   std::unordered_map<std::string, phi::distributed::P2POption>
       place_to_p2p_opts_;
   int64_t create_count_;
-  int nccl_commtype_{-1};
+  int comm_group_type_{-1};
 };
 
 }  //  namespace distributed
