@@ -19,7 +19,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void MeshgridKernel(const Context& ctx,
+void MeshgridKernel(const Context& dev_ctx,
                     const std::vector<const DenseTensor*>& inputs,
                     std::vector<DenseTensor*> outputs);
 

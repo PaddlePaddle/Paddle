@@ -183,6 +183,32 @@ class TestFrobeniusNormOp2(TestFrobeniusNormOp):
         self.check_grad(['X'], 'Out', check_pir=True)
 
 
+class TestFrobeniusNormOp3(TestFrobeniusNormOp):
+    def init_test_case(self):
+        self.shape = [5, 5, 5]
+        self.axis = (0, 1)
+        self.keepdim = True
+
+    def init_dtype(self):
+        self.dtype = "complex64"
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', check_pir=True)
+
+
+class TestFrobeniusNormOp4(TestFrobeniusNormOp):
+    def init_test_case(self):
+        self.shape = [5, 5, 5, 2]
+        self.axis = (0, 1)
+        self.keepdim = True
+
+    def init_dtype(self):
+        self.dtype = "complex128"
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', check_pir=True)
+
+
 class TestFrobeniusNormOpZeroSize(TestFrobeniusNormOp):
     def init_test_case(self):
         self.shape = [0, 20, 3]
@@ -948,7 +974,6 @@ class API_NormTest(unittest.TestCase):
                     keep_dim=keep,
                     check_dim=True,
                 )
-
                 check_linalg_vector_static(
                     self,
                     p=1,
@@ -1093,6 +1118,40 @@ class API_NormTest(unittest.TestCase):
                     keep_dim=keep,
                     check_dim=True,
                 )
+                check_linalg_matrix_static(
+                    self,
+                    p=-np.inf,
+                    axis=[-2, -1],
+                    shape_x=[0, 1, 2, 1],
+                    dtype="float64",
+                    keep_dim=keep,
+                    check_dim=True,
+                )
+                check_linalg_matrix_static(
+                    self,
+                    p="fro",
+                    axis=[-2, -1],
+                    shape_x=[0, 1, 2, 1],
+                    dtype="float64",
+                    keep_dim=keep,
+                    check_dim=True,
+                )
+                check_linalg_matrix_static(
+                    self,
+                    p="fro",
+                    axis=[-2, -1],
+                    shape_x=[3, 2, 1],
+                    dtype="complex64",
+                    keep_dim=keep,
+                )
+                check_linalg_matrix_static(
+                    self,
+                    p="fro",
+                    axis=[-2, -1],
+                    shape_x=[3, 2, 1],
+                    dtype="complex128",
+                    keep_dim=keep,
+                )
 
     def test_dygraph(self):
         paddle.disable_static()
@@ -1135,7 +1194,6 @@ class API_NormTest(unittest.TestCase):
                 keep_dim=keep,
                 check_dim=True,
             )
-
             check_linalg_norm_dygraph(
                 self,
                 p=2,
@@ -1466,7 +1524,40 @@ class API_NormTest(unittest.TestCase):
                 keep_dim=keep,
                 check_dim=True,
             )
-
+            check_linalg_matrix_dygraph(
+                self,
+                p=-np.inf,
+                axis=[-2, -1],
+                shape_x=[0, 1, 2, 1],
+                dtype="float64",
+                keep_dim=keep,
+                check_dim=True,
+            )
+            check_linalg_matrix_dygraph(
+                self,
+                p="fro",
+                axis=[-2, -1],
+                shape_x=[0, 1, 2, 1],
+                dtype="float64",
+                keep_dim=keep,
+                check_dim=True,
+            )
+            check_linalg_matrix_dygraph(
+                self,
+                p="fro",
+                axis=[-2, -1],
+                shape_x=[3, 2, 1],
+                dtype="complex64",
+                keep_dim=keep,
+            )
+            check_linalg_matrix_dygraph(
+                self,
+                p="fro",
+                axis=[-2, -1],
+                shape_x=[3, 2, 1],
+                dtype="complex128",
+                keep_dim=keep,
+            )
         paddle.enable_static()
 
     def test_name(self):

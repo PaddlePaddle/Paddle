@@ -32,7 +32,7 @@
 namespace phi {
 
 template <typename Context, typename T, typename IndexT>
-void GraphSendUERecvOpCUDAKernelLaunchHelper(const Context& ctx,
+void GraphSendUERecvOpCUDAKernelLaunchHelper(const Context& dev_ctx,
                                              const DenseTensor& x,
                                              const DenseTensor& e,
                                              const DenseTensor& src_index,
@@ -56,17 +56,17 @@ void GraphSendUERecvOpCUDAKernelLaunchHelper(const Context& ctx,
     memset_size *= dims_[i];
   }
 
-  ctx.template Alloc<T>(out);
+  dev_ctx.template Alloc<T>(out);
   T* out_data = out->data<T>();
   const size_t& memset_bytes = memset_size * sizeof(T);
   funcs::SetConstant<Context, T> constant_functor;
   if (reduce_op == "SUM" || reduce_op == "MEAN") {
-    constant_functor(ctx, out, static_cast<T>(0));
+    constant_functor(dev_ctx, out, static_cast<T>(0));
   } else if (reduce_op == "MAX") {
-    constant_functor(ctx, out, std::numeric_limits<T>::lowest());
+    constant_functor(dev_ctx, out, std::numeric_limits<T>::lowest());
 
   } else if (reduce_op == "MIN") {
-    constant_functor(ctx, out, std::numeric_limits<T>::max());
+    constant_functor(dev_ctx, out, std::numeric_limits<T>::max());
   }
 
   if (index_size == 0) return;
@@ -84,8 +84,8 @@ void GraphSendUERecvOpCUDAKernelLaunchHelper(const Context& ctx,
   }
 
   int64_t out_len = bcast_info.out_len;
-  const int ntx = FindNumThreads(out_len, ctx.GetMaxThreadsPerBlock());
-  const int nty = ctx.GetMaxThreadsPerBlock() / ntx;
+  const int ntx = FindNumThreads(out_len, dev_ctx.GetMaxThreadsPerBlock());
+  const int nty = dev_ctx.GetMaxThreadsPerBlock() / ntx;
   const int nbx = (out_len + ntx - 1) / ntx;
   const int nby = FindNumBlocks('y', (index_size + nty - 1) / nty);
   const dim3 grid(nbx, nby);
@@ -100,7 +100,7 @@ void GraphSendUERecvOpCUDAKernelLaunchHelper(const Context& ctx,
                                 IndexT,
                                 GraphSendUERecvSumCUDAFunctor<T>,
                                 funcs::AddFunctor<T>>
-          <<<grid, block, 0, ctx.stream()>>>(
+          <<<grid, block, 0, dev_ctx.stream()>>>(
               x_data,
               e_data,
               s_index,
@@ -121,7 +121,7 @@ void GraphSendUERecvOpCUDAKernelLaunchHelper(const Context& ctx,
                                 IndexT,
                                 GraphSendUERecvSumCUDAFunctor<T>,
                                 funcs::MultiplyFunctor<T>>
-          <<<grid, block, 0, ctx.stream()>>>(
+          <<<grid, block, 0, dev_ctx.stream()>>>(
               x_data,
               e_data,
               s_index,
@@ -140,24 +140,24 @@ void GraphSendUERecvOpCUDAKernelLaunchHelper(const Context& ctx,
     if (reduce_op == "MEAN") {
       input_size = out_size <= 0 ? x.dims()[0] : out_size;
       dst_count->Resize({input_size});
-      ctx.template Alloc<int>(dst_count);
+      dev_ctx.template Alloc<int>(dst_count);
       int* dst_count_data = dst_count->data<int>();
 #ifdef PADDLE_WITH_HIP
       hipMemset(dst_count_data, 0, input_size * sizeof(int));
 #else
       cudaMemsetAsync(
-          dst_count_data, 0, input_size * sizeof(int), ctx.stream());
+          dst_count_data, 0, input_size * sizeof(int), dev_ctx.stream());
 #endif
       int64_t grid_count = (index_size + block_ - 1) / block_;
       ComputeCountCUDAKernel<T, IndexT>
-          <<<grid_count, block_, 0, ctx.stream()>>>(
+          <<<grid_count, block_, 0, dev_ctx.stream()>>>(
               dst_count_data, d_index, index_size);
 
       int64_t grid_mean = (input_size * out_len + block_ - 1) / block_;
-      int64_t max_grid_dimx = ctx.GetCUDAMaxGridDimSize()[0];
+      int64_t max_grid_dimx = dev_ctx.GetCUDAMaxGridDimSize()[0];
       int64_t grid_mean_ =
           grid_mean < max_grid_dimx ? grid_mean : max_grid_dimx;
-      ManipulateMeanCUDAKernel<T><<<grid_mean_, block_, 0, ctx.stream()>>>(
+      ManipulateMeanCUDAKernel<T><<<grid_mean_, block_, 0, dev_ctx.stream()>>>(
           out_data, dst_count_data, input_size, out_len);
     }
   } else if (reduce_op == "MAX") {
@@ -168,7 +168,7 @@ void GraphSendUERecvOpCUDAKernelLaunchHelper(const Context& ctx,
                                 IndexT,
                                 GraphSendUERecvMaxCUDAFunctor<T>,
                                 funcs::AddFunctor<T>>
-          <<<grid, block, 0, ctx.stream()>>>(
+          <<<grid, block, 0, dev_ctx.stream()>>>(
               x_data,
               e_data,
               s_index,
@@ -189,7 +189,7 @@ void GraphSendUERecvOpCUDAKernelLaunchHelper(const Context& ctx,
                                 IndexT,
                                 GraphSendUERecvMaxCUDAFunctor<T>,
                                 funcs::MultiplyFunctor<T>>
-          <<<grid, block, 0, ctx.stream()>>>(
+          <<<grid, block, 0, dev_ctx.stream()>>>(
               x_data,
               e_data,
               s_index,
@@ -209,10 +209,10 @@ void GraphSendUERecvOpCUDAKernelLaunchHelper(const Context& ctx,
       input_size = out_size;
     }
     int64_t grid_max = (input_size * out_len + block_ - 1) / block_;
-    int64_t max_grid_dimx = ctx.GetCUDAMaxGridDimSize()[0];
+    int64_t max_grid_dimx = dev_ctx.GetCUDAMaxGridDimSize()[0];
     int64_t grid_max_ = grid_max < max_grid_dimx ? grid_max : max_grid_dimx;
-    InputResetMaxCUDAKernel<T>
-        <<<grid_max_, block_, 0, ctx.stream()>>>(out_data, input_size, out_len);
+    InputResetMaxCUDAKernel<T><<<grid_max_, block_, 0, dev_ctx.stream()>>>(
+        out_data, input_size, out_len);
   } else if (reduce_op == "MIN") {
     GraphSendUERecvMinCUDAFunctor<T> min_functor;
     if (message_op == "ADD") {
@@ -221,7 +221,7 @@ void GraphSendUERecvOpCUDAKernelLaunchHelper(const Context& ctx,
                                 IndexT,
                                 GraphSendUERecvMinCUDAFunctor<T>,
                                 funcs::AddFunctor<T>>
-          <<<grid, block, 0, ctx.stream()>>>(
+          <<<grid, block, 0, dev_ctx.stream()>>>(
               x_data,
               e_data,
               s_index,
@@ -242,7 +242,7 @@ void GraphSendUERecvOpCUDAKernelLaunchHelper(const Context& ctx,
                                 IndexT,
                                 GraphSendUERecvMinCUDAFunctor<T>,
                                 funcs::MultiplyFunctor<T>>
-          <<<grid, block, 0, ctx.stream()>>>(
+          <<<grid, block, 0, dev_ctx.stream()>>>(
               x_data,
               e_data,
               s_index,
@@ -262,15 +262,15 @@ void GraphSendUERecvOpCUDAKernelLaunchHelper(const Context& ctx,
       input_size = out_size;
     }
     int64_t grid_min = (input_size * out_len + block_ - 1) / block_;
-    int64_t max_grid_dimx = ctx.GetCUDAMaxGridDimSize()[0];
+    int64_t max_grid_dimx = dev_ctx.GetCUDAMaxGridDimSize()[0];
     int64_t grid_min_ = grid_min < max_grid_dimx ? grid_min : max_grid_dimx;
-    InputResetMinCUDAKernel<T>
-        <<<grid_min_, block_, 0, ctx.stream()>>>(out_data, input_size, out_len);
+    InputResetMinCUDAKernel<T><<<grid_min_, block_, 0, dev_ctx.stream()>>>(
+        out_data, input_size, out_len);
   }
 }
 
 template <typename T, typename Context>
-void SendUERecvKernel(const Context& ctx,
+void SendUERecvKernel(const Context& dev_ctx,
                       const DenseTensor& x,
                       const DenseTensor& y,
                       const DenseTensor& src_index,
@@ -284,7 +284,7 @@ void SendUERecvKernel(const Context& ctx,
   auto& out_size_data = out_size.GetData();
   if (index_type == phi::DataType::INT32) {
     GraphSendUERecvOpCUDAKernelLaunchHelper<Context, T, int32_t>(
-        ctx,
+        dev_ctx,
         x,
         y,
         src_index,
@@ -296,7 +296,7 @@ void SendUERecvKernel(const Context& ctx,
         dst_count);
   } else if (index_type == phi::DataType::INT64) {
     GraphSendUERecvOpCUDAKernelLaunchHelper<Context, T, int64_t>(
-        ctx,
+        dev_ctx,
         x,
         y,
         src_index,

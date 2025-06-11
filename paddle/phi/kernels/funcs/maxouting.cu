@@ -19,6 +19,9 @@ limitations under the License. */
 namespace phi {
 namespace funcs {
 
+/*
+ * All tensors are in NCHW or NHWC format.
+ */
 template <typename T>
 __global__ void KernelMaxOut(const int nthreads,
                              const T* input_data,
@@ -28,14 +31,15 @@ __global__ void KernelMaxOut(const int nthreads,
                              const int groups,
                              const int axis,
                              T* output_data) {
-  const int size = input_height * input_width * channels / groups;
-  const int feat_len = input_height * input_width;
-  int index = blockIdx.x * blockDim.x + threadIdx.x;
-  int offset = blockDim.x * gridDim.x;
-  for (int i = index; i < nthreads; i += offset) {
-    int batch_idx = i / size;
-    int batch_offset = i % size;
-    int channel_idx, feat_idx, data_idx;
+  const int64_t size =
+      static_cast<int64_t>(input_height) * input_width * channels / groups;
+  const int64_t feat_len = static_cast<int64_t>(input_height) * input_width;
+  int64_t index = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t offset = blockDim.x * gridDim.x;
+  for (int64_t i = index; i < nthreads; i += offset) {
+    int64_t batch_idx = i / size;
+    int64_t batch_offset = i % size;
+    int64_t channel_idx, feat_idx, data_idx;
     if (axis == 1) {
       channel_idx = batch_offset / feat_len;
       feat_idx = batch_offset % feat_len;
@@ -49,7 +53,7 @@ __global__ void KernelMaxOut(const int nthreads,
     }
     T ele = static_cast<T>(-FLT_MAX);
     for (int g = 0; g < groups; ++g) {
-      int idx_offset = (axis == 1 ? g * feat_len : g);
+      int64_t idx_offset = (axis == 1 ? g * feat_len : g);
       T x = input_data[data_idx + idx_offset];
       ele = ele > x ? ele : x;
     }
@@ -57,6 +61,9 @@ __global__ void KernelMaxOut(const int nthreads,
   }
 }
 
+/*
+ * All tensors are in NCHW or NHWC format.
+ */
 template <typename T>
 __global__ void KernelMaxoutGrad(const int nthreads,
                                  const T* input_data,
@@ -68,14 +75,15 @@ __global__ void KernelMaxoutGrad(const int nthreads,
                                  const int input_width,
                                  const int groups,
                                  const int axis) {
-  const int size = input_height * input_width * channels / groups;
-  const int feat_len = input_height * input_width;
-  int index = blockIdx.x * blockDim.x + threadIdx.x;
-  int offset = blockDim.x * gridDim.x;
-  for (int i = index; i < nthreads; i += offset) {
-    int batch_idx = i / size;
-    int batch_offset = i % size;
-    int channel_idx, feat_idx, data_idx;
+  const int64_t size =
+      static_cast<int64_t>(input_height) * input_width * channels / groups;
+  const int64_t feat_len = static_cast<int64_t>(input_height) * input_width;
+  int64_t index = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t offset = blockDim.x * gridDim.x;
+  for (int64_t i = index; i < nthreads; i += offset) {
+    int64_t batch_idx = i / size;
+    int64_t batch_offset = i % size;
+    int64_t channel_idx, feat_idx, data_idx;
     if (axis == 1) {
       channel_idx = batch_offset / feat_len;
       feat_idx = batch_offset % feat_len;
@@ -87,14 +95,13 @@ __global__ void KernelMaxoutGrad(const int nthreads,
       data_idx =
           (batch_idx * size + feat_idx * channels + channel_idx) * groups;
     }
-    int max_index = -1;
+    int64_t max_index = -1;
     bool continue_match = true;
     for (int g = 0; g < groups && continue_match; ++g) {
-      int idx_offset = (axis == 1 ? g * feat_len : g);
+      int64_t idx_offset = (axis == 1 ? g * feat_len : g);
       if (input_data[data_idx + idx_offset] == output_data[i]) {
         max_index = data_idx + idx_offset;
         continue_match = false;
-        break;
       }
     }
     if (max_index != -1) {
@@ -103,9 +110,6 @@ __global__ void KernelMaxoutGrad(const int nthreads,
   }
 }
 
-/*
- * All tensors are in NCHW or NHWC format.
- */
 template <typename DeviceContext, typename T>
 void MaxOutFunctor<DeviceContext, T>::operator()(const DeviceContext& context,
                                                  const phi::DenseTensor& input,
@@ -116,12 +120,11 @@ void MaxOutFunctor<DeviceContext, T>::operator()(const DeviceContext& context,
   const int input_channels = input.dims()[axis];
   const int input_height = (axis == 1 ? input.dims()[2] : input.dims()[1]);
   const int input_width = (axis == 1 ? input.dims()[3] : input.dims()[2]);
-  const int output_channels = output->dims()[axis];
 
   const T* input_data = input.data<T>();
   T* output_data = context.template Alloc<T>(output);
-  int nthreads = output->numel();
-  int blocks = (nthreads + 1024 - 1) / 1024;
+  int64_t nthreads = static_cast<int64_t>(output->numel());
+  int blocks = static_cast<int>((nthreads + 1024 - 1) / 1024);
   dim3 threads(1024, 1);
   dim3 grid(blocks, 1);
 
@@ -135,9 +138,6 @@ void MaxOutFunctor<DeviceContext, T>::operator()(const DeviceContext& context,
                                                           output_data);
 }
 
-/*
- * All tensors are in NCHW or NHWC format.
- */
 template <typename DeviceContext, typename T>
 void MaxOutGradFunctor<DeviceContext, T>::operator()(
     const DeviceContext& context,
@@ -147,18 +147,16 @@ void MaxOutGradFunctor<DeviceContext, T>::operator()(
     const phi::DenseTensor& output_grad,
     const int groups,
     const int axis) {
-  const int batch_size = input.dims()[0];
   const int input_channels = input.dims()[axis];
   const int input_height = (axis == 1 ? input.dims()[2] : input.dims()[1]);
   const int input_width = (axis == 1 ? input.dims()[3] : input.dims()[2]);
-  const int output_channels = output.dims()[axis];
 
   const T* input_data = input.data<T>();
   const T* output_data = output.data<T>();
   const T* output_grad_data = output_grad.data<T>();
   T* input_grad_data = context.template Alloc<T>(input_grad);
-  int nthreads = output.numel();
-  int blocks = (nthreads + 1024 - 1) / 1024;
+  int64_t nthreads = static_cast<int64_t>(output.numel());
+  int blocks = static_cast<int>((nthreads + 1024 - 1) / 1024);
   dim3 threads(1024, 1);
   dim3 grid(blocks, 1);
 

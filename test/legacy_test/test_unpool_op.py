@@ -179,6 +179,17 @@ class TestUnpoolOpOutput(TestUnpoolOp):
         self.output_size = [12, 12]
 
 
+class TestUnpoolOp_ZeroSize(TestUnpoolOp):
+    def init_test_case(self):
+        self.unpool2d_forward_naive = unpool2dmax_forward_naive
+        self.unpooling_type = "max"
+        self.shape = [3, 2, 5, 0]
+        self.ksize = [4, 4]
+        self.strides = [2, 2]
+        self.paddings = [0, 0]
+        self.output_size = None
+
+
 class TestUnpoolOpException(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()

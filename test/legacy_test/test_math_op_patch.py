@@ -503,6 +503,20 @@ class TestMathOpPatches(unittest.TestCase):
             complex(a)
 
 
+class CustomTensor:
+
+    def __init__(self, value):
+        assert isinstance(value, paddle.Tensor)
+
+        self._value = value
+
+    def __radd__(self, other):
+        return self._value + other
+
+    def __rmul__(self, other):
+        return self._value * other
+
+
 class TestDygraphMathOpPatches(unittest.TestCase):
     def init_data(self):
         self.np_a = np.random.random((2, 3, 4)).astype(np.float32)
@@ -634,6 +648,34 @@ class TestDygraphMathOpPatches(unittest.TestCase):
         b = paddle.to_tensor(b_np)
         c = b.__rmatmul__(a)
         np.testing.assert_allclose(a @ b, c.numpy(), rtol=1e-5, atol=1e-5)
+        paddle.enable_static()
+
+    @unittest.skipIf(
+        paddle.device.is_compiled_with_xpu(),
+        reason="XPU not support custom tensor.",
+    )
+    def test_dygraph_custom_add(self):
+        paddle.disable_static()
+        a_np = np.random.random((2, 3)).astype(np.float32) * 100
+        b_np = np.random.random((2, 3)).astype(np.float32) * 100
+        a = paddle.to_tensor(a_np)
+        b = paddle.to_tensor(b_np)
+        c = a + CustomTensor(b)
+        np.testing.assert_allclose(a + b, c, atol=0)
+        paddle.enable_static()
+
+    @unittest.skipIf(
+        paddle.device.is_compiled_with_xpu(),
+        reason="XPU not support custom tensor.",
+    )
+    def test_dygraph_custom_mul(self):
+        paddle.disable_static()
+        a_np = np.random.random((2, 3)).astype(np.float32) * 100
+        b_np = np.random.random((2, 3)).astype(np.float32) * 100
+        a = paddle.to_tensor(a_np)
+        b = paddle.to_tensor(b_np)
+        c = a * CustomTensor(b)
+        np.testing.assert_allclose(a * b, c, atol=0)
         paddle.enable_static()
 
 

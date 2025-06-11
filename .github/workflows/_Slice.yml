@@ -32,11 +32,11 @@ jobs:
     runs-on:
       group: slice
     steps:
-      - name: Download test script
-        run: |
-          sudo rm -rf * .[^.]*
-          source ${{ github.workspace }}/../../../proxy
-          wget https://raw.githubusercontent.com/PaddlePaddle/Paddle/refs/heads/develop/ci/slice/test_slice_float32.py
+      # - name: Download test script
+      #   run: |
+      #     sudo rm -rf * .[^.]*
+      #     source ${{ github.workspace }}/../../../proxy
+      #     wget https://raw.githubusercontent.com/PaddlePaddle/Paddle/refs/heads/develop/ci/slice/test_slice_float32.py
 
       - name: Check docker image and run container
         env:
@@ -63,6 +63,22 @@ jobs:
             -e CI_name \
             -w /paddle --network host ${docker_image}
 
+      - name: Download Paddle
+        env:
+          work_dir: ${{ github.workspace }}
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
+          rm -rf * .[^.]*
+          echo "Downloading build.tar.gz"
+          wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/build/${PR_ID}/${COMMIT_ID}/build.tar.gz --no-check-certificate
+          echo "Extracting build.tar.gz"
+          git config --global --add safe.directory ${work_dir}
+          tar --use-compress-program="pzstd -1" -xpf build.tar.gz --strip-components=1
+          git submodule foreach "git config --global --add safe.directory \$toplevel/\$sm_path"
+          git checkout test
+          rm build.tar.gz
+          '
+
       - name: Test
         env:
           work_dir: ${{ github.workspace }}
@@ -74,7 +90,7 @@ jobs:
           python3.10 -m pip config set global.cache-dir ${{ github.workspace }}/../../../.cache/pip
           python3.10 -m pip install $wheel_link
           python3.10 -m pip install torch==2.6.0 torchvision==0.21.0 torchaudio==2.6.0 --index-url https://download.pytorch.org/whl/cu118
-          python3.10 test_slice_float32.py
+          python3.10 ci/slice/test_slice_perform.py
           '
 
       - name: Terminate and delete the container
