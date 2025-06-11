@@ -1,13 +1,29 @@
+# Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, overload
+from typing import TYPE_CHECKING
 
-import paddle
 from paddle import _C_ops
 from paddle.framework import LayerHelper, in_dynamic_or_pir_mode
 
+from ...base.data_feeder import check_dtype
+
 if TYPE_CHECKING:
     from paddle import Tensor
+
 
 def fused_weighted_swiglu_act_quant(
     x: Tensor,
@@ -19,7 +35,7 @@ def fused_weighted_swiglu_act_quant(
     Fused weighted SwiGLU activation with quantization.
 
     This function performs a fused operation that combines weighted SwiGLU activation
-    and quantization. The SwiGLU activation is applied to the input tensor x, 
+    and quantization. The SwiGLU activation is applied to the input tensor x,
     optionally weighted by prob, and then quantized to FP8 format.
 
     Args:
@@ -102,12 +118,12 @@ def fused_weighted_swiglu_act_quant(
                 ['float32'],
                 'fused_weighted_swiglu_act_quant',
             )
-            
+
             prob_shape = list(prob.shape)
             batch_size = 1
             for i in range(len(input_shape) - 1):
                 batch_size *= input_shape[i]
-                
+
             assert len(prob_shape) == 1 and prob_shape[0] == batch_size, (
                 f"The prob tensor must have shape [{batch_size}], "
                 f"but got shape {prob_shape}.\n"
@@ -120,7 +136,9 @@ def fused_weighted_swiglu_act_quant(
         )
 
     if in_dynamic_or_pir_mode():
-        return _C_ops.fused_weighted_swiglu_act_quant(x, prob, using_pow2_scaling)
+        return _C_ops.fused_weighted_swiglu_act_quant(
+            x, prob, using_pow2_scaling
+        )
     else:
         __check_input(x, prob, using_pow2_scaling)
 

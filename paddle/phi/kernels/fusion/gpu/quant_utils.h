@@ -1,3 +1,17 @@
+// Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #pragma once
 
 #include <cuda.h>
@@ -5,7 +19,6 @@
 #include <cuda_fp8.h>
 #include <cuda_runtime.h>
 #include <limits>
-
 
 #include "paddle/phi/common/float8_e4m3fn.h"
 #include "paddle/phi/common/float8_e5m2.h"
@@ -22,14 +35,13 @@
     }                                            \
   }
 
-// 对二维坐标进行swizzle变换，提供相对offset,避免bank conflict
 __device__ __forceinline__ int swizzled_2d_idx(const int outer_dim,
                                                const int inner_rank,
                                                const int inner_dim) {
   return outer_dim * inner_rank + outer_dim ^ inner_dim;
 }
 
-// Type trait for extreme values of fp8 types. 
+// Type trait for extreme values of fp8 types.
 // Used in the calculation of scale factors as a constexpr lookup from
 // e4m3 or e5m2 to the max finite value.
 template <typename T>
@@ -130,7 +142,7 @@ __device__ __forceinline__ float ComputeScale(const float amax,
     return scale;
   }
   if constexpr (Power2Scaling) {
-    uint32_t scale_bits = *reinterpret_cast<uint32_t *>(&scale);
+    uint32_t scale_bits = *reinterpret_cast<uint32_t*>(&scale);
     // Scale must be positive, shift it
     uint8_t exp = scale_bits >> 23;
 

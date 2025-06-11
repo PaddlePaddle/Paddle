@@ -1,0 +1,13 @@
+commit 9519b9e66eb6c36a83160338e761328eff8f2551
+Author: shanjiang7 <jiangshan.nsfz@outlook.com>
+Date:   Mon Jun 9 17:01:39 2025 +0800
+
+    updates
+
+diff --git a/third_party/flashattn b/third_party/flashattn
+index 749aca3807..7c0f9623bc 160000
+--- a/third_party/flashattn
++++ b/third_party/flashattn
+@@ -1 +1 @@
+-Subproject commit 749aca380794b472096d4e7ea01dd252ab0887c9
++Subproject commit 7c0f9623bc710bf1fd1a8bd17bdccc68cf2237d5

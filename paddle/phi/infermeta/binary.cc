@@ -4642,36 +4642,37 @@ void FusedRMSNormInferMeta(const MetaTensor& x,
   invvar->set_dtype(DataType::FLOAT32);
 }
 
-
 void FusedWeightedSwigluActQuantInferMeta(const MetaTensor& x,
-               const MetaTensor& prob,
-               bool using_pow2_scaling,
-               MetaTensor* out,
-               MetaTensor* scale){
-  PADDLE_ENFORCE_EQ(x.dtype(),
-                    DataType::BFLOAT16,
-                    common::errors::InvalidArgument(
-                        "The dtype of Input(x) must be BFLOAT16, but received %s",
-                        x.dtype()));
-  if(prob){
-    PADDLE_ENFORCE_EQ(prob.dtype(),
-                  DataType::FLOAT32,
-                  common::errors::InvalidArgument(
-                      "The dtype of Input(prob) must be FLOAT32, but received %s",
-                      prob.dtype()));
+                                          const MetaTensor& prob,
+                                          bool using_pow2_scaling,
+                                          MetaTensor* out,
+                                          MetaTensor* scale) {
+  PADDLE_ENFORCE_EQ(
+      x.dtype(),
+      DataType::BFLOAT16,
+      common::errors::InvalidArgument(
+          "The dtype of Input(x) must be BFLOAT16, but received %s",
+          x.dtype()));
+  if (prob) {
+    PADDLE_ENFORCE_EQ(
+        prob.dtype(),
+        DataType::FLOAT32,
+        common::errors::InvalidArgument(
+            "The dtype of Input(prob) must be FLOAT32, but received %s",
+            prob.dtype()));
   }
-  int64_t rows=1;
-  for(int i = 0; i < x.dims().size()-1; ++i){
-    rows *=x.dims()[i];
+  int64_t rows = 1;
+  for (int i = 0; i < x.dims().size() - 1; ++i) {
+    rows *= x.dims()[i];
   }
-  int64_t cols=x.dims()[x.dims().size()-1];
+  int64_t cols = x.dims()[x.dims().size() - 1];
   PADDLE_ENFORCE_EQ(cols % 2,
                     0,
                     common::errors::InvalidArgument(
-                      "The last dim of Input(X) should be exactly divided "
-                      "by 2 , but got %d",
-                      cols));
-  if(prob){
+                        "The last dim of Input(X) should be exactly divided "
+                        "by 2 , but got %d",
+                        cols));
+  if (prob) {
     PADDLE_ENFORCE_EQ(prob.dims()[0],
                       rows,
                       common::errors::InvalidArgument(
@@ -4696,12 +4697,12 @@ void FusedActDequantInferMeta(const MetaTensor& x,
   auto x_scale_dims = Xscale.dims();
 
   PADDLE_ENFORCE_EQ(
-    x.dtype(),
-    phi::DataType::FLOAT8_E4M3FN,
-    phi::errors::InvalidArgument(
-        "The data type of X should be FLOAT8_E4M3FN, but received %s.",
-        x.dtype()));
-  
+      x.dtype(),
+      phi::DataType::FLOAT8_E4M3FN,
+      phi::errors::InvalidArgument(
+          "The data type of X should be FLOAT8_E4M3FN, but received %s.",
+          x.dtype()));
+
   PADDLE_ENFORCE_EQ(
       Xscale.dtype(),
       phi::DataType::FLOAT32,
@@ -4709,30 +4710,30 @@ void FusedActDequantInferMeta(const MetaTensor& x,
           "The data type of X_scale should be FLOAT32, but received %s.",
           Xscale.dtype()));
 
-  PADDLE_ENFORCE_EQ(
-      x_dims.size(),
-      2,
-      phi::errors::InvalidArgument(
-          "The input X should be a 2D tensor, but received %dD.",
-          x_dims.size()));
+  PADDLE_ENFORCE_EQ(x_dims.size(),
+                    2,
+                    phi::errors::InvalidArgument(
+                        "The input X should be a 2D tensor, but received %dD.",
+                        x_dims.size()));
 
   int64_t rows = x_dims[0];
   int64_t cols = x_dims[1];
-  
+
   PADDLE_ENFORCE_GT(
       rows,
       0,
-      phi::errors::InvalidArgument("The rows of X should be positive, but received %d.", rows));
-  
+      phi::errors::InvalidArgument(
+          "The rows of X should be positive, but received %d.", rows));
+
   PADDLE_ENFORCE_GT(
       cols,
       0,
-      phi::errors::InvalidArgument("The cols of X should be positive, but received %d.", cols));
+      phi::errors::InvalidArgument(
+          "The cols of X should be positive, but received %d.", cols));
 
-  out->set_dims(x_dims);  
-  out->set_dtype(phi::DataType::BFLOAT16);  
-  out->set_layout(x.layout());  
-
+  out->set_dims(x_dims);
+  out->set_dtype(phi::DataType::BFLOAT16);
+  out->set_layout(x.layout());
 }
 
 }  // namespace phi

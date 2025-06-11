@@ -1,11 +1,23 @@
-#include "paddle/phi/kernels/fused_swiglu_weighted_bwd.h"
-#include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/core/tensor_utils.h"
-#include "paddle/phi/backends/gpu/gpu_context.h"
+// Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
-// #include <cuda_bf16.h>
+#include "paddle/phi/kernels/fused_swiglu_weighted_bwd.h"
 #include <cuda_runtime.h>
 #include <vector>
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/tensor_utils.h"
 
 namespace phi {
 
@@ -246,12 +258,12 @@ __global__ void SwigluProbsGradKernelVec4(
 
 template <typename T, typename Context>
 void FusedSwigluWeightedBwdKernel(const Context& dev_ctx,
-                                const DenseTensor& o1,
-                                const DenseTensor& do2_s,
-                                const DenseTensor& unzipped_probs,
-                                DenseTensor* do1,
-                                DenseTensor* probs_grad,
-                                DenseTensor* o2_s) {
+                                  const DenseTensor& o1,
+                                  const DenseTensor& do2_s,
+                                  const DenseTensor& unzipped_probs,
+                                  DenseTensor* do1,
+                                  DenseTensor* probs_grad,
+                                  DenseTensor* o2_s) {
   auto o1_dims = o1.dims();
   int o1_outer_dim = 1;
   for (int i = 0; i < o1_dims.size() - 1; i++) {
@@ -263,36 +275,44 @@ void FusedSwigluWeightedBwdKernel(const Context& dev_ctx,
 
   do1->Resize(o1.dims());
   dev_ctx.template Alloc<T>(do1);
-  
+
   probs_grad->Resize({unzipped_probs.dims()});
   dev_ctx.template Alloc<float>(probs_grad);
-  
+
   o2_s->Resize(do2_s.dims());
   dev_ctx.template Alloc<T>(o2_s);
 
   const BFloat16* o1_ptr = reinterpret_cast<const BFloat16*>(o1.data<T>());
-  const BFloat16* do2_s_ptr = reinterpret_cast<const BFloat16*>(do2_s.data<T>());
+  const BFloat16* do2_s_ptr =
+      reinterpret_cast<const BFloat16*>(do2_s.data<T>());
   const float* unzipped_probs_ptr = unzipped_probs.data<float>();
   BFloat16* do1_ptr = reinterpret_cast<BFloat16*>(do1->data<T>());
   float* probs_grad_ptr = probs_grad->data<float>();
   BFloat16* o2_s_ptr = reinterpret_cast<BFloat16*>(o2_s->data<T>());
 
   constexpr int block_size = 256;
-  
+
   if (moe_intermediate_size % 4 != 0) {
     SwigluProbsGradKernel<block_size>
         <<<o1_outer_dim, block_size, 0, dev_ctx.stream()>>>(
-            o1_ptr, do2_s_ptr, unzipped_probs_ptr,
-            do1_ptr, probs_grad_ptr, o2_s_ptr,
+            o1_ptr,
+            do2_s_ptr,
+            unzipped_probs_ptr,
+            do1_ptr,
+            probs_grad_ptr,
+            o2_s_ptr,
             moe_intermediate_size);
   } else {
     SwigluProbsGradKernelVec4<block_size>
         <<<o1_outer_dim, block_size, 0, dev_ctx.stream()>>>(
-            o1_ptr, do2_s_ptr, unzipped_probs_ptr,
-            do1_ptr, probs_grad_ptr, o2_s_ptr,
+            o1_ptr,
+            do2_s_ptr,
+            unzipped_probs_ptr,
+            do1_ptr,
+            probs_grad_ptr,
+            o2_s_ptr,
             moe_intermediate_size);
   }
-
 }
 
 }  // namespace phi
@@ -302,7 +322,7 @@ PD_REGISTER_KERNEL(fused_swiglu_weighted_bwd,
                    ALL_LAYOUT,
                    phi::FusedSwigluWeightedBwdKernel,
                    phi::dtype::bfloat16) {
-  kernel->OutputAt(0).SetDataType(phi::DataType::BFLOAT16); 
-  kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);  
-  kernel->OutputAt(2).SetDataType(phi::DataType::BFLOAT16); 
+  kernel->OutputAt(0).SetDataType(phi::DataType::BFLOAT16);
+  kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
+  kernel->OutputAt(2).SetDataType(phi::DataType::BFLOAT16);
 }

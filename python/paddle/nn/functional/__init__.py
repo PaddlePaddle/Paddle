@@ -94,6 +94,9 @@ from .flash_attention import (
     scaled_dot_product_attention,
     sdp_kernel,  # noqa: F401
 )
+from .fused_act_dequant import fused_act_dequant
+from .fused_swiglu_weighted_bwd import fused_swiglu_weighted_bwd
+from .fused_weighted_swiglu_act_quant import fused_weighted_swiglu_act_quant
 from .input import (
     embedding,
     embedding_renorm_,  # noqa: F401
@@ -167,9 +170,6 @@ from .vision import (
     pixel_shuffle,
     pixel_unshuffle,
 )
-from .fused_weighted_swiglu_act_quant import fused_weighted_swiglu_act_quant
-from .fused_act_dequant import fused_act_dequant
-from .fused_swiglu_weighted_bwd import fused_swiglu_weighted_bwd
 
 __all__ = [
     'celu',

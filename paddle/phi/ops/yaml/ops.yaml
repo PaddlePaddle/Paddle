@@ -5774,6 +5774,15 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
   traits : paddle::dialect::ForwardOnlyTrait
 
+- op: fused_act_dequant
+  args: (Tensor x, Tensor Xscale)
+  output: Tensor(out)
+  infer_meta:
+    func: FusedActDequantInferMeta
+  kernel:
+    func: fused_act_dequant
+    data_type: x
+
 - op: fused_rms_norm_ext
   args: (Tensor x, Tensor scale, float epsilon)
   output: Tensor(y), Tensor(invvar)
@@ -5783,6 +5792,24 @@
     func: fused_rms_norm_ext
     data_type: x
   backward: fused_rms_norm_ext_grad
+
+- op: fused_swiglu_weighted_bwd
+  args: (Tensor o1, Tensor do2_s, Tensor unzipped_probs)
+  output: Tensor(do1), Tensor(probs_grad), Tensor(o2_s)
+  infer_meta:
+    func: FusedSwigluWeightedBwdInferMeta
+  kernel:
+    func: fused_swiglu_weighted_bwd
+    data_type: o1
+
+- op: fused_weighted_swiglu_act_quant
+  args: (Tensor x, Tensor prob, bool using_pow2_scaling)
+  output: Tensor(out), Tensor(scale)
+  infer_meta:
+    func: FusedWeightedSwigluActQuantInferMeta
+  kernel:
+    func: fused_weighted_swiglu_act_quant
+  optional: prob
 
 - op: int_bincount
   args: (Tensor x, int64_t low, int64_t high, int64_t dtype)
@@ -5803,33 +5830,3 @@
      data_type: numbers
   interfaces : paddle::dialect::InferSymbolicShapeInterface
   traits : paddle::dialect::ForwardOnlyTrait
-
-
-
-- op: fused_weighted_swiglu_act_quant
-  args: (Tensor x, Tensor prob, bool using_pow2_scaling)
-  output: Tensor(out), Tensor(scale)
-  infer_meta:
-    func: FusedWeightedSwigluActQuantInferMeta
-  kernel:
-    func: fused_weighted_swiglu_act_quant
-  optional: prob
-
-
-- op: fused_act_dequant
-  args: (Tensor x, Tensor Xscale)
-  output: Tensor(out)
-  infer_meta:
-    func: FusedActDequantInferMeta
-  kernel: 
-    func: fused_act_dequant
-    data_type: x
-
-- op: fused_swiglu_weighted_bwd
-  args: (Tensor o1, Tensor do2_s, Tensor unzipped_probs)
-  output: Tensor(do1), Tensor(probs_grad), Tensor(o2_s)
-  infer_meta:
-    func: FusedSwigluWeightedBwdInferMeta
-  kernel:
-    func: fused_swiglu_weighted_bwd
-    data_type: o1
