@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
 #include "paddle/phi/core/distributed/auto_parallel/inferspmd_utils.h"
 #include "paddle/phi/core/distributed/auto_parallel/utils.h"
+#include "paddle/phi/infermeta/spmd_rules/spmd_rule_macro_define.h"
 #include "paddle/phi/infermeta/spmd_rules/utils.h"
 
 namespace phi::distributed {
@@ -38,6 +39,8 @@ SpmdInfo InstanceNormInferSpmd(const DistMetaTensor& x,
   int scale_ndim = static_cast<int>(scale_shape.size());
   int bias_ndim = static_cast<int>(bias_shape.size());
   TensorDistAttr x_dist_attr_src = x.dist_attr();
+  TensorDistAttr scale_dist_attr_src = scale.dist_attr();
+  TensorDistAttr bias_dist_attr_src = bias.dist_attr();
   std::vector<int64_t> x_dims_mapping = x_dist_attr_src.dims_mapping();
   std::vector<int64_t> scale_dims_mapping = scale.dist_attr().dims_mapping();
   std::vector<int64_t> bias_dims_mapping = bias.dist_attr().dims_mapping();
@@ -143,6 +146,10 @@ SpmdInfo InstanceNormGradInferSpmd(const DistMetaTensor& x,
   int saved_variance_ndim = static_cast<int>(saved_variance_shape.size());
   int y_grad_ndim = static_cast<int>(y_grad_shape.size());
   TensorDistAttr x_dist_attr_src = x.dist_attr();
+  TensorDistAttr scale_dist_attr_src = scale.dist_attr();
+  TensorDistAttr saved_mean_dist_attr_src = saved_mean.dist_attr();
+  TensorDistAttr saved_variance_dist_attr_src = saved_variance.dist_attr();
+  TensorDistAttr y_grad_dist_attr_src = y_grad.dist_attr();
   std::vector<int64_t> x_dims_mapping = x_dist_attr_src.dims_mapping();
   std::vector<int64_t> scale_dims_mapping = scale.dist_attr().dims_mapping();
   std::vector<int64_t> saved_mean_dims_mapping =
@@ -233,13 +240,13 @@ SpmdInfo InstanceNormGradInferSpmd(const DistMetaTensor& x,
   TensorDistAttr y_grad_dist_attr_dst =
       CopyTensorDistAttrForOutput(y_grad.dist_attr());
   y_grad_dist_attr_dst.set_dims_mapping(x_dims_mapping);
-  TensorDistAttr saved_mean_dist_attr =
+  TensorDistAttr saved_mean_dist_attr_dst =
       CopyTensorDistAttrForOutput(saved_mean.dist_attr());
-  saved_mean_dist_attr.set_dims_mapping(
+  saved_mean_dist_attr_dst.set_dims_mapping(
       GetDimsMappingForAxes(saved_mean_axes, axis_to_dim_map));
-  TensorDistAttr saved_variance_dist_attr =
+  TensorDistAttr saved_variance_dist_attr_dst =
       CopyTensorDistAttrForOutput(saved_variance.dist_attr());
-  saved_variance_dist_attr.set_dims_mapping(
+  saved_variance_dist_attr_dst.set_dims_mapping(
       GetDimsMappingForAxes(saved_variance_axes, axis_to_dim_map));
   TensorDistAttr scale_dist_attr_dst =
       CopyTensorDistAttrForOutput(scale.dist_attr());
@@ -268,8 +275,8 @@ SpmdInfo InstanceNormGradInferSpmd(const DistMetaTensor& x,
 
   return {{x_dist_attr_dst,
            scale_dist_attr_dst,
-           saved_mean_dist_attr,
-           saved_variance_dist_attr,
+           saved_mean_dist_attr_dst,
+           saved_variance_dist_attr_dst,
            y_grad_dist_attr_dst},
           {x_grad_dist_attr, scale_grad_dist_attr, bias_grad_dist_attr}};
 }
