@@ -2023,7 +2023,7 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
 
           AdvancedIndex ad = AdvancedIndex(transed_sub_tensor, transed_index);
           transed_sub_tensor =
-              index_elementwise_put__ad_func(sub_tensor,
+              index_elementwise_put__ad_func(tensor,
                                              ad.indices,
                                              value_tensor,
                                              ad.src_sizes,

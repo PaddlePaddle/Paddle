@@ -116,7 +116,6 @@ struct AdvancedIndex {
 };
 
 inline static paddle::Tensor restride_src(
-    paddle::Tensor src,
     std::vector<int64_t>* shape,
     std::vector<int64_t>* strides,
     int64_t dims_before,
@@ -129,7 +128,6 @@ inline static paddle::Tensor restride_src(
                 replacement_shape.begin(),
                 replacement_shape.end());
   strides->insert(strides->begin() + dims_before, replacement_shape.size(), 0);
-  return as_strided_ad_func(src, *shape, *strides);
 }
 
 // move to cuda kernel
@@ -173,12 +171,8 @@ inline AdvancedIndex::AdvancedIndex(paddle::Tensor src,
 
   this->dims_before = dims_before;
   this->dims_after = dims_after;
-  this->src = restride_src(src,
-                           &shape_vec,
-                           &stride_vec,
-                           dims_before,
-                           dims_indexed,
-                           replacement_shape);
+  restride_src(
+      &shape_vec, &stride_vec, dims_before, dims_indexed, replacement_shape);
   this->src_sizes = shape_vec;
   this->src_strides = stride_vec;
 
