@@ -42,6 +42,7 @@ def get_paddle_api():
     modules = [
         paddle,
         paddle.nn.functional,
+        paddle.nn.quant,
         paddle.incubate.nn.functional,
         paddle.linalg,
         paddle.signal,

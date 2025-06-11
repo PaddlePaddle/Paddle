@@ -7162,7 +7162,8 @@ def take(
         )
     elif mode == 'clip':
         # 'clip' mode disables indexing with negative numbers.
-        index_1d = clip(index_1d, 0, max_index - 1)
+        if max_index > 0:  # If max_index is 0, input_1d is 0-size.
+            index_1d = clip(index_1d, 0, max_index - 1)
 
     out = input_1d.index_select(index_1d).reshape(index.shape)
 

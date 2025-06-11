@@ -98,29 +98,6 @@ void AddmmInferMeta(const MetaTensor& input,
           << " alpha=" << alpha << " ndim_input=" << ndim_input
           << " ndim_x=" << ndim_x << " ndim_y=" << ndim_y;
 
-  PADDLE_ENFORCE_NE(
-      product(input_dims),
-      0,
-      errors::PreconditionNotMet("The Input variable 'input' has not "
-                                 "been initialized. You may need to confirm "
-                                 "if you put exe.run(startup_program) "
-                                 "after optimizer.minimize function."));
-
-  PADDLE_ENFORCE_NE(
-      product(x_dims),
-      0,
-      errors::PreconditionNotMet("The Input variable 'x' has not "
-                                 "been initialized. You may need to confirm "
-                                 "if you put exe.run(startup_program) "
-                                 "after optimizer.minimize function."));
-
-  PADDLE_ENFORCE_NE(
-      product(y_dims),
-      0,
-      errors::PreconditionNotMet("The Input variable 'y' has not "
-                                 "been initialized. You may need to confirm "
-                                 "if you put exe.run(startup_program) "
-                                 "after optimizer.minimize function."));
   // dim check
   PADDLE_ENFORCE_EQ(ndim_input == 2 || ndim_input == 1,
                     true,

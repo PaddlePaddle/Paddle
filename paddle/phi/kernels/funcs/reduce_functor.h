@@ -308,6 +308,12 @@ struct AMaxOrAMinGradFunctor {
           mask.sum(axis).reshape(dy->dimensions()).broadcast(dim);
       return;
     }
+
+    if (rank == 0) {
+      dx->device(place) = dy->broadcast(dim) * mask;
+      return;
+    }
+
     // axis is list, HANDLE_AXIS_DIM(broadcast_dim_size, rank)
     HANDLE_AXIS_DIM(3, 2);
     HANDLE_AXIS_DIM(4, 2);
