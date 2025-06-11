@@ -137,7 +137,7 @@ class TestAttentionWithBoolMask(unittest.TestCase):
     def test_dot_scale_product_float_mask(self):
         # test with mask=float
         paddle.disable_static()
-        self.shape = (1, 1, 8, 512)
+        self.shape = (1, 1, 8, 256)
         query = np.random.random(self.shape)
         key = np.random.random(self.shape)
         value = np.random.random(self.shape)
