@@ -551,8 +551,9 @@ void FusedMoeUnpermuteInferMeta(const MetaTensor& unzipped_tokens,
                                 const MetaTensor& zipped_expertwise_rowmap,
                                 const MetaTensor& expert_routemap_topk,
                                 const MetaTensor& unzipped_token_probs,
-                                const int& total_zipped_tokens_num,
-                                const int& num_experts,
+                                const int total_zipped_tokens_num,
+                                const int num_experts,
+                                const bool MP,
                                 MetaTensor* zipped_tokens,
                                 MetaTensor* zipped_probs_topk);
 

@@ -2362,7 +2362,7 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : fused_moe_permute
-  args : (Tensor X, Tensor XScale, Tensor expert_routemap, Tensor expert_prob_topk, int topk, int num_experts, int[] tokens_per_experts, int padding_multiplex)
+  args : (Tensor X, Tensor XScale, Tensor expert_routemap, Tensor expert_prob_topk, int topk, int num_experts, int[] tokens_per_expert, int padding_multiplex)
   output : Tensor(X_unzipoed), Tensor(zipped_expertwise_rowmap), Tensor(token_prob_unzipped), Tensor(XScale_unzipped)
   infer_meta:
     func : FusedMoePermuteInferMeta
@@ -2372,7 +2372,7 @@
   optional : XScale
 
 - op : fused_moe_unpermute
-  args : (Tensor unzipped_tokens, Tensor zipped_expertwise_rowmap, Tensor expert_routemap_topk, Tensor unzipped_token_probs, int total_zipped_tokens_num, int num_experts)
+  args : (Tensor unzipped_tokens, Tensor zipped_expertwise_rowmap, Tensor expert_routemap_topk, Tensor unzipped_token_probs, int total_zipped_tokens_num, int num_experts, bool MP)
   output : Tensor(zipped_tokens), Tensor(zipped_probs_topk)
   infer_meta :
     func : FusedMoeUnpermuteInferMeta

@@ -6024,16 +6024,21 @@ void FusedMoeUnpermuteInferMeta(const MetaTensor& unzipped_tokens,
                                 const MetaTensor& zipped_expertwise_rowmap,
                                 const MetaTensor& expert_routemap_topk,
                                 const MetaTensor& unzipped_token_probs,
-                                const int& total_zipped_tokens_num,
-                                const int& num_experts,
+                                const int total_zipped_tokens_num,
+                                const int num_experts,
+                                const bool MP,
                                 MetaTensor* zipped_tokens,
                                 MetaTensor* zipped_probs_topk) {
   PADDLE_ENFORCE_EQ(
-      unzipped_tokens.dtype() == phi::DataType::BFLOAT16 ||
-          unzipped_tokens.dtype() == phi::DataType::FLOAT32,
+      unzipped_tokens.dtype() == phi::DataType::BFLOAT16,
       true,
       common::errors::InvalidArgument(
-          "Input unzipped_tokens's dtype should be BFLOAT16 or FLOAT32"));
+          "Input unzipped_tokens's dtype should be BFLOAT16"));
+  PADDLE_ENFORCE_EQ(
+      unzipped_token_probs.dtype() == phi::DataType::FLOAT32,
+      true,
+      common::errors::InvalidArgument(
+          "Input unzipped_token_probs's dtype should be FLOAT32"));
   const int cols = unzipped_tokens.dims()[1];       // 一般为7168
   const int topk = expert_routemap_topk.dims()[1];  // 一般为8
   zipped_tokens->set_dims({total_zipped_tokens_num, cols});
