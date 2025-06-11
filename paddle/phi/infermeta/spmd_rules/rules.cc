@@ -795,4 +795,5 @@ PD_REGISTER_SPMD_RULE(roi_align,
 PD_REGISTER_SPMD_RULE(
     fused_gemm_epilogue,
     PD_INFER_SPMD(phi::distributed::FusedGemmEpilogueInferSpmdBase));
+
 }  // namespace phi::distributed

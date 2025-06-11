@@ -35,6 +35,10 @@ void SlogDeterminantGradKernel(const Context& dev_ctx,
                                const DenseTensor& out,
                                const DenseTensor& out_grad,
                                DenseTensor* x_grad) {
+  if (x_grad && x_grad->numel() == 0) {
+    dev_ctx.template Alloc<T>(x_grad);
+    return;
+  }
   PADDLE_ENFORCE_EQ(
       out_grad.dims()[0],
       2,
