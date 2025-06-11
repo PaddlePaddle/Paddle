@@ -3389,7 +3389,7 @@ void PNormInferMeta(const MetaTensor& x,
                         x_rank,
                         x_dim));
 
-  std::vector<int> out_dim_vector;
+  std::vector<int64_t> out_dim_vector;
   if (asvector) {
     if (keepdim) {
       for (int i = 0; i < x_rank; ++i) {
