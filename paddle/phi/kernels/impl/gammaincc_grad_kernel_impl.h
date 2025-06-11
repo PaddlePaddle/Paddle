@@ -49,6 +49,10 @@ void GammainccGradKernel(const Context& dev_ctx,
                          const DenseTensor& y,
                          const DenseTensor& d_out,
                          DenseTensor* d_y) {
+  if (d_y && d_y->numel() == 0) {
+    dev_ctx.template Alloc<T>(d_y);
+    return;
+  }
   auto numel = d_out.numel();
   auto* dout_data = d_out.data<T>();
   auto* x_data = x.data<T>();

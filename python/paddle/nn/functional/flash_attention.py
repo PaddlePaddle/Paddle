@@ -1423,6 +1423,12 @@ def scaled_dot_product_attention(
         sdp_func_name = _select_sdp_for_sdpa(
             query, key, attn_mask, dropout_p, is_causal
         )
+        if attn_mask.dtype == paddle.bool:
+            attn_mask = paddle.where(
+                attn_mask,
+                paddle.to_tensor(0.0, dtype=query.dtype),
+                paddle.to_tensor(-float('inf'), dtype=query.dtype),
+            )
         if sdp_func_name == "flash_attn":
             if in_dynamic_or_pir_mode():
                 fixed_seed_offset = None

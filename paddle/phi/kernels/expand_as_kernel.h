@@ -19,7 +19,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void ExpandAsKernel(const Context& ctx,
+void ExpandAsKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     const paddle::optional<DenseTensor>& y,
                     const std::vector<int64_t>& target_shape,

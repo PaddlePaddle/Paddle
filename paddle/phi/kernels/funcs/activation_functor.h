@@ -3375,6 +3375,7 @@ struct CudaLogitGradFunctor : public BaseActivationFunctor<T> {
                ? zero
                : (static_cast<MT>(dout) / (x * (one - x)));
     }
+
     return static_cast<T>(dx);
   }
   static constexpr ActBwdOpFwdDeps FwdDeps() {
@@ -3588,9 +3589,15 @@ struct CudaReciprocalFunctor : public BaseActivationFunctor<T> {
 
 template <typename T>
 struct CudaReciprocalGradFunctor : public BaseActivationFunctor<T> {
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+
   // dx = -dout * out^2
-  __device__ __forceinline__ T operator()(const T dout, const T out) const {
-    return -dout * out * out;
+  __device__ __forceinline__ T operator()(const T arg_dout,
+                                          const T arg_out) const {
+    MPType dout = static_cast<MPType>(arg_dout);
+    MPType out = static_cast<MPType>(arg_out);
+    return static_cast<T>(-dout *
+                          static_cast<MPType>(static_cast<T>(out * out)));
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() {

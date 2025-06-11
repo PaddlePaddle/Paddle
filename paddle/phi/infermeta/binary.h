@@ -464,6 +464,23 @@ void IndexAddInferMeta(const MetaTensor& x,
                        int axis,
                        MetaTensor* output);
 
+void IndexElementwisePutInferMeta(const MetaTensor& x,
+                                  const std::vector<const MetaTensor*>& index,
+                                  const MetaTensor& value,
+                                  const std::vector<int64_t>& input_dims,
+                                  const std::vector<int64_t>& input_strides,
+                                  const std::vector<int64_t>& index_dims,
+                                  const std::vector<int64_t>& index_strides,
+                                  MetaTensor* out);
+
+void IndexElementwiseGetInferMeta(const MetaTensor& x,
+                                  const std::vector<const MetaTensor*>& index,
+                                  const std::vector<int64_t>& input_dims,
+                                  const std::vector<int64_t>& input_strides,
+                                  const std::vector<int64_t>& index_dims,
+                                  const std::vector<int64_t>& index_stride,
+                                  MetaTensor* out);
+
 void KronInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out);
 
 void LegacyCropInferMeta(const MetaTensor& x,
@@ -790,5 +807,10 @@ void WeightDequantizeInferMeta(const MetaTensor& x,
                                const std::string& algo,
                                const int32_t group_size,
                                MetaTensor* out);
+void FusedRMSNormInferMeta(const MetaTensor& x,
+                           const MetaTensor& scale,
+                           float epsilon,
+                           MetaTensor* y,
+                           MetaTensor* invvar);
 
 }  // namespace phi

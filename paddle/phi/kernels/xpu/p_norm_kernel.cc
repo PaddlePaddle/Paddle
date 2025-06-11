@@ -15,7 +15,7 @@
 #include "paddle/phi/kernels/p_norm_kernel.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
-
+#include "paddle/phi/kernels/full_kernel.h"
 namespace phi {
 
 inline void GetDims(const phi::DDim& dim,
@@ -50,6 +50,11 @@ void PNormKernel(const Context& dev_ctx,
                  DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   dev_ctx.template Alloc<T>(out);
+  if (x.numel() == 0) {
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+    return;
+  }
   auto xdim = x.dims();
   if (axis < 0) axis = xdim.size() + axis;
   std::vector<int64_t> r_dim;

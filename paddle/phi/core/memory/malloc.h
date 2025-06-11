@@ -59,8 +59,16 @@ void EraseStream(std::shared_ptr<Allocation> allocation, gpuStream_t stream);
 gpuStream_t GetStream(const std::shared_ptr<Allocation>& allocation);
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
+extern uint64_t Release(const phi::CustomPlace& place,
+                        phi::stream::stream_t stream);
+
 bool RecordStream(std::shared_ptr<Allocation> allocation,
                   phi::stream::stream_t stream);
+
+void EraseStream(std::shared_ptr<Allocation> allocation,
+                 phi::stream::stream_t stream);
+
+phi::stream::stream_t GetStream(const std::shared_ptr<Allocation>& allocation);
 #endif
 
 template <typename StreamType>
