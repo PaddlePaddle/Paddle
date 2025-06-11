@@ -267,8 +267,8 @@ TEST(LayerNormSPMDRule, Ctor) {
   // begin_norm_axis=2
   begin_norm_axis = 2;
   x_dist_attr.set_dims_mapping({1, -1, -1});
-  scale_dist_attr.set_dims_mapping({-1});
-  bias_dist_attr.set_dims_mapping({-1});
+  scale_dist_attr.set_dims_mapping(std::vector<int64_t>{-1});
+  bias_dist_attr.set_dims_mapping(std::vector<int64_t>{-1});
   phi::distributed::DistMetaTensor x(common::make_ddim(x_shape), x_dist_attr);
   phi::distributed::DistMetaTensor scale(common::make_ddim(scale_shape),
                                          scale_dist_attr);
@@ -294,8 +294,8 @@ TEST(LayerNormSPMDRule, Ctor) {
   // begin_norm_axis=2
   begin_norm_axis = 2;
   x_dist_attr.set_dims_mapping({1, 0, -1});
-  scale_dist_attr.set_dims_mapping({0});
-  bias_dist_attr.set_dims_mapping({0});
+  scale_dist_attr.set_dims_mapping(std::vector<int64_t>{0});
+  bias_dist_attr.set_dims_mapping(std::vector<int64_t>{0});
   x = phi::distributed::DistMetaTensor(common::make_ddim(x_shape), x_dist_attr);
   scale = phi::distributed::DistMetaTensor(common::make_ddim(scale_shape),
                                            scale_dist_attr);
@@ -317,8 +317,8 @@ TEST(LayerNormSPMDRule, Ctor) {
   // begin_norm_axis=1
   begin_norm_axis = 1;
   x_dist_attr.set_dims_mapping({0, -1, -1});
-  scale_dist_attr.set_dims_mapping({-1});
-  bias_dist_attr.set_dims_mapping({1});
+  scale_dist_attr.set_dims_mapping(std::vector<int64_t>{-1});
+  bias_dist_attr.set_dims_mapping(std::vector<int64_t>{1});
   x = phi::distributed::DistMetaTensor(common::make_ddim(x_shape), x_dist_attr);
   scale = phi::distributed::DistMetaTensor(common::make_ddim(scale_shape),
                                            scale_dist_attr);
@@ -1965,7 +1965,7 @@ TEST(ScatterGradInferSpmd, Ctor) {
   // [0], [-1, -1, 1], [0, -1, 1] -->
   // inputs: [-1], [-1, -1, 1], [-1, -1, 1]
   // x_grad: [-1, -1, 1], updates_grad: [-1, -1, 1]
-  index_dist_attr.set_dims_mapping({0});
+  index_dist_attr.set_dims_mapping(std::vector<int64_t>{0});
   updates_dist_attr.set_dims_mapping({-1, -1, 1});
   out_grad_dist_attr.set_dims_mapping({0, -1, 1});
   phi::distributed::DistMetaTensor index(phi::make_ddim(index_shape),
@@ -1991,7 +1991,7 @@ TEST(ScatterGradInferSpmd, Ctor) {
   // [0], [0, -1, 1], [-1, 0, 1] -->
   // inputs: [-1], [-1, -1, 1], [-1, 0, 1]
   // x_grad: [-1, 0, 1], updates_grad: [-1, 0, 1]
-  index_dist_attr.set_dims_mapping({0});
+  index_dist_attr.set_dims_mapping(std::vector<int64_t>{0});
   updates_dist_attr.set_dims_mapping({0, -1, 1});
   out_grad_dist_attr.set_dims_mapping({-1, 0, 1});
   index = phi::distributed::DistMetaTensor(phi::make_ddim(index_shape),
@@ -2040,7 +2040,7 @@ TEST(GatherGradInferSpmd, Ctor) {
   // x_grad: [-1, -1, 1]
   axis = 0;
   x_dist_attr.set_dims_mapping({0, -1, 1});
-  index_dist_attr.set_dims_mapping({0});
+  index_dist_attr.set_dims_mapping(std::vector<int64_t>{0});
   out_grad_dist_attr.set_dims_mapping({0, -1, 1});
   phi::distributed::DistMetaTensor x(phi::make_ddim(x_shape), x_dist_attr);
   phi::distributed::DistMetaTensor index(phi::make_ddim(index_shape),
@@ -2068,7 +2068,7 @@ TEST(GatherGradInferSpmd, Ctor) {
   index_shape = {};
   out_grad_shape = {64, 48};
   x_dist_attr.set_dims_mapping({0, -1, 1});
-  index_dist_attr.set_dims_mapping({-1});
+  index_dist_attr.set_dims_mapping(std::vector<int64_t>{-1});
   out_grad_dist_attr.set_dims_mapping({0, 1});
   x = phi::distributed::DistMetaTensor(phi::make_ddim(x_shape), x_dist_attr);
   index = phi::distributed::DistMetaTensor(phi::make_ddim(index_shape),
@@ -2107,9 +2107,9 @@ TEST(GatherNdGradInferSpmd, Ctor) {
 
   // inputs: [-1], [0] --> [0]
   // x_grad: [-1]
-  x_dist_attr.set_dims_mapping({-1});
-  index_dist_attr.set_dims_mapping({0});
-  out_grad_dist_attr.set_dims_mapping({0});
+  x_dist_attr.set_dims_mapping(std::vector<int64_t>{-1});
+  index_dist_attr.set_dims_mapping(std::vector<int64_t>{0});
+  out_grad_dist_attr.set_dims_mapping(std::vector<int64_t>{0});
   phi::distributed::DistMetaTensor x(phi::make_ddim(x_shape), x_dist_attr);
   phi::distributed::DistMetaTensor index(phi::make_ddim(index_shape),
                                          index_dist_attr);
@@ -2192,7 +2192,7 @@ TEST(CumSumGradInferSpmd, Ctor) {
   // inputs: [0, 1, -1], [-1]
   // x_grad: [-1, -1, -1]
   x_dist_attr.set_dims_mapping({0, 1, -1});
-  out_grad_dist_attr.set_dims_mapping({-1});
+  out_grad_dist_attr.set_dims_mapping(std::vector<int64_t>{-1});
   x = phi::distributed::DistMetaTensor(phi::make_ddim(x_shape), x_dist_attr);
   out_grad = phi::distributed::DistMetaTensor(phi::make_ddim({64 * 32 * 48}),
                                               out_grad_dist_attr);
@@ -2617,7 +2617,7 @@ TEST(MeanAll, Ctor) {
   // [] --> [-1, -1], []
   auto out_grad_dist_attr = TensorDistAttr();
   out_grad_dist_attr.set_process_mesh(process_mesh);
-  out_grad_dist_attr.set_dims_mapping({});
+  out_grad_dist_attr.set_dims_mapping(std::vector<int64_t>{});
   out_grad_dist_attr.set_dynamic_dims({});
   phi::distributed::DistMetaTensor out_grad = phi::distributed::DistMetaTensor(
       common::make_ddim({}), out_grad_dist_attr);
@@ -3055,7 +3055,7 @@ TEST(IndexSelect, Ctor) {
       common::make_ddim({16, 16, 16}), x_dist_attr);
   auto index_dist_attr = TensorDistAttr();
   index_dist_attr.set_process_mesh(process_mesh);
-  index_dist_attr.set_dims_mapping({0});
+  index_dist_attr.set_dims_mapping(std::vector<int64_t>{0});
   index_dist_attr.set_dynamic_dims({false, false, false});
   phi::distributed::DistMetaTensor index =
       phi::distributed::DistMetaTensor(common::make_ddim({3}), index_dist_attr);
