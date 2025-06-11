@@ -786,6 +786,11 @@ PD_REGISTER_SPMD_RULE(
     PD_INFER_SPMD(phi::distributed::PutAlongAxisInferSpmd),
     PD_INFER_SPMD(phi::distributed::PutAlongAxisGradInferSpmd));
 
+// roi_align
+PD_REGISTER_SPMD_RULE(roi_align,
+                      PD_INFER_SPMD(phi::distributed::RoiAlignInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::RoiAlignGradInferSpmd));
+
 // fused gemm epilogue
 PD_REGISTER_SPMD_RULE(
     fused_gemm_epilogue,

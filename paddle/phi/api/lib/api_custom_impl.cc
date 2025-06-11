@@ -240,7 +240,7 @@ std::tuple<Tensor, Tensor> fused_gemm_epilogue_impl(
   Backend kernel_backend = Backend::UNDEFINED;
   DataLayout kernel_layout = DataLayout::UNDEFINED;
   DataType kernel_data_type = DataType::UNDEFINED;
-
+#ifdef PADDLE_WITH_DISTRIBUTE
   bool run_auto_parallel = AllInputsAreDistTensor(x, y, bias);
   bool rank_is_in_current_mesh = true;
   if (run_auto_parallel) {
@@ -442,6 +442,7 @@ std::tuple<Tensor, Tensor> fused_gemm_epilogue_impl(
     // 12. Return
     return api_output;
   }
+#endif  // PADDLE_WITH_DISTRIBUTE
 
   VLOG(6) << "fused_gemm_epilogue API kernel key: [" << kernel_backend << ", "
           << kernel_layout << ", " << kernel_data_type << "]";
