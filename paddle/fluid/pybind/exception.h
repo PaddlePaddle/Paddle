@@ -33,6 +33,13 @@ limitations under the License. */
     return -1;                                        \
   }
 
+#define EAGER_CATCH_AND_THROW_RETURN_NOT_IMPLEMENTED \
+  }                                                  \
+  catch (...) {                                      \
+    Py_INCREF(Py_NotImplemented);                    \
+    return Py_NotImplemented;                        \
+  }
+
 namespace paddle {
 namespace pybind {
 

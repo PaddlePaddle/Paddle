@@ -24,6 +24,7 @@
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/strided_slice.h"
+#include "paddle/phi/kernels/reduce_sum_kernel.h"
 
 namespace phi {
 
@@ -49,9 +50,9 @@ inline void GetOffsets(const DDim& big_dim,
 template <typename T, typename Context, size_t RANK>
 void SetValueGradImpl(const Context& dev_ctx,
                       const DenseTensor& out_grad,
-                      const IntArray& starts,
-                      const IntArray& ends,
-                      const IntArray& steps,
+                      std::vector<int64_t>& starts_local,  // NOLINT
+                      std::vector<int64_t>& ends_local,    // NOLINT
+                      std::vector<int64_t>& steps_local,   // NOLINT
                       const std::vector<int64_t>& axes,
                       const std::vector<int64_t>& decrease_axes,
                       const std::vector<int64_t>& none_axes UNUSED,
@@ -70,9 +71,6 @@ void SetValueGradImpl(const Context& dev_ctx,
   std::vector<int> axes_int32(axes.begin(), axes.end());
   std::vector<int> infer_flags(axes.size(), 1);
   std::vector<int64_t> out_dims_vector(in_dims.size(), -1);
-  std::vector<int64_t> starts_local = starts.GetData();
-  std::vector<int64_t> ends_local = ends.GetData();
-  std::vector<int64_t> steps_local = steps.GetData();
   funcs::StridedSliceOutDims(starts_local,
                              ends_local,
                              steps_local,
@@ -259,86 +257,70 @@ void SetValueGradKernel(const Context& dev_ctx,
                         DenseTensor* x_grad,
                         DenseTensor* value_grad) {
   const int rank = out_grad.dims().size();
+  std::vector<int64_t> starts_local = starts.GetData();
+  std::vector<int64_t> ends_local = ends.GetData();
+  std::vector<int64_t> steps_local = steps.GetData();
+
+  bool ellipsis_flag = true;
+  for (size_t i = 0; i < axes.size(); i++) {
+    auto idx = axes[i];
+    if (!(starts_local[i] == 0 && ends_local[i] == out_grad.dims()[idx] &&
+          steps_local[i] == 1)) {
+      ellipsis_flag = false;
+    }
+  }
+
+  if (ellipsis_flag) {
+    if (x_grad) {
+      FullKernel<T, Context>(dev_ctx,
+                             common::vectorize(x_grad->dims()),
+                             Scalar(0),
+                             x_grad->dtype(),
+                             x_grad);
+    }
+    if (value_grad) {
+      if (value_grad->dims() == out_grad.dims()) {
+        Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, value_grad);
+      } else {
+        SumKernel<T, Context>(dev_ctx,
+                              out_grad,
+                              IntArray(vectorize(value_grad->dims())),
+                              out_grad.dtype(),
+                              false,
+                              value_grad);
+      }
+    }
+    return;
+  }
 
   switch (rank) {
-    case 1:
-      SetValueGradImpl<T, Context, 1>(dev_ctx,
-                                      out_grad,
-                                      starts,
-                                      ends,
-                                      steps,
-                                      axes,
-                                      decrease_axes,
-                                      none_axes,
-                                      x_grad,
-                                      value_grad);
-      break;
-    case 2:
-      SetValueGradImpl<T, Context, 2>(dev_ctx,
-                                      out_grad,
-                                      starts,
-                                      ends,
-                                      steps,
-                                      axes,
-                                      decrease_axes,
-                                      none_axes,
-                                      x_grad,
-                                      value_grad);
-      break;
-    case 3:
-      SetValueGradImpl<T, Context, 3>(dev_ctx,
-                                      out_grad,
-                                      starts,
-                                      ends,
-                                      steps,
-                                      axes,
-                                      decrease_axes,
-                                      none_axes,
-                                      x_grad,
-                                      value_grad);
-      break;
-    case 4:
-      SetValueGradImpl<T, Context, 4>(dev_ctx,
-                                      out_grad,
-                                      starts,
-                                      ends,
-                                      steps,
-                                      axes,
-                                      decrease_axes,
-                                      none_axes,
-                                      x_grad,
-                                      value_grad);
-      break;
-    case 5:
-      SetValueGradImpl<T, Context, 5>(dev_ctx,
-                                      out_grad,
-                                      starts,
-                                      ends,
-                                      steps,
-                                      axes,
-                                      decrease_axes,
-                                      none_axes,
-                                      x_grad,
-                                      value_grad);
-      break;
-    case 6:
-      SetValueGradImpl<T, Context, 6>(dev_ctx,
-                                      out_grad,
-                                      starts,
-                                      ends,
-                                      steps,
-                                      axes,
-                                      decrease_axes,
-                                      none_axes,
-                                      x_grad,
-                                      value_grad);
-      break;
+#define CASE_RANK(__Rk)                               \
+  case __Rk:                                          \
+    SetValueGradImpl<T, Context, __Rk>(dev_ctx,       \
+                                       out_grad,      \
+                                       starts_local,  \
+                                       ends_local,    \
+                                       steps_local,   \
+                                       axes,          \
+                                       decrease_axes, \
+                                       none_axes,     \
+                                       x_grad,        \
+                                       value_grad);   \
+    break;
+    CASE_RANK(1);
+    CASE_RANK(2);
+    CASE_RANK(3);
+    CASE_RANK(4);
+    CASE_RANK(5);
+    CASE_RANK(6);
+#undef CASE_RANK
     default:
       PADDLE_THROW(common::errors::InvalidArgument(
           "The rank of set_value_grad's input should be less than 7, but "
           "received %d.",
           rank));
   }
+  return;
 }
 
 template <typename T, typename Context>

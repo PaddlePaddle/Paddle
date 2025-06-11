@@ -98,5 +98,45 @@ class TestGeluOp(unittest.TestCase):
         )
 
 
+class TestGeluOp_ZeroSize(unittest.TestCase):
+    def _test_case1_cpu(self, approximate):
+        x = np.random.uniform(-1, 1, size=(0, 17)).astype(np.float32)
+        y_ref = gelu(x, approximate)
+
+        place = base.CPUPlace()
+        with dg.guard(place) as g:
+            x_var = paddle.to_tensor(x)
+            x_var.stop_gradient = False
+            y_var = F.gelu(x_var, approximate)
+            y_test = y_var.numpy()
+
+            loss = paddle.sum(y_var)
+            loss.backward()
+        np.testing.assert_allclose(y_ref, y_test, rtol=1e-05, atol=1e-08)
+        np.testing.assert_allclose(x_var.grad.shape, x_var.shape)
+
+    def _test_case1_gpu(self, approximate):
+        x = np.random.uniform(-1, 1, size=(0, 17)).astype(np.float32)
+        y_ref = gelu(x, approximate)
+
+        place = base.CUDAPlace(0)
+        with dg.guard(place) as g:
+            x_var = paddle.to_tensor(x)
+            x_var.stop_gradient = False
+            y_var = F.gelu(x_var, approximate)
+            y_test = y_var.numpy()
+
+            loss = paddle.sum(y_var)
+            loss.backward()
+        np.testing.assert_allclose(y_ref, y_test, rtol=1e-05, atol=1e-08)
+        np.testing.assert_allclose(x_var.grad.shape, x_var.shape)
+
+    def test_cases(self):
+        for approximate in [True, False]:
+            self._test_case1_cpu(approximate)
+            if base.is_compiled_with_cuda():
+                self._test_case1_gpu(approximate)
+
+
 if __name__ == '__main__':
     unittest.main()

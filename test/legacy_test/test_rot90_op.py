@@ -328,6 +328,9 @@ def create_test_zero_size_class(op_type, dtype, shape, axis):
             numpy_api = eval(f"np.{op_type}")
             numpy_out = numpy_api(numpy_tensor_1, axes=axis)
 
+            loss = paddle.sum(paddle_out)
+            loss.backward()
+
             np.testing.assert_allclose(
                 paddle_out.numpy(),
                 numpy_out,
@@ -338,8 +341,12 @@ def create_test_zero_size_class(op_type, dtype, shape, axis):
                 paddle_out.shape,
                 numpy_out.shape,
             )
+            np.testing.assert_allclose(
+                paddle_x.grad.shape,
+                paddle_x.shape,
+            )
 
-    cls_name = f"{op_type}{dtype}_0SizeTest"
+    cls_name = f"{op_type}{dtype}_ZeroSize"
     Cls.__name__ = cls_name
     globals()[cls_name] = Cls
 

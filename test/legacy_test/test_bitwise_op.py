@@ -392,6 +392,11 @@ class TestBitwiseNot_ZeroDim(TestBitwiseNot):
         self.x_shape = []
 
 
+class TestBitwiseNot_ZeroSize(TestBitwiseNot):
+    def init_shape(self):
+        self.x_shape = [0, 3, 4, 5]
+
+
 class TestBitwiseNotUInt8(TestBitwiseNot):
     def init_dtype(self):
         self.dtype = np.uint8

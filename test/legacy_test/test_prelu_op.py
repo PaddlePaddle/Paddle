@@ -379,6 +379,11 @@ class TestModeElementRank6NHWC(PReluTest):
         self.attrs = {'mode': "element", "data_format": "NHWC"}
 
 
+class TestModeElt_ZeroSize(PReluTest):
+    def init_input_shape(self):
+        self.x_shape = [3, 0, 5, 10]
+
+
 def create_test_fp16_class(
     parent, check_grad=True, atol=1e-3, max_relative_error=0.05
 ):

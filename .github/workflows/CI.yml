@@ -32,6 +32,11 @@ jobs:
     with:
       docker_cpu_image: ${{ needs.build-docker.outputs.docker_cpu_image }}
 
+  mac:
+    name: Mac-CPU
+    uses: ./.github/workflows/_Mac.yml
+    needs: clone
+
   xpu:
     name: Linux-XPU
     uses: ./.github/workflows/_Linux-XPU.yml

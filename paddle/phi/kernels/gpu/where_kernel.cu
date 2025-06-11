@@ -30,20 +30,20 @@ struct CondFunctor {
 };
 
 template <typename T, typename Context>
-void WhereKernel(const Context& ctx,
+void WhereKernel(const Context& dev_ctx,
                  const DenseTensor& condition,
                  const DenseTensor& x,
                  const DenseTensor& y,
                  DenseTensor* out) {
   std::vector<const DenseTensor*> ins = {&condition, &x, &y};
   std::vector<DenseTensor*> outs = {out};
-  ctx.template Alloc<T>(out);
+  dev_ctx.template Alloc<T>(out);
   if (out && out->numel() == 0) {
     return;
   }
 
   CondFunctor<T> func;
-  funcs::ElementwiseKernel<T, CondFunctor<T>, 1>(ctx, ins, &outs, func);
+  funcs::ElementwiseKernel<T, CondFunctor<T>, 1>(dev_ctx, ins, &outs, func);
 }
 
 }  // namespace phi
