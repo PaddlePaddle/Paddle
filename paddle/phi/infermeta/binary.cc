@@ -2434,13 +2434,6 @@ void IndexSelectInferMeta(const MetaTensor& x,
     dim += input_dim.size();
   }
 
-  if (input_dim[dim] != 0) {
-    PADDLE_ENFORCE_EQ(index_dim[0] != 0,
-                      true,
-                      common::errors::InvalidArgument(
-                          "The length of Input(Index) can't be 0."));
-  }
-
   auto output_dim = common::vectorize(input_dim);
 
   output_dim[dim] = index_dim[0];
