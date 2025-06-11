@@ -114,7 +114,7 @@ class TestPowOp_ZeroBaseNumber(TestPowOp):
         self.inputs = {
             'X': np.asarray([0, 0, 0]),
         }
-        self.attrs = {"factor": np.asarray([-5, 0, 5])}
+        self.attrs = {"factor": -5}
 
 
 @unittest.skipIf(
