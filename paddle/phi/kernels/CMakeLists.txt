@@ -71,6 +71,18 @@ if(((WITH_GPU) AND (CUDA_VERSION VERSION_LESS 12.0))
     "legacy/gpu/moe_gate_dispatch_grad_kernel.cu"
     "legacy/gpu/int_bincount.cu"
     "legacy/gpu/layer_norm_cuda_kernel.cu")
+  # Get flag for CUDA arch >= 80
+  set(has_arch_ge80 FALSE)
+  foreach(arch ${NVCC_ARCH_BIN})
+    if(${arch} GREATER_EQUAL 80)
+      set(has_arch_ge80 TRUE)
+      break()
+    endif()
+  endforeach()
+  if(NOT has_arch_ge80) # need support BF16
+    list(REMOVE_ITEM kernel_cu "fusion/gpu/fused_moe_permute_kernel.cu"
+         "fusion/gpu/fused_moe_unpermute_kernel.cu")
+  endif()
 endif()
 
 if(NOT WITH_DGC)
