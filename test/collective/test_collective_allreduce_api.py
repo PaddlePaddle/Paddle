@@ -82,6 +82,32 @@ class TestCollectiveAllreduceAPI(TestDistBase):
                     reduce_type=red_type,
                 )
 
+    def test_allreduce_flagcx_with_comm_context(self):
+        dtypes_to_test = [
+            "float16",
+            "float32",
+            "float64",
+            "int32",
+            "int64",
+            "int8",
+            "uint8",
+            "bool",
+        ]
+        red_types_to_test = [
+            dist.ReduceOp.SUM,
+        ]
+        if paddle.base.core.is_compiled_with_flagcx():
+            for dtype in dtypes_to_test:
+                for red_type in red_types_to_test:
+                    self.check_with_place(
+                        "collective_allreduce_api.py",
+                        "allreduce",
+                        "flagcx",
+                        dtype=dtype,
+                        reduce_type=red_type,
+                        need_envs={"USE_COMM_CONTEXT": "1"},
+                    )
+
     def test_allreduce_bkcl(self):
         if paddle.base.core.is_compiled_with_xpu():
             self.check_with_place(
