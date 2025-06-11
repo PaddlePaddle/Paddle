@@ -21,7 +21,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void IndexSelectGradKernel(const Context& ctx,
+void IndexSelectGradKernel(const Context& dev_ctx,
                            const DenseTensor& x,
                            const DenseTensor& index,
                            const DenseTensor& out_grad,
@@ -44,7 +44,7 @@ void IndexSelectGradKernel(const Context& ctx,
                         phi::DataType::INT64));
 
   XPUType* x_grad_data =
-      reinterpret_cast<XPUType*>((ctx.template Alloc<T>(x_grad)));
+      reinterpret_cast<XPUType*>((dev_ctx.template Alloc<T>(x_grad)));
   const XPUType* out_grad_data =
       reinterpret_cast<const XPUType*>(out_grad.data<T>());
 
@@ -54,7 +54,7 @@ void IndexSelectGradKernel(const Context& ctx,
   int r = 0;
   if (index_type == phi::DataType::INT32) {
     const int* index_data = index.data<int>();
-    r = xpu::index_select_grad<XPUType, int>(ctx.x_context(),
+    r = xpu::index_select_grad<XPUType, int>(dev_ctx.x_context(),
                                              nullptr,
                                              index_data,
                                              out_grad_data,
@@ -64,7 +64,7 @@ void IndexSelectGradKernel(const Context& ctx,
                                              x_grad_shape);
   } else if (index_type == phi::DataType::INT64) {
     const int64_t* index_data = index.data<int64_t>();
-    r = xpu::index_select_grad<XPUType, int64_t>(ctx.x_context(),
+    r = xpu::index_select_grad<XPUType, int64_t>(dev_ctx.x_context(),
                                                  nullptr,
                                                  index_data,
                                                  out_grad_data,

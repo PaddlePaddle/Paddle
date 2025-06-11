@@ -87,10 +87,10 @@ void Stream::WaitEvent(event::Event* event) const {
 
 void Stream::Wait() const {
 #if !defined(_WIN32)
-  device_->SynchronizeStream(this);
+  device_->SynchronizeStream(this->raw_stream());
 #else
   while (1) {
-    if (device_->QueryStream(this)) {
+    if (device_->QueryStream(this->raw_stream())) {
       break;
     }
   }
@@ -104,7 +104,7 @@ void Stream::Destroy() {
     if (own_data_ &&
         phi::DeviceManager::HasDeviceType(place_.GetDeviceType())) {
       phi::DeviceManager::SetDevice(place_);
-      device_->DestroyStream(this);
+      device_->DestroyStream(this->raw_stream());
     }
     own_data_ = false;
     stream_ = nullptr;
@@ -112,9 +112,11 @@ void Stream::Destroy() {
   }
 }
 
-bool Stream::Query() const { return device_->QueryStream(this); }
+bool Stream::Query() const { return device_->QueryStream(this->raw_stream()); }
 
-void Stream::Synchronize() const { device_->SynchronizeStream(this); }
+void Stream::Synchronize() const {
+  device_->SynchronizeStream(this->raw_stream());
+}
 
 const Place& Stream::GetPlace() const { return place_; }
 

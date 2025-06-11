@@ -26,7 +26,7 @@ namespace phi {
 
 template <typename Context, typename T, typename IndexT>
 void GraphSendRecvGradOpCUDAKernelLaunchHelper(
-    const Context& ctx,
+    const Context& dev_ctx,
     const DenseTensor& out_grad,
     const DenseTensor& x,
     const DenseTensor& src_index,
@@ -37,7 +37,7 @@ void GraphSendRecvGradOpCUDAKernelLaunchHelper(
     const DenseTensor* out = nullptr) {
   const int& index_size = dst_index.dims()[0];
 
-  ctx.template Alloc<T>(x_grad);
+  dev_ctx.template Alloc<T>(x_grad);
   T* p_output = x_grad->data<T>();
 
   const auto& src_dims = x.dims();
@@ -65,36 +65,37 @@ void GraphSendRecvGradOpCUDAKernelLaunchHelper(
 
   int block = 1024;
   int64_t n = slice_size * index_size;
-  int64_t max_grid_dimx = ctx.GetCUDAMaxGridDimSize()[0];
+  int64_t max_grid_dimx = dev_ctx.GetCUDAMaxGridDimSize()[0];
   int64_t grid_tmp = (n + block - 1) / block;
   int64_t grid = grid_tmp < max_grid_dimx ? grid_tmp : max_grid_dimx;
   int64_t input_size = src_dims[0];
   if (reduce_op == "SUM") {
     GraphSendRecvSumCUDAFunctor<T, IndexT> functor;
     GraphSendRecvCUDAKernel<T, IndexT, GraphSendRecvSumCUDAFunctor<T, IndexT>>
-        <<<grid, block, 0, ctx.stream()>>>(
+        <<<grid, block, 0, dev_ctx.stream()>>>(
             p_src, d_index, s_index, p_output, index_size, slice_size, functor);
   } else if (reduce_op == "MEAN") {
     const int32_t* s_count = dst_count->data<int32_t>();
-    ManipulateMeanGradCUDAKernel<T, IndexT><<<grid, block, 0, ctx.stream()>>>(
-        p_src, d_index, s_index, p_output, index_size, slice_size, s_count);
+    ManipulateMeanGradCUDAKernel<T, IndexT>
+        <<<grid, block, 0, dev_ctx.stream()>>>(
+            p_src, d_index, s_index, p_output, index_size, slice_size, s_count);
   } else if (reduce_op == "MAX" || reduce_op == "MIN") {
     const T* ptr_input = x.data<T>();
     const T* ptr_output = out->data<T>();
     ManipulateMinMaxGradCUDAKernel<T, IndexT>
-        <<<grid, block, 0, ctx.stream()>>>(p_src,
-                                           d_index,
-                                           s_index,
-                                           p_output,
-                                           index_size,
-                                           slice_size,
-                                           ptr_input,
-                                           ptr_output);
+        <<<grid, block, 0, dev_ctx.stream()>>>(p_src,
+                                               d_index,
+                                               s_index,
+                                               p_output,
+                                               index_size,
+                                               slice_size,
+                                               ptr_input,
+                                               ptr_output);
   }
 }
 
 template <typename T, typename Context>
-void SendURecvGradKernel(const Context& ctx,
+void SendURecvGradKernel(const Context& dev_ctx,
                          const DenseTensor& x,
                          const DenseTensor& src_index,
                          const DenseTensor& dst_index,
@@ -106,7 +107,7 @@ void SendURecvGradKernel(const Context& ctx,
   auto index_type = src_index.dtype();
   if (index_type == phi::DataType::INT32) {
     GraphSendRecvGradOpCUDAKernelLaunchHelper<Context, T, int32_t>(
-        ctx,
+        dev_ctx,
         out_grad,
         x,
         src_index,
@@ -117,7 +118,7 @@ void SendURecvGradKernel(const Context& ctx,
         out.get_ptr());
   } else if (index_type == phi::DataType::INT64) {
     GraphSendRecvGradOpCUDAKernelLaunchHelper<Context, T, int64_t>(
-        ctx,
+        dev_ctx,
         out_grad,
         x,
         src_index,

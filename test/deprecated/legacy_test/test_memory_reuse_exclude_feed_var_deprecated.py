@@ -72,7 +72,9 @@ class TestMemoryReuseExcludeFeedVar(unittest.TestCase):
             with base.program_guard(base.Program(), base.Program()):
                 with base.unique_name.guard():
                     with base.scope_guard(base.Scope()):
-                        with paddle.pir_utils.OldIrGuard():  # if you need to test in pir mode ,delete this line
+                        with (
+                            paddle.pir_utils.OldIrGuard()
+                        ):  # if you need to test in pir mode ,delete this line
                             self.main_impl(p)
 
 

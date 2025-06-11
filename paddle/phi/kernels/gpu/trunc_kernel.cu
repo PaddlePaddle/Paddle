@@ -71,6 +71,9 @@ void TruncKernel(const Context& dev_ctx,
                  DenseTensor* out) {
   const auto* x_data = x.data<T>();
   auto* out_data = dev_ctx.template Alloc<T>(out);
+  if (x.numel() == 0) {
+    return;
+  }
 
   int64_t numel = x.numel();
   auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel);

@@ -68,6 +68,9 @@ void FlipKernel(const Context& dev_ctx,
                 DenseTensor* out) {
   auto* in_data = x.data<T>();
   auto* out_data = dev_ctx.template Alloc<T>(out);
+  if (out->numel() == 0) {
+    return;
+  }
 
   auto x_dims = x.dims();
   const int rank = x_dims.size();

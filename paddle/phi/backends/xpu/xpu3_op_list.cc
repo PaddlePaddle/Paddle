@@ -270,6 +270,9 @@ XPUOpMap& get_kl3_ops() {
        XPUKernelSet({phi::DataType::FLOAT32,
                      phi::DataType::FLOAT16,
                      phi::DataType::BFLOAT16,
+#ifdef PADDLE_WITH_XPU_FFT
+                     phi::DataType::COMPLEX64,
+#endif
                      phi::DataType::FLOAT64,
                      phi::DataType::BOOL,
                      phi::DataType::INT8,
@@ -457,11 +460,17 @@ XPUOpMap& get_kl3_ops() {
       {"elementwise_mul_grad",
        XPUKernelSet({phi::DataType::FLOAT32,
                      phi::DataType::FLOAT16,
+#ifdef PADDLE_WITH_XPU_FFT
+                     phi::DataType::COMPLEX64,
+#endif
                      phi::DataType::BFLOAT16})},
       {"elementwise_mul",
        XPUKernelSet({phi::DataType::FLOAT32,
                      phi::DataType::FLOAT16,
                      phi::DataType::BFLOAT16,
+#ifdef PADDLE_WITH_XPU_FFT
+                     phi::DataType::COMPLEX64,
+#endif
                      phi::DataType::INT32,
                      phi::DataType::INT64})},
       {"elementwise_pow",
@@ -1052,6 +1061,9 @@ XPUOpMap& get_kl3_ops() {
                      phi::DataType::INT32,
                      phi::DataType::INT16,
                      phi::DataType::INT64,
+#ifdef PADDLE_WITH_XPU_FFT
+                     phi::DataType::COMPLEX64,
+#endif
                      phi::DataType::BFLOAT16,
                      phi::DataType::FLOAT16})},
       {"pad_grad",
@@ -1059,6 +1071,9 @@ XPUOpMap& get_kl3_ops() {
                      phi::DataType::INT32,
                      phi::DataType::INT16,
                      phi::DataType::INT64,
+#ifdef PADDLE_WITH_XPU_FFT
+                     phi::DataType::COMPLEX64,
+#endif
                      phi::DataType::BFLOAT16,
                      phi::DataType::FLOAT16})},
       {"pixel_shuffle", XPUKernelSet({phi::DataType::FLOAT32})},
@@ -1348,11 +1363,17 @@ XPUOpMap& get_kl3_ops() {
        XPUKernelSet({phi::DataType::FLOAT32,
                      phi::DataType::FLOAT16,
                      phi::DataType::BFLOAT16,
+#ifdef PADDLE_WITH_XPU_FFT
+                     phi::DataType::COMPLEX64,
+#endif
                      phi::DataType::INT32})},
       {"slice",
        XPUKernelSet({phi::DataType::FLOAT32,
                      phi::DataType::FLOAT16,
                      phi::DataType::BFLOAT16,
+#ifdef PADDLE_WITH_XPU_FFT
+                     phi::DataType::COMPLEX64,
+#endif
                      phi::DataType::FLOAT64,
                      phi::DataType::UINT8,
                      phi::DataType::INT8,
@@ -1598,6 +1619,9 @@ XPUOpMap& get_kl3_ops() {
        XPUKernelSet({phi::DataType::FLOAT32,
                      phi::DataType::FLOAT16,
                      phi::DataType::BFLOAT16,
+#ifdef PADDLE_WITH_XPU_FFT
+                     phi::DataType::COMPLEX64,
+#endif
                      phi::DataType::INT64,
                      phi::DataType::INT32,
                      phi::DataType::BOOL})},
@@ -1605,6 +1629,9 @@ XPUOpMap& get_kl3_ops() {
        XPUKernelSet({phi::DataType::FLOAT32,
                      phi::DataType::FLOAT16,
                      phi::DataType::BFLOAT16,
+#ifdef PADDLE_WITH_XPU_FFT
+                     phi::DataType::COMPLEX64,
+#endif
                      phi::DataType::INT64,
                      phi::DataType::INT32,
                      phi::DataType::BOOL})},

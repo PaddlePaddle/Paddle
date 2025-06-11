@@ -119,6 +119,8 @@ message HybridConfig {
   optional DygraphShardingConfig sharding_configs = 8;
   optional bool enable_optimizer_timer = 9 [ default = false ];
   optional bool split_norm_comm = 10 [ default = false ];
+  optional int32 ep_degree = 11 [ default = 1 ];
+  optional int32 moe_sharding_degree = 12 [ default = 1 ];
 }
 
 message AMPConfig {

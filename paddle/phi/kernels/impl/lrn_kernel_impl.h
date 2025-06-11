@@ -24,7 +24,7 @@ namespace phi {
 
 template <typename Context, typename T>
 struct LRNFunctor {
-  void operator()(const Context& ctx,
+  void operator()(const Context& dev_ctx,
                   const phi::DenseTensor& input,
                   phi::DenseTensor* out,
                   phi::DenseTensor* mid,

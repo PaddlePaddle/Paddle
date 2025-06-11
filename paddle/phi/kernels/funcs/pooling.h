@@ -126,13 +126,15 @@ class LPPoolGrad {
 
 /* used for adaptive pool to calculate start and end index of each divided grid
  */
-HOSTDEVICE inline int AdaptStartIndex(int ph, int input_size, int output_size) {
-  return static_cast<int>(
+template <typename T = int>
+HOSTDEVICE inline T AdaptStartIndex(T ph, T input_size, T output_size) {
+  return static_cast<T>(
       floor(static_cast<float>(ph * input_size) / output_size));
 }
 
-HOSTDEVICE inline int AdaptEndIndex(int ph, int input_size, int output_size) {
-  return static_cast<int>(
+template <typename T = int>
+HOSTDEVICE inline T AdaptEndIndex(T ph, T input_size, T output_size) {
+  return static_cast<T>(
       ceil(static_cast<float>((ph + 1) * input_size) / output_size));
 }
 
@@ -213,20 +215,9 @@ class Pool2dFunctor {
  public:
   void operator()(const Context& context,
                   const DenseTensor& input,
-                  const std::vector<int>& ksize,
-                  const std::vector<int>& strides,
-                  const std::vector<int>& paddings,
-                  bool exclusive,
-                  bool adaptive,
-                  DenseTensor* output,
-                  PoolProcess pool_compute);
-
-  // overload operator() to support argument data_format
-  void operator()(const Context& context,
-                  const DenseTensor& input,
-                  const std::vector<int>& ksize,
-                  const std::vector<int>& strides,
-                  const std::vector<int>& paddings,
+                  const std::vector<int64_t>& ksize,
+                  const std::vector<int64_t>& strides,
+                  const std::vector<int64_t>& paddings,
                   const std::string data_format,
                   bool exclusive,
                   bool adaptive,
@@ -241,21 +232,9 @@ class Pool2dGradFunctor {
                   const DenseTensor& input,
                   const DenseTensor& output,
                   const DenseTensor& output_grad,
-                  const std::vector<int>& ksize,
-                  const std::vector<int>& strides,
-                  const std::vector<int>& paddings,
-                  bool exclusive,
-                  bool adaptive,
-                  DenseTensor* input_grad,
-                  PoolProcess pool_compute);
-  // overload operator() to support argument data_format
-  void operator()(const Context& context,
-                  const DenseTensor& input,
-                  const DenseTensor& output,
-                  const DenseTensor& output_grad,
-                  const std::vector<int>& ksize,
-                  const std::vector<int>& strides,
-                  const std::vector<int>& paddings,
+                  const std::vector<int64_t>& ksize,
+                  const std::vector<int64_t>& strides,
+                  const std::vector<int64_t>& paddings,
                   const std::string data_format,
                   bool exclusive,
                   bool adaptive,
@@ -270,18 +249,9 @@ class MaxPool2dGradFunctor {
                   const DenseTensor& input,
                   const DenseTensor& output,
                   const DenseTensor& output_grad,
-                  const std::vector<int>& ksize,
-                  const std::vector<int>& strides,
-                  const std::vector<int>& paddings,
-                  DenseTensor* input_grad);
-  // overload operator() to support argument data_format
-  void operator()(const Context& context,
-                  const DenseTensor& input,
-                  const DenseTensor& output,
-                  const DenseTensor& output_grad,
-                  const std::vector<int>& ksize,
-                  const std::vector<int>& strides,
-                  const std::vector<int>& paddings,
+                  const std::vector<int64_t>& ksize,
+                  const std::vector<int64_t>& strides,
+                  const std::vector<int64_t>& paddings,
                   const std::string data_format,
                   DenseTensor* input_grad);
 };
@@ -309,19 +279,9 @@ class Pool3dFunctor {
  public:
   void operator()(const Context& context,
                   const DenseTensor& input,
-                  const std::vector<int>& ksize,
-                  const std::vector<int>& strides,
-                  const std::vector<int>& paddings,
-                  bool exclusive,
-                  bool adaptive,
-                  DenseTensor* output,
-                  PoolProcess pool_compute);
-  // overload operator() to support argument data_format
-  void operator()(const Context& context,
-                  const DenseTensor& input,
-                  const std::vector<int>& ksize,
-                  const std::vector<int>& strides,
-                  const std::vector<int>& paddings,
+                  const std::vector<int64_t>& ksize,
+                  const std::vector<int64_t>& strides,
+                  const std::vector<int64_t>& paddings,
                   const std::string data_format,
                   bool exclusive,
                   bool adaptive,
@@ -336,21 +296,9 @@ class Pool3dGradFunctor {
                   const DenseTensor& input,
                   const DenseTensor& output,
                   const DenseTensor& output_grad,
-                  const std::vector<int>& ksize,
-                  const std::vector<int>& strides,
-                  const std::vector<int>& paddings,
-                  bool exclusive,
-                  bool adaptive,
-                  DenseTensor* input_grad,
-                  PoolProcess pool_compute);
-  // overload operator() to support argument data_format
-  void operator()(const Context& context,
-                  const DenseTensor& input,
-                  const DenseTensor& output,
-                  const DenseTensor& output_grad,
-                  const std::vector<int>& ksize,
-                  const std::vector<int>& strides,
-                  const std::vector<int>& paddings,
+                  const std::vector<int64_t>& ksize,
+                  const std::vector<int64_t>& strides,
+                  const std::vector<int64_t>& paddings,
                   const std::string data_format,
                   bool exclusive,
                   bool adaptive,
@@ -365,18 +313,9 @@ class MaxPool3dGradFunctor {
                   const DenseTensor& input,
                   const DenseTensor& output,
                   const DenseTensor& output_grad,
-                  const std::vector<int>& ksize,
-                  const std::vector<int>& strides,
-                  const std::vector<int>& paddings,
-                  DenseTensor* input_grad);
-  // overload operator() to support argument data_format
-  void operator()(const Context& context,
-                  const DenseTensor& input,
-                  const DenseTensor& output,
-                  const DenseTensor& output_grad,
-                  const std::vector<int>& ksize,
-                  const std::vector<int>& strides,
-                  const std::vector<int>& paddings,
+                  const std::vector<int64_t>& ksize,
+                  const std::vector<int64_t>& strides,
+                  const std::vector<int64_t>& paddings,
                   const std::string data_format,
                   DenseTensor* input_grad);
 };
@@ -522,11 +461,11 @@ inline T PoolOutputSize(T input_size,
             stride +
         1;
   }
-  PADDLE_ENFORCE_GT(
+  PADDLE_ENFORCE_GE(
       output_size,
       0,
       errors::InvalidArgument(
-          "the output size must be greater than 0. But received: "
+          "the output size must be greater than or equal to 0. But received: "
           "output_size = %d due to the settings of input_size(%d), "
           "padding(%d,%d), "
           "k_size(%d) and stride(%d). Please check again!",
