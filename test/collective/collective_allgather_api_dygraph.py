@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import test_collective_api_base as test_base
+import legacy_test.test_collective_api_base as test_base
 
 import paddle
 import paddle.distributed as dist
