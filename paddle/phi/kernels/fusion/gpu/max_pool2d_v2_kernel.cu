@@ -28,7 +28,7 @@ COMMON_DECLARE_bool(cudnn_exhaustive_search);
 namespace phi {
 
 template <typename Context, typename T1, typename T2 = int>
-void MaxPoolV2CUDNNKernel(const Context& ctx,
+void MaxPoolV2CUDNNKernel(const Context& dev_ctx,
                           const DenseTensor& x,
                           const std::vector<int>& kernel_size,
                           const std::vector<int>& strides,
@@ -38,12 +38,12 @@ void MaxPoolV2CUDNNKernel(const Context& ctx,
                           bool adaptive,
                           DenseTensor* out,
                           DenseTensor* saved_idx) {
-  PADDLE_ENFORCE_GE(ctx.GetComputeCapability(),
+  PADDLE_ENFORCE_GE(dev_ctx.GetComputeCapability(),
                     80,
                     common::errors::PreconditionNotMet(
                         "This op only supports Ampere and later devices, "
                         "but got compute capability: %d.",
-                        ctx.GetComputeCapability()));
+                        dev_ctx.GetComputeCapability()));
   // Additional options
   bool exhaustive_search = FLAGS_cudnn_exhaustive_search;
   bool deterministic = FLAGS_cudnn_deterministic;
@@ -53,8 +53,8 @@ void MaxPoolV2CUDNNKernel(const Context& ctx,
                         "Can't set exhaustive_search True and "
                         "FLAGS_cudnn_deterministic True at same time."));
   // Allocate output tensors
-  ctx.template Alloc<T1>(out);
-  ctx.template Alloc<T2>(saved_idx);
+  dev_ctx.template Alloc<T1>(out);
+  dev_ctx.template Alloc<T2>(saved_idx);
   // Update paddings
   std::vector<int> paddings_ = paddings;
   std::vector<int> kernel_size_ = kernel_size;
@@ -100,8 +100,8 @@ void MaxPoolV2CUDNNKernel(const Context& ctx,
   T1* output_data = out->data<T1>();
   T2* saved_idx_data = saved_idx->data<T2>();
 
-  cudnnHandle_t handle = const_cast<cudnnHandle_t>(ctx.cudnn_handle());
-  auto workspace_handle = ctx.cudnn_workspace_handle();
+  cudnnHandle_t handle = const_cast<cudnnHandle_t>(dev_ctx.cudnn_handle());
+  auto workspace_handle = dev_ctx.cudnn_workspace_handle();
 
   auto layout = GetLayoutFromStr(data_format);
   auto layout_format = phi::backends::gpu::GetCudnnTensorFormat(layout);
@@ -197,7 +197,7 @@ void MaxPoolV2CUDNNKernel(const Context& ctx,
 }
 
 template <typename T, typename Context>
-void MaxPool2dV2CUDNNKernel(const Context& ctx,
+void MaxPool2dV2CUDNNKernel(const Context& dev_ctx,
                             const DenseTensor& x,
                             const std::vector<int>& kernel_size,
                             const std::vector<int>& strides,
@@ -208,7 +208,7 @@ void MaxPool2dV2CUDNNKernel(const Context& ctx,
                             DenseTensor* out,
                             DenseTensor* saved_idx) {
   // TODO(tizheng): support int8 mask
-  MaxPoolV2CUDNNKernel<Context, T>(ctx,
+  MaxPoolV2CUDNNKernel<Context, T>(dev_ctx,
                                    x,
                                    kernel_size,
                                    strides,

@@ -102,9 +102,7 @@ static inline std::vector<paddle::Tensor> expand_outplace(
 }
 
 struct AdvancedIndex {
-  AdvancedIndex(paddle::Tensor src,
-                std::vector<paddle::Tensor> indices,
-                bool bool_case);
+  AdvancedIndex(paddle::Tensor src, std::vector<paddle::Tensor> indices);
 
   paddle::Tensor src;
   std::vector<paddle::Tensor> indices;
@@ -145,8 +143,7 @@ inline static paddle::Tensor reshape_indexer(paddle::Tensor* index,
 }
 
 inline AdvancedIndex::AdvancedIndex(paddle::Tensor src,
-                                    std::vector<paddle::Tensor> indices_list,
-                                    bool bool_case = false) {
+                                    std::vector<paddle::Tensor> indices_list) {
   uint32_t element_size_bytes = phi::SizeOf(src.dtype());
   int64_t dims_before = 0, dims_after = 0, dims_indexed = 0;
   std::vector<int64_t> shape_vec = common::vectorize<int64_t>(src.dims());
@@ -165,10 +162,6 @@ inline AdvancedIndex::AdvancedIndex(paddle::Tensor src,
     } else {
       dims_indexed++;
       replacement_shape = common::vectorize<int64_t>(indices_list[dim].dims());
-      if (bool_case && !replacement_shape.empty() &&
-          replacement_shape.back() == 1) {
-        replacement_shape.pop_back();
-      }
 
       idx_shape_vec.push_back(shape_vec[dim]);
       idx_stride_vec.push_back(stride_vec[dim] * element_size_bytes);
@@ -654,23 +647,9 @@ static std::vector<paddle::Tensor> PrepareIndices(
   for (int j = 0; j < bool_2_idx.shape()[1]; ++j) {
     paddle::Tensor sliced_tensor =
         slice_ad_func(bool_2_idx, {1}, {j}, {j + 1}, {1}, {});
-
-    // Calculate the required dimensionality
-    int64_t original_ndim =
-        tensor.shape().size() - bool_index.shape().size() + 1;
-    int64_t sliced_ndim = sliced_tensor.shape().size();
-    int64_t num_ones_to_add = original_ndim - sliced_ndim;
-
-    // Reshape the tensor by adding 1s if needed
-    if (num_ones_to_add > 0) {
-      std::vector<int64_t> new_shape = sliced_tensor.shape();
-      for (int64_t k = 0; k < num_ones_to_add; ++k) {
-        new_shape.push_back(1);
-      }
-      sliced_tensor = reshape_ad_func(sliced_tensor, new_shape);
-    }
-
-    indices.emplace_back(sliced_tensor);
+    paddle::Tensor sliced_tensor_c = sliced_tensor.contiguous();
+    sliced_tensor_c.reshape({sliced_tensor.dims()[0]});
+    indices.emplace_back(sliced_tensor_c);
   }
   return indices;
 }
@@ -715,17 +694,24 @@ static paddle::Tensor getValueForBoolTensor(const paddle::Tensor& tensor,
 
   auto bool_2_idx = nonzero_ad_func(bool_index);
 #ifdef PADDLE_WITH_CUDA
-  auto indices = PrepareIndices(tensor, bool_2_idx, bool_index);
-  AdvancedIndex ad = AdvancedIndex(tensor, indices, true);
+  if (tensor.is_gpu()) {
+    auto indices = PrepareIndices(tensor, bool_2_idx, bool_index);
+    while (indices.size() < static_cast<size_t>(tensor.dims().size())) {
+      indices.emplace_back();
+    }
 
-  return index_elementwise_get_ad_func(tensor,
-                                       ad.indices,
-                                       ad.src_sizes,
-                                       ad.src_strides,
-                                       ad.indexed_sizes,
-                                       ad.indexed_strides);
+    AdvancedIndex ad = AdvancedIndex(tensor, indices);
+
+    return index_elementwise_get_ad_func(tensor,
+                                         ad.indices,
+                                         ad.src_sizes,
+                                         ad.src_strides,
+                                         ad.indexed_sizes,
+                                         ad.indexed_strides);
+  } else {
+    return gather_nd_ad_func(tensor, bool_2_idx);
+  }
 #else
-
   return gather_nd_ad_func(tensor, bool_2_idx);
 #endif
 }

@@ -12,25 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License. */
-
 #pragma once
 
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
-
 namespace phi {
 
 template <typename Context, typename T>
@@ -195,6 +181,19 @@ void MultiDotKernel(const Context& dev_ctx,
   std::vector<phi::DDim> ins_dims(n);
   GetDims<Context, T>(ins, &ins_dims);
 
+  // If any numel is 0, then return.
+  bool size_0 = false;
+  for (size_t i = 0; i < n; i++) {
+    if (x[i]->numel() == 0) size_0 = true;
+  }
+  if (size_0) {
+    // For example: [2, 0], [0, 4] -> [2, 4]
+    if (out && out->numel() > 0) {
+      phi::Full<T, Context>(
+          dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+    }
+    return;
+  }
   const T scale = static_cast<T>(1.0);
   if (n == 2) {
     auto mat_dim_a = phi::funcs::CreateMatrixDescriptor(ins_dims[0], 0, false);
@@ -348,9 +347,23 @@ void MultiDotGradKernel(const Context& dev_ctx,
 
   auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
 
+  bool size_0 = false;
   const auto n = ins.size();
   for (size_t i = 0; i < n; i++) {
     dev_ctx.template Alloc<T>(dx[i]);
+
+    if (dx[i]->numel() == 0) {
+      size_0 = true;
+    }
+  }
+  if (size_0) {
+    for (size_t i = 0; i < n; i++) {
+      if (dx[i]->numel() > 0) {
+        phi::Full<T, Context>(
+            dev_ctx, phi::IntArray(common::vectorize(dx[i]->dims())), 0, dx[i]);
+      }
+    }
+    return;
   }
 
   std::vector<phi::DDim> ins_dims(n);

@@ -2134,6 +2134,16 @@
     data_type : softmax
   inplace : (softmax -> logits_grad)
 
+- backward_op : masked_fill_double_grad
+  forward : masked_fill_grad (Tensor x, Tensor mask, Tensor value, Tensor grad_out) -> Tensor(grad_x), Tensor(grad_value)
+  args : (Tensor mask, Tensor grad_x_grad, Tensor grad_value_grad)
+  output : Tensor(grad_out_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [grad_x_grad]
+  optional: grad_x_grad, grad_value_grad
+  composite : masked_fill_double_grad(mask, grad_x_grad, grad_value_grad, grad_out_grad)
+
 - backward_op : masked_fill_grad
   forward : masked_fill (Tensor x, Tensor mask, Tensor value) -> Tensor(out)
   args : (Tensor x, Tensor mask, Tensor value, Tensor out_grad)
@@ -2145,7 +2155,7 @@
     func : masked_fill_grad
     param: [x, mask, value, out_grad]
   inplace : (out_grad -> x_grad)
-  composite : masked_fill_grad(x, mask, value, out_grad, x_grad, value_grad)
+  backward: masked_fill_double_grad
 
 - backward_op : masked_select_grad
   forward : masked_select (Tensor x, Tensor mask) -> Tensor(out)
