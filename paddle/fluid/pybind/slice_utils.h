@@ -115,12 +115,11 @@ struct AdvancedIndex {
   bool bool_case;
 };
 
-inline static paddle::Tensor restride_src(
-    std::vector<int64_t>* shape,
-    std::vector<int64_t>* strides,
-    int64_t dims_before,
-    int64_t dims_indexed,
-    std::vector<int64_t> replacement_shape) {
+inline static void restride_src(std::vector<int64_t>* shape,
+                                std::vector<int64_t>* strides,
+                                int64_t dims_before,
+                                int64_t dims_indexed,
+                                std::vector<int64_t> replacement_shape) {
   int64_t end = dims_before + dims_indexed;
   shape->erase(shape->begin() + dims_before, shape->begin() + end);
   strides->erase(strides->begin() + dims_before, strides->begin() + end);

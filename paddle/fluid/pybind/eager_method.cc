@@ -2005,9 +2005,16 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
         transed_sub_tensor =
             masked_fill__ad_func(transed_sub_tensor, mask_tensor, value_tensor);
       } else {
+        bool int_tensor_only = true;
+        for (auto& index : transed_index) {
+          if (index.dtype() == phi::DataType::BOOL) {
+            int_tensor_only = false;
+          }
+        }
 #ifdef PADDLE_WITH_CUDA
         // TODO(czy): remove in the future
-        if (transed_sub_tensor.is_gpu() && value_tensor.numel() == 1) {
+        if (transed_sub_tensor.is_gpu() && value_tensor.numel() == 1 &&
+            int_tensor_only) {
           transed_index = expand_outplace(transed_index);
           for (int i = 0; i < pos_of_new_dim; ++i) {
             transed_index.insert(
