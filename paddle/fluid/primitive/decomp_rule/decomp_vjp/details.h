@@ -1082,37 +1082,68 @@ void masked_fill_grad(const Tensor& x,
                       const Tensor& out_grad,
                       Tensor* x_grad,
                       Tensor* value_grad) {
-  auto x_grad_dims = x.dims();
-  auto mask_dims = mask.dims();
-  auto expanded_dims_vec = common::vectorize(
-      phi::funcs::BroadcastTwoDims(x_grad_dims, mask_dims, -1));
-  auto expanded_dims = common::make_ddim(expanded_dims_vec);
+  /**
+   * dx_i = dy_i if mask_i = 0 else 0
+   * dv = \sum{dy_i if mask_i = 1}
+   */
+  if (has_dynamic_shape(x.shape()) || has_dynamic_shape(mask.shape())) {
+    Tensor out_dims = shape64<T>(out_grad);
+    Tensor mask_expand = backend::expand<T>(mask, out_dims);
+    Tensor zeros_expand = backend::full_with_tensor<T>(
+        out_dims, 0, out_grad.dtype(), out_grad.place());
 
-  // expand mask to match x.shape
-  Tensor mask_expand;
-  if (mask_dims != x_grad_dims) {
-    mask_expand = expand<T>(mask, expanded_dims_vec);
-  } else {
-    mask_expand = mask;
-  }
-
-  if (x_grad) {
-    Tensor x_grad_tmp;
-    Tensor x_grad_expand = masked_fill<T>(
-        out_grad, mask_expand, full_scalar<T>(0, x.dtype(), x.place()));
-    if (x_grad_dims != expanded_dims) {
-      expand_grad<T>(x, x_grad_expand, expanded_dims_vec, &x_grad_tmp);
-    } else {
-      x_grad_tmp = x_grad_expand;
+    if (x_grad) {
+      Tensor x_grad_expand = where<T>(mask_expand, zeros_expand, out_grad);
+      Tensor x_grad_tmp = reduce_as<T>(x_grad_expand, x);
+      set_output<T>(x_grad_tmp, x_grad);
     }
 
-    set_output<T>(x_grad_tmp, x_grad);
-  }
+    if (value_grad) {
+      Tensor value_grad_expand = where<T>(mask_expand, out_grad, zeros_expand);
+      Tensor value_grad_tmp =
+          sum<T>(value_grad_expand, {}, value_grad->dtype(), false);
+      set_output<T>(value_grad_tmp, value_grad);
+    }
 
-  if (value_grad) {
-    auto value_grad_tmp = sum<T>(
-        cast<T>(mask_expand, out_grad.dtype()) * out_grad, {}, value.dtype());
-    set_output<T>(value_grad_tmp, value_grad);
+  } else {
+    // expand mask to match x.shape
+    auto expanded_dims = out_grad.dims();
+    auto expanded_dims_vec = common::vectorize(expanded_dims);
+    Tensor mask_expand;
+    if (mask.dims() != expanded_dims) {
+      mask_expand = expand<T>(mask, expanded_dims_vec);
+    } else {
+      mask_expand = mask;
+    }
+    Tensor zeros_expand =
+        full<T>(expanded_dims_vec, 0, out_grad.dtype(), out_grad.place());
+
+    if (x_grad) {
+      Tensor x_grad_expand = where<T>(mask_expand, zeros_expand, out_grad);
+      auto reduce_dim =
+          get_reduce_dims_from_out(x_grad_expand.dims(), x.dims());
+      Tensor x_grad_tmp;
+      if (x.dims().size() == x_grad_expand.dims().size()) {
+        x_grad_tmp = sum<T>(x_grad_expand,
+                            common::vectorize(reduce_dim),
+                            x_grad->dtype(),
+                            true);
+      } else {
+        x_grad_tmp = sum<T>(x_grad_expand,
+                            common::vectorize(reduce_dim),
+                            x_grad->dtype(),
+                            false);
+        x_grad_tmp = reshape<T>(x_grad_tmp, common::vectorize(x.dims()));
+      }
+      set_output<T>(x_grad_tmp, x_grad);
+    }
+
+    if (value_grad) {
+      Tensor value_grad_expand = where<T>(mask_expand, out_grad, zeros_expand);
+      Tensor value_grad_tmp =
+          sum<T>(value_grad_expand, {}, value_grad->dtype(), false);
+      set_output<T>(value_grad_tmp, value_grad);
+    }
   }
 }
 
