@@ -2900,10 +2900,9 @@ def slogdet(x: Tensor, name: str | None = None) -> tuple[Tensor, Tensor]:
             >>> x = paddle.randn([3, 3, 3])
             >>> A = paddle.linalg.slogdet(x) # Updated example
             >>> print(A)
-            (Tensor(shape=[3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-                [-1., -1., -1.]), Tensor(shape=[3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-                [-1.39344728, -2.30671787, -2.53045821]))
-
+           (Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+                  [-1.,  1.,  1.]), Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+                  [ 0.25681755, -0.25061053, -0.10809596]))
     """
     if in_dynamic_or_pir_mode():
         return _C_ops.slogdet(x)
