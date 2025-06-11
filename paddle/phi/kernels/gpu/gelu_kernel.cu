@@ -61,6 +61,9 @@ void GeluKernel(const Context& dev_ctx,
                 bool approximate,
                 DenseTensor* out) {
   dev_ctx.template Alloc<T>(out);
+  if (out && out->numel() == 0) {
+    return;
+  }
   std::vector<const DenseTensor*> ins = {&x};
   std::vector<DenseTensor*> outs = {out};
   if (approximate) {

@@ -145,7 +145,8 @@ void SetValueKernelV2(const Context& dev_ctx,
     is_full_set_one_value = true;
   }
 
-  if (is_full_set_one_value && std::is_same<T, float>::value) {
+  if (is_full_set_one_value && !std::is_same<T, complex64>::value &&
+      !std::is_same<T, complex128>::value) {
     dev_ctx.template Alloc<T>(out);
     phi::funcs::set_constant(
         dev_ctx, out, static_cast<float>(assign_values[0]));

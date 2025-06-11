@@ -22,14 +22,14 @@
 
 namespace phi {
 template <typename Context, typename T, int Dims>
-void ExpandBackward(const Context& ctx,
+void ExpandBackward(const Context& dev_ctx,
                     const DenseTensor& out_grad,
                     const std::vector<int>& reshape_dims_vec,
                     const std::vector<int>& reduce_dims_vec,
                     DenseTensor* in_grad) {
   size_t reshape_size = reshape_dims_vec.size();
   size_t reduce_size = reduce_dims_vec.size();
-  ctx.template Alloc<T>(in_grad);
+  dev_ctx.template Alloc<T>(in_grad);
   in_grad->data<T>();
 
   auto x_grad = EigenVector<T>::Flatten(*in_grad);
@@ -42,13 +42,13 @@ void ExpandBackward(const Context& ctx,
     reduce_dims[i] = reduce_dims_vec[i];
   }
   auto out_grad0 = EigenVector<T>::Flatten(out_grad);
-  auto& place = *ctx.eigen_device();
+  auto& place = *dev_ctx.eigen_device();
   phi::funcs::EigenBroadcastGrad<std::decay_t<decltype(place)>, T, Dims>::Eval(
       place, x_grad, out_grad0, reduce_dims, reshape_dims);
 }
 
 template <typename T, typename Context>
-void ExpandGradKernel(const Context& ctx,
+void ExpandGradKernel(const Context& dev_ctx,
                       const DenseTensor& x,
                       const DenseTensor& out_grad,
                       const IntArray& shape,
@@ -57,16 +57,18 @@ void ExpandGradKernel(const Context& ctx,
   auto x_dims = x.dims();
   if (x.numel() == 0 || out_grad.numel() == 0 ||
       (in_grad && in_grad->numel() == 0)) {
-    ctx.template Alloc<T>(in_grad);
+    dev_ctx.template Alloc<T>(in_grad);
     if (in_grad->numel() != 0) {
-      phi::Full<T, Context>(
-          ctx, phi::IntArray(common::vectorize(in_grad->dims())), 0, in_grad);
+      phi::Full<T, Context>(dev_ctx,
+                            phi::IntArray(common::vectorize(in_grad->dims())),
+                            0,
+                            in_grad);
     }
     return;
   }
 
   if (in_grad->dims() == out_grad.dims()) {
-    phi::Copy(ctx, out_grad, ctx.GetPlace(), false, in_grad);
+    phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, in_grad);
     return;
   }
   auto vec_in_dims = common::vectorize<int>(x_dims);
@@ -112,39 +114,39 @@ void ExpandGradKernel(const Context& ctx,
   switch (dims) {
     case 0:
       ExpandBackward<Context, T, 1>(
-          ctx, out_grad, reshape_dims_vec, reduce_dims_vec, in_grad);
+          dev_ctx, out_grad, reshape_dims_vec, reduce_dims_vec, in_grad);
       break;
     case 1:
       ExpandBackward<Context, T, 1>(
-          ctx, out_grad, reshape_dims_vec, reduce_dims_vec, in_grad);
+          dev_ctx, out_grad, reshape_dims_vec, reduce_dims_vec, in_grad);
       break;
     case 2:
       ExpandBackward<Context, T, 2>(
-          ctx, out_grad, reshape_dims_vec, reduce_dims_vec, in_grad);
+          dev_ctx, out_grad, reshape_dims_vec, reduce_dims_vec, in_grad);
       break;
     case 3:
       ExpandBackward<Context, T, 3>(
-          ctx, out_grad, reshape_dims_vec, reduce_dims_vec, in_grad);
+          dev_ctx, out_grad, reshape_dims_vec, reduce_dims_vec, in_grad);
       break;
     case 4:
       ExpandBackward<Context, T, 4>(
-          ctx, out_grad, reshape_dims_vec, reduce_dims_vec, in_grad);
+          dev_ctx, out_grad, reshape_dims_vec, reduce_dims_vec, in_grad);
       break;
     case 5:
       ExpandBackward<Context, T, 5>(
-          ctx, out_grad, reshape_dims_vec, reduce_dims_vec, in_grad);
+          dev_ctx, out_grad, reshape_dims_vec, reduce_dims_vec, in_grad);
       break;
     case 6:
       ExpandBackward<Context, T, 6>(
-          ctx, out_grad, reshape_dims_vec, reduce_dims_vec, in_grad);
+          dev_ctx, out_grad, reshape_dims_vec, reduce_dims_vec, in_grad);
       break;
     case 7:
       ExpandBackward<Context, T, 7>(
-          ctx, out_grad, reshape_dims_vec, reduce_dims_vec, in_grad);
+          dev_ctx, out_grad, reshape_dims_vec, reduce_dims_vec, in_grad);
       break;
     case 8:
       ExpandBackward<Context, T, 8>(
-          ctx, out_grad, reshape_dims_vec, reduce_dims_vec, in_grad);
+          dev_ctx, out_grad, reshape_dims_vec, reduce_dims_vec, in_grad);
       break;
     default:
       PADDLE_THROW(common::errors::InvalidArgument(
