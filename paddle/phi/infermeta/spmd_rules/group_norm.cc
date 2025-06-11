@@ -38,9 +38,11 @@ SpmdInfo GroupNormInferSpmdBase(const DistMetaTensor& x,
   int scale_ndim = static_cast<int>(scale_shape.size());
   int bias_ndim = static_cast<int>(bias_shape.size());
   TensorDistAttr x_dist_attr_src = x.dist_attr();
+  TensorDistAttr scale_dist_attr_src = scale.dist_attr();
+  TensorDistAttr bias_dist_attr_src = bias.dist_attr();
   std::vector<int64_t> x_dims_mapping = x_dist_attr_src.dims_mapping();
-  std::vector<int64_t> scale_dims_mapping = scale.dist_attr().dims_mapping();
-  std::vector<int64_t> bias_dims_mapping = bias.dist_attr().dims_mapping();
+  std::vector<int64_t> scale_dims_mapping = scale_dist_attr_src.dims_mapping();
+  std::vector<int64_t> bias_dims_mapping = bias_dist_attr_src.dims_mapping();
 
   PADDLE_ENFORCE_GE(
       x_ndim,
@@ -158,6 +160,12 @@ SpmdInfo GroupNormGradInferSpmdBase(const DistMetaTensor& x,
   int variance_ndim = static_cast<int>(variance_shape.size());
   int y_grad_ndim = static_cast<int>(y_grad_shape.size());
   TensorDistAttr x_dist_attr_src = x.dist_attr();
+  TensorDistAttr scale_dist_attr_src = scale.dist_attr();
+  TensorDistAttr bias_dist_attr_src = bias.dist_attr();
+  TensorDistAttr y_dist_attr_src = y.dist_attr();
+  TensorDistAttr mean_dist_attr_src = mean.dist_attr();
+  TensorDistAttr variance_dist_attr_src = variance.dist_attr();
+  TensorDistAttr y_grad_dist_attr_src = mean.dist_attr();
   std::vector<int64_t> x_dims_mapping = x_dist_attr_src.dims_mapping();
   std::vector<int64_t> scale_dims_mapping = scale.dist_attr().dims_mapping();
   std::vector<int64_t> bias_dims_mapping = bias.dist_attr().dims_mapping();
