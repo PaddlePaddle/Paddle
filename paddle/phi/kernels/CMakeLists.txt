@@ -69,7 +69,10 @@ if(((WITH_GPU) AND (CUDA_VERSION VERSION_LESS 12.0))
     "gpu/moe_gate_dispatch_kernel.cu"
     "gpu/moe_gate_dispatch_grad_kernel.cu"
     "gpu/int_bincount.cu"
-    "gpu/layer_norm_cuda_kernel.cu")
+    "gpu/layer_norm_cuda_kernel.cu"
+    "fusion/gpu/fused_swiglu_weighted_bwd_kernel.cu"
+    "fusion/gpu/fused_weighted_swiglu_act_quant_kernel.cu"
+    "fusion/gpu/fused_act_dequant_kernel.cu")
 endif()
 
 if(NOT WITH_DGC)
