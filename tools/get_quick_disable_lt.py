@@ -49,7 +49,9 @@ def download_file():
                 'disable_ut_release'
             )
         else:
-            url = "https://sys-p0.bj.bcebos.com/prec/{}".format('disable_ut')
+            url = "https://sys-p0.bj.bcebos.com/prec/{}".format(
+                'disable_ut_debug_use'
+            )
 
     if paddle.is_compiled_with_rocm():
         if cuda.get_device_name() == 'K100_AI':
