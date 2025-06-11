@@ -778,8 +778,8 @@ class TestSumOpInt32(unittest.TestCase):
             self.assertEqual(result.dtype, paddle.int64)
 
             x1 = paddle.ones(shape=[1], dtype=self.input_dtype)
-            result1 = paddle.cumsum(x, axis=self.axis)
-            self.assertEqual(result.dtype, paddle.int64)
+            result1 = paddle.cumsum(x1, axis=self.axis)
+            self.assertEqual(result1.dtype, paddle.int64)
 
     def test_static(self):
         with static_guard():
@@ -795,8 +795,8 @@ class TestSumOpInt32(unittest.TestCase):
                 x1 = paddle.static.data(
                     name='x', shape=[1], dtype=self.input_dtype
                 )
-                result1 = paddle.cumsum(x, axis=self.axis)
-                self.assertEqual(result.dtype, paddle.int64)
+                result1 = paddle.cumsum(x1, axis=self.axis)
+                self.assertEqual(result1.dtype, paddle.int64)
 
 
 def create_test_class(op_type, dtype, shape, axis):
