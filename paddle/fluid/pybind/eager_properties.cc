@@ -230,11 +230,6 @@ Examples:
 PyObject* tensor_properties_get_data(TensorObject* self, void* closure) {
   EAGER_TRY
   paddle::Tensor new_tensor(self->tensor.impl());
-
-  auto meta = std::make_shared<egr::AutogradMeta>();
-  meta->SetStopGradient(true);
-  new_tensor.set_autograd_meta(meta);
-
   return ToPyObject(new_tensor);
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
