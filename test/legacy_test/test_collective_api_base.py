@@ -541,8 +541,8 @@ class TestDistBase(unittest.TestCase):
                 ],
                 axis=0,
             )
-            tr0_out = np.concat([out.flatten() for out in tr0_out])
-            tr1_out = np.concat([out.flatten() for out in tr1_out])
+            tr0_out = np.concatenate([out.flatten() for out in tr0_out])
+            tr1_out = np.concatenate([out.flatten() for out in tr1_out])
             np.testing.assert_allclose(
                 tr0_out, need_result1, rtol=1e-05, atol=1e-05
             )
