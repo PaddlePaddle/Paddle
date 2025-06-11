@@ -24,9 +24,10 @@ from paddle.base import core
 def np_masked_select(x, mask):
     result = np.empty(shape=(0), dtype=x.dtype)
     x, mask = np.broadcast_arrays(x, mask)
-    for ele, ma in zip(np.nditer(x), np.nditer(mask)):
-        if ma:
-            result = np.append(result, ele)
+    if x.size != 0:
+        for ele, ma in zip(np.nditer(x), np.nditer(mask)):
+            if ma:
+                result = np.append(result, ele)
     return result.flatten()
 
 
@@ -278,6 +279,18 @@ class TestMaskedSelectOpBroadcast4(TestMaskedSelectOp):
     def init(self):
         self.shape = (300, 40)
         self.mask_shape = 40
+
+
+class TestMaskedSelectOpBroadcast_ZeroSize(TestMaskedSelectOp):
+    def init(self):
+        self.shape = (0, 40)
+        self.mask_shape = 40
+
+
+class TestMaskedSelectOpBroadcast_ZeroSize2(TestMaskedSelectOp):
+    def init(self):
+        self.shape = (0, 0)
+        self.mask_shape = 0
 
 
 if __name__ == '__main__':
