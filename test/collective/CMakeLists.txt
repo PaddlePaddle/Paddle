@@ -20,8 +20,12 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
 endif()
 if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
-    test_collective_allgather_api MODULES test_collective_allgather_api ENVS
-    "http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python")
+    test_collective_allgather_api
+    MODULES
+    test_collective_allgather_api
+    ENVS
+    "NVIDIA_TF32_OVERRIDE=0;http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python;FLAGS_enable_pir_api=0"
+  )
   set_tests_properties(test_collective_allgather_api
                        PROPERTIES TIMEOUT "300" LABELS "RUN_TYPE=DIST")
 endif()
@@ -114,7 +118,7 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
     MODULES
     test_collective_broadcast_api
     ENVS
-    "http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python;FLAGS_enable_pir_api=0"
+    "NVIDIA_TF32_OVERRIDE=0;http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python;FLAGS_enable_pir_api=0"
   )
   if((NOT WITH_ROCM) AND ((${CUDA_ARCH_NAME}) STREQUAL "Ampere"))
     set_tests_properties(test_collective_broadcast_api
@@ -134,8 +138,12 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
 endif()
 if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
-    test_collective_concat_api MODULES test_collective_concat_api ENVS
-    "http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python")
+    test_collective_concat_api
+    MODULES
+    test_collective_concat_api
+    ENVS
+    "NVIDIA_TF32_OVERRIDE=0;http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python;FLAGS_enable_pir_api=0"
+  )
   set_tests_properties(test_collective_concat_api
                        PROPERTIES TIMEOUT "120" LABELS "RUN_TYPE=DIST")
 endif()
@@ -254,8 +262,12 @@ if((WITH_GPU OR WITH_ROCM)
 endif()
 if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
-    test_collective_scatter_api MODULES test_collective_scatter_api ENVS
-    "http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python")
+    test_collective_scatter_api
+    MODULES
+    test_collective_scatter_api
+    ENVS
+    "NVIDIA_TF32_OVERRIDE=0;http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python;FLAGS_enable_pir_api=0"
+  )
   set_tests_properties(test_collective_scatter_api
                        PROPERTIES TIMEOUT "300" LABELS "RUN_TYPE=DIST")
 endif()
