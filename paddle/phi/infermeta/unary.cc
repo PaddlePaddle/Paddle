@@ -6139,12 +6139,23 @@ void WeightQuantizeInferMeta(const MetaTensor& x,
       2UL,
       common::errors::InvalidArgument(
           "The x tensor of quant op must be 2D, but got[%d]", x_dims.size()));
-  PADDLE_ENFORCE_EQ(
-      x_dims[0] % 64,
-      0,
-      common::errors::InvalidArgument(
-          "The first dimension of input must be divisible by 64, but got[%d]",
-          x_dims[0]));
+
+  if (algo == "w4a8") {
+    PADDLE_ENFORCE_EQ(
+        x_dims[0] % 32,
+        0,
+        common::errors::InvalidArgument("The first dimension of packed-input "
+                                        "must be divisible by 32, but got[%d]",
+                                        x_dims[0]));
+  } else {
+    PADDLE_ENFORCE_EQ(
+        x_dims[0] % 64,
+        0,
+        common::errors::InvalidArgument(
+            "The first dimension of input must be divisible by 64, but got[%d]",
+            x_dims[0]));
+  }
+
   PADDLE_ENFORCE_EQ(
       x_dims[1] % 16,
       0,
