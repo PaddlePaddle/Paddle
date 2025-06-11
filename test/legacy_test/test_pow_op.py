@@ -96,6 +96,14 @@ class TestPowOpInt(TestPowOp):
         pass
 
 
+class TestPowOp_ZeroBaseNumber(TestPowOp):
+    def custom_setting(self):
+        self.inputs = {
+            'X': np.asarray([0, 0, 0]),
+        }
+        self.attrs = {"factor": np.asarray([-5, 0, 5])}
+
+
 @unittest.skipIf(
     core.is_compiled_with_xpu(),
     "Skip XPU for complex dtype is not fully supported",

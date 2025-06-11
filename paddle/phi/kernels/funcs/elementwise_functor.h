@@ -1045,11 +1045,19 @@ compute_pow(const T a, const T b) {
   // it will return a float number like 2.99... , which floor to 2
   // when cast to int by default and it is wrong.
   // Use llrint to cast it to the nearest integer, which is 3.
+  T zero = static_cast<T>(0);
+  if (a == zero && b < zero) {
+    return zero;
+  }
   return llrint(pow(static_cast<double>(a), static_cast<double>(b)));
 }
 template <typename T, typename MPType>
 inline HOSTDEVICE typename std::enable_if<!std::is_integral<T>::value, T>::type
 compute_pow(const T a, const T b) {
+  T zero = static_cast<T>(0);
+  if (a == zero && b < zero) {
+    return zero;
+  }
   MPType a_val = static_cast<MPType>(a);
   MPType b_val = static_cast<MPType>(b);
   return static_cast<T>(pow(a_val, b_val));
@@ -1057,6 +1065,10 @@ compute_pow(const T a, const T b) {
 #else
 template <typename T, typename MPType>
 inline HOSTDEVICE T compute_pow(const T a, const T b) {
+  T zero = static_cast<T>(0);
+  if (a == zero && b < zero) {
+    return zero;
+  }
   MPType a_val = static_cast<MPType>(a);
   MPType b_val = static_cast<MPType>(b);
 #ifdef PADDLE_WITH_XPU_KP
