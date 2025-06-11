@@ -34,6 +34,7 @@ from test_activation_op import (
     TestReciprocal,
     TestRelu,
     TestRelu6,
+    TestRound,
     TestRsqrt,
     TestSigmoid,
     TestSilu,
@@ -108,6 +109,7 @@ create_test_zero_size_class(TestLeakyRelu)
 create_test_zero_size_class(TestRelu6)
 create_test_zero_size_class(TestHardSwish)
 create_test_zero_size_class(TestSwish)
+create_test_zero_size_class(TestRound)
 
 if __name__ == "__main__":
     unittest.main()

@@ -22,16 +22,16 @@
 namespace phi {
 
 template <typename T, typename Context>
-void MultiplexGradKernel(const Context& ctx,
+void MultiplexGradKernel(const Context& dev_ctx,
                          const DenseTensor& ids,
                          const DenseTensor& out_grad,
                          std::vector<DenseTensor*> ins_grad) {
   size_t idx = -1UL;
   for (size_t i = 0; i < ins_grad.size(); i++) {
     if (ins_grad[i]) {
-      ctx.template Alloc<T>(ins_grad[i]);
+      dev_ctx.template Alloc<T>(ins_grad[i]);
       auto t = phi::EigenVector<T>::Flatten(*ins_grad[i]);
-      t.device(*ctx.eigen_device()) = t.constant(static_cast<T>(0));
+      t.device(*dev_ctx.eigen_device()) = t.constant(static_cast<T>(0));
       idx = i;
     }
   }
@@ -43,9 +43,9 @@ void MultiplexGradKernel(const Context& ctx,
   for (auto i = 0; i < rows; i++) {
     size_t k = static_cast<size_t>(index[i]);
     if (ins_grad[k]) {
-      memory_utils::Copy(ctx.GetPlace(),
+      memory_utils::Copy(dev_ctx.GetPlace(),
                          ins_grad[k]->data<T>() + i * cols,
-                         ctx.GetPlace(),
+                         dev_ctx.GetPlace(),
                          out_grad.data<T>() + i * cols,
                          cols * sizeof(T));
     }

@@ -20,7 +20,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void ExpandKernel(const Context& ctx,
+void ExpandKernel(const Context& dev_ctx,
                   const DenseTensor& x,
                   const IntArray& shape,
                   DenseTensor* out) {
@@ -92,7 +92,7 @@ void ExpandKernel(const Context& ctx,
 
   DDim out_dims = common::make_ddim(final_expand_shape);
   out->Resize(out_dims);
-  ctx.template Alloc<T>(out);
+  dev_ctx.template Alloc<T>(out);
   if (has_zero_dim) {
     return;
   }
@@ -108,12 +108,12 @@ void ExpandKernel(const Context& ctx,
     auto x_data = reinterpret_cast<const int8_t*>(x.data<T>());
     auto out_data = reinterpret_cast<int8_t*>(out->data<T>());
     r = xpu::broadcast<int8_t>(
-        ctx.x_context(), x_data, out_data, x_shape, out_shape);
+        dev_ctx.x_context(), x_data, out_data, x_shape, out_shape);
   } else {
     auto x_data = reinterpret_cast<const XPUType*>(x.data<T>());
     auto out_data = reinterpret_cast<XPUType*>(out->data<T>());
     r = xpu::broadcast<XPUType>(
-        ctx.x_context(), x_data, out_data, x_shape, out_shape);
+        dev_ctx.x_context(), x_data, out_data, x_shape, out_shape);
   }
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast");
 }

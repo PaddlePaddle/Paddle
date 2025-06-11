@@ -17,7 +17,6 @@
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-// See Note [ Why still include the fluid headers? ]
 #include "paddle/phi/common/complex.h"
 
 namespace phi {

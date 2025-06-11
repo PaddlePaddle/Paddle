@@ -23,13 +23,13 @@
 namespace phi {
 
 template <typename T, typename Context>
-void ExpandGradKernel(const Context& ctx,
+void ExpandGradKernel(const Context& dev_ctx,
                       const DenseTensor& x,
                       const DenseTensor& out_grad,
                       const IntArray& shape,
                       DenseTensor* in_grad) {
   using XPUType = typename XPUTypeTrait<T>::Type;
-  auto in_grad_data = ctx.template Alloc<T>(in_grad);
+  auto in_grad_data = dev_ctx.template Alloc<T>(in_grad);
   auto out_grad_dims = common::vectorize<int64_t>(out_grad.dims());
   auto in_grad_dims = common::vectorize<int64_t>(in_grad->dims());
   in_grad_dims.insert(
@@ -42,7 +42,7 @@ void ExpandGradKernel(const Context& ctx,
   }
 
   int r = xpu::expand_grad<XPUType>(
-      ctx.x_context(),
+      dev_ctx.x_context(),
       reinterpret_cast<const XPUType*>(out_grad.data<T>()),
       reinterpret_cast<XPUType*>(in_grad_data),
       out_grad_dims,

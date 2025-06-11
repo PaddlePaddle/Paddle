@@ -353,6 +353,15 @@ class TestDiffOpFp16(TestDiffOp):
         paddle.disable_static()
 
 
+class TestDiffOp_ZeroSize(TestDiffOp):
+    def set_args(self):
+        self.input = np.array([1, 0, 5, 2]).astype('float32')
+        self.n = 2
+        self.axis = 0
+        self.prepend = None
+        self.append = None
+
+
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()

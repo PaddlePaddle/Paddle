@@ -133,6 +133,9 @@ void GeluGradKernel(const Context& dev_ctx,
                     bool approximate,
                     DenseTensor* x_grad) {
   dev_ctx.template Alloc<T>(x_grad);
+  if (x_grad && x_grad->numel() == 0) {
+    return;
+  }
   auto eigen_x = EigenVector<T>::Flatten(x);
   auto eigen_out_grad = EigenVector<T>::Flatten(out_grad);
   auto eigen_x_grad = EigenVector<T>::Flatten(*x_grad);

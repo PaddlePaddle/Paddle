@@ -22,7 +22,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void IndexAddGradKernel(const Context& ctx,
+void IndexAddGradKernel(const Context& dev_ctx,
                         const DenseTensor& index,
                         const DenseTensor& add_value,
                         const DenseTensor& out_grad,
@@ -34,11 +34,11 @@ void IndexAddGradKernel(const Context& ctx,
   }
 
   if (x_grad) {
-    phi::Copy(ctx, out_grad, ctx.GetPlace(), false, x_grad);
+    phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
   }
   if (add_value_grad) {
     phi::IndexSelectKernel<T, Context>(
-        ctx, out_grad, index, dim, add_value_grad);
+        dev_ctx, out_grad, index, dim, add_value_grad);
   }
 }
 
