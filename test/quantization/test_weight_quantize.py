@@ -111,7 +111,7 @@ class WeightQuantizeW4a8TestCase(unittest.TestCase):
         out = weight_quantize(self.weight, algo="w4a8")[0]
         out = out.reshape([-1])
         baseline = np.array(ref_out).reshape([-1])
-        np.allclose(np.array(ref_out), out.astype("int32").numpy(), atol=1e-2)
+        np.allclose(baseline, out.astype("int32").numpy(), atol=1e-2)
 
 if __name__ == '__main__':
     unittest.main()
