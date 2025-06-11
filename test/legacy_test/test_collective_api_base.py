@@ -335,7 +335,7 @@ class TestDistBase(unittest.TestCase):
         dtype=None,
         reduce_type=None,
     ):
-        if backend == "nccl" or backend == "bkcl":
+        if backend == "nccl" or backend == "bkcl" or backend == "flagcx":
             with_gloo = '0'
         else:
             with_gloo = '1'

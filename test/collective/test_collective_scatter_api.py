@@ -54,13 +54,14 @@ class TestCollectiveScatterAPI(TestDistBase):
             "int32",
             "int64",
         ]
-        for dtype in dtypes_to_test:
-            self.check_with_place(
-                "collective_scatter_api.py",
-                "scatter",
-                "flagcx",
-                dtype=dtype,
-            )
+        if paddle.base.core.is_compiled_with_flagcx():
+            for dtype in dtypes_to_test:
+                self.check_with_place(
+                    "collective_scatter_api.py",
+                    "scatter",
+                    "flagcx",
+                    dtype=dtype,
+                )
 
     def test_scatter_nccl_dygraph(self):
         dtypes_to_test = [
