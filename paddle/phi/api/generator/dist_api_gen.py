@@ -255,18 +255,6 @@ MULTI_SINGLE_OUT_CREATION_TEMPLATE = """
             phi::DenseTensorMeta());
     }}
 """
-MULTI_SINGLE_OUT_CREATION_FUSED_GEMM_EPILOGUE_TEMPLATE = """
-    phi::distributed::DistTensor* dist_out_{idx} = nullptr;
-    if (activation != "none"){{
-      dist_out_{idx} = SetKernelDistOutput(&{out}, spmd_info.second[{idx}]);
-    }}
-    auto dense_out_{idx} = dist_out_{idx} ? dist_out_{idx}->unsafe_mutable_value() : nullptr;
-    if (!rank_is_in_current_mesh) {{
-      *dense_out_{idx} = phi::DenseTensor(
-            std::make_shared<phi::Allocation>(nullptr, 0, phi::distributed::GetDefaultPlace()),
-            phi::DenseTensorMeta());
-    }}
-"""
 MULTI_SINGLE_INPLACE_OUT_CREATION_TEMPLATE = """
     auto dist_out_{idx} = SetKernelDistOutput(&{out}, spmd_info.second[{idx}]);
     auto dense_out_{idx} = dist_out_{idx} ? dist_out_{idx}->unsafe_mutable_value() : nullptr;
@@ -1223,14 +1211,11 @@ class DistForwardAPI(ForwardAPI):
                                             idx=i
                                         )
                             else:
-                                if self.api == 'fused_gemm_epilogue' and i == 1:
-                                    output_creation_code += MULTI_SINGLE_OUT_CREATION_FUSED_GEMM_EPILOGUE_TEMPLATE.format(
+                                output_creation_code += (
+                                    MULTI_SINGLE_OUT_CREATION_TEMPLATE.format(
                                         idx=i, out=get_out_code
                                     )
-                                else:
-                                    output_creation_code += MULTI_SINGLE_OUT_CREATION_TEMPLATE.format(
-                                        idx=i, out=get_out_code
-                                    )
+                                )
                         else:
                             if self.need_to_generate_code_for_inplace_impl(i):
                                 output_creation_code += MULTI_SINGLE_INPLACE_OUT_CREATION_TEMPLATE_NO_SPMD.format(
