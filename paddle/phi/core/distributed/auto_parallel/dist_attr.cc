@@ -319,8 +319,7 @@ bool TensorDistAttr::verify_dynamic(
 std::string TensorDistAttr::to_string() const {
   std::string dist_str;
   dist_str += "{process_mesh: " + process_mesh_.to_string() + ", ";
-  // dist_str += "dims_mappings: [" + str_join(dims_mapping_1d_) + "], ";
-  dist_str += "new dim_mappings: [" + str_join(dims_mapping_2d_) + "], ";
+  dist_str += "dim_mappings: [" + str_join(dims_mapping_2d_) + "], ";
   dist_str += "batch_dim: " + std::to_string(batch_dim_) + ", ";
   dist_str += "chunk_id: " + std::to_string(chunk_id_) + ", ";
   dist_str += "skip_check_mesh: " + std::to_string(skip_check_mesh_) + ", ";
