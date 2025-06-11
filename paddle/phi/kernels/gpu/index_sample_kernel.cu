@@ -52,7 +52,7 @@ __global__ void IndexSampleForward(const IndexT* index,
 }
 
 template <typename T, typename Context>
-void IndexSampleKernel(const Context& ctx,
+void IndexSampleKernel(const Context& dev_ctx,
                        const DenseTensor& x,
                        const DenseTensor& index,
                        DenseTensor* out) {
@@ -68,8 +68,8 @@ void IndexSampleKernel(const Context& ctx,
                         DataTypeToString(DataType::INT32),
                         DataTypeToString(DataType::INT64)));
   const T* in_data = x.data<T>();
-  T* out_data = ctx.template Alloc<T>(out);
-  auto stream = reinterpret_cast<const phi::GPUContext&>(ctx).stream();
+  T* out_data = dev_ctx.template Alloc<T>(out);
+  auto stream = reinterpret_cast<const phi::GPUContext&>(dev_ctx).stream();
   auto input_dim = x.dims();
   auto index_dim = index.dims();
   size_t batch_size = input_dim[0];
@@ -85,7 +85,7 @@ void IndexSampleKernel(const Context& ctx,
   dim3 block_dim(block_width, block_height);
   dim3 grid_dim((index_length + block_dim.x - 1) / block_dim.x,
                 (batch_size + block_dim.y - 1) / block_dim.y);
-  phi::backends::gpu::LimitGridDim(ctx, &grid_dim);
+  phi::backends::gpu::LimitGridDim(dev_ctx, &grid_dim);
 
   if (index_type == DataType::INT64) {
     const int64_t* index_data = index.data<int64_t>();

@@ -36,7 +36,7 @@ from paddle.distributed.auto_parallel.static.utils import (
     convert_to_dims_mapping,
 )
 from paddle.framework import use_pir_api
-from paddle.pir import fake_value, is_fake_value
+from paddle.pir import is_fake_value
 from paddle.static import InputSpec
 from paddle.utils import flatten, is_sequence
 
@@ -448,7 +448,7 @@ class VariableCreator(metaclass=Singleton):
 
     def create_var(self, meta_or_null: MetaInfoOrNull):
         if meta_or_null.is_null():
-            return fake_value()
+            return None
         meta = meta_or_null.unwrap_unsafe()
         shape = meta.shape_with_special_symbol(-1)
 

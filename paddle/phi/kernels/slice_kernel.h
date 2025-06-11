@@ -22,7 +22,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void SliceKernel(const Context& ctx,
+void SliceKernel(const Context& dev_ctx,
                  const DenseTensor& input,
                  const std::vector<int64_t>& axes,
                  const IntArray& starts,
@@ -45,7 +45,7 @@ void SliceArrayDenseKernel(const Context& dev_ctx,
                            DenseTensor* out);
 
 template <typename Context>
-void SliceStridedKernel(const Context& ctx,
+void SliceStridedKernel(const Context& dev_ctx,
                         const DenseTensor& input,
                         const std::vector<int64_t>& axes,
                         const IntArray& starts,
@@ -55,7 +55,7 @@ void SliceStridedKernel(const Context& ctx,
                         DenseTensor* out);
 
 template <typename T, typename Context>
-DenseTensor Slice(const Context& ctx,
+DenseTensor Slice(const Context& dev_ctx,
                   const DenseTensor& input,
                   const std::vector<int64_t>& axes,
                   const IntArray& starts,
@@ -66,13 +66,19 @@ DenseTensor Slice(const Context& ctx,
   std::vector<int64_t> decrease_axis = {};
   SliceRawInferMeta(
       input, axes, starts, ends, infer_flags, decrease_axis, &meta_out);
-  SliceKernel<T, Context>(
-      ctx, input, axes, starts, ends, infer_flags, decrease_axis, &dense_out);
+  SliceKernel<T, Context>(dev_ctx,
+                          input,
+                          axes,
+                          starts,
+                          ends,
+                          infer_flags,
+                          decrease_axis,
+                          &dense_out);
   return dense_out;
 }
 
 template <typename T, typename Context>
-void Slice(const Context& ctx,
+void Slice(const Context& dev_ctx,
            const DenseTensor& input,
            const std::vector<int64_t>& axes,
            const IntArray& starts,
@@ -85,7 +91,7 @@ void Slice(const Context& ctx,
       input, axes, starts, ends, infer_flags, decrease_axis, &meta_out);
   if (input.initialized()) {
     SliceKernel<T, Context>(
-        ctx, input, axes, starts, ends, infer_flags, decrease_axis, out);
+        dev_ctx, input, axes, starts, ends, infer_flags, decrease_axis, out);
   }
 }
 

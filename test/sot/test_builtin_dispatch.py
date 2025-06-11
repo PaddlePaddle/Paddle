@@ -173,6 +173,11 @@ def test_builtin_type_check_eq():
     return eq_results, ne_results
 
 
+@check_no_breakgraph
+def test_is(x, y):
+    return x is y
+
+
 class TestBuiltinDispatch(TestCaseBase):
     def test_dispatch_len(self):
         self.assert_results(dispatch_len, paddle.to_tensor([1, 2, 3]))
@@ -342,6 +347,20 @@ class TestBuiltinDispatch(TestCaseBase):
         self.assert_results(test_all, d_true)
         self.assert_results(test_all, d_false)
         self.assert_results(test_all_iter, l_true_and_false)
+
+    def test_dispatch_is(self):
+        x = paddle.ones(shape=[1, 2])
+        y = paddle.ones(shape=[1, 2])
+        # TODO(wangmingkai02): support comparison of same tensor object
+        # self.assert_results(test_is, x, x)
+        # self.assert_results(test_is, [x], [x])
+        self.assert_results(test_is, x, y)
+        self.assert_results(test_is, x, None)
+        self.assert_results(test_is, [x], x)
+        self.assert_results(test_is, None, x)
+        self.assert_results(test_is, [x], None)
+        self.assert_results(test_is, None, [x])
+        self.assert_results(test_is, None, None)
 
 
 def run_getattr(x: paddle.Tensor):

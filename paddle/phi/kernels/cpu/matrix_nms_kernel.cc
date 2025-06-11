@@ -243,7 +243,7 @@ size_t MultiClassMatrixNMS(const DenseTensor& scores,
 }
 
 template <typename T, typename Context>
-void MatrixNMSKernel(const Context& ctx,
+void MatrixNMSKernel(const Context& dev_ctx,
                      const DenseTensor& bboxes,
                      const DenseTensor& scores,
                      float score_threshold,
@@ -298,21 +298,21 @@ void MatrixNMSKernel(const Context& ctx,
   int64_t num_kept = static_cast<int64_t>(offsets.back());
   if (num_kept == 0) {
     out->Resize(common::make_ddim({0, out_dim}));
-    ctx.template Alloc<T>(out);
+    dev_ctx.template Alloc<T>(out);
     index->Resize(common::make_ddim({0, 1}));
-    ctx.template Alloc<int>(index);
+    dev_ctx.template Alloc<int>(index);
   } else {
     out->Resize(common::make_ddim({num_kept, out_dim}));
-    ctx.template Alloc<T>(out);
+    dev_ctx.template Alloc<T>(out);
     index->Resize(common::make_ddim({num_kept, 1}));
-    ctx.template Alloc<int>(index);
+    dev_ctx.template Alloc<int>(index);
     std::copy(detections.begin(), detections.end(), out->data<T>());
     std::copy(indices.begin(), indices.end(), index->data<int>());
   }
 
   if (roisnum != nullptr) {
     roisnum->Resize(common::make_ddim({batch_size}));
-    ctx.template Alloc<int>(roisnum);
+    dev_ctx.template Alloc<int>(roisnum);
     std::copy(num_per_batch.begin(), num_per_batch.end(), roisnum->data<int>());
   }
 }

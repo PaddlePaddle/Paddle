@@ -19,7 +19,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void LerpGradKernel(const Context& ctx,
+void LerpGradKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     const DenseTensor& y,
                     const DenseTensor& weight,

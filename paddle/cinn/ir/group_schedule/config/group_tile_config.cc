@@ -304,11 +304,16 @@ int UpdateWarpNumsInDifferentCase(
   return warp_nums;
 }
 
-inline bool CheckThreadDimensionCanVectorize(int threads,
+static bool CheckThreadDimensionCanVectorize(int threads,
                                              int nums,
-                                             int factor) {
+                                             int factor,
+                                             bool is_reduce) {
   const int deal_elements_in_warp = threads * factor;
-  if (nums == deal_elements_in_warp) {
+  if (is_reduce && nums == deal_elements_in_warp) {
+    return true;
+  }
+
+  if (!is_reduce && nums % deal_elements_in_warp == 0) {
     return true;
   }
   return false;
@@ -325,7 +330,8 @@ bool ReduceRegionCanVectorize(
 
   int rd_thread_num = warp_nums * kWarpSize;
   if ((warp_nums > 1 || spatial_numel < warp_nums * 64) &&
-      CheckThreadDimensionCanVectorize(rd_thread_num, reduce_numel, factor) &&
+      CheckThreadDimensionCanVectorize(
+          rd_thread_num, reduce_numel, factor, true) &&
       CheckSmUtilization(
           base_info, sm_config, spatial_numel * factor, rd_thread_num)) {
     return true;
@@ -343,7 +349,8 @@ bool SpatialRegionCanVectorize(
   const int64_t reduce_numel = base_info->reduce_numel;
   const int sp_thread_num = kWarpSize * warp_nums;
   if (group_vectorize_info.has_select_op) return false;
-  if (CheckThreadDimensionCanVectorize(sp_thread_num, spatial_numel, factor) &&
+  if (CheckThreadDimensionCanVectorize(
+          sp_thread_num, spatial_numel, factor, false) &&
       CheckSmUtilization(base_info, sm_config, spatial_numel, sp_thread_num)) {
     return true;
   }
