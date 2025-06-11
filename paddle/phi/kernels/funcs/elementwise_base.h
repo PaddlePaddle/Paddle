@@ -373,6 +373,9 @@ void ElementwiseCompute(const CPUContext &dev_ctx,
                         DenseTensor *z,
                         int axis = -1) {
   dev_ctx.Alloc<OutType>(z);
+  if (z && z->numel() == 0) {
+    return;
+  }
   auto x_dims = x.dims();
   auto y_dims = y.dims();
   bool is_xsize_larger = true;

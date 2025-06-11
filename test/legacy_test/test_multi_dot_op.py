@@ -31,14 +31,19 @@ class TestMultiDotOp(OpTest):
         self.op_type = "multi_dot"
         self.python_api = paddle.linalg.multi_dot
         self.dtype = self.get_dtype()
+        self.init_shape()
         self.get_inputs_and_outputs()
+
+    def init_shape(self):
+        self.A_shape = (2, 8)
+        self.B_shape = (8, 4)
 
     def get_dtype(self):
         return "float64"
 
     def get_inputs_and_outputs(self):
-        self.A = np.random.random((2, 8)).astype(self.dtype)
-        self.B = np.random.random((8, 4)).astype(self.dtype)
+        self.A = np.random.random(self.A_shape).astype(self.dtype)
+        self.B = np.random.random(self.B_shape).astype(self.dtype)
         self.inputs = {'X': [('x0', self.A), ('x1', self.B)]}
         self.outputs = {'Out': multi_dot([self.A, self.B])}
 
@@ -53,6 +58,36 @@ class TestMultiDotOp(OpTest):
 class TestMultiDotFP16Op(TestMultiDotOp):
     def get_dtype(self):
         return "float16"
+
+
+class TestMultiDotOp_ZeroSize1(TestMultiDotOp):
+    def get_inputs_and_outputs(self):
+        # result shape: [2, 3]
+        self.A = np.random.random((2, 10)).astype(self.dtype)
+        self.B = np.random.random((10, 0)).astype(self.dtype)
+        self.C = np.random.random((0, 3)).astype(self.dtype)
+        self.inputs = {'X': [('x0', self.A), ('x1', self.B), ('x2', self.C)]}
+        self.outputs = {'Out': multi_dot([self.A, self.B, self.C])}
+
+    def test_check_grad(self):
+        self.check_grad(['x0'], 'Out', check_pir=True)
+        self.check_grad(['x1'], 'Out', check_pir=True)
+        self.check_grad(['x2'], 'Out', check_pir=True)
+
+
+class TestMultiDotOp_ZeroSize2(TestMultiDotOp):
+    def get_inputs_and_outputs(self):
+        # result shape: [0, 3]
+        self.A = np.random.random((0, 10)).astype(self.dtype)
+        self.B = np.random.random((10, 4)).astype(self.dtype)
+        self.C = np.random.random((4, 3)).astype(self.dtype)
+        self.inputs = {'X': [('x0', self.A), ('x1', self.B), ('x2', self.C)]}
+        self.outputs = {'Out': multi_dot([self.A, self.B, self.C])}
+
+    def test_check_grad(self):
+        self.check_grad(['x0'], 'Out', check_pir=True)
+        self.check_grad(['x1'], 'Out', check_pir=True)
+        self.check_grad(['x2'], 'Out', check_pir=True)
 
 
 @unittest.skipIf(

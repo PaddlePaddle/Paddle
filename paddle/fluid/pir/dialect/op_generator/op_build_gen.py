@@ -141,6 +141,8 @@ _INFERMETA_NEED_META_CONFIG = {
     'Pool2DInferMeta',
     'ReduceIntArrayAxisInferMetaBase',
     'ReduceIntArrayAxisInferMeta',
+    'StrictReduceIntArrayAxisInferMetaBase',
+    'StrictReduceIntArrayAxisInferMeta',
     'ReshapeInferMeta',
     'ReshapeWithXShapeInferMeta',
     'ReverseInferMeta',

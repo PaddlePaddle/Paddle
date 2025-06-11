@@ -19,7 +19,6 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/bitwise_functors.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 
-// See Note [ Why still include the fluid headers? ]
 #include "paddle/phi/common/transform.h"
 
 namespace phi {

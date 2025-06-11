@@ -21,7 +21,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void UnfoldGradKernel(const Context& ctx,
+void UnfoldGradKernel(const Context& dev_ctx,
                       const DenseTensor& x,
                       const DenseTensor& out_grad,
                       const std::vector<int>& kernel_sizes_,
@@ -30,7 +30,7 @@ void UnfoldGradKernel(const Context& ctx,
                       const std::vector<int>& dilations_,
                       DenseTensor* x_grad) {
   using XPUType = typename XPUTypeTrait<T>::Type;
-  ctx.template Alloc<T>(x_grad);
+  dev_ctx.template Alloc<T>(x_grad);
   const std::string data_format = common::DataLayoutToString(x.layout());
   bool is_nchw = data_format == "NCHW";
   PADDLE_ENFORCE_EQ(is_nchw,
@@ -61,19 +61,19 @@ void UnfoldGradKernel(const Context& ctx,
                                                  paddings[3],
                                                  strides[1]);
 
-  xpu::ctx_guard RAII_GUARD(ctx.x_context());
+  xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
   XPUType* out_grad_trans =
       RAII_GUARD.alloc_l3_or_gm<XPUType>(out_grad.numel());
 
   int r = xpu::transpose(
-      ctx.x_context(),
+      dev_ctx.x_context(),
       reinterpret_cast<const XPUType*>(out_grad.data<T>()),
       out_grad_trans,
       {n, c, kernel_sizes[0], kernel_sizes[1], out_height, out_width},
       {0, 4, 5, 1, 2, 3});
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "transpose");
 
-  r = xpu::col2im(ctx.x_context(),
+  r = xpu::col2im(dev_ctx.x_context(),
                   out_grad_trans,
                   reinterpret_cast<XPUType*>(x_grad->data<T>()),
                   n,

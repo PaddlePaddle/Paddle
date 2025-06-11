@@ -14,7 +14,6 @@
 
 #pragma once
 
-// See Note [ Why still include the fluid headers? ]
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"

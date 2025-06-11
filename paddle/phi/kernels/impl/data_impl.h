@@ -24,7 +24,7 @@ const char kForward[] = "FORWARD";
 const char kBackward[] = "BACKWARD";
 
 template <typename Context>
-void ShadowFeedKernel(const Context& ctx,
+void ShadowFeedKernel(const Context& dev_ctx,
                       const DenseTensor& x,
                       int dst_place_type,
                       DenseTensor* out) {
@@ -43,7 +43,7 @@ void ShadowFeedKernel(const Context& ctx,
       break;
 #elif defined(PADDLE_WITH_CUSTOM_DEVICE)
     case 1:  // CustomPlace
-      target_place = ctx.GetPlace();
+      target_place = dev_ctx.GetPlace();
       break;
 #endif
     default:
@@ -54,9 +54,9 @@ void ShadowFeedKernel(const Context& ctx,
 
   if (!(x.has_allocation())) {
     if (target_place == CPUPlace()) {
-      ctx.HostAlloc(out, out->dtype());
+      dev_ctx.HostAlloc(out, out->dtype());
     } else {
-      ctx.Alloc(out, out->dtype());
+      dev_ctx.Alloc(out, out->dtype());
     }
     return;
   }
@@ -65,22 +65,22 @@ void ShadowFeedKernel(const Context& ctx,
     out->ShareDataWith(x);
     out->set_lod(x.lod());
   } else {
-    phi::Copy<Context>(ctx, x, target_place, true, out);
+    phi::Copy<Context>(dev_ctx, x, target_place, true, out);
   }
 }
 
 template <typename Context>
-void ShadowFeedTensorsKernel(const Context& ctx,
+void ShadowFeedTensorsKernel(const Context& dev_ctx,
                              const std::vector<const DenseTensor*>& xs,
                              int dst_place_type,
                              std::vector<DenseTensor*> outs) {
   for (size_t i = 0; i < xs.size(); ++i) {
-    ShadowFeedKernel<Context>(ctx, *(xs[i]), dst_place_type, outs[i]);
+    ShadowFeedKernel<Context>(dev_ctx, *(xs[i]), dst_place_type, outs[i]);
   }
 }
 
 template <typename Context>
-void PrintKernel(const Context& ctx,
+void PrintKernel(const Context& dev_ctx,
                  const DenseTensor& x,
                  int first_n,
                  const std::string& message,
@@ -93,7 +93,7 @@ void PrintKernel(const Context& ctx,
                  const std::string& print_phase,
                  bool is_forward,
                  DenseTensor* out) {
-  phi::Copy<Context>(ctx, x, ctx.GetPlace(), true, out);
+  phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), true, out);
   out->set_lod(x.lod());
 
   if ((is_forward && print_phase == kBackward) ||

@@ -30,6 +30,10 @@ void RollGradKernel(const Context& dev_ctx,
                     const std::vector<int64_t>& axis,
                     DenseTensor* x_grad) {
   auto* out_grad_data = out_grad.data<T>();
+  if (x_grad && x_grad->numel() == 0) {
+    dev_ctx.template Alloc<T>(x_grad);
+    return;
+  }
   T* x_grad_data = dev_ctx.template Alloc<T>(x_grad);
 
   auto shifts_data = shifts.GetData();
