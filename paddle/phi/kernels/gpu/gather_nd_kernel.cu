@@ -22,11 +22,11 @@
 namespace phi {
 
 template <typename T, typename Context>
-void GatherNdKernel(const Context &ctx,
+void GatherNdKernel(const Context &dev_ctx,
                     const DenseTensor &x,
                     const DenseTensor &index,
                     DenseTensor *out) {
-  ctx.template Alloc<T>(out);
+  dev_ctx.template Alloc<T>(out);
   if (x.numel() == 0 || out->numel() == 0) return;
   if (index.dims()[0] == 0 && index.numel() == 0) return;
   const auto &index_type = index.dtype();
@@ -41,9 +41,9 @@ void GatherNdKernel(const Context &ctx,
                         phi::DataType::INT32,
                         phi::DataType::INT64));
   if (index_type == phi::DataType::INT32) {
-    phi::funcs::GPUGatherNd<T, int>(ctx, x, index, out);
+    phi::funcs::GPUGatherNd<T, int>(dev_ctx, x, index, out);
   } else if (index_type == phi::DataType::INT64) {
-    phi::funcs::GPUGatherNd<T, int64_t>(ctx, x, index, out);
+    phi::funcs::GPUGatherNd<T, int64_t>(dev_ctx, x, index, out);
   }
 }
 
