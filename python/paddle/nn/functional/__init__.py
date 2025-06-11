@@ -94,6 +94,8 @@ from .flash_attention import (
     scaled_dot_product_attention,
     sdp_kernel,  # noqa: F401
 )
+from .fused_moe_permute import fused_moe_permute
+from .fused_moe_unpermute import fused_moe_unpermute
 from .input import (
     embedding,
     embedding_renorm_,  # noqa: F401
@@ -298,4 +300,6 @@ __all__ = [
     "flash_attention_v3_varlen",
     'flash_attn_varlen_qkvpacked',
     'group_norm',
+    'fused_moe_permute',
+    'fused_moe_unpermute',
 ]
