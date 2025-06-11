@@ -153,11 +153,11 @@ struct KronOpFunctor {
 };
 
 template <typename T, typename Context>
-void KronKernel(const Context &ctx,
+void KronKernel(const Context &dev_ctx,
                 const DenseTensor &x,
                 const DenseTensor &y,
                 DenseTensor *out) {
-  ctx.template Alloc<T>(out);
+  dev_ctx.template Alloc<T>(out);
   if (out && out->numel() == 0) {
     return;
   }
@@ -167,7 +167,7 @@ void KronKernel(const Context &ctx,
   DenseTensor yy = UnsqueezeTo(y, ndims);
 
   KronOpFunctor<Context, T> func;
-  func(ctx, xx, yy, out);
+  func(dev_ctx, xx, yy, out);
 }
 
 }  // namespace phi
