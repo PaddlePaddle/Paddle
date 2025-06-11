@@ -91,13 +91,14 @@ def _all_reduce_in_static_mode(
 
     # TODO: Support task and use task.wait in static graph mode
     #       Use use_calc_stream rather than sync_op
-    op_type = _get_reduce_op(op)
-    helper = framework.LayerHelper(op_type, **locals())
+    op_type = "all_reduce"
+    reduce_type = _get_reduce_op(op)
+    helper = framework.LayerHelper(str(op_type), **locals())
     helper.append_op(
         type=op_type,
-        inputs={'X': [tensor]},
-        outputs={'Out': [tensor]},
-        attrs={'ring_id': ring_id, 'use_calc_stream': sync_op},
+        inputs={'x': [tensor]},
+        outputs={'out': [tensor]},
+        attrs={'ring_id': ring_id, "reduce_type": int(reduce_type)},
     )
 
 
