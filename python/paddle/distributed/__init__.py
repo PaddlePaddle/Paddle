@@ -52,6 +52,7 @@ from .auto_parallel.intermediate.parallelize import parallelize
 from .auto_parallel.intermediate.pipeline_parallel import SplitPoint
 from .auto_parallel.intermediate.tensor_parallel import (
     ColWiseParallel,
+    ConvParallel,
     PrepareLayerInput,
     PrepareLayerOutput,
     RowWiseParallel,
@@ -219,4 +220,5 @@ __all__ = [
     "get_mesh",
     "to_distributed",
     "COMM_GROUP_TYPE",
+    "ConvParallel",
 ]
