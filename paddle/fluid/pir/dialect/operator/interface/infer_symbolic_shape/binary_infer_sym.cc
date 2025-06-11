@@ -1361,7 +1361,18 @@ bool MatrixRankTolOpInferSymbolicShape(
                     common::errors::InvalidArgument(
                         "The dims of input must be greater than 2"));
   bool hermitian = GetBoolAttr(op, "hermitian");
-  if (hermitian) {
+  const auto &GetProduct = [&](const auto &dim_exprs, const auto &Filter) {
+    symbol::DimExpr product{1};
+    for (const auto &dim_expr : dim_exprs) {
+      if (Filter(dim_expr)) {
+        product = product * dim_expr;
+      }
+    }
+    return product;
+  };
+  const auto &x_numel = GetProduct(x_shape, [](const auto &) { return true; });
+
+  if (hermitian && x_numel != 0) {
     infer_context->AddEqualCstr(x_shape[x_rank - 2], x_shape[x_rank - 1]);
   }
   std::vector<symbol::DimExpr> x_shape_batch = [&] {
@@ -1385,6 +1396,12 @@ bool MatrixRankTolOpInferSymbolicShape(
 
   const std::vector<symbol::DimExpr> shapes = [&] {
     std::vector<symbol::DimExpr> shapes;
+    if (x_numel == 0) {
+      if (x_rank == 2)
+        return shapes;  // return empty shape
+      else
+        return x_shape_batch;  // return x_shape[:-2]
+    }
     symbol::DimExprBuilder builder;
     for (size_t i = 0; i < x_shape_batch.size(); i++) {
       if (x_shape_batch[i] == tol_shape[i]) {

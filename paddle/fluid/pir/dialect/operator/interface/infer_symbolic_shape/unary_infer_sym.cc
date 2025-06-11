@@ -2168,6 +2168,17 @@ bool MatrixRankOpInferSymbolicShape(
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();
 
+  const auto &GetProduct = [&](const auto &dim_exprs, const auto &Filter) {
+    symbol::DimExpr product{1};
+    for (const auto &dim_expr : dim_exprs) {
+      if (Filter(dim_expr)) {
+        product = product * dim_expr;
+      }
+    }
+    return product;
+  };
+  const auto &x_numel = GetProduct(x_shape, [](const auto &) { return true; });
+
   // 确保输入x的维度大于等于2
   PADDLE_ENFORCE_GE(x_shape.size(),
                     2,
@@ -2177,8 +2188,8 @@ bool MatrixRankOpInferSymbolicShape(
   // 获取Hermitian属性
   bool hermitian = op->attribute<pir::BoolAttribute>("hermitian").data();
 
-  // 如果hermitian为true，确保输入x是方阵
-  if (hermitian) {
+  // 如果hermitian为true，确保输入x是方阵,0-size Tensor不需要此检查
+  if (hermitian && x_numel != 0) {
     infer_context->AddEqualCstr(x_shape[x_shape.size() - 2],
                                 x_shape[x_shape.size() - 1]);
   }
