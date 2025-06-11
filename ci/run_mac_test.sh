@@ -207,6 +207,8 @@ EOF
                                 fi
                             done
 			find $tmp_dir -delete
+			echo 123
+			ls $tmp_dir
                         failed_test_lists=''
                         ctest -R "($retry_unittests_regular)" --output-on-failure -j 4 | tee $tmpfile
                         collect_failed_tests
