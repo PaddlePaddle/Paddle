@@ -90,9 +90,12 @@ void GPUIndexElementwisePutKernel(const phi::GPUContext& ctx,
       desired_shape.size(), desired_shape.data(), strides_vector);
 
   const int64_t N = numel;
-  PADDLE_ENFORCE(N >= 0 && N <= std::numeric_limits<int32_t>::max(),
-                 "Output numel be in the range [0, "
-                 "std::numeric_limits<int32_t>::max()]");
+  PADDLE_ENFORCE_GE(
+      N, 0, common::errors::InvalidArgument("Output numel must >= 0"));
+  PADDLE_ENFORCE_LE(
+      N,
+      std::numeric_limits<int32_t>::max(),
+      common::errors::InvalidArgument("Output numel must <= INT32_MAX"));
 
   constexpr int nt = 128;
   constexpr int vt = 4;
@@ -116,8 +119,10 @@ void GPUIndexElementwisePutKernel(const phi::GPUContext& ctx,
         for (int i = 0; i < num_indices; i++) {
           int64_t index =
               *reinterpret_cast<int64_t*>(index_ptrs[i] + offsets[2]);
-          PADDLE_ENFORCE(-sizes[i] <= index && index < sizes[i],
-                         "index out of bounds");
+          PADDLE_ENFORCE(-sizes[i] <= index,
+                         "index is less than the lower bound");
+          PADDLE_ENFORCE(index < sizes[i],
+                         "index is greater than or equal to the upper bound");
           if (index < 0) {
             index += sizes[i];
           }

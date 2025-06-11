@@ -513,6 +513,60 @@ class TestAddMMAPI(unittest.TestCase):
         paddle.enable_static()
 
 
+class TestAddmmOp_ZeroSize(OpTest):
+    def setUp(self):
+        self.op_type = "addmm"
+        self.python_api = paddle.addmm
+        self.public_python_api = paddle.addmm
+        self.init_dtype_type()
+        self.init_input()
+        self.attrs = {
+            'Alpha': 0.5,
+            'Beta': 2.0,
+        }
+        self.outputs = {
+            'Out': self.attrs['Beta'] * self.inputs['Input']
+            + self.attrs['Alpha'] * np.dot(self.inputs['X'], self.inputs['Y'])
+        }
+
+    def init_input(self):
+        # result shape: [20, 100]
+        self.inputs = {
+            'Input': np.random.random(100).astype(self.dtype),
+            'X': np.random.random((20, 0)).astype(self.dtype),
+            'Y': np.random.random((0, 100)).astype(self.dtype),
+        }
+
+    def init_dtype_type(self):
+        self.dtype = np.float64
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
+    def test_check_grad_normal(self):
+        self.check_grad(['Input', 'X', 'Y'], 'Out', check_pir=True)
+
+
+class TestAddmmOp_ZeroSize2(TestAddmmOp_ZeroSize):
+    def init_input(self):
+        # result shape: [20, 0]
+        self.inputs = {
+            'Input': np.random.random(0).astype(self.dtype),
+            'X': np.random.random((20, 100)).astype(self.dtype),
+            'Y': np.random.random((100, 0)).astype(self.dtype),
+        }
+
+
+class TestAddmmOp_ZeroSize3(TestAddmmOp_ZeroSize):
+    def init_input(self):
+        # result shape: [0, 0]
+        self.inputs = {
+            'Input': np.random.random(0).astype(self.dtype),
+            'X': np.random.random((0, 100)).astype(self.dtype),
+            'Y': np.random.random((100, 0)).astype(self.dtype),
+        }
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()
