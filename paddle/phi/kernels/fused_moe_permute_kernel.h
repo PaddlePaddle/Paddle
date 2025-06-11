@@ -31,3 +31,4 @@ void FusedMoePermuteKernel(const Context &dev_ctx,
                            DenseTensor *token_prob_unzipped,
                            DenseTensor *XScale_unzipped);
 }  // namespace phi
+
