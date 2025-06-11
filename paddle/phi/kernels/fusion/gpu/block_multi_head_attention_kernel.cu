@@ -653,7 +653,7 @@ void DispatchWithDtype(
           paddle::none /*fixed_seed_offset*/,
           paddle::none /*mask*/,
           0.0,
-          is_precache_infer ? false : causual /*precache_infer_casual*/,
+          is_precache_infer ? true : causual /*precache_infer_casual*/,
           false,
           is_precache_infer /*is_test*/,
           "" /*rng_name*/,
