@@ -322,7 +322,7 @@ void LPPool2dKernel(const Context& dev_ctx,
     }
     if (need_zero) {
       phi::Full<T, Context>(
-          ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+          dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
       return;
     }
   }
