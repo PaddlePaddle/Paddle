@@ -108,5 +108,82 @@ class TestBlhaGetMaxLenOp(unittest.TestCase):
         )
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda() and not core.is_compiled_with_xpu(),
+    "Only support XPU or GPU in CUDA mode.",
+)
+class TestBlhaGetMaxLenOp_ZeroSize(unittest.TestCase):
+    def setUp(self):
+        self.name = "TestBlhaGetMaxLenOpDynamic_ZeroSize"
+        if paddle.is_compiled_with_cuda():
+            place = paddle.CUDAPlace(0)
+        elif paddle.device.is_compiled_with_xpu():
+            place = paddle.device.XPUPlace(0)
+        else:
+            raise ValueError("Only support CUDA or XPU Place.")
+        self.batch_size = 0
+        self.test_encoder_data = np.random.randint(
+            1, 100, size=self.batch_size
+        ).astype("int32")
+        self.test_decoder_data = np.random.randint(
+            1, 100, size=self.batch_size
+        ).astype("int32")
+
+    def test_dynamic_api(self):
+        paddle.disable_static()
+        seq_lens_encoder = paddle.to_tensor(
+            self.test_encoder_data,
+            "int32",
+        )
+        seq_lens_decoder = paddle.to_tensor(
+            self.test_decoder_data,
+            "int32",
+        )
+        batch_size_tensor = paddle.ones([self.batch_size])
+        max_enc_len_this_time, max_dec_len_this_time = blha_get_max_len(
+            seq_lens_encoder,
+            seq_lens_decoder,
+            batch_size_tensor,
+        )
+        assert tuple(max_enc_len_this_time.shape) == (1,) and tuple(
+            max_dec_len_this_time.shape
+        ) == (1,)
+
+    def test_static_api(self):
+        paddle.enable_static()
+
+        if paddle.is_compiled_with_cuda():
+            place = paddle.CUDAPlace(0)
+        elif paddle.device.is_compiled_with_xpu():
+            place = paddle.device.XPUPlace(0)
+        else:
+            raise ValueError("Only support CUDA or XPU Place.")
+
+        with paddle.static.program_guard(paddle.static.Program()):
+            seq_lens_encoder = paddle.static.data(
+                "seq_lens_encoder", self.test_encoder_data.shape, "int32"
+            )
+            seq_lens_decoder = paddle.static.data(
+                "seq_lens_decoder", self.test_decoder_data.shape, "int32"
+            )
+            batch_size_tensor = paddle.ones([self.batch_size], "int32")
+            max_enc_len_this_time, max_dec_len_this_time = blha_get_max_len(
+                seq_lens_encoder,
+                seq_lens_decoder,
+                batch_size_tensor,
+            )
+            exe = paddle.static.Executor(place)
+            res_max_enc_len_this_time, res_max_dec_len_this_time = exe.run(
+                feed={
+                    "seq_lens_encoder": self.test_encoder_data,
+                    "seq_lens_decoder": self.test_decoder_data,
+                },
+                fetch_list=[max_enc_len_this_time, max_dec_len_this_time],
+            )
+        assert tuple(res_max_enc_len_this_time.shape) == (1,) and tuple(
+            res_max_dec_len_this_time.shape
+        ) == (1,)
+
+
 if __name__ == '__main__':
     unittest.main()

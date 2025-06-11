@@ -41,7 +41,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void ConvCudnnKernel(const Context& ctx,
+void ConvCudnnKernel(const Context& dev_ctx,
                      const DenseTensor& input,
                      const DenseTensor& filter,
                      const std::vector<int>& strides,
@@ -76,7 +76,7 @@ void DepthwiseConvCudnnKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void ConvCudnnGradKernel(const Context& ctx,
+void ConvCudnnGradKernel(const Context& dev_ctx,
                          const DenseTensor& input,
                          const DenseTensor& filter,
                          const DenseTensor& output_grad,

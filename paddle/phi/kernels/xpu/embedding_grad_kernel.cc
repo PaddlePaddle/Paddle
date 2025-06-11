@@ -22,7 +22,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void EmbeddingGradKernel(const Context& ctx,
+void EmbeddingGradKernel(const Context& dev_ctx,
                          const DenseTensor& input,
                          const DenseTensor& weight,
                          const DenseTensor& out_grad,
@@ -37,20 +37,19 @@ void EmbeddingGradKernel(const Context& ctx,
   auto d_table_t = weight_grad;
 
   if (std::getenv("XPU_CDNN_CLUSTER_PARALLEL") != nullptr) {
-    ctx.Wait();
+    dev_ctx.Wait();
   }
 
   int64_t ids_numel = ids_t->numel();
 
-  auto& dev_ctx = ctx;
-  xpu::ctx_guard RAII_GUARD(ctx.x_context());
+  xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
   const int64_t* ids_data;
   if (ids_t->dtype() == phi::DataType::INT64) {
     ids_data = ids_t->data<int64_t>();
   } else {
     int64_t* ids_tt = RAII_GUARD.alloc_l3_or_gm<int64_t>(ids_t->numel());
     int r = xpu::cast<int32_t, int64_t>(
-        ctx.x_context(), ids_t->data<int>(), ids_tt, ids_t->numel());
+        dev_ctx.x_context(), ids_t->data<int>(), ids_tt, ids_t->numel());
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
     ids_data = reinterpret_cast<const int64_t*>(ids_tt);
   }
@@ -74,29 +73,29 @@ void EmbeddingGradKernel(const Context& ctx,
 }
 
 template <typename T, typename Context>
-void EmbeddingSparseGradKernel(const Context& ctx,
+void EmbeddingSparseGradKernel(const Context& dev_ctx,
                                const DenseTensor& input,
                                const DenseTensor& weight,
                                const DenseTensor& out_grad,
                                int64_t padding_idx,
                                SelectedRows* weight_grad) {
   DDim table_dim = weight.dims();
-  auto xpu_place = ctx.GetPlace();
+  auto xpu_place = dev_ctx.GetPlace();
 
-  xpu::ctx_guard RAII_GUARD(ctx.x_context());
+  xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
   std::vector<int64_t> ids;
   DenseTensor ids_cpu;
   ids_cpu.Resize(input.dims());
-  ctx.HostAlloc(&ids_cpu, input.dtype(), input.numel() * sizeof(int64_t));
+  dev_ctx.HostAlloc(&ids_cpu, input.dtype(), input.numel() * sizeof(int64_t));
   if (input.dtype() == phi::DataType::INT64) {
-    phi::Copy(ctx, input, CPUPlace(), false, &ids_cpu);
+    phi::Copy(dev_ctx, input, CPUPlace(), false, &ids_cpu);
 
     ids = CopyIdsToVector<int64_t, int64_t>(ids_cpu);
 
   } else if (input.dtype() == phi::DataType::INT32) {
     int64_t* id_t = RAII_GUARD.alloc_l3_or_gm<int64_t>(input.numel());
     int r = xpu::cast<int32_t, int64_t>(
-        ctx.x_context(), input.data<int>(), id_t, input.numel());
+        dev_ctx.x_context(), input.data<int>(), id_t, input.numel());
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
     memory_utils::Copy(CPUPlace(),
                        ids_cpu.data(),
@@ -119,7 +118,7 @@ void EmbeddingSparseGradKernel(const Context& ctx,
   auto* d_table_value = d_table->mutable_value();
   d_table_value->Resize({ids_num, table_dim[1]});
 
-  ctx.template HostAlloc<T>(d_table_value);
+  dev_ctx.template HostAlloc<T>(d_table_value);
 
   d_table->set_height(table_dim[0]);
 

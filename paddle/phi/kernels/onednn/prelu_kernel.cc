@@ -25,10 +25,10 @@ void PReluKernel(const Context& dev_ctx,
                  const std::string& data_format,
                  const std::string& mode,
                  DenseTensor* out) {
-  PADDLE_ENFORCE_EQ(dev_ctx.GetPlace().GetType(),
-                    AllocationType::CPU,
-                    common::errors::PreconditionNotMet(
-                        "Operator oneDNN PReLU must use CPUPlace"));
+  if (out && out->numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
 
   bool is_test = dev_ctx.HasDnnAttr("is_test")
                      ? PADDLE_GET_CONST(bool, dev_ctx.GetDnnAttr("is_test"))

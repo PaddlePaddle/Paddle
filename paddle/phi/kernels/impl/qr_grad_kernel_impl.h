@@ -38,18 +38,18 @@
 namespace phi {
 
 template <class T, class Context>
-static DenseTensor Fill(const Context& ctx,
+static DenseTensor Fill(const Context& dev_ctx,
                         std::vector<int> shape,
                         float fill_value) {
   DenseTensor ret;
   ret.Resize(common::make_ddim(shape));
-  ctx.template Alloc<T>(&ret);
-  funcs::SetConstant<Context, T>()(ctx, &ret, T(fill_value));
+  dev_ctx.template Alloc<T>(&ret);
+  funcs::SetConstant<Context, T>()(dev_ctx, &ret, T(fill_value));
   return ret;
 }
 
 template <typename T, typename Context>
-void QrGradKernel(const Context& ctx,
+void QrGradKernel(const Context& dev_ctx,
                   const DenseTensor& x,
                   const DenseTensor& q,
                   const DenseTensor& r,
@@ -65,8 +65,8 @@ void QrGradKernel(const Context& ctx,
   const DenseTensor& dR = r_grad;
   DenseTensor& dA = *x_grad;
 
-  ctx.template Alloc<T>(&dA);
-  phi::funcs::SetConstant<Context, T>()(ctx, &dA, T(0));
+  dev_ctx.template Alloc<T>(&dA);
+  phi::funcs::SetConstant<Context, T>()(dev_ctx, &dA, T(0));
 
   bool compute_q, reduced;
   std::tie(compute_q, reduced) = phi::funcs::ParseQrMode(mode);
@@ -89,7 +89,7 @@ void QrGradKernel(const Context& ctx,
   }
 
   // m >= n case
-  auto m_gt_n_case = [](const Context& ctx,
+  auto m_gt_n_case = [](const Context& dev_ctx,
                         const DenseTensor& dQ,
                         const DenseTensor& dR,
                         const DenseTensor& A UNUSED,
@@ -102,120 +102,124 @@ void QrGradKernel(const Context& ctx,
     // dR^H
     DenseTensor R_term;
     if (dR.initialized()) {
-      R_term = Matmul<T, Context>(
-          ctx,
-          R,
-          TransposeLast2Dim<T, Context>(ctx, Conj<T, Context>(ctx, dR)));
+      R_term = Matmul<T, Context>(dev_ctx,
+                                  R,
+                                  TransposeLast2Dim<T, Context>(
+                                      dev_ctx, Conj<T, Context>(dev_ctx, dR)));
     } else {
-      R_term = Fill<T, Context>(ctx, common::vectorize<int>(R.dims()), 0);
+      R_term = Fill<T, Context>(dev_ctx, common::vectorize<int>(R.dims()), 0);
     }
 
     // dQ^H * Q
     DenseTensor Q_term;
     if (dQ.initialized()) {
       Q_term = Matmul<T, Context>(
-          ctx,
-          TransposeLast2Dim<T, Context>(ctx, Conj<T, Context>(ctx, dQ)),
+          dev_ctx,
+          TransposeLast2Dim<T, Context>(dev_ctx, Conj<T, Context>(dev_ctx, dQ)),
           Q);
     } else {
-      Q_term = Fill<T, Context>(ctx, common::vectorize<int>(R.dims()), 0);
+      Q_term = Fill<T, Context>(dev_ctx, common::vectorize<int>(R.dims()), 0);
     }
 
-    DenseTensor M_tmp1 = Subtract<T, Context>(ctx, R_term, Q_term);
+    DenseTensor M_tmp1 = Subtract<T, Context>(dev_ctx, R_term, Q_term);
     DenseTensor M;
 #ifdef PADDLE_WITH_HIP
     // Compute M = (tril(M) + tril(M).mH()) * 0.5 Identity
-    DenseTensor M_tril_0 = TrilTriu<T, Context>(ctx, M_tmp1, 0, true);
-    DenseTensor M_tril_1 = TrilTriu<T, Context>(ctx, M_tmp1, -1, true);
+    DenseTensor M_tril_0 = TrilTriu<T, Context>(dev_ctx, M_tmp1, 0, true);
+    DenseTensor M_tril_1 = TrilTriu<T, Context>(dev_ctx, M_tmp1, -1, true);
     M = Add<T, Context>(
-        ctx, M_tril_0, TransposeLast2Dim<T, Context>(ctx, M_tril_1));
+        dev_ctx, M_tril_0, TransposeLast2Dim<T, Context>(dev_ctx, M_tril_1));
 #else
     if (std::is_same<T, phi::dtype::complex<float>>::value ||
         std::is_same<T, phi::dtype::complex<double>>::value) {
-      DenseTensor M_tril_tmp = TrilTriu<T, Context>(ctx, M_tmp1, -1, true);
+      DenseTensor M_tril_tmp = TrilTriu<T, Context>(dev_ctx, M_tmp1, -1, true);
       DenseTensor M_tril =
-          Add<T, Context>(ctx,
+          Add<T, Context>(dev_ctx,
                           M_tril_tmp,
                           TransposeLast2Dim<T, Context>(
-                              ctx, Conj<T, Context>(ctx, M_tril_tmp)));
+                              dev_ctx, Conj<T, Context>(dev_ctx, M_tril_tmp)));
 
       size_t rank = M_tmp1.dims().size();
       DenseTensor M_diag_tmp =
-          Diagonal<T, Context>(ctx, M_tmp1, 0, rank - 2, rank - 1);
-      DenseTensor M_diag_real = Real<T, Context>(ctx, M_diag_tmp);
+          Diagonal<T, Context>(dev_ctx, M_tmp1, 0, rank - 2, rank - 1);
+      DenseTensor M_diag_real = Real<T, Context>(dev_ctx, M_diag_tmp);
       DenseTensor M_diag_imag = Fill<phi::dtype::Real<T>, Context>(
-          ctx, common::vectorize<int>(M_diag_real.dims()), 0);
+          dev_ctx, common::vectorize<int>(M_diag_real.dims()), 0);
 
       DenseTensor M_diag;
       M_diag.Resize(M_diag_real.dims());
-      ctx.template Alloc<T>(&M_diag);
+      dev_ctx.template Alloc<T>(&M_diag);
       phi::ComplexKernel<phi::dtype::Real<T>>(
-          ctx, M_diag_real, M_diag_imag, &M_diag);
+          dev_ctx, M_diag_real, M_diag_imag, &M_diag);
 
       M = FillDiagonalTensor<T, Context>(
-          ctx, M_tril, M_diag, 0, rank - 2, rank - 1);
+          dev_ctx, M_tril, M_diag, 0, rank - 2, rank - 1);
     } else {
       // Compute M = (tril(M) + tril(M).mH()) * 0.5 Identity
-      DenseTensor M_tril_0 = TrilTriu<T, Context>(ctx, M_tmp1, 0, true);
-      DenseTensor M_tril_1 = TrilTriu<T, Context>(ctx, M_tmp1, -1, true);
+      DenseTensor M_tril_0 = TrilTriu<T, Context>(dev_ctx, M_tmp1, 0, true);
+      DenseTensor M_tril_1 = TrilTriu<T, Context>(dev_ctx, M_tmp1, -1, true);
       M = Add<T, Context>(
-          ctx, M_tril_0, TransposeLast2Dim<T, Context>(ctx, M_tril_1));
+          dev_ctx, M_tril_0, TransposeLast2Dim<T, Context>(dev_ctx, M_tril_1));
     }
 #endif
 
     DenseTensor rhs_term;
     if (dQ.initialized()) {
-      rhs_term = Add<T, Context>(ctx, dQ, Matmul<T, Context>(ctx, Q, M));
+      rhs_term =
+          Add<T, Context>(dev_ctx, dQ, Matmul<T, Context>(dev_ctx, Q, M));
     } else {
-      rhs_term = Matmul<T, Context>(ctx, Q, M);
+      rhs_term = Matmul<T, Context>(dev_ctx, Q, M);
     }
 
     // dA * R^H = rhs_term
     auto dA = TriangularSolve<T, Context>(
-        ctx,
+        dev_ctx,
         TransposeLast2Dim<T, Context>(
-            ctx, Conj<T, Context>(ctx, TransposeLast2Dim<T, Context>(ctx, R))),
-        TransposeLast2Dim<T, Context>(ctx, rhs_term),
+            dev_ctx,
+            Conj<T, Context>(dev_ctx,
+                             TransposeLast2Dim<T, Context>(dev_ctx, R))),
+        TransposeLast2Dim<T, Context>(dev_ctx, rhs_term),
         /*upper=*/true,
         /*transpose=*/false,
         /*unitriangular=*/false);
 
-    return TransposeLast2Dim<T, Context>(ctx, dA);
+    return TransposeLast2Dim<T, Context>(dev_ctx, dA);
   };
 
   if (m >= n) {
-    auto dA_tmp = m_gt_n_case(ctx, dQ, dR, A, Q, R);
-    phi::Copy(ctx, dA_tmp, dA.place(), false, &dA);
+    auto dA_tmp = m_gt_n_case(dev_ctx, dQ, dR, A, Q, R);
+    phi::Copy(dev_ctx, dA_tmp, dA.place(), false, &dA);
   } else {
     // If m < n for input matrices A, we partition A = [X|Y] and R = [U|V]
     // Calculate dX and dY individually and concatenate them to get dA
-    ctx.template Alloc<phi::dtype::Real<T>>(&dA);
+    dev_ctx.template Alloc<phi::dtype::Real<T>>(&dA);
 
-    auto Y = Slice<T, Context>(ctx, A, {A.dims().size() - 1}, {m}, {n});
-    auto U = Slice<T, Context>(ctx, R, {R.dims().size() - 1}, {0}, {m});
+    auto Y = Slice<T, Context>(dev_ctx, A, {A.dims().size() - 1}, {m}, {n});
+    auto U = Slice<T, Context>(dev_ctx, R, {R.dims().size() - 1}, {0}, {m});
     DenseTensor dY, dX, dV, dU, dQ_prime;
 
     if (dR.initialized()) {
-      dV = Slice<T, Context>(ctx, dR, {dR.dims().size() - 1}, {m}, {n});
-      dU = Slice<T, Context>(ctx, dR, {dR.dims().size() - 1}, {0}, {m});
+      dV = Slice<T, Context>(dev_ctx, dR, {dR.dims().size() - 1}, {m}, {n});
+      dU = Slice<T, Context>(dev_ctx, dR, {dR.dims().size() - 1}, {0}, {m});
       // Y * dV^H
-      dQ_prime = Matmul<T, Context>(
-          ctx,
-          Y,
-          TransposeLast2Dim<T, Context>(ctx, Conj<T, Context>(ctx, dV)));
+      dQ_prime =
+          Matmul<T, Context>(dev_ctx,
+                             Y,
+                             TransposeLast2Dim<T, Context>(
+                                 dev_ctx, Conj<T, Context>(dev_ctx, dV)));
     } else {
-      dV = Fill<T, Context>(ctx, common::vectorize<int>(Y.dims()), 0);
-      dQ_prime = Fill<T, Context>(ctx, common::vectorize<int>(Q.dims()), 0);
+      dV = Fill<T, Context>(dev_ctx, common::vectorize<int>(Y.dims()), 0);
+      dQ_prime = Fill<T, Context>(dev_ctx, common::vectorize<int>(Q.dims()), 0);
     }
 
     if (dQ.initialized()) {
-      dQ_prime = Add<T, Context>(ctx, dQ, dQ_prime);
+      dQ_prime = Add<T, Context>(dev_ctx, dQ, dQ_prime);
     }
-    dX = m_gt_n_case(ctx, dQ_prime, dU, A, Q, U);
-    dY = Matmul<T, Context>(ctx, Q, dV);
+    dX = m_gt_n_case(dev_ctx, dQ_prime, dU, A, Q, U);
+    dY = Matmul<T, Context>(dev_ctx, Q, dV);
     // Concatenate dX and dY to get dA.
-    auto dA_tmp = Concat<T, Context>(ctx, {&dX, &dY}, -1);
-    phi::Copy(ctx, dA_tmp, dA.place(), false, &dA);
+    auto dA_tmp = Concat<T, Context>(dev_ctx, {&dX, &dY}, -1);
+    phi::Copy(dev_ctx, dA_tmp, dA.place(), false, &dA);
   }
 }
 

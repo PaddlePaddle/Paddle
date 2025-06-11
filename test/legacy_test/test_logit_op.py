@@ -86,7 +86,10 @@ class TestLogitOp(OpTest):
 
     def test_check_grad(self):
         self.check_grad(
-            ['X'], ['Out'], user_defined_grads=[self.x_grad], check_pir=True
+            ['X'],
+            ['Out'],
+            user_defined_grads=[self.x_grad],
+            check_pir=True,
         )
 
 
@@ -99,11 +102,6 @@ class TestLogitOpFp32(TestLogitOp):
     def test_check_output(self):
         self.check_output(check_pir=True)
 
-    def test_check_grad(self):
-        self.check_grad(
-            ['X'], ['Out'], user_defined_grads=[self.x_grad], check_pir=True
-        )
-
 
 class TestLogitOpFp16(TestLogitOp):
     def set_attrs(self):
@@ -113,11 +111,6 @@ class TestLogitOpFp16(TestLogitOp):
 
     def test_check_output(self):
         self.check_output(check_pir=True)
-
-    def test_check_grad(self):
-        self.check_grad(
-            ['X'], ['Out'], user_defined_grads=[self.x_grad], check_pir=True
-        )
 
 
 @unittest.skipIf(
@@ -241,6 +234,36 @@ class TestLogitAPI(unittest.TestCase):
 
             x = paddle.static.data(name='X2', shape=[100], dtype='float32')
             self.assertRaises(TypeError, paddle.logit, x, dtype='int32')
+
+
+class TestLogitAPI_NAN_Val(unittest.TestCase):
+    def setUp(self):
+        self.init_input_output()
+        self.place = [paddle.CPUPlace()]
+        if paddle.base.core.is_compiled_with_cuda():
+            self.place.append(paddle.CUDAPlace(0))
+
+    def init_input_output(self):
+        self.x = [-0.1, 1.1, 2]
+        self.expect_out = [np.nan, np.nan, np.nan]
+        self.expect_x_grad = [np.nan, np.nan, np.nan]
+
+    def test_nan_val(self):
+        def _test_nan_val_with_place(place):
+            with paddle.base.dygraph.guard():
+                x = paddle.to_tensor(self.x, stop_gradient=False, place=place)
+                y = paddle.logit(x)
+                loss = y.sum()
+                loss.backward()
+                np.testing.assert_allclose(
+                    y.numpy(), self.expect_out, rtol=1e-05
+                )
+                np.testing.assert_allclose(
+                    x.grad.numpy(), self.expect_x_grad, rtol=1e-05
+                )
+
+        for place in self.place:
+            _test_nan_val_with_place(place)
 
 
 class TestLogitAPICase1(unittest.TestCase):
