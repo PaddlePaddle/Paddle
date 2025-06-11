@@ -39,4 +39,5 @@ vjp_interface_black_list = [
     'index_add_grad',
     'acos_grad',
     'put_along_axis_grad',
+    'masked_fill_grad',
 ]

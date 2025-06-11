@@ -297,11 +297,11 @@ static inline void IndexPutStride(
     const int64_t index_elesize,
     std::vector<int64_t>* desired_shape,
     std::array<int64_t*, N>* strides_array,
-    int64_t* numel) {
+    int64_t* numel,
+    std::array<std::vector<int64_t>, N>& strides_vec) {  // NOLINT
   int64_t index_size = 1;
   int ndim = output_dims.size();
 
-  std::array<std::vector<int64_t>, N> strides_vec;
   std::vector<int64_t> stride_size;
 
   *desired_shape = compute_shapes({input_dims, output_dims, index_dims});
@@ -341,22 +341,23 @@ static inline void IndexPutStride(
 }
 
 template <int N>
-static inline void IndexGetStride(const std::vector<int64_t> output_dims,
-                                  const std::vector<int64_t> output_strides,
-                                  const int64_t output_elesize,
-                                  const std::vector<int64_t> input_dims,
-                                  const std::vector<int64_t> input_strides,
-                                  const int64_t input_elesize,
-                                  const std::vector<int64_t> index_dims,
-                                  const std::vector<int64_t> index_strides,
-                                  const int64_t index_elesize,
-                                  std::vector<int64_t>* desired_shape,
-                                  std::array<int64_t*, N>* strides_array,
-                                  int64_t* numel) {
+static inline void IndexGetStride(
+    const std::vector<int64_t> output_dims,
+    const std::vector<int64_t> output_strides,
+    const int64_t output_elesize,
+    const std::vector<int64_t> input_dims,
+    const std::vector<int64_t> input_strides,
+    const int64_t input_elesize,
+    const std::vector<int64_t> index_dims,
+    const std::vector<int64_t> index_strides,
+    const int64_t index_elesize,
+    std::vector<int64_t>* desired_shape,
+    std::array<int64_t*, N>* strides_array,
+    int64_t* numel,
+    std::array<std::vector<int64_t>, N>& strides_vec) {  // NOLINT
   int64_t index_size = 1;
   int ndim = output_dims.size();
 
-  std::array<std::vector<int64_t>, N> strides_vec;
   std::vector<int64_t> stride_size;
 
   *desired_shape = compute_shapes({input_dims, output_dims, index_dims});

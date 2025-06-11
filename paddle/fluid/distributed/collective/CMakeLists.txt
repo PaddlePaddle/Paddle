@@ -1,6 +1,8 @@
 string(FIND "${COMPILED_CUDA_ARCHS}" "90" ARCH_BIN_CONTAINS_90)
 
-if(WITH_GPU AND (ARCH_BIN_CONTAINS_90 GREATER -1))
+if(WITH_DISTRIBUTE
+   AND WITH_GPU
+   AND (ARCH_BIN_CONTAINS_90 GREATER -1))
   message(STATUS "Enable DeepEP alltoall communication.")
   add_subdirectory(deep_ep)
   set(DEEPEP_LIB deep_ep)

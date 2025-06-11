@@ -17,6 +17,9 @@ limitations under the License. */
 #include <cublasXt.h>
 #include <cublas_v2.h>
 #include <cuda.h>
+#if CUDA_VERSION >= 12030
+#include <cublas_api.h>
+#endif
 
 #include <mutex>  // NOLINT
 #include <type_traits>
@@ -136,6 +139,15 @@ CUBLAS_BLAS_ROUTINE_EACH_R3(DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP)
   __macro(cublasGemmStridedBatchedEx);
 
 CUBLAS_BLAS_ROUTINE_EACH_R4(DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP)
+#endif
+
+#if CUDA_VERSION >= 12030
+#define CUBLAS_BLAS_ROUTINE_EACH_R5(__macro) \
+  __macro(cublasGemmStridedBatchedEx_64);    \
+  __macro(cublasGemmEx_64);                  \
+  __macro(cublasSgemmEx_64);
+
+CUBLAS_BLAS_ROUTINE_EACH_R5(DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP)
 #endif
 
 #undef DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP

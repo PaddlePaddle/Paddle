@@ -1,0 +1,93 @@
+name: Mac-CPU
+
+on:
+  workflow_call:
+
+env:
+  PR_ID: ${{ github.event.pull_request.number }}
+  COMMIT_ID: ${{ github.event.pull_request.head.sha }}
+  BRANCH: ${{ github.event.pull_request.base.ref }}
+  work_dir: ${{ github.workspace }}
+  PADDLE_ROOT: "${{ github.workspace }}/Paddle"
+  MACOSX_DEPLOYMENT_TARGET: 10.11
+  PADDLE_DEV_NAME: "paddlepaddle/paddle:dev"
+  PADDLE_VERSION: 0.0.0
+  COVERALLS_UPLOAD: "OFF"
+  WITH_DEB: "OFF"
+  RUN_TEST: "OFF"
+  WITH_DISTRIBUTE: "ON"
+  WITH_FLUID_ONLY: "ON"
+  WITH_TESTING: "ON"
+  WITH_INFERENCE_API_TEST: "OFF"
+  INSTALL_PREFIX: "/Users/paddle/CI_install_path"
+  PYTHON_ABI: "cp310-cp310"
+  PY_VERSION: "3.10"
+  WITH_AVX: "OFF"
+  WITH_ARM: "ON"
+  PROC_RUN: 8
+  WITH_CACHE: "ON"
+  NIGHTLY_MODE: "OFF"
+  GIT_PR_ID: ${{ github.event.pull_request.number }}
+  PRECISION_TEST: "OFF"
+  CI_SKIP_CPP_TEST: "OFF"
+  WITH_ONNXRUNTIME: "OFF"
+  WITH_TENSORRT: "OFF"
+  GENERATOR: "Ninja"
+  WITH_SHARED_PHI: "ON"
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build-and-test:
+    name: Build and test
+    runs-on:
+      group: Mac-CI
+
+    steps:
+      - name: Check environment
+        run: |
+          set -x
+          cd ${work_dir}
+          [ -d "${work_dir}/Paddle" ] && rm -rf ${work_dir}/Paddle
+          [ -f "${work_dir}/Paddle.tar.gz" ] && rm -rf ${work_dir}/Paddle.tar.gz
+          wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/Paddle/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
+          tar xf Paddle.tar.gz && cd Paddle
+
+          git config --global user.name "PaddleCI"
+          git config --global user.email "paddle_ci@example.com"
+          git remote add upstream https://github.com/PaddlePaddle/Paddle.git
+          git checkout $BRANCH
+          git pull upstream $BRANCH
+          git fetch upstream $BRANCH
+          git checkout test
+          git merge --no-edit $BRANCH
+
+      - name: Check bypass
+        id: check-bypass
+        uses: ./Paddle/.github/actions/check-bypass
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          workflow-name: mac
+
+      - name: Build with mac python3.10
+        if: steps.check-bypass.outputs.can-skip != 'true'
+        run: |
+          set -x
+          cd ${work_dir}/Paddle
+          source ~/.zshrc
+          bash -x ${work_dir}/Paddle/ci/run_setup.sh bdist_wheel ${parallel_number:-""}
+          EXCODE=$?
+          exit $EXCODE
+
+      - name: Test with mac python3.10
+        if: steps.check-bypass.outputs.can-skip != 'true'
+        run: |
+          set -ex
+          cd ${work_dir}/Paddle
+          pip3.10 install -r ${work_dir}/Paddle/python/unittest_py/requirements.txt
+          pip3.10 install -U ${work_dir}/Paddle/dist/*whl
+          bash -x ${work_dir}/Paddle/ci/run_mac_test.sh ${PYTHON_ABI:-""} ${PROC_RUN:-""}
+          EXCODE=$?
+          exit $EXCODE
