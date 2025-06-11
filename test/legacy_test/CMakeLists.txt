@@ -499,6 +499,17 @@ if(NOT WITH_GPU
     test_incubate_moe_gate_dispatch_partial_nosoftmaxtopk
     test_incubate_moe_gate_dispatch_w_permute_bwd
     test_incubate_moe_gate_dispatch_w_permute)
+  # Get flag for CUDA arch >= 80
+  set(has_arch_ge80 FALSE)
+  foreach(arch ${NVCC_ARCH_BIN})
+    if(${arch} GREATER_EQUAL 80)
+      set(has_arch_ge80 TRUE)
+      break()
+    endif()
+  endforeach()
+  if(NOT has_arch_ge80) # need support BF16
+    list(REMOVE_ITEM TEST_OPS test_fused_moe_permute_unpermute)
+  endif()
 endif()
 
 if(NOT WITH_CUDNN_FRONTEND)

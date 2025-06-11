@@ -210,7 +210,7 @@ void dispatch_tokens_unzip_stable(const Context &dev_ctx,
     HANDLE_TOKEN_TYPE(float, INT_T)                           \
   }
 
-  if (DTYPE_CASE(zipped_expertwise_rowmap.dtype(), INT32)) {
+  if (DTYPE_CASE(zipped_expertwise_rowmap->dtype(), INT32)) {
     HANDLE_PROB_TYPE(int)
   }
 
