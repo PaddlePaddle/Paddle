@@ -283,7 +283,7 @@ TEST(InstanceNorm, Ctor) {
   VLOG(4) << "test forward done.";
 
   // Test backward.
-  // [-1,0, 1, -1], [-1], [-1,-1], [-1,-1], [-1,0, 1, -1]
+  // [-1,0, 1, -1], [-1], [-1,-1], [-1,-1], [-1,0, 1, -1]-->[-1,0,-1,-1],[-1],[-1]
   TensorDistAttr mean_and_variance_dist_attr = TensorDistAttr();
   mean_and_variance_dist_attr.set_process_mesh(process_mesh);
   mean_and_variance_dist_attr.set_dims_mapping(std::vector<int64_t>({-1, -1}));

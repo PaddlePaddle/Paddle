@@ -114,33 +114,12 @@ SpmdInfo InstanceNormInferSpmd(const DistMetaTensor& x,
   scale_dist_attr_dst.set_dims_mapping({-1});
   bias_dist_attr_dst.set_dims_mapping({-1});
 
-  VLOG(4) << "InstanceNormInferSpmd:";
-  VLOG(4) << "data type: [N,C,H,W]";
-  VLOG(4) << "Einsum Notation: " << x_axes << "," << scale_axes << ","
-          << bias_axes << "-->" << y_axes << "," << saved_mean_axes << ","
-          << saved_variance_axes;
-  VLOG(4) << "X"
-          << " shape: [" << str_join(x_shape) << "] "
-          << "src_dims_mapping: [" << str_join(x_dist_attr_src.dims_mapping())
-          << "] "
-          << "dst_dims_mapping: [" << str_join(x_dims_mapping) << "]";
-  VLOG(4) << "Scale"
-          << " shape: [" << str_join(scale_shape) << "] "
-          << "src_dims_mapping: [" << str_join(scale_dims_mapping) << "] "
-          << "dst_dims_mapping: ["
-          << str_join(scale_dist_attr_dst.dims_mapping()) << "]";
-  VLOG(4) << "Bias"
-          << " shape: [" << str_join(bias_shape) << "] "
-          << "src_dims_mapping: [" << str_join(bias_dims_mapping) << "] "
-          << "dst_dims_mapping: ["
-          << str_join(bias_dist_attr_dst.dims_mapping()) << "]";
-  VLOG(4) << "Out dims mapping: [" << str_join(y_dist_attr.dims_mapping())
-          << "]";
-  VLOG(4) << "Saved_Mean dims mapping: ["
-          << str_join(saved_mean_dist_attr.dims_mapping()) << "]";
-  VLOG(4) << "Saved_Variance dims mapping: ["
-          << str_join(saved_variance_dist_attr.dims_mapping()) << "]";
-  VLOG(4) << std::endl;
+  LOG_SPMD_INPUT(x);
+  LOG_SPMD_INPUT(scale);
+  LOG_SPMD_INPUT(bias);
+  LOG_SPMD_OUTPUT(y_dist_attr);
+  LOG_SPMD_OUTPUT(saved_mean_dist_attr);
+  LOG_SPMD_OUTPUT(saved_variance_dist_attr);
 
   return {{x_dist_attr_dst, scale_dist_attr_dst, bias_dist_attr_dst},
           {y_dist_attr, saved_mean_dist_attr, saved_variance_dist_attr}};
@@ -277,45 +256,15 @@ SpmdInfo InstanceNormGradInferSpmd(const DistMetaTensor& x,
   }
   scale_grad_dist_attr.set_partial_status(partial_on_dims);
   bias_grad_dist_attr.set_partial_status(partial_on_dims);
-  VLOG(4) << "InstanceNormGradInferSpmd:";
-  VLOG(4) << "data type: [N,C,H,W]";
-  VLOG(4) << "Einsum Notation: " << x_axes << "," << scale_axes << ","
-          << saved_mean_axes << "," << saved_variance_axes << "," << y_grad_axes
-          << "-->" << x_grad_axes << "," << scale_grad_axes << ","
-          << bias_grad_axes;
-  VLOG(4) << "X"
-          << " shape: [" << str_join(x_shape) << "] "
-          << "src_dims_mapping: [" << str_join(x_dist_attr_src.dims_mapping())
-          << "] "
-          << "dst_dims_mapping: [" << str_join(x_dims_mapping) << "]";
-  VLOG(4) << "Scale"
-          << " shape: [" << str_join(scale_shape) << "] "
-          << "src_dims_mapping: [" << str_join(scale_dims_mapping) << "] "
-          << "dst_dims_mapping: ["
-          << str_join(scale_dist_attr_dst.dims_mapping()) << "]";
-  VLOG(4) << "Saved_mean"
-          << " shape: [" << str_join(saved_mean_shape) << "] "
-          << "src_dims_mapping: [" << str_join(saved_mean_dims_mapping) << "] "
-          << "dst_dims_mapping: ["
-          << str_join(saved_mean_dist_attr.dims_mapping()) << "]";
-  VLOG(4) << "Saved_variance"
-          << " shape: [" << str_join(saved_variance_shape) << "] "
-          << "src_dims_mapping: [" << str_join(saved_variance_dims_mapping)
-          << "] "
-          << "dst_dims_mapping: ["
-          << str_join(saved_variance_dist_attr.dims_mapping()) << "]";
-  VLOG(4) << "Y_grad"
-          << " shape: [" << str_join(y_grad_shape) << "] "
-          << "src_dims_mapping: [" << str_join(y_grad_dims_mapping) << "] "
-          << "dst_dims_mapping: ["
-          << str_join(y_grad_dist_attr_dst.dims_mapping()) << "]";
-  VLOG(4) << "x_grad dims mapping: ["
-          << str_join(x_grad_dist_attr.dims_mapping()) << "]";
-  VLOG(4) << "Scale_grad dims mapping: ["
-          << str_join(scale_grad_dist_attr.dims_mapping()) << "]";
-  VLOG(4) << "Bias_grad dims mapping: ["
-          << str_join(bias_grad_dist_attr.dims_mapping()) << "]";
-  VLOG(4) << std::endl;
+
+  LOG_SPMD_INPUT(x);
+  LOG_SPMD_INPUT(scale);
+  LOG_SPMD_INPUT(saved_mean);
+  LOG_SPMD_INPUT(saved_variance);
+  LOG_SPMD_INPUT(y_grad);
+  LOG_SPMD_OUTPUT(x_grad_dist_attr);
+  LOG_SPMD_OUTPUT(scale_grad_dist_attr);
+  LOG_SPMD_OUTPUT(bias_grad_dist_attr);
 
   return {{x_dist_attr_dst,
            scale_dist_attr_dst,
