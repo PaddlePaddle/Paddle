@@ -415,8 +415,11 @@ PD_REGISTER_KERNEL(fused_weighted_swiglu_act_quant,
                    GPU,
                    ALL_LAYOUT,
                    phi::FusedWeightedSwigluActQuantKernel,
-                   phi::dtype::bfloat16,
-                   float) {
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   phi::dtype::bfloat16) {
   kernel->OutputAt(0).SetDataType(phi::DataType::FLOAT8_E4M3FN);
   kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
 }

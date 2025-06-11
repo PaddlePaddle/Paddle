@@ -323,6 +323,8 @@ PD_REGISTER_KERNEL(fused_swiglu_weighted_bwd,
                    phi::FusedSwigluWeightedBwdKernel,
                    float,
                    double,
+                   int,
+                   int64_t,
                    phi::dtype::bfloat16) {
   kernel->OutputAt(0).SetDataType(phi::DataType::BFLOAT16);
   kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);

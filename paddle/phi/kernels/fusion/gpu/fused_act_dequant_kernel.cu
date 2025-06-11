@@ -120,7 +120,10 @@ PD_REGISTER_KERNEL(fused_act_dequant,
                    GPU,
                    ALL_LAYOUT,
                    phi::FusedActDequantKernel,
-                   phi::dtype::float8_e4m3fn,
-                   float) {
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   phi::dtype::float8_e4m3fn) {
   kernel->OutputAt(0).SetDataType(phi::DataType::BFLOAT16);
 }
