@@ -17,6 +17,7 @@ from __future__ import annotations
 import operator
 import sys
 import types
+from enum import Enum
 from functools import cached_property, reduce
 from typing import TYPE_CHECKING, Any
 
@@ -2321,3 +2322,57 @@ class ExceptionVariable(VariableBase):
             )
             return exception_var
         return None
+
+
+class EnumVariable(VariableBase):
+    def __init__(
+        self, value: Enum, graph: FunctionGraph = None, tracker: Tracker = None
+    ) -> None:
+        super().__init__(graph=graph, tracker=tracker)
+        self.value = value
+
+    def get_py_value(self, allow_tensor=False) -> Any:
+        return self.value
+
+    @VariableFactory.register_from_value()
+    def from_value(value: Exception, graph: FunctionGraph, tracker: Tracker):
+        if isinstance(value, Enum):
+            var = EnumVariable(value, graph=graph, tracker=tracker)
+            return var
+        return None
+
+    @check_faster_guard
+    def make_faster_guard(self) -> list[paddle.framework.core.GuardNodeBase]:
+        expr_node = self.tracker.guard_tree_expr_node()
+        type_guard = paddle.framework.core.GuardNode(
+            paddle.framework.core.TypeMatchGuard(self.get_py_type()),
+            [expr_node],
+        )
+        value_guard = paddle.framework.core.GuardNode(
+            paddle.framework.core.ValueMatchGuard(self.value),
+            [expr_node],
+        )
+        return [type_guard, value_guard]
+
+    @check_guard
+    def make_stringified_guard(self) -> list[StringifiedExpression]:
+        frame_value_tracer = self.tracker.trace_value_from_frame()
+        return [
+            FasterStringifiedExpression(
+                f"id(type({{}})) == {id(self.get_py_type())}",
+                paddle.core.TypeMatchGuard(self.get_py_type()),
+                [frame_value_tracer],
+                union_free_vars(frame_value_tracer.free_vars),
+            ),
+            FasterStringifiedExpression(
+                f"{{}} == {self.value!s}",
+                paddle.core.ValueMatchGuard(self.value),
+                [frame_value_tracer],
+                union_free_vars(
+                    frame_value_tracer.free_vars,
+                    {
+                        f"{self.get_py_value().__class__.__name__}": self.get_py_type()
+                    },
+                ),
+            ),
+        ]

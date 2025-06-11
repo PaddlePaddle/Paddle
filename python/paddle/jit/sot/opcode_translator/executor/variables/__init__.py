@@ -23,6 +23,7 @@ from .basic import (  # noqa: F401
     ConstantVariable,
     DataVariable,
     DygraphTracerVariable,
+    EnumVariable,
     ExceptionVariable,
     FunctionGlobalVariable,
     GlobalVariable,
