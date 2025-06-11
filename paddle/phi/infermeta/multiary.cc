@@ -5984,7 +5984,7 @@ void FusedMoePermuteInferMeta(const MetaTensor& X,
       common::errors::InvalidArgument("Input X's dims should be 2, but got %u.",
                                       X.dims().size()));
   PADDLE_ENFORCE_EQ(X.dtype() == phi::DataType::BFLOAT16 ||
-                    X.dtype() == phi::DataType::FLOAT8_E4M3FN,
+                        X.dtype() == phi::DataType::FLOAT8_E4M3FN,
                     true,
                     common::errors::InvalidArgument(
                         "Input X's dtype should be BFLOAT16 or FLOAT8_E4M3FN"));
@@ -6029,11 +6029,10 @@ void FusedMoeUnpermuteInferMeta(const MetaTensor& unzipped_tokens,
                                 const bool MP,
                                 MetaTensor* zipped_tokens,
                                 MetaTensor* zipped_probs_topk) {
-  PADDLE_ENFORCE_EQ(
-      unzipped_tokens.dtype() == phi::DataType::BFLOAT16,
-      true,
-      common::errors::InvalidArgument(
-          "Input unzipped_tokens's dtype should be BFLOAT16"));
+  PADDLE_ENFORCE_EQ(unzipped_tokens.dtype() == phi::DataType::BFLOAT16,
+                    true,
+                    common::errors::InvalidArgument(
+                        "Input unzipped_tokens's dtype should be BFLOAT16"));
   PADDLE_ENFORCE_EQ(
       unzipped_token_probs.dtype() == phi::DataType::FLOAT32,
       true,

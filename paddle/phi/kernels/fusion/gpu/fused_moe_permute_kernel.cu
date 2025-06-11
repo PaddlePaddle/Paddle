@@ -21,7 +21,7 @@
 namespace phi {
 namespace fusion {
 
-#define CUMSUM_BLOCK_SIZE 48 
+#define CUMSUM_BLOCK_SIZE 48
 #define CUMSUM_INVALID_TAG -1
 #ifndef MAX_NUM_EXPERTS
 #define MAX_NUM_EXPERTS 8
@@ -55,10 +55,7 @@ __global__ void tokens_unzip_stable_kernel(
   int local_cumsum[MAX_NUM_EXPERTS];
 #pragma unroll
   for (int i = 0; i < num_experts; i++) {
-    cumsum_offset[i] =
-        (blockIdx.x == 0)
-            ? 0
-            : CUMSUM_INVALID_TAG; 
+    cumsum_offset[i] = (blockIdx.x == 0) ? 0 : CUMSUM_INVALID_TAG;
     local_expert_offsets[i] = expert_base_offset.data[i];
     local_cumsum[i] = 0;
   }
@@ -67,15 +64,14 @@ __global__ void tokens_unzip_stable_kernel(
   __shared__ probs_T shared_expert_probmap[CUMSUM_BLOCK_SIZE][MAX_NUM_EXPERTS];
 
   // --------------------- thread0 单线程任务传递 -------------------------
-  if (threadIdx.x == 0) [[unlikely]] {
+  if (threadIdx.x == 0) {
     int local_expert_rowmap[CUMSUM_BLOCK_SIZE][MAX_NUM_EXPERTS];
     probs_T local_expert_probs[CUMSUM_BLOCK_SIZE][MAX_NUM_EXPERTS];
 #pragma unroll
     for (int i = 0; i < CUMSUM_BLOCK_SIZE; i++) {
 #pragma unroll
       for (int j = 0; j < num_experts; j++) {
-        local_expert_rowmap[i][j] =
-            -1; 
+        local_expert_rowmap[i][j] = -1;
         local_expert_probs[i][j] = (probs_T)0;
       }
     }
@@ -96,7 +92,7 @@ __global__ void tokens_unzip_stable_kernel(
 // -------------------------- 块间通信逻辑 -----------------------------
 #pragma unroll
     for (int i = 0; i < num_experts; i++) {
-      if (blockIdx.x != 0) [[likely]] {
+      if (blockIdx.x != 0) {
         while (cumsum_offset[i] == CUMSUM_INVALID_TAG) [[likely]] {
             cumsum_offset[i] = atomicExch(
                 &global_expertwise_block_cumsum[blockIdx.x * num_experts + i],
@@ -106,7 +102,7 @@ __global__ void tokens_unzip_stable_kernel(
       const int proposed_offset = cumsum_offset[i] + local_cumsum[i];
       global_expertwise_block_cumsum[(blockIdx.x + 1) * num_experts + i] =
           proposed_offset;
-    } 
+    }
 
 // -------------------------- 块内通信逻辑 -----------------------------
 #pragma unroll
@@ -121,8 +117,8 @@ __global__ void tokens_unzip_stable_kernel(
         shared_expert_probmap[i][j] = local_expert_probs[i][j];
       }
     }
-  }  
-  __syncthreads(); 
+  }
+  __syncthreads();
   // ------------------------- 所有block内线程 -------------------------
   for (int row = block_row_base; row < block_row_base + CUMSUM_BLOCK_SIZE;
        row++) {
@@ -160,11 +156,11 @@ void dispatch_tokens_unzip_stable(const Context &dev_ctx,
                                   const DenseTensor &expert_prob_topk,
                                   const paddle::optional<DenseTensor> &XScale,
                                   const expert_base_offset &expert_offsets,
-                                  DenseTensor &X_unzipped,
-                                  DenseTensor &zipped_expertwise_rowmap,
-                                  DenseTensor &token_prob_unzipped,
-                                  DenseTensor &XScale_unzipped,
-                                  DenseTensor &global_expertwise_block_cumsum,
+                                  DenseTensor *X_unzipped,
+                                  DenseTensor *zipped_expertwise_rowmap,
+                                  DenseTensor *token_prob_unzipped,
+                                  DenseTensor *XScale_unzipped,
+                                  DenseTensor *global_expertwise_block_cumsum,
                                   const int total_zipped_tokens_num,
                                   const int token_length,
                                   const int topk,  // deprecated
@@ -177,7 +173,7 @@ void dispatch_tokens_unzip_stable(const Context &dev_ctx,
 
 #define DTYPE_CASE(dtype, type) dtype == phi::DataType::type
 #define GET_DATA(tensor, type) tensor.data<type>()
-
+#define GET_PTR_DATA(tensor, type) tensor->data<type>()
 #define DISPATCH_CASE(TOKEN_T, PROB_T, INT_T, HAS_SCALE)                       \
   auto kernel = tokens_unzip_stable_kernel<TOKEN_T, INT_T, PROB_T, HAS_SCALE>; \
   kernel<<<grid, block, 0, dev_ctx.stream()>>>(                                \
@@ -186,11 +182,11 @@ void dispatch_tokens_unzip_stable(const Context &dev_ctx,
       GET_DATA(expert_prob_topk, PROB_T),                                      \
       XScale ? XScale.get_ptr()->data<float>() : nullptr,                      \
       expert_offsets,                                                          \
-      GET_DATA(X_unzipped, TOKEN_T),                                           \
-      GET_DATA(zipped_expertwise_rowmap, INT_T),                               \
-      GET_DATA(token_prob_unzipped, PROB_T),                                   \
-      XScale_unzipped.data<float>(),                                           \
-      global_expertwise_block_cumsum.data<int>(),                              \
+      GET_PTR_DATA(X_unzipped, TOKEN_T),                                       \
+      GET_PTR_DATA(zipped_expertwise_rowmap, INT_T),                           \
+      GET_PTR_DATA(token_prob_unzipped, PROB_T),                               \
+      XScale_unzipped->data<float>(),                                          \
+      global_expertwise_block_cumsum->data<int>(),                             \
       total_zipped_tokens_num,                                                 \
       token_length,                                                            \
       scale_length,                                                            \
@@ -318,20 +314,21 @@ void FusedMoePermuteKernel(const Context &dev_ctx,
   // ------------ 前缀和辅助数组相关逻辑，“推”式block通信 -------------------
   const int cumsum_blocknum =
       (rows + CUMSUM_BLOCK_SIZE - 1) / CUMSUM_BLOCK_SIZE;
-  DenseTensor global_expertwise_block_cumsum = phi::Full<int, Context>(dev_ctx,
-                                                                        phi::IntArray({cumsum_blocknum + 1, num_experts}),
-                                                                        CUMSUM_INVALID_TAG);
+  DenseTensor global_expertwise_block_cumsum =
+      phi::Full<int, Context>(dev_ctx,
+                              phi::IntArray({cumsum_blocknum + 1, num_experts}),
+                              CUMSUM_INVALID_TAG);
   dispatch_tokens_unzip_stable<T, Context>(dev_ctx,
                                            X,
                                            expert_routemap_topk,
                                            expert_prob_topk,
                                            XScale,
                                            expert_offset,
-                                           *X_unzipped,
-                                           *zipped_expertwise_rowmap,
-                                           *token_prob_unzipped,
-                                           *XScale_unzipped,
-                                           global_expertwise_block_cumsum,
+                                           X_unzipped,
+                                           zipped_expertwise_rowmap,
+                                           token_prob_unzipped,
+                                           XScale_unzipped,
+                                           &global_expertwise_block_cumsum,
                                            rows,
                                            cols,
                                            topk_calculated,

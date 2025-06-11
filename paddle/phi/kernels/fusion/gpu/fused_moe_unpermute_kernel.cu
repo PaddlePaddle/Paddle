@@ -151,14 +151,14 @@ __global__ void tokens_zip_kernel(
   }
 }
 
-template<typename T, typename Context>
-void dispatch_tokens_zip(const Context& dev_ctx,
+template <typename T, typename Context>
+void dispatch_tokens_zip(const Context &dev_ctx,
                          const DenseTensor &unzipped_tokens,
                          const DenseTensor &zipped_expertwise_rowmap,
                          const DenseTensor &expert_routemap_topk,
                          const DenseTensor &unzipped_token_probs,
-                         DenseTensor &zipped_tokens,
-                         DenseTensor &zipped_probs_topk,
+                         DenseTensor *zipped_tokens,
+                         DenseTensor *zipped_probs_topk,
                          const int total_zipped_tokens_num,
                          const int num_experts,
                          const int token_length,
@@ -170,15 +170,15 @@ void dispatch_tokens_zip(const Context& dev_ctx,
 
   // Map data types to C++ types
   if (unzipped_tokens.dtype() == paddle::DataType::BFLOAT16) {
-    if (zipped_probs_topk.dtype() == paddle::DataType::FLOAT32) {
-      if(MP==true){
+    if (unzipped_token_probs.dtype() == paddle::DataType::FLOAT32) {
+      if (MP == true) {
         tokens_zip_kernel<true><<<grid, block, 0, dev_ctx.stream()>>>(
             unzipped_tokens.data<phi::bfloat16>(),
             zipped_expertwise_rowmap.data<int>(),
             expert_routemap_topk.data<int>(),
             unzipped_token_probs.data<float>(),
-            zipped_tokens.data<phi::bfloat16>(),
-            zipped_probs_topk.data<float>(),
+            zipped_tokens->data<phi::bfloat16>(),
+            zipped_probs_topk->data<float>(),
             total_zipped_tokens_num,
             token_length,
             num_experts,
@@ -189,8 +189,8 @@ void dispatch_tokens_zip(const Context& dev_ctx,
             zipped_expertwise_rowmap.data<int>(),
             expert_routemap_topk.data<int>(),
             unzipped_token_probs.data<float>(),
-            zipped_tokens.data<phi::bfloat16>(),
-            zipped_probs_topk.data<float>(),
+            zipped_tokens->data<phi::bfloat16>(),
+            zipped_probs_topk->data<float>(),
             total_zipped_tokens_num,
             token_length,
             num_experts,
@@ -202,16 +202,16 @@ void dispatch_tokens_zip(const Context& dev_ctx,
 
 template <typename T, typename Context>
 void FusedMoeUnpermuteKernel(const Context &dev_ctx,
-                const DenseTensor &unzipped_tokens,
-                const DenseTensor &zipped_expertwise_rowmap,
-                const DenseTensor &expert_routemap_topk,
-                const DenseTensor &unzipped_token_probs,
-                const int total_zipped_tokens_num,
-                const int num_experts,
-                const bool MP,
-                DenseTensor *zipped_tokens,
-                DenseTensor *zipped_probs_topk) {
-  const int rows = unzipped_tokens.dims()[0]; 
+                             const DenseTensor &unzipped_tokens,
+                             const DenseTensor &zipped_expertwise_rowmap,
+                             const DenseTensor &expert_routemap_topk,
+                             const DenseTensor &unzipped_token_probs,
+                             const int total_zipped_tokens_num,
+                             const int num_experts,
+                             const bool MP,
+                             DenseTensor *zipped_tokens,
+                             DenseTensor *zipped_probs_topk) {
+  const int rows = unzipped_tokens.dims()[0];
   const int cols = unzipped_tokens.dims()[1];
   const int topk = expert_routemap_topk.dims()[1];
   // -----------------------------------------
@@ -235,19 +235,19 @@ void FusedMoeUnpermuteKernel(const Context &dev_ctx,
   }
 
   dispatch_tokens_zip<T, Context>(dev_ctx,
-                      unzipped_tokens,
-                      zipped_expertwise_rowmap,
-                      expert_routemap_topk,
-                      unzipped_token_probs,
-                      *zipped_tokens,
-                      *zipped_probs_topk,
-                      total_zipped_tokens_num,
-                      num_experts,
-                      cols,
-                      topk,
-                      MP);
+                                  unzipped_tokens,
+                                  zipped_expertwise_rowmap,
+                                  expert_routemap_topk,
+                                  unzipped_token_probs,
+                                  zipped_tokens,
+                                  zipped_probs_topk,
+                                  total_zipped_tokens_num,
+                                  num_experts,
+                                  cols,
+                                  topk,
+                                  MP);
 }
-}
+}  // namespace fusion
 }  // namespace phi
 
 PD_REGISTER_KERNEL(fused_moe_unpermute,
