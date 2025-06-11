@@ -785,4 +785,9 @@ PD_REGISTER_SPMD_RULE(
     put_along_axis,
     PD_INFER_SPMD(phi::distributed::PutAlongAxisInferSpmd),
     PD_INFER_SPMD(phi::distributed::PutAlongAxisGradInferSpmd));
+
+// index_put
+PD_REGISTER_SPMD_RULE(index_put,
+                      PD_INFER_SPMD(phi::distributed::IndexPutInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::IndexPutInferSpmdReverse));
 }  // namespace phi::distributed
