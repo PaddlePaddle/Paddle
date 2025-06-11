@@ -1,0 +1,83 @@
+# Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+from paddle import _C_ops
+from paddle.base.framework import in_dynamic_or_pir_mode
+from paddle.base.layer_helper import LayerHelper
+
+if TYPE_CHECKING:
+    from paddle import Tensor
+
+
+def fused_moe_unpermute(
+    unzipped_tokens: Tensor,
+    zipped_expertwise_rowmap: Tensor,
+    expert_routemap_topk: Tensor,
+    unzipped_token_probs: Tensor,
+    total_zipped_tokens: int,
+    num_experts: int,
+    MP: bool = True,
+    name: str | None = None,
+):
+    # 为了突出重点，省略部分代码
+    # 动静统一分支，直接调用算子对应的 Python C 函数
+    if in_dynamic_or_pir_mode():
+        zipped_tokens, zipped_probs_topk = _C_ops.fused_moe_unpermute(
+            unzipped_tokens,
+            zipped_expertwise_rowmap,
+            expert_routemap_topk,
+            unzipped_token_probs,
+            total_zipped_tokens,
+            num_experts,
+            MP,
+        )
+        return (zipped_tokens, zipped_probs_topk)
+    # 老静态图分支
+    ## 输入参数检查
+    # __check_input
+
+    ## 构造输出，添加 op，返回输出
+    helper = LayerHelper('fused_moe_unpermute', **locals())
+    zipped_tokens = helper.create_variable_for_type_inference(
+        dtype=unzipped_tokens.dtype
+    )
+    zipped_probs_topk = helper.create_variable_for_type_inference(
+        dtype=unzipped_token_probs.dtype
+    )
+
+    inputs = {
+        'unzipped_tokens': unzipped_tokens,
+        'zipped_expertwise_rowmap': zipped_expertwise_rowmap,
+        'expert_routemap_topk': expert_routemap_topk,
+        'unzipped_token_probs': unzipped_token_probs,
+    }
+    outputs = {
+        'zipped_tokens': zipped_tokens,
+        'zipped_probs_topk': zipped_probs_topk,
+    }
+    attrs = {
+        'total_zipped_tokens': total_zipped_tokens,
+        'num_experts': num_experts,
+    }
+    helper.append_op(
+        type='fused_moe_unpermute',
+        inputs=inputs,
+        attrs=attrs,
+        outputs=outputs,
+    )
+    return (zipped_tokens, zipped_probs_topk)
