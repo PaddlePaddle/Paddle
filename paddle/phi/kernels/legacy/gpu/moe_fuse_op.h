@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #pragma once
-#ifdef PADDLE_WITH_CUDA
 #include <thrust/adjacent_difference.h>  // 包含常用的 thrust 算法
 #include <thrust/device_vector.h>
 #include <thrust/host_vector.h>
@@ -24,7 +23,7 @@
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
-#include "paddle/phi/kernels/moe_kernel_impl.h"
+#include "paddle/phi/kernels/legacy/gpu/moe_kernel_impl.h"
 
 namespace phi {
 
@@ -816,4 +815,3 @@ void copy_unpermuted_to_permuted_kernelLauncher(
   }
 }
 }  // namespace phi
-#endif

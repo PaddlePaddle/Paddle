@@ -34,6 +34,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/gpudnn/conv_miopen_helper.h"
 #else
 #include "paddle/phi/backends/gpu/cuda/cudnn_helper.h"
+#include "paddle/phi/backends/gpu/cuda/cudnn_workspace_helper.h"
 #include "paddle/phi/kernels/gpudnn/conv_cudnn_v7.h"
 #endif
 
@@ -201,6 +202,9 @@ void ConvTransposeGradRawGPUDNNKernel(const Context& dev_ctx,
   SearchResult<miopenConvFwdAlgorithm_t> fwd_result;
   SearchResult<miopenConvBwdWeightsAlgorithm_t> filter_result;
 #else
+  CUDNN_ENFORCE_TENSOR_SIZE_SUPPORTED(transformed_dout);
+  CUDNN_ENFORCE_TENSOR_SIZE_SUPPORTED(filter);
+  CUDNN_ENFORCE_TENSOR_SIZE_SUPPORTED(x_transpose);
   SearchResult<cudnnConvolutionFwdAlgo_t> fwd_result;
   SearchResult<cudnnConvolutionBwdFilterAlgo_t> filter_result;
 #endif

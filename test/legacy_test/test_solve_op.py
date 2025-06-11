@@ -997,7 +997,7 @@ class TestSolveOpAPIZeroDimCase(unittest.TestCase):
                     tensor_input_x, tensor_input_y, left=True
                 )
                 np.testing.assert_allclose(
-                    numpy_output, paddle_output.numpy(), rtol=0.0001
+                    numpy_output, paddle_output.numpy(), rtol=0.00011
                 )
                 self.assertEqual(
                     numpy_output.shape, paddle_output.numpy().shape

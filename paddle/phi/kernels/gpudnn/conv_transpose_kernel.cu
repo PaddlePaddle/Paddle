@@ -32,6 +32,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/gpudnn/conv_miopen_helper.h"
 #else
 #include "paddle/phi/backends/gpu/cuda/cudnn_helper.h"
+#include "paddle/phi/backends/gpu/cuda/cudnn_workspace_helper.h"
 #include "paddle/phi/kernels/gpudnn/conv_cudnn_v7.h"
 #endif
 
@@ -228,6 +229,9 @@ void ConvTransposeRawGPUDNNKernel(const Context& dev_ctx,
   bwd_result.algo =
       search::Find<T>(args, false, deterministic, workspace_size, dev_ctx);
 #else
+  CUDNN_ENFORCE_TENSOR_SIZE_SUPPORTED(transformed_x);
+  CUDNN_ENFORCE_TENSOR_SIZE_SUPPORTED(filter);
+  CUDNN_ENFORCE_TENSOR_SIZE_SUPPORTED(transformed_out);
   SearchResult<cudnnConvolutionBwdDataAlgo_t> bwd_result;
   using search = SearchAlgorithm<ConvKind::kBackwardData>;
   bwd_result = search::Find<T>(dev_ctx, args, false, deterministic, false);

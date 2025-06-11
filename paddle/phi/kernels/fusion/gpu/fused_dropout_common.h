@@ -52,7 +52,7 @@ namespace fusion {
  * 2D grids: gridDim.y = rows
  */
 inline phi::backends::gpu::GpuLaunchConfig Get1DBlocksAnd2DGrids(
-    const phi::GPUContext &ctx,
+    const phi::GPUContext &dev_ctx,
     const uint32_t rows,
     const uint32_t cols,
     const int vec_size) {
@@ -67,7 +67,7 @@ inline phi::backends::gpu::GpuLaunchConfig Get1DBlocksAnd2DGrids(
   int threads = std::max(static_cast<uint32_t>(32),
                          std::min(tmp_cols,
                                   static_cast<uint32_t>(std::min(
-                                      ctx.GetMaxThreadsPerBlock(), 512))));
+                                      dev_ctx.GetMaxThreadsPerBlock(), 512))));
   const auto blocks_x =
       std::max(static_cast<uint32_t>(1), (tmp_cols + threads - 1) / threads);
   int blocks_y = std::max(static_cast<uint32_t>(1), rows);
@@ -123,9 +123,9 @@ __forceinline__ __device__ void RandVec<8>(GPURAND(StatePhilox4_32_10_t) *
 }
 
 template <typename T>
-inline void SetZero(const phi::GPUContext &ctx, T *ptr, const size_t size) {
+inline void SetZero(const phi::GPUContext &dev_ctx, T *ptr, const size_t size) {
   PADDLE_ENFORCE_GPU_SUCCESS(
-      GPU(MemsetAsync)(ptr, 0, size * sizeof(T), ctx.stream()));
+      GPU(MemsetAsync)(ptr, 0, size * sizeof(T), dev_ctx.stream()));
 }
 
 /**

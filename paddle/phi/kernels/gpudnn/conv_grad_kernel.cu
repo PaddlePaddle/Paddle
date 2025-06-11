@@ -641,6 +641,9 @@ void ConvCudnnGradKernel(const Context& dev_ctx,
                  ? phi::backends::gpu::DataLayout::kNDHWC
                  : phi::backends::gpu::DataLayout::kNCDHW;
   }
+  CUDNN_ENFORCE_TENSOR_SIZE_SUPPORTED(transformed_input);
+  CUDNN_ENFORCE_TENSOR_SIZE_SUPPORTED(transformed_filter_channel);
+  CUDNN_ENFORCE_TENSOR_SIZE_SUPPORTED(transformed_output_grad_channel);
 
 #ifdef PADDLE_WITH_CUDNN_FRONTEND
   if (dynload::IsCudnnFrontendEnabled() && (groups == 1))

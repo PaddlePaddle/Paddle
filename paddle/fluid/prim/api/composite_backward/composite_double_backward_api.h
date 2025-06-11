@@ -157,6 +157,29 @@ void pow_double_grad(const Tensor& x,
 }
 
 template <typename T>
+void masked_fill_double_grad(const Tensor& mask,
+                             const paddle::optional<Tensor>& grad_x_grad,
+                             const paddle::optional<Tensor>& grad_value_grad,
+                             Tensor* grad_out_grad) {
+  if (grad_out_grad) {
+    Tensor grad_out_grad_tmp;
+    if (grad_x_grad && grad_value_grad) {
+      grad_out_grad_tmp =
+          masked_fill<T>(grad_x_grad.get(), mask, grad_value_grad.get());
+    } else if (grad_x_grad) {
+      grad_out_grad_tmp = masked_fill<T>(
+          grad_x_grad.get(),
+          mask,
+          full<T>({}, 0, grad_x_grad.get().dtype(), grad_x_grad.get().place()));
+    } else if (grad_value_grad) {
+      PADDLE_THROW(common::errors::InvalidArgument(
+          "grad_x_grad can not be null in 'masked_fill_double_grad'"));
+    }
+    set_output<T>(grad_out_grad_tmp, grad_out_grad);
+  }
+}
+
+template <typename T>
 void maximum_double_grad(const Tensor& x,
                          const Tensor& y,
                          const paddle::optional<Tensor>& grad_x_grad,
