@@ -258,12 +258,19 @@ def monkey_patch_tensor():
                         self.value().process_mesh,
                         self.value().placements,
                     )
-                if isinstance(value, paddle.Tensor):
+                if (
+                    isinstance(value, paddle.Tensor)
+                    and value.is_contiguous()
+                    and self.value().is_contiguous()
+                ):
                     self.value().set_tensor(value)
                 else:
                     self.value().get_tensor().set(value.get_tensor())
                 return
-            if isinstance(value, paddle.Tensor):
+            if isinstance(value, paddle.Tensor) and (
+                value.dtype == paddle.float8_e4m3fn
+                or value.dtype == paddle.float8_e5m2
+            ):
                 self.value().set_tensor(value)
             else:
                 self.value().get_tensor().set(
