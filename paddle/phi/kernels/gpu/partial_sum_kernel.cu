@@ -75,7 +75,6 @@ void PartialSumOpCUDAKernel(const Context &dev_ctx,
                             int start_index,
                             int length,
                             DenseTensor *out) {
-  auto ctx = dev_ctx;
   auto in_vars = x;
 
   PADDLE_ENFORCE_EQ(

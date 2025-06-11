@@ -21,7 +21,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void IndexSelectGradKernel(const Context& ctx,
+void IndexSelectGradKernel(const Context& dev_ctx,
                            const DenseTensor& x UNUSED,
                            const DenseTensor& index,
                            const DenseTensor& out_grad,
@@ -44,10 +44,11 @@ void IndexSelectGradKernel(const Context& ctx,
                         phi::DataType::INT64));
 
   if (index_type == phi::DataType::INT32) {
-    IndexSelectGradInner<Context, T, int>(ctx, out_grad, index, x_grad, dim);
+    IndexSelectGradInner<Context, T, int>(
+        dev_ctx, out_grad, index, x_grad, dim);
   } else if (index_type == phi::DataType::INT64) {
     IndexSelectGradInner<Context, T, int64_t>(
-        ctx, out_grad, index, x_grad, dim);
+        dev_ctx, out_grad, index, x_grad, dim);
   }
 }
 

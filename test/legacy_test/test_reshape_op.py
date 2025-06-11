@@ -92,6 +92,35 @@ class TestReshapeOp_ZeroDim3(OpTest):
         self.inferred_shape = ()
 
 
+class TestReshapeOp_ZeroSize(OpTest):
+    def init_data(self):
+        self.ori_shape = (0, 2)
+        self.new_shape = (2, 0)
+        self.inferred_shape = (2, 0)
+
+    def setUp(self):
+        self.init_data()
+        self.op_type = "reshape2"
+        self.python_api = paddle.tensor.reshape
+        self.public_python_api = paddle.tensor.reshape
+        self.python_out_sig = ['Out']
+        self.inputs = {"X": np.random.random(self.ori_shape).astype("float32")}
+        self.attrs = {"shape": self.new_shape}
+        self.outputs = {
+            "Out": self.inputs["X"].reshape(self.inferred_shape),
+            'XShape': np.random.random(self.ori_shape).astype("float32"),
+        }
+
+    def test_check_output(self):
+        self.check_output(no_check_set=['XShape'])
+
+    def test_check_grad(self):
+        self.check_grad(
+            ["X"],
+            "Out",
+        )
+
+
 @unittest.skipIf(
     not paddle.is_compiled_with_cuda() or paddle.is_compiled_with_rocm(),
     "BFP16 test runs only on CUDA",

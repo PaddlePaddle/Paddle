@@ -20,7 +20,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void ScatterGradKernel(const Context &ctx,
+void ScatterGradKernel(const Context &dev_ctx,
                        const DenseTensor &index,
                        const DenseTensor &updates,
                        const DenseTensor &out_grad,
@@ -44,11 +44,11 @@ void ScatterGradKernel(const Context &ctx,
   T *x_grad_data = nullptr;
   T *updates_grad_data = nullptr;
   if (x_grad != nullptr) {
-    ctx.template Alloc<T>(x_grad);
+    dev_ctx.template Alloc<T>(x_grad);
     x_grad_data = x_grad->data<T>();
   }
   if (updates_grad != nullptr) {
-    ctx.template Alloc<T>(updates_grad);
+    dev_ctx.template Alloc<T>(updates_grad);
     updates_grad_data = updates_grad->data<T>();
   }
 
@@ -65,7 +65,7 @@ void ScatterGradKernel(const Context &ctx,
     auto index_data = const_cast<int *>(index.data<int>());
     xpu::VectorParam<int> indices{nullptr, index_size, index_data};
     r = xpu::scatter_grad<XPUType, int>(
-        ctx.x_context(),
+        dev_ctx.x_context(),
         reinterpret_cast<const XPUType *>(out_grad.data<T>()),
         indices,
         reinterpret_cast<XPUType *>(x_grad_data),
@@ -76,7 +76,7 @@ void ScatterGradKernel(const Context &ctx,
     auto index_data = const_cast<int64_t *>(index.data<int64_t>());
     xpu::VectorParam<int64_t> indices{nullptr, index_size, index_data};
     r = xpu::scatter_grad<XPUType, int64_t>(
-        ctx.x_context(),
+        dev_ctx.x_context(),
         reinterpret_cast<const XPUType *>(out_grad.data<T>()),
         indices,
         reinterpret_cast<XPUType *>(x_grad_data),
