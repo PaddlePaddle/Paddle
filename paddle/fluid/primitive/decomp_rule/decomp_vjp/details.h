@@ -1101,7 +1101,7 @@ void masked_fill_grad(const Tensor& x,
     if (value_grad) {
       Tensor value_grad_expand = where<T>(mask_expand, out_grad, zeros_expand);
       Tensor value_grad_tmp =
-          sum<T>(value_grad_expand, {}, value_grad->dtype(), false);
+          sum<T>(value_grad_expand, {}, value.dtype(), false);
       set_output<T>(value_grad_tmp, value_grad);
     }
 
@@ -1120,28 +1120,28 @@ void masked_fill_grad(const Tensor& x,
 
     if (x_grad) {
       Tensor x_grad_expand = where<T>(mask_expand, zeros_expand, out_grad);
-      auto reduce_dim =
-          get_reduce_dims_from_out(x_grad_expand.dims(), x.dims());
-      Tensor x_grad_tmp;
-      if (x.dims().size() == x_grad_expand.dims().size()) {
-        x_grad_tmp = sum<T>(x_grad_expand,
-                            common::vectorize(reduce_dim),
-                            x_grad->dtype(),
-                            true);
+      if (x.dims() != x_grad_expand.dims()) {
+        auto reduce_dim =
+            get_reduce_dims_from_out(x_grad_expand.dims(), x.dims());
+        if (!reduce_dim.size()) {
+          set_output<T>(x_grad_expand, x_grad);
+        } else {
+          Tensor x_grad_tmp = sum<T>(
+              x_grad_expand, common::vectorize(reduce_dim), x.dtype(), false);
+          if (x_grad_tmp.dims() != x.dims()) {
+            x_grad_tmp = reshape<T>(x_grad_tmp, x.shape());
+          }
+          set_output<T>(x_grad_tmp, x_grad);
+        }
       } else {
-        x_grad_tmp = sum<T>(x_grad_expand,
-                            common::vectorize(reduce_dim),
-                            x_grad->dtype(),
-                            false);
-        x_grad_tmp = reshape<T>(x_grad_tmp, common::vectorize(x.dims()));
+        set_output<T>(x_grad_expand, x_grad);
       }
-      set_output<T>(x_grad_tmp, x_grad);
     }
 
     if (value_grad) {
       Tensor value_grad_expand = where<T>(mask_expand, out_grad, zeros_expand);
       Tensor value_grad_tmp =
-          sum<T>(value_grad_expand, {}, value_grad->dtype(), false);
+          sum<T>(value_grad_expand, {}, value.dtype(), false);
       set_output<T>(value_grad_tmp, value_grad);
     }
   }
