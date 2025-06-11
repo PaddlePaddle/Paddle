@@ -195,22 +195,16 @@ SpmdInfo ReshapeInferSpmd(const DistMetaTensor& x,
 
   std::vector<std::shared_ptr<DimTrans>> trans =
       MakeReshapeDimTrans(x_shape, tgt_shape);
-  VLOG(4) << "Finish Make Reshape DimTrans";
   // Step2: Infer the dims mapping of input (if reshard is
   // needed) and output from the dimension transformation.
   const auto& dims_mapping_vec = InferFromDimTrans(x, trans);
-  VLOG(4) << "Finish Infer from DimTrans";
   const auto& input_dims_mapping = std::get<0>(dims_mapping_vec);
   const auto& output_dims_mapping = std::get<1>(dims_mapping_vec);
 
   // Step3: Update the dist attributes of input
   // and output with the inferred dims mapping.
-  VLOG(4) << "input dims mapping = " << str_join(input_dims_mapping);
   TensorDistAttr x_dist_attr_dst(x_dist_attr_src);
-  VLOG(4) << "x dist attr = " << x_dist_attr_dst;
   x_dist_attr_dst.set_dims_mapping(input_dims_mapping);
-  VLOG(4) << "x dist attr = " << x_dist_attr_dst;
-  VLOG(4) << "Set Input Dims Mapping";
 
   size_t input_dims_mappings_size =
       x_dist_attr_dst.is_co_shard() ? x_dist_attr_dst.dims_mapping_2d().size()
@@ -222,7 +216,6 @@ SpmdInfo ReshapeInferSpmd(const DistMetaTensor& x,
   }
   TensorDistAttr out_dist_attr(x_dist_attr_src);
   out_dist_attr.set_dims_mapping(output_dims_mapping);
-  VLOG(4) << "Set Output Dims Mapping";
 
   size_t output_dims_mappings_size =
       out_dist_attr.is_co_shard() ? out_dist_attr.dims_mapping_2d().size()
@@ -242,7 +235,6 @@ SpmdInfo ReshapeInferSpmd(const DistMetaTensor& x,
           << "] dims_mapping_dst: [" << str_join(input_dims_mapping) << "]";
   VLOG(4) << "Out dims_mapping: [" << str_join(output_dims_mapping) << "]\n\n";
 
-  VLOG(4) << "x dst attr " << x_dist_attr_dst;
   return {{x_dist_attr_dst}, {out_dist_attr}};
 }
 

@@ -17,6 +17,7 @@ import copy
 import logging
 import os
 import warnings
+from collections import OrderedDict
 from types import MethodType
 from typing import TYPE_CHECKING, Any, Literal, TypedDict
 
@@ -58,6 +59,11 @@ from paddle.distributed.auto_parallel.static.utils import (
     split_param_func,
     to_list,
 )
+from paddle.distributed.fleet.utils.tensor_fusion_helper import (
+    align,
+    alignment,
+    get_current_device_type,
+)
 from paddle.framework import core
 from paddle.io.dataloader.batch_sampler import (
     DistributedBatchSampler,
@@ -85,7 +91,11 @@ from .placement_type import (
     to_placements,
 )
 from .random import determinate_rng, rng_state
-from .sharding import ShardingOptimizerStage1, get_placement_with_sharding
+from .sharding import (
+    ShardingOptimizerStage1,
+    get_mesh_comm_list,
+    get_placement_with_sharding,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
@@ -849,7 +859,6 @@ def reshard(
         # when reshard has been changed align dygraph logic, delete it.
         sharding_specs = get_shard_spec(mesh, placements, dist_tensor.ndim)
         dist_attr = DistAttr(mesh, sharding_specs)
-        print("dist attr = ", dist_attr)
         partial_dims = []
         for i, p in enumerate(placements):
             if isinstance(p, dist.Partial):
@@ -1074,6 +1083,27 @@ def shard_layer(
         )
 
 
+def is_dist_tensor(tensor) -> bool:
+    """
+    Check if an input is a dist_tensor in both dynamic and static modes.
+    Args:
+        tensor: The input to check
+    Returns:
+        bool: True if the input is a dist_tensor, False otherwise
+    """
+    if paddle.in_dynamic_mode():
+        return (
+            isinstance(tensor, paddle.Tensor)
+            and hasattr(tensor, 'is_dist')
+            and tensor.is_dist()
+        )
+    else:
+        return (
+            isinstance(tensor, paddle.base.libpaddle.pir.Value)
+            and tensor.dist_attr() is not None
+        )
+
+
 class _ShardOptimizer(Optimizer):
     def __init__(self, optimizer, shard_fn=None, gradient_accumulation_steps=1):
         assert (
@@ -1121,6 +1151,22 @@ class _ShardOptimizer(Optimizer):
         if isinstance(self._shard_fn, ShardingStage3):
             for param in self._inner_opt._parameter_list:
                 self._shard_fn._shard_parameter(param)
+
+        self.fuse_param_view = []
+        self.param_storage = []
+        self.grad_storage = []
+        self._sharding_group = None
+        self._mp_group = None
+        self.do_tensor_fusion_once = True
+        self._strategy = Strategy()
+        self.enable_tensor_fusion = os.getenv("FLAGS_enable_tensor_fusion") in [
+            "True",
+            "true",
+            "1",
+        ]
+        self.enable_sharding_overlap = os.getenv(
+            "FLAGS_enable_sharding_overlap"
+        ) in ["True", "true", "1"]
 
     def _set_and_check_sharding_prop_from_param(self):
         global_mesh = fleet.auto.get_mesh()
@@ -1256,13 +1302,33 @@ class _ShardOptimizer(Optimizer):
 
     def _finish_update(self, block, parameters_and_grads):
         self._inner_opt._finish_update(block, parameters_and_grads)
-        if isinstance(parameters_and_grads, list):
-            for p, _ in parameters_and_grads:
-                self._reset_placements(p)
+        if self.enable_tensor_fusion:
+            # zero the grad storage for add_ op in inplace_master_grad
+            for grad_storage in self.grad_storage:
+                grad_storage.zero_()
+                grad_storage.check_in = 0
+            if not self.enable_sharding_overlap:
+                for i in range(len(self.fuse_param_view)):
+                    shard_size = (
+                        self.param_storage[i]._numel()
+                        // self._sharding_group.nranks
+                    )
+                    begin = shard_size * max(self._sharding_group.rank, 0)
+                    end = begin + shard_size
+                    slice_buffer = paddle._C_ops.view_slice(
+                        self.param_storage[i], begin, end
+                    )
+                    self._sharding_group.process_group.all_gather(
+                        slice_buffer, self.param_storage[i]
+                    ).wait()
         else:
-            # reset the parameter and grad to right placements
-            for p, _ in parameters_and_grads['params']:
-                self._reset_placements(p)
+            if isinstance(parameters_and_grads, list):
+                for p, _ in parameters_and_grads:
+                    self._reset_placements(p)
+            else:
+                # reset the parameter and grad to right placements
+                for p, _ in parameters_and_grads['params']:
+                    self._reset_placements(p)
 
     def apply_gradients(self, params_grads):
         new_params_grads = []
@@ -1783,31 +1849,36 @@ class _ShardOptimizer(Optimizer):
     def _apply_optimize(
         self, loss, startup_program, params_grads, param_group_idx=0
     ):
-        # Fuse the communication of gradients prior to the optimization operation in the dynamic mode.
-        if paddle.in_dynamic_mode():
-            # Get fuse optimization flag.
-            def get_env(flag_name):
-                if os.getenv(flag_name) in ['True', 'true', '1']:
-                    return True
-                return False
+        if self.enable_tensor_fusion:
+            params_grads = self._tensor_fusion(params_grads)
+        else:
+            # Fuse the communication of gradients prior to the optimization operation in the dynamic mode.
+            if paddle.in_dynamic_mode() and isinstance(
+                self._shard_fn, ShardingStage1
+            ):
+                # Get fuse optimization flag.
+                def get_env(flag_name):
+                    if os.getenv(flag_name) in ['True', 'true', '1']:
+                        return True
+                    return False
 
-            # TODO: This optimization hasn't been verified on a wide range of models. Currently,
-            # it's controlled by a flag switch and will be removed later.
-            fuse_allreduce_in_opt = get_env("FLAGS_fuse_allreduce_in_opt")
-            fuse_reducescatter_in_opt = get_env(
-                "FLAGS_fuse_reducescatter_in_opt"
-            )
-            assert not (
-                fuse_allreduce_in_opt and fuse_reducescatter_in_opt
-            ), "The `FLAGS_fuse_allreduce_in_opt` switch and the `FLAGS_fuse_reducescatter_in_opt` switch cannot be turned on simultaneously."
-
-            if fuse_allreduce_in_opt or fuse_reducescatter_in_opt:
-                flags = {}
-                flags["fuse_allreduce"] = fuse_allreduce_in_opt
-                flags["fuse_reducescatter"] = fuse_reducescatter_in_opt
-                params_grads = self._fused_comm_before_apply_optimize(
-                    flags, params_grads
+                # TODO: This optimization hasn't been verified on a wide range of models. Currently,
+                # it's controlled by a flag switch and will be removed later.
+                fuse_allreduce_in_opt = get_env("FLAGS_fuse_allreduce_in_opt")
+                fuse_reducescatter_in_opt = get_env(
+                    "FLAGS_fuse_reducescatter_in_opt"
                 )
+                assert not (
+                    fuse_allreduce_in_opt and fuse_reducescatter_in_opt
+                ), "The `FLAGS_fuse_allreduce_in_opt` switch and the `FLAGS_fuse_reducescatter_in_opt` switch cannot be turned on simultaneously."
+
+                if fuse_allreduce_in_opt or fuse_reducescatter_in_opt:
+                    flags = {}
+                    flags["fuse_allreduce"] = fuse_allreduce_in_opt
+                    flags["fuse_reducescatter"] = fuse_reducescatter_in_opt
+                    params_grads = self._fused_comm_before_apply_optimize(
+                        flags, params_grads
+                    )
 
         return super()._apply_optimize(
             loss, startup_program, params_grads, param_group_idx
@@ -1841,7 +1912,12 @@ class _ShardingStageBase:
         self, param: Tensor, master_weight: Tensor
     ) -> Tensor:
         if param.is_dist():
-            placements = get_placement_with_sharding(param, self._sharding_axis)
+            if os.getenv("FLAGS_enable_tensor_fusion") in ["True", "true", "1"]:
+                placements = param.placements
+            else:
+                placements = get_placement_with_sharding(
+                    param, self._sharding_axis
+                )
             if isinstance(master_weight, pir.Value):
                 data_op = master_weight.get_defining_op()
                 assert (

@@ -35,7 +35,6 @@ namespace phi::distributed {
 ReshardFunction* ChooseProperReshardFunction(
     const DistTensor& in, const TensorDistAttr& out_dist_attr) {
   for (const auto& func : GetReshardFunctionList()) {
-    VLOG(4) << "cur func is " << func->Name();
     if (func->IsSuitable(in, out_dist_attr)) {
       VLOG(4) << "Choose ReshardFunction: " << func->Name();
       return func.get();
