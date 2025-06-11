@@ -44,6 +44,7 @@ SpmdInfo InstanceNormInferSpmd(const DistMetaTensor& x,
   std::vector<int64_t> x_dims_mapping = x_dist_attr_src.dims_mapping();
   std::vector<int64_t> scale_dims_mapping = scale.dist_attr().dims_mapping();
   std::vector<int64_t> bias_dims_mapping = bias.dist_attr().dims_mapping();
+
   PADDLE_ENFORCE_GE(
       x_ndim,
       2,
