@@ -5277,8 +5277,8 @@ def atleast_1d(*inputs, name=None):
             [123]), Tensor(shape=[1, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[1.23000002]])]
     """
-    if len(inputs) == 1 and isinstance(inputs[0], list):
-        if all(
+    if len(inputs) == 1 and isinstance(inputs[0], (list, tuple)):
+        if any(
             isinstance(
                 item,
                 (
@@ -5380,8 +5380,8 @@ def atleast_2d(*inputs, name=None):
             [[123]]), Tensor(shape=[1, 1, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[[1.23000002]]])]
     """
-    if len(inputs) == 1 and isinstance(inputs[0], list):
-        if all(
+    if len(inputs) == 1 and isinstance(inputs[0], (list, tuple)):
+        if any(
             isinstance(
                 item,
                 (
@@ -5472,8 +5472,8 @@ def atleast_3d(*inputs, name=None):
             [[[123]]]), Tensor(shape=[1, 1, 1, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[[[1.23000002]]]])]
     """
-    if len(inputs) == 1 and isinstance(inputs[0], list):
-        if all(
+    if len(inputs) == 1 and isinstance(inputs[0], (list, tuple)):
+        if any(
             isinstance(
                 item,
                 (
