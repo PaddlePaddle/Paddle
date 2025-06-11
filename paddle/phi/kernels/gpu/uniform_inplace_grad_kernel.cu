@@ -21,7 +21,7 @@ limitations under the License. */
 namespace phi {
 
 template <typename T, typename Context>
-void UniformInplaceGradKernel(const Context& ctx,
+void UniformInplaceGradKernel(const Context& dev_ctx,
                               const DenseTensor& out_grad,
                               float min,
                               float max,
@@ -32,7 +32,7 @@ void UniformInplaceGradKernel(const Context& ctx,
                               DenseTensor* x_grad) {
   auto dims = common::vectorize(x_grad->dims());
   float value = static_cast<float>(0.0f);
-  phi::FullKernel<T>(ctx, dims, value, phi::DataType::UNDEFINED, x_grad);
+  phi::FullKernel<T>(dev_ctx, dims, value, phi::DataType::UNDEFINED, x_grad);
 }
 
 }  // namespace phi

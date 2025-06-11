@@ -20,7 +20,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void SwiGLUGradKernelImpl(const Context &ctx,
+void SwiGLUGradKernelImpl(const Context &dev_ctx,
                           const T *x,
                           const T *y,
                           const T *dz,
@@ -30,7 +30,7 @@ void SwiGLUGradKernelImpl(const Context &ctx,
                           int64_t n);
 
 template <typename T, typename Context>
-void SwiGLUGradKernel(const Context &ctx,
+void SwiGLUGradKernel(const Context &dev_ctx,
                       const DenseTensor &x,
                       const paddle::optional<DenseTensor> &y,
                       const DenseTensor &dz,
@@ -38,17 +38,17 @@ void SwiGLUGradKernel(const Context &ctx,
                       DenseTensor *dy) {
   if (x.numel() == 0) {
     if (dx) {
-      ctx.template Alloc<T>(dx);
+      dev_ctx.template Alloc<T>(dx);
     }
     if (dy) {
-      ctx.template Alloc<T>(dy);
+      dev_ctx.template Alloc<T>(dy);
     }
     return;
   }
   const auto *x_ptr = x.data<T>();
   const auto *dz_ptr = dz.data<T>();
-  auto *dx_ptr = dx ? ctx.template Alloc<T>(dx) : nullptr;
-  auto *dy_ptr = y && dy ? ctx.template Alloc<T>(dy) : nullptr;
+  auto *dx_ptr = dx ? dev_ctx.template Alloc<T>(dx) : nullptr;
+  auto *dy_ptr = y && dy ? dev_ctx.template Alloc<T>(dy) : nullptr;
   const auto &dims = x.dims();
 
   if (y) {
@@ -61,8 +61,14 @@ void SwiGLUGradKernel(const Context &ctx,
                           "to the shape of Input(X):[%s].",
                           y_dims,
                           dims));
-    SwiGLUGradKernelImpl<T, Context>(
-        ctx, x_ptr, y_tensor.data<T>(), dz_ptr, dx_ptr, dy_ptr, x.numel(), 1);
+    SwiGLUGradKernelImpl<T, Context>(dev_ctx,
+                                     x_ptr,
+                                     y_tensor.data<T>(),
+                                     dz_ptr,
+                                     dx_ptr,
+                                     dy_ptr,
+                                     x.numel(),
+                                     1);
   } else {
     auto dims_2d = flatten_to_2d(dims, dims.size() - 1);
     int64_t m = dims_2d[0], n = dims_2d[1];
@@ -73,7 +79,7 @@ void SwiGLUGradKernel(const Context &ctx,
                           "by 2 when Input(Y) is None, but got %d",
                           n));
     SwiGLUGradKernelImpl<T, Context>(
-        ctx, x_ptr, nullptr, dz_ptr, dx_ptr, nullptr, m, n / 2);
+        dev_ctx, x_ptr, nullptr, dz_ptr, dx_ptr, nullptr, m, n / 2);
   }
 }
 

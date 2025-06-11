@@ -205,7 +205,7 @@ struct VisitDataCudaArgMinMaxFunctor {
       post *= x_dims[i];
     }
 
-    if (x_dims[new_axis] > std::numeric_limits<int32_t>::max()) {
+    if (numel > std::numeric_limits<int32_t>::max()) {
       ComputeFullArg<T, IndType, Reducer, int64_t>(
           dev_ctx, x, out, pre, post, n);
     } else {

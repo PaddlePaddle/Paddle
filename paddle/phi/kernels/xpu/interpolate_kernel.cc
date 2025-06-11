@@ -24,7 +24,7 @@ namespace phi {
 
 template <typename T, typename Context>
 void InterpolateKernel(
-    const Context& ctx,
+    const Context& dev_ctx,
     const DenseTensor& x,
     const paddle::optional<DenseTensor>& out_size,
     const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
@@ -126,10 +126,10 @@ void InterpolateKernel(
     dim_out = {n, out_h, out_w, c};
   }
   output->Resize(dim_out);
-  ctx.template Alloc<T>(output);
+  dev_ctx.template Alloc<T>(output);
 
   if (in_h == out_h && in_w == out_w) {
-    phi::Copy<Context>(ctx, x, ctx.GetPlace(), false, output);
+    phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, output);
     return;
   }
   bool nearest = "nearest" == interp_method;
@@ -143,7 +143,7 @@ void InterpolateKernel(
   }
 
   int r =
-      xpu::interpolate2d<XPUType>(ctx.x_context(),
+      xpu::interpolate2d<XPUType>(dev_ctx.x_context(),
                                   reinterpret_cast<const XPUType*>(x.data<T>()),
                                   reinterpret_cast<XPUType*>(output->data<T>()),
                                   n,
@@ -160,7 +160,7 @@ void InterpolateKernel(
 
 template <typename T, typename Context>
 void BilinearInterpKernel(
-    const Context& ctx,
+    const Context& dev_ctx,
     const DenseTensor& x,
     const paddle::optional<DenseTensor>& out_size,
     const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
@@ -174,7 +174,7 @@ void BilinearInterpKernel(
     bool align_corners,
     int align_mode,
     DenseTensor* output) {
-  InterpolateKernel<T, Context>(ctx,
+  InterpolateKernel<T, Context>(dev_ctx,
                                 x,
                                 out_size,
                                 size_tensor,
@@ -192,7 +192,7 @@ void BilinearInterpKernel(
 
 template <typename T, typename Context>
 void NearestInterpKernel(
-    const Context& ctx,
+    const Context& dev_ctx,
     const DenseTensor& x,
     const paddle::optional<DenseTensor>& out_size,
     const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
@@ -206,7 +206,7 @@ void NearestInterpKernel(
     bool align_corners,
     int align_mode,
     DenseTensor* output) {
-  InterpolateKernel<T, Context>(ctx,
+  InterpolateKernel<T, Context>(dev_ctx,
                                 x,
                                 out_size,
                                 size_tensor,

@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import site
+import sys
+
 from utils import IS_MAC, extra_compile_args, paddle_includes
 
 from paddle.utils.cpp_extension import CppExtension, CUDAExtension, setup
@@ -25,6 +28,9 @@ if not IS_MAC:
 # custom_relu_op_dup.cc is only used for multi ops test,
 # not a new op, if you want to test only one op, remove this
 # source file
+site_dir = site.getsitepackages()[0]
+sys.argv.extend(["egg_info", f"--egg-base={site_dir}"])
+
 setup(
     name='custom_relu_module_setup',
     ext_modules=Extension(  # test for not specific name here.

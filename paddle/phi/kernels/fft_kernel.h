@@ -20,7 +20,7 @@
 
 namespace phi {
 template <typename T, typename Context>
-void FFTC2CKernel(const Context& ctx,
+void FFTC2CKernel(const Context& dev_ctx,
                   const DenseTensor& x,
                   const std::vector<int64_t>& axes,
                   const std::string& normalization,
@@ -28,7 +28,7 @@ void FFTC2CKernel(const Context& ctx,
                   DenseTensor* out);
 
 template <typename T, typename Context>
-void FFTC2RKernel(const Context& ctx,
+void FFTC2RKernel(const Context& dev_ctx,
                   const DenseTensor& x,
                   const std::vector<int64_t>& axes,
                   const std::string& normalization,
@@ -37,7 +37,7 @@ void FFTC2RKernel(const Context& ctx,
                   DenseTensor* out);
 
 template <typename T, typename Context>
-void FFTR2CKernel(const Context& ctx,
+void FFTR2CKernel(const Context& dev_ctx,
                   const DenseTensor& x,
                   const std::vector<int64_t>& axes,
                   const std::string& normalization,

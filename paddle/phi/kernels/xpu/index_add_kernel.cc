@@ -20,7 +20,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void IndexAddKernel(const Context& ctx,
+void IndexAddKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     const DenseTensor& index,
                     const DenseTensor& add_value,
@@ -44,11 +44,11 @@ void IndexAddKernel(const Context& ctx,
   auto input_vector = common::vectorize<int64_t>(input_dim);
   int64_t numel = add_value.numel();
   if (numel == 0) return;
-  ctx.template Alloc<T>(out);
+  dev_ctx.template Alloc<T>(out);
   int r = 0;
   if (index_type == phi::DataType::INT64) {
     r = xpu::index_add<XPUType, int64_t>(
-        ctx.x_context(),
+        dev_ctx.x_context(),
         reinterpret_cast<const XPUType*>(x.data<T>()),
         reinterpret_cast<const XPUType*>(add_value.data<T>()),
         reinterpret_cast<XPUType*>(out->data<T>()),
@@ -60,7 +60,7 @@ void IndexAddKernel(const Context& ctx,
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "index_add");
   } else if (index_type == phi::DataType::INT32) {
     r = xpu::index_add<XPUType, int>(
-        ctx.x_context(),
+        dev_ctx.x_context(),
         reinterpret_cast<const XPUType*>(x.data<T>()),
         reinterpret_cast<const XPUType*>(add_value.data<T>()),
         reinterpret_cast<XPUType*>(out->data<T>()),

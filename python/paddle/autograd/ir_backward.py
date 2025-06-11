@@ -1000,9 +1000,10 @@ def append_backward_ops(
                         # create grad_op
 
                         before_ops_num = len(bwd_block.ops)
-                        with dynamic_shape_prim_vjp_guard(
-                            op, inputs
-                        ), pir_op_name_guard(op.name() + '_grad'):
+                        with (
+                            dynamic_shape_prim_vjp_guard(op, inputs),
+                            pir_op_name_guard(op.name() + '_grad'),
+                        ):
                             input_grads = paddle.framework.core.call_vjp(
                                 op,
                                 inputs,

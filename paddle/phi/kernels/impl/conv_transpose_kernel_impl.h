@@ -27,7 +27,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void ConvTransposeRawKernel(const Context& ctx,
+void ConvTransposeRawKernel(const Context& dev_ctx,
                             const DenseTensor& x,
                             const DenseTensor& filter,
                             const std::vector<int>& strides,
@@ -91,7 +91,7 @@ void ConvTransposeRawKernel(const Context& ctx,
 
   DenseTensor col;
   col.Resize(col_shape);
-  ctx.template Alloc<T>(&col);
+  dev_ctx.template Alloc<T>(&col);
   // col_matrix shares the same piece of data with col,
   // but will be reshaped into a two-dimensional matrix shape
   // to call the matrix multiplication interface.
@@ -121,12 +121,12 @@ void ConvTransposeRawKernel(const Context& ctx,
   }
   filter_.Resize(filter_matrix_shape);
 
-  ctx.template Alloc<T>(out);
+  dev_ctx.template Alloc<T>(out);
 
   funcs::SetConstant<Context, T> set_zero;
 
-  auto blas = funcs::GetBlas<Context, T>(ctx);
-  set_zero(ctx, out, static_cast<T>(0));
+  auto blas = funcs::GetBlas<Context, T>(dev_ctx);
+  set_zero(dev_ctx, out, static_cast<T>(0));
 
   int in_step = (data_layout != DataLayout::kNHWC
                      ? static_cast<int>(x_dims[1]) / groups
@@ -174,16 +174,17 @@ void ConvTransposeRawKernel(const Context& ctx,
                     &col_matrix,
                     static_cast<T>(0.0));
       } else {
-        funcs::Slice<Context, T, 2>(ctx, &x_batch, &in_slice, start, end, axes);
+        funcs::Slice<Context, T, 2>(
+            dev_ctx, &x_batch, &in_slice, start, end, axes);
         start = g * out_step;
         end = (g + 1) * out_step;
         axes = D - 2;
         if (D == 4U) {
           funcs::Slice<Context, T, 3>(
-              ctx, &out_batch, &out_slice, start, end, axes);
+              dev_ctx, &out_batch, &out_slice, start, end, axes);
         } else if (D == 5U) {
           funcs::Slice<Context, T, 4>(
-              ctx, &out_batch, &out_slice, start, end, axes);
+              dev_ctx, &out_batch, &out_slice, start, end, axes);
         }
         blas.MatMul(filter_slice,
                     true,
@@ -197,7 +198,7 @@ void ConvTransposeRawKernel(const Context& ctx,
       if (data_dim == 2U) {
         // col2im: col_matrix -> dy from (o_c/g * k_h * k_w, h * w) to (o_c/g,
         // o_h, o_w) or (o_h, o_w, o_c/g)
-        col2im(ctx,
+        col2im(dev_ctx,
                col,
                dilations_,
                strides,
@@ -208,21 +209,27 @@ void ConvTransposeRawKernel(const Context& ctx,
       } else if (data_dim == 3U) {
         // col2vol: col_matrix -> dy from (o_c/g * k_d * k_h * k_w, d * h * w)
         // to (o_c/g, o_d, o_h, o_w) or (o_d, o_h, o_w, o_c/g)
-        col2vol(
-            ctx, col, dilations_, strides, paddings_, &out_slice, data_layout);
+        col2vol(dev_ctx,
+                col,
+                dilations_,
+                strides,
+                paddings_,
+                &out_slice,
+                data_layout);
       }
       if (data_layout == DataLayout::kNHWC) {
         out_batch_vec.push_back(out_slice);
       }
     }
     if (data_layout == DataLayout::kNHWC) {
-      concat_functor(ctx, out_batch_vec, static_cast<int>(D - 2), &out_batch);
+      concat_functor(
+          dev_ctx, out_batch_vec, static_cast<int>(D - 2), &out_batch);
     }
   }
 }
 
 template <typename T, typename Context>
-void Conv2dTransposeKernel(const Context& ctx,
+void Conv2dTransposeKernel(const Context& dev_ctx,
                            const DenseTensor& x,
                            const DenseTensor& filter,
                            const std::vector<int>& strides,
@@ -234,7 +241,7 @@ void Conv2dTransposeKernel(const Context& ctx,
                            const std::vector<int>& dilations,
                            const std::string& data_format,
                            DenseTensor* out) {
-  ConvTransposeRawKernel<T, Context>(ctx,
+  ConvTransposeRawKernel<T, Context>(dev_ctx,
                                      x,
                                      filter,
                                      strides,
@@ -247,7 +254,7 @@ void Conv2dTransposeKernel(const Context& ctx,
 }
 
 template <typename T, typename Context>
-void Conv3dTransposeKernel(const Context& ctx,
+void Conv3dTransposeKernel(const Context& dev_ctx,
                            const DenseTensor& x,
                            const DenseTensor& filter,
                            const std::vector<int>& strides,
@@ -259,7 +266,7 @@ void Conv3dTransposeKernel(const Context& ctx,
                            const std::vector<int>& dilations,
                            const std::string& data_format,
                            DenseTensor* out) {
-  ConvTransposeRawKernel<T, Context>(ctx,
+  ConvTransposeRawKernel<T, Context>(dev_ctx,
                                      x,
                                      filter,
                                      strides,

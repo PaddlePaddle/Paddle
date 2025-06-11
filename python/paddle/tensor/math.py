@@ -7162,7 +7162,8 @@ def take(
         )
     elif mode == 'clip':
         # 'clip' mode disables indexing with negative numbers.
-        index_1d = clip(index_1d, 0, max_index - 1)
+        if max_index > 0:  # If max_index is 0, input_1d is 0-size.
+            index_1d = clip(index_1d, 0, max_index - 1)
 
     out = input_1d.index_select(index_1d).reshape(index.shape)
 
@@ -7900,8 +7901,8 @@ def ldexp(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
         out_dtype = DataType.FLOAT64
     else:
         out_dtype = paddle.get_default_dtype()
-    x = paddle.cast(x, dtype=out_dtype)
-    y = paddle.cast(y, dtype=out_dtype)
+    x = x.astype(dtype=out_dtype)
+    y = y.astype(dtype=out_dtype)
     two = paddle.to_tensor(2, dtype=out_dtype)
     return paddle.multiply(x, paddle.pow(two, y))
 

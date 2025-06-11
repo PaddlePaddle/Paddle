@@ -73,7 +73,7 @@ __global__ void NormalizeGradient(const T* x,
 }
 
 template <typename T, typename Context>
-void NormGradKernel(const Context& ctx,
+void NormGradKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     const DenseTensor& norm,
                     const DenseTensor& out_grad,
@@ -85,7 +85,7 @@ void NormGradKernel(const Context& ctx,
   auto* in_norm = &norm;
   auto* in_dy = &out_grad;
   auto* out_dx = x_grad;
-  ctx.template Alloc<T>(out_dx);
+  dev_ctx.template Alloc<T>(out_dx);
   T* dx = out_dx->data<T>();
   const T* x_data = in_x->data<T>();
   const T* x_norm = in_norm->data<T>();
@@ -97,11 +97,11 @@ void NormGradKernel(const Context& ctx,
   funcs::GetPrePostNumel(xdim, axis, &pre, &n, &post);
 
   const int block = 512;
-  int max_threads = ctx.GetMaxPhysicalThreadCount();
+  int max_threads = dev_ctx.GetMaxPhysicalThreadCount();
   const int max_blocks = std::max(max_threads / block, 1);
   int grid = std::min(max_blocks, pre * post);
-  NormalizeGradient<T, block>
-      <<<grid, block, 0, ctx.stream()>>>(x_data, x_norm, dy, pre, n, post, dx);
+  NormalizeGradient<T, block><<<grid, block, 0, dev_ctx.stream()>>>(
+      x_data, x_norm, dy, pre, n, post, dx);
 }
 
 }  // namespace phi

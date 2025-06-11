@@ -210,7 +210,7 @@ void LaunchUnStackKernel(const Context& ctx,
     constexpr int kWarpSize = 32;
     constexpr int kMaxOut = 16;
 
-    int tid_x = 0, tid_y = 0, bid_x = 0, bid_y = 1;
+    int64_t tid_x = 0, tid_y = 0, bid_x = 0, bid_y = 1;
     if (split_dim < kMaxOut) {
       tid_y = split_dim;
       tid_x =
@@ -219,10 +219,13 @@ void LaunchUnStackKernel(const Context& ctx,
     } else {
       tid_y = kMaxOut;
       tid_x = kWarpSize;
-      bid_y = backends::gpu::DivUp<int>(split_dim, kMaxOut);
+      bid_y = backends::gpu::DivUp<int64_t>(split_dim, kMaxOut);
     }
-    int tile_x_num = backends::gpu::DivUp<int>(out_row, tid_x);
-    bid_x = std::min(tile_x_num, backends::gpu::kMultiDimslimit);
+    int64_t tile_x_num = backends::gpu::DivUp<int64_t>(out_row, tid_x);
+    if (tile_x_num < static_cast<int64_t>(backends::gpu::kMultiDimslimit))
+      bid_x = tile_x_num;
+    else
+      bid_x = backends::gpu::kMultiDimslimit;
     dim3 blocks(tid_x, tid_y, 1);
     dim3 grids(bid_x, bid_y, 1);
 

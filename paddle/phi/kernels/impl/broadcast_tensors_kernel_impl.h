@@ -24,16 +24,16 @@
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
-#define SWITCH_OUT_RANK_CASE(n)                                        \
-  case n: {                                                            \
-    ApplyBroadcast<T, Context, n>(ctx, in_tensors[i], out_tensors[i]); \
-    break;                                                             \
+#define SWITCH_OUT_RANK_CASE(n)                                            \
+  case n: {                                                                \
+    ApplyBroadcast<T, Context, n>(dev_ctx, in_tensors[i], out_tensors[i]); \
+    break;                                                                 \
   }
 
 namespace phi {
 
 template <typename T, typename Context, int OutRank>
-void ApplyBroadcast(const Context& ctx,
+void ApplyBroadcast(const Context& dev_ctx,
                     const DenseTensor* input_tensor,
                     DenseTensor* output_tensor) {
   const auto& input_dims = input_tensor->dims();
@@ -66,16 +66,16 @@ void ApplyBroadcast(const Context& ctx,
   // output
   auto x = EigenTensor<T, OutRank>::From(*input_tensor, new_input_dims);
 
-  ctx.template Alloc<T>(output_tensor);
+  dev_ctx.template Alloc<T>(output_tensor);
   auto y = EigenTensor<T, OutRank>::From(*output_tensor, output_dims);
 
-  auto& place = *ctx.eigen_device();
+  auto& place = *dev_ctx.eigen_device();
   funcs::EigenBroadcast<std::decay_t<decltype(place)>, T, OutRank>::Eval(
       place, y, x, bcast_dims);
 }
 
 template <typename T, typename Context>
-void BroadcastTensorsKernel(const Context& ctx,
+void BroadcastTensorsKernel(const Context& dev_ctx,
                             const std::vector<const DenseTensor*>& x,
                             std::vector<DenseTensor*> out) {
   const auto& in_tensors = x;
@@ -105,7 +105,7 @@ void BroadcastTensorsKernel(const Context& ctx,
       case 0: {
         const DenseTensor* src = in_tensors[i];
         DenseTensor* dst = out_tensors[i];
-        phi::Copy(ctx, *src, src->place(), false, dst);
+        phi::Copy(dev_ctx, *src, src->place(), false, dst);
         break;
       }
         SWITCH_OUT_RANK_CASE(1)
