@@ -97,6 +97,19 @@ class TestPowOpInt(TestPowOp):
 
 
 class TestPowOp_ZeroBaseNumber(TestPowOp):
+    def setUp(self):
+        self.op_type = "pow"
+        self.python_api = paddle.pow
+        self.public_python_api = paddle.pow
+        self.prim_op_type = "comp"
+        self.outputs = None
+        self.custom_setting()
+        if not self.outputs:
+            self.outputs = {'Out': np.asarray([0, 0, 0])}
+        self.places = [core.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            self.places.append(core.CUDAPlace(0))
+
     def custom_setting(self):
         self.inputs = {
             'X': np.asarray([0, 0, 0]),
