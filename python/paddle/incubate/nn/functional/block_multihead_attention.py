@@ -60,6 +60,7 @@ def block_multihead_attention(
     max_seq_len: int = -1,
     block_size: int = 64,
     use_neox_style: bool = False,
+    rope_3d: bool = False,
     use_dynamic_cachekv_quant: bool = False,
     quant_round_type: _QuantRoundType = 1,
     quant_max_bound: float = 127.0,
@@ -101,6 +102,7 @@ def block_multihead_attention(
         max_seq_len (Int): The max length of the input. Default is -1.
         block_size (Int): The block_size of cache. Default is 64.
         use_neox_style (Bool): Whether neox_style RoPE is used or not. Default is False.
+        rope_3d (Bool): Whether 3D RoPE is used or not. Default is False.
         use_dynamic_cachekv_quant (Bool): Whether dynamic cache kv quantization is applied or not. Default is False.
         quant_round_type (Int): The quant round type in cache kv quantization and fmha_out quantization. If 0 is set, value will be rounding to nearest ties to even. If 1 is set, value will be rounding to nearest ties away from zero.
         quant_max_bound (Float32): The max bound of float type to int type.
@@ -279,6 +281,8 @@ def block_multihead_attention(
             ...     None, # tgt_mask
             ...     seq_len,
             ...     block_size
+            ...     use_neox_style=False,
+            ...     rope_3d=False,
             ... )[0]
 
             >>> attention_mask = create_attn_mask(
@@ -329,6 +333,7 @@ def block_multihead_attention(
             max_seq_len,
             block_size,
             use_neox_style,
+            rope_3d,
             use_dynamic_cachekv_quant,
             quant_round_type,
             quant_max_bound,
@@ -398,6 +403,7 @@ def block_multihead_attention(
             'max_seq_len': max_seq_len,
             'block_size': block_size,
             'use_neox_style': use_neox_style,
+            'rope_3d' : rope_3d,
             'dynamic_cachekv_quant': use_dynamic_cachekv_quant,
             'quant_round_type': quant_round_type,
             'quant_max_bound': quant_max_bound,

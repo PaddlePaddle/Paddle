@@ -2559,7 +2559,8 @@ __global__ void VariableLengthRotaryKernel(
     const int64_t elem_cnt,
     const int num_head,
     const int seq_len,
-    const int last_dim) {
+    const int last_dim,
+    const bool rope_3d) {
   using LoadT = phi::AlignedVector<T, VecSize>;
   constexpr int HalfVecSize = VecSize / 2;
   using LoadEmbT = phi::AlignedVector<float, HalfVecSize>;
@@ -2586,7 +2587,7 @@ __global__ void VariableLengthRotaryKernel(
 
     const int ori_seq_id = ori_token_idx % seq_len;
 
-    const int emb_idx = ori_seq_id * half_lastdim + h_bias / 2;
+    const int emb_idx = rope_3d ? emb_idx + ori_bi * last_dim * seq_len : ori_seq_id * half_lastdim + h_bias / 2;
     const int64_t base_idx = token_idx * 3 * hidden_size +
                              qkv_id * hidden_size + hi * last_dim + h_bias;
     phi::Load<T, VecSize>(&qkv[base_idx], &src_vec);
@@ -2686,7 +2687,8 @@ void rotary_qk_variable(
     const int seq_len,
     const int input_output_len,
     const int dim_head,
-    bool use_neox_style = false) {
+    bool use_neox_style = false,
+    bool rope_3d = false) {
   int elem_nums = token_num * 2 * head_num * dim_head;  // just q and k
   if (use_neox_style) {
     elem_nums = token_num * head_num * dim_head;
@@ -2709,7 +2711,8 @@ void rotary_qk_variable(
                                                         elem_nums,
                                                         head_num,
                                                         seq_len,
-                                                        dim_head);
+                                                        dim_head,
+                                                        rope_3d);
   } else {
     const float *cos_emb = rotary_emb;
     const float *sin_emb = rotary_emb + input_output_len * dim_head;
@@ -2739,7 +2742,8 @@ __global__ void GQAVariableLengthRotaryKernel(
     const int q_num_head,
     const int kv_num_head,
     const int seq_len,
-    const int last_dim) {
+    const int last_dim,
+    const bool rope_3d) {
   using LoadT = phi::AlignedVector<T, VecSize>;
   constexpr int HalfVecSize = VecSize / 2;
   using LoadEmbT = phi::AlignedVector<float, HalfVecSize>;
@@ -2763,12 +2767,13 @@ __global__ void GQAVariableLengthRotaryKernel(
 
     const int ori_seq_id = ori_token_idx % seq_len;
 
-    const int64_t emb_idx = ori_seq_id * half_lastdim + h_bias / 2;
+    const int64_t emb_idx = rope_3d ? emb_idx + ori_bi * last_dim * seq_len : ori_seq_id * half_lastdim + h_bias / 2;
     // [token_num, q_num_head + 2 * kv_num_head, last_dim]
     const int64_t base_idx =
         token_idx * (q_num_head + 2 * kv_num_head) * last_dim + hi * last_dim +
         h_bias;
     phi::Load<T, VecSize>(&qkv[base_idx], &src_vec);
+    
     phi::Load<float, HalfVecSize>(&cos_emb[emb_idx], &cos_emb_vec);
     phi::Load<float, HalfVecSize>(&sin_emb[emb_idx], &sin_emb_vec);
 #pragma unroll
@@ -2863,7 +2868,8 @@ void gqa_rotary_qk_variable(
     const int seq_len,
     const int input_output_len,
     const int dim_head,
-    bool use_neox_style = false) {
+    bool use_neox_style = false,
+    bool rope_3d = false) {
   int elem_nums =
       token_num * (q_head_num + kv_head_num) * dim_head;  // just q and k
   if (use_neox_style) {
@@ -2888,7 +2894,8 @@ void gqa_rotary_qk_variable(
                                                         q_head_num,
                                                         kv_head_num,
                                                         seq_len,
-                                                        dim_head);
+                                                        dim_head,
+                                                        rope_3d);
   } else {
     const float *cos_emb = rotary_emb;
     const float *sin_emb = rotary_emb + input_output_len * dim_head;
@@ -2920,7 +2927,8 @@ __global__ void VariableLengthRotaryKernel(
     const int64_t elem_cnt,
     const int num_head,
     const int seq_len,
-    const int last_dim) {
+    const int last_dim,
+    const bool rope_3d) {
   using LoadT = phi::AlignedVector<int, VecSize>;
   using LoadBiasT = phi::AlignedVector<T, VecSize>;
   using LoadScaleT = phi::AlignedVector<float, VecSize>;
@@ -2951,7 +2959,7 @@ __global__ void VariableLengthRotaryKernel(
 
     const int ori_seq_id = ori_token_idx % seq_len;
 
-    const int emb_idx = ori_seq_id * half_lastdim + h_bias / 2;
+    const int emb_idx = rope_3d ? emb_idx + ori_bi * last_dim * seq_len : ori_seq_id * half_lastdim + h_bias / 2;
     const int bias_idx = qkv_id * hidden_size + hi * last_dim + h_bias;
     const int64_t base_idx = token_idx * 3 * hidden_size + bias_idx;
     phi::Load<int, VecSize>(&qkv[base_idx], &src_vec);
@@ -3092,7 +3100,8 @@ void rotary_qk_variable(
     const int seq_len,
     const int input_output_len,
     const int dim_head,
-    bool use_neox_style = false) {
+    bool use_neox_style = false,
+    bool rope_3d = false) {
   int elem_nums = token_num * 3 * head_num * dim_head;  // just q and k
   if (use_neox_style) {
     elem_nums = token_num * 3 * head_num * dim_head / 2;
@@ -3117,7 +3126,8 @@ void rotary_qk_variable(
                                                         elem_nums,
                                                         head_num,
                                                         seq_len,
-                                                        dim_head);
+                                                        dim_head,
+                                                        rope_3d);
   } else {
     const float *cos_emb = rotary_emb;
     const float *sin_emb = rotary_emb + input_output_len * dim_head;
@@ -3151,7 +3161,8 @@ __global__ void GQAVariableLengthRotaryKernel(
     const int q_num_head,
     const int kv_num_head,
     const int seq_len,
-    const int last_dim) {
+    const int last_dim,
+    const bool rope_3d) {
   using LoadT = phi::AlignedVector<int, VecSize>;
   using LoadBiasT = phi::AlignedVector<T, VecSize>;
   using LoadScaleT = phi::AlignedVector<float, VecSize>;
@@ -3179,7 +3190,7 @@ __global__ void GQAVariableLengthRotaryKernel(
 
     const int ori_seq_id = ori_token_idx % seq_len;
 
-    const int64_t emb_idx = ori_seq_id * half_lastdim + h_bias / 2;
+    const int64_t emb_idx = rope_3d ? emb_idx + ori_bi * last_dim * seq_len : ori_seq_id * half_lastdim + h_bias / 2;
     const int64_t bias_idx = hi * last_dim + h_bias;
     const int64_t base_idx = token_idx * offset + bias_idx;
     phi::Load<int, VecSize>(&qkv[base_idx], &src_vec);
@@ -3317,7 +3328,8 @@ void gqa_rotary_qk_variable(
     const int seq_len,
     const int input_output_len,
     const int dim_head,
-    bool use_neox_style = false) {
+    bool use_neox_style = false,
+    bool rope_3d = false) {
   int elem_nums =
       token_num * (q_head_num + 2 * kv_head_num) * dim_head;  // for all q k v
   if (use_neox_style) {
@@ -3344,7 +3356,8 @@ void gqa_rotary_qk_variable(
                                                         q_head_num,
                                                         kv_head_num,
                                                         seq_len,
-                                                        dim_head);
+                                                        dim_head,
+                                                        rope_3d);
   } else {
     const float *cos_emb = rotary_emb;
     const float *sin_emb = rotary_emb + input_output_len * dim_head;
@@ -3377,7 +3390,8 @@ __global__ void VariableLengthRotaryKernel(
     const int64_t elem_cnt,
     const int num_head,
     const int seq_len,
-    const int last_dim) {
+    const int last_dim,
+    const bool rope_3d) {
   using LoadT = phi::AlignedVector<T, VecSize>;
   constexpr int HalfVecSize = VecSize / 2;
   using LoadEmbT = phi::AlignedVector<float, HalfVecSize>;
@@ -3405,7 +3419,7 @@ __global__ void VariableLengthRotaryKernel(
 
     const int ori_seq_id = ori_token_idx % seq_len;
 
-    const int emb_idx = ori_seq_id * half_lastdim + h_bias / 2;
+    const int emb_idx = rope_3d ? emb_idx + ori_bi * last_dim * seq_len : ori_seq_id * half_lastdim + h_bias / 2;
     const int bias_idx = qkv_id * hidden_size + hi * last_dim + h_bias;
     const int64_t base_idx = token_idx * 3 * hidden_size + bias_idx;
     phi::Load<T, VecSize>(&qkv[base_idx], &src_vec);
@@ -3527,7 +3541,8 @@ void rotary_qk_variable(
     const int seq_len,
     const int input_output_len,
     const int dim_head,
-    bool use_neox_style = false) {
+    bool use_neox_style = false,
+    bool rope_3d = false) {
   int elem_nums = token_num * 3 * head_num * dim_head;  // just q and k
   if (use_neox_style) {
     elem_nums = token_num * 3 * head_num * dim_head / 2;
@@ -3551,7 +3566,8 @@ void rotary_qk_variable(
                                                         elem_nums,
                                                         head_num,
                                                         seq_len,
-                                                        dim_head);
+                                                        dim_head,
+                                                        rope_3d);
   } else {
     const float *cos_emb = rotary_emb;
     const float *sin_emb = rotary_emb + input_output_len * dim_head;
@@ -3583,7 +3599,8 @@ __global__ void GQAVariableLengthRotaryKernel(
     const int q_num_head,
     const int kv_num_head,
     const int seq_len,
-    const int last_dim) {
+    const int last_dim,
+    const bool rope_3d) {
   using LoadT = phi::AlignedVector<T, VecSize>;
   constexpr int HalfVecSize = VecSize / 2;
   using LoadEmbT = phi::AlignedVector<float, HalfVecSize>;
@@ -3608,7 +3625,7 @@ __global__ void GQAVariableLengthRotaryKernel(
 
     const int ori_seq_id = ori_token_idx % seq_len;
 
-    const int64_t emb_idx = ori_seq_id * half_lastdim + h_bias / 2;
+    const int64_t emb_idx = rope_3d ? emb_idx + ori_bi * last_dim * seq_len : ori_seq_id * half_lastdim + h_bias / 2;
     const int64_t bias_idx = hi * last_dim + h_bias;
     const int64_t base_idx = token_idx * offset + bias_idx;
     phi::Load<T, VecSize>(&qkv[base_idx], &src_vec);
@@ -3727,7 +3744,8 @@ void gqa_rotary_qk_variable(
     const int seq_len,
     const int input_output_len,
     const int dim_head,
-    bool use_neox_style = false) {
+    bool use_neox_style = false,
+    bool rope_3d = false) {
   int elem_nums =
       token_num * (q_head_num + 2 * kv_head_num) * dim_head;  // for all q k v
   if (use_neox_style) {
@@ -3753,7 +3771,8 @@ void gqa_rotary_qk_variable(
                                                         q_head_num,
                                                         kv_head_num,
                                                         seq_len,
-                                                        dim_head);
+                                                        dim_head,
+                                                        rope_3d);
   } else {
     const float *cos_emb = rotary_emb;
     const float *sin_emb = rotary_emb + input_output_len * dim_head;

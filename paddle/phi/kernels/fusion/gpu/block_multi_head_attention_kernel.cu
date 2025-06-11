@@ -307,6 +307,7 @@ void DispatchWithDtype(
     int max_seq_len,
     int block_size,
     bool use_neox_style,
+    bool rope_3d,
     const bool dynamic_cachekv_quant,
     const int quant_round_type,
     const float quant_max_bound,
@@ -493,9 +494,10 @@ void DispatchWithDtype(
                            token_num,
                            q_num_head,
                            max_seq_len,
-                           rope_emb.get().dims()[2],
+                           rope_3d ? rotary_embs.get().dims()[3] : rotary_embs.get().dims()[2],
                            dim_head,
-                           use_neox_style);
+                           use_neox_style,
+                           rope_3d)
       } else {
         gqa_rotary_qk_variable(dev_ctx,
                                qkv_buf.data<T>(),
@@ -507,9 +509,10 @@ void DispatchWithDtype(
                                q_num_head,
                                kv_num_head,
                                max_seq_len,
-                               rope_emb.get().dims()[2],
+                               rope_3d ? rotary_embs.get().dims()[3] : rotary_embs.get().dims()[2],
                                dim_head,
-                               use_neox_style);
+                               use_neox_style,
+                               rope_3d);
       }
     }
     // VLOGMatrix(
@@ -876,6 +879,7 @@ void BlockMultiheadAttentionKernel(
     int max_seq_len,
     int block_size,
     bool use_neox_style,
+    bool rope_3d,
     const bool dynamic_cachekv_quant,
     const int quant_round_type,
     const float quant_max_bound,
@@ -921,6 +925,7 @@ void BlockMultiheadAttentionKernel(
                                                       max_seq_len,
                                                       block_size,
                                                       use_neox_style,
+                                                      rope_3d,
                                                       dynamic_cachekv_quant,
                                                       quant_round_type,
                                                       quant_max_bound,
@@ -965,6 +970,7 @@ void BlockMultiheadAttentionKernel(
                                                        max_seq_len,
                                                        block_size,
                                                        use_neox_style,
+                                                       rope_3d,
                                                        dynamic_cachekv_quant,
                                                        quant_round_type,
                                                        quant_max_bound,
@@ -1011,6 +1017,7 @@ void BlockMultiheadAttentionKernel(
                                                       max_seq_len,
                                                       block_size,
                                                       use_neox_style,
+                                                      rope_3d,
                                                       dynamic_cachekv_quant,
                                                       quant_round_type,
                                                       quant_max_bound,
@@ -1055,6 +1062,7 @@ void BlockMultiheadAttentionKernel(
                                                        max_seq_len,
                                                        block_size,
                                                        use_neox_style,
+                                                       rope_3d,
                                                        dynamic_cachekv_quant,
                                                        quant_round_type,
                                                        quant_max_bound,
