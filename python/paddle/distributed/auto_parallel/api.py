@@ -219,7 +219,7 @@ class DistAttr(core.TensorDistAttr):
         core.TensorDistAttr.__init__(self)
 
         self.process_mesh = mesh
-        self.dims_mapping = dims_mapping
+        self.dims_mapping_2d = dims_mapping
         self.mark_annotated("process_mesh")
         self.mark_annotated("dims_mapping")
 
