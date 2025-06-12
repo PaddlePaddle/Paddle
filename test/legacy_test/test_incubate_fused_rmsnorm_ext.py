@@ -84,6 +84,24 @@ class TestFusedRMSNorm(unittest.TestCase):
             invvar_fused, invvar_ref, rtol=1e-5, atol=1e-5
         )
 
+    def test_bf16_input(self):
+        # 测试 bf16 输入
+        batch, rows, cols = 16, 32, 64
+        x = paddle.randn([batch, rows, cols], dtype='bfloat16')
+        scale = paddle.randn([cols], dtype='bfloat16')
+
+        # 使用我们的实现
+        y_fused, invvar_fused = fused_rms_norm_ext(x, scale)
+
+        # 使用参考实现
+        y_ref, invvar_ref = self.rms_norm_reference(x, scale)
+
+        # 验证结果
+        np.testing.assert_allclose(y_fused, y_ref, rtol=1e-5, atol=1e-5)
+        np.testing.assert_allclose(
+            invvar_fused, invvar_ref, rtol=1e-5, atol=1e-5
+        )
+
     def test_without_bias(self):
         # 测试没有偏置的情况
         rows, cols = 32, 64
