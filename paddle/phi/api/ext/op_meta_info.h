@@ -1163,7 +1163,7 @@ class PADDLE_API OpMetaInfoBuilder {
       ::paddle::OpMetaInfoBuilder(#op_name, 2)
 
 #define PD_BUILD_OP_CUSTOM_PREFIX_NAME(prefix, op_name) \
-  PD_BUILD_OP(prefix##_##op_name)
+  PD_BUILD_OP(prefix##op_name)
 }  // namespace paddle
 
 ///////////////////// C API ///////////////////
