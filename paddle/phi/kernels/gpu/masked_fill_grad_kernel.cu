@@ -221,14 +221,7 @@ void MaskedFillGradKernel(const Context& dev_ctx,
     std::vector<int> v_dims(mask_expand.dims().size());
     std::iota(v_dims.begin(), v_dims.end(), 0);
     IntArray v_axis(v_dims);
-    Tensor mask_expad_cast;
-    CastKernel<T>(mask_expand, out_grad->dtype(), &mask_expad_cast);
-    SumKernel<T>(dev_ctx,
-                 mask_expad_cast * out_grad,
-                 v_axis,
-                 v_grad->dtype(),
-                 false,
-                 v_grad);
+    SumKernel<T>(dev_ctx, mask_expand, v_axis, v_grad->dtype(), false, v_grad);
   }
 }
 
