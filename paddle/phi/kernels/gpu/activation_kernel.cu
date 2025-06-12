@@ -208,7 +208,7 @@ void PowKernel(const Context& dev_ctx,
                const DenseTensor& x,
                const Scalar& factor,
                DenseTensor* out) {
-  if (std::is_integral<T>::value) {
+  if constexpr (std::is_integral<T>::value) {
     PADDLE_ENFORCE_GE(
         factor.to<float>(),
         0,
