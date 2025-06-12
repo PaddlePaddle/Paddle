@@ -600,5 +600,57 @@ class TestAtleastWithTensorTuple(unittest.TestCase):
             )
 
 
+class TestAtleastWithNestedList(unittest.TestCase):
+    """Test when input is a list containing nested lists"""
+
+    def test_nested_list_input(self):
+        for device, place in PLACES:
+            paddle.disable_static(place)
+            paddle.set_device(device)
+
+            nested_list = [[1, 2, 3], [1, 2, 3], [1, 2, 3]]
+
+            # atleast_1d
+            out_1d = paddle.atleast_1d(nested_list)
+            self.assertEqual(out_1d.shape, [3, 3])
+            self.assertTrue(isinstance(out_1d, paddle.Tensor))
+
+            # atleast_2d
+            out_2d = paddle.atleast_2d(nested_list)
+            self.assertEqual(out_2d.shape, [3, 3])
+            self.assertTrue(isinstance(out_2d, paddle.Tensor))
+
+            # atleast_3d
+            out_3d = paddle.atleast_3d(nested_list)
+            self.assertEqual(out_3d.shape, [3, 3, 1])
+            self.assertTrue(isinstance(out_3d, paddle.Tensor))
+
+
+class TestAtleastWithNestedTuple(unittest.TestCase):
+    """Test when input is a tuple containing nested tuples"""
+
+    def test_nested_tuple_input(self):
+        for device, place in PLACES:
+            paddle.disable_static(place)
+            paddle.set_device(device)
+
+            nested_tuple = ((1, 2, 3), (1, 2, 3), (1, 2, 3))
+
+            # atleast_1d
+            out_1d = paddle.atleast_1d(nested_tuple)
+            self.assertEqual(out_1d.shape, [3, 3])
+            self.assertTrue(isinstance(out_1d, paddle.Tensor))
+
+            # atleast_2d
+            out_2d = paddle.atleast_2d(nested_tuple)
+            self.assertEqual(out_2d.shape, [3, 3])
+            self.assertTrue(isinstance(out_2d, paddle.Tensor))
+
+            # atleast_3d
+            out_3d = paddle.atleast_3d(nested_tuple)
+            self.assertEqual(out_3d.shape, [3, 3, 1])
+            self.assertTrue(isinstance(out_3d, paddle.Tensor))
+
+
 if __name__ == '__main__':
     unittest.main()
