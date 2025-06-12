@@ -123,10 +123,6 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& dev_ctx,
                                            const DenseTensor& repeats_tensor,
                                            int dim,
                                            DenseTensor* out) {
-  if (x.numel() == 0) {
-    dev_ctx.template Alloc<T>(out);
-    return;
-  }
   auto place = dev_ctx.GetPlace();
   auto cpu_place = phi::CPUPlace();
 
@@ -155,6 +151,23 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& dev_ctx,
           DataTypeToString(index_type),
           DataTypeToString(phi::DataType::INT32),
           DataTypeToString(phi::DataType::INT64)));
+
+  if (x.numel() == 0) {
+    // infer out shape
+    if (index_type == phi::DataType::INT32) {
+      phi::funcs::RepeatsTensor2IndexTensor<Context, int>(
+          dev_ctx, repeats_tensor, &index);
+
+    } else if (index_type == phi::DataType::INT64) {
+      phi::funcs::RepeatsTensor2IndexTensor<Context, int64_t>(
+          dev_ctx, repeats_tensor, &index);
+    }
+    auto output_dim = common::vectorize(x.dims());
+    output_dim[dim] = index.dims()[0];
+    out->Resize(common::make_ddim(output_dim));
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   if (place == cpu_place) {
     auto x_copy = x;
     if (index_type == phi::DataType::INT32) {
