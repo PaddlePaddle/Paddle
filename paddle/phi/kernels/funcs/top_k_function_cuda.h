@@ -220,8 +220,8 @@ __device__ __forceinline__ void AddTo(Pair<T> topk[],
 template <typename T, int BlockSize>
 __device__ __forceinline__ void GetTopK(Pair<T> topk[],
                                         const T* src,
-                                        int idx,
-                                        int dim,
+                                        int64_t idx,
+                                        int64_t dim,
                                         int beam_size,
                                         const bool& largest) {
   while (idx < dim) {
