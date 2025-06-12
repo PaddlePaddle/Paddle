@@ -802,7 +802,6 @@ class PartialProgramLayer:
             self.program.forward_program,
             self.program.backward_program,
         )
-        print("after run_program_op in sot_call, outputs: ", outputs)
         return self._outputs.quick_restore(out_vars)
 
     def call_run_impl_with_hook(
