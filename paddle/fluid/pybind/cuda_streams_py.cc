@@ -30,18 +30,19 @@ phi::stream::Stream *get_current_stream(int device_id) {
   if (device_id == -1) {
     device_id = phi::DeviceManager::GetDevice(dev_types[0]);
   }
-  auto *custom_context = static_cast<const phi::CustomContext *>(
-      DeviceContextPool::Instance().Get(phi::CustomPlace(dev_types[0], device_id)));
+  auto *custom_context =
+      static_cast<const phi::CustomContext *>(DeviceContextPool::Instance().Get(
+          phi::CustomPlace(dev_types[0], device_id)));
   return custom_context->GetStream().get();
 }
 
 phi::stream::Stream *set_current_stream(phi::stream::Stream *stream) {
-    auto *original_stream = get_current_stream(stream->GetPlace().GetDeviceId());
-    auto *custom_context = static_cast<phi::CustomContext *>(
-        DeviceContextPool::Instance().Get(stream->GetPlace()));
-    custom_context->SetStream(std::shared_ptr<phi::stream::Stream>(stream));
-    return original_stream;
-  }
+  auto *original_stream = get_current_stream(stream->GetPlace().GetDeviceId());
+  auto *custom_context = static_cast<phi::CustomContext *>(
+      DeviceContextPool::Instance().Get(stream->GetPlace()));
+  custom_context->SetStream(std::shared_ptr<phi::stream::Stream>(stream));
+  return original_stream;
+}
 
 #elif defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 phi::CUDAStream *get_current_stream(int device_id) {
@@ -74,9 +75,9 @@ void BindCudaStream(py::module *m_ptr) {
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
         return paddle::platform::get_current_stream(deviceId);
 #else
-        PADDLE_THROW(
-            common::errors::Unavailable("Paddle is not compiled with CUSTOM_DEVICE. "
-                                        "Cannot visit device synchronize."));
+        PADDLE_THROW(common::errors::Unavailable(
+            "Paddle is not compiled with CUSTOM_DEVICE. "
+            "Cannot visit device synchronize."));
 #endif
       },
       py::return_value_policy::reference);
@@ -87,9 +88,9 @@ void BindCudaStream(py::module *m_ptr) {
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
         return paddle::platform::set_current_stream(stream);
 #else
-        PADDLE_THROW(
-            common::errors::Unavailable("Paddle is not compiled with CUSTOM_DEVICE. "
-                                        "Cannot visit device synchronize."));
+        PADDLE_THROW(common::errors::Unavailable(
+            "Paddle is not compiled with CUSTOM_DEVICE. "
+            "Cannot visit device synchronize."));
 #endif
       },
       py::return_value_policy::reference);
