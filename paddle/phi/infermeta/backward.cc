@@ -2086,6 +2086,18 @@ void FusedRMSNormGradInferMeta(const MetaTensor& x,
                                float epsilon,
                                MetaTensor* x_grad,
                                MetaTensor* scale_grad) {
+  PADDLE_ENFORCE_EQ(
+      x.dtype() == DataType::FLOAT32 || x.dtype() == DataType::BFLOAT16,
+      true,
+      common::errors::InvalidArgument(
+          "The dtype of x must be FLOAT32 or BFLOAT16, but got [%s]",
+          x.dtype()));
+  PADDLE_ENFORCE_EQ(
+      scale.dtype() == DataType::FLOAT32 || scale.dtype() == DataType::BFLOAT16,
+      true,
+      common::errors::InvalidArgument(
+          "The dtype of scale must be FLOAT32 or BFLOAT16, but got [%s]",
+          scale.dtype()));
   x_grad->set_dims(x.dims());
   x_grad->set_dtype(x.dtype());
   scale_grad->set_dims(scale.dims());

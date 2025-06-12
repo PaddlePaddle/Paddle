@@ -78,8 +78,18 @@ void RMSLnBwd(const Context &dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    fused_rms_norm_ext, GPU, ALL_LAYOUT, phi::RMSLnFwd, float, double) {}
+PD_REGISTER_KERNEL(fused_rms_norm_ext,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::RMSLnFwd,
+                   float,
+                   double,
+                   phi::dtype::bfloat16) {}
 
-PD_REGISTER_KERNEL(
-    fused_rms_norm_ext_grad, GPU, ALL_LAYOUT, phi::RMSLnBwd, float, double) {}
+PD_REGISTER_KERNEL(fused_rms_norm_ext_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::RMSLnBwd,
+                   float,
+                   double,
+                   phi::dtype::bfloat16) {}
