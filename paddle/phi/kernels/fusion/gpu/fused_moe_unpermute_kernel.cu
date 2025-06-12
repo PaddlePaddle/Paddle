@@ -155,7 +155,7 @@ __global__ void tokens_zip_kernel(
     // 剩余元素处理
     for (int i = num_full_vec * vecSize + threadIdx.x; i < token_length;
          i += blockDim.x) {
-      __nv_bfloat16 sum = (__nv_bfloat16)0;
+      __nv_bfloat16 sum = (__nv_bfloat16)0.0f;
 #pragma unroll
       for (int expert = 0; expert < num_experts; ++expert) {
         int fetch_row = local_row_fetchlist[expert];
