@@ -57,3 +57,9 @@ op_patches:
         type : pir::ArrayAttribute
         default :
           - type: pir::Int64Attribute
+  - op_name : pd_op.cumsum
+    actions:
+      - action : add_attr
+        object : dtype
+        type : pir::DataTypeAttribute
+        default : pir::UndefinedType
