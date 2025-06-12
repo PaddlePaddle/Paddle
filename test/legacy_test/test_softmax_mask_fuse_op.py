@@ -43,12 +43,17 @@ class TestSoftmaxMaskFuseOp(OpTest):
     def setUp(self):
         self.op_type = "fused_softmax_mask"
         self.python_api = paddle.incubate.softmax_mask_fuse
-        x = np.random.random((1, 1, 8, 32))
-        mask = np.random.randint(0, 2, (1, 1, 8, 32))
+        self.init_shape()
+        x = np.random.random(self.x_shape)
+        mask = np.random.randint(0, 2, self.mask_shape)
         mask_input = np.where(mask == 1, -10000.0, mask)
         self.inputs = {'X': x, 'Mask': mask_input}
         rst = _get_softmax(x, mask_input)
         self.outputs = {'Out': rst}
+
+    def init_shape(self):
+        self.x_shape = (1, 1, 8, 32)
+        self.mask_shape = (1, 1, 8, 32)
 
     def test_check_output(self):
         self.check_output_with_place(core.CPUPlace(), check_pir=True)
@@ -89,12 +94,17 @@ class TestSoftmaxMaskFuseOp01(OpTest):
     def setUp(self):
         self.op_type = "fused_softmax_mask"
         self.python_api = paddle.incubate.softmax_mask_fuse
-        x = np.random.random((1, 1, 8, 32)).astype("float16")
-        mask = np.random.randint(0, 2, (1, 1, 8, 32)).astype("float32")
+        self.init_shape()
+        x = np.random.random(self.x_shape).astype("float16")
+        mask = np.random.randint(0, 2, self.mask_shape).astype("float32")
         mask_input = np.where(mask == 1, -10000.0, mask)
         self.inputs = {'X': x, 'Mask': mask_input}
         rst = _get_softmax(x, mask_input)
         self.outputs = {'Out': rst}
+
+    def init_shape(self):
+        self.x_shape = (1, 1, 8, 32)
+        self.mask_shape = (1, 1, 8, 32)
 
     def test_check_output(self):
         self.check_output_with_place(core.CUDAPlace(0), check_pir=True)
@@ -147,6 +157,53 @@ class TestDropoutBiasFuseOp3(unittest.TestCase):
             rst = incubate.softmax_mask_fuse(input_x, input_mask)
             np.testing.assert_allclose(rst, rst_np, rtol=1e-05)
 
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
+class TestSoftmaxMaskFuseOp04(TestSoftmaxMaskFuseOp01):
+    def init_shape(self):
+        self.x_shape = (31, 7, 8, 64)
+        self.mask_shape = (31, 1, 8, 64)
+
+    def test_dygraph(self):
+        self.init_shape()
+        with base.dygraph.guard(base.CUDAPlace(0)):
+            x_in_np = np.random.random(self.x_shape).astype("float32")
+            mask = np.random.randint(-8, 8, self.mask_shape).astype("float32")
+            mask_in_np = np.where(mask == 1, -10000.0, mask)
+            rst_np = _get_softmax(x_in_np, mask_in_np, False)
+            input_x = paddle.to_tensor(x_in_np)
+            input_mask = paddle.to_tensor(mask_in_np)
+            rst = incubate.softmax_mask_fuse(input_x, input_mask)
+            np.testing.assert_allclose(rst, rst_np, rtol=1e-05)
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
+class TestSoftmaxMaskFuseOp05(TestSoftmaxMaskFuseOp04):
+    def init_shape(self):
+        self.x_shape = (3, 17, 32, 128)
+        self.mask_shape = (3, 1, 32, 128)
+
+
+def create_TestSoftmaxMaskFuseOp_class(parent, key_seq_lens):
+    class _TestSoftmaxMaskFuseOp(parent):
+        def init_shape(self):
+            self.x_shape = (2, 2, 8, key_seq_lens)
+            self.mask_shape = (2, 1, 8, key_seq_lens)
+
+    cls_name = f"{parent.__name__}_{key_seq_lens!s}"
+    _TestSoftmaxMaskFuseOp.__name__ = cls_name
+    globals()[cls_name] = _TestSoftmaxMaskFuseOp
+
+
+create_TestSoftmaxMaskFuseOp_class(TestSoftmaxMaskFuseOp04, 256)
+create_TestSoftmaxMaskFuseOp_class(TestSoftmaxMaskFuseOp04, 512)
+create_TestSoftmaxMaskFuseOp_class(TestSoftmaxMaskFuseOp04, 1024)
+create_TestSoftmaxMaskFuseOp_class(TestSoftmaxMaskFuseOp04, 2048)
+create_TestSoftmaxMaskFuseOp_class(TestSoftmaxMaskFuseOp04, 4096)
 
 if __name__ == '__main__':
     unittest.main()
