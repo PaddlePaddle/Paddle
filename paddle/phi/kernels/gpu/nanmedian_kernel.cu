@@ -24,47 +24,61 @@
 #include "paddle/phi/kernels/top_k_kernel.h"
 
 namespace phi {
+void test_cuda(const std::string& str) {
+  std::cout << str << " begin" << std::endl;
+  // 1. wait all kernel finish
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
 
-using phi::PADDLE_CUDA_NUM_THREADS;
+  // 2. get error state
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaGetLastError());
 
-inline int GET_BLOCKS(const int N) {
-  return (N + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS;
+  // 3. check if cuda 700
+  size_t bytes = 256;
+  char* cuda_mem;
+  char* cpu_mem = new char[bytes + 1];
+
+  cudaMalloc(&cuda_mem, bytes + 1);
+  cudaMemset(cuda_mem, 0, bytes + 1);
+  cudaMemcpyAsync(cpu_mem, cuda_mem, bytes, cudaMemcpyDeviceToHost);
+
+  cudaFree(cuda_mem);
+  delete[] cpu_mem;
+  std::cout << str << " end" << std::endl;
 }
 
 template <typename T>
 __global__ void KernelNanCounts(const T* input,
-                                const int numel,
+                                const int64_t numel,
                                 const int64_t pre_dim,
                                 const int64_t stride,
-                                T min_val,
                                 int64_t* nan_total,
                                 int64_t* nan_counts) {
-  extern __shared__ int64_t buf[];
-  for (int i = threadIdx.x; i < pre_dim; i += blockDim.x) {
-    buf[i] = 0;
+  int64_t begin = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+  int64_t step = static_cast<int64_t>(blockDim.x) * gridDim.x;
+
+  for (int64_t i = begin; i < pre_dim; i += step) {
     nan_counts[i] = 0;
   }
 
-  if (threadIdx.x == 0) {
+  if (begin == 0) {
     nan_total[0] = 0;
     nan_total[1] = 0;
   }
 
   __syncthreads();
 
-  CUDA_KERNEL_LOOP(index, numel) {
+  for (int64_t index = begin; index < numel; index += step) {
     const T x = input[index];
     if (isnan(static_cast<float>(x))) {
       auto bin = static_cast<int64_t>(index / stride);
-      phi::CudaAtomicAdd(&buf[bin], 1);
+      phi::CudaAtomicAdd(&nan_counts[bin], 1);
     }
   }
   __syncthreads();
 
-  for (int i = threadIdx.x; i < pre_dim; i += blockDim.x) {
-    phi::CudaAtomicAdd(&nan_counts[i], buf[i]);
-    phi::CudaAtomicAdd(&nan_total[0], buf[i]);
-    phi::CudaAtomicMax(&nan_total[1], stride - buf[i]);
+  for (int64_t i = begin; i < pre_dim; i += step) {
+    phi::CudaAtomicAdd(&nan_total[0], nan_counts[i]);
+    phi::CudaAtomicMax(&nan_total[1], stride - nan_counts[i]);
   }
 }
 
@@ -77,7 +91,10 @@ __global__ void CalcMedianMeanKernel(const T* sort_out_ptr,
                                      const bool is_odd,
                                      const int64_t pre_dim,
                                      const int64_t stride) {
-  CUDA_KERNEL_LOOP(index, pre_dim) {
+  int64_t begin = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+  int64_t step = static_cast<int64_t>(blockDim.x) * gridDim.x;
+
+  for (int64_t index = begin; index < pre_dim; index += step) {
     int64_t pos = static_cast<int64_t>((index + 1) * stride) - 1;
     if (is_odd) {
       median_val[index * 2] = sort_indices_ptr[pos];
@@ -103,7 +120,10 @@ __global__ void CalcMedianMinKernel(const T* sort_out_ptr,
                                     const bool is_odd,
                                     const int64_t pre_dim,
                                     const int64_t stride) {
-  CUDA_KERNEL_LOOP(index, pre_dim) {
+  int64_t begin = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+  int64_t step = static_cast<int64_t>(blockDim.x) * gridDim.x;
+
+  for (int64_t index = begin; index < pre_dim; index += step) {
     int64_t pos = static_cast<int64_t>((index + 1) * stride) - 1;
     if (is_odd) {
       median_val[index] = sort_indices_ptr[pos];
@@ -129,7 +149,10 @@ __global__ void CalcNanmedianMeanKernel(const T* sort_out_ptr,
                                         const int64_t stride,
                                         const T div_factor,
                                         const T nan_val) {
-  CUDA_KERNEL_LOOP(index, pre_dim) {
+  int64_t begin = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+  int64_t step = static_cast<int64_t>(blockDim.x) * gridDim.x;
+
+  for (int64_t index = begin; index < pre_dim; index += step) {
     int64_t pos = static_cast<int64_t>(index * max_valid_num);
     int64_t nan_cnt = nan_counts[index];
     if (nan_cnt == stride) {
@@ -170,7 +193,10 @@ __global__ void CalcNanmedianMinKernel(const T* sort_out_ptr,
                                        const int64_t stride,
                                        const T div_factor,
                                        const T nan_val) {
-  CUDA_KERNEL_LOOP(index, pre_dim) {
+  int64_t begin = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+  int64_t step = static_cast<int64_t>(blockDim.x) * gridDim.x;
+
+  for (int64_t index = begin; index < pre_dim; index += step) {
     int64_t pos = static_cast<int64_t>(index * max_valid_num);
     int64_t nan_cnt = nan_counts[index];
     if (nan_cnt == stride) {
@@ -208,7 +234,7 @@ void ProcessMedianKernel(const Context& dev_ctx,
 
   int64_t numel = x.numel();
   auto x_dim = x.dims();
-  int64_t x_rank = x_dim.size();
+  int x_rank = x_dim.size();
   int64_t stride = x_dim[x_rank - 1];
 
   PADDLE_ENFORCE_NE(stride,
@@ -219,7 +245,6 @@ void ProcessMedianKernel(const Context& dev_ctx,
                         x_dim));
 
   int64_t pre_dim = numel / stride;
-  int64_t i = 0;
 
   DenseTensor nan_counts, nan_stat;
   int64_t* nan_counts_ptr;
@@ -234,17 +259,10 @@ void ProcessMedianKernel(const Context& dev_ctx,
     int64_t* nan_stat_mem = dev_ctx.template Alloc<int64_t>(&nan_stat);
     int64_t* nan_stat_ptr = nan_stat.data<int64_t>();
 
-    KernelNanCounts<T><<<GET_BLOCKS(numel),
-                         PADDLE_CUDA_NUM_THREADS,
-                         pre_dim * sizeof(int64_t),
-                         stream>>>(x_data,
-                                   numel,
-                                   pre_dim,
-                                   stride,
-                                   std::numeric_limits<T>::min(),
-                                   nan_stat_ptr,
-                                   nan_counts_ptr);
-
+    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel);
+    KernelNanCounts<T>
+        <<<config.block_per_grid.x, config.thread_per_block.x, 0, stream>>>(
+            x_data, numel, pre_dim, stride, nan_stat_ptr, nan_counts_ptr);
     auto nan_stat_mem_cpu =
         phi::memory_utils::Alloc(phi::CPUPlace(), sizeof(int64_t) * 2);
     int64_t* nan_stat_cpu_ptr =
@@ -291,10 +309,11 @@ void ProcessMedianKernel(const Context& dev_ctx,
 
   T div_factor = static_cast<T>(2.0);
   T nan_val = std::numeric_limits<T>::quiet_NaN();
+  auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, pre_dim);
   if (ignore_nan) {
     if (mode == "avg") {
       CalcNanmedianMeanKernel<T>
-          <<<GET_BLOCKS(pre_dim), PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
+          <<<config.block_per_grid.x, config.thread_per_block.x, 0, stream>>>(
               sort_out_ptr,
               sort_indices_ptr,
               nan_counts_ptr,
@@ -308,7 +327,7 @@ void ProcessMedianKernel(const Context& dev_ctx,
               nan_val);
     } else {  // mode == "min"
       CalcNanmedianMinKernel<T>
-          <<<GET_BLOCKS(pre_dim), PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
+          <<<config.block_per_grid.x, config.thread_per_block.x, 0, stream>>>(
               sort_out_ptr,
               sort_indices_ptr,
               nan_counts_ptr,
@@ -324,7 +343,7 @@ void ProcessMedianKernel(const Context& dev_ctx,
   } else {
     if (mode == "avg") {
       CalcMedianMeanKernel<T>
-          <<<GET_BLOCKS(pre_dim), PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
+          <<<config.block_per_grid.x, config.thread_per_block.x, 0, stream>>>(
               sort_out_ptr,
               sort_indices_ptr,
               m_data,
@@ -335,7 +354,7 @@ void ProcessMedianKernel(const Context& dev_ctx,
               sort_k);
     } else {  // mode == "min"
       CalcMedianMinKernel<T>
-          <<<GET_BLOCKS(pre_dim), PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
+          <<<config.block_per_grid.x, config.thread_per_block.x, 0, stream>>>(
               sort_out_ptr,
               sort_indices_ptr,
               m_data,
