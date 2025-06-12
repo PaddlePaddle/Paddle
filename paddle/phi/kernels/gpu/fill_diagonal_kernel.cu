@@ -51,7 +51,7 @@ void FillDiagonalKernel(const Context& dev_ctx,
                         bool wrap,
                         DenseTensor* out) {
   if (out && out->numel() == 0) {
-    ctx.template Alloc<T>(out);
+    dev_ctx.template Alloc<T>(out);
     return;
   }
   const int64_t kMaxBlockDim = 512;
