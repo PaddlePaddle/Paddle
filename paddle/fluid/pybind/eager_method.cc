@@ -2027,7 +2027,9 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
             transed_index.emplace_back(empty_ad_func(
                 {}, transed_index[0].dtype(), transed_index[0].place()));
           }
-
+          int64_t slice_offset =
+              static_cast<int64_t>(reinterpret_cast<char*>(sub_tensor.data()) -
+                                   reinterpret_cast<char*>(tensor.data()));
           AdvancedIndex ad = AdvancedIndex(transed_sub_tensor, transed_index);
           transed_sub_tensor =
               index_elementwise_put__ad_func(tensor,
@@ -2036,7 +2038,11 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
                                              ad.src_sizes,
                                              ad.src_strides,
                                              ad.indexed_sizes,
-                                             ad.indexed_strides);
+                                             ad.indexed_strides,
+                                             slice_offset);
+          // New kernel does not need to transpose back, so set out_is_view to
+          // false. Remove when all cases use this branch.
+          out_is_view = false;
 
         } else {
           transed_sub_tensor = index_put__ad_func(
