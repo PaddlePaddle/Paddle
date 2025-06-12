@@ -31,6 +31,7 @@ from paddle.framework import (
 from paddle.nn import Layer
 from paddle.nn.utils import dygraph_utils
 
+from .....jit.marker import unified
 from ....communication.reduce import ReduceOp, _get_reduce_op
 
 if TYPE_CHECKING:
@@ -74,6 +75,7 @@ class c_split_eager(PyLayer):
         return out
 
 
+@unified
 def _c_identity(tensor, group=None, skip_c_identity_dynamic=False):
     """
     Return a copy of the tensor, mainly used with model parallel.
@@ -119,6 +121,7 @@ def _c_identity(tensor, group=None, skip_c_identity_dynamic=False):
         return out
 
 
+@unified
 def _c_concat(tensor, group=None):
     """
     Return allgather of the tensor, mainly used with model parallel.
@@ -169,6 +172,7 @@ def _c_concat(tensor, group=None):
         return out
 
 
+@unified
 def _c_split(tensor, group=None):
     """
     Split tensor evenly among all members, mainly used with model parallel.
@@ -256,6 +260,7 @@ class mp_allreduce_eager(PyLayer):
             return _C_ops.c_identity(dy, ctx.ring_id, True, True)
 
 
+@unified
 def _mp_allreduce(
     tensor,
     op=ReduceOp.SUM,
@@ -307,6 +312,7 @@ def _mp_allreduce(
         return out
 
 
+@unified
 def _c_lookup_table(table, index, start_index=0, vocab_size=-1, name=None):
     """
     Lookup table according to index.
@@ -382,6 +388,7 @@ class _Linear(Layer):
         return f'in_features={self.weight.shape[0]}, out_features={self.weight.shape[1]}, dtype={self._dtype}{name_str}'
 
 
+@unified
 def _c_softmax_with_cross_entropy(
     logits,
     label,
@@ -449,6 +456,7 @@ def _c_softmax_with_cross_entropy(
         return loss
 
 
+@unified
 def _c_softmax_with_multi_label_cross_entropy(
     logits,
     label,
@@ -537,6 +545,7 @@ def _c_softmax_with_multi_label_cross_entropy(
         return loss
 
 
+@unified
 def _linear(x, weight, bias=None, name=None):
     """
     Function Linear
