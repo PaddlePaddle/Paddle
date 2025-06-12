@@ -582,8 +582,10 @@ XCCLComm* XCCLCommContext::AssignXCCLComm(
   c->set_rank(rank);
   c->set_comm(comm);
   c->set_dev_ctx(std::move(dev_ctx));
-  c->set_compute_event(std::move(compute_event));
-  c->set_comm_event(std::move(comm_event));
+  c->set_compute_event(
+      std::make_shared<phi::event::event_t>(compute_event->raw_event()));
+  c->set_comm_event(
+      std::make_shared<phi::event::event_t>(comm_event->raw_event()));
 
   comm_map_mutex_.lock();
   if (comm_map_.count(ring_id) == 0) {
