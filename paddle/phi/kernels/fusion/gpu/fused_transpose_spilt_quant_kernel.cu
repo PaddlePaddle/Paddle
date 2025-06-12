@@ -303,6 +303,10 @@ PD_REGISTER_KERNEL(fused_transpose_split_quant,
                    GPU,
                    ALL_LAYOUT,
                    phi::FusedTransposeSplitQuantKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
                    phi::dtype::bfloat16) {
   kernel->OutputAt(0).SetDataType(phi::DataType::FLOAT8_E4M3FN);
   kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);

@@ -35,7 +35,8 @@
     }                                            \
   }
 
-// 对二维坐标进行swizzle变换，提供相对offset,避免bank conflict
+// Perform swizzle transformation on 2D coordinates with relative offset to
+// avoid bank conflicts
 __device__ __forceinline__ int swizzled_2d_idx(const int outer_dim,
                                                const int inner_rank,
                                                const int inner_dim) {

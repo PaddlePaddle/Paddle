@@ -498,7 +498,8 @@ if(NOT WITH_GPU
     test_incubate_moe_combine
     test_incubate_moe_gate_dispatch_partial_nosoftmaxtopk
     test_incubate_moe_gate_dispatch_w_permute_bwd
-    test_incubate_moe_gate_dispatch_w_permute)
+    test_incubate_moe_gate_dispatch_w_permute
+    test_fused_transpose_spilt_quant_op)
 endif()
 
 if(NOT WITH_CUDNN_FRONTEND)
