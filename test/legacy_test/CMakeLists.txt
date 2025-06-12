@@ -504,7 +504,10 @@ if(NOT WITH_GPU
     test_incubate_moe_combine
     test_incubate_moe_gate_dispatch_partial_nosoftmaxtopk
     test_incubate_moe_gate_dispatch_w_permute_bwd
-    test_incubate_moe_gate_dispatch_w_permute)
+    test_incubate_moe_gate_dispatch_w_permute
+    test_fused_act_dequant_op
+    test_fused_weighted_swiglu_act_quant_op
+    test_fused_swiglu_weighted_bwd_op)
 endif()
 
 if(NOT WITH_CUDNN_FRONTEND)
