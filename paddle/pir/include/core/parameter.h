@@ -40,10 +40,6 @@ class IR_API Parameter {
 
   Parameter(const Parameter& param) {
     data_ = malloc(param.size_);
-    PADDLE_ENFORCE_NOT_NULL(
-        data_,
-        phi::errors::ResourceExhausted("malloc failed for data_ (size = %zu)",
-                                       param.size_));
     memcpy(data_, param.data_, param.size_);
     size_ = param.size_;
     type_ = param.type_;
@@ -51,10 +47,6 @@ class IR_API Parameter {
 
   Parameter& operator=(const Parameter& param) {
     data_ = malloc(param.size_);
-    PADDLE_ENFORCE_NOT_NULL(
-        data_,
-        phi::errors::ResourceExhausted("malloc failed for data_ (size = %zu)",
-                                       param.size_));
     memcpy(data_, param.data_, param.size_);
     size_ = param.size_;
     type_ = param.type_;
