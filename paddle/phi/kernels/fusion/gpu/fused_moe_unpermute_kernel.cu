@@ -19,6 +19,10 @@
 
 namespace phi {
 namespace fusion {
+struct __custom_bfloat162 {
+  __nv_bfloat16 x;
+  __nv_bfloat16 y;
+}
 #ifndef MAX_NUM_EXPERTS
 #define MAX_NUM_EXPERTS 8
 #endif
@@ -74,9 +78,9 @@ __global__ void tokens_zip_kernel(
          x_offset < num_full_vec * vecSize;
          x_offset += thread_stride) {
       float2 sum = {0.0f, 0.0f};
-      __nv_bfloat162 raw = {0, 0};
+      __custom_bfloat162 raw = {0, 0};
       int aggreg_cnt = 0;
-      __nv_bfloat162 *out_ptr = reinterpret_cast<__nv_bfloat162 *>(
+      __custom_bfloat162 *out_ptr = reinterpret_cast<__custom_bfloat162 *>(
           &zipped_tokens[(int64_t)this_row * (int64_t)token_length + x_offset]);
 #pragma unroll
       for (int expert = 0; expert < num_experts; ++expert) {
@@ -84,15 +88,19 @@ __global__ void tokens_zip_kernel(
         if (fetch_row < 0) continue;
         aggreg_cnt++;
         // 手动类型提升
-        raw = *reinterpret_cast<const __nv_bfloat162 *>(
+        raw = *reinterpret_cast<const __custom_bfloat162 *>(
             &unzipped_tokens[(int64_t)fetch_row * (int64_t)token_length +
                              x_offset]);
-        float2 token_vec = __bfloat1622float2(raw);
+        float2 token_vec = {0.0f, 0.0f};
+        token_vec.x = static_cast<float>(raw.x);
+        token_vec.y = static_cast<float>(raw.y);
         sum.x = __fadd_rn(token_vec.x, sum.x);
         sum.y = __fadd_rn(token_vec.y, sum.y);
       }
       // 选择性类型下降为原有精度
-      *out_ptr = (aggreg_cnt > 1) ? __float22bfloat162_rn(sum) : raw;
+      *out_ptr = (aggreg_cnt > 1) ? {static_cast<__nv_bfloat16>(sum.x),
+                                     static_cast<__nv_bfloat16>(sum.y)}
+                                  : raw;
     }
 
     // 剩余元素处理
@@ -107,11 +115,11 @@ __global__ void tokens_zip_kernel(
         if (fetch_row < 0) continue;
         aggreg_cnt++;
         raw = unzipped_tokens[(int64_t)fetch_row * (int64_t)token_length + i];
-        float token_val = __bfloat162float(raw);
+        float token_val = static_cast<float>(raw);
         sum = __fadd_rn(token_val, sum);
       }
       zipped_tokens[(int64_t)this_row * (int64_t)token_length + i] =
-          (aggreg_cnt > 1) ? __float2bfloat16_rn(sum) : raw;
+          (aggreg_cnt > 1) ? static_cast<__nv_bfloat16>(sum) : raw;
     }
   } else {
     // ------------------------ BF16 intrinsics 加权累加 -----------------------
@@ -119,17 +127,20 @@ __global__ void tokens_zip_kernel(
     for (int x_offset = threadIdx.x * vecSize;
          x_offset < num_full_vec * vecSize;
          x_offset += thread_stride) {
-      __nv_bfloat162 sum = {0, 0};
-      __nv_bfloat162 *out_ptr = reinterpret_cast<__nv_bfloat162 *>(
+      __custom_bfloat162 sum = {0, 0};
+      __custom_bfloat162 *out_ptr = reinterpret_cast<__custom_bfloat162 *>(
           &zipped_tokens[(int64_t)this_row * (int64_t)token_length + x_offset]);
 #pragma unroll
       for (int expert = 0; expert < num_experts; ++expert) {
         const int fetch_row = local_row_fetchlist[expert];
         if (fetch_row < 0) continue;
-        __nv_bfloat162 token_vec = *reinterpret_cast<const __nv_bfloat162 *>(
-            &unzipped_tokens[(int64_t)fetch_row * (int64_t)token_length +
-                             x_offset]);
-        sum = __hadd2(sum, token_vec);
+        __custom_bfloat162 token_vec =
+            *reinterpret_cast<const __custom_bfloat162 *>(
+                &unzipped_tokens[(int64_t)fetch_row * (int64_t)token_length +
+                                 x_offset]);
+        // sum = __hadd2(sum, token_vec);
+        sum.x = sum.x + token_vec.x;
+        sum.y = sum.y + token_vec.y;
       }
       *out_ptr = sum;
     }
