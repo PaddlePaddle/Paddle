@@ -223,9 +223,10 @@ class MetaInfoOrNull:
         shape = [SymbolicInt() if dim == -1 else dim for dim in value.shape]
         for dim in shape:
             if isinstance(dim, int):
-                assert (
-                    dim >= 0
-                ), "Dynamic dimension must be non-negative or SymbolicInt"
+                assert dim >= 0, (
+                    "Dimensions must be non-negative integers or SymbolicInt. "
+                    f"Encountered value {dim} in shape {shape}."
+                )
 
         if isinstance(value, paddle.pir.Value) and value.is_dist():
             dist_info = DistInfo.from_value(value)
