@@ -13,11 +13,13 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/funcs/repeat_tensor2index_tensor.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/exclusive_scan.h"
+#include "paddle/phi/kernels/impl/repeat_interleave_kernel_impl.h"
 #include "paddle/phi/kernels/primitive/kernel_primitives.h"
 
 namespace phi {
@@ -40,67 +42,63 @@ __global__ void fill_array_kernel(T *output,
 }
 
 template <typename RepeatsT>
-class RepeatsTensor2IndexTensorFunctor<phi::GPUContext, RepeatsT> {
- public:
-  void operator()(const phi::GPUContext &ctx,
-                  const DenseTensor &repeats,
-                  DenseTensor *index) {
-    const RepeatsT *repeats_ptr = repeats.data<RepeatsT>();
-    int64_t num_reps = repeats.dims()[0];
+void RepeatsTensor2IndexTensorFunctor<phi::GPUContext, RepeatsT>::operator()(
+    const phi::GPUContext &dev_ctx,
+    const DenseTensor &repeats,
+    DenseTensor *index) {
+  const RepeatsT *repeats_ptr = repeats.data<RepeatsT>();
+  int64_t num_reps = repeats.dims()[0];
 
-    // compute prefix sum of repeats to get start index of each repeat
-    RepeatsT *prefix_ptr;
-    cudaMalloc(&prefix_ptr, num_reps * sizeof(RepeatsT));
+  // compute prefix sum of repeats to get start index of each repeat
+  DenseTensor prefix;
+  prefix.Resize(common::make_ddim({num_reps}));
+  dev_ctx.template Alloc<RepeatsT>(&prefix);
+  auto *prefix_ptr = prefix.data<RepeatsT>();
 
-    cudaStream_t stream = ctx.stream();
-    phi::funcs::
-        CubExclusiveScan<const RepeatsT *, RepeatsT *, cub::Sum, RepeatsT>(
-            repeats_ptr,
-            prefix_ptr,
-            num_reps,
-            static_cast<RepeatsT>(0),
-            cub::Sum(),
-            ctx);
+  cudaStream_t stream = dev_ctx.stream();
+  phi::funcs::
+      CubExclusiveScan<const RepeatsT *, RepeatsT *, cub::Sum, RepeatsT>(
+          repeats_ptr,
+          prefix_ptr,
+          num_reps,
+          static_cast<RepeatsT>(0),
+          cub::Sum(),
+          dev_ctx);
 
-    // get last prefix and repeat to compute total size of index tensor
-    RepeatsT last_prefix = 0;
-    RepeatsT last_repeat = 0;
-    cudaMemcpyAsync(&last_prefix,
-                    prefix_ptr + num_reps - 1,
-                    sizeof(RepeatsT),
-                    cudaMemcpyDeviceToHost,
-                    stream);
-    cudaMemcpyAsync(&last_repeat,
-                    repeats_ptr + num_reps - 1,
-                    sizeof(RepeatsT),
-                    cudaMemcpyDeviceToHost,
-                    stream);
-    cudaStreamSynchronize(stream);
-    int64_t total_size =
-        static_cast<int64_t>(last_prefix) + static_cast<int64_t>(last_repeat);
+  // get last prefix and repeat to compute total size of index tensor
+  RepeatsT last_prefix = 0;
+  RepeatsT last_repeat = 0;
+  cudaMemcpyAsync(&last_prefix,
+                  prefix_ptr + num_reps - 1,
+                  sizeof(RepeatsT),
+                  cudaMemcpyDeviceToHost,
+                  stream);
+  cudaMemcpyAsync(&last_repeat,
+                  repeats_ptr + num_reps - 1,
+                  sizeof(RepeatsT),
+                  cudaMemcpyDeviceToHost,
+                  stream);
+  cudaStreamSynchronize(stream);
+  int64_t total_size =
+      static_cast<int64_t>(last_prefix) + static_cast<int64_t>(last_repeat);
 
-    // resize & alloc index tensor
-    index->Resize({total_size});
-    ctx.template Alloc<RepeatsT>(index);
+  // resize & alloc index tensor
+  index->Resize({total_size});
+  dev_ctx.template Alloc<RepeatsT>(index);
 
-    if (total_size == 0) {
-      cudaFree(prefix_ptr);
-      return;
-    }
-
-    RepeatsT *index_ptr = index->data<RepeatsT>();
-    int block_size = 256;
-    int grid_size = (num_reps + block_size - 1) / block_size;
-    fill_array_kernel<<<grid_size, block_size, 0, stream>>>(
-        index_ptr, prefix_ptr, repeats_ptr, num_reps);
-
-    cudaFree(prefix_ptr);
+  if (total_size == 0) {
+    return;
   }
-};
 
-using GPU = phi::GPUContext;
-template class RepeatsTensor2IndexTensorFunctor<GPU, int>;
-template class RepeatsTensor2IndexTensorFunctor<GPU, int64_t>;
+  RepeatsT *index_ptr = index->data<RepeatsT>();
+  int block_size = 256;
+  int grid_size = (num_reps + block_size - 1) / block_size;
+  fill_array_kernel<<<grid_size, block_size, 0, stream>>>(
+      index_ptr, prefix_ptr, repeats_ptr, num_reps);
+}
+
+template class RepeatsTensor2IndexTensorFunctor<phi::GPUContext, int>;
+template class RepeatsTensor2IndexTensorFunctor<phi::GPUContext, int64_t>;
 
 }  // namespace funcs
 }  // namespace phi
