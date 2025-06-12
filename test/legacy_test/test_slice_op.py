@@ -170,6 +170,16 @@ class TestSliceZerosShapeTensor(OpTest):
         self.check_output_with_place(paddle.CPUPlace(), check_pir=True)
 
 
+class TestCase_ZeroSize(TestSliceOp):
+    def config(self):
+        self.input = np.random.random([0, 0, 5, 6]).astype("float64")
+        self.starts = [-3, 0, 2]
+        self.ends = [3, 100, -1]
+        self.axes = [0, 1, 3]
+        self.infer_flags = [1, 1, 1]
+        self.out = self.input[-3:3, 0:100, :, 2:-1]
+
+
 # 1.2 with attr(decrease)
 class TestSliceOp_decs_dim(OpTest):
     def setUp(self):

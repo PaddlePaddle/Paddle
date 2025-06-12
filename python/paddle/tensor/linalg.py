@@ -773,8 +773,10 @@ def matrix_norm(
         Auxiliary function for matrix_norm
         Computes the permutation that moves the two given dimensions to the back
         """
-        ret = [i for i in range(dimn) if i != dim0 and i != dim1]
-        ret.extend((dim0, dim1))
+        pos_dim0 = dim0 % dimn
+        pos_dim1 = dim1 % dimn
+        ret = [i for i in range(dimn) if i != pos_dim0 and i != pos_dim1]
+        ret.extend((pos_dim0, pos_dim1))
         return ret
 
     def _inverse_permutation(perm):
@@ -792,7 +794,7 @@ def matrix_norm(
         """
         The frobenius norm OP is to calculate the frobenius norm of certain two dimensions of Tensor `input`.
         Args:
-          input (Variable): Tensor, data type float32, float64.
+          input (Variable): Tensor, data type float32, float64, complex64, complex128.
           dim (list, optional): None for last two dimensions. Default None.
           keepdim (bool, optional): Whether keep the dimensions as the `input`, Default False.
           name (str, optional): The default value is None. Normally there is no need for
@@ -961,7 +963,8 @@ def matrix_norm(
                     )
                 return result
             else:  # 1,-1,inf,-inf
-                dim0, dim1 = axis
+                rank = len(x.shape)
+                dim0, dim1 = (d % rank for d in axis)
                 if abs_ord == np.float64("inf"):
                     dim0, dim1 = dim1, dim0
                 if not keepdim and (dim0 < dim1):
@@ -1056,7 +1059,8 @@ def matrix_norm(
             return reduce_out
 
         else:
-            dim0, dim1 = axis
+            rank = len(x.shape)
+            dim0, dim1 = (d % rank for d in axis)
             if abs_ord == np.float64("inf"):
                 dim0, dim1 = dim1, dim0
             if not keepdim and (dim0 < dim1):

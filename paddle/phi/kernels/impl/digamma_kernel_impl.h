@@ -44,15 +44,17 @@ struct DigammaFunctor {
 };
 
 template <typename T, typename Context>
-void DigammaKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
-  ctx.template Alloc<T>(out);
+void DigammaKernel(const Context& dev_ctx,
+                   const DenseTensor& x,
+                   DenseTensor* out) {
+  dev_ctx.template Alloc<T>(out);
   if (out && out->numel() == 0) {
     return;
   }
   auto* x_data = x.data<T>();
   auto* out_data = out->data<T>();
   auto numel = x.numel();
-  phi::funcs::ForRange<Context> for_range(ctx, numel);
+  phi::funcs::ForRange<Context> for_range(dev_ctx, numel);
   DigammaFunctor<T> functor(x_data, out_data, numel);
   for_range(functor);
 }

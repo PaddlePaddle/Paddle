@@ -3389,7 +3389,7 @@ void PNormInferMeta(const MetaTensor& x,
                         x_rank,
                         x_dim));
 
-  std::vector<int> out_dim_vector;
+  std::vector<int64_t> out_dim_vector;
   if (asvector) {
     if (keepdim) {
       for (int i = 0; i < x_rank; ++i) {
@@ -6139,12 +6139,23 @@ void WeightQuantizeInferMeta(const MetaTensor& x,
       2UL,
       common::errors::InvalidArgument(
           "The x tensor of quant op must be 2D, but got[%d]", x_dims.size()));
-  PADDLE_ENFORCE_EQ(
-      x_dims[0] % 64,
-      0,
-      common::errors::InvalidArgument(
-          "The first dimension of input must be divisible by 64, but got[%d]",
-          x_dims[0]));
+
+  if (algo == "w4a8") {
+    PADDLE_ENFORCE_EQ(
+        x_dims[0] % 32,
+        0,
+        common::errors::InvalidArgument("The first dimension of packed-input "
+                                        "must be divisible by 32, but got[%d]",
+                                        x_dims[0]));
+  } else {
+    PADDLE_ENFORCE_EQ(
+        x_dims[0] % 64,
+        0,
+        common::errors::InvalidArgument(
+            "The first dimension of input must be divisible by 64, but got[%d]",
+            x_dims[0]));
+  }
+
   PADDLE_ENFORCE_EQ(
       x_dims[1] % 16,
       0,
@@ -6172,7 +6183,7 @@ void WeightQuantizeInferMeta(const MetaTensor& x,
   } else if (algo == "weight_only_int4") {
     dim_out = std::vector<int64_t>({x_dims[1] / 2, x_dims[0]});
   } else if (algo == "w4a8") {
-    dim_out = std::vector<int64_t>({x_dims[1], x_dims[0] / 2});
+    dim_out = vectorize(x_dims);
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
         "The algo must be in ['weight_only_int8', 'weight_only_int4', "

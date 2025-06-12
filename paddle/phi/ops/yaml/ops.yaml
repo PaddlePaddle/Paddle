@@ -273,6 +273,7 @@
   output : Tensor(out)
   infer_meta :
     func : ReduceInferMeta
+    spmd_rule : ReductionAnyInferSpmdDynamic
   kernel :
     func : any
   traits : paddle::dialect::ForwardOnlyTrait
@@ -1719,6 +1720,7 @@
   infer_meta :
     func : CreateLikeInferMeta
     param : [x, dtype]
+    spmd_rule : EmptyLikeInferSpmd
   kernel :
     func : empty_like
     param : [x, dtype]
@@ -2792,6 +2794,16 @@
   inplace : (x -> out)
   backward : index_add_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
+
+- op : index_elementwise_get
+  args : (Tensor x, Tensor[] index, int64_t[] input_dims, int64_t[] input_strides, int64_t[] index_dims, int64_t[] index_stride)
+  output : Tensor (out)
+  infer_meta :
+    func : IndexElementwiseGetInferMeta
+  kernel :
+    func : index_elementwise_get
+    data_type : x
+  backward : index_elementwise_get_grad
 
 - op : index_elementwise_put
   args : (Tensor x, Tensor[] index, Tensor value, int64_t[] input_dims, int64_t[] input_strides, int64_t[] index_dims, int64_t[] index_strides)
@@ -4456,6 +4468,7 @@
   output : Tensor
   infer_meta :
     func : RoiAlignInferMeta
+    spmd_rule : RoiAlignInferSpmd
   kernel :
     func : roi_align
     data_type : x
@@ -4481,6 +4494,7 @@
   output : Tensor(out)
   infer_meta :
     func : RollInferMeta
+    spmd_rule : RollInferSpmdDynamic
   kernel :
     func : roll
     data_type : x

@@ -104,7 +104,7 @@ __global__ void GPUPSROIPoolBackward(const int nthreads,
 }
 
 template <typename T, typename Context>
-void PsroiPoolGradKernel(const Context& ctx,
+void PsroiPoolGradKernel(const Context& dev_ctx,
                          const DenseTensor& x,
                          const DenseTensor& rois,
                          const paddle::optional<DenseTensor>& rois_num,
@@ -123,14 +123,15 @@ void PsroiPoolGradKernel(const Context& ctx,
     // set roi batch id
     DenseTensor rois_batch_id_list;
     rois_batch_id_list.Resize({rois_num_t});
-    int* rois_batch_id_data = ctx.template HostAlloc<int>(&rois_batch_id_list);
+    int* rois_batch_id_data =
+        dev_ctx.template HostAlloc<int>(&rois_batch_id_list);
     int rois_batch_size;
     if (rois_num.get_ptr()) {
       rois_batch_size = rois_num->numel();
       std::vector<int> rois_num_list(rois_batch_size);
       memory_utils::Copy(CPUPlace(),
                          rois_num_list.data(),
-                         ctx.GetPlace(),
+                         dev_ctx.GetPlace(),
                          rois_num->data<int>(),
                          sizeof(int) * rois_batch_size,
                          0);
@@ -152,22 +153,22 @@ void PsroiPoolGradKernel(const Context& ctx,
     }
 
     DenseTensor rois_batch_id_list_gpu;
-    Copy(ctx,
+    Copy(dev_ctx,
          rois_batch_id_list,
-         ctx.GetPlace(),
+         dev_ctx.GetPlace(),
          false,
          &rois_batch_id_list_gpu);
 
-    ctx.template Alloc<T>(dx);
+    dev_ctx.template Alloc<T>(dx);
     funcs::SetConstant<Context, T> set_zero;
-    set_zero(ctx, dx, static_cast<T>(0));
+    set_zero(dev_ctx, dx, static_cast<T>(0));
 
     int dout_size = dout.numel();
     int blocks = NumBlocks(dout_size);
     int threads = kNumCUDAThreads;
 
     if (dout_size > 0) {
-      GPUPSROIPoolBackward<T><<<blocks, threads, 0, ctx.stream()>>>(
+      GPUPSROIPoolBackward<T><<<blocks, threads, 0, dev_ctx.stream()>>>(
           dout_size,
           rois.data<T>(),
           dout.data<T>(),
@@ -179,7 +180,7 @@ void PsroiPoolGradKernel(const Context& ctx,
           pooled_height,
           pooled_width,
           rois_batch_id_list_gpu.data<int>(),
-          ctx.template Alloc<T>(dx));
+          dev_ctx.template Alloc<T>(dx));
     }
   }
 }
