@@ -13,9 +13,11 @@
 // limitations under the License.
 
 #pragma once
-#include <vector>
+// #include <vector>
 
+// #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
+// #include "paddle/phi/core/tensor_utils.h"
 
 namespace phi {
 namespace funcs {
@@ -27,6 +29,16 @@ class RepeatsTensor2IndexTensorFunctor {
                   const DenseTensor &repeats,
                   DenseTensor *index);
 };
+
+#if defined(__NVCC__) || defined(__HIPCC__)
+template <typename RepeatsT>
+class RepeatsTensor2IndexTensorFunctor<phi::GPUContext, RepeatsT> {
+ public:
+  void operator()(const phi::GPUContext &ctx,
+                  const DenseTensor &repeats,
+                  DenseTensor *index);
+};
+#endif
 
 }  // namespace funcs
 }  // namespace phi

@@ -16,6 +16,7 @@
 
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/cpu/index_select_impl.h"
+#include "paddle/phi/kernels/funcs/repeat_tensor2index_tensor.h"
 #include "paddle/phi/kernels/repeat_interleave_kernel.h"
 #if defined(__NVCC__) || defined(__HIPCC__)
 #include "paddle/phi/backends/gpu/gpu_decls.h"
@@ -24,8 +25,6 @@
 #include "paddle/phi/backends/gpu/gpu_resources.h"
 #include "paddle/phi/kernels/primitive/functor_primitives.h"
 #endif
-
-#include "paddle/phi/kernels/funcs/repeat_tensor2index_tensor.h"
 
 namespace phi {
 
