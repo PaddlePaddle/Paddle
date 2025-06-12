@@ -72,6 +72,7 @@ if(NOT WITH_GPU)
   list(REMOVE_ITEM TEST_OPS test_fused_transformer_encoder_layer)
   list(REMOVE_ITEM TEST_OPS test_fused_bias_dropout_residual_layer_norm_op)
   list(REMOVE_ITEM TEST_OPS test_fused_bias_dropout_residual_layer_norm_op_api)
+  list(REMOVE_ITEM TEST_OPS test_fused_transpose_spilt_quant_op)
   list(REMOVE_ITEM TEST_OPS test_rms_norm_op)
   list(REMOVE_ITEM TEST_OPS test_fused_layernorm_op)
   list(REMOVE_ITEM TEST_OPS test_fused_comm_buffer)
@@ -162,6 +163,7 @@ if(WIN32)
   list(REMOVE_ITEM TEST_OPS test_matmul_int8_op)
   list(REMOVE_ITEM TEST_OPS test_variable_length_memory_efficient_attention)
   list(REMOVE_ITEM TEST_OPS test_ops_nms)
+  list(REMOVE_ITEM TEST_OPS test_fused_transpose_spilt_quant_op)
 endif()
 list(REMOVE_ITEM TEST_OPS test_checkpoint_saver)
 
@@ -498,7 +500,8 @@ if(NOT WITH_GPU
     test_incubate_moe_combine
     test_incubate_moe_gate_dispatch_partial_nosoftmaxtopk
     test_incubate_moe_gate_dispatch_w_permute_bwd
-    test_incubate_moe_gate_dispatch_w_permute)
+    test_incubate_moe_gate_dispatch_w_permute
+    test_fused_transpose_spilt_quant_op)
 endif()
 
 if(NOT WITH_CUDNN_FRONTEND)

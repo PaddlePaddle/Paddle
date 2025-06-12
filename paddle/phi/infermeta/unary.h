@@ -1031,4 +1031,10 @@ void IntBincountInferMeta(const MetaTensor& x,
                           int64_t dtype,
                           MetaTensor* out);
 
+void FusedTransposeSplitQuantInferMeta(const MetaTensor& x,
+                                       const IntArray& tokens_per_expert,
+                                       bool pow_2_scales,
+                                       std::vector<MetaTensor*> outs,
+                                       std::vector<MetaTensor*> scales);
+
 }  // namespace phi
