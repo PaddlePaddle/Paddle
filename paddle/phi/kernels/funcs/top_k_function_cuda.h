@@ -316,7 +316,7 @@ __forceinline__ __device__ Pair<T> WarpReduce(Pair<T> input,
     for (int offset = WARP_SIZE / 2; offset > 0; offset >>= 1) {
       T tmp_val =
           phi::backends::gpu::CudaShuffleDownSync(FINAL_MASK, input.v, offset);
-      int tmp_id =
+      int64_t tmp_id =
           phi::backends::gpu::CudaShuffleDownSync(FINAL_MASK, input.id, offset);
       if (input.v < tmp_val || (input.v == tmp_val && input.id > tmp_id)) {
         input.v = tmp_val;
@@ -328,7 +328,7 @@ __forceinline__ __device__ Pair<T> WarpReduce(Pair<T> input,
     for (int offset = WARP_SIZE / 2; offset > 0; offset >>= 1) {
       T tmp_val =
           phi::backends::gpu::CudaShuffleDownSync(FINAL_MASK, input.v, offset);
-      int tmp_id =
+      int64_t tmp_id =
           phi::backends::gpu::CudaShuffleDownSync(FINAL_MASK, input.id, offset);
       if (input.v > tmp_val || (input.v == tmp_val && input.id > tmp_id)) {
         input.v = tmp_val;
@@ -697,7 +697,7 @@ __device__ void ExclusiveBinaryPrefixScan(
 template <typename T, typename RadixType>
 __device__ T FindPattern(const T* input,
                          T* shared_mem,
-                         int slice_size,
+                         int64_t slice_size,
                          RadixType desired,
                          RadixType desired_mask) {
   if (threadIdx.x < 2) {
@@ -706,8 +706,8 @@ __device__ T FindPattern(const T* input,
   __syncthreads();
 
   int block_dim = static_cast<int>(blockDim.x);
-  int loop = ((slice_size + block_dim - 1) / block_dim * block_dim);
-  for (int i = threadIdx.x; i < loop; i += blockDim.x) {
+  int64_t loop = ((slice_size + block_dim - 1) / block_dim * block_dim);
+  for (int64_t i = threadIdx.x; i < loop; i += blockDim.x) {
     bool valid = (i < slice_size);
     T v = valid ? input[i] : static_cast<T>(0);
 
@@ -739,7 +739,7 @@ __device__ void RadixCountUsingMask(const T* input,
                                     RadixType desired,
                                     RadixType desired_mask,
                                     int radix_digit_pos,
-                                    int slice_size) {
+                                    int64_t slice_size) {
 #pragma unroll
   for (int i = 0; i < RadixSize; ++i) {
     counts[i] = 0;
@@ -750,7 +750,7 @@ __device__ void RadixCountUsingMask(const T* input,
   }
   __syncthreads();
 
-  for (int i = threadIdx.x; i < slice_size; i += blockDim.x) {
+  for (int64_t i = threadIdx.x; i < slice_size; i += blockDim.x) {
     RadixType val = RadixTypeConfig<T>::Convert(input[i]);
 
     bool has_val = ((val & desired_mask) == desired);
@@ -783,7 +783,7 @@ __device__ void RadixCountUsingMask(const T* input,
 
 template <typename T, typename RadixType, bool Largest>
 __device__ void RadixSearch(
-    const T* input, int k, int slice_size, int* shared_mem, T* kth_value) {
+    const T* input, int k, int64_t slice_size, int* shared_mem, T* kth_value) {
   int counts[RADIX_SIZE];
 
   RadixType desired = 0;
@@ -919,8 +919,8 @@ void LaunchGatherKthValue(const phi::GPUContext& dev_ctx,
 template <typename T, bool Largest>
 __global__ void RadixTopK(const T* input,
                           int k,
-                          int slice_num,
-                          int slice_size,
+                          int64_t slice_num,
+                          int64_t slice_size,
                           T* output,
                           int64_t* indices) {
   __shared__ int shared_mem[32];
@@ -933,10 +933,10 @@ __global__ void RadixTopK(const T* input,
 
   // 2. Select the value strictly less/greater than kth_value and their indices
   int block_dim = static_cast<int>(blockDim.x);
-  int loop = ((slice_size + block_dim - 1) / block_dim * block_dim);
+  int64_t loop = ((slice_size + block_dim - 1) / block_dim * block_dim);
   int write_start = 0;
 
-  for (int i = threadIdx.x; i < loop; i += blockDim.x) {
+  for (int64_t i = threadIdx.x; i < loop; i += blockDim.x) {
     bool valid = i < slice_size;
     T v = valid ? input[i] : static_cast<T>(0);
     const auto convertd_v = RadixTypeConfig<T>::Convert(v);
@@ -962,7 +962,7 @@ __global__ void RadixTopK(const T* input,
   // 3. Fill the rest with value == kth_value
   assert(k >= write_start);
   int remain = k - write_start;
-  for (int i = threadIdx.x; i < loop; i += blockDim.x) {
+  for (int64_t i = threadIdx.x; i < loop; i += blockDim.x) {
     bool valid = i < slice_size;
     T v = valid ? input[i] : static_cast<T>(0);
     const auto convertd_v = RadixTypeConfig<T>::Convert(v);
