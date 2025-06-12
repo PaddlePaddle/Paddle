@@ -87,11 +87,6 @@ void CTCAlignOpCUDAKernel(const Context& dev_ctx,
                           int padding_value,
                           DenseTensor* output,
                           DenseTensor* output_length) {
-  PADDLE_ENFORCE_EQ(dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU,
-                    true,
-                    common::errors::InvalidArgument(
-                        "CTCAlign operator CUDA kernel must use CUDAPlace "
-                        "rather than CPUPlace."));
   const T* tokens = input.data<T>();
   auto stream = dev_ctx.stream();
 

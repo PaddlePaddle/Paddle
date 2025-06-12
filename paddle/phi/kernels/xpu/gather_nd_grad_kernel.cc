@@ -21,18 +21,18 @@
 namespace phi {
 
 template <typename T, typename Context>
-void GatherNdGradKernel(const Context &ctx,
+void GatherNdGradKernel(const Context &dev_ctx,
                         const DenseTensor &x,
                         const DenseTensor &index,
                         const DenseTensor &out_grad,
                         DenseTensor *x_grad) {
   using XPUType = typename XPUTypeTrait<T>::Type;
-  ctx.template Alloc<T>(x_grad);
+  dev_ctx.template Alloc<T>(x_grad);
 
   int r = 0;
   XPUType *dx_data = reinterpret_cast<XPUType *>(x_grad->data<T>());
   r = xpu::constant<XPUType>(
-      ctx.x_context(), dx_data, x_grad->numel(), static_cast<XPUType>(0));
+      dev_ctx.x_context(), dx_data, x_grad->numel(), static_cast<XPUType>(0));
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
 
   if (out_grad.numel() == 0) {
@@ -66,7 +66,7 @@ void GatherNdGradKernel(const Context &ctx,
     // int reduce_sum(Context* ctx, const T* x, T* y, const std::vector<int>&
     // xshape, const std::vector<int>& rdims)
     int r =
-        xpu::reduce_sum(ctx.x_context(),
+        xpu::reduce_sum(dev_ctx.x_context(),
                         reinterpret_cast<const XPUType *>(out_grad.data<T>()),
                         reinterpret_cast<XPUType *>(x_grad->data<T>()),
                         {(int64_t)remain_numel, (int64_t)x_numel},
@@ -100,7 +100,7 @@ void GatherNdGradKernel(const Context &ctx,
     auto index_data = const_cast<int *>(index.data<int>());
     xpu::VectorParam<int> index_vec{nullptr, index_size, index_data};
     r = xpu::scatter_nd<XPUType, int>(
-        ctx.x_context(),
+        dev_ctx.x_context(),
         nullptr,
         reinterpret_cast<const XPUType *>(out_grad.data<T>()),
         dx_data,
@@ -112,7 +112,7 @@ void GatherNdGradKernel(const Context &ctx,
     auto index_data = const_cast<int64_t *>(index.data<int64_t>());
     xpu::VectorParam<int64_t> index_vec{nullptr, index_size, index_data};
     r = xpu::scatter_nd<XPUType, int64_t>(
-        ctx.x_context(),
+        dev_ctx.x_context(),
         nullptr,
         reinterpret_cast<const XPUType *>(out_grad.data<T>()),
         dx_data,

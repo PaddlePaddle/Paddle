@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import itertools
+from contextlib import contextmanager
 from functools import cached_property
 from typing import TYPE_CHECKING
 
@@ -671,6 +672,8 @@ class PartialProgramLayer:
         Layer: A Layer object that run all ops internally in static graph mode.
     """
 
+    HOOKED_RUN_IMPL = None
+
     def __init__(
         self,
         main_program,
@@ -729,26 +732,38 @@ class PartialProgramLayer:
         """
         Execute static graph by Interpreter and Return dynamic Tensors.
         """
-        in_vars = self._prepare_inputs(inputs)
-        out_vars = self._prepare_outputs()
         attrs = self._prepare_attributes(in_sot_mode=False)
-        inputs = self._valid_vars(in_vars)
+        inputs = self._valid_vars(self._prepare_inputs(inputs))
+        parameters = self._valid_vars(self._params)
+        out_vars = self._prepare_outputs()
+        outputs = self._valid_vars(out_vars)
 
-        _C_ops.run_program(
-            inputs,
-            self._valid_vars(self._params),
-            self._valid_vars(out_vars),
-            self._create_scope_vec(
-                cache_key=(
-                    hash_with_seed(
-                        self.program_id,
-                        self._calc_input_places_hash(inputs),
-                    )
+        def run_impl(inputs, parameters, outputs):
+            _C_ops.run_program(
+                inputs,
+                parameters,
+                outputs,
+                self._create_scope_vec(
+                    cache_key=(
+                        hash_with_seed(
+                            self.program_id,
+                            self._calc_input_places_hash(inputs),
+                        )
+                    ),
+                    use_scope_cache=True,
                 ),
-                use_scope_cache=True,
-            ),
-            *attrs,
+                *attrs,
+            )
+
+        self.call_run_impl_with_hook(
+            run_impl,
+            inputs,
+            parameters,
+            outputs,
+            self.program.forward_program,
+            self.program.backward_program,
         )
+
         restored_nest_out = self._restore_out(out_vars)
         return self._remove_no_value(restored_nest_out)
 
@@ -756,26 +771,63 @@ class PartialProgramLayer:
         """
         In sot, inputs and outputs of partial program only contain tensors, so we can skip some step to speed up
         """
-        out_vars = self._prepare_outputs()
         attrs = self._prepare_attributes(in_sot_mode=True)
         inputs = self._valid_vars(inputs)
+        parameters = self._valid_vars(self._params)
+        out_vars = self._prepare_outputs()
+        outputs = self._valid_vars(out_vars)
 
-        _C_ops.run_program(
-            inputs,
-            self._valid_vars(self._params),
-            self._valid_vars(out_vars),
-            self._create_scope_vec(
-                cache_key=(
-                    hash_with_seed(
-                        self.program_id,
-                        self._calc_input_places_hash(inputs),
-                    )
+        def run_impl(inputs, parameters, outputs):
+            _C_ops.run_program(
+                inputs,
+                parameters,
+                outputs,
+                self._create_scope_vec(
+                    cache_key=(
+                        hash_with_seed(
+                            self.program_id,
+                            self._calc_input_places_hash(inputs),
+                        )
+                    ),
+                    use_scope_cache=True,
                 ),
-                use_scope_cache=True,
-            ),
-            *attrs,
+                *attrs,
+            )
+
+        self.call_run_impl_with_hook(
+            run_impl,
+            inputs,
+            parameters,
+            outputs,
+            self.program.forward_program,
+            self.program.backward_program,
         )
         return self._outputs.quick_restore(out_vars)
+
+    def call_run_impl_with_hook(
+        self,
+        run_impl,
+        inputs,
+        parameters,
+        outputs,
+        forward_program,
+        backward_program,
+    ):
+        if PartialProgramLayer.HOOKED_RUN_IMPL is None:
+            run_impl(
+                inputs,
+                parameters,
+                outputs,
+            )
+        else:
+            PartialProgramLayer.HOOKED_RUN_IMPL(
+                run_impl,
+                inputs,
+                parameters,
+                outputs,
+                forward_program,
+                backward_program,
+            )
 
     @cached_property
     def origin_runnable_program(self) -> RunnableProgram:
@@ -1312,6 +1364,20 @@ class PartialProgramLayer:
 
     def _valid_vars(self, vars):
         return vars if vars else None
+
+
+@contextmanager
+def replace_run_impl_guard(new_run_impl):
+    """
+    A context manager to temporarily replace the run_impl of PartialProgramLayer.
+    This is used for testing purposes.
+    """
+    old_run_impl = PartialProgramLayer.HOOKED_RUN_IMPL
+    PartialProgramLayer.HOOKED_RUN_IMPL = new_run_impl
+    try:
+        yield
+    finally:
+        PartialProgramLayer.HOOKED_RUN_IMPL = old_run_impl
 
 
 def partial_program_from(
