@@ -19,20 +19,20 @@
 namespace phi {
 
 template <typename T, typename Context>
-void NumelKernel(const Context& ctx,
+void NumelKernel(const Context& dev_ctx,
                  const DenseTensor& input,
                  DenseTensor* out) {
-  auto place = ctx.GetPlace();
-  auto out_data = ctx.template Alloc<int64_t>(out);
+  auto place = dev_ctx.GetPlace();
+  auto out_data = dev_ctx.template Alloc<int64_t>(out);
 
   if (place == phi::CPUPlace()) {
     out_data[0] = input.numel();
   } else {
     DenseTensor cpu_tensor;
     cpu_tensor.Resize(out->dims());
-    auto cpu_data = ctx.template HostAlloc<int64_t>(&cpu_tensor);
+    auto cpu_data = dev_ctx.template HostAlloc<int64_t>(&cpu_tensor);
     cpu_data[0] = input.numel();
-    phi::Copy(ctx, cpu_tensor, place, false, out);
+    phi::Copy(dev_ctx, cpu_tensor, place, false, out);
   }
 }
 

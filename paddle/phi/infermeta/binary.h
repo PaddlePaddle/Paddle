@@ -401,23 +401,6 @@ void GatherNdInferMeta(const MetaTensor& x,
                        const MetaTensor& index,
                        MetaTensor* out);
 
-void IndexElementwisePutInferMeta(const MetaTensor& x,
-                                  const std::vector<const MetaTensor*>& index,
-                                  const MetaTensor& value,
-                                  const std::vector<int64_t>& input_dims,
-                                  const std::vector<int64_t>& input_strides,
-                                  const std::vector<int64_t>& index_dims,
-                                  const std::vector<int64_t>& index_strides,
-                                  MetaTensor* out);
-
-void IndexElementwiseGetInferMeta(const MetaTensor& x,
-                                  const std::vector<const MetaTensor*>& index,
-                                  const std::vector<int64_t>& input_dims,
-                                  const std::vector<int64_t>& input_strides,
-                                  const std::vector<int64_t>& index_dims,
-                                  const std::vector<int64_t>& index_stride,
-                                  MetaTensor* out);
-
 void GatherTreeMeta(const MetaTensor& ids,
                     const MetaTensor& parents,
                     MetaTensor* out);
@@ -480,6 +463,23 @@ void IndexAddInferMeta(const MetaTensor& x,
                        const MetaTensor& add_value,
                        int axis,
                        MetaTensor* output);
+
+void IndexElementwisePutInferMeta(const MetaTensor& x,
+                                  const std::vector<const MetaTensor*>& index,
+                                  const MetaTensor& value,
+                                  const std::vector<int64_t>& input_dims,
+                                  const std::vector<int64_t>& input_strides,
+                                  const std::vector<int64_t>& index_dims,
+                                  const std::vector<int64_t>& index_strides,
+                                  MetaTensor* out);
+
+void IndexElementwiseGetInferMeta(const MetaTensor& x,
+                                  const std::vector<const MetaTensor*>& index,
+                                  const std::vector<int64_t>& input_dims,
+                                  const std::vector<int64_t>& input_strides,
+                                  const std::vector<int64_t>& index_dims,
+                                  const std::vector<int64_t>& index_stride,
+                                  MetaTensor* out);
 
 void KronInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out);
 

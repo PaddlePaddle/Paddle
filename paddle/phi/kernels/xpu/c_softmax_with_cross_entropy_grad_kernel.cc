@@ -35,7 +35,7 @@ void CSoftmaxWithCrossEntropyGradKernel(const Context& dev_ctx,
                                         int rank,
                                         int nranks,
                                         DenseTensor* logits_grad) {
-#if defined(PADDLE_WITH_BKCL)
+#if defined(PADDLE_WITH_XPU_BKCL)
   using XPUType = typename XPUTypeTrait<T>::Type;
   const phi::DenseTensor* labels = &label_in;
   const phi::DenseTensor* loss_grad = &loss_grad_in;

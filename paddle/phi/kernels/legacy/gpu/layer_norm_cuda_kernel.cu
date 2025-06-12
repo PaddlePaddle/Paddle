@@ -1,4 +1,4 @@
-// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/gpu/layer_norm_cuda_kernel.h"  // NOLINT
+#include "paddle/phi/kernels/legacy/gpu/layer_norm_cuda_kernel.h"  // NOLINT
 
 namespace phi {
 // #define CHECK_CUDA(x) PD_CHECK(!x.is_cpu(), #x " must be a CUDA tensor")
@@ -38,7 +38,7 @@ static void GetRowsCols(const std::vector<int64_t> &shape,
 }
 
 template <typename T, typename Context>
-void RMSLnFwd(const Context &ctx,
+void RMSLnFwd(const Context &dev_ctx,
               const DenseTensor &x,
               const DenseTensor &scale,
               float epsilon,
@@ -54,14 +54,14 @@ void RMSLnFwd(const Context &ctx,
   cols = x_shape[1];
   // GetRowsCols(x_shape, &rows, &cols);
 
-  *y = phi::EmptyLike<T, Context>(ctx, x);
-  *invvar = phi::Empty<float, Context>(ctx, {rows});
+  *y = phi::EmptyLike<T, Context>(dev_ctx, x);
+  *invvar = phi::Empty<float, Context>(dev_ctx, {rows});
 
-  cuda_rms_norm<T, Context>(ctx, x, scale, rows, cols, epsilon, y, invvar);
+  cuda_rms_norm<T, Context>(dev_ctx, x, scale, rows, cols, epsilon, y, invvar);
 }
 
 template <typename T, typename Context>
-void RMSLnBwd(const Context &ctx,
+void RMSLnBwd(const Context &dev_ctx,
               const DenseTensor &x,
               const DenseTensor &scale,
               const DenseTensor &invvar,
@@ -73,10 +73,18 @@ void RMSLnBwd(const Context &ctx,
   const auto &x_shape = x.dims();
   rows = x_shape[0];
   cols = x_shape[1];
-  ctx.template Alloc<T>(x_grad);
-  ctx.template Alloc<T>(scale_grad);
-  cuda_rms_norm_gradient<T, Context>(
-      ctx, x, scale, invvar, y_grad, rows, cols, epsilon, x_grad, scale_grad);
+  dev_ctx.template Alloc<T>(x_grad);
+  dev_ctx.template Alloc<T>(scale_grad);
+  cuda_rms_norm_gradient<T, Context>(dev_ctx,
+                                     x,
+                                     scale,
+                                     invvar,
+                                     y_grad,
+                                     rows,
+                                     cols,
+                                     epsilon,
+                                     x_grad,
+                                     scale_grad);
 }
 
 }  // namespace phi

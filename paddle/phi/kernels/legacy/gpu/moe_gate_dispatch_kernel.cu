@@ -1,5 +1,4 @@
-// NOLINT
-// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/moe_gate_dispatch_kernel.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/full_kernel.h"
-#include "paddle/phi/kernels/moe_fuse_op.h"
+#include "paddle/phi/kernels/legacy/gpu/moe_fuse_op.h"
 namespace phi {
 
 // --------      getWorkspaceSize      -------- //
@@ -84,7 +83,7 @@ void apply_moe_dispatch_fwd(const Context &dev_ctx,
                             cudaStream_t stream) {
   phi::CubKeyValueSorter sorter(stream);
   // phi::funcs::SetConstant<phi::GPUContext, bool> zero;
-  // zero(ctx, &finished_tensor, false);
+  // zero(dev_ctx, &finished_tensor, false);
 
   DenseTensor xpanded_source_row_to_expanded_dest_row_tensor =
       phi::Empty<int, Context>(dev_ctx, IntArray({num_rows, k}));
@@ -164,7 +163,7 @@ void apply_moe_dispatch_fwd(const Context &dev_ctx,
                                             stream);
 
 #ifdef DEBUG_MOE_OP
-  // phi::CastKernel<float>(ctx, expert_scales_tensor_float,
+  // phi::CastKernel<float>(dev_ctx, expert_scales_tensor_float,
   // expert_scales_tensor.dtype(), &expert_scales_tensor);
   print_to_screen1(
       combine_weights, 8, 16, std::string("expert_scales_float after topk"));

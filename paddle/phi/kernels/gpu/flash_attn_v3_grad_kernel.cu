@@ -41,7 +41,7 @@ namespace phi {
 // d: head_size
 template <typename T, typename Context>
 void FlashAttnV3GradBaseKernel(
-    const Context &ctx,
+    const Context &dev_ctx,
     const DenseTensor
         &dout,  // (b, s_q, h, dv) or (total_q, h, dv) if there is cu_seqlens_q
     const DenseTensor
@@ -89,7 +89,7 @@ void FlashAttnV3GradBaseKernel(
 #ifdef PADDLE_WITH_FLASHATTN_V3
 
   // TODO(umiswing): support ampere
-  int device_id = ctx.GetPlace().GetDeviceId();
+  int device_id = dev_ctx.GetPlace().GetDeviceId();
   auto dprops = paddle::platform::GetDeviceProperties(device_id);
   const bool is_sm90 = dprops.major == 9 && dprops.minor == 0;
   PADDLE_ENFORCE_EQ(is_sm90,
@@ -339,7 +339,7 @@ void FlashAttnV3GradBaseKernel(
       CHECK_SHAPE((*dq), total_q, num_heads, head_size);
     }
   } else {
-    *dq = phi::EmptyLike<T, Context>(ctx, q);
+    *dq = phi::EmptyLike<T, Context>(dev_ctx, q);
   }
   if (dk_.is_initialized()) {
     *dk = dk_.get();
@@ -358,7 +358,7 @@ void FlashAttnV3GradBaseKernel(
       CHECK_SHAPE((*dk), total_k, num_heads_k, head_size);
     }
   } else {
-    *dk = phi::EmptyLike<T, Context>(ctx, k);
+    *dk = phi::EmptyLike<T, Context>(dev_ctx, k);
   }
   if (dv_.is_initialized()) {
     *dv = dv_.get();
@@ -377,7 +377,7 @@ void FlashAttnV3GradBaseKernel(
       CHECK_SHAPE((*dv), total_k, num_heads_k, head_size_v);
     }
   } else {
-    *dv = phi::EmptyLike<T, Context>(ctx, v);
+    *dv = phi::EmptyLike<T, Context>(dev_ctx, v);
   }
 
   // Otherwise the kernel will be launched from cuda:0 device
@@ -406,10 +406,10 @@ void FlashAttnV3GradBaseKernel(
     }
   }
   if (softmax_d) {
-    ctx.template Alloc<float>(softmax_d);
+    dev_ctx.template Alloc<float>(softmax_d);
   }
   if (softmax_lse_log2) {
-    ctx.template Alloc<float>(softmax_lse_log2);
+    dev_ctx.template Alloc<float>(softmax_lse_log2);
   }
   if (dq_accum) {
     if (!is_varlen) {
@@ -419,7 +419,7 @@ void FlashAttnV3GradBaseKernel(
       dq_accum->Resize(common::make_ddim(
           {num_heads, total_q_padded_rounded * head_size_rounded}));
     }
-    ctx.template Alloc<float>(dq_accum);
+    dev_ctx.template Alloc<float>(dq_accum);
   }
   if (num_heads_k != num_heads) {  // MQA / GQA
     if (!is_varlen) {
@@ -442,18 +442,18 @@ void FlashAttnV3GradBaseKernel(
       }
     }
     if (dk_accum) {
-      ctx.template Alloc<float>(dk_accum);
+      dev_ctx.template Alloc<float>(dk_accum);
     }
     if (dv_accum) {
-      ctx.template Alloc<float>(dv_accum);
+      dev_ctx.template Alloc<float>(dv_accum);
     }
     phi::funcs::SetConstant<Context, float> set_zero;
 
     if (dk_accum) {
-      set_zero(ctx, dk_accum, float{0});
+      set_zero(dev_ctx, dk_accum, float{0});
     }
     if (dv_accum) {
-      set_zero(ctx, dv_accum, float{0});
+      set_zero(dev_ctx, dv_accum, float{0});
     }
   }
 
@@ -509,16 +509,16 @@ void FlashAttnV3GradBaseKernel(
   // tile_count_semaphore.data_ptr<int>(); Will be zero'ed out in the backward
   // preprocess kernel
   DenseTensor dq_semaphore = phi::Empty<int32_t>(
-      ctx, {(seqlen_q + kBlockM - 1) / kBlockM, batch_size, num_heads});
+      dev_ctx, {(seqlen_q + kBlockM - 1) / kBlockM, batch_size, num_heads});
   dynload::fa3_bwd_params_set_dq_semaphore(params_handle,
                                            dq_semaphore.data<int>());
   if (num_heads_k != num_heads &&
       dynload::fa3_bwd_params_get_deterministic(params_handle)) {
     // TODO(tridao): do we need to zero them out?
     DenseTensor dk_semaphore = phi::Empty<int32_t>(
-        ctx, {(seqlen_k + kBlockN - 1) / kBlockN, batch_size, num_heads_k});
+        dev_ctx, {(seqlen_k + kBlockN - 1) / kBlockN, batch_size, num_heads_k});
     DenseTensor dv_semaphore = phi::Empty<int32_t>(
-        ctx, {(seqlen_k + kBlockN - 1) / kBlockN, batch_size, num_heads_k});
+        dev_ctx, {(seqlen_k + kBlockN - 1) / kBlockN, batch_size, num_heads_k});
     dynload::fa3_bwd_params_set_dk_semaphore(params_handle,
                                              dk_semaphore.data<int>());
     dynload::fa3_bwd_params_set_dv_semaphore(params_handle,
@@ -539,23 +539,23 @@ void FlashAttnV3GradBaseKernel(
 #endif
 
   if (total_q > 0 && total_k > 0 && num_heads_k > 0) {
-    dynload::fa3_run_mha_bwd(params_handle, ctx.stream());
+    dynload::fa3_run_mha_bwd(params_handle, dev_ctx.stream());
   } else if (total_k > 0 && num_heads_k > 0) {
     // If seqlen_q == 0, then we have an empty tensor. We need to set the output
     // to 0.
     phi::funcs::SetConstant<Context, T> set_zero;
-    set_zero(ctx, dk, T{0});
-    set_zero(ctx, dv, T{0});
+    set_zero(dev_ctx, dk, T{0});
+    set_zero(dev_ctx, dv, T{0});
     if (softmax_d) {
       phi::funcs::SetConstant<Context, float> set_zero_fp32;
-      set_zero_fp32(ctx, softmax_d, float{0});
+      set_zero_fp32(dev_ctx, softmax_d, float{0});
     }
   } else if (total_q > 0 && num_heads_k > 0) {
     phi::funcs::SetConstant<Context, T> set_zero;
-    set_zero(ctx, dq, T{0});
+    set_zero(dev_ctx, dq, T{0});
     if (softmax_d) {
       phi::funcs::SetConstant<Context, float> set_zero_fp32;
-      set_zero_fp32(ctx, softmax_d, float{0});
+      set_zero_fp32(dev_ctx, softmax_d, float{0});
     }
   }
 #else
@@ -564,7 +564,7 @@ void FlashAttnV3GradBaseKernel(
 }
 
 template <typename T, typename Context>
-void FlashAttnV3GradKernel(const Context &ctx,
+void FlashAttnV3GradKernel(const Context &dev_ctx,
                            const DenseTensor &q,
                            const DenseTensor &k,
                            const DenseTensor &v,
@@ -632,7 +632,7 @@ void FlashAttnV3GradKernel(const Context &ctx,
         out.dims()[out.dims().size() - 3],
         common::errors::InvalidArgument("seqlen_v and seqlen_o must be equal"));
   }
-  FlashAttnV3GradBaseKernel<T, Context>(ctx,
+  FlashAttnV3GradBaseKernel<T, Context>(dev_ctx,
                                         out_grad,
                                         q,
                                         k,
