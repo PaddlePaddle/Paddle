@@ -13,15 +13,18 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/infermeta/spmd_rules/gelu.h"
+#include "glog/logging.h"
 #include "paddle/phi/infermeta/spmd_rules/elementwise.h"
 
 namespace phi::distributed {
 SpmdInfo GeluInferSpmd(const DistMetaTensor& x, bool approximate) {
+  VLOG(4) << "GeluInferSpmd Call ElementwiseUnaryInferSpmd";
   return ElementwiseUnaryInferSpmd(x);
 }
 SpmdInfo GeluGradInferSpmd(const DistMetaTensor& x,
                            const DistMetaTensor& out_grad,
                            bool approximate) {
+  VLOG(4) << "GeluGradInferSpmd Call ElementwiseUnaryGradInferSpmd";
   return ElementwiseUnaryGradInferSpmd(x, out_grad);
 }
 }  // namespace phi::distributed
