@@ -29,13 +29,11 @@ void SetKernel(const Context& dev_ctx,
   meta.dims = DDim(dims.data(), static_cast<int>(dims.size()));
   meta.strides = DDim(stride.data(), static_cast<int>(stride.size()));
   meta.offset = offset;
-  if (x.IsSharedWith(source)) {
-    out->set_meta(meta);
-  } else {
+  if (!x.IsSharedWith(source)) {
     phi::Full<T, Context>(dev_ctx, phi::IntArray(dims), 0, out);
     out->ResetHolder(source.Holder());
-    out->set_meta(meta);
   }
+  out->set_meta(meta);
   out->ShareInplaceVersionCounterWith(x);
 }
 
