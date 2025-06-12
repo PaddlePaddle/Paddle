@@ -13,6 +13,7 @@ env:
   work_dir: /paddle
   PADDLE_ROOT: /paddle
   BRANCH: ${{ github.event.pull_request.base.ref }}
+  PADDLE_BRANCH: ${{ github.event.pull_request.base.ref }}
   CI_name: dcu
   no_proxy: "bcebos.com,apiin.im.baidu.com,gitee.com,aliyun.com,.baidu.com,.tuna.tsinghua.edu.cn"
 
@@ -40,16 +41,26 @@ jobs:
     steps:
       - name: Check docker image and run container
         env:
+          WITH_DOC: "OFF"
+          WITH_GPU: "OFF"
           WITH_ROCM: "ON"
           WITH_RCCL: "ON"
+          WITH_XPU: "OFF"
           WITH_TENSORRT: "OFF"
-          ON_INFER: "OFF"
+          WITH_COVERAGE: "OFF"
+          COVERALLS_UPLOAD: "OFF"
+          CMAKE_BUILD_TYPE: "Release"
           WITH_AVX: "ON"
           WITH_MKL: "ON"
+          WITH_ARM: "OFF"
+          WITH_CACHE: "ON"
+          RUN_TEST: "ON"
+          WITH_TESTING: "ON"
+          CI_SKIP_CPP_TEST: "OFF"
+          WITH_DISTRIBUTE: "ON"
+          CMAKE_EXPORT_COMPILE_COMMANDS: "ON"
           GIT_PR_ID: ${{ github.event.pull_request.number }}
           PADDLE_VERSION: 0.0.0
-          WITH_TESTING: "ON"
-          WITH_DISTRIBUTE: "ON"
           PY_VERSION: "3.10"
           CACHE_DIR: /root/.cache
           CCACHE_DIR: /root/.ccache
@@ -60,35 +71,44 @@ jobs:
         run: |
           container_name=${TASK}-$(date +%Y%m%d-%H%M%S)
           echo "container_name=${container_name}" >> ${{ github.env }}
-          docker run --ulimit nofile=102400:102400 -d -t --name ${container_name} \
+          docker run --privileged --network=hos --shm-size=128G \
+            --ulimit nofile=102400:102400 -d -t --name ${container_name} \
             -v $home_dir/.cache:/root/.cache \
             -v $home_dir/.ccache:/root/.ccache \
             -v ${{ github.workspace }}/../../..:${{ github.workspace }}/../../.. \
             -v ${{ github.workspace }}:/paddle \
-            -e BRANCH \
             -e PR_ID \
             -e COMMIT_ID \
             -e work_dir \
             -e PADDLE_ROOT \
+            -e WITH_DOC \
+            -e WITH_GPU \
             -e WITH_ROCM \
             -e WITH_RCCL \
+            -e WITH_XPU \
             -e WITH_TENSORRT \
-            -e ON_INFER \
-            -e WITH_AVX \
+            -e WITH_COVERAGE \
+            -e COVERALLS_UPLOAD \
+            -e CMAKE_BUILD_TYPE \
             -e WITH_MKL \
-            -e GIT_PR_ID \
-            -e PADDLE_VERSION \
+            -e WITH_AVX \
+            -e WITH_ARM  \
+            -e RUN_TEST \
             -e WITH_TESTING \
+            -e CI_SKIP_CPP_TEST \
             -e WITH_DISTRIBUTE \
-            -e PY_VERSION \
-            -e WITH_INFERENCE_API_TEST \
             -e CACHE_DIR \
             -e CCACHE_DIR \
             -e CCACHE_MAXSIZE \
             -e CCACHE_LIMIT_MULTIPLE \
             -e ci_scripts \
-            -e WITH_AVX \
+            -e BRANCH \
+            -e PADDLE_BRANCH \
+            -e PADDLE_VERSION \
             -e no_proxy \
+            -e CMAKE_EXPORT_COMPILE_COMMANDS \
+            -e PY_VERSION \
+            -e GIT_PR_ID \
             -e GITHUB_API_TOKEN \
             -e CI_name \
             -w /paddle --network host ${docker_image} /bin/bash
@@ -109,7 +129,6 @@ jobs:
           git config --global user.name "PaddleCI"
           git config --global user.email "paddle_ci@example.com"
           git remote add upstream https://github.com/PaddlePaddle/Paddle.git
-          source ${{ github.workspace }}/../../../proxy
           git config pull.rebase false
           git checkout test
           echo "Pull upstream develop or target branch"
@@ -123,7 +142,6 @@ jobs:
         run: |
           set -x
           docker exec -t ${{ env.container_name }} /bin/bash -c '
-          source ${{ github.workspace }}/../../../proxy
           source /opt/dtk-24.04.1/env.sh
           bash -x ${ci_scripts}/run_setup.sh bdist_wheel
           EXCODE=$?
