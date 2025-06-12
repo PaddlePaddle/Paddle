@@ -890,7 +890,7 @@ class Buffer:
             out: the in-place output tensor, if set, the kernel will write the result to this tensor and return it directly.
 
         Returns:
-            combined_x: the reduced token tensor, with shape `[num_combined_tokens, hidden]` and type `torch.bfloat16`.
+            combined_x: the reduced token tensor, with shape `[num_combined_tokens, hidden]` and type `paddle.bfloat16`.
             event: the event after executing the kernel (valid only if `async_finish` is set).
             hook: the receiving hook function (valid only if `return_recv_hook` is set).
         """
