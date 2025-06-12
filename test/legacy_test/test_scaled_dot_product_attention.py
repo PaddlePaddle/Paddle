@@ -137,7 +137,7 @@ class TestAttentionWithBoolMask(unittest.TestCase):
     def test_dot_scale_product_float_mask(self):
         # test with mask=float
         paddle.disable_static()
-        self.shape = (1, 1, 8, 256)
+
         query = np.random.random(self.shape)
         key = np.random.random(self.shape)
         value = np.random.random(self.shape)
@@ -169,7 +169,7 @@ class TestAttentionWithBoolMask(unittest.TestCase):
         )
 
         with sdp_kernel(
-            enable_math=None, enable_flash=None, enable_mem_efficient=None
+            enable_math=True, enable_flash=False, enable_mem_efficient=False
         ):
             out = scaled_dot_product_attention(
                 q, k, v, m, self.dropout, self.causal
