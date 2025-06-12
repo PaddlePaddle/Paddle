@@ -30,7 +30,7 @@
 namespace phi {
 
 template <typename Context, typename T, typename IndexT>
-void GraphSendRecvOpCUDAKernelLaunchHelper(const Context& ctx,
+void GraphSendRecvOpCUDAKernelLaunchHelper(const Context& dev_ctx,
                                            const DenseTensor& x,
                                            const DenseTensor& src_index,
                                            const DenseTensor& dst_index,
@@ -58,16 +58,16 @@ void GraphSendRecvOpCUDAKernelLaunchHelper(const Context& ctx,
       memset_size *= src_dims[i];
     }
   }
-  ctx.template Alloc<T>(out);
+  dev_ctx.template Alloc<T>(out);
   T* p_output = out->data<T>();
   const size_t& memset_bytes = memset_size * sizeof(T);
   funcs::SetConstant<Context, T> constant_functor;
   if (reduce_op == "SUM" || reduce_op == "MEAN") {
-    constant_functor(ctx, out, static_cast<T>(0));
+    constant_functor(dev_ctx, out, static_cast<T>(0));
   } else if (reduce_op == "MAX") {
-    constant_functor(ctx, out, std::numeric_limits<T>::lowest());
+    constant_functor(dev_ctx, out, std::numeric_limits<T>::lowest());
   } else if (reduce_op == "MIN") {
-    constant_functor(ctx, out, std::numeric_limits<T>::max());
+    constant_functor(dev_ctx, out, std::numeric_limits<T>::max());
   }
 
   if (index_size == 0) return;
@@ -82,66 +82,67 @@ void GraphSendRecvOpCUDAKernelLaunchHelper(const Context& ctx,
 
   int block = 1024;
   int64_t n = slice_size * index_size;
-  int64_t max_grid_dimx = ctx.GetCUDAMaxGridDimSize()[0];
+  int64_t max_grid_dimx = dev_ctx.GetCUDAMaxGridDimSize()[0];
   int64_t grid_tmp = (n + block - 1) / block;
   int64_t grid = grid_tmp < max_grid_dimx ? grid_tmp : max_grid_dimx;
   int64_t input_size = out_size <= 0 ? src_dims[0] : out_size;
   if (reduce_op == "SUM") {
     GraphSendRecvSumCUDAFunctor<T, IndexT> functor;
     GraphSendRecvCUDAKernel<T, IndexT, GraphSendRecvSumCUDAFunctor<T, IndexT>>
-        <<<grid, block, 0, ctx.stream()>>>(
+        <<<grid, block, 0, dev_ctx.stream()>>>(
             p_src, s_index, d_index, p_output, index_size, slice_size, functor);
   } else if (reduce_op == "MAX") {
     GraphSendRecvMaxCUDAFunctor<T, IndexT> functor;
     GraphSendRecvCUDAKernel<T, IndexT, GraphSendRecvMaxCUDAFunctor<T, IndexT>>
-        <<<grid, block, 0, ctx.stream()>>>(
+        <<<grid, block, 0, dev_ctx.stream()>>>(
             p_src, s_index, d_index, p_output, index_size, slice_size, functor);
 
     int64_t grid_max_tmp = (input_size * slice_size + block - 1) / block;
     int64_t grid_max =
         grid_max_tmp < max_grid_dimx ? grid_max_tmp : max_grid_dimx;
-    InputResetMaxCUDAKernel<T><<<grid_max, block, 0, ctx.stream()>>>(
+    InputResetMaxCUDAKernel<T><<<grid_max, block, 0, dev_ctx.stream()>>>(
         p_output, input_size, slice_size);
   } else if (reduce_op == "MIN") {
     GraphSendRecvMinCUDAFunctor<T, IndexT> functor;
     GraphSendRecvCUDAKernel<T, IndexT, GraphSendRecvMinCUDAFunctor<T, IndexT>>
-        <<<grid, block, 0, ctx.stream()>>>(
+        <<<grid, block, 0, dev_ctx.stream()>>>(
             p_src, s_index, d_index, p_output, index_size, slice_size, functor);
 
     int64_t grid_min_tmp = (input_size * slice_size + block - 1) / block;
     int64_t grid_min =
         grid_min_tmp < max_grid_dimx ? grid_min_tmp : max_grid_dimx;
-    InputResetMinCUDAKernel<T><<<grid_min, block, 0, ctx.stream()>>>(
+    InputResetMinCUDAKernel<T><<<grid_min, block, 0, dev_ctx.stream()>>>(
         p_output, input_size, slice_size);
   } else if (reduce_op == "MEAN") {
     GraphSendRecvSumCUDAFunctor<T, IndexT> functor;
     GraphSendRecvCUDAKernel<T, IndexT, GraphSendRecvSumCUDAFunctor<T, IndexT>>
-        <<<grid, block, 0, ctx.stream()>>>(
+        <<<grid, block, 0, dev_ctx.stream()>>>(
             p_src, s_index, d_index, p_output, index_size, slice_size, functor);
     dst_count->Resize({input_size});
-    ctx.template Alloc<int32_t>(dst_count);
+    dev_ctx.template Alloc<int32_t>(dst_count);
     int* p_dst_count = dst_count->data<int>();
 
 #ifdef PADDLE_WITH_HIP
     hipMemset(p_dst_count, 0, input_size * sizeof(int));
 #else
-    cudaMemsetAsync(p_dst_count, 0, input_size * sizeof(int), ctx.stream());
+    cudaMemsetAsync(p_dst_count, 0, input_size * sizeof(int), dev_ctx.stream());
 #endif
 
     int64_t grid_count = (index_size + block - 1) / block;
-    ComputeCountCUDAKernel<T, IndexT><<<grid_count, block, 0, ctx.stream()>>>(
-        p_dst_count, d_index, index_size);
+    ComputeCountCUDAKernel<T, IndexT>
+        <<<grid_count, block, 0, dev_ctx.stream()>>>(
+            p_dst_count, d_index, index_size);
 
     int64_t grid_mean_tmp = (input_size * slice_size + block - 1) / block;
     int64_t grid_mean =
         grid_mean_tmp < max_grid_dimx ? grid_mean_tmp : max_grid_dimx;
-    ManipulateMeanCUDAKernel<T><<<grid_mean, block, 0, ctx.stream()>>>(
+    ManipulateMeanCUDAKernel<T><<<grid_mean, block, 0, dev_ctx.stream()>>>(
         p_output, p_dst_count, input_size, slice_size);
   }
 }
 
 template <typename T, typename Context>
-void SendURecvKernel(const Context& ctx,
+void SendURecvKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      const DenseTensor& src_index,
                      const DenseTensor& dst_index,
@@ -152,7 +153,7 @@ void SendURecvKernel(const Context& ctx,
   auto index_type = src_index.dtype();
   auto& out_size_data = out_size.GetData();
   if (index_type == phi::DataType::INT32) {
-    GraphSendRecvOpCUDAKernelLaunchHelper<Context, T, int32_t>(ctx,
+    GraphSendRecvOpCUDAKernelLaunchHelper<Context, T, int32_t>(dev_ctx,
                                                                x,
                                                                src_index,
                                                                dst_index,
@@ -161,7 +162,7 @@ void SendURecvKernel(const Context& ctx,
                                                                out,
                                                                dst_count);
   } else if (index_type == phi::DataType::INT64) {
-    GraphSendRecvOpCUDAKernelLaunchHelper<Context, T, int64_t>(ctx,
+    GraphSendRecvOpCUDAKernelLaunchHelper<Context, T, int64_t>(dev_ctx,
                                                                x,
                                                                src_index,
                                                                dst_index,

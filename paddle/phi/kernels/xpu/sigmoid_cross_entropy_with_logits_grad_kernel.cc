@@ -37,10 +37,6 @@ void SigmoidCrossEntropyWithLogitsGradKernel(
     int ignore_index,
     DenseTensor* in_grad) {
   using XPUType = typename XPUTypeTrait<T>::Type;
-  PADDLE_ENFORCE_EQ(x.place().GetType() == phi::AllocationType::XPU,
-                    true,
-                    errors::Unavailable("This kernel only runs on XPU."));
-
   dev_ctx.template Alloc<T>(in_grad);
 
   // allocate temp memory

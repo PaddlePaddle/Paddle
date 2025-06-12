@@ -1,4 +1,4 @@
-# Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,7 +16,6 @@ import itertools
 import os
 import weakref
 from collections import OrderedDict
-from distutils.util import strtobool
 
 import numpy as np
 
@@ -27,6 +26,7 @@ from paddle.framework import (
     core,
 )
 from paddle.framework.recall_error import check_naninf
+from paddle.utils import strtobool
 
 from .log_util import logger
 

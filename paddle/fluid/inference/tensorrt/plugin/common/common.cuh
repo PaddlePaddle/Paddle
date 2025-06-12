@@ -33,10 +33,11 @@ __device__ inline float rsqrt(const float& x) {
 }
 
 namespace cub {
-__host__ __device__ inline kv_float operator+(const kv_float& a, const kv_float& b) {
+__host__ __device__ inline kv_float operator+(const kv_float& a,
+                                              const kv_float& b) {
   return kv_float(a.key + b.key, a.value + b.value);
 }
-}
+}  // namespace cub
 
 // Half Operations
 __device__ inline half2 __hadd2_with_fallback(const half2 a, const half2 b) {
@@ -154,8 +155,8 @@ namespace tensorrt {
 namespace plugin {
 // Helper Functions for multihead related plugins
 template <typename T>
-__global__ void transpose(T *src,
-                          T *dst,
+__global__ void transpose(T* src,
+                          T* dst,
                           const int batch_size,
                           const int seq_len,
                           const int head_num,
@@ -169,7 +170,7 @@ __global__ void transpose(T *src,
 }
 
 template <typename T>
-__global__ void TransposeQkvKernel(const int H, const T *input, T *output) {
+__global__ void TransposeQkvKernel(const int H, const T* input, T* output) {
   // Input: BxSx3xNxH
   // Bias: 3xSxB
   // Output: 3xBxNxSxH
@@ -195,15 +196,15 @@ inline void TransposeQKV(const int batch,
                          const int seq_len,
                          const int head_size,
                          const int head_num,
-                         const float *input,
-                         float *output,
+                         const float* input,
+                         float* output,
                          cudaStream_t stream) {
   int scratch_size = batch * head_num * seq_len * seq_len;
   const dim3 grid(seq_len, batch, 3);
   if (head_size % 4 == 0 && scratch_size % 4 == 0) {
     const int h = head_size / 4;
-    const float4 *input4 = reinterpret_cast<const float4 *>(input);
-    float4 *output4 = reinterpret_cast<float4 *>(output);
+    const float4* input4 = reinterpret_cast<const float4*>(input);
+    float4* output4 = reinterpret_cast<float4*>(output);
     const dim3 block(h, head_num, 1);
     // limit h * head_num to max block size(1024).
     PADDLE_ENFORCE_LE(h * head_num,
@@ -216,8 +217,8 @@ inline void TransposeQKV(const int batch,
     TransposeQkvKernel<float4><<<grid, block, 0, stream>>>(h, input4, output4);
   } else if (head_size % 2 == 0 && scratch_size % 2 == 0) {
     const int h = head_size / 2;
-    const float2 *input2 = reinterpret_cast<const float2 *>(input);
-    float2 *output2 = reinterpret_cast<float2 *>(output);
+    const float2* input2 = reinterpret_cast<const float2*>(input);
+    float2* output2 = reinterpret_cast<float2*>(output);
     const dim3 block(h, head_num, 1);
     // limit h * head_num to max block size(1024).
     PADDLE_ENFORCE_LE(h * head_num,
@@ -247,15 +248,15 @@ inline void TransposeQKV(const int batch,
                          const int seq_len,
                          const int head_size,
                          const int head_num,
-                         const half *input,
-                         half *output,
+                         const half* input,
+                         half* output,
                          cudaStream_t stream) {
   int scratch_size = batch * head_num * seq_len * seq_len;
   const dim3 grid(seq_len, batch, 3);
   if (head_size % 8 == 0 && scratch_size % 8 == 0) {
     int h = head_size / 8;
-    const int4 *input4 = reinterpret_cast<const int4 *>(input);
-    int4 *output4 = reinterpret_cast<int4 *>(output);
+    const int4* input4 = reinterpret_cast<const int4*>(input);
+    int4* output4 = reinterpret_cast<int4*>(output);
     dim3 block(h, head_num, 1);
     // limit h * head_num to max block size(1024).
     PADDLE_ENFORCE_LE(h * head_num,
@@ -268,8 +269,8 @@ inline void TransposeQKV(const int batch,
     TransposeQkvKernel<int4><<<grid, block, 0, stream>>>(h, input4, output4);
   } else if (head_size % 2 == 0 && scratch_size % 2 == 0) {
     const int h = head_size / 2;
-    const half2 *input2 = reinterpret_cast<const half2 *>(input);
-    half2 *output2 = reinterpret_cast<half2 *>(output);
+    const half2* input2 = reinterpret_cast<const half2*>(input);
+    half2* output2 = reinterpret_cast<half2*>(output);
     const dim3 block(h, head_num, 1);
     // limit h * head_num to max block size(1024).
     PADDLE_ENFORCE_LE(h * head_num,
@@ -294,7 +295,7 @@ inline void TransposeQKV(const int batch,
         <<<grid, block, 0, stream>>>(head_size, input, output);
   }
 }
-}
-}
-}
-}
+}  // namespace plugin
+}  // namespace tensorrt
+}  // namespace inference
+}  // namespace paddle

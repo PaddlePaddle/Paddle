@@ -20,24 +20,24 @@
 namespace phi {
 
 template <typename T, typename Context>
-void TrilTriuGradKernel(const Context& ctx,
+void TrilTriuGradKernel(const Context& dev_ctx,
                         const DenseTensor& out_grad,
                         int diagonal,
                         bool lower,
                         DenseTensor* x_grad) {
   using XPUType = typename XPUTypeTrait<T>::Type;
-  ctx.template Alloc<T>(x_grad);
+  dev_ctx.template Alloc<T>(x_grad);
   auto dy_shape = common::vectorize<int64_t>(out_grad.dims());
   int r = 0;
   if (lower) {
-    r = xpu::tril(ctx.x_context(),
+    r = xpu::tril(dev_ctx.x_context(),
                   reinterpret_cast<const XPUType*>(out_grad.data<T>()),
                   reinterpret_cast<XPUType*>(x_grad->data<T>()),
                   dy_shape,
                   static_cast<int64_t>(diagonal));
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "tril_op");
   } else {
-    r = xpu::triu(ctx.x_context(),
+    r = xpu::triu(dev_ctx.x_context(),
                   reinterpret_cast<const XPUType*>(out_grad.data<T>()),
                   reinterpret_cast<XPUType*>(x_grad->data<T>()),
                   dy_shape,
@@ -47,29 +47,29 @@ void TrilTriuGradKernel(const Context& ctx,
 }
 
 template <typename T, typename Context>
-void TrilGradKernel(const Context& ctx,
+void TrilGradKernel(const Context& dev_ctx,
                     const DenseTensor& out_grad,
                     int diagonal,
                     DenseTensor* x_grad) {
   if (x_grad && x_grad->numel() == 0) {
-    ctx.template Alloc<T>(x_grad);
+    dev_ctx.template Alloc<T>(x_grad);
     return;
   }
 
-  TrilTriuGradKernel<T, Context>(ctx, out_grad, diagonal, true, x_grad);
+  TrilTriuGradKernel<T, Context>(dev_ctx, out_grad, diagonal, true, x_grad);
 }
 
 template <typename T, typename Context>
-void TriuGradKernel(const Context& ctx,
+void TriuGradKernel(const Context& dev_ctx,
                     const DenseTensor& out_grad,
                     int diagonal,
                     DenseTensor* x_grad) {
   if (x_grad && x_grad->numel() == 0) {
-    ctx.template Alloc<T>(x_grad);
+    dev_ctx.template Alloc<T>(x_grad);
     return;
   }
 
-  TrilTriuGradKernel<T, Context>(ctx, out_grad, diagonal, false, x_grad);
+  TrilTriuGradKernel<T, Context>(dev_ctx, out_grad, diagonal, false, x_grad);
 }
 
 }  // namespace phi

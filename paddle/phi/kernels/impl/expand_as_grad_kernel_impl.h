@@ -19,14 +19,14 @@
 
 namespace phi {
 template <typename Context, typename T, int Dims>
-void ExpandAsBackward(const Context& ctx,
+void ExpandAsBackward(const Context& dev_ctx,
                       const DenseTensor& out_grad,
                       const std::vector<int64_t>& reshape_dims_vec,
                       const std::vector<int>& reduce_dims_vec,
                       DenseTensor* in_grad) {
   size_t reshape_size = reshape_dims_vec.size();
   size_t reduce_size = reduce_dims_vec.size();
-  ctx.template Alloc<T>(in_grad);
+  dev_ctx.template Alloc<T>(in_grad);
   auto x_grad = EigenVector<T>::Flatten(*in_grad);
   Eigen::DSizes<Eigen::DenseIndex, Dims * 2> reshape_dims;
   for (size_t i = 0; i < reshape_size; ++i) {
@@ -37,7 +37,7 @@ void ExpandAsBackward(const Context& ctx,
     reduce_dims[i] = reduce_dims_vec[i];
   }
   auto out_grad0 = EigenVector<T>::Flatten(out_grad);
-  auto& place = *ctx.eigen_device();
+  auto& place = *dev_ctx.eigen_device();
   funcs::EigenBroadcastGrad<std::decay_t<decltype(place)>, T, Dims>::Eval(
       place, x_grad, out_grad0, reduce_dims, reshape_dims);
 }

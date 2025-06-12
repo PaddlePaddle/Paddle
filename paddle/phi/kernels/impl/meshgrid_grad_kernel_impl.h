@@ -24,7 +24,7 @@
 namespace phi {
 
 template <typename T, typename Context, int Rank>
-void MeshgridBackward(const Context& ctx,
+void MeshgridBackward(const Context& dev_ctx,
                       const std::vector<const DenseTensor*>& ins UNUSED,
                       const std::vector<const DenseTensor*>& out_grad,
                       std::vector<DenseTensor*> outs) {
@@ -33,17 +33,17 @@ void MeshgridBackward(const Context& ctx,
   if (out_grad[0]->numel() == 0) {
     for (size_t i = 0; i < outs.size(); i++) {
       auto* out = outs[i];
-      ctx.template Alloc<T>(out);
+      dev_ctx.template Alloc<T>(out);
       if (out->numel() != 0) {
         phi::Full<T, Context>(
-            ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+            dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
       }
     }
     return;
   }
 
   for (int i = 0; i < n; i++) {
-    ctx.template Alloc<T>(outs[i]);
+    dev_ctx.template Alloc<T>(outs[i]);
     auto out_grad_tmp = EigenVector<T>::Flatten(*out_grad[i]);
     auto in_grad = EigenVector<T>::Flatten(*outs[i]);
 
@@ -70,36 +70,42 @@ void MeshgridBackward(const Context& ctx,
       reshape_dims[k] = reshape_dims_vec[k];
     }
 
-    auto& place = *ctx.eigen_device();
+    auto& place = *dev_ctx.eigen_device();
     funcs::EigenBroadcastGrad<std::decay_t<decltype(place)>, T, Rank>::Eval(
         place, in_grad, out_grad_tmp, reduce_dims, reshape_dims);
   }
 }
 
 template <typename T, typename Context>
-void MeshgridGradKernel(const Context& ctx,
+void MeshgridGradKernel(const Context& dev_ctx,
                         const std::vector<const DenseTensor*>& inputs,
                         const std::vector<const DenseTensor*>& outputs_grad,
                         std::vector<DenseTensor*> inputs_grad) {
   int n = outputs_grad.size();
   switch (n) {
     case 1:
-      MeshgridBackward<T, Context, 1>(ctx, inputs, outputs_grad, inputs_grad);
+      MeshgridBackward<T, Context, 1>(
+          dev_ctx, inputs, outputs_grad, inputs_grad);
       break;
     case 2:
-      MeshgridBackward<T, Context, 2>(ctx, inputs, outputs_grad, inputs_grad);
+      MeshgridBackward<T, Context, 2>(
+          dev_ctx, inputs, outputs_grad, inputs_grad);
       break;
     case 3:
-      MeshgridBackward<T, Context, 3>(ctx, inputs, outputs_grad, inputs_grad);
+      MeshgridBackward<T, Context, 3>(
+          dev_ctx, inputs, outputs_grad, inputs_grad);
       break;
     case 4:
-      MeshgridBackward<T, Context, 4>(ctx, inputs, outputs_grad, inputs_grad);
+      MeshgridBackward<T, Context, 4>(
+          dev_ctx, inputs, outputs_grad, inputs_grad);
       break;
     case 5:
-      MeshgridBackward<T, Context, 5>(ctx, inputs, outputs_grad, inputs_grad);
+      MeshgridBackward<T, Context, 5>(
+          dev_ctx, inputs, outputs_grad, inputs_grad);
       break;
     case 6:
-      MeshgridBackward<T, Context, 6>(ctx, inputs, outputs_grad, inputs_grad);
+      MeshgridBackward<T, Context, 6>(
+          dev_ctx, inputs, outputs_grad, inputs_grad);
       break;
     default:
       PADDLE_THROW(common::errors::InvalidArgument(

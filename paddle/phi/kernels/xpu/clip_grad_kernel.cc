@@ -20,16 +20,16 @@
 namespace phi {
 
 template <typename T, typename Context>
-void ClipGradKernel(const Context& ctx,
+void ClipGradKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     const DenseTensor& out_grad,
                     const Scalar& min,
                     const Scalar& max,
                     DenseTensor* x_grad) {
-  ctx.template Alloc<T>(x_grad);
+  dev_ctx.template Alloc<T>(x_grad);
   using XPUDataType = typename XPUTypeTrait<T>::Type;
   int r =
-      xpu::clamp_grad(ctx.x_context(),
+      xpu::clamp_grad(dev_ctx.x_context(),
                       reinterpret_cast<const XPUDataType*>(x.data<T>()),
                       reinterpret_cast<const XPUDataType*>(out_grad.data<T>()),
                       reinterpret_cast<XPUDataType*>(x_grad->data<T>()),

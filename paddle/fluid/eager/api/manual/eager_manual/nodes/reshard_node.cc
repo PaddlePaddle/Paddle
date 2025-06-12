@@ -46,9 +46,10 @@ ReshardGradNode::operator()(
 
   // Collect GradIn Tensors, Attrs and Recovered TensorWrappers
   auto input = egr::EagerUtils::RecoverTensorWrapper(&this->input_);
-  const auto& dist_attr =
+  auto dist_attr =
       std::static_pointer_cast<phi::distributed::DistTensor>(input.impl())
           ->dist_attr();
+  dist_attr.clean_partial_status();
   auto& grad_out = hooked_grad[0][0];
   // Prepare Grad function call
 

@@ -238,6 +238,7 @@ class NdMeshReshardFunction(ReshardFunction):
                     tmp_dst_type,
                 )
                 src_dist_attr = tmp_dst_dist_attr
+
         # Step3. Convert the replicated status to the status in dst_dist_attr
         # Step3.1 convert replicated to partial
         if is_partial(dst_dist_attr):
@@ -264,7 +265,7 @@ class NdMeshReshardFunction(ReshardFunction):
 
                 tmp_dst_dist_attr = copy_dist_attr_with_new_member(
                     dst_dist_attr,
-                    new_partial_status=src_dist_attr.partial_status,
+                    new_partial_status={partial_dim: partial_type},
                 )
                 tmp_dst_type = paddle.base.libpaddle.pir.cvt_to_dist_type(
                     src_value.type(), tmp_dst_dist_attr
