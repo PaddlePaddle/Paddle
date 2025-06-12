@@ -1567,6 +1567,7 @@ Dispatcher.register(
 )
 
 
+# TODO(wangmingkai): Forward operator.ne of (VariableBase, VariableBase) to the negation of operator.eq
 @Dispatcher.register_decorator(operator.ne)
 def dispatch_enum_ne(lhs: EnumVariable, rhs: EnumVariable):
     return Dispatcher.call(operator.eq, lhs, rhs).bool_not()
