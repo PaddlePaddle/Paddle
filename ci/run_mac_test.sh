@@ -197,6 +197,7 @@ EOF
                         echo "The following unittest will be re-run:"
                         echo "${retry_unittests}"
                         echo "========================================="
+                        set -x
 
                         retry_unittests_regular=''
                         for line in ${retry_unittests[@]} ;
