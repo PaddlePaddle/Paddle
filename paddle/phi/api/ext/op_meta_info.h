@@ -1162,7 +1162,8 @@ class PADDLE_API OpMetaInfoBuilder {
   static ::paddle::OpMetaInfoBuilder __grad_grad_op_meta_info_##op_name##__ = \
       ::paddle::OpMetaInfoBuilder(#op_name, 2)
 
-#define PD_BUILD_STATIC_OP(name) PD_BUILD_OP(static_op_##name)
+#define PD_BUILD_OP_CUSTOM_PREFIX_NAME(name, prefix) \
+  PD_BUILD_OP(prefix##_##name)
 }  // namespace paddle
 
 ///////////////////// C API ///////////////////
