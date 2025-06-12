@@ -37,7 +37,7 @@ __global__ void PReluOpGradKernel(const T* x_ptr,
                                   size_t spatial_size,
                                   size_t numel,
                                   PRELU_MODE mode) {
-  CUDA_KERNEL_LOOP(index, numel) {
+  CUDA_KERNEL_LOOP_TYPE(index, numel, int64_t) {
     T scale;
     if (mode == Element) {
       size_t element_index = index % spatial_size;
@@ -136,7 +136,7 @@ void PReluGradKernel(const Context& dev_ctx,
 
   if (!x_grad && !alpha_grad) return;
 
-  int numel = x.numel();
+  int64_t numel = x.numel();
   auto dim = x.dims();
   auto x_rank = dim.size();
   auto stream = dev_ctx.stream();

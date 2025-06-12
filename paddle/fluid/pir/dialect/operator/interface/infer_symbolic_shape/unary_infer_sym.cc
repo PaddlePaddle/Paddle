@@ -2168,6 +2168,15 @@ bool MatrixRankOpInferSymbolicShape(
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();
 
+  const auto &GetProduct = [&](const auto &dim_exprs) {
+    symbol::DimExpr product{1};
+    for (const auto &dim_expr : dim_exprs) {
+      product = product * dim_expr;
+    }
+    return product;
+  };
+  const auto &x_numel = GetProduct(x_shape);
+
   // 确保输入x的维度大于等于2
   PADDLE_ENFORCE_GE(x_shape.size(),
                     2,
@@ -2177,8 +2186,8 @@ bool MatrixRankOpInferSymbolicShape(
   // 获取Hermitian属性
   bool hermitian = op->attribute<pir::BoolAttribute>("hermitian").data();
 
-  // 如果hermitian为true，确保输入x是方阵
-  if (hermitian) {
+  // 如果hermitian为true，确保输入x是方阵,0-size Tensor不需要此检查
+  if (hermitian && x_numel != 0) {
     infer_context->AddEqualCstr(x_shape[x_shape.size() - 2],
                                 x_shape[x_shape.size() - 1]);
   }
@@ -2315,39 +2324,14 @@ bool NanmedianOpInferSymbolicShape(
     median_shape.emplace_back(2);
   }
 
-  const auto &IsZero = [&](const symbol::DimExpr &dim_expr) {
-    if (dim_expr.isa<int64_t>()) {
-      return dim_expr.dyn_cast<int64_t>() == static_cast<int64_t>(0);
-    }
-    return false;
-  };
-  bool size_0 = false;
-  for (size_t i = 0; i < x_shape.size(); i++) {
-    if (IsZero(x_shape.at(i))) {
-      size_0 = true;
-      break;
-    }
-  }
-  if (size_0) {
-    std::vector<symbol::DimExpr> x_numel_0_shape = {};
-    infer_context->SetShapeOrDataForValue(
-        op->result(0),
-        symbol::ShapeOrDataDimExprs{
-            symbol::TensorShapeOrDataDimExprs(x_numel_0_shape)});
-    infer_context->SetShapeOrDataForValue(
-        op->result(1),
-        symbol::ShapeOrDataDimExprs{
-            symbol::TensorShapeOrDataDimExprs(x_numel_0_shape)});
-  } else {
-    infer_context->SetShapeOrDataForValue(
-        op->result(0),
-        symbol::ShapeOrDataDimExprs{
-            symbol::TensorShapeOrDataDimExprs(out_shape)});
-    infer_context->SetShapeOrDataForValue(
-        op->result(1),
-        symbol::ShapeOrDataDimExprs{
-            symbol::TensorShapeOrDataDimExprs(median_shape)});
-  }
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(out_shape)});
+  infer_context->SetShapeOrDataForValue(
+      op->result(1),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(median_shape)});
   return true;
 }
 
