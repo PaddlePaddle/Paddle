@@ -13,6 +13,7 @@
 // limitations under the License.
 #include "paddle/phi/kernels/set_kernel.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 
 namespace phi {
 
@@ -31,9 +32,12 @@ void SetKernel(const Context& dev_ctx,
   if (x.IsSharedWith(source)) {
     out->set_meta(meta);
   } else {
-    // reset holder to nullptr
-    out->clear();
-    *out = DenseTensor{source.Holder(), meta};
+    // // reset holder to nullptr
+    // out->clear();
+    // *out = DenseTensor{source.Holder(), meta};
+    phi::Full<T, Context>(dev_ctx, phi::IntArray(dims), 0, out);
+    out->ResetHolder(source.Holder());
+    out->set_meta(meta);
   }
   out->ShareInplaceVersionCounterWith(x);
 }

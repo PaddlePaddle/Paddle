@@ -2222,6 +2222,15 @@ class TestDygraphInplaceSet(unittest.TestCase):
 
             self.assertRaises(ValueError, leaf_inplace_error)
 
+    def test_api_accuracy(self):
+        for dtype in self.support_dtypes:
+            for place in self.places:
+                with paddle.base.dygraph.guard():
+                    x = paddle.randn([3, 8], dtype=dtype)
+                    src = paddle.randn([6, 3], dtype=dtype)
+                    x.set_(src, [3, 8], [2, 2], 0)
+                    self.assertEqual(x.numpy()[2, 7], 0.0)
+
 
 @unittest.skipIf(
     not paddle.base.core.is_compiled_with_cuda()
