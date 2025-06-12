@@ -22,6 +22,10 @@ namespace fusion {
 struct __custom_bfloat162 {
   __nv_bfloat16 x;
   __nv_bfloat16 y;
+};
+__nv_bfloat16 __custoom_hadd(__nv_bfloat16 x, __nv_bfloat16 y) {
+  return static_cast<__nv_bfloat16>(static_cast<float>(x) +
+                                    static_cast<float>(y));
 }
 #ifndef MAX_NUM_EXPERTS
 #define MAX_NUM_EXPERTS 8
@@ -78,7 +82,7 @@ __global__ void tokens_zip_kernel(
          x_offset < num_full_vec * vecSize;
          x_offset += thread_stride) {
       float2 sum = {0.0f, 0.0f};
-      __custom_bfloat162 raw = {0, 0};
+      __custom_bfloat162 raw = {0.0f, 0.0f};
       int aggreg_cnt = 0;
       __custom_bfloat162 *out_ptr = reinterpret_cast<__custom_bfloat162 *>(
           &zipped_tokens[(int64_t)this_row * (int64_t)token_length + x_offset]);
@@ -107,7 +111,7 @@ __global__ void tokens_zip_kernel(
     for (int i = num_full_vec * vecSize + threadIdx.x; i < token_length;
          i += blockDim.x) {
       float sum = 0.0f;
-      __nv_bfloat16 raw = 0;
+      __nv_bfloat16 raw = 0.0f;
       int aggreg_cnt = 0;
 #pragma unroll
       for (int expert = 0; expert < num_experts; ++expert) {
@@ -127,7 +131,7 @@ __global__ void tokens_zip_kernel(
     for (int x_offset = threadIdx.x * vecSize;
          x_offset < num_full_vec * vecSize;
          x_offset += thread_stride) {
-      __custom_bfloat162 sum = {0, 0};
+      __custom_bfloat162 sum = {0.0f, 0.0f};
       __custom_bfloat162 *out_ptr = reinterpret_cast<__custom_bfloat162 *>(
           &zipped_tokens[(int64_t)this_row * (int64_t)token_length + x_offset]);
 #pragma unroll
@@ -139,8 +143,8 @@ __global__ void tokens_zip_kernel(
                 &unzipped_tokens[(int64_t)fetch_row * (int64_t)token_length +
                                  x_offset]);
         // sum = __hadd2(sum, token_vec);
-        sum.x = sum.x + token_vec.x;
-        sum.y = sum.y + token_vec.y;
+        sum.x = __custoom_hadd(sum.x, token_vec.x);
+        sum.y = __custoom_hadd(sum.y, token_vec.y);
       }
       *out_ptr = sum;
     }
@@ -155,7 +159,7 @@ __global__ void tokens_zip_kernel(
         if (fetch_row < 0) continue;
         __nv_bfloat16 token_val =
             unzipped_tokens[(int64_t)fetch_row * (int64_t)token_length + i];
-        sum = __hadd(sum, token_val);
+        sum = __custoom_hadd(sum, token_val);
       }
       zipped_tokens[(int64_t)this_row * (int64_t)token_length + i] = sum;
     }
