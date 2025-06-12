@@ -18,7 +18,7 @@ import logging
 from typing import Any, Callable, Union
 
 import paddle
-from paddle.distributed import fleet
+from paddle.distributed import ProcessMesh, fleet
 from paddle.distributed.auto_parallel.api import (
     dtensor_from_local,
 )
@@ -172,3 +172,128 @@ def _map_debug_info(a):
     `a` may be a list, tuple, or dict.
     """
     return map_structure(_friendly_debug_info, a)
+
+
+class GET_PP_INFO_OF_LAYER:
+    """Class for getting Pipeline Parallel information of model layers
+
+    Args:
+        hidden_layer_num (int): Number of model layers
+        mesh (ProcessMesh): Device mesh information
+        pp_schedule (str, optional): Pipeline parallel scheduling strategy. Defaults to "1F1B", representing the common model allocation strategy.
+        vpp_degree (int | None, optional): VPP parallel degree. Defaults to None, indicating VPP strategy is not used.
+    """
+
+    def __init__(
+        self,
+        hidden_layer_num: int,
+        mesh: ProcessMesh,
+        pp_schedule: str = "1F1B",
+        vpp_degree: int | None = None,
+    ):
+        self.mesh = mesh
+        if "pp" in self.mesh.dim_names:
+            self.pp_degree = mesh.get_dim_size("pp")
+        else:
+            raise ValueError("mesh must have 'pp' dimension")
+
+        self.pp_schedule = pp_schedule.upper()
+        # Check if schedule is supported
+        if self.pp_schedule not in ["VPP", "1F1B", "GPIPE"]:
+            raise ValueError(
+                f"The pipeline schedule {self.pp_schedule} is not supported currently"
+            )
+        self.hidden_layer_num = hidden_layer_num
+        self.vpp_degree = vpp_degree
+
+        # Initialize VPP mode parameters
+        if self.pp_schedule == "VPP":
+            if self.vpp_degree is None:
+                raise ValueError("VPP mode requires vpp_degree to be specified")
+            self.real_pp_degree = self.vpp_degree * self.pp_degree
+            if self.hidden_layer_num < self.real_pp_degree:
+                raise ValueError(
+                    f"In VPP mode, number of layers must be >= vpp_degree * pp_degree, "
+                    f"but got {hidden_layer_num} layers with {self.real_pp_degree} stages "
+                    f"(vpp_degree={vpp_degree}, pp_degree={self.pp_degree})"
+                )
+
+        # Calculate base layers per stage and remaining layers
+        if pp_schedule == "VPP":
+            self.base_layers = hidden_layer_num // self.real_pp_degree
+            self.remaining_layers = hidden_layer_num % self.real_pp_degree
+        else:
+            self.base_layers = hidden_layer_num // self.pp_degree
+            self.remaining_layers = hidden_layer_num % self.pp_degree
+
+    def __getitem__(self, layer_idx: int) -> ProcessMesh:
+        """Get device mesh information for specified layer through index access
+
+        Args:
+            layer_idx (int): Layer index
+
+        Returns:
+            ProcessMesh: Corresponding device mesh information
+        """
+        return self.get_info_by_index(layer_idx)
+
+    def get_info_by_index(self, layer_idx: int) -> ProcessMesh:
+        """Get device mesh information for specified layer
+
+        Args:
+            layer_idx (int): Layer index
+
+        Returns:
+            ProcessMesh: Corresponding device mesh information
+        """
+        if layer_idx >= self.hidden_layer_num:
+            raise ValueError(
+                f"layer_idx {layer_idx} exceeds total number of layers {self.hidden_layer_num}"
+            )
+
+        if self.pp_schedule == "VPP":
+            # Calculate logical stage index (0 to real_pp_degree-1)
+            if layer_idx < self.remaining_layers * (self.base_layers + 1):
+                logical_stage_idx = layer_idx // (self.base_layers + 1)
+            else:
+                layers_not_remaining = layer_idx - self.remaining_layers * (
+                    self.base_layers + 1
+                )
+                logical_stage_idx = (
+                    self.remaining_layers
+                    + layers_not_remaining // self.base_layers
+                )
+
+            # Map logical stage to physical device (0 to pp_degree-1)
+            physical_device_idx = logical_stage_idx % self.pp_degree
+            return self.mesh.get_mesh_with_dim("pp", physical_device_idx)
+        elif (
+            self.pp_schedule == "1F1B" or self.pp_schedule == "GPIPE"
+        ):  # "1F1B" or "Gpipe"
+            if layer_idx < self.remaining_layers * (self.base_layers + 1):
+                stage_idx = layer_idx // (self.base_layers + 1)
+            else:
+                layers_not_remaining = layer_idx - self.remaining_layers * (
+                    self.base_layers + 1
+                )
+                stage_idx = (
+                    self.remaining_layers
+                    + layers_not_remaining // self.base_layers
+                )
+
+            return self.mesh.get_mesh_with_dim("pp", stage_idx)
+        else:
+            raise ValueError(
+                f"The pipeline schedule {self.pp_schedule} is not supported currently"
+            )
+
+    def get_info_mapping(self) -> dict[int, ProcessMesh]:
+        """Get device mesh information mapping for all layers
+
+        Returns:
+            dict[int, ProcessMesh]: key is layer_index (starting from 0), value is the corresponding device group mesh
+        """
+        return {
+            layer_idx: self.get_info_by_index(layer_idx)
+            for layer_idx in range(self.hidden_layer_num)
+        }

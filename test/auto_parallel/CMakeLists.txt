@@ -191,6 +191,7 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
     FLAGS_cudnn_deterministic=1
     FLAGS_embedding_deterministic=1
     NVIDIA_TF32_OVERRIDE=0)
+  py_test_modules(test_get_pp_info_of_layer MODULES test_get_pp_info_of_layer)
   # End of unittests WITH single card WITHOUT timeout
 
 endif()
