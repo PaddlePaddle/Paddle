@@ -63,7 +63,7 @@ __global__ void GraphSendUVCUDAKernel(const T* x_data,
 }
 
 template <typename Context, typename T, typename IndexT>
-void GraphSendUVOpCUDAKernelLaunchHelper(const Context& ctx,
+void GraphSendUVOpCUDAKernelLaunchHelper(const Context& dev_ctx,
                                          const DenseTensor& x,
                                          const DenseTensor& y,
                                          const DenseTensor& src_index,
@@ -83,7 +83,7 @@ void GraphSendUVOpCUDAKernelLaunchHelper(const Context& ctx,
   for (int i = 0; i < out_dims.size(); i++) {
     memset_size *= out_dims[i];
   }
-  ctx.template Alloc<T>(out);
+  dev_ctx.template Alloc<T>(out);
   T* out_data = out->data<T>();
 
   const auto& bcast_info = phi::CalcBCastInfo(x.dims(), y.dims());
@@ -98,8 +98,8 @@ void GraphSendUVOpCUDAKernelLaunchHelper(const Context& ctx,
   }
 
   int64_t out_len = bcast_info.out_len;
-  const int ntx = FindNumThreads(out_len, ctx.GetMaxThreadsPerBlock());
-  const int nty = ctx.GetMaxThreadsPerBlock() / ntx;
+  const int ntx = FindNumThreads(out_len, dev_ctx.GetMaxThreadsPerBlock());
+  const int nty = dev_ctx.GetMaxThreadsPerBlock() / ntx;
   const int nbx = (out_len + ntx - 1) / ntx;
   const int nby = FindNumBlocks('y', (index_size + nty - 1) / nty);
   const dim3 grid(nbx, nby);
@@ -107,7 +107,7 @@ void GraphSendUVOpCUDAKernelLaunchHelper(const Context& ctx,
   if (message_op == "ADD") {
     funcs::AddFunctor<T> add_functor;
     GraphSendUVCUDAKernel<T, IndexT, funcs::AddFunctor<T>>
-        <<<grid, block, 0, ctx.stream()>>>(
+        <<<grid, block, 0, dev_ctx.stream()>>>(
             x_data,
             y_data,
             s_index,
@@ -124,7 +124,7 @@ void GraphSendUVOpCUDAKernelLaunchHelper(const Context& ctx,
   } else if (message_op == "MUL") {
     funcs::MultiplyFunctor<T> mul_functor;
     GraphSendUVCUDAKernel<T, IndexT, funcs::MultiplyFunctor<T>>
-        <<<grid, block, 0, ctx.stream()>>>(
+        <<<grid, block, 0, dev_ctx.stream()>>>(
             x_data,
             y_data,
             s_index,
@@ -142,7 +142,7 @@ void GraphSendUVOpCUDAKernelLaunchHelper(const Context& ctx,
 }
 
 template <typename T, typename Context>
-void SendUVKernel(const Context& ctx,
+void SendUVKernel(const Context& dev_ctx,
                   const DenseTensor& x,
                   const DenseTensor& y,
                   const DenseTensor& src_index,
@@ -152,10 +152,10 @@ void SendUVKernel(const Context& ctx,
   auto index_type = src_index.dtype();
   if (index_type == phi::DataType::INT32) {
     GraphSendUVOpCUDAKernelLaunchHelper<Context, T, int32_t>(
-        ctx, x, y, src_index, dst_index, message_op, out);
+        dev_ctx, x, y, src_index, dst_index, message_op, out);
   } else if (index_type == phi::DataType::INT64) {
     GraphSendUVOpCUDAKernelLaunchHelper<Context, T, int64_t>(
-        ctx, x, y, src_index, dst_index, message_op, out);
+        dev_ctx, x, y, src_index, dst_index, message_op, out);
   }
 }
 

@@ -26,7 +26,7 @@ repos:
       - id: remove-crlf
       - id: remove-tabs
         name: Tabs remover (C++)
-        files: \.(c|cc|cxx|cpp|cu|h|hpp|hxx|xpu|kps)$
+        files: \.(c|cc|cxx|cpp|cu|h|cuh|hpp|hxx|xpu|kps)$
         args: [--whitespaces-count, '2']
       - id: remove-tabs
         name: Tabs remover (Python)
@@ -35,7 +35,7 @@ repos:
         # Exclude some unit test files that require tabs.
         exclude: |
           (?x)^(
-              test/dygraph_to_static/test_error.py
+            test/dygraph_to_static/test_error.py
           )$
   - repo: local
     hooks:
@@ -43,7 +43,7 @@ repos:
         name: copyright_checker
         entry: python ./tools/codestyle/copyright.py
         language: system
-        files: \.(c|cc|cxx|cpp|cu|h|hpp|hxx|proto|xpu|kps|py|pyi|sh)$
+        files: \.(c|cc|cxx|cpp|cu|h|cuh|hpp|hxx|proto|xpu|kps|py|pyi|sh)$
         exclude: |
           (?x)^(
             paddle/utils/.*|
@@ -72,7 +72,7 @@ repos:
         description: Format files with ClangFormat.
         entry: bash ./tools/codestyle/clang_format.sh -i
         language: system
-        files: \.(c|cc|cxx|cpp|cu|h|hpp|hxx|xpu|kps)$
+        files: \.(c|cc|cxx|cpp|cu|h|cuh|hpp|hxx|xpu|kps)$
   - repo: local
     hooks:
       - id: cpplint-cpp-source

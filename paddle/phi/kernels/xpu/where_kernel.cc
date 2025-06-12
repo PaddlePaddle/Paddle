@@ -20,7 +20,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void WhereKernel(const Context& ctx,
+void WhereKernel(const Context& dev_ctx,
                  const DenseTensor& condition,
                  const DenseTensor& x,
                  const DenseTensor& y,
@@ -29,7 +29,8 @@ void WhereKernel(const Context& ctx,
   const bool* cond_data = condition.data<bool>();
   const XPUType* x_data = reinterpret_cast<const XPUType*>(x.data<T>());
   const XPUType* y_data = reinterpret_cast<const XPUType*>(y.data<T>());
-  XPUType* out_data = reinterpret_cast<XPUType*>(ctx.template Alloc<T>(out));
+  XPUType* out_data =
+      reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(out));
   if (out && out->numel() == 0) {
     return;
   }
@@ -45,8 +46,13 @@ void WhereKernel(const Context& ctx,
     x_dims = std::vector<int64_t>({1});
   }
 
-  int ret = xpu::select(
-      ctx.x_context(), cond_data, x_data, y_data, out_data, cond_dims, x_dims);
+  int ret = xpu::select(dev_ctx.x_context(),
+                        cond_data,
+                        x_data,
+                        y_data,
+                        out_data,
+                        cond_dims,
+                        x_dims);
 
   PADDLE_ENFORCE_XDNN_SUCCESS(ret, "xpu::select");
 }

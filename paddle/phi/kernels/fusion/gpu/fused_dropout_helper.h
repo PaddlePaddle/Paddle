@@ -104,10 +104,10 @@ template <typename T,
           typename OutType = T>
 class FusedDropoutHelper {
  private:
-  int GetIncrement(const phi::GPUContext& ctx) {
+  int GetIncrement(const phi::GPUContext& dev_ctx) {
     const int VecSize = MAX_CACHE_BYTES / sizeof(T);
     const int real_vec_size = cols_ % VecSize == 0 ? VecSize : 1;
-    auto config = Get1DBlocksAnd2DGrids(ctx,
+    auto config = Get1DBlocksAnd2DGrids(dev_ctx,
                                         static_cast<uint64_t>(rows_),
                                         static_cast<uint64_t>(cols_),
                                         real_vec_size);
@@ -115,13 +115,13 @@ class FusedDropoutHelper {
                                     config.block_per_grid.x * real_vec_size) +
                      1) *
                     real_vec_size;
-    increment = dropout_param_.UpdateSeedAndIncrement(ctx, increment);
+    increment = dropout_param_.UpdateSeedAndIncrement(dev_ctx, increment);
     return increment;
   }
 
  public:
   FusedDropoutHelper() {}
-  FusedDropoutHelper(const phi::GPUContext& ctx,
+  FusedDropoutHelper(const phi::GPUContext& dev_ctx,
                      const int rows,
                      const int cols,
                      const DropoutParam& dropout_param,
@@ -133,7 +133,7 @@ class FusedDropoutHelper {
   }
 
   // out = residual + dropout( src + bias )
-  void ResidualDropoutBias(const phi::GPUContext& ctx,
+  void ResidualDropoutBias(const phi::GPUContext& dev_ctx,
                            const InType* src,
                            const T* residual,
                            const T* bias,
@@ -142,7 +142,7 @@ class FusedDropoutHelper {
                            const float quant_last_in_scale = 1.0,
                            const float* dequant_out_scale_data = nullptr,
                            const float quant_next_in_scale = 1.0) {
-    auto increment = GetIncrement(ctx);
+    auto increment = GetIncrement(dev_ctx);
     LaunchResidualDropoutBias<T, MaskType, InType, OutType>(
         rows_,
         cols_,
@@ -156,14 +156,14 @@ class FusedDropoutHelper {
         bias,
         mask,
         out,
-        ctx,
+        dev_ctx,
         quant_last_in_scale,
         dequant_out_scale_data,
         quant_next_in_scale,
         residual_alpha_);
   }
 
-  void ResidualDropoutBiasGrad(const phi::GPUContext& ctx,
+  void ResidualDropoutBiasGrad(const phi::GPUContext& dev_ctx,
                                const T* d_out,
                                const MaskType* mask,
                                T* d_src,
@@ -178,19 +178,19 @@ class FusedDropoutHelper {
         cols_,
         d_src,
         d_bias,
-        ctx);
+        dev_ctx);
     if (d_residual) {
-      phi::memory_utils::Copy(ctx.GetPlace(),
+      phi::memory_utils::Copy(dev_ctx.GetPlace(),
                               d_residual,
-                              ctx.GetPlace(),
+                              dev_ctx.GetPlace(),
                               d_out,
                               rows_ * cols_ * sizeof(T),
-                              ctx.stream());
+                              dev_ctx.stream());
     }
   }
 
   // out = dropout(activation(src + bias))
-  void DropoutActBias(const phi::GPUContext& ctx,
+  void DropoutActBias(const phi::GPUContext& dev_ctx,
                       const InType* src,
                       const T* bias,
                       const std::string& act_method,
@@ -202,7 +202,7 @@ class FusedDropoutHelper {
                       const int quant_round_type = 1,
                       const float quant_max_bound = 127.0,
                       const float quant_min_bound = -127.0) {
-    auto increment = GetIncrement(ctx);
+    auto increment = GetIncrement(dev_ctx);
     if (act_method == "gelu") {
       if (FLAGS_use_fast_math) {
         phi::fusion::FastGeluFunctor<T> fast_gelu;
@@ -223,7 +223,7 @@ class FusedDropoutHelper {
             bias,
             out,
             mask,
-            ctx,
+            dev_ctx,
             quant_last_in_scale,
             dequant_out_scale_data,
             quant_next_in_scale,
@@ -249,7 +249,7 @@ class FusedDropoutHelper {
                      bias,
                      out,
                      mask,
-                     ctx,
+                     dev_ctx,
                      quant_last_in_scale,
                      dequant_out_scale_data,
                      quant_next_in_scale,
@@ -276,7 +276,7 @@ class FusedDropoutHelper {
           bias,
           out,
           mask,
-          ctx,
+          dev_ctx,
           quant_last_in_scale,
           dequant_out_scale_data,
           quant_next_in_scale,
@@ -289,7 +289,7 @@ class FusedDropoutHelper {
     }
   }
 
-  void DropoutActBiasGrad(const phi::GPUContext& ctx,
+  void DropoutActBiasGrad(const phi::GPUContext& dev_ctx,
                           const T* dout,
                           const T* src,
                           const T* bias,
@@ -313,7 +313,7 @@ class FusedDropoutHelper {
           cols_,
           d_src,
           d_bias,
-          ctx);
+          dev_ctx);
     } else if (act_method == "relu") {
       phi::funcs::ReluGradFunctor<T> relu_grad;
       phi::fusion::
@@ -329,7 +329,7 @@ class FusedDropoutHelper {
               cols_,
               d_src,
               d_bias,
-              ctx);
+              dev_ctx);
     } else {
       PADDLE_THROW(errors::InvalidArgument(
           "Currently only supports gelu or relu activation functions!"));
@@ -362,20 +362,20 @@ class FusedDropoutLayerNormHelper
     this->residual_alpha_ = residual_alpha;
   }
 
-  FusedDropoutLayerNormHelper(const phi::GPUContext& ctx,
+  FusedDropoutLayerNormHelper(const phi::GPUContext& dev_ctx,
                               const int64_t rows,
                               const int64_t cols,
                               const DropoutParam& dropout_param,
                               const float epsilon,
                               const float residual_alpha = 1.0)
       : FusedDropoutHelper<T, MaskType, InType, OutType>(
-            ctx, rows, cols, dropout_param, residual_alpha) {
+            dev_ctx, rows, cols, dropout_param, residual_alpha) {
     using U = phi::funcs::LayerNormParamType<T>;
     epsilon_ = epsilon;
   }
 
   // call layer_norm
-  void LayerNorm(const phi::GPUContext& ctx,
+  void LayerNorm(const phi::GPUContext& dev_ctx,
                  const InType* src,
                  const phi::funcs::LayerNormParamType<T>* gamma,
                  const phi::funcs::LayerNormParamType<T>* beta,
@@ -389,7 +389,7 @@ class FusedDropoutLayerNormHelper
                                     phi::funcs::LayerNormParamType<T>>
         layer_norm;
     std::vector<int64_t> src_shape{this->rows_, this->cols_};
-    layer_norm(ctx.stream(),
+    layer_norm(dev_ctx.stream(),
                reinterpret_cast<const InDataType*>(src),
                src_shape,
                beta,
@@ -401,7 +401,7 @@ class FusedDropoutLayerNormHelper
                epsilon_);
   }
 
-  void LayerNormGrad(const phi::GPUContext& ctx,
+  void LayerNormGrad(const phi::GPUContext& dev_ctx,
                      const T* dout,
                      const T* src,
                      const phi::funcs::LayerNormParamType<T>* gamma,
@@ -422,14 +422,14 @@ class FusedDropoutLayerNormHelper
                                         epsilon_,
                                         this->rows_,
                                         this->cols_,
-                                        ctx);
+                                        dev_ctx);
   }
 
   // out = layernorm(residual + dropout(src + bias))
   template <typename P = phi::funcs::LayerNormParamType<T>,
             bool is_same_type = false>
   void LayernormResidualDropoutBias(
-      const phi::GPUContext& ctx,
+      const phi::GPUContext& dev_ctx,
       const InType* src,
       const T* residual,
       const T* bias,
@@ -453,7 +453,7 @@ class FusedDropoutLayerNormHelper
     }
     int threads = phi::funcs::GetDesiredBlockDim(this->cols_ / vec_size);
     int increment = ((this->cols_ - 1) / (threads * vec_size) + 1) * vec_size;
-    increment = this->dropout_param_.UpdateSeedAndIncrement(ctx, increment);
+    increment = this->dropout_param_.UpdateSeedAndIncrement(dev_ctx, increment);
     LaunchLayernormResidualDropoutBias<T,
                                        MaskType,
                                        U,
@@ -478,7 +478,7 @@ class FusedDropoutLayerNormHelper
         out,
         mean,
         variance,
-        ctx,
+        dev_ctx,
         quant_last_in_scale,
         dequant_out_scale_data,
         quant_next_in_scale,
@@ -491,7 +491,7 @@ class FusedDropoutLayerNormHelper
   template <typename P = phi::funcs::LayerNormParamType<T>,
             bool is_same_type = false>
   void LayernormResidualDropoutBiasGrad(
-      const phi::GPUContext& ctx,
+      const phi::GPUContext& dev_ctx,
       const T* d_out,
       const T* layernorm_src,
       const MaskType* mask,
@@ -517,7 +517,7 @@ class FusedDropoutLayerNormHelper
 
     if (can_call_1024_kernel) {
       LaunchLayernormResidualDropoutGrad<T, U, MaskType, is_same_type>(
-          ctx,
+          dev_ctx,
           this->rows_,
           this->cols_,
           epsilon_,
@@ -545,9 +545,9 @@ class FusedDropoutLayerNormHelper
                                                         epsilon_,
                                                         this->rows_,
                                                         this->cols_,
-                                                        ctx);
+                                                        dev_ctx);
       this->ResidualDropoutBiasGrad(
-          ctx, d_layernorm_src, mask, d_dropout_src, d_residual, d_bias);
+          dev_ctx, d_layernorm_src, mask, d_dropout_src, d_residual, d_bias);
     }
   }
 

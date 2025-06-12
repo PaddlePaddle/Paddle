@@ -31,12 +31,12 @@ namespace phi {
 using Tensor = DenseTensor;
 template <typename DeviceContext, typename T>
 struct GetTensorValue {
-  T operator()(const DeviceContext& ctx, const DenseTensor& tensor) const;
+  T operator()(const DeviceContext& dev_ctx, const DenseTensor& tensor) const;
 };
 
 template <typename DeviceContext, typename T>
 struct IscloseFunctor {
-  void operator()(const DeviceContext& ctx,
+  void operator()(const DeviceContext& dev_ctx,
                   const DenseTensor& in,
                   const DenseTensor& other,
                   const float rtol,
@@ -55,7 +55,7 @@ struct GetTensorValue<phi::CPUContext, T> {
 
 template <typename T>
 struct IscloseFunctor<phi::CPUContext, T> {
-  void operator()(const phi::CPUContext& ctx,
+  void operator()(const phi::CPUContext& dev_ctx,
                   const DenseTensor& in,
                   const DenseTensor& other,
                   const double rtol,
@@ -64,7 +64,7 @@ struct IscloseFunctor<phi::CPUContext, T> {
                   DenseTensor* output) {
     auto* in_a = in.data<T>();
     auto* in_b = other.data<T>();
-    auto* out_data = ctx.template Alloc<bool>(output);
+    auto* out_data = dev_ctx.template Alloc<bool>(output);
     int64_t num = in.numel();
     // *out_data = true;
     for (int64_t i = 0; i < num; i++) {
@@ -89,7 +89,7 @@ struct IscloseFunctor<phi::CPUContext, T> {
 
 template <typename T>
 struct IscloseFunctor<phi::CPUContext, phi::dtype::complex<T>> {
-  void operator()(const phi::CPUContext& ctx,
+  void operator()(const phi::CPUContext& dev_ctx,
                   const DenseTensor& in,
                   const DenseTensor& other,
                   const double rtol,
@@ -98,7 +98,7 @@ struct IscloseFunctor<phi::CPUContext, phi::dtype::complex<T>> {
                   DenseTensor* output) {
     auto* in_a = in.data<phi::dtype::complex<T>>();
     auto* in_b = other.data<phi::dtype::complex<T>>();
-    auto* out_data = ctx.template Alloc<bool>(output);
+    auto* out_data = dev_ctx.template Alloc<bool>(output);
     int64_t num = in.numel();
     // *out_data = true;
     for (int64_t i = 0; i < num; i++) {

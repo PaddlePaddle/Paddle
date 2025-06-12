@@ -1022,6 +1022,27 @@ TEST(ReduceAllRule, Ctor) {
   check_partial_dims(forward_info.second[0], {0});
 }
 
+TEST(ReduceAnyRule, Ctor) {
+  std::vector<int64_t> mesh_shape = {2};
+  std::vector<int64_t> process_ids = {0, 1};
+  std::vector<std::string> dim_names = {"x"};
+  ProcessMesh process_mesh(mesh_shape, process_ids, dim_names);
+
+  // test forward
+  auto t_dist_attr = TensorDistAttr();
+  t_dist_attr.set_process_mesh(process_mesh);
+  t_dist_attr.set_dims_mapping({-1, 0, -1});
+  t_dist_attr.set_dynamic_dims({false, false, false});
+  phi::distributed::DistMetaTensor x =
+      phi::distributed::DistMetaTensor(phi::make_ddim({4, 6, 8}), t_dist_attr);
+  phi::IntArray axis = {1};
+  bool keep_dim = false;
+  phi::distributed::SpmdInfo forward_info =
+      phi::distributed::ReductionAnyInferSpmdDynamic(x, axis, keep_dim);
+  check_dim_mapping(forward_info.second[0], {-1, -1});
+  check_partial_dims(forward_info.second[0], {0});
+}
+
 TEST(Numel, Ctor) {
   std::vector<int64_t> mesh_shape = {2, 2};
   std::vector<int64_t> process_ids = {0, 1, 2, 3};
@@ -1507,7 +1528,12 @@ TEST(ElementwiseUnaryLike, Ctor) {
   inferred_dist_attrs =
       phi::distributed::FullLikeInferSpmd(input, 1.0, phi::DataType::FLOAT32);
   check_element_unary_like(inferred_dist_attrs);
-
+  // empty like
+  input =
+      phi::distributed::DistMetaTensor(common::make_ddim(shape), t_dist_attr);
+  inferred_dist_attrs =
+      phi::distributed::EmptyLikeInferSpmd(input, phi::DataType::FLOAT32);
+  check_element_unary_like(inferred_dist_attrs);
   // pow
   input =
       phi::distributed::DistMetaTensor(common::make_ddim(shape), t_dist_attr);
@@ -2940,6 +2966,131 @@ TEST(ArgSortInferSpmd, Ctor) {
           << std::endl;
 }
 
+TEST(Roll, Ctor) {
+  std::vector<int64_t> mesh_shape = {2, 2};
+  std::vector<int64_t> process_ids = {0, 1, 2, 3};
+  std::vector<std::string> dim_names = {"x", "y"};
+  ProcessMesh process_mesh(mesh_shape, process_ids, dim_names);
+  phi::IntArray shifts = {1};
+  std::vector<int64_t> axis = {};
+
+  // test forward
+  // axis = [], shifts = [1]
+  // [0, 1, -1] --> [-1, -1, -1], [-1, -1, -1]
+  auto x_dist_attr = TensorDistAttr();
+  x_dist_attr.set_process_mesh(process_mesh);
+  x_dist_attr.set_dims_mapping({0, 1, -1});
+  x_dist_attr.set_dynamic_dims({false, false, false});
+
+  phi::distributed::DistMetaTensor x = phi::distributed::DistMetaTensor(
+      common::make_ddim({16, 16, 16}), x_dist_attr);
+  phi::distributed::SpmdInfo forward_info =
+      phi::distributed::RollInferSpmdDynamic(x, shifts, axis);
+
+  EXPECT_EQ(forward_info.first.size(), 1UL);
+  EXPECT_EQ(forward_info.second.size(), 1UL);
+  check_dim_mapping(forward_info.first[0], {-1, -1, -1});
+  check_dim_mapping(forward_info.second[0], {-1, -1, -1});
+  // axis = [0, 2], shifts = [1, 2]
+  // [0, 1, -1] --> [-1, 1, -1], [-1, 1, -1]
+  shifts = {1, 2};
+  axis = {0, 2};
+  forward_info = phi::distributed::RollInferSpmdDynamic(x, shifts, axis);
+
+  EXPECT_EQ(forward_info.first.size(), 1UL);
+  EXPECT_EQ(forward_info.second.size(), 1UL);
+  check_dim_mapping(forward_info.first[0], {-1, 1, -1});
+  check_dim_mapping(forward_info.second[0], {-1, 1, -1});
+
+  // test backward
+  // axis = [], shifts = [1]
+  // [0, 1, -1], [-1, -1, -1] --> [-1, -1, -1], [-1, -1, -1], [-1, -1, -1]
+  shifts = {1};
+  axis = {};
+  x_dist_attr.set_dims_mapping({-1, -1, -1});
+  x = phi::distributed::DistMetaTensor(common::make_ddim({16, 16, 16}),
+                                       x_dist_attr);
+  auto out_grad_dist_attr = TensorDistAttr();
+  out_grad_dist_attr.set_process_mesh(process_mesh);
+  out_grad_dist_attr.set_dims_mapping({0, 1, -1});
+  out_grad_dist_attr.set_dynamic_dims({false, false, false});
+  phi::distributed::DistMetaTensor out_grad = phi::distributed::DistMetaTensor(
+      common::make_ddim({16, 16, 16}), out_grad_dist_attr);
+  phi::distributed::SpmdInfo backward_info =
+      phi::distributed::RollGradInferSpmdDynamic(x, out_grad, shifts, axis);
+  EXPECT_EQ(backward_info.first.size(), 2UL);
+  EXPECT_EQ(backward_info.second.size(), 1UL);
+  check_dim_mapping(backward_info.first[0], {-1, -1, -1});
+  check_dim_mapping(backward_info.first[1], {-1, -1, -1});
+  check_dim_mapping(backward_info.second[0], {-1, -1, -1});
+
+  // axis = [0, 2], shifts = [1, 2]
+  // [-1, -1, -1], [0, 1, -1] --> [-1, 1, -1], [-1, 1, -1], [-1, 1, -1]
+  shifts = {1, 2};
+  axis = {0, 2};
+  backward_info =
+      phi::distributed::RollGradInferSpmdDynamic(x, out_grad, shifts, axis);
+  EXPECT_EQ(backward_info.first.size(), 2UL);
+  EXPECT_EQ(backward_info.second.size(), 1UL);
+  check_dim_mapping(backward_info.first[0], {-1, 1, -1});
+  check_dim_mapping(backward_info.first[1], {-1, 1, -1});
+  check_dim_mapping(backward_info.second[0], {-1, 1, -1});
+}
+
+TEST(IndexSelect, Ctor) {
+  std::vector<int64_t> mesh_shape = {2, 3};
+  std::vector<int64_t> process_ids = {0, 1, 2, 3, 4, 5};
+  std::vector<std::string> dim_names = {"x", "y"};
+  ProcessMesh process_mesh(mesh_shape, process_ids, dim_names);
+  int axis = 1;
+
+  // test forward
+  // axis = 1
+  // [-1, -1, -1], [0] --> [-1, -1, -1], [0], [-1, 0, -1]
+  auto x_dist_attr = TensorDistAttr();
+  x_dist_attr.set_process_mesh(process_mesh);
+  x_dist_attr.set_dims_mapping({-1, -1, -1});
+  x_dist_attr.set_dynamic_dims({false, false, false});
+  phi::distributed::DistMetaTensor x = phi::distributed::DistMetaTensor(
+      common::make_ddim({16, 16, 16}), x_dist_attr);
+  auto index_dist_attr = TensorDistAttr();
+  index_dist_attr.set_process_mesh(process_mesh);
+  index_dist_attr.set_dims_mapping({0});
+  index_dist_attr.set_dynamic_dims({false, false, false});
+  phi::distributed::DistMetaTensor index =
+      phi::distributed::DistMetaTensor(common::make_ddim({3}), index_dist_attr);
+
+  phi::distributed::SpmdInfo forward_info =
+      phi::distributed::IndexSelectInferSpmd(x, index, axis);
+
+  EXPECT_EQ(forward_info.first.size(), 2UL);
+  EXPECT_EQ(forward_info.second.size(), 1UL);
+  check_dim_mapping(forward_info.first[0], {-1, -1, -1});
+  check_dim_mapping(forward_info.first[1], {0});
+  check_dim_mapping(forward_info.second[0], {-1, 0, -1});
+
+  // test backward
+  // axis = 1
+  // [-1, -1, -1], [0], [-1, 0, -1], axis=1 --> [-1, -1, -1], [0], [-1, 0, -1],
+  // [-1, -1, -1](partial on axis=1 with 0)
+  auto out_grad_dist_attr = TensorDistAttr();
+  out_grad_dist_attr.set_process_mesh(process_mesh);
+  out_grad_dist_attr.set_dims_mapping({-1, 0, -1});
+  out_grad_dist_attr.set_dynamic_dims({false, false, false});
+  phi::distributed::DistMetaTensor out_grad = phi::distributed::DistMetaTensor(
+      common::make_ddim({16, 3, 16}), out_grad_dist_attr);
+  phi::distributed::SpmdInfo backward_info =
+      phi::distributed::IndexSelectGradInferSpmd(x, index, out_grad, axis);
+  EXPECT_EQ(backward_info.first.size(), 3UL);
+  EXPECT_EQ(backward_info.second.size(), 1UL);
+  check_dim_mapping(backward_info.first[0], {-1, -1, -1});
+  check_dim_mapping(backward_info.first[1], {0});
+  check_dim_mapping(backward_info.first[2], {-1, 0, -1});
+  check_dim_mapping(backward_info.second[0], {-1, -1, -1});
+  EXPECT_EQ(is_partial(backward_info.second[0]), true);
+  check_partial_dims(backward_info.second[0], {0});
+}
+
 TEST(Unique, Ctor) {
   std::vector<int64_t> mesh_shape = {2, 2};
   std::vector<int64_t> process_ids = {0, 1, 2, 3};
@@ -2995,6 +3146,117 @@ TEST(Unique, Ctor) {
   check_dim_mapping(forward_info.second[1], {-1});
   check_dim_mapping(forward_info.second[2], {-1});
   check_dim_mapping(forward_info.second[3], {-1});
+}
+
+TEST(RolAlign, Ctor) {
+  std::vector<int64_t> mesh_shape = {2, 2};
+  std::vector<int64_t> process_ids = {0, 1, 2, 3};
+  std::vector<std::string> dim_names = {"x", "y"};
+  ProcessMesh process_mesh(mesh_shape, process_ids, dim_names);
+  int pooled_height = 3;
+  int pooled_width = 3;
+  float spatial_scale = 0.5;
+  int sampling_ratio = -1;
+  bool aligned = true;
+
+  // test forward
+  // [0, 1, -1, -1], [-1, 1], [0] --> [-1, 1, -1, -1],[-1, -1],[-1],[-1,1,-1,-1]
+  auto x_dist_attr = TensorDistAttr();
+  x_dist_attr.set_process_mesh(process_mesh);
+  x_dist_attr.set_dims_mapping({0, 1, -1, -1});
+  x_dist_attr.set_dynamic_dims({false, false, false, false});
+  auto boxes_dist_attr = TensorDistAttr();
+  boxes_dist_attr.set_process_mesh(process_mesh);
+  boxes_dist_attr.set_dims_mapping({-1, 1});
+  boxes_dist_attr.set_dynamic_dims({false, false});
+  auto boxes_num_dist_attr = TensorDistAttr();
+  boxes_num_dist_attr.set_process_mesh(process_mesh);
+  boxes_num_dist_attr.set_dims_mapping({0});
+  boxes_num_dist_attr.set_dynamic_dims({false});
+
+  phi::distributed::DistMetaTensor x = phi::distributed::DistMetaTensor(
+      common::make_ddim({2, 4, 16, 16}), x_dist_attr);
+  phi::distributed::DistMetaTensor boxes = phi::distributed::DistMetaTensor(
+      common::make_ddim({6, 6}), boxes_dist_attr);
+  phi::distributed::DistMetaTensor boxes_num = phi::distributed::DistMetaTensor(
+      common::make_ddim({2}), boxes_num_dist_attr);
+
+  phi::distributed::SpmdInfo forward_info =
+      phi::distributed::RoiAlignInferSpmd(x,
+                                          boxes,
+                                          boxes_num,
+                                          pooled_height,
+                                          pooled_width,
+                                          spatial_scale,
+                                          sampling_ratio,
+                                          aligned);
+
+  EXPECT_EQ(forward_info.first.size(), 3UL);
+  EXPECT_EQ(forward_info.second.size(), 1UL);
+  check_dim_mapping(forward_info.first[0], {-1, 1, -1, -1});
+  check_dim_mapping(forward_info.first[1], {-1, -1});
+  check_dim_mapping(forward_info.first[2], {-1});
+  check_dim_mapping(forward_info.second[0], {-1, 1, -1, -1});
+  forward_info =
+      phi::distributed::RoiAlignInferSpmd(x,
+                                          boxes,
+                                          phi::distributed::DistMetaTensor(),
+                                          pooled_height,
+                                          pooled_width,
+                                          spatial_scale,
+                                          sampling_ratio,
+                                          aligned);
+  EXPECT_EQ(forward_info.first.size(), 3UL);
+  EXPECT_EQ(forward_info.second.size(), 1UL);
+  check_dim_mapping(forward_info.first[0], {-1, 1, -1, -1});
+  check_dim_mapping(forward_info.first[1], {-1, -1});
+  check_empty_dist_attr(forward_info.first[2]);
+  check_dim_mapping(forward_info.second[0], {-1, 1, -1, -1});
+
+  // test backward
+  // [0, 1, -1, -1], [-1, 1], [0], [0, -1, -1, -1] --> [-1, 1, -1, -1],[-1,
+  // -1],[-1],[-1,1,-1,-1],[-1, 1, -1, -1]
+  auto out_grad_dist_attr = TensorDistAttr();
+  out_grad_dist_attr.set_process_mesh(process_mesh);
+  out_grad_dist_attr.set_dims_mapping({0, -1, -1, -1});
+  out_grad_dist_attr.set_dynamic_dims({false, false, false, false});
+  phi::distributed::DistMetaTensor out_grad = phi::distributed::DistMetaTensor(
+      common::make_ddim({6, 2, 3, 3}), out_grad_dist_attr);
+  phi::distributed::SpmdInfo backward_info =
+      phi::distributed::RoiAlignGradInferSpmd(x,
+                                              boxes,
+                                              boxes_num,
+                                              out_grad,
+                                              pooled_height,
+                                              pooled_width,
+                                              spatial_scale,
+                                              sampling_ratio,
+                                              aligned);
+  EXPECT_EQ(backward_info.first.size(), 4UL);
+  EXPECT_EQ(backward_info.second.size(), 1UL);
+  check_dim_mapping(backward_info.first[0], {-1, 1, -1, -1});
+  check_dim_mapping(backward_info.first[1], {-1, -1});
+  check_dim_mapping(backward_info.first[2], {-1});
+  check_dim_mapping(backward_info.first[3], {-1, 1, -1, -1});
+  check_dim_mapping(backward_info.second[0], {-1, 1, -1, -1});
+
+  backward_info = phi::distributed::RoiAlignGradInferSpmd(
+      x,
+      boxes,
+      phi::distributed::DistMetaTensor(),
+      out_grad,
+      pooled_height,
+      pooled_width,
+      spatial_scale,
+      sampling_ratio,
+      aligned);
+  EXPECT_EQ(backward_info.first.size(), 4UL);
+  EXPECT_EQ(backward_info.second.size(), 1UL);
+  check_dim_mapping(backward_info.first[0], {-1, 1, -1, -1});
+  check_dim_mapping(backward_info.first[1], {-1, -1});
+  check_empty_dist_attr(backward_info.first[2]);
+  check_dim_mapping(backward_info.first[3], {-1, 1, -1, -1});
+  check_dim_mapping(backward_info.first[0], {-1, 1, -1, -1});
 }
 }  // namespace auto_parallel
 }  // namespace distributed
