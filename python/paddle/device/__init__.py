@@ -494,12 +494,12 @@ def get_device_properties(
         .. code-block:: python
 
             >>> import paddle
-            >>> paddle.device.set_device('metax_gpu')
-            >>> paddle.device.get_device_properties('metax_gpu:0')
-            >>> # _customDeviceProperties(name='A100-SXM4-40GB', major=8, minor=0, total_memory=40536MB, multi_processor_count=108)
+            >>> paddle.device.set_device('npu')
+            >>> paddle.device.get_device_properties('npu:0')
+            >>> # _customDeviceProperties(name='', major=0, minor=0, total_memory=0MB, multi_processor_count=0)
 
-            >>> paddle.device.get_device_properties('metax_gpu')
-            >>> # _customDeviceProperties(name='A100-SXM4-40GB', major=8, minor=0, total_memory=40536MB, multi_processor_count=108)
+            >>> paddle.device.get_device_properties('npu')
+            >>> # _customDeviceProperties(name='', major=0, minor=0, total_memory=0MB, multi_processor_count=0)
     """
     device_name = None
 
