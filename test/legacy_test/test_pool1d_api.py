@@ -855,6 +855,7 @@ class TestPool1D_API_ZeroSize(unittest.TestCase):
 
     def check_max_dygraph_results(self, place):
         with base.dygraph.guard(place):
+            # test1
             input_np = np.random.random([2, 0, 3]).astype("float32")
             input = paddle.to_tensor(input_np)
             input.stop_gradient = False
@@ -866,6 +867,19 @@ class TestPool1D_API_ZeroSize(unittest.TestCase):
             loss = paddle.sum(result)
             loss.backward()
             np.testing.assert_allclose(input.grad.shape, input.shape)
+            # test2
+            input_np2 = np.random.random([2, 3, 0]).astype("float64")
+            input2 = paddle.to_tensor(input_np2)
+            input2.stop_gradient = False
+            result2 = F.max_pool1d(
+                input2, kernel_size=2, stride=1, padding=[1, 1]
+            )
+            # Torch result is 0.0
+            result_np2 = np.zeros([2, 3, 1], dtype=np.float64)
+            np.testing.assert_allclose(result2.numpy(), result_np2, rtol=1e-05)
+            loss2 = paddle.sum(result2)
+            loss2.backward()
+            np.testing.assert_allclose(input2.grad.shape, input2.shape)
 
     def check_lp_dygraph_results(self, place):
         with base.dygraph.guard(place):
