@@ -481,7 +481,7 @@ def get_device_properties(
 
     Args:
         device(|paddle.CustomPlace|int|str|None, optional): The device, the id of the device or
-            the string name of device like metax_gpu:x' which to get the properties of the
+            the string name of device like npu:x' which to get the properties of the
             device from. If device is None, the device is the current device.
             Default: None.
 
