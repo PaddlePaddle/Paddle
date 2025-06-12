@@ -28,6 +28,7 @@ void BindMoeWna16MarlinApi(pybind11::module *m) {
 m->def(
     "moe_wna16_marlin_gemm",
     &moe_wna16_marlin_gemm_api,
+    return_value_policy::move,
     py::arg("a"),
     py::arg("c_or_none") = std::nullopt,
     py::arg("b_q_weight"),
