@@ -23,7 +23,7 @@ struct __custom_bfloat162 {
   __nv_bfloat16 x;
   __nv_bfloat16 y;
 };
-__nv_bfloat16 __custoom_hadd(__nv_bfloat16 x, __nv_bfloat16 y) {
+__device__ __nv_bfloat16 __custoom_hadd(__nv_bfloat16 x, __nv_bfloat16 y) {
   return static_cast<__nv_bfloat16>(static_cast<float>(x) +
                                     static_cast<float>(y));
 }
@@ -102,9 +102,12 @@ __global__ void tokens_zip_kernel(
         sum.y = __fadd_rn(token_vec.y, sum.y);
       }
       // 选择性类型下降为原有精度
-      *out_ptr = (aggreg_cnt > 1) ? {static_cast<__nv_bfloat16>(sum.x),
-                                     static_cast<__nv_bfloat16>(sum.y)}
-                                  : raw;
+      if (aggreg_cnt > 1) {
+        (*out_ptr).x = static_cast<__nv_bfloat16>(sum.x);
+        (*out_ptr).y = static_cast<__nv_bfloat16>(sum.y);
+      } else {
+        *out_ptr = raw;
+      }
     }
 
     // 剩余元素处理
