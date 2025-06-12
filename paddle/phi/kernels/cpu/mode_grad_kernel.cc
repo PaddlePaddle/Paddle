@@ -34,6 +34,9 @@ void ModeGradKernel(const Context& dev_ctx,
   auto out_dims = indices.dims();
 
   T* x_grad_data = dev_ctx.template Alloc<T>(x_grad);
+  if (x_grad && x_grad->numel() == 0) {
+    return;
+  }
 
   // axis < 0, get the real axis
   axis = (axis < 0) ? (in_dims.size() + axis) : axis;

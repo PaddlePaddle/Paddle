@@ -28,7 +28,7 @@ limitations under the License. */
 namespace phi {
 
 template <typename T, typename Context>
-void SequenceMaskScalarKernel(const Context& ctx,
+void SequenceMaskScalarKernel(const Context& dev_ctx,
                               const DenseTensor& x,
                               const Scalar& max_len,
                               DataType out_dtype,
@@ -60,21 +60,23 @@ void SequenceMaskScalarKernel(const Context& ctx,
 
   phi::VisitDataType(out_dtype,
                      phi::funcs::SequenceMaskFunctor<Context, T>(
-                         ctx, x_data, y, x_numel * maxlen, maxlen));
+                         dev_ctx, x_data, y, x_numel * maxlen, maxlen));
 }
 
 template <typename T, typename Context>
-void SequenceMaskKernel(const Context& ctx,
+void SequenceMaskKernel(const Context& dev_ctx,
                         const DenseTensor& x,
                         const paddle::optional<DenseTensor>& max_len_tensor,
                         int maxlen,
                         DataType out_dtype,
                         DenseTensor* y) {
   if (max_len_tensor) {
-    bool is_gpu_place = ctx.GetPlace().GetType() == phi::AllocationType::GPU;
+    bool is_gpu_place =
+        dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU;
     if (is_gpu_place) {
       phi::DenseTensor temp;
-      phi::Copy(ctx, *max_len_tensor.get_ptr(), phi::CPUPlace(), false, &temp);
+      phi::Copy(
+          dev_ctx, *max_len_tensor.get_ptr(), phi::CPUPlace(), false, &temp);
       maxlen = *temp.data<int32_t>();
     } else {
       maxlen = *max_len_tensor.get_ptr()->data<int32_t>();
@@ -92,6 +94,7 @@ void SequenceMaskKernel(const Context& ctx,
             "received Input(MaxLenTensor) value = %d.",
             maxlen));
   }
-  SequenceMaskScalarKernel<T, Context>(ctx, x, Scalar(maxlen), out_dtype, y);
+  SequenceMaskScalarKernel<T, Context>(
+      dev_ctx, x, Scalar(maxlen), out_dtype, y);
 }
 }  // namespace phi

@@ -741,6 +741,8 @@ class Conv2D(_ConvNd):
                 data_format=self._data_format,
             )
 
+        # Note(luchang): If the input tensor is sharded along the spatial width
+        # dimension (W), this indicates spatially parallel convolution is being used.
         if (
             in_dygraph_mode()
             and x.is_dist()
