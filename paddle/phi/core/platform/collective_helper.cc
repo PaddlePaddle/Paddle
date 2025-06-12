@@ -408,19 +408,19 @@ class XCCLCommImpl : public XCCLComm {
   }
   phi::CustomContext* dev_context() const override { return dev_ctx_.get(); }
 
-  std::shared_ptr<phi::event::Event> compute_event() const override {
+  std::shared_ptr<phi::event::event_t> compute_event() const override {
     return compute_event_;
   }
 
-  std::shared_ptr<phi::event::Event> comm_event() const override {
+  std::shared_ptr<phi::event::event_t> comm_event() const override {
     return comm_event_;
   }
 
-  void set_compute_event(std::shared_ptr<phi::event::Event>&& compute_event) {
+  void set_compute_event(std::shared_ptr<phi::event::event_t>&& compute_event) {
     compute_event_ = std::move(compute_event);
   }
 
-  void set_comm_event(std::shared_ptr<phi::event::Event>&& comm_event) {
+  void set_comm_event(std::shared_ptr<phi::event::event_t>&& comm_event) {
     comm_event_ = std::move(comm_event);
   }
 
@@ -432,10 +432,10 @@ class XCCLCommImpl : public XCCLComm {
   std::unique_ptr<phi::CustomContext> dev_ctx_;
 
   // used for comm wait compute, compute_stream-->event-->comm_stream
-  std::shared_ptr<phi::event::Event> compute_event_;
+  std::shared_ptr<phi::event::event_t> compute_event_;
 
   // used for compute wait comm, comm_stream-->event-->compute_stream
-  std::shared_ptr<phi::event::Event> comm_event_;
+  std::shared_ptr<phi::event::event_t> comm_event_;
 };
 
 static std::unordered_map<std::string, std::unique_ptr<XCCLCommContext>>
