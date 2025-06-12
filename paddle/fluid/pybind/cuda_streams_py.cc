@@ -95,7 +95,7 @@ void BindCudaStream(py::module *m_ptr) {
       },
       py::return_value_policy::reference);
 
-#elif defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#else
   m.def(
       "_get_current_stream",
       [](int deviceId) {
