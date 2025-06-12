@@ -45,7 +45,10 @@ void RMSLnFwd(const Context &dev_ctx,
   const auto &scale_shape = scale.dims();
   int rows, cols;
   GetRowsCols(common::vectorize(x.dims()), &rows, &cols);
-  dev_ctx.template Alloc<T>(y);
+  if (scale.dtype() == phi::DataType::BFLOAT16)
+    dev_ctx.template Alloc<phi::bfloat16>(y);
+  else if (scale.dtype() == phi::DataType::FLOAT32)
+    dev_ctx.template Alloc<float>(y);
   invvar->Resize({rows});
   dev_ctx.template Alloc<float>(invvar);
   cuda_rms_norm<T, Context>(dev_ctx, x, scale, rows, cols, epsilon, y, invvar);
@@ -63,7 +66,10 @@ void RMSLnBwd(const Context &dev_ctx,
   int rows, cols;
   GetRowsCols(common::vectorize(x.dims()), &rows, &cols);
   dev_ctx.template Alloc<T>(x_grad);
-  dev_ctx.template Alloc<T>(scale_grad);
+  if (scale.dtype() == phi::DataType::BFLOAT16)
+    dev_ctx.template Alloc<phi::bfloat16>(scale_grad);
+  else if (scale.dtype() == phi::DataType::FLOAT32)
+    dev_ctx.template Alloc<float>(scale_grad);
   cuda_rms_norm_gradient<T, Context>(dev_ctx,
                                      x,
                                      scale,
