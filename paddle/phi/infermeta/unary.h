@@ -1031,4 +1031,20 @@ void IntBincountInferMeta(const MetaTensor& x,
                           int64_t dtype,
                           MetaTensor* out);
 
+void Fp8BlockwiseQuantInferMeta(const MetaTensor& x_bf16,
+                                const bool is_1d_scaled,
+                                const bool return_transpose,
+                                const bool pow2_scale,
+                                MetaTensor* out,
+                                MetaTensor* scale);
+
+void Fp8BlockwiseTransposedQuantInferMeta(const MetaTensor& x_bf16,
+                                          const bool is_1d_scaled,
+                                          const bool return_transpose,
+                                          const bool pow2_scale,
+                                          MetaTensor* out,
+                                          MetaTensor* scale,
+                                          MetaTensor* out_transpose,
+                                          MetaTensor* scale_transpose);
+
 }  // namespace phi
