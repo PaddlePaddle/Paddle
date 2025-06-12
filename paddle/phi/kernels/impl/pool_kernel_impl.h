@@ -281,6 +281,11 @@ void Pool2dKernel(const Context& dev_ctx,
                   bool adaptive,
                   const std::string& padding_algorithm,
                   DenseTensor* out) {
+  if (x.numel() == 0 && out->numel() != 0 && pooling_type == "max") {
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+    return;
+  }
   PoolRawKernel<T, Context>(dev_ctx,
                             x,
                             kernel_size.GetData(),
