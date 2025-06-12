@@ -54,24 +54,33 @@ def fused_transpose_split_quant(x, tokens_per_expert, pow_2_scales=False):
                     is negative or not divisible by 128, sum of token counts doesn't
                     match x.shape[0], or K exceeds the maximum limit.
     Examples:
-        .. code-block:: python
-            import paddle
-            # Create input tensor: 384 tokens, 1024 features
-            x = paddle.randn([384, 1024], dtype='bfloat16')
-            # Define tokens per expert: 3 experts with 128, 256, 0 tokens respectively
-            tokens_per_expert = [128, 256, 0]
-            # Perform fused operation
-            outs, scales = paddle.nn.functional.fused_transpose_split_quant(
-                x, tokens_per_expert, pow_2_scales=False
-            )
-            # outs[0]: [1024, 128] float8_e4m3fn - first expert's quantized data
-            # outs[1]: [1024, 256] float8_e4m3fn - second expert's quantized data
-            # outs[2]: [1024, 0] float8_e4m3fn   - third expert's quantized data (empty)
-            # scales[0]: [1] float32 - scaling factors for first expert (128//128=1 blocks)
-            # scales[1]: [2] float32 - scaling factors for second expert (256//128=2 blocks)
-            # scales[2]: [0] float32 - scaling factors for third expert (0//128=0 blocks)
-            print(f"Expert 0 output shape: {outs[0].shape}")  # [1024, 128]
-            print(f"Expert 1 scale shape: {scales[1].shape}") # [2]0
+            >>> import paddle
+            >>> # Create input tensor: 384 tokens, 1024 features
+            >>> x = paddle.ones([384, 1024], dtype='bfloat16')  # 使用固定值而非随机值
+            >>> # Define tokens per expert: 3 experts with 128, 256, 0 tokens respectively
+            >>> tokens_per_expert = [128, 256, 0]
+            >>> # Perform fused operation
+            >>> outs, scales = paddle.nn.functional.fp8.fused_transpose_split_quant(
+            ...     x, tokens_per_expert, pow_2_scales=False
+            ... )
+            >>> # Print shapes to show results
+            >>> print(f"Expert 0 output shape: {outs[0].shape}")
+            Expert 0 output shape: [1024, 128]
+            >>> print(f"Expert 1 output shape: {outs[1].shape}")
+            Expert 1 output shape: [1024, 256]
+            >>> print(f"Expert 2 output shape: {outs[2].shape}")
+            Expert 2 output shape: [1024, 0]
+            >>> print(f"Expert 0 scale shape: {scales[0].shape}")
+            Expert 0 scale shape: [1]
+            >>> print(f"Expert 1 scale shape: {scales[1].shape}")
+            Expert 1 scale shape: [2]
+            >>> print(f"Expert 2 scale shape: {scales[2].shape}")
+            Expert 2 scale shape: [0]
+            >>> # Show data types
+            >>> print(f"Output dtype: {outs[0].dtype}")
+            Output dtype: float8_e4m3fn
+            >>> print(f"Scale dtype: {scales[0].dtype}")
+            Scale dtype: float32
     """
     if not isinstance(x, paddle.Tensor):
         raise TypeError("x must be a Tensor")
