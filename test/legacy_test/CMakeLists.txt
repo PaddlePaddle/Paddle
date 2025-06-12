@@ -516,7 +516,6 @@ if(NOT WITH_GPU
    OR WITH_ROCM)
   list(REMOVE_ITEM TEST_OPS test_fused_moe_permute_unpermute)
 endif()
-endif()
 
 if(NOT WITH_CUDNN_FRONTEND)
   list(REMOVE_ITEM TEST_OPS test_fused_scale_bias_relu_conv_bn_op)

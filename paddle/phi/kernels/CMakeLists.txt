@@ -90,7 +90,6 @@ if(WITH_GPU
   list(REMOVE_ITEM kernel_cu "fusion/gpu/fused_moe_permute_kernel.cu"
        "fusion/gpu/fused_moe_unpermute_kernel.cu")
 endif()
-endif()
 
 if(NOT WITH_DGC)
   list(REMOVE_ITEM kernel_gpu "gpu/dgc_kernel.cu")
