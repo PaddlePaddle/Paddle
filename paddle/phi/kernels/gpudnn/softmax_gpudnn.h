@@ -624,29 +624,30 @@ api to compute max (sum) in one warp.
 template <typename T,
           typename VecT,
           typename AccT,
+          typename IndexType,
           int Log2Elements,
           bool LogMode = false>
 __global__ void WarpSoftmaxBackward(T* dst,
                                     const T* grad,
                                     const T* src,
-                                    int batch_size,
-                                    int stride,
-                                    int element_count) {
-  constexpr int kVSize = sizeof(VecT) / sizeof(T);
-  constexpr int kDimCeil = 1 << Log2Elements;
-  constexpr int kWarpSize = (kDimCeil < 32) ? kDimCeil : 32;
-  constexpr int kLoops = kDimCeil / kWarpSize;
-  constexpr int kBatchSize = (kDimCeil <= 128) ? 2 : 1;
-  constexpr int kLoopsV = (kLoops >= kVSize) ? (kLoops / kVSize) : 1;
-  int element_count_v = element_count / kVSize;
-  int first_batch = (blockDim.y * blockIdx.x + threadIdx.y) * kBatchSize;
-  int local_batches = min(batch_size - first_batch, kBatchSize);
+                                    IndexType batch_size,
+                                    IndexType stride,
+                                    IndexType element_count) {
+  constexpr IndexType kVSize = sizeof(VecT) / sizeof(T);
+  constexpr IndexType kDimCeil = 1 << Log2Elements;
+  constexpr IndexType kWarpSize = (kDimCeil < 32) ? kDimCeil : 32;
+  constexpr IndexType kLoops = kDimCeil / kWarpSize;
+  constexpr IndexType kBatchSize = (kDimCeil <= 128) ? 2 : 1;
+  constexpr IndexType kLoopsV = (kLoops >= kVSize) ? (kLoops / kVSize) : 1;
+  IndexType element_count_v = element_count / kVSize;
+  IndexType first_batch = (blockDim.y * blockIdx.x + threadIdx.y) * kBatchSize;
+  IndexType local_batches = min(batch_size - first_batch, kBatchSize);
 
   // max index to read
-  int idx_max_v[kBatchSize];
+  IndexType idx_max_v[kBatchSize];
 #pragma unroll
-  for (int i = 0; i < kBatchSize; i++) {
-    int idx_max = ((i + first_batch) < batch_size) ? element_count : 0;
+  for (IndexType i = 0; i < kBatchSize; i++) {
+    IndexType idx_max = ((i + first_batch) < batch_size) ? element_count : 0;
     idx_max_v[i] = idx_max / kVSize;
   }
 
@@ -654,15 +655,15 @@ __global__ void WarpSoftmaxBackward(T* dst,
   VecT src_reg[kBatchSize][kLoopsV];
   VecT grad_reg[kBatchSize][kLoopsV];
   VecT k_value;
-  for (int s = 0; s < kVSize; s++) {
+  for (IndexType s = 0; s < kVSize; s++) {
     reinterpret_cast<T*>(&k_value)[s] = 0.0;
   }
   kps::Init<VecT, kBatchSize * kLoopsV>(&src_reg[0][0], k_value);
   kps::Init<VecT, kBatchSize * kLoopsV>(&grad_reg[0][0], k_value);
 #pragma unroll
-  for (int i = 0; i < kBatchSize; ++i) {
+  for (IndexType i = 0; i < kBatchSize; ++i) {
     int flag = i < local_batches ? 1 : 0;
-    int ptr = (first_batch + i) * stride;
+    IndexType ptr = (first_batch + i) * stride;
     const VecT* src_v = reinterpret_cast<const VecT*>(&src[ptr]);
     const VecT* grad_v = reinterpret_cast<const VecT*>(&grad[ptr]);
     kps::ReadData<VecT, VecT, kLoopsV, 1, true>(
@@ -676,8 +677,8 @@ __global__ void WarpSoftmaxBackward(T* dst,
   AccT grad_tmp[kBatchSize][kLoopsV][kVSize];
   const T* src_ptr = reinterpret_cast<const T*>(&src_reg[0][0]);
   const T* grad_ptr = reinterpret_cast<const T*>(&grad_reg[0][0]);
-  constexpr int kStep = kBatchSize * kLoopsV * kVSize;
-  constexpr int kVItem = kLoopsV * kVSize;
+  constexpr IndexType kStep = kBatchSize * kLoopsV * kVSize;
+  constexpr IndexType kVItem = kLoopsV * kVSize;
   kps::ElementwiseUnary<T, AccT, kStep, 1, DataTransFunctor<T, AccT>>(
       &src_tmp[0][0][0], &src_ptr[0], DataTransFunctor<T, AccT>());
   kps::ElementwiseUnary<T, AccT, kStep, 1, DataTransFunctor<T, AccT>>(
@@ -711,7 +712,7 @@ __global__ void WarpSoftmaxBackward(T* dst,
   AccT out[kBatchSize][kLoopsV][kVSize];
   T out_tmp[kBatchSize][kLoopsV][kVSize];
 #pragma unroll
-  for (int i = 0; i < kBatchSize; ++i) {
+  for (IndexType i = 0; i < kBatchSize; ++i) {
     if (i >= local_batches) break;
     AccT* gradptr = reinterpret_cast<AccT*>(&grad_tmp[i][0][0]);
     AccT* srcptr = reinterpret_cast<AccT*>(&src_tmp[i][0][0]);
@@ -780,27 +781,27 @@ void SwitchWarpSoftmaxForward(const IndexType blocks,
   }
 }
 
-#define SOFTMAX_WARP_BACKWARD_CASE(Log2Elements, AccT)          \
-  case Log2Elements:                                            \
-    WarpSoftmaxBackward<T, VecT, AccT, Log2Elements, LogMode>   \
-        <<<blocks, threads, 0, dev_ctx.stream()>>>(             \
-            dst, grad, src, batch_size, stride, element_count); \
+#define SOFTMAX_WARP_BACKWARD_CASE(Log2Elements, AccT)                   \
+  case Log2Elements:                                                     \
+    WarpSoftmaxBackward<T, VecT, AccT, IndexType, Log2Elements, LogMode> \
+        <<<blocks, threads, 0, dev_ctx.stream()>>>(                      \
+            dst, grad, src, batch_size, stride, element_count);          \
     break;
 
 /*
 Wrapper of softmax backward with template instantiation on size of input.
 */
-template <typename T, typename VecT, bool LogMode>
-void SwitchWarpSoftmaxBackward(const int blocks,
+template <typename T, typename VecT, typename IndexType, bool LogMode>
+void SwitchWarpSoftmaxBackward(const IndexType blocks,
                                const dim3 threads,
                                const GPUContext& dev_ctx,
                                T* dst,
                                const T* grad,
                                const T* src,
-                               const int batch_size,
-                               const int stride,
-                               const int element_count,
-                               int log2_element_count) {
+                               const IndexType batch_size,
+                               const IndexType stride,
+                               const IndexType element_count,
+                               IndexType log2_element_count) {
   using AccT = typename phi::dtype::MPTypeTrait<T>::Type;
   switch (log2_element_count) {
     SOFTMAX_WARP_BACKWARD_CASE(0, AccT);
@@ -864,22 +865,29 @@ static void GetLaunchConfig(
 
 template <typename T,
           typename AccT,
+          typename IndexType,
           template <typename, typename>
           class Functor>
-__global__ void NormalSoftmaxForward(
-    T* output, const T* input, int high_dim, int mid_dim, int low_dim) {
+__global__ void NormalSoftmaxForward(T* output,
+                                     const T* input,
+                                     IndexType high_dim,
+                                     IndexType mid_dim,
+                                     IndexType low_dim) {
   using kMode = kps::details::ReduceMode;
-  const int high_stride = mid_dim * low_dim;
-  const int mid_stride = low_dim;
-  for (int high_id = blockIdx.y; high_id < high_dim; high_id += gridDim.y) {
-    for (int low_id = blockIdx.x * blockDim.x + threadIdx.x; low_id < low_dim;
+  const IndexType high_stride = mid_dim * low_dim;
+  const IndexType mid_stride = low_dim;
+  for (IndexType high_id = blockIdx.y; high_id < high_dim;
+       high_id += gridDim.y) {
+    for (IndexType low_id = blockIdx.x * blockDim.x + threadIdx.x;
+         low_id < low_dim;
          low_id += blockDim.x * gridDim.x) {
-      const int input_offset = high_id * high_stride + low_id;
+      const IndexType input_offset = high_id * high_stride + low_id;
 
       // 1. reduce max
       AccT max_value = -std::numeric_limits<AccT>::infinity();
       AccT value = -std::numeric_limits<AccT>::infinity();
-      for (int mid_id = threadIdx.y; mid_id < mid_dim; mid_id += blockDim.y) {
+      for (IndexType mid_id = threadIdx.y; mid_id < mid_dim;
+           mid_id += blockDim.y) {
         value = static_cast<AccT>(input[input_offset + mid_id * mid_stride]);
         max_value = kps::MaxFunctor<AccT>()(max_value, value);
       }
@@ -891,7 +899,8 @@ __global__ void NormalSoftmaxForward(
 
       // 2. reduce sum
       AccT sum = 0;
-      for (int mid_id = threadIdx.y; mid_id < mid_dim; mid_id += blockDim.y) {
+      for (IndexType mid_id = threadIdx.y; mid_id < mid_dim;
+           mid_id += blockDim.y) {
         value = static_cast<AccT>(input[input_offset + mid_id * mid_stride]);
         sum += std::exp(value - max_value);
       }
@@ -902,8 +911,9 @@ __global__ void NormalSoftmaxForward(
 
       // 3. (log)softmax
       Functor<AccT, T> functor(max_value, sum);
-      for (int mid_id = threadIdx.y; mid_id < mid_dim; mid_id += blockDim.y) {
-        int data_offset = input_offset + mid_id * mid_stride;
+      for (IndexType mid_id = threadIdx.y; mid_id < mid_dim;
+           mid_id += blockDim.y) {
+        IndexType data_offset = input_offset + mid_id * mid_stride;
         output[data_offset] = functor(static_cast<AccT>(input[data_offset]));
       }
     }
@@ -912,33 +922,38 @@ __global__ void NormalSoftmaxForward(
 
 template <typename T,
           typename AccT,
+          typename IndexType,
           template <typename, typename>
           class Functor,
           bool LogMode>
 __global__ void NormalSoftmaxBackward(T* input_grad,
                                       const T* output_grad,
                                       const T* output,
-                                      int high_dim,
-                                      int mid_dim,
-                                      int low_dim) {
+                                      IndexType high_dim,
+                                      IndexType mid_dim,
+                                      IndexType low_dim) {
   using kMode = kps::details::ReduceMode;
-  const int high_stride = mid_dim * low_dim;
-  const int mid_stride = low_dim;
-  for (int high_id = blockIdx.y; high_id < high_dim; high_id += gridDim.y) {
-    for (int low_id = blockIdx.x * blockDim.x + threadIdx.x; low_id < low_dim;
+  const IndexType high_stride = mid_dim * low_dim;
+  const IndexType mid_stride = low_dim;
+  for (IndexType high_id = blockIdx.y; high_id < high_dim;
+       high_id += gridDim.y) {
+    for (IndexType low_id = blockIdx.x * blockDim.x + threadIdx.x;
+         low_id < low_dim;
          low_id += blockDim.x * gridDim.x) {
-      const int grad_offset = high_id * high_stride + low_id;
+      const IndexType grad_offset = high_id * high_stride + low_id;
 
       // 1. reduce sum
       AccT sum = 0;
       if (LogMode) {
-        for (int mid_id = threadIdx.y; mid_id < mid_dim; mid_id += blockDim.y) {
-          int data_offset = grad_offset + mid_id * mid_stride;
+        for (IndexType mid_id = threadIdx.y; mid_id < mid_dim;
+             mid_id += blockDim.y) {
+          IndexType data_offset = grad_offset + mid_id * mid_stride;
           sum += static_cast<AccT>(output_grad[data_offset]);
         }
       } else {
-        for (int mid_id = threadIdx.y; mid_id < mid_dim; mid_id += blockDim.y) {
-          int data_offset = grad_offset + mid_id * mid_stride;
+        for (IndexType mid_id = threadIdx.y; mid_id < mid_dim;
+             mid_id += blockDim.y) {
+          IndexType data_offset = grad_offset + mid_id * mid_stride;
           sum += static_cast<AccT>(output_grad[data_offset]) *
                  static_cast<AccT>(output[data_offset]);
         }
@@ -950,8 +965,9 @@ __global__ void NormalSoftmaxBackward(T* input_grad,
 
       // 2. (log)softmax backward
       Functor<AccT, T> functor(sum);
-      for (int mid_id = threadIdx.y; mid_id < mid_dim; mid_id += blockDim.y) {
-        int data_offset = grad_offset + mid_id * mid_stride;
+      for (IndexType mid_id = threadIdx.y; mid_id < mid_dim;
+           mid_id += blockDim.y) {
+        IndexType data_offset = grad_offset + mid_id * mid_stride;
         input_grad[data_offset] =
             functor(static_cast<AccT>(output_grad[data_offset]),
                     static_cast<AccT>(output[data_offset]));
@@ -960,40 +976,44 @@ __global__ void NormalSoftmaxBackward(T* input_grad,
   }
 }
 
-template <typename T, bool LogMode = false>
+template <typename T, typename IndexType, bool LogMode = false>
 void LaunchNormalSoftmaxForward(const GPUContext& dev_ctx,
                                 T* output_data,
                                 const T* input_data,
-                                int high_dim,
-                                int mid_dim,
-                                int low_dim) {
+                                IndexType high_dim,
+                                IndexType mid_dim,
+                                IndexType low_dim) {
   using AccT = typename phi::dtype::MPTypeTrait<T>::Type;
   dim3 grid, block;
   GetLaunchConfig(high_dim, mid_dim, low_dim, &grid, &block);
   if (LogMode) {
-    NormalSoftmaxForward<T, AccT, LogSoftmaxForwardFunctor>
+    NormalSoftmaxForward<T, AccT, IndexType, LogSoftmaxForwardFunctor>
         <<<grid, block, 0, dev_ctx.stream()>>>(
             output_data, input_data, high_dim, mid_dim, low_dim);
   } else {
-    NormalSoftmaxForward<T, AccT, SoftmaxForwardFunctor>
+    NormalSoftmaxForward<T, AccT, IndexType, SoftmaxForwardFunctor>
         <<<grid, block, 0, dev_ctx.stream()>>>(
             output_data, input_data, high_dim, mid_dim, low_dim);
   }
 }
 
-template <typename T, bool LogMode = false>
+template <typename T, typename IndexType, bool LogMode = false>
 void LaunchNormalSoftmaxBackward(const GPUContext& dev_ctx,
                                  T* input_grad_data,
                                  const T* output_grad_data,
                                  const T* output_data,
-                                 int high_dim,
-                                 int mid_dim,
-                                 int low_dim) {
+                                 IndexType high_dim,
+                                 IndexType mid_dim,
+                                 IndexType low_dim) {
   using AccT = typename phi::dtype::MPTypeTrait<T>::Type;
   dim3 grid, block;
   GetLaunchConfig(high_dim, mid_dim, low_dim, &grid, &block);
   if (LogMode) {
-    NormalSoftmaxBackward<T, AccT, LogSoftmaxBackwardFunctor, LogMode>
+    NormalSoftmaxBackward<T,
+                          AccT,
+                          IndexType,
+                          LogSoftmaxBackwardFunctor,
+                          LogMode>
         <<<grid, block, 0, dev_ctx.stream()>>>(input_grad_data,
                                                output_grad_data,
                                                output_data,
@@ -1001,7 +1021,7 @@ void LaunchNormalSoftmaxBackward(const GPUContext& dev_ctx,
                                                mid_dim,
                                                low_dim);
   } else {
-    NormalSoftmaxBackward<T, AccT, SoftmaxBackwardFunctor, LogMode>
+    NormalSoftmaxBackward<T, AccT, IndexType, SoftmaxBackwardFunctor, LogMode>
         <<<grid, block, 0, dev_ctx.stream()>>>(input_grad_data,
                                                output_grad_data,
                                                output_data,
@@ -1247,7 +1267,7 @@ void SoftmaxForwardCUDAKernelDriverImpl(const GPUContext& dev_ctx,
       GetSoftmaxTensorDims<IndexType>(x.dims(), axis);
   IndexType N = tensor_dims[0];
   IndexType dim = tensor_dims[1];
-  int D = tensor_dims[2];
+  IndexType D = tensor_dims[2];
 
   if (D == 1) {
     if (!UseCudnnSoftmax<T>(dev_ctx, dim, true)) {
@@ -1308,7 +1328,7 @@ void SoftmaxForwardCUDAKernelDriverImpl(const GPUContext& dev_ctx,
       }
     }
   } else {
-    LaunchNormalSoftmaxForward<T, LogMode>(
+    LaunchNormalSoftmaxForward<T, IndexType, LogMode>(
         dev_ctx, out_data, x.data<T>(), N, dim, D);
   }
 }
@@ -1327,25 +1347,26 @@ void SoftmaxForwardCUDAKernelDriver(const GPUContext& dev_ctx,
   }
 }
 
-template <typename T, bool LogMode = false>
-void SoftmaxBackwardCUDAKernelDriver(const GPUContext& dev_ctx,
-                                     const DenseTensor& out,
-                                     const DenseTensor& dout,
-                                     const int input_axis,
-                                     DenseTensor* dx) {
+template <typename T, typename IndexType, bool LogMode = false>
+void SoftmaxBackwardCUDAKernelDriverImpl(const GPUContext& dev_ctx,
+                                         const DenseTensor& out,
+                                         const DenseTensor& dout,
+                                         const int input_axis,
+                                         DenseTensor* dx) {
   auto* dx_data = dx->data<T>();
 
   int rank = out.dims().size();
   int axis = phi::funcs::CanonicalAxis(input_axis, rank);
-  std::vector<int> tensor_dims = GetSoftmaxTensorDims(out.dims(), axis);
-  int N = tensor_dims[0];
-  int dim = tensor_dims[1];
+  std::vector<IndexType> tensor_dims =
+      GetSoftmaxTensorDims<IndexType>(out.dims(), axis);
+  IndexType N = tensor_dims[0];
+  IndexType dim = tensor_dims[1];
   int D = tensor_dims[2];
 
   if (D == 1) {
     if (!UseCudnnSoftmax<T>(dev_ctx, dim, true)) {
       int dim_log2 = Log2Ceil(dim);
-      int dim_ceil = 1 << dim_log2;
+      IndexType dim_ceil = 1 << dim_log2;
       int warp_size = (dim_ceil < 32) ? dim_ceil : 32;
       int batches_per_warp = (dim_ceil <= 128) ? 2 : 1;
 
@@ -1353,53 +1374,68 @@ void SoftmaxBackwardCUDAKernelDriver(const GPUContext& dev_ctx,
 
       int warps_per_block = (threads_per_block / warp_size);
       int batches_per_block = warps_per_block * batches_per_warp;
-      int blocks = (N + batches_per_block - 1) / batches_per_block;
+      IndexType blocks = (N + batches_per_block - 1) / batches_per_block;
       dim3 threads(warp_size, warps_per_block, 1);
 
       // vectorization read/write
       using T4 = typename VecT4<T>::Type;
       using T2 = typename VecT2<T>::Type;
       if (dim % 4 == 0) {
-        SwitchWarpSoftmaxBackward<T, T4, LogMode>(blocks,
-                                                  threads,
-                                                  dev_ctx,
-                                                  dx_data,
-                                                  dout.data<T>(),
-                                                  out.data<T>(),
-                                                  N,
-                                                  dim,
-                                                  dim,
-                                                  dim_log2);
+        SwitchWarpSoftmaxBackward<T, T4, IndexType, LogMode>(blocks,
+                                                             threads,
+                                                             dev_ctx,
+                                                             dx_data,
+                                                             dout.data<T>(),
+                                                             out.data<T>(),
+                                                             N,
+                                                             dim,
+                                                             dim,
+                                                             dim_log2);
       } else if (dim % 2 == 0) {
-        SwitchWarpSoftmaxBackward<T, T2, LogMode>(blocks,
-                                                  threads,
-                                                  dev_ctx,
-                                                  dx_data,
-                                                  dout.data<T>(),
-                                                  out.data<T>(),
-                                                  N,
-                                                  dim,
-                                                  dim,
-                                                  dim_log2);
+        SwitchWarpSoftmaxBackward<T, T2, IndexType, LogMode>(blocks,
+                                                             threads,
+                                                             dev_ctx,
+                                                             dx_data,
+                                                             dout.data<T>(),
+                                                             out.data<T>(),
+                                                             N,
+                                                             dim,
+                                                             dim,
+                                                             dim_log2);
       } else {
-        SwitchWarpSoftmaxBackward<T, T, LogMode>(blocks,
-                                                 threads,
-                                                 dev_ctx,
-                                                 dx_data,
-                                                 dout.data<T>(),
-                                                 out.data<T>(),
-                                                 N,
-                                                 dim,
-                                                 dim,
-                                                 dim_log2);
+        SwitchWarpSoftmaxBackward<T, T, IndexType, LogMode>(blocks,
+                                                            threads,
+                                                            dev_ctx,
+                                                            dx_data,
+                                                            dout.data<T>(),
+                                                            out.data<T>(),
+                                                            N,
+                                                            dim,
+                                                            dim,
+                                                            dim_log2);
       }
     } else {
       LaunchSoftmaxBackwardCudnnKernel<T>(
           dev_ctx, out, dout, axis, LogMode, dx);
     }
   } else {
-    LaunchNormalSoftmaxBackward<T, LogMode>(
+    LaunchNormalSoftmaxBackward<T, IndexType, LogMode>(
         dev_ctx, dx_data, dout.data<T>(), out.data<T>(), N, dim, D);
+  }
+}
+
+template <typename T, bool LogMode = false>
+void SoftmaxBackwardCUDAKernelDriver(const GPUContext& dev_ctx,
+                                     const DenseTensor& out,
+                                     const DenseTensor& dout,
+                                     const int input_axis,
+                                     DenseTensor* dx) {
+  if (out.numel() >= std::numeric_limits<int32_t>::max()) {
+    SoftmaxBackwardCUDAKernelDriverImpl<T, int64_t, LogMode>(
+        dev_ctx, out, dout, input_axis, dx);
+  } else {
+    SoftmaxBackwardCUDAKernelDriverImpl<T, int32_t, LogMode>(
+        dev_ctx, out, dout, input_axis, dx);
   }
 }
 

@@ -4468,6 +4468,7 @@
   output : Tensor
   infer_meta :
     func : RoiAlignInferMeta
+    spmd_rule : RoiAlignInferSpmd
   kernel :
     func : roi_align
     data_type : x

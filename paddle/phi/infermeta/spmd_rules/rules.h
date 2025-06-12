@@ -64,6 +64,7 @@ limitations under the License. */
 #include "paddle/phi/infermeta/spmd_rules/replicated.h"
 #include "paddle/phi/infermeta/spmd_rules/reshape.h"
 #include "paddle/phi/infermeta/spmd_rules/rms_norm.h"
+#include "paddle/phi/infermeta/spmd_rules/roi_align.h"
 #include "paddle/phi/infermeta/spmd_rules/roll.h"
 #include "paddle/phi/infermeta/spmd_rules/scale.h"
 #include "paddle/phi/infermeta/spmd_rules/scatter.h"
