@@ -84,9 +84,10 @@ class MLPLayer(nn.Layer):
 
 
 def mlp_pretrain_forward(train_program, start_program):
-    with static.program_guard(
-        train_program, start_program
-    ), utils.unique_name.guard():
+    with (
+        static.program_guard(train_program, start_program),
+        utils.unique_name.guard(),
+    ):
         input = static.data(
             name="input",
             shape=[batch_size, sequence_len, hidden_size],

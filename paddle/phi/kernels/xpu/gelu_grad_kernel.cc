@@ -29,6 +29,9 @@ void GeluGradKernel(const Context& dev_ctx,
                     DenseTensor* x_grad) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   dev_ctx.template Alloc<T>(x_grad);
+  if (x_grad && x_grad->numel() == 0) {
+    return;
+  }
   int r = xpu::gelu_grad<XPUType>(
       dev_ctx.x_context(),
       reinterpret_cast<const XPUType*>(x.data<T>()),

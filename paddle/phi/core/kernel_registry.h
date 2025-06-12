@@ -1247,10 +1247,20 @@ struct KernelRegistrar {
  * with one template argument.
  */
 
+#if (defined(PADDLE_WITH_CUSTOM_DEVICE) && defined(PADDLE_WITH_CUDA))
+#define PD_REGISTER_KERNEL_FOR_ALL_DTYPE(                                \
+    kernel_name, backend, layout, kernel_fn)                             \
+  template decltype(kernel_fn) kernel_fn;                                \
+  static void                                                            \
+      __FAKE_PD_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout( \
+          const ::phi::KernelKey& kernel_key UNUSED,                     \
+          ::phi::Kernel* kernel UNUSED)
+#else
 #define PD_REGISTER_KERNEL_FOR_ALL_DTYPE(    \
     kernel_name, backend, layout, kernel_fn) \
   _PD_REGISTER_KERNEL_FOR_ALL_DTYPE(         \
       ::phi::RegType::INNER, kernel_name, backend, layout, kernel_fn)
+#endif
 
 #define _PD_REGISTER_KERNEL_FOR_ALL_DTYPE(                                   \
     reg_type, kernel_name, backend, layout, kernel_fn)                       \

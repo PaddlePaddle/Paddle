@@ -19,7 +19,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void SearchsortedKernel(const Context& ctx,
+void SearchsortedKernel(const Context& dev_ctx,
                         const DenseTensor& sorted_sequence,
                         const DenseTensor& value,
                         bool out_int32,

@@ -273,6 +273,7 @@
   output : Tensor(out)
   infer_meta :
     func : ReduceInferMeta
+    spmd_rule : ReductionAnyInferSpmdDynamic
   kernel :
     func : any
   traits : paddle::dialect::ForwardOnlyTrait
@@ -820,6 +821,15 @@
   backward: broadcast_tensors_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
+- op : build_src_rank_and_local_expert_id
+  args : (Tensor expert_num_global_tensor, int64_t[] expert_num_global, int64_t num_local_experts)
+  output : Tensor(vector), Tensor(local_expert_id)
+  infer_meta :
+    func : BuildSrcRankAndLocalExpertIdInferMeta
+  kernel :
+    func : build_src_rank_and_local_expert_id
+    data_type : expert_num_global_tensor
+
 - op : c_allreduce_sum
   args : (Tensor x, int ring_id, bool use_calc_stream, bool use_model_parallel)
   output : Tensor(out)
@@ -883,6 +893,17 @@
   kernel :
     func : c_split
     param: [x, rank, nranks, use_model_parallel]
+
+- op : cal_aux_loss
+  args : (Tensor gate_prob, Tensor dispatch_mask, Tensor tokens_mask, Tensor dispatch_tokens_mask, int64_t num_experts, bool use_group, int64_t moe_k, float clip_min)
+  output : Tensor(l_aux_loss), Tensor(seqlen_float), Tensor(ce)
+  infer_meta :
+    func : CalAuxLossInferMeta
+  kernel :
+    func : cal_aux_loss
+    data_type : gate_prob
+  optional: tokens_mask, dispatch_tokens_mask
+  backward : cal_aux_loss_grad
 
 - op : calc_reduced_attn_scores
   args : (Tensor q, Tensor k, Tensor softmax_lse)
@@ -1699,6 +1720,7 @@
   infer_meta :
     func : CreateLikeInferMeta
     param : [x, dtype]
+    spmd_rule : EmptyLikeInferSpmd
   kernel :
     func : empty_like
     param : [x, dtype]
@@ -1781,7 +1803,7 @@
   backward : expand_grad
 
 - op : expand_as
-  args : (Tensor x, Tensor y, int[] target_shape = {})
+  args : (Tensor x, Tensor y, int64_t[] target_shape = {})
   output : Tensor(out)
   infer_meta :
     func : ExpandAsInferMeta
@@ -1792,6 +1814,15 @@
   optional : y
   backward : expand_as_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+
+- op : expand_modality_expert_id
+  args : (Tensor expert_id, int64_t num_expert_per_modality, int64_t group_size, int64_t modality_offset, bool is_group_expert)
+  output : Tensor(expert_id_out)
+  infer_meta :
+    func : ExpandModalityExpertIdInferMeta
+  kernel :
+    func : expand_modality_expert_id
+    data_type : expert_id
 
 - op : expm1
   args : (Tensor x)
@@ -2054,6 +2085,17 @@
     func : flash_attn_v3
     data_type : q
   backward : flash_attn_v3_grad
+
+- op : flash_attn_v3_varlen
+  args : (Tensor q, Tensor k, Tensor v, Tensor cu_seqlens_q, Tensor cu_seqlens_k, Tensor q_v_, Tensor q_descale_, Tensor k_descale_, Tensor v_descale_, float softmax_scale, bool is_causal, int window_size_left, int window_size_right, float softcap, int num_splits, bool manual_set_pack_gqa, bool pack_gqa_, int sm_margin, int max_seqlen_q, int max_seqlen_k)
+  output : Tensor(out), Tensor(softmax_lse)
+  optional : q_v_, q_descale_, k_descale_, v_descale_
+  infer_meta :
+    func : FlashAttnV3InferMeta
+    param : [q, k, v]
+  kernel :
+    func : flash_attn_v3_varlen
+    data_type : q
 
 - op : flash_attn_varlen_qkvpacked
   args : (Tensor qkv, Tensor cu_seqlens_q,  Tensor cu_seqlens_k, Tensor fixed_seed_offset, Tensor attn_mask, Scalar max_seqlen_q, Scalar max_seqlen_k, float scale, float dropout = 0.0, bool causal = false, bool return_softmax = false, bool is_test = false, str rng_name = "", bool varlen_padded = true)
@@ -2753,6 +2795,28 @@
   backward : index_add_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
 
+- op : index_elementwise_get
+  args : (Tensor x, Tensor[] index, int64_t[] input_dims, int64_t[] input_strides, int64_t[] index_dims, int64_t[] index_stride)
+  output : Tensor (out)
+  infer_meta :
+    func : IndexElementwiseGetInferMeta
+  kernel :
+    func : index_elementwise_get
+    data_type : x
+  backward : index_elementwise_get_grad
+
+- op : index_elementwise_put
+  args : (Tensor x, Tensor[] index, Tensor value, int64_t[] input_dims, int64_t[] input_strides, int64_t[] index_dims, int64_t[] index_strides)
+  output : Tensor (out)
+  infer_meta :
+    func : IndexElementwisePutInferMeta
+  kernel :
+    func : index_elementwise_put
+    data_type : x
+  inplace : (x -> out)
+  backward : index_elementwise_put_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+
 - op : index_put
   args : (Tensor x, Tensor[] indices, Tensor value, bool accumulate=false)
   output : Tensor(out)
@@ -2783,6 +2847,7 @@
   output : Tensor(out)
   infer_meta :
     func : IndexSelectInferMeta
+    spmd_rule : IndexSelectInferSpmd
   kernel :
     func : index_select
     data_type : x
@@ -3439,7 +3504,7 @@
   args : (Tensor x, IntArray axis={}, bool keepdim=false)
   output : Tensor(out)
   infer_meta :
-    func : ReduceIntArrayAxisInferMeta
+    func : StrictReduceIntArrayAxisInferMeta
     spmd_rule: ReductionMaxInferSpmdDynamic
   kernel :
     func : max
@@ -3597,6 +3662,49 @@
     func : mode
   backward : mode_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
+
+- op : moe_combine
+  args : (Tensor x, Tensor combine_weights, Tensor scatter_index)
+  output : Tensor(y)
+  infer_meta :
+    func : MoeCombineInferMeta
+  kernel :
+    func : moe_combine
+    data_type : x
+  backward : moe_combine_grad
+
+- op : moe_gate_dispatch
+  args : (Tensor x, Tensor gate_logits, Tensor corr_bias, int64_t k, int64_t capacity, bool use_pad)
+  output : Tensor(y), Tensor(combine_weights), Tensor(scatter_index), Tensor(expert_offset), Tensor(expert_id)
+  infer_meta :
+    func : MoeGateDispatchInferMeta
+  kernel :
+    func : moe_gate_dispatch
+    data_type : x
+  optional : corr_bias
+  backward : moe_gate_dispatch_grad
+
+- op : moe_gate_dispatch_partial_nosoftmaxtopk
+  args : (Tensor x, Tensor combine_weights, Tensor expert_id, int64_t k, int64_t capacity, int64_t num_experts, bool use_pad, int64_t expert_start_index, int64_t expert_end_index, bool reverse_token_drop)
+  output : Tensor(y), Tensor(combine_weights_out), Tensor(scatter_index), Tensor(scatter_index_rev), Tensor(expert_offset), Tensor(expert_nums_local)
+  infer_meta :
+    func : MoeGateDispatchPartialNoSoftmaxTopKInferMeta
+  kernel :
+    func : moe_gate_dispatch_partial_nosoftmaxtopk
+    data_type : x
+  # inplace : (combine_weights -> combine_weights_out)
+  backward : moe_gate_dispatch_partial_nosoftmaxtopk_grad
+
+- op : moe_gate_dispatch_permute
+  args : (Tensor x, Tensor gate_logits, Tensor corr_bias, int64_t k, int64_t capacity, int64_t world_size)
+  output : Tensor(y), Tensor(combine_weights), Tensor(scatter_index), Tensor(expert_offset), Tensor(expert_id)
+  infer_meta :
+    func : MoeGateDispatchPermuteInferMeta
+  kernel :
+    func : moe_gate_dispatch_permute
+    data_type : x
+  optional : corr_bias
+  backward : moe_gate_dispatch_permute_grad
 
 - op : momentum_
   args : (Tensor param, Tensor grad, Tensor velocity, Tensor learning_rate, Tensor master_param, float mu, bool use_nesterov = false, str regularization_method = "", float regularization_coeff = 0.0f, bool multi_precision = false, float rescale_grad = 1.0f)
@@ -4037,6 +4145,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [arr]
+    spmd_rule : PutAlongAxisInferSpmd
   kernel :
     func : put_along_axis
     data_type : arr
@@ -4359,6 +4468,7 @@
   output : Tensor
   infer_meta :
     func : RoiAlignInferMeta
+    spmd_rule : RoiAlignInferSpmd
   kernel :
     func : roi_align
     data_type : x
@@ -4384,6 +4494,7 @@
   output : Tensor(out)
   infer_meta :
     func : RollInferMeta
+    spmd_rule : RollInferSpmdDynamic
   kernel :
     func : roll
     data_type : x
@@ -5666,6 +5777,25 @@
   optional: seq_length
   interfaces : paddle::dialect::InferSymbolicShapeInterface
   traits : paddle::dialect::ForwardOnlyTrait
+
+- op: fused_rms_norm_ext
+  args: (Tensor x, Tensor scale, float epsilon)
+  output: Tensor(y), Tensor(invvar)
+  infer_meta:
+    func: FusedRMSNormInferMeta
+  kernel:
+    func: fused_rms_norm_ext
+    data_type: x
+  backward: fused_rms_norm_ext_grad
+
+- op: int_bincount
+  args: (Tensor x, int64_t low, int64_t high, int64_t dtype)
+  output: Tensor(out)
+  infer_meta:
+    func: IntBincountInferMeta
+  kernel:
+    func: int_bincount
+    data_type: x
 
 - op: number_count
   args: (Tensor numbers, int upper_range)

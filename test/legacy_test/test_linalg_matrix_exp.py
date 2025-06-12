@@ -23,15 +23,20 @@ import paddle
 from paddle import base
 from paddle.base import core
 
+os.environ['NVIDIA_TF32_OVERRIDE'] = '0'
+
 if sys.platform == 'win32':
     RTOL = {'float32': 1e-02, 'float64': 1e-04}
     ATOL = {'float32': 1e-02, 'float64': 1e-04}
 elif sys.platform == 'darwin':
     RTOL = {'float32': 1e-06, 'float64': 1e-12}
     ATOL = {'float32': 1e-06, 'float64': 1e-12}
-else:
+elif scipy.__version__ < '1.15':
     RTOL = {'float32': 1e-06, 'float64': 1e-15}
     ATOL = {'float32': 1e-06, 'float64': 1e-15}
+else:
+    RTOL = {'float32': 1e-06, 'float64': 1e-13}
+    ATOL = {'float32': 1e-06, 'float64': 1e-13}
 
 
 class MatrixExpTestCase(unittest.TestCase):

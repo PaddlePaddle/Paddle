@@ -463,5 +463,40 @@ class TestAllcloseOpLargeDimInput(TestAllcloseOp):
         self.equal_nan = False
 
 
+class TestAllcloseOp_ZeroSize(OpTest):
+    def set_args(self):
+        self.input = np.random.random((2, 0)).astype("float32")
+        self.other = np.random.random((2, 0)).astype("float32")
+        self.rtol = np.array([1e-05]).astype("float64")
+        self.atol = np.array([1e-08]).astype("float64")
+        self.equal_nan = False
+
+    def setUp(self):
+        self.set_args()
+        self.op_type = "allclose"
+        self.python_api = paddle.allclose
+        self.inputs = {
+            'Input': self.input,
+            'Other': self.other,
+            "Rtol": self.rtol,
+            "Atol": self.atol,
+        }
+        self.attrs = {'equal_nan': self.equal_nan}
+        self.outputs = {
+            'Out': np.array(
+                np.allclose(
+                    self.inputs['Input'],
+                    self.inputs['Other'],
+                    rtol=self.rtol,
+                    atol=self.atol,
+                    equal_nan=self.equal_nan,
+                )
+            )
+        }
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
+
 if __name__ == "__main__":
     unittest.main()

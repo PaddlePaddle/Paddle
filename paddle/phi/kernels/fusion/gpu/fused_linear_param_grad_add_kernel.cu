@@ -33,7 +33,7 @@ namespace fusion {
 #if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
 
 template <typename T, typename MT, typename Context>
-void FusedLinearParamGradAddImpl(const Context &ctx,
+void FusedLinearParamGradAddImpl(const Context &dev_ctx,
                                  const DenseTensor &x,
                                  const DenseTensor &dout,
                                  const paddle::optional<DenseTensor> &dbias,
@@ -49,7 +49,7 @@ void FusedLinearParamGradAddImpl(const Context &ctx,
   const bool fuse_bias_grad = false;  // kIsMultiPrecision && dweight_out;
   if (dweight_out) {
     phi::funcs::ComputeFusedGemmEpilogueBackward<T, T, MT>(
-        ctx,
+        dev_ctx,
         &dout,
         &x,
         nullptr,
@@ -75,9 +75,9 @@ void FusedLinearParamGradAddImpl(const Context &ctx,
   DenseTensor dbias_tmp_tensor;
   if (dbias) {
     if (kIsMultiPrecision) {
-      dbias_tmp_tensor = phi::EmptyLike<MT, Context>(ctx, dbias.get());
+      dbias_tmp_tensor = phi::EmptyLike<MT, Context>(dev_ctx, dbias.get());
     } else {
-      dbias_tmp_tensor = phi::EmptyLike<T, Context>(ctx, dbias.get());
+      dbias_tmp_tensor = phi::EmptyLike<T, Context>(dev_ctx, dbias.get());
     }
   }
   DenseTensor *dbias_tmp = !dbias ? dbias_out : &dbias_tmp_tensor;
@@ -86,14 +86,14 @@ void FusedLinearParamGradAddImpl(const Context &ctx,
     auto dout_copy = dout;
     dout_copy.Resize({M, N});
     if (kIsMultiPrecision) {
-      phi::SumKernel<T, Context>(ctx,
+      phi::SumKernel<T, Context>(dev_ctx,
                                  dout_copy,
                                  {0},
                                  phi::CppTypeToDataType<MT>::Type(),
                                  false,
                                  dbias_tmp);
     } else {
-      phi::SumKernel<T, Context>(ctx,
+      phi::SumKernel<T, Context>(dev_ctx,
                                  dout_copy,
                                  {0},
                                  phi::CppTypeToDataType<T>::Type(),
@@ -104,9 +104,9 @@ void FusedLinearParamGradAddImpl(const Context &ctx,
 
   if (dbias) {
     if (kIsMultiPrecision) {
-      phi::AddKernel<MT, Context>(ctx, dbias.get(), *dbias_tmp, dbias_out);
+      phi::AddKernel<MT, Context>(dev_ctx, dbias.get(), *dbias_tmp, dbias_out);
     } else {
-      phi::AddKernel<T, Context>(ctx, dbias.get(), *dbias_tmp, dbias_out);
+      phi::AddKernel<T, Context>(dev_ctx, dbias.get(), *dbias_tmp, dbias_out);
     }
   }
 }
@@ -143,7 +143,7 @@ static void PrintMeta(const paddle::optional<DenseTensor> &t,
 }
 
 template <typename T, typename Context>
-void FusedLinearParamGradAdd(const Context &ctx,
+void FusedLinearParamGradAdd(const Context &dev_ctx,
                              const DenseTensor &x,
                              const DenseTensor &dout,
                              const paddle::optional<DenseTensor> &dweight,
@@ -183,9 +183,9 @@ void FusedLinearParamGradAdd(const Context &ctx,
       }
     } else {
       if (multi_precision) {
-        ctx.template Alloc<MT>(dweight_out);
+        dev_ctx.template Alloc<MT>(dweight_out);
       } else {
-        ctx.template Alloc<T>(dweight_out);
+        dev_ctx.template Alloc<T>(dweight_out);
       }
     }
   }
@@ -206,9 +206,9 @@ void FusedLinearParamGradAdd(const Context &ctx,
       }
     } else {
       if (multi_precision) {
-        ctx.template Alloc<MT>(dbias_out);
+        dev_ctx.template Alloc<MT>(dbias_out);
       } else {
-        ctx.template Alloc<T>(dbias_out);
+        dev_ctx.template Alloc<T>(dbias_out);
       }
     }
   }
@@ -234,7 +234,7 @@ void FusedLinearParamGradAdd(const Context &ctx,
   }
 
   if (multi_precision) {
-    FusedLinearParamGradAddImpl<T, MT, Context>(ctx,
+    FusedLinearParamGradAddImpl<T, MT, Context>(dev_ctx,
                                                 x,
                                                 dout,
                                                 dbias,
@@ -246,7 +246,7 @@ void FusedLinearParamGradAdd(const Context &ctx,
                                                 dweight_out,
                                                 dbias_out);
   } else {
-    FusedLinearParamGradAddImpl<T, T, Context>(ctx,
+    FusedLinearParamGradAddImpl<T, T, Context>(dev_ctx,
                                                x,
                                                dout,
                                                dbias,
@@ -262,7 +262,7 @@ void FusedLinearParamGradAdd(const Context &ctx,
 
 #else
 template <typename T, typename Context>
-void FusedLinearParamGradAdd(const Context &ctx,
+void FusedLinearParamGradAdd(const Context &dev_ctx,
                              const DenseTensor &x,
                              const DenseTensor &dout,
                              const paddle::optional<DenseTensor> &dweight,

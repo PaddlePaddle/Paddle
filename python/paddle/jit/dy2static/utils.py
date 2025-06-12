@@ -29,6 +29,7 @@ import time
 import types
 import warnings
 from contextlib import contextmanager
+from dataclasses import fields, is_dataclass
 from enum import Enum, Flag, auto
 from importlib.machinery import SourceFileLoader
 from typing import TYPE_CHECKING, Any
@@ -286,6 +287,13 @@ def type_name(v):
     return type(v).__name__
 
 
+def _is_dataclass_instance(obj):
+    """Check if the object is an instance of a dataclass.
+    Refer to https://docs.python.org/3/library/dataclasses.html#dataclasses.is_dataclass
+    """
+    return is_dataclass(obj) and not isinstance(obj, type)
+
+
 def make_hashable(x, error_msg=None):
     """
     Makes input `x` hashable.
@@ -294,6 +302,15 @@ def make_hashable(x, error_msg=None):
     """
     if isinstance(x, (tuple, list, set)):
         return tuple(map(make_hashable, x))
+
+    if _is_dataclass_instance(x):
+        return (
+            type(x).__name__,
+            *map(
+                make_hashable,
+                [getattr(x, field.name) for field in fields(x)],
+            ),
+        )
 
     try:
         hash(x)

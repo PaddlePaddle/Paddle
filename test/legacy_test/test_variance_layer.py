@@ -126,5 +126,15 @@ class TestVarError(unittest.TestCase):
             self.assertRaises(TypeError, paddle.var, x)
 
 
+class TestVarAPI_ZeroSize(unittest.TestCase):
+    def test_zerosize(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(np.random.random([10, 0]))
+        out1 = paddle.var(x).numpy()
+        out2 = np.var(x.numpy())
+        np.testing.assert_allclose(out1, out2, equal_nan=True)
+        paddle.enable_static()
+
+
 if __name__ == '__main__':
     unittest.main()

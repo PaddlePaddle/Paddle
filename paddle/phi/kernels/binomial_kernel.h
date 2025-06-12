@@ -29,7 +29,7 @@ namespace phi {
  * @param  out          A Tensor filled with returned random value
  */
 template <typename T, typename Context>
-void BinomialiKernel(const Context& ctx,
+void BinomialiKernel(const Context& dev_ctx,
                      const DenseTensor& count,
                      const DenseTensor& prob,
                      DenseTensor* out);

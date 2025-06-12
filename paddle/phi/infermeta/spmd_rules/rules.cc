@@ -708,6 +708,9 @@ PD_REGISTER_SPMD_RULE(cumsum,
                       PD_INFER_SPMD(phi::distributed::CumSumInferSpmd),
                       PD_INFER_SPMD(phi::distributed::CumSumInferSpmdReverse));
 
+// unique
+PD_REGISTER_SPMD_RULE(unique, PD_INFER_SPMD(phi::distributed::UniqueInferSpmd));
+
 // argmin
 PD_REGISTER_SPMD_RULE(
     argmin,
@@ -753,6 +756,10 @@ PD_REGISTER_SPMD_RULE(nonzero,
 // add_n
 PD_REGISTER_SPMD_RULE(add_n, PD_INFER_SPMD(phi::distributed::AddNInferSpmd));
 
+// roll
+PD_REGISTER_SPMD_RULE(roll,
+                      PD_INFER_SPMD(phi::distributed::RollInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::RollGradInferSpmd));
 // cummax
 PD_REGISTER_SPMD_RULE(cummax,
                       PD_INFER_SPMD(phi::distributed::CummaxInferSpmd),
@@ -766,4 +773,21 @@ PD_REGISTER_SPMD_RULE(cummin,
 PD_REGISTER_SPMD_RULE(argsort,
                       PD_INFER_SPMD(phi::distributed::ArgSortInferSpmd),
                       PD_INFER_SPMD(phi::distributed::ArgSortGradInferSpmd));
+
+// index_select
+PD_REGISTER_SPMD_RULE(
+    index_select,
+    PD_INFER_SPMD(phi::distributed::IndexSelectInferSpmd),
+    PD_INFER_SPMD(phi::distributed::IndexSelectGradInferSpmd));
+
+// put_along_axis
+PD_REGISTER_SPMD_RULE(
+    put_along_axis,
+    PD_INFER_SPMD(phi::distributed::PutAlongAxisInferSpmd),
+    PD_INFER_SPMD(phi::distributed::PutAlongAxisGradInferSpmd));
+
+// roi_align
+PD_REGISTER_SPMD_RULE(roi_align,
+                      PD_INFER_SPMD(phi::distributed::RoiAlignInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::RoiAlignGradInferSpmd));
 }  // namespace phi::distributed

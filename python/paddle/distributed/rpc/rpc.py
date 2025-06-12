@@ -89,7 +89,8 @@ def init_rpc(
     master_endpoint: str | None = None,
 ) -> None:
     """
-    init rpc.
+    init rpc. Warning: All RPC API should only be used internally within a secure network environment and
+    must not be accessible via the public internet.
 
     Args:
         name (str): worker name.
@@ -165,7 +166,9 @@ def rpc_sync(
     timeout: int = _DEFAULT_RPC_TIMEOUT,
 ) -> _RetT:
     """
-    Make a blocking RPC call to run function ``fn`` on worker ``to``. Attention: Users must use this API in a secure network environment.
+    Make a blocking RPC call to run function ``fn`` on worker ``to``. Warning: All RPC API should
+    only be used internally within a secure network environment and must not be accessible via
+    the public internet.
 
     Args:
         to (str): name of the destination worker.
@@ -211,7 +214,8 @@ def rpc_async(
     timeout: int = _DEFAULT_RPC_TIMEOUT,
 ) -> _FutureWrapper[_RetT]:
     """
-    Make a non-blocking RPC call to run function ``fn`` on worker ``to``. Attention: Users must use this API in a secure network environment.
+    Make a non-blocking RPC call to run function ``fn`` on worker ``to``. Warning: All RPC API should
+    only be used internally within a secure network environment and must not be accessible via the public internet.
 
     Args:
         to (str): name of the destination worker.
@@ -306,7 +310,9 @@ def shutdown() -> None:
     """
     Perform a shutdown of the RPC agent, stop the worker and destroy the agent.
     This will block until all local and remote RPC processes reach this method
-    and wait for all outstanding work to complete.
+    and wait for all outstanding work to complete. Warning: All RPC API should
+    only be used internally within a secure network environment and must not be
+    accessible via the public internet.
 
     Returns:
         None.
@@ -335,7 +341,9 @@ def shutdown() -> None:
 
 def get_worker_info(name: str) -> WorkerInfo:
     """
-    Get worker information by worker name.
+    Get worker information by worker name. Warning: All RPC API should
+    only be used internally within a secure network environment and must
+    not be accessible via the public internet.
 
     Args:
         name (str): name of the worker.
@@ -365,7 +373,9 @@ def get_worker_info(name: str) -> WorkerInfo:
 
 def get_all_worker_infos() -> list[WorkerInfo]:
     """
-    Get all worker information.
+    Get all worker information. Warning: All RPC API should only be used
+    internally within a secure network environment and must not be
+    accessible via the public internet.
 
     Returns:
         List[WorkerInfo].
@@ -392,7 +402,8 @@ def get_all_worker_infos() -> list[WorkerInfo]:
 
 def get_current_worker_info() -> WorkerInfo:
     """
-    Get current worker information.
+    Get current worker information. Warning: All RPC API should only be used internally
+    within a secure network environment and must not be accessible via the public internet.
 
     Returns:
         class `WorkerInfo` with attribute `name`, `rank`, `ip` and `port`.
