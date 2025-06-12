@@ -358,6 +358,126 @@ def _dist_reshape(
         )
 
 
+def get_sub_meshes_for_shard(mesh, mesh_dim):
+    process_ids = np.array(mesh.process_ids).reshape(mesh.shape)
+    num_shards = mesh.shape[mesh_dim]
+
+    sub_meshes = []
+    for i in range(num_shards):
+        coords = [slice(None)] * len(mesh.shape)
+        coords[mesh_dim] = i
+        sub_process_ids = process_ids[tuple(coords)].flatten().tolist()
+        new_shape = list(mesh.shape)
+        new_shape[mesh_dim] = 1
+        sub_mesh = dist.ProcessMesh(
+            shape=new_shape,
+            process_ids=sub_process_ids,
+            dim_names=mesh.dim_names,
+        )
+        sub_meshes.append(sub_mesh)
+    return sub_meshes
+
+
+def shard_submesh_and_slice(mesh, tensor_slice, tensor_dim, mesh_dim):
+    new_sub_meshes = get_sub_meshes_for_shard(mesh, mesh_dim)
+    num_shards = len(new_sub_meshes)
+
+    total_size = tensor_slice[tensor_dim][1] - tensor_slice[tensor_dim][0]
+    shard_size = (total_size + num_shards - 1) // num_shards
+    effective_size = shard_size * (num_shards - 1)
+    last_shard_size = total_size - effective_size
+
+    new_slices = []
+    for i in range(num_shards):
+        start = tensor_slice[tensor_dim][0] + i * shard_size
+        if i == num_shards - 1:
+            end = min(start + last_shard_size, tensor_slice[tensor_dim][1])
+        else:
+            end = min(start + shard_size, tensor_slice[tensor_dim][1])
+        new_slice = list(tensor_slice)
+        new_slice[tensor_dim] = (start, end)
+        new_slices.append(tuple(new_slice))
+    return new_sub_meshes, new_slices
+
+
+def get_rank2tensor_indices(sub_mesh2tensor_indices):
+    rank2tensor_indices = {}
+    for sub_mesh, info in sub_mesh2tensor_indices.items():
+        for rank in sub_mesh.process_ids:
+            rank2tensor_indices[rank] = {
+                'slice': info['slice'],
+                'partial': info['partial'],
+            }
+    return rank2tensor_indices
+
+
+def get_local_slices(tensor, mesh, placements):
+    if len(mesh.shape) != len(placements):
+        raise ValueError(
+            f"placements nums ({len(placements)}) must equal mesh_shape({len(mesh.shape)})"
+        )
+
+    sub_mesh2tensor_indices = {
+        mesh: {'slice': [(0, s) for s in tensor.shape], 'partial': {}}
+    }
+    for mesh_dim, placement in enumerate(placements):
+        new_sub_mesh2tensor_indices = {}
+
+        if placement.is_shard():
+            tensor_dim = placement.get_dim()
+
+            for sub_mesh, info in sub_mesh2tensor_indices.items():
+                new_sub_meshes, new_slices = shard_submesh_and_slice(
+                    sub_mesh, info['slice'], tensor_dim, mesh_dim
+                )
+                for new_sub_mesh, new_slice in zip(new_sub_meshes, new_slices):
+                    new_sub_mesh2tensor_indices[new_sub_mesh] = {
+                        'slice': new_slice,
+                        'partial': info['partial'].copy(),
+                    }
+        elif hasattr(placement, 'is_partial') and placement.is_partial():
+            for sub_mesh, info in sub_mesh2tensor_indices.items():
+                new_partial = info['partial'].copy()
+                new_partial[mesh_dim] = placement.reduce_type()
+                new_sub_mesh2tensor_indices[sub_mesh] = {
+                    'slice': info['slice'],
+                    'partial': new_partial,
+                }
+        else:
+            for sub_mesh, info in sub_mesh2tensor_indices.items():
+                new_sub_mesh2tensor_indices[sub_mesh] = info.copy()
+
+        sub_mesh2tensor_indices = new_sub_mesh2tensor_indices
+    return get_rank2tensor_indices(sub_mesh2tensor_indices)
+
+
+def _only_reshard_mesh_shape(
+    dist_tensor: Tensor, mesh: ProcessMesh, placements: list[Placement]
+):
+    if not os.getenv("FLAGS_enable_moe_utils") == "true":
+        return False
+
+    if paddle.in_dynamic_mode():
+        src_placements = dist_tensor.placements
+        src_mesh = dist_tensor.process_mesh
+    elif paddle.framework.in_pir_mode():
+        src_placements = dist_tensor.dist_attr().placements_attr
+        src_mesh = dist_tensor.dist_attr().process_mesh
+    else:
+        raise NotImplementedError(
+            "_only_reshard_mesh_shape is only supported in dynamic and pir mode."
+        )
+    if src_mesh == mesh or src_mesh.process_ids != mesh.process_ids:
+        return False
+    src_rank2tensor_indices = get_local_slices(
+        dist_tensor, src_mesh, src_placements
+    )
+    dst_rank2tensor_indices = get_local_slices(dist_tensor, mesh, placements)
+    if src_rank2tensor_indices != dst_rank2tensor_indices:
+        return False
+    return True
+
+
 def _reshard_mesh_shape(
     dist_tensor: Tensor, mesh: ProcessMesh, placements: list[Placement]
 ):

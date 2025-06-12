@@ -119,10 +119,33 @@ class TestMoEUtils:
             dist_y._local_value().numpy(), dist_x._local_value().numpy()
         )
 
+    def test_get_local_slices(self):
+        (h, w) = (4, 4)
+        src_shape = [h, w]
+        x = paddle.arange(0, h * w).reshape(src_shape)
+        placements = [dist.Shard(0), dist.Partial()]
+        dist_x = dist.shard_tensor(x, self._mesh0, placements)
+        dist_x_local_slices = dist.auto_parallel.moe_utils.get_local_slices(
+            x, self._mesh0, placements
+        )
+        if dist.get_rank() == 0:
+            assert dist_x_local_slices[0]['slice'] == ((0, 2), (0, 4))
+            assert (
+                dist_x_local_slices[0]['partial'][1]
+                == dist_x.placements[1].reduce_type()
+            )
+        if dist.get_rank() == 1:
+            assert dist_x_local_slices[1]['slice'] == ((2, 4), (0, 4))
+            assert (
+                dist_x_local_slices[1]['partial'][1]
+                == dist_x.placements[1].reduce_type()
+            )
+
     def run_test_case(self):
         self.test_local_reshape()
         self.test_nd_mesh_alltoall()
         self.test_reshard_mesh_shape()
+        self.test_get_local_slices()
 
 
 if __name__ == '__main__':
