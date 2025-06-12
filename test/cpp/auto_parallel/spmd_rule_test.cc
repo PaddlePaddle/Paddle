@@ -3171,7 +3171,7 @@ TEST(RolAlign, Ctor) {
   boxes_dist_attr.set_dynamic_dims({false, false});
   auto boxes_num_dist_attr = TensorDistAttr();
   boxes_num_dist_attr.set_process_mesh(process_mesh);
-  boxes_num_dist_attr.set_dims_mapping({0});
+  boxes_num_dist_attr.set_dims_mapping(std::vector<int64_t>{0});
   boxes_num_dist_attr.set_dynamic_dims({false});
 
   phi::distributed::DistMetaTensor x = phi::distributed::DistMetaTensor(
