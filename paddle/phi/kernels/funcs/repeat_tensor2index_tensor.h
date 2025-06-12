@@ -15,9 +15,9 @@
 #pragma once
 // #include <vector>
 
-// #include "paddle/phi/common/place.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/dense_tensor.h"
-// #include "paddle/phi/core/tensor_utils.h"
 
 namespace phi {
 namespace funcs {
