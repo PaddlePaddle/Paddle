@@ -79,7 +79,7 @@ static void UniqueConsecutiveFlattenedTensor(const Context& context,
 
 template <typename Context, typename InT>
 struct UniqueConsecutiveFlattenedTensorFunctor {
-  const Context& ctx_;
+  const Context& dev_ctx_;
   const DenseTensor& in_;
   DenseTensor* out_;
   const bool return_inverse_;
@@ -94,7 +94,7 @@ struct UniqueConsecutiveFlattenedTensorFunctor {
                                           bool return_counts,
                                           DenseTensor* inverse,
                                           DenseTensor* count)
-      : ctx_(context),
+      : dev_ctx_(context),
         in_(in),
         out_(out),
         return_inverse_(return_inverse),
@@ -105,7 +105,7 @@ struct UniqueConsecutiveFlattenedTensorFunctor {
   template <typename IndexT>
   void apply() const {
     UniqueConsecutiveFlattenedTensor<InT, IndexT, Context>(
-        ctx_, in_, out_, return_inverse_, return_counts_, inverse_, count_);
+        dev_ctx_, in_, out_, return_inverse_, return_counts_, inverse_, count_);
   }
 };
 
@@ -220,7 +220,7 @@ static void UniqueConsecutiveDim(const Context& context,
 
 template <typename Context, typename InT>
 struct UniqueConsecutiveDimFunctor {
-  const Context& ctx_;
+  const Context& dev_ctx_;
   const DenseTensor& in_;
   DenseTensor* out_;
   const int axis_;
@@ -237,7 +237,7 @@ struct UniqueConsecutiveDimFunctor {
                               bool return_counts,
                               DenseTensor* inverse,
                               DenseTensor* count)
-      : ctx_(context),
+      : dev_ctx_(context),
         in_(in),
         out_(out),
         axis_(axis),
@@ -248,7 +248,7 @@ struct UniqueConsecutiveDimFunctor {
 
   template <typename IndexT>
   void apply() const {
-    UniqueConsecutiveDim<Context, InT, IndexT>(ctx_,
+    UniqueConsecutiveDim<Context, InT, IndexT>(dev_ctx_,
                                                in_,
                                                out_,
                                                return_inverse_,

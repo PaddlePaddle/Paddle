@@ -22,7 +22,7 @@ namespace phi {
 #define DEFINE_ISFINITE_SR(isfinite_sr)   \
   template <typename T, typename Context> \
   void isfinite_sr(                       \
-      const Context& ctx, const SelectedRows& x, SelectedRows* out);
+      const Context& dev_ctx, const SelectedRows& x, SelectedRows* out);
 
 DEFINE_ISFINITE_SR(IsinfSR)
 DEFINE_ISFINITE_SR(IsnanSR)

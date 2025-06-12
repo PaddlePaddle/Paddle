@@ -87,7 +87,7 @@ struct MergedMomentumKernelParam
 
 template <typename MT, typename Context, typename MPType, typename T>
 void MergedMomentumInnerCompute(
-    const Context &ctx,
+    const Context &dev_ctx,
     const std::vector<const DenseTensor *> &params,
     const std::vector<const DenseTensor *> &grads,
     const std::vector<const DenseTensor *> &velocities,
@@ -255,7 +255,7 @@ void MergedMomentumInnerCompute(
           kMultiPrecision ? master_params_out[j + start]->data<MT>()       \
                           : nullptr);                                      \
     }                                                                      \
-    phi::funcs::ForRange<Context> for_range(ctx, max_size);                \
+    phi::funcs::ForRange<Context> for_range(dev_ctx, max_size);            \
     for_range(kernel_params);                                              \
     VLOG(10) << "Launch MergedMomentum kernel " << i << " "                \
              << kernel_params.param_num;                                   \
@@ -284,7 +284,7 @@ void MergedMomentumInnerCompute(
           multi_precision ? master_params_opt.get()[idx]->data<MT>() : nullptr;
       MT *master_out_data =
           multi_precision ? master_params_out[idx]->data<MT>() : nullptr;
-      if (ctx.GetPlace().GetType() == phi::AllocationType::CPU) {
+      if (dev_ctx.GetPlace().GetType() == phi::AllocationType::CPU) {
         phi::CPUDenseMomentumFunctor<MT> functor;
         functor(params[idx],
                 grads[idx],
@@ -297,9 +297,9 @@ void MergedMomentumInnerCompute(
                 params_out[idx],
                 velocities_out[idx]);
         VLOG(10) << "Launch MergedMomentum cpu kernel.";
-      } else if (ctx.GetPlace().GetType() == phi::AllocationType::GPU) {
+      } else if (dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU) {
         phi::funcs::ForRange<Context> for_range(
-            static_cast<const Context &>(ctx), params[idx]->numel());
+            static_cast<const Context &>(dev_ctx), params[idx]->numel());
         const auto grad_type = grads[idx]->dtype();
 #define PADDLE_LAUNCH_DENSE_MTMOMENTUM_KERNEL(__nesterov, __reg_type)   \
   if (grad_type == phi::DataType::FLOAT32) {                            \
