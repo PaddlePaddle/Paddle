@@ -343,15 +343,20 @@ class PipelineScheduleSingle(_PipelineSchedule):
         self._stage.has_backward = self._has_backward
         self._stage_initialized = False
 
-    def _initialize_stage(self, args, kwargs):
+    def _initialize_stage(self, args, kwargs, labels):
         if self._stage.is_first:
-            self._stage._prepare_forward_infra(
+            next_stage_args = self._stage._prepare_forward_infra(
                 self._n_microbatches, args, kwargs
             )
         else:
-            self._stage._prepare_forward_infra(self._n_microbatches, (), kwargs)
+            next_stage_args = self._stage._prepare_forward_infra(
+                self._n_microbatches, (), kwargs
+            )
+        loss = None
+        if self._stage.is_last:
+            loss = self._loss_fn(next_stage_args[0], labels)
         if self._has_backward:
-            self._stage._prepare_backward_infra(self._n_microbatches)
+            self._stage._prepare_backward_infra(self._n_microbatches, loss)
         self._stage_initialized = True
 
     def step(self, *args, target=None, losses: list | None = None, **kwargs):
@@ -424,9 +429,9 @@ def _sorted_batch_p2p(p2p_ops: list[dist.P2POp], desc: str | None = None):
     return work_by_peer
 
 
-class ScheduleGPipe(PipelineScheduleSingle):
+class ScheduleFThenB(PipelineScheduleSingle):
     """
-    The GPipe schedule.
+    The FThenB schedule.
     Will go through all the microbatches in a fill-drain manner.
     """
 
@@ -439,7 +444,7 @@ class ScheduleGPipe(PipelineScheduleSingle):
     ):
         """
         Run one iteration of the pipeline schedule with list of microbatches.
-        Will go through all the microbatches according to the GPipe schedule.
+        Will go through all the microbatches according to the FThenB schedule.
 
         Args:
             microbatches: list of microbatch args.
@@ -449,7 +454,10 @@ class ScheduleGPipe(PipelineScheduleSingle):
         )
 
         if not self._stage_initialized:
-            self._initialize_stage(arg_mbs[0], kwarg_mbs[0])
+            if target_mbs is not None:
+                self._initialize_stage(arg_mbs[0], kwarg_mbs[0], target_mbs[0])
+            else:
+                self._initialize_stage(arg_mbs[0], kwarg_mbs[0], None)
 
         # Delay send waits
         fwd_sends_to_wait: list[dist.Work] = []
@@ -540,7 +548,10 @@ class Schedule1F1B(PipelineScheduleSingle):
         )
 
         if not self._stage_initialized:
-            self._initialize_stage(arg_mbs[0], kwarg_mbs[0])
+            if target_mbs is not None:
+                self._initialize_stage(arg_mbs[0], kwarg_mbs[0], target_mbs[0])
+            else:
+                self._initialize_stage(arg_mbs[0], kwarg_mbs[0], None)
 
         # Last stage has 1 warmup, second-to-last 2 warmups, ...
         # first stage `num_stages` warmups
@@ -725,7 +736,7 @@ class PipelineScheduleMulti(_PipelineSchedule):
                 "Simply stop passing it, and everything should still work fine."
             )
 
-    def _initialize_stages(self, args: tuple[Any, ...], kwargs):
+    def _initialize_stages(self, args: tuple[Any, ...], kwargs, labels):
         # may be 'none' value (if this stage sends its output shapes to the next stage via P2P)
         # or real value (if this stage and next stage are on the same device)
         next_stage_args: tuple[Any, ...] = ()
@@ -738,11 +749,21 @@ class PipelineScheduleMulti(_PipelineSchedule):
                 next_stage_args = stage._prepare_forward_infra(
                     self._n_microbatches, next_stage_args, kwargs
                 )
+        loss = None
+        last_stage = self._stages[-1]
+        if last_stage.is_last:
+            loss = self._loss_fn(next_stage_args[0], labels)
 
         if self._has_backward:
             for stage_reverse in reversed(self._stages):
-                stage_reverse._prepare_backward_infra(self._n_microbatches)
-
+                if stage_reverse.is_last:
+                    stage_reverse._prepare_backward_infra(
+                        self._n_microbatches, loss
+                    )
+                else:
+                    stage_reverse._prepare_backward_infra(
+                        self._n_microbatches, None
+                    )
         self._stages_initialized = True
 
     def step(self, *args, target=None, losses: list | None = None, **kwargs):
@@ -793,7 +814,10 @@ class PipelineScheduleMulti(_PipelineSchedule):
         )
 
         if not self._stages_initialized:
-            self._initialize_stages(arg_mbs[0], kwarg_mbs[0])
+            if target_mbs is not None:
+                self._initialize_stages(arg_mbs[0], kwarg_mbs[0], target_mbs[0])
+            else:
+                self._initialize_stages(arg_mbs[0], kwarg_mbs[0], None)
 
         # Based on the plan in Step 1 created in __init__:
         # 2. Perform communication based on the pipeline_order
@@ -1103,13 +1127,13 @@ def _get_1f1b_rank_ops(
     return rank_ops
 
 
-class ScheduleInterleaved1F1B(PipelineScheduleMulti):
+class ScheduleVPP(PipelineScheduleMulti):
     """
-    The Interleaved 1F1B schedule.
+    The VPP schedule.
     See https://arxiv.org/pdf/2104.04473 for details.
     Will perform one forward and one backward on the microbatches in steady
     state and supports multiple stages per rank. When microbatches are ready for
-    multiple local stages, Interleaved 1F1B prioritizes the earlier microbatch
+    multiple local stages, VPP prioritizes the earlier microbatch
     (also called "depth first").
 
     This schedule is mostly similar to the original paper.
@@ -1145,7 +1169,7 @@ class ScheduleInterleaved1F1B(PipelineScheduleMulti):
         self.microbatches_per_round = n_microbatches // self.number_of_rounds
         if n_microbatches % self.number_of_rounds != 0:
             raise ValueError(
-                "Interleaved 1F1B requires the number of microbatches to be a "
+                "VPP requires the number of microbatches to be a "
                 f"multiple of the number of rounds ({self.number_of_rounds}), "
                 f"but got {n_microbatches}."
             )

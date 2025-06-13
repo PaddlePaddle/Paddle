@@ -15,7 +15,7 @@
 import random
 
 import numpy as np
-from schedules import Schedule1F1B, ScheduleGPipe, ScheduleInterleaved1F1B
+from schedules import Schedule1F1B, ScheduleFThenB, ScheduleVPP
 from stage import (
     PipelineStage,
 )
@@ -215,14 +215,14 @@ class Test_Schedules:
         )
         fleet.auto.set_mesh(cls.mesh)
 
-    def test_ScheduleGpipe(self):
+    def test_ScheduleFThenB(self):
         fix_seeds()
         self.model = PPMyModel_SingleStage()
         self.micro_batches = 8
         self.stage = PipelineStage(self.model, self.rank, 4, group=self.group)
         self.stage.has_backward = True
         loss_fn_ = nn.MSELoss()
-        schedule = ScheduleGPipe(
+        schedule = ScheduleFThenB(
             self.stage, self.micro_batches, loss_fn=loss_fn_
         )
         opt = paddle.optimizer.AdamW(
@@ -275,7 +275,7 @@ class Test_Schedules:
             opt.clear_grad()
         return losses_by_step
 
-    def test_ScheduleInterleaved1F1B(self):
+    def test_ScheduleVPP(self):
         fix_seeds()
         self.model = PPMyModel_MultiStage()
         self.local_stages = 2
@@ -292,7 +292,7 @@ class Test_Schedules:
             )
             self.stage_list[i].has_backward = True
         loss_fn_ = nn.MSELoss()
-        schedule = ScheduleInterleaved1F1B(
+        schedule = ScheduleVPP(
             self.stage_list, self.micro_batches, loss_fn=loss_fn_
         )
         opt = paddle.optimizer.AdamW(
@@ -366,7 +366,7 @@ class Test_Schedules:
             )
         self.stage.has_backward = True
         loss_fn_ = nn.MSELoss()
-        schedule = ScheduleGPipe(
+        schedule = ScheduleFThenB(
             self.stage, self.micro_batches, loss_fn=loss_fn_
         )
         opt = paddle.optimizer.AdamW(
@@ -409,33 +409,33 @@ class Test_Schedules:
         """Compare losses between three training methods"""
         self.setUpClass()
         pp_losses = self.test_pp_model()
-        scheduleGpipe_losses = self.test_ScheduleGpipe()
+        scheduleFThenB_losses = self.test_ScheduleFThenB()
         schedule1f1b_losses = self.test_Schedule1F1B()
-        scheduleinterleaved1f1b_losses = self.test_ScheduleInterleaved1F1B()
+        schedulevpp_losses = self.test_ScheduleVPP()
         dp_pp_losses = self.test_dp_pp()
 
         if self.rank == 3:
             np.testing.assert_allclose(
                 pp_losses,
-                scheduleGpipe_losses,
+                scheduleFThenB_losses,
                 rtol=1e-5,
             )
 
             np.testing.assert_allclose(
                 schedule1f1b_losses,
-                scheduleGpipe_losses,
+                scheduleFThenB_losses,
                 rtol=1e-5,
             )
 
             np.testing.assert_allclose(
-                scheduleinterleaved1f1b_losses,
-                scheduleGpipe_losses,
+                schedulevpp_losses,
+                scheduleFThenB_losses,
                 rtol=1e-5,
             )
 
             np.testing.assert_allclose(
                 dp_pp_losses,
-                scheduleGpipe_losses,
+                scheduleFThenB_losses,
                 rtol=1e-5,
             )
 
