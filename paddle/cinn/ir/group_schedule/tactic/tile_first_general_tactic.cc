@@ -14,6 +14,7 @@
 
 #include "paddle/cinn/ir/group_schedule/tactic/tile_first_general_tactic.h"
 #include "paddle/cinn/ir/ir_analyzer/ir_analyzer.h"
+#include "paddle/cinn/utils/string.h"
 
 namespace cinn {
 namespace ir {

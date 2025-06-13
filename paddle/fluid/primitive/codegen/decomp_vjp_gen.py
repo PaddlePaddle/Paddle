@@ -128,7 +128,6 @@ PRIM_VJP = [
     'subtract_grad',
     'sum_grad',
     'take_along_axis_grad',
-    'put_along_axis_grad',
     'tanh_grad',
     'tile_grad',
     'topk_grad',

@@ -85,7 +85,7 @@ def _get_conv_tp_group(x_mesh, x_placements, data_format):
     )
 
 
-def _ring_send_recv_construct(
+def _ring_conv_halo_exchange(
     local_input_tensor,
     halo_width_to_receive_from_left,
     halo_width_to_receive_from_right,
@@ -183,10 +183,10 @@ def _ring_send_recv_construct(
             axis=width_dim_idx,
         )
 
-    return reconstructed_tensor
+    return reconstructed_tensor.contiguous()
 
 
-def _ring_send_recv_aggregate(
+def _ring_conv_halo_aggregate(
     local_gradient_tensor,
     halo_width_send_left,
     halo_width_send_right,
@@ -314,7 +314,7 @@ def _ring_send_recv_aggregate(
         ]
         target_slice_left.add_(buffer_for_gradient_from_left)
 
-    return processed_gradient_tensor
+    return processed_gradient_tensor.contiguous()
 
 
 class RingConv2d(paddle.autograd.PyLayer):
@@ -489,7 +489,7 @@ class RingConv2d(paddle.autograd.PyLayer):
 
             # step 1: reconstruct the local input tensor including halo regions via ring communication
             # `x` is updated here, now including halo data received from neighboring ranks.
-            x = _ring_send_recv_construct(
+            x = _ring_conv_halo_exchange(
                 x,
                 left_halo_width,
                 right_halo_width,
@@ -570,7 +570,7 @@ class RingConv2d(paddle.autograd.PyLayer):
             final_local_results, x_mesh, x_placements
         )
 
-        return final_local_results
+        return final_local_results.contiguous()
 
     @staticmethod
     def backward(ctx, grad_out):
@@ -627,7 +627,7 @@ class RingConv2d(paddle.autograd.PyLayer):
             output_width_dim_idx = ctx.output_width_dim_idx
 
             # Step 1: Reconstruct `in_tensor_augmented` (original input to local conv in forward)
-            in_tensor_augmented = _ring_send_recv_construct(
+            in_tensor_augmented = _ring_conv_halo_exchange(
                 x,
                 left_halo_width,
                 right_halo_width,
@@ -671,7 +671,7 @@ class RingConv2d(paddle.autograd.PyLayer):
 
             # Step 4: Aggregate "halo" regions for grad_input
             if not x_stop_gradient:
-                grad_x = _ring_send_recv_aggregate(
+                grad_x = _ring_conv_halo_aggregate(
                     grad_x_augmented,
                     left_halo_width,
                     right_halo_width,
@@ -709,6 +709,7 @@ class RingConv2d(paddle.autograd.PyLayer):
         grad_weight = dist.auto_parallel.api.dtensor_from_local(
             grad_weight, weight_mesh, weight_placements
         )
+        # do allreduce to get right grad_weight
         grad_weight = dist.reshard(
             grad_weight,
             weight_mesh,
@@ -719,11 +720,12 @@ class RingConv2d(paddle.autograd.PyLayer):
             grad_bias = dist.auto_parallel.api.dtensor_from_local(
                 grad_bias, bias_mesh, bias_placements
             )
-        grad_weight = dist.reshard(
-            grad_weight,
-            weight_mesh,
-            [dist.Replicate() for _ in range(len(weight_placements))],
-        )
+            # do allreduce to get right grad_bias
+            grad_bias = dist.reshard(
+                grad_bias,
+                weight_mesh,
+                [dist.Replicate() for _ in range(len(bias_placements))],
+            )
 
         if x_stop_gradient:
             grad_x = None

@@ -180,6 +180,8 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
                   test_dtensor_from_local_api)
   py_test_modules(test_dy_local_view_compute MODULES test_dy_local_view_compute)
   py_test_modules(test_local_view_compute MODULES test_local_view_compute)
+  py_test_modules(test_microbatch MODULES test_microbatch)
+  py_test_modules(test_PipelineStage MODULES test_PipelineStage)
   py_test_modules(
     test_tp_conv
     MODULES
@@ -189,7 +191,6 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
     FLAGS_cudnn_deterministic=1
     FLAGS_embedding_deterministic=1
     NVIDIA_TF32_OVERRIDE=0)
-  py_test_modules(test_microbatch MODULES test_microbatch)
   # End of unittests WITH single card WITHOUT timeout
 
 endif()

@@ -46,6 +46,7 @@ void GPUIndexElementwisePutKernel(const phi::GPUContext& dev_ctx,
 
   std::array<int64_t*, 3> strides_array;
   std::vector<int64_t> desired_shape;
+  std::array<std::vector<int64_t>, 3> strides_vec;
 
   funcs::IndexPutStride<3>(input_dims,
                            input_strides,
@@ -58,7 +59,8 @@ void GPUIndexElementwisePutKernel(const phi::GPUContext& dev_ctx,
                            phi::SizeOf(index[0]->dtype()),
                            &desired_shape,
                            &strides_array,
-                           &numel);
+                           &numel,
+                           strides_vec);
 
   auto offset_calc =
       funcs::make_offset_calculator_put<3>(desired_shape, strides_array);
