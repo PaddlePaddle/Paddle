@@ -27,6 +27,7 @@
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/common_infer_shape_functions.h"
+#include "paddle/phi/kernels/funcs/slice_utils.h"
 #include "paddle/phi/kernels/funcs/strided_slice.h"
 #include "pybind11/numpy.h"
 #include "pybind11/pybind11.h"
@@ -553,10 +554,15 @@ static paddle::Tensor getTensorWithBasicIndexing(
 
 inline static bool MaskedFillDispatching(
     const paddle::Tensor& tensor,
-    const paddle::Tensor& value,
     const std::vector<paddle::Tensor>& indices,
-    paddle::Tensor* mask_tensor) {
-  if (indices.size() != 1 || value.numel() != 1) return false;
+    paddle::Tensor* mask_tensor,
+    paddle::Tensor* value_tensor) {
+  bool can_expand = phi::funcs::CheckIsDimsMatchBool(
+      static_cast<phi::DenseTensor*>(tensor.impl().get())->dims(),
+      static_cast<phi::DenseTensor*>(value_tensor->impl().get())->dims());
+  if (indices.size() != 1 || !(value_tensor->numel() == 1 || can_expand))
+    return false;
+
   int64_t num_ind = 0;
   if ((indices)[0].dtype() != phi::DataType::BOOL) {
     return false;
@@ -566,6 +572,10 @@ inline static bool MaskedFillDispatching(
   *mask_tensor = (indices)[0];
   for (size_t i = num_ind; i < tensor.shape().size(); i++) {
     *mask_tensor = unsqueeze_ad_func(*mask_tensor, {-1});
+  }
+  if (can_expand && value_tensor->numel() != 1) {
+    *value_tensor = expand_ad_func(*value_tensor,
+                                   common::vectorize<int64_t>(tensor.dims()));
   }
   return true;
 }

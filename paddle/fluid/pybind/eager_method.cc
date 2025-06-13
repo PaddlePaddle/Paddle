@@ -2001,7 +2001,7 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
       }
       paddle::Tensor mask_tensor;
       if (MaskedFillDispatching(
-              transed_sub_tensor, value_tensor, transed_index, &mask_tensor)) {
+              transed_sub_tensor, transed_index, &mask_tensor, &value_tensor)) {
         transed_sub_tensor =
             masked_fill__ad_func(transed_sub_tensor, mask_tensor, value_tensor);
       } else {

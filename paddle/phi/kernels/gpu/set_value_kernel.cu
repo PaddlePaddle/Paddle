@@ -85,7 +85,7 @@ void SetTensorValueKernelV2(const Context& dev_ctx,
     return;
   }
 
-  CheckIsDimsMatch(phi::make_ddim(new_out_shape), value.dims());
+  phi::funcs::CheckIsDimsMatch(phi::make_ddim(new_out_shape), value.dims());
   if (new_out_shape.empty()) new_out_shape.push_back(1);
   DenseTensor expand_tensor;
   if (value.numel() == 1) {
@@ -109,12 +109,16 @@ void SetTensorValueKernelV2(const Context& dev_ctx,
 
   out->ResetHolder(in.Holder());
   out->ShareInplaceVersionCounterWith(in);
-  StridedCopyKernel<T, Context>(dev_ctx,
-                                expand_tensor,
-                                new_out_shape,
-                                new_out_stride,
-                                output_offset,
-                                out);
+  if (starts_local.empty() && ends_local.empty() && steps_local.empty()) {
+    Copy<Context>(dev_ctx, expand_tensor, dev_ctx.GetPlace(), false, out);
+  } else {
+    StridedCopyKernel<T, Context>(dev_ctx,
+                                  expand_tensor,
+                                  new_out_shape,
+                                  new_out_stride,
+                                  output_offset,
+                                  out);
+  }
   out->set_meta(meta);
 }
 
