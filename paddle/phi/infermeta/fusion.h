@@ -1459,4 +1459,10 @@ void ResnetBasicBlockGradInferMeta(const MetaTensor& x,
                                    MetaTensor* bias3_grad,
                                    MetaConfig config = MetaConfig());
 
+void FusedTransposeSplitQuantInferMeta(const MetaTensor& x,
+                                       const IntArray& tokens_per_expert,
+                                       bool pow_2_scales,
+                                       std::vector<MetaTensor*> outs,
+                                       std::vector<MetaTensor*> scales);
+
 }  // namespace phi
