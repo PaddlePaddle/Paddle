@@ -127,12 +127,64 @@ class TestVarError(unittest.TestCase):
 
 
 class TestVarAPI_ZeroSize(unittest.TestCase):
+    def init_data(self):
+        self.x_shape = [10, 0]
+
     def test_zerosize(self):
+        self.init_data()
         paddle.disable_static()
-        x = paddle.to_tensor(np.random.random([10, 0]))
+        x = paddle.to_tensor(np.random.random(self.x_shape))
         out1 = paddle.var(x).numpy()
         out2 = np.var(x.numpy())
         np.testing.assert_allclose(out1, out2, equal_nan=True)
+        paddle.enable_static()
+
+
+class TestVarAPI_ZeroSize1(unittest.TestCase):
+    def init_data(self):
+        self.x_shape = []
+        # x = torch.tensor([])
+        # res= torch.var(x)     Here, res is nan
+        self.expact_out = np.nan
+
+    def test_zerosize(self):
+        self.init_data()
+        paddle.disable_static()
+        x = paddle.to_tensor(np.random.random(self.x_shape))
+        out1 = paddle.var(x).numpy()
+        np.testing.assert_allclose(out1, self.expact_out, equal_nan=True)
+        paddle.enable_static()
+
+
+class TestVarAPI_UnBiased1(unittest.TestCase):
+    def init_data(self):
+        self.x_shape = [1]
+        # x = torch.randn([1])
+        # res= torch.var(x,correction=0)     Here, res is 0.
+        self.expact_out = 0.0
+
+    def test_api(self):
+        self.init_data()
+        paddle.disable_static()
+        x = paddle.to_tensor(np.random.random(self.x_shape))
+        out1 = paddle.var(x, unbiased=False).numpy()
+        np.testing.assert_allclose(out1, self.expact_out, equal_nan=True)
+        paddle.enable_static()
+
+
+class TestVarAPI_UnBiased2(unittest.TestCase):
+    def init_data(self):
+        self.x_shape = [1]
+        # x = torch.randn([1])
+        # res= torch.var(x,correction=1)     Here, res is 0.
+        self.expact_out = np.nan
+
+    def test_api(self):
+        self.init_data()
+        paddle.disable_static()
+        x = paddle.to_tensor(np.random.random(self.x_shape))
+        out1 = paddle.var(x, unbiased=True).numpy()
+        np.testing.assert_allclose(out1, self.expact_out, equal_nan=True)
         paddle.enable_static()
 
 
