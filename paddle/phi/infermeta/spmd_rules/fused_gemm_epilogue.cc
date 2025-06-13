@@ -235,7 +235,7 @@ SpmdInfo FusedGemmEpilogueInferSpmdBase(const DistMetaTensor& x,
   TensorDistAttr bias_dist_attr_dst =
       CopyTensorDistAttrForOutput(bias_dist_attr_src);
   bias_dist_attr_dst.set_dims_mapping(
-      {output_dist_attr_dst.dims_mapping().back()});
+      std::vector<int64_t>{output_dist_attr_dst.dims_mapping().back()});
 
   // Step2.3: Handle Partial
   // Step2.3.1 Output Partial

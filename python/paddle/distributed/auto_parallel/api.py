@@ -857,17 +857,19 @@ def reshard(
     if paddle.framework.in_dynamic_mode():
         # TODO(LiYuRio): static logic here, reshard should be changed for dygraph logic
         # when reshard has been changed align dygraph logic, delete it.
-        sharding_specs = get_shard_spec(mesh, placements, dist_tensor.ndim)
-        dist_attr = DistAttr(mesh, sharding_specs)
-        partial_dims = []
-        for i, p in enumerate(placements):
-            if isinstance(p, dist.Partial):
-                partial_dims.append(i)
-            if p.is_shard() and p.get_split_factor() > 1:
-                dist_attr._set_split_factor(i, p.get_split_factor())
 
-        if len(partial_dims) > 0:
-            dist_attr._set_partial_dims(partial_dims)
+        dims_mapping, partial_status, split_factor = to_dim_map(
+            placements, dist_tensor.ndim, return_split_factor=True
+        )
+        dist_attr = core.TensorDistAttr()
+        dist_attr.dims_mapping_2d = dims_mapping
+        dist_attr.process_mesh = mesh
+        dist_attr.mark_annotated("process_mesh")
+        dist_attr.mark_annotated("dims_mapping")
+        if len(split_factor) > 0:
+            dist_attr._set_split_factor(split_factor)
+        if len(partial_status) > 0:
+            dist_attr._set_partial_dims(partial_status)
 
         alltoall_dim = _specific_alltoall_dim(dist_tensor, mesh, placements)
         if alltoall_dim is not None:

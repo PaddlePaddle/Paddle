@@ -121,14 +121,12 @@ def to_dim_map(placements, tensor_dims, return_split_factor=False):
     return output_list
 
 
+# TODO(lfw): delete it in future.
 def get_shard_spec(mesh, placements, tensor_dims):
     """to get shard_spec for construct DistAttr for static API."""
     dim_map, _ = to_dim_map(placements, tensor_dims)
     mesh_dim_names = mesh.dim_names
-    shard_spec = [[] for _ in range(len(dim_map))]
+    shard_spec = [None] * len(dim_map)
     for i, d in enumerate(dim_map):
-        if len(d) > 0:
-            for mesh_dim in d:
-                shard_spec[i].append(mesh_dim_names[mesh_dim])
-
-    return shard_spec
+        if d > -1:
+            shard_spec[i] = mesh_dim_names[d]
