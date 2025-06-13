@@ -2634,17 +2634,8 @@ TEST(BatchNorm, Ctor) {
   phi::distributed::DistMetaTensor bias = phi::distributed::DistMetaTensor(
       common::make_ddim({16}), one_dim_dist_attr);
   phi::distributed::SpmdInfo forward_info =
-      phi::distributed::BatchNormInferSpmd(x,
-                                           mean,
-                                           variance,
-                                           scale,
-                                           bias,
-                                           false,
-                                           0.9,
-                                           0.1,
-                                           "NCHW",
-                                           false,
-                                           false);
+      phi::distributed::BatchNormInferSpmdStatic(
+          x, mean, variance, scale, bias);
 
   EXPECT_EQ(forward_info.first.size(), 5UL);
   EXPECT_EQ(forward_info.second.size(), 6UL);

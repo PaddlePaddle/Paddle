@@ -524,6 +524,9 @@ PD_REGISTER_SPMD_RULE(
 PD_REGISTER_SPMD_RULE(mean_all,
                       PD_INFER_SPMD(phi::distributed::MeanAllInferSpmd),
                       PD_INFER_SPMD(phi::distributed::MeanAllGradInferSpmd));
+// batch_norm
+PD_REGISTER_SPMD_RULE(
+    batch_norm, PD_INFER_SPMD(phi::distributed::BatchNormInferSpmdStatic));
 
 // layer_norm
 PD_REGISTER_SPMD_RULE(

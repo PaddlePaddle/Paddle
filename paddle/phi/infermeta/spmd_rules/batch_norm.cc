@@ -32,7 +32,7 @@ SpmdInfo BatchNormInferSpmd(const DistMetaTensor& x,
                             const bool is_test,
                             const float momentum,
                             const float epsilon,
-                            const std::string data_format,
+                            const std::string& data_format,
                             const bool use_global_stats,
                             const bool trainable_statistics) {
   // Step0: verify input args based on batch_norm logic
@@ -108,7 +108,7 @@ SpmdInfo BatchNormInferSpmd(const DistMetaTensor& x,
   for (int i = 0; i < x_ndim; ++i) {
     x_axes[i] = alphabet[i];
   }
-  int c_index = data_format[1] == "C" ? 1 : x_ndim - 1;
+  int c_index = data_format[1] == 'C' ? 1 : x_ndim - 1;
   std::string mean_axes(1, x_axes[c_index]);
   std::string variance_axes(1, x_axes[c_index]);
   std::string scale_axes(1, x_axes[c_index]);
@@ -197,7 +197,13 @@ SpmdInfo BatchNormInferSpmd(const DistMetaTensor& x,
            saved_variance_dist_attr,
            reserve_space_dist_attr}};
 }
-
+SpmdInfo BatchNormInferSpmdStatic(const DistMetaTensor& x,
+                                  const DistMetaTensor& mean,
+                                  const DistMetaTensor& variance,
+                                  const DistMetaTensor& scale,
+                                  const DistMetaTensor& bias) {
+  return BatchNormInferSpmd(x, mean, variance, scale, bias);
+}
 SpmdInfo BatchNormGradInferSpmd(const DistMetaTensor& x,
                                 const DistMetaTensor& scale,
                                 const DistMetaTensor& bias,
@@ -209,7 +215,7 @@ SpmdInfo BatchNormGradInferSpmd(const DistMetaTensor& x,
                                 const DistMetaTensor& out_grad,
                                 const float momentum,
                                 const float epsilon,
-                                const std::string data_format,
+                                const std::string& data_format,
                                 const bool is_test,
                                 const bool use_global_stats,
                                 const bool trainable_statistics) {
@@ -318,7 +324,7 @@ SpmdInfo BatchNormGradInferSpmd(const DistMetaTensor& x,
     x_axes[i] = alphabet[i];
     out_grad_axes[i] = alphabet[i];
   }
-  int c_index = data_format[1] == "C" ? 1 : x_ndim - 1;
+  int c_index = data_format[1] == 'C' ? 1 : x_ndim - 1;
   std::string mean_out_axes(1, x_axes[c_index]);
   std::string variance_out_axes(1, x_axes[c_index]);
   std::string scale_axes(1, x_axes[c_index]);
@@ -352,32 +358,34 @@ SpmdInfo BatchNormGradInferSpmd(const DistMetaTensor& x,
   // infer input spmdinfo
   TensorDistAttr x_dist_attr_dst = CopyTensorDistAttrForOutput(x_dist_attr_src);
   x_dist_attr_dst.set_dims_mapping(x_dims_mapping);
-  TensorDistAttr mean_out_attr_dst =
+  TensorDistAttr mean_out_dist_attr_dst =
       CopyTensorDistAttrForOutput(x_dist_attr_src);
-  mean_out_attr_dst.set_dims_mapping(
+  mean_out_dist_attr_dst.set_dims_mapping(
       GetDimsMappingForAxes(mean_out_axes, axis_to_dim_map));
-  TensorDistAttr variance_out_attr_dst =
+  TensorDistAttr variance_out_dist_attr_dst =
       CopyTensorDistAttrForOutput(x_dist_attr_src);
-  variance_out_attr_dst.set_dims_mapping(
+  variance_out_dist_attr_dst.set_dims_mapping(
       GetDimsMappingForAxes(variance_out_axes, axis_to_dim_map));
-  TensorDistAttr scale_attr_dst = CopyTensorDistAttrForOutput(x_dist_attr_src);
-  scale_attr_dst.set_dims_mapping({-1});
-  TensorDistAttr bias_attr_dst = CopyTensorDistAttrForOutput(x_dist_attr_src);
-  bias_attr_dst.set_dims_mapping({-1});
-  TensorDistAttr saved_mean_attr_dst =
+  TensorDistAttr scale_dist_attr_dst =
       CopyTensorDistAttrForOutput(x_dist_attr_src);
-  saved_mean_attr_dst.set_dims_mapping(
+  scale_dist_attr_dst.set_dims_mapping({-1});
+  TensorDistAttr bias_dist_attr_dst =
+      CopyTensorDistAttrForOutput(x_dist_attr_src);
+  bias_dist_attr_dst.set_dims_mapping({-1});
+  TensorDistAttr saved_mean_dist_attr_dst =
+      CopyTensorDistAttrForOutput(x_dist_attr_src);
+  saved_mean_dist_attr_dst.set_dims_mapping(
       GetDimsMappingForAxes(saved_mean_axes, axis_to_dim_map));
-  TensorDistAttr saved_variance_attr_dst =
+  TensorDistAttr saved_variance_dist_attr_dst =
       CopyTensorDistAttrForOutput(x_dist_attr_src);
-  saved_variance_attr_dst.set_dims_mapping(
+  saved_variance_dist_attr_dst.set_dims_mapping(
       GetDimsMappingForAxes(saved_variance_axes, axis_to_dim_map));
-  TensorDistAttr reserve_space_attr_dst =
+  TensorDistAttr reserve_space_dist_attr_dst =
       CopyTensorDistAttrForOutput(x_dist_attr_src);
-  reserve_space_attr_dst.set_dims_mapping({-1});
-  TensorDistAttr out_grad_attr_dst =
+  reserve_space_dist_attr_dst.set_dims_mapping({-1});
+  TensorDistAttr out_grad_dist_attr_dst =
       CopyTensorDistAttrForOutput(x_dist_attr_src);
-  out_grad_attr_dst.set_dims_mapping(
+  out_grad_dist_attr_dst.set_dims_mapping(
       GetDimsMappingForAxes(out_grad_axes, axis_to_dim_map));
 
   // partial grad dim
@@ -405,14 +413,14 @@ SpmdInfo BatchNormGradInferSpmd(const DistMetaTensor& x,
   LOG_SPMD_OUTPUT(bias_grad_dist_attr);
 
   return {{x_dist_attr_dst,
-           scale_attr_dst,
-           bias_attr_dst,
-           mean_out_attr_dst,
-           variance_out_attr_dst,
-           saved_mean_attr_dst,
-           saved_variance_attr_dst,
-           reserve_space_attr_dst,
-           out_grad_attr_dst},
+           scale_dist_attr_dst,
+           bias_dist_attr_dst,
+           mean_out_dist_attr_dst,
+           variance_out_dist_attr_dst,
+           saved_mean_dist_attr_dst,
+           saved_variance_dist_attr_dst,
+           reserve_space_dist_attr_dst,
+           out_grad_dist_attr_dst},
           {x_grad_dist_attr, scale_grad_dist_attr, bias_grad_dist_attr}};
 }
 

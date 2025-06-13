@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/phi/infermeta/spmd_rules/argmax.h"
 #include "paddle/phi/infermeta/spmd_rules/argmin.h"
 #include "paddle/phi/infermeta/spmd_rules/argsort.h"
+#include "paddle/phi/infermeta/spmd_rules/batch_norm.h"
 #include "paddle/phi/infermeta/spmd_rules/c_embedding.h"
 #include "paddle/phi/infermeta/spmd_rules/c_softmax_with_cross_entropy.h"
 #include "paddle/phi/infermeta/spmd_rules/c_softmax_with_multi_label_cross_entropy.h"

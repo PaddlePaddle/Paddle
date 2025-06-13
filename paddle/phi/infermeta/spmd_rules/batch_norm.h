@@ -25,12 +25,18 @@ SpmdInfo BatchNormInferSpmd(const DistMetaTensor& x,
                             const DistMetaTensor& variance,
                             const DistMetaTensor& scale,
                             const DistMetaTensor& bias,
-                            const bool is_test,
-                            const float momentum,
-                            const float epsilon,
-                            const std::string data_format,
-                            const bool use_global_stats,
-                            const bool trainable_statistics);
+                            const bool is_test = false,
+                            const float momentum = 0.9,
+                            const float epsilon = 1e-05,
+                            const std::string& data_format = "NCHW",
+                            const bool use_global_stats = false,
+                            const bool trainable_statistics = false);
+SpmdInfo BatchNormInferSpmdStatic(const DistMetaTensor& x,
+                                  const DistMetaTensor& mean,
+                                  const DistMetaTensor& variance,
+                                  const DistMetaTensor& scale,
+                                  const DistMetaTensor& bias);
+
 SpmdInfo BatchNormGradInferSpmd(const DistMetaTensor& x,
                                 const DistMetaTensor& scale,
                                 const DistMetaTensor& bias,
@@ -40,12 +46,12 @@ SpmdInfo BatchNormGradInferSpmd(const DistMetaTensor& x,
                                 const DistMetaTensor& saved_variance,
                                 const DistMetaTensor& reserve_space,
                                 const DistMetaTensor& out_grad,
-                                const float momentum,
-                                const float epsilon,
-                                const std::string data_format,
-                                const bool is_test,
-                                const bool use_global_stats,
-                                const bool trainable_statistics);
+                                const float momentum = 0.9,
+                                const float epsilon = 1e-05,
+                                const std::string& data_format = "NCHW",
+                                const bool is_test = false,
+                                const bool use_global_stats = false,
+                                const bool trainable_statistics = false);
 
 }  // namespace distributed
 }  // namespace phi
