@@ -41,6 +41,7 @@ limitations under the License. */
 #include "paddle/phi/infermeta/spmd_rules/flatten.h"
 #include "paddle/phi/infermeta/spmd_rules/full_like.h"
 #include "paddle/phi/infermeta/spmd_rules/fused_dropout_add.h"
+#include "paddle/phi/infermeta/spmd_rules/fused_gemm_epilogue.h"
 #include "paddle/phi/infermeta/spmd_rules/fused_linear_param_grad_add.h"
 #include "paddle/phi/infermeta/spmd_rules/fused_rope.h"
 #include "paddle/phi/infermeta/spmd_rules/gather.h"
