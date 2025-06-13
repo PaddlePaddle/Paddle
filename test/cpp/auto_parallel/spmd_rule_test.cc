@@ -2660,32 +2660,6 @@ TEST(BatchNorm, Ctor) {
   check_dim_mapping(forward_info.second[4], {1});
   check_dim_mapping(forward_info.second[5], {-1});
 
-  phi::distributed::SpmdInfo forward_info_sync =
-      phi::distributed::SyncBatchNormInferSpmd(x,
-                                               mean,
-                                               variance,
-                                               scale,
-                                               bias,
-                                               false,
-                                               0.9,
-                                               0.1,
-                                               "NCHW",
-                                               false,
-                                               false);
-
-  EXPECT_EQ(forward_info_sync.first.size(), 5UL);
-  EXPECT_EQ(forward_info_sync.second.size(), 6UL);
-  check_dim_mapping(forward_info_sync.first[0], {-1, 1, -1, -1});
-  check_dim_mapping(forward_info_sync.first[1], {1});
-  check_dim_mapping(forward_info_sync.first[2], {1});
-  check_dim_mapping(forward_info_sync.first[3], {-1});
-  check_dim_mapping(forward_info_sync.first[4], {-1});
-  check_dim_mapping(forward_info_sync.second[0], {-1, 1, -1, -1});
-  check_dim_mapping(forward_info_sync.second[1], {1});
-  check_dim_mapping(forward_info_sync.second[2], {1});
-  check_dim_mapping(forward_info_sync.second[3], {1});
-  check_dim_mapping(forward_info_sync.second[4], {1});
-  check_dim_mapping(forward_info_sync.second[5], {-1});
   // test backward
   // data_format = NCHW
   // [0, 1, -1, -1],[-1],[-1],[-1],[-1],[-1],[-1],[-1],[0, 1, -1, -1]
@@ -2746,35 +2720,6 @@ TEST(BatchNorm, Ctor) {
   check_dim_mapping(backward_info.second[0], {-1, 1, -1, -1});
   check_dim_mapping(backward_info.second[1], {-1});
   check_dim_mapping(backward_info.second[2], {-1});
-
-  phi::distributed::SpmdInfo backward_info_sync =
-      phi::distributed::SyncBatchNormGradInferSpmd(x,
-                                                   scale,
-                                                   bias,
-                                                   saved_mean,
-                                                   saved_variance,
-                                                   reserve_space,
-                                                   out_grad,
-                                                   0.9,
-                                                   0.1,
-                                                   "NCHW",
-                                                   false,
-                                                   false,
-                                                   false);
-
-  EXPECT_EQ(backward_info_sync.first.size(), 7UL);
-  EXPECT_EQ(backward_info_sync.second.size(), 3UL);
-  check_dim_mapping(backward_info_sync.first[0], {-1, 1, -1, -1});
-  check_dim_mapping(backward_info_sync.first[1], {-1});
-  check_dim_mapping(backward_info_sync.first[2], {-1});
-  check_dim_mapping(backward_info_sync.first[3], {1});
-  check_dim_mapping(backward_info_sync.first[4], {1});
-  check_dim_mapping(backward_info_sync.first[5], {-1});
-  check_dim_mapping(backward_info_sync.first[6], {-1, 1, -1, -1});
-
-  check_dim_mapping(backward_info_sync.second[0], {-1, 1, -1, -1});
-  check_dim_mapping(backward_info_sync.second[1], {-1});
-  check_dim_mapping(backward_info_sync.second[2], {-1});
 }
 TEST(Topk, Ctor) {
   std::vector<int64_t> mesh_shape = {2, 2};
@@ -2785,7 +2730,7 @@ TEST(Topk, Ctor) {
 
   // test forward
   // axis = 1
-  // [0, -1, -1, 1],[-1],[-1],[-1],[-1] ->[-1 , -1, -1, 1],[1],[1],[1],[1],[1]
+  // [0, 1, -1] -> [0, -1, -1], [0, -1, -1]
   auto x_dist_attr = TensorDistAttr();
   x_dist_attr.set_process_mesh(process_mesh);
   x_dist_attr.set_dims_mapping({0, 1, -1});

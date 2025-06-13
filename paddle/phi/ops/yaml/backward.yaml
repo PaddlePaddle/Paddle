@@ -3437,7 +3437,6 @@
   infer_meta :
     func : GeneralTernaryGradInferMeta
     param : [x, scale, bias]
-    spmd_rule : SyncBatchNormGradInferSpmd
   kernel :
     func : sync_batch_norm_grad
     data_type : out_grad
