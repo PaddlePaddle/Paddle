@@ -55,7 +55,7 @@ void RepeatsTensor2IndexTensorFunctor<phi::GPUContext, RepeatsT>::operator()(
   dev_ctx.template Alloc<RepeatsT>(&prefix);
   auto *prefix_ptr = prefix.data<RepeatsT>();
 
-  cudaStream_t stream = dev_ctx.stream();
+  auto stream = dev_ctx.stream();
   phi::funcs::
       CubExclusiveScan<const RepeatsT *, RepeatsT *, cub::Sum, RepeatsT>(
           repeats_ptr,
