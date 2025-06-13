@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
@@ -295,9 +296,18 @@ class TestMaskedSelectOpBroadcast_ZeroSize2(TestMaskedSelectOp):
 
 class TestMaskedSelectOp_ZeroSize3(unittest.TestCase):
     def setUp(self):
-        paddle.disable_static()
+        self.place = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            self.place.append(paddle.CPUPlace())
+        if core.is_compiled_with_cuda():
+            self.place.append(paddle.CUDAPlace(0))
 
-    def test_out_0size(self):
+    def _test_out_0size(self, place):
+        paddle.disable_static(place)
         x = paddle.to_tensor([1, 2], dtype='float32')
         x.stop_gradient = False
         y = paddle.to_tensor([False, False], dtype='bool')
@@ -305,6 +315,11 @@ class TestMaskedSelectOp_ZeroSize3(unittest.TestCase):
         np.testing.assert_allclose(z.shape, [0])
         z.sum().backward()
         np.testing.assert_allclose(x.grad.numpy(), [0, 0])
+        paddle.enable_static()
+
+    def test_out_0size(self):
+        for place in self.place:
+            self._test_out_0size(place)
 
 
 if __name__ == '__main__':
