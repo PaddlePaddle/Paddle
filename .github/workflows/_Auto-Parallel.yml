@@ -35,7 +35,7 @@ jobs:
       github-token: ${{ secrets.GITHUB_TOKEN }}
 
   parallel-test:
-    name: Parallel-test
+    name: Parallel test
     needs: check-bypass
     if: ${{ inputs.can-skip != 'true'  && needs.check-bypass.outputs.can-skip != 'true' }}
     runs-on:
