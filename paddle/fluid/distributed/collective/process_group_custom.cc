@@ -215,7 +215,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllGather(
   return RunFnInXCCLEnv(
       [&](const phi::stream::Stream& stream) {
         auto comm_context = this->GetCommContext();
-        comm_context->AllGather(out_tensor, in_tensor_maybe_partial, stream);
+        comm_context->AllGather(
+            out_tensor, in_tensor_maybe_partial, stream.raw_stream());
       },
       in_tensor_maybe_partial,
       CommType::ALLGATHER,
@@ -239,7 +240,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllReduce(
             out_tensor,
             in_tensor,
             paddle::distributed::ToXCCLRedType(opts.reduce_op),
-            stream);
+            stream.raw_stream());
       },
       in_tensor,
       CommType::ALLREDUCE,
@@ -315,7 +316,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllToAll(
             rank_,
             size_,
             comm_context->GetXcclComm(),
-            stream);
+            stream.raw_stream());
       },
       in_tensor,
       CommType::ALLTOALL,
@@ -358,7 +359,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Broadcast(
       [&](const phi::stream::Stream& stream) {
         int root = opts.source_rank + opts.source_root;
         auto comm_context = this->GetCommContext();
-        comm_context->Broadcast(out_tensor, in_tensor, root, stream);
+        comm_context->Broadcast(
+            out_tensor, in_tensor, root, stream.raw_stream());
       },
       in_tensor,
       CommType::BROADCAST,
@@ -382,7 +384,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Reduce(
                              in_tensor,
                              paddle::distributed::ToXCCLRedType(opts.reduce_op),
                              opts.root_rank,
-                             stream);
+                             stream.raw_stream());
       },
       in_tensor,
       CommType::REDUCE,
@@ -406,7 +408,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::ReduceScatter(
             out_tensor,
             in_tensor,
             paddle::distributed::ToXCCLRedType(opts.reduce_op),
-            stream);
+            stream.raw_stream());
       },
       in_tensor,
       CommType::REDUCE_SCATTER,
@@ -441,7 +443,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Scatter(
           for (auto i = 0; i < size_; i++) {
             partial_tensor = GetPartialTensor(in_tensor, offset, numel);
             if (i != rank_) {
-              comm_context->Send(partial_tensor, numel, i, stream);
+              comm_context->Send(partial_tensor, numel, i, stream.raw_stream());
             } else {
               phi::DeviceManager::GetDeviceWithPlace(stream.GetPlace())
                   ->MemoryCopyD2D(out_tensor->data(),
@@ -452,7 +454,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Scatter(
             offset += numel;
           }
         } else {
-          comm_context->Recv(out_tensor, numel, opts.root_rank, stream);
+          comm_context->Recv(
+              out_tensor, numel, opts.root_rank, stream.raw_stream());
         }
       },
       in_tensor,
@@ -506,7 +509,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Gather(
       for (auto i = 0; i < size_; i++) {
         auto& gather_tensor = gather_tensors[i];
         if (i != rank_) {
-          comm_context->Recv(&gather_tensor, gather_tensor.numel(), i, stream);
+          comm_context->Recv(
+              &gather_tensor, gather_tensor.numel(), i, stream.raw_stream());
         } else {
           phi::DeviceManager::GetDeviceWithPlace(stream.GetPlace())
               ->MemoryCopyD2D(
@@ -518,7 +522,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Gather(
       }
     } else {
       // send to root
-      comm_context->Send(in_tensor, in_tensor.numel(), opts.root_rank, stream);
+      comm_context->Send(
+          in_tensor, in_tensor.numel(), opts.root_rank, stream.raw_stream());
     }
   };
   return RunFnInXCCLEnv(
@@ -542,7 +547,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Recv(
   return RunFnInXCCLEnv(
       [&](const phi::stream::Stream& stream) {
         auto comm_context = this->GetCommContext();
-        comm_context->Recv(tensor, tensor->numel(), src_rank, stream);
+        comm_context->Recv(
+            tensor, tensor->numel(), src_rank, stream.raw_stream());
       },
       *tensor,
       CommType::RECV,
@@ -569,7 +575,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Send(
         comm_context->Send(tensor_maybe_partial,
                            tensor_maybe_partial.numel(),
                            dst_rank,
-                           stream);
+                           stream.raw_stream());
       },
       tensor_maybe_partial,
       CommType::SEND,
@@ -915,7 +921,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllReduce(
             &output,
             input,
             paddle::distributed::ToXCCLRedType(opts.reduce_op),
-            stream);
+            stream.raw_stream());
       },
       CommType::ALLREDUCE);
 }
@@ -942,7 +948,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Broadcast(
         const auto root =
             opts.source_rank * in_tensors.size() + opts.source_root;
         auto comm_context = this->GetCommContext();
-        comm_context->Broadcast(&output, input, root, stream);
+        comm_context->Broadcast(&output, input, root, stream.raw_stream());
       },
       CommType::BROADCAST);
 }
@@ -988,7 +994,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Send(
           const phi::stream::Stream& stream,
           int dst_rank) {
         auto comm_context = this->GetCommContext();
-        comm_context->Send(input, input.numel(), dst_rank, stream);
+        comm_context->Send(input, input.numel(), dst_rank, stream.raw_stream());
       },
       dst_rank,
       CommType::SEND);
@@ -1008,7 +1014,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Recv(
           const phi::stream::Stream& stream,
           int src_rank) {
         auto comm_context = this->GetCommContext();
-        comm_context->Recv(&output, output.numel(), src_rank, stream);
+        comm_context->Recv(
+            &output, output.numel(), src_rank, stream.raw_stream());
       },
       src_rank,
       CommType::RECV);
@@ -1037,7 +1044,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllGather(
           const phi::ccl::CCLComm& comm,
           const phi::stream::Stream& stream) {
         auto comm_context = this->GetCommContext();
-        comm_context->AllGather(&output, input, stream);
+        comm_context->AllGather(&output, input, stream.raw_stream());
       },
       CommType::ALLGATHER);
 }
@@ -1089,7 +1096,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllToAll(
             rank_,
             size_,
             comm_context->GetXcclComm(),
-            stream);
+            stream.raw_stream());
       },
       CommType::ALLTOALL);
 }
@@ -1166,7 +1173,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllToAll(
                                         rank_,
                                         size_,
                                         comm_context->GetXcclComm(),
-                                        stream);
+                                        stream.raw_stream());
       },
       in_tensors,
       CommType::ALLTOALL,
@@ -1197,7 +1204,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Reduce(
                              input,
                              paddle::distributed::ToXCCLRedType(opts.reduce_op),
                              opts.root_rank,
-                             stream);
+                             stream.raw_stream());
       },
       CommType::REDUCE);
 }
@@ -1232,13 +1239,15 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Scatter(
           for (auto i = 0; i < size_; i++) {
             auto input_data = reinterpret_cast<phi::DenseTensor*>(
                 GetPointerByOffset(input.data(), offset, input.dtype()));
-            comm_context->Send(*input_data, count, i, stream);
+            comm_context->Send(*input_data, count, i, stream.raw_stream());
             offset += count;
           }
-          comm_context->Recv(&output, count, opts.root_rank, stream);
+          comm_context->Recv(
+              &output, count, opts.root_rank, stream.raw_stream());
           comm_context->GroupEnd();
         } else {
-          comm_context->Recv(&output, count, opts.root_rank, stream);
+          comm_context->Recv(
+              &output, count, opts.root_rank, stream.raw_stream());
         }
       },
       CommType::SCATTER);

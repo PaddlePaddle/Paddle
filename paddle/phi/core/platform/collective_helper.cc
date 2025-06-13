@@ -397,10 +397,12 @@ class XCCLCommImpl : public XCCLComm {
   void set_comm(phi::ccl::CCLComm comm) { comm_ = comm; }
   phi::ccl::CCLComm comm() const override { return comm_; }
 
-  std::shared_ptr<phi::stream::Stream> stream() const override {
+  phi::stream::stream_t stream() const override {
+    return dev_ctx_->GetStream()->raw_stream();
+  }
+  std::shared_ptr<phi::stream::Stream> GetStream() const override {
     return dev_ctx_->GetStream();
   }
-
   void set_dev_ctx(std::unique_ptr<phi::CustomContext>&& dev_ctx) {
     dev_ctx_ = std::move(dev_ctx);
   }

@@ -1,5 +1,4 @@
-# DeepEP of 2025.03.07, commit: 1fc40d50f3b199758b57b775e85c1d01080482d9
-
+# DeepEP of 2025.05.19, commit: d5ca4495c0c068bc617102841b9322d378fac8ea
 if(WITH_NVSHMEM)
   set(CMAKE_CUDA_FLAGS
       "${CMAKE_CUDA_FLAGS} -rdc=true --ptxas-options=--register-usage-level=10,--warn-on-local-memory-usage"

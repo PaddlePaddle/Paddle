@@ -234,5 +234,61 @@ class TestMultiplyInplaceError(unittest.TestCase):
         paddle.enable_static()
 
 
+class TestMultiplyApiZeroSize(TestMultiplyApi):
+
+    # only support the 0 size tensor
+    def _test_grad(self, x_data, y_data):
+        paddle.disable_static()
+        x = paddle.to_tensor(x_data, stop_gradient=False)
+        y = paddle.to_tensor(y_data, stop_gradient=False)
+        z = paddle.multiply(x, y)
+        loss = z.sum()
+        loss.backward()
+        np.testing.assert_allclose(
+            x.grad.numpy(), np.zeros(self.x_shape).astype('float32'), rtol=1e-05
+        )
+        np.testing.assert_allclose(
+            y.grad.numpy(), np.zeros(self.y_shape).astype('float32'), rtol=1e-05
+        )
+
+    def init_shapes(self):
+        self.x_shape = [0, 4]
+        self.y_shape = [0, 1]
+
+    def test_multiply(self):
+        np.random.seed(7)
+        self.init_shapes()
+
+        # test static computation graph
+        x_data = np.random.rand(*(self.x_shape)).astype('float32')
+        y_data = np.random.rand(*(self.y_shape)).astype('float32')
+        expected_res = np.multiply(x_data, y_data)
+        res = self._run_static_graph_case(x_data, y_data)
+        np.testing.assert_allclose(res, expected_res, rtol=1e-05)
+        # test dynamic computation graph
+        res = self._run_dynamic_graph_case(x_data, y_data)
+        np.testing.assert_allclose(res, expected_res, rtol=1e-05)
+        # test gradient
+        self._test_grad(x_data, y_data)
+
+
+class TestMultiplyApiZeroSize1(TestMultiplyApiZeroSize):
+    def init_shapes(self):
+        self.x_shape = [6, 0]
+        self.y_shape = [6, 0]
+
+
+class TestMultiplyApiZeroSize2(TestMultiplyApiZeroSize):
+    def init_shapes(self):
+        self.x_shape = [1, 8]
+        self.y_shape = [0, 1]
+
+
+class TestMultiplyApiZeroSize3(TestMultiplyApiZeroSize):
+    def init_shapes(self):
+        self.x_shape = [5, 0]
+        self.y_shape = [5, 1]
+
+
 if __name__ == '__main__':
     unittest.main()

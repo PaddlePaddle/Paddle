@@ -275,7 +275,64 @@ class TestImagAPI(TestRealAPI):
             self.places.append(paddle.CPUPlace())
         if paddle.is_compiled_with_cuda():
             self.places.append(paddle.CUDAPlace(0))
+        self.init_shape()
+
+    def init_shape(self):
         self._shape = [2, 20, 2, 3]
+
+
+class TestImagAPIZeroSize(TestImagAPI):
+    def init_shape(self):
+        self._shape = [2, 0, 2, 3]
+
+
+class TestImagAPIZeroSize1(TestImagAPI):
+    def init_shape(self):
+        self._shape = [2, 0, 0, 3]
+
+
+class TestImagAPIZeroSize2(TestImagAPI):
+    def init_shape(self):
+        self._shape = [0, 0, 0, 0]
+
+
+class TestImagAPIZeroDtype(unittest.TestCase):
+    def init_data(self):
+        self.shape = [8, 0, 8]
+        self.dtype = 'float32'
+        self.expact_dtype = paddle.float32
+
+    def test_dtype(self):
+        with paddle.base.dygraph.guard():
+            self.init_data()
+            real_part = paddle.rand(self.shape, dtype=self.dtype)
+            imag_part = paddle.rand(self.shape, dtype=self.dtype)
+            complex_matrix = paddle.complex(real_part, imag_part)
+            imag = paddle.imag(complex_matrix)
+            self.assertTrue(imag.dtype == self.expact_dtype)
+
+
+class TestImagAPIZeroDtype1(TestImagAPIZeroDtype):
+    def init_shape(self):
+        self.shape = [8, 0, 8]
+        self.dtype = 'float64'
+        self.expact_dtype = paddle.float64
+
+
+class TestRealAPIZeroDtype(unittest.TestCase):
+    def init_data(self):
+        self.shape = [8, 0, 8]
+        self.dtype = 'float32'
+        self.expact_dtype = paddle.float32
+
+    def test_dtype(self):
+        with paddle.base.dygraph.guard():
+            self.init_data()
+            real_part = paddle.rand(self.shape, dtype=self.dtype)
+            imag_part = paddle.rand(self.shape, dtype=self.dtype)
+            complex_matrix = paddle.complex(real_part, imag_part)
+            real = paddle.real(complex_matrix)
+            self.assertTrue(real.dtype == self.expact_dtype)
 
 
 if __name__ == "__main__":

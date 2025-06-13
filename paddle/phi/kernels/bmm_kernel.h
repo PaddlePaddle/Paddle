@@ -33,7 +33,7 @@ namespace phi {
  * @param  out      The product Tensor
  */
 template <typename T, typename Context>
-void BmmKernel(const Context& ctx,
+void BmmKernel(const Context& dev_ctx,
                const DenseTensor& x,
                const DenseTensor& y,
                DenseTensor* out);
