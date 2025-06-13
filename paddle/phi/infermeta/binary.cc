@@ -2992,7 +2992,12 @@ void MatmulInferMeta(const MetaTensor& x,
   } else {
     new_dims.reserve(ndims_x);
     for (size_t i = 0; i < ndims_x - 2; ++i) {
-      new_dims.push_back(std::max(dims_x[i], dims_y[i]));
+      // If one of them is 0, choose 0.
+      if (dims_x[i] == 0 || dims_y[i] == 0) {
+        new_dims.push_back(0);
+      } else {
+        new_dims.push_back(std::max(dims_x[i], dims_y[i]));
+      }
     }
   }
   if (!x_broadcasted) {
@@ -3177,9 +3182,10 @@ void MatrixRankTolInferMeta(const MetaTensor& x,
                     common::errors::InvalidArgument(
                         "The dims of input must be greater than 2"));
 
-  if (hermitian) {
+  if (hermitian && x.numel() != 0) {
     int64_t rows = static_cast<int64_t>(dim_x[dim_x.size() - 2]);
     int64_t cols = static_cast<int64_t>(dim_x[dim_x.size() - 1]);
+    // if x is 0 size tensor,ignore rows == cols check.
     PADDLE_ENFORCE_EQ(rows,
                       cols,
                       common::errors::InvalidArgument(
@@ -3187,7 +3193,13 @@ void MatrixRankTolInferMeta(const MetaTensor& x,
   }
   DDim dim_x_batch = detail::CheckAndGetOutputDim(dim_x);
   auto dim_tol = atol_tensor.dims();
-  if (dim_x_batch == dim_tol) {
+  if (x.numel() == 0) {
+    if (dim_x.size() == 2) {
+      out->set_dims(common::make_ddim({}));
+    } else {
+      out->set_dims(dim_x_batch);
+    }
+  } else if (dim_x_batch == dim_tol) {
     out->set_dims(dim_x_batch);
   } else {
     int max_dim = std::max(dim_x_batch.size(), dim_tol.size());

@@ -311,6 +311,21 @@ void LPPool2dKernel(const Context& dev_ctx,
                     const std::string& padding_algorithm,
                     const float norm_type,
                     DenseTensor* out) {
+  int dims = x.dims().size();
+  if (x.numel() == 0 && dims) {
+    bool need_zero = false;
+    for (int i = 1; i < dims; i++) {
+      if (x.dims()[i] == 0) {
+        need_zero = true;
+        break;
+      }
+    }
+    if (need_zero) {
+      phi::Full<T, Context>(
+          dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+      return;
+    }
+  }
   PoolRawKernel<T, Context>(dev_ctx,
                             x,
                             kernel_size.GetData(),

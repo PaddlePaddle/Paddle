@@ -26,6 +26,17 @@ limitations under the License. */
 #include "paddle/phi/kernels/impl/box_coder.h"
 
 namespace phi {
+namespace detail {
+// Used in MatrixRankAtolRtolInferMeta
+static DDim CheckAndGetOutputDim(const DDim& dim_x) {
+  auto x_vec = common::vectorize(dim_x);
+  if (x_vec.size() == 2) {
+    return common::make_ddim({});
+  }
+  x_vec.erase(x_vec.end() - 2, x_vec.end());
+  return common::make_ddim(x_vec);
+}
+}  // namespace detail
 
 void AccuracyInferMeta(const MetaTensor& out,
                        const MetaTensor& indice,
@@ -1493,6 +1504,18 @@ void MatrixRankAtolRtolInferMeta(const MetaTensor& x,
                                  const MetaTensor& rtol,
                                  bool hermitian,
                                  MetaTensor* out) {
+  if (x.numel() == 0) {
+    auto dim_x = x.dims();
+    PADDLE_ENFORCE_GE(dim_x.size(),
+                      2,
+                      common::errors::InvalidArgument(
+                          "The dims of input must be greater than 2"));
+
+    DDim dim_x_batch = detail::CheckAndGetOutputDim(dim_x);
+    out->set_dims(dim_x_batch);
+    out->share_lod(x);
+    return;
+  }
   MatrixRankTolInferMeta(x, atol, true, hermitian, out);
 }
 
