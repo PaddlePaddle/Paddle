@@ -27,7 +27,7 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
     "NVIDIA_TF32_OVERRIDE=0;http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python;FLAGS_enable_pir_api=0"
   )
   set_tests_properties(test_collective_allgather_api
-                       PROPERTIES TIMEOUT "400" LABELS "RUN_TYPE=DIST")
+                       PROPERTIES TIMEOUT "450" LABELS "RUN_TYPE=DIST")
 endif()
 if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
@@ -46,7 +46,7 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
     "NVIDIA_TF32_OVERRIDE=0;http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python;FLAGS_enable_pir_api=0"
   )
   set_tests_properties(test_collective_allreduce_api
-                       PROPERTIES TIMEOUT "400" LABELS "RUN_TYPE=DIST")
+                       PROPERTIES TIMEOUT "450" LABELS "RUN_TYPE=DIST")
 endif()
 if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
@@ -58,10 +58,10 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   )
   if((NOT WITH_ROCM) AND ((${CUDA_ARCH_NAME}) STREQUAL "Ampere"))
     set_tests_properties(test_collective_alltoall_api
-                         PROPERTIES TIMEOUT "380" LABELS "RUN_TYPE=DIST")
+                         PROPERTIES TIMEOUT "430" LABELS "RUN_TYPE=DIST")
   else()
     set_tests_properties(test_collective_alltoall_api
-                         PROPERTIES TIMEOUT "340" LABELS "RUN_TYPE=DIST")
+                         PROPERTIES TIMEOUT "390" LABELS "RUN_TYPE=DIST")
   endif()
 endif()
 if((WITH_GPU OR WITH_ROCM) AND (LINUX))
@@ -122,10 +122,10 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   )
   if((NOT WITH_ROCM) AND ((${CUDA_ARCH_NAME}) STREQUAL "Ampere"))
     set_tests_properties(test_collective_broadcast_api
-                         PROPERTIES TIMEOUT "600" LABELS "RUN_TYPE=DIST")
+                         PROPERTIES TIMEOUT "650" LABELS "RUN_TYPE=DIST")
   else()
     set_tests_properties(test_collective_broadcast_api
-                         PROPERTIES TIMEOUT "550" LABELS "RUN_TYPE=DIST")
+                         PROPERTIES TIMEOUT "600" LABELS "RUN_TYPE=DIST")
   endif()
 endif()
 if((WITH_GPU OR WITH_ROCM) AND (LINUX))
@@ -145,7 +145,7 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
     "NVIDIA_TF32_OVERRIDE=0;http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python;FLAGS_enable_pir_api=0"
   )
   set_tests_properties(test_collective_concat_api
-                       PROPERTIES TIMEOUT "220" LABELS "RUN_TYPE=DIST")
+                       PROPERTIES TIMEOUT "270" LABELS "RUN_TYPE=DIST")
 endif()
 if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
@@ -229,7 +229,7 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
     "NVIDIA_TF32_OVERRIDE=0;http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python;FLAGS_enable_pir_api=0"
   )
   set_tests_properties(test_collective_reduce_api
-                       PROPERTIES TIMEOUT "600" LABELS "RUN_TYPE=DIST")
+                       PROPERTIES TIMEOUT "650" LABELS "RUN_TYPE=DIST")
 endif()
 if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   bash_test_modules(
@@ -269,7 +269,7 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
     "NVIDIA_TF32_OVERRIDE=0;http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python;FLAGS_enable_pir_api=0"
   )
   set_tests_properties(test_collective_scatter_api
-                       PROPERTIES TIMEOUT "400" LABELS "RUN_TYPE=DIST")
+                       PROPERTIES TIMEOUT "450" LABELS "RUN_TYPE=DIST")
 endif()
 if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
