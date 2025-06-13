@@ -17,6 +17,9 @@
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/dense_tensor.h"
+#ifdef PADDLE_WITH_XPU
+#include "paddle/phi/backends/xpu/xpu_context.h"
+#endif
 
 namespace phi {
 namespace funcs {
@@ -42,6 +45,16 @@ template <typename RepeatsT>
 class RepeatsTensor2IndexTensorFunctor<phi::CPUContext, RepeatsT> {
  public:
   void operator()(const phi::CPUContext &ctx,
+                  const DenseTensor &repeats,
+                  DenseTensor *index);
+};
+#endif
+
+#ifdef PADDLE_WITH_XPU
+template <typename RepeatsT>
+class RepeatsTensor2IndexTensorFunctor<phi::XPUContext, RepeatsT> {
+ public:
+  void operator()(const phi::XPUContext &ctx,
                   const DenseTensor &repeats,
                   DenseTensor *index);
 };
