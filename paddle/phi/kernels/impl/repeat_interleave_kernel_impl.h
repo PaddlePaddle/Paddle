@@ -38,16 +38,25 @@ __global__ void index_select_cuda_kernel(const T* input,
                                          int64_t stride,
                                          int64_t size,
                                          int64_t delta) {
-  int64_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+  const int64_t idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (idx >= N) {
     return;
   }
+  const int64_t stride_size = stride * size;
 
-  int64_t pre_idx = idx / (stride * size);
-  int64_t dim_idx = idx % (stride * size) / stride;
-  IndexT src_dim_idx = index[dim_idx];
-  int64_t input_idx = idx + (delta * pre_idx + src_dim_idx - dim_idx) * stride;
-  output[idx] = input[input_idx];
+  // 使用 __ldg 读取全局内存可以提高缓存命中率
+  const int64_t pre_idx = idx / stride_size;
+  const int64_t remainder = idx % stride_size;
+  const int64_t dim_idx = remainder / stride;
+
+  // 使用 __ldg 读取 index 数组，可能提高缓存利用率
+  const IndexT src_dim_idx = __ldg(&index[dim_idx]);
+
+  // int64_t input_idx =       idx + (delta * pre_idx + src_dim_idx - dim_idx) *
+  // stride; output[idx] = input[input_idx];
+  const int64_t input_idx =
+      idx + ((delta * pre_idx) + (src_dim_idx - dim_idx)) * stride;
+  output[idx] = __ldg(&input[input_idx]);
 }
 #endif
 
@@ -154,11 +163,11 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& dev_ctx,
   if (x.numel() == 0) {
     // infer out shape
     if (index_type == phi::DataType::INT32) {
-      phi::funcs::RepeatsTensor2IndexTensor<Context, int>(
+      phi::funcs::RepeatsTensor2IndexTensorFunctor<Context, int>()(
           dev_ctx, repeats_tensor, &index);
 
     } else if (index_type == phi::DataType::INT64) {
-      phi::funcs::RepeatsTensor2IndexTensor<Context, int64_t>(
+      phi::funcs::RepeatsTensor2IndexTensorFunctor<Context, int64_t>()(
           dev_ctx, repeats_tensor, &index);
     }
     auto output_dim = common::vectorize(x.dims());
