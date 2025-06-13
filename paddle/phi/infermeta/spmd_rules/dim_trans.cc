@@ -237,16 +237,17 @@ std::vector<std::shared_ptr<DimTrans>> GetDimTrans(
     }
   } else if (type == DimTrans::Type::SPLIT) {
     std::shared_ptr<Split> split = std::dynamic_pointer_cast<Split>(dim_trans);
-    std::shared_ptr<DimTrans> dim = GetDimTrans(split->input(),
+    std::vector<std::shared_ptr<DimTrans>> dims = GetDimTrans(split->input(),
                                                 input_shape,
                                                 mesh_shape,
                                                 sharded_input_dims,
                                                 shardable,
-                                                seen_dims)[0];
+                                                seen_dims);
     int64_t ret_size = split->local_split_shape_value();
 
     if (split->split_id() == 0) {
-      if (dim != nullptr) {
+      if (dims.size() > 0) {
+        auto dim = dims[0];
         PADDLE_ENFORCE_EQ(dim->type(),
                           DimTrans::Type::INPUTDIM,
                           common::errors::InvalidArgument(
@@ -262,8 +263,8 @@ std::vector<std::shared_ptr<DimTrans>> GetDimTrans(
         for (int64_t imesh = 0; imesh < nmesh; imesh++) {
           (*shardable)[input_axis][imesh] = (ret_size % mesh_shape[imesh] == 0);
         }
+        ret_dim_trans.push_back(dim);
       }
-      ret_dim_trans.push_back(dim);
     }
   } else if (type == DimTrans::Type::SINGLETON) {
   }
