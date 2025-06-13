@@ -169,9 +169,6 @@ class TestParallelAPI:
         self.prepare_input_output = False
         if os.getenv("prepare_input_output") == "true":
             self.sequence_parallel = True
-        print(
-            f'sep_parallel:{self.sep_parallel} context_parallel:{self.context_parallel}'
-        )
         if self.sep > 1:
             assert (
                 self.context_parallel is True and self.sep_parallel is False
@@ -210,7 +207,6 @@ class TestParallelAPI:
             0, reduce(lambda x, y: x * y, mesh_shape, 1)
         ).reshape(mesh_shape)
         global_mesh = dist.ProcessMesh(mesh_arr, dim_names)
-        print(f'global_mesh:{global_mesh}')
         dist.auto_parallel.set_mesh(global_mesh)
 
     def check_mp(self, layer):
@@ -219,9 +215,6 @@ class TestParallelAPI:
         for name, sub_layer in layer.named_sublayers():
             if len(sub_layer.sublayers()) == 0:
                 if 'q_proj' in name or 'k_proj' in name or 'v_proj' in name:
-                    print(
-                        f'name:{name}, sub_layer.weight.placements:{sub_layer.weight.placements}'
-                    )
                     assert sub_layer.weight.placements == [
                         dist.Replicate(),
                         dist.Shard(1),

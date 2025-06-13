@@ -101,7 +101,6 @@ class TestContextParallel:
         loss_sharded = paddle.mean(output_sharded)
         loss_sharded.backward()
 
-        print(f'loss_ref:{loss_ref}, loss_sharded:{loss_sharded}')
         with paddle.no_grad():
             reorder_t = unshard_seq_load_balance(output_sharded, 1)
         np.testing.assert_allclose(

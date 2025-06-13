@@ -294,7 +294,6 @@ class TestLlamaAuto:
 
             tr_loss_step.backward()
             tr_loss_add += tr_loss_step
-            print(f'step {step} tr_loss_add: {tr_loss_add}')
 
             if int(dist.get_rank()) in [2, 3, 6, 7]:
                 assert tr_loss_step._is_initialized()

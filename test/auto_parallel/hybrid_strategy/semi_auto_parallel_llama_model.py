@@ -256,6 +256,7 @@ class LlamaAttentionAuto(nn.Layer):
                 key_states, get_mesh(self.ipp), placements
             )
             print(f'key_states after resharding:{key_states}')
+            print(f'value_states placements:{value_states.placements}')
             value_states = dist.reshard(
                 value_states, get_mesh(self.ipp), placements
             )
@@ -978,7 +979,6 @@ def split_sequence_dim(inputs):
         # split sequence dim
         placements[sep_index] = dist.Shard(1)
         split_input = dist.reshard(inputs, process_mesh, placements)
-        # print(f'split_input:{split_input}')
     return split_input
 
 

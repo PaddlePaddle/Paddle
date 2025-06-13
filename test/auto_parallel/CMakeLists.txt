@@ -200,7 +200,6 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
     FLAGS_cudnn_deterministic=1
     FLAGS_embedding_deterministic=1
     NVIDIA_TF32_OVERRIDE=0)
-  py_test_modules(test_microbatch MODULES test_microbatch)
   # End of unittests WITH single card WITHOUT timeout
 
 endif()

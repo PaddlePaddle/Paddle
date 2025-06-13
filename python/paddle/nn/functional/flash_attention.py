@@ -533,9 +533,6 @@ def flash_attention(
                     not training,
                     rng_name,
                 )
-                print(
-                    f'result_attention:{result_attention.shape}, query shape:{query.shape}'
-                )
                 return result_attention, (
                     result_softmax if return_softmax else None
                 )
