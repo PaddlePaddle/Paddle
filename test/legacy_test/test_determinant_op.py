@@ -363,7 +363,9 @@ class TestSlogDeterminantOp_ZeroSize(TestSlogDeterminantOp):
         np.random.seed(0)
         self.case = np.random.rand(0, 5, 5).astype('float64')
         self.inputs = {'Input': self.case}
-        self.target = np.array(np.linalg.slogdet(self.case))
+        s, l = np.linalg.slogdet(self.case)
+        self.sign = s
+        self.logdet = l
 
 
 class TestSlogDeterminantOp_ZeroSize2(TestSlogDeterminantOp):
@@ -371,7 +373,9 @@ class TestSlogDeterminantOp_ZeroSize2(TestSlogDeterminantOp):
         np.random.seed(0)
         self.case = np.random.rand(0, 0, 0).astype('float64')
         self.inputs = {'Input': self.case}
-        self.target = np.array(np.linalg.slogdet(self.case))
+        s, l = np.linalg.slogdet(self.case)
+        self.sign = s
+        self.logdet = l
 
 
 class TestSlogDeterminantAPI(unittest.TestCase):
