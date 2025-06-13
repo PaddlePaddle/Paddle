@@ -439,6 +439,9 @@ void EluKernel(const Context& dev_ctx,
                DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   dev_ctx.template Alloc<T>(out);
+  if (out->numel() == 0) {
+    return;
+  }
   // template<typename T> int elu(Context* ctx, const T* x, T* y, int64_t len,
   // float alpha = 1.0f, const float* max_x = nullptr, float* max_y = nullptr)
   int r = xpu::elu(dev_ctx.x_context(),

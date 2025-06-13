@@ -553,7 +553,7 @@ class FunctionGraph:
         log(3, f"call paddle.api : {func.__name__}", "\n")
 
         def message_handler(*args, **kwargs):
-            return f"Call paddle_api error: {func.__name__}, may be not a operator api?"
+            return f"Call paddle_api error: {func.__name__}"
 
         return inner_error_default_handler(self.symbolic_call, message_handler)(
             InferMetaCache(),
@@ -580,7 +580,7 @@ class FunctionGraph:
         log(3, f"call numpy.api : {func.__name__}", "\n")
 
         def message_handler(*args, **kwargs):
-            return f"Call numpy api error: {func.__name__}, may be not a operator api?"
+            return f"Call numpy api error: {func.__name__}"
 
         return inner_error_default_handler(self.symbolic_call, message_handler)(
             InferMetaCache(),
@@ -623,7 +623,7 @@ class FunctionGraph:
         """
 
         def message_handler(*args, **kwargs):
-            return f"Call tensor_method error: Tensor.{method_name}, may be not a valid operator api?"
+            return f"Call tensor_method error: Tensor.{method_name}"
 
         return inner_error_default_handler(self.symbolic_call, message_handler)(
             InferMetaCache(),
@@ -661,7 +661,7 @@ class FunctionGraph:
             )
 
         def message_handler(*args, **kwargs):
-            return f"Call paddle layer error: {layer}, may be not a valid paddle layer?"
+            return f"Call paddle layer error: {layer}"
 
         return inner_error_default_handler(self.symbolic_call, message_handler)(
             infer_meta_fn, compute_fn, layer, APIType.PADDLE, *args, **kwargs

@@ -38,6 +38,7 @@ limitations under the License. */
 #if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
 #include "paddle/phi/kernels/autotune/auto_tune_base.h"
 #endif
+#include "paddle/phi/kernels/full_kernel.h"
 
 COMMON_DECLARE_bool(cuda_core_int8_gemm);
 
@@ -2007,23 +2008,9 @@ void MatmulKernel(const Context& dev_ctx,
                   bool transpose_y,
                   DenseTensor* out) {
   if (x.numel() == 0 || y.numel() == 0) {
-    auto x_dims = x.dims();
-    auto y_dims = y.dims();
-    if (transpose_x) {
-      std::swap(x_dims[x_dims.size() - 1], x_dims[x_dims.size() - 2]);
-    }
-    if (transpose_y) {
-      std::swap(y_dims[y_dims.size() - 1], y_dims[y_dims.size() - 2]);
-    }
-    std::vector<std::int64_t> out_dims(x_dims.size() - 1 + y_dims.size() - 1);
-    for (int64_t i = 0; i < x_dims.size() - 1; ++i) {
-      out_dims[i] = x_dims[i];
-    }
-    for (int64_t i = 1; i < y_dims.size(); ++i) {
-      out_dims[x_dims.size() - 1 + i - 1] = y_dims[i];
-    }
-    out->Resize(phi::make_ddim(out_dims));
-    dev_ctx.template Alloc<T>(out);
+    // input shape [1, 1, 5, 0], [1, 1, 0, 5], result shape is [1, 1, 5, 5]
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
     return;
   }
   PADDLE_ENFORCE_GE(

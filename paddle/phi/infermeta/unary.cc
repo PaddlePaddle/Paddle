@@ -2534,9 +2534,10 @@ void MatrixRankInferMeta(const MetaTensor& x,
                     common::errors::InvalidArgument(
                         "The dims of input must be greater than 2."));
 
-  if (hermitian) {
+  if (hermitian && x.numel() != 0) {
     int rows = static_cast<int>(dim_x[dim_x.size() - 2]);
     int cols = static_cast<int>(dim_x[dim_x.size() - 1]);
+    // if x is 0-size Tensor,ignore rows == cols check.
     PADDLE_ENFORCE_EQ(rows,
                       cols,
                       common::errors::InvalidArgument(
@@ -2884,11 +2885,6 @@ void NanmedianInferMeta(const MetaTensor& x,
   }
   median_index->set_dtype(DataType::INT64);
   median_index->set_dims(make_ddim(median_dim));
-
-  if (x.numel() == 0) {
-    out->set_dims(make_ddim({}));
-    median_index->set_dims(make_ddim({}));
-  }
 }
 
 void NMSInferMeta(const MetaTensor& x, float threshold, MetaTensor* out) {
