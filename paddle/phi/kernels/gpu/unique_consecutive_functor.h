@@ -290,16 +290,20 @@ void IndexSelect(const Context& context,
 
   auto input_width = slice_size * input_dim[dim];
   auto output_width = slice_size * output_dim[dim];
+
   auto outer_nums = 1;
   for (auto i = 0; i < dim; i++) {
     outer_nums *= input_dim[i];
   }
+
   auto index_size = index.dims()[0];
+
   std::vector<InT> input_vec;
   std::vector<IndexT> index_vec;
   phi::TensorToVector(input, context, &input_vec);
   phi::TensorToVector(index, context, &index_vec);
   std::vector<InT> out_vec(output->numel());
+
   for (int i = 0; i < index_size; i++) {
     PADDLE_ENFORCE_GE(
         index_vec[i],
