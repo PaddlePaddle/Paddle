@@ -185,7 +185,7 @@ static inline void xpu_conv2d_grad(xpu::Context *ctx,
   int64_t H = input_shape[2];
   int64_t W = input_shape[3];
 
-  int r = xpu::conv2d_grad<T, T, T, int16_t>(dev_ctx,
+  int r = xpu::conv2d_grad<T, T, T, int16_t>(ctx,
                                              input_data,
                                              filter_data,
                                              output_grad_data,
