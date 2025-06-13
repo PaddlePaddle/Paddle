@@ -58,7 +58,9 @@ def run_paddle_moe(inputs, weight, scores, topk, bit):
     #     top_k_weights,
     #     top_k_indices,
     # ) = moe_expert_dispatch(inputs, scores, topk, False, topk_only_mode=True)
-    w1, scale1 = GetQuantizedWeights(expert , weight, quant_mode, group_size)
+    w1, scale1 = GetQuantizedWeights(expert , weight, quant_mode, -1)
+    
+    print("w1.shape: ", w1.shape)
     
     sorted_token_ids     = paddle.zeros([num_tokens * topk], dtype='int64')  # 全部指向专家 0
     expert_ids           = paddle.zeros([num_tokens * topk], dtype='int64')  # 全部专家 ID=0
@@ -154,8 +156,8 @@ res = []
 for num_experts, top_k, n, k in weight_shapes:
     # for bit in [4, 8]:
     for bit in [4,]:
-        for i in range(1):
-            num_tokens = 2 ** 4
+        for i in range(4):
+            num_tokens = 2 ** i
 
             paddle.seed(0)
 
