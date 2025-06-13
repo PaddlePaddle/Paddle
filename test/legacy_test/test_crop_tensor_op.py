@@ -160,6 +160,7 @@ class TestCase_ZeroSize(TestCropTensorOp):
 
 class TestCase_ZeroSize2(TestCropTensorOp):
     def initTestCase(self):
+        paddle.disable_static()
         self.__class__.exist_fp64_check_grad = True
         # x_grad return NAN
         self.x_shape = (2, 4, 5, 8, 8)
