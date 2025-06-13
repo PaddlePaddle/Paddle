@@ -25,7 +25,7 @@ namespace py = pybind11;
 namespace paddle {
 namespace platform {
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
-STREAM_TYPE get_current_stream(int device_id) {
+PY_STREAM_TYPE get_current_stream(int device_id) {
   auto dev_types = phi::DeviceManager::GetAllCustomDeviceTypes();
   if (device_id == -1) {
     device_id = phi::DeviceManager::GetDevice(dev_types[0]);
@@ -36,7 +36,7 @@ STREAM_TYPE get_current_stream(int device_id) {
   return custom_context->GetStream().get();
 }
 
-STREAM_TYPE set_current_stream(STREAM_TYPE stream) {
+PY_STREAM_TYPE set_current_stream(PY_STREAM_TYPE stream) {
   auto *original_stream = get_current_stream(stream->GetPlace().GetDeviceId());
   auto *custom_context = static_cast<phi::CustomContext *>(
       DeviceContextPool::Instance().Get(stream->GetPlace()));
@@ -45,7 +45,7 @@ STREAM_TYPE set_current_stream(STREAM_TYPE stream) {
 }
 
 #elif defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-STREAM_TYPE get_current_stream(int device_id) {
+PY_STREAM_TYPE get_current_stream(int device_id) {
   if (device_id == -1) {
     device_id = phi::backends::gpu::GetCurrentDeviceId();
   }
@@ -54,7 +54,7 @@ STREAM_TYPE get_current_stream(int device_id) {
   return gpu_context->cuda_stream();
 }
 
-STREAM_TYPE set_current_stream(STREAM_TYPE stream) {
+PY_STREAM_TYPE set_current_stream(PY_STREAM_TYPE stream) {
   auto *original_stream = get_current_stream(stream->place().GetDeviceId());
   auto *gpu_context = static_cast<phi::GPUContext *>(
       DeviceContextPool::Instance().Get(stream->place()));
@@ -73,7 +73,7 @@ void BindCudaStream(py::module *m_ptr) {
       [](int deviceId) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
     defined(PADDLE_WITH_CUSTOM_DEVICE)
-        return paddle::platform::get_current_stream(deviceId);
+        return platform::get_current_stream(deviceId);
 #else
         PADDLE_THROW(common::errors::Unavailable(
             "Paddle do not support _get_current_stream "
@@ -84,10 +84,10 @@ void BindCudaStream(py::module *m_ptr) {
 
   m.def(
       "_set_current_stream",
-      [](STREAM_TYPE stream) {
+      [](PY_STREAM_TYPE stream) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
     defined(PADDLE_WITH_CUSTOM_DEVICE)
-        return paddle::platform::set_current_stream(stream);
+        return platform::set_current_stream(stream);
 #else
         PADDLE_THROW(common::errors::Unavailable(
             "Paddle do not support _set_current_stream "
