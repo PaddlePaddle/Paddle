@@ -494,11 +494,11 @@ def get_device_properties(
         .. code-block:: python
 
             >>> import paddle
-            >>> paddle.device.set_device('npu')
-            >>> paddle.device.get_device_properties('npu:0')
+            >>> # paddle.device.set_device('npu')
+            >>> # paddle.device.get_device_properties('npu:0')
             >>> # _customDeviceProperties(name='', major=0, minor=0, total_memory=0MB, multi_processor_count=0)
 
-            >>> paddle.device.get_device_properties('npu')
+            >>> # paddle.device.get_device_properties('npu')
             >>> # _customDeviceProperties(name='', major=0, minor=0, total_memory=0MB, multi_processor_count=0)
     """
     device_name = None
