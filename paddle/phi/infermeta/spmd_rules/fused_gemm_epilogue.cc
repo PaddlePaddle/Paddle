@@ -122,7 +122,7 @@ void SetTensorDistAttrReplicated(TensorDistAttr* dist_attr, const int ndim) {
     }
     dist_attr->set_dims_mapping(replicated_dims_mapping);
   } else {
-    dist_attr->set_dims_mapping({-1});
+    dist_attr->set_dims_mapping(std::vector<int64_t>{-1});
   }
 }
 SpmdInfo FusedGemmEpilogueInferSpmdBase(const DistMetaTensor& x,
