@@ -24,7 +24,9 @@
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/strided_slice.h"
+#include "paddle/phi/kernels/impl/share_data_kernel_impl.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
+#include "paddle/phi/kernels/reshape_kernel.h"
 
 namespace phi {
 
@@ -279,8 +281,18 @@ void SetValueGradKernel(const Context& dev_ctx,
                              x_grad);
     }
     if (value_grad) {
-      if (value_grad->dims() == out_grad.dims()) {
-        Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, value_grad);
+      if (value_grad->numel() == out_grad.numel()) {
+        if (value_grad->dims() != out_grad.dims()) {
+          DenseTensor out_grad_temp;
+          ShareDataKernel<T, Context>(dev_ctx, out_grad, &out_grad_temp);
+          ReshapeKernel<Context>(dev_ctx,
+                                 out_grad_temp,
+                                 IntArray(vectorize(value_grad->dims())),
+                                 &out_grad_temp);
+          Copy(dev_ctx, out_grad_temp, dev_ctx.GetPlace(), false, value_grad);
+        } else {
+          Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, value_grad);
+        }
       } else {
         SumKernel<T, Context>(dev_ctx,
                               out_grad,
