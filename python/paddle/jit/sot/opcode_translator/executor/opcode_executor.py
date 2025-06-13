@@ -671,6 +671,7 @@ class OpcodeExecutorBase:
             assert opname != "CALL", "CALL should fused with PRECALL"
         with EventGuard(f"{opname}", event_level=2):
             try:
+                # breakpoint()
                 return getattr(self, opname)(instr)  # run single step.
             except SotCapturedException as e:
                 self.handle_exception(e)

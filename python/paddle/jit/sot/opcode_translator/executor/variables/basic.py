@@ -17,6 +17,7 @@ from __future__ import annotations
 import operator
 import sys
 import types
+from dataclasses import dataclass, is_dataclass
 from enum import Enum
 from functools import cached_property, reduce
 from typing import TYPE_CHECKING, Any
@@ -2395,4 +2396,134 @@ class EnumVariable(VariableBase):
         else:
             id = len(same_name_enums)
             same_name_enums.append(enum_class)
+        return id
+
+
+class DataClassInstanceVariable(VariableBase):
+    known_dataclasses = {}
+
+    def __init__(
+        self,
+        value,
+        graph: FunctionGraph,
+        tracker: Tracker,
+    ):
+        super().__init__(graph=graph, tracker=tracker)
+        self.dataclass_type = type(value)
+        var_dict = value.__dict__
+        var_dict.update(
+            {'__post_init__': getattr(value, '__post_init__', None)}
+        )
+        self.proxy = self.graph.side_effects.get_proxy(
+            MutableDictLikeData,
+            var_dict,
+            self.proxy_getter,
+            id_getter=lambda _: id(value),
+        )
+
+    @cached_property
+    def attr_proxy(self):
+        return self.proxy
+
+    def getattr(self, name: str, default=None):
+        return self.proxy.get(name)
+
+    def setattr(self, key: str, value):
+        self.proxy.set(key, value)
+        self.graph.side_effects.record_proxy_variable(self)
+        return ConstantVariable.wrap_literal(None, self.graph)
+
+    def proxy_getter(self, proxy: MutableDictLikeData, key: Any):
+        if key not in proxy.original_data:
+            return MutableDictLikeData.Empty()
+        return VariableFactory.from_value(
+            proxy.original_data[key],
+            self.graph,
+            tracker=GetAttrTracker(self, key, changed=proxy.has_changed),
+        )
+
+    def get_py_type(self):
+        return self.dataclass_type
+
+    def get_py_value(self, allow_tensor=False):
+        return self.dataclass_type(
+            **{
+                key: value.get_py_value(allow_tensor)
+                for key, value in self.proxy.get_all().items()
+            }
+        )
+
+    @check_faster_guard
+    def make_faster_guard(self) -> list[paddle.framework.core.GuardNodeBase]:
+        expr_node = self.tracker.guard_tree_expr_node()
+        type_guard = paddle.framework.core.GuardNode(
+            paddle.framework.core.TypeMatchGuard(self.get_py_type()),
+            [expr_node],
+        )
+        guard_variables = filter(
+            lambda var: not isinstance(var, MutableDictLikeData.Empty),
+            self.proxy.reproduce(0).values(),
+        )
+        return reduce(
+            operator.add,
+            [[type_guard]]
+            + [
+                item.make_faster_guard()
+                for item in guard_variables
+                if item.tracker.need_guard()
+            ],
+        )
+
+    @check_guard
+    def make_stringified_guard(self) -> list[StringifiedExpression]:
+        data_class = self.get_py_type()
+        class_name = data_class.__name__
+        data_class_id = DataClassInstanceVariable.get_class_id(data_class)
+        extern_var_name = f"__{class_name}_{data_class_id}"
+        frame_value_tracer = self.tracker.trace_value_from_frame()
+        type_guard = FasterStringifiedExpression(
+            f"isinstance({{}}, {extern_var_name})",
+            paddle.framework.core.InstanceCheckGuard(self.get_py_type()),
+            [frame_value_tracer],
+            union_free_vars(
+                frame_value_tracer.free_vars,
+                {f"{extern_var_name}": self.get_py_type()},
+            ),
+        )
+        guard_variables = filter(
+            lambda var: not isinstance(var, MutableDictLikeData.Empty),
+            self.proxy.reproduce(0).values(),
+        )
+        return reduce(
+            operator.add,
+            [[type_guard]]
+            + [
+                item.make_stringified_guard()
+                for item in guard_variables
+                if item.tracker.need_guard()
+            ],
+        )
+
+    @VariableFactory.register_from_value()
+    def from_value(value: dataclass, graph: FunctionGraph, tracker: Tracker):
+        if is_dataclass(value) and not isinstance(value, type):
+            var = DataClassInstanceVariable(value, graph=graph, tracker=tracker)
+            return var
+        return None
+
+    @classmethod
+    def get_class_id(cls, data_class: type[dataclass]):
+        class_name = data_class.__name__
+        DataClassInstanceVariable.known_dataclasses.setdefault(class_name, [])
+        same_name_dataclasses = DataClassInstanceVariable.known_dataclasses[
+            class_name
+        ]
+        id = 0
+        for i, cls in enumerate(same_name_dataclasses):
+            if data_class == cls:
+                id = i
+                break
+        else:
+            id = len(same_name_dataclasses)
+            same_name_dataclasses.append(data_class)
         return id
