@@ -139,20 +139,38 @@ Json GetAttrJson(const YAML::Node &action) {
     if (at_name == "paddle::dialect::IntArrayAttribute") {
       VLOG(8) << "Get IntArrayAttribute name.";
       json[ID] = dialect + paddle::dialect::IntArrayAttribute::name();
+      if (!action.IsScalar() && action["default"].IsDefined()) {
+        json[DATA] = action["default"].as<std::vector<int64_t>>();
+      }
     } else if (at_name == "paddle::dialect::ScalarAttribute") {
       VLOG(8) << "Get ScalarAttribute name.";
       json[ID] = dialect + paddle::dialect::ScalarAttribute::name();
-
+      if (!action.IsScalar() && action["default"].IsDefined()) {
+        json[DATA] = action["default"].as<std::string>();
+      }
     } else if (at_name == "paddle::dialect::DataTypeAttribute") {
       VLOG(8) << "Get DataTypeAttribute name.";
       json[ID] = dialect + paddle::dialect::DataTypeAttribute::name();
+      if (!action.IsScalar() && action["default"].IsDefined()) {
+        json[DATA] =
+            action["default"]
+                .as<std::string>();  // DataTypeAttribute patch use string to
+                                     // represent DataType See DataTypeToString
+                                     // for the mapping.
+      }
     } else if (at_name == "paddle::dialect::PlaceAttribute") {
       VLOG(8) << "Get PlaceAttribute name.";
       json[ID] = dialect + paddle::dialect::PlaceAttribute::name();
+      if (!action.IsScalar() && action["default"].IsDefined()) {
+        json[DATA] =
+            action["default"]
+                .as<std::string>();  // PlaceAttribute should be detailed
+      }
+    } else {
+      PADDLE_ENFORCE(false,
+                     common::errors::InvalidArgument(
+                         "Unknown Attr %s in the OpPatches.", at_name));
     }
-    PADDLE_ENFORCE(false,
-                   common::errors::InvalidArgument(
-                       "Unknown Attr %s in the OpPatches.", at_name));
   }
   return json;
 }
@@ -186,7 +204,10 @@ Json GetTypeJson(const YAML::Node &action) {
     type_name = action["type"].as<std::string>();
     VLOG(8) << "Get new Type name." << type_name;
   }
-  if (type_name == "pir::BoolType") {
+  if (type_name == "pir::UndefinedType") {
+    VLOG(8) << "Get UndefinedType name.";
+    json[ID] = builtin_dialect + pir::UndefinedType::name();
+  } else if (type_name == "pir::BoolType") {
     VLOG(8) << "Get BoolType name.";
     json[ID] = builtin_dialect + pir::BoolType::name();
   } else if (type_name == "pir::BFloat16Type") {
