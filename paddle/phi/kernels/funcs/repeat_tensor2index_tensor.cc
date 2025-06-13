@@ -86,5 +86,37 @@ void RepeatsTensor2IndexTensorFunctor<phi::CPUContext, RepeatsT>::operator()(
 template class RepeatsTensor2IndexTensorFunctor<phi::CPUContext, int>;
 template class RepeatsTensor2IndexTensorFunctor<phi::CPUContext, int64_t>;
 
+#ifdef PADDLE_WITH_XPU
+template <typename RepeatsT>
+void RepeatsTensor2IndexTensorFunctor<phi::XPUContext, RepeatsT>::operator()(
+    const phi::XPUContext &dev_ctx,
+    const DenseTensor &repeats,
+    DenseTensor *index) {
+  const RepeatsT *repeats_data = repeats.data<RepeatsT>();
+
+  int64_t index_size = 0;
+  for (int i = 0; i < repeats.dims()[0]; i++) {
+    PADDLE_ENFORCE_GE(repeats_data[i],
+                      0,
+                      common::errors::InvalidArgument(
+                          "repeats must grater or equal than 0, but got %d",
+                          repeats_data[i]));
+    index_size += repeats_data[i];
+  }
+  std::vector<RepeatsT> index_vec(index_size);
+  int offset = 0;
+  for (int i = 0; i < repeats.dims()[0]; i++) {
+    std::fill_n(index_vec.begin() + offset, repeats_data[i], i);
+    offset += repeats_data[i];
+  }
+  index->Resize(common::make_ddim({index_size}));
+
+  phi::TensorFromVector<RepeatsT>(index_vec, dev_ctx, index);
+}
+
+template class RepeatsTensor2IndexTensorFunctor<phi::XPUContext, int>;
+template class RepeatsTensor2IndexTensorFunctor<phi::XPUContext, int64_t>;
+#endif
+
 }  // namespace funcs
 }  // namespace phi

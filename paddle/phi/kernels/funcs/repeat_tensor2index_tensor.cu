@@ -91,10 +91,11 @@ void RepeatsTensor2IndexTensorFunctor<phi::GPUContext, RepeatsT>::operator()(
   }
 
   RepeatsT *index_ptr = index->data<RepeatsT>();
-  int block_size = 256;
-  int grid_size = (num_reps + block_size - 1) / block_size;
-  fill_array_kernel<<<grid_size, block_size, 0, stream>>>(
-      index_ptr, prefix_ptr, repeats_ptr, num_reps);
+  fill_array_kernel<<<(num_reps + PADDLE_CUDA_NUM_THREADS - 1) /
+                          PADDLE_CUDA_NUM_THREADS,
+                      PADDLE_CUDA_NUM_THREADS,
+                      0,
+                      stream>>>(index_ptr, prefix_ptr, repeats_ptr, num_reps);
 }
 
 template class RepeatsTensor2IndexTensorFunctor<phi::GPUContext, int>;
