@@ -139,6 +139,7 @@ else()
     set(FLASHATTN_CXX_FLAGS_DEBUG ${CMAKE_CXX_FLAGS_DEBUG})
   endif()
 
+  set(FLASHATTN_CMAKE_CUDA_FLAGS "-Xfatbin -compress-all")
   set(FA_NVCC_ARCH_BIN "")
   foreach(arch ${NVCC_ARCH_BIN})
     string(STRIP ${arch} arch)
@@ -267,6 +268,7 @@ else()
                -DCMAKE_INSTALL_PREFIX=${FLASHATTN_INSTALL_DIR}
                -DWITH_GPU=${WITH_GPU}
                -DCMAKE_CUDA_COMPILER=${CMAKE_CUDA_COMPILER}
+               -DCMAKE_CUDA_FLAGS=${FLASHATTN_CMAKE_CUDA_FLAGS}
                -DWITH_ROCM=${WITH_ROCM}
                -DWITH_OMP=${USE_OMP}
                -DBUILD_SHARED=ON

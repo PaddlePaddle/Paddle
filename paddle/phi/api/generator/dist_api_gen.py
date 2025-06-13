@@ -1612,7 +1612,7 @@ class DistForwardAPI(ForwardAPI):
     def get_shape_type(self, attr_info):
         shape_type = "int"
         for name, info in attr_info.items():
-            if "IntArray" in info[0]:
+            if "IntArray" in info[0] or "int64_t" in info[0]:
                 shape_type = "int64_t"
         return shape_type
 
@@ -1817,6 +1817,10 @@ class DistForwardAPI(ForwardAPI):
                     kernel_args_type_list.append(
                         self.attrs['attr_info'][arg][0]
                     )
+                    # calculate local_shape for expand_as
+                    # TODO(ooooo): bwd reuse this function to kernel, but actually the local_shape isn't same meaning.
+                    if self.infer_meta['local_shape'] is not None:
+                        arg = "local_shape"
                 input_args.append(arg)
             elif isinstance(arg, bool):
                 input_args.append(str(arg).lower())

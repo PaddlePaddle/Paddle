@@ -32,13 +32,16 @@ class TestElementwiseOp(OpTest):
         self.public_python_api = paddle.subtract
         self.prim_op_type = "prim"
         self.init_dtype()
+        self.init_inputs()
+        self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
+        self.if_check_prim()
+        self.if_enable_cinn()
+
+    def init_inputs(self):
         self.inputs = {
             'X': np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype(self.dtype),
             'Y': np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype(self.dtype),
         }
-        self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
-        self.if_check_prim()
-        self.if_enable_cinn()
 
     def init_dtype(self):
         self.dtype = np.float64
@@ -1149,6 +1152,38 @@ class TestFloatElementwiseSubop1(unittest.TestCase):
         )
 
         paddle.enable_static()
+
+
+class TestElementwiseOpZeroSize(TestElementwiseOp):
+    def init_inputs(self):
+        self.attrs = {'enable_check_eager_comp': False}
+        self.inputs = {
+            'X': np.random.uniform(0.1, 1, [2, 0, 4, 5]).astype(self.dtype),
+            'Y': np.random.uniform(0.1, 1, [2, 0, 4, 5]).astype(self.dtype),
+        }
+
+    def if_check_prim(self):
+        self.check_prim = False
+        self.check_prim_pir = False
+
+    def test_check_grad_normal(self):
+        pass
+
+
+class TestElementwiseOpZeroSize2(TestElementwiseOpZeroSize):
+    def init_inputs(self):
+        self.inputs = {
+            'X': np.random.uniform(0.1, 1, [2, 1, 4, 5]).astype(self.dtype),
+            'Y': np.random.uniform(0.1, 1, [2, 0, 4, 5]).astype(self.dtype),
+        }
+
+
+class TestElementwiseOpZeroSize3(TestElementwiseOpZeroSize):
+    def init_inputs(self):
+        self.inputs = {
+            'X': np.random.uniform(0.1, 1, [2, 1, 0, 5]).astype(self.dtype),
+            'Y': np.random.uniform(0.1, 1, [2, 1, 1, 5]).astype(self.dtype),
+        }
 
 
 class TestTensorSubAPIWarnings(unittest.TestCase):

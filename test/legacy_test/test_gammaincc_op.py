@@ -32,12 +32,15 @@ class TestGammainccOp(OpTest):
         self.op_type = 'gammaincc'
         self.python_api = paddle.gammaincc
         self.init_dtype_type()
-        self.shape = (3, 40)
+        self.init_shape()
         self.x = np.random.random(self.shape).astype(self.dtype) + 1
         self.y = np.random.random(self.shape).astype(self.dtype) + 1
         self.inputs = {'x': self.x, 'y': self.y}
         out = ref_gammaincc(self.x, self.y)
         self.outputs = {'out': out}
+
+    def init_shape(self):
+        self.shape = (3, 40)
 
     def init_dtype_type(self):
         self.dtype = np.float64
@@ -125,6 +128,18 @@ class TestGammainccOpApi(unittest.TestCase):
 class TestGammainccOpFp32Api(TestGammainccOpApi):
     def init_dtype_type(self):
         self.dtype = "float32"
+
+
+class TestGammainccOp_ZeroSize(TestGammainccOp):
+
+    def init_shape(self):
+        self.shape = (0, 40)
+
+
+class TestGammainccOp_ZeroSize2(TestGammainccOp):
+
+    def init_shape(self):
+        self.shape = (0, 0)
 
 
 if __name__ == "__main__":

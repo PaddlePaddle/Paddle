@@ -78,15 +78,33 @@ bool AllcloseOpInferSymbolicShape(
       infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
   const auto y_shape =
       infer_context->GetShapeOrDataForValue(op->operand_source(1)).shape();
-  PADDLE_ENFORCE_EQ(x_shape.size(),
-                    y_shape.size(),
-                    common::errors::PreconditionNotMet(
-                        "Input(X) and Input(Y) must have the same "
-                        "dimension size. but got %d vs %d",
-                        x_shape.size(),
-                        y_shape.size()));
+
+  bool size_0 = false;
   for (size_t i = 0; i < x_shape.size(); ++i) {
-    infer_context->AddEqualCstr(x_shape[i], y_shape[i]);
+    if (x_shape[i] == 0) {
+      size_0 = true;
+      break;
+    }
+  }
+  if (!size_0) {
+    for (size_t i = 0; i < y_shape.size(); ++i) {
+      if (y_shape[i] == 0) {
+        size_0 = true;
+        break;
+      }
+    }
+  }
+  if (!size_0) {
+    PADDLE_ENFORCE_EQ(x_shape.size(),
+                      y_shape.size(),
+                      common::errors::PreconditionNotMet(
+                          "Input(X) and Input(Y) must have the same "
+                          "dimension size. but got %d vs %d",
+                          x_shape.size(),
+                          y_shape.size()));
+    for (size_t i = 0; i < x_shape.size(); ++i) {
+      infer_context->AddEqualCstr(x_shape[i], y_shape[i]);
+    }
   }
 
   infer_context->SetShapeOrDataForValue(
@@ -777,8 +795,8 @@ bool SparseWeightEmbeddingOpInferSymbolicShape(
 
 bool ExpandAsOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  std::vector<int> target_shape =
-      paddle::dialect::details::GetVectorAttr<int>(op, "target_shape");
+  std::vector<int64_t> target_shape =
+      paddle::dialect::details::GetVectorAttr<int64_t>(op, "target_shape");
   const std::vector<symbol::DimExpr> &output_dims = [&] {
     const auto &input_shape_or_data =
         infer_context->GetShapeOrDataForValue(op->operand_source(1));
@@ -787,7 +805,7 @@ bool ExpandAsOpInferSymbolicShape(
     }
     std::vector<symbol::DimExpr> output_dims;
     output_dims.reserve(target_shape.size());
-    for (int shape : target_shape) {
+    for (int64_t shape : target_shape) {
       output_dims.push_back(shape);
     }
     return output_dims;
@@ -1343,7 +1361,16 @@ bool MatrixRankTolOpInferSymbolicShape(
                     common::errors::InvalidArgument(
                         "The dims of input must be greater than 2"));
   bool hermitian = GetBoolAttr(op, "hermitian");
-  if (hermitian) {
+  const auto &GetProduct = [&](const auto &dim_exprs) {
+    symbol::DimExpr product{1};
+    for (const auto &dim_expr : dim_exprs) {
+      product = product * dim_expr;
+    }
+    return product;
+  };
+  const auto &x_numel = GetProduct(x_shape);
+
+  if (hermitian && x_numel != 0) {
     infer_context->AddEqualCstr(x_shape[x_rank - 2], x_shape[x_rank - 1]);
   }
   std::vector<symbol::DimExpr> x_shape_batch = [&] {
@@ -1367,6 +1394,12 @@ bool MatrixRankTolOpInferSymbolicShape(
 
   const std::vector<symbol::DimExpr> shapes = [&] {
     std::vector<symbol::DimExpr> shapes;
+    if (x_numel == 0) {
+      if (x_rank == 2)
+        return shapes;  // return empty shape
+      else
+        return x_shape_batch;  // return x_shape[:-2]
+    }
     symbol::DimExprBuilder builder;
     for (size_t i = 0; i < x_shape_batch.size(); i++) {
       if (x_shape_batch[i] == tol_shape[i]) {

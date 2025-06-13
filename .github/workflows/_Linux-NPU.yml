@@ -88,7 +88,7 @@ jobs:
           FLAGS_use_stride_kernel: 0
           FLAGS_allocator_strategy: naive_best_fit
           FLAGS_npu_storage_format: 0
-          TEST_IMPORTANT: "ON"
+          TEST_IMPORTANT: "OFF"
           PADDLE_BRANCH: ${{ github.event.pull_request.base.ref }}
           home_dir: ${{ github.workspace }}/../../../..
         run: |

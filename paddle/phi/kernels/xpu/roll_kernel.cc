@@ -26,6 +26,10 @@ void RollKernel(const Context& dev_ctx,
                 DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   auto shifts_data = shifts.GetData();
+  if (out && out->numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   dev_ctx.template Alloc<T>(out);
   DDim input_dim = x.dims();
   std::vector<int64_t> xshape;

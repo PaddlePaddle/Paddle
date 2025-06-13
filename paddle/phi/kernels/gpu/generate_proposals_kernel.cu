@@ -41,23 +41,23 @@ int const kThreadsPerBlock = sizeof(uint64_t) * 8;
 static const double kBBoxClipDefault = std::log(1000.0 / 16.0);
 
 template <typename T>
-static void SortDescending(const phi::GPUContext &ctx,
+static void SortDescending(const phi::GPUContext &dev_ctx,
                            const DenseTensor &value,
                            DenseTensor *value_out,
                            DenseTensor *index_out) {
   int num = static_cast<int>(value.numel());
   DenseTensor index_in_t;
   index_in_t.Resize(common::make_ddim({num}));
-  int *idx_in = ctx.template Alloc<int>(&index_in_t);
-  phi::funcs::ForRange<phi::GPUContext> for_range(ctx, num);
+  int *idx_in = dev_ctx.template Alloc<int>(&index_in_t);
+  phi::funcs::ForRange<phi::GPUContext> for_range(dev_ctx, num);
   for_range(funcs::RangeInitFunctor{0, 1, idx_in});
 
   index_out->Resize(common::make_ddim({num}));
-  int *idx_out = ctx.template Alloc<int>(index_out);
+  int *idx_out = dev_ctx.template Alloc<int>(index_out);
 
   const T *keys_in = value.data<T>();
   value_out->Resize(common::make_ddim({num}));
-  T *keys_out = ctx.template Alloc<T>(value_out);
+  T *keys_out = dev_ctx.template Alloc<T>(value_out);
 
   // Determine temporary device storage requirements
   size_t temp_storage_bytes = 0;
@@ -70,9 +70,9 @@ static void SortDescending(const phi::GPUContext &ctx,
                                                     num,
                                                     0,
                                                     sizeof(T) * 8,
-                                                    ctx.stream());
+                                                    dev_ctx.stream());
   // Allocate temporary storage
-  auto place = ctx.GetPlace();
+  auto place = dev_ctx.GetPlace();
   auto d_temp_storage = phi::memory_utils::Alloc(place, temp_storage_bytes);
 
   // Run sorting operation
@@ -85,7 +85,7 @@ static void SortDescending(const phi::GPUContext &ctx,
                                                     num,
                                                     0,
                                                     sizeof(T) * 8,
-                                                    ctx.stream());
+                                                    dev_ctx.stream());
 }
 
 template <typename T>
@@ -284,7 +284,7 @@ static __global__ void NMSKernel(const int n_boxes,
 }
 
 template <typename T>
-static void NMS(const phi::GPUContext &ctx,
+static void NMS(const phi::GPUContext &dev_ctx,
                 const DenseTensor &proposals,
                 const DenseTensor &sorted_indices,
                 const T nms_threshold,
@@ -297,14 +297,14 @@ static void NMS(const phi::GPUContext &ctx,
   dim3 threads(kThreadsPerBlock);
 
   const T *boxes = proposals.data<T>();
-  auto place = ctx.GetPlace();
+  auto place = dev_ctx.GetPlace();
   auto mask_ptr = phi::memory_utils::Alloc(
       place,
       boxes_num * col_blocks * sizeof(uint64_t),
-      phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
+      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
   uint64_t *mask_dev = reinterpret_cast<uint64_t *>(mask_ptr->ptr());
 
-  NMSKernel<<<blocks, threads, 0, ctx.stream()>>>(
+  NMSKernel<<<blocks, threads, 0, dev_ctx.stream()>>>(
       boxes_num, nms_threshold, boxes, mask_dev, pixel_offset);
 
   std::vector<uint64_t> remv(col_blocks);
@@ -316,7 +316,7 @@ static void NMS(const phi::GPUContext &ctx,
                      place,
                      mask_dev,
                      boxes_num * col_blocks * sizeof(uint64_t),
-                     ctx.stream());
+                     dev_ctx.stream());
 
   std::vector<int> keep_vec;
   int num_to_keep = 0;
@@ -334,19 +334,19 @@ static void NMS(const phi::GPUContext &ctx,
     }
   }
   keep_out->Resize(common::make_ddim({num_to_keep}));
-  int *keep = ctx.template Alloc<int>(keep_out);
+  int *keep = dev_ctx.template Alloc<int>(keep_out);
   memory_utils::Copy(place,
                      keep,
                      CPUPlace(),
                      keep_vec.data(),
                      sizeof(int) * num_to_keep,
-                     ctx.stream());
-  ctx.Wait();
+                     dev_ctx.stream());
+  dev_ctx.Wait();
 }
 
 template <typename T>
 static std::pair<DenseTensor, DenseTensor> ProposalForOneImage(
-    const phi::GPUContext &ctx,
+    const phi::GPUContext &dev_ctx,
     const DenseTensor &im_shape,
     const DenseTensor &anchors,
     const DenseTensor &variances,
@@ -360,7 +360,7 @@ static std::pair<DenseTensor, DenseTensor> ProposalForOneImage(
     bool pixel_offset) {
   // 1. pre nms
   DenseTensor scores_sort, index_sort;
-  SortDescending<T>(ctx, scores, &scores_sort, &index_sort);
+  SortDescending<T>(dev_ctx, scores, &scores_sort, &index_sort);
   int num = scores.numel();
   int pre_nms_num = (pre_nms_top_n <= 0 || pre_nms_top_n > num) ? scores.numel()
                                                                 : pre_nms_top_n;
@@ -370,10 +370,10 @@ static std::pair<DenseTensor, DenseTensor> ProposalForOneImage(
   // 2. box decode and clipping
   DenseTensor proposals;
   proposals.Resize(common::make_ddim({pre_nms_num, 4}));
-  ctx.template Alloc<T>(&proposals);
+  dev_ctx.template Alloc<T>(&proposals);
 
   {
-    phi::funcs::ForRange<phi::GPUContext> for_range(ctx, pre_nms_num);
+    phi::funcs::ForRange<phi::GPUContext> for_range(dev_ctx, pre_nms_num);
     for_range(BoxDecodeAndClipFunctor<T>{anchors.data<T>(),
                                          bbox_deltas.data<T>(),
                                          variances.data<T>(),
@@ -386,11 +386,11 @@ static std::pair<DenseTensor, DenseTensor> ProposalForOneImage(
   // 3. filter
   DenseTensor keep_index, keep_num_t;
   keep_index.Resize(common::make_ddim({pre_nms_num}));
-  ctx.template Alloc<int>(&keep_index);
+  dev_ctx.template Alloc<int>(&keep_index);
   keep_num_t.Resize(common::make_ddim({1}));
-  ctx.template Alloc<int>(&keep_num_t);
+  dev_ctx.template Alloc<int>(&keep_num_t);
   min_size = std::max(min_size, 1.0f);
-  auto stream = ctx.stream();
+  auto stream = dev_ctx.stream();
   FilterBBoxes<T, 512><<<1, 512, 0, stream>>>(proposals.data<T>(),
                                               im_shape.data<T>(),
                                               min_size,
@@ -400,14 +400,14 @@ static std::pair<DenseTensor, DenseTensor> ProposalForOneImage(
                                               false,
                                               pixel_offset);
   int keep_num;
-  const auto gpu_place = ctx.GetPlace();
+  const auto gpu_place = dev_ctx.GetPlace();
   memory_utils::Copy(CPUPlace(),
                      &keep_num,
                      gpu_place,
                      keep_num_t.data<int>(),
                      sizeof(int),
-                     ctx.stream());
-  ctx.Wait();
+                     dev_ctx.stream());
+  dev_ctx.Wait();
   keep_index.Resize(common::make_ddim({keep_num}));
 
   DenseTensor scores_filter, proposals_filter;
@@ -415,19 +415,19 @@ static std::pair<DenseTensor, DenseTensor> ProposalForOneImage(
   if (keep_num == 0) {
     phi::funcs::SetConstant<phi::GPUContext, T> set_zero;
     proposals_filter.Resize(common::make_ddim({1, 4}));
-    ctx.template Alloc<T>(&proposals_filter);
+    dev_ctx.template Alloc<T>(&proposals_filter);
     scores_filter.Resize(common::make_ddim({1, 1}));
-    ctx.template Alloc<T>(&scores_filter);
-    set_zero(ctx, &proposals_filter, static_cast<T>(0));
-    set_zero(ctx, &scores_filter, static_cast<T>(0));
+    dev_ctx.template Alloc<T>(&scores_filter);
+    set_zero(dev_ctx, &proposals_filter, static_cast<T>(0));
+    set_zero(dev_ctx, &scores_filter, static_cast<T>(0));
     return std::make_pair(proposals_filter, scores_filter);
   }
   proposals_filter.Resize(common::make_ddim({keep_num, 4}));
-  ctx.template Alloc<T>(&proposals_filter);
+  dev_ctx.template Alloc<T>(&proposals_filter);
   scores_filter.Resize(common::make_ddim({keep_num, 1}));
-  ctx.template Alloc<T>(&scores_filter);
-  phi::funcs::GPUGather<T>(ctx, proposals, keep_index, &proposals_filter);
-  phi::funcs::GPUGather<T>(ctx, scores_sort, keep_index, &scores_filter);
+  dev_ctx.template Alloc<T>(&scores_filter);
+  phi::funcs::GPUGather<T>(dev_ctx, proposals, keep_index, &proposals_filter);
+  phi::funcs::GPUGather<T>(dev_ctx, scores_sort, keep_index, &scores_filter);
 
   if (nms_thresh <= 0) {
     return std::make_pair(proposals_filter, scores_filter);
@@ -435,25 +435,29 @@ static std::pair<DenseTensor, DenseTensor> ProposalForOneImage(
 
   // 4. nms
   DenseTensor keep_nms;
-  NMS<T>(
-      ctx, proposals_filter, keep_index, nms_thresh, &keep_nms, pixel_offset);
+  NMS<T>(dev_ctx,
+         proposals_filter,
+         keep_index,
+         nms_thresh,
+         &keep_nms,
+         pixel_offset);
   if (post_nms_top_n > 0 && post_nms_top_n < keep_nms.numel()) {
     keep_nms.Resize(common::make_ddim({post_nms_top_n}));
   }
 
   DenseTensor scores_nms, proposals_nms;
   proposals_nms.Resize(common::make_ddim({keep_nms.numel(), 4}));
-  ctx.template Alloc<T>(&proposals_nms);
+  dev_ctx.template Alloc<T>(&proposals_nms);
   scores_nms.Resize(common::make_ddim({keep_nms.numel(), 1}));
-  ctx.template Alloc<T>(&scores_nms);
-  phi::funcs::GPUGather<T>(ctx, proposals_filter, keep_nms, &proposals_nms);
-  phi::funcs::GPUGather<T>(ctx, scores_filter, keep_nms, &scores_nms);
+  dev_ctx.template Alloc<T>(&scores_nms);
+  phi::funcs::GPUGather<T>(dev_ctx, proposals_filter, keep_nms, &proposals_nms);
+  phi::funcs::GPUGather<T>(dev_ctx, scores_filter, keep_nms, &scores_nms);
 
   return std::make_pair(proposals_nms, scores_nms);
 }
 
 template <typename T, typename Context>
-void GenerateProposalsKernel(const Context &ctx,
+void GenerateProposalsKernel(const Context &dev_ctx,
                              const DenseTensor &scores,
                              const DenseTensor &bbox_deltas,
                              const DenseTensor &im_shape,
@@ -488,14 +492,14 @@ void GenerateProposalsKernel(const Context &ctx,
 
   DenseTensor bbox_deltas_swap, scores_swap;
   bbox_deltas_swap.Resize(common::make_ddim({num, h_bbox, w_bbox, c_bbox}));
-  ctx.template Alloc<T>(&bbox_deltas_swap);
+  dev_ctx.template Alloc<T>(&bbox_deltas_swap);
   scores_swap.Resize(common::make_ddim({num, h_score, w_score, c_score}));
-  ctx.template Alloc<T>(&scores_swap);
+  dev_ctx.template Alloc<T>(&scores_swap);
 
   phi::funcs::Transpose<phi::GPUContext, T, 4> trans;
   std::vector<int> axis = {0, 2, 3, 1};
-  trans(ctx, bbox_deltas, &bbox_deltas_swap, axis);
-  trans(ctx, scores, &scores_swap, axis);
+  trans(dev_ctx, bbox_deltas, &bbox_deltas_swap, axis);
+  trans(dev_ctx, scores, &scores_swap, axis);
 
   DenseTensor tmp_anchors = anchors;
   DenseTensor tmp_variances = variances;
@@ -503,14 +507,14 @@ void GenerateProposalsKernel(const Context &ctx,
   tmp_variances.Resize(common::make_ddim({tmp_variances.numel() / 4, 4}));
 
   rpn_rois->Resize(common::make_ddim({bbox_deltas.numel() / 4, 4}));
-  ctx.template Alloc<T>(rpn_rois);
+  dev_ctx.template Alloc<T>(rpn_rois);
   rpn_roi_probs->Resize(common::make_ddim({scores.numel(), 1}));
-  ctx.template Alloc<T>(rpn_roi_probs);
+  dev_ctx.template Alloc<T>(rpn_roi_probs);
 
   T *rpn_rois_data = rpn_rois->data<T>();
   T *rpn_roi_probs_data = rpn_roi_probs->data<T>();
 
-  auto place = ctx.GetPlace();
+  auto place = dev_ctx.GetPlace();
   auto cpu_place = phi::CPUPlace();
 
   int64_t num_proposals = 0;
@@ -527,7 +531,7 @@ void GenerateProposalsKernel(const Context &ctx,
     scores_slice.Resize(common::make_ddim({h_score * w_score * c_score, 1}));
 
     std::pair<DenseTensor, DenseTensor> box_score_pair =
-        ProposalForOneImage<T>(ctx,
+        ProposalForOneImage<T>(dev_ctx,
                                im_shape_slice,
                                tmp_anchors,
                                tmp_variances,
@@ -548,28 +552,28 @@ void GenerateProposalsKernel(const Context &ctx,
                        place,
                        proposals.data<T>(),
                        sizeof(T) * proposals.numel(),
-                       ctx.stream());
+                       dev_ctx.stream());
     memory_utils::Copy(place,
                        rpn_roi_probs_data + num_proposals,
                        place,
                        nscores.data<T>(),
                        sizeof(T) * nscores.numel(),
-                       ctx.stream());
-    ctx.Wait();
+                       dev_ctx.stream());
+    dev_ctx.Wait();
     num_proposals += proposals.dims()[0];
     offset.emplace_back(num_proposals);
     tmp_num.push_back(proposals.dims()[0]);
   }
   if (rpn_rois_num != nullptr) {
     rpn_rois_num->Resize(common::make_ddim({num}));
-    ctx.template Alloc<int>(rpn_rois_num);
+    dev_ctx.template Alloc<int>(rpn_rois_num);
     int *num_data = rpn_rois_num->data<int>();
     memory_utils::Copy(place,
                        num_data,
                        cpu_place,
                        &tmp_num[0],
                        sizeof(int) * num,
-                       ctx.stream());
+                       dev_ctx.stream());
     rpn_rois_num->Resize(common::make_ddim({num}));
   }
   phi::LegacyLoD lod;

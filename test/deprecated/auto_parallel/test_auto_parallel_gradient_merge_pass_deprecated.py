@@ -163,9 +163,10 @@ class TestGradientMergePass(AutoParallelPassTestBase):
 
         train_program = static.Program()
         startup_program = static.Program()
-        with static.program_guard(
-            train_program, startup_program
-        ), utils.unique_name.guard():
+        with (
+            static.program_guard(train_program, startup_program),
+            utils.unique_name.guard(),
+        ):
             input = static.data(
                 name="input", shape=[batch_size, hidden_size], dtype='float32'
             )

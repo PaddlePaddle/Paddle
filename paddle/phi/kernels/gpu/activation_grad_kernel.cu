@@ -57,6 +57,9 @@ void ActivationGradGPUImpl(const Context& dev_ctx,
   }
 
   dev_ctx.template Alloc<T>(d_x);
+  if (d_x->numel() == 0) {
+    return;
+  }
 
   std::vector<const DenseTensor*> ins = {d_out};
   std::vector<DenseTensor*> outs = {d_x};
@@ -267,6 +270,9 @@ void EluGradKernel(const Context& dev_ctx,
                    float alpha,
                    DenseTensor* dx) {
   dev_ctx.template Alloc<T>(dx);
+  if (dx->numel() == 0) {
+    return;
+  }
   std::vector<const DenseTensor*> ins = {&dout, &out};
   std::vector<DenseTensor*> outs = {dx};
   if (alpha > 0) {

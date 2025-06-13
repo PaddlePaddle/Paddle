@@ -136,6 +136,22 @@ class TestDeterminantOpCase8(TestDeterminantOp):
         self.target = np.linalg.det(self.case)
 
 
+class TestDeterminantOp_ZeroSize(TestDeterminantOp):
+    def init_data(self):
+        np.random.seed(0)
+        self.case = np.random.rand(0, 10, 10)
+        self.inputs = {'Input': self.case}
+        self.target = np.linalg.det(self.case)
+
+
+class TestDeterminantOp_ZeroSize2(TestDeterminantOp):
+    def init_data(self):
+        np.random.seed(0)
+        self.case = np.random.rand(0, 0, 0)
+        self.inputs = {'Input': self.case}
+        self.target = np.linalg.det(self.case)
+
+
 class TestDeterminantAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(0)
@@ -320,6 +336,22 @@ class TestSlogDeterminantOpCase1(TestSlogDeterminantOp):
     def init_data(self):
         np.random.seed(0)
         self.case = np.random.rand(2, 2, 5, 5).astype(np.float32)
+        self.inputs = {'Input': self.case}
+        self.target = np.array(np.linalg.slogdet(self.case))
+
+
+class TestSlogDeterminantOp_ZeroSize(TestSlogDeterminantOp):
+    def init_data(self):
+        np.random.seed(0)
+        self.case = np.random.rand(0, 5, 5).astype('float64')
+        self.inputs = {'Input': self.case}
+        self.target = np.array(np.linalg.slogdet(self.case))
+
+
+class TestSlogDeterminantOp_ZeroSize2(TestSlogDeterminantOp):
+    def init_data(self):
+        np.random.seed(0)
+        self.case = np.random.rand(0, 0, 0).astype('float64')
         self.inputs = {'Input': self.case}
         self.target = np.array(np.linalg.slogdet(self.case))
 
