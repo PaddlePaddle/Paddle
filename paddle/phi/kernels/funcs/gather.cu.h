@@ -196,8 +196,9 @@ __global__ void GatherGradGPUKernel(const T* input,
                                     int64_t input_index_dim_size,
                                     int64_t out_index_dim_size,
                                     int64_t size) {
-  int64_t idx = blockDim.x * blockIdx.x + threadIdx.x;
-  for (; idx < size; idx += blockDim.x * gridDim.x) {
+  int64_t idx = static_cast<int64_t>(blockDim.x) * blockIdx.x + threadIdx.x;
+  const int64_t stride = static_cast<int64_t>(blockDim.x) * gridDim.x;
+  for (; idx < size; idx += stride) {
     int64_t inner_dim_index = idx / (outer_dim_size * input_index_dim_size);
     int64_t next_idx = idx % (outer_dim_size * input_index_dim_size);
     int64_t index_dim_index = next_idx / (outer_dim_size);

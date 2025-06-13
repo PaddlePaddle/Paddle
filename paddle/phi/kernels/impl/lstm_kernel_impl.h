@@ -294,14 +294,14 @@ void LSTMGradKernel(const Context& dev_ctx,
 
   phi::funcs::DenseTensor2BatchFunctor<Context, T> to_batch;
 
-  auto ToBatch = [&batch_gate, &to_batch](const Context& ctx,
+  auto ToBatch = [&batch_gate, &to_batch](const Context& dev_ctx,
                                           const phi::DenseTensor& src,
                                           const phi::DDim& dims,
                                           phi::DenseTensor& dst) {
     dst.Resize(dims);
-    ctx.template Alloc<T>(&dst);
+    dev_ctx.template Alloc<T>(&dst);
     dst.set_lod(batch_gate->lod());
-    to_batch(ctx, src, &dst, false);
+    to_batch(dev_ctx, src, &dst, false);
   };
 
   phi::DenseTensor batch_hidden, batch_hidden_g, batch_cell;

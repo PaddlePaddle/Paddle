@@ -23,23 +23,23 @@ namespace phi {
 
 template <typename T>
 #ifdef PADDLE_WITH_HIP
-void LSTMInferece(const bool &has_seq_length,
-                  const miopenHandle_t &handle,
+void LSTMInference(const bool &has_seq_length,
+                   const miopenHandle_t &handle,
 #else
-void LSTMInferece(const bool &has_seq_length,
-                  const cudnnHandle_t &handle,
+void LSTMInference(const bool &has_seq_length,
+                   const cudnnHandle_t &handle,
 #endif
-                  const int &seq_length,
-                  ScopedRNNBase *rnn,
-                  const T *x_data,
-                  const T *init_h_data,
-                  const T *init_c_data,
-                  const T *w_data,
-                  T *out_data,
-                  T *last_h_data,
-                  T *last_c_data,
-                  phi::DenseTensor *workspace_data,
-                  const size_t &workspace_size) {
+                   const int &seq_length,
+                   ScopedRNNBase *rnn,
+                   const T *x_data,
+                   const T *init_h_data,
+                   const T *init_c_data,
+                   const T *w_data,
+                   T *out_data,
+                   T *last_h_data,
+                   T *last_c_data,
+                   phi::DenseTensor *workspace_data,
+                   const size_t &workspace_size) {
 #if CUDNN_VERSION >= 90000
   PADDLE_ENFORCE_GPU_SUCCESS(
       phi::dynload::cudnnRNNForward(handle,
@@ -156,7 +156,7 @@ void LSTMInferece(const bool &has_seq_length,
 
 template <typename T, typename Context>
 void CudnnLSTMKernel(
-    const Context &ctx,
+    const Context &dev_ctx,
     const DenseTensor &x,
     const DenseTensor &init_h,
     const DenseTensor &init_c,
@@ -178,14 +178,14 @@ void CudnnLSTMKernel(
   const T *init_h_data = init_h.data<T>();
   const T *init_c_data = init_c.data<T>();
 
-  T *out_data = ctx.template Alloc<T>(out);
-  T *last_h_data = ctx.template Alloc<T>(last_h);
-  T *last_c_data = ctx.template Alloc<T>(last_c);
+  T *out_data = dev_ctx.template Alloc<T>(out);
+  T *last_h_data = dev_ctx.template Alloc<T>(last_h);
+  T *last_c_data = dev_ctx.template Alloc<T>(last_c);
 
   if (!is_test) {
     if (seed == 0) {
       // If not specify seed, use global Generator to generate seed.
-      int device_id = ctx.GetPlace().GetDeviceId();
+      int device_id = dev_ctx.GetPlace().GetDeviceId();
       auto gen_cuda = phi::DefaultCUDAGenerator(device_id);
       seed = static_cast<int>(gen_cuda->Random64());
     }
@@ -198,7 +198,7 @@ void CudnnLSTMKernel(
     SequenceLength = phi::GetVectorFromTensor<int>(running_sequence_length);
   }
 
-  auto handle = ctx.cudnn_handle();
+  auto handle = dev_ctx.cudnn_handle();
 
   int seq_length = x.dims()[0];
   int batch_size = x.dims()[1];
@@ -211,8 +211,8 @@ void CudnnLSTMKernel(
   T *w_data = nullptr;
   int weight_numel;
   bool w_initialized = false;
-  auto place = ctx.GetPlace();
-  auto stream = ctx.stream();
+  auto place = dev_ctx.GetPlace();
+  auto stream = dev_ctx.stream();
   auto *running_w = w.get_ptr();
   if (is_test && running_w != nullptr) {
     w_initialized = running_w->initialized() ? true : false;
@@ -230,7 +230,7 @@ void CudnnLSTMKernel(
              "less efficient calculation will be called. Please call "
              "flatten_parameters() to make the input memory continuous.";
       weight_whole.Resize({weight_numel});
-      ctx.template Alloc<T>(&weight_whole);
+      dev_ctx.template Alloc<T>(&weight_whole);
       weight_to_tensor<T>(place, stream, running_weight_list, &weight_whole);
       w_data = weight_whole.data<T>();
       if (is_test) {  // maybe also reset small weights' ptr for training
@@ -264,7 +264,7 @@ void CudnnLSTMKernel(
                     state_initialized,
                     is_bidirec);
   rnn.Create<T>(handle,
-                ctx.GetPlace(),
+                dev_ctx.GetPlace(),
                 SequenceLength,
                 &workspace_size,
                 &reserve_size,
@@ -272,25 +272,25 @@ void CudnnLSTMKernel(
 
   phi::DenseTensor workspace_data_;
   workspace_data_.Resize({static_cast<int64_t>(workspace_size)});
-  ctx.template Alloc<uint8_t>(&workspace_data_);
+  dev_ctx.template Alloc<uint8_t>(&workspace_data_);
 
   reserve->Resize({static_cast<int64_t>(reserve_size)});
-  auto *reserve_data = ctx.template Alloc<uint8_t>(reserve);
+  auto *reserve_data = dev_ctx.template Alloc<uint8_t>(reserve);
 
   if (is_test) {
-    LSTMInferece<T>(has_seq_length,
-                    handle,
-                    seq_length,
-                    &rnn,
-                    x_data,
-                    init_h_data,
-                    init_c_data,
-                    w_data,
-                    out_data,
-                    last_h_data,
-                    last_c_data,
-                    &workspace_data_,
-                    workspace_size);
+    LSTMInference<T>(has_seq_length,
+                     handle,
+                     seq_length,
+                     &rnn,
+                     x_data,
+                     init_h_data,
+                     init_c_data,
+                     w_data,
+                     out_data,
+                     last_h_data,
+                     last_c_data,
+                     &workspace_data_,
+                     workspace_size);
   } else {
 #if CUDNN_VERSION >= 90000
     PADDLE_ENFORCE_GPU_SUCCESS(

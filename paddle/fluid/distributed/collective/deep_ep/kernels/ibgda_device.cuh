@@ -314,27 +314,6 @@ __device__ static __forceinline__ void *ibgda_get_wqe_ptr(
                                   (idx << MLX5_SEND_WQE_SHIFT));
 }
 
-// Wait until wqe `idx - 1` is completed.
-// This is a simplified version of NVSHMEM's `ibgda_poll_cq`. It can only be
-// used for polling recv. Because we post recv and poll recv in the same thread,
-// so we don't need to maintain queue status.
-__device__ static __forceinline__ void nvshmemi_ibgda_poll_recv(int dst_pe,
-                                                                int qp_id) {
-  auto qp = ibgda_get_rc(dst_pe, qp_id);
-  auto cq = qp->rx_wq.cq;
-
-  const uint32_t ncqes = cq->ncqes;
-  auto *cqe64 = reinterpret_cast<struct mlx5_cqe64 *>(cq->cqe);
-  auto old_cons_idx = *cq->cons_idx;
-  *cq->cons_idx = old_cons_idx + 1;
-
-  // Wait until `wqe_counter >= old_cons_idx`
-  while ((static_cast<uint16_t>(
-              old_cons_idx - HtoBE16(ld_na_relaxed(&cqe64->wqe_counter)) - 1) <
-          ncqes))
-    ;
-}
-
 __device__ static __forceinline__ void nvshmemi_ibgda_rma_p(
     int *rptr,
     const int value,
@@ -430,47 +409,7 @@ __device__ static __forceinline__ void ibgda_write_empty_recv_wqe(
                 *reinterpret_cast<const int4 *>(&data_seg));
 }
 
-__device__ static __forceinline__ uint64_t
-nvshmemi_ibgda_allocate_recvs(nvshmemi_ibgda_device_qp *qp) {
-  auto mvars = &qp->mvars;
-
-  // Allocate if not enough
-  constexpr int kMinIBGDARecvs = 32;
-  auto resv_head = mvars->rx_wq.resv_head;
-  auto num_valid_slots = resv_head - mvars->rx_wq.cons_idx;
-  if (num_valid_slots < kMinIBGDARecvs) {
-    resv_head = mvars->rx_wq.cons_idx + qp->rx_wq.nwqes;
-    mvars->rx_wq.resv_head = resv_head;
-
-    // Ensure WQE is written before `dbrec`
-    __be32 dbrec_val;
-    __be32 *dbrec_ptr = qp->rx_wq.dbrec;
-
-    // Compared to sending, for each QP, we only post recv in a single thread,
-    // so we don't need to do synchronization here
-    // This is equivalent to `WRITE_ONCE(dbrec_ptr, HtoBE32(wqe_idx & 0xffff))`
-    asm("{\n\t"
-        ".reg .b32 dbrec_head_16b;\n\t"
-        ".reg .b32 ign;\n\t"
-        "and.b32 dbrec_head_16b, %1, 0xffff;\n\t"
-        "prmt.b32 %0, dbrec_head_16b, ign, 0x123;\n\t"
-        "}"
-        : "=r"(dbrec_val)
-        : "r"(static_cast<uint32_t>(resv_head)));
-    st_na_release(dbrec_ptr, dbrec_val);
-  }
-
-  // Return old number of slots
-  return num_valid_slots;
-}
-
-__device__ static __forceinline__ void nvshmemi_ibgda_prepare_recvs(
-    int dst_rank, int qp_id) {
-  // NOTES: only one thread can run this function
-  EP_DEVICE_ASSERT(
-      nvshmemi_ibgda_allocate_recvs(ibgda_get_rc(dst_rank, qp_id)) > 16);
-}
-
+template <bool kAlwaysDoPostSend = false>
 __device__ static __forceinline__ void nvshmemi_ibgda_put_nbi_warp(
     uint64_t req_rptr,
     uint64_t req_lptr,
@@ -529,7 +468,8 @@ __device__ static __forceinline__ void nvshmemi_ibgda_put_nbi_warp(
 
   // Submit
   if (lane_id == 0)
-    ibgda_submit_requests<false>(qp, base_wqe_idx, num_wqes, message_idx);
+    ibgda_submit_requests<kAlwaysDoPostSend>(
+        qp, base_wqe_idx, num_wqes, message_idx);
   __syncwarp();
 }
 
@@ -593,26 +533,36 @@ __device__ static __forceinline__ void ibgda_write_amo_add_wqe(
 }
 
 __device__ __forceinline__ void nvshmemi_ibgda_amo_nonfetch_add(
-    void *rptr, const int &value, int pe, int qp_id) {
-  nvshmemi_ibgda_device_qp_t *qp = ibgda_get_rc(pe, qp_id);
+    void *rptr,
+    const int &value,
+    int pe,
+    int qp_id,
+    bool is_local_copy = false) {
+  if (is_local_copy) {
+    // Fallback to NVSHMEM legacy API
+    nvshmemx_signal_op(
+        static_cast<uint64_t *>(rptr), value, NVSHMEM_SIGNAL_ADD, pe);
+  } else {
+    nvshmemi_ibgda_device_qp_t *qp = ibgda_get_rc(pe, qp_id);
 
-  __be32 rkey;
-  uint64_t raddr;
-  ibgda_get_rkey(reinterpret_cast<uint64_t>(rptr), pe, &raddr, &rkey);
+    __be32 rkey;
+    uint64_t raddr;
+    ibgda_get_rkey(reinterpret_cast<uint64_t>(rptr), pe, &raddr, &rkey);
 
-  uint64_t my_wqe_idx = ibgda_reserve_wqe_slots(qp, 1);
-  void *wqe_ptrs = ibgda_get_wqe_ptr(qp, my_wqe_idx);
+    uint64_t my_wqe_idx = ibgda_reserve_wqe_slots(qp, 1);
+    void *wqe_ptrs = ibgda_get_wqe_ptr(qp, my_wqe_idx);
 
-  ibgda_write_amo_add_wqe(qp,
-                          value,
-                          reinterpret_cast<uint64_t>(qp->ibuf.buf),
-                          qp->ibuf.lkey,
-                          raddr,
-                          rkey,
-                          my_wqe_idx,
-                          &wqe_ptrs);
+    ibgda_write_amo_add_wqe(qp,
+                            value,
+                            reinterpret_cast<uint64_t>(qp->ibuf.buf),
+                            qp->ibuf.lkey,
+                            raddr,
+                            rkey,
+                            my_wqe_idx,
+                            &wqe_ptrs);
 
-  ibgda_submit_requests<true>(qp, my_wqe_idx, 1);
+    ibgda_submit_requests<true>(qp, my_wqe_idx, 1);
+  }
 }
 
 }  // namespace deep_ep

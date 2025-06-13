@@ -22,12 +22,12 @@
 namespace phi {
 
 template <typename Context, typename T, size_t D>
-static void LerpFunction(const Context& ctx,
+static void LerpFunction(const Context& dev_ctx,
                          const DenseTensor& x,
                          const DenseTensor& y,
                          const DenseTensor& weight,
                          DenseTensor* out) {
-  ctx.template Alloc<T>(out);
+  dev_ctx.template Alloc<T>(out);
   const auto& out_dims = out->dims();
   auto x_dims = phi::funcs::ExtendDims2Rank(x.dims(), D);
   auto y_dims = phi::funcs::ExtendDims2Rank(y.dims(), D);
@@ -45,7 +45,7 @@ static void LerpFunction(const Context& ctx,
   auto eigen_out = phi::EigenTensor<T, D>::From(*out);
 
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
-  auto& place = *ctx.eigen_device();
+  auto& place = *dev_ctx.eigen_device();
   eigen_out.device(place) =
       (eigen_x.broadcast(x_bcast_dims).template cast<MPType>() +
        eigen_w.broadcast(w_bcast_dims).template cast<MPType>() *
@@ -55,12 +55,12 @@ static void LerpFunction(const Context& ctx,
 }
 
 template <typename Context, typename T>
-static void LerpFunctionZero(const Context& ctx,
+static void LerpFunctionZero(const Context& dev_ctx,
                              const DenseTensor& x,
                              const DenseTensor& y,
                              const DenseTensor& weight,
                              DenseTensor* out) {
-  ctx.template Alloc<T>(out);
+  dev_ctx.template Alloc<T>(out);
 
   auto dim = common::make_ddim(std::vector<int64_t>(1, 1));
   auto eigen_x = phi::EigenTensor<T, 1>::From(x, dim);
@@ -69,7 +69,7 @@ static void LerpFunctionZero(const Context& ctx,
   auto eigen_out = phi::EigenTensor<T, 1>::From(*out, dim);
 
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
-  auto& place = *ctx.eigen_device();
+  auto& place = *dev_ctx.eigen_device();
   eigen_out.device(place) =
       (eigen_x.template cast<MPType>() +
        eigen_w.template cast<MPType>() *
@@ -78,13 +78,13 @@ static void LerpFunctionZero(const Context& ctx,
 }
 
 template <typename T, typename Context>
-void LerpKernel(const Context& ctx,
+void LerpKernel(const Context& dev_ctx,
                 const DenseTensor& x,
                 const DenseTensor& y,
                 const DenseTensor& weight,
                 DenseTensor* out) {
   if (out && out->numel() == 0) {
-    ctx.template Alloc<T>(out);
+    dev_ctx.template Alloc<T>(out);
     return;
   }
   int rank = out->dims().size();
@@ -104,25 +104,25 @@ void LerpKernel(const Context& ctx,
           rank));
   switch (rank) {
     case 0:
-      LerpFunctionZero<Context, T>(ctx, x, y, weight, out);
+      LerpFunctionZero<Context, T>(dev_ctx, x, y, weight, out);
       break;
     case 1:
-      LerpFunction<Context, T, 1>(ctx, x, y, weight, out);
+      LerpFunction<Context, T, 1>(dev_ctx, x, y, weight, out);
       break;
     case 2:
-      LerpFunction<Context, T, 2>(ctx, x, y, weight, out);
+      LerpFunction<Context, T, 2>(dev_ctx, x, y, weight, out);
       break;
     case 3:
-      LerpFunction<Context, T, 3>(ctx, x, y, weight, out);
+      LerpFunction<Context, T, 3>(dev_ctx, x, y, weight, out);
       break;
     case 4:
-      LerpFunction<Context, T, 4>(ctx, x, y, weight, out);
+      LerpFunction<Context, T, 4>(dev_ctx, x, y, weight, out);
       break;
     case 5:
-      LerpFunction<Context, T, 5>(ctx, x, y, weight, out);
+      LerpFunction<Context, T, 5>(dev_ctx, x, y, weight, out);
       break;
     case 6:
-      LerpFunction<Context, T, 6>(ctx, x, y, weight, out);
+      LerpFunction<Context, T, 6>(dev_ctx, x, y, weight, out);
       break;
   }
 }
