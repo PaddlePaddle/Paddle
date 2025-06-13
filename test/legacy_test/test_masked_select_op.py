@@ -293,6 +293,20 @@ class TestMaskedSelectOpBroadcast_ZeroSize2(TestMaskedSelectOp):
         self.mask_shape = 0
 
 
+class TestMaskedSelectOp_ZeroSize3(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+
+    def test_out_0size(self):
+        x = paddle.to_tensor([1, 2], dtype='float32')
+        x.stop_gradient = False
+        y = paddle.to_tensor([False, False], dtype='bool')
+        z = x.masked_select(y)
+        np.testing.assert_allclose(z.shape, [0])
+        z.sum().backward()
+        np.testing.assert_allclose(x.grad.numpy(), [0, 0])
+
+
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()
