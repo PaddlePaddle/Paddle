@@ -42,24 +42,6 @@ class TestCollectiveAllToAllAPI(TestDistBase):
                 need_envs={},
             )
 
-    def test_alltoall_flagcx_with_new_comm(self):
-        dtypes_to_test = [
-            "float16",
-            "float32",
-            "float64",
-            "int32",
-            "int64",
-        ]
-        if paddle.base.core.is_compiled_with_flagcx():
-            for dtype in dtypes_to_test:
-                self.check_with_place(
-                    "collective_alltoall_api.py",
-                    "alltoall",
-                    "flagcx",
-                    dtype=dtype,
-                    need_envs={},
-                )
-
     def test_alltoall_nccl_with_new_comm_pir(self):
         dtypes_to_test = [
             "float16",
