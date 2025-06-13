@@ -2174,6 +2174,42 @@ def get_headers():
             )
         )  # xre headers with .hpp extension
 
+    if (
+        env_dict.get("WITH_GPU") == 'ON'
+        and tuple(map(int, env_dict.get("CUDA_VERSION").split('.'))) >= (12, 9)
+        and env_dict.get("COMPILED_CUDA_ARCHS").find("90") != -1
+    ):
+        headers += list(
+            find_files(
+                '*.hpp',
+                paddle_source_dir + '/paddle/fluid/fp8/deep_gemm/include/cute/',
+                recursive=True,
+            )
+        )
+        headers += list(
+            find_files(
+                '*.h',
+                paddle_source_dir
+                + '/paddle/fluid/fp8/deep_gemm/include/cutlass/',
+                recursive=True,
+            )
+        )
+        headers += list(
+            find_files(
+                '*.hpp',
+                paddle_source_dir
+                + '/paddle/fluid/fp8/deep_gemm/include/cutlass/',
+                recursive=True,
+            )
+        )
+        headers += list(
+            find_files(
+                '*.cuh',
+                paddle_source_dir
+                + '/paddle/fluid/fp8/deep_gemm/include/deep_gemm',
+                recursive=True,
+            )
+        )
     # pybind headers
     headers += list(find_files('*.h', env_dict.get("PYBIND_INCLUDE_DIR"), True))
     return headers
@@ -2383,6 +2419,14 @@ def get_setup_parameters():
         and env_dict.get("CUDA_ARCH_BIN").find("90") != -1
     ):
         packages.extend(['paddle.distributed.communication.deep_ep'])
+    if (
+        env_dict.get("WITH_GPU") == 'ON'
+        and tuple(map(int, env_dict.get("CUDA_VERSION").split('.'))) >= (12, 9)
+        and env_dict.get("COMPILED_CUDA_ARCHS").find("90") != -1
+    ):
+        packages.extend(['paddle.incubate.fp8.deep_gemm'])
+        packages.extend(['paddle.incubate.fp8.deep_gemm.jit'])
+        packages.extend(['paddle.incubate.fp8.deep_gemm.jit_kernels'])
 
     if env_dict.get("WITH_TENSORRT") == 'ON':
         packages.extend(

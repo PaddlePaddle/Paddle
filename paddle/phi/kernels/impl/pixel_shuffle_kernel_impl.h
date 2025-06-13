@@ -23,13 +23,13 @@
 namespace phi {
 
 template <typename T, typename Context>
-void PixelShuffleKernel(const Context& ctx,
+void PixelShuffleKernel(const Context& dev_ctx,
                         const DenseTensor& x,
                         int upscale_factor,
                         const std::string& data_format,
                         DenseTensor* out) {
   auto* in = &x;
-  ctx.template Alloc<T>(out);
+  dev_ctx.template Alloc<T>(out);
   if (out && out->numel() == 0) {
     return;
   }
@@ -54,7 +54,7 @@ void PixelShuffleKernel(const Context& ctx,
     o.Resize({in_dims[0], in_dims[1], factor, in_dims[2], factor, o_dims[3]});
   }
   phi::funcs::Transpose<Context, T, 6> trans;
-  trans(ctx, t, &o, axis);
+  trans(dev_ctx, t, &o, axis);
   out->Resize(o_dims);
 }
 

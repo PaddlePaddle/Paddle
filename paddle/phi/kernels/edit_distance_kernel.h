@@ -19,7 +19,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void EditDistanceKernel(const Context& ctx,
+void EditDistanceKernel(const Context& dev_ctx,
                         const DenseTensor& hyps,
                         const DenseTensor& refs,
                         const paddle::optional<DenseTensor>& hypslength,

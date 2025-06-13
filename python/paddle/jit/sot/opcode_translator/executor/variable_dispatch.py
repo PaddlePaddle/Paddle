@@ -983,16 +983,17 @@ Dispatcher.register(
     ),
 )
 
+
 # VariableBase
-Dispatcher.register(
-    operator.is_,
-    ("VariableBase", "VariableBase"),
-    lambda var, other: ConstantVariable(
+@Dispatcher.register_decorator(operator.is_)
+def is_func(var: VariableBase, other: VariableBase):
+    if var.get_py_type() is not other.get_py_type():
+        return ConstantVariable(False, var.graph, DummyTracker([var, other]))
+    return ConstantVariable(
         var.get_py_value() is other.get_py_value(),
         var.graph,
-        tracker=DummyTracker([var, other]),
-    ),
-)
+        DummyTracker([var, other]),
+    )
 
 
 @Dispatcher.register_decorator(operator.is_not)

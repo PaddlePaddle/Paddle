@@ -43,7 +43,7 @@ __global__ void fill_diagonal_tensor_kernel(int64_t size,
 }
 
 template <typename T, typename Context>
-void FillDiagonalTensorKernel(const Context &ctx,
+void FillDiagonalTensorKernel(const Context &dev_ctx,
                               const DenseTensor &x,
                               const DenseTensor &y,
                               int64_t offset,
@@ -51,9 +51,9 @@ void FillDiagonalTensorKernel(const Context &ctx,
                               int dim2,
                               DenseTensor *out) {
   const int64_t kMaxBlockDim = 512;
-  phi::Copy(ctx, x, ctx.GetPlace(), false, out);
+  phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
 
-  T *out_data = ctx.template Alloc<T>(out);
+  T *out_data = dev_ctx.template Alloc<T>(out);
   const T *fill_data = y.data<T>();
 
   auto out_dims = out->dims();
@@ -87,11 +87,11 @@ void FillDiagonalTensorKernel(const Context &ctx,
 
   auto size = out->numel();
 
-  auto stream = ctx.stream();
+  auto stream = dev_ctx.stream();
   DenseTensor tensor_tmp;
   tensor_tmp.Resize(common::make_ddim({2 + fill_dims[0]}));
-  int64_t *memory_block_cu = ctx.template Alloc<int64_t>(&tensor_tmp);
-  const auto gpu_place = ctx.GetPlace();
+  int64_t *memory_block_cu = dev_ctx.template Alloc<int64_t>(&tensor_tmp);
+  const auto gpu_place = dev_ctx.GetPlace();
   memory_utils::Copy(gpu_place,
                      memory_block_cu,
                      CPUPlace(),

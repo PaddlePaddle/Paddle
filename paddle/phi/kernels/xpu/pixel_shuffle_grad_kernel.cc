@@ -19,7 +19,7 @@
 
 namespace phi {
 template <typename T, typename Context>
-void PixelShuffleGradKernel(const Context& ctx,
+void PixelShuffleGradKernel(const Context& dev_ctx,
                             const DenseTensor& out_grad,
                             int upscale_factor,
                             const std::string& data_format,
@@ -27,7 +27,7 @@ void PixelShuffleGradKernel(const Context& ctx,
   using XPUType = typename XPUTypeTrait<T>::Type;
 
   const T* x_ptr = out_grad.data<T>();
-  T* y_ptr = ctx.template Alloc<T>(x_grad);
+  T* y_ptr = dev_ctx.template Alloc<T>(x_grad);
   if (x_grad && x_grad->numel() == 0) {
     return;
   }
@@ -39,7 +39,7 @@ void PixelShuffleGradKernel(const Context& ctx,
   int64_t xh = out_grad.dims()[is_nchw ? 2 : 1];
   int64_t xw = out_grad.dims()[is_nchw ? 3 : 2];
 
-  int r = pixel_unshuffle(ctx.x_context(),
+  int r = pixel_unshuffle(dev_ctx.x_context(),
                           reinterpret_cast<const XPUType*>(x_ptr),
                           reinterpret_cast<XPUType*>(y_ptr),
                           n,

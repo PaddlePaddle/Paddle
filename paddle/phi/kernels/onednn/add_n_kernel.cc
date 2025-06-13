@@ -86,11 +86,6 @@ template <typename T, typename Context>
 void AddNKernel(const Context& dev_ctx,
                 const std::vector<const TensorBase*>& x,
                 DenseTensor* out) {
-  PADDLE_ENFORCE_EQ(
-      dev_ctx.GetPlace().GetType() == AllocationType::CPU,
-      true,
-      errors::PreconditionNotMet("oneDNN AddN kernel must use CPUPlace"));
-
   const auto& onednn_engine = dev_ctx.GetEngine();
 
   PADDLE_ENFORCE_NE(

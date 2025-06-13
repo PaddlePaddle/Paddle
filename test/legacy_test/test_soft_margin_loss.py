@@ -195,5 +195,51 @@ class TestSoftMarginLoss(unittest.TestCase):
         paddle.enable_static()
 
 
+class TestSoftMarginLoss_ZeroSize(unittest.TestCase):
+    def init_shape(self):
+        self.shape = (0, 5)
+
+    def test_SoftMarginLoss(self):
+        self.init_shape()
+        input_np = np.random.uniform(0.1, 0.8, size=self.shape).astype(
+            np.float64
+        )
+        type = np.float32
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not paddle.device.is_compiled_with_cuda()
+        ):
+            places.append(paddle.CPUPlace())
+        if paddle.device.is_compiled_with_cuda():
+            places.append(paddle.CUDAPlace(0))
+        reductions = ['sum', 'mean', 'none']
+        for place in places:
+            for reduction in reductions:
+                label_np = np.random.randint(0, 2, size=self.shape).astype(type)
+                label_np[label_np == 0] = -1
+
+                expected = calc_softmarginloss(input_np, label_np, reduction)
+
+                paddle.disable_static(place)
+                input = paddle.to_tensor(input_np)
+                input.stop_gradient = False
+                label = paddle.to_tensor(label_np)
+
+                dy_res = paddle.nn.functional.soft_margin_loss(
+                    input, label, reduction=reduction
+                )
+                np.testing.assert_allclose(dy_res.numpy(), expected, rtol=1e-05)
+                loss = paddle.sum(dy_res)
+                loss.backward()
+                np.testing.assert_allclose(input.grad.shape, input.shape)
+
+
+class TestSoftMarginLoss_ZeroSize2(TestSoftMarginLoss_ZeroSize):
+    def init_shape(self):
+        self.shape = (0, 0)
+
+
 if __name__ == "__main__":
     unittest.main()

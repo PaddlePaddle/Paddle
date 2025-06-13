@@ -34,7 +34,7 @@ __global__ void WhereGradCUDAKernel(
 }
 
 template <typename T, typename Context>
-void WhereGradKernel(const Context& ctx,
+void WhereGradKernel(const Context& dev_ctx,
                      const DenseTensor& condition,
                      const DenseTensor& x,
                      const DenseTensor& y,
@@ -46,24 +46,24 @@ void WhereGradKernel(const Context& ctx,
   auto* dout = out_grad.data<T>();
   if (out_grad.numel() == 0) {
     if (x_grad) {
-      phi::Full<T, Context>(ctx,
+      phi::Full<T, Context>(dev_ctx,
                             phi::IntArray(common::vectorize(x_grad->dims())),
                             static_cast<T>(0),
                             x_grad);
     }
     if (y_grad) {
-      phi::Full<T, Context>(ctx,
+      phi::Full<T, Context>(dev_ctx,
                             phi::IntArray(common::vectorize(y_grad->dims())),
                             static_cast<T>(0),
                             y_grad);
     }
     return;
   }
-  T* dx = (x_grad != nullptr) ? ctx.template Alloc<T>(x_grad) : nullptr;
-  T* dy = (y_grad != nullptr) ? ctx.template Alloc<T>(y_grad) : nullptr;
+  T* dx = (x_grad != nullptr) ? dev_ctx.template Alloc<T>(x_grad) : nullptr;
+  T* dy = (y_grad != nullptr) ? dev_ctx.template Alloc<T>(y_grad) : nullptr;
 
-  auto stream = ctx.stream();
-  auto config = backends::gpu::GetGpuLaunchConfig1D(ctx, numel);
+  auto stream = dev_ctx.stream();
+  auto config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel);
   if (numel <= std::numeric_limits<int>::max()) {
     WhereGradCUDAKernel<T, int>
         <<<config.block_per_grid.x, config.thread_per_block.x, 0, stream>>>(

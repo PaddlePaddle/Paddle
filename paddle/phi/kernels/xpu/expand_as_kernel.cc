@@ -84,7 +84,7 @@ void ExpandAs(const Context& context,
 }
 
 template <typename T, typename Context>
-void ExpandAsKernel(const Context& ctx,
+void ExpandAsKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     const paddle::optional<DenseTensor>& y,
                     const std::vector<int64_t>& target_shape,
@@ -112,7 +112,7 @@ void ExpandAsKernel(const Context& ctx,
                         "expand_as_v2 op must be less than or equal to %d.",
                         target_rank,
                         MAX_RANK_SUPPORTED));
-  ExpandAs<Context, T>(ctx, x, target_shape, out);
+  ExpandAs<Context, T>(dev_ctx, x, target_shape, out);
 }
 }  // namespace phi
 

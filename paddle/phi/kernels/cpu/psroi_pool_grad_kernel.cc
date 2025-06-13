@@ -22,7 +22,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void PsroiPoolGradKernel(const Context& ctx,
+void PsroiPoolGradKernel(const Context& dev_ctx,
                          const DenseTensor& x,
                          const DenseTensor& rois,
                          const paddle::optional<DenseTensor>& rois_num,
@@ -42,7 +42,7 @@ void PsroiPoolGradKernel(const Context& ctx,
     // set roi batch id
     DenseTensor rois_batch_id_list;
     rois_batch_id_list.Resize({rois_num_t});
-    int* rois_batch_id_data = ctx.template Alloc<int>(&rois_batch_id_list);
+    int* rois_batch_id_data = dev_ctx.template Alloc<int>(&rois_batch_id_list);
     int rois_batch_size = 0;
     if (rois_num.get_ptr()) {
       rois_batch_size = static_cast<int>(rois_num->numel());
@@ -66,11 +66,11 @@ void PsroiPoolGradKernel(const Context& ctx,
     }
     const T* input_rois = rois.data<T>();
     const T* dout_data = dout.data<T>();
-    T* dx_data = ctx.template Alloc<T>(dx);
+    T* dx_data = dev_ctx.template Alloc<T>(dx);
 
     // set gradient of X to be 0. before backpropagate.
     funcs::SetConstant<Context, T> set_zero;
-    set_zero(ctx, dx, static_cast<T>(0));
+    set_zero(dev_ctx, dx, static_cast<T>(0));
 
     // backpropagate gradient per output pixel
     int dout_size = static_cast<int>(dout.numel());

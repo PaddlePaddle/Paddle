@@ -83,6 +83,7 @@ NO_FP64_CHECK_GRAD_OP_LIST = [
     'i1',
     'i0e',
     'i1e',
+    'round',
 ]
 
 NO_FP16_CHECK_GRAD_OP_LIST = [
