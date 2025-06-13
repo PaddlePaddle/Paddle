@@ -37,6 +37,14 @@ class RepeatsTensor2IndexTensorFunctor<phi::GPUContext, RepeatsT> {
                   const DenseTensor &repeats,
                   DenseTensor *index);
 };
+#else
+template <typename RepeatsT>
+class RepeatsTensor2IndexTensorFunctor<phi::CPUContext, RepeatsT> {
+ public:
+  void operator()(const phi::CPUContext &ctx,
+                  const DenseTensor &repeats,
+                  DenseTensor *index);
+};
 #endif
 
 }  // namespace funcs
