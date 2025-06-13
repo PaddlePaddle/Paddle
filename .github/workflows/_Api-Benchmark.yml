@@ -69,7 +69,7 @@ jobs:
           echo "container_name=${container_name}" >> ${{ github.env }}
           docker container ls -a --filter "name=paddle-CI-*-api-benchmark-${core_index}*" --format "{{.ID}}" | xargs -r docker rm -f
           docker container ls -a --filter "name=api_benchmark_ci_baseline_" --format "{{.ID}} {{.CreatedAt}}" | awk '$2 <= "'$(date -d '1 day ago' +'%Y-%m-%d')'" {print $1}' | xargs -r docker rm -f
-          docker run -d -t --name ${container_name} --shm-size=128g \
+          docker run -d -t --name  ${container_name} --shm-size=128g \
             -v ${{ github.workspace }}/../../..:${{ github.workspace }}/../../.. \
             -v ${{ github.workspace }}:/paddle \
             -e python \
