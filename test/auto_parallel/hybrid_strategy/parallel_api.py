@@ -169,11 +169,15 @@ class TestParallelAPI:
         self.prepare_input_output = False
         if os.getenv("prepare_input_output") == "true":
             self.sequence_parallel = True
-
+        print(
+            f'sep_parallel:{self.sep_parallel} context_parallel:{self.context_parallel}'
+        )
         if self.sep > 1:
             assert (
-                self.context_parallel is True or self.sep_parallel is True
-            ), "when sep > 1, context_parallel or sep_parallel should be true"
+                self.context_parallel is True and self.sep_parallel is False
+            ) or (
+                self.context_parallel is False and self.sep_parallel is True
+            ), "when sep > 1, either context_parallel or sep_parallel should be true"
         num_hidden_layers = os.getenv("num_hidden_layers")
         if num_hidden_layers:
             self.config.num_hidden_layers = int(num_hidden_layers)
@@ -409,11 +413,15 @@ class TestParallelAPI:
                         f"when sep > 1, should set context_parallel or sep_parallel, but got sep_parallel={self.sep_parallel}, context_parallel={self.context_parallel}"
                     )
                 update_plan = {
-                    f"{prefix}llama": dist.ContextParallelBegin(backend=bck),
+                    f"{prefix}llama": dist.ContextParallelPrefix(
+                        backend=bck, period='begin'
+                    ),
                     f"{prefix}llama.layers.*.self_attn.sdpa": dist.ContextParallel(
                         backend=bck
                     ),
-                    f"{prefix}loss_func": dist.ContextParallelEnd(backend=bck),
+                    f"{prefix}loss_func": dist.ContextParallelPrefix(
+                        backend=bck, period='end'
+                    ),
                 }
                 plan.update(update_plan)
             mp_config = {'parallelize_plan': plan}

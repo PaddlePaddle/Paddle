@@ -84,12 +84,22 @@ class TestSemiAutoParallelLlamaCPTest(test_base.CommunicationTestDistBase):
         }
         _changeable_envs = {
             "backend": ["gpu"],
+            "amp": ["true"],
+            "amp_level": ["O2"],
+            "amp_dtype": ["bfloat16"],
+            "amp_master_grad": ["false"],
+            "seq_length": ["1024"],
+            "hidden_size": ["2048"],
+            "num_attention_heads": ["8"],
+            "num_key_value_heads": ["8"],
             "context_parallel": ["true"],
+            "max_position_embeddings": ["2048"],
         }
         envs_list = test_base.gen_product_envs_list(
             _default_envs, _changeable_envs
         )
         for envs in envs_list:
+            self._log_dir.name = "./log_cp"
             self.run_test_case(
                 "semi_auto_llama_acc_align.py",
                 user_defined_envs=envs,

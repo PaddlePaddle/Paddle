@@ -19,6 +19,9 @@ import paddle
 import paddle.distributed as dist
 import paddle.nn.functional as F
 from paddle import nn
+from paddle.distributed.auto_parallel.ring_attention import (
+    shard_seq_load_balance,
+)
 from paddle.distributed.fleet.utils import recompute
 
 try:
@@ -267,12 +270,53 @@ class LlamaAttentionAuto(nn.Layer):
 
         if past_key_value is not None:
             kv_seq_len += past_key_value[0].shape[-3]
-
         if self.config.rope:
-            cos, sin = self.rotary_emb(value_states, seq_len=kv_seq_len)
-            query_states, key_states = apply_rotary_pos_emb(
-                query_states, key_states, cos, sin, position_ids
-            )
+            if self.config.context_parallel_degree > 1:
+                mesh = dist.auto_parallel.get_mesh()
+                group = mesh._get_group("sep")
+                batch_size, seq_length, _, _ = query_states._local_shape
+                chunk_size = seq_length // 2
+                chunk_num = group.nranks * 2
+                rank = group.rank
+                first_chunk_ids = paddle.arange(
+                    rank * chunk_size, (rank + 1) * chunk_size, dtype="int64"
+                )
+                second_chunk_ids = paddle.arange(
+                    (chunk_num - rank - 1) * chunk_size,
+                    (chunk_num - rank) * chunk_size,
+                    dtype="int64",
+                )
+                position_ids = paddle.concat(
+                    [first_chunk_ids, second_chunk_ids]
+                ).expand((batch_size, seq_length))
+                kv_seq_len *= self.config.context_parallel_degree
+                cos, sin = self.rotary_emb(
+                    value_states._local_value(), seq_len=kv_seq_len
+                )
+                new_query_states, new_key_states = apply_rotary_pos_emb(
+                    query_states._local_value(),
+                    key_states._local_value(),
+                    cos,
+                    sin,
+                    position_ids,
+                )
+                query_states = dist.auto_parallel.api.dtensor_from_local(
+                    new_query_states,
+                    query_states.process_mesh,
+                    query_states.placements,
+                )
+                key_states = dist.auto_parallel.api.dtensor_from_local(
+                    new_key_states,
+                    key_states.process_mesh,
+                    key_states.placements,
+                )
+                query_states.stop_gradient = False
+                key_states.stop_gradient = False
+            else:
+                cos, sin = self.rotary_emb(value_states, seq_len=kv_seq_len)
+                query_states, key_states = apply_rotary_pos_emb(
+                    query_states, key_states, cos, sin, position_ids
+                )
 
         # [bs, seq_len, num_head, head_dim]
         if past_key_value is not None:
@@ -694,9 +738,7 @@ class LlamaModelAuto(nn.Layer):
             cache_length = paddle.shape(past_key_values[0][0])[1]
             seq_length_with_past += cache_length
         if inputs_embeds is None:
-            # print(f'input_ids:{input_ids}')
             inputs_embeds = self.embed_tokens(input_ids)
-            # print(f'inputs_embeds:{inputs_embeds}')
 
         if self.config.sequence_parallel:
             # [B, S, H] -> [S, B, H]
@@ -716,7 +758,6 @@ class LlamaModelAuto(nn.Layer):
             inputs_embeds.dtype,
             mesh,
         )  # [bs, 1, seq_len, seq_len]
-        # print(f'attention_mask:{attention_mask}')
         attention_mask = dist.shard_tensor(
             attention_mask,
             mesh,
@@ -729,13 +770,11 @@ class LlamaModelAuto(nn.Layer):
                 (batch_size, seq_length)
             )
         if position_ids is not None:
-            # print(f'position_ids:{position_ids}')
             position_ids = dist.shard_tensor(
                 position_ids,
                 mesh,
                 [dist.Replicate() for _ in range(len(mesh._shape))],
             )
-            # print(f'position_ids after shard:{position_ids}')
 
         if self.config.use_flash_attention:
             is_casual = is_casual_mask(attention_mask)
@@ -745,7 +784,6 @@ class LlamaModelAuto(nn.Layer):
         hidden_states = dist.reshard(
             hidden_states, get_mesh(0), self.placements
         )
-        # print(f'hidden_states:{hidden_states}')
 
         # decoder layers
         all_hidden_states = () if output_hidden_states else None
@@ -885,6 +923,10 @@ class LlamaPretrainingCriterionAuto(paddle.nn.Layer):
         )
 
     def forward(self, prediction_scores, masked_lm_labels):
+        if self.config.sep_parallel_degree > 1:
+            masked_lm_labels = split_sequence_dim(masked_lm_labels)
+        if self.config.context_parallel_degree > 1:
+            masked_lm_labels = shard_seq_load_balance(masked_lm_labels, 1)
         # Force Replicated to match dy & st
         prediction_scores1 = dist.reshard(
             prediction_scores,
@@ -908,18 +950,6 @@ class LlamaPretrainingCriterionAuto(paddle.nn.Layer):
                 prediction_scores1.astype("float32"),
                 masked_lm_labels1.unsqueeze(2),
             )
-        if (
-            self.config.context_parallel_degree > 1
-            or self.config.sep_parallel_degree > 1
-        ):
-            # print(f'masked_lm_loss:{masked_lm_loss}')
-            masked_lm_loss = dist.reshard(
-                masked_lm_loss,
-                get_mesh(-1),
-                [dist.Replicate() for _ in range(len(get_mesh(-1)._shape))],
-            )
-            print(f'masked_lm_loss after:{masked_lm_loss}')
-
         masked_lm_loss = paddle.masked_select(
             masked_lm_loss, masked_lm_loss > 0
         ).astype("float32")
@@ -936,13 +966,8 @@ def split_sequence_dim(inputs):
         'sep'
     )  # get the axis for the split
     sep_degree = process_mesh.shape[sep_index]
-    print(
-        f'sep_degree:{sep_degree}, process_mesh:{process_mesh}, placements:{placements}'
-    )
     if sep_degree > 1:
-        print(f'input:{type(inputs)}, is_dist: {inputs.is_dist()}')
         assert inputs.is_dist(), "Input tensor must be a distributed tensor."
-        print(f'tensor:{inputs}')
         assert (
             len(inputs.shape) == 2
         ), f"input_ids should be [batch_size, seq_len], but got {inputs.shape}"
@@ -955,36 +980,6 @@ def split_sequence_dim(inputs):
         split_input = dist.reshard(inputs, process_mesh, placements)
         # print(f'split_input:{split_input}')
     return split_input
-
-
-def split_sequence_dim_load_balance(inputs):
-    if inputs is None:
-        return inputs
-    placements = inputs.placements
-    process_mesh = inputs.process_mesh
-    cp_index = process_mesh.dim_names.index('sep')  # get the axis for the split
-    cp_degree = process_mesh.shape[cp_index]
-    if cp_degree > 1:
-        # split
-        sliced_datas = paddle.split(
-            inputs, num_or_sections=cp_degree * 2, axis=-1
-        )
-        # resort [q0,q1,q2,q3] -> [q0,q3,q1,q2]
-        indices = []
-        for i in range(cp_degree):
-            indices.append(i)
-            indices.append(cp_degree * 2 - 1 - i)
-        reorder_indices = indices
-        reordered = [sliced_datas[i] for i in reorder_indices]
-        print(f'reorder_indices:{reorder_indices}')
-        reordered_tensor = paddle.concat(reordered, axis=-1)
-        print(f'reordered_tensor:{reordered_tensor}')
-        # reshard q/k/v -> Shard(seq_dim)
-        placements[cp_index] = dist.Shard(1)  # seq_dim:1
-        print(f'placements:{placements}')
-        inputs = dist.reshard(reordered_tensor, get_mesh(0), placements)
-        print(f'new_arg:{inputs}')
-    return inputs
 
 
 class LlamaForCausalLMAuto(nn.Layer):
@@ -1016,11 +1011,10 @@ class LlamaForCausalLMAuto(nn.Layer):
         output_hidden_states=None,
     ):
         input_ids.stop_gradient = True
-        print(f'input_ids: {input_ids}, labels:{labels}')
         if self.config.sep_parallel_degree > 1:
             input_ids = split_sequence_dim(input_ids)
         if self.config.context_parallel_degree > 1:
-            input_ids = split_sequence_dim_load_balance(input_ids)
+            input_ids = shard_seq_load_balance(input_ids, 1)
 
         output_attentions = (
             output_attentions if output_attentions is not None else False
@@ -1196,16 +1190,13 @@ def scaled_dot_product_attention(
             if alibi is not None:
                 alibi = alibi.reshape([bsz, num_heads, 1, -1])
                 attention_mask = attention_mask.cast(alibi.dtype) + alibi
-            print('before flash attention')
             attn_output = F.scaled_dot_product_attention(
                 query_states,
                 key_states,
                 value_states,
                 attn_mask=attention_mask,
                 is_causal=attention_mask is None,
-                backward=(
-                    'p2p' if config.context_parallel_degree > 1 else None
-                ),
+                backend=('p2p' if config.context_parallel_degree > 1 else None),
             )
             attn_weights = None
 

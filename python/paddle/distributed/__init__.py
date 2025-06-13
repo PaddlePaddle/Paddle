@@ -53,8 +53,7 @@ from .auto_parallel.intermediate.pipeline_parallel import SplitPoint
 from .auto_parallel.intermediate.tensor_parallel import (
     ColWiseParallel,
     ContextParallel,
-    ContextParallelBegin,
-    ContextParallelEnd,
+    ContextParallelPrefix,
     PrepareLayerInput,
     PrepareLayerOutput,
     RowWiseParallel,
@@ -221,6 +220,5 @@ __all__ = [
     "get_mesh",
     "to_distributed",
     "ContextParallel",
-    "ContextParallelBegin",
-    "ContextParallelEnd",
+    "ContextParallelPrefix",
 ]
