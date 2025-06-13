@@ -18,6 +18,7 @@ import builtins
 import inspect
 import math
 import operator
+from dataclasses import fields
 from functools import partial, reduce
 from typing import TYPE_CHECKING
 
@@ -67,6 +68,7 @@ from .variables import (
     CallableVariable,
     ConstantVariable,
     ContainerVariable,
+    DataClassInstanceVariable,
     DictVariable,
     EnumerateVariable,
     EnumVariable,
@@ -1555,6 +1557,31 @@ Dispatcher.register(
     ("ExceptionVariable", "ExceptionVariable"),
     lambda left, right: exception_variable_equal(left, right),
 )
+
+
+@Dispatcher.register_decorator(operator.eq)
+def dataclass_instance_eq(
+    lhs: DataClassInstanceVariable, rhs: DataClassInstanceVariable
+):
+    if lhs.get_py_type() != rhs.get_py_type():
+        return ConstantVariable(False, lhs.graph, DummyTracker([lhs, rhs]))
+
+    return ConstantVariable(
+        all(
+            Dispatcher.call(
+                operator.eq, lhs.getattr(field.name), rhs.getattr(field.name)
+            )
+            for field in fields(lhs.get_py_type())
+        ),
+        lhs.graph,
+        DummyTracker([lhs, rhs]),
+    )
+
+
+@Dispatcher.register_decorator(operator.ne)
+def dataclass_instance_ne(lhs: TupleVariable, rhs: TupleVariable):
+    return Dispatcher.call(operator.eq, lhs, rhs).bool_not()
+
 
 Dispatcher.register(
     operator.eq,

@@ -21,6 +21,7 @@ from .base import (  # noqa: F401
 from .basic import (  # noqa: F401
     CellVariable,
     ConstantVariable,
+    DataClassInstanceVariable,
     DataVariable,
     DygraphTracerVariable,
     EnumVariable,
