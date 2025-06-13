@@ -61,5 +61,5 @@ op_patches:
     actions:
       - action : add_attr
         object : dtype
-        type : pir::DataTypeAttribute
+        type : paddle::dialect::DataTypeAttribute
         default : pir::UndefinedType
