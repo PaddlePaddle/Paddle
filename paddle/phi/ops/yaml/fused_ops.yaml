@@ -396,6 +396,27 @@
   support_dygraph_mode : true
   traits : pir::SideEffectTrait
 
+- op : fused_moe_permute
+  args : (Tensor X, Tensor XScale, Tensor expert_routemap, Tensor expert_prob_topk, int topk, int num_experts, int[] tokens_per_expert, int padding_multiplex)
+  output : Tensor(X_unzipoed), Tensor(zipped_expertwise_rowmap), Tensor(token_prob_unzipped), Tensor(XScale_unzipped)
+  infer_meta:
+    func : FusedMoePermuteInferMeta
+  kernel :
+    func : fused_moe_permute
+    data_type : X
+  optional : XScale
+  support_dygraph_mode : true
+
+- op : fused_moe_unpermute
+  args : (Tensor unzipped_tokens, Tensor zipped_expertwise_rowmap, Tensor expert_routemap_topk, Tensor unzipped_token_probs, int total_zipped_tokens_num, int num_experts, bool MP)
+  output : Tensor(zipped_tokens), Tensor(zipped_probs_topk)
+  infer_meta :
+    func : FusedMoeUnpermuteInferMeta
+  kernel :
+    func : fused_moe_unpermute
+    data_type : unzipped_tokens
+  support_dygraph_mode : true
+
 - op : fused_multi_transformer_
   args : (Tensor x, Tensor[] ln_scales, Tensor[] ln_biases, Tensor[] qkv_weights, Tensor[] qkv_biases, Tensor[] cache_kvs, Tensor[] pre_caches, Tensor rotary_tensor, Tensor beam_offset, Tensor time_step, Tensor seq_lengths, Tensor src_mask, Tensor[] out_linear_weights, Tensor[] out_linear_biases, Tensor[] ffn_ln_scales, Tensor[] ffn_ln_biases, Tensor[] ffn1_weights, Tensor[] ffn1_biases, Tensor[] ffn2_weights, Tensor[] ffn2_biases, bool pre_layer_norm = true, float epsilon = 1e-5, float residual_alpha = 1.0f, float dropout_rate = .5f, int rotary_emb_dims = 0, bool is_test = false, str dropout_implementation = "downgrade_in_infer", str act_method = "gelu", bool trans_qkvw = true, int ring_id = -1, str norm_type = "layernorm", bool use_neox_rotary_style=true, int gqa_group_size=-1)
   output :  Tensor[](cache_kv_outs){out_linear_weights.size()}, Tensor(out)

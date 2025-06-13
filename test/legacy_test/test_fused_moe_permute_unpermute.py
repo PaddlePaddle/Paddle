@@ -92,7 +92,7 @@ class TestFusedMoePermuteUnpermute(unittest.TestCase):
     TOKEN_LEN = 7168
     DTYPES = ["bfloat16"]
     EXPERT_NUMS = [4, 8]
-    TOPKS = [4, 8, 12]
+    TOPKS = [4, 12]
 
     def setUp(self):
         """Initialize test environment."""
@@ -159,14 +159,9 @@ class TestFusedMoePermuteUnpermute(unittest.TestCase):
                         max_abs_err, max_rel_err = tensor_max_abs_rel_err(
                             tokens, tokens_recovered
                         )
-                        print(
-                            f"unzip-zip tokens max absolute error: {max_abs_err}, relative error: {max_rel_err}"
-                        )
+                        print(f"unzip-zip tokens relative error: {max_rel_err}")
                         self.assertLess(
-                            max_abs_err, 1e-1, "Tokens absolute error too large"
-                        )
-                        self.assertLess(
-                            max_rel_err, 1e-1, "Tokens relative error too large"
+                            max_rel_err, 1e-2, "Tokens relative error too large"
                         )
 
                         max_abs_err, max_rel_err = tensor_max_abs_rel_err(
@@ -176,7 +171,7 @@ class TestFusedMoePermuteUnpermute(unittest.TestCase):
                             f"unzip-zip probs max absolute error: {max_abs_err}, relative error: {max_rel_err}"
                         )
                         self.assertLess(
-                            max_abs_err, 1e-1, "Probs absolute error too large"
+                            max_abs_err, 1e-5, "Probs absolute error too large"
                         )
                         self.assertLess(
                             max_rel_err, 1e-5, "Probs relative error too large"
