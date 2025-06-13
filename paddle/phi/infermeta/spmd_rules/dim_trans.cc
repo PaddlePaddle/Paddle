@@ -237,12 +237,13 @@ std::vector<std::shared_ptr<DimTrans>> GetDimTrans(
     }
   } else if (type == DimTrans::Type::SPLIT) {
     std::shared_ptr<Split> split = std::dynamic_pointer_cast<Split>(dim_trans);
-    std::vector<std::shared_ptr<DimTrans>> dims = GetDimTrans(split->input(),
-                                                input_shape,
-                                                mesh_shape,
-                                                sharded_input_dims,
-                                                shardable,
-                                                seen_dims);
+    std::vector<std::shared_ptr<DimTrans>> dims =
+        GetDimTrans(split->input(),
+                    input_shape,
+                    mesh_shape,
+                    sharded_input_dims,
+                    shardable,
+                    seen_dims);
     int64_t ret_size = split->local_split_shape_value();
 
     if (split->split_id() == 0) {
