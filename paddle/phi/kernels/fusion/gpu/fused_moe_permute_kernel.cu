@@ -63,7 +63,6 @@ __global__ void tokens_unzip_stable_kernel(
   __shared__ int shared_expert_rowmap[CUMSUM_BLOCK_SIZE][MAX_NUM_EXPERTS];
   __shared__ probs_T shared_expert_probmap[CUMSUM_BLOCK_SIZE][MAX_NUM_EXPERTS];
 
-  // --------------------- thread0 单线程任务传递 -------------------------
   if (threadIdx.x == 0) {
     int local_expert_rowmap[CUMSUM_BLOCK_SIZE][MAX_NUM_EXPERTS];
     probs_T local_expert_probs[CUMSUM_BLOCK_SIZE][MAX_NUM_EXPERTS];
@@ -89,7 +88,6 @@ __global__ void tokens_unzip_stable_kernel(
         local_cumsum[expert] += 1;
       }
     }
-// -------------------------- 块间通信逻辑 -----------------------------
 #pragma unroll
     for (int i = 0; i < num_experts; i++) {
       if (blockIdx.x != 0) {
@@ -103,8 +101,6 @@ __global__ void tokens_unzip_stable_kernel(
       global_expertwise_block_cumsum[(blockIdx.x + 1) * num_experts + i] =
           proposed_offset;
     }
-
-// -------------------------- 块内通信逻辑 -----------------------------
 #pragma unroll
     for (int i = 0; i < CUMSUM_BLOCK_SIZE; i++) {
 #pragma unroll
@@ -119,7 +115,6 @@ __global__ void tokens_unzip_stable_kernel(
     }
   }
   __syncthreads();
-  // ------------------------- 所有block内线程 -------------------------
   for (int row = block_row_base; row < block_row_base + CUMSUM_BLOCK_SIZE;
        row++) {
     if (row >= total_zipped_tokens_num) return;
@@ -148,7 +143,6 @@ __global__ void tokens_unzip_stable_kernel(
     }
   }
 }
-// ---------------------------- Dispatch ---------------------------------
 template <typename T, typename Context>
 void dispatch_tokens_unzip_stable(const Context &dev_ctx,
                                   const DenseTensor &X,
@@ -239,11 +233,6 @@ void FusedMoePermuteKernel(const Context &dev_ctx,
   const int rows = X.dims()[0];
   const int cols = X.dims()[1];
   const int quanted_cols = (XScale) ? XScale.get_ptr()->dims()[1] : 0;
-  /*
-  const int max_tokens_per_expert =
-      ((max_tokens_per_expert_in + 127) / 128) * 128;
-  const int output_rows = num_experts * max_tokens_per_expert;
-  */
   expert_base_offset expert_offset;
   int tokens_cumulated = 0;
   for (int i = 0; i < MAX_NUM_EXPERTS; i++) {
@@ -259,7 +248,6 @@ void FusedMoePermuteKernel(const Context &dev_ctx,
 
   const int output_rows = tokens_cumulated;
   const int topk_calculated = expert_routemap_topk.dims()[1];
-  //------------------------ 输出缓冲区分配  ------------------------
   X_unzipped->Resize({output_rows, cols});
   token_prob_unzipped->Resize({output_rows});
   if (XScale) {
@@ -268,7 +256,6 @@ void FusedMoePermuteKernel(const Context &dev_ctx,
   }
   dev_ctx.template Alloc<float>(XScale_unzipped);
   dev_ctx.template Alloc<int>(zipped_expertwise_rowmap);
-  // ------------------------ 缓冲区初始化（适配padding）----------------
   if (X.dtype() == phi::DataType::BFLOAT16) {
     dev_ctx.template Alloc<phi::dtype::bfloat16>(X_unzipped);
     auto X_unzipped_ptr =
@@ -311,7 +298,6 @@ void FusedMoePermuteKernel(const Context &dev_ctx,
                     sizeof(float) * output_rows,
                     dev_ctx.stream());
   }
-  // ------------ 前缀和辅助数组相关逻辑，“推”式block通信 -------------------
   const int cumsum_blocknum =
       (rows + CUMSUM_BLOCK_SIZE - 1) / CUMSUM_BLOCK_SIZE;
   DenseTensor global_expertwise_block_cumsum =

@@ -52,7 +52,6 @@ __global__ void tokens_zip_kernel(
 
   int local_row_fetchlist[MAX_NUM_EXPERTS];
 
-// -------------------------初始化任务表 ------------------------
 #pragma unroll
   for (int expert = 0; expert < num_experts; ++expert) {
     const int fetch_row =
@@ -76,8 +75,6 @@ __global__ void tokens_zip_kernel(
   const int thread_stride = blockDim.x * vecSize;
 
   if constexpr (MP) {
-    // ------------------------ 手动混合精度 ---------------------------------
-    // 齐整区域向量化搬移
     for (int x_offset = threadIdx.x * vecSize;
          x_offset < num_full_vec * vecSize;
          x_offset += thread_stride) {
@@ -91,7 +88,6 @@ __global__ void tokens_zip_kernel(
         const int fetch_row = local_row_fetchlist[expert];
         if (fetch_row < 0) continue;
         aggreg_cnt++;
-        // 手动类型提升
         raw = *reinterpret_cast<const __custom_bfloat162 *>(
             &unzipped_tokens[(int64_t)fetch_row * (int64_t)token_length +
                              x_offset]);
@@ -101,7 +97,6 @@ __global__ void tokens_zip_kernel(
         sum.x = __fadd_rn(token_vec.x, sum.x);
         sum.y = __fadd_rn(token_vec.y, sum.y);
       }
-      // 选择性类型下降为原有精度
       if (aggreg_cnt > 1) {
         (*out_ptr).x = static_cast<__nv_bfloat16>(sum.x);
         (*out_ptr).y = static_cast<__nv_bfloat16>(sum.y);
@@ -110,7 +105,6 @@ __global__ void tokens_zip_kernel(
       }
     }
 
-    // 剩余元素处理
     for (int i = num_full_vec * vecSize + threadIdx.x; i < token_length;
          i += blockDim.x) {
       float sum = 0.0f;
@@ -129,8 +123,6 @@ __global__ void tokens_zip_kernel(
           (aggreg_cnt > 1) ? static_cast<__nv_bfloat16>(sum) : raw;
     }
   } else {
-    // ------------------------ BF16 intrinsics 加权累加 -----------------------
-    // 齐整区域向量化搬移
     for (int x_offset = threadIdx.x * vecSize;
          x_offset < num_full_vec * vecSize;
          x_offset += thread_stride) {
@@ -145,14 +137,12 @@ __global__ void tokens_zip_kernel(
             *reinterpret_cast<const __custom_bfloat162 *>(
                 &unzipped_tokens[(int64_t)fetch_row * (int64_t)token_length +
                                  x_offset]);
-        // sum = __hadd2(sum, token_vec);
         sum.x = __custoom_hadd(sum.x, token_vec.x);
         sum.y = __custoom_hadd(sum.y, token_vec.y);
       }
       *out_ptr = sum;
     }
 
-    // 剩余元素处理
     for (int i = num_full_vec * vecSize + threadIdx.x; i < token_length;
          i += blockDim.x) {
       __nv_bfloat16 sum = (__nv_bfloat16)0.0f;
@@ -232,7 +222,6 @@ void FusedMoeUnpermuteKernel(const Context &dev_ctx,
   const int rows = unzipped_tokens.dims()[0];
   const int cols = unzipped_tokens.dims()[1];
   const int topk = expert_routemap_topk.dims()[1];
-  // -----------------------------------------
   dev_ctx.template Alloc<phi::dtype::bfloat16>(zipped_tokens);
   if (unzipped_token_probs.dtype() == phi::DataType::FLOAT32) {
     dev_ctx.template Alloc<float>(zipped_probs_topk);
