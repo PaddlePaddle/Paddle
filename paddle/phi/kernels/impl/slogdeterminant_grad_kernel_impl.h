@@ -73,6 +73,10 @@ void SlogDeterminantGradKernel(const Context& dev_ctx,
             x_rank));
 
   dev_ctx.template Alloc<T>(x_grad);
+  if (x_grad->numel() == 0) {
+    return;
+  }
+
   // Check Whether the matrix is invertible
   // (matrix A not invertible) == (absslogdet(A)=0)
   if (!detail::CheckMatrixInvertible<RealT, Context>(dev_ctx, &logdet)) {

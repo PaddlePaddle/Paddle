@@ -75,6 +75,11 @@ struct SlogDeterminantFunctor {
                   int64_t batch_count,
                   DenseTensor* sign,
                   DenseTensor* logdet) {
+    if (input.numel() == 0) {
+      dev_ctx.template Alloc<T>(sign);
+      dev_ctx.template Alloc<T>(logdet);
+      return;
+    }
 #ifndef PADDLE_WITH_HIP
     phi::Allocator::AllocationPtr tmp_gpu_mat_data;
     const T* gpu_mat = input.data<T>();
@@ -206,6 +211,11 @@ struct SlogDeterminantFunctor<phi::dtype::complex<T>, Context> {
                   int64_t batch_count,
                   DenseTensor* sign,
                   DenseTensor* logdet) {
+    if (input.numel() == 0) {
+      dev_ctx.template Alloc<phi::dtype::complex<T>>(sign);
+      dev_ctx.template Alloc<T>(logdet);
+      return;
+    }
 #ifndef PADDLE_WITH_HIP
     phi::Allocator::AllocationPtr tmp_gpu_mat_data;
     const phi::dtype::complex<T>* gpu_mat =
@@ -311,27 +321,8 @@ void SlogDeterminantKernel(const Context& dev_ctx,
                            DenseTensor* logdet) {
   auto input_dim = common::vectorize(x.dims());
   auto input_dim_size = input_dim.size();
-
-  // shape [*, M, M], check whether it contains 0 in '*'.
-  if (input_dim.size() > 2) {
-    bool size_0 = false;
-    std::vector<int> tmp_dim_vec(input_dim.begin(), input_dim.end() - 2);
-    for (size_t i = 0; i < tmp_dim_vec.size(); ++i) {
-      if (tmp_dim_vec[i] == 0) {
-        size_0 = true;
-        break;
-      }
-    }
-    if (size_0) {
-      tmp_dim_vec.insert(tmp_dim_vec.begin(),
-                         2);  // make the output dims as same as numpy
-      out->Resize(common::make_ddim(tmp_dim_vec));
-      dev_ctx.template Alloc<T>(out);
-      return;
-    }
-  }
-
   auto batch_count = detail::GetBatchCount(x.dims());
+
   VLOG(3) << "input dim:" << x.dims();
   PADDLE_ENFORCE_GE(
       input_dim_size,
@@ -342,7 +333,7 @@ void SlogDeterminantKernel(const Context& dev_ctx,
       input_dim[input_dim_size - 1],
       input_dim[input_dim_size - 2],
       errors::InvalidArgument("the input matrix should be square matrix."));
-  auto rank = input_dim[input_dim_size - 1];  // square matrix length
+  int64_t rank = input_dim[input_dim_size - 1];  // square matrix length
   SlogDeterminantFunctor<T, Context>()(
       dev_ctx, x, rank, batch_count, sign, logdet);
   VLOG(3) << "sign dim:" << sign->dims();
