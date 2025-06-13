@@ -5777,26 +5777,10 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
   traits : paddle::dialect::ForwardOnlyTrait
 
-- op: fp8_blockwise_quant
-  args: (Tensor input, Tensor scale_inv, Tensor scale_inv_t, float epsilon, bool return_transpose, bool pow2_scale, bool permute_scale, bool transpose_scales)
-  outputs: Tensor (out), Tensor (scale)
-  infer_meta:
-    func: Fp8BlockwiseQuantInferMeta
-  kernel:
-    func: fp8_blockwise_quant
-
-- op: fp8_blockwise_transposed_quant
-  args: (Tensor x_bf16, bool is_1d_scaled, bool return_transpose, bool pow2_scale)
-  outputs: Tensor (out), Tensor (scale), Tensor (out_transpose), Tensor (scale_transpose)
-  infer_meta:
-    func: Fp8BlockwiseTransposedQuantInferMeta
-  kernel:
-    func: fp8_blockwise_quant
-
 - op: fp8_gemm_blockwise
-  args: (Tensor a, Tensor a_scale, Tensor b, Tensor b_scale, Tensor bias, Tensor pre_gelu_out, bool transa, bool transb, bool grad, Tensor workspace, bool accumulate,
-   bool use_split_accumulator, int math_sm_count, bool is_A_1d_scaled, bool is_B_1d_scaled)
-  output: Tensor (out)
+  args: (Tensor A, Tensor A_scale, Tensor B, Tensor B_scale, Tensor bias, Tensor pre_gelu, Tensor workspace, bool transa, bool transb, bool grad, bool accumulate, bool use_split_accumulator, int math_sm_count, bool is_A_1d_scaled, bool is_B_1d_scaled)
+  output: Tensor (out), Tensor (pre_gelu_out), Tensor (workspace_out)
+  inplace: (pre_gelu -> pre_gelu_out), (workspace -> workspace_out)
   infer_meta:
     func: Fp8GemmBlockwiseInferMeta
   kernel:

@@ -1308,12 +1308,23 @@ void MoeGateDispatchInferMeta(const MetaTensor& x,
                               MetaTensor* expert_offset,
                               MetaTensor* expert_id);
 
-void Fp8GemmBlockwiseInferMeta(const MetaTensor& x_fp8,
-                               const MetaTensor& x_scale,
-                               const MetaTensor& w_fp8,
-                               const MetaTensor& w_scale,
-                               const bool is_x_1d_scale,
-                               const bool is_x_t_1d_scale,
-                               MetaTensor* out);
+void Fp8GemmBlockwiseInferMeta(const MetaTensor& A,
+                               const MetaTensor& A_scale,
+                               const MetaTensor& B,
+                               const MetaTensor& B_scale,
+                               const MetaTensor& bias,
+                               const MetaTensor& pre_gelu,
+                               const MetaTensor& workspace,
+                               bool transa,
+                               bool transb,
+                               bool grad,
+                               bool accumulate,
+                               bool use_split_accumulator,
+                               int math_sm_count,
+                               bool is_A_1d_scaled,
+                               bool is_B_1d_scaled,
+                               MetaTensor* out,
+                               MetaTensor* pre_gelu_out,
+                               MetaTensor* workspace_out);
 
 }  // namespace phi

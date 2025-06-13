@@ -6471,5 +6471,110 @@ void MoeGateDispatchInferMeta(const MetaTensor& x,
   expert_id->set_dtype(phi::DataType::INT32);
 }
 
+inline bool IsFp8Dtype(const paddle::DataType dtype) {
+  return dtype == phi::DataType::FLOAT8_E4M3FN ||
+         dtype == phi::DataType::FLOAT8_E5M2;
+}
+
+void Fp8GemmBlockwiseInferMeta(const MetaTensor& A,
+                               const MetaTensor& A_scale,
+                               const MetaTensor& B,
+                               const MetaTensor& B_scale,
+                               const MetaTensor& bias,
+                               const MetaTensor& pre_gelu,
+                               const MetaTensor& workspace,
+                               bool transa,
+                               bool transb,
+                               bool grad,
+                               bool accumulate,
+                               bool use_split_accumulator,
+                               int math_sm_count,
+                               bool is_A_1d_scaled,
+                               bool is_B_1d_scaled,
+                               MetaTensor* out,
+                               MetaTensor* pre_gelu_out,
+                               MetaTensor* workspace_out) {
+  PADDLE_ENFORCE_EQ(
+      use_split_accumulator,
+      true,
+      errors::InvalidArgument("Only split accumulator is supported"));
+
+  auto A_dims = A.dims();
+  auto B_dims = B.dims();
+  auto A_scale_dims = A_scale.dims();
+  auto B_scale_dims = B_scale.dims();
+
+  PADDLE_ENFORCE_EQ(
+      transa,
+      true,
+      errors::InvalidArgument("Only transa == true is supported"));
+
+  PADDLE_ENFORCE_EQ(
+      transb,
+      false,
+      errors::InvalidArgument("Only transb == false is supported"));
+
+  PADDLE_ENFORCE_EQ(
+      A_dims.size(),
+      2,
+      errors::InvalidArgument("Input A should have 2 dimensions"));
+
+  PADDLE_ENFORCE_EQ(
+      B_dims.size(),
+      2,
+      errors::InvalidArgument("Input B should have 2 dimensions"));
+
+  PADDLE_ENFORCE_EQ(IsFp8Dtype(A.dtype()),
+                    true,
+                    errors::InvalidArgument("A must be FP8 dtype"));
+
+  PADDLE_ENFORCE_EQ(IsFp8Dtype(B.dtype()),
+                    true,
+                    errors::InvalidArgument("B must be FP8 dtype"));
+
+  PADDLE_ENFORCE_EQ(
+      A_scale.dtype(),
+      phi::DataType::FLOAT32,
+      errors::InvalidArgument(
+          "The dtype of A_scale must be float32, but got %d", A_scale.dtype()));
+
+  PADDLE_ENFORCE_EQ(
+      B_scale.dtype(),
+      phi::DataType::FLOAT32,
+      errors::InvalidArgument(
+          "The dtype of B_scale must be float32, but got %d", B_scale.dtype()));
+
+  // Validate scaling modes
+  PADDLE_ENFORCE_EQ(is_A_1d_scaled || is_B_1d_scaled,
+                    true,
+                    errors::InvalidArgument("2Dx2D scaling is not supported"));
+
+  // Calculate matrix dimensions
+  const int64_t m = transa ? A_dims[0] : A_dims[1];
+  const int64_t k = transa ? A_dims[1] : A_dims[0];
+  const int64_t n = transb ? B_dims[1] : B_dims[0];
+
+  // Validate matrix dimension compatibility
+  PADDLE_ENFORCE_EQ(
+      transa ? A_dims[1] : A_dims[0],
+      transb ? B_dims[0] : B_dims[1],
+      errors::InvalidArgument(
+          "Matrix inner dimensions must match for multiplication. "
+          "A inner dim: %d, B inner dim: %d",
+          transa ? A_dims[1] : A_dims[0],
+          transb ? B_dims[0] : B_dims[1]));
+
+  // Set output dimensions and dtype
+  std::vector<int64_t> out_dims = {n, m};
+  out->set_dims(common::make_ddim(out_dims));
+
+  // Output can be either BFloat16 or Float32
+  out->set_dtype(phi::DataType::BFLOAT16);
+  pre_gelu_out->set_dims(pre_gelu.dims());
+  pre_gelu_out->set_dtype(pre_gelu.dtype());
+  workspace_out->set_dims(workspace.dims());
+  workspace_out->set_dtype(workspace.dtype());
+}
+
 }  // namespace phi
 PD_REGISTER_INFER_META_FN(batch_norm_infer, phi::BatchNormInferInferMeta);
