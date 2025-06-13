@@ -17,7 +17,7 @@
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/utils/data_type.h"
-
+#include "paddle/phi/kernels/full_kernel.h"
 namespace phi {
 
 template <typename T, typename Context>
@@ -28,6 +28,11 @@ void IndexSelectGradKernel(const Context& dev_ctx,
                            int dim,
                            DenseTensor* x_grad) {
   using XPUType = typename XPUTypeTrait<T>::Type;
+  if (out_grad.numel() == 0) {
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(x.dims())), 0, x_grad);
+    return;
+  }
   if (dim < 0) {
     dim += out_grad.dims().size();
   }

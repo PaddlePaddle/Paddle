@@ -47,6 +47,7 @@ void GPUIndexElementwisePutKernel(const phi::GPUContext& ctx,
 
   std::array<int64_t*, 3> strides_array;
   std::vector<int64_t> desired_shape;
+  std::array<std::vector<int64_t>, 3> strides_vec;
 
   funcs::IndexPutStride<3>(input_dims,
                            input_strides,
@@ -59,7 +60,8 @@ void GPUIndexElementwisePutKernel(const phi::GPUContext& ctx,
                            phi::SizeOf(index[0]->dtype()),
                            &desired_shape,
                            &strides_array,
-                           &numel);
+                           &numel,
+                           strides_vec);
 
   const int64_t* template_stride = strides_array[2];
   PADDLE_ENFORCE_NOT_NULL(template_stride,
