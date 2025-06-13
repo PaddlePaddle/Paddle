@@ -94,7 +94,7 @@ class PPMyModel_SingleStage(nn.Layer):
             self.linears.append(linear)
 
     def get_pp_mesh(self, layer_index):
-        # layer_index=0-7 对应的 mesh_idx 分别为 0,0,1,1,2,2,3,3
+        # layer_index=0-7 maps to mesh_idx as 0,0,1,1,2,2,3,3
         mesh_idx = int(layer_index // self.num_layers_per_card)
         return self.mesh[mesh_idx]
 
@@ -133,7 +133,7 @@ class PPMyModel_MultiStage(nn.Layer):
         return self.mesh[mesh_idx]
 
     def forward(self, x):
-        # 对于MultiStage，我们将模型层分片，因此forward调用的是_Pipeline_model_chunk的forward
+        # For MultiStage, we shard model layers, so forward calls _Pipeline_model_chunk's forward
         pass
 
 
