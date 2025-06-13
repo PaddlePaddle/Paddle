@@ -41,6 +41,11 @@ def crop(data, offsets, crop_shape):
                 )
             if selected:
                 result.append(value)
+    # data 0-size
+    if 0 in data.shape:
+        for i, value in enumerate(data.shape):
+            if value == 0:
+                crop_shape[i] = 0
     return np.array(result).reshape(crop_shape)
 
 
@@ -141,6 +146,22 @@ class TestCase6(TestCropTensorOp):
 
     def test_check_output(self):
         self.check_output(check_pir=True, check_symbol_infer=False)
+
+
+class TestCase_ZeroSize(TestCropTensorOp):
+    def initTestCase(self):
+        self.x_shape = (0, 0, 5, 8, 8)
+        self.crop_shape = [1, 1, 2, 4, 4]
+        self.offsets = [1, 0, 0, 2, 2]
+        self.offset_by_input = True
+
+
+class TestCase_ZeroSize2(TestCropTensorOp):
+    def initTestCase(self):
+        self.x_shape = (2, 4, 5, 8, 8)
+        self.crop_shape = [0, 0, 2, 4, 4]
+        self.offsets = [1, 0, 0, 2, 2]
+        self.offset_by_input = True
 
 
 class TestCropTensorOpTensorAttr(OpTest):
