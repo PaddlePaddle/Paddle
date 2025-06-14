@@ -78,6 +78,7 @@ if(NOT WITH_GPU)
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_hapi_model")
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_spmt")
   list(REMOVE_ITEM TEST_OPS test_async_read_write)
+  list(REMOVE_ITEM TEST_OPS test_fp8_gemm)
 endif()
 
 list(REMOVE_ITEM TEST_OPS test_audio_logmel_feature test_audio_mel_feature)
@@ -162,6 +163,7 @@ if(WIN32)
   list(REMOVE_ITEM TEST_OPS test_matmul_int8_op)
   list(REMOVE_ITEM TEST_OPS test_variable_length_memory_efficient_attention)
   list(REMOVE_ITEM TEST_OPS test_ops_nms)
+  list(REMOVE_ITEM TEST_OPS test_fp8_gemm)
 endif()
 list(REMOVE_ITEM TEST_OPS test_checkpoint_saver)
 
@@ -498,7 +500,8 @@ if(NOT WITH_GPU
     test_incubate_moe_combine
     test_incubate_moe_gate_dispatch_partial_nosoftmaxtopk
     test_incubate_moe_gate_dispatch_w_permute_bwd
-    test_incubate_moe_gate_dispatch_w_permute)
+    test_incubate_moe_gate_dispatch_w_permute
+    test_fp8_gemm)
 endif()
 
 if(NOT WITH_CUDNN_FRONTEND)
