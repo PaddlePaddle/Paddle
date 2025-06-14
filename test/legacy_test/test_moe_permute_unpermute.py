@@ -15,7 +15,7 @@
 import unittest
 
 import paddle
-from paddle.nn.functional import fused_moe_permute, fused_moe_unpermute
+from paddle.nn.functional import moe_permute, moe_unpermute
 
 
 def fabricate_dispatch_result(
@@ -132,7 +132,7 @@ class TestFusedMoePermuteUnpermute(unittest.TestCase):
                             zipped_expertwise_rowmap,
                             unzipped_probs,
                             unzipped_scales,
-                        ) = fused_moe_permute(
+                        ) = moe_permute(
                             tokens,
                             tokens_scale,
                             dispatched_indices,
@@ -144,7 +144,7 @@ class TestFusedMoePermuteUnpermute(unittest.TestCase):
                         )
 
                         # Unpermute step
-                        tokens_recovered, probs_recovered = fused_moe_unpermute(
+                        tokens_recovered, probs_recovered = moe_unpermute(
                             (
                                 unzipped_tokens * unzipped_probs.unsqueeze(-1)
                             ).astype("bfloat16"),

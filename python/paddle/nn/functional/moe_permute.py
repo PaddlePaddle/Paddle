@@ -23,7 +23,7 @@ if TYPE_CHECKING:
     from paddle import Tensor
 
 
-def fused_moe_permute(
+def moe_permute(
     X: Tensor,
     XScale: Tensor | None,
     expert_routemap_topk: Tensor,

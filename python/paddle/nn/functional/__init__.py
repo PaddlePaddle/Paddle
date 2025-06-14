@@ -94,8 +94,6 @@ from .flash_attention import (
     scaled_dot_product_attention,
     sdp_kernel,  # noqa: F401
 )
-from .fused_moe_permute import fused_moe_permute
-from .fused_moe_unpermute import fused_moe_unpermute
 from .input import (
     embedding,
     embedding_renorm_,  # noqa: F401
@@ -132,6 +130,8 @@ from .loss import (
     triplet_margin_loss,
     triplet_margin_with_distance_loss,
 )
+from .moe_permute import moe_permute
+from .moe_unpermute import moe_unpermute
 from .norm import (
     batch_norm,
     group_norm,
@@ -300,6 +300,6 @@ __all__ = [
     "flash_attention_v3_varlen",
     'flash_attn_varlen_qkvpacked',
     'group_norm',
-    'fused_moe_permute',
-    'fused_moe_unpermute',
+    'moe_permute',
+    'moe_unpermute',
 ]

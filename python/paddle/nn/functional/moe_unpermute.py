@@ -23,7 +23,7 @@ if TYPE_CHECKING:
     from paddle import Tensor
 
 
-def fused_moe_unpermute(
+def moe_unpermute(
     unzipped_tokens: Tensor,
     zipped_expertwise_rowmap: Tensor,
     expert_routemap_topk: Tensor,
