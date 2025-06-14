@@ -33,8 +33,6 @@ def moe_unpermute(
     MP: bool = True,
     name: str | None = None,
 ):
-    # 为了突出重点，省略部分代码
-    # 动静统一分支，直接调用算子对应的 Python C 函数
     if in_dynamic_or_pir_mode():
         zipped_tokens, zipped_probs_topk = _C_ops.fused_moe_unpermute(
             unzipped_tokens,
