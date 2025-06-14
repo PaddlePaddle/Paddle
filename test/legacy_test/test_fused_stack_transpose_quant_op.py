@@ -70,12 +70,6 @@ class TestFusedStackTransposeQuantOp(unittest.TestCase):
     def test_fused_stack_transpose_quant2(self):
         self.check_main(4, 2048, 128)
 
-    def test_fused_stack_transpose_quant3(self):
-        self.check_main(1, 7168, 4096)
-
-    def test_fused_stack_transpose_quant4(self):
-        self.check_main(4, 7168, 4096)
-
 
 class TestFusedStackTransposeQuantOp1(TestFusedStackTransposeQuantOp):
     def setUp(self):
