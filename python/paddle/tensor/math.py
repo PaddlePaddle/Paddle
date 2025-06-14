@@ -2953,6 +2953,16 @@ def outer(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     else:
         ny = y.reshape((1, -1))
 
+    if x.dtype in [
+        paddle.int32,
+        paddle.int64,
+        DataType.INT32,
+        DataType.INT64,
+        VarDesc.VarType.INT32,
+        VarDesc.VarType.INT64,
+    ]:
+        return nx * ny
+
     if in_dynamic_mode():
         return _C_ops.matmul(nx, ny, False, False)
 
