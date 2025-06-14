@@ -62,7 +62,8 @@ from .variable_length_memory_efficient_attention import (
 )
 
 __all__ = [
-    'fp8_gemm_blockwise' 'fused_multi_head_attention',
+    'fp8_gemm_blockwise',
+    'fused_multi_head_attention',
     'fused_feedforward',
     'fused_multi_transformer',
     'fused_matmul_bias',
