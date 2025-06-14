@@ -18,7 +18,7 @@ from paddle.framework import in_dynamic_or_pir_mode
 
 
 def fused_transpose_split_quant(x, tokens_per_expert, pow_2_scales=False):
-    """
+    r"""
     Performs fused transpose, split, and quantization operations for Mixture of Experts (MoE) models.
     This function combines three operations into a single fused kernel for better performance:
     1. Transpose the input tensor from [total_tokens, K] to [K, total_tokens]
@@ -48,13 +48,14 @@ def fused_transpose_split_quant(x, tokens_per_expert, pow_2_scales=False):
             match x.shape[0], or K exceeds the maximum limit.
     Examples:
         .. code-block:: python
+
             >>> import paddle
             >>> # Create input tensor: 384 tokens, 1024 features
             >>> x = paddle.ones([384, 1024], dtype='bfloat16')
             >>> # Define tokens per expert: 3 experts with 128, 256, 0 tokens respectively
             >>> tokens_per_expert = [128, 256, 0]
             >>> # Perform fused operation
-            >>> outs, scales = paddle.nn.functional.fp8.fused_transpose_split_quant(
+            >>> outs, scales = paddle.incubate.nn.functional.fused_transpose_split_quant(
             ...     x, tokens_per_expert, pow_2_scales=False
             ... )
             >>> # Print shapes to show results
