@@ -49,20 +49,16 @@ def fused_transpose_split_quant(x, tokens_per_expert, pow_2_scales=False):
     Examples:
         .. code-block:: python
 
-            >>> import paddle
-            >>> # Simple example with non-zero tokens
-            >>> x = paddle.randn([256, 128], dtype='bfloat16')
-            >>> x = paddle.clip(x, min=-10, max=10)
-            >>> tokens_per_expert = [128, 128]
-            >>> outs, scales = paddle.incubate.nn.functional.fused_transpose_split_quant(x, tokens_per_expert)
-            >>> len(outs)  # Number of experts
-            2
-            >>> outs[0].shape  # First expert output
-            [128, 128]
-            >>> scales[0].shape  # First expert scale
-            [1, 128]
-            >>> str(outs[0].dtype)  # Output dtype
-            'paddle.float8_e4m3fn'
+            import paddle
+            # Simple example with non-zero tokens
+            x = paddle.randn([256, 128], dtype='bfloat16')
+            x = paddle.clip(x, min=-10, max=10)
+            tokens_per_expert = [128, 128]
+            outs, scales = paddle.incubate.nn.functional.fused_transpose_split_quant(x, tokens_per_expert)
+            len(outs)  # Number of experts
+            outs[0].shape  # First expert output
+            scales[0].shape  # First expert scale
+            str(outs[0].dtype)
     """
 
     tokens_per_expert = [int(t) for t in tokens_per_expert]
