@@ -87,8 +87,8 @@ if(WITH_GPU
    OR WIN32
    OR APPLE
    OR WITH_ROCM) # need support BF16
-  list(REMOVE_ITEM kernel_cu "fusion/gpu/fused_moe_permute_kernel.cu"
-       "fusion/gpu/fused_moe_unpermute_kernel.cu")
+  list(REMOVE_ITEM kernel_gpu "gpu/moe_permute_kernel.cu"
+       "gpu/moe_unpermute_kernel.cu")
 endif()
 
 if(NOT WITH_DGC)

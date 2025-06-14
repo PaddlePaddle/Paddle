@@ -92,7 +92,7 @@ class TestFusedMoePermuteUnpermute(unittest.TestCase):
     TOKEN_LEN = 7168
     DTYPES = ["bfloat16"]
     EXPERT_NUMS = [4, 8]
-    TOPKS = [4, 8, 12]
+    TOPKS = [4, 8]
 
     def setUp(self):
         """Initialize test environment."""

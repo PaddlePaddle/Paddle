@@ -514,7 +514,7 @@ if(NOT WITH_GPU
    OR WIN32
    OR APPLE
    OR WITH_ROCM)
-  list(REMOVE_ITEM TEST_OPS test_fused_moe_permute_unpermute)
+  list(REMOVE_ITEM TEST_OPS test_moe_permute_unpermute)
 endif()
 
 if(NOT WITH_CUDNN_FRONTEND)

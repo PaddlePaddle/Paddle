@@ -5966,25 +5966,24 @@ void FusedConvInferMeta(const MetaTensor& input,
                 config);
 }
 
-void FusedMoePermuteInferMeta(const MetaTensor& X,
-                              const MetaTensor& XScale,
-                              const MetaTensor& expert_routemap_topk,
-                              const MetaTensor& expert_prob_topk,
-                              const int topk,
-                              const int num_experts,
-                              const std::vector<int>& tokens_per_expert,
-                              const int padding_multiplex,
-                              MetaTensor* X_unzipped,
-                              MetaTensor* zipped_expertwise_rowmap,
-                              MetaTensor* token_prob_unzipped,
-                              MetaTensor* XScale_unzipped) {
+void MoePermuteInferMeta(const MetaTensor& X,
+                         const MetaTensor& XScale,
+                         const MetaTensor& expert_routemap_topk,
+                         const MetaTensor& expert_prob_topk,
+                         const int topk,
+                         const int num_experts,
+                         const std::vector<int>& tokens_per_expert,
+                         const int padding_multiplex,
+                         MetaTensor* X_unzipped,
+                         MetaTensor* zipped_expertwise_rowmap,
+                         MetaTensor* token_prob_unzipped,
+                         MetaTensor* XScale_unzipped) {
   PADDLE_ENFORCE_EQ(
       X.dims().size(),
       2,
       common::errors::InvalidArgument("Input X's dims should be 2, but got %u.",
                                       X.dims().size()));
-  PADDLE_ENFORCE_EQ(X.dtype() == phi::DataType::BFLOAT16 ||
-                        X.dtype() == phi::DataType::FLOAT8_E4M3FN,
+  PADDLE_ENFORCE_EQ(X.dtype() == phi::DataType::BFLOAT16,
                     true,
                     common::errors::InvalidArgument(
                         "Input X's dtype should be BFLOAT16 or FLOAT8_E4M3FN"));
@@ -6020,15 +6019,15 @@ void FusedMoePermuteInferMeta(const MetaTensor& X,
   token_prob_unzipped->set_dtype(expert_prob_topk.dtype());
 }
 
-void FusedMoeUnpermuteInferMeta(const MetaTensor& unzipped_tokens,
-                                const MetaTensor& zipped_expertwise_rowmap,
-                                const MetaTensor& expert_routemap_topk,
-                                const MetaTensor& unzipped_token_probs,
-                                const int total_zipped_tokens_num,
-                                const int num_experts,
-                                const bool MP,
-                                MetaTensor* zipped_tokens,
-                                MetaTensor* zipped_probs_topk) {
+void MoeUnpermuteInferMeta(const MetaTensor& unzipped_tokens,
+                           const MetaTensor& zipped_expertwise_rowmap,
+                           const MetaTensor& expert_routemap_topk,
+                           const MetaTensor& unzipped_token_probs,
+                           const int total_zipped_tokens_num,
+                           const int num_experts,
+                           const bool MP,
+                           MetaTensor* zipped_tokens,
+                           MetaTensor* zipped_probs_topk) {
   PADDLE_ENFORCE_EQ(unzipped_tokens.dtype() == phi::DataType::BFLOAT16,
                     true,
                     common::errors::InvalidArgument(

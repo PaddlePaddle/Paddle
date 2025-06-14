@@ -15,10 +15,9 @@
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/full_kernel.h"
-#include "paddle/phi/kernels/gpu/fused_moe_permute_utils.h"
+#include "paddle/phi/kernels/gpu/moe_permute_utils.h"
 
 namespace phi {
-namespace fusion {
 struct __custom_bfloat162 {
   __nv_bfloat16 x;
   __nv_bfloat16 y;
@@ -177,48 +176,46 @@ void dispatch_tokens_zip(const Context &dev_ctx,
   block.x = 256;
 
   // Map data types to C++ types
-  if (unzipped_tokens.dtype() == paddle::DataType::BFLOAT16) {
-    if (unzipped_token_probs.dtype() == paddle::DataType::FLOAT32) {
-      if (MP == true) {
-        tokens_zip_kernel<true><<<grid, block, 0, dev_ctx.stream()>>>(
-            unzipped_tokens.data<phi::bfloat16>(),
-            zipped_expertwise_rowmap.data<int>(),
-            expert_routemap_topk.data<int>(),
-            unzipped_token_probs.data<float>(),
-            zipped_tokens->data<phi::bfloat16>(),
-            zipped_probs_topk->data<float>(),
-            total_zipped_tokens_num,
-            token_length,
-            num_experts,
-            topk);
-      } else {
-        tokens_zip_kernel<false><<<grid, block, 0, dev_ctx.stream()>>>(
-            unzipped_tokens.data<phi::bfloat16>(),
-            zipped_expertwise_rowmap.data<int>(),
-            expert_routemap_topk.data<int>(),
-            unzipped_token_probs.data<float>(),
-            zipped_tokens->data<phi::bfloat16>(),
-            zipped_probs_topk->data<float>(),
-            total_zipped_tokens_num,
-            token_length,
-            num_experts,
-            topk);
-      }
+  if (unzipped_token_probs.dtype() == paddle::DataType::FLOAT32) {
+    if (MP == true) {
+      tokens_zip_kernel<true><<<grid, block, 0, dev_ctx.stream()>>>(
+          unzipped_tokens.data<phi::bfloat16>(),
+          zipped_expertwise_rowmap.data<int>(),
+          expert_routemap_topk.data<int>(),
+          unzipped_token_probs.data<float>(),
+          zipped_tokens->data<phi::bfloat16>(),
+          zipped_probs_topk->data<float>(),
+          total_zipped_tokens_num,
+          token_length,
+          num_experts,
+          topk);
+    } else {
+      tokens_zip_kernel<false><<<grid, block, 0, dev_ctx.stream()>>>(
+          unzipped_tokens.data<phi::bfloat16>(),
+          zipped_expertwise_rowmap.data<int>(),
+          expert_routemap_topk.data<int>(),
+          unzipped_token_probs.data<float>(),
+          zipped_tokens->data<phi::bfloat16>(),
+          zipped_probs_topk->data<float>(),
+          total_zipped_tokens_num,
+          token_length,
+          num_experts,
+          topk);
     }
   }
 }
 
 template <typename T, typename Context>
-void FusedMoeUnpermuteKernel(const Context &dev_ctx,
-                             const DenseTensor &unzipped_tokens,
-                             const DenseTensor &zipped_expertwise_rowmap,
-                             const DenseTensor &expert_routemap_topk,
-                             const DenseTensor &unzipped_token_probs,
-                             const int total_zipped_tokens_num,
-                             const int num_experts,
-                             const bool MP,
-                             DenseTensor *zipped_tokens,
-                             DenseTensor *zipped_probs_topk) {
+void MoeUnpermuteKernel(const Context &dev_ctx,
+                        const DenseTensor &unzipped_tokens,
+                        const DenseTensor &zipped_expertwise_rowmap,
+                        const DenseTensor &expert_routemap_topk,
+                        const DenseTensor &unzipped_token_probs,
+                        const int total_zipped_tokens_num,
+                        const int num_experts,
+                        const bool MP,
+                        DenseTensor *zipped_tokens,
+                        DenseTensor *zipped_probs_topk) {
   const int rows = unzipped_tokens.dims()[0];
   const int cols = unzipped_tokens.dims()[1];
   const int topk = expert_routemap_topk.dims()[1];
@@ -254,14 +251,12 @@ void FusedMoeUnpermuteKernel(const Context &dev_ctx,
                                   topk,
                                   MP);
 }
-}  // namespace fusion
 }  // namespace phi
 
-PD_REGISTER_KERNEL(fused_moe_unpermute,
+PD_REGISTER_KERNEL(moe_unpermute,
                    GPU,
                    ALL_LAYOUT,
-                   phi::fusion::FusedMoeUnpermuteKernel,
+                   phi::MoeUnpermuteKernel,
                    float,
                    double,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float8_e4m3fn) {}
+                   phi::dtype::bfloat16) {}

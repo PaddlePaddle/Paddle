@@ -18,7 +18,6 @@ from typing import TYPE_CHECKING
 
 from paddle import _C_ops
 from paddle.base.framework import in_dynamic_or_pir_mode
-from paddle.base.layer_helper import LayerHelper
 
 if TYPE_CHECKING:
     from paddle import Tensor
@@ -35,8 +34,6 @@ def fused_moe_permute(
     padding_multiplex: int,
     name: str | None = None,
 ):
-    # 为了突出重点，省略部分代码
-    # 动静统一分支，直接调用算子对应的 Python C 函数
     if in_dynamic_or_pir_mode():
         X_unzipped, zipped_experwise, token_prob_unzipped, XScale_unzipped = (
             _C_ops.fused_moe_permute(
@@ -56,47 +53,3 @@ def fused_moe_permute(
             token_prob_unzipped,
             XScale_unzipped,
         )
-
-    # 老静态图分支
-    ## 输入参数检查
-    # __check_input
-
-    ## 构造输出，添加 op，返回输出
-    helper = LayerHelper('fused_moe_permute', **locals())
-    X_unzipped = helper.create_variable_for_type_inference(dtype=X.dtype)
-    zipped_experwise = helper.create_variable_for_type_inference(
-        dtype=expert_routemap_topk.dtype
-    )
-    token_prob_unzipped = helper.create_variable_for_type_inference(
-        dtype=expert_prob_topk.dtype
-    )
-    XScale_unzipped = helper.create_variable_for_type_inference(
-        dtype=XScale.dtype
-    )
-
-    inputs = {
-        'X': X,
-        'XScale': XScale,
-        'expert_routemap_topk': expert_routemap_topk,
-        'expert_prob_topk': expert_prob_topk,
-    }
-
-    outputs = {
-        'X_unzipped': X_unzipped,
-        'zipped_experwise': zipped_experwise,
-        'token_prob_unzipped': token_prob_unzipped,
-        'XScale_unzipped': XScale_unzipped,
-    }
-    attrs = {
-        'topk': topk,
-        'num_experts': num_experts,
-        'tokens_per_expert': tokens_per_expert,
-        'padding_multiplex': padding_multiplex,
-    }
-    helper.append_op(
-        type='fused_moe_permute',
-        inputs=inputs,
-        attrs=attrs,
-        outputs=outputs,
-    )
-    return (X_unzipped, zipped_experwise, token_prob_unzipped, XScale_unzipped)

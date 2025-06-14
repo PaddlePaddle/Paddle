@@ -15,11 +15,10 @@
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/full_kernel.h"
-#include "paddle/phi/kernels/gpu/fused_moe_permute_utils.h"
+#include "paddle/phi/kernels/gpu/moe_permute_utils.h"
 #include "paddle/utils/optional.h"
 
 namespace phi {
-namespace fusion {
 
 #define CUMSUM_BLOCK_SIZE 48
 #define CUMSUM_INVALID_TAG -1
@@ -217,19 +216,19 @@ void dispatch_tokens_unzip_stable(const Context &dev_ctx,
 }
 
 template <typename T, typename Context>
-void FusedMoePermuteKernel(const Context &dev_ctx,
-                           const DenseTensor &X,
-                           const paddle::optional<DenseTensor> &XScale,
-                           const DenseTensor &expert_routemap_topk,
-                           const DenseTensor &expert_prob_topk,
-                           const int topk,
-                           const int num_experts,
-                           const std::vector<int> &tokens_per_expert,
-                           const int padding_multiplex,
-                           DenseTensor *X_unzipped,
-                           DenseTensor *zipped_expertwise_rowmap,
-                           DenseTensor *token_prob_unzipped,
-                           DenseTensor *XScale_unzipped) {
+void MoePermuteKernel(const Context &dev_ctx,
+                      const DenseTensor &X,
+                      const paddle::optional<DenseTensor> &XScale,
+                      const DenseTensor &expert_routemap_topk,
+                      const DenseTensor &expert_prob_topk,
+                      const int topk,
+                      const int num_experts,
+                      const std::vector<int> &tokens_per_expert,
+                      const int padding_multiplex,
+                      DenseTensor *X_unzipped,
+                      DenseTensor *zipped_expertwise_rowmap,
+                      DenseTensor *token_prob_unzipped,
+                      DenseTensor *XScale_unzipped) {
   const int rows = X.dims()[0];
   const int cols = X.dims()[1];
   const int quanted_cols = (XScale) ? XScale.get_ptr()->dims()[1] : 0;
@@ -256,23 +255,10 @@ void FusedMoePermuteKernel(const Context &dev_ctx,
   }
   dev_ctx.template Alloc<float>(XScale_unzipped);
   dev_ctx.template Alloc<int>(zipped_expertwise_rowmap);
-  if (X.dtype() == phi::DataType::BFLOAT16) {
-    dev_ctx.template Alloc<phi::dtype::bfloat16>(X_unzipped);
-    auto X_unzipped_ptr =
-        reinterpret_cast<void *>(X_unzipped->data<phi::dtype::bfloat16>());
-    cudaMemsetAsync(X_unzipped_ptr,
-                    0,
-                    sizeof(phi::bfloat16) * output_rows * cols,
-                    dev_ctx.stream());
-  } else if (X.dtype() == phi::DataType::FLOAT8_E4M3FN) {
-    dev_ctx.template Alloc<phi::dtype::float8_e4m3fn>(X_unzipped);
-    auto X_unzipped_ptr =
-        reinterpret_cast<void *>(X_unzipped->data<phi::dtype::float8_e4m3fn>());
-    cudaMemsetAsync(X_unzipped_ptr,
-                    0,
-                    sizeof(phi::float8_e4m3fn) * output_rows * cols,
-                    dev_ctx.stream());
-  }
+  dev_ctx.template Alloc<T>(X_unzipped);
+  auto X_unzipped_ptr = reinterpret_cast<void *>(X_unzipped->data<T>());
+  cudaMemsetAsync(
+      X_unzipped_ptr, 0, sizeof(T) * output_rows * cols, dev_ctx.stream());
   if (XScale) {
     auto XScale_unzipped_ptr =
         reinterpret_cast<void *>(XScale_unzipped->data<float>());
@@ -324,14 +310,12 @@ void FusedMoePermuteKernel(const Context &dev_ctx,
 #undef CUMSUM_BLOCK_SIZE
 #undef CUMSUM_INVALID_TAG
 #undef MAX_NUM_EXPERTS
-}  // namespace fusion
 }  // namespace phi
 
-PD_REGISTER_KERNEL(fused_moe_permute,
+PD_REGISTER_KERNEL(moe_permute,
                    GPU,
                    ALL_LAYOUT,
-                   phi::fusion::FusedMoePermuteKernel,
+                   phi::MoePermuteKernel,
                    float,
                    double,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float8_e4m3fn) {}
+                   phi::dtype::bfloat16) {}
