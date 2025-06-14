@@ -264,5 +264,23 @@ class TestMaxMinAmaxAminAPI7(TestMaxMinAmaxAminAPI):
         _test_dygraph('min')
 
 
+class TestMaxMinAmaxAminAPI_ZeroSize(TestMaxMinAmaxAminAPI):
+    def init_case(self):
+        self.x_np = np.random.randn(1, 0, 10).astype(np.float32)
+        self.shape = [1, 0, 10]
+        self.dtype = 'float32'
+        self.axis = 0
+        self.keepdim = False
+
+
+class TestMaxMinAmaxAminAPI_ZeroSize2(TestMaxMinAmaxAminAPI):
+    def init_case(self):
+        self.x_np = np.random.randn(1, 0, 10).astype(np.float32)
+        self.shape = [1, 0, 10]
+        self.dtype = 'float32'
+        self.axis = -1
+        self.keepdim = True
+
+
 if __name__ == '__main__':
     unittest.main()
