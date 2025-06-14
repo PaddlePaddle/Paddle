@@ -43,7 +43,7 @@ void RealKernel(const Context& dev_ctx,
                 const DenseTensor& x,
                 DenseTensor* out) {
   if (out->numel() == 0) {
-    dev_ctx.template Alloc<T>(out);
+    dev_ctx.template Alloc<phi::dtype::Real<T>>(out);
     return;
   }
   auto numel = x.numel();
@@ -61,7 +61,7 @@ void ImagKernel(const Context& dev_ctx,
                 const DenseTensor& x,
                 DenseTensor* out) {
   if (out->numel() == 0) {
-    dev_ctx.template Alloc<T>(out);
+    dev_ctx.template Alloc<phi::dtype::Real<T>>(out);
     return;
   }
   auto numel = x.numel();

@@ -236,25 +236,213 @@ std::tuple<Tensor, Tensor> fused_gemm_epilogue_impl(
     bool trans_x,
     bool trans_y,
     const std::string& activation) {
+  // Kernel Key Construction
   Backend kernel_backend = Backend::UNDEFINED;
   DataLayout kernel_layout = DataLayout::UNDEFINED;
   DataType kernel_data_type = DataType::UNDEFINED;
-
-  if (kernel_backend == Backend::UNDEFINED ||
-      kernel_layout == DataLayout::UNDEFINED ||
-      kernel_data_type == DataType::UNDEFINED) {
-    auto kernel_key_set = ParseKernelKeyByInputArgs(x, y, bias);
-    auto kernel_key = kernel_key_set.GetHighestPriorityKernelKey();
-    if (kernel_backend == Backend::UNDEFINED) {
-      kernel_backend = kernel_key.backend();
-    }
-    if (kernel_layout == DataLayout::UNDEFINED) {
-      kernel_layout = kernel_key.layout();
-    }
-    if (kernel_data_type == DataType::UNDEFINED) {
-      kernel_data_type = kernel_key.dtype();
+#ifdef PADDLE_WITH_DISTRIBUTE
+  bool run_auto_parallel = AllInputsAreDistTensor(x, y, bias);
+  bool rank_is_in_current_mesh = true;
+  if (run_auto_parallel) {
+    auto mesh =
+        std::static_pointer_cast<phi::distributed::DistTensor>(bias.impl())
+            ->dist_attr()
+            .process_mesh();
+    rank_is_in_current_mesh = phi::distributed::IsCurRankInMesh(mesh);
+  }
+  if (rank_is_in_current_mesh) {
+    if (kernel_backend == Backend::UNDEFINED ||
+        kernel_layout == DataLayout::UNDEFINED ||
+        kernel_data_type == DataType::UNDEFINED) {
+      auto kernel_key_set = ParseKernelKeyByInputArgs(x, y, bias);
+      auto kernel_key = kernel_key_set.GetHighestPriorityKernelKey();
+      if (kernel_backend == Backend::UNDEFINED) {
+        kernel_backend = kernel_key.backend();
+      }
+      if (kernel_layout == DataLayout::UNDEFINED) {
+        kernel_layout = kernel_key.layout();
+      }
+      if (kernel_data_type == DataType::UNDEFINED) {
+        kernel_data_type = kernel_key.dtype();
+      }
     }
   }
+
+  // Kernel Dispatch Body
+  // Auto Parallel condition
+  if (run_auto_parallel) {
+    // 1. InferSpmd (Infer DistAttr of Inputs&Outputs)
+    auto meta_dist_input_x = MakeDistMetaTensor(*x.impl());
+    auto meta_dist_input_y = MakeDistMetaTensor(*y.impl());
+    auto meta_dist_input_bias = MakeDistMetaTensor(*bias.impl());
+    auto spmd_info =
+        phi::distributed::FusedGemmEpilogueInferSpmd(meta_dist_input_x,
+                                                     meta_dist_input_y,
+                                                     meta_dist_input_bias,
+                                                     trans_x,
+                                                     trans_y,
+                                                     activation);
+    DebugInfoForInferSpmd("fused_gemm_epilogue", spmd_info);
+
+    // 2. Create API Output & Prepare Dist and Dense Output
+    phi::DeviceContext* dev_ctx = nullptr;
+    std::tuple<Tensor, Tensor> api_output;
+
+    auto dist_out_0 =
+        SetKernelDistOutput(&std::get<0>(api_output), spmd_info.second[0]);
+    auto dense_out_0 =
+        dist_out_0 ? dist_out_0->unsafe_mutable_value() : nullptr;
+    if (!rank_is_in_current_mesh) {
+      *dense_out_0 =
+          phi::DenseTensor(std::make_shared<phi::Allocation>(
+                               nullptr, 0, phi::distributed::GetDefaultPlace()),
+                           phi::DenseTensorMeta());
+    }
+
+    phi::distributed::DistTensor* dist_out_1 = nullptr;
+    if (activation != "none") {
+      dist_out_1 =
+          SetKernelDistOutput(&std::get<1>(api_output), spmd_info.second[1]);
+    }
+    auto dense_out_1 =
+        dist_out_1 ? dist_out_1->unsafe_mutable_value() : nullptr;
+    if (!rank_is_in_current_mesh) {
+      *dense_out_1 =
+          phi::DenseTensor(std::make_shared<phi::Allocation>(
+                               nullptr, 0, phi::distributed::GetDefaultPlace()),
+                           phi::DenseTensorMeta());
+    }
+
+    // 3. Infer DistTensor's Global Shape
+    phi::MetaTensor meta_dist_out_0(dist_out_0);
+    phi::MetaTensor meta_dist_out_1(dist_out_1);
+    phi::FusedGemmEpilogueInferMeta(MakeMetaTensor(*x.impl()),
+                                    MakeMetaTensor(*y.impl()),
+                                    MakeMetaTensor(*bias.impl()),
+                                    trans_x,
+                                    trans_y,
+                                    activation,
+                                    dist_out_0 ? &meta_dist_out_0 : nullptr,
+                                    dist_out_1 ? &meta_dist_out_1 : nullptr);
+
+    if (rank_is_in_current_mesh) {
+      // 4. Select Kernel
+      VLOG(6) << "fused_gemm_epilogue API dist branch: kernel key: ["
+              << kernel_backend << ", " << kernel_layout << ", "
+              << kernel_data_type << "]";
+      auto kernel_result =
+          phi::KernelFactory::Instance().SelectKernelOrThrowError(
+              "fused_gemm_epilogue",
+              {kernel_backend, kernel_layout, kernel_data_type});
+      const auto& kernel = kernel_result.kernel;
+      VLOG(6) << "fused_gemm_epilogue kernel: " << kernel;
+      dev_ctx = GetDeviceContextByBackend(
+          kernel_result.has_fallback_cpu ? Backend::CPU : kernel_backend);
+
+      // 5. Reshard Input
+      auto dist_input_x =
+          ReshardApiInputToKernelInput(dev_ctx, x, spmd_info.first[0], "x");
+      auto dist_input_y =
+          ReshardApiInputToKernelInput(dev_ctx, y, spmd_info.first[1], "y");
+      auto dist_input_bias = ReshardApiInputToKernelInput(
+          dev_ctx, bias, spmd_info.first[2], "bias");
+
+      // 6. PrepareData (DataTransform & Prepare Dense Input)
+      dist_input_x = PrepareDataForDistTensor(
+          dist_input_x,
+          GetKernelInputArgDef(kernel.InputAt(0), kernel_backend),
+          {},
+          kernel_result.is_stride_kernel);
+      auto input_x = &dist_input_x->value();
+
+      dist_input_y = PrepareDataForDistTensor(
+          dist_input_y,
+          GetKernelInputArgDef(kernel.InputAt(1), kernel_backend),
+          {},
+          kernel_result.is_stride_kernel);
+      auto input_y = &dist_input_y->value();
+
+      dist_input_bias = PrepareDataForDistTensor(
+          dist_input_bias,
+          GetKernelInputArgDef(kernel.InputAt(2), kernel_backend),
+          {},
+          kernel_result.is_stride_kernel);
+      auto input_bias = &dist_input_bias->value();
+
+      // 7. RecordOpInfoSupplement
+      if (phi::RecordOpInfoSupplement::IsEnabled()) {
+        std::vector<std::pair<const char*, std::vector<phi::DDim>>>
+            input_shapes{{"x", {(*input_x).dims()}},
+                         {"y", {(*input_y).dims()}},
+                         {"bias", {(*input_bias).dims()}}};
+        phi::AttributeMap attrs;
+        attrs["trans_x"] = trans_x;
+        attrs["trans_y"] = trans_y;
+        attrs["activation"] = activation;
+        phi::RecordOpInfoSupplement("fused_gemm_epilogue", input_shapes, attrs);
+      }
+      // 8. Infer Local DenseTensor Meta
+      phi::MetaTensor meta_dense_out_0(dense_out_0);
+      phi::MetaTensor meta_dense_out_1(dense_out_1);
+      phi::FusedGemmEpilogueInferMeta(
+          MakeMetaTensor(*input_x),
+          MakeMetaTensor(*input_y),
+          MakeMetaTensor(*input_bias),
+          trans_x,
+          trans_y,
+          activation,
+          dense_out_0 ? &meta_dense_out_0 : nullptr,
+          dense_out_1 ? &meta_dense_out_1 : nullptr);
+
+      // 9. DenseTensor Kernel Call
+      phi::RecordEvent* kernel_record_event = nullptr;
+      if (phi::RecordEvent::IsEnabled()) {
+        kernel_record_event =
+            new phi::RecordEvent("fused_gemm_epilogue dist compute",
+                                 phi::TracerEventType::DygraphKernelLaunch,
+                                 1);
+      }
+      using kernel_signature = void (*)(const phi::DeviceContext&,
+                                        const phi::DenseTensor&,
+                                        const phi::DenseTensor&,
+                                        const phi::DenseTensor&,
+                                        bool,
+                                        bool,
+                                        const std::string&,
+                                        phi::DenseTensor*,
+                                        phi::DenseTensor*);
+      auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
+      (*kernel_fn)(*dev_ctx,
+                   *input_x,
+                   *input_y,
+                   *input_bias,
+                   trans_x,
+                   trans_y,
+                   activation,
+                   dense_out_0,
+                   dense_out_1);
+      if (FLAGS_benchmark) {
+        dev_ctx->Wait();
+        std::cout << "fused_gemm_epilogue kernel run finish." << std::endl;
+      }
+      if (kernel_record_event != nullptr) {
+        delete kernel_record_event;
+      }
+
+      // 10. Fallback
+      if (kernel_result.has_fallback_cpu) {
+        TransDataBackend(dense_out_0, kernel_backend, dense_out_0);
+        TransDataBackend(dense_out_1, kernel_backend, dense_out_1);
+      }
+    }
+
+    // 11. Set Output Dist Attr For Default Impl
+    // API `fused_gemm_epilogue` does not need to set DistAttr for output.
+
+    // 12. Return
+    return api_output;
+  }
+#endif  // PADDLE_WITH_DISTRIBUTE
 
   VLOG(6) << "fused_gemm_epilogue API kernel key: [" << kernel_backend << ", "
           << kernel_layout << ", " << kernel_data_type << "]";
@@ -289,6 +477,17 @@ std::tuple<Tensor, Tensor> fused_gemm_epilogue_impl(
       GetKernelInputArgDef(kernel.InputAt(2), actual_kernel_backend),
       {},
       kernel_result.is_stride_kernel);
+  if (phi::RecordOpInfoSupplement::IsEnabled()) {
+    std::vector<std::pair<const char*, std::vector<phi::DDim>>> input_shapes{
+        {"x", {(*input_x).dims()}},
+        {"y", {(*input_y).dims()}},
+        {"bias", {(*input_bias).dims()}}};
+    phi::AttributeMap attrs;
+    attrs["trans_x"] = trans_x;
+    attrs["trans_y"] = trans_y;
+    attrs["activation"] = activation;
+    phi::RecordOpInfoSupplement("fused_gemm_epilogue", input_shapes, attrs);
+  }
 
   std::tuple<Tensor, Tensor> api_output;
   auto kernel_out_0 = SetKernelOutput(&std::get<0>(api_output));
@@ -297,6 +496,13 @@ std::tuple<Tensor, Tensor> fused_gemm_epilogue_impl(
     kernel_out_1 = SetKernelOutput(&std::get<1>(api_output));
   }
 
+  phi::RecordEvent* infer_shape_record_event = nullptr;
+  if (phi::RecordEvent::IsEnabled()) {
+    infer_shape_record_event =
+        new phi::RecordEvent("fused_gemm_epilogue infer_meta",
+                             phi::TracerEventType::OperatorInner,
+                             1);
+  }
   phi::MetaTensor meta_out_0(kernel_out_0, kernel_result.is_stride_kernel);
   phi::MetaTensor meta_out_1(kernel_out_1, kernel_result.is_stride_kernel);
 
@@ -309,6 +515,9 @@ std::tuple<Tensor, Tensor> fused_gemm_epilogue_impl(
                                   kernel_out_0 ? &meta_out_0 : nullptr,
                                   kernel_out_1 ? &meta_out_1 : nullptr);
 
+  if (infer_shape_record_event != nullptr) {
+    delete infer_shape_record_event;
+  }
   using kernel_signature = void (*)(const phi::DeviceContext&,
                                     const phi::DenseTensor&,
                                     const phi::DenseTensor&,
@@ -319,7 +528,13 @@ std::tuple<Tensor, Tensor> fused_gemm_epilogue_impl(
                                     phi::DenseTensor*,
                                     phi::DenseTensor*);
   auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
-
+  phi::RecordEvent* kernel_record_event = nullptr;
+  if (phi::RecordEvent::IsEnabled()) {
+    kernel_record_event =
+        new phi::RecordEvent("fused_gemm_epilogue kernel launch",
+                             phi::TracerEventType::DygraphKernelLaunch,
+                             1);
+  }
   (*kernel_fn)(*dev_ctx,
                *input_x,
                *input_y,
@@ -329,11 +544,19 @@ std::tuple<Tensor, Tensor> fused_gemm_epilogue_impl(
                activation,
                kernel_out_0,
                kernel_out_1);
-
+  if (FLAGS_benchmark) {
+    dev_ctx->Wait();
+    std::cout << "fused_gemm_epilogue kernel run finish." << std::endl;
+  }
+  if (kernel_record_event != nullptr) {
+    delete kernel_record_event;
+  }
   if (kernel_result.has_fallback_cpu) {
     TransDataBackend(kernel_out_0, kernel_backend, kernel_out_0);
     TransDataBackend(kernel_out_1, kernel_backend, kernel_out_1);
   }
+  dev_ctx = GetDeviceContextByBackend(kernel_backend);
+
   return api_output;
 }
 

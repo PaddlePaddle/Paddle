@@ -115,8 +115,7 @@ class MetaInfoOrNull:
         return self.meta
 
     def unwrap_unsafe(self):
-        if self.meta is None:
-            raise AssertionError("MetaInfo is None")
+        assert self.meta is not None, "MetaInfo is None"
         return self.meta
 
     def with_dynamic_axes(
@@ -222,6 +221,13 @@ class MetaInfoOrNull:
         name = SOT_INFER_META_INNER_VAR
         dtype = MetaInfoOrNull._handle_legacy_ir_amp_dtype(value.dtype)
         shape = [SymbolicInt() if dim == -1 else dim for dim in value.shape]
+        for dim in shape:
+            if isinstance(dim, int):
+                assert dim >= 0, (
+                    "Dimensions must be non-negative integers or SymbolicInt. "
+                    f"Encountered value {dim} in shape {shape}."
+                )
+
         if isinstance(value, paddle.pir.Value) and value.is_dist():
             dist_info = DistInfo.from_value(value)
         else:

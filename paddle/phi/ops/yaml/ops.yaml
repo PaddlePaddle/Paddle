@@ -1808,6 +1808,7 @@
   infer_meta :
     func : ExpandAsInferMeta
     local_shape: out
+    spmd_rule : ExpandAsInferSpmd
   kernel :
     func : expand_as
     data_type : x
@@ -2557,6 +2558,7 @@
   output : Tensor(y), Tensor(mean), Tensor(variance)
   infer_meta :
     func : GroupNormInferMeta
+    spmd_rule : GroupNormInferSpmd
   kernel :
     func : group_norm
   optional : scale, bias
@@ -2996,6 +2998,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [label]
+    spmd_rule : LabelSmoothInferSpmd
   kernel :
     func : label_smooth
     data_type : label
@@ -4469,6 +4472,7 @@
   output : Tensor
   infer_meta :
     func : RoiAlignInferMeta
+    spmd_rule : RoiAlignInferSpmd
   kernel :
     func : roi_align
     data_type : x
