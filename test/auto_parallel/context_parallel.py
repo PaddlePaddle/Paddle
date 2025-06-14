@@ -140,9 +140,13 @@ class TestContextParallel:
         )
 
     def run_test_cases(self):
-        self._test_cp_base()
-
-        self._test_cp_base(is_causal=False)
+        # flash attention is not supported yet for cpu
+        if self.backend == "gpu":
+            cuda_version_main = int(paddle.version.cuda().split(".")[0])
+            device_prop_main = paddle.device.cuda.get_device_capability()[0]
+            if cuda_version_main >= 11 and device_prop_main >= 8:
+                self._test_cp_base()
+                self._test_cp_base(is_causal=False)
 
 
 if __name__ == '__main__':
