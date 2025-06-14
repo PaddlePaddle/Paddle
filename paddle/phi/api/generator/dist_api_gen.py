@@ -1817,6 +1817,10 @@ class DistForwardAPI(ForwardAPI):
                     kernel_args_type_list.append(
                         self.attrs['attr_info'][arg][0]
                     )
+                    # calculate local_shape for expand_as
+                    # TODO(ooooo): bwd reuse this function to kernel, but actually the local_shape isn't same meaning.
+                    if self.infer_meta['local_shape'] is not None:
+                        arg = "local_shape"
                 input_args.append(arg)
             elif isinstance(arg, bool):
                 input_args.append(str(arg).lower())

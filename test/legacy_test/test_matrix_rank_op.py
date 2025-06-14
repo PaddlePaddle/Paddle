@@ -474,6 +474,21 @@ class TestMatrixRankZeroSizeTensor(unittest.TestCase):
             )
             np.testing.assert_allclose(y_valid2, y_valid2_real, rtol=1e-05)
 
+            x_valid3 = paddle.full((2, 0, 7, 7), 1.0, dtype='float64')
+            tol = paddle.full((2, 0), 1.0, dtype='float32')
+            y_valid3 = paddle.linalg.matrix_rank(x_valid3, tol)
+            self.assertEqual(y_valid3.shape, x_valid3.shape[:-2])
+
+            x_valid4 = paddle.full((2, 0, 7, 7), 1.0, dtype='float64')
+            atol = paddle.full((2, 0), 1.0, dtype='float32')
+            y_valid4 = paddle.linalg.matrix_rank(x_valid4, atol=atol)
+            self.assertEqual(y_valid4.shape, x_valid4.shape[:-2])
+
+            x_valid5 = paddle.full((0, 7), 1.0, dtype='float64')
+            tol = paddle.full((1), 1.0, dtype='float32')
+            y_valid5 = paddle.linalg.matrix_rank(x_valid5, tol)
+            self.assertEqual(y_valid5.shape, y_valid5.shape[:-2])
+
     def test_matrix_rank_tensor(self):
         for place in self._get_places():
             self._test_matrix_rank_static(place)

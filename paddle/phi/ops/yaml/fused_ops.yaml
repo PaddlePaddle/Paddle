@@ -474,6 +474,26 @@
     data_type: x
   backward: fused_seqpool_cvm_grad
 
+- op : fused_stack_quant
+  args : (Tensor[] x)
+  output : Tensor(out), Tensor(scale)
+  infer_meta :
+    func : FusedStackQuantInferMeta
+  kernel :
+    func : fused_stack_quant
+    data_type : x
+  support_dygraph_mode : true
+
+- op : fused_stack_transpose_quant
+  args : (Tensor[] x)
+  output : Tensor(out), Tensor(scale)
+  infer_meta :
+    func : FusedStackTransposeQuantInferMeta
+  kernel :
+    func : fused_stack_transpose_quant
+    data_type : x
+  support_dygraph_mode : true
+
 - op : fused_token_prune
   args: (Tensor attn, Tensor x, Tensor mask, Tensor new_mask, bool keep_first_token
     = true, bool keep_order = false)

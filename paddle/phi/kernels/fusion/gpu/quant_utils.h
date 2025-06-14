@@ -13,13 +13,15 @@
 // limitations under the License.
 
 #pragma once
-
 #include <cuda.h>
 #include <cuda_bf16.h>
 #include <cuda_fp8.h>
 #include <cuda_runtime.h>
+
+#include <iostream>
 #include <limits>
 
+#include "paddle/phi/api/all.h"
 #include "paddle/phi/common/float8_e4m3fn.h"
 #include "paddle/phi/common/float8_e5m2.h"
 #include "paddle/phi/kernels/funcs/math_cuda_utils.h"
@@ -35,14 +37,25 @@
     }                                            \
   }
 
+#if defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 800)
+#define BF16_MAX(a, b) __hmax(a, b)
+#define BF16_ABS(x) __habs(x)
+#else
+#define BF16_MAX(a, b) \
+  __float2bfloat16(fmaxf(__bfloat162float(a), __bfloat162float(b)))
+#define BF16_ABS(x) __float2bfloat16(fabsf(__bfloat162float(x)))
+#endif
+
+// Perform swizzle transformation on 2D coordinates with relative offset to
+// avoid bank conflicts
 __device__ __forceinline__ int swizzled_2d_idx(const int outer_dim,
                                                const int inner_rank,
                                                const int inner_dim) {
   return outer_dim * inner_rank + outer_dim ^ inner_dim;
 }
-
-// Type trait for extreme values of fp8 types.
-// Used in the calculation of scale factors as a constexpr lookup from
+// ------------------------------ Numerical Part (from
+// kitchen)--------------------------- Type trait for extreme values of fp8
+// types. Used in the calculation of scale factors as a constexpr lookup from
 // e4m3 or e5m2 to the max finite value.
 template <typename T>
 struct F8LimitsTrait;
@@ -51,9 +64,8 @@ template <>
 struct F8LimitsTrait<__nv_fp8_e4m3> {
   static constexpr float max = 448.0f;
 };
-
 template <>
-struct F8LimitsTrait<phi::dtype::float8_e4m3fn> {
+struct F8LimitsTrait<phi::float8_e4m3fn> {
   static constexpr float max = 448.0f;
 };
 
@@ -61,9 +73,8 @@ template <>
 struct F8LimitsTrait<__nv_fp8_e5m2> {
   static constexpr float max = 57344.0f;
 };
-
 template <>
-struct F8LimitsTrait<phi::dtype::float8_e5m2> {
+struct F8LimitsTrait<phi::float8_e5m2> {
   static constexpr float max = 57344.0f;
 };
 
@@ -86,13 +97,13 @@ struct HighPrecisionFloatScaleLimitsTrait<float, true> {
 };
 
 template <>
-struct HighPrecisionFloatScaleLimitsTrait<__nv_bfloat16, false> {
+struct HighPrecisionFloatScaleLimitsTrait<nv_bfloat16, false> {
   // Hex float format of 1.(7 bits of 1) * 2 ^ 127
   static constexpr float max = 0x1.FEp127;
 };
 
 template <>
-struct HighPrecisionFloatScaleLimitsTrait<__nv_bfloat16, true> {
+struct HighPrecisionFloatScaleLimitsTrait<nv_bfloat16, true> {
   // Hex float format of 1.0 * 2 ^ 127
   static constexpr float max = 0x1.0p127;
 };
@@ -108,9 +119,10 @@ struct HighPrecisionFloatScaleLimitsTrait<half, true> {
   // Hex float format of 1.0 * 2 ^ 15
   static constexpr float max = 0x1.0p15;
 };
-
+// ----------------------------- Scale Part ---------------------------
 // Calculate the quantization scale for an individual data element
 // given the amax(abs(tile)) value for a given quantization tile.
+//
 //
 // Arguments:
 // IType: data type of the tensor being quantized (float or bf16)
@@ -142,7 +154,7 @@ __device__ __forceinline__ float ComputeScale(const float amax,
     return scale;
   }
   if constexpr (Power2Scaling) {
-    uint32_t scale_bits = *reinterpret_cast<uint32_t*>(&scale);
+    uint32_t scale_bits = *reinterpret_cast<uint32_t *>(&scale);
     // Scale must be positive, shift it
     uint8_t exp = scale_bits >> 23;
 
@@ -161,9 +173,11 @@ __device__ __forceinline__ float ComputeScale(const float amax,
   }
   return scale;
 }
+// -------------------------------------- From Kitchen
+// ----------------------------------
 
-// Utility function to calculate size up to dimension k
-inline int64_t size_to_dim(size_t k, const std::vector<int64_t>& dims) {
+inline int64_t size_to_dim(size_t k, std::vector<int64_t> dims) {
+  PD_CHECK(k >= 0 && k <= dims.size());
   int64_t r = 1;
   for (size_t i = 0; i < k; ++i) {
     r *= dims[i];
@@ -171,7 +185,6 @@ inline int64_t size_to_dim(size_t k, const std::vector<int64_t>& dims) {
   return r;
 }
 
-// Warp-level reduction for maximum value
 __device__ __forceinline__ float warpReduceMax(float val) {
   for (int offset = 16; offset > 0; offset /= 2)
     val = fmaxf(val, __shfl_down_sync(0xFFFFFFFF, val, offset));

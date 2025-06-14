@@ -27,6 +27,7 @@ from .cal_aux_loss import cal_aux_loss
 from .expand_modality_expert_id import expand_modality_expert_id
 from .fp8 import (
     fused_act_dequant,
+    fused_stack_transpose_quant,
     fused_swiglu_weighted_bwd,
     fused_weighted_swiglu_act_quant,
 )
