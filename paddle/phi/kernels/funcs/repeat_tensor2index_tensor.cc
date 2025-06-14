@@ -92,7 +92,9 @@ void RepeatsTensor2IndexTensorFunctor<phi::XPUContext, RepeatsT>::operator()(
     const phi::XPUContext &dev_ctx,
     const DenseTensor &repeats,
     DenseTensor *index) {
-  const RepeatsT *repeats_data = repeats.data<RepeatsT>();
+  DenseTensor repeats_cpu_copy;
+  phi::Copy(dev_ctx, repeats, phi::CPUPlace(), true, &repeats_cpu_copy);
+  const RepeatsT *repeats_data = repeats_cpu_copy.data<RepeatsT>();
 
   int64_t index_size = 0;
   for (int i = 0; i < repeats.dims()[0]; i++) {
