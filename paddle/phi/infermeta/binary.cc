@@ -2992,7 +2992,12 @@ void MatmulInferMeta(const MetaTensor& x,
   } else {
     new_dims.reserve(ndims_x);
     for (size_t i = 0; i < ndims_x - 2; ++i) {
-      new_dims.push_back(std::max(dims_x[i], dims_y[i]));
+      // If one of them is 0, choose 0.
+      if (dims_x[i] == 0 || dims_y[i] == 0) {
+        new_dims.push_back(0);
+      } else {
+        new_dims.push_back(std::max(dims_x[i], dims_y[i]));
+      }
     }
   }
   if (!x_broadcasted) {

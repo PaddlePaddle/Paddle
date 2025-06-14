@@ -62,6 +62,57 @@ class TestElementwisePowOp(OpTest):
             )
 
 
+class TestElementwisePowOp_ZeroBaseNumber1(TestElementwisePowOp):
+    def setUp(self):
+        self.op_type = "elementwise_pow"
+        self.python_api = paddle.pow
+        self.public_python_api = paddle.pow
+        self.prim_op_type = "prim"
+
+        self.inputs = {
+            'X': np.random.randint(-100, -1, size=[20, 5]).astype("int32"),
+            'Y': np.random.randint(-200, 0, size=[20, 5], dtype="int32"),
+        }
+        self.outputs = {'Out': np.zeros([20, 5]).astype("int32")}
+
+    def test_check_grad_normal(self):
+        pass
+
+
+class TestElementwisePowOp_ZeroBaseNumber2(TestElementwisePowOp):
+    def setUp(self):
+        self.op_type = "elementwise_pow"
+        self.python_api = paddle.pow
+        self.public_python_api = paddle.pow
+        self.prim_op_type = "prim"
+
+        self.inputs = {
+            'X': np.random.randint(2, 100, size=[20, 5]).astype("int32"),
+            'Y': np.random.randint(-200, 0, size=[20, 5], dtype="int32"),
+        }
+        self.outputs = {'Out': np.zeros([20, 5]).astype("int32")}
+
+    def test_check_grad_normal(self):
+        pass
+
+
+class TestElementwisePowOp_ZeroBaseNumber3(TestElementwisePowOp):
+    def setUp(self):
+        self.op_type = "elementwise_pow"
+        self.python_api = paddle.pow
+        self.public_python_api = paddle.pow
+        self.prim_op_type = "prim"
+
+        self.inputs = {
+            'X': np.asarray([-1, 0, 1]),
+            'Y': np.asarray([-1, -1, -1]),
+        }
+        self.outputs = {'Out': np.asarray([-1, 0, 1])}
+
+    def test_check_grad_normal(self):
+        pass
+
+
 class TestElementwisePowOp_ZeroDim1(TestElementwisePowOp):
     def setUp(self):
         self.op_type = "elementwise_pow"
