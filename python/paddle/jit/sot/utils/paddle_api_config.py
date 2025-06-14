@@ -52,6 +52,7 @@ def get_paddle_api():
         paddle.geometric,
     ]
     distributed_apis = [
+        paddle.distributed.all_reduce,
         paddle.distributed.shard_tensor,
         paddle.distributed.reshard,
         paddle.distributed.all_gather,
