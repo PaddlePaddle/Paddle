@@ -81,7 +81,7 @@ void TileGradKernel(const Context& dev_ctx,
                           dims));
 
     using XPUType = typename XPUTypeTrait<T>::Type;
-    // int reduce_sum(Context* ctx, const T* x, T* y, const
+    // int reduce_sum(Context* xpu_ctx, const T* x, T* y, const
     // std::vector<int64_t>& xshape, const std::vector<int64_t>& rdims)
     const auto* out_data = reinterpret_cast<const XPUType*>(out_grad.data<T>());
     auto* x_grad_data = reinterpret_cast<XPUType*>(x_grad->data<T>());
