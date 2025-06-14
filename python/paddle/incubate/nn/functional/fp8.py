@@ -47,18 +47,20 @@ def fused_transpose_split_quant(x, tokens_per_expert, pow_2_scales=False):
             is negative or not divisible by 128, sum of token counts doesn't
             match x.shape[0], or K exceeds the maximum limit.
     Examples:
-        .. code-block:: python
-
-            import paddle
-            # Simple example with non-zero tokens
-            x = paddle.randn([256, 128], dtype='bfloat16')
-            x = paddle.clip(x, min=-10, max=10)
-            tokens_per_expert = [128, 128]
-            outs, scales = paddle.incubate.nn.functional.fused_transpose_split_quant(x, tokens_per_expert)
-            len(outs)  # Number of experts
-            outs[0].shape  # First expert output
-            scales[0].shape  # First expert scale
-            str(outs[0].dtype)
+        >>> import paddle
+        >>> paddle.seed(2023)
+        >>> x = paddle.randn([256, 128], dtype='bfloat16')
+        >>> x = paddle.clip(x, min=-10, max=10)
+        >>> tokens_per_expert = [128, 128]
+        >>> outs, scales = paddle.incubate.nn.functional.fused_transpose_split_quant(x, tokens_per_expert)
+        >>> print(len(outs))
+        2
+        >>> print(outs[0].shape)
+        [128, 128]
+        >>> print(scales[0].shape)
+        [1]
+        >>> print(outs[0].dtype)
+        paddle.float8_e4m3fn
     """
 
     tokens_per_expert = [int(t) for t in tokens_per_expert]
