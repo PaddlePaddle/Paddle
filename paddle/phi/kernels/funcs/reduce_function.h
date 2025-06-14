@@ -1460,6 +1460,10 @@ void ReduceKernelImpl(const Context& dev_ctx,
                       const std::vector<int64_t>& dims,
                       bool keep_dim,
                       bool reduce_all) {
+  if (input.numel() == 0) {
+    dev_ctx.template Alloc<OutT>(output);
+    return;
+  }
   PADDLE_ENFORCE_GT(input.numel(),
                     0,
                     common::errors::InvalidArgument(
