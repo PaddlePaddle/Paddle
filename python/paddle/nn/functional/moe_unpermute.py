@@ -34,7 +34,7 @@ def moe_unpermute(
     name: str | None = None,
 ):
     if in_dynamic_or_pir_mode():
-        zipped_tokens, zipped_probs_topk = _C_ops.fused_moe_unpermute(
+        zipped_tokens, zipped_probs_topk = _C_ops.moe_unpermute(
             unzipped_tokens,
             zipped_expertwise_rowmap,
             expert_routemap_topk,

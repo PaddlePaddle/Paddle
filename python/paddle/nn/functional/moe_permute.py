@@ -36,7 +36,7 @@ def moe_permute(
 ):
     if in_dynamic_or_pir_mode():
         X_unzipped, zipped_experwise, token_prob_unzipped, XScale_unzipped = (
-            _C_ops.fused_moe_permute(
+            _C_ops.moe_permute(
                 X,
                 XScale,
                 expert_routemap_topk,
