@@ -5992,8 +5992,7 @@ void MoePermuteInferMeta(const MetaTensor& X,
                     common::errors::InvalidArgument(
                         "Input expert_routemap_topk's dtype should be INT32"));
   PADDLE_ENFORCE_EQ(
-      expert_prob_topk.dtype() == phi::DataType::BFLOAT16 ||
-          expert_prob_topk.dtype() == phi::DataType::FLOAT32,
+      expert_prob_topk.dtype() == phi::DataType::FLOAT32,
       true,
       common::errors::InvalidArgument(
           "Input expert_prob_topk's dtype should be BFLOAT16 or FLOAT32"));

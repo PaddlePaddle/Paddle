@@ -267,23 +267,13 @@ void MoePermuteKernel(const Context &dev_ctx,
                     sizeof(float) * output_rows * quanted_cols,
                     dev_ctx.stream());
   }
-  if (expert_prob_topk.dtype() == phi::DataType::BFLOAT16) {
-    dev_ctx.template Alloc<phi::dtype::bfloat16>(token_prob_unzipped);
-    auto token_prob_unzipped_ptr = reinterpret_cast<void *>(
-        token_prob_unzipped->data<phi::dtype::bfloat16>());
-    cudaMemsetAsync(token_prob_unzipped_ptr,
-                    0,
-                    sizeof(phi::bfloat16) * output_rows,
-                    dev_ctx.stream());
-  } else if (expert_prob_topk.dtype() == phi::DataType::FLOAT32) {
-    dev_ctx.template Alloc<float>(token_prob_unzipped);
-    auto token_prob_unzipped_ptr =
-        reinterpret_cast<void *>(token_prob_unzipped->data<float>());
-    cudaMemsetAsync(token_prob_unzipped_ptr,
-                    0,
-                    sizeof(float) * output_rows,
-                    dev_ctx.stream());
-  }
+  dev_ctx.template Alloc<float>(token_prob_unzipped);
+  auto token_prob_unzipped_ptr =
+      reinterpret_cast<void *>(token_prob_unzipped->data<float>());
+  cudaMemsetAsync(token_prob_unzipped_ptr,
+                  0,
+                  sizeof(float) * output_rows,
+                  dev_ctx.stream());
   const int cumsum_blocknum =
       (rows + CUMSUM_BLOCK_SIZE - 1) / CUMSUM_BLOCK_SIZE;
   DenseTensor global_expertwise_block_cumsum =

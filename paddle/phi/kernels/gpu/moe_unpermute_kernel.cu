@@ -220,23 +220,13 @@ void MoeUnpermuteKernel(const Context &dev_ctx,
   const int cols = unzipped_tokens.dims()[1];
   const int topk = expert_routemap_topk.dims()[1];
   dev_ctx.template Alloc<T>(zipped_tokens);
-  if (unzipped_token_probs.dtype() == phi::DataType::FLOAT32) {
-    dev_ctx.template Alloc<float>(zipped_probs_topk);
-    void *zipped_probs_topk_ptr =
-        reinterpret_cast<void *>(zipped_probs_topk->data<float>());
-    cudaMemsetAsync(zipped_probs_topk_ptr,
-                    0,
-                    sizeof(float) * total_zipped_tokens_num * topk,
-                    dev_ctx.stream());
-  } else if (unzipped_token_probs.dtype() == phi::DataType::BFLOAT16) {
-    dev_ctx.template Alloc<phi::dtype::bfloat16>(zipped_probs_topk);
-    void *zipped_probs_topk_ptr =
-        reinterpret_cast<void *>(zipped_probs_topk->data<phi::bfloat16>());
-    cudaMemsetAsync(zipped_probs_topk_ptr,
-                    0,
-                    sizeof(phi::bfloat16) * total_zipped_tokens_num * topk,
-                    dev_ctx.stream());
-  }
+  dev_ctx.template Alloc<float>(zipped_probs_topk);
+  void *zipped_probs_topk_ptr =
+      reinterpret_cast<void *>(zipped_probs_topk->data<float>());
+  cudaMemsetAsync(zipped_probs_topk_ptr,
+                  0,
+                  sizeof(float) * total_zipped_tokens_num * topk,
+                  dev_ctx.stream());
 
   dispatch_tokens_zip<T, Context>(dev_ctx,
                                   unzipped_tokens,
