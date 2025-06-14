@@ -2112,6 +2112,106 @@ void FrameInferMeta(const MetaTensor& x,
   out->set_dims(common::make_ddim(output_shape));
   out->set_dtype(x.dtype());
 }
+void Fp8QuantBlockwiseInferMeta(const MetaTensor& X,
+                                bool using_1x128_vec_quant,
+                                bool input_transpose,
+                                bool output_scale_transpose,
+                                bool using_e5m2,
+                                bool using_pow2_scale,
+                                MetaTensor* out,
+                                MetaTensor* scale,
+                                MetaTensor* out_transposed,
+                                MetaTensor* scale_transposed) {
+  PADDLE_ENFORCE_EQ(
+      X.dims().size() == 2, true, "Input must have exactly 2 dimensions.");
+  PADDLE_ENFORCE_EQ(using_e5m2, false, "currently e5m2 is not support.");
+  PADDLE_ENFORCE_EQ(X.dtype() == phi::DataType::BFLOAT16,
+                    true,
+                    "currently only support bfloat16 input.");
+
+  const int64_t rows = X.dims()[0];
+  const int64_t cols = X.shape()[1];
+  if (input_transpose) {
+    PADDLE_ENFORCE_EQ(
+        using_1x128_vec_quant,
+        True,
+        common::errors::InvalidArgument("The input_transpose strategy is only "
+                                        "support quant_method = 0(1x128)"));
+  }
+  PADDLE_ENFORCE_EQ(
+      rows % 128,
+      0,
+      common::errors::InvalidArgument("The first dim of "
+                                      "Input(X) should be exactly divided "
+                                      "by 128 , but got %d",
+                                      rows));
+  PADDLE_ENFORCE_EQ(cols % 128,
+                    0,
+                    common::errors::InvalidArgument(
+                        "The last dim of Input(X) should be exactly divided "
+                        "by 128 , but got %d",
+                        cols));
+
+  int64_t output_outer_dim = -1;
+  int64_t output_inner_dim = -1;
+  int64_t scale_outer_dim = -1;
+  int64_t scale_inner_dim = -1;
+
+  // output_fp8's shape should exactly match input x.
+  output_outer_dim = input_transpose ? cols : rows;
+  output_inner_dim = input_transpose ? rows : cols;
+
+  if (using_1x128_vec_quant) {
+    // 1x128 w/wo transpose
+    const int64_t dim_to_be_quantized = input_transpose ? rows : cols;
+    const int64_t quantized_dim = (dim_to_be_quantized + 127) / 128;
+    const int64_t no_quantize_dim = input_transpose ? cols : rows;
+    scale_outer_dim = output_scale_transpose ? quantized_dim : no_quantize_dim;
+    scale_inner_dim = output_scale_transpose ? no_quantize_dim : quantized_dim;
+  } else {
+    // 128x128
+    // No input_transpose support
+    const int64_t row_quantized = (rows + 127) / 128;
+    const int64_t col_quantized = (cols + 127) / 128;
+    scale_outer_dim = output_scale_transpose ? col_quantized : row_quantized;
+    scale_inner_dim = output_scale_transpose ? row_quantized : col_quantized;
+  }
+
+  PADDLE_ENFORCE_GT(output_outer_dim,
+                    0,
+                    common::errors::InvalidArgument(
+                        "invalid shape encountered in output outer dim."));
+  PADDLE_ENFORCE_GT(output_inner_dim,
+                    0,
+                    common::errors::InvalidArgument(
+                        "invalid shape encountered in output inner dim."));
+  PADDLE_ENFORCE_GT(scale_outer_dim,
+                    0,
+                    common::errors::InvalidArgument(
+                        "invalid shape encountered in scale outer dim."));
+  PADDLE_ENFORCE_GT(scale_inner_dim,
+                    0,
+                    common::errors::InvalidArgument(
+                        "invalid shape encountered in scale inner dim."));
+
+  if (X && out && scale) {
+    out->set_dims(common::make_ddim({output_outer_dim, output_inner_dim}));
+    out->set_dtype(phi::DataType::FLOAT8_E4M3FN);
+    scale->set_dims(common::make_ddim({scale_outer_dim, scale_inner_dim}));
+    scale->set_dtype(phi::DataType::FLOAT32);
+    if (input_transpose) {
+      out_transposed->set_dims(
+          common::make_ddim({output_inner_dim, output_outer_dim}));
+      out_transposed->set_dtype(phi::DataType::FLOAT8_E4M3FN);
+      scale_transposed->set_dims(
+          common::make_ddim({scale_inner_dim, scale_outer_dim}));
+      scale_transposed->set_dtype(phi::DataType::FLOAT32);
+    }
+  } else {
+    PADDLE_THROW(
+        common::errors::InvalidArgument("invalid input or output tensor"));
+  }
+}
 
 void FullBatchSizeLikeInferMeta(const MetaTensor& x,
                                 const std::vector<int>& shape,
