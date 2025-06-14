@@ -51,15 +51,6 @@ __device__ void BlockLoad(const phi::bfloat16* X,
   }
 }
 
-#if defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 800)
-#define BF16_MAX(a, b) __hmax(a, b)
-#define BF16_ABS(x) __habs(x)
-#else
-#define BF16_MAX(a, b) \
-  __float2bfloat16(fmaxf(__bfloat162float(a), __bfloat162float(b)))
-#define BF16_ABS(x) __float2bfloat16(fabsf(__bfloat162float(x)))
-#endif
-
 __device__ void BlockColumnMax(const __nv_bfloat16 input[4][4],
                                __nv_bfloat16 amax[4],
                                __nv_bfloat16* shm) {
