@@ -81,7 +81,7 @@ struct Store {
 
 template <typename T>
 struct Store<T, true> {
-  Store(T *dst, const T *shift, const T *smooth, const int cols)
+  Store(T *dst, const T *shift, const T *smooth, const int64_t cols)
       : dst_(dst), shift_(shift), smooth_(smooth), cols_(cols) {}
 
   template <int VecSize>
@@ -102,12 +102,14 @@ struct Store<T, true> {
   T *dst_;
   const T *shift_;
   const T *smooth_;
-  const int cols_;
+  const int64_t cols_;
 };
 
 template <typename T>
 struct DequantLoad {
-  DequantLoad(const int32_t *src, const float *dequant_scales, const int cols)
+  DequantLoad(const int32_t *src,
+              const float *dequant_scales,
+              const int64_t cols)
       : src_(src), dequant_scales_(dequant_scales), cols_(cols) {}
 
   template <int VecSize>
@@ -132,7 +134,7 @@ struct DequantLoad {
 
   const int32_t *src_;
   const float *dequant_scales_;
-  const int cols_;
+  const int64_t cols_;
 };
 
 template <typename T, typename OutT, bool Smooth = false>
@@ -186,7 +188,7 @@ struct QuantStore<T, int8_t, true> {
   QuantStore(int8_t *dst,
              const T *shift,
              const T *smooth,
-             const int cols,
+             const int64_t cols,
              const int quant_round_type,
              const float quant_scale,
              const float quant_max_bound,
@@ -232,7 +234,7 @@ struct QuantStore<T, int8_t, true> {
   const float quant_min_bound_;
   const T *shift_;
   const T *smooth_;
-  const int cols_;
+  const int64_t cols_;
 };
 
 }  // namespace funcs

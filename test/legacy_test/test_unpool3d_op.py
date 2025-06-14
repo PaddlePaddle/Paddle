@@ -181,6 +181,17 @@ class TestUnpool3DOpOutput(TestUnpool3DOp):
         self.output_size = [7, 9, 11]
 
 
+class TestUnpool3DOp_ZeroSize(TestUnpool3DOp):
+    def init_test_case(self):
+        self.unpool3d_forward_naive = unpool3dmax_forward_naive
+        self.unpooling_type = "max"
+        self.shape = [1, 3, 4, 5, 0]
+        self.ksize = [2, 2, 2]
+        self.strides = [2, 2, 2]
+        self.paddings = [0, 0, 0]
+        self.output_size = None
+
+
 class TestUnpool3DOpException(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()

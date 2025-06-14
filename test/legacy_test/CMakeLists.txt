@@ -75,6 +75,7 @@ if(NOT WITH_GPU)
   list(REMOVE_ITEM TEST_OPS test_rms_norm_op)
   list(REMOVE_ITEM TEST_OPS test_fused_layernorm_op)
   list(REMOVE_ITEM TEST_OPS test_fused_comm_buffer)
+  list(REMOVE_ITEM TEST_OPS test_fused_stack_transpose_quant_op)
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_hapi_model")
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_spmt")
   list(REMOVE_ITEM TEST_OPS test_async_read_write)
@@ -159,6 +160,7 @@ if(WIN32)
   list(REMOVE_ITEM TEST_OPS test_masked_multihead_attention_op)
   list(REMOVE_ITEM TEST_OPS test_rms_norm_op)
   list(REMOVE_ITEM TEST_OPS test_fused_layernorm_op)
+  list(REMOVE_ITEM TEST_OPS test_fused_stack_transpose_quant_op)
   list(REMOVE_ITEM TEST_OPS test_matmul_int8_op)
   list(REMOVE_ITEM TEST_OPS test_variable_length_memory_efficient_attention)
   list(REMOVE_ITEM TEST_OPS test_ops_nms)
@@ -477,6 +479,28 @@ if(NOT WITH_GPU
    OR APPLE)
   list(REMOVE_ITEM TEST_OPS test_build_strategy_fusion_group_pass)
   list(REMOVE_ITEM TEST_OPS test_sparse_conv_igemm_op)
+endif()
+
+# New Op only supported by CUDA>=12.0 and Linux, CUDA_ARCH_NAME==Volta, skip some op test
+if(NOT WITH_GPU
+   OR WIN32
+   OR APPLE
+   OR WITH_ROCM
+   OR (${CUDA_ARCH_NAME} STREQUAL "Volta") # Affects the accuracy of op tests
+   OR ((WITH_GPU) AND (CUDA_VERSION VERSION_LESS 12.0))
+)# Restrict the use of older versions of CUB
+  list(
+    REMOVE_ITEM
+    TEST_OPS
+    test_incubate_build_src_rank_and_local_expert_id
+    test_incubate_expand_modality_expert_id
+    test_incubate_fused_loss
+    test_incubate_fused_rmsnorm_ext
+    test_incubate_int_bincount
+    test_incubate_moe_combine
+    test_incubate_moe_gate_dispatch_partial_nosoftmaxtopk
+    test_incubate_moe_gate_dispatch_w_permute_bwd
+    test_incubate_moe_gate_dispatch_w_permute)
 endif()
 
 if(NOT WITH_CUDNN_FRONTEND)

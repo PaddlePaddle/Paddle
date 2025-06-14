@@ -21,11 +21,11 @@
 namespace phi {
 
 template <typename T, typename Context>
-void MultiplexKernel(const Context& ctx,
+void MultiplexKernel(const Context& dev_ctx,
                      const std::vector<const DenseTensor*>& ins,
                      const DenseTensor& ids,
                      DenseTensor* out) {
-  ctx.template Alloc<T>(out);
+  dev_ctx.template Alloc<T>(out);
   for (size_t i = 0; i < ins.size(); ++i) {
     PADDLE_ENFORCE_GT(
         ins[i]->numel(),
@@ -45,9 +45,9 @@ void MultiplexKernel(const Context& ctx,
                       ins.size(),
                       errors::PreconditionNotMet(
                           "index exceeds the number of candidate tensors."));
-    memory_utils::Copy(ctx.GetPlace(),
+    memory_utils::Copy(dev_ctx.GetPlace(),
                        out->data<T>() + i * cols,
-                       ctx.GetPlace(),
+                       dev_ctx.GetPlace(),
                        ins[k]->data<T>() + i * cols,
                        cols * sizeof(T));
   }

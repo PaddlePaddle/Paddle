@@ -243,14 +243,14 @@ static __global__ void SimpleElemwiseSubGradCUDAKernel(const T *dout,
                                                        int64_t size,
                                                        T *dx,
                                                        T *dy) {
-  int col = BLOCK_ID_X * BLOCK_NUM_X + THREAD_ID_X;
+  int64_t col = static_cast<int64_t>(BLOCK_ID_X) * BLOCK_NUM_X + THREAD_ID_X;
 
   while (col < size) {
     if (dx != nullptr) {
       dx[col] = dout[col];
     }
     dy[col] = -dout[col];
-    col += BLOCK_NUM_X * GRID_NUM_X;
+    col += static_cast<int64_t>(BLOCK_NUM_X) * GRID_NUM_X;
   }
 }
 

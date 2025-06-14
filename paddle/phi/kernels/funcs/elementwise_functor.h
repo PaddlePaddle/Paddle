@@ -1045,6 +1045,10 @@ compute_pow(const T a, const T b) {
   // it will return a float number like 2.99... , which floor to 2
   // when cast to int by default and it is wrong.
   // Use llrint to cast it to the nearest integer, which is 3.
+  T zero = static_cast<T>(0);
+  if (a == zero && b < zero) {
+    return zero;
+  }
   return llrint(pow(static_cast<double>(a), static_cast<double>(b)));
 }
 template <typename T, typename MPType>
@@ -1057,6 +1061,11 @@ compute_pow(const T a, const T b) {
 #else
 template <typename T, typename MPType>
 inline HOSTDEVICE T compute_pow(const T a, const T b) {
+  if constexpr (std::is_integral<T>::value) {
+    if (a == static_cast<T>(0) && b < static_cast<T>(0)) {
+      return static_cast<T>(0);
+    }
+  }
   MPType a_val = static_cast<MPType>(a);
   MPType b_val = static_cast<MPType>(b);
 #ifdef PADDLE_WITH_XPU_KP
@@ -1171,6 +1180,57 @@ template <typename T>
 struct InverseCopySignFunctor {
   inline HOSTDEVICE T operator()(const T a, const T b) const {
     return copysign_func(b, a);
+  }
+};
+
+template <typename T, typename Enable = void>
+struct NextafterFunctor {
+  inline HOSTDEVICE T operator()(const T x, const T y) const {
+    return static_cast<T>(
+        std::nextafter(static_cast<float>(x), static_cast<float>(y)));
+  }
+};
+
+template <typename T>
+struct NextafterFunctor<
+    T,
+    typename std::enable_if_t<std::is_same<T, double>::value>> {
+  inline HOSTDEVICE T operator()(const T x, const T y) const {
+    return std::nextafter(x, y);
+  }
+};
+
+template <typename T>
+struct NextafterFunctor<T,
+                        typename std::enable_if_t<std::is_integral<T>::value>> {
+  inline HOSTDEVICE double operator()(const T x, const T y) const {
+    return std::nextafter(static_cast<double>(x), static_cast<double>(y));
+  }
+};
+
+template <typename T, typename Enable = void>
+struct InverseNextafterFunctor {
+  inline HOSTDEVICE T operator()(const T x, const T y) const {
+    return static_cast<T>(
+        std::nextafter(static_cast<float>(y), static_cast<float>(x)));
+  }
+};
+
+template <typename T>
+struct InverseNextafterFunctor<
+    T,
+    typename std::enable_if_t<std::is_same<T, double>::value>> {
+  inline HOSTDEVICE T operator()(const T x, const T y) const {
+    return std::nextafter(y, x);
+  }
+};
+
+template <typename T>
+struct InverseNextafterFunctor<
+    T,
+    typename std::enable_if_t<std::is_integral<T>::value>> {
+  inline HOSTDEVICE double operator()(const T x, const T y) const {
+    return std::nextafter(static_cast<double>(y), static_cast<double>(x));
   }
 };
 

@@ -35,8 +35,6 @@
 #include "paddle/cinn/optim/resize_buffer.h"
 #include "paddle/cinn/optim/update_buffer_axis_pass.h"
 #include "paddle/cinn/pass/pass_manager.h"
-#include "paddle/cinn/poly/isl_utils.h"
-#include "paddle/cinn/poly/stage.h"
 #include "paddle/cinn/runtime/intrinsic.h"
 #include "paddle/cinn/utils/string.h"
 #include "paddle/common/enforce.h"
