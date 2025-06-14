@@ -428,8 +428,8 @@ TEST(GroupNorm, Ctor) {
   // output:[0,-1, -1, -1], [0], [0]
 
   x_dist_attr.set_dims_mapping({0, 1, -1, -1});
-  scale_dist_attr.set_dims_mapping({-1});
-  bias_dist_attr.set_dims_mapping({-1});
+  scale_dist_attr.set_dims_mapping(std::vector<int64_t>{-1});
+  bias_dist_attr.set_dims_mapping(std::vector<int64_t>{-1});
   phi::distributed::DistMetaTensor x(common::make_ddim(x_shape), x_dist_attr);
   phi::distributed::DistMetaTensor scale(common::make_ddim(scale_shape),
                                          scale_dist_attr);
