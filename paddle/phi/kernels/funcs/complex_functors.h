@@ -355,15 +355,6 @@ struct ConjFunctor<T, DisableComplex<T>> {
 template <typename T, typename Enable = void>
 struct AngleFunctor;
 
-template <typename T>
-HOSTDEVICE bool is_nan(const T& value) {
-  if constexpr (std::is_same_v<T, double> || std::is_same_v<T, float>) {
-    return std::isnan(value);
-  } else {
-    return phi::dtype::isnan(value);
-  }
-}
-
 // angel function for complex
 template <typename T>
 struct AngleFunctor<T, phi::funcs::Complex<T, dtype::Real<T>>> {
@@ -386,10 +377,28 @@ struct AngleFunctor<T, phi::funcs::NoComplex<T, dtype::Real<T>>> {
       : input_(input), output_(output), numel_(numel) {}
 
   HOSTDEVICE void operator()(int64_t idx) const {
-    if (is_nan<T>(input_[idx])) {
-      output_[idx] = input_[idx];
-      return;
+    if constexpr (std::is_floating_point_v<T>) {
+#if defined(__CUDACC__) || defined(__HIPCC__)
+      if (::isnan(input_[idx])) {
+        output_[idx] = input_[idx];
+        return;
+      }
+#else
+      if (std::isnan(input_[idx])) {
+        output_[idx] = input_[idx];
+        return;
+      }
+#endif
+    } else {
+      if constexpr (std::is_same_v<T, phi::dtype::bfloat16> ||
+                    std::is_same_v<T, phi::dtype::float16>) {
+        if (phi::dtype::isnan(input_[idx])) {
+          output_[idx] = input_[idx];
+          return;
+        }
+      }
     }
+
     output_[idx] = input_[idx] < static_cast<T>(0) ? M_PI : 0;
   }
 
