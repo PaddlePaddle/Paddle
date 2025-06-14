@@ -28,10 +28,10 @@ from paddle.framework import (
     in_dynamic_or_pir_mode,
     in_pir_mode,
 )
+from paddle.jit.marker import unified
 from paddle.nn import Layer
 from paddle.nn.utils import dygraph_utils
 
-from .....jit.marker import unified
 from ....communication.reduce import ReduceOp, _get_reduce_op
 
 if TYPE_CHECKING:
