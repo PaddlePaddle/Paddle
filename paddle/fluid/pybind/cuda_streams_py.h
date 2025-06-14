@@ -30,7 +30,7 @@ class CUDAStream {};
 
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
 #define PY_STREAM_TYPE phi::stream::Stream*
-#elif defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#else
 #define PY_STREAM_TYPE phi::CUDAStream*
 #endif
 
