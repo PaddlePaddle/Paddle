@@ -94,7 +94,6 @@ from .flash_attention import (
     scaled_dot_product_attention,
     sdp_kernel,  # noqa: F401
 )
-from .fp8 import fp8_gemm_blockwise
 from .input import (
     embedding,
     embedding_renorm_,  # noqa: F401
@@ -180,7 +179,6 @@ __all__ = [
     'pairwise_distance',
     'elu',
     'elu_',
-    'fp8_gemm_blockwise',
     'gelu',
     'hardshrink',
     'hardtanh',
