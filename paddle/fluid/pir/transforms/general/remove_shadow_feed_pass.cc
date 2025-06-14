@@ -78,7 +78,7 @@ class RemoveShadowFeedPattern
   bool IsSamePlaceShadowFeed(paddle::dialect::PhiKernelOp op) const {
     if (op.op_name() == "pd_op.shadow_feed") {
       auto in = op.operand_source(0);
-      auto *var = [&] -> paddle::framework::Variable * {
+      auto *var = [&]() -> paddle::framework::Variable * {
         auto *defined_op = in.defining_op();
         if (defined_op && defined_op->isa<paddle::dialect::PhiKernelOp>()) {
           if (defined_op->dyn_cast<paddle::dialect::PhiKernelOp>()
