@@ -113,8 +113,8 @@ SpmdInfo GroupNormInferSpmdBase(const DistMetaTensor& x,
       CopyTensorDistAttrForOutput(bias.dist_attr());
   x_dist_attr_dst.set_dims_mapping(x_dims_mapping);
 
-  scale_dist_attr_dst.set_dims_mapping({-1});
-  bias_dist_attr_dst.set_dims_mapping({-1});
+  scale_dist_attr_dst.set_dims_mapping(std::vector<int64_t>{-1});
+  bias_dist_attr_dst.set_dims_mapping(std::vector<int64_t>{-1});
 
   // Step2.4.  handle input and out tensor partial
   // GroupNorm not support
