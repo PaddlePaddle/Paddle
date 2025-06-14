@@ -21,7 +21,9 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 import paddle
-from paddle.distributed.auto_parallel.placement_type import to_dim_map
+from paddle.distributed.auto_parallel.placement_type import (
+    placemetns_to_dist_status,
+)
 
 if TYPE_CHECKING:
     from paddle.framework import core
@@ -62,7 +64,7 @@ def compute_local_shape_and_global_offset(
     local_shape = copy.copy(global_shape)
     global_offset = [0 for _ in global_shape]
 
-    dims_mapping = to_dim_map(placements)
+    dims_mapping, _ = placemetns_to_dist_status(placements, len(global_shape))
     for tensor_dim, mesh_dims in enumerate(dims_mapping):
         if len(mesh_dims) == 0:
             continue

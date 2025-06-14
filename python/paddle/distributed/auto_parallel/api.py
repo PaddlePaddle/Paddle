@@ -87,6 +87,7 @@ from .moe_utils import (
 from .placement_type import (
     check_placements_equal,
     get_shard_spec,
+    placemetns_to_dist_status,
     to_dim_map,
     to_placements,
 )
@@ -203,23 +204,20 @@ class DistAttr(core.TensorDistAttr):
             raise ValueError("The sharding_specs must be an instance of list.")
         assert all(
             isinstance(dim_name, str) or dim_name is None
-            for dim_name_list in sharding_specs
-            for dim_name in dim_name_list
+            for dim_name in sharding_specs
         ), 'The dimension name in sharding_specs must be an instance of str.'
 
         self._sharding_specs = sharding_specs
-
-        dims_mapping = [[] for _ in sharding_specs]
-        for i, mesh_dims in enumerate(sharding_specs):
-            if len(mesh_dims) > 0:
-                for d in mesh_dims:
-                    dims_mapping[i].append(mesh.dim_names.index(d))
+        dims_mapping = [
+            mesh.dim_names.index(dim_name) if dim_name is not None else -1
+            for dim_name in sharding_specs
+        ]
 
         # 2. init core.TensorDistAttr
         core.TensorDistAttr.__init__(self)
 
         self.process_mesh = mesh
-        self.dims_mapping_2d = dims_mapping
+        self.dims_mapping = dims_mapping
         self.mark_annotated("process_mesh")
         self.mark_annotated("dims_mapping")
 
@@ -858,7 +856,7 @@ def reshard(
         # TODO(LiYuRio): static logic here, reshard should be changed for dygraph logic
         # when reshard has been changed align dygraph logic, delete it.
 
-        dims_mapping, partial_status, split_factor = to_dim_map(
+        dims_mapping, partial_status, split_factor = placemetns_to_dist_status(
             placements, dist_tensor.ndim, return_split_factor=True
         )
         dist_attr = core.TensorDistAttr()
@@ -867,9 +865,13 @@ def reshard(
         dist_attr.mark_annotated("process_mesh")
         dist_attr.mark_annotated("dims_mapping")
         if len(split_factor) > 0:
-            dist_attr._set_split_factor(split_factor)
+            for dim, sf in split_factor.items():
+                dist_attr._set_split_factor(dim, sf)
         if len(partial_status) > 0:
-            dist_attr._set_partial_dims(partial_status)
+            dims = []
+            for dim, _ in partial_status.items():
+                dims.append(dim)
+            dist_attr._set_partial_dims(dims)
 
         alltoall_dim = _specific_alltoall_dim(dist_tensor, mesh, placements)
         if alltoall_dim is not None:

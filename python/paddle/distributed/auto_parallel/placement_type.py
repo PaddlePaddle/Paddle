@@ -17,7 +17,7 @@ import paddle
 from paddle.base.core import Partial, Replicate, Shard
 
 
-def to_placements(dim_map, mesh, partial_idx=[], split_factor={}):
+def dims_mapping_to_placements(dim_map, mesh, partial_idx=[], split_factor={}):
     """
     convert dim_map to placements.
 
@@ -66,7 +66,7 @@ def to_placements(dim_map, mesh, partial_idx=[], split_factor={}):
     return placements
 
 
-def to_placements_static_graph(dim_map, mesh, partial_idx=[]):
+def to_placements(dim_map, mesh, partial_idx=[]):
     """
     convert dim_map to placements.
     Args:
@@ -116,7 +116,9 @@ def check_placements_equal(this, that):
     return True
 
 
-def to_dim_map(placements, tensor_dims, return_split_factor=False):
+def placemetns_to_dist_status(
+    placements, tensor_dims, return_split_factor=False
+):
     """
     convert placements to dim_map.
 
@@ -156,6 +158,36 @@ def to_dim_map(placements, tensor_dims, return_split_factor=False):
         output_list.append(split_factor_map)
 
     return output_list
+
+
+def to_dim_map(placements, tensor_dims):
+    """
+    convert placements to dim_map.
+
+    Args:
+        placements(List[Placement]): a list contains some `paddle.distributed.Placement`.
+        tensor_dims(int): the dimension of dist_tensor.
+
+    Returns:
+        List[int]: a list of integer that represents sharding on each tensor dimension.
+    """
+    dim_map = [-1] * tensor_dims
+    partial_status = {}
+    for i, placement in enumerate(placements):
+        if placement.is_shard():
+            shard_dim = cast("Shard", placement).get_dim()
+            if dim_map[shard_dim] > -1:
+                import logging
+
+                logging.warning(
+                    f"Tensor dim {shard_dim} is already sharded on mesh dim {dim_map[shard_dim]}."
+                )
+
+            dim_map[shard_dim] = i
+        if placement.is_partial():
+            partial_status[i] = cast("Partial", placement).reduce_type()
+
+    return dim_map, partial_status
 
 
 # TODO(lfw): delete it in future.

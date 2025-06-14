@@ -27,7 +27,7 @@ from paddle.base.unique_name import (
 )
 from paddle.distributed.auto_parallel.placement_type import (
     get_shard_spec,
-    to_placements_static_graph,
+    to_placements,
 )
 from paddle.distributed.auto_parallel.static.dist_input_spec import (
     DistributedInputSpec,
@@ -341,7 +341,7 @@ class MetaInfo:
     def to_input_spec(self) -> DistributedInputSpec | ConstrainedInputSpec:
         shape = self.shape_with_special_symbol(None)
         if self.dist_info is not None:
-            placements = to_placements_static_graph(
+            placements = to_placements(
                 self.dist_info.dims_mapping, self.dist_info.mesh
             )
             return DistributedInputSpec(
@@ -471,7 +471,7 @@ class VariableCreator(metaclass=Singleton):
 
                 if meta.dist_info is not None:
                     mesh = meta.dist_info.mesh
-                    placements = to_placements_static_graph(
+                    placements = to_placements(
                         meta.dist_info.dims_mapping, mesh
                     )
                     var = paddle._pir_ops.shard_tensor(var, mesh, placements)
