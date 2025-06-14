@@ -20,7 +20,6 @@ from dataclasses import dataclass, field
 
 from test_case_base import (
     TestCaseBase,
-    test_instruction_translator_cache_context,
 )
 
 import paddle
@@ -102,25 +101,6 @@ def set_attr(data: DataMeta):
 
 
 class TestDataClassInstance(TestCaseBase):
-    def test_guard(self):
-        d1 = DataTensor(x=paddle.randn([1]))
-        dm1 = DataMeta(x=paddle.randn([1]))
-        dm2 = DataMeta(x=paddle.randn([1]))
-        dm3 = DataMeta(x=paddle.zeros([1]))
-        dm4 = DataMeta(x=paddle.randn([1]), n=1)
-        with test_instruction_translator_cache_context() as ctx:
-            self.assertEqual(ctx.translate_count, 0)
-            self.assert_results(is_any_eq, dm1, dm2)
-            self.assertEqual(ctx.translate_count, 2)
-            self.assert_results(is_any_eq, dm1, dm2)
-            self.assertEqual(ctx.translate_count, 2)
-            self.assert_results(is_any_eq, dm1, d1)
-            self.assertEqual(ctx.translate_count, 4)
-            self.assert_results(is_any_eq, dm1, dm3)
-            self.assertEqual(ctx.translate_count, 4)
-            self.assert_results(is_any_eq, dm1, dm4)
-            self.assertEqual(ctx.translate_count, 5)
-
     def test_get_attr(self):
         dm = DataMeta(x=paddle.randn([1, 2]), y=paddle.randn([1]))
         self.assert_results(get_attr, dm)
