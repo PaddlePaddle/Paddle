@@ -1488,6 +1488,11 @@ void OverlapAddGradInferMeta(const MetaTensor& x,
   }
 }
 
+inline int64_t HandleDynamicDim(int64_t maybe_dynamic_dim,
+                                int64_t static_result) {
+  return maybe_dynamic_dim == -1 ? -1 : static_result;
+}
+
 void PixelUnshuffleGradInferMeta(const MetaTensor& out_grad,
                                  int downscale_factor,
                                  const std::string& data_format,
@@ -1506,13 +1511,15 @@ void PixelUnshuffleGradInferMeta(const MetaTensor& out_grad,
   dx_dims[0] = do_dims[0];
 
   if (!channel_last) {
-    dx_dims[1] = do_dims[1] / (downscale_factor * downscale_factor);
-    dx_dims[2] = do_dims[2] * downscale_factor;
-    dx_dims[3] = do_dims[3] * downscale_factor;
+    dx_dims[1] = HandleDynamicDim(
+        do_dims[1], do_dims[1] / (downscale_factor * downscale_factor));
+    dx_dims[2] = HandleDynamicDim(do_dims[2], do_dims[2] * downscale_factor);
+    dx_dims[3] = HandleDynamicDim(do_dims[3], do_dims[3] * downscale_factor);
   } else {
-    dx_dims[1] = do_dims[1] * downscale_factor;
-    dx_dims[2] = do_dims[2] * downscale_factor;
-    dx_dims[3] = do_dims[3] / (downscale_factor * downscale_factor);
+    dx_dims[1] = HandleDynamicDim(do_dims[1], do_dims[1] * downscale_factor);
+    dx_dims[2] = HandleDynamicDim(do_dims[2], do_dims[2] * downscale_factor);
+    dx_dims[3] = HandleDynamicDim(
+        do_dims[3], do_dims[3] / (downscale_factor * downscale_factor));
   }
   x_grad->set_dims(dx_dims);
   x_grad->set_dtype(out_grad.dtype());
