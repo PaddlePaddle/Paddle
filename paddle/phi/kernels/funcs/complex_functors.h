@@ -386,7 +386,7 @@ struct AngleFunctor<T, phi::funcs::NoComplex<T, dtype::Real<T>>> {
       : input_(input), output_(output), numel_(numel) {}
 
   HOSTDEVICE void operator()(int64_t idx) const {
-    if (is_nan(input_[idx])) {
+    if (is_nan<T>(input_[idx])) {
       output_[idx] = input_[idx];
       return;
     }

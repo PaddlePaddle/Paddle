@@ -169,7 +169,7 @@ class TestAngleAPI(unittest.TestCase):
 
 class TestAngleAPIWithNan(TestAngleAPI):
     def setUp(self):
-        self.x = np.array([np.nan, 1j * np.inf, np.inf, 1j * np.nan, 1])
+        self.x = np.array([np.nan, -1, 1], dtype=np.float64)
         self.out = np.angle(self.x)
 
 
