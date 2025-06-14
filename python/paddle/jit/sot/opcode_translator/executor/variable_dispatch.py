@@ -69,6 +69,7 @@ from .variables import (
     ContainerVariable,
     DictVariable,
     EnumerateVariable,
+    EnumVariable,
     ExceptionVariable,
     IterVariable,
     ListVariable,
@@ -1554,6 +1555,23 @@ Dispatcher.register(
     ("ExceptionVariable", "ExceptionVariable"),
     lambda left, right: exception_variable_equal(left, right),
 )
+
+Dispatcher.register(
+    operator.eq,
+    ("EnumVariable", "EnumVariable"),
+    lambda left, right: ConstantVariable(
+        left.get_py_value() == right.get_py_value(),
+        left.graph,
+        tracker=DummyTracker([left, right]),
+    ),
+)
+
+
+# TODO(wangmingkai): Forward operator.ne of (VariableBase, VariableBase) to the negation of operator.eq
+@Dispatcher.register_decorator(operator.ne)
+def dispatch_enum_ne(lhs: EnumVariable, rhs: EnumVariable):
+    return Dispatcher.call(operator.eq, lhs, rhs).bool_not()
+
 
 Dispatcher.register(
     bool,
