@@ -15,7 +15,8 @@
 function run_mac_test() {
     export FLAGS_PIR_OPTEST=True
     export FLAGS_CI_PIPELINE=mac
-    tmp_dir='/tmp'
+    tmp_dir='/Users/paddle/tmp'
+    mkdir -p $tmp_dir
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
     if [ ${WITH_TESTING:-ON} == "ON" ] ; then

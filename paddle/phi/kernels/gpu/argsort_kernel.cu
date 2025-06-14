@@ -28,6 +28,7 @@ namespace cub = hipcub;
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
+#include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -83,6 +84,72 @@ struct SegmentOffsetIter {
 
   int num_cols_;
 };
+
+template <typename T, typename IndType>
+__global__ void merge_kernel(const T* A,
+                             size_t sizeA,
+                             const T* B,
+                             size_t sizeB,
+                             const IndType* ids_A,
+                             const IndType* ids_B,
+                             T* out,
+                             IndType* out_ids,
+                             bool descending) {
+  int64_t thread = blockDim.x * gridDim.x;
+  int64_t num_per_thread = (sizeA + sizeB + thread) / thread;
+  for (int offset = 0; offset < num_per_thread; offset++) {
+    size_t idx = blockIdx.x * blockDim.x + threadIdx.x + offset * thread;
+    size_t total = sizeA + sizeB;
+    if (idx >= total) return;
+    size_t left = (idx > sizeB) ? idx - sizeB : 0;
+    size_t right = (idx < sizeA) ? idx : sizeA;
+    while (left < right) {
+      size_t mid = (left + right) / 2;
+      size_t b_idx = idx - mid;
+
+      T A_mid, B_bidx;
+      if (descending) {
+        A_mid = (mid >= sizeA) ? std::numeric_limits<T>::lowest() : A[mid];
+        B_bidx = (b_idx >= sizeB) ? std::numeric_limits<T>::lowest() : B[b_idx];
+      } else {
+        A_mid = (mid >= sizeA) ? std::numeric_limits<T>::max() : A[mid];
+        B_bidx = (b_idx >= sizeB) ? std::numeric_limits<T>::max() : B[b_idx];
+      }
+
+      if (descending ? (A_mid >= B_bidx) : (A_mid <= B_bidx))
+        left = mid + 1;
+      else
+        right = mid;
+    }
+
+    size_t a_idx = left;
+    size_t b_idx = idx - a_idx;
+    if (a_idx >= sizeA) {
+      if (descending ? (A[sizeA - 1] < B[b_idx]) : (A[sizeA - 1] > B[b_idx])) {
+        out[idx] = A[sizeA - 1];
+        out_ids[idx] = ids_A[sizeA - 1];
+      } else {
+        out[idx] = B[b_idx];
+        out_ids[idx] = ids_B[b_idx];
+      }
+    } else if (b_idx >= sizeB) {
+      out[idx] = A[a_idx];
+      out_ids[idx] = ids_A[a_idx];
+    } else {
+      if (descending ? (A[a_idx] >= B[b_idx]) : (A[a_idx] <= B[b_idx])) {
+        out[idx] = A[a_idx];
+        out_ids[idx] = ids_A[a_idx];
+      } else if (descending ? (a_idx > 0 && (A[a_idx - 1] < B[b_idx]))
+                            : (a_idx > 0 && (A[a_idx - 1] > B[b_idx]))) {
+        out[idx] = A[a_idx - 1];
+        out_ids[idx] = ids_A[a_idx - 1];
+      } else {
+        out[idx] = B[b_idx];
+        out_ids[idx] = ids_B[b_idx];
+      }
+    }
+  }
+}
 
 template <typename T>
 static __global__ void FillIndex(T* indices, T num_rows, T num_cols) {
@@ -205,6 +272,41 @@ void ArgFullSort(const phi::GPUContext& dev_ctx,
     offset += n_elements;
   }
 }
+template <typename T, typename IndType>
+void PerSort(const phi::GPUContext& dev_ctx,
+             T* out_data,
+             int64_t* ids_data,
+             IndType start,
+             IndType end,
+             bool stable,
+             bool descending) {
+#ifdef PADDLE_WITH_CUDA
+  const auto& exec_policy = thrust::cuda::par.on(dev_ctx.stream());
+#else
+  const auto& exec_policy = thrust::hip::par.on(dev_ctx.stream());
+#endif
+  if (stable) {
+    if (descending) {
+      thrust::stable_sort_by_key(exec_policy,
+                                 out_data + start,
+                                 out_data + end,
+                                 ids_data + start,
+                                 thrust::greater<T>());
+    } else {
+      thrust::stable_sort_by_key(
+          exec_policy, out_data + start, out_data + end, ids_data + start);
+    }
+    return;
+  } else {
+    thrust::sort_by_key(
+        exec_policy, out_data + start, out_data + end, ids_data + start);
+    if (descending) {
+      thrust::reverse(exec_policy, out_data + start, out_data + end);
+      thrust::reverse(exec_policy, ids_data + start, ids_data + end);
+    }
+    return;
+  }
+}
 
 template <typename T, typename Context>
 void ArgsortKernel(const Context& dev_ctx,
@@ -249,30 +351,49 @@ void ArgsortKernel(const Context& dev_ctx,
 #else
     const auto& exec_policy = thrust::hip::par.on(dev_ctx.stream());
 #endif
-    if (stable) {
-      thrust::sequence(exec_policy, ids_data, ids_data + size);
-      thrust::copy(exec_policy, in_data, in_data + size, out_data);
-      if (descending) {
-        thrust::stable_sort_by_key(exec_policy,
-                                   out_data,
-                                   out_data + size,
-                                   ids_data,
-                                   thrust::greater<T>());
-      } else {
-        thrust::stable_sort_by_key(
-            exec_policy, out_data, out_data + size, ids_data);
-      }
-      return;
+    auto cu_stream = dev_ctx.stream();
+    thrust::sequence(exec_policy, ids_data, ids_data + size);
+    thrust::copy(exec_policy, in_data, in_data + size, out_data);
+    const int64_t per_number = (1LL << 31) - 1;
+    int64_t start = 0;
+    int64_t end = std::min(start + per_number, size);
+    if (end == size) {
+      PerSort<T, int64_t>(
+          dev_ctx, out_data, ids_data, start, end, stable, descending);
     } else {
-      thrust::sequence(exec_policy, ids_data, ids_data + size);
-      thrust::copy(exec_policy, in_data, in_data + size, out_data);
-      thrust::sort_by_key(exec_policy, out_data, out_data + size, ids_data);
-      if (descending) {
-        thrust::reverse(exec_policy, out_data, out_data + size);
-        thrust::reverse(exec_policy, ids_data, ids_data + size);
+      // Sorting the segments and then merging them
+      DenseTensor temp;
+      DenseTensor ids;
+      temp.Resize(in_dims);
+      ids.Resize(in_dims);
+      T* temp_data = dev_ctx.template Alloc<T>(&temp);
+      int64_t* temp_ids = dev_ctx.template Alloc<int64_t>(&ids);
+
+      while (start != size) {
+        PerSort<T, int64_t>(
+            dev_ctx, out_data, ids_data, start, end, stable, descending);
+        if (start != 0) {
+          auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, end);
+          merge_kernel<<<config.block_per_grid.x,
+                         config.thread_per_block.x,
+                         0,
+                         cu_stream>>>(out_data,
+                                      start,
+                                      out_data + start,
+                                      end - start,
+                                      ids_data,
+                                      ids_data + start,
+                                      temp_data,
+                                      temp_ids,
+                                      descending);
+          thrust::copy(exec_policy, temp_ids, temp_ids + end, ids_data);
+          thrust::copy(exec_policy, temp_data, temp_data + end, out_data);
+        }
+        start = end;
+        end = std::min(start + per_number, size);
       }
-      return;
     }
+    return;
   }
 
   // Special case for full sort, speedup ~190x.

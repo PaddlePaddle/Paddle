@@ -116,14 +116,14 @@ def _options_valid_check(options):
 
 def _get_default_nprocs():
     device = get_device()
-    if 'gpu' in device:
+    if device in core.get_available_custom_device():
+        return core.get_custom_device_count(device.split(":")[0])
+    elif 'gpu' in device:
         return core.get_cuda_device_count()
     elif 'xpu' in device:
         return core.get_xpu_device_count()
     elif 'cpu' in device:
         return multiprocessing.cpu_count()
-    elif device in core.get_available_custom_device():
-        return core.get_custom_device_count(device.split(":")[0])
     else:
         raise RuntimeError(
             f"`paddle.distributed.spawn` does not support parallel training on device `{device}` now."
@@ -132,14 +132,14 @@ def _get_default_nprocs():
 
 def _get_default_backend():
     device = get_device()
-    if 'gpu' in device:
+    if device in core.get_available_custom_device():
+        return 'xccl'
+    elif 'gpu' in device:
         return 'nccl'
     elif 'xpu' in device:
         return 'bkcl'
     elif 'cpu' in device:
         return 'gloo'
-    elif device in core.get_available_custom_device():
-        return 'xccl'
     else:
         raise RuntimeError(
             f"`paddle.distributed.spawn` does not support parallel training on device `{device}` now."
