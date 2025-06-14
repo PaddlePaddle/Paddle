@@ -47,8 +47,6 @@ file(
 if(APPLE OR WIN32)
   list(REMOVE_ITEM kernel_cu "fusion/gpu/fusion_group_kernel.cu")
   list(REMOVE_ITEM kernel_cu "sparse/gpu/conv_kernel_igemm.cu")
-  list(REMOVE_ITEM kernel_cu "fusion/gpu/fused_stack_transpose_quant_kernel.cu")
-  list(REMOVE_ITEM kernel_cu "fusion/gpu/fused_stack_quant_kernel.cu")
 endif()
 
 # New Op only supported by CUDA>=12.0 and Linux
@@ -72,7 +70,9 @@ if(((WITH_GPU) AND (CUDA_VERSION VERSION_LESS 12.0))
     "legacy/gpu/moe_gate_dispatch_kernel.cu"
     "legacy/gpu/moe_gate_dispatch_grad_kernel.cu"
     "legacy/gpu/int_bincount.cu"
-    "legacy/gpu/layer_norm_cuda_kernel.cu")
+    "legacy/gpu/layer_norm_cuda_kernel.cu",
+    "fusion/gpu/fused_stack_transpose_quant_kernel.cu",
+    "fusion/gpu/fused_stack_quant_kernel.cu")
 endif()
 
 if(NOT WITH_DGC)
