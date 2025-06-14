@@ -397,14 +397,14 @@
   traits : pir::SideEffectTrait
 
 - op : fused_moe_permute
-  args : (Tensor X, Tensor XScale, Tensor expert_routemap, Tensor expert_prob_topk, int topk, int num_experts, int[] tokens_per_expert, int padding_multiplex)
-  output : Tensor(X_unzipoed), Tensor(zipped_expertwise_rowmap), Tensor(token_prob_unzipped), Tensor(XScale_unzipped)
+  args : (Tensor hidden_states, Tensor scale, Tensor expert_routemap, Tensor expert_prob_topk, int topk, int num_experts, int[] tokens_per_expert, int padding_multiplex)
+  output : Tensor(hidden_states_unzipped), Tensor(zipped_expertwise_rowmap), Tensor(token_prob_unzipped), Tensor(scale_unzipped)
   infer_meta:
     func : FusedMoePermuteInferMeta
   kernel :
     func : fused_moe_permute
-    data_type : X
-  optional : XScale
+    data_type : hidden_states
+  optional : scale
   support_dygraph_mode : true
 
 - op : fused_moe_unpermute

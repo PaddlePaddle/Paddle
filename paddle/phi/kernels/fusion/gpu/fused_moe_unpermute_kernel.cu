@@ -15,7 +15,7 @@
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/full_kernel.h"
-#include "paddle/phi/kernels/gpu/fused_moe_permute_utils.h"
+#include "paddle/phi/kernels/fusion/gpu/fused_moe_permute_utils.h"
 
 namespace phi {
 namespace fusion {
@@ -177,33 +177,31 @@ void dispatch_tokens_zip(const Context &dev_ctx,
   block.x = 256;
 
   // Map data types to C++ types
-  if (unzipped_tokens.dtype() == paddle::DataType::BFLOAT16) {
-    if (unzipped_token_probs.dtype() == paddle::DataType::FLOAT32) {
-      if (MP == true) {
-        tokens_zip_kernel<true><<<grid, block, 0, dev_ctx.stream()>>>(
-            unzipped_tokens.data<phi::bfloat16>(),
-            zipped_expertwise_rowmap.data<int>(),
-            expert_routemap_topk.data<int>(),
-            unzipped_token_probs.data<float>(),
-            zipped_tokens->data<phi::bfloat16>(),
-            zipped_probs_topk->data<float>(),
-            total_zipped_tokens_num,
-            token_length,
-            num_experts,
-            topk);
-      } else {
-        tokens_zip_kernel<false><<<grid, block, 0, dev_ctx.stream()>>>(
-            unzipped_tokens.data<phi::bfloat16>(),
-            zipped_expertwise_rowmap.data<int>(),
-            expert_routemap_topk.data<int>(),
-            unzipped_token_probs.data<float>(),
-            zipped_tokens->data<phi::bfloat16>(),
-            zipped_probs_topk->data<float>(),
-            total_zipped_tokens_num,
-            token_length,
-            num_experts,
-            topk);
-      }
+  if (unzipped_token_probs.dtype() == paddle::DataType::FLOAT32) {
+    if (MP == true) {
+      tokens_zip_kernel<true><<<grid, block, 0, dev_ctx.stream()>>>(
+          unzipped_tokens.data<phi::bfloat16>(),
+          zipped_expertwise_rowmap.data<int>(),
+          expert_routemap_topk.data<int>(),
+          unzipped_token_probs.data<float>(),
+          zipped_tokens->data<phi::bfloat16>(),
+          zipped_probs_topk->data<float>(),
+          total_zipped_tokens_num,
+          token_length,
+          num_experts,
+          topk);
+    } else {
+      tokens_zip_kernel<false><<<grid, block, 0, dev_ctx.stream()>>>(
+          unzipped_tokens.data<phi::bfloat16>(),
+          zipped_expertwise_rowmap.data<int>(),
+          expert_routemap_topk.data<int>(),
+          unzipped_token_probs.data<float>(),
+          zipped_tokens->data<phi::bfloat16>(),
+          zipped_probs_topk->data<float>(),
+          total_zipped_tokens_num,
+          token_length,
+          num_experts,
+          topk);
     }
   }
 }

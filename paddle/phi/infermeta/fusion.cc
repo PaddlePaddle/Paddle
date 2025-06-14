@@ -143,25 +143,24 @@ void LayerNormalizeReluXPUInferMeta(const MetaTensor& x,
   out->set_layout(x.layout());
 }
 
-void FusedMoePermuteInferMeta(const MetaTensor& X,
-                              const MetaTensor& XScale,
+void FusedMoePermuteInferMeta(const MetaTensor& hidden_states,
+                              const MetaTensor& scale,
                               const MetaTensor& expert_routemap_topk,
                               const MetaTensor& expert_prob_topk,
                               const int topk,
                               const int num_experts,
                               const std::vector<int>& tokens_per_expert,
                               const int padding_multiplex,
-                              MetaTensor* X_unzipped,
+                              MetaTensor* hidden_states_unzipped,
                               MetaTensor* zipped_expertwise_rowmap,
                               MetaTensor* token_prob_unzipped,
-                              MetaTensor* XScale_unzipped) {
+                              MetaTensor* scale_unzipped) {
   PADDLE_ENFORCE_EQ(
-      X.dims().size(),
+      hidden_states.dims().size(),
       2,
       common::errors::InvalidArgument("Input X's dims should be 2, but got %u.",
-                                      X.dims().size()));
-  PADDLE_ENFORCE_EQ(X.dtype() == phi::DataType::BFLOAT16 ||
-                        X.dtype() == phi::DataType::FLOAT8_E4M3FN,
+                                      hidden_states.dims().size()));
+  PADDLE_ENFORCE_EQ(hidden_states.dtype() == phi::DataType::BFLOAT16,
                     true,
                     common::errors::InvalidArgument(
                         "Input X's dtype should be BFLOAT16 or FLOAT8_E4M3FN"));
@@ -175,22 +174,22 @@ void FusedMoePermuteInferMeta(const MetaTensor& X,
       true,
       common::errors::InvalidArgument(
           "Input expert_prob_topk's dtype should be BFLOAT16 or FLOAT32"));
-  if (XScale) {
-    PADDLE_ENFORCE_EQ(XScale.dtype(),
+  if (scale) {
+    PADDLE_ENFORCE_EQ(scale.dtype(),
                       phi::DataType::FLOAT32,
                       common::errors::InvalidArgument(
                           "Input XScale's dtype should be FLOAT32"));
-    const int quanted_cols = XScale.dims()[1];
-    XScale_unzipped->set_dims({-1, quanted_cols});
-    XScale_unzipped->set_dtype(XScale.dtype());
+    const int quanted_cols = scale.dims()[1];
+    scale_unzipped->set_dims({-1, quanted_cols});
+    scale_unzipped->set_dtype(scale.dtype());
   } else {
-    XScale_unzipped->set_dims({0});
-    XScale_unzipped->set_dtype(phi::DataType::FLOAT32);
+    scale_unzipped->set_dims({0});
+    scale_unzipped->set_dtype(phi::DataType::FLOAT32);
   }
-  const int rows = X.dims()[0];
-  const int cols = X.dims()[1];
-  X_unzipped->set_dims({-1, cols});
-  X_unzipped->set_dtype(X.dtype());
+  const int rows = hidden_states.dims()[0];
+  const int cols = hidden_states.dims()[1];
+  hidden_states_unzipped->set_dims({-1, cols});
+  hidden_states_unzipped->set_dtype(hidden_states.dtype());
   zipped_expertwise_rowmap->set_dims({rows, num_experts});
   zipped_expertwise_rowmap->set_dtype(phi::DataType::INT32);
   token_prob_unzipped->set_dims({-1});

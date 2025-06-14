@@ -24,7 +24,7 @@
 #include "paddle/phi/kernels/funcs/math_cuda_utils.h"
 
 namespace phi {
-
+namespace fusion {
 template <paddle::DataType DType>
 struct TypeMap;
 template <>
@@ -100,5 +100,5 @@ __device__ __forceinline__ void vectorized_memcpy(const T* src,
     }
   }
 }
-
+}  // namespace fusion
 }  // namespace phi

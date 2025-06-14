@@ -22,18 +22,18 @@ namespace phi {
 // Common InferMeta Functions for fusion operators.
 // NOTE: The InferMeta Functions in this file are arranged in alphabetic order.
 
-void FusedMoePermuteInferMeta(const MetaTensor& X,
-                              const MetaTensor& XScale,
+void FusedMoePermuteInferMeta(const MetaTensor& hidden_states,
+                              const MetaTensor& scale,
                               const MetaTensor& expert_routemap_topk,
                               const MetaTensor& expert_prob_topk,
                               const int topk,
                               const int num_experts,
                               const std::vector<int>& tokens_per_expert,
                               const int padding_multiplex,
-                              MetaTensor* X_unzipped,
+                              MetaTensor* hidden_states_unzipped,
                               MetaTensor* zipped_expertwise_rowmap,
                               MetaTensor* token_prob_unzipped,
-                              MetaTensor* XScale_unzipped);
+                              MetaTensor* scale_unzipped);
 
 void FusedMoeUnpermuteInferMeta(const MetaTensor& unzipped_tokens,
                                 const MetaTensor& zipped_expertwise_rowmap,
