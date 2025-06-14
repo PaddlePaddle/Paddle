@@ -857,7 +857,6 @@ void FusedActDequantInferMeta(const MetaTensor& x,
                               const MetaTensor& x_scale,
                               MetaTensor* out) {
   auto x_dims = x.dims();
-  auto x_scale_dims = x_scale.dims();
 
   PADDLE_ENFORCE_EQ(
       x.dtype(),

@@ -46,23 +46,19 @@ def fused_act_dequant(
     Examples:
         .. code-block:: python
 
-            >>> import paddle
-            >>> import paddle.incubate.nn.functional as F
+            import paddle
+            import paddle.incubate.nn.functional as F
 
-            >>> # Example 1: Basic usage with 1D scale
-            >>> x = paddle.randint(0, 255, [512, 1024], dtype='uint8')  # Simulate quantized data
-            >>> x = x.astype('float8_e4m3fn')  # Convert to float8_e4m3fn
-            >>> x_scale = paddle.rand([8], dtype='float32')  # 1024 // 128 = 8 scale groups
-            >>> out = F.fused_act_dequant(x, x_scale)
-            >>> print(f"Input shape: {x.shape}, Output shape: {out.shape}")
-            >>> print(f"Input dtype: {x.dtype}, Output dtype: {out.dtype}")
-
-            >>> # Example 2: Per-row scaling with 2D scale
-            >>> x = paddle.randint(0, 255, [256, 512], dtype='uint8')
-            >>> x = x.astype('float8_e4m3fn')
-            >>> x_scale = paddle.rand([256, 4], dtype='float32')  # 512 // 128 = 4 scale groups per row
-            >>> out = F.fused_act_dequant(x, x_scale)
-            >>> print(f"Output shape: {out.shape}, dtype: {out.dtype}")
+            # Example 1: Basic usage with 1D scale
+            # Create random data and convert to float8_e4m3fn
+            x = paddle.randn([512, 1024], dtype='bfloat16')
+            # Simulate quantized input by converting to float8_e4m3fn
+            x = x.astype('float8_e4m3fn')
+            # Create scale tensor: 1024 // 128 = 8 scale groups
+            x_scale = paddle.rand([8], dtype='float32')
+            out = F.fused_act_dequant(x, x_scale)
+            print(f"Input shape: {x.shape}, Output shape: {out.shape}")
+            print(f"Input dtype: {x.dtype}, Output dtype: {out.dtype}")
 
     Note:
         - Input x must be 2D tensor with dtype float8_e4m3fn
@@ -104,20 +100,18 @@ def fused_swiglu_weighted_bwd(
     Examples:
         .. code-block:: python
 
-            >>> import paddle
-            >>> import paddle.incubate.nn.functional as F
+            import paddle
+            import paddle.incubate.nn.functional as F
 
-            >>> # Example: Basic 2D usage
-            >>> batch_size, hidden_size = 8, 2048
-            >>> o1 = paddle.randn([batch_size, hidden_size * 2], dtype='bfloat16')
-            >>> do2_s = paddle.randn([batch_size, hidden_size], dtype='bfloat16')
-            >>> probs = paddle.rand([batch_size], dtype='float32')
-            >>> do1, probs_grad, o2_s = F.fused_swiglu_weighted_bwd(o1, do2_s, probs)
-            >>> print(f"Input shape: {o1.shape}, Output do1 shape: {do1.shape}")
-            >>> print(f"Probs gradient shape: {probs_grad.shape}")
+            # Example: Basic 2D usage
+            batch_size, hidden_size = 8, 2048
+            o1 = paddle.randn([batch_size, hidden_size * 2], dtype='bfloat16')
+            do2_s = paddle.randn([batch_size, hidden_size], dtype='bfloat16')
+            probs = paddle.rand([batch_size, 1], dtype='float32')
+            do1, probs_grad, o2_s = F.fused_swiglu_weighted_bwd(o1, do2_s, probs)
+            print(f"Input shape: {o1.shape}, Output do1 shape: {do1.shape}")
+            print(f"Probs gradient shape: {probs_grad.shape}")
 
-            Input shape: [8, 4096], Output do1 shape: [8, 4096]
-            Probs gradient shape: [8]
     Note:
         - This operator is specifically optimized for MoE training scenarios
         - All input tensors must be on the same device (GPU)
@@ -161,35 +155,23 @@ def fused_weighted_swiglu_act_quant(
     Examples:
         .. code-block:: python
 
-            >>> import paddle
-            >>> import paddle.incubate.nn.functional as F
+            import paddle
+            import paddle.incubate.nn.functional as F
 
-            >>> # Example 1: Basic usage without probability weighting
-            >>> x = paddle.randn([32, 4096], dtype='bfloat16')
-            >>> out, scale = F.fused_weighted_swiglu_act_quant(x)
-            >>> print(f"Input shape: {x.shape}")
-            >>> print(f"Output shape: {out.shape}")
-            >>> print(f"Scale shape: {scale.shape}")
-            Input shape: [32, 4096]
-            Output shape: [32, 2048]
-            Scale shape: [32, 16]
+            # Example 1: Basic usage without probability weighting
+            x = paddle.randn([32, 4096], dtype='bfloat16')
+            out, scale = F.fused_weighted_swiglu_act_quant(x)
+            print(f"Input shape: {x.shape}")
+            print(f"Output shape: {out.shape}")
+            print(f"Scale shape: {scale.shape}")
 
-            >>> # Example 2: With probability weighting
-            >>> x = paddle.randn([16, 2048], dtype='bfloat16')
-            >>> prob = paddle.randn([16], dtype='float32')
-            >>> out, scale = F.fused_weighted_swiglu_act_quant(x, prob=prob)
-            >>> print(f"Output shape: {out.shape}")
-            >>> print(f"Scale shape: {scale.shape}")
-            Output shape: [16, 1024]
-            Scale shape: [16, 8]
+            # Example 2: With probability weighting
+            x = paddle.randn([16, 2048], dtype='bfloat16')
+            prob = paddle.randn([16], dtype='float32')
+            out, scale = F.fused_weighted_swiglu_act_quant(x, prob=prob)
+            print(f"Output shape: {out.shape}")
+            print(f"Scale shape: {scale.shape}")
 
-            >>> # Example 3: With power-of-2 scaling
-            >>> x = paddle.randn([8, 1024], dtype='bfloat16')
-            >>> out, scale = F.fused_weighted_swiglu_act_quant(
-            ...     x, using_pow2_scaling=True
-            ... )
-            >>> print(f"Output shape: {out.shape}")
-            Output shape: [8, 512]
     """
     if in_dynamic_or_pir_mode():
         return _C_ops.fused_weighted_swiglu_act_quant(
