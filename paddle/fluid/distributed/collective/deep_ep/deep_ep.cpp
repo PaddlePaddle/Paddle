@@ -978,6 +978,12 @@ Buffer::internode_dispatch(
     std::optional<EventHandle>& previous_event,  // NOLINT
     bool async,
     bool allocate_on_comm_stream) {
+  // In dispatch, CPU will busy-wait until GPU receive tensor size metadata from
+  // other ranks, which can be quite long. If users of DeepEP need to execute
+  // other Python code on other threads, such as KV transfer, their code will
+  // get stuck due to GIL unless we release GIL here.
+  // pybind11::gil_scoped_release release;
+
   const int num_channels = config.num_sms / 2;
   EP_HOST_ASSERT(config.num_sms % 2 == 0);
   EP_HOST_ASSERT(0 < get_num_rdma_ranks() &&
@@ -1811,8 +1817,10 @@ Buffer::low_latency_combine(const deep_ep::detail::Tensor& x,
                             const deep_ep::detail::Tensor& layout_range,
                             int num_max_dispatch_tokens_per_rank,
                             int num_experts,
+                            bool zero_copy,
                             bool async,
-                            bool return_recv_hook) {
+                            bool return_recv_hook,
+                            const std::optional<deep_ep::detail::Tensor>& out) {
   EP_HOST_ASSERT(low_latency_mode);
 
   // Tensor checks
@@ -1859,9 +1867,17 @@ Buffer::low_latency_combine(const deep_ep::detail::Tensor& x,
   if (!return_recv_hook) stream_wait(launch_stream, compute_stream);
 
   // Allocate output tensor
-  auto combined_x =
-      ConvertPaddleTensorToDetailTensor(paddle::experimental::empty(
-          {num_combined_tokens, hidden}, x.dtype(), x.place()));
+  deep_ep::detail::Tensor combined_x;
+  if (out.has_value()) {
+    EP_HOST_ASSERT(out->dim() == 2 && out->is_contiguous());
+    EP_HOST_ASSERT(out->size(0) == num_combined_tokens &&
+                   out->size(1) == hidden);
+    EP_HOST_ASSERT(out->scalar_type() == x.scalar_type());
+    combined_x = out.value();
+  } else {
+    combined_x = ConvertPaddleTensorToDetailTensor(paddle::experimental::empty(
+        {num_combined_tokens, hidden}, x.dtype(), x.place()));
+  }
 
   // Kernel launch
   auto next_clean_meta = next_buffer.clean_meta();
@@ -1886,7 +1902,8 @@ Buffer::low_latency_combine(const deep_ep::detail::Tensor& x,
                           num_ranks,
                           workspace,
                           launch_stream,
-                          phases);
+                          phases,
+                          zero_copy);
   };
   launcher(return_recv_hook
                ? LOW_LATENCY_SEND_PHASE
@@ -2204,14 +2221,20 @@ Buffer::low_latency_combine_api(const paddle::Tensor& x,
                                 const paddle::Tensor& layout_range,
                                 int num_max_dispatch_tokens_per_rank,
                                 int num_experts,
+                                bool zero_copy,
                                 bool async,
-                                bool return_recv_hook) {
+                                bool return_recv_hook,
+                                const std::optional<paddle::Tensor>& out) {
 #ifdef PADDLE_WITH_NVSHMEM
   const auto& x_ = ConvertPaddleTensorToDetailTensor(x);
   const auto& topk_idx_ = ConvertPaddleTensorToDetailTensor(topk_idx);
   const auto& topk_weights_ = ConvertPaddleTensorToDetailTensor(topk_weights);
   const auto& src_info_ = ConvertPaddleTensorToDetailTensor(src_info);
   const auto& layout_range_ = ConvertPaddleTensorToDetailTensor(layout_range);
+  std::optional<deep_ep::detail::Tensor> out_ = std::nullopt;
+  if (out.has_value()) {
+    out_ = ConvertOptionalPaddleTensorToDetailTensor(out.value());
+  }
 
   auto res = low_latency_combine(x_,
                                  topk_idx_,
@@ -2220,8 +2243,10 @@ Buffer::low_latency_combine_api(const paddle::Tensor& x,
                                  layout_range_,
                                  num_max_dispatch_tokens_per_rank,
                                  num_experts,
+                                 zero_copy,
                                  async,
-                                 return_recv_hook);
+                                 return_recv_hook,
+                                 out_);
 
   auto combined_x_ = ConvertDetailTensorToPaddleTensor(std::get<0>(res));
   const auto& event = std::get<1>(res);

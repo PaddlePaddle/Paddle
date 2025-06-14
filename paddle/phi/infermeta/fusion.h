@@ -904,6 +904,14 @@ void FusionSeqExpandConcatFCInferMeta(const std::vector<const MetaTensor*>& x,
                                       MetaTensor* out,
                                       MetaTensor* fc_out);
 
+void FusedStackTransposeQuantInferMeta(const std::vector<const MetaTensor*>& x,
+                                       MetaTensor* out,
+                                       MetaTensor* scale);
+
+void FusedStackQuantInferMeta(const std::vector<const MetaTensor*>& x,
+                              MetaTensor* out,
+                              MetaTensor* scale);
+
 void FusedBiasDropoutResidualLnInferMeta(
     const MetaTensor& x,
     const MetaTensor& residual,

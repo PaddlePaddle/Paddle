@@ -40,7 +40,7 @@ __global__ void GPUMaskedFillGradKernel(const T* out_grad,
                                         const int64_t input_len,
                                         const int64_t batch_size,
                                         T* x_grad) {
-  int64_t idx = (blockIdx.x * blockDim.x + threadIdx.x);
+  int64_t idx = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
 
   if (idx >= (input_len / VecSize)) {
     return;

@@ -233,8 +233,9 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fast_ln_fwd_kernel(
 #pragma unroll
     for (int it = 0, col = c; it < LDGS; it++) {
       if (col < cols) {
-        phi::Load<T, VecSize>(x_ptr + row * ELTS_PER_ROW + col * VecSize,
-                              &x[it]);
+        phi::Load<T, VecSize>(
+            x_ptr + static_cast<int64_t>(row) * ELTS_PER_ROW + col * VecSize,
+            &x[it]);
       } else {
         x[it] = Vec{};
       }
@@ -344,8 +345,9 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fast_ln_fwd_kernel(
 #pragma unroll
     for (int it = 0, col = c; it < LDGS; it++) {
       if (col < cols) {
-        phi::Store<T, VecSize>(x[it],
-                               y_ptr + row * ELTS_PER_ROW + col * VecSize);
+        phi::Store<T, VecSize>(
+            x[it],
+            y_ptr + static_cast<int64_t>(row) * ELTS_PER_ROW + col * VecSize);
       }
       col += THREADS_PER_ROW;
     }
