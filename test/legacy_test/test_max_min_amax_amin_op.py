@@ -92,6 +92,7 @@ class TestMaxMinAmaxAminAPI(unittest.TestCase):
 
     def test_static_graph(self):
         def _test_static_graph(func):
+            paddle.enable_static()
             startup_program = base.Program()
             train_program = base.Program()
             with base.program_guard(startup_program, train_program):
@@ -107,6 +108,7 @@ class TestMaxMinAmaxAminAPI(unittest.TestCase):
                     fetch_list=[out],
                 )
                 self.assertTrue((np.array(res[0]) == self.np_out[func]).all())
+            paddle.disable_static()
 
         _test_static_graph('amax')
         _test_static_graph('amin')
