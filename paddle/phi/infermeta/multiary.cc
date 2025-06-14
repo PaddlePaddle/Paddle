@@ -5983,19 +5983,18 @@ void MoePermuteInferMeta(const MetaTensor& X,
       2,
       common::errors::InvalidArgument("Input X's dims should be 2, but got %u.",
                                       X.dims().size()));
-  PADDLE_ENFORCE_EQ(X.dtype() == phi::DataType::BFLOAT16,
-                    true,
-                    common::errors::InvalidArgument(
-                        "Input X's dtype should be BFLOAT16 or FLOAT8_E4M3FN"));
+  PADDLE_ENFORCE_EQ(
+      X.dtype() == phi::DataType::BFLOAT16,
+      true,
+      common::errors::InvalidArgument("Input X's dtype should be BFLOAT16"));
   PADDLE_ENFORCE_EQ(expert_routemap_topk.dtype() == phi::DataType::INT32,
                     true,
                     common::errors::InvalidArgument(
                         "Input expert_routemap_topk's dtype should be INT32"));
-  PADDLE_ENFORCE_EQ(
-      expert_prob_topk.dtype() == phi::DataType::FLOAT32,
-      true,
-      common::errors::InvalidArgument(
-          "Input expert_prob_topk's dtype should be BFLOAT16 or FLOAT32"));
+  PADDLE_ENFORCE_EQ(expert_prob_topk.dtype() == phi::DataType::FLOAT32,
+                    true,
+                    common::errors::InvalidArgument(
+                        "Input expert_prob_topk's dtype should be FLOAT32"));
   if (XScale) {
     PADDLE_ENFORCE_EQ(XScale.dtype(),
                       phi::DataType::FLOAT32,
