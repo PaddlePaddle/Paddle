@@ -43,9 +43,14 @@ struct Tensor {
 
   int64_t dim() const { return raw_tensor_.dims().size(); }
 
+  int64_t numel() const { return raw_tensor_.numel(); }
+
   bool is_contiguous() const { return true; }
 
-  int64_t size(int64_t d) const { return raw_tensor_.dims().at(d); }
+  int64_t size(int64_t d) const {
+    int64_t idx = (d >= 0) ? d : raw_tensor_.dims().size() + d;
+    return raw_tensor_.dims().at(idx);
+  }
 
   template <typename T>
   T *data_ptr() const {

@@ -8,7 +8,6 @@
 #include "paddle/fluid/distributed/collective/marlin/include/types.h"
 #include "paddle/phi/api/include/api.h"
 
-#ifndef USE_ROCM
 paddle::Tensor moe_wna16_marlin_gemm_api(
     const paddle::Tensor& a,
     const std::optional<paddle::Tensor>& c_or_none,
@@ -21,13 +20,13 @@ paddle::Tensor moe_wna16_marlin_gemm_api(
     const paddle::Tensor& workspace,
     const paddle::Tensor& sorted_token_ids,
     const paddle::Tensor& expert_ids,
-    const paddle::Tensor& num_tokens_past_padded,
+    const paddle::Tensor& num_tokens_post_padded,
     const paddle::Tensor& topk_weights,
     int64_t moe_block_size,
     int64_t top_k,
     bool mul_topk_weights,
     bool is_ep,
-    const deep_ep::detail::ScalarTypeId& b_q_type_id,
+    const std::string& b_q_type_str,
     int64_t size_m,
     int64_t size_n,
     int64_t size_k,
@@ -35,4 +34,3 @@ paddle::Tensor moe_wna16_marlin_gemm_api(
     bool use_atomic_add,
     bool use_fp32_reduce,
     bool is_zp_float);
-#endif

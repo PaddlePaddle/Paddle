@@ -500,6 +500,21 @@ void marlin_mm(const void* A, const void* B, void* C, void* C_tmp, void* s,
                int dev, cudaStream_t stream, int thread_k, int thread_n,
                int sms, bool use_atomic_add, bool use_fp32_reduce,
                bool is_zp_float) {
+  std::cout << "-- [marlin_mm] A: " << A << std::endl;
+  std::cout << "-- [marlin_mm] B: " << B << std::endl;
+  std::cout << "-- [marlin_mm] C: " << C << std::endl;
+  std::cout << "-- [marlin_mm] C_tmp: " << C_tmp << std::endl;
+  std::cout << "-- [marlin_mm] s: " << s << std::endl;
+  std::cout << "-- [marlin_mm] s2: " << s2 << std::endl;
+  std::cout << "-- [marlin_mm] zp: " << zp << std::endl;
+  std::cout << "-- [marlin_mm] g_idx: " << g_idx << std::endl;
+  std::cout << "-- [marlin_mm] perm: " << perm << std::endl;
+  std::cout << "-- [marlin_mm] a_tmp: " << a_tmp << std::endl;
+  std::cout << "-- [marlin_mm] sorted_token_ids: " << sorted_token_ids << std::endl;
+  std::cout << "-- [marlin_mm] expert_ids: " << expert_ids << std::endl;
+  std::cout << "-- [marlin_mm] num_tokens_past_padded: " << num_tokens_past_padded << std::endl;
+  std::cout << "-- [marlin_mm] topk_weights: " << topk_weights << std::endl;
+
   int thread_m_blocks = div_ceil(moe_block_size, 16);
   bool m_block_size_8 = moe_block_size == 8;
 
@@ -709,6 +724,7 @@ deep_ep::detail::Tensor moe_wna16_marlin_gemm(
     bool is_zp_float) {
   deep_ep::detail::ScalarType const b_q_type = deep_ep::detail::ScalarType::from_id(b_q_type_id);
   int pack_factor = 32 / b_q_type.size_bits();
+  std::cout << "-- pack_factor: " << pack_factor << std::endl;
 
   if (moe_block_size != 8) {
     PADDLE_ENFORCE(moe_block_size % 16 == 0,
@@ -737,6 +753,7 @@ deep_ep::detail::Tensor moe_wna16_marlin_gemm(
       " is not divisible by tile_size = ", MARLIN_NAMESPACE_NAME::tile_size);
   int actual_size_n =
       (b_q_weight.size(2) / MARLIN_NAMESPACE_NAME::tile_size) * pack_factor;
+  std::cout << "-- actual_size_n: " << actual_size_n << ", tile_size: " << MARLIN_NAMESPACE_NAME::tile_size << std::endl;
   PADDLE_ENFORCE(size_n == actual_size_n, "size_n = ", size_n,
               ", actual_size_n = ", actual_size_n);
 
@@ -778,37 +795,36 @@ deep_ep::detail::Tensor moe_wna16_marlin_gemm(
     PADDLE_ENFORCE(c.size(1) == size_n, "Shape mismatch: c.size(1) = ", c.size(1),
                 ", size_n = ", size_n);
   } else {
+    std::cout << "-- create c: shape={" << size_m * top_k << ", " << size_n << "}" << std::endl;
     c = ConvertPaddleTensorToDetailTensor(paddle::experimental::empty({size_m * top_k, size_n}, a.dtype(), phi::GPUPlace(device_id)));
   }
 
   // Alloc C tmp buffer that is going to be used for the global reduce
   deep_ep::detail::Tensor c_tmp;
-  // auto options_fp32 =
-  //     torch::TensorOptions().dtype(deep_ep::detail::kFloat).device(a.device());
   if (use_fp32_reduce && !use_atomic_add) {
     // max num of threadblocks is sms * 4
     long max_c_tmp_size = std::min(
         (long)size_n * sorted_token_ids.size(0),
         (long)sms * 4 * moe_block_size * MARLIN_NAMESPACE_NAME::max_thread_n);
     if (moe_block_size == 8) max_c_tmp_size *= 2;
-    c = ConvertPaddleTensorToDetailTensor(paddle::experimental::empty({max_c_tmp_size}, deep_ep::detail::kFloat32, phi::GPUPlace(device_id)));
-
+    std::cout << "-- Alloc c_tmp: {" << max_c_tmp_size << "}" << std::endl;
+    c_tmp = ConvertPaddleTensorToDetailTensor(paddle::experimental::empty({max_c_tmp_size}, deep_ep::detail::kFloat32, phi::GPUPlace(device_id)));
   } else {
-    c = ConvertPaddleTensorToDetailTensor(paddle::experimental::empty({0}, deep_ep::detail::kFloat32, phi::GPUPlace(device_id)));
+    c_tmp = ConvertPaddleTensorToDetailTensor(paddle::experimental::empty({0}, deep_ep::detail::kFloat32, phi::GPUPlace(device_id)));
   }
 
   // Detect groupsize and act_order
-  int num_groups = -1;
   int group_size = -1;
 
   int rank = b_scales.dim();
   PADDLE_ENFORCE(rank == 3, "b_scales rank = ", rank, " is not 3");
   PADDLE_ENFORCE(b_scales.size(2) == size_n, "b_scales dim 2 = ", b_scales.size(2),
               " is not size_n = ", size_n);
-  num_groups = b_scales.size(1);
+  int num_groups = b_scales.size(1);
+  std::cout << "-- num_groups: " << num_groups << std::endl;
 
+  bool has_act_order = false;
   deep_ep::detail::Tensor g_idx, perm, a_tmp;
-  ;
   if (g_idx_or_none.has_value() && perm_or_none.has_value()) {
     g_idx = g_idx_or_none.value();
     perm = perm_or_none.value();
@@ -824,6 +840,8 @@ deep_ep::detail::Tensor moe_wna16_marlin_gemm(
                 "Unexpected g_idx.size(-1) = ", g_idx.size(-1),
                 " and perm.size(-1) = ", perm.size(-1),
                 ", where size_k = ", size_k);
+
+    has_act_order = g_idx.size(-1) > 0 && perm.size(-1) > 0;
   } else {
     g_idx = ConvertPaddleTensorToDetailTensor(paddle::experimental::empty({0}, a.dtype(), phi::GPUPlace(device_id)));
 
@@ -832,9 +850,10 @@ deep_ep::detail::Tensor moe_wna16_marlin_gemm(
     a_tmp = ConvertPaddleTensorToDetailTensor(paddle::experimental::empty({0}, a.dtype(), phi::GPUPlace(device_id)));
 
   }
-  bool has_act_order = g_idx.size(-1) > 0 && perm.size(-1) > 0;
+  std::cout << "-- has_act_order: " << has_act_order << std::endl;
 
   if (has_act_order) {
+    std::cout << "-- Alloc a_tmp: {" << size_m * top_k << ", " << size_k << "}" << std::endl;
     a_tmp = ConvertPaddleTensorToDetailTensor(paddle::experimental::empty({size_m * top_k, size_k}, a.dtype(), phi::GPUPlace(device_id)));
 
     if (is_k_full) {
@@ -858,6 +877,7 @@ deep_ep::detail::Tensor moe_wna16_marlin_gemm(
       group_size = -1;
     }
   }
+  std::cout << "-- group_size: " << group_size << std::endl;
 
   deep_ep::detail::Tensor global_scale;
   if (global_scale_or_none.has_value()) {
@@ -879,7 +899,8 @@ deep_ep::detail::Tensor moe_wna16_marlin_gemm(
   } else {
     b_zeros = ConvertPaddleTensorToDetailTensor(paddle::experimental::empty({0}, a.dtype(), phi::GPUPlace(device_id)));
   }
-  bool has_zp = b_zeros.size(-1) > 0;
+  bool has_zp = b_zeros.numel() > 0;
+  std::cout << "-- has_zp: " << has_zp << std::endl;
 
   if (has_zp) {
     PADDLE_ENFORCE(
@@ -930,39 +951,40 @@ deep_ep::detail::Tensor moe_wna16_marlin_gemm(
   int max_n_tiles = size_n / MARLIN_NAMESPACE_NAME::min_thread_n;
   int min_workspace_size = std::min(
       max_n_tiles * (int)(sorted_token_ids.size(0) / moe_block_size), sms * 4);
+  std::cout << "-- min_workspace_size: " << min_workspace_size << std::endl;
   PADDLE_ENFORCE(workspace.numel() >= min_workspace_size,
               "workspace.numel = ", workspace.numel(),
               " is below min_workspace_size = ", min_workspace_size);
 
-  int dev = a.place().GetDeviceId(); 
-//float8_e4m3fn
   if (a.dtype() == paddle::DataType::FLOAT16) {
+    using DataType = phi::dtype::float16;
+    std::cout << "-- a.dtype is float16" << std::endl;
     void* scales_ptr;
     if (b_q_type == deep_ep::detail::kFE2M1f) {
       scales_ptr = b_scales.data_ptr<phi::dtype::float8_e4m3fn>();
     } else {
-      scales_ptr = b_scales.data_ptr<phi::dtype::float16>(); // half
+      scales_ptr = b_scales.data_ptr<DataType>(); // half
     }
 
     MARLIN_NAMESPACE_NAME::marlin_mm<half>(
-        a.data_ptr<phi::dtype::float16>(), b_q_weight.data_ptr(), c.data_ptr<phi::dtype::float16>(),
+        a.data_ptr<DataType>(), b_q_weight.data_ptr(), c.data_ptr<phi::dtype::float16>(),
         c_tmp.data_ptr<float>(), scales_ptr, global_scale.data_ptr<phi::dtype::float16>(),
         b_zeros.data_ptr(), g_idx.data_ptr(), perm.data_ptr(),
         a_tmp.data_ptr<phi::dtype::float16>(), sorted_token_ids.data_ptr(),
         expert_ids.data_ptr(), num_tokens_past_padded.data_ptr(),
         topk_weights.data_ptr(), moe_block_size, top_k, mul_topk_weights, is_ep,
         size_m, size_n, size_k, workspace.data_ptr(), b_q_type, has_act_order,
-        is_k_full, has_zp, num_groups, group_size, dev,
+        is_k_full, has_zp, num_groups, group_size, device_id,
         0, thread_k, thread_n, sms,
         use_atomic_add, use_fp32_reduce, is_zp_float);
-  } 
-  else if (a.dtype() == deep_ep::detail::kBFloat16) {
+  } else if (a.dtype() == deep_ep::detail::kBFloat16) {
+    std::cout << "-- a.dtype is float16" << std::endl;
     void* scales_ptr;
     if (b_q_type == deep_ep::detail::kFE2M1f) {
       scales_ptr = b_scales.data_ptr<phi::dtype::float8_e4m3fn>();
     } else {
       scales_ptr = b_scales.data_ptr<phi::dtype::bfloat16>();
-    } 
+    }
 
     MARLIN_NAMESPACE_NAME::marlin_mm<nv_bfloat16>(
         a.data_ptr<phi::dtype::bfloat16>(), b_q_weight.data_ptr(),
@@ -973,16 +995,16 @@ deep_ep::detail::Tensor moe_wna16_marlin_gemm(
         num_tokens_past_padded.data_ptr(), topk_weights.data_ptr(),
         moe_block_size, top_k, mul_topk_weights, is_ep, size_m, size_n, size_k,
         workspace.data_ptr(), b_q_type, has_act_order, is_k_full, has_zp,
-        num_groups, group_size, dev, 0,
+        num_groups, group_size, device_id, 0,
         thread_k, thread_n, sms, use_atomic_add, use_fp32_reduce, is_zp_float);
-  } 
-  else {
+  } else {
     PADDLE_ENFORCE(false,
                 "moe_wna16_marlin_gemm only supports bfloat16 and float16");
   }
 
   return c;
 }
+
 paddle::Tensor moe_wna16_marlin_gemm_api(
     const paddle::Tensor& a,
     const std::optional<paddle::Tensor>& c_or_none,
@@ -995,13 +1017,13 @@ paddle::Tensor moe_wna16_marlin_gemm_api(
     const paddle::Tensor& workspace,
     const paddle::Tensor& sorted_token_ids,
     const paddle::Tensor& expert_ids,
-    const paddle::Tensor& num_tokens_past_padded,
+    const paddle::Tensor& num_tokens_post_padded,
     const paddle::Tensor& topk_weights,
     int64_t moe_block_size,
     int64_t top_k,
     bool mul_topk_weights,
     bool is_ep,
-    const int64_t& b_q_type_id,
+    const std::string& b_q_type_str,
     int64_t size_m,
     int64_t size_n,
     int64_t size_k,
@@ -1010,13 +1032,26 @@ paddle::Tensor moe_wna16_marlin_gemm_api(
     bool use_fp32_reduce,
     bool is_zp_float) {
 
+  std::cout << "-- moe_block_size: " << moe_block_size << std::endl;
+  std::cout << "-- top_k: " << top_k << std::endl;
+  std::cout << "-- mul_topk_weights: " << mul_topk_weights << std::endl;
+  std::cout << "-- is_ep: " << is_ep << std::endl;
+  std::cout << "-- b_q_type_str: " << b_q_type_str << std::endl;
+  std::cout << "-- size_m: " << size_m << std::endl;
+  std::cout << "-- size_n: " << size_n << std::endl;
+  std::cout << "-- size_k: " << size_k << std::endl;
+  std::cout << "-- is_k_full: " << is_k_full << std::endl;
+  std::cout << "-- use_atomic_add: " << use_atomic_add << std::endl;
+  std::cout << "-- use_fp32_reduce: " << use_fp32_reduce << std::endl;
+  std::cout << "-- is_zp_float: " << is_zp_float << std::endl;
+
   auto a_ = ConvertPaddleTensorToDetailTensor(a);
   auto b_q_weight_ = ConvertPaddleTensorToDetailTensor(b_q_weight);
   auto b_scales_   = ConvertPaddleTensorToDetailTensor(b_scales);
   auto workspace_  = ConvertPaddleTensorToDetailTensor(workspace);
   auto sorted_token_ids_    = ConvertPaddleTensorToDetailTensor(sorted_token_ids);
   auto expert_ids_          = ConvertPaddleTensorToDetailTensor(expert_ids);
-  auto num_tokens_padded_   = ConvertPaddleTensorToDetailTensor(num_tokens_past_padded);
+  auto num_tokens_padded_   = ConvertPaddleTensorToDetailTensor(num_tokens_post_padded);
   auto topk_weights_        = ConvertPaddleTensorToDetailTensor(topk_weights);
 
   std::optional<deep_ep::detail::Tensor> c_opt_ =
@@ -1029,6 +1064,15 @@ paddle::Tensor moe_wna16_marlin_gemm_api(
       ConvertOptionalPaddleTensorToDetailTensor(g_idx_or_none);
   std::optional<deep_ep::detail::Tensor> perm_opt_ =
       ConvertOptionalPaddleTensorToDetailTensor(perm_or_none);
+
+  deep_ep::detail::ScalarTypeId b_q_type_id;
+  if (b_q_type_str == "uint4") {
+    b_q_type_id = deep_ep::detail::kU4.id();
+  } else if (b_q_type_str == "uint8") {
+    b_q_type_id == deep_ep::detail::kU8.id();
+  } else {
+    PADDLE_ENFORCE(false, "b_q_type_str not supported!");
+  }
 
   deep_ep::detail::Tensor out_detail = moe_wna16_marlin_gemm(
       a_,
@@ -1048,7 +1092,7 @@ paddle::Tensor moe_wna16_marlin_gemm_api(
       top_k,
       mul_topk_weights,
       is_ep,
-      static_cast<deep_ep::detail::ScalarTypeId>(b_q_type_id),
+      b_q_type_id,
       size_m,
       size_n,
       size_k,
