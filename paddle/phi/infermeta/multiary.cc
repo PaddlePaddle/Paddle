@@ -6037,8 +6037,8 @@ void MoeUnpermuteInferMeta(const MetaTensor& unzipped_tokens,
       true,
       common::errors::InvalidArgument(
           "Input unzipped_token_probs's dtype should be FLOAT32"));
-  const int cols = unzipped_tokens.dims()[1];       // 一般为7168
-  const int topk = expert_routemap_topk.dims()[1];  // 一般为8
+  const int cols = unzipped_tokens.dims()[1];
+  const int topk = expert_routemap_topk.dims()[1];
   zipped_tokens->set_dims({total_zipped_tokens_num, cols});
   zipped_tokens->set_dtype(unzipped_tokens.dtype());
   zipped_probs_topk->set_dims({total_zipped_tokens_num, topk});

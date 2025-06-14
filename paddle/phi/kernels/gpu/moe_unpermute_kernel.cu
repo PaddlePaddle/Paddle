@@ -219,7 +219,7 @@ void MoeUnpermuteKernel(const Context &dev_ctx,
   const int rows = unzipped_tokens.dims()[0];
   const int cols = unzipped_tokens.dims()[1];
   const int topk = expert_routemap_topk.dims()[1];
-  dev_ctx.template Alloc<phi::dtype::bfloat16>(zipped_tokens);
+  dev_ctx.template Alloc<T>(zipped_tokens);
   if (unzipped_token_probs.dtype() == phi::DataType::FLOAT32) {
     dev_ctx.template Alloc<float>(zipped_probs_topk);
     void *zipped_probs_topk_ptr =
