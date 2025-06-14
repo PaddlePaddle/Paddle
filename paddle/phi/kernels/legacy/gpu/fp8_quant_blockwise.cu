@@ -13,9 +13,9 @@
 // limitations under the License.
 
 // #include "paddle/extension.h"
+#include <cuda_fp8.h>
 #include <cstdint>
 #include <vector>
-#include "cub/device/device_histogram.cuh"
 #include "paddle/common/flags.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/utils/data_type.h"
@@ -25,10 +25,11 @@
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-COsrc_rowssrc_rowsON_DECLARE_bool(enable_pir_api);
+COMMON_DECLARE_bool(enable_pir_api);
 
 namespace phi {
 
+/*
 // Kernel 1: 1x128 Quantization with Transpose Switch
 template <class Engine, class Layout, class T>
 __global__ void __launch_bounds__(1024)
@@ -145,17 +146,21 @@ __global__ void __launch_bounds__(1024)
 
   copy(gmem_tiled_copy, rS, gD_part);
 }
+*/
 
-template <bool using_1x128_vec_quant,
+template <typename Context,
+          bool using_1x128_vec_quant,
           bool input_transpose,
           bool output_scale_transpose,
           bool using_pow2_scale>
 void FP8QuantBlockWiseKernelImpl(const Context &dev_ctx,
                                  const DenseTensor &X,
                                  DenseTensor *out,
-                                 DenseTensor *scale) {
+                                 DenseTensor *scale,
+                                 DenseTensor *out_transposed,
+                                 DenseTensor *scale_transposed) {
+  /*
   // using namespace cute;
-
   const int src_rows = X.dims()[0];
   const int src_cols = X.dims()[1];
   const int quanted_cols = scale.dims()[1];
@@ -185,6 +190,7 @@ void FP8QuantBlockWiseKernelImpl(const Context &dev_ctx,
                                               output_scale_transpose,
                                               using_pow2_scale>;
   kernel<<<grid, block, 0, dev_ctx.stream()>>>(gmem_src, gmem_out, gmem_scale);
+  */
 }
 
 // T is x's input type and out_dtype is in args
@@ -197,12 +203,18 @@ void FP8QuantBlockWiseKernel(const Context &dev_ctx,
                              bool using_e5m2,
                              bool using_pow2_scale,
                              DenseTensor *out,
-                             DenseTensor *scale) {
+                             DenseTensor *scale,
+                             DenseTensor *out_transposed,
+                             DenseTensor *scale_transposed) {
   PD_CHECK(X.dtype() == phi::DataType::BFLOAT16,
            "X datatype error, can only be bfloat16");
 
-  dev_ctx.template Alloc<phi::DataType::FLOAT8_E4src_rows3FN>(out);
-  dev_ctx.template Alloc<phi::DataType::FLOAT32>(scale);
+  dev_ctx.template Alloc<phi::dtype::float8_e4m3fn>(out);
+  dev_ctx.template Alloc<float>(scale);
+  if (input_transpose) {
+    dev_ctx.template Alloc<phi::dtype::float8_e4m3fn>(out_transposed);
+    dev_ctx.template Alloc<float>(scale_transposed);
+  }
 #define DISPATCH_BOOL(condition, ConstName, ...) \
   {                                              \
     if (condition) {                             \
@@ -225,13 +237,19 @@ void FP8QuantBlockWiseKernel(const Context &dev_ctx,
               output_scale_transpose,
               k_output_scale_transpose,
               DISPATCH_BOOL(
-                  using_pow2_scaling,
-                  k_using_pow2_scaling,
-                  FP8QuantBlockWiseKernelImpl<k_using_1x128,
+                  using_pow2_scale,
+                  k_using_pow2_scale,
+                  FP8QuantBlockWiseKernelImpl<Context,
+                                              k_using_1x128_vec_quant,
                                               k_input_transpose,
                                               k_output_scale_transpose,
-                                              k_using_pow2_scaling>(
-                      X, out, scale);))));
+                                              k_using_pow2_scale>(
+                      dev_ctx,
+                      X,
+                      out,
+                      scale,
+                      out_transposed,
+                      scale_transposed);))));
 #undef DISPATCH_BOOL
 }
 }  // namespace phi

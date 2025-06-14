@@ -363,7 +363,9 @@ void Fp8QuantBlockwiseInferMeta(const MetaTensor& X,
                                 bool using_e5m2,
                                 bool using_pow2_scale,
                                 MetaTensor* out,
-                                MetaTensor* scale);
+                                MetaTensor* scale,
+                                MetaTensor* out_transposed,
+                                MetaTensor* scale_transposed);
 
 void FullBatchSizeLikeInferMeta(const MetaTensor& x,
                                 const std::vector<int>& shape,

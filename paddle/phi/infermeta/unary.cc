@@ -2130,11 +2130,11 @@ void Fp8QuantBlockwiseInferMeta(const MetaTensor& X,
                     "currently only support bfloat16 input.");
 
   const int64_t rows = X.dims()[0];
-  const int64_t cols = X.shape()[1];
+  const int64_t cols = X.dims()[1];
   if (input_transpose) {
     PADDLE_ENFORCE_EQ(
         using_1x128_vec_quant,
-        True,
+        true,
         common::errors::InvalidArgument("The input_transpose strategy is only "
                                         "support quant_method = 0(1x128)"));
   }
