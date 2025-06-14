@@ -1380,14 +1380,20 @@ def scaled_dot_product_attention(
         query(Tensor): The query tensor in the Attention module.
                         4-D tensor with shape:
                         [batch_size, seq_len, num_heads, head_dim].
+                        3-D tensor with shape:
+                        [seq_len, num_heads, head_dim].
                         The dtype can be float16 or bfloat16.
         key(Tensor): The key tensor in the Attention module.
                         4-D tensor with shape:
                         [batch_size, seq_len, num_heads, head_dim].
+                        3-D tensor with shape:
+                        [seq_len, num_heads, head_dim].
                         The dtype can be float16 or bfloat16.
         value(Tensor): The value tensor in the Attention module.
                         4-D tensor with shape:
                         [batch_size, seq_len, num_heads, head_dim].
+                        3-D tensor with shape:
+                        [seq_len, num_heads, head_dim].
                         The dtype can be float16 or bfloat16.
         attn_mask(Tensor, optional): A float mask of the same type as query,
                         key, value that is added to the attention score.
@@ -1413,6 +1419,14 @@ def scaled_dot_product_attention(
             >>> print(output)
             >>> # doctest: -SKIP
     """
+    if query.ndim == 3:
+        query = paddle.unsqueeze(query, axis=0)
+
+    if key.ndim == 3:
+        key = paddle.unsqueeze(key, axis=0)
+
+    if value.ndim == 3:
+        value = paddle.unsqueeze(value, axis=0)
 
     if attn_mask is None:
         # downgraded to ordinary flash attention implementation
