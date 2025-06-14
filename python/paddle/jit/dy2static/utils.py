@@ -856,9 +856,11 @@ def compose_guards(*guard_creators):
         if not guard_creators:
             yield
             return
-        with guard_creators[0]():
-            with compose_guards(*guard_creators[1:])():
-                yield
+        with (
+            guard_creators[0](),
+            compose_guards(*guard_creators[1:])(),
+        ):
+            yield
 
     return composed_guard
 
