@@ -24,7 +24,6 @@ from .basic import (  # noqa: F401
     DataClassInstanceVariable,
     DataVariable,
     DygraphTracerVariable,
-    EnumVariable,
     ExceptionVariable,
     FunctionGlobalVariable,
     GlobalVariable,

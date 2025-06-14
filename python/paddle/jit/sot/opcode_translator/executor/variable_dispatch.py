@@ -71,7 +71,6 @@ from .variables import (
     DataClassInstanceVariable,
     DictVariable,
     EnumerateVariable,
-    EnumVariable,
     ExceptionVariable,
     IterVariable,
     ListVariable,
@@ -1580,23 +1579,6 @@ def dataclass_instance_eq(
 
 @Dispatcher.register_decorator(operator.ne)
 def dataclass_instance_ne(lhs: TupleVariable, rhs: TupleVariable):
-    return Dispatcher.call(operator.eq, lhs, rhs).bool_not()
-
-
-Dispatcher.register(
-    operator.eq,
-    ("EnumVariable", "EnumVariable"),
-    lambda left, right: ConstantVariable(
-        left.get_py_value() == right.get_py_value(),
-        left.graph,
-        tracker=DummyTracker([left, right]),
-    ),
-)
-
-
-# TODO(wangmingkai): Forward operator.ne of (VariableBase, VariableBase) to the negation of operator.eq
-@Dispatcher.register_decorator(operator.ne)
-def dispatch_enum_ne(lhs: EnumVariable, rhs: EnumVariable):
     return Dispatcher.call(operator.eq, lhs, rhs).bool_not()
 
 
