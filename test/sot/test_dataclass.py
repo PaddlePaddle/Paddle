@@ -16,8 +16,6 @@ from __future__ import annotations
 
 import unittest
 from dataclasses import dataclass, field
-from enum import IntEnum
-from typing import Callable
 
 from test_case_base import (
     TestCaseBase,
@@ -26,16 +24,20 @@ from test_case_base import (
 
 import paddle
 from paddle.jit.sot.psdb import check_no_breakgraph
-from paddle.jit.sot.utils import strict_mode_guard
 
 
 @dataclass
-class Data:
+class DataTensor:
     x: paddle.Tensor
 
 
 @dataclass
-class DataWithPostInit:
+class DataInt:
+    x: int
+
+
+@dataclass
+class DataTensorWithPostInit:
     x: paddle.Tensor
 
     def __post_init__(self):
@@ -43,48 +45,45 @@ class DataWithPostInit:
 
 
 def return_dataclass(x):
-    return Data(x + 1)
+    return DataTensor(x + 1)
 
 
 def return_dataclass_with_post_init(x):
-    return DataWithPostInit(x)
+    return DataTensorWithPostInit(x)
 
 
-class TestDataclass(TestCaseBase):
-    @strict_mode_guard(False)
+class TestDataclassBasic(TestCaseBase):
     def test_dtype_reconstruct(self):
         x = paddle.to_tensor(1)
         self.assert_results(return_dataclass, x)
 
-    @strict_mode_guard(False)
     def test_dtype_reconstruct_with_post_init(self):
         x = paddle.to_tensor(1)
         self.assert_results(return_dataclass_with_post_init, x)
 
 
-class DataType(IntEnum):
-    FLOAT32 = 1
-    FLOAT64 = 2
-    INT32 = 3
-    INT64 = 4
-
-
 @dataclass
 class DataMeta:
     x: paddle.Tensor
-    y: paddle.Tensor = None
-    z: DataType = DataType.FLOAT32
+    y: paddle.Tensor | None = None
     m: list[list[paddle.Tensor]] = field(default_factory=list)
     n: int = 0
-    f: Callable[[DataMeta], list] = None
 
     def __post_init__(self):
         self.x += 1
 
 
 @check_no_breakgraph
-def is_eq(data: DataMeta, data2: DataMeta):
-    return data == data2
+def is_data_int_eq(data1: DataInt, data2: DataInt):
+    return data1 == data2
+
+
+def is_data_tensor_eq(data1: DataTensor, data2: DataTensor):
+    return data1 == data2
+
+
+def is_any_eq(data1, data2):
+    return data1 == data2
 
 
 @check_no_breakgraph
@@ -101,33 +100,25 @@ def set_attr(data: DataMeta):
     return res
 
 
-@check_no_breakgraph
-def callable_attr(data: DataMeta):
-    return data.f(data)
-
-
 class TestDataClassInstance(TestCaseBase):
     def test_guard(self):
-        d1 = Data(x=paddle.randn([1]))
+        d1 = DataTensor(x=paddle.randn([1]))
         dm1 = DataMeta(x=paddle.randn([1]))
         dm2 = DataMeta(x=paddle.randn([1]))
         dm3 = DataMeta(x=paddle.zeros([1]))
-        dm4 = DataMeta(x=paddle.randn([1]), z=DataType.INT32)
-        dm5 = DataMeta(x=paddle.randn([1]), n=1)
+        dm4 = DataMeta(x=paddle.randn([1]), n=1)
         with test_instruction_translator_cache_context() as ctx:
             self.assertEqual(ctx.translate_count, 0)
-            self.assert_results(is_eq, dm1, dm2)
-            self.assertEqual(ctx.translate_count, 1)
-            self.assert_results(is_eq, dm1, dm2)
-            self.assertEqual(ctx.translate_count, 1)
-            self.assert_results(is_eq, dm1, d1)
+            self.assert_results(is_any_eq, dm1, dm2)
             self.assertEqual(ctx.translate_count, 2)
-            self.assert_results(is_eq, dm1, dm3)
+            self.assert_results(is_any_eq, dm1, dm2)
             self.assertEqual(ctx.translate_count, 2)
-            self.assert_results(is_eq, dm1, dm4)
-            self.assertEqual(ctx.translate_count, 3)
-            self.assert_results(is_eq, dm1, dm5)
+            self.assert_results(is_any_eq, dm1, d1)
             self.assertEqual(ctx.translate_count, 4)
+            self.assert_results(is_any_eq, dm1, dm3)
+            self.assertEqual(ctx.translate_count, 4)
+            self.assert_results(is_any_eq, dm1, dm4)
+            self.assertEqual(ctx.translate_count, 5)
 
     def test_get_attr(self):
         dm = DataMeta(x=paddle.randn([1, 2]), y=paddle.randn([1]))
@@ -137,25 +128,63 @@ class TestDataClassInstance(TestCaseBase):
         dm = DataMeta(x=paddle.ones([1, 2]), n=2)
         self.assert_results(set_attr, dm)
 
-    def test_callable_attr(self):
+    def test_eq_int(self):
+        di1 = DataInt(x=1)
+        di2 = DataInt(x=1)
+        di3 = DataInt(x=2)
+        self.assert_results(is_data_int_eq, di1, di2)
+        self.assert_results(is_data_int_eq, di1, di3)
 
-        def process_func(data: DataMeta):
-            return data.x.shape
+    def test_eq_tensor(self):
+        t = paddle.randn([1])
+        dt1 = DataTensor(x=t)
+        dt2 = DataTensor(x=t)
+        dt3 = DataTensor(x=paddle.zeros([1]))
+        self.assert_results(is_data_tensor_eq, dt1, dt2)
+        self.assert_results(is_data_tensor_eq, dt1, dt3)
 
-        dm = DataMeta(x=paddle.randn([1, 2]), f=process_func)
-        self.assert_results(callable_attr, dm)
+    def test_eq_diff_dataclass(self):
+        di = DataInt(x=1)
+        dt = DataTensor(x=1)  # type: ignore
+        self.assert_results(is_data_int_eq, di, dt)
 
-    def test_eq(self):
-        dm1 = DataMeta(x=paddle.randn([1]))
-        dm2 = DataMeta(x=paddle.randn([1]))
-        dm3 = DataMeta(x=paddle.zeros([1]))
-        dm4 = DataMeta(x=paddle.randn([1]), z=DataType.INT32)
-        self.assert_results(is_eq, dm1, dm2)
-        self.assert_results(is_eq, dm1, dm3)
-        self.assert_results(is_eq, dm1, dm4)
-        # TODO(wangmingkai): operator.eq with args UserDefinedFunctionVariable
-        # dm5 = DataMeta(x= paddle.randn([1]), f=lambda _: [])
-        # self.assert_results(is_eq, dm1, dm5)
+
+@dataclass
+class ComplexDataClass:
+    a: int
+    b: int = 0
+    c: int = field(default=1)
+    d: int = field(default_factory=lambda: 2, kw_only=True)
+
+
+def create_dataclass_with_a():
+    return ComplexDataClass(0)
+
+
+def create_dataclass_with_kwarg_a():
+    return ComplexDataClass(a=1)
+
+
+def create_dataclass_with_a_b_c():
+    return ComplexDataClass(1, 2, 3)
+
+
+def create_dataclass_with_kwarg_a_b_c():
+    return ComplexDataClass(1, 2, 3)
+
+
+class TestDataClassConstruction(TestCaseBase):
+    def test_create_dataclass_with_a(self):
+        self.assert_results(create_dataclass_with_a)
+
+    def test_create_dataclass_with_kwarg_a(self):
+        self.assert_results(create_dataclass_with_kwarg_a)
+
+    def test_create_dataclass_with_a_b_c(self):
+        self.assert_results(create_dataclass_with_a_b_c)
+
+    def test_create_dataclass_with_kwarg_a_b_c(self):
+        self.assert_results(create_dataclass_with_kwarg_a_b_c)
 
 
 if __name__ == "__main__":

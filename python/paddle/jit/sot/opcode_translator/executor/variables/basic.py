@@ -14,10 +14,11 @@
 
 from __future__ import annotations
 
+import dataclasses
 import operator
 import sys
 import types
-from dataclasses import dataclass, is_dataclass
+from dataclasses import asdict, is_dataclass
 from functools import cached_property, reduce
 from typing import TYPE_CHECKING, Any
 
@@ -26,6 +27,7 @@ import numpy as np
 import paddle
 from paddle._typing import unreached
 from paddle.framework import core
+from paddle.jit.sot.opcode_translator.executor.pycode_generator import PyCodeGen
 from paddle.pir.core import _PADDLE_PIR_DTYPE_2_NUMPY_DTYPE
 
 from ....infer_meta import (
@@ -128,7 +130,12 @@ if TYPE_CHECKING:
 
     from ..function_graph import FunctionGraph
     from ..pycode_generator import PyCodeGen
-    from .callable import BuiltinVariable, ClassVariable, FunctionVariable
+    from .callable import (
+        BuiltinVariable,
+        ClassVariable,
+        DataClassVariable,
+        FunctionVariable,
+    )
     from .container import TupleVariable
 
     SymbolicConstraint: TypeAlias = tuple[
@@ -2329,28 +2336,56 @@ class DataClassInstanceVariable(VariableBase):
 
     def __init__(
         self,
-        value,
+        data_dict: dict[str, Any],
+        class_var: DataClassVariable,
+        data_id: int | None,
         graph: FunctionGraph,
         tracker: Tracker,
     ):
         super().__init__(graph=graph, tracker=tracker)
-        self.dataclass_type = type(value)
-        var_dict = value.__dict__
-        var_dict.update(
-            {'__post_init__': getattr(value, '__post_init__', None)}
-        )
+        self.class_var = class_var
         self.proxy = self.graph.side_effects.get_proxy(
             MutableDictLikeData,
-            var_dict,
+            data_dict,
             self.proxy_getter,
-            id_getter=lambda _: id(value),
+            id_getter=lambda _: data_id or id(data_dict),
         )
+
+    @staticmethod
+    def _dataclass_from_dict(dataclass_type: type[Any], data: dict[str, Any]):
+        # NOTE(SigureMo): Create dataclass without __post_init__,
+        # because __post_init__ has been run in simulation
+        instance = dataclass_type.__new__(dataclass_type, **data)
+        for fd in dataclasses.fields(dataclass_type):
+            setattr(instance, fd.name, data[fd.name])
+        return instance
+
+    def _reconstruct(self, codegen: PyCodeGen) -> None:
+        codegen.gen_load_object(
+            DataClassInstanceVariable._dataclass_from_dict,
+            "___dataclass_from_dict",
+        )
+        self.getattr("__class__").reconstruct(codegen)
+        data = self.proxy.get_all().keys()
+        for key in data:
+            if not isinstance(key, ConstTypes):
+                raise InnerError(
+                    f"[{self.__class__.__name__}] received {key} as key."
+                )
+            key_var = ConstantVariable.wrap_literal(key, self.graph)
+            value_var = self.getattr(key)
+            key_var.reconstruct(codegen)
+            value_var.reconstruct(codegen)
+        codegen.gen_build_map(len(data))
+        codegen.gen_call_function(2)
 
     @cached_property
     def attr_proxy(self):
         return self.proxy
 
     def getattr(self, name: str, default=None):
+        if name == "__class__":
+            return self.class_var
         return self.proxy.get(name)
 
     def setattr(self, key: str, value):
@@ -2368,14 +2403,15 @@ class DataClassInstanceVariable(VariableBase):
         )
 
     def get_py_type(self):
-        return self.dataclass_type
+        return self.class_var.get_py_value()
 
     def get_py_value(self, allow_tensor=False):
-        return self.dataclass_type(
-            **{
+        return DataClassInstanceVariable._dataclass_from_dict(
+            self.get_py_type(),
+            {
                 key: value.get_py_value(allow_tensor)
                 for key, value in self.proxy.get_all().items()
-            }
+            },
         )
 
     @check_faster_guard
@@ -2429,15 +2465,8 @@ class DataClassInstanceVariable(VariableBase):
             ],
         )
 
-    @VariableFactory.register_from_value()
-    def from_value(value: dataclass, graph: FunctionGraph, tracker: Tracker):
-        if is_dataclass(value) and not isinstance(value, type):
-            var = DataClassInstanceVariable(value, graph=graph, tracker=tracker)
-            return var
-        return None
-
     @classmethod
-    def get_class_id(cls, data_class: type[dataclass]):
+    def get_class_id(cls, data_class: type[Any]):
         class_name = data_class.__name__
         DataClassInstanceVariable.known_dataclasses.setdefault(class_name, [])
         same_name_dataclasses = DataClassInstanceVariable.known_dataclasses[
@@ -2452,3 +2481,26 @@ class DataClassInstanceVariable(VariableBase):
             id = len(same_name_dataclasses)
             same_name_dataclasses.append(data_class)
         return id
+
+    def flatten_inner_vars(self) -> list[VariableBase]:
+        return [
+            self.getattr(fd.name)
+            for fd in dataclasses.fields(self.get_py_type())
+        ]
+
+    @VariableFactory.register_from_value()
+    def from_value(value: object, graph: FunctionGraph, tracker: Tracker):
+        if is_dataclass(value) and not isinstance(value, type):
+            class_var = VariableFactory.from_value(
+                type(value), graph, DanglingTracker()
+            )
+            var = DataClassInstanceVariable(
+                asdict(value),
+                class_var,
+                id(value),
+                graph=graph,
+                tracker=tracker,
+            )
+            class_var.tracker = GetAttrTracker(var, "__class__")
+            return var
+        return None

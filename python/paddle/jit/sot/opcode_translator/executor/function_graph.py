@@ -912,9 +912,13 @@ class FunctionGraph:
         current_executor = OpcodeExecutorBase.call_stack[-1]
         current_line = current_executor._current_line
         filename = current_executor.vframe.code.co_filename
-        source_lines, start_line = inspect.getsourcelines(
-            current_executor.vframe.code
-        )
+        try:
+            source_lines, start_line = inspect.getsourcelines(
+                current_executor.vframe.code
+            )
+        except OSError:
+            # Skip if the function has not source code
+            return []
         # TODO(SigureMo): In 3.11, lineno maybe changed after multiple breakgraph,
         # We need to find a way to fix this.
         line_idx = max(min(current_line - start_line, len(source_lines) - 1), 0)

@@ -1565,10 +1565,15 @@ def dataclass_instance_eq(
     if lhs.get_py_type() != rhs.get_py_type():
         return ConstantVariable(False, lhs.graph, DummyTracker([lhs, rhs]))
 
+    call_eq = BuiltinVariable(operator.eq, lhs.graph, DanglingTracker())
+    call_bool = BuiltinVariable(bool, lhs.graph, DanglingTracker())
+
     return ConstantVariable(
         all(
-            Dispatcher.call(
-                operator.eq, lhs.getattr(field.name), rhs.getattr(field.name)
+            bool(
+                call_bool(
+                    call_eq(lhs.getattr(field.name), rhs.getattr(field.name))
+                )
             )
             for field in fields(lhs.get_py_type())
         ),
