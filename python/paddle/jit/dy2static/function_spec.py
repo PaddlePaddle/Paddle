@@ -24,7 +24,7 @@ from paddle.base import core
 from paddle.base.data_feeder import convert_dtype
 from paddle.base.dygraph.base import switch_to_static_graph
 from paddle.distributed.auto_parallel.placement_type import (
-    to_placements,
+    to_placements_static_graph,
 )
 from paddle.jit.pir_translated_layer import PirTranslatedLayer
 from paddle.jit.translated_layer import TranslatedLayer
@@ -199,7 +199,7 @@ class FunctionSpec:
                     )
 
                     if isinstance(var_spec, DistributedInputSpec):
-                        placements = to_placements(
+                        placements = to_placements_static_graph(
                             var_spec.dims_mapping, var_spec
                         )
                         dist_feed_value = paddle._pir_ops.shard_tensor(
@@ -388,7 +388,7 @@ def _replace_value_with_input_spec(args):
             stop_gradient = input_var.stop_gradient
             if input_var.is_dist():
                 mesh = input_var.dist_attr().process_mesh
-                placements = to_placements(
+                placements = to_placements_static_graph(
                     input_var.dist_attr().dims_mapping, mesh
                 )
                 input_var = DistributedInputSpec(

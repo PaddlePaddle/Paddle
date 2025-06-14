@@ -13,6 +13,7 @@
 # limitations under the License.
 from typing import cast
 
+import paddle
 from paddle.base.core import Partial, Replicate, Shard
 
 
@@ -61,6 +62,42 @@ def to_placements(dim_map, mesh, partial_idx=[], split_factor={}):
             placements[k].set_split_factor(v)
             # split factor size is 1
             break
+
+    return placements
+
+
+def to_placements_static_graph(dim_map, mesh, partial_idx=[]):
+    """
+    convert dim_map to placements.
+    Args:
+        dim_map(List[int]): a list of integer that represents sharding on each tensor dimension.
+        mesh(paddle.distributed.ProcessMesh): The `ProcessMesh` object describes the Cartesian topology of the used processes.
+        partial_idx(List[int], Optional): a list of integer that represents the DTensor have pending sum on which device mesh dimension
+    Returns:
+        List[Placement]: a list contains some `paddle.distributed.Placement`.
+    """
+    if isinstance(mesh, paddle.base.libpaddle.ProcessMesh):
+        shape = mesh.shape
+    else:
+        shape = mesh.mesh.shape
+    placements = [Replicate() for _ in range(len(shape))]
+
+    for s in partial_idx:
+        placements[s] = Partial()
+
+    for i, m in enumerate(dim_map):
+        if m >= 0:
+            p = placements[m]
+            if p.is_shard():
+                p = cast("Shard", p)
+                raise Exception(
+                    f"ProcessMesh dimension can not be mapped to two dimension of same tensor: {i} and {p.get_dim()}."
+                )
+            elif p.is_partial():
+                raise Exception(
+                    f"ProcessMesh dimension {m} can not be both shard and partial!"
+                )
+            placements[m] = Shard(i)
 
     return placements
 
@@ -124,9 +161,23 @@ def to_dim_map(placements, tensor_dims, return_split_factor=False):
 # TODO(lfw): delete it in future.
 def get_shard_spec(mesh, placements, tensor_dims):
     """to get shard_spec for construct DistAttr for static API."""
-    dim_map, _ = to_dim_map(placements, tensor_dims)
+    dim_map = [-1] * tensor_dims
+    for i, placement in enumerate(placements):
+        if placement.is_shard():
+            shard_dim = cast("Shard", placement).get_dim()
+            if dim_map[shard_dim] > -1:
+                import logging
+
+                logging.warning(
+                    f"Tensor dim {shard_dim} is already sharded on mesh dim {dim_map[shard_dim]}."
+                )
+
+            dim_map[shard_dim] = i
+
     mesh_dim_names = mesh.dim_names
     shard_spec = [None] * len(dim_map)
     for i, d in enumerate(dim_map):
         if d > -1:
             shard_spec[i] = mesh_dim_names[d]
+
+    return shard_spec
