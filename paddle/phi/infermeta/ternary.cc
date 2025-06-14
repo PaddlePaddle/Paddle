@@ -2735,5 +2735,4 @@ void TdmSamplerInferMeta(const MetaTensor& x,
     labels->set_dtype(x.dtype());
   }
 }
-
 }  // namespace phi
