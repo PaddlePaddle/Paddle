@@ -25,6 +25,7 @@ def dims_mapping_to_placements(dim_map, mesh, partial_idx=[], split_factor={}):
         dim_map(List[int]): a list of integer that represents sharding on each tensor dimension.
         mesh(paddle.distributed.ProcessMesh): The `ProcessMesh` object describes the Cartesian topology of the used processes.
         partial_idx(List[int], Optional): a list of integer that represents the DTensor have pending sum on which device mesh dimension
+        split_factor(Dict(int, int)): a dict that control how to rearange tensor.
 
     Returns:
         List[Placement]: a list contains some `paddle.distributed.Placement`.
