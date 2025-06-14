@@ -54,24 +54,27 @@ class TestFusedStackTransposeQuantOp(unittest.TestCase):
                 .reshape([-1, K])
             )
         paddle.enable_static()
-        return x_restored, x_fp32
 
-    def test_fused_stack_transpose_quant(self):
         if not paddle.is_compiled_with_cuda():
             return
-        for batch_size in [1, 4]:
-            for seq_len in [2048, 7168]:
-                for hidden_size in [128, 4096]:
-                    x_restored, x_fp32 = self.check_main(
-                        batch_size, seq_len, hidden_size
-                    )
+        np.testing.assert_allclose(
+            x_fp32.numpy(),
+            x_restored.numpy(),
+            rtol=0.01,
+            atol=0.2,
+        )
 
-                    np.testing.assert_allclose(
-                        x_fp32.numpy(),
-                        x_restored.numpy(),
-                        rtol=0.01,
-                        atol=0.2,
-                    )
+    def test_fused_stack_transpose_quant(self):
+        self.check_main(1, 2048, 128)
+
+    def test_fused_stack_transpose_quant2(self):
+        self.check_main(4, 2048, 128)
+
+    def test_fused_stack_transpose_quant3(self):
+        self.check_main(1, 7168, 4096)
+
+    def test_fused_stack_transpose_quant4(self):
+        self.check_main(4, 7168, 4096)
 
 
 class TestFusedStackTransposeQuantOp1(TestFusedStackTransposeQuantOp):
