@@ -94,11 +94,6 @@ from .flash_attention import (
     scaled_dot_product_attention,
     sdp_kernel,  # noqa: F401
 )
-from .fp8 import (
-    fused_act_dequant,
-    fused_swiglu_weighted_bwd,
-    fused_weighted_swiglu_act_quant,
-)
 from .input import (
     embedding,
     embedding_renorm_,  # noqa: F401
@@ -303,7 +298,4 @@ __all__ = [
     "flash_attention_v3_varlen",
     'flash_attn_varlen_qkvpacked',
     'group_norm',
-    'fused_weighted_swiglu_act_quant',
-    'fused_act_dequant',
-    'fused_swiglu_weighted_bwd',
 ]

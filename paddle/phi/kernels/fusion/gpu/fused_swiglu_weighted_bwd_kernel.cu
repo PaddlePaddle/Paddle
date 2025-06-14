@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/fused_swiglu_weighted_bwd_kernel.h"
 #include <cuda_runtime.h>
 #include <vector>
 #include "paddle/phi/backends/gpu/gpu_context.h"

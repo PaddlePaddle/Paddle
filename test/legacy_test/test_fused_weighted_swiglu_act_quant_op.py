@@ -50,7 +50,7 @@ class TestFusedWeightedSwigluActQuant(unittest.TestCase):
 
         # Compute fused result
         fused_res, fused_scales = (
-            paddle.nn.functional.fused_weighted_swiglu_act_quant(
+            paddle.incubate.nn.functional.fused_weighted_swiglu_act_quant(
                 x, prob, using_pow2_scaling=False
             )
         )
@@ -137,7 +137,7 @@ class TestFusedWeightedSwigluActQuant(unittest.TestCase):
             # Test with mismatched dimensions
             x = paddle.randn([100, 200]).astype("bfloat16")
             prob = paddle.randn([150, 1]).astype("float32")  # Wrong height
-            paddle.nn.functional.fused_weighted_swiglu_act_quant(
+            paddle.incubate.nn.functional.fused_weighted_swiglu_act_quant(
                 x, prob, using_pow2_scaling=False
             )
 

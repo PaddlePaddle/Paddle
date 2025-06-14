@@ -104,7 +104,7 @@ class TestFusedWeightedSwigluBwd(unittest.TestCase):
         Returns:
             Tuple of (do1, probs_grad, o2_s)
         """
-        return paddle.nn.functional.fused_swiglu_weighted_bwd(
+        return paddle.incubate.nn.functional.fused_swiglu_weighted_bwd(
             o1, do2_s, unzipped_probs
         )
 

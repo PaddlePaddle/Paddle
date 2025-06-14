@@ -25,6 +25,11 @@ from .build_src_rank_and_local_expert_id import (
 )
 from .cal_aux_loss import cal_aux_loss
 from .expand_modality_expert_id import expand_modality_expert_id
+from .fp8 import (
+    fused_act_dequant,
+    fused_swiglu_weighted_bwd,
+    fused_weighted_swiglu_act_quant,
+)
 from .fused_bias_act import fused_bias_act
 from .fused_dot_product_attention import (
     cudnn_flash_attention,
@@ -61,6 +66,7 @@ from .variable_length_memory_efficient_attention import (
 )
 
 __all__ = [
+    'fused_act_dequant',
     'fused_multi_head_attention',
     'fused_feedforward',
     'fused_multi_transformer',
@@ -74,6 +80,8 @@ __all__ = [
     "fused_rms_norm",
     "fused_layer_norm",
     "fused_bias_act",
+    'fused_swiglu_weighted_bwd',
+    'fused_weighted_swiglu_act_quant',
     "masked_multihead_attention",
     "blha_get_max_len",
     "block_multihead_attention",

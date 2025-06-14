@@ -296,6 +296,10 @@ void MultiEncoderXPUInferMeta(
     MetaTensor* x_fp16,
     MetaTensor* out_fp16);
 
+void FusedActDequantInferMeta(const MetaTensor& x,
+                              const MetaTensor& x_scale,
+                              MetaTensor* out);
+
 void FusedAttentionInferMeta(const MetaTensor& x,
                              const MetaTensor& ln_scale,
                              const MetaTensor& ln_bias,
@@ -1197,6 +1201,19 @@ void FusionSeqpoolConcatInferMeta(const std::vector<const MetaTensor*>& x,
                                   int axis,
                                   MetaTensor* out,
                                   MetaConfig config = MetaConfig());
+
+void FusedSwigluWeightedBwdInferMeta(const MetaTensor& o1,
+                                     const MetaTensor& do2_s,
+                                     const MetaTensor& unzipped_probs,
+                                     MetaTensor* do1,
+                                     MetaTensor* probs_grad,
+                                     MetaTensor* o2_s);
+
+void FusedWeightedSwigluActQuantInferMeta(const MetaTensor& x,
+                                          const MetaTensor& prob,
+                                          bool using_pow2_scaling,
+                                          MetaTensor* out,
+                                          MetaTensor* scale);
 
 void ResnetUnitInferMeta(const MetaTensor& x,
                          const MetaTensor& filter_x,

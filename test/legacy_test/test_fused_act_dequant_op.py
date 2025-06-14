@@ -188,9 +188,9 @@ class TestActQuantDequant(unittest.TestCase):
         x_fp8, scale = self.act_quant(x)
 
         # Get results from both implementations
-        if hasattr(paddle.nn.functional, 'fused_act_dequant'):
-            dequant_result_fused = paddle.nn.functional.fused_act_dequant(
-                x_fp8, scale
+        if hasattr(paddle.incubate.nn.functional, 'fused_act_dequant'):
+            dequant_result_fused = (
+                paddle.incubate.nn.functional.fused_act_dequant(x_fp8, scale)
             )
         else:
             # Skip fused test if not available
