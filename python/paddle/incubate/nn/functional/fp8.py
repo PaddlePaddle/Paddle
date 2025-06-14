@@ -28,7 +28,7 @@ def fused_act_dequant(
     x: Tensor,
     x_scale: Tensor,
 ) -> Tensor:
-    """
+    r"""
     Fused activation and dequantization operation.
 
     This function performs dequantization on quantized float8_e4m3fn input tensor
@@ -44,23 +44,25 @@ def fused_act_dequant(
         Tensor: Dequantized output tensor with dtype bfloat16 and same shape as input x.
 
     Examples:
-        >>> import paddle
-        >>> import paddle.nn.functional as F
+        .. code-block:: python
 
-        >>> # Example 1: Basic usage with 1D scale
-        >>> x = paddle.randint(0, 255, [512, 1024], dtype='uint8')  # Simulate quantized data
-        >>> x = x.astype('float8_e4m3fn')  # Convert to float8_e4m3fn
-        >>> x_scale = paddle.rand([8], dtype='float32')  # 1024 // 128 = 8 scale groups
-        >>> out = F.fused_act_dequant(x, x_scale)
-        >>> print(f"Input shape: {x.shape}, Output shape: {out.shape}")
-        >>> print(f"Input dtype: {x.dtype}, Output dtype: {out.dtype}")
+            >>> import paddle
+            >>> import paddle.incubate.nn.functional as F
 
-        >>> # Example 2: Per-row scaling with 2D scale
-        >>> x = paddle.randint(0, 255, [256, 512], dtype='uint8')
-        >>> x = x.astype('float8_e4m3fn')
-        >>> x_scale = paddle.rand([256, 4], dtype='float32')  # 512 // 128 = 4 scale groups per row
-        >>> out = F.fused_act_dequant(x, x_scale)
-        >>> print(f"Output shape: {out.shape}, dtype: {out.dtype}")
+            >>> # Example 1: Basic usage with 1D scale
+            >>> x = paddle.randint(0, 255, [512, 1024], dtype='uint8')  # Simulate quantized data
+            >>> x = x.astype('float8_e4m3fn')  # Convert to float8_e4m3fn
+            >>> x_scale = paddle.rand([8], dtype='float32')  # 1024 // 128 = 8 scale groups
+            >>> out = F.fused_act_dequant(x, x_scale)
+            >>> print(f"Input shape: {x.shape}, Output shape: {out.shape}")
+            >>> print(f"Input dtype: {x.dtype}, Output dtype: {out.dtype}")
+
+            >>> # Example 2: Per-row scaling with 2D scale
+            >>> x = paddle.randint(0, 255, [256, 512], dtype='uint8')
+            >>> x = x.astype('float8_e4m3fn')
+            >>> x_scale = paddle.rand([256, 4], dtype='float32')  # 512 // 128 = 4 scale groups per row
+            >>> out = F.fused_act_dequant(x, x_scale)
+            >>> print(f"Output shape: {out.shape}, dtype: {out.dtype}")
 
     Note:
         - Input x must be 2D tensor with dtype float8_e4m3fn
@@ -100,20 +102,22 @@ def fused_swiglu_weighted_bwd(
         - **probs_grad** (Tensor): Gradient w.r.t. probabilities. Shape: [...], dtype: float32
         - **o2_s** (Tensor): Scaled output o2 * prob. Shape: [..., hidden_size], dtype: bfloat16
     Examples:
-        >>> import paddle
-        >>> from paddle.incubate.nn.functional import fused_swiglu_weighted_bwd
+        .. code-block:: python
 
-        >>> # Example: Basic 2D usage
-        >>> batch_size, hidden_size = 8, 2048
-        >>> o1 = paddle.randn([batch_size, hidden_size * 2], dtype='bfloat16')
-        >>> do2_s = paddle.randn([batch_size, hidden_size], dtype='bfloat16')
-        >>> probs = paddle.rand([batch_size], dtype='float32')
-        >>> do1, probs_grad, o2_s = fused_swiglu_weighted_bwd(o1, do2_s, probs)
-        >>> print(f"Input shape: {o1.shape}, Output do1 shape: {do1.shape}")
-        >>> print(f"Probs gradient shape: {probs_grad.shape}")
+            >>> import paddle
+            >>> import paddle.incubate.nn.functional as F
 
-        Input shape: [8, 4096], Output do1 shape: [8, 4096]
-        Probs gradient shape: [8]
+            >>> # Example: Basic 2D usage
+            >>> batch_size, hidden_size = 8, 2048
+            >>> o1 = paddle.randn([batch_size, hidden_size * 2], dtype='bfloat16')
+            >>> do2_s = paddle.randn([batch_size, hidden_size], dtype='bfloat16')
+            >>> probs = paddle.rand([batch_size], dtype='float32')
+            >>> do1, probs_grad, o2_s = F.fused_swiglu_weighted_bwd(o1, do2_s, probs)
+            >>> print(f"Input shape: {o1.shape}, Output do1 shape: {do1.shape}")
+            >>> print(f"Probs gradient shape: {probs_grad.shape}")
+
+            Input shape: [8, 4096], Output do1 shape: [8, 4096]
+            Probs gradient shape: [8]
     Note:
         - This operator is specifically optimized for MoE training scenarios
         - All input tensors must be on the same device (GPU)
@@ -130,7 +134,7 @@ def fused_weighted_swiglu_act_quant(
     using_pow2_scaling: bool = False,
     name: str | None = None,
 ) -> tuple[Tensor, Tensor]:
-    """
+    r"""
     Fused weighted SwiGLU activation with quantization.
 
     This function performs a fused operation that combines weighted SwiGLU activation
@@ -158,7 +162,7 @@ def fused_weighted_swiglu_act_quant(
         .. code-block:: python
 
             >>> import paddle
-            >>> import paddle.nn.functional as F
+            >>> import paddle.incubate.nn.functional as F
 
             >>> # Example 1: Basic usage without probability weighting
             >>> x = paddle.randn([32, 4096], dtype='bfloat16')
