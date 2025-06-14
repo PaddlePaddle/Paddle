@@ -70,9 +70,10 @@ if(((WITH_GPU) AND (CUDA_VERSION VERSION_LESS 12.0))
     "legacy/gpu/moe_gate_dispatch_kernel.cu"
     "legacy/gpu/moe_gate_dispatch_grad_kernel.cu"
     "legacy/gpu/int_bincount.cu"
-    "legacy/gpu/layer_norm_cuda_kernel.cu",
-    "fusion/gpu/fused_stack_transpose_quant_kernel.cu",
-    "fusion/gpu/fused_stack_quant_kernel.cu")
+    "legacy/gpu/layer_norm_cuda_kernel.cu"
+    "fusion/gpu/fused_stack_transpose_quant_kernel.cu"
+    "fusion/gpu/fused_stack_quant_kernel.cu"
+    "fusion/gpu/fused_transpose_split_quant_kernel.cu")
 endif()
 
 if(NOT WITH_DGC)
