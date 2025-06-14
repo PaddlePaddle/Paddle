@@ -218,8 +218,8 @@ PD_REGISTER_SPMD_RULE(
     PD_INFER_SPMD(phi::distributed::ElementwiseUnaryInferSpmdReverse));
 PD_REGISTER_SPMD_RULE(
     label_smooth,
-    PD_INFER_SPMD(phi::distributed::ElementwiseUnaryInferSpmd),
-    PD_INFER_SPMD(phi::distributed::ElementwiseUnaryInferSpmdReverse));
+    PD_INFER_SPMD(phi::distributed::LabelSmoothInferSpmd),
+    PD_INFER_SPMD(phi::distributed::LabelSmoothGradInferSpmd));
 PD_REGISTER_SPMD_RULE(
     leaky_relu,
     PD_INFER_SPMD(phi::distributed::ElementwiseUnaryInferSpmd),
@@ -746,6 +746,9 @@ PD_REGISTER_SPMD_RULE(pad,
                       PD_INFER_SPMD(phi::distributed::PadInferSpmd),
                       PD_INFER_SPMD(phi::distributed::PadGradInferSpmd));
 
+// group_norm
+PD_REGISTER_SPMD_RULE(group_norm,
+                      PD_INFER_SPMD(phi::distributed::GroupNormInferSpmdBase));
 // nonzero
 PD_REGISTER_SPMD_RULE(nonzero,
                       PD_INFER_SPMD(phi::distributed::NonZeroInferSpmd),
