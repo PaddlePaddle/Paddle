@@ -46,6 +46,7 @@ void RepeatsTensor2IndexTensorFunctor<phi::GPUContext, RepeatsT>::operator()(
     const phi::GPUContext &dev_ctx,
     const DenseTensor &repeats,
     DenseTensor *index) {
+#if defined(__NVCC__)
   const RepeatsT *repeats_ptr = repeats.data<RepeatsT>();
   int64_t num_reps = repeats.dims()[0];
 
@@ -96,6 +97,35 @@ void RepeatsTensor2IndexTensorFunctor<phi::GPUContext, RepeatsT>::operator()(
                       PADDLE_CUDA_NUM_THREADS,
                       0,
                       stream>>>(index_ptr, prefix_ptr, repeats_ptr, num_reps);
+#else
+  DenseTensor repeats_cpu_copy;
+  if (repeats.place().GetType() != phi::AllocationType::CPU) {
+    phi::Copy(ctx, repeats, phi::CPUPlace(), true, &repeats_cpu_copy);
+  }
+  const RepeatsT *repeats_data =
+      repeats.place().GetType() == phi::AllocationType::CPU
+          ? repeats.data<RepeatsT>()
+          : repeats_cpu_copy.data<RepeatsT>();
+
+  int64_t index_size = 0;
+  for (int i = 0; i < repeats.dims()[0]; i++) {
+    PADDLE_ENFORCE_GE(repeats_data[i],
+                      0,
+                      common::errors::InvalidArgument(
+                          "repeats must grater or equal than 0, but got %d",
+                          repeats_data[i]));
+    index_size += repeats_data[i];
+  }
+  std::vector<RepeatsT> index_vec(index_size);
+  int offset = 0;
+  for (int i = 0; i < repeats.dims()[0]; i++) {
+    std::fill_n(index_vec.begin() + offset, repeats_data[i], i);
+    offset += repeats_data[i];
+  }
+  index->Resize(common::make_ddim({index_size}));
+
+  phi::TensorFromVector<RepeatsT>(index_vec, ctx, index);
+#endif
 }
 
 template class RepeatsTensor2IndexTensorFunctor<phi::GPUContext, int>;
