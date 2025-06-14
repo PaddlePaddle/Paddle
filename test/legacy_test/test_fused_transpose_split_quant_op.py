@@ -43,7 +43,7 @@ def test_fused_transpose_split_quant(tokens_per_expert, seq_len, pow_2_scales):
     x = paddle.randn([sum(tokens_per_expert), seq_len], dtype='bfloat16')
     x = paddle.clip(x, min=-50, max=50)
 
-    out, scale = paddle.nn.functional.fused_transpose_split_quant(
+    out, scale = paddle.incubate.nn.functional.fused_transpose_split_quant(
         x, tokens_per_expert, pow_2_scales
     )
 
