@@ -16,10 +16,7 @@ from __future__ import annotations
 
 import paddle
 from paddle import _C_ops
-from paddle.base.framework import in_dygraph_mode
-from paddle.base.layer_helper import LayerHelper
-
-__all__ = ['fp8_gemm_blockwise']
+from paddle.framework import in_dynamic_or_pir_mode
 
 
 def fp8_gemm_blockwise(
@@ -113,81 +110,16 @@ def fp8_gemm_blockwise(
         - Only TN layout (transa=True, transb=False) is supported
     """
 
-    # Input validation
-    if not isinstance(a, paddle.Tensor):
-        raise TypeError("a must be a Tensor")
-    if not isinstance(b, paddle.Tensor):
-        raise TypeError("b must be a Tensor")
-    if not isinstance(a_decode_scale, paddle.Tensor):
-        raise TypeError("a_decode_scale must be a Tensor")
-    if not isinstance(b_decode_scale, paddle.Tensor):
-        raise TypeError("b_decode_scale must be a Tensor")
-
-    # Check FP8 dtypes
-    if a.dtype not in (paddle.float8_e4m3fn, paddle.float8_e5m2):
-        raise TypeError(
-            f"a.dtype must be float8_e4m3fn or float8_e5m2, but got {a.dtype}"
-        )
-    if b.dtype not in (paddle.float8_e4m3fn, paddle.float8_e5m2):
-        raise TypeError(
-            f"b.dtype must be float8_e4m3fn or float8_e5m2, but got {b.dtype}"
-        )
-
-    # Check scale dtypes
-    if a_decode_scale.dtype != paddle.float32:
-        raise TypeError(
-            f"a_decode_scale.dtype must be float32, but got {a_decode_scale.dtype}"
-        )
-    if b_decode_scale.dtype != paddle.float32:
-        raise TypeError(
-            f"b_decode_scale.dtype must be float32, but got {b_decode_scale.dtype}"
-        )
-
     # Check output dtype
     if out_dtype not in (paddle.bfloat16, paddle.float32):
         raise TypeError(
             f"out_dtype must be bfloat16 or float32, but got {out_dtype}"
         )
-
-    # Check tensor dimensions
-    if len(a.shape) != 2:
-        raise ValueError(f"a must be 2D tensor, but got {len(a.shape)}D")
-    if len(b.shape) != 2:
-        raise ValueError(f"b must be 2D tensor, but got {len(b.shape)}D")
-
-    # Check matrix dimensions compatibility
-    M, K = a.shape
-    N, K_b = b.shape
-    if K != K_b:
-        raise ValueError(
-            f"Matrix dimensions do not match: a.shape[1]={K}, b.shape[1]={K_b}"
-        )
-
-    # Check layout support
-    if not (transa and not transb):
-        raise ValueError(
-            "Only TN layout (transa=True, transb=False) is supported"
-        )
-
-    # Check split accumulator requirement
-    if not use_split_accumulator:
-        raise ValueError(
-            "Split accumulator is required (use_split_accumulator must be True)"
-        )
-
     # Check bias support
     if bias is not None:
         raise ValueError("Bias is currently not supported")
 
-    # Check scaling configuration
-    if not is_a_1d_scaled and not is_b_1d_scaled:
-        raise ValueError("2Dx2D scaling is not supported")
-
-    # Handle empty tensors
-    if M == 0 or N == 0 or K == 0:
-        return paddle.empty([M, N], dtype=out_dtype)
-
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         # Create workspace tensor for cuBLAS
         workspace_size = (
             33_554_432
@@ -218,68 +150,4 @@ def fp8_gemm_blockwise(
             is_b_1d_scaled,
             is_a_1d_scaled,
         )
-        return out
-    else:
-        helper = LayerHelper("fp8_gemm_blockwise", **locals())
-
-        # Create output tensor
-        out = helper.create_variable_for_type_inference(dtype=out_dtype)
-
-        # Create workspace tensor
-        workspace_size = (
-            33_554_432
-            if paddle.device.cuda.get_device_properties().major >= 9
-            else 4_194_304
-        )
-        workspace = helper.create_variable_for_type_inference(
-            dtype=paddle.uint8
-        )
-        workspace.desc.set_shape([workspace_size])
-
-        # Create empty bias and pre_gelu_out tensors
-        empty_bias = helper.create_variable_for_type_inference(
-            dtype=paddle.float32
-        )
-        empty_bias.desc.set_shape([0])
-        empty_pre_gelu_out = helper.create_variable_for_type_inference(
-            dtype=paddle.float32
-        )
-        empty_pre_gelu_out.desc.set_shape([0])
-
-        # Create output tensors for pre_gelu_out and workspace_out
-        pre_gelu_out = helper.create_variable_for_type_inference(
-            dtype=paddle.float32
-        )
-        workspace_out = helper.create_variable_for_type_inference(
-            dtype=paddle.uint8
-        )
-
-        helper.append_op(
-            type="fp8_gemm_blockwise",
-            inputs={
-                "A": a,
-                "A_scale": a_decode_scale,
-                "B": b,
-                "B_scale": b_decode_scale,
-                "bias": empty_bias,
-                "pre_gelu": empty_pre_gelu_out,
-                "workspace": workspace,
-            },
-            outputs={
-                "out": out,
-                "pre_gelu_out": pre_gelu_out,
-                "workspace_out": workspace_out,
-            },
-            attrs={
-                "transa": transa,
-                "transb": transb,
-                "grad": grad,
-                "accumulate": accumulate,
-                "use_split_accumulator": use_split_accumulator,
-                "math_sm_count": math_sm_count,
-                "is_A_1d_scaled": is_a_1d_scaled,
-                "is_B_1d_scaled": is_b_1d_scaled,
-            },
-        )
-
         return out
