@@ -247,6 +247,4 @@ PD_REGISTER_KERNEL(moe_unpermute,
                    GPU,
                    ALL_LAYOUT,
                    phi::MoeUnpermuteKernel,
-                   float,
-                   double,
                    phi::dtype::bfloat16) {}

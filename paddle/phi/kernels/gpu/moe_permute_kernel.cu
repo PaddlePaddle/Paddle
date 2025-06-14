@@ -302,10 +302,6 @@ void MoePermuteKernel(const Context &dev_ctx,
 #undef MAX_NUM_EXPERTS
 }  // namespace phi
 
-PD_REGISTER_KERNEL(moe_permute,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::MoePermuteKernel,
-                   float,
-                   double,
-                   phi::dtype::bfloat16) {}
+PD_REGISTER_KERNEL(
+    moe_permute, GPU, ALL_LAYOUT, phi::MoePermuteKernel, phi::dtype::bfloat16) {
+}
