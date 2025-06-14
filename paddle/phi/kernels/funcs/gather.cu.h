@@ -37,16 +37,17 @@ __global__ void GatherNdCUDAKernel(const T* input,
                                    size_t remain_size,
                                    size_t slice_size,
                                    size_t end_size) {
-  int total_size = remain_size * slice_size;
-  int idx = (blockIdx.x * blockDim.x + threadIdx.x) * VecSize;
-  int64_t stride = blockDim.x * gridDim.x * VecSize;
+  size_t total_size = remain_size * slice_size;
+  size_t idx =
+      (static_cast<size_t>(blockIdx.x) * blockDim.x + threadIdx.x) * VecSize;
+  size_t stride = static_cast<size_t>(blockDim.x) * gridDim.x * VecSize;
 
 #pragma unroll
   for (; idx < total_size; idx += stride) {
-    int indices_i = idx / slice_size;
-    int slice_i = idx % slice_size;
-    int64_t gather_i = 0;
-    int64_t temp = slice_size;
+    size_t indices_i = idx / slice_size;
+    size_t slice_i = idx % slice_size;
+    size_t gather_i = 0;
+    size_t gather_stride = slice_size;
 #pragma unroll
     for (int j = end_size - 1; j >= 0; --j) {
       auto index_value = indices[indices_i * end_size + j];
@@ -63,10 +64,10 @@ __global__ void GatherNdCUDAKernel(const T* input,
       if (index_value < 0) {
         index_value += input_dims[j];
       }
-      gather_i += (index_value * temp);
-      temp *= input_dims[j];
+      gather_i += index_value * gather_stride;
+      gather_stride *= input_dims[j];
     }
-    int64_t input_i = gather_i + slice_i;
+    size_t input_i = gather_i + slice_i;
 
     using VecType = kps::details::VectorType<T, VecSize>;
     const VecType* src = reinterpret_cast<const VecType*>(&input[input_i]);
