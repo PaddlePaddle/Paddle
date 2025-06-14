@@ -1586,6 +1586,16 @@
   kernel :
     func : hsigmoid_loss_grad
 
+- backward_op : huber_loss_div_delta_grad
+  forward : huber_loss_div_delta (Tensor input, Tensor label, float delta) -> Tensor(out), Tensor(residual)
+  args : (Tensor residual, Tensor out_grad, float delta)
+  output : Tensor(input_grad), Tensor(label_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param : [residual, residual]
+  kernel :
+    func : huber_loss_div_delta_grad
+
 - backward_op : huber_loss_grad
   forward : huber_loss (Tensor input, Tensor label, float delta) -> Tensor(out), Tensor(residual)
   args : (Tensor residual, Tensor out_grad, float delta)

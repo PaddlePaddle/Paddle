@@ -37,6 +37,7 @@ _INFERMETA_NEED_META_CONFIG = {
     'ElementwiseRawInferMeta',
     'GridSampleBaseInferMeta',
     'HuberLossInferMeta',
+    'HuberLossDivDeltaInferMeta',
     'Im2sequenceInferMeta',
     'IndexSampleInferMeta',
     'LodResetInferMeta',

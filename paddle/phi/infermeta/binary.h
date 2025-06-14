@@ -429,6 +429,13 @@ void HuberLossInferMeta(const MetaTensor& input_meta,
                         MetaTensor* residual,
                         MetaConfig config = MetaConfig());
 
+void HuberLossDivDeltaInferMeta(const MetaTensor& input_meta,
+                                const MetaTensor& label_meta,
+                                float delta,
+                                MetaTensor* out,
+                                MetaTensor* residual,
+                                MetaConfig config = MetaConfig());
+
 void IdentityLossGradInferMeta(const MetaTensor& x,
                                const MetaTensor& out_grad,
                                const int reduction,

@@ -177,6 +177,26 @@ std::tuple<Tensor, Tensor> huber_loss_decomp(const Tensor& input,
 }
 
 template <typename T>
+std::tuple<Tensor, Tensor> huber_loss_div_delta_decomp(const Tensor& input,
+                                                       const Tensor& label,
+                                                       float delta) {
+  Tensor delta_full;
+  if (has_dynamic_shape(input.shape())) {
+    delta_full =
+        backend::full_with_tensor<T>(shape64<T>(input), delta, input.dtype());
+  } else {
+    delta_full = full<T>(input.shape(), delta, input.dtype(), input.place());
+  }
+  auto val = label - input;
+  auto abs_val = abs<T>(val);
+  auto factor = full_scalar<T>(0.5, input.dtype(), input.place());
+  auto ans = where<T>(abs_val <= delta_full,
+                      factor * val * val / delta_full,
+                      (abs_val - factor * delta_full));
+  return std::make_tuple(ans, val);
+}
+
+template <typename T>
 Tensor one_hot_decomp(const Tensor& x, const Tensor& num_classes) {
   auto start = full<T>({1}, 0, x.dtype(), x.place());
   auto step = full<T>({1}, 1, x.dtype(), x.place());

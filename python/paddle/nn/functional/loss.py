@@ -1105,6 +1105,7 @@ def smooth_l1_loss(
     label: Tensor,
     reduction: _ReduceMode = 'mean',
     delta: float = 1.0,
+    is_huber: bool = True,
     name: str | None = None,
 ) -> Tensor:
     r"""
@@ -1143,6 +1144,7 @@ def smooth_l1_loss(
             The value determines how large the errors need to be to use L1. Errors
             smaller than delta are minimized with L2. Parameter is ignored for
             negative/zero values. Default = 1.0
+        is_huber (bool, optional): If True, use the Huber loss, otherwise use a modified version where the Huber loss is divided by delta. Default is True.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -1162,35 +1164,64 @@ def smooth_l1_loss(
                     0.08307374)
 
     """
-
-    if in_dynamic_or_pir_mode():
-        out = _C_ops.huber_loss(input, label, delta)
+    if is_huber:
+        if in_dynamic_or_pir_mode():
+            out = _C_ops.huber_loss(input, label, delta)
+        else:
+            check_variable_and_dtype(
+                input,
+                'input',
+                ['float16', 'float32', 'float64', 'uint16'],
+                'smooth_l1_loss',
+            )
+            check_variable_and_dtype(
+                label,
+                'label',
+                ['float16', 'float32', 'float64', 'uint16'],
+                'smooth_l1_loss',
+            )
+            helper = LayerHelper('huber_loss', **locals())
+            residual = helper.create_variable_for_type_inference(
+                dtype=helper.input_dtype()
+            )
+            out = helper.create_variable_for_type_inference(
+                dtype=helper.input_dtype()
+            )
+            helper.append_op(
+                type='huber_loss',
+                inputs={'X': input, 'Y': label},
+                outputs={'Out': out, 'Residual': residual},
+                attrs={'delta': delta},
+            )
     else:
-        check_variable_and_dtype(
-            input,
-            'input',
-            ['float16', 'float32', 'float64', 'uint16'],
-            'smooth_l1_loss',
-        )
-        check_variable_and_dtype(
-            label,
-            'label',
-            ['float16', 'float32', 'float64', 'uint16'],
-            'smooth_l1_loss',
-        )
-        helper = LayerHelper('huber_loss', **locals())
-        residual = helper.create_variable_for_type_inference(
-            dtype=helper.input_dtype()
-        )
-        out = helper.create_variable_for_type_inference(
-            dtype=helper.input_dtype()
-        )
-        helper.append_op(
-            type='huber_loss',
-            inputs={'X': input, 'Y': label},
-            outputs={'Out': out, 'Residual': residual},
-            attrs={'delta': delta},
-        )
+        if in_dynamic_or_pir_mode():
+            out = _C_ops.huber_loss_div_delta(input, label, delta)
+        else:
+            check_variable_and_dtype(
+                input,
+                'input',
+                ['float16', 'float32', 'float64', 'uint16'],
+                'smooth_l1_loss',
+            )
+            check_variable_and_dtype(
+                label,
+                'label',
+                ['float16', 'float32', 'float64', 'uint16'],
+                'smooth_l1_loss',
+            )
+            helper = LayerHelper('huber_loss', **locals())
+            residual = helper.create_variable_for_type_inference(
+                dtype=helper.input_dtype()
+            )
+            out = helper.create_variable_for_type_inference(
+                dtype=helper.input_dtype()
+            )
+            helper.append_op(
+                type='huber_loss_div_delta',
+                inputs={'X': input, 'Y': label},
+                outputs={'Out': out, 'Residual': residual},
+                attrs={'delta': delta},
+            )
 
     if reduction not in ['sum', 'mean', 'none']:
         raise ValueError(

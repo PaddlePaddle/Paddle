@@ -114,6 +114,7 @@ register_unity_group(
   hinge_loss_op.cc
   histogram_op.cc
   huber_loss_op.cc
+  huber_loss_div_delta_op.cc
   im2sequence_op.cc
   increment_op.cc
   index_sample_op.cc
@@ -387,6 +388,7 @@ register_unity_group(
   hinge_loss_op.cu
   histogram_op.cu
   huber_loss_op.cu
+  huber_loss_div_delta_op.cu
   im2sequence_op.cu
   increment_op.cu
   index_sample_op.cu

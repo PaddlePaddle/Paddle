@@ -118,6 +118,7 @@ type_promote_white_list = {
     "minimum": ["x", "y"],
     "remainder": ["x", "y"],
     "huber_loss": ["input", "label"],
+    "huber_loss_div_delta": ["input", "label"],
     "nextafter": ["x", "y"],
     "atan2": ["x", "y"],
     "copysign": ["x", "y"],

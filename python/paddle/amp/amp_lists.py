@@ -83,6 +83,7 @@ FP16_BLACK_LIST = {
     'cross_entropy2',
     'nll_loss',
     'huber_loss',
+    'huber_loss_div_delta',
     'triplet_margin_loss',
     'log_loss',
     'hsigmoid_loss',

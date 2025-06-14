@@ -99,6 +99,8 @@ SUPPORT_PROMOTION_OPS_AND_INPUTNAME = {
     "elementwise_mod_grad": ['X', 'Y'],
     "huber_loss": ['X', 'Y'],
     "huber_loss_grad": ['X', 'Y'],
+    "huber_loss_div_delta": ['X', 'Y'],
+    "huber_loss_div_delta_grad": ['X', 'Y'],
     "nextafter": ['x', 'y'],
     "atan2": ['X1', 'X2'],
     "atan2_grad": ['X1', 'X2'],

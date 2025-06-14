@@ -2694,6 +2694,17 @@
   backward : huber_loss_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
+- op : huber_loss_div_delta
+  args : (Tensor input, Tensor label, float delta)
+  output : Tensor(out), Tensor(residual)
+  infer_meta :
+    func : HuberLossDivDeltaInferMeta
+  kernel :
+    func : huber_loss_div_delta
+  intermediate : residual
+  backward : huber_loss_div_delta_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+
 - op : i0
   args : (Tensor x)
   output : Tensor(out)

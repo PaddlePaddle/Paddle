@@ -48,6 +48,7 @@ GENERATE_IMPL_DECOMP = [
     "hardswish",
     "heaviside",
     "huber_loss",
+    "huber_loss_div_delta",
     "index_sample",
     "index_select",
     "instance_norm",

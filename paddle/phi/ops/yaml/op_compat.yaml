@@ -2004,6 +2004,13 @@
   outputs :
     {out : Out, residual : Residual}
 
+- op : huber_loss_div_delta
+  backward : huber_loss_div_delta_grad
+  inputs :
+    {input : X, label : Y}
+  outputs :
+    {out : Out, residual : Residual}
+
 - op : im2sequence
   inputs:
     {x : X, y : Y}
