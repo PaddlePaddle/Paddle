@@ -86,7 +86,7 @@ def tensor_max_abs_rel_err(a, b, eps=1e-8):
 
 
 class TestFusedMoePermuteUnpermute(unittest.TestCase):
-    """Test cases for fused_moe_permute and fused_moe_unpermute."""
+    """Test cases for moe_permute and moe_unpermute."""
 
     SEQLEN = 16384
     TOKEN_LEN = 7168
@@ -160,23 +160,20 @@ class TestFusedMoePermuteUnpermute(unittest.TestCase):
                             tokens, tokens_recovered
                         )
                         print(
-                            f"unzip-zip tokens max absolute error: {max_abs_err}, relative error: {max_rel_err}"
+                            f"permute-unpermute tokens relative error: {max_rel_err}"
                         )
                         self.assertLess(
-                            max_abs_err, 1e-1, "Tokens absolute error too large"
-                        )
-                        self.assertLess(
-                            max_rel_err, 1e-1, "Tokens relative error too large"
+                            max_rel_err, 1e-2, "Tokens relative error too large"
                         )
 
                         max_abs_err, max_rel_err = tensor_max_abs_rel_err(
                             dispatched_probs, probs_recovered
                         )
                         print(
-                            f"unzip-zip probs max absolute error: {max_abs_err}, relative error: {max_rel_err}"
+                            f"ermute-unpermute probs max absolute error: {max_abs_err}, relative error: {max_rel_err}"
                         )
                         self.assertLess(
-                            max_abs_err, 1e-1, "Probs absolute error too large"
+                            max_abs_err, 1e-5, "Probs absolute error too large"
                         )
                         self.assertLess(
                             max_rel_err, 1e-5, "Probs relative error too large"
