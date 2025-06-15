@@ -220,7 +220,6 @@ class GlobalThreadLocal(threading.local):
         """
         global _dygraph_tracer_
         self._in_to_static_mode_ = False
-        self._in_sot_simulation_mode_ = False
         self._functional_dygraph_context_manager = None
         self._dygraph_tracer_ = _dygraph_tracer_
         env_pir_enabled = os.environ.get("FLAGS_enable_pir_api")
@@ -242,9 +241,6 @@ class GlobalThreadLocal(threading.local):
     def __str__(self):
         strings = []
         strings.append("_in_to_static_mode_:" + str(self._in_to_static_mode_))
-        strings.append(
-            "_in_sot_simulation_mode_:" + str(self._in_sot_simulation_mode_)
-        )
         strings.append(
             "_functional_dygraph_context_manager:"
             + str(self._functional_dygraph_context_manager)
