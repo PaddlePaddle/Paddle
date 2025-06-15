@@ -166,7 +166,6 @@ jobs:
           python -m pip install wheel
           echo "::endgroup::"
           source /usr/local/Ascend/ascend-toolkit/set_env.sh
-          pip install -U numpy==1.26.4
           git config --global --add safe.directory ${work_dir}
           git config --global --add safe.directory ${work_dir}/Paddle
           cd Paddle
