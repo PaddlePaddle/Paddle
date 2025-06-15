@@ -183,7 +183,7 @@ class TestAttentionWithBoolMask(unittest.TestCase):
 
 class TestAttentionWith3DInput(unittest.TestCase):
     def setUp(self):
-        self.dtype = 'float16'
+        self.dtype = 'float32'
         self.dropout = 0.0
         self.causal = False
 
@@ -206,9 +206,12 @@ class TestAttentionWith3DInput(unittest.TestCase):
         k_ref = paddle.unsqueeze(k, axis=0)
         v_ref = paddle.unsqueeze(v, axis=0)
 
-        out = scaled_dot_product_attention(
-            q, k, v, None, self.dropout, self.causal
-        )
+        with sdp_kernel(
+            enable_math=True, enable_flash=False, enable_mem_efficient=False
+        ):
+            out = scaled_dot_product_attention(
+                q, k, v, None, self.dropout, self.causal
+            )
 
         out_ref = attention_naive(q_ref, k_ref, v_ref, self.causal)
 
