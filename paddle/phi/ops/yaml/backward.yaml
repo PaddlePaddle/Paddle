@@ -3933,6 +3933,7 @@
     func: FusedRMSNormGradInferMeta
   kernel:
     func: fused_rms_norm_ext_grad
+    data_type: x
 
 - backward_op: im2sequence_grad
   forward: im2sequence (Tensor x, Tensor y, int[] kernels, int[] strides = {1, 1}, int[] paddings
