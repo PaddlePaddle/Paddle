@@ -78,6 +78,7 @@ __all__ = [
     'fused_bias_dropout_residual_layer_norm',
     'fused_dropout_add',
     'fused_rotary_position_embedding',
+    'fused_stack_transpose_quant',
     'fused_transpose_split_quant',
     'variable_length_memory_efficient_attention',
     "fused_rms_norm",
