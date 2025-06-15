@@ -39,7 +39,7 @@ jobs:
           source ~/.bashrc
           set -e
           echo "Downloading Paddle.tar.gz"
-          wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/Paddle/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
+          wget -q --no-proxy --tries=5 https://paddle-github-action.bj.bcebos.com/PR/Paddle/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
           echo "Extracting Paddle.tar.gz"
           tar xf Paddle.tar.gz
           rm Paddle.tar.gz
@@ -142,7 +142,7 @@ jobs:
           source ~/.bashrc
           wget -q https://sys-p0.bj.bcebos.com/libstdc%2B%2B6_13.1.0-8ubuntu1_20.04.2_amd64.deb
           dpkg -i *deb
-          wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/cpu_whl/${PR_ID}/${COMMIT_ID}/paddlepaddle-0.0.0-cp39-cp39-linux_x86_64.whl --no-check-certificate
+          wget -q --no-proxy --tries=5 https://paddle-github-action.bj.bcebos.com/PR/cpu_whl/${PR_ID}/${COMMIT_ID}/paddlepaddle-0.0.0-cp39-cp39-linux_x86_64.whl --no-check-certificate
           PATH=/usr/local/bin:${PATH}
           echo "export PATH=$PATH" >> ~/.bashrc
           ln -sf $(which python3.9) /usr/local/bin/python

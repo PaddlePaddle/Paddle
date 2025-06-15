@@ -69,7 +69,7 @@ jobs:
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           rm -rf * .[^.]*
           echo "Downloading build.tar.gz"
-          wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/build/${PR_ID}/${COMMIT_ID}/build.tar.gz --no-check-certificate
+          wget -q --no-proxy --tries=5 https://paddle-github-action.bj.bcebos.com/PR/build/${PR_ID}/${COMMIT_ID}/build.tar.gz --no-check-certificate
           echo "Extracting build.tar.gz"
           git config --global --add safe.directory ${work_dir}
           tar --use-compress-program="pzstd -1" -xpf build.tar.gz --strip-components=1
@@ -78,7 +78,7 @@ jobs:
           rm build.tar.gz
           cd /
           echo "Downloading PaddleTest.tar.gz"
-          wget -q --no-proxy https://xly-devops.bj.bcebos.com/PaddleTest/PaddleTest.tar.gz --no-check-certificate
+          wget -q --no-proxy --tries=5 https://xly-devops.bj.bcebos.com/PaddleTest/PaddleTest.tar.gz --no-check-certificate
           echo "Extracting PaddleTest.tar.gz"
           tar -zvxf PaddleTest.tar.gz 1>/dev/null 2>&1
           '

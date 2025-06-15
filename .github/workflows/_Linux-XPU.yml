@@ -109,7 +109,7 @@ jobs:
           rm -rf * .[^.]*
           set -e
           echo "Downloading Paddle.tar.gz"
-          wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/Paddle/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
+          wget -q --no-proxy --tries=5 https://paddle-github-action.bj.bcebos.com/PR/Paddle/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
           echo "Extracting Paddle.tar.gz"
           git config --global --add safe.directory ${work_dir}
           tar xf Paddle.tar.gz  --strip-components=1
@@ -184,7 +184,7 @@ jobs:
       - name: Download build.tar.gz
         run: |
           sudo rm -rf * .[^.]*
-          wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/xpu/${PR_ID}/${COMMIT_ID}/build.tar.gz --no-check-certificate
+          wget -q --no-proxy --tries=5 https://paddle-github-action.bj.bcebos.com/PR/xpu/${PR_ID}/${COMMIT_ID}/build.tar.gz --no-check-certificate
           sudo yum install zstd -y
           sudo tar --use-compress-program="pzstd" -xf build.tar.gz --strip-components=1
           rm build.tar.gz
