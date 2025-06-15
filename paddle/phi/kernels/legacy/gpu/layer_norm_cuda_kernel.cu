@@ -66,20 +66,42 @@ void RMSLnBwd(const Context &dev_ctx,
   int rows, cols;
   GetRowsCols(common::vectorize(x.dims()), &rows, &cols);
   dev_ctx.template Alloc<T>(x_grad);
-  if (scale.dtype() == phi::DataType::BFLOAT16)
-    dev_ctx.template Alloc<phi::bfloat16>(scale_grad);
-  else if (scale.dtype() == phi::DataType::FLOAT32)
-    dev_ctx.template Alloc<float>(scale_grad);
-  cuda_rms_norm_gradient<T, Context>(dev_ctx,
-                                     x,
-                                     scale,
-                                     invvar,
-                                     y_grad,
-                                     rows,
-                                     cols,
-                                     epsilon,
-                                     x_grad,
-                                     scale_grad);
+  if (scale_grad) {
+    if (scale.dtype() == phi::DataType::BFLOAT16) {
+      dev_ctx.template Alloc<phi::bfloat16>(scale_grad);
+    } else if (scale.dtype() == phi::DataType::FLOAT32) {
+      dev_ctx.template Alloc<float>(scale_grad);
+    }
+  } else {
+    // lora specific
+    if (scale.dtype() == phi::DataType::BFLOAT16) {
+      DenseTensor scale_grad_tmp =
+          phi::EmptyLike<phi::bfloat16, Context>(dev_ctx, scale);
+      cuda_rms_norm_gradient<T, Context>(dev_ctx,
+                                         x,
+                                         scale,
+                                         invvar,
+                                         y_grad,
+                                         rows,
+                                         cols,
+                                         epsilon,
+                                         x_grad,
+                                         &scale_grad_tmp);
+    } else if (scale.dtype() == phi::DataType::FLOAT32) {
+      DenseTensor scale_grad_tmp =
+          phi::EmptyLike<float, Context>(dev_ctx, scale);
+      cuda_rms_norm_gradient<T, Context>(dev_ctx,
+                                         x,
+                                         scale,
+                                         invvar,
+                                         y_grad,
+                                         rows,
+                                         cols,
+                                         epsilon,
+                                         x_grad,
+                                         &scale_grad_tmp);
+    }
+  }
 }
 
 }  // namespace phi

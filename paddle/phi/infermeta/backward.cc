@@ -2105,10 +2105,12 @@ void FusedRMSNormGradInferMeta(const MetaTensor& x,
       common::errors::InvalidArgument(
           "The dtype of scale must be FLOAT32 or BFLOAT16, but got [%s]",
           scale.dtype()));
-  x_grad->set_dims(x.dims());
-  x_grad->set_dtype(x.dtype());
-  scale_grad->set_dims(scale.dims());
-  scale_grad->set_dtype(scale.dtype());
+  if (x_grad && x) {
+    x_grad->share_meta(x);
+  }
+  if (scale_grad && scale) {
+    scale_grad->share_meta(scale);
+  }
 }
 
 void IndexElementwiseGetGradInferMeta(
