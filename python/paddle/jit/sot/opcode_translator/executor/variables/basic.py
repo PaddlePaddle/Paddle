@@ -17,6 +17,7 @@ from __future__ import annotations
 import operator
 import sys
 import types
+from enum import Enum
 from functools import cached_property, reduce
 from typing import TYPE_CHECKING, Any
 
@@ -2321,3 +2322,77 @@ class ExceptionVariable(VariableBase):
             )
             return exception_var
         return None
+
+
+class EnumVariable(VariableBase):
+    known_enum_classes = {}
+
+    def __init__(
+        self, value: Enum, graph: FunctionGraph = None, tracker: Tracker = None
+    ) -> None:
+        super().__init__(graph=graph, tracker=tracker)
+        self.value = value
+
+    def get_py_value(self, allow_tensor=False) -> Any:
+        return self.value
+
+    @VariableFactory.register_from_value()
+    def from_value(value: Exception, graph: FunctionGraph, tracker: Tracker):
+        if isinstance(value, Enum):
+            var = EnumVariable(value, graph=graph, tracker=tracker)
+            return var
+        return None
+
+    @check_faster_guard
+    def make_faster_guard(self) -> list[paddle.framework.core.GuardNodeBase]:
+        expr_node = self.tracker.guard_tree_expr_node()
+        type_guard = paddle.framework.core.GuardNode(
+            paddle.framework.core.TypeMatchGuard(self.get_py_type()),
+            [expr_node],
+        )
+        value_guard = paddle.framework.core.GuardNode(
+            paddle.framework.core.ValueMatchGuard(self.value),
+            [expr_node],
+        )
+        return [type_guard, value_guard]
+
+    @check_guard
+    def make_stringified_guard(self) -> list[StringifiedExpression]:
+        frame_value_tracer = self.tracker.trace_value_from_frame()
+        enum_class = self.value.__class__
+        class_name = enum_class.__name__
+        enum_class_id = EnumVariable.get_enum_class_id(enum_class)
+        extern_var_name = f"__{class_name}_{enum_class_id}"
+
+        return [
+            FasterStringifiedExpression(
+                f"id(type({{}})) == {id(self.get_py_type())}",
+                paddle.core.TypeMatchGuard(self.get_py_type()),
+                [frame_value_tracer],
+                union_free_vars(frame_value_tracer.free_vars),
+            ),
+            FasterStringifiedExpression(
+                f"{{}} == {extern_var_name}.{self.value.name}",
+                paddle.core.ValueMatchGuard(self.value),
+                [frame_value_tracer],
+                union_free_vars(
+                    frame_value_tracer.free_vars,
+                    {f"{extern_var_name}": self.get_py_value()},
+                ),
+            ),
+        ]
+
+    @classmethod
+    def get_enum_class_id(cls, enum_class: type[Enum]):
+        class_name = enum_class.__name__
+        EnumVariable.known_enum_classes.setdefault(class_name, [])
+        same_name_enums = EnumVariable.known_enum_classes[class_name]
+        id = 0
+        for i, cls in enumerate(same_name_enums):
+            if enum_class == cls:
+                id = i
+                break
+        else:
+            id = len(same_name_enums)
+            same_name_enums.append(enum_class)
+        return id

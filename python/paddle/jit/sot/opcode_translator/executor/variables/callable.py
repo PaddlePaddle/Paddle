@@ -30,7 +30,10 @@ from typing import (
 )
 
 import paddle
-from paddle.base.dygraph.base import _DecoratorContextManager
+from paddle.base.dygraph.base import (
+    _DecoratorContextManager,
+    in_sot_simulation_mode,
+)
 
 from .... import psdb
 from ....profiler import EventGuard
@@ -277,7 +280,7 @@ class UserDefinedFunctionVariable(FunctionVariable):
                 f"Fallback by psdb.fallback (recursive={recursive_var.get_py_value()})",
                 disable_eval_frame=recursive_var.get_py_value(),
             )
-        elif self.value is psdb.in_sot:
+        elif self.value in {psdb.in_sot, in_sot_simulation_mode}:
             return ConstantVariable.wrap_literal(True, self.graph)
         return None
 

@@ -29,6 +29,7 @@ from .fp8 import (
     fused_act_dequant,
     fused_stack_transpose_quant,
     fused_swiglu_weighted_bwd,
+    fused_transpose_split_quant,
     fused_weighted_swiglu_act_quant,
 )
 from .fused_bias_act import fused_bias_act
@@ -77,6 +78,7 @@ __all__ = [
     'fused_bias_dropout_residual_layer_norm',
     'fused_dropout_add',
     'fused_rotary_position_embedding',
+    'fused_transpose_split_quant',
     'variable_length_memory_efficient_attention',
     "fused_rms_norm",
     "fused_layer_norm",

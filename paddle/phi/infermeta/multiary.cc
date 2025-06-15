@@ -5581,7 +5581,8 @@ void WeightOnlyLinearInferMeta(const MetaTensor& x,
                                const std::string& weight_dtype,
                                const int32_t arch,
                                const int32_t group_size,
-                               MetaTensor* out) {
+                               MetaTensor* out,
+                               MetaConfig config) {
   PADDLE_ENFORCE((group_size == -1 || group_size == 64 || group_size == 128),
                  errors::InvalidArgument("group_size must be -1, 64 or 128."));
 
@@ -5597,26 +5598,32 @@ void WeightOnlyLinearInferMeta(const MetaTensor& x,
       w_dims.size(),
       2UL,
       errors::InvalidArgument("The input(weight) must be a 2D Tensor."));
-  PADDLE_ENFORCE_EQ(
-      w_dims[0] % 16,
-      0,
-      common::errors::InvalidArgument(
-          "The first dimension of input must be divisible by 16, but got[%d]",
-          w_dims[0]));
-  PADDLE_ENFORCE_EQ(
-      w_dims[1] % 16,
-      0,
-      common::errors::InvalidArgument(
-          "The second dimension of input must be divisible by 16, but got[%d]",
-          w_dims[1]));
-  PADDLE_ENFORCE_EQ(
-      x_dims[x_dims.size() - 1],
-      w_dims[1],
-      errors::InvalidArgument(
-          "Input(X) dim[-1] and Input(Weight) dim[1] should be equal."
-          "But received Input(X) dim[-1](%s) != Input(Weight) dim[1](%s)",
-          x_dims[x_dims.size() - 1],
-          w_dims[1]));
+  if (config.is_runtime || w_dims[0] >= 0) {
+    PADDLE_ENFORCE_EQ(
+        w_dims[0] % 16,
+        0,
+        common::errors::InvalidArgument(
+            "The first dimension of input must be divisible by 16, but got[%d]",
+            w_dims[0]));
+  }
+  if (config.is_runtime || w_dims[1] >= 0) {
+    PADDLE_ENFORCE_EQ(
+        w_dims[1] % 16,
+        0,
+        common::errors::InvalidArgument("The second dimension of input must be "
+                                        "divisible by 16, but got[%d]",
+                                        w_dims[1]));
+  }
+  if (config.is_runtime || (x_dims[x_dims.size() - 1] > 0 && w_dims[1] > 0)) {
+    PADDLE_ENFORCE_EQ(
+        x_dims[x_dims.size() - 1],
+        w_dims[1],
+        errors::InvalidArgument(
+            "Input(X) dim[-1] and Input(Weight) dim[1] should be equal."
+            "But received Input(X) dim[-1](%s) != Input(Weight) dim[1](%s)",
+            x_dims[x_dims.size() - 1],
+            w_dims[1]));
+  }
   if (bias.initialized()) {
     auto bias_dims = bias.dims();
     PADDLE_ENFORCE_EQ(

@@ -668,6 +668,12 @@ void FusedMultiTransformerInt8InferMeta(
     std::vector<MetaTensor*> cache_kv_out,
     MetaTensor* out);
 
+void FusedTransposeSplitQuantInferMeta(const MetaTensor& x,
+                                       const IntArray& tokens_per_expert,
+                                       bool pow_2_scales,
+                                       std::vector<MetaTensor*> outs,
+                                       std::vector<MetaTensor*> scales);
+
 void YoloBoxXPUInferMeta(const MetaTensor& x,
                          const MetaTensor& x_max,
                          const MetaTensor& grid,
