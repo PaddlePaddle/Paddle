@@ -2,6 +2,10 @@ name: Linux-NPU
 
 on:
   workflow_call:
+    inputs:
+      can-skip:
+        type: string
+        required: false
 
 env:
   dockerfile: dockerfile
@@ -28,7 +32,7 @@ jobs:
   test:
     name: Test
     needs: check-bypass
-    if: ${{ github.repository_owner == 'PaddlePaddle' && needs.check-bypass.outputs.can-skip != 'true' }}
+    if: ${{ inputs.can-skip != 'true' && needs.check-bypass.outputs.can-skip != 'true' }}
     runs-on:
       group: NPU
 

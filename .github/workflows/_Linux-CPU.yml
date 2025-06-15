@@ -6,6 +6,10 @@ on:
       docker_cpu_image:
         type: string
         required: true
+    outputs:
+      can-skip:
+        description: "Whether to skip the job"
+        value: ${{ jobs.build-and-test.outputs.can-skip }}
 
 env:
   PR_ID: ${{ github.event.pull_request.number }}
@@ -25,6 +29,8 @@ defaults:
 jobs:
   build-and-test:
     name: Build and test
+    outputs:
+      can-skip: ${{ steps.check-bypass.outputs.can-skip }}
     runs-on:
       group: GZ_BD-CPU
 

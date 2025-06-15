@@ -60,6 +60,8 @@ jobs:
     name: Linux-NPU
     uses: ./.github/workflows/_Linux-NPU.yml
     needs: cpu
+    with:
+      can-skip: ${{ needs.build.outputs.can-skip }}
 
   distribute:
     name: Distribute-stable
