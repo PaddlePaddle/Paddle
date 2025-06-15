@@ -183,7 +183,7 @@ class TestAttentionWithBoolMask(unittest.TestCase):
 
 class TestAttentionWith3DInput(unittest.TestCase):
     def setUp(self):
-        self.dtype = 'float32'
+        self.dtype = 'float16'
         self.dropout = 0.0
         self.causal = False
 
