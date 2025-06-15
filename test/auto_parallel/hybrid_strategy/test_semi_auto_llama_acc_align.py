@@ -37,7 +37,6 @@ class TestSemiAutoParallelLlamaACCTest(test_base.CommunicationTestDistBase):
         envs_list = test_base.gen_product_envs_list(
             _default_envs, _changeable_envs
         )
-        self._log_dir.name = "./log_base"
         for envs in envs_list:
             self.run_test_case(
                 "semi_auto_llama_acc_align.py",
@@ -99,7 +98,6 @@ class TestSemiAutoParallelLlamaCPTest(test_base.CommunicationTestDistBase):
             _default_envs, _changeable_envs
         )
         for envs in envs_list:
-            self._log_dir.name = "./log_cp"
             self.run_test_case(
                 "semi_auto_llama_acc_align.py",
                 user_defined_envs=envs,

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 
+import os
 import random
 
 import numpy as np
@@ -141,9 +142,12 @@ class TestContextParallel:
 
     def run_test_cases(self):
         # flash attention is not supported yet for cpu
-        if self.backend == "gpu":
+        if os.getenv("backend") == "gpu":
             cuda_version_main = int(paddle.version.cuda().split(".")[0])
             device_prop_main = paddle.device.cuda.get_device_capability()[0]
+            print(
+                f'CUDA version {cuda_version_main}, Device capability {device_prop_main}'
+            )
             if cuda_version_main >= 11 and device_prop_main >= 8:
                 self._test_cp_base()
                 self._test_cp_base(is_causal=False)
