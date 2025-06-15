@@ -2,7 +2,7 @@ if(WITH_TESTING AND NOT WIN32)
   add_custom_target(
     jit_download_program
     COMMAND
-      wget -nc -q --no-check-certificate
+      wget -nc -q --no-check-certificate --tries=10 --no_proxy
       https://paddle-ci.gz.bcebos.com/dy2st/multi_program_load_with_property.tar.gz
     COMMAND tar zxf multi_program_load_with_property.tar.gz
     WORKING_DIRECTORY "${CC_TESTS_DIR}")

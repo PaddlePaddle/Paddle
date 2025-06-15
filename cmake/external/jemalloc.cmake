@@ -22,18 +22,10 @@ function(download_jemalloc)
       "Downloading ${JEMALLOC_URL} to ${JEMALLOC_DOWNLOAD_DIR}/${JEMALLOC_CACHE_FILENAME}"
   )
   # NOTE: If the version is updated, consider emptying the folder; maybe add timeout
-  file(
-    DOWNLOAD ${JEMALLOC_URL} ${JEMALLOC_DOWNLOAD_DIR}/${JEMALLOC_CACHE_FILENAME}
-    EXPECTED_MD5 ${JEMALLOC_URL_MD5}
-    STATUS ERR)
-  if(ERR EQUAL 0)
-    message(STATUS "Download ${JEMALLOC_CACHE_FILENAME} success")
-  else()
-    message(
-      FATAL_ERROR
-        "Download failed, error: ${ERR}\n You can try downloading ${JEMALLOC_CACHE_FILENAME} again"
-    )
-  endif()
+  download_with_retry(
+    URL ${JEMALLOC_URL} DEST
+    ${JEMALLOC_DOWNLOAD_DIR}/${JEMALLOC_CACHE_FILENAME} EXPECTED_MD5
+    ${JEMALLOC_URL_MD5})
 endfunction()
 
 if(EXISTS ${JEMALLOC_DOWNLOAD_DIR}/${JEMALLOC_CACHE_FILENAME})

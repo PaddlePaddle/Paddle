@@ -57,18 +57,8 @@ function(download_mklml)
   message(
     STATUS "Downloading ${MKLML_URL} to ${MKLML_DOWNLOAD_DIR}/${MKLML_FILE}")
   # NOTE: If the version is updated, consider emptying the folder; maybe add timeout
-  file(
-    DOWNLOAD ${MKLML_URL} ${MKLML_DOWNLOAD_DIR}/${MKLML_FILE}
-    EXPECTED_MD5 ${MKLML_URL_MD5}
-    STATUS ERR)
-  if(ERR EQUAL 0)
-    message(STATUS "Download ${MKLML_FILE} success")
-  else()
-    message(
-      FATAL_ERROR
-        "Download failed, error: ${ERR}\n You can try downloading ${MKLML_FILE} again"
-    )
-  endif()
+  download_with_retry(URL ${MKLML_URL} DEST ${MKLML_DOWNLOAD_DIR}/${MKLML_FILE}
+                      EXPECTED_MD5 ${MKLML_URL_MD5})
 endfunction()
 
 # Download and check mklml.

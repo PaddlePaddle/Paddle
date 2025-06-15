@@ -39,18 +39,9 @@ function(download_dgc)
     STATUS "Downloading ${DGC_URL} to ${DGC_DOWNLOAD_DIR}/${DGC_CACHE_FILENAME}"
   )
   # NOTE: If the version is updated, consider emptying the folder; maybe add timeout
-  file(
-    DOWNLOAD ${DGC_URL} ${DGC_DOWNLOAD_DIR}/${DGC_CACHE_FILENAME}
-    EXPECTED_MD5 ${DGC_URL_MD5}
-    STATUS ERR)
-  if(ERR EQUAL 0)
-    message(STATUS "Download ${DGC_CACHE_FILENAME} success")
-  else()
-    message(
-      FATAL_ERROR
-        "Download failed, error: ${ERR}\n You can try downloading ${DGC_CACHE_FILENAME} again"
-    )
-  endif()
+  download_with_retry(
+    URL ${DGC_URL} DEST ${DGC_DOWNLOAD_DIR}/${DGC_CACHE_FILENAME} EXPECTED_MD5
+    ${DGC_URL_MD5})
 endfunction()
 
 if(EXISTS ${DGC_DOWNLOAD_DIR}/${DGC_CACHE_FILENAME})

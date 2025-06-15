@@ -45,10 +45,8 @@ set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH}" "${BOX_PS_ROOT}/lib")
 
 include_directories(${BOX_PS_INC_DIR})
 
-file(
-  DOWNLOAD ${BOX_PS_URL} ${BOX_PS_DOWNLOAD_DIR}/${BOX_PS_DOWNLOAD_FILE}
-  TLS_VERIFY OFF
-  STATUS ERR)
+download_with_retry(URL ${BOX_PS_URL} DEST
+                    ${BOX_PS_DOWNLOAD_DIR}/${BOX_PS_DOWNLOAD_FILE})
 
 file(
   WRITE ${BOX_PS_DOWNLOAD_DIR}/CMakeLists.txt

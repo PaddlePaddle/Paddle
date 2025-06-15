@@ -20,18 +20,9 @@ set(ISL_INSTALL_DIR ${THIRD_PARTY_PATH}/install/isl)
 function(download_isl)
   message(
     STATUS "Downloading ${ISL_DOWNLOAD_URL} to ${ISL_DOWNLOAD_DIR}/${ISL_FILE}")
-  file(
-    DOWNLOAD ${ISL_DOWNLOAD_URL} ${ISL_DOWNLOAD_DIR}/${ISL_FILE}
-    EXPECTED_MD5 ${ISL_URL_MD5}
-    STATUS ERR)
-  if(ERR EQUAL 0)
-    message(STATUS "Download ${ISL_FILE} success")
-  else()
-    message(
-      FATAL_ERROR
-        "Download failed, error: ${ERR}\n You can try downloading ${ISL_FILE} again"
-    )
-  endif()
+  download_with_retry(
+    URL ${ISL_DOWNLOAD_URL} DEST ${ISL_DOWNLOAD_DIR}/${ISL_FILE} EXPECTED_MD5
+    ${ISL_URL_MD5})
 endfunction()
 
 # Download and check isl.

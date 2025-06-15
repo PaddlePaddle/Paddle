@@ -9,27 +9,31 @@ paddle_test(ir_infershape_test SRCS ir_infershape_test.cc)
 paddle_test(scalar_attribute_test SRCS scalar_attribute_test.cc)
 paddle_test(paddle_fatal_test SRCS paddle_fatal_test.cc)
 
-file(
-  DOWNLOAD https://paddle-ci.gz.bcebos.com/ir_translator_test/resnet50_main.prog
-  ${CMAKE_CURRENT_BINARY_DIR}/resnet50_main.prog
-  EXPECTED_MD5 b64c0ad3c96d99fc37d12094623ce1ad)
+download_with_retry(
+  URL "https://paddle-ci.gz.bcebos.com/ir_translator_test/resnet50_main.prog"
+  DEST "${CMAKE_CURRENT_BINARY_DIR}/resnet50_main.prog" EXPECTED_MD5
+  "b64c0ad3c96d99fc37d12094623ce1ad")
 
-file(
-  DOWNLOAD
-  https://paddle-ci.gz.bcebos.com/ir_translator_test/resnet50_startup.prog
-  ${CMAKE_CURRENT_BINARY_DIR}/resnet50_startup.prog
-  EXPECTED_MD5 6affc5f40f0f0bb84d956919b95eaf50)
+download_with_retry(
+  URL
+  "https://paddle-ci.gz.bcebos.com/ir_translator_test/resnet50_startup.prog"
+  DEST
+  "${CMAKE_CURRENT_BINARY_DIR}/resnet50_startup.prog"
+  EXPECTED_MD5
+  "6affc5f40f0f0bb84d956919b95eaf50")
 
-file(
-  DOWNLOAD
-  https://paddle-ci.gz.bcebos.com/ir_translator_test/conditional_block_test.prog
-  ${CMAKE_CURRENT_BINARY_DIR}/conditional_block_test.prog
-  EXPECTED_MD5 cf9dc869ca7f69e2d57b38dbf8427134)
+download_with_retry(
+  URL
+  "https://paddle-ci.gz.bcebos.com/ir_translator_test/conditional_block_test.prog"
+  DEST
+  "${CMAKE_CURRENT_BINARY_DIR}/conditional_block_test.prog"
+  EXPECTED_MD5
+  "cf9dc869ca7f69e2d57b38dbf8427134")
 
-file(
-  DOWNLOAD https://paddle-ci.gz.bcebos.com/ir_translator_test/while_op_test.prog
-  ${CMAKE_CURRENT_BINARY_DIR}/while_op_test.prog
-  EXPECTED_MD5 290164ae52a496332b0be5829fc93bcd)
+download_with_retry(
+  URL "https://paddle-ci.gz.bcebos.com/ir_translator_test/while_op_test.prog"
+  DEST "${CMAKE_CURRENT_BINARY_DIR}/while_op_test.prog" EXPECTED_MD5
+  "290164ae52a496332b0be5829fc93bcd")
 
 paddle_test(program_translator_test SRCS program_translator_test.cc)
 

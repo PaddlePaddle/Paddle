@@ -109,14 +109,29 @@ if(NOT WITH_SETUP_INSTALL)
       set(THIRD_PARTY_TAR_URL
           https://xly-devops.bj.bcebos.com/PR/build_whl/0/third_party.tar.gz
           CACHE STRING "third_party.tar.gz url")
-      execute_process(
-        COMMAND wget -q ${THIRD_PARTY_TAR_URL}
-        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-        RESULT_VARIABLE wget_result)
+
+      set(MAX_RETRIES 10)
+      set(RETRY_COUNT 0)
+      while(RETRY_COUNT LESS MAX_RETRIES)
+        message(STATUS "Attempting download (Retry #${RETRY_COUNT})...")
+        execute_process(
+          COMMAND wget -q --no-proxy ${THIRD_PARTY_TAR_URL}
+          WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+          RESULT_VARIABLE wget_result)
+        if(wget_result EQUAL 0)
+          message(STATUS "Download succeeded!")
+          break()
+        endif()
+        math(EXPR RETRY_COUNT "${RETRY_COUNT} + 1")
+        if(RETRY_COUNT LESS MAX_RETRIES)
+          execute_process(COMMAND sleep 1)
+        endif()
+      endwhile()
+
       if(NOT wget_result EQUAL 0)
         message(
           FATAL_ERROR
-            "Failed to download third_party.tar.gz, please check your network !"
+            "Failed to download third_party.tar.gz after ${MAX_RETRIES} attempts. Please check your network!"
         )
       else()
         execute_process(

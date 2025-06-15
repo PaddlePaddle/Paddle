@@ -57,7 +57,7 @@ ExternalProject_Add(
   PREFIX ${PSLIB_BRPC_PREFIX_DIR}
   DOWNLOAD_DIR ${PSLIB_BRPC_DOWNLOAD_DIR}
   DOWNLOAD_COMMAND
-    wget --no-check-certificate ${PSLIB_BRPC_URL} -c -q -O
+    wget --no-check-certificate --tries=10 --no_proxy ${PSLIB_BRPC_URL} -c -q -O
     ${PSLIB_BRPC_NAME}.tar.gz && tar zxvf ${PSLIB_BRPC_NAME}.tar.gz
   DOWNLOAD_NO_PROGRESS 1
   UPDATE_COMMAND ""

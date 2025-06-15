@@ -52,10 +52,7 @@ set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH}" "${ARM_BRPC_ROOT}/lib")
 
 include_directories(${ARM_BRPC_INSTALL_ROOT}/${ARM_BRPC_NAME}/output/include)
 
-file(
-  DOWNLOAD ${ARM_BRPC_URL} ${ARM_BRPC_DOWNLOAD_DIR}
-  TLS_VERIFY OFF
-  STATUS ERR)
+download_with_retry(URL ${ARM_BRPC_URL} DEST ${ARM_BRPC_DOWNLOAD_DIR})
 
 file(
   WRITE ${ARM_BRPC_DOWNLOAD_DIR}/CMakeLists.txt

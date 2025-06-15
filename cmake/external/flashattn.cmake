@@ -167,10 +167,25 @@ else()
   if(FA_BUILD_WITH_CACHE)
 
     message(STATUS "Downloading ${TAR_FILE_URL} to ${CACHE_TAR_PATH}")
-    file(
-      DOWNLOAD "${TAR_FILE_URL}" "${CACHE_TAR_PATH}"
-      STATUS DOWNLOAD_STATUS
-      LOG DOWNLOAD_LOG)
+
+    set(MAX_RETRIES 10)
+    set(RETRY_COUNT 0)
+    while(RETRY_COUNT LESS ${MAX_RETRIES})
+      message(STATUS "Attempting download (Retry #${RETRY_COUNT})...")
+      file(
+        DOWNLOAD "${TAR_FILE_URL}" "${CACHE_TAR_PATH}"
+        STATUS DOWNLOAD_STATUS
+        LOG DOWNLOAD_LOG)
+      if(DOWNLOAD_STATUS EQUAL 0)
+        message(STATUS "Download succeeded!")
+        break()
+      endif()
+      math(EXPR RETRY_COUNT "${RETRY_COUNT} + 1")
+      if(RETRY_COUNT LESS MAX_RETRIES)
+        execute_process(COMMAND sleep 1)
+      endif()
+    endwhile()
+
     list(GET DOWNLOAD_STATUS 0 DOWNLOAD_RESULT)
 
     if(DOWNLOAD_RESULT EQUAL 0)

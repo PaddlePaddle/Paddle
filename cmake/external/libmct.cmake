@@ -48,19 +48,9 @@ function(download_libmct)
       "Downloading ${LIBMCT_URL} to ${LIBMCT_DOWNLOAD_DIR}/${LIBMCT_DOWNLOAD_FILE}"
   )
   # NOTE: If the version is updated, consider emptying the folder; maybe add timeout
-  file(
-    DOWNLOAD ${LIBMCT_URL} ${LIBMCT_DOWNLOAD_DIR}/${LIBMCT_DOWNLOAD_FILE}
-    EXPECTED_MD5 ${LIBMCT_URL_MD5}
-    TLS_VERIFY OFF
-    STATUS ERR)
-  if(ERR EQUAL 0)
-    message(STATUS "Download ${LIBMCT_DOWNLOAD_FILE} success")
-  else()
-    message(
-      FATAL_ERROR
-        "Download failed, error: ${ERR}\n You can try downloading ${LIBMCT_DOWNLOAD_FILE} again"
-    )
-  endif()
+  download_with_retry(
+    URL ${LIBMCT_URL} DEST ${LIBMCT_DOWNLOAD_DIR}/${LIBMCT_DOWNLOAD_FILE}
+    EXPECTED_MD5 ${LIBMCT_URL_MD5})
 endfunction()
 
 # Download and check libmct.

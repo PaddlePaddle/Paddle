@@ -1382,3 +1382,62 @@ function(math_library TARGET)
       DEPS ${math_library_DEPS} ${math_common_deps})
   endif()
 endfunction()
+
+function(download_with_retry)
+  set(options)
+  set(oneValueArgs URL DEST EXPECTED_MD5)
+  set(multiValueArgs)
+  cmake_parse_arguments(ARG "${options}" "${oneValueArgs}" "${multiValueArgs}"
+                        ${ARGN})
+
+  set(MAX_RETRIES 10)
+  set(RETRY_COUNT 0)
+  set(RETRY_DELAY 1)
+
+  get_filename_component(DEST_DIR ${ARG_DEST} DIRECTORY)
+  if(NOT EXISTS ${DEST_DIR})
+    file(MAKE_DIRECTORY ${DEST_DIR})
+  endif()
+
+  while(RETRY_COUNT LESS ${MAX_RETRIES})
+    message(
+      STATUS "Downloading ${ARG_URL} (Attempt ${RETRY_COUNT}/${MAX_RETRIES})")
+
+    file(
+      DOWNLOAD ${ARG_URL} ${ARG_DEST}
+      TLS_VERIFY OFF
+      TIMEOUT 300
+      STATUS ERR)
+
+    list(GET ERR 0 ERR_CODE)
+    if(ERR_CODE EQUAL 0)
+      if(DEFINED ARG_EXPECTED_MD5)
+        file(MD5 ${ARG_DEST} ACTUAL_MD5)
+        if(NOT "${ACTUAL_MD5}" STREQUAL "${ARG_EXPECTED_MD5}")
+          message(WARNING "MD5 mismatch! File may be corrupted. Deleting...")
+          file(REMOVE ${ARG_DEST})
+          set(ERR_CODE 1)
+        else()
+          message(STATUS "Download succeeded and MD5 verified: ${ARG_DEST}")
+          return()
+        endif()
+      else()
+        message(STATUS "Download succeeded: ${ARG_DEST}")
+        return()
+      endif()
+    endif()
+
+    if(NOT ERR_CODE EQUAL 0)
+      list(GET ERR 1 ERR_MSG)
+      message(WARNING "Download failed: ${ERR_MSG}")
+      math(EXPR RETRY_COUNT "${RETRY_COUNT} + 1")
+      if(RETRY_COUNT LESS ${MAX_RETRIES})
+        message(STATUS "Retrying in ${RETRY_DELAY} second(s)...")
+        execute_process(COMMAND sleep ${RETRY_DELAY})
+      endif()
+    endif()
+  endwhile()
+
+  message(
+    FATAL_ERROR "Failed to download ${ARG_URL} after ${MAX_RETRIES} attempts")
+endfunction()

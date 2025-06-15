@@ -20,18 +20,11 @@ function(download_ginac)
     STATUS
       "Downloading ${GINAC_DOWNLOAD_URL} to ${GINAC_DOWNLOAD_DIR}/${GINAC_FILE}"
   )
-  file(
-    DOWNLOAD ${GINAC_DOWNLOAD_URL} ${GINAC_DOWNLOAD_DIR}/${GINAC_FILE}
-    EXPECTED_MD5 ${GINAC_URL_MD5}
-    STATUS ERR)
-  if(ERR EQUAL 0)
-    message(STATUS "Download ${GINAC_FILE} success")
-  else()
-    message(
-      FATAL_ERROR
-        "Download failed, error: ${ERR}\n You can try downloading ${GINAC_FILE} again"
-    )
-  endif()
+
+  download_with_retry(
+    URL ${GINAC_DOWNLOAD_URL} DEST ${GINAC_DOWNLOAD_DIR}/${GINAC_FILE}
+    EXPECTED_MD5 ${GINAC_URL_MD5})
+
 endfunction()
 
 # Download and check ginac.
