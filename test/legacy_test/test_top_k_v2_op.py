@@ -103,13 +103,13 @@ class TestTopkOp_ZeroSize(OpTest):
         self.largest = True
 
     def setUp(self):
+        paddle.disable_static()
         self.op_type = "top_k_v2"
         self.python_api = paddle.topk
         self.public_python_api = paddle.topk
         self.dtype = np.float64
         self.input_data = np.random.random([0, 20])
         self.init_args()
-        self.if_enable_cinn()
         self.inputs = {'X': self.input_data}
         self.attrs = {'k': self.k, 'axis': self.axis, 'largest': self.largest}
         output, indices = numpy_topk(
@@ -117,11 +117,8 @@ class TestTopkOp_ZeroSize(OpTest):
         )
         self.outputs = {'Out': output, 'Indices': indices}
 
-    def if_enable_cinn(self):
-        pass
-
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output()
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', check_pir=True)
