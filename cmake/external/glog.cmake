@@ -56,7 +56,7 @@ if(WITH_ARM_BRPC)
     DOWNLOAD_DIR ${GLOG_SOURCE_DIR}
     DOWNLOAD_COMMAND
       rm -rf arm_glog.tar.gz && wget --no-check-certificate --tries=10
-      --no_proxy ${ARM_GLOG_URL} && tar zxvf arm_glog.tar.gz
+      --no-proxy ${ARM_GLOG_URL} && tar zxvf arm_glog.tar.gz
     #DOWNLOAD_COMMAND    cp /home/wangbin44/Paddle/build/arm_glog.tar.gz .
     #                    && tar zxvf arm_glog.tar.gz
     UPDATE_COMMAND ""

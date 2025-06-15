@@ -32,9 +32,9 @@ if(WITH_GPU
    AND NOT WIN32)
   add_custom_target(
     download_program
-    COMMAND wget -nc --no-check-certificate --tries=10 --no_proxy
+    COMMAND wget -nc --no-check-certificate --tries=10 --no-proxy
             https://paddle-ci.gz.bcebos.com/new_exec/lm_main_program
-    COMMAND wget -nc --no-check-certificate --tries=10 --no_proxy
+    COMMAND wget -nc --no-check-certificate --tries=10 --no-proxy
             https://paddle-ci.gz.bcebos.com/new_exec/lm_startup_program
     WORKING_DIRECTORY "${CC_TESTS_DIR}")
 

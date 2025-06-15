@@ -52,7 +52,7 @@ if(WITH_ARM_BRPC)
     DOWNLOAD_DIR ${GFLAGS_SOURCE_DIR}
     DOWNLOAD_COMMAND
       rm -rf arm_gflags.tar.gz && wget --no-check-certificate --tries=10
-      --no_proxy ${ARM_GFLAGS_URL} && tar zxvf arm_gflags.tar.gz
+      --no-proxy ${ARM_GFLAGS_URL} && tar zxvf arm_gflags.tar.gz
     #DOWNLOAD_COMMAND    cp /home/wangbin44/Paddle/build/arm_gflags.tar.gz .
     #                    && tar zxvf arm_gflags.tar.gz
     UPDATE_COMMAND ""

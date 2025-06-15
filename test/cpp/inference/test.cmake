@@ -19,7 +19,7 @@ function(inference_download INSTALL_DIR URL FILENAME)
     ${EXTERNAL_PROJECT_LOG_ARGS}
     PREFIX ${INSTALL_DIR}
     URL ${URL}/${FILENAME}
-    DOWNLOAD_COMMAND wget --no-check-certificate --tries=10 --no_proxy -q -O
+    DOWNLOAD_COMMAND wget --no-check-certificate --tries=10 --no-proxy -q -O
                      ${INSTALL_DIR}/${FILENAME} ${URL}/${FILENAME}
     DOWNLOAD_DIR ${INSTALL_DIR}
     DOWNLOAD_NO_PROGRESS 1

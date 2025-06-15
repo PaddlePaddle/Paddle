@@ -270,7 +270,7 @@ function(build_protobuf TARGET_NAME)
       DOWNLOAD_DIR ${PROTOBUF_SOURCE_DIR}
       DOWNLOAD_COMMAND
         rm -rf arm_protobuf.tar.gz && wget --no-check-certificate --tries=10
-        --no_proxy ${ARM_PROTOBUF_URL} && tar zxvf arm_protobuf.tar.gz
+        --no-proxy ${ARM_PROTOBUF_URL} && tar zxvf arm_protobuf.tar.gz
       UPDATE_COMMAND ""
       CMAKE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${PROTOBUF_INSTALL_DIR}
                  -DCMAKE_BUILD_TYPE:STRING=${THIRD_PARTY_BUILD_TYPE}

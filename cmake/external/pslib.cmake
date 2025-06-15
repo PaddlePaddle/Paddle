@@ -62,7 +62,7 @@ ExternalProject_Add(
   PREFIX ${PSLIB_PREFIX_DIR}
   DOWNLOAD_DIR ${PSLIB_DOWNLOAD_DIR}
   DOWNLOAD_COMMAND
-    wget --no-check-certificate --tries=10 --no_proxy ${PSLIB_URL} -c -q -O
+    wget --no-check-certificate --tries=10 --no-proxy ${PSLIB_URL} -c -q -O
     ${PSLIB_NAME}.tar.gz && tar zxvf ${PSLIB_NAME}.tar.gz
   DOWNLOAD_NO_PROGRESS 1
   UPDATE_COMMAND ""
