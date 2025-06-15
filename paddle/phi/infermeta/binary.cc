@@ -4447,8 +4447,10 @@ void SwiGLUInferMeta(const MetaTensor& x,
                      const MetaTensor& y,
                      MetaTensor* out) {
   if (y) {
+    auto x_numel = common::product(x.dims());
+    auto y_numel = common::product(y.dims());
     // skip 0-size
-    if (x.numel() != 0 && y.numel() != 0) {
+    if (x_numel != 0 && y_numel != 0) {
       PADDLE_ENFORCE_EQ(
           x.dims(),
           y.dims(),
@@ -4457,7 +4459,7 @@ void SwiGLUInferMeta(const MetaTensor& x,
     }
     out->share_meta(x);
     // If y is 0-size, out is 0-size
-    if (x.numel() != 0 && y.numel() == 0) {
+    if (x_numel != 0 && y_numel == 0) {
       out->set_dims(y.dims());
     }
   } else {
