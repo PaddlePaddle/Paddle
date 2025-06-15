@@ -104,6 +104,26 @@ def monkey_patch_math_tensor():
 
         return _C_ops.cast(self, dtype)
 
+    def float16(self: Tensor) -> Tensor:
+        """
+        Cast a Tensor to float16 data type if it differs from the current dtype;
+        otherwise, return the original Tensor.
+
+        Returns:
+            Tensor: a new Tensor with float16 dtype
+        """
+        return astype(self, 'float16')
+
+    def bfloat16(self: Tensor) -> Tensor:
+        """
+        Cast a Tensor to bfloat16 data type if it differs from the current dtype;
+        otherwise, return the original Tensor.
+
+        Returns:
+            Tensor: a new Tensor with bfloat16 dtype
+        """
+        return astype(self, 'bfloat16')
+
     def _scalar_elementwise_op_(
         var: Tensor, scale: float, bias: float
     ) -> Tensor:
@@ -225,6 +245,8 @@ def monkey_patch_math_tensor():
         ('__len__', _len_),
         ('__index__', _index_),
         ('astype', astype),
+        ('float16', float16),
+        ('bfloat16', bfloat16),
         ('dim', dim),
         ('ndimension', ndimension),
         ('ndim', _ndim),
