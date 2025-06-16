@@ -28,8 +28,6 @@ void PadKernel(const Context& dev_ctx,
                DenseTensor* out) {
   dev_ctx.template Alloc<T>(out);
   int rank = x.dims().size();
-  std::cout << "x numel: " << x.numel() << " out numel:   " << out->numel()
-            << std::endl;
   funcs::PaddingFunctor<Context, T>(
       rank, dev_ctx, paddings, pad_value.to<T>(), x, out);
 }
