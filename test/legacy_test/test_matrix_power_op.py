@@ -589,42 +589,40 @@ class TestMatrixPowerEmptyTensor(unittest.TestCase):
         return places
 
     def _test_matrix_power_empty_static(self, place):
-        with static_guard():
-            with paddle.static.program_guard(
+        with (
+            static_guard(),
+            paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
-            ):
-                x2 = paddle.static.data(
-                    name='x2', shape=[0, 6], dtype='float32'
-                )
-                x3 = paddle.static.data(
-                    name='x3', shape=[6, 0], dtype='float32'
-                )
-                x4 = paddle.static.data(
-                    name='x4', shape=[0, 0, 2, 3], dtype='float32'
-                )
-                self.assertRaises(TypeError, paddle.linalg.matrix_power, x2)
-                self.assertRaises(TypeError, paddle.linalg.matrix_power, x3)
-                self.assertRaises(TypeError, paddle.linalg.matrix_power, x4)
+            ),
+        ):
+            x2 = paddle.static.data(name='x2', shape=[0, 6], dtype='float32')
+            x3 = paddle.static.data(name='x3', shape=[6, 0], dtype='float32')
+            x4 = paddle.static.data(
+                name='x4', shape=[0, 0, 2, 3], dtype='float32'
+            )
+            self.assertRaises(TypeError, paddle.linalg.matrix_power, x2)
+            self.assertRaises(TypeError, paddle.linalg.matrix_power, x3)
+            self.assertRaises(TypeError, paddle.linalg.matrix_power, x4)
 
-                x = paddle.static.data(name='x', shape=[0, 0], dtype='float32')
-                y = paddle.linalg.matrix_power(x, 2)
-                x5 = paddle.static.data(
-                    name='x5', shape=[2, 3, 0, 0], dtype='float32'
-                )
-                y5 = paddle.linalg.matrix_power(x5, 2)
-                exe = paddle.static.Executor(place)
-                res = exe.run(
-                    feed={
-                        'x2': np.zeros((0, 6), dtype='float32'),
-                        'x3': np.zeros((6, 0), dtype='float32'),
-                        'x4': np.zeros((0, 0, 2, 3), dtype='float32'),
-                        'x': np.zeros((0, 0), dtype='float32'),
-                        'x5': np.zeros((2, 3, 0, 0), dtype='float32'),
-                    },
-                    fetch_list=[y, y5],
-                )
-                self.assertEqual(res[0].shape, (0, 0))
-                self.assertEqual(res[1].shape, (2, 3, 0, 0))
+            x = paddle.static.data(name='x', shape=[0, 0], dtype='float32')
+            y = paddle.linalg.matrix_power(x, 2)
+            x5 = paddle.static.data(
+                name='x5', shape=[2, 3, 0, 0], dtype='float32'
+            )
+            y5 = paddle.linalg.matrix_power(x5, 2)
+            exe = paddle.static.Executor(place)
+            res = exe.run(
+                feed={
+                    'x2': np.zeros((0, 6), dtype='float32'),
+                    'x3': np.zeros((6, 0), dtype='float32'),
+                    'x4': np.zeros((0, 0, 2, 3), dtype='float32'),
+                    'x': np.zeros((0, 0), dtype='float32'),
+                    'x5': np.zeros((2, 3, 0, 0), dtype='float32'),
+                },
+                fetch_list=[y, y5],
+            )
+            self.assertEqual(res[0].shape, (0, 0))
+            self.assertEqual(res[1].shape, (2, 3, 0, 0))
 
     def _test_matrix_power_empty_dynamic(self):
         with dygraph_guard():

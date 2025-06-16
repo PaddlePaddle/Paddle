@@ -6216,7 +6216,8 @@ def repeat_interleave(
     if isinstance(repeats, (Variable, paddle.pir.Value)) and not repeats.shape:
         repeats = paddle.reshape(repeats, [1])
     if axis is None:
-        x = paddle.flatten(x)
+        if x.ndim != 1:
+            x = paddle.flatten(x)
         axis = 0
     if in_dynamic_or_pir_mode():
         if isinstance(repeats, (Variable, paddle.pir.Value)):
