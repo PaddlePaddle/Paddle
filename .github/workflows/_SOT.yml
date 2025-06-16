@@ -112,7 +112,7 @@ jobs:
           git remote add upstream https://github.com/PaddlePaddle/Paddle.git
           source ${{ github.workspace }}/../../../proxy
           git checkout $BRANCH
-          git pull upstream $BRANCH
+          bash ci/git_pull.sh $BRANCH
           git fetch upstream $BRANCH
           git checkout test
           git merge --no-edit $BRANCH
