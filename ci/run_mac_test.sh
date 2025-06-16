@@ -296,6 +296,14 @@ function get_precision_ut_mac() {
 }
 
 function show_ut_retry_result() {
+    echo 11111
+    echo $is_retry_execute
+    echo 22222
+    echo $exec_times
+    echo 33333
+    echo $mactest_error
+    echo 444444
+    echo $failed_test_lists
     exec_retry_threshold_count=10
     if [[ "$is_retry_execute" != "0" ]]  && [[ "${exec_times}" == "0" ]] ;then
         failed_test_lists_ult=`echo "${failed_test_lists}" | grep -Po '[^ ].*$'`
