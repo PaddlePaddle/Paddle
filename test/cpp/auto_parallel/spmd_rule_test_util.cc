@@ -50,6 +50,14 @@ void check_dim_mapping(const phi::distributed::ArgDistAttr& dist_attr,
   EXPECT_EQ(get_dims_mapping(dist_attr), dim_mapping) << line;
 }
 
+void check_empty_dist_attr(const phi::distributed::ArgDistAttr& dist_attr,
+                           const std::string& line) {
+  EXPECT_TRUE(
+      paddle::holds_alternative<phi::distributed::TensorDistAttr>(dist_attr))
+      << line;
+  EXPECT_EQ(paddle::get<0>(dist_attr), phi::distributed::TensorDistAttr());
+}
+
 void check_partial_dims(const phi::distributed::ArgDistAttr& dist_attr,
                         const std::set<int64_t>& dims,
                         const std::string& line) {

@@ -56,7 +56,7 @@ class RandomDataset(Dataset):
 
     def __getitem__(self, index):
         input = np.full([self.seq_len], index, dtype="int64")
-        label = np.array([index] * 8)
+        label = np.array([index] * self.seq_len)
 
         return input, label
 
@@ -94,25 +94,43 @@ class TestLlamaAuto:
         if os.getenv("use_sp") == "true":
             self.config.sequence_parallel = True
 
+        if os.getenv("seq_length"):
+            self.config.seq_length = int(os.getenv("seq_length"))
+        if os.getenv("hidden_size"):
+            self.config.hidden_size = int(os.getenv("hidden_size"))
+        if os.getenv("num_attention_heads"):
+            self.config.num_attention_heads = int(
+                os.getenv("num_attention_heads")
+            )
+        if os.getenv("num_key_value_heads"):
+            self.config.num_key_value_heads = int(
+                os.getenv("num_key_value_heads")
+            )
+        if os.getenv("max_position_embeddings"):
+            self.config.max_position_embeddings = int(
+                os.getenv("max_position_embeddings")
+            )
         self.strategy = dist.Strategy()
 
         # amp config
         amp = self.strategy._amp
         if os.getenv("amp"):
-            amp.enable = os.getenv("amp")
+            amp.enable = True if os.getenv("amp") == "true" else False
         if os.getenv("amp_dtype"):
             amp.dtype = os.getenv("amp_dtype")
         if os.getenv("amp_level"):
             amp.level = os.getenv("amp_level")
         if os.getenv("amp_master_grad"):
-            amp.use_master_grad = os.getenv("amp_master_grad")
+            amp.use_master_grad = (
+                True if os.getenv("amp_master_grad") == "true" else False
+            )
         if os.getenv("scale_loss"):
             amp.init_loss_scaling = os.getenv("scale_loss")
         if os.getenv("amp_custom_black_list"):
             amp.custom_black_list = os.getenv("amp_custom_black_list")
         if os.getenv("amp_custom_white_list"):
             amp.custom_white_list = os.getenv("amp_custom_white_list")
-
+        print(f'self.strategy._amp:{self.strategy._amp}')
         self.gradient_accumulation_steps = 1
         if os.getenv("acc_step"):
             self.gradient_accumulation_steps = int(os.getenv("acc_step"))
@@ -132,6 +150,8 @@ class TestLlamaAuto:
         self.config.sep_parallel_degree = 1
         if os.getenv("context_parallel", "false") == "true":
             self.config.context_parallel_degree = self.sep
+            self.config.use_flash_attention = True
+            dist.init_parallel_env()
         if os.getenv("sep_parallel", "false") == "true":
             self.config.sep_parallel_degree = self.sep
 
@@ -280,7 +300,6 @@ class TestLlamaAuto:
 
             tr_loss_step.backward()
             tr_loss_add += tr_loss_step
-            print(f'step {step} tr_loss_add: {tr_loss_add}')
 
             if int(dist.get_rank()) in [2, 3, 6, 7]:
                 assert tr_loss_step._is_initialized()
@@ -362,6 +381,13 @@ class TestLlamaAuto:
 
     def run_test_cases(self):
         self.init_dist_env()
+        # context parallel with flash_attn backend not support CPU, not support float32
+        if (
+            self.config.context_parallel_degree > 1
+            and os.getenv("backend") != "gpu"
+            and not self.strategy._amp.enable
+        ):
+            return
         if self.gradient_accumulation_steps > 1:
             dy_losses = self.run_dynamic()
 

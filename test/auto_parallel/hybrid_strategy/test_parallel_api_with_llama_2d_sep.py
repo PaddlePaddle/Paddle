@@ -57,7 +57,6 @@ class TestDPMPCPAPI(test_base.CommunicationTestDistBase):
         for envs in envs_list:
             ckpt_path = tempfile.TemporaryDirectory()
             envs["ckpt_path"] = ckpt_path.name
-            self._log_dir.name = "./log"
             self.run_test_case(
                 "parallel_api.py",
                 user_defined_envs=envs,
@@ -86,6 +85,7 @@ class TestDPMPSEPAPI(test_base.CommunicationTestDistBase):
             "use_lazy_init": ["true"],
             "sequence_parallel": ["true"],
             "sep_parallel": ["true"],
+            "context_parallel": ["false"],
             "prepare_input_output": ["false"],
             "sharding_stage": ["0"],
             "test_share_embedding": [

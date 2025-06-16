@@ -24,7 +24,7 @@ namespace fusion {
     defined(PADDLE_WITH_HIP)
 template <typename T>
 phi::funcs::MatmulFusedType GetFwdFusedEpilogueType(
-    const phi::GPUContext& ctx,
+    const phi::GPUContext& dev_ctx,
     const std::string& activation,
     phi::DenseTensor* reserve_space) {
   using FusedType = phi::funcs::MatmulFusedType;
@@ -42,7 +42,7 @@ phi::funcs::MatmulFusedType GetFwdFusedEpilogueType(
 #else
         fused_type = FusedType::kMatmulBiasReluWithReservedData;
         reserve_space->Resize({phi::product(reserve_space->dims())});
-        ctx.template Alloc<bool>(reserve_space);
+        dev_ctx.template Alloc<bool>(reserve_space);
 #endif
       }
     } else if (activation == "gelu") {
@@ -51,7 +51,7 @@ phi::funcs::MatmulFusedType GetFwdFusedEpilogueType(
       } else {
         fused_type = FusedType::kMatmulBiasGeluWithReservedData;
         int64_t reserve_size = sizeof(T) * phi::product(reserve_space->dims());
-        ctx.template Alloc<T>(reserve_space, reserve_size);
+        dev_ctx.template Alloc<T>(reserve_space, reserve_size);
       }
     } else {
       PADDLE_THROW(common::errors::InvalidArgument(

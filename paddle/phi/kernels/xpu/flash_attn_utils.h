@@ -50,7 +50,7 @@ XPU_FA_TGEMM get_flash_attn_tgemm() {
 }
 
 static void GenerateRNGState(
-    const XPUContext& ctx,
+    const XPUContext& dev_ctx,
     const paddle::optional<DenseTensor>& fixed_seed_offset,
     int64_t* seed_offset_data,
     const std::string& rng_name,
@@ -76,7 +76,7 @@ static void GenerateRNGState(
       auto gen = phi::GetRandomSeedGenerator(rng_name);
       seed_offset_pair = gen->IncrementOffset(inc);
     } else {
-      auto* gen = ctx.GetGenerator();
+      auto* gen = dev_ctx.GetGenerator();
       seed_offset_pair = gen->IncrementOffset(inc);
     }
     seed_offset_data[0] = static_cast<int64_t>(seed_offset_pair.first);

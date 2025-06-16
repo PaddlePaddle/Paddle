@@ -58,7 +58,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void BroadcastTensorsGradKernel(const Context& ctx,
+void BroadcastTensorsGradKernel(const Context& dev_ctx,
                                 const std::vector<const DenseTensor*>& inputs,
                                 const std::vector<const DenseTensor*>& dout,
                                 std::vector<DenseTensor*> dx) {
@@ -117,10 +117,11 @@ void BroadcastTensorsGradKernel(const Context& ctx,
     size_t reduce_size = reduce_dims_vec.size();
     size_t reshape_size = reshape_dims_vec.size();
     bool just_copy = (reduce_dims_vec.empty());
-    ctx.template Alloc<T>(output_tensor);
+    dev_ctx.template Alloc<T>(output_tensor);
     if (just_copy) {
       // If this turns out to be a No-Op, simply perform a tensor copy
-      phi::Copy(ctx, *input_tensor, ctx.GetPlace(), false, output_tensor);
+      phi::Copy(
+          dev_ctx, *input_tensor, dev_ctx.GetPlace(), false, output_tensor);
     } else {
       PADDLE_ENFORCE_GE(
           reduce_dims_vec.size(),
@@ -144,7 +145,7 @@ void BroadcastTensorsGradKernel(const Context& ctx,
       // reshape(dX_shape) -> dX
       auto dX = EigenVector<T>::Flatten(*output_tensor);
       auto dOut = EigenVector<T>::Flatten(*input_tensor);
-      auto& place = *ctx.eigen_device();
+      auto& place = *dev_ctx.eigen_device();
 
       // Expand ReduceSize and ReshapeSize into static values
       switch (reduce_size) {

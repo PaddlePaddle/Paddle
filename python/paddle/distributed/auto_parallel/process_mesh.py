@@ -96,7 +96,6 @@ def init_group_by_process_mesh(dim_names):
         if dim_name in _g_group_map:
             continue
         _g_group_map[dim_name] = {}
-        # print(f'{dim_name} set groups: {_g_group_map[dim_name]}')
 
 
 def get_group_map_by_dim_name(dim_name):

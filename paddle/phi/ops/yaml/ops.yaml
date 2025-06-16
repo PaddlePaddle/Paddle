@@ -273,6 +273,7 @@
   output : Tensor(out)
   infer_meta :
     func : ReduceInferMeta
+    spmd_rule : ReductionAnyInferSpmdDynamic
   kernel :
     func : any
   traits : paddle::dialect::ForwardOnlyTrait
@@ -1719,6 +1720,7 @@
   infer_meta :
     func : CreateLikeInferMeta
     param : [x, dtype]
+    spmd_rule : EmptyLikeInferSpmd
   kernel :
     func : empty_like
     param : [x, dtype]
@@ -1806,6 +1808,7 @@
   infer_meta :
     func : ExpandAsInferMeta
     local_shape: out
+    spmd_rule : ExpandAsInferSpmd
   kernel :
     func : expand_as
     data_type : x
@@ -4466,6 +4469,7 @@
   output : Tensor
   infer_meta :
     func : RoiAlignInferMeta
+    spmd_rule : RoiAlignInferSpmd
   kernel :
     func : roi_align
     data_type : x
@@ -4491,6 +4495,7 @@
   output : Tensor(out)
   infer_meta :
     func : RollInferMeta
+    spmd_rule : RollInferSpmdDynamic
   kernel :
     func : roll
     data_type : x

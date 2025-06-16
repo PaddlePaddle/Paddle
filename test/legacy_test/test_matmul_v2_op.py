@@ -943,6 +943,41 @@ class TestMatmulop(unittest.TestCase):
         paddle.enable_static()
 
 
+class TestMatMulOp_ZeroSize(OpTest):
+    def setUp(self):
+        self.op_type = "matmul_v2"
+        self.python_api = paddle.matmul
+        self.init_input_output()
+
+        self.inputs = {
+            'X': OpTest.np_dtype_to_base_dtype(self.x),
+            'Y': OpTest.np_dtype_to_base_dtype(self.y),
+        }
+        self.out = np.matmul(self.x, self.y)
+        self.attrs = {'axis': -1, 'use_mkldnn': False}
+        self.outputs = {'Out': self.out}
+
+    def init_input_output(self):
+        self.x = np.random.random((1, 1, 2, 3))
+        self.y = np.random.random((1, 0, 3, 2))
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['X', 'Y'],
+            'Out',
+            check_pir=True,
+        )
+
+
+class TestMatMulOp_ZeroSize2(TestMatMulOp_ZeroSize):
+    def init_input_output(self):
+        self.x = np.random.random((0, 3, 2, 3))
+        self.y = np.random.random((1, 3, 3, 2))
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()

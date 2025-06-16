@@ -19,6 +19,9 @@ from typing import TYPE_CHECKING
 
 import paddle
 import paddle.distributed as dist
+from paddle.distributed.auto_parallel.ring_attention import (
+    shard_seq_load_balance,
+)
 
 from .parallel_base import ParallelModel, ParallelOptimizer, is_tensor
 
@@ -635,6 +638,180 @@ class SequenceParallelDisable(PlanBase):
         )
 
 
+class ConvParallel(PlanBase):
+    """
+    A strategy for enabling spatial parallelism on ``paddle.nn.Conv2D`` layers
+    by sharding the input tensor along its Width (W) dimension.
+
+    When this ``ConvParallel`` configuration is applied to a ``Conv2D`` layer,
+    the layer's input tensor will have its width dimension split across devices
+    in the model parallel group. This can help reduce memory usage from activations,
+    especially when dealing with inputs that have a large width.
+
+    To enable width-wise input sharding correctly, make sure your `Conv2D` layer
+    satisfies the following conditions along the width dimension:
+
+    - **Dilation** must be set to `1`.
+    - **If no width padding is used:**
+        - The input width must be evenly divisible by the stride width.
+        - The stride width must be equal to the kernel width.
+    - **If width padding is used:**
+        - The stride width must be `1`.
+        - The total input width must be at least half the kernel width.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> import paddle.nn as nn
+            >>> import paddle.distributed as dist
+
+            >>> class SimpleConvNet(nn.Layer):
+            ...     def __init__(self, data_format="NCHW"):
+            ...         super().__init__()
+            ...         self.conv1 = nn.Conv2D(
+            ...             3, 8, kernel_size=3, padding=1, data_format=data_format
+            ...         )
+            ...         self.relu = nn.ReLU()
+            ...     def forward(self, x):
+            ...         x = self.conv1(x)
+            ...         return self.relu(x)
+            ...
+            >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+            >>> model = SimpleConvNet(data_format="NCHW")
+            >>> mp_config = {
+            ...    "parallelize_plan": {
+            ...        "conv1": dist.ConvParallel()
+            ...     }
+            ... }
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+
+    @staticmethod
+    def _is_supported(
+        input_size,
+        kernel_size,
+        stride,
+        padding,
+        dilation,
+        data_format,
+        mp_group_size,
+    ):
+        idx_w_input = -1
+        idx_w_kernel = -1
+
+        if data_format == "NCHW":
+            idx_w_input = 3
+            idx_w_kernel = 3
+        elif data_format == "NHWC":
+            idx_w_input = 2
+            idx_w_kernel = 3
+        else:
+            return False
+
+        if input_size[idx_w_input] % mp_group_size != 0:
+            return False
+
+        dilation_w = dilation[1]
+        padding_w = padding[1]
+        stride_w = stride[1]
+
+        input_w = input_size[idx_w_input]
+        kernel_w = kernel_size[idx_w_kernel]
+
+        if dilation_w != 1:
+            # RingConv2d only supports dilation=1.
+            # Larger dilation would require enlarged halo regions and more complex communication.
+            return False
+
+        if padding_w == 0:
+            # To avoid halo exchange when padding=0, we require:
+            # - input_w must be divisible by stride_w, so partitions align evenly across ranks.
+            # - stride_w == kernel_w, so each kernel operates on disjoint local regions.
+            if input_w % stride_w != 0:
+                return False
+            if stride_w != kernel_w:
+                return False
+
+        else:
+            # When padding > 0, halo exchange is needed.
+            # To simplify halo logic, we require:
+            # - stride_w == 1: ensures each output element is computed from overlapping input,
+            #   and no input region is skipped, simplifying halo construction.
+            # - kernel_w // 2 <= input_w: prevents the kernel from exceeding local input.
+            if stride_w != 1:
+                return False
+            if kernel_w // 2 > input_w:
+                return False
+
+        return True
+
+    def conv_parallel_start(self, process_mesh, data_format):
+        def start(layer, input, output=None):
+            if data_format == "NCHW":
+                shard_w_dim = 3
+            elif data_format == "NHWC":
+                shard_w_dim = 2
+            else:
+                raise ValueError(
+                    f"Unsupported data_format: {data_format}. "
+                    "Only NCHW and NHWC are supported."
+                )
+
+            if isinstance(input, tuple):
+                x = input[0]
+            else:
+                x = input
+
+            placements = x.placements
+            mp_index = process_mesh.dim_names.index('mp')
+            mp_group_size = process_mesh.get_dim_size('mp')
+
+            # Note(luchang): for intermediate api, when this ConvLayer is
+            # not supported, we just skip apply parallelization.
+            if not ConvParallel._is_supported(
+                x.shape,
+                layer.weight.shape,
+                layer._stride,
+                layer._updated_padding,
+                layer._dilation,
+                data_format,
+                mp_group_size,
+            ):
+                return input
+
+            if placements is None:
+                placements = [
+                    dist.Replicate() for _ in range(len(process_mesh.shape))
+                ]
+            if placements[mp_index] == dist.Shard(shard_w_dim):
+                return input
+
+            placements[mp_index] = dist.Shard(shard_w_dim)
+
+            if not x.is_dist():
+                x = dist.shard_tensor(x, process_mesh, placements)
+            else:
+                x = dist.reshard(x, process_mesh, placements)
+
+            if isinstance(input, tuple):
+                input = list(input)
+                input[0] = x
+                input = tuple(input)
+            else:
+                input = x
+            return input
+
+        return start
+
+    def apply(self, layer, process_mesh, shard_param_list):
+        layer.register_forward_pre_hook(
+            self.conv_parallel_start(process_mesh, layer._data_format)
+        )
+
+
 class TensorParallel(ParallelModel):
     def __init__(self, model, parallelize_plan=None):
         super().__init__(model)
@@ -768,7 +945,7 @@ def tensor_parallel(model, optimizer=None, config=None):
     return model, optimizer
 
 
-class ContextParallelBegin(PlanBase):
+class ContextParallelPrefix(PlanBase):
     """
 
     Prepare Input for context parallel optimizations.
@@ -785,118 +962,137 @@ class ContextParallelBegin(PlanBase):
 
     Args:
         backend (string): select strategy for context parallel, now support 'p2p' and 'all2all'.
+        period (string): select period for hook, now support 'begin' and 'end'.
 
     Examples:
         .. code-block:: python
 
-            >>> import paddle
-            >>> import paddle.distributed as dist
+        >>> import paddle
+        >>> import paddle.distributed as dist
 
-            >>> class SDPALayer(paddle.nn.Layer):
-            ...     def __init__(self):
-            ...         super().__init__()
-            ...
-            ...     def forward(self, q, k, v):
-            ...         return paddle.nn.functional.scaled_dot_product_attention(q, k, v)
-
-            >>> class AttentionLayer(paddle.nn.Layer):
-            ...     def __init__(self):
-            ...         super().__init__()
-            ...         self.hidden_size = 64
-            ...         self.num_key_value_heads = 10
-            ...         self.head_dim = 64
-            ...         self.sdpa = SDPALayer()
-            ...            self.q = nn.Linear(
-            ...                self.hidden_size,
-            ...                self.hidden_size,
-            ...                bias_attr=False,
-            ...            )
-
-            ...            self.k = nn.Linear(
-            ...                self.hidden_size,
-            ...                self.num_key_value_heads * self.head_dim,
-            ...                bias_attr=False,
-            ...            )
-
-            ...            self.v = nn.Linear(
-            ...                self.hidden_size,
-            ...                self.num_key_value_heads * self.head_dim,
-            ...                bias_attr=False,
-            ...            )
-            ...
-            ...     def forward(self, input):
-            ...         q = self.q(input)
-            ...         k = self.k(input)
-            ...         v = self.v(input)
-            ...         return self.sdpa(q, k, v)
-            >>> class LlamaLayer(paddle.nn.Layer):
-            ...     def __init__(self):
-            ...         super().__init__()
-            ...         self.attention = AttentionLayer()
-            ...
-            ...     def forward(self, input):
-            ...         return self.attention(input)
-
-            >>> class LlamaForCausalLayer(paddle.nn.Layer):
-            ...     def __init__(self):
-            ...         super().__init__()
-            ...         self.llama = LlamaLayer()
-            ...         self.weight = self.create_parameter(shape=[64, 1024])
-            ...         self.loss_func = paddle.nn.CrossEntropyLoss()
-            ...
-            ...     def forward(self, input, label):
-            ...         out = self.llama(input)
-            ...         logits = paddle.matmul(out, self.weight)
-            ...         loss = self.loss_func(logits, label)
-            ...         return logits
-
-            >>> # doctest: +REQUIRES(env:DISTRIBUTED)
-            >>> layer = MLP()
-            >>> mp_config = {
-            ...     'llama': dist.ContextParallelBegin('p2p')
-            ...     'sdpa': dist.ContextParallel('p2p')
-            ...     'loss_func': dist.ContextParallelEnd('p2p')
-            ... }
+        >>> class SDPALayer(paddle.nn.Layer):
+        ...     def __init__(self):
+        ...         super().__init__()
+        ...
+        ...     def forward(self, q, k, v):
+        ...         return paddle.nn.functional.scaled_dot_product_attention(q, k, v)
+        >>>
+        >>> class AttentionLayer(paddle.nn.Layer):
+        ...     def __init__(self):
+        ...         super().__init__()
+        ...         self.hidden_size = 64
+        ...         self.num_key_value_heads = 10
+        ...         self.head_dim = 64
+        ...         self.sdpa = SDPALayer()
+        ...         self.q = paddle.nn.Linear(
+        ...             self.hidden_size,
+        ...             self.hidden_size,
+        ...             bias_attr=False,
+        ...         )
+        ...         self.k = paddle.nn.Linear(
+        ...             self.hidden_size,
+        ...             self.num_key_value_heads * self.head_dim,
+        ...             bias_attr=False,
+        ...         )
+        ...         self.v = paddle.nn.Linear(
+        ...             self.hidden_size,
+        ...             self.num_key_value_heads * self.head_dim,
+        ...             bias_attr=False,
+        ...         )
+        ...
+        ...     def forward(self, input):
+        ...         q = self.q(input)
+        ...         k = self.k(input)
+        ...         v = self.v(input)
+        ...         return self.sdpa(q, k, v)
+        >>>
+        >>> class LlamaLayer(paddle.nn.Layer):
+        ...     def __init__(self):
+        ...         super().__init__()
+        ...         self.attention = AttentionLayer()
+        ...
+        ...     def forward(self, input):
+        ...         return self.attention(input)
+        >>>
+        >>> class LlamaForCausalLayer(paddle.nn.Layer):
+        ...     def __init__(self):
+        ...         super().__init__()
+        ...         self.llama = LlamaLayer()
+        ...         self.weight = self.create_parameter(shape=[64, 1024])
+        ...         self.loss_func = paddle.nn.CrossEntropyLoss()
+        ...
+        ...     def forward(self, input, label):
+        ...         out = self.llama(input)
+        ...         logits = paddle.matmul(out, self.weight)
+        ...         loss = self.loss_func(logits, label)
+        ...         return logits
+        >>>
+        >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+        >>> layer = LlamaForCausalLayer()
+        >>> mp_config = {
+        ...     'llama': dist.ContextParallelPrefix('p2p', 'begin'),
+        ...     'sdpa': dist.ContextParallel('p2p'),
+        ...     'loss_func': dist.ContextParallelPrefix('p2p', 'end'),
+        ... }
     """
 
-    def __init__(self, backend: str = 'p2p') -> None:
+    def __init__(self, backend: str = 'p2p', period: str = 'begin') -> None:
         super().__init__()
         self.backend = backend
+        self.period = period
+        assert self.backend in [
+            'p2p',
+            'all2all',
+        ], f"backend must be 'p2p' or 'all2all', but got {self.backend}"
+        assert self.period in [
+            'begin',
+            'end',
+        ], f"period must be 'begin' or 'end', but got {self.period}"
 
     def all2all_split_input_pre_hook(self, process_mesh):
+        def shard_tensor(input_tensor, seq_dim):
+            cp_index = process_mesh.dim_names.index('sep')
+            placements = input_tensor.placements
+            if placements is None:
+                placements = [
+                    dist.Replicate() for _ in range(len(process_mesh.shape))
+                ]
+            # split sequence dim
+            placements[cp_index] = dist.Shard(seq_dim)
+            reshard_input = dist.reshard(input_tensor, process_mesh, placements)
+            return reshard_input
+
         def all2all_split_input(layer, args):
             cp_index = process_mesh.dim_names.index('sep')
             cp_degree = process_mesh.shape[cp_index]
-            print(f'cp_index:{cp_index}, cp_degree: {cp_degree}')
             # check input_ids
-            all_args = []
-            for input_tensor in args:
-                print(
-                    f'input:{type(input_tensor)}, is_dist: {input_tensor.is_dist()}'
+            if isinstance(args, (list, tuple)):
+                all_args = []
+                for input_tensor in args:
+                    print(
+                        f'input:{type(input_tensor)}, is_dist: {input_tensor.is_dist()}'
+                    )
+                    assert (
+                        input_tensor.is_dist()
+                    ), "Input tensor must be a distributed tensor."
+                    assert (
+                        len(input_tensor.shape) == 2
+                    ), f"input_ids should be [batch_size, seq_len], but got {input_tensor.shape}"
+                    _, seq_len = input_tensor.shape
+                    assert (
+                        seq_len % cp_degree == 0
+                    ), f"sequence length {seq_len} must be divisible by cp degree {cp_degree}"
+                    reshard_input = shard_tensor(input_tensor, 1)
+                    all_args.append(reshard_input)
+                new_args = tuple(all_args)
+                return new_args
+            elif isinstance(args, paddle.Tensor):
+                reshard_input = shard_tensor(args, 1)
+                return reshard_input
+            else:
+                raise ValueError(
+                    f"Unsupported argument type: {type(args)}. Expected list of tensors or single tensor."
                 )
-                assert (
-                    input_tensor.is_dist()
-                ), "Input tensor must be a distributed tensor."
-                assert (
-                    len(input_tensor.shape) == 2
-                ), f"input_ids should be [batch_size, seq_len], but got {input_tensor.shape}"
-                _, seq_len = input_tensor.shape
-                assert (
-                    seq_len % cp_degree == 0
-                ), f"sequence length {seq_len} must be divisible by cp degree {cp_degree}"
-                placements = input_tensor.placements
-                if placements is None:
-                    placements = [
-                        dist.Replicate() for _ in range(len(process_mesh.shape))
-                    ]
-                # split sequence dim
-                placements[cp_index] = dist.Shard(1)
-                reshard_input = dist.reshard(
-                    input_tensor, process_mesh, placements
-                )
-                all_args.append(reshard_input)
-            new_args = tuple(all_args)
-            return new_args
 
         return all2all_split_input
 
@@ -904,54 +1100,54 @@ class ContextParallelBegin(PlanBase):
         def p2p_split_input(layer, args):
             cp_index = process_mesh.dim_names.index('sep')
             cp_degree = process_mesh.shape[cp_index]
-            print(f'cp_index:{cp_index}, cp_degree: {cp_degree}')
-            print(f'args:{type(args)}')
-            all_args = []
-            for input_tensor in args:
-                # check input_ids
-                print(
-                    f'arg:{type(input_tensor)}, is_dist: {input_tensor.is_dist()}'
+            if isinstance(args, (list, tuple)):
+                all_args = []
+                for input_tensor in args:
+                    # check input_ids
+                    assert (
+                        input_tensor.is_dist()
+                    ), "Input tensor must be a distributed tensor."
+                    assert (
+                        len(input_tensor.shape) == 2
+                    ), f"input_ids should be [batch_size, seq_len], but got {input_tensor.shape}"
+                    placements = input_tensor.placements
+                    if placements is None:
+                        placements = [
+                            dist.Replicate()
+                            for _ in range(len(process_mesh.shape))
+                        ]
+                    assert (
+                        placements[cp_index] == dist.Replicate()
+                    ), "Input tensor must be a replicated tensor in cp mesh."
+                    reshard_input = shard_seq_load_balance(input_tensor, 1)
+                    all_args.append(reshard_input)
+                new_args = tuple(all_args)
+                return new_args
+            elif isinstance(args, paddle.Tensor):
+                reshard_input = shard_seq_load_balance(input_tensor, 1)
+                return reshard_input
+            else:
+                raise ValueError(
+                    f"Unsupported argument type: {type(args)}. Expected list of tensors or single tensor."
                 )
-                assert (
-                    input_tensor.is_dist()
-                ), "Input tensor must be a distributed tensor."
-                assert (
-                    len(input_tensor.shape) == 2
-                ), f"input_ids should be [batch_size, seq_len], but got {input_tensor.shape}"
-                placements = input_tensor.placements
-                if placements is None:
-                    placements = [
-                        dist.Replicate() for _ in range(len(process_mesh.shape))
-                    ]
-                assert (
-                    placements[cp_index] == dist.Replicate()
-                ), "Input tensor must be a replicated tensor in cp mesh."
-                # split
-                sliced_datas = paddle.split(
-                    input_tensor, num_or_sections=cp_degree * 2, axis=-1
-                )
-                # resort input, [q0,q1,q2,q3] -> [q0,q3,q1,q2]
-                indices = []
-                for i in range(cp_degree):
-                    indices.append(i)
-                    indices.append(cp_degree * 2 - 1 - i)
-                reorder_indices = indices
-                reordered = [sliced_datas[i] for i in reorder_indices]
-                reordered_tensor = paddle.concat(reordered, axis=-1)
-                # reshard sequence dim
-                placements[cp_index] = dist.Shard(1)
-                reshard_input = dist.reshard(
-                    reordered_tensor, process_mesh, placements
-                )
-                all_args.append(reshard_input)
-            new_args = tuple(all_args)
-
-            return new_args
 
         return p2p_split_input
 
+    def reshard_post_hook(self, process_mesh):
+        def reshard_hook(layer, input, output):
+            cp_index = process_mesh.dim_names.index('sep')
+            cp_degree = process_mesh.shape[cp_index]
+            placements = output.placements
+            assert (
+                output.is_dist()
+            ), f"output {output} must be a distributed tensor."
+            placements[cp_index] = dist.Replicate()
+            target_output = dist.reshard(output, process_mesh, placements)
+            return target_output
+
+        return reshard_hook
+
     def apply(self, layer, process_mesh, shard_param_list):
-        print(f'layer:{layer}')
         if self.backend == 'all2all':
             # Deepspeed Ulysses
             layer.register_forward_pre_hook(
@@ -965,6 +1161,10 @@ class ContextParallelBegin(PlanBase):
         else:
             logging.warning(
                 f'{self.backend} is not supported backend for context parallel'
+            )
+        if self.period == 'end':
+            layer.register_forward_post_hook(
+                self.reshard_post_hook(process_mesh)
             )
 
 
@@ -989,74 +1189,73 @@ class ContextParallel(PlanBase):
     Examples:
         .. code-block:: python
 
-            >>> import paddle
-            >>> import paddle.distributed as dist
+        >>> import paddle
+        >>> import paddle.distributed as dist
 
-            >>> class SDPALayer(paddle.nn.Layer):
-            ...     def __init__(self):
-            ...         super().__init__()
-            ...
-            ...     def forward(self, q, k, v):
-            ...         return paddle.nn.functional.scaled_dot_product_attention(q, k, v)
-
-            >>> class AttentionLayer(paddle.nn.Layer):
-            ...     def __init__(self):
-            ...         super().__init__()
-            ...         self.hidden_size = 64
-            ...         self.num_key_value_heads = 10
-            ...         self.head_dim = 64
-            ...         self.sdpa = SDPALayer()
-            ...            self.q = nn.Linear(
-            ...                self.hidden_size,
-            ...                self.hidden_size,
-            ...                bias_attr=False,
-            ...            )
-
-            ...            self.k = nn.Linear(
-            ...                self.hidden_size,
-            ...                self.num_key_value_heads * self.head_dim,
-            ...                bias_attr=False,
-            ...            )
-
-            ...            self.v = nn.Linear(
-            ...                self.hidden_size,
-            ...                self.num_key_value_heads * self.head_dim,
-            ...                bias_attr=False,
-            ...            )
-            ...
-            ...     def forward(self, input):
-            ...         q = self.q(input)
-            ...         k = self.k(input)
-            ...         v = self.v(input)
-            ...         return self.sdpa(q, k, v)
-            >>> class LlamaLayer(paddle.nn.Layer):
-            ...     def __init__(self):
-            ...         super().__init__()
-            ...         self.attention = AttentionLayer()
-            ...
-            ...     def forward(self, input):
-            ...         return self.attention(input)
-
-            >>> class LlamaForCausalLayer(paddle.nn.Layer):
-            ...     def __init__(self):
-            ...         super().__init__()
-            ...         self.llama = LlamaLayer()
-            ...         self.weight = self.create_parameter(shape=[64, 1024])
-            ...         self.loss_func = paddle.nn.CrossEntropyLoss()
-            ...
-            ...     def forward(self, input, label):
-            ...         out = self.llama(input)
-            ...         logits = paddle.matmul(out, self.weight)
-            ...         loss = self.loss_func(logits, label)
-            ...         return logits
-
-            >>> # doctest: +REQUIRES(env:DISTRIBUTED)
-            >>> layer = MLP()
-            >>> mp_config = {
-            ...     'llama': dist.ContextParallelBegin('p2p')
-            ...     'sdpa': dist.ContextParallel('p2p')
-            ...     'loss_func': dist.ContextParallelEnd('p2p')
-            ... }
+        >>> class SDPALayer(paddle.nn.Layer):
+        ...     def __init__(self):
+        ...         super().__init__()
+        ...
+        ...     def forward(self, q, k, v):
+        ...         return paddle.nn.functional.scaled_dot_product_attention(q, k, v)
+        >>>
+        >>> class AttentionLayer(paddle.nn.Layer):
+        ...     def __init__(self):
+        ...         super().__init__()
+        ...         self.hidden_size = 64
+        ...         self.num_key_value_heads = 10
+        ...         self.head_dim = 64
+        ...         self.sdpa = SDPALayer()
+        ...         self.q = paddle.nn.Linear(
+        ...             self.hidden_size,
+        ...             self.hidden_size,
+        ...             bias_attr=False,
+        ...         )
+        ...         self.k = paddle.nn.Linear(
+        ...             self.hidden_size,
+        ...             self.num_key_value_heads * self.head_dim,
+        ...             bias_attr=False,
+        ...         )
+        ...         self.v = paddle.nn.Linear(
+        ...             self.hidden_size,
+        ...             self.num_key_value_heads * self.head_dim,
+        ...             bias_attr=False,
+        ...         )
+        ...
+        ...     def forward(self, input):
+        ...         q = self.q(input)
+        ...         k = self.k(input)
+        ...         v = self.v(input)
+        ...         return self.sdpa(q, k, v)
+        >>>
+        >>> class LlamaLayer(paddle.nn.Layer):
+        ...     def __init__(self):
+        ...         super().__init__()
+        ...         self.attention = AttentionLayer()
+        ...
+        ...     def forward(self, input):
+        ...         return self.attention(input)
+        >>>
+        >>> class LlamaForCausalLayer(paddle.nn.Layer):
+        ...     def __init__(self):
+        ...         super().__init__()
+        ...         self.llama = LlamaLayer()
+        ...         self.weight = self.create_parameter(shape=[64, 1024])
+        ...         self.loss_func = paddle.nn.CrossEntropyLoss()
+        ...
+        ...     def forward(self, input, label):
+        ...         out = self.llama(input)
+        ...         logits = paddle.matmul(out, self.weight)
+        ...         loss = self.loss_func(logits, label)
+        ...         return logits
+        >>>
+        >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+        >>> layer = LlamaForCausalLayer()
+        >>> mp_config = {
+        ...     'llama': dist.ContextParallelPrefix('p2p', 'begin'),
+        ...     'sdpa': dist.ContextParallel('p2p'),
+        ...     'loss_func': dist.ContextParallelPrefix('p2p', 'end'),
+        ... }
     """
 
     def __init__(self, backend: str = 'p2p') -> None:
@@ -1067,11 +1266,9 @@ class ContextParallel(PlanBase):
         def all2all_reshard_hook(layer, args):
             cp_index = process_mesh.dim_names.index('sep')
             cp_degree = process_mesh.shape[cp_index]
-            print(f'cp_index:{cp_index}, cp_degree: {cp_degree}')
             all_args = []
             for arg in args:
                 # check q k v
-                print(f'arg:{type(arg)}, is_dist: {arg.is_dist()}')
                 assert arg.is_dist(), f"arg {arg} must be a distributed tensor."
                 assert len(arg.shape) == 3 or len(arg.shape) == 4
                 placements = arg.placements
@@ -1091,7 +1288,6 @@ class ContextParallel(PlanBase):
         def all2all_reshard_hook(layer, input, output):
             cp_index = process_mesh.dim_names.index('sep')
             cp_degree = process_mesh.shape[cp_index]
-            print(f'cp_index:{cp_index}, cp_degree: {cp_degree}')
             placements = output.placements
             assert (
                 output.is_dist()
@@ -1111,8 +1307,6 @@ class ContextParallel(PlanBase):
         def input_hook(layer, args, kwargs):
             cp_index = process_mesh.dim_names.index('sep')
             cp_degree = process_mesh.shape[cp_index]
-            print(f'cp_index:{cp_index}, cp_degree: {cp_degree}')
-            print(f'args:{type(args)},   kwargs:{kwargs.values()}')
             for arg in args:
                 # check q k v
                 assert (
@@ -1125,15 +1319,12 @@ class ContextParallel(PlanBase):
                 ), f"arg {arg} must be Shard(1) in sequence dimension."
             # edit kwarg backend to 'p2p'
             new_kwargs = kwargs
-            print(f'before new_kwargs:{new_kwargs}')
             new_kwargs['backend'] = 'p2p'
-            print(f'new_kwargs:{new_kwargs}')
             return args, new_kwargs
 
         return input_hook
 
     def apply(self, layer, process_mesh, shard_param_list):
-        print(f'layer:{layer}')
         if self.backend == 'all2all':
             # Deepspeed Ulysses
             layer.register_forward_pre_hook(
@@ -1146,120 +1337,6 @@ class ContextParallel(PlanBase):
             # Ring FlashAttention
             layer.register_forward_pre_hook(
                 self.p2p_reshard_pre_hook(process_mesh), with_kwargs=True
-            )
-        else:
-            logging.warning(
-                f'{self.backend} is not supported backend for context parallel'
-            )
-
-
-class ContextParallelEnd(PlanBase):
-    """
-
-    Prepare Output for context parallel optimizations.
-
-    This will work for Layer that calls like loss function which is the end of the network.
-
-    both backend='p2p/all2all' will use concat output_tensor in sequence dimension.
-
-    Args:
-        backend (string): select strategy for context parallel, now support 'p2p' and 'all2all'.
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-            >>> import paddle.distributed as dist
-
-            >>> class SDPALayer(paddle.nn.Layer):
-            ...     def __init__(self):
-            ...         super().__init__()
-            ...
-            ...     def forward(self, q, k, v):
-            ...         return paddle.nn.functional.scaled_dot_product_attention(q, k, v)
-
-            >>> class AttentionLayer(paddle.nn.Layer):
-            ...     def __init__(self):
-            ...         super().__init__()
-            ...         self.hidden_size = 64
-            ...         self.num_key_value_heads = 10
-            ...         self.head_dim = 64
-            ...         self.sdpa = SDPALayer()
-            ...            self.q = nn.Linear(
-            ...                self.hidden_size,
-            ...                self.hidden_size,
-            ...                bias_attr=False,
-            ...            )
-
-            ...            self.k = nn.Linear(
-            ...                self.hidden_size,
-            ...                self.num_key_value_heads * self.head_dim,
-            ...                bias_attr=False,
-            ...            )
-
-            ...            self.v = nn.Linear(
-            ...                self.hidden_size,
-            ...                self.num_key_value_heads * self.head_dim,
-            ...                bias_attr=False,
-            ...            )
-            ...
-            ...     def forward(self, input):
-            ...         q = self.q(input)
-            ...         k = self.k(input)
-            ...         v = self.v(input)
-            ...         return self.sdpa(q, k, v)
-            >>> class LlamaLayer(paddle.nn.Layer):
-            ...     def __init__(self):
-            ...         super().__init__()
-            ...         self.attention = AttentionLayer()
-            ...
-            ...     def forward(self, input):
-            ...         return self.attention(input)
-
-            >>> class LlamaForCausalLayer(paddle.nn.Layer):
-            ...     def __init__(self):
-            ...         super().__init__()
-            ...         self.llama = LlamaLayer()
-            ...         self.weight = self.create_parameter(shape=[64, 1024])
-            ...         self.loss_func = paddle.nn.CrossEntropyLoss()
-            ...
-            ...     def forward(self, input, label):
-            ...         out = self.llama(input)
-            ...         logits = paddle.matmul(out, self.weight)
-            ...         loss = self.loss_func(logits, label)
-            ...         return logits
-
-            >>> # doctest: +REQUIRES(env:DISTRIBUTED)
-            >>> layer = MLP()
-            >>> mp_config = {
-            ...     'llama': dist.ContextParallelBegin('p2p')
-            ...     'sdpa': dist.ContextParallel('p2p')
-            ...     'loss_func': dist.ContextParallelEnd('p2p')
-            ... }
-    """
-
-    def __init__(self, backend: str = 'p2p') -> None:
-        super().__init__()
-        self.backend = backend
-
-    def reshard_post_hook(self, process_mesh):
-        def reshard_hook(layer, input, output):
-            cp_index = process_mesh.dim_names.index('sep')
-            cp_degree = process_mesh.shape[cp_index]
-            placements = output.placements
-            assert (
-                output.is_dist()
-            ), f"output {output} must be a distributed tensor."
-            placements[cp_index] = dist.Replicate()
-            target_output = dist.reshard(output, process_mesh, placements)
-            return target_output
-
-        return reshard_hook
-
-    def apply(self, layer, process_mesh, shard_param_list):
-        if self.backend == 'all2all' or self.backend == 'p2p':
-            layer.register_forward_post_hook(
-                self.reshard_post_hook(process_mesh)
             )
         else:
             logging.warning(
