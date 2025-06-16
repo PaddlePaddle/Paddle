@@ -132,9 +132,6 @@ class ThreadDataRegistry {
         if (kv.first != tid) {
           auto& data_in_another_thread = kv.second->GetData();
           data_in_another_thread += data;
-          VLOG(2) << "Add data " << data << " from thread " << tid << " to "
-                  << kv.first << " , after update, data is "
-                  << data_in_another_thread << ".";
           break;
         }
       }
