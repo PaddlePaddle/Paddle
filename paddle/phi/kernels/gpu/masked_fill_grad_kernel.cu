@@ -313,25 +313,22 @@ void MaskedFillGradKernel(const Context& dev_ctx,
     }
     return;
   }
-
   auto out_grad_dims = out_grad.dims();
   auto x_grad_dims = x_grad->dims();
   auto mask_dims = mask.dims();
-
   DenseTensor mask_expand;
   DenseTensor x_grad_expand;
   DenseTensor v_grad_expand;
-
   bool expand_x = false;
   bool expand_v = false;
   auto expanded_size =
       common::vectorize(funcs::BroadcastTwoDims(x_grad_dims, mask_dims, -1));
   auto expanded_dims = common::make_ddim(expanded_size);
-
   bool flag = funcs::CanDispatchMaskFillShortcut(out_grad_dims, mask_dims);
-  if (expanded_dims != x_grad_dims ||
-      (v_grad->dims() != expanded_dims && v_grad->numel() != 1))
+  if (expanded_dims != x_grad_dims) flag = false;
+  if (v_grad && v_grad->dims() != expanded_dims && v_grad->numel() != 1)
     flag = false;
+
   if (x_grad) {
     dev_ctx.template Alloc<T>(x_grad);
   }
