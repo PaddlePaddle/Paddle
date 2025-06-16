@@ -1488,6 +1488,11 @@ void OverlapAddGradInferMeta(const MetaTensor& x,
   }
 }
 
+inline int64_t HandleDynamicDim(int64_t maybe_dynamic_dim,
+                                int64_t static_result) {
+  return maybe_dynamic_dim == -1 ? -1 : static_result;
+}
+
 void PixelUnshuffleGradInferMeta(const MetaTensor& out_grad,
                                  int downscale_factor,
                                  const std::string& data_format,
@@ -1506,13 +1511,15 @@ void PixelUnshuffleGradInferMeta(const MetaTensor& out_grad,
   dx_dims[0] = do_dims[0];
 
   if (!channel_last) {
-    dx_dims[1] = do_dims[1] / (downscale_factor * downscale_factor);
-    dx_dims[2] = do_dims[2] * downscale_factor;
-    dx_dims[3] = do_dims[3] * downscale_factor;
+    dx_dims[1] = HandleDynamicDim(
+        do_dims[1], do_dims[1] / (downscale_factor * downscale_factor));
+    dx_dims[2] = HandleDynamicDim(do_dims[2], do_dims[2] * downscale_factor);
+    dx_dims[3] = HandleDynamicDim(do_dims[3], do_dims[3] * downscale_factor);
   } else {
-    dx_dims[1] = do_dims[1] * downscale_factor;
-    dx_dims[2] = do_dims[2] * downscale_factor;
-    dx_dims[3] = do_dims[3] / (downscale_factor * downscale_factor);
+    dx_dims[1] = HandleDynamicDim(do_dims[1], do_dims[1] * downscale_factor);
+    dx_dims[2] = HandleDynamicDim(do_dims[2], do_dims[2] * downscale_factor);
+    dx_dims[3] = HandleDynamicDim(
+        do_dims[3], do_dims[3] / (downscale_factor * downscale_factor));
   }
   x_grad->set_dims(dx_dims);
   x_grad->set_dtype(out_grad.dtype());
@@ -2086,10 +2093,24 @@ void FusedRMSNormGradInferMeta(const MetaTensor& x,
                                float epsilon,
                                MetaTensor* x_grad,
                                MetaTensor* scale_grad) {
-  x_grad->set_dims(x.dims());
-  x_grad->set_dtype(x.dtype());
-  scale_grad->set_dims(scale.dims());
-  scale_grad->set_dtype(scale.dtype());
+  PADDLE_ENFORCE_EQ(
+      x.dtype() == DataType::FLOAT32 || x.dtype() == DataType::BFLOAT16,
+      true,
+      common::errors::InvalidArgument(
+          "The dtype of x must be FLOAT32 or BFLOAT16, but got [%s]",
+          x.dtype()));
+  PADDLE_ENFORCE_EQ(
+      scale.dtype() == DataType::FLOAT32 || scale.dtype() == DataType::BFLOAT16,
+      true,
+      common::errors::InvalidArgument(
+          "The dtype of scale must be FLOAT32 or BFLOAT16, but got [%s]",
+          scale.dtype()));
+  if (x_grad && x) {
+    x_grad->share_meta(x);
+  }
+  if (scale_grad && scale) {
+    scale_grad->share_meta(scale);
+  }
 }
 
 void IndexElementwiseGetGradInferMeta(
