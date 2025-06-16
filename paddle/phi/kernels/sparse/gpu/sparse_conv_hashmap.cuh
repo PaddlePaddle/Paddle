@@ -266,7 +266,7 @@ void build_sparse_conv_kmap(
     out_kmap_cache_ptr = out->SetKmapCache(key, kmap_cache);
     if (out_kmap_cache_ptr->hashmap_keys == nullptr) {
       phi::DenseTensor* tmp_hashmap_keys = new phi::DenseTensor();
-      tmp_hashmap_keys->Resize({2 * x.nnz()});
+      tmp_hashmap_keys->Resize({1800000});
       dev_ctx.template Alloc<IntT>(tmp_hashmap_keys);
       phi::funcs::SetConstant<phi::GPUContext, IntT> set_zero;
       set_zero(dev_ctx, tmp_hashmap_keys, static_cast<IntT>(0));
@@ -275,7 +275,7 @@ void build_sparse_conv_kmap(
     }
     if (out_kmap_cache_ptr->hashmap_values == nullptr) {
       phi::DenseTensor* tmp_hashmap_values = new phi::DenseTensor();
-      tmp_hashmap_values->Resize({2 * x.nnz()});
+      tmp_hashmap_values->Resize({1800000});
       dev_ctx.template Alloc<int32_t>(tmp_hashmap_values);
       phi::funcs::SetConstant<phi::GPUContext, int32_t> set_zero;
       set_zero(dev_ctx, tmp_hashmap_values, static_cast<int32_t>(0));
