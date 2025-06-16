@@ -581,6 +581,29 @@ CALCULATE_LOCAL_SHAPE_TEMPLATE = """
       }}
 """
 
+CALCULATE_LOCAL_SHAPE_KERNEL_TEMPLATE = """
+
+      auto out_grad_shape = out_grad.dims();
+      std::vector<{dtype}> local_kernel_shape;
+      const auto& out_grad_dist_attr = {out_grad_dist_attr};
+      for (int i = 0; i < out_grad_shape.size(); i++) {{
+        if (out_grad_dist_attr.dims_mapping()[i] >= 0) {{
+          {dtype} shape_i = out_grad_shape[i];
+          int64_t dim = out_grad_dist_attr.dims_mapping()[i];
+          int64_t mesh_dim = out_grad_dist_attr.process_mesh().shape()[dim];
+          // TODO: Support aliquant condition.
+          PADDLE_ENFORCE(shape_i % mesh_dim == 0,
+                common::errors::InvalidArgument(
+                    "{op_name} only support local shape dim is divisible "
+                    "by the mesh dim, however local_kernel_shape[%lld] is %lld "
+                    "and shard mesh dims is %lld.", i, shape_i, mesh_dim));
+          local_kernel_shape.push_back(shape_i / mesh_dim);
+        }} else {{
+          local_kernel_shape.push_back(out_grad_shape[i]);
+        }}
+      }}
+"""
+
 # BaseAPI members:
 # inputs:
 #     names : [], list of input names
@@ -1755,7 +1778,7 @@ class DistForwardAPI(ForwardAPI):
 
         return output_decl_code + infer_meta_code
 
-    def generate_kernel_call_code(self) -> str:
+    def generate_kernel_call_code(self, is_forward=True) -> str:
         dense_input_trans_map = {
             'const Tensor&': 'const phi::DenseTensor&',
             'const std::vector<Tensor>&': 'const std::vector<const phi::DenseTensor*>&',
@@ -1773,6 +1796,7 @@ class DistForwardAPI(ForwardAPI):
         kernel_args_type_list = ['const phi::DeviceContext&']
 
         attr_names = self.attrs['names']
+        pure_kernel_args = self.kernel['param']
         kernel_args = self.kernel['param']
         if kernel_args is None:
             kernel_args = input_names + attr_names
@@ -1803,7 +1827,14 @@ class DistForwardAPI(ForwardAPI):
                     kernel_args_type_list.append('const phi::IntArray&')
                     # TODO(GhostScreaming): kernel like reshape need calculate local_shape
                     if self.infer_meta['local_shape'] is not None:
-                        arg = 'phi::IntArray(local_shape)'
+                        if is_forward or (
+                            pure_kernel_args is not None
+                            and self.infer_meta['local_shape']
+                            not in pure_kernel_args
+                        ):
+                            arg = 'phi::IntArray(local_shape)'
+                        else:
+                            arg = 'phi::IntArray(local_kernel_shape)'
                     else:
                         arg = 'phi::IntArray(' + arg + ')'
                 elif 'vector<phi::Scalar>' in self.attrs['attr_info'][arg][0]:
@@ -1818,9 +1849,15 @@ class DistForwardAPI(ForwardAPI):
                         self.attrs['attr_info'][arg][0]
                     )
                     # calculate local_shape for expand_as
-                    # TODO(ooooo): bwd reuse this function to kernel, but actually the local_shape isn't same meaning.
                     if self.infer_meta['local_shape'] is not None:
-                        arg = "local_shape"
+                        if is_forward or (
+                            pure_kernel_args is not None
+                            and self.infer_meta['local_shape']
+                            not in pure_kernel_args
+                        ):
+                            arg = 'local_shape'
+                        else:
+                            arg = 'local_kernel_shape'
                 input_args.append(arg)
             elif isinstance(arg, bool):
                 input_args.append(str(arg).lower())

@@ -16,6 +16,7 @@
 
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/cpu/index_select_impl.h"
+#include "paddle/phi/kernels/funcs/repeat_tensor2index_tensor.h"
 #include "paddle/phi/kernels/repeat_interleave_kernel.h"
 #if defined(__NVCC__) || defined(__HIPCC__)
 #include "paddle/phi/backends/gpu/gpu_decls.h"
@@ -24,8 +25,6 @@
 #include "paddle/phi/backends/gpu/gpu_resources.h"
 #include "paddle/phi/kernels/primitive/functor_primitives.h"
 #endif
-
-#include "paddle/phi/kernels/funcs/repeat_tensor2index_tensor.h"
 
 namespace phi {
 
@@ -39,15 +38,20 @@ __global__ void index_select_cuda_kernel(const T* input,
                                          int64_t stride,
                                          int64_t size,
                                          int64_t delta) {
-  int64_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+  const int64_t idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (idx >= N) {
     return;
   }
+  const int64_t stride_size = stride * size;
 
-  int64_t pre_idx = idx / (stride * size);
-  int64_t dim_idx = idx % (stride * size) / stride;
-  IndexT src_dim_idx = index[dim_idx];
-  int64_t input_idx = idx + (delta * pre_idx + src_dim_idx - dim_idx) * stride;
+  const int64_t pre_idx = idx / stride_size;
+  const int64_t remainder = idx % stride_size;
+  const int64_t dim_idx = remainder / stride;
+
+  const IndexT src_dim_idx = index[dim_idx];
+
+  const int64_t input_idx =
+      idx + ((delta * pre_idx) + (src_dim_idx - dim_idx)) * stride;
   output[idx] = input[input_idx];
 }
 #endif
@@ -155,11 +159,11 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& dev_ctx,
   if (x.numel() == 0) {
     // infer out shape
     if (index_type == phi::DataType::INT32) {
-      phi::funcs::RepeatsTensor2IndexTensor<Context, int>(
+      phi::funcs::RepeatsTensor2IndexTensorFunctor<Context, int>()(
           dev_ctx, repeats_tensor, &index);
 
     } else if (index_type == phi::DataType::INT64) {
-      phi::funcs::RepeatsTensor2IndexTensor<Context, int64_t>(
+      phi::funcs::RepeatsTensor2IndexTensorFunctor<Context, int64_t>()(
           dev_ctx, repeats_tensor, &index);
     }
     auto output_dim = common::vectorize(x.dims());
@@ -171,14 +175,14 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& dev_ctx,
   if (place == cpu_place) {
     auto x_copy = x;
     if (index_type == phi::DataType::INT32) {
-      phi::funcs::RepeatsTensor2IndexTensor<Context, int>(
+      phi::funcs::RepeatsTensor2IndexTensorFunctor<Context, int>()(
           dev_ctx, repeats_tensor, &index);
       auto output_dim = common::vectorize(x.dims());
       output_dim[dim] = index.dims()[0];
       out->Resize(common::make_ddim(output_dim));
       IndexSelectInner<Context, T, int>(dev_ctx, &x_copy, index, out, dim);
     } else if (index_type == phi::DataType::INT64) {
-      phi::funcs::RepeatsTensor2IndexTensor<Context, int64_t>(
+      phi::funcs::RepeatsTensor2IndexTensorFunctor<Context, int64_t>()(
           dev_ctx, repeats_tensor, &index);
       auto output_dim = common::vectorize(x.dims());
       output_dim[dim] = index.dims()[0];
@@ -192,7 +196,7 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& dev_ctx,
     auto stream = dev_ctx.stream();
     auto* in_data = x.data<T>();
     if (index_type == phi::DataType::INT64) {
-      phi::funcs::RepeatsTensor2IndexTensor<Context, int64_t>(
+      phi::funcs::RepeatsTensor2IndexTensorFunctor<Context, int64_t>()(
           dev_ctx, repeats_tensor, &index);
 
       const int64_t* index_data = index.data<int64_t>();
@@ -211,7 +215,7 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& dev_ctx,
              stream>>>(
               in_data, out_data, index_data, numel, stride, size, delta);
     } else {
-      phi::funcs::RepeatsTensor2IndexTensor<Context, int>(
+      phi::funcs::RepeatsTensor2IndexTensorFunctor<Context, int>()(
           dev_ctx, repeats_tensor, &index);
 
       const int* index_data = index.data<int>();

@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/masked_fill_grad_kernel.h"
+#include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/funcs/masked_fill_utils.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
@@ -174,7 +175,12 @@ void MaskedFillGradKernel(const Context& dev_ctx,
       std::vector<int> mask_dims(mask.dims().size());
       std::iota(mask_dims.begin(), mask_dims.end(), 0);
       IntArray mask_axis(mask_dims);
-      SumKernel<T>(dev_ctx, mask, mask_axis, v_grad->dtype(), false, v_grad);
+      SumKernel<T>(dev_ctx,
+                   Cast<bool>(dev_ctx, mask, value.dtype()),
+                   mask_axis,
+                   v_grad->dtype(),
+                   false,
+                   v_grad);
       ScaleKernel<T>(dev_ctx,
                      *v_grad,
                      (out_grad.numel() / mask.numel()),
@@ -221,7 +227,12 @@ void MaskedFillGradKernel(const Context& dev_ctx,
     std::vector<int> v_dims(mask_expand.dims().size());
     std::iota(v_dims.begin(), v_dims.end(), 0);
     IntArray v_axis(v_dims);
-    SumKernel<T>(dev_ctx, mask_expand, v_axis, v_grad->dtype(), false, v_grad);
+    SumKernel<T>(dev_ctx,
+                 Cast<bool>(dev_ctx, mask_expand, value.dtype()),
+                 v_axis,
+                 v_grad->dtype(),
+                 false,
+                 v_grad);
   }
 }
 
