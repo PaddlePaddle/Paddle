@@ -538,6 +538,14 @@ struct C_DeviceInterface {
                                      size_t* compute_capability);
 
   /**
+   * @brief Get device properties
+   *
+   * @param[void*]    device_properties
+   */
+  C_Status (*get_device_properties)(const C_Device device,
+                                    void* device_properties);
+
+  /**
    * @brief Get runtime version
    *
    * @param[size_t*]    version

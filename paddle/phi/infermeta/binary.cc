@@ -2992,7 +2992,12 @@ void MatmulInferMeta(const MetaTensor& x,
   } else {
     new_dims.reserve(ndims_x);
     for (size_t i = 0; i < ndims_x - 2; ++i) {
-      new_dims.push_back(std::max(dims_x[i], dims_y[i]));
+      // If one of them is 0, choose 0.
+      if (dims_x[i] == 0 || dims_y[i] == 0) {
+        new_dims.push_back(0);
+      } else {
+        new_dims.push_back(std::max(dims_x[i], dims_y[i]));
+      }
     }
   }
   if (!x_broadcasted) {
@@ -4633,12 +4638,37 @@ void FusedRMSNormInferMeta(const MetaTensor& x,
                            float epsilon,
                            MetaTensor* y,
                            MetaTensor* invvar) {
-  // Y: same shape, dtype, layout as X
+  auto x_shape = x.dims();
+  auto scale_shape = scale.dims();
+  PADDLE_ENFORCE_EQ(
+      scale_shape.size(),
+      1,
+      common::errors::InvalidArgument(
+          "The scale tensor must be 1D, but got[%d]", scale_shape.size()));
+  PADDLE_ENFORCE_EQ(scale_shape[0],
+                    x_shape[x_shape.size() - 1],
+                    common::errors::InvalidArgument(
+                        "The scale tensor's shape must be equal to the last "
+                        "dimension of x tensor, but got [%d] not equal to [%d]",
+                        scale_shape[0],
+                        x_shape[x_shape.size() - 1]));
+  PADDLE_ENFORCE_EQ(
+      x.dtype() == DataType::FLOAT32 || x.dtype() == DataType::BFLOAT16,
+      true,
+      common::errors::InvalidArgument(
+          "The dtype of x must be FLOAT32 or BFLOAT16, but got [%s]",
+          x.dtype()));
+  PADDLE_ENFORCE_EQ(
+      scale.dtype() == DataType::FLOAT32 || scale.dtype() == DataType::BFLOAT16,
+      true,
+      common::errors::InvalidArgument(
+          "The dtype of scale must be FLOAT32 or BFLOAT16, but got [%s]",
+          scale.dtype()));
+
   y->set_dims(x.dims());
-  y->set_dtype(x.dtype());
-  // mean & invvar: 1-D length = x.dims()[0]
-  int64_t rows = x.dims()[0];
-  invvar->set_dims(DDim({rows}));
+  y->set_dtype(scale.dtype());
+
+  invvar->set_dims({-1});
   invvar->set_dtype(DataType::FLOAT32);
 }
 

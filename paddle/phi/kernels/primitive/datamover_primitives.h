@@ -40,8 +40,8 @@ struct alignas(sizeof(T) * VecSize) VectorType {
  * must be [dim1, dim0].
  */
 struct BroadcastConfig {
-  phi::funcs::FastDivMod<int> divmoders[phi::DDim::kMaxRank];
-  uint32_t strides[phi::DDim::kMaxRank];
+  phi::funcs::FastDivMod<int64_t> divmoders[phi::DDim::kMaxRank];
+  uint64_t strides[phi::DDim::kMaxRank];
   int rank{0};
 
   // BroadcastConfig should be defined on host used on device.
@@ -51,7 +51,7 @@ struct BroadcastConfig {
                   const std::vector<int64_t>& in_dims,
                   int dim_size) {
     for (int i = 0; i < dim_size; ++i) {
-      divmoders[i] = phi::funcs::FastDivMod<int>(out_dims[i]);
+      divmoders[i] = phi::funcs::FastDivMod<int64_t>(out_dims[i]);
     }
 
     for (int i = 0; i < dim_size; ++i) {

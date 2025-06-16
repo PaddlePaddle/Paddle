@@ -30,24 +30,26 @@ def build_program():
     main_program = paddle.static.Program()
     startup_program = paddle.static.Program()
 
-    with paddle.static.program_guard(main_program, startup_program):
+    with (
+        paddle.static.program_guard(main_program, startup_program),
         # data -> [matmul] -> out ->[add] -> add_out
-        with paddle.static.device_guard('gpu'):
-            data = paddle.ones([1024, 2048], dtype='float32', name='data')
-            weight = paddle.randn([2048, 2048], name='weight')  # gpu
-            matmul_out = paddle.matmul(data, weight, name='matmul_out')  # gpus
-            bias = paddle.ones([1024, 2048], dtype='float32', name='bias')
-            add_out = paddle.add(matmul_out, bias, name='add_out')
-            # add_out -> [sub] -> sub_out -> [tanh] -> tanh_out
-            sub_out = paddle.subtract(add_out, data, name='sub_out')
-            tanh_out = paddle.tanh(sub_out, name='tanh_out')
-            bias_1 = paddle.add(bias, sub_out, name='bias_1')
-            out_before = paddle.tanh(bias_1, name='out_before')
-            out_last = paddle.subtract(tanh_out, data, name='out_last')
-            out_last2 = paddle.matmul(out_last, weight, name="matmul_2_out")
+        paddle.static.device_guard('gpu'),
+    ):
+        data = paddle.ones([1024, 2048], dtype='float32', name='data')
+        weight = paddle.randn([2048, 2048], name='weight')  # gpu
+        matmul_out = paddle.matmul(data, weight, name='matmul_out')  # gpus
+        bias = paddle.ones([1024, 2048], dtype='float32', name='bias')
+        add_out = paddle.add(matmul_out, bias, name='add_out')
+        # add_out -> [sub] -> sub_out -> [tanh] -> tanh_out
+        sub_out = paddle.subtract(add_out, data, name='sub_out')
+        tanh_out = paddle.tanh(sub_out, name='tanh_out')
+        bias_1 = paddle.add(bias, sub_out, name='bias_1')
+        out_before = paddle.tanh(bias_1, name='out_before')
+        out_last = paddle.subtract(tanh_out, data, name='out_last')
+        out_last2 = paddle.matmul(out_last, weight, name="matmul_2_out")
 
-            out = paddle.add(out_before, out_last2, name='out')
-            mean = paddle.mean(out, name='mean_out')
+        out = paddle.add(out_before, out_last2, name='out')
+        mean = paddle.mean(out, name='mean_out')
 
     return main_program, startup_program, [mean]
 

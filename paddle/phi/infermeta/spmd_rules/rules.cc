@@ -66,7 +66,6 @@ PD_REGISTER_SPMD_RULE(
     fused_rotary_position_embedding,
     PD_INFER_SPMD(phi::distributed::FusedRopeInferSpmd),
     PD_INFER_SPMD(phi::distributed::FusedRopeInferSpmdReverse));
-
 // replicated rule /* for unittest */
 PD_REGISTER_SPMD_RULE(
     replicated,
@@ -218,8 +217,8 @@ PD_REGISTER_SPMD_RULE(
     PD_INFER_SPMD(phi::distributed::ElementwiseUnaryInferSpmdReverse));
 PD_REGISTER_SPMD_RULE(
     label_smooth,
-    PD_INFER_SPMD(phi::distributed::ElementwiseUnaryInferSpmd),
-    PD_INFER_SPMD(phi::distributed::ElementwiseUnaryInferSpmdReverse));
+    PD_INFER_SPMD(phi::distributed::LabelSmoothInferSpmd),
+    PD_INFER_SPMD(phi::distributed::LabelSmoothGradInferSpmd));
 PD_REGISTER_SPMD_RULE(
     leaky_relu,
     PD_INFER_SPMD(phi::distributed::ElementwiseUnaryInferSpmd),
@@ -525,13 +524,20 @@ PD_REGISTER_SPMD_RULE(
 PD_REGISTER_SPMD_RULE(mean_all,
                       PD_INFER_SPMD(phi::distributed::MeanAllInferSpmd),
                       PD_INFER_SPMD(phi::distributed::MeanAllGradInferSpmd));
+// batch_norm
+PD_REGISTER_SPMD_RULE(
+    batch_norm, PD_INFER_SPMD(phi::distributed::BatchNormInferSpmdStatic));
 
 // layer_norm
 PD_REGISTER_SPMD_RULE(
     layer_norm,
     PD_INFER_SPMD(phi::distributed::LayerNormInferSpmd),
     PD_INFER_SPMD(phi::distributed::LayerNormInferSpmdReverse));
-
+// instance_norm
+PD_REGISTER_SPMD_RULE(
+    instance_norm,
+    PD_INFER_SPMD(phi::distributed::InstanceNormInferSpmd),
+    PD_INFER_SPMD(phi::distributed::InstanceNormGradInferSpmd));
 // fused_rms_norm
 // NOTE(ZHIQIU): Temporally register fused_rms_norm rule,
 // this is not for rms_norm kernel, but for the custom kernel
@@ -667,15 +673,13 @@ PD_REGISTER_SPMD_RULE(
     PD_INFER_SPMD(
         phi::distributed::FusedLinearParamGradAddInferSpmdFakeReverse));
 
-PD_REGISTER_SPMD_RULE(
-    expand_as,
-    PD_INFER_SPMD(phi::distributed::ExpandAsInferSpmd),
-    PD_INFER_SPMD(phi::distributed::ExpandAsInferSpmdReverse));
+PD_REGISTER_SPMD_RULE(expand_as,
+                      PD_INFER_SPMD(phi::distributed::ExpandAsInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::ExpandAsGradInferSpmd));
 
-PD_REGISTER_SPMD_RULE(
-    expand_as_v2,
-    PD_INFER_SPMD(phi::distributed::ExpandAsInferSpmd),
-    PD_INFER_SPMD(phi::distributed::ExpandAsInferSpmdReverse));
+PD_REGISTER_SPMD_RULE(expand_as_v2,
+                      PD_INFER_SPMD(phi::distributed::ExpandAsInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::ExpandAsGradInferSpmd));
 
 // scatter
 PD_REGISTER_SPMD_RULE(scatter,
@@ -748,6 +752,9 @@ PD_REGISTER_SPMD_RULE(pad,
                       PD_INFER_SPMD(phi::distributed::PadInferSpmd),
                       PD_INFER_SPMD(phi::distributed::PadGradInferSpmd));
 
+// group_norm
+PD_REGISTER_SPMD_RULE(group_norm,
+                      PD_INFER_SPMD(phi::distributed::GroupNormInferSpmdBase));
 // nonzero
 PD_REGISTER_SPMD_RULE(nonzero,
                       PD_INFER_SPMD(phi::distributed::NonZeroInferSpmd),
@@ -790,4 +797,10 @@ PD_REGISTER_SPMD_RULE(
 PD_REGISTER_SPMD_RULE(roi_align,
                       PD_INFER_SPMD(phi::distributed::RoiAlignInferSpmd),
                       PD_INFER_SPMD(phi::distributed::RoiAlignGradInferSpmd));
+
+// fused gemm epilogue
+PD_REGISTER_SPMD_RULE(
+    fused_gemm_epilogue,
+    PD_INFER_SPMD(phi::distributed::FusedGemmEpilogueInferSpmdBase));
+
 }  // namespace phi::distributed
