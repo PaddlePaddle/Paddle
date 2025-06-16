@@ -325,7 +325,7 @@ void ScanKernel(const Context& dev_ctx,
   for (size_t i = axis + 1; i < out_dims.size(); i++) {
     width *= out_dims[i];
   }
-  int scan_size = out_dims[axis];
+  int64_t scan_size = out_dims[axis];
   bool transpose = (axis != out_dims.size() - 1);
 
   DenseTensor tmp_tensor;
@@ -341,7 +341,7 @@ void ScanKernel(const Context& dev_ctx,
   int64_t max_grid_x = dev_ctx.GetCUDAMaxGridDimSize()[0];
 
   // Do pre-process transpose
-  int tile_size = 32;
+  int64_t tile_size = 32;
   dim3 blocks(32, 8);
   int64_t transpose_grids = ((width + tile_size - 1) / tile_size) *
                             ((height + tile_size - 1) / tile_size);
