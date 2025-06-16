@@ -70,6 +70,9 @@ template DataType InferSpmdContext::AttrAt(size_t idx) const;
 
 template <>
 bool InferSpmdContext::AttrAt(size_t idx) const {
+  if (idx >= attrs_.size()) {
+    return false;
+  }
   try {
     auto attr = attrs_.at(idx);
     if (attr.type() == typeid(int)) {
