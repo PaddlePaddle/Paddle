@@ -24,34 +24,34 @@ namespace phi {
 using phi::PADDLE_CUDA_NUM_THREADS;
 
 template <typename T>
-__global__ void Pad3DGradConstNCDHW(const int in_size,
+__global__ void Pad3DGradConstNCDHW(const int64_t in_size,
                                     T* d_in_data,
-                                    const int num,
-                                    const int channels,
-                                    const int in_depth,
-                                    const int in_height,
-                                    const int in_width,
-                                    const int out_depth,
-                                    const int out_height,
-                                    const int out_width,
-                                    const int pad_front,
-                                    const int pad_top,
-                                    const int pad_left,
+                                    const int64_t num,
+                                    const int64_t channels,
+                                    const int64_t in_depth,
+                                    const int64_t in_height,
+                                    const int64_t in_width,
+                                    const int64_t out_depth,
+                                    const int64_t out_height,
+                                    const int64_t out_width,
+                                    const int64_t pad_front,
+                                    const int64_t pad_top,
+                                    const int64_t pad_left,
                                     const T* d_out_data) {
-  CUDA_KERNEL_LOOP(in_index, in_size) {
-    const int in_w = in_index % in_width;
+  CUDA_KERNEL_LOOP_TYPE(in_index, in_size, int64_t) {
+    const int64_t in_w = in_index % in_width;
 
     int nc = in_index / in_width;
-    const int in_h = nc % in_height;
+    const int64_t in_h = nc % in_height;
 
     nc /= in_height;
-    const int in_d = nc % in_depth;
+    const int64_t in_d = nc % in_depth;
 
     nc /= in_depth;
 
-    const int out_d = in_d + pad_front;
-    const int out_h = in_h + pad_top;
-    const int out_w = in_w + pad_left;
+    const int64_t out_d = in_d + pad_front;
+    const int64_t out_h = in_h + pad_top;
+    const int64_t out_w = in_w + pad_left;
     d_in_data[in_index] =
         d_out_data[nc * out_depth * out_height * out_width +
                    out_d * out_height * out_width + out_h * out_width + out_w];
@@ -59,36 +59,36 @@ __global__ void Pad3DGradConstNCDHW(const int in_size,
 }
 
 template <typename T>
-__global__ void Pad3DGradConstNDHWC(const int in_size,
+__global__ void Pad3DGradConstNDHWC(const int64_t in_size,
                                     T* d_in_data,
-                                    const int num,
-                                    const int channels,
-                                    const int in_depth,
-                                    const int in_height,
-                                    const int in_width,
-                                    const int out_depth,
-                                    const int out_height,
-                                    const int out_width,
-                                    const int pad_front,
-                                    const int pad_top,
-                                    const int pad_left,
+                                    const int64_t num,
+                                    const int64_t channels,
+                                    const int64_t in_depth,
+                                    const int64_t in_height,
+                                    const int64_t in_width,
+                                    const int64_t out_depth,
+                                    const int64_t out_height,
+                                    const int64_t out_width,
+                                    const int64_t pad_front,
+                                    const int64_t pad_top,
+                                    const int64_t pad_left,
                                     const T* d_out_data) {
-  CUDA_KERNEL_LOOP(in_index, in_size) {
-    const int c = in_index % channels;
-    int n = in_index / channels;
+  CUDA_KERNEL_LOOP_TYPE(in_index, in_size, int64_t) {
+    const int64_t c = in_index % channels;
+    int64_t n = in_index / channels;
 
-    const int in_w = n % in_width;
+    const int64_t in_w = n % in_width;
     n /= in_width;
 
-    const int in_h = n % in_height;
+    const int64_t in_h = n % in_height;
     n /= in_height;
 
     const int in_d = n % in_depth;
     n /= in_depth;
 
-    const int out_d = in_d + pad_front;
-    const int out_h = in_h + pad_top;
-    const int out_w = in_w + pad_left;
+    const int64_t out_d = in_d + pad_front;
+    const int64_t out_h = in_h + pad_top;
+    const int64_t out_w = in_w + pad_left;
 
     d_in_data[in_index] =
         d_out_data[n * out_depth * out_height * out_width * channels +
@@ -352,9 +352,9 @@ void Pad3dGradKernel(const Context& dev_ctx,
 
   auto stream = dev_ctx.stream();
   int block = PADDLE_CUDA_NUM_THREADS;
-  const int out_size = d_out->numel();
-  const int in_size = d_in->numel();
-  int grid = (out_size + block - 1) / block;
+  const size_t out_size = d_out->numel();
+  const size_t in_size = d_in->numel();
+  uint32_t grid = (out_size + block - 1) / block;
 
   if (data_format == "NCDHW") {
     const int channels = d_in_dims[1];
