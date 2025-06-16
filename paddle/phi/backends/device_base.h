@@ -25,8 +25,8 @@ namespace phi {
 
 struct DeviceProp {
   std::string name;
-  int major = 0;
-  int minor = 0;
+  int DeviceMajor = 0;
+  int DeviceMinor = 0;
   size_t totalGlobalMem = 0;
   int multiProcessorCount = 0;
   bool isMultiGpuBoard = false;
@@ -35,15 +35,15 @@ struct DeviceProp {
   DeviceProp() = default;
 
   DeviceProp(const std::string& name_,
-             int major_,
-             int minor_,
+             int DeviceMajor_,
+             int DeviceMinor_,
              size_t totalGlobalMem_,
              int multiProcessorCount_,
              bool isMultiGpuBoard_,
              bool integrated_)
       : name(name_),
-        major(major_),
-        minor(minor_),
+        DeviceMajor(DeviceMajor_),
+        DeviceMinor(DeviceMinor_),
         totalGlobalMem(totalGlobalMem_),
         multiProcessorCount(multiProcessorCount_),
         isMultiGpuBoard(isMultiGpuBoard_),
