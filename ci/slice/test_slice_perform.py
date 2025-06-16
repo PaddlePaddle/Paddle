@@ -826,7 +826,7 @@ def main():
         ]
     }
 
-    n_repeat = 80
+    n_repeat = 50
     n_warmup = 5
 
     print(" n_repeat = ", n_repeat)

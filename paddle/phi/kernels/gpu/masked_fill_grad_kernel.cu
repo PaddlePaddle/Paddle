@@ -26,11 +26,13 @@
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/expand_grad_kernel.h"
 #include "paddle/phi/kernels/expand_kernel.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
 #include "paddle/phi/kernels/funcs/common_infer_shape_functions.h"
 #include "paddle/phi/kernels/primitive/kernel_primitives.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
 #include "paddle/phi/kernels/scale_kernel.h"
+#include "paddle/phi/kernels/where_kernel.h"
 
 namespace phi {
 template <typename T, int VecSize>
@@ -193,6 +195,36 @@ void DispatchMaskFillGradKernel(
 }
 
 template <typename T>
+void DispatchMaskFillOneValueGradKernel(
+    const phi::GPUContext& dev_ctx,
+    const T* input,
+    const bool* mask,
+    const int64_t input_len,
+    const int64_t batch_size,
+    T* x_grad,
+    int vec_size,
+    const phi::backends::gpu::GpuLaunchConfig& config) {
+  auto stream = dev_ctx.stream();
+  if (x_grad) {
+    switch (vec_size) {
+#define CASE_VECSIZE(__Vs)                                               \
+  case __Vs:                                                             \
+    GPUMaskedFillXGradKernel<T, __Vs>                                    \
+        <<<config.block_per_grid, config.thread_per_block, 0, stream>>>( \
+            input, mask, input_len, batch_size, x_grad);                 \
+    break;
+      CASE_VECSIZE(1)
+      CASE_VECSIZE(2)
+      CASE_VECSIZE(4)
+#undef CASE_VECSIZE
+      default:
+        PADDLE_THROW(common::errors::Unimplemented(
+            "Unsupported vectorized size: %d", vec_size));
+    }
+  }
+}
+
+template <typename T>
 void GPUMaskedFillGrad(const phi::GPUContext& dev_ctx,
                        const DenseTensor& out_grad,
                        const DenseTensor& mask,
@@ -227,15 +259,40 @@ void GPUMaskedFillGrad(const phi::GPUContext& dev_ctx,
   auto config =
       phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, input_len, vec_size);
 
-  DispatchMaskFillGradKernel<T>(dev_ctx,
-                                out_grad_data,
-                                mask_data,
-                                input_len,
-                                batch_size,
-                                x_grad_data,
-                                value_grad_data,
-                                vec_size,
-                                config);
+  if (value_grad && value_grad->numel() == 1) {
+    DispatchMaskFillOneValueGradKernel<T>(dev_ctx,
+                                          out_grad_data,
+                                          mask_data,
+                                          input_len,
+                                          batch_size,
+                                          x_grad_data,
+                                          vec_size,
+                                          config);
+    if (value_grad) {
+      DenseTensor zero_tensor;
+      FullLikeKernel<T, phi::GPUContext>(
+          dev_ctx, out_grad, Scalar(T(0.0)), out_grad.dtype(), &zero_tensor);
+      DenseTensor value_grad_tensor;
+      value_grad_tensor.set_meta(out_grad.meta());
+      WhereKernel<T, phi::GPUContext>(
+          dev_ctx, mask, out_grad, zero_tensor, &value_grad_tensor);
+      std::cout << "value_grad " << value_grad->numel() << std::endl;
+      SumKernel<T, phi::GPUContext>(
+          dev_ctx, value_grad_tensor, {1}, out_grad.dtype(), false, value_grad);
+      std::cout << "value_grad " << value_grad->numel() << std::endl;
+    }
+
+  } else {
+    DispatchMaskFillGradKernel<T>(dev_ctx,
+                                  out_grad_data,
+                                  mask_data,
+                                  input_len,
+                                  batch_size,
+                                  x_grad_data,
+                                  value_grad_data,
+                                  vec_size,
+                                  config);
+  }
 }
 
 template <typename T, typename Context>
@@ -246,6 +303,9 @@ void MaskedFillGradKernel(const Context& dev_ctx,
                           const DenseTensor& out_grad,
                           DenseTensor* x_grad,
                           DenseTensor* v_grad) {
+  // std::cout << "o_g " << out_grad.numel() << " mask  " <<  mask.numel() <<
+  // std::endl; std::cout << "x_g " << x_grad->numel() << " v_grad " <<
+  // v_grad->numel() << std::endl;
   if (out_grad.numel() == 0 || mask.numel() == 0) {
     if (x_grad != nullptr) {
       x_grad->Resize({0});
@@ -273,7 +333,10 @@ void MaskedFillGradKernel(const Context& dev_ctx,
   auto expanded_dims = common::make_ddim(expanded_size);
 
   bool flag = funcs::CanDispatchMaskFillShortcut(out_grad_dims, mask_dims);
-  if (expanded_dims != x_grad_dims) flag = false;
+  if (expanded_dims != x_grad_dims ||
+      (v_grad->dims() != expanded_dims && v_grad->numel() != 1))
+    flag = false;
+  std::cout << "flag: " << flag << std::endl;
   if (x_grad) {
     dev_ctx.template Alloc<T>(x_grad);
   }
