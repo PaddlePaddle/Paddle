@@ -24,13 +24,13 @@ template <typename T, int Rank>
 struct EigenPad<Eigen::GpuDevice, T, Rank> {
   using Array = std::array<std::pair<int64_t, int64_t>, Rank>;
   using Array32Bit = std::array<std::pair<int, int>, Rank>;
-  using InType =
-      Eigen::TensorMap<Eigen::Tensor<const T, Rank, Eigen::RowMajor, int64_t>>;
+  using InType = Eigen::TensorMap<
+      Eigen::Tensor<const T, Rank, Eigen::RowMajor, Eigen::DenseIndex>>;
   using InType32BitIndex =
       Eigen::TensorMap<Eigen::Tensor<const T, Rank, Eigen::RowMajor, int>,
                        Eigen::Aligned>;
-  using OutType =
-      Eigen::TensorMap<Eigen::Tensor<T, Rank, Eigen::RowMajor, int64_t>>;
+  using OutType = Eigen::TensorMap<
+      Eigen::Tensor<T, Rank, Eigen::RowMajor, Eigen::DenseIndex>>;
   using OutType32BitIndex =
       Eigen::TensorMap<Eigen::Tensor<T, Rank, Eigen::RowMajor, int>,
                        Eigen::Aligned>;
