@@ -201,6 +201,10 @@ PD_REGISTER_SPMD_RULE(
     PD_INFER_SPMD(phi::distributed::ElementwiseUnaryInferSpmd),
     PD_INFER_SPMD(phi::distributed::ElementwiseUnaryInferSpmdReverse));
 PD_REGISTER_SPMD_RULE(
+    gelu,
+    PD_INFER_SPMD(phi::distributed::ElementwiseUnaryInferSpmd),
+    PD_INFER_SPMD(phi::distributed::ElementwiseUnaryInferSpmdReverse));
+PD_REGISTER_SPMD_RULE(
     hardshrink,
     PD_INFER_SPMD(phi::distributed::ElementwiseUnaryInferSpmd),
     PD_INFER_SPMD(phi::distributed::ElementwiseUnaryInferSpmdReverse));
@@ -696,11 +700,6 @@ PD_REGISTER_SPMD_RULE(
     gather_nd,
     PD_INFER_SPMD(phi::distributed::GatherNdInferSpmd),
     PD_INFER_SPMD(phi::distributed::GatherNdInferSpmdReverse));
-
-// gelu
-PD_REGISTER_SPMD_RULE(gelu,
-                      PD_INFER_SPMD(phi::distributed::GeluInferSpmd),
-                      PD_INFER_SPMD(phi::distributed::GeluGradInferSpmd));
 
 // one_hot
 PD_REGISTER_SPMD_RULE(one_hot,
