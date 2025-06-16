@@ -124,7 +124,7 @@ jobs:
           git config pull.rebase false
           git checkout test
           echo "Pull upstream develop"
-          git pull upstream $BRANCH --no-edit
+          bash ci/git_pull.sh $BRANCH
           '
 
       - name: Run build
