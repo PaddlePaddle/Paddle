@@ -62,9 +62,8 @@ def is_deep_ep_supported():
 
 def bench(fn, num_warmups: int = 20, num_tests: int = 30, post_fn=None):
     # Flush L2 cache with 256 MB data
-    paddle.device.cuda.synchronize()
+    paddle.device.synchronize()
     cache = paddle.empty([int(256e6 // 4)], dtype=paddle.int32)
-
     # Warmup
     for _ in range(num_warmups):
         fn()
@@ -86,7 +85,7 @@ def bench(fn, num_warmups: int = 20, num_tests: int = 30, post_fn=None):
         end_events[i].record()
         if post_fn is not None:
             post_fn()
-    paddle.device.cuda.synchronize()
+    paddle.device.synchronize()
 
     times = np.array(
         [s.elapsed_time(e) / 1e3 for s, e in zip(start_events, end_events)]
@@ -164,6 +163,7 @@ def test_main(
         shape=[num_tokens, hidden], dtype=paddle.bfloat16
     )
     x_e4m3 = per_token_cast_to_fp8(x)
+
     scores = (
         paddle.randn([num_tokens, num_experts], dtype=paddle.float32).abs() + 1
     )
@@ -211,6 +211,7 @@ def test_main(
         token_idx_in_rank[i][tokens[:count]] = paddle.arange(
             count, dtype=paddle.int64
         )
+
     token_idx_in_rank = token_idx_in_rank.t().contiguous().cast(paddle.int32)
     is_token_in_rank = token_idx_in_rank >= 0
     gbl_num_tokens_per_rank = num_tokens_per_rank.clone()
@@ -223,10 +224,15 @@ def test_main(
         ref_is_token_in_rank,
         _,
     ) = buffer.get_dispatch_layout(topk_idx, num_experts)
+
     assert paddle.allclose(ref_num_tokens_per_rank, num_tokens_per_rank)
     assert paddle.allclose(ref_num_tokens_per_expert, num_tokens_per_expert)
     assert paddle.allclose(ref_is_token_in_rank, is_token_in_rank)
+
     t = bench(lambda: buffer.get_dispatch_layout(topk_idx, num_experts))[0]
+    if local_rank == 0:
+        print(f'[layout] Kernel performance: {t * 1000:.3f} ms', flush=True)
+        print()
     paddle.distributed.barrier(group)
     time.sleep(1)
 
@@ -246,10 +252,34 @@ def test_main(
             ).sum().item() == 0
             check_start = check_end
 
+    wsm_a = paddle.randn([num_tokens, hidden], dtype=paddle.bfloat16)
+    wsm_b = paddle.randn([hidden, num_tokens], dtype=paddle.bfloat16)
+
     for previous_mode in (False, True):
         for async_mode in (False, True):
             for current_x in (x_pure_rand, x, x_e4m3):
+
+                paddle.base.core.nvprof_nvtx_push("gemm")
+                wsm_out = paddle.matmul(wsm_a, wsm_b)
+                paddle.base.core.nvprof_nvtx_pop()
+
+                paddle.base.core.nvprof_nvtx_push("wsm_all2all")
+                wsm_all2all_out = paddle.empty_like(wsm_out)
+                paddle.distributed.alltoall_single(
+                    wsm_all2all_out, wsm_out, group=group, sync_op=False
+                )
+                paddle.base.core.nvprof_nvtx_pop()
+
                 for with_topk in (False, True):
+                    if local_rank == 0:
+                        print(
+                            f'[testing] Running with {"FP8" if isinstance(current_x, tuple) else "BF16"}, '
+                            f'{"with" if with_topk else "without"} top-k '
+                            f'(async={async_mode}, previous={previous_mode}) ...',
+                            flush=True,
+                            end='',
+                        )
+
                     dispatch_args = {
                         'x': current_x,
                         'num_tokens_per_rank': num_tokens_per_rank,
@@ -273,6 +303,7 @@ def test_main(
                         dispatch_args.update(
                             {'previous_event': buffer.capture()}
                         )
+
                     (
                         recv_x,
                         recv_topk_idx,
@@ -327,6 +358,7 @@ def test_main(
                             )[
                                 recv_topk_idx.equal(-1)
                             ]
+
                             # check_data(recv_topk_weights, rank_prefix_matrix)
 
                     # Test cached dispatch (must without top-k staffs)
@@ -387,6 +419,7 @@ def test_main(
 
                     if local_rank == 0:
                         print(' passed', flush=True)
+
     if local_rank == 0:
         print()
 
@@ -406,6 +439,16 @@ def test_main(
             t = bench(lambda: buffer.dispatch(**tune_args))[0]
             if t < best_time:
                 best_time, best_results = t, (num_sms, nvl_chunk_size)
+            if local_rank == 0:
+                print(
+                    f'[tuning] SMs {num_sms}, NVL chunk {nvl_chunk_size}: {nvl_recv_bytes / 1e9 / t:.2f} GB/s (NVL) '
+                )
+        if local_rank == 0:
+            print(
+                f'[tuning] Best dispatch ({"FP8" if isinstance(current_x, tuple) else "BF16"}): SMs {best_results[0]}, '
+                f'NVL chunk {best_results[1]}, {nvl_recv_bytes / 1e9 / best_time:.2f} GB/s (NVL)'
+            )
+            print()
 
         if isinstance(current_x, tuple):
             # Gather FP8 the best config from rank 0
@@ -422,6 +465,7 @@ def test_main(
                 group=group,
             )
             best_dispatch_results = all_best_fp8_results_list[0].tolist()
+
     dispatch_config = Config(
         best_dispatch_results[0], best_dispatch_results[1], nvl_buffer_size
     )
@@ -442,8 +486,17 @@ def test_main(
         tune_args = {'x': recv_x, 'handle': handle, 'config': config}
         t = bench(lambda: buffer.combine(**tune_args))[0]
         if local_rank == 0:
+            print(
+                f'[tuning] SMs {num_sms}, NVL chunk {nvl_chunk_size}: {combine_bf16_nvl_send_bytes / 1e9 / t:.2f} GB/s (NVL) '
+            )
             if t < best_time:
                 best_time, best_results = t, (num_sms, nvl_chunk_size)
+
+    if local_rank == 0:
+        print(
+            f'[tuning] Best combine: SMs {best_results[0]}, NVL chunk {best_results[1]}: {combine_bf16_nvl_send_bytes / 1e9 / best_time:.2f} GB/s (NVL)'
+        )
+        print()
 
 
 @unittest.skipIf(
@@ -452,13 +505,27 @@ def test_main(
     "and device's compute capability must be 9.0",
 )
 class TestCollectiveDeepEPAllToAllIntranode(TestDistBase):
-    def test_loop():
+    def test_loop(self):
+        mp_degree = 8
+
+        strategy = fleet.DistributedStrategy()
+
+        strategy.hybrid_configs = {
+            "mp_degree": mp_degree,
+        }
+
+        fleet.init(is_collective=True, strategy=strategy)
+
         hcg = fleet.get_hybrid_communicate_group()
         ep_group = hcg.get_model_parallel_group()
         local_rank = dist.get_rank(ep_group)
         num_local_ranks = dist.get_world_size(ep_group)
         rank = local_rank
         num_ranks = num_local_ranks
+        print(
+            f'local_rank:{local_rank}, num_local_ranks:{num_local_ranks}, num_ranks:{num_ranks}, rank:{rank}'
+        )
+
         paddle.seed(rank)
 
         test_ll_compatibility, num_rdma_bytes = False, 0
@@ -493,6 +560,8 @@ class TestCollectiveDeepEPAllToAllIntranode(TestDistBase):
                 buffer,
                 ep_group,
             )
+            if local_rank == 0:
+                print()
 
 
 if __name__ == "__main__":
