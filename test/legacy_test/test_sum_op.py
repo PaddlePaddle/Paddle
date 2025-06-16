@@ -936,7 +936,7 @@ class TestSum_BoolToInt64_ZeroSize(unittest.TestCase):
     ):
         self.assertTrue(
             (dygraph_result == expected_result).all(),
-            f"Static Mode - Shape: {self.shape}, Axis: {axis}, Keepdim: {keepdim}, Dtype: {dtype}, Place: {place}",
+            f"Shape: {self.shape}, Axis: {axis}, Keepdim: {keepdim}, Dtype: {dtype}, Place: {place}",
         )
 
     def _test_dygraph(self, place, axis, keepdim, dtype):
