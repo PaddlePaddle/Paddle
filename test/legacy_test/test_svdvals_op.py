@@ -121,14 +121,16 @@ class TestSvdvalsAPI(unittest.TestCase):
             )
 
     def test_static_api(self):
-        with static_guard():
-            with paddle.static.program_guard(
+        with (
+            static_guard(),
+            paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
-            ):
-                x = paddle.static.data('x', [10, 12], dtype='float32')
-                s = paddle.linalg.svdvals(x)
-                exe = paddle.static.Executor(self.place)
-                res = exe.run(feed={'x': self.x_np}, fetch_list=[s])
+            ),
+        ):
+            x = paddle.static.data('x', [10, 12], dtype='float32')
+            s = paddle.linalg.svdvals(x)
+            exe = paddle.static.Executor(self.place)
+            res = exe.run(feed={'x': self.x_np}, fetch_list=[s])
 
         np_s = np.linalg.svd(self.x_np, compute_uv=False, hermitian=False)
         for r in res:

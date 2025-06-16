@@ -1034,7 +1034,9 @@ class ResumeFunctionCreator:
     @staticmethod
     def validate_code(code):
         if len(code.co_freevars) + len(code.co_cellvars) > 0:
-            raise FallbackError("Break graph in closure is not support.")
+            raise FallbackError(
+                f"Break graph in closure is not support.\n`co_freevars`: {code.co_freevars}\n`co_cellvars`: {code.co_cellvars}"
+            )
 
     def lookup(self, cache_key):
         if cache_key in self.CODE_CACHE:

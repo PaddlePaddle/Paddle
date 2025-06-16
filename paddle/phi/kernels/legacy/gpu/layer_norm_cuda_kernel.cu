@@ -13,7 +13,6 @@
 // limitations under the License.
 #include <cassert>
 #include <vector>
-#include "paddle/common/exception.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/empty_kernel.h"  // NOLINT
 
@@ -23,7 +22,6 @@
 #include "paddle/phi/kernels/legacy/gpu/layer_norm_cuda_kernel.h"  // NOLINT
 
 namespace phi {
-// #define CHECK_CUDA(x) PD_CHECK(!x.is_cpu(), #x " must be a CUDA tensor")
 
 static void GetRowsCols(const std::vector<int64_t> &shape,
                         int *p_rows,
@@ -45,18 +43,14 @@ void RMSLnFwd(const Context &dev_ctx,
               DenseTensor *y,
               DenseTensor *invvar) {
   const auto &scale_shape = scale.dims();
-  const auto &x_shape = x.dims();
-  PD_CHECK(scale_shape.size() == 1);
-  PD_CHECK(scale_shape[0] == x_shape[x_shape.size() - 1]);
-
   int rows, cols;
-  rows = x_shape[0];
-  cols = x_shape[1];
-  // GetRowsCols(x_shape, &rows, &cols);
-
-  *y = phi::EmptyLike<T, Context>(dev_ctx, x);
-  *invvar = phi::Empty<float, Context>(dev_ctx, {rows});
-
+  GetRowsCols(common::vectorize(x.dims()), &rows, &cols);
+  if (scale.dtype() == phi::DataType::BFLOAT16)
+    dev_ctx.template Alloc<phi::bfloat16>(y);
+  else if (scale.dtype() == phi::DataType::FLOAT32)
+    dev_ctx.template Alloc<float>(y);
+  invvar->Resize({rows});
+  dev_ctx.template Alloc<float>(invvar);
   cuda_rms_norm<T, Context>(dev_ctx, x, scale, rows, cols, epsilon, y, invvar);
 }
 
@@ -70,27 +64,60 @@ void RMSLnBwd(const Context &dev_ctx,
               DenseTensor *x_grad,
               DenseTensor *scale_grad) {
   int rows, cols;
-  const auto &x_shape = x.dims();
-  rows = x_shape[0];
-  cols = x_shape[1];
+  GetRowsCols(common::vectorize(x.dims()), &rows, &cols);
   dev_ctx.template Alloc<T>(x_grad);
-  dev_ctx.template Alloc<T>(scale_grad);
-  cuda_rms_norm_gradient<T, Context>(dev_ctx,
-                                     x,
-                                     scale,
-                                     invvar,
-                                     y_grad,
-                                     rows,
-                                     cols,
-                                     epsilon,
-                                     x_grad,
-                                     scale_grad);
+  if (scale_grad) {
+    if (scale.dtype() == phi::DataType::BFLOAT16) {
+      dev_ctx.template Alloc<phi::bfloat16>(scale_grad);
+    } else if (scale.dtype() == phi::DataType::FLOAT32) {
+      dev_ctx.template Alloc<float>(scale_grad);
+    }
+  } else {
+    // lora specific
+    if (scale.dtype() == phi::DataType::BFLOAT16) {
+      DenseTensor scale_grad_tmp =
+          phi::EmptyLike<phi::bfloat16, Context>(dev_ctx, scale);
+      cuda_rms_norm_gradient<T, Context>(dev_ctx,
+                                         x,
+                                         scale,
+                                         invvar,
+                                         y_grad,
+                                         rows,
+                                         cols,
+                                         epsilon,
+                                         x_grad,
+                                         &scale_grad_tmp);
+    } else if (scale.dtype() == phi::DataType::FLOAT32) {
+      DenseTensor scale_grad_tmp =
+          phi::EmptyLike<float, Context>(dev_ctx, scale);
+      cuda_rms_norm_gradient<T, Context>(dev_ctx,
+                                         x,
+                                         scale,
+                                         invvar,
+                                         y_grad,
+                                         rows,
+                                         cols,
+                                         epsilon,
+                                         x_grad,
+                                         &scale_grad_tmp);
+    }
+  }
 }
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    fused_rms_norm_ext, GPU, ALL_LAYOUT, phi::RMSLnFwd, float, double) {}
+PD_REGISTER_KERNEL(fused_rms_norm_ext,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::RMSLnFwd,
+                   float,
+                   double,
+                   phi::dtype::bfloat16) {}
 
-PD_REGISTER_KERNEL(
-    fused_rms_norm_ext_grad, GPU, ALL_LAYOUT, phi::RMSLnBwd, float, double) {}
+PD_REGISTER_KERNEL(fused_rms_norm_ext_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::RMSLnBwd,
+                   float,
+                   double,
+                   phi::dtype::bfloat16) {}

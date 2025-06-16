@@ -85,12 +85,14 @@ void TileGradKernel(const Context& dev_ctx,
     // std::vector<int64_t>& xshape, const std::vector<int64_t>& rdims)
     const auto* out_data = reinterpret_cast<const XPUType*>(out_grad.data<T>());
     auto* x_grad_data = reinterpret_cast<XPUType*>(x_grad->data<T>());
-    int r = xpu::reduce_sum<XPUType>(dev_ctx.x_context(),
-                                     out_data,
-                                     x_grad_data,
-                                     reshape_dims_vec,
-                                     reduce_dims_vec);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "reduce_sum");
+    if (x_grad->numel() > 0) {
+      int r = xpu::reduce_sum<XPUType>(dev_ctx.x_context(),
+                                       out_data,
+                                       x_grad_data,
+                                       reshape_dims_vec,
+                                       reduce_dims_vec);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "reduce_sum");
+    }
   }
 }
 

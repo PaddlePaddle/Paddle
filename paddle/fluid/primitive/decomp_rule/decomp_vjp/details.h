@@ -1076,6 +1076,78 @@ void softmax_grad(const Tensor& out,
 }
 
 template <typename T>
+void masked_fill_grad(const Tensor& x,
+                      const Tensor& mask,
+                      const Tensor& value,
+                      const Tensor& out_grad,
+                      Tensor* x_grad,
+                      Tensor* value_grad) {
+  /**
+   * dx_i = dy_i if mask_i = 0 else 0
+   * dv = \sum{dy_i if mask_i = 1}
+   */
+  if (has_dynamic_shape(x.shape()) || has_dynamic_shape(mask.shape())) {
+    Tensor out_dims = shape64<T>(out_grad);
+    Tensor mask_expand = backend::expand<T>(mask, out_dims);
+    Tensor zeros_expand = backend::full_with_tensor<T>(
+        out_dims, 0, out_grad.dtype(), out_grad.place());
+
+    if (x_grad) {
+      Tensor x_grad_expand = where<T>(mask_expand, zeros_expand, out_grad);
+      Tensor x_grad_tmp = reduce_as<T>(x_grad_expand, x);
+      set_output<T>(x_grad_tmp, x_grad);
+    }
+
+    if (value_grad) {
+      Tensor value_grad_expand = where<T>(mask_expand, out_grad, zeros_expand);
+      Tensor value_grad_tmp =
+          sum<T>(value_grad_expand, {}, value.dtype(), false);
+      set_output<T>(value_grad_tmp, value_grad);
+    }
+
+  } else {
+    // expand mask to match x.shape
+    auto expanded_dims = out_grad.dims();
+    auto expanded_dims_vec = common::vectorize(expanded_dims);
+    Tensor mask_expand;
+    if (mask.dims() != expanded_dims) {
+      mask_expand = expand<T>(mask, expanded_dims_vec);
+    } else {
+      mask_expand = mask;
+    }
+    Tensor zeros_expand =
+        full<T>(expanded_dims_vec, 0, out_grad.dtype(), out_grad.place());
+
+    if (x_grad) {
+      Tensor x_grad_expand = where<T>(mask_expand, zeros_expand, out_grad);
+      if (x.dims() != x_grad_expand.dims()) {
+        auto reduce_dim =
+            get_reduce_dims_from_out(x_grad_expand.dims(), x.dims());
+        if (!reduce_dim.size()) {
+          set_output<T>(x_grad_expand, x_grad);
+        } else {
+          Tensor x_grad_tmp = sum<T>(
+              x_grad_expand, common::vectorize(reduce_dim), x.dtype(), false);
+          if (x_grad_tmp.dims() != x.dims()) {
+            x_grad_tmp = reshape<T>(x_grad_tmp, x.shape());
+          }
+          set_output<T>(x_grad_tmp, x_grad);
+        }
+      } else {
+        set_output<T>(x_grad_expand, x_grad);
+      }
+    }
+
+    if (value_grad) {
+      Tensor value_grad_expand = where<T>(mask_expand, out_grad, zeros_expand);
+      Tensor value_grad_tmp =
+          sum<T>(value_grad_expand, {}, value.dtype(), false);
+      set_output<T>(value_grad_tmp, value_grad);
+    }
+  }
+}
+
+template <typename T>
 void squeeze_grad(const Tensor& x,
                   const Tensor& out_grad,
                   const IntArray& axis,

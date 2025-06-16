@@ -316,26 +316,26 @@ class RecomputeFunction(PyLayer):
             # NOTE support AMP
             # need restore auto_cast state as well as w/b list
             if ctx.preserve_rng_state:
-                with switch_rng_state_tracker(
-                    ctx.fw_rng_state,
-                    ctx.fwd_rng_state_tracker,
-                    ctx.fwd_numpy_state,
-                    ctx.fwd_random_state,
-                    ctx.fwd_custom_state,
-                    ctx.custom_get_state_func,
-                    ctx.custom_set_state_func,
-                ):
-                    with paddle.amp.auto_cast(
+                with (
+                    switch_rng_state_tracker(
+                        ctx.fw_rng_state,
+                        ctx.fwd_rng_state_tracker,
+                        ctx.fwd_numpy_state,
+                        ctx.fwd_random_state,
+                        ctx.fwd_custom_state,
+                        ctx.custom_get_state_func,
+                        ctx.custom_set_state_func,
+                    ),
+                    paddle.amp.auto_cast(
                         enable=ctx.is_fw_autocast,
                         custom_white_list=ctx.amp_white_list,
                         custom_black_list=ctx.amp_black_list,
                         level=ctx.amp_level,
                         dtype=ctx.amp_dtype,
-                    ):
-                        detached_inputs = detach_variable(tuple(inputs))
-                        outputs = ctx.run_function(
-                            *detached_inputs, **ctx.kwargs
-                        )
+                    ),
+                ):
+                    detached_inputs = detach_variable(tuple(inputs))
+                    outputs = ctx.run_function(*detached_inputs, **ctx.kwargs)
             else:
                 with paddle.amp.auto_cast(
                     enable=ctx.is_fw_autocast,
@@ -502,27 +502,29 @@ def _recompute_without_reentrant(
                 raise Exception("An unexpected backward called on a tensor!")
 
             if preserve_rng_state:
-                with switch_rng_state_tracker(
-                    fw_cuda_rng_state,
-                    fwd_cuda_rng_state_tracker,
-                    fwd_numpy_state,
-                    fwd_random_state,
-                    fwd_custom_state,
-                    custom_get_state_func,
-                    custom_set_state_func,
+                with (
+                    switch_rng_state_tracker(
+                        fw_cuda_rng_state,
+                        fwd_cuda_rng_state_tracker,
+                        fwd_numpy_state,
+                        fwd_random_state,
+                        fwd_custom_state,
+                        custom_get_state_func,
+                        custom_set_state_func,
+                    ),
+                    paddle.set_grad_enabled(True),
+                    paddle.amp.auto_cast(
+                        enable=is_fw_autocast,
+                        custom_white_list=amp_white_list,
+                        custom_black_list=amp_black_list,
+                        level=amp_level,
+                        dtype=amp_dtype,
+                    ),
+                    paddle.autograd.saved_tensors_hooks(
+                        inner_pack, inner_unpack
+                    ),
                 ):
-                    with paddle.set_grad_enabled(True):
-                        with paddle.amp.auto_cast(
-                            enable=is_fw_autocast,
-                            custom_white_list=amp_white_list,
-                            custom_black_list=amp_black_list,
-                            level=amp_level,
-                            dtype=amp_dtype,
-                        ):
-                            with paddle.autograd.saved_tensors_hooks(
-                                inner_pack, inner_unpack
-                            ):
-                                function(*args, **kwargs)
+                    function(*args, **kwargs)
             else:
                 with (
                     paddle.set_grad_enabled(True),

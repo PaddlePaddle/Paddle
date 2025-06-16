@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/masked_fill_grad_kernel.h"
+#include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/funcs/masked_fill_utils.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
@@ -276,10 +277,8 @@ void GPUMaskedFillGrad(const phi::GPUContext& dev_ctx,
       value_grad_tensor.set_meta(out_grad.meta());
       WhereKernel<T, phi::GPUContext>(
           dev_ctx, mask, out_grad, zero_tensor, &value_grad_tensor);
-      std::cout << "value_grad " << value_grad->numel() << std::endl;
       SumKernel<T, phi::GPUContext>(
           dev_ctx, value_grad_tensor, {1}, out_grad.dtype(), false, value_grad);
-      std::cout << "value_grad " << value_grad->numel() << std::endl;
     }
 
   } else {
@@ -303,9 +302,6 @@ void MaskedFillGradKernel(const Context& dev_ctx,
                           const DenseTensor& out_grad,
                           DenseTensor* x_grad,
                           DenseTensor* v_grad) {
-  // std::cout << "o_g " << out_grad.numel() << " mask  " <<  mask.numel() <<
-  // std::endl; std::cout << "x_g " << x_grad->numel() << " v_grad " <<
-  // v_grad->numel() << std::endl;
   if (out_grad.numel() == 0 || mask.numel() == 0) {
     if (x_grad != nullptr) {
       x_grad->Resize({0});
@@ -336,7 +332,6 @@ void MaskedFillGradKernel(const Context& dev_ctx,
   if (expanded_dims != x_grad_dims ||
       (v_grad->dims() != expanded_dims && v_grad->numel() != 1))
     flag = false;
-  std::cout << "flag: " << flag << std::endl;
   if (x_grad) {
     dev_ctx.template Alloc<T>(x_grad);
   }
@@ -388,7 +383,6 @@ void MaskedFillGradKernel(const Context& dev_ctx,
         dev_ctx, value, v_grad_expand, IntArray(expanded_size), v_grad);
   }
 }
-
 }  // namespace phi
 
 PD_REGISTER_KERNEL(masked_fill_grad,
