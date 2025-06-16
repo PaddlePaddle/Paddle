@@ -31,7 +31,10 @@ def smooth_l1_loss_forward(val, delta):
 
 def smooth_l1_loss_np(input, label, reduction='mean', delta=1.0):
     diff = input - label
-    out = np.vectorize(smooth_l1_loss_forward)(diff, delta)
+    if input.size == 0:
+        out = input
+    else:
+        out = np.vectorize(smooth_l1_loss_forward)(diff, delta)
     if reduction == 'sum':
         return np.sum(out)
     elif reduction == 'mean':
