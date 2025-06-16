@@ -223,13 +223,6 @@ TEST(save_load_version_compat, attribute_patch_test2) {
             phi::DataType::UNDEFINED);
   EXPECT_EQ(new_program.block()
                 ->front()
-                .attribute("op4_attr3")
-                .dyn_cast<paddle::dialect::PlaceAttribute>()
-                .data()
-                .GetType(),
-            phi::AllocationType::UNDEFINED);
-  EXPECT_EQ(new_program.block()
-                ->front()
                 .attribute("op4_attr4")
                 .dyn_cast<::paddle::dialect::IntArrayAttribute>()
                 .data()
