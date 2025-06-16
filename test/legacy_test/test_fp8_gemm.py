@@ -173,7 +173,10 @@ def test_1D2D(out_dtype):
     )
 
     qresult_A = quantize_op.quantize(A, A_qparams)
-    qresult_B = quantize_op.quantize(B, B_qparams)
+    # qresult_B = quantize_op.quantize(B, B_qparams)
+    qresult_B = paddle.incubate.nn.functional.quantize(
+        B, input_transpose=False, output_scale_transpose=False
+    )
     qA, sA, qB, sB = (
         qresult_A.data,
         qresult_A.scale,

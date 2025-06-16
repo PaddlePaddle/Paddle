@@ -25,6 +25,7 @@ if TYPE_CHECKING:
 
 def fp8_quant_blockwise(
     X: Tensor,
+    epsilon: float = 0.0,
     input_transpose: bool = False,
     output_scale_transpose: bool = True,
     using_pow2_scale: bool = True,

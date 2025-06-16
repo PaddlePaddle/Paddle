@@ -357,6 +357,7 @@ void FrameInferMeta(const MetaTensor& x,
                     MetaConfig = MetaConfig());
 
 void Fp8QuantBlockwiseInferMeta(const MetaTensor& X,
+                                float epsilon,
                                 bool using_1x128_vec_quant,
                                 bool input_transpose,
                                 bool output_scale_transpose,
