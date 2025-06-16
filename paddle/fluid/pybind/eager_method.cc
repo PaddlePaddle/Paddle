@@ -1955,6 +1955,8 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
     std::vector<int> trans_back_dim, trans_dim;
 
     int pos_of_new_dim = INT_MAX, rank_of_new_dim = 1;
+    // Check if the value is a single value. Remove later.
+    bool single_value = value_tensor.numel() == 1;
 
     paddle::Tensor transed_sub_tensor =
         dealWithAdvancedIndex(sub_tensor,
@@ -1966,7 +1968,8 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
                               &pos_of_new_dim,
                               &rank_of_new_dim,
                               &trans_dim,
-                              &out_is_view);
+                              &out_is_view,
+                              single_value);
 
     // Release gil and do tracing
     py::gil_scoped_release release;
@@ -2005,6 +2008,7 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
         transed_sub_tensor =
             masked_fill__ad_func(transed_sub_tensor, mask_tensor, value_tensor);
       } else {
+        // Check if the index has bool element. Remove later.
         bool int_tensor_only = true;
         for (auto& index : transed_index) {
           if (index.dtype() == phi::DataType::BOOL) {
@@ -2013,8 +2017,7 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
         }
 #ifdef PADDLE_WITH_CUDA
         // TODO(czy): remove in the future
-        if (transed_sub_tensor.is_gpu() && value_tensor.numel() == 1 &&
-            int_tensor_only) {
+        if (transed_sub_tensor.is_gpu() && single_value && int_tensor_only) {
           transed_index = expand_outplace(transed_index);
           for (int i = 0; i < pos_of_new_dim; ++i) {
             transed_index.insert(
