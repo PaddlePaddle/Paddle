@@ -360,13 +360,13 @@ void Pad3dKernel(const Context& dev_ctx,
   out->Resize(out_dims);
   T* out_data = dev_ctx.template Alloc<T>(out);
 
-  int channels = in_dims[1];
-  int in_depth = in_dims[2];
-  int in_height = in_dims[3];
-  int in_width = in_dims[4];
-  int out_depth = out_dims[2];
-  int out_height = out_dims[3];
-  int out_width = out_dims[4];
+  int64_t channels = in_dims[1];
+  int64_t in_depth = in_dims[2];
+  int64_t in_height = in_dims[3];
+  int64_t in_width = in_dims[4];
+  int64_t out_depth = out_dims[2];
+  int64_t out_height = out_dims[3];
+  int64_t out_width = out_dims[4];
   if (data_format == "NDHWC") {
     channels = in_dims[4];
     in_depth = in_dims[1];
@@ -442,16 +442,15 @@ void Pad3dKernel(const Context& dev_ctx,
                           "or replicate padding mode."));
   }
 
-  const int pad_left = pads[0];
-  const int pad_top = pads[2];
-  const int pad_front = pads[4];
-  const int num = in_dims[0];
+  const int64_t pad_left = pads[0];
+  const int64_t pad_top = pads[2];
+  const int64_t pad_front = pads[4];
+  const int64_t num = in_dims[0];
 
   auto stream = dev_ctx.stream();
   int block = PADDLE_CUDA_NUM_THREADS;
   const size_t out_size = out->numel();
   uint32_t grid = (out_size + block - 1) / block;
-  std::cout << " grid " << grid << " block " << block << std::endl;
 
   bool use_int32_index = true;
   if (out_size > std::numeric_limits<int32_t>::max()) {
