@@ -135,7 +135,6 @@ class TestFusedMoePermuteUnpermute(unittest.TestCase):
                     scale,
                     expert_routemap_topk,
                     expert_prob_topk,
-                    topk=topk,
                     num_experts=expert_num,
                     tokens_per_expert=tokens_per_expert,
                     padding_alignment=128,
