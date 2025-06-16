@@ -510,7 +510,7 @@ foreach(arch ${NVCC_ARCH_BIN})
 endforeach()
 if(NOT WITH_GPU
    OR WITH_GPU
-   AND NOT has_arch_ge80
+   AND (NOT has_arch_ge80 OR (CUDA_VERSION VERSION_LESS 12.0))
    OR WIN32
    OR APPLE
    OR WITH_ROCM)
