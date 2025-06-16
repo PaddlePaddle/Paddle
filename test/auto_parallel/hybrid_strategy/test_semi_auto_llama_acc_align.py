@@ -96,37 +96,37 @@ class TestSemiAutoParallelLlamaCPTest(test_base.CommunicationTestDistBase):
             )
 
 
-# class TestSemiAutoParallelLlamaSEPTest(test_base.CommunicationTestDistBase):
-#     def setUp(self):
-#         super().setUp(num_of_devices=8, timeout=200, nnode=1)
+class TestSemiAutoParallelLlamaSEPTest(test_base.CommunicationTestDistBase):
+    def setUp(self):
+        super().setUp(num_of_devices=8, timeout=200, nnode=1)
 
-#     def test_dp2pp2sep2_hybrid_strategy_acc(self):
-#         # now not support mp with sep
-#         # TODO: something wrong with this case
-#         _default_envs = {
-#             "dp": "4",
-#             "mp": "1",
-#             "pp": "1",
-#             "sep": "2",
-#             "acc_step": "1",
-#             "FLAGS_embedding_deterministic": "1",
-#             "FLAGS_cudnn_deterministic": "1",
-#             "FLAGS_enable_pir_api": "1",
-#         }
-#         _changeable_envs = {
-#             "backend": ["gpu"],
-#             "sep_parallel": ["true"],
-#             "context_parallel": ["false"],
-#         }
-#         envs_list = test_base.gen_product_envs_list(
-#             _default_envs, _changeable_envs
-#         )
-#         self._log_dir.name = "./log_sep"
-#         for envs in envs_list:
-#             self.run_test_case(
-#                 "semi_auto_llama_acc_align.py",
-#                 user_defined_envs=envs,
-#             )
+    def test_dp2pp2sep2_hybrid_strategy_acc(self):
+        # now not support mp with sep
+        # TODO: something wrong with this case
+        _default_envs = {
+            "dp": "4",
+            "mp": "1",
+            "pp": "1",
+            "sep": "2",
+            "acc_step": "1",
+            "FLAGS_embedding_deterministic": "1",
+            "FLAGS_cudnn_deterministic": "1",
+            "FLAGS_enable_pir_api": "1",
+        }
+        _changeable_envs = {
+            "backend": ["gpu"],
+            "sep_parallel": ["true"],
+            "context_parallel": ["false"],
+        }
+        envs_list = test_base.gen_product_envs_list(
+            _default_envs, _changeable_envs
+        )
+        self._log_dir.name = "./log_sep"
+        for envs in envs_list:
+            self.run_test_case(
+                "semi_auto_llama_acc_align.py",
+                user_defined_envs=envs,
+            )
 
 
 if __name__ == "__main__":
