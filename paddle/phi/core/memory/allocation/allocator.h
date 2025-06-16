@@ -21,13 +21,16 @@
 
 #include "glog/logging.h"
 #include "paddle/common/flags.h"
-#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/allocator.h"
-#include "paddle/phi/core/cuda_stream.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/memory/allocation/inlined_vector.h"
 #include "paddle/phi/core/platform/device/gpu/gpu_types.h"
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/cuda_stream.h"
+#endif
 
 #ifdef PADDLE_WITH_NCCL
 #include <nccl.h>
