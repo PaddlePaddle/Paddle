@@ -151,9 +151,11 @@ class CoShard : public Shard {
     return os;
   }
 
-  std::shared_ptr<Shard> copy() const { return std::make_shared<Shard>(*this); }
+  std::shared_ptr<Shard> copy() const override {
+    return std::make_shared<Shard>(*this);
+  }
 
-  std::shared_ptr<Shard> deepcopy() const {
+  std::shared_ptr<Shard> deepcopy() const override {
     return std::make_shared<CoShard>(*this);
   }
 
