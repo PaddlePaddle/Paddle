@@ -30,17 +30,18 @@ def fused_stack_transpose_quant(
     """
     Fused operation that performs stacking, optional transposition, and quantization
     on a list of bfloat16 tensors.
-    This API supports both dynamic and static graph modes. In dynamic mode, it invokes
-    the corresponding C++ core op. In static mode, it appends the op manually to the graph.
+
     Args:
         x (list[Tensor] or tuple[Tensor]): A list or tuple of bfloat16 tensors, where each tensor
-            has shape `[M, N]`. All tensors should have the same shape and dtype.
+            has shape `[M, K]`. All tensors should have the same shape and dtype.
         transpose (bool, optional): If True, applies a transpose before quantization.
-            Default is False.
+            Default is True.
+
     Returns:
         tuple:
             - out (Tensor): The quantized output tensor with dtype `float8_e4m3fn`.
             - scale (Tensor): A float32 tensor representing the quantization scale.
+
     Examples:
         .. code-block:: python
 
