@@ -15,6 +15,8 @@
 import itertools
 import unittest
 
+import numpy as np
+
 import paddle
 from paddle.nn.functional import moe_permute, moe_unpermute
 
@@ -28,12 +30,12 @@ def fabricate_dispatch_result(
     broadcast_ratio=0.5,
 ):
     """Helper function to generate test data."""
-    tokens = paddle.randn([seqlen, token_length], dtype=data_type)
+    hidden_states = paddle.randn([seqlen, token_length], dtype=data_type)
 
-    tokens_scale = paddle.empty([0])
+    scale = paddle.empty([0])
     if data_type == "float8_e4m3fn":
         scale_cols = (token_length + 127) // 128
-        tokens_scale = paddle.randn([seqlen, scale_cols], dtype="float32")
+        scale = paddle.randn([seqlen, scale_cols], dtype="float32")
 
     # Calculate expert counts with normal distribution
     expected_experts = max(1, min(broadcast_ratio * num_experts, topk))
@@ -45,35 +47,35 @@ def fabricate_dispatch_result(
     experts_count = paddle.cast(experts_count, "int32")
 
     # Preallocate results
-    dispatched_indices = paddle.full([seqlen, topk], -1, dtype="int32")
-    dispatched_probs = paddle.zeros([seqlen, topk], dtype="float32")
+    expert_routemap_topk = paddle.full([seqlen, topk], -1, dtype="int32")
+    expert_prob_topk = paddle.zeros([seqlen, topk], dtype="float32")
 
     # Batch generate expert indices and probabilities
     for i in range(seqlen):
         count = experts_count[i].item()
         indices = paddle.randperm(num_experts)[:count]
-        dispatched_indices[i, :count] = indices
+        expert_routemap_topk[i, :count] = indices
         prob_value = 1.0 / count
-        dispatched_probs[i, :count] = paddle.full(
+        expert_prob_topk[i, :count] = paddle.full(
             [count], prob_value, dtype=data_type
         )
 
     # Calculate expert token counts
-    valid_indices = dispatched_indices.reshape([-1])
+    valid_indices = expert_routemap_topk.reshape([-1])
     valid_mask = valid_indices >= 0
     valid_experts = valid_indices[valid_mask]
-    expert_counts = paddle.histogram(
+    tokens_per_expert = paddle.histogram(
         valid_experts, bins=num_experts, min=0, max=num_experts - 1
     )
-    expert_counts = paddle.cast(expert_counts, "int32")
-    expert_counts = list(expert_counts)
+    tokens_per_expert = paddle.cast(tokens_per_expert, "int32")
+    tokens_per_expert = list(tokens_per_expert)
 
     return (
-        tokens,
-        tokens_scale,
-        dispatched_indices,
-        dispatched_probs,
-        expert_counts,
+        hidden_states,
+        scale,
+        expert_routemap_topk,
+        expert_prob_topk,
+        tokens_per_expert,
     )
 
 
@@ -106,11 +108,11 @@ class TestFusedMoePermuteUnpermute(unittest.TestCase):
         ):
             with self.subTest(dtype=dt, expert_num=expert_num, topk=topk):
                 (
-                    tokens,
-                    tokens_scale,
-                    dispatched_indices,
-                    dispatched_probs,
-                    expert_tokens_count,
+                    hidden_states,
+                    scale,
+                    expert_routemap_topk,
+                    expert_prob_topk,
+                    tokens_per_expert,
                 ) = fabricate_dispatch_result(
                     self.SEQLEN,
                     self.TOKEN_LEN,
@@ -120,7 +122,7 @@ class TestFusedMoePermuteUnpermute(unittest.TestCase):
                     broadcast_ratio=0.5,
                 )
                 if dt == "bfloat16":
-                    tokens_scale = None
+                    scale = None
 
                 # Permute step
                 (
@@ -129,48 +131,44 @@ class TestFusedMoePermuteUnpermute(unittest.TestCase):
                     unzipped_probs,
                     unzipped_scales,
                 ) = moe_permute(
-                    tokens,
-                    tokens_scale,
-                    dispatched_indices,
-                    dispatched_probs,
+                    hidden_states,
+                    scale,
+                    expert_routemap_topk,
+                    expert_prob_topk,
                     topk=topk,
                     num_experts=expert_num,
-                    tokens_per_expert=expert_tokens_count,
+                    tokens_per_expert=tokens_per_expert,
                     padding_alignment=128,
                 )
 
                 # Unpermute step
-                tokens_recovered, probs_recovered = moe_unpermute(
-                    (unzipped_tokens * unzipped_probs.unsqueeze(-1)).astype(
-                        "bfloat16"
-                    ),
-                    zipped_expertwise_rowmap,
-                    dispatched_indices,
-                    unzipped_probs,
-                    total_zipped_tokens=self.SEQLEN,
-                    num_experts=expert_num,
+                unzipped_tokens_recovered, expert_prob_topk_recovered = (
+                    moe_unpermute(
+                        (unzipped_tokens * unzipped_probs.unsqueeze(-1)).astype(
+                            "bfloat16"
+                        ),
+                        zipped_expertwise_rowmap,
+                        expert_routemap_topk,
+                        unzipped_probs,
+                        total_zipped_tokens=self.SEQLEN,
+                        num_experts=expert_num,
+                    )
                 )
 
                 # Check tensor recovery
                 max_abs_err, max_rel_err = tensor_max_abs_rel_err(
-                    tokens, tokens_recovered
+                    hidden_states, unzipped_tokens_recovered
                 )
                 self.assertLess(
-                    max_rel_err, 1e-2, "Tokens relative error too large"
+                    max_rel_err,
+                    1e-2,
+                    f"Tokens relative error too large, permute-unpermute tokens max relative error: {max_rel_err}",
                 )
 
-                max_abs_err, max_rel_err = tensor_max_abs_rel_err(
-                    dispatched_probs, probs_recovered
-                )
-                self.assertEqual(
-                    0,
-                    max_abs_err,
-                    f"Probs absolute error too large, permute-unpermute probs max absolute error: {max_abs_err}",
-                )
-                self.assertEqual(
-                    0,
-                    max_rel_err,
-                    f"Probs relative error too large, permute-unpermute probs max relative error: {max_rel_err}",
+                np.testing.assert_equal(
+                    expert_prob_topk._md5sum(),
+                    expert_prob_topk_recovered._md5sum(),
+                    err_msg="moe_permute_unpermute probs do not match",
                 )
 
 
