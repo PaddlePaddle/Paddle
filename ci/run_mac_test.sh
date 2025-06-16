@@ -208,9 +208,7 @@ EOF
                                     retry_unittests_regular="$retry_unittests_regular|^$line$"
                                 fi
                             done
-                        echo 123
 			find $tmp_dir -delete
-                        echo 456
                         ls $tmp_dir/*
                         failed_test_lists=''
                         ctest -R "($retry_unittests_regular)" --output-on-failure -j 4 | tee $tmpfile
@@ -234,8 +232,13 @@ EOF
 }
 
 function collect_failed_tests() {
+    echo 123
+    echo pwd
+    echo 321
     for file in `ls $tmp_dir`; do
         exit_code=0
+        echo 456
+        echo $tmp_dir/$file
         grep -q 'The following tests FAILED:' $tmp_dir/$file||exit_code=$?
         if [ $exit_code -ne 0 ]; then
             failuretest=''
