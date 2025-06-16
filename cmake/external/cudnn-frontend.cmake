@@ -64,19 +64,10 @@ function(download_cudnn_frontend)
       "Downloading ${CUDNN_FRONTEND_URL} to ${CUDNN_FRONTEND_DOWNLOAD_DIR}/${CUDNN_FRONTEND_CACHE_FILENAME}"
   )
   # NOTE: If the version is updated, consider emptying the folder; maybe add timeout
-  file(
-    DOWNLOAD ${CUDNN_FRONTEND_URL}
+  download_with_retry(
+    URL ${CUDNN_FRONTEND_URL} DEST
     ${CUDNN_FRONTEND_DOWNLOAD_DIR}/${CUDNN_FRONTEND_CACHE_FILENAME}
-    EXPECTED_MD5 ${CUDNN_FRONTEND_URL_MD5}
-    STATUS ERR)
-  if(ERR EQUAL 0)
-    message(STATUS "Download ${CUDNN_FRONTEND_CACHE_FILENAME} success")
-  else()
-    message(
-      FATAL_ERROR
-        "Download failed, error: ${ERR}\n You can try downloading ${CUDNN_FRONTEND_CACHE_FILENAME} again"
-    )
-  endif()
+    EXPECTED_MD5 ${CUDNN_FRONTEND_URL_MD5})
 endfunction()
 
 if(EXISTS ${CUDNN_FRONTEND_DOWNLOAD_DIR}/${CUDNN_FRONTEND_CACHE_FILENAME})
