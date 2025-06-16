@@ -1155,13 +1155,19 @@ PyObject* ToPyObject(const phi::distributed::Placement& value) {
   return obj.ptr();
 }
 
+PyObject* ToPyObject(std::shared_ptr<phi::distributed::Placement> value) {
+  auto obj = ::pybind11::cast(value, py::return_value_policy::reference);
+  obj.inc_ref();
+  return obj.ptr();
+}
+
 PyObject* ToPyObject(const phi::distributed::Placements& values) {
 #ifdef PADDLE_WITH_DISTRIBUTE
   PyObject* result = PyList_New((Py_ssize_t)values.size());
 
   for (size_t i = 0; i < values.size(); i++) {
     auto& value = values[i];
-    PyList_SET_ITEM(result, static_cast<Py_ssize_t>(i), ToPyObject(*value));
+    PyList_SET_ITEM(result, static_cast<Py_ssize_t>(i), ToPyObject(value));
   }
 
   return result;

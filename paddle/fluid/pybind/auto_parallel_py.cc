@@ -495,13 +495,11 @@ void BindAutoParallel(py::module *m) {
           .def("__str__", &phi::distributed::Shard::to_string)
           .def("__repr__", &phi::distributed::Shard::to_string)
           .def("__copy__",
-               [](const phi::distributed::Shard &self) {
-                 return phi::distributed::Shard(self);
-               })
+               [](const phi::distributed::Shard &self) { return self.copy(); })
           .def(
               "__deepcopy__",
               [](const phi::distributed::Shard &self, py::dict) {
-                return phi::distributed::Shard(self);
+                return self.deepcopy();
               },
               py::arg("memo"))
           .def(py::self == py::self)   // NOLINT

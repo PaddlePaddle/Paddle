@@ -118,6 +118,14 @@ class Shard : public Placement {
     return ss.str();
   }
 
+  virtual std::shared_ptr<Shard> copy() const {
+    return std::make_shared<Shard>(*this);
+  }
+
+  virtual std::shared_ptr<Shard> deepcopy() const {
+    return std::make_shared<Shard>(*this);
+  }
+
  protected:
   int dim_;
   int split_factor_ = 1;
@@ -141,6 +149,12 @@ class CoShard : public Shard {
   friend std::ostream& operator<<(std::ostream& os, const CoShard& p) {
     os << p.to_string();
     return os;
+  }
+
+  std::shared_ptr<Shard> copy() const { return std::make_shared<Shard>(*this); }
+
+  std::shared_ptr<Shard> deepcopy() const {
+    return std::make_shared<CoShard>(*this);
   }
 
  private:
