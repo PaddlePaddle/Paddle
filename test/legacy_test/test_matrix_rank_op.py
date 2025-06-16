@@ -420,22 +420,24 @@ class TestMatrixRankZeroSizeTensor(unittest.TestCase):
         return places
 
     def _test_matrix_rank_static(self, place):
-        with static_guard():
-            with paddle.static.program_guard(
+        with (
+            static_guard(),
+            paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
-            ):
-                x_valid = paddle.static.data(
-                    name='x_valid', shape=[2, 0, 6, 0], dtype='float32'
-                )
+            ),
+        ):
+            x_valid = paddle.static.data(
+                name='x_valid', shape=[2, 0, 6, 0], dtype='float32'
+            )
 
-                y_valid = paddle.linalg.matrix_rank(x_valid)
+            y_valid = paddle.linalg.matrix_rank(x_valid)
 
-                exe = paddle.static.Executor(place)
-                res_valid = exe.run(
-                    feed={'x_valid': np.zeros((2, 0, 6, 0), dtype='float32')},
-                    fetch_list=[y_valid],
-                )
-                self.assertEqual(res_valid[0].shape, tuple(x_valid.shape[:-2]))
+            exe = paddle.static.Executor(place)
+            res_valid = exe.run(
+                feed={'x_valid': np.zeros((2, 0, 6, 0), dtype='float32')},
+                fetch_list=[y_valid],
+            )
+            self.assertEqual(res_valid[0].shape, tuple(x_valid.shape[:-2]))
 
     def _test_matrix_rank_dynamic_cpu(self):
         with dygraph_guard():
