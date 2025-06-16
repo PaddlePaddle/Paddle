@@ -26,6 +26,7 @@ from ...utils import (
     ENV_SOT_ALLOW_DYNAMIC_SHAPE,
     ENV_SOT_ENABLE_GUARD_TREE,
     ENV_SOT_ENABLE_STRICT_GUARD_CHECK,
+    ENV_SOT_UNSAFE_CACHE_FASTPATH,
     BreakGraphError,
     CompileCountInfo,
     ConditionalFallbackError,
@@ -73,6 +74,7 @@ class OpcodeExecutorCache(metaclass=Singleton):
     MAX_CACHE_SIZE = 20
     MAX_COMPILE_TIME_PER_CODE = 40
     MAX_COMPILE_TIME_TOTAL = 15 * 60
+    CACHE_HIT_THRESHOLD = 32
     cache: dict[
         types.CodeType, tuple[GuardedFunctions, paddle.framework.core.GuardTree]
     ]
@@ -85,6 +87,8 @@ class OpcodeExecutorCache(metaclass=Singleton):
         self.translate_count = 0
         self.code_symbolic_inputs = {}
         self.compile_time_stats = {}
+        self.cache_hit_num = 0
+        self.last_cache_index = None
 
     def get_symbolic_inputs(
         self, code: types.CodeType
@@ -168,6 +172,14 @@ class OpcodeExecutorCache(metaclass=Singleton):
 
         enable_strict_guard = ENV_SOT_ENABLE_STRICT_GUARD_CHECK.get()
         enable_guard_tree = ENV_SOT_ENABLE_GUARD_TREE.get()
+        enable_unsafe_cache_fastpath = ENV_SOT_UNSAFE_CACHE_FASTPATH.get()
+
+        if (
+            enable_unsafe_cache_fastpath
+            and self.cache_hit_num > self.CACHE_HIT_THRESHOLD
+        ):
+            # NOTE: In inference scenarios, cache misses are generally rare, so we can enable this short path.
+            return guarded_fns[self.last_cache_index][0]
 
         cache_index = None
         if enable_strict_guard or enable_guard_tree:
@@ -232,6 +244,13 @@ class OpcodeExecutorCache(metaclass=Singleton):
                     assert (
                         cache_index is None or index == cache_index
                     ), f"cache_index({cache_index}) is not equal to index({index})"
+
+                    if self.last_cache_index == index:
+                        self.cache_hit_num += 1
+                    else:
+                        self.last_cache_index = index
+                        self.cache_hit_num = 0
+
                     return custom_code
                 else:
                     log_do(
