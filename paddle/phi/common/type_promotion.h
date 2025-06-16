@@ -13,8 +13,6 @@
 // limitations under the License.
 #pragma once
 
-#include "paddle/fluid/imperative/amp_utils.h"
-#include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/phi/common/data_type.h"
 namespace phi {
 
