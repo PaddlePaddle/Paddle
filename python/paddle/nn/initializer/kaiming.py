@@ -90,12 +90,12 @@ class MSRAInitializer(Initializer):
         self._mode = mode
         if self._mode not in ['fan_in', 'fan_out']:
             raise ValueError(
-                "The mode of MSRAInitializer should be 'fan_in' or 'fan_out', "
+                "The mode of KaimingNormal/KaimingUniform should be 'fan_in' or 'fan_out', "
                 f"but received {self._mode}."
             )
         if self._mode == 'fan_out' and self._fan_in is not None:
             raise ValueError(
-                "The mode of MSRAInitializer is 'fan_out', "
+                "The mode of KaimingNormal/KaimingUniform is 'fan_out', "
                 "but fan_in is set. Please set fan_in to None."
             )
 
