@@ -30,10 +30,12 @@ def new_program_scope(main=None, startup=None, scope=None):
     prog = main if main else base.Program()
     startup_prog = startup if startup else base.Program()
     scope = scope if scope else base.core.Scope()
-    with base.scope_guard(scope):
-        with base.program_guard(prog, startup_prog):
-            with base.unique_name.guard():
-                yield
+    with (
+        base.scope_guard(scope),
+        base.program_guard(prog, startup_prog),
+        base.unique_name.guard(),
+    ):
+        yield
 
 
 class LayerTest(unittest.TestCase):

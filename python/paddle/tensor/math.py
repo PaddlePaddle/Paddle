@@ -2942,8 +2942,16 @@ def outer(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
 
 
     """
-    nx = x.reshape((-1, 1))
-    ny = y.reshape((1, -1))
+    xshape = x.shape
+    yshape = y.shape
+    if math.prod(xshape) == 0:  # If the size is 0
+        nx = x.reshape((0, 0))
+    else:
+        nx = x.reshape((-1, 1))
+    if math.prod(yshape) == 0:  # If the size is 0
+        ny = y.reshape((0, 0))
+    else:
+        ny = y.reshape((1, -1))
 
     if in_dynamic_mode():
         return _C_ops.matmul(nx, ny, False, False)
@@ -7162,7 +7170,8 @@ def take(
         )
     elif mode == 'clip':
         # 'clip' mode disables indexing with negative numbers.
-        index_1d = clip(index_1d, 0, max_index - 1)
+        if max_index > 0:  # If max_index is 0, input_1d is 0-size.
+            index_1d = clip(index_1d, 0, max_index - 1)
 
     out = input_1d.index_select(index_1d).reshape(index.shape)
 

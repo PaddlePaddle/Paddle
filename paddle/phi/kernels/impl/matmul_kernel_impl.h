@@ -38,6 +38,7 @@ limitations under the License. */
 #if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
 #include "paddle/phi/kernels/autotune/auto_tune_base.h"
 #endif
+#include "paddle/phi/kernels/full_kernel.h"
 
 COMMON_DECLARE_bool(cuda_core_int8_gemm);
 
@@ -130,8 +131,8 @@ void MatMulFunctionImplWithBlas(
   auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
 
   if (x_ndim == 1 && y_ndim == 1) {
-    const int M = X.numel();
-    const int N = Y.numel();
+    const int64_t M = X.numel();
+    const int64_t N = Y.numel();
     PADDLE_ENFORCE_EQ(
         M,
         N,
@@ -158,7 +159,7 @@ void MatMulFunctionImplWithBlas(
   }
 
   if (x_ndim == 1) {
-    const int N = X.numel();
+    const int64_t N = X.numel();
     if (trans_y) {
       PADDLE_ENFORCE_EQ(
           y_dims[y_ndim - 1],
@@ -192,7 +193,7 @@ void MatMulFunctionImplWithBlas(
     Out->ResizeAndAllocate(common::make_ddim(out_dims));
     dev_ctx.template Alloc<T>(Out);
     if (trans_y) {
-      const int M = Y.numel() / N;
+      const int64_t M = Y.numel() / N;
       VLOG(3) << "MatMul's case 2";
       blas.GEMV(false,
                 M,
@@ -203,8 +204,8 @@ void MatMulFunctionImplWithBlas(
                 static_cast<T>(flag),
                 dev_ctx.template Alloc<T>(Out));
     } else {
-      const int M = y_dims[y_ndim - 1];
-      const int batch_size = Y.numel() / (M * N);
+      const int64_t M = y_dims[y_ndim - 1];
+      const int64_t batch_size = Y.numel() / (M * N);
       if (batch_size == 1) {
         VLOG(3) << "MatMul's case 3";
         blas.GEMV(true,
@@ -236,7 +237,7 @@ void MatMulFunctionImplWithBlas(
   }
 
   if (y_ndim == 1) {
-    const int N = Y.numel();
+    const int64_t N = Y.numel();
     if (trans_x) {
       PADDLE_ENFORCE_EQ(
           x_dims[x_ndim - 2],
@@ -271,8 +272,8 @@ void MatMulFunctionImplWithBlas(
     dev_ctx.template Alloc<T>(Out);
 
     if (trans_x) {
-      const int M = x_dims[x_ndim - 1];
-      const int batch_size = X.numel() / (M * N);
+      const int64_t M = x_dims[x_ndim - 1];
+      const int64_t batch_size = X.numel() / (M * N);
       if (batch_size == 1) {
         VLOG(3) << "MatMul's case 5";
         blas.GEMV(true,
@@ -300,7 +301,7 @@ void MatMulFunctionImplWithBlas(
                          0);
       }
     } else {
-      const int M = X.numel() / N;
+      const int64_t M = X.numel() / N;
       VLOG(3) << "MatMul's case 7";
       blas.GEMV(false,
                 M,
@@ -314,8 +315,8 @@ void MatMulFunctionImplWithBlas(
     return;
   }
 
-  const int M = trans_x ? x_dims[x_ndim - 1] : x_dims[x_ndim - 2];
-  const int K = trans_x ? x_dims[x_ndim - 2] : x_dims[x_ndim - 1];
+  const int64_t M = trans_x ? x_dims[x_ndim - 1] : x_dims[x_ndim - 2];
+  const int64_t K = trans_x ? x_dims[x_ndim - 2] : x_dims[x_ndim - 1];
   if (trans_y) {
     PADDLE_ENFORCE_EQ(
         y_dims[y_ndim - 1],
@@ -339,8 +340,8 @@ void MatMulFunctionImplWithBlas(
                                         y_ndim - 2,
                                         y_dims[y_ndim - 2]));
   }
-  const int N = trans_y ? y_dims[y_ndim - 2] : y_dims[y_ndim - 1];
-  const int ndim = (std::max)(x_ndim, y_ndim);
+  const int64_t N = trans_y ? y_dims[y_ndim - 2] : y_dims[y_ndim - 1];
+  const int64_t ndim = (std::max)(x_ndim, y_ndim);
   std::vector<std::int64_t> x_broadcast_dims(ndim);
   std::vector<std::int64_t> y_broadcast_dims(ndim);
   std::vector<std::int64_t> out_broadcast_dims(ndim);
@@ -2007,23 +2008,9 @@ void MatmulKernel(const Context& dev_ctx,
                   bool transpose_y,
                   DenseTensor* out) {
   if (x.numel() == 0 || y.numel() == 0) {
-    auto x_dims = x.dims();
-    auto y_dims = y.dims();
-    if (transpose_x) {
-      std::swap(x_dims[x_dims.size() - 1], x_dims[x_dims.size() - 2]);
-    }
-    if (transpose_y) {
-      std::swap(y_dims[y_dims.size() - 1], y_dims[y_dims.size() - 2]);
-    }
-    std::vector<std::int64_t> out_dims(x_dims.size() - 1 + y_dims.size() - 1);
-    for (int64_t i = 0; i < x_dims.size() - 1; ++i) {
-      out_dims[i] = x_dims[i];
-    }
-    for (int64_t i = 1; i < y_dims.size(); ++i) {
-      out_dims[x_dims.size() - 1 + i - 1] = y_dims[i];
-    }
-    out->Resize(phi::make_ddim(out_dims));
-    dev_ctx.template Alloc<T>(out);
+    // input shape [1, 1, 5, 0], [1, 1, 0, 5], result shape is [1, 1, 5, 5]
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
     return;
   }
   PADDLE_ENFORCE_GE(

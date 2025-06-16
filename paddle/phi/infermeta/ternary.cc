@@ -26,6 +26,17 @@ limitations under the License. */
 #include "paddle/phi/kernels/impl/box_coder.h"
 
 namespace phi {
+namespace detail {
+// Used in MatrixRankAtolRtolInferMeta
+static DDim CheckAndGetOutputDim(const DDim& dim_x) {
+  auto x_vec = common::vectorize(dim_x);
+  if (x_vec.size() == 2) {
+    return common::make_ddim({});
+  }
+  x_vec.erase(x_vec.end() - 2, x_vec.end());
+  return common::make_ddim(x_vec);
+}
+}  // namespace detail
 
 void AccuracyInferMeta(const MetaTensor& out,
                        const MetaTensor& indice,
@@ -98,29 +109,6 @@ void AddmmInferMeta(const MetaTensor& input,
           << " alpha=" << alpha << " ndim_input=" << ndim_input
           << " ndim_x=" << ndim_x << " ndim_y=" << ndim_y;
 
-  PADDLE_ENFORCE_NE(
-      product(input_dims),
-      0,
-      errors::PreconditionNotMet("The Input variable 'input' has not "
-                                 "been initialized. You may need to confirm "
-                                 "if you put exe.run(startup_program) "
-                                 "after optimizer.minimize function."));
-
-  PADDLE_ENFORCE_NE(
-      product(x_dims),
-      0,
-      errors::PreconditionNotMet("The Input variable 'x' has not "
-                                 "been initialized. You may need to confirm "
-                                 "if you put exe.run(startup_program) "
-                                 "after optimizer.minimize function."));
-
-  PADDLE_ENFORCE_NE(
-      product(y_dims),
-      0,
-      errors::PreconditionNotMet("The Input variable 'y' has not "
-                                 "been initialized. You may need to confirm "
-                                 "if you put exe.run(startup_program) "
-                                 "after optimizer.minimize function."));
   // dim check
   PADDLE_ENFORCE_EQ(ndim_input == 2 || ndim_input == 1,
                     true,
@@ -1516,6 +1504,18 @@ void MatrixRankAtolRtolInferMeta(const MetaTensor& x,
                                  const MetaTensor& rtol,
                                  bool hermitian,
                                  MetaTensor* out) {
+  if (x.numel() == 0) {
+    auto dim_x = x.dims();
+    PADDLE_ENFORCE_GE(dim_x.size(),
+                      2,
+                      common::errors::InvalidArgument(
+                          "The dims of input must be greater than 2"));
+
+    DDim dim_x_batch = detail::CheckAndGetOutputDim(dim_x);
+    out->set_dims(dim_x_batch);
+    out->share_lod(x);
+    return;
+  }
   MatrixRankTolInferMeta(x, atol, true, hermitian, out);
 }
 

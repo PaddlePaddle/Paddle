@@ -58,11 +58,11 @@ void KthvalueGradKernel(const Context& dev_ctx,
 
   const T* out_grad_data = d_out.data<T>();
   const int64_t* indices_data = indices.data<int64_t>();
-  int pre, n, post;
+  int64_t pre, n, post;
   phi::funcs::GetDims(in_dims, axis, &pre, &n, &post);
   int block_size = getBlockSize(post * k);
   int max_threads = dev_ctx.GetMaxPhysicalThreadCount();
-  const int max_blocks = std::max(((max_threads - 1) / block_size + 1), 1);
+  const int64_t max_blocks = std::max(((max_threads - 1) / block_size + 1), 1);
   int grid_size = std::min(max_blocks, pre);
   phi::funcs::AssignGradWithAxis<T>
       <<<grid_size, block_size, 64 * 4, dev_ctx.stream()>>>(

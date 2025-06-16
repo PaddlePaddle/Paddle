@@ -52,15 +52,25 @@ def get_paddle_api():
         paddle.geometric,
     ]
     distributed_apis = [
+        paddle.distributed.all_reduce,
         paddle.distributed.shard_tensor,
         paddle.distributed.reshard,
+        paddle.distributed.all_gather,
+        paddle.distributed.alltoall,
+        paddle.distributed.barrier,
+        paddle.distributed.recv,
+        paddle.distributed.send,
+        paddle.distributed.broadcast,
         paddle.distributed.unshard_dtensor,
         paddle.distributed.auto_parallel.api.dtensor_to_local,
         paddle.distributed.auto_parallel.api.dtensor_from_local,
         paddle.distributed.auto_parallel.api.moe_global_mesh_tensor,
         paddle.distributed.auto_parallel.api.moe_sub_mesh_tensors,
     ]
-    special_paddle_apis = [paddle.tensor.fill_constant]
+    special_paddle_apis = [
+        paddle.tensor.fill_constant,
+        paddle.tensor.top_p_sampling,
+    ]
     non_operator_related_apis = [
         paddle.in_dynamic_mode,
         paddle.save,
