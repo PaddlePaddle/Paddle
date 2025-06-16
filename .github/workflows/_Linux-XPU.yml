@@ -183,10 +183,10 @@ jobs:
     steps:
       - name: Download build.tar.gz
         run: |
-          sudo rm -rf * .[^.]*
+          rm -rf * .[^.]*
           wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/xpu/${PR_ID}/${COMMIT_ID}/build.tar.gz --no-check-certificate
-          sudo yum install zstd -y
-          sudo tar --use-compress-program="pzstd" -xf build.tar.gz --strip-components=1
+          yum install zstd -y
+          tar --use-compress-program="pzstd" -xf build.tar.gz --strip-components=1
           rm build.tar.gz
 
       - name: Determine the runner
@@ -275,5 +275,5 @@ jobs:
         if: always()
         run: |
           sudo mkdir -p /run/user/0
-          sudo rm -rf * .[^.]*
+          rm -rf * .[^.]*
           docker rm -f ${container_name}
