@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import itertools
 import unittest
 
 import paddle
@@ -100,92 +101,77 @@ class TestFusedMoePermuteUnpermute(unittest.TestCase):
 
     def test_permute_unpermute_consistency(self):
         """Test that permute + unpermute recovers original tensors."""
-        for dt in self.DTYPES:
-            for expert_num in self.EXPERT_NUMS:
-                for topk in self.TOPKS:
-                    with self.subTest(
-                        dtype=dt, expert_num=expert_num, topk=topk
-                    ):
-                        print(
-                            f"Testing with {expert_num} experts, topk {topk}, dtype {dt}"
-                        )
-                        (
-                            tokens,
-                            tokens_scale,
-                            dispatched_indices,
-                            dispatched_probs,
-                            expert_tokens_count,
-                        ) = fabricate_dispatch_result(
-                            self.SEQLEN,
-                            self.TOKEN_LEN,
-                            topk,
-                            expert_num,
-                            data_type=dt,
-                            broadcast_ratio=0.5,
-                        )
-                        if dt == "bfloat16":
-                            tokens_scale = None
+        for dt, expert_num, topk in itertools.product(
+            self.DTYPES, self.EXPERT_NUMS, self.TOPKS
+        ):
+            with self.subTest(dtype=dt, expert_num=expert_num, topk=topk):
+                (
+                    tokens,
+                    tokens_scale,
+                    dispatched_indices,
+                    dispatched_probs,
+                    expert_tokens_count,
+                ) = fabricate_dispatch_result(
+                    self.SEQLEN,
+                    self.TOKEN_LEN,
+                    topk,
+                    expert_num,
+                    data_type=dt,
+                    broadcast_ratio=0.5,
+                )
+                if dt == "bfloat16":
+                    tokens_scale = None
 
-                        # Permute step
-                        (
-                            unzipped_tokens,
-                            zipped_expertwise_rowmap,
-                            unzipped_probs,
-                            unzipped_scales,
-                        ) = moe_permute(
-                            tokens,
-                            tokens_scale,
-                            dispatched_indices,
-                            dispatched_probs,
-                            topk=topk,
-                            num_experts=expert_num,
-                            tokens_per_expert=expert_tokens_count,
-                            padding_multiplex=128,
-                        )
+                # Permute step
+                (
+                    unzipped_tokens,
+                    zipped_expertwise_rowmap,
+                    unzipped_probs,
+                    unzipped_scales,
+                ) = moe_permute(
+                    tokens,
+                    tokens_scale,
+                    dispatched_indices,
+                    dispatched_probs,
+                    topk=topk,
+                    num_experts=expert_num,
+                    tokens_per_expert=expert_tokens_count,
+                    padding_alignment=128,
+                )
 
-                        # Unpermute step
-                        tokens_recovered, probs_recovered = moe_unpermute(
-                            (
-                                unzipped_tokens * unzipped_probs.unsqueeze(-1)
-                            ).astype("bfloat16"),
-                            zipped_expertwise_rowmap,
-                            dispatched_indices,
-                            unzipped_probs,
-                            total_zipped_tokens=self.SEQLEN,
-                            num_experts=expert_num,
-                        )
+                # Unpermute step
+                tokens_recovered, probs_recovered = moe_unpermute(
+                    (unzipped_tokens * unzipped_probs.unsqueeze(-1)).astype(
+                        "bfloat16"
+                    ),
+                    zipped_expertwise_rowmap,
+                    dispatched_indices,
+                    unzipped_probs,
+                    total_zipped_tokens=self.SEQLEN,
+                    num_experts=expert_num,
+                )
 
-                        # Check tensor recovery
-                        max_abs_err, max_rel_err = tensor_max_abs_rel_err(
-                            tokens, tokens_recovered
-                        )
-                        print(
-                            f"permute-unpermute tokens relative error: {max_rel_err}"
-                        )
-                        self.assertLess(
-                            max_rel_err, 1e-2, "Tokens relative error too large"
-                        )
+                # Check tensor recovery
+                max_abs_err, max_rel_err = tensor_max_abs_rel_err(
+                    tokens, tokens_recovered
+                )
+                self.assertLess(
+                    max_rel_err, 1e-2, "Tokens relative error too large"
+                )
 
-                        max_abs_err, max_rel_err = tensor_max_abs_rel_err(
-                            dispatched_probs, probs_recovered
-                        )
-                        print(
-                            f"ermute-unpermute probs max absolute error: {max_abs_err}, relative error: {max_rel_err}"
-                        )
-                        self.assertLess(
-                            max_abs_err, 1e-5, "Probs absolute error too large"
-                        )
-                        self.assertLess(
-                            max_rel_err, 1e-5, "Probs relative error too large"
-                        )
-
-    def assertLess(self, a, b, msg=None):
-        """Custom assert with better error message."""
-        if not a < b:
-            standard_msg = f"{a} not less than {b}"
-            if msg:
-                standard_msg = f"{msg}: {standard_msg}"
-            self.fail(standard_msg)
+                max_abs_err, max_rel_err = tensor_max_abs_rel_err(
+                    dispatched_probs, probs_recovered
+                )
+                self.assertEqual(
+                    0,
+                    max_abs_err,
+                    f"Probs absolute error too large, permute-unpermute probs max absolute error: {max_abs_err}",
+                )
+                self.assertEqual(
+                    0,
+                    max_rel_err,
+                    f"Probs relative error too large, permute-unpermute probs max relative error: {max_rel_err}",
+                )
 
 
 if __name__ == "__main__":
