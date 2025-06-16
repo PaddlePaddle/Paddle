@@ -49,7 +49,7 @@ jobs:
           git checkout test
           echo "Pull upstream develop"
           source ${{ github.workspace }}/../../../proxy
-          bash ${ci_scripts}/git_pull.sh $BRANCH
+          bash ci/git_pull.sh $BRANCH
 
       - name: Determine the runner
         run: |
