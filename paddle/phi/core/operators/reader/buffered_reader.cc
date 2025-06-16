@@ -22,9 +22,13 @@
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/device_guard.h"
 #include "paddle/phi/backends/device_manager.h"
-#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/memory_utils.h"
-
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#endif
+#ifdef PADDLE_WITH_XPU
+#include "paddle/phi/backends/xpu/xpu_context.h"
+#endif
 namespace paddle::operators::reader {
 BufferedReader::~BufferedReader() {
   VLOG(1) << "~BufferedReader";
