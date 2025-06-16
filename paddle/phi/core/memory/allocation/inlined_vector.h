@@ -16,10 +16,11 @@
 #include <cstdint>
 #include <vector>
 
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/core/enforce.h"
 
 namespace paddle {
-namespace framework {
+namespace memory {
+namespace allocation {
 
 template <typename T, size_t N>
 class InlinedVector {
@@ -66,5 +67,6 @@ class InlinedVector {
   std::vector<T> tail_;
 };
 
-}  // namespace framework
+}  // namespace allocation
+}  // namespace memory
 }  // namespace paddle
