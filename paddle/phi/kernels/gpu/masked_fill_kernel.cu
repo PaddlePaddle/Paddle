@@ -31,12 +31,12 @@
 namespace phi {
 
 template <typename T, int VecSize>
-__global__ void GPUMaskedFillKernel(const T* input,
-                                    const bool* mask,
-                                    const T* value,
-                                    const int64_t input_len,
-                                    const int64_t batch_size,
-                                    T* output) {
+__global__ void GPUMaskedFillOneValueKernel(const T* input,
+                                            const bool* mask,
+                                            const T* value,
+                                            const int64_t input_len,
+                                            const int64_t batch_size,
+                                            T* output) {
   int64_t idx = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
   if (idx >= (input_len / VecSize)) {
     return;
