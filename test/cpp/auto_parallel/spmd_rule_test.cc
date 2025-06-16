@@ -261,8 +261,8 @@ TEST(InstanceNorm, Ctor) {
   // [-1,0, 1, -1], [-1], [-1] --> [-1,0, -1, -1], [-1,0], [-1,0]
 
   x_dist_attr.set_dims_mapping({-1, 0, 1, -1});
-  scale_dist_attr.set_dims_mapping({-1});
-  bias_dist_attr.set_dims_mapping({-1});
+  scale_dist_attr.set_dims_mapping(std::vector<int64_t>{-1});
+  bias_dist_attr.set_dims_mapping(std::vector<int64_t>{-1});
   phi::distributed::DistMetaTensor x(common::make_ddim(x_shape), x_dist_attr);
   phi::distributed::DistMetaTensor scale(common::make_ddim(scale_shape),
                                          scale_dist_attr);
@@ -2827,7 +2827,7 @@ TEST(BatchNorm, Ctor) {
   x_dist_attr.set_dynamic_dims({false, false, false, false});
   auto one_dim_dist_attr = TensorDistAttr();
   one_dim_dist_attr.set_process_mesh(process_mesh);
-  one_dim_dist_attr.set_dims_mapping({-1});
+  one_dim_dist_attr.set_dims_mapping(std::vector<int64_t>{-1});
   one_dim_dist_attr.set_dynamic_dims({false});
 
   phi::distributed::DistMetaTensor x = phi::distributed::DistMetaTensor(
