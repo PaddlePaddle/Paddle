@@ -241,15 +241,17 @@ class TestMinBfloat16(unittest.TestCase):
 
 class TestMinAPIWithEmptyTensor(unittest.TestCase):
     def test_empty_tensor(self):
-        with base.dygraph.guard():
-            with self.assertRaises(ValueError):
-                data = np.array([], dtype=np.float32)
-                data = np.reshape(data, [0, 0, 0, 0, 0, 0, 0])
-                x = paddle.to_tensor(data, dtype='float64')
-                np_axis = np.array([0], dtype='int64')
-                tensor_axis = paddle.to_tensor(np_axis, dtype='int64')
+        with (
+            base.dygraph.guard(),
+            self.assertRaises(ValueError),
+        ):
+            data = np.array([], dtype=np.float32)
+            data = np.reshape(data, [0, 0, 0, 0, 0, 0, 0])
+            x = paddle.to_tensor(data, dtype='float64')
+            np_axis = np.array([0], dtype='int64')
+            tensor_axis = paddle.to_tensor(np_axis, dtype='int64')
 
-                out = paddle.min(x, tensor_axis)
+            out = paddle.min(x, tensor_axis)
 
 
 class TestMinWithNan(unittest.TestCase):
@@ -268,17 +270,19 @@ class TestMinWithNan(unittest.TestCase):
     def _test_with_nan_static(
         self, func, shape, dtype=np.float32, place=paddle.CPUPlace()
     ):
-        with static_guard():
-            with paddle.static.program_guard(
+        with (
+            static_guard(),
+            paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
-            ):
-                x_np = np.arange(np.prod(shape), dtype=dtype).reshape(shape)
-                x_np[0, 0] = np.nan
-                x = paddle.static.data(name='x', shape=shape, dtype=dtype)
-                out = func(x)
-                exe = paddle.static.Executor(place)
-                res = exe.run(feed={'x': x_np}, fetch_list=[out])
-                self.assertTrue(np.isnan(res[0]), "Result should be NaN")
+            ),
+        ):
+            x_np = np.arange(np.prod(shape), dtype=dtype).reshape(shape)
+            x_np[0, 0] = np.nan
+            x = paddle.static.data(name='x', shape=shape, dtype=dtype)
+            out = func(x)
+            exe = paddle.static.Executor(place)
+            res = exe.run(feed={'x': x_np}, fetch_list=[out])
+            self.assertTrue(np.isnan(res[0]), "Result should be NaN")
 
     def _test_with_nan_dynamic(
         self, func, shape, dtype=np.float32, place=paddle.CPUPlace()

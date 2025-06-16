@@ -17,6 +17,7 @@ from __future__ import annotations
 import inspect
 import operator
 from contextlib import contextmanager
+from dataclasses import fields
 from functools import cached_property
 from queue import Queue
 from typing import TYPE_CHECKING, Any, Callable, Optional
@@ -120,7 +121,7 @@ def map_variables(
     Returns:
         tuple: The result of applying the map_func to the variables.
     """
-    from .basic import SliceVariable
+    from .basic import DataClassInstanceVariable, SliceVariable
     from .container import ContainerVariable
 
     def _map_container_variable(variable: VariableBase | object):
@@ -153,9 +154,33 @@ def map_variables(
             DummyTracker([new_slice.start, new_slice.stop, new_slice.step]),
         )
 
+    def _map_dataclass_variable(variable: VariableBase | object):
+        if not isinstance(variable, DataClassInstanceVariable):
+            return variable
+        new_dataclass = DataClassInstanceVariable._dataclass_from_dict(
+            variable.get_py_type(),
+            {
+                fd.name: map_func(variable.getattr(fd.name))
+                for fd in fields(variable.get_py_type())
+            },
+        )
+        if not restore_variable:
+            return new_dataclass
+        return VariableFactory.from_value(
+            new_dataclass,
+            variable.graph,
+            DummyTracker(
+                [
+                    variable.getattr(fd.name)
+                    for fd in fields(variable.get_py_type())
+                ]
+            ),
+        )
+
     def _map_variable(variable: VariableBase | object):
         variable = _map_container_variable(variable)
         variable = _map_slice_variable(variable)
+        variable = _map_dataclass_variable(variable)
         return map_func(variable)
 
     return paddle.utils.map_structure(_map_variable, variables)

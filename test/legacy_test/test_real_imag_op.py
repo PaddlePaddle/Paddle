@@ -235,28 +235,32 @@ class TestRealAPI(unittest.TestCase):
                     np.testing.assert_array_equal(np_res, res_t)
 
     def test_name_argument(self):
-        with paddle.pir_utils.OldIrGuard():
-            with static.program_guard(static.Program()):
-                x = static.data(
-                    name="x", shape=self._shape, dtype=self.dtypes[0]
-                )
-                out = paddle_apis[self.api](x, name="real_res")
-                self.assertTrue("real_res" in out.name)
+        with (
+            paddle.pir_utils.OldIrGuard(),
+            static.program_guard(static.Program()),
+        ):
+            x = static.data(name="x", shape=self._shape, dtype=self.dtypes[0])
+            out = paddle_apis[self.api](x, name="real_res")
+            self.assertTrue("real_res" in out.name)
 
     def test_dtype_static_error(self):
         # in static graph mode
-        with self.assertRaises(TypeError):
-            with static.program_guard(static.Program()):
-                x = static.data(name="x", shape=self._shape, dtype="float32")
-                out = paddle_apis[self.api](x, name="real_res")
+        with (
+            self.assertRaises(TypeError),
+            static.program_guard(static.Program()),
+        ):
+            x = static.data(name="x", shape=self._shape, dtype="float32")
+            out = paddle_apis[self.api](x, name="real_res")
 
     def test_dtype_dygraph_error(self):
         # in dynamic mode
-        with self.assertRaises(RuntimeError):
-            with base.dygraph.guard():
-                input = np.random.random(self._shape).astype("float32")
-                input_t = paddle.to_tensor(input)
-                res = paddle_apis[self.api](input_t)
+        with (
+            self.assertRaises(RuntimeError),
+            base.dygraph.guard(),
+        ):
+            input = np.random.random(self._shape).astype("float32")
+            input_t = paddle.to_tensor(input)
+            res = paddle_apis[self.api](input_t)
 
 
 class TestImagAPI(TestRealAPI):

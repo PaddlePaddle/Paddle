@@ -53,8 +53,6 @@ void TopkGradKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<T>(x_grad);
     return;
   }
-  xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
-
   const auto& in_dims = x.dims();
 
   // get the real the axis and the k

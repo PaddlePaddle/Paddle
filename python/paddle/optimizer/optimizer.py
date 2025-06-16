@@ -52,7 +52,6 @@ from ..base.backward import (
 from ..base.framework import Parameter
 from ..base.layer_helper import LayerHelper, LayerHelperBase
 from ..base.log_helper import get_logger
-from .fusion_utils import FusionStorage
 from .lr import LambdaDecay, LRScheduler
 
 if TYPE_CHECKING:
@@ -359,6 +358,8 @@ class Optimizer:
 
     @imperative_base.no_grad()
     def _maybe_refuse(self):
+        from .fusion_utils import FusionStorage
+
         # only support dygraph mode
         if not framework.in_dygraph_mode():
             return
