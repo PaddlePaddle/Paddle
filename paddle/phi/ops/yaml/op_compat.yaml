@@ -1841,8 +1841,6 @@
   backward : gelu_grad
   inputs :
     x : X
-  attrs :
-    {approximate : approximate}
   outputs :
     out : Out
   extra :
