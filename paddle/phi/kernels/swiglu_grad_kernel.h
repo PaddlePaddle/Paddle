@@ -16,6 +16,7 @@
 
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/device_context.h"
+#include "paddle/phi/kernels/full_kernel.h"
 
 namespace phi {
 
@@ -36,12 +37,19 @@ void SwiGLUGradKernel(const Context &dev_ctx,
                       const DenseTensor &dz,
                       DenseTensor *dx,
                       DenseTensor *dy) {
-  if (x.numel() == 0) {
-    if (dx) {
-      dev_ctx.template Alloc<T>(dx);
-    }
+  if (dx && dx->numel() == 0) {
+    dev_ctx.template Alloc<T>(dx);
     if (dy) {
-      dev_ctx.template Alloc<T>(dy);
+      phi::Full<T, Context>(
+          dev_ctx, phi::IntArray(common::vectorize(dy->dims())), 0, dy);
+    }
+    return;
+  }
+  if (dy && dy->numel() == 0) {
+    dev_ctx.template Alloc<T>(dy);
+    if (dx) {
+      phi::Full<T, Context>(
+          dev_ctx, phi::IntArray(common::vectorize(dx->dims())), 0, dx);
     }
     return;
   }

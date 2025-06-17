@@ -69,6 +69,9 @@ void IndexSampleKernel(const Context& dev_ctx,
                         DataTypeToString(DataType::INT64)));
   const T* in_data = x.data<T>();
   T* out_data = dev_ctx.template Alloc<T>(out);
+  if (out && out->numel() == 0) {
+    return;
+  }
   auto stream = reinterpret_cast<const phi::GPUContext&>(dev_ctx).stream();
   auto input_dim = x.dims();
   auto index_dim = index.dims();
