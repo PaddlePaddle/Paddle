@@ -22,8 +22,8 @@
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/swiglu_grad_kernel.h"
-
 namespace phi {
 
 template <typename T, typename Context>
@@ -33,6 +33,22 @@ void SwiGluGradKernel(const Context& dev_ctx,
                       const DenseTensor& dz,
                       DenseTensor* dx,
                       DenseTensor* dy) {
+  if (dx && dx->numel() == 0) {
+    dev_ctx.template Alloc<T>(dx);
+    if (dy) {
+      phi::Full<T, Context>(
+          dev_ctx, phi::IntArray(common::vectorize(dy->dims())), 0, dy);
+    }
+    return;
+  }
+  if (dy && dy->numel() == 0) {
+    dev_ctx.template Alloc<T>(dy);
+    if (dx) {
+      phi::Full<T, Context>(
+          dev_ctx, phi::IntArray(common::vectorize(dx->dims())), 0, dx);
+    }
+    return;
+  }
   using XPUType = typename XPUTypeTrait<T>::Type;
   const auto* x_data = x.data<T>();
   const auto* dz_data = dz.data<T>();

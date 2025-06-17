@@ -47,9 +47,9 @@ void SigmoidCrossEntropyWithLogitsGradKernel(
   auto pos_weight_data =
       (pos_weight.get_ptr() == nullptr ? nullptr
                                        : pos_weight.get_ptr()->data<T>());
-  // int paddle_sigmoid_cross_entropy_with_logits_grad(Context* ctx, const T* x,
-  // const T* label, const T* pos_weight, const T* dy, T* dx, int* hit, int
-  // ignore_index, int64_t n);
+  // int paddle_sigmoid_cross_entropy_with_logits_grad(Context* xpu_ctx, const
+  // T* x, const T* label, const T* pos_weight, const T* dy, T* dx, int* hit,
+  // int ignore_index, int64_t n);
   int r = xpu::paddle_sigmoid_cross_entropy_with_logits_grad(
       dev_ctx.x_context(),
       reinterpret_cast<const XPUType*>(x.data<T>()),
