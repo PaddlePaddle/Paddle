@@ -21,6 +21,9 @@ from test_case_base import (
 )
 
 import paddle
+from paddle.jit.sot.opcode_translator.executor.executor_cache import (
+    OpcodeExecutorCache,
+)
 from paddle.jit.sot.utils import ENV_SOT_UNSAFE_CACHE_FASTPATH
 from paddle.utils.environments import (
     EnvironmentVariableGuard,
@@ -31,21 +34,52 @@ def add(x, y):
     return x + y
 
 
-class TestGuardOutputs(TestCaseBase):
-    def test_guard_inputs(self):
+def subtract(x, y):
+    return x - y
+
+
+class TestUnsafeCacheFastPath(TestCaseBase):
+    def test_guard(self):
         # NOTE: When UNSAFE CACHE FASTPATH is enabled, if the same cache entry is hit consecutively
         # for 32 times (this threshold is configurable), the cache is considered stable and
         # subsequent guard checks will be skipped to improve performance.
         # The related logic is implemented in the OpcodeExecutorCache class.
         with EnvironmentVariableGuard(ENV_SOT_UNSAFE_CACHE_FASTPATH, True):
+
             self.assertTrue(ENV_SOT_UNSAFE_CACHE_FASTPATH.get())
-            for _ in range(50):
+
+            self.assertFalse(
+                OpcodeExecutorCache().is_fastpath_threshold_reached(
+                    add.__code__
+                )
+            )
+            for _ in range(33):
                 self.assert_results(add, 1, paddle.ones([4]))
+            self.assertTrue(
+                OpcodeExecutorCache().is_fastpath_threshold_reached(
+                    add.__code__
+                )
+            )
+            self.assertFalse(
+                OpcodeExecutorCache().is_fastpath_threshold_reached(
+                    subtract.__code__
+                )
+            )
 
         with EnvironmentVariableGuard(ENV_SOT_UNSAFE_CACHE_FASTPATH, False):
             self.assertFalse(ENV_SOT_UNSAFE_CACHE_FASTPATH.get())
-            for _ in range(1000):
+            self.assertFalse(
+                OpcodeExecutorCache().is_fastpath_threshold_reached(
+                    subtract.__code__
+                )
+            )
+            for _ in range(35):
                 self.assert_results(add, 1, 2)
+            self.assertFalse(
+                OpcodeExecutorCache().is_fastpath_threshold_reached(
+                    subtract.__code__
+                )
+            )
 
 
 if __name__ == '__main__':

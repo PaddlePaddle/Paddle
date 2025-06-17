@@ -82,7 +82,7 @@ class OpcodeExecutorCache(metaclass=Singleton):
     code_symbolic_inputs: dict[types.CodeType, dict[str, None | dict[int, int]]]
     compile_time_stats: dict[types.CodeType, float]
     consecutive_cache_hit_count: dict[types.CodeType, int]
-    last_cache_index: dict[types.CodeType, int | None]
+    last_cache_index: dict[types.CodeType, int]
 
     def __init__(self):
         self.cache = {}
@@ -147,6 +147,14 @@ class OpcodeExecutorCache(metaclass=Singleton):
             **kwargs,
         )
 
+    def is_fastpath_threshold_reached(self, code):
+        # Returns True if the number of consecutive cache hits for the given code
+        # exceeds the UNSAFE_CACHE_FASTPATH threshold.
+        return (
+            self.consecutive_cache_hit_count.get(code, 0)
+            >= self.CACHE_HIT_FASTPATH_THRESHOLD
+        )
+
     @event_register("lookup")
     def lookup(
         self,
@@ -178,8 +186,7 @@ class OpcodeExecutorCache(metaclass=Singleton):
         enable_unsafe_cache_fastpath = ENV_SOT_UNSAFE_CACHE_FASTPATH.get()
 
         if enable_unsafe_cache_fastpath and (
-            self.consecutive_cache_hit_count.get(code, 0)
-            > self.CACHE_HIT_FASTPATH_THRESHOLD
+            self.is_fastpath_threshold_reached(code)
         ):
             # NOTE: In inference scenarios, cache misses are generally rare, so we can enable this short path.
             return guarded_fns[self.last_cache_index[code]][0]
@@ -252,7 +259,7 @@ class OpcodeExecutorCache(metaclass=Singleton):
                         self.consecutive_cache_hit_count[code] += 1
                     else:
                         self.last_cache_index[code] = index
-                        self.consecutive_cache_hit_count[code] = 0
+                        self.consecutive_cache_hit_count[code] = 1
 
                     return custom_code
                 else:
