@@ -130,7 +130,6 @@ class TestLlamaAuto:
             amp.custom_black_list = os.getenv("amp_custom_black_list")
         if os.getenv("amp_custom_white_list"):
             amp.custom_white_list = os.getenv("amp_custom_white_list")
-        print(f'self.strategy._amp:{self.strategy._amp}')
         self.gradient_accumulation_steps = 1
         if os.getenv("acc_step"):
             self.gradient_accumulation_steps = int(os.getenv("acc_step"))
@@ -382,15 +381,19 @@ class TestLlamaAuto:
     def run_test_cases(self):
         self.init_dist_env()
         # context parallel with flash_attn backend not support CPU, not support float32
-        if (
-            self.config.context_parallel_degree > 1
-            and os.getenv("backend") != "gpu"
-            and not self.strategy._amp.enable
+        # flash_attn only support Cuda Compute Capability >= 8 and cuda version >= 11
+        if self.config.context_parallel_degree > 1 and (
+            os.getenv("backend") != "gpu"
+            or not self.strategy._amp.enable
+            or int(paddle.version.cuda().split(".")[0]) < 11
+            or paddle.device.cuda.get_device_capability()[0] < 8
         ):
             return
         if self.gradient_accumulation_steps > 1:
             dy_losses = self.run_dynamic()
-
+            # context parallel not support static mode
+            if self.config.context_parallel_degree > 1:
+                return
             self.init_dist_env()
             st_losses = self.run_dy2static()
             if int(dist.get_rank()) in [2, 3, 6, 7]:
@@ -398,7 +401,9 @@ class TestLlamaAuto:
 
         else:
             dy_losses = self.run_llama(to_static=0)
-
+            # context parallel not support static mode
+            if self.config.context_parallel_degree > 1:
+                return
             self.init_dist_env()
             st_losses = self.run_llama(to_static=1)
             assert len(dy_losses) == len(st_losses)
