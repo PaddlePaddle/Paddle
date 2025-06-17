@@ -1245,6 +1245,7 @@ void BindDistributed(py::module *m) {
                   py::arg("group_id") = 0,
                   py::arg("timeout") = 30 * 60 * 1000,
                   py::arg("nccl_comm_init_option") = 0,
+                  py::arg("comm_group_type") = -1,
                   py::call_guard<py::gil_scoped_release>())
       .def_static("group_start", distributed::ProcessGroupNCCL::GroupStart)
       .def_static("group_end", distributed::ProcessGroupNCCL::GroupEnd)
