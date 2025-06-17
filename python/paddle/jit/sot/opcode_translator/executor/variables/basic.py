@@ -18,7 +18,7 @@ import dataclasses
 import operator
 import sys
 import types
-from dataclasses import asdict, is_dataclass
+from dataclasses import is_dataclass
 from enum import Enum
 from functools import cached_property, reduce
 from typing import TYPE_CHECKING, Any
@@ -2563,6 +2563,10 @@ class DataClassInstanceVariable(VariableBase):
             for fd in dataclasses.fields(self.get_py_type())
         ]
 
+    @classmethod
+    def _custom_asdict(cls, obj):
+        return {f.name: getattr(obj, f.name) for f in dataclasses.fields(obj)}
+
     @VariableFactory.register_from_value()
     def from_value(value: object, graph: FunctionGraph, tracker: Tracker):
         if is_dataclass(value) and not isinstance(value, type):
@@ -2570,7 +2574,7 @@ class DataClassInstanceVariable(VariableBase):
                 type(value), graph, DanglingTracker()
             )
             var = DataClassInstanceVariable(
-                asdict(value),
+                DataClassInstanceVariable._custom_asdict(value),
                 class_var,
                 id(value),
                 graph=graph,
