@@ -197,8 +197,6 @@ EOF
                         echo "The following unittest will be re-run:"
                         echo "${retry_unittests}"
                         echo "========================================="
-                        set -x
-
                         retry_unittests_regular=''
                         for line in ${retry_unittests[@]} ;
                             do
@@ -208,7 +206,7 @@ EOF
                                     retry_unittests_regular="$retry_unittests_regular|^$line$"
                                 fi
                             done
-			find $tmp_dir -delete
+			find $tmp_dir -mindepth 1 -delete
                         failed_test_lists=''
                         ctest -R "($retry_unittests_regular)" --output-on-failure -j 4 | tee $tmpfile
                         collect_failed_tests
@@ -231,13 +229,8 @@ EOF
 }
 
 function collect_failed_tests() {
-    echo 123
-    echo pwd
-    echo 321
     for file in `ls $tmp_dir`; do
         exit_code=0
-        echo 456
-        echo $tmp_dir/$file
         grep -q 'The following tests FAILED:' $tmp_dir/$file||exit_code=$?
         if [ $exit_code -ne 0 ]; then
             failuretest=''
@@ -298,14 +291,6 @@ function get_precision_ut_mac() {
 }
 
 function show_ut_retry_result() {
-    echo 11111
-    echo $is_retry_execute
-    echo 22222
-    echo $exec_times
-    echo 33333
-    echo $mactest_error
-    echo 444444
-    echo $failed_test_lists
     exec_retry_threshold_count=10
     if [[ "$is_retry_execute" != "0" ]]  && [[ "${exec_times}" == "0" ]] ;then
         failed_test_lists_ult=`echo "${failed_test_lists}" | grep -Po '[^ ].*$'`
