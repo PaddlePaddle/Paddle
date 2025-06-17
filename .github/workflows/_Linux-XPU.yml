@@ -181,18 +181,12 @@ jobs:
       group: Kunlun
 
     steps:
-      - name: Download build.tar.gz
-        run: |
-          rm -rf * .[^.]*
-          wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/xpu/${PR_ID}/${COMMIT_ID}/build.tar.gz --no-check-certificate
-          tar --use-compress-program="pzstd" -xf build.tar.gz --strip-components=1
-          rm build.tar.gz
-
       - name: Determine the runner
         run: |
           runner_name=`(echo $PWD|awk -F '/' '{print $3}')`
           echo $runner_name
-          source ${ci_scripts_runner}/utils.sh
+          wget -q https://xly-devops.bj.bcebos.com/PR/determine_kunlun_runner.sh
+          source utils.sh
           determine_kunlun_runner ${runner_name}
 
       - name: Check docker image and run container
@@ -208,8 +202,6 @@ jobs:
           PY_VERSION: "3.10"
           XPU_VISIBLE_DEVICES: ${{ env.CUDA_VISIBLE_DEVICES }}
           CUDA_VISIBLE_DEVICES: ${{ env.CUDA_VISIBLE_DEVICES }}
-          CUDA_VERSION:
-          CUDNN_VERSION:
           WITH_XPU_BKCL: "ON"
           CACHE_DIR: /root/.cache
           CCACHE_DIR: /root/.ccache
@@ -245,8 +237,6 @@ jobs:
             -e PY_VERSION \
             -e XPU_VISIBLE_DEVICES \
             -e CUDA_VISIBLE_DEVICES \
-            -e CUDA_VERSION \
-            -e CUDNN_VERSION \
             -e WITH_XPU_BKCL \
             -e CACHE_DIR \
             -e CCACHE_DIR \
@@ -262,6 +252,14 @@ jobs:
             -e CI_name \
             -w /paddle --network host ${docker_image} /bin/bash
 
+      - name: Download build.tar.gz
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
+          wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/xpu/${PR_ID}/${COMMIT_ID}/build.tar.gz --no-check-certificate
+          tar --use-compress-program="pzstd" -xf build.tar.gz --strip-components=1
+          rm build.tar.gz
+          '
+        
       - name: Run test
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
@@ -271,5 +269,5 @@ jobs:
       - name: Terminate and delete the container
         if: always()
         run: |
-          rm -rf * .[^.]*
+          docker exec -t ${container_name} /bin/bash -c 'rm -rf * .[^.]*'
           docker rm -f ${container_name}
