@@ -66,6 +66,7 @@ class TestMaskedScatterError(unittest.TestCase):
             paddle.masked_scatter(x, mask, value)
 
     def test_numel_error(self):
+        paddle.disable_static()
         self.value_np = np.random.randn(5, 5).astype(self.dtype)
         x = paddle.to_tensor(self.x_np, dtype=self.dtype)
         mask = paddle.to_tensor(self.mask_np).astype('bool')
