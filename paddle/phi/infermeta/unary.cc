@@ -2112,6 +2112,7 @@ void FrameInferMeta(const MetaTensor& x,
   out->set_dims(common::make_ddim(output_shape));
   out->set_dtype(x.dtype());
 }
+
 void Fp8QuantBlockwiseInferMeta(const MetaTensor& X,
                                 float epsilon,
                                 bool using_1x128_vec_quant,
@@ -2123,22 +2124,28 @@ void Fp8QuantBlockwiseInferMeta(const MetaTensor& X,
                                 MetaTensor* scale,
                                 MetaTensor* out_transposed,
                                 MetaTensor* scale_transposed) {
+  auto x_dims = X.dims();
   PADDLE_ENFORCE_EQ(
-      X.dims().size() == 2, true, "Input must have exactly 2 dimensions.");
-  PADDLE_ENFORCE_EQ(using_e5m2, false, "currently e5m2 is not support.");
-  PADDLE_ENFORCE_EQ(X.dtype() == phi::DataType::BFLOAT16,
-                    true,
-                    "currently only support bfloat16 input.");
+      x_dims.size(),
+      2,
+      common::errors::InvalidArgument("Input must have exactly 2 dimensions."));
+  PADDLE_ENFORCE_EQ(
+      using_e5m2,
+      false,
+      common::errors::InvalidArgument("currently e5m2 is not support."));
+  PADDLE_ENFORCE_EQ(X.dtype(),
+                    phi::DataType::BFLOAT16,
+                    common::errors::InvalidArgument(
+                        "currently only support bfloat16 input."));
 
-  const int64_t rows = X.dims()[0];
-  const int64_t cols = X.dims()[1];
-  if (input_transpose) {
-    PADDLE_ENFORCE_EQ(
-        using_1x128_vec_quant,
-        true,
-        common::errors::InvalidArgument("The input_transpose strategy is only "
-                                        "support quant_method = 0(1x128)"));
-  }
+  const int64_t rows = x_dims[0];
+  const int64_t cols = x_dims[1];
+  PADDLE_ENFORCE_LE(rows,
+                    65535 * 128,
+                    common::errors::InvalidArgument(
+                        "Currently only supports the first dim of "
+                        "Input(X) <= 65535 * 128, but got %d",
+                        rows));
   PADDLE_ENFORCE_EQ(
       rows % 128,
       0,
@@ -2170,10 +2177,9 @@ void Fp8QuantBlockwiseInferMeta(const MetaTensor& X,
     scale_outer_dim = output_scale_transpose ? quantized_dim : no_quantize_dim;
     scale_inner_dim = output_scale_transpose ? no_quantize_dim : quantized_dim;
   } else {
-    // 128x128
-    // No input_transpose support
-    const int64_t row_quantized = (rows + 127) / 128;
-    const int64_t col_quantized = (cols + 127) / 128;
+    // 128x128 w/wo transpose
+    const int64_t row_quantized = (output_outer_dim + 127) / 128;
+    const int64_t col_quantized = (output_inner_dim + 127) / 128;
     scale_outer_dim = output_scale_transpose ? col_quantized : row_quantized;
     scale_inner_dim = output_scale_transpose ? row_quantized : col_quantized;
   }

@@ -149,28 +149,15 @@ class TestFP8GemmBlockwise(unittest.TestCase):
         A = paddle.randn((M, K), dtype=paddle.bfloat16)
         B = paddle.randn((N, K), dtype=paddle.bfloat16)
 
-        # Quantize A using kitchen quantization (simplified for this example)
-        # Note: This part needs to be replaced with actual quantization logic
-        # For now, we'll skip this test if kitchen imports are not available
-        try:
-            from kitchen import ops, quantization_subchannel_block_hybrid
-            from kitchen.quantization import QParams, ScalingType
-
-            A_dtype = paddle.float8_e4m3fn
-            A_quant_tile_shape = (1, 128)
-            A_qparams = QParams(
-                quant_dtype=A_dtype,
-                scaling_type=ScalingType.VECTOR_TILED_X_AND_G_BLOCK_TILED_W,
-                quant_tile_shape=A_quant_tile_shape,
-            )
-
-            quantize_op = quantization_subchannel_block_hybrid.HybridBlockAndVectorTiledQuantizeOp(
-                ops.Backend.CUBLAS
-            )
-            qresult_A = quantize_op.quantize(A, A_qparams)
-            qA, sA = qresult_A.data, qresult_A.scale
-        except ImportError:
-            self.skipTest("Kitchen quantization not available")
+        # Quantize A using fp8
+        data_A, scale_A = fp8.fp8_quant_blockwise(
+            A,
+            quant_method="1x128",
+            input_transpose=False,
+            output_scale_transpose=True,
+            using_pow2_scale=False,
+        )
+        qA, sA = data_A, scale_A
 
         # Quantize B using fp8
         data_B, scale_B = fp8.fp8_quant_blockwise(
@@ -219,26 +206,15 @@ class TestFP8GemmBlockwise(unittest.TestCase):
         )
         qA, sA = data_A, scale_A
 
-        # Quantize B using kitchen quantization (simplified)
-        try:
-            from kitchen import ops, quantization_subchannel_block_hybrid
-            from kitchen.quantization import QParams, ScalingType
-
-            B_dtype = paddle.float8_e4m3fn
-            B_quant_tile_shape = (1, 128)
-            B_qparams = QParams(
-                quant_dtype=B_dtype,
-                scaling_type=ScalingType.VECTOR_TILED_X_AND_G_BLOCK_TILED_W,
-                quant_tile_shape=B_quant_tile_shape,
-            )
-
-            quantize_op = quantization_subchannel_block_hybrid.HybridBlockAndVectorTiledQuantizeOp(
-                ops.Backend.CUBLAS
-            )
-            qresult_B = quantize_op.quantize(B, B_qparams)
-            qB, sB = qresult_B.data, qresult_B.scale
-        except ImportError:
-            self.skipTest("Kitchen quantization not available")
+        # Quantize B using fp8
+        data_B, scale_B = fp8.fp8_quant_blockwise(
+            B,
+            quant_method="1x128",
+            input_transpose=False,
+            output_scale_transpose=True,
+            using_pow2_scale=False,
+        )
+        qB, sB = data_B, scale_B
 
         gold_matmul_result = A @ B.t()
 

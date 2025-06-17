@@ -1,32 +1,28 @@
-// NOLINTBEGIN
-//  Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
 //
-//  Licensed under the Apache License, Version 2.0 (the "License");
-//  you may not use this file except in compliance with the License.
-//  You may obtain a copy of the License at
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
 //
-//      http://www.apache.org/licenses/LICENSE-2.0
+//     http://www.apache.org/licenses/LICENSE-2.0
 //
-//  Unless required by applicable law or agreed to in writing, software
-//  distributed under the License is distributed on an "AS IS" BASIS,
-//  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-//  See the License for the specific language governing permissions and
-//  limitations under the License.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
-// #include "paddle/extension.h"
 #include <cuda_fp8.h>
 #include <cstdint>
 #include <vector>
 #include "paddle/common/flags.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/utils/data_type.h"
-#include "paddle/phi/kernels/empty_kernel.h"  // NOLINT
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/kernel_registry.h"
-
-COMMON_DECLARE_bool(enable_pir_api);
+#include "paddle/phi/kernels/fusion/gpu/quant_utils.h"
 
 namespace phi {
 
@@ -67,6 +63,14 @@ typedef struct alignas(16) fp8x8_t {
     *reinterpret_cast<uint2 *>(ptr) = data.vector;
   }
 } fp8x16_t;
+
+struct alignas(8) bf16x4_t {
+  __nv_bfloat16 val[4];
+};
+
+struct alignas(4) fp8x4_t {
+  __nv_fp8_e4m3 val[4];
+};
 
 template <bool Power2Scaling>
 __device__ __forceinline__ float ScaleWrapper(const float amax,
@@ -255,20 +259,185 @@ __global__ void __launch_bounds__(256)
   }
 }
 
+template <bool use_pow2_scale>
+__device__ void ComputeColumnScale(const bf16x4_t x[8],
+                                   float block_scale[128],
+                                   __nv_bfloat16 *shm,
+                                   const float epsilon) {
+  // reduce [(8), 16, 32, 4] => [16, 32, 4]
+  __nv_bfloat16 local_max[4];
+  for (uint32_t i = 0; i < 8; i++) {
+    for (uint32_t j = 0; j < 4; j++) {
+      __nv_bfloat16 val = BF16_ABS(x[i].val[j]);
+      local_max[j] = i == 0 ? val : BF16_MAX(val, local_max[j]);
+    }
+  }
+
+  // reduce [(16), 32, 4] => [8, 32, 4]
+  if (threadIdx.y >= 8) {
+    for (uint32_t j = 0; j < 4; j++) {
+      shm[(threadIdx.y - 8) * 128 + threadIdx.x + j * 32] = local_max[j];
+    }
+  }
+  __syncthreads();
+
+  // reduce [(8), 32, 4] => [32, 4]
+  for (uint32_t offset = 8; offset > 0; offset /= 2) {
+    if (threadIdx.y < offset) {
+      for (uint32_t j = 0; j < 4; j++) {
+        __nv_bfloat16 other =
+            offset == 8
+                ? local_max[j]
+                : shm[(threadIdx.y + offset) * 128 + threadIdx.x + j * 32];
+        __nv_bfloat16 new_val =
+            BF16_MAX(shm[threadIdx.y * 128 + threadIdx.x + j * 32], other);
+        if (offset > 1) {
+          shm[threadIdx.y * 128 + threadIdx.x + j * 32] = new_val;
+        } else {
+          block_scale[threadIdx.x * 4 + j] = ScaleWrapper<use_pow2_scale>(
+              static_cast<float>(new_val), epsilon);
+        }
+      }
+    }
+    __syncthreads();
+  }
+}
+
+template <bool use_pow2_scale>
+__device__ void ComputeRowScale(const bf16x4_t x[8],
+                                float block_scale[128],
+                                __nv_bfloat16 *shm,
+                                const float epsilon) {
+  for (uint32_t i = 0; i < 8; i++) {
+    // reduce [32, (4)] => [32]
+    __nv_bfloat16 local_max;
+    for (uint32_t j = 0; j < 4; j++) {
+      __nv_bfloat16 other = BF16_ABS(x[i].val[j]);
+      local_max = j == 0 ? other : BF16_MAX(local_max, other);
+    }
+
+    // reduce [32] => [1]
+    __nv_bfloat16 warp_max = local_max;
+    for (uint32_t offset = 16; offset > 0; offset /= 2) {
+      __nv_bfloat16 other = __shfl_down_sync(0xFFFFFFFF, warp_max, offset);
+      warp_max = BF16_MAX(warp_max, other);
+    }
+    if (threadIdx.x == 0) {
+      shm[i * 16 + threadIdx.y] = warp_max;
+    }
+  }
+  __syncthreads();
+
+  // compute scale
+  if (threadIdx.y < 4) {
+    __nv_bfloat16 amax = shm[threadIdx.y * 32 + threadIdx.x];
+    block_scale[threadIdx.y * 32 + threadIdx.x] =
+        ScaleWrapper<use_pow2_scale>(static_cast<float>(amax), epsilon);
+  }
+  __syncthreads();
+}
+
 template <bool input_transpose,
           bool output_scale_transpose,
           bool use_pow2_scale>
-__global__ void __launch_bounds__(256)
+__global__ void __launch_bounds__(512)
     quantize_1x128_kernel(const __nv_bfloat16 *const input,
                           __nv_fp8_e4m3 *const output,
                           __nv_fp8_e4m3 *const output_transposed,
                           float *const scale,
                           float *const scale_transposed,
-                          const size_t cols,
                           const size_t rows,
-                          const size_t quanted_cols,
+                          const size_t cols,
                           const size_t quanted_rows,
-                          const float epsilon) {}
+                          const size_t quanted_cols,
+                          const float epsilon) {
+  __shared__ __nv_fp8_e4m3 shm[128][129];
+  __shared__ float block_scale[128];
+
+  const size_t block_offset_x = blockIdx.x * size_t(128);
+  const size_t block_offset_y = blockIdx.y * size_t(128);
+
+  // 1. Load 128x128 block of input.
+  bf16x4_t x[8];
+  for (uint32_t i = 0; i < 8; i++) {
+    size_t col_idx = block_offset_y + threadIdx.y + i * 16;
+    size_t row_idx = block_offset_x + threadIdx.x * 4;
+    size_t idx = col_idx * rows + row_idx;
+    x[i] = *reinterpret_cast<const bf16x4_t *>(input + idx);
+  }
+
+  // 2. Compute scale along either the column or row.
+  if constexpr (input_transpose) {
+    ComputeColumnScale<use_pow2_scale>(
+        x, block_scale, reinterpret_cast<__nv_bfloat16 *>(shm), epsilon);
+  } else {
+    ComputeRowScale<use_pow2_scale>(
+        x, block_scale, reinterpret_cast<__nv_bfloat16 *>(shm), epsilon);
+  }
+
+  // 3. Write 1x128 scale.
+  if (threadIdx.y < 4) {
+    float scale_out = 1.0f / block_scale[threadIdx.y * 32 + threadIdx.x];
+    if constexpr (input_transpose) {
+      size_t col_idx = blockIdx.y;
+      size_t row_idx = block_offset_x + threadIdx.y * 32 + threadIdx.x;
+      if constexpr (output_scale_transpose) {
+        scale[col_idx * quanted_rows + row_idx] = scale_out;
+        scale_transposed[row_idx * quanted_cols + col_idx] = scale_out;
+      } else {
+        scale[row_idx * quanted_rows + col_idx] = scale_out;
+        scale_transposed[col_idx * quanted_cols + row_idx] = scale_out;
+      }
+    } else {
+      size_t col_idx = block_offset_y + threadIdx.y * 32 + threadIdx.x;
+      size_t row_idx = blockIdx.x;
+      if constexpr (output_scale_transpose) {
+        scale[row_idx * quanted_rows + col_idx] = scale_out;
+      } else {
+        scale[col_idx * quanted_rows + row_idx] = scale_out;
+      }
+    }
+  }
+
+  // 4. Do quantization on X and write 128x128 output.
+  for (uint32_t i = 0; i < 8; i++) {
+    size_t col_idx = block_offset_y + threadIdx.y + i * 16;
+    size_t row_idx = block_offset_x + threadIdx.x * 4;
+    size_t idx = col_idx * rows + row_idx;
+
+    fp8x4_t data;
+    for (uint32_t j = 0; j < 4; j++) {
+      float scale_val = input_transpose ? block_scale[threadIdx.x * 4 + j]
+                                        : block_scale[i * 16 + threadIdx.y];
+      float x_scaled = static_cast<float>(x[i].val[j]) * scale_val;
+      data.val[j] = static_cast<__nv_fp8_e4m3>(x_scaled);
+    }
+
+    if constexpr (input_transpose) {
+      *reinterpret_cast<fp8x4_t *>(output_transposed + idx) = data;
+      for (uint32_t j = 0; j < 4; j++) {
+        shm[threadIdx.x * 4 + j][i * 16 + threadIdx.y] = data.val[j];
+      }
+    } else {
+      *reinterpret_cast<fp8x4_t *>(output + idx) = data;
+    }
+  }
+
+  // 5. Write transposed 128x128 output.
+  if constexpr (input_transpose) {
+    __syncthreads();
+    for (uint32_t i = 0; i < 8; i++) {
+      size_t row_idx = block_offset_x + threadIdx.y + i * 16;
+      size_t col_idx = block_offset_y + threadIdx.x * 4;
+      size_t idx = row_idx * cols + col_idx;
+      fp8x4_t data;
+      for (uint32_t j = 0; j < 4; j++) {
+        data.val[j] = shm[i * 16 + threadIdx.y][threadIdx.x * 4 + j];
+      }
+      *reinterpret_cast<fp8x4_t *>(output + idx) = data;
+    }
+  }
+}
 
 template <typename Context,
           bool using_1x128_vec_quant,
@@ -290,7 +459,10 @@ void FP8QuantBlockWiseKernelImpl(const Context &dev_ctx,
 
   dim3 block, grid;
   if constexpr (using_1x128_vec_quant) {
-    return;
+    block.x = 32;
+    block.y = 16;
+    grid.x = (src_cols + k_block_span - 1) / k_block_span;
+    grid.y = (src_rows + k_block_span - 1) / k_block_span;
   } else {
     block.x = 256;
     grid.x = (src_cols + k_block_span - 1) / k_block_span;
@@ -344,16 +516,7 @@ void FP8QuantBlockWiseKernel(const Context &dev_ctx,
     dev_ctx.template Alloc<phi::dtype::float8_e4m3fn>(out_transposed);
     dev_ctx.template Alloc<float>(scale_transposed);
   }
-#define DISPATCH_BOOL(condition, ConstName, ...) \
-  {                                              \
-    if (condition) {                             \
-      constexpr bool ConstName = true;           \
-      { __VA_ARGS__ }                            \
-    } else {                                     \
-      constexpr bool ConstName = false;          \
-      { __VA_ARGS__ }                            \
-    }                                            \
-  }
+
   // Currently we only support bfloat16 as input type,
   // fp8_e4m3fn as output type.
   DISPATCH_BOOL(
@@ -380,7 +543,6 @@ void FP8QuantBlockWiseKernel(const Context &dev_ctx,
                       scale,
                       out_transposed,
                       scale_transposed);))));
-#undef DISPATCH_BOOL
 }
 }  // namespace phi
 

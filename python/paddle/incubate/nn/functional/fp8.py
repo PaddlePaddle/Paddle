@@ -54,6 +54,7 @@ def fused_stack_transpose_quant(
 
     Examples:
         .. code-block:: python
+
             import paddle.incubate.nn.functional as F
 
             x_vec = []
@@ -258,7 +259,7 @@ def fp8_gemm_blockwise(
 
 
 def fp8_quant_blockwise(
-    X: Tensor,
+    x: Tensor,
     epsilon: float = 0.0,
     input_transpose: bool = False,
     output_scale_transpose: bool = True,
@@ -267,6 +268,53 @@ def fp8_quant_blockwise(
     output_type: str = "e4m3",
     name: str | None = None,
 ):
+    r"""
+    Performs block-wise FP8 quantization.
+
+    This API performs FP8 quantization on every 1x128 (or 128x128) block of
+    input. For each block, it determines an appropriate scaling factor, scales
+    the elements in the block accordingly, and downcast them to FP8. The output
+    is a quantized FP8 tensor of the same shape as input, and a scale tensor
+    whose size is only 1/128 (or 1/(128x128)) of input.
+
+    Args:
+        x(Tensor): The tensor to be quantized.
+                    2-D tensor with shape: [rows, cols].
+                    The rows and cols must be multiple of 128.
+                    The dtype must be bfloat16.
+        epsilon(float): A small float number to avoid scaling zero.
+                    Note that 0.0 is also valid.
+        input_transpose(bool): Whether to transpose the input before quantization.
+                    If true, it is as if the input is manually transposed before feed
+                    into this API, and there will be two additional outputs.
+        output_scale_transpose(bool): Whether to transpose the scale before return.
+        using_pow2_scale(bool): Whether to use power-of-2 scaling in quantization.
+                    If true, the scale is guaranteed to be power of 2.
+        quant_method(str): The quantization method. Can be `1x128` or `128x128`.
+        output_type(str): The output dtype. Currently only supports `e4m3`.
+        name(str|None, optional): The default value is None. Normally there is no need for user
+                    to set this property. For more information, please refer to
+                    :ref:`api_guide_Name`.
+
+    Returns:
+        out(Tensor): The quantized tensor.
+                    2-D tensor with shape:
+                        [rows, cols] by default, or
+                        [cols, rows] if input_transpose=True.
+                    The dtype is float8_e4m3fn.
+        scale(Tensor): The scale tensor.
+                    2-D tensor with shape:
+                        [out.shape[1]/128, out.shape[0]] if quant_method='1x128', or
+                        [out.shape[1]/128, out.shape[0]/128] if quant_method='128x128', or
+                        the transpose of above if output_scale_transpose=False.
+                    The dtype is float.
+        out_t(Tensor, optional): The transpose of out.
+                    Exists only when input_transpose=True.
+        scale_t(Tensor, optional): The transpose of scale.
+                    Exists only when input_transpose=True.
+
+    """
+
     if quant_method == "1x128":
         using_1x128 = True
     elif quant_method == "128x128":
@@ -280,8 +328,8 @@ def fp8_quant_blockwise(
         raise ValueError("Unsupported output type")
 
     if in_dynamic_or_pir_mode():
-        X_fp8, scale, X_fp8_t, scale_t = _C_ops.fp8_quant_blockwise(
-            X,
+        x_fp8, scale, x_fp8_t, scale_t = _C_ops.fp8_quant_blockwise(
+            x,
             epsilon,
             using_1x128,
             input_transpose,
@@ -291,6 +339,6 @@ def fp8_quant_blockwise(
         )
         # Aligned with kitchen's logic
         if not input_transpose:
-            return X_fp8, scale
+            return x_fp8, scale
         else:
-            return X_fp8, scale, X_fp8_t, scale_t
+            return x_fp8, scale, x_fp8_t, scale_t

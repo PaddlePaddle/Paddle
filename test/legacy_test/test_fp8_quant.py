@@ -72,7 +72,10 @@ class TestFP8Quantization(unittest.TestCase):
         self.assertEqual(scale.shape, x_q.shape)
 
         x_qdq = x_q.astype('float32') * scale
-        return self.cal_all_rmse(x, x_q, x_qdq, input_transpose)
+        rmse = self.cal_all_rmse(x, x_q, x_qdq, input_transpose)
+
+        self.assertLessEqual(rmse, self.rmse_threshold)
+        return rmse
 
     def eval_per_1x128_quant(
         self,
@@ -80,14 +83,42 @@ class TestFP8Quantization(unittest.TestCase):
         input_transpose: bool = False,
         scale_transpose=False,
     ):
-        # TODO(lshpku): add optest
-        pass
+        if input_transpose:
+            x_q, scale, x_t_q, scale_t = fp8.fp8_quant_blockwise(
+                x,
+                quant_method="1x128",
+                input_transpose=True,
+                output_scale_transpose=False,
+                using_pow2_scale=False,
+            )
+        else:
+            x_q, scale = fp8.fp8_quant_blockwise(
+                x,
+                quant_method="1x128",
+                input_transpose=False,
+                output_scale_transpose=False,
+                using_pow2_scale=False,
+            )
+
+        self.assertEqual(len(x_q.shape), 2)
+        self.assertEqual(len(scale.shape), 2)
+
+        scale = paddle.repeat_interleave(scale, repeats=128, axis=1)
+        scale = scale[: x_q.shape[0], : x_q.shape[1]]
+
+        self.assertEqual(scale.shape, x_q.shape)
+
+        x_qdq = x_q.astype('float32') * scale
+        rmse = self.cal_all_rmse(x, x_q, x_qdq, input_transpose)
+
+        self.assertLessEqual(rmse, self.rmse_threshold)
+        return rmse
 
     def test_tensor_shapes(self):
         self.assertEqual(self.x.shape, [self.m, self.n])
         self.assertEqual(self.x.dtype, paddle.bfloat16)
 
-    def test_quantization_consistency(self):
+    def test_quantization_consistency_128x128(self):
         paddle.seed(42)
         x1 = paddle.randn((1024, 1024), dtype=paddle.bfloat16)
         rmse1 = self.eval_per_128x128_quant(x1, input_transpose=False)
@@ -95,6 +126,17 @@ class TestFP8Quantization(unittest.TestCase):
         paddle.seed(42)
         x2 = paddle.randn((1024, 1024), dtype=paddle.bfloat16)
         rmse2 = self.eval_per_128x128_quant(x2, input_transpose=False)
+
+        self.assertAlmostEqual(rmse1.item(), rmse2.item(), places=6)
+
+    def test_quantization_consistency_1x128(self):
+        paddle.seed(42)
+        x1 = paddle.randn((1024, 1024), dtype=paddle.bfloat16)
+        rmse1 = self.eval_per_1x128_quant(x1, input_transpose=False)
+
+        paddle.seed(42)
+        x2 = paddle.randn((1024, 1024), dtype=paddle.bfloat16)
+        rmse2 = self.eval_per_1x128_quant(x2, input_transpose=False)
 
         self.assertAlmostEqual(rmse1.item(), rmse2.item(), places=6)
 
