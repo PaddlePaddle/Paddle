@@ -74,21 +74,23 @@ class OpcodeExecutorCache(metaclass=Singleton):
     MAX_CACHE_SIZE = 20
     MAX_COMPILE_TIME_PER_CODE = 40
     MAX_COMPILE_TIME_TOTAL = 15 * 60
-    CACHE_HIT_THRESHOLD = 32
+    CACHE_HIT_FASTPATH_THRESHOLD = 32
     cache: dict[
         types.CodeType, tuple[GuardedFunctions, paddle.framework.core.GuardTree]
     ]
     translate_count: int
     code_symbolic_inputs: dict[types.CodeType, dict[str, None | dict[int, int]]]
     compile_time_stats: dict[types.CodeType, float]
+    consecutive_cache_hit_count: dict[types.CodeType, int]
+    last_cache_index: dict[types.CodeType, int | None]
 
     def __init__(self):
         self.cache = {}
         self.translate_count = 0
         self.code_symbolic_inputs = {}
         self.compile_time_stats = {}
-        self.cache_hit_num = 0
-        self.last_cache_index = None
+        self.consecutive_cache_hit_count = {}
+        self.last_cache_index = {}
 
     def get_symbolic_inputs(
         self, code: types.CodeType
@@ -165,6 +167,7 @@ class OpcodeExecutorCache(metaclass=Singleton):
         Returns:
             CustomCode: The custom code object if a matching guard function is found, otherwise None.
         """
+        code: types.CodeType = frame.f_code
 
         if len(guarded_fns) >= self.MAX_CACHE_SIZE:
             log(2, "[Cache] Exceed max cache size, skip it\n")
@@ -174,12 +177,12 @@ class OpcodeExecutorCache(metaclass=Singleton):
         enable_guard_tree = ENV_SOT_ENABLE_GUARD_TREE.get()
         enable_unsafe_cache_fastpath = ENV_SOT_UNSAFE_CACHE_FASTPATH.get()
 
-        if (
-            enable_unsafe_cache_fastpath
-            and self.cache_hit_num > self.CACHE_HIT_THRESHOLD
+        if enable_unsafe_cache_fastpath and (
+            self.consecutive_cache_hit_count[code]
+            > self.CACHE_HIT_FASTPATH_THRESHOLD
         ):
             # NOTE: In inference scenarios, cache misses are generally rare, so we can enable this short path.
-            return guarded_fns[self.last_cache_index][0]
+            return guarded_fns[self.last_cache_index[code]][0]
 
         cache_index = None
         if enable_strict_guard or enable_guard_tree:
@@ -245,11 +248,11 @@ class OpcodeExecutorCache(metaclass=Singleton):
                         cache_index is None or index == cache_index
                     ), f"cache_index({cache_index}) is not equal to index({index})"
 
-                    if self.last_cache_index == index:
-                        self.cache_hit_num += 1
+                    if self.last_cache_index[code] == index:
+                        self.consecutive_cache_hit_count[code] += 1
                     else:
-                        self.last_cache_index = index
-                        self.cache_hit_num = 0
+                        self.last_cache_index[code] = index
+                        self.consecutive_cache_hit_count[code] = 0
 
                     return custom_code
                 else:
