@@ -882,6 +882,32 @@ class ShareVarOp : public pir::Op<ShareVarOp, pir::SideEffectTrait> {
   void VerifySig() {}
 };
 
+class IR_API CudaGraphOp
+    : public pir::Op<CudaGraphOp,
+                     paddle::dialect::InferSymbolicShapeInterface,
+                     pir::SideEffectTrait> {
+ public:
+  using Op::Op;
+  static const char *name() { return "pd_op.cuda_graph"; }
+
+  static void Build(pir::Builder &builder,             // NOLINT
+                    pir::OperationArgument &argument,  // NOLINT
+                    const std::vector<pir::Type> &output_types);
+
+  static void Build(pir::Builder &builder,             // NOLINT
+                    pir::OperationArgument &argument,  // NOLINT
+                    std::unique_ptr<pir::Block> &&block);
+
+  pir::Block *block();
+  pir::Block *block() const;
+  std::vector<pir::Operation *> GetOperators() const;
+
+  bool InferSymbolicShape(pir::InferSymbolicShapeContext *infer_context);
+
+  void VerifySig();
+  void Print(pir::IrPrinter &printer);  // NOLINT
+};
+
 }  // namespace dialect
 }  // namespace paddle
 
