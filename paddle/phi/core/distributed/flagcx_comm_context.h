@@ -32,6 +32,12 @@ class FlagcxCommContext final : public CommContext {
 
   flagcxComm_t GetFlagcxComm();
 
+  gpuStream_t GetStream();
+
+  phi::GPUContext* GetDevContext();
+
+  void SetDevContext(std::unique_ptr<phi::GPUContext>&& dev_ctx);
+
   void Broadcast(phi::DenseTensor* out_tensor,
                  const phi::DenseTensor& in_tensor,
                  int root,

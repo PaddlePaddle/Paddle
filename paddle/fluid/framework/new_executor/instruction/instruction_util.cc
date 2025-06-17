@@ -73,6 +73,13 @@
 #define CREATE_COMM_CONTEXT \
   phi::distributed::CommContextManager::CreateXCCLCommContext
 #define PROCESS_GROUP paddle::distributed::ProcessGroupCustom
+#elif defined(PADDLE_WITH_FLAGCX)
+#define COMM_CONTEXT phi::distributed::FlagCXCommContext
+#define DEVICE_CONTEXT phi::GPUContext
+#define CREATE_COMM_CONTEXT \
+  phi::distributed::CommContextManager::CreateFlagcxCommContext
+#define PLATFORM_COMM_CONTEXT platform::FlagcxCommContext
+#define PROCESS_GROUP paddle::distributed::ProcessGroupFlagcx
 #endif
 
 namespace paddle::framework {

@@ -40,12 +40,17 @@
 #include "paddle/phi/core/kernel_factory.h"
 #include "paddle/phi/core/memory/stats.h"
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
-    defined(PADDLE_WITH_CUSTOM_DEVICE)
+    defined(PADDLE_WITH_CUSTOM_DEVICE) || defined(PADDLE_WITH_FLAGCX)
 #include "paddle/fluid/distributed/collective/process_group.h"
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 #include "paddle/fluid/distributed/collective/process_group_custom.h"
 #else
+#if defined(PADDLE_WITH_FLAGCX)
+#include "paddle/fluid/distributed/collective/process_group_flagcx.h"
+#include "paddle/phi/core/distributed/flagcx_comm_context.h"
+#else
 #include "paddle/fluid/distributed/collective/process_group_nccl.h"
+#endif
 #endif
 #endif
 
@@ -841,7 +846,7 @@ void BuildOpFuncList(const phi::Place& place,
                 phi::KernelRegisteredType::FUNCTION) {
           VLOG(6) << op_type << " run function kernel";
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
-    defined(PADDLE_WITH_CUSTOM_DEVICE)
+    defined(PADDLE_WITH_CUSTOM_DEVICE) || defined(PADDLE_WITH_FLAGCX)
           auto attrs = op->Attrs();
           if (attrs.find("ring_id") != attrs.end()) {
             auto ring_id_attr = attrs.at("ring_id");
@@ -864,7 +869,29 @@ void BuildOpFuncList(const phi::Place& place,
                   original_stream);
               // todo  set allocator in custom device
 #else
+#if defined(PADDLE_WITH_FLAGCX)
+              auto original_stream =
+                  static_cast<phi::GPUContext*>(dev_ctx)->cuda_stream();
+              distributed::ProcessGroup* pg = map->get(ring_id);
+              auto comm_context =
+                  static_cast<paddle::distributed::ProcessGroupFlagcx*>(pg)
+                      ->GetOrCreateCommContext(place);
+              dev_ctx = static_cast<phi::distributed::FlagcxCommContext*>(
+                            comm_context)
+                            ->GetDevContext();
+              dev_ctx->SetCommContext(comm_context);
 
+              static_cast<phi::GPUContext*>(dev_ctx)->SetCUDAStream(
+                  original_stream, false);
+              auto& instance =
+                  paddle::memory::allocation::AllocatorFacade::Instance();
+              dev_ctx->SetAllocator(
+                  instance
+                      .GetAllocator(
+                          place,
+                          static_cast<phi::GPUContext*>(dev_ctx)->stream())
+                      .get());
+#else
               auto original_stream =
                   static_cast<phi::GPUContext*>(dev_ctx)->cuda_stream();
               distributed::ProcessGroup* pg = map->get(ring_id);
@@ -886,6 +913,7 @@ void BuildOpFuncList(const phi::Place& place,
                           place,
                           static_cast<phi::GPUContext*>(dev_ctx)->stream())
                       .get());
+#endif
 #endif
             } else {
               VLOG(3) << "ring_id " << ring_id

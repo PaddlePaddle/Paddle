@@ -50,6 +50,15 @@ flagcxComm_t FlagcxCommContext::GetFlagcxComm() {
   return flagcx_handler_->comm;
 }
 
+gpuStream_t FlagcxCommContext::GetStream() { return dev_ctx_->stream(); }
+
+phi::GPUContext* FlagcxCommContext::GetDevContext() { return dev_ctx_.get(); }
+
+void FlagcxCommContext::SetDevContext(
+    std::unique_ptr<phi::GPUContext>&& dev_ctx) {
+  dev_ctx_ = std::move(dev_ctx);
+}
+
 void FlagcxCommContext::Broadcast(phi::DenseTensor* out_tensor,
                                   const phi::DenseTensor& in_tensor,
                                   int root,

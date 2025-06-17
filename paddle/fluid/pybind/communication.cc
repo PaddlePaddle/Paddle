@@ -79,6 +79,17 @@ void BindCommContextManager(py::module *m) {
               &phi::distributed::CommContextManager::CreateXCCLCommContext,
               py::call_guard<py::gil_scoped_release>())
 #endif
+#if defined(PADDLE_WITH_FLAGCX)
+          .def_static(
+              "create_flagcx_comm_context",
+              &phi::distributed::CommContextManager::CreateFlagcxCommContext,
+              py::arg("store"),
+              py::arg("unique_comm_key"),
+              py::arg("rank"),
+              py::arg("size"),
+              py::arg("hash_key") = "",
+              py::call_guard<py::gil_scoped_release>())
+#endif
           .def("set_store", &phi::distributed::CommContextManager::SetStore);
 }
 
