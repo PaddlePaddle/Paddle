@@ -19,7 +19,7 @@ namespace phi {
 namespace fusion {
 
 template <typename T, typename Context>
-void SinePosXPUKernel(const Context& ctx,
+void SinePosXPUKernel(const Context& dev_ctx,
                       const DenseTensor& x,
                       const DenseTensor& y,
                       DenseTensor* out) {
@@ -27,14 +27,14 @@ void SinePosXPUKernel(const Context& ctx,
 
   auto* x_data = reinterpret_cast<const XPUType*>(x.data<T>());
   auto* y_data = reinterpret_cast<const XPUType*>(y.data<T>());
-  auto* out_data = reinterpret_cast<XPUType*>(ctx.template Alloc<T>(out));
+  auto* out_data = reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(out));
   // fix precision of fp16 model
-  xpu::ctx_guard RAII_GUARD(ctx.x_context());
+  xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
   std::vector<int64_t> x_shape = phi::vectorize(x.dims());
   std::vector<int64_t> y_shape = phi::vectorize(y.dims());
   // yolo_box_coord only support fp32&&fp16 precision
   int r = xpu::sine_pos_fusion<XPUType>(
-      /* baidu::xpu::api::Context* ctx */ ctx.x_context(),
+      /* baidu::xpu::api::Context* ctx */ dev_ctx.x_context(),
       /* const T* x */ x_data,
       /* const T* y */ y_data,
       /* T* out */ out_data,

@@ -146,5 +146,53 @@ class Testfp16Std(unittest.TestCase):
                 )
 
 
+class TestStdAPI_ZeroSize1(unittest.TestCase):
+    def init_data(self):
+        self.x_shape = []
+        # x = torch.tensor([])
+        # res= torch.std(x)     Here, res is nan
+        self.expact_out = np.nan
+
+    def test_zerosize(self):
+        self.init_data()
+        paddle.disable_static()
+        x = paddle.to_tensor(np.random.random(self.x_shape))
+        out1 = paddle.std(x).numpy()
+        np.testing.assert_allclose(out1, self.expact_out, equal_nan=True)
+        paddle.enable_static()
+
+
+class TestStdAPI_UnBiased1(unittest.TestCase):
+    def init_data(self):
+        self.x_shape = [1]
+        # x = torch.randn([1])
+        # res= torch.std(x,correction=0)     Here, res is 0.
+        self.expact_out = 0.0
+
+    def test_api(self):
+        self.init_data()
+        paddle.disable_static()
+        x = paddle.to_tensor(np.random.random(self.x_shape))
+        out1 = paddle.std(x, unbiased=False).numpy()
+        np.testing.assert_allclose(out1, self.expact_out, equal_nan=True)
+        paddle.enable_static()
+
+
+class TestStdAPI_UnBiased2(unittest.TestCase):
+    def init_data(self):
+        self.x_shape = [1]
+        # x = torch.randn([1])
+        # res= torch.std(x,correction=1)     Here, res is 0.
+        self.expact_out = np.nan
+
+    def test_api(self):
+        self.init_data()
+        paddle.disable_static()
+        x = paddle.to_tensor(np.random.random(self.x_shape))
+        out1 = paddle.std(x, unbiased=True).numpy()
+        np.testing.assert_allclose(out1, self.expact_out, equal_nan=True)
+        paddle.enable_static()
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -19,14 +19,14 @@
 
 namespace phi {
 template <typename Context, typename T, int Dims>
-void ExpandAsBackward(const Context& ctx,
+void ExpandAsBackward(const Context& dev_ctx,
                       const DenseTensor& out_grad,
                       const std::vector<int64_t>& reshape_dims_vec,
                       const std::vector<int>& reduce_dims_vec,
                       DenseTensor* in_grad) {
   size_t reshape_size = reshape_dims_vec.size();
   size_t reduce_size = reduce_dims_vec.size();
-  ctx.template Alloc<T>(in_grad);
+  dev_ctx.template Alloc<T>(in_grad);
   auto x_grad = EigenVector<T>::Flatten(*in_grad);
   Eigen::DSizes<Eigen::DenseIndex, Dims * 2> reshape_dims;
   for (size_t i = 0; i < reshape_size; ++i) {
@@ -37,7 +37,7 @@ void ExpandAsBackward(const Context& ctx,
     reduce_dims[i] = reduce_dims_vec[i];
   }
   auto out_grad0 = EigenVector<T>::Flatten(out_grad);
-  auto& place = *ctx.eigen_device();
+  auto& place = *dev_ctx.eigen_device();
   funcs::EigenBroadcastGrad<std::decay_t<decltype(place)>, T, Dims>::Eval(
       place, x_grad, out_grad0, reduce_dims, reshape_dims);
 }
@@ -49,18 +49,21 @@ void ExpandAsGradKernel(const Context& context,
                         const std::vector<int64_t>& target_shape,
                         DenseTensor* in_grad) {
   auto x_dims = x.dims();
+  auto out_grad_dims = out_grad.dims();
+  std::vector<int64_t> real_target_shape =
+      phi::vectorize<int64_t>(out_grad_dims);
 
-  if (in_grad->dims() == out_grad.dims()) {
+  if (in_grad->dims() == out_grad_dims) {
     phi::Copy(context, out_grad, context.GetPlace(), false, in_grad);
     return;
   }
 
   auto vec_in_dims = common::vectorize<int64_t>(x_dims);
-  auto diff = target_shape.size() - vec_in_dims.size();
+  auto diff = real_target_shape.size() - vec_in_dims.size();
   vec_in_dims.insert(vec_in_dims.begin(), diff, 1);
   std::vector<int64_t> repeat_times(vec_in_dims.size());
   for (size_t i = 0; i < vec_in_dims.size(); ++i) {
-    repeat_times[i] = target_shape[i] / vec_in_dims[i];
+    repeat_times[i] = real_target_shape[i] / vec_in_dims[i];
   }
   std::vector<int64_t> reshape_dims_vec;
   std::vector<int> reduce_dims_vec;

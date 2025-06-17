@@ -27,7 +27,7 @@ template <typename T_X,
           typename T_OUT,
           typename T_GEMM,
           typename Context>
-void Conv2dXPUKernelImpl(const Context& ctx,
+void Conv2dXPUKernelImpl(const Context& dev_ctx,
                          const DenseTensor& x,
                          const paddle::optional<DenseTensor>& x_max,
                          const DenseTensor& filter,
@@ -83,7 +83,7 @@ void Conv2dXPUKernelImpl(const Context& ctx,
                                      ? nullptr
                                      : branch_max.get_ptr()->data<float>();
   auto* branch_tensor = branch.get_ptr();
-  xpu::ctx_guard RAII_GUARD(ctx.x_context());
+  xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
   if (branch_tensor != nullptr) {
     if (branch_tensor->dtype() == out->dtype()) {
       branch_data =
@@ -92,7 +92,7 @@ void Conv2dXPUKernelImpl(const Context& ctx,
       auto branch_data_temp =
           RAII_GUARD.alloc_l3_or_gm<XPUTypeOut>(branch_tensor->numel());
       int r = xpu::cast<XPUTypeX, XPUTypeOut>(
-          ctx.x_context(),
+          dev_ctx.x_context(),
           reinterpret_cast<const XPUTypeX*>(branch_tensor->data<T_X>()),
           branch_data_temp,
           branch_tensor->numel());
@@ -104,8 +104,8 @@ void Conv2dXPUKernelImpl(const Context& ctx,
   const float* bias_data =
       bias.get_ptr() == nullptr ? nullptr : bias.get_ptr()->data<float>();
   auto* out_data =
-      reinterpret_cast<XPUTypeOut*>(ctx.template Alloc<T_OUT>(out));
-  auto* out_max_data = ctx.template Alloc<float>(out_max);
+      reinterpret_cast<XPUTypeOut*>(dev_ctx.template Alloc<T_OUT>(out));
+  auto* out_max_data = dev_ctx.template Alloc<float>(out_max);
   out_max_data = out_max_in.get_ptr() != nullptr
                      ? const_cast<float*>(out_max_in.get_ptr()->data<float>())
                      : out_max_data;
@@ -118,7 +118,7 @@ void Conv2dXPUKernelImpl(const Context& ctx,
 
   int r = xpu::
       conv2d_fusion<XPUTypeX, XPUTypeW, XPUTypeOut, T_GEMM>(  // TX/TW/TY/TGEMM
-          /* baidu::xpu::api::Context* ctx */ ctx.x_context(),
+          /* baidu::xpu::api::Context* ctx */ dev_ctx.x_context(),
           /* const TX* input */ input_data,
           /* const TW* filter */ filter_data,
           /* TY* output */ out_data,
@@ -147,7 +147,7 @@ void Conv2dXPUKernelImpl(const Context& ctx,
 
 #define CONV2D_XPU_KERNEL_IMPL(x_dtype_, w_dtype_, out_dtype_, gemm_dtype_)  \
   Conv2dXPUKernelImpl<x_dtype_, w_dtype_, out_dtype_, gemm_dtype_, Context>( \
-      ctx,                                                                   \
+      dev_ctx,                                                               \
       x,                                                                     \
       x_max,                                                                 \
       filter,                                                                \
@@ -168,7 +168,7 @@ void Conv2dXPUKernelImpl(const Context& ctx,
       out_max);
 
 template <typename T, typename Context>
-void Conv2dXPUKernel(const Context& ctx,
+void Conv2dXPUKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      const paddle::optional<DenseTensor>& x_max,
                      const DenseTensor& filter,

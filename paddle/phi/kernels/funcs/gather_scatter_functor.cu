@@ -107,9 +107,9 @@ __global__ void ScatterAssignGPUKernel(tensor_t* self_data,
                                        int dim,
                                        const index_t* index_data,
                                        tensor_t* src_data,
-                                       int select_dim_size,
-                                       int self_select_dim_size,
-                                       int src_select_dim_size,
+                                       int64_t select_dim_size,
+                                       int64_t self_select_dim_size,
+                                       int64_t src_select_dim_size,
                                        int64_t outer_dim_size,
                                        int64_t outer_dim_size_self,
                                        int64_t outer_dim_size_src,
@@ -117,7 +117,7 @@ __global__ void ScatterAssignGPUKernel(tensor_t* self_data,
                                        int64_t numel_data,
                                        const func_t& reduce_op,
                                        int* thread_ids) {
-  int64_t tid = threadIdx.x + blockIdx.x * blockDim.x;
+  int64_t tid = threadIdx.x + static_cast<int64_t>(blockIdx.x) * blockDim.x;
   if (tid >= numel) return;
   int64_t i, j, k;  // The i, j, k here is the index of the 3 layers loop
                     // squeezed from the N layers loop.
@@ -199,9 +199,9 @@ __global__ void GatherScatterGPUKernel(tensor_t* self_data,
                                        int dim,
                                        const index_t* index_data,
                                        tensor_t* src_data,
-                                       int select_dim_size,
-                                       int self_select_dim_size,
-                                       int src_select_dim_size,
+                                       int64_t select_dim_size,
+                                       int64_t self_select_dim_size,
+                                       int64_t src_select_dim_size,
                                        int64_t outer_dim_size,
                                        int64_t outer_dim_size_self,
                                        int64_t outer_dim_size_src,
@@ -305,9 +305,9 @@ __global__ void ScatterMeanGPUKernel(tensor_t* self_data,
                                      int dim,
                                      const index_t* index_data,
                                      tensor_t* src_data,
-                                     int select_dim_size,
-                                     int self_select_dim_size,
-                                     int src_select_dim_size,
+                                     int64_t select_dim_size,
+                                     int64_t self_select_dim_size,
+                                     int64_t src_select_dim_size,
                                      int64_t outer_dim_size,
                                      int64_t outer_dim_size_self,
                                      int64_t outer_dim_size_src,
@@ -316,7 +316,7 @@ __global__ void ScatterMeanGPUKernel(tensor_t* self_data,
                                      bool include_self,
                                      const func_t& reduce_op,
                                      int* shared_mem) {
-  int64_t tid = threadIdx.x + blockIdx.x * blockDim.x;
+  int64_t tid = threadIdx.x + static_cast<int64_t>(blockIdx.x) * blockDim.x;
   if (tid >= numel) return;
 
   int64_t i, j, k;  // The i, j, k here is the index of the 3 layers loop
@@ -425,10 +425,10 @@ struct gpu_gather_scatter_functor {
     auto index_dims = index.dims();
     auto src_dims = src.dims();
     if (self_size == 0 || src_size == 0 || index_size == 0) return;
-    int select_dim_size = index_dims[dim];
+    int64_t select_dim_size = index_dims[dim];
     // index matrix has different shape with self matrix or src matrix.
-    int self_select_dim_size = self_dims[dim];
-    int src_select_dim_size = src_dims[dim];
+    int64_t self_select_dim_size = self_dims[dim];
+    int64_t src_select_dim_size = src_dims[dim];
     int64_t outer_dim_size_self = 1;
     int64_t outer_dim_size_src = 1;
     int64_t inner_dim_size = 1;

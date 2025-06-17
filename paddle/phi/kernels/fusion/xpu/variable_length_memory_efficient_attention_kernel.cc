@@ -20,7 +20,7 @@ namespace fusion {
 
 template <typename T, typename Context>
 void MultiHeadAttentionVariableForwardKernel(
-    const Context& ctx,
+    const Context& dev_ctx,
     const DenseTensor& query,
     const DenseTensor& key,
     const DenseTensor& value,
@@ -31,7 +31,7 @@ void MultiHeadAttentionVariableForwardKernel(
     const bool causal,
     const int pre_cache_length,
     DenseTensor* output) {
-  xpu::ctx_guard RAII_GUARD(ctx.x_context());
+  xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
 
   using XPUType = typename XPUTypeTrait<T>::Type;
 
@@ -68,12 +68,13 @@ void MultiHeadAttentionVariableForwardKernel(
 
   const XPUType* mask_ptr =
       mask ? reinterpret_cast<const XPUType*>(mask.get().data<T>()) : nullptr;
-  auto* out_data = reinterpret_cast<XPUType*>(ctx.template Alloc<T>(output));
+  auto* out_data =
+      reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(output));
   XPUType* qk_buf = RAII_GUARD.alloc_l3_or_gm<XPUType>(
       num_batches * num_heads * query_seq_len * query_seq_len);
   float* maxptr_buf = RAII_GUARD.alloc_l3_or_gm<float>(32);
   int r = xpu::qk_attention<XPUType, XPUType, XPUType, int16_t, XPUType>(
-      ctx.x_context(),                                   /* ctx */
+      dev_ctx.x_context(),                               /* dev_ctx */
       reinterpret_cast<const XPUType*>(query.data<T>()), /* q */
       reinterpret_cast<const XPUType*>(key.data<T>()),   /* k */
       qk_buf,                                            /* qk */
@@ -88,7 +89,7 @@ void MultiHeadAttentionVariableForwardKernel(
   XPUType* out_tmp_buf = RAII_GUARD.alloc_l3_or_gm<XPUType>(
       num_batches * query_seq_len * num_heads * head_size);
   r = xpu::qk_v_attention<XPUType, XPUType, XPUType, int16_t>(
-      ctx.x_context(),                                   /* ctx */
+      dev_ctx.x_context(),                               /* dev_ctx */
       qk_buf,                                            /* qk */
       reinterpret_cast<const XPUType*>(value.data<T>()), /* v */
       out_tmp_buf,                                       /* output */
@@ -100,7 +101,7 @@ void MultiHeadAttentionVariableForwardKernel(
   PADDLE_ENFORCE_EQ(
       r, 0, common::errors::InvalidArgument("xpu::qk_v_attention run failed"));
   r = xpu::transpose<XPUType>(
-      ctx.x_context(),
+      dev_ctx.x_context(),
       out_tmp_buf,
       out_data,
       {num_batches, query_seq_len, num_heads, head_size},

@@ -36,7 +36,6 @@ jobs:
       group: GZ_BD-CPU
 
     steps:
-      # sudo usermod -aG docker $USER
       - name: run container
         env:
           BRANCH: ${{ github.base_ref }}

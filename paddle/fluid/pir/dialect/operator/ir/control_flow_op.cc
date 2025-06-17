@@ -214,7 +214,7 @@ void IfOp::Print(pir::IrPrinter &printer) {
 }
 
 void IfOp::VerifySig() {
-  VLOG(4) << "Start Verifying inputs, outputs and attributes for: IfOp.";
+  VLOG(6) << "Start Verifying inputs, outputs and attributes for: IfOp.";
   auto input_size = num_operands();
   PADDLE_ENFORCE_EQ(
       input_size,
@@ -243,8 +243,8 @@ void IfOp::VerifySig() {
 }
 
 void IfOp::VerifyRegion() {
-  VLOG(4) << "Start Verifying sub regions for: IfOp.";
-  VLOG(4) << "Start Verifying true branch.";
+  VLOG(6) << "Start Verifying sub regions for: IfOp.";
+  VLOG(6) << "Start Verifying true branch.";
   PADDLE_ENFORCE_EQ(
       (*this)->region(0).size(),
       1u,
@@ -267,7 +267,7 @@ void IfOp::VerifyRegion() {
                       common::errors::PreconditionNotMet(
                           "The size of last of true block op's input must be "
                           "equal to IfOp's outputs num."));
-    VLOG(4) << "Start Verifying false branch.";
+    VLOG(6) << "Start Verifying false branch.";
     PADDLE_ENFORCE_EQ((*this)->region(1).size(),
                       1u,
                       common::errors::PreconditionNotMet(
@@ -545,7 +545,7 @@ void WhileOp::Print(pir::IrPrinter &printer) {
 }
 
 void WhileOp::VerifySig() {
-  VLOG(4) << "Start Verifying inputs, outputs and attributes for: WhileOp.";
+  VLOG(6) << "Start Verifying inputs, outputs and attributes for: WhileOp.";
   auto input_size = num_operands();
   PADDLE_ENFORCE_GE(
       input_size,
@@ -1003,13 +1003,13 @@ bool WhileOp::InferSymbolicShape(
     auto yield_input_data_opt = yield_input_shape_or_data.data();
     auto input_data_opt =
         infer_context->GetShapeOrDataForValue(body_args[i]).data();
-    bool const_data_not_euqal =
+    bool const_data_not_equal =
         is_all_const_data(yield_input_data_opt) &&
         (!is_all_const_data(input_data_opt) ||
          is_all_const_data(input_data_opt) &&
              yield_input_data_opt.value() != input_data_opt.value());
     auto result_shape_or_data =
-        const_data_not_euqal
+        const_data_not_equal
             ? symbol::TensorShapeOrDataDimExprs(
                   yield_input_shape_or_data.shape(),
                   creat_new_data(yield_input_data_opt.value().size()))
@@ -1153,8 +1153,8 @@ OpInfoTuple AssertOp::GetOpInfo() {
 }
 
 void AssertOp::VerifySig() {
-  VLOG(4) << "Start Verifying inputs, outputs and attributes for: AssertOp.";
-  VLOG(4) << "Verifying inputs:";
+  VLOG(6) << "Start Verifying inputs, outputs and attributes for: AssertOp.";
+  VLOG(6) << "Verifying inputs:";
   {
     auto input_size = num_operands();
     PADDLE_ENFORCE_EQ(
@@ -1199,7 +1199,7 @@ void AssertOp::VerifySig() {
               "Type validation failed for the 1th input."));
     }
   }
-  VLOG(4) << "Verifying attributes:";
+  VLOG(6) << "Verifying attributes:";
   {
     auto &attributes = this->attributes();
     PADDLE_ENFORCE_GT(
@@ -1212,7 +1212,7 @@ void AssertOp::VerifySig() {
         common::errors::InvalidArgument(
             "Type of attribute: summarize is not pir::Int64Attribute."));
   }
-  VLOG(4) << "Verifying outputs:";
+  VLOG(6) << "Verifying outputs:";
   {
     auto output_size = num_results();
     PADDLE_ENFORCE_EQ(
@@ -1222,7 +1222,7 @@ void AssertOp::VerifySig() {
             "The size %d of outputs must be equal to 0.", output_size));
     // Outputs num is 0, not need to check outputs type.
   }
-  VLOG(4) << "End Verifying for: AssertOp.";
+  VLOG(6) << "End Verifying for: AssertOp.";
 }
 
 void SelectInputOp::VerifySig() {

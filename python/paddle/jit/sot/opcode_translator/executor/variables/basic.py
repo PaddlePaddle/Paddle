@@ -14,9 +14,12 @@
 
 from __future__ import annotations
 
+import dataclasses
 import operator
 import sys
 import types
+from dataclasses import asdict, is_dataclass
+from enum import Enum
 from functools import cached_property, reduce
 from typing import TYPE_CHECKING, Any
 
@@ -25,6 +28,7 @@ import numpy as np
 import paddle
 from paddle._typing import unreached
 from paddle.framework import core
+from paddle.jit.sot.opcode_translator.executor.pycode_generator import PyCodeGen
 from paddle.pir.core import _PADDLE_PIR_DTYPE_2_NUMPY_DTYPE
 
 from ....infer_meta import (
@@ -127,7 +131,12 @@ if TYPE_CHECKING:
 
     from ..function_graph import FunctionGraph
     from ..pycode_generator import PyCodeGen
-    from .callable import BuiltinVariable, ClassVariable, FunctionVariable
+    from .callable import (
+        BuiltinVariable,
+        ClassVariable,
+        DataClassVariable,
+        FunctionVariable,
+    )
     from .container import TupleVariable
 
     SymbolicConstraint: TypeAlias = tuple[
@@ -437,7 +446,11 @@ class TensorVariable(VariableBase):
         self.value = None
         self.meta = meta
         dynamic_axes: list[int] = []
-        if ENV_SOT_ALLOW_DYNAMIC_SHAPE.get() and self.tracker.is_traceable():
+        if (
+            ENV_SOT_ALLOW_DYNAMIC_SHAPE.get()
+            and self.tracker.is_traceable()
+            and not self.meta.is_null()
+        ):
             dynamic_axes = self.analyse_dynamic_axes(tracker)
         self.var_name = TensorVariable.var_name_generator.next()
         self.graph.side_effects.record_mutable_variable(self)
@@ -2316,4 +2329,253 @@ class ExceptionVariable(VariableBase):
                 value, graph=graph, tracker=tracker
             )
             return exception_var
+        return None
+
+
+class EnumVariable(VariableBase):
+    known_enum_classes = {}
+
+    def __init__(
+        self, value: Enum, graph: FunctionGraph = None, tracker: Tracker = None
+    ) -> None:
+        super().__init__(graph=graph, tracker=tracker)
+        self.value = value
+
+    def get_py_value(self, allow_tensor=False) -> Any:
+        return self.value
+
+    @VariableFactory.register_from_value()
+    def from_value(value: Exception, graph: FunctionGraph, tracker: Tracker):
+        if isinstance(value, Enum):
+            var = EnumVariable(value, graph=graph, tracker=tracker)
+            return var
+        return None
+
+    @check_faster_guard
+    def make_faster_guard(self) -> list[paddle.framework.core.GuardNodeBase]:
+        expr_node = self.tracker.guard_tree_expr_node()
+        type_guard = paddle.framework.core.GuardNode(
+            paddle.framework.core.TypeMatchGuard(self.get_py_type()),
+            [expr_node],
+        )
+        value_guard = paddle.framework.core.GuardNode(
+            paddle.framework.core.ValueMatchGuard(self.value),
+            [expr_node],
+        )
+        return [type_guard, value_guard]
+
+    @check_guard
+    def make_stringified_guard(self) -> list[StringifiedExpression]:
+        frame_value_tracer = self.tracker.trace_value_from_frame()
+        enum_class = self.value.__class__
+        class_name = enum_class.__name__
+        enum_class_id = EnumVariable.get_enum_class_id(enum_class)
+        extern_var_name = f"__{class_name}_{enum_class_id}"
+
+        return [
+            FasterStringifiedExpression(
+                f"id(type({{}})) == {id(self.get_py_type())}",
+                paddle.core.TypeMatchGuard(self.get_py_type()),
+                [frame_value_tracer],
+                union_free_vars(frame_value_tracer.free_vars),
+            ),
+            FasterStringifiedExpression(
+                f"{{}} == {extern_var_name}.{self.value.name}",
+                paddle.core.ValueMatchGuard(self.value),
+                [frame_value_tracer],
+                union_free_vars(
+                    frame_value_tracer.free_vars,
+                    {f"{extern_var_name}": self.get_py_value()},
+                ),
+            ),
+        ]
+
+    @classmethod
+    def get_enum_class_id(cls, enum_class: type[Enum]):
+        class_name = enum_class.__name__
+        EnumVariable.known_enum_classes.setdefault(class_name, [])
+        same_name_enums = EnumVariable.known_enum_classes[class_name]
+        id = 0
+        for i, cls in enumerate(same_name_enums):
+            if enum_class == cls:
+                id = i
+                break
+        else:
+            id = len(same_name_enums)
+            same_name_enums.append(enum_class)
+        return id
+
+
+class DataClassInstanceVariable(VariableBase):
+    known_dataclasses = {}
+
+    def __init__(
+        self,
+        data_dict: dict[str, Any],
+        class_var: DataClassVariable,
+        data_id: int | None,
+        graph: FunctionGraph,
+        tracker: Tracker,
+    ):
+        super().__init__(graph=graph, tracker=tracker)
+        self.class_var = class_var
+        self.proxy = self.graph.side_effects.get_proxy(
+            MutableDictLikeData,
+            data_dict,
+            self.proxy_getter,
+            id_getter=lambda _: data_id or id(data_dict),
+        )
+
+    @staticmethod
+    def _dataclass_from_dict(dataclass_type: type[Any], data: dict[str, Any]):
+        # NOTE(SigureMo): Create dataclass without __post_init__,
+        # because __post_init__ has been run in simulation
+        instance = dataclass_type.__new__(dataclass_type, **data)
+        for fd in dataclasses.fields(dataclass_type):
+            setattr(instance, fd.name, data[fd.name])
+        return instance
+
+    def _reconstruct(self, codegen: PyCodeGen) -> None:
+        codegen.gen_load_object(
+            DataClassInstanceVariable._dataclass_from_dict,
+            "___dataclass_from_dict",
+        )
+        self.getattr("__class__").reconstruct(codegen)
+        data = self.proxy.get_all().keys()
+        for key in data:
+            if not isinstance(key, ConstTypes):
+                raise InnerError(
+                    f"[{self.__class__.__name__}] received {key} as key."
+                )
+            key_var = ConstantVariable.wrap_literal(key, self.graph)
+            value_var = self.getattr(key)
+            key_var.reconstruct(codegen)
+            value_var.reconstruct(codegen)
+        codegen.gen_build_map(len(data))
+        codegen.gen_call_function(2)
+
+    @cached_property
+    def attr_proxy(self):
+        return self.proxy
+
+    def getattr(self, name: str, default=None):
+        if name == "__class__":
+            return self.class_var
+        return self.proxy.get(name)
+
+    def setattr(self, key: str, value):
+        self.proxy.set(key, value)
+        self.graph.side_effects.record_proxy_variable(self)
+        return ConstantVariable.wrap_literal(None, self.graph)
+
+    def proxy_getter(self, proxy: MutableDictLikeData, key: Any):
+        if key not in proxy.original_data:
+            return MutableDictLikeData.Empty()
+        return VariableFactory.from_value(
+            proxy.original_data[key],
+            self.graph,
+            tracker=GetAttrTracker(self, key, changed=proxy.has_changed),
+        )
+
+    def get_py_type(self):
+        return self.class_var.get_py_value()
+
+    def get_py_value(self, allow_tensor=False):
+        return DataClassInstanceVariable._dataclass_from_dict(
+            self.get_py_type(),
+            {
+                key: value.get_py_value(allow_tensor)
+                for key, value in self.proxy.get_all().items()
+            },
+        )
+
+    @check_faster_guard
+    def make_faster_guard(self) -> list[paddle.framework.core.GuardNodeBase]:
+        expr_node = self.tracker.guard_tree_expr_node()
+        type_guard = paddle.framework.core.GuardNode(
+            paddle.framework.core.TypeMatchGuard(self.get_py_type()),
+            [expr_node],
+        )
+        guard_variables = filter(
+            lambda var: not isinstance(var, MutableDictLikeData.Empty),
+            self.proxy.reproduce(0).values(),
+        )
+        return reduce(
+            operator.add,
+            [[type_guard]]
+            + [
+                item.make_faster_guard()
+                for item in guard_variables
+                if item.tracker.need_guard()
+            ],
+        )
+
+    @check_guard
+    def make_stringified_guard(self) -> list[StringifiedExpression]:
+        data_class = self.get_py_type()
+        class_name = data_class.__name__
+        data_class_id = DataClassInstanceVariable.get_class_id(data_class)
+        extern_var_name = f"__{class_name}_{data_class_id}"
+        frame_value_tracer = self.tracker.trace_value_from_frame()
+        type_guard = FasterStringifiedExpression(
+            f"isinstance({{}}, {extern_var_name})",
+            paddle.framework.core.InstanceCheckGuard(self.get_py_type()),
+            [frame_value_tracer],
+            union_free_vars(
+                frame_value_tracer.free_vars,
+                {f"{extern_var_name}": self.get_py_type()},
+            ),
+        )
+        guard_variables = filter(
+            lambda var: not isinstance(var, MutableDictLikeData.Empty),
+            self.proxy.reproduce(0).values(),
+        )
+        return reduce(
+            operator.add,
+            [[type_guard]]
+            + [
+                item.make_stringified_guard()
+                for item in guard_variables
+                if item.tracker.need_guard()
+            ],
+        )
+
+    @classmethod
+    def get_class_id(cls, data_class: type[Any]):
+        class_name = data_class.__name__
+        DataClassInstanceVariable.known_dataclasses.setdefault(class_name, [])
+        same_name_dataclasses = DataClassInstanceVariable.known_dataclasses[
+            class_name
+        ]
+        id = 0
+        for i, cls in enumerate(same_name_dataclasses):
+            if data_class == cls:
+                id = i
+                break
+        else:
+            id = len(same_name_dataclasses)
+            same_name_dataclasses.append(data_class)
+        return id
+
+    def flatten_inner_vars(self) -> list[VariableBase]:
+        return [
+            self.getattr(fd.name)
+            for fd in dataclasses.fields(self.get_py_type())
+        ]
+
+    @VariableFactory.register_from_value()
+    def from_value(value: object, graph: FunctionGraph, tracker: Tracker):
+        if is_dataclass(value) and not isinstance(value, type):
+            class_var = VariableFactory.from_value(
+                type(value), graph, DanglingTracker()
+            )
+            var = DataClassInstanceVariable(
+                asdict(value),
+                class_var,
+                id(value),
+                graph=graph,
+                tracker=tracker,
+            )
+            class_var.tracker = GetAttrTracker(var, "__class__")
+            return var
         return None

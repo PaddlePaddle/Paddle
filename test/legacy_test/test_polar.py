@@ -106,5 +106,47 @@ class TestPolarAPI(unittest.TestCase):
             self.assertRaises(AttributeError, paddle.polar, abs, None)
 
 
+class TestPolarAPI_ZeroSize(unittest.TestCase):
+    def init_input(self):
+        self.abs = np.random.random([0, 2])
+        self.angle = np.array([np.pi / 2, 5 * np.pi / 4]).astype("float64")
+
+    def setUp(self):
+        self.init_input()
+        self.place = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            self.place.append(paddle.CPUPlace())
+        if core.is_compiled_with_cuda():
+            self.place.append(paddle.CUDAPlace(0))
+
+    def test_api_dygraph(self):
+        def run(place):
+            paddle.disable_static(place)
+            abs = paddle.to_tensor(self.abs)
+            abs.stop_gradient = False
+            angle = paddle.to_tensor(self.angle)
+            out1 = paddle.polar(abs, angle)
+
+            out_ref1 = numpy_polar(self.abs, self.angle)
+            np.testing.assert_allclose(out_ref1, out1.numpy(), rtol=1e-05)
+            loss = paddle.sum(out1)
+            loss.backward()
+            np.testing.assert_allclose(abs.grad.shape, abs.shape)
+            paddle.enable_static()
+
+        for place in self.place:
+            run(place)
+
+
+class TestPolarAPI_ZeroSize2(TestPolarAPI_ZeroSize):
+    def init_input(self):
+        self.abs = np.random.random([0, 0])
+        self.angle = np.random.random([0, 1])
+
+
 if __name__ == "__main__":
     unittest.main()

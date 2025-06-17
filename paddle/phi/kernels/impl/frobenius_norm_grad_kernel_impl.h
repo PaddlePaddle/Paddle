@@ -21,7 +21,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void FrobeniusNormGradKernel(const Context& ctx,
+void FrobeniusNormGradKernel(const Context& dev_ctx,
                              const DenseTensor& x,
                              const DenseTensor& out,
                              const DenseTensor& dout,
@@ -31,7 +31,7 @@ void FrobeniusNormGradKernel(const Context& ctx,
                              DenseTensor* dx) {
   reduce_all = recompute_reduce_all(x, axis.GetData(), reduce_all);
   ReduceGradKernel<Context, T, funcs::FrobeniusNormGradFunctor>(
-      ctx, x, out, dout, axis.GetData(), keep_dim, reduce_all, dx);
+      dev_ctx, x, out, dout, axis.GetData(), keep_dim, reduce_all, dx);
 }
 
 }  // namespace phi

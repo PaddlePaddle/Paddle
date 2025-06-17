@@ -19,7 +19,7 @@ namespace phi {
 namespace fusion {
 
 template <typename T, typename Context>
-void AddCMulXPUKernel(const Context& ctx,
+void AddCMulXPUKernel(const Context& dev_ctx,
                       const DenseTensor& x,
                       const DenseTensor& y,
                       const DenseTensor& w,
@@ -29,10 +29,10 @@ void AddCMulXPUKernel(const Context& ctx,
   const auto* y_data = y.data<T>();
   const auto* w_data = w.data<T>();
 
-  auto* out_data = ctx.template Alloc<T>(out);
+  auto* out_data = dev_ctx.template Alloc<T>(out);
 
 #ifdef PADDLE_WITH_XPU_PLUGIN
-  int r = xpu::plugin::fast_addcmul(ctx.x_context(),
+  int r = xpu::plugin::fast_addcmul(dev_ctx.x_context(),
                                     reinterpret_cast<const XPUType*>(w_data),
                                     reinterpret_cast<const XPUType*>(x_data),
                                     reinterpret_cast<const XPUType*>(y_data),
@@ -40,7 +40,7 @@ void AddCMulXPUKernel(const Context& ctx,
                                     x.numel());
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "fast_addcmul");
 #else
-  int r = xpu::addcmul(ctx.x_context(),
+  int r = xpu::addcmul(dev_ctx.x_context(),
                        reinterpret_cast<const XPUType*>(w_data),
                        reinterpret_cast<const XPUType*>(x_data),
                        reinterpret_cast<const XPUType*>(y_data),

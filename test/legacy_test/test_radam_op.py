@@ -328,22 +328,24 @@ class TestRAdamAPI(unittest.TestCase):
             exe = base.Executor(place)
             train_prog = paddle.static.Program()
             startup = paddle.static.Program()
-            with paddle.static.program_guard(train_prog, startup):
-                with base.unique_name.guard():
-                    data = paddle.static.data(name="data", shape=shape)
-                    hidden = paddle.static.nn.fc(x=data, size=10)
-                    loss = paddle.mean(hidden)
+            with (
+                paddle.static.program_guard(train_prog, startup),
+                base.unique_name.guard(),
+            ):
+                data = paddle.static.data(name="data", shape=shape)
+                hidden = paddle.static.nn.fc(x=data, size=10)
+                loss = paddle.mean(hidden)
 
-                    beta1 = 0.85
-                    beta2 = 0.95
-                    opt = paddle.optimizer.RAdam(
-                        learning_rate=1e-5,
-                        beta1=beta1,
-                        beta2=beta2,
-                        weight_decay=0.01,
-                        epsilon=1e-8,
-                    )
-                    opt.minimize(loss)
+                beta1 = 0.85
+                beta2 = 0.95
+                opt = paddle.optimizer.RAdam(
+                    learning_rate=1e-5,
+                    beta1=beta1,
+                    beta2=beta2,
+                    weight_decay=0.01,
+                    epsilon=1e-8,
+                )
+                opt.minimize(loss)
 
             exe.run(startup)
             data_np = np.random.random(shape).astype("float32")
@@ -652,31 +654,31 @@ def main_test_func(place, dtype):
     paddle.enable_static()
     main = base.Program()
     startup = base.Program()
-    with base.program_guard(main, startup):
-        with base.scope_guard(base.Scope()):
-            x = paddle.static.data(name='x', shape=[None, 13], dtype=dtype)
-            y = paddle.static.data(name='y', shape=[None, 1], dtype=dtype)
-            y_predict = paddle.static.nn.fc(x, size=1)
-            cost = paddle.nn.functional.square_error_cost(
-                input=y_predict, label=y
-            )
-            avg_cost = paddle.mean(cost)
+    with (
+        base.program_guard(main, startup),
+        base.scope_guard(base.Scope()),
+    ):
+        x = paddle.static.data(name='x', shape=[None, 13], dtype=dtype)
+        y = paddle.static.data(name='y', shape=[None, 1], dtype=dtype)
+        y_predict = paddle.static.nn.fc(x, size=1)
+        cost = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
+        avg_cost = paddle.mean(cost)
 
-            radam_optimizer = paddle.optimizer.RAdam(0.01)
-            radam_optimizer.minimize(avg_cost)
+        radam_optimizer = paddle.optimizer.RAdam(0.01)
+        radam_optimizer.minimize(avg_cost)
 
-            fetch_list = [avg_cost]
-            train_reader = list(
-                zip(
-                    np.random.rand(101, 13),
-                    np.random.randint(12, size=(101, 1)),
-                )
+        fetch_list = [avg_cost]
+        train_reader = list(
+            zip(
+                np.random.rand(101, 13),
+                np.random.randint(12, size=(101, 1)),
             )
-            feeder = base.DataFeeder(place=place, feed_list=[x, y])
-            exe = base.Executor(place)
-            exe.run(base.default_startup_program())
-            for data in train_reader:
-                exe.run(main, feed=feeder.feed([data]), fetch_list=fetch_list)
+        )
+        feeder = base.DataFeeder(place=place, feed_list=[x, y])
+        exe = base.Executor(place)
+        exe.run(base.default_startup_program())
+        for data in train_reader:
+            exe.run(main, feed=feeder.feed([data]), fetch_list=fetch_list)
 
     paddle.disable_static()
 

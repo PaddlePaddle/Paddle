@@ -282,53 +282,53 @@ class TestLocalResponseNormFAPI(unittest.TestCase):
 class TestLocalResponseNormFAPIError(unittest.TestCase):
 
     def test_errors(self):
-        with paddle_static_guard():
-            with paddle.static.program_guard(
+        with (
+            paddle_static_guard(),
+            paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
-            ):
+            ),
+        ):
 
-                def test_Variable():
-                    # the input of lrn must be Variable.
-                    x1 = base.create_lod_tensor(
-                        np.array([-1, 3, 5, 5]),
-                        [[1, 1, 1, 1]],
-                        base.CPUPlace(),
-                    )
-                    paddle.nn.functional.local_response_norm(x1, size=5)
+            def test_Variable():
+                # the input of lrn must be Variable.
+                x1 = base.create_lod_tensor(
+                    np.array([-1, 3, 5, 5]),
+                    [[1, 1, 1, 1]],
+                    base.CPUPlace(),
+                )
+                paddle.nn.functional.local_response_norm(x1, size=5)
 
-                self.assertRaises(TypeError, test_Variable)
+            self.assertRaises(TypeError, test_Variable)
 
-                def test_datatype():
-                    x = paddle.static.data(
-                        name='x', shape=[3, 4, 5, 6], dtype="int32"
-                    )
-                    paddle.nn.functional.local_response_norm(x, size=5)
+            def test_datatype():
+                x = paddle.static.data(
+                    name='x', shape=[3, 4, 5, 6], dtype="int32"
+                )
+                paddle.nn.functional.local_response_norm(x, size=5)
 
-                self.assertRaises(TypeError, test_datatype)
+            self.assertRaises(TypeError, test_datatype)
 
-                def test_dataformat():
-                    x = paddle.static.data(
-                        name='x', shape=[3, 4, 5, 6], dtype="float32"
-                    )
-                    paddle.nn.functional.local_response_norm(
-                        x, size=5, data_format="NCTHW"
-                    )
+            def test_dataformat():
+                x = paddle.static.data(
+                    name='x', shape=[3, 4, 5, 6], dtype="float32"
+                )
+                paddle.nn.functional.local_response_norm(
+                    x, size=5, data_format="NCTHW"
+                )
 
-                self.assertRaises(ValueError, test_dataformat)
+            self.assertRaises(ValueError, test_dataformat)
 
-                def test_dim():
-                    x = paddle.static.data(
-                        name='x', shape=[3, 4], dtype="float32"
-                    )
-                    paddle.nn.functional.local_response_norm(x, size=5)
+            def test_dim():
+                x = paddle.static.data(name='x', shape=[3, 4], dtype="float32")
+                paddle.nn.functional.local_response_norm(x, size=5)
 
-                self.assertRaises(ValueError, test_dim)
+            self.assertRaises(ValueError, test_dim)
 
-                def test_shape():
-                    x = paddle.rand(shape=[0, 0, 2, 3], dtype="float32")
-                    paddle.nn.functional.local_response_norm(x, size=5)
+            def test_shape():
+                x = paddle.rand(shape=[0, 0, 2, 3], dtype="float32")
+                paddle.nn.functional.local_response_norm(x, size=5)
 
-                self.assertRaises(ValueError, test_shape)
+            self.assertRaises(ValueError, test_shape)
 
 
 class TestLocalResponseNormCAPI(unittest.TestCase):
@@ -362,29 +362,31 @@ class TestLocalResponseNormCAPI(unittest.TestCase):
     def test_static_fp16_gpu(self):
         if paddle.base.core.is_compiled_with_cuda():
             place = paddle.CUDAPlace(0)
-            with paddle_static_guard():
-                with paddle.static.program_guard(
+            with (
+                paddle_static_guard(),
+                paddle.static.program_guard(
                     paddle.static.Program(), paddle.static.Program()
-                ):
-                    input = np.random.random([3, 3, 112, 112]).astype("float16")
+                ),
+            ):
+                input = np.random.random([3, 3, 112, 112]).astype("float16")
 
-                    x = paddle.static.data(
-                        name="x", shape=[3, 3, 112, 112], dtype="float16"
-                    )
+                x = paddle.static.data(
+                    name="x", shape=[3, 3, 112, 112], dtype="float16"
+                )
 
-                    m = paddle.nn.LocalResponseNorm(size=5)
-                    y = m(x)
+                m = paddle.nn.LocalResponseNorm(size=5)
+                y = m(x)
 
-                    exe = paddle.static.Executor(place)
-                    res = exe.run(
-                        paddle.static.default_main_program(),
-                        feed={
-                            "x": input,
-                        },
-                        fetch_list=[y],
-                    )
+                exe = paddle.static.Executor(place)
+                res = exe.run(
+                    paddle.static.default_main_program(),
+                    feed={
+                        "x": input,
+                    },
+                    fetch_list=[y],
+                )
 
-                    np.testing.assert_array_equal(res[0].shape, input.shape)
+                np.testing.assert_array_equal(res[0].shape, input.shape)
 
 
 if __name__ == "__main__":
