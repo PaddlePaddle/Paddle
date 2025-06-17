@@ -894,11 +894,7 @@ class UserDefinedLayerVariable(LayerVariable):
 
     @VariableFactory.register_from_value(successor="PaddleApiVariable")
     def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
-        if isinstance(
-            value, paddle.nn.Layer
-        ) and TransformOptions.check_fn_need_transform(
-            value.__class__, TransformOptions.ToStaticMode.SOT
-        ):
+        if isinstance(value, paddle.nn.Layer):
             return UserDefinedLayerVariable(value, graph, tracker)
         return None
 
