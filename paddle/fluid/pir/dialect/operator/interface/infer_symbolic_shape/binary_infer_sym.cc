@@ -2088,11 +2088,26 @@ bool SwigluOpInferSymbolicShape(pir::Operation *op,
   if (op->operand_source(1)) {
     const auto &y_shape_or_data =
         infer_context->GetShapeOrDataForValue(op->operand_source(1));
+    bool x_size_0 = false;
+    bool y_size_0 = false;
     for (size_t i = 0; i < rank; ++i) {
+      if (x_shape_or_data.shape()[i] == 0) {
+        x_size_0 = true;
+      }
+      if (y_shape_or_data.shape()[i] == 0) {
+        y_size_0 = true;
+      }
+      if (x_shape_or_data.shape()[i] == 0 || y_shape_or_data.shape()[i] == 0) {
+        continue;
+      }
       infer_context->AddEqualCstr(x_shape_or_data.shape()[i],
                                   y_shape_or_data.shape()[i]);
     }
     infer_context->SetShapeOrDataForValue(op->result(0), x_shape_or_data);
+    if (!x_size_0 && y_size_0) {
+      // set y shape
+      infer_context->SetShapeOrDataForValue(op->result(0), y_shape_or_data);
+    }
   } else {
     std::vector<symbol::DimExpr> x_shape = x_shape_or_data.shape();
     // TODO(CINN): Add distribute constraint

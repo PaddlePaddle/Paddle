@@ -47,75 +47,81 @@ class AffineGridTestCase(unittest.TestCase):
 
     def base_layer(self, place):
         paddle.enable_static()
-        with base.unique_name.guard():
-            with paddle.static.program_guard(
+        with (
+            base.unique_name.guard(),
+            paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
-            ):
-                theta_var = paddle.static.data(
-                    "input", self.theta_shape, dtype=self.dtype
-                )
-                y_var = paddle.nn.functional.affine_grid(
-                    theta_var, self.output_shape
-                )
-                feed_dict = {"input": self.theta}
-                exe = paddle.static.Executor(place)
-                (y_np,) = exe.run(
-                    paddle.static.default_main_program(),
-                    feed=feed_dict,
-                    fetch_list=[y_var],
-                )
-                return y_np
+            ),
+        ):
+            theta_var = paddle.static.data(
+                "input", self.theta_shape, dtype=self.dtype
+            )
+            y_var = paddle.nn.functional.affine_grid(
+                theta_var, self.output_shape
+            )
+            feed_dict = {"input": self.theta}
+            exe = paddle.static.Executor(place)
+            (y_np,) = exe.run(
+                paddle.static.default_main_program(),
+                feed=feed_dict,
+                fetch_list=[y_var],
+            )
+            return y_np
 
     def functional(self, place):
         paddle.enable_static()
-        with base.unique_name.guard():
-            with paddle.static.program_guard(
+        with (
+            base.unique_name.guard(),
+            paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
-            ):
-                theta_var = paddle.static.data(
-                    "input", self.theta_shape, dtype=self.dtype
-                )
-                y_var = F.affine_grid(
-                    theta_var,
-                    self.output_shape,
-                    align_corners=self.align_corners,
-                )
-                feed_dict = {"input": self.theta}
-                exe = paddle.static.Executor(place)
-                (y_np,) = exe.run(
-                    paddle.static.default_main_program(),
-                    feed=feed_dict,
-                    fetch_list=[y_var],
-                )
-                return y_np
+            ),
+        ):
+            theta_var = paddle.static.data(
+                "input", self.theta_shape, dtype=self.dtype
+            )
+            y_var = F.affine_grid(
+                theta_var,
+                self.output_shape,
+                align_corners=self.align_corners,
+            )
+            feed_dict = {"input": self.theta}
+            exe = paddle.static.Executor(place)
+            (y_np,) = exe.run(
+                paddle.static.default_main_program(),
+                feed=feed_dict,
+                fetch_list=[y_var],
+            )
+            return y_np
 
     def test_static_api(self):
         place = base.CPUPlace()
         paddle.enable_static()
-        with base.unique_name.guard():
-            with paddle.static.program_guard(
+        with (
+            base.unique_name.guard(),
+            paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
-            ):
-                align_corners = True
-                theta_var = paddle.static.data(
-                    "input", self.theta_shape, dtype=self.dtype
-                )
-                y_var = paddle.nn.functional.affine_grid(
-                    theta_var, self.output_shape
-                )
-                y_var2 = F.affine_grid(
-                    theta_var,
-                    self.output_shape,
-                    align_corners=align_corners,
-                )
-                feed_dict = {"input": self.theta}
-                exe = paddle.static.Executor(place)
-                (y_np, y_np2) = exe.run(
-                    paddle.static.default_main_program(),
-                    feed=feed_dict,
-                    fetch_list=[y_var, y_var2],
-                )
-                np.testing.assert_array_almost_equal(y_np, y_np2)
+            ),
+        ):
+            align_corners = True
+            theta_var = paddle.static.data(
+                "input", self.theta_shape, dtype=self.dtype
+            )
+            y_var = paddle.nn.functional.affine_grid(
+                theta_var, self.output_shape
+            )
+            y_var2 = F.affine_grid(
+                theta_var,
+                self.output_shape,
+                align_corners=align_corners,
+            )
+            feed_dict = {"input": self.theta}
+            exe = paddle.static.Executor(place)
+            (y_np, y_np2) = exe.run(
+                paddle.static.default_main_program(),
+                feed=feed_dict,
+                fetch_list=[y_var, y_var2],
+            )
+            np.testing.assert_array_almost_equal(y_np, y_np2)
 
     def paddle_dygraph_layer(self):
         paddle.disable_static()
@@ -156,9 +162,8 @@ class AffineGridTestCase(unittest.TestCase):
 class AffineGridErrorTestCase(AffineGridTestCase):
     def runTest(self):
         place = base.CPUPlace()
-        with dg.guard(place):
-            with self.assertRaises(TypeError):
-                self.paddle_dygraph_layer()
+        with dg.guard(place), self.assertRaises(TypeError):
+            self.paddle_dygraph_layer()
 
 
 def add_cases(suite):

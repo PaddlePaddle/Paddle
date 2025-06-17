@@ -2047,16 +2047,18 @@ class TestReduceWithDtype2(TestReduceWithDtype):
 
 class TestReduceSumOpError(unittest.TestCase):
     def test_errors1(self):
-        with static_guard():
-            with paddle.static.program_guard(
+        with (
+            static_guard(),
+            paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
-            ):
-                # The input type of reduce_sum_op must be Variable.
-                x1 = base.create_lod_tensor(
-                    np.array([[-1]]), [[1]], base.CPUPlace()
-                )
-                self.assertRaises(TypeError, paddle.sum, x1)
-                # The input dtype of reduce_sum_op  must be float32 or float64 or int32 or int64.
+            ),
+        ):
+            # The input type of reduce_sum_op must be Variable.
+            x1 = base.create_lod_tensor(
+                np.array([[-1]]), [[1]], base.CPUPlace()
+            )
+            self.assertRaises(TypeError, paddle.sum, x1)
+            # The input dtype of reduce_sum_op  must be float32 or float64 or int32 or int64.
 
 
 class API_TestSumOp(unittest.TestCase):
@@ -2400,27 +2402,27 @@ class TestAllZero(unittest.TestCase):
         )
 
     def _test_static(self, place, axis, keepdim, dtype):
-        with static_guard():
-            with base.program_guard(
+        with (
+            static_guard(),
+            base.program_guard(
                 paddle.static.Program(), paddle.static.Program()
-            ):
-                input = paddle.static.data(
-                    name="x", shape=self.shape, dtype=dtype
-                )
-                result = paddle.all(x=input, axis=axis, keepdim=keepdim)
-                x_np = np.zeros(self.shape, dtype=dtype)
+            ),
+        ):
+            input = paddle.static.data(name="x", shape=self.shape, dtype=dtype)
+            result = paddle.all(x=input, axis=axis, keepdim=keepdim)
+            x_np = np.zeros(self.shape, dtype=dtype)
 
-                exe = base.Executor(place)
-                fetches = exe.run(
-                    feed={"x": x_np},
-                    fetch_list=[result],
-                )
-                expected_result = self.calculate_expected_result(
-                    x_np, axis, keepdim
-                )
-                self.check_result(
-                    fetches[0], expected_result, axis, keepdim, dtype, place
-                )
+            exe = base.Executor(place)
+            fetches = exe.run(
+                feed={"x": x_np},
+                fetch_list=[result],
+            )
+            expected_result = self.calculate_expected_result(
+                x_np, axis, keepdim
+            )
+            self.check_result(
+                fetches[0], expected_result, axis, keepdim, dtype, place
+            )
 
     def _test_dygraph(self, place, axis, keepdim, dtype):
         with dygraph_guard():
@@ -2489,27 +2491,27 @@ class TestAnyZero(unittest.TestCase):
         )
 
     def _test_static(self, place, axis, keepdim, dtype):
-        with static_guard():
-            with base.program_guard(
+        with (
+            static_guard(),
+            base.program_guard(
                 paddle.static.Program(), paddle.static.Program()
-            ):
-                input = paddle.static.data(
-                    name="x", shape=self.shape, dtype=dtype
-                )
-                result = paddle.any(x=input, axis=axis, keepdim=keepdim)
-                x_np = np.zeros(self.shape, dtype=dtype)
+            ),
+        ):
+            input = paddle.static.data(name="x", shape=self.shape, dtype=dtype)
+            result = paddle.any(x=input, axis=axis, keepdim=keepdim)
+            x_np = np.zeros(self.shape, dtype=dtype)
 
-                exe = base.Executor(place)
-                fetches = exe.run(
-                    feed={"x": x_np},
-                    fetch_list=[result],
-                )
-                expected_result = self.calculate_expected_result(
-                    x_np, axis, keepdim
-                )
-                self.check_result(
-                    fetches[0], expected_result, axis, keepdim, dtype, place
-                )
+            exe = base.Executor(place)
+            fetches = exe.run(
+                feed={"x": x_np},
+                fetch_list=[result],
+            )
+            expected_result = self.calculate_expected_result(
+                x_np, axis, keepdim
+            )
+            self.check_result(
+                fetches[0], expected_result, axis, keepdim, dtype, place
+            )
 
     def _test_dygraph(self, place, axis, keepdim, dtype):
         with dygraph_guard():

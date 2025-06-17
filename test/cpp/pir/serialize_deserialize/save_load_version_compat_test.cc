@@ -30,6 +30,7 @@
 #include "paddle/fluid/pir/serialize_deserialize/include/version_compat.h"
 #include "paddle/phi/common/port.h"
 
+#include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/phi/core/tensor_meta.h"
 #include "paddle/pir/include/core/block.h"
 #include "paddle/pir/include/core/builder.h"
@@ -213,6 +214,19 @@ TEST(save_load_version_compat, attribute_patch_test2) {
                 .AsVector()[0]
                 .dyn_cast<::pir::Int64Attribute>()
                 .data(),
+            3);
+  EXPECT_EQ(new_program.block()
+                ->front()
+                .attribute("op4_attr2")
+                .dyn_cast<::paddle::dialect::DataTypeAttribute>()
+                .data(),
+            phi::DataType::UNDEFINED);
+  EXPECT_EQ(new_program.block()
+                ->front()
+                .attribute("op4_attr4")
+                .dyn_cast<::paddle::dialect::IntArrayAttribute>()
+                .data()
+                .size(),
             3);
 }
 
