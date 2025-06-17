@@ -81,9 +81,8 @@ class TestDygraphClearGradient(TestCase):
 
         # actual result
         gradient_actual = linear.weight.grad
-        print(gradient_actual)
         # expected result
-        self.assertTrue(np.empty(gradient_actual))
+        self.assertIsNone(gradient_actual)
 
 
 if __name__ == '__main__':
