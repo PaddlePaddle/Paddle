@@ -135,7 +135,7 @@ class TransformOptions:
         if inspect.ismethod(fn):
             fn = fn.__func__
 
-        if inspect.isfunction(fn):
+        if inspect.isfunction(fn) or issubclass(fn, paddle.nn.Layer):
             setattr(fn, TransformOptions.TRANSFORM_OPTIONS_ATTR_NAME, self)
         else:
             warnings.warn(
