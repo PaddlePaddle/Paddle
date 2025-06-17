@@ -1955,7 +1955,7 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
     std::vector<int> trans_back_dim, trans_dim;
 
     int pos_of_new_dim = INT_MAX, rank_of_new_dim = 1;
-    // Check if the value is a single value. Remove later.
+    // Check if the value is a single value. Remove this later.
     bool single_value = value_tensor.numel() == 1;
 
     paddle::Tensor transed_sub_tensor =
