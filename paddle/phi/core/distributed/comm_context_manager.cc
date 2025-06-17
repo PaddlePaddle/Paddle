@@ -139,7 +139,8 @@ void CommContextManager::RecreateNCCLComm(const std::shared_ptr<Store>& store,
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclGetUniqueId(&nccl_id));
   }
 
-  std::string unique_key = "NCCLCommContext/" + unique_comm_key + hash_key;
+  std::string unique_key =
+      "NCCLCommContext/" + unique_comm_key + "/" + hash_key;
   if (rank == 0 || (p2p_opt && p2p_opt->is_p2p_op && p2p_opt->p2p_rank == 0)) {
     std::vector<uint8_t> nccl_id_wrapper(
         reinterpret_cast<uint8_t*>(&nccl_id),
