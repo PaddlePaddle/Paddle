@@ -185,7 +185,6 @@ jobs:
         run: |
           rm -rf * .[^.]*
           wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/xpu/${PR_ID}/${COMMIT_ID}/build.tar.gz --no-check-certificate
-          yum install zstd -y
           tar --use-compress-program="pzstd" -xf build.tar.gz --strip-components=1
           rm build.tar.gz
 
