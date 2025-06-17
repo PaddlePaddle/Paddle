@@ -42,7 +42,6 @@ void MaskedFillGradKernel(const Context& dev_ctx,
 
   DenseTensor mask_expand;
   DenseTensor x_grad_expand;
-  DenseTensor value_grad_expand;
 
   auto expanded_dims = common::make_ddim(expanded_size);
 
@@ -60,11 +59,14 @@ void MaskedFillGradKernel(const Context& dev_ctx,
     x_grad_expand = *x_grad;
   }
 
-  if (v_grad->dims() != expanded_dims && v_grad->numel() != 1) {
-    value_grad_expand = Empty<T, Context>(dev_ctx, IntArray(expanded_size));
-    expand_value = true;
-  } else {
-    value_grad_expand = *x_grad;
+  if (v_grad) {
+    DenseTensor value_grad_expand;
+    if (v_grad->dims() != expanded_dims && v_grad->numel() != 1) {
+      value_grad_expand = Empty<T, Context>(dev_ctx, IntArray(expanded_size));
+      expand_value = true;
+    } else {
+      value_grad_expand = *x_grad;
+    }
   }
 
   auto* mask_data = mask_expand.data<bool>();
@@ -72,7 +74,7 @@ void MaskedFillGradKernel(const Context& dev_ctx,
   auto numel = mask_expand.numel();
 
   if (numel <= 0) return;
-  if (x_grad != nullptr) {
+  if (x_grad) {
     dev_ctx.template Alloc<T>(x_grad);
 
     DenseTensor* x_grad_tmp = x_grad;
@@ -90,7 +92,7 @@ void MaskedFillGradKernel(const Context& dev_ctx,
     }
   }
 
-  if (v_grad != nullptr) {
+  if (v_grad) {
     dev_ctx.template Alloc<T>(v_grad);
 
     DenseTensor* value_grad_tmp = v_grad;
