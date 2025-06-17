@@ -958,7 +958,8 @@ class DygraphShardingOptimizerV2:
         def pre_forward_hook(layer, inputs):
             # Find the buckets corresponding to params in this layer
             buckets = set()
-            for p in layer.parameters():
+            # a leaf layer or a layer contains a param not in sublayers
+            for p in layer.parameters(include_sublayers=False):
                 for b in self.param2bucket[p.name]:
                     buckets.add(b)
 
@@ -985,9 +986,10 @@ class DygraphShardingOptimizerV2:
     def _register_pre_forward_hooks(self):
         assert self._all_gather_overlap_forward is True
         for layer in self._layers.sublayers():
-            # Only register forward_pre_hook for the leaf layer
-            # to avoid frequent calls to _try_start_bucket_param_sync
-            if len(layer.sublayers()) == 0:
+            # Register forward_pre_hook only at the layer where the parameter may actually be used
+            if len(layer.sublayers()) == 0 or layer.parameters(
+                include_sublayers=False
+            ):
                 layer.register_forward_pre_hook(self.make_forward_hook())
 
     def _sharding_sync_parameters(self):
