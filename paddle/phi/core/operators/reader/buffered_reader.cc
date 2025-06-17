@@ -22,15 +22,14 @@
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/device_guard.h"
 #include "paddle/phi/backends/device_manager.h"
-#include "paddle/phi/common/memory_utils.h"
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#endif
-#ifdef PADDLE_WITH_XPU
-#include "paddle/phi/backends/xpu/xpu_context.h"
-#endif
+#include "paddle/phi/common/memory_utils.h"
+
+#include "glog/logging.h"
+
 namespace paddle::operators::reader {
 BufferedReader::~BufferedReader() {
+  VLOG(1) << "~BufferedReader";
   reader_->Shutdown();
   while (!position_.empty()) {
     auto &front = position_.front();
@@ -56,6 +55,7 @@ BufferedReader::BufferedReader(
       cuda_buffer_(),
       xpu_buffer_(),
       custom_device_buffer_() {
+  VLOG(1) << "BufferedReader";
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (place_.GetType() == phi::AllocationType::GPU && !pin_memory) {
     int dev_idx = place_.device;  // NOLINT
@@ -369,6 +369,7 @@ void BufferedReader::ReadAsync(size_t i) {
 }
 
 void BufferedReader::ShutdownImpl() {
+  VLOG(1) << "ShutdownImpl";
   reader_->Shutdown();
   while (!position_.empty()) {
     position_.pop();
