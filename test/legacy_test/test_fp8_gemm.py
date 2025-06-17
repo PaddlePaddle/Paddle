@@ -12,15 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import kitchen
 import pytest
 from kitchen import ops, quantization_subchannel_block_hybrid
 from kitchen.quantization import QParams, ScalingType
 
 import paddle
 from paddle.incubate.nn.functional import fp8
-
-sub_channel_gemm_supported = kitchen.ops.gemm.is_sub_channel_gemm_supported()
 
 
 def _get_rmse(y_pred, y_true):
@@ -140,9 +137,6 @@ def _pypaddle_qgemm_subchannel_1d1d(a, b, a_descales, b_descales):
     return out
 
 
-@pytest.mark.skipif(
-    not sub_channel_gemm_supported, reason="Sub-channel GEMM is not supported"
-)
 @pytest.mark.parametrize("out_dtype", [paddle.bfloat16])
 def test_1D2D(out_dtype):
     M = 256
@@ -171,6 +165,8 @@ def test_1D2D(out_dtype):
     quantize_op = quantization_subchannel_block_hybrid.HybridBlockAndVectorTiledQuantizeOp(
         ops.Backend.CUBLAS
     )
+
+    # TODO(lshpku): replace kitchen quant with framework quant
     qresult_A = quantize_op.quantize(A, A_qparams)
 
     data_B, scale_B = fp8.fp8_quant_blockwise(
@@ -189,7 +185,6 @@ def test_1D2D(out_dtype):
         f"pypaddle_qgemm_subchannel rmse to precise_D: {_get_rmse(pypaddle_D, precise_D)}"
     )
 
-    # TODO: change to the cublas native 1D2D solution once it is available
     D = fp8.fp8_gemm_blockwise(
         qB, sB, qA, sA, out_dtype, is_a_1d_scaled=False, is_b_1d_scaled=True
     )
@@ -199,9 +194,6 @@ def test_1D2D(out_dtype):
     assert rmse < 0.06
 
 
-@pytest.mark.skipif(
-    not sub_channel_gemm_supported, reason="Sub-channel GEMM is not supported"
-)
 @pytest.mark.parametrize("out_dtype", [paddle.bfloat16])
 def test_2D1D(out_dtype):
     M = 256
@@ -237,6 +229,7 @@ def test_2D1D(out_dtype):
         output_scale_transpose=False,
         using_pow2_scale=False,
     )
+    # TODO(lshpku): replace kitchen quant with framework quant
     qresult_B = quantize_op.quantize(B, B_qparams)
     qA, sA, qB, sB = (
         data_A,
@@ -260,9 +253,6 @@ def test_2D1D(out_dtype):
     assert rmse < 0.06
 
 
-@pytest.mark.skipif(
-    not sub_channel_gemm_supported, reason="Sub-channel GEMM is not supported"
-)
 @pytest.mark.parametrize("out_dtype", [paddle.bfloat16, paddle.float32])
 def test_1D1D(out_dtype):
     M = 256
@@ -292,6 +282,7 @@ def test_1D1D(out_dtype):
         ops.Backend.CUBLAS
     )
 
+    # TODO(lshpku): replace kitchen quant with framework quant
     qresult_A = quantize_op.quantize(A, A_qparams)
     qresult_B = quantize_op.quantize(B, B_qparams)
     qA, sA, qB, sB = (
