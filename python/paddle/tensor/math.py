@@ -8391,11 +8391,6 @@ def combinations(
     if r == 0:
         return paddle.empty(shape=[0], dtype=x.dtype)
 
-    if (r > x.shape[0] and not with_replacement) or (
-        x.shape[0] == 0 and with_replacement
-    ):
-        return paddle.empty(shape=[0, r], dtype=x.dtype)
-
     if r > 1:
         t_l = [x for i in range(r)]
         grids = paddle.meshgrid(t_l)
