@@ -91,6 +91,12 @@ void SetTensorValueKernelV2(const Context& dev_ctx,
   if (value.numel() == 1) {
     expand_tensor = value;
     expand_tensor.Resize(phi::make_ddim({1}));
+  } else if (product(value.dims()) == product(phi::make_ddim(new_out_shape))) {
+    expand_tensor = value;
+    if (value.dims() != phi::make_ddim(new_out_shape)) {
+      expand_tensor.Resize(phi::make_ddim(new_out_shape));
+    }
+
   } else {
     auto value_dims = phi::vectorize<int64_t>(value.dims());
     DenseTensor value_tensor = Empty<T>(dev_ctx, IntArray{value_dims});
