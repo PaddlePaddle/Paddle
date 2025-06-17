@@ -148,14 +148,7 @@ class TestSvdvalsAPI(unittest.TestCase):
                 x_invalid_shape = paddle.to_tensor(x_np_invalid_shape)
                 paddle.linalg.svdvals(x_invalid_shape)
 
-            def test_empty_tensor():
-                """Test empty tensor"""
-                x_np_empty = np.empty([0, 10], dtype='float32')
-                x_empty = paddle.to_tensor(x_np_empty)
-                paddle.linalg.svdvals(x_empty)
-
             self.assertRaises(ValueError, test_invalid_shape)
-            self.assertRaises(ValueError, test_empty_tensor)
 
 
 class TestSvdvalsOp_ZeroSize(OpTest):
