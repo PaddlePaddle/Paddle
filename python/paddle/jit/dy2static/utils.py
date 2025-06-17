@@ -819,7 +819,7 @@ def cse_is_enabled():
     ]
 
 
-def is_specialize_device():
+def use_specialized_device():
     return paddle.get_flags(["FLAGS_specialize_device_in_dy2st"])[
         "FLAGS_specialize_device_in_dy2st"
     ]

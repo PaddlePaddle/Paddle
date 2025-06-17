@@ -40,7 +40,7 @@ from .utils import (
     auto_layout_is_enabled,
     backend_guard,
     cse_is_enabled,
-    is_specialize_device,
+    use_specialized_device,
 )
 
 if TYPE_CHECKING:
@@ -1246,8 +1246,10 @@ class PartialProgramLayer:
             elif isinstance(value, core.eager.Tensor):
                 # NOTE(Aurelius84): If var is on CPUPlace, it will be transformed multi times
                 # into CUDAPlace when it's as input of multi Ops. so we move it in advance to avoid this problem.
-                if value.stop_gradient and not value.place._equals(
-                    expected_place and not is_specialize_device()
+                if (
+                    value.stop_gradient
+                    and not value.place._equals(expected_place)
+                    and not use_specialized_device()
                 ):
                     var = value._copy_to(expected_place, False)
                     var.stop_gradient = True
