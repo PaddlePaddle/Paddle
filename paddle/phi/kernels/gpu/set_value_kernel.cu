@@ -109,12 +109,21 @@ void SetTensorValueKernelV2(const Context& dev_ctx,
 
   out->ResetHolder(in.Holder());
   out->ShareInplaceVersionCounterWith(in);
-  StridedCopyKernel<T, Context>(dev_ctx,
-                                expand_tensor,
-                                new_out_shape,
-                                new_out_stride,
-                                output_offset,
-                                out);
+  if (starts_local.empty() && ends_local.empty() && steps_local.empty()) {
+    if (expand_tensor.numel() == 1) {
+      ExpandKernel<T, Context>(
+          dev_ctx, expand_tensor, IntArray{new_out_shape}, out);
+    } else {
+      Copy<Context>(dev_ctx, expand_tensor, dev_ctx.GetPlace(), false, out);
+    }
+  } else {
+    StridedCopyKernel<T, Context>(dev_ctx,
+                                  expand_tensor,
+                                  new_out_shape,
+                                  new_out_stride,
+                                  output_offset,
+                                  out);
+  }
   out->set_meta(meta);
 }
 
