@@ -178,7 +178,7 @@ class OpcodeExecutorCache(metaclass=Singleton):
         enable_unsafe_cache_fastpath = ENV_SOT_UNSAFE_CACHE_FASTPATH.get()
 
         if enable_unsafe_cache_fastpath and (
-            self.consecutive_cache_hit_count[code]
+            self.consecutive_cache_hit_count.get(code, 0)
             > self.CACHE_HIT_FASTPATH_THRESHOLD
         ):
             # NOTE: In inference scenarios, cache misses are generally rare, so we can enable this short path.
@@ -248,7 +248,7 @@ class OpcodeExecutorCache(metaclass=Singleton):
                         cache_index is None or index == cache_index
                     ), f"cache_index({cache_index}) is not equal to index({index})"
 
-                    if self.last_cache_index[code] == index:
+                    if self.last_cache_index.get(code, None) == index:
                         self.consecutive_cache_hit_count[code] += 1
                     else:
                         self.last_cache_index[code] = index
