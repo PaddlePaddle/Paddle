@@ -54,6 +54,7 @@ def fused_stack_transpose_quant(
 
     Examples:
         .. code-block:: python
+
             import paddle.incubate.nn.functional as F
 
             x_vec = []
@@ -258,7 +259,7 @@ def fp8_gemm_blockwise(
 
 
 def fp8_quant_blockwise(
-    X: Tensor,
+    x: Tensor,
     epsilon: float = 0.0,
     input_transpose: bool = False,
     output_scale_transpose: bool = True,
@@ -280,8 +281,8 @@ def fp8_quant_blockwise(
         raise ValueError("Unsupported output type")
 
     if in_dynamic_or_pir_mode():
-        X_fp8, scale, X_fp8_t, scale_t = _C_ops.fp8_quant_blockwise(
-            X,
+        x_fp8, scale, x_fp8_t, scale_t = _C_ops.fp8_quant_blockwise(
+            x,
             epsilon,
             using_1x128,
             input_transpose,
@@ -291,6 +292,6 @@ def fp8_quant_blockwise(
         )
         # Aligned with kitchen's logic
         if not input_transpose:
-            return X_fp8, scale
+            return x_fp8, scale
         else:
-            return X_fp8, scale, X_fp8_t, scale_t
+            return x_fp8, scale, x_fp8_t, scale_t
