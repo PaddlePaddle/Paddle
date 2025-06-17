@@ -819,6 +819,12 @@ def cse_is_enabled():
     ]
 
 
+def is_specialize_device():
+    return paddle.get_flags(["FLAGS_specialize_device_in_dy2st"])[
+        "FLAGS_specialize_device_in_dy2st"
+    ]
+
+
 def prim_is_enabled():
     return core._is_bwd_prim_enabled() or core._is_fwd_prim_enabled()
 
