@@ -647,8 +647,8 @@ class TestGroupNormAPIV2_ZeroSize(unittest.TestCase):
                     weight=scale_,
                     bias=bias_,
                 )
-                self.assertTrue(
-                    np.allclose(result1.numpy(), expect_res1, atol=1e-5)
+                np.testing.assert_allclose(
+                    result1.numpy(), expect_res1, atol=1e-5
                 )
 
                 loss = paddle.sum(result1)
