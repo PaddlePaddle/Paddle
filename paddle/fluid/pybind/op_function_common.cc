@@ -1242,6 +1242,8 @@ void ConstructAttrMapForRunProgram(
       {"bx_g", CastPyArg2AttrValues},
       {"bp_g", CastPyArg2AttrValues},
       {"bo", CastPyArg2AttrValues},
+      {"cuda_graph_state", CastPyArg2AttrLong},
+      {"cuda_graph_dispatch_key", CastPyArg2AttrLong},
   };
 
   PyObject* obj = nullptr;

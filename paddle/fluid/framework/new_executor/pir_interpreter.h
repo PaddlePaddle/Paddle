@@ -124,6 +124,10 @@ class PirInterpreter : public InterpreterBaseImpl {
     force_events_to_wait_ = force_events_to_wait;
   }
 
+  void SetCUDAGraphState(uint8_t cuda_graph_state) {
+    cuda_graph_state_ = cuda_graph_state;
+  }
+
  private:
   // build graph
   void UpdateSyncOpNum();
@@ -285,6 +289,12 @@ class PirInterpreter : public InterpreterBaseImpl {
 #endif
   size_t last_calculate_instr_id_;
   bool enable_job_schedule_profiler_;
+
+  // 0: not in cuda graph
+  // 1: in cuda graph warmup
+  // 2: in cuda graph capture
+  // 3: in cuda graph replay
+  uint8_t cuda_graph_state_{0};
 };
 
 }  // namespace framework

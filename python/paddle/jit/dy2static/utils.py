@@ -30,7 +30,7 @@ import types
 import warnings
 from contextlib import contextmanager
 from dataclasses import fields, is_dataclass
-from enum import Enum, Flag, auto
+from enum import Enum, Flag, IntEnum, auto
 from importlib.machinery import SourceFileLoader
 from typing import TYPE_CHECKING, Any
 
@@ -988,3 +988,10 @@ def patch_method_guard(
         yield
     finally:
         restorer(instance)
+
+
+class CUDAGraphState(IntEnum):
+    DISABLE = 0
+    WARMUP = 1
+    CAPTURE = 2
+    REPLAY = 3
