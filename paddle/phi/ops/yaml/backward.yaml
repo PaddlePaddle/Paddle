@@ -2160,6 +2160,7 @@
     func : masked_fill_grad
     param: [x, mask, value, out_grad]
   inplace : (out_grad -> x_grad)
+  no_need_buffer : x, value
   backward: masked_fill_double_grad
 
 - backward_op : masked_select_grad

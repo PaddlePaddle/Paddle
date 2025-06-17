@@ -2812,6 +2812,113 @@ TEST(MeanAll, Ctor) {
   check_dim_mapping(backward_info.first[1], {});
   check_dim_mapping(backward_info.second[0], {-1, -1});
 }
+TEST(BatchNorm, Ctor) {
+  std::vector<int64_t> mesh_shape = {2, 2};
+  std::vector<int64_t> process_ids = {0, 1, 2, 3};
+  std::vector<std::string> dim_names = {"x", "y"};
+  ProcessMesh process_mesh(mesh_shape, process_ids, dim_names);
+
+  // test forward
+  // data_format = NCHW
+  // [0, 1, -1, -1],[-1],[-1],[-1],[-1] ->[-1 , 1, -1, -1],[1],[1],[1],[1],[-1]
+  auto x_dist_attr = TensorDistAttr();
+  x_dist_attr.set_process_mesh(process_mesh);
+  x_dist_attr.set_dims_mapping({0, 1, -1, -1});
+  x_dist_attr.set_dynamic_dims({false, false, false, false});
+  auto one_dim_dist_attr = TensorDistAttr();
+  one_dim_dist_attr.set_process_mesh(process_mesh);
+  one_dim_dist_attr.set_dims_mapping({-1});
+  one_dim_dist_attr.set_dynamic_dims({false});
+
+  phi::distributed::DistMetaTensor x = phi::distributed::DistMetaTensor(
+      common::make_ddim({16, 16, 16, 16}), x_dist_attr);
+  phi::distributed::DistMetaTensor mean = phi::distributed::DistMetaTensor(
+      common::make_ddim({16}), one_dim_dist_attr);
+  phi::distributed::DistMetaTensor variance = phi::distributed::DistMetaTensor(
+      common::make_ddim({16}), one_dim_dist_attr);
+  phi::distributed::DistMetaTensor scale = phi::distributed::DistMetaTensor(
+      common::make_ddim({16}), one_dim_dist_attr);
+  phi::distributed::DistMetaTensor bias = phi::distributed::DistMetaTensor(
+      common::make_ddim({16}), one_dim_dist_attr);
+  phi::distributed::SpmdInfo forward_info =
+      phi::distributed::BatchNormInferSpmdStatic(
+          x, mean, variance, scale, bias);
+
+  EXPECT_EQ(forward_info.first.size(), 5UL);
+  EXPECT_EQ(forward_info.second.size(), 6UL);
+  check_dim_mapping(forward_info.first[0], {-1, 1, -1, -1});
+  check_dim_mapping(forward_info.first[1], {1});
+  check_dim_mapping(forward_info.first[2], {1});
+  check_dim_mapping(forward_info.first[3], {-1});
+  check_dim_mapping(forward_info.first[4], {-1});
+  check_dim_mapping(forward_info.second[0], {-1, 1, -1, -1});
+  check_dim_mapping(forward_info.second[1], {1});
+  check_dim_mapping(forward_info.second[2], {1});
+  check_dim_mapping(forward_info.second[3], {1});
+  check_dim_mapping(forward_info.second[4], {1});
+  check_dim_mapping(forward_info.second[5], {-1});
+
+  // test backward
+  // data_format = NCHW
+  // [0, 1, -1, -1],[-1],[-1],[-1],[-1],[-1],[-1],[-1],[0, 1, -1, -1]
+  // ->[-1,1,-1,-1],[-1],[-1]
+  // dst_input: [-1, 1, -1, -1],[-1],[-1],[1],[1],[1],[1],[-1],[-1, 1, -1, -1]
+
+  x = phi::distributed::DistMetaTensor(common::make_ddim({16, 16, 16, 16}),
+                                       x_dist_attr);
+  phi::distributed::DistMetaTensor out_grad = phi::distributed::DistMetaTensor(
+      common::make_ddim({16, 16, 16, 16}), x_dist_attr);
+  phi::distributed::DistMetaTensor mean_out = phi::distributed::DistMetaTensor(
+      common::make_ddim({16}), one_dim_dist_attr);
+  phi::distributed::DistMetaTensor variance_out =
+      phi::distributed::DistMetaTensor(common::make_ddim({16}),
+                                       one_dim_dist_attr);
+  scale = phi::distributed::DistMetaTensor(common::make_ddim({16}),
+                                           one_dim_dist_attr);
+  bias = phi::distributed::DistMetaTensor(common::make_ddim({16}),
+                                          one_dim_dist_attr);
+  phi::distributed::DistMetaTensor saved_mean =
+      phi::distributed::DistMetaTensor(common::make_ddim({16}),
+                                       one_dim_dist_attr);
+  phi::distributed::DistMetaTensor saved_variance =
+      phi::distributed::DistMetaTensor(common::make_ddim({16}),
+                                       one_dim_dist_attr);
+  phi::distributed::DistMetaTensor reserve_space =
+      phi::distributed::DistMetaTensor(common::make_ddim({16}),
+                                       one_dim_dist_attr);
+  phi::distributed::SpmdInfo backward_info =
+      phi::distributed::BatchNormGradInferSpmd(x,
+                                               scale,
+                                               bias,
+                                               mean_out,
+                                               variance_out,
+                                               saved_mean,
+                                               saved_variance,
+                                               reserve_space,
+                                               out_grad,
+                                               0.9,
+                                               0.1,
+                                               "NCHW",
+                                               false,
+                                               false,
+                                               false);
+
+  EXPECT_EQ(backward_info.first.size(), 9UL);
+  EXPECT_EQ(backward_info.second.size(), 3UL);
+  check_dim_mapping(backward_info.first[0], {-1, 1, -1, -1});
+  check_dim_mapping(backward_info.first[1], {-1});
+  check_dim_mapping(backward_info.first[2], {-1});
+  check_dim_mapping(backward_info.first[3], {1});
+  check_dim_mapping(backward_info.first[4], {1});
+  check_dim_mapping(backward_info.first[5], {1});
+  check_dim_mapping(backward_info.first[6], {1});
+  check_dim_mapping(backward_info.first[7], {-1});
+  check_dim_mapping(backward_info.first[8], {-1, 1, -1, -1});
+
+  check_dim_mapping(backward_info.second[0], {-1, 1, -1, -1});
+  check_dim_mapping(backward_info.second[1], {-1});
+  check_dim_mapping(backward_info.second[2], {-1});
+}
 TEST(Topk, Ctor) {
   std::vector<int64_t> mesh_shape = {2, 2};
   std::vector<int64_t> process_ids = {0, 1, 2, 3};
