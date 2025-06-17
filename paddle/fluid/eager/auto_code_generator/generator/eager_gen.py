@@ -122,7 +122,6 @@ type_promote_white_list = {
     "atan2": ["x", "y"],
     "copysign": ["x", "y"],
     "cross": ["x", "y"],
-    "matmul": ["x", "y"],
     "multiply": ["x", "y"],
 }
 
