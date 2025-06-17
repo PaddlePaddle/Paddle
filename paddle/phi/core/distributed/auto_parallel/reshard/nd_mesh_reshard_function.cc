@@ -101,13 +101,19 @@ class ReshardContext final {
   TensorDistAttr CreateOneDimDistAttr(
       const ProcessMesh& sub_mesh,
       bool is_partial = false,
+      std::optional<ReduceType> reduce_type = std::nullopt,
       std::optional<int64_t> cur_tensor_dim = std::nullopt,
       std::optional<int64_t> cur_mesh_split_factor = std::nullopt) const {
     TensorDistAttr dist_attr(common::vectorize(in.dims()));
     dist_attr.set_process_mesh(sub_mesh);
 
     if (is_partial) {
-      dist_attr.set_partial_status(std::vector<int64_t>{0});
+      if (reduce_type) {
+        dist_attr.set_partial_status(std::vector<int64_t>{0},
+                                     reduce_type.value());
+      } else {
+        dist_attr.set_partial_status(std::vector<int64_t>{0});
+      }
     }
 
     if (cur_tensor_dim) {
@@ -195,7 +201,9 @@ class PartialToReplicate final
 
   TensorDistAttr CreateOneDimInDistAttr(
       const ProcessMesh& sub_mesh) const override {
-    return ctx_.CreateOneDimDistAttr(sub_mesh, true);
+    auto input_reduce_type =
+        ctx_.out->dist_attr().partial_status().at(cur_mesh_dim_);
+    return ctx_.CreateOneDimDistAttr(sub_mesh, true, input_reduce_type);
   }
 
   TensorDistAttr CreateOneDimOutDistAttr(
@@ -225,7 +233,7 @@ class ShardToReplicate final
     VLOG(3) << "In S To R, cur mesh dim is " << cur_mesh_dim_
             << ", split factor is " << split_factor;
     return ctx_.CreateOneDimDistAttr(
-        sub_mesh, false, cur_tensor_dim_, split_factor);
+        sub_mesh, false, std::nullopt, cur_tensor_dim_, split_factor);
   }
 
   TensorDistAttr CreateOneDimOutDistAttr(
@@ -283,7 +291,7 @@ class ReplicateToShard final
     VLOG(3) << "In R to S mesh dim is " << cur_mesh_dim_ << ", split factor is "
             << split_factor;
     return ctx_.CreateOneDimDistAttr(
-        sub_mesh, false, cur_tensor_dim_, split_factor);
+        sub_mesh, false, std::nullopt, cur_tensor_dim_, split_factor);
   }
 };
 
@@ -309,7 +317,9 @@ class PartialToShard final
 
   TensorDistAttr CreateOneDimInDistAttr(
       const ProcessMesh& sub_mesh) const override {
-    return ctx_.CreateOneDimDistAttr(sub_mesh, true);
+    auto input_reduce_type =
+        ctx_.out->dist_attr().partial_status().at(cur_mesh_dim_);
+    return ctx_.CreateOneDimDistAttr(sub_mesh, true, input_reduce_type);
   }
 
   TensorDistAttr CreateOneDimOutDistAttr(
@@ -318,7 +328,7 @@ class PartialToShard final
     VLOG(3) << "In P to S mesh dim is " << cur_mesh_dim_ << ", split factor is "
             << split_factor;
     return ctx_.CreateOneDimDistAttr(
-        sub_mesh, false, cur_tensor_dim_, split_factor);
+        sub_mesh, false, std::nullopt, cur_tensor_dim_, split_factor);
   }
 };
 

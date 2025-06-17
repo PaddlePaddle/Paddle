@@ -107,7 +107,7 @@ class SemiAutoParallelTestBase:
             )
             # for dygraph auto_parallel, get placements by using to_placements
             placements = dims_mapping_to_placements(
-                input_dist_attr.dims_mapping, self._mesh
+                input_dist_attr.dims_mapping_2d, self._mesh
             )
             dist_input = dist.shard_tensor(input, self._mesh, placements)
             dist_input.stop_gradient = not with_backward
