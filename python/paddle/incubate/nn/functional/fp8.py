@@ -88,33 +88,16 @@ def fused_act_dequant(
 
     Args:
         x (Tensor): Input quantized tensor with dtype float8_e4m3fn and shape [M, N], where M is the
-                   number of rows and N is the number of columns. This tensor contains the quantized
-                   activations from previous layers.
+            number of rows and N is the number of columns. This tensor contains the quantized
+            activations from previous layers.
         x_scale (Tensor): Dequantization scale tensor with dtype float32 and shape [M, (N + 127) // 128].
-                         Each scale value corresponds to a 128-column block in the input tensor.
-                         The scales are the reciprocal of the quantization scales used during the
-                         forward quantization process.
+            Each scale value corresponds to a 128-column block in the input tensor.
+            The scales are the reciprocal of the quantization scales used during the
+            forward quantization process.
 
     Returns:
         Tensor: Dequantized output tensor with dtype bfloat16 and shape [M, N]. The values are
-               computed as input * scale for each corresponding 128-column block.
-
-    Examples:
-        .. code-block:: python
-            >>> # doctest: +REQUIRES(env:GPU)
-            >>> import paddle
-            >>> from paddle.incubate.nn.functional import fused_act_dequant
-            >>> paddle.set_device('gpu')
-
-            >>> rows, cols = 512, 1024
-            >>> x = paddle.randn([rows, cols], dtype='float32')
-            >>> x = x.astype('float8_e4m3fn')
-            >>> scale_cols = (cols + 127) // 128
-            >>> x_scale = paddle.randn([rows, scale_cols], dtype='float32')
-            >>> x_scale = paddle.abs(x_scale) + 0.1
-            >>> output = fused_act_dequant(x, x_scale)
-            >>> print(output.shape)
-            [512, 1024]
+            computed as input * scale for each corresponding 128-column block.
     """
     if in_dynamic_or_pir_mode():
         return _C_ops.fused_act_dequant(x, x_scale)
@@ -135,28 +118,20 @@ def fused_swiglu_weighted_bwd(
     for memory efficiency. The kernel automatically selects between vectorized and standard
     implementations based on input dimensions.
 
-    The SwiGLU activation is defined as:
-    SwiGLU(x1, x2) = SiLU(x1) * x2 = (x1 * sigmoid(x1)) * x2
-
-    With probability weighting:
-    output = SwiGLU(x1, x2) * prob
-
     Args:
         o1 (Tensor): Forward pass input tensor with dtype bfloat16 and shape
-                    [..., intermediate_size * 2]. The tensor is split into two halves:
-                    - Left half [0:intermediate_size]: x1 values (gate inputs)
-                    - Right half [intermediate_size:]: x2 values (activation inputs)
-                    This is the same input used in the forward SwiGLU computation.
-
+            [..., intermediate_size * 2]. The tensor is split into two halves:
+            - Left half [0:intermediate_size]: x1 values (gate inputs)
+            - Right half [intermediate_size:]: x2 values (activation inputs)
+            This is the same input used in the forward SwiGLU computation.
         do2_s (Tensor): Upstream gradient tensor with dtype bfloat16 and shape
-                       [..., intermediate_size]. Contains gradients flowing back from
-                       the next layer, representing ∂L/∂output before probability weighting.
-                       Each element corresponds to the gradient of one output element.
-
+            [..., intermediate_size]. Contains gradients flowing back from
+            the next layer, representing ∂L/∂output before probability weighting.
+            Each element corresponds to the gradient of one output element.
         unzipped_probs (Tensor): Probability weighting tensor with dtype float32 and
-                                shape matching the batch dimensions of o1 and do2_s
-                                [...]. Each probability value was used to weight the
-                                corresponding row's output in the forward pass.
+            shape matching the batch dimensions of o1 and do2_s
+            [...]. Each probability value was used to weight the
+            corresponding row's output in the forward pass.
 
     Returns:
         tuple[Tensor, Tensor, Tensor]: A tuple containing:
@@ -164,12 +139,10 @@ def fused_swiglu_weighted_bwd(
               [..., intermediate_size * 2]. Layout matches o1:
               - [0:intermediate_size]: ∂L/∂x1 (gradients w.r.t. gate inputs)
               - [intermediate_size:]: ∂L/∂x2 (gradients w.r.t. activation inputs)
-
             - probs_grad (Tensor): Probability gradients with dtype float32 and
               shape [...]. Each element is ∂L/∂prob for the corresponding batch item,
               computed as the sum of (∂L/∂output_i * SwiGLU_output_i) across the
               intermediate dimension.
-
             - o2_s (Tensor): Recomputed forward output with dtype bfloat16 and
               shape [..., intermediate_size]. Contains SwiGLU(x1, x2) * prob values.
               This avoids storing forward activations, trading computation for memory.
@@ -214,24 +187,24 @@ def fused_transpose_split_quant(x, tokens_per_expert, pow_2_scales=False):
 
     Args:
         x (Tensor): Input tensor of shape [M, K] with dtype bfloat16, where M is the total
-                   number of tokens and K is the feature dimension. M must be divisible by 128
-                   for optimal performance.
+            number of tokens and K is the feature dimension. M must be divisible by 128
+            for optimal performance.
         tokens_per_expert (List[int]): List containing the number of tokens assigned to each expert.
-                                     Each value should be a multiple of 128 for optimal performance.
-                                     The sum should equal M (total tokens). Values can be 0 for
-                                     unused experts.
+            Each value should be a multiple of 128 for optimal performance.
+            The sum should equal M (total tokens). Values can be 0 for
+            unused experts.
         pow_2_scales (bool, optional): Whether to constrain quantization scales to powers of 2
-                                     for better hardware efficiency. If True, scales will be
-                                     rounded to the nearest power of 2. Default: False.
+            for better hardware efficiency. If True, scales will be
+            rounded to the nearest power of 2. Default: False.
 
     Returns:
         Tuple[List[Tensor], List[Tensor]]: A tuple containing:
             - outs (List[Tensor]): List of quantized and transposed output tensors, one per expert.
-                                 Each tensor has shape [K, tokens_per_expert[i]] and dtype float8_e4m3fn.
-                                 Empty tensors are included for experts with 0 tokens.
+              Each tensor has shape [K, tokens_per_expert[i]] and dtype float8_e4m3fn.
+              Empty tensors are included for experts with 0 tokens.
             - scales (List[Tensor]): List of dequantization scale tensors, one per expert.
-                                   Each tensor has shape [K // 128, tokens_per_expert[i] // 128]
-                                   and dtype float32. These are the reciprocal of quantization scales.
+              Each tensor has shape [K // 128, tokens_per_expert[i] // 128]
+              and dtype float32. These are the reciprocal of quantization scales.
 
     Examples:
         .. code-block:: python
@@ -285,20 +258,18 @@ def fused_weighted_swiglu_act_quant(
 
     Args:
         x (Tensor): Input tensor with dtype bfloat16 and shape [..., cols], where cols
-                   must be even. The tensor is interpreted as two concatenated matrices:
-                   gate values [0:cols/2] and activation values [cols/2:cols].
-                   Typical shapes: [batch_size, sequence_length, hidden_dim] or
-                   [tokens, expert_dim] in MoE scenarios.
-
+            must be even. The tensor is interpreted as two concatenated matrices:
+            gate values [0:cols/2] and activation values [cols/2:cols].
+            Typical shapes: [batch_size, sequence_length, hidden_dim] or
+            [tokens, expert_dim] in MoE scenarios.
         prob (Tensor, optional): Probability weighting tensor with dtype float32 and
-                               shape matching x's batch dimensions [...]. Each value
-                               multiplies the corresponding row's activation output.
-                               Used for dropout during training or expert selection
-                               probabilities during MoE inference. If None, no
-                               probability weighting is applied. Default: None.
-
+            shape matching x's batch dimensions [...]. Each value
+            multiplies the corresponding row's activation output.
+            Used for dropout during training or expert selection
+            probabilities during MoE inference. If None, no
+            probability weighting is applied. Default: None.
         using_pow2_scaling (bool, optional): Whether to use power-of-2 quantization
-                                           scaling for hardware efficiency.
+            scaling for hardware efficiency.
 
     Returns:
         tuple[Tensor, Tensor]: A tuple containing:
