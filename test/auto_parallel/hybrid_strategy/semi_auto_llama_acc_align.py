@@ -154,6 +154,7 @@ class TestLlamaAuto:
             dist.init_parallel_env()
         if os.getenv("sep_parallel", "false") == "true":
             self.config.sep_parallel_degree = self.sep
+
         if self.sep > 1:
             # only one of the context_parallel and sep_parallel can be True
             assert (
@@ -210,6 +211,7 @@ class TestLlamaAuto:
             )
         model.train()
         losses = []
+
         for step, inputs in enumerate(dist_loader()):
             if step >= self.run_step:
                 break
@@ -239,16 +241,20 @@ class TestLlamaAuto:
         pp_degree = self.pp
         sep_degree = self.sep
         degree = [dp_degree, pp_degree, mp_degree, sep_degree]
+
         mesh_dims = list(filter(lambda x: x[1] > 1, list(zip(order, degree))))
         if not mesh_dims:
             mesh_dims = [("dp", 1)]
+
         dim_names = [mesh_dim[0] for mesh_dim in mesh_dims]
         mesh_shape = [mesh_dim[1] for mesh_dim in mesh_dims]
         mesh_arr = np.arange(
             0, reduce(lambda x, y: x * y, mesh_shape, 1)
         ).reshape(mesh_shape)
+
         global_mesh = dist.ProcessMesh(mesh_arr, dim_names)
         dist.auto_parallel.set_mesh(global_mesh)
+
         paddle.seed(1024)
         np.random.seed(1024)
         random.seed(1024)
@@ -384,8 +390,7 @@ class TestLlamaAuto:
             return
         if self.gradient_accumulation_steps > 1:
             dy_losses = self.run_dynamic()
-            if self.sep > 1:
-                return
+
             self.init_dist_env()
             st_losses = self.run_dy2static()
             if int(dist.get_rank()) in [2, 3, 6, 7]:
@@ -393,8 +398,7 @@ class TestLlamaAuto:
 
         else:
             dy_losses = self.run_llama(to_static=0)
-            if self.sep > 1:
-                return
+
             self.init_dist_env()
             st_losses = self.run_llama(to_static=1)
             assert len(dy_losses) == len(st_losses)
