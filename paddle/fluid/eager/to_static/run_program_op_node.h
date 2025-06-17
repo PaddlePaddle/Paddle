@@ -214,25 +214,15 @@ static void ShareTensorsIntoScope(const std::vector<Tensor> &tensors,
   ShareTensorsIntoScopeWithName(tensors, names, scope);
 }
 
-static void ShareTensorsIntoScopeByValue(
-    const std::vector<Tensor> &tensors,
-    const std::vector<::pir::Value> &values,
-    paddle::framework::Scope *scope) {
-  auto names = GetNameFromValue(values);
-  ShareTensorsIntoScopeWithName(tensors, names, scope);
-}
-
-static void ShareTensorsFromScopeByValue(
-    const std::vector<Tensor *> &tensors,
-    const std::vector<::pir::Value> &values,
-    paddle::framework::Scope *scope) {
-  auto names = GetNameFromValue(values);
+static void ShareTensorsFromScopeWithName(const std::vector<Tensor *> &tensors,
+                                          const std::vector<std::string> &names,
+                                          paddle::framework::Scope *scope) {
   for (size_t i = 0; i < tensors.size(); ++i) {
     auto &name = names[i];
-    auto &value = values[i];
     VLOG(4) << "Share Tensor From Scope: " << name;
 
-    if (value.impl() == nullptr) {
+    if (name == paddle::framework::kFakeVarName ||
+        name == paddle::framework::kEmptyVarName) {
       // skip stop_gradient.
       continue;
     }
@@ -440,6 +430,15 @@ inline void PirRunProgramAPI(
       PADDLE_GET_CONST(std::vector<::pir::Value>, attrs.at("fm"));
   auto param_values =
       PADDLE_GET_CONST(std::vector<::pir::Value>, attrs.at("fp"));
+  auto no_need_buffer_values =
+      PADDLE_GET_CONST(std::vector<::pir::Value>, attrs.at("no_need_buffers"));
+
+  // Get All needed names
+  auto input_names = details::GetNameFromValue(input_values);
+  auto param_names = details::GetNameFromValue(param_values);
+  auto output_names = details::GetNameFromValue(output_values);
+  const auto no_need_buffer_names =
+      details::GetNameFromValue(no_need_buffer_values);
 
   std::shared_ptr<::pir::Program> forward_program = PADDLE_GET_CONST(
       std::shared_ptr<::pir::Program>, attrs.at("forward_program"));
@@ -467,16 +466,12 @@ inline void PirRunProgramAPI(
             << program_id;
 
     // Step 1. Get no need buffer vars for inplace pass and gc
-    auto no_need_buffer_values = PADDLE_GET_CONST(std::vector<::pir::Value>,
-                                                  attrs.at("no_need_buffers"));
-    const auto no_need_buffer_names =
-        details::GetNameFromValue(no_need_buffer_values);
     const auto no_need_buffer_name_set = std::set<std::string>(
         no_need_buffer_names.begin(), no_need_buffer_names.end());
     // Step 2. share input_vars & parameters into scope
-    details::ShareTensorsIntoScopeByValue(x, input_values, global_inner_scope);
-    details::ShareTensorsIntoScopeByValue(
-        params, param_values, global_inner_scope);
+    details::ShareTensorsIntoScopeWithName(x, input_names, global_inner_scope);
+    details::ShareTensorsIntoScopeWithName(
+        params, param_names, global_inner_scope);
     // Step 3. create new interpretercore
     auto passed_kernel_program = paddle::framework::ApplyIrPass(
         forward_program.get(), place, no_need_buffer_name_set);
@@ -502,8 +497,7 @@ inline void PirRunProgramAPI(
       VLOG(4) << "Find no need buffer vars with name:" << name;
       skip_names_set.erase(name);
     }
-    skip_names = details::GetNameFromValue(output_values);
-    skip_names_set.insert(skip_names.begin(), skip_names.end());
+    skip_names_set.insert(output_names.begin(), output_names.end());
 
     details::print_collection(skip_names_set);
     interpreter_core->SetSkipGcVars(skip_names_set);
@@ -515,9 +509,9 @@ inline void PirRunProgramAPI(
     auto &cached_value = cache.GetMutable(cache_key);
     interpreter_core = cached_value.core_;
     // Step 2. update scope for cache interpretercore
-    details::ShareTensorsIntoScopeByValue(x, input_values, global_inner_scope);
-    details::ShareTensorsIntoScopeByValue(
-        params, param_values, global_inner_scope);
+    details::ShareTensorsIntoScopeWithName(x, input_names, global_inner_scope);
+    details::ShareTensorsIntoScopeWithName(
+        params, param_names, global_inner_scope);
   }
 
   paddle::framework::RunFeedHooks(*forward_program, *global_inner_scope);
@@ -532,9 +526,8 @@ inline void PirRunProgramAPI(
     phi::RecordEvent record_event(
         "fetch_and_gc", phi::TracerEventType::UserDefined, 1);
     // Get Output, and Middle Outputs
-    details::ShareTensorsFromScopeByValue(
-        out, output_values, global_inner_scope);
-
+    details::ShareTensorsFromScopeWithName(
+        out, output_names, global_inner_scope);
     VLOG(3) << paddle::framework::GenScopeTreeDebugInfo(out_scope_vec->front());
 
     if (is_test || !require_any_grad) {
@@ -954,11 +947,18 @@ inline void PirRunProgramGradAPI(
   auto p_grad_values =
       PADDLE_GET_CONST(std::vector<::pir::Value>, attrs.at("bp_g"));
 
+  // Get All needed names
+  const auto &input_names = details::GetNameFromValue(forward_input_values);
+  const auto &param_names = details::GetNameFromValue(parameter_values);
+  const auto &output_grad_names = details::GetNameFromValue(output_grad_values);
+  const auto &x_grad_names = details::GetNameFromValue(x_grad_values);
+  const auto &p_grad_names = details::GetNameFromValue(p_grad_values);
+
   details::Trans2ContiguousTensorsInplace(out_grad);
 
   // share x, param, middles, output_grads, out into scope.
-  details::ShareTensorsIntoScopeByValue(
-      out_grad, output_grad_values, global_inner_scope);
+  details::ShareTensorsIntoScopeWithName(
+      out_grad, output_grad_names, global_inner_scope);
 
   auto &cache = paddle::framework::InterpreterCoreInfoCache::Instance();
   std::shared_ptr<paddle::framework::InterpreterCore> interpreter_core =
@@ -1001,10 +1001,8 @@ inline void PirRunProgramGradAPI(
 
     // get all eager gc vars
     std::set<std::string> skip_eager_delete_vars;
-    auto skip_names = details::GetNameFromValue(x_grad_values);
-    skip_eager_delete_vars.insert(skip_names.begin(), skip_names.end());
-    skip_names = details::GetNameFromValue(p_grad_values);
-    skip_eager_delete_vars.insert(skip_names.begin(), skip_names.end());
+    skip_eager_delete_vars.insert(x_grad_names.begin(), x_grad_names.end());
+    skip_eager_delete_vars.insert(p_grad_names.begin(), p_grad_names.end());
     interpreter_core->SetSkipGcVars(skip_eager_delete_vars);
     cache.UpdateSkipEagerDeleteVars(cache_key, skip_eager_delete_vars);
     VLOG(2) << "Get skip GC vars size is: " << skip_eager_delete_vars.size();
@@ -1035,10 +1033,10 @@ inline void PirRunProgramGradAPI(
     phi::RecordEvent record_event(
         "fetch_and_gc", phi::TracerEventType::UserDefined, 1);
     // Step 4. get outputs
-    details::ShareTensorsFromScopeByValue(
-        x_grad, x_grad_values, global_inner_scope);
-    details::ShareTensorsFromScopeByValue(
-        params_grad, p_grad_values, global_inner_scope);
+    details::ShareTensorsFromScopeWithName(
+        x_grad, x_grad_names, global_inner_scope);
+    details::ShareTensorsFromScopeWithName(
+        params_grad, p_grad_names, global_inner_scope);
     VLOG(4) << "after backward gc all vars";
     global_inner_scope->SetCanReused(true);
     details::GcScope(global_inner_scope);
