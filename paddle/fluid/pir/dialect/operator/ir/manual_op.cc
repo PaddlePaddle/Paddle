@@ -52,7 +52,6 @@ paddle::dialect::AddN_Op, paddle::dialect::AddNArrayOp,
 #include "paddle/pir/include/core/builtin_op.h"
 #include "paddle/pir/include/core/builtin_type.h"
 #include "paddle/pir/include/core/ir_context.h"
-#include "paddle/pir/include/dialect/shape/transforms/shape_optimization_pass.h"
 #ifdef PADDLE_WITH_DISTRIBUTE
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_tools.h"
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_type.h"
@@ -4915,19 +4914,6 @@ void CudaGraphOp::Build(pir::Builder &builder,
   argument.output_types = output_types;
 }
 
-void CudaGraphOp::Build(pir::Builder &builder,             // NOLINT
-                        pir::OperationArgument &argument,  // NOLINT
-                        std::unique_ptr<pir::Block> &&block) {
-  VLOG(4) << "Start build GroupOp";
-  if (block && !block->empty()) {
-    auto &op = block->back();
-    for (size_t i = 0; i < op.num_operands(); ++i) {
-      argument.AddOutput(op.operand(i).type());
-    }
-  }
-  argument.AddRegion().push_back(block.release());
-}
-
 pir::Block *CudaGraphOp::block() {
   pir::Region &region = (*this)->region(0);
   if (region.empty()) region.emplace_back();
@@ -4941,14 +4927,6 @@ pir::Block *CudaGraphOp::block() const {
                     ::common::errors::Unavailable(
                         "Required GroupOp's region must not be emptpy."));
   return &region.front();
-}
-
-std::vector<pir::Operation *> CudaGraphOp::GetOperators() const {
-  std::vector<pir::Operation *> rt_ops;
-  for (auto &op : *block()) {
-    rt_ops.push_back(&op);
-  }
-  return rt_ops;
 }
 
 void CudaGraphOp::VerifySig() {}
@@ -4965,25 +4943,12 @@ void CudaGraphOp::Print(pir::IrPrinter &printer) {
   printer.PrintOpReturnType(*op);
   os << " {\n";
   printer.AddIndentation();
-  for (auto &sub_op : GetOperators()) {
-    printer.PrintOperation(*sub_op);
+  for (auto &sub_op : *block()) {
+    printer.PrintOperation(sub_op);
     os << "\n";
   }
   printer.DecreaseIndentation();
   os << printer.indentation() << "}";
-}
-
-bool CudaGraphOp::InferSymbolicShape(
-    ::pir::InferSymbolicShapeContext *infer_context) {
-  ::pir::InferSymExprForBlock(*block(), infer_context);
-
-  for (uint32_t rst_idx = 0; rst_idx < num_results(); rst_idx++) {
-    auto inner_yield_value = block()->back().operand_source(rst_idx);
-    const auto &shape =
-        infer_context->GetShapeOrDataForValue(inner_yield_value);
-    infer_context->SetShapeOrDataForValue(result(rst_idx), shape);
-  }
-  return true;
 }
 
 }  // namespace paddle::dialect
@@ -5013,4 +4978,5 @@ IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::MemcpyD2hMultiIoOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::ShapeBroadcastOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::ArrayPopOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::ShareVarOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::CudaGraphOp)
 #endif

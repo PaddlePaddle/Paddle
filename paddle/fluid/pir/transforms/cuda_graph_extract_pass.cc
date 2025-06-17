@@ -24,6 +24,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/include/core/builder.h"
 #include "paddle/pir/include/core/builtin_op.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_registry.h"
 
@@ -54,7 +55,7 @@ class CudaGraphExtractPass : public pir::Pass {
 
     for (auto& group_ops : groups) {
       VLOG(4) << "current cuda_group count : " << group_ops.size();
-      ::pir::ReplaceWithCudaGraphOp(&block, group_ops);
+      ReplaceWithCudaGraphOp(&block, group_ops);
     }
   }
 
@@ -65,12 +66,6 @@ class CudaGraphExtractPass : public pir::Pass {
  private:
   void ReplaceWithCudaGraphOp(pir::Block* block, const GroupOpsVec& group_ops) {
     ::pir::IrContext* ctx = ::pir::IrContext::Instance();
-#ifdef PADDLE_WITH_CINN
-    ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
-#endif
-#ifdef PADDLE_WITH_DNNL
-    ctx->GetOrRegisterDialect<paddle::dialect::OneDNNOperatorDialect>();
-#endif
     ::pir::Builder builder = ::pir::Builder(ctx, block);
     const std::vector<pir::Value> outputs = AnalysisOutputs(group_ops, false);
 
@@ -81,11 +76,11 @@ class CudaGraphExtractPass : public pir::Pass {
     VLOG(6) << "Insert GroupOp after " << insert_point->name();
 
     // step 2: Replace the old op with CudaGraphOp.
-    auto cuda_graph_op = [&]() -> pir::CudaGraphOp {
+    auto cuda_graph_op = [&]() -> paddle::dialect::CudaGraphOp {
       std::vector<pir::Type> output_types;
       for (auto& value : outputs) output_types.emplace_back(value.type());
 
-      auto group_op = builder.Build<pir::CudaGraphOp>(output_types);
+      auto group_op = builder.Build<paddle::dialect::CudaGraphOp>(output_types);
       for (auto op : group_ops) {
         op->MoveTo(group_op.block(), group_op.block()->end());
       }
@@ -104,7 +99,7 @@ class CudaGraphExtractPass : public pir::Pass {
     }
 
     // step 4: Insert YieldOp for outputs
-    builder.SetInsertionPointToBlockEnd(new_group_op.block());
+    builder.SetInsertionPointToBlockEnd(cuda_graph_op.block());
     builder.Build<::pir::YieldOp>(outputs);
   }
 };

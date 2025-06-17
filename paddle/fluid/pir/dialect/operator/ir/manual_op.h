@@ -882,10 +882,7 @@ class ShareVarOp : public pir::Op<ShareVarOp, pir::SideEffectTrait> {
   void VerifySig() {}
 };
 
-class IR_API CudaGraphOp
-    : public pir::Op<CudaGraphOp,
-                     paddle::dialect::InferSymbolicShapeInterface,
-                     pir::SideEffectTrait> {
+class IR_API CudaGraphOp : public pir::Op<CudaGraphOp> {
  public:
   using Op::Op;
   static const char *name() { return "pd_op.cuda_graph"; }
@@ -894,15 +891,8 @@ class IR_API CudaGraphOp
                     pir::OperationArgument &argument,  // NOLINT
                     const std::vector<pir::Type> &output_types);
 
-  static void Build(pir::Builder &builder,             // NOLINT
-                    pir::OperationArgument &argument,  // NOLINT
-                    std::unique_ptr<pir::Block> &&block);
-
   pir::Block *block();
   pir::Block *block() const;
-  std::vector<pir::Operation *> GetOperators() const;
-
-  bool InferSymbolicShape(pir::InferSymbolicShapeContext *infer_context);
 
   void VerifySig();
   void Print(pir::IrPrinter &printer);  // NOLINT
@@ -936,3 +926,4 @@ IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::ShapeBroadcastOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::MemcpyD2hMultiIoOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::ArrayPopOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::ShareVarOp)
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::CudaGraphOp)
