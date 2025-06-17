@@ -2937,9 +2937,9 @@ All parameter, weight, gradient are variables in Paddle.
       .def_property_readonly(
           "name", [](const phi::DeviceProp &prop) { return prop.name; })
       .def_property_readonly(
-          "major", [](const phi::DeviceProp &prop) { return prop.DeviceMajor; })
+          "major", [](const phi::DeviceProp &prop) { return prop.deviceMajor; })
       .def_property_readonly(
-          "minor", [](const phi::DeviceProp &prop) { return prop.DeviceMinor; })
+          "minor", [](const phi::DeviceProp &prop) { return prop.deviceMinor; })
       .def_property_readonly(
           "total_memory",
           [](const phi::DeviceProp &prop) { return prop.totalGlobalMem; })
@@ -2955,8 +2955,8 @@ All parameter, weight, gradient are variables in Paddle.
       .def("__repr__", [](const phi::DeviceProp &prop) {
         std::stringstream ostr;
         ostr << "_customDeviceProperties(name='" << prop.name
-             << "', major=" << prop.DeviceMajor
-             << ", minor=" << prop.DeviceMinor
+             << "', major=" << prop.deviceMajor
+             << ", minor=" << prop.deviceMinor
              << ", total_memory=" << prop.totalGlobalMem / (1024 * 1024)
              << "MB, multi_processor_count=" << prop.multiProcessorCount << ")";
         return ostr.str();
