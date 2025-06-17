@@ -169,6 +169,16 @@ class TestEigvalsOpBatch3(TestEigvalsOp):
         self.input_dims = (6, 2, 9, 6, 6)
 
 
+class TestEigvalsOp_ZeroSize(TestEigvalsOp):
+    def set_input_dims(self):
+        self.input_dims = (6, 0, 2, 2)
+
+
+class TestEigvalsOp_ZeroSize2(TestEigvalsOp):
+    def set_input_dims(self):
+        self.input_dims = (6, 2, 0, 0)
+
+
 class TestEigvalsAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(0)
