@@ -36,7 +36,7 @@ using ConstEigenVectorArrayMap =
     Eigen::Map<const Eigen::Array<T, Eigen::Dynamic, 1>>;
 
 template <typename T, typename Context>
-void BatchNormGradFunctor(const Context& ctx,
+void BatchNormGradFunctor(const Context& dev_ctx,
                           const DenseTensor& x,
                           const paddle::optional<DenseTensor>& scale,
                           const paddle::optional<DenseTensor>& bias,
@@ -117,7 +117,7 @@ void BatchNormGradFunctor(const Context& ctx,
 
   // init output
   if (d_x) {
-    ctx.template Alloc<T>(d_x);
+    dev_ctx.template Alloc<T>(d_x);
   }
 
   const T* mean_data = nullptr;
@@ -128,7 +128,7 @@ void BatchNormGradFunctor(const Context& ctx,
     const auto* running_variance = variance.get_ptr();
     mean_data = running_mean->data<T>();
     inv_var_tensor.Resize({C});
-    T* running_inv_var_data = ctx.template Alloc<T>(&inv_var_tensor);
+    T* running_inv_var_data = dev_ctx.template Alloc<T>(&inv_var_tensor);
     EigenVectorArrayMap<T> inv_var_tmp(running_inv_var_data, C);
     ConstEigenVectorArrayMap<T> var_arr(running_variance->data<T>(), C);
 
@@ -145,8 +145,8 @@ void BatchNormGradFunctor(const Context& ctx,
   T* d_bias_data = nullptr;
   T* d_scale_data = nullptr;
   if (d_scale && d_bias) {
-    d_bias_data = ctx.template Alloc<T>(d_bias);
-    d_scale_data = ctx.template Alloc<T>(d_scale);
+    d_bias_data = dev_ctx.template Alloc<T>(d_bias);
+    d_scale_data = dev_ctx.template Alloc<T>(d_scale);
   }
 
   // d_bias = np.sum(d_y, axis=0)
@@ -162,7 +162,7 @@ void BatchNormGradFunctor(const Context& ctx,
   }
 
   if (d_x && (N * sample_size) == 1 && !use_global_stats) {
-    phi::Copy(ctx, *d_y, ctx.GetPlace(), false, d_x);
+    phi::Copy(dev_ctx, *d_y, dev_ctx.GetPlace(), false, d_x);
     return;
   }
   auto* Scale = scale.get_ptr();
@@ -185,13 +185,13 @@ void BatchNormGradFunctor(const Context& ctx,
 
   DenseTensor dy_sum;
   dy_sum.Resize({C});
-  auto dy_sum_data = ctx.template Alloc<T>(&dy_sum);
+  auto dy_sum_data = dev_ctx.template Alloc<T>(&dy_sum);
   EigenVectorArrayMap<T> dy_sum_arr(dy_sum_data, C);
 
   DenseTensor dy_mul_x_sub_mean_mul_invstd_sum;
   dy_mul_x_sub_mean_mul_invstd_sum.Resize({C});
   auto dy_mul_x_sub_mean_mul_invstd_sum_data =
-      ctx.template Alloc<T>(&dy_mul_x_sub_mean_mul_invstd_sum);
+      dev_ctx.template Alloc<T>(&dy_mul_x_sub_mean_mul_invstd_sum);
   EigenVectorArrayMap<T> dy_mul_x_sub_mean_mul_invstd_sum_arr(
       dy_mul_x_sub_mean_mul_invstd_sum_data, C);
 
@@ -209,7 +209,8 @@ void BatchNormGradFunctor(const Context& ctx,
     case DataLayout::kNCHW: {
       if (is_inplace) {
         auto px = x;
-        EigenArrayMap<T> x_data(ctx.template Alloc<T>(&px), sample_size, N * C);
+        EigenArrayMap<T> x_data(
+            dev_ctx.template Alloc<T>(&px), sample_size, N * C);
         ConstEigenArrayMap<T> y_data(x.data<T>(), sample_size, N * C);
         for (int nc = 0; nc < N * C; ++nc) {
           x_data.col(nc) = (y_data.col(nc) - bias_arr(nc % C)) /
@@ -235,7 +236,7 @@ void BatchNormGradFunctor(const Context& ctx,
 
       if (d_x) {
         EigenArrayMap<T> d_x_arr(
-            ctx.template Alloc<T>(d_x), sample_size, N * C);
+            dev_ctx.template Alloc<T>(d_x), sample_size, N * C);
         if (!use_global_stats) {
           for (int nc = 0; nc < N * C; ++nc) {
             int c = nc % C;
@@ -257,7 +258,8 @@ void BatchNormGradFunctor(const Context& ctx,
     case DataLayout::kNHWC: {
       if (is_inplace) {
         auto px = x;
-        EigenArrayMap<T> x_data(ctx.template Alloc<T>(&px), C, N * sample_size);
+        EigenArrayMap<T> x_data(
+            dev_ctx.template Alloc<T>(&px), C, N * sample_size);
         ConstEigenArrayMap<T> y_data(x.data<T>(), C, N * sample_size);
         for (int nhw = 0; nhw < N * sample_size; nhw++) {
           x_data.col(nhw) =
@@ -281,7 +283,7 @@ void BatchNormGradFunctor(const Context& ctx,
 
       if (d_x) {
         EigenArrayMap<T> d_x_arr(
-            ctx.template Alloc<T>(d_x), C, N * sample_size);
+            dev_ctx.template Alloc<T>(d_x), C, N * sample_size);
         if (!use_global_stats) {
           for (int nhw = 0; nhw < N * sample_size; ++nhw) {
             d_x_arr.col(nhw) =
@@ -348,7 +350,7 @@ void BatchNormGradKernel(const Context& dev_ctx,
 
 template <typename T, typename Context>
 void BatchNormDoubleGradKernel(
-    const Context& ctx,
+    const Context& dev_ctx,
     const DenseTensor& x,
     const paddle::optional<DenseTensor>& scale,
     const paddle::optional<DenseTensor>& mean,
@@ -390,8 +392,8 @@ void BatchNormDoubleGradKernel(
   auto* dX = x_grad;
   auto* dScale = scale_grad;
   auto* ddY = y_grad_grad;
-  ctx.template Alloc<T>(dX);
-  ctx.template Alloc<T>(ddY);
+  dev_ctx.template Alloc<T>(dX);
+  dev_ctx.template Alloc<T>(ddY);
 
   const auto& x_dims = X->dims();
   const int C = static_cast<int>(
@@ -409,7 +411,7 @@ void BatchNormDoubleGradKernel(
     mean_data = running_mean->data<T>();
     inv_var_tensor.Resize({C});
 
-    T* running_inv_var_data = ctx.template Alloc<T>(&inv_var_tensor);
+    T* running_inv_var_data = dev_ctx.template Alloc<T>(&inv_var_tensor);
     EigenVectorArrayMap<T> inv_var_tmp(running_inv_var_data, C);
     ConstEigenVectorArrayMap<T> var_arr(running_variance->data<T>(), C);
 
@@ -427,15 +429,15 @@ void BatchNormDoubleGradKernel(
   if (data_layout == DataLayout::kNCHW && x_dims.size() > 2) {
     VLOG(3) << "Transform batchnorm output from NCHW to NHWC";
     // Input Tensor
-    ResizeToChannelLast<Context, T>(ctx, X, &transformed_x);
-    TransToChannelLast<Context, T>(ctx, X, &transformed_x);
-    ResizeToChannelLast<Context, T>(ctx, dY, &transformed_dy);
-    TransToChannelLast<Context, T>(ctx, dY, &transformed_dy);
-    ResizeToChannelLast<Context, T>(ctx, ddX, &transformed_ddx);
-    TransToChannelLast<Context, T>(ctx, ddX, &transformed_ddx);
+    ResizeToChannelLast<Context, T>(dev_ctx, X, &transformed_x);
+    TransToChannelLast<Context, T>(dev_ctx, X, &transformed_x);
+    ResizeToChannelLast<Context, T>(dev_ctx, dY, &transformed_dy);
+    TransToChannelLast<Context, T>(dev_ctx, dY, &transformed_dy);
+    ResizeToChannelLast<Context, T>(dev_ctx, ddX, &transformed_ddx);
+    TransToChannelLast<Context, T>(dev_ctx, ddX, &transformed_ddx);
     // Output Tensor
-    ResizeToChannelLast<Context, T>(ctx, dX, &transformed_dx);
-    ResizeToChannelLast<Context, T>(ctx, ddY, &transformed_ddy);
+    ResizeToChannelLast<Context, T>(dev_ctx, dX, &transformed_dx);
+    ResizeToChannelLast<Context, T>(dev_ctx, ddY, &transformed_ddy);
   } else {
     transformed_x.ShareDataWith(*X);
     transformed_dy.ShareDataWith(*dY);
@@ -452,12 +454,12 @@ void BatchNormDoubleGradKernel(
   Tensor mean_tile;
   mean_tile.Resize({C, sample_size});
   EigenArrayMap<T> mean_tile_data(
-      ctx.template Alloc<T>(&mean_tile), C, sample_size);
+      dev_ctx.template Alloc<T>(&mean_tile), C, sample_size);
 
   DenseTensor inv_var_tile;
   inv_var_tile.Resize({C, sample_size});
   EigenArrayMap<T> inv_var_tile_data(
-      ctx.template Alloc<T>(&inv_var_tile), C, sample_size);
+      dev_ctx.template Alloc<T>(&inv_var_tile), C, sample_size);
 
   mean_tile_data = mean_arr.replicate(1, sample_size);
   inv_var_tile_data = inv_var_arr.replicate(1, sample_size);
@@ -465,8 +467,8 @@ void BatchNormDoubleGradKernel(
   DenseTensor Scale_data;
   if (!Scale) {
     Scale_data.Resize({C});
-    ctx.template Alloc<T>(&Scale_data);
-    set_constant(ctx, &Scale_data, static_cast<T>(1));
+    dev_ctx.template Alloc<T>(&Scale_data);
+    set_constant(dev_ctx, &Scale_data, static_cast<T>(1));
   }
   ConstEigenVectorArrayMap<T> scale_arr(
       Scale ? Scale->data<T>() : Scale_data.data<T>(), C);
@@ -474,7 +476,7 @@ void BatchNormDoubleGradKernel(
   Tensor scale_tile;
   scale_tile.Resize({C, sample_size});
   EigenArrayMap<T> scale_tile_data(
-      ctx.template Alloc<T>(&scale_tile), C, sample_size);
+      dev_ctx.template Alloc<T>(&scale_tile), C, sample_size);
   scale_tile_data = scale_arr.replicate(1, sample_size);
 
   ConstEigenArrayMap<T> dy_arr(transformed_dy.data<T>(), C, sample_size);
@@ -484,13 +486,13 @@ void BatchNormDoubleGradKernel(
   x_sub_mean_mul_invstd.Resize({C, sample_size});
 
   EigenArrayMap<T> x_sub_mean_mul_invstd_arr(
-      ctx.template Alloc<T>(&x_sub_mean_mul_invstd), C, sample_size);
+      dev_ctx.template Alloc<T>(&x_sub_mean_mul_invstd), C, sample_size);
   x_sub_mean_mul_invstd_arr = (x_arr - mean_tile_data) * inv_var_tile_data;
 
   if (dX) {
-    ctx.template Alloc<T>(dX);
+    dev_ctx.template Alloc<T>(dX);
     EigenArrayMap<T> dx_arr(
-        ctx.template Alloc<T>(&transformed_dx), C, sample_size);
+        dev_ctx.template Alloc<T>(&transformed_dx), C, sample_size);
     dx_arr.setZero();
     if (use_global_stats) {
       // math: dx = (ddscale * dy) * inv_var
@@ -499,7 +501,7 @@ void BatchNormDoubleGradKernel(
         Tensor ddscale_tile;
         ddscale_tile.Resize({C, sample_size});
         EigenArrayMap<T> ddscale_tile_data(
-            ctx.template Alloc<T>(&ddscale_tile), C, sample_size);
+            dev_ctx.template Alloc<T>(&ddscale_tile), C, sample_size);
         ddscale_tile_data = ddscale_arr.replicate(1, sample_size);
 
         dx_arr = dy_arr * ddscale_tile_data * inv_var_tile_data;
@@ -551,7 +553,7 @@ void BatchNormDoubleGradKernel(
         Tensor ddscale_tile;
         ddscale_tile.Resize({C, sample_size});
         EigenArrayMap<T> ddscale_tile_data(
-            ctx.template Alloc<T>(&ddscale_tile), C, sample_size);
+            dev_ctx.template Alloc<T>(&ddscale_tile), C, sample_size);
         ddscale_tile_data = ddscale_arr.replicate(1, sample_size);
 
         dx_arr +=
@@ -569,11 +571,11 @@ void BatchNormDoubleGradKernel(
     }
     if (data_layout == DataLayout::kNCHW) {
       VLOG(3) << "Transform batchnorm output from NHWC to NCHW";
-      TransToChannelFirst<Context, T>(ctx, &transformed_dx, dX);
+      TransToChannelFirst<Context, T>(dev_ctx, &transformed_dx, dX);
     }
   }
   if (dScale) {
-    EigenVectorArrayMap<T> dscale_arr(ctx.template Alloc<T>(dScale), C);
+    EigenVectorArrayMap<T> dscale_arr(dev_ctx.template Alloc<T>(dScale), C);
     dscale_arr.setZero();
     if (use_global_stats) {
       // math: dscale = np.sum(ddx * dy, axis=(n,h,w)) * inv_var
@@ -588,7 +590,7 @@ void BatchNormDoubleGradKernel(
         Tensor first_grad;
         first_grad.Resize({C, sample_size});
         EigenArrayMap<T> first_grad_arr(
-            ctx.template Alloc<T>(&first_grad), C, sample_size);
+            dev_ctx.template Alloc<T>(&first_grad), C, sample_size);
         first_grad_arr.setZero();
 
         first_grad_arr +=
@@ -607,9 +609,9 @@ void BatchNormDoubleGradKernel(
   }
 
   if (ddY) {
-    ctx.template Alloc<T>(ddY);
+    dev_ctx.template Alloc<T>(ddY);
     EigenArrayMap<T> ddy_arr(
-        ctx.template Alloc<T>(&transformed_ddy), C, sample_size);
+        dev_ctx.template Alloc<T>(&transformed_ddy), C, sample_size);
     ddy_arr.setZero();
     if (use_global_stats) {  // NOLINT
       // math: ddy = r * ddx * inv_var + ddbias +
@@ -639,7 +641,7 @@ void BatchNormDoubleGradKernel(
       Tensor ddscale_tile;
       ddscale_tile.Resize({C, sample_size});
       EigenArrayMap<T> ddscale_tile_data(
-          ctx.template Alloc<T>(&ddscale_tile), C, sample_size);
+          dev_ctx.template Alloc<T>(&ddscale_tile), C, sample_size);
       ddscale_tile_data = ddscale_arr.replicate(1, sample_size);
 
       ddy_arr += x_sub_mean_mul_invstd_arr * ddscale_tile_data;
@@ -650,7 +652,7 @@ void BatchNormDoubleGradKernel(
       Tensor ddbias_tile;
       ddbias_tile.Resize({C, sample_size});
       EigenArrayMap<T> ddbias_tile_data(
-          ctx.template Alloc<T>(&ddbias_tile), C, sample_size);
+          dev_ctx.template Alloc<T>(&ddbias_tile), C, sample_size);
       ddbias_tile_data = ddbias_arr.replicate(1, sample_size);
 
       ddy_arr += ddbias_tile_data;
@@ -658,7 +660,7 @@ void BatchNormDoubleGradKernel(
 
     if (data_layout == DataLayout::kNCHW) {
       VLOG(3) << "Transform batchnorm output from NHWC to NCHW";
-      TransToChannelFirst<Context, T>(ctx, &transformed_ddy, ddY);
+      TransToChannelFirst<Context, T>(dev_ctx, &transformed_ddy, ddY);
     }
   }
 }

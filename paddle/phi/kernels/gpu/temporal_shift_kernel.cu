@@ -95,6 +95,10 @@ void TemporalShiftKernel(const Context& dev_ctx,
                          float shift_ratio,
                          const std::string& data_format_str,
                          DenseTensor* out) {
+  if (out && out->numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   auto* input = &x;
   auto* output = out;
   int t = seg_num;

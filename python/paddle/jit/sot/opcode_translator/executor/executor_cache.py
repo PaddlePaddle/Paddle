@@ -19,7 +19,6 @@ import traceback
 from typing import TYPE_CHECKING
 
 import paddle
-from paddle.base.dygraph.base import sot_simulation_mode_guard
 
 from ...profiler import EventGuard, event_register
 from ...psdb import NO_FALLBACK_CODES
@@ -363,11 +362,12 @@ def start_translate(
         simulator = OpcodeExecutor(vframe, graph)
         simulator.check_code_simulatable()
         InfoCollector().attach(CompileCountInfo, frame.f_code)
-        with sot_simulation_mode_guard(True):
-            new_custom_code, guard_fn = simulator.transform(frame)
-            if ENV_SOT_ENABLE_STRICT_GUARD_CHECK.get():
-                assert guard_fn(frame)
-                assert guard_fn.mirror_guard(frame)
+
+        new_custom_code, guard_fn = simulator.transform(frame)
+        if ENV_SOT_ENABLE_STRICT_GUARD_CHECK.get():
+            assert guard_fn(frame)
+            assert guard_fn.mirror_guard(frame)
+
         if not simulator._graph.need_cache:
             return (
                 CustomCode(None, True),

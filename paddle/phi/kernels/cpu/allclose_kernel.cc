@@ -31,6 +31,11 @@ void AllCloseKernel(const Context& dev_ctx,
                     const Scalar& atol,
                     bool equal_nan,
                     DenseTensor* out) {
+  if (x.numel() == 0 || y.numel() == 0) {
+    auto* out_data = dev_ctx.template Alloc<bool>(out);
+    *out_data = true;
+    return;
+  }
   double rtol_v = NAN, atol_v = NAN;
   if (rtol.dtype() == DataType::FLOAT64) {
     rtol_v = rtol.to<double>();

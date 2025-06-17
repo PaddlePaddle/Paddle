@@ -194,13 +194,13 @@ void SetValueImpl(const Context& dev_ctx,
   CheckIsDimsMatch(slice_dims_for_assign, new_value_dims);
 
   // do broadcasting
-  auto f = [](xpu::Context* ctx,
+  auto f = [](xpu::Context* xpu_ctx,
               const XPUType* x,
               const XPUType* y, /*unused*/
               XPUType* z,
               const std::vector<int64_t>& xshape,
               const std::vector<int64_t>& zshape) {
-    return xpu::broadcast<XPUType>(ctx, x, z, xshape, zshape);
+    return xpu::broadcast<XPUType>(xpu_ctx, x, z, xshape, zshape);
   };
 
   XPUElementwise<T, XPUType>(dev_ctx,

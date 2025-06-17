@@ -66,10 +66,17 @@ def in_to_static_mode() -> bool:
 
 def in_sot_simulation_mode() -> bool:
     """
-    Return a bool value that indicates whether running code under SOT simulation context.
+    Returns whether the code is running under the SOT simulation context.
 
+    NOTE: Always returns False because if this function is called directly from native Python,
+    it is not within the SOT simulation process. In that case, returning False is correct.
+    If the code is running within the SOT simulation process, the function will be represented
+    by UserDefinedFunctionVariable, which is specially handled in its `call_function` method
+    to return True when this function is called.
+
+    This design avoids introducing `global_var` into the guard logic.
     """
-    return global_var._in_sot_simulation_mode_
+    return False
 
 
 # TODO(Aurelius84): Need to remove this alias after clean usage in PaddleX
@@ -117,19 +124,6 @@ def to_static_mode_guard(
         yield
     finally:
         global_var._in_to_static_mode_ = original_val
-
-
-@signature_safe_contextmanager
-def sot_simulation_mode_guard(
-    is_sot_simulation: bool = True,
-) -> Generator[None, None, None]:
-    global global_var
-    original_val = global_var._in_sot_simulation_mode_
-    global_var._in_sot_simulation_mode_ = is_sot_simulation
-    try:
-        yield
-    finally:
-        global_var._in_sot_simulation_mode_ = original_val
 
 
 @signature_safe_contextmanager

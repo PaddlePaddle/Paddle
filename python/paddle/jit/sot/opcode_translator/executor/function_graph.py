@@ -553,7 +553,7 @@ class FunctionGraph:
         log(3, f"call paddle.api : {func.__name__}", "\n")
 
         def message_handler(*args, **kwargs):
-            return f"Call paddle_api error: {func.__name__}, may be not a operator api?"
+            return f"Call paddle_api error: {func.__name__}"
 
         return inner_error_default_handler(self.symbolic_call, message_handler)(
             InferMetaCache(),
@@ -580,7 +580,7 @@ class FunctionGraph:
         log(3, f"call numpy.api : {func.__name__}", "\n")
 
         def message_handler(*args, **kwargs):
-            return f"Call numpy api error: {func.__name__}, may be not a operator api?"
+            return f"Call numpy api error: {func.__name__}"
 
         return inner_error_default_handler(self.symbolic_call, message_handler)(
             InferMetaCache(),
@@ -623,7 +623,7 @@ class FunctionGraph:
         """
 
         def message_handler(*args, **kwargs):
-            return f"Call tensor_method error: Tensor.{method_name}, may be not a valid operator api?"
+            return f"Call tensor_method error: Tensor.{method_name}"
 
         return inner_error_default_handler(self.symbolic_call, message_handler)(
             InferMetaCache(),
@@ -661,7 +661,7 @@ class FunctionGraph:
             )
 
         def message_handler(*args, **kwargs):
-            return f"Call paddle layer error: {layer}, may be not a valid paddle layer?"
+            return f"Call paddle layer error: {layer}"
 
         return inner_error_default_handler(self.symbolic_call, message_handler)(
             infer_meta_fn, compute_fn, layer, APIType.PADDLE, *args, **kwargs
@@ -912,9 +912,13 @@ class FunctionGraph:
         current_executor = OpcodeExecutorBase.call_stack[-1]
         current_line = current_executor._current_line
         filename = current_executor.vframe.code.co_filename
-        source_lines, start_line = inspect.getsourcelines(
-            current_executor.vframe.code
-        )
+        try:
+            source_lines, start_line = inspect.getsourcelines(
+                current_executor.vframe.code
+            )
+        except OSError:
+            # Skip if the function has not source code
+            return []
         # TODO(SigureMo): In 3.11, lineno maybe changed after multiple breakgraph,
         # We need to find a way to fix this.
         line_idx = max(min(current_line - start_line, len(source_lines) - 1), 0)

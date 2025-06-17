@@ -95,7 +95,8 @@ void FixLossAccordingToIgnoreIndex(const phi::XPUContext& dev_ctx,
                              ignore_index);
     PADDLE_ENFORCE_XDNN_SUCCESS(ret, "constant");
     // 如果label和ignore_index一样，那么把这个bool类型的对应位置刷成1，表示后面要刷成0
-    // int equal(Context* ctx, const T* x, const T* y, bool* z, int64_t len);
+    // int equal(Context* xpu_ctx, const T* x, const T* y, bool* z, int64_t
+    // len);
     ret = xpu::equal<int>(dev_ctx.x_context(),
                           ignore_label_as_tensor.data<int>(),
                           labels->data<int>(),
@@ -111,7 +112,8 @@ void FixLossAccordingToIgnoreIndex(const phi::XPUContext& dev_ctx,
                                  ignore_index);
     PADDLE_ENFORCE_XDNN_SUCCESS(ret, "constant");
     // 如果label和ignore_index一样，那么把这个bool类型的对应位置刷成1，表示后面要刷成0
-    // int equal(Context* ctx, const T* x, const T* y, bool* z, int64_t len);
+    // int equal(Context* xpu_ctx, const T* x, const T* y, bool* z, int64_t
+    // len);
     ret = xpu::equal<int64_t>(dev_ctx.x_context(),
                               ignore_label_as_tensor.data<int64_t>(),
                               labels->data<int64_t>(),
@@ -120,7 +122,7 @@ void FixLossAccordingToIgnoreIndex(const phi::XPUContext& dev_ctx,
     PADDLE_ENFORCE_XDNN_SUCCESS(ret, "equal");
   }
   // bool值为1的说明命中了，要刷0，bool为0的要保留
-  // int select(Context* ctx, const bool* condition, const T* x, const T* y,
+  // int select(Context* xpu_ctx, const bool* condition, const T* x, const T* y,
   // T* z, const std::vector<int64_t>& condition_shape, const
   // std::vector<int64_t>& xshape);
   ret = xpu::select(
@@ -143,6 +145,7 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::XPUContext, T> {
                   int nranks,
                   DenseTensor* softmax,
                   DenseTensor* loss) {
+#if defined(PADDLE_WITH_XPU_BKCL)
     using XPUType = typename XPUTypeTrait<T>::Type;
     const phi::DenseTensor* logits = &logits_in;
     const phi::DenseTensor* labels = &label_in;
@@ -181,12 +184,12 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::XPUContext, T> {
     dev_ctx.template Alloc<T>(&logits_max);
     {
       int dims[1] = {1};
-      auto f = [](xpu::Context* ctx,
+      auto f = [](xpu::Context* xpu_ctx,
                   const T* x,
                   T* y,
                   const std::vector<int64_t>& xdims,
                   const std::vector<int64_t>& reduce_dims) {
-        return xpu::reduce_max<XPUType>(ctx,
+        return xpu::reduce_max<XPUType>(xpu_ctx,
                                         reinterpret_cast<const XPUType*>(x),
                                         reinterpret_cast<XPUType*>(y),
                                         xdims,
@@ -206,13 +209,13 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::XPUContext, T> {
 
     // step 2, obtain logit - logit_max
     {
-      auto f = [](xpu::Context* ctx,
+      auto f = [](xpu::Context* xpu_ctx,
                   const XPUType* x,
                   const XPUType* y,
                   XPUType* z,
                   const std::vector<int64_t>& xshape,
                   const std::vector<int64_t>& yshape) {
-        return xpu::broadcast_sub<XPUType>(ctx, x, y, z, xshape, yshape);
+        return xpu::broadcast_sub<XPUType>(xpu_ctx, x, y, z, xshape, yshape);
       };
       phi::XPUElementwise<T, XPUType>(
           dev_ctx, logits_2d, logits_max, axis, &softmax_2d, f);
@@ -274,12 +277,12 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::XPUContext, T> {
     dev_ctx.Alloc<T>(&sum_exp_logits);
     {
       int dims[1] = {1};
-      auto f = [](xpu::Context* ctx,
+      auto f = [](xpu::Context* xpu_ctx,
                   const T* x,
                   T* y,
                   const std::vector<int64_t>& xdims,
                   const std::vector<int64_t>& reduce_dims) {
-        return xpu::reduce_sum<XPUType>(ctx,
+        return xpu::reduce_sum<XPUType>(xpu_ctx,
                                         reinterpret_cast<const XPUType*>(x),
                                         reinterpret_cast<XPUType*>(y),
                                         xdims,
@@ -327,6 +330,12 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::XPUContext, T> {
     // 将label和ignore_index相同的那些loss，置为0
     FixLossAccordingToIgnoreIndex<T>(
         dev_ctx, labels, &predicted_logits, loss, N, ignore_index);
+#else
+    PADDLE_THROW(common::errors::PreconditionNotMet(
+        "PaddlePaddle is not compiled with DWITH_XPU_BKCL, please recompile "
+        "with "
+        "DWITH_XPU_BKCL for using c_softmax_with_cross_entropy."));
+#endif
   }
 };
 

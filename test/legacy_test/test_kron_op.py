@@ -144,6 +144,33 @@ class TestKronFP16Op(TestKronOp):
         return "float16"
 
 
+class TestKronOp_ZeroSize(OpTest):
+    def setUp(self):
+        self.op_type = "kron"
+        self.prim_op_type = "prim"
+        self.python_api = paddle.kron
+        self.public_python_api = paddle.kron
+        self.dtype = self._init_dtype()
+        x = np.random.uniform(size=(10, 0, 2)).astype(self.dtype)
+        y = np.random.uniform(size=(2, 3, 4, 3, 2)).astype(self.dtype)
+        out_ref = np.kron(x, y)
+        self.inputs = {'X': x, 'Y': y}
+        self.outputs = {'Out': out_ref}
+
+    def _init_dtype(self):
+        return "float64"
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['X', 'Y'],
+            'Out',
+            check_pir=True,
+        )
+
+
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),

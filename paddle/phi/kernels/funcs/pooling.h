@@ -461,11 +461,11 @@ inline T PoolOutputSize(T input_size,
             stride +
         1;
   }
-  PADDLE_ENFORCE_GT(
+  PADDLE_ENFORCE_GE(
       output_size,
       0,
       errors::InvalidArgument(
-          "the output size must be greater than 0. But received: "
+          "the output size must be greater than or equal to 0. But received: "
           "output_size = %d due to the settings of input_size(%d), "
           "padding(%d,%d), "
           "k_size(%d) and stride(%d). Please check again!",

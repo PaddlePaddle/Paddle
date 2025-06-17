@@ -36,11 +36,6 @@ void PutAlongAxisGradKernel(const Context& dev_ctx,
                             bool include_self,
                             DenseTensor* x_grad,
                             DenseTensor* value_grad) {
-  PADDLE_ENFORCE_EQ(dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU,
-                    true,
-                    errors::PreconditionNotMet(
-                        "PutAlongAxisGradOpCUDAKernel only runs on GPU."));
-
   if (x.numel() == 0) {
     if (x_grad) {
       dev_ctx.template Alloc<T>(x_grad);
