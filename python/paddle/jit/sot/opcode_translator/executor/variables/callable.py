@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import dataclasses
 import dis
 import functools
 import inspect
@@ -22,6 +23,7 @@ import operator
 import random
 import sys
 import types
+from dataclasses import fields, is_dataclass
 from functools import partial, reduce
 from typing import (
     TYPE_CHECKING,
@@ -30,7 +32,10 @@ from typing import (
 )
 
 import paddle
-from paddle.base.dygraph.base import _DecoratorContextManager
+from paddle.base.dygraph.base import (
+    _DecoratorContextManager,
+    in_sot_simulation_mode,
+)
 
 from .... import psdb
 from ....profiler import EventGuard
@@ -104,6 +109,7 @@ from .base import (
 )
 from .basic import (
     ConstantVariable,
+    DataClassInstanceVariable,
     NumPyNumberVariable,
     ObjectVariable,
     PrintStmtVariable,
@@ -277,7 +283,7 @@ class UserDefinedFunctionVariable(FunctionVariable):
                 f"Fallback by psdb.fallback (recursive={recursive_var.get_py_value()})",
                 disable_eval_frame=recursive_var.get_py_value(),
             )
-        elif self.value is psdb.in_sot:
+        elif self.value in {psdb.in_sot, in_sot_simulation_mode}:
             return ConstantVariable.wrap_literal(True, self.graph)
         return None
 
@@ -1244,6 +1250,65 @@ class PureClassVariable(ClassVariable):
     def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
         if inspect.isclass(value) and value in PD_PURE_CLASSES:
             return PureClassVariable(value, graph, tracker)
+        return None
+
+
+class DataClassVariable(ClassVariable):
+    def __init__(
+        self, class_: type[Any], graph: FunctionGraph, tracker: Tracker
+    ):
+        super().__init__(class_, graph, tracker)
+
+    def call_function(self, /, *args, **kwargs):
+        signature = DataClassVariable.create_dataclass_init_signature(
+            self.value
+        )
+        bound_args = signature.bind(*args, **kwargs)
+        bound_args.apply_defaults()
+
+        instance = DataClassInstanceVariable(
+            bound_args.arguments,
+            self,
+            None,
+            self.graph,
+            DummyTracker([*args, *kwargs.values()]),
+        )
+        if hasattr(self.value, "__post_init__"):
+            post_init = VariableFactory.from_value(
+                self.value.__post_init__,
+                self.graph,
+                GetAttrTracker(self, "__post_init__"),
+            ).bind(instance, "__post_init__")
+            post_init()
+        return instance
+
+    @staticmethod
+    def create_dataclass_init_signature(
+        data_class: type[Any],
+    ) -> inspect.Signature:
+        parameters = []
+        for fd in fields(data_class):
+            if not isinstance(fd.default, dataclasses._MISSING_TYPE):
+                default = fd.default
+            elif not isinstance(fd.default_factory, dataclasses._MISSING_TYPE):
+                default = fd.default_factory()
+            else:
+                default = inspect.Parameter.empty
+            parameters.append(
+                inspect.Parameter(
+                    fd.name,
+                    inspect.Parameter.POSITIONAL_OR_KEYWORD,
+                    default=default,
+                    annotation=fd.type,
+                )
+            )
+        return inspect.Signature(parameters=parameters, return_annotation=None)
+
+    @VariableFactory.register_from_value(successor="ClassVariable")
+    def from_value(value: object, graph: FunctionGraph, tracker: Tracker):
+        if is_dataclass(value) and isinstance(value, type):
+            var = DataClassVariable(value, graph=graph, tracker=tracker)
+            return var
         return None
 
 

@@ -33,10 +33,12 @@ def get_places():
 @contextlib.contextmanager
 def prog_scope_guard(main_prog, startup_prog):
     scope = base.core.Scope()
-    with base.unique_name.guard():
-        with base.scope_guard(scope):
-            with base.program_guard(main_prog, startup_prog):
-                yield
+    with (
+        base.unique_name.guard(),
+        base.scope_guard(scope),
+        base.program_guard(main_prog, startup_prog),
+    ):
+        yield
 
 
 def bow_net(

@@ -193,14 +193,16 @@ class TestRowConvLayer(unittest.TestCase):
     def check_identity(self):
         start = base.Program()
         main = base.Program()
-        with base.unique_name.guard():
-            with base.program_guard(main, start):
-                x = paddle.static.data("x", (-1, -1, self.C), "float32")
-                out = paddle.static.nn.row_conv(
-                    x,
-                    self.context_length,
-                    param_attr=paddle.nn.initializer.Assign(self.w),
-                )
+        with (
+            base.unique_name.guard(),
+            base.program_guard(main, start),
+        ):
+            x = paddle.static.data("x", (-1, -1, self.C), "float32")
+            out = paddle.static.nn.row_conv(
+                x,
+                self.context_length,
+                param_attr=paddle.nn.initializer.Assign(self.w),
+            )
         place = base.CPUPlace()
         exe = base.Executor(place)
         exe.run(start)

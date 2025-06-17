@@ -20,7 +20,7 @@ namespace phi {
 namespace fusion {
 
 template <typename T, typename Context>
-void LayerNormalizeReluXPUKernel(const Context& ctx,
+void LayerNormalizeReluXPUKernel(const Context& dev_ctx,
                                  const DenseTensor& x,
                                  const paddle::optional<DenseTensor>& scale,
                                  const paddle::optional<DenseTensor>& bias,
@@ -34,7 +34,7 @@ void LayerNormalizeReluXPUKernel(const Context& ctx,
   int right = static_cast<int>(matrix_dim[1]);
   const auto* x_data = x.data<T>();
 
-  xpu::ctx_guard RAII_GUARD(ctx.x_context());
+  xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
 
   // scale
   const float* scale_data_fp32 = nullptr;
@@ -45,7 +45,7 @@ void LayerNormalizeReluXPUKernel(const Context& ctx,
     float* scale_data_temp =
         RAII_GUARD.alloc_l3_or_gm<float>(scale_ptr->numel());
     int r = xpu::cast<XPUType, float>(
-        ctx.x_context(),
+        dev_ctx.x_context(),
         reinterpret_cast<const XPUType*>(scale_ptr->data<T>()),
         scale_data_temp,
         scale_ptr->numel());
@@ -64,7 +64,7 @@ void LayerNormalizeReluXPUKernel(const Context& ctx,
   } else if (bias_ptr->dtype() == phi::DataType::FLOAT16) {
     float* bias_data_temp = RAII_GUARD.alloc_l3_or_gm<float>(bias_ptr->numel());
     int r = xpu::cast<XPUType, float>(
-        ctx.x_context(),
+        dev_ctx.x_context(),
         reinterpret_cast<const XPUType*>(bias_ptr->data<T>()),
         bias_data_temp,
         bias_ptr->numel());
@@ -75,9 +75,9 @@ void LayerNormalizeReluXPUKernel(const Context& ctx,
     bias_data_fp32 = bias_ptr->data<float>();
   }
 
-  auto* out_data = ctx.template Alloc<T>(y);
+  auto* out_data = dev_ctx.template Alloc<T>(y);
 
-  int r = xpu::layer_norm_relu_fusion(ctx.x_context(),
+  int r = xpu::layer_norm_relu_fusion(dev_ctx.x_context(),
                                       reinterpret_cast<const XPUType*>(x_data),
                                       reinterpret_cast<XPUType*>(out_data),
                                       left,

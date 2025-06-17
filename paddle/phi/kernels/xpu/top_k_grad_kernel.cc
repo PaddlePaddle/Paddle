@@ -49,8 +49,6 @@ void TopkGradKernel(const Context& dev_ctx,
                     DenseTensor* x_grad) {
   using XPUType = typename XPUTypeTrait<T>::Type;
 
-  xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
-
   const auto& in_dims = x.dims();
 
   // get the real the axis and the k

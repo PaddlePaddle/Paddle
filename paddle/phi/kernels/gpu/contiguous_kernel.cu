@@ -18,10 +18,26 @@ limitations under the License. */
 #include "paddle/phi/kernels/transpose_kernel.h"
 
 namespace phi {
-bool VerifyThreadConfigurationParameters(const dim3& block, const dim3& grid) {
+
+// int64 version of CUDA's dim3.
+// This is used only on host side for safe dim processing. Dims that cannot be
+// contained in uint32_t will be rejected by host checker.
+struct Dim3 {
+  int64_t x, y, z;
+  explicit Dim3(int64_t x, int64_t y, int64_t z) : x(x), y(y), z(z) {}
+  operator dim3() {
+    return {static_cast<uint32_t>(x),
+            static_cast<uint32_t>(y),
+            static_cast<uint32_t>(z)};
+  }
+};
+
+bool VerifyThreadConfigurationParameters(const Dim3& block, const Dim3& grid) {
   return block.x <= 1024 && block.y <= 1024 && block.z <= 64 &&
          block.x * block.y * block.z <= 1024 &&
-         block.x * block.y * block.z >= 96 && grid.y < 65536 && grid.z < 65536;
+         block.x * block.y * block.z >= 96 &&
+         grid.x <= std::numeric_limits<int32_t>::max() && grid.y <= 65535 &&
+         grid.z <= 65535;
 }
 
 template <typename T, size_t N>
@@ -30,11 +46,12 @@ __global__ void ContiguousCaseZeroFunc(
     T* out_data,
     Array<int64_t, phi::DDim::kMaxRank + 1> input_stride) {
   int64_t input_offset = 0;
-  int64_t output_offset = (blockIdx.z * gridDim.y * gridDim.x +
-                           blockIdx.y * gridDim.x + blockIdx.x) *
-                              blockDim.z * blockDim.y * blockDim.x +
-                          threadIdx.z * blockDim.y * blockDim.x +
-                          threadIdx.y * blockDim.x + threadIdx.x;
+  int64_t grid_idx = static_cast<int64_t>(blockIdx.z) * gridDim.y * gridDim.x +
+                     static_cast<int64_t>(blockIdx.y) * gridDim.x + blockIdx.x;
+  int64_t block_size = blockDim.z * (blockDim.y * blockDim.x);
+  int64_t block_idx = threadIdx.z * (blockDim.y * blockDim.x) +
+                      threadIdx.y * blockDim.x + threadIdx.x;
+  int64_t output_offset = grid_idx * block_size + block_idx;
   int64_t coordinate[6] = {threadIdx.x,
                            threadIdx.y,
                            threadIdx.z,
@@ -57,10 +74,11 @@ __global__ void ContiguousCaseOneFunc(
     Array<int64_t, phi::DDim::kMaxRank + 1> input_stride,
     Array<int64_t, 6> dims,
     const int64_t x_max) {
-  int64_t x = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t x = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
   if (x < x_max) {
     int64_t input_offset = 0;
-    int64_t output_offset = (blockIdx.z * gridDim.y + blockIdx.y) * x_max + x;
+    int64_t output_offset =
+        (static_cast<int64_t>(blockIdx.z) * gridDim.y + blockIdx.y) * x_max + x;
 
     int64_t reg_dims[6] = {
         dims[0], dims[1], dims[2], dims[3], dims[4], dims[5]};
@@ -148,9 +166,7 @@ __global__ void ContiguousDefaultFunc(
     phi::Array<int64_t, phi::DDim::kMaxRank + 1> dims,
     const int64_t numel,
     T* out_data) {
-  int64_t gid = blockIdx.x * blockDim.x + threadIdx.x;
-#pragma unroll
-  for (int64_t i = gid; i < numel; i += blockDim.x * gridDim.x) {
+  CUDA_KERNEL_LOOP_TYPE(i, numel, int64_t) {
     int64_t input_offset = 0;
     int64_t index_tmp = i;
 #pragma unroll
@@ -220,7 +236,7 @@ bool LaunchContiguousCazeZeroKernel(
     return false;
   }
 
-  dim3 grid(1, 1, 1), block(1, 1, 1);
+  Dim3 grid(1, 1, 1), block(1, 1, 1);
 
   if (rank >= 1) {
     block.x = input_dims[rank - 1];
@@ -289,7 +305,7 @@ bool LaunchContiguousCazeOneKernel(
     int rank,
     int64_t numel,
     T* output_data) {
-  dim3 grid(1, 1, 1), block(1, 1, 1);
+  Dim3 grid(1, 1, 1), block(1, 1, 1);
   phi::Array<int64_t, 6> cur_input_dims;
   block.x = 512;
 

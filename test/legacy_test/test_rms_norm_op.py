@@ -839,5 +839,66 @@ class TestRMSNormStaticOpCPU(unittest.TestCase):
         )
 
 
+class TestRMSNormAxisEquivalence(unittest.TestCase):
+
+    def setUp(self):
+        np.random.seed(123)
+        paddle.seed(123)
+
+        # x [batch_size, seq_len, hidden_size]
+        self.batch_size = 1
+        self.seq_len = 8
+        self.hidden_size = 64
+
+        self.x_np = np.random.random(
+            [self.batch_size, self.seq_len, self.hidden_size]
+        ).astype('float32')
+        self.weight_np = np.random.random([self.hidden_size]).astype('float32')
+        self.bias_np = np.random.random([self.hidden_size]).astype('float32')
+        self.epsilon = 1e-6
+
+    def test_positive_negative_axis_equivalence(self):
+        paddle.disable_static()
+
+        x = paddle.to_tensor(self.x_np)
+        weight = paddle.to_tensor(self.weight_np)
+        bias = paddle.to_tensor(self.bias_np)
+
+        # positive
+        out_positive = paddle.incubate.nn.functional.fused_rms_norm(
+            x, weight, bias, self.epsilon, begin_norm_axis=2
+        )[0]
+
+        # negative
+        out_negative = paddle.incubate.nn.functional.fused_rms_norm(
+            x, weight, bias, self.epsilon, begin_norm_axis=-1
+        )[0]
+
+        # test
+        np.testing.assert_allclose(
+            out_positive.numpy(),
+            out_negative.numpy(),
+            rtol=1e-5,
+            atol=1e-5,
+        )
+
+    def test_out_of_range_axis(self):
+        paddle.disable_static()
+
+        x = paddle.to_tensor(self.x_np)
+        weight = paddle.to_tensor(self.weight_np)
+        bias = paddle.to_tensor(self.bias_np)
+
+        with self.assertRaises(ValueError):
+            paddle.incubate.nn.functional.fused_rms_norm(
+                x, weight, bias, self.epsilon, begin_norm_axis=3
+            )
+
+        with self.assertRaises(ValueError):
+            paddle.incubate.nn.functional.fused_rms_norm(
+                x, weight, bias, self.epsilon, begin_norm_axis=-4
+            )
+
+
 if __name__ == "__main__":
     unittest.main()
