@@ -343,6 +343,7 @@ class KaimingUniform(MSRAInitializer):
         fan_in (float32|None, optional): fan_in (in_features) of trainable Tensor, If None, it will be inferred automatically. If you don't want to use in_features of the Tensor, you can set the value of 'fan_in' smartly by yourself. Default is None.
         negative_slope (float, optional): negative_slope (only used with leaky_relu). Default is 0.0.
         nonlinearity(str, optional): the non-linear function. Default is relu.
+        mode(str, optional): the mode of initialization, can be 'fan_in' or 'fan_out'. When set to 'fan_in', the fan_in parameter is used for initialization. When set to 'fan_out', the out_features of trainable Tensor will be used. Default is 'fan_in'.
 
     Note:
         It is recommended to set fan_in to None for most cases.
@@ -364,6 +365,7 @@ class KaimingUniform(MSRAInitializer):
         fan_in: float | None = None,
         negative_slope: float = 0.0,
         nonlinearity: str = 'relu',
+        mode: str = 'fan_in',
     ) -> None:
         super().__init__(
             uniform=True,
@@ -371,4 +373,5 @@ class KaimingUniform(MSRAInitializer):
             seed=0,
             negative_slope=negative_slope,
             nonlinearity=nonlinearity,
+            mode=mode,
         )
