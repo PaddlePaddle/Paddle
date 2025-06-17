@@ -47,6 +47,7 @@ limitations under the License. */
 #include "paddle/phi/infermeta/spmd_rules/fused_rope.h"
 #include "paddle/phi/infermeta/spmd_rules/gather.h"
 #include "paddle/phi/infermeta/spmd_rules/gather_nd.h"
+#include "paddle/phi/infermeta/spmd_rules/gelu.h"
 #include "paddle/phi/infermeta/spmd_rules/group_norm.h"
 #include "paddle/phi/infermeta/spmd_rules/index_select.h"
 #include "paddle/phi/infermeta/spmd_rules/instance_norm.h"
