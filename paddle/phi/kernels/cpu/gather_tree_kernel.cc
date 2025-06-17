@@ -28,6 +28,9 @@ void GatherTreeKernel(const Context &dev_ctx,
   const auto *parents_data = parents.data<T>();
 
   T *out_data = dev_ctx.template Alloc<T>(out);
+  if (out && out->numel() == 0) {
+    return;
+  }
 
   auto &ids_dims = ids.dims();
   int64_t max_length = ids_dims[0];
