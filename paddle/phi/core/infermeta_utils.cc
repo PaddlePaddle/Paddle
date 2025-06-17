@@ -13,9 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/core/infermeta_utils.h"
-
+int a = 1;
 namespace phi {
-
 void InferMetaContext::SetMetaConfig(MetaConfig config) { config_ = config; }
 
 void InferMetaContext::EmplaceBackInput(MetaTensor input) {
