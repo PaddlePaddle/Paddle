@@ -186,7 +186,15 @@ jobs:
           source ${ci_scripts}/utils.sh; clean_build_files
           Build_Size=$(du -h --max-depth=0 ${work_dir}/build |awk '"'"'{print $1}'"'"')
           echo "Build_Size=${Build_Size}" > ${work_dir}/dist/coverage_build_size
-          bash ${ci_scripts}/compress_build.sh
+          find ./ -type f -size +200M | xargs du -lh
+          rm -rf $(find . -name "*.a")
+          rm -rf $(find . -name "*.o")
+          rm -rf paddle_inference_install_dir
+          rm -rf paddle_inference_c_install_dir
+          rm -rf lib.linux-x86_64-3.9
+          find ./ -name "eager_generator" -or -name  "kernel_signature_generator" -or -name "eager_legacy_op_function_generator" | xargs rm -rf
+          rm -rf ./python/build/lib.linux-x86_64-3.9/
+          cd "${work_dir}/build/third_party" && find $(ls | grep -v "dlpack" | grep -v "install" | grep -v "eigen3" | grep -v "gflags") -type f ! -name "*.so" -a ! -name "libdnnl.so*" -delete
           cd /
           tar --use-compress-program="pzstd -1" -cf Paddle.tar.gz paddle
           '
@@ -206,9 +214,9 @@ jobs:
           export AK=paddle
           export SK=paddle
           if [ ! -f "${{ env.bos_file }}" ]; then
-            wget -q --no-proxy -O ${{ env.home_path }}/bos_new.tar.gz https://xly-devops.bj.bcebos.com/home/bos_new.tar.gz --no-check-certificate
+            wget -q --no-proxy -O ${{ env.home_path }}/bos_retry.tar.gz https://xly-devops.bj.bcebos.com/home/bos_retry.tar.gz --no-check-certificate
             mkdir ${{ env.home_path }}/bos
-            tar xf ${{ env.home_path }}/bos_new.tar.gz -C ${{ env.home_path }}/bos
+            tar xf ${{ env.home_path }}/bos_retry.tar.gz -C ${{ env.home_path }}/bos
           fi
           cd /paddle/dist
           echo "Uploading coverage build size"
