@@ -143,11 +143,12 @@ jobs:
           bos_file: /action-runner/bos/BosClient.py
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
-          bash ${ci_scripts}/compress_build.sh
           echo "::group::Install bce-python-sdk"
           source /action-runner/proxy
           python -m pip install bce-python-sdk==0.8.74
           echo "::endgroup::"
+          rm -rf `find . -name "*.a"`
+          rm -rf `find . -name "*.o"`
           export AK=paddle
           export SK=paddle
           if [ ! -f "${{ env.bos_file }}" ]; then
