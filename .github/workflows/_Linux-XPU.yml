@@ -100,7 +100,7 @@ jobs:
             -e no_proxy \
             -e GITHUB_API_TOKEN \
             -e CI_name \
-            -w /paddle ${docker_image} /bin/bash
+            -w /paddle --network host ${docker_image} /bin/bash
 
       - name: Download paddle.tar.gz and update test branch
         run: |
@@ -261,7 +261,7 @@ jobs:
             -e GITHUB_API_TOKEN \
             -e FLAGS_use_stride_kernel \
             -e CI_name \
-            -w /paddle ${docker_image} /bin/bash
+            -w /paddle --network host ${docker_image} /bin/bash
 
       - name: Run test
         run: |
