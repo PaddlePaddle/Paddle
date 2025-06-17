@@ -14,8 +14,6 @@
 
 #include "paddle/fluid/pir/transforms/cuda_graph_extract_pass.h"
 
-#include <queue>
-#include <regex>
 #include <set>
 #include <string>
 #include <unordered_map>
@@ -47,7 +45,10 @@ class CudaGraphExtractPass : public pir::Pass {
     auto& block = module_op.block();
 
     auto IsSupportCudaGraph = [](const pir::Operation& op) {
-      return op.name() != "pd_op.attention";
+      static const std::unordered_set<std::string> UNSUPPORTED_OPS = {
+          "pd_op.data", "builtin.shadow_output"};
+      return op.name() != "pd_op.attention" &&
+             UNSUPPORTED_OPS.count(op.name()) == 0;
     };
 
     std::vector<GroupOpsVec> groups =

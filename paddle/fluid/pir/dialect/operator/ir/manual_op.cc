@@ -25,7 +25,7 @@ paddle::dialect::AddN_Op, paddle::dialect::AddNArrayOp,
     paddle::dialect::TensorToArrayOp, paddle::dialect::IncrementOp,
     paddle::dialect::Increment_Op, paddle::dialect::ShapeBroadcastOp,
     paddle::dialect::MemcpyD2hMultiIoOp, paddle::dialect::ArrayPopOp,
-    paddle::dialect::ShareVarOp
+    paddle::dialect::ShareVarOp, paddle::dialect::CudaGraphOp
 #else
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
