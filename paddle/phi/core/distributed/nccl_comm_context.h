@@ -42,14 +42,15 @@ class NCCLCommContext final : public CommContext {
   NCCLCommContext(int rank,
                   int size,
                   ncclUniqueId nccl_id,
-                  int nccl_comm_init_option = 0);
+                  int nccl_comm_init_option = 0,
+                  int comm_group_type = -1);
   ~NCCLCommContext() override = default;
 
   int GetNcclVersion();
 
   ncclComm_t GetNcclComm();
 
-  void CreateNCCLComm(ncclUniqueId nccl_id);
+  void CreateNCCLComm(ncclUniqueId nccl_id, int comm_group_type = -1);
 
   void DestroyNCCLComm();
 
