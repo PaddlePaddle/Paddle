@@ -29,6 +29,7 @@ void GPUIndexElementwiseGetKernel(const phi::GPUContext& ctx,
                                   const std::vector<int64_t>& input_strides,
                                   const std::vector<int64_t>& index_dims,
                                   const std::vector<int64_t>& index_stride,
+                                  const int64_t slice_offset,
                                   DenseTensor* output) {
   int64_t numel = 0;
   auto num_indices = index_dims.size();
@@ -78,9 +79,9 @@ void GPUIndexElementwiseGetKernel(const phi::GPUContext& ctx,
 
   using dtype = funcs::OpaqueType<sizeof(T)>;
 
-  const char* in_ptr = reinterpret_cast<const char*>(input.data<T>());
+  const char* in_ptr =
+      reinterpret_cast<const char*>(input.data<T>()) + slice_offset;
   char* out_ptr = reinterpret_cast<char*>(output->data<T>());
-
   funcs::index_elementwise_kernel<nt, vt>
       <<<grid, block, 0, stream>>>(N, [=] __device__(int idx) {
         const auto offsets = offset_calc.get(idx);
@@ -92,10 +93,6 @@ void GPUIndexElementwiseGetKernel(const phi::GPUContext& ctx,
         for (int i = 0; i < num_indices; i++) {
           int64_t index =
               *reinterpret_cast<int64_t*>(index_ptrs[i] + offsets[2]);
-          PADDLE_ENFORCE(-sizes[i] <= index,
-                         "index is less than the lower bound");
-          PADDLE_ENFORCE(index < sizes[i],
-                         "index is greater than or equal to the upper bound");
           if (index < 0) {
             index += sizes[i];
           }
@@ -115,6 +112,8 @@ void IndexElementwiseGetKernel(const Context& ctx,
                                const std::vector<int64_t>& input_strides,
                                const std::vector<int64_t>& index_dims,
                                const std::vector<int64_t>& index_stride,
+                               const int64_t slice_offset,
+                               const bool accumulate,
                                DenseTensor* out) {
   const auto& index_type = index[0]->dtype();
   PADDLE_ENFORCE_EQ(
@@ -144,6 +143,7 @@ void IndexElementwiseGetKernel(const Context& ctx,
                                          input_strides,
                                          index_dims,
                                          index_stride,
+                                         slice_offset,
                                          out);
   } else if (index_type == phi::DataType::INT64) {
     GPUIndexElementwiseGetKernel<T, int64_t>(ctx,
@@ -153,6 +153,7 @@ void IndexElementwiseGetKernel(const Context& ctx,
                                              input_strides,
                                              index_dims,
                                              index_stride,
+                                             slice_offset,
                                              out);
   }
 }
