@@ -23,8 +23,30 @@ import paddle
 
 cuda_device_num = 0
 
-torch_type = {"float32": torch.float32, "float16": torch.float16}
-paddle_type = {"float32": paddle.float32, "float16": paddle.float16}
+torch_type = {
+    "float32": torch.float32,
+    "float16": torch.float16,
+    "int32": torch.int32,
+}
+paddle_type = {
+    "float32": paddle.float32,
+    "float16": paddle.float16,
+    "int32": paddle.int32,
+}
+
+
+def get_same_shape(shape1, shape2):
+    size1 = len(shape1)
+    size2 = len(shape2)
+    new_shape = []
+    i = 1
+    while i <= min(size1, size2):
+        if shape1[size1 - i] == shape2[size2 - i]:
+            new_shape.append(shape1[size1 - i])
+            i += 1
+        else:
+            break
+    return new_shape[::-1]
 
 
 def convert_numpy(frame_name, data, cuda_device_num=0):
@@ -76,9 +98,10 @@ def set_item_bench(
         index_p = index
 
     if is_tensor:
-        x_value = paddle.full(x[index_p].shape, 0.5, paddle_type[dtype])
+        shape = get_same_shape(x.shape, x[index_p].shape)
+        x_value = paddle.full(shape, 5, paddle_type[dtype])
     else:
-        x_value = 0.5
+        x_value = 5
 
     paddle.device.synchronize()
     # warmup
@@ -116,11 +139,15 @@ def set_item_bench(
         index_t = index
 
     if is_tensor:
+        shape = get_same_shape(y.shape, y[index_t].shape)
         y_value = torch.full(
-            y[index_t].shape, 0.5, device=f"cuda:{cuda_device_num}"
+            shape,
+            5,
+            device=f"cuda:{cuda_device_num}",
+            dtype=torch_type[dtype],
         )
     else:
-        y_value = 0.5
+        y_value = 5
 
     torch.cuda.synchronize()
     # warmup
@@ -297,9 +324,10 @@ def set_item_grad_bench(
         index_p = index
 
     if is_tensor:
-        x_value = paddle.full(x[index_p].shape, 0.5, paddle_type[dtype])
+        shape = get_same_shape(x.shape, x[index_p].shape)
+        x_value = paddle.full(shape, 5, paddle_type[dtype])
     else:
-        x_value = 0.5
+        x_value = 5
 
     paddle.device.synchronize()
     # forward
@@ -345,14 +373,16 @@ def set_item_grad_bench(
     else:
         index_t = index
     if is_tensor:
+        shape = get_same_shape(y.shape, y[index_t].shape)
         y_value = torch.full(
-            y[index_t].shape,
-            0.5,
+            shape,
+            5,
             device=f"cuda:{cuda_device_num}",
+            dtype=torch_type[dtype],
         )
         y_value.stop_gradient = False
     else:
-        y_value = 0.5
+        y_value = 5.0 if dtype == "float32" or dtype == "float16" else 5
 
     torch.cuda.synchronize()
     # forward
@@ -796,7 +826,7 @@ def main():
         ]
     }
 
-    n_repeat = 80
+    n_repeat = 50
     n_warmup = 5
 
     print(" n_repeat = ", n_repeat)

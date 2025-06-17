@@ -534,6 +534,29 @@ void FusedLayerNormInferMeta(const MetaTensor& x,
                              MetaTensor* variance,
                              MetaConfig config = MetaConfig());
 
+void MoePermuteInferMeta(const MetaTensor& X,
+                         const MetaTensor& XScale,
+                         const MetaTensor& expert_routemap_topk,
+                         const MetaTensor& expert_prob_topk,
+                         const int topk,
+                         const int num_experts,
+                         const std::vector<int>& tokens_per_expert,
+                         const int padding_multiplex,
+                         MetaTensor* X_unzipped,
+                         MetaTensor* zipped_expertwise_rowmap,
+                         MetaTensor* token_prob_unzipped,
+                         MetaTensor* XScale_unzipped);
+
+void MoeUnpermuteInferMeta(const MetaTensor& unzipped_tokens,
+                           const MetaTensor& zipped_expertwise_rowmap,
+                           const MetaTensor& expert_routemap_topk,
+                           const MetaTensor& unzipped_token_probs,
+                           const int total_zipped_tokens_num,
+                           const int num_experts,
+                           const bool MP,
+                           MetaTensor* zipped_tokens,
+                           MetaTensor* zipped_probs_topk);
+
 void FusedLinearParamGradAddInferMeta(const MetaTensor& x,
                                       const MetaTensor& dout,
                                       const MetaTensor& dweight,
@@ -1097,7 +1120,8 @@ void WeightOnlyLinearInferMeta(const MetaTensor& x,
                                const std::string& weight_dtype,
                                const int32_t arch,
                                const int32_t group_size,
-                               MetaTensor* out);
+                               MetaTensor* out,
+                               MetaConfig config = MetaConfig());
 
 void WeightedSampleNeighborsInferMeta(const MetaTensor& row,
                                       const MetaTensor& col_ptr,

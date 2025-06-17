@@ -55,16 +55,18 @@ class TestSimpleRNN(unittest.TestCase):
 
         mp = paddle.static.Program()
         sp = paddle.static.Program()
-        with paddle.base.unique_name.guard():
-            with paddle.static.program_guard(mp, sp):
-                rnn2 = paddle.nn.SimpleRNN(
-                    16,
-                    32,
-                    2,
-                    time_major=self.time_major,
-                    direction=self.direction,
-                    activation=self.mode[4:].lower(),
-                )
+        with (
+            paddle.base.unique_name.guard(),
+            paddle.static.program_guard(mp, sp),
+        ):
+            rnn2 = paddle.nn.SimpleRNN(
+                16,
+                32,
+                2,
+                time_major=self.time_major,
+                direction=self.direction,
+                activation=self.mode[4:].lower(),
+            )
 
         exe = paddle.static.Executor(place)
         scope = paddle.base.Scope()
@@ -79,19 +81,21 @@ class TestSimpleRNN(unittest.TestCase):
 
         y1, h1 = rnn1(x, prev_h)
 
-        with paddle.base.unique_name.guard():
-            with paddle.static.program_guard(mp, sp):
-                x_data = paddle.static.data(
-                    "input",
-                    [-1, -1, 16],
-                    dtype=paddle.framework.get_default_dtype(),
-                )
-                init_h = paddle.static.data(
-                    "init_h",
-                    [2 * self.num_directions, -1, 32],
-                    dtype=paddle.framework.get_default_dtype(),
-                )
-                y, h = rnn2(x_data, init_h)
+        with (
+            paddle.base.unique_name.guard(),
+            paddle.static.program_guard(mp, sp),
+        ):
+            x_data = paddle.static.data(
+                "input",
+                [-1, -1, 16],
+                dtype=paddle.framework.get_default_dtype(),
+            )
+            init_h = paddle.static.data(
+                "init_h",
+                [2 * self.num_directions, -1, 32],
+                dtype=paddle.framework.get_default_dtype(),
+            )
+            y, h = rnn2(x_data, init_h)
 
         feed_dict = {x_data.name: x, init_h.name: prev_h}
         with paddle.static.scope_guard(scope):
@@ -113,16 +117,18 @@ class TestSimpleRNN(unittest.TestCase):
 
         mp = paddle.static.Program()
         sp = paddle.static.Program()
-        with paddle.base.unique_name.guard():
-            with paddle.static.program_guard(mp, sp):
-                rnn2 = paddle.nn.SimpleRNN(
-                    16,
-                    32,
-                    2,
-                    time_major=self.time_major,
-                    direction=self.direction,
-                    activation=self.mode[4:].lower(),
-                )
+        with (
+            paddle.base.unique_name.guard(),
+            paddle.static.program_guard(mp, sp),
+        ):
+            rnn2 = paddle.nn.SimpleRNN(
+                16,
+                32,
+                2,
+                time_major=self.time_major,
+                direction=self.direction,
+                activation=self.mode[4:].lower(),
+            )
 
         exe = paddle.static.Executor(place)
         scope = paddle.base.Scope()
@@ -136,14 +142,16 @@ class TestSimpleRNN(unittest.TestCase):
 
         y1, h1 = rnn1(x)
 
-        with paddle.base.unique_name.guard():
-            with paddle.static.program_guard(mp, sp):
-                x_data = paddle.static.data(
-                    "input",
-                    [-1, -1, 16],
-                    dtype=paddle.framework.get_default_dtype(),
-                )
-                y, h = rnn2(x_data)
+        with (
+            paddle.base.unique_name.guard(),
+            paddle.static.program_guard(mp, sp),
+        ):
+            x_data = paddle.static.data(
+                "input",
+                [-1, -1, 16],
+                dtype=paddle.framework.get_default_dtype(),
+            )
+            y, h = rnn2(x_data)
 
         feed_dict = {x_data.name: x}
 
@@ -176,15 +184,17 @@ class TestGRU(unittest.TestCase):
 
         mp = paddle.static.Program()
         sp = paddle.static.Program()
-        with paddle.base.unique_name.guard():
-            with paddle.static.program_guard(mp, sp):
-                rnn2 = paddle.nn.GRU(
-                    16,
-                    32,
-                    2,
-                    time_major=self.time_major,
-                    direction=self.direction,
-                )
+        with (
+            paddle.base.unique_name.guard(),
+            paddle.static.program_guard(mp, sp),
+        ):
+            rnn2 = paddle.nn.GRU(
+                16,
+                32,
+                2,
+                time_major=self.time_major,
+                direction=self.direction,
+            )
 
         exe = paddle.static.Executor(place)
         scope = paddle.base.Scope()
@@ -200,19 +210,21 @@ class TestGRU(unittest.TestCase):
 
         y1, h1 = rnn1(x, prev_h)
 
-        with paddle.base.unique_name.guard():
-            with paddle.static.program_guard(mp, sp):
-                x_data = paddle.static.data(
-                    "input",
-                    [-1, -1, 16],
-                    dtype=paddle.framework.get_default_dtype(),
-                )
-                init_h = paddle.static.data(
-                    "init_h",
-                    [2 * self.num_directions, -1, 32],
-                    dtype=paddle.framework.get_default_dtype(),
-                )
-                y, h = rnn2(x_data, init_h)
+        with (
+            paddle.base.unique_name.guard(),
+            paddle.static.program_guard(mp, sp),
+        ):
+            x_data = paddle.static.data(
+                "input",
+                [-1, -1, 16],
+                dtype=paddle.framework.get_default_dtype(),
+            )
+            init_h = paddle.static.data(
+                "init_h",
+                [2 * self.num_directions, -1, 32],
+                dtype=paddle.framework.get_default_dtype(),
+            )
+            y, h = rnn2(x_data, init_h)
 
         feed_dict = {x_data.name: x, init_h.name: prev_h}
         with paddle.static.scope_guard(scope):
@@ -231,15 +243,17 @@ class TestGRU(unittest.TestCase):
 
         mp = paddle.static.Program()
         sp = paddle.static.Program()
-        with paddle.base.unique_name.guard():
-            with paddle.static.program_guard(mp, sp):
-                rnn2 = paddle.nn.GRU(
-                    16,
-                    32,
-                    2,
-                    time_major=self.time_major,
-                    direction=self.direction,
-                )
+        with (
+            paddle.base.unique_name.guard(),
+            paddle.static.program_guard(mp, sp),
+        ):
+            rnn2 = paddle.nn.GRU(
+                16,
+                32,
+                2,
+                time_major=self.time_major,
+                direction=self.direction,
+            )
 
         exe = paddle.static.Executor(place)
         scope = paddle.base.Scope()
@@ -253,14 +267,16 @@ class TestGRU(unittest.TestCase):
 
         y1, h1 = rnn1(x)
 
-        with paddle.base.unique_name.guard():
-            with paddle.static.program_guard(mp, sp):
-                x_data = paddle.static.data(
-                    "input",
-                    [-1, -1, 16],
-                    dtype=paddle.framework.get_default_dtype(),
-                )
-                y, h = rnn2(x_data)
+        with (
+            paddle.base.unique_name.guard(),
+            paddle.static.program_guard(mp, sp),
+        ):
+            x_data = paddle.static.data(
+                "input",
+                [-1, -1, 16],
+                dtype=paddle.framework.get_default_dtype(),
+            )
+            y, h = rnn2(x_data)
 
         feed_dict = {x_data.name: x}
 
@@ -293,15 +309,17 @@ class TestLSTM(unittest.TestCase):
 
         mp = paddle.static.Program()
         sp = paddle.static.Program()
-        with paddle.base.unique_name.guard():
-            with paddle.static.program_guard(mp, sp):
-                rnn2 = paddle.nn.LSTM(
-                    16,
-                    32,
-                    2,
-                    time_major=self.time_major,
-                    direction=self.direction,
-                )
+        with (
+            paddle.base.unique_name.guard(),
+            paddle.static.program_guard(mp, sp),
+        ):
+            rnn2 = paddle.nn.LSTM(
+                16,
+                32,
+                2,
+                time_major=self.time_major,
+                direction=self.direction,
+            )
 
         exe = paddle.static.Executor(place)
         scope = paddle.base.Scope()
@@ -319,28 +337,30 @@ class TestLSTM(unittest.TestCase):
 
         y1, (h1, c1) = rnn1(x, (prev_h, prev_c))
 
-        with paddle.base.unique_name.guard():
-            with paddle.static.program_guard(mp, sp):
-                x_data = paddle.static.data(
-                    "input",
-                    [-1, -1, 16],
-                    dtype=paddle.framework.get_default_dtype(),
-                )
-                init_h = paddle.static.data(
-                    "init_h",
-                    [
-                        2 * self.num_directions,
-                        -1,
-                        getattr(self, "proj_size", 32),
-                    ],
-                    dtype=paddle.framework.get_default_dtype(),
-                )
-                init_c = paddle.static.data(
-                    "init_c",
-                    [2 * self.num_directions, -1, 32],
-                    dtype=paddle.framework.get_default_dtype(),
-                )
-                y, (h, c) = rnn2(x_data, (init_h, init_c))
+        with (
+            paddle.base.unique_name.guard(),
+            paddle.static.program_guard(mp, sp),
+        ):
+            x_data = paddle.static.data(
+                "input",
+                [-1, -1, 16],
+                dtype=paddle.framework.get_default_dtype(),
+            )
+            init_h = paddle.static.data(
+                "init_h",
+                [
+                    2 * self.num_directions,
+                    -1,
+                    getattr(self, "proj_size", 32),
+                ],
+                dtype=paddle.framework.get_default_dtype(),
+            )
+            init_c = paddle.static.data(
+                "init_c",
+                [2 * self.num_directions, -1, 32],
+                dtype=paddle.framework.get_default_dtype(),
+            )
+            y, (h, c) = rnn2(x_data, (init_h, init_c))
 
         feed_dict = {x_data.name: x, init_h.name: prev_h, init_c.name: prev_c}
         with paddle.static.scope_guard(scope):
@@ -360,15 +380,17 @@ class TestLSTM(unittest.TestCase):
 
         mp = paddle.static.Program()
         sp = paddle.static.Program()
-        with paddle.base.unique_name.guard():
-            with paddle.static.program_guard(mp, sp):
-                rnn2 = paddle.nn.LSTM(
-                    16,
-                    32,
-                    2,
-                    time_major=self.time_major,
-                    direction=self.direction,
-                )
+        with (
+            paddle.base.unique_name.guard(),
+            paddle.static.program_guard(mp, sp),
+        ):
+            rnn2 = paddle.nn.LSTM(
+                16,
+                32,
+                2,
+                time_major=self.time_major,
+                direction=self.direction,
+            )
 
         exe = paddle.static.Executor(place)
         scope = paddle.base.Scope()
@@ -382,14 +404,16 @@ class TestLSTM(unittest.TestCase):
 
         y1, (h1, c1) = rnn1(x)
 
-        with paddle.base.unique_name.guard():
-            with paddle.static.program_guard(mp, sp):
-                x_data = paddle.static.data(
-                    "input",
-                    [-1, -1, 16],
-                    dtype=paddle.framework.get_default_dtype(),
-                )
-                y, (h, c) = rnn2(x_data)
+        with (
+            paddle.base.unique_name.guard(),
+            paddle.static.program_guard(mp, sp),
+        ):
+            x_data = paddle.static.data(
+                "input",
+                [-1, -1, 16],
+                dtype=paddle.framework.get_default_dtype(),
+            )
+            y, (h, c) = rnn2(x_data)
 
         feed_dict = {x_data.name: x}
 
@@ -428,16 +452,18 @@ class TestLSTMWithProjSize(unittest.TestCase):
 
         mp = paddle.static.Program()
         sp = paddle.static.Program()
-        with paddle.base.unique_name.guard():
-            with paddle.static.program_guard(mp, sp):
-                rnn2 = paddle.nn.LSTM(
-                    16,
-                    32,
-                    2,
-                    time_major=self.time_major,
-                    direction=self.direction,
-                    proj_size=8,
-                )
+        with (
+            paddle.base.unique_name.guard(),
+            paddle.static.program_guard(mp, sp),
+        ):
+            rnn2 = paddle.nn.LSTM(
+                16,
+                32,
+                2,
+                time_major=self.time_major,
+                direction=self.direction,
+                proj_size=8,
+            )
 
         exe = paddle.static.Executor(place)
         scope = paddle.base.Scope()
@@ -456,28 +482,30 @@ class TestLSTMWithProjSize(unittest.TestCase):
 
         y1, (h1, c1) = rnn1(x, (prev_h, prev_c))
 
-        with paddle.base.unique_name.guard():
-            with paddle.static.program_guard(mp, sp):
-                x_data = paddle.static.data(
-                    "input",
-                    [-1, -1, 16],
-                    dtype=paddle.framework.get_default_dtype(),
-                )
-                init_h = paddle.static.data(
-                    "init_h",
-                    [
-                        2 * self.num_directions,
-                        -1,
-                        getattr(self, "proj_size", 32),
-                    ],
-                    dtype=paddle.framework.get_default_dtype(),
-                )
-                init_c = paddle.static.data(
-                    "init_c",
-                    [2 * self.num_directions, -1, 32],
-                    dtype=paddle.framework.get_default_dtype(),
-                )
-                y, (h, c) = rnn2(x_data, (init_h, init_c))
+        with (
+            paddle.base.unique_name.guard(),
+            paddle.static.program_guard(mp, sp),
+        ):
+            x_data = paddle.static.data(
+                "input",
+                [-1, -1, 16],
+                dtype=paddle.framework.get_default_dtype(),
+            )
+            init_h = paddle.static.data(
+                "init_h",
+                [
+                    2 * self.num_directions,
+                    -1,
+                    getattr(self, "proj_size", 32),
+                ],
+                dtype=paddle.framework.get_default_dtype(),
+            )
+            init_c = paddle.static.data(
+                "init_c",
+                [2 * self.num_directions, -1, 32],
+                dtype=paddle.framework.get_default_dtype(),
+            )
+            y, (h, c) = rnn2(x_data, (init_h, init_c))
 
         feed_dict = {x_data.name: x, init_h.name: prev_h, init_c.name: prev_c}
         with paddle.static.scope_guard(scope):
@@ -502,16 +530,18 @@ class TestLSTMWithProjSize(unittest.TestCase):
 
         mp = paddle.static.Program()
         sp = paddle.static.Program()
-        with paddle.base.unique_name.guard():
-            with paddle.static.program_guard(mp, sp):
-                rnn2 = paddle.nn.LSTM(
-                    16,
-                    32,
-                    2,
-                    time_major=self.time_major,
-                    direction=self.direction,
-                    proj_size=8,
-                )
+        with (
+            paddle.base.unique_name.guard(),
+            paddle.static.program_guard(mp, sp),
+        ):
+            rnn2 = paddle.nn.LSTM(
+                16,
+                32,
+                2,
+                time_major=self.time_major,
+                direction=self.direction,
+                proj_size=8,
+            )
 
         exe = paddle.static.Executor(place)
         scope = paddle.base.Scope()
@@ -526,14 +556,16 @@ class TestLSTMWithProjSize(unittest.TestCase):
 
         y1, (h1, c1) = rnn1(x)
 
-        with paddle.base.unique_name.guard():
-            with paddle.static.program_guard(mp, sp):
-                x_data = paddle.static.data(
-                    "input",
-                    [-1, -1, 16],
-                    dtype=paddle.framework.get_default_dtype(),
-                )
-                y, (h, c) = rnn2(x_data)
+        with (
+            paddle.base.unique_name.guard(),
+            paddle.static.program_guard(mp, sp),
+        ):
+            x_data = paddle.static.data(
+                "input",
+                [-1, -1, 16],
+                dtype=paddle.framework.get_default_dtype(),
+            )
+            y, (h, c) = rnn2(x_data)
 
         feed_dict = {x_data.name: x}
 

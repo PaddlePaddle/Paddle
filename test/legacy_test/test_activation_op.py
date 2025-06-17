@@ -43,23 +43,25 @@ def dynamic_guard():
 class TestSqrtOpError(unittest.TestCase):
 
     def test_errors(self):
-        with static_guard():
-            with paddle.static.program_guard(
+        with (
+            static_guard(),
+            paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
-            ):
-                # The input type of sqrt op must be Variable or numpy.ndarray.
-                in1 = 1
-                self.assertRaises(TypeError, paddle.sqrt, in1)
-                # The input dtype of sqrt op must be float16, float32, float64.
-                in2 = paddle.static.data(
-                    name='input2', shape=[-1, 12, 10], dtype="int32"
-                )
-                self.assertRaises(TypeError, paddle.sqrt, in2)
+            ),
+        ):
+            # The input type of sqrt op must be Variable or numpy.ndarray.
+            in1 = 1
+            self.assertRaises(TypeError, paddle.sqrt, in1)
+            # The input dtype of sqrt op must be float16, float32, float64.
+            in2 = paddle.static.data(
+                name='input2', shape=[-1, 12, 10], dtype="int32"
+            )
+            self.assertRaises(TypeError, paddle.sqrt, in2)
 
-                in3 = paddle.static.data(
-                    name='input3', shape=[-1, 12, 10], dtype="float16"
-                )
-                paddle.sqrt(x=in3)
+            in3 = paddle.static.data(
+                name='input3', shape=[-1, 12, 10], dtype="float16"
+            )
+            paddle.sqrt(x=in3)
 
 
 class TestActivation(OpTest):
@@ -223,19 +225,21 @@ class TestExp_Complex128(TestExp_Complex64):
 class Test_Exp_Op_Fp16(unittest.TestCase):
 
     def test_api_fp16(self):
-        with static_guard():
-            with paddle.static.program_guard(
+        with (
+            static_guard(),
+            paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
-            ):
-                np_x = np.array([[2, 3, 4], [7, 8, 9]])
-                x = paddle.to_tensor(np_x, dtype='float16')
-                out = paddle.exp(x)
-                if core.is_compiled_with_cuda():
-                    place = paddle.CUDAPlace(0)
-                    exe = paddle.static.Executor(place)
-                    (res,) = exe.run(fetch_list=[out])
-                    x_expect = np.exp(np_x.astype('float16'))
-                    np.testing.assert_allclose(res, x_expect, rtol=1e-3)
+            ),
+        ):
+            np_x = np.array([[2, 3, 4], [7, 8, 9]])
+            x = paddle.to_tensor(np_x, dtype='float16')
+            out = paddle.exp(x)
+            if core.is_compiled_with_cuda():
+                place = paddle.CUDAPlace(0)
+                exe = paddle.static.Executor(place)
+                (res,) = exe.run(fetch_list=[out])
+                x_expect = np.exp(np_x.astype('float16'))
+                np.testing.assert_allclose(res, x_expect, rtol=1e-3)
 
 
 class Test_Exp_Op_Int(unittest.TestCase):
@@ -376,18 +380,18 @@ class Test_Expm1_Op_Int(unittest.TestCase):
 
 class TestParameter:
     def test_out_name(self):
-        with static_guard():
-            with base.program_guard(base.Program()):
-                np_x = np.array([0.1]).astype('float32').reshape((-1, 1))
-                data = paddle.static.data(
-                    name="X", shape=[-1, 1], dtype="float32"
-                )
-                out = eval(f"paddle.{self.op_type}(data, name='Y')")
-                place = base.CPUPlace()
-                exe = base.Executor(place)
-                (result,) = exe.run(feed={"X": np_x}, fetch_list=[out])
-                expected = eval(f"np.{self.op_type}(np_x)")
-                np.testing.assert_allclose(result, expected, rtol=1e-05)
+        with (
+            static_guard(),
+            base.program_guard(base.Program()),
+        ):
+            np_x = np.array([0.1]).astype('float32').reshape((-1, 1))
+            data = paddle.static.data(name="X", shape=[-1, 1], dtype="float32")
+            out = eval(f"paddle.{self.op_type}(data, name='Y')")
+            place = base.CPUPlace()
+            exe = base.Executor(place)
+            (result,) = exe.run(feed={"X": np_x}, fetch_list=[out])
+            expected = eval(f"np.{self.op_type}(np_x)")
+            np.testing.assert_allclose(result, expected, rtol=1e-05)
 
     def test_dygraph(self):
         with base.dygraph.guard():
@@ -987,18 +991,18 @@ class TestAtan(TestActivation, TestParameter):
             )
 
     def test_out_name(self):
-        with static_guard():
-            with base.program_guard(base.Program()):
-                np_x = np.array([0.1]).astype('float32').reshape((-1, 1))
-                data = paddle.static.data(
-                    name="X", shape=[-1, 1], dtype="float32"
-                )
-                out = paddle.atan(data, name='Y')
-                place = base.CPUPlace()
-                exe = base.Executor(place)
-                (result,) = exe.run(feed={"X": np_x}, fetch_list=[out])
-                expected = np.arctan(np_x)
-                self.assertEqual(result, expected)
+        with (
+            static_guard(),
+            base.program_guard(base.Program()),
+        ):
+            np_x = np.array([0.1]).astype('float32').reshape((-1, 1))
+            data = paddle.static.data(name="X", shape=[-1, 1], dtype="float32")
+            out = paddle.atan(data, name='Y')
+            place = base.CPUPlace()
+            exe = base.Executor(place)
+            (result,) = exe.run(feed={"X": np_x}, fetch_list=[out])
+            expected = np.arctan(np_x)
+            self.assertEqual(result, expected)
 
     def test_dygraph(self):
         with base.dygraph.guard():
@@ -1259,20 +1263,22 @@ class TestCoshAPI(unittest.TestCase):
 class TestCoshOpError(unittest.TestCase):
 
     def test_errors(self):
-        with static_guard():
-            with program_guard(Program()):
-                # The input type must be Variable.
-                self.assertRaises(TypeError, paddle.cosh, 1)
-                # The input dtype must be float16, float32, float64.
-                x_int32 = paddle.static.data(
-                    name='x_int32', shape=[12, 10], dtype='int32'
-                )
-                self.assertRaises(TypeError, paddle.cosh, x_int32)
-                # support the input dtype is float16
-                x_fp16 = paddle.static.data(
-                    name='x_fp16', shape=[12, 10], dtype='float16'
-                )
-                paddle.cosh(x_fp16)
+        with (
+            static_guard(),
+            program_guard(Program()),
+        ):
+            # The input type must be Variable.
+            self.assertRaises(TypeError, paddle.cosh, 1)
+            # The input dtype must be float16, float32, float64.
+            x_int32 = paddle.static.data(
+                name='x_int32', shape=[12, 10], dtype='int32'
+            )
+            self.assertRaises(TypeError, paddle.cosh, x_int32)
+            # support the input dtype is float16
+            x_fp16 = paddle.static.data(
+                name='x_fp16', shape=[12, 10], dtype='float16'
+            )
+            paddle.cosh(x_fp16)
 
 
 def ref_tanhshrink(x):
@@ -2870,22 +2876,24 @@ class TestReluAPI(unittest.TestCase):
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
     def test_errors(self):
-        with static_guard():
-            with paddle.static.program_guard(
+        with (
+            static_guard(),
+            paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
-            ):
-                # The input type must be Variable.
-                self.assertRaises(TypeError, self.relu, 1)
-                # The input dtype must be float16, float32, float64.
-                x_int32 = paddle.static.data(
-                    name='x_int32', shape=[10, 12], dtype='int32'
-                )
-                self.assertRaises(TypeError, self.relu, x_int32)
-                # support the input dtype is float16
-                x_fp16 = paddle.static.data(
-                    name='x_fp16', shape=[10, 12], dtype='float16'
-                )
-                self.relu(x_fp16)
+            ),
+        ):
+            # The input type must be Variable.
+            self.assertRaises(TypeError, self.relu, 1)
+            # The input dtype must be float16, float32, float64.
+            x_int32 = paddle.static.data(
+                name='x_int32', shape=[10, 12], dtype='int32'
+            )
+            self.assertRaises(TypeError, self.relu, x_int32)
+            # support the input dtype is float16
+            x_fp16 = paddle.static.data(
+                name='x_fp16', shape=[10, 12], dtype='float16'
+            )
+            self.relu(x_fp16)
 
 
 class TestReluInplaceAPI(TestReluAPI):
@@ -4016,30 +4024,34 @@ class TestLog_Complex128(TestLog_Complex64):
 
 class Test_Log_Op_Fp16(unittest.TestCase):
     def test_api_fp16(self):
-        with static_guard():
-            with static.program_guard(
+        with (
+            static_guard(),
+            static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
-            ):
-                x = [[2, 3, 4], [7, 8, 9]]
-                x = paddle.to_tensor(x, dtype='float16')
-                out = paddle.log(x)
-                if core.is_compiled_with_cuda():
-                    place = paddle.CUDAPlace(0)
-                    exe = paddle.static.Executor(place)
-                    (res,) = exe.run(fetch_list=[out])
+            ),
+        ):
+            x = [[2, 3, 4], [7, 8, 9]]
+            x = paddle.to_tensor(x, dtype='float16')
+            out = paddle.log(x)
+            if core.is_compiled_with_cuda():
+                place = paddle.CUDAPlace(0)
+                exe = paddle.static.Executor(place)
+                (res,) = exe.run(fetch_list=[out])
 
     def test_api_bf16(self):
-        with static_guard():
-            with static.program_guard(
+        with (
+            static_guard(),
+            static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
-            ):
-                x = [[2, 3, 4], [7, 8, 9]]
-                x = paddle.to_tensor(x, dtype='bfloat16')
-                out = paddle.log(x)
-                if core.is_compiled_with_cuda():
-                    place = paddle.CUDAPlace(0)
-                    exe = paddle.static.Executor(place)
-                    (res,) = exe.run(fetch_list=[out])
+            ),
+        ):
+            x = [[2, 3, 4], [7, 8, 9]]
+            x = paddle.to_tensor(x, dtype='bfloat16')
+            out = paddle.log(x)
+            if core.is_compiled_with_cuda():
+                place = paddle.CUDAPlace(0)
+                exe = paddle.static.Executor(place)
+                (res,) = exe.run(fetch_list=[out])
 
 
 class Test_Log_Op_Int(unittest.TestCase):
@@ -4189,17 +4201,19 @@ class TestLog2_Op_Int(unittest.TestCase):
         paddle.enable_static()
 
     def test_api_bf16(self):
-        with static_guard():
-            with static.program_guard(
+        with (
+            static_guard(),
+            static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
-            ):
-                x = [[2, 3, 4], [7, 8, 9]]
-                x = paddle.to_tensor(x, dtype='bfloat16')
-                out = paddle.log2(x)
-                if core.is_compiled_with_cuda():
-                    place = paddle.CUDAPlace(0)
-                    exe = paddle.static.Executor(place)
-                    (res,) = exe.run(fetch_list=[out])
+            ),
+        ):
+            x = [[2, 3, 4], [7, 8, 9]]
+            x = paddle.to_tensor(x, dtype='bfloat16')
+            out = paddle.log2(x)
+            if core.is_compiled_with_cuda():
+                place = paddle.CUDAPlace(0)
+                exe = paddle.static.Executor(place)
+                (res,) = exe.run(fetch_list=[out])
 
 
 class TestLog10(TestActivation):
@@ -4388,17 +4402,19 @@ class TestLog1p_Complex128(TestLog1p_Complex64):
 class Test_Log1p_Op_Fp16(unittest.TestCase):
 
     def test_api_fp16(self):
-        with static_guard():
-            with static.program_guard(
+        with (
+            static_guard(),
+            static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
-            ):
-                x = [[2, 3, 4], [7, 8, 9]]
-                x = paddle.to_tensor(x, dtype='float16')
-                out = paddle.log1p(x)
-                if core.is_compiled_with_cuda():
-                    place = paddle.CUDAPlace(0)
-                    exe = paddle.static.Executor(place)
-                    (res,) = exe.run(fetch_list=[out])
+            ),
+        ):
+            x = [[2, 3, 4], [7, 8, 9]]
+            x = paddle.to_tensor(x, dtype='float16')
+            out = paddle.log1p(x)
+            if core.is_compiled_with_cuda():
+                place = paddle.CUDAPlace(0)
+                exe = paddle.static.Executor(place)
+                (res,) = exe.run(fetch_list=[out])
 
 
 class TestLog1p_Op_Int(unittest.TestCase):
@@ -4413,17 +4429,19 @@ class TestLog1p_Op_Int(unittest.TestCase):
         paddle.enable_static()
 
     def test_api_bf16(self):
-        with static_guard():
-            with static.program_guard(
+        with (
+            static_guard(),
+            static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
-            ):
-                x = [[2, 3, 4], [7, 8, 9]]
-                x = paddle.to_tensor(x, dtype='bfloat16')
-                out = paddle.log1p(x)
-                if core.is_compiled_with_cuda():
-                    place = paddle.CUDAPlace(0)
-                    exe = paddle.static.Executor(place)
-                    (res,) = exe.run(fetch_list=[out])
+            ),
+        ):
+            x = [[2, 3, 4], [7, 8, 9]]
+            x = paddle.to_tensor(x, dtype='bfloat16')
+            out = paddle.log1p(x)
+            if core.is_compiled_with_cuda():
+                place = paddle.CUDAPlace(0)
+                exe = paddle.static.Executor(place)
+                (res,) = exe.run(fetch_list=[out])
 
 
 class TestLog1p_ZeroDim(TestLog1p):

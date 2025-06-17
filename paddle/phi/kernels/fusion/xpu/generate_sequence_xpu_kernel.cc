@@ -19,7 +19,7 @@ namespace phi {
 namespace fusion {
 
 template <typename T, typename Context>
-void GenerateSequenceXPU(const Context& ctx,
+void GenerateSequenceXPU(const Context& dev_ctx,
                          const DenseTensor& x,
                          DataType dtype,
                          DenseTensor* out) {
@@ -30,7 +30,7 @@ void GenerateSequenceXPU(const Context& ctx,
   DenseTensor out_host;
   out_host.Resize(x_dims);
   out_host.set_type(dtype);
-  T* out_host_data = ctx.template HostAlloc<T>(&out_host);
+  T* out_host_data = dev_ctx.template HostAlloc<T>(&out_host);
   for (int i = 0; i < step; i++) {
     out_host_data[i] = static_cast<T>(i);
   }
@@ -38,8 +38,8 @@ void GenerateSequenceXPU(const Context& ctx,
     std::memcpy(out_host_data + i * step, out_host_data, step * sizeof(T));
   }
 
-  ctx.template Alloc<T>(out);
-  phi::Copy(ctx, out_host, out->place(), true, out);
+  dev_ctx.template Alloc<T>(out);
+  phi::Copy(dev_ctx, out_host, out->place(), true, out);
 }
 
 }  // namespace fusion

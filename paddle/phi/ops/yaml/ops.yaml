@@ -2476,6 +2476,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param: [x]
+    spmd_rule : GeluInferSpmd
   kernel :
     func : gelu
   backward : gelu_grad
@@ -2558,6 +2559,7 @@
   output : Tensor(y), Tensor(mean), Tensor(variance)
   infer_meta :
     func : GroupNormInferMeta
+    spmd_rule : GroupNormInferSpmd
   kernel :
     func : group_norm
   optional : scale, bias
@@ -2873,6 +2875,7 @@
   output : Tensor(y), Tensor(saved_mean), Tensor(saved_variance)
   infer_meta :
     func : InstanceNormInferMeta
+    spmd_rule : InstanceNormInferSpmd
   kernel :
     func : instance_norm
     data_type : x
@@ -2996,6 +2999,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [label]
+    spmd_rule : LabelSmoothInferSpmd
   kernel :
     func : label_smooth
     data_type : label
@@ -3706,6 +3710,25 @@
     data_type : x
   optional : corr_bias
   backward : moe_gate_dispatch_permute_grad
+
+- op : moe_permute
+  args : (Tensor hidden_states, Tensor scale, Tensor expert_routemap, Tensor expert_prob_topk, int topk, int num_experts, int[] tokens_per_expert, int padding_multiplex)
+  output : Tensor(hidden_states_unzipped), Tensor(zipped_expertwise_rowmap), Tensor(token_prob_unzipped), Tensor(scale_unzipped)
+  infer_meta:
+    func : MoePermuteInferMeta
+  kernel :
+    func : moe_permute
+    data_type : hidden_states
+  optional : scale
+
+- op : moe_unpermute
+  args : (Tensor unzipped_tokens, Tensor zipped_expertwise_rowmap, Tensor expert_routemap_topk, Tensor unzipped_token_probs, int total_zipped_tokens_num, int num_experts, bool MP)
+  output : Tensor(zipped_tokens), Tensor(zipped_probs_topk)
+  infer_meta :
+    func : MoeUnpermuteInferMeta
+  kernel :
+    func : moe_unpermute
+    data_type : unzipped_tokens
 
 - op : momentum_
   args : (Tensor param, Tensor grad, Tensor velocity, Tensor learning_rate, Tensor master_param, float mu, bool use_nesterov = false, str regularization_method = "", float regularization_coeff = 0.0f, bool multi_precision = false, float rescale_grad = 1.0f)

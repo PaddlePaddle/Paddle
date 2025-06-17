@@ -60,38 +60,40 @@ class TestFunctionalConv2DError(TestCase):
     def static_graph_case(self):
         main = base.Program()
         start = base.Program()
-        with base.unique_name.guard():
-            with base.program_guard(main, start):
-                self.channel_last = self.data_format == "NHWC"
-                if self.channel_last:
-                    x = x = paddle.static.data(
-                        "input",
-                        (-1, -1, -1, self.in_channels),
-                        dtype=self.dtype,
-                    )
-                else:
-                    x = paddle.static.data(
-                        "input",
-                        (-1, self.in_channels, -1, -1),
-                        dtype=self.dtype,
-                    )
-                weight = paddle.static.data(
-                    "weight", self.weight_shape, dtype=self.dtype
+        with (
+            base.unique_name.guard(),
+            base.program_guard(main, start),
+        ):
+            self.channel_last = self.data_format == "NHWC"
+            if self.channel_last:
+                x = x = paddle.static.data(
+                    "input",
+                    (-1, -1, -1, self.in_channels),
+                    dtype=self.dtype,
                 )
-                if not self.no_bias:
-                    bias = paddle.static.data(
-                        "bias", self.bias_shape, dtype=self.dtype
-                    )
-                y = F.conv2d(
-                    x,
-                    weight,
-                    None if self.no_bias else bias,
-                    padding=self.padding,
-                    stride=self.stride,
-                    dilation=self.dilation,
-                    groups=self.groups,
-                    data_format=self.data_format,
+            else:
+                x = paddle.static.data(
+                    "input",
+                    (-1, self.in_channels, -1, -1),
+                    dtype=self.dtype,
                 )
+            weight = paddle.static.data(
+                "weight", self.weight_shape, dtype=self.dtype
+            )
+            if not self.no_bias:
+                bias = paddle.static.data(
+                    "bias", self.bias_shape, dtype=self.dtype
+                )
+            y = F.conv2d(
+                x,
+                weight,
+                None if self.no_bias else bias,
+                padding=self.padding,
+                stride=self.stride,
+                dilation=self.dilation,
+                groups=self.groups,
+                data_format=self.data_format,
+            )
 
 
 class TestFunctionalConv2DErrorCase2(TestFunctionalConv2DError):

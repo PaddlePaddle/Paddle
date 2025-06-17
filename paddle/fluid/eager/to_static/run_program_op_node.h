@@ -468,6 +468,9 @@ inline void PirRunProgramAPI(
     // Step 3. create new interpretercore
     auto passed_kernel_program = paddle::framework::ApplyIrPass(
         forward_program.get(), place, no_need_buffer_name_set);
+    const auto &new_block = passed_kernel_program->block();
+    passed_kernel_program = paddle::framework::ApplyRemoveShadowFeedPass(
+        std::move(passed_kernel_program), new_block, place, global_inner_scope);
     interpreter_core = paddle::framework::CreatePirInterpreterCoreInfoToCache(
         std::move(passed_kernel_program),
         place,

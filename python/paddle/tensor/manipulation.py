@@ -907,10 +907,6 @@ def crop(
             raise TypeError(
                 f"Attr(shape)'s dtype of Op(crop_tensor) should be int32, but received: {type(shape_val)}."
             )
-        if shape_val == 0:
-            raise ValueError(
-                f"Attr(shape) of Op(crop_tensor) should not be zero, but received: {shape_val}."
-            )
         if shape_val < -1:
             raise ValueError(
                 f"When the element in Attr(shape) of Op(crop_tensor) is negative, only -1 is supported, but received: {shape_val}."
@@ -6216,7 +6212,8 @@ def repeat_interleave(
     if isinstance(repeats, (Variable, paddle.pir.Value)) and not repeats.shape:
         repeats = paddle.reshape(repeats, [1])
     if axis is None:
-        x = paddle.flatten(x)
+        if x.ndim != 1:
+            x = paddle.flatten(x)
         axis = 0
     if in_dynamic_or_pir_mode():
         if isinstance(repeats, (Variable, paddle.pir.Value)):
