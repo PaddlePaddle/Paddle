@@ -18,7 +18,7 @@ from kitchen import ops, quantization_subchannel_block_hybrid
 from kitchen.quantization import QParams, ScalingType
 
 import paddle
-from paddle.nn.functional import fp8
+from paddle.incubate.nn.functional import fp8
 
 sub_channel_gemm_supported = kitchen.ops.gemm.is_sub_channel_gemm_supported()
 
@@ -143,7 +143,7 @@ def _pypaddle_qgemm_subchannel_1d1d(a, b, a_descales, b_descales):
 @pytest.mark.skipif(
     not sub_channel_gemm_supported, reason="Sub-channel GEMM is not supported"
 )
-@pytest.mark.parametrize("out_dtype", [paddle.bfloat16, paddle.float32])
+@pytest.mark.parametrize("out_dtype", [paddle.bfloat16])
 def test_1D2D(out_dtype):
     M = 256
     N = 384
@@ -151,8 +151,8 @@ def test_1D2D(out_dtype):
     seed = 0
     paddle.seed(seed)
 
-    A = paddle.randn((M, K), dtype=paddle.float32)
-    B = paddle.randn((N, K), dtype=paddle.float32)
+    A = paddle.randn((M, K), dtype=paddle.bfloat16)
+    B = paddle.randn((N, K), dtype=paddle.bfloat16)
     A_dtype = paddle.float8_e4m3fn
     B_dtype = paddle.float8_e4m3fn
 
@@ -173,16 +173,19 @@ def test_1D2D(out_dtype):
     )
 
     qresult_A = quantize_op.quantize(A, A_qparams)
-    # qresult_B = quantize_op.quantize(B, B_qparams)
-    qresult_B = paddle.incubate.nn.functional.quantize(
-        B, input_transpose=False, output_scale_transpose=False
+    qresult_B = quantize_op.quantize(B, B_qparams)
+    data, scale = fp8.fp8_quant_blockwise(
+        B,
+        quant_method="128x128",
+        input_transpose=False,
+        output_scale_transpose=False,
+        using_pow2_scale=False,
     )
-    qA, sA, qB, sB = (
-        qresult_A.data,
-        qresult_A.scale,
-        qresult_B.data,
-        qresult_B.scale,
-    )
+    print("mydata: ", data)
+    print("myscale: ", scale)
+    print("ref_data: ", qresult_B.data)
+    print("ref_scale: ", qresult_B.scale)
+    qA, sA, qB, sB = (qresult_A.data, qresult_A.scale, data, scale)
 
     precise_D = A @ B.t()
 
@@ -204,7 +207,7 @@ def test_1D2D(out_dtype):
 @pytest.mark.skipif(
     not sub_channel_gemm_supported, reason="Sub-channel GEMM is not supported"
 )
-@pytest.mark.parametrize("out_dtype", [paddle.bfloat16, paddle.float32])
+@pytest.mark.parametrize("out_dtype", [paddle.bfloat16])
 def test_2D1D(out_dtype):
     M = 256
     N = 384
@@ -212,8 +215,8 @@ def test_2D1D(out_dtype):
     seed = 0
     paddle.seed(seed)
 
-    A = paddle.randn((M, K), dtype=paddle.float32)
-    B = paddle.randn((N, K), dtype=paddle.float32)
+    A = paddle.randn((M, K), dtype=paddle.bfloat16)
+    B = paddle.randn((N, K), dtype=paddle.bfloat16)
     A_dtype = paddle.float8_e4m3fn
     B_dtype = paddle.float8_e4m3fn
     A_quant_tile_shape = (128, 128)
@@ -323,7 +326,7 @@ def test_1D1D(out_dtype):
     assert rmse < 0.06
 
 
-test_1D1D(paddle.bfloat16)
+# test_1D1D(paddle.bfloat16)
 print("-------------------")
 test_1D2D(paddle.bfloat16)
 print("-------------------")

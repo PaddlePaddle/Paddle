@@ -280,16 +280,14 @@ def fp8_quant_blockwise(
         raise ValueError("Unsupported output type")
 
     if in_dynamic_or_pir_mode():
-        X_fp8, scale, X_fp8_t, scale_t = (
-            _C_ops.fp9_quant_blockwise(
-                X,
-                using_1x128,
-                input_transpose,
-                output_scale_transpose,
-                using_e5m2,
-                using_pow2_scale,
-            ),
-            None,
+        X_fp8, scale, X_fp8_t, scale_t = _C_ops.fp8_quant_blockwise(
+            X,
+            epsilon,
+            using_1x128,
+            input_transpose,
+            output_scale_transpose,
+            using_e5m2,
+            using_pow2_scale,
         )
         # Aligned with kitchen's logic
         if not input_transpose:

@@ -215,9 +215,9 @@ __global__ void __launch_bounds__(256)
     size_t row_idx = blockIdx.y;
     size_t col_idx = blockIdx.x;
     if constexpr (output_scale_transpose) {
-      scale[row_idx * scale_stride_y + col_idx * scale_stride_x] = output_scale;
-    } else {
       scale[col_idx * scale_stride_y + row_idx * scale_stride_x] = output_scale;
+    } else {
+      scale[row_idx * scale_stride_y + col_idx * scale_stride_x] = output_scale;
     }
 
     if constexpr (input_transpose) {
@@ -307,10 +307,13 @@ void FP8QuantBlockWiseKernelImpl(const Context &dev_ctx,
   kernel<<<grid, block, 0, dev_ctx.stream()>>>(
       reinterpret_cast<const __nv_bfloat16 *>(X.data<phi::bfloat16>()),
       reinterpret_cast<__nv_fp8_e4m3 *>(out->data<phi::dtype::float8_e4m3fn>()),
-      reinterpret_cast<__nv_fp8_e4m3 *>(
-          out_transposed->data<phi::dtype::float8_e4m3fn>()),
+      input_transpose ? reinterpret_cast<__nv_fp8_e4m3 *>(
+                            out_transposed->data<phi::dtype::float8_e4m3fn>())
+                      : nullptr,
       reinterpret_cast<float *>(scale->data<float>()),
-      reinterpret_cast<float *>(scale_transposed->data<float>()),
+      input_transpose
+          ? reinterpret_cast<float *>(scale_transposed->data<float>())
+          : nullptr,
       src_cols,
       src_rows,
       quanted_cols,
