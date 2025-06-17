@@ -181,10 +181,6 @@ def test_1D2D(out_dtype):
         output_scale_transpose=False,
         using_pow2_scale=False,
     )
-    print("mydata: ", data)
-    print("myscale: ", scale)
-    print("ref_data: ", qresult_B.data)
-    print("ref_scale: ", qresult_B.scale)
     qA, sA, qB, sB = (qresult_A.data, qresult_A.scale, data, scale)
 
     precise_D = A @ B.t()
