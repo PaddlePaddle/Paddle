@@ -56,22 +56,33 @@ jobs:
         env:
           CCACHE_DIR: "/root/.ccache/coverage"
           FLAGS_fraction_of_gpu_memory_to_use: 0.15
+          CTEST_OUTPUT_ON_FAILURE: 1
           CTEST_PARALLEL_LEVEL: 2
           WITH_GPU: "ON"
-          CUDA_ARCH_NAME: Volta
+          CUDA_ARCH_NAME: "Volta"
           WITH_AVX: "ON"
+          WITH_TESTING: "ON"
           WITH_COVERAGE: "ON"
           COVERALLS_UPLOAD: "ON"
           PADDLE_VERSION: 0.0.0
-          CUDA_VISIBLE_DEVICES: 0,1
+          CMAKE_BUILD_TYPE: Release
+          PADDLE_FRACTION_GPU_MEMORY_TO_USE: 0.15
+          CUDA_VISIBLE_DEVICES: "0,1"
           WITH_DISTRIBUTE: "ON"
-          PRECISION_TEST: "ON"
+          PRECISION_TEST: "OFF"
+          WITH_LITE: "OFF"
           LITE_GIT_TAG: develop
           WITH_UNITY_BUILD: "ON"
           PY_VERSION: 3.9
+          WITH_ONNXRUNTIME: "OFF"
+          CI_SKIP_CPP_TEST: "OFF"
           WITH_SHARED_PHI: "ON"
           WITH_CINN: "ON"
+          WITH_UCC: "ON"
+          WITH_PIP_CUDA_LIBRARIES: "OFF"
+          WITH_FLAGCX: "ON"
           INFERENCE_DEMO_INSTALL_DIR: /root/.cache/coverage
+          WITH_INCREMENTAL_COVERAGE: "OFF"
           CCACHE_MAXSIZE: 200G
           CCACHE_LIMIT_MULTIPLE: 0.8
           ON_INFER: "ON"
@@ -100,21 +111,33 @@ jobs:
             -e CCACHE_DIR \
             -e ci_scripts \
             -e FLAGS_fraction_of_gpu_memory_to_use \
+            -e CTEST_OUTPUT_ON_FAILURE \
             -e CTEST_PARALLEL_LEVEL \
             -e WITH_GPU \
             -e CUDA_ARCH_NAME \
             -e WITH_AVX \
+            -e WITH_TESTING \
             -e WITH_COVERAGE \
             -e COVERALLS_UPLOAD \
             -e PADDLE_VERSION \
+            -e CMAKE_BUILD_TYPE \
+            -e PADDLE_FRACTION_GPU_MEMORY_TO_USE \
+            -e CUDA_VISIBLE_DEVICES \
             -e WITH_DISTRIBUTE \
             -e PRECISION_TEST \
+            -e WITH_LITE \
             -e LITE_GIT_TAG \
             -e WITH_UNITY_BUILD \
             -e PY_VERSION \
+            -e WITH_ONNXRUNTIME \
+            -e CI_SKIP_CPP_TEST \
             -e WITH_SHARED_PHI \
             -e WITH_CINN \
+            -e WITH_UCC \
+            -e WITH_PIP_CUDA_LIBRARIES \
+            -e WITH_FLAGCX \
             -e INFERENCE_DEMO_INSTALL_DIR \
+            -e WITH_INCREMENTAL_COVERAGE \
             -e CCACHE_MAXSIZE \
             -e CCACHE_LIMIT_MULTIPLE \
             -e ON_INFER \
@@ -250,19 +273,28 @@ jobs:
           CACHE_DIR: "/root/.cache/coverage"
           CCACHE_DIR: "/root/.ccache/coverage"
           FLAGS_fraction_of_gpu_memory_to_use: 0.15
+          CTEST_OUTPUT_ON_FAILURE: 1
           CTEST_PARALLEL_LEVEL: 2
           WITH_GPU: "ON"
-          CUDA_ARCH_NAME: Volta
+          CUDA_ARCH_NAME: Auto
           WITH_AVX: "ON"
+          WITH_TESTING: "ON"
           WITH_COVERAGE: "ON"
           COVERALLS_UPLOAD: "ON"
           PADDLE_VERSION: 0.0.0
+          PADDLE_FRACTION_GPU_MEMORY_TO_USE: 0.15
+          CUDA_VISIBLE_DEVICES: "0,1"
           WITH_DISTRIBUTE: "ON"
-          PRECISION_TEST: "ON"
+          PRECISION_TEST: "OFF"
           WITH_UNITY_BUILD: "ON"
           PY_VERSION: 3.9
+          WITH_INCREMENTAL_COVERAGE: "OFF"
+          CI_SKIP_CPP_TEST: "OFF"
+          WITH_ONNXRUNTIME: "OFF"
           WITH_SHARED_PHI: "ON"
           WITH_CINN: "ON"
+          WITH_UCC: "ON"
+          WITH_PIP_CUDA_LIBRARIES: "OFF"
           INFERENCE_DEMO_INSTALL_DIR: /root/.cache/coverage
           CCACHE_MAXSIZE: 200G
           CCACHE_LIMIT_MULTIPLE: 0.8
@@ -293,19 +325,28 @@ jobs:
             -e CCACHE_DIR \
             -e ci_scripts \
             -e FLAGS_fraction_of_gpu_memory_to_use \
+            -e CTEST_OUTPUT_ON_FAILURE \
             -e CTEST_PARALLEL_LEVEL \
             -e WITH_GPU \
             -e CUDA_ARCH_NAME \
             -e WITH_AVX \
+            -e WITH_TESTING \
             -e WITH_COVERAGE \
             -e COVERALLS_UPLOAD \
             -e PADDLE_VERSION \
+            -e WITH_ONNXRUNTIME \
+            -e PADDLE_FRACTION_GPU_MEMORY_TO_USE \
+            -e CUDA_VISIBLE_DEVICES \
             -e WITH_DISTRIBUTE \
             -e PRECISION_TEST \
             -e WITH_UNITY_BUILD \
             -e PY_VERSION \
+            -e WITH_INCREMENTAL_COVERAGE \
+            -e CI_SKIP_CPP_TEST \
             -e WITH_SHARED_PHI \
             -e WITH_CINN \
+            -e WITH_UCC \
+            -e WITH_PIP_CUDA_LIBRARIES \
             -e INFERENCE_DEMO_INSTALL_DIR \
             -e CCACHE_MAXSIZE \
             -e CCACHE_LIMIT_MULTIPLE \
