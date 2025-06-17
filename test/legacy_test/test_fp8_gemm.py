@@ -171,17 +171,16 @@ def test_1D2D(out_dtype):
     quantize_op = quantization_subchannel_block_hybrid.HybridBlockAndVectorTiledQuantizeOp(
         ops.Backend.CUBLAS
     )
-
     qresult_A = quantize_op.quantize(A, A_qparams)
-    qresult_B = quantize_op.quantize(B, B_qparams)
-    data, scale = fp8.fp8_quant_blockwise(
+
+    data_B, scale_B = fp8.fp8_quant_blockwise(
         B,
         quant_method="128x128",
         input_transpose=False,
         output_scale_transpose=False,
         using_pow2_scale=False,
     )
-    qA, sA, qB, sB = (qresult_A.data, qresult_A.scale, data, scale)
+    qA, sA, qB, sB = (qresult_A.data, qresult_A.scale, data_B, scale_B)
 
     precise_D = A @ B.t()
 
@@ -231,11 +230,17 @@ def test_2D1D(out_dtype):
         ops.Backend.CUBLAS
     )
 
-    qresult_A = quantize_op.quantize(A, A_qparams)
+    data_A, scale_A = fp8.fp8_quant_blockwise(
+        A,
+        quant_method="128x128",
+        input_transpose=False,
+        output_scale_transpose=False,
+        using_pow2_scale=False,
+    )
     qresult_B = quantize_op.quantize(B, B_qparams)
     qA, sA, qB, sB = (
-        qresult_A.data,
-        qresult_A.scale,
+        data_A,
+        scale_A,
         qresult_B.data,
         qresult_B.scale,
     )
