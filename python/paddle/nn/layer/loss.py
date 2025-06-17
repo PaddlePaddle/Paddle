@@ -1481,6 +1481,7 @@ class SmoothL1Loss(Layer):
             The value determines how large the errors need to be to use L1. Errors
             smaller than delta are minimized with L2. Parameter is ignored for
             negative/zero values. Default value is :math:`1.0`.
+        is_huber (bool, optional): If True, use the Huber loss, otherwise use a modified version where the Huber loss is divided by delta. Default is True.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Call Parameters:
@@ -1517,11 +1518,13 @@ class SmoothL1Loss(Layer):
         self,
         reduction: _ReduceMode = 'mean',
         delta: float = 1.0,
+        is_huber: bool = True,
         name: str | None = None,
     ) -> None:
         super().__init__()
         self.reduction = reduction
         self.delta = delta
+        self.is_huber = is_huber
         self.name = name
 
     def forward(self, input: Tensor, label: Tensor) -> Tensor:
@@ -1530,6 +1533,7 @@ class SmoothL1Loss(Layer):
             label,
             reduction=self.reduction,
             delta=self.delta,
+            is_huber=self.is_huber,
             name=self.name,
         )
 

@@ -1105,6 +1105,7 @@ def smooth_l1_loss(
     label: Tensor,
     reduction: _ReduceMode = 'mean',
     delta: float = 1.0,
+    is_huber: bool = True,
     name: str | None = None,
 ) -> Tensor:
     r"""
@@ -1143,6 +1144,7 @@ def smooth_l1_loss(
             The value determines how large the errors need to be to use L1. Errors
             smaller than delta are minimized with L2. Parameter is ignored for
             negative/zero values. Default = 1.0
+        is_huber (bool, optional): If True, use the Huber loss, otherwise use a modified version where the Huber loss is divided by delta. Default is True.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -1191,6 +1193,9 @@ def smooth_l1_loss(
             outputs={'Out': out, 'Residual': residual},
             attrs={'delta': delta},
         )
+
+    if not is_huber:
+        out = out / delta
 
     if reduction not in ['sum', 'mean', 'none']:
         raise ValueError(
