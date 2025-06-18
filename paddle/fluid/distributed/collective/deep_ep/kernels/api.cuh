@@ -340,7 +340,8 @@ void combine(void* combined_x,
              int num_ranks,
              void* workspace,
              cudaStream_t stream,
-             int phases);
+             int phases,
+             bool zero_copy);
 
 }  // namespace internode_ll
 #endif  // PADDLE_WITH_NVSHMEM

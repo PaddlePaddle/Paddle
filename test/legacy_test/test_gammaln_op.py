@@ -110,6 +110,36 @@ class TestGammalnBigNumberOp(TestGammalnOp):
         )
 
 
+class TestGammalnNegativeInputFP64Op(TestGammalnOp):
+    def setUp(self):
+        self.op_type = 'gammaln'
+        self.python_api = paddle.gammaln
+        self.init_dtype_type()
+        self.init_shape()
+        self.x = np.random.random(self.shape).astype(self.dtype) - 1
+        self.inputs = {'x': self.x}
+        out = ref_gammaln(self.x)
+        self.outputs = {'out': out}
+
+    def init_dtype_type(self):
+        self.dtype = np.float64
+
+    def test_check_grad(self):
+        d_out = self.outputs['out']
+        d_x = ref_gammaln_grad(self.x, d_out)
+        self.check_grad(
+            ['x'],
+            'out',
+            user_defined_grads=[
+                d_x,
+            ],
+            user_defined_grad_outputs=[
+                d_out,
+            ],
+            check_pir=True,
+        )
+
+
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),

@@ -353,6 +353,31 @@ class TestNNFunctionalMseLoss(unittest.TestCase):
             self.assertEqual(dy_result.shape, tuple(dim))
 
 
+class TestNNFunctionalMseLoss_ZeroSize(unittest.TestCase):
+
+    def test_dygraph_and_grad(self):
+        for dim in [[0, 0], [2, 0, 10]]:
+            input_np = np.random.uniform(0.1, 0.5, dim).astype("float32")
+            target_np = np.random.uniform(0.1, 0.5, dim).astype("float32")
+
+            paddle.disable_static()
+            x = paddle.to_tensor(input_np)
+            x.stop_gradient = False
+            dy_ret = paddle.nn.functional.mse_loss(
+                x, paddle.to_tensor(target_np), 'mean'
+            )
+            dy_result = dy_ret.numpy()
+
+            sub = input_np - target_np
+            expected = np.mean(sub * sub)
+            np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
+            self.assertEqual(dy_result.shape, ())
+
+            loss = paddle.sum(dy_ret)
+            loss.backward()
+            np.testing.assert_allclose(x.grad.shape, x.shape)
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()

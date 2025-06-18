@@ -158,11 +158,13 @@ class TestDigammaAPI(unittest.TestCase):
                 out = paddle.digamma(x, name="digamma_res")
 
         # in dynamic mode
-        with self.assertRaises(RuntimeError):
-            with base.dygraph.guard():
-                input = np.random.random(self._shape).astype("bool")
-                input_t = paddle.to_tensor(input)
-                res = paddle.digamma(input_t)
+        with (
+            self.assertRaises(RuntimeError),
+            base.dygraph.guard(),
+        ):
+            input = np.random.random(self._shape).astype("bool")
+            input_t = paddle.to_tensor(input)
+            res = paddle.digamma(input_t)
 
 
 if __name__ == "__main__":

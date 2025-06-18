@@ -172,8 +172,8 @@ def bernoulli_(
              [0., 0., 0., 0.]])
     """
     x.uniform_(0.0, 1.0)
-    ones_mask = x > p
-    zeros_mask = x < p
+    ones_mask = x < p
+    zeros_mask = x > p
     x.masked_fill_(ones_mask, 1.0)
     x.masked_fill_(zeros_mask, 0.0)
     return x

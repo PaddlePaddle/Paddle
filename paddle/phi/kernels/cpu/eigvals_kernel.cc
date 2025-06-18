@@ -206,6 +206,9 @@ void EigvalsKernel(const Context& dev_ctx,
                    const DenseTensor& x,
                    DenseTensor* out) {
   dev_ctx.template Alloc<PaddleCType<T>>(out);
+  if (out && out->numel() == 0) {
+    return;
+  }
 
   std::vector<DenseTensor> x_matrices;
   SpiltBatchSquareMatrix(x, /*->*/ &x_matrices);
