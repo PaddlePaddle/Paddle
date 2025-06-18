@@ -51,6 +51,7 @@ class AutoGrowthBestFitAllocator : public Allocator {
     if (FLAGS_enable_auto_growth_allocator_add_lock) {
         // TODO(vivienfanghuagood): the next line may cause the process to deadlock.
         std::lock_guard<SpinLock> guard(spinlock_);
+        return FreeIdleChunks();
     }
     return FreeIdleChunks();
   }
