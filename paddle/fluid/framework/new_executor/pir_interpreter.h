@@ -124,7 +124,7 @@ class PirInterpreter : public InterpreterBaseImpl {
     force_events_to_wait_ = force_events_to_wait;
   }
 
-  void SetCUDAGraphState(uint8_t cuda_graph_state) {
+  void SetCUDAGraphState(uint8_t cuda_graph_state) override {
     cuda_graph_state_ = cuda_graph_state;
   }
 
