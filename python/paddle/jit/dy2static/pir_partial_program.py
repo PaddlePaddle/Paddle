@@ -36,6 +36,7 @@ from .logging_utils import TranslatorLogger
 from .utils import (
     RETURN_NO_VALUE_MAGIC_NUM,
     Backend,
+    CUDAGraphState,
     TimeCounter,
     auto_layout_is_enabled,
     backend_guard,
@@ -728,6 +729,24 @@ class PartialProgramLayer:
 
         self._compile_time_counter = TimeCounter()
 
+    @staticmethod
+    def run_impl(partial_program_layer, inputs, parameters, outputs, attrs):
+        _C_ops.run_program(
+            inputs,
+            parameters,
+            outputs,
+            partial_program_layer._create_scope_vec(
+                cache_key=(
+                    hash_with_seed(
+                        attrs["program_id"],
+                        PartialProgramLayer._calc_input_places_hash(inputs),
+                    )
+                ),
+                use_scope_cache=True,
+            ),
+            *PartialProgramLayer._dict_attributes_to_op_fn_attrs(attrs),
+        )
+
     def __call__(self, inputs):
         """
         Execute static graph by Interpreter and Return dynamic Tensors.
@@ -738,30 +757,11 @@ class PartialProgramLayer:
         out_vars = self._prepare_outputs()
         outputs = self._valid_vars(out_vars)
 
-        def run_impl(inputs, parameters, outputs):
-            _C_ops.run_program(
-                inputs,
-                parameters,
-                outputs,
-                self._create_scope_vec(
-                    cache_key=(
-                        hash_with_seed(
-                            self.program_id,
-                            self._calc_input_places_hash(inputs),
-                        )
-                    ),
-                    use_scope_cache=True,
-                ),
-                *attrs,
-            )
-
         self.call_run_impl_with_hook(
-            run_impl,
             inputs,
             parameters,
             outputs,
-            self.program.forward_program,
-            self.program.backward_program,
+            attrs,
         )
 
         restored_nest_out = self._restore_out(out_vars)
@@ -777,56 +777,35 @@ class PartialProgramLayer:
         out_vars = self._prepare_outputs()
         outputs = self._valid_vars(out_vars)
 
-        def run_impl(inputs, parameters, outputs):
-            _C_ops.run_program(
-                inputs,
-                parameters,
-                outputs,
-                self._create_scope_vec(
-                    cache_key=(
-                        hash_with_seed(
-                            self.program_id,
-                            self._calc_input_places_hash(inputs),
-                        )
-                    ),
-                    use_scope_cache=True,
-                ),
-                *attrs,
-            )
-
         self.call_run_impl_with_hook(
-            run_impl,
             inputs,
             parameters,
             outputs,
-            self.program.forward_program,
-            self.program.backward_program,
+            attrs,
         )
         return self._outputs.quick_restore(out_vars)
 
     def call_run_impl_with_hook(
         self,
-        run_impl,
         inputs,
         parameters,
         outputs,
-        forward_program,
-        backward_program,
+        attrs,
     ):
         if PartialProgramLayer.HOOKED_RUN_IMPL is None:
-            run_impl(
+            PartialProgramLayer.run_impl.__get__(self)(
                 inputs,
                 parameters,
                 outputs,
+                attrs,
             )
         else:
             PartialProgramLayer.HOOKED_RUN_IMPL(
-                run_impl,
+                PartialProgramLayer.run_impl.__get__(self),
                 inputs,
                 parameters,
                 outputs,
-                forward_program,
-                backward_program,
+                attrs,
             )
 
     @cached_property
@@ -860,7 +839,8 @@ class PartialProgramLayer:
         cached_scopes.append(scope)
         return scope
 
-    def _calc_input_places_hash(self, inputs):
+    @staticmethod
+    def _calc_input_places_hash(inputs):
         if not inputs:
             return 0
         return paddle.base.libpaddle.calc_place_hash(inputs)
@@ -1206,22 +1186,27 @@ class PartialProgramLayer:
         return whole_program
 
     def _prepare_attributes(self, in_sot_mode=False):
-        attrs = [
-            'forward_program',
-            self.program.forward_program,
-            'backward_program',
-            self.program.backward_program,
-            'is_test',
-            not self.training,
-            'program_id',
-            self.program_id,
-            'in_sot_mode',
-            in_sot_mode,
-        ]
-        for key, val in self.program.program_attr.items():
-            attrs.append(key)
-            attrs.append(val)
+        attrs = {
+            'forward_program': self.program.forward_program,
+            'backward_program': self.program.backward_program,
+            'is_test': not self.training,
+            'program_id': self.program_id,
+            'in_sot_mode': in_sot_mode,
+            'cuda_graph_state': CUDAGraphState.DISABLE,  # default value for not use cuda graph
+            'cuda_graph_dispatch_key': 0,  # default value for not use cuda graph
+        }
+        attrs |= self.program.program_attr.items()
         return attrs
+
+    @staticmethod
+    def _dict_attributes_to_op_fn_attrs(attrs):
+        op_fn_attrs = []
+        for k, v in attrs.items():
+            if k == "cuda_graph_state":
+                v = int(v)
+            op_fn_attrs.append(k)
+            op_fn_attrs.append(v)
+        return op_fn_attrs
 
     def _prepare_inputs(self, inputs):
         """

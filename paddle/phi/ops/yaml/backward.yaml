@@ -1437,6 +1437,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param: [x]
+    spmd_rule : GeluGradInferSpmd
   kernel :
     func : gelu_grad
   composite: gelu_grad(x, out_grad, approximate, x_grad)

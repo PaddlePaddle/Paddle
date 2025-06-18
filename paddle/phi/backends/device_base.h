@@ -20,6 +20,8 @@
 #include "paddle/phi/backends/stream.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/allocator.h"
+#undef major
+#undef minor
 
 namespace phi {
 
