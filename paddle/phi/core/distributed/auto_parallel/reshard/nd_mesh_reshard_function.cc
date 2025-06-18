@@ -485,12 +485,12 @@ void SameNdMeshReshardFunction::Eval(phi::DeviceContext* dev_ctx,
 
   // TODO(lfw): refine this, now is reports wrong info.
   // Final attr check
-  // CHECK(out->dist_attr() == out_dist_attr_orig,
+  // PADDLE_ENFORCE_EQ(out->dist_attr() == out_dist_attr_orig,
   //                   true,
-  //                   "Expected that out of reshard has to be target dist, "
-  //                   "out dist att is " +
+  //                   common::errors::InvalidArgument("Expected that out of
+  //                   reshard has to be target dist, " "out dist att is " +
   //                       out->dist_attr().to_string() + ", but target is " +
-  //                       out_dist_attr_orig.to_string());
+  //                       out_dist_attr_orig.to_string()));
 }
 
 bool CrossNdMeshReshardFunction::IsSuitable(
