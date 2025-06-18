@@ -115,7 +115,6 @@ class TestCoShard:
             golden = np.array([[1, 2], [5, 6]])
         else:
             golden = np.array([[3, 4], [7, 8]])
-        print(input._local_value().numpy().flatten())
         np.testing.assert_equal(
             input._local_value().numpy().flatten(), golden.flatten()
         )

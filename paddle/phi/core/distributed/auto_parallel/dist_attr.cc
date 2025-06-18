@@ -106,9 +106,11 @@ void TensorDistAttr::set_annotated(
 int64_t TensorDistAttr::get_split_factor(int64_t mesh_dim) const {
   PADDLE_ENFORCE_LT(mesh_dim,
                     process_mesh_.ndim(),
-                    "Mesh dim is %d, Process mesh ndim is %d",
-                    mesh_dim,
-                    process_mesh_.ndim());
+                    ::common::errors::InvalidArgument(
+                        "Expected mesh dim is less than process mesh dim size, "
+                        "but got mesh dim  %d, Process mesh ndim is %d",
+                        mesh_dim,
+                        process_mesh_.ndim()));
   return split_factor_map_.get_split_factor(mesh_dim);
 }
 
@@ -560,10 +562,11 @@ void TensorDistAttr::DimMapProxy::sync_1d_map() const {
   for (size_t i = 0; i < dims_mapping_2d->size(); ++i) {
     PADDLE_ENFORCE_LE(dims_mapping_2d->at(i).size(),
                       1,
-                      "There are %d mesh dim sharded on tensor dim %d,"
-                      "you should call \"dims_mapping_2d()\"",
-                      dims_mapping_2d->at(i).size(),
-                      i);
+                      common::errors::InvalidArgument(
+                          "There are %d mesh dim sharded on tensor dim %d,"
+                          "you should call \"dims_mapping_2d()\"",
+                          dims_mapping_2d->at(i).size(),
+                          i));
     dims_mapping_1d[i] =
         (*dims_mapping_2d)[i].empty() ? -1 : (*dims_mapping_2d)[i][0];
   }

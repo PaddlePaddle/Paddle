@@ -121,8 +121,9 @@ class ReshardContext final {
       PADDLE_ENFORCE_GE(
           cur_tensor_dim.value(),
           0,
-          "tensor dim should be greater than or equal to 0, but got %d.",
-          cur_tensor_dim.value());
+          common::errors::InvalidArgument(
+              "tensor dim should be greater than or equal to 0, but got %d.",
+              cur_tensor_dim.value()));
       dims_mapping[cur_tensor_dim.value()] = {0};
       dist_attr.set_dims_mapping(dims_mapping);
       if (cur_mesh_split_factor) {
@@ -484,7 +485,7 @@ void SameNdMeshReshardFunction::Eval(phi::DeviceContext* dev_ctx,
 
   // TODO(lfw): refine this, now is reports wrong info.
   // Final attr check
-  // PADDLE_ENFORCE_EQ(out->dist_attr() == out_dist_attr_orig,
+  // CHECK(out->dist_attr() == out_dist_attr_orig,
   //                   true,
   //                   "Expected that out of reshard has to be target dist, "
   //                   "out dist att is " +

@@ -141,7 +141,8 @@ class SplitFactor final {
     }
     PADDLE_ENFORCE_LE(split_factor_map_.size(),
                       1,
-                      "At now only support to rearrange at one mesh dim.");
+                      common::errors::InvalidArgument(
+                          "At now only support to rearrange at one mesh dim."));
   }
 
   int64_t get_split_factor(int64_t mesh_dim) const {

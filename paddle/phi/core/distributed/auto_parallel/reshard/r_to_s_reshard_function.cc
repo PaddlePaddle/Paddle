@@ -104,7 +104,7 @@ void RToSReshardFunction::Eval(phi::DeviceContext* dev_ctx,
 
     PADDLE_ENFORCE_LE(start,
                       end,
-                      ::common::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Slice Args 'start' should be less or qual to 'end', "
                           "but got 'start' is %d, 'end' is %d.",
                           start,

@@ -48,9 +48,9 @@ void ReshardSToRWithPadding(DeviceContext* dev_ctx,
       dev_ctx, AllGather, dtype, process_ids, in, num_of_process, out);
 
   if (split_axis != 0 || padding_nums != 0 || split_factor > 1) {
-    PADDLE_ENFORCE_EQ((in.dims()[0] % split_factor) == 0,
-                      true,
-                      ::common::errors::InvalidArgument(
+    PADDLE_ENFORCE_EQ((in.dims()[0] % split_factor),
+                      0,
+                      common::errors::InvalidArgument(
                           "The specified axis of tensor should be evenly "
                           "splited, but got %d and %d.",
                           in.dims()[0],

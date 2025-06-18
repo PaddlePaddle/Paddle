@@ -584,7 +584,7 @@ CALCULATE_LOCAL_SHAPE_TEMPLATE = """
             num_shard *= mesh_shape[dim];
           }}
           // TODO: Support aliquant condition.
-          PADDLE_ENFORCE(shape_i % num_shard == 0,
+          PADDLE_ENFORCE_EQ(shape_i % num_shard, 0,
                 common::errors::InvalidArgument(
                     "{op_name} only support local shape dim is divisible "
                     "by the mesh dim, however local_shape[%lld] is %lld "
