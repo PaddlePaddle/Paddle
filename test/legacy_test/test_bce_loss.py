@@ -336,6 +336,11 @@ class TestBceLossOpStaticFP16(unittest.TestCase):
         paddle.disable_static()
 
 
+class TestBceLossOp_ZeroSize(TestBceLossOp):
+    def init_test_cast(self):
+        self.shape = [0, 1, 2]
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()
