@@ -1601,14 +1601,17 @@ static PyObject* tensor__getitem_dygraph(TensorObject* self,
                                                         &rank_of_new_dim,
                                                         &trans_dim,
                                                         &out_is_view,
+                                                        false,
                                                         true);
 
-  bool int_tensor_only = true;
+  bool has_bool_index = false;
   for (auto& index : transed_index) {
     if (index.dtype() == phi::DataType::BOOL) {
-      int_tensor_only = false;
+      has_bool_index = true;
     }
   }
+  const int index_size = PyTuple_GET_SIZE(index_ptr);
+  const bool is_combined_bool = has_bool_index && index_size > 1;
 
   auto handle_transpose = [&](Tensor& out) {
     if (pos_of_new_dim != 0) {
@@ -1633,7 +1636,8 @@ static PyObject* tensor__getitem_dygraph(TensorObject* self,
       transed_index[0].dtype() == phi::DataType::BOOL) {
     // get value for bool tensor
     int64_t slice_offset = 0;
-    out = getValueForBoolTensor(transed_tensor, transed_index[0], slice_offset);
+    out = getValueForBoolTensor(
+        transed_tensor, transed_index[0], slice_offset, is_combined_bool);
   } else {
     // get value for int tensor
     ParseBoolAndBroadcastIndices(&transed_index);
@@ -1658,7 +1662,14 @@ static PyObject* tensor__getitem_dygraph(TensorObject* self,
     }
 
 #ifdef PADDLE_WITH_CUDA
-    if (transed_tensor.is_gpu() && int_tensor_only) {
+    bool has_empty_index = false;
+    for (const auto& tensor : transed_index) {
+      if (tensor.numel() == 0) {
+        has_empty_index = true;
+        break;
+      }
+    }
+    if (transed_tensor.is_gpu() && !is_combined_bool && !has_empty_index) {
       transed_index = expand_outplace(transed_index);
 
       for (int i = 0; i < pos_of_new_dim; ++i) {
@@ -1693,6 +1704,7 @@ static PyObject* tensor__getitem_dygraph(TensorObject* self,
     } else {
       transed_advanced_index_tensor = build_advanced_index_tensor();
       out = gather_nd_ad_func(transed_tensor, transed_advanced_index_tensor);
+      handle_transpose(out);
       return ToPyObject(out);
     }
 #else

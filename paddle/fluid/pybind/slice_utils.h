@@ -642,14 +642,8 @@ static paddle::Tensor dealWithAdvancedIndex(
     *out_is_view = true;
 #ifdef PADDLE_WITH_CUDA
     // Remove the conditions when all cases are supported.
-    if (tensor.is_gpu() && single_value && int_tensor_only &&
-        *pos_of_new_dim != 0) {
-      transed_tensor = tensor;
-    } else {
-      transed_tensor = transpose_ad_func(tensor, *trans_dim);
-    }
-    // Getitem combine cases
-    if (getitem && tensor.is_gpu() && int_tensor_only && *pos_of_new_dim != 0) {
+    if (tensor.is_gpu() && int_tensor_only && *pos_of_new_dim != 0 &&
+        (single_value || getitem)) {
       transed_tensor = tensor;
     } else {
       transed_tensor = transpose_ad_func(tensor, *trans_dim);
@@ -688,7 +682,8 @@ static std::vector<paddle::Tensor> PrepareIndices(
 
 static paddle::Tensor getValueForBoolTensor(const paddle::Tensor& tensor,
                                             const paddle::Tensor& bool_index,
-                                            const int64_t slice_offset) {
+                                            const int64_t slice_offset,
+                                            const bool is_combined_bool) {
   PADDLE_ENFORCE(bool_index.shape().size() <= tensor.shape().size(),
                  common::errors::InvalidArgument(
                      "The dims of bool index doesn't match indexed array, "
@@ -727,7 +722,7 @@ static paddle::Tensor getValueForBoolTensor(const paddle::Tensor& tensor,
 
   auto bool_2_idx = nonzero_ad_func(bool_index);
 #ifdef PADDLE_WITH_CUDA
-  if (tensor.is_gpu()) {
+  if (tensor.is_gpu() && !is_combined_bool) {
     auto indices = PrepareIndices(tensor, bool_2_idx, bool_index);
     while (indices.size() < static_cast<size_t>(tensor.dims().size())) {
       indices.emplace_back();
