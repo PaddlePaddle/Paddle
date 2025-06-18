@@ -14,7 +14,7 @@
 
 COMMIT_MESSAGE=$(git log -1 --pretty=%B)
 if [[ "$COMMIT_MESSAGE" == *"slice-do"* ]]; then
-    echo "slice-do=true"
-    echo "slice-do=true" >> $GITHUB_OUTPUT
+    echo "slice-check=true"
+    echo "slice-check=true" >> $GITHUB_OUTPUT
 fi
 git checkout test

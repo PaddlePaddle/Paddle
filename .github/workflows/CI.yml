@@ -114,4 +114,4 @@ jobs:
     with:
       can-skip: ${{ needs.build.outputs.can-skip }}
       docker_build_image: ${{ needs.build-docker.outputs.docker_build_image }}
-      slice-do: ${{ needs.clone.outputs.slice-do }}
+      slice-do: ${{ needs.clone.outputs.slice-check }}

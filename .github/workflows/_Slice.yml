@@ -9,7 +9,7 @@ on:
       can-skip:
         type: string
         required: false
-      slice-do:
+      slice-check:
         type: string
         required: false
 
@@ -31,9 +31,9 @@ defaults:
 jobs:
   slice:
     name: Slice test
-    if: ${{ inputs.can-skip != 'true' && inputs.slice-do == 'true' }}
+    if: ${{ inputs.can-skip != 'true' && inputs.slice-check == 'true' }}
     runs-on:
-      group: slice-test
+      group: slice
     steps:
       # - name: Download test script
       #   run: |

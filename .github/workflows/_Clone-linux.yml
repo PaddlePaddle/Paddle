@@ -14,7 +14,7 @@ on:
       can-skip:
         value: ${{ jobs.clone.outputs.can-skip }}
       slice-do:
-        value: ${{ jobs.clone.outputs.slice-do }}
+        value: ${{ jobs.clone.outputs.slice-check }}
 
 permissions: read-all
 
@@ -33,7 +33,7 @@ jobs:
     name: Clone Paddle
     outputs:
       can-skip: ${{ steps.check-bypass.outputs.can-skip }}
-      slice-do: ${{ steps.check-execution.outputs.slice-do }}
+      slice-do: ${{ steps.check-execution.outputs.slice-check }}
 
     if: github.repository_owner == 'PaddlePaddle'
     runs-on:
