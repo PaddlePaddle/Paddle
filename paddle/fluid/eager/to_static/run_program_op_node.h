@@ -23,6 +23,7 @@
 #include "paddle/fluid/framework/tensor_ref_array.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/ir_adaptor/translator/program_translator.h"
+#include "paddle/fluid/pir/transforms/cuda_graph_extract_pass.h"
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
 #include "paddle/fluid/pir/utils/name_analysis.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -33,6 +34,7 @@
 #include "paddle/pir/include/core/builtin_attribute.h"
 #include "paddle/pir/include/core/program.h"
 #include "paddle/pir/include/core/value.h"
+#include "paddle/pir/include/pass/pass_manager.h"
 
 #ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/platform/onednn_helper.h"
@@ -472,6 +474,13 @@ inline void PirRunProgramAPI(
     details::ShareTensorsIntoScopeWithName(x, input_names, global_inner_scope);
     details::ShareTensorsIntoScopeWithName(
         params, param_names, global_inner_scope);
+
+    if (details::is_use_cuda_graph(cuda_graph_state)) {
+      pir::PassManager pass_pm(::pir::IrContext::Instance(), 3);
+      pass_pm.AddPass(pir::CreateCudaGraphExtractPass());
+      pass_pm.Run(forward_program.get());
+    }
+
     // Step 3. create new interpretercore
     auto passed_kernel_program = paddle::framework::ApplyIrPass(
         forward_program.get(), place, no_need_buffer_name_set);
@@ -484,6 +493,7 @@ inline void PirRunProgramAPI(
         global_inner_scope,
         cache_key,
         in_sot_mode);
+    interpreter_core->SetCUDAGraphState(static_cast<uint8_t>(cuda_graph_state));
     // Step 4. get all eager gc vars (skip_names = backward_inputs -
     // no_need_buffers + outputs)
     std::vector<std::string> skip_names;
@@ -508,6 +518,7 @@ inline void PirRunProgramAPI(
     // Step 1. get cache interpretercore
     auto &cached_value = cache.GetMutable(cache_key);
     interpreter_core = cached_value.core_;
+    interpreter_core->SetCUDAGraphState(static_cast<uint8_t>(cuda_graph_state));
     // Step 2. update scope for cache interpretercore
     details::ShareTensorsIntoScopeWithName(x, input_names, global_inner_scope);
     details::ShareTensorsIntoScopeWithName(
