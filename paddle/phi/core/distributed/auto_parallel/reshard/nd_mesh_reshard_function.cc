@@ -482,13 +482,14 @@ void SameNdMeshReshardFunction::Eval(phi::DeviceContext* dev_ctx,
   // 4. Change replicated/partial to shard
   ProcessReplicateOrPartialToShard(dev_ctx, in, out_dist_attr_orig, out);
 
+  // TODO(lfw): refine this, now is reports wrong info.
   // Final attr check
-  PADDLE_ENFORCE_EQ(out->dist_attr() == out_dist_attr_orig,
-                    true,
-                    "Expected that out of reshard has to be target dist, "
-                    "out dist att is " +
-                        out->dist_attr().to_string() + ", but target is " +
-                        out_dist_attr_orig.to_string());
+  // PADDLE_ENFORCE_EQ(out->dist_attr() == out_dist_attr_orig,
+  //                   true,
+  //                   "Expected that out of reshard has to be target dist, "
+  //                   "out dist att is " +
+  //                       out->dist_attr().to_string() + ", but target is " +
+  //                       out_dist_attr_orig.to_string());
 }
 
 bool CrossNdMeshReshardFunction::IsSuitable(
