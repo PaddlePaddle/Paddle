@@ -33,7 +33,7 @@ jobs:
     name: Clone Paddle
     outputs:
       can-skip: ${{ steps.check-bypass.outputs.can-skip }}
-      slice-do: ${{ steps.check-execution.outputs.slice-check }}
+      slice-check: ${{ steps.check-execution.outputs.slice-check }}
 
     if: github.repository_owner == 'PaddlePaddle'
     runs-on:
