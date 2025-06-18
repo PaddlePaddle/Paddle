@@ -140,7 +140,7 @@ jobs:
         if: steps.check-bypass.outputs.can_skip != 'true'
         env:
           home_path: /action-runner
-          bos_file: /action-runner/bos/BosClient.py
+          bos_file: /action-runner/bos_retry/BosClient.py
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           echo "::group::Install bce-python-sdk"
@@ -152,8 +152,8 @@ jobs:
           export SK=paddle
           if [ ! -f "${{ env.bos_file }}" ]; then
             wget -q --no-proxy -O ${{ env.home_path }}/bos_retry.tar.gz https://xly-devops.bj.bcebos.com/home/bos_retry.tar.gz --no-check-certificate
-            mkdir ${{ env.home_path }}/bos
-            tar xf ${{ env.home_path }}/bos_retry.tar.gz -C ${{ env.home_path }}/bos
+            mkdir ${{ env.home_path }}/bos_retry
+            tar xf ${{ env.home_path }}/bos_retry.tar.gz -C ${{ env.home_path }}/bos_retry
           fi
           source /action-runner/unproxy
           cd /
