@@ -37,6 +37,7 @@ class CudaGraphInstruction : public InstructionBase {
   CudaGraphInstruction(size_t id,
                        const phi::Place& place,
                        ::pir::Operation* op,
+                       uint8_t* cuda_graph_state_ref,
                        ValueExecutionInfo* value_exe_info,
                        interpreter::ExecutionConfig execution_config);
 
@@ -55,11 +56,13 @@ class CudaGraphInstruction : public InstructionBase {
   void SetInputHooks(const std::vector<PirHookFunc>& hookfuncs);
 
  private:
-  pir::Operation* op_;
   const phi::Place& place_;
+  pir::Operation* op_;
+  uint8_t* cuda_graph_state_ref_ = nullptr;
 
   std::string name_{"cuda_graph_instruction"};
 
+  std::vector<Variable*> input_vars_;
   std::vector<Variable*> output_vars_;
 
   PirInterpreter* interpreter_ = nullptr;
@@ -67,6 +70,8 @@ class CudaGraphInstruction : public InstructionBase {
   std::vector<std::string> skip_gc_names_;
 
   std::unique_ptr<phi::backends::gpu::CUDAGraph> cuda_graph_ = nullptr;
+  std::vector<phi::DenseTensor> input_tensors_;
+  std::vector<phi::DenseTensor> output_tensors_;
 };
 
 }  // namespace framework

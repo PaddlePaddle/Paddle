@@ -45,34 +45,43 @@ CudaGraphInstruction::CudaGraphInstruction(
     size_t id,
     const phi::Place& place,
     pir::Operation* op,
+    uint8_t* cuda_graph_state_ref,
     ValueExecutionInfo* value_exec_info,
     interpreter::ExecutionConfig execution_config)
     : InstructionBase(id, place),
       op_(op),
       place_(place),
+      cuda_graph_state_ref_(cuda_graph_state_ref),
       name_("cuda_graph_instruction"),
+      input_vars_(),
       output_vars_(),
       interpreter_(nullptr),
       skip_gc_names_() {
   PADDLE_ENFORCE(op->isa<paddle::dialect::CudaGraphOp>(),
                  common::errors::PreconditionNotMet(
                      "CudaGraph instruction only support cuda_graph op"));
-  auto cuda_graph_op = op->dyn_cast<paddle::dialect::CudaGraphOp>();
   op_ = op;
 
   SetKernelType(OpFuncType::kGpuAsync);
   VLOG(6) << "finish process analyse kernel type";
+
+  auto cuda_graph_op = op->dyn_cast<paddle::dialect::CudaGraphOp>();
+
+  std::unordered_map<pir::Value, std::vector<int>> inputs;
+  GetInputIds(op, *value_exec_info, &inputs);
+  const auto outside_inputs =
+      GetExternalInputs(cuda_graph_op.block(), *value_exec_info, &inputs);
+  for (size_t i = 0; i < outside_inputs.size(); ++i) {
+    input_vars_.push_back(value_exec_info->GetScope()->GetVar(
+        value_exec_info->GetValue2VarName().at(outside_inputs.at(i))));
+  }
+  VLOG(6) << "finish process input_vars";
 
   for (size_t i = 0; i < cuda_graph_op.num_results(); ++i) {
     output_vars_.push_back(value_exec_info->GetScope()->GetVar(
         value_exec_info->GetValue2VarName().at(cuda_graph_op.result(i))));
   }
   VLOG(6) << "finish process output_vars";
-
-  std::unordered_map<pir::Value, std::vector<int>> inputs;
-  GetInputIds(op, *value_exec_info, &inputs);
-  auto outside_inputs =
-      GetExternalInputs(cuda_graph_op.block(), *value_exec_info, &inputs);
 
   for (auto& item : inputs) {
     auto& var_vec = item.second;
@@ -159,15 +168,63 @@ void CudaGraphInstruction::SetInputHooks(
 }
 
 void CudaGraphInstruction::Run() {
+  VLOG(0) << "CudaGraphInstruction::Run cuda_graph_state_ref_: "
+          << static_cast<int>(*cuda_graph_state_ref_);
   if (cuda_graph_) {
+    VLOG(4) << "Start replaying cuda graph...";
+    for (size_t i = 0; i < input_vars_.size(); ++i) {
+      if (input_vars_[i]->IsType<phi::DenseTensor>()) {
+        auto* tensor = input_vars_[i]->GetMutable<phi::DenseTensor>();
+        if (tensor->data() != input_tensors_.at(i).data()) {
+          LOG(WARNING) << "The input [" << i
+                       << "] tensor addr for cuda graph is changed. pay "
+                          "attention to this.";
+        }
+      }
+    }
+
     cuda_graph_->Replay();
+
+    // set the output tensors into scope
+    for (size_t i = 0; i < output_vars_.size(); ++i) {
+      *(output_vars_[i]->GetMutable<phi::DenseTensor>()) =
+          output_tensors_.at(i);
+    }
+    VLOG(4) << "Finish replaying cuda graph";
     return;
   }
-  if (false) {
+  if (*cuda_graph_state_ref_ == 2) {
+    VLOG(4) << "Start capturing cuda graph ...";
     platform::BeginCUDAGraphCapture(place_, cudaStreamCaptureModeRelaxed);
+
+    auto RecordTensorsForReplay = [&](const std::vector<Variable*>& vars) {
+      std::vector<phi::DenseTensor> record_tensors;
+      record_tensors.reserve(vars.size());
+      for (auto& var : vars) {
+        auto& tensor = var->Get<phi::DenseTensor>();
+        const auto& holder = tensor.Holder();
+        // Note: new_holder only record the memory address of the tensor for
+        // cuda graph, original tensor memory will be freed to allocator after
+        // graph capture.
+        auto new_holder = std::make_shared<phi::Allocation>(
+            holder->ptr(), holder->size(), holder->place());
+        record_tensors.emplace_back(new_holder, tensor.meta());
+      }
+      return record_tensors;
+    };
+
+    // record the input tensors for replay
+    input_tensors_ = RecordTensorsForReplay(input_vars_);
+
     interpreter_->Run({}, false);
+
+    // record the output tensors for replay
+    output_tensors_ = RecordTensorsForReplay(output_vars_);
+
     cuda_graph_ = platform::EndCUDAGraphCapture();
+    VLOG(4) << "Finish capturing cuda graph";
   } else {
+    VLOG(4) << "Run interpreter without cuda graph";
     interpreter_->Run({}, false);
   }
 }

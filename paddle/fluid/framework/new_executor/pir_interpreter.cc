@@ -879,8 +879,13 @@ void PirInterpreter::BuildInstruction() {
         CREATE_INSTR(SelectOutputInstruction);
 #ifdef PADDLE_WITH_CUDA
       } else if (op.isa<paddle::dialect::CudaGraphOp>()) {
-        auto cuda_graph_instr_ptr = std::make_unique<CudaGraphInstruction>(
-            op_idx++, place_, &op, value_exe_info_.get(), execution_config_);
+        auto cuda_graph_instr_ptr =
+            std::make_unique<CudaGraphInstruction>(op_idx++,
+                                                   place_,
+                                                   &op,
+                                                   &cuda_graph_state_,
+                                                   value_exe_info_.get(),
+                                                   execution_config_);
         cuda_graph_instr_ptr->SetOutputHooks(pir_output_hookfuncs_);
         cuda_graph_instr_ptr->SetInputHooks(pir_input_hookfuncs_);
         vec_instruction_base_.emplace_back(std::move(cuda_graph_instr_ptr));
