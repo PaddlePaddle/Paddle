@@ -440,13 +440,13 @@ inline void PirRunProgramAPI(
   // const auto no_need_buffer_names =
   //     details::GetNameFromValue(no_need_buffer_values);
 
-  auto input_names =
+  const auto &input_names =
       PADDLE_GET_CONST(std::vector<std::string>, attrs.at("fx_names"));
-  auto param_names =
+  const auto &param_names =
       PADDLE_GET_CONST(std::vector<std::string>, attrs.at("fp_names"));
-  auto output_names =
+  const auto &output_names =
       PADDLE_GET_CONST(std::vector<std::string>, attrs.at("fo_names"));
-  auto no_need_buffer_names = PADDLE_GET_CONST(
+  const auto &no_need_buffer_names = PADDLE_GET_CONST(
       std::vector<std::string>, attrs.at("no_need_buffers_names"));
 
   std::shared_ptr<::pir::Program> forward_program = PADDLE_GET_CONST(
@@ -968,15 +968,15 @@ inline void PirRunProgramGradAPI(
   // details::GetNameFromValue(x_grad_values);
   // const auto &p_grad_names =
   // details::GetNameFromValue(p_grad_values);
-  auto input_names =
+  const auto &input_names =
       PADDLE_GET_CONST(std::vector<std::string>, attrs.at("bx_names"));
-  auto parameter_names =
+  const auto &parameter_names =
       PADDLE_GET_CONST(std::vector<std::string>, attrs.at("bp_names"));
-  auto output_grad_names =
+  const auto &output_grad_names =
       PADDLE_GET_CONST(std::vector<std::string>, attrs.at("bo_g_names"));
-  auto x_grad_names =
+  const auto &x_grad_names =
       PADDLE_GET_CONST(std::vector<std::string>, attrs.at("bx_g_names"));
-  auto p_grad_names =
+  const auto &p_grad_names =
       PADDLE_GET_CONST(std::vector<std::string>, attrs.at("bp_g_names"));
 
   details::Trans2ContiguousTensorsInplace(out_grad);
