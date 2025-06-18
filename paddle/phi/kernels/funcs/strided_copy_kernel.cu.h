@@ -34,7 +34,7 @@ __global__ void Contiguous2StridedCaseOneFunc(
     phi::Array<int64_t, phi::DDim::kMaxRank + 1> output_stride,
     phi::Array<int64_t, 6> dims,
     const int64_t x_max) {
-  int64_t x = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t x = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
   if (x < x_max) {
     int64_t input_offset = (blockIdx.z * gridDim.y + blockIdx.y) * x_max + x;
     int64_t output_offset = 0;
@@ -714,7 +714,7 @@ void StrideCopyDiffDimKernel(
     const phi::Array<int64_t, phi::DDim::kMaxRank + 1>& output_stride,
     const phi::Array<int64_t, phi::DDim::kMaxRank + 1>& output_dims,
     int rank,
-    int numel) {
+    int64_t numel) {
   if (LaunchContiguous2StridedCaseZeroKernel<T, Context>(dev_ctx,
                                                          input_data,
                                                          output_data,

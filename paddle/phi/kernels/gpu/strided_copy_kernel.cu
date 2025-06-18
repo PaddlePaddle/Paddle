@@ -719,7 +719,7 @@ void StridedCopyKernel(const Context& dev_ctx,
   meta.offset = offset;
   out->set_meta(meta);
   int rank = out->dims().size();
-  auto numel = out->numel();
+  int64_t numel = out->numel();
   T* output_data = out->data<T>();
   PADDLE_ENFORCE_NOT_NULL(output_data,
                           common::errors::InvalidArgument(

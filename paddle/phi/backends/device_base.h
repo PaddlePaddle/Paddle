@@ -34,6 +34,13 @@ struct DeviceProp {
 
   DeviceProp() = default;
 
+#ifdef major
+#undef major
+#endif
+#ifdef minor
+#undef minor
+#endif
+
   DeviceProp(const std::string& name_,
              int major_,
              int minor_,
