@@ -2017,7 +2017,7 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
         }
 #ifdef PADDLE_WITH_CUDA
         // TODO(czy): remove in the future
-        if (transed_sub_tensor.is_gpu() && single_value && int_tensor_only) {
+        if (transed_sub_tensor.is_gpu() && int_tensor_only) {
           transed_index = expand_outplace(transed_index);
           for (int i = 0; i < pos_of_new_dim; ++i) {
             transed_index.insert(

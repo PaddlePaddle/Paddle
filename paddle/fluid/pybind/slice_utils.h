@@ -643,7 +643,7 @@ static paddle::Tensor dealWithAdvancedIndex(
 #ifdef PADDLE_WITH_CUDA
     // Remove the conditions when all cases are supported.
     // Getitem combine cases to be added.
-    if (tensor.is_gpu() && single_value && int_tensor_only &&
+    if (tensor.is_gpu() && is_for_setitem && int_tensor_only &&
         *pos_of_new_dim != 0) {
       transed_tensor = tensor;
     } else {
