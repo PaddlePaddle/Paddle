@@ -27,6 +27,7 @@
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/common_infer_shape_functions.h"
+#include "paddle/phi/kernels/funcs/slice_utils.h"
 #include "paddle/phi/kernels/funcs/strided_slice.h"
 #include "pybind11/numpy.h"
 #include "pybind11/pybind11.h"
@@ -553,10 +554,15 @@ static paddle::Tensor getTensorWithBasicIndexing(
 
 inline static bool MaskedFillDispatching(
     const paddle::Tensor& tensor,
-    const paddle::Tensor& value,
     const std::vector<paddle::Tensor>& indices,
-    paddle::Tensor* mask_tensor) {
-  if (indices.size() != 1 || value.numel() != 1) return false;
+    paddle::Tensor* mask_tensor,
+    paddle::Tensor* value_tensor) {
+  bool can_expand = phi::funcs::CheckIsDimsMatchBool(
+      static_cast<phi::DenseTensor*>(tensor.impl().get())->dims(),
+      static_cast<phi::DenseTensor*>(value_tensor->impl().get())->dims());
+  if (indices.size() != 1 || !(value_tensor->numel() == 1 || can_expand))
+    return false;
+
   int64_t num_ind = 0;
   if ((indices)[0].dtype() != phi::DataType::BOOL) {
     return false;
@@ -566,6 +572,10 @@ inline static bool MaskedFillDispatching(
   *mask_tensor = (indices)[0];
   for (size_t i = num_ind; i < tensor.shape().size(); i++) {
     *mask_tensor = unsqueeze_ad_func(*mask_tensor, {-1});
+  }
+  if (can_expand && value_tensor->numel() != 1) {
+    *value_tensor = expand_ad_func(*value_tensor,
+                                   common::vectorize<int64_t>(tensor.dims()));
   }
   return true;
 }
@@ -580,14 +590,20 @@ static paddle::Tensor dealWithAdvancedIndex(
     int* pos_of_new_dim,
     int* rank_of_new_dim,
     std::vector<int>* trans_dim,
-    bool* out_is_view) {
+    bool* out_is_view,
+    bool single_value = false) {
   int p = 0;
+  bool int_tensor_only = true;
   for (size_t i = 0; i < advanced_index_dim->size(); ++i) {
     auto index_dim = (*advanced_index_dim)[i];
     if (index_dim != -1) {
       // size of advanced_index is same to number of non -1 element in
       // advanced_index_dim
       auto index = (*advanced_index)[p++];
+      // check if the index has bool element. Remove later.
+      if (index.dtype() == phi::DataType::BOOL) {
+        int_tensor_only = false;
+      }
 
       if (index_dim == 0) {
         // case 1: advanced indices at axis 0, the new dim will be at first.
@@ -624,7 +640,18 @@ static paddle::Tensor dealWithAdvancedIndex(
     transed_tensor = tensor;
   } else {
     *out_is_view = true;
+#ifdef PADDLE_WITH_CUDA
+    // Remove the conditions when all cases are supported.
+    // Getitem combine cases to be added.
+    if (tensor.is_gpu() && single_value && int_tensor_only &&
+        *pos_of_new_dim != 0) {
+      transed_tensor = tensor;
+    } else {
+      transed_tensor = transpose_ad_func(tensor, *trans_dim);
+    }
+#else
     transed_tensor = transpose_ad_func(tensor, *trans_dim);
+#endif
   }
 
   if (is_for_setitem) {

@@ -96,7 +96,7 @@ def not_to_static(func=None):
 
 
 def unified(
-    fn: Callable[_InputT, _RetT] | None = None,
+    fn: Callable[_InputT, _RetT] | type[paddle.nn.Layer] | None = None,
     *,
     for_sot: bool = True,
     for_ast: bool = True,

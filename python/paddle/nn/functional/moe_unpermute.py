@@ -24,23 +24,23 @@ if TYPE_CHECKING:
 
 
 def moe_unpermute(
-    unzipped_tokens: Tensor,
+    hidden_states_unzipped: Tensor,
     zipped_expertwise_rowmap: Tensor,
     expert_routemap_topk: Tensor,
-    unzipped_token_probs: Tensor,
+    token_prob_unzipped: Tensor,
     total_zipped_tokens: int,
     num_experts: int,
-    MP: bool = True,
+    use_mix_precision: bool = True,
     name: str | None = None,
-):
+) -> tuple[Tensor, Tensor]:
     if in_dynamic_or_pir_mode():
         zipped_tokens, zipped_probs_topk = _C_ops.moe_unpermute(
-            unzipped_tokens,
+            hidden_states_unzipped,
             zipped_expertwise_rowmap,
             expert_routemap_topk,
-            unzipped_token_probs,
+            token_prob_unzipped,
             total_zipped_tokens,
             num_experts,
-            MP,
+            use_mix_precision,
         )
         return (zipped_tokens, zipped_probs_topk)
