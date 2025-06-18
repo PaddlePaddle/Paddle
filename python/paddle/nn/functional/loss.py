@@ -3358,81 +3358,28 @@ def sigmoid_focal_loss(
                 f"Expected zero or one dimension of normalizer in sigmoid_focal_loss but got {normalizer_dims}."
             )
 
-    if in_dynamic_or_pir_mode():
-        place = _current_expected_place()
-        one = _C_ops.full(paddle.shape(logit), 1.0, logit.dtype, place)
+    pred = paddle.nn.functional.sigmoid(logit)
 
-        loss = _C_ops.sigmoid_cross_entropy_with_logits(
-            logit, label, None, False, -100
-        )
+    positive_loss = (
+        -label * alpha * (paddle.pow(1.0 - pred, gamma)) * paddle.log(pred)
+    )
+    negative_loss = (
+        -(1.0 - label)
+        * (1.0 - alpha)
+        * paddle.pow(pred, gamma)
+        * paddle.log(1 - pred)
+    )
+    loss = positive_loss + negative_loss
 
-        pred = _C_ops.sigmoid(logit)
+    if normalizer is not None:
+        loss = paddle.divide(loss, normalizer)
 
-        p_t = _C_ops.add(
-            _C_ops.multiply(pred, label),
-            _C_ops.multiply(
-                _C_ops.subtract(one, pred), _C_ops.subtract(one, label)
-            ),
-        )
+    if reduction == "sum":
+        return paddle.sum(loss)
+    elif reduction == "mean":
+        return paddle.mean(loss)
 
-        alpha = paddle.to_tensor(alpha, dtype=loss.dtype)
-        alpha_t = _C_ops.add(
-            _C_ops.multiply(alpha, label),
-            _C_ops.multiply(
-                _C_ops.subtract(one, alpha), _C_ops.subtract(one, label)
-            ),
-        )
-        loss = _C_ops.multiply(alpha_t, loss)
-
-        if in_dynamic_mode():
-            gamma = paddle.to_tensor(gamma, dtype=loss.dtype)
-        gamma_t = _C_ops.pow(_C_ops.subtract(one, p_t), gamma)
-        loss = _C_ops.multiply(gamma_t, loss)
-
-        if normalizer is not None:
-            loss = _C_ops.divide(loss, normalizer)
-
-        if reduction == "sum":
-            return _C_ops.sum(loss, [], None, False)
-        elif reduction == "mean":
-            return _C_ops.mean_all(loss)
-
-        return loss
-
-    else:
-        check_variable_and_dtype(
-            logit, 'logit', ['float32', 'float64'], 'sigmoid_focal_loss'
-        )
-        check_variable_and_dtype(
-            label, 'label', ['float32', 'float64'], 'sigmoid_focal_loss'
-        )
-
-        bce_name = None
-        if reduction == 'none' and normalizer is None:
-            bce_name = name
-        loss = paddle.nn.functional.binary_cross_entropy_with_logits(
-            logit, label, None, reduction='none', name=bce_name
-        )
-
-        pred = paddle.nn.functional.sigmoid(logit)
-        p_t = pred * label + (1 - pred) * (1 - label)
-
-        alpha_t = alpha * label + (1 - alpha) * (1 - label)
-        loss = paddle.multiply(alpha_t, loss)
-
-        gamma_t = paddle.pow((1 - p_t), gamma)
-        loss = paddle.multiply(gamma_t, loss)
-
-        if normalizer is not None:
-            normalizer_name = name if reduction == 'none' else None
-            loss = paddle.divide(loss, normalizer, name=normalizer_name)
-
-        if reduction == 'mean':
-            loss = paddle.mean(loss, name=name)
-        elif reduction == 'sum':
-            loss = paddle.sum(loss, name=name)
-
-        return loss
+    return loss
 
 
 def multi_label_soft_margin_loss(

@@ -92,21 +92,13 @@ def test_dygraph(
 def calc_sigmoid_focal_loss(
     logit_np, label_np, normalizer_np, alpha=0.25, gamma=2.0, reduction='sum'
 ):
-    loss = (
-        np.maximum(logit_np, 0)
-        - logit_np * label_np
-        + np.log(1 + np.exp(-np.abs(logit_np)))
-    )
-
     pred = 1 / (1 + np.exp(-logit_np))
-    p_t = pred * label_np + (1 - pred) * (1 - label_np)
 
-    if alpha is not None:
-        alpha_t = alpha * label_np + (1 - alpha) * (1 - label_np)
-        loss = alpha_t * loss
-
-    if gamma is not None:
-        loss = loss * ((1 - p_t) ** gamma)
+    positive_loss = -label_np * alpha * ((1.0 - pred) ** gamma) * np.log(pred)
+    negative_loss = (
+        -(1.0 - label_np) * (1.0 - alpha) * (pred**gamma) * np.log(1 - pred)
+    )
+    loss = positive_loss + negative_loss
 
     if normalizer_np is not None:
         loss = loss / normalizer_np
@@ -198,6 +190,73 @@ class TestSigmoidFocalLoss(unittest.TestCase):
             reduction="unsupported reduction",
         )
         paddle.enable_static()
+
+
+class TestSigmoidFocalLossFloatLabel(unittest.TestCase):
+
+    def test_SigmoidFocalLoss(self):
+        logit_np = np.random.uniform(0.1, 0.8, size=(2, 3, 4, 10)).astype(
+            np.float64
+        )
+        label_np = np.random.uniform(0, 1, size=(2, 3, 4, 10)).astype(
+            np.float64
+        )
+        normalizer_nps = [
+            np.asarray([np.sum(label_np > 0)], dtype=label_np.dtype),
+            None,
+        ]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not base.core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
+        if base.core.is_compiled_with_cuda():
+            places.append(base.CUDAPlace(0))
+        reductions = ['sum', 'mean', 'none']
+        alphas = [0.25, 0.5]
+        gammas = [3, 0.0]
+        for place in places:
+            for reduction in reductions:
+                for alpha in alphas:
+                    for gamma in gammas:
+                        for normalizer_np in normalizer_nps:
+                            (static_result,) = test_static(
+                                place,
+                                logit_np,
+                                label_np,
+                                normalizer_np,
+                                alpha,
+                                gamma,
+                                reduction,
+                            )
+                            dy_result = test_dygraph(
+                                place,
+                                logit_np,
+                                label_np,
+                                normalizer_np,
+                                alpha,
+                                gamma,
+                                reduction,
+                            )
+                            expected = calc_sigmoid_focal_loss(
+                                logit_np,
+                                label_np,
+                                normalizer_np,
+                                alpha,
+                                gamma,
+                                reduction,
+                            )
+                            np.testing.assert_allclose(
+                                static_result, expected, rtol=1e-05
+                            )
+                            np.testing.assert_allclose(
+                                static_result, dy_result, rtol=1e-05
+                            )
+                            np.testing.assert_allclose(
+                                dy_result, expected, rtol=1e-05
+                            )
 
 
 if __name__ == "__main__":
