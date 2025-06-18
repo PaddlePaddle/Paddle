@@ -22,7 +22,6 @@
 #include "paddle/phi/kernels/funcs/stride_utils.h"
 
 namespace phi {
-
 template <typename T, typename IndexT = int>
 void GPUIndexElementwisePutKernel(const phi::GPUContext& ctx,
                                   const DenseTensor& input,
