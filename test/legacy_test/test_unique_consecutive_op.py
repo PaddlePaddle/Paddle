@@ -371,6 +371,7 @@ class TestUniqueConsecutiveEmptyInput(OpTest):
     def test_check_output(self):
         self.check_output(check_pir=True, check_symbol_infer=False)
 
+
 class TestUniqueConsecutiveZeroSize(TestUniqueConsecutiveOp):
     """ZeroSize input"""
 
@@ -402,6 +403,7 @@ class TestUniqueConsecutiveZeroSize(TestUniqueConsecutiveOp):
         }
         self.python_out_sig = ["Out", "Index", "Counts"]
         self.outputs = {'Out': result, 'Index': inverse, 'Counts': counts}
+
 
 if __name__ == "__main__":
     paddle.enable_static()

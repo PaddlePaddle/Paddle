@@ -4379,7 +4379,8 @@ bool UniqueConsecutiveOpInferSymbolicShape(
         op->result(0), symbol::TensorShapeOrDataDimExprs{out_dims});
     infer_context->SetShapeOrDataForValue(
         op->result(1),
-        return_inverse ? symbol::TensorShapeOrDataDimExprs{inverse_dims} : empty);
+        return_inverse ? symbol::TensorShapeOrDataDimExprs{inverse_dims}
+                       : empty);
     infer_context->SetShapeOrDataForValue(
         op->result(2),
         return_counts ? symbol::TensorShapeOrDataDimExprs{counts_dims} : empty);

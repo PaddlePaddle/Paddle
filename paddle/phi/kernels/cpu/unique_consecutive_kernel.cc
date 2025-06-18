@@ -42,6 +42,7 @@ void UniqueConsecutiveKernel(const Context& dev_ctx,
     if (return_counts) {
       dev_ctx.Alloc(counts, dtype);
     }
+
     return;
   }
   if (dtype == phi::DataType::INT32) {
