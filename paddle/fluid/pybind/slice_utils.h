@@ -582,6 +582,7 @@ static paddle::Tensor dealWithAdvancedIndex(
     std::vector<int>* trans_dim,
     bool* out_is_view,
     bool getitem = false) {
+  bool int_tensor_only = true;
   int p = 0;
   for (size_t i = 0; i < advanced_index_dim->size(); ++i) {
     auto index_dim = (*advanced_index_dim)[i];
@@ -589,6 +590,9 @@ static paddle::Tensor dealWithAdvancedIndex(
       // size of advanced_index is same to number of non -1 element in
       // advanced_index_dim
       auto index = (*advanced_index)[p++];
+      if (index.dtype() == phi::DataType::BOOL) {
+        int_tensor_only = false;
+      }
 
       if (index_dim == 0) {
         // case 1: advanced indices at axis 0, the new dim will be at first.
@@ -627,7 +631,7 @@ static paddle::Tensor dealWithAdvancedIndex(
     *out_is_view = true;
 
 #ifdef PADDLE_WITH_CUDA
-    if (getitem && tensor.is_gpu() && *pos_of_new_dim != 0) {
+    if (getitem && tensor.is_gpu() && int_tensor_only && *pos_of_new_dim != 0) {
       transed_tensor = tensor;
     } else {
       transed_tensor = transpose_ad_func(tensor, *trans_dim);

@@ -1602,6 +1602,33 @@ static PyObject* tensor__getitem_dygraph(TensorObject* self,
                                                         &trans_dim,
                                                         &out_is_view,
                                                         true);
+
+  bool int_tensor_only = true;
+  for (auto& index : transed_index) {
+    if (index.dtype() == phi::DataType::BOOL) {
+      int_tensor_only = false;
+    }
+  }
+
+  auto handle_transpose = [&](Tensor& out) {
+    if (pos_of_new_dim != 0) {
+      std::vector<int> perm(out.shape().size(), 0);
+      int tmp1 = rank_of_new_dim, tmp2 = 0,
+          tmp3 = pos_of_new_dim + rank_of_new_dim;
+      for (int i = 0; i < static_cast<int>(out.shape().size()); ++i) {
+        if (i < pos_of_new_dim) {
+          perm[i] = tmp1++;
+        } else if (i >= pos_of_new_dim &&
+                   i < pos_of_new_dim + rank_of_new_dim) {
+          perm[i] = tmp2++;
+        } else {
+          perm[i] = tmp3++;
+        }
+      }
+      out = transpose_ad_func(out, perm);
+    }
+  };
+
   if (transed_index.size() == 1 &&
       transed_index[0].dtype() == phi::DataType::BOOL) {
     // get value for bool tensor
@@ -1621,25 +1648,6 @@ static PyObject* tensor__getitem_dygraph(TensorObject* self,
       }
     };
 
-    auto handle_transpose = [&](Tensor& out) {
-      if (pos_of_new_dim != 0) {
-        std::vector<int> perm(out.shape().size(), 0);
-        int tmp1 = rank_of_new_dim, tmp2 = 0,
-            tmp3 = pos_of_new_dim + rank_of_new_dim;
-        for (int i = 0; i < static_cast<int>(out.shape().size()); ++i) {
-          if (i < pos_of_new_dim) {
-            perm[i] = tmp1++;
-          } else if (i >= pos_of_new_dim &&
-                     i < pos_of_new_dim + rank_of_new_dim) {
-            perm[i] = tmp2++;
-          } else {
-            perm[i] = tmp3++;
-          }
-        }
-        out = transpose_ad_func(out, perm);
-      }
-    };
-
     paddle::Tensor transed_advanced_index_tensor;
     const phi::distributed::ProcessMesh* mesh = nullptr;
 
@@ -1650,7 +1658,7 @@ static PyObject* tensor__getitem_dygraph(TensorObject* self,
     }
 
 #ifdef PADDLE_WITH_CUDA
-    if (transed_tensor.is_gpu()) {
+    if (transed_tensor.is_gpu() && int_tensor_only) {
       transed_index = expand_outplace(transed_index);
 
       for (int i = 0; i < pos_of_new_dim; ++i) {
@@ -1681,17 +1689,21 @@ static PyObject* tensor__getitem_dygraph(TensorObject* self,
                                           slice_offset,
                                           accumulate);
       out_is_view = false;
+      return ToPyObject(out);
     } else {
       transed_advanced_index_tensor = build_advanced_index_tensor();
       out = gather_nd_ad_func(transed_tensor, transed_advanced_index_tensor);
-      handle_transpose(out);
+      return ToPyObject(out);
     }
 #else
     transed_advanced_index_tensor = build_advanced_index_tensor();
     out = gather_nd_ad_func(transed_tensor, transed_advanced_index_tensor);
     handle_transpose(out);
+    return ToPyObject(out);
 #endif
   }
+
+  handle_transpose(out);
   return ToPyObject(out);
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
