@@ -26,6 +26,7 @@ from .envs import (  # noqa: F401
     ENV_SOT_LOG_LEVEL,
     ENV_SOT_SERIALIZE_INFO,
     ENV_SOT_TRACE_NUMPY,
+    ENV_SOT_UNSAFE_CACHE_FASTPATH,
     ENV_SOT_WITH_CONTROL_FLOW,
     ENV_STRICT_MODE,
     PEP508LikeEnvironmentVariable,
