@@ -420,7 +420,7 @@ def stft(
     norm = 'ortho' if normalized else 'backward'
 
     if onesided is None:
-        onesided = not is_complex(x)
+        onesided = not is_complex(x_frames)
 
     if is_complex(x_frames):
         assert (
