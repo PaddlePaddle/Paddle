@@ -134,6 +134,10 @@ jobs:
           source ${{ github.workspace }}/../../../proxy
           apt install zstd -y
           bash ${ci_scripts}/run_setup.sh bdist_wheel
+          EXCODE=$?
+          if [ ${EXCODE} -ne 0 ]; then
+            echo "::error:: Build failed"
+          fi
           '
 
       - name: Upload build.tar.gz and paddle_whl to bos
