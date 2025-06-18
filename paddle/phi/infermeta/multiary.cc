@@ -1178,13 +1178,13 @@ void BroadcastTensorsInferMeta(const std::vector<const MetaTensor*>& x,
     // Loop axes in reverse order,
     // For each axis, take the maximum as target size
     // Fill size = 1 if shape vector exhausts
-    int target_dim_size = 1;
+    int64_t target_dim_size = 1;
     for (const auto& input_ddim : input_dims) {
       // Reversed order
       int axis = static_cast<int>(input_ddim.size()) - index - 1;
-      int dim_size = 1;
+      int64_t dim_size = 1;
       if (axis >= 0) {
-        dim_size = static_cast<int>(input_ddim[axis]);
+        dim_size = static_cast<int64_t>(input_ddim[axis]);
       }
 
       if (target_dim_size != 1 && dim_size != 1 &&
