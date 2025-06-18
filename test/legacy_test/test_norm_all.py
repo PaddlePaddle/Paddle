@@ -1614,6 +1614,73 @@ class API_NormTest(unittest.TestCase):
             )
 
 
+class API_NormTest_ZeroSize(unittest.TestCase):
+    def check_linalg_norm_dygraph_and_grad(
+        self, p, axis, shape_x, dtype, keep_dim, check_dim=False
+    ):
+        x_numpy = (np.random.random(shape_x) + 1.0).astype(dtype)
+        expected_result = np_linalg_norm(
+            x_numpy, porder=p, axis=axis, keepdims=keep_dim
+        )
+        x_paddle = paddle.to_tensor(x_numpy)
+        x_paddle.stop_gradient = False
+        result1 = paddle.linalg.norm(
+            x=x_paddle, p=p, axis=axis, keepdim=keep_dim
+        )
+        result = result1.numpy()
+        np.testing.assert_allclose(
+            result, expected_result, rtol=1e-6, atol=1e-8
+        )
+        if keep_dim and check_dim:
+            np.testing.assert_equal(result.shape, expected_result.shape)
+        loss = paddle.sum(result1)
+        loss.backward()
+        np.testing.assert_equal(x_paddle.grad.shape, x_paddle.shape)
+
+    def check_linalg_vector_dygraph_and_grad(
+        self, p, axis, shape_x, dtype, keep_dim, check_dim=False
+    ):
+        x_numpy = np.array(np.random.random(shape_x) + 1.0).astype(dtype)
+        expected_result = np_linalg_vector_norm(
+            x_numpy, porder=p, axis=axis, keepdims=keep_dim
+        )
+        x_paddle = paddle.to_tensor(x_numpy)
+        x_paddle.stop_gradient = False
+        result1 = paddle.linalg.vector_norm(
+            x=x_paddle, p=p, axis=axis, keepdim=keep_dim
+        )
+        result = result1.numpy()
+        np.testing.assert_allclose(
+            result, expected_result, rtol=1e-6, atol=1e-8
+        )
+        if keep_dim and check_dim:
+            np.testing.assert_equal(result.shape, expected_result.shape)
+        loss = paddle.sum(result1)
+        loss.backward()
+        np.testing.assert_equal(x_paddle.grad.shape, x_paddle.shape)
+
+    def test_dygraph(self):
+        paddle.disable_static()
+        keep_dims = {False, True}
+        for keep in keep_dims:
+            self.check_linalg_norm_dygraph_and_grad(
+                p=1,
+                axis=[0, 1],
+                shape_x=[0, 3, 4],
+                dtype="float64",
+                keep_dim=keep,
+                check_dim=True,
+            )
+
+            self.check_linalg_vector_dygraph_and_grad(
+                p=np.inf,
+                axis=[1],
+                shape_x=[0, 3, 4],
+                dtype="float32",
+                keep_dim=keep,
+            )
+
+
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()

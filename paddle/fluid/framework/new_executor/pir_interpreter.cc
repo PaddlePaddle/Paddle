@@ -202,8 +202,6 @@ PirInterpreter::PirInterpreter(const phi::Place& place,
     return lhs_scheduling_priority > rhs_scheduling_priority;
   };
 
-  PrepareForCUDAGraphCapture();
-
   value_exe_info_ = std::make_shared<ValueExecutionInfo>(InnerScope());
 
   std::stringstream ss;
@@ -292,8 +290,6 @@ PirInterpreter::PirInterpreter(
     }
     return lhs_scheduling_priority > rhs_scheduling_priority;
   };
-
-  PrepareForCUDAGraphCapture();
 
   std::stringstream ss;
   ss << this
@@ -1477,7 +1473,6 @@ paddle::framework::FetchList PirInterpreter::Run(
   };
 
   SetDeviceId(place_);
-  CheckCUDAGraphBeforeRun(feed_names);
 
 #ifdef PADDLE_WITH_DNNL
   platform::AttachPointerHashToMKLDNNKey(this, place_);
@@ -1557,7 +1552,6 @@ FetchList PirInterpreter::Run(const std::vector<std::string>& feed_names,
   }
 
   SetDeviceId(place_);
-  CheckCUDAGraphBeforeRun(feed_names);
 
 #ifdef PADDLE_WITH_DNNL
   platform::AttachPointerHashToMKLDNNKey(this, place_);

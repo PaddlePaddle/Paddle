@@ -243,5 +243,67 @@ class TestPoissonNLLLossSumReductionCase(TestPoissonNLLLossBasicCase):
         self.test_dynamic_case(reduction="sum")
 
 
+class TestPoissonNLLLossCase_ZeroSize(unittest.TestCase):
+    def init_shape(self):
+        self.shape = [0, 2]
+
+    def setUp(self, dtype="float32"):
+        self.init_shape()
+        self.dtype = dtype
+        self.input_np = np.random.random(self.shape).astype(self.dtype)
+        self.label_np = np.random.random(self.shape).astype(self.dtype)
+        self.place = (
+            paddle.CUDAPlace(0)
+            if core.is_compiled_with_cuda()
+            else paddle.CPUPlace()
+        )
+
+    def _test_dynamic_case_and_grad(
+        self,
+        dtype="float32",
+        log_input=True,
+        full=False,
+        epsilon=1e-8,
+        reduction="mean",
+    ):
+        self.setUp(dtype)
+        paddle.disable_static(self.place)
+
+        input_x = paddle.to_tensor(self.input_np)
+        input_x.stop_gradient = False
+        label = paddle.to_tensor(self.label_np)
+        out_ref = ref_poisson_nll_loss(
+            self.input_np,
+            self.label_np,
+            log_input=log_input,
+            full=full,
+            epsilon=epsilon,
+            reduction=reduction,
+        )
+        out1 = F.poisson_nll_loss(
+            input_x,
+            label,
+            log_input=log_input,
+            full=full,
+            epsilon=epsilon,
+            reduction=reduction,
+        )
+
+        np.allclose(out_ref, out1.numpy(), rtol=1e-5)
+
+        loss = paddle.sum(out1)
+        loss.backward()
+        np.testing.assert_allclose(input_x.grad.shape, input_x.shape)
+        paddle.enable_static()
+
+    def test_api(self):
+        self._test_dynamic_case_and_grad(reduction="sum")
+
+
+class TestPoissonNLLLossCase_ZeroSize2(TestPoissonNLLLossCase_ZeroSize):
+    def init_shape(self):
+        self.shape = [0, 0]
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -40,11 +40,13 @@ class TestSimpleRNNCell(unittest.TestCase):
 
         mp = paddle.static.Program()
         sp = paddle.static.Program()
-        with paddle.base.unique_name.guard():
-            with paddle.static.program_guard(mp, sp):
-                rnn2 = paddle.nn.SimpleRNNCell(
-                    16, 32, bias_ih_attr=self.bias, bias_hh_attr=self.bias
-                )
+        with (
+            paddle.base.unique_name.guard(),
+            paddle.static.program_guard(mp, sp),
+        ):
+            rnn2 = paddle.nn.SimpleRNNCell(
+                16, 32, bias_ih_attr=self.bias, bias_hh_attr=self.bias
+            )
 
         place = self.place
         exe = paddle.static.Executor(place)
@@ -58,19 +60,21 @@ class TestSimpleRNNCell(unittest.TestCase):
 
         y1, h1 = rnn1(x, prev_h)
 
-        with paddle.base.unique_name.guard():
-            with paddle.static.program_guard(mp, sp):
-                x_data = paddle.static.data(
-                    "input",
-                    [-1, 16],
-                    dtype=paddle.framework.get_default_dtype(),
-                )
-                init_h = paddle.static.data(
-                    "init_h",
-                    [-1, 32],
-                    dtype=paddle.framework.get_default_dtype(),
-                )
-                y, h = rnn2(x_data, init_h)
+        with (
+            paddle.base.unique_name.guard(),
+            paddle.static.program_guard(mp, sp),
+        ):
+            x_data = paddle.static.data(
+                "input",
+                [-1, 16],
+                dtype=paddle.framework.get_default_dtype(),
+            )
+            init_h = paddle.static.data(
+                "init_h",
+                [-1, 32],
+                dtype=paddle.framework.get_default_dtype(),
+            )
+            y, h = rnn2(x_data, init_h)
 
         feed_dict = {x_data.name: x, init_h.name: prev_h}
         with paddle.static.scope_guard(scope):
@@ -83,11 +87,13 @@ class TestSimpleRNNCell(unittest.TestCase):
 
         mp = paddle.static.Program()
         sp = paddle.static.Program()
-        with paddle.base.unique_name.guard():
-            with paddle.static.program_guard(mp, sp):
-                rnn2 = paddle.nn.SimpleRNNCell(
-                    16, 32, bias_ih_attr=self.bias, bias_hh_attr=self.bias
-                )
+        with (
+            paddle.base.unique_name.guard(),
+            paddle.static.program_guard(mp, sp),
+        ):
+            rnn2 = paddle.nn.SimpleRNNCell(
+                16, 32, bias_ih_attr=self.bias, bias_hh_attr=self.bias
+            )
 
         place = self.place
         exe = paddle.static.Executor(place)
@@ -100,14 +106,16 @@ class TestSimpleRNNCell(unittest.TestCase):
 
         y1, h1 = rnn1(x)
 
-        with paddle.base.unique_name.guard():
-            with paddle.static.program_guard(mp, sp):
-                x_data = paddle.static.data(
-                    "input",
-                    [-1, 16],
-                    dtype=paddle.framework.get_default_dtype(),
-                )
-                y, h = rnn2(x_data)
+        with (
+            paddle.base.unique_name.guard(),
+            paddle.static.program_guard(mp, sp),
+        ):
+            x_data = paddle.static.data(
+                "input",
+                [-1, 16],
+                dtype=paddle.framework.get_default_dtype(),
+            )
+            y, h = rnn2(x_data)
 
         feed_dict = {x_data.name: x}
 
@@ -136,11 +144,13 @@ class TestGRUCell(unittest.TestCase):
 
         mp = paddle.static.Program()
         sp = paddle.static.Program()
-        with paddle.base.unique_name.guard():
-            with paddle.static.program_guard(mp, sp):
-                rnn2 = paddle.nn.GRUCell(
-                    16, 32, bias_ih_attr=self.bias, bias_hh_attr=self.bias
-                )
+        with (
+            paddle.base.unique_name.guard(),
+            paddle.static.program_guard(mp, sp),
+        ):
+            rnn2 = paddle.nn.GRUCell(
+                16, 32, bias_ih_attr=self.bias, bias_hh_attr=self.bias
+            )
 
         place = self.place
         exe = paddle.static.Executor(place)
@@ -154,19 +164,21 @@ class TestGRUCell(unittest.TestCase):
 
         y1, h1 = rnn1(x, prev_h)
 
-        with paddle.base.unique_name.guard():
-            with paddle.static.program_guard(mp, sp):
-                x_data = paddle.static.data(
-                    "input",
-                    [-1, 16],
-                    dtype=paddle.framework.get_default_dtype(),
-                )
-                init_h = paddle.static.data(
-                    "init_h",
-                    [-1, 32],
-                    dtype=paddle.framework.get_default_dtype(),
-                )
-                y, h = rnn2(x_data, init_h)
+        with (
+            paddle.base.unique_name.guard(),
+            paddle.static.program_guard(mp, sp),
+        ):
+            x_data = paddle.static.data(
+                "input",
+                [-1, 16],
+                dtype=paddle.framework.get_default_dtype(),
+            )
+            init_h = paddle.static.data(
+                "init_h",
+                [-1, 32],
+                dtype=paddle.framework.get_default_dtype(),
+            )
+            y, h = rnn2(x_data, init_h)
 
         feed_dict = {x_data.name: x, init_h.name: prev_h}
         with paddle.static.scope_guard(scope):
@@ -179,11 +191,13 @@ class TestGRUCell(unittest.TestCase):
 
         mp = paddle.static.Program()
         sp = paddle.static.Program()
-        with paddle.base.unique_name.guard():
-            with paddle.static.program_guard(mp, sp):
-                rnn2 = paddle.nn.GRUCell(
-                    16, 32, bias_ih_attr=self.bias, bias_hh_attr=self.bias
-                )
+        with (
+            paddle.base.unique_name.guard(),
+            paddle.static.program_guard(mp, sp),
+        ):
+            rnn2 = paddle.nn.GRUCell(
+                16, 32, bias_ih_attr=self.bias, bias_hh_attr=self.bias
+            )
 
         place = self.place
         exe = paddle.static.Executor(place)
@@ -196,14 +210,16 @@ class TestGRUCell(unittest.TestCase):
 
         y1, h1 = rnn1(x)
 
-        with paddle.base.unique_name.guard():
-            with paddle.static.program_guard(mp, sp):
-                x_data = paddle.static.data(
-                    "input",
-                    [-1, 16],
-                    dtype=paddle.framework.get_default_dtype(),
-                )
-                y, h = rnn2(x_data)
+        with (
+            paddle.base.unique_name.guard(),
+            paddle.static.program_guard(mp, sp),
+        ):
+            x_data = paddle.static.data(
+                "input",
+                [-1, 16],
+                dtype=paddle.framework.get_default_dtype(),
+            )
+            y, h = rnn2(x_data)
 
         feed_dict = {x_data.name: x}
 
@@ -232,11 +248,13 @@ class TestLSTMCell(unittest.TestCase):
 
         mp = paddle.static.Program()
         sp = paddle.static.Program()
-        with paddle.base.unique_name.guard():
-            with paddle.static.program_guard(mp, sp):
-                rnn2 = paddle.nn.LSTMCell(
-                    16, 32, bias_ih_attr=self.bias, bias_hh_attr=self.bias
-                )
+        with (
+            paddle.base.unique_name.guard(),
+            paddle.static.program_guard(mp, sp),
+        ):
+            rnn2 = paddle.nn.LSTMCell(
+                16, 32, bias_ih_attr=self.bias, bias_hh_attr=self.bias
+            )
 
         place = self.place
         exe = paddle.static.Executor(place)
@@ -251,24 +269,26 @@ class TestLSTMCell(unittest.TestCase):
 
         y1, (h1, c1) = rnn1(x, (prev_h, prev_c))
 
-        with paddle.base.unique_name.guard():
-            with paddle.static.program_guard(mp, sp):
-                x_data = paddle.static.data(
-                    "input",
-                    [-1, 16],
-                    dtype=paddle.framework.get_default_dtype(),
-                )
-                init_h = paddle.static.data(
-                    "init_h",
-                    [-1, 32],
-                    dtype=paddle.framework.get_default_dtype(),
-                )
-                init_c = paddle.static.data(
-                    "init_c",
-                    [-1, 32],
-                    dtype=paddle.framework.get_default_dtype(),
-                )
-                y, (h, c) = rnn2(x_data, (init_h, init_c))
+        with (
+            paddle.base.unique_name.guard(),
+            paddle.static.program_guard(mp, sp),
+        ):
+            x_data = paddle.static.data(
+                "input",
+                [-1, 16],
+                dtype=paddle.framework.get_default_dtype(),
+            )
+            init_h = paddle.static.data(
+                "init_h",
+                [-1, 32],
+                dtype=paddle.framework.get_default_dtype(),
+            )
+            init_c = paddle.static.data(
+                "init_c",
+                [-1, 32],
+                dtype=paddle.framework.get_default_dtype(),
+            )
+            y, (h, c) = rnn2(x_data, (init_h, init_c))
 
         feed_dict = {x_data.name: x, init_h.name: prev_h, init_c.name: prev_c}
         with paddle.static.scope_guard(scope):
@@ -282,11 +302,13 @@ class TestLSTMCell(unittest.TestCase):
 
         mp = paddle.static.Program()
         sp = paddle.static.Program()
-        with paddle.base.unique_name.guard():
-            with paddle.static.program_guard(mp, sp):
-                rnn2 = paddle.nn.LSTMCell(
-                    16, 32, bias_ih_attr=self.bias, bias_hh_attr=self.bias
-                )
+        with (
+            paddle.base.unique_name.guard(),
+            paddle.static.program_guard(mp, sp),
+        ):
+            rnn2 = paddle.nn.LSTMCell(
+                16, 32, bias_ih_attr=self.bias, bias_hh_attr=self.bias
+            )
 
         place = self.place
         exe = paddle.static.Executor(place)
@@ -299,14 +321,16 @@ class TestLSTMCell(unittest.TestCase):
 
         y1, (h1, c1) = rnn1(x)
 
-        with paddle.base.unique_name.guard():
-            with paddle.static.program_guard(mp, sp):
-                x_data = paddle.static.data(
-                    "input",
-                    [-1, 16],
-                    dtype=paddle.framework.get_default_dtype(),
-                )
-                y, (h, c) = rnn2(x_data)
+        with (
+            paddle.base.unique_name.guard(),
+            paddle.static.program_guard(mp, sp),
+        ):
+            x_data = paddle.static.data(
+                "input",
+                [-1, 16],
+                dtype=paddle.framework.get_default_dtype(),
+            )
+            y, (h, c) = rnn2(x_data)
 
         feed_dict = {x_data.name: x}
 

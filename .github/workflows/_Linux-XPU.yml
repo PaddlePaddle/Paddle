@@ -65,7 +65,7 @@ jobs:
         run: |
           container_name=${TASK}-$(date +%Y%m%d-%H%M%S)
           echo "container_name=${container_name}" >> ${{ github.env }}
-          docker run --privileged --ulimit nofile=102400:102400 -d -t --name ${container_name} \
+          docker run --ulimit nofile=102400:102400 -d -t --name ${container_name} \
             -v $home_dir/.cache:/root/.cache \
             -v $home_dir/.ccache:/root/.ccache \
             -v ${{ github.workspace }}/../../..:${{ github.workspace }}/../../.. \
@@ -132,6 +132,7 @@ jobs:
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ${{ github.workspace }}/../../../proxy
+          apt install zstd -y
           bash ${ci_scripts}/run_setup.sh bdist_wheel
           EXCODE=$?
           python -m pip install bce-python-sdk==0.8.74
@@ -149,12 +150,12 @@ jobs:
           paddle_whl: paddlepaddle_xpu-0.0.0-cp310-cp310-linux_x86_64.whl
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
+          set -e
           if [ ! -f "${{ env.bos_file }}" ]; then
             wget -q --no-proxy -O ${{ env.home_path }}/bos_new.tar.gz https://xly-devops.bj.bcebos.com/home/bos_new.tar.gz --no-check-certificate
             mkdir ${{ env.home_path }}/bos
             tar xf ${{ env.home_path }}/bos_new.tar.gz -C ${{ env.home_path }}/bos
           fi
-          apt install zstd -y
           cd ..
           tar --use-compress-program="pzstd -5" -cf build.tar.gz paddle
           # source /home/opt/deck/1.0/etc/bashrc
@@ -168,9 +169,8 @@ jobs:
       - name: Terminate and delete the container
         if: always()
         run: |
-          sudo rm -rf * .[^.]*
-          docker stop ${container_name}
-          docker rm ${container_name}
+          docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'
+          docker rm -f ${container_name}
 
   test:
     name: Test
@@ -276,5 +276,4 @@ jobs:
         run: |
           sudo mkdir -p /run/user/0
           sudo rm -rf * .[^.]*
-          docker stop ${container_name}
-          docker rm ${container_name}
+          docker rm -f ${container_name}
