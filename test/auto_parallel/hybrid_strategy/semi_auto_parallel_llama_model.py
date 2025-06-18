@@ -297,7 +297,7 @@ class LlamaAttentionAuto(nn.Layer):
         if past_key_value is not None:
             kv_seq_len += past_key_value[0].shape[-3]
         if self.config.rope:
-            if self.config.sep_parallel_deglree > 1:
+            if self.config.sep_parallel_degree > 1:
                 batch_size, seq_length, _, _ = query_states.shape
                 position_ids = paddle.arange(seq_length, dtype="int64").expand(
                     (batch_size, seq_length)
@@ -383,7 +383,6 @@ class LlamaAttentionAuto(nn.Layer):
                 value_states,
                 attention_mask,
                 output_attentions,
-                self.ipp,
                 None,
                 False,
             )
@@ -395,7 +394,6 @@ class LlamaAttentionAuto(nn.Layer):
                 value_states,
                 attention_mask,
                 output_attentions,
-                self.ipp,
             )
 
         if output_attentions:
@@ -1069,6 +1067,16 @@ class LlamaForCausalLMAuto(nn.Layer):
 
         logits = self.lm_head(hidden_states)
 
+        # loss = None
+        # if labels is not None:
+        #     labels.stop_gradient = True
+        #     labels = dist.shard_tensor(
+        #         labels, get_mesh(-1), [dist.Shard(0), dist.Replicate()]
+        #     )
+        #     loss = self.criterion(logits, labels)
+
+        # output = (logits,) + outputs[1:]
+        # return (loss,) + output if loss is not None else output
         return logits
 
 
@@ -1178,7 +1186,6 @@ def scaled_dot_product_attention(
     value_states,
     attention_mask,
     output_attentions,
-    ipp=-1,
     alibi=None,
     sequence_parallel=False,
 ):

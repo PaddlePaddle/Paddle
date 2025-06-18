@@ -32,7 +32,6 @@ class TestContextParallelAPI(test_base.CommunicationTestDistBase):
             self._default_envs, self._changeable_envs
         )
         for envs in envs_list:
-            self._log_dir.name = "./log_cp"
             self.run_test_case(
                 "context_parallel.py",
                 user_defined_envs=envs,

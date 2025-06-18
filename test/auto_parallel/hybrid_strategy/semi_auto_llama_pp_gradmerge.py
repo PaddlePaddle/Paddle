@@ -297,6 +297,7 @@ class TestLlamaAuto:
                         if tr_loss_step:
                             tr_loss += tr_loss_step
 
+                    print(f"step: {step} loss: {np.array(tr_loss)}")
                     lr_scheduler.step()
                     tr_loss = float(0)
 
