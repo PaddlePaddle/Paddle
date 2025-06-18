@@ -297,6 +297,11 @@ class LlamaAttentionAuto(nn.Layer):
         if past_key_value is not None:
             kv_seq_len += past_key_value[0].shape[-3]
         if self.config.rope:
+            if self.config.sep_parallel_deglree > 1:
+                batch_size, seq_length, _, _ = query_states.shape
+                position_ids = paddle.arange(seq_length, dtype="int64").expand(
+                    (batch_size, seq_length)
+                )
             if self.config.context_parallel_degree > 1:
                 mesh = dist.auto_parallel.get_mesh()
                 group = mesh._get_group("sep")
@@ -1209,12 +1214,12 @@ def scaled_dot_product_attention(
                 backend=('p2p' if config.context_parallel_degree > 1 else None),
             )
             attn_weights = None
-
-        attn_output = sep_reshard_layer(
-            attn_output,
-            split_axis=1,
-            concat_axis=2,
-        )
+        if config.sep_parallel_degree > 1:
+            attn_output = sep_reshard_layer(
+                attn_output,
+                split_axis=1,
+                concat_axis=2,
+            )
 
         if sequence_parallel:
             attn_output = attn_output.reshape(

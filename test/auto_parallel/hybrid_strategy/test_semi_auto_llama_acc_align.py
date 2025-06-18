@@ -129,7 +129,6 @@ class TestSemiAutoParallelLlamaSEPTest(test_base.CommunicationTestDistBase):
         envs_list = test_base.gen_product_envs_list(
             _default_envs, _changeable_envs
         )
-        self._log_dir.name = "./log_sep"
         for envs in envs_list:
             self.run_test_case(
                 "semi_auto_llama_acc_align.py",

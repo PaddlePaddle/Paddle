@@ -96,6 +96,7 @@ class TestLlamaAuto:
             self.config.sequence_parallel = True
         self.gradient_accumulation_steps = int(os.getenv("acc_step"))
         self.config.recompute = False
+        self.config.context_parallel_degree = 1
         self.config.sep_parallel_degree = 1
         self.config.tensor_parallel_degree = self.mp
         self.config.pipeline_parallel_degree = self.pp

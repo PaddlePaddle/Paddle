@@ -57,6 +57,8 @@ class Config:
     num_attention_heads = 8
     rms_norm_eps = 1e-6
     use_lazy_init = False
+    context_parallel = False
+    sep_parallel = False
 
 
 @dataclass
@@ -160,20 +162,22 @@ class TestParallelAPI:
         self.sequence_parallel = False
         if os.getenv("sequence_parallel") == "true":
             self.sequence_parallel = True
-        self.context_parallel = False
+        self.config.context_parallel = False
         if os.getenv("context_parallel", "false") == "true":
-            self.context_parallel = True
-        self.sep_parallel = False
+            self.config.context_parallel = True
+        self.config.sep_parallel = False
         if os.getenv("sep_parallel", "false") == "true":
-            self.sep_parallel = True
+            self.config.sep_parallel = True
         self.prepare_input_output = False
         if os.getenv("prepare_input_output") == "true":
             self.sequence_parallel = True
         if self.sep > 1:
             assert (
-                self.context_parallel is True and self.sep_parallel is False
+                self.config.context_parallel is True
+                and self.config.sep_parallel is False
             ) or (
-                self.context_parallel is False and self.sep_parallel is True
+                self.config.context_parallel is False
+                and self.config.sep_parallel is True
             ), "when sep > 1, either context_parallel or sep_parallel should be true"
         num_hidden_layers = os.getenv("num_hidden_layers")
         if num_hidden_layers:
@@ -396,27 +400,37 @@ class TestParallelAPI:
                         f"{prefix}lm_head": dist.SequenceParallelEnd(),
                     }
             if self.sep > 1:
-                bck = 'p2p'
-                if self.context_parallel is True:
-                    bck = 'p2p'
-                elif self.sep_parallel is True:
-                    bck = 'all2all'
-                else:
-                    logging.error(
-                        f"when sep > 1, should set context_parallel or sep_parallel, but got sep_parallel={self.sep_parallel}, context_parallel={self.context_parallel}"
+                if not (
+                    self.config.context_parallel is True
+                    and (
+                        os.getenv("backend") != "gpu"
+                        or not self.amp
+                        or int(paddle.version.cuda().split(".")[0]) < 11
+                        or paddle.device.cuda.get_device_capability()[0] < 8
                     )
-                update_plan = {
-                    f"{prefix}llama": dist.ContextParallelPrefix(
-                        backend=bck, period='begin'
-                    ),
-                    f"{prefix}llama.layers.*.self_attn.sdpa": dist.ContextParallel(
-                        backend=bck
-                    ),
-                    f"{prefix}loss_func": dist.ContextParallelPrefix(
-                        backend=bck, period='end'
-                    ),
-                }
-                plan.update(update_plan)
+                ):
+
+                    bck = 'p2p'
+                    if self.config.context_parallel is True:
+                        bck = 'p2p'
+                    elif self.config.sep_parallel is True:
+                        bck = 'all2all'
+                    else:
+                        logging.error(
+                            f"when sep > 1, should set context_parallel or sep_parallel, but got sep_parallel={self.config.sep_parallel}, context_parallel={self.context_parallel}"
+                        )
+                    update_plan = {
+                        f"{prefix}llama": dist.ContextParallelPrefix(
+                            backend=bck, period='begin'
+                        ),
+                        f"{prefix}llama.layers.*.self_attn.sdpa": dist.ContextParallel(
+                            backend=bck
+                        ),
+                        f"{prefix}loss_func": dist.ContextParallelPrefix(
+                            backend=bck, period='end'
+                        ),
+                    }
+                    plan.update(update_plan)
             mp_config = {'parallelize_plan': plan}
 
         lr_scheduler = paddle.optimizer.lr.LinearWarmup(

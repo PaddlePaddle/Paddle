@@ -392,7 +392,7 @@ class TestLlamaAuto:
         if self.gradient_accumulation_steps > 1:
             dy_losses = self.run_dynamic()
             # context parallel not support static mode
-            if self.config.context_parallel_degree > 1:
+            if self.sep > 1:
                 return
             self.init_dist_env()
             st_losses = self.run_dy2static()
@@ -402,7 +402,7 @@ class TestLlamaAuto:
         else:
             dy_losses = self.run_llama(to_static=0)
             # context parallel not support static mode
-            if self.config.context_parallel_degree > 1:
+            if self.sep > 1:
                 return
             self.init_dist_env()
             st_losses = self.run_llama(to_static=1)
