@@ -434,11 +434,20 @@ inline void PirRunProgramAPI(
       PADDLE_GET_CONST(std::vector<::pir::Value>, attrs.at("no_need_buffers"));
 
   // Get All needed names
-  auto input_names = details::GetNameFromValue(input_values);
-  auto param_names = details::GetNameFromValue(param_values);
-  auto output_names = details::GetNameFromValue(output_values);
-  const auto no_need_buffer_names =
-      details::GetNameFromValue(no_need_buffer_values);
+  // auto input_names = details::GetNameFromValue(input_values);
+  // auto param_names = details::GetNameFromValue(param_values);
+  // auto output_names = details::GetNameFromValue(output_values);
+  // const auto no_need_buffer_names =
+  //     details::GetNameFromValue(no_need_buffer_values);
+
+  auto input_names =
+      PADDLE_GET_CONST(std::vector<std::string>, attrs.at("fx_names"));
+  auto param_names =
+      PADDLE_GET_CONST(std::vector<std::string>, attrs.at("fp_names"));
+  auto output_names =
+      PADDLE_GET_CONST(std::vector<std::string>, attrs.at("fo_names"));
+  auto no_need_buffer_names = PADDLE_GET_CONST(
+      std::vector<std::string>, attrs.at("no_need_buffers_names"));
 
   std::shared_ptr<::pir::Program> forward_program = PADDLE_GET_CONST(
       std::shared_ptr<::pir::Program>, attrs.at("forward_program"));
@@ -450,6 +459,9 @@ inline void PirRunProgramAPI(
   auto &cache = paddle::framework::InterpreterCoreInfoCache::Instance();
   std::shared_ptr<paddle::framework::InterpreterCore> interpreter_core =
       nullptr;
+  VLOG(0) << "is use cuda graph: "
+          << details::is_use_cuda_graph(cuda_graph_state)
+          << ", cuda_graph_dispatch_key: " << cuda_graph_dispatch_key;
   const paddle::framework::InterpreterCoreInfoCacheKey cache_key(
       program_id,
       global_inner_scope,
@@ -948,11 +960,24 @@ inline void PirRunProgramGradAPI(
       PADDLE_GET_CONST(std::vector<::pir::Value>, attrs.at("bp_g"));
 
   // Get All needed names
-  const auto &input_names = details::GetNameFromValue(forward_input_values);
-  const auto &param_names = details::GetNameFromValue(parameter_values);
-  const auto &output_grad_names = details::GetNameFromValue(output_grad_values);
-  const auto &x_grad_names = details::GetNameFromValue(x_grad_values);
-  const auto &p_grad_names = details::GetNameFromValue(p_grad_values);
+  // const auto &input_names = details::GetNameFromValue(forward_input_values);
+  // const auto &param_names = details::GetNameFromValue(parameter_values);
+  // const auto &output_grad_names =
+  // details::GetNameFromValue(output_grad_values);
+  // const auto &x_grad_names =
+  // details::GetNameFromValue(x_grad_values);
+  // const auto &p_grad_names =
+  // details::GetNameFromValue(p_grad_values);
+  auto input_names =
+      PADDLE_GET_CONST(std::vector<std::string>, attrs.at("bx_names"));
+  auto parameter_names =
+      PADDLE_GET_CONST(std::vector<std::string>, attrs.at("bp_names"));
+  auto output_grad_names =
+      PADDLE_GET_CONST(std::vector<std::string>, attrs.at("bo_g_names"));
+  auto x_grad_names =
+      PADDLE_GET_CONST(std::vector<std::string>, attrs.at("bx_g_names"));
+  auto p_grad_names =
+      PADDLE_GET_CONST(std::vector<std::string>, attrs.at("bp_g_names"));
 
   details::Trans2ContiguousTensorsInplace(out_grad);
 

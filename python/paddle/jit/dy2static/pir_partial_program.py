@@ -442,6 +442,7 @@ class RunnableProgram:
                 values = [fwd_map.get(n, fake_value()) for n in ns]
             else:
                 raise ValueError(f"Unknown program attr: {k}")
+            value_program_attr[f"{k}_names"] = ns
             value_program_attr[k] = values
 
         return value_program_attr
