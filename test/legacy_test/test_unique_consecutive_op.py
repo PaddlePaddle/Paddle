@@ -371,6 +371,37 @@ class TestUniqueConsecutiveEmptyInput(OpTest):
     def test_check_output(self):
         self.check_output(check_pir=True, check_symbol_infer=False)
 
+class TestUniqueConsecutiveZeroSize(TestUniqueConsecutiveOp):
+    """ZeroSize input"""
+
+    def config(self):
+        self.x_size = (0, 2, 4)
+        self.x_range = 20
+        self.return_inverse = True
+        self.return_counts = True
+        self.python_api = paddle.unique_consecutive
+
+    def setUp(self):
+        self.init_kernel_type()
+        self.config()
+        self.op_type = "unique_consecutive"
+        x = np.random.randint(self.x_range, size=self.x_size).astype(self.dtype)
+        result, inverse, counts = reference_unique_consecutive(
+            x, self.return_inverse, self.return_counts
+        )
+        result = np.array(result).astype(self.dtype).reshape(x.shape)
+        inverse = inverse.astype(self.dtype)
+        counts = counts.astype(self.dtype)
+        self.inputs = {
+            'X': x,
+        }
+        self.attrs = {
+            'return_inverse': self.return_inverse,
+            'return_counts': self.return_counts,
+            'dtype': paddle.int32,
+        }
+        self.python_out_sig = ["Out", "Index", "Counts"]
+        self.outputs = {'Out': result, 'Index': inverse, 'Counts': counts}
 
 if __name__ == "__main__":
     paddle.enable_static()

@@ -4351,14 +4351,39 @@ bool UniqueConsecutiveOpInferSymbolicShape(
     return inverse_dims;
   }();
 
-  infer_context->SetShapeOrDataForValue(
-      op->result(0), symbol::TensorShapeOrDataDimExprs{out_dims});
-  infer_context->SetShapeOrDataForValue(
-      op->result(1),
-      return_inverse ? symbol::TensorShapeOrDataDimExprs{inverse_dims} : empty);
-  infer_context->SetShapeOrDataForValue(
-      op->result(2),
-      return_counts ? symbol::TensorShapeOrDataDimExprs{counts_dims} : empty);
+  const auto &IsZero = [&](const symbol::DimExpr &dim_expr) {
+    if (dim_expr.isa<int64_t>()) {
+      return dim_expr.dyn_cast<int64_t>() == static_cast<int64_t>(0);
+    }
+    return false;
+  };
+  bool size_0 = false;
+  for (size_t i = 0; i < x_dims_sym.size(); i++) {
+    if (IsZero(x_dims_sym.at(i))) {
+      size_0 = true;
+      break;
+    }
+  }
+
+  if (size_0) {
+    infer_context->SetShapeOrDataForValue(
+        op->result(0), symbol::TensorShapeOrDataDimExprs{x_dims_sym});
+    infer_context->SetShapeOrDataForValue(
+        op->result(1),
+        return_inverse ? symbol::TensorShapeOrDataDimExprs{} : empty);
+    infer_context->SetShapeOrDataForValue(
+        op->result(2),
+        return_counts ? symbol::TensorShapeOrDataDimExprs{} : empty);
+  } else {
+    infer_context->SetShapeOrDataForValue(
+        op->result(0), symbol::TensorShapeOrDataDimExprs{out_dims});
+    infer_context->SetShapeOrDataForValue(
+        op->result(1),
+        return_inverse ? symbol::TensorShapeOrDataDimExprs{inverse_dims} : empty);
+    infer_context->SetShapeOrDataForValue(
+        op->result(2),
+        return_counts ? symbol::TensorShapeOrDataDimExprs{counts_dims} : empty);
+  }
 
   return true;
 }

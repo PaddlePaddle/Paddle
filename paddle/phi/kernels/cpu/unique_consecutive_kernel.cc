@@ -34,6 +34,16 @@ void UniqueConsecutiveKernel(const Context& dev_ctx,
                              DenseTensor* out,
                              DenseTensor* index,
                              DenseTensor* counts) {
+  if (out && out->numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    if (return_inverse) {
+      dev_ctx.Alloc(index, dtype);
+    }
+    if (return_counts) {
+      dev_ctx.Alloc(counts, dtype);
+    }
+    return;
+  }
   if (dtype == phi::DataType::INT32) {
     PADDLE_ENFORCE_LE(
         x.numel(),

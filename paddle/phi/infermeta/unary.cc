@@ -5918,6 +5918,15 @@ void UniqueConsecutiveInferMeta(const MetaTensor& x,
   if (return_counts) {
     counts->set_dims({-1});
   }
+  if (x.numel() == 0) {
+    out->set_dims(in_dims);
+    if (return_inverse) {
+      index->set_dims({0});
+    }
+    if (return_counts) {
+      counts->set_dims({0});
+    }
+  }
 }
 
 void UniqueInferMeta(const MetaTensor& x,
