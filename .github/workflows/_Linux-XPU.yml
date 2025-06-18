@@ -137,6 +137,7 @@ jobs:
           EXCODE=$?
           if [ ${EXCODE} -ne 0 ]; then
             echo "::error:: Build failed"
+            exit ${EXCODE}
           fi
           '
 
