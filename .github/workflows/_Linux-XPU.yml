@@ -134,11 +134,6 @@ jobs:
           source ${{ github.workspace }}/../../../proxy
           apt install zstd -y
           bash ${ci_scripts}/run_setup.sh bdist_wheel
-          EXCODE=$?
-          python -m pip install bce-python-sdk==0.8.74
-          rm -rf `find . -name "*.a"`
-          rm -rf `find . -name "*.o"`
-          exit $EXCODE
           '
 
       - name: Upload build.tar.gz and paddle_whl to bos
@@ -151,6 +146,11 @@ jobs:
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           set -e
+          source ${{ github.workspace }}/../../../proxy
+          python -m pip install bce-python-sdk==0.8.74
+          unset http_proxy https_proxy
+          rm -rf `find . -name "*.a"`
+          rm -rf `find . -name "*.o"`
           if [ ! -f "${{ env.bos_file }}" ]; then
             wget -q --no-proxy -O ${{ env.home_path }}/bos_new.tar.gz https://xly-devops.bj.bcebos.com/home/bos_new.tar.gz --no-check-certificate
             mkdir ${{ env.home_path }}/bos
