@@ -432,9 +432,12 @@ function(download_and_uncompress INSTALL_DIR URL FILENAME)
     ${EXTERNAL_PROJECT_LOG_ARGS}
     PREFIX ${INSTALL_DIR}
     DOWNLOAD_COMMAND
-      wget --no-check-certificate -q -O ${INSTALL_DIR}/${FILENAME}
-      ${URL}/${FILENAME} && ${CMAKE_COMMAND} -E tar xzf
-      ${INSTALL_DIR}/${FILENAME}
+      bash -c
+      "
+    if [ ! -f ${INSTALL_DIR}/${FILENAME} ]; then
+      wget --tries=5 --waitretry=5 --timeout=60 --no-proxy --no-check-certificate -q -O ${INSTALL_DIR}/${FILENAME} ${URL}/${FILENAME} || exit 1;
+    fi &&
+    tar zxf ${INSTALL_DIR}/${FILENAME}"
     DOWNLOAD_DIR ${INSTALL_DIR}
     DOWNLOAD_NO_PROGRESS 1
     CONFIGURE_COMMAND ""

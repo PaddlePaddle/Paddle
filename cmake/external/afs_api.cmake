@@ -52,8 +52,13 @@ ExternalProject_Add(
   ${EXTERNAL_PROJECT_LOG_ARGS}
   PREFIX ${AFSAPI_PREFIX_DIR}
   DOWNLOAD_DIR ${AFSAPI_DOWNLOAD_DIR}
-  DOWNLOAD_COMMAND wget --no-check-certificate ${AFSAPI_URL} -c -q -O
-                   ${AFSAPI_NAME}.tar.gz && tar zxvf ${AFSAPI_NAME}.tar.gz
+  DOWNLOAD_COMMAND
+    bash -c
+    "
+    if [ ! -f ${AFSAPI_NAME}.tar.gz ]; then
+      wget --tries=5 --waitretry=5 --timeout=60 --no-proxy --no-check-certificate -q -O ${AFSAPI_NAME}.tar.gz ${AFSAPI_URL} || exit 1;
+    fi &&
+    tar zxf ${AFSAPI_NAME}.tar.gz"
   DOWNLOAD_NO_PROGRESS 1
   UPDATE_COMMAND ""
   CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${AFSAPI_INSTALL_ROOT}
