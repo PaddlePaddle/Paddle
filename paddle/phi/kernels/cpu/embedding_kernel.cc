@@ -50,26 +50,24 @@ struct EmbeddingCPUFunctor {
     auto* output = out_->data<T>();
 
     for (int64_t i = 0; i < ids_numel; ++i) {
-      if (padding_idx_ == kNoPadding && ids[i] != padding_idx_) {
-        PADDLE_ENFORCE_LT(
-            ids[i],
-            row_number,
-            common::errors::InvalidArgument(
-                "Variable value (input) of OP(fluid.layers.embedding) "
-                "expected >= 0 and < %ld, but got %ld. Please check input "
-                "value.",
-                row_number,
-                ids[i]));
-        PADDLE_ENFORCE_GE(
-            ids[i],
-            0,
-            common::errors::InvalidArgument(
-                "Variable value (input) of OP(fluid.layers.embedding) "
-                "expected >= 0 and < %ld, but got %ld. Please check input "
-                "value.",
-                row_number,
-                ids[i]));
-      }
+      PADDLE_ENFORCE_LT(
+          ids[i],
+          row_number,
+          common::errors::InvalidArgument(
+              "Variable value (input) of OP(fluid.layers.embedding) "
+              "expected >= 0 and < %ld, but got %ld. Please check input "
+              "value.",
+              row_number,
+              ids[i]));
+      PADDLE_ENFORCE_GE(
+          ids[i],
+          0,
+          common::errors::InvalidArgument(
+              "Variable value (input) of OP(fluid.layers.embedding) "
+              "expected >= 0 and < %ld, but got %ld. Please check input "
+              "value.",
+              row_number,
+              ids[i]));
     }
 
 #if defined(_OPENMP) && !defined(PADDLE_WITH_CUDA)
@@ -77,13 +75,9 @@ struct EmbeddingCPUFunctor {
 #endif
 
     for (int64_t i = 0; i < ids_numel; ++i) {
-      if (padding_idx_ != kNoPadding && ids[i] == padding_idx_) {
-        memset(output + i * row_width, 0, row_width * sizeof(T));
-      } else {
-        memcpy(output + i * row_width,
-               table + ids[i] * row_width,
-               row_width * sizeof(T));
-      }
+      memcpy(output + i * row_width,
+             table + ids[i] * row_width,
+             row_width * sizeof(T));
     }
   }
 

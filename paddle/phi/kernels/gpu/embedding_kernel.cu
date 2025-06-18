@@ -21,7 +21,7 @@
 #include "paddle/phi/kernels/funcs/embedding_util.h"
 namespace phi {
 
-template <typename T, typename IdT, bool PaddingFlag>
+template <typename T, typename IdT>
 __global__ void EmbeddingFW(T *output,
                             const T *table,
                             const IdT *ids,
@@ -34,27 +34,18 @@ __global__ void EmbeddingFW(T *output,
 
   while (idy < K) {
     auto id = static_cast<int64_t>(ids[idy]);
-    if (PaddingFlag == false || id != padding_idx) {
-      PADDLE_ENFORCE(id >= 0,
-                     "Id should no less than 0 but received an id value: %lld.",
-                     id);
-      PADDLE_ENFORCE(
-          id < N,
-          "Id should smaller than %lld but received an id value: %lld.",
-          N,
-          id);
-    }
+    PADDLE_ENFORCE(id >= 0,
+                   "Id should no less than 0 but received an id value: %lld.",
+                   id);
+    PADDLE_ENFORCE(
+        id < N,
+        "Id should smaller than %lld but received an id value: %lld.",
+        N,
+        id);
     T *out = output + idy * D;
     const T *tab = table + id * D;
     for (int i = idx; i < D; i += blockDim.x) {
-      if (PaddingFlag) {
-        if (id == padding_idx)
-          out[i] = static_cast<T>(0);
-        else
-          out[i] = tab[i];
-      } else {
-        out[i] = tab[i];
-      }
+      out[i] = tab[i];
     }
     idy += blockDim.y * gridDim.x;
   }
@@ -88,13 +79,8 @@ struct EmbeddingCUDAFunctor {
     auto *output = dev_ctx_.template Alloc<T>(out_);
     auto stream = dev_ctx_.stream();
 
-    if (padding_idx_ == -1) {
-      EmbeddingFW<T, IdT, false><<<grids, threads, 0, stream>>>(
-          output, table, ids, N, K, D, padding_idx_);
-    } else {
-      EmbeddingFW<T, IdT, true><<<grids, threads, 0, stream>>>(
-          output, table, ids, N, K, D, padding_idx_);
-    }
+    EmbeddingFW<T, IdT><<<grids, threads, 0, stream>>>(
+        output, table, ids, N, K, D, padding_idx_);
   }
 
  private:
