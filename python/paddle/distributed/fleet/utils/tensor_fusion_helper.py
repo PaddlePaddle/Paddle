@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import enum
 import itertools
 import os
 import weakref
@@ -406,6 +406,17 @@ def get_grad_address(param, use_main_grad):
 
 
 class FusedCommBuffer:
+
+    class Status(enum.Enum):
+        """Status of this bucket, Only useful when param allgather overlap is enabled"""
+
+        # Parameters are sharded between processes
+        SHARDED = enum.auto()
+        # Asynchronous communication is in progress
+        SYNCING = enum.auto()
+        # Parameters are ready to use
+        READY = enum.auto()
+
     def __init__(
         self,
         id,
@@ -433,6 +444,9 @@ class FusedCommBuffer:
         self._use_reduce_avg = use_reduce_avg
         self._free_grads_in_comm = free_grads_in_comm
         self._log_message_printed = False
+
+        self.status = FusedCommBuffer.Status.READY
+        self.sync_param_task = None
 
         if self._free_grads_in_comm:
             assert (
@@ -672,6 +686,8 @@ class FusedCommBuffer:
         else:
             # default sync_op is False, so we don't need to to set sync_op = false here.
             task = group.process_group.all_gather(slice_buffer, full_buffer)
+
+            self.sync_param_task = task
             for param in self.params:
                 assert param.name not in param2task
                 param2task[param.name] = task

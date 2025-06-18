@@ -2164,12 +2164,14 @@ void IdentityLossInferMeta(const MetaTensor& x,
 }
 
 void IncrementInferMeta(const MetaTensor& x, float value, MetaTensor* out) {
-  PADDLE_ENFORCE_EQ(
-      product(x.dims()),
-      1UL,
-      errors::InvalidArgument("The number of elements in Input(X) should be 1."
-                              "Now the number is %d.",
-                              product(x.dims())));
+  if (x.numel() != 0) {
+    PADDLE_ENFORCE_EQ(product(x.dims()),
+                      1UL,
+                      errors::InvalidArgument(
+                          "The number of elements in Input(X) should be 1."
+                          "Now the number is %d.",
+                          product(x.dims())));
+  }
   out->set_dims(x.dims());
   out->share_lod(x);
   out->set_layout(x.layout());

@@ -6808,7 +6808,7 @@ def diff(
 def angle(x: Tensor, name: str | None = None) -> Tensor:
     r"""
     Element-wise angle of complex numbers. For non-negative real numbers, the angle is 0 while
-    for negative real numbers, the angle is :math:`\pi`.
+    for negative real numbers, the angle is :math:`\pi`, and NaNs are propagated..
 
     Equation:
         .. math::

@@ -722,6 +722,7 @@ void IndexElementwisePutGradInferMeta(
     const std::vector<int64_t>& input_strides,
     const std::vector<int64_t>& index_dims,
     const std::vector<int64_t>& index_strides,
+    const int64_t slice_offset,
     MetaTensor* x_grad,
     MetaTensor* value_grad);
 

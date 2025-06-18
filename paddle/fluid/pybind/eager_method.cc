@@ -2013,6 +2013,8 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
     std::vector<int> trans_back_dim, trans_dim;
 
     int pos_of_new_dim = INT_MAX, rank_of_new_dim = 1;
+    // Check if the value is a single value. Remove this later.
+    bool single_value = value_tensor.numel() == 1;
 
     paddle::Tensor transed_sub_tensor =
         dealWithAdvancedIndex(sub_tensor,
@@ -2024,7 +2026,8 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
                               &pos_of_new_dim,
                               &rank_of_new_dim,
                               &trans_dim,
-                              &out_is_view);
+                              &out_is_view,
+                              single_value);
 
     // Release gil and do tracing
     py::gil_scoped_release release;
@@ -2059,30 +2062,48 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
       }
       paddle::Tensor mask_tensor;
       if (MaskedFillDispatching(
-              transed_sub_tensor, value_tensor, transed_index, &mask_tensor)) {
+              transed_sub_tensor, transed_index, &mask_tensor, &value_tensor)) {
         transed_sub_tensor =
             masked_fill__ad_func(transed_sub_tensor, mask_tensor, value_tensor);
       } else {
+        // Check if the index has bool element. Remove later.
+        bool int_tensor_only = true;
+        for (auto& index : transed_index) {
+          if (index.dtype() == phi::DataType::BOOL) {
+            int_tensor_only = false;
+          }
+        }
 #ifdef PADDLE_WITH_CUDA
         // TODO(czy): remove in the future
-        if (transed_sub_tensor.is_gpu() && !out_is_view &&
-            transed_index.size() == 1 && value_tensor.numel() == 1) {
+        if (transed_sub_tensor.is_gpu() && single_value && int_tensor_only) {
           transed_index = expand_outplace(transed_index);
+          for (int i = 0; i < pos_of_new_dim; ++i) {
+            transed_index.insert(
+                transed_index.begin(),
+                empty_ad_func(
+                    {}, transed_index[0].dtype(), transed_index[0].place()));
+          }
           while (transed_index.size() <
                  static_cast<size_t>(transed_sub_tensor.dims().size())) {
             transed_index.emplace_back(empty_ad_func(
                 {}, transed_index[0].dtype(), transed_index[0].place()));
           }
-
+          int64_t slice_offset =
+              static_cast<int64_t>(reinterpret_cast<char*>(sub_tensor.data()) -
+                                   reinterpret_cast<char*>(tensor.data()));
           AdvancedIndex ad = AdvancedIndex(transed_sub_tensor, transed_index);
           transed_sub_tensor =
-              index_elementwise_put__ad_func(transed_sub_tensor,
+              index_elementwise_put__ad_func(tensor,
                                              ad.indices,
                                              value_tensor,
                                              ad.src_sizes,
                                              ad.src_strides,
                                              ad.indexed_sizes,
-                                             ad.indexed_strides);
+                                             ad.indexed_strides,
+                                             slice_offset);
+          // New kernel does not need to transpose back, so set out_is_view to
+          // false. Remove when all cases use this branch.
+          out_is_view = false;
 
         } else {
           transed_sub_tensor = index_put__ad_func(
