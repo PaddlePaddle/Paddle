@@ -13,8 +13,7 @@
 # limitations under the License.
 
 COMMIT_MESSAGE=$(git log -1 --pretty=%B)
+echo "COMMIT_MESSAGE: $COMMIT_MESSAGE"
 if [[ "$COMMIT_MESSAGE" == *"slice-check"* ]]; then
     echo "slice-check=true"
-    echo "slice-check=true" >> $GITHUB_OUTPUT
 fi
-git checkout test
