@@ -33,7 +33,7 @@ def moe_unpermute(
     use_mix_precision: bool = True,
     name: str | None = None,
 ) -> tuple[Tensor, Tensor]:
-    """
+    r"""
     Permute tokens for Mixture of Experts (MoE) computation.
 
     Args:
