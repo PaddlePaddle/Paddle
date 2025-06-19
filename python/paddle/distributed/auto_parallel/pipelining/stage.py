@@ -205,7 +205,9 @@ class _PipelineStageBase(ABC):
         # Forward infra
         self.args_recv_info: dict[int, tuple[InputInfo, ...]] = {}
         self.act_send_info: dict[int, list] = {}
-        self.grad_recv_indices: dict[int, list] = {}
+        self._need_grad_indices: dict[int, list] = (
+            {}
+        )  # record the index of output that needs to receive grad from the next stage.
         # Backward infra will created lazily
         self.grad_recv_info: dict = {}
         self.grad_send_info: list | None = None
@@ -1121,10 +1123,10 @@ class PipelineStage(_PipelineStageBase):
             if not self.is_last:
                 self.act_send_info[idx] = [self.stage_index + 1]
                 if not outputs_meta[idx].stop_gradient:
-                    self.grad_recv_indices[idx] = [self.stage_index + 1]
+                    self._need_grad_indices[idx] = [self.stage_index + 1]
             else:
                 self.act_send_info[idx] = []
-                self.grad_recv_indices[idx] = []
+                self._need_grad_indices[idx] = []
 
         return outputs
 
@@ -1239,7 +1241,7 @@ class PipelineStage(_PipelineStageBase):
                         dst_list[0],
                         _make_tensor_from_meta(self.grads_meta[idx]),
                     )
-                    for idx, dst_list in self.grad_recv_indices.items()
+                    for idx, dst_list in self._need_grad_indices.items()
                 ]
             )
         return grad_recv_info
