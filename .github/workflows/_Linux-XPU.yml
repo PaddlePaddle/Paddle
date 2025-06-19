@@ -136,8 +136,7 @@ jobs:
           bash ${ci_scripts}/run_setup.sh bdist_wheel
           EXCODE=$?
           python -m pip install bce-python-sdk==0.8.74
-          rm -rf `find . -name "*.a"`
-          rm -rf `find . -name "*.o"`
+          bash ${ci_scripts}/compress_build.sh
           exit $EXCODE
           '
 
