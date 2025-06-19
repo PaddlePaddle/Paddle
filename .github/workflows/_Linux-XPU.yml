@@ -219,6 +219,7 @@ jobs:
             -v ${{ github.workspace }}:/paddle \
             --device ${XPU_CODE_1} \
             --device ${XPU_CODE_2} \
+            --device /dev/xpuctrl \
             --shm-size=32g \
             -e BRANCH \
             -e PR_ID \
