@@ -43,7 +43,7 @@ __global__ void EmbeddingFW(T *output,
             "expected >= 0 and < %lld, but got %lld. Please check input "
             "value.",
             N,
-            ids_data[i]));
+            id));
     PADDLE_ENFORCE_GE(
         id,
         0,
@@ -53,7 +53,7 @@ __global__ void EmbeddingFW(T *output,
             "expected >= 0 and < %lld, but got %lld. Please check input "
             "value.",
             N,
-            ids_data[i]));
+            id));
     T *out = output + idy * D;
     const T *tab = table + id * D;
     for (int i = idx; i < D; i += blockDim.x) {
