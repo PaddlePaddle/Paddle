@@ -761,17 +761,21 @@ class SymbolicStaticFunction(StaticFunction):
         super().__init__(function, input_spec, **kwargs)
         self.last_call_input_spec = None
 
+    @staticmethod
+    def _convert_into_input_spec(x):
+        if isinstance(x, paddle.Tensor):
+            return paddle.static.InputSpec.from_tensor(x)
+        return x
+
     def _perform_call(self, *args, **kwargs):
         from ..sot import symbolic_translate
 
         args, kwargs = self._function_spec.unified_args_and_kwargs(args, kwargs)
         cuda_pinned_tensors_move_to_excepted_place(args)
 
-        (
-            input_args_with_spec,
-            input_kwargs_with_spec,
-        ) = self._function_spec.args_to_input_spec(args, kwargs)
-        self.last_call_input_spec = input_args_with_spec
+        self.last_call_input_spec = paddle.utils.map_structure(
+            SymbolicStaticFunction._convert_into_input_spec, args
+        )
 
         build_strategy = self._kwargs.get("build_strategy", None)
         backend = self._kwargs.get("backend", None)
