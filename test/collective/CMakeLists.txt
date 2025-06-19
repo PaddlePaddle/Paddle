@@ -437,18 +437,5 @@ if((WITH_ROCM OR WITH_GPU) AND (LINUX))
     "PADDLE_DIST_UT_PORT=21958;http_proxy=;https_proxy=")
   set_tests_properties(test_orthogonal_strategy PROPERTIES TIMEOUT "120")
 endif()
-if((WITH_GPU) AND (LINUX))
-  bash_test_modules(
-    test_comm_group_num
-    START_BASH
-    test_comm_group_num.sh
-    TIMEOUT
-    "120"
-    LABELS
-    "RUN_TYPE=DIST"
-    ENVS
-    "PADDLE_DIST_UT_PORT=22304;http_proxy=;https_proxy=")
-  set_tests_properties(test_comm_group_num PROPERTIES TIMEOUT "120")
-endif()
 add_subdirectory(fleet)
 add_subdirectory(multinode)

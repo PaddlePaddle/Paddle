@@ -203,7 +203,7 @@ jobs:
         if: steps.check-bypass.outputs.can-skip != 'true'
         env:
           home_path: ${{ github.workspace }}/..
-          bos_file: ${{ github.workspace }}/../bos/BosClient.py
+          bos_file: ${{ github.workspace }}/../bos_retry/BosClient.py
           paddle_whl: paddlepaddle_gpu-0.0.0-cp39-cp39-linux_x86_64.whl
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
@@ -214,9 +214,9 @@ jobs:
           export AK=paddle
           export SK=paddle
           if [ ! -f "${{ env.bos_file }}" ]; then
-            wget -q --no-proxy -O ${{ env.home_path }}/bos_new.tar.gz https://xly-devops.bj.bcebos.com/home/bos_new.tar.gz --no-check-certificate
-            mkdir ${{ env.home_path }}/bos
-            tar xf ${{ env.home_path }}/bos_new.tar.gz -C ${{ env.home_path }}/bos
+            wget -q --no-proxy -O ${{ env.home_path }}/bos_retry.tar.gz https://xly-devops.bj.bcebos.com/home/bos_retry.tar.gz --no-check-certificate
+            mkdir ${{ env.home_path }}/bos_retry
+            tar xf ${{ env.home_path }}/bos_retry.tar.gz -C ${{ env.home_path }}/bos_retry
           fi
           cd /paddle/dist
           echo "Uploading coverage build size"
