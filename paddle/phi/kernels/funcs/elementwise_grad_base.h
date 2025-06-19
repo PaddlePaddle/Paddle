@@ -104,8 +104,8 @@ static void ElemwiseGradBroadcast1CPU(const T *x,
                                       const T *y,
                                       const Tout *out,
                                       const Tout *dout,
-                                      int h,
-                                      int w,
+                                      size_t h,
+                                      size_t w,
                                       bool is_xsize_larger,
                                       DX_OP dx_op,
                                       DY_OP dy_op,
@@ -114,10 +114,10 @@ static void ElemwiseGradBroadcast1CPU(const T *x,
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
 
   if (is_xsize_larger) {
-    for (int j = 0; j < w; ++j) {
+    for (size_t j = 0; j < w; ++j) {
       MPType sum_y = static_cast<MPType>(0);
-      for (int i = 0; i < h; ++i) {
-        int x_offset = i * w + j;
+      for (size_t i = 0; i < h; ++i) {
+        size_t x_offset = i * w + j;
         if (dx != nullptr) {
           dx[x_offset] =
               dx_op(x[x_offset], y[j], out[x_offset], dout[x_offset]);
@@ -132,10 +132,10 @@ static void ElemwiseGradBroadcast1CPU(const T *x,
       }
     }
   } else {
-    for (int j = 0; j < w; ++j) {
+    for (size_t j = 0; j < w; ++j) {
       MPType sum_x = static_cast<MPType>(0);
-      for (int i = 0; i < h; ++i) {
-        int y_offset = i * w + j;
+      for (size_t i = 0; i < h; ++i) {
+        size_t y_offset = i * w + j;
         if (dy != nullptr) {
           dy[y_offset] =
               dy_op(x[j], y[y_offset], out[y_offset], dout[y_offset]);
@@ -157,9 +157,9 @@ static void ElemwiseGradBroadcast2CPU(const T *x,
                                       const T *y,
                                       const Tout *out,
                                       const Tout *dout,
-                                      int pre,
-                                      int n,
-                                      int post,
+                                      size_t pre,
+                                      size_t n,
+                                      size_t post,
                                       bool is_xsize_larger,
                                       DX_OP dx_op,
                                       DY_OP dy_op,
@@ -168,11 +168,11 @@ static void ElemwiseGradBroadcast2CPU(const T *x,
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
 
   if (is_xsize_larger) {
-    for (int j = 0; j < n; ++j) {
+    for (size_t j = 0; j < n; ++j) {
       MPType sum_y = static_cast<MPType>(0);
-      for (int i = 0; i < pre; ++i) {
-        for (int k = 0; k < post; ++k) {
-          int x_offset = i * n * post + j * post + k;
+      for (size_t i = 0; i < pre; ++i) {
+        for (size_t k = 0; k < post; ++k) {
+          size_t x_offset = i * n * post + j * post + k;
           if (dx != nullptr) {
             dx[x_offset] =
                 dx_op(x[x_offset], y[j], out[x_offset], dout[x_offset]);
@@ -188,11 +188,11 @@ static void ElemwiseGradBroadcast2CPU(const T *x,
       }
     }
   } else {
-    for (int j = 0; j < n; ++j) {
+    for (size_t j = 0; j < n; ++j) {
       MPType sum_x = static_cast<MPType>(0);
-      for (int i = 0; i < pre; ++i) {
-        for (int k = 0; k < post; ++k) {
-          int y_offset = i * n * post + j * post + k;
+      for (size_t i = 0; i < pre; ++i) {
+        for (size_t k = 0; k < post; ++k) {
+          size_t y_offset = i * n * post + j * post + k;
           if (dy != nullptr) {
             dy[y_offset] =
                 dy_op(x[j], y[y_offset], out[y_offset], dout[y_offset]);
@@ -298,7 +298,8 @@ void ElemwiseGradComputeWithBroadcast(const CPUContext &ctx,
           max_dim,
           axis));
 
-  int pre, n, post, is_run_common_broadcast, axis_trim = 0;
+  size_t pre, n, post;
+  int is_run_common_broadcast, axis_trim = 0;
   if (is_xsize_larger) {
     auto y_dims_trimmed = TrimTrailingSingularDims(y_dims);
     axis_trim = (y_dims_trimmed.size() == 0) ? x_dims.size() : axis;
@@ -744,8 +745,8 @@ static __global__ void ElemwiseGradBroadcast1CUDAKernel(const T *x,
                                                         const T *y,
                                                         const Tout *out,
                                                         const Tout *dout,
-                                                        int h,
-                                                        int w,
+                                                        size_t h,
+                                                        size_t w,
                                                         bool is_xsize_larger,
                                                         DX_OP dx_op,
                                                         DY_OP dy_op,
@@ -757,7 +758,7 @@ static __global__ void ElemwiseGradBroadcast1CUDAKernel(const T *x,
   T val(0);
   if (is_xsize_larger) {
     do {
-      int x_offset = i * w + j;
+      size_t x_offset = i * w + j;
       if (dx) {
         dx[x_offset] = dx_op(x[x_offset], y[j], out[x_offset], dout[x_offset]);
       }
@@ -776,7 +777,7 @@ static __global__ void ElemwiseGradBroadcast1CUDAKernel(const T *x,
     }
   } else {  // x.dims < y.dims, broadcast for x.
     do {
-      int y_offset = i * w + j;
+      size_t y_offset = i * w + j;
       if (dy) {
         dy[y_offset] = dy_op(x[j], y[y_offset], out[y_offset], dout[y_offset]);
       }
@@ -804,8 +805,8 @@ static __global__ void FastElemwiseGradBroadcast1CUDAKernel(
     const T *y,
     const Tout *out,
     const Tout *dout,
-    int h,
-    int w,
+    size_t h,
+    size_t w,
     bool is_xsize_larger,
     DX_OP dx_op,
     DY_OP dy_op,
@@ -892,9 +893,9 @@ static __global__ void ElemwiseGradBroadcast2CUDAKernel(const T *x,
                                                         const T *y,
                                                         const Tout *out,
                                                         const Tout *dout,
-                                                        int pre,
-                                                        int n,
-                                                        int post,
+                                                        size_t pre,
+                                                        size_t n,
+                                                        size_t post,
                                                         bool is_xsize_larger,
                                                         DX_OP dx_op,
                                                         DY_OP dy_op,
@@ -912,7 +913,7 @@ static __global__ void ElemwiseGradBroadcast2CUDAKernel(const T *x,
       int k = ttid % post;
       if (i >= pre) break;
 
-      int x_offset = i * n * post + j * post + k;
+      size_t x_offset = i * n * post + j * post + k;
 
       if (dx != nullptr) {
         dx[x_offset] = dx_op(x[x_offset], y[j], out[x_offset], dout[x_offset]);
@@ -926,7 +927,7 @@ static __global__ void ElemwiseGradBroadcast2CUDAKernel(const T *x,
     }
 
     if (dy) {
-      int h = pre * post;
+      size_t h = pre * post;
       h = h > ELEMWISE_MAX_BLOCK_DIM ? ELEMWISE_MAX_BLOCK_DIM : h;
       val = phi::backends::gpu::reduceSum(val, tid, h);
       if (THREAD_ID_X == 0) {
@@ -939,7 +940,7 @@ static __global__ void ElemwiseGradBroadcast2CUDAKernel(const T *x,
       int k = ttid % post;
       if (i >= pre) break;
 
-      int y_offset = i * n * post + j * post + k;
+      size_t y_offset = i * n * post + j * post + k;
 
       if (dy != nullptr) {
         dy[y_offset] = dy_op(x[j], y[y_offset], out[y_offset], dout[y_offset]);
@@ -953,7 +954,7 @@ static __global__ void ElemwiseGradBroadcast2CUDAKernel(const T *x,
     }
 
     if (dx) {
-      int h = pre * post;
+      size_t h = pre * post;
       h = h > ELEMWISE_MAX_BLOCK_DIM ? ELEMWISE_MAX_BLOCK_DIM : h;
       val = phi::backends::gpu::reduceSum(val, tid, h);
       if (THREAD_ID_X == 0) {
@@ -969,8 +970,8 @@ static void ElemwiseGradBroadcast1CUDA(gpuStream_t stream,
                                        const T *y,
                                        const Tout *out,
                                        const Tout *dout,
-                                       int h,
-                                       int w,
+                                       size_t h,
+                                       size_t w,
                                        bool is_xsize_larger,
                                        DX_OP dx_op,
                                        DY_OP dy_op,
@@ -979,7 +980,7 @@ static void ElemwiseGradBroadcast1CUDA(gpuStream_t stream,
   // For small case use 1D block
   constexpr int half_walf = 16;
   if (w < half_walf || h < half_walf) {
-    int block_size = std::min(ELEMWISE_MAX_BLOCK_DIM, h);
+    int block_size = std::min(static_cast<size_t>(ELEMWISE_MAX_BLOCK_DIM), h);
     int grid_size = w;
     ElemwiseGradBroadcast1CUDAKernel<<<grid_size, block_size, 0, stream>>>(
         x, y, out, dout, h, w, is_xsize_larger, dx_op, dy_op, dx, dy);
@@ -1002,15 +1003,16 @@ static void ElemwiseGradBroadcast2CUDA(gpuStream_t stream,
                                        const T *y,
                                        const Tout *out,
                                        const Tout *dout,
-                                       int pre,
-                                       int n,
-                                       int post,
+                                       size_t pre,
+                                       size_t n,
+                                       size_t post,
                                        bool is_xsize_larger,
                                        DX_OP dx_op,
                                        DY_OP dy_op,
                                        T *dx,
                                        T *dy) {
-  int block_size = std::min(ELEMWISE_MAX_BLOCK_DIM, pre * post);
+  int block_size =
+      std::min(static_cast<size_t>(ELEMWISE_MAX_BLOCK_DIM), pre * post);
   dim3 grid_size = dim3(n);
   auto gplace = phi::GPUPlace(phi::backends::gpu::GetCurrentDeviceId());
   auto *ctx =
@@ -1738,7 +1740,8 @@ void ElemwiseGradComputeWithBroadcast(const GPUContext &ctx,
           max_dim,
           axis));
 
-  int pre, n, post, is_run_common_broadcast, axis_trim = 0;
+  size_t pre, n, post;
+  int is_run_common_broadcast, axis_trim = 0;
   if (is_xsize_larger) {
     auto y_dims_trimmed = TrimTrailingSingularDims(y_dims);
     axis_trim = (y_dims_trimmed.size() == 0) ? x_dims.size() : axis;

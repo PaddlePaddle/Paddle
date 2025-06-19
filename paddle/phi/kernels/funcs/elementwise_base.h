@@ -406,7 +406,8 @@ void ElementwiseCompute(const CPUContext &dev_ctx,
           max_dim,
           axis));
 
-  int pre, n, post, is_run_common_broadcast, axis_trim = 0;
+  size_t pre, n, post;
+  int is_run_common_broadcast, axis_trim = 0;
   if (is_xsize_larger) {
     auto y_dims_trimmed = TrimTrailingSingularDims(y_dims);
     axis_trim = (y_dims_trimmed.size() == 0) ? x_dims.size() : axis;
