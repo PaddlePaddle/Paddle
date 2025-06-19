@@ -16,6 +16,7 @@
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 namespace phi {
 
 template <typename T, typename Context>
@@ -25,6 +26,11 @@ void LogLossGradXPUKernel(const Context& dev_ctx,
                           const DenseTensor& out_grad,
                           float epsilon_in,
                           DenseTensor* in_grad) {
+  if (out_grad.numel() == 0 && in_grad) {
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(in_grad->dims())), 0, in_grad);
+    return;
+  }
   auto* predict = &input;
   auto* labels = &label;
   auto* dloss = &out_grad;
