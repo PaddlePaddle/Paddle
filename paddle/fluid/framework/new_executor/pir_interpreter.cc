@@ -122,8 +122,10 @@ bool UseTraceRun(const ExecutionConfig& execution_config,
           (sync_op_num == 0));
 }
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 const int64_t PirInterpreter::cuda_graph_capture_pool_id_ =
     phi::backends::gpu::CUDAGraph::UniqueMemoryPoolID();
+#endif
 
 PirInterpreter::PirInterpreter(const phi::Place& place,
                                const std::vector<std::string>& fetch_var_names,
@@ -880,7 +882,7 @@ void PirInterpreter::BuildInstruction() {
         CREATE_INSTR(SelectInputInstruction);
       } else if (op.isa<paddle::dialect::SelectOutputOp>()) {
         CREATE_INSTR(SelectOutputInstruction);
-#ifdef PADDLE_WITH_CUDA
+#ifdef PADDLE_WITH_CUDA || defined(PADDLE_WITH_HIP)
       } else if (op.isa<paddle::dialect::CudaGraphOp>()) {
         auto cuda_graph_instr_ptr =
             std::make_unique<CudaGraphInstruction>(op_idx++,

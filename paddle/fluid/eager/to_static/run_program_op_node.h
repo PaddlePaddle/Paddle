@@ -490,11 +490,13 @@ inline void PirRunProgramAPI(
     details::ShareTensorsIntoScopeWithName(
         params, param_names, global_inner_scope);
 
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     if (details::is_use_cuda_graph(cuda_graph_state)) {
       pir::PassManager pass_pm(::pir::IrContext::Instance(), 3);
       pass_pm.AddPass(pir::CreateCudaGraphExtractPass());
       pass_pm.Run(forward_program.get());
     }
+#endif
 
     // Step 3. create new interpretercore
     if (FLAGS_specialize_device_in_dy2st) {

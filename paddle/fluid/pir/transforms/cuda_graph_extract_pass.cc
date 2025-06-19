@@ -41,6 +41,7 @@ class CudaGraphExtractPass : public pir::Pass {
       : pir::Pass("cuda_graph_extract_pass", /*opt_level=*/1) {}
 
   void Run(pir::Operation* op) override {
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     auto module_op = op->dyn_cast<pir::ModuleOp>();
     PADDLE_ENFORCE_NOT_NULL(
         module_op,
@@ -51,16 +52,14 @@ class CudaGraphExtractPass : public pir::Pass {
     auto IsSupportCudaGraph = [](const pir::Operation& op) {
       static const std::unordered_set<std::string> UNSUPPORTED_OPS = {
           "pd_op.data", "builtin.shadow_output"};
-      static const std::unordered_set<std::string> CUDA_GRAPH_BLACKLIST =
-          [] -> std::unordered_set<std::string> {
-        if (FLAGS_cuda_graph_blacklist.empty()) return {};
+      static const std::unordered_set<std::string> CUDA_GRAPH_BLACKLIST = [] {
         std::regex re(",");
         std::sregex_token_iterator it(FLAGS_cuda_graph_blacklist.begin(),
                                       FLAGS_cuda_graph_blacklist.end(),
                                       re,
                                       -1);
         std::sregex_token_iterator end;
-        return {it, end};
+        return std::unordered_set<std::string>(it, end);
       }();
       return UNSUPPORTED_OPS.count(op.name()) == 0 &&
              CUDA_GRAPH_BLACKLIST.count(op.name()) == 0;
@@ -73,6 +72,7 @@ class CudaGraphExtractPass : public pir::Pass {
       VLOG(4) << "current cuda_group count : " << group_ops.size();
       ReplaceWithCudaGraphOp(&block, group_ops);
     }
+#endif
   }
 
   bool CanApplyOn(pir::Operation* op) const override {
