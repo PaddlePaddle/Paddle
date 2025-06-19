@@ -65,7 +65,9 @@ jobs:
           PADDLE_VERSION: 0.0.0
           CUDA_VISIBLE_DEVICES: 0,1
           WITH_DISTRIBUTE: "ON"
-          PRECISION_TEST: "ON"
+          PRECISION_TEST: "OFF"
+          WITH_PIP_CUDA_LIBRARIES: "OFF"
+          WITH_FLAGCX: "ON"
           LITE_GIT_TAG: develop
           WITH_UNITY_BUILD: "ON"
           PY_VERSION: 3.9
@@ -109,6 +111,8 @@ jobs:
             -e PADDLE_VERSION \
             -e WITH_DISTRIBUTE \
             -e PRECISION_TEST \
+            -e WITH_PIP_CUDA_LIBRARIES \
+            -e WITH_FLAGCX \
             -e LITE_GIT_TAG \
             -e WITH_UNITY_BUILD \
             -e PY_VERSION \
@@ -252,13 +256,13 @@ jobs:
           FLAGS_fraction_of_gpu_memory_to_use: 0.15
           CTEST_PARALLEL_LEVEL: 2
           WITH_GPU: "ON"
-          CUDA_ARCH_NAME: Volta
+          CUDA_ARCH_NAME: Auto
           WITH_AVX: "ON"
           WITH_COVERAGE: "ON"
           COVERALLS_UPLOAD: "ON"
           PADDLE_VERSION: 0.0.0
           WITH_DISTRIBUTE: "ON"
-          PRECISION_TEST: "ON"
+          PRECISION_TEST: "OFF"
           WITH_UNITY_BUILD: "ON"
           PY_VERSION: 3.9
           WITH_SHARED_PHI: "ON"
