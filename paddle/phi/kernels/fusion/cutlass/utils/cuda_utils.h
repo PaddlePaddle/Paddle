@@ -451,6 +451,7 @@ void compareTwoTensor(const T1* pred,
               "abs_diff",
               "rel_diff(%)");
     }
+
   }
   if (print_size > 0) {
     VLOG(2) << "  id |   pred  |   ref   |abs diff | rel diff (%) |";
