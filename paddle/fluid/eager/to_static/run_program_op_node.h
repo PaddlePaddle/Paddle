@@ -527,7 +527,9 @@ inline void PirRunProgramAPI(
         global_inner_scope,
         cache_key,
         in_sot_mode);
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     interpreter_core->SetCUDAGraphState(static_cast<uint8_t>(cuda_graph_state));
+#endif
     // Step 4. get all eager gc vars (skip_names = backward_inputs -
     // no_need_buffers + outputs)
     std::vector<std::string> skip_names;
@@ -552,7 +554,9 @@ inline void PirRunProgramAPI(
     // Step 1. get cache interpretercore
     auto &cached_value = cache.GetMutable(cache_key);
     interpreter_core = cached_value.core_;
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     interpreter_core->SetCUDAGraphState(static_cast<uint8_t>(cuda_graph_state));
+#endif
     // Step 2. update scope for cache interpretercore
     details::ShareTensorsIntoScopeWithName(x, input_names, global_inner_scope);
     details::ShareTensorsIntoScopeWithName(
