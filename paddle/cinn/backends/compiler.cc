@@ -23,6 +23,7 @@
 #include "paddle/cinn/hlir/framework/graph_compiler_util.h"
 #include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/runtime/backend_api.h"
+#include "paddle/cinn/utils/string.h"
 #ifdef CINN_WITH_CUDA
 #include "paddle/cinn/backends/codegen_cuda_dev.h"
 #include "paddle/cinn/backends/nvrtc/nvrtc_util.h"
@@ -564,7 +565,7 @@ void Compiler::ExportObject(const std::string& path) {
   engine_->ExportObject(path);
 }
 
-void* Compiler::Lookup(absl::string_view fn_name) {
+void* Compiler::Lookup(std::string_view fn_name) {
   PADDLE_ENFORCE_NOT_NULL(
       engine_, ::common::errors::InvalidArgument("Sorry, engine_ is nullptr"));
   if (engine_->Lookup(fn_name) != nullptr) {

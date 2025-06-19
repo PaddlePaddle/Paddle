@@ -242,6 +242,7 @@ class TensorRTConfig:
         workspace_size: int | None = 1 << 30,
         use_cuda_graph: bool | None = False,
         refit_params_path: str | None = None,
+        disable_loggling: bool | None = True,
     ) -> None:
         """
         A class for configuring TensorRT optimizations.
@@ -273,6 +274,8 @@ class TensorRTConfig:
                 Specify whether TensorRT enables cuda_graph during the optimization process (default is false).
             refit_params_path(str, optional):
                 The path to the weights that need to be refitted.
+            disable_loggling (bool, optional):
+                Specifies whether to enable GLOG info output during the optimization process (default is true).
         Returns:
             None
 
@@ -330,6 +333,7 @@ class TensorRTConfig:
         self.workspace_size = workspace_size
         self.use_cuda_graph = use_cuda_graph
         self.refit_params_path = refit_params_path
+        self.disable_loggling = disable_loggling
         if self.refit_params_path:
             self.disable_passes.append("constant_folding_pass")
         paddle.framework.set_flags(

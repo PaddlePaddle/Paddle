@@ -29,7 +29,8 @@ import time
 import types
 import warnings
 from contextlib import contextmanager
-from enum import Enum, auto
+from dataclasses import fields, is_dataclass
+from enum import Enum, Flag, auto
 from importlib.machinery import SourceFileLoader
 from typing import TYPE_CHECKING, Any
 
@@ -89,6 +90,7 @@ ENV_ENABLE_CINN_IN_DY2ST = BooleanEnvironmentVariable(
 class Backend(Enum):
     CINN = auto()
     PHI = auto()
+    PCC = auto()
 
     @staticmethod
     def from_arg(arg: str | Backend | None):
@@ -98,6 +100,8 @@ class Backend(Enum):
             return Backend.PHI
         if arg.upper() == "CINN":
             return Backend.CINN
+        if arg.upper() == "PCC":
+            return Backend.PCC
         raise ValueError(
             f"Unknown backend {arg}. Only support 'CINN' or None for PHI."
         )
@@ -105,8 +109,49 @@ class Backend(Enum):
     def is_cinn(self):
         return self == Backend.CINN
 
+    def is_pcc(self):
+        return self == Backend.PCC
+
     def is_phi(self):
         return self == Backend.PHI
+
+
+class TransformOptions:
+
+    class ToStaticMode(Flag):
+        SOT = auto()
+        AST = auto()
+
+        @classmethod
+        def Nil(cls):
+            return cls(0)
+
+    TRANSFORM_OPTIONS_ATTR_NAME = "___jit_transform_options___"
+
+    def __init__(self, skip_transform_mode: ToStaticMode = ToStaticMode.Nil()):
+        self.skip_transform_mode = skip_transform_mode
+
+    def attach(self, fn):
+        if inspect.ismethod(fn):
+            fn = fn.__func__
+
+        if inspect.isfunction(fn) or issubclass(fn, paddle.nn.Layer):
+            setattr(fn, TransformOptions.TRANSFORM_OPTIONS_ATTR_NAME, self)
+        else:
+            warnings.warn(
+                f"Only support @jit.marker.unified to type(function) or type(method), but received {type(fn)}"
+            )
+
+    def need_transform(self, mode: ToStaticMode):
+        return not (self.skip_transform_mode & mode)
+
+    @staticmethod
+    def check_fn_need_transform(fn, mode: ToStaticMode):
+        if not hasattr(fn, TransformOptions.TRANSFORM_OPTIONS_ATTR_NAME):
+            return True
+        return getattr(
+            fn, TransformOptions.TRANSFORM_OPTIONS_ATTR_NAME
+        ).need_transform(mode)
 
 
 class TimeCounter:
@@ -242,6 +287,13 @@ def type_name(v):
     return type(v).__name__
 
 
+def _is_dataclass_instance(obj):
+    """Check if the object is an instance of a dataclass.
+    Refer to https://docs.python.org/3/library/dataclasses.html#dataclasses.is_dataclass
+    """
+    return is_dataclass(obj) and not isinstance(obj, type)
+
+
 def make_hashable(x, error_msg=None):
     """
     Makes input `x` hashable.
@@ -250,6 +302,15 @@ def make_hashable(x, error_msg=None):
     """
     if isinstance(x, (tuple, list, set)):
         return tuple(map(make_hashable, x))
+
+    if _is_dataclass_instance(x):
+        return (
+            type(x).__name__,
+            *map(
+                make_hashable,
+                [getattr(x, field.name) for field in fields(x)],
+            ),
+        )
 
     try:
         hash(x)
@@ -758,6 +819,12 @@ def cse_is_enabled():
     ]
 
 
+def use_specialized_device():
+    return paddle.get_flags(["FLAGS_specialize_device_in_dy2st"])[
+        "FLAGS_specialize_device_in_dy2st"
+    ]
+
+
 def prim_is_enabled():
     return core._is_bwd_prim_enabled() or core._is_fwd_prim_enabled()
 
@@ -795,9 +862,11 @@ def compose_guards(*guard_creators):
         if not guard_creators:
             yield
             return
-        with guard_creators[0]():
-            with compose_guards(*guard_creators[1:])():
-                yield
+        with (
+            guard_creators[0](),
+            compose_guards(*guard_creators[1:])(),
+        ):
+            yield
 
     return composed_guard
 

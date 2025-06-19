@@ -531,7 +531,7 @@ def pow(x: Tensor, y: float | Tensor, name: str | None = None) -> Tensor:
 
 
     Args:
-        x (Tensor): An N-D Tensor, the data type is bfloat16, float16, float32, float64, int32 or int64.
+        x (Tensor): An N-D Tensor, the data type is bfloat16, float16, float32, float64, int32, int64, complex64 or complex128.
         y (float|int|Tensor): If it is an N-D Tensor, its data type should be the same as `x`.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
@@ -638,6 +638,7 @@ def _elementwise_op(helper):
         "elementwise_mul",
         "elementwise_div",
         "elementwise_max",
+        "elementwise_pow",
     ]
     if original_op_type in bf16_and_complex_supported_ops:
         data_type = [
@@ -2899,9 +2900,7 @@ def inner(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
         __check_input(nx, ny)
 
         if in_dynamic_or_pir_mode():
-            return _C_ops.matmul(
-                nx, paddle.transpose(ny, [1, 0]), False, False
-            ).reshape(dstshape)
+            return _C_ops.matmul(nx, ny, False, True).reshape(dstshape)
         else:
             helper = LayerHelper('inner', **locals())
             out = helper.create_variable_for_type_inference(dtype=nx.dtype)
@@ -2943,8 +2942,16 @@ def outer(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
 
 
     """
-    nx = x.reshape((-1, 1))
-    ny = y.reshape((1, -1))
+    xshape = x.shape
+    yshape = y.shape
+    if math.prod(xshape) == 0:  # If the size is 0
+        nx = x.reshape((0, 0))
+    else:
+        nx = x.reshape((-1, 1))
+    if math.prod(yshape) == 0:  # If the size is 0
+        ny = y.reshape((0, 0))
+    else:
+        ny = y.reshape((1, -1))
 
     if in_dynamic_mode():
         return _C_ops.matmul(nx, ny, False, False)
@@ -6801,7 +6808,7 @@ def diff(
 def angle(x: Tensor, name: str | None = None) -> Tensor:
     r"""
     Element-wise angle of complex numbers. For non-negative real numbers, the angle is 0 while
-    for negative real numbers, the angle is :math:`\pi`.
+    for negative real numbers, the angle is :math:`\pi`, and NaNs are propagated..
 
     Equation:
         .. math::
@@ -6945,13 +6952,15 @@ def frac(x: Tensor, name: str | None = None) -> Tensor:
         paddle.int64,
         paddle.float32,
         paddle.float64,
+        paddle.float16,
         DataType.INT32,
         DataType.INT64,
         DataType.FLOAT32,
         DataType.FLOAT64,
+        DataType.FLOAT16,
     ]:
         raise TypeError(
-            f"The data type of input must be one of ['int32', 'int64', 'float32', 'float64'], but got {x.dtype}"
+            f"The data type of input must be one of ['int32', 'int64', 'float32', 'float64', 'float16'], but got {x.dtype}"
         )
     if in_dynamic_or_pir_mode():
         y = _C_ops.trunc(x)
@@ -6962,7 +6971,7 @@ def frac(x: Tensor, name: str | None = None) -> Tensor:
 
         helper = LayerHelper("trunc", **locals())
         check_variable_and_dtype(
-            x, "X", ['int32', 'int64', 'float32', 'float64'], 'trunc'
+            x, "X", ['int32', 'int64', 'float32', 'float64', 'float16'], 'trunc'
         )
         y = helper.create_variable_for_type_inference(dtype=x.dtype)
         helper.append_op(
@@ -6983,9 +6992,10 @@ def frac_(x: Tensor, name: str | None = None) -> Tensor:
         paddle.int64,
         paddle.float32,
         paddle.float64,
+        paddle.float16,
     ]:
         raise TypeError(
-            f"The data type of input must be one of ['int32', 'int64', 'float32', 'float64'], but got {x.dtype}"
+            f"The data type of input must be one of ['int32', 'int64', 'float32', 'float64', 'float16'], but got {x.dtype}"
         )
     if in_dynamic_mode():
         y = _C_ops.trunc(x)
@@ -7160,7 +7170,8 @@ def take(
         )
     elif mode == 'clip':
         # 'clip' mode disables indexing with negative numbers.
-        index_1d = clip(index_1d, 0, max_index - 1)
+        if max_index > 0:  # If max_index is 0, input_1d is 0-size.
+            index_1d = clip(index_1d, 0, max_index - 1)
 
     out = input_1d.index_select(index_1d).reshape(index.shape)
 
@@ -7898,8 +7909,8 @@ def ldexp(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
         out_dtype = DataType.FLOAT64
     else:
         out_dtype = paddle.get_default_dtype()
-    x = paddle.cast(x, dtype=out_dtype)
-    y = paddle.cast(y, dtype=out_dtype)
+    x = x.astype(dtype=out_dtype)
+    y = y.astype(dtype=out_dtype)
     two = paddle.to_tensor(2, dtype=out_dtype)
     return paddle.multiply(x, paddle.pow(two, y))
 
@@ -8379,11 +8390,6 @@ def combinations(
 
     if r == 0:
         return paddle.empty(shape=[0], dtype=x.dtype)
-
-    if (r > x.shape[0] and not with_replacement) or (
-        x.shape[0] == 0 and with_replacement
-    ):
-        return paddle.empty(shape=[0, r], dtype=x.dtype)
 
     if r > 1:
         t_l = [x for i in range(r)]

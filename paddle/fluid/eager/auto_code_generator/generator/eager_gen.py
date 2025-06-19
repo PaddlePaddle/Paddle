@@ -55,9 +55,6 @@ inplace_check_blacklist = {"assign_out_"}
 
 # Black Ops list that's NO NEED to apply code generation
 black_ops_list = [
-    "conv2d",
-    "conv2d_grad",
-    "conv2d_grad_grad",
     "add_n",
     "add_n_grad",
     "sync_batch_norm_",
@@ -67,6 +64,8 @@ black_ops_list = [
     "pull_sparse_v2_grad",
     "push_gpups_sparse",
 ]
+
+only_backward_ops_list = ["conv2d"]
 
 
 # white ops list whose kernel can be deleted after performance analysis
@@ -91,6 +90,8 @@ prim_white_list = [
     "take_along_axis_double_grad",
     "index_add_double_grad",
     "acos_double_grad",
+    "put_along_axis_double_grad",
+    "masked_fill_double_grad",
 ]
 
 # white ops list whose kernel can automatically do type promotion.
@@ -119,6 +120,9 @@ type_promote_white_list = {
     "huber_loss": ["input", "label"],
     "nextafter": ["x", "y"],
     "atan2": ["x", "y"],
+    "copysign": ["x", "y"],
+    "cross": ["x", "y"],
+    "multiply": ["x", "y"],
 }
 
 type_promote_inplace_white_list = {
@@ -137,6 +141,7 @@ type_promote_inplace_white_list = {
     "logical_or_": ["x", "y"],
     "logical_xor_": ["x", "y"],
     "remainder_": ["x", "y"],
+    "copysign_": ["x", "y"],
 }
 
 # ops support casting int tensor into float32 to do forward calculation
@@ -3245,10 +3250,14 @@ class DygraphForwardAndNodesGenerator(GeneratorBase):
         for forward_api_contents in true_forward_api_list:
             if forward_api_contents[op_string] in black_ops_list:
                 continue
-            if op_string == 'backward_op' and (
-                forward_api_contents[op_string].endswith(
-                    ('double_grad', 'triple_grad', 'grad_grad')
+            if (
+                op_string == 'backward_op'
+                and (
+                    forward_api_contents[op_string].endswith(
+                        ('double_grad', 'triple_grad', 'grad_grad')
+                    )
                 )
+                and "conv2d" not in forward_api_contents[op_string]
             ):
                 continue
 
@@ -3261,21 +3270,22 @@ class DygraphForwardAndNodesGenerator(GeneratorBase):
                     forward_api_contents
                 )
 
-            # Generate Dygraph Forward Function
-            function_generator = DygraphForwardFunctionGenerator(
-                forward_api_contents,
-                backward_api_contents,
-                forward_apis_dict,
-                namespace,
-            )
-            function_generator.run(grad_flag)
+            if forward_api_contents[op_string] not in only_backward_ops_list:
+                # Generate Dygraph Forward Function
+                function_generator = DygraphForwardFunctionGenerator(
+                    forward_api_contents,
+                    backward_api_contents,
+                    forward_apis_dict,
+                    namespace,
+                )
+                function_generator.run(grad_flag)
 
-            self.forward_definition_str += (
-                function_generator.forward_definition_str + "\n"
-            )
-            self.forward_declaration_str += (
-                function_generator.forward_declaration_str + "\n"
-            )
+                self.forward_definition_str += (
+                    function_generator.forward_definition_str + "\n"
+                )
+                self.forward_declaration_str += (
+                    function_generator.forward_declaration_str + "\n"
+                )
 
             if not grad_flag:
                 # Generate Dygraph GradNode Function
@@ -3314,8 +3324,7 @@ class DygraphForwardAndNodesGenerator(GeneratorBase):
                     backward_api_contents = next_grad_api_contents
 
         if len(namespace) > 0:
-            if namespace.endswith("::"):
-                namespace = namespace[:-2]
+            namespace = namespace.removesuffix("::")
             self.forward_definition_str = NAMESPACE_WRAPPER_TEMPLATE.format(
                 namespace, self.forward_definition_str
             )

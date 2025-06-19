@@ -36,11 +36,11 @@ T GetAttr(const cinn::utils::AttributeMap &attr_map,
                         "Sorry, cannot found attribute %s", attr_name));
   const auto &attr = attr_map.at(attr_name);
   PADDLE_ENFORCE_EQ(
-      absl::holds_alternative<T>(attr),
+      std::holds_alternative<T>(attr),
       true,
       ::common::errors::InvalidArgument(
           "The type of attribute %s isn't %s", attr_name, typeid(T).name()));
-  return absl::get<T>(attr_map.at(attr_name));
+  return std::get<T>(attr_map.at(attr_name));
 }
 
 template <class T>

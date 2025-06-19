@@ -15,10 +15,6 @@ limitations under the License. */
 #include "paddle/fluid/pybind/communication.h"
 
 #include <Python.h>
-// Avoid a problem with copysign defined in pyconfig.h on Windows.
-#ifdef copysign
-#undef copysign
-#endif
 #include <pybind11/chrono.h>
 #include <pybind11/complex.h>
 #include <pybind11/functional.h>
@@ -58,6 +54,7 @@ void BindCommContextManager(py::module *m) {
               py::arg("hash_key") = "",
               py::arg("p2p_opt") = nullptr,
               py::arg("nccl_comm_init_option") = 0,
+              py::arg("comm_group_type") = -1,
               py::call_guard<py::gil_scoped_release>())
 #endif
 #if defined(PADDLE_WITH_XPU_BKCL)

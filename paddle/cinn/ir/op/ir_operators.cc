@@ -28,7 +28,7 @@
 
 namespace cinn {
 namespace ir {
-using attr_t = absl::variant<int, float, bool, std::string>;
+using attr_t = std::variant<int, float, bool, std::string>;
 
 Expr operator<<(Expr a, Expr b) {
   PADDLE_ENFORCE_EQ(a.type().is_int() || a.type().is_uint(),

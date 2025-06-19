@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include <absl/strings/string_view.h>
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/IRBuilder.h>
@@ -24,6 +23,7 @@
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <unordered_set>
 #include <utility>
 #include <vector>
@@ -254,7 +254,7 @@ class CodeGenLLVM : public LLVMIRVisitor, public IrBuilderMixin<CodeGenLLVM> {
    * can optimize by reordering loads and stores across different buffers.
    */
   void AddTbaaMetadata(llvm::Instruction *inst,
-                       absl::string_view buffer,
+                       std::string_view buffer,
                        Expr index);
 
   void InitTarget(const Target &target);

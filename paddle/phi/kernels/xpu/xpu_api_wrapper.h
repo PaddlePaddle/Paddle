@@ -14,8 +14,6 @@
 
 #pragma once
 
-#ifdef PADDLE_WITH_XPU
-
 #include <unordered_map>
 #include <vector>
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
@@ -99,15 +97,15 @@ inline XPUFCCalcType FCCalcType<XPUTypeBF16>() {
 }
 
 struct XpuFcInfo {
-  int bs;
-  int m;
-  int n;
-  int k;
+  int64_t bs;
+  int64_t m;
+  int64_t n;
+  int64_t k;
   bool trans_x;
   bool trans_y;
-  int stride_x;
-  int stride_y;
-  int stride_out;
+  int64_t stride_x;
+  int64_t stride_y;
+  int64_t stride_out;
   float* max_x;
   float* max_y;
   float* max_out;
@@ -139,10 +137,10 @@ struct XpuFcInfo {
         scale_y(nullptr),
         scale_x_mode(0),
         scale_y_mode(0) {}
-  void InitFcInfo(int bs,
-                  int m,
-                  int n,
-                  int k,
+  void InitFcInfo(int64_t bs,
+                  int64_t m,
+                  int64_t n,
+                  int64_t k,
                   bool trans_x,
                   bool trans_y,
                   float* max_x,
@@ -240,21 +238,21 @@ static void GetFCInfo(const phi::DDim& x_dims,
 }
 
 template <typename XPUType, typename FCT>
-static void xblas_fc_wrapper(xpu::Context* ctx,
+static void xblas_fc_wrapper(xpu::Context* xpu_ctx,
                              const XPUType* x,
                              const XPUType* w,
                              XPUType* y,
-                             int m,
-                             int n,
-                             int k,
+                             int64_t m,
+                             int64_t n,
+                             int64_t k,
                              bool x_trans,
                              bool w_trans,
                              const float* x_maxptr,
                              const float* w_maxptr,
                              float* y_maxptr,
-                             int ldx,
-                             int ldw,
-                             int ldy,
+                             int64_t ldx,
+                             int64_t ldw,
+                             int64_t ldy,
                              float alpha,
                              float beta,
                              const float* bias,
@@ -264,7 +262,7 @@ static void xblas_fc_wrapper(xpu::Context* ctx,
                              int scale_x_mode,
                              int scale_w_mode) {
   int r = 0;
-  xpu::ctx_guard RAII_GUARD(ctx);
+  xpu::ctx_guard RAII_GUARD(xpu_ctx);
   if (x_trans && std::getenv("XPU_PADDLE_FC_TRANS_A") != nullptr &&
       std::is_same<float, XPUType>::value) {
     XPUType* l3_addr = nullptr;
@@ -273,10 +271,10 @@ static void xblas_fc_wrapper(xpu::Context* ctx,
 
     std::vector<int64_t> shape = {k, m};
     std::vector<int64_t> axis = {1, 0};
-    r = xpu::transpose<XPUType>(ctx, x, l3_addr, shape, axis);
+    r = xpu::transpose<XPUType>(xpu_ctx, x, l3_addr, shape, axis);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "transpose");
 #ifdef PADDLE_WITH_XPU_XRE5
-    r = xblas::fc_fusion<XPUType, XPUType, XPUType, FCT>(ctx,
+    r = xblas::fc_fusion<XPUType, XPUType, XPUType, FCT>(xpu_ctx,
                                                          l3_addr,
                                                          w,
                                                          y,
@@ -301,7 +299,7 @@ static void xblas_fc_wrapper(xpu::Context* ctx,
                                                          scale_w_mode);
     PADDLE_ENFORCE_XBLAS_SUCCESS(r, "xblas_fc_fusion");
 #else
-    r = xpu::fc_fusion<XPUType, XPUType, XPUType, FCT>(ctx,
+    r = xpu::fc_fusion<XPUType, XPUType, XPUType, FCT>(xpu_ctx,
                                                        l3_addr,
                                                        w,
                                                        y,
@@ -326,12 +324,12 @@ static void xblas_fc_wrapper(xpu::Context* ctx,
 #ifdef PADDLE_WITH_XPU_XRE5
     if constexpr (std::is_same<XPUTypeBF16, XPUType>::value) {
       if (std::getenv("XPU_PADDLE_FC_BFLOAT16_XTE") != nullptr) {
-        const int MAXPTR_N = ctx->max_ptr_size();
-        int x_len = m * k;
+        const int MAXPTR_N = xpu_ctx->max_ptr_size();
+        int64_t x_len = m * k;
         XPUTypeFP16* x_fp16 = nullptr;
         x_fp16 = RAII_GUARD.alloc_l3_or_gm<XPUTypeFP16>(x_len);
         PADDLE_ENFORCE_XDNN_NOT_NULL(x_fp16);
-        int w_len = k * n;
+        int64_t w_len = k * n;
         XPUTypeFP16* w_fp16 = nullptr;
         w_fp16 = RAII_GUARD.alloc_l3_or_gm<XPUTypeFP16>(w_len);
         PADDLE_ENFORCE_XDNN_NOT_NULL(w_fp16);
@@ -348,29 +346,31 @@ static void xblas_fc_wrapper(xpu::Context* ctx,
         if (x_maxptr == nullptr) {
           xte_x_maxptr = RAII_GUARD.alloc_l3_or_gm<float>(MAXPTR_N);
           PADDLE_ENFORCE_XDNN_NOT_NULL(xte_x_maxptr);
-          int r = xpu::findmax(ctx, x, xte_x_maxptr, x_len);
+          int r = xpu::findmax(xpu_ctx, x, xte_x_maxptr, x_len);
           PADDLE_ENFORCE_XDNN_SUCCESS(r, "xpu_findmax");
-          r = xpu::cast_te(ctx, x, xte_x_maxptr, x_fp16, xte_scale_x, x_len);
+          r = xpu::cast_te(
+              xpu_ctx, x, xte_x_maxptr, x_fp16, xte_scale_x, x_len);
           PADDLE_ENFORCE_XDNN_SUCCESS(r, "xpu_cast_te");
         } else {
-          r = xpu::cast_te(ctx, x, x_maxptr, x_fp16, xte_scale_x, x_len);
+          r = xpu::cast_te(xpu_ctx, x, x_maxptr, x_fp16, xte_scale_x, x_len);
           PADDLE_ENFORCE_XDNN_SUCCESS(r, "xpu_cast_te");
         }
         if (w_maxptr == nullptr) {
           xte_w_maxptr = RAII_GUARD.alloc_l3_or_gm<float>(MAXPTR_N);
           PADDLE_ENFORCE_XDNN_NOT_NULL(xte_w_maxptr);
-          r = xpu::findmax(ctx, w, xte_w_maxptr, w_len);
+          r = xpu::findmax(xpu_ctx, w, xte_w_maxptr, w_len);
           PADDLE_ENFORCE_XDNN_SUCCESS(r, "xpu_findmax");
-          r = xpu::cast_te(ctx, w, xte_w_maxptr, w_fp16, xte_scale_w, w_len);
+          r = xpu::cast_te(
+              xpu_ctx, w, xte_w_maxptr, w_fp16, xte_scale_w, w_len);
           PADDLE_ENFORCE_XDNN_SUCCESS(r, "xpu_cast_te");
         } else {
-          r = xpu::cast_te(ctx, w, w_maxptr, w_fp16, xte_scale_w, w_len);
+          r = xpu::cast_te(xpu_ctx, w, w_maxptr, w_fp16, xte_scale_w, w_len);
           PADDLE_ENFORCE_XDNN_SUCCESS(r, "xpu_cast_te");
         }
 
         r = xblas::
             fc_fusion<XPUTypeFP16, XPUTypeFP16, XPUTypeBF16, XPUTypeFP16>(
-                ctx,
+                xpu_ctx,
                 x_fp16,
                 w_fp16,
                 y,
@@ -398,7 +398,7 @@ static void xblas_fc_wrapper(xpu::Context* ctx,
         return;
       }
     }
-    r = xblas::fc_fusion<XPUType, XPUType, XPUType, FCT>(ctx,
+    r = xblas::fc_fusion<XPUType, XPUType, XPUType, FCT>(xpu_ctx,
                                                          x,
                                                          w,
                                                          y,
@@ -424,7 +424,7 @@ static void xblas_fc_wrapper(xpu::Context* ctx,
 
     PADDLE_ENFORCE_XBLAS_SUCCESS(r, "xblas_fc_fusion");
 #else
-    r = xpu::fc_fusion<XPUType, XPUType, XPUType, FCT>(ctx,
+    r = xpu::fc_fusion<XPUType, XPUType, XPUType, FCT>(xpu_ctx,
                                                        x,
                                                        w,
                                                        y,
@@ -450,21 +450,21 @@ static void xblas_fc_wrapper(xpu::Context* ctx,
 
 #define DECLARE_UNSUPPORTED_XBLAS_FC_WRAPPER(XPUType, FCT)          \
   template <>                                                       \
-  void xblas_fc_wrapper<XPUType, FCT>(xpu::Context * ctx,           \
+  void xblas_fc_wrapper<XPUType, FCT>(xpu::Context * xpu_ctx,       \
                                       const XPUType* x,             \
                                       const XPUType* w,             \
                                       XPUType* y,                   \
-                                      int m,                        \
-                                      int n,                        \
-                                      int k,                        \
+                                      int64_t m,                    \
+                                      int64_t n,                    \
+                                      int64_t k,                    \
                                       bool x_trans,                 \
                                       bool w_trans,                 \
                                       const float* x_maxptr,        \
                                       const float* w_maxptr,        \
                                       float* y_maxptr,              \
-                                      int ldx,                      \
-                                      int ldw,                      \
-                                      int ldy,                      \
+                                      int64_t ldx,                  \
+                                      int64_t ldw,                  \
+                                      int64_t ldy,                  \
                                       float alpha,                  \
                                       float beta,                   \
                                       const float* bias,            \
@@ -491,20 +491,20 @@ DECLARE_UNSUPPORTED_XBLAS_FC_WRAPPER(float, XPUTypeFP16)
 
 template <typename XPUType, typename FCT, typename TGEMM_OUT>
 static void xblas_fc_batch_wrapper(xpu::Context* xpu_ctx,
-                                   int bs,
+                                   int64_t bs,
                                    bool trans_x,
                                    bool trans_w,
-                                   int m,
-                                   int n,
-                                   int k,
+                                   int64_t m,
+                                   int64_t n,
+                                   int64_t k,
                                    float alpha,
                                    const XPUType* x,
-                                   int stride_x,
+                                   int64_t stride_x,
                                    const XPUType* w,
-                                   int stride_w,
+                                   int64_t stride_w,
                                    float beta,
                                    XPUType* y,
-                                   int stride_y,
+                                   int64_t stride_y,
                                    const float* x_maxptr,
                                    const float* w_maxptr) {
 #ifdef PADDLE_WITH_XPU_XRE5
@@ -554,20 +554,20 @@ static void xblas_fc_batch_wrapper(xpu::Context* xpu_ctx,
   template <>                                                               \
   void xblas_fc_batch_wrapper<XPUType, FCT, TGEMM_OUT>(                     \
       xpu::Context * xpu_ctx,                                               \
-      int bs,                                                               \
+      int64_t bs,                                                           \
       bool trans_x,                                                         \
       bool trans_w,                                                         \
-      int m,                                                                \
-      int n,                                                                \
-      int k,                                                                \
+      int64_t m,                                                            \
+      int64_t n,                                                            \
+      int64_t k,                                                            \
       float alpha,                                                          \
       const XPUType* x,                                                     \
-      int stride_x,                                                         \
+      int64_t stride_x,                                                     \
       const XPUType* w,                                                     \
-      int stride_w,                                                         \
+      int64_t stride_w,                                                     \
       float beta,                                                           \
       XPUType* y,                                                           \
-      int stride_y,                                                         \
+      int64_t stride_y,                                                     \
       const float* x_maxptr,                                                \
       const float* w_maxptr) {                                              \
     int r = xpu::Error_t::INVALID_PARAM;                                    \
@@ -651,13 +651,13 @@ static void MatMulXPUFunction(
     xblas_fc_batch_api =
         &xblas_fc_batch_wrapper<XPUType, XPUTypeFP16, XPUTypeFP16>;
   }
-  int m = fcinfo.m;
-  int n = fcinfo.n;
-  int k = fcinfo.k;
-  int batch_size = fcinfo.bs;
-  int ldx = fcinfo.stride_x;
-  int ldy = fcinfo.stride_y;
-  int ldout = fcinfo.stride_out;
+  int64_t m = fcinfo.m;
+  int64_t n = fcinfo.n;
+  int64_t k = fcinfo.k;
+  int64_t batch_size = fcinfo.bs;
+  int64_t ldx = fcinfo.stride_x;
+  int64_t ldy = fcinfo.stride_y;
+  int64_t ldout = fcinfo.stride_out;
   bool trans_x = fcinfo.trans_x;
   bool trans_y = fcinfo.trans_y;
   float* max_x = fcinfo.max_x;
@@ -722,21 +722,21 @@ static void MatMulXPUFunction(
       y_data = y_broadcast_data;
     }
     // batch matmul
-    xblas_fc_batch_api(xpu_ctx,                          // Context* ctx,
-                       batch_size,                       // int batch_size,
+    xblas_fc_batch_api(xpu_ctx,                          // Context* xpu_ctx,
+                       batch_size,                       // int64_t batch_size,
                        trans_x,                          // bool x_trans,
                        trans_y,                          // bool w_trans,
-                       m,                                // int m,
-                       n,                                // int n,
-                       k,                                // int k,
+                       m,                                // int64_t m,
+                       n,                                // int64_t n,
+                       k,                                // int64_t k,
                        alpha,                            // float alpha,
                        x_data,                           // const TX* x,
-                       ldx,                              // int stride_a,
+                       ldx,                              // int64_t stride_a,
                        y_data,                           // const TW* w,
-                       ldy,                              // int stride_b,
+                       ldy,                              // int64_t stride_b,
                        beta,                             // float beta,
                        reinterpret_cast<XPUType*>(out),  // TY* y,
-                       ldout,                            // int stride_c,
+                       ldout,                            // int64_t stride_c,
                        max_x,   // const float* x_maxptr,
                        max_y);  // const float* w_maxptr
   }
@@ -761,10 +761,10 @@ MatmulGradFcInfo(xpu::Context* xpu_ctx,
   float* max_dout = NULL;
   int maxptr_size = xpu_ctx->max_ptr_size();
   uint64_t l3_size = uint64_t(xpu_ctx->_l3_mgr.get_size());
-  int bs = (dout_shape.bs <= 1) ? (1) : (dout_shape.bs);
-  int dx_size = bs * dout_shape.m * dout_shape.k;
-  int dy_size = bs * dout_shape.k * dout_shape.n;
-  int dout_size = bs * dout_shape.m * dout_shape.n;
+  int64_t bs = (dout_shape.bs <= 1) ? (1) : (dout_shape.bs);
+  int64_t dx_size = bs * dout_shape.m * dout_shape.k;
+  int64_t dy_size = bs * dout_shape.k * dout_shape.n;
+  int64_t dout_size = bs * dout_shape.m * dout_shape.n;
   if (trans_x && trans_y) {
     copy_to_l3 = l3_size >= (dout_size * 2 + dy_size) * sizeof(T);
   } else if (trans_x) {
@@ -910,4 +910,3 @@ MatmulGradFcInfo(xpu::Context* xpu_ctx,
 }
 
 }  // namespace phi
-#endif

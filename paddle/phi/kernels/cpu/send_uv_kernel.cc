@@ -50,7 +50,7 @@ void GraphSendUVCpuKernel(const BroadCastInfo& bcast,
 }
 
 template <typename Context, typename T, typename IndexT>
-void GraphSendUVOpKernelLaunchHelper(const Context& ctx,
+void GraphSendUVOpKernelLaunchHelper(const Context& dev_ctx,
                                      const DenseTensor& x,
                                      const DenseTensor& y,
                                      const DenseTensor& src_index,
@@ -65,7 +65,7 @@ void GraphSendUVOpKernelLaunchHelper(const Context& ctx,
                               "should be greater than 0, but received %d.",
                               index_size));
 
-  ctx.template Alloc<T>(out);
+  dev_ctx.template Alloc<T>(out);
   T* out_data = out->data<T>();
 
   const auto& bcast_info = phi::CalcBCastInfo(x.dims(), y.dims());
@@ -97,7 +97,7 @@ void GraphSendUVOpKernelLaunchHelper(const Context& ctx,
 }
 
 template <typename T, typename Context>
-void SendUVKernel(const Context& ctx,
+void SendUVKernel(const Context& dev_ctx,
                   const DenseTensor& x,
                   const DenseTensor& y,
                   const DenseTensor& src_index,
@@ -107,10 +107,10 @@ void SendUVKernel(const Context& ctx,
   auto index_type = src_index.dtype();
   if (index_type == phi::DataType::INT32) {
     GraphSendUVOpKernelLaunchHelper<Context, T, int32_t>(
-        ctx, x, y, src_index, dst_index, message_op, out);
+        dev_ctx, x, y, src_index, dst_index, message_op, out);
   } else if (index_type == phi::DataType::INT64) {
     GraphSendUVOpKernelLaunchHelper<Context, T, int64_t>(
-        ctx, x, y, src_index, dst_index, message_op, out);
+        dev_ctx, x, y, src_index, dst_index, message_op, out);
   }
 }
 

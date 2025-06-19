@@ -157,6 +157,12 @@ class TestFlipOpNegAxis(TestFlipOp):
         self.axis = [-1]
 
 
+class TestFlipOp_ZeroSize(TestFlipOp):
+    def init_test_case(self):
+        self.in_shape = (4, 0, 6, 3)
+        self.axis = [0, 2]
+
+
 # ----------------flip_fp16----------------
 def create_test_fp16_class(parent):
     @unittest.skipIf(

@@ -529,7 +529,7 @@ static void UniqueDimsCUDATensor(const Context& context,
 // functor for processing a flattened DenseTensor
 template <typename Context, typename InT>
 struct UniqueFlattenedCUDAFunctor {
-  const Context& ctx_;
+  const Context& dev_ctx_;
   const DenseTensor& in_;
   DenseTensor* out_;
   DenseTensor* indices_;
@@ -548,7 +548,7 @@ struct UniqueFlattenedCUDAFunctor {
                              bool return_index,
                              bool return_inverse,
                              bool return_counts)
-      : ctx_(context),
+      : dev_ctx_(context),
         in_(in),
         out_(out),
         indices_(indices),
@@ -560,7 +560,7 @@ struct UniqueFlattenedCUDAFunctor {
 
   template <typename IndexT>
   void apply() const {
-    UniqueFlattenedCUDATensor<Context, InT, IndexT>(ctx_,
+    UniqueFlattenedCUDATensor<Context, InT, IndexT>(dev_ctx_,
                                                     in_,
                                                     out_,
                                                     indices_,
@@ -576,7 +576,7 @@ struct UniqueFlattenedCUDAFunctor {
 // functor for processing a multi-dimensional DenseTensor
 template <typename Context, typename InT>
 struct UniqueDimsCUDAFunctor {
-  const Context& ctx_;
+  const Context& dev_ctx_;
   const DenseTensor& in_;
   DenseTensor* out_;
   DenseTensor* indices_;
@@ -597,7 +597,7 @@ struct UniqueDimsCUDAFunctor {
                         bool return_index,
                         bool return_inverse,
                         bool return_counts)
-      : ctx_(context),
+      : dev_ctx_(context),
         in_(in),
         out_(out),
         indices_(indices),
@@ -610,7 +610,7 @@ struct UniqueDimsCUDAFunctor {
 
   template <typename IndexT>
   void apply() const {
-    UniqueDimsCUDATensor<Context, InT, IndexT>(ctx_,
+    UniqueDimsCUDATensor<Context, InT, IndexT>(dev_ctx_,
                                                in_,
                                                out_,
                                                indices_,

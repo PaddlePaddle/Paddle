@@ -136,7 +136,7 @@ void SetValueImpl(const Context& dev_ctx,
   // be two ops points to the output in graph: op1 -> output <- set_value.
   // In this case, we have to find a way to handle the running order of
   // set_value is what we want.
-  int r = XPU_SUCCESS;
+  int r = 0;
   out->Resize(in.dims());
   dev_ctx.template Alloc<T>(out);
 
@@ -166,7 +166,7 @@ void SetValueImpl(const Context& dev_ctx,
     strides_indices[i] = 1;
   }
   for (size_t i = 0; i < axes.size(); i++) {
-    int axis_index = axes[i];
+    int64_t axis_index = axes[i];
     starts_indices[axis_index] = starts_local[i];
     ends_indices[axis_index] = ends_local[i];
     strides_indices[axis_index] = steps_local[i];
@@ -191,16 +191,16 @@ void SetValueImpl(const Context& dev_ctx,
   // If do broadcasting on Tensor with shape [3] and [3], the result's shape
   // is [3], which is right.
 
-  CheckIsDimsMatch(slice_dims_for_assign, new_value_dims);
+  phi::funcs::CheckIsDimsMatch(slice_dims_for_assign, new_value_dims);
 
   // do broadcasting
-  auto f = [](xpu::Context* ctx,
+  auto f = [](xpu::Context* xpu_ctx,
               const XPUType* x,
               const XPUType* y, /*unused*/
               XPUType* z,
               const std::vector<int64_t>& xshape,
               const std::vector<int64_t>& zshape) {
-    return xpu::broadcast<XPUType>(ctx, x, z, xshape, zshape);
+    return xpu::broadcast<XPUType>(xpu_ctx, x, z, xshape, zshape);
   };
 
   XPUElementwise<T, XPUType>(dev_ctx,
@@ -393,12 +393,12 @@ void SetValueKernel(const Context& dev_ctx,
                     const std::vector<Scalar>& values,
                     DenseTensor* out) {
   // avoid using vector<T> if T is bool or phi::dtype::float16
-  int value_size = sizeof(T);
-  int values_size = values.size();
-  int values_length = values_size * value_size;
+  size_t value_size = sizeof(T);
+  size_t values_size = values.size();
+  size_t values_length = values_size * value_size;
   std::vector<uint8_t> assign_values(values_length);
   uint8_t* value_data_uint8_cpu = assign_values.data();
-  for (int i = 0; i < values_size; i++) {
+  for (size_t i = 0; i < values_size; i++) {
     T value = values[i].to<T>();
     memcpy(value_data_uint8_cpu + i * value_size, &value, value_size);
   }

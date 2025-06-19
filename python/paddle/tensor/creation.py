@@ -18,10 +18,9 @@ import builtins
 import math
 import re
 import warnings
-from typing import TYPE_CHECKING, Any, overload
+from typing import TYPE_CHECKING, overload
 
 import numpy as np
-import numpy.typing as npt
 
 import paddle
 from paddle import _C_ops
@@ -32,7 +31,6 @@ from ..base.data_feeder import (
     check_type,
     check_variable_and_dtype,
     convert_dtype,
-    convert_float_to_uint16,
 )
 from ..base.framework import Variable, device_guard
 from ..base.param_attr import ParamAttr
@@ -699,19 +697,6 @@ def _to_tensor_non_static(
                 return tensor.astype(convert_dtype(dtype))
         return tensor
 
-    def _handle_np_dtype(
-        ndarray: npt.NDArray[Any], dtype: DTypeLike
-    ) -> npt.NDArray[Any]:
-        if dtype:
-            if convert_dtype(dtype) != convert_dtype(ndarray.dtype):
-                # should not ndarray.astype('uint16') directly, data bits is wrong
-                if convert_dtype(dtype) in ['uint16']:
-                    return convert_float_to_uint16(ndarray.astype('float32'))
-                else:
-                    return ndarray.astype(convert_dtype(dtype))
-
-        return ndarray
-
     if isinstance(data, np.number):  # Special case for numpy scalars
         data = np.array(data)
 
@@ -757,23 +742,57 @@ def _to_tensor_non_static(
                         if default_type in ['float16', 'float32']
                         else 'complex128'
                     )
-                data = _handle_np_dtype(data, default_type)
+                if convert_dtype(default_type) != convert_dtype(data.dtype):
+                    dtype = default_type
             # Windows default type is 'int32', while Linux/Mac is 'int64'. Unify they.
             if data.dtype in ['int32']:
                 data = data.astype("int64")
 
-    if dtype:
-        data = _handle_np_dtype(data, dtype)
+    if dtype and convert_dtype(dtype) != convert_dtype(data.dtype):
+        if convert_dtype(dtype) == 'uint16':
+            tensor = core.eager.Tensor(
+                value=data,
+                place=place,
+                persistable=False,
+                zero_copy=False,
+                name=None,
+                stop_gradient=True,
+            )
+            tensor = tensor.astype(dtype)
+            tensor.stop_gradient = stop_gradient
+            return tensor
+        else:
+            data = data.astype(convert_dtype(dtype))
 
     if isinstance(data, np.ndarray):
-        return core.eager.Tensor(
-            value=data,
-            place=place,
-            persistable=False,
-            zero_copy=False,
-            name=None,
-            stop_gradient=stop_gradient,
-        )
+        if (
+            data.dtype
+            in [
+                np.float32,
+                np.float64,
+                np.int32,
+                np.int64,
+                np.complex64,
+                np.complex128,
+            ]
+            and data.size == 1
+            and (
+                isinstance(place, core.CUDAPlace)
+                or (isinstance(place, core.Place) and place.is_gpu_place())
+            )
+        ):
+            ret = paddle.full(data.shape, data.reshape([1])[0], data.dtype)
+            ret.stop_gradient = stop_gradient
+            return ret
+        else:
+            return core.eager.Tensor(
+                value=data,
+                place=place,
+                persistable=False,
+                zero_copy=False,
+                name=None,
+                stop_gradient=stop_gradient,
+            )
     else:
         return paddle.Tensor(
             value=data,
@@ -2645,7 +2664,7 @@ def assign(x: TensorLike, output: paddle.Tensor | None = None) -> paddle.Tensor:
              [2.5 2.5]]
             >>> array = np.array([[1, 1], [3, 4], [1, 3]]).astype(
             ...     np.int64
-            ... )  # type: ignore[var-annotated]
+            ... )
             >>> result1 = paddle.zeros(shape=[3, 3], dtype='float32')
             >>> paddle.assign(array, result1)
             >>> print(result1.numpy())
@@ -2781,7 +2800,8 @@ def assign(x: TensorLike, output: paddle.Tensor | None = None) -> paddle.Tensor:
         )
         value_name = "values"
         values = input.ravel().tolist()
-        if input.size > 1024 * 1024:
+        max_element_num = 17179869184  # 17179869184 = 2**34
+        if input.size > max_element_num:
             from paddle.jit.sot.utils.exceptions import SotExtraInfo
 
             sot_extra_info = SotExtraInfo(need_breakgraph=True)

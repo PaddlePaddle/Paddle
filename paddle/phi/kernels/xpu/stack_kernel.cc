@@ -39,19 +39,19 @@ void StackKernel(const Context& dev_ctx,
 
   dev_ctx.template Alloc<T>(out);
   auto& dim = x[0]->dims();
-  std::vector<int> xdims;
+  std::vector<int64_t> xdims;
   for (auto i = 0; i < dim.size(); ++i) {
     xdims.push_back(dim[i]);
   }
   xdims.push_back(1);
-  std::vector<std::vector<int>> xdims_list;
-  int n = static_cast<int>(x.size());
-  for (int i = 0; i < n; i++) {
+  std::vector<std::vector<int64_t>> xdims_list;
+  int64_t n = static_cast<int64_t>(x.size());
+  for (int64_t i = 0; i < n; i++) {
     xdims_list.push_back(xdims);
   }
 
   std::vector<const XPUType*> x_list;
-  for (int i = 0; i < n; i++) {
+  for (int64_t i = 0; i < n; i++) {
     x_list.push_back(reinterpret_cast<const XPUType*>(x[i]->data<T>()));
   }
 

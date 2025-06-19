@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #pragma once
-#include <absl/types/any.h>
+#include <any>
 
 #include <string>
 #include "paddle/utils/flat_hash_map.h"
@@ -33,7 +33,7 @@ class InfoRegistry {
   void Clear() { data_.clear(); }
 
  private:
-  paddle::flat_hash_map<std::string, absl::any> data_;
+  paddle::flat_hash_map<std::string, std::any> data_;
 };
 
 template <typename T>
@@ -42,7 +42,7 @@ T& InfoRegistry::Get(const std::string& key) {
   if (it == data_.end()) {
     data_[key] = T();
   }
-  return absl::any_cast<T&>(data_[key]);
+  return std::any_cast<T&>(data_[key]);
 }
 
 }  // namespace common

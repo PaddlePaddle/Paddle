@@ -20,24 +20,24 @@ limitations under the License. */
 namespace phi {
 
 template <typename T, typename Context>
-void ShapeKernel(const Context& ctx,
+void ShapeKernel(const Context& dev_ctx,
                  const DenseTensor& input,
                  DenseTensor* out) {
   auto& in_dims = input.dims();
   out->Resize({in_dims.size()});
-  auto out_data = ctx.template HostAlloc<int32_t>(out);
+  auto out_data = dev_ctx.template HostAlloc<int32_t>(out);
   for (int i = 0; i < in_dims.size(); ++i) {
     out_data[i] = in_dims[i];
   }
 }
 
 template <typename T, typename Context>
-void Shape64Kernel(const Context& ctx,
+void Shape64Kernel(const Context& dev_ctx,
                    const DenseTensor& input,
                    DenseTensor* out) {
   auto& in_dims = input.dims();
   out->Resize({in_dims.size()});
-  auto out_data = ctx.template HostAlloc<int64_t>(out);
+  auto out_data = dev_ctx.template HostAlloc<int64_t>(out);
   for (int i = 0; i < in_dims.size(); ++i) {
     out_data[i] = in_dims[i];
   }
@@ -103,7 +103,7 @@ PD_REGISTER_KERNEL(shape,
 }
 #endif
 
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
+#if defined(PADDLE_WITH_CUSTOM_DEVICE) && !defined(PADDLE_WITH_CUDA)
 PD_REGISTER_KERNEL(shape,
                    Custom,
                    ALL_LAYOUT,
@@ -186,7 +186,7 @@ PD_REGISTER_KERNEL(shape64,
 }
 #endif
 
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
+#if defined(PADDLE_WITH_CUSTOM_DEVICE) && !defined(PADDLE_WITH_CUDA)
 PD_REGISTER_KERNEL(shape64,
                    Custom,
                    ALL_LAYOUT,

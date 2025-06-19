@@ -47,7 +47,7 @@ void LapackSvdvals(const T* X, T* S, int rows, int cols) {
                                                 nullptr,  // iwork is not needed
                                                 &info);
   if (info != 0) {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "Error during LAPACK lwork query. Invalid matrix or arguments."));
   }
   lwork = static_cast<int>(work[0]);
@@ -68,11 +68,11 @@ void LapackSvdvals(const T* X, T* S, int rows, int cols) {
                                                 nullptr,  // iwork is not needed
                                                 &info);
   if (info < 0) {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "This %s-th argument has an illegal value.", info));
   }
   if (info > 0) {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "SVD computation did not converge. Input matrix may be invalid."));
   }
 }
@@ -90,6 +90,10 @@ template <typename T, typename Context>
 void SvdvalsKernel(const Context& dev_ctx,
                    const DenseTensor& X,
                    DenseTensor* S) {
+  if (S && S->numel() == 0) {
+    dev_ctx.template Alloc<phi::dtype::Real<T>>(S);
+    return;
+  }
   auto x_dims = X.dims();
   int rows = static_cast<int>(x_dims[x_dims.size() - 2]);
   int cols = static_cast<int>(x_dims[x_dims.size() - 1]);
@@ -97,17 +101,17 @@ void SvdvalsKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_GT(
       rows,
       0,
-      phi::errors::InvalidArgument("The row of Input(X) must be > 0."));
+      common::errors::InvalidArgument("The row of Input(X) must be > 0."));
   PADDLE_ENFORCE_GT(
       cols,
       0,
-      phi::errors::InvalidArgument("The column of Input(X) must be > 0."));
+      common::errors::InvalidArgument("The column of Input(X) must be > 0."));
   int k = std::min(rows, cols);
   int batches = static_cast<int>(X.numel() / (rows * cols));
-  PADDLE_ENFORCE_GT(
-      batches,
-      0,
-      phi::errors::InvalidArgument("The batch size of Input(X) must be > 0."));
+  PADDLE_ENFORCE_GT(batches,
+                    0,
+                    common::errors::InvalidArgument(
+                        "The batch size of Input(X) must be > 0."));
   DDim s_dims;
   if (x_dims.size() <= 2) {
     s_dims = {k};

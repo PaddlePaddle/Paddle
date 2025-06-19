@@ -60,7 +60,7 @@ void AllToAllKernel(const phi::CustomContext& dev_ctx,
                                   rank,
                                   nranks,
                                   comm_ctx->GetXcclComm(),
-                                  *dev_ctx.GetStream());
+                                  dev_ctx.stream());
 }
 
 #endif

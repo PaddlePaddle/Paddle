@@ -24,7 +24,7 @@
 #include "paddle/ap/include/drr/value_method_class.h"
 #include "paddle/ap/include/paddle/pir/pir_method_class.h"
 
-namespace cinn::dialect::ir {
+namespace ap::paddle {
 
 namespace adt = ap::adt;
 
@@ -39,7 +39,7 @@ using DrrCtx = ap::drr::DrrCtx;
 
 ApDrrHelper::ApDrrHelper(
     const std::weak_ptr<ap::memory::CirclableRefListBase>& circlable_ref_list)
-    : drr_interpreter_(ap::paddle::GetPirClass(), circlable_ref_list) {}
+    : drr_interpreter_(circlable_ref_list) {}
 
 adt::Result<DrrCtx> ApDrrHelper::InterpretDrrCtxMaker(
     const Function& lambda, const std::vector<ap::axpr::Value>& args) {
@@ -61,4 +61,4 @@ adt::Result<DrrCtx> ApDrrHelper::Interpret(
   return drr_interpreter_.InterpretPass(cls);
 }
 
-}  // namespace cinn::dialect::ir
+}  // namespace ap::paddle

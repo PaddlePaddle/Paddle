@@ -21,6 +21,8 @@
 #include <math.h>
 
 #include "paddle/common/ddim.h"
+#include "paddle/common/enforce.h"
+#include "paddle/common/errors.h"
 #include "paddle/fluid/prim/api/all.h"
 #include "paddle/fluid/prim/api/generated_prim/prim_generated_api.h"
 #include "paddle/phi/common/amp_type_traits.h"
@@ -151,6 +153,29 @@ void pow_double_grad(const Tensor& x,
     auto x_grad_tmp =
         y_value * (y_value - 1) * x.pow(y_value - 2) * grad_out * grad_x_grad;
     set_output<T>(x_grad_tmp, x_grad);
+  }
+}
+
+template <typename T>
+void masked_fill_double_grad(const Tensor& mask,
+                             const paddle::optional<Tensor>& grad_x_grad,
+                             const paddle::optional<Tensor>& grad_value_grad,
+                             Tensor* grad_out_grad) {
+  if (grad_out_grad) {
+    Tensor grad_out_grad_tmp;
+    if (grad_x_grad && grad_value_grad) {
+      grad_out_grad_tmp =
+          masked_fill<T>(grad_x_grad.get(), mask, grad_value_grad.get());
+    } else if (grad_x_grad) {
+      grad_out_grad_tmp = masked_fill<T>(
+          grad_x_grad.get(),
+          mask,
+          full<T>({}, 0, grad_x_grad.get().dtype(), grad_x_grad.get().place()));
+    } else if (grad_value_grad) {
+      PADDLE_THROW(common::errors::InvalidArgument(
+          "grad_x_grad can not be null in 'masked_fill_double_grad'"));
+    }
+    set_output<T>(grad_out_grad_tmp, grad_out_grad);
   }
 }
 
@@ -1131,6 +1156,58 @@ void take_along_axis_double_grad(const Tensor& indices,
     }
     // ddout = take_along_axis(ddx, index)
     auto grad_out_grad_tmp = take_along_axis<T>(grad_arr_grad, indices, axis);
+    set_output<T>(grad_out_grad_tmp, grad_out_grad);
+  }
+}
+
+template <typename T>
+void put_along_axis_double_grad(
+    const Tensor& arr,
+    const Tensor& indices,
+    const Tensor& values,
+    const paddle::optional<Tensor>& grad_values_grad,
+    const paddle::optional<Tensor>& grad_arr_grad,
+    int axis,
+    const std::string& reduce,
+    bool include_self,
+    Tensor* grad_out_grad) {
+  if (grad_out_grad) {
+    if (reduce != "add") {
+      PADDLE_THROW(common::errors::InvalidArgument(
+          "put_along_axis_double_grad only support reduce = 'add' yet, "
+          "but received: '%s'",
+          reduce));
+    }
+    if (axis < 0) {
+      axis += arr.dims().size();
+    }
+    // ddy[q] = {
+    //   sum_{i} ddv_{ind_i}, if q \in ind and q == ind_i,
+    //   ddx[q] if q \notin ind
+    // }
+
+    Tensor grad_values_grad_tmp;
+    if (grad_values_grad) {
+      grad_values_grad_tmp = grad_values_grad.get();
+    } else {
+      grad_values_grad_tmp = full<T>(
+          common::vectorize(values.dims()), 0, values.dtype(), values.place());
+    }
+
+    Tensor grad_arr_grad_tmp;
+    if (grad_arr_grad) {
+      grad_arr_grad_tmp = grad_arr_grad.get();
+    } else {
+      grad_arr_grad_tmp =
+          full<T>(common::vectorize(arr.dims()), 0, arr.dtype(), arr.place());
+    }
+
+    Tensor grad_out_grad_tmp = put_along_axis<T>(grad_arr_grad_tmp,
+                                                 indices,
+                                                 grad_values_grad_tmp,
+                                                 axis,
+                                                 reduce,
+                                                 include_self);
     set_output<T>(grad_out_grad_tmp, grad_out_grad);
   }
 }

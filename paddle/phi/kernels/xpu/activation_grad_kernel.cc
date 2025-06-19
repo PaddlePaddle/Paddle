@@ -35,6 +35,9 @@ void ActivationGradXPUImpl(const Context& dev_ctx,
     out = d_out;  // fake out
   }
   dev_ctx.template Alloc<T>(d_x);
+  if (d_x->numel() == 0) {
+    return;
+  }
   functor(dev_ctx, x, out, d_out, d_x);
 }
 
@@ -144,7 +147,7 @@ int xpu_activation_backward(const Context& dev_ctx,
                                               const XPUType*,
                                               const XPUType*,
                                               XPUType*,
-                                              int)> func) {
+                                              int64_t)> func) {
   /* TODO: relu tanh sigmoid are inplace */
   const XPUType* x_data = nullptr;
   const XPUType* y_data = nullptr;
@@ -446,9 +449,9 @@ void PowGradKernel(const Context& dev_ctx,
   T* x_grad = dx->data<T>();
 
   // check dims: all dims should equal
-  auto x_dims = common::vectorize<int>(x.dims());
-  auto dy_dims = common::vectorize<int>(dout.dims());
-  auto dx_dims = common::vectorize<int>(dx->dims());
+  auto x_dims = common::vectorize<int64_t>(x.dims());
+  auto dy_dims = common::vectorize<int64_t>(dout.dims());
+  auto dx_dims = common::vectorize<int64_t>(dx->dims());
   PADDLE_ENFORCE_EQ(x_dims,
                     dy_dims,
                     errors::PreconditionNotMet("x_dims should match dy_dims."));
@@ -606,8 +609,19 @@ struct XPURsqrtGradFunctor : public funcs::BaseActivationFunctor<T> {
                   const DenseTensor* out,
                   const DenseTensor* dout,
                   DenseTensor* dx) const {
-    int r = xpu_activation_backward<Context, T, XPUType>(
-        dev_ctx, x, out, dout, dx, xpu::rsqrt_grad<XPUType>);
+    dev_ctx.template Alloc<T>(dx);
+    const XPUType* out_data = nullptr;
+    const XPUType* dout_data = nullptr;
+    if (out != nullptr) {
+      out_data = reinterpret_cast<const XPUType*>(out->data<T>());
+    }
+    if (dout != nullptr) {
+      dout_data = reinterpret_cast<const XPUType*>(dout->data<T>());
+    }
+    XPUType* dx_data = reinterpret_cast<XPUType*>(dx->data<T>());
+
+    int r = xpu::rsqrt_grad(
+        dev_ctx.x_context(), out_data, dout_data, dx_data, dx->numel());
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "rsqrt_grad");
   }
 };
@@ -676,6 +690,9 @@ void ExpGradKernel(const Context& dev_ctx,
                    DenseTensor* dx) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   dev_ctx.template Alloc<T>(dx);
+  if (dx && dx->numel() == 0) {
+    return;
+  }
   const XPUType* y_data = reinterpret_cast<const XPUType*>(out.data<T>());
   const XPUType* y_grad = reinterpret_cast<const XPUType*>(dout.data<T>());
   XPUType* x_grad = reinterpret_cast<XPUType*>(dx->data<T>());
@@ -692,6 +709,9 @@ void TanhGradKernel(const Context& dev_ctx,
                     DenseTensor* dx) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   dev_ctx.template Alloc<T>(dx);
+  if (dx->numel() == 0) {
+    return;
+  }
   const XPUType* y_data = reinterpret_cast<const XPUType*>(out.data<T>());
   const XPUType* y_grad = reinterpret_cast<const XPUType*>(dout.data<T>());
   XPUType* x_grad = reinterpret_cast<XPUType*>(dx->data<T>());

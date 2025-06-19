@@ -83,7 +83,7 @@ int XPUReduce(const Context& dev_ctx,
   std::vector<int64_t> reduce_dims;
   GetReduceDims(x.dims(), dims, reduce_all, &reduce_dims);
 
-  int r = xpu::SUCCESS;
+  int r = 0;
   if (reduce_dims.size() == 0) {
     r = xpu::copy<XPUType>(dev_ctx.x_context(),
                            reinterpret_cast<const XPUType*>(x_data),

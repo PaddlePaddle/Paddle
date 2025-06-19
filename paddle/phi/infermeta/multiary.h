@@ -140,10 +140,31 @@ void AddNInferMeta(const std::vector<const MetaTensor*>& x,
                    MetaTensor* out,
                    MetaConfig config = MetaConfig());
 
+void ApTrivialFusionBeginInferMeta(
+    const paddle::optional<std::vector<const MetaTensor*>>& xs,
+    MetaTensor* out,
+    MetaConfig config = MetaConfig());
+
+void ApTrivialFusionEndInferMeta(
+    const paddle::optional<std::vector<const MetaTensor*>>& xs,
+    MetaTensor* out,
+    MetaConfig config = MetaConfig());
+
+void ApFacadeInferMeta(
+    const paddle::optional<std::vector<const MetaTensor*>>& xs,
+    int64_t num_outputs,
+    const std::string& custom_op_name,
+    const std::string& infer_meta_func_name,
+    const std::string& infer_symbolic_func_name,
+    const std::string& serialized_attributes,
+    std::vector<MetaTensor*> outs,
+    MetaConfig config = MetaConfig());
+
 void ApVariadicInferMeta(const std::vector<const MetaTensor*>& xs,
                          int num_outputs,
                          const std::string& code_module_lambda,
                          const std::string& infer_meta_lambda,
+                         const std::string& infer_symbolic_lambda,
                          const std::string& kernel_dispatch_lambda,
                          const std::string& kernel_dispatch_const_data_lambda,
                          std::vector<MetaTensor*> outs,
@@ -512,6 +533,28 @@ void FusedLayerNormInferMeta(const MetaTensor& x,
                              MetaTensor* mean,
                              MetaTensor* variance,
                              MetaConfig config = MetaConfig());
+
+void MoePermuteInferMeta(const MetaTensor& X,
+                         const MetaTensor& XScale,
+                         const MetaTensor& expert_routemap_topk,
+                         const MetaTensor& expert_prob_topk,
+                         const int num_experts,
+                         const std::vector<int>& tokens_per_expert,
+                         const int padding_multiplex,
+                         MetaTensor* X_unzipped,
+                         MetaTensor* zipped_expertwise_rowmap,
+                         MetaTensor* token_prob_unzipped,
+                         MetaTensor* XScale_unzipped);
+
+void MoeUnpermuteInferMeta(const MetaTensor& unzipped_tokens,
+                           const MetaTensor& zipped_expertwise_rowmap,
+                           const MetaTensor& expert_routemap_topk,
+                           const MetaTensor& unzipped_token_probs,
+                           const int total_zipped_tokens_num,
+                           const int num_experts,
+                           const bool MP,
+                           MetaTensor* zipped_tokens,
+                           MetaTensor* zipped_probs_topk);
 
 void FusedLinearParamGradAddInferMeta(const MetaTensor& x,
                                       const MetaTensor& dout,
@@ -1076,7 +1119,8 @@ void WeightOnlyLinearInferMeta(const MetaTensor& x,
                                const std::string& weight_dtype,
                                const int32_t arch,
                                const int32_t group_size,
-                               MetaTensor* out);
+                               MetaTensor* out,
+                               MetaConfig config = MetaConfig());
 
 void WeightedSampleNeighborsInferMeta(const MetaTensor& row,
                                       const MetaTensor& col_ptr,
@@ -1262,5 +1306,29 @@ void TopPSamplingInferMeta(const MetaTensor& x,
                            MetaTensor* ids,
                            MetaTensor* topk_scores,
                            MetaTensor* topk_ids);
+
+void CalAuxLossInferMeta(const MetaTensor& gate_prob,
+                         const MetaTensor& dispatch_mask,
+                         const MetaTensor& tokens_mask,
+                         const MetaTensor& dispatch_tokens_mask,
+                         const int64_t num_experts,
+                         const bool use_group,
+                         const int64_t moe_k,
+                         const float clip_min,
+                         MetaTensor* l_aux_loss,
+                         MetaTensor* seqlen_floats,
+                         MetaTensor* ce);
+
+void MoeGateDispatchInferMeta(const MetaTensor& x,
+                              const MetaTensor& gate_logits,
+                              const MetaTensor& corr_bias,
+                              const int64_t k,
+                              const int64_t capacity,
+                              const bool use_pad,
+                              MetaTensor* y,
+                              MetaTensor* combine_weights,
+                              MetaTensor* scatter_index,
+                              MetaTensor* expert_offset,
+                              MetaTensor* expert_id);
 
 }  // namespace phi

@@ -20,7 +20,6 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 
-// See Note [ Why still include the fluid headers? ]
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 

@@ -184,28 +184,28 @@ std::vector<ir::Expr> CustomCallArgsForCublas(
 
   const auto &attr_store = attrs.attr_store;
   bool trans_a = attr_store.count("trans_a")
-                     ? absl::get<bool>(attr_store.at("trans_a"))
+                     ? std::get<bool>(attr_store.at("trans_a"))
                      : false;
   bool trans_b = attr_store.count("trans_b")
-                     ? absl::get<bool>(attr_store.at("trans_b"))
+                     ? std::get<bool>(attr_store.at("trans_b"))
                      : false;
   bool trans_out = attr_store.count("trans_out")
-                       ? absl::get<bool>(attr_store.at("trans_out"))
+                       ? std::get<bool>(attr_store.at("trans_out"))
                        : false;
   float alpha = attr_store.count("alpha")
-                    ? absl::get<float>(attr_store.at("alpha"))
+                    ? std::get<float>(attr_store.at("alpha"))
                     : 1.0f;
   float beta =
-      attr_store.count("beta") ? absl::get<float>(attr_store.at("beta")) : 0.0f;
+      attr_store.count("beta") ? std::get<float>(attr_store.at("beta")) : 0.0f;
 
   int x_num_col_dims = attr_store.count("x_num_col_dims")
-                           ? absl::get<int>(attr_store.at("x_num_col_dims"))
+                           ? std::get<int>(attr_store.at("x_num_col_dims"))
                            : 0;
   int y_num_col_dims = attr_store.count("y_num_col_dims")
-                           ? absl::get<int>(attr_store.at("y_num_col_dims"))
+                           ? std::get<int>(attr_store.at("y_num_col_dims"))
                            : 0;
   bool is_infer = attr_store.count("is_infer")
-                      ? absl::get<bool>(attr_store.at("is_infer"))
+                      ? std::get<bool>(attr_store.at("is_infer"))
                       : false;
   PADDLE_ENFORCE_EQ(
       (x_num_col_dims == 0 && y_num_col_dims == 0) ||
@@ -357,28 +357,28 @@ std::vector<ir::Expr> CustomCallArgsForBatchedCublas(
 
   const auto &attr_store = attrs.attr_store;
   bool trans_a = attr_store.count("trans_a")
-                     ? absl::get<bool>(attr_store.at("trans_a"))
+                     ? std::get<bool>(attr_store.at("trans_a"))
                      : false;
   bool trans_b = attr_store.count("trans_b")
-                     ? absl::get<bool>(attr_store.at("trans_b"))
+                     ? std::get<bool>(attr_store.at("trans_b"))
                      : false;
   bool trans_out = attr_store.count("trans_out")
-                       ? absl::get<bool>(attr_store.at("trans_out"))
+                       ? std::get<bool>(attr_store.at("trans_out"))
                        : false;
   float alpha = attr_store.count("alpha")
-                    ? absl::get<float>(attr_store.at("alpha"))
+                    ? std::get<float>(attr_store.at("alpha"))
                     : 1.0f;
   float beta =
-      attr_store.count("beta") ? absl::get<float>(attr_store.at("beta")) : 0.0f;
+      attr_store.count("beta") ? std::get<float>(attr_store.at("beta")) : 0.0f;
 
   int x_num_col_dims = attr_store.count("x_num_col_dims")
-                           ? absl::get<int>(attr_store.at("x_num_col_dims"))
+                           ? std::get<int>(attr_store.at("x_num_col_dims"))
                            : 0;
   int y_num_col_dims = attr_store.count("y_num_col_dims")
-                           ? absl::get<int>(attr_store.at("y_num_col_dims"))
+                           ? std::get<int>(attr_store.at("y_num_col_dims"))
                            : 0;
   bool is_infer = attr_store.count("is_infer")
-                      ? absl::get<bool>(attr_store.at("is_infer"))
+                      ? std::get<bool>(attr_store.at("is_infer"))
                       : false;
   PADDLE_ENFORCE_EQ((x_num_col_dims == 0 && y_num_col_dims == 0) ||
                         (x_num_col_dims > 0 && y_num_col_dims > 0),
@@ -402,7 +402,7 @@ std::vector<ir::Expr> CustomCallArgsForBatchedCublas(
                         "x_num_col_dims = %d, y_num_col_dims = %d.",
                         x_num_col_dims,
                         y_num_col_dims));
-  if (absl::get<std::string>(attr_store.at("side")) == "left") {
+  if (std::get<std::string>(attr_store.at("side")) == "left") {
     left = inputs[0];
     right = inputs[1];
   } else {
@@ -511,8 +511,8 @@ std::vector<ir::Expr> CustomCallArgsForBatchedCublas(
 
   // func args
   std::vector<ir::Expr> args = {
-      absl::get<std::string>(attr_store.at("side")) == "left" ? ir::Expr(0)
-                                                              : ir::Expr(1),
+      std::get<std::string>(attr_store.at("side")) == "left" ? ir::Expr(0)
+                                                             : ir::Expr(1),
       ir::Expr(trans_a),
       ir::Expr(trans_b),
       ir::Expr(trans_out),
@@ -543,36 +543,36 @@ std::vector<ir::Expr> CustomCallArgsForCudnnConvForward(
            output_shapes.size())); */
   const auto &attr_store = attrs.attr_store;
   float alpha = attr_store.count("alpha")
-                    ? absl::get<float>(attr_store.at("alpha"))
+                    ? std::get<float>(attr_store.at("alpha"))
                     : 1.0f;
   float beta =
-      attr_store.count("beta") ? absl::get<float>(attr_store.at("beta")) : 0.0f;
+      attr_store.count("beta") ? std::get<float>(attr_store.at("beta")) : 0.0f;
 
   PADDLE_ENFORCE_EQ(
       attr_store.count("padding"),
       true,
       ::common::errors::NotFound(
           "The CudnnConvForward custom_call must has attribute \"padding\""));
-  auto padding = absl::get<std::vector<int>>(attr_store.at("padding"));
+  auto padding = std::get<std::vector<int>>(attr_store.at("padding"));
   PADDLE_ENFORCE_EQ(
       attr_store.count("stride"),
       true,
       ::common::errors::NotFound(
           "The CudnnConvForward custom_call must has attribute \"stride\""));
-  auto stride = absl::get<std::vector<int>>(attr_store.at("stride"));
+  auto stride = std::get<std::vector<int>>(attr_store.at("stride"));
   auto dilation = attr_store.count("dilation")
-                      ? absl::get<std::vector<int>>(attr_store.at("dilation"))
+                      ? std::get<std::vector<int>>(attr_store.at("dilation"))
                       : std::vector<int>({1, 1});
   std::string data_format =
       attr_store.count("data_format")
-          ? absl::get<std::string>(attr_store.at("data_format"))
+          ? std::get<std::string>(attr_store.at("data_format"))
           : "NCHW";
   if (data_format == "AnyLayout") {
     data_format = "NCHW";
   }
 
   int groups =
-      attr_store.count("groups") ? absl::get<int>(attr_store.at("groups")) : 1;
+      attr_store.count("groups") ? std::get<int>(attr_store.at("groups")) : 1;
   cudnnTensorFormat_t format =
       data_format == "NCHW" ? CUDNN_TENSOR_NCHW : CUDNN_TENSOR_NHWC;
 
@@ -626,36 +626,36 @@ std::vector<ir::Expr> CustomCallArgsForCudnnConvBackwardData(
 
   const auto &attr_store = attrs.attr_store;
   float alpha = attr_store.count("alpha")
-                    ? absl::get<float>(attr_store.at("alpha"))
+                    ? std::get<float>(attr_store.at("alpha"))
                     : 1.0f;
   float beta =
-      attr_store.count("beta") ? absl::get<float>(attr_store.at("beta")) : 0.0f;
+      attr_store.count("beta") ? std::get<float>(attr_store.at("beta")) : 0.0f;
 
   PADDLE_ENFORCE_EQ(
       attr_store.count("padding"),
       true,
       ::common::errors::NotFound("The CudnnConvBackwardData custom_call"
                                  "must has attribute \"padding\""));
-  auto padding = absl::get<std::vector<int>>(attr_store.at("padding"));
+  auto padding = std::get<std::vector<int>>(attr_store.at("padding"));
   PADDLE_ENFORCE_EQ(
       attr_store.count("stride"),
       true,
       ::common::errors::NotFound("The CudnnConvBackwardData custom_call"
                                  "must has attribute \"stride\""));
-  auto stride = absl::get<std::vector<int>>(attr_store.at("stride"));
+  auto stride = std::get<std::vector<int>>(attr_store.at("stride"));
   auto dilation = attr_store.count("dilation")
-                      ? absl::get<std::vector<int>>(attr_store.at("dilation"))
+                      ? std::get<std::vector<int>>(attr_store.at("dilation"))
                       : std::vector<int>({1, 1});
   std::string data_format =
       attr_store.count("data_format")
-          ? absl::get<std::string>(attr_store.at("data_format"))
+          ? std::get<std::string>(attr_store.at("data_format"))
           : "NCHW";
   if (data_format == "AnyLayout") {
     data_format = "NCHW";
   }
 
   int groups =
-      attr_store.count("groups") ? absl::get<int>(attr_store.at("groups")) : 1;
+      attr_store.count("groups") ? std::get<int>(attr_store.at("groups")) : 1;
   cudnnTensorFormat_t format =
       data_format == "NCHW" ? CUDNN_TENSOR_NCHW : CUDNN_TENSOR_NHWC;
 
@@ -708,36 +708,36 @@ std::vector<ir::Expr> CustomCallArgsForCudnnConvBackwardFilter(
 
   const auto &attr_store = attrs.attr_store;
   float alpha = attr_store.count("alpha")
-                    ? absl::get<float>(attr_store.at("alpha"))
+                    ? std::get<float>(attr_store.at("alpha"))
                     : 1.0f;
   float beta =
-      attr_store.count("beta") ? absl::get<float>(attr_store.at("beta")) : 0.0f;
+      attr_store.count("beta") ? std::get<float>(attr_store.at("beta")) : 0.0f;
 
   PADDLE_ENFORCE_EQ(
       attr_store.count("padding"),
       true,
       ::common::errors::NotFound("The CudnnConvBackwardFilter custom_call"
                                  "must has attribute \"padding\""));
-  auto padding = absl::get<std::vector<int>>(attr_store.at("padding"));
+  auto padding = std::get<std::vector<int>>(attr_store.at("padding"));
   PADDLE_ENFORCE_EQ(
       attr_store.count("stride"),
       true,
       ::common::errors::NotFound("The CudnnConvBackwardFilter custom_call"
                                  "must has attribute \"stride\""));
-  auto stride = absl::get<std::vector<int>>(attr_store.at("stride"));
+  auto stride = std::get<std::vector<int>>(attr_store.at("stride"));
   auto dilation = attr_store.count("dilation")
-                      ? absl::get<std::vector<int>>(attr_store.at("dilation"))
+                      ? std::get<std::vector<int>>(attr_store.at("dilation"))
                       : std::vector<int>({1, 1});
   std::string data_format =
       attr_store.count("data_format")
-          ? absl::get<std::string>(attr_store.at("data_format"))
+          ? std::get<std::string>(attr_store.at("data_format"))
           : "NCHW";
   if (data_format == "AnyLayout") {
     data_format = "NCHW";
   }
 
   int groups =
-      attr_store.count("groups") ? absl::get<int>(attr_store.at("groups")) : 1;
+      attr_store.count("groups") ? std::get<int>(attr_store.at("groups")) : 1;
 
   cudnnTensorFormat_t format =
       data_format == "NCHW" ? CUDNN_TENSOR_NCHW : CUDNN_TENSOR_NHWC;
@@ -791,45 +791,44 @@ std::vector<ir::Expr> CustomCallArgsForCudnnPoolForward(
 
   const auto &attr_store = attrs.attr_store;
   float alpha = attr_store.count("alpha")
-                    ? absl::get<float>(attr_store.at("alpha"))
+                    ? std::get<float>(attr_store.at("alpha"))
                     : 1.0f;
   float beta =
-      attr_store.count("beta") ? absl::get<float>(attr_store.at("beta")) : 0.0f;
+      attr_store.count("beta") ? std::get<float>(attr_store.at("beta")) : 0.0f;
 
   PADDLE_ENFORCE_EQ(
       attr_store.count("kernel_size"),
       true,
       ::common::errors::NotFound("The CudnnPoolForward custom_call"
                                  "must has attribute \"kernel_size\""));
-  auto kernel = absl::get<std::vector<int>>(attr_store.at("kernel_size"));
+  auto kernel = std::get<std::vector<int>>(attr_store.at("kernel_size"));
   PADDLE_ENFORCE_EQ(
       attr_store.count("padding_size"),
       true,
       ::common::errors::NotFound("The CudnnPoolForward custom_call"
                                  "must has attribute \"padding_size\""));
-  auto padding = absl::get<std::vector<int>>(attr_store.at("padding_size"));
+  auto padding = std::get<std::vector<int>>(attr_store.at("padding_size"));
   PADDLE_ENFORCE_EQ(
       attr_store.count("stride_size"),
       true,
       ::common::errors::NotFound("The CudnnPoolForward custom_call"
                                  "must has attribute \"stride_size\""));
-  auto stride = absl::get<std::vector<int>>(attr_store.at("stride_size"));
+  auto stride = std::get<std::vector<int>>(attr_store.at("stride_size"));
   PADDLE_ENFORCE_EQ(
       attr_store.count("pool_type"),
       true,
       ::common::errors::NotFound("The CudnnPoolForward custom_call"
                                  "must has attribute \"pool_type\""));
-  auto pool_type = absl::get<std::string>(attr_store.at("pool_type"));
+  auto pool_type = std::get<std::string>(attr_store.at("pool_type"));
   PADDLE_ENFORCE_EQ(
       attr_store.count("data_format"),
       true,
       ::common::errors::NotFound("The CudnnPoolForward custom_call"
                                  "must has attribute \"data_format\""));
-  std::string data_format =
-      absl::get<std::string>(attr_store.at("data_format"));
+  std::string data_format = std::get<std::string>(attr_store.at("data_format"));
 
   bool exclusive = attr_store.count("exclusive")
-                       ? absl::get<bool>(attrs.attr_store.at("exclusive"))
+                       ? std::get<bool>(attrs.attr_store.at("exclusive"))
                        : true;
   cudnnPoolingMode_t mode =
       pool_type == "max"
@@ -886,45 +885,45 @@ std::vector<ir::Expr> CustomCallArgsForCudnnPoolBackward(
 
   const auto &attr_store = attrs.attr_store;
   float alpha = attr_store.count("alpha")
-                    ? absl::get<float>(attr_store.at("alpha"))
+                    ? std::get<float>(attr_store.at("alpha"))
                     : 1.0f;
   float beta =
-      attr_store.count("beta") ? absl::get<float>(attr_store.at("beta")) : 0.0f;
+      attr_store.count("beta") ? std::get<float>(attr_store.at("beta")) : 0.0f;
 
   PADDLE_ENFORCE_EQ(
       attr_store.count("kernel_size"),
       true,
       ::common::errors::NotFound("The CudnnPoolBackward custom_call"
                                  "must has attribute \"kernel_size\""));
-  auto kernel = absl::get<std::vector<int>>(attr_store.at("kernel_size"));
+  auto kernel = std::get<std::vector<int>>(attr_store.at("kernel_size"));
   PADDLE_ENFORCE_EQ(
       attr_store.count("padding_size"),
       true,
       ::common::errors::NotFound("The CudnnPoolBackward custom_call"
                                  "must has attribute \"padding_size\""));
-  auto padding = absl::get<std::vector<int>>(attr_store.at("padding_size"));
+  auto padding = std::get<std::vector<int>>(attr_store.at("padding_size"));
   PADDLE_ENFORCE_EQ(
       attr_store.count("stride_size"),
       true,
       ::common::errors::NotFound("The CudnnPoolBackward custom_call"
                                  "must has attribute \"stride_size\""));
-  auto stride = absl::get<std::vector<int>>(attr_store.at("stride_size"));
+  auto stride = std::get<std::vector<int>>(attr_store.at("stride_size"));
   PADDLE_ENFORCE_EQ(
       attr_store.count("pool_type"),
       true,
       ::common::errors::NotFound("The CudnnPoolBackward custom_call"
                                  "must has attribute \"pool_type\""));
-  auto pool_type = absl::get<std::string>(attr_store.at("pool_type"));
+  auto pool_type = std::get<std::string>(attr_store.at("pool_type"));
   PADDLE_ENFORCE_EQ(
       attr_store.count("data_format"),
       true,
       ::common::errors::NotFound("The CudnnPoolBackward custom_call"
                                  "must has attribute \"data_format\""));
   std::string data_format =
-      absl::get<std::string>(attrs.attr_store.at("data_format"));
+      std::get<std::string>(attrs.attr_store.at("data_format"));
 
   bool exclusive = attr_store.count("exclusive")
-                       ? absl::get<bool>(attrs.attr_store.at("exclusive"))
+                       ? std::get<bool>(attrs.attr_store.at("exclusive"))
                        : true;
   cudnnPoolingMode_t mode =
       pool_type == "max"
@@ -985,9 +984,9 @@ std::vector<ir::Expr> CustomCallArgsForAssertTrue(
           "The assert_true custom_call must has attribute \"msg\""));
   // TODO(thisjiang): change type from 'int' to 'std::string' when custom call
   // support 'std::string' type
-  int msg = absl::get<int>(attr_store.at("msg"));
+  int msg = std::get<int>(attr_store.at("msg"));
   bool only_warning = attr_store.count("only_warning")
-                          ? absl::get<bool>(attrs.attr_store.at("only_warning"))
+                          ? std::get<bool>(attrs.attr_store.at("only_warning"))
                           : false;
 
   std::vector<ir::Expr> args = {ir::Expr(msg), ir::Expr(only_warning)};
@@ -1009,14 +1008,13 @@ std::vector<ir::Expr> CustomCallArgsForGaussianRandom(
   const auto &attr_store = attrs.attr_store;
 
   float mean = attr_store.count("mean")
-                   ? absl::get<float>(attrs.attr_store.at("mean"))
+                   ? std::get<float>(attrs.attr_store.at("mean"))
                    : 0.0f;
   float std = attr_store.count("std")
-                  ? absl::get<float>(attrs.attr_store.at("std"))
+                  ? std::get<float>(attrs.attr_store.at("std"))
                   : 1.0f;
-  int seed = attr_store.count("seed")
-                 ? absl::get<int>(attrs.attr_store.at("seed"))
-                 : 0;
+  int seed =
+      attr_store.count("seed") ? std::get<int>(attrs.attr_store.at("seed")) : 0;
 
   std::vector<ir::Expr> args = {ir::Expr(mean), ir::Expr(std), ir::Expr(seed)};
 
@@ -1037,14 +1035,13 @@ std::vector<ir::Expr> CustomCallArgsForUniformRandom(
   const auto &attr_store = attrs.attr_store;
 
   float min = attr_store.count("min")
-                  ? absl::get<float>(attrs.attr_store.at("min"))
+                  ? std::get<float>(attrs.attr_store.at("min"))
                   : -1.0f;
   float max = attr_store.count("max")
-                  ? absl::get<float>(attrs.attr_store.at("max"))
+                  ? std::get<float>(attrs.attr_store.at("max"))
                   : 1.0f;
-  int seed = attr_store.count("seed")
-                 ? absl::get<int>(attrs.attr_store.at("seed"))
-                 : 0;
+  int seed =
+      attr_store.count("seed") ? std::get<int>(attrs.attr_store.at("seed")) : 0;
 
   PADDLE_ENFORCE_GE(max,
                     min,
@@ -1072,9 +1069,8 @@ std::vector<ir::Expr> CustomCallArgsForRandInt(
 
   const auto &attr_store = attrs.attr_store;
 
-  int seed = attr_store.count("seed")
-                 ? absl::get<int>(attrs.attr_store.at("seed"))
-                 : 0;
+  int seed =
+      attr_store.count("seed") ? std::get<int>(attrs.attr_store.at("seed")) : 0;
 
   std::vector<ir::Expr> args = {ir::Expr(seed)};
 
@@ -1106,7 +1102,7 @@ std::vector<ir::Expr> CustomCallArgsForCholesky(
   }
   int m = x->shape[ndim - 1].as_int32();
 
-  auto upper = absl::get<bool>(attrs.attr_store.at("upper"));
+  auto upper = std::get<bool>(attrs.attr_store.at("upper"));
 
   std::vector<ir::Expr> args = {
       ir::Expr(batch_size), ir::Expr(m), ir::Expr(upper)};
@@ -1154,10 +1150,10 @@ std::vector<ir::Expr> CustomCallArgsForTriangularSolve(
     batch_size *= a->shape[i].as_int32();
   }
 
-  auto left_side = absl::get<bool>(attrs.attr_store.at("left_side"));
-  auto upper = absl::get<bool>(attrs.attr_store.at("upper"));
-  auto transpose_a = absl::get<bool>(attrs.attr_store.at("transpose_a"));
-  auto unit_diagonal = absl::get<bool>(attrs.attr_store.at("unit_diagonal"));
+  auto left_side = std::get<bool>(attrs.attr_store.at("left_side"));
+  auto upper = std::get<bool>(attrs.attr_store.at("upper"));
+  auto transpose_a = std::get<bool>(attrs.attr_store.at("transpose_a"));
+  auto unit_diagonal = std::get<bool>(attrs.attr_store.at("unit_diagonal"));
 
   int m = a->shape[a_ndim - 1].as_int32();
   int k = left_side ? b->shape[b_ndim - 1].as_int32()
@@ -1228,7 +1224,7 @@ std::vector<ir::Expr> CustomCallArgsForMemset(
 
   int value = 0;
   const auto &value_attr = attr_store.at("value");
-  absl::visit(Visitor(&value), value_attr);
+  std::visit(Visitor(&value), value_attr);
   // can support memset non-0 ?
   PADDLE_ENFORCE_EQ(
       value,
@@ -1242,7 +1238,7 @@ std::vector<ir::Expr> CustomCallArgsForMemset(
   }
 
   const auto &dtype =
-      cinn::common::Str2Type(absl::get<std::string>(attr_store.at("dtype")));
+      cinn::common::Str2Type(std::get<std::string>(attr_store.at("dtype")));
   count *= dtype.bytes();
   VLOG(4) << "call memset custom_call with value="
           << utils::Attribute2String(value_attr) << " (" << value

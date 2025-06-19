@@ -237,8 +237,14 @@ ir::IndexExpr::IndexType VerifyIndex(const ir::Expr &expr) {
                                          : ir::IndexExpr::IndexType::kInvalid;
     }
     case ir::IrNodeTy::Load: {
-      return expr.type().is_index_type() ? ir::IndexExpr::IndexType::kLoad
-                                         : ir::IndexExpr::IndexType::kInvalid;
+      if (!expr.type().is_index_type())
+        return ir::IndexExpr::IndexType::kInvalid;
+      auto load = expr.As<ir::Load>();
+      for (const auto &indices : load->indices) {
+        if (VerifyIndex(indices) == ir::IndexExpr::IndexType::kInvalid)
+          return ir::IndexExpr::IndexType::kInvalid;
+      }
+      return ir::IndexExpr::IndexType::kLoad;
     }
     case ir::IrNodeTy::Cast: {
       ir::IndexExpr::IndexType result = VerifyIndex(expr->operand(0));

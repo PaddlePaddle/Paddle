@@ -1213,10 +1213,17 @@ struct LogitGradFunctor {
   template <typename Device, typename X, typename dOut, typename dX, typename P>
   void operator()(Device d, X x, dOut dout, dX dx, P p, float eps) const {
     // logit(x)' = 1/(x*(1-x))
-    dx.device(d) =
-        (x < static_cast<T>(eps) || x > static_cast<T>(1.0 - eps))
-            .select(p.constant(static_cast<T>(0)),
-                    dout * (static_cast<T>(1) / ((static_cast<T>(1) - x) * x)));
+    if (!eps) {
+      dx.device(d) = (x < static_cast<T>(0.0) || x > static_cast<T>(1.0))
+                         .select(p.constant(static_cast<T>(NAN)),
+                                 dout * (static_cast<T>(1) /
+                                         ((static_cast<T>(1) - x) * x)));
+    } else {
+      dx.device(d) = (x < static_cast<T>(eps) || x > static_cast<T>(1.0 - eps))
+                         .select(p.constant(static_cast<T>(0)),
+                                 dout * (static_cast<T>(1) /
+                                         ((static_cast<T>(1) - x) * x)));
+    }
   }
 };
 
@@ -3359,9 +3366,16 @@ struct CudaLogitGradFunctor : public BaseActivationFunctor<T> {
   // logit(x)' = 1/(x*(1-x))
   __device__ __forceinline__ T operator()(const T dout, const T arg_x) const {
     MT x = static_cast<MT>(arg_x);
-    MT dx = (x < static_cast<MT>(eps) || x > one - static_cast<MT>(eps))
-                ? zero
-                : (static_cast<MT>(dout) / (x * (one - x)));
+    MT dx;
+    if (!eps) {
+      dx = (x < zero || x > one) ? static_cast<T>(NAN)
+                                 : (static_cast<MT>(dout) / (x * (one - x)));
+    } else {
+      dx = (x < static_cast<MT>(eps) || x > one - static_cast<MT>(eps))
+               ? zero
+               : (static_cast<MT>(dout) / (x * (one - x)));
+    }
+
     return static_cast<T>(dx);
   }
   static constexpr ActBwdOpFwdDeps FwdDeps() {
@@ -3575,9 +3589,15 @@ struct CudaReciprocalFunctor : public BaseActivationFunctor<T> {
 
 template <typename T>
 struct CudaReciprocalGradFunctor : public BaseActivationFunctor<T> {
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+
   // dx = -dout * out^2
-  __device__ __forceinline__ T operator()(const T dout, const T out) const {
-    return -dout * out * out;
+  __device__ __forceinline__ T operator()(const T arg_dout,
+                                          const T arg_out) const {
+    MPType dout = static_cast<MPType>(arg_dout);
+    MPType out = static_cast<MPType>(arg_out);
+    return static_cast<T>(-dout *
+                          static_cast<MPType>(static_cast<T>(out * out)));
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() {

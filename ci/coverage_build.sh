@@ -32,6 +32,7 @@ echo "/usr/local/nvidia/lib:/usr/local/nvidia/lib64:/usr/lib/x86_64-linux-gnu:\$
 echo "export PATH=/usr/local/bin:\\" >> ~/.bashrc
 echo "\${PATH}" >> ~/.bashrc
 source ~/.bashrc
+unset GREP_OPTIONS
 
 check_diff_file_for_coverage
 

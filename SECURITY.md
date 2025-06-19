@@ -19,6 +19,11 @@ These tools include adversarial example evaluation test, pseudo-natural environm
 Always load and execute untrusted models inside a sandbox and be sure to know the security impacts.
 There are several ways in which a model could become untrusted. PaddlePaddle has enough features to impact on the system. (e.g. `paddle.load` uses [pickle](https://docs.python.org/3/library/pickle.html) implicitly, which may cause malformed models to achieve arbitrary code execution). So we recommend when using the untrusted models, you need to carefully audit it and run PaddlePaddle inside a sandbox.
 
+### Using distributed features
+PaddlePaddle offers distributed computing capabilities through the paddle.distributed package. These distributed features are meant for secure, trusted environments only, not for use on public or untrusted networks.
+
+For efficiency, PaddlePaddle Distributed (e.g. RPC) does not use encryption or authentication. Messages are sent in plain text, and connections from any source are accepted. This means if you run a PaddlePaddle Distributed program on your network, anyone who can access that network could send tasks to PaddlePaddle, and those tasks will be executed without any security checks, using the same permissions as the PaddlePaddle process.
+
 ## PaddlePaddle Code Security
 
 PaddlePaddle always take code security seriously. However, due to the complexity of the framework and its dependence on other thirdparty open source libraries, there may still be some security issues undetected. Therefore, we hope that more security researchers and PaddlePaddle developers can participate in the code security program. We encourage responsible disclosure of security issues, as well as contributing code to improve our vulnerability finding tools to make PaddlePaddle safer.

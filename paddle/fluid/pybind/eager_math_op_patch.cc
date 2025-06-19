@@ -16,10 +16,6 @@ typedef SSIZE_T ssize_t;
 #endif
 
 #include <Python.h>
-// Avoid a problem with copysign defined in pyconfig.h on Windows.
-#ifdef copysign
-#undef copysign
-#endif
 
 #include <string>
 #include <unordered_map>
@@ -334,7 +330,12 @@ static PyObject* tensor__add__method(TensorObject* self,
   }
 
   return ToPyObject(ret);
+
+#if defined(PADDLE_WITH_XPU_BKCL)
   EAGER_CATCH_AND_THROW_RETURN_NULL
+#else
+  EAGER_CATCH_AND_THROW_RETURN_NOT_IMPLEMENTED
+#endif
 }
 
 static PyObject* tensor__sub__method(TensorObject* self,
@@ -629,7 +630,12 @@ static PyObject* tensor__mul__method(TensorObject* self,
   }
 
   return ToPyObject(ret);
+
+#if defined(PADDLE_WITH_XPU_BKCL)
   EAGER_CATCH_AND_THROW_RETURN_NULL
+#else
+  EAGER_CATCH_AND_THROW_RETURN_NOT_IMPLEMENTED
+#endif
 }
 
 static PyObject* tensor__div__method(TensorObject* self,
@@ -2070,7 +2076,7 @@ static PyObject* tensor__ne__method(TensorObject* self,
       if (PyComplex_Check(other_obj)) {
         eager_gil_scoped_release guard;
         other_tensor =
-            full_ad_func({1}, value, DataType::COMPLEX64, self_tensor.place());
+            full_ad_func({}, value, DataType::COMPLEX64, self_tensor.place());
       } else {
         eager_gil_scoped_release guard;
         other_tensor = full_ad_func(self_tensor.shape(),
@@ -2163,7 +2169,7 @@ static PyObject* tensor__eq__method(TensorObject* self,
       if (PyComplex_Check(other_obj)) {
         eager_gil_scoped_release guard;
         other_tensor =
-            full_ad_func({1}, value, DataType::COMPLEX64, self_tensor.place());
+            full_ad_func({}, value, DataType::COMPLEX64, self_tensor.place());
       } else {
         eager_gil_scoped_release guard;
         other_tensor = full_ad_func(self_tensor.shape(),

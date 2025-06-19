@@ -1089,10 +1089,10 @@ void ReduceKernel(const KPDevice& dev_ctx,
                   phi::DenseTensor* y,
                   const TransformOp& transform,
                   const std::vector<int>& origin_reduce_dims) {
-  PADDLE_ENFORCE_GT(x.numel(),
-                    0,
-                    common::errors::InvalidArgument(
-                        "Tensor need be reduced must not empty."));
+  if (x.numel() == 0) {
+    dev_ctx.Alloc<Ty>(y);
+    return;
+  }
 #ifdef PADDLE_WITH_XPU_KP
   auto stream = dev_ctx.x_context()->xpu_stream;
 #else
@@ -1460,12 +1460,10 @@ void ReduceKernelImpl(const Context& dev_ctx,
                       const std::vector<int64_t>& dims,
                       bool keep_dim,
                       bool reduce_all) {
-  PADDLE_ENFORCE_GT(input.numel(),
-                    0,
-                    common::errors::InvalidArgument(
-                        "Tensor need be reduced must not empty."));
-
   dev_ctx.template Alloc<OutT>(output);
+  if (input.numel() == 0) {
+    return;
+  }
 
   if (reduce_all) {
     // Flatten and reduce 1-D tensor

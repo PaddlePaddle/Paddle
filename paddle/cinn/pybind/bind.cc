@@ -28,8 +28,6 @@ void BindCINN(py::module *m) {
   py::module common = cinn.def_submodule("common", "namespace cinn::common");
   py::module lang = cinn.def_submodule("lang", "namespace cinn::lang");
   py::module ir = cinn.def_submodule("ir", "namespace cinn::ir");
-  py::module poly =
-      cinn.def_submodule("poly", "namespace cinn::poly, polyhedral");
   py::module backends = cinn.def_submodule(
       "backends", "namespace cinn::backends, execution backends");
   py::module optim = cinn.def_submodule(
@@ -49,7 +47,6 @@ void BindCINN(py::module *m) {
   BindCommon(&common);
   BindIr(&ir);
   BindLang(&lang);
-  BindPoly(&poly);
   BindBackends(&backends);
   BindOptim(&optim);
   BindPE(&pe);

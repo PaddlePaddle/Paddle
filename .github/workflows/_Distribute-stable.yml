@@ -2,10 +2,12 @@ name: Distribute-stable
 
 on:
   workflow_call:
+    inputs:
+      docker_distribute_image:
+        type: string
+        required: true
 
 env:
-  dockerfile: Dockerfile.cuda123_cudnn9_gcc122_ubuntu20
-  docker_image: 4b95dcca2173
   PR_ID: ${{ github.event.pull_request.number }}
   COMMIT_ID: ${{ github.event.pull_request.head.sha }}
   work_dir: /paddle
@@ -15,6 +17,7 @@ env:
   BRANCH: ${{ github.event.pull_request.base.ref }}
   CI_name: distribute
   no_proxy: bcebos.com,apiin.im.baidu.com,gitee.com,aliyun.com,.baidu.com,.tuna.tsinghua.edu.cn,paddlepaddle.org.cn
+  docker_image: ${{ inputs.docker_distribute_image }}
 
 defaults:
   run:
@@ -23,6 +26,8 @@ defaults:
 jobs:
   build:
     name: Build
+    outputs:
+      can-skip: ${{ steps.check-bypass.outputs.can-skip }}
     runs-on:
       group: GZ_BD-CPU
 
@@ -142,6 +147,7 @@ jobs:
           workflow-name: distribute
 
       - name: Download flashattn cache
+        if: steps.check-bypass.outputs.can-skip != 'true'
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           set +e
@@ -154,6 +160,7 @@ jobs:
           '
 
       - name: Build
+        if: steps.check-bypass.outputs.can-skip != 'true'
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ${{ github.workspace }}/../../../proxy
@@ -161,6 +168,7 @@ jobs:
           '
 
       - name: Packaging of products
+        if: steps.check-bypass.outputs.can-skip != 'true'
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           if [ "${{ env.flashattn_cached_package }}" == "true" ]; then
@@ -179,6 +187,7 @@ jobs:
           '
 
       - name: Upload product to bos
+        if: steps.check-bypass.outputs.can-skip != 'true'
         env:
           home_path: ${{ github.workspace }}/..
           bos_file: ${{ github.workspace }}/../bos/BosClient.py
@@ -213,7 +222,7 @@ jobs:
           '
 
       - name: Terminate and delete the container
-        if: always()
+        if: ${{ steps.check-bypass.outputs.can-skip != 'true' && always() }}
         run: |
           set +e
           docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'
@@ -223,6 +232,7 @@ jobs:
   test:
     name: Test
     needs: build
+    if: ${{ needs.build.outputs.can-skip != 'true' }}
     runs-on:
       group: Distribute
     steps:
@@ -260,7 +270,7 @@ jobs:
           export SMI="-v /usr/bin/nvidia-smi:/usr/bin/nvidia-smi"
           container_name=${TASK}-test-$(date +%Y%m%d-%H%M%S)
           echo "container_name=${container_name}" >> ${{ github.env }}
-          docker run --privileged -d -t --name ${container_name} ${CUDA_SO} ${DEVICES} ${SMI} --shm-size=32G \
+          docker run -d -t --name ${container_name} ${CUDA_SO} ${DEVICES} ${SMI} --shm-size=32G \
           -v "/home/data/cfs:/home/data/cfs" \
           -v "/home/data/cfs/.cache/:/root/.cache" \
           -v "/home/data/cfs/.ccache:/root/.ccache" \
