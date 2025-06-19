@@ -173,6 +173,7 @@ jobs:
           paddle_whl: paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
+          bash ${ci_scripts}/compress_build.sh
           export AK=paddle
           export SK=paddle
           if [ ! -f "${{ env.bos_file }}" ]; then

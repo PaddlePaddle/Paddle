@@ -23,6 +23,8 @@
 #include "paddle/fluid/framework/tensor_ref_array.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/ir_adaptor/translator/program_translator.h"
+#include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
+#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
 #include "paddle/fluid/pir/utils/name_analysis.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -41,6 +43,7 @@
 COMMON_DECLARE_bool(enable_pir_with_pt_in_dy2st);
 COMMON_DECLARE_bool(enable_pir_in_executor);
 COMMON_DECLARE_bool(use_mkldnn);
+COMMON_DECLARE_bool(specialize_device_in_dy2st);
 
 namespace details {
 using Tensor = paddle::Tensor;
@@ -466,6 +469,23 @@ inline void PirRunProgramAPI(
     details::ShareTensorsIntoScopeByValue(
         params, param_values, global_inner_scope);
     // Step 3. create new interpretercore
+    if (FLAGS_specialize_device_in_dy2st) {
+      // NOTE: Set PlaceAttribute for DataOp based on input tensor's place when
+      // FLAGS_specialize_device_in_dy2st=True. Performance may decrease when a
+      // CPU Tensor is copied to a device multiple times; consider applying CSE
+      // in future.
+      for (size_t i = 0; i < input_values.size(); ++i) {
+        const auto &input_tensor = x[i];
+        const auto &input_value = input_values[i];
+        if (input_value.defining_op() &&
+            input_value.defining_op()->isa<paddle::dialect::DataOp>()) {
+          input_value.defining_op()->set_attribute(
+              "place",
+              paddle::dialect::PlaceAttribute::get(pir::IrContext::Instance(),
+                                                   input_tensor.place()));
+        }
+      }
+    }
     auto passed_kernel_program = paddle::framework::ApplyIrPass(
         forward_program.get(), place, no_need_buffer_name_set);
     const auto &new_block = passed_kernel_program->block();

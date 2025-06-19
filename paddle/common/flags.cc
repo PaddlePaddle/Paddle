@@ -1884,6 +1884,19 @@ PHI_DEFINE_EXPORTED_bool(enable_cse_in_dy2st,
                          "Apply CSE optimize pass in Dy2St");
 
 /**
+ * Run Dy2St in specialized device
+ * Name: specialize_device_in_dy2st
+ * Since Version: 3.1.0 Beta
+ * Value Range: bool, default=false
+ * Example:
+ * Note: If True, will specialize device for DataOp's place based on input
+ * tensor's place before lowering.
+ */
+PHI_DEFINE_EXPORTED_bool(specialize_device_in_dy2st,
+                         false,
+                         "Run Dy2St in specialized device");
+
+/**
  * Max count of eliminate redundant computation in CSE, for debug usage
  * Name: cse_max_count
  * Since Version: 3.0.0
