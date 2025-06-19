@@ -93,7 +93,6 @@ class TestLogLossOp_ZeroSize(OpTest):
         self.check_grad(
             ['Predicted'],
             'Loss',
-            max_relative_error=0.03,
             check_pir=True,
         )
 
