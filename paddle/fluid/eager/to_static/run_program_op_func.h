@@ -150,7 +150,7 @@ pir_filter_no_need_buffer_input_var_in_backward(
   const auto& forward_inputs_names =
       PADDLE_GET_CONST(std::vector<std::string>, attrs.at("fx_names"));
   const auto& no_need_buffers_names = PADDLE_GET_CONST(
-      std::vector<::pir::Value>, attrs.at("no_need_buffers_names"));
+      std::vector<std::string>, attrs.at("no_need_buffers_names"));
   auto filter_x = std::vector<paddle::Tensor>(x);
   std::deque<std::shared_ptr<paddle::memory::Allocation>>* garbages =
       new std::deque<std::shared_ptr<paddle::memory::Allocation>>();
