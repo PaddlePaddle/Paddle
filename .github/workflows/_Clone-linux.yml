@@ -50,6 +50,7 @@ jobs:
       - name: Merge PR to test branch
         id: check-execution
         run: |
+          set -x
           git config --unset http.https://github.com/.extraheader
           git submodule foreach --recursive sh -c "git config --local --unset-all 'http.https://github.com/.extraheader'"
           git submodule foreach --recursive sh -c "git config remote.origin.fetch '+refs/heads/*:refs/remotes/origin/*'"
