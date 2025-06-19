@@ -390,8 +390,8 @@ class TestUniqueConsecutiveZeroSize(TestUniqueConsecutiveOp):
         result, inverse, counts = reference_unique_consecutive(
             x, self.return_inverse, self.return_counts
         )
-        result = np.array(result).astype(self.dtype).reshape(x.shape)
-        inverse = inverse.astype(self.dtype)
+        result = np.array(result).astype(self.dtype)
+        inverse = inverse.astype(self.dtype).reshape(x.shape)
         counts = counts.astype(self.dtype)
         self.inputs = {
             'X': x,
