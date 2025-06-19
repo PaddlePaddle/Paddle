@@ -1030,6 +1030,8 @@ paddle::Tensor moe_wna16_marlin_gemm_api(
   deep_ep::detail::ScalarTypeId b_q_type_id;
   if (b_q_type_str == "uint4") {
     b_q_type_id = deep_ep::detail::kU4.id();
+  } else if(b_q_type_str == "uint8"){
+    b_q_type_id = deep_ep::detail::kU8B128.id();
   } else {
     PADDLE_ENFORCE(false, "b_q_type_str not supported!");
   }
