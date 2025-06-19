@@ -94,7 +94,7 @@ Placements ToPlacements(const TensorDistAttr& dist_attr) {
   }
 
   const std::vector<std::vector<int64_t>>& dim_mapping =
-      dist_attr.dims_mapping_2d();
+      dist_attr.multi_dims_mapping();
   for (size_t t_dim = 0; t_dim < dim_mapping.size(); t_dim++) {
     auto m_dims = dim_mapping[t_dim];
 

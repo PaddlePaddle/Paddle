@@ -20,8 +20,8 @@ import paddle.distributed as dist
 
 class TestCoShard:
     def basic_interface_case(self):
-        shard = dist.Shard(0, co_shard_order=0)
-        np.testing.assert_equal(str(shard), "Shard(dim=0, co_shard_order=0)")
+        shard = dist.Shard(0, shard_order=0)
+        np.testing.assert_equal(str(shard), "Shard(dim=0, shard_order=0)")
 
         shard = dist.Shard(0, split_factor=2)
         np.testing.assert_equal(str(shard), "Shard(dim=0, split_factor=2)")
@@ -31,8 +31,8 @@ class TestCoShard:
         mesh = dist.ProcessMesh([[0, 1], [2, 3]], dim_names=['x', 'y'])
 
         placements = [
-            dist.Shard(0, co_shard_order=0),
-            dist.Shard(0, co_shard_order=1),
+            dist.Shard(0, shard_order=0),
+            dist.Shard(0, shard_order=1),
         ]
         input = dist.shard_tensor(a, mesh, placements)
 
@@ -67,8 +67,8 @@ class TestCoShard:
         a = paddle.to_tensor([[1, 2], [3, 4], [5, 6], [7, 8]])
         mesh = dist.ProcessMesh([[0, 1], [2, 3]], dim_names=['x', 'y'])
         placements = [
-            dist.Shard(0, co_shard_order=1),
-            dist.Shard(0, co_shard_order=0),
+            dist.Shard(0, shard_order=1),
+            dist.Shard(0, shard_order=0),
         ]
         input = dist.shard_tensor(a, mesh, placements)
 
@@ -148,8 +148,8 @@ class TestCoShard:
         input = dist.shard_tensor(a, mesh, placements)
 
         reshard_placements = [
-            dist.Shard(0, co_shard_order=0),
-            dist.Shard(0, co_shard_order=1),
+            dist.Shard(0, shard_order=0),
+            dist.Shard(0, shard_order=1),
         ]
         out = dist.reshard(input, mesh, reshard_placements)
         np.testing.assert_equal(
@@ -157,10 +157,10 @@ class TestCoShard:
             a[dist.get_rank()].numpy().flatten(),
         )
         np.testing.assert_equal(
-            str(out.placements[0]), "Shard(dim=0, co_shard_order=0)"
+            str(out.placements[0]), "Shard(dim=0, shard_order=0)"
         )
         np.testing.assert_equal(
-            str(out.placements[1]), "Shard(dim=0, co_shard_order=1)"
+            str(out.placements[1]), "Shard(dim=0, shard_order=1)"
         )
 
     def run_test_case_4(self):
@@ -172,10 +172,10 @@ class TestCoShard:
         out = paddle.reshape(input, [-1])
         np.testing.assert_equal(out.shape, [8])
         np.testing.assert_equal(
-            str(out.placements[0]), "Shard(dim=0, co_shard_order=0)"
+            str(out.placements[0]), "Shard(dim=0, shard_order=0)"
         )
         np.testing.assert_equal(
-            str(out.placements[1]), "Shard(dim=0, co_shard_order=1)"
+            str(out.placements[1]), "Shard(dim=0, shard_order=1)"
         )
         np.testing.assert_equal(
             out._local_value().numpy(), a[dist.get_rank()].numpy().flatten()
@@ -183,10 +183,10 @@ class TestCoShard:
 
         relu_out = paddle.nn.ReLU()(out)
         np.testing.assert_equal(
-            str(relu_out.placements[0]), "Shard(dim=0, co_shard_order=0)"
+            str(relu_out.placements[0]), "Shard(dim=0, shard_order=0)"
         )
         np.testing.assert_equal(
-            str(relu_out.placements[1]), "Shard(dim=0, co_shard_order=1)"
+            str(relu_out.placements[1]), "Shard(dim=0, shard_order=1)"
         )
 
     def run_test_case_main(self):

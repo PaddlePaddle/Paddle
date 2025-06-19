@@ -141,7 +141,7 @@ class CoShard : public Shard {
   std::string to_string() const override {
     std::stringstream ss;
     ss << "Shard(dim=" << std::to_string(dim_);
-    ss << ", co_shard_order=" << std::to_string(co_shard_order_) << ")";
+    ss << ", shard_order=" << std::to_string(co_shard_order_) << ")";
 
     return ss.str();
   }

@@ -58,8 +58,8 @@ ProcessMesh GetSubProcessMesh(const ProcessMesh& mesh, int64_t axis) {
 // -1] and [-1, -1, 0, -1], the first diff shard axis is 2.
 int64_t FindFirstDiffShardAxis(const TensorDistAttr& in_dist_attr,
                                const TensorDistAttr& out_dist_attr) {
-  const auto& in_dims_mapping = in_dist_attr.dims_mapping_2d();
-  const auto& out_dims_mapping = out_dist_attr.dims_mapping_2d();
+  const auto& in_dims_mapping = in_dist_attr.multi_dims_mapping();
+  const auto& out_dims_mapping = out_dist_attr.multi_dims_mapping();
 
   VLOG(3) << "In find diff axis, in dim mapping "
           << auto_parallel::str_join(in_dims_mapping) << ", out dim mapping "
@@ -117,7 +117,7 @@ class ReshardContext final {
     }
 
     if (cur_tensor_dim) {
-      auto dims_mapping = dist_attr.dims_mapping_2d();
+      auto dims_mapping = dist_attr.multi_dims_mapping();
       PADDLE_ENFORCE_GE(
           cur_tensor_dim.value(),
           0,
@@ -221,7 +221,7 @@ class ShardToReplicate final
   TensorDistAttr CalculateNewDistAttr() const override {
     auto real_out_attr = ctx_.out->dist_attr();
     std::vector<std::vector<int64_t>> real_dims_mapping =
-        real_out_attr.dims_mapping_2d();
+        real_out_attr.multi_dims_mapping();
     real_dims_mapping[cur_tensor_dim_] = {};
     real_out_attr.set_dims_mapping(real_dims_mapping);
     real_out_attr.clear_split_factor(cur_mesh_dim_);
@@ -272,7 +272,7 @@ class ReplicateToShard final
   TensorDistAttr CalculateNewDistAttr() const override {
     TensorDistAttr real_out_dist_attr(ctx_.out->dist_attr());
     std::vector<std::vector<int64_t>> real_dims_mapping =
-        real_out_dist_attr.dims_mapping_2d();
+        real_out_dist_attr.multi_dims_mapping();
     real_dims_mapping[cur_tensor_dim_].push_back(cur_mesh_dim_);
     real_out_dist_attr.set_dims_mapping(real_dims_mapping);
 
@@ -304,7 +304,7 @@ class PartialToShard final
   TensorDistAttr CalculateNewDistAttr() const override {
     TensorDistAttr real_out_dist_attr(ctx_.out->dist_attr());
     std::vector<std::vector<int64_t>> real_dims_mapping =
-        real_out_dist_attr.dims_mapping_2d();
+        real_out_dist_attr.multi_dims_mapping();
     real_dims_mapping[cur_tensor_dim_].push_back(cur_mesh_dim_);
     real_out_dist_attr.set_dims_mapping(real_dims_mapping);
     if (real_out_dist_attr.is_partial(cur_mesh_dim_)) {
@@ -376,8 +376,8 @@ void ProcessShardToReplicated(phi::DeviceContext* dev_ctx,
   VLOG(3) << "In S to R, fist diff axis is " << first_diff_axis;
   for (int cur_tensor_dim = first_diff_axis; cur_tensor_dim >= 0;
        --cur_tensor_dim) {
-    auto in_mesh_axis = out->dist_attr().dims_mapping_2d()[cur_tensor_dim];
-    auto out_mesh_axis = out_dist_attr.dims_mapping_2d()[cur_tensor_dim];
+    auto in_mesh_axis = out->dist_attr().multi_dims_mapping()[cur_tensor_dim];
+    auto out_mesh_axis = out_dist_attr.multi_dims_mapping()[cur_tensor_dim];
     if (in_mesh_axis.size() == 0 ||
         is_same_shard(in_mesh_axis, out_mesh_axis)) {
       continue;
@@ -426,8 +426,9 @@ void ProcessReplicateOrPartialToShard(phi::DeviceContext* dev_ctx,
   for (int64_t cur_tensor_dim = first_diff_axis; cur_tensor_dim >= 0;
        --cur_tensor_dim) {
     const auto& in_mesh_axis =
-        out->dist_attr().dims_mapping_2d()[cur_tensor_dim];
-    const auto& out_mesh_axis = out_dist_attr.dims_mapping_2d()[cur_tensor_dim];
+        out->dist_attr().multi_dims_mapping()[cur_tensor_dim];
+    const auto& out_mesh_axis =
+        out_dist_attr.multi_dims_mapping()[cur_tensor_dim];
     if (in_mesh_axis == out_mesh_axis) {
       continue;
     }

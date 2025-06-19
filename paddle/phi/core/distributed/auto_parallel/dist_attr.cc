@@ -41,7 +41,7 @@ TensorDistAttr& TensorDistAttr::operator=(const TensorDistAttr& dist_attr) {
   if (this == &dist_attr) return *this;
   TensorDistAttr tmp(dist_attr);
   std::swap(this->process_mesh_, tmp.process_mesh_);
-  std::swap(this->dims_mapping_2d_, tmp.dims_mapping_2d_);
+  std::swap(this->dims_mapping_, tmp.dims_mapping_);
   std::swap(this->batch_dim_, tmp.batch_dim_);
   std::swap(this->chunk_id_, tmp.chunk_id_);
   std::swap(this->dynamic_dims_, tmp.dynamic_dims_);
@@ -54,7 +54,7 @@ TensorDistAttr& TensorDistAttr::operator=(const TensorDistAttr& dist_attr) {
 
 void TensorDistAttr::copy_from(const TensorDistAttr& dist_attr) {
   set_process_mesh(dist_attr.process_mesh());
-  set_dims_mapping(dist_attr.dims_mapping_2d());
+  set_dims_mapping(dist_attr.multi_dims_mapping());
   split_factor_map_ = dist_attr.split_factor();
   set_batch_dim(dist_attr.batch_dim());
   set_chunk_id(dist_attr.chunk_id());
@@ -188,7 +188,7 @@ bool TensorDistAttr::verify_process_mesh(
   VLOG(4) << "[TensorDistAttr verify_process_mesh] "
           << process_mesh.to_string();
   if (!process_mesh_.empty()) {
-    for (const auto& dims_mapping : dims_mapping_2d_) {
+    for (const auto& dims_mapping : dims_mapping_) {
       for (int64_t mesh_dim : dims_mapping)
         if (mesh_dim >= process_mesh_.ndim()) {
           return false;
@@ -286,7 +286,7 @@ bool TensorDistAttr::verify(const std::vector<int64_t>& tensor_shape) const {
   if (!verify_process_mesh(process_mesh_)) {
     return false;
   }
-  if (!verify_dims_mapping(dims_mapping_2d_, tensor_shape)) {
+  if (!verify_dims_mapping(dims_mapping_, tensor_shape)) {
     return false;
   }
   if (!verify_batch_dim(batch_dim_, tensor_shape)) {
@@ -309,7 +309,7 @@ bool TensorDistAttr::verify_dynamic(
   if (!verify_process_mesh(process_mesh_)) {
     return false;
   }
-  if (!verify_dims_mapping(dims_mapping_2d_, tensor_shape)) {
+  if (!verify_dims_mapping(dims_mapping_, tensor_shape)) {
     return false;
   }
   if (!verify_partial_status()) {
@@ -321,7 +321,7 @@ bool TensorDistAttr::verify_dynamic(
 std::string TensorDistAttr::to_string() const {
   std::string dist_str;
   dist_str += "{process_mesh: " + process_mesh_.to_string() + ", ";
-  dist_str += "dim_mappings: [" + str_join(dims_mapping_2d_) + "], ";
+  dist_str += "dim_mappings: [" + str_join(dims_mapping_) + "], ";
   dist_str += "batch_dim: " + std::to_string(batch_dim_) + ", ";
   dist_str += "chunk_id: " + std::to_string(chunk_id_) + ", ";
   dist_str += "skip_check_mesh: " + std::to_string(skip_check_mesh_) + ", ";
@@ -334,7 +334,7 @@ std::string TensorDistAttr::to_string() const {
 
 void TensorDistAttr::from_proto(const TensorDistAttrProto& proto) {
   process_mesh_ = ProcessMesh::from_proto(proto.process_mesh());
-  dims_mapping_2d_.resize(proto.dims_mapping_size());
+  dims_mapping_.resize(proto.dims_mapping_size());
 
   for (int i = 0; i < proto.dims_mapping_size(); ++i) {
     const auto& mesh_dims_proto = proto.dims_mapping(i);
@@ -342,7 +342,7 @@ void TensorDistAttr::from_proto(const TensorDistAttrProto& proto) {
     for (int j = 0; j < mesh_dims_proto.mesh_dims_size(); ++j) {
       mesh_dims_vec.push_back(mesh_dims_proto.mesh_dims(j));
     }
-    dims_mapping_2d_[i] = mesh_dims_vec;
+    dims_mapping_[i] = mesh_dims_vec;
   }
 
   batch_dim_ = proto.batch_dim();
@@ -357,10 +357,10 @@ void TensorDistAttr::to_proto(TensorDistAttrProto* proto) const {
   proto->mutable_process_mesh()->CopyFrom(
       phi::distributed::to_proto(process_mesh_));
 
-  for (size_t i = 0; i < dims_mapping_2d_.size(); ++i) {
+  for (size_t i = 0; i < dims_mapping_.size(); ++i) {
     proto->add_dims_mapping();
-    for (size_t j = 0; j < dims_mapping_2d_.at(i).size(); ++j) {
-      proto->mutable_dims_mapping(i)->add_mesh_dims(dims_mapping_2d_[i][j]);
+    for (size_t j = 0; j < dims_mapping_.at(i).size(); ++j) {
+      proto->mutable_dims_mapping(i)->add_mesh_dims(dims_mapping_[i][j]);
     }
   }
 
@@ -396,7 +396,7 @@ bool operator==(const TensorDistAttr& lhs, const TensorDistAttr& rhs) {
   if (lhs.process_mesh() != rhs.process_mesh()) {
     return false;
   }
-  if (lhs.dims_mapping_2d() != rhs.dims_mapping_2d()) {
+  if (lhs.multi_dims_mapping() != rhs.multi_dims_mapping()) {
     return false;
   }
   if (lhs.batch_dim() != rhs.batch_dim()) {
@@ -438,8 +438,8 @@ std::vector<std::shared_ptr<PlacementStatus>> TensorDistAttr::to_placement()
   auto ndim = process_mesh_.ndim();
   std::vector<std::shared_ptr<PlacementStatus>> placement(
       ndim, std::make_shared<ReplicatedStatus>());
-  for (size_t i = 0; i < dims_mapping_2d_.size(); ++i) {
-    const auto& cur_dims = dims_mapping_2d_.at(i);
+  for (size_t i = 0; i < dims_mapping_.size(); ++i) {
+    const auto& cur_dims = dims_mapping_.at(i);
     for (size_t j = 0; j < cur_dims.size(); ++j) {
       int64_t cur_dim = cur_dims.at(j);
       PADDLE_ENFORCE_LT(
@@ -502,7 +502,7 @@ bool TensorDistAttr::is_partial(int64_t mesh_axis) const {
 void TensorDistAttr::set_skip_check_mesh(bool skip) { skip_check_mesh_ = skip; }
 
 bool TensorDistAttr::is_co_shard() const {
-  for (const auto& mesh_dims : dims_mapping_2d_) {
+  for (const auto& mesh_dims : dims_mapping_) {
     if (mesh_dims.size() > 1) {
       return true;
     }
@@ -564,7 +564,7 @@ void TensorDistAttr::DimMapProxy::sync_1d_map() const {
                       1,
                       common::errors::InvalidArgument(
                           "There are %d mesh dim sharded on tensor dim %d,"
-                          "you should call \"dims_mapping_2d()\"",
+                          "you should call \"multi_dims_mapping()\"",
                           dims_mapping_2d->at(i).size(),
                           i));
     dims_mapping_1d[i] =

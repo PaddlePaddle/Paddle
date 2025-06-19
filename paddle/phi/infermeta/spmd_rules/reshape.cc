@@ -207,8 +207,9 @@ SpmdInfo ReshapeInferSpmd(const DistMetaTensor& x,
   x_dist_attr_dst.set_dims_mapping(input_dims_mapping);
 
   size_t input_dims_mappings_size =
-      x_dist_attr_dst.is_co_shard() ? x_dist_attr_dst.dims_mapping_2d().size()
-                                    : x_dist_attr_dst.dims_mapping().size();
+      x_dist_attr_dst.is_co_shard()
+          ? x_dist_attr_dst.multi_dims_mapping().size()
+          : x_dist_attr_dst.dims_mapping().size();
   if (x_dist_attr_dst.dynamic_dims().size() != input_dims_mappings_size) {
     VLOG(3) << "Reshape InferSPMD change input dist attr dynamic dims";
     x_dist_attr_dst.set_default_dynamic_dims(
@@ -218,7 +219,7 @@ SpmdInfo ReshapeInferSpmd(const DistMetaTensor& x,
   out_dist_attr.set_dims_mapping(output_dims_mapping);
 
   size_t output_dims_mappings_size =
-      out_dist_attr.is_co_shard() ? out_dist_attr.dims_mapping_2d().size()
+      out_dist_attr.is_co_shard() ? out_dist_attr.multi_dims_mapping().size()
                                   : out_dist_attr.dims_mapping().size();
   if (out_dist_attr.dynamic_dims().size() != output_dims_mappings_size) {
     VLOG(3) << "Reshape InferSPMD change output dist attr dynamic dims";

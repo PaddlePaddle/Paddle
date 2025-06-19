@@ -479,13 +479,13 @@ void BindAutoParallel(py::module *m) {
                py::arg("dim"),
                py::kw_only(),
                py::arg("split_factor") = 1)
-          .def(py::init([](int64_t dim, int64_t co_shard_order) {
+          .def(py::init([](int64_t dim, int64_t shard_order) {
                  return std::make_shared<phi::distributed::CoShard>(
                      dim, co_shard_order);
                }),
                py::arg("dim"),
                py::kw_only(),
-               py::arg("co_shard_order") = 0)
+               py::arg("shard_order") = 0)
           .def("get_dim", &phi::distributed::Shard::get_dim)
           .def("get_co_shard_order",
                &phi::distributed::Shard::get_co_shard_order)

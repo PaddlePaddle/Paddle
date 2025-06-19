@@ -41,7 +41,6 @@ def dims_mapping_to_placements(dim_map, mesh, partial_idx=[], split_factor={}):
         for shard_order, mesh_dim in enumerate(mesh_dims):
             p = placements[mesh_dim]
             if p.is_shard():
-                p = cast("Shard", p)
                 raise Exception(
                     f"ProcessMesh dimension can not be mapped to two dimension of same tensor: {tensor_dim} and {p.get_dim()}."
                 )
@@ -57,11 +56,11 @@ def dims_mapping_to_placements(dim_map, mesh, partial_idx=[], split_factor={}):
             )
             placements[mesh_dim] = shard
 
-    if len(split_factor) >= 1:
-        for k, v in split_factor.items():
-            placements[k].set_split_factor(v)
-            # split factor size is 1
-            break
+    if len(split_factor) > 1:
+        raise RuntimeError("At now only support to rearrange at one mesh dim.")
+
+    for k, v in split_factor.items():
+        placements[k].set_split_factor(v)
 
     return placements
 

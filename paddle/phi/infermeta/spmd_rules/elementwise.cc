@@ -82,7 +82,7 @@ SpmdInfo ElementwiseUnaryInferSpmd(const DistMetaTensor& x) {
   if (x.dist_attr().is_co_shard()) {
     TensorDistAttr x_dist_attr_src = x.dist_attr();
     std::vector<std::vector<int64_t>> dims_mapping =
-        x_dist_attr_src.dims_mapping_2d();
+        x_dist_attr_src.multi_dims_mapping();
     TensorDistAttr out_dist_attr = CopyTensorDistAttrForOutput(x_dist_attr_src);
     out_dist_attr.set_dims_mapping(dims_mapping);
     TensorDistAttr x_dst_dist_attr =

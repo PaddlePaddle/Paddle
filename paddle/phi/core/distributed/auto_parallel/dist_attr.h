@@ -102,7 +102,7 @@ class TEST_API TensorDistAttr {
     return dims_mapping_proxy;
   }
 
-  const std::vector<std::vector<int64_t>>& dims_mapping_2d() const {
+  const std::vector<std::vector<int64_t>>& multi_dims_mapping() const {
     return dims_mapping_proxy;
   }
 
@@ -264,9 +264,9 @@ class TEST_API TensorDistAttr {
   // The flag indicates whether to skip checking the process mesh.
   bool skip_check_mesh_ = false;
 
-  std::vector<std::vector<int64_t>> dims_mapping_2d_;
+  std::vector<std::vector<int64_t>> dims_mapping_;
   // for short time, backward compatible for existing spmd relus.
-  DimMapProxy dims_mapping_proxy{&dims_mapping_2d_};
+  DimMapProxy dims_mapping_proxy{&dims_mapping_};
 };
 
 inline std::ostream& operator<<(std::ostream& os, const TensorDistAttr& obj) {

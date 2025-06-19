@@ -576,7 +576,7 @@ CALCULATE_LOCAL_SHAPE_TEMPLATE = """
       const auto& out_dist_attr = {out_dist_attr};
       const auto& mesh_shape = out_dist_attr.process_mesh().shape();
       for (int i = 0; i < out_shape.size(); i++) {{
-        const auto& dims = out_dist_attr.dims_mapping_2d()[i];
+        const auto& dims = out_dist_attr.multi_dims_mapping()[i];
         if (dims.size() > 0) {{
           {dtype} shape_i = out_shape[i];
           int64_t num_shard = 1;

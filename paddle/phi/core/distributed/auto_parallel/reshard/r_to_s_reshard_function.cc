@@ -60,7 +60,7 @@ void RToSReshardFunction::Eval(phi::DeviceContext* dev_ctx,
                                const TensorDistAttr& out_dist_attr,
                                DistTensor* out) {
   VLOG(3) << "Call " << Name();
-  const auto& out_dims_mapping = out_dist_attr.dims_mapping_2d();
+  const auto& out_dims_mapping = out_dist_attr.multi_dims_mapping();
   const auto& out_process_mesh = out_dist_attr.process_mesh();
   const DenseTensor& in_physical_tensor_cur_rank = in.value();
 
