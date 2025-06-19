@@ -1029,27 +1029,25 @@ class TestWhereZeroSizeTensor(unittest.TestCase):
             result = paddle.where(tensors[0], tensors[1], tensors[2])
         np.testing.assert_allclose(result, out_ref, rtol=1e-05)
 
-        with static_guard():
-            with paddle.static.program_guard(
+        with (
+            static_guard(),
+            paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
-            ):
-                cond_t = paddle.static.data(
-                    name='cond', shape=[2, 3, 5], dtype='bool'
-                )
-                x_t = paddle.static.data(
-                    name='x', shape=[2, 3, 5], dtype='float64'
-                )
-                y_t = paddle.static.data(
-                    name='y', shape=[2, 3, 5], dtype='float64'
-                )
-                result = paddle.where(cond_t, x_t, y_t)
+            ),
+        ):
+            cond_t = paddle.static.data(
+                name='cond', shape=[2, 3, 5], dtype='bool'
+            )
+            x_t = paddle.static.data(name='x', shape=[2, 3, 5], dtype='float64')
+            y_t = paddle.static.data(name='y', shape=[2, 3, 5], dtype='float64')
+            result = paddle.where(cond_t, x_t, y_t)
 
-                exe = base.Executor(base.CPUPlace())
-                out = exe.run(
-                    paddle.static.default_main_program(),
-                    feed={'cond': inputs[0], 'x': inputs[1], 'y': inputs[2]},
-                    fetch_list=[result],
-                )
+            exe = base.Executor(base.CPUPlace())
+            out = exe.run(
+                paddle.static.default_main_program(),
+                feed={'cond': inputs[0], 'x': inputs[1], 'y': inputs[2]},
+                fetch_list=[result],
+            )
         np.testing.assert_allclose(out[0], out_ref, rtol=1e-05)
 
     def test_api_with_zero_size_input(self):
@@ -1084,27 +1082,25 @@ class TestWhereBoolInput(unittest.TestCase):
         y = np.random.random([2, 3, 5]).astype('bool')
         out_ref = np.where(cond, x, y)
 
-        with static_guard():
-            with paddle.static.program_guard(
+        with (
+            static_guard(),
+            paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
-            ):
-                cond_t = paddle.static.data(
-                    name='cond', shape=[2, 3, 5], dtype='bool'
-                )
-                x_t = paddle.static.data(
-                    name='x', shape=[2, 3, 5], dtype='bool'
-                )
-                y_t = paddle.static.data(
-                    name='y', shape=[2, 3, 5], dtype='bool'
-                )
-                result = paddle.where(cond_t, x_t, y_t)
+            ),
+        ):
+            cond_t = paddle.static.data(
+                name='cond', shape=[2, 3, 5], dtype='bool'
+            )
+            x_t = paddle.static.data(name='x', shape=[2, 3, 5], dtype='bool')
+            y_t = paddle.static.data(name='y', shape=[2, 3, 5], dtype='bool')
+            result = paddle.where(cond_t, x_t, y_t)
 
-                exe = base.Executor(base.CPUPlace())
-                out = exe.run(
-                    paddle.static.default_main_program(),
-                    feed={'cond': cond, 'x': x, 'y': y},
-                    fetch_list=[result],
-                )
+            exe = base.Executor(base.CPUPlace())
+            out = exe.run(
+                paddle.static.default_main_program(),
+                feed={'cond': cond, 'x': x, 'y': y},
+                fetch_list=[result],
+            )
         np.testing.assert_allclose(out[0], out_ref, rtol=1e-05)
 
 

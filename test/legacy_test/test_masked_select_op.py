@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
@@ -24,9 +25,10 @@ from paddle.base import core
 def np_masked_select(x, mask):
     result = np.empty(shape=(0), dtype=x.dtype)
     x, mask = np.broadcast_arrays(x, mask)
-    for ele, ma in zip(np.nditer(x), np.nditer(mask)):
-        if ma:
-            result = np.append(result, ele)
+    if x.size != 0:
+        for ele, ma in zip(np.nditer(x), np.nditer(mask)):
+            if ma:
+                result = np.append(result, ele)
     return result.flatten()
 
 
@@ -278,6 +280,46 @@ class TestMaskedSelectOpBroadcast4(TestMaskedSelectOp):
     def init(self):
         self.shape = (300, 40)
         self.mask_shape = 40
+
+
+class TestMaskedSelectOpBroadcast_ZeroSize(TestMaskedSelectOp):
+    def init(self):
+        self.shape = (0, 40)
+        self.mask_shape = 40
+
+
+class TestMaskedSelectOpBroadcast_ZeroSize2(TestMaskedSelectOp):
+    def init(self):
+        self.shape = (0, 0)
+        self.mask_shape = 0
+
+
+class TestMaskedSelectOp_ZeroSize3(unittest.TestCase):
+    def setUp(self):
+        self.place = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            self.place.append(paddle.CPUPlace())
+        if core.is_compiled_with_cuda():
+            self.place.append(paddle.CUDAPlace(0))
+
+    def _test_out_0size(self, place):
+        paddle.disable_static(place)
+        x = paddle.to_tensor([1, 2], dtype='float32')
+        x.stop_gradient = False
+        y = paddle.to_tensor([False, False], dtype='bool')
+        z = x.masked_select(y)
+        np.testing.assert_allclose(z.shape, [0])
+        z.sum().backward()
+        np.testing.assert_allclose(x.grad.numpy(), [0, 0])
+        paddle.enable_static()
+
+    def test_out_0size(self):
+        for place in self.place:
+            self._test_out_0size(place)
 
 
 if __name__ == '__main__':

@@ -28,6 +28,7 @@ jobs:
     uses: ./.github/workflows/docker.yml
     with:
       bos_dir: Paddle-build
+      task: build
 
   build:
     name: Linux-build
@@ -68,18 +69,11 @@ jobs:
       can-skip: ${{ needs.build.outputs.can-skip }}
       docker_build_image: ${{ needs.build-docker.outputs.docker_build_image }}
 
-  auto-parallel:
-    name: Auto-Parallel
-    uses: ./.github/workflows/_Auto-Parallel.yml
-    needs: [build-docker, build]
-    with:
-      can-skip: ${{ needs.build.outputs.can-skip }}
-      docker_build_image: ${{ needs.build-docker.outputs.docker_build_image }}
-
   slice:
     name: Slice
     uses: ./.github/workflows/_Slice.yml
-    needs: [build-docker, build]
+    needs: [clone, build-docker, build]
     with:
       can-skip: ${{ needs.build.outputs.can-skip }}
       docker_build_image: ${{ needs.build-docker.outputs.docker_build_image }}
+      slice-check: ${{ needs.clone.outputs.slice-check }}
