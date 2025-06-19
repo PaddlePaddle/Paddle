@@ -33,9 +33,7 @@ void GatherGradKernel(const Context& dev_ctx,
 
   const auto& index_type = index.dtype();
 
-  if (x.numel() == 0 || index.numel() == 0 || out_grad.numel() == 0) {
-    VLOG(6)
-        << "Do nothing for GatherGradKernel since inputs has 0-size tensor.";
+  if (out_grad.numel() == 0) {
     return;
   }
 
