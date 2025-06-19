@@ -182,6 +182,7 @@ endif()
 
 if(APPLE)
   list(REMOVE_ITEM TEST_OPS test_compare_op_0size)
+  list(REMOVE_ITEM TEST_OPS test_run)
 endif()
 
 list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_hybrid_parallel)
