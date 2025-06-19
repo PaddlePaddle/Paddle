@@ -1304,20 +1304,20 @@ void PirInterpreter::CheckGC(InstructionBase* instr) {
     if (is_ready) {
       VLOG(6) << "Async delete variable with name : "
               << value_exe_info_->GetNameById(static_cast<int>(var_id));
-      gc_vars.push_back(refs_[var_id]->Var());
+      if (use_trace_run_ && FLAGS_enable_async_fast_gc) {
+        gc_vars.push_back(refs_[var_id]->Var());
+      } else {
+        gc_->Add(refs_[var_id]->Var(), instr);
+      }
     }
-  }
-
-  for (auto var : instr->EagerGCVars()) {
-    gc_vars.push_back(var);
   }
 
   if (use_trace_run_ && FLAGS_enable_async_fast_gc) {
     async_gc_->Add(gc_vars);
-  } else {
-    for (const auto& var : gc_vars) {
-      gc_->Add(var, instr);
-    }
+  }
+
+  for (auto var : instr->EagerGCVars()) {
+    gc_->Add(var, instr);
   }
   instr->ClearEagerGCVars();
 }
