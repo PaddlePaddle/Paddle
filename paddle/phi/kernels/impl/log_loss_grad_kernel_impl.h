@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 namespace phi {
@@ -26,9 +25,8 @@ void LogLossGradKernel(const Context& dev_ctx,
                        const DenseTensor& out_grad,
                        float epsilon,
                        DenseTensor* in_grad) {
-  if (out_grad.numel() == 0 && in_grad) {
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(in_grad->dims())), 0, in_grad);
+  if (in_grad && in_grad->numel() == 0) {
+    dev_ctx.template Alloc<T>(in_grad);
     return;
   }
   auto prediction = EigenVector<T>::Flatten(input);
