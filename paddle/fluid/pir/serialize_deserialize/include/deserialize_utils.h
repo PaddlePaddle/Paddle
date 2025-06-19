@@ -229,7 +229,7 @@ paddle::dialect::DataLayoutAttribute
 deserializeAttrFromJson<paddle::dialect::DataLayoutAttribute, std::string>(
     Json* attr_json, pir::IrContext* ctx) {
   std::string data = attr_json->at(DATA).template get<std::string>();
-  phi::DataLayout data_type = phi::StringToDataLayout(data);
+  phi::DataLayout data_type = common::StringToDataLayout(data);
   return paddle::dialect::DataLayoutAttribute::get(ctx, data_type);
 }
 
