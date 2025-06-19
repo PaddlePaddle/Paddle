@@ -1164,6 +1164,23 @@ def get_paddle_extra_install_requirements():
                     "nvidia-cufile-cu12==1.14.0.30; platform_system == 'Linux' and platform_machine == 'x86_64'"
                 ),
             }
+            if env_dict.get("WITH_CINN") == "ON":
+                PADDLE_CUDA_INSTALL_REQUIREMENTS[
+                    "12.3"
+                ] += " | nvidia-cuda-cccl-cu12==12.3.52;platform_system == 'Linux' and platform_machine == 'x86_64' "
+                PADDLE_CUDA_INSTALL_REQUIREMENTS[
+                    "12.4"
+                ] += " | nvidia-cuda-cccl-cu12==12.4.99;platform_system == 'Linux' and platform_machine == 'x86_64' "
+                PADDLE_CUDA_INSTALL_REQUIREMENTS[
+                    "12.6"
+                ] += " | nvidia-cuda-cccl-cu12==12.6.77;platform_system == 'Linux' and platform_machine == 'x86_64' "
+                PADDLE_CUDA_INSTALL_REQUIREMENTS[
+                    "12.8"
+                ] += " | nvidia-cuda-cccl-cu12==12.8.90;platform_system == 'Linux' and platform_machine == 'x86_64' "
+                PADDLE_CUDA_INSTALL_REQUIREMENTS[
+                    "12.9"
+                ] += " | nvidia-cuda-cccl-cu12==12.9.27;platform_system == 'Linux' and platform_machine == 'x86_64' "
+
         elif platform.system() == 'Windows':
             PADDLE_CUDA_INSTALL_REQUIREMENTS = {
                 "11.8": (
@@ -1410,8 +1427,8 @@ def get_package_data_and_package_dir():
     for json in json_path_list:
         package_data['paddle.cinn_config'] += [json]
 
-    if env_dict.get("WITH_CINN") == 'ON':
-        build_cutlass3_src_code()
+    # if env_dict.get("WITH_CINN") == 'ON':
+    #     build_cutlass3_src_code()
 
     package_data['paddle.apy'] = []
     file_path_list = get_apy_files()
@@ -2174,6 +2191,42 @@ def get_headers():
             )
         )  # xre headers with .hpp extension
 
+    if (
+        env_dict.get("WITH_GPU") == 'ON'
+        and tuple(map(int, env_dict.get("CUDA_VERSION").split('.'))) >= (12, 9)
+        and env_dict.get("COMPILED_CUDA_ARCHS").find("90") != -1
+    ):
+        headers += list(
+            find_files(
+                '*.hpp',
+                paddle_source_dir + '/paddle/fluid/fp8/deep_gemm/include/cute/',
+                recursive=True,
+            )
+        )
+        headers += list(
+            find_files(
+                '*.h',
+                paddle_source_dir
+                + '/paddle/fluid/fp8/deep_gemm/include/cutlass/',
+                recursive=True,
+            )
+        )
+        headers += list(
+            find_files(
+                '*.hpp',
+                paddle_source_dir
+                + '/paddle/fluid/fp8/deep_gemm/include/cutlass/',
+                recursive=True,
+            )
+        )
+        headers += list(
+            find_files(
+                '*.cuh',
+                paddle_source_dir
+                + '/paddle/fluid/fp8/deep_gemm/include/deep_gemm',
+                recursive=True,
+            )
+        )
     # pybind headers
     headers += list(find_files('*.h', env_dict.get("PYBIND_INCLUDE_DIR"), True))
     return headers
@@ -2259,6 +2312,7 @@ def get_setup_parameters():
         'paddle.distributed.fleet.meta_parallel.parallel_layers',
         'paddle.distributed.auto_parallel',
         'paddle.distributed.auto_parallel.intermediate',
+        'paddle.distributed.auto_parallel.pipelining',
         'paddle.distributed.auto_parallel.dygraph',
         'paddle.distributed.auto_parallel.static',
         'paddle.distributed.auto_parallel.static.operators',
@@ -2382,6 +2436,14 @@ def get_setup_parameters():
         and env_dict.get("CUDA_ARCH_BIN").find("90") != -1
     ):
         packages.extend(['paddle.distributed.communication.deep_ep'])
+    if (
+        env_dict.get("WITH_GPU") == 'ON'
+        and tuple(map(int, env_dict.get("CUDA_VERSION").split('.'))) >= (12, 9)
+        and env_dict.get("COMPILED_CUDA_ARCHS").find("90") != -1
+    ):
+        packages.extend(['paddle.incubate.fp8.deep_gemm'])
+        packages.extend(['paddle.incubate.fp8.deep_gemm.jit'])
+        packages.extend(['paddle.incubate.fp8.deep_gemm.jit_kernels'])
 
     if env_dict.get("WITH_TENSORRT") == 'ON':
         packages.extend(

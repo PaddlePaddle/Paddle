@@ -34,8 +34,8 @@ void SquaredL2NormKernel(const Context& dev_ctx,
     y_for_xdnn = RAII_GUARD.alloc_l3_or_gm<float>(1);
   }
 
-  // int square_reduce_sum(Context* ctx, const T* x, float* y, int64_t len, bool
-  // is_sqrt=false);
+  // int square_reduce_sum(Context* xpu_ctx, const T* x, float* y, int64_t len,
+  // bool is_sqrt=false);
   int r = xpu::square_reduce_sum<XPUType>(
       dev_ctx.x_context(),
       reinterpret_cast<const XPUType*>(x.data<T>()),
@@ -45,7 +45,7 @@ void SquaredL2NormKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "square_reduce_sum");
 
   if (!std::is_same<T, float>::value) {
-    // int cast(Context* ctx, const TX* x, TY* y, int64_t len);
+    // int cast(Context* xpu_ctx, const TX* x, TY* y, int64_t len);
     int r = xpu::cast<float, XPUType>(
         dev_ctx.x_context(), y_for_xdnn, reinterpret_cast<XPUType*>(data), 1);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");

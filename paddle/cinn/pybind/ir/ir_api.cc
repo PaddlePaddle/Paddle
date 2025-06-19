@@ -34,7 +34,6 @@
 #include "paddle/cinn/ir/tensor.h"
 #include "paddle/cinn/ir/utils/ir_compare.h"
 #include "paddle/cinn/lang/packed_func.h"
-#include "paddle/cinn/poly/stage.h"
 #include "paddle/cinn/pybind/bind.h"
 #include "paddle/cinn/pybind/bind_utils.h"
 #include "paddle/cinn/pybind/ir/ir.h"

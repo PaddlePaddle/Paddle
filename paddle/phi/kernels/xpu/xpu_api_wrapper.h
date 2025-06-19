@@ -238,7 +238,7 @@ static void GetFCInfo(const phi::DDim& x_dims,
 }
 
 template <typename XPUType, typename FCT>
-static void xblas_fc_wrapper(xpu::Context* ctx,
+static void xblas_fc_wrapper(xpu::Context* xpu_ctx,
                              const XPUType* x,
                              const XPUType* w,
                              XPUType* y,
@@ -262,7 +262,7 @@ static void xblas_fc_wrapper(xpu::Context* ctx,
                              int scale_x_mode,
                              int scale_w_mode) {
   int r = 0;
-  xpu::ctx_guard RAII_GUARD(ctx);
+  xpu::ctx_guard RAII_GUARD(xpu_ctx);
   if (x_trans && std::getenv("XPU_PADDLE_FC_TRANS_A") != nullptr &&
       std::is_same<float, XPUType>::value) {
     XPUType* l3_addr = nullptr;
@@ -271,10 +271,10 @@ static void xblas_fc_wrapper(xpu::Context* ctx,
 
     std::vector<int64_t> shape = {k, m};
     std::vector<int64_t> axis = {1, 0};
-    r = xpu::transpose<XPUType>(ctx, x, l3_addr, shape, axis);
+    r = xpu::transpose<XPUType>(xpu_ctx, x, l3_addr, shape, axis);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "transpose");
 #ifdef PADDLE_WITH_XPU_XRE5
-    r = xblas::fc_fusion<XPUType, XPUType, XPUType, FCT>(ctx,
+    r = xblas::fc_fusion<XPUType, XPUType, XPUType, FCT>(xpu_ctx,
                                                          l3_addr,
                                                          w,
                                                          y,
@@ -299,7 +299,7 @@ static void xblas_fc_wrapper(xpu::Context* ctx,
                                                          scale_w_mode);
     PADDLE_ENFORCE_XBLAS_SUCCESS(r, "xblas_fc_fusion");
 #else
-    r = xpu::fc_fusion<XPUType, XPUType, XPUType, FCT>(ctx,
+    r = xpu::fc_fusion<XPUType, XPUType, XPUType, FCT>(xpu_ctx,
                                                        l3_addr,
                                                        w,
                                                        y,
@@ -324,7 +324,7 @@ static void xblas_fc_wrapper(xpu::Context* ctx,
 #ifdef PADDLE_WITH_XPU_XRE5
     if constexpr (std::is_same<XPUTypeBF16, XPUType>::value) {
       if (std::getenv("XPU_PADDLE_FC_BFLOAT16_XTE") != nullptr) {
-        const int MAXPTR_N = ctx->max_ptr_size();
+        const int MAXPTR_N = xpu_ctx->max_ptr_size();
         int64_t x_len = m * k;
         XPUTypeFP16* x_fp16 = nullptr;
         x_fp16 = RAII_GUARD.alloc_l3_or_gm<XPUTypeFP16>(x_len);
@@ -346,29 +346,31 @@ static void xblas_fc_wrapper(xpu::Context* ctx,
         if (x_maxptr == nullptr) {
           xte_x_maxptr = RAII_GUARD.alloc_l3_or_gm<float>(MAXPTR_N);
           PADDLE_ENFORCE_XDNN_NOT_NULL(xte_x_maxptr);
-          int r = xpu::findmax(ctx, x, xte_x_maxptr, x_len);
+          int r = xpu::findmax(xpu_ctx, x, xte_x_maxptr, x_len);
           PADDLE_ENFORCE_XDNN_SUCCESS(r, "xpu_findmax");
-          r = xpu::cast_te(ctx, x, xte_x_maxptr, x_fp16, xte_scale_x, x_len);
+          r = xpu::cast_te(
+              xpu_ctx, x, xte_x_maxptr, x_fp16, xte_scale_x, x_len);
           PADDLE_ENFORCE_XDNN_SUCCESS(r, "xpu_cast_te");
         } else {
-          r = xpu::cast_te(ctx, x, x_maxptr, x_fp16, xte_scale_x, x_len);
+          r = xpu::cast_te(xpu_ctx, x, x_maxptr, x_fp16, xte_scale_x, x_len);
           PADDLE_ENFORCE_XDNN_SUCCESS(r, "xpu_cast_te");
         }
         if (w_maxptr == nullptr) {
           xte_w_maxptr = RAII_GUARD.alloc_l3_or_gm<float>(MAXPTR_N);
           PADDLE_ENFORCE_XDNN_NOT_NULL(xte_w_maxptr);
-          r = xpu::findmax(ctx, w, xte_w_maxptr, w_len);
+          r = xpu::findmax(xpu_ctx, w, xte_w_maxptr, w_len);
           PADDLE_ENFORCE_XDNN_SUCCESS(r, "xpu_findmax");
-          r = xpu::cast_te(ctx, w, xte_w_maxptr, w_fp16, xte_scale_w, w_len);
+          r = xpu::cast_te(
+              xpu_ctx, w, xte_w_maxptr, w_fp16, xte_scale_w, w_len);
           PADDLE_ENFORCE_XDNN_SUCCESS(r, "xpu_cast_te");
         } else {
-          r = xpu::cast_te(ctx, w, w_maxptr, w_fp16, xte_scale_w, w_len);
+          r = xpu::cast_te(xpu_ctx, w, w_maxptr, w_fp16, xte_scale_w, w_len);
           PADDLE_ENFORCE_XDNN_SUCCESS(r, "xpu_cast_te");
         }
 
         r = xblas::
             fc_fusion<XPUTypeFP16, XPUTypeFP16, XPUTypeBF16, XPUTypeFP16>(
-                ctx,
+                xpu_ctx,
                 x_fp16,
                 w_fp16,
                 y,
@@ -396,7 +398,7 @@ static void xblas_fc_wrapper(xpu::Context* ctx,
         return;
       }
     }
-    r = xblas::fc_fusion<XPUType, XPUType, XPUType, FCT>(ctx,
+    r = xblas::fc_fusion<XPUType, XPUType, XPUType, FCT>(xpu_ctx,
                                                          x,
                                                          w,
                                                          y,
@@ -422,7 +424,7 @@ static void xblas_fc_wrapper(xpu::Context* ctx,
 
     PADDLE_ENFORCE_XBLAS_SUCCESS(r, "xblas_fc_fusion");
 #else
-    r = xpu::fc_fusion<XPUType, XPUType, XPUType, FCT>(ctx,
+    r = xpu::fc_fusion<XPUType, XPUType, XPUType, FCT>(xpu_ctx,
                                                        x,
                                                        w,
                                                        y,
@@ -448,7 +450,7 @@ static void xblas_fc_wrapper(xpu::Context* ctx,
 
 #define DECLARE_UNSUPPORTED_XBLAS_FC_WRAPPER(XPUType, FCT)          \
   template <>                                                       \
-  void xblas_fc_wrapper<XPUType, FCT>(xpu::Context * ctx,           \
+  void xblas_fc_wrapper<XPUType, FCT>(xpu::Context * xpu_ctx,       \
                                       const XPUType* x,             \
                                       const XPUType* w,             \
                                       XPUType* y,                   \
@@ -720,7 +722,7 @@ static void MatMulXPUFunction(
       y_data = y_broadcast_data;
     }
     // batch matmul
-    xblas_fc_batch_api(xpu_ctx,                          // Context* ctx,
+    xblas_fc_batch_api(xpu_ctx,                          // Context* xpu_ctx,
                        batch_size,                       // int64_t batch_size,
                        trans_x,                          // bool x_trans,
                        trans_y,                          // bool w_trans,

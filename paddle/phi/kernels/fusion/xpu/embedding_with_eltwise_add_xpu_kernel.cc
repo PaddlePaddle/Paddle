@@ -59,7 +59,7 @@ void FillSeqLod<float>(int batch_size,
 }
 
 template <typename TT, typename TID, typename Context>
-void MultiEmbeddingKernel(const Context& ctx,
+void MultiEmbeddingKernel(const Context& dev_ctx,
                           const std::vector<const DenseTensor*>& ids,
                           const std::vector<const DenseTensor*>& tables,
                           const paddle::optional<DenseTensor>& mask,
@@ -110,9 +110,9 @@ void MultiEmbeddingKernel(const Context& ctx,
     int batch_size = mask_tensor->dims()[0];
     auto pad_seq_len = mask_tensor->dims()[1];
     max_seq_len->Resize({1});
-    ctx.template HostAlloc<int>(max_seq_len)[0] = pad_seq_len;
+    dev_ctx.template HostAlloc<int>(max_seq_len)[0] = pad_seq_len;
     seq_lod->Resize({batch_size + 1});
-    int* seq_lod_data = ctx.template HostAlloc<int>(seq_lod);
+    int* seq_lod_data = dev_ctx.template HostAlloc<int>(seq_lod);
 
     std::vector<int> cpu_seq_lod{0};
     switch (mask_tensor->dtype()) {
@@ -160,9 +160,9 @@ void MultiEmbeddingKernel(const Context& ctx,
   }
 
   int r = xpu::multi_embedding_fusion<XPUType, XPUType, TID>(
-      ctx.x_context(),
+      dev_ctx.x_context(),
       arg_tables,
-      reinterpret_cast<XPUType*>(ctx.template Alloc<TT>(out)),
+      reinterpret_cast<XPUType*>(dev_ctx.template Alloc<TT>(out)),
       arg_ids,
       table_lens,
       emb_dim,
@@ -174,7 +174,7 @@ void MultiEmbeddingKernel(const Context& ctx,
 
 template <typename T, typename Context>
 void EmbeddingWithEltwiseAddXpuKernel(
-    const Context& ctx,
+    const Context& dev_ctx,
     const std::vector<const DenseTensor*>& ids,
     const std::vector<const DenseTensor*>& tables,
     const paddle::optional<DenseTensor>& mask,
@@ -185,11 +185,11 @@ void EmbeddingWithEltwiseAddXpuKernel(
   switch (ids[0]->dtype()) {
     case DataType::INT32:
       MultiEmbeddingKernel<T, int, Context>(
-          ctx, ids, tables, mask, padding_idx, out, seq_lod, max_seq_len);
+          dev_ctx, ids, tables, mask, padding_idx, out, seq_lod, max_seq_len);
       break;
     case DataType::INT64:
       MultiEmbeddingKernel<T, int64_t, Context>(
-          ctx, ids, tables, mask, padding_idx, out, seq_lod, max_seq_len);
+          dev_ctx, ids, tables, mask, padding_idx, out, seq_lod, max_seq_len);
       break;
     default:
       PADDLE_THROW(common::errors::Unimplemented(

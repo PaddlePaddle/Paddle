@@ -31,6 +31,7 @@ import numpy as np
 import paddle
 from paddle import _legacy_C_ops, framework
 from paddle.distributed.collective import (
+    COMM_GROUP_TYPE,
     Group,
     _default_group_name,
     _get_group_map_by_name,
@@ -167,6 +168,7 @@ def sync_params_buffers(
     src_rank: int = 0,
     is_model_parallel: bool = False,
     fuse_params: bool = True,
+    is_moe_sharding_parallel: bool = False,
 ) -> None:
     model_vars = []
     for _, param in model._obtain_parameters_buffers().items():
@@ -179,10 +181,18 @@ def sync_params_buffers(
             if hasattr(param, "is_distributed") and param.is_distributed:
                 continue
 
-        # NOTE(shenliang03): Support situations that do not require synchronization parameters,
-        # such as moe's expert parameters
-        if getattr(param, "no_sync", False):
-            continue
+        if not is_moe_sharding_parallel:
+            # NOTE(shenliang03): Support situations that do not require synchronization parameters,
+            # such as moe's expert parameters
+            if getattr(param, "no_sync", False):
+                continue
+        else:
+            # NOTE(zhangyuqin1998): In moe sharding parallel, we do need to broadcast expert parameters
+            # in moe sharding group.
+            if getattr(param, "no_sync", False) and not getattr(
+                param, "expert", False
+            ):
+                continue
 
         if param.type == core.VarDesc.VarType.VOCAB:
             continue
@@ -1144,6 +1154,7 @@ def init_parallel_env() -> Group:
             world_size,
             _default_group_name,
             pg_options=None,
+            comm_group_type=COMM_GROUP_TYPE.AG.value,
         )
         ranks = list(range(world_size))
         group = Group(rank, 0, ranks, pg=pg, name=_default_group_name)

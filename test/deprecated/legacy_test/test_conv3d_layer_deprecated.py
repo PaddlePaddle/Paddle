@@ -92,33 +92,33 @@ class Conv3DTestCase(unittest.TestCase):
     def base_layer(self, place):
         main = base.Program()
         start = base.Program()
-        with base.unique_name.guard():
-            with base.program_guard(main, start):
-                input_shape = (
-                    (-1, -1, -1, -1, self.num_channels)
-                    if self.channel_last
-                    else (-1, self.num_channels, -1, -1, -1)
-                )
-                x_var = paddle.static.data(
-                    "input", input_shape, dtype=self.dtype
-                )
-                weight_attr = paddle.nn.initializer.Assign(self.weight)
-                if self.bias is None:
-                    bias_attr = False
-                else:
-                    bias_attr = paddle.nn.initializer.Assign(self.bias)
-                y_var = paddle.static.nn.conv3d(
-                    x_var,
-                    self.num_filters,
-                    self.filter_size,
-                    padding=self.padding,
-                    stride=self.stride,
-                    dilation=self.dilation,
-                    groups=self.groups,
-                    param_attr=weight_attr,
-                    bias_attr=bias_attr,
-                    data_format=self.data_format,
-                )
+        with (
+            base.unique_name.guard(),
+            base.program_guard(main, start),
+        ):
+            input_shape = (
+                (-1, -1, -1, -1, self.num_channels)
+                if self.channel_last
+                else (-1, self.num_channels, -1, -1, -1)
+            )
+            x_var = paddle.static.data("input", input_shape, dtype=self.dtype)
+            weight_attr = paddle.nn.initializer.Assign(self.weight)
+            if self.bias is None:
+                bias_attr = False
+            else:
+                bias_attr = paddle.nn.initializer.Assign(self.bias)
+            y_var = paddle.static.nn.conv3d(
+                x_var,
+                self.num_filters,
+                self.filter_size,
+                padding=self.padding,
+                stride=self.stride,
+                dilation=self.dilation,
+                groups=self.groups,
+                param_attr=weight_attr,
+                bias_attr=bias_attr,
+                data_format=self.data_format,
+            )
         feed_dict = {"input": self.input}
         exe = base.Executor(place)
         exe.run(start)
@@ -128,35 +128,35 @@ class Conv3DTestCase(unittest.TestCase):
     def functional(self, place):
         main = base.Program()
         start = base.Program()
-        with base.unique_name.guard():
-            with base.program_guard(main, start):
-                input_shape = (
-                    (-1, -1, -1, -1, self.num_channels)
-                    if self.channel_last
-                    else (-1, self.num_channels, -1, -1, -1)
+        with (
+            base.unique_name.guard(),
+            base.program_guard(main, start),
+        ):
+            input_shape = (
+                (-1, -1, -1, -1, self.num_channels)
+                if self.channel_last
+                else (-1, self.num_channels, -1, -1, -1)
+            )
+            x_var = paddle.static.data("input", input_shape, dtype=self.dtype)
+            w_var = paddle.static.data(
+                "weight", self.weight_shape, dtype=self.dtype
+            )
+            if not self.no_bias:
+                b_var = paddle.static.data(
+                    "bias", (self.num_filters,), dtype=self.dtype
                 )
-                x_var = paddle.static.data(
-                    "input", input_shape, dtype=self.dtype
-                )
-                w_var = paddle.static.data(
-                    "weight", self.weight_shape, dtype=self.dtype
-                )
-                if not self.no_bias:
-                    b_var = paddle.static.data(
-                        "bias", (self.num_filters,), dtype=self.dtype
-                    )
-                else:
-                    b_var = None
-                y_var = F.conv3d(
-                    x_var,
-                    w_var,
-                    b_var,
-                    padding=self.padding,
-                    stride=self.stride,
-                    dilation=self.dilation,
-                    groups=self.groups,
-                    data_format=self.data_format,
-                )
+            else:
+                b_var = None
+            y_var = F.conv3d(
+                x_var,
+                w_var,
+                b_var,
+                padding=self.padding,
+                stride=self.stride,
+                dilation=self.dilation,
+                groups=self.groups,
+                data_format=self.data_format,
+            )
         feed_dict = {"input": self.input, "weight": self.weight}
         if self.bias is not None:
             feed_dict["bias"] = self.bias
@@ -208,9 +208,11 @@ class Conv3DTestCase(unittest.TestCase):
 class Conv3DErrorTestCase(Conv3DTestCase):
     def runTest(self):
         place = base.CPUPlace()
-        with dg.guard(place):
-            with self.assertRaises(ValueError):
-                self.paddle_nn_layer()
+        with (
+            dg.guard(place),
+            self.assertRaises(ValueError),
+        ):
+            self.paddle_nn_layer()
 
 
 def add_cases(suite):

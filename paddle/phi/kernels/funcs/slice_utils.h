@@ -23,6 +23,54 @@ namespace phi {
 
 namespace funcs {
 
+// check whether the tensor with dimension of second can assign to the
+// tensor with dimension of first
+inline bool CheckIsDimsMatchBool(const DDim& first, const DDim& second) {
+  int ignore_axis1 = 0, ignore_axis2 = 0;
+  for (; ignore_axis1 < first.size(); ++ignore_axis1) {
+    if (first[ignore_axis1] != 1) {
+      break;
+    }
+  }
+  for (; ignore_axis2 < second.size(); ++ignore_axis2) {
+    if (second[ignore_axis2] != 1) {
+      break;
+    }
+  }
+
+  if (second.size() == ignore_axis2) {
+    // second tensor has only one value
+    return true;
+  }
+
+  if (first.size() - ignore_axis1 >= second.size() - ignore_axis2) {
+    auto idx1 = first.size() - 1;
+    auto idx2 = second.size() - 1;
+    bool is_match = true;
+    for (; idx2 >= ignore_axis2; idx2--) {
+      if (first[idx1--] != second[idx2] && second[idx2] != 1) {
+        is_match = false;
+        break;
+      }
+    }
+    if (is_match) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+inline void CheckIsDimsMatch(const DDim& first, const DDim& second) {
+  if (CheckIsDimsMatchBool(first, second)) {
+    return;
+  }
+  PADDLE_THROW(errors::InvalidArgument(
+      "The shape of tensor assigned value must match the shape "
+      "of target shape: %d, but now shape is %d.",
+      second.to_str(),
+      first.to_str()));
+}
 /**
  * @brief Normalizes the slice interval [st, ed) with a given step and dimension
  * size.
@@ -344,7 +392,6 @@ inline void GetDecreasedDimsAndStrides(const std::vector<T> slice_dims,
                                        std::vector<T>* new_strides,
                                        std::vector<T>* infer_flags = nullptr) {
   std::vector<uint8_t> decrease_flag(slice_dims.size(), 0);
-
   if (none_axes.size() > 0) {
     size_t none_axes_cur = 0, decrease_axes_cur = 0;
     for (int i = 0; i < slice_dims.size(); ++i) {
@@ -364,7 +411,7 @@ inline void GetDecreasedDimsAndStrides(const std::vector<T> slice_dims,
     }
     while (none_axes_cur < none_axes.size()) {
       new_dims->push_back(1);
-      new_strides->push_back(slice_strides[-1]);
+      new_strides->push_back(slice_strides[slice_strides.size() - 1]);
       none_axes_cur++;
     }
   } else if (decrease_axes.size() > 0) {

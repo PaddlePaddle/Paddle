@@ -28,6 +28,10 @@ void MaxOutGradKernel(const Context& dev_ctx,
                       int groups,
                       int axis,
                       DenseTensor* x_grad) {
+  if (x_grad && x_grad->numel() == 0) {
+    dev_ctx.template Alloc<T>(x_grad);
+    return;
+  }
   if (axis < 0) {
     axis += x.dims().size();
   }

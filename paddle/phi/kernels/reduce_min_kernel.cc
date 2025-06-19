@@ -26,12 +26,11 @@ void MinKernel(const Context& dev_ctx,
                const IntArray& dims,
                bool keep_dim,
                DenseTensor* out) {
+  if (x.numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   bool reduce_all = recompute_reduce_all(x, dims);
-  PADDLE_ENFORCE_GT(
-      x.numel(),
-      0,
-      errors::InvalidArgument("Zero-size tensor to reduction operation minimum "
-                              "which has no identity."));
   MinRawKernel<T>(dev_ctx, x, dims, keep_dim, reduce_all, out);
 }
 

@@ -35,6 +35,7 @@ from .auto_parallel.api import (
     ShardingStage3,
     Strategy,
     dtensor_from_fn,
+    enable_auto_dp,  # noqa: F401
     in_auto_parallel_align_mode,  # noqa: F401
     reshard,
     shard_dataloader,
@@ -51,6 +52,7 @@ from .auto_parallel.intermediate.parallelize import parallelize
 from .auto_parallel.intermediate.pipeline_parallel import SplitPoint
 from .auto_parallel.intermediate.tensor_parallel import (
     ColWiseParallel,
+    ConvParallel,
     PrepareLayerInput,
     PrepareLayerOutput,
     RowWiseParallel,
@@ -70,6 +72,7 @@ from .auto_parallel.process_mesh import ProcessMesh
 from .checkpoint.load_state_dict import load_state_dict
 from .checkpoint.save_state_dict import save_state_dict
 from .collective import (
+    COMM_GROUP_TYPE,
     is_available,
     new_group,
     restart_process_group,
@@ -216,4 +219,6 @@ __all__ = [
     "set_mesh",
     "get_mesh",
     "to_distributed",
+    "ConvParallel",
+    "COMM_GROUP_TYPE",
 ]
