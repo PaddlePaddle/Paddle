@@ -22,24 +22,23 @@
 #include "paddle/phi/kernels/funcs/common_shape.h"
 namespace phi {
 
+template <typename IndexT>
 __global__ void weight_permute_kernel_wint8(const int8_t* input_data_dev,
                                             int8_t* output_data_dev,
-                                            int numel,
-                                            int total_k,
-                                            int total_n) {
-  for (int linear_idx = blockIdx.x * blockDim.x + threadIdx.x;
-       linear_idx < numel;
-       linear_idx += blockDim.x * gridDim.x) {
-    int k_id = linear_idx / total_n;
-    int n_id = linear_idx % total_n;
-    int k_mod_16 = k_id % 16;
+                                            IndexT numel,
+                                            IndexT total_k,
+                                            IndexT total_n) {
+  CUDA_KERNEL_LOOP_TYPE(linear_idx, numel, IndexT) {
+    IndexT k_id = linear_idx / total_n;
+    IndexT n_id = linear_idx % total_n;
+    IndexT k_mod_16 = k_id % 16;
 
     constexpr int map[16] = {
         0, 2, 4, 6, 8, 10, 12, 14, 1, 3, 5, 7, 9, 11, 13, 15};
-    int permute_kk = map[k_mod_16] + k_id / 16 * 16;
+    IndexT permute_kk = map[k_mod_16] + k_id / 16 * 16;
 
-    int permute_index = permute_kk % 64 + permute_kk / 64 * 128 +
-                        64 * (n_id % 2) + total_k * 2 * (n_id / 2);
+    IndexT permute_index = permute_kk % 64 + permute_kk / 64 * 128 +
+                           64 * (n_id % 2) + total_k * 2 * (n_id / 2);
     uint8_t shift_quant_weight = static_cast<uint8_t>(
         static_cast<int32_t>(input_data_dev[linear_idx]) + 128);
     output_data_dev[permute_index] =
@@ -47,23 +46,22 @@ __global__ void weight_permute_kernel_wint8(const int8_t* input_data_dev,
   }
 }
 
+template <typename IndexT>
 __global__ void weight_permute_kernel_wint4(const int8_t* input_data_dev,
                                             int8_t* output_data_dev,
-                                            int numel,
-                                            int total_k,
-                                            int total_n) {
-  for (int linear_idx = blockIdx.x * blockDim.x + threadIdx.x;
-       linear_idx < numel;
-       linear_idx += blockDim.x * gridDim.x) {
-    int k_id = linear_idx / total_n;
-    int n_id = linear_idx % total_n;
+                                            IndexT numel,
+                                            IndexT total_k,
+                                            IndexT total_n) {
+  CUDA_KERNEL_LOOP_TYPE(linear_idx, numel, IndexT) {
+    IndexT k_id = linear_idx / total_n;
+    IndexT n_id = linear_idx % total_n;
     // k_id is 8_bit index.
     constexpr int map[16] = {
         0, 4, 8, 12, 1, 5, 9, 13, 2, 6, 10, 14, 3, 7, 11, 15};
 
-    int permute_kk = map[k_id % 16] + k_id / 16 * 16;
-    int permute_index = permute_kk % 32 + permute_kk / 32 * 128 +
-                        32 * (n_id % 4) + total_k * 2 * (n_id / 4);
+    IndexT permute_kk = map[k_id % 16] + k_id / 16 * 16;
+    IndexT permute_index = permute_kk % 32 + permute_kk / 32 * 128 +
+                           32 * (n_id % 4) + total_k * 2 * (n_id / 4);
     int8_t shift_quant_weight = input_data_dev[linear_idx];
     output_data_dev[permute_index] =
         *reinterpret_cast<int8_t*>(&shift_quant_weight);
@@ -72,12 +70,15 @@ __global__ void weight_permute_kernel_wint4(const int8_t* input_data_dev,
 
 // convetr 0,1,2,3,4,5,6,7 4bit -> 0,2,4,6,1,3,5,7
 __global__ void weight_interval_kernel_wint4(int8_t* output_data_dev,
-                                             int numel) {
+                                             int64_t numel) {
   constexpr int value_per_interval_thread = 4;
-  for (int linear_idx =
-           (blockIdx.x * blockDim.x + threadIdx.x) * value_per_interval_thread;
-       linear_idx < numel;
-       linear_idx += blockDim.x * gridDim.x * value_per_interval_thread) {
+  int64_t linear_idx =
+      (static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x) *
+      value_per_interval_thread;
+  int64_t stride =
+      static_cast<int64_t>(blockDim.x) * gridDim.x * value_per_interval_thread;
+
+  for (; linear_idx < numel; linear_idx += stride) {
     uint32_t value = *reinterpret_cast<uint32_t*>(output_data_dev + linear_idx);
     uint32_t result = 0;
 
@@ -100,20 +101,18 @@ For SM70 volta arch, weightonly int8 dequantize invoked in load global memory.
 So it only need interleave in K-dimension
 K_index: 0 1 2 3 -> 0 2 1 3
 */
+template <typename IndexT>
 __global__ void weight_interleave_add_bias_kernel_wint8(
     const int8_t* input_data_dev,
     int8_t* output_data_dev,
-    int numel,
-    int total_k,
-    int total_n) {
-  for (int linear_idx = blockIdx.x * blockDim.x + threadIdx.x;
-       linear_idx < numel;
-       linear_idx += blockDim.x * gridDim.x) {
-    int k_id = linear_idx / total_n;
-    int n_id = linear_idx % total_n;
+    IndexT numel,
+    IndexT total_n) {
+  CUDA_KERNEL_LOOP_TYPE(linear_idx, numel, IndexT) {
+    IndexT k_id = linear_idx / total_n;
+    IndexT n_id = linear_idx % total_n;
     constexpr int n_interleaved_factor = 4;
-    int n_interleave_group_id = n_id / n_interleaved_factor;
-    int n_interleave_id = n_id % n_interleaved_factor;
+    IndexT n_interleave_group_id = n_id / n_interleaved_factor;
+    IndexT n_interleave_id = n_id % n_interleaved_factor;
     if (n_interleave_id == 1 || n_interleave_id == 2) {
       /*
       0001 xor 0011 -> 0010
@@ -121,9 +120,9 @@ __global__ void weight_interleave_add_bias_kernel_wint8(
       */
       n_interleave_id ^= 3;
     }
-    const int new_n_id =
+    const IndexT new_n_id =
         n_interleave_group_id * n_interleaved_factor + n_interleave_id;
-    const int interleave_idx = k_id * total_n + new_n_id;
+    const IndexT interleave_idx = k_id * total_n + new_n_id;
 
     uint8_t shift_quant_weight = static_cast<uint8_t>(
         static_cast<int32_t>(input_data_dev[linear_idx]) + 128);
@@ -137,16 +136,15 @@ For SM70 volta arch, weightonly int4 dequantize invoked in load global memory.
 So it only need interleave in K-dimension
 K_index: 0 1 2 3 4 5 6 7 -> 0 2 4 6 1 3 5 7
 */
+template <typename IndexT>
 __global__ void weight_interleave_add_bias_kernel_wint4(int8_t* input_data_dev,
                                                         int8_t* output_data_dev,
-                                                        int numel,
-                                                        int total_k,
-                                                        int total_n) {
-  const int num_registers = numel / 4;
+                                                        IndexT numel,
+                                                        IndexT total_n) {
+  const IndexT num_registers = numel / 4;
   uint32_t* packed_input = reinterpret_cast<uint32_t*>(input_data_dev);
   uint32_t* packed_output = reinterpret_cast<uint32_t*>(output_data_dev);
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < num_registers;
-       i += blockDim.x * gridDim.x) {
+  CUDA_KERNEL_LOOP_TYPE(i, num_registers, IndexT) {
     uint32_t current_pack = packed_input[i];
     uint32_t transformed_pack = 0;
 #pragma unroll
@@ -164,13 +162,13 @@ __global__ void weight_interleave_add_bias_kernel_wint4(int8_t* input_data_dev,
   }
 }
 
-template <typename GPUContext>
-void weight_permute_gpu(const GPUContext& dev_ctx,
-                        int8_t* input_data,
-                        int8_t* output_data,
-                        const std::vector<int>& shape,
-                        const int32_t arch,
-                        const std::string& algo) {
+template <typename GPUContext, typename IndexT>
+void weight_permute_gpu_impl(const GPUContext& dev_ctx,
+                             int8_t* input_data,
+                             int8_t* output_data,
+                             const std::vector<int64_t>& shape,
+                             const int32_t arch,
+                             const std::string& algo) {
   auto total_k = shape[0];
   auto total_n = shape[1];
   auto numel = total_k * total_n;
@@ -181,22 +179,39 @@ void weight_permute_gpu(const GPUContext& dev_ctx,
       (arch == 75)) {
     if (algo == "weight_only_int4") {
       numel /= 2;
-      weight_permute_kernel_wint4<<<grid_size, block_size>>>(
+      weight_permute_kernel_wint4<IndexT><<<grid_size, block_size>>>(
           input_data, output_data, numel, total_k, total_n);
       weight_interval_kernel_wint4<<<grid_size, block_size>>>(output_data,
                                                               numel);
     } else {
-      weight_permute_kernel_wint8<<<grid_size, block_size>>>(
+      weight_permute_kernel_wint8<IndexT><<<grid_size, block_size>>>(
           input_data, output_data, numel, total_k, total_n);
     }
   } else if (arch == 70) {
     if (algo == "weight_only_int4") {
-      weight_interleave_add_bias_kernel_wint4<<<grid_size, block_size>>>(
-          input_data, output_data, numel, total_k, total_n);
+      weight_interleave_add_bias_kernel_wint4<IndexT>
+          <<<grid_size, block_size>>>(input_data, output_data, numel, total_n);
     } else {
-      weight_interleave_add_bias_kernel_wint8<<<grid_size, block_size>>>(
-          input_data, output_data, numel, total_k, total_n);
+      weight_interleave_add_bias_kernel_wint8<IndexT>
+          <<<grid_size, block_size>>>(input_data, output_data, numel, total_n);
     }
+  }
+}
+
+template <typename GPUContext>
+void weight_permute_gpu(const GPUContext& dev_ctx,
+                        int8_t* input_data,
+                        int8_t* output_data,
+                        const std::vector<int64_t>& shape,
+                        const int32_t arch,
+                        const std::string& algo) {
+  int64_t numel = shape[0] * shape[1];
+  if (numel <= std::numeric_limits<int>::max()) {
+    weight_permute_gpu_impl<GPUContext, int>(
+        dev_ctx, input_data, output_data, shape, arch, algo);
+  } else {
+    weight_permute_gpu_impl<GPUContext, int64_t>(
+        dev_ctx, input_data, output_data, shape, arch, algo);
   }
 }
 
@@ -205,8 +220,8 @@ __global__ void per_channel_quant_gpu(const T* weight_data,
                                       int8_t* quanted_weight_data,
                                       ScaleT* scale_data,
                                       int total_k,
-                                      int total_vec_n) {
-  int n = blockIdx.x * blockDim.x + threadIdx.x;
+                                      int64_t total_vec_n) {
+  int64_t n = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
   if (n < total_vec_n) {
     const int4* vec_weight_data_ptr =
         reinterpret_cast<const int4*>(weight_data);
@@ -219,7 +234,7 @@ __global__ void per_channel_quant_gpu(const T* weight_data,
     }
 #pragma unroll
     for (int k = 0; k < total_k; ++k) {
-      int linear_index = k * total_vec_n + n;
+      int64_t linear_index = k * total_vec_n + n;
       phi::AlignedVector<T, VectorSize> weight;
       *reinterpret_cast<int4*>(&weight) = vec_weight_data_ptr[linear_index];
 #pragma unroll
@@ -237,7 +252,7 @@ __global__ void per_channel_quant_gpu(const T* weight_data,
 
     for (int k = 0; k < total_k; ++k) {
       phi::AlignedVector<int8_t, VectorSize> quanted_weight;
-      int linear_index = k * total_vec_n + n;
+      int64_t linear_index = k * total_vec_n + n;
       phi::AlignedVector<T, VectorSize> weight;
       *reinterpret_cast<int4*>(&weight) =
           *reinterpret_cast<const int4*>(vec_weight_data_ptr + linear_index);
@@ -261,8 +276,8 @@ __global__ void per_channel_quant_gpu_int4_row_pack(const T* weight_data,
                                                     int8_t* quanted_weight_data,
                                                     ScaleT* scale_data,
                                                     int total_k,
-                                                    int total_vec_n) {
-  int n = blockIdx.x * blockDim.x + threadIdx.x;
+                                                    int64_t total_vec_n) {
+  int64_t n = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
   if (n < total_vec_n) {
     const int4* vec_weight_data_ptr =
         reinterpret_cast<const int4*>(weight_data);
@@ -274,7 +289,7 @@ __global__ void per_channel_quant_gpu_int4_row_pack(const T* weight_data,
     }
 #pragma unroll
     for (int k = 0; k < total_k; ++k) {
-      int linear_index = k * total_vec_n + n;
+      int64_t linear_index = k * total_vec_n + n;
       phi::AlignedVector<T, VectorSize> weight;
       *reinterpret_cast<int4*>(&weight) = vec_weight_data_ptr[linear_index];
 #pragma unroll
@@ -290,7 +305,7 @@ __global__ void per_channel_quant_gpu_int4_row_pack(const T* weight_data,
     *reinterpret_cast<float4*>(scale_data + VectorSize * n) =
         *reinterpret_cast<float4*>(&scale);
     for (int k = 0; k < total_k; ++k) {
-      int linear_index = k * total_vec_n + n;
+      int64_t linear_index = k * total_vec_n + n;
       phi::AlignedVector<T, VectorSize> weight;
       phi::AlignedVector<int8_t, VectorSize / 2> quanted_weight;
       *reinterpret_cast<int4*>(&weight) =
@@ -325,8 +340,8 @@ __global__ void per_channel_quant_gpu_int4_col_pack(const T* weight_data,
                                                     int8_t* quanted_weight_data,
                                                     ScaleT* scale_data,
                                                     int total_k,
-                                                    int total_vec_n) {
-  int n = blockIdx.x * blockDim.x + threadIdx.x;
+                                                    int64_t total_vec_n) {
+  int64_t n = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
   if (n < total_vec_n) {
     const int4* vec_weight_data_ptr =
         reinterpret_cast<const int4*>(weight_data);
@@ -339,7 +354,7 @@ __global__ void per_channel_quant_gpu_int4_col_pack(const T* weight_data,
     }
 #pragma unroll
     for (int k = 0; k < total_k; ++k) {
-      int linear_index = k * total_vec_n + n;
+      int64_t linear_index = k * total_vec_n + n;
       phi::AlignedVector<T, VectorSize> weight;
       *reinterpret_cast<int4*>(&weight) = vec_weight_data_ptr[linear_index];
 #pragma unroll
@@ -358,7 +373,7 @@ __global__ void per_channel_quant_gpu_int4_col_pack(const T* weight_data,
     for (int k = 0; k < total_k / 2; ++k) {
       phi::AlignedVector<int8_t, VectorSize> quanted_weight;
       for (int packed_idx = 0; packed_idx < 2; ++packed_idx) {
-        int linear_index = (k * 2 + packed_idx) * total_vec_n + n;
+        int64_t linear_index = (k * 2 + packed_idx) * total_vec_n + n;
         phi::AlignedVector<T, VectorSize> weight;
         *reinterpret_cast<int4*>(&weight) =
             *reinterpret_cast<const int4*>(vec_weight_data_ptr + linear_index);
@@ -374,7 +389,7 @@ __global__ void per_channel_quant_gpu_int4_col_pack(const T* weight_data,
           quanted_weight[i] |= ((clipped_weight & 0x0F) << (4 * packed_idx));
         }
       }
-      int linear_index_new = k * total_vec_n + n;
+      int64_t linear_index_new = k * total_vec_n + n;
       *reinterpret_cast<int2*>(vec_quanted_weight_data + linear_index_new) =
           *reinterpret_cast<int2*>(&quanted_weight);
     }
@@ -386,12 +401,12 @@ void weight_quant_gpu(const GPUContext& dev_ctx,
                       const T* weight_data,
                       int8_t* quanted_weight_data,
                       ScaleT* scale_data,
-                      const std::vector<int>& shape,
+                      const std::vector<int64_t>& shape,
                       const int32_t arch,
                       const std::string& algo) {
-  int total_k = shape[0];
-  int total_n = shape[1];
-  int numel = total_k * total_n;
+  int64_t total_k = shape[0];
+  int64_t total_n = shape[1];
+  int64_t numel = total_k * total_n;
   constexpr int kWarpSize = 32;
   constexpr int kBlockSize = 64;
   constexpr int kWarpNum = kBlockSize / kWarpSize;
@@ -402,9 +417,9 @@ void weight_quant_gpu(const GPUContext& dev_ctx,
                         "Currently, weight_quant_gpu kernel only support n "
                         "with multiple of %d, please use",
                         kVectorSize));
-  int vec_total_n = total_n / kVectorSize;
-  int kGridSize =
-      max((vec_total_n + kBlockSize - 1) / kBlockSize, static_cast<int>(1));
+  int64_t vec_total_n = total_n / kVectorSize;
+  int64_t kGridSize =
+      max((vec_total_n + kBlockSize - 1) / kBlockSize, int64_t(1));
   if (algo == "weight_only_int4") {
 #ifdef PADDLE_WITH_HIP
     per_channel_quant_gpu_int4_row_pack<T, kVectorSize>
@@ -434,24 +449,23 @@ void weight_quant_gpu(const GPUContext& dev_ctx,
   }
 }
 
+template <typename IndexT>
 __global__ void weight_permute_transpose_interleave_kernel_w4a8(
     const int8_t* input_data_ptr,
     int8_t* output_data_ptr,
-    int original_k,
-    int original_n) {
+    IndexT original_k,
+    IndexT original_n) {
   // every 2 k-direction 8bit , ie 4 k-direction 4bit,
   // is packed to 2 int8, and assigned to a new new_index.
   // so here / 4.
-  int numel = original_k * original_n / 4;
-  for (int linear_idx = blockIdx.x * blockDim.x + threadIdx.x;
-       linear_idx < numel;
-       linear_idx += blockDim.x * gridDim.x) {
-    const int k_group_id = linear_idx / original_n;
-    const int n_id = linear_idx % original_n;
+  IndexT numel = original_k * original_n / 4;
+  CUDA_KERNEL_LOOP_TYPE(linear_idx, numel, IndexT) {
+    const IndexT k_group_id = linear_idx / original_n;
+    const IndexT n_id = linear_idx % original_n;
 
     uint16_t res = 0;
     for (int j = 0; j < 2; j++) {
-      const int k_id = k_group_id * 2 + j;
+      const IndexT k_id = k_group_id * 2 + j;
       uint16_t val = input_data_ptr[k_id * original_n + n_id];
       val = val & 0xFF;
       val = val << (j * 8);
@@ -463,18 +477,16 @@ __global__ void weight_permute_transpose_interleave_kernel_w4a8(
     // [16,               4,              original_k/64,     original_n/4]
     // index is :
     // [k_group_id % 16,  n_id % 4,       k_group_id/16,     n_id/4]
-    const int32_t new_index = map[k_group_id % 8] + k_group_id % 16 / 8 * 8 +
-                              (n_id % 4) * 16 + k_group_id / 16 * (16 * 4) +
-                              n_id / 4 * (original_k);
+    const IndexT new_index = map[k_group_id % 8] + k_group_id % 16 / 8 * 8 +
+                             (n_id % 4) * 16 + k_group_id / 16 * (16 * 4) +
+                             n_id / 4 * (original_k);
 
     reinterpret_cast<uint16_t*>(output_data_ptr)[new_index] = res;
   }
 }
 
-__global__ void w4a8_inplace_permute(uint32_t* output_data_ptr, int numel) {
-  for (int linear_idx = blockIdx.x * blockDim.x + threadIdx.x;
-       linear_idx < numel;
-       linear_idx += blockDim.x * gridDim.x) {
+__global__ void w4a8_inplace_permute(uint32_t* output_data_ptr, int64_t numel) {
+  CUDA_KERNEL_LOOP_TYPE(linear_idx, numel, int64_t) {
     const uint32_t value = output_data_ptr[linear_idx];
 
     uint32_t res = 0;
@@ -494,7 +506,7 @@ template <typename GPUContext>
 void weight_permute_gpu_w4a8(const GPUContext& dev_ctx,
                              const int8_t* input_data,
                              int8_t* output_data,
-                             const std::vector<int>& shape,
+                             const std::vector<int64_t>& shape,
                              const int32_t arch,
                              const std::string& algo) {
   auto original_k = shape[0] * 2;
@@ -508,8 +520,15 @@ void weight_permute_gpu_w4a8(const GPUContext& dev_ctx,
   if (arch > 70) {
     if (algo == "w4a8") {
       dim3 block_dim(128);
-      weight_permute_transpose_interleave_kernel_w4a8<<<grid_size, block_dim>>>(
-          input_data, output_data, original_k, original_n);
+      if (original_numel <= std::numeric_limits<int>::max()) {
+        weight_permute_transpose_interleave_kernel_w4a8<int>
+            <<<grid_size, block_dim>>>(
+                input_data, output_data, original_k, original_n);
+      } else {
+        weight_permute_transpose_interleave_kernel_w4a8<int64_t>
+            <<<grid_size, block_dim>>>(
+                input_data, output_data, original_k, original_n);
+      }
       w4a8_inplace_permute<<<grid_size, block_dim>>>(
           reinterpret_cast<uint32_t*>(output_data), original_numel / 8);
     }
