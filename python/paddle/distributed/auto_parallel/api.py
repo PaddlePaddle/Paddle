@@ -860,7 +860,7 @@ def reshard(
             placements, dist_tensor.ndim, return_split_factor=True
         )
         dist_attr = core.TensorDistAttr()
-        dist_attr.dims_mapping_2d = dims_mapping
+        dist_attr.multi_dims_mapping = dims_mapping
         dist_attr.process_mesh = mesh
         dist_attr.mark_annotated("process_mesh")
         dist_attr.mark_annotated("dims_mapping")
