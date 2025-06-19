@@ -684,6 +684,22 @@ class LayerVariable(CallableVariable):
             )
         return super().getattr(name, default)
 
+    def setattr(self, name: str, value):
+        layer = self.value
+        if (
+            '_parameters' in layer.__dict__
+            and name in layer.__dict__["_parameters"]
+        ):
+            return self.getattr("_parameters").setitem(name, value)
+        if (
+            '_sub_layers' in layer.__dict__
+            and name in layer.__dict__["_sub_layers"]
+        ):
+            return self.getattr("_sub_layers").setitem(name, value)
+        if '_buffers' in layer.__dict__ and name in layer.__dict__["_buffers"]:
+            return self.getattr("_buffers").setitem(name, value)
+        return super().setattr(name, value)
+
     def get_py_value(self, allow_tensor=False):
         return self.value
 
