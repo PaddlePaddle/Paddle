@@ -261,6 +261,7 @@ jobs:
       - name: Run test
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
+          sleep 3d
           bash ${ci_scripts}/kunlun_test.sh
           '
 
