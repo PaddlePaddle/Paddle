@@ -5,7 +5,7 @@ on:
 
 env:
   dockerfile: dockerfile
-  docker_image: aa13dc110ab3
+  docker_image: 08d38377a9c7
   PR_ID: ${{ github.event.pull_request.number }}
   COMMIT_ID: ${{ github.event.pull_request.head.sha }}
   ci_scripts: /paddle/ci
