@@ -221,7 +221,6 @@ __all__ = [
     "get_mesh",
     "to_distributed",
     "ConvParallel",
-    "COMM_GROUP_TYPE",
     "ContextParallel",
     "ContextParallelPrefix",
 ]
