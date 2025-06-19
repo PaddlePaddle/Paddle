@@ -77,7 +77,7 @@ jobs:
           # docker build images
           if [ "${{ inputs.task }}" == "cpu" ]; then
             declare -A docker_files=(["docker_cpu"]="$docker_cpu_file" ["docker_inference"]="$docker_inference_file" ["docker_distribute"]="$docker_distribute_file")
-          elif [ "${{ inputs.task }}" == "build" ]
+          elif [ "${{ inputs.task }}" == "build" ]; then
             declare -A docker_files=(["docker_build"]="$docker_build_file")
           else
             declare -A docker_files=(["docker_coverage"]="$docker_coverage_file")
