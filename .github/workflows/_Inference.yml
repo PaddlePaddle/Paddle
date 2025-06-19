@@ -140,19 +140,20 @@ jobs:
         if: steps.check-bypass.outputs.can_skip != 'true'
         env:
           home_path: /action-runner
-          bos_file: /action-runner/bos/BosClient.py
+          bos_file: /action-runner/bos_retry/BosClient.py
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           echo "::group::Install bce-python-sdk"
           source /action-runner/proxy
           python -m pip install bce-python-sdk==0.8.74
           echo "::endgroup::"
+          rm -rf `find . -name "*.o"`
           export AK=paddle
           export SK=paddle
           if [ ! -f "${{ env.bos_file }}" ]; then
-            wget -q --no-proxy -O ${{ env.home_path }}/bos_new.tar.gz https://xly-devops.bj.bcebos.com/home/bos_new.tar.gz --no-check-certificate
-            mkdir ${{ env.home_path }}/bos
-            tar xf ${{ env.home_path }}/bos_new.tar.gz -C ${{ env.home_path }}/bos
+            wget -q --no-proxy -O ${{ env.home_path }}/bos_retry.tar.gz https://xly-devops.bj.bcebos.com/home/bos_retry.tar.gz --no-check-certificate
+            mkdir ${{ env.home_path }}/bos_retry
+            tar xf ${{ env.home_path }}/bos_retry.tar.gz -C ${{ env.home_path }}/bos_retry
           fi
           source /action-runner/unproxy
           cd /
