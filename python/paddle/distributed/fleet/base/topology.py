@@ -210,9 +210,7 @@ class HybridCommunicateGroup:
         ), f"nranks: {self.nranks}, mp_num: {self._mp_degree}, sharding_num: {self._sharding_degree}, pp_num: {self._pp_degree}, dp_num: {self._dp_degree}, sep_num: {self._sep_degree}"
 
         # create comm group for pipe parallel
-        self._pp_group, self._pp_comm_group = self._set_comm_group(
-            "pipe", comm_group_type=paddle.distributed.COMM_GROUP_TYPE.PP.value
-        )
+        self._pp_group, self._pp_comm_group = self._set_comm_group("pipe")
         # NOTE(shenliang03): In pipeline parallel, we use batch_isend_irecv.
         # if batch_isend_irecv is the first collective operation, all ranks of
         # the pipeline group must participate in this call. In order to avoid
@@ -227,66 +225,48 @@ class HybridCommunicateGroup:
         env_name = "FLAGS_eager_communication_connection"
         if paddle.get_flags(env_name)[env_name]:
             if self._pp_comm_group.nranks > 1:
-                self._pp_comm_group.process_group.eager_connect_ring_exchange(
-                    paddle.distributed.COMM_GROUP_TYPE.PP_EXCHANGE.value
-                )
+                self._pp_comm_group.process_group.eager_connect_ring_exchange()
 
         # create comm group for data parallel
-        self._dp_group, self._dp_comm_group = self._set_comm_group(
-            "data", comm_group_type=paddle.distributed.COMM_GROUP_TYPE.DP.value
-        )
+        self._dp_group, self._dp_comm_group = self._set_comm_group("data")
 
         # create comm group for model parallel
-        self._mp_group, self._mp_comm_group = self._set_comm_group(
-            "model", comm_group_type=paddle.distributed.COMM_GROUP_TYPE.TP.value
-        )
+        self._mp_group, self._mp_comm_group = self._set_comm_group("model")
 
         # create comm group for sharding parallel
         self._sharding_group, self._sharding_comm_group = self._set_comm_group(
-            "sharding",
-            comm_group_type=paddle.distributed.COMM_GROUP_TYPE.SHARDING.value,
+            "sharding"
         )
         self._sep_group = None
         if self._sep_degree > 1:
             # create comm group for sep parallel
-            self._sep_group, self._sep_comm_group = self._set_comm_group(
-                "sep",
-                comm_group_type=paddle.distributed.COMM_GROUP_TYPE.SEP.value,
-            )
+            self._sep_group, self._sep_comm_group = self._set_comm_group("sep")
 
         # create global group for check inf_nan / clip global norm
         self._check_group, self._check_comm_group = self._set_check_group(
-            "data",
-            comm_group_type=paddle.distributed.COMM_GROUP_TYPE.DP_CHECK.value,
+            "data"
         )
 
         if self._sharding_degree > 1:
             (
                 self.sharding_check_group,
                 self.sharding_check_comm_group,
-            ) = self._set_check_group(
-                "sharding",
-                comm_group_type=paddle.distributed.COMM_GROUP_TYPE.SHARDING_CHECK.value,
-            )
+            ) = self._set_check_group("sharding")
 
         # create fused comm group
         if self._sep_degree > 1:
             (
                 self._dp_sep_group,
                 self._dp_sep_comm_group,
-            ) = self.create_fuse_group(
-                ["data", "sep"],
-                comm_group_type=paddle.distributed.COMM_GROUP_TYPE.DP_SEP.value,
-            )
+            ) = self.create_fuse_group(["data", "sep"])
             self._pp_mp_group, self._pp_mp_comm_group = self.create_fuse_group(
-                ["pipe", "model"],
-                comm_group_type=paddle.distributed.COMM_GROUP_TYPE.PP_MP.value,
+                ["pipe", "model"]
             )
 
-        # (
-        #     self.sharding_check_group,
-        #     self.sharding_check_comm_group,
-        # ) = self._set_check_group("sharding")
+        (
+            self.sharding_check_group,
+            self.sharding_check_comm_group,
+        ) = self._set_check_group("sharding")
 
         # create p2p group
         self.is_first_stage = self.stage_id == 0
@@ -362,10 +342,7 @@ class HybridCommunicateGroup:
         assert self._sep_degree > 1, "sep not exist"
 
     def _set_comm_group(
-        self,
-        parallel_method: str = "data",
-        topo: CommunicateTopology = None,
-        comm_group_type=-1,
+        self, parallel_method: str = "data", topo: CommunicateTopology = None
     ) -> tuple[list[int], Group]:
         parallel_group = []
         parallel_comm_group = None
@@ -382,7 +359,6 @@ class HybridCommunicateGroup:
             comm_group = paddle.distributed.new_group(
                 ranks=group,
                 nccl_comm_init_option=group_nccl_comm_init_option,
-                comm_group_type=comm_group_type,
             )
             if self.global_rank in group:
                 parallel_group = group
@@ -397,10 +373,7 @@ class HybridCommunicateGroup:
         return parallel_group, parallel_comm_group
 
     def _set_check_group(
-        self,
-        parallel_method: str = "data",
-        topo: CommunicateTopology = None,
-        comm_group_type=-1,
+        self, parallel_method: str = "data", topo: CommunicateTopology = None
     ) -> tuple[list[int], Group]:
         parallel_group = []
         parallel_comm_group = None
@@ -409,9 +382,7 @@ class HybridCommunicateGroup:
         parallel_size = topo.get_dim(parallel_method)
         for idx in range(parallel_size):
             parallel_groups = self._topo.get_axis_list(parallel_method, idx)
-            comm_group = paddle.distributed.new_group(
-                ranks=parallel_groups, comm_group_type=comm_group_type
-            )
+            comm_group = paddle.distributed.new_group(ranks=parallel_groups)
             if self.global_rank in parallel_groups:
                 parallel_group = parallel_groups
                 parallel_comm_group = comm_group
@@ -601,7 +572,7 @@ class HybridCommunicateGroup:
         return 0
 
     def create_fuse_group(
-        self, fused_strategy_list: list[str], comm_group_type: int
+        self, fused_strategy_list: list[str]
     ) -> tuple[list[list[int]], list[Group]] | tuple[list[int], Group]:
         assert (
             len(fused_strategy_list) > 0
@@ -613,9 +584,7 @@ class HybridCommunicateGroup:
         parallel_groups.sort()
 
         for group in parallel_groups:
-            comm_group = paddle.distributed.new_group(
-                ranks=group, comm_group_type=comm_group_type
-            )
+            comm_group = paddle.distributed.new_group(ranks=group)
             if self.global_rank in group:
                 parallel_group.append(group)
                 parallel_comm_group.append(comm_group)
