@@ -278,7 +278,7 @@ def stft(
     center: bool = True,
     pad_mode: Literal["reflect", "constant"] = "reflect",
     normalized: bool = False,
-    onesided: bool = True,
+    onesided: bool | None = None,
     name: str | None = None,
 ) -> Tensor:
     r"""
@@ -317,7 +317,7 @@ def stft(
             Default: `False`
         onesided (bool, optional): Control whether to return half of the Fourier transform
             output that satisfies the conjugate symmetry condition when input is a real-valued
-            tensor. It can not be `True` if input is a complex tensor. Default: `True`
+            tensor. It can not be `True` if input is a complex tensor. Default: `None`
         name (str|None, optional): The default value is None. Normally there is no need for user
             to set this property. For more information, please refer to :ref:`api_guide_Name`.
 
@@ -418,6 +418,10 @@ def stft(
     x_frames = paddle.multiply(x_frames, window)
 
     norm = 'ortho' if normalized else 'backward'
+
+    if onesided is None:
+        onesided = not is_complex(x_frames)
+
     if is_complex(x_frames):
         assert (
             not onesided

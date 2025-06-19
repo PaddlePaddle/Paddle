@@ -9,6 +9,9 @@ on:
       can-skip:
         type: string
         required: false
+      slice-check:
+        type: string
+        required: false
 
 env:
   PR_ID: ${{ github.event.pull_request.number }}
@@ -28,7 +31,7 @@ defaults:
 jobs:
   slice:
     name: Slice test
-    if: ${{ inputs.can-skip != 'true' }}
+    if: ${{ inputs.can-skip != 'true' && inputs.slice-check == 'true' }}
     runs-on:
       group: slice
     steps:
