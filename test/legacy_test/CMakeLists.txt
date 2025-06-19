@@ -180,11 +180,6 @@ if(APPLE OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_multiprocess_dataloader_static)
 endif()
 
-if(APPLE)
-  list(REMOVE_ITEM TEST_OPS test_compare_op_0size)
-  list(REMOVE_ITEM TEST_OPS test_run)
-endif()
-
 list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_hybrid_parallel)
 
 list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_transformer_gloo)
@@ -654,6 +649,12 @@ endif()
 
 set_tests_properties(test_norm_nn_grad PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
 set_tests_properties(test_nn_grad PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
+
+if(APPLE)
+  list(REMOVE_ITEM TEST_OPS test_compare_op_0size)
+  list(REMOVE_ITEM TEST_OPS test_run)
+endif()
+
 if(WITH_DISTRIBUTE)
   # FIXME(typhoonzero): add these tests back
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_transformer")
