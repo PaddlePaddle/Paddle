@@ -74,9 +74,9 @@ SpmdInfo Conv3dInferSpmdBase(const DistMetaTensor& input,
                         filter_dims_mapping.size()));
   // todo: NCDHW or NDHWC check, check channel logic, input's channel
   // dims_mapping must be equal to filter's channel dims_mapping
-  int inpput_channel_dim = (data_format == "NCDHW") ? 1 : 4;
+  int input_channel_dim = (data_format == "NCDHW") ? 1 : 4;
   int filter_channel_dim = 1;
-  PADDLE_ENFORCE_EQ(input_dims_mapping[inpput_channel_dim],
+  PADDLE_ENFORCE_EQ(input_dims_mapping[input_channel_dim],
                     filter_dims_mapping[filter_channel_dim],
                     common::errors::InvalidArgument(
                         "The Input channel's dims mapping must be equal to "
@@ -87,7 +87,7 @@ SpmdInfo Conv3dInferSpmdBase(const DistMetaTensor& input,
                         "will compute complete output.",
                         "But now the Input channel's dims mapping is [%d], and "
                         "the filter channel's dims mapping is [%d].",
-                        input_dims_mapping[inpput_channel_dim],
+                        input_dims_mapping[input_channel_dim],
                         filter_dims_mapping[filter_channel_dim]));
 
   VLOG(6) << "Conv3D InferForward Inputs: "
@@ -158,7 +158,7 @@ SpmdInfo Conv3dGradInferSpmdBase(const DistMetaTensor& input,
       [&](const phi::distributed::TensorDistAttr& input_dist_attr,
           const phi::distributed::TensorDistAttr& filter_dist_attr,
           const phi::distributed::TensorDistAttr& output_grad_dist_attr) {
-        int inpput_channel_dim = (data_format == "NCDHW") ? 1 : 4;
+        int input_channel_dim = (data_format == "NCDHW") ? 1 : 4;
         int filter_channel_dim = 1;
         if (output_grad_dist_attr.is_partial()) {
           std::set<int64_t> partial_dims = output_grad_dist_attr.partial_dims();
@@ -175,7 +175,7 @@ SpmdInfo Conv3dGradInferSpmdBase(const DistMetaTensor& input,
           int64_t partial_dim = *partial_dims.begin();
           auto input_dims_mapping = input_dist_attr.dims_mapping();
           auto filter_dims_mapping = filter_dist_attr.dims_mapping();
-          if (input_dims_mapping[inpput_channel_dim] == partial_dim &&
+          if (input_dims_mapping[input_channel_dim] == partial_dim &&
               filter_dims_mapping[filter_channel_dim] == partial_dim) {
             return true;
           }
@@ -240,7 +240,7 @@ SpmdInfo Conv3dGradInferSpmdBase(const DistMetaTensor& input,
       GetDimsMappingForAxes(output_axes, axis_to_dim_map_3));
 
   // process channel_dim, handle partial
-  int inpput_channel_dim = (data_format == "NCDHW") ? 1 : 4;
+  int input_channel_dim = (data_format == "NCDHW") ? 1 : 4;
   int filter_channel_dim = 1;
   if (check_channel_dist_attr(input_dist_attr_src,
                               filter_dist_attr_src,
@@ -248,7 +248,7 @@ SpmdInfo Conv3dGradInferSpmdBase(const DistMetaTensor& input,
     int partial_mesh_dim = *output_grad_dist_attr_src.partial_dims().begin();
     std::vector<int64_t> input_grad_dims_mapping_dst =
         input_grad_dist_attr_dst.dims_mapping();
-    input_grad_dims_mapping_dst[inpput_channel_dim] = partial_mesh_dim;
+    input_grad_dims_mapping_dst[input_channel_dim] = partial_mesh_dim;
     input_grad_dist_attr_dst.set_dims_mapping(input_grad_dims_mapping_dst);
     std::vector<int64_t> filter_grad_dims_mapping_dst =
         filter_grad_dist_attr_dst.dims_mapping();
