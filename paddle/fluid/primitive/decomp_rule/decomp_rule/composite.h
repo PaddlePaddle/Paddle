@@ -1138,15 +1138,6 @@ Tensor embedding_decomp(const Tensor& x,
   Tensor weight_tmp = weight;
   Tensor res;
   if (has_dynamic_shape(x.shape())) {
-    if (padding_idx != NoPadding) {
-      Tensor put_shape = shape64<T>(sum<T>(weight, {0}, weight.dtype(), true));
-      Tensor padding_idx_tensor =
-          backend::full_with_tensor<T>(put_shape, padding_idx, DataType::INT64);
-      Tensor zeros =
-          backend::full_with_tensor<T>(put_shape, 0.0, weight.dtype());
-      weight_tmp = put_along_axis<T>(weight, padding_idx_tensor, zeros, 0);
-    }
-
     if (x.dims().size() <= 1) {
       res = gather<T>(weight_tmp, x);
       if (x.dims().size() == 0) {
@@ -1162,14 +1153,6 @@ Tensor embedding_decomp(const Tensor& x,
       res = backend::reshape<T>(out, res_t_shape);
     }
   } else {
-    if (padding_idx != NoPadding) {
-      std::vector<int64_t> put_shape{1, weight.dims()[1]};
-      Tensor padding_idx_tensor =
-          full<T>(put_shape, padding_idx, DataType::INT64, x.place());
-      Tensor zeros = full<T>(put_shape, 0.0, weight.dtype(), weight.place());
-      weight_tmp = put_along_axis<T>(weight, padding_idx_tensor, zeros, 0);
-    }
-
     if (x.dims().size() <= 1) {
       res = gather<T>(weight_tmp, x);
       if (x.dims().size() == 0) {

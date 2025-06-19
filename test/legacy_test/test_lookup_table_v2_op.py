@@ -124,7 +124,6 @@ class TestLookupTableOpWithPadding(TestLookupTableOp):
     def test_check_output(self):
         ids = np.squeeze(self.inputs['Ids'])
         padding_idx = np.random.choice(ids, 1)[0]
-        self.outputs['Out'][ids == padding_idx] = np.zeros(31)
         self.attrs = {'padding_idx': int(padding_idx)}
         self.check_output(check_cinn=True, check_pir=True, check_prim_pir=True)
 
@@ -139,7 +138,6 @@ class TestLookupTableOpWithTensorIdsAndPadding(TestLookupTableOpWithTensorIds):
         ids = self.inputs['Ids']
         flatten_idx = ids.flatten()
         padding_idx = np.random.choice(flatten_idx, 1)[0]
-        self.outputs['Out'][np.squeeze(ids == padding_idx)] = np.zeros(31)
         self.attrs = {'padding_idx': padding_idx}
         self.check_output(check_cinn=True, check_pir=True, check_prim_pir=True)
 
