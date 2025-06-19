@@ -152,6 +152,7 @@ class TestDepthwiseConv2dSPMDRule(unittest.TestCase):
 
         # case 4
         # input: NCHinWin[-1, 0, -1, -1], filter: MCHkWk[-1, -1, -1, -1] ---> output: NMHoutWout[-1, -1, -1, -1]
+        # Automatically reset dim "C" to -1
         self.input_dist_tensor_spec.set_dims_mapping([-1, 0, -1, -1])
         self.filter_dist_tensor_spec.set_dims_mapping([-1, -1, -1, -1])
 
@@ -185,6 +186,7 @@ class TestDepthwiseConv2dSPMDRule(unittest.TestCase):
 
         # case 5
         # input: NCHinWin[0, 2, -1, -1], filter: MCHkWk[1, -1, -1, -1] ---> output: NMHoutWout[0, 1, -1, -1]
+        # Automatically reset dim "C" to -1
         self.input_dist_tensor_spec.set_dims_mapping([0, 2, -1, -1])
         self.filter_dist_tensor_spec.set_dims_mapping([1, -1, -1, -1])
 
@@ -342,6 +344,7 @@ class TestDepthwiseConv2dSPMDRule(unittest.TestCase):
 
         # case 4
         # input: NHinWinC[-1, -1, -1, 0], filter: MCHkWk[-1, -1, -1, -1] ---> output: NMHoutWout[-1, -1, -1, -1]
+        # Automatically reset dim "C" to -1
         self.input_dist_tensor_spec.set_dims_mapping([-1, -1, -1, 0])
         self.filter_dist_tensor_spec.set_dims_mapping([-1, -1, -1, -1])
 

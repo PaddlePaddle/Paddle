@@ -106,9 +106,9 @@ SpmdInfo DepthwiseConv2dInferSpmd(const DistMetaTensor& input,
   std::string output_axes = "nmhw";
 
   if (data_format == "NCHW")
-    input_dims_mapping[1] == -1;
+    input_dims_mapping[1] = -1;
   else
-    input_dims_mapping[3] == -1;
+    input_dims_mapping[3] = -1;
 
   // Step2: sharding propagation
   VLOG(4) << "step 2: sharding propagation";
@@ -134,6 +134,7 @@ SpmdInfo DepthwiseConv2dInferSpmd(const DistMetaTensor& input,
   filter_dist_attr_dst.set_dims_mapping(
       GetDimsMappingForAxes(filter_axes, axis_to_dim_map));
 
+  // Step3: Handle Partial
   VLOG(4) << "DepthwiseConv2DSPMDRule InferForward: "
           << "Einsum notation: [" << input_axes << "," << filter_axes << " --> "
           << output_axes << "]. " << std::endl;
