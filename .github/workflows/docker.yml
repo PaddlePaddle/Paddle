@@ -5,6 +5,10 @@ on:
         required: false
         type: string
         default: "Paddle"
+      task:
+        required: false
+        type: string
+        default: "cpu"
       is_merge:
         required: false
         type: string
@@ -71,7 +75,11 @@ jobs:
           cd ../..
 
           # docker build images
-          declare -A docker_files=(["docker_cpu"]="$docker_cpu_file" ["docker_inference"]="$docker_inference_file" ["docker_coverage"]="$docker_coverage_file" ["docker_build"]="$docker_build_file" ["docker_distribute"]="$docker_distribute_file")
+          if [ "${{ inputs.task }}" == "cpu" ]; then
+            declare -A docker_files=(["docker_cpu"]="$docker_cpu_file" ["docker_inference"]="$docker_inference_file" ["docker_build"]="$docker_build_file" ["docker_distribute"]="$docker_distribute_file")
+          else
+            declare -A docker_files=(["docker_coverage"]="$docker_coverage_file")
+          fi
           for name in "${!docker_files[@]}"
           do
             md5_value=`md5sum tools/dockerfile/${docker_files[$name]} | awk '{print $1}'`
