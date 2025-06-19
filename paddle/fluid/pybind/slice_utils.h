@@ -723,12 +723,21 @@ static paddle::Tensor getValueForBoolTensor(const paddle::Tensor& tensor,
   auto bool_2_idx = nonzero_ad_func(bool_index);
 #ifdef PADDLE_WITH_CUDA
   if (tensor.is_gpu() && !is_combined_bool) {
-    auto indices = PrepareIndices(tensor, bool_2_idx, bool_index);
+    std::vector<paddle::Tensor> indices =
+        PrepareIndices(tensor, bool_2_idx, bool_index);
     while (indices.size() < static_cast<size_t>(tensor.dims().size())) {
       indices.emplace_back();
     }
 
-    AdvancedIndex ad = AdvancedIndex(tensor, indices);
+    std::vector<paddle::Tensor> indices_int64;
+    for (auto& indice : indices) {
+      if (indice.defined() && indice.dtype() == paddle::DataType::INT32) {
+        indice = indice.cast(paddle::DataType::INT64);  // int32 -> int64
+      }
+      indices_int64.push_back(indice);
+    }
+
+    AdvancedIndex ad = AdvancedIndex(tensor, indices_int64);
     const bool accumulate = false;
 
     return index_elementwise_get_ad_func(tensor,

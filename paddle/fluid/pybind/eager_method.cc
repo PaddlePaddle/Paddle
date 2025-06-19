@@ -1689,7 +1689,15 @@ static PyObject* tensor__getitem_dygraph(TensorObject* self,
           static_cast<int64_t>(reinterpret_cast<char*>(sub_tensor.data()) -
                                reinterpret_cast<char*>(tensor.data()));
 
-      AdvancedIndex ad = AdvancedIndex(transed_tensor, transed_index);
+      std::vector<paddle::Tensor> transed_index_int64;
+      for (auto& indice : transed_index) {
+        if (indice.defined() && indice.dtype() == paddle::DataType::INT32) {
+          indice = indice.cast(paddle::DataType::INT64);  // int32 -> int64
+        }
+        transed_index_int64.push_back(indice);
+      }
+
+      AdvancedIndex ad = AdvancedIndex(transed_tensor, transed_index_int64);
       const bool accumulate = true;
       out = index_elementwise_get_ad_func(tensor,
                                           ad.indices,

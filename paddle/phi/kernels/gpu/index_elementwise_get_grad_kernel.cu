@@ -167,41 +167,26 @@ void IndexElementwiseGetGradKernel(const Context& ctx,
   if (out_grad.numel() == 0) return;
 
   const auto& index_type = index[0]->dtype();
-  PADDLE_ENFORCE_EQ(
-      index_type == phi::DataType::INT32 || index_type == phi::DataType::INT64,
-      true,
-      common::errors::InvalidArgument(
-          "Index holds the wrong type, it holds [%s], but "
-          "desires to be [%s] or [%s].",
-          index_type,
-          phi::DataType::INT32,
-          phi::DataType::INT64));
+  PADDLE_ENFORCE_EQ(index_type == phi::DataType::INT64,
+                    true,
+                    common::errors::InvalidArgument(
+                        "Index holds the wrong type, it holds [%s], but "
+                        "desires to be [%s].",
+                        index_type,
+                        phi::DataType::INT32,
+                        phi::DataType::INT64));
 
-  if (index_type == phi::DataType::INT32) {
-    GPUIndexElementwiseGetGrad<T, int>(ctx,
-                                       x,
-                                       out_grad,
-                                       index,
-                                       input_dims,
-                                       input_strides,
-                                       index_dims,
-                                       index_strides,
-                                       slice_offset,
-                                       accumulate,
-                                       x_grad);
-  } else if (index_type == phi::DataType::INT64) {
-    GPUIndexElementwiseGetGrad<T, int64_t>(ctx,
-                                           x,
-                                           out_grad,
-                                           index,
-                                           input_dims,
-                                           input_strides,
-                                           index_dims,
-                                           index_strides,
-                                           slice_offset,
-                                           accumulate,
-                                           x_grad);
-  }
+  GPUIndexElementwiseGetGrad<T, int64_t>(ctx,
+                                         x,
+                                         out_grad,
+                                         index,
+                                         input_dims,
+                                         input_strides,
+                                         index_dims,
+                                         index_strides,
+                                         slice_offset,
+                                         accumulate,
+                                         x_grad);
 }
 
 }  // namespace phi
