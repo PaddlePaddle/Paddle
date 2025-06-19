@@ -137,6 +137,12 @@ void TopkKernel(const Context& dev_ctx,
                 bool sorted,
                 DenseTensor* out,
                 DenseTensor* indices) {
+  if (out && out->numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    dev_ctx.template Alloc<int64_t>(indices);
+    return;
+  }
+
   const auto* input = &x;
   // Get the top k elements of each row of input tensor
   const auto& in_dims = input->dims();

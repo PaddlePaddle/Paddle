@@ -2231,6 +2231,36 @@ static PyObject* tensor_remove_grad_hook(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* apply_backward_hook(TensorObject* self,
+                                     PyObject* args,
+                                     PyObject* kwargs) {
+  EAGER_TRY
+  VLOG(6) << " Apply tensor hook for tensor: " << self->tensor.name();
+  std::shared_ptr<egr::GradNodeBase> grad_node =
+      egr::EagerUtils::grad_node(self->tensor);
+  PADDLE_ENFORCE_EQ(
+      !egr::EagerUtils::unsafe_autograd_meta(self->tensor)->StopGradient(),
+      true,
+      common::errors::InvalidArgument(
+          "Cannot apply backward hook on a Tensor that stop "
+          "gradient."));
+  PADDLE_ENFORCE_NE(
+      grad_node.get(),
+      nullptr,
+      common::errors::Fatal("Detected nullptr grad_node,"
+                            "Leaf tensor should have had grad_node "
+                            "with type: GradNodeAccumulation."));
+
+  auto accumulation_grad_node =
+      std::dynamic_pointer_cast<egr::GradNodeAccumulation>(grad_node);
+
+  if (accumulation_grad_node->ReduceHooksRegistered()) {
+    accumulation_grad_node->ApplyReduceHooks();
+  }
+  RETURN_PY_NONE;
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 static PyObject* tensor_inplace_assign(TensorObject* self,
                                        PyObject* args,
                                        PyObject* kwargs) {
@@ -3800,6 +3830,10 @@ PyMethodDef variable_methods[] = {  // NOLINT
      nullptr},
     {"_remove_grad_hook",
      (PyCFunction)(void (*)())tensor_remove_grad_hook,
+     METH_VARARGS | METH_KEYWORDS,
+     nullptr},
+    {"_apply_backward_hook",
+     (PyCFunction)(void (*)())apply_backward_hook,
      METH_VARARGS | METH_KEYWORDS,
      nullptr},
     {"_register_backward_hook",

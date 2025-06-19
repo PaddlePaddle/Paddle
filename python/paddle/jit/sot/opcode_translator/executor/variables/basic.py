@@ -76,6 +76,7 @@ from ....symbolic_shape.symbolic_value import (
 )
 from ....utils import (
     ENV_SOT_ALLOW_DYNAMIC_SHAPE,
+    ENV_SOT_ENABLE_0_SIZE_FALLBACK,
     BreakGraphError,
     BuiltinFunctionBreak,
     ConditionalFallbackError,
@@ -1446,6 +1447,7 @@ class SymbolicVariable(VariableBase):
         )
         if (
             should_create_sym is None
+            and ENV_SOT_ENABLE_0_SIZE_FALLBACK.get()
             and SymbolicVariable.find_tensor_shape_source(tracker) is not None
         ):
             graph.add_global_guarded_variable(

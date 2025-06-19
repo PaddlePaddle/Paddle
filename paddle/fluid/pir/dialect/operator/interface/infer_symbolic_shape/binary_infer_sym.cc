@@ -1058,6 +1058,9 @@ bool GatherTreeOpInferSymbolicShape(
                         "shape of Input(Ids)."));
   size_t rank = ids_shape.size();
   for (size_t i = 0; i < rank; ++i) {
+    if (ids_shape[i] == 0) {
+      continue;
+    }
     infer_context->AddEqualCstr(ids_shape[i], parents_shape[i]);
   }
 
