@@ -437,12 +437,6 @@ inline void PirRunProgramAPI(
       PADDLE_GET_CONST(std::vector<::pir::Value>, attrs.at("no_need_buffers"));
 
   // Get All needed names
-  // auto input_names = details::GetNameFromValue(input_values);
-  // auto param_names = details::GetNameFromValue(param_values);
-  // auto output_names = details::GetNameFromValue(output_values);
-  // const auto no_need_buffer_names =
-  //     details::GetNameFromValue(no_need_buffer_values);
-
   const auto &input_names =
       PADDLE_GET_CONST(std::vector<std::string>, attrs.at("fx_names"));
   const auto &param_names =
@@ -980,14 +974,6 @@ inline void PirRunProgramGradAPI(
       PADDLE_GET_CONST(std::vector<::pir::Value>, attrs.at("bp_g"));
 
   // Get All needed names
-  // const auto &input_names = details::GetNameFromValue(forward_input_values);
-  // const auto &param_names = details::GetNameFromValue(parameter_values);
-  // const auto &output_grad_names =
-  // details::GetNameFromValue(output_grad_values);
-  // const auto &x_grad_names =
-  // details::GetNameFromValue(x_grad_values);
-  // const auto &p_grad_names =
-  // details::GetNameFromValue(p_grad_values);
   const auto &input_names =
       PADDLE_GET_CONST(std::vector<std::string>, attrs.at("bx_names"));
   const auto &parameter_names =
