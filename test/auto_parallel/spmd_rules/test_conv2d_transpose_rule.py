@@ -92,7 +92,7 @@ class TestConv2dTransposeSPMDRule(unittest.TestCase):
 
         # case 2
         # input: NCHinWin[-1, -1, -1, -1], filter: CMHkWk[-1, 0, -1, -1]
-        # ---> output: NMHoutWout[-1, 0, -1, -1, -1]
+        # ---> output: NMHoutWout[-1, 0, -1, -1]
         self.input_dist_tensor_spec.set_dims_mapping([-1, -1, -1, -1])
         self.filter_dist_tensor_spec.set_dims_mapping([-1, 0, -1, -1])
 
@@ -309,7 +309,7 @@ class TestConv2dTransposeSPMDRule(unittest.TestCase):
         self.assertEqual(inferred_output_dist_attrs[0]._partial_dims(), {0})
 
         # case 7
-        # input: NHinWinC[0, -1, -1, 2], filter: MCHkWk[2, 1, -1, -1] --->
+        # input: NHinWinC[0, -1, -1, 2], filter: CMHkWk[2, 1, -1, -1] --->
         # output: NMHoutWout[0, 1, -1, -1]
         self.input_dist_tensor_spec.set_dims_mapping([0, -1, -1, 2])
         self.filter_dist_tensor_spec.set_dims_mapping([2, 1, -1, -1])
