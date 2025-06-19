@@ -2079,6 +2079,11 @@ PHI_DEFINE_EXPORTED_bool(save_cf_stack_op,
                          false,
                          "Save cf stack op for higher-order derivatives.");
 
+PHI_DEFINE_EXPORTED_bool(
+    enable_auto_growth_allocator_add_lock,
+    false,
+    "Enable add lock when call AutoGrowthBestFitAllocator::ReleaseImpl");
+
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 /**
  * FlashAttention related FLAG
