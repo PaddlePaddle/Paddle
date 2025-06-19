@@ -359,9 +359,29 @@ SpmdInfo ElementwiseBinaryWithPartialInferSpmd(const DistMetaTensor& x,
       GetDimsMappingForAxes(y_axes, axis_to_dim_map));
 
   // Step3: Handle partial
-  x_dist_attr_dst.set_partial_status(x_dist_attr_src.partial_status());
-  y_dist_attr_dst.set_partial_status(y_dist_attr_src.partial_status());
-  out_dist_attr.set_partial_status(x_dist_attr_src.partial_status());
+  if (x_dist_attr_src.is_partial() || y_dist_attr_src.is_partial()) {
+    if (x_dist_attr_src.is_partial() && y_dist_attr_src.is_partial()) {
+      if (x_ndim >= y_ndim) {
+        x_dist_attr_dst.set_partial_status(x_dist_attr_src.partial_status());
+        out_dist_attr.set_partial_status(x_dist_attr_src.partial_status());
+      } else {
+        y_dist_attr_dst.set_partial_status(y_dist_attr_src.partial_status());
+        out_dist_attr.set_partial_status(y_dist_attr_src.partial_status());
+      }
+    } else if (x_dist_attr_src.is_partial()) {
+      x_dist_attr_dst.set_partial_status(x_dist_attr_src.partial_status());
+      out_dist_attr.set_partial_status(x_dist_attr_src.partial_status());
+    } else if (y_dist_attr_src.is_partial()) {
+      y_dist_attr_dst.set_partial_status(y_dist_attr_src.partial_status());
+      out_dist_attr.set_partial_status(y_dist_attr_src.partial_status());
+    }
+    if (!IsPartialLegal(x_dist_attr_dst) || !IsPartialLegal(y_dist_attr_dst) ||
+        !IsPartialLegal(out_dist_attr)) {
+      x_dist_attr_dst.clean_partial_status();
+      y_dist_attr_dst.clean_partial_status();
+      out_dist_attr.clean_partial_status();
+    }
+  }
 
   VLOG(4) << "ElementwiseWithPartialSPMDRule InferForward:";
   VLOG(4) << "Input0 shape: [" << str_join(x_shape) << "] "
