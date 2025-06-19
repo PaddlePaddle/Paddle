@@ -54,9 +54,10 @@ endif()
 
 set(NVSHMEM_PATCH_PATH ${PADDLE_SOURCE_DIR}/patches/nvshmem/nvshmem.patch)
 set(NVSHMEM_PATCH_COMMAND
-    git init && git config user.name "PaddlePaddle" && git config user.email
-    "paddle@baidu.com" && git config --add safe.directory . && git add . && git
-    commit -m "init" && git apply ${NVSHMEM_PATCH_PATH})
+    git init && git config --global --add safe.directory ${NVSHMEM_SOURCE_DIR}
+    && git config user.name "PaddlePaddle" && git config user.email
+    "paddle@baidu.com" && git add . && git commit -m "init" && git apply
+    ${NVSHMEM_PATCH_PATH})
 
 set(NVSHMEM_LIB ${NVSHMEM_INSTALL_DIR}/lib/libnvshmem.a)
 set(NVSHMEM_BOOTSTRAP_UID_LIB

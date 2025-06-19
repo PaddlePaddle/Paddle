@@ -113,8 +113,8 @@ struct BroadcastConfig {
 template <typename T>
 __device__ __forceinline__ void WriteData(T* dst,
                                           T* __restrict__ src,
-                                          int num) {
-  for (int i = 0; i < num; i++) {
+                                          int64_t num) {
+  for (int64_t i = 0; i < num; i++) {
     dst[i] = src[i];
   }
 }
@@ -122,8 +122,8 @@ __device__ __forceinline__ void WriteData(T* dst,
 template <typename T>
 __device__ __forceinline__ void ReadData(T* dst,
                                          const T* __restrict__ src,
-                                         int num) {
-  for (int i = 0; i < num; i++) {
+                                         int64_t num) {
+  for (int64_t i = 0; i < num; i++) {
     dst[i] = src[i];
   }
 }
@@ -161,7 +161,7 @@ __device__ __forceinline__ void ReadData(Ty* dst,
                                          int size_nx,
                                          int size_ny,
                                          int stride_nx,
-                                         int stride_ny) {
+                                         int64_t stride_ny) {
   int thread_offset = threadIdx.x;
   int left_size_nx = size_nx - thread_offset;
 
@@ -290,9 +290,9 @@ __device__ __forceinline__ void Init(ArgsT* dst, T init_data) {
 template <typename T, int NX, int NY, bool IsBoundary = false>
 __device__ __forceinline__ void ReadData(T* dst,
                                          const T* __restrict__ src,
-                                         int num) {
+                                         int64_t num) {
   if (IsBoundary) {  // blockDim.x * NX > num
-    int thread_offset = threadIdx.x * NX;
+    int64_t thread_offset = threadIdx.x * NX;
 #pragma unroll
     for (int idx = 0; idx < NX; ++idx) {
       if (idx + thread_offset < num) {
@@ -302,7 +302,7 @@ __device__ __forceinline__ void ReadData(T* dst,
   } else {  // blockDim,x * NX < num
     constexpr int kVectorSize = (NX % 4 == 0) ? 4 : (NX % 2 == 0) ? 2 : 1;
     constexpr int kVectorsPerThread = NX / kVectorSize;
-    int thread_offset = threadIdx.x * kVectorsPerThread;
+    int64_t thread_offset = threadIdx.x * kVectorsPerThread;
 
     using VecType = details::VectorType<T, kVectorSize>;
     const VecType* vec_input = reinterpret_cast<const VecType*>(src);
@@ -522,19 +522,20 @@ template <typename Tx,
           int Rank,
           typename IndexCal,
           typename Functor,
-          bool IsBoundary = false>
+          bool IsBoundary = false,
+          typename IndexType = int>
 __device__ __forceinline__ void ReadDataReduce(Ty* dst,
                                                const Tx* __restrict__ src,
-                                               int block_offset,
+                                               IndexType block_offset,
                                                const IndexCal& index_cal,
-                                               int size_nx,
-                                               int size_ny,
-                                               int stride_nx,
-                                               int stride_ny,
+                                               IndexType size_nx,
+                                               IndexType size_ny,
+                                               IndexType stride_nx,
+                                               IndexType stride_ny,
                                                Functor func,
                                                bool reduce_last_dim) {
-  int thread_offset = 0;
-  int left_idx = 0;
+  IndexType thread_offset = 0;
+  IndexType left_idx = 0;
   if (reduce_last_dim) {
     thread_offset = threadIdx.x;
     left_idx = threadIdx.y;
@@ -545,28 +546,28 @@ __device__ __forceinline__ void ReadDataReduce(Ty* dst,
 
   if (NX == 1) {
 #pragma unroll
-    for (int ny = 0; ny < NY; ++ny) {
+    for (IndexType ny = 0; ny < NY; ++ny) {
       if (IsBoundary) {
         if (thread_offset >= size_ny) {
           break;
         }
       }
-      uint32_t index_src = index_cal(thread_offset + block_offset);
+      IndexType index_src = index_cal(thread_offset + block_offset);
       dst[ny] = static_cast<Ty>(func(src[index_src]));
       thread_offset += stride_ny;
     }
   } else {
 #pragma unroll
-    for (int nx = 0; nx < NX; ++nx) {
+    for (IndexType nx = 0; nx < NX; ++nx) {
 #pragma unroll
-      for (int ny = 0; ny < NY; ++ny) {
+      for (IndexType ny = 0; ny < NY; ++ny) {
         if (IsBoundary) {
           if ((thread_offset >= size_ny) ||
               (left_idx + nx * stride_nx >= size_nx)) {
             break;
           }
         }
-        uint32_t index_src = index_cal(thread_offset + block_offset);
+        IndexType index_src = index_cal(thread_offset + block_offset);
         dst[nx + ny * NX] = static_cast<Ty>(func(src[index_src]));
         thread_offset += stride_ny;
       }
@@ -890,8 +891,9 @@ __device__ __forceinline__ void ReadDataBc(
  * init_data: The register pointer of init data, the size is NX.
  */
 template <typename T, int NX, int NY>
-__device__ __forceinline__ void InitWithDataIndex(T* dst, int block_offset) {
-  int thread_offset = block_offset + threadIdx.x * NX;
+__device__ __forceinline__ void InitWithDataIndex(T* dst,
+                                                  int64_t block_offset) {
+  int64_t thread_offset = block_offset + threadIdx.x * NX;
 #pragma unroll
   for (int nx = 0; nx < NX; ++nx) {
     dst[nx] = static_cast<T>(thread_offset + nx);

@@ -24,14 +24,13 @@ namespace phi {
 template <typename T>
 __global__ void ExtractDiagonalKernel(const T* dout,
                                       T* dx,
-                                      std::ptrdiff_t start,
-                                      std::ptrdiff_t dx_length,
-                                      const std::ptrdiff_t sumStride,
-                                      const std::ptrdiff_t xStride) {
-  for (std::ptrdiff_t idx = blockIdx.x * blockDim.x + threadIdx.x;
-       idx < dx_length;
+                                      int64_t start,
+                                      int64_t dx_length,
+                                      const int64_t sumStride,
+                                      const int64_t xStride) {
+  for (int64_t idx = blockIdx.x * blockDim.x + threadIdx.x; idx < dx_length;
        idx += gridDim.x * blockDim.x) {
-    const std::ptrdiff_t outOffset = start + sumStride * idx;
+    const int64_t outOffset = start + sumStride * idx;
     dx[xStride * idx] = dout[outOffset];
   }
 }
@@ -40,13 +39,13 @@ __global__ void ExtractDiagonalKernel(const T* dout,
 template <typename T>
 __global__ void PasteDiagonalKernel(const T* dout,
                                     T* dx,
-                                    std::ptrdiff_t start,
-                                    std::ptrdiff_t size,
-                                    const std::ptrdiff_t sumStride,
-                                    const std::ptrdiff_t outStride) {
-  for (std::ptrdiff_t idx = blockIdx.x * blockDim.x + threadIdx.x; idx < size;
+                                    int64_t start,
+                                    int64_t size,
+                                    const int64_t sumStride,
+                                    const int64_t outStride) {
+  for (int64_t idx = blockIdx.x * blockDim.x + threadIdx.x; idx < size;
        idx += gridDim.x * blockDim.x) {
-    std::ptrdiff_t xOffset = start + sumStride * idx;
+    int64_t xOffset = start + sumStride * idx;
     dx[xOffset] = dout[outStride * idx];
   }
 }
@@ -74,14 +73,14 @@ void DiagGradKernel(const Context& dev_ctx,
   };
 
   if (dx_dims.size() <= 1) {
-    auto dx_length = (dx_dims.size() == 1 ? dx_dims[0] : int64_t(1));
-    auto size = (offset > 0) ? dx_length + offset : dx_length - offset;
-    int dx_stride = 1;
+    int64_t dx_length = (dx_dims.size() == 1ULL ? dx_dims[0] : 1ULL);
+    int64_t size = (offset > 0ULL) ? dx_length + offset : dx_length - offset;
+    int64_t dx_stride = 1;
     if (size > 0) {
-      auto dout_stride_0 = phi::funcs::ComputeStride(0, dout_dims);
-      auto dout_stride_1 = phi::funcs::ComputeStride(1, dout_dims);
-      auto start =
-          (offset >= 0 ? offset * dout_stride_1 : -offset * dout_stride_0);
+      int64_t dout_stride_0 = phi::funcs::ComputeStride(0, dout_dims);
+      int64_t dout_stride_1 = phi::funcs::ComputeStride(1, dout_dims);
+      int64_t start =
+          (offset >= 0ULL ? offset * dout_stride_1 : -offset * dout_stride_0);
 
       std::tuple<int64_t, int64_t> block_grid_size = GetBlockGridSize(size);
       ExtractDiagonalKernel<T>
@@ -99,8 +98,8 @@ void DiagGradKernel(const Context& dev_ctx,
     phi::funcs::SetConstant<Context, T> set_padding_value;
     set_padding_value(dev_ctx, x_grad, static_cast<T>(0));
 
-    int dx_stride_0 = phi::funcs::ComputeStride(0, dx_dims);
-    int dx_stride_1 = phi::funcs::ComputeStride(1, dx_dims);
+    int64_t dx_stride_0 = phi::funcs::ComputeStride(0, dx_dims);
+    int64_t dx_stride_1 = phi::funcs::ComputeStride(1, dx_dims);
     int64_t size;
     if (offset > 0) {
       size = std::min(dx_dims[0], dx_dims[1] - offset);
@@ -109,8 +108,9 @@ void DiagGradKernel(const Context& dev_ctx,
     }
 
     if (size > 0) {
-      auto start = (offset >= 0 ? offset * dx_stride_1 : -offset * dx_stride_0);
-      auto dout_stride_0 = phi::funcs::ComputeStride(0, dout_dims);
+      int64_t start =
+          (offset >= 0 ? offset * dx_stride_1 : -offset * dx_stride_0);
+      int64_t dout_stride_0 = phi::funcs::ComputeStride(0, dout_dims);
       std::tuple<int64_t, int64_t> block_grid_size = GetBlockGridSize(size);
       PasteDiagonalKernel<T><<<std::get<1>(block_grid_size),
                                std::get<0>(block_grid_size),

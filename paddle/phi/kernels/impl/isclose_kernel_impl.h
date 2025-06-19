@@ -65,12 +65,12 @@ struct IscloseFunctor<phi::CPUContext, T> {
     auto* in_a = in.data<T>();
     auto* in_b = other.data<T>();
     auto* out_data = ctx.template Alloc<bool>(output);
-    auto num = in.numel();
+    int64_t num = in.numel();
     // *out_data = true;
-    for (int i = 0; i < num; i++) {
+    for (int64_t i = 0; i < num; i++) {
       out_data[i] = true;
     }
-    for (int i = 0; i < num; i++) {
+    for (int64_t i = 0; i < num; i++) {
       const T a = in_a[i], b = in_b[i];
       bool val;
       if (std::isnan(a) || std::isnan(b)) {
@@ -99,12 +99,12 @@ struct IscloseFunctor<phi::CPUContext, phi::dtype::complex<T>> {
     auto* in_a = in.data<phi::dtype::complex<T>>();
     auto* in_b = other.data<phi::dtype::complex<T>>();
     auto* out_data = ctx.template Alloc<bool>(output);
-    auto num = in.numel();
+    int64_t num = in.numel();
     // *out_data = true;
-    for (int i = 0; i < num; i++) {
+    for (int64_t i = 0; i < num; i++) {
       out_data[i] = true;
     }
-    for (int i = 0; i < num; i++) {
+    for (int64_t i = 0; i < num; i++) {
       const phi::dtype::complex<T> a = in_a[i], b = in_b[i];
       bool val;
       if (std::isnan(a) || std::isnan(b)) {
@@ -122,18 +122,18 @@ struct IscloseFunctor<phi::CPUContext, phi::dtype::complex<T>> {
 };
 
 #if defined(__NVCC__) || defined(__HIPCC__)
-template <typename T>
+template <typename T, typename IndexType>
 __global__ void IscloseCUDAKernel(const T* in_data,
                                   const T* other_data,
                                   const double rtol,
                                   const double atol,
                                   bool equal_nan,
-                                  int num,
+                                  IndexType num,
                                   bool* out_data) {
-  unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
+  IndexType idx = threadIdx.x + blockIdx.x * blockDim.x;
   bool val;
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
-  for (int i = idx; i < num; i += blockDim.x * gridDim.x) {
+  for (IndexType i = idx; i < num; i += blockDim.x * gridDim.x) {
     const MPType a = static_cast<MPType>(in_data[i]);
     const MPType b = static_cast<MPType>(other_data[i]);
     if (isnan(a) || isnan(b)) {
@@ -149,17 +149,17 @@ __global__ void IscloseCUDAKernel(const T* in_data,
   }
 }
 template <>
-__global__ void IscloseCUDAKernel<phi::dtype::complex<float>>(
+__global__ void IscloseCUDAKernel<phi::dtype::complex<float>, unsigned int>(
     const phi::dtype::complex<float>* in_data,
     const phi::dtype::complex<float>* other_data,
     const double rtol,
     const double atol,
     bool equal_nan,
-    int num,
+    unsigned int num,
     bool* out_data) {
   unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
   bool val;
-  for (int i = idx; i < num; i += blockDim.x * gridDim.x) {
+  for (unsigned int i = idx; i < num; i += blockDim.x * gridDim.x) {
     const phi::dtype::complex<float> a = in_data[i];
     const phi::dtype::complex<float> b = other_data[i];
     if (isnan(a) || isnan(b)) {
@@ -176,17 +176,44 @@ __global__ void IscloseCUDAKernel<phi::dtype::complex<float>>(
 }
 
 template <>
-__global__ void IscloseCUDAKernel<phi::dtype::complex<double>>(
+__global__ void IscloseCUDAKernel<phi::dtype::complex<float>, int64_t>(
+    const phi::dtype::complex<float>* in_data,
+    const phi::dtype::complex<float>* other_data,
+    const double rtol,
+    const double atol,
+    bool equal_nan,
+    int64_t num,
+    bool* out_data) {
+  int64_t idx = threadIdx.x + blockIdx.x * blockDim.x;
+  bool val;
+  for (int64_t i = idx; i < num; i += blockDim.x * gridDim.x) {
+    const phi::dtype::complex<float> a = in_data[i];
+    const phi::dtype::complex<float> b = other_data[i];
+    if (isnan(a) || isnan(b)) {
+      val = equal_nan && isnan(a) == isnan(b);
+    } else {
+      float left = abs(a - b);
+      float right = atol + rtol * abs(b);
+      float diff = abs(left - right);
+      val = a == b || left <= right || diff <= 1e-15;
+    }
+    out_data[i] = val;
+    // if (!val) *out_data = false;
+  }
+}
+
+template <>
+__global__ void IscloseCUDAKernel<phi::dtype::complex<double>, unsigned int>(
     const phi::dtype::complex<double>* in_data,
     const phi::dtype::complex<double>* other_data,
     const double rtol,
     const double atol,
     bool equal_nan,
-    int num,
+    unsigned int num,
     bool* out_data) {
   unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
   bool val;
-  for (int i = idx; i < num; i += blockDim.x * gridDim.x) {
+  for (unsigned int i = idx; i < num; i += blockDim.x * gridDim.x) {
     const phi::dtype::complex<double> a = in_data[i];
     const phi::dtype::complex<double> b = other_data[i];
     if (isnan(a) || isnan(b)) {
@@ -201,6 +228,34 @@ __global__ void IscloseCUDAKernel<phi::dtype::complex<double>>(
     // if (!val) *out_data = false;
   }
 }
+
+template <>
+__global__ void IscloseCUDAKernel<phi::dtype::complex<double>, int64_t>(
+    const phi::dtype::complex<double>* in_data,
+    const phi::dtype::complex<double>* other_data,
+    const double rtol,
+    const double atol,
+    bool equal_nan,
+    int64_t num,
+    bool* out_data) {
+  int64_t idx = threadIdx.x + blockIdx.x * blockDim.x;
+  bool val;
+  for (int64_t i = idx; i < num; i += blockDim.x * gridDim.x) {
+    const phi::dtype::complex<double> a = in_data[i];
+    const phi::dtype::complex<double> b = other_data[i];
+    if (isnan(a) || isnan(b)) {
+      val = equal_nan && isnan(a) == isnan(b);
+    } else {
+      double left = abs(a - b);
+      double right = atol + rtol * abs(b);
+      double diff = abs(left - right);
+      val = a == b || left <= right || diff <= 1e-15;
+    }
+    out_data[i] = val;
+    // if (!val) *out_data = false;
+  }
+}
+
 template <typename T>
 struct GetTensorValue<phi::GPUContext, T> {
   T operator()(const phi::GPUContext& dev_ctx,
@@ -223,20 +278,25 @@ struct IscloseFunctor<phi::GPUContext, T> {
                   const double atol,
                   bool equal_nan,
                   DenseTensor* output) {
-    int num = in.numel();
+    int64_t num = in.numel();
     const T* in_data = in.data<T>();
     const T* other_data = other.data<T>();
     bool* out_data = dev_ctx.template Alloc<bool>(output);
-    int block = 1024;
-    int grid = (block - 1 + num) / block;
+    int64_t block = 1024;
+    int64_t grid = (block - 1 + num) / block;
     grid = (grid > block) ? block : grid;
 #ifdef PADDLE_WITH_HIP
     hipMemset(out_data, true, num * sizeof(bool));
 #else
     cudaMemset(out_data, true, num * sizeof(bool));
 #endif
-    IscloseCUDAKernel<T><<<grid, block, 0, dev_ctx.stream()>>>(
-        in_data, other_data, rtol, atol, equal_nan, num, out_data);
+    if (num + grid * block + 1 > std::numeric_limits<unsigned int>::max()) {
+      IscloseCUDAKernel<T, int64_t><<<grid, block, 0, dev_ctx.stream()>>>(
+          in_data, other_data, rtol, atol, equal_nan, num, out_data);
+    } else {
+      IscloseCUDAKernel<T, unsigned int><<<grid, block, 0, dev_ctx.stream()>>>(
+          in_data, other_data, rtol, atol, equal_nan, num, out_data);
+    }
   }
 };
 #endif

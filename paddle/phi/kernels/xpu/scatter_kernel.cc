@@ -34,6 +34,12 @@ void ScatterKernel(const Context &ctx,
   auto *out_data = reinterpret_cast<XPUTypeT *>(ctx.template Alloc<T>(out));
   int ret = xpu::copy(ctx.x_context(), x_data, out_data, x.numel());
   PADDLE_ENFORCE_XDNN_SUCCESS(ret, "copy");
+
+  if (x.numel() == 0 || index.numel() == 0 || updates.numel() == 0) {
+    VLOG(6) << "Do nothing for ScatterKernel since inputs has 0-size tensor.";
+    return;
+  }
+
   // Apply ScatterUpdate: Out[index] = Updates[:]
   const auto &index_type = index.dtype();
   bool index_type_match =

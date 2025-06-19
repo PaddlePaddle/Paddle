@@ -4300,6 +4300,95 @@ def scatter_(
     return _C_ops.scatter_(x, index, updates, overwrite)
 
 
+def scatter_add(
+    x: Tensor,
+    index: Tensor,
+    updates: Tensor,
+    name: str | None = None,
+) -> Tensor:
+    """
+    **Scatter Add Layer**
+    scatter_add adds the values from the updates tensor to the corresponding positions of the target tensor (x) based on the specified indices. The detailed logic is as follows:
+
+        1. Indexing Operation: For each updates[i], its value is accumulated (added) to the position x[index[i]] in the output tensor.
+        2. Repeated Index Handling: If the same index appears multiple times, all associated updates values are summed together at that position.
+    .. code-block:: python
+        :name: scatter_add-example-1
+
+        >>> import paddle
+        >>> #input:
+        >>> x = paddle.to_tensor([[1, 1], [2, 2], [3, 3]], dtype='float32')
+        >>> index = paddle.to_tensor([2, 1, 0, 1], dtype='int64')
+        >>> # shape of updates should be the same as x
+        >>> # shape of updates with dim > 1 should be the same as input
+        >>> updates = paddle.to_tensor([[1, 1], [2, 2], [3, 3], [4, 4]], dtype='float32')
+        >>> # calculation:
+        >>> for i in range(len(index)):
+        ...     x[index[i]] += updates[i]
+        >>> # output:
+        >>> out = paddle.to_tensor([[4, 4], [8, 8], [4, 4]])
+        >>> print(out.shape)
+        [3, 2]
+
+    Args:
+        x (Tensor): The input N-D Tensor with ndim>=1. Data type can be float32, float64.
+        index (Tensor): The index is a 1-D or 0-D Tensor. Data type can be int32, int64. The length of index cannot exceed updates's length, and the value in index cannot exceed input's length.
+        updates (Tensor): Update input with updates parameter based on index. When the index is a 1-D tensor, the updates shape should be the same as input, and dim value with dim > 1 should be the same as input. When the index is a 0-D tensor, the updates should be a (N-1)-D tensor, the ith dim of the updates should be equal with the (i+1)th dim of the input.
+        name(str|None, optional): The default value is None. Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
+
+    Returns:
+        Tensor, The output is a Tensor with the same shape as x.
+
+    Examples:
+        .. code-block:: python
+            :name: scatter_add-example-2
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([[1, 1], [2, 2], [3, 3]], dtype='float32')
+            >>> index = paddle.to_tensor([2, 1, 0, 1], dtype='int64')
+            >>> updates = paddle.to_tensor([[1, 1], [2, 2], [3, 3], [4, 4]], dtype='float32')
+
+            >>> output = paddle.scatter_add(x, index, updates)
+            >>> print(output)
+            Tensor(shape=[3, 2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            [[4., 4.],
+             [8., 8.],
+             [4., 4.]])
+    """
+    if in_dynamic_or_pir_mode():
+        return _C_ops.scatter_add(x, index, updates)
+    else:
+        check_variable_and_dtype(
+            x,
+            'dtype',
+            ['float32', 'float64', 'float16', 'int32', 'int64', 'uint16'],
+            'scatter_add',
+        )
+
+        helper = LayerHelper('scatter_add', **locals())
+        out = helper.create_variable_for_type_inference(x.dtype)
+        helper.append_op(
+            type="scatter_add",
+            inputs={"X": x, "Ids": index, "Updates": updates},
+            outputs={"Out": out},
+        )
+        return out
+
+
+@inplace_apis_in_dygraph_only
+def scatter_add_(
+    x: Tensor,
+    index: Tensor,
+    updates: Tensor,
+    name: str | None = None,
+) -> Tensor:
+    """
+    Inplace version of ``scatter_add`` API, the output Tensor will be inplaced with input ``x``.
+    """
+    return _C_ops.scatter_add_(x, index, updates)
+
+
 def scatter_nd_add(
     x: Tensor, index: Tensor, updates: Tensor, name: str | None = None
 ) -> Tensor:

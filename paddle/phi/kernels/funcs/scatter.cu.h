@@ -146,7 +146,14 @@ void GPUScatterAssign(const phi::GPUContext& ctx,
                       const DenseTensor& src,
                       const DenseTensor& index,
                       DenseTensor* output,
-                      bool overwrite = true) {
+                      bool overwrite = true,
+                      bool need_init_zero = true) {
+  if (src.numel() == 0 || index.numel() == 0) {
+    VLOG(6)
+        << "Do nothing for GPUScatterAssign since inputs has 0-size tensor.";
+    return;
+  }
+
   if (index.dims().size() == 2) {
     PADDLE_ENFORCE_EQ(
         index.dims()[1],
@@ -191,8 +198,10 @@ void GPUScatterAssign(const phi::GPUContext& ctx,
 
   // if not overwrite mode, init data
   if (!overwrite) {
-    ScatterInitCUDAKernel<T, IndexT><<<grid, block, 0, ctx.stream()>>>(
-        p_index, p_output, output_dims[0], index_size, slice_size);
+    if (need_init_zero) {
+      ScatterInitCUDAKernel<T, IndexT><<<grid, block, 0, ctx.stream()>>>(
+          p_index, p_output, output_dims[0], index_size, slice_size);
+    }
 
     ScatterCUDAKernel<T, IndexT, false, 1><<<grid, block, 0, ctx.stream()>>>(
         p_src, p_index, p_output, output_dims[0], index_size, slice_size);
@@ -234,6 +243,10 @@ template <typename T, typename IndexT = int>
 void GPUScatterGradForX(const phi::GPUContext& ctx,
                         const DenseTensor& index,
                         DenseTensor* output) {
+  if (index.numel() == 0) {
+    VLOG(6) << "Do nothing for GPUScatterGradX since index is 0-size tensor.";
+    return;
+  }
   int64_t index_size = index.dims().size() == 0 ? 1 : index.dims()[0];
   auto dst_dims = output->dims();
   // slice size

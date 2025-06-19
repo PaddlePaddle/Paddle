@@ -467,18 +467,22 @@ void Pool2dDirectCUDAFunctor<PoolProcess, T>::operator()(
   const int stride_width = strides[1];
   const int padding_height = paddings[0];
   const int padding_width = paddings[1];
-  int nthreads = batch_size * output_channels * output_height * output_width;
+  int64_t nthreads = static_cast<int64_t>(batch_size) * output_channels *
+                     output_height * output_width;
   auto pool_divmods =
       FastDivModForPooling(input_channels, output_width, output_height);
   if (adaptive) {
-    int max_threads = 512;
-    int thread_num =
+    int64_t max_threads = 512;
+    int64_t thread_num =
         std::min(phi::funcs::details::GetLastPow2(output_height * output_width),
                  max_threads);
-    int blocks = std::min(max_threads / thread_num, output_channels);
+    int64_t blocks = std::min(max_threads / thread_num,
+                              static_cast<int64_t>(output_channels));
     dim3 threads(thread_num, blocks, 1);
-    dim3 grid(
-        std::max((output_channels + blocks - 1) / blocks, 1), batch_size, 1);
+    dim3 grid(std::max((output_channels + blocks - 1) / blocks,
+                       static_cast<int64_t>(1)),
+              batch_size,
+              1);
     AdaptiveKernelPool2D<PoolProcess, T>
         <<<grid, threads, 0, stream>>>(nthreads,
                                        input,
@@ -563,18 +567,22 @@ class Pool2dFunctor<phi::GPUContext, PoolProcess, T> {
     const T* input_data = input.data<T>();
     T* output_data = context.template Alloc<T>(output);
 
-    int nthreads = batch_size * output_channels * output_height * output_width;
+    int64_t nthreads = static_cast<int64_t>(batch_size) * output_channels *
+                       output_height * output_width;
     auto pool_divmods =
         FastDivModForPooling(input_channels, output_width, output_height);
     if (adaptive) {
-      int max_threads = 512;
-      int thread_num = std::min(
+      int64_t max_threads = 512;
+      int64_t thread_num = std::min(
           phi::funcs::details::GetLastPow2(output_height * output_width),
           max_threads);
-      int blocks = std::min(max_threads / thread_num, output_channels);
+      int64_t blocks = std::min(max_threads / thread_num,
+                                static_cast<int64_t>(output_channels));
       dim3 threads(thread_num, blocks, 1);
-      dim3 grid(
-          std::max((output_channels + blocks - 1) / blocks, 1), batch_size, 1);
+      dim3 grid(std::max((output_channels + blocks - 1) / blocks,
+                         static_cast<int64_t>(1)),
+                batch_size,
+                1);
       AdaptiveKernelPool2D<PoolProcess, T>
           <<<grid, threads, 0, context.stream()>>>(nthreads,
                                                    input_data,
@@ -657,18 +665,22 @@ class Pool2dFunctor<phi::GPUContext, PoolProcess, T> {
     const T* input_data = input.data<T>();
     T* output_data = context.template Alloc<T>(output);
 
-    int nthreads = batch_size * output_channels * output_height * output_width;
+    int64_t nthreads = static_cast<int64_t>(batch_size) * output_channels *
+                       output_height * output_width;
     auto pool_divmods =
         FastDivModForPooling(input_channels, output_width, output_height);
     if (adaptive) {
-      int max_threads = 512;
-      int thread_num = std::min(
+      int64_t max_threads = 512;
+      int64_t thread_num = std::min(
           phi::funcs::details::GetLastPow2(output_height * output_width),
           max_threads);
-      int blocks = std::min(max_threads / thread_num, output_channels);
+      int64_t blocks = std::min(max_threads / thread_num,
+                                static_cast<int64_t>(output_channels));
       dim3 threads(thread_num, blocks, 1);
-      dim3 grid(
-          std::max((output_channels + blocks - 1) / blocks, 1), batch_size, 1);
+      dim3 grid(std::max((output_channels + blocks - 1) / blocks,
+                         static_cast<int64_t>(1)),
+                batch_size,
+                1);
       AdaptiveKernelPool2D<PoolProcess, T>
           <<<grid, threads, 0, context.stream()>>>(nthreads,
                                                    input_data,
@@ -2159,18 +2171,22 @@ class MaxPool2dWithIndexFunctor<phi::GPUContext, T1, T2> {
     T1* output_data = context.template Alloc<T1>(output);
     T2* mask_data = context.template Alloc<T2>(mask);
 
-    int nthreads = batch_size * output_channels * output_height * output_width;
+    int64_t nthreads = static_cast<int64_t>(batch_size) * output_channels *
+                       output_height * output_width;
     auto pool_divmods =
         FastDivModForPooling(input_channels, output_width, output_height);
     if (adaptive && output_height > 1 && output_width > 1) {
-      int max_threads = 512;
-      int thread_num = std::min(
+      int64_t max_threads = 512;
+      int64_t thread_num = std::min(
           phi::funcs::details::GetLastPow2(output_height * output_width),
           max_threads);
-      int blocks = std::min(max_threads / thread_num, output_channels);
+      int64_t blocks = std::min(max_threads / thread_num,
+                                static_cast<int64_t>(output_channels));
       dim3 threads(thread_num, blocks, 1);
-      dim3 grid(
-          std::max((output_channels + blocks - 1) / blocks, 1), batch_size, 1);
+      dim3 grid(std::max((output_channels + blocks - 1) / blocks,
+                         static_cast<int64_t>(1)),
+                batch_size,
+                1);
       AdaptiveKernelMaxPool2dWithIdx<T1, T2>
           <<<grid, threads, 0, context.stream()>>>(nthreads,
                                                    input_data,

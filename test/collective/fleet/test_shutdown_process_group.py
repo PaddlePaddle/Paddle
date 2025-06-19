@@ -1,4 +1,4 @@
-# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,11 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .recompute import (  # noqa: F401
-    custom_state_manager,
-    recompute,
-    recompute_sequential,
-)
-from .recompute_hybrid import recompute_hybrid  # noqa: F401
+import unittest
 
-__all__ = []
+from legacy_test.test_parallel_dygraph_dataparallel import (
+    TestMultipleAccelerators,
+)
+
+
+class TestShutdownProcessGroup(TestMultipleAccelerators):
+    def test_shutdown_process_group(self):
+        self.run_mnist_2accelerators('shutdown_process_group.py')
+
+
+if __name__ == "__main__":
+    unittest.main()

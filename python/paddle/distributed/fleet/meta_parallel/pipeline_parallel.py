@@ -30,6 +30,7 @@ from ..meta_optimizers.dygraph_optimizer import HybridParallelOptimizer
 from ..utils import timer_helper as timer
 from ..utils.hybrid_parallel_util import (
     broadcast_dp_parameters,
+    broadcast_moe_sharding_parameters,
     broadcast_mp_parameters,
     broadcast_sep_parameters,
     broadcast_sharding_parameters,
@@ -259,6 +260,9 @@ class PipelineParallel(MetaParallelBase):
         self.use_sharding_parallel = (
             self._hcg.get_sharding_parallel_world_size() > 1
         )
+        self.use_moe_sharding_parallel = (
+            self._hcg.get_moe_sharding_parallel_world_size() > 1
+        )
 
         self.total_loss = None
 
@@ -430,6 +434,10 @@ class PipelineParallel(MetaParallelBase):
         if self.use_data_parallel:
             logger.info("start broadcast dp parameters")
             broadcast_dp_parameters(self._layers, self._hcg)
+
+        if self.use_moe_sharding_parallel:
+            logger.info("start broadcast moe_sharding parameters")
+            broadcast_moe_sharding_parameters(self._layers, self._hcg)
 
         if self._dp_comm_overlap:
             self.register_allreduce_overlap_hook(
@@ -1672,7 +1680,11 @@ class PipelineParallelWithInterleave(PipelineParallel):
             self.output_tensors[virtual_pp_rank].pop()
 
     def _forward_step_helper(
-        self, micro_dataset, micro_step, overlap_schedule_mode=False
+        self,
+        micro_dataset,
+        micro_step,
+        overlap_schedule_mode=False,
+        release_input=False,
     ):
         virtual_pp_rank = self._get_virtual_pp_rank(micro_step, forward=True)
         self.set_virtual_pipeline_rank(virtual_pp_rank)
@@ -1690,6 +1702,10 @@ class PipelineParallelWithInterleave(PipelineParallel):
         self._store_forward_outputs(
             virtual_pp_rank, output_tensor, schedule_chunk, loss_fn_node
         )
+
+        if release_input:
+            return output_tensor, input_tensor
+
         return output_tensor
 
     def _overlap_comm_grads(self):
@@ -3194,7 +3210,9 @@ class VPPFhenBInBalancedMemory(PipelineParallelWithInterleaveFthenB):
         # to simplify the code logic of stage 1F1B.
         for micro_step in range(startup_steps):
             self._record_stamp("F", micro_step, '"B"', forward=True)
-            output_tensor = self._forward_step_helper(micro_dataset, micro_step)
+            output_tensor, input_t = self._forward_step_helper(
+                micro_dataset, micro_step, release_input=True
+            )
             self._record_stamp("F", micro_step, '"E"', forward=True)
             next_forward_virtual_pp_rank = self._get_virtual_pp_rank(
                 micro_step + 1, forward=True
@@ -3225,6 +3243,7 @@ class VPPFhenBInBalancedMemory(PipelineParallelWithInterleaveFthenB):
                 input_tensor
             )
             self._release_output(output_tensor)
+            self._release_output(input_t)
 
         if self.is_pipeline_first_stage(ignore_virtual=True):
             assert (
@@ -3239,8 +3258,8 @@ class VPPFhenBInBalancedMemory(PipelineParallelWithInterleaveFthenB):
             backward_micro_step_id = micro_step
 
             self._record_stamp("F", forward_micro_step_id, '"B"', forward=True)
-            output_tensor = self._forward_step_helper(
-                micro_dataset, forward_micro_step_id
+            output_tensor, input_t = self._forward_step_helper(
+                micro_dataset, forward_micro_step_id, release_input=True
             )
             self._record_stamp("F", forward_micro_step_id, '"E"', forward=True)
 
@@ -3251,6 +3270,10 @@ class VPPFhenBInBalancedMemory(PipelineParallelWithInterleaveFthenB):
                 self.is_pipeline_last_stage(ignore_virtual=True),
                 batch_p2p_comm=self._use_batch_p2p_comm,
             )
+
+            self._release_output(output_tensor)
+            self._release_output(input_t)
+
             output_tensor_grad = self._p2p_helper.recv_backward(
                 self.is_pipeline_last_stage(ignore_virtual=True),
                 batch_p2p_comm=self._use_batch_p2p_comm,
