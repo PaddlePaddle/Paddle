@@ -52,8 +52,8 @@ class NConvConcatActivationFusePattern : public paddle::drr::DrrPatternBase {
     return "Conv" + std::to_string(concat_count_) + "Concat" + "Level" +
            std::to_string(fused_level_) + activation_name_ + "Pattern";
   }
-
-  size_t benefit() const override { return benefit_; }
+  uint32_t benefit() const override { return benefit_; }
+  // size_t benefit() const override { return benefit_; }
 
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
@@ -305,8 +305,8 @@ class NConvConcatHardSigmoidFusePattern : public paddle::drr::DrrPatternBase {
     return "Conv" + std::to_string(concat_count_) + "Concat" + "Level" +
            std::to_string(fused_level_) + "HardSigmoidPattern";
   }
-
-  size_t benefit() const override { return concat_count_; }
+  uint32_t benefit() const override { return concat_count_; }
+  // size_t benefit() const override { return concat_count_; }
 
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
@@ -524,8 +524,8 @@ class NConvConcatGeluFusePattern : public paddle::drr::DrrPatternBase {
     return "Conv" + std::to_string(concat_count_) + "Concat" + "Level" +
            std::to_string(fused_level_) + "GeluPattern";
   }
-
-  size_t benefit() const override { return concat_count_; }
+  uint32_t benefit() const override { return concat_count_; }
+  // size_t benefit() const override { return concat_count_; }
 
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
@@ -749,8 +749,8 @@ class NConvConcatClipFusePattern : public paddle::drr::DrrPatternBase {
     return "Conv" + std::to_string(concat_count_) + "Concat" + "Level" +
            std::to_string(fused_level_) + "ClipPattern";
   }
-
-  size_t benefit() const override { return concat_count_; }
+  uint32_t benefit() const override { return concat_count_; }
+  // size_t benefit() const override { return concat_count_; }
 
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
