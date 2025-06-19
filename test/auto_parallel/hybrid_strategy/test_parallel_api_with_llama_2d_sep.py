@@ -50,7 +50,7 @@ class TestDPMPCPAPI(test_base.CommunicationTestDistBase):
             "one_api": ["true", "false"],
         }
 
-    def test_simple_net_dp2_tp2(self):
+    def test_simple_net_mp2_cp2(self):
         envs_list = test_base.gen_product_envs_list(
             self._default_envs, self._changeable_envs
         )
@@ -71,8 +71,8 @@ class TestDPMPSEPAPI(test_base.CommunicationTestDistBase):
             "dtype": "float32",
             "seed": "2023",
             "dp": "1",
-            "mp": "2",
-            "pp": "1",
+            "mp": "1",
+            "pp": "2",
             "sep": "2",
             "acc_step": "2",
         }
@@ -97,7 +97,7 @@ class TestDPMPSEPAPI(test_base.CommunicationTestDistBase):
             "one_api": ["true", "false"],
         }
 
-    def test_simple_net_dp2_tp2(self):
+    def test_simple_net_mp2_sep2(self):
         envs_list = test_base.gen_product_envs_list(
             self._default_envs, self._changeable_envs
         )

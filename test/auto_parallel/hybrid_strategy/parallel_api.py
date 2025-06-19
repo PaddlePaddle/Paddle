@@ -314,6 +314,7 @@ class TestParallelAPI:
         dp_config = None
         mp_config = None
         pp_config = None
+        cp_config = None
         prefix = "model." if self.test_lora else ""
         if self.pp > 1:
             # decoders_per_rank = self.config.num_hidden_layers // self.pp
@@ -399,40 +400,34 @@ class TestParallelAPI:
                         f"{prefix}lm_head.weight": dist.ColWiseParallel(),
                         f"{prefix}lm_head": dist.SequenceParallelEnd(),
                     }
-            if self.sep > 1:
-                if not (
-                    self.config.context_parallel is True
-                    and (
-                        os.getenv("backend") != "gpu"
-                        or not self.amp
-                        or int(paddle.version.cuda().split(".")[0]) < 11
-                        or paddle.device.cuda.get_device_capability()[0] < 8
-                    )
-                ):
-
-                    bck = 'p2p'
-                    if self.config.context_parallel is True:
-                        bck = 'p2p'
-                    elif self.config.sep_parallel is True:
-                        bck = 'all2all'
-                    else:
-                        logging.error(
-                            f"when sep > 1, should set context_parallel or sep_parallel, but got sep_parallel={self.config.sep_parallel}, context_parallel={self.context_parallel}"
-                        )
-                    update_plan = {
-                        f"{prefix}llama": dist.ContextParallelPrefix(
-                            backend=bck, period='begin'
-                        ),
-                        f"{prefix}llama.layers.*.self_attn.sdpa": dist.ContextParallel(
-                            backend=bck
-                        ),
-                        f"{prefix}loss_func": dist.ContextParallelPrefix(
-                            backend=bck, period='end'
-                        ),
-                    }
-                    plan.update(update_plan)
             mp_config = {'parallelize_plan': plan}
+        if self.sep > 1:
+            if not (
+                self.config.context_parallel is True
+                and (
+                    os.getenv("backend") != "gpu"
+                    or not self.amp
+                    or int(paddle.version.cuda().split(".")[0]) < 11
+                    or paddle.device.cuda.get_device_capability()[0] < 8
+                )
+            ):
 
+                bck = 'p2p'
+                if self.config.context_parallel is True:
+                    bck = 'p2p'
+                elif self.config.sep_parallel is True:
+                    bck = 'all2all'
+                else:
+                    logging.error(
+                        f"when sep > 1, should set context_parallel or sep_parallel, but got sep_parallel={self.config.sep_parallel}, context_parallel={self.context_parallel}"
+                    )
+                plan = {
+                    f"{prefix}llama": dist.PrepareContextParallel(backend=bck),
+                    f"{prefix}llama.layers.*.self_attn.sdpa": dist.ContextParallel(
+                        backend=bck
+                    ),
+                }
+                cp_config = {'parallelize_plan': plan}
         lr_scheduler = paddle.optimizer.lr.LinearWarmup(
             learning_rate=0.0001, warmup_steps=2, start_lr=0, end_lr=0.0001
         )
@@ -441,6 +436,7 @@ class TestParallelAPI:
             'dp_config': dp_config,
             'mp_config': mp_config,
             'pp_config': pp_config,
+            'cp_config': cp_config,
         }
 
         if self.one_api:
