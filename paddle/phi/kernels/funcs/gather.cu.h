@@ -121,6 +121,7 @@ void GPUGatherNd(const phi::GPUContext& ctx,
       ctx, remain_numel * slice_size, vec_size * loop_count);
 
   auto stream = ctx.stream();
+
   switch (vec_size) {
 #define CASE_VEC_SIZE(__Sz)                                              \
   case __Sz:                                                             \
