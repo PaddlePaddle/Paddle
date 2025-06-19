@@ -299,7 +299,6 @@ static inline void IndexPutStride(
     std::array<int64_t*, N>* strides_array,
     int64_t* numel,
     std::array<std::vector<int64_t>, N>& strides_vec) {  // NOLINT
-  int64_t index_size = 1;
   int ndim = output_dims.size();
 
   std::vector<int64_t> stride_size;
@@ -355,7 +354,6 @@ static inline void IndexGetStride(
     std::array<int64_t*, N>* strides_array,
     int64_t* numel,
     std::array<std::vector<int64_t>, N>& strides_vec) {  // NOLINT
-  int64_t index_size = 1;
   int ndim = output_dims.size();
 
   std::vector<int64_t> stride_size;

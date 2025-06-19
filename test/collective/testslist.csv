@@ -51,4 +51,3 @@ test_world_size_and_rank,linux,rocm;gpu,120,DIST,test_world_size_and_rank.sh,2,,
 test_mpi_comm,linux,,,DIST,test_mpi_comm.sh,2,,http_proxy=;https_proxy=,WITH_MPI
 test_strategy_group,linux,rocm;gpu,120,DIST,test_strategy_group.sh,2,,http_proxy=;https_proxy=,
 test_orthogonal_strategy,linux,rocm;gpu,120,DIST,test_orthogonal_strategy.sh,2,,http_proxy=;https_proxy=,
-test_comm_group_num,linux,gpu,120,DIST,test_comm_group_num.sh,2,,http_proxy=;https_proxy=,

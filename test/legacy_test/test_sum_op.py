@@ -923,6 +923,48 @@ class TestSumAPIWarnings(unittest.TestCase):
                 os.environ["FLAGS_print_extra_attrs"] = '0'
 
 
+class TestSum_BoolToInt64_ZeroSize(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(123)
+        self.shape = [3, 0, 2]
+        self.places = [base.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            self.places.append(base.CUDAPlace(0))
+
+    def check_result(
+        self, dygraph_result, expected_result, axis, keepdim, dtype, place
+    ):
+        self.assertTrue(
+            (dygraph_result == expected_result).all(),
+            f"Shape: {self.shape}, Axis: {axis}, Keepdim: {keepdim}, Dtype: {dtype}, Place: {place}",
+        )
+
+    def _test_dygraph(self, place, axis, keepdim, dtype):
+        with dygraph_guard():
+            x_np = np.random.random(self.shape).astype(dtype)
+            x = paddle.to_tensor(x_np)
+            x.stop_gradient = False
+            dygraph_result = paddle.sum(x, axis=axis, keepdim=keepdim)
+            expected_result = np.sum(x_np, axis=axis, keepdims=keepdim)
+            self.check_result(
+                dygraph_result.numpy(),
+                expected_result,
+                axis,
+                keepdim,
+                dtype,
+                place,
+            )
+            paddle.sum(dygraph_result).backward()
+            np.testing.assert_allclose(x.grad.shape, x.shape)
+
+    def test_zero_size(self):
+        keepdims_options = [True, False]
+        for place in self.places:
+            for keepdim in keepdims_options:
+                self._test_dygraph(place, None, keepdim, "bool")
+                self._test_dygraph(place, None, keepdim, "int32")
+
+
 if __name__ == "__main__":
     enable_static()
     unittest.main()

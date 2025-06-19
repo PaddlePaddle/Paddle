@@ -13,6 +13,8 @@ on:
     outputs:
       can-skip:
         value: ${{ jobs.clone.outputs.can-skip }}
+      slice-check:
+        value: ${{ jobs.clone.outputs.slice-check }}
 
 permissions: read-all
 
@@ -31,6 +33,7 @@ jobs:
     name: Clone Paddle
     outputs:
       can-skip: ${{ steps.check-bypass.outputs.can-skip }}
+      slice-check: ${{ steps.check-execution.outputs.slice-check }}
 
     if: github.repository_owner == 'PaddlePaddle'
     runs-on:
@@ -45,6 +48,7 @@ jobs:
           fetch-depth: 1000
 
       - name: Merge PR to test branch
+        id: check-execution
         run: |
           git config --unset http.https://github.com/.extraheader
           git submodule foreach --recursive sh -c "git config --local --unset-all 'http.https://github.com/.extraheader'"
@@ -58,6 +62,8 @@ jobs:
           git config user.name "PaddleCI"
           git config user.email "paddle_ci@example.com"
           git fetch origin pull/${{ github.event.pull_request.number }}/head:pr
+          git checkout pr
+          source ${ci_scripts}/check_execution.sh
           git merge --no-ff pr
           git branch -d pr
           bash ${ci_scripts}/third_party_tag.sh
