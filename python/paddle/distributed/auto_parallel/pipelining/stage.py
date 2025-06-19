@@ -205,7 +205,7 @@ class _PipelineStageBase(ABC):
         # Forward infra
         self.args_recv_info: dict[int, tuple[InputInfo, ...]] = {}
         self.act_send_info: dict[int, list] = {}
-
+        self.grad_recv_indices: dict[int, list] = {}
         # Backward infra will created lazily
         self.grad_recv_info: dict = {}
         self.grad_send_info: list | None = None
@@ -481,7 +481,7 @@ class _PipelineStageBase(ABC):
                             else dtensor_to_local(
                                 out,
                                 out.process_mesh,
-                                self.grads_meta[idx].placements,
+                                out.placements,
                             )
                         ),
                         peer_global_rank,
@@ -620,9 +620,6 @@ class _PipelineStageBase(ABC):
     def backward_maybe_with_nosync(
         self, backward_type, bwd_kwargs: dict, last_backward=False
     ) -> tuple[tuple[paddle.Tensor | None, ...], list[dict[str, Any] | None]]:
-        """
-        PP 与 DP 混用时，在每个batch的最后一个microbatch的反向开始时，此时的一些行为可能会有所差异，此时可能需要注意。
-        """
 
         def perform_backward(
             backward_type,
@@ -711,9 +708,19 @@ class _PipelineStageBase(ABC):
         flat_args = _flatten_args(input_args)
         flat_kwargs = _flatten_args(composite_kwargs)
         flatten_input_tensors = flat_args + flat_kwargs
+        grad_required_output_tuple = tuple(
+            out
+            for out in output_tuple
+            if isinstance(out, paddle.Tensor) and not out.stop_gradient
+        )
+        grad_required_flatten_input_tensors = [
+            inp
+            for inp in flatten_input_tensors
+            if isinstance(inp, paddle.Tensor) and not inp.stop_gradient
+        ]
         self.fwd_cache[fwd_chunk_id] = (
-            output_tuple,  # stage_output
-            flatten_input_tensors,  # input_values
+            grad_required_output_tuple,  # stage_output
+            grad_required_flatten_input_tensors,  # input_values
         )
 
         logger.debug(
@@ -1005,8 +1012,16 @@ class PipelineStage(_PipelineStageBase):
                 flatten_input_tensors = [
                     x for x in flatten_input_tensors if not x.stop_gradient
                 ]
+                grad_required_outputs = _normalize_model_output_as_tuple(
+                    outputs
+                )
+                grad_required_outputs = tuple(
+                    out
+                    for out in grad_required_outputs
+                    if isinstance(out, paddle.Tensor) and not out.stop_gradient
+                )
                 self.fwd_cache[0] = (
-                    _normalize_model_output_as_tuple(outputs),  # stage_output
+                    grad_required_outputs,  # stage_output
                     flatten_input_tensors,  # input_values
                 )
 
@@ -1100,13 +1115,16 @@ class PipelineStage(_PipelineStageBase):
         # Send info during forward for each activation
         # only need the rank that is being sent to
         self.act_send_info: dict[int, list] = {}
-
-        for idx in range(len(self.get_outputs_meta())):
+        outputs_meta = self.get_outputs_meta()
+        for idx in range(len(outputs_meta)):
             # We assume we always send to stage + 1
             if not self.is_last:
                 self.act_send_info[idx] = [self.stage_index + 1]
+                if not outputs_meta[idx].stop_gradient:
+                    self.grad_recv_indices[idx] = [self.stage_index + 1]
             else:
                 self.act_send_info[idx] = []
+                self.grad_recv_indices[idx] = []
 
         return outputs
 
@@ -1195,9 +1213,7 @@ class PipelineStage(_PipelineStageBase):
                 self._shape_inference_bwd()
         for mb_index in range(num_microbatches):
             # `grad_recv_info` is a mirror of `act_send_info`
-            self.grad_recv_info[mb_index] = self._create_grad_recv_info(
-                self.act_send_info
-            )
+            self.grad_recv_info[mb_index] = self._create_grad_recv_info()
 
         # the last stage does not need recv grads from other rank
         if not self.is_last:
@@ -1211,7 +1227,6 @@ class PipelineStage(_PipelineStageBase):
 
     def _create_grad_recv_info(
         self,
-        act_send_info: dict,
     ) -> tuple[_RecvInfo, ...]:
         grad_recv_info: tuple[_RecvInfo, ...] = ()
         if not self.is_last:
@@ -1224,7 +1239,7 @@ class PipelineStage(_PipelineStageBase):
                         dst_list[0],
                         _make_tensor_from_meta(self.grads_meta[idx]),
                     )
-                    for idx, dst_list in act_send_info.items()
+                    for idx, dst_list in self.grad_recv_indices.items()
                 ]
             )
         return grad_recv_info
