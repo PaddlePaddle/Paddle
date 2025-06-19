@@ -16,6 +16,7 @@
 
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
+
 namespace phi {
 
 template <typename T, typename Context>
