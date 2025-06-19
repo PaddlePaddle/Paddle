@@ -34,26 +34,14 @@ __global__ void EmbeddingFW(T *output,
 
   while (idy < K) {
     auto id = static_cast<int64_t>(ids[idy]);
-    PADDLE_ENFORCE_LT(
-        id,
+    PADDLE_ENFORCE(id >= 0,
+                   "Id should no less than 0 but received an id value: %lld.",
+                   id);
+    PADDLE_ENFORCE(
+        id < N,
+        "Id should smaller than %lld but received an id value: %lld.",
         N,
-        common::errors::InvalidArgument(
-            "Variable value (input) of "
-            "OP(paddle.nn.functional.embedding) "
-            "expected >= 0 and < %lld, but got %lld. Please check input "
-            "value.",
-            N,
-            id));
-    PADDLE_ENFORCE_GE(
-        id,
-        0,
-        common::errors::InvalidArgument(
-            "Variable value (input) of "
-            "OP(paddle.nn.functional.embedding) "
-            "expected >= 0 and < %lld, but got %lld. Please check input "
-            "value.",
-            N,
-            id));
+        id);
     T *out = output + idy * D;
     const T *tab = table + id * D;
     for (int i = idx; i < D; i += blockDim.x) {
