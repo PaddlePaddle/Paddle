@@ -30,7 +30,7 @@ from paddle.base import core, framework
 from paddle.base.compiler import BuildStrategy
 from paddle.base.data_feeder import check_type
 from paddle.base.dygraph.base import switch_to_static_graph
-from paddle.pir import Value, fake_value, is_fake_value
+from paddle.pir import Value, fake_value, get_fake_value_name, is_fake_value
 
 from .logging_utils import TranslatorLogger
 from .utils import (
@@ -52,7 +52,7 @@ __all__ = []
 prog_logger = TranslatorLogger()
 
 
-FAKE_VALUE_NAME = "FakeValue"
+FAKE_VALUE_NAME = get_fake_value_name()
 
 
 def hash_with_seed(value, seed):

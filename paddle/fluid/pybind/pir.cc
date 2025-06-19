@@ -2545,6 +2545,8 @@ void BindUtils(pybind11::module *m) {
   m->def("append_print", AppendPrintOp);
   m->def("append_prints", AppendPrintOps);
   m->def("fake_value", FakeValue);
+  m->def("get_fake_value_name",
+         []() -> std::string { return paddle::framework::kFakeVarName; });
   m->def("is_fake_value", IsFakeValue);
   m->def("get_current_insertion_point", []() -> PyInsertionPoint {
     return {ApiBuilder::Instance().GetCurrentInsertionPoint()};
