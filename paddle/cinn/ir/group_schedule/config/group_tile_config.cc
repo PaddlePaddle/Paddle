@@ -324,18 +324,30 @@ bool ReduceRegionCanVectorize(
     const SMConfig& sm_config,
     const int warp_nums,
     const int factor) {
+  VLOG(6) << "YUHAN!!! ReduceRegionCanVectorize ";
+  VLOG(6) << "warp_nums: " << warp_nums;
+  
   const int64_t spatial_numel = base_info->spatial_numel;
   const int64_t reduce_numel = base_info->reduce_numel;
-  if (warp_nums < 4 && spatial_numel > 1) return false;
+  VLOG(6) << "spatial_numel: " << spatial_numel;
+  VLOG(6) << "reduce_numel: " << reduce_numel;
+  //if (warp_nums < 4 && spatial_numel > 1) return false;
 
   int rd_thread_num = warp_nums * kWarpSize;
-  if ((warp_nums > 1 || spatial_numel < warp_nums * 64) &&
-      CheckThreadDimensionCanVectorize(
-          rd_thread_num, reduce_numel, factor, true) &&
+
+  VLOG(6) << "CheckThreadDimensionCanVectorize: " << CheckThreadDimensionCanVectorize(rd_thread_num, reduce_numel, factor, true);
+  VLOG(6) << "CheckSmUtilization: " << CheckSmUtilization(
+          base_info, sm_config, spatial_numel * factor, rd_thread_num);
+  
+  if (//(warp_nums > 1 || spatial_numel < warp_nums * 64) &&
+      CheckThreadDimensionCanVectorize(r
+          d_thread_num, reduce_numel, factor, true) &&
       CheckSmUtilization(
           base_info, sm_config, spatial_numel * factor, rd_thread_num)) {
+    VLOG(6) << "YUHAN!!! ReduceRegionCanVectorize return true ";
     return true;
   }
+  VLOG(6) << "YUHAN!!! ReduceRegionCanVectorize return false ";
   return false;
 }
 
@@ -550,12 +562,15 @@ TileConfigMap BuildVectorizeConfig(
     const std::shared_ptr<ScheduleConfig::BaseInfo>& base_info,
     const GroupVectorizeInfo& group_vectorize_info,
     const common::Target& target) {
+  VLOG(6) << "YUHAN!!! Inside BuildVectorizeConfig " << group_vectorize_info.meet_vectorization_condition;
   if (!group_vectorize_info.meet_vectorization_condition) return {};
-
+  VLOG(6) << "YUHAN!!! ";
   // TileFirstGeneralTactic apply Vectorize current
   // only support [S, R] and [S]
   const int64_t iters_dim = base_info->iter_space_type.size();
+  VLOG(6) << "YUHAN!!! iters_dim: " << iters_dim;
   const auto& last_dim = base_info->iter_space_type.back().first;
+  VLOG(6) << "YUHAN!!! last_dim: " << last_dim;
   if (!((iters_dim == 2 && last_dim == "R") ||
         (iters_dim == 1 && last_dim == "S"))) {
     return {};
@@ -577,20 +592,27 @@ TileConfigMap BuildVectorizeConfig(
 
   // Reduce Region
   if (last_dim == "R") {
+    VLOG(6) << "YUHAN!!! Inside Reduce Region";
     for (auto factor : vectorize_factors) {
       vectorize_factor = factor;
+      VLOG(6) << "YUHAN!!! Inside Reduce Region, vectorize_factor = " << vectorize_factor;
       const int elements_in_warp = kWarpSize * vectorize_factor;
+      VLOG(6) << "YUHAN!!! Inside Reduce Region, elements_in_warp = " << elements_in_warp;
       warp_nums = CeilDiv(reduce_numel, elements_in_warp);
+       VLOG(6) << "YUHAN!!! Inside Reduce Region, warp_nums = " << warp_nums;
       warp_nums = Trim(warp_nums, 1, 32);
+      VLOG(6) << "YUHAN!!! Inside Reduce Region, warp_nums = " << warp_nums;
       rd_thread_num = warp_nums * kWarpSize;
       if (ReduceRegionCanVectorize(
               base_info, sm_config, warp_nums, vectorize_factor)) {
+        VLOG(6) << "YUHAN!!! can_vectorize = true , vectorize_factor = " << vectorize_factor;
         can_vectorize = true;
         reduce_method = BlockReduceMethod();
         break;
       }
     }
   } else if (iters_dim == 1 && last_dim == "S") {  // Spatial Region
+    VLOG(6) << "YUHAN!!! Inside Spatial Region";
     for (auto factor : vectorize_factors) {
       vectorize_factor = factor;
       const int elements_in_warp = kWarpSize * vectorize_factor;
@@ -599,11 +621,17 @@ TileConfigMap BuildVectorizeConfig(
           CalculateWarpNums(sm_config, spatial_numel / vectorize_factor);
       warp_nums = Trim(warp_nums, 1, max_warp_nums);
       sp_thread_num = kWarpSize * warp_nums;
+      VLOG(6) << "YUHAN!!! SpatialRegionCanVectorize: " << SpatialRegionCanVectorize(base_info,
+                                    group_vectorize_info,
+                                    sm_config,
+                                    warp_nums,
+                                    vectorize_factor);
       if (SpatialRegionCanVectorize(base_info,
                                     group_vectorize_info,
                                     sm_config,
                                     warp_nums,
                                     vectorize_factor)) {
+        VLOG(6) << "YUHAN!!! can_vectorize = true";
         can_vectorize = true;
         break;
       }
@@ -620,13 +648,15 @@ TileConfigMap BuildVectorizeConfig(
   }
 
   if (!can_vectorize) {
+    VLOG(6) << "YUHAN!!! can_vectorize = false";
     return {};
   }
-
+  VLOG(6) << "YUHAN!!! base_info->can_apply_vectorize = true";
   base_info->can_apply_vectorize = true;
   int64_t sp_upper_bound = base_info->spatial_numel > 1 ? kMaxNumel : 1;
   int64_t rd_upper_bound = base_info->reduce_numel > 1 ? kMaxNumel : 1;
   BucketInfo bucket_info{1, sp_upper_bound, 1, rd_upper_bound};
+  VLOG(6) << "YUHAN!!! TileConfig tile_config " << warp_nums << " " << rd_thread_num << " " << vectorize_factor;
   TileConfig tile_config{warp_nums,
                          /* tree_reduce_num = */ rd_thread_num,
                          /* grid_reduce_num = */ 1,
@@ -730,12 +760,17 @@ TileConfigMap BuildPureStaticShapeConfig(
   if (last_dim == "R") {
     rd_thread_num = 32;
     int64_t remain_reduce_numel = CeilDiv(reduce_numel, 32);
+    VLOG(6) << "YUHAN!!! BuildPureStaticShapeConfig ";
+    VLOG(6) << "YUHAN!!! BuildPureStaticShapeConfig remain_reduce_numel=" << remain_reduce_numel
+            << ", spatial_numel=" << spatial_numel;
     if ((remain_reduce_numel <= 8 && spatial_numel > 1) ||
         (spatial_numel > remain_reduce_numel * 128)) {
       sp_thread_num = Trim(spatial_numel, 1, 8);
+      VLOG(6) << "YUHAN!!! WarpReduceMethod";
       reduce_method = WarpReduceMethod();
     } else {
       rd_thread_num *= Trim(remain_reduce_numel, 1, 32);
+      VLOG(6) << "YUHAN!!! BlockReduceMethod, rd_thread_num=" << rd_thread_num;
       reduce_method = BlockReduceMethod();
     }
   } else {  // last_dim == "S"

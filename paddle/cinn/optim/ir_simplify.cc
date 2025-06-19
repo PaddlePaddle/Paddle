@@ -455,6 +455,7 @@ struct SimplifySelect2MinMaxMutator : public ir::IRMutator<> {
               if (auto* b_value = b.As<ir::FloatImm>()) {
                 if (max_value->value == b_value->value &&
                     min_value->value <= max_value->value) {
+                  VLOG(6) << "YUHAN!!! Simplify minmax";
                   return ir::Min::Make(ir::Max::Make(a, max->b()), b);
                 }
               }
@@ -470,6 +471,7 @@ struct SimplifySelect2MinMaxMutator : public ir::IRMutator<> {
               if (auto* a_value = a.As<ir::FloatImm>()) {
                 if (min_value->value == a_value->value &&
                     min_value->value <= max_value->value) {
+                  VLOG(6) << "YUHAN!!! Simplify minmax 2";
                   return ir::Min::Make(ir::Max::Make(b, a), min->b());
                 }
               }
@@ -512,6 +514,181 @@ struct SimplifySelect2MinMaxMutator : public ir::IRMutator<> {
             *expr = optimized;
             return;
         }
+    }
+  }
+};
+
+struct SimplifyPowerCeilLog2BitOpLdexpfMutator : public ir::IRMutator<> {
+  void operator()(Expr* expr) { ir::IRMutator<>::Visit(expr, expr); }
+
+  using ir::IRMutator<>::Visit;
+  /*
+  bool pow_ceil_log2_replaced_ = false;
+  Expr bits_let_ = ir::Expr();
+
+  void Visit(const ir::ScheduleBlock* op, Expr* expr) override {
+    ir::IRMutator<>::Visit(op, expr);
+    auto* node = expr->As<ir::ScheduleBlock>();
+    if (pow_ceil_log2_replaced_) {
+      auto schedule_body_stmts = node->body.As<ir::Block>()->stmts;
+      std::vector<Expr> new_body = {bits_let_};
+      for (const auto& expr : schedule_body_stmts) 
+        new_body.push_back(expr);
+      node->body = ir::Block::Make(new_body);
+      pow_ceil_log2_replaced_ = false;
+    }
+    return;
+  }
+  */
+  void Visit(const ir::Call* op, Expr* expr) override {
+    // 1. 先递归处理所有子表达式
+    std::vector<Expr> new_args;
+    for (const auto& arg : op->read_args) {
+      Expr new_arg = arg;
+      Visit(&new_arg, &new_arg);
+      new_args.push_back(new_arg);
+    }
+
+    // 2. 匹配目标模式：pow(base, ceil(log2(x)))
+    if (op->name == "pow" && new_args.size() == 2) {
+      VLOG(6) << "YUHAN!!! Simplify pow(ceil(log2(x))) to bitop+ldexpf: Inside pow";
+      const Expr& base = new_args[0];
+      const Expr& exponent = new_args[1];
+
+      // 检查指数部分是否为 ceil(log2(x))
+      if (const ir::Call* ceil_call = exponent.As<ir::Call>()) {
+        if (ceil_call->name == "ceil" && ceil_call->read_args.size() == 1) {
+          VLOG(6) << "YUHAN!!! Simplify pow(ceil(log2(x))) to bitop+ldexpf: Inside ceil";
+          if (const ir::Call* log2_call = ceil_call->read_args[0].As<ir::Call>()) {
+            if (log2_call->name == "log2" && log2_call->read_args.size() == 1 &&
+                log2_call->read_args[0].type().is_float(32)) {
+              VLOG(6) << "YUHAN!!! Simplify pow(ceil(log2(x))) to bitop+ldexpf: Inside log2";
+              // 确认 base 是简单的 var_31[0] 形式
+              bool is_simple_base = false;
+              if (const ir::Load* load = base.As<ir::Load>()) {
+                if (load->indices.size() == 1 && 
+                    load->indices[0].As<ir::IntImm>() && 
+                    load->indices[0].As<ir::IntImm>()->value == 0) {
+                  is_simple_base = true;
+                }
+              }
+
+              if (is_simple_base) {
+                // 3. 替换为位操作 + ldexpf
+                Expr x = log2_call->read_args[0]; // 提取 log2 的参数
+
+                // 创建位运算表达式来计算 ceil(log2(x))
+                // 1. 将浮点数重新解释为32位整数
+                Expr bits = ir::Call::Make(
+                  common::Int(32),
+                  "__float_as_uint",
+                  {x},
+                  {},
+                  ir::CallType::Extern,
+                  ir::FunctionRef(),
+                  0,
+                  {}
+                );
+
+                // Var temp_bits("temp_bits", common::Int(32));
+                // bits_let_ = ir::Let::Make(temp_bits, bits);
+
+                VLOG(6) << "YUHAN!!! Simplify 1" << bits;
+                std::vector<cinn::ir::Expr> shift_r_args = {bits, ir::Expr(23)};
+                Expr shift_r = ir::Call::Make(
+                  common::Int(32),
+                  "right_shift",
+                  shift_r_args,
+                  {},
+                  ir::CallType::Extern,
+                  ir::FunctionRef(),
+                  0,
+                  {}
+                );
+                VLOG(6) << "YUHAN!!! Simplify 2" << shift_r;
+                // 2. 提取指数部分: ((bits >> 23) & 0xFF) - 127
+                std::vector<cinn::ir::Expr> bitwise_and_exp_args = {shift_r, ir::Expr(0xFF)};
+                Expr bitwise_and_exp = ir::Call::Make(
+                  common::Int(32),
+                  "bitwise_and",
+                  bitwise_and_exp_args,
+                  {},
+                  ir::CallType::Extern,
+                  ir::FunctionRef(),
+                  0,
+                  {}
+                );
+                Expr exponent_raw = ir::Sub::Make(
+                  bitwise_and_exp, ir::Expr(127)
+                );
+                VLOG(6) << "YUHAN!!! Simplify 3" << exponent_raw;
+                // 3. 检查尾数是否非零（即是否需要 exponent+1）
+                std::vector<cinn::ir::Expr> bitwise_and_tail_args = {bits, ir::Expr(0x007FFFFF)};
+                Expr bitwise_and_tail = ir::Call::Make(
+                    common::Int(32),
+                    "bitwise_and",
+                    bitwise_and_tail_args,
+                    {},
+                    ir::CallType::Extern,
+                    ir::FunctionRef(),
+                    0,
+                    {}
+                  );
+                Expr mantissa_non_zero = ir::NE::Make(
+                  bitwise_and_tail, ir::Expr(0)
+                );
+                VLOG(6) << "YUHAN!!! Simplify 4" << mantissa_non_zero;
+                // 4. 检查是否是正规数（exponent != -127）
+                Expr is_normal = ir::NE::Make(
+                  exponent_raw,
+                  ir::Expr(-127)
+                );
+                VLOG(6) << "YUHAN!!! Simplify 5" << is_normal;
+                // 5. 如果需要，exponent += 1
+                Expr exponent_final = ir::Add::Make(
+                  exponent_raw,
+                  ir::Select::Make(
+                    ir::And::Make(is_normal, mantissa_non_zero),
+                    ir::Expr(1),
+                    ir::Expr(0)
+                  )
+                );
+                VLOG(6) << "YUHAN!!! Simplify 6" << exponent_final;
+                // 6. 创建最终表达式: ldexpf(1.0f, exponent_final)
+                Expr new_expr = ir::Call::Make(
+                  op->type(),
+                  "ldexpf",
+                  {ir::Expr(1.0f), exponent_final},
+                  {},
+                  ir::CallType::Extern,
+                  ir::FunctionRef(),
+                  0,
+                  {}
+                );
+                
+                VLOG(6) << "YUHAN!!! Simplify pow(ceil(log2(x))) to bitop+ldexpf: Replacement done " << new_expr;
+                *expr = new_expr;
+                // pow_ceil_log2_replaced_ = true;
+                return;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // 非目标模式则原样重建
+    if (new_args != op->read_args) {
+      *expr = ir::Call::Make(
+        op->type(),
+        op->name,
+        new_args,
+        op->write_args,
+        op->call_type,
+        op->func,
+        op->value_index,
+        op->attrs
+      );
     }
   }
 };
@@ -629,6 +806,7 @@ void Simplify(Expr* expr) {
   SimplifyIfThenElseMutator()(expr);
   SimplifySelectMutator()(expr);
   SimplifySelect2MinMaxMutator()(expr);
+  SimplifyPowerCeilLog2BitOpLdexpfMutator()(expr);
   SimplifyNoPureMathMutator()(expr);
   VLOG(6) << "End Simplify " << *expr;
 }

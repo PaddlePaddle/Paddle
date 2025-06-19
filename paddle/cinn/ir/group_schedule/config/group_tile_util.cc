@@ -345,94 +345,18 @@ bool CheckTensorIsContinuous(
     const std::vector<Expr>& indices,
     const std::vector<ir::Var>& for_iters,
     const std::unordered_map<ir::Var, ir::Expr>& iter_var2value) {
-  VLOG(6) << "YUHAN!! Inside CheckTensorIsContinuous indices size is " << indices.size() << " " << for_iters.size();
-  if (indices.size() == for_iters.size()) {
-    for (int i = 0; i < indices.size(); ++i) {
-      ir::Expr index = indices[i];
-      std::vector<Var> replaced;
-      std::vector<Expr> candidates;
-      for (auto iter : iter_var2value) {
-        replaced.push_back(iter.first);
-        candidates.push_back(iter.second);
-      }
-      ReplaceExpr(&index, replaced, candidates);
-      index = optim::ArithSimplify(index, IndexExpr::OptLevel::kLevel3);
-      VLOG(6) << "YUHAN!! Inside CheckTensorIsContinuous index is " << index;
-      if (!index.is_var()) {
-        VLOG(6) << "YUHAN!! Inside CheckTensorIsContinuous index is not a var: " << index;
-        return false;
-      }
-      if (for_iters[i] != index.as_var_ref()) {
-        VLOG(6) << "YUHAN!! Inside CheckTensorIsContinuous for_iters[" << i << "] != index.as_var_ref(): " << for_iters[i] << " vs " << index.as_var_ref();
-        return false;
-      }
-      // ir::Var iter_var = index.as_var_ref();
-      // if (!iter_var2value.count(iter_var)) {
-      //   VLOG(6) << "YUHAN!! Inside CheckTensorIsContinuous iter_var not found in iter_var2value: " << iter_var;
-      //   return false;
-      // }
-      // ir::Expr iter_value = iter_var2value.at(iter_var);
-      // if (!iter_value.as_var()) {
-      //   VLOG(6) << "YUHAN!! Inside CheckTensorIsContinuous iter_value is not a var: " << iter_value;
-      //   return false;
-      // }
-      // if (for_iters[i] != iter_value.as_var_ref()) {
-      //   VLOG(6) << "YUHAN!! Inside CheckTensorIsContinuous for_iters[" << i << "] != iter_value.as_var_ref(): " << for_iters[i] << " vs " << iter_value.as_var_ref();
-      //   return false;
-      // }
-    }
-    return true;
-  } else {
+    VLOG(6) << "YUHAN!! Inside CheckTensorIsContinuous indices size is " << indices.size() << " " << for_iters.size();
+  
     /* After reshapeOp and Inline
     for i in range(C1):
       for j in range(C2):
         for k in range(C3):
-            B[i][j][k] = A[i][C3*j + k] + A[i][C3*j + k + C4]
+            A[i][j][k]; // one on one
+            B[i][C3*j + k + C4]; // After reshapeOp -> Linear
+            D[i][j]; // k axis is reduecd
+            E[i][C5][C6]; // need broadcast
     */
-    // 条件1：indices 必须比 for_iters 多1个（如 A[i][j*C3 +k] 对应循环 i,j,k）
-    if (indices.size() != for_iters.size() - 1) {
-      VLOG(6) << "YUHAN!! Indices/for_iters size mismatch for offset access";
-      return false;
-    }
-
-    // 检查前 N-1 维是否直接对应循环变量（如 A[i][...] 中的 i）
-    for (int i = 0; i < indices.size() - 1; ++i) {
-      ir::Expr index = indices[i];
-      std::vector<Var> replaced;
-      std::vector<Expr> candidates;
-      for (auto iter : iter_var2value) {
-        replaced.push_back(iter.first);
-        candidates.push_back(iter.second);
-      }
-      ReplaceExpr(&index, replaced, candidates);
-      index = optim::ArithSimplify(index, IndexExpr::OptLevel::kLevel3);
-      VLOG(6) << "YUHAN!! Inside CheckTensorIsContinuous index is " << index;
-      if (!index.is_var()) {
-        VLOG(6) << "YUHAN!! Inside CheckTensorIsContinuous index is not a var: " << index;
-        return false;
-      }
-      if (for_iters[i] != index.as_var_ref()) {
-        VLOG(6) << "YUHAN!! Inside CheckTensorIsContinuous for_iters[" << i << "] != index.as_var_ref(): " << for_iters[i] << " vs " << index.as_var_ref();
-        return false;
-      }
-      // ir::Var iter_var = index.as_var_ref();
-      // if (!iter_var2value.count(iter_var)) {
-      //   VLOG(6) << "YUHAN!! Inside CheckTensorIsContinuous iter_var not found in iter_var2value: " << iter_var;
-      //   return false;
-      // }
-      // ir::Expr iter_value = iter_var2value.at(iter_var);
-      // if (!iter_value.as_var()) {
-      //   VLOG(6) << "YUHAN!! Inside CheckTensorIsContinuous iter_value is not a var: " << iter_value;
-      //   return false;
-      // }
-      // if (for_iters[i] != iter_value.as_var_ref()) {
-      //   VLOG(6) << "YUHAN!! Inside CheckTensorIsContinuous for_iters[" << i << "] != iter_value.as_var_ref(): " << for_iters[i] << " vs " << iter_value.as_var_ref();
-      //   return false;
-      // }
-      
-    }
-
-    // 检查最后一维的偏移表达式（如 j*C3 + k + C4）
+    // 检查最后一维的偏移表达式
     ir::Expr offset_expr = indices.back();
     std::vector<Var> replaced;
     std::vector<Expr> candidates;
@@ -441,42 +365,55 @@ bool CheckTensorIsContinuous(
       candidates.push_back(iter.second);
     }
     ReplaceExpr(&offset_expr, replaced, candidates);
-    VLOG(6) << "YUHAN!!! IsLinearOffsetExpr simplified2 " << offset_expr;
+    VLOG(6) << "YUHAN!!! IsLinearOffsetExpr simplified2 after ReplaceExpr " << offset_expr;
     offset_expr = optim::ArithSimplify(offset_expr, IndexExpr::OptLevel::kLevel3);
     VLOG(6) << "YUHAN!!! IsLinearOffsetExpr simplified2 after ArithSimplify " << offset_expr;
-    // 检查线性组合结构
-    bool has_outer = false;    // 是否找到 outer_iter（j）
-    bool has_inner = false;    // 是否找到 inner_iter（k）
-    bool has_constant = false; // 是否找到常量项（C4）
-    int outer_coeff = 1;       // outer_iter 的系数（C3）
-    int constant_term = 0;     // 常量项的值（C4）
-    if (!IsLinearOffsetExpr(offset_expr, for_iters[for_iters.size() - 2], for_iters.back(), iter_var2value,
-                            &has_outer, &has_inner, &has_constant, &outer_coeff, &constant_term)) {
+    
+
+    ir::Expr offset_expr_plusone = offset_expr;
+    ReplaceExpr(&offset_expr_plusone, {for_iters[for_iters.size() - 1]}, {Add::Make(for_iters[for_iters.size() - 1], Expr(1))});
+
+    auto diff = optim::ArithSimplify(Sub::Make(offset_expr_plusone, offset_expr), IndexExpr::OptLevel::kLevel3);
+    if (!diff.is_constant()) {
+      VLOG(6) << "YUHAN!! Offset expr  diff is not constant: " << diff;
+      return false;
+    }
+    if (diff.get_constant() != 0 && diff.get_constant() != 1 ) {
       VLOG(6) << "YUHAN!! Offset expr is not linear: " << offset_expr;
       return false;
     }
 
     // 条件2：C3 和 C4 必须是 2/4 的整数倍
-    if (!IsAlignedConstant(outer_coeff, 2) && !IsAlignedConstant(outer_coeff) &&
-        !IsAlignedConstant(constant_term, 2) && !IsAlignedConstant(constant_term) ) {
-      VLOG(6) << "YUHAN!! Coefficient not aligned (required 2/4 multiple)";
-      return false;
-    }
+    // if (!IsAlignedConstant(outer_coeff, 2) && !IsAlignedConstant(outer_coeff) &&
+    //     !IsAlignedConstant(constant_term, 2) && !IsAlignedConstant(constant_term) ) {
+    //   VLOG(6) << "YUHAN!! Coefficient not aligned (required 2/4 multiple)";
+    //   return false;
+    // }
 
     // 条件3：检查越界（假设已知张量形状为 shape[]）
     const ir::_Var_* var_ptr = for_iters.back().get();
     ir::Expr ub = var_ptr->upper_bound;
     ir::Expr lb = var_ptr->lower_bound;
-    if (lb.get_constant() != 0 || outer_coeff != ub.get_constant()) {
-      VLOG(6) << "YUHAN!! ub.get_constant() is" << ub.get_constant() << ", C3 is" << outer_coeff;
+    ir::Expr extent_mod4 = optim::ArithSimplify(Mod::Make(Sub::Make(ub, lb), Expr(4)), IndexExpr::OptLevel::kLevel3);
+    ir::Expr extent_mod2 = optim::ArithSimplify(Mod::Make(Sub::Make(ub, lb), Expr(2)), IndexExpr::OptLevel::kLevel3);
+    if (!extent_mod4.is_constant() || extent_mod4.get_constant() != 0) {
+      VLOG(6) << "YUHAN!! Extent not aligned (required 4 multiple)";
       return false;
     }
+    if (!extent_mod2.is_constant() || extent_mod2.get_constant() != 0) {
+      VLOG(6) << "YUHAN!! Extent not aligned (required 2 multiple)";
+      return false;
+    }
+    // if (lb.get_constant() != 0 || outer_coeff != ub.get_constant()) {
+    //   VLOG(6) << "YUHAN!! ub.get_constant() is" << ub.get_constant() << ", C3 is" << outer_coeff;
+    //   return false;
+    // }
     // if (C3 * (/* C2 */) + (/* C3 */) >= inner_dim_size) {
     //   VLOG(6) << "YUHAN!! Offset access out of bounds";
     //   return false;
     // }
     return true;
-  }
+
 }
 
 std::unordered_map<std::string, std::vector<std::vector<ir::Expr>>>
@@ -557,6 +494,7 @@ bool ScheduleBlockRealizeCanVectorize(
       }
 
       if (CheckTensorIsContinuous(indices, for_iters, iter_var2value)) {
+        VLOG(6) << "YUHAN!!! Tensor " << tensor_name << " is continuous";
         continue;
       }
       VLOG(6) << "YUHAN!!! Tensor " << tensor_name << " is not continuous";
@@ -564,13 +502,13 @@ bool ScheduleBlockRealizeCanVectorize(
       return false;
     }
   }
-
+  
   if (!has_if_else_op) {
     tensor_can_vectorize->insert(tensors.begin(), tensors.end());
     broadcast_tensor_axis_info->insert(broadcast_axis_info.begin(),
                                        broadcast_axis_info.end());
   }
-
+  VLOG(6) << "YUHAN!!! Inside ScheduleBlockRealizeCanVectorize: return true " << tensors.size();
   return true;
 }
 
@@ -692,7 +630,7 @@ GroupVectorizeInfo GetGroupVectorizeInfo(
                                        tensor_broadcast_info,
                                        &args_tensor_can_vectorize,
                                        &args_tensor_broadcast_info);
-
+  VLOG(6) << "YUHAN!!! Inside GetGroupVectorizeInfo: can_vectorize = " << can_vectorize;
   return {can_vectorize,
           has_if_else_op,
           has_select_op,

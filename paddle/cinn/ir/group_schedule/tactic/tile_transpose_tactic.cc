@@ -338,6 +338,7 @@ struct IterSpaceGetter {
 };
 
 void TileTransposeTactic::Init(ScheduleContext* context, ir::IRSchedule* sch) {
+  VLOG(6) << "YUHAN!!! Inside TileTransposeTactic::Init";
   context_ = context;
   can_apply_ = false;
   if (!FLAGS_cinn_enable_tile_transpose) return;

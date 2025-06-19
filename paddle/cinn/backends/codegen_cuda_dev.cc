@@ -34,8 +34,8 @@ using cinn::common::float164;
 using cinn::common::float162;
 using cinn::common::bfloat168;
 using cinn::common::bfloat164;
-//using cinn::common::float8e4m3x2;
-//using cinn::common::float8e4m3x8;
+using cinn::common::float8e4m32;
+using cinn::common::float8e4m34;
 using cinn::common::bfloat162;
 #include <cooperative_groups.h>
 #include "cinn_cuda_runtime_source.cuh"
@@ -59,8 +59,9 @@ using cinn::common::float162;
 using cinn::common::bfloat168;
 using cinn::common::bfloat164;
 using cinn::common::bfloat162;
-using cinn::common::float8e4m3
-using cinn::common::float8e4m3x4;
+using cinn::common::float8e4m3;
+using cinn::common::float8e4m32;
+using cinn::common::float8e4m34;
 #include <cooperative_groups.h>
 #include <cinn_cuda_runtime_source_h>
 )";

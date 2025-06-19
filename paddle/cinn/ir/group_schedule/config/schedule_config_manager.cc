@@ -43,8 +43,10 @@ ScheduleConfigMap ScheduleConfigManager::ExtractConfigs(
   };
 
   if (policy_ == "default" || tile_config_data_.count(policy_) == 0) {
+    VLOG(6) << "YUHAN!!! ExtractConfigs " << policy_;
     return BuildScheduleConfig(group_info, target);
   } else if (policy_ == "hybrid") {
+    VLOG(6) << "YUHAN!!! ExtractConfigs " << policy_;
     ScheduleConfigMap default_map = BuildScheduleConfig(group_info, target);
     ScheduleConfigMap stored_map = ReadConfigs(policy_);
     stored_map.insert(default_map.begin(), default_map.end());

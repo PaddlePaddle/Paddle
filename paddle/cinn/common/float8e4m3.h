@@ -170,11 +170,11 @@ struct CINN_ALIGN(1) float8e4m3 {
 };
 
 // Vector types
-struct CINN_ALIGN(8) float8e4m3x4 {
+struct CINN_ALIGN(4) float8e4m34 {
   float8e4m3 x, y, z, w;
 };
 
-struct CINN_ALIGN(4) float8e4m3x2 {
+struct CINN_ALIGN(2) float8e4m32 {
   float8e4m3 x, y;
 };
 

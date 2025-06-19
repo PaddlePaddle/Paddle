@@ -552,7 +552,7 @@ std::vector<std::string> TileBroadcastTactic::TileVectorizeNCHW(
     sch->Split(block_id, 2, {-1, vectorize_factor});
     return {"blockIdx.y", "blockIdx.x", "threadIdx.x", ""};
   } else if (low_broadcast_size_ <= 2048) {
-    sch->Split(block_id, 2, {-1, block_size, vectorize_factor});
+    sch->Split(block_id, 2, {-1, block_size, vectorize_factor}); // YUHAN!!! TODO
     sch->Fuse(block_id, {1, 2});
     return {"blockIdx.y", "blockIdx.x", "threadIdx.x", ""};
   } else {

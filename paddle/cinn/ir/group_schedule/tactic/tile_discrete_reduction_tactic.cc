@@ -58,6 +58,7 @@ class TileDiscreteReductionTactic final : public ScheduleTactic {
 
 void TileDiscreteReductionTactic::Init(ScheduleContext* context,
                                        ir::IRSchedule* sch) {
+  VLOG(6) << "Inside TileDiscreteReductionTactic::Init";
   context_ = context;
   can_apply_ = false;
 

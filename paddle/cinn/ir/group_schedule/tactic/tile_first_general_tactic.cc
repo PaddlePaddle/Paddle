@@ -44,8 +44,9 @@ bool UseContinuousDataTile(const ScheduleConfig& config) {
 
 bool ScheduleBlockEnableVectorize(const ScheduleConfig& config,
                                   const std::string& block_id) {
+  VLOG(6) << "YUHAN!!! Inside ScheduleBlockEnableVectorize  " << config.base_info->can_apply_vectorize;
   if (!config.base_info->can_apply_vectorize) return false;
-
+  VLOG(6) << "YUHAN!!! Inside ScheduleBlockEnableVectorize " << UseContinuousDataTile(config);
   if (!UseContinuousDataTile(config)) return false;
   return true;
 }
@@ -76,6 +77,7 @@ class TileFirstGeneralTactic final : public ScheduleTactic {
 
 void TileFirstGeneralTactic::Init(ScheduleContext* context,
                                   ir::IRSchedule* sch) {
+  VLOG(6) << "YUHAN!!! Inside TileFirstGeneralTactic::Init";
   context_ = context;
   can_apply_ = false;
 
@@ -84,9 +86,11 @@ void TileFirstGeneralTactic::Init(ScheduleContext* context,
   ir::Expr root_block = ir::analyzer::GetRootSBlock(module_root);
   auto* root_node = root_block.As<ir::ScheduleBlockRealize>()
                         ->schedule_block.As<ir::ScheduleBlock>();
+  VLOG(6) << "YUHAN!!! Inside TileFirstGeneralTactic::Init root_node->attrs.count(kTileMethod) = " << root_node->attrs.count(kTileMethod);
   if (root_node->attrs.count(kTileMethod) > 0) {
     return;
   }
+  VLOG(6) << "YUHAN!!! Inside TileFirstGeneralTactic::Init can_apply_ = true;";
   can_apply_ = true;
   root_node->attrs[kTileMethod] = TacticName();
 
@@ -109,9 +113,11 @@ void TileFirstGeneralTactic::Init(ScheduleContext* context,
 
 void TileFirstGeneralTactic::Apply(ir::IRSchedule* sch,
                                    const std::string& block_id) {
+  VLOG(6) << "YUHAN!!! Inside TileFirstGeneralTactic::";
   if (!can_apply_) return;
+  VLOG(6) << "YUHAN!!! Inside TileFirstGeneralTactic:: Can apply";
   if (ir::IsReduceInitTensorName(block_id)) return;
-
+  VLOG(6) << "YUHAN!!! ScheduleBlockEnableVectorize" << ScheduleBlockEnableVectorize(context_->config, block_id);
   // loops tiling with vectorize
   if (ScheduleBlockEnableVectorize(context_->config, block_id)) {
     ApplyVectorize(sch, block_id);
@@ -388,6 +394,7 @@ void SpatialRegionVectorizeTilingSchedule(ir::IRSchedule* sch,
                                           const std::string& block_id,
                                           const int sp_thread,
                                           const int vectorize_factor) {
+  VLOG(6) << "YUHAN!!! Inside SpatialRegionVectorizeTilingSchedule";
   const auto DoBind = [&](const std::vector<ir::Expr>& loops) {
     sch->Bind(loops[0], "blockIdx.x");
     sch->Bind(loops[1], "threadIdx.x");
@@ -397,7 +404,8 @@ void SpatialRegionVectorizeTilingSchedule(ir::IRSchedule* sch,
   // The iter_value bound by axis_bind must contain the loop_var of the axis
   // to be vectorized.
   if (ContainsVectorizableAxis(sch, loops.size() - 1, block_id)) {
-    sch->Split(loops[0], std::vector<int>{-1, sp_thread, vectorize_factor});
+    VLOG(6) << "YUHAN!!! Split loops[0] " << loops[0] << "to (-1, " << sp_thread << ", " << vectorize_factor;
+    sch->Split(loops[0], std::vector<int>{-1, sp_thread, vectorize_factor}); // YUHAN!!! TODO
 
     // set vectorize schedule primitives
     loops = sch->GetLoops(block_id);
@@ -418,15 +426,19 @@ void ReduceRegionWithReduceBlockVectorizeTilingSchedule(
     const std::string& block_id,
     const int rd_thread,
     const int vectorize_factor) {
-  int threads_axis = 1;
+  VLOG(6) << "YUHAN!!! Inside ReduceRegionWithReduceBlockVectorizeTilingSchedule";
+  int threads_axis = 1; // YUHAN!!! TODO
   int vectorize_axis = 2;
   auto loops = sch->GetLoops(block_id);
   if (ContainsVectorizableAxis(sch, loops.size() - 1, block_id)) {
+    VLOG(6) << "YUHAN!!! Split loops[1] " << loops[1] << "to (" << rd_thread << ", " << vectorize_factor << ")";
     sch->Split(loops[1], {rd_thread, vectorize_factor});
+    // sch->Split(loops[0], std::vector<int>{-1, 8});
     loops = sch->GetLoops(block_id);
     sch->Vectorize(loops[vectorize_axis], vectorize_factor);
   } else {
     sch->Split(loops[1], {-1, rd_thread});
+    // sch->Split(loops[0], std::vector<int>{-1, 8});
     loops = sch->GetLoops(block_id);
   }
 
@@ -440,6 +452,7 @@ void ReduceRegionWithReduceBlockVectorizeTilingSchedule(
 
   const auto DoBind = [&](const std::vector<ir::Expr>& loops) {
     sch->Bind(loops[0], "blockIdx.x");
+    // sch->Bind(loops[1], "threadIdx.y");
     sch->Bind(loops[threads_axis], "threadIdx.x");
   };
 
@@ -454,9 +467,13 @@ void ReduceRegionWithSpatialBlockVectorizeTilingSchedule(
     const std::string& block_id,
     const int rd_thread,
     const int vectorize_factor) {
+  VLOG(6) << "YUHAN!!! Inside ReduceRegionWithSpatialBlockVectorizeTilingSchedule";
   auto loops = sch->GetLoops(block_id);
   if (ContainsVectorizableAxis(sch, loops.size() - 1, block_id)) {
+    VLOG(6) << "YUHAN!!! Inside ReduceRegionWithSpatialBlockVectorizeTilingSchedule ContainsVectorizableAxis";
+    VLOG(6) << "YUHAN!!! Split loops[1] " << loops[1] << "to (" << rd_thread << ", " << vectorize_factor << ")";
     sch->Split(loops[1], std::vector<int>{rd_thread, vectorize_factor});
+    // sch->Split(loops[0], std::vector<int>{-1, 8});
 
     // set vectorize schedule primitives
     loops = sch->GetLoops(block_id);
@@ -464,15 +481,19 @@ void ReduceRegionWithSpatialBlockVectorizeTilingSchedule(
     sch->Vectorize(loops[vectorize_axis], vectorize_factor);
     const auto DoBind = [&](const std::vector<ir::Expr>& loops) {
       sch->Bind(loops[0], "blockIdx.x");
+      sch->Bind(loops[1], "threadIdx.y");
       auto threadsIdx_x_axis = vectorize_axis - 1;
       sch->Bind(loops[threadsIdx_x_axis], "threadIdx.x");
     };
     loops = sch->GetLoops(block_id);
     DoBind(loops);
   } else {
+    VLOG(6) << "YUHAN!!! Inside ReduceRegionWithSpatialBlockVectorizeTilingSchedule not ContainsVectorizableAxis";
     sch->Split(loops[1], std::vector<int>{-1, rd_thread});
+    // sch->Split(loops[0], std::vector<int>{-1, 8});
     const auto DoBind = [&](const std::vector<ir::Expr>& loops) {
       sch->Bind(loops[0], "blockIdx.x");
+      // sch->Bind(loops[1], "threadIdx.y");
       auto threadsIdx_x_axis = loops.size() - 1;
       sch->Bind(loops[threadsIdx_x_axis], "threadIdx.x");
     };
@@ -516,6 +537,7 @@ void TileFirstGeneralTactic::ApplyVectorize(ir::IRSchedule* sch,
           << sch->GetModule().GetExprs().front();
 
   // Merge spatial axes
+  VLOG(4) << "YUHAN!!! Before MergeFlattenAxis";
   MergeFlattenAxis(sch, block_id);
   VLOG(4) << "After MergeFlattenAxis on block: [" << block_id
           << "], loop nest:\n"

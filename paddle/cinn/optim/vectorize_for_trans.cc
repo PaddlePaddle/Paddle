@@ -482,6 +482,7 @@ class VectorizeForTransMutator : public ir::IRMutator<ir::Expr *> {
         ::common::errors::InvalidArgument(
             "Expected _Tensor_ node in Load, but received nullptr."));
 
+    VLOG(5) << "YUHAN!!! Load: " << *expr << in_vectorize_ << node->is_addr_tensor() << tensor_can_vectorized_.count(tensor->name);
     if (in_vectorize_ && node->is_addr_tensor() &&
         tensor_can_vectorized_.count(tensor->name)) {
       TensorVectorized(node, &node->indices, false);
@@ -513,6 +514,7 @@ class VectorizeForTransMutator : public ir::IRMutator<ir::Expr *> {
             "Expected _Tensor_ node in Store, but received nullptr."));
     schedule_block_write_dependency_.insert(tensor->name);
 
+    VLOG(5) << "YUHAN!!! Store: " << *expr << in_vectorize_ << node->is_addr_tensor() << tensor_can_vectorized_.count(tensor->name);
     if (in_vectorize_ && node->is_addr_tensor() &&
         tensor_can_vectorized_.count(tensor->name)) {
       is_assignment_ = IsAssignment(node->value, node->type());
@@ -549,6 +551,7 @@ class VectorizeForTransMutator : public ir::IRMutator<ir::Expr *> {
 
   void Visit(const ir::For *op, ir::Expr *expr) override {
     auto *forloop = expr->As<ir::For>();
+    VLOG(5) << "YUHAN!!! op->is_vectorized() = " << op->is_vectorized();
     if (op->is_vectorized()) {
       vectorize_factor_ = forloop->vectorize_info().factor;
       loop_var_ = op->loop_var;
@@ -624,6 +627,7 @@ class VectorizeForTransMutator : public ir::IRMutator<ir::Expr *> {
     GET_CUDA_VECTOR_TYPE_NAME(type.is_float16(), "float16");
     GET_CUDA_VECTOR_TYPE_NAME(type.is_float(64), "double");
     GET_CUDA_VECTOR_TYPE_NAME(type.is_bfloat16(), "bfloat16");
+    GET_CUDA_VECTOR_TYPE_NAME(type.is_float8e4m3(), "float8e4m3");
 #undef GET_CUDA_VECTOR_TYPE_NAME
 
     // others are not implemented yet
@@ -637,6 +641,7 @@ class VectorizeForTransMutator : public ir::IRMutator<ir::Expr *> {
     scalar_tensor_without_vectorize_axis_.insert(
         teller.GetScalarTensorsWithoutVectorizeAxis().begin(),
         teller.GetScalarTensorsWithoutVectorizeAxis().end());
+    VLOG(5) << "YUHAN!!! teller.EnableVectorize() = " << teller.EnableVectorize();
     in_vectorize_ = teller.EnableVectorize();
     return;
   }
