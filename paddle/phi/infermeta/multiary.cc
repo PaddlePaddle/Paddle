@@ -6564,6 +6564,7 @@ void Fp8GemmBlockwiseInferMeta(const MetaTensor& A,
                                const MetaTensor& A_scale,
                                const MetaTensor& B,
                                const MetaTensor& B_scale,
+                               const MetaTensor& input_result,
                                const MetaTensor& bias,
                                const MetaTensor& pre_gelu,
                                const MetaTensor& workspace,
@@ -6575,7 +6576,7 @@ void Fp8GemmBlockwiseInferMeta(const MetaTensor& A,
                                int math_sm_count,
                                bool is_A_1d_scaled,
                                bool is_B_1d_scaled,
-                               MetaTensor* out,
+                               MetaTensor* output,
                                MetaTensor* pre_gelu_out,
                                MetaTensor* workspace_out) {
   PADDLE_ENFORCE_EQ(
@@ -6585,8 +6586,6 @@ void Fp8GemmBlockwiseInferMeta(const MetaTensor& A,
 
   auto A_dims = A.dims();
   auto B_dims = B.dims();
-  auto A_scale_dims = A_scale.dims();
-  auto B_scale_dims = B_scale.dims();
 
   PADDLE_ENFORCE_EQ(
       transa,
@@ -6628,15 +6627,17 @@ void Fp8GemmBlockwiseInferMeta(const MetaTensor& A,
       errors::InvalidArgument(
           "The dtype of B_scale must be float32, but got %d", B_scale.dtype()));
 
+  PADDLE_ENFORCE_EQ(input_result.dtype() == phi::DataType::FLOAT32 ||
+                        input_result.dtype() == phi::DataType::BFLOAT16,
+                    true,
+                    errors::InvalidArgument(
+                        "out_dtype must be bfloat16 or float32, but got %d",
+                        input_result.dtype()));
+
   // Validate scaling modes
   PADDLE_ENFORCE_EQ(is_A_1d_scaled || is_B_1d_scaled,
                     true,
                     errors::InvalidArgument("2Dx2D scaling is not supported"));
-
-  // Calculate matrix dimensions
-  const int64_t m = transa ? A_dims[0] : A_dims[1];
-  const int64_t k = transa ? A_dims[1] : A_dims[0];
-  const int64_t n = transb ? B_dims[1] : B_dims[0];
 
   // Validate matrix dimension compatibility
   PADDLE_ENFORCE_EQ(
@@ -6649,11 +6650,8 @@ void Fp8GemmBlockwiseInferMeta(const MetaTensor& A,
           transb ? B_dims[0] : B_dims[1]));
 
   // Set output dimensions and dtype
-  std::vector<int64_t> out_dims = {n, m};
-  out->set_dims(common::make_ddim(out_dims));
-
-  // Output can be either BFloat16 or Float32
-  out->set_dtype(phi::DataType::BFLOAT16);
+  output->set_dims(input_result.dims());
+  output->set_dtype(input_result.dtype());
   pre_gelu_out->set_dims(pre_gelu.dims());
   pre_gelu_out->set_dtype(pre_gelu.dtype());
   workspace_out->set_dims(workspace.dims());
