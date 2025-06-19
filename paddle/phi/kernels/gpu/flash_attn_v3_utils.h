@@ -63,7 +63,7 @@ inline int get_max_headdim() {
   return 0;
 }
 
-inline int round_up_headdim(int head_size) {
+inline int round_up_headdim(int64_t head_size) {
 #ifndef FLASHATTENTION_DISABLE_HDIM64
   if (head_size <= 64) {
     return 64;

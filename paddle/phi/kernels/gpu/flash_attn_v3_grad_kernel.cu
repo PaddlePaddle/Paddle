@@ -191,14 +191,15 @@ void FlashAttnV3GradBaseKernel(
 #endif
 
   auto const sizes = q.dims();
-  int const batch_size = !is_varlen_q ? sizes[0] : cu_seqlens_q.dims()[0] - 1;
-  int const seqlen_q = !is_varlen_q ? sizes[1] : max_seqlen_q_;
-  int const total_q = !is_varlen_q ? batch_size * sizes[1] : sizes[0];
-  int const num_heads = q.dims()[q.dims().size() - 2];
-  int const head_size = q.dims()[q.dims().size() - 1];
-  int const seqlen_k = !is_varlen_k ? k.dims()[1] : max_seqlen_k_;
-  int const total_k = !is_varlen_k ? batch_size * k.dims()[1] : k.dims()[0];
-  int const num_heads_k = k.dims()[k.dims().size() - 2];
+  int64_t const batch_size =
+      !is_varlen_q ? sizes[0] : cu_seqlens_q.dims()[0] - 1;
+  int64_t const seqlen_q = !is_varlen_q ? sizes[1] : max_seqlen_q_;
+  int64_t const total_q = !is_varlen_q ? batch_size * sizes[1] : sizes[0];
+  int64_t const num_heads = q.dims()[q.dims().size() - 2];
+  int64_t const head_size = q.dims()[q.dims().size() - 1];
+  int64_t const seqlen_k = !is_varlen_k ? k.dims()[1] : max_seqlen_k_;
+  int64_t const total_k = !is_varlen_k ? batch_size * k.dims()[1] : k.dims()[0];
+  int64_t const num_heads_k = k.dims()[k.dims().size() - 2];
   PADDLE_ENFORCE_EQ(
       head_size % 8,
       0,
@@ -266,12 +267,14 @@ void FlashAttnV3GradBaseKernel(
   int const kBlockN =
       arch >= 90 ? kBlockN_sm90
                  : (arch == 86 || arch == 89 ? kBlockN_sm86 : kBlockN_sm80);
-  auto round_multiple = [](int x, int m) { return (x + m - 1) / m * m; };
-  int const seqlen_q_rounded = round_multiple(seqlen_q, kBlockM);
-  int const seqlen_k_rounded = round_multiple(seqlen_k, kBlockN);
-  int const total_q_padded_rounded =
+  auto round_multiple = [](int64_t x, int64_t m) {
+    return (x + m - 1) / m * m;
+  };
+  int64_t const seqlen_q_rounded = round_multiple(seqlen_q, kBlockM);
+  int64_t const seqlen_k_rounded = round_multiple(seqlen_k, kBlockN);
+  int64_t const total_q_padded_rounded =
       round_multiple(total_q + batch_size * kBlockM, kBlockM);
-  int const total_k_padded_rounded =
+  int64_t const total_k_padded_rounded =
       round_multiple(total_k + batch_size * kBlockN, kBlockN);
 
   if (!is_varlen_q) {

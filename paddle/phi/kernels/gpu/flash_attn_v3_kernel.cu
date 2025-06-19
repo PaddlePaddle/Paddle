@@ -212,22 +212,23 @@ void FlashAttnV3BaseKernel(
   }
 
   auto const sizes = q.dims();
-  const int batch_size = !is_varlen_q ? sizes[0] : cu_seqlens_q.dims()[0] - 1;
-  int seqlen_q = !is_varlen_q ? sizes[1] : max_seqlen_q_;
-  int total_q = !is_varlen_q ? batch_size * sizes[1] : sizes[0];
-  int num_heads = q.dims()[q.dims().size() - 2];
-  int const head_size = q.dims()[q.dims().size() - 1];
-  int const head_size_v = v.dims()[v.dims().size() - 1];
-  int const max_num_pages_per_seq = !paged_KV ? 0 : page_table.dims()[1];
-  int const num_pages = !paged_KV ? 0 : k.dims()[0];
-  int const page_size = !paged_KV ? 1 : k.dims()[1];
-  int const seqlen_k =
+  const int64_t batch_size =
+      !is_varlen_q ? sizes[0] : cu_seqlens_q.dims()[0] - 1;
+  int64_t seqlen_q = !is_varlen_q ? sizes[1] : max_seqlen_q_;
+  int64_t total_q = !is_varlen_q ? batch_size * sizes[1] : sizes[0];
+  int64_t num_heads = q.dims()[q.dims().size() - 2];
+  int64_t const head_size = q.dims()[q.dims().size() - 1];
+  int64_t const head_size_v = v.dims()[v.dims().size() - 1];
+  int64_t const max_num_pages_per_seq = !paged_KV ? 0 : page_table.dims()[1];
+  int64_t const num_pages = !paged_KV ? 0 : k.dims()[0];
+  int64_t const page_size = !paged_KV ? 1 : k.dims()[1];
+  int64_t const seqlen_k =
       !is_varlen_k
           ? (!paged_KV ? k.dims()[1] : max_num_pages_per_seq * page_size)
           : max_seqlen_k_;
-  int const total_k = !is_varlen_k ? batch_size * k.dims()[1] : k.dims()[0];
-  int const num_heads_k = k.dims()[k.dims().size() - 2];
-  int const batch_size_k =
+  int64_t const total_k = !is_varlen_k ? batch_size * k.dims()[1] : k.dims()[0];
+  int64_t const num_heads_k = k.dims()[k.dims().size() - 2];
+  int64_t const batch_size_k =
       !paged_KV ? (!is_varlen_k ? k.dims()[0] : cu_seqlens_k.dims()[0] - 1)
                 : page_table.dims()[0];
   if (!kv_batch_idx_.is_initialized()) {
@@ -236,7 +237,7 @@ void FlashAttnV3BaseKernel(
                       common::errors::InvalidArgument(
                           "batch_size must be equal to batch_size_k"));
   }
-  int const max_headdim = get_max_headdim();
+  int64_t const max_headdim = get_max_headdim();
   PADDLE_ENFORCE_LE(
       head_size,
       max_headdim,
@@ -405,11 +406,13 @@ void FlashAttnV3BaseKernel(
     }
   }
 
-  auto round_multiple = [](int x, int m) { return (x + m - 1) / m * m; };
+  auto round_multiple = [](int64_t x, int64_t m) {
+    return (x + m - 1) / m * m;
+  };
   int const head_size_rounded = round_up_headdim(head_size);
   int const head_size_v_rounded = round_up_headdim(head_size_v);
-  int const seqlen_q_rounded = round_multiple(seqlen_q, 128);
-  int const seqlen_k_rounded = round_multiple(seqlen_k, 128);
+  int64_t const seqlen_q_rounded = round_multiple(seqlen_q, 128);
+  int64_t const seqlen_k_rounded = round_multiple(seqlen_k, 128);
 
   if (!is_varlen_q) {
     softmax_lse->Resize(common::make_ddim({batch_size, num_heads, seqlen_q}));
@@ -521,8 +524,8 @@ void FlashAttnV3BaseKernel(
                           "v_new tensor must have contiguous last dimension"));
     // We don't need max_seqlen_k_new, so seqlen_k_new can be whatever when
     // is_varlen_k_new
-    int seqlen_k_new = !is_varlen_k_new ? k_new.dims()[1] : 0;
-    int total_k_new =
+    int64_t seqlen_k_new = !is_varlen_k_new ? k_new.dims()[1] : 0;
+    int64_t total_k_new =
         !is_varlen_k_new ? batch_size * k_new.dims()[1] : k_new.dims()[0];
     if (!is_varlen_k_new) {
       CHECK_SHAPE(k_new, batch_size, seqlen_k_new, num_heads_k, head_size);
@@ -601,8 +604,8 @@ void FlashAttnV3BaseKernel(
                         : ((params_is_causal && !is_varlen) ||
                            (is_varlen && params_num_splits > 1));
   if (scheduler_needs_semaphore || use_dynamic_split) {
-    int metadata_size = static_cast<int>(scheduler_needs_semaphore) +
-                        static_cast<int>(use_dynamic_split) * params_b;
+    int64_t metadata_size = static_cast<int>(scheduler_needs_semaphore) +
+                            static_cast<int>(use_dynamic_split) * params_b;
     phi::dynload::fa3_fwd_params_set_skip_scheduler_metadata_computation(
         params_handle, scheduler_metadata_.is_initialized());
     if (scheduler_metadata_.is_initialized()) {
@@ -688,7 +691,7 @@ void FlashAttnV3BaseKernel(
     DenseTensor rotary_cos = rotary_cos_.get();
     CHECK_DEVICE(rotary_cos);
     CHECK_CONTIGUOUS(rotary_cos);
-    int params_rotary_dim = rotary_cos.dims()[1] * 2;
+    int64_t params_rotary_dim = rotary_cos.dims()[1] * 2;
     phi::dynload::fa3_fwd_params_set_rotary_dim(params_handle,
                                                 params_rotary_dim);
     PADDLE_ENFORCE_LE(
@@ -700,7 +703,7 @@ void FlashAttnV3BaseKernel(
         0,
         common::errors::InvalidArgument(
             "Only rotary dimensions divisible by 16 are currently supported"));
-    const int seqlen_ro = rotary_cos.dims()[0];
+    const int64_t seqlen_ro = rotary_cos.dims()[0];
     if (paged_KV) {
       PADDLE_ENFORCE_GE(
           seqlen_ro,
