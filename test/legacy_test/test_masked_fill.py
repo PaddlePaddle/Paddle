@@ -167,6 +167,7 @@ class TestMaskedFillGrad(unittest.TestCase):
                 y = x * 2
                 y.retain_grads()
                 ny = y.masked_fill(mask=mask, value=v)
+                ny.retain_grads()  # if ny grad is none, v_grad should be 0
                 loss = ny.sum()
                 loss.backward()
 

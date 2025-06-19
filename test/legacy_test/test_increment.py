@@ -76,5 +76,15 @@ class TestInplaceApiWithDataTransform(unittest.TestCase):
             self.assertEqual(a[0], 1)
 
 
+class TestIncrement_ZeroSize(unittest.TestCase):
+
+    def test_api(self):
+        with base.dygraph.guard():
+            input = paddle.randn(shape=[0]).astype('int64')
+            expected_result = np.random.random([0]).astype('int64')
+            output = paddle.tensor.math.increment(input, value=1)
+            self.assertEqual((output.numpy() == expected_result).all(), True)
+
+
 if __name__ == "__main__":
     unittest.main()
