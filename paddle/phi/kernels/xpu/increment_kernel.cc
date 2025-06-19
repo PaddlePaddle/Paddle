@@ -25,6 +25,10 @@ void IncrementKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      float value,
                      DenseTensor* out) {
+  if (x.numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   // check input
   PADDLE_ENFORCE_EQ(x.numel(),
                     1,

@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import datetime
 import hashlib
-from enum import IntEnum
 from typing import (
     TYPE_CHECKING,
     Literal,
@@ -45,26 +44,6 @@ from .fleet.layers.mpu.mp_ops import (  # noqa: F401
     _set_var_distributed,
     split,
 )
-
-
-class COMM_GROUP_TYPE(IntEnum):
-    UNDEF = -1
-    TP = 0
-    PP = 1
-    DP = 2
-    EP = 3
-    SP = 4
-    PP_EXCHANGE = 9
-    SHARDING = 10
-    SEP = 12
-    DP_SEP = 14
-    PP_MP = 15
-    SHARDING_CHECK = 11
-    DP_CHECK = 13
-    INTRA = 6
-    AG = 7
-    HG = 8
-
 
 if TYPE_CHECKING:
     _BackendList: TypeAlias = Literal["gloo", "nccl", "xccl", "bkcl", "flagcx"]
@@ -178,7 +157,6 @@ def _new_process_group_impl(
     pg_options,
     group_id=0,
     nccl_comm_init_option=0,
-    comm_group_type=-1,
 ):
     pg = None
     genv = _get_global_env()
@@ -193,7 +171,6 @@ def _new_process_group_impl(
             group_id,
             genv.pg_timeout,
             nccl_comm_init_option,
-            comm_group_type,
         )
     elif backend == "xccl":
         pg = core.ProcessGroupCustom.create(
@@ -229,7 +206,6 @@ def new_group(
     backend: Literal['nccl'] | None = None,
     timeout: datetime.timedelta = _default_timeout,
     nccl_comm_init_option: int = 0,
-    comm_group_type: int = -1,
 ) -> Group:
     """
 
@@ -285,7 +261,6 @@ def new_group(
                 pg_options=None,
                 group_id=gid,
                 nccl_comm_init_option=nccl_comm_init_option,
-                comm_group_type=comm_group_type,
             )
         else:
             rank = -1
