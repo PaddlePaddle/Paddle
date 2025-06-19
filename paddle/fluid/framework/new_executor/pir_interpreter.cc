@@ -122,6 +122,9 @@ bool UseTraceRun(const ExecutionConfig& execution_config,
           (sync_op_num == 0));
 }
 
+const int64_t PirInterpreter::cuda_graph_capture_pool_id_ =
+    phi::backends::gpu::CUDAGraph::UniqueMemoryPoolID();
+
 PirInterpreter::PirInterpreter(const phi::Place& place,
                                const std::vector<std::string>& fetch_var_names,
                                const ::pir::Block* ir_block,
@@ -884,6 +887,7 @@ void PirInterpreter::BuildInstruction() {
                                                    place_,
                                                    &op,
                                                    &cuda_graph_state_,
+                                                   cuda_graph_capture_pool_id_,
                                                    value_exe_info_.get(),
                                                    execution_config_);
         cuda_graph_instr_ptr->SetOutputHooks(pir_output_hookfuncs_);

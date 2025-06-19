@@ -295,6 +295,9 @@ class PirInterpreter : public InterpreterBaseImpl {
   // 2: in cuda graph capture
   // 3: in cuda graph replay
   uint8_t cuda_graph_state_{0};
+
+  // Currently, all cuda graphs use the same memory pool.
+  static const int64_t cuda_graph_capture_pool_id_;
 };
 
 }  // namespace framework

@@ -38,6 +38,7 @@ class CudaGraphInstruction : public InstructionBase {
                        const phi::Place& place,
                        ::pir::Operation* op,
                        uint8_t* cuda_graph_state_ref,
+                       int64_t cuda_graph_capture_pool_id,
                        ValueExecutionInfo* value_exe_info,
                        interpreter::ExecutionConfig execution_config);
 
@@ -59,6 +60,7 @@ class CudaGraphInstruction : public InstructionBase {
   const phi::Place& place_;
   pir::Operation* op_;
   uint8_t* cuda_graph_state_ref_ = nullptr;
+  int64_t cuda_graph_capture_pool_id_ = -1;
 
   std::string name_{"cuda_graph_instruction"};
 

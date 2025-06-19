@@ -14,11 +14,13 @@
 
 #include "paddle/fluid/pir/transforms/cuda_graph_extract_pass.h"
 
+#include <regex>
 #include <set>
 #include <string>
 #include <unordered_map>
 
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
+#include "paddle/common/flags.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/include/core/builder.h"
 #include "paddle/pir/include/core/builtin_op.h"
@@ -27,6 +29,8 @@
 #include "paddle/pir/include/pass/pass_registry.h"
 
 #include "paddle/fluid/pir/transforms/sub_graph_detector.h"
+
+COMMON_DECLARE_string(cuda_graph_blacklist);
 
 namespace {
 using GroupOpsVec = std::vector<pir::Operation*>;
@@ -47,8 +51,19 @@ class CudaGraphExtractPass : public pir::Pass {
     auto IsSupportCudaGraph = [](const pir::Operation& op) {
       static const std::unordered_set<std::string> UNSUPPORTED_OPS = {
           "pd_op.data", "builtin.shadow_output"};
-      return op.name() != "pd_op.attention" &&
-             UNSUPPORTED_OPS.count(op.name()) == 0;
+      static const std::unordered_set<std::string> CUDA_GRAPH_BLACKLIST =
+          [] -> std::unordered_set<std::string> {
+        if (FLAGS_cuda_graph_blacklist.empty()) return {};
+        std::regex re(",");
+        std::sregex_token_iterator it(FLAGS_cuda_graph_blacklist.begin(),
+                                      FLAGS_cuda_graph_blacklist.end(),
+                                      re,
+                                      -1);
+        std::sregex_token_iterator end;
+        return {it, end};
+      }();
+      return UNSUPPORTED_OPS.count(op.name()) == 0 &&
+             CUDA_GRAPH_BLACKLIST.count(op.name()) == 0;
     };
 
     std::vector<GroupOpsVec> groups =

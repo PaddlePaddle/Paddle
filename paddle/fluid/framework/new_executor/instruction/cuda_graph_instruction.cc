@@ -19,15 +19,11 @@
 #include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
 #include "paddle/fluid/framework/new_executor/pir_interpreter.h"
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/pir/dialect/operator/interface/infermeta.h"
-#include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
-#include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_parser.h"
-#include "paddle/phi/core/infermeta_utils.h"
-#include "paddle/phi/core/meta_tensor.h"
 #include "paddle/phi/core/platform/collective_helper.h"
 #include "paddle/phi/core/platform/cuda_graph_with_memory_pool.h"
 #include "paddle/phi/core/platform/device_context.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/core/type_defs.h"
 
 #include "paddle/pir/include/core/builtin_attribute.h"
@@ -46,12 +42,14 @@ CudaGraphInstruction::CudaGraphInstruction(
     const phi::Place& place,
     pir::Operation* op,
     uint8_t* cuda_graph_state_ref,
+    int64_t cuda_graph_capture_pool_id,
     ValueExecutionInfo* value_exec_info,
     interpreter::ExecutionConfig execution_config)
     : InstructionBase(id, place),
       op_(op),
       place_(place),
       cuda_graph_state_ref_(cuda_graph_state_ref),
+      cuda_graph_capture_pool_id_(cuda_graph_capture_pool_id),
       name_("cuda_graph_instruction"),
       input_vars_(),
       output_vars_(),
@@ -168,17 +166,16 @@ void CudaGraphInstruction::SetInputHooks(
 }
 
 void CudaGraphInstruction::Run() {
-  VLOG(0) << "CudaGraphInstruction::Run cuda_graph_state_ref_: "
-          << static_cast<int>(*cuda_graph_state_ref_);
-  if (cuda_graph_) {
+  if (cuda_graph_ && *cuda_graph_state_ref_ == 3) {
     VLOG(4) << "Start replaying cuda graph...";
     for (size_t i = 0; i < input_vars_.size(); ++i) {
       if (input_vars_[i]->IsType<phi::DenseTensor>()) {
         auto* tensor = input_vars_[i]->GetMutable<phi::DenseTensor>();
         if (tensor->data() != input_tensors_.at(i).data()) {
-          LOG(WARNING) << "The input [" << i
-                       << "] tensor addr for cuda graph is changed. pay "
-                          "attention to this.";
+          LOG(WARNING) << "The input [" << i << "] tensor addr for "
+                       << "cuda graph is changed. Pay attention to this!";
+          const auto* dev_ctx = phi::DeviceContextPool::Instance().Get(place_);
+          phi::Copy(*dev_ctx, *tensor, place_, false, &input_tensors_.at(i));
         }
       }
     }
@@ -195,7 +192,8 @@ void CudaGraphInstruction::Run() {
   }
   if (*cuda_graph_state_ref_ == 2) {
     VLOG(4) << "Start capturing cuda graph ...";
-    platform::BeginCUDAGraphCapture(place_, cudaStreamCaptureModeRelaxed);
+    platform::BeginCUDAGraphCapture(
+        place_, cudaStreamCaptureModeRelaxed, cuda_graph_capture_pool_id_);
 
     auto RecordTensorsForReplay = [&](const std::vector<Variable*>& vars) {
       std::vector<phi::DenseTensor> record_tensors;
