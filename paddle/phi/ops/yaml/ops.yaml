@@ -5801,10 +5801,10 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
   traits : paddle::dialect::ForwardOnlyTrait
 
-- op: fp8_gemm_blockwise
-  args: (Tensor A, Tensor A_scale, Tensor B, Tensor B_scale, Tensor bias, Tensor pre_gelu, Tensor workspace, bool transa, bool transb, bool grad, bool accumulate, bool use_split_accumulator, int math_sm_count, bool is_A_1d_scaled, bool is_B_1d_scaled)
-  output: Tensor (out), Tensor (pre_gelu_out), Tensor (workspace_out)
-  inplace: (pre_gelu -> pre_gelu_out), (workspace -> workspace_out)
+- op: fp8_gemm_blockwise_
+  args: (Tensor A, Tensor A_scale, Tensor B, Tensor B_scale, Tensor input_result, Tensor bias, Tensor pre_gelu, Tensor workspace, bool transa, bool transb, bool grad, bool accumulate, bool use_split_accumulator, int math_sm_count, bool is_A_1d_scaled, bool is_B_1d_scaled)
+  output: Tensor (output), Tensor (pre_gelu_out), Tensor (workspace_out)
+  inplace: (input_result -> output), (pre_gelu -> pre_gelu_out), (workspace -> workspace_out)
   infer_meta:
     func: Fp8GemmBlockwiseInferMeta
   kernel:

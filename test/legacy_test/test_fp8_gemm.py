@@ -31,7 +31,7 @@ class TestFP8GemmBlockwise(unittest.TestCase):
         """Calculate Root Mean Square Error"""
         return paddle.sqrt(paddle.mean((y_pred - y_true) ** 2))
 
-    def pyop_ref_1x128_128x128(self, a, b, a_descales, b_descales):
+    def pyop_ref_1x128_128x128(self, a, b, a_descales, b_descales, C):
         """Reference implementation for 1x128 @ 128x128 pattern"""
         self.assertEqual(a.dtype, paddle.float8_e4m3fn)
         self.assertEqual(b.dtype, paddle.float8_e4m3fn)
@@ -64,10 +64,10 @@ class TestFP8GemmBlockwise(unittest.TestCase):
                         * a_descales[k // 128, i]
                         * b_descales[j // 128, k // 128]
                     )
-
+        out = out + C.t()
         return out
 
-    def pyop_ref_128x128_1x128(self, a, b, a_descales, b_descales):
+    def pyop_ref_128x128_1x128(self, a, b, a_descales, b_descales, C):
         """Reference implementation for 128x128 @ 1x128 pattern"""
         self.assertEqual(a.dtype, paddle.float8_e4m3fn)
         self.assertEqual(b.dtype, paddle.float8_e4m3fn)
@@ -100,6 +100,8 @@ class TestFP8GemmBlockwise(unittest.TestCase):
                         * a_descales[i // 128, k // 128]
                         * b_descales[k // 128, j]
                     )
+
+        out = out + C
 
         return out
 
@@ -171,13 +173,22 @@ class TestFP8GemmBlockwise(unittest.TestCase):
 
         gold_matmul_result = A @ B.t()
 
+        C = paddle.ones([N, M], dtype=paddle.bfloat16)
         # Test reference implementation
-        pyop_result = self.pyop_ref_1x128_128x128(qA, qB, sA, sB)
+        pyop_result = self.pyop_ref_1x128_128x128(qA, qB, sA, sB, C)
         ref_rmse = self.cal_rmse(pyop_result, gold_matmul_result)
 
         # Test fp8_gemm_blockwise
         fp8_gemm_result = fp8.fp8_gemm_blockwise(
-            qB, sB, qA, sA, out_dtype, is_a_1d_scaled=False, is_b_1d_scaled=True
+            qB,
+            sB,
+            qA,
+            sA,
+            out_dtype,
+            C,
+            accumulate=True,
+            is_a_1d_scaled=False,
+            is_b_1d_scaled=True,
         )
         fp8_gemm_result = fp8_gemm_result.t()
 
@@ -218,12 +229,21 @@ class TestFP8GemmBlockwise(unittest.TestCase):
 
         gold_matmul_result = A @ B.t()
 
+        C = paddle.ones([M, N], dtype=paddle.bfloat16)
         # Test reference implementation
-        pyop_result = self.pyop_ref_128x128_1x128(qA, qB, sA, sB)
+        pyop_result = self.pyop_ref_128x128_1x128(qA, qB, sA, sB, C)
 
         # Test fp8_gemm_blockwise
         fp8_gemm_result = fp8.fp8_gemm_blockwise(
-            qA, sA, qB, sB, out_dtype, is_a_1d_scaled=False, is_b_1d_scaled=True
+            qA,
+            sA,
+            qB,
+            sB,
+            out_dtype,
+            C,
+            accumulate=True,
+            is_a_1d_scaled=False,
+            is_b_1d_scaled=True,
         )
 
         rmse = self.cal_rmse(fp8_gemm_result, pyop_result)

@@ -312,6 +312,7 @@ void Fp8GemmBlockwiseKernel(const Context& dev_ctx,
                             const DenseTensor& A_scale,
                             const DenseTensor& B,
                             const DenseTensor& B_scale,
+                            const DenseTensor& input_result,
                             const DenseTensor& bias,
                             const DenseTensor& pre_gelu,
                             const DenseTensor& workspace,
@@ -323,27 +324,19 @@ void Fp8GemmBlockwiseKernel(const Context& dev_ctx,
                             int math_sm_count,
                             bool is_A_1d_scaled,
                             bool is_B_1d_scaled,
-                            DenseTensor* out,
+                            DenseTensor* output,
                             DenseTensor* pre_gelu_out,
                             DenseTensor* workspace_out) {
-  PADDLE_ENFORCE_EQ(
-      use_split_accumulator,
-      true,
-      phi::errors::InvalidArgument("Only split accumulator is supported"));
+  // phi::Copy(dev_ctx, pre_gelu, dev_ctx.GetPlace(), false, pre_gelu_out);
+  // phi::Copy(dev_ctx, workspace, dev_ctx.GetPlace(), false, workspace_out);
+  // phi::Copy(dev_ctx, out, dev_ctx.GetPlace(), false, output);
+  // DenseTensor& mutable_out = const_cast<DenseTensor&>(out);
 
-  // Allocate output tensor
-  dev_ctx.template Alloc<phi::dtype::bfloat16>(out);
-
-  // Copy pre_gelu and workspace to output tensors
-  phi::Copy(dev_ctx, pre_gelu, dev_ctx.GetPlace(), false, pre_gelu_out);
-  phi::Copy(dev_ctx, workspace, dev_ctx.GetPlace(), false, workspace_out);
-
-  // Call the actual GEMM implementation
   cublas_gemm_blockwise_impl(A,
                              A_scale,
                              B,
                              B_scale,
-                             out,
+                             output,
                              bias,
                              pre_gelu_out,
                              transa,
@@ -356,6 +349,8 @@ void Fp8GemmBlockwiseKernel(const Context& dev_ctx,
                              is_A_1d_scaled,
                              is_B_1d_scaled,
                              dev_ctx.stream());
+
+  // phi::Copy(dev_ctx, mutable_out, dev_ctx.GetPlace(), false, output);
 }
 
 }  // namespace phi
@@ -368,12 +363,10 @@ PD_REGISTER_KERNEL(fp8_gemm_blockwise,
                    phi::dtype::bfloat16,
                    phi::dtype::float8_e4m3fn,
                    uint8_t,
-                   float) {
-  kernel->InputAt(0).SetDataType(phi::DataType::FLOAT8_E4M3FN);  // A (FP8)
-  kernel->InputAt(1).SetDataType(phi::DataType::FLOAT32);        // A_scale
-  kernel->InputAt(2).SetDataType(phi::DataType::FLOAT8_E4M3FN);  // B (FP8)
-  kernel->InputAt(3).SetDataType(phi::DataType::FLOAT32);        // B_scale
-  kernel->InputAt(4).SetDataType(phi::DataType::FLOAT32);        // bias
-  kernel->InputAt(5).SetDataType(phi::DataType::FLOAT32);        // pre_gelu
-  kernel->InputAt(6).SetDataType(phi::DataType::UINT8);          // workspace
+                   float,
+                   double) {
+  // kernel->InputAt(0).SetDataType(phi::DataType::FLOAT8_E4M3FN);  // A (FP8)
+  // kernel->InputAt(1).SetDataType(phi::DataType::FLOAT32);        // A_scale
+  // kernel->InputAt(2).SetDataType(phi::DataType::FLOAT8_E4M3FN);  // B (FP8)
+  // kernel->InputAt(3).SetDataType(phi::DataType::FLOAT32);        // B_scale
 }
