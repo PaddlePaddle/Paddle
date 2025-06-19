@@ -197,8 +197,6 @@ jobs:
           PY_VERSION: "3.10"
           XPU_VISIBLE_DEVICES: ${{ env.CUDA_VISIBLE_DEVICES }}
           CUDA_VISIBLE_DEVICES: ${{ env.CUDA_VISIBLE_DEVICES }}
-          CUDA_VERSION:
-          CUDNN_VERSION:
           WITH_XPU_BKCL: "ON"
           CACHE_DIR: /root/.cache
           CCACHE_DIR: /root/.ccache
@@ -261,7 +259,6 @@ jobs:
       - name: Run test
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
-          sleep 3d
           bash ${ci_scripts}/kunlun_test.sh
           '
 
