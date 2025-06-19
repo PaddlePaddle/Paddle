@@ -18,6 +18,7 @@
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/funcs/functors.h"
 #include "paddle/phi/kernels/funcs/math_cuda_utils.h"
@@ -147,6 +148,11 @@ void HistogramKernel(const Context& dev_ctx,
   const T* input_data = input.data<T>();
   const int64_t input_numel = input.numel();
   auto weight_data = weight.get_ptr() ? weight.get_ptr()->data<T>() : nullptr;
+  if (input_numel == 0) {
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(output->dims())), 0, output);
+    return;
+  }
 
   if (input_data == nullptr) return;
 

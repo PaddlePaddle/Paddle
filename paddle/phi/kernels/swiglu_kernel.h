@@ -16,7 +16,7 @@
 
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/device_context.h"
-
+#include "paddle/phi/kernels/full_kernel.h"
 namespace phi {
 
 template <typename T, typename Context>
@@ -28,10 +28,12 @@ void SwiGLUKernel(const Context &dev_ctx,
                   const DenseTensor &x,
                   const paddle::optional<DenseTensor> &y,
                   DenseTensor *z) {
-  if (x.numel() == 0) {
+  // If either x or y has a numel 0, the numel of z is 0.
+  if (z->numel() == 0) {
     dev_ctx.template Alloc<T>(z);
     return;
   }
+
   const auto *x_ptr = x.data<T>();
   auto *z_ptr = dev_ctx.template Alloc<T>(z);
   const auto &dims = x.dims();

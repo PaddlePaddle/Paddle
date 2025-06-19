@@ -2800,7 +2800,8 @@ def assign(x: TensorLike, output: paddle.Tensor | None = None) -> paddle.Tensor:
         )
         value_name = "values"
         values = input.ravel().tolist()
-        if input.size > 1024 * 1024:
+        max_element_num = 17179869184  # 17179869184 = 2**34
+        if input.size > max_element_num:
             from paddle.jit.sot.utils.exceptions import SotExtraInfo
 
             sot_extra_info = SotExtraInfo(need_breakgraph=True)

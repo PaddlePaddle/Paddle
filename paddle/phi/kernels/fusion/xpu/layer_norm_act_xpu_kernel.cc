@@ -20,7 +20,7 @@ namespace phi {
 namespace fusion {
 
 template <typename T, typename Context>
-void LayerNormActXPUKernel(const Context& ctx,
+void LayerNormActXPUKernel(const Context& dev_ctx,
                            const DenseTensor& x,
                            const paddle::optional<DenseTensor>& scale,
                            const paddle::optional<DenseTensor>& bias,
@@ -36,7 +36,7 @@ void LayerNormActXPUKernel(const Context& ctx,
   int right = static_cast<int>(matrix_dim[1]);
   const auto* x_data = x.data<T>();
 
-  xpu::ctx_guard RAII_GUARD(ctx.x_context());
+  xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
 
   // scale
   const float* scale_data_fp32 = nullptr;
@@ -48,7 +48,7 @@ void LayerNormActXPUKernel(const Context& ctx,
     float* scale_data_temp =
         RAII_GUARD.alloc_l3_or_gm<float>(scale_ptr->numel());
     int r = xpu::cast<XPUType, float>(
-        ctx.x_context(),
+        dev_ctx.x_context(),
         reinterpret_cast<const XPUType*>(scale_ptr->data<T>()),
         scale_data_temp,
         scale_ptr->numel());
@@ -68,7 +68,7 @@ void LayerNormActXPUKernel(const Context& ctx,
              phi::CppTypeToDataType<phi::dtype::float16>::Type()) {
     float* bias_data_temp = RAII_GUARD.alloc_l3_or_gm<float>(bias_ptr->numel());
     int r = xpu::cast<XPUType, float>(
-        ctx.x_context(),
+        dev_ctx.x_context(),
         reinterpret_cast<const XPUType*>(bias_ptr->data<T>()),
         bias_data_temp,
         bias_ptr->numel());
@@ -79,7 +79,7 @@ void LayerNormActXPUKernel(const Context& ctx,
     bias_data_fp32 = bias_ptr->data<float>();
   }
 
-  auto* out_data = ctx.template Alloc<T>(y);
+  auto* out_data = dev_ctx.template Alloc<T>(y);
 
   xpu::Activation_t act(static_cast<xpu::Activation_t::act_enum>(act_type));
   if (act_type == xpu::Activation_t::LEAKY_RELU) {
@@ -89,7 +89,7 @@ void LayerNormActXPUKernel(const Context& ctx,
   }
 #ifdef PADDLE_WITH_XPU_PLUGIN
   int r = xpu::plugin::layer_norm_act_fusion(
-      ctx.x_context(),
+      dev_ctx.x_context(),
       reinterpret_cast<const XPUType*>(x_data),
       reinterpret_cast<XPUType*>(out_data),
       left,
@@ -100,7 +100,7 @@ void LayerNormActXPUKernel(const Context& ctx,
       act);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "layer_norm_act_fusion");
 #else
-  int r = xpu::layer_norm(ctx.x_context(),
+  int r = xpu::layer_norm(dev_ctx.x_context(),
                           reinterpret_cast<const XPUType*>(x_data),
                           reinterpret_cast<XPUType*>(out_data),
                           left,
@@ -111,7 +111,7 @@ void LayerNormActXPUKernel(const Context& ctx,
                           nullptr,
                           nullptr);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "layer_norm");
-  r = xpu::leaky_relu(ctx.x_context(),
+  r = xpu::leaky_relu(dev_ctx.x_context(),
                       reinterpret_cast<XPUType*>(out_data),
                       reinterpret_cast<XPUType*>(out_data),
                       left * right,

@@ -135,7 +135,7 @@ class TransformOptions:
         if inspect.ismethod(fn):
             fn = fn.__func__
 
-        if inspect.isfunction(fn):
+        if inspect.isfunction(fn) or issubclass(fn, paddle.nn.Layer):
             setattr(fn, TransformOptions.TRANSFORM_OPTIONS_ATTR_NAME, self)
         else:
             warnings.warn(
@@ -816,6 +816,12 @@ def cinn_is_available():
 def cse_is_enabled():
     return paddle.get_flags(["FLAGS_enable_cse_in_dy2st"])[
         "FLAGS_enable_cse_in_dy2st"
+    ]
+
+
+def use_specialized_device():
+    return paddle.get_flags(["FLAGS_specialize_device_in_dy2st"])[
+        "FLAGS_specialize_device_in_dy2st"
     ]
 
 
