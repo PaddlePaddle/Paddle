@@ -128,7 +128,6 @@ static std::vector<paddle::Tensor> filter_unused_input_var_in_backward(
 
 static std::vector<paddle::Tensor> pir_filter_unused_input_var_in_backward(
     const std::vector<paddle::Tensor>& x,
-    const std::string x_key_name,
     const paddle::framework::AttributeMap& attrs) {
   const auto& names =
       PADDLE_GET_CONST(std::vector<std::string>, attrs.at("bx_names"));
