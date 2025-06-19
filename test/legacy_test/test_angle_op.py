@@ -148,6 +148,7 @@ class TestAngleAPI(unittest.TestCase):
     def setUp(self):
         self.x = np.random.randn(2, 3) + 1j * np.random.randn(2, 3)
         self.out = np.angle(self.x)
+        self.dtype = "complex128"
 
     def test_dygraph(self):
         with dygraph.guard():
@@ -158,13 +159,20 @@ class TestAngleAPI(unittest.TestCase):
     def test_static(self):
         mp, sp = static.Program(), static.Program()
         with static.program_guard(mp, sp):
-            x = static.data("x", shape=[2, 3], dtype="complex128")
+            x = static.data("x", shape=[2, 3], dtype=self.dtype)
             out = paddle.angle(x)
 
         exe = static.Executor()
         exe.run(sp)
         [out_np] = exe.run(mp, feed={"x": self.x}, fetch_list=[out])
         np.testing.assert_allclose(self.out, out_np, rtol=1e-05)
+
+
+class TestAngleAPIWithNan(TestAngleAPI):
+    def setUp(self):
+        self.x = np.array([np.nan, -1, 1], dtype=np.float64)
+        self.out = np.angle(self.x)
+        self.dtype = "float64"
 
 
 class TestZeroSize(unittest.TestCase):

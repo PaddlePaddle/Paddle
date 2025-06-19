@@ -36,6 +36,7 @@ from paddle.base.dygraph.base import (
     _DecoratorContextManager,
     in_sot_simulation_mode,
 )
+from paddle.jit.dy2static.utils import TransformOptions
 
 from .... import psdb
 from ....profiler import EventGuard
@@ -861,7 +862,11 @@ class PaddleLayerVariable(LayerVariable):
                 or is_not_supported_paddle_layer(type(value))
             ):
                 return None
-            if value.__module__.startswith("paddle.nn."):
+            if value.__module__.startswith("paddle.nn.") or (
+                not TransformOptions.check_fn_need_transform(
+                    value.__class__, TransformOptions.ToStaticMode.SOT
+                )
+            ):
                 return PaddleLayerVariable(value, graph, tracker)
         return None
 

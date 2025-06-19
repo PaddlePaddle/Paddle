@@ -2138,11 +2138,13 @@ void GatherTreeMeta(const MetaTensor& ids,
                     MetaTensor* out) {
   auto ids_dims = ids.dims();
   auto parents_dims = parents.dims();
-  PADDLE_ENFORCE_EQ(ids_dims == parents_dims,
-                    true,
-                    common::errors::InvalidArgument(
-                        "The shape of Input(Parents) must be same with the "
-                        "shape of Input(Ids)."));
+  if (common::product(ids_dims) != 0) {
+    PADDLE_ENFORCE_EQ(ids_dims == parents_dims,
+                      true,
+                      common::errors::InvalidArgument(
+                          "The shape of Input(Parents) must be same with the "
+                          "shape of Input(Ids)."));
+  }
   out->set_dims(ids_dims);
   out->set_dtype(ids.dtype());
 }
@@ -2546,6 +2548,7 @@ void IndexElementwisePutInferMeta(const MetaTensor& x,
                                   const std::vector<int64_t>& input_strides,
                                   const std::vector<int64_t>& index_dims,
                                   const std::vector<int64_t>& index_strides,
+                                  const int64_t slice_offset,
                                   MetaTensor* out) {
   out->set_dims(x.dims());
   out->set_dtype(x.dtype());

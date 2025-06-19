@@ -191,7 +191,7 @@ void SetValueImpl(const Context& dev_ctx,
   // If do broadcasting on Tensor with shape [3] and [3], the result's shape
   // is [3], which is right.
 
-  CheckIsDimsMatch(slice_dims_for_assign, new_value_dims);
+  phi::funcs::CheckIsDimsMatch(slice_dims_for_assign, new_value_dims);
 
   // do broadcasting
   auto f = [](xpu::Context* xpu_ctx,

@@ -24,32 +24,33 @@ if TYPE_CHECKING:
 
 
 def moe_permute(
-    X: Tensor,
-    XScale: Tensor | None,
+    hidden_states: Tensor,
+    scale: Tensor | None,
     expert_routemap_topk: Tensor,
     expert_prob_topk: Tensor,
-    topk: int,
     num_experts: int,
     tokens_per_expert: list,
-    padding_multiplex: int,
+    padding_alignment: int,
     name: str | None = None,
-):
+) -> tuple[Tensor, Tensor, Tensor, Tensor]:
     if in_dynamic_or_pir_mode():
-        X_unzipped, zipped_experwise, token_prob_unzipped, XScale_unzipped = (
-            _C_ops.moe_permute(
-                X,
-                XScale,
-                expert_routemap_topk,
-                expert_prob_topk,
-                topk,
-                num_experts,
-                tokens_per_expert,
-                padding_multiplex,
-            )
+        (
+            hidden_states_unzipped,
+            zipped_expertwise_rowmap,
+            token_prob_unzipped,
+            scale_unzipped,
+        ) = _C_ops.moe_permute(
+            hidden_states,
+            scale,
+            expert_routemap_topk,
+            expert_prob_topk,
+            num_experts,
+            tokens_per_expert,
+            padding_alignment,
         )
         return (
-            X_unzipped,
-            zipped_experwise,
+            hidden_states_unzipped,
+            zipped_expertwise_rowmap,
             token_prob_unzipped,
-            XScale_unzipped,
+            scale_unzipped,
         )
