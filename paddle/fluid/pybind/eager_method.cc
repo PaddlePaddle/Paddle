@@ -1669,6 +1669,7 @@ static PyObject* tensor__getitem_dygraph(TensorObject* self,
         break;
       }
     }
+
     if (transed_tensor.is_gpu() && !is_combined_bool && !has_empty_index) {
       transed_index = expand_outplace(transed_index);
 
