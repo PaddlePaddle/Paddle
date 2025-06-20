@@ -70,6 +70,18 @@ op_patches:
         default :
           - type: pir::Int64Attribute
           - type: pir::Int64Attribute
+      - action : add_attr
+        object : op4_attr2
+        type : paddle::dialect::DataTypeAttribute
+        default : Undefined(ALL_DTYPE)
+      - action : add_attr
+        object : op4_attr3
+        type : paddle::dialect::PlaceAttribute
+        default : [0,0,""]
+      - action : add_attr
+        object : op4_attr4
+        type : paddle::dialect::IntArrayAttribute
+        default : [2, 2, 2]
 
 attr_patches:
   - attr_name : pir::FloatAttribute

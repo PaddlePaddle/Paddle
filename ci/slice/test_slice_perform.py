@@ -23,8 +23,30 @@ import paddle
 
 cuda_device_num = 0
 
-torch_type = {"float32": torch.float32, "float16": torch.float16}
-paddle_type = {"float32": paddle.float32, "float16": paddle.float16}
+torch_type = {
+    "float32": torch.float32,
+    "float16": torch.float16,
+    "int32": torch.int32,
+}
+paddle_type = {
+    "float32": paddle.float32,
+    "float16": paddle.float16,
+    "int32": paddle.int32,
+}
+
+
+def get_same_shape(shape1, shape2):
+    size1 = len(shape1)
+    size2 = len(shape2)
+    new_shape = []
+    i = 1
+    while i <= min(size1, size2):
+        if shape1[size1 - i] == shape2[size2 - i]:
+            new_shape.append(shape1[size1 - i])
+            i += 1
+        else:
+            break
+    return new_shape[::-1]
 
 
 def convert_numpy(frame_name, data, cuda_device_num=0):
@@ -52,6 +74,7 @@ def set_item_bench(
     cuda_device_num=0,
     dtype="float32",
     is_tensor=False,
+    value_shape=[1],
 ):
 
     x = paddle.to_tensor(
@@ -76,9 +99,9 @@ def set_item_bench(
         index_p = index
 
     if is_tensor:
-        x_value = paddle.full(x[index_p].shape, 0.5, paddle_type[dtype])
+        x_value = paddle.full(value_shape, 5, paddle_type[dtype])
     else:
-        x_value = 0.5
+        x_value = 5
 
     paddle.device.synchronize()
     # warmup
@@ -117,10 +140,13 @@ def set_item_bench(
 
     if is_tensor:
         y_value = torch.full(
-            y[index_t].shape, 0.5, device=f"cuda:{cuda_device_num}"
+            value_shape,
+            5,
+            device=f"cuda:{cuda_device_num}",
+            dtype=torch_type[dtype],
         )
     else:
-        y_value = 0.5
+        y_value = 5
 
     torch.cuda.synchronize()
     # warmup
@@ -270,6 +296,7 @@ def set_item_grad_bench(
     cuda_device_num=0,
     dtype="float32",
     is_tensor=False,
+    value_shape=[1],
 ):
     x = paddle.to_tensor(
         n, dtype=paddle_type[dtype], place=paddle.CUDAPlace(cuda_device_num)
@@ -297,9 +324,9 @@ def set_item_grad_bench(
         index_p = index
 
     if is_tensor:
-        x_value = paddle.full(x[index_p].shape, 0.5, paddle_type[dtype])
+        x_value = paddle.full(value_shape, 5, paddle_type[dtype])
     else:
-        x_value = 0.5
+        x_value = 5
 
     paddle.device.synchronize()
     # forward
@@ -346,13 +373,14 @@ def set_item_grad_bench(
         index_t = index
     if is_tensor:
         y_value = torch.full(
-            y[index_t].shape,
-            0.5,
+            value_shape,
+            5,
             device=f"cuda:{cuda_device_num}",
+            dtype=torch_type[dtype],
         )
         y_value.stop_gradient = False
     else:
-        y_value = 0.5
+        y_value = 5.0 if dtype == "float32" or dtype == "float16" else 5
 
     torch.cuda.synchronize()
     # forward
@@ -524,11 +552,13 @@ def test_dtype(
     dtype="float32",
     is_tensor=False,
 ):
+
     print("========== test ", dtype, " is_tensor ", is_tensor, "=============")
     get_item_score = []
     get_item_grad_score = []
     set_item_score = []
     set_item_grad_score = []
+
     for key in first_index_dict:
         index_list = first_index_dict[key]
         print(key, " case :")
@@ -557,7 +587,18 @@ def test_dtype(
                     cuda_device_num=cuda_device_num,
                     dtype=dtype,
                 )
+            value_shape = [1]
+            if key == "combined":
+                if i == 2:
+                    value_shape = [1]
+                elif i == 3:
+                    value_shape = [108, 1, 1, 1]
+                else:
+                    value_shape = n[index].shape
 
+            else:
+                value_shape = get_same_shape(n.shape, n[index].shape)
+            print("value_shape = ", value_shape)
             set_item_bench(
                 n,
                 index,
@@ -567,6 +608,7 @@ def test_dtype(
                 cuda_device_num=cuda_device_num,
                 dtype=dtype,
                 is_tensor=is_tensor,
+                value_shape=value_shape,
             )
 
             if key == "combined" and i == 3:
@@ -580,6 +622,7 @@ def test_dtype(
                 cuda_device_num=cuda_device_num,
                 dtype=dtype,
                 is_tensor=is_tensor,
+                value_shape=value_shape,
             )
             print(" ")
 
@@ -588,7 +631,9 @@ def test_dtype(
         print(key, " case :")
         n = np.random.randn(108, 64, 12288, 3).astype(dtype)
         print("x.shape = ", n.shape)
+        i = 0
         for index in index_list:
+            i += 1
             print("index = ", str(index))
             if not is_tensor:
                 get_item_bench(
@@ -609,6 +654,15 @@ def test_dtype(
                     cuda_device_num=cuda_device_num,
                     dtype=dtype,
                 )
+            value_shape = [1]
+            if key == "combined":
+                if i == 2:
+                    value_shape = [108, 2, 12288]
+                else:
+                    value_shape = n[index].shape
+            else:
+                value_shape = get_same_shape(n.shape, n[index].shape)
+            print("value_shape = ", value_shape)
 
             set_item_bench(
                 n,
@@ -619,7 +673,9 @@ def test_dtype(
                 cuda_device_num=cuda_device_num,
                 dtype=dtype,
                 is_tensor=is_tensor,
+                value_shape=value_shape,
             )
+
             set_item_grad_bench(
                 n,
                 index,
@@ -631,6 +687,7 @@ def test_dtype(
                 is_tensor=is_tensor,
             )
             print(" ")
+
     score_lists = [
         get_item_score,
         set_item_score,
@@ -796,7 +853,7 @@ def main():
         ]
     }
 
-    n_repeat = 80
+    n_repeat = 50
     n_warmup = 5
 
     print(" n_repeat = ", n_repeat)
@@ -807,16 +864,16 @@ def main():
     )
     print()
     test_dtype(
+        first_index_dict, second_index_dict, n_repeat, n_warmup, dtype="float16"
+    )
+    print()
+    test_dtype(
         first_index_dict,
         second_index_dict,
         n_repeat,
         n_warmup,
         dtype="float32",
         is_tensor=True,
-    )
-    print()
-    test_dtype(
-        first_index_dict, second_index_dict, n_repeat, n_warmup, dtype="float16"
     )
 
 

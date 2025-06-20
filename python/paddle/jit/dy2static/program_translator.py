@@ -71,6 +71,7 @@ from .utils import (
     make_hashable,
     prim_or_cinn_is_enabled,
     type_name,
+    use_specialized_device,
 )
 
 if TYPE_CHECKING:
@@ -765,7 +766,8 @@ class SymbolicStaticFunction(StaticFunction):
         from ..sot import symbolic_translate
 
         args, kwargs = self._function_spec.unified_args_and_kwargs(args, kwargs)
-        cuda_pinned_tensors_move_to_excepted_place(args)
+        if not use_specialized_device():
+            cuda_pinned_tensors_move_to_excepted_place(args)
 
         (
             input_args_with_spec,

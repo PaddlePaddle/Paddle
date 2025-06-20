@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import atexit
 import builtins
+import dataclasses
 import functools
 import importlib.util
 import inspect
@@ -135,7 +136,7 @@ class TransformOptions:
         if inspect.ismethod(fn):
             fn = fn.__func__
 
-        if inspect.isfunction(fn):
+        if inspect.isfunction(fn) or issubclass(fn, paddle.nn.Layer):
             setattr(fn, TransformOptions.TRANSFORM_OPTIONS_ATTR_NAME, self)
         else:
             warnings.warn(
@@ -287,11 +288,28 @@ def type_name(v):
     return type(v).__name__
 
 
-def _is_dataclass_instance(obj):
+def is_dataclass_instance(obj):
     """Check if the object is an instance of a dataclass.
     Refer to https://docs.python.org/3/library/dataclasses.html#dataclasses.is_dataclass
     """
     return is_dataclass(obj) and not isinstance(obj, type)
+
+
+def is_dataclass_type(obj):
+    return is_dataclass(obj) and isinstance(obj, type)
+
+
+def dataclass_as_dict(obj):
+    return {f.name: getattr(obj, f.name) for f in dataclasses.fields(obj)}
+
+
+def dataclass_from_dict(dataclass_type: type[Any], data: dict[str, Any]):
+    # NOTE(SigureMo): Create dataclass without __post_init__,
+    # because __post_init__ has been run in simulation
+    instance = dataclass_type.__new__(dataclass_type, **data)
+    for fd in dataclasses.fields(dataclass_type):
+        setattr(instance, fd.name, data[fd.name])
+    return instance
 
 
 def make_hashable(x, error_msg=None):
@@ -303,7 +321,7 @@ def make_hashable(x, error_msg=None):
     if isinstance(x, (tuple, list, set)):
         return tuple(map(make_hashable, x))
 
-    if _is_dataclass_instance(x):
+    if is_dataclass_instance(x):
         return (
             type(x).__name__,
             *map(
@@ -816,6 +834,12 @@ def cinn_is_available():
 def cse_is_enabled():
     return paddle.get_flags(["FLAGS_enable_cse_in_dy2st"])[
         "FLAGS_enable_cse_in_dy2st"
+    ]
+
+
+def use_specialized_device():
+    return paddle.get_flags(["FLAGS_specialize_device_in_dy2st"])[
+        "FLAGS_specialize_device_in_dy2st"
     ]
 
 

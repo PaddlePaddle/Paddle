@@ -119,9 +119,9 @@ class SplitFunctor<XPUContext, T> {
       context.template Alloc<T>(&tmp_data);
     }
 
-    // int split(Context* ctx, const T* x, const std::vector<T*>& y_list, const
-    // std::vector<int64_t>& xshape, const std::vector<int64_t>& split_list,
-    // int64_t axis);
+    // int split(Context* xpu_ctx, const T* x, const std::vector<T*>& y_list,
+    // const std::vector<int64_t>& xshape, const std::vector<int64_t>&
+    // split_list, int64_t axis);
     auto r = xpu::split<XPUType>(
         context.x_context(),
         reinterpret_cast<const XPUType*>(tmp_data.data<T>()),

@@ -1164,6 +1164,23 @@ def get_paddle_extra_install_requirements():
                     "nvidia-cufile-cu12==1.14.0.30; platform_system == 'Linux' and platform_machine == 'x86_64'"
                 ),
             }
+            if env_dict.get("WITH_CINN") == "ON":
+                PADDLE_CUDA_INSTALL_REQUIREMENTS[
+                    "12.3"
+                ] += " | nvidia-cuda-cccl-cu12==12.3.52;platform_system == 'Linux' and platform_machine == 'x86_64' "
+                PADDLE_CUDA_INSTALL_REQUIREMENTS[
+                    "12.4"
+                ] += " | nvidia-cuda-cccl-cu12==12.4.99;platform_system == 'Linux' and platform_machine == 'x86_64' "
+                PADDLE_CUDA_INSTALL_REQUIREMENTS[
+                    "12.6"
+                ] += " | nvidia-cuda-cccl-cu12==12.6.77;platform_system == 'Linux' and platform_machine == 'x86_64' "
+                PADDLE_CUDA_INSTALL_REQUIREMENTS[
+                    "12.8"
+                ] += " | nvidia-cuda-cccl-cu12==12.8.90;platform_system == 'Linux' and platform_machine == 'x86_64' "
+                PADDLE_CUDA_INSTALL_REQUIREMENTS[
+                    "12.9"
+                ] += " | nvidia-cuda-cccl-cu12==12.9.27;platform_system == 'Linux' and platform_machine == 'x86_64' "
+
         elif platform.system() == 'Windows':
             PADDLE_CUDA_INSTALL_REQUIREMENTS = {
                 "11.8": (
@@ -2415,8 +2432,8 @@ def get_setup_parameters():
 
     if (
         env_dict.get("WITH_GPU") == 'ON'
-        and env_dict.get("CUDA_ARCH_BIN")
-        and env_dict.get("CUDA_ARCH_BIN").find("90") != -1
+        and env_dict.get("COMPILED_CUDA_ARCHS")
+        and env_dict.get("COMPILED_CUDA_ARCHS").find("90") != -1
     ):
         packages.extend(['paddle.distributed.communication.deep_ep'])
     if (

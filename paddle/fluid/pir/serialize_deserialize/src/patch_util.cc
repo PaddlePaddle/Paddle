@@ -45,56 +45,59 @@ std::string GetAttrName(const YAML::Node &action) {
 }
 Json GetAttrJson(const YAML::Node &action) {
   Json json;
-  std::string dialect = DialectIdMap::Instance()->GetCompressDialectId(
-                            pir::BuiltinDialect::name()) +
-                        ".";
+  std::string builtin_dialect = DialectIdMap::Instance()->GetCompressDialectId(
+                                    pir::BuiltinDialect::name()) +
+                                ".";
+  std::string op_dialect = DialectIdMap::Instance()->GetCompressDialectId(
+                               paddle::dialect::OperatorDialect::name()) +
+                           ".";
   std::string at_name;
   if (action.IsScalar()) {
     at_name = action.as<std::string>();
-    VLOG(8) << "Get old Type name." << at_name;
+    VLOG(8) << "Get old Attr name." << at_name;
   } else {
     at_name = action["type"].as<std::string>();
-    VLOG(8) << "Get new Type name." << at_name;
+    VLOG(8) << "Get new Attr name." << at_name;
   }
   if (at_name == "pir::BoolAttribute") {
     VLOG(8) << "Get BoolAttribute name.";
-    json[ID] = dialect + pir::BoolAttribute::name();
+    json[ID] = builtin_dialect + pir::BoolAttribute::name();
     if (!action.IsScalar() && action["default"].IsDefined()) {
       json[DATA] = action["default"].as<bool>();
     }
   } else if (at_name == "pir::FloatAttribute") {
     VLOG(8) << "Get FloatAttribute name.";
-    json[ID] = dialect + pir::FloatAttribute::name();
+    json[ID] = builtin_dialect + pir::FloatAttribute::name();
     if (!action.IsScalar() && action["default"].IsDefined()) {
       json[DATA] = action["default"].as<float>();
     }
   } else if (at_name == "pir::DoubleAttribute") {
     VLOG(8) << "Get DoubleAttribute name.";
-    json[ID] = dialect + pir::DoubleAttribute::name();
+    json[ID] = builtin_dialect + pir::DoubleAttribute::name();
     if (!action.IsScalar() && action["default"].IsDefined()) {
       json[DATA] = action["default"].as<double>();
     }
   } else if (at_name == "pir::Int32Attribute") {
     VLOG(8) << "Get Int32Attribute name.";
-    json[ID] = dialect + pir::Int32Attribute::name();
+    json[ID] = builtin_dialect + pir::Int32Attribute::name();
     if (!action.IsScalar() && action["default"].IsDefined()) {
       json[DATA] = action["default"].as<int32_t>();
     }
   } else if (at_name == "pir::Int64Attribute") {
     VLOG(8) << "Get Int64Attribute name.";
-    json[ID] = dialect + pir::Int64Attribute::name();
+    json[ID] = builtin_dialect + pir::Int64Attribute::name();
     if (!action.IsScalar() && action["default"].IsDefined()) {
       json[DATA] = action["default"].as<int64_t>();
     }
   } else if (at_name == "pir::IndexAttribute") {
     VLOG(8) << "Get IndexAttribute name.";
-    json[ID] = dialect + pir::IndexAttribute::name();
+    json[ID] = builtin_dialect + pir::IndexAttribute::name();
     if (!action.IsScalar() && action["default"].IsDefined()) {
       json[DATA] = action["default"].as<int64_t>();
     }
   } else if (at_name == "pir::ArrayAttribute") {
     VLOG(8) << "Get ArrayAttribute name.";
-    json[ID] = dialect + pir::ArrayAttribute::name();
+    json[ID] = builtin_dialect + pir::ArrayAttribute::name();
     if (!action.IsScalar() && action["default"].IsDefined()) {
       json[DATA] = Json::array();
       for (size_t i = 0; i < action["default"].size(); ++i) {
@@ -104,55 +107,70 @@ Json GetAttrJson(const YAML::Node &action) {
     }
   } else if (at_name == "pir::TypeAttribute") {
     VLOG(8) << "Get TypeAttribute name.";
-    json[ID] = dialect + pir::TypeAttribute::name();
+    json[ID] = builtin_dialect + pir::TypeAttribute::name();
     if (!action.IsScalar() && action["default"].IsDefined()) {
       json[DATA] = action["default"].as<std::string>();
     }  // TODO(czy): type attribute
   } else if (at_name == "pir::TensorNameAttribute") {
     VLOG(8) << "Get TensorNameAttribute name.";
-    json[ID] = dialect + pir::TensorNameAttribute::name();
+    json[ID] = builtin_dialect + pir::TensorNameAttribute::name();
     if (!action.IsScalar() && action["default"].IsDefined()) {
       json[DATA] = action["default"].as<std::string>();
     }
   } else if (at_name == "pir::Complex64Attribute") {
     VLOG(8) << "Get Complex64Attribute name.";
-    json[ID] = dialect + pir::Complex64Attribute::name();
+    json[ID] = builtin_dialect + pir::Complex64Attribute::name();
     if (!action.IsScalar() && action["default"].IsDefined()) {
       json[DATA] = action["default"].as<float>();
     }
   } else if (at_name == "pir::Complex128Attribute") {
     VLOG(8) << "Get Complex128Attribute name.";
-    json[ID] = dialect + pir::Complex128Attribute::name();
+    json[ID] = builtin_dialect + pir::Complex128Attribute::name();
     if (!action.IsScalar() && action["default"].IsDefined()) {
       json[DATA] = action["default"].as<double>();
     }
   } else if (at_name == "pir::StrAttribute") {
     VLOG(8) << "Get StrAttribute name.";
-    json[ID] = dialect + pir::StrAttribute::name();
+    json[ID] = builtin_dialect + pir::StrAttribute::name();
     if (!action.IsScalar() && action["default"].IsDefined()) {
       json[DATA] = action["default"].as<std::string>();
     }
-  } else {  // TODO(czy): add data patch for other attributes
-    dialect = DialectIdMap::Instance()->GetCompressDialectId(
-                  paddle::dialect::OperatorDialect::name()) +
-              ".";
-    if (at_name == "paddle::dialect::IntArrayAttribute") {
-      VLOG(8) << "Get IntArrayAttribute name.";
-      json[ID] = dialect + paddle::dialect::IntArrayAttribute::name();
-    } else if (at_name == "paddle::dialect::ScalarAttribute") {
-      VLOG(8) << "Get ScalarAttribute name.";
-      json[ID] = dialect + paddle::dialect::ScalarAttribute::name();
-
-    } else if (at_name == "paddle::dialect::DataTypeAttribute") {
-      VLOG(8) << "Get DataTypeAttribute name.";
-      json[ID] = dialect + paddle::dialect::DataTypeAttribute::name();
-    } else if (at_name == "paddle::dialect::PlaceAttribute") {
-      VLOG(8) << "Get PlaceAttribute name.";
-      json[ID] = dialect + paddle::dialect::PlaceAttribute::name();
+  } else if (at_name == "paddle::dialect::IntArrayAttribute") {
+    VLOG(8) << "Get IntArrayAttribute name.";
+    json[ID] = op_dialect + paddle::dialect::IntArrayAttribute::name();
+    if (!action.IsScalar() && action["default"].IsDefined()) {
+      json[DATA] = action["default"].as<std::vector<int64_t>>();
     }
-    PADDLE_ENFORCE(false,
-                   common::errors::InvalidArgument(
-                       "Unknown Attr %s in the OpPatches.", at_name));
+  } else if (at_name == "paddle::dialect::ScalarAttribute") {
+    VLOG(8) << "Get ScalarAttribute name.";
+    json[ID] = op_dialect + paddle::dialect::ScalarAttribute::name();
+    if (!action.IsScalar() && action["default"].IsDefined()) {
+      // Now use string vector to save scalar attribute.
+      // TODO(czy): support more scalar type.
+      json[DATA] = action["default"].as<std::vector<std::string>>();
+    }
+  } else if (at_name == "paddle::dialect::DataTypeAttribute") {
+    VLOG(8) << "Get DataTypeAttribute name.";
+    json[ID] = op_dialect + paddle::dialect::DataTypeAttribute::name();
+    if (!action.IsScalar() && action["default"].IsDefined()) {
+      // DataTypeAttribute patch use string to represent DataType.
+      // See DataTypeToString for the mapping.
+      json[DATA] = action["default"].as<std::string>();
+    }
+  } else if (at_name == "paddle::dialect::PlaceAttribute") {
+    VLOG(8) << "Get PlaceAttribute name.";
+    json[ID] = op_dialect + paddle::dialect::PlaceAttribute::name();
+    if (!action.IsScalar() && action["default"].IsDefined()) {
+      Json content = Json::array();
+      YAML::Node place_value = action["default"];
+      content.push_back(place_value[1].as<int8_t>());       // allocation_type
+      content.push_back(place_value[1].as<int8_t>());       // device_id
+      content.push_back(place_value[2].as<std::string>());  // device_type
+      json[DATA] = content;
+    }
+  } else {  // TODO(czy): support more attribute type.
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "Unknown Attr %s in the GetAttrJson.", at_name));
   }
   return json;
 }

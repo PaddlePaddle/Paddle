@@ -59,7 +59,7 @@ void MultiplyGradKernel(const Context& dev_ctx,
     return;
   }
   funcs::ElementwiseGradPreProcess(dout, dx);
-  auto f = [](xpu::Context* ctx,
+  auto f = [](xpu::Context* xpu_ctx,
               const XPUType* x,
               const XPUType* y,
               const XPUType* z,
@@ -69,7 +69,7 @@ void MultiplyGradKernel(const Context& dev_ctx,
               const std::vector<int64_t>& xshape,
               const std::vector<int64_t>& yshape) {
     return xpu::broadcast_mul_grad<XPUType>(
-        ctx, x, y, z, dz, dy, dx, xshape, yshape);
+        xpu_ctx, x, y, z, dz, dy, dx, xshape, yshape);
   };
 
   XPUElementwiseGrad<T, XPUType>(dev_ctx, x, y, dout, axis, dx, dy, f, true);
