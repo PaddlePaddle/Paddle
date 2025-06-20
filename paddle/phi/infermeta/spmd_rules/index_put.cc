@@ -21,8 +21,6 @@ limitations under the License. */
 #include "paddle/phi/infermeta/spmd_rules/spmd_rule_macro_define.h"
 #include "paddle/phi/infermeta/spmd_rules/utils.h"
 
-// 当x_ndim>indices_size时，被广播的维度是可以被切的，indices内所有的tensor的dims_mapping只能是-1，value的dims_mapping也只能是-1
-
 namespace phi::distributed {
 SpmdInfo IndexPutInferSpmd(const DistMetaTensor& x,
                            const std::vector<DistMetaTensor>& indices,
