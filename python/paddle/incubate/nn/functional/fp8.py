@@ -11,10 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import paddle
 from paddle import _C_ops
 from paddle.framework import in_dynamic_or_pir_mode
 
@@ -124,3 +126,115 @@ def fused_weighted_swiglu_act_quant(
         return _C_ops.fused_weighted_swiglu_act_quant(
             x, prob, using_pow2_scaling
         )
+
+
+def fp8_gemm_blockwise(
+    a,
+    a_decode_scale,
+    b,
+    b_decode_scale,
+    out_dtype,
+    out: Tensor | None = None,
+    bias: Tensor | None = None,
+    accumulate: bool = False,
+    use_split_accumulator: bool = True,
+    is_a_1d_scaled: bool = True,
+    is_b_1d_scaled: bool = True,
+):
+
+    assert bias is None, "Bias is not supported"
+
+    if bias is None:
+        bias = paddle.empty([0], dtype=paddle.float32)
+    else:
+        assert bias.dtype in (
+            paddle.float16,
+            paddle.bfloat16,
+        ), "Only fp16 and bfloat16 bias are supported."
+
+    M, K = a.shape
+    N, K_b = b.shape
+
+    if out is None:
+        out = paddle.empty((M, N), dtype=out_dtype)
+    else:
+        assert out.shape == [
+            M,
+            N,
+        ], f"Expected shape {(M, N)}, got {out.shape}"
+        assert out.is_contiguous(), "Output tensor is not contiguous."
+
+    if in_dynamic_or_pir_mode():
+        # Create workspace tensor for cuBLAS
+        workspace_size = (
+            33_554_432
+            if paddle.device.cuda.get_device_properties().major >= 9
+            else 4_194_304
+        )
+        workspace = paddle.empty([workspace_size], dtype=paddle.uint8)
+
+        empty_pre_gelu_out = paddle.empty([0], dtype=paddle.float32)
+
+        transa, transb = True, False
+        grad = False
+        math_sm_count = 112
+
+        # Call the C++ operator - it returns (output, pre_gelu_out, workspace_out)
+        output, _, _ = _C_ops.fp8_gemm_blockwise_(
+            b,
+            b_decode_scale,
+            a,
+            a_decode_scale,
+            out,
+            bias,
+            empty_pre_gelu_out,
+            workspace,
+            transa,
+            transb,
+            grad,
+            accumulate,
+            use_split_accumulator,
+            math_sm_count,
+            is_b_1d_scaled,
+            is_a_1d_scaled,
+        )
+        return output
+
+
+def fp8_quant_blockwise(
+    x: Tensor,
+    epsilon: float = 0.0,
+    input_transpose: bool = False,
+    output_scale_transpose: bool = True,
+    using_pow2_scale: bool = True,
+    quant_method: str = "1x128",
+    output_type: str = "e4m3",
+    name: str | None = None,
+):
+    if quant_method == "1x128":
+        using_1x128 = True
+    elif quant_method == "128x128":
+        using_1x128 = False
+    else:
+        raise ValueError("Unsupported quantization method")
+
+    if output_type == "e4m3":
+        using_e5m2 = False
+    else:
+        raise ValueError("Unsupported output type")
+
+    if in_dynamic_or_pir_mode():
+        x_fp8, scale, x_fp8_t, scale_t = _C_ops.fp8_quant_blockwise(
+            x,
+            epsilon,
+            using_1x128,
+            input_transpose,
+            output_scale_transpose,
+            using_e5m2,
+            using_pow2_scale,
+        )
+        # Aligned with kitchen's logic
+        if not input_transpose:
+            return x_fp8, scale
+        else:
+            return x_fp8, scale, x_fp8_t, scale_t
