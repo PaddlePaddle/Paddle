@@ -337,5 +337,47 @@ class TestPairwiseDistance(unittest.TestCase):
         static_ret = test_static(place, x_np, y_np)
 
 
+class TestPairwiseDistance_ZeroSize(unittest.TestCase):
+    def test_pairwise_distance(self):
+        epsilon = 1e-6
+        all_shape = [[0], [100, 0]]
+        dtype = 'float32'
+        p = 0
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not paddle.device.is_compiled_with_cuda()
+        ):
+            places.append(paddle.CPUPlace())
+        if paddle.device.is_compiled_with_cuda():
+            places.append(paddle.CUDAPlace(0))
+        keeps = [False, True]
+        for place in places:
+            for shape in all_shape:
+                for keepdim in keeps:
+                    x_np = np.random.random(shape).astype(dtype)
+                    y_np = np.random.random(shape).astype(dtype)
+
+                    excepted_value = np_pairwise_distance(
+                        x_np, y_np, p, epsilon=epsilon, keepdim=keepdim
+                    )
+                    paddle.disable_static(place)
+                    x = paddle.to_tensor(x_np)
+                    x.stop_gradient = False
+                    y = paddle.to_tensor(y_np)
+                    ret = call_pairwise_distance_functional(
+                        x=x, y=y, p=p, epsilon=epsilon, keepdim=keepdim
+                    )
+                    np.testing.assert_allclose(
+                        ret.numpy(),
+                        excepted_value,
+                        rtol=1e-05,
+                    )
+                    loss = paddle.sum(ret)
+                    loss.backward()
+                    np.testing.assert_allclose(x.grad.shape, x.shape)
+
+
 if __name__ == "__main__":
     unittest.main()

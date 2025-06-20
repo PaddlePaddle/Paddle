@@ -23,7 +23,7 @@
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/device_context.h"
-
+#include "paddle/phi/kernels/full_kernel.h"
 namespace phi {
 
 static inline int32_t divUp(int32_t m, int32_t n) { return (m + n - 1) / n; }
@@ -1178,6 +1178,18 @@ void GroupNormKernel(const Context& dev_ctx,
                      DenseTensor* y,
                      DenseTensor* mean,
                      DenseTensor* var) {
+  if (y && y->numel() == 0) {
+    dev_ctx.template Alloc<T>(y);
+    if (mean) {
+      phi::Full<T, Context>(
+          dev_ctx, phi::IntArray(common::vectorize(mean->dims())), 0, mean);
+    }
+    if (var) {
+      phi::Full<T, Context>(
+          dev_ctx, phi::IntArray(common::vectorize(var->dims())), 0, var);
+    }
+    return;
+  }
   using std::is_same;
   if (is_same<T, phi::dtype::float16>::value && data_layout_str == "NHWC") {
     const paddle::optional<DenseTensor>& residual =

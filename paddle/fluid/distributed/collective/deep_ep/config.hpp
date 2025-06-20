@@ -154,6 +154,9 @@ struct LowLatencyBuffer {
   void* combine_rdma_recv_data_buffer = nullptr;
   int* combine_rdma_recv_flag_buffer = nullptr;
 
+  void* combine_rdma_send_buffer_data_start = nullptr;
+  size_t num_bytes_per_combine_msg = 0;
+
   std::pair<int*, int> clean_meta() {
     EP_HOST_ASSERT(dispatch_rdma_recv_count_buffer ==
                    combine_rdma_recv_flag_buffer);
@@ -179,7 +182,6 @@ struct LowLatencyLayout {
                    int num_ranks,
                    int num_experts) {
     const int num_scales = hidden / 128;
-    // const int num_local_experts = num_experts / num_ranks;
 
     // Dispatch and combine layout:
     //  - 2 symmetric odd/even send buffer
@@ -187,13 +189,13 @@ struct LowLatencyLayout {
     //  - 2 symmetric odd/even signaling buffers
 
     // Message sizes
+    // NOTES: you should add a control `int4` for combine messages if you want
+    // to do data transformation
     EP_HOST_ASSERT(num_scales * static_cast<int64_t>(sizeof(float)) <= hidden);
     size_t num_bytes_per_dispatch_msg =
         sizeof(int4) + std::max(hidden * sizeof(nv_bfloat16),
                                 hidden + num_scales * sizeof(float));
-
-    size_t num_bytes_per_combine_msg =
-        sizeof(int4) + hidden * sizeof(nv_bfloat16);
+    size_t num_bytes_per_combine_msg = hidden * sizeof(nv_bfloat16);
 
     // Send buffer
     size_t dispatch_send_buffer_bytes =
@@ -246,7 +248,9 @@ struct LowLatencyLayout {
           advance(rdma_buffer, send_buffer_bytes * 2 + recv_buffer_bytes * i),
           advance<int*>(rdma_buffer,
                         send_buffer_bytes * 2 + recv_buffer_bytes * 2 +
-                            signaling_buffer_bytes * i)};
+                            signaling_buffer_bytes * i),
+          advance(rdma_buffer, send_buffer_bytes * i),
+          num_bytes_per_combine_msg};
     }
   }
 };

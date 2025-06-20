@@ -51,7 +51,7 @@ struct BroadcastConfig {
                   const std::vector<int64_t>& in_dims,
                   int dim_size) {
     for (int i = 0; i < dim_size; ++i) {
-      divmoders[i] = phi::funcs::FastDivMod<int>(out_dims[i]);
+      divmoders[i] = phi::funcs::FastDivMod<int64_t>(out_dims[i]);
     }
 
     for (int i = 0; i < dim_size; ++i) {

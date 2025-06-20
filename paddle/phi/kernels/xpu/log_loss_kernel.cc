@@ -29,6 +29,8 @@ void LogLossXPUKernel(const Context& dev_ctx,
   auto* loss = out;
   auto epsilon = static_cast<T>(epsilon_in);
   dev_ctx.template Alloc<T>(loss);
+  if (out && out->numel() == 0) return;
+
   int64_t n = predict->numel();
   int r = xpu::log_loss(dev_ctx.x_context(),
                         predict->data<T>(),

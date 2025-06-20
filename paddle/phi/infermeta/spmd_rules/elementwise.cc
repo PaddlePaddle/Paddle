@@ -301,6 +301,102 @@ SpmdInfo ElementwiseBinaryInferSpmd(const DistMetaTensor& x,
   return {{x_dist_attr_dst, y_dist_attr_dst}, {out_dist_attr}};
 }
 
+// NOTE(nieyuntao): This function is only for `multiply` right now to support
+// partial propagation
+SpmdInfo ElementwiseBinaryWithPartialInferSpmd(const DistMetaTensor& x,
+                                               const DistMetaTensor& y) {
+  // Step0: Verify Input Args Based on Elementwise Logic
+  auto x_shape = common::vectorize(x.dims());
+  int x_ndim = static_cast<int>(x_shape.size());
+  auto y_shape = common::vectorize(y.dims());
+  int y_ndim = static_cast<int>(y_shape.size());
+  TensorDistAttr x_dist_attr_src = x.dist_attr();
+  TensorDistAttr y_dist_attr_src = y.dist_attr();
+  std::vector<int64_t> x_dims_mapping = x_dist_attr_src.dims_mapping();
+  std::vector<int64_t> y_dims_mapping = y_dist_attr_src.dims_mapping();
+  PADDLE_ENFORCE_EQ(
+      x_ndim,
+      x_dims_mapping.size(),
+      common::errors::InvalidArgument(
+          "ElementwiseBinaryWithPartial, The Tensor X's rank [%d] and X's "
+          "dims_mapping size [%d] are not matched.",
+          x_ndim,
+          x_dims_mapping.size()));
+  PADDLE_ENFORCE_EQ(
+      y_ndim,
+      y_dims_mapping.size(),
+      common::errors::InvalidArgument(
+          "ElementwiseBinaryWithPartial, The Tensor Y's rank [%d] and Y's "
+          "dims_mapping size [%d] are not matched.",
+          y_ndim,
+          y_dims_mapping.size()));
+
+  // Step1: Build Einsum Notation
+  std::string x_axes, y_axes, out_axes;
+  GetBinaryNotations(x_shape, y_shape, &x_axes, &y_axes, &out_axes);
+
+  // Step2: Sharding Propagation
+  // Step2.1: Merge input shardings
+  std::unordered_map<std::string, int64_t> axis_to_dim_map =
+      ShardingMergeForTensors(
+          {{x_axes, x_dims_mapping}, {y_axes, y_dims_mapping}});
+
+  // Step2.2: Infer output dims mapping from merged input dims mapping
+  std::vector<int64_t> out_dims_mapping =
+      GetDimsMappingForAxes(out_axes, axis_to_dim_map);
+
+  // initialize output dist_attr's process_mesh, batch_dim and dynamic dims with
+  // input dist_attr.
+  TensorDistAttr out_dist_attr = CopyTensorDistAttrForOutput(x_dist_attr_src);
+  out_dist_attr.set_dims_mapping(out_dims_mapping);
+
+  // Step2.3: Update inputs' dims mapping with merged one.
+  TensorDistAttr x_dist_attr_dst = CopyTensorDistAttrForOutput(x_dist_attr_src);
+  TensorDistAttr y_dist_attr_dst = CopyTensorDistAttrForOutput(y_dist_attr_src);
+  x_dist_attr_dst.set_dims_mapping(
+      GetDimsMappingForAxes(x_axes, axis_to_dim_map));
+  y_dist_attr_dst.set_dims_mapping(
+      GetDimsMappingForAxes(y_axes, axis_to_dim_map));
+
+  // Step3: Handle partial
+  if (x_dist_attr_src.is_partial() || y_dist_attr_src.is_partial()) {
+    if (x_dist_attr_src.is_partial() && y_dist_attr_src.is_partial()) {
+      if (x_ndim >= y_ndim) {
+        x_dist_attr_dst.set_partial_status(x_dist_attr_src.partial_status());
+        out_dist_attr.set_partial_status(x_dist_attr_src.partial_status());
+      } else {
+        y_dist_attr_dst.set_partial_status(y_dist_attr_src.partial_status());
+        out_dist_attr.set_partial_status(y_dist_attr_src.partial_status());
+      }
+    } else if (x_dist_attr_src.is_partial()) {
+      x_dist_attr_dst.set_partial_status(x_dist_attr_src.partial_status());
+      out_dist_attr.set_partial_status(x_dist_attr_src.partial_status());
+    } else if (y_dist_attr_src.is_partial()) {
+      y_dist_attr_dst.set_partial_status(y_dist_attr_src.partial_status());
+      out_dist_attr.set_partial_status(y_dist_attr_src.partial_status());
+    }
+    if (!IsPartialLegal(x_dist_attr_dst) || !IsPartialLegal(y_dist_attr_dst) ||
+        !IsPartialLegal(out_dist_attr)) {
+      x_dist_attr_dst.clean_partial_status();
+      y_dist_attr_dst.clean_partial_status();
+      out_dist_attr.clean_partial_status();
+    }
+  }
+
+  VLOG(4) << "ElementwiseWithPartialSPMDRule InferForward:";
+  VLOG(4) << "Input0 shape: [" << str_join(x_shape) << "] "
+          << "src_dims_mapping: [" << str_join(x_dims_mapping) << "] "
+          << "dst_dims_mapping: [" << str_join(x_dist_attr_dst.dims_mapping())
+          << "]";
+  VLOG(4) << "Input1 shape: [" << str_join(y_shape) << "] "
+          << "src_dims_mapping: [" << str_join(y_dims_mapping) << "] "
+          << "dst_dims_mapping: [" << str_join(y_dist_attr_dst.dims_mapping())
+          << "]";
+  VLOG(4) << "Output dims_mapping: [" + str_join(out_dims_mapping) + "]\n\n";
+
+  return {{x_dist_attr_dst, y_dist_attr_dst}, {out_dist_attr}};
+}
+
 SpmdInfo ElementwiseBinaryInferSpmdReverse(const DistMetaTensor& x,
                                            const DistMetaTensor& y,
                                            const DistMetaTensor& out) {

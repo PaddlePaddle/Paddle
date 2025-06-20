@@ -15,8 +15,10 @@
 function run_mac_test() {
     export FLAGS_PIR_OPTEST=True
     export FLAGS_CI_PIPELINE=mac
-    tmp_dir='/tmp'
+    tmp_dir='/Users/paddle/tmp'
+    mkdir -p $tmp_dir
     mkdir -p ${PADDLE_ROOT}/build
+    find $tmp_dir -mindepth 1 -delete
     cd ${PADDLE_ROOT}/build
     if [ ${WITH_TESTING:-ON} == "ON" ] ; then
     cat <<EOF
@@ -196,7 +198,6 @@ EOF
                         echo "The following unittest will be re-run:"
                         echo "${retry_unittests}"
                         echo "========================================="
-
                         retry_unittests_regular=''
                         for line in ${retry_unittests[@]} ;
                             do
@@ -206,7 +207,7 @@ EOF
                                     retry_unittests_regular="$retry_unittests_regular|^$line$"
                                 fi
                             done
-			find $tmp_dir -delete
+			find $tmp_dir -mindepth 1 -delete
                         failed_test_lists=''
                         ctest -R "($retry_unittests_regular)" --output-on-failure -j 4 | tee $tmpfile
                         collect_failed_tests

@@ -719,6 +719,7 @@ class DygraphShardingOptimizerV2:
 
         self._all_gather_overlap_forward = False
         self._forward_pre_hook_remove_helper = []
+        self.has_register_forward_hook = False
 
     def _set_all_gather_overlap_forward(
         self, all_gather_overlap_forward, layers
@@ -789,7 +790,7 @@ class DygraphShardingOptimizerV2:
             for color, params in color_dict.items():
                 params.sort(key=lambda x: str(x.dtype))
 
-        all_var_groups = []
+        self.param2bucket = {}
         group_idx = 0
         for color, params in color_dict.items():
             g_color = color[0]
@@ -811,6 +812,12 @@ class DygraphShardingOptimizerV2:
                 )
                 group_idx += 1
                 self._comm_buffer_list.append(buffer)
+
+                for p in parameters:
+                    if p.name in self.param2bucket:
+                        self.param2bucket[p.name].append(buffer)
+                    else:
+                        self.param2bucket[p.name] = [buffer]
 
     def clear_grad(self, set_to_zero=True):
         """
@@ -904,6 +911,86 @@ class DygraphShardingOptimizerV2:
                 task.wait()
 
         return __impl__
+
+    def _try_start_bucket_param_sync(self, buckets=None):
+        """Attempt to launch parameter synchronization
+
+        Find a parameter that still requires
+        synchronization when no other synchronizations are in progress.
+        Parameters used first in model forward need to be synchronized earlier,
+        so synchronize according to the order of param group.
+        Parameter synchronization is asynchronous.
+
+        Arguments:
+            buckets (List): buckets to synchronize
+
+        """
+
+        if buckets is None:
+            # There is communication in progress, return directly
+            if any(
+                bucket.status == FusedCommBuffer.Status.SYNCING
+                for bucket in self._comm_buffer_list
+            ):
+                return
+
+            # All communications are completed, return directly
+            if all(
+                bucket.status == FusedCommBuffer.Status.READY
+                for bucket in self._comm_buffer_list
+            ):
+                return
+
+            # Find the first bucket that needs to communicate from front to back
+            for bucket in self._comm_buffer_list:
+                if bucket.status == FusedCommBuffer.Status.SHARDED:
+                    buckets = [bucket]
+                    break
+
+        assert buckets is not None
+        # Launch parameters all_gather communication
+        for bucket in buckets:
+            bucket.sync_params(sync=False, param2task={})
+            # Change status to SYNCING
+            bucket.status = FusedCommBuffer.Status.SYNCING
+
+    def make_forward_hook(self) -> None:
+        def pre_forward_hook(layer, inputs):
+            # Find the buckets corresponding to params in this layer
+            buckets = set()
+            # a leaf layer or a layer contains a param not in sublayers
+            for p in layer.parameters(include_sublayers=False):
+                for b in self.param2bucket[p.name]:
+                    buckets.add(b)
+
+            # If there is a SYNCING bucket, wait for it to complete
+            # If there is a SHARDED state, launch communication and wait for it to complete
+            # After the communication is completed, mark the state as READY
+            for bucket in buckets:
+                if bucket.status == FusedCommBuffer.Status.READY:
+                    continue
+                elif bucket.status == FusedCommBuffer.Status.SYNCING:
+                    assert bucket.sync_param_task is not None
+                    bucket.sync_param_task.wait()
+                    bucket.status = FusedCommBuffer.Status.READY
+                elif bucket.status == FusedCommBuffer.Status.SHARDED:
+                    self._try_start_bucket_param_sync([bucket])
+                    assert bucket.sync_param_task is not None
+                    bucket.sync_param_task.wait()
+                    bucket.status = FusedCommBuffer.Status.READY
+
+            self._try_start_bucket_param_sync()
+
+        return pre_forward_hook
+
+    def _register_pre_forward_hooks(self):
+        assert self._all_gather_overlap_forward is True
+        for layer in self._layers.sublayers():
+            # Register forward_pre_hook only at the layer where the parameter may actually be used
+            if len(layer.sublayers()) == 0 or layer.parameters(
+                include_sublayers=False
+            ):
+                layer.register_forward_pre_hook(self.make_forward_hook())
 
     def _sharding_sync_parameters(self):
         """
@@ -1043,7 +1130,18 @@ class DygraphShardingOptimizerV2:
                 self.timers("apply-optimize").stop()
 
         # sync parameters across sharding ranks
-        self._sharding_sync_parameters()
+        if not self._all_gather_overlap_forward:
+            self._sharding_sync_parameters()
+        else:
+            # Reset the status of the bucket. The parameter is SHARDED.
+            for comm_buffer in self._comm_buffer_list:
+                comm_buffer.status = FusedCommBuffer.Status.SHARDED
+                comm_buffer.sync_param_task = None
+
+            self._try_start_bucket_param_sync()
+            if not self.has_register_forward_hook:
+                self._register_pre_forward_hooks()
+                self.has_register_forward_hook = True
 
     @framework.dygraph_only
     def set_state_dict(self, state_dict):

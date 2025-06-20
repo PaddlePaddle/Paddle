@@ -38,7 +38,7 @@ void PReluKernel(const Context& dev_ctx,
   const T* x_ptr = x.data<T>();
   const T* alpha_ptr = alpha.data<T>();
 
-  int numel = x.numel();
+  int64_t numel = x.numel();
   auto dim = x.dims();
   auto x_rank = dim.size();
 

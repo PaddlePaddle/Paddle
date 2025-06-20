@@ -784,7 +784,9 @@ void CropInferMeta(const MetaTensor& x,
 
   auto out_dims = std::vector<int64_t>(shape.size(), -1);
   for (int i = 0; i < static_cast<int>(shape_dims.size()); ++i) {
-    if (shape_dims[i] > 0) {
+    if (x_dim[i] == 0) {
+      out_dims[i] = static_cast<int64_t>(x_dim[i]);
+    } else if (shape_dims[i] >= 0) {
       out_dims[i] = static_cast<int64_t>(shape_dims[i]);
     }
   }
@@ -2162,12 +2164,14 @@ void IdentityLossInferMeta(const MetaTensor& x,
 }
 
 void IncrementInferMeta(const MetaTensor& x, float value, MetaTensor* out) {
-  PADDLE_ENFORCE_EQ(
-      product(x.dims()),
-      1UL,
-      errors::InvalidArgument("The number of elements in Input(X) should be 1."
-                              "Now the number is %d.",
-                              product(x.dims())));
+  if (x.numel() != 0) {
+    PADDLE_ENFORCE_EQ(product(x.dims()),
+                      1UL,
+                      errors::InvalidArgument(
+                          "The number of elements in Input(X) should be 1."
+                          "Now the number is %d.",
+                          product(x.dims())));
+  }
   out->set_dims(x.dims());
   out->share_lod(x);
   out->set_layout(x.layout());
@@ -2534,9 +2538,10 @@ void MatrixRankInferMeta(const MetaTensor& x,
                     common::errors::InvalidArgument(
                         "The dims of input must be greater than 2."));
 
-  if (hermitian) {
+  if (hermitian && x.numel() != 0) {
     int rows = static_cast<int>(dim_x[dim_x.size() - 2]);
     int cols = static_cast<int>(dim_x[dim_x.size() - 1]);
+    // if x is 0-size Tensor,ignore rows == cols check.
     PADDLE_ENFORCE_EQ(rows,
                       cols,
                       common::errors::InvalidArgument(
@@ -2884,11 +2889,6 @@ void NanmedianInferMeta(const MetaTensor& x,
   }
   median_index->set_dtype(DataType::INT64);
   median_index->set_dims(make_ddim(median_dim));
-
-  if (x.numel() == 0) {
-    out->set_dims(make_ddim({}));
-    median_index->set_dims(make_ddim({}));
-  }
 }
 
 void NMSInferMeta(const MetaTensor& x, float threshold, MetaTensor* out) {
@@ -3229,6 +3229,11 @@ void PartialSendInferMeta(const MetaTensor& x, int peer, int num, int id) {
           "The id (%d) for partial_send op must >=0 and <num (%d)", id, num));
 }
 
+inline int64_t HandleDynamicDim(int64_t maybe_dynamic_dim,
+                                int64_t static_result) {
+  return maybe_dynamic_dim == -1 ? -1 : static_result;
+}
+
 void PixelShuffleInferMeta(const MetaTensor& x,
                            int upscale_factor,
                            const std::string& data_format,
@@ -3267,13 +3272,19 @@ void PixelShuffleInferMeta(const MetaTensor& x,
   auto output_dims = input_dims;
   output_dims[0] = input_dims[0];
   if (!channel_last) {
-    output_dims[1] = input_dims[1] / (upscale_factor * upscale_factor);
-    output_dims[2] = input_dims[2] * upscale_factor;
-    output_dims[3] = input_dims[3] * upscale_factor;
+    output_dims[1] = HandleDynamicDim(
+        input_dims[1], input_dims[1] / (upscale_factor * upscale_factor));
+    output_dims[2] =
+        HandleDynamicDim(input_dims[2], input_dims[2] * upscale_factor);
+    output_dims[3] =
+        HandleDynamicDim(input_dims[3], input_dims[3] * upscale_factor);
   } else {
-    output_dims[1] = input_dims[1] * upscale_factor;
-    output_dims[2] = input_dims[2] * upscale_factor;
-    output_dims[3] = input_dims[3] / (upscale_factor * upscale_factor);
+    output_dims[1] =
+        HandleDynamicDim(input_dims[1], input_dims[1] * upscale_factor);
+    output_dims[2] =
+        HandleDynamicDim(input_dims[2], input_dims[2] * upscale_factor);
+    output_dims[3] = HandleDynamicDim(
+        input_dims[3], input_dims[3] / (upscale_factor * upscale_factor));
   }
   out->set_dtype(x.dtype());
   out->set_dims(output_dims);
@@ -3297,13 +3308,15 @@ void PixelShuffleGradInferMeta(const MetaTensor& out_grad,
   dx_dims[0] = do_dims[0];
 
   if (!channel_last) {
-    dx_dims[1] = do_dims[1] * (upscale_factor * upscale_factor);
-    dx_dims[2] = do_dims[2] / upscale_factor;
-    dx_dims[3] = do_dims[3] / upscale_factor;
+    dx_dims[1] = HandleDynamicDim(
+        do_dims[1], do_dims[1] * (upscale_factor * upscale_factor));
+    dx_dims[2] = HandleDynamicDim(do_dims[2], do_dims[2] / upscale_factor);
+    dx_dims[3] = HandleDynamicDim(do_dims[3], do_dims[3] / upscale_factor);
   } else {
-    dx_dims[1] = do_dims[1] / upscale_factor;
-    dx_dims[2] = do_dims[2] / upscale_factor;
-    dx_dims[3] = do_dims[3] * (upscale_factor * upscale_factor);
+    dx_dims[1] = HandleDynamicDim(do_dims[1], do_dims[1] / upscale_factor);
+    dx_dims[2] = HandleDynamicDim(do_dims[2], do_dims[2] / upscale_factor);
+    dx_dims[3] = HandleDynamicDim(
+        do_dims[3], do_dims[3] * (upscale_factor * upscale_factor));
   }
   x_grad->set_dims(dx_dims);
   x_grad->set_dtype(out_grad.dtype());
@@ -3357,13 +3370,19 @@ void PixelUnshuffleInferMeta(const MetaTensor& x,
   auto output_dims = input_dims;
   output_dims[0] = input_dims[0];
   if (!channel_last) {
-    output_dims[1] = input_dims[1] * (downscale_factor * downscale_factor);
-    output_dims[2] = input_dims[2] / downscale_factor;
-    output_dims[3] = input_dims[3] / downscale_factor;
+    output_dims[1] = HandleDynamicDim(
+        input_dims[1], input_dims[1] * (downscale_factor * downscale_factor));
+    output_dims[2] =
+        HandleDynamicDim(input_dims[2], input_dims[2] / downscale_factor);
+    output_dims[3] =
+        HandleDynamicDim(input_dims[3], input_dims[3] / downscale_factor);
   } else {
-    output_dims[1] = input_dims[1] / downscale_factor;
-    output_dims[2] = input_dims[2] / downscale_factor;
-    output_dims[3] = input_dims[3] * (downscale_factor * downscale_factor);
+    output_dims[1] =
+        HandleDynamicDim(input_dims[1], input_dims[1] / downscale_factor);
+    output_dims[2] =
+        HandleDynamicDim(input_dims[2], input_dims[2] / downscale_factor);
+    output_dims[3] = HandleDynamicDim(
+        input_dims[3], input_dims[3] * (downscale_factor * downscale_factor));
   }
   out->set_dtype(x.dtype());
   out->set_dims(output_dims);
@@ -3389,7 +3408,7 @@ void PNormInferMeta(const MetaTensor& x,
                         x_rank,
                         x_dim));
 
-  std::vector<int> out_dim_vector;
+  std::vector<int64_t> out_dim_vector;
   if (asvector) {
     if (keepdim) {
       for (int i = 0; i < x_rank; ++i) {
@@ -6139,12 +6158,23 @@ void WeightQuantizeInferMeta(const MetaTensor& x,
       2UL,
       common::errors::InvalidArgument(
           "The x tensor of quant op must be 2D, but got[%d]", x_dims.size()));
-  PADDLE_ENFORCE_EQ(
-      x_dims[0] % 64,
-      0,
-      common::errors::InvalidArgument(
-          "The first dimension of input must be divisible by 64, but got[%d]",
-          x_dims[0]));
+
+  if (algo == "w4a8") {
+    PADDLE_ENFORCE_EQ(
+        x_dims[0] % 32,
+        0,
+        common::errors::InvalidArgument("The first dimension of packed-input "
+                                        "must be divisible by 32, but got[%d]",
+                                        x_dims[0]));
+  } else {
+    PADDLE_ENFORCE_EQ(
+        x_dims[0] % 64,
+        0,
+        common::errors::InvalidArgument(
+            "The first dimension of input must be divisible by 64, but got[%d]",
+            x_dims[0]));
+  }
+
   PADDLE_ENFORCE_EQ(
       x_dims[1] % 16,
       0,
@@ -6172,7 +6202,7 @@ void WeightQuantizeInferMeta(const MetaTensor& x,
   } else if (algo == "weight_only_int4") {
     dim_out = std::vector<int64_t>({x_dims[1] / 2, x_dims[0]});
   } else if (algo == "w4a8") {
-    dim_out = std::vector<int64_t>({x_dims[1], x_dims[0] / 2});
+    dim_out = vectorize(x_dims);
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
         "The algo must be in ['weight_only_int8', 'weight_only_int4', "
