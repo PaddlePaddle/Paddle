@@ -20,7 +20,9 @@ limitations under the License. */
 #include <xpu/xpuml.h>
 #endif
 
+#ifdef PADDLE_WITH_XPU_FFT
 #include "fft/cufft.h"
+#endif
 #include "paddle/phi/backends/xpu/xpu_header.h"
 #include "paddle/phi/core/enforce.h"
 #include "xre/cuda_runtime_api.h"
