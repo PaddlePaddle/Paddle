@@ -97,19 +97,6 @@ static bool IsVariableRefArray(const Tensor &tensor) {
   return paddle::framework::VariableRefArray::classof(tensor.impl().get());
 }
 
-static auto GetNameFromValue(const std::vector<::pir::Value> &values) {
-  std::vector<std::string> names;
-  std::transform(
-      values.begin(),
-      values.end(),
-      std::back_inserter(names),
-      [](const ::pir::Value &v) {
-        return pir::utils::name_analysis::TryGetValueFirstName(v).value_or(
-            std::string(paddle::framework::kFakeVarName));
-      });
-  return names;
-}
-
 static void CheckInputVarStatus(const Tensor &tensor) {
   PADDLE_ENFORCE_EQ(tensor.defined() &&
                         (tensor.is_dense_tensor() ||
