@@ -340,8 +340,8 @@ bool ReduceRegionCanVectorize(
           base_info, sm_config, spatial_numel * factor, rd_thread_num);
   
   if (//(warp_nums > 1 || spatial_numel < warp_nums * 64) &&
-      CheckThreadDimensionCanVectorize(r
-          d_thread_num, reduce_numel, factor, true) &&
+      CheckThreadDimensionCanVectorize(
+          rd_thread_num, reduce_numel, factor, true) &&
       CheckSmUtilization(
           base_info, sm_config, spatial_numel * factor, rd_thread_num)) {
     VLOG(6) << "YUHAN!!! ReduceRegionCanVectorize return true ";

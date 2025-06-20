@@ -427,18 +427,18 @@ void ReduceRegionWithReduceBlockVectorizeTilingSchedule(
     const int rd_thread,
     const int vectorize_factor) {
   VLOG(6) << "YUHAN!!! Inside ReduceRegionWithReduceBlockVectorizeTilingSchedule";
-  int threads_axis = 1; // YUHAN!!! TODO
-  int vectorize_axis = 2;
+  int threads_axis = 2; // YUHAN!!! TODO
+  int vectorize_axis = 3;
   auto loops = sch->GetLoops(block_id);
   if (ContainsVectorizableAxis(sch, loops.size() - 1, block_id)) {
     VLOG(6) << "YUHAN!!! Split loops[1] " << loops[1] << "to (" << rd_thread << ", " << vectorize_factor << ")";
     sch->Split(loops[1], {rd_thread, vectorize_factor});
-    // sch->Split(loops[0], std::vector<int>{-1, 8});
+    sch->Split(loops[0], std::vector<int>{-1, 8});
     loops = sch->GetLoops(block_id);
     sch->Vectorize(loops[vectorize_axis], vectorize_factor);
   } else {
     sch->Split(loops[1], {-1, rd_thread});
-    // sch->Split(loops[0], std::vector<int>{-1, 8});
+    sch->Split(loops[0], std::vector<int>{-1, 8});
     loops = sch->GetLoops(block_id);
   }
 
@@ -452,7 +452,7 @@ void ReduceRegionWithReduceBlockVectorizeTilingSchedule(
 
   const auto DoBind = [&](const std::vector<ir::Expr>& loops) {
     sch->Bind(loops[0], "blockIdx.x");
-    // sch->Bind(loops[1], "threadIdx.y");
+    sch->Bind(loops[1], "threadIdx.y");
     sch->Bind(loops[threads_axis], "threadIdx.x");
   };
 
@@ -473,7 +473,7 @@ void ReduceRegionWithSpatialBlockVectorizeTilingSchedule(
     VLOG(6) << "YUHAN!!! Inside ReduceRegionWithSpatialBlockVectorizeTilingSchedule ContainsVectorizableAxis";
     VLOG(6) << "YUHAN!!! Split loops[1] " << loops[1] << "to (" << rd_thread << ", " << vectorize_factor << ")";
     sch->Split(loops[1], std::vector<int>{rd_thread, vectorize_factor});
-    // sch->Split(loops[0], std::vector<int>{-1, 8});
+    sch->Split(loops[0], std::vector<int>{-1, 8});
 
     // set vectorize schedule primitives
     loops = sch->GetLoops(block_id);
@@ -490,10 +490,10 @@ void ReduceRegionWithSpatialBlockVectorizeTilingSchedule(
   } else {
     VLOG(6) << "YUHAN!!! Inside ReduceRegionWithSpatialBlockVectorizeTilingSchedule not ContainsVectorizableAxis";
     sch->Split(loops[1], std::vector<int>{-1, rd_thread});
-    // sch->Split(loops[0], std::vector<int>{-1, 8});
+    sch->Split(loops[0], std::vector<int>{-1, 8});
     const auto DoBind = [&](const std::vector<ir::Expr>& loops) {
       sch->Bind(loops[0], "blockIdx.x");
-      // sch->Bind(loops[1], "threadIdx.y");
+      sch->Bind(loops[1], "threadIdx.y");
       auto threadsIdx_x_axis = loops.size() - 1;
       sch->Bind(loops[threadsIdx_x_axis], "threadIdx.x");
     };
