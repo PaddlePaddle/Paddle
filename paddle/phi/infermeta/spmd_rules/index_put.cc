@@ -103,8 +103,9 @@ SpmdInfo IndexPutInferSpmd(const DistMetaTensor& x,
   // Step4: Log SpmdInfo
   LOG_SPMD_INPUT(x);
   // LOG_SPMD_INPUT(indices);
-  VLOG(4) << "name:indices";
-  VLOG(4) << "shape: [" << std::to_string(indices_shape) << "] "
+  VLOG(4) << "name: indices";
+  VLOG(4) << "ndim: " << std::to_string(indices_ndim) << " "
+          << "indices_size: " << std::to_string(indices_size) << " "
           << "indices_dist_attr_src: [" << indices_dist_attrs_src[0].to_string()
           << "] "
           << "indices_dist_attr_dst: [" << indices_dist_attrs_dst[0].to_string()
@@ -214,8 +215,9 @@ SpmdInfo IndexPutGradInferSpmd(const DistMetaTensor& x,
   // Step4: Log SpmdInfo
   LOG_SPMD_INPUT(x);
   // LOG_SPMD_INPUT(indices);
-  VLOG(4) << "name:indices";
-  VLOG(4) << "shape: [" << std::to_string(indices_shape) << "] "
+  VLOG(4) << "name: indices";
+  VLOG(4) << "ndim: " << std::to_string(indices_ndim) << " "
+          << "indices_size: " << std::to_string(indices_size) << " "
           << "indices_dist_attr_src: [" << indices_dist_attrs_src[0].to_string()
           << "] "
           << "indices_dist_attr_dst: [" << indices_dist_attrs_dst[0].to_string()
