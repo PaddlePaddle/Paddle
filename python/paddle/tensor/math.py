@@ -4012,6 +4012,9 @@ def clip(
     elif x_dtype == 'paddle.float16':
         min_ = float(np.finfo(np.float16).min)
         max_ = float(np.finfo(np.float16).max)
+    elif x_dtype == 'paddle.float64':
+        min_ = float(np.finfo(np.float64).min)
+        max_ = float(np.finfo(np.float64).max)
     else:
         min_ = float(np.finfo(np.float32).min)
         max_ = float(np.finfo(np.float32).max)
