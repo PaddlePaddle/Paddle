@@ -24,6 +24,10 @@ void IndexSampleKernel(const Context& dev_ctx,
                        const DenseTensor& x,
                        const DenseTensor& index,
                        DenseTensor* out) {
+  if (out && out->numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   auto index_type = index.dtype();
   bool index_type_match =
       index_type == DataType::INT32 || index_type == DataType::INT64;
@@ -48,7 +52,7 @@ void IndexSampleKernel(const Context& dev_ctx,
   T* out_data = dev_ctx.template Alloc<T>(out);
 
   // template<typename T, typename TID> DLL_EXPORT int gather_element(Context*
-  // ctx, const T* x, const TID* index, T* y, const std::vector<int64_t>&
+  // xpu_ctx, const T* x, const TID* index, T* y, const std::vector<int64_t>&
   // xshape, const std::vector<int64_t>& idxshape, int64_t axis);
 
   if (index_type == DataType::INT64) {

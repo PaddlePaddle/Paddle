@@ -91,6 +91,7 @@ prim_white_list = [
     "index_add_double_grad",
     "acos_double_grad",
     "put_along_axis_double_grad",
+    "masked_fill_double_grad",
 ]
 
 # white ops list whose kernel can automatically do type promotion.
@@ -120,6 +121,8 @@ type_promote_white_list = {
     "nextafter": ["x", "y"],
     "atan2": ["x", "y"],
     "copysign": ["x", "y"],
+    "cross": ["x", "y"],
+    "multiply": ["x", "y"],
 }
 
 type_promote_inplace_white_list = {

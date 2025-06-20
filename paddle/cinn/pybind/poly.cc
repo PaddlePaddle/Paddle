@@ -14,7 +14,6 @@
 
 #include <llvm/Support/FormatVariadic.h>
 
-#include "paddle/cinn/poly/stage.h"
 #include "paddle/cinn/pybind/bind.h"
 #include "paddle/cinn/pybind/bind_utils.h"
 
@@ -22,10 +21,6 @@ namespace py = pybind11;
 
 namespace cinn::pybind {
 
-using poly::Condition;
-using poly::Iterator;
-using poly::Stage;
-using poly::StageForloopInfo;
 using py::arg;
 
 namespace {

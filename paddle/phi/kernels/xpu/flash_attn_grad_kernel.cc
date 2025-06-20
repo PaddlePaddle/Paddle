@@ -161,8 +161,8 @@ void FlashAttnGradKernelBase(
         baidu::xpu::xfa::mha_varlen_bwd<XPUType, float, XPUTypeFP16, int>;
   }
   // template<typename T, typename TACCUM, typename TGEMM, typename TID = int>
-  // int mha_varlen_bwd(xdnn::Context* ctx, const T* dout, const T* q, const T*
-  // k, const T* v, const T* out, const TACCUM* softmax_lse, T* dq, T* dk, T*
+  // int mha_varlen_bwd(xdnn::Context* xpu_ctx, const T* dout, const T* q, const
+  // T* k, const T* v, const T* out, const TACCUM* softmax_lse, T* dq, T* dk, T*
   // dv, const xdnn::VectorParam<TID>& lod_seqlens_q, const
   // xdnn::VectorParam<TID>& lod_seqlens_k, int64_t max_seqlen_q, int64_t
   // max_seqlen_k, int64_t head_num, int64_t head_num_k, int64_t head_dim, const

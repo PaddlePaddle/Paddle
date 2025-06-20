@@ -63,21 +63,23 @@ class TestAutoCast(AmpTestBase):
         self.assertEqual(out3.dtype, paddle.float32)
 
     def test_pir_amp_OD_level(self):
-        with paddle.pir_utils.IrGuard():
-            with paddle.static.program_guard(
+        with (
+            paddle.pir_utils.IrGuard(),
+            paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
-            ):
-                self.init_net()
-                with paddle.amp.auto_cast(level='OD'):
-                    out1 = self._conv(
-                        paddle.rand(shape=[1, 1, 6, 6], dtype='float32')
-                    )
-                    out2 = out1 + paddle.rand(shape=out1.shape, dtype='float16')
-                    out3 = self._linear(out2)
+            ),
+        ):
+            self.init_net()
+            with paddle.amp.auto_cast(level='OD'):
+                out1 = self._conv(
+                    paddle.rand(shape=[1, 1, 6, 6], dtype='float32')
+                )
+                out2 = out1 + paddle.rand(shape=out1.shape, dtype='float16')
+                out3 = self._linear(out2)
 
-                self.assertEqual(out1.dtype, core.DataType.FLOAT16)
-                self.assertEqual(out2.dtype, core.DataType.FLOAT32)
-                self.assertEqual(out3.dtype, core.DataType.FLOAT32)
+            self.assertEqual(out1.dtype, core.DataType.FLOAT16)
+            self.assertEqual(out2.dtype, core.DataType.FLOAT32)
+            self.assertEqual(out3.dtype, core.DataType.FLOAT32)
 
 
 class SimpleConvNet(nn.Layer):
@@ -120,22 +122,24 @@ class TestStaticDecorate(AmpTestBase):
     ):
         main_program = paddle.static.Program()
         startup_program = paddle.static.Program()
-        with paddle.utils.unique_name.guard():
-            with paddle.static.program_guard(main_program, startup_program):
-                model = SimpleConvNet()
-                x = paddle.static.data(
-                    name='input', shape=[None, 1, 6, 6], dtype='float32'
-                )
-                out = model(x)
-                loss = paddle.mean(out)
-                optimizer = paddle.optimizer.Adadelta(learning_rate=0.001)
-                optimizer = paddle.static.amp.decorate(
-                    optimizer,
-                    init_loss_scaling=128.0,
-                    use_dynamic_loss_scaling=True,
-                    level=level,
-                )
-                optimizer.minimize(loss)
+        with (
+            paddle.utils.unique_name.guard(),
+            paddle.static.program_guard(main_program, startup_program),
+        ):
+            model = SimpleConvNet()
+            x = paddle.static.data(
+                name='input', shape=[None, 1, 6, 6], dtype='float32'
+            )
+            out = model(x)
+            loss = paddle.mean(out)
+            optimizer = paddle.optimizer.Adadelta(learning_rate=0.001)
+            optimizer = paddle.static.amp.decorate(
+                optimizer,
+                init_loss_scaling=128.0,
+                use_dynamic_loss_scaling=True,
+                level=level,
+            )
+            optimizer.minimize(loss)
 
         feed_vars = [x]
         fetch_vars = [loss]

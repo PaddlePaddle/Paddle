@@ -31,6 +31,7 @@ void GPUIndexElementwisePutKernel(const phi::GPUContext& dev_ctx,
                                   const std::vector<int64_t>& input_strides,
                                   const std::vector<int64_t>& index_dims,
                                   const std::vector<int64_t>& index_strides,
+                                  const int64_t slice_offset,
                                   DenseTensor* output) {
   int64_t numel = 0;
 
@@ -46,6 +47,7 @@ void GPUIndexElementwisePutKernel(const phi::GPUContext& dev_ctx,
 
   std::array<int64_t*, 3> strides_array;
   std::vector<int64_t> desired_shape;
+  std::array<std::vector<int64_t>, 3> strides_vec;
 
   funcs::IndexPutStride<3>(input_dims,
                            input_strides,
@@ -58,7 +60,8 @@ void GPUIndexElementwisePutKernel(const phi::GPUContext& dev_ctx,
                            phi::SizeOf(index[0]->dtype()),
                            &desired_shape,
                            &strides_array,
-                           &numel);
+                           &numel,
+                           strides_vec);
 
   auto offset_calc =
       funcs::make_offset_calculator_put<3>(desired_shape, strides_array);
@@ -80,7 +83,7 @@ void GPUIndexElementwisePutKernel(const phi::GPUContext& dev_ctx,
   funcs::index_elementwise_kernel<nt, vt>
       <<<grid, block, 0, stream>>>(N, [=] __device__(int idx) {
         const auto offsets = offset_calc.get(idx);
-        char* const out_data = out_ptr + offsets[0];
+        char* const out_data = out_ptr + offsets[0] + slice_offset;
         const char* const in_data = in_ptr + offsets[1];
 
         int64_t offset = 0;
@@ -109,6 +112,7 @@ void IndexElementwisePutKernel(const Context& dev_ctx,
                                const std::vector<int64_t>& input_strides,
                                const std::vector<int64_t>& index_dims,
                                const std::vector<int64_t>& index_strides,
+                               const int64_t slice_offset,
                                DenseTensor* out) {
   const auto& index_type = index[0]->dtype();
   PADDLE_ENFORCE_EQ(
@@ -133,6 +137,7 @@ void IndexElementwisePutKernel(const Context& dev_ctx,
                                          input_strides,
                                          index_dims,
                                          index_strides,
+                                         slice_offset,
                                          out);
   } else if (index_type == phi::DataType::INT64) {
     GPUIndexElementwisePutKernel<T, int64_t>(dev_ctx,
@@ -143,6 +148,7 @@ void IndexElementwisePutKernel(const Context& dev_ctx,
                                              input_strides,
                                              index_dims,
                                              index_strides,
+                                             slice_offset,
                                              out);
   }
 }

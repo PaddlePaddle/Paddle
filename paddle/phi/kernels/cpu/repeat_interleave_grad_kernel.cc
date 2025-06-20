@@ -61,12 +61,12 @@ void RepeatInterleaveWithTensorIndexGradKernel(
 
   phi::DeviceContextPool::Instance().Get(repeats_tensor.place());
   if (index_type == phi::DataType::INT32) {
-    phi::funcs::RepeatsTensor2IndexTensor<Context, int>(
+    phi::funcs::RepeatsTensor2IndexTensorFunctor<Context, int>()(
         dev_ctx, repeats_tensor, &index);
     IndexSelectGradInner<Context, T, int>(
         dev_ctx, out_grad, index, x_grad, dim);
   } else if (index_type == phi::DataType::INT64) {
-    phi::funcs::RepeatsTensor2IndexTensor<Context, int64_t>(
+    phi::funcs::RepeatsTensor2IndexTensorFunctor<Context, int64_t>()(
         dev_ctx, repeats_tensor, &index);
     IndexSelectGradInner<Context, T, int64_t>(
         dev_ctx, out_grad, index, x_grad, dim);

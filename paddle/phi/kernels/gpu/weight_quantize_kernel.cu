@@ -36,14 +36,19 @@ void WeightQuantizeKernel(const Context& dev_ctx,
       common::errors::InvalidArgument(
           "Currently, group_size only support -1(per-channel), 64 or 128."));
 
+  const int64_t m = x.dims()[0];
+  const int64_t n = x.dims()[1];
+  PADDLE_ENFORCE_LE(
+      m,
+      std::numeric_limits<int>::max(),
+      common::errors::InvalidArgument(
+          "Currently only supports x.shape[0] <= INT_MAX, but got %d", m));
+
   DenseTensor quanted_x;
   dev_ctx.template Alloc<int8_t>(out);
-  size_t m = x.dims()[0];
-  size_t n = x.dims()[1];
-  quanted_x.Resize({static_cast<int64_t>(m), static_cast<int64_t>(n)});
+  quanted_x.Resize({m, n});
   dev_ctx.template Alloc<int8_t>(&quanted_x);
-  std::vector<int> weight_shape{static_cast<int>(x.dims()[0]),
-                                static_cast<int>(x.dims()[1])};
+  std::vector<int64_t> weight_shape{m, n};
 #ifndef PADDLE_WITH_HIP
   PADDLE_ENFORCE_EQ(
       ((arch == 70) || (arch == 75) || (arch == 80) || (arch == 86) ||
@@ -96,7 +101,7 @@ void WeightQuantizeKernel(const Context& dev_ctx,
                                  algo);
 #ifdef PADDLE_WITH_HIP
     DenseTensor x_int_tmp(out->type());
-    x_int_tmp.Resize({static_cast<int64_t>(m), static_cast<int64_t>(n / 2)});
+    x_int_tmp.Resize({m, n / 2});
     dev_ctx.template Alloc<int8_t>(&x_int_tmp);
     int8_t* x_int_tmp_data = x_int_tmp.data<int8_t>();
     int8_t* quanted_x_data = quanted_x.data<int8_t>();
