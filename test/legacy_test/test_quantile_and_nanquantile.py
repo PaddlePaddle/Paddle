@@ -207,6 +207,20 @@ class TestQuantileAndNanquantile(unittest.TestCase):
             [(paddle.nanquantile, None)],
         )
 
+    def test_nanquantile_ZeroSize(self):
+        input_data = np.full(shape=[2, 0, 3], fill_value=np.nan)
+        x = paddle.to_tensor(input_data)
+        x.stop_gradient = False
+        paddle_res = paddle.nanquantile(x, q=0.35, axis=0)
+        np_res = np.nanquantile(input_data, q=0.35, axis=0)
+        np.testing.assert_allclose(
+            paddle_res.numpy(), np_res, rtol=1e-05, equal_nan=True
+        )
+
+        loss = paddle.sum(paddle_res)
+        loss.backward()
+        np.testing.assert_allclose(x.grad.shape, x.shape)
+
 
 class TestMuitlpleQ(unittest.TestCase):
     """

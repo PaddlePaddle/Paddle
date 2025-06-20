@@ -215,6 +215,21 @@ bool PlacementEqual(const std::shared_ptr<PlacementStatus>& a,
   return a_shard->get_axis() == b_shard->get_axis();
 }
 
+bool IsPartialLegal(const TensorDistAttr& dist_attr) {
+  if (dist_attr.is_partial()) {
+    const std::vector<int64_t> dims_mapping = dist_attr.dims_mapping();
+    const std::set<int64_t> partial_on_dims = dist_attr.partial_dims();
+    for (const int64_t& dim : dims_mapping) {
+      if (dim != -1 && partial_on_dims.count(dim) != 0) {
+        return false;
+      }
+    }
+    return true;
+  } else {
+    return true;
+  }
+}
+
 void AlignDimsSharding(std::vector<TensorDistAttr>* input_attrs_ptr,
                        const std::vector<std::vector<int64_t>>& tensor_shapes,
                        const std::vector<std::string>& axis_names,

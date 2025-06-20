@@ -29,6 +29,7 @@
 #include "paddle/cinn/ir/utils/ir_copy.h"
 #include "paddle/cinn/lang/compute.h"
 #include "paddle/cinn/optim/ir_simplify.h"
+#include "paddle/cinn/utils/string.h"
 #include "paddle/common/enforce.h"
 #include "paddle/utils/flat_hash_map.h"
 namespace cinn {

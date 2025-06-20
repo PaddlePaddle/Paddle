@@ -285,14 +285,14 @@ inline std::string GetHintString(const std::string& op_type,
 }
 
 template <typename T>
-static char* GetGpuHintStringPtr(const phi::GPUContext& ctx,
+static char* GetGpuHintStringPtr(const phi::GPUContext& dev_ctx,
                                  const std::string& op_type,
                                  const std::string& var_name,
                                  int dev_id) {
   std::call_once(init_multi_gpu_op_var_map_flag, InitMultiGPUOpVarMap);
 
   std::string op_var =
-      GetHintString<T>(op_type, var_name, ctx.GetPlace(), dev_id);
+      GetHintString<T>(op_type, var_name, dev_ctx.GetPlace(), dev_id);
   char* gpu_str_ptr = nullptr;
 
   {
@@ -302,9 +302,9 @@ static char* GetGpuHintStringPtr(const phi::GPUContext& ctx,
     std::lock_guard<std::mutex> guard(op_var2gpu_str_mutex);
     if (op_var2gpu_str.find(op_var) == op_var2gpu_str.end()) {  // insert
       auto gpu_str_tensor = phi::memory_utils::Alloc(
-          ctx.GetPlace(),
+          dev_ctx.GetPlace(),
           op_var.length() + 1,
-          phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
+          phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
       gpu_str_ptr = reinterpret_cast<char*>(gpu_str_tensor->ptr());
 
       op_var2gpu_str.emplace(op_var, std::move(gpu_str_tensor));
@@ -322,13 +322,13 @@ static char* GetGpuHintStringPtr(const phi::GPUContext& ctx,
                                                 iter->first.c_str(),
                                                 op_var.length() + 1,
                                                 hipMemcpyHostToDevice,
-                                                ctx.stream()));
+                                                dev_ctx.stream()));
 #else
       PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(gpu_str_ptr,
                                                  iter->first.c_str(),
                                                  op_var.length() + 1,
                                                  cudaMemcpyHostToDevice,
-                                                 ctx.stream()));
+                                                 dev_ctx.stream()));
 #endif
     } else {  // get
       auto iter = op_var2gpu_str.find(op_var);
@@ -345,7 +345,7 @@ static char* GetGpuHintStringPtr(const phi::GPUContext& ctx,
 }
 
 template <typename T>
-static void PrintStack(const phi::GPUContext& ctx,
+static void PrintStack(const phi::GPUContext& dev_ctx,
                        const DenseTensor& stats,
                        const std::string& op_type,
                        const std::string& var_name,
@@ -358,8 +358,8 @@ static void PrintStack(const phi::GPUContext& ctx,
                           stats.place(),
                           stats.data(),
                           3 * sizeof(int64_t),
-                          ctx.stream());
-  ctx.Wait();
+                          dev_ctx.stream());
+  dev_ctx.Wait();
   if (cpu_stats_ptr[0] > 0 || cpu_stats_ptr[1] > 0) {
     const std::string debug_info =
         GetHintString<T>(op_type, var_name, stats.place(), dev_id);
@@ -371,7 +371,7 @@ static void PrintStack(const phi::GPUContext& ctx,
 }
 
 template <typename T, typename MT>
-static void WriteToOutputDir(const phi::GPUContext& ctx,
+static void WriteToOutputDir(const phi::GPUContext& dev_ctx,
                              const DenseTensor& tensor,
                              const DenseTensor& stats,
                              const DenseTensor& values,
@@ -382,12 +382,12 @@ static void WriteToOutputDir(const phi::GPUContext& ctx,
   // Copy stats and values from GPU to CPU.
   phi::DenseTensor cpu_stats;
   cpu_stats.Resize({static_cast<int64_t>(3)});
-  phi::Copy(ctx, stats, phi::CPUPlace(), false, &cpu_stats);
+  phi::Copy(dev_ctx, stats, phi::CPUPlace(), false, &cpu_stats);
 
   phi::DenseTensor cpu_values;
   cpu_values.Resize({static_cast<int64_t>(3)});
-  phi::Copy(ctx, values, phi::CPUPlace(), false, &cpu_values);
-  ctx.Wait();
+  phi::Copy(dev_ctx, values, phi::CPUPlace(), false, &cpu_values);
+  dev_ctx.Wait();
 
   int dev_id = tensor.place().device;
   const std::string debug_info =
@@ -409,7 +409,7 @@ static void WriteToOutputDir(const phi::GPUContext& ctx,
 }
 
 template <typename T, typename Context>
-void CheckNumericsKernel(const Context& ctx,
+void CheckNumericsKernel(const Context& dev_ctx,
                          const DenseTensor& tensor,
                          const std::string& op_type,
                          const std::string& var_name,
@@ -427,7 +427,8 @@ void CheckNumericsKernel(const Context& ctx,
   if (tensor.numel() <= 0) return;
 
   // Print to the standard output.
-  char* gpu_str_ptr = GetGpuHintStringPtr<T>(ctx, op_type, var_name, dev_id);
+  char* gpu_str_ptr =
+      GetGpuHintStringPtr<T>(dev_ctx, op_type, var_name, dev_id);
 
   const size_t threads = 1024;
   size_t blocks =
@@ -441,51 +442,51 @@ void CheckNumericsKernel(const Context& ctx,
   phi::DenseTensor block_num_nan_inf_zero;
   block_num_nan_inf_zero.Resize({static_cast<int64_t>(3 * numel_max_min)});
   int64_t* block_num_nan_ptr =
-      ctx.template Alloc<int64_t>(&block_num_nan_inf_zero);
+      dev_ctx.template Alloc<int64_t>(&block_num_nan_inf_zero);
   int64_t* block_num_inf_ptr = block_num_nan_ptr + numel_max_min;
   int64_t* block_num_zero_ptr = block_num_inf_ptr + numel_max_min;
 
   phi::DenseTensor tensor_block_max_min;
   tensor_block_max_min.Resize({static_cast<int64_t>(3 * numel_max_min)});
-  MT* tensor_block_max_ptr = ctx.template Alloc<MT>(&tensor_block_max_min);
+  MT* tensor_block_max_ptr = dev_ctx.template Alloc<MT>(&tensor_block_max_min);
   MT* tensor_block_min_ptr = tensor_block_max_ptr + numel_max_min;
   MT* tensor_block_mean_ptr = tensor_block_max_ptr + 2 * numel_max_min;
 
   FindNanInfAndBlockMaxMin<T, MT>
-      <<<blocks, threads, 0, ctx.stream()>>>(tensor.data<T>(),
-                                             tensor.numel(),
-                                             block_num_nan_ptr,
-                                             block_num_inf_ptr,
-                                             block_num_zero_ptr,
-                                             tensor_block_max_ptr,
-                                             tensor_block_min_ptr,
-                                             tensor_block_mean_ptr);
+      <<<blocks, threads, 0, dev_ctx.stream()>>>(tensor.data<T>(),
+                                                 tensor.numel(),
+                                                 block_num_nan_ptr,
+                                                 block_num_inf_ptr,
+                                                 block_num_zero_ptr,
+                                                 tensor_block_max_ptr,
+                                                 tensor_block_min_ptr,
+                                                 tensor_block_mean_ptr);
 
   // stats stores the checking result of num_nan, num_inf and num_zero.
   stats->Resize({static_cast<int64_t>(3)});
-  int64_t* stats_ptr = ctx.template Alloc<int64_t>(stats);
+  int64_t* stats_ptr = dev_ctx.template Alloc<int64_t>(stats);
 
   // values stores the max_value, min_value and mean_value.
   values->Resize({static_cast<int64_t>(3)});
-  float* values_ptr = ctx.template Alloc<float>(values);
+  float* values_ptr = dev_ctx.template Alloc<float>(values);
 
   FindGlobalMaxMinAndPrint<T, MT>
-      <<<1, 1, 0, ctx.stream()>>>(block_num_nan_ptr,
-                                  block_num_inf_ptr,
-                                  block_num_zero_ptr,
-                                  tensor_block_max_ptr,
-                                  tensor_block_min_ptr,
-                                  tensor_block_mean_ptr,
-                                  gpu_str_ptr,
-                                  tensor.numel(),
-                                  numel_max_min,
-                                  check_nan_inf_level,
-                                  stats_ptr,
-                                  values_ptr);
+      <<<1, 1, 0, dev_ctx.stream()>>>(block_num_nan_ptr,
+                                      block_num_inf_ptr,
+                                      block_num_zero_ptr,
+                                      tensor_block_max_ptr,
+                                      tensor_block_min_ptr,
+                                      tensor_block_mean_ptr,
+                                      gpu_str_ptr,
+                                      tensor.numel(),
+                                      numel_max_min,
+                                      check_nan_inf_level,
+                                      stats_ptr,
+                                      values_ptr);
 
   if (output_dir.size() > 0) {
     // Write log to output_dir.
-    WriteToOutputDir<T, MT>(ctx,
+    WriteToOutputDir<T, MT>(dev_ctx,
                             tensor,
                             *stats,
                             *values,
@@ -496,7 +497,7 @@ void CheckNumericsKernel(const Context& ctx,
   }
 
   if (check_nan_inf_level == 0 && stack_height_limit > 0) {
-    PrintStack<T>(ctx, *stats, op_type, var_name, dev_id);
+    PrintStack<T>(dev_ctx, *stats, op_type, var_name, dev_id);
   }
 }
 

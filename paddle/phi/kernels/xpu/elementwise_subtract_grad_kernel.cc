@@ -48,7 +48,7 @@ void SubtractGradKernel(const Context& dev_ctx,
     return;
   }
 
-  auto f = [](xpu::Context* ctx,
+  auto f = [](xpu::Context* xpu_ctx,
               const XPUType* x,
               const XPUType* y,
               const XPUType* z,
@@ -58,7 +58,7 @@ void SubtractGradKernel(const Context& dev_ctx,
               const std::vector<int64_t>& xshape,
               const std::vector<int64_t>& yshape) {
     return xpu::broadcast_sub_grad<XPUType>(
-        ctx, x, y, z, dz, dy, dx, xshape, yshape);
+        xpu_ctx, x, y, z, dz, dy, dx, xshape, yshape);
   };
 
   phi::XPUElementwiseGrad<T, XPUType>(

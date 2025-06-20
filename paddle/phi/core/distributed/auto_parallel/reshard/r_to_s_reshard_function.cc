@@ -59,6 +59,11 @@ void RToSReshardFunction::Eval(phi::DeviceContext* dev_ctx,
   int64_t mesh_axis = split_axis_to_mesh_axis.begin()->second;
 
   int64_t num_of_process = out_process_mesh.shape()[mesh_axis];
+  if (num_of_process == 1) {
+    SetValue(out, in.value());
+    SetDistProps(out, in.dims(), out_dist_attr);
+    return;
+  }
   VLOG(3) << "RToSReshard: Tensor will be split on axis " << split_axis
           << ". Split will use axis " << mesh_axis << " of process_mesh."
           << " There will have " << num_of_process

@@ -14,14 +14,17 @@
 
 from __future__ import annotations
 
+import dataclasses
 import dis
 import functools
 import inspect
 import itertools
 import operator
+import random
 import sys
 import types
-from functools import reduce
+from dataclasses import fields
+from functools import partial, reduce
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -29,7 +32,11 @@ from typing import (
 )
 
 import paddle
-from paddle.base.dygraph.base import _DecoratorContextManager
+from paddle.base.dygraph.base import (
+    _DecoratorContextManager,
+    in_sot_simulation_mode,
+)
+from paddle.jit.dy2static.utils import TransformOptions, is_dataclass_type
 
 from .... import psdb
 from ....profiler import EventGuard
@@ -43,7 +50,6 @@ from ....utils import (
     get_obj_stable_repr,
     get_static_function,
     hashable,
-    is_break_graph_api,
     is_break_graph_tensor_methods,
     is_builtin_fn,
     is_directly_run_api,
@@ -61,6 +67,7 @@ from ....utils.exceptions import (
     DataDependencyOperationBreak,
     FallbackError,
     FallbackInlineCallBreak,
+    ForceBreak,
     InnerError,
     OtherInlineCallBreak,
     PsdbBreakReason,
@@ -69,7 +76,11 @@ from ....utils.exceptions import (
     SotErrorBase,
     UnsupportedNumPyAPIBreak,
     UnsupportedOperationBreak,
-    UnsupportedPaddleAPIBreak,
+    UnsupportedRandomAPIBreak,
+)
+from ....utils.paddle_api_config import (
+    break_graph_functions,
+    break_graph_layer_classes,
 )
 from ..dispatcher import Dispatcher
 from ..guard import (
@@ -99,6 +110,7 @@ from .base import (
 )
 from .basic import (
     ConstantVariable,
+    DataClassInstanceVariable,
     NumPyNumberVariable,
     ObjectVariable,
     PrintStmtVariable,
@@ -142,6 +154,33 @@ class CallableVariable(VariableBase):
 
     def call_function(self, /, *args, **kwargs):
         raise NotImplementedError("call_function is not implemented.")
+
+
+class ForceBreakCallableVariable(CallableVariable):
+    def __init__(self, name: str, graph: FunctionGraph, tracker: Tracker):
+        super().__init__(graph, tracker)
+        self.name = name
+
+    def call_function(self, /, *args, **kwargs) -> VariableBase:
+        raise BreakGraphError(ForceBreak(reason_str=f"Force run {self.name}"))
+
+    def get_py_value(self, allow_tensor=False):
+        return self.value
+
+    @VariableFactory.register_from_value()
+    def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
+        if (
+            isinstance(value, paddle.nn.Layer)
+            and value.__class__ in break_graph_layer_classes
+        ):
+            return ForceBreakCallableVariable(
+                f"Layer({value.__class__.__name__})", graph, tracker
+            )
+        elif hashable(value) and value in break_graph_functions:
+            return ForceBreakCallableVariable(
+                get_obj_stable_repr(value), graph, tracker
+            )
+        return None
 
 
 class FunctionVariable(CallableVariable):
@@ -245,11 +284,15 @@ class UserDefinedFunctionVariable(FunctionVariable):
                 f"Fallback by psdb.fallback (recursive={recursive_var.get_py_value()})",
                 disable_eval_frame=recursive_var.get_py_value(),
             )
-        elif self.value is psdb.in_sot:
+        elif self.value in {psdb.in_sot, in_sot_simulation_mode}:
             return ConstantVariable.wrap_literal(True, self.graph)
         return None
 
     def call_function(self, /, *args, **kwargs) -> VariableBase:
+        if UserDefinedFunctionVariable.__is_random_function(self.value):
+            raise BreakGraphError(
+                UnsupportedRandomAPIBreak(fn_name=self.value.__name__)
+            )
         from ..opcode_inline_executor import OpcodeInlineExecutor
 
         result = self.handle_psdb_function(*args, **kwargs)
@@ -318,6 +361,13 @@ class UserDefinedFunctionVariable(FunctionVariable):
             "name": self.value.__name__,
         }
 
+    @staticmethod
+    def __is_random_function(value) -> bool:
+        return value.__qualname__ in [
+            f"{random._inst.__class__.__name__}.{name}"
+            for name in dir(random._inst)
+        ]
+
 
 class UserCodeVariable(FunctionVariable):
     """
@@ -351,10 +401,6 @@ class PaddleApiVariable(FunctionVariable):
         super().__init__(fn, graph, tracker)
 
     def call_function(self, /, *args, **kwargs):
-        if is_break_graph_api(self.value):
-            raise BreakGraphError(
-                UnsupportedPaddleAPIBreak(fn_name=self.value.__name__)
-            )
         return self.graph.call_paddle_api(self.value, *args, **kwargs)
 
     @VariableFactory.register_from_value(
@@ -613,6 +659,47 @@ class LayerVariable(CallableVariable):
         super().__init__(graph, tracker)
         self.value = layer
 
+    def getattr(self, name: str, default=None):
+        # TODO(SigureMo): Use more common logic to handle this case,
+        # e.g. call Layer's __getattr__
+        layer = self.value
+        if (
+            '_parameters' in layer.__dict__
+            and name in layer.__dict__["_parameters"]
+        ):
+            return self.getattr("_parameters").getitem(
+                ConstantVariable.wrap_literal(name, self.graph)
+            )
+        if (
+            '_sub_layers' in layer.__dict__
+            and name in layer.__dict__["_sub_layers"]
+        ):
+            out = self.getattr("_sub_layers").getitem(
+                ConstantVariable.wrap_literal(name, self.graph)
+            )
+            return out
+        if '_buffers' in layer.__dict__ and name in layer.__dict__["_buffers"]:
+            return self.getattr("_buffers").getitem(
+                ConstantVariable.wrap_literal(name, self.graph)
+            )
+        return super().getattr(name, default)
+
+    def setattr(self, name: str, value):
+        layer = self.value
+        if (
+            '_parameters' in layer.__dict__
+            and name in layer.__dict__["_parameters"]
+        ):
+            return self.getattr("_parameters").setitem(name, value)
+        if (
+            '_sub_layers' in layer.__dict__
+            and name in layer.__dict__["_sub_layers"]
+        ):
+            return self.getattr("_sub_layers").setitem(name, value)
+        if '_buffers' in layer.__dict__ and name in layer.__dict__["_buffers"]:
+            return self.getattr("_buffers").setitem(name, value)
+        return super().setattr(name, value)
+
     def get_py_value(self, allow_tensor=False):
         return self.value
 
@@ -816,7 +903,11 @@ class PaddleLayerVariable(LayerVariable):
                 or is_not_supported_paddle_layer(type(value))
             ):
                 return None
-            if value.__module__.startswith("paddle.nn."):
+            if value.__module__.startswith("paddle.nn.") or (
+                not TransformOptions.check_fn_need_transform(
+                    value.__class__, TransformOptions.ToStaticMode.SOT
+                )
+            ):
                 return PaddleLayerVariable(value, graph, tracker)
         return None
 
@@ -1118,7 +1209,9 @@ class ClassVariable(CallableVariable):
         # do not have init function
         if self.value.__init__ is object.__init__:
             return VariableFactory.from_value(
-                new_object, self.graph, DummyTracker([self])
+                new_object,
+                self.graph,
+                DummyTracker([self, *args, *kwargs.values()]),
             )
 
         if not hasattr(self.value.__init__, "__code__"):
@@ -1138,7 +1231,7 @@ class ClassVariable(CallableVariable):
         new_object_variable = VariableFactory.from_value(
             new_object,
             self.graph,
-            DummyTracker([self, *list(args), *list(kwargs.values())]),
+            DummyTracker([self, *args, *kwargs.values()]),
         )
         fn_var(new_object_variable, *args, **kwargs)
         return new_object_variable
@@ -1206,6 +1299,65 @@ class PureClassVariable(ClassVariable):
         return None
 
 
+class DataClassVariable(ClassVariable):
+    def __init__(
+        self, class_: type[Any], graph: FunctionGraph, tracker: Tracker
+    ):
+        super().__init__(class_, graph, tracker)
+
+    def call_function(self, /, *args, **kwargs):
+        signature = DataClassVariable.create_dataclass_init_signature(
+            self.value
+        )
+        bound_args = signature.bind(*args, **kwargs)
+        bound_args.apply_defaults()
+
+        instance = DataClassInstanceVariable(
+            bound_args.arguments,
+            self,
+            None,
+            self.graph,
+            DummyTracker([*args, *kwargs.values()]),
+        )
+        if hasattr(self.value, "__post_init__"):
+            post_init = VariableFactory.from_value(
+                self.value.__post_init__,
+                self.graph,
+                GetAttrTracker(self, "__post_init__"),
+            ).bind(instance, "__post_init__")
+            post_init()
+        return instance
+
+    @staticmethod
+    def create_dataclass_init_signature(
+        data_class: type[Any],
+    ) -> inspect.Signature:
+        parameters = []
+        for fd in fields(data_class):
+            if not isinstance(fd.default, dataclasses._MISSING_TYPE):
+                default = fd.default
+            elif not isinstance(fd.default_factory, dataclasses._MISSING_TYPE):
+                default = fd.default_factory()
+            else:
+                default = inspect.Parameter.empty
+            parameters.append(
+                inspect.Parameter(
+                    fd.name,
+                    inspect.Parameter.POSITIONAL_OR_KEYWORD,
+                    default=default,
+                    annotation=fd.type,
+                )
+            )
+        return inspect.Signature(parameters=parameters, return_annotation=None)
+
+    @VariableFactory.register_from_value(successor="ClassVariable")
+    def from_value(value: object, graph: FunctionGraph, tracker: Tracker):
+        if is_dataclass_type(value):
+            var = DataClassVariable(value, graph=graph, tracker=tracker)
+            return var
+        return None
+
+
 class NamedTupleClassVariable(ClassVariable):
     def __init__(
         self, class_: type[Any], graph: FunctionGraph, tracker: Tracker
@@ -1233,4 +1385,49 @@ class NamedTupleClassVariable(ClassVariable):
     def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
         if is_namedtuple_class(value):
             return NamedTupleClassVariable(value, graph, tracker)
+        return None
+
+
+class PartialVariable(CallableVariable):
+    def __init__(
+        self,
+        value: partial,
+        graph: FunctionGraph,
+        tracker: Tracker,
+    ):
+        super().__init__(graph, tracker)
+        self.value = value
+
+    def get_py_value(self, allow_tensor=False):
+        return self.value
+
+    def get_py_type(self):
+        return partial
+
+    def call_function(self, /, *call_args, **call_kwargs):
+        func_variable = VariableFactory.from_value(
+            self.value.func, self.graph, GetAttrTracker(self, "func")
+        )
+        partial_args = VariableFactory.from_value(
+            self.value.args, self.graph, GetAttrTracker(self, "args")
+        )
+        partial_keywords = VariableFactory.from_value(
+            self.value.keywords, self.graph, GetAttrTracker(self, "keywords")
+        )
+        assert isinstance(func_variable, CallableVariable)
+
+        partial_keywords.get_wrapped_items().update(call_kwargs)
+
+        out = func_variable(
+            *partial_args.get_wrapped_items(),
+            *call_args,
+            **(partial_keywords.get_wrapped_items() | call_kwargs),
+        )
+
+        return out
+
+    @VariableFactory.register_from_value()
+    def from_value(value: partial, graph: FunctionGraph, tracker: Tracker):
+        if isinstance(value, partial):
+            return PartialVariable(value, graph, tracker)
         return None

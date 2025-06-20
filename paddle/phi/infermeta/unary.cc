@@ -784,7 +784,9 @@ void CropInferMeta(const MetaTensor& x,
 
   auto out_dims = std::vector<int64_t>(shape.size(), -1);
   for (int i = 0; i < static_cast<int>(shape_dims.size()); ++i) {
-    if (shape_dims[i] > 0) {
+    if (x_dim[i] == 0) {
+      out_dims[i] = static_cast<int64_t>(x_dim[i]);
+    } else if (shape_dims[i] >= 0) {
       out_dims[i] = static_cast<int64_t>(shape_dims[i]);
     }
   }
@@ -1365,6 +1367,36 @@ void ExpandInferMeta(const MetaTensor& x,
 #undef EXPAND_MAX_RANK_SUPPORTED
 }
 
+void ExpandModalityExpertIdInferMeta(const MetaTensor& expert_id,
+                                     int64_t num_expert_per_modality,
+                                     int64_t group_size,
+                                     int64_t modality_offset,
+                                     bool is_group_expert,
+                                     MetaTensor* expert_id_out) {
+  auto expert_id_dims = expert_id.dims();
+  PADDLE_ENFORCE_EQ(
+      expert_id_dims.size(),
+      2,
+      common::errors::InvalidArgument(
+          "The input expert_id's dimensions size should be 2. But received "
+          "expert_id's dimensions size=[%d],  expert_id's dimensions=[%s].",
+          expert_id_dims.size(),
+          expert_id_dims));
+  PADDLE_ENFORCE_EQ(
+      expert_id.dtype() == DataType::INT32 ||
+          expert_id.dtype() == DataType::INT64,
+      true,
+      common::errors::InvalidArgument(
+          "The dtype of expert_id should be INT32 or INT64. But received"
+          "dtype=%s.",
+          DataTypeToString(expert_id.dtype())));
+
+  int64_t seqlen = expert_id_dims[0];
+  int64_t k = expert_id_dims[1];
+  expert_id_out->set_dims(common::make_ddim({seqlen, k}));
+  expert_id_out->set_dtype(expert_id.dtype());
+}
+
 void FakeChannelWiseQuantizeAbsMaxInferMeta(const MetaTensor& x,
                                             int bit_length,
                                             int round_type,
@@ -1470,7 +1502,7 @@ void FFTC2CInferMeta(const MetaTensor& x,
   if (config.is_runtime) {
     const phi::DDim x_dim = x.dims();
     for (auto axis : axes) {
-      PADDLE_ENFORCE_GT(x_dim[axis],
+      PADDLE_ENFORCE_GE(x_dim[axis],
                         0,
                         common::errors::InvalidArgument(
                             "Invalid fft n-point (%d).", x_dim[axis]));
@@ -1497,7 +1529,7 @@ void FFTC2RInferMeta(const MetaTensor& x,
   if (config.is_runtime) {
     size_t signal_dims = axes.size();
     for (size_t i = 0; i < signal_dims - 1; i++) {
-      PADDLE_ENFORCE_GT(x_dim[axes[i]],
+      PADDLE_ENFORCE_GE(x_dim[axes[i]],
                         0,
                         common::errors::InvalidArgument(
                             "Invalid fft n-point (%d).", x_dim[axes[i]]));
@@ -1513,7 +1545,7 @@ void FFTC2RInferMeta(const MetaTensor& x,
   } else if (config.is_runtime) {
     const int64_t input_last_dim_size = x_dim[last_fft_axis];
     const int64_t fft_n_point = (input_last_dim_size - 1) * 2;
-    PADDLE_ENFORCE_GT(fft_n_point,
+    PADDLE_ENFORCE_GE(fft_n_point,
                       0,
                       common::errors::InvalidArgument(
                           "Invalid fft n-point (%d).", fft_n_point));
@@ -1542,7 +1574,7 @@ void FFTR2CInferMeta(const MetaTensor& x,
   // they might be -1 to indicate unknown size ar compile time
   if (config.is_runtime) {
     for (auto axis : axes) {
-      PADDLE_ENFORCE_GT(x_dim[axis],
+      PADDLE_ENFORCE_GE(x_dim[axis],
                         0,
                         common::errors::InvalidArgument(
                             "Invalid fft n-point (%d).", x_dim[axis]));
@@ -2132,12 +2164,14 @@ void IdentityLossInferMeta(const MetaTensor& x,
 }
 
 void IncrementInferMeta(const MetaTensor& x, float value, MetaTensor* out) {
-  PADDLE_ENFORCE_EQ(
-      product(x.dims()),
-      1UL,
-      errors::InvalidArgument("The number of elements in Input(X) should be 1."
-                              "Now the number is %d.",
-                              product(x.dims())));
+  if (x.numel() != 0) {
+    PADDLE_ENFORCE_EQ(product(x.dims()),
+                      1UL,
+                      errors::InvalidArgument(
+                          "The number of elements in Input(X) should be 1."
+                          "Now the number is %d.",
+                          product(x.dims())));
+  }
   out->set_dims(x.dims());
   out->share_lod(x);
   out->set_layout(x.layout());
@@ -2504,9 +2538,10 @@ void MatrixRankInferMeta(const MetaTensor& x,
                     common::errors::InvalidArgument(
                         "The dims of input must be greater than 2."));
 
-  if (hermitian) {
+  if (hermitian && x.numel() != 0) {
     int rows = static_cast<int>(dim_x[dim_x.size() - 2]);
     int cols = static_cast<int>(dim_x[dim_x.size() - 1]);
+    // if x is 0-size Tensor,ignore rows == cols check.
     PADDLE_ENFORCE_EQ(rows,
                       cols,
                       common::errors::InvalidArgument(
@@ -3194,6 +3229,11 @@ void PartialSendInferMeta(const MetaTensor& x, int peer, int num, int id) {
           "The id (%d) for partial_send op must >=0 and <num (%d)", id, num));
 }
 
+inline int64_t HandleDynamicDim(int64_t maybe_dynamic_dim,
+                                int64_t static_result) {
+  return maybe_dynamic_dim == -1 ? -1 : static_result;
+}
+
 void PixelShuffleInferMeta(const MetaTensor& x,
                            int upscale_factor,
                            const std::string& data_format,
@@ -3232,13 +3272,19 @@ void PixelShuffleInferMeta(const MetaTensor& x,
   auto output_dims = input_dims;
   output_dims[0] = input_dims[0];
   if (!channel_last) {
-    output_dims[1] = input_dims[1] / (upscale_factor * upscale_factor);
-    output_dims[2] = input_dims[2] * upscale_factor;
-    output_dims[3] = input_dims[3] * upscale_factor;
+    output_dims[1] = HandleDynamicDim(
+        input_dims[1], input_dims[1] / (upscale_factor * upscale_factor));
+    output_dims[2] =
+        HandleDynamicDim(input_dims[2], input_dims[2] * upscale_factor);
+    output_dims[3] =
+        HandleDynamicDim(input_dims[3], input_dims[3] * upscale_factor);
   } else {
-    output_dims[1] = input_dims[1] * upscale_factor;
-    output_dims[2] = input_dims[2] * upscale_factor;
-    output_dims[3] = input_dims[3] / (upscale_factor * upscale_factor);
+    output_dims[1] =
+        HandleDynamicDim(input_dims[1], input_dims[1] * upscale_factor);
+    output_dims[2] =
+        HandleDynamicDim(input_dims[2], input_dims[2] * upscale_factor);
+    output_dims[3] = HandleDynamicDim(
+        input_dims[3], input_dims[3] / (upscale_factor * upscale_factor));
   }
   out->set_dtype(x.dtype());
   out->set_dims(output_dims);
@@ -3262,13 +3308,15 @@ void PixelShuffleGradInferMeta(const MetaTensor& out_grad,
   dx_dims[0] = do_dims[0];
 
   if (!channel_last) {
-    dx_dims[1] = do_dims[1] * (upscale_factor * upscale_factor);
-    dx_dims[2] = do_dims[2] / upscale_factor;
-    dx_dims[3] = do_dims[3] / upscale_factor;
+    dx_dims[1] = HandleDynamicDim(
+        do_dims[1], do_dims[1] * (upscale_factor * upscale_factor));
+    dx_dims[2] = HandleDynamicDim(do_dims[2], do_dims[2] / upscale_factor);
+    dx_dims[3] = HandleDynamicDim(do_dims[3], do_dims[3] / upscale_factor);
   } else {
-    dx_dims[1] = do_dims[1] / upscale_factor;
-    dx_dims[2] = do_dims[2] / upscale_factor;
-    dx_dims[3] = do_dims[3] * (upscale_factor * upscale_factor);
+    dx_dims[1] = HandleDynamicDim(do_dims[1], do_dims[1] / upscale_factor);
+    dx_dims[2] = HandleDynamicDim(do_dims[2], do_dims[2] / upscale_factor);
+    dx_dims[3] = HandleDynamicDim(
+        do_dims[3], do_dims[3] * (upscale_factor * upscale_factor));
   }
   x_grad->set_dims(dx_dims);
   x_grad->set_dtype(out_grad.dtype());
@@ -3322,13 +3370,19 @@ void PixelUnshuffleInferMeta(const MetaTensor& x,
   auto output_dims = input_dims;
   output_dims[0] = input_dims[0];
   if (!channel_last) {
-    output_dims[1] = input_dims[1] * (downscale_factor * downscale_factor);
-    output_dims[2] = input_dims[2] / downscale_factor;
-    output_dims[3] = input_dims[3] / downscale_factor;
+    output_dims[1] = HandleDynamicDim(
+        input_dims[1], input_dims[1] * (downscale_factor * downscale_factor));
+    output_dims[2] =
+        HandleDynamicDim(input_dims[2], input_dims[2] / downscale_factor);
+    output_dims[3] =
+        HandleDynamicDim(input_dims[3], input_dims[3] / downscale_factor);
   } else {
-    output_dims[1] = input_dims[1] / downscale_factor;
-    output_dims[2] = input_dims[2] / downscale_factor;
-    output_dims[3] = input_dims[3] * (downscale_factor * downscale_factor);
+    output_dims[1] =
+        HandleDynamicDim(input_dims[1], input_dims[1] / downscale_factor);
+    output_dims[2] =
+        HandleDynamicDim(input_dims[2], input_dims[2] / downscale_factor);
+    output_dims[3] = HandleDynamicDim(
+        input_dims[3], input_dims[3] * (downscale_factor * downscale_factor));
   }
   out->set_dtype(x.dtype());
   out->set_dims(output_dims);
@@ -3354,7 +3408,7 @@ void PNormInferMeta(const MetaTensor& x,
                         x_rank,
                         x_dim));
 
-  std::vector<int> out_dim_vector;
+  std::vector<int64_t> out_dim_vector;
   if (asvector) {
     if (keepdim) {
       for (int i = 0; i < x_rank; ++i) {
@@ -4520,23 +4574,23 @@ void SplitInferMeta(const MetaTensor& x,
   } else {
     auto input_axis_dim = x.dims().at(axis_value);
     std::vector<int64_t> sections_vec;
-    const int unknow_dim_val = -1;
-    int unknow_dim_idx = -1;
-    int num_of_unknow = 0;
+    const int unknown_dim_val = -1;
+    int unknown_dim_idx = -1;
+    int num_of_unknown = 0;
     int64_t sum_of_section = 0;
 
     for (int i = 0; i < static_cast<int>(sections_data.size()); ++i) {
       sections_vec.push_back(sections_data[i]);
 
-      if (sections_data[i] == unknow_dim_val) {
-        num_of_unknow++;
-        unknow_dim_idx = i;
+      if (sections_data[i] == unknown_dim_val) {
+        num_of_unknown++;
+        unknown_dim_idx = i;
       } else {
         sum_of_section += static_cast<int64_t>(sections_data[i]);
       }
     }
 
-    PADDLE_ENFORCE_LE(num_of_unknow,
+    PADDLE_ENFORCE_LE(num_of_unknown,
                       1,
                       common::errors::InvalidArgument(
                           "Only one dimension value of Attr(num_or_sections) "
@@ -4544,7 +4598,7 @@ void SplitInferMeta(const MetaTensor& x,
                           "But received Attr(num_or_sections) = [%s].",
                           common::make_ddim(sections_data)));
 
-    if (unknow_dim_idx != -1) {
+    if (unknown_dim_idx != -1) {
       // for example, input shape = [4 ,5], axis = 1, sections = [2, 3, -1].
       // input_axis_dim = 5, sum_of_sections = 5.
       // the following check will fail.
@@ -4561,7 +4615,7 @@ void SplitInferMeta(const MetaTensor& x,
               x.dims(),
               axis_value));
 
-      sections_vec[unknow_dim_idx] = input_axis_dim - sum_of_section;
+      sections_vec[unknown_dim_idx] = input_axis_dim - sum_of_section;
     } else {
       PADDLE_ENFORCE_EQ(
           sum_of_section,
@@ -6075,7 +6129,7 @@ void UnStackInferMeta(const MetaTensor& x,
             x_dim[axis],
             num));
   }
-  auto vec = common::vectorize<int>(x_dim);
+  auto vec = common::vectorize<int64_t>(x_dim);
   vec.erase(vec.begin() + axis);
   for (size_t i = 0; i < output_count; i++) {
     outs[i]->set_dims(common::make_ddim(vec));
@@ -6104,12 +6158,23 @@ void WeightQuantizeInferMeta(const MetaTensor& x,
       2UL,
       common::errors::InvalidArgument(
           "The x tensor of quant op must be 2D, but got[%d]", x_dims.size()));
-  PADDLE_ENFORCE_EQ(
-      x_dims[0] % 64,
-      0,
-      common::errors::InvalidArgument(
-          "The first dimension of input must be divisible by 64, but got[%d]",
-          x_dims[0]));
+
+  if (algo == "w4a8") {
+    PADDLE_ENFORCE_EQ(
+        x_dims[0] % 32,
+        0,
+        common::errors::InvalidArgument("The first dimension of packed-input "
+                                        "must be divisible by 32, but got[%d]",
+                                        x_dims[0]));
+  } else {
+    PADDLE_ENFORCE_EQ(
+        x_dims[0] % 64,
+        0,
+        common::errors::InvalidArgument(
+            "The first dimension of input must be divisible by 64, but got[%d]",
+            x_dims[0]));
+  }
+
   PADDLE_ENFORCE_EQ(
       x_dims[1] % 16,
       0,
@@ -6136,10 +6201,17 @@ void WeightQuantizeInferMeta(const MetaTensor& x,
     dim_out = std::vector<int64_t>({x_dims[1], x_dims[0]});
   } else if (algo == "weight_only_int4") {
     dim_out = std::vector<int64_t>({x_dims[1] / 2, x_dims[0]});
+  } else if (algo == "w4a8") {
+    dim_out = vectorize(x_dims);
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
         "The algo must be in ['weight_only_int8', 'weight_only_int4', "
-        "'llm.int8'], but got[%s]",
+        "'llm.int8', 'w4a8'], but got[%s]",
+        algo));
+  }
+  if (x.dtype() == DataType::INT8 && algo != "w4a8") {
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "The algo must be 'w4a8' while the x's dtype is INT8, but got[%s]",
         algo));
   }
   out->set_dims(common::make_ddim(dim_out));
@@ -6275,6 +6347,49 @@ void ArrayPopInferMeta(const MetaTensor& array,
   // TODO(dev): Support get a tensor dims from TensorArray.
   // out->set_dims(x.dims());
   out->set_dtype(array.dtype());
+}
+
+void BuildSrcRankAndLocalExpertIdInferMeta(
+    const MetaTensor& expert_num_global_tensor,
+    const std::vector<int64_t>& expert_num_global,
+    int64_t num_local_experts,
+    MetaTensor* src_rank,
+    MetaTensor* local_expert_id) {
+  int64_t token_num =
+      std::accumulate(expert_num_global.begin(), expert_num_global.end(), 0);
+
+  PADDLE_ENFORCE_EQ(
+      expert_num_global_tensor.dtype(),
+      phi::DataType::INT64,
+      errors::InvalidArgument(
+          "The input expert_num_global_tensor type should be INT64"));
+
+  src_rank->set_dims({token_num});
+  src_rank->set_dtype(DataType::INT32);
+
+  local_expert_id->set_dims({token_num});
+  local_expert_id->set_dtype(DataType::INT32);
+}
+
+void IntBincountInferMeta(const MetaTensor& x,
+                          int64_t low,
+                          int64_t high,
+                          int64_t dtype,
+                          MetaTensor* out) {
+  PADDLE_ENFORCE_EQ(
+      x.dims().size(),
+      1,
+      errors::InvalidArgument(
+          "The input 'x' of int_bincount must be a 1-D Tensor, but got %u-D.",
+          x.dims().size()));
+  PADDLE_ENFORCE_GT(
+      high,
+      low,
+      errors::InvalidArgument("Attr high (%d) must be > low (%d).", high, low));
+  int64_t bin_count = high - low + 1;
+
+  out->set_dims(phi::make_ddim({bin_count}));
+  out->set_dtype(x.dtype());
 }
 
 }  // namespace phi

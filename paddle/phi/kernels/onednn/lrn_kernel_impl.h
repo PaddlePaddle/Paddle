@@ -136,11 +136,6 @@ void LRNMKLDNNOpKernel(const Context& dev_ctx,
       is_float_type,
       true,
       common::errors::PreconditionNotMet("DNNL LRN must use float data."));
-  bool eq_place = dev_ctx.GetPlace().GetType() == phi::AllocationType::CPU;
-  PADDLE_ENFORCE_EQ(eq_place,
-                    true,
-                    common::errors::PreconditionNotMet(
-                        "Operator DNNL LRN must use CPUPlace"));
   const auto& onednn_engine = dev_ctx.GetEngine();
 
   auto x = &x_in;
@@ -193,10 +188,6 @@ void LRNMKLDNNGradOpKernel(const Context& dev_ctx,
                     true,
                     common::errors::PreconditionNotMet(
                         "DNNL LRN GradOpKernel must use float data."));
-  PADDLE_ENFORCE_EQ(dev_ctx.GetPlace().GetType() == phi::AllocationType::CPU,
-                    true,
-                    common::errors::PreconditionNotMet(
-                        "Operator DNNL LRNGrad must use CPUPlace"));
 
   auto in_x = &x;
   auto mid = &mid_out;

@@ -20,7 +20,6 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/adam_functors.h"
-// See Note [ Why still include the fluid headers? ]
 #include "paddle/phi/kernels/funcs/selected_rows_functor.h"
 
 namespace phi {
