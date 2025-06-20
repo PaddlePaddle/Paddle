@@ -544,7 +544,10 @@ PD_REGISTER_SPMD_RULE(
 PD_REGISTER_SPMD_RULE(fused_rms_norm,
                       PD_INFER_SPMD(phi::distributed::RmsNormInferSpmd),
                       PD_INFER_SPMD(phi::distributed::RmsNormInferSpmdReverse));
-
+// index_put
+PD_REGISTER_SPMD_RULE(index_put,
+                      PD_INFER_SPMD(phi::distributed::IndexPutInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::IndexPutGradInferSpmd));
 PD_REGISTER_SPMD_RULE(
     flash_attention,
     PD_INFER_SPMD(phi::distributed::FlashAttInferSpmdStatic),

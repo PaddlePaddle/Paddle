@@ -2825,6 +2825,7 @@
   output : Tensor(out)
   infer_meta :
     func : IndexPutInferMeta
+    spmd_rule : IndexPutInferSpmd
   kernel :
     func : index_put
     data_type : x
