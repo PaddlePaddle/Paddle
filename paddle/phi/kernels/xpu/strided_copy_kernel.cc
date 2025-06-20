@@ -106,6 +106,7 @@ void StridedCopyKernel<phi::dtype::complex<float>, XPUContext>(
   phi::ComplexKernel<float>(dev_ctx, real_out, imag_out, out);
 }
 #endif
+
 }  // namespace phi
 
 PD_REGISTER_KERNEL(strided_copy,

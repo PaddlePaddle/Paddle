@@ -338,7 +338,6 @@ namespace phi {
   }()
 
 #ifdef PADDLE_WITH_XPU_FFT
-
 #define PD_XPU_COMPLEX64_CASE(NAME, ...) \
   PD_PRIVATE_CASE_TYPE(                  \
       NAME, ::phi::DataType::COMPLEX64, phi::complex64, __VA_ARGS__)
