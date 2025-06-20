@@ -305,7 +305,7 @@ class TestLogsumexp_ZeroSize(OpTest):
         self.public_python_api = logsumexp_wrapper
         self.dtype = 'float64'
         self.shape = [2, 3, 0]
-        self.axis = [-1]  # out return -inf
+        self.axis = [-1]  # out return shape [2, 3], value -inf
         self.keepdim = False
         self.reduce_all = False
         self.set_attrs()
@@ -321,12 +321,8 @@ class TestLogsumexp_ZeroSize(OpTest):
             'keepdim': self.keepdim,
             'reduce_all': self.reduce_all,
         }
-        self.set_attrs_addition()
 
     def set_attrs(self):
-        pass
-
-    def set_attrs_addition(self):
         pass
 
     def test_check_output(self):
