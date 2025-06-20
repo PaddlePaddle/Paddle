@@ -433,21 +433,11 @@ class RunnableProgram:
                 if new_name in no_need_buffer_names:
                     no_need_buffer_names.remove(new_name)
 
-        value_program_attr = {}
+        program_attr = {}
         for k, ns in self.program_name_attr.items():
-            if k.startswith("f"):
-                values = [fwd_map.get(n, fake_value()) for n in ns]
-            elif k.startswith("b"):
-                values = [bwd_map.get(n, fake_value()) for n in ns]
-            elif k == "no_need_buffers":
-                values = [fwd_map.get(n, fake_value()) for n in ns]
-            else:
-                raise ValueError(f"Unknown program attr: {k}")
-            value_program_attr[f"{k}_names"] = ns
-            if k in {"fx"}:  # Currently, only 'fx' is passed to cpp side
-                value_program_attr[k] = values
+            program_attr[f"{k}_names"] = ns
 
-        return value_program_attr
+        return program_attr
 
     @staticmethod
     def unify_value_names(

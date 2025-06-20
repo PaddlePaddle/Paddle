@@ -412,9 +412,6 @@ inline void PirRunProgramAPI(
 
   VLOG(4) << "global_inner_scope:" << global_inner_scope;
 
-  auto input_values =
-      PADDLE_GET_CONST(std::vector<::pir::Value>, attrs.at("fx"));
-
   // Get All needed names
   const auto &input_names =
       PADDLE_GET_CONST(std::vector<std::string>, attrs.at("fx_names"));
@@ -466,9 +463,18 @@ inline void PirRunProgramAPI(
       // FLAGS_specialize_device_in_dy2st=True. Performance may decrease when a
       // CPU Tensor is copied to a device multiple times; consider applying CSE
       // in future.
-      for (size_t i = 0; i < input_values.size(); ++i) {
+      auto all_named_values =
+          pir::utils::name_analysis::GetAllNamedValues(*forward_program);
+      for (size_t i = 0; i < input_names.size(); ++i) {
+        const auto &input_name = input_names[i];
         const auto &input_tensor = x[i];
-        const auto &input_value = input_values[i];
+        if (all_named_values.find(input_name) == all_named_values.end()) {
+          VLOG(6) << "Input name: " << input_name
+                  << " not found in all_named_values, skip setting place.";
+          continue;
+        }
+
+        const auto &input_value = all_named_values.at(input_name);
         if (input_value.defining_op() &&
             input_value.defining_op()->isa<paddle::dialect::DataOp>()) {
           input_value.defining_op()->set_attribute(

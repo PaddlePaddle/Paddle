@@ -509,6 +509,10 @@ void BindProgram(py::module *m) {
             return vars;
           },
           return_value_policy::reference)
+      .def("_list_named_vars",
+           [](std::shared_ptr<Program> self) {
+             return name_analysis::GetAllNamedValues(*self);
+           })
       .def(
           "global_block",
           [](const std::shared_ptr<Program> &self) { return self->block(); },
