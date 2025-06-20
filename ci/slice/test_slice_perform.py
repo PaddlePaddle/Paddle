@@ -74,6 +74,7 @@ def set_item_bench(
     cuda_device_num=0,
     dtype="float32",
     is_tensor=False,
+    value_shape=[1],
 ):
 
     x = paddle.to_tensor(
@@ -98,8 +99,7 @@ def set_item_bench(
         index_p = index
 
     if is_tensor:
-        shape = get_same_shape(x.shape, x[index_p].shape)
-        x_value = paddle.full(shape, 5, paddle_type[dtype])
+        x_value = paddle.full(value_shape, 5, paddle_type[dtype])
     else:
         x_value = 5
 
@@ -139,9 +139,8 @@ def set_item_bench(
         index_t = index
 
     if is_tensor:
-        shape = get_same_shape(y.shape, y[index_t].shape)
         y_value = torch.full(
-            shape,
+            value_shape,
             5,
             device=f"cuda:{cuda_device_num}",
             dtype=torch_type[dtype],
@@ -297,6 +296,7 @@ def set_item_grad_bench(
     cuda_device_num=0,
     dtype="float32",
     is_tensor=False,
+    value_shape=[1],
 ):
     x = paddle.to_tensor(
         n, dtype=paddle_type[dtype], place=paddle.CUDAPlace(cuda_device_num)
@@ -324,8 +324,7 @@ def set_item_grad_bench(
         index_p = index
 
     if is_tensor:
-        shape = get_same_shape(x.shape, x[index_p].shape)
-        x_value = paddle.full(shape, 5, paddle_type[dtype])
+        x_value = paddle.full(value_shape, 5, paddle_type[dtype])
     else:
         x_value = 5
 
@@ -373,9 +372,8 @@ def set_item_grad_bench(
     else:
         index_t = index
     if is_tensor:
-        shape = get_same_shape(y.shape, y[index_t].shape)
         y_value = torch.full(
-            shape,
+            value_shape,
             5,
             device=f"cuda:{cuda_device_num}",
             dtype=torch_type[dtype],
@@ -554,11 +552,13 @@ def test_dtype(
     dtype="float32",
     is_tensor=False,
 ):
+
     print("========== test ", dtype, " is_tensor ", is_tensor, "=============")
     get_item_score = []
     get_item_grad_score = []
     set_item_score = []
     set_item_grad_score = []
+
     for key in first_index_dict:
         index_list = first_index_dict[key]
         print(key, " case :")
@@ -587,7 +587,18 @@ def test_dtype(
                     cuda_device_num=cuda_device_num,
                     dtype=dtype,
                 )
+            value_shape = [1]
+            if key == "combined":
+                if i == 2:
+                    value_shape = [1]
+                elif i == 3:
+                    value_shape = [108, 1, 1, 1]
+                else:
+                    value_shape = n[index].shape
 
+            else:
+                value_shape = get_same_shape(n.shape, n[index].shape)
+            print("value_shape = ", value_shape)
             set_item_bench(
                 n,
                 index,
@@ -597,6 +608,7 @@ def test_dtype(
                 cuda_device_num=cuda_device_num,
                 dtype=dtype,
                 is_tensor=is_tensor,
+                value_shape=value_shape,
             )
 
             if key == "combined" and i == 3:
@@ -610,6 +622,7 @@ def test_dtype(
                 cuda_device_num=cuda_device_num,
                 dtype=dtype,
                 is_tensor=is_tensor,
+                value_shape=value_shape,
             )
             print(" ")
 
@@ -618,7 +631,9 @@ def test_dtype(
         print(key, " case :")
         n = np.random.randn(108, 64, 12288, 3).astype(dtype)
         print("x.shape = ", n.shape)
+        i = 0
         for index in index_list:
+            i += 1
             print("index = ", str(index))
             if not is_tensor:
                 get_item_bench(
@@ -639,6 +654,15 @@ def test_dtype(
                     cuda_device_num=cuda_device_num,
                     dtype=dtype,
                 )
+            value_shape = [1]
+            if key == "combined":
+                if i == 2:
+                    value_shape = [108, 2, 12288]
+                else:
+                    value_shape = n[index].shape
+            else:
+                value_shape = get_same_shape(n.shape, n[index].shape)
+            print("value_shape = ", value_shape)
 
             set_item_bench(
                 n,
@@ -649,7 +673,9 @@ def test_dtype(
                 cuda_device_num=cuda_device_num,
                 dtype=dtype,
                 is_tensor=is_tensor,
+                value_shape=value_shape,
             )
+
             set_item_grad_bench(
                 n,
                 index,
@@ -661,6 +687,7 @@ def test_dtype(
                 is_tensor=is_tensor,
             )
             print(" ")
+
     score_lists = [
         get_item_score,
         set_item_score,
@@ -837,16 +864,16 @@ def main():
     )
     print()
     test_dtype(
+        first_index_dict, second_index_dict, n_repeat, n_warmup, dtype="float16"
+    )
+    print()
+    test_dtype(
         first_index_dict,
         second_index_dict,
         n_repeat,
         n_warmup,
         dtype="float32",
         is_tensor=True,
-    )
-    print()
-    test_dtype(
-        first_index_dict, second_index_dict, n_repeat, n_warmup, dtype="float16"
     )
 
 

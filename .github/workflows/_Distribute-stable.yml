@@ -136,7 +136,7 @@ jobs:
           source ${{ github.workspace }}/../../../proxy
           git checkout test
           echo "Pull upstream develop"
-          git pull upstream $BRANCH --no-edit
+          bash ci/git_pull.sh $BRANCH
           '
 
       - name: Check bypass
@@ -324,7 +324,7 @@ jobs:
           git checkout test
           echo "Pull upstream $BRANCH"
           source ${{ github.workspace }}/../../../proxy
-          git pull upstream $BRANCH --no-edit
+          bash ci/git_pull.sh $BRANCH
           '
 
       - name: Test

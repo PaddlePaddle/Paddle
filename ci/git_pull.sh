@@ -12,9 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-COMMIT_MESSAGE=$(git log --pretty=format:%s -2 | tail -n 1)
-if [[ "$COMMIT_MESSAGE" == *"slice-check"* ]]; then
-    echo "slice-check=true"
-    echo "slice-check=true" >> $GITHUB_OUTPUT
+BRANCH=$1
+
+MAX_RETRY=5
+n=0
+
+while [ "$n" -lt "$MAX_RETRY" ]; do
+  git pull upstream "$BRANCH" --no-edit && break
+  n=$((n+1))
+  echo "git pull failed, retrying in 5 seconds... ($n/$MAX_RETRY)"
+  sleep 5
+done
+
+if [ "$n" -eq "$MAX_RETRY" ]; then
+  echo "Pull failed after $MAX_RETRY retries"
+  exit 2
 fi
-git checkout test
