@@ -427,14 +427,6 @@ inline void PirRunProgramAPI(
 
   auto input_values =
       PADDLE_GET_CONST(std::vector<::pir::Value>, attrs.at("fx"));
-  auto output_values =
-      PADDLE_GET_CONST(std::vector<::pir::Value>, attrs.at("fo"));
-  auto middle_values =
-      PADDLE_GET_CONST(std::vector<::pir::Value>, attrs.at("fm"));
-  auto param_values =
-      PADDLE_GET_CONST(std::vector<::pir::Value>, attrs.at("fp"));
-  auto no_need_buffer_values =
-      PADDLE_GET_CONST(std::vector<::pir::Value>, attrs.at("no_need_buffers"));
 
   // Get All needed names
   const auto &input_names =
@@ -958,21 +950,6 @@ inline void PirRunProgramGradAPI(
   std::shared_ptr<::pir::Program> backward_program = PADDLE_GET_CONST(
       std::shared_ptr<::pir::Program>, attrs.at("backward_program"));
 
-  auto output_grad_values =
-      PADDLE_GET_CONST(std::vector<::pir::Value>, attrs.at("bo_g"));
-  auto forward_input_values =
-      PADDLE_GET_CONST(std::vector<::pir::Value>, attrs.at("bx"));
-  auto forward_middle_values =
-      PADDLE_GET_CONST(std::vector<::pir::Value>, attrs.at("bm"));
-  auto parameter_values =
-      PADDLE_GET_CONST(std::vector<::pir::Value>, attrs.at("bp"));
-  auto forward_output_values =
-      PADDLE_GET_CONST(std::vector<::pir::Value>, attrs.at("bo"));
-  auto x_grad_values =
-      PADDLE_GET_CONST(std::vector<::pir::Value>, attrs.at("bx_g"));
-  auto p_grad_values =
-      PADDLE_GET_CONST(std::vector<::pir::Value>, attrs.at("bp_g"));
-
   // Get All needed names
   const auto &input_names =
       PADDLE_GET_CONST(std::vector<std::string>, attrs.at("bx_names"));
@@ -1133,7 +1110,7 @@ class GradNodeRunProgram : public egr::GradNodeBase {
       }
     }
 
-    auto out_grad_names =
+    const auto &out_grad_names =
         PADDLE_GET_CONST(std::vector<std::string>, attrs_.at("out_grad_names"));
     PADDLE_ENFORCE_EQ(hooked_grads[0].size(),
                       out_grad_names.size(),
@@ -1187,7 +1164,7 @@ class GradNodeRunProgram : public egr::GradNodeBase {
  protected:
   void ConstructXGradTensors(const std::vector<paddle::Tensor> &x,
                              std::vector<paddle::Tensor> *x_grad) {
-    auto x_grad_names =
+    const auto &x_grad_names =
         PADDLE_GET_CONST(std::vector<std::string>, attrs_.at("x_grad_names"));
     PADDLE_ENFORCE_EQ(
         x.size(),
@@ -1212,8 +1189,8 @@ class GradNodeRunProgram : public egr::GradNodeBase {
 
   void ConstructParamGradTensors(const std::vector<paddle::Tensor> &params,
                                  std::vector<paddle::Tensor> *param_grads) {
-    auto param_grad_names = PADDLE_GET_CONST(std::vector<std::string>,
-                                             attrs_.at("param_grad_names"));
+    const auto &param_grad_names = PADDLE_GET_CONST(
+        std::vector<std::string>, attrs_.at("param_grad_names"));
     PADDLE_ENFORCE_EQ(params.size(),
                       param_grad_names.size(),
                       common::errors::InvalidArgument(
@@ -1314,10 +1291,10 @@ class PirGradNodeRunProgram : public egr::GradNodeBase {
       }
     }
 
-    auto out_grad_values =
-        PADDLE_GET_CONST(std::vector<::pir::Value>, attrs_.at("bo_g"));
+    const auto &out_grad_names =
+        PADDLE_GET_CONST(std::vector<std::string>, attrs_.at("bo_g_names"));
     PADDLE_ENFORCE_EQ(hooked_grads[0].size(),
-                      out_grad_values.size(),
+                      out_grad_names.size(),
                       common::errors::InvalidArgument(
                           "The hooked_grads[0].size() and "
                           "out_grad_values.size() should be equal."));
@@ -1366,16 +1343,16 @@ class PirGradNodeRunProgram : public egr::GradNodeBase {
  protected:
   void ConstructXGradTensors(const std::vector<paddle::Tensor> &x,
                              std::vector<paddle::Tensor> *x_grad) {
-    auto x_grad_values =
-        PADDLE_GET_CONST(std::vector<::pir::Value>, attrs_.at("bx_g"));
+    auto x_grad_names =
+        PADDLE_GET_CONST(std::vector<std::string>, attrs_.at("bx_g_names"));
     PADDLE_ENFORCE_EQ(
         x.size(),
-        x_grad_values.size(),
+        x_grad_names.size(),
         common::errors::InvalidArgument(
             "The x.size() and x_grad_names.size() should be equal. "
             "But received x.size() = %d, x_grad_names.size() = %d",
             x.size(),
-            x_grad_values.size()));
+            x_grad_names.size()));
 
     // TODO(dev): Need an elegant way to determine information of grad_tensor,
     // such as: name, tensor type (DenseTensor, SelectedRows or
@@ -1397,10 +1374,10 @@ class PirGradNodeRunProgram : public egr::GradNodeBase {
 
   void ConstructParamGradTensors(const std::vector<paddle::Tensor> &params,
                                  std::vector<paddle::Tensor> *param_grads) {
-    auto p_grad_values =
-        PADDLE_GET_CONST(std::vector<::pir::Value>, attrs_.at("bp_g"));
+    auto p_grad_names =
+        PADDLE_GET_CONST(std::vector<std::string>, attrs_.at("bp_g_names"));
     PADDLE_ENFORCE_EQ(params.size(),
-                      p_grad_values.size(),
+                      p_grad_names.size(),
                       common::errors::InvalidArgument(
                           "The param.size() and "
                           "param_grad_names.size() should be equal."));

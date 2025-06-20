@@ -444,7 +444,8 @@ class RunnableProgram:
             else:
                 raise ValueError(f"Unknown program attr: {k}")
             value_program_attr[f"{k}_names"] = ns
-            value_program_attr[k] = values
+            if k in {"fx"}:  # Currently, only 'fx' is passed to cpp side
+                value_program_attr[k] = values
 
         return value_program_attr
 
