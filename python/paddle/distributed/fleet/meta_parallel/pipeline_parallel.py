@@ -780,7 +780,8 @@ class PipelineParallel(MetaParallelBase):
             if not self.is_pipeline_last_stage():
                 self._release_output(output_tensor)
 
-            self._release_output(input_tensor)
+            if not self.is_pipeline_first_stage():
+                self._release_output(input_tensor)
 
         if steady_steps > 0 and not static_scheduler:
             input_tensor = self._p2p_helper.recv_forward(
@@ -819,7 +820,8 @@ class PipelineParallel(MetaParallelBase):
             if not self.is_pipeline_last_stage():
                 self._release_output(output_tensor)
 
-            self._release_output(input_tensor)
+            if not self.is_pipeline_first_stage():
+                self._release_output(input_tensor)
 
             input_tensor, output_tensor = input_buffers.pop(
                 0
