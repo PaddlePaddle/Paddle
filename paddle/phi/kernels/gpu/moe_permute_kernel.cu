@@ -239,7 +239,13 @@ void MoePermuteKernel(const Context &dev_ctx,
           "value.",
           MAX_NUM_EXPERTS,
           num_experts));
-  if (rows == 0) return;
+  if (X.numel() == 0) {
+    dev_ctx.template Alloc<float>(XScale_unzipped);
+    dev_ctx.template Alloc<int>(zipped_expertwise_rowmap);
+    dev_ctx.template Alloc<T>(X_unzipped);
+    dev_ctx.template Alloc<float>(token_prob_unzipped);
+    return;
+  }
   const int quanted_cols = (XScale) ? XScale.get_ptr()->dims()[1] : 0;
   expert_base_offset expert_offset;
   int tokens_cumulated = 0;
