@@ -50,35 +50,43 @@ Json GetAttrJson(const YAML::Node &action) {
   std::string op_dialect = DialectIdMap::Instance()->GetCompressDialectId(
                                paddle::dialect::OperatorDialect::name()) +
                            ".";
+  std::string builtin_dialect = DialectIdMap::Instance()->GetCompressDialectId(
+                                    pir::BuiltinDialect::name()) +
+                                ".";
+  std::string op_dialect = DialectIdMap::Instance()->GetCompressDialectId(
+                               paddle::dialect::OperatorDialect::name()) +
+                           ".";
   std::string at_name;
   if (action.IsScalar()) {
     at_name = action.as<std::string>();
     VLOG(8) << "Get old Attr name." << at_name;
+    VLOG(8) << "Get old Attr name." << at_name;
   } else {
     at_name = action["type"].as<std::string>();
+    VLOG(8) << "Get new Attr name." << at_name;
     VLOG(8) << "Get new Attr name." << at_name;
   }
   if (at_name == "pir::BoolAttribute") {
     VLOG(8) << "Get BoolAttribute name.";
-    json[ID] = builtin_dialect + pir::BoolAttribute::name();
+    json[ID] = builtin_builtin_dialect + pir::BoolAttribute::name();
     if (!action.IsScalar() && action["data"].IsDefined()) {
       json[DATA] = action["data"].as<bool>();
     }
   } else if (at_name == "pir::FloatAttribute") {
     VLOG(8) << "Get FloatAttribute name.";
-    json[ID] = builtin_dialect + pir::FloatAttribute::name();
+    json[ID] = builtin_builtin_dialect + pir::FloatAttribute::name();
     if (!action.IsScalar() && action["data"].IsDefined()) {
       json[DATA] = action["data"].as<float>();
     }
   } else if (at_name == "pir::DoubleAttribute") {
     VLOG(8) << "Get DoubleAttribute name.";
-    json[ID] = builtin_dialect + pir::DoubleAttribute::name();
+    json[ID] = builtin_builtin_dialect + pir::DoubleAttribute::name();
     if (!action.IsScalar() && action["data"].IsDefined()) {
       json[DATA] = action["data"].as<double>();
     }
   } else if (at_name == "pir::Int32Attribute") {
     VLOG(8) << "Get Int32Attribute name.";
-    json[ID] = builtin_dialect + pir::Int32Attribute::name();
+    json[ID] = builtin_builtin_dialect + pir::Int32Attribute::name();
     if (!action.IsScalar() && action["data"].IsDefined()) {
       json[DATA] = action["data"].as<int32_t>();
     }

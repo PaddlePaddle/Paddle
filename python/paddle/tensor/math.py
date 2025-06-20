@@ -2942,8 +2942,16 @@ def outer(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
 
 
     """
-    nx = x.reshape((-1, 1))
-    ny = y.reshape((1, -1))
+    xshape = x.shape
+    yshape = y.shape
+    if math.prod(xshape) == 0:  # If the size is 0
+        nx = x.reshape((0, 0))
+    else:
+        nx = x.reshape((-1, 1))
+    if math.prod(yshape) == 0:  # If the size is 0
+        ny = y.reshape((0, 0))
+    else:
+        ny = y.reshape((1, -1))
 
     if in_dynamic_mode():
         return _C_ops.matmul(nx, ny, False, False)
@@ -6800,7 +6808,7 @@ def diff(
 def angle(x: Tensor, name: str | None = None) -> Tensor:
     r"""
     Element-wise angle of complex numbers. For non-negative real numbers, the angle is 0 while
-    for negative real numbers, the angle is :math:`\pi`.
+    for negative real numbers, the angle is :math:`\pi`, and NaNs are propagated..
 
     Equation:
         .. math::
@@ -8382,11 +8390,6 @@ def combinations(
 
     if r == 0:
         return paddle.empty(shape=[0], dtype=x.dtype)
-
-    if (r > x.shape[0] and not with_replacement) or (
-        x.shape[0] == 0 and with_replacement
-    ):
-        return paddle.empty(shape=[0, r], dtype=x.dtype)
 
     if r > 1:
         t_l = [x for i in range(r)]

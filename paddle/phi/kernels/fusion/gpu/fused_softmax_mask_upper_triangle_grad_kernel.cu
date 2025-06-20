@@ -23,11 +23,23 @@
 namespace phi {
 namespace fusion {
 
+#define LAUNCH_SOFTMAX_MASK_FUSE_UPPER_TRIANGLE_GRAD_GPU_KERNEL(T, pow2_index) \
+  SoftmaxMaskFuseUpperTriangleGradGPUKernel<T, pow2_index>                     \
+      <<<blocks, threads, 0, stream>>>(grad_y_data,                            \
+                                       x_grad_data,                            \
+                                       softmax_rst_data,                       \
+                                       batch_count,                            \
+                                       GridDimX,                               \
+                                       GridDimY,                               \
+                                       key_seq_len);
+
 template <typename T, int pow2_index>
 __global__ void SoftmaxMaskFuseUpperTriangleGradGPUKernel(const T* grad_input,
                                                           T* grad_output,
                                                           const T* softmax_rst,
                                                           int64_t batch_count,
+                                                          uint32_t GridDimX,
+                                                          uint32_t GridDimY,
                                                           int64_t key_seq_len) {
   constexpr int next_pow2 = 1 << pow2_index;
   constexpr int warp_size = (next_pow2 < WARP_SIZE) ? next_pow2 : WARP_SIZE;
@@ -36,11 +48,14 @@ __global__ void SoftmaxMaskFuseUpperTriangleGradGPUKernel(const T* grad_input,
   constexpr int kOneLoadingCounts = 4;
   int64_t key_seq_len_pow_2 = key_seq_len * key_seq_len;
 
+  uint32_t blockInGrid = blockIdx.x;
+  uint32_t blockIdX = blockInGrid / GridDimY;
+  uint32_t blockIdY = blockInGrid % GridDimY;
   int64_t first_idx =
-      (static_cast<int64_t>(blockDim.y) * blockIdx.y + threadIdx.y) *
-          gridDim.x * kLocalBatchSize +
-      blockIdx.x;
-  int64_t local_block_idx = blockIdx.x + 1;
+      (static_cast<int64_t>(blockDim.y) * blockIdY + threadIdx.y) * GridDimX *
+          kLocalBatchSize +
+      blockIdX;
+  int64_t local_block_idx = blockIdX + 1;
 
   // micro_batch_size might not be a multiple of WARP_BATCH. Check how
   // many batches have to computed within this WARP.
@@ -162,91 +177,58 @@ void FusedSoftmaxMaskFuseUpperTriangleGradKernel(const Context& dev_ctx,
 
   int warps_per_block = (threads_per_block / warp_size);
   int batches_per_block = warps_per_block * batches_per_warp;
-  dim3 blocks(query_seq_len,
-              (attn_mul_batch + batches_per_block) / batches_per_block,
-              1);
+  // if we use dim3 blocks(query_seq_len,
+  //             (attn_mul_batch + batches_per_block) / batches_per_block,
+  //             1);
+  // it will cause CUDA error 9 (invalid configuration argument),
+  // when (attn_mul_batch + batches_per_block) / batches_per_block beyond 65535.
+
+  uint32_t GridDimX = query_seq_len;
+  uint32_t GridDimY = (attn_mul_batch + batches_per_block) / batches_per_block;
+  uint32_t totoal_blocks = GridDimX * GridDimY;
+
+  dim3 blocks(totoal_blocks);
   dim3 threads(warp_size, warps_per_block, 1);
 
   switch (pow2_index) {
     case 5:  // 32
-      SoftmaxMaskFuseUpperTriangleGradGPUKernel<T, 5>
-          <<<blocks, threads, 0, stream>>>(grad_y_data,
-                                           x_grad_data,
-                                           softmax_rst_data,
-                                           batch_count,
-                                           key_seq_len);
+      LAUNCH_SOFTMAX_MASK_FUSE_UPPER_TRIANGLE_GRAD_GPU_KERNEL(T, 5)
       break;
     case 6:  // 64
-      SoftmaxMaskFuseUpperTriangleGradGPUKernel<T, 6>
-          <<<blocks, threads, 0, stream>>>(grad_y_data,
-                                           x_grad_data,
-                                           softmax_rst_data,
-                                           batch_count,
-                                           key_seq_len);
+      LAUNCH_SOFTMAX_MASK_FUSE_UPPER_TRIANGLE_GRAD_GPU_KERNEL(T, 6)
+
       break;
     case 7:  // 128
-      SoftmaxMaskFuseUpperTriangleGradGPUKernel<T, 7>
-          <<<blocks, threads, 0, stream>>>(grad_y_data,
-                                           x_grad_data,
-                                           softmax_rst_data,
-                                           batch_count,
-                                           key_seq_len);
+      LAUNCH_SOFTMAX_MASK_FUSE_UPPER_TRIANGLE_GRAD_GPU_KERNEL(T, 7)
+
       break;
     case 8:  // 256
-      SoftmaxMaskFuseUpperTriangleGradGPUKernel<T, 8>
-          <<<blocks, threads, 0, stream>>>(grad_y_data,
-                                           x_grad_data,
-                                           softmax_rst_data,
-                                           batch_count,
-                                           key_seq_len);
+      LAUNCH_SOFTMAX_MASK_FUSE_UPPER_TRIANGLE_GRAD_GPU_KERNEL(T, 8)
+
       break;
     case 9:  // 512
-      SoftmaxMaskFuseUpperTriangleGradGPUKernel<T, 9>
-          <<<blocks, threads, 0, stream>>>(grad_y_data,
-                                           x_grad_data,
-                                           softmax_rst_data,
-                                           batch_count,
-                                           key_seq_len);
+      LAUNCH_SOFTMAX_MASK_FUSE_UPPER_TRIANGLE_GRAD_GPU_KERNEL(T, 9)
+
       break;
     case 10:  // 1024
-      SoftmaxMaskFuseUpperTriangleGradGPUKernel<T, 10>
-          <<<blocks, threads, 0, stream>>>(grad_y_data,
-                                           x_grad_data,
-                                           softmax_rst_data,
-                                           batch_count,
-                                           key_seq_len);
+      LAUNCH_SOFTMAX_MASK_FUSE_UPPER_TRIANGLE_GRAD_GPU_KERNEL(T, 10)
+
       break;
     case 11:  // 2048
-      SoftmaxMaskFuseUpperTriangleGradGPUKernel<T, 11>
-          <<<blocks, threads, 0, stream>>>(grad_y_data,
-                                           x_grad_data,
-                                           softmax_rst_data,
-                                           batch_count,
-                                           key_seq_len);
+      LAUNCH_SOFTMAX_MASK_FUSE_UPPER_TRIANGLE_GRAD_GPU_KERNEL(T, 11)
+
       break;
     case 12:  // 4096
-      SoftmaxMaskFuseUpperTriangleGradGPUKernel<T, 12>
-          <<<blocks, threads, 0, stream>>>(grad_y_data,
-                                           x_grad_data,
-                                           softmax_rst_data,
-                                           batch_count,
-                                           key_seq_len);
+      LAUNCH_SOFTMAX_MASK_FUSE_UPPER_TRIANGLE_GRAD_GPU_KERNEL(T, 12)
+
       break;
     case 13:  // 8192
-      SoftmaxMaskFuseUpperTriangleGradGPUKernel<T, 13>
-          <<<blocks, threads, 0, stream>>>(grad_y_data,
-                                           x_grad_data,
-                                           softmax_rst_data,
-                                           batch_count,
-                                           key_seq_len);
+      LAUNCH_SOFTMAX_MASK_FUSE_UPPER_TRIANGLE_GRAD_GPU_KERNEL(T, 13)
+
       break;
     case 14:
-      SoftmaxMaskFuseUpperTriangleGradGPUKernel<T, 14>
-          <<<blocks, threads, 0, stream>>>(grad_y_data,
-                                           x_grad_data,
-                                           softmax_rst_data,
-                                           batch_count,
-                                           key_seq_len);
+      LAUNCH_SOFTMAX_MASK_FUSE_UPPER_TRIANGLE_GRAD_GPU_KERNEL(T, 14)
+
       break;
     default:
       PADDLE_THROW(common::errors::Unimplemented("Too large sequence length."));

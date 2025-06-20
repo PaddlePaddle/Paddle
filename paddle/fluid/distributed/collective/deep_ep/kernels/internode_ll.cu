@@ -556,8 +556,6 @@ void dispatch(void* packed_recv_x,
   const auto num_warps = kNumWarpGroups * kNumWarpsPerGroup;
   const auto num_sms = cell_div(num_experts, kNumWarpGroups);
   EP_HOST_ASSERT(num_topk <= kNumMaxTopK);
-  EP_HOST_ASSERT(cell_div(static_cast<int>(hidden * 2 / sizeof(int4)),
-                          32 * (num_warps - 1)) <= 2);
 
   // Workspace checks
   auto atomic_counter_per_expert = reinterpret_cast<int*>(workspace);
@@ -695,7 +693,7 @@ __global__ __launch_bounds__(
       const auto rdma_send_type_row = reinterpret_cast<int*>(
           rdma_send_x_vec + token_idx * num_bytes_per_slot);
       const auto rdma_send_x_vec_row =
-          reinterpret_cast<uint8_t*>(rdma_send_type_row + 4);
+          reinterpret_cast<uint8_t*>(rdma_send_type_row);
 
       // Copy directly to local rank, or copy to buffer and issue RDMA
       auto src_idx = __ldg(local_src_info + token_idx);
@@ -703,8 +701,7 @@ __global__ __launch_bounds__(
       const auto dst_ptr =
           reinterpret_cast<uint64_t>(rdma_recv_x) +
           (global_expert_idx * num_max_dispatch_tokens_per_rank + src_idx) *
-              num_bytes_per_slot +
-          sizeof(int4);
+              num_bytes_per_slot;
       if (dst_rank == rank) {
         const auto dst_int4_ptr = reinterpret_cast<int4*>(dst_ptr);
         UNROLLED_WARP_COPY(7,
@@ -827,7 +824,7 @@ LOW_LATENCY_COMBINE_RECV:
               (reg_topk_idx[i] * num_max_dispatch_tokens_per_rank + token_idx) *
                   num_bytes_per_slot);
           auto rdma_buffer_row =
-              reinterpret_cast<const uint8_t*>(rdma_buffer_type + 4);
+              reinterpret_cast<const uint8_t*>(rdma_buffer_type);
 
           // Reduce
           auto x_vec = ld_nc_global(
@@ -871,7 +868,8 @@ void combine(void* combined_x,
              int num_ranks,
              void* workspace,
              cudaStream_t stream,
-             int phases) {
+             int phases,
+             bool zero_copy) {
   constexpr int kNumWarpsPerGroup = 10;
   constexpr int kNumWarpGroups = 3;
   constexpr int kNumMaxTopk = 9;
@@ -910,7 +908,7 @@ void combine(void* combined_x,
                   rank,                                                  \
                   num_ranks,                                             \
                   phases,                                                \
-                  false);                                                \
+                  zero_copy);                                            \
   }                                                                      \
   break
 
