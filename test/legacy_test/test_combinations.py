@@ -143,9 +143,22 @@ class TestCombinationsEmpty(unittest.TestCase):
         for place in self.place:
             paddle.device.set_device(place)
             a = paddle.rand([3], dtype='float32')
+            a.stop_gradient = False
             c = paddle.combinations(a, r=4)
             expected = convert_combinations_to_array(a.numpy(), r=4)
             np.testing.assert_allclose(c, expected)
+            loss = c.sum().backward()
+            expected = np.zeros([3], dtype='float32')
+            np.testing.assert_allclose(a.grad, expected)
+
+            a = paddle.rand([0], dtype='float32')
+            a.stop_gradient = False
+            c = paddle.combinations(a, r=2, with_replacement=True)
+            expected = convert_combinations_to_array(a.numpy(), r=2)
+            np.testing.assert_allclose(c, expected)
+            loss = c.sum().backward()
+            expected = np.empty([0], dtype='float32')
+            np.testing.assert_allclose(a.grad, expected)
 
             # test empty input
             a = paddle.empty([random.randint(0, 8)])

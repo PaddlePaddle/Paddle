@@ -35,7 +35,7 @@ float GetAbsMax(const Context& dev_ctx,
                 int64_t numel) {
   int max_ptr_size = phi::backends::xpu::get_xpu_max_ptr_size(-1);
   std::vector<float> buffer_cpu(max_ptr_size);
-  // int findmax(Context* ctx, const T* x, float* maxptr, int64_t len);
+  // int findmax(Context* xpu_ctx, const T* x, float* maxptr, int64_t len);
   int r = xpu::findmax<float>(dev_ctx.x_context(), input, buffer_xpu, numel);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "findmax");
   memory_utils::Copy(CPUPlace(),
@@ -190,7 +190,7 @@ void AdamwDenseKernelKL3(const Context& dev_ctx,
     using XPUType16 = typename XPUTypeTrait<phi::dtype::float16>::Type;
 
     // cast moment1 and moment2, from fp16 to fp32
-    // int cast(Context* ctx, const TX* x, TY* y, int64_t len);
+    // int cast(Context* xpu_ctx, const TX* x, TY* y, int64_t len);
     r = xpu::cast<XPUType16, float>(
         dev_ctx.x_context(),
         reinterpret_cast<const XPUType16*>(
@@ -219,7 +219,7 @@ void AdamwDenseKernelKL3(const Context& dev_ctx,
     }
 
     // de-scale using scale_value
-    // int scale(Context* ctx, const T* x, T* y, int64_t len, bool
+    // int scale(Context* xpu_ctx, const T* x, T* y, int64_t len, bool
     // bias_after_scale, float _scale, float _bias);
     if (moment1_scale_value > 0) {
       r = xpu::scale<float>(dev_ctx.x_context(),
@@ -244,8 +244,8 @@ void AdamwDenseKernelKL3(const Context& dev_ctx,
   }
 
   // template <typename T, typename TG, typename MT> DLL_EXPORT int
-  // adamw(Context* ctx, MT beta1, MT beta2, MT epsilon, MT coeff, MT lr_ratio,
-  // const MT* beta1_pow, MT beta1_pow_scalar, const MT* beta2_pow, MT
+  // adamw(Context* xpu_ctx, MT beta1, MT beta2, MT epsilon, MT coeff, MT
+  // lr_ratio, const MT* beta1_pow, MT beta1_pow_scalar, const MT* beta2_pow, MT
   // beta2_pow_scalar, const MT* moment1, MT* moment1_out, const MT* moment2,
   // MT* moment2_out, const MT* lr, const TG* grad, const T* param, T*
   // param_out, const MT* master_param, MT* master_param_out, int64_t n);
@@ -408,7 +408,7 @@ void AdamwDenseKernelKL3(const Context& dev_ctx,
                                            buffer_for_findmax,
                                            moment1_out->numel());
     float moment1_scale_value = 65504.0f / moment1_max / 2.0f;
-    // int scale(Context* ctx, const T* x, T* y, int64_t len, bool
+    // int scale(Context* xpu_ctx, const T* x, T* y, int64_t len, bool
     // bias_after_scale, float _scale, float _bias);
     r = xpu::scale<float>(dev_ctx.x_context(),
                           moment1_output_for_xdnn,
@@ -430,7 +430,7 @@ void AdamwDenseKernelKL3(const Context& dev_ctx,
                                             buffer_for_findmax,
                                             moment2_out->numel());
     float moment2_scale_value = 65504.0f / moment2_max_ / 2.0f;
-    // int scale(Context* ctx, const T* x, T* y, int64_t len, bool
+    // int scale(Context* xpu_ctx, const T* x, T* y, int64_t len, bool
     // bias_after_scale, float _scale, float _bias);
     r = xpu::scale<float>(dev_ctx.x_context(),
                           moment2_output_for_xdnn,
@@ -447,7 +447,7 @@ void AdamwDenseKernelKL3(const Context& dev_ctx,
     moment2_out->set_storage_properties(std::move(moment2_out_sp));
 
     // cast moment1 and moment2 output, from fp32 to fp16
-    // int cast(Context* ctx, const TX* x, TY* y, int64_t len);
+    // int cast(Context* xpu_ctx, const TX* x, TY* y, int64_t len);
     r = xpu::cast<float, XPUType16>(
         dev_ctx.x_context(),
         moment1_output_for_xdnn,
@@ -583,7 +583,7 @@ void AdamwDenseKernel(
     using XPUType16 = typename XPUTypeTrait<phi::dtype::float16>::Type;
 
     // cast moment1 and moment2, from fp16 to fp32
-    // int cast(Context* ctx, const TX* x, TY* y, int64_t len);
+    // int cast(Context* xpu_ctx, const TX* x, TY* y, int64_t len);
     r = xpu::cast<XPUType16, float>(
         dev_ctx.x_context(),
         reinterpret_cast<const XPUType16*>(
@@ -612,7 +612,7 @@ void AdamwDenseKernel(
     }
 
     // de-scale using scale_value
-    // int scale(Context* ctx, const T* x, T* y, int64_t len, bool
+    // int scale(Context* xpu_ctx, const T* x, T* y, int64_t len, bool
     // bias_after_scale, float _scale, float _bias);
     if (moment1_scale_value > 0) {
       r = xpu::scale<float>(dev_ctx.x_context(),
@@ -701,7 +701,7 @@ void AdamwDenseKernel(
     if (grad_type != phi::DataType::FLOAT32) {
       grad_fp32 = RAII_GUARD.alloc_l3_or_gm<float>(grad.numel());
       PADDLE_ENFORCE_XDNN_NOT_NULL(grad_fp32);
-      // int cast(Context* ctx, const TX* x, TY* y, int64_t len);
+      // int cast(Context* xpu_ctx, const TX* x, TY* y, int64_t len);
       int r = xpu::cast<XPUType, float>(
           dev_ctx.x_context(),
           reinterpret_cast<const XPUType*>(grad.template data<T>()),
@@ -709,10 +709,10 @@ void AdamwDenseKernel(
           grad.numel());
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
     }
-    // int adamw(Context* ctx, const T* g, const float* mom1, const float* mom2,
-    // const T* param, const float* beta1_pow, const float* beta2_pow, const
-    // float* lr, float* moment1_out, float* moment2_out, T* param_out, float
-    // beta1, float beta2, float epsilon, float coeff, int64_t n);
+    // int adamw(Context* xpu_ctx, const T* g, const float* mom1, const float*
+    // mom2, const T* param, const float* beta1_pow, const float* beta2_pow,
+    // const float* lr, float* moment1_out, float* moment2_out, T* param_out,
+    // float beta1, float beta2, float epsilon, float coeff, int64_t n);
     r = xpu::adamw<float>(
         dev_ctx.x_context(),
         (grad_type == phi::DataType::FLOAT32) ? grad.data<float>() : grad_fp32,
@@ -743,10 +743,10 @@ void AdamwDenseKernel(
         param_out->numel());
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
   } else {
-    // int adamw(Context* ctx, const T* g, const float* mom1, const float* mom2,
-    // const T* param, const float* beta1_pow, const float* beta2_pow, const
-    // float* lr, float* moment1_out, float* moment2_out, T* param_out, float
-    // beta1, float beta2, float epsilon, float coeff, int64_t n);
+    // int adamw(Context* xpu_ctx, const T* g, const float* mom1, const float*
+    // mom2, const T* param, const float* beta1_pow, const float* beta2_pow,
+    // const float* lr, float* moment1_out, float* moment2_out, T* param_out,
+    // float beta1, float beta2, float epsilon, float coeff, int64_t n);
     r = xpu::adamw(
         dev_ctx.x_context(),
         reinterpret_cast<const XPUType*>(grad.template data<T>()),
@@ -785,7 +785,7 @@ void AdamwDenseKernel(
                                            buffer_for_findmax,
                                            moment1_out->numel());
     float moment1_scale_value = 65504.0f / moment1_max / 2.0f;
-    // int scale(Context* ctx, const T* x, T* y, int64_t len, bool
+    // int scale(Context* xpu_ctx, const T* x, T* y, int64_t len, bool
     // bias_after_scale, float _scale, float _bias);
     r = xpu::scale<float>(dev_ctx.x_context(),
                           moment1_output_for_xdnn,
@@ -807,7 +807,7 @@ void AdamwDenseKernel(
                                             buffer_for_findmax,
                                             moment2_out->numel());
     float moment2_scale_value = 65504.0f / moment2_max_ / 2.0f;
-    // int scale(Context* ctx, const T* x, T* y, int64_t len, bool
+    // int scale(Context* xpu_ctx, const T* x, T* y, int64_t len, bool
     // bias_after_scale, float _scale, float _bias);
     r = xpu::scale<float>(dev_ctx.x_context(),
                           moment2_output_for_xdnn,
@@ -824,7 +824,7 @@ void AdamwDenseKernel(
     moment2_out->set_storage_properties(std::move(moment2_out_sp));
 
     // cast moment1 and moment2 output, from fp32 to fp16
-    // int cast(Context* ctx, const TX* x, TY* y, int64_t len);
+    // int cast(Context* xpu_ctx, const TX* x, TY* y, int64_t len);
     r = xpu::cast<float, XPUType16>(
         dev_ctx.x_context(),
         moment1_output_for_xdnn,

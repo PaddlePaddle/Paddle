@@ -52,7 +52,6 @@ from ..base.backward import (
 from ..base.framework import Parameter
 from ..base.layer_helper import LayerHelper, LayerHelperBase
 from ..base.log_helper import get_logger
-from .fusion_utils import FusionStorage
 from .lr import LambdaDecay, LRScheduler
 
 if TYPE_CHECKING:
@@ -359,6 +358,8 @@ class Optimizer:
 
     @imperative_base.no_grad()
     def _maybe_refuse(self):
+        from .fusion_utils import FusionStorage
+
         # only support dygraph mode
         if not framework.in_dygraph_mode():
             return
@@ -1668,6 +1669,14 @@ class Optimizer:
                 paddle.static.default_main_program(),
                 paddle.static.default_startup_program(),
             ):
+                auto_dp = (
+                    paddle.distributed.auto_parallel.auto_dp_utils.in_auto_dp_mode()
+                )
+                if auto_dp:
+                    paddle.distributed.auto_parallel.auto_dp_utils._convert_fake_replicate_grad_to_partial(
+                        params_grads
+                    )
+
                 if isinstance(params_grads, list):
                     if self._grad_clip is not None:
                         params_grads = self._grad_clip(params_grads)
@@ -2008,6 +2017,10 @@ class Optimizer:
                 if param.stop_gradient:
                     continue
                 if os.getenv("FLAGS_enable_tensor_fusion") in [
+                    "True",
+                    "true",
+                    "1",
+                ] or os.getenv("FLAGS_enable_main_grad") in [
                     "True",
                     "true",
                     "1",

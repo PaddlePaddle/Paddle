@@ -1798,6 +1798,11 @@ PHI_DEFINE_EXPORTED_string(
     "Specify root dir path for nvidia site-package, such as "
     "python3.9/site-packages/nvidia");
 
+PHI_DEFINE_EXPORTED_string(cuda_cccl_dir,  // NOLINT
+                           "",
+                           "Specify root dir path for nv/target, such as "
+                           "python3.9/site-packages/nvidia/cuda_cccl/include/");
+
 PHI_DEFINE_EXPORTED_string(
     cudnn_dir,  // NOLINT
     "",
@@ -1877,6 +1882,19 @@ PHI_DEFINE_EXPORTED_bool(
 PHI_DEFINE_EXPORTED_bool(enable_cse_in_dy2st,
                          true,
                          "Apply CSE optimize pass in Dy2St");
+
+/**
+ * Run Dy2St in specialized device
+ * Name: specialize_device_in_dy2st
+ * Since Version: 3.1.0 Beta
+ * Value Range: bool, default=false
+ * Example:
+ * Note: If True, will specialize device for DataOp's place based on input
+ * tensor's place before lowering.
+ */
+PHI_DEFINE_EXPORTED_bool(specialize_device_in_dy2st,
+                         false,
+                         "Run Dy2St in specialized device");
 
 /**
  * Max count of eliminate redundant computation in CSE, for debug usage

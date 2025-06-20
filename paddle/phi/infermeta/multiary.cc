@@ -5581,7 +5581,8 @@ void WeightOnlyLinearInferMeta(const MetaTensor& x,
                                const std::string& weight_dtype,
                                const int32_t arch,
                                const int32_t group_size,
-                               MetaTensor* out) {
+                               MetaTensor* out,
+                               MetaConfig config) {
   PADDLE_ENFORCE((group_size == -1 || group_size == 64 || group_size == 128),
                  errors::InvalidArgument("group_size must be -1, 64 or 128."));
 
@@ -5597,26 +5598,32 @@ void WeightOnlyLinearInferMeta(const MetaTensor& x,
       w_dims.size(),
       2UL,
       errors::InvalidArgument("The input(weight) must be a 2D Tensor."));
-  PADDLE_ENFORCE_EQ(
-      w_dims[0] % 16,
-      0,
-      common::errors::InvalidArgument(
-          "The first dimension of input must be divisible by 16, but got[%d]",
-          w_dims[0]));
-  PADDLE_ENFORCE_EQ(
-      w_dims[1] % 16,
-      0,
-      common::errors::InvalidArgument(
-          "The second dimension of input must be divisible by 16, but got[%d]",
-          w_dims[1]));
-  PADDLE_ENFORCE_EQ(
-      x_dims[x_dims.size() - 1],
-      w_dims[1],
-      errors::InvalidArgument(
-          "Input(X) dim[-1] and Input(Weight) dim[1] should be equal."
-          "But received Input(X) dim[-1](%s) != Input(Weight) dim[1](%s)",
-          x_dims[x_dims.size() - 1],
-          w_dims[1]));
+  if (config.is_runtime || w_dims[0] >= 0) {
+    PADDLE_ENFORCE_EQ(
+        w_dims[0] % 16,
+        0,
+        common::errors::InvalidArgument(
+            "The first dimension of input must be divisible by 16, but got[%d]",
+            w_dims[0]));
+  }
+  if (config.is_runtime || w_dims[1] >= 0) {
+    PADDLE_ENFORCE_EQ(
+        w_dims[1] % 16,
+        0,
+        common::errors::InvalidArgument("The second dimension of input must be "
+                                        "divisible by 16, but got[%d]",
+                                        w_dims[1]));
+  }
+  if (config.is_runtime || (x_dims[x_dims.size() - 1] > 0 && w_dims[1] > 0)) {
+    PADDLE_ENFORCE_EQ(
+        x_dims[x_dims.size() - 1],
+        w_dims[1],
+        errors::InvalidArgument(
+            "Input(X) dim[-1] and Input(Weight) dim[1] should be equal."
+            "But received Input(X) dim[-1](%s) != Input(Weight) dim[1](%s)",
+            x_dims[x_dims.size() - 1],
+            w_dims[1]));
+  }
   if (bias.initialized()) {
     auto bias_dims = bias.dims();
     PADDLE_ENFORCE_EQ(
@@ -5964,6 +5971,82 @@ void FusedConvInferMeta(const MetaTensor& input,
                 data_format,
                 out,
                 config);
+}
+
+void MoePermuteInferMeta(const MetaTensor& X,
+                         const MetaTensor& XScale,
+                         const MetaTensor& expert_routemap_topk,
+                         const MetaTensor& expert_prob_topk,
+                         const int num_experts,
+                         const std::vector<int>& tokens_per_expert,
+                         const int padding_multiplex,
+                         MetaTensor* X_unzipped,
+                         MetaTensor* zipped_expertwise_rowmap,
+                         MetaTensor* token_prob_unzipped,
+                         MetaTensor* XScale_unzipped) {
+  PADDLE_ENFORCE_EQ(
+      X.dims().size(),
+      2,
+      common::errors::InvalidArgument("Input X's dims should be 2, but got %u.",
+                                      X.dims().size()));
+  PADDLE_ENFORCE_EQ(
+      X.dtype() == phi::DataType::BFLOAT16,
+      true,
+      common::errors::InvalidArgument("Input X's dtype should be BFLOAT16"));
+  PADDLE_ENFORCE_EQ(expert_routemap_topk.dtype() == phi::DataType::INT32,
+                    true,
+                    common::errors::InvalidArgument(
+                        "Input expert_routemap_topk's dtype should be INT32"));
+  PADDLE_ENFORCE_EQ(expert_prob_topk.dtype() == phi::DataType::FLOAT32,
+                    true,
+                    common::errors::InvalidArgument(
+                        "Input expert_prob_topk's dtype should be FLOAT32"));
+  if (XScale) {
+    PADDLE_ENFORCE_EQ(XScale.dtype(),
+                      phi::DataType::FLOAT32,
+                      common::errors::InvalidArgument(
+                          "Input XScale's dtype should be FLOAT32"));
+    const int quanted_cols = XScale.dims()[1];
+    XScale_unzipped->set_dims({-1, quanted_cols});
+    XScale_unzipped->set_dtype(XScale.dtype());
+  } else {
+    XScale_unzipped->set_dims({0});
+    XScale_unzipped->set_dtype(phi::DataType::FLOAT32);
+  }
+  const int rows = X.dims()[0];
+  const int cols = X.dims()[1];
+  X_unzipped->set_dims({-1, cols});
+  X_unzipped->set_dtype(X.dtype());
+  zipped_expertwise_rowmap->set_dims({rows, num_experts});
+  zipped_expertwise_rowmap->set_dtype(phi::DataType::INT32);
+  token_prob_unzipped->set_dims({-1});
+  token_prob_unzipped->set_dtype(expert_prob_topk.dtype());
+}
+
+void MoeUnpermuteInferMeta(const MetaTensor& unzipped_tokens,
+                           const MetaTensor& zipped_expertwise_rowmap,
+                           const MetaTensor& expert_routemap_topk,
+                           const MetaTensor& unzipped_token_probs,
+                           const int total_zipped_tokens_num,
+                           const int num_experts,
+                           const bool MP,
+                           MetaTensor* zipped_tokens,
+                           MetaTensor* zipped_probs_topk) {
+  PADDLE_ENFORCE_EQ(unzipped_tokens.dtype() == phi::DataType::BFLOAT16,
+                    true,
+                    common::errors::InvalidArgument(
+                        "Input unzipped_tokens's dtype should be BFLOAT16"));
+  PADDLE_ENFORCE_EQ(
+      unzipped_token_probs.dtype() == phi::DataType::FLOAT32,
+      true,
+      common::errors::InvalidArgument(
+          "Input unzipped_token_probs's dtype should be FLOAT32"));
+  const int cols = unzipped_tokens.dims()[1];
+  const int topk = expert_routemap_topk.dims()[1];
+  zipped_tokens->set_dims({total_zipped_tokens_num, cols});
+  zipped_tokens->set_dtype(unzipped_tokens.dtype());
+  zipped_probs_topk->set_dims({total_zipped_tokens_num, topk});
+  zipped_probs_topk->set_dtype(unzipped_token_probs.dtype());
 }
 
 void FusedRopeInferMeta(const MetaTensor& q,

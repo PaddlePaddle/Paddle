@@ -141,15 +141,15 @@ class ComputeCodeGenerator(ast.NodeVisitor):
             node(ast.For): The ast For node
         """
         for_ctx = ExprExecutor(self.variables_table.get()).exec(node.iter)
-        with self.variables_table:
-            with for_ctx as loop_var:
-                local_var_table = exec_assign(
-                    target=node.target, source=loop_var
-                )
-                for k, v in local_var_table.items():
-                    loop_var.rename(k)
-                    self.variables_table.add(k, ir.Expr(v))
-                self.visit_compound_statement(node.body)
+        with (
+            self.variables_table,
+            for_ctx as loop_var,
+        ):
+            local_var_table = exec_assign(target=node.target, source=loop_var)
+            for k, v in local_var_table.items():
+                loop_var.rename(k)
+                self.variables_table.add(k, ir.Expr(v))
+            self.visit_compound_statement(node.body)
 
     def visit_Assign(self, node):
         """
@@ -208,17 +208,17 @@ class ComputeCodeGenerator(ast.NodeVisitor):
                     self.variables_table.add(k, v[0])
 
     def visit_If(self, node):
-        with self.variables_table:
-            with ir.IfContext(
+        with (
+            self.variables_table,
+            ir.IfContext(
                 ExprExecutor(self.variables_table.get()).exec(node.test)
-            ):
-                with ir.ThenContext():
-                    with self.variables_table:
-                        self.visit_compound_statement(node.body)
-                if node.orelse:
-                    with ir.ElseContext():
-                        with self.variables_table:
-                            self.visit_compound_statement(node.body)
+            ),
+        ):
+            with ir.ThenContext(), self.variables_table:
+                self.visit_compound_statement(node.body)
+            if node.orelse:
+                with ir.ElseContext(), self.variables_table:
+                    self.visit_compound_statement(node.body)
 
     def visit_With(self, node):
         with self.variables_table:

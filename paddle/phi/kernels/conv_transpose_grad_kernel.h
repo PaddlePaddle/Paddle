@@ -23,7 +23,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void Conv2dTransposeGradKernel(const Context& ctx,
+void Conv2dTransposeGradKernel(const Context& dev_ctx,
                                const DenseTensor& x,
                                const DenseTensor& filter,
                                const DenseTensor& dout,
@@ -39,7 +39,7 @@ void Conv2dTransposeGradKernel(const Context& ctx,
                                DenseTensor* dfilter);
 
 template <typename T, typename Context>
-void Conv2dTransposeDoubleGradKernel(const Context& ctx,
+void Conv2dTransposeDoubleGradKernel(const Context& dev_ctx,
                                      const DenseTensor& x,
                                      const DenseTensor& filter,
                                      const DenseTensor& dout,
@@ -58,7 +58,7 @@ void Conv2dTransposeDoubleGradKernel(const Context& ctx,
                                      DenseTensor* ddout);
 
 template <typename T, typename Context>
-void Conv3dTransposeGradKernel(const Context& ctx,
+void Conv3dTransposeGradKernel(const Context& dev_ctx,
                                const DenseTensor& x,
                                const DenseTensor& filter,
                                const DenseTensor& dout,
@@ -74,7 +74,7 @@ void Conv3dTransposeGradKernel(const Context& ctx,
                                DenseTensor* dfilter);
 
 template <typename T, typename Context>
-void DepthwiseConv2dTransposeGradKernel(const Context& ctx,
+void DepthwiseConv2dTransposeGradKernel(const Context& dev_ctx,
                                         const DenseTensor& x,
                                         const DenseTensor& filter,
                                         const DenseTensor& dout,

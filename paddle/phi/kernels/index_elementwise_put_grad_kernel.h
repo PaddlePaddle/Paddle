@@ -19,7 +19,7 @@
 
 namespace phi {
 template <typename T, typename Context>
-void IndexElementwisePutGradKernel(const Context& ctx,
+void IndexElementwisePutGradKernel(const Context& dev_ctx,
                                    const DenseTensor& input,
                                    const std::vector<const DenseTensor*>& index,
                                    const DenseTensor& value,
@@ -28,6 +28,7 @@ void IndexElementwisePutGradKernel(const Context& ctx,
                                    const std::vector<int64_t>& input_strides,
                                    const std::vector<int64_t>& index_dims,
                                    const std::vector<int64_t>& index_strides,
+                                   const int64_t slice_offset,
                                    DenseTensor* x_grad,
                                    DenseTensor* value_grad);
 

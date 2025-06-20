@@ -37,7 +37,7 @@ void MaskedFillKernel(const Context& dev_ctx,
 
   DenseTensor mask_expand;
   DenseTensor x_expand;
-  auto value_data = value.data<T>();
+  DenseTensor value_expand;
 
   DDim expand_dims = common::make_ddim(expanded_size);
   if (mask.dims() != expand_dims) {
@@ -53,20 +53,39 @@ void MaskedFillKernel(const Context& dev_ctx,
     x_expand = x;
   }
 
+  if (value.dims() != expand_dims && value.numel() != 1) {
+    ExpandKernel<T, Context>(
+        dev_ctx, value, IntArray(expanded_size), &value_expand);
+  } else {
+    value_expand = value;
+  }
+
   auto input_data = x_expand.data<T>();
   auto mask_data = mask_expand.data<bool>();
+  auto value_data = value_expand.data<T>();
 
   auto x_size = x_expand.numel();
 
   out->Resize(expand_dims);
 
   auto out_data = dev_ctx.template HostAlloc<T>(out);
-
-  for (int i = 0; i < x_size; i++) {
-    if (mask_data[i]) {
-      out_data[i] = value_data[0];
-    } else {
-      out_data[i] = input_data[i];
+  if (value.numel() == 1) {
+#pragma unroll
+    for (int i = 0; i < x_size; i++) {
+      if (mask_data[i]) {
+        out_data[i] = value_data[0];
+      } else {
+        out_data[i] = input_data[i];
+      }
+    }
+  } else {
+#pragma unroll
+    for (int i = 0; i < x_size; i++) {
+      if (mask_data[i]) {
+        out_data[i] = value_data[i];
+      } else {
+        out_data[i] = input_data[i];
+      }
     }
   }
 }

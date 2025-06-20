@@ -70,7 +70,7 @@ void CumsumKernel(const Context& dev_ctx,
     }
   }
 
-  // template<typename T> DLL_EXPORT int cumsum(Context* ctx, const T* x, T*
+  // template<typename T> DLL_EXPORT int cumsum(Context* xpu_ctx, const T* x, T*
   // y, const std::vector<int>& xshape, bool reverse, bool exclusive, int
   // axis);
   int r = xpu::cumsum<XPUType>(dev_ctx.x_context(),
