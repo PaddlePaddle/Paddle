@@ -24,7 +24,8 @@ limitations under the License. */
 namespace phi::distributed {
 SpmdInfo IndexPutInferSpmd(const DistMetaTensor& x,
                            const std::vector<DistMetaTensor>& indices,
-                           const DistMetaTensor& value) {
+                           const DistMetaTensor& value,
+                           const bool accumulate) {
   // Step0: verify input args based on group_norm logic
   auto x_shape = common::vectorize(x.dims());
   int indices_size = indices.size();
@@ -121,7 +122,8 @@ SpmdInfo IndexPutInferSpmd(const DistMetaTensor& x,
 SpmdInfo IndexPutGradInferSpmd(const DistMetaTensor& x,
                                const std::vector<DistMetaTensor>& indices,
                                const DistMetaTensor& value,
-                               const DistMetaTensor& out_grad) {
+                               const DistMetaTensor& out_grad,
+                               const bool accumulate) {
   // Step0: verify input args based on group_norm logic
   auto x_shape = common::vectorize(x.dims());
   int indices_size = indices.size();

@@ -22,11 +22,11 @@ namespace distributed {
 SpmdInfo IndexPutInferSpmd(const DistMetaTensor& x,
                            const std::vector<DistMetaTensor>& indices,
                            const DistMetaTensor& value,
-                           bool accumulate = false);
+                           const bool accumulate = false);
 SpmdInfo IndexPutGradInferSpmd(const DistMetaTensor& x,
                                const std::vector<DistMetaTensor>& indices,
                                const DistMetaTensor& value,
                                const DistMetaTensor& out_grad,
-                               bool accumulate = false);
+                               const bool accumulate = false);
 }  // namespace distributed
 }  // namespace phi
