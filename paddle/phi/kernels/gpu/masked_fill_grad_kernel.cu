@@ -241,7 +241,7 @@ void GPUMaskedFillGrad(const phi::GPUContext& dev_ctx,
   int64_t mask_len = mask.numel();
   int batch_size = input_len / mask_len;
 
-  int vec_size = 4;
+  int vec_size = 8;
   vec_size = std::min(phi::GetVectorizedSize(out_grad_data), vec_size);
   if (x_grad) {
     x_grad_data = x_grad->data<T>();
