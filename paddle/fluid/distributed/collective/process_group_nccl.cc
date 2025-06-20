@@ -135,8 +135,7 @@ ProcessGroupNCCL::ProcessGroupNCCL(
     int size,
     int gid,
     int64_t timeout,
-    int nccl_comm_init_option,
-    int comm_group_type)
+    int nccl_comm_init_option)
     : ProcessGroupWithStream(rank, size, gid),
       store_(store),
       place_to_calc_event_(),
@@ -148,8 +147,7 @@ ProcessGroupNCCL::ProcessGroupNCCL(
       nccl_comm_init_option_(nccl_comm_init_option),
       allocation_stream_pairs_(),
       place_to_p2p_opts_(),
-      create_count_(0),
-      comm_group_type_(comm_group_type) {
+      create_count_(0) {
   LOG(INFO) << "ProcessGroupNCCL pg_timeout_ " << pg_timeout_;
   LOG(INFO) << "ProcessGroupNCCL nccl_comm_init_option_ "
             << nccl_comm_init_option_;
@@ -225,7 +223,7 @@ phi::distributed::NCCLCommContext* ProcessGroupNCCL::GetOrCreateCommContext(
   std::string store_key;
   GetStoreKey(key, comm_type, &store_key);
   if (place_to_comm_ctx_.find(key) == place_to_comm_ctx_.end()) {
-    CreateNCCLEnvCache(place, key, store_key, comm_type, comm_group_type_);
+    CreateNCCLEnvCache(place, key, store_key, comm_type);
   }
   return GetCommContext(&store_key);
 }
@@ -868,8 +866,7 @@ void ProcessGroupNCCL::CreateNCCLEnvCache(const Place& place,
                                           const std::string& place_key,
                                           const std::string& store_key,
                                           CommType comm_type,
-                                          int p2p_rank,
-                                          int comm_group_type) {
+                                          int p2p_rank) {
   VLOG(3) << "init nccl rank_in_group: " << rank_ << ", nranks: " << size_
           << ", gid: " << gid_ << ", place key: " << place_key
           << ", store_key: " << store_key;
@@ -888,14 +885,7 @@ void ProcessGroupNCCL::CreateNCCLEnvCache(const Place& place,
 
   phi::distributed::P2POption p2p_opts({is_p2p_op, p2p_rank, num_ranks, rank});
   phi::distributed::CommContextManager::CreateNCCLCommContext(
-      store_,
-      store_key,
-      rank_,
-      size_,
-      "",
-      &p2p_opts,
-      nccl_comm_init_option_,
-      comm_group_type);
+      store_, store_key, rank_, size_, "", &p2p_opts, nccl_comm_init_option_);
 
   NCCL_CHECK(phi::dynload::ncclGroupEnd());
 
@@ -1013,12 +1003,11 @@ void ProcessGroupNCCL::EagerConnect() {
 
   auto it = place_to_comm_ctx_.find(key);
   if (it == place_to_comm_ctx_.end()) {
-    CreateNCCLEnvCache(
-        place, key, store_key, CommType::ALLREDUCE, 0, comm_group_type_);
+    CreateNCCLEnvCache(place, key, store_key, CommType::ALLREDUCE);
   }
 }
 
-void ProcessGroupNCCL::EagerConnectRingExchange(int comm_group_type) {
+void ProcessGroupNCCL::EagerConnectRingExchange() {
   std::vector<std::pair<int, int>> peers;
   const auto& place = phi::GPUPlace(phi::backends::gpu::GetCurrentDeviceId());
 
@@ -1051,8 +1040,7 @@ void ProcessGroupNCCL::EagerConnectRingExchange(int comm_group_type) {
     std::string store_key;
     GetStoreKey(key, CommType::SEND, &store_key);
     if (place_to_comm_ctx_.find(key) == place_to_comm_ctx_.end()) {
-      CreateNCCLEnvCache(
-          place, key, store_key, CommType::SEND, p2p_rank, comm_group_type);
+      CreateNCCLEnvCache(place, key, store_key, CommType::SEND, p2p_rank);
     }
   }
 }
@@ -1079,7 +1067,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Collective(
   GetStoreKey(key, comm_type, &store_key);
 
   if (place_to_comm_ctx_.find(key) == place_to_comm_ctx_.end()) {
-    CreateNCCLEnvCache(place, key, store_key, comm_type, 0, comm_group_type_);
+    CreateNCCLEnvCache(place, key, store_key, comm_type);
   }
 
   if (!use_calc_stream) {
@@ -1212,8 +1200,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Point2Point(
   GetStoreKey(key, comm_type, &store_key);
 
   if (place_to_comm_ctx_.find(key) == place_to_comm_ctx_.end()) {
-    CreateNCCLEnvCache(
-        place, key, store_key, comm_type, p2p_rank, comm_group_type_);
+    CreateNCCLEnvCache(place, key, store_key, comm_type, p2p_rank);
   }
   if (p2p_comm_seq_.find(key) == p2p_comm_seq_.end()) {
     p2p_comm_seq_[key] = 0;
@@ -1303,10 +1290,9 @@ std::shared_ptr<ProcessGroupNCCL> ProcessGroupNCCL::CreateProcessGroupNCCL(
     int size,
     int gid,
     int64_t timeout,
-    int nccl_comm_init_option,
-    int comm_group_type) {
+    int nccl_comm_init_option) {
   auto process_group = std::make_shared<ProcessGroupNCCL>(
-      store, rank, size, gid, timeout, nccl_comm_init_option, comm_group_type);
+      store, rank, size, gid, timeout, nccl_comm_init_option);
   ProcessGroupIdMap::GetInstance().emplace(gid, process_group);
   return process_group;
 }

@@ -153,6 +153,9 @@ ENV_SOT_TRACE_NUMPY = BooleanEnvironmentVariable("ENV_SOT_TRACE_NUMPY", True)
 ENV_SOT_UNSAFE_CACHE_FASTPATH = BooleanEnvironmentVariable(
     "SOT_UNSAFE_CACHE_FASTPATH", False
 )
+ENV_SOT_ENABLE_0_SIZE_FALLBACK = BooleanEnvironmentVariable(
+    "SOT_ENABLE_0_SIZE_FALLBACK", True
+)
 
 
 def update_ce_flags():

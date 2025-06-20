@@ -110,7 +110,8 @@ jobs:
   slice:
     name: Slice
     uses: ./.github/workflows/_Slice.yml
-    needs: [build-docker, build]
+    needs: [clone, build-docker, build]
     with:
       can-skip: ${{ needs.build.outputs.can-skip }}
       docker_build_image: ${{ needs.build-docker.outputs.docker_build_image }}
+      slice-check: ${{ needs.clone.outputs.slice-check }}
