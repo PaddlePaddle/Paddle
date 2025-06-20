@@ -106,29 +106,6 @@ void StridedCopyKernel<phi::dtype::complex<float>, XPUContext>(
   phi::ComplexKernel<float>(dev_ctx, real_out, imag_out, out);
 }
 #endif
-
-#ifdef PADDLE_WITH_XPU_FFT
-template <>
-void StridedCopyKernel<phi::dtype::complex<float>, XPUContext>(
-    const XPUContext& dev_ctx,
-    const DenseTensor& input,
-    const std::vector<int64_t>& dims,
-    const std::vector<int64_t>& out_stride,
-    int64_t offset,
-    DenseTensor* out) {
-  using T = phi::dtype::complex<float>;
-  const DenseTensor real = Real<T, XPUContext>(dev_ctx, input);
-  const DenseTensor imag = Imag<T, XPUContext>(dev_ctx, input);
-  DenseTensor real_out, imag_out;
-  real_out.Resize(out->dims());
-  imag_out.Resize(out->dims());
-  StridedCopyKernel<float, XPUContext>(
-      dev_ctx, real, dims, out_stride, offset, &real_out);
-  StridedCopyKernel<float, XPUContext>(
-      dev_ctx, imag, dims, out_stride, offset, &imag_out);
-  phi::ComplexKernel<float>(dev_ctx, real_out, imag_out, out);
-}
-#endif
 }  // namespace phi
 
 PD_REGISTER_KERNEL(strided_copy,

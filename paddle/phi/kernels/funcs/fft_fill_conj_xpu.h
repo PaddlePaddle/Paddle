@@ -76,7 +76,7 @@ void FFTFillConj(const DeviceContext& ctx,
   PADDLE_ENFORCE_NOT_NULL(dst_strides_ptr,
                           common::errors::External("XPU has no enough memory"));
   xpu_memcpy(reinterpret_cast<void*>(dst_strides_ptr),
-             reinterpret_cast<void*>(src_strides_v.data()),
+             reinterpret_cast<void*>(dst_strides_v.data()),
              dst_strides_v.size() * sizeof(int64_t),
              XPUMemcpyKind::XPU_HOST_TO_DEVICE);
   int64_t* dst_shape_ptr =
