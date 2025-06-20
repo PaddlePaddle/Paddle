@@ -2883,6 +2883,8 @@ def slogdet(x: Tensor, name: str | None = None) -> tuple[Tensor, Tensor]:
         2. For matrices with complex value, the :math:`abs(det)` is the modulus of the determinant,
         and therefore :math:`sign = det / abs(det)`.
 
+        3. The return structure of this API has been revised (see `PR #69913 <https://github.com/PaddlePaddle/Paddle/pull/72505>`_) to align with PyTorch and NumPy. This modification may cause incompatibility with models previously exported for inference that relied on the old return structure.
+
     Args:
         x (Tensor): the batch of matrices of size :math:`(*, n, n)`
             where math:`*` is one or more batch dimensions.
