@@ -310,6 +310,14 @@ bool IsCompiledWithFlagcx() {
 #endif
 }
 
+bool IsCompiledWithDeepEP() {
+#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_DEEP_EP)
+  return true;
+#else
+  return false;
+#endif
+}
+
 bool IsCompiledWithMPI() {
 #ifdef PADDLE_WITH_MPI
   return true;
