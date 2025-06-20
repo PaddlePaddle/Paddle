@@ -303,11 +303,10 @@ class TestFusedGemmEpilogueSPMDRule(unittest.TestCase):
         self.assertEqual(
             inferred_output_dist_attrs[0].dims_mapping, [-1, -1, 1, -1]
         )
-        self.assertEqual(inferred_output_dist_attrs[0]._is_partial(), False)
         self.assertEqual(inferred_output_dist_attrs[0]._is_partial(), True)
         self.assertEqual(inferred_output_dist_attrs[0]._partial_dims(), {0})
 
-        # has partial,force to replicate mk[-1,1],k[1],bias[1] --> mk[-1,-1],k[-1],bias[-1] = m[-1]
+        # mk[-1,1],k[1],bias[1] --> mk[-1,1],k[1],bias[-1]partial[1] = m[-1]partial[1]
         x_shape = [64, 32]
         y_shape = [32]
         bias_shape = [32]
@@ -339,13 +338,17 @@ class TestFusedGemmEpilogueSPMDRule(unittest.TestCase):
 
         inferred_input_dist_attrs = result_dist_attrs[0]
         inferred_output_dist_attrs = result_dist_attrs[1]
-        self.assertEqual(inferred_input_dist_attrs[0].dims_mapping, [-1, -1])
-        self.assertEqual(inferred_input_dist_attrs[1].dims_mapping, [-1])
+        self.assertEqual(inferred_input_dist_attrs[0].dims_mapping, [-1, 1])
+        self.assertEqual(inferred_input_dist_attrs[1].dims_mapping, [1])
         self.assertEqual(inferred_input_dist_attrs[2].dims_mapping, [-1])
-        self.assertEqual(inferred_output_dist_attrs[0].dims_mapping, [-1])
-        self.assertEqual(inferred_output_dist_attrs[0]._is_partial(), False)
+        self.assertEqual(inferred_input_dist_attrs[2]._is_partial(), True)
+        self.assertEqual(inferred_input_dist_attrs[2]._partial_dims(), {1})
 
-        # has partial,force to replicate k[-1],kn[-1,1],bias[-1] --> k[-1],kn[-1,1],bias[1] = n[1]
+        self.assertEqual(inferred_output_dist_attrs[0].dims_mapping, [-1])
+        self.assertEqual(inferred_output_dist_attrs[0]._is_partial(), True)
+        self.assertEqual(inferred_output_dist_attrs[0]._partial_dims(), {1})
+
+        # k[-1],kn[-1,1],bias[-1] --> k[-1],kn[-1,1],bias[1] = n[1]
         x_shape = [32]
         y_shape = [32, 64]
         bias_shape = [64]
@@ -380,6 +383,7 @@ class TestFusedGemmEpilogueSPMDRule(unittest.TestCase):
         self.assertEqual(inferred_input_dist_attrs[0].dims_mapping, [-1])
         self.assertEqual(inferred_input_dist_attrs[1].dims_mapping, [-1, 1])
         self.assertEqual(inferred_input_dist_attrs[2].dims_mapping, [1])
+        self.assertEqual(inferred_input_dist_attrs[2]._is_partial(), False)
         self.assertEqual(inferred_output_dist_attrs[0].dims_mapping, [1])
         self.assertEqual(inferred_output_dist_attrs[0]._is_partial(), False)
 
