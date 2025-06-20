@@ -140,23 +140,25 @@ class TestMasterWeight(AmpTestBase):
             main_program = paddle.static.Program()
             startup_program = paddle.static.Program()
             losses = []
-            with paddle.utils.unique_name.guard():
-                with paddle.static.program_guard(main_program, startup_program):
-                    model = SimpleNet(100, 100)
-                    optimizer = paddle.optimizer.AdamW(learning_rate=0.01)
-                    optimizer = paddle.static.amp.decorate(
-                        optimizer,
-                        level=level,
-                        dtype=dtype,
-                        use_promote=use_promote,
-                        master_weight=True,
-                    )
-                    x = paddle.static.data(
-                        name='input', shape=[100, 100], dtype='float16'
-                    )
-                    out = model(x)
-                    loss = paddle.mean(out)
-                    optimizer.minimize(loss)
+            with (
+                paddle.utils.unique_name.guard(),
+                paddle.static.program_guard(main_program, startup_program),
+            ):
+                model = SimpleNet(100, 100)
+                optimizer = paddle.optimizer.AdamW(learning_rate=0.01)
+                optimizer = paddle.static.amp.decorate(
+                    optimizer,
+                    level=level,
+                    dtype=dtype,
+                    use_promote=use_promote,
+                    master_weight=True,
+                )
+                x = paddle.static.data(
+                    name='input', shape=[100, 100], dtype='float16'
+                )
+                out = model(x)
+                loss = paddle.mean(out)
+                optimizer.minimize(loss)
 
             if paddle.is_compiled_with_cuda():
                 place = paddle.CUDAPlace(0)

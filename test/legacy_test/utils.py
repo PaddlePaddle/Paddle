@@ -190,14 +190,16 @@ def to_pir_pt_test(fn):
             original_flag_value = get_flags(pt_flag)[pt_flag]
             if os.environ.get('FLAGS_use_stride_kernel', False):
                 return
-            with static.scope_guard(static.Scope()):
-                with static.program_guard(static.Program()):
-                    with EnvironmentVariableGuard(ENV_ENABLE_PIR_WITH_PT, True):
-                        try:
-                            set_flags({pt_flag: True})
-                            ir_outs = fn(*args, **kwargs)
-                        finally:
-                            set_flags({pt_flag: original_flag_value})
+            with (
+                static.scope_guard(static.Scope()),
+                static.program_guard(static.Program()),
+                EnvironmentVariableGuard(ENV_ENABLE_PIR_WITH_PT, True),
+            ):
+                try:
+                    set_flags({pt_flag: True})
+                    ir_outs = fn(*args, **kwargs)
+                finally:
+                    set_flags({pt_flag: original_flag_value})
         return ir_outs
 
     return impl

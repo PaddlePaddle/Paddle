@@ -38,7 +38,8 @@ void GaussianKernel(const Context& dev_ctx,
   using XPUType = typename XPUTypeTrait<T>::Type;
   int64_t real_seed = seed != 0 ? seed : dev_ctx.GetGenerator()->Random64();
 
-  // int normal(Context* ctx, T* x, T mean, T std, int64_t len, int64_t seed);
+  // int normal(Context* xpu_ctx, T* x, T mean, T std, int64_t len, int64_t
+  // seed);
   int r = xpu::normal_<XPUType>(dev_ctx.x_context(),
                                 reinterpret_cast<XPUType*>(data),
                                 mean,

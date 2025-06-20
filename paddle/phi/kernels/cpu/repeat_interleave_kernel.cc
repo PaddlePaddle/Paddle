@@ -18,6 +18,8 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/repeat_interleave_kernel_impl.h"
 
+#include "paddle/phi/kernels/funcs/repeat_tensor2index_tensor.h"
+
 PD_REGISTER_KERNEL(repeat_interleave,
                    CPU,
                    ALL_LAYOUT,
