@@ -30,47 +30,6 @@
 #include "paddle/phi/kernels/funcs/slice_utils.h"
 namespace phi {
 
-// check whether the tensor with dimension of second can assign to the
-// tensor with dimension of first
-inline void CheckIsDimsMatch(const DDim& first, const DDim& second) {
-  int ignore_axis1 = 0, ignore_axis2 = 0;
-  for (; ignore_axis1 < first.size(); ++ignore_axis1) {
-    if (first[ignore_axis1] != 1) {
-      break;
-    }
-  }
-  for (; ignore_axis2 < second.size(); ++ignore_axis2) {
-    if (second[ignore_axis2] != 1) {
-      break;
-    }
-  }
-
-  if (second.size() == ignore_axis2) {
-    // second tensor has only one value
-    return;
-  }
-
-  if (first.size() - ignore_axis1 >= second.size() - ignore_axis2) {
-    auto idx1 = first.size() - 1;
-    auto idx2 = second.size() - 1;
-    bool is_match = true;
-    for (; idx2 >= ignore_axis2; idx2--) {
-      if (first[idx1--] != second[idx2] && second[idx2] != 1) {
-        is_match = false;
-        break;
-      }
-    }
-    if (is_match) {
-      return;
-    }
-  }
-  PADDLE_THROW(errors::InvalidArgument(
-      "The shape of tensor assigned value must match the shape "
-      "of target shape: %d, but now shape is %d.",
-      second.to_str(),
-      first.to_str()));
-}
-
 template <typename T, typename Context, size_t RANK>
 void SetValueImpl(const Context& dev_ctx,
                   const DenseTensor& in,
@@ -124,7 +83,7 @@ void SetValueImpl(const Context& dev_ctx,
 
     slice_dims_for_assign = common::make_ddim(slice_dims_with_none);
   }
-  CheckIsDimsMatch(slice_dims_for_assign, value.dims());
+  phi::funcs::CheckIsDimsMatch(slice_dims_for_assign, value.dims());
 
   auto value_shape = phi::vectorize<int64_t>(value.dims());
 
