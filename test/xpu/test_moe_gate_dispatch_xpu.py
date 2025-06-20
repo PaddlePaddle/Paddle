@@ -40,23 +40,13 @@ def topk_grad(x, dy, indices, w):
     """
     s, e = x.shape
     _, k = dy.shape
-    dx = paddle.scatter_nd(
-        paddle.stack(
-            [
-                paddle.arange(s).repeat_interleave(k).cast(indices.dtype),
-                indices.reshape([-1]),
-            ],
-            -1,
-        ),
-        dy.reshape([-1]),
-        shape=[s, e],
-    )  # [s,k] -> [s,e]
+    dx = paddle.zeros([s, e])
     # mask
     for i in range(s):
         for j in range(k):
-            if w[i, j] <= 0:
+            if w[i, j] > 0:
                 index = indices[i, j]
-                dx[i, index] = 0
+                dx[i, index] = dy[i, j]
     return dx  # dx 保持高精度
 
 
