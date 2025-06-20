@@ -23,6 +23,33 @@
 
 namespace phi {
 
+struct DeviceProp {
+  std::string name;
+  int deviceMajor = 0;
+  int deviceMinor = 0;
+  size_t totalGlobalMem = 0;
+  int multiProcessorCount = 0;
+  bool isMultiGpuBoard = false;
+  bool integrated = false;
+
+  DeviceProp() = default;
+
+  DeviceProp(const std::string& name_,
+             int deviceMajor_,
+             int deviceMinor_,
+             size_t totalGlobalMem_,
+             int multiProcessorCount_,
+             bool isMultiGpuBoard_,
+             bool integrated_)
+      : name(name_),
+        deviceMajor(deviceMajor_),
+        deviceMinor(deviceMinor_),
+        totalGlobalMem(totalGlobalMem_),
+        multiProcessorCount(multiProcessorCount_),
+        isMultiGpuBoard(isMultiGpuBoard_),
+        integrated(integrated_) {}
+};
+
 class TraceEventCollector;
 
 class DeviceInterface {  // Driver / Runtime
@@ -37,6 +64,8 @@ class DeviceInterface {  // Driver / Runtime
 
   // Info
   virtual size_t GetComputeCapability(size_t dev_id);
+
+  virtual DeviceProp& GetDeviceProperties(size_t dev_id);
 
   virtual size_t GetRuntimeVersion(size_t dev_id);
 

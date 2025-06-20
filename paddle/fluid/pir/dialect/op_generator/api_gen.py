@@ -53,6 +53,7 @@ type_promote_white_list = {
     "atan2": ["x", "y"],
     "multiply": ["x", "y"],
     "copysign": ["x", "y"],
+    "cross": ["x", "y"],
 }
 
 type_promote_inplace_white_list = {

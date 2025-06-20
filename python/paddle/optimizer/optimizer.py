@@ -2020,6 +2020,10 @@ class Optimizer:
                     "True",
                     "true",
                     "1",
+                ] or os.getenv("FLAGS_enable_main_grad") in [
+                    "True",
+                    "true",
+                    "1",
                 ]:
                     if (
                         hasattr(param, "main_grad")

@@ -123,6 +123,91 @@ struct InverseDivideFunctor {
 template <typename T>
 using ComplexType = phi::dtype::complex<T>;
 
+// Reference: https://github.com/pytorch/pytorch/pull/92539
+template <typename T>
+struct DivideFunctor<ComplexType<T>> {
+  inline HOSTDEVICE ComplexType<T> operator()(const ComplexType<T> x,
+                                              const ComplexType<T> y) const {
+    T a = x.real;
+    T b = x.imag;
+    T c = y.real;
+    T d = y.imag;
+
+    // (a + bi) / (c + di) = (ac + bd)/(c^2 + d^2) + (bc - ad)/(c^2 + d^2) i
+    // the calculation below follows numpy's complex division
+#if defined(__GNUC__) && !defined(__clang__)
+    // std::abs is already constexpr by gcc
+    auto abs_c = std::abs(c);
+    auto abs_d = std::abs(d);
+#else
+    auto abs_c = c < 0 ? -c : c;
+    auto abs_d = d < 0 ? -d : d;
+#endif
+
+    T real_, imag_;
+    if (abs_c >= abs_d) {
+      if (abs_c == T(0) && abs_d == T(0)) {
+        /* divide by zeros should yield a complex inf or nan */
+        real_ = a / abs_c;
+        imag_ = b / abs_d;
+      } else {
+        auto rat = d / c;
+        auto scl = T(1.0) / (c + d * rat);
+        real_ = (a + b * rat) * scl;
+        imag_ = (b - a * rat) * scl;
+      }
+    } else {
+      auto rat = c / d;
+      auto scl = T(1.0) / (d + c * rat);
+      real_ = (a * rat + b) * scl;
+      imag_ = (b * rat - a) * scl;
+    }
+    return ComplexType<T>(real_, imag_);
+  }
+};
+
+template <typename T>
+struct InverseDivideFunctor<ComplexType<T>> {
+  inline HOSTDEVICE ComplexType<T> operator()(const ComplexType<T> x,
+                                              const ComplexType<T> y) const {
+    T a = y.real;
+    T b = y.imag;
+    T c = x.real;
+    T d = x.imag;
+
+    // (a + bi) / (c + di) = (ac + bd)/(c^2 + d^2) + (bc - ad)/(c^2 + d^2) i
+    // the calculation below follows numpy's complex division
+#if defined(__GNUC__) && !defined(__clang__)
+    // std::abs is already constexpr by gcc
+    auto abs_c = std::abs(c);
+    auto abs_d = std::abs(d);
+#else
+    auto abs_c = c < 0 ? -c : c;
+    auto abs_d = d < 0 ? -d : d;
+#endif
+
+    T real_, imag_;
+    if (abs_c >= abs_d) {
+      if (abs_c == T(0) && abs_d == T(0)) {
+        /* divide by zeros should yield a complex inf or nan */
+        real_ = a / abs_c;
+        imag_ = b / abs_d;
+      } else {
+        auto rat = d / c;
+        auto scl = T(1.0) / (c + d * rat);
+        real_ = (a + b * rat) * scl;
+        imag_ = (b - a * rat) * scl;
+      }
+    } else {
+      auto rat = c / d;
+      auto scl = T(1.0) / (d + c * rat);
+      real_ = (a * rat + b) * scl;
+      imag_ = (b * rat - a) * scl;
+    }
+    return ComplexType<T>(real_, imag_);
+  }
+};
+
 template <typename InT, typename OutT>
 struct DivGradXYFunctor {
   inline HOSTDEVICE phi::Array<OutT, 2> operator()(const InT a,
