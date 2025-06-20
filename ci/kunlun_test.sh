@@ -42,6 +42,7 @@ EOF
         echo "Starting running xpu tests"
         export XPU_OP_LIST_DIR=$tmp_dir
         ut_startTime_s=`date +%s`
+        sleep 30m
         get_quickly_disable_ut||disable_ut_quickly='disable_ut'   # indicate whether the case was in quickly disable list
         get_multi_card_ut_list_for_xpu
         test_cases=$(ctest -N -V -E "$disable_ut_quickly|$multi_card_ut_list_for_xpu")        # cases list which would be run exclusively
@@ -82,7 +83,6 @@ EOF
         echo "start to run XPU ut using single card, part 1:"
         echo ${single_card_tests}
         echo "========================================="
-        sleep 30m
         card_test "${single_card_tests}" 1 4
 
         echo "========================================="
