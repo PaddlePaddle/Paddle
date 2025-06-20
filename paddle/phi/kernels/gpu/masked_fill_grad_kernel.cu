@@ -155,6 +155,7 @@ void DispatchMaskFillGradKernel(
       CASE_VECSIZE(1)
       CASE_VECSIZE(2)
       CASE_VECSIZE(4)
+      CASE_VECSIZE(8)
 #undef CASE_VECSIZE
       default:
         PADDLE_THROW(common::errors::Unimplemented(
@@ -171,6 +172,7 @@ void DispatchMaskFillGradKernel(
       CASE_VECSIZE(1)
       CASE_VECSIZE(2)
       CASE_VECSIZE(4)
+      CASE_VECSIZE(8)
 #undef CASE_VECSIZE
       default:
         PADDLE_THROW(common::errors::Unimplemented(
@@ -187,6 +189,7 @@ void DispatchMaskFillGradKernel(
       CASE_VECSIZE(1)
       CASE_VECSIZE(2)
       CASE_VECSIZE(4)
+      CASE_VECSIZE(8)
 #undef CASE_VECSIZE
       default:
         PADDLE_THROW(common::errors::Unimplemented(
@@ -217,6 +220,7 @@ void DispatchMaskFillOneValueGradKernel(
       CASE_VECSIZE(1)
       CASE_VECSIZE(2)
       CASE_VECSIZE(4)
+      CASE_VECSIZE(8)
 #undef CASE_VECSIZE
       default:
         PADDLE_THROW(common::errors::Unimplemented(

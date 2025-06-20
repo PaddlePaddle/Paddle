@@ -110,6 +110,7 @@ void DispatchMaskFillKernel(const phi::GPUContext& dev_ctx,
     CASE_VECSIZE(1)
     CASE_VECSIZE(2)
     CASE_VECSIZE(4)
+    CASE_VECSIZE(8)
 #undef CASE_VECSIZE
     default:
       PADDLE_THROW(common::errors::Unimplemented(
@@ -139,6 +140,7 @@ void DispatchMaskFillOneValueKernel(
     CASE_VECSIZE(1)
     CASE_VECSIZE(2)
     CASE_VECSIZE(4)
+    CASE_VECSIZE(8)
 #undef CASE_VECSIZE
     default:
       PADDLE_THROW(common::errors::Unimplemented(
