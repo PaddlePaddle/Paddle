@@ -125,7 +125,6 @@ void IndexElementwisePutKernel(const Context& dev_ctx,
 
   dev_ctx.template Alloc<T>(out);
   if (out->numel() == 0) return;
-
   GPUIndexElementwisePutKernel<T, int64_t>(dev_ctx,
                                            x,
                                            value,
