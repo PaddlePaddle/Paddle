@@ -269,6 +269,9 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
     const KernelKey& const_kernel_key,
     bool use_strided_kernel) const {
   auto iter = kernels_.find(kernel_name);
+  std::cout << "SelectKernel kernel = " << kernel_name << std::endl;
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaGetLastError());
 
   PADDLE_ENFORCE_NE(iter,
                     kernels_.end(),

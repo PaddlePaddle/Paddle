@@ -284,6 +284,9 @@ std::vector<paddle::Tensor> RunBackward(
   while (!queue.empty()) {
     GradNodeBase* node = queue.front();
     VLOG(3) << "Preparing GradNode:" << node->name() << " addr:" << node;
+    std::cout << "run backward node = " << node->name() << std::endl;
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaGetLastError());
     try {
       queue.pop_front();
 
