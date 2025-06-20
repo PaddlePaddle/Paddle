@@ -166,16 +166,15 @@ SpmdInfo FusedGemmEpilogueInferSpmdBase(const DistMetaTensor& x,
           "FusedGemmEpilogue, The ndim of bias should be 1, but got [%d].",
           bias_ndim));
 
-  VLOG(6) << "FusedGemmEpilogueSPMDRule InferForward Inputs: "
-          << "X shape: [" << str_join(ori_x_shape) << "], x_dims_mapping: ["
-          << str_join(x_dims_mapping) << "]; Y shape: ["
-          << str_join(ori_y_shape) << "], y_dims_mapping: ["
-          << str_join(y_dims_mapping) << "]; bias shape: ["
-          << str_join(ori_bias_shape) << "], bias_dims_mapping: ["
-          << str_join(bias_dims_mapping) << "]; trans_x: "
-          << "[" << (trans_x ? "true" : "false") << "]; "
-          << "trans_y: "
-          << "[" << (trans_y ? "true" : "false") << "]; ";
+  VLOG(4) << "FusedGemmEpilogueSPMDRule InferForward Inputs: ";
+  VLOG(4) << "X shape: [" << str_join(ori_x_shape) << "], x_dims_mapping: ["
+          << str_join(x_dims_mapping) << "];";
+  VLOG(4) << "Y shape: [" << str_join(ori_y_shape) << "], y_dims_mapping: ["
+          << str_join(y_dims_mapping) << "];";
+  VLOG(4) << "bias shape: [" << str_join(ori_bias_shape)
+          << "], bias_dims_mapping: [" << str_join(bias_dims_mapping) << "];";
+  VLOG(4) << "trans_x: [" << (trans_x ? "true" : "false") << "]; "
+          << "trans_y: [" << (trans_y ? "true" : "false") << "]; ";
 
   // Step1: build Einsum Notation
   std::string x_axes;
@@ -244,13 +243,19 @@ SpmdInfo FusedGemmEpilogueInferSpmdBase(const DistMetaTensor& x,
   output_dist_attr_dst.set_partial_status(partial_on_dims);
 
   if (output_dist_attr_dst.is_partial()) {
-    VLOG(4) << "FusedGemmEpilogue not support partial output, force set output "
-               "to replicated.";
-    output_dist_attr_dst.clean_partial_status();
-    SetTensorDistAttrReplicated(&x_dist_attr_dst, x_ndim);
-    SetTensorDistAttrReplicated(&y_dist_attr_dst, y_ndim);
-    SetTensorDistAttrReplicated(&bias_dist_attr_dst, bias_ndim);
-    SetTensorDistAttrReplicated(&output_dist_attr_dst, out_axes.size());
+    bias_dist_attr_dst.set_partial_status(
+        output_dist_attr_dst.partial_status());
+    if (!IsPartialLegal(bias_dist_attr_dst) ||
+        !IsPartialLegal(output_dist_attr_dst)) {
+      VLOG(4) << "FusedGemmEpilogue partial output illegal, force set output "
+                 "to replicated.";
+      output_dist_attr_dst.clean_partial_status();
+      bias_dist_attr_dst.clean_partial_status();
+      SetTensorDistAttrReplicated(&x_dist_attr_dst, x_ndim);
+      SetTensorDistAttrReplicated(&y_dist_attr_dst, y_ndim);
+      SetTensorDistAttrReplicated(&bias_dist_attr_dst, bias_ndim);
+      SetTensorDistAttrReplicated(&output_dist_attr_dst, out_axes.size());
+    }
   }
   TensorDistAttr output_reserve_dist_attr_dst =
       CopyTensorDistAttrForOutput(output_dist_attr_dst);
@@ -262,7 +267,6 @@ SpmdInfo FusedGemmEpilogueInferSpmdBase(const DistMetaTensor& x,
   LogInputDistAttr(
       "Bias", ori_bias_shape, bias_dist_attr_src, bias_dist_attr_dst);
   LogOutputDistAttr("Output", output_dist_attr_dst);
-  VLOG(4) << std::endl;
 
   return {{x_dist_attr_dst, y_dist_attr_dst, bias_dist_attr_dst},
           {output_dist_attr_dst, output_reserve_dist_attr_dst}};
