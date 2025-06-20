@@ -48,10 +48,6 @@ void MoeGateDispatchPartialNoSoftMaxTopkGradKernel(
   DenseTensor t_scatter_index;
   phi::Transpose<int, Context>(
       dev_ctx, scatter_index, {1, 0}, &t_scatter_index);
-  DenseTensor t_scatter_index_out;
-  phi::ContiguousKernel<int, Context>(
-      dev_ctx, t_scatter_index, &t_scatter_index_out);
-  t_scatter_index = t_scatter_index_out;
 
   int64_t num_rows = combine_weights_out.dims()[0];
   int64_t hidden_size = y_grad.dims()[1];
