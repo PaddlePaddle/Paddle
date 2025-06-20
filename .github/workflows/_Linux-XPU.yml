@@ -258,8 +258,9 @@ jobs:
 
       - name: Run test
         run: |
+          set -x
           docker exec -t ${{ env.container_name }} /bin/bash -c '
-          bash ${ci_scripts}/kunlun_test.sh
+          bash -x ${ci_scripts}/kunlun_test.sh
           '
 
       - name: Terminate and delete the container
