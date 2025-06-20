@@ -230,6 +230,16 @@ void MoePermuteKernel(const Context &dev_ctx,
                       DenseTensor *XScale_unzipped) {
   const int rows = X.dims()[0];
   const int cols = X.dims()[1];
+  PADDLE_ENFORCE_LE(
+      num_experts,
+      MAX_NUM_EXPERTS,
+      common::errors::InvalidArgument(
+          "Currently we support no more than (%ld), received num_expert: "
+          "(%ld). Please check input "
+          "value.",
+          MAX_NUM_EXPERTS,
+          num_experts));
+  if (rows == 0) return;
   const int quanted_cols = (XScale) ? XScale.get_ptr()->dims()[1] : 0;
   expert_base_offset expert_offset;
   int tokens_cumulated = 0;
