@@ -26,8 +26,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/moe_ops_partial_nosoftmaxtopk_kernel.h"
-
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
@@ -125,7 +123,7 @@ void MoeGateDispatchPartialNoSoftMaxTopkKernel(
       scatter_index_rev->data<int>(),
       expert_offset->data<int64_t>(),
       expert_nums_local->data<int64_t>(),
-      const_cast<int *>(expert_id.data<int>()),
+      expert_id.data<int>(),
       use_pad);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "moe_gate_dispatch_partial_nosoftmaxtopk");
 
