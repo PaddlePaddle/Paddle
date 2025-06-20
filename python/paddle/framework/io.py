@@ -172,7 +172,11 @@ def _build_saved_state_dict(state_dict):
                     raise ValueError(
                         "The saved tensor is not initialized. If you used group sharded, please use save_group_sharded_model."
                     )
-                if value.is_dense() and value.place.is_custom_place():
+                if (
+                    value.is_dense()
+                    and value.place.is_custom_place()
+                    and paddle.device.is_compiled_with_custom_device("npu")
+                ):
                     value = paddle._C_ops.npu_identity(value, -1)
                 save_dict[key] = np.array(value.cpu())
             name_table[key] = value.name
@@ -213,7 +217,11 @@ def _load_state_dict_from_save_inference_model(model_path, config):
         load_param_dict = {}
         for var_name in persistable_var_dict:
             tmp_var = persistable_var_dict[var_name]
-            if tmp_var.is_dense() and tmp_var.place.is_custom_place():
+            if (
+                tmp_var.is_dense()
+                and tmp_var.place.is_custom_place()
+                and paddle.device.is_compiled_with_custom_device("npu")
+            ):
                 load_param_dict[var_name] = np.array(
                     paddle._C_ops.npu_identity(tmp_var, -1).cpu()
                 )
@@ -271,7 +279,11 @@ def _load_state_dict_from_save_params(model_path):
     # 3. construct state_dict
     load_param_dict = {}
     for var in load_var_list:
-        if var.is_dense() and var.place.is_custom_place():
+        if (
+            var.is_dense()
+            and var.place.is_custom_place()
+            and paddle.device.is_compiled_with_custom_device("npu")
+        ):
             var = paddle._C_ops.npu_identity(var, -1)
         load_param_dict[var.name] = np.array(var.cpu())
 
@@ -423,7 +435,11 @@ def _pickle_save(obj, f, protocol):
         )
 
     def reduce_varbase(self):
-        if self.is_dense() and self.place.is_custom_place():
+        if (
+            self.is_dense()
+            and self.place.is_custom_place()
+            and paddle.device.is_compiled_with_custom_device("npu")
+        ):
             data = np.array(paddle._C_ops.npu_identity(self, -1).cpu())
         else:
             data = np.array(self.cpu())
@@ -434,7 +450,10 @@ def _pickle_save(obj, f, protocol):
     def reduce_DenseTensor(self):
         p = core.Place()
         p.set_place(paddle.CPUPlace())
-        if self._place().is_custom_place():
+        if (
+            self._place().is_custom_place()
+            and paddle.device.is_compiled_with_custom_device("npu")
+        ):
             data = np.array(paddle._C_ops.npu_identity(self, -1)._copy(p))
         else:
             data = np.array(self._copy(p))
@@ -1239,7 +1258,12 @@ def load(path: str | BytesIO, **configs: Unpack[_LoadOptions]) -> Any:
                     if config.return_numpy:
                         p = core.Place()
                         p.set_place(paddle.CPUPlace())
-                        if tensor._place().is_custom_place():
+                        if (
+                            tensor._place().is_custom_place()
+                            and paddle.device.is_compiled_with_custom_device(
+                                "npu"
+                            )
+                        ):
                             return np.array(
                                 paddle._C_ops.npu_identity(tensor, -1)._copy(p)
                             )
