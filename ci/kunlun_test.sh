@@ -38,7 +38,7 @@ function parallel_test_base_xpu() {
     ========================================
 EOF
 
-set +x
+#set +x
         echo "Starting running xpu tests"
         export XPU_OP_LIST_DIR=$tmp_dir
         ut_startTime_s=`date +%s`
@@ -82,6 +82,7 @@ set +x
         echo "start to run XPU ut using single card, part 1:"
         echo ${single_card_tests}
         echo "========================================="
+        sleep 30m
         card_test "${single_card_tests}" 1 4
 
         echo "========================================="
