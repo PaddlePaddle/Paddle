@@ -79,13 +79,6 @@ def fused_act_dequant(
     """
     Applies fused activation and dequantization operation to convert float8 quantized data back to bfloat16.
 
-    This function performs dequantization from float8_e4m3fn to bfloat16 format using pre-computed
-    scaling factors. The operation uses vectorized memory access and optimized CUDA kernels for
-    high-performance inference in quantized neural networks.
-
-    The dequantization formula is: output = input * scale, where scales are applied per 128-column blocks
-    to balance quantization quality and computational efficiency.
-
     Args:
         x (Tensor): Input quantized tensor with dtype float8_e4m3fn and shape [M, N], where M is the
             number of rows and N is the number of columns. This tensor contains the quantized
@@ -134,7 +127,7 @@ def fused_swiglu_weighted_bwd(
             corresponding row's output in the forward pass.
 
     Returns:
-        tuple[Tensor, Tensor, Tensor]: A tuple containing:
+        tuple:
             - do1 (Tensor): Input gradients with dtype bfloat16 and shape
               [..., intermediate_size * 2]. Layout matches o1:
               - [0:intermediate_size]: ∂L/∂x1 (gradients w.r.t. gate inputs)
@@ -151,7 +144,7 @@ def fused_swiglu_weighted_bwd(
         .. code-block:: python
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
-            >>> from paddle.incubate.nn.functional import fused_swiglu_weighted_bwd
+            >>> import paddle.incubate.nn.functional as F
             >>> paddle.set_device('gpu')
 
             >>> batch_size, seq_len = 32, 128
@@ -161,7 +154,7 @@ def fused_swiglu_weighted_bwd(
             >>> do2_s = paddle.randn([batch_size, seq_len, intermediate_size], dtype='bfloat16')
             >>> expert_probs = paddle.rand([batch_size, seq_len, 1], dtype='float32')
 
-            >>> do1, probs_grad, o2_s = fused_swiglu_weighted_bwd(o1, do2_s, expert_probs)
+            >>> do1, probs_grad, o2_s = F.fused_swiglu_weighted_bwd(o1, do2_s, expert_probs)
             >>> print(do1.shape)
             [32, 128, 4096]
             >>> print(probs_grad.shape)
@@ -198,7 +191,7 @@ def fused_transpose_split_quant(x, tokens_per_expert, pow_2_scales=False):
             rounded to the nearest power of 2. Default: False.
 
     Returns:
-        Tuple[List[Tensor], List[Tensor]]: A tuple containing:
+        tuple:
             - outs (List[Tensor]): List of quantized and transposed output tensors, one per expert.
               Each tensor has shape [K, tokens_per_expert[i]] and dtype float8_e4m3fn.
               Empty tensors are included for experts with 0 tokens.
@@ -210,13 +203,13 @@ def fused_transpose_split_quant(x, tokens_per_expert, pow_2_scales=False):
         .. code-block:: python
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
-            >>> from paddle.incubate.nn.functional import fused_transpose_split_quant
+            >>> import paddle.incubate.nn.functional as F
             >>> paddle.set_device('gpu')
 
             >>> x = paddle.randn([384, 512], dtype='bfloat16')
             >>> x = paddle.clip(x, min=-50, max=50)
             >>> tokens_per_expert = [128, 128, 128]
-            >>> outs, scales = fused_transpose_split_quant(x, tokens_per_expert, pow_2_scales=True)
+            >>> outs, scales = F.fused_transpose_split_quant(x, tokens_per_expert, pow_2_scales=True)
             >>> print(outs[0].shape)
             [512, 128]
             >>> print(scales[0].shape)
@@ -252,10 +245,6 @@ def fused_weighted_swiglu_act_quant(
     - Left half [0, cols/2): first input to SwiGLU (gate values)
     - Right half [cols/2, cols): second input to SwiGLU (activation values)
 
-    Quantization is performed per 128-element blocks to balance precision and efficiency.
-    The kernel automatically selects between vectorized (cols % 8 == 0) and standard
-    implementations for optimal performance.
-
     Args:
         x (Tensor): Input tensor with dtype bfloat16 and shape [..., cols], where cols
             must be even. The tensor is interpreted as two concatenated matrices:
@@ -272,10 +261,10 @@ def fused_weighted_swiglu_act_quant(
             scaling for hardware efficiency.
 
     Returns:
-        tuple[Tensor, Tensor]: A tuple containing:
-            - **out** (Tensor): Quantized activation output with dtype float8_e4m3fn
+        tuple:
+            - out (Tensor): Quantized activation output with dtype float8_e4m3fn
               and shape [..., cols/2]. Contains the quantized SwiGLU results.
-            - **scale** (Tensor): Dequantization scales with dtype float32 and shape
+            - scale (Tensor): Dequantization scales with dtype float32 and shape
               [..., (cols/2 + 127) // 128]. Each scale corresponds to a 128-element
               block in the output tensor. To dequantize: original_value = quantized_value / scale.
 
@@ -283,12 +272,12 @@ def fused_weighted_swiglu_act_quant(
         .. code-block:: python
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
-            >>> from paddle.incubate.nn.functional import fused_weighted_swiglu_act_quant
+            >>> import paddle.incubate.nn.functional as F
             >>> paddle.set_device('gpu')
 
             >>> batch_size, seq_len, expert_dim = 32, 128, 2048
             >>> x = paddle.randn([batch_size, seq_len, expert_dim], dtype='bfloat16')
-            >>> quantized_out, scales = fused_weighted_swiglu_act_quant(x)
+            >>> quantized_out, scales = F.fused_weighted_swiglu_act_quant(x)
             >>> print(x.shape)
             [32, 128, 2048]
             >>> print(quantized_out.shape)
