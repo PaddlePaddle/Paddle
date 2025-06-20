@@ -327,11 +327,6 @@ void Fp8GemmBlockwiseKernel(const Context& dev_ctx,
                             DenseTensor* output,
                             DenseTensor* pre_gelu_out,
                             DenseTensor* workspace_out) {
-  // phi::Copy(dev_ctx, pre_gelu, dev_ctx.GetPlace(), false, pre_gelu_out);
-  // phi::Copy(dev_ctx, workspace, dev_ctx.GetPlace(), false, workspace_out);
-  // phi::Copy(dev_ctx, out, dev_ctx.GetPlace(), false, output);
-  // DenseTensor& mutable_out = const_cast<DenseTensor&>(out);
-
   cublas_gemm_blockwise_impl(A,
                              A_scale,
                              B,
@@ -349,8 +344,6 @@ void Fp8GemmBlockwiseKernel(const Context& dev_ctx,
                              is_A_1d_scaled,
                              is_B_1d_scaled,
                              dev_ctx.stream());
-
-  // phi::Copy(dev_ctx, mutable_out, dev_ctx.GetPlace(), false, output);
 }
 
 }  // namespace phi
@@ -364,9 +357,4 @@ PD_REGISTER_KERNEL(fp8_gemm_blockwise,
                    phi::dtype::float8_e4m3fn,
                    uint8_t,
                    float,
-                   double) {
-  // kernel->InputAt(0).SetDataType(phi::DataType::FLOAT8_E4M3FN);  // A (FP8)
-  // kernel->InputAt(1).SetDataType(phi::DataType::FLOAT32);        // A_scale
-  // kernel->InputAt(2).SetDataType(phi::DataType::FLOAT8_E4M3FN);  // B (FP8)
-  // kernel->InputAt(3).SetDataType(phi::DataType::FLOAT32);        // B_scale
-}
+                   double) {}
