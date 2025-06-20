@@ -1146,6 +1146,16 @@ def init_parallel_env() -> Group:
         if backend in ["nccl", 'xccl', 'bkcl', 'flagcx']:
             core.CommContextManager.set_device_id(parallel_env.device_id)
 
+        nccl_config = core.NCCLConfig.create(
+            commName="default",
+            ll_buffsize=8,
+            ll128_buffsize=0,
+            simple_buffsize=0,
+            buffsize_align=1024,
+            nchannels=1,
+            algoStr="Ring",
+            protoStr="LL",
+        )
         pg = _new_process_group_impl(
             backend,
             default_store,
@@ -1153,6 +1163,7 @@ def init_parallel_env() -> Group:
             world_size,
             _default_group_name,
             pg_options=None,
+            nccl_config=nccl_config,
         )
         ranks = list(range(world_size))
         group = Group(rank, 0, ranks, pg=pg, name=_default_group_name)

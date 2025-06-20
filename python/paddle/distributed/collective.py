@@ -157,6 +157,7 @@ def _new_process_group_impl(
     pg_options,
     group_id=0,
     nccl_comm_init_option=0,
+    nccl_config=None,
 ):
     pg = None
     genv = _get_global_env()
@@ -171,6 +172,7 @@ def _new_process_group_impl(
             group_id,
             genv.pg_timeout,
             nccl_comm_init_option,
+            nccl_config,
         )
     elif backend == "xccl":
         pg = core.ProcessGroupCustom.create(
@@ -206,6 +208,7 @@ def new_group(
     backend: Literal['nccl'] | None = None,
     timeout: datetime.timedelta = _default_timeout,
     nccl_comm_init_option: int = 0,
+    nccl_config=None,
 ) -> Group:
     """
 
@@ -261,6 +264,7 @@ def new_group(
                 pg_options=None,
                 group_id=gid,
                 nccl_comm_init_option=nccl_comm_init_option,
+                nccl_config=nccl_config,
             )
         else:
             rank = -1
