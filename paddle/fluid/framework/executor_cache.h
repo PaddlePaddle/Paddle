@@ -103,7 +103,8 @@ class InterpreterCoreInfoCacheKey {
       hash_result = hash_with_seed(hash_result, scope_i);
       hash_result = hash_with_seed(hash_result, place_hash_key_);
       // CUDA Graph is available in pir mode only
-      hash_result = hash_with_seed(hash_result, static_cast<int64_t>(use_cuda_graph_));
+      hash_result =
+          hash_with_seed(hash_result, static_cast<int64_t>(use_cuda_graph_));
       hash_result = hash_with_seed(hash_result, cuda_graph_dispatch_key_);
     }
     return hash_result;
