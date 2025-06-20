@@ -285,18 +285,18 @@ TEST(IndexPut, Ctor) {
   phi::distributed::DistMetaTensor out_grad(common::make_ddim(x_shape),
                                             x_dist_attr);
 
-  phi::distributed::SpmdInfo forward_info =
+  phi::distributed::SpmdInfo backward_info =
       phi::distributed::IndexPutGradInferSpmd(x, indices, value, out_grad);
-  size_t input_size = 4;
-  size_t output_size = 2;
-  EXPECT_EQ(forward_info.first.size(), input_size);
-  EXPECT_EQ(forward_info.second.size(), output_size);
-  check_dim_mapping(forward_info.first[0], {-1, -1, 1});
-  check_dim_mapping(forward_info.first[1], {-1});
-  check_dim_mapping(forward_info.first[2], {-1});
-  check_dim_mapping(forward_info.first[3], {-1, -1, 1});
-  check_dim_mapping(forward_info.second[0], {-1, -1, 1});
-  check_dim_mapping(forward_info.second[1], {-1});
+  input_size = 4;
+  output_size = 2;
+  EXPECT_EQ(backward_info.first.size(), input_size);
+  EXPECT_EQ(backward_info.second.size(), output_size);
+  check_dim_mapping(backward_info.first[0], {-1, -1, 1});
+  check_dim_mapping(backward_info.first[1], {-1});
+  check_dim_mapping(backward_info.first[2], {-1});
+  check_dim_mapping(backward_info.first[3], {-1, -1, 1});
+  check_dim_mapping(backward_info.second[0], {-1, -1, 1});
+  check_dim_mapping(backward_info.second[1], {-1});
   VLOG(4) << "test backward done.";
 }
 TEST(InstanceNorm, Ctor) {
