@@ -35,6 +35,7 @@ void GPUIndexElementwisePutGradKernel(
     const std::vector<int64_t>& input_strides,
     const std::vector<int64_t>& index_dims,
     const std::vector<int64_t>& index_strides,
+    const int64_t slice_offset,
     DenseTensor* output) {
   int64_t numel = 0;
 
@@ -82,7 +83,7 @@ void GPUIndexElementwisePutGradKernel(
   funcs::index_elementwise_kernel<nt, vt>
       <<<grid, block, 0, stream>>>(N, [=] __device__(int idx) {
         const auto offsets = offset_calc.get(idx);
-        char* const out_data = out_ptr + offsets[0];
+        char* const out_data = out_ptr + offsets[0] + slice_offset;
 
         int64_t offset = 0;
 #pragma unroll
@@ -177,6 +178,7 @@ void LaunchIndexElementwisePutGradCudaKernel(
     const std::vector<int64_t>& input_strides,
     const std::vector<int64_t>& index_dims,
     const std::vector<int64_t>& index_strides,
+    const int64_t slice_offset,
     DenseTensor* value_grad,
     DenseTensor* x_grad) {
   phi::Allocator::AllocationPtr indices_holder_1, indices_holder_2;
@@ -191,6 +193,7 @@ void LaunchIndexElementwisePutGradCudaKernel(
                                                input_strides,
                                                index_dims,
                                                index_strides,
+                                               slice_offset,
                                                x_grad);
     } else if (index_type == phi::DataType::INT64) {
       GPUIndexElementwisePutGradKernel<T, int64_t>(dev_ctx,
@@ -199,6 +202,7 @@ void LaunchIndexElementwisePutGradCudaKernel(
                                                    input_strides,
                                                    index_dims,
                                                    index_strides,
+                                                   slice_offset,
                                                    x_grad);
     }
   }
@@ -315,6 +319,7 @@ void IndexElementwisePutGradKernel(
     const std::vector<int64_t>& input_strides,
     const std::vector<int64_t>& index_dims,
     const std::vector<int64_t>& index_strides,
+    const int64_t slice_offset,
     DenseTensor* x_grad,
     DenseTensor* value_grad) {
   const auto& index_type = indices[0]->dtype();
@@ -376,6 +381,7 @@ void IndexElementwisePutGradKernel(
                                                       input_strides,
                                                       index_dims,
                                                       index_strides,
+                                                      slice_offset,
                                                       value_grad,
                                                       x_grad);
 }
