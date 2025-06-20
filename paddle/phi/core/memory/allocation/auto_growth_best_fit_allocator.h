@@ -23,6 +23,8 @@
 #include "paddle/phi/core/memory/allocation/allocator.h"
 #include "paddle/phi/core/memory/allocation/spin_lock.h"
 
+COMMON_DECLARE_bool(enable_auto_growth_allocator_add_lock);
+
 namespace paddle {
 namespace memory {
 namespace allocation {
@@ -47,7 +49,10 @@ class AutoGrowthBestFitAllocator : public Allocator {
   // Release the memory block which is not used in pool.
   uint64_t ReleaseImpl(const phi::Place &place) override {
     // TODO(vivienfanghuagood): the next line may cause the process to deadlock.
-    // std::lock_guard<SpinLock> guard(spinlock_);
+    if (FLAGS_enable_auto_growth_allocator_add_lock) {
+      std::lock_guard<SpinLock> guard(spinlock_);
+      return FreeIdleChunks();
+    }
     return FreeIdleChunks();
   }
 
