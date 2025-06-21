@@ -33,7 +33,6 @@ void TileBackward(const Context& dev_ctx,
   size_t reshape_size = reshape_dims_vec.size();
   size_t reduce_size = reduce_dims_vec.size();
   dev_ctx.template Alloc<T>(x_grad);
-  x_grad->data<T>();
 
   if constexpr (std::is_same_v<T, dtype::float16> ||
                 std::is_same_v<T, dtype::bfloat16>) {
