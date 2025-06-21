@@ -214,8 +214,14 @@ jobs:
             -v /ssd1/cibuild/.ccache:/root/.ccache \
             -v ${{ github.workspace }}/../../..:${{ github.workspace }}/../../.. \
             -v ${{ github.workspace }}:/paddle \
+            --device ${XPU_CODE_0} \
             --device ${XPU_CODE_1} \
             --device ${XPU_CODE_2} \
+            --device ${XPU_CODE_3} \
+            --device ${XPU_CODE_4} \
+            --device ${XPU_CODE_5} \
+            --device ${XPU_CODE_6} \
+            --device ${XPU_CODE_7} \
             --device /dev/xpuctrl \
             --shm-size=32g \
             -e BRANCH \
