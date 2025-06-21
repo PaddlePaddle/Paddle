@@ -99,6 +99,7 @@ static bool IsVariableRefArray(const Tensor &tensor) {
 
 static auto GetNameFromValue(const std::vector<::pir::Value> &values) {
   std::vector<std::string> names;
+  names.reserve(values.size());
   std::transform(
       values.begin(),
       values.end(),
@@ -170,14 +171,13 @@ static void ShareTensorsIntoScopeWithName(
     const std::vector<std::string> &tensor_names,
     paddle::framework::Scope *scope) {
   for (size_t i = 0; i < tensors.size(); ++i) {
-    auto name = tensor_names[i];
+    const auto &name = tensor_names[i];
     VLOG(4) << "Share Tensor Into Scope: " << name;
     if (name == paddle::framework::kFakeVarName ||
         name == paddle::framework::kEmptyVarName) {
       continue;
     }
     auto *var = scope->Var(name);
-    CheckInputVarStatus(tensors[i]);
     // share tensor
     auto tensor_base = tensors[i].impl();
     if (phi::DenseTensor::classof(tensor_base.get())) {
@@ -352,30 +352,25 @@ static void BuildScopeByBlock(
 }
 
 static void GcScope(paddle::framework::Scope *scope) {
-  std::deque<std::shared_ptr<paddle::memory::Allocation>> *garbages =
-      new std::deque<std::shared_ptr<paddle::memory::Allocation>>();
-
-  for (auto &var : scope->LocalVars()) {
+  for (auto &[_, var] : scope->LocalVarsMap()) {
     if (var != nullptr) {
       if (var->IsType<phi::DenseTensor>()) {
-        garbages->emplace_back(
-            var->GetMutable<phi::DenseTensor>()->MoveMemoryHolder());
+        var->GetMutable<phi::DenseTensor>()->MoveMemoryHolder();
       }
       if (var->IsType<phi::SelectedRows>()) {
-        garbages->emplace_back(var->GetMutable<phi::SelectedRows>()
-                                   ->mutable_value()
-                                   ->MoveMemoryHolder());
+        var->GetMutable<phi::SelectedRows>()
+            ->mutable_value()
+            ->MoveMemoryHolder();
       }
       if (var->IsType<phi::TensorArray>()) {
         auto *lod_tensor_arr = var->GetMutable<phi::TensorArray>();
         for (auto &t : *lod_tensor_arr) {
-          garbages->emplace_back(t.MoveMemoryHolder());
+          t.MoveMemoryHolder();
         }
         lod_tensor_arr->clear();
       }
     }
   }
-  delete garbages;  // free mem
 }
 
 template <class T>

@@ -58,7 +58,6 @@ __global__ void tokens_unzip_stable_kernel(
     local_expert_offsets[i] = expert_base_offset.data[i];
     local_cumsum[i] = 0;
   }
-  const int base_row_idx = blockIdx.x * CUMSUM_BLOCK_SIZE;
   __shared__ int shared_expert_rowmap[CUMSUM_BLOCK_SIZE][MAX_NUM_EXPERTS];
   __shared__ probs_T shared_expert_probmap[CUMSUM_BLOCK_SIZE][MAX_NUM_EXPERTS];
 
@@ -230,6 +229,22 @@ void MoePermuteKernel(const Context &dev_ctx,
                       DenseTensor *XScale_unzipped) {
   const int rows = X.dims()[0];
   const int cols = X.dims()[1];
+  PADDLE_ENFORCE_LE(
+      num_experts,
+      MAX_NUM_EXPERTS,
+      common::errors::InvalidArgument(
+          "Currently we support no more than (%ld), received num_expert: "
+          "(%ld). Please check input "
+          "value.",
+          MAX_NUM_EXPERTS,
+          num_experts));
+  if (X.numel() == 0) {
+    dev_ctx.template Alloc<float>(XScale_unzipped);
+    dev_ctx.template Alloc<int>(zipped_expertwise_rowmap);
+    dev_ctx.template Alloc<T>(X_unzipped);
+    dev_ctx.template Alloc<float>(token_prob_unzipped);
+    return;
+  }
   const int quanted_cols = (XScale) ? XScale.get_ptr()->dims()[1] : 0;
   expert_base_offset expert_offset;
   int tokens_cumulated = 0;
@@ -256,23 +271,45 @@ void MoePermuteKernel(const Context &dev_ctx,
   dev_ctx.template Alloc<int>(zipped_expertwise_rowmap);
   dev_ctx.template Alloc<T>(X_unzipped);
   auto X_unzipped_ptr = reinterpret_cast<void *>(X_unzipped->data<T>());
-  cudaMemsetAsync(
-      X_unzipped_ptr, 0, sizeof(T) * output_rows * cols, dev_ctx.stream());
+  for (int i = 0; i < num_experts; i++) {
+    int next_expert_offset =
+        i < num_experts - 1 ? expert_offset.data[i + 1] : output_rows;
+    int invalid_rows =
+        next_expert_offset - expert_offset.data[i] - tokens_per_expert[i];
+    cudaMemsetAsync(X_unzipped_ptr + tokens_per_expert[i] * sizeof(T),
+                    0,
+                    sizeof(T) * invalid_rows * cols,
+                    dev_ctx.stream());
+  }
   if (XScale) {
     auto XScale_unzipped_ptr =
         reinterpret_cast<void *>(XScale_unzipped->data<float>());
-    cudaMemsetAsync(XScale_unzipped_ptr,
-                    0,
-                    sizeof(float) * output_rows * quanted_cols,
-                    dev_ctx.stream());
+    for (int i = 0; i < num_experts; i++) {
+      int next_expert_offset =
+          i < num_experts - 1 ? expert_offset.data[i + 1] : output_rows;
+      int invalid_rows =
+          next_expert_offset - expert_offset.data[i] - tokens_per_expert[i];
+      cudaMemsetAsync(
+          XScale_unzipped_ptr + tokens_per_expert[i] * sizeof(float),
+          0,
+          sizeof(float) * invalid_rows * quanted_cols,
+          dev_ctx.stream());
+    }
   }
   dev_ctx.template Alloc<float>(token_prob_unzipped);
   auto token_prob_unzipped_ptr =
       reinterpret_cast<void *>(token_prob_unzipped->data<float>());
-  cudaMemsetAsync(token_prob_unzipped_ptr,
-                  0,
-                  sizeof(float) * output_rows,
-                  dev_ctx.stream());
+  for (int i = 0; i < num_experts; i++) {
+    int next_expert_offset =
+        i < num_experts - 1 ? expert_offset.data[i + 1] : output_rows;
+    int invalid_rows =
+        next_expert_offset - expert_offset.data[i] - tokens_per_expert[i];
+    cudaMemsetAsync(
+        token_prob_unzipped_ptr + tokens_per_expert[i] * sizeof(float),
+        0,
+        sizeof(float) * invalid_rows,
+        dev_ctx.stream());
+  }
   const int cumsum_blocknum =
       (rows + CUMSUM_BLOCK_SIZE - 1) / CUMSUM_BLOCK_SIZE;
   DenseTensor global_expertwise_block_cumsum =

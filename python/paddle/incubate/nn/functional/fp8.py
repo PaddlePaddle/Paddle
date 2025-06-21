@@ -18,7 +18,9 @@ import functools
 from typing import TYPE_CHECKING
 
 import paddle
+
 from paddle import Tensor, _C_ops
+
 from paddle.framework import in_dynamic_or_pir_mode
 
 if TYPE_CHECKING:
@@ -150,7 +152,9 @@ def fp8_gemm_blockwise(
     assert bias is None, "Bias is not supported"
 
     if bias is None:
+
         bias = _empty_tensor()
+
     else:
         assert bias.dtype in (
             paddle.float16,
@@ -178,6 +182,8 @@ def fp8_gemm_blockwise(
         )
         workspace = paddle.empty([workspace_size], dtype=paddle.uint8)
 
+
+
         transa, transb = True, False
         grad = False
         math_sm_count = 112
@@ -190,6 +196,7 @@ def fp8_gemm_blockwise(
             a_decode_scale,
             out,
             bias,
+
             _empty_tensor(),
             workspace,
             transa,

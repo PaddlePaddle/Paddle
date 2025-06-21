@@ -91,8 +91,6 @@ void GPUIndexElementwisePutKernel(const phi::GPUContext& dev_ctx,
         for (int i = 0; i < num_indices; i++) {
           int64_t index =
               *reinterpret_cast<int64_t*>(index_ptrs[i] + offsets[2]);
-          PADDLE_ENFORCE(-sizes[i] <= index && index < sizes[i],
-                         "index out of bounds");
           if (index < 0) {
             index += sizes[i];
           }
