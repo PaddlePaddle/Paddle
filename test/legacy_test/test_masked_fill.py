@@ -145,6 +145,7 @@ class TestMaskedFillGrad(unittest.TestCase):
         self.dtype = "float32"
 
     def test_backward(self):
+        paddle.disable_static()
         expected_np = np.array(
             [[2, 1, 1], [2, 1, 1], [2, 1, 1], [2, 1, 1]]
         ).astype('float32')
