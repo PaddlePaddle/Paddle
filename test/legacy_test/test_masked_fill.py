@@ -386,19 +386,17 @@ class TestMaskedFillAPI_ZeroSize(unittest.TestCase):
         else:
             value = paddle.to_tensor(self.value_np, dtype=self.dtype)
         result = paddle.masked_fill(x, mask, value)
-        print(self.out_np.shape, result)
         np.testing.assert_allclose(self.out_np, result.numpy(), rtol=1e-05)
 
         paddle.sum(result).backward()
         np.testing.assert_allclose(x.grad.shape, x.shape)
-
         paddle.enable_static()
 
 
 class TestMaskedFillAPI_ZeroSize2(TestMaskedFillAPI_ZeroSize):
     # x_grad shape [2, 3], filled with 0.
     def init(self):
-        self.x_shape = (2, 3)
+        self.x_shape = (1, 3)
         self.mask_shape = (0, 3)
         self.dtype = "float32"
         self.scalar_value = False

@@ -20,9 +20,9 @@
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/expand_grad_kernel.h"
 #include "paddle/phi/kernels/expand_kernel.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/common_infer_shape_functions.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
-
 namespace phi {
 
 template <typename T, typename Context>
