@@ -1028,5 +1028,89 @@ class TestIndexPutAPIMixedIndices1(TestIndexPutAPIBase):
         self.index_type_pd1 = "bool"
 
 
+class TestIndexPutAPI_ZeroSize(unittest.TestCase):
+    def setUp(self):
+        self.mixed_indices = False
+        self.is_all_false = False
+        self.init_dtype_type()
+        self.setPlace()
+
+        if self.mixed_indices:
+            tmp_indices_np1 = gen_indices_np(
+                self.x_shape,
+                self.indices_shapes,
+                self.index_type_np,
+                self.is_all_false,
+            )
+            tmp_indices_np2 = gen_indices_np(
+                self.x_shape,
+                self.indices_shapes1,
+                self.index_type_np1,
+                self.is_all_false,
+            )
+            self.indices_np = tuple(
+                list(tmp_indices_np1) + list(tmp_indices_np2)
+            )
+        else:
+            self.indices_np = gen_indices_np(
+                self.x_shape,
+                self.indices_shapes,
+                self.index_type_np,
+                self.is_all_false,
+            )
+
+    def init_dtype_type(self):
+        self.dtype_np = np.float32
+        self.index_type_np = np.int64
+        self.x_shape = (10, 0)
+        self.indices_shapes = [[10]]
+        self.value_shape = [1, 1]
+        self.dtype_pd = paddle.float32
+        self.index_type_pd = paddle.int64
+
+    def setPlace(self):
+        self.place = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not paddle.is_compiled_with_cuda()
+        ):
+            self.place.append('cpu')
+        if self.dtype_np is np.float16:
+            self.place = []
+        if paddle.is_compiled_with_cuda():
+            self.place.append('gpu')
+
+    def test_dygraph_forward(self):
+        paddle.disable_static()
+        for place in self.place:
+            paddle.device.set_device(place)
+            x_pd = paddle.randn(self.x_shape, dtype=self.dtype_pd)
+            x_np = x_pd.numpy()
+            value_pd = paddle.randn(self.value_shape, dtype=self.dtype_pd)
+            value_np = value_pd.numpy()
+            x_pd.stop_gradient = False
+            value_pd.stop_gradient = False
+            indices_pd = [
+                paddle.randn(indices_shape).astype(dtype=self.index_type_pd)
+                for indices_shape in self.indices_shapes
+            ]
+            indices_np = [item.numpy() for item in indices_pd]
+            indices_pd = tuple(indices_pd)
+            accumulate = False
+            ref_res = compute_index_put_ref(
+                x_np, indices_np, value_np, accumulate
+            )
+            pd_res = paddle.index_put(x_pd, indices_pd, value_pd, accumulate)
+            np.testing.assert_allclose(ref_res, pd_res.numpy(), atol=1e-7)
+
+            # check grad
+            pd_res.sum().backward()
+            np.testing.assert_allclose(x_pd.grad.shape, x_pd.shape)
+            np.testing.assert_allclose(
+                value_pd.grad.numpy(), np.zeros(value_pd.shape)
+            )
+
+
 if __name__ == '__main__':
     unittest.main()
