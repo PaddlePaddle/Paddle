@@ -19,7 +19,6 @@
 #include <string>
 #include <unordered_map>
 
-#include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/common/flags.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/include/core/builder.h"
@@ -41,7 +40,7 @@ class CudaGraphExtractPass : public pir::Pass {
       : pir::Pass("cuda_graph_extract_pass", /*opt_level=*/1) {}
 
   void Run(pir::Operation* op) override {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     auto module_op = op->dyn_cast<pir::ModuleOp>();
     PADDLE_ENFORCE_NOT_NULL(
         module_op,
