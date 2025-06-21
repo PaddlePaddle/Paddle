@@ -409,13 +409,6 @@ class RunnableProgram:
         ), "program_attr() is called by PartialProgramLayer, don't call it manually, use program_name_attr instead."
         # can't apply pass after call this function.
         self.finish_pass = True
-        fwd_map = RunnableProgram._get_name_value_map_from_program(
-            self.forward_program
-        )
-        bwd_map = RunnableProgram._get_name_value_map_from_program(
-            self.backward_program
-        )
-
         program_name_attr = self.program_name_attr
         no_need_buffer_names = program_name_attr["no_need_buffers"]
         rename_mapping = {}
@@ -432,6 +425,10 @@ class RunnableProgram:
                     no_need_buffer_names.remove(original_name)
                 if new_name in no_need_buffer_names:
                     no_need_buffer_names.remove(new_name)
+
+        RunnableProgram.update_program_name_attr(
+            self.program_name_attr, rename_mapping
+        )
 
         program_attr = {}
         for k, ns in self.program_name_attr.items():
@@ -460,6 +457,15 @@ class RunnableProgram:
                     value._has_only_one_name()
                 ), f"Expected all values in Program have only one name, but {value} has multiple names: {value._names}"
         return rename_mapping
+
+    @staticmethod
+    def update_program_name_attr(
+        name_attr: dict[str, list[str]], rename_mapping: dict[str, str]
+    ):
+        for k, vs in name_attr.items():
+            name_attr[k] = [
+                rename_mapping[v] if v in rename_mapping else v for v in vs
+            ]
 
     @cached_property
     def program_name_attr(self):
@@ -730,9 +736,10 @@ class PartialProgramLayer:
             outputs,
             partial_program_layer._create_scope_vec(
                 cache_key=(
-                    hash_with_seed(
+                    PartialProgramLayer._calc_scope_cache_key(
                         attrs["program_id"],
-                        PartialProgramLayer._calc_input_places_hash(inputs),
+                        inputs,
+                        attrs["cuda_graph_state"] != CUDAGraphState.DISABLE,
                     )
                 ),
                 use_scope_cache=True,
@@ -837,6 +844,14 @@ class PartialProgramLayer:
         if not inputs:
             return 0
         return paddle.base.libpaddle.calc_place_hash(inputs)
+
+    @staticmethod
+    def _calc_scope_cache_key(program_id, inputs, use_cuda_graph):
+        res = hash_with_seed(
+            program_id, PartialProgramLayer._calc_input_places_hash(inputs)
+        )
+        res = hash_with_seed(res, int(use_cuda_graph))
+        return res
 
     # whole
     @switch_to_static_graph

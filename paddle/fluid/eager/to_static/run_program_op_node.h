@@ -156,8 +156,16 @@ static void ShareTensorsIntoScopeWithName(
     const std::vector<Tensor> &tensors,
     const std::vector<std::string> &tensor_names,
     paddle::framework::Scope *scope) {
+  PADDLE_ENFORCE_EQ(
+      tensors.size(),
+      tensor_names.size(),
+      common::errors::InvalidArgument(
+          "The size of tensors and tensor_names should be equal, but got "
+          "tensors size: %d, tensor_names size: %d.",
+          tensors.size(),
+          tensor_names.size()));
   for (size_t i = 0; i < tensors.size(); ++i) {
-    auto name = tensor_names[i];
+    const auto &name = tensor_names.at(i);
     VLOG(4) << "Share Tensor Into Scope: " << name;
     if (name == paddle::framework::kFakeVarName ||
         name == paddle::framework::kEmptyVarName) {
@@ -207,6 +215,14 @@ static void ShareTensorsIntoScope(const std::vector<Tensor> &tensors,
 static void ShareTensorsFromScopeWithName(const std::vector<Tensor *> &tensors,
                                           const std::vector<std::string> &names,
                                           paddle::framework::Scope *scope) {
+  PADDLE_ENFORCE_EQ(
+      tensors.size(),
+      names.size(),
+      common::errors::InvalidArgument(
+          "The size of tensors and names should be equal, but got "
+          "tensors size: %d, names size: %d.",
+          tensors.size(),
+          names.size()));
   for (size_t i = 0; i < tensors.size(); ++i) {
     auto &name = names[i];
     VLOG(4) << "Share Tensor From Scope: " << name;
@@ -427,14 +443,15 @@ inline void PirRunProgramAPI(
   std::shared_ptr<::pir::Program> backward_program = PADDLE_GET_CONST(
       std::shared_ptr<::pir::Program>, attrs.at("backward_program"));
 
-  VLOG(10) << is_test << program_id;
-
   auto &cache = paddle::framework::InterpreterCoreInfoCache::Instance();
   std::shared_ptr<paddle::framework::InterpreterCore> interpreter_core =
       nullptr;
-  VLOG(0) << "is use cuda graph: "
-          << details::is_use_cuda_graph(cuda_graph_state)
-          << ", cuda_graph_dispatch_key: " << cuda_graph_dispatch_key;
+  VLOG(7) << "Get interpretercore for program: " << program_id
+          << ", scope ptr: " << global_inner_scope
+          << ", place_hash_key: " << place_hash_key
+          << ", cuda_graph_state: " << cuda_graph_state
+          << ", cuda_graph_dispatch_key: " << cuda_graph_dispatch_key
+          << ", in_sot_mode: " << in_sot_mode;
   const paddle::framework::InterpreterCoreInfoCacheKey cache_key(
       program_id,
       global_inner_scope,
@@ -964,6 +981,12 @@ inline void PirRunProgramGradAPI(
   auto &cache = paddle::framework::InterpreterCoreInfoCache::Instance();
   std::shared_ptr<paddle::framework::InterpreterCore> interpreter_core =
       nullptr;
+  VLOG(7) << "Get interpretercore for program: " << program_id
+          << ", scope ptr: " << global_inner_scope
+          << ", place_hash_key: " << place_hash_key
+          << ", cuda_graph_state: " << cuda_graph_state
+          << ", cuda_graph_dispatch_key: " << cuda_graph_dispatch_key
+          << ", in_sot_mode: " << in_sot_mode;
   const paddle::framework::InterpreterCoreInfoCacheKey cache_key(
       program_id,
       global_inner_scope,
