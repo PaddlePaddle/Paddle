@@ -390,8 +390,7 @@ class TestMaskedFillAPI_ZeroSize(unittest.TestCase):
 
         paddle.sum(result).backward()
         np.testing.assert_allclose(x.grad.shape, x.shape)
-        np.testing.assert_allclose(x.grad, paddle.zeros(x.shape))
-        paddle.enable_static()
+        np.testing.assert_allclose(x.grad.numpy(), np.zeros(x.shape))
 
 
 class TestMaskedFillAPI_ZeroSize2(TestMaskedFillAPI_ZeroSize):
