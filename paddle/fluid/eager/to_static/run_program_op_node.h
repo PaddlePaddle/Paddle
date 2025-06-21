@@ -97,18 +97,6 @@ static bool IsVariableRefArray(const Tensor &tensor) {
   return paddle::framework::VariableRefArray::classof(tensor.impl().get());
 }
 
-static void CheckInputVarStatus(const Tensor &tensor) {
-  PADDLE_ENFORCE_EQ(tensor.defined() &&
-                        (tensor.is_dense_tensor() ||
-                         IsVariableRefArray(tensor) || tensor.is_dist_tensor()),
-                    true,
-                    common::errors::InvalidArgument(
-                        "The input tensor %s of RunProgram(Grad)Op holds "
-                        "wrong type. Expect type is DenseTensor or "
-                        "VariableRefArray or DistTensor.",
-                        tensor.name()));
-}
-
 static void CheckOutputVarStatus(const paddle::framework::Variable &src_var,
                                  const Tensor &dst_tensor) {
   auto name = dst_tensor.name();
@@ -164,15 +152,20 @@ static void ShareTensorsIntoScopeWithName(
           "tensors size: %d, tensor_names size: %d.",
           tensors.size(),
           tensor_names.size()));
+  const auto &name = tensor_names.at(i);
   for (size_t i = 0; i < tensors.size(); ++i) {
-    const auto &name = tensor_names.at(i);
+    PADDLE_ENFORCE_EQ(
+        tensors[i].defined(),
+        true,
+        common::errors::InvalidArgument(
+            "The input tensor %s of RunProgram(Grad)Op should be initialized.",
+            name));
     VLOG(4) << "Share Tensor Into Scope: " << name;
     if (name == paddle::framework::kFakeVarName ||
         name == paddle::framework::kEmptyVarName) {
       continue;
     }
     auto *var = scope->Var(name);
-    CheckInputVarStatus(tensors[i]);
     // share tensor
     auto tensor_base = tensors[i].impl();
     if (phi::DenseTensor::classof(tensor_base.get())) {
@@ -194,6 +187,11 @@ static void ShareTensorsIntoScopeWithName(
       auto t =
           std::dynamic_pointer_cast<phi::distributed::DistTensor>(tensor_base);
       *dst_tensor = t->value();
+    } else {
+      PADDLE_THROW(common::errors::InvalidArgument(
+          "The RunProgram(Grad)Op only support input "
+          "variable of type DenseTensor, SelectedRows or VariableRefArray",
+          name));
     }
   }
 }
@@ -286,7 +284,7 @@ static void ShareTensorsFromScopeWithPartialBlock(
     auto *var = scope->FindVar(name);
     if (name == paddle::framework::kEmptyVarName ||
         name == paddle::framework::kFakeVarName || var == nullptr) {
-      VLOG(2) << "find tensor name is " << name << ", skip it!";
+      VLOG(2) << "Found tensor name is " << name << ", skip it!";
       continue;
     }
     CheckOutputVarStatus(*var, *tensors[i]);
@@ -345,30 +343,25 @@ static void BuildScopeByBlock(
 }
 
 static void GcScope(paddle::framework::Scope *scope) {
-  std::deque<std::shared_ptr<paddle::memory::Allocation>> *garbages =
-      new std::deque<std::shared_ptr<paddle::memory::Allocation>>();
-
-  for (auto &var : scope->LocalVars()) {
+  for (auto &[_, var] : scope->LocalVarsMap()) {
     if (var != nullptr) {
       if (var->IsType<phi::DenseTensor>()) {
-        garbages->emplace_back(
-            var->GetMutable<phi::DenseTensor>()->MoveMemoryHolder());
+        var->GetMutable<phi::DenseTensor>()->MoveMemoryHolder();
       }
       if (var->IsType<phi::SelectedRows>()) {
-        garbages->emplace_back(var->GetMutable<phi::SelectedRows>()
-                                   ->mutable_value()
-                                   ->MoveMemoryHolder());
+        var->GetMutable<phi::SelectedRows>()
+            ->mutable_value()
+            ->MoveMemoryHolder();
       }
       if (var->IsType<phi::TensorArray>()) {
         auto *lod_tensor_arr = var->GetMutable<phi::TensorArray>();
         for (auto &t : *lod_tensor_arr) {
-          garbages->emplace_back(t.MoveMemoryHolder());
+          t.MoveMemoryHolder();
         }
         lod_tensor_arr->clear();
       }
     }
   }
-  delete garbages;  // free mem
 }
 
 template <class T>
