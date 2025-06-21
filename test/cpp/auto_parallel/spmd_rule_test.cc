@@ -274,7 +274,11 @@ TEST(IndexPut, Ctor) {
   EXPECT_EQ(forward_info.first.size(), input_size);
   EXPECT_EQ(forward_info.second.size(), output_size);
   check_dim_mapping(forward_info.first[0], {-1, -1, 1});
-  check_dim_mapping(forward_info.first[1], {-1});
+  auto indices_dist_attr = forward_info.first[1];
+  for (auto& attr : indices_dist_attr) {
+    check_dim_mapping(attr, {-1});
+  }
+
   check_dim_mapping(forward_info.first[2], {-1});
   check_dim_mapping(forward_info.second[0], {-1, -1, 1});
   VLOG(4) << "test forward done.";
@@ -292,7 +296,11 @@ TEST(IndexPut, Ctor) {
   EXPECT_EQ(backward_info.first.size(), input_size);
   EXPECT_EQ(backward_info.second.size(), output_size);
   check_dim_mapping(backward_info.first[0], {-1, -1, 1});
-  check_dim_mapping(backward_info.first[1], {-1});
+  indices_dist_attr = backward_info.first[1];
+  for (auto& attr : indices_dist_attr) {
+    check_dim_mapping(attr, {-1});
+  }
+
   check_dim_mapping(backward_info.first[2], {-1});
   check_dim_mapping(backward_info.first[3], {-1, -1, 1});
   check_dim_mapping(backward_info.second[0], {-1, -1, 1});

@@ -81,7 +81,7 @@ SpmdInfo IndexPutInferSpmd(const DistMetaTensor& x,
   // Step1: set dims_mapping for input
   if (x_ndim > indices_size) {
     for (int i = 0; i < indices_size; i++) {
-      x_dims_mapping[i] == -1;
+      x_dims_mapping[i] = -1;
     }
   } else {  // indices_size = x_ndim
     for (int i = 0; i < x_ndim; i++) {
