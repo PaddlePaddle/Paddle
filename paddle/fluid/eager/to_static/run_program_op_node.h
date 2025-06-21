@@ -490,14 +490,6 @@ inline void PirRunProgramAPI(
     details::ShareTensorsIntoScopeWithName(
         params, param_names, global_inner_scope);
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-    if (details::is_use_cuda_graph(cuda_graph_state)) {
-      pir::PassManager pass_pm(::pir::IrContext::Instance(), 3);
-      pass_pm.AddPass(pir::CreateCudaGraphExtractPass());
-      pass_pm.Run(forward_program.get());
-    }
-#endif
-
     // Step 3. create new interpretercore
     if (FLAGS_specialize_device_in_dy2st) {
       // NOTE: Set PlaceAttribute for DataOp based on input tensor's place when
@@ -516,6 +508,18 @@ inline void PirRunProgramAPI(
         }
       }
     }
+
+    auto program = forward_program;
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    if (details::is_use_cuda_graph(cuda_graph_state)) {
+      pir::PassManager pass_pm(::pir::IrContext::Instance(), 3);
+      pass_pm.AddPass(pir::CreateCudaGraphExtractPass());
+      pir::IrMapping ir_mapping;
+      program = forward_program->Clone(ir_mapping);
+      pass_pm.Run(program.get());
+    }
+#endif
+
     auto passed_kernel_program = paddle::framework::ApplyIrPass(
         forward_program.get(), place, no_need_buffer_name_set);
     const auto &new_block = passed_kernel_program->block();

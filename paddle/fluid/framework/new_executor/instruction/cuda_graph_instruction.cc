@@ -33,7 +33,7 @@
 #include "paddle/fluid/framework/new_executor/instruction/instruction_util.h"
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 
-#ifdef PADDLE_WITH_CUDA
+#ifdef PADDLE_WITH_CUDA || defined(PADDLE_WITH_HIP)
 
 namespace paddle::framework {
 
@@ -166,7 +166,7 @@ void CudaGraphInstruction::SetInputHooks(
 }
 
 void CudaGraphInstruction::Run() {
-  if (cuda_graph_ && *cuda_graph_state_ref_ == 3) {
+  if (cuda_graph_ != nullptr && *cuda_graph_state_ref_ == 3) {
     VLOG(4) << "Start replaying cuda graph...";
     for (size_t i = 0; i < input_vars_.size(); ++i) {
       if (input_vars_[i]->IsType<phi::DenseTensor>()) {
@@ -174,8 +174,11 @@ void CudaGraphInstruction::Run() {
         if (tensor->data() != input_tensors_.at(i).data()) {
           LOG(WARNING) << "The input [" << i << "] tensor addr for "
                        << "cuda graph is changed. Pay attention to this!";
-          const auto* dev_ctx = phi::DeviceContextPool::Instance().Get(place_);
-          phi::Copy(*dev_ctx, *tensor, place_, false, &input_tensors_.at(i));
+          if (phi::is_gpu_place(tensor->place())) {
+            const auto* dev_ctx =
+                phi::DeviceContextPool::Instance().Get(place_);
+            phi::Copy(*dev_ctx, *tensor, place_, false, &input_tensors_.at(i));
+          }
         }
       }
     }
@@ -190,7 +193,9 @@ void CudaGraphInstruction::Run() {
     VLOG(4) << "Finish replaying cuda graph";
     return;
   }
-  if (*cuda_graph_state_ref_ == 2) {
+  if (*cuda_graph_state_ref_ == 2 && cuda_graph_ == nullptr) {
+    VLOG(4) << "Warmup before capturing";
+    interpreter_->Run({}, false);
     VLOG(4) << "Start capturing cuda graph ...";
     platform::BeginCUDAGraphCapture(
         place_, cudaStreamCaptureModeRelaxed, cuda_graph_capture_pool_id_);
