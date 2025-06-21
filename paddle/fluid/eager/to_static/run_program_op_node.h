@@ -177,27 +177,27 @@ static void ShareTensorsIntoScopeWithName(
         name == paddle::framework::kEmptyVarName) {
       continue;
     }
-    auto *var = scope->Var(name);
+    auto *var = scope->VarLockFree(name);
     // share tensor
     auto tensor_base = tensors[i].impl();
     if (phi::DenseTensor::classof(tensor_base.get())) {
       auto *dst_tensor = var->GetMutable<phi::DenseTensor>();
-      auto t = std::dynamic_pointer_cast<phi::DenseTensor>(tensor_base);
+      auto t = std::static_pointer_cast<phi::DenseTensor>(tensor_base);
       *dst_tensor = *t;
     } else if (phi::SelectedRows::classof(tensor_base.get())) {
       auto *dst_tensor = var->GetMutable<phi::SelectedRows>();
-      auto t = std::dynamic_pointer_cast<phi::SelectedRows>(tensor_base);
+      auto t = std::static_pointer_cast<phi::SelectedRows>(tensor_base);
       *dst_tensor = *t;
     } else if (paddle::framework::VariableRefArray::classof(
                    tensor_base.get())) {
       auto *dst_tensor = var->GetMutable<paddle::framework::VariableRefArray>();
-      auto t = std::dynamic_pointer_cast<paddle::framework::VariableRefArray>(
+      auto t = std::static_pointer_cast<paddle::framework::VariableRefArray>(
           tensor_base);
       *dst_tensor = *t;
     } else if (phi::distributed::DistTensor::classof(tensor_base.get())) {
       auto *dst_tensor = var->GetMutable<phi::DenseTensor>();
       auto t =
-          std::dynamic_pointer_cast<phi::distributed::DistTensor>(tensor_base);
+          std::static_pointer_cast<phi::distributed::DistTensor>(tensor_base);
       *dst_tensor = t->value();
     }
   }
@@ -239,7 +239,7 @@ static void ShareTensorsFromScopeByValue(
       // skip stop_gradient.
       continue;
     }
-    auto *var = scope->FindVar(name);
+    auto *var = scope->FindVarLockFree(name);
     PADDLE_ENFORCE_NOT_NULL(
         var,
         common::errors::NotFound("The output tensor %s is not in "
