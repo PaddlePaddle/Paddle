@@ -87,6 +87,7 @@ from .moe_utils import (
 from .placement_type import (
     check_placements_equal,
     get_shard_spec,
+    placemetns_to_dist_status,
     to_dim_map,
     to_placements,
 )
@@ -854,14 +855,23 @@ def reshard(
     if paddle.framework.in_dynamic_mode():
         # TODO(LiYuRio): static logic here, reshard should be changed for dygraph logic
         # when reshard has been changed align dygraph logic, delete it.
-        sharding_specs = get_shard_spec(mesh, placements, dist_tensor.ndim)
-        dist_attr = DistAttr(mesh, sharding_specs)
-        partial_dims = []
-        for i, p in enumerate(placements):
-            if isinstance(p, dist.Partial):
-                partial_dims.append(i)
-        if len(partial_dims) > 0:
-            dist_attr._set_partial_dims(partial_dims)
+
+        dims_mapping, partial_status, split_factor = placemetns_to_dist_status(
+            placements, dist_tensor.ndim, return_split_factor=True
+        )
+        dist_attr = core.TensorDistAttr()
+        dist_attr.multi_dims_mapping = dims_mapping
+        dist_attr.process_mesh = mesh
+        dist_attr.mark_annotated("process_mesh")
+        dist_attr.mark_annotated("dims_mapping")
+        if len(split_factor) > 0:
+            for dim, sf in split_factor.items():
+                dist_attr._set_split_factor(dim, sf)
+        if len(partial_status) > 0:
+            dims = []
+            for dim, _ in partial_status.items():
+                dims.append(dim)
+            dist_attr._set_partial_dims(dims)
 
         alltoall_dim = _specific_alltoall_dim(dist_tensor, mesh, placements)
         if alltoall_dim is not None:
@@ -1080,10 +1090,8 @@ def shard_layer(
 def is_dist_tensor(tensor) -> bool:
     """
     Check if an input is a dist_tensor in both dynamic and static modes.
-
     Args:
         tensor: The input to check
-
     Returns:
         bool: True if the input is a dist_tensor, False otherwise
     """
@@ -1317,7 +1325,6 @@ class _ShardOptimizer(Optimizer):
                     self._sharding_group.process_group.all_gather(
                         slice_buffer, self.param_storage[i]
                     ).wait()
-
         else:
             if isinstance(parameters_and_grads, list):
                 for p, _ in parameters_and_grads:

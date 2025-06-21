@@ -5158,7 +5158,7 @@ def masked_scatter(
     zeros_like_x = paddle.zeros_like(x, dtype=int)
     mask = paddle.add(paddle.cast(mask, dtype="int"), zeros_like_x)
     mask_prefix = paddle.clip(mask.cumsum() - 1, min=0)
-    if in_dynamic_mode():
+    if in_dynamic_mode() and mask_prefix.numel() != 0:
         assert (
             mask_prefix[-1] <= value.numel()
         ), f'mask true nums must be <= value size, but got mask true nums is {mask_prefix[-1].item()}, value size is {value.numel().item()}'

@@ -87,6 +87,8 @@ ENV_ENABLE_CINN_IN_DY2ST = BooleanEnvironmentVariable(
     "ENABLE_CINN_IN_DY2ST", True
 )
 
+DYNAMIC_DIMS_ATTR_NAME = "__sot_dynamic_dims"
+
 
 class Backend(Enum):
     CINN = auto()
@@ -1012,3 +1014,26 @@ def patch_method_guard(
         yield
     finally:
         restorer(instance)
+
+
+def extract_tensor_dynamic_dims(
+    tensor: paddle.Tensor,
+) -> tuple[int]:
+    """
+    Extract dynamic dimensions from a paddle.Tensor.
+    Returns a list of dynamic dimensions or None if no dynamic dimensions exist.
+    """
+    if not isinstance(tensor, paddle.Tensor):
+        raise TypeError(
+            f"Expected a paddle.Tensor, but got {type(tensor).__name__}"
+        )
+
+    if not hasattr(tensor, DYNAMIC_DIMS_ATTR_NAME):
+        return []
+
+    dynamic_dims = getattr(tensor, DYNAMIC_DIMS_ATTR_NAME)
+    if not isinstance(dynamic_dims, tuple):
+        raise TypeError(
+            f"Expected {DYNAMIC_DIMS_ATTR_NAME} to be a tuple, but got {type(dynamic_dims).__name__}"
+        )
+    return dynamic_dims

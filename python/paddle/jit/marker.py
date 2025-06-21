@@ -15,22 +15,22 @@
 from __future__ import annotations
 
 import inspect
-from typing import (
-    Callable,
-    Protocol,
-    TypeVar,
-    overload,
-)
+from typing import TYPE_CHECKING, Callable, Protocol, TypeVar, overload
 
 from typing_extensions import (
     ParamSpec,
 )
 
 import paddle
+from paddle.jit.dy2static.utils import DYNAMIC_DIMS_ATTR_NAME
 
 from .dy2static.utils import (
     TransformOptions,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
 
 _RetT = TypeVar("_RetT")
 _InputT = ParamSpec("_InputT")
@@ -147,3 +147,32 @@ def force_dynamic(
     raise TypeError(
         f"Expected a callable or paddle.nn.Layer, but got {type(fn).__name__}."
     )
+
+
+def dynamic_dims(
+    tensor: paddle.Tensor,
+    dims: int | Sequence[int],
+) -> None:
+    """
+    Mark a tensor as having dynamic dimensions.
+    This is used to indicate that the tensor's shape may change dynamically
+    during execution, which is particularly useful in dynamic-to-static
+    conversion scenarios.
+    Args:
+        tensor (paddle.Tensor): The tensor to mark as dynamic.
+        dims (int | Sequence[int]): The dimensions to mark as dynamic.
+    """
+    if not isinstance(tensor, paddle.Tensor):
+        raise TypeError(
+            f"Expected a paddle.Tensor, but got {type(tensor).__name__}."
+        )
+
+    if isinstance(dims, int):
+        dims = (dims,)
+
+    if not isinstance(dims, (list, tuple)):
+        raise TypeError("Dimensions must be a list or tuple.")
+    if not all(isinstance(dim, int) for dim in dims):
+        raise TypeError("All dimensions must be integers.")
+
+    setattr(tensor, DYNAMIC_DIMS_ATTR_NAME, tuple(dims))

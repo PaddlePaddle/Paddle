@@ -99,7 +99,6 @@ void GPUIndexElementwiseGetGrad(const phi::GPUContext& ctx,
                            &strides_array,
                            &numel,
                            strides_vec);
-
   auto offset_calc =
       funcs::make_offset_calculator_put<3>(desired_shape, strides_array);
 
