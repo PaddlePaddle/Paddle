@@ -471,6 +471,10 @@ inline void PirRunProgramAPI(
         params, param_names, global_inner_scope);
     // Step 3. create new interpretercore
     if (FLAGS_specialize_device_in_dy2st) {
+      // NOTE: Set PlaceAttribute for DataOp based on input tensor's place when
+      // FLAGS_specialize_device_in_dy2st=True. Performance may decrease when a
+      // CPU Tensor is copied to a device multiple times; consider applying CSE
+      // in future.
       auto all_named_values =
           pir::utils::name_analysis::GetAllNamedValues(*forward_program);
       for (size_t i = 0; i < input_names.size(); ++i) {
@@ -970,26 +974,6 @@ inline void PirRunProgramGradAPI(
       std::shared_ptr<::pir::Program>, attrs.at("backward_program"));
 
   // Get All needed names
-  const auto &input_names =
-      PADDLE_GET_CONST(std::vector<std::string>, attrs.at("bx_names"));
-  const auto &parameter_names =
-      PADDLE_GET_CONST(std::vector<std::string>, attrs.at("bp_names"));
-  const auto &output_grad_names =
-      PADDLE_GET_CONST(std::vector<std::string>, attrs.at("bo_g_names"));
-  const auto &x_grad_names =
-      PADDLE_GET_CONST(std::vector<std::string>, attrs.at("bx_g_names"));
-  const auto &p_grad_names =
-      PADDLE_GET_CONST(std::vector<std::string>, attrs.at("bp_g_names"));
-
-  // Get All needed names
-  // const auto &input_names = details::GetNameFromValue(forward_input_values);
-  // const auto &param_names = details::GetNameFromValue(parameter_values);
-  // const auto &output_grad_names =
-  // details::GetNameFromValue(output_grad_values);
-  // const auto &x_grad_names =
-  // details::GetNameFromValue(x_grad_values);
-  // const auto &p_grad_names =
-  // details::GetNameFromValue(p_grad_values);
   const auto &input_names =
       PADDLE_GET_CONST(std::vector<std::string>, attrs.at("bx_names"));
   const auto &parameter_names =
