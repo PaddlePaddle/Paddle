@@ -274,7 +274,8 @@ TEST(IndexPut, Ctor) {
   EXPECT_EQ(forward_info.first.size(), input_size);
   EXPECT_EQ(forward_info.second.size(), output_size);
   check_dim_mapping(forward_info.first[0], {-1, -1, 1});
-  std::vector<TensorDistAttr> indices_dist_attr = forward_info.first[1];
+  std::vector<TensorDistAttr> indices_dist_attr =
+      paddle::get<1>(forward_info.first[1]);
   for (auto& attr : indices_dist_attr) {
     check_dim_mapping(attr, {-1});
   }
@@ -296,7 +297,7 @@ TEST(IndexPut, Ctor) {
   EXPECT_EQ(backward_info.first.size(), input_size);
   EXPECT_EQ(backward_info.second.size(), output_size);
   check_dim_mapping(backward_info.first[0], {-1, -1, 1});
-  indices_dist_attr = backward_info.first[1];
+  indices_dist_attr = paddle::get<1>(backward_info.first[1]);
   for (auto& attr : indices_dist_attr) {
     check_dim_mapping(attr, {-1});
   }
