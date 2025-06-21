@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
@@ -65,6 +66,7 @@ class TestMaskedScatterError(unittest.TestCase):
             paddle.masked_scatter(x, mask, value)
 
     def test_numel_error(self):
+        paddle.disable_static()
         self.value_np = np.random.randn(5, 5).astype(self.dtype)
         x = paddle.to_tensor(self.x_np, dtype=self.dtype)
         mask = paddle.to_tensor(self.mask_np).astype('bool')
@@ -307,6 +309,52 @@ class TestMaskedScatterBF16APIBroadcast2(TestMaskedScatterBF16):
         self.mask_shape = (300, 3)
         self.dtype = "uint16"
         self.value_shape = (300, 300)
+
+
+class TestMaskedScatterAPI_ZeroSize(unittest.TestCase):
+    def setUp(self):
+        self.init()
+
+        self.x_np = np.random.random(self.x_shape).astype(self.dtype)
+        self.mask_np = np.array(
+            np.random.randint(2, size=self.mask_shape), dtype="bool"
+        )
+
+        self.value_np = np.random.randn(*self.value_shape).astype(self.dtype)
+        self.out_np = np_masked_scatter(self.x_np, self.mask_np, self.value_np)
+
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
+        if core.is_compiled_with_cuda():
+            places.append(base.CUDAPlace(0))
+        self.places = places
+
+    def init(self):
+        self.x_shape = (3, 0)
+        self.mask_shape = self.x_shape
+        self.dtype = "float32"
+        self.value_shape = (300, 300)
+
+    def _test_dygraph(self, place):
+        paddle.disable_static(place)
+        x = paddle.to_tensor(self.x_np, dtype=self.dtype)
+        x.stop_gradient = False
+        mask = paddle.to_tensor(self.mask_np).astype('bool')
+        value = paddle.to_tensor(self.value_np, dtype=self.dtype)
+        result = paddle.masked_scatter(x, mask, value)
+        np.testing.assert_allclose(self.out_np, result.numpy(), rtol=1e-05)
+        paddle.sum(result).backward()
+        np.testing.assert_allclose(x.grad.shape, x.shape)
+        paddle.enable_static()
+
+    def test_dygraph(self):
+        for place in self.places:
+            self._test_dygraph(place)
 
 
 if __name__ == '__main__':
