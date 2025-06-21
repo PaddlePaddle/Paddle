@@ -83,6 +83,8 @@ if(NOT WITH_GPU)
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_hapi_model")
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_spmt")
   list(REMOVE_ITEM TEST_OPS test_async_read_write)
+  list(REMOVE_ITEM TEST_OPS test_fp8_gemm)
+  list(REMOVE_ITEM TEST_OPS test_fp8_quant)
 endif()
 
 list(REMOVE_ITEM TEST_OPS test_audio_logmel_feature test_audio_mel_feature)
@@ -171,6 +173,8 @@ if(WIN32)
   list(REMOVE_ITEM TEST_OPS test_matmul_int8_op)
   list(REMOVE_ITEM TEST_OPS test_variable_length_memory_efficient_attention)
   list(REMOVE_ITEM TEST_OPS test_ops_nms)
+  list(REMOVE_ITEM TEST_OPS test_fp8_gemm)
+  list(REMOVE_ITEM TEST_OPS test_fp8_quant)
   list(REMOVE_ITEM TEST_OPS test_fused_transpose_spilt_quant_op)
 endif()
 list(REMOVE_ITEM TEST_OPS test_checkpoint_saver)
@@ -182,6 +186,7 @@ endif()
 
 if(APPLE)
   list(REMOVE_ITEM TEST_OPS test_compare_op_0size)
+  list(REMOVE_ITEM TEST_OPS test_run)
 endif()
 
 list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_hybrid_parallel)
@@ -509,6 +514,8 @@ if(NOT WITH_GPU
     test_incubate_moe_gate_dispatch_partial_nosoftmaxtopk
     test_incubate_moe_gate_dispatch_w_permute_bwd
     test_incubate_moe_gate_dispatch_w_permute
+    test_fp8_gemm
+    test_fp8_quant
     test_fused_act_dequant_op
     test_fused_stack_transpose_quant_op
     test_fused_swiglu_weighted_bwd_op
@@ -653,6 +660,7 @@ endif()
 
 set_tests_properties(test_norm_nn_grad PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
 set_tests_properties(test_nn_grad PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
+
 if(WITH_DISTRIBUTE)
   # FIXME(typhoonzero): add these tests back
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_transformer")
@@ -801,8 +809,10 @@ endif()
 set_tests_properties(test_cross_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_isin PROPERTIES TIMEOUT 30)
 set_tests_properties(test_binomial_op PROPERTIES TIMEOUT 30)
-set_tests_properties(test_run PROPERTIES TIMEOUT 120)
 set_tests_properties(test_gather_nd_op PROPERTIES TIMEOUT 120)
+if(NOT APPLE)
+  set_tests_properties(test_run PROPERTIES TIMEOUT 120)
+endif()
 
 set_tests_properties(test_profiler PROPERTIES TIMEOUT 120)
 set_tests_properties(test_cross_entropy_loss PROPERTIES TIMEOUT 180)

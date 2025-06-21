@@ -218,9 +218,19 @@ void MoeUnpermuteKernel(const Context &dev_ctx,
                         DenseTensor *zipped_probs_topk) {
   const int rows = unzipped_tokens.dims()[0];
   const int cols = unzipped_tokens.dims()[1];
+  PADDLE_ENFORCE_LE(
+      num_experts,
+      MAX_NUM_EXPERTS,
+      common::errors::InvalidArgument(
+          "Currently we support no more than (%ld), received num_expert: "
+          "(%ld). Please check input "
+          "value.",
+          MAX_NUM_EXPERTS,
+          num_experts));
   const int topk = expert_routemap_topk.dims()[1];
   dev_ctx.template Alloc<T>(zipped_tokens);
   dev_ctx.template Alloc<float>(zipped_probs_topk);
+  if (unzipped_tokens.numel() == 0) return;  // 0-size tensor
   void *zipped_probs_topk_ptr =
       reinterpret_cast<void *>(zipped_probs_topk->data<float>());
   cudaMemsetAsync(zipped_probs_topk_ptr,

@@ -2165,21 +2165,34 @@ inline void Blas<phi::GPUContext>::GEMM(bool transA,
   cublasOperation_t cuTransA = transA ? CUBLAS_OP_T : CUBLAS_OP_N;
   cublasOperation_t cuTransB = transB ? CUBLAS_OP_T : CUBLAS_OP_N;
 
-  context_.CublasCall([&](cublasHandle_t handle) {
-    CUBlas<phi::dtype::float16>::GEMM(handle,
-                                      cuTransB,
-                                      cuTransA,
-                                      N,
-                                      M,
-                                      K,
-                                      &alpha,
-                                      B,
-                                      ldb,
-                                      A,
-                                      lda,
-                                      &beta,
-                                      C,
-                                      ldc);
+  cublasGemmAlgo_t algo = CUBLAS_GEMM_DEFAULT;
+  float h_alpha = static_cast<float>(alpha);
+  float h_beta = static_cast<float>(beta);
+  bool use_tensor_op_math = context_.tensor_core_available();
+  VLOG(5) << "use_tensor_op_math is : " << use_tensor_op_math;
+  if (use_tensor_op_math) {
+    algo = CUBLAS_GEMM_DFALT_TENSOR_OP;
+  }
+  context_.TensorCoreCublasCallIfAvailable([&](cublasHandle_t handle) {
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasGemmEx(handle,
+                                                          cuTransB,
+                                                          cuTransA,
+                                                          N,
+                                                          M,
+                                                          K,
+                                                          &h_alpha,
+                                                          B,
+                                                          CUDA_R_16F,
+                                                          ldb,
+                                                          A,
+                                                          CUDA_R_16F,
+                                                          lda,
+                                                          &h_beta,
+                                                          C,
+                                                          CUDA_R_16F,
+                                                          ldc,
+                                                          CUDA_R_32F,
+                                                          algo));
   });
 }
 

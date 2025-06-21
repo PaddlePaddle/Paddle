@@ -214,6 +214,22 @@ void MoePermuteKernel(const Context &dev_ctx,
                       DenseTensor *XScale_unzipped) {
   const int rows = X.dims()[0];
   const int cols = X.dims()[1];
+  PADDLE_ENFORCE_LE(
+      num_experts,
+      MAX_NUM_EXPERTS,
+      common::errors::InvalidArgument(
+          "Currently we support no more than (%ld), received num_expert: "
+          "(%ld). Please check input "
+          "value.",
+          MAX_NUM_EXPERTS,
+          num_experts));
+  if (X.numel() == 0) {
+    dev_ctx.template Alloc<float>(XScale_unzipped);
+    dev_ctx.template Alloc<int>(zipped_expertwise_rowmap);
+    dev_ctx.template Alloc<T>(X_unzipped);
+    dev_ctx.template Alloc<float>(token_prob_unzipped);
+    return;
+  }
   const int quanted_cols = (XScale) ? XScale.get_ptr()->dims()[1] : 0;
   int expert_offset[MAX_NUM_EXPERTS];
   int tokens_cumulated = 0;
