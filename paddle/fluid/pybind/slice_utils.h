@@ -591,8 +591,7 @@ static paddle::Tensor dealWithAdvancedIndex(
     int* rank_of_new_dim,
     std::vector<int>* trans_dim,
     bool* out_is_view,
-    bool single_value = false,
-    bool getitem = false) {
+    bool single_value = false) {
   int p = 0;
   bool int_tensor_only = true;
   for (size_t i = 0; i < advanced_index_dim->size(); ++i) {
@@ -643,7 +642,7 @@ static paddle::Tensor dealWithAdvancedIndex(
 #ifdef PADDLE_WITH_CUDA
     // Remove the conditions when all cases are supported.
     if (tensor.is_gpu() && int_tensor_only && *pos_of_new_dim != 0 &&
-        (single_value || getitem)) {
+        (single_value || !is_for_setitem)) {
       transed_tensor = tensor;
     } else {
       transed_tensor = transpose_ad_func(tensor, *trans_dim);
