@@ -167,7 +167,7 @@ void CudaGraphInstruction::SetInputHooks(
 
 void CudaGraphInstruction::Run() {
   if (cuda_graph_ != nullptr && *cuda_graph_state_ref_ == 3) {
-    VLOG(4) << "Start replaying cuda graph...";
+    VLOG(4) << "Start replaying cuda graph @" << cuda_graph_.get();
     for (size_t i = 0; i < input_vars_.size(); ++i) {
       if (input_vars_[i]->IsType<phi::DenseTensor>()) {
         auto* tensor = input_vars_[i]->GetMutable<phi::DenseTensor>();
@@ -225,7 +225,10 @@ void CudaGraphInstruction::Run() {
     output_tensors_ = RecordTensorsForReplay(output_vars_);
 
     cuda_graph_ = platform::EndCUDAGraphCapture();
-    VLOG(4) << "Finish capturing cuda graph";
+    VLOG(4) << "Finish capturing cuda graph @" << cuda_graph_.get();
+
+    // compute the right result
+    cuda_graph_->Replay();
   } else {
     VLOG(4) << "Run interpreter without cuda graph";
     interpreter_->Run({}, false);
