@@ -30,7 +30,7 @@ from paddle.base import core, framework
 from paddle.base.compiler import BuildStrategy
 from paddle.base.data_feeder import check_type
 from paddle.base.dygraph.base import switch_to_static_graph
-from paddle.pir import Value, fake_value, is_fake_value
+from paddle.pir import Value, fake_value, get_fake_value_name, is_fake_value
 
 from .logging_utils import TranslatorLogger
 from .utils import (
@@ -52,7 +52,7 @@ __all__ = []
 prog_logger = TranslatorLogger()
 
 
-FAKE_VALUE_NAME = "FakeValue"
+FAKE_VALUE_NAME = get_fake_value_name()
 
 
 def hash_with_seed(value, seed):
@@ -409,13 +409,6 @@ class RunnableProgram:
         ), "program_attr() is called by PartialProgramLayer, don't call it manually, use program_name_attr instead."
         # can't apply pass after call this function.
         self.finish_pass = True
-        fwd_map = RunnableProgram._get_name_value_map_from_program(
-            self.forward_program
-        )
-        bwd_map = RunnableProgram._get_name_value_map_from_program(
-            self.backward_program
-        )
-
         program_name_attr = self.program_name_attr
         no_need_buffer_names = program_name_attr["no_need_buffers"]
         rename_mapping = {}
@@ -433,20 +426,15 @@ class RunnableProgram:
                 if new_name in no_need_buffer_names:
                     no_need_buffer_names.remove(new_name)
 
-        value_program_attr = {}
-        for k, ns in self.program_name_attr.items():
-            if k.startswith("f"):
-                values = [fwd_map.get(n, fake_value()) for n in ns]
-            elif k.startswith("b"):
-                values = [bwd_map.get(n, fake_value()) for n in ns]
-            elif k == "no_need_buffers":
-                values = [fwd_map.get(n, fake_value()) for n in ns]
-            else:
-                raise ValueError(f"Unknown program attr: {k}")
-            value_program_attr[f"{k}_names"] = ns
-            value_program_attr[k] = values
+        RunnableProgram.update_program_name_attr(
+            self.program_name_attr, rename_mapping
+        )
 
-        return value_program_attr
+        program_attr = {}
+        for k, ns in self.program_name_attr.items():
+            program_attr[f"{k}_names"] = ns
+
+        return program_attr
 
     @staticmethod
     def unify_value_names(
@@ -469,6 +457,15 @@ class RunnableProgram:
                     value._has_only_one_name()
                 ), f"Expected all values in Program have only one name, but {value} has multiple names: {value._names}"
         return rename_mapping
+
+    @staticmethod
+    def update_program_name_attr(
+        name_attr: dict[str, list[str]], rename_mapping: dict[str, str]
+    ):
+        for k, vs in name_attr.items():
+            name_attr[k] = [
+                rename_mapping[v] if v in rename_mapping else v for v in vs
+            ]
 
     @cached_property
     def program_name_attr(self):
@@ -739,9 +736,10 @@ class PartialProgramLayer:
             outputs,
             partial_program_layer._create_scope_vec(
                 cache_key=(
-                    hash_with_seed(
+                    PartialProgramLayer._calc_scope_cache_key(
                         attrs["program_id"],
-                        PartialProgramLayer._calc_input_places_hash(inputs),
+                        inputs,
+                        attrs["cuda_graph_state"] != CUDAGraphState.DISABLE,
                     )
                 ),
                 use_scope_cache=True,
@@ -846,6 +844,14 @@ class PartialProgramLayer:
         if not inputs:
             return 0
         return paddle.base.libpaddle.calc_place_hash(inputs)
+
+    @staticmethod
+    def _calc_scope_cache_key(program_id, inputs, use_cuda_graph):
+        res = hash_with_seed(
+            program_id, PartialProgramLayer._calc_input_places_hash(inputs)
+        )
+        res = hash_with_seed(res, int(use_cuda_graph))
+        return res
 
     # whole
     @switch_to_static_graph

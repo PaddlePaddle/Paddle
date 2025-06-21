@@ -99,31 +99,6 @@ static bool IsVariableRefArray(const Tensor &tensor) {
   return paddle::framework::VariableRefArray::classof(tensor.impl().get());
 }
 
-static auto GetNameFromValue(const std::vector<::pir::Value> &values) {
-  std::vector<std::string> names;
-  std::transform(
-      values.begin(),
-      values.end(),
-      std::back_inserter(names),
-      [](const ::pir::Value &v) {
-        return pir::utils::name_analysis::TryGetValueFirstName(v).value_or(
-            std::string(paddle::framework::kFakeVarName));
-      });
-  return names;
-}
-
-static void CheckInputVarStatus(const Tensor &tensor) {
-  PADDLE_ENFORCE_EQ(tensor.defined() &&
-                        (tensor.is_dense_tensor() ||
-                         IsVariableRefArray(tensor) || tensor.is_dist_tensor()),
-                    true,
-                    common::errors::InvalidArgument(
-                        "The input tensor %s of RunProgram(Grad)Op holds "
-                        "wrong type. Expect type is DenseTensor or "
-                        "VariableRefArray or DistTensor.",
-                        tensor.name()));
-}
-
 static void CheckOutputVarStatus(const paddle::framework::Variable &src_var,
                                  const Tensor &dst_tensor) {
   auto name = dst_tensor.name();
@@ -171,15 +146,28 @@ static void ShareTensorsIntoScopeWithName(
     const std::vector<Tensor> &tensors,
     const std::vector<std::string> &tensor_names,
     paddle::framework::Scope *scope) {
+  PADDLE_ENFORCE_EQ(
+      tensors.size(),
+      tensor_names.size(),
+      common::errors::InvalidArgument(
+          "The size of tensors and tensor_names should be equal, but got "
+          "tensors size: %d, tensor_names size: %d.",
+          tensors.size(),
+          tensor_names.size()));
   for (size_t i = 0; i < tensors.size(); ++i) {
-    auto name = tensor_names[i];
+    const auto &name = tensor_names.at(i);
+    PADDLE_ENFORCE_EQ(
+        tensors[i].defined(),
+        true,
+        common::errors::InvalidArgument(
+            "The input tensor %s of RunProgram(Grad)Op should be initialized.",
+            name));
     VLOG(4) << "Share Tensor Into Scope: " << name;
     if (name == paddle::framework::kFakeVarName ||
         name == paddle::framework::kEmptyVarName) {
       continue;
     }
     auto *var = scope->Var(name);
-    CheckInputVarStatus(tensors[i]);
     // share tensor
     auto tensor_base = tensors[i].impl();
     if (phi::DenseTensor::classof(tensor_base.get())) {
@@ -201,6 +189,11 @@ static void ShareTensorsIntoScopeWithName(
       auto t =
           std::dynamic_pointer_cast<phi::distributed::DistTensor>(tensor_base);
       *dst_tensor = t->value();
+    } else {
+      PADDLE_THROW(common::errors::InvalidArgument(
+          "The RunProgram(Grad)Op only support input "
+          "variable of type DenseTensor, SelectedRows or VariableRefArray",
+          name));
     }
   }
 }
@@ -222,6 +215,14 @@ static void ShareTensorsIntoScope(const std::vector<Tensor> &tensors,
 static void ShareTensorsFromScopeWithName(const std::vector<Tensor *> &tensors,
                                           const std::vector<std::string> &names,
                                           paddle::framework::Scope *scope) {
+  PADDLE_ENFORCE_EQ(
+      tensors.size(),
+      names.size(),
+      common::errors::InvalidArgument(
+          "The size of tensors and names should be equal, but got "
+          "tensors size: %d, names size: %d.",
+          tensors.size(),
+          names.size()));
   for (size_t i = 0; i < tensors.size(); ++i) {
     auto &name = names[i];
     VLOG(4) << "Share Tensor From Scope: " << name;
@@ -285,7 +286,7 @@ static void ShareTensorsFromScopeWithPartialBlock(
     auto *var = scope->FindVar(name);
     if (name == paddle::framework::kEmptyVarName ||
         name == paddle::framework::kFakeVarName || var == nullptr) {
-      VLOG(2) << "find tensor name is " << name << ", skip it!";
+      VLOG(2) << "Found tensor name is " << name << ", skip it!";
       continue;
     }
     CheckOutputVarStatus(*var, *tensors[i]);
@@ -344,30 +345,25 @@ static void BuildScopeByBlock(
 }
 
 static void GcScope(paddle::framework::Scope *scope) {
-  std::deque<std::shared_ptr<paddle::memory::Allocation>> *garbages =
-      new std::deque<std::shared_ptr<paddle::memory::Allocation>>();
-
-  for (auto &var : scope->LocalVars()) {
+  for (auto &[_, var] : scope->LocalVarsMap()) {
     if (var != nullptr) {
       if (var->IsType<phi::DenseTensor>()) {
-        garbages->emplace_back(
-            var->GetMutable<phi::DenseTensor>()->MoveMemoryHolder());
+        var->GetMutable<phi::DenseTensor>()->MoveMemoryHolder();
       }
       if (var->IsType<phi::SelectedRows>()) {
-        garbages->emplace_back(var->GetMutable<phi::SelectedRows>()
-                                   ->mutable_value()
-                                   ->MoveMemoryHolder());
+        var->GetMutable<phi::SelectedRows>()
+            ->mutable_value()
+            ->MoveMemoryHolder();
       }
       if (var->IsType<phi::TensorArray>()) {
         auto *lod_tensor_arr = var->GetMutable<phi::TensorArray>();
         for (auto &t : *lod_tensor_arr) {
-          garbages->emplace_back(t.MoveMemoryHolder());
+          t.MoveMemoryHolder();
         }
         lod_tensor_arr->clear();
       }
     }
   }
-  delete garbages;  // free mem
 }
 
 template <class T>
@@ -427,24 +423,7 @@ inline void PirRunProgramAPI(
 
   VLOG(4) << "global_inner_scope:" << global_inner_scope;
 
-  auto input_values =
-      PADDLE_GET_CONST(std::vector<::pir::Value>, attrs.at("fx"));
-  auto output_values =
-      PADDLE_GET_CONST(std::vector<::pir::Value>, attrs.at("fo"));
-  auto middle_values =
-      PADDLE_GET_CONST(std::vector<::pir::Value>, attrs.at("fm"));
-  auto param_values =
-      PADDLE_GET_CONST(std::vector<::pir::Value>, attrs.at("fp"));
-  auto no_need_buffer_values =
-      PADDLE_GET_CONST(std::vector<::pir::Value>, attrs.at("no_need_buffers"));
-
   // Get All needed names
-  // auto input_names = details::GetNameFromValue(input_values);
-  // auto param_names = details::GetNameFromValue(param_values);
-  // auto output_names = details::GetNameFromValue(output_values);
-  // const auto no_need_buffer_names =
-  //     details::GetNameFromValue(no_need_buffer_values);
-
   const auto &input_names =
       PADDLE_GET_CONST(std::vector<std::string>, attrs.at("fx_names"));
   const auto &param_names =
@@ -459,14 +438,15 @@ inline void PirRunProgramAPI(
   std::shared_ptr<::pir::Program> backward_program = PADDLE_GET_CONST(
       std::shared_ptr<::pir::Program>, attrs.at("backward_program"));
 
-  VLOG(10) << is_test << program_id;
-
   auto &cache = paddle::framework::InterpreterCoreInfoCache::Instance();
   std::shared_ptr<paddle::framework::InterpreterCore> interpreter_core =
       nullptr;
-  VLOG(0) << "is use cuda graph: "
-          << details::is_use_cuda_graph(cuda_graph_state)
-          << ", cuda_graph_dispatch_key: " << cuda_graph_dispatch_key;
+  VLOG(7) << "Get interpretercore for program: " << program_id
+          << ", scope ptr: " << global_inner_scope
+          << ", place_hash_key: " << place_hash_key
+          << ", cuda_graph_state: " << cuda_graph_state
+          << ", cuda_graph_dispatch_key: " << cuda_graph_dispatch_key
+          << ", in_sot_mode: " << in_sot_mode;
   const paddle::framework::InterpreterCoreInfoCacheKey cache_key(
       program_id,
       global_inner_scope,
@@ -489,16 +469,20 @@ inline void PirRunProgramAPI(
     details::ShareTensorsIntoScopeWithName(x, input_names, global_inner_scope);
     details::ShareTensorsIntoScopeWithName(
         params, param_names, global_inner_scope);
-
     // Step 3. create new interpretercore
     if (FLAGS_specialize_device_in_dy2st) {
-      // NOTE: Set PlaceAttribute for DataOp based on input tensor's place when
-      // FLAGS_specialize_device_in_dy2st=True. Performance may decrease when a
-      // CPU Tensor is copied to a device multiple times; consider applying CSE
-      // in future.
-      for (size_t i = 0; i < input_values.size(); ++i) {
+      auto all_named_values =
+          pir::utils::name_analysis::GetAllNamedValues(*forward_program);
+      for (size_t i = 0; i < input_names.size(); ++i) {
+        const auto &input_name = input_names[i];
         const auto &input_tensor = x[i];
-        const auto &input_value = input_values[i];
+        if (all_named_values.find(input_name) == all_named_values.end()) {
+          VLOG(6) << "Input name: " << input_name
+                  << " not found in all_named_values, skip setting place.";
+          continue;
+        }
+
+        const auto &input_value = all_named_values.at(input_name);
         if (input_value.defining_op() &&
             input_value.defining_op()->isa<paddle::dialect::DataOp>()) {
           input_value.defining_op()->set_attribute(
@@ -985,20 +969,17 @@ inline void PirRunProgramGradAPI(
   std::shared_ptr<::pir::Program> backward_program = PADDLE_GET_CONST(
       std::shared_ptr<::pir::Program>, attrs.at("backward_program"));
 
-  auto output_grad_values =
-      PADDLE_GET_CONST(std::vector<::pir::Value>, attrs.at("bo_g"));
-  auto forward_input_values =
-      PADDLE_GET_CONST(std::vector<::pir::Value>, attrs.at("bx"));
-  auto forward_middle_values =
-      PADDLE_GET_CONST(std::vector<::pir::Value>, attrs.at("bm"));
-  auto parameter_values =
-      PADDLE_GET_CONST(std::vector<::pir::Value>, attrs.at("bp"));
-  auto forward_output_values =
-      PADDLE_GET_CONST(std::vector<::pir::Value>, attrs.at("bo"));
-  auto x_grad_values =
-      PADDLE_GET_CONST(std::vector<::pir::Value>, attrs.at("bx_g"));
-  auto p_grad_values =
-      PADDLE_GET_CONST(std::vector<::pir::Value>, attrs.at("bp_g"));
+  // Get All needed names
+  const auto &input_names =
+      PADDLE_GET_CONST(std::vector<std::string>, attrs.at("bx_names"));
+  const auto &parameter_names =
+      PADDLE_GET_CONST(std::vector<std::string>, attrs.at("bp_names"));
+  const auto &output_grad_names =
+      PADDLE_GET_CONST(std::vector<std::string>, attrs.at("bo_g_names"));
+  const auto &x_grad_names =
+      PADDLE_GET_CONST(std::vector<std::string>, attrs.at("bx_g_names"));
+  const auto &p_grad_names =
+      PADDLE_GET_CONST(std::vector<std::string>, attrs.at("bp_g_names"));
 
   // Get All needed names
   // const auto &input_names = details::GetNameFromValue(forward_input_values);
@@ -1029,6 +1010,12 @@ inline void PirRunProgramGradAPI(
   auto &cache = paddle::framework::InterpreterCoreInfoCache::Instance();
   std::shared_ptr<paddle::framework::InterpreterCore> interpreter_core =
       nullptr;
+  VLOG(7) << "Get interpretercore for program: " << program_id
+          << ", scope ptr: " << global_inner_scope
+          << ", place_hash_key: " << place_hash_key
+          << ", cuda_graph_state: " << cuda_graph_state
+          << ", cuda_graph_dispatch_key: " << cuda_graph_dispatch_key
+          << ", in_sot_mode: " << in_sot_mode;
   const paddle::framework::InterpreterCoreInfoCacheKey cache_key(
       program_id,
       global_inner_scope,
@@ -1168,7 +1155,7 @@ class GradNodeRunProgram : public egr::GradNodeBase {
       }
     }
 
-    auto out_grad_names =
+    const auto &out_grad_names =
         PADDLE_GET_CONST(std::vector<std::string>, attrs_.at("out_grad_names"));
     PADDLE_ENFORCE_EQ(hooked_grads[0].size(),
                       out_grad_names.size(),
@@ -1222,7 +1209,7 @@ class GradNodeRunProgram : public egr::GradNodeBase {
  protected:
   void ConstructXGradTensors(const std::vector<paddle::Tensor> &x,
                              std::vector<paddle::Tensor> *x_grad) {
-    auto x_grad_names =
+    const auto &x_grad_names =
         PADDLE_GET_CONST(std::vector<std::string>, attrs_.at("x_grad_names"));
     PADDLE_ENFORCE_EQ(
         x.size(),
@@ -1247,8 +1234,8 @@ class GradNodeRunProgram : public egr::GradNodeBase {
 
   void ConstructParamGradTensors(const std::vector<paddle::Tensor> &params,
                                  std::vector<paddle::Tensor> *param_grads) {
-    auto param_grad_names = PADDLE_GET_CONST(std::vector<std::string>,
-                                             attrs_.at("param_grad_names"));
+    const auto &param_grad_names = PADDLE_GET_CONST(
+        std::vector<std::string>, attrs_.at("param_grad_names"));
     PADDLE_ENFORCE_EQ(params.size(),
                       param_grad_names.size(),
                       common::errors::InvalidArgument(
@@ -1349,10 +1336,10 @@ class PirGradNodeRunProgram : public egr::GradNodeBase {
       }
     }
 
-    auto out_grad_values =
-        PADDLE_GET_CONST(std::vector<::pir::Value>, attrs_.at("bo_g"));
+    const auto &out_grad_names =
+        PADDLE_GET_CONST(std::vector<std::string>, attrs_.at("bo_g_names"));
     PADDLE_ENFORCE_EQ(hooked_grads[0].size(),
-                      out_grad_values.size(),
+                      out_grad_names.size(),
                       common::errors::InvalidArgument(
                           "The hooked_grads[0].size() and "
                           "out_grad_values.size() should be equal."));
@@ -1401,16 +1388,16 @@ class PirGradNodeRunProgram : public egr::GradNodeBase {
  protected:
   void ConstructXGradTensors(const std::vector<paddle::Tensor> &x,
                              std::vector<paddle::Tensor> *x_grad) {
-    auto x_grad_values =
-        PADDLE_GET_CONST(std::vector<::pir::Value>, attrs_.at("bx_g"));
+    auto x_grad_names =
+        PADDLE_GET_CONST(std::vector<std::string>, attrs_.at("bx_g_names"));
     PADDLE_ENFORCE_EQ(
         x.size(),
-        x_grad_values.size(),
+        x_grad_names.size(),
         common::errors::InvalidArgument(
             "The x.size() and x_grad_names.size() should be equal. "
             "But received x.size() = %d, x_grad_names.size() = %d",
             x.size(),
-            x_grad_values.size()));
+            x_grad_names.size()));
 
     // TODO(dev): Need an elegant way to determine information of grad_tensor,
     // such as: name, tensor type (DenseTensor, SelectedRows or
@@ -1432,10 +1419,10 @@ class PirGradNodeRunProgram : public egr::GradNodeBase {
 
   void ConstructParamGradTensors(const std::vector<paddle::Tensor> &params,
                                  std::vector<paddle::Tensor> *param_grads) {
-    auto p_grad_values =
-        PADDLE_GET_CONST(std::vector<::pir::Value>, attrs_.at("bp_g"));
+    auto p_grad_names =
+        PADDLE_GET_CONST(std::vector<std::string>, attrs_.at("bp_g_names"));
     PADDLE_ENFORCE_EQ(params.size(),
-                      p_grad_values.size(),
+                      p_grad_names.size(),
                       common::errors::InvalidArgument(
                           "The param.size() and "
                           "param_grad_names.size() should be equal."));

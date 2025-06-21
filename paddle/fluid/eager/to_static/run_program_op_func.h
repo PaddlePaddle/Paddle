@@ -47,17 +47,22 @@ static bool IsFakeValue(const pir::Value& value) {
   return value.impl() == nullptr || !value.type();
 }
 
+static bool IsFakeValueName(const std::string& name) {
+  return name == paddle::framework::kFakeVarName ||
+         name == paddle::framework::kEmptyVarName;
+}
+
 // Filter params without grads in global block. In this case, we will
 // tag its AutogradMeta with stop_gradient = True to avoid fault from
 // reducer while training on multi-cards.
 static void pir_clear_no_grad_edges(
     const std::vector<paddle::Tensor>& params,
-    const std::vector<pir::Value>& backward_params_grad,
+    const std::vector<std::string>& backward_params_grad_names,
     const pir::Block* backward_block,
     egr::GradNodeBase* grad_node,
     size_t slot_id) {
   for (size_t i = 0; i < params.size(); ++i) {
-    if (IsFakeValue(backward_params_grad[i])) {
+    if (IsFakeValueName(backward_params_grad_names[i])) {
       VLOG(3) << "clear edge of " << params[i].name();
       grad_node->MutableOutputMeta()[slot_id][i].GetMutableEdge().Clear();
     }
@@ -86,10 +91,9 @@ static void clear_unused_out_var_in_backward(
 }
 
 static void pir_clear_unused_out_var_in_backward(
-    const std::vector<pir::Value>& fo,
+    const std::vector<std::string>& out_names,
     const pir::Block* backward_block,
     paddle::framework::Scope* scope) {
-  auto out_names = details::GetNameFromValue(fo);
   std::deque<std::shared_ptr<paddle::memory::Allocation>>* garbages =
       new std::deque<std::shared_ptr<paddle::memory::Allocation>>();
   for (auto out_name : out_names) {
@@ -124,13 +128,12 @@ static std::vector<paddle::Tensor> filter_unused_input_var_in_backward(
 
 static std::vector<paddle::Tensor> pir_filter_unused_input_var_in_backward(
     const std::vector<paddle::Tensor>& x,
-    const std::string x_key_name,
     const paddle::framework::AttributeMap& attrs) {
-  auto values =
-      PADDLE_GET_CONST(std::vector<::pir::Value>, attrs.at(x_key_name));
+  const auto& names =
+      PADDLE_GET_CONST(std::vector<std::string>, attrs.at("bx_names"));
   auto filter_x = std::vector<paddle::Tensor>(x);
   for (size_t i = 0; i < x.size(); i++) {
-    if (values[i].impl() == nullptr) {
+    if (IsFakeValueName(names[i])) {
       auto fake = paddle::Tensor(std::make_shared<phi::DenseTensor>());
       fake.set_name(paddle::framework::kFakeVarName);
       filter_x[i] = fake;
@@ -143,17 +146,17 @@ static std::vector<paddle::Tensor>
 pir_filter_no_need_buffer_input_var_in_backward(
     const std::vector<paddle::Tensor>& x,
     const paddle::framework::AttributeMap& attrs) {
-  auto forward_inputs_values =
-      PADDLE_GET_CONST(std::vector<::pir::Value>, attrs.at("fx"));
-  auto no_need_buffers_values =
-      PADDLE_GET_CONST(std::vector<::pir::Value>, attrs.at("no_need_buffers"));
+  const auto& forward_inputs_names =
+      PADDLE_GET_CONST(std::vector<std::string>, attrs.at("fx_names"));
+  const auto& no_need_buffers_names = PADDLE_GET_CONST(
+      std::vector<std::string>, attrs.at("no_need_buffers_names"));
   auto filter_x = std::vector<paddle::Tensor>(x);
   std::deque<std::shared_ptr<paddle::memory::Allocation>>* garbages =
       new std::deque<std::shared_ptr<paddle::memory::Allocation>>();
   for (size_t i = 0; i < x.size(); i++) {
-    if (std::find(no_need_buffers_values.begin(),
-                  no_need_buffers_values.end(),
-                  forward_inputs_values[i]) != no_need_buffers_values.end()) {
+    if (std::find(no_need_buffers_names.begin(),
+                  no_need_buffers_names.end(),
+                  forward_inputs_names[i]) != no_need_buffers_names.end()) {
       auto& tensor = filter_x[i];
       if (tensor.has_allocation() && tensor.is_dense_tensor()) {
         auto copied_dense_tensor = std::make_shared<phi::DenseTensor>(
@@ -238,7 +241,7 @@ inline void run_program_ad_func(
     is_test = PADDLE_GET_CONST(bool, attrs.at("is_test"));
   }
   if (!is_test && require_any_grad) {
-    auto x_names =
+    const auto& x_names =
         PADDLE_GET_CONST(std::vector<std::string>, attrs.at("x_names"));
 
     // Create GradOpNode (1 means [out_grad], 2 means [x_grad, paramx_grad])
@@ -304,10 +307,6 @@ inline void pir_run_program_ad_func(
   bool require_any_grad = egr::EagerUtils::ComputeRequireGrad(
       trace_backward, &p_autograd_x, &p_autograd_params);
 
-  // Create Middle Output for GradNode.
-  auto middle_values =
-      PADDLE_GET_CONST(std::vector<::pir::Value>, attrs.at("fm"));
-
   auto is_test = false;
   if (attrs.count("is_test")) {
     is_test = PADDLE_GET_CONST(bool, attrs.at("is_test"));
@@ -348,19 +347,19 @@ inline void pir_run_program_ad_func(
     // For the first kind, we can create a empty Tensor to replace it.
     // For the second kind, we need to keep the meta only Tensor.
     auto filter_x = pir_filter_no_need_buffer_input_var_in_backward(
-        pir_filter_unused_input_var_in_backward(x_tmp, "bx", attrs), attrs);
+        pir_filter_unused_input_var_in_backward(x_tmp, attrs), attrs);
     // Set TensorWrappers
     grad_node->SetFwdX(filter_x);
 
     std::shared_ptr<::pir::Program> backward_program = PADDLE_GET_CONST(
         std::shared_ptr<::pir::Program>, attrs.at("backward_program"));
-    auto forward_outputs =
-        PADDLE_GET_CONST(std::vector<::pir::Value>, attrs.at("fo"));
-    auto backward_params_grad =
-        PADDLE_GET_CONST(std::vector<::pir::Value>, attrs.at("bp_g"));
+    const auto& forward_outputs_names =
+        PADDLE_GET_CONST(std::vector<std::string>, attrs.at("fo_names"));
+    const auto& backward_params_grad_names =
+        PADDLE_GET_CONST(std::vector<std::string>, attrs.at("bp_g_names"));
 
     pir_clear_unused_out_var_in_backward(
-        forward_outputs, backward_program->block(), step_scope[0]);
+        forward_outputs_names, backward_program->block(), step_scope[0]);
 
     grad_node->SetFwdParams(params_tmp);
 
@@ -372,7 +371,7 @@ inline void pir_run_program_ad_func(
     // Clear no grad edges
     VLOG(2) << "clear no grad edges.";
     pir_clear_no_grad_edges(params,
-                            backward_params_grad,
+                            backward_params_grad_names,
                             backward_program->block(),
                             grad_node.get(),
                             /*slot id*/ 1);
