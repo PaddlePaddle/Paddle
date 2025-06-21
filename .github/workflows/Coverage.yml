@@ -65,7 +65,7 @@ jobs:
           PADDLE_VERSION: 0.0.0
           CUDA_VISIBLE_DEVICES: 0,1
           WITH_DISTRIBUTE: "ON"
-          PRECISION_TEST: "OFF"
+          PRECISION_TEST: "ON"
           WITH_PIP_CUDA_LIBRARIES: "OFF"
           WITH_FLAGCX: "ON"
           LITE_GIT_TAG: develop
@@ -262,7 +262,7 @@ jobs:
           COVERALLS_UPLOAD: "ON"
           PADDLE_VERSION: 0.0.0
           WITH_DISTRIBUTE: "ON"
-          PRECISION_TEST: "OFF"
+          PRECISION_TEST: "ON"
           WITH_UNITY_BUILD: "ON"
           PY_VERSION: 3.9
           WITH_SHARED_PHI: "ON"
