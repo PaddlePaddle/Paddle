@@ -48,6 +48,8 @@ class TestPybindPlace(unittest.TestCase):
 
             pybind_place_2 = paddle.CUDAPlace(0)
             self.assertEqual(pybind_place, pybind_place_2)
+        else:
+            self.skipTest("Skip as paddle is not compiled with cuda")
 
     def test_xpu_place(self):
         if paddle.device.is_compiled_with_xpu():
@@ -64,6 +66,8 @@ class TestPybindPlace(unittest.TestCase):
 
             pybind_place_2 = paddle.XPUPlace(0)
             self.assertEqual(pybind_place, pybind_place_2)
+        else:
+            self.skipTest("Skip as paddle is not compiled with xpu")
 
     def test_custom_place(self):
         if paddle.device.is_compiled_with_custom_device("FakeCPU"):
@@ -80,6 +84,8 @@ class TestPybindPlace(unittest.TestCase):
 
             pybind_place_2 = paddle.CustomPlace("FakeCPU", 0)
             self.assertEqual(pybind_place, pybind_place_2)
+        else:
+            self.skipTest("Skip as paddle is not compiled with custom device")
 
     def test_ipu_place(self):
         if paddle.device.is_compiled_with_ipu():
@@ -96,6 +102,8 @@ class TestPybindPlace(unittest.TestCase):
 
             pybind_place_2 = paddle.IPUPlace()
             self.assertEqual(pybind_place, pybind_place_2)
+        else:
+            self.skipTest("Skip as paddle is not compiled with ipu")
 
 
 if __name__ == '__main__':

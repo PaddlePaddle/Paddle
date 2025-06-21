@@ -441,12 +441,6 @@ void BindPlace(pybind11::module &m) {  // NOLINT
       .def("_equals", &IsSamePlace<phi::GPUPlace, phi::XPUPlace>)
       .def("_equals", &IsSamePlace<phi::GPUPlace, phi::GPUPinnedPlace>)
       .def("_equals", &IsSamePlace<phi::GPUPlace, phi::XPUPinnedPlace>)
-      .def("__eq__", &IsSamePlace<phi::GPUPlace, phi::Place>)
-      .def("__eq__", &IsSamePlace<phi::GPUPlace, phi::GPUPlace>)
-      .def("__eq__", &IsSamePlace<phi::GPUPlace, phi::CPUPlace>)
-      .def("__eq__", &IsSamePlace<phi::GPUPlace, phi::XPUPlace>)
-      .def("__eq__", &IsSamePlace<phi::GPUPlace, phi::GPUPinnedPlace>)
-      .def("__eq__", &IsSamePlace<phi::GPUPlace, phi::XPUPinnedPlace>)
       .def("_get_device_id",
            [](phi::GPUPlace &self) -> int { return self.GetDeviceId(); })
 #endif
