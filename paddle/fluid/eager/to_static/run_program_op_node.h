@@ -152,8 +152,8 @@ static void ShareTensorsIntoScopeWithName(
           "tensors size: %d, tensor_names size: %d.",
           tensors.size(),
           tensor_names.size()));
-  const auto &name = tensor_names.at(i);
   for (size_t i = 0; i < tensors.size(); ++i) {
+    const auto &name = tensor_names.at(i);
     PADDLE_ENFORCE_EQ(
         tensors[i].defined(),
         true,
