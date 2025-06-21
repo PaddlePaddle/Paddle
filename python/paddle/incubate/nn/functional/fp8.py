@@ -14,16 +14,21 @@
 
 from __future__ import annotations
 
+import functools
 from typing import TYPE_CHECKING
 
 import paddle
-from paddle import _C_ops
+from paddle import Tensor, _C_ops
 from paddle.framework import in_dynamic_or_pir_mode
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-    from paddle import Tensor
+
+@functools.cache
+def _empty_tensor() -> Tensor:
+    """Get tensor with no entries and no data"""
+    return Tensor()
 
 
 def fused_stack_transpose_quant(
@@ -145,7 +150,7 @@ def fp8_gemm_blockwise(
     assert bias is None, "Bias is not supported"
 
     if bias is None:
-        bias = paddle.empty([0], dtype=paddle.float32)
+        bias = _empty_tensor()
     else:
         assert bias.dtype in (
             paddle.float16,
@@ -172,9 +177,6 @@ def fp8_gemm_blockwise(
             else 4_194_304
         )
         workspace = paddle.empty([workspace_size], dtype=paddle.uint8)
-
-        empty_pre_gelu_out = paddle.empty([0], dtype=paddle.float32)
-
         transa, transb = True, False
         grad = False
         math_sm_count = 112
@@ -187,7 +189,7 @@ def fp8_gemm_blockwise(
             a_decode_scale,
             out,
             bias,
-            empty_pre_gelu_out,
+            _empty_tensor(),
             workspace,
             transa,
             transb,
