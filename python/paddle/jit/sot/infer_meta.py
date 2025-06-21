@@ -36,6 +36,7 @@ from paddle.distributed.auto_parallel.static.utils import (
     convert_to_dims_mapping,
 )
 from paddle.framework import use_pir_api
+from paddle.jit.dy2static.utils import extract_tensor_dynamic_dims
 from paddle.pir import is_fake_value
 from paddle.static import InputSpec
 from paddle.utils import flatten, is_sequence
@@ -158,6 +159,10 @@ class MetaInfoOrNull:
         return dtype
 
     @staticmethod
+    def mix_axes(axes1: list[int], axes2: list[int]) -> list[int]:
+        return sorted(set(axes1 + axes2))
+
+    @staticmethod
     def from_tensor(
         tensor: paddle.Tensor, *, dynamic_axes: list[int] | None = None
     ) -> MetaInfoOrNull:
@@ -171,9 +176,13 @@ class MetaInfoOrNull:
         assert (
             -1 not in tensor.shape
         ), "Tensor shape should not contain -1, maybe you pass a Value to from_tensor"
+        user_specified_dynamic_axes = extract_tensor_dynamic_dims(tensor)
         dynamic_axes = dynamic_axes or []
+        dynamic_axes = MetaInfoOrNull.mix_axes(
+            dynamic_axes, list(user_specified_dynamic_axes)
+        )
         shape = [
-            SymbolicInt() if i in dynamic_axes else dim
+            SymbolicInt(dim) if i in dynamic_axes else dim
             for i, dim in enumerate(tensor.shape)
         ]
         if tensor.is_dist():
@@ -302,10 +311,19 @@ class MetaInfo:
         ]
 
     def with_dynamic_axes(self, name: str, dynamic_axes: list[int]) -> MetaInfo:
+        mixed_dynamic_axes = MetaInfoOrNull.mix_axes(
+            self.dynamic_axes, dynamic_axes
+        )
         # NOTE(SigureMo): Make sure create a new shape list with dynamic axes.
         # We will create a new shape list variable lazily in the future.
         shape = [
-            SymbolicInt(dim) if i in dynamic_axes else dim
+            (
+                SymbolicInt(dim)
+                if (
+                    i in mixed_dynamic_axes and not isinstance(dim, SymbolicInt)
+                )
+                else dim
+            )
             for i, dim in enumerate(self.shape)
         ]
         return MetaInfo(
