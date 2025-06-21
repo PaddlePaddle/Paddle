@@ -25,6 +25,7 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
 
+# special re-use of empty to reduce launch cost.
 @functools.cache
 def _empty_tensor() -> Tensor:
     """Get tensor with no entries and no data"""
