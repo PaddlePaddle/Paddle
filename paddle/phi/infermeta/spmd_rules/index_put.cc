@@ -96,10 +96,10 @@ SpmdInfo IndexPutInferSpmd(const DistMetaTensor& x,
   x_dist_attr_dst.set_dims_mapping(x_dims_mapping);
   TensorDistAttr value_dist_attr_dst =
       CopyTensorDistAttrForOutput(value.dist_attr());
-  value_dist_attr_dst.set_dims_mapping({-1});
+  value_dist_attr_dst.set_dims_mapping(std::vector<int64_t>{-1});
   std::vector<TensorDistAttr> indices_dist_attrs_dst = indices_dist_attrs_src;
   for (auto& input_attr : indices_dist_attrs_dst) {
-    input_attr.set_dims_mapping({-1});
+    input_attr.set_dims_mapping(std::vector<int64_t>{-1});
   }
   // Step4: Log SpmdInfo
   LOG_SPMD_INPUT(x);
@@ -200,7 +200,7 @@ SpmdInfo IndexPutGradInferSpmd(const DistMetaTensor& x,
   x_grad_dist_attr.set_dims_mapping(x_dims_mapping);
   TensorDistAttr value_grad_dist_attr =
       CopyTensorDistAttrForOutput(value_dist_attr_src);
-  value_grad_dist_attr.set_dims_mapping({-1});
+  value_grad_dist_attr.set_dims_mapping(std::vector<int64_t>{-1});
   // Step3: update input dims mapping
   TensorDistAttr x_dist_attr_dst = CopyTensorDistAttrForOutput(x_dist_attr_src);
   x_dist_attr_dst.set_dims_mapping(x_dims_mapping);
@@ -209,10 +209,10 @@ SpmdInfo IndexPutGradInferSpmd(const DistMetaTensor& x,
   out_grad_dist_attr_dst.set_dims_mapping(x_dims_mapping);
   TensorDistAttr value_dist_attr_dst =
       CopyTensorDistAttrForOutput(value.dist_attr());
-  value_dist_attr_dst.set_dims_mapping({-1});
+  value_dist_attr_dst.set_dims_mapping(std::vector<int64_t>{-1});
   std::vector<TensorDistAttr> indices_dist_attrs_dst = indices_dist_attrs_src;
   for (auto& input_attr : indices_dist_attrs_dst) {
-    input_attr.set_dims_mapping({-1});
+    input_attr.set_dims_mapping(std::vector<int64_t>{-1});
   }
   // Step4: Log SpmdInfo
   LOG_SPMD_INPUT(x);
