@@ -230,7 +230,7 @@ void MoeUnpermuteKernel(const Context &dev_ctx,
   const int topk = expert_routemap_topk.dims()[1];
   dev_ctx.template Alloc<T>(zipped_tokens);
   dev_ctx.template Alloc<float>(zipped_probs_topk);
-  if (unzipped_tokens->numel() == 0) return;  // 0-size tensor
+  if (unzipped_tokens.numel() == 0) return;  // 0-size tensor
   void *zipped_probs_topk_ptr =
       reinterpret_cast<void *>(zipped_probs_topk->data<float>());
   cudaMemsetAsync(zipped_probs_topk_ptr,
