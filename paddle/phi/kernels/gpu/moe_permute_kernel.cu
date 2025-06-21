@@ -26,18 +26,13 @@ namespace phi {
 #define MAX_NUM_EXPERTS 64
 #endif
 
-typedef struct __align__(16) {
-  int data[MAX_NUM_EXPERTS];
-}
-expert_base_offset;
-
 template <typename X_T, typename routemap_T, typename probs_T, bool has_scale>
 __global__ void tokens_unzip_stable_kernel(
     const X_T *__restrict__ X,
     const routemap_T *__restrict__ routemap_topk,
     const probs_T *__restrict__ probs_topk,
     const float *__restrict__ XScale,
-    const expert_base_offset expert_base_offset,
+    const int *__restrict__ expert_base_offset,
     X_T *__restrict__ X_unzipped,
     int *__restrict__ zipped_expertwise_rowmap,
     probs_T *__restrict__ probs_unzipped,
@@ -55,19 +50,17 @@ __global__ void tokens_unzip_stable_kernel(
   __shared__ int shared_expert_rowmap[CUMSUM_BLOCK_SIZE][MAX_NUM_EXPERTS];
   __shared__ probs_T shared_expert_probmap[CUMSUM_BLOCK_SIZE][MAX_NUM_EXPERTS];
   for (int i = 0; i < num_experts; i++) {
-    local_expert_offsets[i] = expert_base_offset.data[i];
+    local_expert_offsets[i] = expert_base_offset[i];
   }
 
-  // --------------------- thread0 单线程任务传递 -------------------------
-  if (threadIdx.x < MAX_NUM_EXPERTS) {
+  if (threadIdx.x < num_experts) {
     int local_expert_rowmap[CUMSUM_BLOCK_SIZE];
     probs_T local_expert_probs[CUMSUM_BLOCK_SIZE];
 #pragma unroll
     for (int i = 0; i < CUMSUM_BLOCK_SIZE; i++) {
-      local_expert_rowmap[i] = -1;  // 以非法值初始化，方便后续shared mem写入
+      local_expert_rowmap[i] = -1;
       local_expert_probs[i] = (probs_T)0;
     }
-    // 将乱序访存限制在寄存器级别，后续shared_mem规整写入
     for (int row = block_row_base; row < block_row_base + CUMSUM_BLOCK_SIZE;
          row++) {
       if (row >= total_zipped_tokens_num) break;
@@ -84,7 +77,6 @@ __global__ void tokens_unzip_stable_kernel(
         }
       }
     }
-    // -------------------------- 块间通信逻辑 -----------------------------
     if (blockIdx.x != 0) {
       while (cumsum_offset == CUMSUM_INVALID_TAG) {
         cumsum_offset = atomicExch(
@@ -96,9 +88,6 @@ __global__ void tokens_unzip_stable_kernel(
     const int proposed_offset = cumsum_offset + local_cumsum;
     global_expertwise_block_cumsum[(blockIdx.x + 1) * num_experts +
                                    threadIdx.x] = proposed_offset;
-    // 至此，给下一个block的cumsum已经更新完毕，下一个block可以开始cumsum的计算了
-
-// -------------------------- 块内通信逻辑 -----------------------------
 #pragma unroll
     for (int i = 0; i < CUMSUM_BLOCK_SIZE; i++) {
       const int proposed_row = (local_expert_rowmap[i] == -1)
@@ -107,7 +96,7 @@ __global__ void tokens_unzip_stable_kernel(
       shared_expert_rowmap[i][threadIdx.x] = proposed_row;
       shared_expert_probmap[i][threadIdx.x] = local_expert_probs[i];
     }
-  }  // 至此，本线程块内的shared_mem已经规整完毕，接下来是向量化的数据搬运
+  }
   __syncthreads();
   for (int row = block_row_base; row < block_row_base + CUMSUM_BLOCK_SIZE;
        row++) {
@@ -143,7 +132,7 @@ void dispatch_tokens_unzip_stable(const Context &dev_ctx,
                                   const DenseTensor &expert_routemap_topk,
                                   const DenseTensor &expert_prob_topk,
                                   const paddle::optional<DenseTensor> &XScale,
-                                  const expert_base_offset &expert_offsets,
+                                  const DenseTensor &expert_offsets,
                                   DenseTensor *X_unzipped,
                                   DenseTensor *zipped_expertwise_rowmap,
                                   DenseTensor *token_prob_unzipped,
@@ -169,7 +158,7 @@ void dispatch_tokens_unzip_stable(const Context &dev_ctx,
       GET_DATA(expert_routemap_topk, INT_T),                                   \
       GET_DATA(expert_prob_topk, PROB_T),                                      \
       XScale ? XScale.get_ptr()->data<float>() : nullptr,                      \
-      expert_offsets,                                                          \
+      GET_DATA(expert_offsets, int),                                           \
       GET_PTR_DATA(X_unzipped, TOKEN_T),                                       \
       GET_PTR_DATA(zipped_expertwise_rowmap, INT_T),                           \
       GET_PTR_DATA(token_prob_unzipped, PROB_T),                               \
@@ -226,19 +215,26 @@ void MoePermuteKernel(const Context &dev_ctx,
   const int rows = X.dims()[0];
   const int cols = X.dims()[1];
   const int quanted_cols = (XScale) ? XScale.get_ptr()->dims()[1] : 0;
-  expert_base_offset expert_offset;
+  int expert_offset[MAX_NUM_EXPERTS];
   int tokens_cumulated = 0;
   for (int i = 0; i < MAX_NUM_EXPERTS; i++) {
     if (i < num_experts) {
-      expert_offset.data[i] = tokens_cumulated;
+      expert_offset[i] = tokens_cumulated;
       tokens_cumulated +=
           ((tokens_per_expert[i] + padding_multiplex - 1) / padding_multiplex) *
           padding_multiplex;
     } else {
-      expert_offset.data[i] = 0;
+      expert_offset[i] = 0;
     }
   }
-
+  DenseTensor expert_offset_tensor;
+  expert_offset_tensor.Resize({MAX_NUM_EXPERTS});
+  dev_ctx.template Alloc<int>(&expert_offset_tensor);
+  cudaMemcpyAsync(expert_offset_tensor.data<int>(),
+                  expert_offset,
+                  sizeof(int) * MAX_NUM_EXPERTS,
+                  cudaMemcpyHostToDevice,
+                  dev_ctx.stream());
   const int output_rows = tokens_cumulated;
   const int topk_calculated = expert_routemap_topk.dims()[1];
   X_unzipped->Resize({output_rows, cols});
@@ -253,9 +249,9 @@ void MoePermuteKernel(const Context &dev_ctx,
   auto X_unzipped_ptr = reinterpret_cast<void *>(X_unzipped->data<T>());
   for (int i = 0; i < num_experts; i++) {
     int next_expert_offset =
-        i < num_experts - 1 ? expert_offset.data[i + 1] : output_rows;
+        i < num_experts - 1 ? expert_offset[i + 1] : output_rows;
     int invalid_rows =
-        next_expert_offset - expert_offset.data[i] - tokens_per_expert[i];
+        next_expert_offset - expert_offset[i] - tokens_per_expert[i];
     cudaMemsetAsync(X_unzipped_ptr + tokens_per_expert[i] * sizeof(T),
                     0,
                     sizeof(T) * invalid_rows * cols,
@@ -266,9 +262,9 @@ void MoePermuteKernel(const Context &dev_ctx,
         reinterpret_cast<void *>(XScale_unzipped->data<float>());
     for (int i = 0; i < num_experts; i++) {
       int next_expert_offset =
-          i < num_experts - 1 ? expert_offset.data[i + 1] : output_rows;
+          i < num_experts - 1 ? expert_offset[i + 1] : output_rows;
       int invalid_rows =
-          next_expert_offset - expert_offset.data[i] - tokens_per_expert[i];
+          next_expert_offset - expert_offset[i] - tokens_per_expert[i];
       cudaMemsetAsync(
           XScale_unzipped_ptr + tokens_per_expert[i] * sizeof(float),
           0,
@@ -281,9 +277,9 @@ void MoePermuteKernel(const Context &dev_ctx,
       reinterpret_cast<void *>(token_prob_unzipped->data<float>());
   for (int i = 0; i < num_experts; i++) {
     int next_expert_offset =
-        i < num_experts - 1 ? expert_offset.data[i + 1] : output_rows;
+        i < num_experts - 1 ? expert_offset[i + 1] : output_rows;
     int invalid_rows =
-        next_expert_offset - expert_offset.data[i] - tokens_per_expert[i];
+        next_expert_offset - expert_offset[i] - tokens_per_expert[i];
     cudaMemsetAsync(
         token_prob_unzipped_ptr + tokens_per_expert[i] * sizeof(float),
         0,
@@ -301,7 +297,7 @@ void MoePermuteKernel(const Context &dev_ctx,
                                            expert_routemap_topk,
                                            expert_prob_topk,
                                            XScale,
-                                           expert_offset,
+                                           expert_offset_tensor,
                                            X_unzipped,
                                            zipped_expertwise_rowmap,
                                            token_prob_unzipped,
