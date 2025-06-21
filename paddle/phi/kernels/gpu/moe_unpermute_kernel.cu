@@ -27,7 +27,7 @@ __device__ __nv_bfloat16 __custoom_hadd(__nv_bfloat16 x, __nv_bfloat16 y) {
                                     static_cast<float>(y));
 }
 #ifndef MAX_NUM_EXPERTS
-#define MAX_NUM_EXPERTS 8
+#define MAX_NUM_EXPERTS 64
 #endif
 template <bool MP>
 __global__ void tokens_zip_kernel(

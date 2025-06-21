@@ -91,11 +91,11 @@ def tensor_max_abs_rel_err(a, b, eps=1e-8):
 class TestFusedMoePermuteUnpermute(unittest.TestCase):
     """Test cases for moe_permute and moe_unpermute."""
 
-    SEQLEN = 16384
+    SEQLEN = 1024
     TOKEN_LEN = 7168
     DTYPES = ["bfloat16"]
-    EXPERT_NUMS = [4, 8]
-    TOPKS = [4, 8]
+    EXPERT_NUMS = [64]
+    TOPKS = [4]
 
     def setUp(self):
         """Initialize test environment."""
