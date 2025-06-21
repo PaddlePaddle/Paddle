@@ -1030,34 +1030,8 @@ class TestIndexPutAPIMixedIndices1(TestIndexPutAPIBase):
 
 class TestIndexPutAPI_ZeroSize(unittest.TestCase):
     def setUp(self):
-        self.mixed_indices = False
-        self.is_all_false = False
         self.init_dtype_type()
         self.setPlace()
-
-        if self.mixed_indices:
-            tmp_indices_np1 = gen_indices_np(
-                self.x_shape,
-                self.indices_shapes,
-                self.index_type_np,
-                self.is_all_false,
-            )
-            tmp_indices_np2 = gen_indices_np(
-                self.x_shape,
-                self.indices_shapes1,
-                self.index_type_np1,
-                self.is_all_false,
-            )
-            self.indices_np = tuple(
-                list(tmp_indices_np1) + list(tmp_indices_np2)
-            )
-        else:
-            self.indices_np = gen_indices_np(
-                self.x_shape,
-                self.indices_shapes,
-                self.index_type_np,
-                self.is_all_false,
-            )
 
     def init_dtype_type(self):
         self.dtype_np = np.float32
