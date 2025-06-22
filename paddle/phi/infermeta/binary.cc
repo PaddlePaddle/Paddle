@@ -1613,6 +1613,9 @@ void DotInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
           x_dims.to_str()));
   bool shape_match = true;
   for (int i = 0; i < x_rank; ++i) {
+    if (x_dims[i] == 0 || y_dims[i] == 0) {
+      continue;
+    }
     if (x_dims[i] != y_dims[i]) {
       shape_match = false;
       break;
@@ -1627,10 +1630,16 @@ void DotInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
                         "with input tensor Y: %s",
                         x_dims.to_str(),
                         y_dims.to_str()));
-  std::vector<int64_t> x_dims_vec = common::vectorize(x_dims);
-  std::vector<int64_t> x_dims_vec_cut(x_dims_vec.begin(), x_dims_vec.end() - 1);
-  x_dims = common::make_ddim(x_dims_vec_cut);
-  out->set_dims(x_dims);
+
+  auto out_dims = x_dims;
+  // The output dims need to be modified.
+  if (x_rank == 2 && x_dims[0] != 0 && y_dims[0] == 0) {
+    out_dims[0] = 0;
+  }
+  std::vector<int64_t> out_dims_vec = common::vectorize(out_dims);
+  std::vector<int64_t> out_dims_vec_cut(out_dims_vec.begin(),
+                                        out_dims_vec.end() - 1);
+  out->set_dims(common::make_ddim(out_dims_vec_cut));
   out->set_dtype(x.dtype());
   out->set_layout(x.layout());
 }
@@ -2138,11 +2147,13 @@ void GatherTreeMeta(const MetaTensor& ids,
                     MetaTensor* out) {
   auto ids_dims = ids.dims();
   auto parents_dims = parents.dims();
-  PADDLE_ENFORCE_EQ(ids_dims == parents_dims,
-                    true,
-                    common::errors::InvalidArgument(
-                        "The shape of Input(Parents) must be same with the "
-                        "shape of Input(Ids)."));
+  if (common::product(ids_dims) != 0) {
+    PADDLE_ENFORCE_EQ(ids_dims == parents_dims,
+                      true,
+                      common::errors::InvalidArgument(
+                          "The shape of Input(Parents) must be same with the "
+                          "shape of Input(Ids)."));
+  }
   out->set_dims(ids_dims);
   out->set_dtype(ids.dtype());
 }
@@ -2356,7 +2367,7 @@ void IndexSampleInferMeta(const MetaTensor& x,
           "Inputs(Index) shape of IndexSample op should be 2-D, but "
           "got Index's shape [%s] , please check index shape.",
           input_dims));
-  if (config.is_runtime) {
+  if (config.is_runtime && index_dims[0] != 0) {  // 0-size not check
     PADDLE_ENFORCE_EQ(input_dims[0],
                       index_dims[0],
                       errors::InvalidArgument(
@@ -2546,6 +2557,7 @@ void IndexElementwisePutInferMeta(const MetaTensor& x,
                                   const std::vector<int64_t>& input_strides,
                                   const std::vector<int64_t>& index_dims,
                                   const std::vector<int64_t>& index_strides,
+                                  const int64_t slice_offset,
                                   MetaTensor* out) {
   out->set_dims(x.dims());
   out->set_dtype(x.dtype());
@@ -4452,12 +4464,21 @@ void SwiGLUInferMeta(const MetaTensor& x,
                      const MetaTensor& y,
                      MetaTensor* out) {
   if (y) {
-    PADDLE_ENFORCE_EQ(
-        x.dims(),
-        y.dims(),
-        common::errors::InvalidArgument(
-            "The shape of Input(X) should be equal of the shape of Input(Y)."));
+    auto x_numel = common::product(x.dims());
+    auto y_numel = common::product(y.dims());
+    // skip 0-size
+    if (x_numel != 0 && y_numel != 0) {
+      PADDLE_ENFORCE_EQ(
+          x.dims(),
+          y.dims(),
+          common::errors::InvalidArgument("The shape of Input(X) should be "
+                                          "equal of the shape of Input(Y)."));
+    }
     out->share_meta(x);
+    // If y is 0-size, out is 0-size
+    if (x_numel != 0 && y_numel == 0) {
+      out->set_dims(y.dims());
+    }
   } else {
     auto dims = x.dims();
     PADDLE_ENFORCE_EQ(

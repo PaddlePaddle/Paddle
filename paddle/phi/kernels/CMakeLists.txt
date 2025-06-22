@@ -71,10 +71,13 @@ if(((WITH_GPU) AND (CUDA_VERSION VERSION_LESS 12.0))
     "legacy/gpu/moe_gate_dispatch_grad_kernel.cu"
     "legacy/gpu/int_bincount.cu"
     "legacy/gpu/layer_norm_cuda_kernel.cu"
+    "legacy/gpu/fp8_gemm_blockwise_kernel.cu"
+    "legacy/gpu/fp8_quant_blockwise_kernel.cu"
     "fusion/gpu/fused_act_dequant_kernel.cu"
     "fusion/gpu/fused_stack_transpose_quant_kernel.cu"
     "fusion/gpu/fused_stack_quant_kernel.cu"
     "fusion/gpu/fused_transpose_split_quant_kernel.cu"
+    "fusion/gpu/fused_transpose_wlch_split_quant_kernel.cu"
     "fusion/gpu/fused_swiglu_weighted_bwd_kernel.cu"
     "fusion/gpu/fused_weighted_swiglu_act_quant_kernel.cu")
 endif()
@@ -89,7 +92,7 @@ foreach(arch ${NVCC_ARCH_BIN})
 endforeach()
 
 if(WITH_GPU
-   AND NOT has_arch_ge80
+   AND (NOT has_arch_ge80 OR (CUDA_VERSION VERSION_LESS 12.0))
    OR WIN32
    OR APPLE
    OR WITH_ROCM) # need support BF16

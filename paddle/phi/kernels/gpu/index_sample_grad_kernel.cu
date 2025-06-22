@@ -102,6 +102,7 @@ void IndexSampleGradKernel(const Context& dev_ctx,
   phi::funcs::SetConstant<Context, T> set_zero;
   set_zero(dev_ctx, x_grad, static_cast<T>(0));
 
+  if (out_grad.numel() == 0) return;
   if (index_type == DataType::INT64) {
     const int64_t* index_data = index.data<int64_t>();
     IndexSampleGrad<T, int64_t>

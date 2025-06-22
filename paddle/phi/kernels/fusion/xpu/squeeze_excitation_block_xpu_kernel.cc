@@ -20,7 +20,7 @@ namespace phi {
 namespace fusion {
 
 template <typename T, typename TW, typename Context>
-void SqueezeExcitationKernelImpl(const Context& ctx,
+void SqueezeExcitationKernelImpl(const Context& dev_ctx,
                                  const DenseTensor& x,
                                  const DenseTensor& filter,
                                  const DenseTensor& filter_max,
@@ -58,7 +58,7 @@ void SqueezeExcitationKernelImpl(const Context& ctx,
   int max_ptr_size = 6;
   const float* w1_maxptr = filter_max.data<float>();
   const float* w2_maxptr = w1_maxptr + max_ptr_size;
-  auto* out_data = reinterpret_cast<XPUTypeX*>(ctx.template Alloc<T>(out));
+  auto* out_data = reinterpret_cast<XPUTypeX*>(dev_ctx.template Alloc<T>(out));
 
   std::vector<xpu::Activation_t> act;
   for (size_t i = 0; i < 3; i++) {
@@ -71,7 +71,7 @@ void SqueezeExcitationKernelImpl(const Context& ctx,
     act.push_back(cur_act);
   }
   int r = xpu::squeeze_excitation_block<XPUTypeX, XPUTypeW, XPUTypeW>(
-      /* baidu::xpu::api::Context* ctx */ ctx.x_context(),
+      /* baidu::xpu::api::Context* ctx */ dev_ctx.x_context(),
       /* const T* x */ input_data,
       /* const TW* weight1 */ reinterpret_cast<const XPUTypeW*>(weight1_ptr),
       /* const TW* weight2 */ reinterpret_cast<const XPUTypeW*>(weight2_ptr),
@@ -93,7 +93,7 @@ void SqueezeExcitationKernelImpl(const Context& ctx,
 }
 
 #define SQUEEZE_EXCITATION_KERNEL_IMPL(t_dtype_, tw_dtype_)              \
-  SqueezeExcitationKernelImpl<t_dtype_, tw_dtype_, Context>(ctx,         \
+  SqueezeExcitationKernelImpl<t_dtype_, tw_dtype_, Context>(dev_ctx,     \
                                                             x,           \
                                                             filter,      \
                                                             filter_max,  \
@@ -105,7 +105,7 @@ void SqueezeExcitationKernelImpl(const Context& ctx,
                                                             out);
 
 template <typename T, typename Context>
-void SqueezeExcitationKernel(const Context& ctx,
+void SqueezeExcitationKernel(const Context& dev_ctx,
                              const DenseTensor& x,
                              const DenseTensor& filter,
                              const DenseTensor& filter_max,

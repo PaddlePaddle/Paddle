@@ -1361,6 +1361,7 @@ def scaled_dot_product_attention(
     is_causal: bool = False,
     training: bool = True,
     name: str | None = None,
+    backend: str | None = None,
 ) -> Tensor:
     r"""
     The equation is:
@@ -1380,14 +1381,20 @@ def scaled_dot_product_attention(
         query(Tensor): The query tensor in the Attention module.
                         4-D tensor with shape:
                         [batch_size, seq_len, num_heads, head_dim].
+                        3-D tensor with shape:
+                        [seq_len, num_heads, head_dim].
                         The dtype can be float16 or bfloat16.
         key(Tensor): The key tensor in the Attention module.
                         4-D tensor with shape:
                         [batch_size, seq_len, num_heads, head_dim].
+                        3-D tensor with shape:
+                        [seq_len, num_heads, head_dim].
                         The dtype can be float16 or bfloat16.
         value(Tensor): The value tensor in the Attention module.
                         4-D tensor with shape:
                         [batch_size, seq_len, num_heads, head_dim].
+                        3-D tensor with shape:
+                        [seq_len, num_heads, head_dim].
                         The dtype can be float16 or bfloat16.
         attn_mask(Tensor, optional): A float mask of the same type as query,
                         key, value that is added to the attention score.
@@ -1413,6 +1420,31 @@ def scaled_dot_product_attention(
             >>> print(output)
             >>> # doctest: -SKIP
     """
+    if (
+        backend == 'p2p'
+        and query.is_dist()
+        and key.is_dist()
+        and value.is_dist()
+    ):
+        # ring attention for auto_parallel mode
+        out = paddle.distributed.auto_parallel.ring_attention.RingFlashAttention.apply(
+            query,
+            key,
+            value,
+            attn_mask,
+            dropout_p,
+            is_causal,
+        )
+        return out
+
+    if query.ndim == 3:
+        query = paddle.unsqueeze(query, axis=0)
+
+    if key.ndim == 3:
+        key = paddle.unsqueeze(key, axis=0)
+
+    if value.ndim == 3:
+        value = paddle.unsqueeze(value, axis=0)
 
     if attn_mask is None:
         # downgraded to ordinary flash attention implementation

@@ -18,7 +18,6 @@ import dataclasses
 import operator
 import sys
 import types
-from dataclasses import asdict, is_dataclass
 from enum import Enum
 from functools import cached_property, reduce
 from typing import TYPE_CHECKING, Any
@@ -28,6 +27,11 @@ import numpy as np
 import paddle
 from paddle._typing import unreached
 from paddle.framework import core
+from paddle.jit.dy2static.utils import (
+    dataclass_as_dict,
+    dataclass_from_dict,
+    is_dataclass_instance,
+)
 from paddle.jit.sot.opcode_translator.executor.pycode_generator import PyCodeGen
 from paddle.pir.core import _PADDLE_PIR_DTYPE_2_NUMPY_DTYPE
 
@@ -76,6 +80,7 @@ from ....symbolic_shape.symbolic_value import (
 )
 from ....utils import (
     ENV_SOT_ALLOW_DYNAMIC_SHAPE,
+    ENV_SOT_ENABLE_0_SIZE_FALLBACK,
     BreakGraphError,
     BuiltinFunctionBreak,
     ConditionalFallbackError,
@@ -452,7 +457,7 @@ class TensorVariable(VariableBase):
             and not self.meta.is_null()
         ):
             dynamic_axes = self.analyse_dynamic_axes(tracker)
-        self.var_name = TensorVariable.var_name_generator.next()
+        self.var_name = self.var_name_generator.next()
         self.graph.side_effects.record_mutable_variable(self)
         self.meta = self.meta.with_dynamic_axes(self.var_name, dynamic_axes)
         self.origin_meta = self.meta
@@ -1407,6 +1412,8 @@ class SymbolicVariable(VariableBase):
         if not ENV_SOT_ALLOW_DYNAMIC_SHAPE.get():
             return None
         if isinstance(value, SymbolicInt):
+            if value.is_backed():
+                return SymbolicVariable(value, graph, tracker)
             tensor_shape_source_result = (
                 SymbolicVariable.find_tensor_shape_source(tracker)
             )
@@ -1446,6 +1453,7 @@ class SymbolicVariable(VariableBase):
         )
         if (
             should_create_sym is None
+            and ENV_SOT_ENABLE_0_SIZE_FALLBACK.get()
             and SymbolicVariable.find_tensor_shape_source(tracker) is not None
         ):
             graph.add_global_guarded_variable(
@@ -1461,6 +1469,8 @@ class SymbolicVariable(VariableBase):
 
 
 class ParameterVariable(TensorVariable):
+    var_name_generator = NameGenerator("param_")
+
     def __init__(
         self,
         meta: MetaInfoOrNull,
@@ -2426,18 +2436,9 @@ class DataClassInstanceVariable(VariableBase):
             id_getter=lambda _: data_id or id(data_dict),
         )
 
-    @staticmethod
-    def _dataclass_from_dict(dataclass_type: type[Any], data: dict[str, Any]):
-        # NOTE(SigureMo): Create dataclass without __post_init__,
-        # because __post_init__ has been run in simulation
-        instance = dataclass_type.__new__(dataclass_type, **data)
-        for fd in dataclasses.fields(dataclass_type):
-            setattr(instance, fd.name, data[fd.name])
-        return instance
-
     def _reconstruct(self, codegen: PyCodeGen) -> None:
         codegen.gen_load_object(
-            DataClassInstanceVariable._dataclass_from_dict,
+            dataclass_from_dict,
             "___dataclass_from_dict",
         )
         self.getattr("__class__").reconstruct(codegen)
@@ -2481,7 +2482,7 @@ class DataClassInstanceVariable(VariableBase):
         return self.class_var.get_py_value()
 
     def get_py_value(self, allow_tensor=False):
-        return DataClassInstanceVariable._dataclass_from_dict(
+        return dataclass_from_dict(
             self.get_py_type(),
             {
                 key: value.get_py_value(allow_tensor)
@@ -2565,12 +2566,12 @@ class DataClassInstanceVariable(VariableBase):
 
     @VariableFactory.register_from_value()
     def from_value(value: object, graph: FunctionGraph, tracker: Tracker):
-        if is_dataclass(value) and not isinstance(value, type):
+        if is_dataclass_instance(value):
             class_var = VariableFactory.from_value(
                 type(value), graph, DanglingTracker()
             )
             var = DataClassInstanceVariable(
-                asdict(value),
+                dataclass_as_dict(value),
                 class_var,
                 id(value),
                 graph=graph,

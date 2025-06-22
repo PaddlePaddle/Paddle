@@ -32,6 +32,12 @@ void TopkKernel(const Context& dev_ctx,
   using XPUType = typename XPUTypeTrait<T>::Type;
   using XPUTypeINT64 = typename XPUTypeTrait<int64_t>::Type;
 
+  if (out && out->numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    dev_ctx.template Alloc<int64_t>(indices);
+    return;
+  }
+
   const auto& in_dims = x.dims();
   if (in_dims.size() == 0) {
     phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, out);

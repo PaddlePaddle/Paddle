@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import atexit
 import builtins
+import dataclasses
 import functools
 import importlib.util
 import inspect
@@ -30,7 +31,7 @@ import types
 import warnings
 from contextlib import contextmanager
 from dataclasses import fields, is_dataclass
-from enum import Enum, Flag, auto
+from enum import Enum, Flag, IntEnum, auto
 from importlib.machinery import SourceFileLoader
 from typing import TYPE_CHECKING, Any
 
@@ -86,6 +87,8 @@ ENV_ENABLE_CINN_IN_DY2ST = BooleanEnvironmentVariable(
     "ENABLE_CINN_IN_DY2ST", True
 )
 
+DYNAMIC_DIMS_ATTR_NAME = "__sot_dynamic_dims"
+
 
 class Backend(Enum):
     CINN = auto()
@@ -116,6 +119,13 @@ class Backend(Enum):
         return self == Backend.PHI
 
 
+class CUDAGraphState(IntEnum):
+    DISABLE = 0
+    WARMUP = 1
+    CAPTURE = 2
+    REPLAY = 3
+
+
 class TransformOptions:
 
     class ToStaticMode(Flag):
@@ -135,7 +145,7 @@ class TransformOptions:
         if inspect.ismethod(fn):
             fn = fn.__func__
 
-        if inspect.isfunction(fn):
+        if inspect.isfunction(fn) or issubclass(fn, paddle.nn.Layer):
             setattr(fn, TransformOptions.TRANSFORM_OPTIONS_ATTR_NAME, self)
         else:
             warnings.warn(
@@ -287,11 +297,28 @@ def type_name(v):
     return type(v).__name__
 
 
-def _is_dataclass_instance(obj):
+def is_dataclass_instance(obj):
     """Check if the object is an instance of a dataclass.
     Refer to https://docs.python.org/3/library/dataclasses.html#dataclasses.is_dataclass
     """
     return is_dataclass(obj) and not isinstance(obj, type)
+
+
+def is_dataclass_type(obj):
+    return is_dataclass(obj) and isinstance(obj, type)
+
+
+def dataclass_as_dict(obj):
+    return {f.name: getattr(obj, f.name) for f in dataclasses.fields(obj)}
+
+
+def dataclass_from_dict(dataclass_type: type[Any], data: dict[str, Any]):
+    # NOTE(SigureMo): Create dataclass without __post_init__,
+    # because __post_init__ has been run in simulation
+    instance = dataclass_type.__new__(dataclass_type, **data)
+    for fd in dataclasses.fields(dataclass_type):
+        setattr(instance, fd.name, data[fd.name])
+    return instance
 
 
 def make_hashable(x, error_msg=None):
@@ -303,7 +330,7 @@ def make_hashable(x, error_msg=None):
     if isinstance(x, (tuple, list, set)):
         return tuple(map(make_hashable, x))
 
-    if _is_dataclass_instance(x):
+    if is_dataclass_instance(x):
         return (
             type(x).__name__,
             *map(
@@ -819,6 +846,12 @@ def cse_is_enabled():
     ]
 
 
+def use_specialized_device():
+    return paddle.get_flags(["FLAGS_specialize_device_in_dy2st"])[
+        "FLAGS_specialize_device_in_dy2st"
+    ]
+
+
 def prim_is_enabled():
     return core._is_bwd_prim_enabled() or core._is_fwd_prim_enabled()
 
@@ -988,3 +1021,26 @@ def patch_method_guard(
         yield
     finally:
         restorer(instance)
+
+
+def extract_tensor_dynamic_dims(
+    tensor: paddle.Tensor,
+) -> tuple[int]:
+    """
+    Extract dynamic dimensions from a paddle.Tensor.
+    Returns a list of dynamic dimensions or None if no dynamic dimensions exist.
+    """
+    if not isinstance(tensor, paddle.Tensor):
+        raise TypeError(
+            f"Expected a paddle.Tensor, but got {type(tensor).__name__}"
+        )
+
+    if not hasattr(tensor, DYNAMIC_DIMS_ATTR_NAME):
+        return []
+
+    dynamic_dims = getattr(tensor, DYNAMIC_DIMS_ATTR_NAME)
+    if not isinstance(dynamic_dims, tuple):
+        raise TypeError(
+            f"Expected {DYNAMIC_DIMS_ATTR_NAME} to be a tuple, but got {type(dynamic_dims).__name__}"
+        )
+    return dynamic_dims
