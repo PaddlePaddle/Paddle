@@ -47,7 +47,7 @@ static PyObject *eager_api_run_program(PyObject *self,  // TOREMOVE
         "run_program", args, 5, PyTuple_GET_SIZE(args), attrs);
 
     tstate = PyEval_SaveThread();
-    run_program_ad_func(X, Params, Out, OutScope, attrs);
+    egr::to_static::run_program_ad_func(X, Params, Out, OutScope, attrs);
     PyEval_RestoreThread(tstate);
     tstate = nullptr;
     Py_RETURN_NONE;
