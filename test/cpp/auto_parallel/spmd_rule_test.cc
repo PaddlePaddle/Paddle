@@ -244,7 +244,7 @@ TEST(IndexPut, Ctor) {
   TensorDistAttr x_dist_attr = TensorDistAttr();
   x_dist_attr.set_process_mesh(process_mesh);
   x_dist_attr.set_dims_mapping(std::vector<int64_t>({-1, 0, 1}));
-  x_dist_attr.set_dynamic_dims(std::vector<bool>({false, false, false, false}));
+  x_dist_attr.set_dynamic_dims(std::vector<bool>({false, false, false}));
 
   TensorDistAttr value_dist_attr = TensorDistAttr();
   value_dist_attr.set_process_mesh(process_mesh);
