@@ -16,6 +16,8 @@
 #include "paddle/fluid/framework/new_executor/interpreter_base_impl.h"
 #include "paddle/fluid/framework/new_executor/new_executor_defs.h"
 
+// TEST for trigger test_parallel_api_with_llama_2d_sep
+
 PD_DECLARE_bool(new_executor_use_local_scope);
 
 namespace pir {
