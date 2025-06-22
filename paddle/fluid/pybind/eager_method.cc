@@ -2232,6 +2232,36 @@ static PyObject* tensor__clear_dataptr(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* tensor__clear_to_zero_allocation(TensorObject* self,
+                                                  PyObject* args,
+                                                  PyObject* kwargs) {
+  EAGER_TRY
+  auto* dense_tensor =
+      dynamic_cast<phi::DenseTensor*>(self->tensor.impl().get());
+  if (dense_tensor != nullptr && dense_tensor->Holder() != nullptr) {
+    phi::DenseTensor tmp(std::make_shared<phi::Allocation>(
+                             nullptr, 0, dense_tensor->Holder()->place()),
+                         dense_tensor->meta());
+    dense_tensor->ShareBufferWith(std::move(tmp), /*only_buffer=*/true);
+  }
+  RETURN_PY_NONE
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+static PyObject* tensor__holder_size(TensorObject* self,
+                                     PyObject* args,
+                                     PyObject* kwargs) {
+  EAGER_TRY
+  auto* dense_tensor =
+      dynamic_cast<phi::DenseTensor*>(self->tensor.impl().get());
+  size_t size = 0;
+  if (dense_tensor != nullptr && dense_tensor->Holder() != nullptr) {
+    size = dense_tensor->Holder()->size();
+  }
+  return PyLong_FromSize_t(size);
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 static PyObject* tensor__copy_gradient_from(TensorObject* self,
                                             PyObject* args,
                                             PyObject* kwargs) {
@@ -3711,6 +3741,14 @@ PyMethodDef variable_methods[] = {  // NOLINT
      nullptr},
     {"_clear_dataptr",
      (PyCFunction)(void (*)())tensor__clear_dataptr,
+     METH_VARARGS | METH_KEYWORDS,
+     nullptr},
+    {"_clear_to_zero_allocation",
+     (PyCFunction)(void (*)())tensor__clear_to_zero_allocation,
+     METH_VARARGS | METH_KEYWORDS,
+     nullptr},
+    {"_holder_size",
+     (PyCFunction)(void (*)())tensor__holder_size,
      METH_VARARGS | METH_KEYWORDS,
      nullptr},
     {"_copy_gradient_from",

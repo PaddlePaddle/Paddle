@@ -83,18 +83,26 @@ AUTO_PARALLEL_COND_TEMPLATE = """
   }}
 """
 
+NCCL_GROUP_KEY = """
+#if defined(PADDLE_WITH_NCCL)
+  const auto &group_key = "nccl_ids/" + std::to_string(ring_id) + "/0";
+#else
+  const auto &group_key = std::to_string(ring_id);
+#endif
+"""
+
 NCCL_COMMCONTEXT_INIT = """
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_XPU_BKCL)
   const auto & comm_context_manager_ = phi::distributed::CommContextManager::GetInstance();
-  if (nranks > 1 && !comm_context_manager_.Has(std::to_string(ring_id))) {{
+  if (nranks > 1 && !comm_context_manager_.Has(group_key)) {{
     auto store = phi::distributed::CreateOrGetGlobalTCPStore();
-    CREATE_COMM_CONTEXT(store, std::to_string(ring_id), rank, nranks);
+    CREATE_COMM_CONTEXT(store, group_key, rank, nranks);
   }}
 #elif defined(PADDLE_WITH_CUSTOM_DEVICE)
   const auto & comm_context_manager_ = phi::distributed::CommContextManager::GetInstance();
-  if (nranks > 1 && !comm_context_manager_.Has(std::to_string(ring_id))) {{
+  if (nranks > 1 && !comm_context_manager_.Has(group_key)) {{
     auto store = phi::distributed::CreateOrGetGlobalTCPStore();
-    CREATE_COMM_CONTEXT(store, std::to_string(ring_id), phi::distributed::GetDefaultPlace(), rank, nranks);
+    CREATE_COMM_CONTEXT(store, group_key, phi::distributed::GetDefaultPlace(), rank, nranks);
   }}
 #endif
 """
@@ -103,16 +111,14 @@ SET_NCCL_COMMCONTEXT = """
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_CUSTOM_DEVICE)
   const auto & comm_context_manager = phi::distributed::CommContextManager::GetInstance();
   COMM_CONTEXT* comm_context = nullptr;
-  if (comm_context_manager.Has(std::to_string(ring_id))) {{
-    comm_context = static_cast<COMM_CONTEXT*>(
-          comm_context_manager.Get(std::to_string(ring_id)));
+  if (comm_context_manager.Has(group_key)) {{
+    comm_context = static_cast<COMM_CONTEXT*>(comm_context_manager.Get(group_key));
     PADDLE_ENFORCE_NE(
         comm_context,
         nullptr,
         common::errors::Unavailable(
             "NCCLCommContext is nullptr, collective op should "
-            "has ring_id(%d) attr.",
-            std::to_string(ring_id)));
+            "has ring_id(%d) attr.", ring_id));
     #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_XPU_BKCL)
         if (!comm_context->GetDevContext() || !comm_context->GetDevContext()->GetCommContext())
         {{
@@ -921,6 +927,7 @@ class DistForwardAPI(ForwardAPI):
         # Current initialization only consider the case where the parameters of op contain ring_id, nranks and rank.
         # Other cases will be addressed in the future.
         if 'ring_id' in self.attrs['names']:
+            if_condition_code += NCCL_GROUP_KEY
             if (
                 'rank' in self.attrs['names']
                 and 'nranks' in self.attrs['names']

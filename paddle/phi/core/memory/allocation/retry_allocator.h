@@ -28,10 +28,16 @@ namespace paddle {
 namespace memory {
 namespace allocation {
 
+void RegisterOOMCallback(std::function<size_t(phi::Place, size_t)> callback);
+
 class RetryAllocator : public Allocator {
  public:
-  RetryAllocator(std::shared_ptr<Allocator> allocator, size_t retry_ms)
-      : underlying_allocator_(std::move(allocator)), retry_time_(retry_ms) {
+  RetryAllocator(std::shared_ptr<Allocator> allocator,
+                 phi::Place place,
+                 size_t retry_ms)
+      : underlying_allocator_(std::move(allocator)),
+        place_(place),
+        retry_time_(retry_ms) {
     PADDLE_ENFORCE_NOT_NULL(
         underlying_allocator_,
         common::errors::InvalidArgument(
@@ -54,6 +60,7 @@ class RetryAllocator : public Allocator {
 
  private:
   std::shared_ptr<Allocator> underlying_allocator_;
+  phi::Place place_;
   std::chrono::milliseconds retry_time_;
   std::mutex mutex_;
   std::condition_variable cv_;
