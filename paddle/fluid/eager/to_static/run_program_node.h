@@ -387,7 +387,7 @@ inline void PirRunProgramAPI(
     bool require_any_grad,
     const paddle::framework::AttributeMap &attrs,
     const int64_t &place_hash_key) {
-  VLOG(2) << "RunProgramOpKernel Compute";
+  VLOG(2) << "RunProgram Impl";
   // In the original run_program OP, the default value of the is_test
   // attribute is false, we should check if there is is_test parameter
   // in attrs
@@ -415,7 +415,7 @@ inline void PirRunProgramAPI(
       common::errors::InvalidArgument(
           "The OutScope of RunProgramGradOp should only hold one scope."));
 
-  VLOG(2) << "RunProgramOp use interpretercore to execute program.";
+  VLOG(2) << "RunProgram use interpretercore to execute program.";
 
   paddle::framework::Scope *global_inner_scope = out_scope_vec->front();
 
@@ -576,7 +576,7 @@ inline void RunProgramAPI(
     bool require_any_grad,
     const paddle::framework::AttributeMap &attrs,
     const int64_t &place_hash_key) {
-  VLOG(2) << "RunProgramOpKernel Compute";
+  VLOG(2) << "RunProgram Impl";
   // In the original run_program OP, the default value of the is_test
   // attribute is false, we should check if there is is_test parameter
   // in attrs
@@ -603,7 +603,7 @@ inline void RunProgramAPI(
       common::errors::InvalidArgument(
           "The OutScope of RunProgramGradOp should only hold one scope."));
 
-  VLOG(2) << "RunProgramOp use interpretercore to execute program.";
+  VLOG(2) << "RunProgram use interpretercore to execute program.";
 
   paddle::framework::Scope *global_inner_scope = out_scope_vec->front();
 

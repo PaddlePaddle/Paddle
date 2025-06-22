@@ -15,7 +15,7 @@
 
 #include <iostream>
 
-#include "paddle/fluid/eager/to_static/run_program_op_func.h"
+#include "paddle/fluid/eager/to_static/run_program_func.h"
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/phi/core/enforce.h"
 

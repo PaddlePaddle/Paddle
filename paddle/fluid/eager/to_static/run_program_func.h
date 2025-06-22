@@ -17,7 +17,7 @@
 #include <vector>
 
 #include "paddle/fluid/eager/eager_tensor.h"
-#include "paddle/fluid/eager/to_static/run_program_op_node.h"
+#include "paddle/fluid/eager/to_static/run_program_node.h"
 
 namespace egr::to_static {
 

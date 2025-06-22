@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/eager/to_static/utils.h"
+#include "paddle/fluid/eager/to_static/run_program_utils.h"
 
 #include "paddle/fluid/framework/operator.h"
 
