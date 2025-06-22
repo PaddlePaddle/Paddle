@@ -54,7 +54,7 @@ void clear_unused_out_var_in_backward(const std::vector<std::string>& out_names,
 // Filter params without grads in global block. In this case, we will
 // tag its AutogradMeta with stop_gradient = True to avoid fault from
 // reducer while training on multi-cards.
-void pir_clear_no_grad_edges(
+void clear_no_grad_edges(
     const std::vector<paddle::Tensor>& params,
     const std::vector<std::string>& backward_params_grad_names,
     const pir::Block* backward_block,
@@ -272,11 +272,11 @@ void run_program_ad_func(
 
     // Clear no grad edges
     VLOG(2) << "clear no grad edges.";
-    pir_clear_no_grad_edges(params,
-                            backward_params_grad_names,
-                            backward_program->block(),
-                            grad_node.get(),
-                            /*slot id*/ 1);
+    clear_no_grad_edges(params,
+                        backward_params_grad_names,
+                        backward_program->block(),
+                        grad_node.get(),
+                        /*slot id*/ 1);
 
     grad_node->SetGradInMeta(deref_out, 0);
 
