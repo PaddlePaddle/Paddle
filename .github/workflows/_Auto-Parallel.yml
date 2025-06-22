@@ -41,18 +41,6 @@ jobs:
     runs-on:
       group: Auto-Parallel
     steps:
-      - name: Download Paddle
-        env:
-          work_dir: ${{ github.workspace }}
-        run: |
-          sudo rm -rf * .[^.]*
-          echo "Downloading build.tar.gz"
-          wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/build/${{ github.event.pull_request.number }}/${{ github.event.pull_request.head.sha }}/build.tar.gz --no-check-certificate
-          echo "Extracting build.tar.gz"
-          tar --use-compress-program="pzstd" -xpf build.tar.gz
-          mv paddle Paddle
-          rm build.tar.gz
-
       - name: Check docker image and run container
         env:
           CACHE_DIR: /home/data/cfs/.cache
@@ -83,6 +71,20 @@ jobs:
             -e python_version \
             -w /workspace --runtime=nvidia ${docker_image}
 
+      - name: Download Paddle
+        env:
+          work_dir: ${{ github.workspace }}
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
+          rm -rf * .[^.]*
+          echo "Downloading build.tar.gz"
+          wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/build/${{ github.event.pull_request.number }}/${{ github.event.pull_request.head.sha }}/build.tar.gz --no-check-certificate
+          echo "Extracting build.tar.gz"
+          tar --use-compress-program="pzstd" -xpf build.tar.gz
+          mv paddle Paddle
+          rm build.tar.gz
+          '
+
       - name: Download PaddleTest
         env:
           work_dir: ${{ github.workspace }}
@@ -91,9 +93,6 @@ jobs:
           echo "Download and extract PaddleNLP.tar.gz"
           wget -q --no-proxy  https://paddle-qa.bj.bcebos.com/CodeSync/develop/PaddleNLP.tar --no-check-certificate
           tar xf PaddleNLP.tar && rm -rf PaddleNLP.tar
-          # wget -q --no-proxy https://paddle-qa.bj.bcebos.com/paddlenlp/Bos.zip --no-check-certificate
-          # unzip -P "$(cat ${{ github.workspace }}/../../../bos_key)" Bos.zip
-          # mkdir paddlenlp && mv Bos/* ./paddlenlp/
           source ${{ github.workspace }}/../../../proxy
           cd PaddleNLP
           git pull
@@ -121,15 +120,15 @@ jobs:
         if: always()
         env:
           home_path: ${{ github.workspace }}/..
-          bos_file: ${{ github.workspace }}/../bos/BosClient.py
+          bos_file: ${{ github.workspace }}/../bos_retry/BosClient.py
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           export AK=paddle
           export SK=paddle
           if [ ! -f "${{ env.bos_file }}" ]; then
-            wget -q --no-proxy -O ${{ env.home_path }}/bos_new.tar.gz https://xly-devops.bj.bcebos.com/home/bos_new.tar.gz --no-check-certificate
-            mkdir ${{ env.home_path }}/bos
-            tar xf ${{ env.home_path }}/bos_new.tar.gz -C ${{ env.home_path }}/bos
+            wget -q --no-proxy -O ${{ env.home_path }}/bos_retry.tar.gz https://xly-devops.bj.bcebos.com/home/bos_retry.tar.gz --no-check-certificate
+            mkdir ${{ env.home_path }}/bos_retry
+            tar xf ${{ env.home_path }}/bos_retry.tar.gz -C ${{ env.home_path }}/bos_retry
           fi
           cd /workspace/case_logs
           for FILE in /workspace/case_logs/*; do
@@ -142,5 +141,5 @@ jobs:
       - name: Terminate and delete the container
         if: always()
         run: |
-          sudo rm -rf * .[^.]*
+          docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'
           docker rm -f ${{ env.container_name }}
