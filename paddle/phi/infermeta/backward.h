@@ -468,12 +468,6 @@ void MoeCombineGradInferMeta(const MetaTensor& x,
                              const MetaTensor& grad_y,
                              MetaTensor* grad_x,
                              MetaTensor* grad_combine_weights_helper);
-
-void MoeCombineNoWeightGradInferMeta(const MetaTensor& x,
-                                     const MetaTensor& scatter_index,
-                                     const MetaTensor& grad_y,
-                                     MetaTensor* grad_x);
-
 // Tensor combine_weights_out, Tensor scatter_index, Tensor scatter_index_rev,
 // Tensor expert_offset, Tensor expert_offset_local, Tensor y_grad, Tensor
 // combine_weights_out_grad, int64_t k, int64_t capacity, bool use_pad, int64_t

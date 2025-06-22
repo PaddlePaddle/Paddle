@@ -21,7 +21,6 @@ import paddle.incubate.nn.functional as F
 
 
 def gen_test_case(S, K, Dim, seed=1234):
-    """gen_test_case"""
     random.seed(seed)
     np.random.seed(seed)
     paddle.seed(seed)
