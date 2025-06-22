@@ -288,7 +288,7 @@ class TestProdOp_ZeroSize(unittest.TestCase):
         expected_result = np.prod(self.input)
         np.testing.assert_allclose(out.numpy(), expected_result, rtol=1e-05)
         out.sum().backward()
-        np.testing.assert_allclose(input.grad.numpy(), expected_result)
+        np.testing.assert_allclose(input.grad.shape, input.shape)
 
     def test_cpu(self):
         with dygraph_guard():
