@@ -71,7 +71,7 @@ class TestCombineFwd(unittest.TestCase):
         x_2 = paddle.to_tensor(x_numpy, self.dtype)
         x_2.stop_gradient = False
 
-        y_2 = F.moe_combine_no_weight(x_2, scatter_index, self.s, self.k)
+        y_2 = F.moe_combine_no_weight(x_2, scatter_index)
         paddle.autograd.backward(tensors=[y_2], grad_tensors=[y_grad])
 
         y_2 = y_2.cast("float32")

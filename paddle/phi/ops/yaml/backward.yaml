@@ -2321,8 +2321,8 @@
     func : moe_combine_grad
 
 - backward_op : moe_combine_no_weight_grad
-  forward : moe_combine_no_weight (Tensor x, Tensor scatter_index, int64_t seq_len, int64_t k) -> Tensor(y)
-  args : (Tensor x, Tensor scatter_index, Tensor y_grad, int64_t seq_len, int64_t k)
+  forward : moe_combine_no_weight (Tensor x, Tensor scatter_index) -> Tensor(y)
+  args : (Tensor x, Tensor scatter_index, Tensor y_grad)
   output : Tensor(x_grad)
   infer_meta :
     func : MoeCombineNoWeightGradInferMeta

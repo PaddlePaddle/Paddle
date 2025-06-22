@@ -78,11 +78,13 @@ void MoeCombineNoWeightGradKernel(const Context& dev_ctx,
                                   const DenseTensor& x,
                                   const DenseTensor& scatter_index,
                                   const DenseTensor& grad_y,
-                                  const int64_t seqlen,
-                                  const int64_t k,
                                   DenseTensor* grad_x) {
   const auto x_shape = x.dims();
   const int64_t hidden_size = x_shape[1];
+
+  const auto scatter_index_shape = scatter_index.dims();
+  const int64_t seqlen = scatter_index_shape[0];
+  const int64_t k = scatter_index_shape[1];
 
   dev_ctx.template Alloc<T>(grad_x);
   phi::Full<T, Context>(

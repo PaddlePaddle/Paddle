@@ -1632,17 +1632,22 @@ void MoeCombineInferMeta(const MetaTensor& x,
 
 void MoeCombineNoWeightInferMeta(const MetaTensor& x,
                                  const MetaTensor& scatter_index,
-                                 int64_t seq_len,
-                                 int64_t k,
                                  MetaTensor* y) {
   auto x_dim = x.dims();
+  auto scatter_index_dim = scatter_index.dims();
   PADDLE_ENFORCE_EQ(x_dim.size(),
                     2,
                     common::errors::InvalidArgument(
-                        "The dimensions of Input(x) must be 1, but "
+                        "The dimensions of Input(x) must be 2, but "
                         "received dimensions of Input(x) is [%d]",
                         x_dim.size()));
-  y->set_dims(phi::make_ddim({seq_len, x_dim[1]}));
+  PADDLE_ENFORCE_EQ(scatter_index_dim.size(),
+                    2,
+                    common::errors::InvalidArgument(
+                        "The dimensions of Input(scatter_index) must be 2, but "
+                        "received dimensions of Input(scatter_index) is [%d]",
+                        scatter_index_dim.size()));
+  y->set_dims(phi::make_ddim({scatter_index_dim[0], x_dim[1]}));
   y->set_dtype(x.dtype());
 }
 

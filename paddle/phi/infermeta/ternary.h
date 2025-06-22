@@ -276,8 +276,6 @@ void MoeCombineInferMeta(const MetaTensor& x,
 
 void MoeCombineNoWeightInferMeta(const MetaTensor& x,
                                  const MetaTensor& scatter_index,
-                                 int64_t seq_len,
-                                 int64_t k,
                                  MetaTensor* y);
 
 void MoeGateDispatchPartialNoSoftmaxTopKInferMeta(

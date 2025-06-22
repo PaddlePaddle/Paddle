@@ -1247,8 +1247,6 @@ void MoeCombineGradInferMeta(const MetaTensor& x,
 void MoeCombineNoWeightGradInferMeta(const MetaTensor& x,
                                      const MetaTensor& scatter_index,
                                      const MetaTensor& grad_y,
-                                     int64_t seq_len,
-                                     int64_t k,
                                      MetaTensor* grad_x) {
   auto x_dim = x.dims();
   PADDLE_ENFORCE_EQ(
