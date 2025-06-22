@@ -1244,6 +1244,29 @@ void MoeCombineGradInferMeta(const MetaTensor& x,
   grad_combine_weights_helper->set_dtype(x.dtype());
 }
 
+void MoeCombineNoWeightGradInferMeta(const MetaTensor& x,
+                                     const MetaTensor& scatter_index,
+                                     const MetaTensor& grad_y,
+                                     int64_t seq_len,
+                                     int64_t k,
+                                     MetaTensor* grad_x) {
+  auto x_dim = x.dims();
+  PADDLE_ENFORCE_EQ(
+      x_dim.size(),
+      2,
+      errors::InvalidArgument("The input X should have 2 dimensions"
+                              "But received X's dimension = %d",
+                              x_dim.size()));
+  PADDLE_ENFORCE_EQ(
+      (scatter_index.dtype() == phi::DataType::INT32),
+      true,
+      errors::InvalidArgument("The input scatter_index type should be int32"
+                              "But received scatter_index type = %s",
+                              scatter_index.dtype()));
+  grad_x->set_dims(x_dim);
+  grad_x->set_dtype(x.dtype());
+}
+
 void MoeGateDispatchPartialNoSoftmaxTopkGradInferMeta(
     const MetaTensor& combine_weights_out,
     const MetaTensor& scatter_index,

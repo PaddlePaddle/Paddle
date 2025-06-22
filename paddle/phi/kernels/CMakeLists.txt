@@ -64,6 +64,8 @@ if(((WITH_GPU) AND (CUDA_VERSION VERSION_LESS 12.0))
     "legacy/gpu/expand_modality_expert_id_kernel.cu"
     "legacy/gpu/moe_combine_kernel.cu"
     "legacy/gpu/moe_combine_grad_kernel.cu"
+    "legacy/gpu/moe_combine_no_weight_kernel.cu"
+    "legacy/gpu/moe_combine_no_weight_grad_kernel.cu"
     "legacy/gpu/cal_aux_loss_kernel.cu"
     "legacy/gpu/cal_aux_loss_grad_kernel.cu"
     "legacy/gpu/ext_build_src_rank_and_local_expert_id_kernel.cu"

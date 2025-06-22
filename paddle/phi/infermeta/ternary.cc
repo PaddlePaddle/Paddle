@@ -1630,6 +1630,22 @@ void MoeCombineInferMeta(const MetaTensor& x,
   y->set_dtype(x.dtype());
 }
 
+void MoeCombineNoWeightInferMeta(const MetaTensor& x,
+                                 const MetaTensor& scatter_index,
+                                 int64_t seq_len,
+                                 int64_t k,
+                                 MetaTensor* y) {
+  auto x_dim = x.dims();
+  PADDLE_ENFORCE_EQ(x_dim.size(),
+                    2,
+                    common::errors::InvalidArgument(
+                        "The dimensions of Input(x) must be 1, but "
+                        "received dimensions of Input(x) is [%d]",
+                        x_dim.size()));
+  y->set_dims(phi::make_ddim({seq_len, x_dim[1]}));
+  y->set_dtype(x.dtype());
+}
+
 void MoeGateDispatchPartialNoSoftmaxTopKInferMeta(
     const MetaTensor& x,
     const MetaTensor& combine_weights,
