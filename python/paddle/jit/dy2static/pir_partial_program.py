@@ -740,6 +740,7 @@ class PartialProgramLayer:
                         attrs["program_id"],
                         inputs,
                         attrs["cuda_graph_state"] != CUDAGraphState.DISABLE,
+                        attrs["cuda_graph_dispatch_key"],
                     )
                 ),
                 use_scope_cache=True,
@@ -846,11 +847,14 @@ class PartialProgramLayer:
         return paddle.base.libpaddle.calc_place_hash(inputs)
 
     @staticmethod
-    def _calc_scope_cache_key(program_id, inputs, use_cuda_graph):
+    def _calc_scope_cache_key(
+        program_id, inputs, use_cuda_graph, cuda_graph_dispatch_key
+    ):
         res = hash_with_seed(
             program_id, PartialProgramLayer._calc_input_places_hash(inputs)
         )
         res = hash_with_seed(res, int(use_cuda_graph))
+        res = hash_with_seed(res, cuda_graph_dispatch_key)
         return res
 
     # whole

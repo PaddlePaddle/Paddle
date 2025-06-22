@@ -25,6 +25,7 @@
 #include "paddle/fluid/ir_adaptor/translator/program_translator.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
+#include "paddle/fluid/pir/transforms/cuda_graph_extract_pass.h"
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
 #include "paddle/fluid/pir/utils/name_analysis.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -36,6 +37,7 @@
 #include "paddle/pir/include/core/builtin_attribute.h"
 #include "paddle/pir/include/core/program.h"
 #include "paddle/pir/include/core/value.h"
+#include "paddle/pir/include/pass/pass_manager.h"
 
 #ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/platform/onednn_helper.h"
@@ -478,6 +480,18 @@ void RunProgramImpl(
         }
       }
     }
+
+    auto program = forward_program;
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    if (details::is_use_cuda_graph(cuda_graph_state)) {
+      pir::PassManager pass_pm(::pir::IrContext::Instance(), 3);
+      pass_pm.AddPass(pir::CreateCudaGraphExtractPass());
+      pir::IrMapping ir_mapping;
+      program = forward_program->Clone(ir_mapping);
+      pass_pm.Run(program.get());
+    }
+#endif
+
     auto passed_kernel_program = paddle::framework::ApplyIrPass(
         forward_program.get(), place, no_need_buffer_name_set);
     const auto &new_block = passed_kernel_program->block();
@@ -489,6 +503,9 @@ void RunProgramImpl(
         global_inner_scope,
         cache_key,
         in_sot_mode);
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    interpreter_core->SetCUDAGraphState(static_cast<uint8_t>(cuda_graph_state));
+#endif
     // Step 4. get all eager gc vars (skip_names = backward_inputs -
     // no_need_buffers + outputs)
     std::vector<std::string> skip_names;
@@ -513,6 +530,9 @@ void RunProgramImpl(
     // Step 1. get cache interpretercore
     auto &cached_value = cache.GetMutable(cache_key);
     interpreter_core = cached_value.core_;
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    interpreter_core->SetCUDAGraphState(static_cast<uint8_t>(cuda_graph_state));
+#endif
     // Step 2. update scope for cache interpretercore
     details::ShareTensorsIntoScopeWithName(x, input_names, global_inner_scope);
     details::ShareTensorsIntoScopeWithName(
