@@ -195,7 +195,7 @@ void run_program_ad_func(
     std::vector<paddle::framework::Scope*>& step_scope,  // NOLINT
     const paddle::framework::AttributeMap& attrs) {
   // Prepare Autograd Meta
-  VLOG(4) << "start run run_program ad function.";
+  VLOG(2) << "start run run_program ad function.";
   auto deref_out = details::DereferenceTensors(out);
   std::vector<egr::AutogradMeta*> p_autograd_x =
       egr::EagerUtils::nullable_autograd_meta(x);
@@ -208,7 +208,7 @@ void run_program_ad_func(
   bool require_any_grad = egr::EagerUtils::ComputeRequireGrad(
       trace_backward, &p_autograd_x, &p_autograd_params);
 
-  VLOG(4) << "start run run_program with require_any_grad = "
+  VLOG(2) << "start run run_program with require_any_grad = "
           << require_any_grad;
   auto x_tmp = Trans2ContiguousTensors(x);
   auto params_tmp = Trans2ContiguousTensors(params);
@@ -226,7 +226,7 @@ void run_program_ad_func(
                 require_any_grad,
                 attrs,
                 place_hash_key);
-  VLOG(4) << "start run run_program grad";
+  VLOG(2) << "start run run_program grad";
   auto is_test = false;
   if (attrs.count("is_test")) {
     is_test = PADDLE_GET_CONST(bool, attrs.at("is_test"));
@@ -285,7 +285,7 @@ void pir_run_program_ad_func(
     std::vector<paddle::framework::Scope*>& step_scope,  // NOLINT
     const paddle::framework::AttributeMap& attrs) {
   // Prepare Autograd Meta
-  VLOG(4) << "start run pir run_program ad function.";
+  VLOG(2) << "start run pir run_program ad function.";
   auto deref_out = details::DereferenceTensors(out);
   std::vector<egr::AutogradMeta*> p_autograd_x =
       egr::EagerUtils::nullable_autograd_meta(x);
@@ -302,7 +302,7 @@ void pir_run_program_ad_func(
   if (attrs.count("is_test")) {
     is_test = PADDLE_GET_CONST(bool, attrs.at("is_test"));
   }
-  VLOG(4) << "start run run_program with require_any_grad = "
+  VLOG(2) << "start run run_program with require_any_grad = "
           << require_any_grad << ", is_test = " << is_test;
   auto x_tmp = Trans2ContiguousTensors(x);
   auto params_tmp = Trans2ContiguousTensors(params);
