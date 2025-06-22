@@ -17,13 +17,26 @@
 #include "paddle/fluid/framework/operator.h"
 
 namespace egr::to_static {
-bool IsFakeValueName(const std::string& name) {
+bool IsFakeValueName(const std::string &name) {
   return name == paddle::framework::kFakeVarName ||
          name == paddle::framework::kEmptyVarName;
 }
 
 int64_t hash_with_seed(int64_t value, int64_t seed) {
   return seed + 0x9e3779b9 + (value << 6) + (value >> 2);
+}
+
+bool IsVariableRefArray(const paddle::Tensor &tensor) {
+  return paddle::framework::VariableRefArray::classof(tensor.impl().get());
+}
+
+std::vector<paddle::Tensor> DereferenceTensors(
+    const std::vector<paddle::Tensor *> &tensor_ptr) {
+  std::vector<paddle::Tensor> res;
+  for (auto *t : tensor_ptr) {
+    res.emplace_back(*t);
+  }
+  return res;
 }
 
 }  // namespace egr::to_static

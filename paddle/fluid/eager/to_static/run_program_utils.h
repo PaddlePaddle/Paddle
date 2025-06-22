@@ -16,10 +16,16 @@
 
 #include <cstdint>
 #include <string>
+#include <vector>
+#include "paddle/phi/api/include/tensor.h"
 
 namespace egr::to_static {
 bool IsFakeValueName(const std::string& name);
 
 int64_t hash_with_seed(int64_t value, int64_t seed);
 
+bool IsVariableRefArray(const paddle::Tensor& tensor);
+
+std::vector<paddle::Tensor> DereferenceTensors(
+    const std::vector<paddle::Tensor*>& tensor_ptr);
 }  // namespace egr::to_static
