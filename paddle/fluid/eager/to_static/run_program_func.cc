@@ -17,6 +17,7 @@
 #include <vector>
 
 #include "paddle/fluid/eager/autograd_meta.h"
+#include "paddle/fluid/eager/to_static/run_program_impl.h"
 #include "paddle/fluid/eager/to_static/run_program_utils.h"
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/framework/tensor_ref_array.h"
