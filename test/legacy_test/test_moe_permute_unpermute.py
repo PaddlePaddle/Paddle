@@ -15,12 +15,11 @@
 import itertools
 import unittest
 
-import numpy as np
-
 import paddle
 from paddle.nn.functional import moe_permute, moe_unpermute
 
-REP=100
+REP = 100
+
 
 def fabricate_dispatch_result(
     seqlen,
@@ -104,6 +103,7 @@ class TestFusedMoePermuteUnpermute(unittest.TestCase):
 
     def test_permute_unpermute_consistency(self):
         from paddle.base import core
+
         core.nvprof_start()
         """Test that permute + unpermute recovers original tensors."""
         for dt, expert_num, topk in itertools.product(
@@ -128,7 +128,9 @@ class TestFusedMoePermuteUnpermute(unittest.TestCase):
                     scale = None
 
                 for i in range(REP):
-                    core.nvprof_nvtx_push(f"permute_expert{expert_num}_topk{topk}")
+                    core.nvprof_nvtx_push(
+                        f"permute_expert{expert_num}_topk{topk}"
+                    )
                     # Permute step
                     (
                         unzipped_tokens,
@@ -148,12 +150,14 @@ class TestFusedMoePermuteUnpermute(unittest.TestCase):
 
                 for i in range(REP):
                     # Unpermute step
-                    core.nvprof_nvtx_push(f"unpermute_expert{expert_num}_topk{topk}")
+                    core.nvprof_nvtx_push(
+                        f"unpermute_expert{expert_num}_topk{topk}"
+                    )
                     unzipped_tokens_recovered, expert_prob_topk_recovered = (
                         moe_unpermute(
-                            (unzipped_tokens * unzipped_probs.unsqueeze(-1)).astype(
-                                "bfloat16"
-                            ),
+                            (
+                                unzipped_tokens * unzipped_probs.unsqueeze(-1)
+                            ).astype("bfloat16"),
                             zipped_expertwise_rowmap,
                             expert_routemap_topk,
                             unzipped_probs,
