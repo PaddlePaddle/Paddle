@@ -114,8 +114,9 @@ struct LogAddExp {
   template <typename T>
   __host__ __device__ __forceinline__ T operator()(const T& a,
                                                    const T& b) const {
-    return std::log(1 + std::exp(std::min(a, b) - std::max(a, b))) +
-           std::max(a, b);
+    T min_val = std::min(a, b);
+    T max_val = std::max(a, b);
+    return std::log1p(std::exp(min_val - max_val)) + max_val;
   }
 };
 
