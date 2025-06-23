@@ -38,11 +38,10 @@ function parallel_test_base_xpu() {
     ========================================
 EOF
 
-#set +x
+set +x
         echo "Starting running xpu tests"
         export XPU_OP_LIST_DIR=$tmp_dir
         ut_startTime_s=`date +%s`
-        sleep 3d
         get_quickly_disable_ut||disable_ut_quickly='disable_ut'   # indicate whether the case was in quickly disable list
         get_multi_card_ut_list_for_xpu
         test_cases=$(ctest -N -V -E "$disable_ut_quickly|$multi_card_ut_list_for_xpu")        # cases list which would be run exclusively
