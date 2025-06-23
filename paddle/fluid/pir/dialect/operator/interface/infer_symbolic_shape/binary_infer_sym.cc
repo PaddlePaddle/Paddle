@@ -704,14 +704,23 @@ bool DotOpInferSymbolicShape(pir::Operation *op,
                         y_rank,
                         x_rank));
   for (size_t i = 0; i < x_rank; ++i) {
+    if (x_shape[i] == 0 || y_shape[i] == 0) {
+      continue;
+    }
     infer_context->AddEqualCstr(x_shape[i], y_shape[i]);
   }
   // Dot OP require both inputs should have the same shape
 
-  x_shape.erase(x_shape.end() - 1);
-  auto output_shape =
-      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(x_shape)};
-  infer_context->SetShapeOrDataForValue(op->result(0), output_shape);
+  auto out_shape = x_shape;
+  // The output dims need to be modified.
+  if (x_rank == 2 && x_shape[0] != 0 && y_shape[0] == 0) {
+    out_shape[0] = symbol::DimExpr{0};
+  }
+  out_shape.erase(out_shape.end() - 1);
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(out_shape)});
   return true;
 }
 

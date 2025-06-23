@@ -43,10 +43,19 @@ class TestNoNeedBuffer(Dy2StTestBase):
         np.testing.assert_allclose(static_res.numpy(), dygraph_res.numpy())
 
         _, partial_program_layer = static_fn.get_concrete_program(input)
-        no_need_buffers = partial_program_layer.program.program_attr[
-            "no_need_buffers"
+        named_values = (
+            partial_program_layer.program.forward_program._list_named_vars()
+        )
+        no_need_buffers_names = partial_program_layer.program.program_attr[
+            "no_need_buffers_names"
+        ]
+        no_need_buffers = [
+            value := named_values.get(no_need_buffer_name, None)
+            for no_need_buffer_name in no_need_buffers_names
         ]
         for no_need_buffer_value in no_need_buffers:
+            if no_need_buffer_value is None:
+                continue
             defining_op = no_need_buffer_value.get_defining_op()
             # y = x + 1, it's defining op is `pd_op.scale`
             if defining_op is not None and defining_op.name() == 'pd_op.scale':

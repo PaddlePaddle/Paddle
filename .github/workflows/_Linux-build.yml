@@ -154,6 +154,7 @@ jobs:
           mkdir -p /root/.cache/build
           mkdir -p /root/.ccache/build
           source ${{ github.workspace }}/../../../proxy
+          bash ${ci_scripts}/cmake-predownload.sh
           bash ${ci_scripts}/run_setup.sh bdist_wheel
           '
 

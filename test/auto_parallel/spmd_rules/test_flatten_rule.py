@@ -145,9 +145,12 @@ class TestFlattenSPMDRule(unittest.TestCase):
         inferred_output_dist_attrs = result_dist_attrs[1]
 
         self.assertEqual(
-            inferred_input_dist_attrs[0].dims_mapping, [1, -1, -1, -1]
+            inferred_input_dist_attrs[0].multi_dims_mapping,
+            [[1, 0], [], [], []],
         )
-        self.assertEqual(inferred_output_dist_attrs[0].dims_mapping, [1])
+        self.assertEqual(
+            inferred_output_dist_attrs[0].multi_dims_mapping, [[1, 0]]
+        )
 
         # shape: [8, 16, 8, 24] --> [8, 16 * 8 * 24]
         # dims_mapping: [-1, -1, 0, 1] --> [-1, -1, -1, -1] ([-1, -1])

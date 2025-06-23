@@ -17,6 +17,7 @@
 #include <vector>
 
 #include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/tile_grad_kernel.h"
@@ -33,20 +34,49 @@ void TileBackward(const Context& dev_ctx,
   size_t reduce_size = reduce_dims_vec.size();
   dev_ctx.template Alloc<T>(x_grad);
 
-  auto eigen_x_grad = EigenVector<T>::Flatten(*x_grad);
-  Eigen::DSizes<Eigen::DenseIndex, Dims * 2> reshape_dims;
-  for (size_t i = 0; i < reshape_size; ++i) {
-    reshape_dims[i] = reshape_dims_vec[i];
-  }
-  Eigen::DSizes<Eigen::DenseIndex, Dims> reduce_dims;
-  for (size_t i = 0; i < reduce_size; ++i) {
-    reduce_dims[i] = reduce_dims_vec[i];
-  }
+  if constexpr (std::is_same_v<T, dtype::float16> ||
+                std::is_same_v<T, dtype::bfloat16>) {
+    const DenseTensor out_grad_fp32 =
+        phi::Cast<T, Context>(dev_ctx, out_grad, DataType::FLOAT32);
+    DenseTensor x_grad_fp32;
+    x_grad_fp32.Resize(x_grad->dims());
+    dev_ctx.template Alloc<float>(&x_grad_fp32);
+    auto eigen_x_grad = EigenVector<float>::Flatten(x_grad_fp32);
+    Eigen::DSizes<Eigen::DenseIndex, Dims * 2> reshape_dims;
+    for (size_t i = 0; i < reshape_size; ++i) {
+      reshape_dims[i] = reshape_dims_vec[i];
+    }
+    Eigen::DSizes<Eigen::DenseIndex, Dims> reduce_dims;
+    for (size_t i = 0; i < reduce_size; ++i) {
+      reduce_dims[i] = reduce_dims_vec[i];
+    }
+    const auto eigen_out_grad_fp32 = EigenVector<float>::Flatten(out_grad_fp32);
+    auto& place = *dev_ctx.eigen_device();
+    funcs::EigenBroadcastGrad<std::decay_t<decltype(place)>, float, Dims>::Eval(
+        place, eigen_x_grad, eigen_out_grad_fp32, reduce_dims, reshape_dims);
+    if constexpr (std::is_same_v<T, dtype::float16>) {
+      phi::CastKernel<float, Context>(
+          dev_ctx, x_grad_fp32, DataType::FLOAT16, x_grad);
+    } else {
+      phi::CastKernel<float, Context>(
+          dev_ctx, x_grad_fp32, DataType::BFLOAT16, x_grad);
+    }
+  } else {
+    auto eigen_x_grad = EigenVector<T>::Flatten(*x_grad);
+    Eigen::DSizes<Eigen::DenseIndex, Dims * 2> reshape_dims;
+    for (size_t i = 0; i < reshape_size; ++i) {
+      reshape_dims[i] = reshape_dims_vec[i];
+    }
+    Eigen::DSizes<Eigen::DenseIndex, Dims> reduce_dims;
+    for (size_t i = 0; i < reduce_size; ++i) {
+      reduce_dims[i] = reduce_dims_vec[i];
+    }
 
-  auto eigen_out_grad = EigenVector<T>::Flatten(out_grad);
-  auto& place = *dev_ctx.eigen_device();
-  funcs::EigenBroadcastGrad<std::decay_t<decltype(place)>, T, Dims>::Eval(
-      place, eigen_x_grad, eigen_out_grad, reduce_dims, reshape_dims);
+    auto eigen_out_grad = EigenVector<T>::Flatten(out_grad);
+    auto& place = *dev_ctx.eigen_device();
+    funcs::EigenBroadcastGrad<std::decay_t<decltype(place)>, T, Dims>::Eval(
+        place, eigen_x_grad, eigen_out_grad, reduce_dims, reshape_dims);
+  }
 }
 
 template <typename T, typename Context>

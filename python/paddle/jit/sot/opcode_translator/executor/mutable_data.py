@@ -148,6 +148,9 @@ class MutableData(Generic[InnerMutableDataT]):
     def has_changed(self):
         return self.version != 0
 
+    def check_changed(self, key: Any) -> bool:
+        raise NotImplementedError
+
     def rollback(self, version: int):
         assert version <= self.version
         self.records[:] = self.records[:version]
@@ -181,6 +184,17 @@ class MutableDictLikeData(MutableData["dict[str, Any]"]):
 
     def clear_read_cache(self):
         self.read_cache.clear()
+
+    def check_changed(self, key: Any) -> bool:
+        if not self.has_changed:
+            return False
+        for mutation in self.records:
+            if (
+                isinstance(mutation, (MutationNew, MutationDel, MutationSet))
+                and mutation.key == key
+            ):
+                return True
+        return False
 
     def get(self, key: Any):
         # TODO(SigureMo): Optimize performance of this.
@@ -239,6 +253,9 @@ class MutableListLikeData(MutableData["list[Any]"]):
 
     def clear_read_cache(self):
         self.read_cache[:] = []
+
+    def check_changed(self, key: Any) -> bool:
+        return self.has_changed
 
     @property
     def length(self):
