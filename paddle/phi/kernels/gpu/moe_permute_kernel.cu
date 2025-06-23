@@ -54,6 +54,7 @@ __global__ void tokens_unzip_stable_kernel(
     local_expert_offsets[i] = expert_base_offset[i];
   }
 
+  // Expertwise deterministic job scheduling
   if (threadIdx.x < num_experts) {
     int local_expert_rowmap[CUMSUM_BLOCK_SIZE];
     probs_T local_expert_probs[CUMSUM_BLOCK_SIZE];
