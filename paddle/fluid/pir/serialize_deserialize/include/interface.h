@@ -40,10 +40,10 @@ namespace pir {
  */
 void IR_API WriteModule(const pir::Program& program,
                         const std::string& file_path,
-                        uint64_t pir_version,
-                        bool overwrite,
+                        bool overwrite = true,
                         bool readable = false,
-                        bool trainable = true);
+                        bool trainable = true,
+                        int64_t pir_version = -1);
 
 /**
  * @brief Gets a PIR program from the specified file path.

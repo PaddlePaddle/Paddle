@@ -201,9 +201,10 @@ def unfold(
                 "paddings should either be an integer or a list/tuple of 2 or 4 integers"
             )
     else:
-        raise ValueError(
-            "Unexpected type of paddings, it should be either an integer or a list/tuple"
-            "of 2 or 4 integers"
+        raise NotSupportedTensorArgumentError(
+            "Unexpected type of paddings, it should be either an integer or a list/tuple "
+            "of 2 or 4 integers",
+            "paddings",
         )
 
     if in_dynamic_or_pir_mode():
@@ -2226,9 +2227,15 @@ def cosine_similarity(
             [ 0.97689527,  0.99996042, -0.55138415])
 
     """
+    bs = paddle.broadcast_shape([x1.shape[axis]], [x2.shape[axis]])
     w12 = sum(paddle.multiply(x1, x2), axis=axis)
     w1 = sum(paddle.multiply(x1, x1), axis=axis)
     w2 = sum(paddle.multiply(x2, x2), axis=axis)
+    m1, m2 = bs[0] / x1.shape[axis], bs[0] / x2.shape[axis]
+    if m1 != 1:
+        w1 = w1 * m1
+    if m2 != 1:
+        w2 = w2 * m2
     n12 = sqrt(clip(w1 * w2, min=eps * eps))
     cos_sim = w12 / n12
     return cos_sim

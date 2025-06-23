@@ -1,0 +1,80 @@
+name: Check version equality on release branch
+
+on:
+  create:
+    branches:
+      - 'release/**'
+  workflow_dispatch:
+
+jobs:
+  check-version-and-create-issue:
+    runs-on: ubuntu-latest
+    if: github.ref_type == 'branch'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Check DEVELOP_VERSION and RELEASE_VERSION equality
+        id: check_versions
+        run: |
+          FILE="paddle/fluid/pir/serialize_deserialize/CMakeLists.txt"
+          if [ ! -f "$FILE" ]; then
+            echo "file_exists=false" >> "$GITHUB_OUTPUT"
+            echo "equal=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          else
+            echo "file_exists=true" >> "$GITHUB_OUTPUT"
+          fi
+
+          develop_version=$(grep -oP '(?<=add_definitions\(-DDEVELOP_VERSION=)[0-9]+' "$FILE")
+          release_version=$(grep -oP '(?<=add_definitions\(-DRELEASE_VERSION=)[0-9]+' "$FILE")
+
+          echo "Develop version: $develop_version"
+          echo "Release version: $release_version"
+
+          echo "develop_version=$develop_version" >> "$GITHUB_OUTPUT"
+          echo "release_version=$release_version" >> "$GITHUB_OUTPUT"
+
+          if [ "$develop_version" = "$release_version" ]; then
+            echo "equal=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "equal=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create Issue if versions not equal
+        if: steps.check_versions.outputs.equal == 'false'
+        uses: actions/github-script@v7
+        env:
+          DEVELOP_VERSION: ${{ steps.check_versions.outputs.develop_version }}
+          RELEASE_VERSION: ${{ steps.check_versions.outputs.release_version }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const branchName = context.ref.replace('refs/heads/', '');
+            const developVersion = parseInt(process.env.DEVELOP_VERSION);
+            const releaseVersion = parseInt(process.env.RELEASE_VERSION);
+            const issueTitle = `DEVELOP_VERSION and RELEASE_VERSION mismatch in paddle/fluid/pir/serialize_deserialize/CMakeLists.txt (${branchName})`;
+            const issueBody =
+              `Hello, in the new branch \`${branchName}\`, the \`DEVELOP_VERSION\` and \`RELEASE_VERSION\` values in \`paddle/fluid/pir/serialize_deserialize/CMakeLists.txt\` are inconsistent. Please check.\n\n` +
+              `**Current values:**\n` +
+              `- DEVELOP_VERSION: \`${developVersion}\`\n` +
+              `- RELEASE_VERSION: \`${releaseVersion}\`\n\n` +
+              `**Recommended update (apply to both \`develop\` and \`release\` branches):**\n` +
+              `\`\`\`\n` +
+              `DEVELOP_VERSION=${releaseVersion + 1}\n` +
+              `RELEASE_VERSION=${releaseVersion + 1}\n` +
+              `\`\`\`\n\n` +
+              `Also, please remember to update the corresponding YAML files under:\n` +
+              `\`paddle/fluid/pir/serialize_deserialize/patch\`\n`;
+            const issueResult = await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: issueTitle,
+              body: issueBody,
+            });
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueResult.data.number,
+              body: 'cc @changeyoung98 @xiaoguoguo626807 @goocody  请尽快处理上述版本不一致问题，谢谢。'
+            });

@@ -61,6 +61,7 @@ from .transformers import DygraphToStaticAst
 from .utils import (
     ALREADY_D2S,
     NO_SHAPE_VAR_TYPE,
+    TransformOptions,
     ast_to_func,
     backend_guard,
     cuda_pinned_tensors_move_to_excepted_place,
@@ -70,6 +71,7 @@ from .utils import (
     make_hashable,
     prim_or_cinn_is_enabled,
     type_name,
+    use_specialized_device,
 )
 
 if TYPE_CHECKING:
@@ -85,8 +87,6 @@ __all__ = []
 # For each traced function, we set `max_traced_program_count` = 10 to consider caching performance.
 # Once exceeding the threshold, we will raise warning to users to make sure the conversion is as expected.
 MAX_TRACED_PROGRAM_COUNT = 10
-
-CONVERSION_OPTIONS = "__jst_not_to_static"
 
 
 def synchronized(func):
@@ -252,12 +252,13 @@ def convert_to_static(function):
     if getattr(function, ALREADY_D2S, None):
         return function
 
-    # Return directly if decorated with @not_to_static and DO NOT Cache it
-    options = getattr(function, CONVERSION_OPTIONS, None)
+    # Return directly if decorated with @jit.marker.unified and DO NOT Cache it
     # or ignore paddle api
-    need_skip = (options is not None and options.not_convert) or is_paddle_func(
-        function
-    )
+    need_skip = (
+        not TransformOptions.check_fn_need_transform(
+            function, TransformOptions.ToStaticMode.AST
+        )
+    ) or is_paddle_func(function)
     if need_skip:
         return function.__func__ if inspect.ismethod(function) else function
 
@@ -765,7 +766,8 @@ class SymbolicStaticFunction(StaticFunction):
         from ..sot import symbolic_translate
 
         args, kwargs = self._function_spec.unified_args_and_kwargs(args, kwargs)
-        cuda_pinned_tensors_move_to_excepted_place(args)
+        if not use_specialized_device():
+            cuda_pinned_tensors_move_to_excepted_place(args)
 
         (
             input_args_with_spec,
@@ -1270,9 +1272,10 @@ class ConcreteProgram:
         )
 
         with ir_static.program_guard(main_program, startup_program):
-            with to_static_mode_guard(
-                is_to_static=True
-            ), static_op_arg_cast_guard(_convert_into_value):
+            with (
+                to_static_mode_guard(is_to_static=True),
+                static_op_arg_cast_guard(_convert_into_value),
+            ):
                 # 1. Adds `paddle.static.data` layers for input if needed
                 static_inputs, program_inputs = (
                     func_spec.pir_to_static_inputs_with_spec(
@@ -1293,12 +1296,10 @@ class ConcreteProgram:
                     )
 
                 # 2. Builds program only once and returns the output Variables.
-                with param_guard(
-                    get_parameters(class_instance, True)
-                ), param_guard(
-                    get_buffers(class_instance, True)
-                ), backend_guard(
-                    backend
+                with (
+                    param_guard(get_parameters(class_instance, True)),
+                    param_guard(get_buffers(class_instance, True)),
+                    backend_guard(backend),
                 ):
                     try:
                         # only for jit.save, do nothing while train and eval process
@@ -1404,9 +1405,10 @@ class ConcreteProgram:
                     )
 
                 # 2. Builds program only once and returns the output Variables.
-                with param_guard(
-                    get_parameters(class_instance, True)
-                ), param_guard(get_buffers(class_instance, True)):
+                with (
+                    param_guard(get_parameters(class_instance, True)),
+                    param_guard(get_buffers(class_instance, True)),
+                ):
                     try:
                         # only for jit.save, do nothing while train and eval process
                         inputs = hook_helper.apply_pre_hooks(static_inputs)

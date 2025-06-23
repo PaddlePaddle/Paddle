@@ -19,7 +19,7 @@ namespace phi {
 namespace fusion {
 
 template <typename T, typename Context>
-void AddActXPUKernel(const Context& ctx,
+void AddActXPUKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      const paddle::optional<DenseTensor>& x_max,
                      const DenseTensor& y,
@@ -35,14 +35,14 @@ void AddActXPUKernel(const Context& ctx,
   auto* y_data = reinterpret_cast<const XPUType*>(y.data<T>());
   const float* y_max_data =
       y_max.get_ptr() == nullptr ? nullptr : y_max.get_ptr()->data<float>();
-  auto* out_data = reinterpret_cast<XPUType*>(ctx.template Alloc<T>(out));
+  auto* out_data = reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(out));
 
   std::vector<int64_t> x_shape = common::vectorize(x.dims());
   std::vector<int64_t> y_shape = common::vectorize(y.dims());
   xpu::Activation_t act(static_cast<xpu::Activation_t::act_enum>(act_type));
   int r =
       xpu::add_activation_fusion<XPUType, XPUType, XPUType>(  // TX/TY/TZ/TID
-          /* baidu::xpu::api::Context* ctx */ ctx.x_context(),
+          /* baidu::xpu::api::Context* ctx */ dev_ctx.x_context(),
           /* const TX* x */ x_data,
           /* const TY* y */ y_data,
           /* TZ* z */ out_data,
@@ -50,7 +50,7 @@ void AddActXPUKernel(const Context& ctx,
           /* const std::vector<int64_t>& y_shape */ y_shape,
           /* const float* max_x */ x_max_data,
           /* const float* max_y */ y_max_data,
-          /* float* max_z */ ctx.template Alloc<float>(out_max),
+          /* float* max_z */ dev_ctx.template Alloc<float>(out_max),
           /* const baidu::xpu::api::Activation_t& act */ act);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "add_act_xpu");
 }

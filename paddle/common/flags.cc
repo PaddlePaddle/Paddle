@@ -434,6 +434,24 @@ PHI_DEFINE_EXPORTED_bool(
 
 /**
  * Memory related FLAG
+ * Name: FLAGS_enable_async_fast_gc
+ * Since Version: 3.1.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: Enable async fast garbage collection mode. If enabled, allocation will
+ *       be released asynchronously, which makes the garbage collection process
+ *       faster. This flag is valid when fast_eager_deletion_mode is enabled.
+ */
+PHI_DEFINE_EXPORTED_bool(
+    enable_async_fast_gc,
+    false,
+    "Enable async fast garbage collection mode. If enabled, allocation will "
+    "be released asynchronously, which make the garbage collection process "
+    "non-blocking. This flag is only valid when FLAGS_fast_eager_deletion_mode "
+    "is true.");
+
+/**
+ * Memory related FLAG
  * Name: FLAGS_memory_fraction_of_eager_deletion
  * Since Version: 1.4
  * Value Range: double [0.0, 1.0], default=1.0
@@ -1178,6 +1196,19 @@ PHI_DEFINE_EXPORTED_bool(
     "release graph-owned blocks that have not freed before relaunching.");
 
 /*
+ * CUDA Graph related FLAG
+ * Name: FLAGS_cuda_graph_blacklist
+ * Since Version: 3.1
+ * Value Range: string, default=""
+ * Example: FLAGS_cuda_graph_blacklist="op1,op2,op3" would
+ * blacklist op1, op2, op3 from being captured in CUDA Graph.
+ */
+PHI_DEFINE_EXPORTED_string(
+    cuda_graph_blacklist,
+    "",
+    "CUDA Graph blacklist, split by ',', e.g., 'op1,op2,op3'");
+
+/*
  * Executor related FLAG
  * Name: FLAGS_executor_log_deps_every_microseconds
  * Since Version: 2.5
@@ -1401,6 +1432,16 @@ PHI_DEFINE_EXPORTED_bool(enable_fusion_fallback,
 PHI_DEFINE_EXPORTED_bool(enable_fusion_result_check,
                          false,
                          "Whether enable fusion result check in cinn.");
+
+/**
+ * CINN all horizontal groups merge FLAG
+ * Name: FLAGS_merge_all_horizontal_groups
+ * Since Version: 3.0
+ * Value Range: bool, default=false
+ */
+PHI_DEFINE_EXPORTED_bool(merge_all_horizontal_groups,
+                         false,
+                         "Whether enable merge all horizontal groups in cinn.");
 
 /**
  * Conv Search cache max number related FLAG
@@ -1788,6 +1829,11 @@ PHI_DEFINE_EXPORTED_string(
     "Specify root dir path for nvidia site-package, such as "
     "python3.9/site-packages/nvidia");
 
+PHI_DEFINE_EXPORTED_string(cuda_cccl_dir,  // NOLINT
+                           "",
+                           "Specify root dir path for nv/target, such as "
+                           "python3.9/site-packages/nvidia/cuda_cccl/include/");
+
 PHI_DEFINE_EXPORTED_string(
     cudnn_dir,  // NOLINT
     "",
@@ -1867,6 +1913,19 @@ PHI_DEFINE_EXPORTED_bool(
 PHI_DEFINE_EXPORTED_bool(enable_cse_in_dy2st,
                          true,
                          "Apply CSE optimize pass in Dy2St");
+
+/**
+ * Run Dy2St in specialized device
+ * Name: specialize_device_in_dy2st
+ * Since Version: 3.1.0 Beta
+ * Value Range: bool, default=false
+ * Example:
+ * Note: If True, will specialize device for DataOp's place based on input
+ * tensor's place before lowering.
+ */
+PHI_DEFINE_EXPORTED_bool(specialize_device_in_dy2st,
+                         false,
+                         "Run Dy2St in specialized device");
 
 /**
  * Max count of eliminate redundant computation in CSE, for debug usage
@@ -2050,6 +2109,11 @@ PHI_DEFINE_EXPORTED_int64(multi_block_attention_min_partition_size,
 PHI_DEFINE_EXPORTED_bool(save_cf_stack_op,
                          false,
                          "Save cf stack op for higher-order derivatives.");
+
+PHI_DEFINE_EXPORTED_bool(
+    enable_auto_growth_allocator_add_lock,
+    false,
+    "Enable add lock when call AutoGrowthBestFitAllocator::ReleaseImpl");
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 /**

@@ -34,6 +34,9 @@ void ActivationGPUImpl(const Context& dev_ctx,
   PADDLE_ENFORCE_NOT_NULL(out,
                           errors::NotFound("Output Out should not be nullptr"));
   dev_ctx.template Alloc<T>(out);
+  if (out->numel() == 0) {
+    return;
+  }
   std::vector<const DenseTensor*> ins = {&x};
   std::vector<DenseTensor*> outs = {out};
   funcs::ElementwiseKernel<T>(dev_ctx, ins, &outs, functor);
@@ -205,6 +208,13 @@ void PowKernel(const Context& dev_ctx,
                const DenseTensor& x,
                const Scalar& factor,
                DenseTensor* out) {
+  if constexpr (std::is_integral<T>::value) {
+    PADDLE_ENFORCE_GE(
+        factor.to<float>(),
+        0,
+        common::errors::InvalidArgument(
+            "Integers to negative integer powers are not allowed."));
+  }
   if (factor.to<float>() == 0) {
     std::vector<int64_t> vec_dims = common::vectorize(out->dims());
     phi::Full<T, Context>(

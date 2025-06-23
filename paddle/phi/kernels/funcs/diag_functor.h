@@ -25,8 +25,8 @@
 namespace phi {
 namespace funcs {
 
-inline int ComputeStride(int axis, phi::DDim dims) {
-  int size = 1;
+inline int64_t ComputeStride(int axis, phi::DDim dims) {
+  int64_t size = 1;
   for (int i = axis + 1; i < dims.size(); i++) {
     size *= dims[i];
   }

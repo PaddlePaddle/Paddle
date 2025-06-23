@@ -73,8 +73,12 @@ function(cinn_cc_test TARGET_NAME)
     add_executable(${TARGET_NAME} ${cinn_cc_test_SRCS})
     get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
     target_link_libraries(${TARGET_NAME} ${os_dependency_modules}
-                          cinn_gtest_main gtest glog ${cinn_cc_test_DEPS})
-    add_dependencies(${TARGET_NAME} cinn_gtest_main gtest glog
+                          paddle_gtest_main gtest glog ${cinn_cc_test_DEPS})
+    if(WITH_SHARED_PHI)
+      target_link_libraries(${TARGET_NAME} -Wl,--as-needed phi_core phi_gpu
+                            -Wl,--no-as-needed)
+    endif()
+    add_dependencies(${TARGET_NAME} paddle_gtest_main gtest glog
                      ${cinn_cc_test_DEPS})
 
     add_test(
@@ -159,13 +163,18 @@ function(cinn_nv_test TARGET_NAME)
     target_link_libraries(
       ${TARGET_NAME}
       ${cinn_nv_test_DEPS}
-      cinn_gtest_main
+      paddle_gtest_main
       gtest
       ${os_dependency_modules}
       ${CUDNN_LIBRARY}
       ${CUBLAS_LIBRARIES}
       ${CUDA_LIBRARIES})
-    add_dependencies(${TARGET_NAME} ${cinn_nv_test_DEPS} cinn_gtest_main gtest)
+    if(WITH_SHARED_PHI)
+      target_link_libraries(${TARGET_NAME} -Wl,--as-needed phi_core phi_gpu
+                            -Wl,--no-as-needed)
+    endif()
+    add_dependencies(${TARGET_NAME} ${cinn_nv_test_DEPS} paddle_gtest_main
+                     gtest)
     common_link(${TARGET_NAME})
     add_test(
       NAME ${TARGET_NAME}
@@ -423,9 +432,9 @@ function(download_and_uncompress INSTALL_DIR URL FILENAME)
     ${EXTERNAL_PROJECT_LOG_ARGS}
     PREFIX ${INSTALL_DIR}
     DOWNLOAD_COMMAND
-      wget --no-check-certificate -q -O ${INSTALL_DIR}/${FILENAME}
-      ${URL}/${FILENAME} && ${CMAKE_COMMAND} -E tar xzf
-      ${INSTALL_DIR}/${FILENAME}
+      /bin/sh -c
+      "[ -f '${FILENAME}' ] && echo 'skip download' || wget --no-check-certificate -q -O '${FILENAME}' '${URL}/${FILENAME}'"
+      && ${CMAKE_COMMAND} -E tar xzf ${FILENAME}
     DOWNLOAD_DIR ${INSTALL_DIR}
     DOWNLOAD_NO_PROGRESS 1
     CONFIGURE_COMMAND ""

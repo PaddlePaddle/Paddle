@@ -12,8 +12,6 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  Dockerfile: Dockerfile.cuda117_cudnn8_gcc82_ubuntu18_coverage
-  docker_image: 5a60bb165c34
   PR_ID: ${{ github.event.pull_request.number }}
   COMMIT_ID: ${{ github.event.pull_request.head.sha }}
   TASK: paddle-CI-${{ github.event.pull_request.number }}-coverage
@@ -55,8 +53,8 @@ jobs:
 
     steps:
       - name: Check docker image and run container
-        if: steps.check-bypass.outputs.can-skip != 'true'
         env:
+          CACHE_DIR: "/root/.cache/coverage"
           CCACHE_DIR: "/root/.ccache/coverage"
           FLAGS_fraction_of_gpu_memory_to_use: 0.15
           CTEST_PARALLEL_LEVEL: 2
@@ -69,6 +67,8 @@ jobs:
           CUDA_VISIBLE_DEVICES: 0,1
           WITH_DISTRIBUTE: "ON"
           PRECISION_TEST: "ON"
+          WITH_PIP_CUDA_LIBRARIES: "OFF"
+          WITH_FLAGCX: "ON"
           LITE_GIT_TAG: develop
           WITH_UNITY_BUILD: "ON"
           PY_VERSION: 3.9
@@ -100,6 +100,7 @@ jobs:
             -e work_dir \
             -e PADDLE_ROOT \
             -e GIT_PR_ID \
+            -e CACHE_DIR \
             -e CCACHE_DIR \
             -e ci_scripts \
             -e FLAGS_fraction_of_gpu_memory_to_use \
@@ -112,6 +113,8 @@ jobs:
             -e PADDLE_VERSION \
             -e WITH_DISTRIBUTE \
             -e PRECISION_TEST \
+            -e WITH_PIP_CUDA_LIBRARIES \
+            -e WITH_FLAGCX \
             -e LITE_GIT_TAG \
             -e WITH_UNITY_BUILD \
             -e PY_VERSION \
@@ -143,7 +146,7 @@ jobs:
           git checkout test
           echo "Pull upstream $BRANCH"
           source ${{ github.workspace }}/../../../proxy
-          git pull upstream $BRANCH --no-edit
+          bash ci/git_pull.sh $BRANCH
           '
 
       - name: Check bypass
@@ -160,6 +163,7 @@ jobs:
           mkdir -p /home/data/cfs/.cache/coverage
           mkdir -p /home/data/cfs/.ccache/coverage
           source ${{ github.workspace }}/../../../proxy
+          bash ${ci_scripts}/cmake-predownload.sh
           bash $ci_scripts/coverage_build.sh bdist_wheel
           '
 
@@ -206,7 +210,7 @@ jobs:
         if: steps.check-bypass.outputs.can-skip != 'true'
         env:
           home_path: ${{ github.workspace }}/..
-          bos_file: ${{ github.workspace }}/../bos/BosClient.py
+          bos_file: ${{ github.workspace }}/../bos_retry/BosClient.py
           paddle_whl: paddlepaddle_gpu-0.0.0-cp39-cp39-linux_x86_64.whl
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
@@ -217,9 +221,9 @@ jobs:
           export AK=paddle
           export SK=paddle
           if [ ! -f "${{ env.bos_file }}" ]; then
-            wget -q --no-proxy -O ${{ env.home_path }}/bos_new.tar.gz https://xly-devops.bj.bcebos.com/home/bos_new.tar.gz --no-check-certificate
-            mkdir ${{ env.home_path }}/bos
-            tar xf ${{ env.home_path }}/bos_new.tar.gz -C ${{ env.home_path }}/bos
+            wget -q --no-proxy -O ${{ env.home_path }}/bos_retry.tar.gz https://xly-devops.bj.bcebos.com/home/bos_retry.tar.gz --no-check-certificate
+            mkdir ${{ env.home_path }}/bos_retry
+            tar xf ${{ env.home_path }}/bos_retry.tar.gz -C ${{ env.home_path }}/bos_retry
           fi
           cd /paddle/dist
           echo "Uploading coverage build size"
@@ -243,7 +247,7 @@ jobs:
 
   test:
     name: Coverage test
-    needs: build
+    needs: [build, build-docker]
     if: needs.build.outputs.can-skip != 'true'
     runs-on:
       group: BD_BJ-V100
@@ -255,7 +259,7 @@ jobs:
           FLAGS_fraction_of_gpu_memory_to_use: 0.15
           CTEST_PARALLEL_LEVEL: 2
           WITH_GPU: "ON"
-          CUDA_ARCH_NAME: Volta
+          CUDA_ARCH_NAME: Auto
           WITH_AVX: "ON"
           WITH_COVERAGE: "ON"
           COVERALLS_UPLOAD: "ON"
@@ -277,6 +281,7 @@ jobs:
         run: |
           container_name=${TASK}-$(date +%Y%m%d-%H%M%S)
           echo "container_name=${container_name}" >> ${{ github.env }}
+          docker_image=${{ needs.build-docker.outputs.docker_coverage_image }}
           docker run -d -t --gpus all --name ${container_name} \
             -v "/home/data/cfs:/home/data/cfs" \
             -v "/home/data/cfs/.cache:/root/.cache" \
@@ -332,7 +337,7 @@ jobs:
           source ${{ github.workspace }}/../../../proxy
           git checkout test
           echo "Pull upstream develop"
-          git pull upstream $BRANCH --no-edit
+          bash ci/git_pull.sh $BRANCH
           '
 
       - name: Test

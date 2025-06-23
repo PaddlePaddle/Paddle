@@ -601,6 +601,38 @@ Tensor full_like_decomp(const Tensor& x,
 }
 
 template <typename T>
+Tensor masked_fill_decomp(const Tensor& x,
+                          const Tensor& mask,
+                          const Tensor& v) {
+  if (has_dynamic_shape(x.shape()) || has_dynamic_shape(mask.shape())) {
+    // NOTE: use add operator to get broadcast shape implicitly,
+    // which is not efficient yet, should be improved in the future.
+    Tensor dummy_x =
+        backend::full_with_tensor<T>(shape64<T>(x), 0.0, x.dtype(), x.place());
+    Tensor dummy_y = backend::full_with_tensor<T>(
+        shape64<T>(mask), 0.0, x.dtype(), x.place());
+    Tensor dummy = dummy_x + dummy_y;
+    Tensor mask_expanded = backend::expand<T>(mask, shape64<T>(dummy));
+    Tensor v_expanded = backend::expand<T>(v, shape64<T>(dummy));
+    return where<T>(mask_expanded, v_expanded, x);
+
+  } else {
+    auto out_dims = phi::funcs::BroadcastTwoDims(x.dims(), mask.dims());
+    std::vector<int64_t> out_shape = common::vectorize(out_dims);
+    Tensor x_expanded = x;
+    if (x.dims() != out_dims) {
+      x_expanded = expand<T>(x_expanded, out_shape);
+    }
+    Tensor mask_expanded = mask;
+    if (mask.dims() != out_dims) {
+      mask_expanded = expand<T>(mask, out_shape);
+    }
+    Tensor v_expanded = expand<T>(v, out_shape);
+    return where<T>(mask_expanded, v_expanded, x_expanded);
+  }
+}
+
+template <typename T>
 std::tuple<Tensor, Tensor> dropout_decomp(
     const Tensor& x,
     const paddle::optional<Tensor>& seed_tensor,
@@ -679,8 +711,7 @@ Tensor gelu_decomp(const Tensor& x, bool approximate) {
     auto kAlpha =
         full_scalar<T>(PM_2_SQRTPI * PM_SQRT1_2, org_dtype, x.place());
     auto GELU_CONSTANT = full_scalar<T>(0.044715, org_dtype, x.place());
-    auto x_pow3 =
-        elementwise_pow<T>(x, full_scalar<T>(3, org_dtype, x.place()));
+    auto x_pow3 = x * x * x;
     auto tanh_out = tanh<T>(kAlpha * (x + x_pow3 * GELU_CONSTANT));
 
     auto res = x * half * (one + tanh_out);
@@ -909,7 +940,7 @@ Tensor flatten_decomp(const Tensor& x, int start_axis, int end_axis) {
       return reshape<T>(x, x_dim);
     }
 
-    int slice_numel = 1;
+    int64_t slice_numel = 1;
     for (int i = start_axis; i <= end_axis; ++i) {
       slice_numel *= x_dim[i];
     }

@@ -26,6 +26,7 @@
 #include "paddle/fluid/prim/api/generated_prim/prim_generated_api.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/int_array.h"
+#include "paddle/phi/kernels/funcs/common_infer_shape_functions.h"
 
 namespace paddle {
 namespace prim {

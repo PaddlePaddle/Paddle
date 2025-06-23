@@ -19,6 +19,7 @@
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 
 namespace phi {
 
@@ -147,6 +148,11 @@ void RoiAlignKernel(const Context& dev_ctx,
                     DenseTensor* out) {
   if (out->numel() == 0) {
     dev_ctx.template Alloc<T>(out);
+    return;
+  }
+  if (x.numel() == 0) {
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
     return;
   }
   auto in_dims = x.dims();

@@ -29,6 +29,10 @@ using gpuStream_t = cudaStream_t;
 using gpuStream_t = hipStream_t;
 #endif
 
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+#include "paddle/phi/backends/stream.h"
+#endif
+
 #include "paddle/common/layout.h"
 #include "paddle/common/macros.h"
 #include "paddle/phi/common/data_type.h"
@@ -430,6 +434,14 @@ class PADDLE_API Tensor final {
    * @return gpuStream_t
    */
   gpuStream_t stream() const;
+#elif defined(PADDLE_WITH_CUSTOM_DEVICE)
+  /**
+   * @brief Get the stream where the tensor is currently located
+   * This is a deprecated method and may be removed in the future!
+   *
+   * @return stream_t
+   */
+  phi::stream::stream_t stream() const;
 #endif
 
   /**

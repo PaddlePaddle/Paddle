@@ -55,7 +55,7 @@ void MaskedSelectKernel(const Context& dev_ctx,
                      static_cast<void*>(&out_size_cpu),
                      mask.place(),
                      static_cast<void*>(out_size),
-                     sizeof(int32_t));
+                     sizeof(int64_t));
   if (std::getenv("XPUSIM_SKIP_RUN") &&
       std::strcmp(std::getenv("XPUSIM_SKIP_RUN"), "1") == 0) {
     VLOG(3) << "WARNING: In the simulator mode, the variable out_size_cpu "

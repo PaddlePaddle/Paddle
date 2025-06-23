@@ -22,14 +22,14 @@
 namespace phi {
 
 template <typename T, typename Context>
-void ScatterKernel(const Context &ctx,
+void ScatterKernel(const Context &dev_ctx,
                    const DenseTensor &x,
                    const DenseTensor &index,
                    const DenseTensor &updates,
                    bool overwrite,
                    DenseTensor *out) {
   // In place output: Out = X, Out[Ids] = Updates
-  phi::Copy(ctx, x, ctx.GetPlace(), false, out);
+  phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
   // Apply ScatterUpdate: Out[index] = Updates[:]
   const auto &index_type = index.dtype();
   bool index_type_match =
@@ -44,15 +44,15 @@ void ScatterKernel(const Context &ctx,
                         phi::DataType::INT64));
   if (overwrite) {
     if (index_type == phi::DataType::INT32) {
-      phi::funcs::ScatterAssign<T, int32_t>(ctx, updates, index, out);
+      phi::funcs::ScatterAssign<T, int32_t>(dev_ctx, updates, index, out);
     } else {
-      phi::funcs::ScatterAssign<T, int64_t>(ctx, updates, index, out);
+      phi::funcs::ScatterAssign<T, int64_t>(dev_ctx, updates, index, out);
     }
   } else {
     if (index_type == phi::DataType::INT32) {
-      phi::funcs::ScatterAssignAdd<T, int32_t>(ctx, updates, index, out);
+      phi::funcs::ScatterAssignAdd<T, int32_t>(dev_ctx, updates, index, out);
     } else {
-      phi::funcs::ScatterAssignAdd<T, int64_t>(ctx, updates, index, out);
+      phi::funcs::ScatterAssignAdd<T, int64_t>(dev_ctx, updates, index, out);
     }
   }
 }

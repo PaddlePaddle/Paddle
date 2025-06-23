@@ -24,7 +24,7 @@ template <typename Context, typename T, typename InputT>
 void BincountInner(const Context& dev_ctx,
                    const DenseTensor& x,
                    const paddle::optional<DenseTensor>& weights,
-                   int minlength,
+                   int64_t minlength,
                    DenseTensor* out) {
   const DenseTensor* input = &x;
   DenseTensor* output = out;
@@ -48,7 +48,7 @@ void BincountInner(const Context& dev_ctx,
   int64_t output_size = static_cast<int64_t>(*std::max_element(
                             input_data, input_data + input_numel)) +
                         1L;
-  output_size = std::max(output_size, static_cast<int64_t>(minlength));
+  output_size = std::max(output_size, minlength);
 
   phi::DDim out_dim{output_size};
   output->Resize(out_dim);
@@ -89,7 +89,7 @@ void BincountKernel(const Context& dev_ctx,
                     const paddle::optional<DenseTensor>& weights,
                     const Scalar& minlength,
                     DenseTensor* out) {
-  int int_minlength = minlength.to<int>();
+  int64_t int_minlength = minlength.to<int64_t>();
   PADDLE_ENFORCE_GE(int_minlength,
                     0,
                     common::errors::InvalidArgument(

@@ -305,6 +305,7 @@ void dispatch(void* packed_recv_x,
               void* rdma_x,
               const void* x,
               const int64_t* topk_idx,
+              const float* expertwise_scale,
               int* next_clean,
               int num_next_clean_int,
               int num_tokens,
@@ -339,7 +340,8 @@ void combine(void* combined_x,
              int num_ranks,
              void* workspace,
              cudaStream_t stream,
-             int phases);
+             int phases,
+             bool zero_copy);
 
 }  // namespace internode_ll
 #endif  // PADDLE_WITH_NVSHMEM

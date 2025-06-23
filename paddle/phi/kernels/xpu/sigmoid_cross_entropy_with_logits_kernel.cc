@@ -36,9 +36,6 @@ void SigmoidCrossEntropyWithLogitsKernel(
     int ignore_index,
     DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
-  PADDLE_ENFORCE_EQ(x.place().GetType() == phi::AllocationType::XPU,
-                    true,
-                    errors::Unavailable("This kernel only runs on XPU."));
 
   dev_ctx.template Alloc<T>(out);
   xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
@@ -48,7 +45,7 @@ void SigmoidCrossEntropyWithLogitsKernel(
   auto pos_weight_data =
       (pos_weight.get_ptr() == nullptr ? nullptr
                                        : pos_weight.get_ptr()->data<T>());
-  // int paddle_sigmoid_cross_entropy_with_logits(Context* ctx, const T* x,
+  // int paddle_sigmoid_cross_entropy_with_logits(Context* xpu_ctx, const T* x,
   // const T* label, const T* pos_weight, T* y, int* hit, int ignore_index,
   // int64_t n);
   int r = xpu::paddle_sigmoid_cross_entropy_with_logits(

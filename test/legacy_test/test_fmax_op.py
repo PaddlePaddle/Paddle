@@ -139,11 +139,15 @@ class TestElementwiseFmaxOp(OpTest):
         # If x and y have the same value, the max() is not differentiable.
         # So we generate test data by the following method
         # to avoid them being too close to each other.
-        x = np.random.uniform(0.1, 1, [13, 17]).astype("float64")
-        sgn = np.random.choice([-1, 1], [13, 17]).astype("float64")
-        y = x + sgn * np.random.uniform(0.1, 1, [13, 17]).astype("float64")
+        self.init_shape()
+        x = np.random.uniform(0.1, 1, self.shape).astype("float64")
+        sgn = np.random.choice([-1, 1], self.shape).astype("float64")
+        y = x + sgn * np.random.uniform(0.1, 1, self.shape).astype("float64")
         self.inputs = {'X': x, 'Y': y}
         self.outputs = {'Out': np.fmax(self.inputs['X'], self.inputs['Y'])}
+
+    def init_shape(self):
+        self.shape = [13, 17]
 
     def test_check_output(self):
         """test_check_output"""
@@ -284,6 +288,39 @@ class TestFmaxBF16OP(OpTest):
         self.check_grad_with_place(
             place, ['X', 'Y'], 'Out', check_pir=True, check_prim_pir=True
         )
+
+
+class TestElementwiseFmaxOpZeroSize(TestElementwiseFmaxOp):
+    def init_shape(self):
+        self.shape = [0, 15]
+
+
+class TestElementwiseFmaxOpZeroSize1(TestElementwiseFmaxOp):
+    def init_shape(self):
+        self.shape = [0, 15, 0]
+
+
+class ApiFMaxTestZeroSize(unittest.TestCase):
+    """ApiFMaxTest"""
+
+    def setUp(self):
+        """setUp"""
+        if core.is_compiled_with_cuda():
+            self.place = core.CUDAPlace(0)
+        else:
+            self.place = core.CPUPlace()
+
+        self.input_x = np.random.rand(0, 15).astype("float32")
+        self.input_y = np.random.rand(0, 15).astype("float32")
+        self.input_z = np.random.rand(1, 15).astype("float32")
+        self.input_a = np.random.rand(15, 0).astype('int64')
+        self.input_b = np.random.rand(15, 0, 1).astype('int64')
+        self.input_c = np.random.rand(15, 0, 2).astype('int64')
+
+        self.np_expected1 = np.fmax(self.input_x, self.input_y)
+        self.np_expected2 = np.fmax(self.input_x, self.input_z)
+        self.np_expected3 = np.fmax(self.input_a, self.input_c)
+        self.np_expected4 = np.fmax(self.input_b, self.input_c)
 
 
 if __name__ == "__main__":

@@ -96,6 +96,7 @@ _INFERMETA_NEED_META_CONFIG = {
     'PyramidHashInferMeta',
     'SigmoidCrossEntropyWithLogitsInferMeta',
     'StackInferMeta',
+    'WeightOnlyLinearInferMeta',
     'YoloBoxPostInferMeta',
     'FusedConvInferMeta',
     # nullary.h
@@ -141,6 +142,8 @@ _INFERMETA_NEED_META_CONFIG = {
     'Pool2DInferMeta',
     'ReduceIntArrayAxisInferMetaBase',
     'ReduceIntArrayAxisInferMeta',
+    'StrictReduceIntArrayAxisInferMetaBase',
+    'StrictReduceIntArrayAxisInferMeta',
     'ReshapeInferMeta',
     'ReshapeWithXShapeInferMeta',
     'ReverseInferMeta',
