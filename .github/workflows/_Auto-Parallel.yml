@@ -43,7 +43,6 @@ jobs:
     steps:
       - name: Check docker image and run container
         env:
-          CACHE_DIR: /home/data/cfs/.cache
           FLAGS_dynamic_static_unified_comm: "True"
           python_version: "3.10"
           paddle_whl: https://paddle-github-action.bj.bcebos.com/PR/build/${{ github.event.pull_request.number }}/${{ github.event.pull_request.head.sha }}/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl
@@ -108,10 +107,6 @@ jobs:
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           ldconfig
           pip config set global.cache-dir "/home/.cache/pip"
-          ln -sf $(which python${python_version}) /usr/bin/python
-          '
-          docker exec -t ${{ env.container_name }} /bin/bash -c '
-          ldconfig
           set -e
           timeout 80m bash Paddle/ci/auto_parallel/ci_auto_parallel.sh ${paddle_whl}
           '
