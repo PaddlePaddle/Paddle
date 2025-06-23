@@ -845,6 +845,7 @@ void StridedCopyKernel(const Context& dev_ctx,
         CASE_VECSIZE(1);
         CASE_VECSIZE(2);
         CASE_VECSIZE(4);
+        CASE_VECSIZE(8);
 #undef CASE_VECSIZE
         default:
           PADDLE_THROW(common::errors::InvalidArgument(
