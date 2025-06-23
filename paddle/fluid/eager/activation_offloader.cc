@@ -164,7 +164,7 @@ size_t ActivationOffloaderWithPlace::Offload(size_t size) {
   for (auto &pair : activations_) {
     auto dense_tensor = pair.first.lock();
     auto ref_cnt = dense_tensor.use_count() - 1;
-    auto cnt = pair.second;
+    auto cnt = static_cast<decltype(ref_cnt)>(pair.second);
     PADDLE_ENFORCE_GE(
         cnt,
         1,
