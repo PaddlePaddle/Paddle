@@ -21,6 +21,7 @@
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/utils/data_type.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 COMMON_DECLARE_bool(cudnn_deterministic);
@@ -58,6 +59,12 @@ void IndexSelectGradKernel(const Context& dev_ctx,
                            const DenseTensor& out_grad,
                            int dim,
                            DenseTensor* x_grad) {
+  if (out_grad.numel() == 0) {
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(x.dims())), 0, x_grad);
+    return;
+  }
+
   auto* output_grad_data = out_grad.data<T>();
   auto* in_grad_data = dev_ctx.template Alloc<T>(x_grad);
 

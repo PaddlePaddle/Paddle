@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from op_test import OpTest
 from scipy import special
 
 import paddle
@@ -68,6 +69,37 @@ class TestGammaincApi(unittest.TestCase):
 class TestGammaincApiFp32(TestGammaincApi):
     def init_dtype_type(self):
         self.dtype = "float32"
+
+
+class TestGammaincOp_ZeroSize(OpTest):
+    def setUp(self):
+        self.op_type = 'gammaincc'
+        self.python_api = paddle.gammainc
+        self.init_dtype_type()
+        self.init_shape()
+        self.x = np.random.random(self.shape).astype(self.dtype) + 1
+        self.y = np.random.random(self.shape).astype(self.dtype) + 1
+        self.inputs = {'x': self.x, 'y': self.y}
+        out = ref_gammainc(self.x, self.y)
+        self.outputs = {'out': out}
+
+    def init_shape(self):
+        self.shape = (0, 40)
+
+    def init_dtype_type(self):
+        self.dtype = np.float64
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['y'], 'out')
+
+
+class TestGammaincOp_ZeroSize2(TestGammaincOp_ZeroSize):
+
+    def init_shape(self):
+        self.shape = (0,)
 
 
 if __name__ == "__main__":

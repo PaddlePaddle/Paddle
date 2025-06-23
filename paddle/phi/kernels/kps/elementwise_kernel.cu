@@ -201,6 +201,10 @@ void NextafterKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      const DenseTensor& y,
                      DenseTensor* out) {
+  if (x.numel() == 0 || y.numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   std::vector<const DenseTensor*> inputs = {&x, &y};
   std::vector<DenseTensor*> outputs = {out};
   dev_ctx.template Alloc<T>(out);

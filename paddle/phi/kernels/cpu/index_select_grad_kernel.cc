@@ -17,6 +17,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/kernels/cpu/index_select_impl.h"
+#include "paddle/phi/kernels/full_kernel.h"
 
 namespace phi {
 
@@ -27,6 +28,12 @@ void IndexSelectGradKernel(const Context& dev_ctx,
                            const DenseTensor& out_grad,
                            int dim,
                            DenseTensor* x_grad) {
+  // x [3, 4], index [5, 0], out [5, 0]
+  if (out_grad.numel() == 0) {
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(x.dims())), 0, x_grad);
+    return;
+  }
   if (dim < 0) {
     dim += out_grad.dims().size();
   }

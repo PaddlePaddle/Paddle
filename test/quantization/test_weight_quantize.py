@@ -93,8 +93,12 @@ def arrange_cols(rows, cols):
     for i in range(rows):
         for j in range(cols):
             weight.append((j % 15) - 7)
-    return np.array(weight).reshape([rows, cols])
-
+    # pack them
+    res = np.array(weight).reshape([rows, cols])
+    res0 = res[0::2,:] & 0x0F
+    res1 = (res[1::2,:] & 0x0F) << 4
+    res = res0 | res1
+    return res
 
 class WeightQuantizeW4a8TestCase(unittest.TestCase):
     def setUp(self):
@@ -105,7 +109,9 @@ class WeightQuantizeW4a8TestCase(unittest.TestCase):
 
     def run_test(self):
         out = weight_quantize(self.weight, algo="w4a8")[0]
-        np.allclose(np.array(ref_out), out.astype("int32").numpy(), atol=1e-2)
+        out = out.reshape([-1])
+        baseline = np.array(ref_out).reshape([-1])
+        np.allclose(baseline, out.astype("int32").numpy(), atol=1e-2)
 
 if __name__ == '__main__':
     unittest.main()

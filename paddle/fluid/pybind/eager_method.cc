@@ -1955,6 +1955,8 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
     std::vector<int> trans_back_dim, trans_dim;
 
     int pos_of_new_dim = INT_MAX, rank_of_new_dim = 1;
+    // Check if the value is a single value. Remove this later.
+    bool single_value = value_tensor.numel() == 1;
 
     paddle::Tensor transed_sub_tensor =
         dealWithAdvancedIndex(sub_tensor,
@@ -1966,7 +1968,8 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
                               &pos_of_new_dim,
                               &rank_of_new_dim,
                               &trans_dim,
-                              &out_is_view);
+                              &out_is_view,
+                              single_value);
 
     // Release gil and do tracing
     py::gil_scoped_release release;
@@ -2001,30 +2004,58 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
       }
       paddle::Tensor mask_tensor;
       if (MaskedFillDispatching(
-              transed_sub_tensor, value_tensor, transed_index, &mask_tensor)) {
+              transed_sub_tensor, transed_index, &mask_tensor, &value_tensor)) {
         transed_sub_tensor =
             masked_fill__ad_func(transed_sub_tensor, mask_tensor, value_tensor);
       } else {
+        // Check if the index has bool element. Remove later.
+        bool int_tensor_only = true;
+        for (auto& index : transed_index) {
+          if (index.dtype() == phi::DataType::BOOL) {
+            int_tensor_only = false;
+          }
+        }
 #ifdef PADDLE_WITH_CUDA
         // TODO(czy): remove in the future
-        if (transed_sub_tensor.is_gpu() && !out_is_view &&
-            transed_index.size() == 1 && value_tensor.numel() == 1) {
+        if (transed_sub_tensor.is_gpu() && single_value && int_tensor_only) {
           transed_index = expand_outplace(transed_index);
+          for (int i = 0; i < pos_of_new_dim; ++i) {
+            transed_index.insert(
+                transed_index.begin(),
+                empty_ad_func(
+                    {}, transed_index[0].dtype(), transed_index[0].place()));
+          }
           while (transed_index.size() <
                  static_cast<size_t>(transed_sub_tensor.dims().size())) {
             transed_index.emplace_back(empty_ad_func(
                 {}, transed_index[0].dtype(), transed_index[0].place()));
           }
+          int64_t slice_offset =
+              static_cast<int64_t>(reinterpret_cast<char*>(sub_tensor.data()) -
+                                   reinterpret_cast<char*>(tensor.data()));
 
-          AdvancedIndex ad = AdvancedIndex(transed_sub_tensor, transed_index);
+          std::vector<paddle::Tensor> transed_index_int64;
+          for (auto& indice : transed_index) {
+            if (indice.defined() && indice.dtype() == paddle::DataType::INT32) {
+              indice = indice.cast(paddle::DataType::INT64);  // int32 -> int64
+            }
+            transed_index_int64.push_back(indice);
+          }
+
+          AdvancedIndex ad =
+              AdvancedIndex(transed_sub_tensor, transed_index_int64);
           transed_sub_tensor =
-              index_elementwise_put__ad_func(transed_sub_tensor,
+              index_elementwise_put__ad_func(tensor,
                                              ad.indices,
                                              value_tensor,
                                              ad.src_sizes,
                                              ad.src_strides,
                                              ad.indexed_sizes,
-                                             ad.indexed_strides);
+                                             ad.indexed_strides,
+                                             slice_offset);
+          // New kernel does not need to transpose back, so set out_is_view to
+          // false. Remove when all cases use this branch.
+          out_is_view = false;
 
         } else {
           transed_sub_tensor = index_put__ad_func(
@@ -2207,6 +2238,36 @@ static PyObject* tensor_remove_grad_hook(TensorObject* self,
   int64_t hook_id = pybind::CastPyArg2AttrLong(PyTuple_GET_ITEM(args, 0), 0);
 
   return ToPyObject(grad_node->RemoveGradientHook(hook_id));
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+static PyObject* apply_backward_hook(TensorObject* self,
+                                     PyObject* args,
+                                     PyObject* kwargs) {
+  EAGER_TRY
+  VLOG(6) << " Apply tensor hook for tensor: " << self->tensor.name();
+  std::shared_ptr<egr::GradNodeBase> grad_node =
+      egr::EagerUtils::grad_node(self->tensor);
+  PADDLE_ENFORCE_EQ(
+      !egr::EagerUtils::unsafe_autograd_meta(self->tensor)->StopGradient(),
+      true,
+      common::errors::InvalidArgument(
+          "Cannot apply backward hook on a Tensor that stop "
+          "gradient."));
+  PADDLE_ENFORCE_NE(
+      grad_node.get(),
+      nullptr,
+      common::errors::Fatal("Detected nullptr grad_node,"
+                            "Leaf tensor should have had grad_node "
+                            "with type: GradNodeAccumulation."));
+
+  auto accumulation_grad_node =
+      std::dynamic_pointer_cast<egr::GradNodeAccumulation>(grad_node);
+
+  if (accumulation_grad_node->ReduceHooksRegistered()) {
+    accumulation_grad_node->ApplyReduceHooks();
+  }
+  RETURN_PY_NONE;
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
@@ -3779,6 +3840,10 @@ PyMethodDef variable_methods[] = {  // NOLINT
      nullptr},
     {"_remove_grad_hook",
      (PyCFunction)(void (*)())tensor_remove_grad_hook,
+     METH_VARARGS | METH_KEYWORDS,
+     nullptr},
+    {"_apply_backward_hook",
+     (PyCFunction)(void (*)())apply_backward_hook,
      METH_VARARGS | METH_KEYWORDS,
      nullptr},
     {"_register_backward_hook",

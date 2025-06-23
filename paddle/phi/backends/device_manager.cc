@@ -474,6 +474,12 @@ size_t DeviceManager::GetComputeCapability(const Place& place) {
   return dev_impl->GetComputeCapability(device_id);
 }
 
+phi::DeviceProp& DeviceManager::GetDeviceProperties(
+    const std::string& device_type, size_t device_id) {
+  auto dev_impl = GetDeviceInterfaceWithType(device_type);
+  return dev_impl->GetDeviceProperties(device_id);
+}
+
 size_t DeviceManager::GetRuntimeVersion(const Place& place) {
   auto device_type = place.GetDeviceType();
   auto device_id = place.GetDeviceId();

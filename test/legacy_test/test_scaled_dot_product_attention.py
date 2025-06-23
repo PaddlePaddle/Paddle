@@ -181,5 +181,42 @@ class TestAttentionWithBoolMask(unittest.TestCase):
         np.testing.assert_allclose(out.numpy(), out_, rtol=5e-03, atol=1e-03)
 
 
+class TestAttentionWith3DInput(unittest.TestCase):
+    def setUp(self):
+        self.dtype = 'float32'
+        self.dropout = 0.0
+        self.causal = False
+
+    def test_3d_input(self):
+        """Test scaled_dot_product_attention with 3D input tensors."""
+        # test dynamic
+        paddle.disable_static()
+
+        shape_3d = (8, 1, 8)
+
+        query = np.random.random(shape_3d).astype(np.float32)
+        key = np.random.random(shape_3d).astype(np.float32)
+        value = np.random.random(shape_3d).astype(np.float32)
+
+        q = paddle.to_tensor(query, dtype=self.dtype, stop_gradient=False)
+        k = paddle.to_tensor(key, dtype=self.dtype, stop_gradient=False)
+        v = paddle.to_tensor(value, dtype=self.dtype, stop_gradient=False)
+
+        q_ref = paddle.unsqueeze(q, axis=0)
+        k_ref = paddle.unsqueeze(k, axis=0)
+        v_ref = paddle.unsqueeze(v, axis=0)
+
+        with sdp_kernel(
+            enable_math=True, enable_flash=False, enable_mem_efficient=False
+        ):
+            out = scaled_dot_product_attention(
+                q, k, v, None, self.dropout, self.causal
+            )
+
+        out_ref = attention_naive(q_ref, k_ref, v_ref, self.causal)
+
+        np.testing.assert_allclose(out.numpy(), out_ref, rtol=5e-03, atol=1e-03)
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -108,27 +108,29 @@ class TestAccuracyOpBf16(OpTest):
 
 class TestAccuracyOpError(unittest.TestCase):
     def test_type_errors(self):
-        with paddle_static_guard():
-            with program_guard(Program(), Program()):
-                # The input type of accuracy_op must be Variable.
-                x1 = base.create_lod_tensor(
-                    np.array([[-1]]), [[1]], base.CPUPlace()
-                )
-                label = paddle.static.data(
-                    name='label', shape=[-1, 1], dtype="int32"
-                )
-                self.assertRaises(TypeError, paddle.static.accuracy, x1, label)
-                self.assertRaises(TypeError, paddle.metric.accuracy, x1, label)
-                # The input dtype of accuracy_op must be float32 or float64.
-                x2 = paddle.static.data(name='x2', shape=[-1, 4], dtype="int32")
-                self.assertRaises(TypeError, paddle.static.accuracy, x2, label)
-                self.assertRaises(TypeError, paddle.metric.accuracy, x2, label)
+        with (
+            paddle_static_guard(),
+            program_guard(Program(), Program()),
+        ):
+            # The input type of accuracy_op must be Variable.
+            x1 = base.create_lod_tensor(
+                np.array([[-1]]), [[1]], base.CPUPlace()
+            )
+            label = paddle.static.data(
+                name='label', shape=[-1, 1], dtype="int32"
+            )
+            self.assertRaises(TypeError, paddle.static.accuracy, x1, label)
+            self.assertRaises(TypeError, paddle.metric.accuracy, x1, label)
+            # The input dtype of accuracy_op must be float32 or float64.
+            x2 = paddle.static.data(name='x2', shape=[-1, 4], dtype="int32")
+            self.assertRaises(TypeError, paddle.static.accuracy, x2, label)
+            self.assertRaises(TypeError, paddle.metric.accuracy, x2, label)
 
-                x3 = paddle.static.data(
-                    name='input', shape=[-1, 2], dtype="float32"
-                )
-                paddle.static.accuracy(input=x3, label=label)
-                paddle.metric.accuracy(input=x3, label=label)
+            x3 = paddle.static.data(
+                name='input', shape=[-1, 2], dtype="float32"
+            )
+            paddle.static.accuracy(input=x3, label=label)
+            paddle.metric.accuracy(input=x3, label=label)
 
     def test_value_errors(self):
         with program_guard(Program(), Program()):

@@ -88,6 +88,9 @@ void IndexSampleKernel(const Context &dev_ctx,
                        const DenseTensor &index,
                        DenseTensor *out) {
   dev_ctx.template Alloc<T>(out);
+  if (out && out->numel() == 0) {
+    return;
+  }
   auto index_type = index.dtype();
   bool index_type_match =
       index_type == DataType::INT32 || index_type == DataType::INT64;
