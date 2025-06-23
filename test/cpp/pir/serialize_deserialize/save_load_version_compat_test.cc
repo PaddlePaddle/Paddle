@@ -223,11 +223,39 @@ TEST(save_load_version_compat, attribute_patch_test2) {
             phi::DataType::UNDEFINED);
   EXPECT_EQ(new_program.block()
                 ->front()
+                .attribute("op4_attr3")
+                .dyn_cast<::paddle::dialect::PlaceAttribute>()
+                .data()
+                .GetType(),
+            phi::AllocationType::UNDEFINED);
+  EXPECT_EQ(new_program.block()
+                ->front()
                 .attribute("op4_attr4")
                 .dyn_cast<::paddle::dialect::IntArrayAttribute>()
                 .data()
                 .size(),
             3);
+  EXPECT_EQ(new_program.block()
+                ->front()
+                .attribute("op4_attr5")
+                .dyn_cast<::paddle::dialect::ScalarAttribute>()
+                .data()
+                .to<phi::dtype::complex<float>>()
+                .real,
+            1.0);
+  EXPECT_EQ(new_program.block()
+                ->front()
+                .attribute("op4_attr6")
+                .dyn_cast<::pir::TypeAttribute>()
+                .data()
+                .isa<pir::Float64Type>(),
+            true);
+  EXPECT_EQ(new_program.block()
+                ->front()
+                .attribute("op4_attr7")
+                .dyn_cast<::paddle::dialect::DataLayoutAttribute>()
+                .data(),
+            phi::DataLayout::kNHWC);
 }
 
 // Test for op I/O and op attribute modification.

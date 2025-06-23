@@ -132,8 +132,9 @@ jobs:
           git config --global user.email "paddle_ci@example.com"
           git remote add upstream https://github.com/PaddlePaddle/Paddle.git
           source ${{ github.workspace }}/../../../proxy
+          cp ci/git_pull.sh ci/git_pull_copy.sh
           git checkout $BRANCH
-          git pull upstream $BRANCH
+          bash ci/git_pull_copy.sh $BRANCH
           git fetch upstream $BRANCH
           git checkout test
           git merge --no-edit $BRANCH
@@ -153,6 +154,7 @@ jobs:
           mkdir -p /root/.cache/build
           mkdir -p /root/.ccache/build
           source ${{ github.workspace }}/../../../proxy
+          bash ${ci_scripts}/cmake-predownload.sh
           bash ${ci_scripts}/run_setup.sh bdist_wheel
           '
 
@@ -173,6 +175,7 @@ jobs:
           paddle_whl: paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
+          bash ${ci_scripts}/compress_build.sh
           export AK=paddle
           export SK=paddle
           if [ ! -f "${{ env.bos_file }}" ]; then
