@@ -161,6 +161,7 @@ const std::unordered_set<std::string> SpecialLowerOps = {
     IfOp::name(),
     WhileOp::name(),
     PyLayerOp::name(),
+    CudaGraphOp::name(),
     pir::StackCreateOp::name(),
     pir::TuplePushOp::name(),
     pir::TuplePopOp::name(),
@@ -1514,6 +1515,39 @@ void HandleForIfOp(
   }
 }
 
+void HandleForCudaGraphOp(
+    const phi::Place& place,
+    pir::Operation* op_item,
+    pir::Block* block,
+    pir::IrContext* ctx,
+    std::unordered_map<pir::Operation*, pir::Operation*>* map_op_pair,
+    std::unordered_map<pir::Value, pir::Value>* map_value_pair) {
+  // Create CudaGraphOp and insert to kernel dialect program
+  pir::Builder builder(ctx, block);
+  auto cuda_graph_op = op_item->dyn_cast<CudaGraphOp>();
+  std::vector<pir::Type> new_outputs;
+  for (size_t i = 0; i < cuda_graph_op.num_results(); ++i) {
+    new_outputs.push_back(
+        ConvertOpTypeToKernelType(ctx, cuda_graph_op.result(i).type(), place));
+  }
+  auto new_cg_op = builder.Build<CudaGraphOp>(std::move(new_outputs));
+
+  // process block
+  ProcessBlock(place,
+               cuda_graph_op.block(),
+               new_cg_op.block(),
+               ctx,
+               map_op_pair,
+               map_value_pair,
+               true);
+
+  // update map
+  (*map_op_pair)[op_item] = new_cg_op;
+  for (size_t i = 0; i < op_item->num_results(); ++i) {
+    (*map_value_pair)[op_item->result(i)] = new_cg_op->result(i);
+  }
+}
+
 void HandleForPyLayerOp(
     const phi::Place& place,
     pir::Operation* op_item,
@@ -1829,6 +1863,14 @@ void HandleForSpecialOp(
     HandleForWhileOp(place, op_item, block, ctx, map_op_pair, map_value_pair);
     return;
   }
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  if (op_item->isa<CudaGraphOp>()) {
+    HandleForCudaGraphOp(
+        place, op_item, block, ctx, map_op_pair, map_value_pair);
+    return;
+  }
+#endif
 
   std::vector<pir::Value> vec_inputs;
   std::vector<pir::Type> op_output_types;

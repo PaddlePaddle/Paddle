@@ -60,7 +60,6 @@ class TrtConvertAssignTest(TrtLayerAutoScanTest):
                 np.float32,
                 np.int64,
             ]:
-                # breakpoint()
                 self.has_bool_dtype = dtype == np.bool_
                 ops_config = [
                     {

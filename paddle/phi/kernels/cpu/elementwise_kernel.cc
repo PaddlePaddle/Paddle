@@ -111,6 +111,10 @@ void NextafterKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      const DenseTensor& y,
                      DenseTensor* out) {
+  if (x.numel() == 0 || y.numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   dev_ctx.template Alloc<T>(out);
   auto x_dims = x.dims();
   auto y_dims = y.dims();
@@ -210,5 +214,6 @@ PD_REGISTER_KERNEL(copysign,
                    double,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}
+
 PD_REGISTER_KERNEL(
     nextafter, CPU, ALL_LAYOUT, phi::NextafterKernel, float, double) {}

@@ -119,6 +119,8 @@ class InterpreterBaseImpl {
 
   virtual std::tuple<double, double> InterpreterRunTime() = 0;
 
+  virtual void SetCUDAGraphState(uint8_t cuda_graph_state) = 0;
+
   // Only for debug
   virtual Variable* DebugVar(const std::string& name) const = 0;
 };

@@ -51,6 +51,7 @@ class ValueExecutionInfo {
  public:
   friend class IfInstruction;
   friend class WhileInstruction;
+  friend class CudaGraphInstruction;
   friend class PyLayerInstruction;
   friend class CustomEngineInstruction;
   explicit ValueExecutionInfo(Scope* scope) : scope_(scope) {}

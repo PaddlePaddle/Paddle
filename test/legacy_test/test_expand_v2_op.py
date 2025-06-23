@@ -408,23 +408,23 @@ class TestExpandV2BF16Op(OpTest):
 class TestExpandV2Error(unittest.TestCase):
 
     def test_errors(self):
-        with static_guard():
-            with paddle.static.program_guard(
+        with (
+            static_guard(),
+            paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
-            ):
-                shape = [2, 2]
-                if not in_pir_mode():
-                    x1 = base.create_lod_tensor(
-                        np.array([[-1]]), [[1]], base.CPUPlace()
-                    )
-                    self.assertRaises(
-                        TypeError, paddle.tensor.expand, x1, shape
-                    )
-                x2 = paddle.static.data(name='x2', shape=[-1, 4], dtype="bool")
-                x2.stop_gradient = False
-                self.assertRaises(ValueError, paddle.tensor.expand, x2, shape)
-                x2.stop_gradient = True
-                self.assertRaises(TypeError, paddle.tensor.expand, x2, 1)
+            ),
+        ):
+            shape = [2, 2]
+            if not in_pir_mode():
+                x1 = base.create_lod_tensor(
+                    np.array([[-1]]), [[1]], base.CPUPlace()
+                )
+                self.assertRaises(TypeError, paddle.tensor.expand, x1, shape)
+            x2 = paddle.static.data(name='x2', shape=[-1, 4], dtype="bool")
+            x2.stop_gradient = False
+            self.assertRaises(ValueError, paddle.tensor.expand, x2, shape)
+            x2.stop_gradient = True
+            self.assertRaises(TypeError, paddle.tensor.expand, x2, 1)
 
 
 # Test python API

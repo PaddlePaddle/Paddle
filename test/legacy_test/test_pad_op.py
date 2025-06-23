@@ -165,21 +165,23 @@ create_test_fp16(TestCase5)
 class TestPadOpError(unittest.TestCase):
 
     def test_errors(self):
-        with static_guard():
-            with paddle.static.program_guard(
+        with (
+            static_guard(),
+            paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
-            ):
-                input_data = np.random.random((2, 2)).astype("float32")
+            ),
+        ):
+            input_data = np.random.random((2, 2)).astype("float32")
 
-                def test_Variable():
-                    paddle.nn.functional.pad(x=input_data, pad=[1, 1, 1, 1])
+            def test_Variable():
+                paddle.nn.functional.pad(x=input_data, pad=[1, 1, 1, 1])
 
-                self.assertRaises(TypeError, test_Variable)
-                if core.is_compiled_with_cuda():
-                    data = paddle.static.data(
-                        name="data", shape=[4], dtype="float16"
-                    )
-                    paddle.nn.functional.pad(x=data, pad=[0, 1])
+            self.assertRaises(TypeError, test_Variable)
+            if core.is_compiled_with_cuda():
+                data = paddle.static.data(
+                    name="data", shape=[4], dtype="float16"
+                )
+                paddle.nn.functional.pad(x=data, pad=[0, 1])
 
 
 class TestPaddingValueTensor(UnittestBase):

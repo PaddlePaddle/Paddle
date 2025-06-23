@@ -192,59 +192,57 @@ class TestLinspaceAPI(unittest.TestCase):
 
 class TestLinspaceOpError(unittest.TestCase):
     def test_errors(self):
-        with paddle_static_guard():
-            with paddle.base.program_guard(
+        with (
+            paddle_static_guard(),
+            paddle.base.program_guard(
                 paddle.base.Program(), paddle.base.Program()
-            ):
+            ),
+        ):
 
-                def test_dtype():
-                    paddle.linspace(0, 10, 1, dtype="int8")
+            def test_dtype():
+                paddle.linspace(0, 10, 1, dtype="int8")
 
-                self.assertRaises(TypeError, test_dtype)
+            self.assertRaises(TypeError, test_dtype)
 
-                def test_dtype1():
-                    paddle.linspace(0, 10, 1.33, dtype="int32")
+            def test_dtype1():
+                paddle.linspace(0, 10, 1.33, dtype="int32")
 
-                self.assertRaises(TypeError, test_dtype1)
+            self.assertRaises(TypeError, test_dtype1)
 
-                def test_start_type():
-                    paddle.linspace([0], 10, 1, dtype="float32")
+            def test_start_type():
+                paddle.linspace([0], 10, 1, dtype="float32")
 
-                self.assertRaises(TypeError, test_start_type)
+            self.assertRaises(TypeError, test_start_type)
 
-                def test_end_type():
-                    paddle.linspace(0, [10], 1, dtype="float32")
+            def test_end_type():
+                paddle.linspace(0, [10], 1, dtype="float32")
 
-                self.assertRaises(TypeError, test_end_type)
+            self.assertRaises(TypeError, test_end_type)
 
-                def test_step_dtype():
-                    paddle.linspace(0, 10, [0], dtype="float32")
+            def test_step_dtype():
+                paddle.linspace(0, 10, [0], dtype="float32")
 
-                self.assertRaises(TypeError, test_step_dtype)
+            self.assertRaises(TypeError, test_step_dtype)
 
-                def test_start_dtype():
-                    start = paddle.static.data(
-                        shape=[1], dtype="float64", name="start"
-                    )
-                    paddle.linspace(start, 10, 1, dtype="float32")
+            def test_start_dtype():
+                start = paddle.static.data(
+                    shape=[1], dtype="float64", name="start"
+                )
+                paddle.linspace(start, 10, 1, dtype="float32")
 
-                self.assertRaises(ValueError, test_start_dtype)
+            self.assertRaises(ValueError, test_start_dtype)
 
-                def test_end_dtype():
-                    end = paddle.static.data(
-                        shape=[1], dtype="float64", name="end"
-                    )
-                    paddle.linspace(0, end, 1, dtype="float32")
+            def test_end_dtype():
+                end = paddle.static.data(shape=[1], dtype="float64", name="end")
+                paddle.linspace(0, end, 1, dtype="float32")
 
-                self.assertRaises(ValueError, test_end_dtype)
+            self.assertRaises(ValueError, test_end_dtype)
 
-                def test_num_dtype():
-                    num = paddle.static.data(
-                        shape=[1], dtype="int32", name="step"
-                    )
-                    paddle.linspace(0, 10, num, dtype="float32")
+            def test_num_dtype():
+                num = paddle.static.data(shape=[1], dtype="int32", name="step")
+                paddle.linspace(0, 10, num, dtype="float32")
 
-                self.assertRaises(TypeError, test_step_dtype)
+            self.assertRaises(TypeError, test_step_dtype)
 
 
 class TestLinspaceOpEmptyTensor(unittest.TestCase):
@@ -255,15 +253,17 @@ class TestLinspaceOpEmptyTensor(unittest.TestCase):
         return places
 
     def _test_linspace_empty_static(self, place):
-        with static_guard():
-            with paddle.static.program_guard(
+        with (
+            static_guard(),
+            paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
-            ):
-                out = paddle.linspace(0, 10, 0, dtype='float32')
-                exe = paddle.static.Executor(place)
-                res = exe.run(fetch_list=[out])
-                self.assertEqual(res[0].shape, (0,))
-                self.assertEqual(len(res[0]), 0)
+            ),
+        ):
+            out = paddle.linspace(0, 10, 0, dtype='float32')
+            exe = paddle.static.Executor(place)
+            res = exe.run(fetch_list=[out])
+            self.assertEqual(res[0].shape, (0,))
+            self.assertEqual(len(res[0]), 0)
 
     def _test_linspace_empty_dynamic(self):
         with dygraph_guard():

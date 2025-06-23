@@ -91,6 +91,7 @@ prim_white_list = [
     "index_add_double_grad",
     "acos_double_grad",
     "put_along_axis_double_grad",
+    "masked_fill_double_grad",
 ]
 
 # white ops list whose kernel can automatically do type promotion.
@@ -120,6 +121,8 @@ type_promote_white_list = {
     "nextafter": ["x", "y"],
     "atan2": ["x", "y"],
     "copysign": ["x", "y"],
+    "cross": ["x", "y"],
+    "multiply": ["x", "y"],
 }
 
 type_promote_inplace_white_list = {
@@ -561,7 +564,7 @@ NODE_CC_FILE_TEMPLATE = """
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/eager/api/generated/eager_generated/backwards/nodes.h"
 #include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
-#include "paddle/fluid/eager/to_static/run_program_op_node.h"
+#include "paddle/fluid/eager/to_static/run_program_node.h"
 #include "paddle/fluid/eager/nan_inf_utils.h"
 #include "paddle/phi/api/include/sparse_api.h"
 #include "paddle/fluid/eager/api/manual/eager_manual/nodes/nodes.h"

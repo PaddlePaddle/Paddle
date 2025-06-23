@@ -22,7 +22,6 @@
 #include "paddle/phi/kernels/funcs/stride_utils.h"
 
 namespace phi {
-
 template <typename T, typename IndexT = int>
 void GPUIndexElementwisePutKernel(const phi::GPUContext& ctx,
                                   const DenseTensor& input,
@@ -47,6 +46,7 @@ void GPUIndexElementwisePutKernel(const phi::GPUContext& ctx,
 
   std::array<int64_t*, 3> strides_array;
   std::vector<int64_t> desired_shape;
+  std::array<std::vector<int64_t>, 3> strides_vec;
 
   funcs::IndexPutStride<3>(input_dims,
                            input_strides,
@@ -59,40 +59,18 @@ void GPUIndexElementwisePutKernel(const phi::GPUContext& ctx,
                            phi::SizeOf(index[0]->dtype()),
                            &desired_shape,
                            &strides_array,
-                           &numel);
-
-  const int64_t* template_stride = strides_array[2];
-  PADDLE_ENFORCE_NOT_NULL(template_stride,
-                          ::common::errors::InvalidArgument(
-                              "strides_array[2] should not be nullptr in "
-                              "GPUIndexElementwiseGetKernel"));
-
-  size_t stride_size = desired_shape.size();
-  std::vector<std::vector<int64_t>> strides_vector;
-  strides_vector.reserve(num_indices + 2);
-
-  for (int i = 0; i < 2; ++i) {
-    if (i < strides_array.size() && strides_array[i] != nullptr) {
-      strides_vector.emplace_back(strides_array[i],
-                                  strides_array[i] + stride_size);
-    } else {
-      strides_vector.emplace_back(stride_size, 0);
-    }
-  }
-
-  std::vector<int64_t> template_vec(template_stride,
-                                    template_stride + stride_size);
-  for (size_t i = 0; i < num_indices; ++i) {
-    strides_vector.push_back(template_vec);
-  }
-
-  auto offset_calc = funcs::make_offset_calculator<3>(
-      desired_shape.size(), desired_shape.data(), strides_vector);
+                           &numel,
+                           strides_vec);
+  auto offset_calc =
+      funcs::make_offset_calculator_put<3>(desired_shape, strides_array);
 
   const int64_t N = numel;
-  PADDLE_ENFORCE(N >= 0 && N <= std::numeric_limits<int32_t>::max(),
-                 "Output numel be in the range [0, "
-                 "std::numeric_limits<int32_t>::max()]");
+  PADDLE_ENFORCE_GE(
+      N, 0, common::errors::InvalidArgument("Output numel must >= 0"));
+  PADDLE_ENFORCE_LE(
+      N,
+      std::numeric_limits<int32_t>::max(),
+      common::errors::InvalidArgument("Output numel must <= INT32_MAX"));
 
   constexpr int nt = 128;
   constexpr int vt = 4;
@@ -116,8 +94,6 @@ void GPUIndexElementwisePutKernel(const phi::GPUContext& ctx,
         for (int i = 0; i < num_indices; i++) {
           int64_t index =
               *reinterpret_cast<int64_t*>(index_ptrs[i] + offsets[2]);
-          PADDLE_ENFORCE(-sizes[i] <= index && index < sizes[i],
-                         "index out of bounds");
           if (index < 0) {
             index += sizes[i];
           }

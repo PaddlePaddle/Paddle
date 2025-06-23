@@ -120,7 +120,7 @@ void RepeatInterleaveWithTensorIndexGradKernel(
          stream>>>(in_grad_data, numel);
 
   if (index_type == DataType::INT64) {
-    phi::funcs::RepeatsTensor2IndexTensor<Context, int64_t>(
+    phi::funcs::RepeatsTensor2IndexTensorFunctor<Context, int64_t>()(
         dev_ctx, repeats_tensor, &index);
     int64_t index_nums = index.numel();
 
@@ -137,7 +137,7 @@ void RepeatInterleaveWithTensorIndexGradKernel(
                      size,
                      delta);
   } else {
-    phi::funcs::RepeatsTensor2IndexTensor<Context, int>(
+    phi::funcs::RepeatsTensor2IndexTensorFunctor<Context, int>()(
         dev_ctx, repeats_tensor, &index);
     int64_t index_nums = index.numel();
 
