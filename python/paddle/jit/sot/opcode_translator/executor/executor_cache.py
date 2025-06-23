@@ -265,7 +265,7 @@ class OpcodeExecutorCache(metaclass=Singleton):
                             # Move the current hit to the front
                             # Note: Be cautious when modifying the order of elements in a list during iteration,
                             # as it can lead to unexpected behavior.
-                            guarded_fns = [
+                            guarded_fns[:] = [
                                 guarded_fns[index],
                                 *guarded_fns[:index],
                                 *guarded_fns[index + 1 :],

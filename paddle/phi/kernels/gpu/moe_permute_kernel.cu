@@ -223,13 +223,7 @@ void MoePermuteKernel(const Context &dev_ctx,
           "value.",
           MAX_NUM_EXPERTS,
           num_experts));
-  if (X.numel() == 0) {
-    dev_ctx.template Alloc<float>(XScale_unzipped);
-    dev_ctx.template Alloc<int>(zipped_expertwise_rowmap);
-    dev_ctx.template Alloc<T>(X_unzipped);
-    dev_ctx.template Alloc<float>(token_prob_unzipped);
-    return;
-  }
+
   const int quanted_cols = (XScale) ? XScale.get_ptr()->dims()[1] : 0;
   int expert_offset[MAX_NUM_EXPERTS];
   int tokens_cumulated = 0;
@@ -262,6 +256,7 @@ void MoePermuteKernel(const Context &dev_ctx,
   dev_ctx.template Alloc<float>(XScale_unzipped);
   dev_ctx.template Alloc<int>(zipped_expertwise_rowmap);
   dev_ctx.template Alloc<T>(X_unzipped);
+  dev_ctx.template Alloc<float>(token_prob_unzipped);
   auto X_unzipped_ptr = reinterpret_cast<void *>(X_unzipped->data<T>());
   for (int i = 0; i < num_experts; i++) {
     int next_expert_offset =
@@ -290,7 +285,7 @@ void MoePermuteKernel(const Context &dev_ctx,
           dev_ctx.stream());
     }
   }
-  dev_ctx.template Alloc<float>(token_prob_unzipped);
+
   auto token_prob_unzipped_ptr =
       reinterpret_cast<void *>(token_prob_unzipped->data<float>());
   for (int i = 0; i < num_experts; i++) {

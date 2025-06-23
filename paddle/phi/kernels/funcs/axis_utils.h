@@ -36,7 +36,7 @@ static inline T SizeToAxis(const int axis, DDim dims) {
 }
 
 template <typename T = int>
-static inline int SizeFromAxis(const int axis, DDim dims) {
+static inline T SizeFromAxis(const int axis, DDim dims) {
   T size = 1;
   for (int i = axis; i < dims.size(); i++) {
     size *= dims[i];
@@ -45,7 +45,7 @@ static inline int SizeFromAxis(const int axis, DDim dims) {
 }
 
 template <typename T = int>
-static inline int SizeOutAxis(const int axis, DDim dims) {
+static inline T SizeOutAxis(const int axis, DDim dims) {
   T size = 1;
   for (int i = axis + 1; i < dims.size(); i++) {
     size *= dims[i];

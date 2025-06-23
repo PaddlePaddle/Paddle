@@ -74,6 +74,9 @@ class TEST_API Scope {
   /// Caller doesn't own the returned Variable.
   Variable* Var(const std::string& name);
 
+  /// Lock free version of Var
+  Variable* VarLockFree(const std::string& name);
+
   /// Create a variable with a scope-unique name.
   /// Caller doesn't own the returned Variable.
   Variable* Var(std::string* name = nullptr);
@@ -87,6 +90,9 @@ class TEST_API Scope {
   /// nullptr if cannot find.
   /// Caller doesn't own the returned Variable.
   Variable* FindVar(const std::string& name) const;
+
+  /// Lock free version of FindVar
+  Variable* FindVarLockFree(const std::string& name) const;
 
   // Get a variable in the scope or any of its ancestors. Enforce
   /// the returned Variable is not nullptr

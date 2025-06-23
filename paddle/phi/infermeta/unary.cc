@@ -6487,17 +6487,11 @@ void IntBincountInferMeta(const MetaTensor& x,
                           int64_t high,
                           int64_t dtype,
                           MetaTensor* out) {
-  PADDLE_ENFORCE_EQ(
-      x.dims().size(),
-      1,
-      errors::InvalidArgument(
-          "The input 'x' of int_bincount must be a 1-D Tensor, but got %u-D.",
-          x.dims().size()));
   PADDLE_ENFORCE_GT(
       high,
       low,
       errors::InvalidArgument("Attr high (%d) must be > low (%d).", high, low));
-  int64_t bin_count = high - low + 1;
+  int64_t bin_count = high - low;
 
   out->set_dims(phi::make_ddim({bin_count}));
   out->set_dtype(x.dtype());
