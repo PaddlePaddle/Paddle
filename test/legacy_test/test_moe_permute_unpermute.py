@@ -94,8 +94,8 @@ class TestFusedMoePermuteUnpermute(unittest.TestCase):
     SEQLEN = 16384
     TOKEN_LEN = 7168
     DTYPES = ["bfloat16"]
-    EXPERT_NUMS = [4, 8]
-    TOPKS = [4, 8]
+    EXPERT_NUMS = [4, 8, 16, 32, 64]
+    TOPKS = [4, 8, 16]
 
     def setUp(self):
         """Initialize test environment."""
@@ -139,7 +139,6 @@ class TestFusedMoePermuteUnpermute(unittest.TestCase):
                     tokens_per_expert=tokens_per_expert,
                     padding_alignment=128,
                 )
-
                 # Unpermute step
                 unzipped_tokens_recovered, expert_prob_topk_recovered = (
                     moe_unpermute(
