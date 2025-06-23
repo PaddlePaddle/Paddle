@@ -1955,8 +1955,6 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
     std::vector<int> trans_back_dim, trans_dim;
 
     int pos_of_new_dim = INT_MAX, rank_of_new_dim = 1;
-    // Check if the value is a single value. Remove this later.
-    bool single_value = value_tensor.numel() == 1;
 
     paddle::Tensor transed_sub_tensor =
         dealWithAdvancedIndex(sub_tensor,
@@ -1968,9 +1966,15 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
                               &pos_of_new_dim,
                               &rank_of_new_dim,
                               &trans_dim,
-                              &out_is_view,
-                              single_value);
+                              &out_is_view);
 
+    // Check if the index has bool element. Remove later.
+    bool int_tensor_only = true;
+    for (auto& index : transed_index) {
+      if (index.dtype() == phi::DataType::BOOL) {
+        int_tensor_only = false;
+      }
+    }
     // Release gil and do tracing
     py::gil_scoped_release release;
     if (value_tensor.initialized()) {
@@ -1992,7 +1996,8 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
         }
       }
 
-      if (value_tensor.dims().size() > 1 && pos_of_new_dim != 0) {
+      if (value_tensor.dims().size() > 1 && pos_of_new_dim != 0 &&
+          !int_tensor_only) {
         value_tensor = transpose_ad_func(value_tensor, trans_dim);
       }
 
@@ -2008,13 +2013,6 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
         transed_sub_tensor =
             masked_fill__ad_func(transed_sub_tensor, mask_tensor, value_tensor);
       } else {
-        // Check if the index has bool element. Remove later.
-        bool int_tensor_only = true;
-        for (auto& index : transed_index) {
-          if (index.dtype() == phi::DataType::BOOL) {
-            int_tensor_only = false;
-          }
-        }
 #ifdef PADDLE_WITH_CUDA
         // TODO(czy): remove in the future
         if (transed_sub_tensor.is_gpu() && int_tensor_only) {

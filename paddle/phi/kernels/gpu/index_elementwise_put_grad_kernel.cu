@@ -270,7 +270,7 @@ void LaunchIndexElementwisePutGradCudaKernel(
                                  value_grad_data);
     } else {
       DenseTensor tmp_value_grad(value_grad->dtype());
-      tmp_value_grad.Resize(indices[0]->dims());
+      tmp_value_grad.Resize(common::make_ddim(input_dims));
 
       T* tmp_value_grad_data = dev_ctx.template Alloc<T>(&tmp_value_grad);
       auto out_grad_data = out_grad.data<T>();
