@@ -103,7 +103,7 @@ class TestTensorChecker(unittest.TestCase):
                     self.assertEqual(
                         1,
                         num_nan,
-                        f"Expected num_nan to be 0, but received {num_nan}, place={place}.",
+                        f"Expected num_nan to be 1, but received {num_nan}, place={place}.",
                     )
                 else:
                     self.assertEqual(
