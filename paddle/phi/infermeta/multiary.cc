@@ -415,19 +415,29 @@ void AddNInferMeta(const std::vector<const MetaTensor*>& x,
       continue;
     }
     is_all_0d_tensor = false;
-    if (common::product(in_dim) == 0) {
+    // use the first dimension
+    if (i == 0) {
       in_dim = x_dim;
     } else {
       if (config.is_runtime) {
-        PADDLE_ENFORCE_EQ(in_dim,
-                          x_dim,
-                          common::errors::InvalidArgument(
-                              "The input tensor X of AddNOp must"
-                              " have same shape. But received X[0]'s shape = "
-                              "[%s], X[%d]'s shape = [%s].",
-                              in_dim,
-                              i,
-                              x_dim));
+        if (common::product(x_dim) != 0) {
+          PADDLE_ENFORCE_EQ(in_dim,
+                            x_dim,
+                            common::errors::InvalidArgument(
+                                "The input tensor X of AddNOp must"
+                                " have same shape. But received X[0]'s shape = "
+                                "[%s], X[%d]'s shape = [%s].",
+                                in_dim,
+                                i,
+                                x_dim));
+        } else {
+          // update the 0 dim
+          for (int j = 0; j < x_dim.size(); ++j) {
+            if (x_dim[j] == 0) {
+              in_dim[j] = 0;
+            }
+          }
+        }
       } else {
         PADDLE_ENFORCE_EQ(
             in_dim.size(),
