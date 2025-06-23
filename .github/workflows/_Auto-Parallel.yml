@@ -106,6 +106,10 @@ jobs:
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           ldconfig
+          ln -sf $(which python${python_version}) /usr/bin/python
+          '
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
+          ldconfig
           pip config set global.cache-dir "/home/.cache/pip"
           set -e
           timeout 80m bash Paddle/ci/auto_parallel/ci_auto_parallel.sh ${paddle_whl}
