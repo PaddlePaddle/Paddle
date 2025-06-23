@@ -242,7 +242,7 @@ class OpcodeExecutorCache(metaclass=Singleton):
             try:
                 with EventGuard("try guard"):
                     guard_result = guard_fn(frame)
-                if enable_strict_guard:
+                if enable_strict_guard and (not enable_unsafe_cache_fastpath):
                     assert mirror_guard_result == guard_result, (
                         "faster guard result is not equal to guard result, "
                         f"guard_expr: {getattr(guard_fn, 'expr', 'None')} \n"
@@ -253,10 +253,11 @@ class OpcodeExecutorCache(metaclass=Singleton):
                         2,
                         f"[Cache] Cache hit, Guard is \n{getattr(guard_fn, 'expr', 'None')}\n",
                     )
-                    # TODO(zrr1999): cache_index should be equal to index when enable_strict_guard.
-                    assert (
-                        cache_index is None or index == cache_index
-                    ), f"cache_index({cache_index}) is not equal to index({index})"
+                    if not enable_unsafe_cache_fastpath:
+                        # TODO(zrr1999): cache_index should be equal to index when enable_strict_guard.
+                        assert (
+                            cache_index is None or index == cache_index
+                        ), f"cache_index({cache_index}) is not equal to index({index})"
 
                     if enable_unsafe_cache_fastpath:
                         if index == 0:
@@ -265,7 +266,7 @@ class OpcodeExecutorCache(metaclass=Singleton):
                             # Move the current hit to the front
                             # Note: Be cautious when modifying the order of elements in a list during iteration,
                             # as it can lead to unexpected behavior.
-                            guarded_fns = [
+                            guarded_fns[:] = [
                                 guarded_fns[index],
                                 *guarded_fns[:index],
                                 *guarded_fns[index + 1 :],
@@ -296,7 +297,7 @@ class OpcodeExecutorCache(metaclass=Singleton):
                     2,
                     self.analyse_guard_error(guard_fn, frame),
                 )
-                if enable_strict_guard:
+                if enable_strict_guard and (not enable_unsafe_cache_fastpath):
                     assert type(e) == type(mirror_guard_error) and str(
                         e
                     ) == str(mirror_guard_error), (
