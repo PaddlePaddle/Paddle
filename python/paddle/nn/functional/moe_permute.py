@@ -61,16 +61,6 @@ def moe_permute(
             - scale_unzipped: Scaled tensor (only valid when hidden_states is fp8).
                 Shape: [seqlen_broadcasted, (token_len + 127) // 128], dtype: float32.
 
-    Example:
-        >>> import paddle
-        >>> hidden = paddle.randn([16, 128], dtype='bfloat16')
-        >>> scale = None  # Not needed for bfloat16
-        >>> route_map = paddle.randint(-1, 4, [16, 2], dtype='int32')
-        >>> expert_prob = paddle.randn([16, 2], dtype='float32')
-        >>> experts = 4
-        >>> tokens_per_exp = [8, 6, 10, 12]  # Must sum to seq_len * topk
-        >>> align = 8
-        >>> out = moe_permute(hidden, scale, route_map, expert_prob, experts, tokens_per_exp, align)
     """
     if in_dynamic_or_pir_mode():
         (
