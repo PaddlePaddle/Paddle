@@ -295,16 +295,18 @@ void BincountInferMeta(const MetaTensor& x,
                           "But the dimension of Input(Weights) is [%d]",
                           weights_dim.size()));
 
-    PADDLE_ENFORCE_EQ(
-        weights_dim[0],
-        input_dim[0],
-        common::errors::InvalidArgument(
-            "The 'shape' of Input(Weights) must be equal to the 'shape' of "
-            "Input(X)."
-            "But received: the 'shape' of Input(Weights) is [%s],"
-            "the 'shape' of Input(X) is [%s]",
-            weights_dim,
-            input_dim));
+    if (input_dim[0] != 0) {
+      PADDLE_ENFORCE_EQ(
+          weights_dim[0],
+          input_dim[0],
+          common::errors::InvalidArgument(
+              "The 'shape' of Input(Weights) must be equal to the 'shape' of "
+              "Input(X)."
+              "But received: the 'shape' of Input(Weights) is [%s],"
+              "the 'shape' of Input(X) is [%s]",
+              weights_dim,
+              input_dim));
+    }
   }
   out->set_dims(common::make_ddim({-1}));
   if (weights) {
