@@ -513,7 +513,6 @@ if(NOT WITH_GPU
     test_incubate_fused_rmsnorm_ext
     test_incubate_int_bincount
     test_incubate_moe_combine
-    test_incubate_moe_combine_no_weight
     test_incubate_moe_gate_dispatch_partial_nosoftmaxtopk
     test_incubate_moe_gate_dispatch_w_permute_bwd
     test_incubate_moe_gate_dispatch_w_permute
