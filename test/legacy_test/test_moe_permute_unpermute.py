@@ -139,12 +139,14 @@ class TestFusedMoePermuteUnpermute(unittest.TestCase):
                     tokens_per_expert=tokens_per_expert,
                     padding_alignment=128,
                 )
-                # Unpermute step
+
+                unpermute_input = (
+                    unzipped_tokens * unzipped_probs.unsqueeze(-1)
+                ).astype("bfloat16")
+
                 unzipped_tokens_recovered, expert_prob_topk_recovered = (
                     moe_unpermute(
-                        (unzipped_tokens * unzipped_probs.unsqueeze(-1)).astype(
-                            "bfloat16"
-                        ),
+                        unpermute_input,
                         zipped_expertwise_rowmap,
                         expert_routemap_topk,
                         unzipped_probs,
@@ -157,6 +159,7 @@ class TestFusedMoePermuteUnpermute(unittest.TestCase):
                 max_abs_err, max_rel_err = tensor_max_abs_rel_err(
                     hidden_states, unzipped_tokens_recovered
                 )
+
                 self.assertLess(
                     max_rel_err,
                     1e-2,
