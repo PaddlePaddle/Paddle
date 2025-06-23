@@ -278,6 +278,133 @@ class TestMultiLabelMarginLoss(unittest.TestCase):
                 )
                 np.testing.assert_allclose(dy_functional, expected, rtol=1e-5)
 
+    def test_MultiLabelMarginLoss_error(self):
+        paddle.disable_static()
+        self.assertRaises(
+            ValueError,
+            paddle.nn.MultiLabelMarginLoss,
+            reduction="unsupported reduction",
+        )
+        input = paddle.to_tensor([[0.1, 0.3, 0.2, 0.4]], dtype='float32')
+        label = paddle.to_tensor([[0, 2, -1, -1]], dtype='int64')
+        self.assertRaises(
+            ValueError,
+            paddle.nn.functional.multi_label_margin_loss,
+            input=input,
+            label=label,
+            reduction="unsupported reduction",
+        )
+        paddle.enable_static()
+
+    def test_MultiLabelMarginLoss_dimension(self):
+        paddle.disable_static()
+
+        # Test dimension mismatch - wrong input dimension (1D instead of 2D)
+        input_1d = paddle.to_tensor([0.1, 0.3, 0.2, 0.4], dtype='float32')
+        label_2d = paddle.to_tensor([[0, 2, -1, -1]], dtype='int64')
+
+        self.assertRaises(
+            ValueError,
+            paddle.nn.functional.multi_label_margin_loss,
+            input=input_1d,
+            label=label_2d,
+        )
+        MLMLoss = paddle.nn.MultiLabelMarginLoss()
+        self.assertRaises(
+            ValueError,
+            MLMLoss,
+            input=input_1d,
+            label=label_2d,
+        )
+
+        # Test dimension mismatch - wrong label dimension (1D instead of 2D)
+        input_2d = paddle.to_tensor([[0.1, 0.3, 0.2, 0.4]], dtype='float32')
+        label_1d = paddle.to_tensor([0, 2, -1, -1], dtype='int64')
+
+        self.assertRaises(
+            ValueError,
+            paddle.nn.functional.multi_label_margin_loss,
+            input=input_2d,
+            label=label_1d,
+        )
+        self.assertRaises(
+            ValueError,
+            MLMLoss,
+            input=input_2d,
+            label=label_1d,
+        )
+
+        # Test dimension mismatch - both wrong dimensions (3D input)
+        input_3d = paddle.to_tensor([[[0.1, 0.3], [0.2, 0.4]]], dtype='float32')
+        label_2d_wrong = paddle.to_tensor([[0, 2]], dtype='int64')
+
+        self.assertRaises(
+            ValueError,
+            paddle.nn.functional.multi_label_margin_loss,
+            input=input_3d,
+            label=label_2d_wrong,
+        )
+        self.assertRaises(
+            ValueError,
+            MLMLoss,
+            input=input_3d,
+            label=label_2d_wrong,
+        )
+
+        paddle.enable_static()
+
+    def test_MultiLabelMarginLoss_dtype_check(self):
+        paddle.enable_static()
+
+        batch_size = 2
+        num_classes = 3
+
+        # Test wrong input dtype
+        prog = paddle.static.Program()
+        startup_prog = paddle.static.Program()
+        with paddle.static.program_guard(prog, startup_prog):
+            # Wrong input dtype (int32 instead of float32/float64)
+            input_wrong_dtype = paddle.static.data(
+                name='input_wrong',
+                shape=[batch_size, num_classes],
+                dtype='int32',
+            )
+            label_correct = paddle.static.data(
+                name='label_correct',
+                shape=[batch_size, num_classes],
+                dtype='int64',
+            )
+
+            with self.assertRaises(TypeError):
+                res = paddle.nn.functional.multi_label_margin_loss(
+                    input=input_wrong_dtype,
+                    label=label_correct,
+                )
+
+        # Test wrong label dtype
+        prog = paddle.static.Program()
+        startup_prog = paddle.static.Program()
+        with paddle.static.program_guard(prog, startup_prog):
+            input_correct = paddle.static.data(
+                name='input_correct',
+                shape=[batch_size, num_classes],
+                dtype='float32',
+            )
+            # Wrong label dtype (float32 instead of int32/int64)
+            label_wrong_dtype = paddle.static.data(
+                name='label_wrong',
+                shape=[batch_size, num_classes],
+                dtype='float32',
+            )
+
+            with self.assertRaises(TypeError):
+                res = paddle.nn.functional.multi_label_margin_loss(
+                    input=input_correct,
+                    label=label_wrong_dtype,
+                )
+
+        paddle.disable_static()
+
 
 if __name__ == "__main__":
     unittest.main()
