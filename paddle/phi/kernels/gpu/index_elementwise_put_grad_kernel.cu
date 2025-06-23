@@ -186,25 +186,14 @@ void LaunchIndexElementwisePutGradCudaKernel(
   if (x_grad) {
     phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
 
-    if (index_type == phi::DataType::INT32) {
-      GPUIndexElementwisePutGradKernel<T, int>(dev_ctx,
-                                               x_indices,
-                                               input_dims,
-                                               input_strides,
-                                               index_dims,
-                                               index_strides,
-                                               slice_offset,
-                                               x_grad);
-    } else if (index_type == phi::DataType::INT64) {
-      GPUIndexElementwisePutGradKernel<T, int64_t>(dev_ctx,
-                                                   x_indices,
-                                                   input_dims,
-                                                   input_strides,
-                                                   index_dims,
-                                                   index_strides,
-                                                   slice_offset,
-                                                   x_grad);
-    }
+    GPUIndexElementwisePutGradKernel<T, int64_t>(dev_ctx,
+                                                 x_indices,
+                                                 input_dims,
+                                                 input_strides,
+                                                 index_dims,
+                                                 index_strides,
+                                                 slice_offset,
+                                                 x_grad);
   }
 
   auto out_grad_dims = out_grad.dims();
@@ -323,15 +312,13 @@ void IndexElementwisePutGradKernel(
     DenseTensor* x_grad,
     DenseTensor* value_grad) {
   const auto& index_type = indices[0]->dtype();
-  PADDLE_ENFORCE_EQ(
-      index_type == phi::DataType::INT32 || index_type == phi::DataType::INT64,
-      true,
-      common::errors::InvalidArgument(
-          "Index holds the wrong type, it holds [%s], but "
-          "desires to be [%s] or [%s].",
-          index_type,
-          phi::DataType::INT32,
-          phi::DataType::INT64));
+  PADDLE_ENFORCE_EQ(index_type == phi::DataType::INT64,
+                    true,
+                    common::errors::InvalidArgument(
+                        "Index holds the wrong type, it holds [%s], but "
+                        "desires to be [%s].",
+                        index_type,
+                        phi::DataType::INT64));
 
   std::vector<DenseTensor> tmp_args;
   std::vector<const phi::DenseTensor*> int_indices_v =

@@ -1,4 +1,3 @@
-// NOLINT
 // Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -34,30 +33,32 @@ void moe_dispatch_fwd(const Context &dev_ctx,
                       DenseTensor *expert_offset,
                       DenseTensor *expert_id,
                       bool use_pad) {
-  if (!(x.dtype() == paddle::DataType::FLOAT32 ||
-        x.dtype() == paddle::DataType::FLOAT16 ||
-        x.dtype() == paddle::DataType::BFLOAT16)) {
-    PD_THROW(
-        "Unsupported dtype for x, "
-        "currently float32, float16 and bfloat16 are supported.");
-  }
-
-  if (gate_logits.dtype() != paddle::DataType::FLOAT32) {
-    PD_THROW(
-        "Unsupported dtype for gate_logits, "
-        "currently only float32 is supported.");
-  }
+  PADDLE_ENFORCE_EQ(gate_logits.dtype(),
+                    paddle::DataType::FLOAT32,
+                    ::common::errors::InvalidArgument(
+                        "Unsupported dtype for gate_logits, "
+                        "currently only float32 is supported."));
 
   int64_t s = x.dims()[0];
   int64_t d = x.dims()[1];
   int64_t e = gate_logits.dims()[1];
 
-  if (k <= 0) PD_THROW("the k of topk must more than 0.");
-  if (capacity <= 0) PD_THROW("the capacity of each expert must more than 0.");
-  if (e < k) PD_THROW("the amount of experts must greater than k.");
-  if (k > 512) PD_THROW("currently, the k of topk must lesser than 512.");
-  if (e > 512 * 64 * 12)
-    PD_THROW("currently, he amount of experts must lesser than 393216.");
+  PADDLE_ENFORCE_GT(
+      k,
+      0,
+      ::common::errors::InvalidArgument("the k of topk must more than 0."));
+  PADDLE_ENFORCE_GT(capacity,
+                    0,
+                    ::common::errors::InvalidArgument(
+                        "the capacity of each expert must more than 0."));
+  PADDLE_ENFORCE_GE(e,
+                    k,
+                    ::common::errors::InvalidArgument(
+                        "the amount of experts must greater than k."));
+  PADDLE_ENFORCE_EQ(
+      corr_bias.is_initialized(),
+      false,
+      ::common::errors::InvalidArgument("corr_bias is not supported yet"));
 
   using XPUType = typename XPUTypeTrait<T>::Type;
 

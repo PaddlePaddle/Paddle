@@ -73,6 +73,7 @@ if(NOT WITH_GPU)
   list(REMOVE_ITEM TEST_OPS test_fused_bias_dropout_residual_layer_norm_op)
   list(REMOVE_ITEM TEST_OPS test_fused_bias_dropout_residual_layer_norm_op_api)
   list(REMOVE_ITEM TEST_OPS test_fused_transpose_spilt_quant_op)
+  list(REMOVE_ITEM TEST_OPS test_fused_transpose_wlch_split_quant_op)
   list(REMOVE_ITEM TEST_OPS test_rms_norm_op)
   list(REMOVE_ITEM TEST_OPS test_fused_layernorm_op)
   list(REMOVE_ITEM TEST_OPS test_fused_swiglu_weighted_bwd_op)
@@ -176,6 +177,7 @@ if(WIN32)
   list(REMOVE_ITEM TEST_OPS test_fp8_gemm)
   list(REMOVE_ITEM TEST_OPS test_fp8_quant)
   list(REMOVE_ITEM TEST_OPS test_fused_transpose_spilt_quant_op)
+  list(REMOVE_ITEM TEST_OPS test_fused_transpose_wlch_split_quant_op)
 endif()
 list(REMOVE_ITEM TEST_OPS test_checkpoint_saver)
 
@@ -520,6 +522,7 @@ if(NOT WITH_GPU
     test_fused_stack_transpose_quant_op
     test_fused_swiglu_weighted_bwd_op
     test_fused_transpose_spilt_quant_op
+    test_fused_transpose_wlch_split_quant_op
     test_fused_weighted_swiglu_act_quant_op)
 endif()
 

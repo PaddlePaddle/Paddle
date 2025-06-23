@@ -595,7 +595,9 @@ class TestNearestInterpOpBF16(OpTest):
         self.outputs = {'Out': convert_float_to_uint16(output_np)}
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(
+            check_pir=True, check_symbol_infer=(self.out_size is None)
+        )
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', in_place=True, check_pir=True)

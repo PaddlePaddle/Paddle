@@ -108,7 +108,10 @@ def create_async_load():
     Constructs a new AsyncLoad object.
     It is used to load/reload data asynchronously on GPU.
     """
-    return core.AsyncLoad()
+    if paddle.is_compiled_with_xpu():
+        return core.XpuAsyncLoad()
+    else:  # default is GPU or CUDA
+        return core.AsyncLoad()
 
 
 def create_xpu_async_load():

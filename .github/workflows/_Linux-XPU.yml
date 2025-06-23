@@ -132,6 +132,7 @@ jobs:
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ${{ github.workspace }}/../../../proxy
+          bash ${ci_scripts}/cmake-predownload.sh
           apt install zstd -y
           bash ${ci_scripts}/run_setup.sh bdist_wheel
           EXCODE=$?
