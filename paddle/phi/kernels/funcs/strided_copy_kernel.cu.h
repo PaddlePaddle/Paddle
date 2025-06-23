@@ -208,6 +208,20 @@ __global__ void Contiguous2StridedCaseOneDiffDimFunc(
   }
 }
 
+// Check whether "out" is the output of the stride slice.
+bool CheckStride(
+    const phi::Array<int64_t, phi::DDim::kMaxRank + 1>& output_stride,
+    const phi::Array<int64_t, phi::DDim::kMaxRank + 1>& dims,
+    int rank,
+    int64_t numel) {
+  int64_t stride = numel;
+  for (size_t i = 0; i < rank; i++) {
+    stride = stride / dims[i];
+    if (output_stride[i] > stride) return false;
+  }
+  return true;
+}
+
 template <typename T, typename Context>
 bool LaunchContiguous2StridedCaseOneKernel(
     const Context& dev_ctx,
@@ -218,6 +232,9 @@ bool LaunchContiguous2StridedCaseOneKernel(
     int rank,
     int64_t numel,
     bool diff_dims) {
+  if (!CheckStride(output_stride, dims, rank, numel)) {
+    return false;
+  }
   dim3 grid(1, 1, 1), block(1, 1, 1);
   phi::Array<int64_t, 6> cur_dims;
   block.x = 512;
@@ -722,14 +739,14 @@ void StrideCopyDiffDimKernel(
                                                          output_dims,
                                                          rank,
                                                          true)) {
-    // } else if (LaunchContiguous2StridedCaseOneKernel<T, Context>(dev_ctx,
-    //                                                              input_data,
-    //                                                              output_data,
-    //                                                              output_stride,
-    //                                                              output_dims,
-    //                                                              rank,
-    //                                                              numel,
-    //                                                              true)) {
+  } else if (LaunchContiguous2StridedCaseOneKernel<T, Context>(dev_ctx,
+                                                               input_data,
+                                                               output_data,
+                                                               output_stride,
+                                                               output_dims,
+                                                               rank,
+                                                               numel,
+                                                               true)) {
   } else {
     switch (VecSize) {
 #define CASE_VECSIZE(__Sz)                                                 \
