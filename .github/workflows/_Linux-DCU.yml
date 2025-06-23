@@ -227,7 +227,6 @@ jobs:
           CCACHE_LIMIT_MULTIPLE: 0.8
           GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           home_dir: ${{ github.workspace }}/../../../..
-          FLAGS_use_stride_kernel: "0"
         run: |
           container_name=${TASK}-$(date +%Y%m%d-%H%M%S)
           echo "container_name=${container_name}" >> ${{ github.env }}
@@ -251,7 +250,7 @@ jobs:
             -e WITH_RCCL \
             -e WITH_AVX \
             -e WITH_MKL \
-            -e WITH_DISTRIBUTE \
+            -e WITH_TENSORRT \
             -e IF_DCU \
             -e WITH_RCCL \
             -e CMAKE_BUILD_TYPE \
@@ -269,7 +268,6 @@ jobs:
             -e WITH_AVX \
             -e no_proxy \
             -e GITHUB_API_TOKEN \
-            -e FLAGS_use_stride_kernel \
             -e CI_name \
             -w /paddle --network host ${docker_image} /bin/bash
 
