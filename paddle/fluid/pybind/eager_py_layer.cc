@@ -133,9 +133,6 @@ PyObject* pylayer_method_apply(PyObject* cls,
   EAGER_TRY
   SetPythonStack();
   VLOG(6) << "Begin run PyLayer apply...";
-  if (FLAGS_check_cuda_error) {
-    egr::CUDAErrorCheck("pylayer_method_apply begin");
-  }
   PyObject* backward_function =
       PyObject_GetAttrString(cls, "_backward_function");
   if (!backward_function) {
@@ -150,6 +147,10 @@ PyObject* pylayer_method_apply(PyObject* cls,
     return nullptr;
   }
   VLOG(6) << "PyLayer construct PyLayerContext finish...";
+  if (FLAGS_check_cuda_error) {
+    egr::CUDAErrorCheck("pylayer_method_apply " +
+                        std::string(Py_TYPE(ctx)->tp_name) + " begin");
+  }
 
   bool require_any_grad = false;
 
@@ -527,7 +528,8 @@ PyObject* pylayer_method_apply(PyObject* cls,
   Py_XDECREF(ctx);
 
   if (FLAGS_check_cuda_error) {
-    egr::CUDAErrorCheck("pylayer_method_apply finish");
+    egr::CUDAErrorCheck("pylayer_method_apply " +
+                        std::string(Py_TYPE(ctx)->tp_name) + " finish");
   }
 
   return outputs;

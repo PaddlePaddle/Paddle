@@ -536,9 +536,6 @@ PyObject* eager_api_run_custom_op(PyObject* self,
                                   PyObject* kwargs) {
   EAGER_TRY
   FLAGS_tensor_operants_mode = "phi";
-  if (FLAGS_check_cuda_error) {
-    egr::CUDAErrorCheck("eager_api_run_custom_op begin");
-  }
   if (paddle::OperantsManager::Instance().phi_operants.get() == nullptr) {
     paddle::OperantsManager::Instance().phi_operants =
         std::make_unique<paddle::operants::PhiTensorOperants>();
@@ -547,6 +544,9 @@ PyObject* eager_api_run_custom_op(PyObject* self,
 
   std::string op_type = CastPyArg2AttrString(PyTuple_GET_ITEM(args, 0), 0);
   VLOG(7) << "Get things from python for Custom Op: " << op_type;
+  if (FLAGS_check_cuda_error) {
+    egr::CUDAErrorCheck("eager_api_run_custom_op " + op_type + " begin");
+  }
   paddle::CustomOpKernelContext ctx;
   auto meta_info_map = egr::Controller::Instance().GetOpMetaInfoMap();
   PADDLE_ENFORCE_NE(meta_info_map.find(op_type),
@@ -865,7 +865,7 @@ PyObject* eager_api_run_custom_op(PyObject* self,
     }
   }
   if (FLAGS_check_cuda_error) {
-    egr::CUDAErrorCheck("eager_api_run_custom_op finish");
+    egr::CUDAErrorCheck("eager_api_run_custom_op " + op_type + " finish");
   }
   return ToPyObject(*ctx.AllMutableOutput());
   EAGER_CATCH_AND_THROW_RETURN_NULL
