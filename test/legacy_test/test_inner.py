@@ -193,7 +193,7 @@ class TestMultiplyApi_ZeroSize(unittest.TestCase):
         self._test_case([0, 0], [1, 0])
         self._test_case([0, 0], [0, 0])
         self._test_case([0], [1, 0])
-        self._test_case([1, 1, 1], [1, 0, 1])
+        self._test_case([5, 1, 1], [1, 0, 1])
 
 
 if __name__ == '__main__':

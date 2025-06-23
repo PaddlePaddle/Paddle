@@ -2872,11 +2872,7 @@ def inner(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     xshape = x.shape
     yshape = y.shape
     if in_dynamic_mode() and (x.size == 1 or y.size == 1):
-        if len(xshape) > 1 and len(yshape) > 1:
-            dstshape = list(xshape[:-1]) + list(yshape[:-1])
-            return multiply(x, y).reshape(dstshape)
-        else:
-            return multiply(x, y)
+        return multiply(x, y)
     else:
         dstshape = list(xshape[:-1]) + list(yshape[:-1])
         if xshape[-1] == 0:  # If the last dimension is 0
