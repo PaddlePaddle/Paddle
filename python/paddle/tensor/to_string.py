@@ -308,16 +308,7 @@ def _format_dense_tensor(tensor, indent):
     ):
         np_tensor = mask_xpu_bf16_tensor(np_tensor)
 
-    if len(tensor.shape) == 0:
-        size = 0
-    else:
-        size = 1
-        for dim in tensor.shape:
-            size *= dim
-
-    summary = False
-    if size > DEFAULT_PRINT_OPTIONS.threshold:
-        summary = True
+    summary = tensor.numel() > DEFAULT_PRINT_OPTIONS.threshold
 
     max_width, signed = _get_max_width(_to_summary(np_tensor))
 
