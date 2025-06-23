@@ -62,4 +62,4 @@ op_patches:
       - action : add_output
         object : 1
         type : pir::DenseTensorType
-        default : [pir::Float32Type,[-1],"NCHW",[],0]
+        data : [pir::Float32Type,[-1],"NCHW",[],0]
