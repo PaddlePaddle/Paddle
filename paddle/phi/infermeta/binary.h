@@ -591,6 +591,10 @@ void MatrixRankTolInferMeta(const MetaTensor& x,
                             bool hermitian,
                             MetaTensor* out);
 
+void MoeCombineNoWeightInferMeta(const MetaTensor& x,
+                                 const MetaTensor& scatter_index,
+                                 MetaTensor* y);
+
 void MulticlassNmsv1InferMeta(const MetaTensor& b_boxes,
                               const MetaTensor& scores,
                               float score_threshold,
