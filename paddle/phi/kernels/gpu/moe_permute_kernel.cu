@@ -268,7 +268,8 @@ void MoePermuteKernel(const Context &dev_ctx,
         i < num_experts - 1 ? expert_offset[i + 1] : output_rows;
     int invalid_rows =
         next_expert_offset - expert_offset[i] - tokens_per_expert[i];
-    cudaMemsetAsync(X_unzipped_ptr + tokens_per_expert[i] * sizeof(T),
+    int cur_expert_end = expert_offset[i] + tokens_per_expert[i];
+    cudaMemsetAsync(X_unzipped_ptr + cur_expert_end * cols * sizeof(T),
                     0,
                     sizeof(T) * invalid_rows * cols,
                     dev_ctx.stream());
@@ -281,8 +282,9 @@ void MoePermuteKernel(const Context &dev_ctx,
           i < num_experts - 1 ? expert_offset[i + 1] : output_rows;
       int invalid_rows =
           next_expert_offset - expert_offset[i] - tokens_per_expert[i];
+      int cur_expert_end = expert_offset[i] + tokens_per_expert[i];
       cudaMemsetAsync(
-          XScale_unzipped_ptr + tokens_per_expert[i] * sizeof(float),
+          XScale_unzipped_ptr + cur_expert_end * quanted_cols * sizeof(float),
           0,
           sizeof(float) * invalid_rows * quanted_cols,
           dev_ctx.stream());
@@ -296,11 +298,11 @@ void MoePermuteKernel(const Context &dev_ctx,
         i < num_experts - 1 ? expert_offset[i + 1] : output_rows;
     int invalid_rows =
         next_expert_offset - expert_offset[i] - tokens_per_expert[i];
-    cudaMemsetAsync(
-        token_prob_unzipped_ptr + tokens_per_expert[i] * sizeof(float),
-        0,
-        sizeof(float) * invalid_rows,
-        dev_ctx.stream());
+    int cur_expert_end = expert_offset[i] + tokens_per_expert[i];
+    cudaMemsetAsync(token_prob_unzipped_ptr + cur_expert_end * sizeof(float),
+                    0,
+                    sizeof(float) * invalid_rows,
+                    dev_ctx.stream());
   }
   const int cumsum_blocknum =
       (rows + CUMSUM_BLOCK_SIZE - 1) / CUMSUM_BLOCK_SIZE;
