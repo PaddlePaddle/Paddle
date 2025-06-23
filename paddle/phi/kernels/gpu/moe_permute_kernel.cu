@@ -60,20 +60,18 @@ __global__ void tokens_unzip_stable_kernel(
     const int scale_length,
     const int num_experts,
     const int topk) {
+
   using expert_infos_t = expert_infos<probs_T>;
+  int local_cumsum = 0;
+  int local_expert_offsets;
   const int block_row_base = blockIdx.x * CUMSUM_BLOCK_SIZE;
   int cumsum_offset = (blockIdx.x != 0) * CUMSUM_INVALID_TAG;
-  int local_expert_offsets;
-  int local_cumsum = 0;
-
   __shared__ expert_infos_t
       shared_expert_infos[CUMSUM_BLOCK_SIZE][MAX_NUM_EXPERTS];
 
+  // ---------------Expertwise deterministic job scheduling ---------------
   if (threadIdx.x < num_experts) {
     local_expert_offsets = expert_base_offset[threadIdx.x];
-  }
-  // Expertwise deterministic job scheduling
-  if (threadIdx.x < num_experts) {
     expert_infos_t local_expert_infos[CUMSUM_BLOCK_SIZE];
 #pragma unroll
     for (int i = 0; i < CUMSUM_BLOCK_SIZE; i++) {
