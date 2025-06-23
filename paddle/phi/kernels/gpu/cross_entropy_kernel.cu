@@ -536,10 +536,10 @@ __global__ void WarpSoftmaxForwardSoftLabel(T* loss,
   constexpr int kIterations = kDimCeil / kWarpSize;
   constexpr int kIterationsV =
       (kIterations >= kVSize) ? (kIterations / kVSize) : 1;
-  constexpr int kBatchSize = (kDimCeil <= 128) ? 2 : 1;
+  constexpr int64_t kBatchSize = (kDimCeil <= 128) ? 2 : 1;
 
-  int first_batch = (blockDim.y * blockIdx.x + threadIdx.y) * kBatchSize;
-  int local_batches = batch_size - first_batch;
+  int64_t first_batch = (blockDim.y * blockIdx.x + threadIdx.y) * kBatchSize;
+  int64_t local_batches = batch_size - first_batch;
   if (local_batches > kBatchSize) {
     local_batches = kBatchSize;
   }

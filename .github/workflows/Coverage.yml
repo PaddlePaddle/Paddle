@@ -54,6 +54,7 @@ jobs:
     steps:
       - name: Check docker image and run container
         env:
+          CACHE_DIR: "/root/.cache/coverage"
           CCACHE_DIR: "/root/.ccache/coverage"
           FLAGS_fraction_of_gpu_memory_to_use: 0.15
           CTEST_PARALLEL_LEVEL: 2
@@ -99,6 +100,7 @@ jobs:
             -e work_dir \
             -e PADDLE_ROOT \
             -e GIT_PR_ID \
+            -e CACHE_DIR \
             -e CCACHE_DIR \
             -e ci_scripts \
             -e FLAGS_fraction_of_gpu_memory_to_use \
@@ -161,6 +163,7 @@ jobs:
           mkdir -p /home/data/cfs/.cache/coverage
           mkdir -p /home/data/cfs/.ccache/coverage
           source ${{ github.workspace }}/../../../proxy
+          bash ${ci_scripts}/cmake-predownload.sh
           bash $ci_scripts/coverage_build.sh bdist_wheel
           '
 
