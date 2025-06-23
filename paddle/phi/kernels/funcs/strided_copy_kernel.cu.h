@@ -559,80 +559,6 @@ void LaunchContiguous2StridedDefaultKernel(
       switch (rank) {
 #define CASE_RANK(__Rk)                                           \
   case __Rk:                                                      \
-    Contiguous2StridedDefaultFunc<T, 4, __Rk>                     \
-        <<<grid, block, 0, dev_ctx.stream()>>>(                   \
-            input_data, output_data, output_stride, dims, numel); \
-    break
-
-        CASE_RANK(1);
-        CASE_RANK(2);
-        CASE_RANK(3);
-        CASE_RANK(4);
-        CASE_RANK(5);
-        CASE_RANK(6);
-        CASE_RANK(7);
-        CASE_RANK(8);
-        CASE_RANK(9);
-#undef CASE_RANK
-        default:
-          PADDLE_THROW(common::errors::InvalidArgument(
-              "The rank of input should be less than 9, but received %d.",
-              rank));
-      }
-    } else if (VecSize == 2) {
-      switch (rank) {
-#define CASE_RANK(__Rk)                                           \
-  case __Rk:                                                      \
-    Contiguous2StridedDefaultFunc<T, 2, __Rk>                     \
-        <<<grid, block, 0, dev_ctx.stream()>>>(                   \
-            input_data, output_data, output_stride, dims, numel); \
-    break
-
-        CASE_RANK(1);
-        CASE_RANK(2);
-        CASE_RANK(3);
-        CASE_RANK(4);
-        CASE_RANK(5);
-        CASE_RANK(6);
-        CASE_RANK(7);
-        CASE_RANK(8);
-        CASE_RANK(9);
-#undef CASE_RANK
-        default:
-          PADDLE_THROW(common::errors::InvalidArgument(
-              "The rank of input should be less than 9, but received %d.",
-              rank));
-      }
-    } else {
-      switch (rank) {
-#define CASE_RANK(__Rk)                                           \
-  case __Rk:                                                      \
-    Contiguous2StridedDefaultFunc<T, 1, __Rk>                     \
-        <<<grid, block, 0, dev_ctx.stream()>>>(                   \
-            input_data, output_data, output_stride, dims, numel); \
-    break
-
-        CASE_RANK(1);
-        CASE_RANK(2);
-        CASE_RANK(3);
-        CASE_RANK(4);
-        CASE_RANK(5);
-        CASE_RANK(6);
-        CASE_RANK(7);
-        CASE_RANK(8);
-        CASE_RANK(9);
-#undef CASE_RANK
-        default:
-          PADDLE_THROW(common::errors::InvalidArgument(
-              "The rank of input should be less than 9, but received %d.",
-              rank));
-      }
-    }
-  } else {
-    if (VecSize == 4) {
-      switch (rank) {
-#define CASE_RANK(__Rk)                                           \
-  case __Rk:                                                      \
     Contiguous2StridedDefaultDiffDimFunc<T, __Rk, 4>              \
         <<<grid, block, 0, dev_ctx.stream()>>>(                   \
             input_data, output_data, output_stride, dims, numel); \
@@ -703,6 +629,80 @@ void LaunchContiguous2StridedDefaultKernel(
               rank));
       }
     }
+  } else {
+    if (VecSize == 4) {
+      switch (rank) {
+#define CASE_RANK(__Rk)                                           \
+  case __Rk:                                                      \
+    Contiguous2StridedDefaultFunc<T, 4, __Rk>                     \
+        <<<grid, block, 0, dev_ctx.stream()>>>(                   \
+            input_data, output_data, output_stride, dims, numel); \
+    break
+
+        CASE_RANK(1);
+        CASE_RANK(2);
+        CASE_RANK(3);
+        CASE_RANK(4);
+        CASE_RANK(5);
+        CASE_RANK(6);
+        CASE_RANK(7);
+        CASE_RANK(8);
+        CASE_RANK(9);
+#undef CASE_RANK
+        default:
+          PADDLE_THROW(common::errors::InvalidArgument(
+              "The rank of input should be less than 9, but received %d.",
+              rank));
+      }
+    } else if (VecSize == 2) {
+      switch (rank) {
+#define CASE_RANK(__Rk)                                           \
+  case __Rk:                                                      \
+    Contiguous2StridedDefaultFunc<T, 2, __Rk>                     \
+        <<<grid, block, 0, dev_ctx.stream()>>>(                   \
+            input_data, output_data, output_stride, dims, numel); \
+    break
+
+        CASE_RANK(1);
+        CASE_RANK(2);
+        CASE_RANK(3);
+        CASE_RANK(4);
+        CASE_RANK(5);
+        CASE_RANK(6);
+        CASE_RANK(7);
+        CASE_RANK(8);
+        CASE_RANK(9);
+#undef CASE_RANK
+        default:
+          PADDLE_THROW(common::errors::InvalidArgument(
+              "The rank of input should be less than 9, but received %d.",
+              rank));
+      }
+    } else {
+      switch (rank) {
+#define CASE_RANK(__Rk)                                           \
+  case __Rk:                                                      \
+    Contiguous2StridedDefaultFunc<T, 1, __Rk>                     \
+        <<<grid, block, 0, dev_ctx.stream()>>>(                   \
+            input_data, output_data, output_stride, dims, numel); \
+    break
+
+        CASE_RANK(1);
+        CASE_RANK(2);
+        CASE_RANK(3);
+        CASE_RANK(4);
+        CASE_RANK(5);
+        CASE_RANK(6);
+        CASE_RANK(7);
+        CASE_RANK(8);
+        CASE_RANK(9);
+#undef CASE_RANK
+        default:
+          PADDLE_THROW(common::errors::InvalidArgument(
+              "The rank of input should be less than 9, but received %d.",
+              rank));
+      }
+    }
   }
 }
 
@@ -722,14 +722,14 @@ void StrideCopyDiffDimKernel(
                                                          output_dims,
                                                          rank,
                                                          true)) {
-  } else if (LaunchContiguous2StridedCaseOneKernel<T, Context>(dev_ctx,
-                                                               input_data,
-                                                               output_data,
-                                                               output_stride,
-                                                               output_dims,
-                                                               rank,
-                                                               numel,
-                                                               true)) {
+    // } else if (LaunchContiguous2StridedCaseOneKernel<T, Context>(dev_ctx,
+    //                                                              input_data,
+    //                                                              output_data,
+    //                                                              output_stride,
+    //                                                              output_dims,
+    //                                                              rank,
+    //                                                              numel,
+    //                                                              true)) {
   } else {
     switch (VecSize) {
 #define CASE_VECSIZE(__Sz)                                                 \
