@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/impl/add_n_kernel_impl.h"
 #include "paddle/phi/common/amp_type_traits.h"
+#include "paddle/phi/kernels/impl/add_n_kernel_impl.h"
 
 #include "glog/logging.h"
 
