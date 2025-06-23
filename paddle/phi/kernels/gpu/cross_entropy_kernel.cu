@@ -538,7 +538,9 @@ __global__ void WarpSoftmaxForwardSoftLabel(T* loss,
       (kIterations >= kVSize) ? (kIterations / kVSize) : 1;
   constexpr int64_t kBatchSize = (kDimCeil <= 128) ? 2 : 1;
 
-  int64_t first_batch = (blockDim.y * blockIdx.x + threadIdx.y) * kBatchSize;
+  int64_t first_batch =
+      (static_cast<int64_t>(blockDim.y) * blockIdx.x + threadIdx.y) *
+      kBatchSize;
   int64_t local_batches = batch_size - first_batch;
   if (local_batches > kBatchSize) {
     local_batches = kBatchSize;
@@ -1255,8 +1257,8 @@ void CrossEntropyWithSoftmaxCUDAKernel(const GPUContext& dev_ctx,
     const int axis_v = phi::funcs::CanonicalAxis(axis, rank);
     const int axis_dim = softmax->dims()[axis_v];
 
-    const int n = phi::funcs::SizeToAxis(axis_v, softmax->dims());
-    const int d = phi::funcs::SizeFromAxis(axis_v, softmax->dims());
+    const int64_t n = phi::funcs::SizeToAxis(axis_v, softmax->dims());
+    const int64_t d = phi::funcs::SizeFromAxis(axis_v, softmax->dims());
 
     auto* softmax_out_data = dev_ctx.template Alloc<T>(softmax_out);
     auto* loss_data = dev_ctx.template Alloc<T>(loss);
@@ -1298,7 +1300,7 @@ void CrossEntropyWithSoftmaxCUDAKernel(const GPUContext& dev_ctx,
       const int kDimCeil = 1 << kDimLog2;
       int kThreadPerBlock = 512;
       int kBatchPerBlock = 1;
-      int blocks = (n * d + kBatchPerBlock - 1) / kBatchPerBlock;
+      int64_t blocks = (n * d + kBatchPerBlock - 1) / kBatchPerBlock;
       dim3 threads(kThreadPerBlock / kBatchPerBlock, kBatchPerBlock, 1);
 
       CrossEntropySoftLabel<T, T, false>
@@ -1314,7 +1316,7 @@ void CrossEntropyWithSoftmaxCUDAKernel(const GPUContext& dev_ctx,
       auto* logits_data = softmax->data<T>();
       auto* labels_data = labels.data<LabelT>();
       int threads = 128;
-      int blocks = (n * d / axis_dim + threads - 1) / threads;
+      int64_t blocks = (n * d / axis_dim + threads - 1) / threads;
       CrossEntropyHardLabel<T, LabelT>
           <<<blocks, threads, 0, dev_ctx.stream()>>>(loss_data,
                                                      logits_data,
