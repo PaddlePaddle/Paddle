@@ -504,6 +504,15 @@
     func: fused_token_prune
   support_dygraph_mode : true
 
+- op : fused_transpose_wlch_split_quant
+  args: (Tensor x, IntArray tokens_per_expert, bool pow_2_scales=false)
+  output: Tensor[](out){tokens_per_expert.size()}, Tensor[](scales){tokens_per_expert.size()}
+  infer_meta:
+    func: FusedTransposeWLCHSplitQuantInferMeta
+  kernel:
+    func: fused_transpose_wlch_split_quant
+  support_dygraph_mode : true
+
 - op : fusion_group
   args: (Tensor[] inputs, int[] outs_dtype = {}, int[] inputs_dtype = {}, str func_name = "", int type
     = 0)

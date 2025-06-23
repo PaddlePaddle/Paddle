@@ -5802,6 +5802,24 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
   traits : paddle::dialect::ForwardOnlyTrait
 
+- op: fp8_gemm_blockwise_
+  args: (Tensor A, Tensor A_scale, Tensor B, Tensor B_scale, Tensor input_result, Tensor bias, Tensor pre_gelu, Tensor workspace, bool transa, bool transb, bool grad, bool accumulate, bool use_split_accumulator, int math_sm_count, bool is_A_1d_scaled, bool is_B_1d_scaled)
+  output: Tensor (output), Tensor (pre_gelu_out), Tensor (workspace_out)
+  inplace: (input_result -> output), (pre_gelu -> pre_gelu_out), (workspace -> workspace_out)
+  infer_meta:
+    func: Fp8GemmBlockwiseInferMeta
+  kernel:
+    func: fp8_gemm_blockwise
+
+- op: fp8_quant_blockwise
+  args: (Tensor x, float epsilon, bool using_1x128_vec_quant, bool input_transpose, bool output_scale_transpose, bool using_e5m2, bool using_pow2_scale)
+  output: Tensor(out), Tensor(scale), Tensor(out_transposed), Tensor(scale_transposed)
+  infer_meta:
+    func: Fp8QuantBlockwiseInferMeta
+  kernel:
+    func: fp8_quant_blockwise
+    data_type: x
+
 - op: fused_rms_norm_ext
   args: (Tensor x, Tensor scale, float epsilon)
   output: Tensor(y), Tensor(invvar)
