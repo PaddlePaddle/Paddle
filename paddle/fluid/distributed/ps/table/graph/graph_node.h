@@ -38,7 +38,7 @@ class Node {
   virtual ~Node() {}
   static int id_size, int_size, weight_size;
   uint64_t get_id() { return id; }
-  int64_t get_py_id() { return static_cast<int64_t>(id); }
+  int64_t get_py_id() { return (int64_t)id; }
   void set_id(uint64_t id) { this->id = id; }
 
   virtual void build_edges(bool is_weighted UNUSED) {}
@@ -104,17 +104,10 @@ class GraphNode : public Node {
       int k, const std::shared_ptr<std::mt19937_64> rng) {
     return sampler->sample_k(k, rng);
   }
-  virtual uint64_t get_neighbor_id(int idx) { return edges->get_id(idx); }
-  /*
   virtual uint64_t get_neighbor_id(int idx) {
-    PADDLE_ENFORCE_GE(
-        idx,
-        0,
-        ::paddle::platform::errors::InvalidArgument(
-            "Index must be non-negative, but received %d.", idx));
-    return edges->get_id(static_cast<size_t>(idx));
+    return static_cast<uint64_t>(edges->get_id(idx));
   }
-  */
+
 #ifdef PADDLE_WITH_CUDA
   virtual half get_neighbor_weight(int idx) { return edges->get_weight(idx); }
 #else
