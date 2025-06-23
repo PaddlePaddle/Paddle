@@ -41,7 +41,7 @@ jobs:
           echo "Downloading Paddle.tar.gz"
           wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/Paddle/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
           echo "Extracting Paddle.tar.gz"
-          tar xf Paddle.tar.gz
+          tar -I "zstd -T0" xf Paddle.tar.gz
           rm Paddle.tar.gz
           cd Paddle
           git remote add upstream https://github.com/PaddlePaddle/Paddle.git

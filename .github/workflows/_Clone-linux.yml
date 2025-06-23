@@ -92,7 +92,7 @@ jobs:
           bos_file: "/home/paddle/actions-runner/bos/BosClient.py"
         run: |
           cd ..
-          tar -zcf Paddle.tar.gz Paddle
+          tar -I 'zstd -T0' -cf Paddle.tar.gz Paddle
           echo "::group::Install bce-python-sdk"
           python -m pip install bce-python-sdk==0.8.74
           echo "::endgroup::"
