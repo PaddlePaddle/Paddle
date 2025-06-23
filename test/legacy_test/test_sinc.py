@@ -364,5 +364,43 @@ class TestSincAPIBF16(unittest.TestCase):
         run(self.place)
 
 
+class TestSincAPI_ZeroSize(unittest.TestCase):
+    def setUp(self):
+        self.support_dtypes = [
+            'float32',
+            'float64',
+        ]
+        self.place = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            self.place.append(paddle.CPUPlace())
+        if core.is_compiled_with_cuda():
+            self.place.append(paddle.CUDAPlace(0))
+        self.shapes = [[0], [16, 0]]
+
+    def test_dygraph(self):
+        def run_dygraph(place):
+            paddle.disable_static(place)
+            for dtype in self.support_dtypes:
+                for shape in self.shapes:
+                    x_data = np.random.rand(*shape).astype(dtype)
+                    x = paddle.to_tensor(x_data)
+                    x.stop_gradient = False
+                    out = paddle.sinc(x)
+                    out_expected = np_sinc(x_data)
+                    np.testing.assert_allclose(
+                        out.numpy(), out_expected, rtol=1e-6, atol=1e-6
+                    )
+                    loss = paddle.sum(out)
+                    loss.backward()
+                    np.testing.assert_allclose(x.grad.shape, x.shape)
+
+        for place in self.place:
+            run_dygraph(place)
+
+
 if __name__ == "__main__":
     unittest.main()

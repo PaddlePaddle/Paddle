@@ -36,11 +36,13 @@ void MaskedFillGradKernel(const Context& dev_ctx,
   auto x_grad_dims = x_grad->dims();
   auto mask_dims = mask.dims();
   bool expand_x = false;
+  bool expand_value = false;
   auto expanded_size =
       common::vectorize(funcs::BroadcastTwoDims(x_grad_dims, mask_dims, -1));
 
   DenseTensor mask_expand;
   DenseTensor x_grad_expand;
+  DenseTensor value_grad_expand;
 
   auto expanded_dims = common::make_ddim(expanded_size);
 
@@ -58,14 +60,22 @@ void MaskedFillGradKernel(const Context& dev_ctx,
     x_grad_expand = *x_grad;
   }
 
+  if (v_grad) {
+    if (v_grad->dims() != expanded_dims && v_grad->numel() != 1) {
+      value_grad_expand = Empty<T, Context>(dev_ctx, IntArray(expanded_size));
+      expand_value = true;
+    } else {
+      value_grad_expand = *x_grad;
+    }
+  }
+
   auto* mask_data = mask_expand.data<bool>();
   auto* dout = out_grad.data<T>();
   auto numel = mask_expand.numel();
 
-  if (x_grad != nullptr) {
+  if (numel <= 0) return;
+  if (x_grad) {
     dev_ctx.template Alloc<T>(x_grad);
-    auto mask_size = mask_expand.numel();
-    if (mask_size <= 0) return;
 
     DenseTensor* x_grad_tmp = x_grad;
     if (expand_x) {
@@ -82,17 +92,36 @@ void MaskedFillGradKernel(const Context& dev_ctx,
     }
   }
 
-  if (v_grad != nullptr) {
-    auto* dv = dev_ctx.template Alloc<int64_t>(v_grad);
-    dv[0] = 0;
-    for (int i = 0; i < numel; i++) {
-      if (mask_data[i]) {
-        dv[0]++;
+  if (v_grad) {
+    dev_ctx.template Alloc<T>(v_grad);
+
+    DenseTensor* value_grad_tmp = v_grad;
+    if (expand_value) {
+      value_grad_tmp = &value_grad_expand;
+    }
+
+    auto* dv = value_grad_tmp->data<T>();
+    if (v_grad->numel() == 1) {
+      dv[0] = 0;
+      for (int i = 0; i < numel; i++) {
+        if (mask_data[i]) {
+          dv[0] += dout[i];
+        }
+      }
+    } else {
+      for (int i = 0; i < numel; i++) {
+        if (mask_data[i]) {
+          dv[i] = dout[i];
+        }
+      }
+
+      if (expand_value) {
+        ExpandGradKernel<T, Context>(
+            dev_ctx, x, value_grad_expand, IntArray(expanded_size), v_grad);
       }
     }
   }
 }
-
 }  // namespace phi
 
 PD_REGISTER_KERNEL(masked_fill_grad,

@@ -66,7 +66,7 @@ class InterpreterCoreInfo {
     std::unique_ptr<::pir::Program> ir_prog_{nullptr};
   };
 
-  bool IsAvailable(bool is_grad) {
+  bool IsAvailable(bool is_grad) const {
     const auto& core = is_grad ? backward_info_.core_ : forward_info_.core_;
     return core != nullptr;
   }
@@ -80,55 +80,89 @@ class InterpreterCoreInfo {
   CacheValue backward_info_;
 };
 
+class InterpreterCoreInfoCacheKey {
+ public:
+  InterpreterCoreInfoCacheKey(int64_t program_id,
+                              const framework::Scope* scope,
+                              int64_t place_hash_key,
+                              bool use_cuda_graph = false,
+                              int64_t cuda_graph_dispatch_key = 0,
+                              bool is_grad = false,
+                              bool in_pir_mode = false)
+      : program_id_(program_id),
+        scope_(scope),
+        place_hash_key_(place_hash_key),
+        use_cuda_graph_(use_cuda_graph),
+        cuda_graph_dispatch_key_(cuda_graph_dispatch_key),
+        is_grad_(is_grad),
+        in_pir_mode_(in_pir_mode) {}
+  int64_t hash() const {
+    int64_t hash_result = program_id_;
+    if (in_pir_mode_) {
+      int64_t scope_i = reinterpret_cast<int64_t>(scope_);
+      hash_result = hash_with_seed(hash_result, scope_i);
+      hash_result = hash_with_seed(hash_result, place_hash_key_);
+      // CUDA Graph is available in pir mode only
+      hash_result =
+          hash_with_seed(hash_result, static_cast<int64_t>(use_cuda_graph_));
+      hash_result = hash_with_seed(hash_result, cuda_graph_dispatch_key_);
+    }
+    return hash_result;
+  }
+
+  bool is_grad() const { return is_grad_; }
+
+  InterpreterCoreInfoCacheKey with_pir_mode(bool in_pir_mode) const {
+    // Create a new key with the specified PIR mode if the current key's
+    // PIR mode is different from the specified one. Otherwise, return
+    // the current key itself. This function is used to switch legacy IR
+    // and PT mode.
+    if (in_pir_mode == in_pir_mode_) {
+      return std::move(*this);
+    }
+    return InterpreterCoreInfoCacheKey(program_id_,
+                                       scope_,
+                                       place_hash_key_,
+                                       use_cuda_graph_,
+                                       cuda_graph_dispatch_key_,
+                                       is_grad_,
+                                       in_pir_mode);
+  }
+
+ private:
+  int64_t program_id_;
+  const framework::Scope* scope_;
+  int64_t place_hash_key_;
+  bool use_cuda_graph_;
+  int64_t cuda_graph_dispatch_key_;
+  bool is_grad_;
+  bool in_pir_mode_;
+};
+
 class InterpreterCoreInfoCache {
  public:
   static InterpreterCoreInfoCache& Instance();
-
-  bool Has(int64_t program_id,
-           const framework::Scope* scope,
-           const int64_t& place_hash_key,
-           bool is_grad,
-           bool in_pir_mode) {
-    if (in_pir_mode) {
-      int64_t scope_i = reinterpret_cast<int64_t>(scope);
-      program_id = hash_with_seed(program_id, scope_i);
-      program_id = hash_with_seed(program_id, place_hash_key);
-    }
-    return info_map_.find(program_id) != info_map_.end() &&
-           info_map_[program_id].IsAvailable(is_grad);
+  bool Has(const InterpreterCoreInfoCacheKey& key) const {
+    int64_t hash_key = key.hash();
+    return info_map_.find(hash_key) != info_map_.end() &&
+           info_map_.at(hash_key).IsAvailable(key.is_grad());
   }
 
-  InterpreterCoreInfo::CacheValue& GetMutable(int64_t program_id,
-                                              const framework::Scope* scope,
-                                              const int64_t& place_hash_key,
-                                              bool is_grad,
-                                              bool in_pir_mode) {
-    if (in_pir_mode) {
-      int64_t scope_i = reinterpret_cast<int64_t>(scope);
-      program_id = hash_with_seed(program_id, scope_i);
-      program_id = hash_with_seed(program_id, place_hash_key);
-    }
-    return info_map_[program_id].GetMutable(is_grad);
+  InterpreterCoreInfo::CacheValue& GetMutable(
+      const InterpreterCoreInfoCacheKey& key) {
+    int64_t hash_key = key.hash();
+    return info_map_[hash_key].GetMutable(key.is_grad());
   }
 
-  void UpdateSkipEagerDeleteVars(int64_t program_id,
-                                 const framework::Scope* scope,
-                                 const int64_t& place_hash_key,
-                                 bool is_grad,
-                                 bool in_pir_mode,
+  void UpdateSkipEagerDeleteVars(const InterpreterCoreInfoCacheKey& key,
                                  const std::set<std::string>& skip_vars) {
-    auto& cached_value =
-        GetMutable(program_id, scope, place_hash_key, is_grad, in_pir_mode);
+    auto& cached_value = GetMutable(key);
     cached_value.skip_eager_delete_vars_ = std::move(skip_vars);
   }
 
-  std::set<std::string>& GetSkipEagerDeleteVars(int64_t program_id,
-                                                const framework::Scope* scope,
-                                                const int64_t& place_hash_key,
-                                                bool in_pir_mode,
-                                                bool is_grad) {
-    auto& cached_value =
-        GetMutable(program_id, scope, place_hash_key, is_grad, in_pir_mode);
+  std::set<std::string>& GetSkipEagerDeleteVars(
+      const InterpreterCoreInfoCacheKey& key) {
+    auto& cached_value = GetMutable(key);
     return cached_value.skip_eager_delete_vars_;
   }
 
@@ -148,18 +182,14 @@ class InterpreterCoreInfoCache {
 std::shared_ptr<InterpreterCore> CreateProgramInterpreterCoreInfoToCache(
     const ProgramDesc& program_desc,
     const phi::Place& place,
-    bool is_grad,
-    int64_t program_id,
     framework::Scope* scope,
-    const int64_t& place_hash_key);
+    const InterpreterCoreInfoCacheKey& key);
 
 std::shared_ptr<InterpreterCore> CreatePirInterpreterCoreInfoToCache(
     std::unique_ptr<::pir::Program> ir_prog,
     const phi::Place& place,
-    bool is_grad,
-    int64_t program_id,
     framework::Scope* scope,
-    const int64_t& place_hash_key,
+    const InterpreterCoreInfoCacheKey& key,
     bool used_for_sot);
 
 std::unique_ptr<::pir::Program> ApplyIrPass(

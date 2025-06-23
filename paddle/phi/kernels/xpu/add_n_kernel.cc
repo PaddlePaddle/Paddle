@@ -146,7 +146,7 @@ void AddNArrayKernel(const Context& dev_ctx,
           ptrs.push_back(
               reinterpret_cast<const XPUType*>(out->at(j).data<T>()));
 
-          // int sum(Context* ctx, const std::vector<const T*>& x_list, T*
+          // int sum(Context* xpu_ctx, const std::vector<const T*>& x_list, T*
           // y, int64_t len);
           int r = xpu::sum(dev_ctx.x_context(),
                            ptrs,

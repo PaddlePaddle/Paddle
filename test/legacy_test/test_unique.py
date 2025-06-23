@@ -422,20 +422,22 @@ class TestUniqueAPI(unittest.TestCase):
         self.assertTrue((counts.numpy() == np_counts).all(), True)
 
     def test_static_graph(self):
-        with paddle_static_guard():
-            with paddle.static.program_guard(
+        with (
+            paddle_static_guard(),
+            paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
-            ):
-                x = paddle.static.data(name='x', shape=[3, 2], dtype='float64')
-                unique, inverse, counts = paddle.unique(
-                    x, return_inverse=True, return_counts=True, axis=0
-                )
-                place = paddle.CPUPlace()
-                exe = paddle.static.Executor(place)
-                x_np = np.array([[1, 2], [3, 4], [1, 2]]).astype('float64')
-                result = exe.run(
-                    feed={"x": x_np}, fetch_list=[unique, inverse, counts]
-                )
+            ),
+        ):
+            x = paddle.static.data(name='x', shape=[3, 2], dtype='float64')
+            unique, inverse, counts = paddle.unique(
+                x, return_inverse=True, return_counts=True, axis=0
+            )
+            place = paddle.CPUPlace()
+            exe = paddle.static.Executor(place)
+            x_np = np.array([[1, 2], [3, 4], [1, 2]]).astype('float64')
+            result = exe.run(
+                feed={"x": x_np}, fetch_list=[unique, inverse, counts]
+            )
 
 
 class TestUniqueError(unittest.TestCase):

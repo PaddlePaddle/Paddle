@@ -20,7 +20,7 @@ namespace phi {
 namespace fusion {
 
 template <typename T, typename Context>
-void GroupNormalizeSiluXPUKernel(const Context& ctx,
+void GroupNormalizeSiluXPUKernel(const Context& dev_ctx,
                                  const DenseTensor& x,
                                  const DenseTensor& scale,
                                  const DenseTensor& bias,
@@ -32,13 +32,13 @@ void GroupNormalizeSiluXPUKernel(const Context& ctx,
   auto* in_data = reinterpret_cast<const XPUType*>(x.data<T>());
   auto* scale_data = reinterpret_cast<const float*>(scale.data<float>());
   auto* bias_data = reinterpret_cast<const float*>(bias.data<float>());
-  auto* out_data = reinterpret_cast<XPUType*>(ctx.template Alloc<T>(out));
+  auto* out_data = reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(out));
   int n = static_cast<int>(x.dims()[0]);
   int c = static_cast<int>(x.dims()[1]);
   int h = static_cast<int>(x.dims()[2]);
   int w = static_cast<int>(x.dims()[3]);
 
-  int r = xpu::group_norm_silu_fusion<XPUType>(ctx.x_context(),
+  int r = xpu::group_norm_silu_fusion<XPUType>(dev_ctx.x_context(),
                                                in_data,
                                                out_data,
                                                n,

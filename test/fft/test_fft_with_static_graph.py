@@ -117,11 +117,13 @@ class TestFft(unittest.TestCase):
 )
 class TestFftException(unittest.TestCase):
     def test_fft(self):
-        with self.assertRaises(self.expect_exception):
-            with stgraph(
+        with (
+            self.assertRaises(self.expect_exception),
+            stgraph(
                 paddle.fft.fft, self.place, self.x, self.n, self.axis, self.norm
-            ) as y:
-                pass
+            ) as y,
+        ):
+            pass
 
 
 @place(DEVICES)
@@ -206,16 +208,18 @@ class TestFft2(unittest.TestCase):
 )
 class TestFft2Exception(unittest.TestCase):
     def test_static_fft2(self):
-        with self.assertRaises(self.expect_exception):
-            with stgraph(
+        with (
+            self.assertRaises(self.expect_exception),
+            stgraph(
                 paddle.fft.fft2,
                 self.place,
                 self.x,
                 self.n,
                 self.axis,
                 self.norm,
-            ) as y:
-                pass
+            ) as y,
+        ):
+            pass
 
 
 @place(DEVICES)
@@ -289,16 +293,18 @@ class TestFftn(unittest.TestCase):
 )
 class TestFftnException(unittest.TestCase):
     def test_static_fftn(self):
-        with self.assertRaises(self.expect_exception):
-            with stgraph(
+        with (
+            self.assertRaises(self.expect_exception),
+            stgraph(
                 paddle.fft.fftn,
                 self.place,
                 self.x,
                 self.n,
                 self.axis,
                 self.norm,
-            ) as y:
-                pass
+            ) as y,
+        ):
+            pass
 
 
 @place(DEVICES)
@@ -779,16 +785,18 @@ class TestHfftException(unittest.TestCase):
                     ) as y:
                         pass
         else:
-            with self.assertRaises(self.expect_exception):
-                with stgraph(
+            with (
+                self.assertRaises(self.expect_exception),
+                stgraph(
                     paddle.fft.hfft,
                     self.place,
                     self.x,
                     self.n,
                     self.axis,
                     self.norm,
-                ) as y:
-                    pass
+                ) as y,
+            ):
+                pass
 
 
 @place(DEVICES)
@@ -887,16 +895,18 @@ class TestIrfftException(unittest.TestCase):
                     ) as y:
                         pass
         else:
-            with self.assertRaises(self.expect_exception):
-                with stgraph(
+            with (
+                self.assertRaises(self.expect_exception),
+                stgraph(
                     paddle.fft.irfft,
                     self.place,
                     self.x,
                     self.n,
                     self.axis,
                     self.norm,
-                ) as y:
-                    pass
+                ) as y,
+            ):
+                pass
 
 
 @place(DEVICES)
@@ -1003,16 +1013,18 @@ class TestHfft2Exception(unittest.TestCase):
                     ) as y:
                         pass
         else:
-            with self.assertRaises(self.expect_exception):
-                with stgraph(
+            with (
+                self.assertRaises(self.expect_exception),
+                stgraph(
                     paddle.fft.hfft2,
                     self.place,
                     self.x,
                     self.n,
                     self.axis,
                     self.norm,
-                ) as y:
-                    pass
+                ) as y,
+            ):
+                pass
 
 
 @place(DEVICES)
@@ -1119,16 +1131,18 @@ class TestIrfft2Exception(unittest.TestCase):
                     ) as y:
                         pass
         else:
-            with self.assertRaises(self.expect_exception):
-                with stgraph(
+            with (
+                self.assertRaises(self.expect_exception),
+                stgraph(
                     paddle.fft.irfft2,
                     self.place,
                     self.x,
                     self.n,
                     self.axis,
                     self.norm,
-                ) as y:
-                    pass
+                ) as y,
+            ):
+                pass
 
 
 @place(DEVICES)
@@ -1235,16 +1249,18 @@ class TestHfftnException(unittest.TestCase):
                     ) as y:
                         pass
         else:
-            with self.assertRaises(self.expect_exception):
-                with stgraph(
+            with (
+                self.assertRaises(self.expect_exception),
+                stgraph(
                     paddle.fft.hfftn,
                     self.place,
                     self.x,
                     self.n,
                     self.axis,
                     self.norm,
-                ) as y:
-                    pass
+                ) as y,
+            ):
+                pass
 
 
 @place(DEVICES)
@@ -1344,16 +1360,18 @@ class TestIrfftnException(unittest.TestCase):
                     ) as y:
                         pass
         else:
-            with self.assertRaises(self.expect_exception):
-                with stgraph(
+            with (
+                self.assertRaises(self.expect_exception),
+                stgraph(
                     paddle.fft.irfftn,
                     self.place,
                     self.x,
                     self.n,
                     self.axis,
                     self.norm,
-                ) as y:
-                    pass
+                ) as y,
+            ):
+                pass
 
 
 @place(DEVICES)
@@ -1420,16 +1438,18 @@ class TestRfft(unittest.TestCase):
 )
 class TestRfftException(unittest.TestCase):
     def test_rfft(self):
-        with self.assertRaises(self.expect_exception):
-            with stgraph(
+        with (
+            self.assertRaises(self.expect_exception),
+            stgraph(
                 paddle.fft.rfft,
                 self.place,
                 self.x,
                 self.n,
                 self.axis,
                 self.norm,
-            ) as y:
-                pass
+            ) as y,
+        ):
+            pass
 
 
 @place(DEVICES)
@@ -1515,16 +1535,18 @@ class TestRfft2(unittest.TestCase):
 )
 class TestRfft2Exception(unittest.TestCase):
     def test_static_rfft(self):
-        with self.assertRaises(self.expect_exception):
-            with stgraph(
+        with (
+            self.assertRaises(self.expect_exception),
+            stgraph(
                 paddle.fft.rfft2,
                 self.place,
                 self.x,
                 self.n,
                 self.axis,
                 self.norm,
-            ) as y:
-                pass
+            ) as y,
+        ):
+            pass
 
 
 @place(DEVICES)
@@ -1599,16 +1621,18 @@ class TestRfftn(unittest.TestCase):
 )
 class TestRfftnException(unittest.TestCase):
     def test_static_rfftn(self):
-        with self.assertRaises(self.expect_exception):
-            with stgraph(
+        with (
+            self.assertRaises(self.expect_exception),
+            stgraph(
                 paddle.fft.rfftn,
                 self.place,
                 self.x,
                 self.n,
                 self.axis,
                 self.norm,
-            ) as y:
-                pass
+            ) as y,
+        ):
+            pass
 
 
 @place(DEVICES)
@@ -1675,16 +1699,18 @@ class TestIhfft(unittest.TestCase):
 )
 class TestIhfftException(unittest.TestCase):
     def test_static_ihfft(self):
-        with self.assertRaises(self.expect_exception):
-            with stgraph(
+        with (
+            self.assertRaises(self.expect_exception),
+            stgraph(
                 paddle.fft.ihfft,
                 self.place,
                 self.x,
                 self.n,
                 self.axis,
                 self.norm,
-            ) as y:
-                pass
+            ) as y,
+        ):
+            pass
 
 
 @place(DEVICES)
@@ -1778,16 +1804,18 @@ class TestIhfft2(unittest.TestCase):
 )
 class TestIhfft2Exception(unittest.TestCase):
     def test_static_ihfft2(self):
-        with self.assertRaises(self.expect_exception):
-            with stgraph(
+        with (
+            self.assertRaises(self.expect_exception),
+            stgraph(
                 paddle.fft.ihfft2,
                 self.place,
                 self.x,
                 self.n,
                 self.axis,
                 self.norm,
-            ) as y:
-                pass
+            ) as y,
+        ):
+            pass
 
 
 @place(DEVICES)
@@ -1854,16 +1882,18 @@ class TestIhfftn(unittest.TestCase):
 )
 class TestIhfftnException(unittest.TestCase):
     def test_static_ihfftn(self):
-        with self.assertRaises(self.expect_exception):
-            with stgraph(
+        with (
+            self.assertRaises(self.expect_exception),
+            stgraph(
                 paddle.fft.ihfftn,
                 self.place,
                 self.x,
                 self.n,
                 self.axis,
                 self.norm,
-            ) as y:
-                pass
+            ) as y,
+        ):
+            pass
 
 
 @place(DEVICES)

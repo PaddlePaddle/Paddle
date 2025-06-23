@@ -55,16 +55,14 @@ endif()
 
 set(NVSHMEM_PATCH_PATH ${PADDLE_SOURCE_DIR}/patches/nvshmem/nvshmem.patch)
 set(NVSHMEM_PATCH_COMMAND
-    git init && git config user.name "PaddlePaddle" && git config user.email
-    "paddle@baidu.com" && git config --global --add safe.directory
-    ${NVSHMEM_SOURCE_DIR} && git add . && git commit -m "init" && git apply
+    git init && git config --global --add safe.directory ${NVSHMEM_SOURCE_DIR}
+    && git config user.name "PaddlePaddle" && git config user.email
+    "paddle@baidu.com" && git add . && git commit -m "init" && git apply
     ${NVSHMEM_PATCH_PATH})
 
 set(NVSHMEM_LIB ${NVSHMEM_INSTALL_DIR}/lib/libnvshmem.a)
 set(NVSHMEM_BOOTSTRAP_UID_LIB
     ${NVSHMEM_INSTALL_DIR}/lib/nvshmem_bootstrap_uid.so.3)
-set(NVSHMEM_BOOTSTRAP_MPI_LIB
-    ${NVSHMEM_INSTALL_DIR}/lib/nvshmem_bootstrap_mpi.so.3)
 set(NVSHMEM_BOOTSTRAP_PMI_LIB
     ${NVSHMEM_INSTALL_DIR}/lib/nvshmem_bootstrap_pmi.so.3)
 set(NVSHMEM_BOOTSTRAP_PMI2_LIB
@@ -100,6 +98,7 @@ ExternalProject_Add(
              -DNVSHMEM_IBRC_SUPPORT=1
              -DNVSHMEM_BUILD_TESTS=0
              -DNVSHMEM_BUILD_EXAMPLES=0
+             -DNVSHMEM_MPI_SUPPORT=0
   CMAKE_CACHE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${NVSHMEM_INSTALL_DIR}
   BUILD_BYPRODUCTS ${NVSHMEM_LIB})
 

@@ -82,9 +82,9 @@ class VecT2<phi::dtype::bfloat16> {
   using Type = int;
 };
 
-static inline int Log2Ceil(int value) {
+static inline int Log2Ceil(int64_t value) {
   int log2_value = 0;
-  while ((1 << log2_value) < value) ++log2_value;
+  while ((int64_t(1) << log2_value) < value) ++log2_value;
   return log2_value;
 }
 
@@ -320,10 +320,11 @@ struct SumExpFunctor {
 template <template <typename, typename> class Reduction,
           typename T,
           typename AccT,
+          typename IndexType,
           int VecSize>
 __device__ __forceinline__ AccT
 ThreadVecReduce(T* data,
-                int dim_size,
+                IndexType dim_size,
                 const int shift,
                 const Reduction<T, AccT>& functor,
                 AccT default_value) {
@@ -331,7 +332,7 @@ ThreadVecReduce(T* data,
   AccT thread_val = default_value;
 
   // for memory align, handle the unaligned data in first block.
-  int offset = threadIdx.x;
+  IndexType offset = threadIdx.x;
   if (shift > 0) {
     data -= shift;
     dim_size += shift;
@@ -365,16 +366,17 @@ ThreadVecReduce(T* data,
 template <template <typename, typename> class Reduction,
           typename T,
           typename AccT,
+          typename IndexType,
           int VecSize>
 __device__ __forceinline__ void ThreadVecWriteVec(T* out,
                                                   T* input,
-                                                  int dim_size,
+                                                  IndexType dim_size,
                                                   const int shift,
                                                   Reduction<AccT, T> functor) {
   using VecT = phi::AlignedVector<T, VecSize>;
 
   // for memory align, handle the unaligned data in first block.
-  int offset = threadIdx.x;
+  IndexType offset = threadIdx.x;
   if (shift > 0) {
     input -= shift;
     out -= shift;
@@ -414,14 +416,15 @@ __device__ __forceinline__ void ThreadVecWriteVec(T* out,
 template <template <typename, typename> class Reduction,
           typename T,
           typename AccT,
+          typename IndexType,
           int VecSize>
 __device__ __forceinline__ void ThreadVecWrite(T* out,
                                                T* input,
-                                               int dim_size,
+                                               IndexType dim_size,
                                                Reduction<AccT, T> functor) {
   const int last = dim_size % (VecSize * blockDim.x);
 
-  for (int offset = threadIdx.x; offset < dim_size - last;
+  for (IndexType offset = threadIdx.x; offset < dim_size - last;
        offset += blockDim.x * VecSize) {
 #pragma unroll
     for (int i = 0; i < VecSize; i++) {
@@ -431,14 +434,16 @@ __device__ __forceinline__ void ThreadVecWrite(T* out,
   }
 
   // the tail
-  for (int offset = dim_size - last + threadIdx.x; offset < dim_size;
+  for (IndexType offset = dim_size - last + threadIdx.x; offset < dim_size;
        offset += blockDim.x) {
     out[offset] = functor(static_cast<AccT>(input[offset]));
   }
 }
 
 template <typename T, typename AccT, typename IndexType, bool LogMode = false>
-__global__ void KeMatrixSoftmaxForward(T* softmax, const T* src, int dim_size) {
+__global__ void KeMatrixSoftmaxForward(T* softmax,
+                                       const T* src,
+                                       IndexType dim_size) {
   constexpr int kVecSize =
       MaxWithOne<MATRIX_SOFTMAX_ALIGN_BYTES / sizeof(T)>::kValue;
   using VecT = phi::AlignedVector<T, kVecSize>;
@@ -453,7 +458,7 @@ __global__ void KeMatrixSoftmaxForward(T* softmax, const T* src, int dim_size) {
       ((uint64_t)batch_output) % MATRIX_SOFTMAX_ALIGN_BYTES / sizeof(T);
 
   // get max value
-  AccT thread_max = ThreadVecReduce<MaxFunctor, T, AccT, kVecSize>(
+  AccT thread_max = ThreadVecReduce<MaxFunctor, T, AccT, IndexType, kVecSize>(
       batch_input,
       dim_size,
       input_align_shift,
@@ -462,31 +467,32 @@ __global__ void KeMatrixSoftmaxForward(T* softmax, const T* src, int dim_size) {
   BlockReduceMax<AccT>(&thread_max);
 
   // get exp value and sum all
-  AccT thread_exp = ThreadVecReduce<SumExpFunctor, T, AccT, kVecSize>(
-      batch_input,
-      dim_size,
-      input_align_shift,
-      SumExpFunctor<T, AccT>(thread_max),
-      static_cast<AccT>(0.));
+  AccT thread_exp =
+      ThreadVecReduce<SumExpFunctor, T, AccT, IndexType, kVecSize>(
+          batch_input,
+          dim_size,
+          input_align_shift,
+          SumExpFunctor<T, AccT>(thread_max),
+          static_cast<AccT>(0.));
   BlockReduceSum<AccT>(&thread_exp);
 
   // write data to softmax_output according to the LogMode
   if (LogMode) {
     LogSoftmaxForwardFunctor<AccT, T> reduction(thread_max, thread_exp);
     if (input_align_shift == output_align_shift) {
-      ThreadVecWriteVec<LogSoftmaxForwardFunctor, T, AccT, kVecSize>(
+      ThreadVecWriteVec<LogSoftmaxForwardFunctor, T, AccT, IndexType, kVecSize>(
           batch_output, batch_input, dim_size, input_align_shift, reduction);
     } else {
-      ThreadVecWrite<LogSoftmaxForwardFunctor, T, AccT, kVecSize>(
+      ThreadVecWrite<LogSoftmaxForwardFunctor, T, AccT, IndexType, kVecSize>(
           batch_output, batch_input, dim_size, reduction);
     }
   } else {
     SoftmaxForwardFunctor<AccT, T> reduction(thread_max, thread_exp);
     if (input_align_shift == output_align_shift) {
-      ThreadVecWriteVec<SoftmaxForwardFunctor, T, AccT, kVecSize>(
+      ThreadVecWriteVec<SoftmaxForwardFunctor, T, AccT, IndexType, kVecSize>(
           batch_output, batch_input, dim_size, input_align_shift, reduction);
     } else {
-      ThreadVecWrite<SoftmaxForwardFunctor, T, AccT, kVecSize>(
+      ThreadVecWrite<SoftmaxForwardFunctor, T, AccT, IndexType, kVecSize>(
           batch_output, batch_input, dim_size, reduction);
     }
   }
@@ -830,37 +836,42 @@ void SwitchWarpSoftmaxBackward(const IndexType blocks,
  * Better performance when axis != -1
  */
 
-static void GetGridDim(
-    int high_dim, int mid_dim, int low_dim, const dim3& block, dim3* grid) {
+static void GetGridDim(int64_t high_dim,
+                       int64_t low_dim,
+                       const dim3& block,
+                       dim3* grid) {
   int device_id = phi::backends::gpu::GetCurrentDeviceId();
   int max_mp = phi::backends::gpu::GetGPUMultiProcessors(device_id);
   int max_threads_per_mp =
       phi::backends::gpu::GetGPUMaxThreadsPerMultiProcessor(device_id);
   int max_threads = max_threads_per_mp * max_mp;
   int num_threads = block.x * block.y;
-  int max_num_blocks = max_threads / num_threads;
+  int64_t max_num_blocks = max_threads / num_threads;
 
-  int grid_x = (low_dim + block.x - 1) / block.x;
+  int64_t grid_x = (low_dim + block.x - 1) / block.x;
   grid_x = std::min(grid_x, max_num_blocks);
-  int grid_y = (max_num_blocks + grid_x - 1) / grid_x;
+  int64_t grid_y = (max_num_blocks + grid_x - 1) / grid_x;
   grid_y = std::min(grid_y, high_dim);
   grid->x = grid_x;
   grid->y = grid_y;
 }
 
-static void GetBlockDim(int mid_dim, int low_dim, dim3* block) {
+static void GetBlockDim(int64_t mid_dim, int64_t low_dim, dim3* block) {
   constexpr int max_num_threads = 1024;
-  int block_x = 1 << Log2Ceil(low_dim);
-  int block_y = 1 << Log2Ceil(mid_dim);
-  block->x = std::min(block_x, 32);
-  block->y = std::min(block_y, static_cast<int>(max_num_threads / block->x));
-  block->x = std::min(block_x, static_cast<int>(max_num_threads / block->y));
+  int64_t block_x = int64_t(1) << Log2Ceil(low_dim);
+  int64_t block_y = int64_t(1) << Log2Ceil(mid_dim);
+  block->x = std::min<int64_t>(block_x, 32);
+  block->y = std::min<int64_t>(block_y, max_num_threads / block->x);
+  block->x = std::min<int64_t>(block_x, max_num_threads / block->y);
 }
 
-static void GetLaunchConfig(
-    int high_dim, int mid_dim, int low_dim, dim3* grid, dim3* block) {
+static void GetLaunchConfig(int64_t high_dim,
+                            int64_t mid_dim,
+                            int64_t low_dim,
+                            dim3* grid,
+                            dim3* block) {
   GetBlockDim(mid_dim, low_dim, block);
-  GetGridDim(high_dim, mid_dim, low_dim, *block, grid);
+  GetGridDim(high_dim, low_dim, *block, grid);
 }
 
 template <typename T,
@@ -1197,8 +1208,11 @@ void LaunchSoftmaxBackwardCudnnKernel(const GPUContext& dev_ctx,
 }
 
 template <typename T, typename IndexType, bool LogMode>
-void LaunchKeMatrixSoftmaxForwardKernel(
-    const GPUContext& dev_ctx, T* out, const T* input, int N, int dim_size) {
+void LaunchKeMatrixSoftmaxForwardKernel(const GPUContext& dev_ctx,
+                                        T* out,
+                                        const T* input,
+                                        int N,
+                                        IndexType dim_size) {
   using AccT = typename phi::dtype::MPTypeTrait<T>::Type;
   constexpr int kVecSize =
       MaxWithOne<MATRIX_SOFTMAX_ALIGN_BYTES / sizeof(T)>::kValue;
@@ -1364,7 +1378,8 @@ void SoftmaxBackwardCUDAKernelDriverImpl(const GPUContext& dev_ctx,
   int D = tensor_dims[2];
 
   if (D == 1) {
-    if (!UseCudnnSoftmax<T>(dev_ctx, dim, true)) {
+    if (!UseCudnnSoftmax<T>(dev_ctx, dim, true) ||
+        dim > std::numeric_limits<int32_t>::max()) {
       int dim_log2 = Log2Ceil(dim);
       IndexType dim_ceil = 1 << dim_log2;
       int warp_size = (dim_ceil < 32) ? dim_ceil : 32;

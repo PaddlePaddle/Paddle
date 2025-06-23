@@ -39,7 +39,7 @@ TEST(FusedRmsNormSPMDRule, test_fused_rms_norm) {
   scale_dist_attr.set_dynamic_dims(std::vector<bool>({false}));
 
   x_dist_attr.set_dims_mapping({1, -1, -1});
-  scale_dist_attr.set_dims_mapping({-1});
+  scale_dist_attr.set_dims_mapping(std::vector<int64_t>{-1});
 
   phi::distributed::DistMetaTensor x(common::make_ddim(x_shape), x_dist_attr);
   phi::distributed::DistMetaTensor scale(common::make_ddim(scale_shape),
@@ -58,7 +58,7 @@ TEST(FusedRmsNormSPMDRule, test_fused_rms_norm) {
   VLOG(4) << "test1 done.";
 
   x_dist_attr.set_dims_mapping({1, 0, -1});
-  scale_dist_attr.set_dims_mapping({0});
+  scale_dist_attr.set_dims_mapping(std::vector<int64_t>{0});
   x = phi::distributed::DistMetaTensor(common::make_ddim(x_shape), x_dist_attr);
   scale = phi::distributed::DistMetaTensor(common::make_ddim(scale_shape),
                                            scale_dist_attr);
