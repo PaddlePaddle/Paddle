@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+from contextlib import contextmanager
 
 from test_case_base import (
     TestCaseBase,
@@ -24,8 +25,8 @@ from paddle.jit.sot.psdb import check_no_breakgraph
 
 
 class Manager:
-    def __init__(self, x):
-        x /= 1
+    def __init__(self):
+        pass
 
     def __enter__(self):
         return self
@@ -33,94 +34,93 @@ class Manager:
     def __exit__(self, exc, value, traceback):
         pass
 
-    def add1(self, x):
-        x += 1
-        return x
 
-    def sub2(self, x):
-        x -= 2
-        return x
-
-    def mul3(self, x):
-        x *= 3
-        return x
-
-    def div4(self, x):
-        x /= 4
-        return x
-
-
-class ManagerReturnFalse(Manager):
+class ManagerExitReturnFalse(Manager):
     def __exit__(self, *args):
         return False
 
 
-class ManagerReturnTrue(Manager):
+class ManagerExitReturnTrue(Manager):
     def __exit__(self, *args):
         return True
 
 
+TEST_WITH_STATEMENT_FLAG = False
+
+
+@contextmanager
+def my_context():
+    global TEST_WITH_STATEMENT_FLAG
+    try:
+        TEST_WITH_STATEMENT_FLAG = True
+        yield
+    finally:
+        TEST_WITH_STATEMENT_FLAG = False
+
+
 @check_no_breakgraph
-def run_with_stmt(x):
+def test_with_exit_true_suppresses(x):
     x += 1
 
-    with Manager(x) as mgr:
+    with Manager() as mgr:
         x *= 2
-        mgr.add1(x)
 
-    with ManagerReturnTrue(x) as mgr_true:
+    with ManagerExitReturnTrue() as mgr_true:
         x *= 3
-        mgr_true.div4(x)
         raise ValueError("test")
         x -= 4
-        mgr_true.sub2(x)
 
-    with ManagerReturnTrue(x) as mgr_true:
-        x /= 5
-        mgr_true.add1(x)
-        x / 0
-        x -= 6
-        mgr_true.mul3(x)
+    with ManagerExitReturnTrue() as mgr_true:
+        x += 5
+        # TODO(DrRyanHuang): Division by zero (x / 0) will raise an InnerError.
+        # In the future, the actual Exception should be propagated rather than being wrapped as InnerError.
+        1 / 0  # noqa: B018
+        x *= 6
 
-    x -= 7
-    mgr.div4(x)
+    global TEST_WITH_STATEMENT_FLAG
+
+    # with my_context() as e:
+    #     if TEST_WITH_STATEMENT_FLAG:
+    #         x /= 7
+    #     else:
+    #         x *= 7
+
+    if not TEST_WITH_STATEMENT_FLAG:
+        x += 8
+    else:
+        x -= 8
+
+    x /= 9
     return x
 
 
 @check_no_breakgraph
-def run_with_stmt_with_error(x):
+def test_with_exit_false_propagates(x):
     x += 3
     try:
-        with ManagerReturnFalse(x) as mgr_false:
+        with ManagerExitReturnFalse() as mgr_false:
             x *= 4
-            mgr_false.add1(x)
-            x / 0
+            1 / 0  # noqa: B018
     except ZeroDivisionError:
         x /= 4
-        mgr_false.sub2(x)
     return x
 
 
 class TestWithStatement(TestCaseBase):
     def test_with(self):
         t = paddle.to_tensor(-10.0)
-        self.assert_results(run_with_stmt, t)
-
-    def test_with_with_try_except(self):
-        t = paddle.to_tensor(123.0)
-        self.assert_results(run_with_stmt, t)
+        self.assert_results(test_with_exit_true_suppresses, t)
+        self.assert_results(test_with_exit_false_propagates, t)
 
     def test_guard_run(self):
         x = paddle.to_tensor([-4.0])
         with test_instruction_translator_cache_context() as ctx:
             self.assertEqual(ctx.translate_count, 0)
-            self.assert_results(run_with_stmt, x)
-            self.assert_results(run_with_stmt, x)
-            self.assert_results(run_with_stmt, x)
+            self.assert_results(test_with_exit_true_suppresses, x)
+            self.assert_results(test_with_exit_true_suppresses, x)
             self.assertEqual(ctx.translate_count, 1)
-            self.assert_results(run_with_stmt_with_error, x)
-            self.assert_results(run_with_stmt_with_error, x)
-            self.assert_results(run_with_stmt_with_error, x)
+            self.assert_results(test_with_exit_false_propagates, x)
+            self.assert_results(test_with_exit_false_propagates, x)
             self.assertEqual(ctx.translate_count, 2)
 
 

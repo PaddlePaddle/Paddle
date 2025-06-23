@@ -121,7 +121,6 @@ if TYPE_CHECKING:
     from .virtual_frame import VirtualFrame
 
 from .exception_stack import ExceptionStack
-from .virtual_frame import BlockStackItem
 
 COMPARE_OP_NAME_TO_FN = {
     ">": operator.gt,
@@ -2192,16 +2191,16 @@ class OpcodeExecutor(OpcodeExecutorBase):
 
     @fallback_if_python_version_unsupported
     def SETUP_WITH(self, instr: Instruction):
-        mgr = self.pop()
+        mgr = self.stack.pop()
         exit = BuiltinVariable(
             getattr, graph=self._graph, tracker=DanglingTracker()
-        )(mgr, "__exit__")
+        )(mgr, ConstantVariable.wrap_literal("__exit__", self._graph))
 
-        self.push(exit)
+        self.stack.push(exit)
 
         enter = BuiltinVariable(
             getattr, graph=self._graph, tracker=DanglingTracker()
-        )(mgr, "__enter__")
+        )(mgr, ConstantVariable.wrap_literal("__enter__", self._graph))
 
         res = enter.call_function()
         self.vframe.block_stack.append(
@@ -2209,7 +2208,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
                 "SETUP_FINALLY", instr, instr.jump_to, len(self.stack)
             )
         )
-        self.push(res)
+        self.stack.push(res)
 
     @fallback_if_python_version_unsupported
     def WITH_EXCEPT_START(self, instr: Instruction):
@@ -2226,7 +2225,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
         exit_func = self.stack.peek[7]
         res = exit_func.call_function(exc, val, tb)
 
-        self.push(res)
+        self.stack.push(res)
 
     def RETURN_CONST(self, instr: Instruction):
         ret_const = self.vframe.consts[instr.arg]
