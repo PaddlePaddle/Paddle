@@ -26,6 +26,23 @@ namespace phi {
 #define MAX_NUM_EXPERTS 64
 #endif
 
+template <typename probs_T>
+struct expert_infos {
+  int expert_row_idx;
+  probs_T expert_probs;
+
+  __device__ __host__ expert_infos()
+      : expert_row_idx(-1), expert_probs(probs_T(0)) {}
+  __device__ __host__ expert_infos(int idx, probs_T prob)
+      : expert_row_idx(idx), expert_probs(prob) {}
+
+  __device__ __host__ expert_infos &operator=(const expert_infos &other) {
+    expert_row_idx = other.expert_row_idx;
+    expert_probs = other.expert_probs;
+    return *this;
+  }
+};
+
 template <typename X_T, typename routemap_T, typename probs_T, bool has_scale>
 __global__ void tokens_unzip_stable_kernel(
     const X_T *__restrict__ X,
@@ -43,25 +60,36 @@ __global__ void tokens_unzip_stable_kernel(
     const int scale_length,
     const int num_experts,
     const int topk) {
+  using expert_infos_t = expert_infos<probs_T>;
   const int block_row_base = blockIdx.x * CUMSUM_BLOCK_SIZE;
   int cumsum_offset = (blockIdx.x != 0) * CUMSUM_INVALID_TAG;
-  int local_expert_offsets[MAX_NUM_EXPERTS];
+  int local_expert_offsets;
   int local_cumsum = 0;
 
+  /*
   __shared__ int shared_expert_rowmap[CUMSUM_BLOCK_SIZE][MAX_NUM_EXPERTS];
   __shared__ probs_T shared_expert_probmap[CUMSUM_BLOCK_SIZE][MAX_NUM_EXPERTS];
-  for (int i = 0; i < num_experts; i++) {
-    local_expert_offsets[i] = expert_base_offset[i];
-  }
+  */
+  __shared__ expert_infos_t
+      shared_expert_infos[CUMSUM_BLOCK_SIZE][MAX_NUM_EXPERTS];
 
+  if (threadIdx.x < num_experts) {
+    local_expert_offsets = expert_base_offset[threadIdx.x];
+  }
   // Expertwise deterministic job scheduling
   if (threadIdx.x < num_experts) {
+    /*
     int local_expert_rowmap[CUMSUM_BLOCK_SIZE];
     probs_T local_expert_probs[CUMSUM_BLOCK_SIZE];
+    */
+    expert_infos_t local_expert_infos[CUMSUM_BLOCK_SIZE];
 #pragma unroll
     for (int i = 0; i < CUMSUM_BLOCK_SIZE; i++) {
+      /*
       local_expert_rowmap[i] = -1;
       local_expert_probs[i] = (probs_T)0;
+      */
+      local_expert_infos[i] = {-1, (probs_T)0};
     }
     for (int row = block_row_base; row < block_row_base + CUMSUM_BLOCK_SIZE;
          row++) {
@@ -69,36 +97,53 @@ __global__ void tokens_unzip_stable_kernel(
       const int internal_row = row - block_row_base;
 #pragma unroll
       for (int k = 0; k < topk; k++) {
+        /*
         const int expert = routemap_topk[row * topk + k];
         if (expert == -1) continue;
-        if (threadIdx.x == expert) {
+        */
+        expert_infos_t proposed = {routemap_topk[row * topk + k],
+                                   probs_topk[row * topk + k]};
+        if (proposed.expert_row_idx == -1) continue;
+        if (threadIdx.x == proposed.expert_row_idx) {
+          /*
           local_expert_rowmap[internal_row] =
               local_cumsum + local_expert_offsets[expert];
           local_expert_probs[internal_row] = probs_topk[row * topk + k];
+          */
+          local_expert_infos[internal_row] = {
+              local_cumsum + local_expert_offsets, proposed.expert_probs};
           local_cumsum += 1;
         }
       }
     }
+    const int anticipate_signal_idx = blockIdx.x * num_experts + threadIdx.x;
+    const int push_signal_idx = (blockIdx.x + 1) * num_experts + threadIdx.x;
     if (blockIdx.x != 0) {
       while (cumsum_offset == CUMSUM_INVALID_TAG) {
-        cumsum_offset = atomicExch(
-            &global_expertwise_block_cumsum[blockIdx.x * num_experts +
-                                            threadIdx.x],
-            CUMSUM_INVALID_TAG);
+        cumsum_offset =
+            atomicExch(&global_expertwise_block_cumsum[anticipate_signal_idx],
+                       CUMSUM_INVALID_TAG);
       }
     }
     const int proposed_offset = cumsum_offset + local_cumsum;
-    global_expertwise_block_cumsum[(blockIdx.x + 1) * num_experts +
-                                   threadIdx.x] = proposed_offset;
+    global_expertwise_block_cumsum[push_signal_idx] = proposed_offset;
 #pragma unroll
     for (int i = 0; i < CUMSUM_BLOCK_SIZE; i++) {
+      /*
       const int proposed_row = (local_expert_rowmap[i] == -1)
                                    ? -1
                                    : (local_expert_rowmap[i] + cumsum_offset);
       shared_expert_rowmap[i][threadIdx.x] = proposed_row;
       shared_expert_probmap[i][threadIdx.x] = local_expert_probs[i];
+      */
+      local_expert_infos[i].expert_row_idx =
+          (local_expert_infos[i].expert_row_idx == -1)
+              ? -1
+              : local_expert_infos[i].expert_row_idx + cumsum_offset;
+      shared_expert_infos[i][threadIdx.x] = local_expert_infos[i];
     }
   }
+  // --------------------------- Jobs schedule done -------------------------
   __syncthreads();
   for (int row = block_row_base; row < block_row_base + CUMSUM_BLOCK_SIZE;
        row++) {
@@ -106,6 +151,7 @@ __global__ void tokens_unzip_stable_kernel(
     const int internal_row = row - block_row_base;
 #pragma unroll
     for (int expert = 0; expert < num_experts; expert++) {
+      /*
       const int unzipped_row_idx = shared_expert_rowmap[internal_row][expert];
       if (threadIdx.x == 0) {
         zipped_expertwise_rowmap[row * num_experts + expert] = unzipped_row_idx;
@@ -115,15 +161,22 @@ __global__ void tokens_unzip_stable_kernel(
         probs_unzipped[unzipped_row_idx] =
             shared_expert_probmap[internal_row][expert];
       }
+      */
+      const expert_infos_t this_expert_token_info =
+          shared_expert_infos[internal_row][expert];
+      const int proposed_row_idx = this_expert_token_info.expert_row_idx;
+      zipped_expertwise_rowmap[row * num_experts + expert] = proposed_row_idx;
+      if (proposed_row_idx == -1) continue;  // no memcpy
+      probs_unzipped[proposed_row_idx] = this_expert_token_info.expert_probs;
       if constexpr (has_scale) {
         vectorized_memcpy(
             &XScale[(int64_t)row * (int64_t)scale_length],
-            &XScale_unzipped[(int64_t)unzipped_row_idx * (int64_t)scale_length],
+            &XScale_unzipped[(int64_t)proposed_row_idx * (int64_t)scale_length],
             scale_length);
       }
       vectorized_memcpy(
           &X[(int64_t)row * (int64_t)token_length],
-          &X_unzipped[(int64_t)unzipped_row_idx * (int64_t)token_length],
+          &X_unzipped[(int64_t)proposed_row_idx * (int64_t)token_length],
           token_length);
     }
   }
