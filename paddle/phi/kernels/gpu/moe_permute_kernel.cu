@@ -299,6 +299,7 @@ void MoePermuteKernel(const Context &dev_ctx,
                     sizeof(float) * invalid_rows,
                     dev_ctx.stream());
   }
+  if (X.numel() == 0) return;
   const int cumsum_blocknum =
       (rows + CUMSUM_BLOCK_SIZE - 1) / CUMSUM_BLOCK_SIZE;
   DenseTensor global_expertwise_block_cumsum =
