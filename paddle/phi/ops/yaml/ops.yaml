@@ -3678,6 +3678,16 @@
     data_type : x
   backward : moe_combine_grad
 
+- op : moe_combine_no_weight
+  args : (Tensor x, Tensor scatter_index)
+  output : Tensor(y)
+  infer_meta :
+    func : MoeCombineNoWeightInferMeta
+  kernel :
+    func : moe_combine_no_weight
+    data_type : x
+  backward : moe_combine_no_weight_grad
+
 - op : moe_gate_dispatch
   args : (Tensor x, Tensor gate_logits, Tensor corr_bias, int64_t k, int64_t capacity, bool use_pad)
   output : Tensor(y), Tensor(combine_weights), Tensor(scatter_index), Tensor(expert_offset), Tensor(expert_id)
