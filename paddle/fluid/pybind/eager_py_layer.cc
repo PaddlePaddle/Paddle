@@ -35,6 +35,7 @@ limitations under the License. */
 #include "pybind11/pytypes.h"
 #pragma GCC diagnostic ignored "-Wwrite-strings"
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
+COMMON_DECLARE_bool(check_cuda_error);
 
 using egr::ConvertToDistTensor;
 
@@ -132,6 +133,9 @@ PyObject* pylayer_method_apply(PyObject* cls,
   EAGER_TRY
   SetPythonStack();
   VLOG(6) << "Begin run PyLayer apply...";
+  if (FLAGS_check_cuda_error) {
+    egr::CUDAErrorCheck("pylayer_method_apply begin");
+  }
   PyObject* backward_function =
       PyObject_GetAttrString(cls, "_backward_function");
   if (!backward_function) {
@@ -521,6 +525,10 @@ PyObject* pylayer_method_apply(PyObject* cls,
   Py_XDECREF(backward_function);
   Py_XDECREF(forward_fn);
   Py_XDECREF(ctx);
+
+  if (FLAGS_check_cuda_error) {
+    egr::CUDAErrorCheck("pylayer_method_apply finish");
+  }
 
   return outputs;
   EAGER_CATCH_AND_THROW_RETURN_NULL

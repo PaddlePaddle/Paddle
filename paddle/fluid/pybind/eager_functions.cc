@@ -70,6 +70,7 @@ typedef SSIZE_T ssize_t;
 #endif
 
 COMMON_DECLARE_string(tensor_operants_mode);
+COMMON_DECLARE_bool(check_cuda_error);
 
 using egr::ConvertAllInputsToDistTensor;
 using egr::InputsContainDistTensor;
@@ -535,6 +536,9 @@ PyObject* eager_api_run_custom_op(PyObject* self,
                                   PyObject* kwargs) {
   EAGER_TRY
   FLAGS_tensor_operants_mode = "phi";
+  if (FLAGS_check_cuda_error) {
+    egr::CUDAErrorCheck("eager_api_run_custom_op begin");
+  }
   if (paddle::OperantsManager::Instance().phi_operants.get() == nullptr) {
     paddle::OperantsManager::Instance().phi_operants =
         std::make_unique<paddle::operants::PhiTensorOperants>();
@@ -859,6 +863,9 @@ PyObject* eager_api_run_custom_op(PyObject* self,
       }
       grad_node->SetAttrs(attrs);
     }
+  }
+  if (FLAGS_check_cuda_error) {
+    egr::CUDAErrorCheck("eager_api_run_custom_op finish");
   }
   return ToPyObject(*ctx.AllMutableOutput());
   EAGER_CATCH_AND_THROW_RETURN_NULL

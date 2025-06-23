@@ -32,6 +32,7 @@ using egr::ConvertAllInputsToDistTensor;
 using egr::InputsContainDistTensor;
 
 COMMON_DECLARE_bool(check_nan_inf);
+COMMON_DECLARE_bool(check_cuda_error);
 
 paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>
 Conv2dGradNodeFinal::operator()(
@@ -41,6 +42,9 @@ Conv2dGradNodeFinal::operator()(
     bool is_new_grad) {
   // Fill Zero For GradIn Tensors
   VLOG(3) << " Running Conv2dGradNodeFinal: " << this;
+  if (FLAGS_check_cuda_error) {
+    egr::CUDAErrorCheck("Conv2dGradNodeFinal begin");
+  }
   // This 'Local_XXXGradNode' record event is different with
   // 'Global_XXXGradNode' event.
   // * 'Local_XXXGradNode' will only cover execution time of this function.
@@ -230,6 +234,10 @@ Conv2dGradNodeFinal::operator()(
     returns = ApplyNodePostHooks(returns, hooked_grads);
   }
 
+  if (FLAGS_check_cuda_error) {
+    egr::CUDAErrorCheck("Conv2dGradNodeFinal finish");
+  }
+
   // Return
   if (NeedComplexToRealConversion()) HandleComplexGradToRealGrad(&returns);
   return returns;
@@ -241,6 +249,9 @@ Conv2dDoubleGradNodeFinal::operator()(
                          egr::kSlotSmallVectorSize>& grads,
     bool create_graph,
     bool is_new_grad) {
+  if (FLAGS_check_cuda_error) {
+    egr::CUDAErrorCheck("Conv2dDoubleGradNodeFinal begin");
+  }
   // This 'Local_XXXGradNode' record event is different with
   // 'Global_XXXGradNode' event.
   // * 'Local_XXXGradNode' will only cover execution time of this function.
@@ -422,6 +433,10 @@ Conv2dDoubleGradNodeFinal::operator()(
 
   if (HasNodePostHook()) {
     returns = ApplyNodePostHooks(returns, hooked_grads);
+  }
+
+  if (FLAGS_check_cuda_error) {
+    egr::CUDAErrorCheck("Conv2dDoubleGradNodeFinal finish");
   }
 
   // Return
