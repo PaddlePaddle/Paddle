@@ -66,10 +66,6 @@ __global__ void tokens_unzip_stable_kernel(
   int local_expert_offsets;
   int local_cumsum = 0;
 
-  /*
-  __shared__ int shared_expert_rowmap[CUMSUM_BLOCK_SIZE][MAX_NUM_EXPERTS];
-  __shared__ probs_T shared_expert_probmap[CUMSUM_BLOCK_SIZE][MAX_NUM_EXPERTS];
-  */
   __shared__ expert_infos_t
       shared_expert_infos[CUMSUM_BLOCK_SIZE][MAX_NUM_EXPERTS];
 
@@ -78,17 +74,9 @@ __global__ void tokens_unzip_stable_kernel(
   }
   // Expertwise deterministic job scheduling
   if (threadIdx.x < num_experts) {
-    /*
-    int local_expert_rowmap[CUMSUM_BLOCK_SIZE];
-    probs_T local_expert_probs[CUMSUM_BLOCK_SIZE];
-    */
     expert_infos_t local_expert_infos[CUMSUM_BLOCK_SIZE];
 #pragma unroll
     for (int i = 0; i < CUMSUM_BLOCK_SIZE; i++) {
-      /*
-      local_expert_rowmap[i] = -1;
-      local_expert_probs[i] = (probs_T)0;
-      */
       local_expert_infos[i] = {-1, (probs_T)0};
     }
     for (int row = block_row_base; row < block_row_base + CUMSUM_BLOCK_SIZE;
@@ -97,19 +85,10 @@ __global__ void tokens_unzip_stable_kernel(
       const int internal_row = row - block_row_base;
 #pragma unroll
       for (int k = 0; k < topk; k++) {
-        /*
-        const int expert = routemap_topk[row * topk + k];
-        if (expert == -1) continue;
-        */
         expert_infos_t proposed = {routemap_topk[row * topk + k],
                                    probs_topk[row * topk + k]};
         if (proposed.expert_row_idx == -1) continue;
         if (threadIdx.x == proposed.expert_row_idx) {
-          /*
-          local_expert_rowmap[internal_row] =
-              local_cumsum + local_expert_offsets[expert];
-          local_expert_probs[internal_row] = probs_topk[row * topk + k];
-          */
           local_expert_infos[internal_row] = {
               local_cumsum + local_expert_offsets, proposed.expert_probs};
           local_cumsum += 1;
@@ -129,13 +108,6 @@ __global__ void tokens_unzip_stable_kernel(
     global_expertwise_block_cumsum[push_signal_idx] = proposed_offset;
 #pragma unroll
     for (int i = 0; i < CUMSUM_BLOCK_SIZE; i++) {
-      /*
-      const int proposed_row = (local_expert_rowmap[i] == -1)
-                                   ? -1
-                                   : (local_expert_rowmap[i] + cumsum_offset);
-      shared_expert_rowmap[i][threadIdx.x] = proposed_row;
-      shared_expert_probmap[i][threadIdx.x] = local_expert_probs[i];
-      */
       local_expert_infos[i].expert_row_idx =
           (local_expert_infos[i].expert_row_idx == -1)
               ? -1
@@ -151,17 +123,6 @@ __global__ void tokens_unzip_stable_kernel(
     const int internal_row = row - block_row_base;
 #pragma unroll
     for (int expert = 0; expert < num_experts; expert++) {
-      /*
-      const int unzipped_row_idx = shared_expert_rowmap[internal_row][expert];
-      if (threadIdx.x == 0) {
-        zipped_expertwise_rowmap[row * num_experts + expert] = unzipped_row_idx;
-      }
-      if (unzipped_row_idx == -1) continue;
-      if (threadIdx.x == 0) {
-        probs_unzipped[unzipped_row_idx] =
-            shared_expert_probmap[internal_row][expert];
-      }
-      */
       const expert_infos_t this_expert_token_info =
           shared_expert_infos[internal_row][expert];
       const int proposed_row_idx = this_expert_token_info.expert_row_idx;
