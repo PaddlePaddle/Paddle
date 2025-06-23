@@ -90,8 +90,6 @@ void ReloadFunctor::Reload() {
                             nullptr);
     dense_tensor->set_offset(0);
     dense_tensor->ResetHolder(std::move(dst_holder));
-  } else {
-    VLOG(10) << "Do not need to reload " << GetTensorMetaString(dense_tensor);
   }
 }
 
@@ -129,20 +127,20 @@ paddle::optional<ReloadFunctor> ActivationOffloaderWithPlace::Add(
     return paddle::none;
   }
   if (!dense_tensor->meta().is_contiguous()) {
-    VLOG(6) << "Offload skip non-contiguous tensor "
+    VLOG(7) << "Offload skip non-contiguous tensor "
             << GetTensorMetaString(dense_tensor)
             << " allocated: " << GetAllocatedMemory(place_);
     return paddle::none;
   }
   if (dense_tensor->offset() != 0) {
-    VLOG(6) << "Offload skip non-zero offset tensor "
+    VLOG(7) << "Offload skip non-zero offset tensor "
             << GetTensorMetaString(dense_tensor)
             << " allocated: " << GetAllocatedMemory(place_);
     return paddle::none;
   }
   if (!FLAGS_offload_inplace_tensor &&
       dense_tensor->InplaceVersionCounter().CurrentVersion() > 0) {
-    VLOG(6) << "Offload skip inplace tensor "
+    VLOG(7) << "Offload skip inplace tensor "
             << GetTensorMetaString(dense_tensor)
             << " allocated: " << GetAllocatedMemory(place_);
     return paddle::none;
@@ -170,14 +168,14 @@ size_t ActivationOffloaderWithPlace::Offload(size_t size) {
         1,
         phi::errors::InvalidArgument("Invalid reference count %d", cnt));
     if (ref_cnt > cnt) {
-      VLOG(6) << "Cannot offload tensor because its reference is not unique: "
+      VLOG(7) << "Cannot offload tensor because its reference is not unique: "
               << GetTensorMetaString(dense_tensor)
               << " , allocated: " << GetAllocatedMemory(place_)
               << " , desired_ref_cnt: " << cnt
               << " , actual_ref_cnt: " << ref_cnt;
       continue;
     } else if (cnt > 1) {
-      VLOG(6) << "Tensor with ref_cnt " << cnt << ": "
+      VLOG(7) << "Tensor with ref_cnt " << cnt << ": "
               << GetTensorMetaString(dense_tensor)
               << " , allocated: " << GetAllocatedMemory(place_)
               << " , desired_ref_cnt: " << cnt
