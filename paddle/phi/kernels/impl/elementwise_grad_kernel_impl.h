@@ -1426,6 +1426,7 @@ compute_pow_grad_dx(T x, T y, T out, T dout) {
 template <typename T, typename MPType>
 HOSTDEVICE typename std::enable_if<!std::is_integral<T>::value, T>::type
 compute_pow_grad_dx(T x, T y, T out, T dout) {
+  if (y == static_cast<T>(0.0)) return static_cast<T>(0.0);
   MPType x_val = static_cast<MPType>(x);
   MPType y_val = static_cast<MPType>(y);
   return static_cast<T>(static_cast<MPType>(dout) * y_val *
@@ -1440,6 +1441,7 @@ compute_pow_grad_dy(T x, T y, T out, T dout) {
 template <typename T, typename MPType>
 HOSTDEVICE typename std::enable_if<!std::is_integral<T>::value, T>::type
 compute_pow_grad_dy(T x, T y, T out, T dout) {
+  if (x <= static_cast<T>(0)) return std::numeric_limits<T>::quiet_NaN();
   MPType x_val = static_cast<MPType>(x);
   MPType y_val = static_cast<MPType>(y);
   return static_cast<T>(static_cast<MPType>(dout) * log(x_val) *
