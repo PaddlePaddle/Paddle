@@ -431,10 +431,23 @@ void AddNInferMeta(const std::vector<const MetaTensor*>& x,
                                 i,
                                 x_dim));
         } else {
-          // update the 0 dim
           for (int j = 0; j < x_dim.size(); ++j) {
-            if (x_dim[j] == 0) {
-              in_dim[j] = 0;
+            if (in_dim[j] != 0) {
+              if (x_dim[j] == 0) {
+                // update the 0 dim
+                in_dim[j] = 0;
+              } else {
+                PADDLE_ENFORCE_EQ(
+                    in_dim[j],
+                    x_dim[j],
+                    common::errors::InvalidArgument(
+                        "The input tensor X of AddNOp must"
+                        " have same shape. But received X[0]'s shape = "
+                        "[%s], X[%d]'s shape = [%s].",
+                        in_dim,
+                        i,
+                        x_dim));
+              }
             }
           }
         }
