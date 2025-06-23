@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/impl/add_n_kernel_impl.h"
+#include "paddle/phi/common/amp_type_traits.h"
 
 #include "glog/logging.h"
 
@@ -32,7 +33,12 @@ void AddNKernel(const Context& dev_ctx,
     }
   }
 
-  auto result = EigenVector<T>::Flatten(*out);
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  DenseTensor temp_out;
+  temp_out.Resize(out->dims());
+  dev_ctx.template Alloc<MPType>(&temp_out);
+  auto result_mp = EigenVector<MPType>::Flatten(temp_out);
+
   auto& place = *dev_ctx.eigen_device();
   int start = in_place ? 1 : 0;
   if (!in_place) {
@@ -42,9 +48,9 @@ void AddNKernel(const Context& dev_ctx,
       auto& in_0 = *(static_cast<const DenseTensor*>(x[0]));
       auto& in_1 = *(static_cast<const DenseTensor*>(x[1]));
       if (in_0.numel() && in_1.numel()) {
-        auto in_0_e = EigenVector<T>::Flatten(in_0);
-        auto in_1_e = EigenVector<T>::Flatten(in_1);
-        result.device(place) = in_0_e + in_1_e;
+        auto in_0_e = EigenVector<T>::Flatten(in_0).template cast<MPType>();
+        auto in_1_e = EigenVector<T>::Flatten(in_1).template cast<MPType>();
+        result_mp.device(place) = in_0_e + in_1_e;
         start = 2;
       }
     }
@@ -55,7 +61,7 @@ void AddNKernel(const Context& dev_ctx,
     }
   }
 
-  phi::funcs::SelectedRowsAddToTensor<Context, T> functor;
+  phi::funcs::SelectedRowsAddToTensor<Context, MPType> functor;
   // If in_place, just skip the first tensor
   for (size_t i = start; i < in_num; i++) {
     if (DenseTensor::classof(x[i])) {
@@ -63,11 +69,11 @@ void AddNKernel(const Context& dev_ctx,
       if (!in_t.initialized() || in_t.numel() == 0) {
         continue;
       }
-      auto in = EigenVector<T>::Flatten(in_t);
-      result.device(place) = result + in;
+      auto in = EigenVector<T>::Flatten(in_t).template cast<MPType>();
+      result_mp.device(place) = result_mp + in;
     } else if (SelectedRows::classof(x[i])) {
       auto& in_t = *(static_cast<const SelectedRows*>(x[i]));
-      functor(dev_ctx, in_t, out);
+      functor(dev_ctx, in_t, &temp_out);
     } else {
       PADDLE_THROW(common::errors::InvalidArgument(
           "Expected type of Input(X) of %d-th must be Tensor, "
@@ -76,6 +82,8 @@ void AddNKernel(const Context& dev_ctx,
           x[i]->type_info().name()));
     }
   }
+  auto result = EigenVector<T>::Flatten(*out);
+  result.device(place) = result_mp.template cast<T>();
   VLOG(10) << "end add_n kernel";
 }
 
