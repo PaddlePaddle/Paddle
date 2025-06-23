@@ -243,12 +243,12 @@ void GPUMaskedFillGrad(const phi::GPUContext& dev_ctx,
 
   int vec_size = 4;
   vec_size = std::min(phi::GetVectorizedSize(out_grad_data), vec_size);
-  if (x_grad) {
+  if (x_grad && x_grad->initialized()) {
     x_grad_data = x_grad->data<T>();
     vec_size = std::min(phi::GetVectorizedSize(x_grad_data), vec_size);
   }
 
-  if (value_grad) {
+  if (value_grad && value_grad->initialized()) {
     value_grad_data = value_grad->data<T>();
     vec_size = std::min(phi::GetVectorizedSize(value_grad_data), vec_size);
   }

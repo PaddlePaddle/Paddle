@@ -23,7 +23,7 @@ import operator
 import random
 import sys
 import types
-from dataclasses import fields, is_dataclass
+from dataclasses import fields
 from functools import partial, reduce
 from typing import (
     TYPE_CHECKING,
@@ -36,7 +36,7 @@ from paddle.base.dygraph.base import (
     _DecoratorContextManager,
     in_sot_simulation_mode,
 )
-from paddle.jit.dy2static.utils import TransformOptions
+from paddle.jit.dy2static.utils import TransformOptions, is_dataclass_type
 
 from .... import psdb
 from ....profiler import EventGuard
@@ -658,6 +658,47 @@ class LayerVariable(CallableVariable):
     ):
         super().__init__(graph, tracker)
         self.value = layer
+
+    def getattr(self, name: str, default=None):
+        # TODO(SigureMo): Use more common logic to handle this case,
+        # e.g. call Layer's __getattr__
+        layer = self.value
+        if (
+            '_parameters' in layer.__dict__
+            and name in layer.__dict__["_parameters"]
+        ):
+            return self.getattr("_parameters").getitem(
+                ConstantVariable.wrap_literal(name, self.graph)
+            )
+        if (
+            '_sub_layers' in layer.__dict__
+            and name in layer.__dict__["_sub_layers"]
+        ):
+            out = self.getattr("_sub_layers").getitem(
+                ConstantVariable.wrap_literal(name, self.graph)
+            )
+            return out
+        if '_buffers' in layer.__dict__ and name in layer.__dict__["_buffers"]:
+            return self.getattr("_buffers").getitem(
+                ConstantVariable.wrap_literal(name, self.graph)
+            )
+        return super().getattr(name, default)
+
+    def setattr(self, name: str, value):
+        layer = self.value
+        if (
+            '_parameters' in layer.__dict__
+            and name in layer.__dict__["_parameters"]
+        ):
+            return self.getattr("_parameters").setitem(name, value)
+        if (
+            '_sub_layers' in layer.__dict__
+            and name in layer.__dict__["_sub_layers"]
+        ):
+            return self.getattr("_sub_layers").setitem(name, value)
+        if '_buffers' in layer.__dict__ and name in layer.__dict__["_buffers"]:
+            return self.getattr("_buffers").setitem(name, value)
+        return super().setattr(name, value)
 
     def get_py_value(self, allow_tensor=False):
         return self.value
@@ -1311,7 +1352,7 @@ class DataClassVariable(ClassVariable):
 
     @VariableFactory.register_from_value(successor="ClassVariable")
     def from_value(value: object, graph: FunctionGraph, tracker: Tracker):
-        if is_dataclass(value) and isinstance(value, type):
+        if is_dataclass_type(value):
             var = DataClassVariable(value, graph=graph, tracker=tracker)
             return var
         return None

@@ -23,6 +23,9 @@ from queue import Queue
 from typing import TYPE_CHECKING, Any, Callable, Optional
 
 import paddle
+from paddle.jit.dy2static.utils import (
+    dataclass_from_dict,
+)
 
 from ....profiler import event_register
 from ....utils import (
@@ -157,7 +160,7 @@ def map_variables(
     def _map_dataclass_variable(variable: VariableBase | object):
         if not isinstance(variable, DataClassInstanceVariable):
             return variable
-        new_dataclass = DataClassInstanceVariable._dataclass_from_dict(
+        new_dataclass = dataclass_from_dict(
             variable.get_py_type(),
             {
                 fd.name: map_func(variable.getattr(fd.name))

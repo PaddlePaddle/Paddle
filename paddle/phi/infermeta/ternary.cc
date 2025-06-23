@@ -1630,6 +1630,43 @@ void MoeCombineInferMeta(const MetaTensor& x,
   y->set_dtype(x.dtype());
 }
 
+void MoeCombineNoWeightInferMeta(const MetaTensor& x,
+                                 const MetaTensor& scatter_index,
+                                 MetaTensor* y) {
+  auto x_dim = x.dims();
+  auto scatter_index_dim = scatter_index.dims();
+  PADDLE_ENFORCE_EQ(x_dim.size(),
+                    2,
+                    common::errors::InvalidArgument(
+                        "The dimensions of Input(x) must be 2, but "
+                        "received dimensions of Input(x) is [%d]",
+                        x_dim.size()));
+  PADDLE_ENFORCE_EQ(scatter_index_dim.size(),
+                    2,
+                    common::errors::InvalidArgument(
+                        "The dimensions of Input(scatter_index) must be 2, but "
+                        "received dimensions of Input(scatter_index) is [%d]",
+                        scatter_index_dim.size()));
+  PADDLE_ENFORCE_EQ(scatter_index.dtype(),
+                    phi::DataType::INT32,
+                    common::errors::InvalidArgument(
+                        "The input scatter_index type should be int32"
+                        "But received scatter_index type = %s",
+                        scatter_index.dtype()));
+  int64_t seqlen = scatter_index_dim[0];
+  int64_t k = scatter_index_dim[1];
+  int64_t hidden_size = x_dim[1];
+  PADDLE_ENFORCE_EQ(x_dim[0],
+                    seqlen * k,
+                    common::errors::InvalidArgument(
+                        "The upper dim of Input(x) [%d] must equal to "
+                        "the total size of Input(scatter_index) [%d].",
+                        x_dim[0],
+                        seqlen * k));
+  y->set_dims(phi::make_ddim({seqlen, hidden_size}));
+  y->set_dtype(x.dtype());
+}
+
 void MoeGateDispatchPartialNoSoftmaxTopKInferMeta(
     const MetaTensor& x,
     const MetaTensor& combine_weights,
@@ -1817,16 +1854,6 @@ void MoeGateDispatchPermuteInferMeta(const MetaTensor& x,
             "The dimensions of Input(corr_bias) must be 1, but received "
             "dimensions of Input(corr_bias) is [%d]",
             corr_bias_dims.size()));
-    PADDLE_ENFORCE_EQ(
-        corr_bias_dims[0],
-        x_dims[0],
-        common::errors::InvalidArgument(
-            "The dimensions of Input(corr_bias) must be equal to the first "
-            "dimension of Input(x), but received Input(corr_bias) first "
-            "dimension is [%d],"
-            "Input(x) first dimension is [%d]",
-            corr_bias_dims[0],
-            x_dims[0]));
     PADDLE_ENFORCE_EQ(
         corr_bias.dtype(),
         paddle::DataType::FLOAT32,
