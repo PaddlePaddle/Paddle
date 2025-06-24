@@ -38,6 +38,15 @@ void IndexAddKernel(const Context& dev_ctx,
                         DataTypeToString(DataType::INT32),
                         DataTypeToString(DataType::INT64)));
 
+  if (out && out->numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
+  if (index.numel() == 0) {
+    phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+    return;
+  }
+
   using XPUType = typename XPUTypeTrait<T>::Type;
   auto input_dim = x.dims();
   int dim = axis >= 0 ? axis : axis + input_dim.size();

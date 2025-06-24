@@ -29,6 +29,7 @@ void GPUIndexElementwiseGetKernel(const phi::GPUContext& ctx,
                                   const std::vector<int64_t>& input_strides,
                                   const std::vector<int64_t>& index_dims,
                                   const std::vector<int64_t>& index_stride,
+                                  const int64_t slice_offset,
                                   DenseTensor* output) {
   int64_t numel = 0;
   auto num_indices = index_dims.size();
@@ -78,9 +79,9 @@ void GPUIndexElementwiseGetKernel(const phi::GPUContext& ctx,
 
   using dtype = funcs::OpaqueType<sizeof(T)>;
 
-  const char* in_ptr = reinterpret_cast<const char*>(input.data<T>());
+  const char* in_ptr =
+      reinterpret_cast<const char*>(input.data<T>()) + slice_offset;
   char* out_ptr = reinterpret_cast<char*>(output->data<T>());
-
   funcs::index_elementwise_kernel<nt, vt>
       <<<grid, block, 0, stream>>>(N, [=] __device__(int idx) {
         const auto offsets = offset_calc.get(idx);
@@ -111,17 +112,17 @@ void IndexElementwiseGetKernel(const Context& ctx,
                                const std::vector<int64_t>& input_strides,
                                const std::vector<int64_t>& index_dims,
                                const std::vector<int64_t>& index_stride,
+                               const int64_t slice_offset,
+                               const bool accumulate,
                                DenseTensor* out) {
   const auto& index_type = index[0]->dtype();
-  PADDLE_ENFORCE_EQ(
-      index_type == phi::DataType::INT32 || index_type == phi::DataType::INT64,
-      true,
-      common::errors::InvalidArgument(
-          "Index holds the wrong type, it holds [%s], but "
-          "desires to be [%s] or [%s].",
-          index_type,
-          phi::DataType::INT32,
-          phi::DataType::INT64));
+  PADDLE_ENFORCE_EQ(index_type == phi::DataType::INT64,
+                    true,
+                    common::errors::InvalidArgument(
+                        "Index holds the wrong type, it holds [%s], but "
+                        "desires to be [%s].",
+                        index_type,
+                        phi::DataType::INT64));
 
   auto out_dims = out->dims();
   if (out_dims.size() > 0) {
@@ -132,25 +133,15 @@ void IndexElementwiseGetKernel(const Context& ctx,
   ctx.template Alloc<T>(out);
   if (out->numel() == 0) return;
 
-  if (index_type == phi::DataType::INT32) {
-    GPUIndexElementwiseGetKernel<T, int>(ctx,
-                                         x,
-                                         index,
-                                         input_dims,
-                                         input_strides,
-                                         index_dims,
-                                         index_stride,
-                                         out);
-  } else if (index_type == phi::DataType::INT64) {
-    GPUIndexElementwiseGetKernel<T, int64_t>(ctx,
-                                             x,
-                                             index,
-                                             input_dims,
-                                             input_strides,
-                                             index_dims,
-                                             index_stride,
-                                             out);
-  }
+  GPUIndexElementwiseGetKernel<T, int64_t>(ctx,
+                                           x,
+                                           index,
+                                           input_dims,
+                                           input_strides,
+                                           index_dims,
+                                           index_stride,
+                                           slice_offset,
+                                           out);
 }
 
 }  // namespace phi

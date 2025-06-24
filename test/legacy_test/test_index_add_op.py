@@ -458,5 +458,49 @@ class TestIndexAddAPICase5(TestIndexAddAPI):
 
 #             self.assertRaises(ValueError, test_add_value_broadcast)
 
+
+class TestIndexAddOp_ZeroSize(OpTest):
+    def setUp(self):
+        self.python_api = raw_index_add
+        self.op_type = "index_add"
+        self.init_dtype_type()
+        index_np = np.random.randint(
+            low=-self.x_shape[self.axis],
+            high=self.x_shape[self.axis],
+            size=self.index_size,
+        )
+        x_np = np.random.random(self.x_shape).astype(self.x_type)
+        add_value_np = np.random.random(self.add_value_shape).astype(
+            self.x_type
+        )
+
+        self.inputs = {'X': x_np, 'Index': index_np, 'AddValue': add_value_np}
+        self.attrs = {'axis': self.axis}
+        out = compute_index_add_ref(
+            self.axis,
+            self.x_shape,
+            x_np,
+            self.add_value_shape,
+            add_value_np,
+            self.index_size,
+            index_np,
+        )
+        self.outputs = {'Out': out}
+
+    def init_dtype_type(self):
+        self.axis = 0
+        self.x_type = np.float64
+        self.index_type = np.int64
+        self.x_shape = (101, 0)
+        self.index_size = 3
+        self.add_value_shape = (3, 0)
+
+    def test_check_output(self):
+        self.check_output(atol=1e-2, check_pir=True)
+
+    def test_check_grad_normal(self):
+        self.check_grad(['X', 'AddValue'], 'Out', check_pir=True)
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -8,7 +8,7 @@ on:
 permissions: read-all
 
 concurrency:
-  group: ${{ github.event.pull_request.number }}
+  group: ${{ github.event.pull_request.number }}-${{ github.workflow }}
   cancel-in-progress: true
 
 env:
@@ -60,6 +60,8 @@ jobs:
     name: Linux-NPU
     uses: ./.github/workflows/_Linux-NPU.yml
     needs: cpu
+    with:
+      can-skip: ${{ needs.cpu.outputs.can-skip }}
 
   distribute:
     name: Distribute-stable
@@ -67,51 +69,3 @@ jobs:
     needs: build-docker
     with:
       docker_distribute_image: ${{ needs.build-docker.outputs.docker_distribute_image }}
-
-  build:
-    name: Linux-build
-    uses: ./.github/workflows/_Linux-build.yml
-    needs: build-docker
-    with:
-      docker_build_image: ${{ needs.build-docker.outputs.docker_build_image }}
-
-  static-check:
-    name: Static-Check
-    uses: ./.github/workflows/_Static-Check.yml
-    needs: [build-docker, build]
-    with:
-      can-skip: ${{ needs.build.outputs.can-skip }}
-      docker_build_image: ${{ needs.build-docker.outputs.docker_build_image }}
-
-  ce-framework:
-    name: CE-Framework
-    uses: ./.github/workflows/_CE-Framework.yml
-    needs: [build-docker, build]
-    with:
-      can-skip: ${{ needs.build.outputs.can-skip }}
-      docker_build_image: ${{ needs.build-docker.outputs.docker_build_image }}
-
-  ce-cinn-framework:
-    name: CE-CINN-Framework
-    uses: ./.github/workflows/_CE-CINN-Framework.yml
-    needs: [build-docker, build]
-    with:
-      can-skip: ${{ needs.build.outputs.can-skip }}
-      docker_build_image: ${{ needs.build-docker.outputs.docker_build_image }}
-
-  api-benchmark:
-    name: Api-Benchmark
-    uses: ./.github/workflows/_Api-Benchmark.yml
-    needs: [build-docker, build]
-    with:
-      can-skip: ${{ needs.build.outputs.can-skip }}
-      docker_build_image: ${{ needs.build-docker.outputs.docker_build_image }}
-
-  slice:
-    name: Slice
-    uses: ./.github/workflows/_Slice.yml
-    needs: [clone, build-docker, build]
-    with:
-      can-skip: ${{ needs.build.outputs.can-skip }}
-      docker_build_image: ${{ needs.build-docker.outputs.docker_build_image }}
-      slice-check: ${{ needs.clone.outputs.slice-check }}
