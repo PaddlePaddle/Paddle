@@ -25,6 +25,10 @@ void LogLossGradXPUKernel(const Context& dev_ctx,
                           const DenseTensor& out_grad,
                           float epsilon_in,
                           DenseTensor* in_grad) {
+  if (in_grad && in_grad->numel() == 0) {
+    dev_ctx.template Alloc<T>(in_grad);
+    return;
+  }
   auto* predict = &input;
   auto* labels = &label;
   auto* dloss = &out_grad;

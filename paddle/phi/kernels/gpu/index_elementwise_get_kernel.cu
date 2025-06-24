@@ -92,10 +92,6 @@ void GPUIndexElementwiseGetKernel(const phi::GPUContext& ctx,
         for (int i = 0; i < num_indices; i++) {
           int64_t index =
               *reinterpret_cast<int64_t*>(index_ptrs[i] + offsets[2]);
-          PADDLE_ENFORCE(-sizes[i] <= index,
-                         "index is less than the lower bound");
-          PADDLE_ENFORCE(index < sizes[i],
-                         "index is greater than or equal to the upper bound");
           if (index < 0) {
             index += sizes[i];
           }
