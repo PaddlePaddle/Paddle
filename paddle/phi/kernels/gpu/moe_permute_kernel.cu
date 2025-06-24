@@ -88,19 +88,21 @@ __global__ __launch_bounds__(512) void tokens_unzip_stable_kernel(
         }
       }
     }
+    // Inter-block communication
     const int anticipate_signal_idx = blockIdx.x * num_experts + threadIdx.x;
     const int push_signal_idx = (blockIdx.x + 1) * num_experts + threadIdx.x;
     if (blockIdx.x != 0) {
-      // signal receive from previous block
-      while (cumsum_offset == CUMSUM_INVALID_TAG) {
-        cumsum_offset =
-            atomicExch(&global_expertwise_block_cumsum[anticipate_signal_idx],
-                       CUMSUM_INVALID_TAG);
+      // signal receive from previous block, using light-weight atomicAdd(check)
+      // this will not change any data, only do fetch in low-cost
+      while ((cumsum_offset = atomicAdd(
+                  &global_expertwise_block_cumsum[anticipate_signal_idx], 0)) ==
+             CUMSUM_INVALID_TAG) {
       }
     }
     // signal send for next block, with current cumsum
     const int proposed_offset = cumsum_offset + local_cumsum;
     global_expertwise_block_cumsum[push_signal_idx] = proposed_offset;
+    // Intra-block communication;
 #pragma unroll
     for (int i = 0; i < CUMSUM_BLOCK_SIZE; i++) {
       local_expert_infos[i].expert_row_idx =
@@ -110,6 +112,7 @@ __global__ __launch_bounds__(512) void tokens_unzip_stable_kernel(
       shared_expert_infos[i][threadIdx.x] = local_expert_infos[i];
     }
   }
+
   // --------------------------- Jobs schedule done -------------------------
   __syncthreads();
   for (int row = block_row_base; row < block_row_base + CUMSUM_BLOCK_SIZE;
