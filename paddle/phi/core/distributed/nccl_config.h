@@ -45,6 +45,7 @@ class NCCLConfig {
              const int nchannels,
              const std::string& algoStr,
              const std::string& protoStr);
+  ~NCCLConfig();
 
  private:
   const std::string commName_;
@@ -56,7 +57,7 @@ class NCCLConfig {
   const std::string algoStr_;
   const std::string protoStr_;
 
-  ncclMemOptConfig_t* nccl_memopt_config_ptr;
+  ncclMemOptConfig_t* nccl_memopt_config_ptr{nullptr};
 };
 
 }  // namespace distributed

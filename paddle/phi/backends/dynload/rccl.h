@@ -29,7 +29,7 @@ ncclResult_t ncclCommInitRank2(ncclComm_t* newcomm,
                                int myrank,
                                int param);
 
-struct ncclMemOptConfig_t;
+typedef struct ncclMemOptConfig ncclMemOptConfig_t;
 
 ncclResult_t ncclCommInitRankConfigMemOpt(ncclComm_t* comm,
                                           int nranks,
@@ -46,6 +46,8 @@ ncclMemOptConfig_t* ncclCommGenMemOptConfig(const char* commName,
                                             int nchannels,
                                             const char* algoStr,
                                             const char* protoStr);
+
+ncclResult_t ncclCommFreeMemOptConfig(ncclMemOptConfig_t* config);
 #ifdef __cplusplus
 }
 #endif
@@ -83,6 +85,7 @@ extern void* rccl_dso_handle;
   __macro(ncclCommInitRank2);            \
   __macro(ncclCommInitRankConfigMemOpt); \
   __macro(ncclCommGenMemOptConfig);      \
+  __macro(ncclCommFreeMemOptConfig);     \
   __macro(ncclCommAbort);                \
   __macro(ncclCommDestroy);              \
   __macro(ncclCommCount);                \

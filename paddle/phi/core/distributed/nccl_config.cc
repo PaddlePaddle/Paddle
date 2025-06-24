@@ -71,4 +71,11 @@ ncclConfig_t* NCCLConfig::GetOrigin() { return nullptr; }
 
 ncclMemOptConfig_t* NCCLConfig::GetMemOpt() { return nccl_memopt_config_ptr; }
 
+NCCLConfig::~NCCLConfig() {
+  if (phi::dynload::ncclCommFreeMemOptConfig.IsValid() &&
+      nccl_memopt_config_ptr != nullptr) {
+    phi::dynload::ncclCommFreeMemOptConfig(nccl_memopt_config_ptr);
+  }
+}
+
 }  // namespace phi::distributed

@@ -658,9 +658,9 @@ class PipelineLayer(nn.Layer):
             )
 
         from paddle.distributed import fleet
+        from paddle.distributed.fleet.base.topology import message2nccl_config
 
         hybrid_configs = fleet.fleet._user_defined_strategy.hybrid_configs
-        from google.protobuf.json_format import MessageToDict
 
         # The third loop generates comm group for each comm key.
         for comm_key in comm_keys:
@@ -683,10 +683,9 @@ class PipelineLayer(nn.Layer):
                 logger.info(f"Building comm group among {shared_ranks}.")
                 group = paddle.distributed.new_group(
                     ranks=shared_ranks,
-                    nccl_config=core.NCCLConfig.create(
-                        **MessageToDict(
-                            hybrid_configs["pp_configs"].shared_nccl_config
-                        )
+                    nccl_config=message2nccl_config(
+                        hybrid_configs["pp_configs"].shared_nccl_config,
+                        "pp_shared",
                     ),
                 )
                 if self.global_rank in shared_ranks:

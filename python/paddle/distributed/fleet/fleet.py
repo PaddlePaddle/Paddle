@@ -335,21 +335,16 @@ class Fleet:
                         self._user_defined_strategy.nccl_comm_num
                     )
 
-                from paddle.base import core
-
-                def proto_to_kwargs(message):
-                    kwargs = {}
-                    for field_descriptor, value in message.ListFields():
-                        kwargs[field_descriptor.name] = value
-                    return kwargs
+                from paddle.distributed.fleet.base.topology import (
+                    message2nccl_config,
+                )
 
                 paddle.distributed.init_parallel_env(
-                    core.NCCLConfig.create(
-                        **proto_to_kwargs(
-                            self._user_defined_strategy.hybrid_configs[
-                                "default_comm_group_configs"
-                            ].nccl_config
-                        )
+                    message2nccl_config(
+                        self._user_defined_strategy.hybrid_configs[
+                            "default_comm_group_configs"
+                        ].nccl_config,
+                        "default",
                     )
                 )
 

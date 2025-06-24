@@ -56,7 +56,8 @@ void NCCLCommContext::CreateNCCLComm(
     if (param > 0) {
       LOG(WARNING) << "ncclCommInitRank2 is not supported.";
     }
-    if (phi::dynload::ncclCommInitRankConfigMemOpt.IsValid()) {
+    if (nccl_config_ptr != nullptr &&
+        phi::dynload::ncclCommInitRankConfigMemOpt.IsValid()) {
       NCCL_CHECK(phi::dynload::ncclCommInitRankConfigMemOpt(
           &nccl_comm_,
           nranks,
@@ -65,6 +66,9 @@ void NCCLCommContext::CreateNCCLComm(
           nccl_config_ptr->GetOrigin(),
           nccl_config_ptr->GetMemOpt()));
     } else {
+      if (nccl_config_ptr != nullptr) {
+        LOG(WARNING) << "ncclCommInitRankConfigMemOpt is not supported.";
+      }
       NCCL_CHECK(
           phi::dynload::ncclCommInitRank(&nccl_comm_, nranks, nccl_id, myrank));
     }

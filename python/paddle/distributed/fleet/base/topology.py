@@ -20,10 +20,30 @@ from functools import reduce
 from itertools import product
 from typing import TYPE_CHECKING, Any, Literal
 
-from google.protobuf.json_format import MessageToDict
+
+def message2nccl_config(message, default_name=None):
+    from google.protobuf.json_format import MessageToDict
+
+    from paddle.base import core
+
+    if isinstance(message, dict):
+        ret_dict = message
+    else:
+        ret_dict = MessageToDict(message, preserving_proto_field_name=True)
+    if (
+        len(ret_dict) > 0
+        and "commName" not in ret_dict
+        and default_name is not None
+    ):
+        ret_dict["commName"] = default_name
+    return core.NCCLConfig.create(**ret_dict)
+
+
+def create_nccl_config(nccl_config):
+    return message2nccl_config(nccl_config, None)
+
 
 import paddle
-from paddle.base import core
 from paddle.distributed.utils.nccl_utils import check_nccl_version_for_p2p
 
 from ..utils.log_util import logger
@@ -215,8 +235,8 @@ class HybridCommunicateGroup:
         # create comm group for pipe parallel
         self._pp_group, self._pp_comm_group = self._set_comm_group(
             "pipe",
-            nccl_config=core.NCCLConfig.create(
-                **MessageToDict(hybrid_configs["pp_configs"].coll_nccl_config)
+            nccl_config=message2nccl_config(
+                hybrid_configs["pp_configs"].coll_nccl_config, "pp_coll"
             ),
         )
         # NOTE(shenliang03): In pipeline parallel, we use batch_isend_irecv.
@@ -234,34 +254,32 @@ class HybridCommunicateGroup:
         if paddle.get_flags(env_name)[env_name]:
             if self._pp_comm_group.nranks > 1:
                 self._pp_comm_group.process_group.eager_connect_ring_exchange(
-                    nccl_config=core.NCCLConfig.create(
-                        **MessageToDict(
-                            hybrid_configs["pp_configs"].p2p_nccl_config
-                        )
+                    nccl_config=message2nccl_config(
+                        hybrid_configs["pp_configs"].p2p_nccl_config, "pp_p2p"
                     )
                 )
 
         # create comm group for data parallel
         self._dp_group, self._dp_comm_group = self._set_comm_group(
             "data",
-            nccl_config=core.NCCLConfig.create(
-                **MessageToDict(hybrid_configs["dp_configs"].nccl_config)
+            nccl_config=message2nccl_config(
+                hybrid_configs["dp_configs"].nccl_config, "dp"
             ),
         )
 
         # create comm group for model parallel
         self._mp_group, self._mp_comm_group = self._set_comm_group(
             "model",
-            nccl_config=core.NCCLConfig.create(
-                **MessageToDict(hybrid_configs["mp_configs"].nccl_config)
+            nccl_config=message2nccl_config(
+                hybrid_configs["mp_configs"].nccl_config, "tp"
             ),
         )
 
         # create comm group for sharding parallel
         self._sharding_group, self._sharding_comm_group = self._set_comm_group(
             "sharding",
-            nccl_config=core.NCCLConfig.create(
-                **MessageToDict(hybrid_configs["sharding_configs"].nccl_config)
+            nccl_config=message2nccl_config(
+                hybrid_configs["sharding_configs"].nccl_config, "sharding"
             ),
         )
         self._sep_group = None
@@ -269,16 +287,16 @@ class HybridCommunicateGroup:
             # create comm group for sep parallel
             self._sep_group, self._sep_comm_group = self._set_comm_group(
                 "sep",
-                nccl_config=core.NCCLConfig.create(
-                    **MessageToDict(hybrid_configs["sep_configs"].nccl_config)
+                nccl_config=message2nccl_config(
+                    hybrid_configs["sep_configs"].nccl_config, "sep"
                 ),
             )
 
         # create global group for check inf_nan / clip global norm
         self._check_group, self._check_comm_group = self._set_check_group(
             "data",
-            nccl_config=core.NCCLConfig.create(
-                **MessageToDict(hybrid_configs["dp_configs"].check_nccl_config)
+            nccl_config=message2nccl_config(
+                hybrid_configs["dp_configs"].check_nccl_config, "dp_check"
             ),
         )
 
@@ -288,10 +306,9 @@ class HybridCommunicateGroup:
                 self.sharding_check_comm_group,
             ) = self._set_check_group(
                 "sharding",
-                nccl_config=core.NCCLConfig.create(
-                    **MessageToDict(
-                        hybrid_configs["sharding_configs"].check_nccl_config
-                    )
+                nccl_config=message2nccl_config(
+                    hybrid_configs["sharding_configs"].check_nccl_config,
+                    "sharding_check",
                 ),
             )
 
@@ -302,16 +319,14 @@ class HybridCommunicateGroup:
                 self._dp_sep_comm_group,
             ) = self.create_fuse_group(
                 ["data", "sep"],
-                nccl_config=core.NCCLConfig.create(
-                    **MessageToDict(
-                        hybrid_configs["dp_sep_configs"].nccl_config
-                    )
+                nccl_config=message2nccl_config(
+                    hybrid_configs["dp_sep_configs"].nccl_config, "dp_sep"
                 ),
             )
             self._pp_mp_group, self._pp_mp_comm_group = self.create_fuse_group(
                 ["pipe", "model"],
-                nccl_config=core.NCCLConfig.create(
-                    **MessageToDict(hybrid_configs["pp_tp_configs"].nccl_config)
+                nccl_config=message2nccl_config(
+                    hybrid_configs["pp_tp_configs"].nccl_config, "pp_tp"
                 ),
             )
 
@@ -739,8 +754,8 @@ class EPHybridCommunicateGroup(HybridCommunicateGroup):
         self._pp_group, self._pp_comm_group = self._set_comm_group(
             "pipe",
             self._moe_topo,
-            nccl_config=core.NCCLConfig.create(
-                **MessageToDict(hybrid_configs["pp_configs"].coll_nccl_config)
+            nccl_config=message2nccl_config(
+                hybrid_configs["pp_configs"].coll_nccl_config, "pp_coll"
             ),
         )
         paddle.distributed.all_reduce(
@@ -752,10 +767,8 @@ class EPHybridCommunicateGroup(HybridCommunicateGroup):
         if paddle.get_flags(env_name)[env_name]:
             if self._pp_comm_group.nranks > 1:
                 self._pp_comm_group.process_group.eager_connect_ring_exchange(
-                    nccl_config=core.NCCLConfig.create(
-                        **MessageToDict(
-                            hybrid_configs["pp_configs"].p2p_nccl_config
-                        )
+                    nccl_config=message2nccl_config(
+                        hybrid_configs["pp_configs"].p2p_nccl_config, "pp_p2p"
                     )
                 )
 
@@ -763,8 +776,8 @@ class EPHybridCommunicateGroup(HybridCommunicateGroup):
         self._ep_group, self._ep_comm_group = self._set_comm_group(
             "expert",
             self._moe_topo,
-            nccl_config=core.NCCLConfig.create(
-                **MessageToDict(hybrid_configs["ep_configs"].nccl_config)
+            nccl_config=message2nccl_config(
+                hybrid_configs["ep_configs"].nccl_config, "ep"
             ),
         )
 
@@ -773,10 +786,9 @@ class EPHybridCommunicateGroup(HybridCommunicateGroup):
             self._set_comm_group(
                 "moe_sharding",
                 self._moe_topo,
-                nccl_config=core.NCCLConfig.create(
-                    **MessageToDict(
-                        hybrid_configs["moe_sharding_configs"].nccl_config
-                    )
+                nccl_config=message2nccl_config(
+                    hybrid_configs["moe_sharding_configs"].nccl_config,
+                    "moe_sharding",
                 ),
             )
         )
@@ -785,8 +797,8 @@ class EPHybridCommunicateGroup(HybridCommunicateGroup):
         self._dp_group, self._dp_comm_group = self._set_comm_group(
             "data",
             self._dense_topo,
-            nccl_config=core.NCCLConfig.create(
-                **MessageToDict(hybrid_configs["dp_configs"].nccl_config)
+            nccl_config=message2nccl_config(
+                hybrid_configs["dp_configs"].nccl_config, "dp"
             ),
         )
 
@@ -794,8 +806,8 @@ class EPHybridCommunicateGroup(HybridCommunicateGroup):
         self._sep_group, self._sep_comm_group = self._set_comm_group(
             "sep",
             self._dense_topo,
-            nccl_config=core.NCCLConfig.create(
-                **MessageToDict(hybrid_configs["sep_configs"].nccl_config)
+            nccl_config=message2nccl_config(
+                hybrid_configs["sep_configs"].nccl_config, "sep"
             ),
         )
 
@@ -803,8 +815,8 @@ class EPHybridCommunicateGroup(HybridCommunicateGroup):
         self._mp_group, self._mp_comm_group = self._set_comm_group(
             "model",
             self._dense_topo,
-            nccl_config=core.NCCLConfig.create(
-                **MessageToDict(hybrid_configs["mp_configs"].nccl_config)
+            nccl_config=message2nccl_config(
+                hybrid_configs["mp_configs"].nccl_config, "tp"
             ),
         )
 
@@ -812,10 +824,8 @@ class EPHybridCommunicateGroup(HybridCommunicateGroup):
         self._sharding_group, self._sharding_comm_group = (
             self.build_sharding_group(
                 self._dense_topo,
-                nccl_config=core.NCCLConfig.create(
-                    **MessageToDict(
-                        hybrid_configs["sharding_configs"].nccl_config
-                    )
+                nccl_config=message2nccl_config(
+                    hybrid_configs["sharding_configs"].nccl_config, "sharding"
                 ),
             ),
         )
@@ -824,16 +834,17 @@ class EPHybridCommunicateGroup(HybridCommunicateGroup):
         self._check_group, self._check_comm_group = self._set_check_group(
             "data",
             self._dense_topo,
-            nccl_config=core.NCCLConfig.create(
-                **MessageToDict(hybrid_configs["dp_configs"].check_nccl_config)
+            nccl_config=message2nccl_config(
+                hybrid_configs["dp_configs"].check_nccl_config, "data_check"
             ),
         )
         self.sharding_check_group, self.sharding_check_comm_group = (
             self._set_check_group(
                 "moe_sharding",
                 self._moe_topo,
-                nccl_config=core.NCCLConfig.create(
-                    **(hybrid_configs["moe_sharding_configs"].check_nccl_config)
+                nccl_config=message2nccl_config(
+                    hybrid_configs["moe_sharding_configs"].check_nccl_config,
+                    "moe_sharding_check",
                 ),
             )
         )
