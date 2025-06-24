@@ -1008,10 +1008,8 @@ def _get_1f1b_rank_ops(
     # earliest time step of first backward = [local_stages * group_size + 2 * (group_size - 1 - rank)]
     # warmup_ops = calculated above
     post_warmup_ops = (
-        (n_local_stages * pp_group_size + 2 * (pp_group_size - 1 - rank))
-        - (warmup_ops + rank)
-        - 1
-    )
+        n_local_stages * pp_group_size + 2 * (pp_group_size - 1 - rank)
+    ) - (warmup_ops + rank)
 
     if enable_zero_bubble:
         post_warmup_ops = pp_group_size - rank - 1
@@ -1076,11 +1074,13 @@ def _get_1f1b_rank_ops(
                     )
                 )
                 weight_op_count += 1
-            if op == warmup_ops + fwd_bwd_ops - 1:
-                # This is the last step in the 1F1B Phase, the bubbles are symmetrical with respect to the ending phase of the warm_up
-                rank_ops.extend([None] * post_warmup_ops)
         # Cooldown phase
         else:
+            # During cooldown phase, we need steps to align with 1f1b happening in other ranks
+            # TODO: we don't need to always append, after all 1f1b are finished we can stop appending None
+            if not enable_zero_bubble:
+                rank_ops.append(None)
+
             bwd_stage_index = backward_stage_index(op)
             bwd_stage_mb_index[bwd_stage_index] = (
                 bwd_mb_index := bwd_stage_mb_index[bwd_stage_index]

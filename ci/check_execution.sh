@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-COMMIT_MESSAGE=$(git log -1 --pretty=%B)
+COMMIT_MESSAGE=$(git log --pretty=format:%s -2 | tail -n 1)
 if [[ "$COMMIT_MESSAGE" == *"slice-check"* ]]; then
     echo "slice-check=true"
     echo "slice-check=true" >> $GITHUB_OUTPUT

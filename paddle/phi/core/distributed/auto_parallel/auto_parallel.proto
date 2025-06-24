@@ -30,6 +30,10 @@ message ProcessMeshProto {
 
 }
 
+message MeshDimsProto {
+  repeated int64 mesh_dims = 1;
+}
+
 // This distributed attribute describes how to distribute the corresponding tensor,
 // and store any other information needed by auto parallel.
 message TensorDistAttrProto {
@@ -41,7 +45,7 @@ message TensorDistAttrProto {
   // of the above process mesh. If dims_mapping[i] is -1, the i-th dimension of the tensor
   // will not be sharded. For example, given a tensor shape [2, 6, 12], a process mesh
   // shape [2, 3] and a dims_mapping [-1, 1, 0], each sharded tensor will have a shape [2, 2, 6].
-  repeated int64 dims_mapping = 2;
+  repeated MeshDimsProto dims_mapping = 2;
 
   // The batch dimension of the corresponding tensor.
   optional int64 batch_dim = 3;
