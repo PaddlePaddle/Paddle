@@ -265,12 +265,14 @@ void GatherV2GradFunction(const phi::CPUContext& ctx,
   for (int64_t i = 0; i < inner_dim_size; i++) {
     for (int64_t j = 0; j < input_index_dim_size; j++) {
       const int64_t index_data_j =
-          (index_data[j] < 0 ? index_data[j] + input_index_dim_size
+          (index_data[j] < 0 ? index_data[j] + out_index_dim_size
                              : index_data[j]);
       for (int64_t k = 0; k < outer_dim_size; k++) {
         int64_t index = k + index_data_j * outer_dim_size +
                         i * outer_dim_size * out_index_dim_size;
-        out_data[index] += input_data[j * outer_dim_size + k];
+        out_data[index] +=
+            input_data[i * input_index_dim_size * outer_dim_size +
+                       j * outer_dim_size + k];
       }
     }
   }

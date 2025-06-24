@@ -18,6 +18,7 @@ function run_mac_test() {
     tmp_dir='/Users/paddle/tmp'
     mkdir -p $tmp_dir
     mkdir -p ${PADDLE_ROOT}/build
+    find $tmp_dir -mindepth 1 -delete
     cd ${PADDLE_ROOT}/build
     if [ ${WITH_TESTING:-ON} == "ON" ] ; then
     cat <<EOF

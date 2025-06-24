@@ -98,6 +98,8 @@ class InterpreterCore {
 
   bool IsStaticBuild() const;
 
+  void SetCUDAGraphState(uint8_t cuda_graph_state);
+
   std::tuple<double, double> InterpreterRunTime();
 
   // Only for debug
