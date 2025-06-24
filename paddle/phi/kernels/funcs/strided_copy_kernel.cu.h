@@ -560,7 +560,7 @@ __global__ void Contiguous2StridedDefaultFunc(
       output_offset += (index_tmp % dims[dim]) * output_stride[dim];
       index_tmp = index_tmp / dims[dim];
     }
-    if (is_aligned(&output_data[output_offset], MAX_LOAD_BITS)) {
+    if (is_aligned(&output_data[output_offset], MAX_LOAD_BYTES)) {
       using VecType = kps::details::VectorType<T, VecSize>;
       const VecType* src = reinterpret_cast<const VecType*>(&input_data[i]);
       VecType* dst = reinterpret_cast<VecType*>(&output_data[output_offset]);
