@@ -3679,7 +3679,7 @@
   backward : moe_combine_grad
 
 - op : moe_combine_no_weight
-  args : (Tensor x, Tensor scatter_index)
+  args : (Tensor x, Tensor combine_weight, Tensor scatter_index, float epsilon = 1.0e-15)
   output : Tensor(y)
   infer_meta :
     func : MoeCombineNoWeightInferMeta

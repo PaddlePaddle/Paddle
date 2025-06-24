@@ -41,9 +41,9 @@ def moe_combine_no_weight_ref(x, scatter_index):
 
 class TestCombineFwd(unittest.TestCase):
     def setUp(self):
-        self.s = 4
-        self.k = 2
-        self.h = 4
+        self.s = 4096
+        self.k = 8
+        self.h = 8192
         self.dtype = "float32"
         self.rtol = 1e-05
         self.atol = 1e-05
@@ -70,7 +70,8 @@ class TestCombineFwd(unittest.TestCase):
         x_2 = paddle.to_tensor(x_numpy, self.dtype)
         x_2.stop_gradient = False
 
-        y_2 = F.moe_combine_no_weight(x_2, scatter_index)
+        combine_weight = paddle.ones([self.s, self.k], dtype=self.dtype)
+        y_2 = F.moe_combine_no_weight(x_2, combine_weight, scatter_index)
         paddle.autograd.backward(tensors=[y_2], grad_tensors=[y_grad])
 
         y_2 = y_2.cast("float32")

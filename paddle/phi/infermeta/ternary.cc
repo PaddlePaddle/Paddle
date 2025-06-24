@@ -1631,6 +1631,7 @@ void MoeCombineInferMeta(const MetaTensor& x,
 }
 
 void MoeCombineNoWeightInferMeta(const MetaTensor& x,
+                                 const MetaTensor& combine_weights,
                                  const MetaTensor& scatter_index,
                                  MetaTensor* y) {
   auto x_dim = x.dims();
