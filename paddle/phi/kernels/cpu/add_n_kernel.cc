@@ -25,7 +25,6 @@ void AddNKernel(const Context& dev_ctx,
                 DenseTensor* out) {
   size_t in_num = x.size();
   dev_ctx.template Alloc<T>(out);
-
   bool in_place = false;
   if (!x.empty() && x[0]->initialized() && DenseTensor::classof(x[0])) {
     if ((static_cast<const DenseTensor*>(x[0]))->Holder() == out->Holder()) {
@@ -33,12 +32,15 @@ void AddNKernel(const Context& dev_ctx,
     }
   }
 
+  // Using MPType to leverage precision
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   DenseTensor temp_out;
   temp_out.Resize(out->dims());
   dev_ctx.template Alloc<MPType>(&temp_out);
-  auto result_mp = EigenVector<MPType>::Flatten(temp_out);
+  phi::funcs::SetConstant<Context, MPType> constant_functor;
+  constant_functor(dev_ctx, &temp_out, static_cast<MPType>(0));
 
+  auto result_mp = EigenVector<MPType>::Flatten(temp_out);
   auto& place = *dev_ctx.eigen_device();
   int start = in_place ? 1 : 0;
   if (!in_place) {
@@ -53,11 +55,6 @@ void AddNKernel(const Context& dev_ctx,
         result_mp.device(place) = in_0_e + in_1_e;
         start = 2;
       }
-    }
-    if (start != 2) {
-      VLOG(10) << "Fill with constant = 0 in sum kernel.";
-      phi::funcs::SetConstant<Context, T> constant_functor;
-      constant_functor(dev_ctx, out, static_cast<T>(0));
     }
   }
 
