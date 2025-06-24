@@ -1128,14 +1128,12 @@ if '${WITH_GPU}' == 'ON' or '${WITH_ROCM}' == 'ON':
 if '${WITH_DISTRIBUTE}' == 'ON' and '${WITH_NVSHMEM}' == 'ON':
     package_data['paddle.libs']+=[
         os.path.basename('${NVSHMEM_BOOTSTRAP_UID_LIB}'),
-        os.path.basename('${NVSHMEM_BOOTSTRAP_MPI_LIB}'),
         os.path.basename('${NVSHMEM_BOOTSTRAP_PMI_LIB}'),
         os.path.basename('${NVSHMEM_BOOTSTRAP_PMI2_LIB}'),
         os.path.basename('${NVSHMEM_TRANSPORT_IBRC_LIB}'),
         os.path.basename('${NVSHMEM_TRANSPORT_IBGDA_LIB}'),
     ]
     shutil.copy('${NVSHMEM_BOOTSTRAP_UID_LIB}', libs_path)
-    shutil.copy('${NVSHMEM_BOOTSTRAP_MPI_LIB}', libs_path)
     shutil.copy('${NVSHMEM_BOOTSTRAP_PMI_LIB}', libs_path)
     shutil.copy('${NVSHMEM_BOOTSTRAP_PMI2_LIB}', libs_path)
     shutil.copy('${NVSHMEM_TRANSPORT_IBRC_LIB}', libs_path)
