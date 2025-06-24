@@ -44,7 +44,7 @@ struct expert_infos {
 };
 
 template <typename X_T, typename routemap_T, typename probs_T, bool has_scale>
-__global__ void tokens_unzip_stable_kernel(
+__global__ __launch_bounds__(512) void tokens_unzip_stable_kernel(
     const X_T *__restrict__ X,
     const routemap_T *__restrict__ routemap_topk,
     const probs_T *__restrict__ probs_topk,
@@ -72,10 +72,6 @@ __global__ void tokens_unzip_stable_kernel(
   if (threadIdx.x < num_experts) {
     local_expert_offsets = expert_base_offset[threadIdx.x];
     expert_infos_t local_expert_infos[CUMSUM_BLOCK_SIZE];
-#pragma unroll
-    for (int i = 0; i < CUMSUM_BLOCK_SIZE; i++) {
-      local_expert_infos[i] = {-1, (probs_T)0};
-    }
     for (int row = block_row_base; row < block_row_base + CUMSUM_BLOCK_SIZE;
          row++) {
       if (row >= total_zipped_tokens_num) break;
@@ -95,12 +91,14 @@ __global__ void tokens_unzip_stable_kernel(
     const int anticipate_signal_idx = blockIdx.x * num_experts + threadIdx.x;
     const int push_signal_idx = (blockIdx.x + 1) * num_experts + threadIdx.x;
     if (blockIdx.x != 0) {
+      // signal receive from previous block
       while (cumsum_offset == CUMSUM_INVALID_TAG) {
         cumsum_offset =
             atomicExch(&global_expertwise_block_cumsum[anticipate_signal_idx],
                        CUMSUM_INVALID_TAG);
       }
     }
+    // signal send for next block, with current cumsum
     const int proposed_offset = cumsum_offset + local_cumsum;
     global_expertwise_block_cumsum[push_signal_idx] = proposed_offset;
 #pragma unroll
@@ -116,6 +114,7 @@ __global__ void tokens_unzip_stable_kernel(
   __syncthreads();
   for (int row = block_row_base; row < block_row_base + CUMSUM_BLOCK_SIZE;
        row++) {
+    // OOB check
     if (row >= total_zipped_tokens_num) return;
     const int internal_row = row - block_row_base;
 #pragma unroll
@@ -123,9 +122,12 @@ __global__ void tokens_unzip_stable_kernel(
       const expert_infos_t this_expert_token_info =
           shared_expert_infos[internal_row][expert];
       const int proposed_row_idx = this_expert_token_info.expert_row_idx;
-      zipped_expertwise_rowmap[row * num_experts + expert] = proposed_row_idx;
+      if (threadIdx.x == 0)
+        zipped_expertwise_rowmap[row * num_experts + expert] = proposed_row_idx;
       if (proposed_row_idx == -1) continue;  // no memcpy
-      probs_unzipped[proposed_row_idx] = this_expert_token_info.expert_probs;
+      if (threadIdx.x == 0)
+        probs_unzipped[proposed_row_idx] = this_expert_token_info.expert_probs;
+      // vec copy
       if constexpr (has_scale) {
         vectorized_memcpy(
             &XScale[(int64_t)row * (int64_t)scale_length],
@@ -159,7 +161,7 @@ void dispatch_tokens_unzip_stable(const Context &dev_ctx,
   dim3 grid, block;
   grid.x =
       (total_zipped_tokens_num + CUMSUM_BLOCK_SIZE - 1) / CUMSUM_BLOCK_SIZE;
-  block.x = 256;
+  block.x = 512;
 
 #define DTYPE_CASE(dtype, type) dtype == phi::DataType::type
 #define GET_DATA(tensor, type) tensor.data<type>()

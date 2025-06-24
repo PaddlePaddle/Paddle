@@ -32,7 +32,7 @@ __device__ __nv_bfloat16 __custom_hadd(__nv_bfloat16 x, __nv_bfloat16 y) {
 #define MAX_NUM_EXPERTS 64
 #endif
 template <bool MP>
-__global__ void tokens_zip_kernel(
+__global__ __launch_bounds__(256) void tokens_zip_kernel(
     const phi::bfloat16 *__restrict__ unzipped_tokens_in,
     const int *__restrict__ zipped_expertwise_rowmap,
     const int *__restrict__ expert_routemap_topk,
