@@ -216,6 +216,7 @@ jobs:
           WITH_MKL: "ON"
           IF_DCU: "ON"
           WITH_TENSORRT: "OFF"
+          WITH_XPU: "OFF"
           GIT_PR_ID: ${{ github.event.pull_request.number }}
           PADDLE_VERSION: 0.0.0
           WITH_TESTING: "ON"
@@ -251,6 +252,7 @@ jobs:
             -e WITH_AVX \
             -e WITH_MKL \
             -e WITH_TENSORRT \
+            -e WITH_XPU \
             -e IF_DCU \
             -e WITH_RCCL \
             -e CMAKE_BUILD_TYPE \
