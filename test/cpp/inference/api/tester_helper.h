@@ -382,7 +382,8 @@ std::unique_ptr<PaddlePredictor> CreateTestPredictor(
 }
 
 size_t GetSize(const PaddleTensor &out) {
-  return static_cast<size_t>(VecReduceToInt(out.shape));
+  return VecReduceToInt(out.shape);
+  // return static_cast<size_t>(VecReduceToInt(out.shape));
 }
 
 void SetFakeImageInput(std::vector<std::vector<PaddleTensor>> *inputs,

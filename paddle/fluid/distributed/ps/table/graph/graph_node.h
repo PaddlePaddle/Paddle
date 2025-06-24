@@ -105,7 +105,7 @@ class GraphNode : public Node {
     return sampler->sample_k(k, rng);
   }
   virtual uint64_t get_neighbor_id(int idx) {
-    return static_cast<uint64_t>(edges->get_id(idx));
+    return (uint64_t)(edges->get_id(idx));
   }
 
 #ifdef PADDLE_WITH_CUDA

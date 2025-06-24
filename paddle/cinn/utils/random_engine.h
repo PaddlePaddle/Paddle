@@ -85,7 +85,8 @@ class LinearRandomEngine {
   // Move the state to the next and return the new state
   result_type Next() {
     *state_ = (increment + (*state_) * multiplier) % modulus;
-    return static_cast<result_type>(*state_);
+    return *state_;
+    // return static_cast<result_type>(*state_);
   }
 
  private:
