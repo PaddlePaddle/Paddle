@@ -41,6 +41,7 @@ jobs:
     uses: ./.github/workflows/docker.yml
     with:
       bos_dir: Paddle-coverage
+      task: coverage
 
   build:
     name: Coverage build
