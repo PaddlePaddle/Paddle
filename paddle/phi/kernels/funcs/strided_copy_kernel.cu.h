@@ -20,7 +20,6 @@ limitations under the License. */
 #include "paddle/phi/kernels/strided_copy_kernel.h"
 
 namespace phi {
-#define MAX_LOAD_BYTES 16
 bool VerifyStridedCopyThreadConfigurationParameters(const dim3& block,
                                                     const dim3& grid) {
   return block.x <= 1024 && block.y <= 1024 && block.z <= 64 &&
@@ -520,6 +519,7 @@ __global__ void Contiguous2StridedDefaultDiffDimFunc(
     Array<int64_t, phi::DDim::kMaxRank + 1> output_stride,
     Array<int64_t, phi::DDim::kMaxRank + 1> dims,
     const int64_t numel) {
+  int MAX_LOAD_BYTES = VecSize * sizeof(T);
   int64_t gid = (blockIdx.x * blockDim.x + threadIdx.x) * VecSize;
 #pragma unroll
   for (int64_t i = gid; i < numel; i += blockDim.x * gridDim.x * VecSize) {
@@ -550,8 +550,8 @@ __global__ void Contiguous2StridedDefaultFunc(
     Array<int64_t, phi::DDim::kMaxRank + 1> output_stride,
     Array<int64_t, phi::DDim::kMaxRank + 1> dims,
     const int64_t numel) {
+  int MAX_LOAD_BYTES = VecSize * sizeof(T);
   int64_t gid = (blockIdx.x * blockDim.x + threadIdx.x) * VecSize;
-
 #pragma unroll
   for (int64_t i = gid; i < numel; i += blockDim.x * gridDim.x * VecSize) {
     int64_t output_offset = 0;
