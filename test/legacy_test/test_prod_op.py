@@ -277,5 +277,39 @@ class TestProdWithTensorAxis2(TestReduceOPTensorAxisBase):
         ]
 
 
+class TestProdOp_ZeroSize(unittest.TestCase):
+    def setUp(self):
+        self.input = np.random.random(size=(10, 0, 5)).astype(np.float32)
+
+    def run_imperative(self, place):
+        input = paddle.to_tensor(self.input, place=place)
+        input.stop_gradient = False
+        out = paddle.prod(input)
+        expected_result = np.prod(self.input)
+        np.testing.assert_allclose(out.numpy(), expected_result, rtol=1e-05)
+        out.sum().backward()
+        np.testing.assert_allclose(input.grad.shape, input.shape)
+
+    def test_cpu(self):
+        with dygraph_guard():
+            self.run_imperative(place=paddle.CPUPlace())
+
+    def test_gpu(self):
+        if not paddle.base.core.is_compiled_with_cuda():
+            return
+        with dygraph_guard():
+            self.run_imperative(place=paddle.CUDAPlace(0))
+
+
+class TestProdOp_ZeroSize2(TestProdOp_ZeroSize):
+    def setUp(self):
+        self.input = np.random.random(size=(10, 1, 5)).astype(np.float32)
+
+    def run_imperative(self, place):
+        input = paddle.to_tensor(self.input, place=place)
+        out = paddle.prod(input, paddle.randn([0]).astype(paddle.int32))
+        np.testing.assert_allclose(out.numpy(), input.numpy())
+
+
 if __name__ == "__main__":
     unittest.main()

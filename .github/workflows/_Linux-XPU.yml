@@ -5,7 +5,7 @@ on:
 
 env:
   dockerfile: dockerfile
-  docker_image: aa13dc110ab3
+  docker_image: 08d38377a9c7
   PR_ID: ${{ github.event.pull_request.number }}
   COMMIT_ID: ${{ github.event.pull_request.head.sha }}
   ci_scripts: /paddle/ci
@@ -50,8 +50,6 @@ jobs:
           WITH_DISTRIBUTE: "ON"
           PY_VERSION: "3.10"
           XPU_VISIBLE_DEVICES: "0,1"
-          CUDA_VERSION:
-          CUDNN_VERSION:
           WITH_XPU_BKCL: "ON"
           WITH_XPU_FFT: "ON"
           WITH_XPU_XRE5: "ON"
@@ -84,8 +82,6 @@ jobs:
             -e WITH_DISTRIBUTE \
             -e PY_VERSION \
             -e XPU_VISIBLE_DEVICES \
-            -e CUDA_VERSION \
-            -e CUDNN_VERSION \
             -e WITH_XPU_BKCL \
             -e WITH_XPU_FFT \
             -e WITH_XPU_XRE5 \
@@ -181,19 +177,12 @@ jobs:
       group: Kunlun
 
     steps:
-      - name: Download build.tar.gz
-        run: |
-          sudo rm -rf * .[^.]*
-          wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/xpu/${PR_ID}/${COMMIT_ID}/build.tar.gz --no-check-certificate
-          sudo yum install zstd -y
-          sudo tar --use-compress-program="pzstd" -xf build.tar.gz --strip-components=1
-          rm build.tar.gz
-
       - name: Determine the runner
         run: |
           runner_name=`(echo $PWD|awk -F '/' '{print $3}')`
           echo $runner_name
-          source ${ci_scripts_runner}/utils.sh
+          wget -q https://xly-devops.bj.bcebos.com/PR/utils.sh
+          source utils.sh
           determine_kunlun_runner ${runner_name}
 
       - name: Check docker image and run container
@@ -209,8 +198,6 @@ jobs:
           PY_VERSION: "3.10"
           XPU_VISIBLE_DEVICES: ${{ env.CUDA_VISIBLE_DEVICES }}
           CUDA_VISIBLE_DEVICES: ${{ env.CUDA_VISIBLE_DEVICES }}
-          CUDA_VERSION:
-          CUDNN_VERSION:
           WITH_XPU_BKCL: "ON"
           CACHE_DIR: /root/.cache
           CCACHE_DIR: /root/.ccache
@@ -223,14 +210,14 @@ jobs:
         run: |
           container_name=${TASK}-$(date +%Y%m%d-%H%M%S)
           echo "container_name=${container_name}" >> ${{ github.env }}
-          sudo mkdir -p /run/user/0
-          docker run --cap-add=SYS_PTRACE --privileged --ulimit nofile=102400 --ulimit core=-1 --shm-size=32g -d -t --name ${container_name} \
+          docker run --ulimit nofile=102400 --ulimit core=-1 --shm-size=32g -d -t --name ${container_name} \
             -v /ssd1/cibuild/.cache:/root/.cache \
             -v /ssd1/cibuild/.ccache:/root/.ccache \
             -v ${{ github.workspace }}/../../..:${{ github.workspace }}/../../.. \
             -v ${{ github.workspace }}:/paddle \
             --device ${XPU_CODE_1} \
             --device ${XPU_CODE_2} \
+            --device /dev/xpuctrl \
             --shm-size=32g \
             -e BRANCH \
             -e PR_ID \
@@ -247,8 +234,6 @@ jobs:
             -e PY_VERSION \
             -e XPU_VISIBLE_DEVICES \
             -e CUDA_VISIBLE_DEVICES \
-            -e CUDA_VERSION \
-            -e CUDNN_VERSION \
             -e WITH_XPU_BKCL \
             -e CACHE_DIR \
             -e CCACHE_DIR \
@@ -264,9 +249,14 @@ jobs:
             -e CI_name \
             -w /paddle --network host ${docker_image} /bin/bash
 
+      - name: Download build.tar.gz
+        run: |
+          wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/xpu/${PR_ID}/${COMMIT_ID}/build.tar.gz --no-check-certificate
+          tar --use-compress-program="pzstd" -xf build.tar.gz --strip-components=1
+          rm build.tar.gz
+
       - name: Run test
         run: |
-          sudo mkdir -p /run/user/0
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           bash ${ci_scripts}/kunlun_test.sh
           '
@@ -274,6 +264,5 @@ jobs:
       - name: Terminate and delete the container
         if: always()
         run: |
-          sudo mkdir -p /run/user/0
-          sudo rm -rf * .[^.]*
+          docker exec -t ${container_name} /bin/bash -c 'rm -rf * .[^.]*'
           docker rm -f ${container_name}

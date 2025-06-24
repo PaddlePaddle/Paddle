@@ -20,10 +20,10 @@
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/gather.cu.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/top_k_function_cuda.h"
-
 namespace phi {
 
 #define FIXED_BLOCK_DIM_BASE(dim, ...) \
@@ -83,17 +83,25 @@ void TopkKernel(const Context& dev_ctx,
   if (axis < 0) axis += in_dims.size();
 
   int k = k_scalar.to<int>();
-  PADDLE_ENFORCE_GE(
-      x.numel(),
-      k,
-      errors::InvalidArgument(
-          "x has only %d element, can not find %d top values.", x.numel(), k));
+  // out shape [-1]
   if (k_scalar.FromTensor()) {
     phi::DDim out_dims = out->dims();
     out_dims[axis] = k;
     out->Resize(out_dims);
     indices->Resize(out_dims);
   }
+  if (x.numel() == 0) {
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(out->dims())), NAN, out);
+    phi::Full<int64_t, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(indices->dims())), 0, indices);
+    return;
+  }
+  PADDLE_ENFORCE_GE(
+      x.numel(),
+      k,
+      errors::InvalidArgument(
+          "x has only %d element, can not find %d top values.", x.numel(), k));
 
   const auto& out_dims = out->dims();
 
