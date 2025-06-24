@@ -24,7 +24,7 @@ struct __custom_bfloat164 {
   __nv_bfloat16 z;
   __nv_bfloat16 w;
 };
-__device__ __nv_bfloat16 __custoom_hadd(__nv_bfloat16 x, __nv_bfloat16 y) {
+__device__ __nv_bfloat16 __custom_hadd(__nv_bfloat16 x, __nv_bfloat16 y) {
   return static_cast<__nv_bfloat16>(static_cast<float>(x) +
                                     static_cast<float>(y));
 }
@@ -144,10 +144,10 @@ __global__ void tokens_zip_kernel(
             *reinterpret_cast<const __custom_bfloat164 *>(
                 &unzipped_tokens[(int64_t)fetch_row * (int64_t)token_length +
                                  x_offset]);
-        sum.x = __custoom_hadd(sum.x, token_vec.x);
-        sum.y = __custoom_hadd(sum.y, token_vec.y);
-        sum.z = __custoom_hadd(sum.z, token_vec.z);
-        sum.w = __custoom_hadd(sum.w, token_vec.w);
+        sum.x = __custom_hadd(sum.x, token_vec.x);
+        sum.y = __custom_hadd(sum.y, token_vec.y);
+        sum.z = __custom_hadd(sum.z, token_vec.z);
+        sum.w = __custom_hadd(sum.w, token_vec.w);
       }
       *out_ptr = sum;
     }
@@ -161,7 +161,7 @@ __global__ void tokens_zip_kernel(
         if (fetch_row < 0) continue;
         __nv_bfloat16 token_val =
             unzipped_tokens[(int64_t)fetch_row * (int64_t)token_length + i];
-        sum = __custoom_hadd(sum, token_val);
+        sum = __custom_hadd(sum, token_val);
       }
       zipped_tokens[(int64_t)this_row * (int64_t)token_length + i] = sum;
     }
