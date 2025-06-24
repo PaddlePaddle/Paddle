@@ -16,7 +16,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import paddle
 from paddle import _C_ops
+import paddle.distributed as dist
 
 # from ....framework import LayerHelper, in_dynamic_or_pir_mode
 from paddle.base.framework import in_dynamic_or_pir_mode
@@ -51,7 +53,11 @@ def cal_aux_loss(
     Returns:
     """
     if in_dynamic_or_pir_mode():
-        return _C_ops.cal_aux_loss(
+        if paddle.device.is_compiled_with_custom_device('npu'):
+            return math_cal_aux_loss(gate_prob, dispatch_mask, tokens_mask, dispatch_tokens_mask, num_experts,
+                                     use_group, moe_k)
+        else:
+            return _C_ops.cal_aux_loss(
             gate_prob,
             dispatch_mask,
             tokens_mask,
@@ -88,3 +94,53 @@ def cal_aux_loss(
         type='cal_aux_loss', inputs=inputs, attrs=attrs, outputs=outputs
     )
     return l_aux_loss, seqlen_float, ce
+
+
+def math_cal_aux_loss(
+    gate_prob,
+    dispatch_mask,
+    tokens_mask,
+    dispatch_tokens_mask,
+    num_experts,
+    use_group,
+    moe_k,
+    global_aux_loss=False,
+    rank=None,
+    group=None,
+    clip_min=1e-6,
+):
+    if tokens_mask is not None and tokens_mask.dtype != gate_prob.dtype:
+        tokens_mask = tokens_mask.astype(gate_prob.dtype)
+
+    scale = None
+    if dispatch_tokens_mask is not None:
+        seqlen_float = dispatch_tokens_mask.astype(gate_prob.dtype).sum()
+        if (
+            tokens_mask is not None
+            and gate_prob.shape[0] != dispatch_tokens_mask.shape[0]
+        ):
+            scale = seqlen_float / paddle.clip(tokens_mask.sum(), min=1e-6)
+    elif tokens_mask is not None:
+        seqlen_float = tokens_mask.sum()
+    else:
+        seqlen_float = gate_prob.numel().astype(gate_prob.dtype) / num_experts
+    seqlen_float = paddle.clip(seqlen_float, min=1e-6)
+    if len(dispatch_mask.shape) == 2:
+        dispatch_mask = dispatch_mask.sum(0)
+    ce = dispatch_mask.astype(gate_prob.dtype).detach() / seqlen_float
+    me = paddle.sum(gate_prob, axis=0) / seqlen_float
+    if global_aux_loss:
+        me_list, ce_list = [], []
+        dist.all_gather(me_list, me, group=group)
+        dist.all_gather(ce_list, ce, group=group)
+        me_list[rank] = me
+        ce_list[rank] = ce
+        me = paddle.stack(me_list).mean(0)
+        ce = paddle.stack(ce_list).mean(0)
+
+    l_aux = paddle.sum(me * ce) * num_experts
+    if use_group:
+        l_aux = l_aux / moe_k
+    if scale is not None:
+        l_aux = l_aux + (scale - 1) * l_aux.detach()
+    return l_aux, seqlen_float, ce
