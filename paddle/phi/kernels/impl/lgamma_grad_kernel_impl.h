@@ -32,7 +32,7 @@ struct LgammaGradFunctor {
     MT mp_out = mp_x == static_cast<MT>(0)
                     ? (std::signbit(mp_x) ? mp_inf : -mp_inf)
                     : eigen_out;
-    output_[idx] = static_cast<T>(mp_dout) * static_cast<T>(mp_out);
+    output_[idx] = static_cast<T>(mp_dout * mp_out);
   }
 
  private:
