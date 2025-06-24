@@ -3336,6 +3336,9 @@ def squeeze(
         axis = [axis]
     elif isinstance(axis, tuple):
         axis = list(axis)
+    elif isinstance(axis, (paddle.Tensor, Variable)):
+        if axis.size == 0:
+            return x
 
     input = x
     axes = axis
