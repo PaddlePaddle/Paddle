@@ -883,20 +883,31 @@ bool DiagOpInferSymbolicShape(pir::Operation *op,
         op->result(0), symbol::TensorShapeOrDataDimExprs({size_, size_}));
   } else if (x_shape.size() == 2UL) {
     if (x_shape[0].isa<int64_t>() && x_shape[1].isa<int64_t>()) {
+      int64_t x0 = x_shape[0].dyn_cast<int64_t>();
+      int64_t x1 = x_shape[1].dyn_cast<int64_t>();
       int64_t size_ = 0;
+
       if (offset_data >= 0) {
-        if (x_shape[0].dyn_cast<int64_t>() <
-            x_shape[1].dyn_cast<int64_t>() - offset_data) {
-          size_ = x_shape[0].dyn_cast<int64_t>();
+        int64_t tmp = x1 - offset_data;
+        if (tmp > 0) {
+          if (x0 < tmp) {
+            size_ = x0;
+          } else {
+            size_ = tmp;
+          }
         } else {
-          size_ = x_shape[1].dyn_cast<int64_t>() - offset_data;
+          size_ = 0;  // if x1 <= offset_data, the diag size is 0
         }
       } else {
-        if (x_shape[0].dyn_cast<int64_t>() + offset_data <
-            x_shape[1].dyn_cast<int64_t>()) {
-          size_ = x_shape[0].dyn_cast<int64_t>() + offset_data;
+        int64_t tmp = x0 + offset_data;
+        if (tmp > 0) {
+          if (tmp < x1) {
+            size_ = tmp;
+          } else {
+            size_ = x1;
+          }
         } else {
-          size_ = x_shape[1].dyn_cast<int64_t>();
+          size_ = 0;  // if x0 + offset_data <= 0, the diag size is 0
         }
       }
       infer_context->SetShapeOrDataForValue(

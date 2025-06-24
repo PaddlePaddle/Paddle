@@ -941,18 +941,22 @@ void DiagInferMeta(const MetaTensor& x,
     if (offset >= 0) {
       // Note(LutaoChu): Do not use std::min here, otherwise the calculation
       // of `size_` will have unexpected result on Windows Python3.8
-      if (x_dims[0] < x_dims[1] - offset) {
-        size_ = x_dims[0];
+      int64_t tmp = x_dims[1] - offset;  // Avoid negative value
+      // If tmp is negative, size_ will be 0
+      if (tmp > 0) {
+        size_ = (x_dims[0] < tmp ? x_dims[0] : tmp);
       } else {
-        size_ = x_dims[1] - offset;
+        size_ = 0;
       }
     } else {
       // Note(LutaoChu): Do not use std::min here, otherwise the calculation
       // of `size_` will have unexpected result on Windows Python3.8
-      if (x_dims[0] + offset < x_dims[1]) {
-        size_ = x_dims[0] + offset;
+      int64_t tmp = x_dims[0] + offset;  // Avoid negative value
+      // If tmp is negative, size_ will be 0
+      if (tmp > 0) {
+        size_ = (tmp < x_dims[1] ? tmp : x_dims[1]);
       } else {
-        size_ = x_dims[1];
+        size_ = 0;
       }
     }
     out->set_dims({size_});
@@ -6487,11 +6491,17 @@ void IntBincountInferMeta(const MetaTensor& x,
                           int64_t high,
                           int64_t dtype,
                           MetaTensor* out) {
+  PADDLE_ENFORCE_EQ(
+      x.dims().size(),
+      1,
+      errors::InvalidArgument(
+          "The input 'x' of int_bincount must be a 1-D Tensor, but got %u-D.",
+          x.dims().size()));
   PADDLE_ENFORCE_GT(
       high,
       low,
       errors::InvalidArgument("Attr high (%d) must be > low (%d).", high, low));
-  int64_t bin_count = high - low;
+  int64_t bin_count = high - low + 1;
 
   out->set_dims(phi::make_ddim({bin_count}));
   out->set_dtype(x.dtype());

@@ -400,6 +400,12 @@ class TestDiagV2Complex128OP(TestDiagV2Op):
         self.out = np.diag(self.x, self.offset)
 
 
+class TestDiagV2_ZeroSize(TestDiagV2Op):
+    def init_input_output(self):
+        self.x = np.random.rand(10, 0).astype(self.dtype)
+        self.out = np.diag(self.x, self.offset)
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()
