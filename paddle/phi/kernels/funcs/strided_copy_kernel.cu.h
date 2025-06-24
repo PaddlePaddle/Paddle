@@ -20,11 +20,16 @@ limitations under the License. */
 #include "paddle/phi/kernels/strided_copy_kernel.h"
 
 namespace phi {
+#define MAX_LOAD_BITS 128
 bool VerifyStridedCopyThreadConfigurationParameters(const dim3& block,
                                                     const dim3& grid) {
   return block.x <= 1024 && block.y <= 1024 && block.z <= 64 &&
          block.x * block.y * block.z <= 1024 &&
          block.x * block.y * block.z >= 96 && grid.y < 65536 && grid.z < 65536;
+}
+
+__device__ bool is_aligned(const void* ptr, size_t alignment) {
+  return (reinterpret_cast<uintptr_t>(ptr) % alignment) == 0;
 }
 
 template <typename T, size_t N>
@@ -215,7 +220,10 @@ bool CheckStride(
     int rank,
     int64_t numel) {
   int64_t stride = numel;
+  int64_t last_stride = 1;
   for (size_t i = 0; i < rank; i++) {
+    if (output_stride[i] < last_stride) return true;
+    last_stride = output_stride[i];
     stride = stride / dims[i];
     if (output_stride[i] > stride) return false;
   }
@@ -505,7 +513,7 @@ bool LaunchContiguous2StridedCaseZeroKernel(
   return true;
 }
 
-template <typename T, size_t OUT_RANK, int VecSize>
+template <typename T, int VecSize, size_t OUT_RANK>
 __global__ void Contiguous2StridedDefaultDiffDimFunc(
     const T* input_data,
     T* output_data,
@@ -522,11 +530,16 @@ __global__ void Contiguous2StridedDefaultDiffDimFunc(
       output_offset += (index_tmp % dims[dim]) * output_stride[dim];
       index_tmp = index_tmp / dims[dim];
     }
-
-    using VecType = kps::details::VectorType<T, VecSize>;
-    const VecType* src = reinterpret_cast<const VecType*>(&input_data[0]);
-    VecType* dst = reinterpret_cast<VecType*>(&output_data[output_offset]);
-    *dst = *src;
+    if (is_aligned(&output_data[output_offset], MAX_LOAD_BITS)) {
+      using VecType = kps::details::VectorType<T, VecSize>;
+      const VecType* src = reinterpret_cast<const VecType*>(&input_data[0]);
+      VecType* dst = reinterpret_cast<VecType*>(&output_data[output_offset]);
+      *dst = *src;
+    } else {
+      for (int j = 0; j < VecSize; j++) {
+        output_data[output_offset + j] = input_data[0];
+      }
+    }
   }
 }
 
@@ -547,11 +560,16 @@ __global__ void Contiguous2StridedDefaultFunc(
       output_offset += (index_tmp % dims[dim]) * output_stride[dim];
       index_tmp = index_tmp / dims[dim];
     }
-
-    using VecType = kps::details::VectorType<T, VecSize>;
-    const VecType* src = reinterpret_cast<const VecType*>(&input_data[i]);
-    VecType* dst = reinterpret_cast<VecType*>(&output_data[output_offset]);
-    *dst = *src;
+    if (is_aligned(&output_data[output_offset], MAX_LOAD_BITS)) {
+      using VecType = kps::details::VectorType<T, VecSize>;
+      const VecType* src = reinterpret_cast<const VecType*>(&input_data[i]);
+      VecType* dst = reinterpret_cast<VecType*>(&output_data[output_offset]);
+      *dst = *src;
+    } else {
+      for (int j = 0; j < VecSize; j++) {
+        output_data[output_offset + j] = input_data[i + j];
+      }
+    }
   }
 }
 
@@ -576,7 +594,7 @@ void LaunchContiguous2StridedDefaultKernel(
       switch (rank) {
 #define CASE_RANK(__Rk)                                           \
   case __Rk:                                                      \
-    Contiguous2StridedDefaultDiffDimFunc<T, __Rk, 4>              \
+    Contiguous2StridedDefaultDiffDimFunc<T, 4, __Rk>              \
         <<<grid, block, 0, dev_ctx.stream()>>>(                   \
             input_data, output_data, output_stride, dims, numel); \
     break
@@ -601,7 +619,7 @@ void LaunchContiguous2StridedDefaultKernel(
       switch (rank) {
 #define CASE_RANK(__Rk)                                           \
   case __Rk:                                                      \
-    Contiguous2StridedDefaultDiffDimFunc<T, __Rk, 2>              \
+    Contiguous2StridedDefaultDiffDimFunc<T, 2, __Rk>              \
         <<<grid, block, 0, dev_ctx.stream()>>>(                   \
             input_data, output_data, output_stride, dims, numel); \
     break
@@ -625,7 +643,7 @@ void LaunchContiguous2StridedDefaultKernel(
       switch (rank) {
 #define CASE_RANK(__Rk)                                           \
   case __Rk:                                                      \
-    Contiguous2StridedDefaultDiffDimFunc<T, __Rk, 1>              \
+    Contiguous2StridedDefaultDiffDimFunc<T, 1, __Rk>              \
         <<<grid, block, 0, dev_ctx.stream()>>>(                   \
             input_data, output_data, output_stride, dims, numel); \
     break
