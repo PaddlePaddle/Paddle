@@ -82,5 +82,41 @@ class TestAddnOp(unittest.TestCase):
             np.testing.assert_allclose(y_np_32, y_np_gt, rtol=1e-06)
 
 
+class TestAddnOp_ZeroSize(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(20)
+        self.l = 2
+        self.x_np = np.random.random([self.l, 0, 256])
+
+    def check_main(self, x_np, dtype, axis=None, mixed_dtype=False):
+        paddle.disable_static()
+        x = []
+        for i in range(x_np.shape[0]):
+            if mixed_dtype and i == 0:
+                val = paddle.to_tensor(x_np[i].astype('float32'))
+            else:
+                val = paddle.to_tensor(x_np[i].astype(dtype))
+            val.stop_gradient = False
+            x.append(val)
+
+        y = paddle.add_n(x)
+        x_g = paddle.grad(y, x)
+        y_np = y.numpy().astype(dtype)
+        x_g_np = []
+        for val in x_g:
+            x_g_np.append(val.numpy().astype(dtype))
+        paddle.enable_static()
+        return y_np, x_g_np
+
+    def test_add_n_zerosize(self):
+        if not paddle.is_compiled_with_cuda():
+            return
+        y_np_32, x_g_np_32 = self.check_main(self.x_np, 'float32')
+
+        np.testing.assert_allclose(y_np_32.shape, [0, 256])
+        for i in range(len(x_g_np_32)):
+            np.testing.assert_allclose(x_g_np_32[i].shape, [0, 256])
+
+
 if __name__ == "__main__":
     unittest.main()
