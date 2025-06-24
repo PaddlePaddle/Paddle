@@ -122,6 +122,18 @@ def fused_transpose_split_quant(x, tokens_per_expert, pow_2_scales=False):
         )
 
 
+def fused_transpose_wlch_split_quant(
+    x: Tensor, tokens_per_expert: Sequence[int], pow_2_scales: bool = False
+) -> tuple[list[Tensor], list[Tensor]]:
+
+    tokens_per_expert = [int(t) for t in tokens_per_expert]
+
+    if in_dynamic_or_pir_mode():
+        return _C_ops.fused_transpose_wlch_split_quant(
+            x, tokens_per_expert, pow_2_scales
+        )
+
+
 def fused_weighted_swiglu_act_quant(
     x: Tensor,
     prob: Tensor | None = None,

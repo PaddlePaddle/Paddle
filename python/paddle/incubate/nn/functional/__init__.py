@@ -32,6 +32,7 @@ from .fp8 import (
     fused_stack_transpose_quant,
     fused_swiglu_weighted_bwd,
     fused_transpose_split_quant,
+    fused_transpose_wlch_split_quant,
     fused_weighted_swiglu_act_quant,
 )
 from .fused_bias_act import fused_bias_act
@@ -59,6 +60,7 @@ from .fused_transformer import (
 from .int_bincount import int_bincount
 from .masked_multihead_attention import masked_multihead_attention
 from .moe_combine import moe_combine
+from .moe_combine_no_weight import moe_combine_no_weight
 from .moe_gate_dispatch import moe_gate_dispatch
 from .moe_gate_dispatch_partial_nosoftmaxtopk import (
     moe_gate_dispatch_partial_nosoftmaxtopk,
@@ -84,6 +86,7 @@ __all__ = [
     'fused_rotary_position_embedding',
     'fused_stack_transpose_quant',
     'fused_transpose_split_quant',
+    'fused_transpose_wlch_split_quant',
     'variable_length_memory_efficient_attention',
     "fused_rms_norm",
     "fused_layer_norm",
