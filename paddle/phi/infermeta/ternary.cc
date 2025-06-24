@@ -1818,16 +1818,6 @@ void MoeGateDispatchPermuteInferMeta(const MetaTensor& x,
             "dimensions of Input(corr_bias) is [%d]",
             corr_bias_dims.size()));
     PADDLE_ENFORCE_EQ(
-        corr_bias_dims[0],
-        x_dims[0],
-        common::errors::InvalidArgument(
-            "The dimensions of Input(corr_bias) must be equal to the first "
-            "dimension of Input(x), but received Input(corr_bias) first "
-            "dimension is [%d],"
-            "Input(x) first dimension is [%d]",
-            corr_bias_dims[0],
-            x_dims[0]));
-    PADDLE_ENFORCE_EQ(
         corr_bias.dtype(),
         paddle::DataType::FLOAT32,
         common::errors::InvalidArgument(

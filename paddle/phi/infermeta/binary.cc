@@ -1613,6 +1613,9 @@ void DotInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
           x_dims.to_str()));
   bool shape_match = true;
   for (int i = 0; i < x_rank; ++i) {
+    if (x_dims[i] == 0 || y_dims[i] == 0) {
+      continue;
+    }
     if (x_dims[i] != y_dims[i]) {
       shape_match = false;
       break;
@@ -1627,10 +1630,16 @@ void DotInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
                         "with input tensor Y: %s",
                         x_dims.to_str(),
                         y_dims.to_str()));
-  std::vector<int64_t> x_dims_vec = common::vectorize(x_dims);
-  std::vector<int64_t> x_dims_vec_cut(x_dims_vec.begin(), x_dims_vec.end() - 1);
-  x_dims = common::make_ddim(x_dims_vec_cut);
-  out->set_dims(x_dims);
+
+  auto out_dims = x_dims;
+  // The output dims need to be modified.
+  if (x_rank == 2 && x_dims[0] != 0 && y_dims[0] == 0) {
+    out_dims[0] = 0;
+  }
+  std::vector<int64_t> out_dims_vec = common::vectorize(out_dims);
+  std::vector<int64_t> out_dims_vec_cut(out_dims_vec.begin(),
+                                        out_dims_vec.end() - 1);
+  out->set_dims(common::make_ddim(out_dims_vec_cut));
   out->set_dtype(x.dtype());
   out->set_layout(x.layout());
 }
@@ -2501,11 +2510,6 @@ void IndexAddInferMeta(const MetaTensor& x,
                         "the dimension of Input(Index) is [%d].",
                         index_dim,
                         index_dim.size()));
-
-  PADDLE_ENFORCE_EQ(index_dim[0] != 0,
-                    true,
-                    common::errors::InvalidArgument(
-                        "The length of Input(Index) can't be 0."));
 
   // Note, add_value does not support broadcast now.
   PADDLE_ENFORCE_EQ(input_dim.size() == add_value_dim.size(),
