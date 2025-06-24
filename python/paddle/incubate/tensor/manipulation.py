@@ -156,8 +156,11 @@ def async_offload(src_tensor, async_load):
 
     if is_xpu_tensor:
         # sync fallback
-        cpu_tensor = src_tensor.cpu()
-        return cpu_tensor, _NoopAsyncTask()
+        host_tensor = src_tensor.cpu()
+        pinned = paddle.to_tensor(
+            host_tensor.numpy(), place=paddle.XPUPinnedPlace()
+        )
+        return pinned, _NoopAsyncTask()
 
     return _load_reload_impl(src_tensor, async_load.offload)
 
@@ -175,6 +178,16 @@ def async_reload(src_tensor, async_load):
          - dest_tensor (EagerParamBase|paddle.Tensor): The destination tensor.
          - task (Task): The task that reloads the source tensor into the destination tensor.
     """
+
+    if (
+        paddle.is_compiled_with_xpu()
+        and hasattr(src_tensor, "place")
+        and src_tensor.place.is_xpu_pinned_place()
+    ):
+        arr = src_tensor.numpy()
+        xpu = paddle.to_tensor(arr, place=paddle.XPUPlace(0))
+        return xpu, _NoopAsyncTask()
+
     return _load_reload_impl(src_tensor, async_load.reload)
 
 
