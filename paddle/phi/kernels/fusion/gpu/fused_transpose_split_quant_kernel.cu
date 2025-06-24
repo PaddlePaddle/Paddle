@@ -293,8 +293,6 @@ void FusedTransposeSplitQuantKernel(
 
 #undef LAUNCH_KERNEL_PARTIAL
 #undef LAUNCH_KERNEL
-
-  PADDLE_ENFORCE_GPU_SUCCESS(cudaGetLastError());
 }
 
 }  // namespace phi

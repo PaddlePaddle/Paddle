@@ -671,6 +671,8 @@ class DygraphShardingOptimizerV2:
         self.enable_fuse_optimizer_states = (
             sharding_config.enable_fuse_optimizer_states
         )
+
+        self.param2bucket = {}
         self._build_comm_buffers(
             acc_steps, comm_buffer_size_MB * 1024 * 1024, free_grads_in_comm
         )
@@ -790,7 +792,6 @@ class DygraphShardingOptimizerV2:
             for color, params in color_dict.items():
                 params.sort(key=lambda x: str(x.dtype))
 
-        self.param2bucket = {}
         group_idx = 0
         for color, params in color_dict.items():
             g_color = color[0]
@@ -1060,6 +1061,7 @@ class DygraphShardingOptimizerV2:
     def _collect_comm_buffers(self):
         if self._comm_buffer_list:
             return
+        # if pp_overlap is True, _comm_buffer_list need collect from PipelineParallel
         for param in self._parameter_list:
             if not hasattr(param, "comm_buffer_ref"):
                 continue
@@ -1067,6 +1069,13 @@ class DygraphShardingOptimizerV2:
             del param.comm_buffer_ref
             comm_buffer = comm_buffer_ref()
             self._comm_buffer_list.append(comm_buffer)
+
+        for bucket in self._comm_buffer_list:
+            for p in bucket._params:
+                if p.name in self.param2bucket:
+                    self.param2bucket[p.name].append(bucket)
+                else:
+                    self.param2bucket[p.name] = [bucket]
 
         assert self._comm_buffer_list
 

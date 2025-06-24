@@ -22,7 +22,6 @@
 #include "paddle/phi/kernels/funcs/stride_utils.h"
 
 namespace phi {
-
 template <typename T, typename IndexT = int>
 void GPUIndexElementwisePutKernel(const phi::GPUContext& ctx,
                                   const DenseTensor& input,
@@ -62,34 +61,8 @@ void GPUIndexElementwisePutKernel(const phi::GPUContext& ctx,
                            &strides_array,
                            &numel,
                            strides_vec);
-
-  const int64_t* template_stride = strides_array[2];
-  PADDLE_ENFORCE_NOT_NULL(template_stride,
-                          ::common::errors::InvalidArgument(
-                              "strides_array[2] should not be nullptr in "
-                              "GPUIndexElementwiseGetKernel"));
-
-  size_t stride_size = desired_shape.size();
-  std::vector<std::vector<int64_t>> strides_vector;
-  strides_vector.reserve(num_indices + 2);
-
-  for (int i = 0; i < 2; ++i) {
-    if (i < strides_array.size() && strides_array[i] != nullptr) {
-      strides_vector.emplace_back(strides_array[i],
-                                  strides_array[i] + stride_size);
-    } else {
-      strides_vector.emplace_back(stride_size, 0);
-    }
-  }
-
-  std::vector<int64_t> template_vec(template_stride,
-                                    template_stride + stride_size);
-  for (size_t i = 0; i < num_indices; ++i) {
-    strides_vector.push_back(template_vec);
-  }
-
-  auto offset_calc = funcs::make_offset_calculator<3>(
-      desired_shape.size(), desired_shape.data(), strides_vector);
+  auto offset_calc =
+      funcs::make_offset_calculator_put<3>(desired_shape, strides_array);
 
   const int64_t N = numel;
   PADDLE_ENFORCE_GE(
@@ -121,10 +94,6 @@ void GPUIndexElementwisePutKernel(const phi::GPUContext& ctx,
         for (int i = 0; i < num_indices; i++) {
           int64_t index =
               *reinterpret_cast<int64_t*>(index_ptrs[i] + offsets[2]);
-          PADDLE_ENFORCE(-sizes[i] <= index,
-                         "index is less than the lower bound");
-          PADDLE_ENFORCE(index < sizes[i],
-                         "index is greater than or equal to the upper bound");
           if (index < 0) {
             index += sizes[i];
           }
