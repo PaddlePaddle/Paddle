@@ -4556,6 +4556,7 @@ def adaptive_log_softmax_with_loss(
 
         label_mask = (label >= low_idx) & (label < high_idx)
         row_indices = label_mask.nonzero().squeeze()
+
         if row_indices.dim() == 0:
             row_indices.unsqueeze_(0)
 
