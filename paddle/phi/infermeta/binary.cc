@@ -2511,11 +2511,6 @@ void IndexAddInferMeta(const MetaTensor& x,
                         index_dim,
                         index_dim.size()));
 
-  PADDLE_ENFORCE_EQ(index_dim[0] != 0,
-                    true,
-                    common::errors::InvalidArgument(
-                        "The length of Input(Index) can't be 0."));
-
   // Note, add_value does not support broadcast now.
   PADDLE_ENFORCE_EQ(input_dim.size() == add_value_dim.size(),
                     true,
