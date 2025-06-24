@@ -221,6 +221,7 @@ jobs:
           PADDLE_VERSION: 0.0.0
           WITH_TESTING: "ON"
           WITH_DISTRIBUTE: "ON"
+          HIP_VISIBLE_DEVICES: ${{ env.HIP_VISIBLE_DEVICES }}
           PY_VERSION: "3.10"
           CACHE_DIR: /root/.cache
           CCACHE_DIR: /root/.ccache
@@ -254,6 +255,7 @@ jobs:
             -e WITH_TENSORRT \
             -e WITH_XPU \
             -e IF_DCU \
+            -e HIP_VISIBLE_DEVICES \
             -e WITH_RCCL \
             -e CMAKE_BUILD_TYPE \
             -e GIT_PR_ID \
