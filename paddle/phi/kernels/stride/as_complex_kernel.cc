@@ -31,6 +31,10 @@ void AsComplexStridedKernel(const Context& dev_ctx,
         "FLAGS_use_stride_kernel is closed. Strided kernel "
         "be called, something wrong has happened!"));
   }
+  if (out && out->numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
 
   PADDLE_ENFORCE_EQ(
       x.strides()[x.strides().size() - 1],
