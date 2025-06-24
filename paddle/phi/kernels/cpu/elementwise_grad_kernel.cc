@@ -97,6 +97,15 @@ void RemainderGradKernel(const Context& dev_ctx,
                          DenseTensor* dy) {
   funcs::ElementwiseGradPreProcess(dout, dx);
   int axis = -1;
+  if (dout.numel() == 0) {
+  if (dx && dx->numel() == 0) {
+    dev_ctx.template Alloc<T>(dx);
+  }
+  if (dy && dy->numel() == 0) {
+    dev_ctx.template Alloc<T>(dy);
+  }
+  return;
+  }
   phi::funcs::
       ElemwiseGradCompute<Context, T, RemainderGradDx<T>, RemainderGradDy<T>>(
           dev_ctx,

@@ -405,6 +405,12 @@ class TestRemainderOp(unittest.TestCase):
             np.testing.assert_allclose(self.z_expected2, z_np2, rtol=1e-05)
             np.testing.assert_allclose(self.z_expected3, z_np3, rtol=1e-05)
 
+    def test_remainder_zero_size(self):
+        x = paddle.rand([0, 2], dtype='float32')
+        y = paddle.rand([0, 1, 2], dtype='float32')
+        out = paddle.remainder(x, y)
+        assert out.shape == [0, 2]
+        assert out.numpy().size == 0
 
 class TestRemainderInplaceOp(TestRemainderOp):
     def _executed_api(self, x, y, name=None):

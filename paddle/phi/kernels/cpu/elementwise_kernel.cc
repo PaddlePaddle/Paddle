@@ -46,6 +46,10 @@ void RemainderKernel(const Context& dev_ctx,
                      const DenseTensor& y,
                      DenseTensor* out) {
   int axis = -1;
+  if (out && out->numel() == 0) {
+  dev_ctx.template Alloc<T>(out);
+  return;
+}
   RemainderRawKernel<T>(dev_ctx, x, y, axis, out);
 }
 
