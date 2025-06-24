@@ -131,6 +131,7 @@ jobs:
         run: |
           docker exec -t ${container_name} /bin/bash -c '
           source /action-runner/proxy
+          bash ${ci_scripts}/cmake-predownload.sh
           bash ${ci_scripts}/inference_build.sh
           EXCODE=$?
           exit $EXCODE

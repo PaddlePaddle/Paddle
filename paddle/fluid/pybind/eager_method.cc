@@ -2033,7 +2033,17 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
           int64_t slice_offset =
               static_cast<int64_t>(reinterpret_cast<char*>(sub_tensor.data()) -
                                    reinterpret_cast<char*>(tensor.data()));
-          AdvancedIndex ad = AdvancedIndex(transed_sub_tensor, transed_index);
+
+          std::vector<paddle::Tensor> transed_index_int64;
+          for (auto& indice : transed_index) {
+            if (indice.defined() && indice.dtype() == paddle::DataType::INT32) {
+              indice = indice.cast(paddle::DataType::INT64);  // int32 -> int64
+            }
+            transed_index_int64.push_back(indice);
+          }
+
+          AdvancedIndex ad =
+              AdvancedIndex(transed_sub_tensor, transed_index_int64);
           transed_sub_tensor =
               index_elementwise_put__ad_func(tensor,
                                              ad.indices,

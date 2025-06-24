@@ -25,7 +25,7 @@ paddle::dialect::AddN_Op, paddle::dialect::AddNArrayOp,
     paddle::dialect::TensorToArrayOp, paddle::dialect::IncrementOp,
     paddle::dialect::Increment_Op, paddle::dialect::ShapeBroadcastOp,
     paddle::dialect::MemcpyD2hMultiIoOp, paddle::dialect::ArrayPopOp,
-    paddle::dialect::ShareVarOp
+    paddle::dialect::ShareVarOp, paddle::dialect::CudaGraphOp
 #else
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
@@ -4907,6 +4907,50 @@ bool ArrayPopOp::InferSymbolicShape(
   return true;
 }
 
+void CudaGraphOp::Build(pir::Builder &builder,
+                        pir::OperationArgument &argument,
+                        const std::vector<pir::Type> &output_types) {
+  argument.AddRegion(nullptr);
+  argument.output_types = output_types;
+}
+
+pir::Block *CudaGraphOp::block() {
+  pir::Region &region = (*this)->region(0);
+  if (region.empty()) region.emplace_back();
+  return &region.front();
+}
+
+pir::Block *CudaGraphOp::block() const {
+  pir::Region &region = (*this)->region(0);
+  PADDLE_ENFORCE_EQ(region.empty(),
+                    false,
+                    ::common::errors::Unavailable(
+                        "Required GroupOp's region must not be emptpy."));
+  return &region.front();
+}
+
+void CudaGraphOp::VerifySig() {}
+
+void CudaGraphOp::Print(pir::IrPrinter &printer) {
+  auto &os = printer.os;
+  auto op = operation();
+  printer.PrintOpResult(*op);
+  os << " = ";
+  printer.PrintOpName(*op);
+  printer.PrintOpId(*op);
+  printer.PrintOpOperands(*op);
+  os << " -> ";
+  printer.PrintOpReturnType(*op);
+  os << " {\n";
+  printer.AddIndentation();
+  for (auto &sub_op : *block()) {
+    printer.PrintOperation(sub_op);
+    os << "\n";
+  }
+  printer.DecreaseIndentation();
+  os << printer.indentation() << "}";
+}
+
 }  // namespace paddle::dialect
 
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::SplitGradOp)
@@ -4934,4 +4978,5 @@ IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::MemcpyD2hMultiIoOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::ShapeBroadcastOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::ArrayPopOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::ShareVarOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::CudaGraphOp)
 #endif
