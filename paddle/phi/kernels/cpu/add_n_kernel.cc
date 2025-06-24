@@ -35,33 +35,19 @@ void AddNKernel(const Context& dev_ctx,
 
   // using MPType to keep precision
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
-  auto& place = *devCtx.eigen_device;
+  auto& place = *dev_ctx.eigen_device;
 
   if constexpr (std::is_same_v<MPType, T>) {
     // compute in out
     auto result = EigenVector<T>::Flatten(*out);
-    size_t start = in_place ? 1 : 0;
 
-    if (!in_place && in_num >= 2 && DenseTensor::classof(x[0]) &&
-        DenseTensor::classof(x[1]) && x[0]->initialized() &&
-        x[1]->initialized()) {
-      auto& in_0 = *(static_cast<const DenseTensor*>(x[0]));
-      auto& in_1 = *(static_cast<const DenseTensor*>(x[1]));
-      if (in_0.numel() && in_1.numel()) {
-        auto in_0_e = EigenVector<T>::Flatten(in_0);
-        auto in_1_e = EigenVector<T>::Flatten(in_1);
-        result.device(place) = in_0_e + in_1_e;
-        start = 2;
-      }
-    }
-
-    if (!in_place && start != 2) {
-      VLOG(10) << "Fill with constant = 0 in sum kernel.";
+    if (!in_place) {
       phi::funcs::SetConstant<Context, T> constant_functor;
-      constant_functor(devCtx, out, static_cast<T>(0));
+      constant_functor(dev_ctx, out, static_cast<T>(0));
     }
 
     phi::funcs::SelectedRowsAddToTensor<Context, T> functor;
+    size_t start = in_place ? 1 : 0;
     for (size_t i = start; i < in_num; i++) {
       if (DenseTensor::classof(x[i])) {
         auto& in_t = *(static_cast<const DenseTensor*>(x[i]));
@@ -72,7 +58,7 @@ void AddNKernel(const Context& dev_ctx,
         result.device(place) = result + in;
       } else if (SelectedRows::classof(x[i])) {
         auto& in_t = *(static_cast<const SelectedRows*>(x[i]));
-        functor(devCtx, in_t, out);
+        functor(dev_ctx, in_t, out);
       } else {
         PADDLE_THROW(common::errors::InvalidArgument(
             "Expected type of Input(X) of %d-th must be Tensor, "
@@ -86,6 +72,7 @@ void AddNKernel(const Context& dev_ctx,
     DenseTensor temp_out;
     temp_out.Resize(out->dims());
     dev_ctx.template Alloc<MPType>(&temp_out);
+
     auto result_mp = EigenVector<MPType>::Flatten(temp_out);
 
     // set temp_out
@@ -96,15 +83,15 @@ void AddNKernel(const Context& dev_ctx,
         auto in_0_e = EigenVector<T>::Flatten(in_0).template cast<MPType>();
         result_mp.device(place) = in_0_e;
       } else {
-        constant_functor(devCtx, &temp_out, static_cast<MPType>(0));
+        constant_functor(dev_ctx, &temp_out, static_cast<MPType>(0));
       }
     } else {
-      constant_functor(devCtx, &temp_out, static_cast<MPType>(0));
+      constant_functor(dev_ctx, &temp_out, static_cast<MPType>(0));
     }
 
     phi::funcs::SelectedRowsAddToTensor<Context, MPType> functor;
-    size_t start_idx = in_place ? 1 : 0;
-    for (size_t i = start_idx; i < in_num; i++) {
+    size_t start = in_place ? 1 : 0;
+    for (size_t i = start; i < in_num; i++) {
       if (DenseTensor::classof(x[i])) {
         auto& in_t = *(static_cast<const DenseTensor*>(x[i]));
         if (!in_t.initialized() || in_t.numel() == 0) {
@@ -128,8 +115,6 @@ void AddNKernel(const Context& dev_ctx,
     auto result = EigenVector<T>::Flatten(*out);
     result.device(place) = result_mp.template cast<T>();
   }
-
-  VLOG(10) << "end add_n kernel";
 }
 
 }  // namespace phi
