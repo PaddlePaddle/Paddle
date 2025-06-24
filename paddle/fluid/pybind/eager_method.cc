@@ -1600,8 +1600,7 @@ static PyObject* tensor__getitem_dygraph(TensorObject* self,
                                                         &pos_of_new_dim,
                                                         &rank_of_new_dim,
                                                         &trans_dim,
-                                                        &out_is_view,
-                                                        false);
+                                                        &out_is_view);
 
   bool has_bool_index = false;
   for (auto& index : transed_index) {

@@ -590,8 +590,7 @@ static paddle::Tensor dealWithAdvancedIndex(
     int* pos_of_new_dim,
     int* rank_of_new_dim,
     std::vector<int>* trans_dim,
-    bool* out_is_view,
-    bool single_value = false) {
+    bool* out_is_view) {
   int p = 0;
   bool int_tensor_only = true;
   for (size_t i = 0; i < advanced_index_dim->size(); ++i) {
