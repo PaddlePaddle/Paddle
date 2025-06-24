@@ -241,7 +241,7 @@ void MatmulGradKernel(const Context& dev_ctx,
         dev_ctx, phi::IntArray(common::vectorize(x.dims())), 0, dx);
     return;
   }
-  if (transpose_y && y.dims().size() < 2) {
+  if (!transpose_x && transpose_y && y.dims().size() < 2) {
     transpose_y = false;
   }
   // get dims
