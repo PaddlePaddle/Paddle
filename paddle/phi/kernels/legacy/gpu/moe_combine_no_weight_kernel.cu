@@ -53,6 +53,7 @@ __global__ void combine_no_weight_kernel(const T* __restrict__ x,
 
 template <typename T>
 void moe_combine_no_weight_fwd(const T* x,
+                               const T* combine_weights,
                                const int* scatter_index,
                                T* y,
                                const int64_t k,
@@ -65,11 +66,16 @@ void moe_combine_no_weight_fwd(const T* x,
   dim3 gridDim(seqlen);
   size_t sharedMemSize = k * (sizeof(int64_t) + sizeof(T));
 
-#define CALL_KERNEL(K)                                 \
-  case K:                                              \
-    combine_no_weight_kernel<T, float, K>              \
-        <<<gridDim, blockDim, sharedMemSize>>>(        \
-            x, scatter_index, y, hidden_size, seqlen); \
+#define CALL_KERNEL(K)                                          \
+  case K:                                                       \
+    combine_no_weight_kernel<T, float, K>                       \
+        <<<gridDim, blockDim, sharedMemSize>>>(x,               \
+                                               combine_weights, \
+                                               scatter_index,   \
+                                               y,               \
+                                               hidden_size,     \
+                                               seqlen,          \
+                                               epsilon);        \
     break;
 
   switch (k) {
@@ -99,8 +105,8 @@ void moe_combine_no_weight_fwd(const T* x,
 template <typename T, typename Context>
 void MoeCombineNoWeightKernel(const Context& dev_ctx,
                               const DenseTensor& x,
-                              const DenseTensor& scatter_index,
                               const DenseTensor& combine_weights,
+                              const DenseTensor& scatter_index,
                               const float epsilon,
                               DenseTensor* y) {
   const auto x_shape = x.dims();
@@ -113,6 +119,7 @@ void MoeCombineNoWeightKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(y);
 
   moe_combine_no_weight_fwd<T>(x.data<T>(),
+                               combine_weights.data<T>(),
                                scatter_index.data<int>(),
                                y->data<T>(),
                                k,

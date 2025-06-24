@@ -21,7 +21,8 @@
 namespace phi {
 
 template <typename T, typename MTP, int VecSize>
-__global__ void combine_no_weight_bwd_kernel(const int* scatter_index,
+__global__ void combine_no_weight_bwd_kernel(const T* combine_weights,
+                                             const int* scatter_index,
                                              const T* grad_y,
                                              T* grad_x,
                                              const int64_t k,
@@ -49,7 +50,8 @@ __global__ void combine_no_weight_bwd_kernel(const int* scatter_index,
 }
 
 template <typename T>
-void moe_combine_no_weight_bwd(const int* scatter_index,
+void moe_combine_no_weight_bwd(const T* combine_weights,
+                               const int* scatter_index,
                                const T* grad_y,
                                T* grad_x,
                                const int64_t k,
@@ -66,17 +68,31 @@ void moe_combine_no_weight_bwd(const int* scatter_index,
   constexpr int max_pack_size = 16 / sizeof(T);
   if (hidden_size % max_pack_size == 0) {
     combine_no_weight_bwd_kernel<T, float, max_pack_size>
-        <<<gridDim, blockDim, 0, stream>>>(
-            scatter_index, grad_y, grad_x, k, seqlen, hidden_size, epsilon);
+        <<<gridDim, blockDim, 0, stream>>>(combine_weights,
+                                           scatter_index,
+                                           grad_y,
+                                           grad_x,
+                                           k,
+                                           seqlen,
+                                           hidden_size,
+                                           epsilon);
   } else {
-    combine_no_weight_bwd_kernel<T, float, 1><<<gridDim, blockDim, 0, stream>>>(
-        scatter_index, grad_y, grad_x, k, seqlen, hidden_size, epsilon);
+    combine_no_weight_bwd_kernel<T, float, 1>
+        <<<gridDim, blockDim, 0, stream>>>(combine_weights,
+                                           scatter_index,
+                                           grad_y,
+                                           grad_x,
+                                           k,
+                                           seqlen,
+                                           hidden_size,
+                                           epsilon);
   }
 }
 
 template <typename T, typename Context>
 void MoeCombineNoWeightGradKernel(const Context& dev_ctx,
                                   const DenseTensor& x,
+                                  const DenseTensor& combine_weights,
                                   const DenseTensor& scatter_index,
                                   const DenseTensor& grad_y,
                                   const float epsilon,
@@ -92,7 +108,8 @@ void MoeCombineNoWeightGradKernel(const Context& dev_ctx,
   phi::Full<T, Context>(
       dev_ctx, phi::IntArray(common::vectorize(grad_x->dims())), 0, grad_x);
 
-  moe_combine_no_weight_bwd<T>(scatter_index.data<int>(),
+  moe_combine_no_weight_bwd<T>(combine_weights.data<T>(),
+                               scatter_index.data<int>(),
                                grad_y.data<T>(),
                                grad_x->data<T>(),
                                k,

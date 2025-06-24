@@ -28,6 +28,7 @@ def moe_combine_no_weight(
     x: Tensor,
     combine_weight: Tensor,
     scatter_index: Tensor,
+    epsilon: float = 1e-15,
     name: str | None = None,
 ) -> Tensor:
     """
@@ -39,13 +40,16 @@ def moe_combine_no_weight(
         Output Combined output [seq_len, hidden_size]
     """
     if in_dynamic_or_pir_mode():
-        return _C_ops.moe_combine_no_weight(x, combine_weight, scatter_index)
+        return _C_ops.moe_combine_no_weight(
+            x, combine_weight, scatter_index, epsilon
+        )
     helper = LayerHelper('moe_combine_no_weight', **locals())
     y = helper.create_variable_for_type_inference(dtype=x.dtype)
     inputs = {
         'x': x,
         'combine_weight': combine_weight,
         'scatter_index': scatter_index,
+        'epsilon': epsilon,
     }
     helper.append_op(
         type='moe_combine_no_weight', inputs=inputs, outputs={'y': y}
