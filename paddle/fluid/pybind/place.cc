@@ -135,7 +135,7 @@ limitations under the License. */
 #include "paddle/phi/capi/capi.h"
 #endif
 
-#include "paddle/phi/core/platform/cuda_graph_with_memory_pool.h"
+#include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
 
 #ifdef PADDLE_WITH_IPU
 #include "paddle/fluid/platform/device/ipu/ipu_backend.h"

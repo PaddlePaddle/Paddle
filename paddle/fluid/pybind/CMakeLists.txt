@@ -45,7 +45,8 @@ set(PYBIND_DEPS
     detail_op_handle
     type_info
     auto_parallel
-    executor_cache)
+    executor_cache
+    cuda_graph_with_memory_pool)
 
 if(WITH_GPU)
   list(APPEND PYBIND_DEPS gpu_event_timer)

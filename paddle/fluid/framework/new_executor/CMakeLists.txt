@@ -35,6 +35,7 @@ set(standalone_executor_deps
     executor_gc_helper
     phi
     common
+    ${DEVICE_EVENT_LIBS}
     supplement_tracing)
 
 if(WITH_CINN)

@@ -14,10 +14,13 @@
 #pragma once
 #include <memory>
 
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/platform/device_event_base.h"
+#include "paddle/fluid/platform/device_event_defs.h"
+#include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/platform/device_context.h"
-#include "paddle/phi/core/platform/device_event_defs.h"
 #include "paddle/utils/test_macros.h"
 
 namespace paddle {

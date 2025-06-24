@@ -34,7 +34,7 @@ if(WITH_GPU)
   nv_test(
     device_event_test
     SRCS device_event_test.cc
-    DEPS phi common)
+    DEPS ${DEVICE_EVENT_LIBS} phi common)
   nv_test(
     device_context_test
     SRCS device_context_test.cu
@@ -42,14 +42,14 @@ if(WITH_GPU)
   nv_test(
     device_context_test_cuda_graph
     SRCS device_context_test_cuda_graph.cu
-    DEPS device_context phi common)
+    DEPS device_context phi common cuda_graph_with_memory_pool)
 endif()
 
 if(WITH_ROCM)
   hip_test(
     device_event_test
     SRCS device_event_test.cc
-    DEPS phi common)
+    DEPS ${DEVICE_EVENT_LIBS} phi common)
   hip_test(
     device_context_test
     SRCS device_context_test.cu

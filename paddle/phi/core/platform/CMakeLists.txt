@@ -22,15 +22,7 @@ if(WITH_CUSTOM_DEVICE)
 endif()
 
 # device event library
-list(APPEND DEVICE_SRCS device_event_base.cc device_event_defs.cc)
-if(WITH_GPU OR WITH_ROCM)
-  list(APPEND DEVICE_SRCS device_event_gpu.cc)
-endif()
-if(WITH_CUSTOM_DEVICE)
-  list(APPEND DEVICE_SRCS device_event_custom_device.cc)
-endif()
 
-list(APPEND DEVICE_SRCS cuda_graph_with_memory_pool.cc)
 list(APPEND DEVICE_SRCS device_context.cc gen_comm_id_helper.cc)
 list(APPEND DEVICE_SRCS profiler/utils.cc profiler/cpu_utilization.cc)
 

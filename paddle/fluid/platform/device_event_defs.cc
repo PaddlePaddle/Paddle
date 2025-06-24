@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/platform/device_event_defs.h"
+#include "paddle/fluid/platform/device_event_defs.h"
 #include "glog/logging.h"
 
 namespace paddle {

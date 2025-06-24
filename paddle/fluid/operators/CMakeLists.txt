@@ -111,7 +111,7 @@ if(WITH_XPU)
   set(COMMON_OP_DEPS ${COMMON_OP_DEPS} xpulib)
 endif()
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} layer)
-set(COMMON_OP_DEPS ${COMMON_OP_DEPS} op_version_registry)
+set(COMMON_OP_DEPS ${COMMON_OP_DEPS} op_version_registry ${DEVICE_EVENT_LIBS})
 
 
 # FIXME(typhoonzero): operator deps may not needed.

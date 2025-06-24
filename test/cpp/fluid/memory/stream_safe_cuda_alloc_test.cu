@@ -26,7 +26,7 @@
 #include <cuda.h>
 #include <cuda_runtime.h>
 
-#include "paddle/phi/core/platform/cuda_graph_with_memory_pool.h"
+#include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
 #endif
 
 #ifdef PADDLE_WITH_HIP

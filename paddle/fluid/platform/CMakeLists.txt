@@ -41,6 +41,62 @@ cc_library(
 
 # Manage all device event library
 set(DEVICE_EVENT_LIBS)
+cc_library(
+  device_event_base
+  SRCS device_event_base.cc device_event_defs.cc
+  DEPS device_context op_registry phi common)
+set(DEVICE_EVENT_LIBS
+    device_event_base
+    CACHE INTERNAL "device event libs")
+if(WITH_GPU)
+  nv_library(
+    device_event_gpu
+    SRCS device_event_gpu.cc
+    DEPS device_event_base)
+  set(DEVICE_EVENT_LIBS
+      device_event_gpu
+      CACHE INTERNAL "device event libs")
+endif()
+
+if(WITH_ROCM)
+  hip_library(
+    device_event_gpu
+    SRCS device_event_gpu.cc
+    DEPS device_event_base)
+  set(DEVICE_EVENT_LIBS
+      device_event_gpu
+      CACHE INTERNAL "device event libs")
+endif()
+
+if(WITH_CUSTOM_DEVICE)
+  cc_library(
+    device_event_custom_device
+    SRCS device_event_custom_device.cc
+    DEPS device_event_base phi)
+  set(DEVICE_EVENT_LIBS
+      ${DEVICE_EVENT_LIBS} device_event_custom_device
+      CACHE INTERNAL "device event libs")
+endif()
+
+if(WITH_GPU)
+  if(WITH_CUSTOM_DEVICE)
+    nv_library(
+      cuda_graph_with_memory_pool
+      SRCS cuda_graph_with_memory_pool.cc
+      DEPS ${DEVICE_EVENT_LIBS} device_event_custom_device device_context phi
+           common)
+  else()
+    nv_library(
+      cuda_graph_with_memory_pool
+      SRCS cuda_graph_with_memory_pool.cc
+      DEPS ${DEVICE_EVENT_LIBS} device_context phi common)
+  endif()
+else()
+  cc_library(
+    cuda_graph_with_memory_pool
+    SRCS cuda_graph_with_memory_pool.cc
+    DEPS device_context phi common)
+endif()
 
 cc_library(
   densetensor_printer

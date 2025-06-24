@@ -17,7 +17,7 @@
 #include <condition_variable>
 #include <mutex>
 
-#include "paddle/phi/core/platform/device_event_base.h"
+#include "paddle/fluid/platform/device_event_base.h"
 
 namespace paddle {
 namespace platform {
