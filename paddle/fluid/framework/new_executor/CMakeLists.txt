@@ -36,6 +36,7 @@ set(standalone_executor_deps
     phi
     common
     ${DEVICE_EVENT_LIBS}
+    cuda_graph_with_memory_pool
     supplement_tracing)
 
 if(WITH_CINN)
