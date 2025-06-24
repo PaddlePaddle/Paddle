@@ -96,7 +96,7 @@ void FFTFillConj(const DeviceContext& ctx,
              XPUMemcpyKind::XPU_HOST_TO_DEVICE);
 
   int r = xfft_internal::xpu::FFTFillConj(
-      src->numel(),
+      dst->numel(),
       reinterpret_cast<cuFloatComplex*>(src_data),
       reinterpret_cast<cuFloatComplex*>(dst_data),
       src_strides_ptr,
