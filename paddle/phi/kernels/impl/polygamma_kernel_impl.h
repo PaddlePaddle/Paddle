@@ -131,10 +131,9 @@ struct CudaPolygammaGradFunctor {
     const MT mp_x = static_cast<MT>(_x);
     const MT mp_out_grad = static_cast<MT>(_out_grad);
     const auto one = MT{1};
-    return static_cast<T>(
-        static_cast<T>(std::exp(std::lgamma(static_cast<MT>(_n) + one))) *
-        static_cast<T>(zeta<MT>(static_cast<MT>(_n + 1), mp_x)) * mp_out_grad *
-        ((_n % 2) ? one : -one));
+    return (mp_out_grad * ((_n % 2) ? one : -one)) *
+           (std::exp(std::lgamma(static_cast<MT>(_n) + one))) *
+           (zeta<MT>(static_cast<MT>(_n + 1), mp_x));
   }
 };
 #else

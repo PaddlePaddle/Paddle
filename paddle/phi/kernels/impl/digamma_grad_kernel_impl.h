@@ -31,8 +31,8 @@ struct DigammaGradFunctor {
     using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
     const MPType mp_dout = static_cast<MPType>(dout_[idx]);
     const MPType mp_x = static_cast<MPType>(x_[idx]);
-    output_[idx] = static_cast<T>(mp_dout) *
-                   static_cast<T>(Eigen::numext::polygamma(MPType(1), mp_x));
+    output_[idx] =
+        static_cast<T>(mp_dout * Eigen::numext::polygamma(MPType(1), mp_x));
   }
 
  private:
