@@ -36,7 +36,7 @@ jobs:
     name: Model benchmark
     if: ${{ inputs.can-skip != 'true' && needs.check-bypass.outputs.can-skip != 'true' }}
     runs-on:
-      group: BD_BJ-V100
+      group: v100-test
     steps:
       - name: Check docker image and run container
         env:
@@ -82,7 +82,7 @@ jobs:
           docker exec ${container_name} bash -c '
           COMMIT_SHA="${{ github.event.pull_request.head.sha }}"
           AUTHOR="${{ github.event.pull_request.user.login }}"
-          JSON_DATA=$(jq -n --arg commit "$COMMIT_SHA" --arg author "$AUTHOR" '[{"Commit": $commit, "author": $author}]')
+          JSON_DATA=$(jq -n --arg commit "$COMMIT_SHA" --arg author "$AUTHOR" "[{"Commit": $commit, "author": \$author}]")
           echo "export AGILE_COMMENTS=$JSON_DATA" >> ~/.bashrc
           echo $JSON_DATA
           DEVICE_ID=$(cat /sys/class/dmi/id/product_uuid |awk -F "-" "{print \$5}")

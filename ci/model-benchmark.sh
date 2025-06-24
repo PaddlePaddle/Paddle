@@ -66,7 +66,8 @@ update_summary () {
 wget_paddle () {
     set_python
     cd ${ROOT_DIR}
-    cp /home/data/cfs/build/${AGILE_PULL_ID}/${AGILE_REVISION}/build.tar.gz .
+    # wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/build/${PR_ID}/${COMMIT_ID}/build.tar.gz --no-check-certificate
+    wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/build/73584/08c0b24a87a07a5dae413adc64dc33b9abfcd4c0/build.tar.gz --no-check-certificate
     tar --use-compress-program="pzstd -1" -xpf build.tar.gz
     cd ${ROOT_DIR}/paddle
     git checkout test

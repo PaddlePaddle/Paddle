@@ -80,10 +80,8 @@ jobs:
   model-benchmark:
     name: Model-Benchmark
     uses: ./.github/workflows/_Model-Benchmark.yml
-    needs: [build-docker, build]
     with:
-      can-skip: ${{ needs.build.outputs.can-skip }}
-      docker_build_image: ${{ needs.build-docker.outputs.docker_build_image }}
+      docker_build_image: ccr-2vdh3abv-pub.cnc.bj.baidubce.com/ci/paddle:29f259c1f2a060142f49e2d0307cfc4e
 
   slice:
     name: Slice
