@@ -24,6 +24,7 @@ from .interface import (  # noqa: F401
 )
 from .process_mesh import ProcessMesh  # noqa: F401
 from .random import parallel_manual_seed  # noqa: F401
+from .ring_attention import RingFlashAttention  # noqa: F401
 from .ring_conv import RingConv2d  # noqa: F401
 from .static.engine import Engine  # noqa: F401
 from .strategy import Strategy  # noqa: F401

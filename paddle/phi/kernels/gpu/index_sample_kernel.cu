@@ -29,23 +29,25 @@ namespace {
 #define PREDEFINED_BLOCK_SIZE_X 512
 #define PREDEFINED_BLOCK_SIZE 1024
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
+#define UINT32_MAX std::numeric_limits<uint32_t>::max()
+
 }  // namespace
 
-template <typename T, typename IndexT = int>
-__global__ void IndexSampleForward(const IndexT* index,
+template <typename T, typename SampleIndexT = int, typename ElementIndexT>
+__global__ void IndexSampleForward(const SampleIndexT* index,
                                    const T* in_data,
                                    T* out_data,
                                    size_t index_length,
                                    size_t input_length,
                                    size_t batch_size) {
-  unsigned int index_i = blockDim.x * blockIdx.x + threadIdx.x;
-  unsigned int index_j = blockDim.y * blockIdx.y + threadIdx.y;
+  ElementIndexT index_i = blockDim.x * blockIdx.x + threadIdx.x;
+  ElementIndexT index_j = blockDim.y * blockIdx.y + threadIdx.y;
   for (; index_j < batch_size; index_j += blockDim.y * gridDim.y) {
     index_i = blockDim.x * blockIdx.x + threadIdx.x;
     for (; index_i < index_length; index_i += blockDim.x * gridDim.x) {
-      unsigned int index_idx = index_j * index_length + index_i;
-      unsigned int in_idx = index_j * input_length + index_i;
-      IndexT sample_idx = index[index_idx];
+      ElementIndexT index_idx = index_j * index_length + index_i;
+      ElementIndexT in_idx = index_j * input_length + index_i;
+      SampleIndexT sample_idx = index[index_idx];
       out_data[index_idx] = in_data[in_idx - index_i + sample_idx];
     }
   }
@@ -89,15 +91,51 @@ void IndexSampleKernel(const Context& dev_ctx,
   dim3 grid_dim((index_length + block_dim.x - 1) / block_dim.x,
                 (batch_size + block_dim.y - 1) / block_dim.y);
   phi::backends::gpu::LimitGridDim(dev_ctx, &grid_dim);
+  // choose the element index type ; uint32 or int64 based on the tensor size
+  bool use_uint32 = true;
+  if (x.numel() > UINT32_MAX || out->numel() > UINT32_MAX) {
+    use_uint32 = false;
+  }
 
   if (index_type == DataType::INT64) {
     const int64_t* index_data = index.data<int64_t>();
-    IndexSampleForward<T, int64_t><<<grid_dim, block_dim, 0, stream>>>(
-        index_data, in_data, out_data, index_length, input_length, batch_size);
+    if (use_uint32) {
+      IndexSampleForward<T, int64_t, uint32_t>
+          <<<grid_dim, block_dim, 0, stream>>>(index_data,
+                                               in_data,
+                                               out_data,
+                                               index_length,
+                                               input_length,
+                                               batch_size);
+    } else {
+      IndexSampleForward<T, int64_t, int64_t>
+          <<<grid_dim, block_dim, 0, stream>>>(index_data,
+                                               in_data,
+                                               out_data,
+                                               index_length,
+                                               input_length,
+                                               batch_size);
+    }
+
   } else if (index_type == DataType::INT32) {
     const int* index_data = index.data<int>();
-    IndexSampleForward<T, int><<<grid_dim, block_dim, 0, stream>>>(
-        index_data, in_data, out_data, index_length, input_length, batch_size);
+    if (use_uint32) {
+      IndexSampleForward<T, int, uint32_t>
+          <<<grid_dim, block_dim, 0, stream>>>(index_data,
+                                               in_data,
+                                               out_data,
+                                               index_length,
+                                               input_length,
+                                               batch_size);
+    } else {
+      IndexSampleForward<T, int, int64_t>
+          <<<grid_dim, block_dim, 0, stream>>>(index_data,
+                                               in_data,
+                                               out_data,
+                                               index_length,
+                                               input_length,
+                                               batch_size);
+    }
   }
 }
 }  // namespace phi

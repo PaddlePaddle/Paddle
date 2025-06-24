@@ -60,6 +60,7 @@
 #include "paddle/fluid/framework/new_executor/instruction/control_flow/tuple_push_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/control_flow/while_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/control_flow/yield_instruction.h"
+#include "paddle/fluid/framework/new_executor/instruction/cuda_graph_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/custom_kernel_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/instruction_util.h"
 #include "paddle/fluid/framework/new_executor/instruction/legacy_kernel_instruction.h"
@@ -122,6 +123,11 @@ bool UseTraceRun(const ExecutionConfig& execution_config,
          ((execution_config.used_for_jit || execution_config.used_for_cinn) &&
           (sync_op_num == 0));
 }
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+const int64_t PirInterpreter::cuda_graph_capture_pool_id_ =
+    phi::backends::gpu::CUDAGraph::UniqueMemoryPoolID();
+#endif
 
 PirInterpreter::PirInterpreter(const phi::Place& place,
                                const std::vector<std::string>& fetch_var_names,
@@ -881,6 +887,25 @@ void PirInterpreter::BuildInstruction() {
         CREATE_INSTR(SelectInputInstruction);
       } else if (op.isa<paddle::dialect::SelectOutputOp>()) {
         CREATE_INSTR(SelectOutputInstruction);
+#ifdef PADDLE_WITH_CUDA || defined(PADDLE_WITH_HIP)
+      } else if (op.isa<paddle::dialect::CudaGraphOp>()) {
+        auto cuda_graph_instr_ptr =
+            std::make_unique<CudaGraphInstruction>(op_idx++,
+                                                   place_,
+                                                   &op,
+                                                   &cuda_graph_state_,
+                                                   cuda_graph_capture_pool_id_,
+                                                   value_exe_info_.get(),
+                                                   execution_config_);
+        cuda_graph_instr_ptr->SetOutputHooks(pir_output_hookfuncs_);
+        cuda_graph_instr_ptr->SetInputHooks(pir_input_hookfuncs_);
+        vec_instruction_base_.emplace_back(std::move(cuda_graph_instr_ptr));
+
+        sub_blocks_.insert({op.dyn_cast<paddle::dialect::CudaGraphOp>().block(),
+                            dynamic_cast<CudaGraphInstruction*>(
+                                vec_instruction_base_.back().get())
+                                ->interpreter()});
+#endif
       } else if (op.isa<paddle::dialect::TensorRTEngineOp>()) {
 #ifdef PADDLE_WITH_TENSORRT
         CREATE_INSTR(TensorRTEngineInstruction);
