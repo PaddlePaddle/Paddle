@@ -1996,9 +1996,14 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
         }
       }
 
-      if (value_tensor.dims().size() > 1 && pos_of_new_dim != 0 &&
-          !int_tensor_only) {
+      if (value_tensor.dims().size() > 1 && pos_of_new_dim != 0) {
+#ifdef PADDLE_WITH_CUDA
+        if (!value_tensor.is_gpu() || !int_tensor_only) {
+          value_tensor = transpose_ad_func(value_tensor, trans_dim);
+        }
+#else
         value_tensor = transpose_ad_func(value_tensor, trans_dim);
+#endif
       }
 
       const phi::distributed::ProcessMesh* mesh = nullptr;
