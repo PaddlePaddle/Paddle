@@ -20,7 +20,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/strided_copy_kernel.h"
 
 namespace phi {
-#define MAX_LOAD_BITS 128
+#define MAX_LOAD_BYTES 16
 bool VerifyStridedCopyThreadConfigurationParameters(const dim3& block,
                                                     const dim3& grid) {
   return block.x <= 1024 && block.y <= 1024 && block.z <= 64 &&
