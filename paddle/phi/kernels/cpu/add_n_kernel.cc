@@ -30,6 +30,9 @@ void AddNKernel(const Context& dev_ctx,
   if (!x.empty() && x[0]->initialized() && DenseTensor::classof(x[0])) {
     if ((static_cast<const DenseTensor*>(x[0]))->Holder() == out->Holder()) {
       in_place = true;
+      if (in_num == 1) {
+        return;
+      }
     }
   }
 
