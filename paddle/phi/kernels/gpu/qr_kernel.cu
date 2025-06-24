@@ -413,7 +413,6 @@ void BatchedGeqrf<GPUContext, float>(const GPUContext& dev_ctx,
                                      int tau_stride) {
   if (static_cast<int64_t>(m) * static_cast<int64_t>(n) * 171 >
       std::numeric_limits<int>::max()) {
-    std::cout << "执行Xgeqrf" << std::endl;
     const int64_t batch_size_64 = static_cast<int64_t>(batch_size);
     const int64_t m_64 = static_cast<int64_t>(m);
     const int64_t n_64 = static_cast<int64_t>(n);
@@ -447,10 +446,9 @@ void BatchedGeqrf<GPUContext, float>(const GPUContext& dev_ctx,
         dev_ctx.template Alloc<uint8_t>(&device_workspace);
 
     DenseTensor host_workspace;
-    uint8_t* host_workspace_ptr = nullptr;  // Default to nullptr
+    uint8_t* host_workspace_ptr = nullptr;
 
     if (workspace_in_bytes_on_host > 0) {
-      // Allocate only if cuSOLVER requests it
       host_workspace.Resize(common::make_ddim(
           {static_cast<int64_t>(workspace_in_bytes_on_host)}));
       host_workspace_ptr = dev_ctx.template HostAlloc<uint8_t>(&host_workspace);
@@ -499,14 +497,8 @@ void BatchedGeqrf<GPUContext, float>(const GPUContext& dev_ctx,
     int lwork = 0;
 
     auto handle = dev_ctx.cusolver_dn_handle();
-
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cusolverDnSgeqrf_bufferSize(
         handle, m, n, a, lda, &lwork));
-    // std::cout << "打印" << std::endl;
-    // std::cout << " m = " << m << std::endl;
-    // std::cout << " n = " << n << std::endl;
-    // std::cout << " lwork = " << lwork << std::endl;
-    // std::cout << " batch_size " << batch_size << std::endl;
 
     DenseTensor workspace = DenseTensor();
     workspace.Resize(common::make_ddim({lwork}));
