@@ -657,6 +657,11 @@ class PipelineLayer(nn.Layer):
                 "this may happen when all shared attrs are on a same stage."
             )
 
+        from paddle.distributed import fleet
+
+        hybrid_configs = fleet.fleet._user_defined_strategy.hybrid_configs
+        from google.protobuf.json_format import MessageToDict
+
         # The third loop generates comm group for each comm key.
         for comm_key in comm_keys:
             shared_stages = comm_key_to_stage_idx[comm_key]
@@ -676,7 +681,14 @@ class PipelineLayer(nn.Layer):
                 shared_ranks = [comm[s] for s in sorted(shared_stages)]
 
                 logger.info(f"Building comm group among {shared_ranks}.")
-                group = paddle.distributed.new_group(ranks=shared_ranks)
+                group = paddle.distributed.new_group(
+                    ranks=shared_ranks,
+                    nccl_config=core.NCCLConfig.create(
+                        **MessageToDict(
+                            hybrid_configs["pp_configs"].shared_nccl_config
+                        )
+                    ),
+                )
                 if self.global_rank in shared_ranks:
                     assert layer_name in self.shared_layers
                     shared_comm[comm_key] = {

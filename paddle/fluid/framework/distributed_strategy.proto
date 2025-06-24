@@ -76,6 +76,7 @@ message MpConfig {
     // Recompute AllGather in forward of ColumnSequenceParallelLinear to reduce the memory usage.
     optional bool recompute_allgather = 9 [default = false];
     optional bool sp_async_reduce_scatter = 10 [default = false];
+    optional NCCLConfig nccl_config = 11;
 }
 
 message PpConfig {
@@ -93,6 +94,9 @@ message PpConfig {
     optional bool enable_dynamic_shape = 12 [ default = false ];
     optional bool use_dualpipev = 13 [ default = false ];
     optional bool forward_backward_overlap_scheduler = 14 [ default = false ];
+    optional NCCLConfig coll_nccl_config = 15;
+    optional NCCLConfig p2p_nccl_config = 16;
+    optional NCCLConfig shared_nccl_config = 17;
 }
 
 message DygraphShardingConfig {
@@ -106,6 +110,8 @@ message DygraphShardingConfig {
   optional bool release_gradients = 8 [ default = false ];
   optional bool free_grads_in_comm = 9 [ default = false ];
   optional bool enable_fuse_optimizer_states = 10 [ default = false ];
+  optional NCCLConfig nccl_config = 11;
+  optional NCCLConfig check_nccl_config = 12;
 }
 
 message HybridConfig {
@@ -121,6 +127,13 @@ message HybridConfig {
   optional bool split_norm_comm = 10 [ default = false ];
   optional int32 ep_degree = 11 [ default = 1 ];
   optional int32 moe_sharding_degree = 12 [ default = 1 ];
+  optional DpConfig dp_configs = 13;
+  optional SepConfig sep_configs = 14;
+  optional DpSepConfig dp_sep_configs = 15;
+  optional PpTpConfig pp_tp_configs = 16;
+  optional EpConfig ep_configs = 17;
+  optional MoeShardingConfig moe_sharding_configs = 18;
+  optional DefaultCommGroupConfig default_comm_group_configs = 19;
 }
 
 message AMPConfig {
@@ -446,4 +459,46 @@ message DistributedJobInfo {
   optional string distributed_main = 7; // with backpropagation and optimization
   optional string optimizer_name = 8;   // optimizer name
   optional DistributedStrategy strategy = 101;
+}
+
+message NCCLConfig {
+  optional string commName = 1;
+  optional int32 ll_buffsize = 2;
+  optional int32 ll128_buffsize = 3;
+  optional int32 simple_buffsize = 4;
+  optional int32 buffsize_align = 5;
+  optional int32 nchannels = 6;
+  optional string algoStr = 7;
+  optional string protoStr = 8;
+}
+
+message DpConfig {
+  optional NCCLConfig nccl_config = 1;
+  optional NCCLConfig check_nccl_config = 2;
+}
+
+message SepConfig {
+  optional NCCLConfig nccl_config = 1;
+}
+
+message DpSepConfig {
+  optional NCCLConfig nccl_config = 1;
+}
+
+message PpTpConfig {
+  optional NCCLConfig nccl_config = 1;
+}
+
+message EpConfig {
+  optional NCCLConfig nccl_config = 1;
+  optional NCCLConfig grad_nccl_config = 2;
+}
+
+message MoeShardingConfig {
+  optional NCCLConfig nccl_config = 1;
+  optional NCCLConfig check_nccl_config = 2;
+}
+
+message DefaultCommGroupConfig {
+  optional NCCLConfig nccl_config = 1;
 }

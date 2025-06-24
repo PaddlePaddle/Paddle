@@ -20,6 +20,8 @@ from functools import reduce
 from itertools import product
 from typing import TYPE_CHECKING, Any, Literal
 
+from google.protobuf.json_format import MessageToDict
+
 import paddle
 from paddle.base import core
 from paddle.distributed.utils.nccl_utils import check_nccl_version_for_p2p
@@ -189,7 +191,7 @@ class CommunicateTopology:
 
 
 class HybridCommunicateGroup:
-    def __init__(self, topology: CommunicateTopology) -> None:
+    def __init__(self, topology: CommunicateTopology, hybrid_configs) -> None:
         self.nranks = paddle.distributed.get_world_size()
         self.global_rank = paddle.distributed.get_rank()
         self._topo = topology
@@ -211,18 +213,11 @@ class HybridCommunicateGroup:
         ), f"nranks: {self.nranks}, mp_num: {self._mp_degree}, sharding_num: {self._sharding_degree}, pp_num: {self._pp_degree}, dp_num: {self._dp_degree}, sep_num: {self._sep_degree}"
 
         # create comm group for pipe parallel
-        nccl_config = core.NCCLConfig.create(
-            commName="pp_coll",
-            ll_buffsize=671,
-            ll128_buffsize=0,
-            simple_buffsize=-1,
-            buffsize_align=1024,
-            nchannels=16,
-            algoStr="Ring",
-            protoStr="LL,Simple",
-        )
         self._pp_group, self._pp_comm_group = self._set_comm_group(
-            "pipe", nccl_config=nccl_config
+            "pipe",
+            nccl_config=core.NCCLConfig.create(
+                **MessageToDict(hybrid_configs["pp_configs"].coll_nccl_config)
+            ),
         )
         # NOTE(shenliang03): In pipeline parallel, we use batch_isend_irecv.
         # if batch_isend_irecv is the first collective operation, all ranks of
@@ -238,140 +233,86 @@ class HybridCommunicateGroup:
         env_name = "FLAGS_eager_communication_connection"
         if paddle.get_flags(env_name)[env_name]:
             if self._pp_comm_group.nranks > 1:
-                nccl_config = core.NCCLConfig.create(
-                    commName="pp_p2p",
-                    ll_buffsize=56,
-                    ll128_buffsize=0,
-                    simple_buffsize=0,
-                    buffsize_align=1024,
-                    nchannels=-1,
-                    algoStr="",
-                    protoStr="LL",
-                )
                 self._pp_comm_group.process_group.eager_connect_ring_exchange(
-                    nccl_config=nccl_config
+                    nccl_config=core.NCCLConfig.create(
+                        **MessageToDict(
+                            hybrid_configs["pp_configs"].p2p_nccl_config
+                        )
+                    )
                 )
 
         # create comm group for data parallel
-        nccl_config = core.NCCLConfig.create(
-            commName="dp",
-            ll_buffsize=0,
-            ll128_buffsize=0,
-            simple_buffsize=0,
-            buffsize_align=1024,
-            nchannels=0,
-            algoStr="",
-            protoStr="",
-        )
         self._dp_group, self._dp_comm_group = self._set_comm_group(
-            "data", nccl_config=nccl_config
+            "data",
+            nccl_config=core.NCCLConfig.create(
+                **MessageToDict(hybrid_configs["dp_configs"].nccl_config)
+            ),
         )
 
         # create comm group for model parallel
-        nccl_config = core.NCCLConfig.create(
-            commName="tp",
-            ll_buffsize=51200,
-            ll128_buffsize=0,
-            simple_buffsize=-1,
-            buffsize_align=1024,
-            nchannels=24,
-            algoStr="Ring",
-            protoStr="LL,Simple",
-        )
         self._mp_group, self._mp_comm_group = self._set_comm_group(
-            "model", nccl_config=nccl_config
+            "model",
+            nccl_config=core.NCCLConfig.create(
+                **MessageToDict(hybrid_configs["mp_configs"].nccl_config)
+            ),
         )
 
         # create comm group for sharding parallel
-        nccl_config = core.NCCLConfig.create(
-            commName="sharding",
-            ll_buffsize=4,
-            ll128_buffsize=0,
-            simple_buffsize=-1,
-            buffsize_align=1024,
-            nchannels=24,
-            algoStr="Ring",
-            protoStr="LL,Simple",
-        )
         self._sharding_group, self._sharding_comm_group = self._set_comm_group(
-            "sharding", nccl_config=nccl_config
+            "sharding",
+            nccl_config=core.NCCLConfig.create(
+                **MessageToDict(hybrid_configs["sharding_configs"].nccl_config)
+            ),
         )
         self._sep_group = None
         if self._sep_degree > 1:
             # create comm group for sep parallel
-            nccl_config = core.NCCLConfig.create(
-                commName="sep",
-                ll_buffsize=0,
-                ll128_buffsize=0,
-                simple_buffsize=0,
-                buffsize_align=1024,
-                nchannels=0,
-                algoStr="",
-                protoStr="",
-            )
             self._sep_group, self._sep_comm_group = self._set_comm_group(
-                "sep", nccl_config=nccl_config
+                "sep",
+                nccl_config=core.NCCLConfig.create(
+                    **MessageToDict(hybrid_configs["sep_configs"].nccl_config)
+                ),
             )
 
         # create global group for check inf_nan / clip global norm
-        nccl_config = core.NCCLConfig.create(
-            commName="dp_check",
-            ll_buffsize=0,
-            ll128_buffsize=0,
-            simple_buffsize=0,
-            buffsize_align=1024,
-            nchannels=0,
-            algoStr="",
-            protoStr="",
-        )
         self._check_group, self._check_comm_group = self._set_check_group(
-            "data", nccl_config=nccl_config
+            "data",
+            nccl_config=core.NCCLConfig.create(
+                **MessageToDict(hybrid_configs["dp_configs"].check_nccl_config)
+            ),
         )
 
         if self._sharding_degree > 1:
-            nccl_config = core.NCCLConfig.create(
-                commName="sharding_check",
-                ll_buffsize=4,
-                ll128_buffsize=0,
-                simple_buffsize=0,
-                buffsize_align=1024,
-                nchannels=1,
-                algoStr="Ring",
-                protoStr="LL",
-            )
             (
                 self.sharding_check_group,
                 self.sharding_check_comm_group,
-            ) = self._set_check_group("sharding", nccl_config=nccl_config)
+            ) = self._set_check_group(
+                "sharding",
+                nccl_config=core.NCCLConfig.create(
+                    **MessageToDict(
+                        hybrid_configs["sharding_configs"].check_nccl_config
+                    )
+                ),
+            )
 
         # create fused comm group
         if self._sep_degree > 1:
-            nccl_config = core.NCCLConfig.create(
-                commName="dp_sep",
-                ll_buffsize=0,
-                ll128_buffsize=0,
-                simple_buffsize=0,
-                buffsize_align=1024,
-                nchannels=0,
-                algoStr="",
-                protoStr="",
-            )
             (
                 self._dp_sep_group,
                 self._dp_sep_comm_group,
-            ) = self.create_fuse_group(["data", "sep"], nccl_config=nccl_config)
-            nccl_config = core.NCCLConfig.create(
-                commName="pp_tp",
-                ll_buffsize=0,
-                ll128_buffsize=0,
-                simple_buffsize=0,
-                buffsize_align=1024,
-                nchannels=0,
-                algoStr="",
-                protoStr="",
+            ) = self.create_fuse_group(
+                ["data", "sep"],
+                nccl_config=core.NCCLConfig.create(
+                    **MessageToDict(
+                        hybrid_configs["dp_sep_configs"].nccl_config
+                    )
+                ),
             )
             self._pp_mp_group, self._pp_mp_comm_group = self.create_fuse_group(
-                ["pipe", "model"], nccl_config=nccl_config
+                ["pipe", "model"],
+                nccl_config=core.NCCLConfig.create(
+                    **MessageToDict(hybrid_configs["pp_tp_configs"].nccl_config)
+                ),
             )
 
         # create p2p group
@@ -731,6 +672,7 @@ class EPHybridCommunicateGroup(HybridCommunicateGroup):
             "model",
         ],
         dims: list[int] = [1, 1, 1, 1, 1, 1, 1],
+        hybrid_configs=None,
     ) -> None:
         self.nranks = paddle.distributed.get_world_size()
         self.global_rank = paddle.distributed.get_rank()
@@ -795,7 +737,11 @@ class EPHybridCommunicateGroup(HybridCommunicateGroup):
         ), f"sep_degree {self._sep_degree} and dp_degree {self._dp_degree} must be 1 in MoE."
 
         self._pp_group, self._pp_comm_group = self._set_comm_group(
-            "pipe", self._moe_topo
+            "pipe",
+            self._moe_topo,
+            nccl_config=core.NCCLConfig.create(
+                **MessageToDict(hybrid_configs["pp_configs"].coll_nccl_config)
+            ),
         )
         paddle.distributed.all_reduce(
             paddle.zeros([1], dtype="int32"),
@@ -805,53 +751,92 @@ class EPHybridCommunicateGroup(HybridCommunicateGroup):
         env_name = "FLAGS_eager_communication_connection"
         if paddle.get_flags(env_name)[env_name]:
             if self._pp_comm_group.nranks > 1:
-                self._pp_comm_group.process_group.eager_connect_ring_exchange()
+                self._pp_comm_group.process_group.eager_connect_ring_exchange(
+                    nccl_config=core.NCCLConfig.create(
+                        **MessageToDict(
+                            hybrid_configs["pp_configs"].p2p_nccl_config
+                        )
+                    )
+                )
 
         # create comm group for expert parallel
         self._ep_group, self._ep_comm_group = self._set_comm_group(
-            "expert", self._moe_topo
+            "expert",
+            self._moe_topo,
+            nccl_config=core.NCCLConfig.create(
+                **MessageToDict(hybrid_configs["ep_configs"].nccl_config)
+            ),
         )
 
         # create comm group for sharding parallel in MoE layer
         self._moe_sharding_group, self._moe_sharding_comm_group = (
-            self._set_comm_group("moe_sharding", self._moe_topo)
+            self._set_comm_group(
+                "moe_sharding",
+                self._moe_topo,
+                nccl_config=core.NCCLConfig.create(
+                    **MessageToDict(
+                        hybrid_configs["moe_sharding_configs"].nccl_config
+                    )
+                ),
+            )
         )
 
         # create comm group for data parallel
         self._dp_group, self._dp_comm_group = self._set_comm_group(
-            "data", self._dense_topo
+            "data",
+            self._dense_topo,
+            nccl_config=core.NCCLConfig.create(
+                **MessageToDict(hybrid_configs["dp_configs"].nccl_config)
+            ),
         )
 
         # create comm group for sep parallel
         self._sep_group, self._sep_comm_group = self._set_comm_group(
-            "sep", self._dense_topo
+            "sep",
+            self._dense_topo,
+            nccl_config=core.NCCLConfig.create(
+                **MessageToDict(hybrid_configs["sep_configs"].nccl_config)
+            ),
         )
 
         # create comm group for model parallel
         self._mp_group, self._mp_comm_group = self._set_comm_group(
-            "model", self._dense_topo
+            "model",
+            self._dense_topo,
+            nccl_config=core.NCCLConfig.create(
+                **MessageToDict(hybrid_configs["mp_configs"].nccl_config)
+            ),
         )
 
         # create comm group for sharding parallel
         self._sharding_group, self._sharding_comm_group = (
-            self.build_sharding_group(self._dense_topo)
+            self.build_sharding_group(
+                self._dense_topo,
+                nccl_config=core.NCCLConfig.create(
+                    **MessageToDict(
+                        hybrid_configs["sharding_configs"].nccl_config
+                    )
+                ),
+            ),
         )
 
         # create global group for check inf_nan / clip global norm
         self._check_group, self._check_comm_group = self._set_check_group(
-            "data", self._dense_topo
+            "data",
+            self._dense_topo,
+            nccl_config=core.NCCLConfig.create(
+                **MessageToDict(hybrid_configs["dp_configs"].check_nccl_config)
+            ),
         )
         self.sharding_check_group, self.sharding_check_comm_group = (
             self._set_check_group(
                 "moe_sharding",
                 self._moe_topo,
+                nccl_config=core.NCCLConfig.create(
+                    **(hybrid_configs["moe_sharding_configs"].check_nccl_config)
+                ),
             )
         )
-
-        # (
-        #     self.sharding_check_group,
-        #     self.sharding_check_comm_group,
-        # ) = self._set_check_group("sharding")
 
         # create p2p group
         self.is_first_stage = self.stage_id == 0
@@ -876,7 +861,7 @@ class EPHybridCommunicateGroup(HybridCommunicateGroup):
         global _HYBRID_PARALLEL_GROUP
         _HYBRID_PARALLEL_GROUP = self
 
-    def build_sharding_group(self, topo):
+    def build_sharding_group(self, topo, nccl_config=None):
         parallel_group = []
         parallel_comm_group = None
 
@@ -890,6 +875,7 @@ class EPHybridCommunicateGroup(HybridCommunicateGroup):
             comm_group = paddle.distributed.new_group(
                 ranks=group,
                 nccl_comm_init_option=group_nccl_comm_init_option,
+                nccl_config=nccl_config,
             )
             if self.global_rank in group:
                 parallel_group = group

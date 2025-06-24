@@ -984,7 +984,7 @@ def _print_modified_flags(modified_flags):
         )
 
 
-def init_parallel_env() -> Group:
+def init_parallel_env(nccl_config=None) -> Group:
     """
 
     Initialize parallel training environment in dynamic graph mode.
@@ -1146,16 +1146,6 @@ def init_parallel_env() -> Group:
         if backend in ["nccl", 'xccl', 'bkcl', 'flagcx']:
             core.CommContextManager.set_device_id(parallel_env.device_id)
 
-        nccl_config = core.NCCLConfig.create(
-            commName="default",
-            ll_buffsize=8,
-            ll128_buffsize=0,
-            simple_buffsize=0,
-            buffsize_align=1024,
-            nchannels=1,
-            algoStr="Ring",
-            protoStr="LL",
-        )
         pg = _new_process_group_impl(
             backend,
             default_store,
