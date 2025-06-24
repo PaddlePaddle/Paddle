@@ -60,6 +60,7 @@ from .fused_transformer import (
 from .int_bincount import int_bincount
 from .masked_multihead_attention import masked_multihead_attention
 from .moe_combine import moe_combine
+from .moe_combine_no_weight import moe_combine_no_weight
 from .moe_gate_dispatch import moe_gate_dispatch
 from .moe_gate_dispatch_partial_nosoftmaxtopk import (
     moe_gate_dispatch_partial_nosoftmaxtopk,
