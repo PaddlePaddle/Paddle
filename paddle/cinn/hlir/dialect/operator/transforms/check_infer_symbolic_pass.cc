@@ -243,14 +243,14 @@ class BlockDimExprsAsserter {
 
   size_t GetNumel(pir::Value value) {
     const auto& dims = value.type().dyn_cast<pir::DenseTensorType>().dims();
-    size_t numel = static_cast<size_t>(::common::product(dims));
+    int64_t numel = ::common::product(dims);
     PADDLE_ENFORCE_GE(
         numel,
         0,
         ::common::errors::InvalidArgument(
             "The numel of value must be >= 0, but received numel is %d.",
             numel));
-    return numel;
+    return static_cast<size_t>(numel);
   }
 
   void AddAssertEqual(const pir::Operation* op,
