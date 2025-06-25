@@ -339,6 +339,7 @@ jobs:
           source ${{ github.workspace }}/../../../proxy
           git checkout test
           # echo "Pull upstream develop"
+          # echo "Pull upstream develop"
           # bash ci/git_pull.sh $BRANCH
           nvidia-smi
           '
