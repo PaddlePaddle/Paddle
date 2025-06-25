@@ -91,8 +91,8 @@ class TestGroupNormAPIV2_With_General_Dimensions(unittest.TestCase):
                 data_pd = paddle.to_tensor(data)
                 result1 = gn1(data_pd).numpy()
                 result2 = gn2(data_pd).numpy()
-                self.assertTrue(np.allclose(result1, expect_res1, atol=1e-5))
-                self.assertTrue(np.allclose(result2, expect_res2, atol=1e-5))
+                np.testing.assert_allclose(result1, expect_res1, atol=1e-5)
+                np.testing.assert_allclose(result2, expect_res2, atol=1e-5)
 
 
 class TestGroupNormAPIV2_With_NCL(unittest.TestCase):

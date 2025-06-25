@@ -4,60 +4,60 @@ op_patches:
       - action : modify_output_attr
         object : stop_gradient
         type : pir::ArrayAttribute
-        default :
+        data :
           - type: pir::BoolAttribute
-            default: "false"
+            data: "false"
   - op_name : builtin.constant
     actions:
       - action : modify_attr
         object : value
         type : pir::FloatAttribute
-        default : 1.0
+        data : 1.0
       - action : modify_output_type
         object : 0
         type : pir::Float64Type
-        default : pir::Float32Type
+        data : pir::Float32Type
   - op_name : builtin.parameter
     actions :
       - action : modify_attr
         object : parameter_name
         type : pir::StrAttribute
-        default : "fc_0"
+        data : "fc_0"
       - action : modify_output_attr
         object : stop_gradient
         type: pir::BoolAttribute
-        default : "false"
+        data : "false"
   - op_name : pd_op.fetch
     actions :
       - action : add_output
         object : 1
         type : pir::DenseTensorType
-        default : [pir::Float32Type,[-1,30],"NCHW",[],0]
+        data : [pir::Float32Type,[-1,30],"NCHW",[],0]
 
   - op_name : test.operation1
     actions :
       - action : modify_attr
         object : op1_attr1
         type : pir::StrAttribute
-        default : "op1_attr1_value"
+        data : "op1_attr1_value"
       - action : delete_attr
         object : op1_attr2
       - action : add_attr
         object : op1_attr3
         type : pir::StrAttribute
-        default : "op1_attr3_value"
+        data : "op1_attr3_value"
       - action : modify_name
-        default : test1.operation1
+        data : test1.operation1
   - op_name : test.operation2
     actions :
       - action : add_output
         object : 0
         type : pir::DenseTensorType
-        default : [pir::Float32Type,[-1],"NCHW",[],0]
+        data : [pir::Float32Type,[-1],"NCHW",[],0]
       - action : add_output_attr
         object : op2_attr1
         type : pir::StrAttribute
-        default : "op2_attr1_value"
+        data : "op2_attr1_value"
   - op_name : test1.operation3
     actions :
       - action : delete_input
@@ -67,21 +67,35 @@ op_patches:
       - action : modify_attr
         object : op4_attr1
         type : pir::ArrayAttribute
-        default :
+        data :
           - type: pir::Int64Attribute
           - type: pir::Int64Attribute
       - action : add_attr
         object : op4_attr2
         type : paddle::dialect::DataTypeAttribute
-        default : Undefined(ALL_DTYPE)
+        data : phi::DataType::UNDEFINED
       - action : add_attr
         object : op4_attr3
         type : paddle::dialect::PlaceAttribute
-        default : [0,0,""]
+        data : [0,0,""]
       - action : add_attr
         object : op4_attr4
         type : paddle::dialect::IntArrayAttribute
-        default : [2, 2, 2]
+        data : [2, 2, 2]
+      - action : add_attr
+        object : op4_attr5
+        type : paddle::dialect::ScalarAttribute
+        data :
+          - type: phi::DataType::COMPLEX64
+            data: [1.0, 1.0]
+      - action : add_attr
+        object : op4_attr6
+        type : pir::TypeAttribute
+        data : pir::Float64Type
+      - action : add_attr
+        object : op4_attr7
+        type : paddle::dialect::DataLayoutAttribute
+        data : phi::DataLayout::kNHWC
 
 attr_patches:
   - attr_name : pir::FloatAttribute

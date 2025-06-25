@@ -45,6 +45,13 @@ void ProdKernel(const Context& dev_ctx,
                 bool keep_dim,
                 bool reduce_all,
                 DenseTensor* out) {
+  if (x.numel() == 0) {
+    // fill with 1.
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(out->dims())), 1, out);
+    return;
+  }
+
   reduce_all = recompute_reduce_all(x, dims, reduce_all);
   auto out_dtype = x.dtype();
   phi::Reduce<T, kps::MulFunctor, kps::IdentityFunctor>(
@@ -212,11 +219,20 @@ void SumRawKernel(const Context& dev_ctx,
   }
   if (x.numel() == 0) {
     dev_ctx.template Alloc<T>(out);
-    FullKernel<T, Context>(dev_ctx,
-                           phi::IntArray(common::vectorize(out->dims())),
-                           0,
-                           out_dtype,
-                           out);
+    if (out_dtype == DataType::INT64) {
+      FullKernel<int64_t, Context>(
+          dev_ctx,
+          phi::IntArray(common::vectorize(out->dims())),
+          0,
+          out_dtype,  // not used
+          out);
+    } else {
+      FullKernel<T, Context>(dev_ctx,
+                             phi::IntArray(common::vectorize(out->dims())),
+                             0,
+                             out_dtype,  // not used
+                             out);
+    }
     return;
   }
 

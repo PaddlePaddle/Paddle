@@ -21,7 +21,9 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 import paddle
-import paddle.distributed as dist
+from paddle.distributed.auto_parallel.placement_type import (
+    placemetns_to_dist_status,
+)
 
 if TYPE_CHECKING:
     from paddle.framework import core
@@ -61,15 +63,24 @@ def compute_local_shape_and_global_offset(
     rank_coordinator = get_coordinator(mesh, paddle.distributed.get_rank())
     local_shape = copy.copy(global_shape)
     global_offset = [0 for _ in global_shape]
-    for dim, placement in enumerate(placements):
-        if isinstance(placement, dist.Replicate):
+
+    dims_mapping, _ = placemetns_to_dist_status(placements, len(global_shape))
+    for tensor_dim, mesh_dims in enumerate(dims_mapping):
+        if len(mesh_dims) == 0:
             continue
-        else:
-            i = placement.get_dim()
-            chunk_idx = rank_coordinator[dim]
-            chunks = balanced_split(global_shape[i], process_mesh.shape[dim])
-            local_shape[i] = chunks[chunk_idx]
-            global_offset[i] = sum(chunks[:chunk_idx])
+        local_offset = [0] * len(global_shape)
+        for mesh_dim in mesh_dims:
+            chunk_idx = rank_coordinator[mesh_dim]
+            chunks = balanced_split(
+                local_shape[tensor_dim], process_mesh.shape[mesh_dim]
+            )
+            local_shape[tensor_dim] = chunks[chunk_idx]
+            local_offset[tensor_dim] = sum(chunks[:chunk_idx])
+
+            if global_offset[tensor_dim] <= local_offset[tensor_dim]:
+                global_offset[tensor_dim] = local_offset[tensor_dim]
+            else:
+                global_offset[tensor_dim] += local_offset[tensor_dim]
 
     return tuple(local_shape), tuple(global_offset)
 

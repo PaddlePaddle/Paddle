@@ -1686,8 +1686,8 @@
   backward : index_add_double_grad
 
 - backward_op : index_elementwise_get_grad
-  forward : index_elementwise_get (Tensor x, Tensor[] index, int64_t[] input_dims, int64_t[] input_strides, int64_t[] index_dims, int64_t[] index_stride) -> Tensor(out)
-  args : (Tensor x, Tensor[] index, Tensor out_grad, int64_t[] input_dims, int64_t[] input_strides, int64_t[] index_dims, int64_t[] index_stride)
+  forward : index_elementwise_get (Tensor x, Tensor[] index, int64_t[] input_dims, int64_t[] input_strides, int64_t[] index_dims, int64_t[] index_stride, int64_t slice_offset, bool accumulate) -> Tensor(out)
+  args : (Tensor x, Tensor[] index, Tensor out_grad, int64_t[] input_dims, int64_t[] input_strides, int64_t[] index_dims, int64_t[] index_stride, int64_t slice_offset = 0, bool accumulate = true)
   output : Tensor(x_grad)
   infer_meta :
     func : IndexElementwiseGetGradInferMeta
@@ -1695,8 +1695,8 @@
     func : index_elementwise_get_grad
 
 - backward_op : index_elementwise_put_grad
-  forward : index_elementwise_put (Tensor x, Tensor[] index, Tensor value, int64_t[] input_dims, int64_t[] input_strides, int64_t[] index_dims, int64_t[] index_strides) -> Tensor(out)
-  args : (Tensor x, Tensor[] index, Tensor value, Tensor out_grad, int64_t[] input_dims, int64_t[] input_strides, int64_t[] index_dims, int64_t[] index_strides)
+  forward : index_elementwise_put (Tensor x, Tensor[] index, Tensor value, int64_t[] input_dims, int64_t[] input_strides, int64_t[] index_dims, int64_t[] index_strides, int64_t slice_offset) -> Tensor(out)
+  args : (Tensor x, Tensor[] index, Tensor value, Tensor out_grad, int64_t[] input_dims, int64_t[] input_strides, int64_t[] index_dims, int64_t[] index_strides, int64_t slice_offset)
   output : Tensor(x_grad), Tensor(value_grad)
   infer_meta :
     func : IndexElementwisePutGradInferMeta
@@ -2319,6 +2319,17 @@
     func : MoeCombineGradInferMeta
   kernel :
     func : moe_combine_grad
+
+- backward_op : moe_combine_no_weight_grad
+  forward : moe_combine_no_weight (Tensor x, Tensor combine_weight, Tensor scatter_index, float epsilon = 1.0e-15) -> Tensor(y)
+  args : (Tensor x, Tensor combine_weight, Tensor scatter_index, Tensor y_grad, float epsilon = 1.0e-15)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : moe_combine_no_weight_grad
+  no_need_buffer : x
 
 - backward_op : moe_gate_dispatch_grad
   forward : moe_gate_dispatch (Tensor x, Tensor gate_logits, Tensor corr_bias, int64_t k, int64_t capacity, bool use_pad) -> Tensor(y), Tensor(combine_weights), Tensor(scatter_index), Tensor(expert_offset), Tensor(expert_id)

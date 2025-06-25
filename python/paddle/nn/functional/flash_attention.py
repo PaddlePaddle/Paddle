@@ -1361,6 +1361,7 @@ def scaled_dot_product_attention(
     is_causal: bool = False,
     training: bool = True,
     name: str | None = None,
+    backend: str | None = None,
 ) -> Tensor:
     r"""
     The equation is:
@@ -1419,6 +1420,23 @@ def scaled_dot_product_attention(
             >>> print(output)
             >>> # doctest: -SKIP
     """
+    if (
+        backend == 'p2p'
+        and query.is_dist()
+        and key.is_dist()
+        and value.is_dist()
+    ):
+        # ring attention for auto_parallel mode
+        out = paddle.distributed.auto_parallel.ring_attention.RingFlashAttention.apply(
+            query,
+            key,
+            value,
+            attn_mask,
+            dropout_p,
+            is_causal,
+        )
+        return out
+
     if query.ndim == 3:
         query = paddle.unsqueeze(query, axis=0)
 

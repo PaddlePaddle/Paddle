@@ -792,7 +792,7 @@ Placements CastPyArg2VectorOfPlacement(PyObject* obj, ssize_t arg_pos) {
   auto check_and_emplace = [&](PyObject* item, ssize_t i) {
     if (PyObject_TypeCheck(item, g_placement_shard_pytype)) {  // NOLINT
       result.emplace_back(
-          std::make_shared<Shard>(::pybind11::handle(item).cast<Shard>()));
+          ::pybind11::handle(item).cast<std::shared_ptr<Shard>>());
     } else if (PyObject_TypeCheck(item, g_placement_replicated_pytype)) {
       result.emplace_back(std::make_shared<Replicate>(
           ::pybind11::handle(item).cast<Replicate>()));
@@ -1155,13 +1155,19 @@ PyObject* ToPyObject(const phi::distributed::Placement& value) {
   return obj.ptr();
 }
 
+PyObject* ToPyObject(std::shared_ptr<phi::distributed::Placement> value) {
+  auto obj = ::pybind11::cast(value, py::return_value_policy::reference);
+  obj.inc_ref();
+  return obj.ptr();
+}
+
 PyObject* ToPyObject(const phi::distributed::Placements& values) {
 #ifdef PADDLE_WITH_DISTRIBUTE
   PyObject* result = PyList_New((Py_ssize_t)values.size());
 
   for (size_t i = 0; i < values.size(); i++) {
     auto& value = values[i];
-    PyList_SET_ITEM(result, static_cast<Py_ssize_t>(i), ToPyObject(*value));
+    PyList_SET_ITEM(result, static_cast<Py_ssize_t>(i), ToPyObject(value));
   }
 
   return result;

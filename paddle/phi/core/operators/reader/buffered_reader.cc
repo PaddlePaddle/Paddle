@@ -19,9 +19,13 @@
 #include "paddle/phi/core/platform/profiler.h"
 #include "paddle/phi/core/platform/profiler/event_tracing.h"
 
+#include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/device_guard.h"
 #include "paddle/phi/backends/device_manager.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/memory_utils.h"
+
+#include "glog/logging.h"
 
 namespace paddle::operators::reader {
 BufferedReader::~BufferedReader() {
