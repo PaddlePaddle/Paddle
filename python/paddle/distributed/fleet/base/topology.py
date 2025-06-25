@@ -30,11 +30,7 @@ def message2nccl_config(message, default_name=None):
         ret_dict = message
     else:
         ret_dict = MessageToDict(message, preserving_proto_field_name=True)
-    if (
-        len(ret_dict) > 0
-        and "commName" not in ret_dict
-        and default_name is not None
-    ):
+    if "commName" not in ret_dict and default_name is not None:
         ret_dict["commName"] = default_name
     return core.NCCLConfig.create(**ret_dict)
 

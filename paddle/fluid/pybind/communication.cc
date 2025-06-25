@@ -29,7 +29,9 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/phi/core/distributed/comm_context_manager.h"
+#if defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_NCCL)
 #include "paddle/phi/core/distributed/nccl_config.h"
+#endif
 #include "paddle/phi/core/distributed/store/store_utils.h"
 #include "paddle/phi/core/distributed/store/tcp_store.h"
 
