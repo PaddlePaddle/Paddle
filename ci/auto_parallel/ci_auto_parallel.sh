@@ -13,12 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-source /workspace/Paddle/tools/auto_parallel/target_path_lists.sh
+source ${work_dir}/ci/auto_parallel/target_path_lists.sh
 
 export paddle=$1
-export paddle_dir=/workspace/Paddle
-mkdir -p /workspace/case_logs
-export log_path=/workspace/case_logs
+export paddle_dir=${work_dir}
+mkdir -p ${work_dir}/../case_logs
+export log_path=${work_dir}/../case_logs
 export case_list=()
 
 global_total_count=0
@@ -28,70 +28,72 @@ global_runtime_fail_arr=()
 global_verification_fail_arr=()
 
 install_paddle(){
+    echo "::group::Install paddlepaddle-gpu"
     echo -e "\033[31m ---- Install paddlepaddle-gpu  \033"
     if [ -n "$paddle" ];then
       python -m pip install --user --no-cache-dir ${paddle} --force-reinstall --no-dependencies;
     fi
     python -c "import paddle; print('paddle version:',paddle.__version__,'\npaddle commit:',paddle.version.commit)";
+    echo "::endgroup::"
 }
 
 install_external_ops(){
     echo -e "\033[31m ---- Install extern_ops  \033"
-    export PYTHONPATH=/workspace/PaddleNLP:$PYTHONPATH
-    cd /workspace/PaddleNLP/slm/model_zoo/gpt-3/external_ops
+    export PYTHONPATH=${work_dir}/../PaddleNLP:$PYTHONPATH
+    cd ${work_dir}/../PaddleNLP/slm/model_zoo/gpt-3/external_ops
     python setup.py install
     python -c "import fused_ln;";
 }
 
 get_diff_TO_case(){
-cd ${paddle_dir}
-# get the location of "test/auto_parallel" in target_lists_for_semi_auto_ci
-count=0
-for element in "${target_lists_for_semi_auto_ci[@]}";do
-  if [[ "$element" == "test/auto_parallel" ]]; then
-    test_auto_num=$count
-    break
-  fi
-  count=$((count+1))
-done
-# get the location of "test/collective/hybrid_strategy" in target_lists_for_dygraph_ci
-count=0
-for element in "${target_lists_for_dygraph_ci[@]}";do
-  if [[ "$element" == "test/collective/hybrid_strategy" ]]; then
-    test_dygraph_num=$count
-    break
-  fi
-  count=$((count+1))
-done
+    cd ${paddle_dir}
+    # get the location of "test/auto_parallel" in target_lists_for_semi_auto_ci
+    count=0
+    for element in "${target_lists_for_semi_auto_ci[@]}";do
+    if [[ "$element" == "test/auto_parallel" ]]; then
+        test_auto_num=$count
+        break
+    fi
+    count=$((count+1))
+    done
+    # get the location of "test/collective/hybrid_strategy" in target_lists_for_dygraph_ci
+    count=0
+    for element in "${target_lists_for_dygraph_ci[@]}";do
+    if [[ "$element" == "test/collective/hybrid_strategy" ]]; then
+        test_dygraph_num=$count
+        break
+    fi
+    count=$((count+1))
+    done
 
-# There are two types of tests included here:
-# 1. The auto-parallel unit testing in Paddle repository. CI will immediately end with
-# an error when a test fails.
-# 2. The auto-parallel testing of large language models in `PaddleNLP` repository. The execution
-# status of each test will be recorded through global variables. When a test fails, it does not
-# affect the execution of subsequent tests. They will be summarized and output after the CI is completed.
-# Therefore, it is required to perform paddle unit testing first, followed by testing in `PaddleNLP`.
-case_list[${#case_list[*]}]="llama_auto_unit_test"
-case_list[${#case_list[*]}]=llama_auto
-case_list[${#case_list[*]}]=gpt-3_auto
-case_list[${#case_list[*]}]=gpt-3_dygraph
+    # There are two types of tests included here:
+    # 1. The auto-parallel unit testing in Paddle repository. CI will immediately end with
+    # an error when a test fails.
+    # 2. The auto-parallel testing of large language models in `PaddleNLP` repository. The execution
+    # status of each test will be recorded through global variables. When a test fails, it does not
+    # affect the execution of subsequent tests. They will be summarized and output after the CI is completed.
+    # Therefore, it is required to perform paddle unit testing first, followed by testing in `PaddleNLP`.
+    case_list[${#case_list[*]}]="llama_auto_unit_test"
+    case_list[${#case_list[*]}]=llama_auto
+    case_list[${#case_list[*]}]=gpt-3_auto
+    case_list[${#case_list[*]}]=gpt-3_dygraph
 }
 
 print_info(){
-#解决异常退出-6的问题，CI中的偶现问题，无法发现
-if [[ $1 -ne 0 ]] && [[ $1 -ne 250 ]];then
-    EXCODE=2
-    if [ ! -f ${log_path}/$2 ];then
-        echo -e "\033[31m run $2 CI FAIL \033"
-else
-    mv ${log_path}/$2 ${log_path}/$2_FAIL.log
-    echo -e "\033[31m ${log_path}/$2_FAIL \033"
-    tail -70 ${log_path}/$2_FAIL.log
+    #解决异常退出-6的问题，CI中的偶现问题，无法发现
+    if [[ $1 -ne 0 ]] && [[ $1 -ne 250 ]];then
+        EXCODE=2
+        if [ ! -f ${log_path}/$2 ];then
+            echo -e "\033[31m run $2 CI FAIL \033"
+    else
+        mv ${log_path}/$2 ${log_path}/$2_FAIL.log
+        echo -e "\033[31m ${log_path}/$2_FAIL \033"
+        tail -70 ${log_path}/$2_FAIL.log
+        fi
+        exit $EXCODE
+    else
+        echo -e "\033[32m The $3 CI has completed \033"
     fi
-    exit $EXCODE
-else
-    echo -e "\033[32m The $3 CI has completed \033"
-fi
 }
 
 function execute_func_list(){
@@ -197,19 +199,19 @@ if [[ ${#case_list[*]} -ne 0 ]];then
         echo -e "\033[31m ---- running case $case_num/${#case_list[*]}: ${case} \033"
         # Suggest that the logical order here be consistent with the `case_stst` order.
         if [[ ${case} == "auto_unit_test" ]];then
-            bash /workspace/Paddle/tools/auto_parallel/ci_case_unit.sh auto_unit_test
+            bash ${work_dir}/ci/auto_parallel/ci_case_unit.sh auto_unit_test
             print_info $? `ls -lt ${log_path} | grep "test" | head -n 1 | awk '{print $9}'` ${case}
             let case_num++
         elif [[ ${case} == "dygraph_unit_test" ]];then
-            bash /workspace/Paddle/tools/auto_parallel/ci_case_unit.sh dygraph_unit_test
+            bash ${work_dir}/ci/auto_parallel/ci_case_unit.sh dygraph_unit_test
             print_info $? `ls -lt ${log_path} | grep "test" | head -n 1 | awk '{print $9}'` ${case}
             let case_num++
         elif [[ ${case} == "llama_auto_unit_test" ]];then
-            bash /workspace/Paddle/tools/auto_parallel/ci_case_unit.sh llama_auto_unit_test
+            bash ${work_dir}/ci/auto_parallel/ci_case_unit.sh llama_auto_unit_test
             print_info $? `ls -lt ${log_path} | grep "test" | head -n 1 | awk '{print $9}'` ${case}
             let case_num++
         elif [[ ${case} == "llama_auto" ]];then
-            cmd=/workspace/PaddleNLP/scripts/distribute/ci_case_auto.sh
+            cmd=${work_dir}/../PaddleNLP/scripts/distribute/ci_case_auto.sh
             bash $cmd prepare_case llama_case_list_auto $FLAGS_install_deps $FLAGS_download_data
             execute_func_list $cmd llama_auto
             # There is no need to reinstall the related packages of `PaddleNLP` afterward.
@@ -218,21 +220,21 @@ if [[ ${#case_list[*]} -ne 0 ]];then
             # that there is no need to repeat the download process later.
             export FLAGS_download_data="llama ""$FLAGS_download_data"
             let case_num++
-            clean_file /workspace/PaddleNLP/llm/auto_parallel/llama
+            clean_file ${work_dir}/../PaddleNLP/llm/auto_parallel/llama
         elif [[ ${case} == "gpt-3_auto" ]];then
-            cmd=/workspace/PaddleNLP/scripts/distribute/ci_case_auto.sh
+            cmd=${work_dir}/../PaddleNLP/scripts/distribute/ci_case_auto.sh
             bash $cmd prepare_case llm_gpt_case_list_auto $FLAGS_install_deps $FLAGS_download_data
             execute_func_list $cmd gpt-3_auto
             # there is no need to repeat the `gpt` download process later.
             export FLAGS_download_data="gpt ""$FLAGS_download_data"
             let case_num++
-            clean_file /workspace/PaddleNLP/llm/auto_parallel/gpt-3
+            clean_file ${work_dir}/../PaddleNLP/llm/auto_parallel/gpt-3
         elif [[ ${case} == "gpt-3_dygraph" ]];then
-            cmd=/workspace/PaddleNLP/scripts/distribute/ci_case_dy.sh
+            cmd=${work_dir}/../PaddleNLP/scripts/distribute/ci_case_dy.sh
             bash $cmd prepare_case llm_gpt_case_list_dygraph $FLAGS_install_deps $FLAGS_download_data
             execute_func_list $cmd gpt-3_dygraph
             let case_num++
-            clean_file /workspace/PaddleNLP/llm
+            clean_file ${work_dir}/../PaddleNLP/llm
         else
             echo -e "\033[31m ---- no ${case} \033"
             let case_num++

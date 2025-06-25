@@ -28,6 +28,7 @@
 #include "paddle/phi/core/platform/cuda_device_guard.h"
 #include "paddle/phi/core/platform/device/gpu/nccl_helper.h"
 #include "paddle/phi/core/utils/data_type.h"
+#include "paddle/utils/string/string_helper.h"
 
 COMMON_DECLARE_bool(benchmark);
 COMMON_DECLARE_bool(benchmark_nccl);

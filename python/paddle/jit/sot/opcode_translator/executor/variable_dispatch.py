@@ -62,7 +62,7 @@ from .dispatch_functions import (
     tensor_dim,
 )
 from .dispatcher import Dispatcher, optional
-from .tracker import ConstTracker, DanglingTracker, DummyTracker
+from .tracker import ConstTracker, DanglingTracker, DummyTracker, GetAttrTracker
 from .variables import (
     BuiltinVariable,
     CallableVariable,
@@ -250,6 +250,15 @@ Dispatcher.register(
     ("ConstantVariable | SymbolicVariable",),
     lambda var: VariableFactory.from_value(
         var.get_py_type(), graph=var.graph, tracker=DummyTracker([var])
+    ),
+)
+Dispatcher.register(
+    type,
+    ("VariableBase",),
+    lambda var: VariableFactory.from_value(
+        type(var.get_py_value()),
+        graph=var.graph,
+        tracker=GetAttrTracker(var, "__class__"),
     ),
 )
 
@@ -796,6 +805,23 @@ Dispatcher.register(
 @Dispatcher.register_decorator(str.format)
 def str_format(var: ConstantVariable, *args: ConstantVariable):
     return var.format(*args)
+
+
+@Dispatcher.register_decorator(str.encode)
+def str_encode(
+    var: ConstantVariable,
+    encoding: ConstantVariable = None,  # type: ignore
+    errors: ConstantVariable = None,  # type: ignore
+):
+    if encoding is None:
+        encoding = ConstantVariable('utf-8', var.graph, DanglingTracker())
+    if errors is None:
+        errors = ConstantVariable('strict', var.graph, DanglingTracker())
+    return ConstantVariable(
+        var.get_py_value().encode(encoding=encoding.get_py_value()),
+        graph=var.graph,
+        tracker=DummyTracker([var, encoding]),
+    )
 
 
 Dispatcher.register(

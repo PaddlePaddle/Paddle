@@ -192,6 +192,15 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
     FLAGS_embedding_deterministic=1
     NVIDIA_TF32_OVERRIDE=0)
   py_test_modules(test_PP_Schedules MODULES test_PP_Schedules)
+  py_test_modules(
+    test_context_parallel
+    MODULES
+    test_context_parallel
+    ENVS
+    FLAGS_max_inplace_grad_add=4
+    FLAGS_cudnn_deterministic=1
+    FLAGS_embedding_deterministic=1
+    NVIDIA_TF32_OVERRIDE=0)
   # End of unittests WITH single card WITHOUT timeout
 
 endif()

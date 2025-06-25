@@ -310,6 +310,14 @@ bool IsCompiledWithFlagcx() {
 #endif
 }
 
+bool IsCompiledWithDeepEP() {
+#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_DEEP_EP)
+  return true;
+#else
+  return false;
+#endif
+}
+
 bool IsCompiledWithMPI() {
 #ifdef PADDLE_WITH_MPI
   return true;
@@ -2583,6 +2591,7 @@ All parameter, weight, gradient are variables in Paddle.
     VLOG(4) << "Initialize tensor operants successfully";
   });
   m.def("is_compiled_with_flagcx", IsCompiledWithFlagcx);
+  m.def("is_compiled_with_deepep", IsCompiledWithDeepEP);
   m.def("is_compiled_with_avx", IsCompiledWithAVX);
   m.def("is_compiled_with_cuda", IsCompiledWithCUDA);
   m.def("is_compiled_with_cudnn_frontend", IsCompiledWithCudnnFrontend);
