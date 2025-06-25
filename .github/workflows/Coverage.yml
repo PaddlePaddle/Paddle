@@ -335,7 +335,7 @@ jobs:
               sleep infinity
           fi
           echo "Downloading Paddle.tar.gz"
-          wget -q --no-proxy --no-check-certificate https://paddle-github-action.bj.bcebos.com/PR/coverage/73481/3e1c438c236b5a8e36279cc3bee6d98a4eb9e8b9/Paddle.tar.gz
+          wget -q --no-proxy --no-check-certificate https://paddle-github-action.bj.bcebos.com/PR/coverage/73433/4369b88874f7374ce644a733d941081219d6698d/Paddle.tar.gz
           echo "Extracting Paddle.tar.gz"
           tar --use-compress-program="pzstd -1" -xf Paddle.tar.gz --strip-components=1
           rm Paddle.tar.gz
