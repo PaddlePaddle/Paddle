@@ -17,6 +17,7 @@ from __future__ import annotations
 import functools
 import weakref
 from typing import TYPE_CHECKING, Any, Callable, TypeVar
+from weakref import WeakValueDictionary
 
 import paddle
 from paddle.jit.utils import OrderedSet
@@ -24,6 +25,7 @@ from paddle.utils import flatten, map_structure
 
 from ..utils import (
     ENV_SOT_ENABLE_PERSISTENT_PARAMETERS,
+    InnerError,
     NameGenerator,
     Singleton,
     flatten_extend,
@@ -39,13 +41,24 @@ _StatementContextT = TypeVar("_StatementContextT", bound="StatementContext")
 
 class ParametersHolder:
     def __init__(self):
-        self._params = {}
+        self._params = WeakValueDictionary[
+            str, paddle.base.framework.EagerParamBase
+        ]()
 
     def set(self, name, param):
         self._params[name] = param
 
     def get(self, name):
-        return self._params[name]
+        if (param := self._params.get(name)) is None:
+            raise InnerError(
+                f"Parameter '{name}' not found in ParametersHolder."
+            )
+        return param
+
+    def copy(self):
+        new_holder = ParametersHolder()
+        new_holder._params = self._params.copy()
+        return new_holder
 
 
 class Reference:  # to unify weak_ref and strong_ref

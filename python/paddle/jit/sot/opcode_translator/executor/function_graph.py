@@ -312,7 +312,7 @@ class FunctionGraph:
             print_variables=list(self._print_variables),
             inplace_tensors=OrderedSet(self._inplace_tensors),
             need_cache=self.need_cache,
-            parameters_holder=deepcopy(self.parameters_holder),
+            parameters_holder=self.parameters_holder.copy(),
         )
 
     def restore_memo(self, memo: FunctionGraph.Memo):
