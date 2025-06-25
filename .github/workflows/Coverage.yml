@@ -249,7 +249,7 @@ jobs:
   test:
     name: Coverage test
     needs: [build, build-docker]
-    # if: needs.build.outputs.can-skip != 'true'
+    if: needs.build.outputs.can-skip != 'true'
     runs-on:
       group: v100-test
     steps:
