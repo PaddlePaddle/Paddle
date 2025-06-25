@@ -2475,7 +2475,7 @@ class DataClassInstanceVariable(VariableBase):
         return VariableFactory.from_value(
             proxy.original_data[key],
             self.graph,
-            tracker=GetAttrTracker(self, key, changed=proxy.has_changed),
+            tracker=GetAttrTracker(self, key, changed=proxy.check_changed(key)),
         )
 
     def get_py_type(self):

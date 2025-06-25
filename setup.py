@@ -1550,14 +1550,12 @@ def get_package_data_and_package_dir():
         if len(env_dict.get("NVSHMEM_BOOTSTRAP_UID_LIB", "")) > 1:
             package_data['paddle.libs'] += [
                 os.path.basename(env_dict.get("NVSHMEM_BOOTSTRAP_UID_LIB")),
-                os.path.basename(env_dict.get("NVSHMEM_BOOTSTRAP_MPI_LIB")),
                 os.path.basename(env_dict.get("NVSHMEM_BOOTSTRAP_PMI_LIB")),
                 os.path.basename(env_dict.get("NVSHMEM_BOOTSTRAP_PMI2_LIB")),
                 os.path.basename(env_dict.get("NVSHMEM_TRANSPORT_IBRC_LIB")),
                 os.path.basename(env_dict.get("NVSHMEM_TRANSPORT_IBGDA_LIB")),
             ]
             shutil.copy(env_dict.get("NVSHMEM_BOOTSTRAP_UID_LIB"), libs_path)
-            shutil.copy(env_dict.get("NVSHMEM_BOOTSTRAP_MPI_LIB"), libs_path)
             shutil.copy(env_dict.get("NVSHMEM_BOOTSTRAP_PMI_LIB"), libs_path)
             shutil.copy(env_dict.get("NVSHMEM_BOOTSTRAP_PMI2_LIB"), libs_path)
             shutil.copy(env_dict.get("NVSHMEM_TRANSPORT_IBRC_LIB"), libs_path)
