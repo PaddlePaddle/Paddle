@@ -383,6 +383,24 @@ class TestArgMinTensorAxis(TestArgMaxTensorAxis):
         return out
 
 
+class TestArgmax_ZeroSize(BaseTestCase):
+    def initTestCase(self):
+        self.op_type = 'arg_max'
+        self.python_api = paddle.tensor.argmax
+        self.dims = (3, 0, 5)
+        self.dtype = 'float32'
+        self.axis = 0
+
+
+class TestArgmin_ZeroSize(BaseTestCase):
+    def initTestCase(self):
+        self.op_type = 'arg_min'
+        self.python_api = paddle.tensor.argmin
+        self.dims = (3, 0, 5)
+        self.dtype = 'float32'
+        self.axis = 0
+
+
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()
