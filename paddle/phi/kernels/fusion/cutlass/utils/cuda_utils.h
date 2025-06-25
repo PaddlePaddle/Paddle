@@ -443,7 +443,7 @@ void compareTwoTensor(const T1* pred,
   FILE* fd = nullptr;
   if (filename != "") {
     fd = fopen(filename.c_str(), "w");
-    if (fd != nullptr) {
+    if (fd) {
       fprintf(fd,
               "| %10s | %10s | %10s | %10s | \n",
               "pred",
