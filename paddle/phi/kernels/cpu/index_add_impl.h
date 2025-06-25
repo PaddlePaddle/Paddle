@@ -43,6 +43,7 @@ void IndexAddInner(const Context& dev_ctx,
   // copy x to output.
   // todo(@limin29): inplace do not need copy.
   phi::Copy(dev_ctx, *input, dev_ctx.GetPlace(), false, output);
+  if (index.numel() == 0) return;
 
   auto slice_size = 1;
   for (auto i = axis + 1; i < input_dim_size; i++) {
@@ -107,6 +108,10 @@ void IndexAddBaseKernel(const Context& dev_ctx,
                         int axis,
                         const DenseTensor& add_value,
                         DenseTensor* output) {
+  if (output && output->numel() == 0) {
+    dev_ctx.template Alloc<T>(output);
+    return;
+  }
   const auto& index_type = index.dtype();
   if (axis < 0) {
     axis += x.dims().size();
