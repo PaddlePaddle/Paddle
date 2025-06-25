@@ -806,7 +806,7 @@ set -x
         export FLAGS_trt_ibuilder_cache=1
         precision_cases=""
         #check change of pr_unittests and dev_unittests
-        #check_approvals_of_unittest 2
+        # check_approvals_of_unittest 2
         ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' > ${PADDLE_ROOT}/build/all_ut_list
         if [ ${PRECISION_TEST:-OFF} == "ON" ]; then
             python $PADDLE_ROOT/tools/get_pr_ut.py
