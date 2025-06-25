@@ -176,7 +176,7 @@ class StatementIRBuilder:
     def compile_fn(
         self,
         sir_name: str,
-        parameter_holder: ParametersHolder,
+        parameters_holder: ParametersHolder,
         input_spec: tuple[InputSpec | None, ...],
         **kwargs,
     ):
@@ -184,7 +184,7 @@ class StatementIRBuilder:
         start compile and return the python function, which must can be to_static without errors.
         """
         static_func = CompileSIRCache()(
-            self, sir_name, parameter_holder, input_spec, **kwargs
+            self, sir_name, parameters_holder, input_spec, **kwargs
         )
 
         return static_func
