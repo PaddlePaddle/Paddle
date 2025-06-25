@@ -82,5 +82,31 @@ class TestFunctionalConv1DErrorCase2(TestFunctionalConv1DError):
         self.data_format = "NCL"
 
 
+class TestFunctionalConv1D_CPU_FP16(TestCase):
+    def setUp(self):
+        self.padding = 0
+        self.stride = 1
+        self.dilation = 1
+        self.groups = 1
+        self.data_format = "NCL"
+
+    def test_cpu_fp16(self):
+        with dg.guard(paddle.CPUPlace()):
+            x = paddle.ones([1, 1, 1])
+            w = paddle.ones([1, 1, 1]).astype(paddle.float16)
+            b = paddle.ones([1]).astype(paddle.float16)
+            y = F.conv1d(
+                x,
+                w,
+                b,
+                padding=self.padding,
+                stride=self.stride,
+                dilation=self.dilation,
+                groups=self.groups,
+                data_format=self.data_format,
+            )
+            np.testing.assert_allclose(y.numpy(), [[[2]]])
+
+
 if __name__ == "__main__":
     unittest.main()
