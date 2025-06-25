@@ -31,6 +31,7 @@ from paddle.jit.dy2static.utils import (
     dataclass_as_dict,
     dataclass_from_dict,
     is_dataclass_instance,
+    parameters_persistent_mode_is_enabled,
 )
 from paddle.jit.sot.opcode_translator.executor.pycode_generator import PyCodeGen
 from paddle.pir.core import _PADDLE_PIR_DTYPE_2_NUMPY_DTYPE
@@ -81,7 +82,6 @@ from ....symbolic_shape.symbolic_value import (
 from ....utils import (
     ENV_SOT_ALLOW_DYNAMIC_SHAPE,
     ENV_SOT_ENABLE_0_SIZE_FALLBACK,
-    ENV_SOT_ENABLE_PERSISTENT_PARAMETERS,
     BreakGraphError,
     BuiltinFunctionBreak,
     ConditionalFallbackError,
@@ -1485,7 +1485,7 @@ class ParameterVariable(TensorVariable):
         if isinstance(value, paddle.base.framework.EagerParamBase):
             meta = MetaInfoOrNull.from_tensor(value)
             param_var = ParameterVariable(meta, graph, tracker)
-            if ENV_SOT_ENABLE_PERSISTENT_PARAMETERS.get():
+            if parameters_persistent_mode_is_enabled():
                 graph.parameters_holder.set(param_var.get_symbol().name, value)
             return param_var
         return None

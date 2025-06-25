@@ -1928,6 +1928,21 @@ PHI_DEFINE_EXPORTED_bool(specialize_device_in_dy2st,
                          "Run Dy2St in specialized device");
 
 /**
+ * Persist parameters in scope to avoid the overhead of
+ * repeated sharing during each execution period.
+ * Name: parameters_persistent_mode_in_dy2st
+ * Since Version: 3.1.1
+ * Value Range: bool, default=false
+ * Example:
+ * Note: If True, will persist parameters in scope to avoid the overhead of
+ * repeated sharing during each execution period.
+ */
+PHI_DEFINE_EXPORTED_bool(parameters_persistent_mode_in_dy2st,
+                         false,
+                         "Persist parameters in scope to avoid the overhead of "
+                         "repeated sharing during each execution period.");
+
+/**
  * Max count of eliminate redundant computation in CSE, for debug usage
  * Name: cse_max_count
  * Since Version: 3.0.0

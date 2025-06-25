@@ -20,11 +20,11 @@ from typing import TYPE_CHECKING, Any, Callable, TypeVar
 from weakref import WeakValueDictionary
 
 import paddle
+from paddle.jit.dy2static.utils import parameters_persistent_mode_is_enabled
 from paddle.jit.utils import OrderedSet
 from paddle.utils import flatten, map_structure
 
 from ..utils import (
-    ENV_SOT_ENABLE_PERSISTENT_PARAMETERS,
     InnerError,
     NameGenerator,
     Singleton,
@@ -356,7 +356,7 @@ class StatementIR:
                     generated_symbols.add(out)
 
         used_symbols = sorted(used_symbols, key=lambda x: x.name)
-        if not ENV_SOT_ENABLE_PERSISTENT_PARAMETERS.get():
+        if not parameters_persistent_mode_is_enabled():
             return used_symbols, []
         input_symbols = [
             symbol for symbol in used_symbols if symbol not in self.param_symbol
