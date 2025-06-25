@@ -1354,17 +1354,19 @@ void masked_select_grad(const Tensor& x,
     auto promoted_x = ConvertToMT<T>(x);
     auto promoted_out_grad = ConvertToMT<T>(out_grad);
     if (has_dynamic_shape(x.shape()) || has_dynamic_shape(mask.shape())) {
+      // clang-format off
       /**
        * expand_shape = broadcast(x, mask)
-       * out = masked_select(expand(x, expand_shape), expand(mask,
-       * expand_shape)) Given dout, then: expand_dx_flat =
-       * scatter(out_grad.reshape([-1]), index, dout, axis=0, overwrite=False) #
-       * overwrite should be false for broadcast case where index =
-       * masked_select( arange(expand_shape.prod()), expand(mask,
-       * expand_shape).reshape([-1]),
+       * out = masked_select(expand(x, expand_shape), expand(mask, expand_shape))
+       * Given dout, then:
+       * expand_dx_flat = scatter(out_grad.reshape([-1]), index, dout, axis=0, overwrite=False) # overwrite should be false for broadcast case
+       * where index = masked_select(
+       *   arange(expand_shape.prod()),
+       *   expand(mask, expand_shape).reshape([-1]),
        * )
        * dx = reduce_as(expand_dx_flat.reshape(expand_shape), x)
-       */
+      */
+      // clang-format on
       // get broadcast shape
       auto dummy_x = backend::full_with_tensor<T>(
           shape64<T>(x), 0.0, x.dtype(), x.place());
