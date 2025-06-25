@@ -57,6 +57,10 @@ void SequenceMaskScalarKernel(const Context& dev_ctx,
     y_dim.push_back(maxlen);
     y->Resize(common::make_ddim(y_dim));
   }
+  if (x_numel == 0) {
+    dev_ctx.Alloc(y, out_dtype);
+    return;
+  }
 
   phi::VisitDataType(out_dtype,
                      phi::funcs::SequenceMaskFunctor<Context, T>(
