@@ -30,7 +30,7 @@ from paddle._typing import unreached
 from paddle.framework import core
 from paddle.jit.dy2static.utils import (
     dataclass_from_dict,
-    is_plain_dataclass_inst,
+    is_plain_dataclass_type,
 )
 from paddle.jit.sot.opcode_translator.executor.pycode_generator import PyCodeGen
 from paddle.pir.core import _PADDLE_PIR_DTYPE_2_NUMPY_DTYPE
@@ -2582,7 +2582,7 @@ class DataClassInstanceVariable(VariableBase):
 
     @VariableFactory.register_from_value()
     def from_value(value: object, graph: FunctionGraph, tracker: Tracker):
-        if is_plain_dataclass_inst(value):
+        if is_plain_dataclass_type(type(value)):
             class_var = VariableFactory.from_value(
                 type(value), graph, DanglingTracker()
             )
