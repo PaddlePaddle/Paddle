@@ -330,6 +330,7 @@ jobs:
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           rm -rf * .[^.]*
           set -e
+          nvidia-smi
           echo "Downloading Paddle.tar.gz"
           wget -q --no-proxy --no-check-certificate https://paddle-github-action.bj.bcebos.com/PR/coverage/73481/3e1c438c236b5a8e36279cc3bee6d98a4eb9e8b9/Paddle.tar.gz
           echo "Extracting Paddle.tar.gz"
