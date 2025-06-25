@@ -806,6 +806,64 @@ class TestMeanAPI(unittest.TestCase):
         )
 
 
+class TestMeanAPIInt32(unittest.TestCase):
+    def setUp(self):
+        self.x_shape = [2, 3, 4, 5]
+        self.dtype = "int32"
+        self.x_np = np.random.randint(-1, 10000, self.x_shape).astype(
+            self.dtype
+        )
+        self.places = [paddle.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            self.places.append(paddle.CUDAPlace(0))
+
+    def test_dygraph(self):
+        for place in self.places:
+            with base.dygraph.guard(place):
+                x = paddle.to_tensor(self.x_np)
+                out = paddle.mean(x=x)
+            np.testing.assert_equal(
+                out.numpy(),
+                np.mean(self.x_np.astype("float32")).astype(self.dtype),
+            )
+
+    def test_static(self):
+        paddle.enable_static()
+        for place in self.places:
+            with base.program_guard(base.Program(), base.Program()):
+                x = paddle.static.data(
+                    "x", shape=self.x_shape, dtype=self.dtype
+                )
+                out = paddle.mean(x=x)
+                exe = base.Executor(place)
+                res = exe.run(feed={"x": self.x_np}, fetch_list=[out])
+            np.testing.assert_equal(
+                res[0], np.mean(self.x_np.astype("float32")).astype(self.dtype)
+            )
+
+
+class TestMeanAPIInt64(TestMeanAPIInt32):
+    def setUp(self):
+        self.x_shape = [2, 3, 4, 5]
+        self.dtype = "int64"
+        self.x_np = np.random.randint(-1, 10000, self.x_shape).astype(
+            self.dtype
+        )
+        self.places = [paddle.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            self.places.append(paddle.CUDAPlace(0))
+
+
+class TestMeanAPIBool(TestMeanAPIInt32):
+    def setUp(self):
+        self.x_shape = [2, 3, 4, 5]
+        self.dtype = "bool"
+        self.x_np = np.random.uniform(-1, 1, self.x_shape).astype(self.dtype)
+        self.places = [paddle.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            self.places.append(paddle.CUDAPlace(0))
+
+
 class TestMeanWithTensorAxis1(TestReduceOPTensorAxisBase):
     def init_data(self):
         self.pd_api = paddle.mean

@@ -1750,7 +1750,7 @@ void StackGradInferMeta(const MetaTensor& out_grad,
           x_grad.size(),
           static_cast<size_t>(dy_dim[axis])));
 
-  auto vec = common::vectorize<int>(dy_dim);
+  auto vec = common::vectorize<int64_t>(dy_dim);
   vec.erase(vec.begin() + axis);
 
   for (auto& grad : x_grad) {
@@ -2122,6 +2122,8 @@ void IndexElementwiseGetGradInferMeta(
     const std::vector<int64_t>& input_strides,
     const std::vector<int64_t>& index_dims,
     const std::vector<int64_t>& index_strides,
+    const int64_t slice_offset,
+    const bool accumulate,
     MetaTensor* x_grad) {
   if (x_grad) {
     x_grad->share_meta(x);

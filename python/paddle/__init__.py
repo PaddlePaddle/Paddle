@@ -127,6 +127,7 @@ from . import (
     linalg as linalg,
     signal as signal,
     tensor as tensor,
+    utils as utils,
 )
 from .autograd import (
     enable_grad,

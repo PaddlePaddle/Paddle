@@ -701,7 +701,8 @@ static bool ReshardIsNeededWithPartial(
     const phi::distributed::TensorDistAttr& in_dist_attr,
     const phi::distributed::TensorDistAttr& out_dist_attr) {
   return (in_dist_attr.process_mesh() != out_dist_attr.process_mesh() ||
-          in_dist_attr.dims_mapping() != out_dist_attr.dims_mapping() ||
+          in_dist_attr.multi_dims_mapping() !=
+              out_dist_attr.multi_dims_mapping() ||
           in_dist_attr.partial_status() != out_dist_attr.partial_status());
 }
 
@@ -709,7 +710,8 @@ static bool ReshardIsNeeded(
     const phi::distributed::TensorDistAttr& in_dist_attr,
     const phi::distributed::TensorDistAttr& out_dist_attr) {
   return (in_dist_attr.process_mesh() != out_dist_attr.process_mesh() ||
-          in_dist_attr.dims_mapping() != out_dist_attr.dims_mapping());
+          in_dist_attr.multi_dims_mapping() !=
+              out_dist_attr.multi_dims_mapping());
 }
 
 std::string ReshardDebugInfo(

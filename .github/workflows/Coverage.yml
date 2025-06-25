@@ -41,6 +41,7 @@ jobs:
     uses: ./.github/workflows/docker.yml
     with:
       bos_dir: Paddle-coverage
+      task: coverage
 
   build:
     name: Coverage build
@@ -54,6 +55,7 @@ jobs:
     steps:
       - name: Check docker image and run container
         env:
+          CACHE_DIR: "/root/.cache/coverage"
           CCACHE_DIR: "/root/.ccache/coverage"
           FLAGS_fraction_of_gpu_memory_to_use: 0.15
           CTEST_PARALLEL_LEVEL: 2
@@ -66,6 +68,8 @@ jobs:
           CUDA_VISIBLE_DEVICES: 0,1
           WITH_DISTRIBUTE: "ON"
           PRECISION_TEST: "ON"
+          WITH_PIP_CUDA_LIBRARIES: "OFF"
+          WITH_FLAGCX: "ON"
           LITE_GIT_TAG: develop
           WITH_UNITY_BUILD: "ON"
           PY_VERSION: 3.9
@@ -97,6 +101,7 @@ jobs:
             -e work_dir \
             -e PADDLE_ROOT \
             -e GIT_PR_ID \
+            -e CACHE_DIR \
             -e CCACHE_DIR \
             -e ci_scripts \
             -e FLAGS_fraction_of_gpu_memory_to_use \
@@ -109,6 +114,8 @@ jobs:
             -e PADDLE_VERSION \
             -e WITH_DISTRIBUTE \
             -e PRECISION_TEST \
+            -e WITH_PIP_CUDA_LIBRARIES \
+            -e WITH_FLAGCX \
             -e LITE_GIT_TAG \
             -e WITH_UNITY_BUILD \
             -e PY_VERSION \
@@ -140,7 +147,7 @@ jobs:
           git checkout test
           echo "Pull upstream $BRANCH"
           source ${{ github.workspace }}/../../../proxy
-          git pull upstream $BRANCH --no-edit
+          bash ci/git_pull.sh $BRANCH
           '
 
       - name: Check bypass
@@ -157,6 +164,7 @@ jobs:
           mkdir -p /home/data/cfs/.cache/coverage
           mkdir -p /home/data/cfs/.ccache/coverage
           source ${{ github.workspace }}/../../../proxy
+          bash ${ci_scripts}/cmake-predownload.sh
           bash $ci_scripts/coverage_build.sh bdist_wheel
           '
 
@@ -252,7 +260,7 @@ jobs:
           FLAGS_fraction_of_gpu_memory_to_use: 0.15
           CTEST_PARALLEL_LEVEL: 2
           WITH_GPU: "ON"
-          CUDA_ARCH_NAME: Volta
+          CUDA_ARCH_NAME: Auto
           WITH_AVX: "ON"
           WITH_COVERAGE: "ON"
           COVERALLS_UPLOAD: "ON"
@@ -330,7 +338,7 @@ jobs:
           source ${{ github.workspace }}/../../../proxy
           git checkout test
           echo "Pull upstream develop"
-          git pull upstream $BRANCH --no-edit
+          bash ci/git_pull.sh $BRANCH
           '
 
       - name: Test
