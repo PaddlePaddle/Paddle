@@ -329,8 +329,11 @@ jobs:
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           rm -rf * .[^.]*
-          set -e
-          nvidia-smi
+          nvidia-smi; status=$?
+          if [ $status -ne 0 ]; then
+              echo "1nvidia-smi failed, sleeping..."
+              sleep infinity
+          fi
           echo "Downloading Paddle.tar.gz"
           wget -q --no-proxy --no-check-certificate https://paddle-github-action.bj.bcebos.com/PR/coverage/73481/3e1c438c236b5a8e36279cc3bee6d98a4eb9e8b9/Paddle.tar.gz
           echo "Extracting Paddle.tar.gz"
@@ -338,17 +341,29 @@ jobs:
           rm Paddle.tar.gz
           source ${{ github.workspace }}/../../../proxy
           git checkout test
-          invidia-smi
-          # echo "Pull upstream develop"
-          # bash ci/git_pull.sh $BRANCH
+          nvidia-smi; status=$?
+          if [ $status -ne 0 ]; then
+              echo "2nvidia-smi failed, sleeping..."
+              sleep infinity
+          fi
           '
 
       - name: Test
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
+          nvidia-smi; status=$?
+          if [ $status -ne 0 ]; then
+              echo "3nvidia-smi failed, sleeping..."
+              sleep infinity
+          fi
           source ${{ github.workspace }}/../../../proxy
           bash $ci_scripts/coverage_test.sh
           TEST_EXIT_CODE=$?
+          nvidia-smi; status=$?
+          if [ $status -ne 0 ]; then
+              echo "15nvidia-smi failed, sleeping..."
+              sleep infinity
+          fi
           echo "TEST_EXIT_CODE=${TEST_EXIT_CODE}" >> ${{ github.env }}
           if [[ "$TEST_EXIT_CODE" -ne 0 && "$TEST_EXIT_CODE" -ne 9 ]]; then
               exit $TEST_EXIT_CODE

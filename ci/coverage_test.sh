@@ -35,6 +35,11 @@ function is_run_distribute_in_op_test() {
     done
 }
 
+nvidia-smi; status=$?
+if [ $status -ne 0 ]; then
+    echo "4nvidia-smi failed, sleeping..."
+    sleep infinity
+fi
 
 ldconfig
 
@@ -65,7 +70,19 @@ pip install PyGithub
 
 echo "::endgroup::"
 
+nvidia-smi; status=$?
+if [ $status -ne 0 ]; then
+    echo "5nvidia-smi failed, sleeping..."
+    sleep infinity
+fi
+
 is_run_distribute_in_op_test $1
+
+nvidia-smi; status=$?
+if [ $status -ne 0 ]; then
+    echo "6nvidia-smi failed, sleeping..."
+    sleep infinity
+fi
 
 mkdir -p ${PADDLE_ROOT}/build
 cd ${PADDLE_ROOT}/build
@@ -82,6 +99,12 @@ fi
 echo "::endgroup::"
 cp ${PADDLE_ROOT}/build/test/legacy_test/testsuite.py ${PADDLE_ROOT}/build/python
 cp -r ${PADDLE_ROOT}/build/test/white_list ${PADDLE_ROOT}/build/python
+
+nvidia-smi; status=$?
+if [ $status -ne 0 ]; then
+    echo "7nvidia-smi failed, sleeping..."
+    sleep infinity
+fi
 
 ut_total_startTime_s=`date +%s`
 

@@ -794,6 +794,11 @@ function parallel_test_base_gpu_test() {
     ========================================
 EOF
 
+nvidia-smi; status=$?
+if [ $status -ne 0 ]; then
+    echo "8nvidia-smi failed, sleeping..."
+    sleep infinity
+fi
 
 set -x
         # set trt_convert ut to run 15% cases.
@@ -818,6 +823,11 @@ set -x
                 set -x
             fi
         fi
+nvidia-smi; status=$?
+if [ $status -ne 0 ]; then
+    echo "9nvidia-smi failed, sleeping..."
+    sleep infinity
+fi
         if [ -a "$PADDLE_ROOT/added_ut" ];then
             added_uts=^$(awk BEGIN{RS=EOF}'{gsub(/\n/,"$|^");print}' $PADDLE_ROOT/added_ut)$
             if [ "$WITH_ROCM" == "ON" ];then
@@ -838,7 +848,11 @@ set +x
         wget --no-proxy https://paddle-docker-tar.bj.bcebos.com/pre_test/CTestCostData.txt --no-check-certificate
         mkdir -p ${PADDLE_ROOT}/build/Testing/Temporary/
         cp -r ${PADDLE_ROOT}/build/CTestCostData.txt ${PADDLE_ROOT}/build/Testing/Temporary/
-
+nvidia-smi; status=$?
+if [ $status -ne 0 ]; then
+    echo "10nvidia-smi failed, sleeping..."
+    sleep infinity
+fi
         get_quickly_disable_ut||disable_ut_quickly='disable_ut'    # indicate whether the case was in quickly disable list
         test_cases=$(ctest -N -V) # get all test cases
 
@@ -860,7 +874,11 @@ set +x
             echo "::endgroup::"
             echo "========================================"
         fi
-
+nvidia-smi; status=$?
+if [ $status -ne 0 ]; then
+    echo "11nvidia-smi failed, sleeping..."
+    sleep infinity
+fi
         python ${PADDLE_ROOT}/tools/group_case_for_parallel.py ${PADDLE_ROOT}
 
         if [ ${WITH_CINN=-OFF} == "ON" ]; then
@@ -890,7 +908,11 @@ set +x
             echo "ipipe_log_param_cinn_TestCases_Total_Time: $[ $cinn_ut_endTime_s - $cinn_ut_startTime_s ]s"
             echo "ipipe_log_param_cinn_TestCases_Total_Time: $[ $cinn_ut_endTime_s - $cinn_ut_startTime_s ]s"  >> ${PADDLE_ROOT}/build/build_summary.txt
         fi
-
+nvidia-smi; status=$?
+if [ $status -ne 0 ]; then
+    echo "12nvidia-smi failed, sleeping..."
+    sleep infinity
+fi
         single_ut_mem_0_startTime_s=`date +%s`
         while read line
         do
@@ -966,6 +988,11 @@ set +x
         echo "ipipe_log_param_noparallel_TestCases_Total_Time: $[ $noparallel_ut_endTime_s - $noparallel_ut_startTime_s ]s"
         echo "ipipe_log_param_noparallel_TestCases_Total_Time: $[ $noparallel_ut_endTime_s - $noparallel_ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
         ###retry
+nvidia-smi; status=$?
+if [ $status -ne 0 ]; then
+    echo "13nvidia-smi failed, sleeping..."
+    sleep infinity
+fi
         collect_failed_tests
         rm -f $tmp_dir/*
         exec_times=0
@@ -1044,6 +1071,11 @@ set +x
                 done
             retry_unittests_record="$retry_unittests_record$failed_test_lists"
         fi
+nvidia-smi; status=$?
+if [ $status -ne 0 ]; then
+    echo "14nvidia-smi failed, sleeping..."
+    sleep infinity
+fi
         rerun_ut_endTime_s=`date +%s`
         echo "ipipe_log_param_Rerun_TestCases_Total_Time: $[ $rerun_ut_endTime_s - $rerun_ut_startTime_s ]s"
         echo "ipipe_log_param_Rerun_TestCases_Total_Time: $[ $rerun_ut_endTime_s - $rerun_ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
