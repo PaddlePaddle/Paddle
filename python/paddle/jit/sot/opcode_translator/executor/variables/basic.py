@@ -81,6 +81,7 @@ from ....symbolic_shape.symbolic_value import (
 from ....utils import (
     ENV_SOT_ALLOW_DYNAMIC_SHAPE,
     ENV_SOT_ENABLE_0_SIZE_FALLBACK,
+    ENV_SOT_ENABLE_PERSISTENT_PARAMETERS,
     BreakGraphError,
     BuiltinFunctionBreak,
     ConditionalFallbackError,
@@ -1481,9 +1482,12 @@ class ParameterVariable(TensorVariable):
 
     @VariableFactory.register_from_value(successor="TensorVariable")
     def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
-        if isinstance(value, (paddle.base.framework.EagerParamBase)):
-            value = MetaInfoOrNull.from_tensor(value)
-            return ParameterVariable(value, graph, tracker)
+        if isinstance(value, paddle.base.framework.EagerParamBase):
+            meta = MetaInfoOrNull.from_tensor(value)
+            param_var = ParameterVariable(meta, graph, tracker)
+            if ENV_SOT_ENABLE_PERSISTENT_PARAMETERS.get():
+                graph.parameters_holder.set(param_var.get_symbol().name, value)
+            return param_var
         return None
 
 
