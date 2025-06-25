@@ -553,9 +553,8 @@ void RunProgramImpl(
       // we don't need to share params again.
       // NOTE(dev): Currently, we only use this in LLM inference, so
       // we don't modify this logic about backward impl.
-      auto skip_names_set =
-          std::set<std::string>(param_names.begin(), param_names.end());
-      interpreter_core->SetSkipGcVars(skip_names_set);
+      details::ShareTensorsIntoScopeWithName(
+          params, param_names, global_inner_scope);
     }
   }
 
