@@ -243,7 +243,7 @@ class BlockDimExprsAsserter {
 
   size_t GetNumel(pir::Value value) {
     const auto& dims = value.type().dyn_cast<pir::DenseTensorType>().dims();
-    size_t numel = (size_t)(::common::product(dims));
+    size_t numel = static_cast<size_t>(::common::product(dims));
     PADDLE_ENFORCE_GE(
         numel,
         0,
