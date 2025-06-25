@@ -25,4 +25,4 @@ unset PADDLE_ELASTIC_TIMEOUT
 nnodes=1
 rank=0
 
-CUDA_VISIBLE_DEVICES=0,1,2 python -m paddle.distributed.launch --nnodes=$nnodes --rank $rank new_api_per_op_and_group_intranode.py
+CUDA_VISIBLE_DEVICES=0,1 python -m paddle.distributed.launch --nnodes=$nnodes --rank $rank new_api_per_op_and_group_intranode.py
