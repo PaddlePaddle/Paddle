@@ -4012,6 +4012,9 @@ def clip(
     elif x_dtype == 'paddle.float16':
         min_ = float(np.finfo(np.float16).min)
         max_ = float(np.finfo(np.float16).max)
+    elif x_dtype == 'paddle.float64':
+        min_ = float(np.finfo(np.float64).min)
+        max_ = float(np.finfo(np.float64).max)
     else:
         min_ = float(np.finfo(np.float32).min)
         max_ = float(np.finfo(np.float32).max)
@@ -5011,6 +5014,10 @@ def prod(
         )
         if x.dtype != convert_np_dtype_to_dtype_(dtype):
             x = cast(x, dtype)
+
+    # axis is 0-size tensor.
+    if paddle.is_tensor(axis) and axis.shape == [0]:
+        return x
 
     reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
     if in_dynamic_or_pir_mode():
@@ -6808,7 +6815,7 @@ def diff(
 def angle(x: Tensor, name: str | None = None) -> Tensor:
     r"""
     Element-wise angle of complex numbers. For non-negative real numbers, the angle is 0 while
-    for negative real numbers, the angle is :math:`\pi`.
+    for negative real numbers, the angle is :math:`\pi`, and NaNs are propagated..
 
     Equation:
         .. math::
@@ -8390,11 +8397,6 @@ def combinations(
 
     if r == 0:
         return paddle.empty(shape=[0], dtype=x.dtype)
-
-    if (r > x.shape[0] and not with_replacement) or (
-        x.shape[0] == 0 and with_replacement
-    ):
-        return paddle.empty(shape=[0, r], dtype=x.dtype)
 
     if r > 1:
         t_l = [x for i in range(r)]

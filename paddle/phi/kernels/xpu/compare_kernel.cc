@@ -64,13 +64,13 @@ void XPUCompareKernelImpl(
                     const DenseTensor& y,                             \
                     DenseTensor* out) {                               \
     using XPUType = typename XPUTypeTrait<T>::Type;                   \
-    auto f = [](xpu::Context* ctx,                                    \
+    auto f = [](xpu::Context* xpu_ctx,                                \
                 const XPUType* x,                                     \
                 const XPUType* y,                                     \
                 bool* z,                                              \
                 const std::vector<int64_t>& xshape,                   \
                 const std::vector<int64_t>& yshape) {                 \
-      return functor(ctx, x, y, z, xshape, yshape);                   \
+      return functor(xpu_ctx, x, y, z, xshape, yshape);               \
     };                                                                \
     XPUCompareKernelImpl<T, XPUType, Context>(dev_ctx, x, y, out, f); \
   }
