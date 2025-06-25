@@ -49,7 +49,6 @@ class InterpreterCoreAsyncFastGarbageCollector {
   explicit InterpreterCoreAsyncFastGarbageCollector(int num_instructions);
 
   void Reset(int num_instructions);
-  { async_worker_->Reset(num_instructions); }
 
   void Add(const std::vector<Variable*>& vars);
 
