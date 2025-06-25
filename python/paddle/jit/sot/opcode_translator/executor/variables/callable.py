@@ -23,7 +23,7 @@ import operator
 import random
 import sys
 import types
-from dataclasses import fields, is_dataclass
+from dataclasses import fields
 from functools import partial, reduce
 from typing import (
     TYPE_CHECKING,
@@ -36,7 +36,10 @@ from paddle.base.dygraph.base import (
     _DecoratorContextManager,
     in_sot_simulation_mode,
 )
-from paddle.jit.dy2static.utils import TransformOptions
+from paddle.jit.dy2static.utils import (
+    TransformOptions,
+    is_plain_dataclass_type,
+)
 
 from .... import psdb
 from ....profiler import EventGuard
@@ -1348,19 +1351,10 @@ class DataClassVariable(ClassVariable):
 
     @VariableFactory.register_from_value(successor="ClassVariable")
     def from_value(value: object, graph: FunctionGraph, tracker: Tracker):
-        if DataClassVariable.is_plain_dataclass_type(value):
+        if is_plain_dataclass_type(value):
             var = DataClassVariable(value, graph=graph, tracker=tracker)
             return var
         return None
-
-    @staticmethod
-    def is_plain_dataclass_type(cls: type):
-        # Note: Currently, this only supports dataclasses without multiple or complex inheritance.
-        return (
-            is_dataclass(cls)
-            and isinstance(cls, type)
-            and len(cls.__mro__) == 2
-        )
 
 
 class NamedTupleClassVariable(ClassVariable):

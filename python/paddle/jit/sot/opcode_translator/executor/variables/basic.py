@@ -18,7 +18,7 @@ import dataclasses
 import operator
 import sys
 import types
-from dataclasses import asdict, is_dataclass
+from dataclasses import asdict
 from enum import Enum
 from functools import cached_property, reduce
 from typing import TYPE_CHECKING, Any
@@ -30,6 +30,7 @@ from paddle._typing import unreached
 from paddle.framework import core
 from paddle.jit.dy2static.utils import (
     dataclass_from_dict,
+    is_plain_dataclass_inst,
 )
 from paddle.jit.sot.opcode_translator.executor.pycode_generator import PyCodeGen
 from paddle.pir.core import _PADDLE_PIR_DTYPE_2_NUMPY_DTYPE
@@ -2581,7 +2582,7 @@ class DataClassInstanceVariable(VariableBase):
 
     @VariableFactory.register_from_value()
     def from_value(value: object, graph: FunctionGraph, tracker: Tracker):
-        if DataClassInstanceVariable.is_plain_dataclass_inst(value):
+        if is_plain_dataclass_inst(value):
             class_var = VariableFactory.from_value(
                 type(value), graph, DanglingTracker()
             )
@@ -2599,12 +2600,3 @@ class DataClassInstanceVariable(VariableBase):
             class_var.tracker = GetAttrTracker(var, "__class__")
             return var
         return None
-
-    @staticmethod
-    def is_plain_dataclass_inst(val):
-        # Note: Currently, this only supports dataclasses without multiple or complex inheritance.
-        return (
-            is_dataclass(val)
-            and not isinstance(val, type)
-            and len(val.__class__.__mro__) == 2
-        )
