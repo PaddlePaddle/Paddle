@@ -2061,13 +2061,6 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
                               &trans_dim,
                               &out_is_view);
 
-    // Check if the index has bool element. Remove later.
-    bool int_tensor_only = true;
-    for (auto& index : transed_index) {
-      if (index.dtype() == phi::DataType::BOOL) {
-        int_tensor_only = false;
-      }
-    }
     // Release gil and do tracing
     py::gil_scoped_release release;
     if (value_tensor.initialized()) {
@@ -2091,7 +2084,7 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
 
       if (value_tensor.dims().size() > 1 && pos_of_new_dim != 0) {
 #ifdef PADDLE_WITH_CUDA
-        if (!value_tensor.is_gpu() || !int_tensor_only) {
+        if (!value_tensor.is_gpu()) {
           value_tensor = transpose_ad_func(value_tensor, trans_dim);
         }
 #else
@@ -2113,7 +2106,8 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
       } else {
 #ifdef PADDLE_WITH_CUDA
         // TODO(czy): remove in the future
-        if (transed_sub_tensor.is_gpu() && int_tensor_only) {
+        if (transed_sub_tensor.is_gpu()) {
+          transed_index = expandTensors(transed_index);
           transed_index = expand_outplace(transed_index);
           for (int i = 0; i < pos_of_new_dim; ++i) {
             transed_index.insert(

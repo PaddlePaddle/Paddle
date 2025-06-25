@@ -321,9 +321,7 @@ void IndexElementwisePutGradKernel(
                         phi::DataType::INT64));
 
   std::vector<DenseTensor> tmp_args;
-  std::vector<const phi::DenseTensor*> int_indices_v =
-      funcs::DealWithBoolIndices<T, Context>(dev_ctx, indices, &tmp_args);
-  if (int_indices_v.empty()) {
+  if (indices.empty()) {
     if (x_grad) {
       phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
     }
@@ -337,21 +335,21 @@ void IndexElementwisePutGradKernel(
     return;
   }
 
-  auto bd_dim = funcs::BroadCastTensorsDims(int_indices_v);
+  auto bd_dim = funcs::BroadCastTensorsDims(indices);
 
   std::vector<int64_t> res_dim_v(common::vectorize(bd_dim));
   std::vector<const phi::DenseTensor*> res_indices_v(x.dims().size(), nullptr);
   std::vector<DenseTensor> tmp_res_indices_v;
   std::vector<DenseTensor> range_tensor_v;
 
-  for (int i = int_indices_v.size(); i < x.dims().size(); ++i) {
+  for (int i = indices.size(); i < x.dims().size(); ++i) {
     range_tensor_v.emplace_back(funcs::GetRangeCudaTensor<int64_t, Context>(
         dev_ctx, x.dims()[i], phi::DataType::INT64));
   }
 
   funcs::DealWithIndices<T, Context>(dev_ctx,
                                      x,
-                                     int_indices_v,
+                                     indices,
                                      &res_indices_v,
                                      &tmp_res_indices_v,
                                      range_tensor_v,
