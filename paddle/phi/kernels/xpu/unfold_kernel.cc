@@ -29,7 +29,10 @@ void UnfoldKernel(const Context& dev_ctx,
                   const std::vector<int>& dilations_,
                   DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
-  dev_ctx.template Alloc<T>(out);
+  if (out && out->numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   const std::string data_format = common::DataLayoutToString(x.layout());
   bool is_nchw = data_format == "NCHW";
   PADDLE_ENFORCE_EQ(is_nchw,
