@@ -251,7 +251,7 @@ jobs:
     needs: [build-docker]
     # if: needs.build.outputs.can-skip != 'true'
     runs-on:
-      group: BD_BJ-V100
+      group: v100-test
     steps:
       - name: Check docker image and run container
         env:
