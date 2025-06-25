@@ -866,6 +866,8 @@ class PipelineScheduleMulti(_PipelineSchedule):
                         stage = stage_index_to_stage[stage_index]
                         loss = self._maybe_get_loss(stage, mb_index)
                         backward_counter[stage_index] += 1
+                        if loss and len(loss) == 2:
+                            loss = loss[0]
                         stage.backward_one_chunk(
                             mb_index,
                             loss=loss,
