@@ -321,7 +321,7 @@ std::vector<CondFuncPriorWrapper> OpLowererImpl::PostProcess(
                    op_result.type().isa<paddle::dialect::DenseTensorType>();
       PADDLE_ENFORCE_EQ(check,
                         true,
-                        common::errors::PreconditionNotMet(
+                        ::common::errors::PreconditionNotMet(
                             "cinn only support DenseTensorType"));
       const auto dims =
           op_result.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
