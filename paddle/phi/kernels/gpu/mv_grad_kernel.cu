@@ -24,7 +24,7 @@ namespace phi {
 template <typename T>
 __global__ void MVGradDxCUDAKernel(
     const int64_t m, const int64_t n, const T *dout, const T *vec, T *dx) {
-  int64_t idx = static_cast<int64_t>(blockDim.x) * blockIdx.x + threadIdx.x;
+  int64_t idx = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
   for (; idx < m * n; idx += static_cast<int64_t>(blockDim.x) * gridDim.x) {
     int64_t i = idx / n;
     int64_t j = idx % n;
