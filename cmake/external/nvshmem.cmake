@@ -45,7 +45,7 @@ if(NVSHMEM_SRC_TAR_PATH)
       && tar xf ${NVSHMEM_TAR_NAME} && mv nvshmem_src extern_nvshmem)
 else()
   set(NVSHMEM_URL
-      "https://developer.download.nvidia.com/compute/redist/nvshmem/3.2.5/source/${NVSHMEM_TAR_NAME}"
+      "https://paddle-ci.gz.bcebos.com/${NVSHMEM_TAR_NAME}"
       CACHE STRING "" FORCE)
   set(NVSHMEM_DOWNLOAD_COMMAND
       rm -rf extern_nvshmem ${NVSHMEM_TAR_NAME} && wget --no-check-certificate
