@@ -27,9 +27,10 @@ static constexpr int kNumCUDAThreads = 512;
 static constexpr int kNumMaximumNumBlocks = 4096;
 static constexpr int kROISize = 4;
 
-static inline int NumBlocks(const int N) {
-  return std::min((N + kNumCUDAThreads - 1) / kNumCUDAThreads,
-                  kNumMaximumNumBlocks);
+static inline uint32_t NumBlocks(const int64_t N) {
+  return static_cast<uint32_t>(
+      std::min((N + kNumCUDAThreads - 1) / kNumCUDAThreads,
+               static_cast<int64_t>(kNumMaximumNumBlocks)));
 }
 
 template <class T>
@@ -156,21 +157,21 @@ void RoiAlignKernel(const Context& dev_ctx,
     return;
   }
   auto in_dims = x.dims();
-  int batch_size = in_dims[0];
-  int channels = in_dims[1];
-  int height = in_dims[2];
-  int width = in_dims[3];
+  int64_t batch_size = in_dims[0];
+  int64_t channels = in_dims[1];
+  int64_t height = in_dims[2];
+  int64_t width = in_dims[3];
 
-  int rois_num = boxes.dims()[0];
+  int64_t rois_num = boxes.dims()[0];
 
   if (rois_num == 0) {
     dev_ctx.template Alloc<T>(out);
     return;
   }
 
-  int output_size = out->numel();
-  int blocks = NumBlocks(output_size);
-  int threads = kNumCUDAThreads;
+  int64_t output_size = out->numel();
+  uint32_t blocks = NumBlocks(output_size);
+  uint32_t threads = kNumCUDAThreads;
 #ifdef WITH_NV_JETSON
   backends::gpu::ChangeThreadNum(dev_ctx, &threads, 256);
 #endif
