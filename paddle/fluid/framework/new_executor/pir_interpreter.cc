@@ -1664,8 +1664,12 @@ void PirInterpreter::TraceRunImpl() {
   }
 
   if (FLAGS_enable_async_fast_gc) {
-    async_gc_ = std::make_unique<InterpreterCoreAsyncFastGarbageCollector>(
-        vec_instruction_base_.size());
+    if (!async_gc_) {
+      async_gc_ = std::make_unique<InterpreterCoreAsyncFastGarbageCollector>(
+          vec_instruction_base_.size());
+    } else {
+      async_gc_->Reset(vec_instruction_base_.size());
+    }
   }
 
   interpreter::ResetAtomicGuard guard(&deps_, &refs_);
