@@ -74,8 +74,14 @@ void WriteModule(const pir::Program& program,
 bool ReadModule(const std::string& file_path,
                 pir::Program* program,
                 int64_t pir_version) {
-  std::ifstream f(file_path);
-  Json data = Json::parse(f);
+  Json data;
+  if (file_path.size() < 1000) {
+    std::ifstream f(file_path);
+    data = Json::parse(f);
+  } else {
+    data = Json::parse(file_path);
+  }
+  
   if (pir_version < 0) {
     pir_version = DEVELOP_VERSION;
     VLOG(6) << "pir_version is null, get pir_version: " << pir_version;

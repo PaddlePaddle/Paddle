@@ -188,13 +188,20 @@ void LoadCombineFunction(const std::string& file_path,
                          std::vector<phi::DenseTensor*>* out,
                          bool load_as_fp16,
                          phi::Place place) {
-  std::ifstream fin(file_path, std::ios::binary);
-  PADDLE_ENFORCE_EQ(static_cast<bool>(fin),
-                    true,
-                    common::errors::Unavailable(
-                        "Load operator fail to open file %s, please check "
-                        "whether the model file is complete or damaged.",
-                        file_path));
+  std::unique_ptr<std::istream> fin_ptr;
+  if (file_path.size() < 1000) {
+    fin_ptr = std::make_unique<std::ifstream>(file_path, std::ios::binary);
+    PADDLE_ENFORCE_EQ(static_cast<bool>(*fin_ptr),
+                      true,
+                      common::errors::Unavailable(
+                          "Load operator fail to open file %s, please check "
+                          "whether the model file is complete or damaged.",
+                          file_path));
+  } else {
+    fin_ptr = std::make_unique<std::istringstream>(
+        file_path, std::ios::in | std::ios::binary);
+  }
+  std::istream& fin = *fin_ptr;
 
   PADDLE_ENFORCE_GT(out->size(),
                     0UL,
