@@ -32,7 +32,18 @@ void AsComplexStridedKernel(const Context& dev_ctx,
         "be called, something wrong has happened!"));
   }
   if (out && out->numel() == 0) {
-    dev_ctx.template Alloc<T>(out);
+    if (x.dtype() == DataType::FLOAT32) {
+      out->set_type(DataType::COMPLEX64);
+    } else if (x.dtype() == DataType::FLOAT64) {
+      out->set_type(DataType::COMPLEX128);
+    } else {
+      PADDLE_THROW(common::errors::Unimplemented(
+          "as_complex is not supported data type (%s).",
+          DataTypeToString(x.dtype())));
+    }
+    out->set_offset(x.offset());
+    out->ResetHolder(x.Holder());
+    out->ShareInplaceVersionCounterWith(x);
     return;
   }
 
