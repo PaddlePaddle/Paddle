@@ -265,7 +265,7 @@ void PaddleInferShareExternalDataByPtrName(
   volatile shmStruct *shm = NULL;
   sharedMemoryInfo info;
   if (sharedMemoryOpen(shm_name.c_str(), sizeof(shmStruct), &info) != 0) {
-    PADDLE_THROW(phi::errors::Fatal("Failed to create shared memory slab."));
+    PADDLE_THROW(common::errors::Fatal("Failed to create shared memory slab."));
   }
   shm = (volatile shmStruct *)info.addr;
   void *ptr = nullptr;
@@ -293,14 +293,14 @@ void PaddleInferShareExternalDataByPtrName(
     uint8_t *data_ptr = reinterpret_cast<uint8_t *>(ptr);
     tensor.ShareExternalData(data_ptr, shape, place_type);
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Unsupported data type. Now share_external_data_by_ptr only supports "
         "UINT8, INT8, FLOAT32, BFLOAT16 and FLOAT16, but got %d.",
         dtype));
   }
   sharedMemoryClose(&info);
 #else
-  PADDLE_THROW(phi::errors::Unimplemented(
+  PADDLE_THROW(common::errors::Unimplemented(
       "share_external_data_by_ptr_name only supports CUDA device."));
 #endif
 }

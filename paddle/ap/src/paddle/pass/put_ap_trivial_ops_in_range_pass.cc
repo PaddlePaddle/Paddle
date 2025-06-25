@@ -45,7 +45,7 @@ class PutApTrivialOpsInRangeHelper {
     PADDLE_ENFORCE_EQ(
         ret.HasError(),
         false,
-        phi::errors::Fatal(
+        common::errors::Fatal(
             "PutApTrivialOpsInRangeHelper::MatchAndRewrite failed. "
             "\nTraceback (most recent call "
             "last):\n%s\n%s: %s. ",
