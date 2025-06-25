@@ -1372,25 +1372,38 @@ void masked_select_grad(const Tensor& x,
           shape64<T>(x), 0.0, x.dtype(), x.place());
       auto dummy_y = backend::full_with_tensor<T>(
           shape64<T>(mask), 0.0, x.dtype(), x.place());
-      auto dummy_z = dummy_x + dummy_y;
-      auto expand_shape = shape64<T>(dummy_z);
+      auto zeros = dummy_x + dummy_y;
+      auto expand_shape = shape64<T>(zeros);
 
-      // generate indices for scatter
+      // generate out_indices for scatter
       auto start = full_scalar<T>(0, DataType::INT64);
       auto end = full_scalar<T>(1, DataType::INT64);
-      for (int i = 0; i < dummy_z.dims().size(); ++i) {
+      for (int i = 0; i < zeros.dims().size(); ++i) {
         end = end * get_slice<T>(expand_shape, i);
       }
       auto step = full_scalar<T>(1, DataType::INT64);
 
-      auto indices = masked_select<T>(
-          backend::arange<T>(start, end, step),
-          backend::reshape<T>(backend::expand<T>(mask, expand_shape), {-1}));
+      Tensor expand_shape_numel =
+          full<T>({1}, 1.0, DataType::INT64, expand_shape.place());
+      for (int i = 0; i < zeros.dims().size(); i++) {
+        expand_shape_numel = expand_shape_numel * get_slice<T>(expand_shape, i);
+      }
+
+      auto out_indices = masked_select<T>(
+          backend::arange<T>(start, end, step, DataType::INT64, x.place()),
+          backend::reshape<T>(backend::expand<T>(mask, expand_shape),
+                              expand_shape_numel));
 
       // scatter
+      auto out_grad_shape = shape64<T>(out_grad);
+      Tensor out_grad_numel =
+          full<T>({1}, 1.0, out_grad_shape.dtype(), out_grad.place());
+      for (int i = 0; i < out_grad.dims().size(); i++) {
+        out_grad_numel = out_grad_numel * get_slice<T>(out_grad_shape, i);
+      }
       auto expand_dx_flat =
-          scatter<T>(backend::reshape<T>(promoted_out_grad, {-1}),
-                     indices,
+          scatter<T>(backend::reshape<T>(zeros, expand_shape_numel),
+                     out_indices,
                      out_grad,
                      false);
       // reshape to broadcast shape
