@@ -35,12 +35,12 @@ void IndexSampleGradInner(const Context& context,
 
   auto value_length = x_grad_dims[1];
   auto index_length = index_dims[1];
-  int index_ids_num = static_cast<int>(index.numel());
+  int64_t index_ids_num = index.numel();
 
   std::vector<T> x_grad_vec(x_grad->numel(), 0);
 
-  for (int i = 0; i < index_ids_num; i++) {
-    int b = floor(i / index_length);
+  for (int64_t i = 0; i < index_ids_num; i++) {
+    int64_t b = floor(i / index_length);
     PADDLE_ENFORCE_GE(
         index_vec[i],
         0,
@@ -59,7 +59,7 @@ void IndexSampleGradInner(const Context& context,
             "value.",
             value_length,
             index_vec[i]));
-    int v_i = b * value_length + static_cast<int>(index_vec[i]);
+    int64_t v_i = b * value_length + static_cast<int64_t>(index_vec[i]);
     x_grad_vec[v_i] += out_grad_vec[i];
   }
   context.template Alloc<T>(x_grad);
