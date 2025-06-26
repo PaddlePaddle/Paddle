@@ -22,6 +22,8 @@ from typing import TYPE_CHECKING, Any, Literal
 
 
 def message2nccl_config(message, default_name=None):
+    if paddle.distributed.collective._default_backend != 'nccl':
+        return None
     from google.protobuf.json_format import MessageToDict
 
     from paddle.base import core
