@@ -2189,7 +2189,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
         ret_val = self.stack.pop()
         return self.compile_return(ret_val)
 
-    @call_break_graph_decorator(push_n=1)
+    @call_break_graph_decorator(push_n=2)
     @fallback_if_python_version_unsupported
     def SETUP_WITH(self, instr: Instruction):
         mgr = self.stack.pop()
