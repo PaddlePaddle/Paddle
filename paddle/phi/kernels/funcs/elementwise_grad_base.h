@@ -513,7 +513,7 @@ static __global__ void FastCommonGradBroadcastOneCUDAKernel(const T *x,
       }
     }
     if (dd) {
-      int64_t h = n > ELEMWISE_MAX_BLOCK_DIM ? ELEMWISE_MAX_BLOCK_DIM : n;
+      int h = n > ELEMWISE_MAX_BLOCK_DIM ? ELEMWISE_MAX_BLOCK_DIM : n;
       val = phi::backends::gpu::reduceSum(val, tid, h);
       if (tid == 0) {
         dd[bid] = val;
@@ -536,7 +536,7 @@ static __global__ void FastCommonGradBroadcastOneCUDAKernel(const T *x,
       }
     }
     if (dd) {
-      int64_t h = n > ELEMWISE_MAX_BLOCK_DIM ? ELEMWISE_MAX_BLOCK_DIM : n;
+      int h = n > ELEMWISE_MAX_BLOCK_DIM ? ELEMWISE_MAX_BLOCK_DIM : n;
       val = phi::backends::gpu::reduceSum(val, tid, h);
       if (tid == 0) {
         dd[bid] = val;
@@ -582,7 +582,7 @@ static __global__ void FastCommonGradBroadcastAllCUDAKernel(
       }
     }
     if (dy) {
-      int64_t h = n > ELEMWISE_MAX_BLOCK_DIM ? ELEMWISE_MAX_BLOCK_DIM : n;
+      int h = n > ELEMWISE_MAX_BLOCK_DIM ? ELEMWISE_MAX_BLOCK_DIM : n;
       val = phi::backends::gpu::reduceSum(val, tid, h);
       if (tid == 0) {
         dy[bid] = val;
@@ -603,7 +603,7 @@ static __global__ void FastCommonGradBroadcastAllCUDAKernel(
       }
     }
     if (dx) {
-      int64_t h = n > ELEMWISE_MAX_BLOCK_DIM ? ELEMWISE_MAX_BLOCK_DIM : n;
+      int h = n > ELEMWISE_MAX_BLOCK_DIM ? ELEMWISE_MAX_BLOCK_DIM : n;
       val = phi::backends::gpu::reduceSum(val, tid, h);
       if (tid == 0) {
         dx[bid] = val;
@@ -726,15 +726,15 @@ static __global__ void CommonGradBroadcast1CUDAKernelHeight(const T *x,
 
       if (dy) {
         h = h > ELEMWISE_MAX_BLOCK_DIM ? ELEMWISE_MAX_BLOCK_DIM : h;
-        val = phi::backends::gpu::reduceSum(val, tid, h);
+        val = phi::backends::gpu::reduceSum(val, tid, static_cast<int>(h));
         if (THREAD_ID_X == 0) {
           dy[j] = val;
         }
       }
     } else {
       do {
-        int64_t out_offset = i * w + j;
-        int64_t y_offset = (i % x_h) * x_w + j % x_w;
+        IndexType out_offset = i * w + j;
+        IndexType y_offset = (i % x_h) * x_w + j % x_w;
         if (dy) {
           val += dy_op(x[j], y[y_offset], out[out_offset], dout[out_offset]);
         }
@@ -743,7 +743,7 @@ static __global__ void CommonGradBroadcast1CUDAKernelHeight(const T *x,
 
       if (dy) {
         h = h > ELEMWISE_MAX_BLOCK_DIM ? ELEMWISE_MAX_BLOCK_DIM : h;
-        val = phi::backends::gpu::reduceSum(val, tid, h);
+        val = phi::backends::gpu::reduceSum(val, tid, static_cast<int>(h));
         if (THREAD_ID_X == 0) {
           dy[j] = val;
         }
@@ -788,14 +788,14 @@ static __global__ void ElemwiseGradBroadcast1CUDAKernel(const T *x,
 
       if (dy) {
         h = h > ELEMWISE_MAX_BLOCK_DIM ? ELEMWISE_MAX_BLOCK_DIM : h;
-        val = phi::backends::gpu::reduceSum(val, tid, h);
+        val = phi::backends::gpu::reduceSum(val, tid, static_cast<int>(h));
         if (THREAD_ID_X == 0) {
           dy[j] = val;
         }
       }
     } else {  // x.dims < y.dims, broadcast for x.
       do {
-        int64_t y_offset = i * w + j;
+        IndexType y_offset = i * w + j;
         if (dy) {
           dy[y_offset] =
               dy_op(x[j], y[y_offset], out[y_offset], dout[y_offset]);
@@ -808,7 +808,7 @@ static __global__ void ElemwiseGradBroadcast1CUDAKernel(const T *x,
 
       if (dx) {
         h = h > ELEMWISE_MAX_BLOCK_DIM ? ELEMWISE_MAX_BLOCK_DIM : h;
-        val = phi::backends::gpu::reduceSum(val, tid, h);
+        val = phi::backends::gpu::reduceSum(val, tid, static_cast<int>(h));
         if (THREAD_ID_X == 0) {
           dx[j] = val;
         }
@@ -954,9 +954,9 @@ static __global__ void ElemwiseGradBroadcast2CUDAKernel(const T *x,
       }
 
       if (dy) {
-        int64_t h = pre * post;
+        IndexType h = pre * post;
         h = h > ELEMWISE_MAX_BLOCK_DIM ? ELEMWISE_MAX_BLOCK_DIM : h;
-        val = phi::backends::gpu::reduceSum(val, tid, h);
+        val = phi::backends::gpu::reduceSum(val, tid, static_cast<int>(h));
         if (THREAD_ID_X == 0) {
           dy[j] = val;
         }
@@ -984,7 +984,7 @@ static __global__ void ElemwiseGradBroadcast2CUDAKernel(const T *x,
       if (dx) {
         IndexType h = pre * post;
         h = h > ELEMWISE_MAX_BLOCK_DIM ? ELEMWISE_MAX_BLOCK_DIM : h;
-        val = phi::backends::gpu::reduceSum(val, tid, h);
+        val = phi::backends::gpu::reduceSum(val, tid, static_cast<int>(h));
         if (THREAD_ID_X == 0) {
           dx[j] = val;
         }
@@ -1123,7 +1123,7 @@ __global__ void CommonGradBroadcastCUDAKernel(const int64_t *x_strides_array,
     out_index = C_index;
     val += dx_op(x[x_index], y[y_index], out[out_index], dout[out_index]);
   }
-  val = phi::backends::gpu::reduceSum(val, tid, thread_num);
+  val = phi::backends::gpu::reduceSum(val, tid, static_cast<int>(thread_num));
   if (THREAD_ID_X == 0) {
     dx[i] = val;
   }

@@ -151,7 +151,7 @@ HOSTDEVICE T Infinity() {
 }
 
 template <typename T>
-__device__ T reduceSum(T val, int tid, int64_t len) {
+__device__ T reduceSum(T val, int tid, int len) {
   // NOTE(zcd): The warp size should be taken from the
   // parameters of the GPU but not specified as 32 simply.
   // To make the reduceSum more efficiently,
