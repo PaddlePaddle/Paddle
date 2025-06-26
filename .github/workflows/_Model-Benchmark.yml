@@ -61,6 +61,8 @@ jobs:
             -v "/dev/shm:/dev/shm" \
             -v ${{ github.workspace }}/../../..:${{ github.workspace }}/../../.. \
             -v ${{ github.workspace }}:/workspace \
+            -e PR_ID \
+            -e COMMIT_ID \
             -e BRANCH \
             -e ci_scripts \
             -e no_proxy \
@@ -88,7 +90,10 @@ jobs:
           DEVICE_ID=$(cat /sys/class/dmi/id/product_uuid |awk -F "-" "{print \$5}")
           echo "export DEVICE_ID=$DEVICE_ID" >> ~/.bashrc
           echo $DEVICE_ID
-          wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/build/${PR_ID}/${COMMIT_ID}/build.tar.gz --no-check-certificate
+          echo "Downloading build.tar.gz"
+          # wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/build/${PR_ID}/${COMMIT_ID}/build.tar.gz --no-check-certificate
+          wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/build/73584/7134472eb3ff3cc5d4873f8607b5a24f5169229f/build.tar.gz --no-check-certificate
+          echo "Extracting build.tar.gz"
           tar --use-compress-program="pzstd -1" -xpf build.tar.gz
           source ${ci_scripts}/model_benchmark.sh
           check_paddle ${{ github.env }}
