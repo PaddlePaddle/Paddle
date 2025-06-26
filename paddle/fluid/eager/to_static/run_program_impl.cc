@@ -329,9 +329,9 @@ void BuildScopeByBlock(
 }
 
 void GcScope(paddle::framework::Scope *scope,
-             const std::unordered_set<std::string_view> &persistent_vars) {
+             const std::unordered_set<std::string_view> &persistent_names) {
   for (auto &[name, var] : scope->LocalVarsMap()) {
-    if (persistent_vars.count(name)) {
+    if (persistent_names.count(name)) {
       continue;
     }
     if (var == nullptr) {
@@ -581,9 +581,9 @@ void RunProgramImpl(
         VLOG(4) << "Parameters persistent mode is enabled, "
                    "set this scope can not reused and skip gc "
                    "for persistent parameters.";
-        const std::unordered_set<std::string_view> persistent_vars(
+        const std::unordered_set<std::string_view> persistent_names(
             param_names.begin(), param_names.end());
-        details::GcScope(global_inner_scope, persistent_vars);
+        details::GcScope(global_inner_scope, persistent_names);
       } else {
         VLOG(4) << "don't require any grad, set this scope can reused";
         details::GcScope(global_inner_scope);
