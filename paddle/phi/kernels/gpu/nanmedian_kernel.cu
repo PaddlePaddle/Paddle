@@ -14,6 +14,10 @@
 
 #include "paddle/phi/kernels/nanmedian_kernel.h"
 
+#include <thrust/device_ptr.h>
+#include <thrust/execution_policy.h>
+#include <thrust/functional.h>
+#include <thrust/reduce.h>
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
@@ -22,6 +26,13 @@
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/nanmedian_utils.h"
 #include "paddle/phi/kernels/top_k_kernel.h"
+
+#if defined(__NVCC__) || defined(__HIPCC__)
+#include "paddle/phi/backends/gpu/gpu_device_function.h"
+#include "paddle/phi/kernels/primitive/kernel_primitives.h"
+#endif
+
+constexpr int64_t ELEMWISE_MAX_BLOCK_DIM = 1024;
 
 namespace phi {
 void test_cuda(const std::string& str) {
@@ -51,34 +62,29 @@ __global__ void KernelNanCounts(const T* input,
                                 const int64_t numel,
                                 const int64_t pre_dim,
                                 const int64_t stride,
-                                int64_t* nan_total,
                                 int64_t* nan_counts) {
-  int64_t begin = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
-  int64_t step = static_cast<int64_t>(blockDim.x) * gridDim.x;
+  int bx = blockIdx.x;
+  int tx = threadIdx.x;
+  int64_t total1 = 0;
+  int64_t total2 = 0;
 
-  for (int64_t i = begin; i < pre_dim; i += step) {
-    nan_counts[i] = 0;
-  }
+  for (int64_t j = bx; j < pre_dim; j += gridDim.x) {
+    int64_t num = 0;
+    int64_t i = tx;
+    while (i < stride) {
+      int64_t offset = i + j * stride;
 
-  if (begin == 0) {
-    nan_total[0] = 0;
-    nan_total[1] = 0;
-  }
+      T x = input[offset];
+      if (isnan(static_cast<float>(x))) num += 1;
 
-  __syncthreads();
-
-  for (int64_t index = begin; index < numel; index += step) {
-    const T x = input[index];
-    if (isnan(static_cast<float>(x))) {
-      auto bin = static_cast<int64_t>(index / stride);
-      phi::CudaAtomicAdd(&nan_counts[bin], 1);
+      i += blockDim.x;
     }
-  }
-  __syncthreads();
 
-  for (int64_t i = begin; i < pre_dim; i += step) {
-    phi::CudaAtomicAdd(&nan_total[0], nan_counts[i]);
-    phi::CudaAtomicMax(&nan_total[1], stride - nan_counts[i]);
+    int len = stride > blockDim.x ? blockDim.x : stride;
+    num = phi::backends::gpu::reduceSum(num, tx, len);
+    if (tx == 0) {
+      nan_counts[j] = num;
+    }
   }
 }
 
@@ -227,6 +233,11 @@ void ProcessMedianKernel(const Context& dev_ctx,
                          const std::string& mode,
                          DenseTensor* out,
                          DenseTensor* median_index) {
+#ifdef PADDLE_WITH_CUDA
+  const auto& exec_policy = thrust::cuda::par.on(dev_ctx.stream());
+#else
+  const auto& exec_policy = thrust::hip::par.on(dev_ctx.stream());
+#endif
   auto stream = dev_ctx.stream();
   const T* x_data = x.data<T>();
   T* out_data = dev_ctx.template Alloc<T>(out);
@@ -246,7 +257,7 @@ void ProcessMedianKernel(const Context& dev_ctx,
 
   int64_t pre_dim = numel / stride;
 
-  DenseTensor nan_counts, nan_stat;
+  DenseTensor nan_counts;
   int64_t* nan_counts_ptr;
   int64_t max_valid_num = 0;
 
@@ -255,25 +266,27 @@ void ProcessMedianKernel(const Context& dev_ctx,
     nan_counts.Resize(common::make_ddim({pre_dim}));
     dev_ctx.template Alloc<int64_t>(&nan_counts);
     nan_counts_ptr = nan_counts.data<int64_t>();
-    nan_stat.Resize(common::make_ddim({2}));
-    int64_t* nan_stat_mem = dev_ctx.template Alloc<int64_t>(&nan_stat);
-    int64_t* nan_stat_ptr = nan_stat.data<int64_t>();
-
-    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel);
-    KernelNanCounts<T>
-        <<<config.block_per_grid.x, config.thread_per_block.x, 0, stream>>>(
-            x_data, numel, pre_dim, stride, nan_stat_ptr, nan_counts_ptr);
+    int block_size = std::min(ELEMWISE_MAX_BLOCK_DIM, stride);
+    int64_t grid_size = pre_dim;
+    int64_t max_grid_dim = dev_ctx.GetCUDAMaxGridDimSize()[0];
+    grid_size = std::min(grid_size, max_grid_dim);
+    KernelNanCounts<T><<<grid_size, block_size, 0, stream>>>(
+        x_data, numel, pre_dim, stride, nan_counts_ptr);
     auto nan_stat_mem_cpu =
         phi::memory_utils::Alloc(phi::CPUPlace(), sizeof(int64_t) * 2);
     int64_t* nan_stat_cpu_ptr =
         reinterpret_cast<int64_t*>(nan_stat_mem_cpu->ptr());
+    int64_t sum =
+        thrust::reduce(exec_policy, nan_counts_ptr, nan_counts_ptr + pre_dim);
+    nan_stat_cpu_ptr[0] = sum;
+    auto maxx_ptr = thrust::max_element(
+        exec_policy, nan_counts_ptr, nan_counts_ptr + pre_dim);
     memory_utils::Copy(phi::CPUPlace(),
-                       nan_stat_cpu_ptr,
+                       nan_stat_cpu_ptr + 1,
                        dev_ctx.GetPlace(),
-                       nan_stat_mem,
-                       sizeof(int64_t) * 2,
+                       maxx_ptr,
+                       sizeof(int64_t),
                        stream);
-
     // all elements are nan values
     T nan_val = std::numeric_limits<T>::quiet_NaN();
     if (nan_stat_cpu_ptr[0] == numel) {
