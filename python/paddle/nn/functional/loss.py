@@ -1525,7 +1525,7 @@ def nll_loss(
         if input_dims != 2 and input_dims != 4:
             input = _C_ops.reshape(input, [n, c, 1, -1])
             label = _C_ops.reshape(label, [n, 1, -1])
-            out_shape = [n] + input_shape[2:]
+            out_shape = [n, *input_shape[2:]]
         out, total_weight = _C_ops.nll_loss(
             input, label, weight, ignore_index, reduction
         )
@@ -1538,7 +1538,7 @@ def nll_loss(
         if input_dims != 2 and input_dims != 4:
             input = reshape(input, shape=[n, c, 1, -1])
             label = reshape(label, shape=[n, 1, -1])
-            out_shape = [n] + input_shape[2:]
+            out_shape = [n, *input_shape[2:]]
 
         check_variable_and_dtype(
             input, 'input', ['float32', 'float64'], 'nll_loss'

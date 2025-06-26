@@ -221,8 +221,9 @@ def fc(
             )
             if in_pir_mode():
                 if len(input_var.shape) > 2:
-                    new_shape = input_var.shape[:num_flatten_dims] + [
-                        np.prod(input_var.shape[num_flatten_dims:])
+                    new_shape = [
+                        *input_var.shape[:num_flatten_dims],
+                        np.prod(input_var.shape[num_flatten_dims:]),
                     ]
                     input_var = paddle.reshape(input_var, new_shape)
                 tmp = paddle.matmul(input_var, w)
@@ -2807,7 +2808,7 @@ def prelu(x, mode, param_attr=None, data_format="NCHW", name=None):
         assert (
             len(x.shape) >= 1
         ), "The size of input shape should be equal or larger than 1 in prelu() when mode is 'element'"
-        alpha_shape = [1] + list(x.shape)[1:]
+        alpha_shape = [1, *list(x.shape)[1:]]
     dtype = helper.input_dtype(input_param_name='x')
     alpha = helper.create_parameter(
         attr=helper.param_attr,

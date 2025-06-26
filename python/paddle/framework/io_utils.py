@@ -196,8 +196,10 @@ def _legacy_static_save(param_dict, model_path, protocol=2):
         pickle_bytes = pickle.dumps(param_dict, protocol=protocol)
         with open(model_path, 'wb') as f:
             max_bytes = 2**30
-            for i in range(0, len(pickle_bytes), max_bytes):
-                f.write(pickle_bytes[i : i + max_bytes])
+            f.writelines(
+                pickle_bytes[i : i + max_bytes]
+                for i in range(0, len(pickle_bytes), max_bytes)
+            )
     else:
         with _open_file_buffer(model_path, 'wb') as f:
             pickle.dump(param_dict, f, protocol=protocol)

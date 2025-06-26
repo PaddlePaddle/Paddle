@@ -575,8 +575,7 @@ The best trial is: [{best_trial.name}], whose configuration is following:
         summary_ += "\n" + best_trial.summary() + "\n"
         self._logger.info(summary_)
         with open(os.path.join(self.project_dir, "summary.txt"), "w+") as fw:
-            for line in summary_.split("\n"):
-                fw.write(line + "\n")
+            fw.writelines(line + "\n" for line in summary_.split("\n"))
 
         # full_strategy = self.get_best_config()
         # path = os.path.join(self.project_dir, "tuned_dist_strategy.yaml")

@@ -73,7 +73,7 @@ class DataLoaderKeepOrderTestBase(unittest.TestCase):
         else:
             self.assertEqual(
                 list(input_data.shape),
-                [self.shape[0] * dev_cnt] + self.shape[1:],
+                [self.shape[0] * dev_cnt, *self.shape[1:]],
             )
             start_val = dev_cnt * batch_id
             for idx in range(dev_cnt):

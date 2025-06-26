@@ -330,10 +330,11 @@ class PipeLineModelAdaptor:
             # special treatment for shared layer
             if config.vpp > 1:
                 segments[0] = [
-                    ([layers[0][0], segments[0][0][0][0]], layers[0][1])
-                ] + segments[0][1:]
+                    ([layers[0][0], segments[0][0][0][0]], layers[0][1]),
+                    *segments[0][1:],
+                ]
             else:
-                segments[0] = [([layers[0][0]], layers[0][1])] + segments[0][1:]
+                segments[0] = [([layers[0][0]], layers[0][1]), *segments[0][1:]]
 
             for i in range(1, config.pp):
                 segments[i] = [([layers[0][0]], layers[0][1])] + segments[i]
