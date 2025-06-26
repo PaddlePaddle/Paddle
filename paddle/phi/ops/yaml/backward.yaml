@@ -2320,6 +2320,17 @@
   kernel :
     func : moe_combine_grad
 
+- backward_op : moe_combine_no_weight_grad
+  forward : moe_combine_no_weight (Tensor x, Tensor combine_weight, Tensor scatter_index, float epsilon = 1.0e-15) -> Tensor(y)
+  args : (Tensor x, Tensor combine_weight, Tensor scatter_index, Tensor y_grad, float epsilon = 1.0e-15)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : moe_combine_no_weight_grad
+  no_need_buffer : x
+
 - backward_op : moe_gate_dispatch_grad
   forward : moe_gate_dispatch (Tensor x, Tensor gate_logits, Tensor corr_bias, int64_t k, int64_t capacity, bool use_pad) -> Tensor(y), Tensor(combine_weights), Tensor(scatter_index), Tensor(expert_offset), Tensor(expert_id)
   args : (Tensor combine_weights, Tensor scatter_index, Tensor expert_id, Tensor y_grad, Tensor combine_weights_grad, int64_t k, int64_t capacity, bool use_pad)
