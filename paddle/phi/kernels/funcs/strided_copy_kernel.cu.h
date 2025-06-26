@@ -693,7 +693,7 @@ void LaunchContiguous2StridedDefaultKernel(
       switch (rank) {
 #define CASE_RANK(__Rk)                                           \
   case __Rk:                                                      \
-    Contiguous2StridedDefaultDiffDimFunc<T, __Rk, 8>              \
+    Contiguous2StridedDefaultDiffDimFunc<T, 8, __Rk>              \
         <<<grid, block, 0, dev_ctx.stream()>>>(                   \
             input_data, output_data, output_stride, dims, numel); \
     break
