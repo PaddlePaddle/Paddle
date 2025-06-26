@@ -128,7 +128,11 @@ void LUKernel(const Context& dev_ctx,
               DenseTensor* pivots,
               DenseTensor* infos) {
   // big tensor currently not supported
-  PADDLE_ENFORCE_GE(x.dims().size(), 2);
+  PADDLE_ENFORCE_GE(
+      x.dims().size(),
+      2,
+      ::common::errors::PreconditionNotMet(
+          "Invalid input x dimensionality: %d (expected ≥2)", x.dims().size()));
   int64_t largest_matrix = (1LL << 31) - 1;
   int64_t last = x.dims()[x.dims().size() - 1],
           second_last = x.dims()[x.dims().size() - 2];
