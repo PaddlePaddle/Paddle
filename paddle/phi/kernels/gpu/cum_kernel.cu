@@ -56,24 +56,6 @@ __global__ void MatrixRowReverse(const T* matrix_data,
   }
 }
 
-template <typename T, typename Op>
-struct BlockPrefixCallbackOp {
-  // Running prefix
-  T running_total_;
-  Op op_;
-
-  __device__ BlockPrefixCallbackOp(T running_total, Op op)
-      : running_total_(running_total), op_(op) {}
-
-  // Callback operator to be entered by the first warp of threads in the block.
-  // tid 0 is responsible for returning a value for seeding the block-wide scan.
-  __device__ T operator()(T block_aggregate) {
-    T old_prefix = running_total_;
-    running_total_ = op_(old_prefix, block_aggregate);
-    return old_prefix;
-  }
-};
-
 // No bank-conflict transpose
 template <typename T, int TILE_DIM, int BLOCK_ROWS>
 __global__ void MatrixTranspose(T* odata,
@@ -146,6 +128,25 @@ struct Identity<T, ComplexSum> {
   static constexpr T value = {0, 0};
 };
 
+template <typename T, typename Op>
+struct BlockPrefixCallbackOp {
+  // Running prefix
+  T running_total_;
+  Op op_;
+
+  __device__ BlockPrefixCallbackOp(T running_total, Op op)
+      : running_total_(running_total), op_(op) {}
+
+  // Callback operator to be entered by the first warp of threads in the block.
+  // tid 0 is responsible for returning a value for seeding the block-wide scan.
+  __device__ T operator()(T block_aggregate) {
+    T old_prefix = running_total_;
+    running_total_ = op_(old_prefix, block_aggregate);
+    return old_prefix;
+  }
+};
+
+// TODO(cangtianhuang): accelerate kernel by using chunk and d_agg
 template <typename T, int BLOCK_THREADS, int ITEMS_PER_THREAD, typename Op>
 __global__ void BlockScanKernel(T* d_out,
                                 const T* d_in,
@@ -153,6 +154,7 @@ __global__ void BlockScanKernel(T* d_out,
                                 int64_t scan_size,
                                 bool exclusive,
                                 Op op) {
+  // float still results in precision loss, so promote to double here
   using MT = std::conditional_t<
       std::is_same_v<typename phi::dtype::MPTypeTrait<T>::Type, float>,
       double,
@@ -251,7 +253,6 @@ void ScanKernel(const Context& dev_ctx,
   for (size_t i = 0; i <= axis; i++) {
     height *= out_dims[i];
   }
-
   for (size_t i = axis + 1; i < out_dims.size(); i++) {
     width *= out_dims[i];
   }
