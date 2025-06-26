@@ -542,6 +542,8 @@ void BindPlace(pybind11::module &m) {  // NOLINT
   m.def("get_xpu_device_count", platform::GetXPUDeviceCount);
   m.def("set_xpu_debug_level",
         [](int level) { platform::set_xpu_debug_level(level); });
+  m.def("set_xpu_ncluster_num",
+        [](int level) { platform::set_xpu_ncluster_num(level); });
   m.def("get_xpu_device_version",
         [](int device_id) { return platform::get_xpu_version(device_id); });
 #ifdef PADDLE_WITH_XPU_KP

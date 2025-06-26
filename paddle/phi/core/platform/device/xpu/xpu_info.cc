@@ -102,6 +102,9 @@ void set_xpu_debug_level(int level) {
   phi::backends::xpu::set_xpu_debug_level(level);
 }
 
+void set_xpu_ncluster_num(int num) {
+  phi::backends::xpu::set_xpu_ncluster_num(level);
+}
 /**************************** XPU Allocator **************************/
 size_t XPUMinChunkSize() { return 1 << 6; }
 

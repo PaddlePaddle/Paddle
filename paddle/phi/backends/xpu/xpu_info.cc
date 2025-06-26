@@ -296,6 +296,13 @@ void set_xpu_debug_level(int level) {
   PADDLE_ENFORCE_XPU_SUCCESS(xpu_ctx->x_context()->set_debug_level(level));
 }
 
+void set_xpu_ncluster_num(int num) {
+  auto* dev_ctx =
+      paddle::experimental::GetDeviceContextByBackend(phi::Backend::XPU);
+  auto* xpu_ctx = static_cast<const phi::XPUContext*>(dev_ctx);
+  PADDLE_ENFORCE_XPU_SUCCESS(xpu_ctx->x_context()->set_ncluster(num));
+}
+
 int get_xpu_max_ptr_size(int dev_id) {
   auto xpu_version = get_xpu_version(dev_id);
   int max_ptr_size = 0;

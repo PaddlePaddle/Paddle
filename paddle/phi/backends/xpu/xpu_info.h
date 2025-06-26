@@ -112,6 +112,7 @@ class XPUDeviceGuard {
 enum XPUVersion { XPU1, XPU2, XPU3 };
 XPUVersion get_xpu_version(int dev_id);
 void set_xpu_debug_level(int level);
+void set_xpu_ncluster_num(int num);
 
 int get_xpu_max_ptr_size(int dev_id);
 int GetXPUDeviceUtilizationRate(int dev_id);

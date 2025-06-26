@@ -75,6 +75,7 @@ using XPUDeviceGuard = phi::backends::xpu::XPUDeviceGuard;
 phi::backends::xpu::XPUVersion get_xpu_version(int dev_id);
 
 void set_xpu_debug_level(int level);
+void set_xpu_ncluster_num(int num);
 
 //! Get the minimum chunk size for XPU allocator.
 size_t XPUMinChunkSize();
