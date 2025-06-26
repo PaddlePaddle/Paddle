@@ -153,7 +153,7 @@ class TestUnfoldOp(OpTest):
         paddle.nn.functional.unfold(x, 3, 1, 1, (1, 1))
         out1 = paddle.nn.functional.unfold(x, 3, (1, 1), (1, 1), (1, 1))
         out2 = paddle.nn.functional.unfold(x, (3, 3), (1, 1), (1, 1), (1, 1))
-        self.assertTrue(np.allclose(out1.numpy(), out2.numpy()))
+        np.testing.assert_allclose(out1.numpy(), out2.numpy())
         paddle.enable_static()
 
 

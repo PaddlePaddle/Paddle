@@ -40,9 +40,9 @@ using DDim = phi::DDim;
 inline void GetMidDims(const DDim &x_dims,
                        const DDim &y_dims,
                        const int axis,
-                       int64_t *pre,
-                       int64_t *n,
-                       int64_t *post,
+                       size_t *pre,
+                       size_t *n,
+                       size_t *post,
                        int *is_run_common_broadcast) {
   *pre = 1;
   *n = 1;

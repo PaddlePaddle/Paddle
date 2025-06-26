@@ -259,7 +259,8 @@ static void FusedElemwiseAndActBroadcast1CUDA(gpuStream_t stream,
                                               int64_t w,
                                               T *out,
                                               T *intermediate_out) {
-  int64_t block_size = std::min(ELEMWISE_MAX_BLOCK_DIM, w);
+  int64_t block_size =
+      std::min(static_cast<int64_t>(ELEMWISE_MAX_BLOCK_DIM), w);
   int64_t gird_size = h;
   FusedElemwiseAndActBroadcast1CUDAKernel<T,
                                           CompoundFunctor,
@@ -335,7 +336,8 @@ static void FusedElemwiseAndActBroadcast2CUDA(gpuStream_t stream,
                                               CompoundFunctor compound_functor,
                                               T *out,
                                               T *intermediate_out) {
-  int64_t block_size = std::min(ELEMWISE_MAX_BLOCK_DIM, pre * post);
+  int64_t block_size =
+      std::min(static_cast<int64_t>(ELEMWISE_MAX_BLOCK_DIM), pre * post);
   int64_t gird_size = n;
 
   FusedElemwiseAndActBroadcast2CUDAKernel<T,
@@ -395,7 +397,7 @@ void FusedElemwiseAndActComputeWithBroadcast(
   auto y_dim = phi::funcs::TrimTrailingSingularDims(y_dim_untrimed);
   axis = (y_dim.size() == 0) ? x_dim.size() : axis;
 
-  int64_t pre, n, post;
+  size_t pre, n, post;
   int is_run_common_broadcast;
   phi::funcs::GetMidDims(
       x_dim, y_dim, axis, &pre, &n, &post, &is_run_common_broadcast);
@@ -1092,7 +1094,8 @@ static void FusedElemwiseAndActGradBroadcast2CUDA(
     T *dx,
     T *dy,
     T *dintermediate) {
-  int64_t block_size = std::min(ELEMWISE_MAX_BLOCK_DIM, pre * post);
+  int64_t block_size =
+      std::min(static_cast<int64_t>(ELEMWISE_MAX_BLOCK_DIM), pre * post);
   int64_t gird_size = n;
   FusedElemwiseAndActGradBroadcast2CUDAKernel<T,
                                               DX_OP,
@@ -1146,7 +1149,7 @@ void FusedElemwiseAndActGradComputeWithBroadcast(
   auto y_dim = phi::funcs::TrimTrailingSingularDims(y_dim_untrimed);
   axis = (y_dim.size() == 0) ? x_dim.size() : axis;
 
-  int64_t pre, n, post;
+  size_t pre, n, post;
   int is_run_common_broadcast;
   phi::funcs::GetMidDims(
       x_dim, y_dim, axis, &pre, &n, &post, &is_run_common_broadcast);

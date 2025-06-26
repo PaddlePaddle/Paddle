@@ -585,21 +585,23 @@ class TestSoftmaxAPI(unittest.TestCase):
         paddle.enable_static()
 
     def test_error(self):
-        with static_guard():
-            with paddle.static.program_guard(paddle.static.Program()):
-                # The input type must be Variable.
-                self.assertRaises(TypeError, self.softmax, 1)
-                # The input dtype must be float16, float32, float64.
-                x_int32 = paddle.static.data(
-                    name='x_int32', shape=[2, 3], dtype='int32'
-                )
-                self.assertRaises(TypeError, self.softmax, x_int32)
+        with (
+            static_guard(),
+            paddle.static.program_guard(paddle.static.Program()),
+        ):
+            # The input type must be Variable.
+            self.assertRaises(TypeError, self.softmax, 1)
+            # The input dtype must be float16, float32, float64.
+            x_int32 = paddle.static.data(
+                name='x_int32', shape=[2, 3], dtype='int32'
+            )
+            self.assertRaises(TypeError, self.softmax, x_int32)
 
-                if core.is_compiled_with_cuda():
-                    x_fp16 = paddle.static.data(
-                        name='x_fp16', shape=[2, 3], dtype='float16'
-                    )
-                    self.softmax(x_fp16)
+            if core.is_compiled_with_cuda():
+                x_fp16 = paddle.static.data(
+                    name='x_fp16', shape=[2, 3], dtype='float16'
+                )
+                self.softmax(x_fp16)
 
 
 class TestSoftmaxAPI_ZeroDim(unittest.TestCase):

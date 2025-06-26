@@ -90,6 +90,10 @@ template <typename T, typename Context>
 void SvdvalsKernel(const Context& dev_ctx,
                    const DenseTensor& X,
                    DenseTensor* S) {
+  if (S && S->numel() == 0) {
+    dev_ctx.template Alloc<phi::dtype::Real<T>>(S);
+    return;
+  }
   auto x_dims = X.dims();
   int rows = static_cast<int>(x_dims[x_dims.size() - 2]);
   int cols = static_cast<int>(x_dims[x_dims.size() - 1]);

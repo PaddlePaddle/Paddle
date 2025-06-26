@@ -75,7 +75,7 @@ jobs:
           container_name=${TASK}-${core_index}-$(date +%Y%m%d-%H%M%S)
           echo "container_name=${container_name}" >> ${{ github.env }}
           docker_image=${{ inputs.docker_build_image }}
-          docker run -d -t --gpus all --name ${container_name} --privileged --shm-size=128g \
+          docker run -d -t --gpus all --name ${container_name} --shm-size=128g \
             -v "/home/data/cfs:/home/data/cfs" \
             -v "/home/data/cfs/.cache:/root/.cache" \
             -v "/home/data/cfs/.ccache:/root/.ccache" \
@@ -153,7 +153,7 @@ jobs:
       - name: Terminate and delete the container
         if: always()
         run: |
-          sudo rm -rf * .[^.]*
+          docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'
           docker rm -f ${{ env.container_name }}
 
   test:
@@ -172,7 +172,7 @@ jobs:
           container_name=${TASK}-${core_index}-$(date +%Y%m%d-%H%M%S)
           echo "container_name=${container_name}" >> ${{ github.env }}
           docker_image=${{ inputs.docker_build_image }}
-          docker run -d -t --gpus all --name ${container_name} --privileged --shm-size=128g \
+          docker run -d -t --gpus all --name ${container_name} --shm-size=128g \
             -v "/home/data/cfs:/home/data/cfs" \
             -v "/home/data/cfs/.cache:/root/.cache" \
             -v "/home/data/cfs/.ccache:/root/.ccache" \
@@ -250,5 +250,5 @@ jobs:
       - name: Terminate and delete the container
         if: always()
         run: |
-          sudo rm -rf * .[^.]*
+          docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'
           docker rm -f ${{ env.container_name }}

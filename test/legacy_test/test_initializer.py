@@ -1671,6 +1671,68 @@ class TestMSRAInitializerDygraph(unittest.TestCase):
         paddle.enable_static()
 
 
+class TestMSRAInitializerFanoutDygraph(unittest.TestCase):
+    def test_msra_fanout_initializer(self, dtype="float32"):
+        """
+        In dygraph mode, we can use initializer directly to initialize a tensor.
+        """
+        paddle.disable_static()
+
+        tensor = paddle.zeros([16, 1024])
+        tensor.stop_gradient = False
+
+        msra_ = paddle.nn.initializer.KaimingNormal(mode='fan_out')
+        msra_(tensor)
+
+        hist, _ = output_hist(tensor.numpy())
+
+        hist2, _ = output_hist(
+            np.random.normal(0, np.sqrt(2.0 / (1024)), [16, 1024])
+        )
+
+        np.testing.assert_allclose(hist, hist2, rtol=0, atol=0.01)
+        paddle.enable_static()
+
+    def test_msra_invalid_fanout_initializer(self, dtype="float32"):
+        """
+        In dygraph mode, we can use initializer directly to initialize a tensor.
+        """
+        paddle.disable_static()
+
+        tensor = paddle.zeros([16, 1024])
+        tensor.stop_gradient = False
+
+        with self.assertRaises(ValueError):
+            msra_ = paddle.nn.initializer.KaimingNormal(mode='fan')
+            msra_(tensor)
+
+        with self.assertRaises(ValueError):
+            msra_ = paddle.nn.initializer.KaimingNormal(
+                fan_in=1, mode='fan_out'
+            )
+            msra_(tensor)
+
+    def test_msra_uniform_fanout_initializer(self, dtype="float32"):
+        paddle.disable_static()
+
+        tensor = paddle.zeros([16, 1024])
+        tensor.stop_gradient = False
+
+        msra_ = paddle.nn.initializer.KaimingUniform(mode='fan_out')
+        msra_(tensor)
+
+        hist, _ = output_hist(tensor.numpy())
+
+        fan_out = tensor.shape[1]
+        limit = np.sqrt(6.0 / fan_out)
+        theory_data = np.random.uniform(-limit, limit, [16, 1024])
+
+        hist2, _ = output_hist(theory_data)
+
+        np.testing.assert_allclose(hist, hist2, rtol=0, atol=0.01)
+        paddle.enable_static()
+
+
 class TestConsistencyOfDynamicAndStaticGraph(unittest.TestCase):
     def test_order(self):
         paddle.set_device('cpu')

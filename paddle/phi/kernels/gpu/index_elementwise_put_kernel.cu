@@ -31,6 +31,7 @@ void GPUIndexElementwisePutKernel(const phi::GPUContext& dev_ctx,
                                   const std::vector<int64_t>& input_strides,
                                   const std::vector<int64_t>& index_dims,
                                   const std::vector<int64_t>& index_strides,
+                                  const int64_t slice_offset,
                                   DenseTensor* output) {
   int64_t numel = 0;
 
@@ -82,7 +83,7 @@ void GPUIndexElementwisePutKernel(const phi::GPUContext& dev_ctx,
   funcs::index_elementwise_kernel<nt, vt>
       <<<grid, block, 0, stream>>>(N, [=] __device__(int idx) {
         const auto offsets = offset_calc.get(idx);
-        char* const out_data = out_ptr + offsets[0];
+        char* const out_data = out_ptr + offsets[0] + slice_offset;
         const char* const in_data = in_ptr + offsets[1];
 
         int64_t offset = 0;
@@ -90,8 +91,6 @@ void GPUIndexElementwisePutKernel(const phi::GPUContext& dev_ctx,
         for (int i = 0; i < num_indices; i++) {
           int64_t index =
               *reinterpret_cast<int64_t*>(index_ptrs[i] + offsets[2]);
-          PADDLE_ENFORCE(-sizes[i] <= index && index < sizes[i],
-                         "index out of bounds");
           if (index < 0) {
             index += sizes[i];
           }
@@ -111,42 +110,29 @@ void IndexElementwisePutKernel(const Context& dev_ctx,
                                const std::vector<int64_t>& input_strides,
                                const std::vector<int64_t>& index_dims,
                                const std::vector<int64_t>& index_strides,
+                               const int64_t slice_offset,
                                DenseTensor* out) {
   const auto& index_type = index[0]->dtype();
-  PADDLE_ENFORCE_EQ(
-      index_type == phi::DataType::INT32 || index_type == phi::DataType::INT64,
-      true,
-      common::errors::InvalidArgument(
-          "Index holds the wrong type, it holds [%s], but "
-          "desires to be [%s] or [%s].",
-          index_type,
-          phi::DataType::INT32,
-          phi::DataType::INT64));
+  PADDLE_ENFORCE_EQ(index_type == phi::DataType::INT64,
+                    true,
+                    common::errors::InvalidArgument(
+                        "Index holds the wrong type, it holds [%s], but "
+                        "desires to be [%s].",
+                        index_type,
+                        phi::DataType::INT64));
 
-  if (out->numel() == 0) return;
   dev_ctx.template Alloc<T>(out);
-
-  if (index_type == phi::DataType::INT32) {
-    GPUIndexElementwisePutKernel<T, int>(dev_ctx,
-                                         x,
-                                         value,
-                                         index,
-                                         input_dims,
-                                         input_strides,
-                                         index_dims,
-                                         index_strides,
-                                         out);
-  } else if (index_type == phi::DataType::INT64) {
-    GPUIndexElementwisePutKernel<T, int64_t>(dev_ctx,
-                                             x,
-                                             value,
-                                             index,
-                                             input_dims,
-                                             input_strides,
-                                             index_dims,
-                                             index_strides,
-                                             out);
-  }
+  if (out->numel() == 0) return;
+  GPUIndexElementwisePutKernel<T, int64_t>(dev_ctx,
+                                           x,
+                                           value,
+                                           index,
+                                           input_dims,
+                                           input_strides,
+                                           index_dims,
+                                           index_strides,
+                                           slice_offset,
+                                           out);
 }
 
 }  // namespace phi

@@ -15,7 +15,7 @@
 
 #include <iostream>
 
-#include "paddle/fluid/eager/to_static/run_program_op_func.h"
+#include "paddle/fluid/eager/to_static/run_program_func.h"
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/phi/core/enforce.h"
 
@@ -101,7 +101,7 @@ static PyObject *eager_api_run_program(PyObject *self,
 
     VLOG(6) << "Finish Pir ConstructAttrMapFromPyArgs";
     tstate = PyEval_SaveThread();
-    pir_run_program_ad_func(X, Params, Out, OutScope, attrs);
+    egr::to_static::run_program_ad_func(X, Params, Out, OutScope, attrs);
     PyEval_RestoreThread(tstate);
     tstate = nullptr;
     Py_RETURN_NONE;
