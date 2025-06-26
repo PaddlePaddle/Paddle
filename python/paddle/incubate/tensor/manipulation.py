@@ -122,6 +122,19 @@ def create_xpu_async_load():
     return core.XpuAsyncLoad()
 
 
+class _NoopAsyncTask:
+    """A dummy Task for sync‐fallback on XPU."""
+
+    def is_completed(self):
+        return True
+
+    def cpu_wait(self):
+        pass
+
+    def xpu_wait(self):
+        pass
+
+
 def async_offload(src_tensor, async_load):
     """
     Loads the source tensor into the destination tensor asynchronously.
@@ -135,6 +148,18 @@ def async_offload(src_tensor, async_load):
          - dest_tensor (EagerParamBase|paddle.Tensor): The destination tensor.
          - task (Task): The task that loads the source tensor into the destination tensor.
     """
+    is_xpu_tensor = (
+        paddle.is_compiled_with_xpu()
+        and hasattr(src_tensor, "place")
+        and src_tensor.place.is_xpu_place()
+    )
+
+    if is_xpu_tensor:
+        # sync fallback
+        host_tensor = src_tensor.cpu()
+        out = paddle.to_tensor(host_tensor.numpy(), place=paddle.CPUPlace())
+        return out, _NoopAsyncTask()
+
     return _load_reload_impl(src_tensor, async_load.offload)
 
 
@@ -151,6 +176,16 @@ def async_reload(src_tensor, async_load):
          - dest_tensor (EagerParamBase|paddle.Tensor): The destination tensor.
          - task (Task): The task that reloads the source tensor into the destination tensor.
     """
+
+    if (
+        paddle.is_compiled_with_xpu()
+        and hasattr(src_tensor, "place")
+        and src_tensor.place.is_cpu_place()
+    ):
+        arr = src_tensor.numpy()
+        xpu = paddle.to_tensor(arr, place=paddle.XPUPlace(0))
+        return xpu, _NoopAsyncTask()
+
     return _load_reload_impl(src_tensor, async_load.reload)
 
 
