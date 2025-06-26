@@ -31,7 +31,7 @@ __global__ void ShardIndexInner(const T* in_data,
                                 const int shard_id,
                                 const int ignore_value) {
   int shard_size = (index_num + nshards - 1) / nshards;
-  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t idx = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
   if (idx < numel) {
     PADDLE_ENFORCE(in_data[idx] >= 0,
                    "The input_index for Op(shard_index) must be "
