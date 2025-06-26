@@ -145,7 +145,12 @@ CUBLAS_BLAS_ROUTINE_EACH_R4(DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP)
 #define CUBLAS_BLAS_ROUTINE_EACH_R5(__macro) \
   __macro(cublasGemmStridedBatchedEx_64);    \
   __macro(cublasGemmEx_64);                  \
-  __macro(cublasSgemmEx_64);
+  __macro(cublasSgemmEx_64);                 \
+  __macro(cublasSgemm_v2_64);                \
+  __macro(cublasDgemm_v2_64);                \
+  __macro(cublasCgemm_v2_64);                \
+  __macro(cublasZgemm_v2_64);                \
+  __macro(cublasHgemm_64);
 
 CUBLAS_BLAS_ROUTINE_EACH_R5(DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP)
 #endif

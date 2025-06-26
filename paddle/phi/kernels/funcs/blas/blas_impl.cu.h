@@ -43,6 +43,16 @@ struct CUBlas<float> {
   }
 
   template <typename... ARGS>
+  static void GEMM_64(ARGS... args) {
+#if CUDA_VERSION >= 12030
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasSgemm_64(args...));
+#else
+    PADDLE_THROW(common::errors::Unimplemented(
+        "cublasSgemm_64 is not supported on cuda < 12.3"));
+#endif
+  }
+
+  template <typename... ARGS>
   static void AXPY(ARGS... args) {
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasSaxpy(args...));
   }
@@ -221,6 +231,16 @@ struct CUBlas<double> {
   }
 
   template <typename... ARGS>
+  static void GEMM_64(ARGS... args) {
+#if CUDA_VERSION >= 12030
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasDgemm_64(args...));
+#else
+    PADDLE_THROW(common::errors::Unimplemented(
+        "cublasDgemm_64 is not supported on cuda < 12.3"));
+#endif
+  }
+
+  template <typename... ARGS>
   static void AXPY(ARGS... args) {
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasDaxpy(args...));
   }
@@ -337,6 +357,42 @@ struct CUBlas<phi::dtype::float16> {
                                   reinterpret_cast<const __half *>(beta),
                                   reinterpret_cast<__half *>(C),
                                   ldc));
+  }
+
+  static void GEMM_64(cublasHandle_t handle,
+                      cublasOperation_t transa,
+                      cublasOperation_t transb,
+                      int64_t m,
+                      int64_t n,
+                      int64_t k,
+                      const float16 *alpha,
+                      const float16 *A,
+                      int64_t lda,
+                      const float16 *B,
+                      int64_t ldb,
+                      const float16 *beta,
+                      float16 *C,
+                      int64_t ldc) {
+#if CUDA_VERSION >= 12030 && defined(__linux__)
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::cublasHgemm_64(handle,
+                                     transa,
+                                     transb,
+                                     m,
+                                     n,
+                                     k,
+                                     reinterpret_cast<const __half *>(alpha),
+                                     reinterpret_cast<const __half *>(A),
+                                     lda,
+                                     reinterpret_cast<const __half *>(B),
+                                     ldb,
+                                     reinterpret_cast<const __half *>(beta),
+                                     reinterpret_cast<__half *>(C),
+                                     ldc));
+#else
+    PADDLE_THROW(common::errors::Unimplemented(
+        "cublasHgemm_64 is not supported on cuda < 12.3"));
+#endif
   }
 
 #if defined(__NVCC__)
@@ -680,6 +736,42 @@ struct CUBlas<phi::dtype::complex<float>> {
         reinterpret_cast<const cuFloatComplex *>(beta),
         reinterpret_cast<cuFloatComplex *>(C),
         ldc));
+  }
+
+  static void GEMM_64(cublasHandle_t handle,
+                      cublasOperation_t transa,
+                      cublasOperation_t transb,
+                      int64_t m,
+                      int64_t n,
+                      int64_t k,
+                      const phi::dtype::complex<float> *alpha,
+                      const phi::dtype::complex<float> *A,
+                      int64_t lda,
+                      const phi::dtype::complex<float> *B,
+                      int64_t ldb,
+                      const phi::dtype::complex<float> *beta,
+                      phi::dtype::complex<float> *C,
+                      int64_t ldc) {
+#if CUDA_VERSION >= 12030 && defined(__linux__)
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasCgemm_64(
+        handle,
+        transa,
+        transb,
+        m,
+        n,
+        k,
+        reinterpret_cast<const cuFloatComplex *>(alpha),
+        reinterpret_cast<const cuFloatComplex *>(A),
+        lda,
+        reinterpret_cast<const cuFloatComplex *>(B),
+        ldb,
+        reinterpret_cast<const cuFloatComplex *>(beta),
+        reinterpret_cast<cuFloatComplex *>(C),
+        ldc));
+#else
+    PADDLE_THROW(common::errors::Unimplemented(
+        "cublasCgemm_64 is not supported on cuda < 12.3"));
+#endif
   }
 
   static void TRSM(cublasHandle_t handle,
@@ -1031,6 +1123,41 @@ struct CUBlas<phi::dtype::complex<double>> {
         reinterpret_cast<cuDoubleComplex *>(C),
         ldc));
   }
+  static void GEMM_64(cublasHandle_t handle,
+                      cublasOperation_t transa,
+                      cublasOperation_t transb,
+                      int64_t m,
+                      int64_t n,
+                      int64_t k,
+                      const phi::dtype::complex<double> *alpha,
+                      const phi::dtype::complex<double> *A,
+                      int64_t lda,
+                      const phi::dtype::complex<double> *B,
+                      int64_t ldb,
+                      const phi::dtype::complex<double> *beta,
+                      phi::dtype::complex<double> *C,
+                      int64_t ldc) {
+#if CUDA_VERSION >= 12030 && defined(__linux__)
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasZgemm_64(
+        handle,
+        transa,
+        transb,
+        m,
+        n,
+        k,
+        reinterpret_cast<const cuDoubleComplex *>(alpha),
+        reinterpret_cast<const cuDoubleComplex *>(A),
+        lda,
+        reinterpret_cast<const cuDoubleComplex *>(B),
+        ldb,
+        reinterpret_cast<const cuDoubleComplex *>(beta),
+        reinterpret_cast<cuDoubleComplex *>(C),
+        ldc));
+#else
+    PADDLE_THROW(common::errors::Unimplemented(
+        "cublasZgemm_64 is not supported on cuda < 12.3"));
+#endif
+  }
 
   static void TRSM(cublasHandle_t handle,
                    cublasSideMode_t side,
@@ -1328,8 +1455,27 @@ void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
   } else {
 #endif  // CUDA_VERSION >= 8000
     if (M > INT_MAX_VALUE || N > INT_MAX_VALUE || K > INT_MAX_VALUE) {
-      PADDLE_THROW(common::errors::Unimplemented(
-          "GEMM_EX_64 is not supported on cuda < 12.3"));
+#if CUDA_VERSION >= 12030 && defined(__linux__)
+      context_.CublasCall([&](cublasHandle_t handle) {
+        CUBlas<T>::GEMM_64(handle,
+                           cuTransB,
+                           cuTransA,
+                           N,
+                           M,
+                           K,
+                           &alpha,
+                           B,
+                           ldb,
+                           A,
+                           lda,
+                           &beta,
+                           C,
+                           N);
+      });
+#else
+    PADDLE_THROW(common::errors::Unimplemented(
+        "GEMM_64 is not supported on cuda < 12.3"));
+#endif
     } else {
       context_.CublasCall([&](cublasHandle_t handle) {
         CUBlas<T>::GEMM(handle,
