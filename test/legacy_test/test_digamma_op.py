@@ -152,10 +152,12 @@ class TestDigammaAPI(unittest.TestCase):
 
     def test_dtype_error(self):
         # in static graph mode
-        with self.assertRaises(TypeError):
-            with static.program_guard(static.Program()):
-                x = static.data(name="x", shape=self._shape, dtype="bool")
-                out = paddle.digamma(x, name="digamma_res")
+        with (
+            self.assertRaises(TypeError),
+            static.program_guard(static.Program()),
+        ):
+            x = static.data(name="x", shape=self._shape, dtype="bool")
+            out = paddle.digamma(x, name="digamma_res")
 
         # in dynamic mode
         with (
