@@ -31,7 +31,7 @@ SpmdInfo FusedDropoutAddSpmdBase(const DistMetaTensor& x,
 
   TensorDistAttr seed_offset_dist_attr({2});
   seed_offset_dist_attr.set_process_mesh(x.dist_attr().process_mesh());
-  seed_offset_dist_attr.set_dims_mapping({-1});
+  seed_offset_dist_attr.set_dims_mapping(std::vector<int64_t>{-1});
 
   VLOG(4) << "x dist_attr: [" << x.dist_attr().to_string() << "]";
   VLOG(4) << "y dist_attr: [" << y.dist_attr().to_string() << "]";

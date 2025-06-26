@@ -395,7 +395,8 @@ void FusedElemwiseAndActComputeWithBroadcast(
   auto y_dim = phi::funcs::TrimTrailingSingularDims(y_dim_untrimed);
   axis = (y_dim.size() == 0) ? x_dim.size() : axis;
 
-  int pre, n, post, is_run_common_broadcast;
+  size_t pre, n, post;
+  int is_run_common_broadcast;
   phi::funcs::GetMidDims(
       x_dim, y_dim, axis, &pre, &n, &post, &is_run_common_broadcast);
   if (post == 1) {
@@ -1145,7 +1146,8 @@ void FusedElemwiseAndActGradComputeWithBroadcast(
   auto y_dim = phi::funcs::TrimTrailingSingularDims(y_dim_untrimed);
   axis = (y_dim.size() == 0) ? x_dim.size() : axis;
 
-  int pre, n, post, is_run_common_broadcast;
+  size_t pre, n, post;
+  int is_run_common_broadcast;
   phi::funcs::GetMidDims(
       x_dim, y_dim, axis, &pre, &n, &post, &is_run_common_broadcast);
   const T *x_data = nullptr;

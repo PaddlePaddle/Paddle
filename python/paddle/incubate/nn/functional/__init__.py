@@ -26,10 +26,13 @@ from .build_src_rank_and_local_expert_id import (
 from .cal_aux_loss import cal_aux_loss
 from .expand_modality_expert_id import expand_modality_expert_id
 from .fp8 import (
+    fp8_gemm_blockwise,
+    fp8_quant_blockwise,
     fused_act_dequant,
     fused_stack_transpose_quant,
     fused_swiglu_weighted_bwd,
     fused_transpose_split_quant,
+    fused_transpose_wlch_split_quant,
     fused_weighted_swiglu_act_quant,
 )
 from .fused_bias_act import fused_bias_act
@@ -57,6 +60,7 @@ from .fused_transformer import (
 from .int_bincount import int_bincount
 from .masked_multihead_attention import masked_multihead_attention
 from .moe_combine import moe_combine
+from .moe_combine_no_weight import moe_combine_no_weight
 from .moe_gate_dispatch import moe_gate_dispatch
 from .moe_gate_dispatch_partial_nosoftmaxtopk import (
     moe_gate_dispatch_partial_nosoftmaxtopk,
@@ -68,6 +72,8 @@ from .variable_length_memory_efficient_attention import (
 )
 
 __all__ = [
+    'fp8_gemm_blockwise',
+    'fp8_quant_blockwise',
     'fused_act_dequant',
     'fused_multi_head_attention',
     'fused_feedforward',
@@ -80,6 +86,7 @@ __all__ = [
     'fused_rotary_position_embedding',
     'fused_stack_transpose_quant',
     'fused_transpose_split_quant',
+    'fused_transpose_wlch_split_quant',
     'variable_length_memory_efficient_attention',
     "fused_rms_norm",
     "fused_layer_norm",

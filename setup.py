@@ -1550,14 +1550,12 @@ def get_package_data_and_package_dir():
         if len(env_dict.get("NVSHMEM_BOOTSTRAP_UID_LIB", "")) > 1:
             package_data['paddle.libs'] += [
                 os.path.basename(env_dict.get("NVSHMEM_BOOTSTRAP_UID_LIB")),
-                os.path.basename(env_dict.get("NVSHMEM_BOOTSTRAP_MPI_LIB")),
                 os.path.basename(env_dict.get("NVSHMEM_BOOTSTRAP_PMI_LIB")),
                 os.path.basename(env_dict.get("NVSHMEM_BOOTSTRAP_PMI2_LIB")),
                 os.path.basename(env_dict.get("NVSHMEM_TRANSPORT_IBRC_LIB")),
                 os.path.basename(env_dict.get("NVSHMEM_TRANSPORT_IBGDA_LIB")),
             ]
             shutil.copy(env_dict.get("NVSHMEM_BOOTSTRAP_UID_LIB"), libs_path)
-            shutil.copy(env_dict.get("NVSHMEM_BOOTSTRAP_MPI_LIB"), libs_path)
             shutil.copy(env_dict.get("NVSHMEM_BOOTSTRAP_PMI_LIB"), libs_path)
             shutil.copy(env_dict.get("NVSHMEM_BOOTSTRAP_PMI2_LIB"), libs_path)
             shutil.copy(env_dict.get("NVSHMEM_TRANSPORT_IBRC_LIB"), libs_path)
@@ -2432,8 +2430,8 @@ def get_setup_parameters():
 
     if (
         env_dict.get("WITH_GPU") == 'ON'
-        and env_dict.get("CUDA_ARCH_BIN")
-        and env_dict.get("CUDA_ARCH_BIN").find("90") != -1
+        and env_dict.get("COMPILED_CUDA_ARCHS")
+        and env_dict.get("COMPILED_CUDA_ARCHS").find("90") != -1
     ):
         packages.extend(['paddle.distributed.communication.deep_ep'])
     if (
