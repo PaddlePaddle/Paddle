@@ -342,11 +342,13 @@ class OptimizationTuner:
 
         # Generate optimizer
         # FIXME should be remove from apply pass after pass support optimizers
-        with program_guard(dist_main_prog, dist_startup_prog):
-            with dist_main_prog.switch_name_generator_guard("opt_"):
-                optimizer_ops = dist_context.serial_optimizer.apply_gradients(
-                    dist_params_grads
-                )
+        with (
+            program_guard(dist_main_prog, dist_startup_prog),
+            dist_main_prog.switch_name_generator_guard("opt_"),
+        ):
+            optimizer_ops = dist_context.serial_optimizer.apply_gradients(
+                dist_params_grads
+            )
         completer.complete_update_annotation(dist_main_prog)
 
         resharder = Resharder(

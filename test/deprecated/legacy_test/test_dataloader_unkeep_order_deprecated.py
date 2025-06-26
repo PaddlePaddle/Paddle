@@ -114,75 +114,73 @@ class DataLoaderKeepOrderTestBase(unittest.TestCase):
         self.run_main_with_place(self.get_places())
 
     def run_main_with_place(self, places):
-        with base.scope_guard(base.Scope()):
-            with base.program_guard(base.Program(), base.Program()):
-                input_data, loss, loader = self.build_network(places)
-                fetch_list = [input_data]
+        with (
+            base.scope_guard(base.Scope()),
+            base.program_guard(base.Program(), base.Program()),
+        ):
+            input_data, loss, loader = self.build_network(places)
+            fetch_list = [input_data]
 
-                exe = base.Executor(places[0])
-                exe.run(base.default_startup_program())
+            exe = base.Executor(places[0])
+            exe.run(base.default_startup_program())
 
-                dev_cnt = len(places)
-                self.assertTrue(dev_cnt == 1)
+            dev_cnt = len(places)
+            self.assertTrue(dev_cnt == 1)
 
-                main_program = base.default_main_program()
+            main_program = base.default_main_program()
 
-                max_batch_num = min(
-                    self.break_num, int(self.batch_num / dev_cnt)
-                )
+            max_batch_num = min(self.break_num, int(self.batch_num / dev_cnt))
 
-                if loader.iterable:
+            if loader.iterable:
+                early_break = False
+                for epoch_id in range(self.epoch_num):
                     early_break = False
-                    for epoch_id in range(self.epoch_num):
-                        early_break = False
-                        self.clear_visited()
-                        batch_id = 0
-                        for data in loader():
+                    self.clear_visited()
+                    batch_id = 0
+                    for data in loader():
+                        if batch_id >= self.break_num:
+                            early_break = True
+                            break
+                        self.assertInputData(
+                            batch_id, data, dev_cnt, check_visited=False
+                        )
+                        (fetch_val,) = exe.run(
+                            program=main_program,
+                            feed=data,
+                            fetch_list=fetch_list,
+                        )
+                        self.assertInputData(batch_id, fetch_val, dev_cnt)
+                        batch_id += 1
+
+                    if dev_cnt == 1:
+                        self.assertEqual(batch_id, max_batch_num)
+                    else:
+                        self.assertLessEqual(batch_id, max_batch_num)
+
+                if early_break:
+                    loader._reset()
+            else:
+                for epoch_id in range(self.epoch_num):
+                    batch_id = 0
+                    self.clear_visited()
+                    loader.start()
+                    try:
+                        while True:
                             if batch_id >= self.break_num:
-                                early_break = True
+                                loader.reset()
                                 break
-                            self.assertInputData(
-                                batch_id, data, dev_cnt, check_visited=False
-                            )
                             (fetch_val,) = exe.run(
-                                program=main_program,
-                                feed=data,
-                                fetch_list=fetch_list,
+                                program=main_program, fetch_list=fetch_list
                             )
                             self.assertInputData(batch_id, fetch_val, dev_cnt)
                             batch_id += 1
+                    except base.core.EOFException:
+                        loader.reset()
 
-                        if dev_cnt == 1:
-                            self.assertEqual(batch_id, max_batch_num)
-                        else:
-                            self.assertLessEqual(batch_id, max_batch_num)
-
-                    if early_break:
-                        loader._reset()
-                else:
-                    for epoch_id in range(self.epoch_num):
-                        batch_id = 0
-                        self.clear_visited()
-                        loader.start()
-                        try:
-                            while True:
-                                if batch_id >= self.break_num:
-                                    loader.reset()
-                                    break
-                                (fetch_val,) = exe.run(
-                                    program=main_program, fetch_list=fetch_list
-                                )
-                                self.assertInputData(
-                                    batch_id, fetch_val, dev_cnt
-                                )
-                                batch_id += 1
-                        except base.core.EOFException:
-                            loader.reset()
-
-                        if dev_cnt == 1:
-                            self.assertEqual(batch_id, max_batch_num)
-                        else:
-                            self.assertLessEqual(batch_id, max_batch_num)
+                    if dev_cnt == 1:
+                        self.assertEqual(batch_id, max_batch_num)
+                    else:
+                        self.assertLessEqual(batch_id, max_batch_num)
 
 
 class IterableDataLoaderKeepOrderTest2(DataLoaderKeepOrderTestBase):

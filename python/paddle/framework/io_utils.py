@@ -171,11 +171,13 @@ def _load_program_scope(main=None, startup=None, scope=None):
     prog = main if main else paddle.base.Program()
     startup_prog = startup if startup else paddle.base.Program()
     scope = scope if scope else paddle.base.core.Scope()
-    with paddle.base.scope_guard(scope):
-        with paddle.base.program_guard(prog, startup_prog):
-            with paddle.base.unique_name.guard():
-                with paddle.base.framework._dygraph_guard(None):
-                    yield
+    with (
+        paddle.base.scope_guard(scope),
+        paddle.base.program_guard(prog, startup_prog),
+        paddle.base.unique_name.guard(),
+        paddle.base.framework._dygraph_guard(None),
+    ):
+        yield
 
 
 @static_only
