@@ -335,17 +335,10 @@ class Fleet:
                         self._user_defined_strategy.nccl_comm_num
                     )
 
-                from paddle.distributed.fleet.base.topology import (
-                    message2nccl_config,
-                )
-
                 paddle.distributed.init_parallel_env(
-                    message2nccl_config(
-                        self._user_defined_strategy.hybrid_configs[
-                            "default_comm_group_configs"
-                        ].nccl_config,
-                        "default",
-                    )
+                    self._user_defined_strategy.hybrid_configs[
+                        "default_comm_group_configs"
+                    ].nccl_config
                 )
 
             # hybrid parallel not support for npu/xpu

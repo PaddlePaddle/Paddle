@@ -1146,6 +1146,10 @@ def init_parallel_env(nccl_config=None) -> Group:
         if backend in ["nccl", 'xccl', 'bkcl', 'flagcx']:
             core.CommContextManager.set_device_id(parallel_env.device_id)
 
+        from paddle.distributed.fleet.base.topology import (
+            message2nccl_config,
+        )
+
         pg = _new_process_group_impl(
             backend,
             default_store,
@@ -1153,7 +1157,10 @@ def init_parallel_env(nccl_config=None) -> Group:
             world_size,
             _default_group_name,
             pg_options=None,
-            nccl_config=nccl_config,
+            nccl_config=message2nccl_config(
+                nccl_config,
+                "default",
+            ),
         )
         ranks = list(range(world_size))
         group = Group(rank, 0, ranks, pg=pg, name=_default_group_name)
