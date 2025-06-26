@@ -51,6 +51,7 @@ jobs:
           ROOT_DIR: /workspace
           bos_path: modelBK_CI
           CACHE_DIR: /root/.cache/model-benchmark
+          work_dir: /workspace/paddle
         run: |
           container_name=${TASK}-${core_index}-$(date +%Y%m%d-%H%M%S)
           echo "container_name=${container_name}" >> ${{ github.env }}
@@ -77,6 +78,8 @@ jobs:
             -e benchmark_ci_cache \
             -e bos_path \
             -e ROOT_DIR \
+            -e CACHE_DIR \
+            -e work_dir \
             -w /workspace --network host ${docker_image}
 
       - name: Prepare environment and download paddle
@@ -95,6 +98,8 @@ jobs:
           wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/build/73584/7134472eb3ff3cc5d4873f8607b5a24f5169229f/build.tar.gz --no-check-certificate
           echo "Extracting build.tar.gz"
           tar --use-compress-program="pzstd -1" -xpf build.tar.gz
+          git config --global --add safe.directory ${work_dir}
+          cd paddle && git submodule foreach "git config --global --add safe.directory \$toplevel/\$sm_path"
           source ${ci_scripts}/model-benchmark.sh
           check_paddle ${{ github.env }}
           '
