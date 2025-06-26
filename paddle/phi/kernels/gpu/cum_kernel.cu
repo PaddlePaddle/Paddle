@@ -216,12 +216,10 @@ void ScanKernel(const Context& dev_ctx,
                 bool reverse,
                 Op op,
                 DenseTensor* out) {
+  T* out_data = dev_ctx.template Alloc<T>(out);
   if (out && out->numel() == 0) {
-    dev_ctx.template Alloc<T>(out);
     return;
   }
-  T* out_data = dev_ctx.template Alloc<T>(out);
-
   // For 0D Tensor
   if (out->numel() == 1) {
     auto raw_dims = out->dims();
@@ -231,8 +229,6 @@ void ScanKernel(const Context& dev_ctx,
   }
 
   auto out_dims = out->dims();
-  auto size = x.numel();
-
   PADDLE_ENFORCE_EQ(
       axis < out_dims.size() && axis >= (0 - out_dims.size()),
       true,
