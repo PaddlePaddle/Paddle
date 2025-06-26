@@ -95,7 +95,7 @@ jobs:
           wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/build/73584/7134472eb3ff3cc5d4873f8607b5a24f5169229f/build.tar.gz --no-check-certificate
           echo "Extracting build.tar.gz"
           tar --use-compress-program="pzstd -1" -xpf build.tar.gz
-          source ${ci_scripts}/model_benchmark.sh
+          source ${ci_scripts}/model-benchmark.sh
           check_paddle ${{ github.env }}
           '
 
