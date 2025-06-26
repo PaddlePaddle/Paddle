@@ -23,19 +23,19 @@ namespace funcs {
  * All tensors are in NCHW or NHWC format.
  */
 template <typename T>
-__global__ void KernelMaxOut(const int nthreads,
+__global__ void KernelMaxOut(const int64_t nthreads,
                              const T* input_data,
-                             const int channels,
-                             const int input_height,
-                             const int input_width,
+                             const int64_t channels,
+                             const int64_t input_height,
+                             const int64_t input_width,
                              const int groups,
                              const int axis,
                              T* output_data) {
   const int64_t size =
       static_cast<int64_t>(input_height) * input_width * channels / groups;
   const int64_t feat_len = static_cast<int64_t>(input_height) * input_width;
-  int64_t index = blockIdx.x * blockDim.x + threadIdx.x;
-  int64_t offset = blockDim.x * gridDim.x;
+  int64_t index = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+  int64_t offset = static_cast<int64_t>(blockDim.x) * gridDim.x;
   for (int64_t i = index; i < nthreads; i += offset) {
     int64_t batch_idx = i / size;
     int64_t batch_offset = i % size;
@@ -65,21 +65,21 @@ __global__ void KernelMaxOut(const int nthreads,
  * All tensors are in NCHW or NHWC format.
  */
 template <typename T>
-__global__ void KernelMaxoutGrad(const int nthreads,
+__global__ void KernelMaxoutGrad(const int64_t nthreads,
                                  const T* input_data,
                                  const T* output_data,
                                  const T* output_grad,
                                  T* input_grad,
-                                 const int channels,
-                                 const int input_height,
-                                 const int input_width,
+                                 const int64_t channels,
+                                 const int64_t input_height,
+                                 const int64_t input_width,
                                  const int groups,
                                  const int axis) {
   const int64_t size =
       static_cast<int64_t>(input_height) * input_width * channels / groups;
   const int64_t feat_len = static_cast<int64_t>(input_height) * input_width;
-  int64_t index = blockIdx.x * blockDim.x + threadIdx.x;
-  int64_t offset = blockDim.x * gridDim.x;
+  int64_t index = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+  int64_t offset = static_cast<int64_t>(blockDim.x) * gridDim.x;
   for (int64_t i = index; i < nthreads; i += offset) {
     int64_t batch_idx = i / size;
     int64_t batch_offset = i % size;
@@ -116,15 +116,15 @@ void MaxOutFunctor<DeviceContext, T>::operator()(const DeviceContext& context,
                                                  phi::DenseTensor* output,
                                                  const int groups,
                                                  const int axis) {
-  const int batch_size = input.dims()[0];
-  const int input_channels = input.dims()[axis];
-  const int input_height = (axis == 1 ? input.dims()[2] : input.dims()[1]);
-  const int input_width = (axis == 1 ? input.dims()[3] : input.dims()[2]);
+  const int64_t batch_size = input.dims()[0];
+  const int64_t input_channels = input.dims()[axis];
+  const int64_t input_height = (axis == 1 ? input.dims()[2] : input.dims()[1]);
+  const int64_t input_width = (axis == 1 ? input.dims()[3] : input.dims()[2]);
 
   const T* input_data = input.data<T>();
   T* output_data = context.template Alloc<T>(output);
   int64_t nthreads = static_cast<int64_t>(output->numel());
-  int blocks = static_cast<int>((nthreads + 1024 - 1) / 1024);
+  int64_t blocks = static_cast<int64_t>((nthreads + 1024 - 1) / 1024);
   dim3 threads(1024, 1);
   dim3 grid(blocks, 1);
 
@@ -147,16 +147,16 @@ void MaxOutGradFunctor<DeviceContext, T>::operator()(
     const phi::DenseTensor& output_grad,
     const int groups,
     const int axis) {
-  const int input_channels = input.dims()[axis];
-  const int input_height = (axis == 1 ? input.dims()[2] : input.dims()[1]);
-  const int input_width = (axis == 1 ? input.dims()[3] : input.dims()[2]);
+  const int64_t input_channels = input.dims()[axis];
+  const int64_t input_height = (axis == 1 ? input.dims()[2] : input.dims()[1]);
+  const int64_t input_width = (axis == 1 ? input.dims()[3] : input.dims()[2]);
 
   const T* input_data = input.data<T>();
   const T* output_data = output.data<T>();
   const T* output_grad_data = output_grad.data<T>();
   T* input_grad_data = context.template Alloc<T>(input_grad);
   int64_t nthreads = static_cast<int64_t>(output.numel());
-  int blocks = static_cast<int>((nthreads + 1024 - 1) / 1024);
+  int64_t blocks = static_cast<int64_t>((nthreads + 1024 - 1) / 1024);
   dim3 threads(1024, 1);
   dim3 grid(blocks, 1);
 

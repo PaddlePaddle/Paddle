@@ -155,6 +155,9 @@ void FusedSoftmaxMaskFuseUpperTriangleKernel(const Context& dev_ctx,
 
   auto* x_data = x_ptr->data<T>();
   auto* y_data = dev_ctx.template Alloc<T>(out);
+  if (out && out->numel() == 0) {
+    return;
+  }
 
   auto x_dim = x_ptr->dims();
   auto batches = x_dim[0];
