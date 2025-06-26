@@ -153,18 +153,20 @@ __global__ void BlockScanKernel(T* d_out,
                                 int64_t scan_size,
                                 bool exclusive,
                                 Op op) {
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = std::conditional_t<
+      std::is_same_v<typename phi::dtype::MPTypeTrait<T>::Type, float>,
+      double,
+      typename phi::dtype::MPTypeTrait<T>::Type>;
 
   // Specialize BlockLoad, BlockStore, and BlockRadixSort collective types
-  typedef cub::
-      BlockLoad<MT, BLOCK_THREADS, ITEMS_PER_THREAD, cub::BLOCK_LOAD_TRANSPOSE>
-          BlockLoadT;
-  typedef cub::BlockStore<MT,
-                          BLOCK_THREADS,
-                          ITEMS_PER_THREAD,
-                          cub::BLOCK_STORE_TRANSPOSE>
-      BlockStoreT;
-  typedef cub::BlockScan<MT, BLOCK_THREADS> BlockScanT;
+  using BlockLoadT = cub::
+      BlockLoad<MT, BLOCK_THREADS, ITEMS_PER_THREAD, cub::BLOCK_LOAD_TRANSPOSE>;
+  using BlockStoreT = cub::BlockStore<MT,
+                                      BLOCK_THREADS,
+                                      ITEMS_PER_THREAD,
+                                      cub::BLOCK_STORE_TRANSPOSE>;
+  using BlockScanT = cub::BlockScan<MT, BLOCK_THREADS>;
+
   // Allocate type-safe, repurposable shared memory for collectives
   __shared__ union {
     typename BlockLoadT::TempStorage load;
@@ -174,26 +176,20 @@ __global__ void BlockScanKernel(T* d_out,
 
   // Obtain this block's segment of consecutive keys (blocked across threads)
   int64_t item_per_block = BLOCK_THREADS * ITEMS_PER_THREAD;
-
   for (int64_t bx = blockIdx.x; bx < grid_size; bx += gridDim.x) {
     BlockPrefixCallbackOp<MT, Op> prefix_op(Identity<MT, Op>::value, op);
 
     for (int64_t block_offset = 0; block_offset < scan_size;
          block_offset += item_per_block) {
-      int64_t valid_item = (scan_size - block_offset > item_per_block)
-                               ? item_per_block
-                               : (scan_size - block_offset);
-      if (scan_size < item_per_block) {
-        valid_item = scan_size;
-      }
-
+      int64_t valid_item = std::min(item_per_block, scan_size - block_offset);
       int64_t offset = bx * scan_size + block_offset;
 
       MT thread_keys[ITEMS_PER_THREAD];
       BlockLoadT(temp_storage.load)
-          .Load(d_in + offset, thread_keys, valid_item, 0);
-
+          .Load(
+              d_in + offset, thread_keys, valid_item, Identity<MT, Op>::value);
       __syncthreads();
+
       if (exclusive) {
         BlockScanT(temp_storage.scan)
             .ExclusiveScan(thread_keys, thread_keys, op, prefix_op);
@@ -208,63 +204,6 @@ __global__ void BlockScanKernel(T* d_out,
     }
   }
 }
-
-template <typename Context, typename T>
-typename std::enable_if<!std::is_same<T, phi::dtype::float16>::value &&
-                        !std::is_same<T, phi::dtype::bfloat16>::value>::type
-ThrustCumsumKernel(const Context& dev_ctx,
-                   const T* in_data,
-                   T* out_data,
-                   int64_t size,
-                   bool reverse,
-                   bool exclusive) {
-#ifdef __HIPCC__
-  const auto& policy = thrust::hip::par.on(dev_ctx.stream());
-#else
-  phi::memory_utils::ThrustAllocator<cudaStream_t> allocator(dev_ctx.GetPlace(),
-                                                             dev_ctx.stream());
-  const auto& policy = thrust::cuda::par(allocator).on(dev_ctx.stream());
-#endif
-  if (reverse) {
-    thrust::reverse_iterator<thrust::device_ptr<const T>> reversed_in(
-        thrust::device_pointer_cast(in_data) + size);
-    thrust::reverse_iterator<thrust::device_ptr<T>> reversed_out(
-        thrust::device_pointer_cast(out_data) + size);
-    if (exclusive) {
-      thrust::exclusive_scan(
-          policy, reversed_in, reversed_in + size, reversed_out);
-    } else {
-      thrust::inclusive_scan(
-          policy, reversed_in, reversed_in + size, reversed_out);
-    }
-  } else {
-    if (exclusive) {
-      thrust::exclusive_scan(policy, in_data, in_data + size, out_data);
-    } else {
-      thrust::inclusive_scan(policy, in_data, in_data + size, out_data);
-    }
-  }
-
-  return;
-}
-
-template <typename Context, typename T>
-typename std::enable_if<std::is_same<T, phi::dtype::float16>::value>::type
-ThrustCumsumKernel(const Context& dev_ctx,
-                   const phi::dtype::float16* in_data,
-                   phi::dtype::float16* out_data,
-                   int64_t size,
-                   bool reverse,
-                   bool exclusive) {}
-
-template <typename Context, typename T>
-typename std::enable_if<std::is_same<T, phi::dtype::bfloat16>::value>::type
-ThrustCumsumKernel(const Context& dev_ctx,
-                   const phi::dtype::bfloat16* in_data,
-                   phi::dtype::bfloat16* out_data,
-                   int64_t size,
-                   bool reverse,
-                   bool exclusive) {}
 
 template <typename T, typename Context, typename Op>
 void ScanKernel(const Context& dev_ctx,
@@ -306,16 +245,6 @@ void ScanKernel(const Context& dev_ctx,
   }
 
   const T* in_data = x.data<T>();
-
-  // Use thrust for parallel acceleration when the input size is equal to the
-  // length of the 'axis' dimension.
-  if (!std::is_same<T, phi::dtype::float16>::value &&
-      !std::is_same<T, phi::dtype::bfloat16>::value &&
-      std::is_same<Op, cub::Sum>::value && size == out_dims[axis]) {
-    ThrustCumsumKernel<Context, T>(
-        dev_ctx, in_data, out_data, size, reverse, exclusive);
-    return;
-  }
 
   size_t height = 1;
   size_t width = 1;
