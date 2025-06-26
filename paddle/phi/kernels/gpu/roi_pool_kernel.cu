@@ -203,19 +203,36 @@ void RoiPoolKernel(const Context& dev_ctx,
 
   T* output_data = dev_ctx.template Alloc<T>(out);
   int64_t* arg_max_data = dev_ctx.template Alloc<int64_t>(arg_max);
-  GPURoiPoolForward<T>
-      <<<blocks, threads, 0, dev_ctx.stream()>>>(output_size,
-                                                 x.data<T>(),
-                                                 boxes.data<T>(),
-                                                 spatial_scale,
-                                                 channels,
-                                                 height,
-                                                 width,
-                                                 pooled_height,
-                                                 pooled_width,
-                                                 box_id_data,
-                                                 output_data,
-                                                 arg_max_data);
+  if (output_size > std::numeric_limits<int32_t>::max() ||
+      x.numel() > std::numeric_limits<int32_t>::max()) {
+    GPURoiPoolForward<T, int64_t>
+        <<<blocks, threads, 0, dev_ctx.stream()>>>(output_size,
+                                                   x.data<T>(),
+                                                   boxes.data<T>(),
+                                                   spatial_scale,
+                                                   channels,
+                                                   height,
+                                                   width,
+                                                   pooled_height,
+                                                   pooled_width,
+                                                   box_id_data,
+                                                   output_data,
+                                                   arg_max_data);
+  } else {
+    GPURoiPoolForward<T, int32_t>
+        <<<blocks, threads, 0, dev_ctx.stream()>>>(output_size,
+                                                   x.data<T>(),
+                                                   boxes.data<T>(),
+                                                   spatial_scale,
+                                                   channels,
+                                                   height,
+                                                   width,
+                                                   pooled_height,
+                                                   pooled_width,
+                                                   box_id_data,
+                                                   output_data,
+                                                   arg_max_data);
+  }
 }
 
 }  // namespace phi

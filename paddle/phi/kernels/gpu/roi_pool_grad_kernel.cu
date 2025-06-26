@@ -143,20 +143,38 @@ void RoiPoolGradKernel(const Context& dev_ctx,
     uint32_t threads = kNumCUDAThreads;
 
     if (output_grad_size > 0) {
-      GPURoiPoolBackward<T>
-          <<<blocks, threads, 0, dev_ctx.stream()>>>(output_grad_size,
-                                                     boxes.data<T>(),
-                                                     out_grad.data<T>(),
-                                                     arg_max.data<int64_t>(),
-                                                     rois_num,
-                                                     spatial_scale,
-                                                     channels,
-                                                     height,
-                                                     width,
-                                                     pooled_height,
-                                                     pooled_width,
-                                                     roi_id_data,
-                                                     dx->data<T>());
+      if (output_grad_size > std::numeric_limits<int32_t>::max() ||
+          dx->numel() > std::numeric_limits<int32_t>::max()) {
+        GPURoiPoolBackward<T, int64_t>
+            <<<blocks, threads, 0, dev_ctx.stream()>>>(output_grad_size,
+                                                       boxes.data<T>(),
+                                                       out_grad.data<T>(),
+                                                       arg_max.data<int64_t>(),
+                                                       rois_num,
+                                                       spatial_scale,
+                                                       channels,
+                                                       height,
+                                                       width,
+                                                       pooled_height,
+                                                       pooled_width,
+                                                       roi_id_data,
+                                                       dx->data<T>());
+      } else {
+        GPURoiPoolBackward<T, int32_t>
+            <<<blocks, threads, 0, dev_ctx.stream()>>>(output_grad_size,
+                                                       boxes.data<T>(),
+                                                       out_grad.data<T>(),
+                                                       arg_max.data<int64_t>(),
+                                                       rois_num,
+                                                       spatial_scale,
+                                                       channels,
+                                                       height,
+                                                       width,
+                                                       pooled_height,
+                                                       pooled_width,
+                                                       roi_id_data,
+                                                       dx->data<T>());
+      }
     }
   }
 }
