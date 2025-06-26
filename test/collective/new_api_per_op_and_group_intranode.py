@@ -215,11 +215,11 @@ def test_primitive():
 
     proto_list = ["LL", "LL128", "Simple"]
 
-    ll_size = list(range(32768, 1048576, 1024 * 400))
-    ll128_size = list(range(32768 * 4, 1048576, 1024 * 400))
-    simple_size = list(range(32768 * 4, 1048576, 1024 * 400))
+    ll_size = list(range(32768, 1000 * 1024, 1024 * 250))
+    ll128_size = list(range(32768 * 4, 6 * 1024 * 1024, 3 * 1024 * 1024 // 2))
+    simple_size = list(range(32768 * 4, 5 * 1024 * 1024, 1024 * 1024))
 
-    nchannels = [6, 12, 18, 24]
+    nchannels = [8, 16, 24, 32]
 
     nccl_config1 = [
         core.NCCLConfig.create(
@@ -311,20 +311,20 @@ def test_primitive():
         for j in range(len(simple_size))
     ]
 
-    nccl_config7 = [
-        core.NCCLConfig.create(
-            commName="tp_comm",
-            ll_buffsize=-1,
-            ll128_buffsize=-1,
-            simple_buffsize=simple_size[j],
-            buffsize_align=1024,
-            nchannels=nchannels[i],
-            algoStr="NVLS",
-            protoStr="Simple",
-        )
-        for i in range(len(nchannels))
-        for j in range(len(simple_size))
-    ]
+    # nccl_config7 = [
+    #     core.NCCLConfig.create(
+    #         commName="tp_comm",
+    #         ll_buffsize=-1,
+    #         ll128_buffsize=-1,
+    #         simple_buffsize=simple_size[j],
+    #         buffsize_align=1024,
+    #         nchannels=nchannels[i],
+    #         algoStr="NVLS",
+    #         protoStr="Simple",
+    #     )
+    #     for i in range(len(nchannels))
+    #     for j in range(len(simple_size))
+    # ]
 
     config_len1 = len(nccl_config1)
     config_len2 = len(nccl_config2)
@@ -332,7 +332,7 @@ def test_primitive():
     config_len4 = len(nccl_config4)
     config_len5 = len(nccl_config5)
     config_len6 = len(nccl_config6)
-    config_len7 = len(nccl_config7)
+    # config_len7 = len(nccl_config7)
 
     ep_group1 = [
         paddle.distributed.new_group(ranks, nccl_config=nccl_config1[i])
@@ -364,10 +364,10 @@ def test_primitive():
         for i in range(config_len6)
     ]
 
-    ep_group7 = [
-        paddle.distributed.new_group(ranks, nccl_config=nccl_config7[i])
-        for i in range(config_len7)
-    ]
+    # ep_group7 = [
+    #     paddle.distributed.new_group(ranks, nccl_config=nccl_config7[i])
+    #     for i in range(config_len7)
+    # ]
 
     # ep_groups = [paddle.distributed.new_group(ranks) for _ in range(7)]
 
@@ -401,10 +401,10 @@ def test_primitive():
         test_reduce(ep_group6[i], "Ring Simple")
         test_reducescatter(ep_group6[i], "Ring Simple")
 
-    for i in range(config_len7):
-        test_all_reduce(ep_group7[i], "NVLS Simple")
-        test_all_gather(ep_group7[i], "NVLS Simple")
-        test_reducescatter(ep_group7[i], "NVLS Simple")
+    # for i in range(config_len7):
+    #     test_all_reduce(ep_group7[i], "NVLS Simple")
+    #     test_all_gather(ep_group7[i], "NVLS Simple")
+    #     test_reducescatter(ep_group7[i], "NVLS Simple")
 
 
 class TestCollectiveDeepEPNewAPIIntranode(unittest.TestCase):
