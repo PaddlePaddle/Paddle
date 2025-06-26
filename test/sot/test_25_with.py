@@ -79,11 +79,11 @@ def test_with_exit_true_suppresses(x):
 
     global TEST_WITH_STATEMENT_FLAG
 
-    # with my_context() as e:
-    #     if TEST_WITH_STATEMENT_FLAG:
-    #         x /= 7
-    #     else:
-    #         x *= 7
+    with my_context() as e:
+        if TEST_WITH_STATEMENT_FLAG:
+            x /= 7
+        else:
+            x *= 7
 
     if not TEST_WITH_STATEMENT_FLAG:
         x += 8
@@ -122,6 +122,21 @@ class TestWithStatement(TestCaseBase):
             self.assert_results(test_with_exit_false_propagates, x)
             self.assert_results(test_with_exit_false_propagates, x)
             self.assertEqual(ctx.translate_count, 2)
+
+    def test_no_grad(self):
+        x = paddle.rand([1, 2])
+        layer1 = paddle.nn.Linear(2, 2)
+        y = layer1(x).sum()
+        self.assertTrue(layer1.weight.grad is None)
+        y.backward()
+        self.assertFalse(layer1.weight.grad is None)
+
+        layer2 = paddle.nn.Linear(2, 2)
+        with paddle.no_grad():
+            y = layer2(x).sum()
+        self.assertTrue(layer2.weight.grad is None)
+        y.backward()
+        self.assertTrue(layer2.weight.grad is None)
 
 
 if __name__ == '__main__':
