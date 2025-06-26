@@ -32,8 +32,8 @@ set_python () {
 wget_model_benchmark_ci () {
     cd ${ROOT_DIR}
     wget --no-proxy https://paddle-github-action.bj.bcebos.com/paddle-qa/benchmark/${bos_path}/model_benchmark_ci_action.tar.gz
-    tar xvf model_benchmark_ci.tar.gz
-    mv model_benchmark_ci/* ${ROOT_DIR}
+    tar xvf model_benchmark_ci_action.tar.gz
+    mv model_benchmark_ci_action/* ${ROOT_DIR}
 
     rm -rf benchmark_summary_res.csv
     wget --no-proxy https://paddle-github-action.bj.bcebos.com/paddle-qa/benchmark/${bos_path}/benchmark_summary_res.csv
