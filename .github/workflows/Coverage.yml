@@ -339,8 +339,6 @@ jobs:
           echo "Extracting Paddle.tar.gz"
           tar --use-compress-program="pzstd -1" -xf Paddle.tar.gz --strip-components=1
           rm Paddle.tar.gz
-          source ${{ github.workspace }}/../../../proxy
-          git checkout test
           nvidia-smi; status=$?
           if [ $status -ne 0 ]; then
               echo "2nvidia-smi failed, sleeping..."

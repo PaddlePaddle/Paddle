@@ -25,9 +25,9 @@ struct SequenceMaskForRangeFunctor {
   HOSTDEVICE SequenceMaskForRangeFunctor(const Tx *x, Ty *y, int maxlen)
       : x_(x), y_(y), maxlen_(maxlen) {}
 
-  HOSTDEVICE void operator()(int y_idx) const {
-    int x_idx = y_idx / maxlen_;
-    int j = y_idx % maxlen_;
+  HOSTDEVICE void operator()(int64_t y_idx) const {
+    int64_t x_idx = y_idx / maxlen_;
+    int64_t j = y_idx % maxlen_;
     y_[y_idx] = static_cast<Ty>(j < x_[x_idx] ? 1 : 0);
   }
 
@@ -42,7 +42,7 @@ struct SequenceMaskFunctor {
   SequenceMaskFunctor(const DeviceContext &ctx,
                       const Tx *x,
                       phi::DenseTensor *y,
-                      int limits,
+                      int64_t limits,
                       int maxlen)
       : ctx_(ctx), x_(x), y_(y), limits_(limits), maxlen_(maxlen) {}
   template <typename Ty>
@@ -57,7 +57,7 @@ struct SequenceMaskFunctor {
   const DeviceContext &ctx_;
   const Tx *x_;
   phi::DenseTensor *y_;
-  int limits_;
+  int64_t limits_;
   int maxlen_;
 };
 
