@@ -234,7 +234,7 @@ void RoiAlignKernel(const Context& dev_ctx,
                       errors::InvalidArgument("Input(ROIs) in ROIAlignOp does "
                                               "not contain LoD information."));
     auto boxes_lod = lod.back();
-    int boxes_batch_size = boxes_lod.size() - 1;
+    int64_t boxes_batch_size = boxes_lod.size() - 1;
     PADDLE_ENFORCE_EQ(
         boxes_batch_size,
         batch_size,
@@ -244,7 +244,7 @@ void RoiAlignKernel(const Context& dev_ctx,
             "and images batch size = %d",
             boxes_batch_size,
             batch_size));
-    int boxes_num_with_lod = boxes_lod[boxes_batch_size];
+    int64_t boxes_num_with_lod = boxes_lod[boxes_batch_size];
     PADDLE_ENFORCE_EQ(
         rois_num,
         boxes_num_with_lod,
