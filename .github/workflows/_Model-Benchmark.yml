@@ -109,7 +109,7 @@ jobs:
         run: |
           docker exec ${container_name} bash -c '
           source ~/.bashrc
-          source ${ci_scripts}/model_benchmark.sh
+          source ${ci_scripts}/model-benchmark.sh
           wget_model_benchmark_ci
           '
 
@@ -118,7 +118,7 @@ jobs:
         run: |
           docker exec ${container_name} bash -c '
           source ~/.bashrc
-          source ${ci_scripts}/model_benchmark.sh
+          source ${ci_scripts}/model-benchmark.sh
           get_paddlescope_tar
           '
 
@@ -127,7 +127,7 @@ jobs:
         run: |
           docker exec ${container_name} bash -c '
           source ~/.bashrc
-          source ${ci_scripts}/model_benchmark.sh
+          source ${ci_scripts}/model-benchmark.sh
           check_skip ${{ github.env }}
           '
 
@@ -136,7 +136,7 @@ jobs:
         run: |
           docker exec ${container_name} bash -c '
           source ~/.bashrc
-          source ${ci_scripts}/model_benchmark.sh
+          source ${ci_scripts}/model-benchmark.sh
           check_model_benchmark
           if [[ $EXCODE -eq 0 ]];then
               echo "Congratulations!  Your PR passed the model benchmark ci."
