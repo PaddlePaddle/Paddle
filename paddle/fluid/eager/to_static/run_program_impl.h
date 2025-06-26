@@ -25,7 +25,7 @@
 namespace egr::to_static {
 namespace details {
 void GcScope(paddle::framework::Scope *scope,
-             const std::unordered_set<std::string> &persistent_vars = {});
+             const std::unordered_set<std::string_view> &persistent_vars = {});
 
 }  // namespace details
 
