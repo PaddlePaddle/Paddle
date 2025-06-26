@@ -17,6 +17,7 @@
 #include <vector>
 
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/im2col.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/unfold_functor.h"
@@ -32,8 +33,9 @@ void UnfoldKernel(const Context& dev_ctx,
                   const std::vector<int>& dilations,
                   DenseTensor* out) {
   const int batch_size = static_cast<int>(x.dims()[0]);
-  if (out && out->numel() == 0) {
-    dev_ctx.template Alloc<T>(out);
+  if (x && x->numel() == 0) {
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
     return;
   }
   phi::funcs::Im2ColFunctor<phi::funcs::ColFormat::kCFO, Context, T> im2col;
