@@ -124,7 +124,7 @@ class AssignFunctor {
 
 void SelectOutputInstruction::Run() {
   VLOG(6) << "run select_output instruction";
-  if (FLAGS_check_cuda_error) {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
     CUDAErrorCheck("SelectOutputInstruction begin");
   }
 
@@ -141,7 +141,7 @@ void SelectOutputInstruction::Run() {
           outputs_.size()));
   Variable *selected = outputs_[output_branch];
   VisitVarType(*input_, AssignFunctor(selected));
-  if (FLAGS_check_cuda_error) {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
     CUDAErrorCheck("SelectOutputInstruction finish");
   }
 }

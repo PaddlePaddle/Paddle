@@ -260,7 +260,7 @@ OneDNNLegacyKernelInstruction::~OneDNNLegacyKernelInstruction() {
 }
 
 void OneDNNLegacyKernelInstruction::Run() {
-  if (FLAGS_check_cuda_error) {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
     CUDAErrorCheck("OneDNNLegacyKernelInstruction " + legacy_op_name_ +
                    " begin");
   }
@@ -319,7 +319,7 @@ void OneDNNLegacyKernelInstruction::Run() {
   VLOG(6) << "Run op " << legacy_op_name_ << " kernel.";
   (*(phi_kernel_))((kernel_context_));
 
-  if (FLAGS_check_cuda_error) {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
     CUDAErrorCheck("OneDNNLegacyKernelInstruction " + legacy_op_name_ +
                    " finish");
   }

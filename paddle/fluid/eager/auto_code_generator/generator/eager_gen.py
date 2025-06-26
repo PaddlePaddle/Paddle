@@ -328,7 +328,7 @@ class {} : public egr::GradNodeBase {{
 GRAD_FUNCTION_TEMPLATE = """
 paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize> {}::operator()(paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>& grads, bool create_graph, bool is_new_grad) {{
   VLOG(3) << \"Running AD API GRAD: \" << \"{}\";
-  if (FLAGS_check_cuda_error) {{
+  if (FLAGS_check_cuda_error) [[unlikely]] {{
     egr::CUDAErrorCheck(\"{} begin\");
   }}
 
@@ -378,7 +378,7 @@ paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize> {}:
     returns = ApplyNodePostHooks(returns, hooked_grads);
   }}
 
-  if (FLAGS_check_cuda_error) {{
+  if (FLAGS_check_cuda_error) [[unlikely]] {{
     egr::CUDAErrorCheck(\"{} finish\");
   }}
 
@@ -391,7 +391,7 @@ FORWARD_FUNCTION_TEMPLATE = """
 TEST_API {} {}({}) {{
   FLAGS_tensor_operants_mode = "eager";
   VLOG(3) << \"Running AD API: \" << \"{}\";
-  if (FLAGS_check_cuda_error) {{
+  if (FLAGS_check_cuda_error) [[unlikely]] {{
     egr::CUDAErrorCheck(\"{} begin\");
   }}
 {}
@@ -442,7 +442,7 @@ TEST_API {} {}({}) {{
   VLOG(4) << \"Finish AD API: {}";
   // LOG IF DEBUG
 {}
-  if (FLAGS_check_cuda_error) {{
+  if (FLAGS_check_cuda_error) [[unlikely]] {{
     egr::CUDAErrorCheck(\"{} finish\");
   }}
   // Returns
@@ -476,7 +476,7 @@ FORWARD_ONLY_FUNCTION_TEMPLATE = """
 TEST_API {} {}({}) {{
   FLAGS_tensor_operants_mode = "eager";
   VLOG(3) << \"Running AD API: \" << \"{}\";
-  if (FLAGS_check_cuda_error) {{
+  if (FLAGS_check_cuda_error) [[unlikely]] {{
     egr::CUDAErrorCheck(\"{} begin\");
   }}
 {}
@@ -507,7 +507,7 @@ TEST_API {} {}({}) {{
 {}{}
   // LOG IF DEBUG
 {}
-  if (FLAGS_check_cuda_error) {{
+  if (FLAGS_check_cuda_error) [[unlikely]] {{
     egr::CUDAErrorCheck(\"{} finish\");
   }}
   // Returns

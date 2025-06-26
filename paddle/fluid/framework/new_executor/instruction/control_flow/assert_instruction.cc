@@ -55,7 +55,7 @@ AssertInstruction::AssertInstruction(size_t id,
 }
 
 void AssertInstruction::Run() {
-  if (FLAGS_check_cuda_error) {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
     CUDAErrorCheck("AssertInstruction begin");
   }
 
@@ -105,7 +105,7 @@ void AssertInstruction::Run() {
       value_exe_info_->GetVarName(cond_var_),
       error_msg));
 
-  if (FLAGS_check_cuda_error) {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
     CUDAErrorCheck("AssertInstruction finish");
   }
 }

@@ -214,7 +214,7 @@ void WhileInstruction::CheckGCEarly(const CheckGCEarlyHook& check_gc_early) {
 }
 
 void WhileInstruction::Run() {
-  if (FLAGS_check_cuda_error) {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
     CUDAErrorCheck("WhileInstruction begin");
   }
 
@@ -241,7 +241,7 @@ void WhileInstruction::Run() {
   }
   VLOG(6) << "while instruction run done";
 
-  if (FLAGS_check_cuda_error) {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
     CUDAErrorCheck("WhileInstruction finish");
   }
 }

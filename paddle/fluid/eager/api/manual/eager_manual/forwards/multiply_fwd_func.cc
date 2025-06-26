@@ -42,7 +42,7 @@ paddle::Tensor multiply_ad_func(const paddle::Tensor& x,
   FLAGS_tensor_operants_mode = "eager";
   VLOG(3) << "Running AD API: "
           << "multiply";
-  if (FLAGS_check_cuda_error) {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
     egr::CUDAErrorCheck("multiply_ad_func begin");
   }
   // Dygraph Record Event
@@ -233,7 +233,7 @@ paddle::Tensor multiply_ad_func(const paddle::Tensor& x,
     VLOG(4) << paddle::string::Sprintf(
         INPUT_PRINT_TEMPLATE, input_str, output_str);
   }
-  if (FLAGS_check_cuda_error) {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
     egr::CUDAErrorCheck("multiply_ad_func finish");
   }
   // Returns
@@ -245,7 +245,7 @@ paddle::Tensor& multiply__ad_func(paddle::Tensor& x,  // NOLINT
   FLAGS_tensor_operants_mode = "eager";
   VLOG(3) << "Running AD API: "
           << "multiply_";
-  if (FLAGS_check_cuda_error) {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
     egr::CUDAErrorCheck("multiply__ad_func begin");
   }
   // Dygraph Record Event
@@ -409,7 +409,7 @@ paddle::Tensor& multiply__ad_func(paddle::Tensor& x,  // NOLINT
         INPUT_PRINT_TEMPLATE, input_str, output_str);
   }
 
-  if (FLAGS_check_cuda_error) {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
     egr::CUDAErrorCheck("multiply__ad_func finish");
   }
   // Returns
@@ -423,7 +423,7 @@ paddle::Tensor multiply_ad_func(const paddle::Tensor& x,
   FLAGS_tensor_operants_mode = "eager";
   VLOG(3) << "Running AD API: "
           << "multiply";
-  if (FLAGS_check_cuda_error) {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
     egr::CUDAErrorCheck("sparse::multiply_ad_func begin");
   }
   // Dygraph Record Event
@@ -593,7 +593,7 @@ paddle::Tensor multiply_ad_func(const paddle::Tensor& x,
     VLOG(4) << paddle::string::Sprintf(
         INPUT_PRINT_TEMPLATE, input_str, output_str);
   }
-  if (FLAGS_check_cuda_error) {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
     egr::CUDAErrorCheck("sparse::multiply_ad_func finish");
   }
   // Returns

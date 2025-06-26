@@ -26,7 +26,7 @@ paddle::Tensor reshard_ad_function(
 #ifdef PADDLE_WITH_DISTRIBUTE
   VLOG(3) << "Running AD API: "
           << "reshard dygraph";
-  if (FLAGS_check_cuda_error) {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
     egr::CUDAErrorCheck("reshard_ad_function begin");
   }
   // Dygraph Record Event
@@ -80,7 +80,7 @@ paddle::Tensor reshard_ad_function(
     }
     grad_node->SetGradInMeta(out, 0);
   }
-  if (FLAGS_check_cuda_error) {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
     egr::CUDAErrorCheck("reshard_ad_function finish");
   }
   return out;

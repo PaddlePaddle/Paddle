@@ -114,7 +114,7 @@ void FullFakeTensor(const pir::Value &output_value, Variable *output_var) {
 #endif
 }
 void YieldInstruction::Run() {
-  if (FLAGS_check_cuda_error) {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
     CUDAErrorCheck("YieldInstruction begin");
   }
 
@@ -141,7 +141,7 @@ void YieldInstruction::Run() {
                                                  input_vars_[i]->Type()));
     }
   }
-  if (FLAGS_check_cuda_error) {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
     CUDAErrorCheck("YieldInstruction finish");
   }
 }

@@ -31,7 +31,7 @@ DtensorToLocalGradNode::operator()(
 #ifdef PADDLE_WITH_DISTRIBUTE
   VLOG(3) << "Running AD API GRAD: "
           << "dtensor_to_local";
-  if (FLAGS_check_cuda_error) {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
     egr::CUDAErrorCheck("DtensorToLocalGradNode begin");
   }
 
@@ -121,7 +121,7 @@ DtensorToLocalGradNode::operator()(
         INPUT_PRINT_TEMPLATE, input_str, output_str);
   }
 
-  if (FLAGS_check_cuda_error) {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
     egr::CUDAErrorCheck("DtensorToLocalGradNode finish");
   }
 

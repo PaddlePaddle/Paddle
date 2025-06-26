@@ -56,7 +56,7 @@ HasElementsInstruction::HasElementsInstruction(
 
 void HasElementsInstruction::Run() {
   VLOG(6) << "run has_elements instruction";
-  if (FLAGS_check_cuda_error) {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
     CUDAErrorCheck("HasElementsInstruction begin");
   }
 
@@ -64,7 +64,7 @@ void HasElementsInstruction::Run() {
   bool* has_elements = pool.Get(phi::CPUPlace())->Alloc<bool>(bool_tensor_);
   *has_elements = !stack_element_var_array_->empty();
 
-  if (FLAGS_check_cuda_error) {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
     CUDAErrorCheck("HasElementsInstruction finish");
   }
 }

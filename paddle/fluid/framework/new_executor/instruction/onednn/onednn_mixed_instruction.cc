@@ -59,7 +59,7 @@ OneDNNMixedPhiKernelInstruction::OneDNNMixedPhiKernelInstruction(
 }
 
 void OneDNNMixedPhiKernelInstruction::Run() {
-  if (FLAGS_check_cuda_error) {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
     CUDAErrorCheck("OneDNNMixedPhiKernelInstruction " + phi_op_name_ +
                    " begin");
   }
@@ -161,7 +161,7 @@ void OneDNNMixedPhiKernelInstruction::Run() {
     VLOG(6) << "End run op " << phi_op_name_ << " kernel.";
   }
 
-  if (FLAGS_check_cuda_error) {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
     CUDAErrorCheck("OneDNNMixedPhiKernelInstruction " + phi_op_name_ +
                    " finish");
   }

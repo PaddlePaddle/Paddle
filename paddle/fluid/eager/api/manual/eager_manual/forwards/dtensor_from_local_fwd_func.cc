@@ -29,7 +29,7 @@ paddle::Tensor dtensor_from_local_ad_function(
 #ifdef PADDLE_WITH_DISTRIBUTE
   VLOG(3) << "Running AD API: "
           << "dtensor_from_local dygraph";
-  if (FLAGS_check_cuda_error) {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
     egr::CUDAErrorCheck("dtensor_from_local_ad_function begin");
   }
 
@@ -105,7 +105,7 @@ paddle::Tensor dtensor_from_local_ad_function(
     grad_node->SetGradInMeta(out, 0);
     grad_node->SetTensorWrapperNoNeedBuffer_Output(out);
   }
-  if (FLAGS_check_cuda_error) {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
     egr::CUDAErrorCheck("dtensor_from_local_ad_function finish");
   }
   return out;

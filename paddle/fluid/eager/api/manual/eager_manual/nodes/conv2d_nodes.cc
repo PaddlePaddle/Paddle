@@ -42,7 +42,7 @@ Conv2dGradNodeFinal::operator()(
     bool is_new_grad) {
   // Fill Zero For GradIn Tensors
   VLOG(3) << " Running Conv2dGradNodeFinal: " << this;
-  if (FLAGS_check_cuda_error) {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
     egr::CUDAErrorCheck("Conv2dGradNodeFinal begin");
   }
   // This 'Local_XXXGradNode' record event is different with
@@ -234,7 +234,7 @@ Conv2dGradNodeFinal::operator()(
     returns = ApplyNodePostHooks(returns, hooked_grads);
   }
 
-  if (FLAGS_check_cuda_error) {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
     egr::CUDAErrorCheck("Conv2dGradNodeFinal finish");
   }
 
@@ -249,7 +249,7 @@ Conv2dDoubleGradNodeFinal::operator()(
                          egr::kSlotSmallVectorSize>& grads,
     bool create_graph,
     bool is_new_grad) {
-  if (FLAGS_check_cuda_error) {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
     egr::CUDAErrorCheck("Conv2dDoubleGradNodeFinal begin");
   }
   // This 'Local_XXXGradNode' record event is different with
@@ -435,7 +435,7 @@ Conv2dDoubleGradNodeFinal::operator()(
     returns = ApplyNodePostHooks(returns, hooked_grads);
   }
 
-  if (FLAGS_check_cuda_error) {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
     egr::CUDAErrorCheck("Conv2dDoubleGradNodeFinal finish");
   }
 

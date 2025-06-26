@@ -27,7 +27,7 @@ paddle::Tensor dtensor_to_local_ad_function(
 #ifdef PADDLE_WITH_DISTRIBUTE
   VLOG(3) << "Running AD API: "
           << "dtensor_to_local dygraph";
-  if (FLAGS_check_cuda_error) {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
     egr::CUDAErrorCheck("dtensor_to_local_ad_function begin");
   }
   bool rank_is_in_current_mesh = phi::distributed::IsCurRankInMesh(
@@ -127,7 +127,7 @@ paddle::Tensor dtensor_to_local_ad_function(
     }
     grad_node->SetGradInMeta(out, 0);
   }
-  if (FLAGS_check_cuda_error) {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
     egr::CUDAErrorCheck("dtensor_to_local_ad_function finish");
   }
   return out;

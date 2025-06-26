@@ -406,7 +406,7 @@ OneDNNPhiKernelInstruction::~OneDNNPhiKernelInstruction() {
 }
 
 void OneDNNPhiKernelInstruction::Run() {
-  if (FLAGS_check_cuda_error) {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
     CUDAErrorCheck("OneDNNPhiKernelInstruction " + phi_op_name_ + " begin");
   }
 
@@ -520,7 +520,7 @@ void OneDNNPhiKernelInstruction::Run() {
   // Step5. ClearDnnAttr
   one_dnn_ctx->ClearDnnAttr();
 
-  if (FLAGS_check_cuda_error) {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
     CUDAErrorCheck("OneDNNPhiKernelInstruction " + phi_op_name_ + " finish");
   }
 }

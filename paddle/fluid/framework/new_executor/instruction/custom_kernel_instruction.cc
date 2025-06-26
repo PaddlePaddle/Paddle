@@ -500,7 +500,7 @@ void CustomKernelInstruction::BuildShapeDtype() {
 }
 
 void CustomKernelInstruction::Run() {
-  if (FLAGS_check_cuda_error) {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
     CUDAErrorCheck("CustomKernelInstruction " + custom_op_name_ + " begin");
   }
 
@@ -528,7 +528,7 @@ void CustomKernelInstruction::Run() {
   }
   VLOG(6) << "Run custom op " << custom_op_name_ << " kernel.";
   kernel_func_(&custom_kernel_ctx_);
-  if (FLAGS_check_cuda_error) {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
     CUDAErrorCheck("CustomKernelInstruction " + custom_op_name_ + " finish");
   }
 }

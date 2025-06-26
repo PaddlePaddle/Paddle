@@ -336,7 +336,7 @@ CinnJitInstruction::CinnJitInstruction(
 }
 
 void CinnJitInstruction::Run() {
-  if (FLAGS_check_cuda_error) {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
     CUDAErrorCheck("CinnJitInstruction begin");
   }
 
@@ -374,7 +374,7 @@ void CinnJitInstruction::Run() {
              "support CUDA/HIP kernel";
 #endif
 
-  if (FLAGS_check_cuda_error) {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
     CUDAErrorCheck("CinnJitInstruction finish");
   }
 }

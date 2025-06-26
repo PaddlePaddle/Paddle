@@ -31,7 +31,7 @@ ReshardGradNode::operator()(
 #ifdef PADDLE_WITH_DISTRIBUTE
   VLOG(3) << "Running AD API GRAD: "
           << "reshard_grad";
-  if (FLAGS_check_cuda_error) {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
     egr::CUDAErrorCheck("ReshardGradNode begin");
   }
   // This 'Local_XXXGradNode' record event is different with
@@ -110,7 +110,7 @@ ReshardGradNode::operator()(
     VLOG(4) << paddle::string::Sprintf(
         INPUT_PRINT_TEMPLATE, input_str, output_str);
   }
-  if (FLAGS_check_cuda_error) {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
     egr::CUDAErrorCheck("ReshardGradNode finish");
   }
   return returns;

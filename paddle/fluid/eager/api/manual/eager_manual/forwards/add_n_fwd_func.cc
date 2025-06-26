@@ -26,7 +26,7 @@ COMMON_DECLARE_bool(check_cuda_error);
 paddle::Tensor add_n_ad_func(const std::vector<paddle::Tensor>& x) {
   VLOG(3) << "Running AD API: "
           << "add_n";
-  if (FLAGS_check_cuda_error) {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
     egr::CUDAErrorCheck("add_n_ad_func begin");
   }
   // Dygraph Record Event
@@ -113,7 +113,7 @@ paddle::Tensor add_n_ad_func(const std::vector<paddle::Tensor>& x) {
     // Set TensorWrappers for Forward Outputs if needed
   }
 
-  if (FLAGS_check_cuda_error) {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
     egr::CUDAErrorCheck("add_n_ad_func finish");
   }
 

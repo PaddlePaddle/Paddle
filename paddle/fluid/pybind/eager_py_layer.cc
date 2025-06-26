@@ -147,7 +147,7 @@ PyObject* pylayer_method_apply(PyObject* cls,
     return nullptr;
   }
   VLOG(6) << "PyLayer construct PyLayerContext finish...";
-  if (FLAGS_check_cuda_error) {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
     egr::CUDAErrorCheck("pylayer_method_apply " +
                         std::string(Py_TYPE(ctx)->tp_name) + " begin");
   }
@@ -527,7 +527,7 @@ PyObject* pylayer_method_apply(PyObject* cls,
   Py_XDECREF(forward_fn);
   Py_XDECREF(ctx);
 
-  if (FLAGS_check_cuda_error) {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
     egr::CUDAErrorCheck("pylayer_method_apply " +
                         std::string(Py_TYPE(ctx)->tp_name) + " finish");
   }

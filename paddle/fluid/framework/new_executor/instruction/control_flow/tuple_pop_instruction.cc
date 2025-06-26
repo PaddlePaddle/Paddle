@@ -129,7 +129,7 @@ void ShareVarData(const Variable* src_var, Variable* dst_var) {
 
 void TuplePopInstruction::Run() {
   VLOG(6) << "run tuple_pop instruction";
-  if (FLAGS_check_cuda_error) {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
     CUDAErrorCheck("TuplePopInstruction begin");
   }
 
@@ -154,7 +154,7 @@ void TuplePopInstruction::Run() {
       AddEagerGCVar(gc_front_var);
     }
   }
-  if (FLAGS_check_cuda_error) {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
     CUDAErrorCheck("TuplePopInstruction finish");
   }
 }

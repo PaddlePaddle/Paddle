@@ -218,7 +218,7 @@ void IfInstruction::SetInputHooks(const std::vector<PirHookFunc>& hookfuncs) {
 }
 
 void IfInstruction::Run() {
-  if (FLAGS_check_cuda_error) {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
     CUDAErrorCheck("IfInstruction begin");
   }
 
@@ -270,7 +270,7 @@ void IfInstruction::Run() {
   }
   // copy output
 
-  if (FLAGS_check_cuda_error) {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
     CUDAErrorCheck("IfInstruction finish");
   }
 }

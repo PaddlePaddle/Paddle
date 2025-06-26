@@ -97,7 +97,7 @@ TuplePushInstruction::TuplePushInstruction(size_t id,
 
 void TuplePushInstruction::Run() {
   VLOG(4) << "run tuple_push instruction";
-  if (FLAGS_check_cuda_error) {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
     CUDAErrorCheck("TuplePushInstruction begin");
   }
 
@@ -140,7 +140,7 @@ void TuplePushInstruction::Run() {
     }
   }
 
-  if (FLAGS_check_cuda_error) {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
     CUDAErrorCheck("TuplePushInstruction finish");
   }
 }

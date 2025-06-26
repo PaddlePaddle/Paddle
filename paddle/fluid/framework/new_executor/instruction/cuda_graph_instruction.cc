@@ -168,7 +168,7 @@ void CudaGraphInstruction::SetInputHooks(
 }
 
 void CudaGraphInstruction::Run() {
-  if (FLAGS_check_cuda_error) {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
     CUDAErrorCheck("CudaGraphInstruction begin");
   }
 
@@ -240,7 +240,7 @@ void CudaGraphInstruction::Run() {
     interpreter_->Run({}, false);
   }
 
-  if (FLAGS_check_cuda_error) {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
     CUDAErrorCheck("CudaGraphInstruction finish");
   }
 }

@@ -45,7 +45,7 @@ MultiplyGradNode::operator()(
     bool is_new_grad) {
   VLOG(3) << "Running AD API GRAD: "
           << "multiply_grad";
-  if (FLAGS_check_cuda_error) {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
     egr::CUDAErrorCheck("MultiplyGradNode begin");
   }
   // This 'Local_XXXGradNode' record event is different with
@@ -262,7 +262,7 @@ MultiplyGradNode::operator()(
     returns = ApplyNodePostHooks(returns, hooked_grads);
   }
 
-  if (FLAGS_check_cuda_error) {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
     egr::CUDAErrorCheck("MultiplyGradNode finish");
   }
 
@@ -279,7 +279,7 @@ MultiplyDoubleGradNode::operator()(
     bool is_new_grad) {
   VLOG(3) << "Running AD API GRAD: "
           << "multiply_double_grad";
-  if (FLAGS_check_cuda_error) {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
     egr::CUDAErrorCheck("MultiplyDoubleGradNode begin");
   }
   // This 'Local_XXXGradNode' record event is different with
@@ -543,7 +543,7 @@ MultiplyDoubleGradNode::operator()(
     returns = ApplyNodePostHooks(returns, hooked_grads);
   }
 
-  if (FLAGS_check_cuda_error) {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
     egr::CUDAErrorCheck("MultiplyDoubleGradNode finish");
   }
 
@@ -561,7 +561,7 @@ MultiplyGradNode::operator()(
     bool is_new_grad) {
   VLOG(3) << "Running AD API GRAD: "
           << "multiply_grad";
-  if (FLAGS_check_cuda_error) {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
     egr::CUDAErrorCheck("sparse::MultiplyGradNode begin");
   }
   // This 'Local_XXXGradNode' record event is different with
@@ -710,7 +710,7 @@ MultiplyGradNode::operator()(
   if (HasNodePostHook()) {
     returns = ApplyNodePostHooks(returns, hooked_grads);
   }
-  if (FLAGS_check_cuda_error) {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
     egr::CUDAErrorCheck("sparse::MultiplyGradNode finish");
   }
   // Return

@@ -41,7 +41,7 @@ GradNodePyLayer::operator()(
                          kSlotSmallVectorSize>& grads,  // NOLINT
     bool create_graph,
     bool is_new_grad) {
-  if (FLAGS_check_cuda_error) {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
     egr::CUDAErrorCheck("GradNodePyLayer begin");
   }
   pybind11::gil_scoped_acquire gil;
@@ -244,7 +244,7 @@ GradNodePyLayer::operator()(
   Py_XDECREF(ctx_);
   ctx_ = nullptr;
 
-  if (FLAGS_check_cuda_error) {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
     egr::CUDAErrorCheck("GradNodePyLayer finish");
   }
 

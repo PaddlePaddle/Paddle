@@ -184,7 +184,7 @@ PhiKernelInstruction::PhiKernelInstruction(
 PhiKernelInstruction::~PhiKernelInstruction() { delete phi_kernel_; }
 
 void PhiKernelInstruction::Run() {
-  if (FLAGS_check_cuda_error) {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
     CUDAErrorCheck("PhiKernelInstruction " + phi_op_name_ + " begin");
   }
 
@@ -235,7 +235,7 @@ void PhiKernelInstruction::Run() {
 
   VLOG(6) << "End run op " << phi_op_name_ << " kernel.";
 
-  if (FLAGS_check_cuda_error) {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
     CUDAErrorCheck("PhiKernelInstruction " + phi_op_name_ + " finish");
   }
 }

@@ -211,7 +211,7 @@ CustomEngineInstruction::CustomEngineInstruction(
 }
 
 void CustomEngineInstruction::Run() {
-  if (FLAGS_check_cuda_error) {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
     CUDAErrorCheck("CustomEngineInstruction " + op_name_ + " begin");
   }
 
@@ -247,7 +247,7 @@ void CustomEngineInstruction::Run() {
         "not implemented"));
   }
 
-  if (FLAGS_check_cuda_error) {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
     CUDAErrorCheck("CustomEngineInstruction " + op_name_ + " finish");
   }
 }

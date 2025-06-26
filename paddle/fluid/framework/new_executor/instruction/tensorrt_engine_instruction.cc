@@ -848,7 +848,7 @@ void TensorRTEngineInstruction::RunTrt() {
 }
 
 void TensorRTEngineInstruction::Run() {
-  if (FLAGS_check_cuda_error) {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
     CUDAErrorCheck("TensorRTEngineInstruction " + op_name_ + " begin");
   }
 
@@ -862,7 +862,7 @@ void TensorRTEngineInstruction::Run() {
   InputsCheck();
   RunTrt();
 
-  if (FLAGS_check_cuda_error) {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
     CUDAErrorCheck("TensorRTEngineInstruction " + op_name_ + " finish");
   }
 }

@@ -167,7 +167,7 @@ RunCustomOpNode::operator()(paddle::small_vector<std::vector<paddle::Tensor>,
                                                  kSlotSmallVectorSize>& grads,
                             bool create_graph,
                             bool is_new_grad) {  // NOLINT
-  if (FLAGS_check_cuda_error) {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
     egr::CUDAErrorCheck("RunCustomOpNode begin");
   }
   paddle::CustomOpKernelContext ctx;
@@ -381,7 +381,7 @@ RunCustomOpNode::operator()(paddle::small_vector<std::vector<paddle::Tensor>,
     outs = ApplyNodePostHooks(outs, hooked_grads);
   }
 
-  if (FLAGS_check_cuda_error) {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
     egr::CUDAErrorCheck("RunCustomOpNode finish");
   }
 
@@ -394,7 +394,7 @@ RunCustomOpDoubleGradNode::operator()(
         grads,
     bool create_graph,
     bool is_new_grad) {  // NOLINT
-  if (FLAGS_check_cuda_error) {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
     egr::CUDAErrorCheck("RunCustomOpDoubleGradNode begin");
   }
   paddle::CustomOpKernelContext ctx;
@@ -478,7 +478,7 @@ RunCustomOpDoubleGradNode::operator()(
     outs = ApplyNodePostHooks(outs, hooked_grads);
   }
 
-  if (FLAGS_check_cuda_error) {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
     egr::CUDAErrorCheck("RunCustomOpDoubleGradNode finish");
   }
 

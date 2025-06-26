@@ -36,7 +36,7 @@ AddNGradNodeFinal::operator()(
     bool is_new_grad) {
   VLOG(3) << "Running AD API GRAD: "
           << "add_n_grad";
-  if (FLAGS_check_cuda_error) {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
     egr::CUDAErrorCheck("AddNGradNodeFinal begin");
   }
   // Fill Zero For GradIn Tensors
@@ -119,7 +119,7 @@ AddNGradNodeFinal::operator()(
     returns = ApplyNodePostHooks(returns, hooked_grads);
   }
 
-  if (FLAGS_check_cuda_error) {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
     egr::CUDAErrorCheck("AddNGradNodeFinal finish");
   }
   if (NeedComplexToRealConversion()) HandleComplexGradToRealGrad(&returns);

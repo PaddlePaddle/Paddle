@@ -34,7 +34,7 @@ paddle::Tensor conv2d_ad_func(const paddle::Tensor& input,
                               std::string data_format) {
   VLOG(3) << "Running AD API: "
           << "conv2d";
-  if (FLAGS_check_cuda_error) {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
     egr::CUDAErrorCheck("conv2d_ad_func begin");
   }
   // Dygraph Record Event
@@ -173,7 +173,7 @@ paddle::Tensor conv2d_ad_func(const paddle::Tensor& input,
     // Set TensorWrappers for Forward Outputs if needed
   }
 
-  if (FLAGS_check_cuda_error) {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
     egr::CUDAErrorCheck("conv2d_ad_func finish");
   }
   // Returns

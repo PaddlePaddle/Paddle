@@ -151,7 +151,7 @@ PyLayerInstruction::~PyLayerInstruction() { delete fwd_inter_; }
 
 void PyLayerInstruction::Run() {
   VLOG(6) << "start pylayer forward block interpreter";
-  if (FLAGS_check_cuda_error) {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
     CUDAErrorCheck("PyLayerInstruction begin");
   }
 
@@ -163,7 +163,7 @@ void PyLayerInstruction::Run() {
 #endif
   fwd_inter_->Run({}, false);
 
-  if (FLAGS_check_cuda_error) {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
     CUDAErrorCheck("PyLayerInstruction finish");
   }
 }

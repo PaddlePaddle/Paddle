@@ -188,7 +188,7 @@ LegacyKernelInstruction::~LegacyKernelInstruction() {
 }
 
 void LegacyKernelInstruction::Run() {
-  if (FLAGS_check_cuda_error) {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
     CUDAErrorCheck("LegacyKernelInstruction " + legacy_op_name_ + " begin");
   }
 
@@ -202,7 +202,7 @@ void LegacyKernelInstruction::Run() {
   VLOG(6) << "Run op " << legacy_op_name_ << " kernel.";
   (*(phi_kernel_))((kernel_context_));
 
-  if (FLAGS_check_cuda_error) {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
     CUDAErrorCheck("LegacyKernelInstruction " + legacy_op_name_ + " finish");
   }
 }

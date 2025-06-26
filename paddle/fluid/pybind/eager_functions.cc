@@ -544,7 +544,7 @@ PyObject* eager_api_run_custom_op(PyObject* self,
 
   std::string op_type = CastPyArg2AttrString(PyTuple_GET_ITEM(args, 0), 0);
   VLOG(7) << "Get things from python for Custom Op: " << op_type;
-  if (FLAGS_check_cuda_error) {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
     egr::CUDAErrorCheck("eager_api_run_custom_op " + op_type + " begin");
   }
   paddle::CustomOpKernelContext ctx;
@@ -864,7 +864,7 @@ PyObject* eager_api_run_custom_op(PyObject* self,
       grad_node->SetAttrs(attrs);
     }
   }
-  if (FLAGS_check_cuda_error) {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
     egr::CUDAErrorCheck("eager_api_run_custom_op " + op_type + " finish");
   }
   return ToPyObject(*ctx.AllMutableOutput());

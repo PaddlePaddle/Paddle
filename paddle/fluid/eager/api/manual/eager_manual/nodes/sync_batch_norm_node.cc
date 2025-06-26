@@ -39,7 +39,7 @@ SyncBatchNormGradNode::operator()(
     bool is_new_grad) {
   VLOG(3) << "Running AD API GRAD: "
           << "sync_batch_norm_grad";
-  if (FLAGS_check_cuda_error) {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
     egr::CUDAErrorCheck("SyncBatchNormGradNode begin");
   }
   // This 'Local_XXXGradNode' record event is different with
@@ -263,7 +263,7 @@ SyncBatchNormGradNode::operator()(
   if (HasNodePostHook()) {
     returns = ApplyNodePostHooks(returns, hooked_grads);
   }
-  if (FLAGS_check_cuda_error) {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
     egr::CUDAErrorCheck("SyncBatchNormGradNode finish");
   }
   // Return
@@ -280,7 +280,7 @@ SyncBatchNormGradNode::operator()(
     bool is_new_grad) {
   VLOG(3) << "Running AD API GRAD: "
           << "sync_batch_norm_grad";
-  if (FLAGS_check_cuda_error) {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
     egr::CUDAErrorCheck("sparse::SyncBatchNormGradNode begin");
   }
   // This 'Local_XXXGradNode' record event is different with
@@ -505,7 +505,7 @@ SyncBatchNormGradNode::operator()(
   if (HasNodePostHook()) {
     returns = ApplyNodePostHooks(returns, hooked_grads);
   }
-  if (FLAGS_check_cuda_error) {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
     egr::CUDAErrorCheck("sparse::SyncBatchNormGradNode finish");
   }
   // Return
