@@ -88,16 +88,13 @@ def fused_act_dequant(
     Applies fused activation and dequantization operation to convert float8 quantized data back to bfloat16.
 
     Args:
-        x (Tensor): Input quantized tensor with dtype float8_e4m3fn and shape [M, N], where M is the
-            number of rows and N is the number of columns. This tensor contains the quantized
+        x (Tensor): Input quantized tensor with dtype float8_e4m3fn and shape [M, N]. This tensor contains the quantized
             activations from previous layers.
         x_scale (Tensor): Dequantization scale tensor with dtype float32 and shape [M, (N + 127) // 128].
             Each scale value corresponds to a 128-column block in the input tensor.
-            The scales are the reciprocal of the quantization scales used during the
-            forward quantization process.
 
     Returns:
-        Tensor: Dequantized output tensor with dtype bfloat16 and shape [M, N]. The values are
+        Tensor. Dequantized output tensor with dtype bfloat16 and shape [M, N]. The values are
             computed as input * scale for each corresponding 128-column block.
     """
     if in_dynamic_or_pir_mode():
@@ -113,6 +110,7 @@ def fused_swiglu_weighted_bwd(
     """
     Computes gradients for fused weighted SwiGLU activation function in backward pass.
 
+    Note:
     This function performs the backward propagation for the SwiGLU (Swish-Gated Linear Unit)
     activation with probability weighting. It computes gradients with respect to both the
     input activations and the probability weights, while also recomputing forward pass values
@@ -136,20 +134,21 @@ def fused_swiglu_weighted_bwd(
 
     Returns:
         tuple:
-            - do1 (Tensor): Input gradients with dtype bfloat16 and shape
+            - do1 (Tensor). Input gradients with dtype bfloat16 and shape
               [..., intermediate_size * 2]. Layout matches o1:
               - [0:intermediate_size]: ∂L/∂x1 (gradients w.r.t. gate inputs)
               - [intermediate_size:]: ∂L/∂x2 (gradients w.r.t. activation inputs)
-            - probs_grad (Tensor): Probability gradients with dtype float32 and
+            - probs_grad (Tensor). Probability gradients with dtype float32 and
               shape [...]. Each element is ∂L/∂prob for the corresponding batch item,
               computed as the sum of (∂L/∂output_i * SwiGLU_output_i) across the
               intermediate dimension.
-            - o2_s (Tensor): Recomputed forward output with dtype bfloat16 and
+            - o2_s (Tensor). Recomputed forward output with dtype bfloat16 and
               shape [..., intermediate_size]. Contains SwiGLU(x1, x2) * prob values.
               This avoids storing forward activations, trading computation for memory.
 
     Examples:
         .. code-block:: python
+
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
             >>> import paddle.incubate.nn.functional as F
@@ -178,13 +177,11 @@ def fused_transpose_split_quant(x, tokens_per_expert, pow_2_scales=False):
     """
     Applies fused transpose, split, and quantization operation for Mixture of Experts (MoE) models.
 
-    This function performs three operations in a single optimized CUDA kernel:
-    1. Quantizes input from bfloat16 to float8_e4m3fn format using column-wise scaling
-    2. Transposes the matrix from [M, K] to [K, M] layout
-    3. Splits the transposed data across multiple experts based on token distribution
-
-    The quantization uses block-wise (128-row blocks) maximum absolute values to compute
-    scaling factors, ensuring optimal utilization of the float8_e4m3fn range.
+    Note:
+        This function performs three operations in a single optimized CUDA kernel:
+        1. Quantizes input from bfloat16 to float8_e4m3fn format using column-wise scaling
+        2. Transposes the matrix from [M, K] to [K, M] layout
+        3. Splits the transposed data across multiple experts based on token distribution
 
     Args:
         x (Tensor): Input tensor of shape [M, K] with dtype bfloat16, where M is the total
@@ -200,15 +197,16 @@ def fused_transpose_split_quant(x, tokens_per_expert, pow_2_scales=False):
 
     Returns:
         tuple:
-            - outs (List[Tensor]): List of quantized and transposed output tensors, one per expert.
+            - outs (List[Tensor]). List of quantized and transposed output tensors, one per expert.
               Each tensor has shape [K, tokens_per_expert[i]] and dtype float8_e4m3fn.
               Empty tensors are included for experts with 0 tokens.
-            - scales (List[Tensor]): List of dequantization scale tensors, one per expert.
+            - scales (List[Tensor]). List of dequantization scale tensors, one per expert.
               Each tensor has shape [K // 128, tokens_per_expert[i] // 128]
               and dtype float32. These are the reciprocal of quantization scales.
 
     Examples:
         .. code-block:: python
+
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
             >>> import paddle.incubate.nn.functional as F
@@ -255,15 +253,16 @@ def fused_weighted_swiglu_act_quant(
     """
     Applies fused weighted SwiGLU activation followed by quantization to float8_e4m3fn format.
 
-    This function combines four operations into a single optimized CUDA kernel:
-    1. SwiGLU activation: SwiGLU(x1, x2) = SiLU(x1) * x2 = (x1 * sigmoid(x1)) * x2
-    2. Probability weighting: multiply by optional probability factors (for dropout/expert selection)
-    3. Activation computation: compute final activation values in float32 precision
-    4. Quantization: convert results to float8_e4m3fn with computed scaling factors
+    Note:
+        This function combines four operations into a single optimized CUDA kernel:
+        1. SwiGLU activation: SwiGLU(x1, x2) = SiLU(x1) * x2 = (x1 * sigmoid(x1)) * x2
+        2. Probability weighting: multiply by optional probability factors
+        3. Activation computation: compute final activation values in float32 precision
+        4. Quantization: convert results to float8_e4m3fn with computed scaling factors
 
-    The input tensor is split into two halves along the last dimension:
-    - Left half [0, cols/2): first input to SwiGLU (gate values)
-    - Right half [cols/2, cols): second input to SwiGLU (activation values)
+        The input tensor is split into two halves along the last dimension:
+        - Left half [0, cols/2): first input to SwiGLU (gate values)
+        - Right half [cols/2, cols): second input to SwiGLU (activation values)
 
     Args:
         x (Tensor): Input tensor with dtype bfloat16 and shape [..., cols], where cols
@@ -274,22 +273,20 @@ def fused_weighted_swiglu_act_quant(
         prob (Tensor, optional): Probability weighting tensor with dtype float32 and
             shape matching x's batch dimensions [...]. Each value
             multiplies the corresponding row's activation output.
-            Used for dropout during training or expert selection
-            probabilities during MoE inference. If None, no
-            probability weighting is applied. Default: None.
         using_pow2_scaling (bool, optional): Whether to use power-of-2 quantization
             scaling for hardware efficiency.
 
     Returns:
         tuple:
-            - out (Tensor): Quantized activation output with dtype float8_e4m3fn
+            - out (Tensor). Quantized activation output with dtype float8_e4m3fn
               and shape [..., cols/2]. Contains the quantized SwiGLU results.
-            - scale (Tensor): Dequantization scales with dtype float32 and shape
+            - scale (Tensor). Dequantization scales with dtype float32 and shape
               [..., (cols/2 + 127) // 128]. Each scale corresponds to a 128-element
               block in the output tensor. To dequantize: original_value = quantized_value / scale.
 
     Examples:
         .. code-block:: python
+
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
             >>> import paddle.incubate.nn.functional as F
