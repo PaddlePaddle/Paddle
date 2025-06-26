@@ -24,6 +24,12 @@ from typing import TYPE_CHECKING, Any, Literal
 def message2nccl_config(message, default_name=None):
     if paddle.distributed.collective._default_backend != 'nccl':
         return None
+    from paddle.distributed.fleet.proto.distributed_strategy_pb2 import (
+        NCCLConfig,
+    )
+
+    if not isinstance(message, (NCCLConfig, dict)):
+        return None
     from google.protobuf.json_format import MessageToDict
 
     from paddle.base import core
@@ -209,7 +215,9 @@ class CommunicateTopology:
 
 
 class HybridCommunicateGroup:
-    def __init__(self, topology: CommunicateTopology, hybrid_configs) -> None:
+    def __init__(
+        self, topology: CommunicateTopology, hybrid_configs=None
+    ) -> None:
         self.nranks = paddle.distributed.get_world_size()
         self.global_rank = paddle.distributed.get_rank()
         self._topo = topology
