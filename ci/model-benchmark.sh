@@ -31,12 +31,12 @@ set_python () {
 ############################ wget model_benchmark_ci
 wget_model_benchmark_ci () {
     cd ${ROOT_DIR}
-    wget --no-proxy https://paddle-qa.bj.bcebos.com/benchmark/${bos_path}/model_benchmark_ci.tar.gz
+    wget --no-proxy https://paddle-github-action.bj.bcebos.com/paddle-qa/benchmark/${bos_path}/model_benchmark_ci.tar.gz
     tar xvf model_benchmark_ci.tar.gz
     mv model_benchmark_ci/* ${ROOT_DIR}
 
     rm -rf benchmark_summary_res.csv
-    wget --no-proxy https://paddle-qa.bj.bcebos.com/benchmark/${bos_path}/benchmark_summary_res.csv
+    wget --no-proxy https://paddle-github-action.bj.bcebos.com/paddle-qa/benchmark/${bos_path}/benchmark_summary_res.csv
     cd ${ROOT_DIR}
     wget -q --no-proxy https://xly-devops.bj.bcebos.com/PaddleTest/PaddleTest.tar.gz
     tar xf PaddleTest.tar.gz
@@ -56,9 +56,9 @@ get_paddlescope_tar () {
 update_summary () {
     cd ${ROOT_DIR}
     rm -rf benchmark_summary_res.csv
-    wget --no-proxy https://paddle-qa.bj.bcebos.com/benchmark/${bos_path}/benchmark_summary_res.csv
+    wget --no-proxy https://paddle-github-action.bj.bcebos.com/paddle-qa/benchmark/${bos_path}/benchmark_summary_res.csv
     bash main.sh update_summary
-    python ${push_file} benchmark_summary_res.csv paddle-qa/benchmark/${bos_path} upload
+    python ${push_file} benchmark_summary_res.csv paddle-github-action/paddle-qa/benchmark/${bos_path} upload
     echo "----------benchmark_log: update_summary done ------------- "
     head -3 benchmark_summary_res.csv
 }
@@ -105,6 +105,7 @@ check_paddle () {
     sum_num=$((filelist_num1 + filelist_num2 + filelist_num3 + filelist_num4))
     echo " check cinn case sum_num: ${sum_num}"
     export CINN_FILE_LIST=${sum_num}
+    echo "export CINN_FILE_LIST=$CINN_FILE_LIST" >> ~/.bashrc
 }
 ############################ pr_analysis.py
 run_pr_analysis () {
@@ -146,7 +147,7 @@ check_skip () {
         echo "temp_summary_res.txt not exist"
     fi
     cd ${ROOT_DIR}
-    python ${push_file} benchmark_summary_res.csv paddle-qa/benchmark/${bos_path} upload
+    python ${push_file} benchmark_summary_res.csv paddle-github-action/paddle-qa/benchmark/${bos_path} upload
     cat $ROOT_DIR/case_info.csv
 }
 check_model_benchmark () {
@@ -156,7 +157,7 @@ check_model_benchmark () {
     ########################### over
     cd ${ROOT_DIR}
     bash main.sh update_history
-    python ${push_file} benchmark_history_PR_result.csv paddle-qa/benchmark/${bos_path} upload
+    python ${push_file} benchmark_history_PR_result.csv paddle-github-action/paddle-qa/benchmark/${bos_path} upload
     update_summary
     echo ------------------------------ model_benchmark CI result   ------------------------------
     cat $ROOT_DIR/case_info.csv
