@@ -35,28 +35,6 @@
 constexpr int64_t ELEMWISE_MAX_BLOCK_DIM = 1024;
 
 namespace phi {
-void test_cuda(const std::string& str) {
-  std::cout << str << " begin" << std::endl;
-  // 1. wait all kernel finish
-  PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
-
-  // 2. get error state
-  PADDLE_ENFORCE_GPU_SUCCESS(cudaGetLastError());
-
-  // 3. check if cuda 700
-  size_t bytes = 256;
-  char* cuda_mem;
-  char* cpu_mem = new char[bytes + 1];
-
-  cudaMalloc(&cuda_mem, bytes + 1);
-  cudaMemset(cuda_mem, 0, bytes + 1);
-  cudaMemcpyAsync(cpu_mem, cuda_mem, bytes, cudaMemcpyDeviceToHost);
-
-  cudaFree(cuda_mem);
-  delete[] cpu_mem;
-  std::cout << str << " end" << std::endl;
-}
-
 template <typename T>
 __global__ void KernelNanCounts(const T* input,
                                 const int64_t numel,
