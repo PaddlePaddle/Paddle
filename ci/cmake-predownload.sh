@@ -236,9 +236,9 @@ if [ "$SYSTEM" == "Linux" ]; then
         download_and_verify ${URL} ${EXPECTED_MD5} ${filename}
     else
         echo "use cfs cache"
+    fi
     mkdir -p ${TARGET_DIR}/onnxruntime/Linux
     cp ${PREDOWNLOAD_DIR}/${filename} ${TARGET_DIR}/onnxruntime/Linux/${ONNXRUNTIME_VERSION}.tgz
-    fi
 else
     filename=osx-${ONNXRUNTIME_VERSION}.tgz
     echo "check ${filename}"
@@ -249,9 +249,9 @@ else
         download_and_verify ${URL} ${EXPECTED_MD5} ${filename}
     else
         echo "use cfs cache"
+    fi
     mkdir -p ${TARGET_DIR}/onnxruntime/Darwin
     cp ${PREDOWNLOAD_DIR}/${filename} ${TARGET_DIR}/onnxruntime/Darwin/${ONNXRUNTIME_VERSION}.tgz
-    fi
 fi
 
 # paddle2onnx.cmake
@@ -268,9 +268,9 @@ if [ "$SYSTEM" == "Linux" ]; then
         download_and_verify ${URL} ${EXPECTED_MD5} ${filename}
     else
         echo "use cfs cache"
-    mkdir -p ${TARGET_DIR}/onnxruntime/paddle2onnx/Linux
-    cp ${PREDOWNLOAD_DIR}/${filename} ${TARGET_DIR}/onnxruntime/Linux/${ONNXRUNTIME_VERSION}.tgz
     fi
+    mkdir -p ${TARGET_DIR}/paddle2onnx/Linux
+    cp ${PREDOWNLOAD_DIR}/${filename} ${TARGET_DIR}/paddle2onnx/Linux/${PADDLE2ONNX_VERSION}.tgz
 else
     filename=osx-${PADDLE2ONNX_VERSION}.tgz
     echo "check ${filename}"
@@ -281,9 +281,9 @@ else
         download_and_verify ${URL} ${EXPECTED_MD5} ${filename}
     else
         echo "use cfs cache"
-    mkdir -p ${TARGET_DIR}/paddle2onnx/Darwin
-    cp ${PREDOWNLOAD_DIR}/${filename} ${TARGET_DIR}/paddle2onnx/Darwin/${ONNXRUNTIME_VERSION}.tgz
     fi
+    mkdir -p ${TARGET_DIR}/paddle2onnx/Darwin
+    cp ${PREDOWNLOAD_DIR}/${filename} ${TARGET_DIR}/paddle2onnx/Darwin/${PADDLE2ONNX_VERSION}.tgz
 fi
 
 # flashattn.cmake

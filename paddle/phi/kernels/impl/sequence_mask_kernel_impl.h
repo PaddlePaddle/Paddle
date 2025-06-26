@@ -35,7 +35,7 @@ void SequenceMaskScalarKernel(const Context& dev_ctx,
                               DenseTensor* y) {
   int maxlen = max_len.to<int>();
   auto* x_data = x.data<T>();
-  auto x_numel = x.numel();
+  int64_t x_numel = x.numel();
 
   if (maxlen < 0) {
     if (x_numel == 0) {
@@ -53,7 +53,7 @@ void SequenceMaskScalarKernel(const Context& dev_ctx,
       maxlen = static_cast<int>(*std::max_element(x_data, x_data + x_numel));
 #endif
     }
-    auto y_dim = common::vectorize<int>(x.dims());
+    auto y_dim = common::vectorize<int64_t>(x.dims());
     y_dim.push_back(maxlen);
     y->Resize(common::make_ddim(y_dim));
   }
@@ -82,7 +82,7 @@ void SequenceMaskKernel(const Context& dev_ctx,
       maxlen = *max_len_tensor.get_ptr()->data<int32_t>();
     }
 
-    auto y_dim = common::vectorize<int>(x.dims());
+    auto y_dim = common::vectorize<int64_t>(x.dims());
     y_dim.push_back(maxlen);
     y->Resize(common::make_ddim(y_dim));
 
