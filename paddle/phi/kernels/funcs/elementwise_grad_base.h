@@ -963,11 +963,11 @@ static __global__ void ElemwiseGradBroadcast2CUDAKernel(const T *x,
       }
     } else {  // x.dims < y.dims, broadcast for x.
       while (true) {
-        int64_t i = ttid / post;
-        int64_t k = ttid % post;
+        IndexType i = ttid / post;
+        IndexType k = ttid % post;
         if (i >= pre) break;
 
-        int64_t y_offset = i * n * post + j * post + k;
+        IndexType y_offset = i * n * post + j * post + k;
 
         if (dy != nullptr) {
           dy[y_offset] =
@@ -1123,6 +1123,8 @@ __global__ void CommonGradBroadcastCUDAKernel(const int64_t *x_strides_array,
     out_index = C_index;
     val += dx_op(x[x_index], y[y_index], out[out_index], dout[out_index]);
   }
+  thread_num =
+      thread_num > ELEMWISE_MAX_BLOCK_DIM ? ELEMWISE_MAX_BLOCK_DIM : thread_num;
   val = phi::backends::gpu::reduceSum(val, tid, static_cast<int>(thread_num));
   if (THREAD_ID_X == 0) {
     dx[i] = val;
