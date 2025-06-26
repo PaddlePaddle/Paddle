@@ -63,7 +63,7 @@ jobs:
     name: Infer
     if: ${{ inputs.can-skip != 'true' }}
     runs-on:
-      group: BD_BJ-V100
+      group: v100-test
     env:
       TASK: paddle-CI-${{ github.event.pull_request.number }}-CE-Framework-infer
     steps:
@@ -160,7 +160,7 @@ jobs:
     name: Test
     if: ${{ inputs.can-skip != 'true' }}
     runs-on:
-      group: BD_BJ-V100
+      group: v100-test
     env:
       TASK: paddle-CI-${{ github.event.pull_request.number }}-CE-Framework-test
     steps:
