@@ -1412,6 +1412,8 @@ class SymbolicVariable(VariableBase):
         if not ENV_SOT_ALLOW_DYNAMIC_SHAPE.get():
             return None
         if isinstance(value, SymbolicInt):
+            if value.is_backed():
+                return SymbolicVariable(value, graph, tracker)
             tensor_shape_source_result = (
                 SymbolicVariable.find_tensor_shape_source(tracker)
             )
@@ -2473,7 +2475,7 @@ class DataClassInstanceVariable(VariableBase):
         return VariableFactory.from_value(
             proxy.original_data[key],
             self.graph,
-            tracker=GetAttrTracker(self, key, changed=proxy.has_changed),
+            tracker=GetAttrTracker(self, key, changed=proxy.check_changed(key)),
         )
 
     def get_py_type(self):

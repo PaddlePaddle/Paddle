@@ -19,6 +19,7 @@
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/utils/data_type.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/gpu/index_select_impl.h"
 
@@ -34,6 +35,18 @@ void IndexAddGradKernel(const Context& dev_ctx,
                         int dim,
                         DenseTensor* x_grad,
                         DenseTensor* add_value_grad) {
+  if (out_grad.numel() == 0) {
+    dev_ctx.template Alloc<T>(x_grad);
+    if (add_value_grad) {
+      phi::Full<T, Context>(
+          dev_ctx,
+          phi::IntArray(common::vectorize(add_value_grad->dims())),
+          0,
+          add_value_grad);
+    }
+    return;
+  }
+
   // x.shape == out.shape in index_grad op
   auto input_dim = out_grad.dims();
   auto add_value_dim = add_value.dims();
