@@ -29,6 +29,10 @@ ncclResult_t ncclCommInitRank2(ncclComm_t* newcomm,
                                int myrank,
                                int param);
 
+#if NCCL_VERSION_CODE < 21400
+typedef struct ncclConfig_v21400 ncclConfig_t;
+#endif
+
 typedef struct ncclMemOptConfig ncclMemOptConfig_t;
 
 ncclResult_t ncclCommInitRankConfigMemOpt(ncclComm_t* comm,
