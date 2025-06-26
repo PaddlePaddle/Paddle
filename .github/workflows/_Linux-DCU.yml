@@ -287,7 +287,6 @@ jobs:
           tar -zxf hyhal-Z100.tar.gz -C /opt
           source /opt/dtk-24.04.1/env.sh
           bash -x ${ci_scripts}/dcu_test.sh
-          sleep 3d
           '
 
       - name: Terminate and delete the container
