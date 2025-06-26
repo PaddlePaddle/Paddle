@@ -63,11 +63,8 @@ update_summary () {
     head -3 benchmark_summary_res.csv
 }
 ############################ wget_paddle git diff
-wget_paddle () {
+check_paddle () {
     set_python
-    cd ${ROOT_DIR}
-    wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/build/${PR_ID}/${COMMIT_ID}/build.tar.gz --no-check-certificate
-    tar --use-compress-program="pzstd -1" -xpf build.tar.gz
     cd ${ROOT_DIR}/paddle
     git checkout test
     git diff --numstat --diff-filter=AMR ${BRANCH} | \
