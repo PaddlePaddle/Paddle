@@ -809,8 +809,9 @@ def _dygraph_tracer():
 
 def _current_expected_place_():
     global _global_expected_place_
-    if _global_expected_place_ is None or isinstance(
-        _global_expected_place_, core.Place
+    if (
+        _global_expected_place_ is None
+        or type(_global_expected_place_) is core.Place
     ):
         if core.is_compiled_with_cuda():
             try:
