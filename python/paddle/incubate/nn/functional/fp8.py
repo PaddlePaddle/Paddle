@@ -111,11 +111,11 @@ def fused_swiglu_weighted_bwd(
     Computes gradients for fused weighted SwiGLU activation function in backward pass.
 
     Note:
-    This function performs the backward propagation for the SwiGLU (Swish-Gated Linear Unit)
-    activation with probability weighting. It computes gradients with respect to both the
-    input activations and the probability weights, while also recomputing forward pass values
-    for memory efficiency. The kernel automatically selects between vectorized and standard
-    implementations based on input dimensions.
+        This function performs the backward propagation for the SwiGLU (Swish-Gated Linear Unit)
+        activation with probability weighting. It computes gradients with respect to both the
+        input activations and the probability weights, while also recomputing forward pass values
+        for memory efficiency. The kernel automatically selects between vectorized and standard
+        implementations based on input dimensions.
 
     Args:
         o1 (Tensor): Forward pass input tensor with dtype bfloat16 and shape
