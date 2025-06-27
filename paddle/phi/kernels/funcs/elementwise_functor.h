@@ -762,7 +762,6 @@ struct RemainderFunctor<ComplexType<T>> {
   inline HOSTDEVICE ComplexType<T> operator()(ComplexType<T> a,
                                               ComplexType<T> b) const {
     // remainder = z1 - q_rounded * z2
-    // auto q = DivideFunctor<ComplexType<T>>(a, b);
     T a__ = a.real;
     T b__ = a.imag;
     T c__ = b.real;
@@ -957,7 +956,6 @@ struct InverseRemainderFunctor<
   inline HOSTDEVICE ComplexType<T> operator()(ComplexType<T> b,
                                               ComplexType<T> a) const {
     // remainder = z1 - q_rounded * z2
-    // auto q = DivideFunctor<ComplexType<T>>(a, b);
     T a__ = a.real;
     T b__ = a.imag;
     T c__ = b.real;
