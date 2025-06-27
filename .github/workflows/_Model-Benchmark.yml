@@ -33,7 +33,7 @@ jobs:
       github-token: ${{ secrets.GITHUB_TOKEN }}
 
   model-benchmark:
-    name: Model benchmark
+    name: Benchmark test
     if: ${{ inputs.can-skip != 'true' && needs.check-bypass.outputs.can-skip != 'true' }}
     runs-on:
       group: model-bm
@@ -85,9 +85,10 @@ jobs:
       - name: Prepare environment and download paddle
         run: |
           docker exec ${container_name} bash -c '
+          rm -rf * .[^.]*
           COMMIT_SHA="${{ github.event.pull_request.head.sha }}"
           AUTHOR="${{ github.event.pull_request.user.login }}"
-          AGILE_COMMENTS=[{"Commit":"${COMMIT_SHA}","author":"${AUTHOR}"]
+          AGILE_COMMENTS=[{"Commit":"${COMMIT_SHA}","author":"${AUTHOR}"}]
           echo "export AGILE_COMMENTS=$AGILE_COMMENTS" >> ~/.bashrc
           echo $AGILE_COMMENTS
           DEVICE_ID=$(cat /sys/class/dmi/id/product_uuid |awk -F "-" "{print \$5}")
@@ -97,7 +98,7 @@ jobs:
           # wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/build/${PR_ID}/${COMMIT_ID}/build.tar.gz --no-check-certificate
           echo "Extracting build.tar.gz"
           # tar --use-compress-program="pzstd -1" -xpf build.tar.gz
-          rm build.tar.gz
+          # rm build.tar.gz
           git config --global --add safe.directory ${work_dir}
           cd paddle && git submodule foreach "git config --global --add safe.directory \$toplevel/\$sm_path"
           source ${ci_scripts}/model-benchmark.sh
