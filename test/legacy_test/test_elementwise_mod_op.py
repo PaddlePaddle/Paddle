@@ -200,40 +200,46 @@ class TestElementwiseModOpDouble(TestElementwiseModOpFloat):
 
 class TestElementwiseModOpComplex64(unittest.TestCase):
     def test_check_output(self):
-        dtype = "complex64"
-        a = np.array([6 + 4j]).astype(dtype)
-        b = np.array([3 + 5j]).astype(dtype)
-        res = np.array([-2 + 2j]).astype(dtype)
+        with dygraph_guard():
+            dtype = "complex64"
+            a = np.array([6 + 4j]).astype(dtype)
+            b = np.array([3 + 5j]).astype(dtype)
+            res = np.array([-2 + 2j]).astype(dtype)
 
-        res_pd = paddle.remainder(paddle.to_tensor(a), paddle.to_tensor(b))
-        np.testing.assert_allclose(res, res_pd.numpy())
-
-        dtype = "complex64"
-        a = np.array([6 + 4j]).astype(dtype)
-        b = np.array([3 + 5j]).astype(dtype)
-        res = np.array([-2 + 2j]).astype(dtype)
-
-        res_pd = paddle.remainder(paddle.to_tensor(a), paddle.to_tensor(b))
-        np.testing.assert_allclose(res, res_pd.numpy())
-
-        with base.device_guard("cpu"):
             res_pd = paddle.remainder(paddle.to_tensor(a), paddle.to_tensor(b))
-        np.testing.assert_allclose(res, res_pd.numpy())
+            np.testing.assert_allclose(res, res_pd.numpy())
+
+            dtype = "complex64"
+            a = np.array([6 + 4j]).astype(dtype)
+            b = np.array([3 + 5j]).astype(dtype)
+            res = np.array([-2 + 2j]).astype(dtype)
+
+            res_pd = paddle.remainder(paddle.to_tensor(a), paddle.to_tensor(b))
+            np.testing.assert_allclose(res, res_pd.numpy())
+
+            with base.device_guard("cpu"):
+                res_pd = paddle.remainder(
+                    paddle.to_tensor(a), paddle.to_tensor(b)
+                )
+            np.testing.assert_allclose(res, res_pd.numpy())
 
 
 class TestElementwiseModOpComplex128(unittest.TestCase):
     def test_check_output(self):
-        dtype = "complex128"
-        a = np.array([6 + 4j]).astype(dtype)
-        b = np.array([3 + 5j]).astype(dtype)
-        res = np.array([-2 + 2j]).astype(dtype)
+        with dygraph_guard():
+            dtype = "complex128"
+            a = np.array([6 + 4j]).astype(dtype)
+            b = np.array([3 + 5j]).astype(dtype)
+            res = np.array([-2 + 2j]).astype(dtype)
 
-        res_pd = paddle.remainder(paddle.to_tensor(a), paddle.to_tensor(b))
-        np.testing.assert_allclose(res, res_pd.numpy())
-
-        with base.device_guard("cpu"):
             res_pd = paddle.remainder(paddle.to_tensor(a), paddle.to_tensor(b))
-        np.testing.assert_allclose(res, res_pd.numpy())
+            np.testing.assert_allclose(res, res_pd.numpy())
+
+            with base.device_guard("cpu"):
+                res_pd = paddle.remainder(
+                    paddle.to_tensor(a), paddle.to_tensor(b)
+                )
+            np.testing.assert_allclose(res, res_pd.numpy())
 
 
 class TestElementwiseDygraph(unittest.TestCase):
