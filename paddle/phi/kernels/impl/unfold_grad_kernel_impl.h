@@ -17,6 +17,7 @@
 #include <vector>
 
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/im2col.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/unfold_functor.h"
