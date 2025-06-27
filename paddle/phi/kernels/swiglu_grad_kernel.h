@@ -45,10 +45,6 @@ void SwiGLUGradKernel(const Context &dev_ctx,
     }
     return;
   }
-  if (dy && dy->numel() == 0) {
-    dev_ctx.template Alloc<T>(dy);
-    return;
-  }
   const auto *x_ptr = x.data<T>();
   const auto *dz_ptr = dz.data<T>();
   auto *dx_ptr = dx ? dev_ctx.template Alloc<T>(dx) : nullptr;
