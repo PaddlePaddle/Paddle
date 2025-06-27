@@ -30,25 +30,19 @@ ENV PATH=/opt/cmake-3.27.7/bin:${PATH}
 
 # default python version
 ARG PY_VERSION=3.10
-RUN apt-get install -y python3-distutils python3.8 python3.8-dev python3.9 python3.9-dev python3.10 python3.10-dev
+RUN apt-get install -y python3-distutils python3.10 python3.10-dev
 RUN apt-get update && apt-get install -y python3.10-distutils
 
 # install pip
-RUN curl -s -q https://bootstrap.pypa.io/pip/3.8/get-pip.py | /usr/bin/python3.8 && \
-    curl -s -q https://bootstrap.pypa.io/get-pip.py | /usr/bin/python3.9 && \
-    curl -s -q https://bootstrap.pypa.io/get-pip.py | /usr/bin/python3.10
+RUN curl -s -q https://bootstrap.pypa.io/get-pip.py | /usr/bin/python3.10
 
 # set default python
 RUN rm -rf /usr/bin/python3 && ln -s /usr/bin/python${PY_VERSION} /usr/bin/python3 && \
     rm -rf /usr/bin/python  && ln -s /usr/bin/python${PY_VERSION} /usr/bin/python
 
 # install pylint and pre-commit
-RUN pip3.8 install pre-commit==2.17.0 pylint pytest astroid isort coverage qtconsole distro && \
-    pip3.9 install pre-commit==2.17.0 pylint pytest astroid isort coverage qtconsole distro && \
-    pip3.10 install pre-commit==2.17.0 pylint pytest astroid isort coverage qtconsole distro
-RUN pip3.8 install attrs pyyaml pathlib2 scipy requests psutil Cython clang-format==13.0.0 && \
-    pip3.9 install attrs pyyaml pathlib2 scipy requests psutil Cython clang-format==13.0.0 && \
-    pip3.10 install attrs pyyaml pathlib2 scipy requests psutil Cython clang-format==13.0.0
+RUN pip3.10 install pre-commit==2.17.0 pylint pytest astroid isort coverage qtconsole distro
+RUN pip3.10 install attrs pyyaml pathlib2 scipy requests psutil Cython clang-format==13.0.0
 
 # add more libs
 RUN apt-get update && apt-get install libprotobuf-dev protobuf-compiler libprotoc-dev lsof libgeos-dev \
@@ -56,13 +50,9 @@ RUN apt-get update && apt-get install libprotobuf-dev protobuf-compiler libproto
 
 # install Paddle requirement
 RUN wget --no-check-certificate https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/python/requirements.txt -O requirements.txt && \
-    pip3.8 install -r requirements.txt -i https://pypi.org/simple && \
-    pip3.9 install -r requirements.txt -i https://pypi.org/simple && \
     pip3.10 install -r requirements.txt -i https://pypi.org/simple && rm -rf requirements.txt
 
 RUN wget --no-check-certificate https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/python/unittest_py/requirements.txt -O requirements.txt && \
-    pip3.8 install -r requirements.txt -i https://pypi.org/simple && \
-    pip3.9 install -r requirements.txt -i https://pypi.org/simple && \
     pip3.10 install -r requirements.txt -i https://pypi.org/simple && rm -rf requirements.txt
 
 # git credential to skip password typing
