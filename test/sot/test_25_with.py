@@ -21,6 +21,7 @@ from test_case_base import (
 
 import paddle
 from paddle.jit.sot.psdb import check_no_breakgraph
+from paddle.jit.sot.utils import strict_mode_guard
 
 
 class Manager:
@@ -110,7 +111,8 @@ def with_manager_exit_false(x):
 
 
 # TODO(DrRyanHuang): NoGradContextManagerVariable and UserDefinedContextManagerVariable will be implemented separately in the future.
-# The @check_no_breakgraph decorator will be added here to ensure that breakgraph is no longer permitted.
+# The @strict_mode_guard decorator will be removed here to ensure that fallback is no longer permitted.
+@strict_mode_guard(False)
 def test_no_grad_behavior():
     x = paddle.rand([1, 2])
     p = paddle.rand([1, 2])
