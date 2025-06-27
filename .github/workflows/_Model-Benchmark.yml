@@ -52,6 +52,7 @@ jobs:
           bos_path: modelBK_CI
           CACHE_DIR: /root/.cache/model_benchmark
           work_dir: /workspace/paddle
+          AGILE_COMMENTS: '[{"Commit":"${{ github.event.pull_request.head.sha }}","author":"${{ github.event.pull_request.user.login }}"}]'
         run: |
           container_name=${TASK}-${core_index}-$(date +%Y%m%d-%H%M%S)
           echo "container_name=${container_name}" >> ${{ github.env }}
@@ -80,16 +81,17 @@ jobs:
             -e ROOT_DIR \
             -e CACHE_DIR \
             -e work_dir \
+            -e AGILE_COMMENTS \
             -w /workspace --network host ${docker_image}
 
       - name: Prepare environment and download paddle
         run: |
           docker exec ${container_name} bash -c '
           # rm -rf * .[^.]*
-          COMMIT_SHA="${{ github.event.pull_request.head.sha }}"
-          AUTHOR="${{ github.event.pull_request.user.login }}"
-          AGILE_COMMENTS=[{"Commit":"${COMMIT_SHA}","author":"${AUTHOR}"}]
-          echo "export AGILE_COMMENTS=$AGILE_COMMENTS" >> ~/.bashrc
+          # COMMIT_SHA="${{ github.event.pull_request.head.sha }}"
+          # AUTHOR="${{ github.event.pull_request.user.login }}"
+          # AGILE_COMMENTS=[{"Commit":"${COMMIT_SHA}","author":"${AUTHOR}"}]
+          # echo "export AGILE_COMMENTS=$AGILE_COMMENTS" >> ~/.bashrc
           echo $AGILE_COMMENTS
           DEVICE_ID=$(cat /sys/class/dmi/id/product_uuid |awk -F "-" "{print \$5}")
           echo "export DEVICE_ID=$DEVICE_ID" >> ~/.bashrc
