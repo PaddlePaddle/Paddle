@@ -86,18 +86,11 @@ ARG XRE_INSTALL=/usr/local/xpu-${XRE_VERSION}
 RUN wget -q https://klx-sdk-release-public.su.bcebos.com/xre/kl3-release/${XRE_VERSION}/xre-ubuntu_2004-x86_64-${XRE_VERSION}.tar.gz && \
     tar -zxf xre-ubuntu_2004-x86_64-${XRE_VERSION}.tar.gz && \
     mkdir -p ${XRE_INSTALL} && \
-    cp -af /opt/xre-ubuntu_2004-x86_64-${XRE_VERSION}/bin/ ${XRE_INSTALL}/ && \
-    cp -af /opt/xre-ubuntu_2004-x86_64-${XRE_VERSION}/include/ ${XRE_INSTALL}/ && \
-    cp -af /opt/xre-ubuntu_2004-x86_64-${XRE_VERSION}/tools/ ${XRE_INSTALL}/ && \
-    cp -af /opt/xre-ubuntu_2004-x86_64-${XRE_VERSION}/version.txt ${XRE_INSTALL}/ && \
-    mkdir -p ${XRE_INSTALL}/lib64 && \
-    cp -af /opt/xre-ubuntu_2004-x86_64-${XRE_VERSION}/lib/* ${XRE_INSTALL}/lib64/ && \
-    cp -af /opt/xre-ubuntu_2004-x86_64-${XRE_VERSION}/so/* ${XRE_INSTALL}/lib64/ && \
+    mv -f /opt/xre-ubuntu_2004-x86_64-${XRE_VERSION}/* ${XRE_INSTALL}/ && \
     ln -sf ${XRE_INSTALL} /usr/local/xpu && \
     ln -sf ${XRE_INSTALL}/bin/xpu_smi /usr/local/bin/xpu_smi && \
-    rm -rf xre-ubuntu_2004-x86_64-${XRE_VERSION}.tar.gz && rm -rf xre-ubuntu_2004-x86_64-${XRE_VERSION}/
+    rm -rf xre-ubuntu_2004-x86_64-${XRE_VERSION}.tar.gz
 ENV PATH=${XRE_INSTALL}/bin:$PATH
-ENV LD_LIBRARY_PATH=${XRE_INSTALL}/lib64:$LD_LIBRARY_PATH
 
 # Update RDMA
 RUN wget "https://su.bcebos.com/v1/klx-sdk-release-public/xccl/resource/MLNX_OFED_LINUX-24.10-2.1.8.0-ubuntu20.04-x86_64.tgz?authorization=bce-auth-v1%2FALTAKlxQapmxlH5xQFcp7rEkCr%2F2025-05-28T02%3A24%3A09Z%2F-1%2Fhost%2Fbaad25d036a6eb868dad8ab19468884e5016507fdd6879fe1259db4bbef694e6" \
