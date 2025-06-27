@@ -387,7 +387,6 @@ void NanmedianKernel(const Context& dev_ctx,
 
   ProcessMedianKernel<T, Context>(dev_ctx, tmp_x, mode, out, median_index);
 }
-
 }  // namespace phi
 
 PD_REGISTER_KERNEL(nanmedian,
