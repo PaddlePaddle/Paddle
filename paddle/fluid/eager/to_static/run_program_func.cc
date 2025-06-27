@@ -117,20 +117,20 @@ std::vector<paddle::Tensor> filter_no_need_buffer_input_var_in_backward(
 std::vector<paddle::Tensor> Trans2ContiguousTensors(
     const std::vector<paddle::Tensor>& tensors) {
   std::vector<paddle::Tensor> res;
+  res.reserve(tensors.size());
   for (const auto& t : tensors) {
-    if (t.initialized() && t.is_dense_tensor() &&
-        !std::dynamic_pointer_cast<phi::DenseTensor>(t.impl())
-             ->meta()
-             .is_contiguous()) {
-      res.emplace_back(
-          std::make_shared<phi::DenseTensor>(
-              paddle::experimental::Trans2Contiguous(
-                  *(std::dynamic_pointer_cast<phi::DenseTensor>(t.impl())))),
-          t.mutable_autograd_meta(),
-          t.name());
-    } else {
-      res.emplace_back(t);
+    if (t.initialized() && t.is_dense_tensor()) {
+      auto dense_ptr = std::static_pointer_cast<phi::DenseTensor>(t.impl());
+      if (dense_ptr && !dense_ptr->meta().is_contiguous()) {
+        res.emplace_back(
+            std::make_shared<phi::DenseTensor>(
+                paddle::experimental::Trans2Contiguous(*dense_ptr)),
+            t.mutable_autograd_meta(),
+            t.name());
+        continue;
+      }
     }
+    res.emplace_back(t);
   }
   return res;
 }
@@ -310,8 +310,8 @@ void legacy_run_program_ad_func(
 
   VLOG(2) << "start run run_program with require_any_grad = "
           << require_any_grad;
-  auto x_tmp = Trans2ContiguousTensors(x);
-  auto params_tmp = Trans2ContiguousTensors(params);
+  auto x_contig = Trans2ContiguousTensors(x);
+  auto params_contig = Trans2ContiguousTensors(params);
   // Call forward function
   // if require_any_grad is False, don't save any middle vars.
   int64_t place_hash_key = 0;
@@ -319,8 +319,8 @@ void legacy_run_program_ad_func(
     int64_t device_type = static_cast<int64_t>(tensor.place().GetType());
     place_hash_key = hash_with_seed(place_hash_key, device_type);
   }
-  egr::to_static::LegacyRunProgramImpl(x_tmp,
-                                       params_tmp,
+  egr::to_static::LegacyRunProgramImpl(x_contig,
+                                       params_contig,
                                        out,
                                        step_scope,
                                        require_any_grad,
@@ -350,14 +350,14 @@ void legacy_run_program_ad_func(
         paddle::framework::BlockDesc*, attrs.at("backward_global_block"));
     // Clear unused x vars
     auto filter_x = legacy_filter_unused_input_var_in_backward(
-        x_tmp, x_names, backward_global_block);
+        x_contig, x_names, backward_global_block);
     // Set TensorWrappers
     grad_node->SetFwdX(filter_x);
     // Clear unused out vars
     legacy_clear_unused_out_var_in_backward(
         out, backward_global_block, step_scope[0]);
 
-    grad_node->SetFwdParams(params_tmp);
+    grad_node->SetFwdParams(params_contig);
     grad_node->SetStepScope(step_scope);
 
     grad_node->SetGradOutMeta(x, /*slot id*/ 0);
