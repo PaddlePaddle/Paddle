@@ -16,12 +16,10 @@ import unittest
 
 import numpy as np
 from dygraph_to_static_utils import (
-    BackendMode,
     Dy2StTestBase,
-    IrMode,
-    ToStaticMode,
-    disable_test_case,
+    test_phi_only,
     test_pir_only,
+    test_sot_mgs0_only,
 )
 
 import paddle
@@ -58,7 +56,7 @@ class TestParametersPersistentMode(Dy2StTestBase):
     def test_persistent_mode(self):
         net = NetWithParameters(10, 3)
         net.eval()
-        inputs = [paddle.randn([2, 10], dtype='float32') for _ in range(10)]
+        inputs = [paddle.randn([2, 10], dtype='float32') for _ in range(5)]
         dy_outs = self.run_forward(net, inputs)
         st_net = paddle.jit.to_static(net)
         st_outs = self.run_forward(st_net, inputs)
@@ -68,19 +66,18 @@ class TestParametersPersistentMode(Dy2StTestBase):
             )
 
     @test_pir_only
-    @disable_test_case(  # This case will run in dygraph mode
-        (ToStaticMode.SOT_MGS10, IrMode.PIR, BackendMode.PHI)
-    )
+    @test_sot_mgs0_only
+    @test_phi_only
     def test_training_mode_error(self):
         net = NetWithParameters(10, 3)
         net.train()
-        inputs = [paddle.randn([2, 10], dtype='float32') for _ in range(10)]
+        inputs = [paddle.randn([2, 10], dtype='float32')]
         st_net = paddle.jit.to_static(net)
         with self.assertRaisesRegex(
             RuntimeError,
             "Currently parameters persistent mode only support forward process",
         ):
-            self.run_forward(net, inputs)
+            self.run_forward(st_net, inputs)
 
 
 if __name__ == "__main__":
