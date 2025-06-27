@@ -411,8 +411,7 @@ void BatchedGeqrf<GPUContext, float>(const GPUContext& dev_ctx,
                                      float* tau,
                                      int a_stride,
                                      int tau_stride) {
-  if (static_cast<int64_t>(m) * static_cast<int64_t>(n) * 171 >
-      std::numeric_limits<int>::max()) {
+  if (static_cast<int64_t>(m) * n * 171 > std::numeric_limits<int>::max()) {
     const int64_t batch_size_64 = static_cast<int64_t>(batch_size);
     const int64_t m_64 = static_cast<int64_t>(m);
     const int64_t n_64 = static_cast<int64_t>(n);
@@ -426,18 +425,18 @@ void BatchedGeqrf<GPUContext, float>(const GPUContext& dev_ctx,
     size_t workspace_in_bytes_on_host = 0;
 
     PADDLE_ENFORCE_GPU_SUCCESS(
-        cusolverDnXgeqrf_bufferSize(handle,
-                                    nullptr,
-                                    m_64,
-                                    n_64,
-                                    CUDA_R_32F,
-                                    a,
-                                    lda_64,
-                                    CUDA_R_32F,
-                                    tau,
-                                    CUDA_R_32F,
-                                    &workspace_in_bytes_on_device,
-                                    &workspace_in_bytes_on_host));
+        phi::dynload::cusolverDnXgeqrf_bufferSize(handle,
+                                                  nullptr,
+                                                  m_64,
+                                                  n_64,
+                                                  CUDA_R_32F,
+                                                  a,
+                                                  lda_64,
+                                                  CUDA_R_32F,
+                                                  tau,
+                                                  CUDA_R_32F,
+                                                  &workspace_in_bytes_on_device,
+                                                  &workspace_in_bytes_on_host));
 
     DenseTensor device_workspace;
     device_workspace.Resize(common::make_ddim(
@@ -462,21 +461,22 @@ void BatchedGeqrf<GPUContext, float>(const GPUContext& dev_ctx,
       float* a_working_ptr = &a[i * a_stride_64];
       float* tau_working_ptr = &tau[i * tau_stride_64];
 
-      PADDLE_ENFORCE_GPU_SUCCESS(cusolverDnXgeqrf(handle,
-                                                  nullptr,
-                                                  m_64,
-                                                  n_64,
-                                                  CUDA_R_32F,
-                                                  a_working_ptr,
-                                                  lda_64,
-                                                  CUDA_R_32F,
-                                                  tau_working_ptr,
-                                                  CUDA_R_32F,
-                                                  device_workspace_ptr,
-                                                  workspace_in_bytes_on_device,
-                                                  host_workspace_ptr,
-                                                  workspace_in_bytes_on_host,
-                                                  info_d));
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          phi::dynload::cusolverDnXgeqrf(handle,
+                                         nullptr,
+                                         m_64,
+                                         n_64,
+                                         CUDA_R_32F,
+                                         a_working_ptr,
+                                         lda_64,
+                                         CUDA_R_32F,
+                                         tau_working_ptr,
+                                         CUDA_R_32F,
+                                         device_workspace_ptr,
+                                         workspace_in_bytes_on_device,
+                                         host_workspace_ptr,
+                                         workspace_in_bytes_on_host,
+                                         info_d));
 
       int info_h;
       memory_utils::Copy(phi::CPUPlace(),
