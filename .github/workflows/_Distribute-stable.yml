@@ -263,7 +263,7 @@ jobs:
           CACHE_DIR: /root/.cache/build
           CCACHE_DIR: /root/.ccache/gpubox
         run: |
-          export CUDA_SO="$(\ls /usr/lib64/libcuda* | xargs -I{} echo "-v {}:{}") $(\ls /usr/lib64/libnvidia* | xargs -I{} echo "-v {}:{}")"
+          export CUDA_SO="$(\ls -d /usr/lib64/libcuda* | xargs -I{} echo '-v {}:{}') $(\ls -d /usr/lib64/libnvidia* | xargs -I{} echo '-v {}:{}')"
           export DEVICES="$(\ls -d /dev/nvidia* | xargs -I{} echo "-v {}:{}") $(\ls /dev/nvidia-caps/* | xargs -I{} echo "-v {}:{}")"
           export SMI="-v /usr/bin/nvidia-smi:/usr/bin/nvidia-smi"
           container_name=${TASK}-test-$(date +%Y%m%d-%H%M%S)

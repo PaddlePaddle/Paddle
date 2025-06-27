@@ -899,33 +899,35 @@ class TestAdamOpV2(unittest.TestCase):
             exe = base.Executor(place)
             train_prog = paddle.static.Program()
             startup = paddle.static.Program()
-            with paddle.static.program_guard(train_prog, startup):
-                with base.unique_name.guard():
-                    data = paddle.static.data(name="data", shape=shape)
-                    conv_layer = paddle.nn.Conv2D(3, 8, 3)
-                    conv = conv_layer(data)
-                    loss = paddle.mean(conv)
+            with (
+                paddle.static.program_guard(train_prog, startup),
+                base.unique_name.guard(),
+            ):
+                data = paddle.static.data(name="data", shape=shape)
+                conv_layer = paddle.nn.Conv2D(3, 8, 3)
+                conv = conv_layer(data)
+                loss = paddle.mean(conv)
 
-                    beta1 = paddle.pir.core.create_parameter(
-                        'float32',
-                        [1],
-                        initializer=paddle.nn.initializer.Constant(0.85),
-                    )
-                    beta2 = paddle.pir.core.create_parameter(
-                        'float32',
-                        [1],
-                        initializer=paddle.nn.initializer.Constant(0.95),
-                    )
-                    betas = [beta1, beta2]
-                    opt = paddle.optimizer.Adam(
-                        learning_rate=1e-5,
-                        beta1=beta1,
-                        beta2=beta2,
-                        weight_decay=0.01,
-                        epsilon=1e-8,
-                        amsgrad=self.amsgrad,
-                    )
-                    opt.minimize(loss)
+                beta1 = paddle.pir.core.create_parameter(
+                    'float32',
+                    [1],
+                    initializer=paddle.nn.initializer.Constant(0.85),
+                )
+                beta2 = paddle.pir.core.create_parameter(
+                    'float32',
+                    [1],
+                    initializer=paddle.nn.initializer.Constant(0.95),
+                )
+                betas = [beta1, beta2]
+                opt = paddle.optimizer.Adam(
+                    learning_rate=1e-5,
+                    beta1=beta1,
+                    beta2=beta2,
+                    weight_decay=0.01,
+                    epsilon=1e-8,
+                    amsgrad=self.amsgrad,
+                )
+                opt.minimize(loss)
 
             exe.run(startup)
             data_np = np.random.random(shape).astype('float32')

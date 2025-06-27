@@ -83,15 +83,17 @@ class TestDynRNNStopGradient(unittest.TestCase):
         with paddle.pir_utils.IrGuard():
             main_program = paddle.static.Program()
             startup_program = paddle.static.Program()
-            with paddle.static.program_guard(main_program, startup_program):
-                with base.scope_guard(base.Scope()):
-                    value1 = build_and_run_program(
-                        place, self.batch_size, self.beam_size, False
-                    )
-                    value2 = build_and_run_program(
-                        place, self.batch_size, self.beam_size, True
-                    )
-                    np.testing.assert_array_equal(value1, value2)
+            with (
+                paddle.static.program_guard(main_program, startup_program),
+                base.scope_guard(base.Scope()),
+            ):
+                value1 = build_and_run_program(
+                    place, self.batch_size, self.beam_size, False
+                )
+                value2 = build_and_run_program(
+                    place, self.batch_size, self.beam_size, True
+                )
+                np.testing.assert_array_equal(value1, value2)
 
     def test_check_main(self):
         places = []
