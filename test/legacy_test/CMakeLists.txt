@@ -508,11 +508,13 @@ if(NOT WITH_GPU
     REMOVE_ITEM
     TEST_OPS
     test_incubate_build_src_rank_and_local_expert_id
+    test_incubate_cal_aux_loss
     test_incubate_expand_modality_expert_id
     test_incubate_fused_loss
     test_incubate_fused_rmsnorm_ext
     test_incubate_int_bincount
     test_incubate_moe_combine
+    test_incubate_moe_combine_no_weight
     test_incubate_moe_gate_dispatch_partial_nosoftmaxtopk
     test_incubate_moe_gate_dispatch_w_permute_bwd
     test_incubate_moe_gate_dispatch_w_permute
