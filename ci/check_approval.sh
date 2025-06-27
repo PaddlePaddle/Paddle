@@ -151,7 +151,7 @@ IF_ADD_METACONFIG=`echo $INFERMETA_FILES_ADDED_LINES | grep -B5 --no-group-separ
 HAS_MODIFIED_OP_BUILD_GEN_SCRIPT=`git diff --name-only upstream/$BRANCH -- 'paddle/fluid/pir/dialect/op_generator/op_build_gen.py'`
 if [ -n "${IF_ADD_METACONFIG}" ] && [ -z "${HAS_MODIFIED_OP_BUILD_GEN_SCRIPT}" ]; then
     echo_line="If your added infermeta file contains MetaConfig, you must update _INFERMETA_NEED_META_CONFIG in op_build_gen.py synchronously.\n"
-    echo_line=${echo_line}"If you believe this is a false positive, please request one of the RD (SigureMo(Recommend), @DrRyanHuangDrRyanHuang, zyfncg, zhangbo9674) approval for the changes.\n"
+    echo_line=${echo_line}"If you believe this is a false positive, please request one of the RD (SigureMo(Recommend), DrRyanHuang, zyfncg, zhangbo9674) approval for the changes.\n"
     check_approval 1 SigureMo DrRyanHuang zyfncg zhangbo9674
 fi
 
