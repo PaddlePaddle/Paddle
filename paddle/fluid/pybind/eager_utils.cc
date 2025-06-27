@@ -2893,7 +2893,7 @@ PyObject* CalcScopeCacheKey(PyObject* dummy, PyObject* args) {
       tensors_vec.push_back(&(reinterpret_cast<TensorObject*>(item)->tensor));
     } else {
       PADDLE_THROW(common::errors::InvalidArgument(
-          "The input tensors should be a list of Tensor."));
+          "The input tensors should be a list or tuple of Tensor."));
     }
   }
 
