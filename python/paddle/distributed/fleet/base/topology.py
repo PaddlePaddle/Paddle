@@ -63,51 +63,40 @@ def message2nccl_config(message, default_name=None):
 
 
 def create_nccl_config(nccl_config):
-    r"""Function that creates nccl config.
+    """
+
+    Function that creates nccl config.
 
     Args:
-        nccl_config (Optional[Dict[str, Union[int, str]]]): None or
-            a dict containing the following keys:
-                commName (str): name of the process group.
-                ll_buffsize (int): buffer size of ll protocol.
-                ll128_buffsize (int): buffer size of ll128 protocol.
-                simple_buffsize (int): buffer size of simple protocol.
-                buffsize_align (int): alignment unit of the total buffer size.
-                nchannels (int): max number of channels.
-                algoStr (str): communication algorithm.
-                protoStr (str): communication protocol.
+        nccl_config (Optional[Dict[str, Union[int, str]]]): None or a dict containing the following keys:
+            commName (str): name of the process group. ll_buffsize (int): buffer size of ll protocol.
+            ll128_buffsize (int): buffer size of ll128 protocol. simple_buffsize (int): buffer size of
+            simple protocol. buffsize_align (int): alignment unit of the total buffer size.
+            nchannels (int): max number of channels. algoStr (str): communication algorithm.
+            protoStr (str): communication protocol.
+
     Returns:
         NCCLConfig (Optional[paddle.base.libpaddle.NCCLConfig]): an object containing the information,
         which can be used as an argument of new_group().
-    Example:
-        import paddle
-        import paddle.distributed as dist
-        dist.init_parallel_env()
-        nccl_config={
-            "commName":"tp_comm",
-            "ll_buffsize":0,
-            "ll128_buffsize":0,
-            "simple_buffsize":1024,
-            "buffsize_align":1024,
-            "nchannels":4,
-            "algoStr":"Ring",
-            "protoStr":"Simple",
-        }
-        ranks=[0,1,2,3,4,5,6,7]
-        nccl_config=dist.create_nccl_config(nccl_config)
-        pg=dist.new_group(ranks, nccl_config=nccl_config)
-        m, n = 4096, 8192
-        local_rank = dist.get_rank(pg)
-        num_local_ranks = dist.get_world_size(pg)
-        x = paddle.ones(shape=[m, n], dtype=paddle.float32) * (local_rank + 1)
-        gbl_x = x.clone()
-        dist.all_reduce(gbl_x, group=pg)
-        res = paddle.ones(shape=[m, n], dtype=paddle.float32) * (
-        num_local_ranks * (num_local_ranks + 1) / 2
-        )
-        assert paddle.allclose(
-            gbl_x, res
-        ), f"rank {local_rank}: all reduce validation failed"
+
+    Examples:
+        .. code-block:: python
+            :name: code-example1
+
+            >>> import paddle
+            >>> import paddle.distributed as dist
+            >>> dist.init_parallel_env()
+            >>> nccl_config={"commName":"tp_comm","ll_buffsize":0,"ll128_buffsize":0,"simple_buffsize":1024,"buffsize_align":1024,"nchannels":4,"algoStr":"Ring","protoStr":"Simple",}
+            >>> ranks=[0,1,2,3,4,5,6,7]
+            >>> nccl_config=dist.create_nccl_config(nccl_config)
+            >>> pg=dist.new_group(ranks, nccl_config=nccl_config)
+            >>> m, n = 4096, 8192
+            >>> local_rank = dist.get_rank(pg)
+            >>> num_local_ranks = dist.get_world_size(pg)
+            >>> x = paddle.ones(shape=[m, n], dtype=paddle.float32) * (local_rank + 1)
+            >>> gbl_x = x.clone()
+            >>> dist.all_reduce(gbl_x, group=pg)
+
     """
     return message2nccl_config(nccl_config, None)
 
