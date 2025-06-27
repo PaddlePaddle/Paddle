@@ -79,38 +79,38 @@ def moe_permute(
                 Shape: [total_tokens_after_broadcast, ceil(token_dimension / 128)]
                 Data type: float32
     Examples:
-    .. code-block:: python
+        .. code-block:: python
 
-        >>> # doctest: +REQUIRES(env:GPU)
-        >>> import paddle
-        >>> import paddle.incubate.nn.functional as F
-        >>> paddle.set_device('gpu')
-        >>> hidden_states = paddle.randn([3, 128], dtype='bfloat16')
-        >>> expert_routemap_topk = paddle.to_tensor([[-1, 0, -1, -1, 2, -1, -1, -1],
-        ...                                          [1, -1, -1, -1, -1, -1, -1, -1],
-        ...                                          [-1, -1, -1, -1, -1, -1, 1, -1]],
-        ...                                           dtype='int32')
-        >>> expert_prob_topk= paddle.to_tensor([[0.0, 0.6, 0.0, 0.0, 0.4, 0.0, 0.0, 0.0],
-        ...                                     [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        ...                                     [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0]],
-        ...                                          dtype='float32')
-        >>> num_experts = 3
-        >>> tokens_per_expert = [1, 2, 1]
-        >>> padding_alignment = 2
-        >>> hidden_states_unzipped, zipped_expertwise_rowmap, token_prob_unzipped, scale_unzipped = F.moe_permute(
-        ...     hidden_states,
-        ...     None,
-        ...     expert_routemap_topk,
-        ...     expert_prob_topk,
-        ...     num_experts,
-        ...     tokens_per_expert,
-        ...     padding_alignment,
-        ... )
-        >>> print(zipped_expertwise_rowmap)
-        Tensor(shape=[3, 3], dtype=int32, place=Place(gpu:0), stop_gradient=True,
-            [[ 0, -1,  4],
-            [-1,  2, -1],
-            [-1,  3, -1]])
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> import paddle.incubate.nn.functional as F
+            >>> paddle.set_device('gpu')
+            >>> hidden_states = paddle.randn([3, 128], dtype='bfloat16')
+            >>> expert_routemap_topk = paddle.to_tensor([[-1, 0, -1, -1, 2, -1, -1, -1],
+            ...                                          [1, -1, -1, -1, -1, -1, -1, -1],
+            ...                                          [-1, -1, -1, -1, -1, -1, 1, -1]],
+            ...                                           dtype='int32')
+            >>> expert_prob_topk= paddle.to_tensor([[0.0, 0.6, 0.0, 0.0, 0.4, 0.0, 0.0, 0.0],
+            ...                                     [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            ...                                     [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0]],
+            ...                                          dtype='float32')
+            >>> num_experts = 3
+            >>> tokens_per_expert = [1, 2, 1]
+            >>> padding_alignment = 2
+            >>> hidden_states_unzipped, zipped_expertwise_rowmap, token_prob_unzipped, scale_unzipped = F.moe_permute(
+            ...     hidden_states,
+            ...     None,
+            ...     expert_routemap_topk,
+            ...     expert_prob_topk,
+            ...     num_experts,
+            ...     tokens_per_expert,
+            ...     padding_alignment,
+            ... )
+            >>> print(zipped_expertwise_rowmap)
+            Tensor(shape=[3, 3], dtype=int32, place=Place(gpu:0), stop_gradient=True,
+                [[ 0, -1,  4],
+                [-1,  2, -1],
+                [-1,  3, -1]])
 
     Note:
         1. This function is typically used in pair of moe_unpermute to provide complete MoE functionality.
