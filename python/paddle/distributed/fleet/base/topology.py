@@ -953,7 +953,7 @@ class EPHybridCommunicateGroup(HybridCommunicateGroup):
                     if hybrid_configs is not None
                     else None
                 ),
-            ),
+            )
         )
 
         # create global group for check inf_nan / clip global norm
