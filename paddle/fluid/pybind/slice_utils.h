@@ -72,6 +72,21 @@ static inline common::DDim infer_size_symdimvector(common::DDim a,
   return expandedSizes;
 }
 
+static inline std::vector<paddle::Tensor> expandTensors(
+    std::vector<paddle::Tensor> indices) {
+  // expands bool to int tensors;
+  std::vector<paddle::Tensor> result;
+  for (auto& index : indices) {
+    if (index.dtype() == paddle::DataType::BOOL) {
+      auto bool_2_idx = nonzero_ad_func(index);
+      result.emplace_back(squeeze_ad_func(bool_2_idx, {-1}));
+    } else {
+      result.emplace_back(index);
+    }
+  }
+  return result;
+}
+
 static inline std::vector<paddle::Tensor> expand_outplace(
     std::vector<paddle::Tensor> to_expand) {
   // expands a list of Tensors; ignores undefined (null) tensors
@@ -590,8 +605,7 @@ static paddle::Tensor dealWithAdvancedIndex(
     int* pos_of_new_dim,
     int* rank_of_new_dim,
     std::vector<int>* trans_dim,
-    bool* out_is_view,
-    bool single_value = false) {
+    bool* out_is_view) {
   int p = 0;
   bool int_tensor_only = true;
   for (size_t i = 0; i < advanced_index_dim->size(); ++i) {
@@ -641,8 +655,8 @@ static paddle::Tensor dealWithAdvancedIndex(
     *out_is_view = true;
 #ifdef PADDLE_WITH_CUDA
     // Remove the conditions when all cases are supported.
-    if (tensor.is_gpu() && int_tensor_only && *pos_of_new_dim != 0 &&
-        (single_value || !is_for_setitem)) {
+    if (tensor.is_gpu() && *pos_of_new_dim != 0 &&
+        (is_for_setitem || int_tensor_only)) {
       transed_tensor = tensor;
     } else {
       transed_tensor = transpose_ad_func(tensor, *trans_dim);

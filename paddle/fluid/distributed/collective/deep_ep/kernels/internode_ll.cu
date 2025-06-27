@@ -397,7 +397,7 @@ __global__ __launch_bounds__(
             (reinterpret_cast<char*>(rdma_recv_count +
                                      dst_expert_local_idx * num_ranks + rank) -
              reinterpret_cast<char*>(nvshmemi_device_state_d.heap_base)));
-        st_na_release(rptr_actual, -num_tokens_sent - 1);
+        st_release_sys_global(rptr_actual, -num_tokens_sent - 1);
       } else {
         nvshmemi_ibgda_amo_nonfetch_add(
             rdma_recv_count + dst_expert_local_idx * num_ranks + rank,
@@ -768,7 +768,7 @@ __global__ __launch_bounds__(
               reinterpret_cast<char*>(peer_base_addr) +
               (reinterpret_cast<char*>(rdma_recv_flag + global_expert_idx) -
                reinterpret_cast<char*>(nvshmemi_device_state_d.heap_base)));
-          st_na_release(req_rptr_actual, 1);
+          st_release_sys_global(req_rptr_actual, 1);
         } else {
           nvshmemi_ibgda_amo_nonfetch_add(rdma_recv_flag + global_expert_idx,
                                           1,

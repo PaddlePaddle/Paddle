@@ -30,24 +30,26 @@ class TestReshapeTransposeMatmulV2OneDNNFusePass(InferencePassTest):
         self.set_params()
         self.transpose_perm = [0, 2, 1, 3]
         self.pass_name = 'reshape_transpose_matmul_onednn_fuse_pass'
-        with paddle.pir_utils.OldIrGuard():
-            with base.program_guard(self.main_program, self.startup_program):
-                data = paddle.static.data(
-                    name="data", shape=self.data_shape, dtype="float32"
-                )
-                weight = paddle.create_parameter(
-                    shape=self.weight_shape, dtype="float32"
-                )
+        with (
+            paddle.pir_utils.OldIrGuard(),
+            base.program_guard(self.main_program, self.startup_program),
+        ):
+            data = paddle.static.data(
+                name="data", shape=self.data_shape, dtype="float32"
+            )
+            weight = paddle.create_parameter(
+                shape=self.weight_shape, dtype="float32"
+            )
 
-                reshape = paddle.reshape(data, shape=self.reshape_shape)
-                transpose = paddle.transpose(reshape, self.transpose_perm)
+            reshape = paddle.reshape(data, shape=self.reshape_shape)
+            transpose = paddle.transpose(reshape, self.transpose_perm)
 
-                matmul = paddle.matmul(
-                    transpose,
-                    weight,
-                    transpose_x=self.transpose_x,
-                    transpose_y=self.transpose_y,
-                )
+            matmul = paddle.matmul(
+                transpose,
+                weight,
+                transpose_x=self.transpose_x,
+                transpose_y=self.transpose_y,
+            )
 
         self.fetch_list = [matmul]
         self.enable_mkldnn = True

@@ -208,5 +208,34 @@ class TestSequenceMaskWithEmptyTensor(unittest.TestCase):
         self.assertEqual(list(mask.shape), [0, 0])
 
 
+class SequenceMaskTest_ZeroSize(OpTest):
+    def initDefaultParameters(self):
+        self.op_type = 'sequence_mask'
+        self.python_api = sequence_mask_wrapper
+        self.maxlen = 10
+        self.mask_dtype = 'int64'
+        self.x = np.random.random([0, 3]).astype('int64')
+        self.y = np.random.random([0, 3, 10]).astype('int64')
+
+    def initParameters(self):
+        pass
+
+    def setUp(self):
+        self.initDefaultParameters()
+        self.initParameters()
+        if not isinstance(self.x, np.ndarray):
+            self.x = np.array(self.x)
+
+        self.inputs = {'X': self.x}
+        self.outputs = {'Y': self.y}
+        self.attrs = {
+            'maxlen': self.maxlen,
+            'out_dtype': convert_np_dtype_to_proto_type(self.mask_dtype),
+        }
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
+
 if __name__ == '__main__':
     unittest.main()
