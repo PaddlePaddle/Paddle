@@ -16,6 +16,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import paddle
 from paddle import _C_ops, _legacy_C_ops, get_flags, in_dynamic_mode, pir
 from paddle.base.framework import _global_flags, in_dynamic_or_pir_mode
 from paddle.device import (
@@ -458,6 +459,15 @@ def conv1d(
     dilation = [1, *convert_to_list(dilation, 1, "dilation")]
     from ...tensor.creation import assign as paddle_assign
 
+    # cpu not support float16, need to convert dtype.
+    float16_convert = False
+    if paddle.device.get_device() == "cpu":
+        if weight.dtype == paddle.float16:
+            float16_convert = True
+            weight = weight.astype(x.dtype)
+        if bias is not None and bias.dtype == paddle.float16:
+            float16_convert = True
+            bias = bias.astype(x.dtype)
     weight = paddle_assign(weight)
     weight = unsqueeze(weight, axis=[-2])
 
@@ -475,7 +485,6 @@ def conv1d(
 
     squeeze_axis = -3 if channel_last else -2
     x = unsqueeze(x, axis=[squeeze_axis])
-
     if in_dynamic_or_pir_mode():
         if l_type == 'conv2d':
             out = _C_ops.conv2d(
@@ -530,6 +539,9 @@ def conv1d(
         if bias is not None:
             out = _add_with_axis(out, bias, axis=channel_dim)
     out = squeeze(out, axis=[squeeze_axis])
+    if float16_convert:
+        # out is float16
+        out = out.astype(paddle.float16)
     return out
 
 

@@ -1061,9 +1061,9 @@ class TestConcatOpErrorWithPir(unittest.TestCase):
             paddle.base.program_guard(
                 paddle.base.Program(), paddle.base.Program()
             ),
+            self.assertRaisesRegex(ValueError, "but got empty list"),
         ):
-            with self.assertRaisesRegex(ValueError, "but got empty list"):
-                paddle.concat([], axis=0)
+            paddle.concat([], axis=0)
 
 
 class TestConcatOpZeroSize1(TestConcatOp):

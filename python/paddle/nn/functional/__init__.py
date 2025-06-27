@@ -130,6 +130,8 @@ from .loss import (
     triplet_margin_loss,
     triplet_margin_with_distance_loss,
 )
+from .moe_permute import moe_permute
+from .moe_unpermute import moe_unpermute
 from .norm import (
     batch_norm,
     group_norm,
@@ -298,4 +300,6 @@ __all__ = [
     "flash_attention_v3_varlen",
     'flash_attn_varlen_qkvpacked',
     'group_norm',
+    'moe_permute',
+    'moe_unpermute',
 ]

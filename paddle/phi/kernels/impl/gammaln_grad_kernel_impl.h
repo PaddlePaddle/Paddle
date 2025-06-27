@@ -19,17 +19,12 @@
 
 namespace phi {
 template <typename T>
-HOSTDEVICE T digamma(T x) {
+HOSTDEVICE T digamma_positive_domain(T x) {
   static T c = T{8.5};
   static T euler_mascheroni = T{0.57721566490153286060};
   T r;
   T value;
   T x2;
-
-  if (x <= T{0.0}) {
-    value = T{0.0};
-    return value;
-  }
 
   if (x <= T{0.000001}) {
     value = -euler_mascheroni - T{1.0} / x + T{1.6449340668482264365} * x;
@@ -55,6 +50,27 @@ HOSTDEVICE T digamma(T x) {
                          r * (T{1.0} / T{240.0} - r * (T{1.0} / T{132.0})))));
 
   return value;
+}
+
+template <typename T>
+HOSTDEVICE T digamma(T x) {
+  static T pi = T{3.14159265358979323846};
+
+  if (x == T{0.0}) {
+    T inf = std::numeric_limits<T>::infinity();
+    return std::signbit(x) ? inf : -inf;
+  } else if (x < T{0.0}) {
+    if (x == std::trunc(x)) {
+      return std::numeric_limits<T>::quiet_NaN();
+    } else {
+      T iptr;
+      T frac_part = std::modf(x, &iptr);
+      return digamma_positive_domain(T{1.0} - x) -
+             pi / std::tan(pi * frac_part);
+    }
+  } else {
+    return digamma_positive_domain(x);
+  }
 }
 
 template <typename T>

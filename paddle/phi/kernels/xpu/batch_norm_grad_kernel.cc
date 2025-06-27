@@ -22,7 +22,7 @@
 namespace phi {
 
 template <typename T>
-static int CalculateInvBNY(xpu::Context *ctx,
+static int CalculateInvBNY(xpu::Context *xpu_ctx,
                            T *x,
                            const T *scale,
                            const T *bias,
@@ -39,34 +39,34 @@ static int CalculateInvBNY(xpu::Context *ctx,
   std::vector<int64_t> tensor_shape_vec({N, C, M});
   std::vector<int64_t> array_shape_vec({1, C, 1});
   // y - bias
-  int r1 =
-      xpu::broadcast_sub<T>(ctx, bias, y, x, array_shape_vec, tensor_shape_vec);
+  int r1 = xpu::broadcast_sub<T>(
+      xpu_ctx, bias, y, x, array_shape_vec, tensor_shape_vec);
   // (y - bias) / scale
   int r2 = xpu::broadcast_div<T>(
-      ctx, scale, x, x, array_shape_vec, tensor_shape_vec);
+      xpu_ctx, scale, x, x, array_shape_vec, tensor_shape_vec);
   // (y - bias) / scale / variance
   int r3 = xpu::broadcast_div<T>(
-      ctx, variance, x, x, array_shape_vec, tensor_shape_vec);
+      xpu_ctx, variance, x, x, array_shape_vec, tensor_shape_vec);
   // (y - bias) / scale / variance + mean
-  int r4 =
-      xpu::broadcast_add<T>(ctx, mean, x, x, array_shape_vec, tensor_shape_vec);
+  int r4 = xpu::broadcast_add<T>(
+      xpu_ctx, mean, x, x, array_shape_vec, tensor_shape_vec);
 
   return r1 + r2 + r3 + r4;
 }
 
 template <typename T>
-static int CalculateInvVar(xpu::Context *ctx,
+static int CalculateInvVar(xpu::Context *xpu_ctx,
                            const T *var,
                            const T epsilon,
                            const int64_t C,
                            T *epsilon_data,
                            T *inv_var) {
-  int r1 = constant(ctx, epsilon_data, 1, epsilon);
+  int r1 = constant(xpu_ctx, epsilon_data, 1, epsilon);
   std::vector<int64_t> tensor_shape_vec({C});
   std::vector<int64_t> array_shape_vec({1});
   int r2 = xpu::broadcast_add<T>(
-      ctx, epsilon_data, var, inv_var, array_shape_vec, tensor_shape_vec);
-  int r3 = xpu::rsqrt<T>(ctx, inv_var, inv_var, C);
+      xpu_ctx, epsilon_data, var, inv_var, array_shape_vec, tensor_shape_vec);
+  int r3 = xpu::rsqrt<T>(xpu_ctx, inv_var, inv_var, C);
   return r1 + r2 + r3;
 }
 

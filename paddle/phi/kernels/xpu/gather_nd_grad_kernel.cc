@@ -63,8 +63,8 @@ void GatherNdGradKernel(const Context &dev_ctx,
             remain_numel,
             out_grad_numel));
 
-    // int reduce_sum(Context* ctx, const T* x, T* y, const std::vector<int>&
-    // xshape, const std::vector<int>& rdims)
+    // int reduce_sum(Context* xpu_ctx, const T* x, T* y, const
+    // std::vector<int>& xshape, const std::vector<int>& rdims)
     int r =
         xpu::reduce_sum(dev_ctx.x_context(),
                         reinterpret_cast<const XPUType *>(out_grad.data<T>()),

@@ -47,6 +47,10 @@ void ReduceSumGradKernel(const Context& dev_ctx,
                          bool reduce_all,
                          DenseTensor* x_grad) {
   reduce_all = recompute_reduce_all(x, dims, reduce_all);
+  if (x_grad && x_grad->numel() == 0) {
+    dev_ctx.template Alloc<T>(x_grad);
+    return;
+  }
   // get reduce_dim for reduce_mean_grad
   int dim_size = x.dims().size();
   std::vector<int> reduce_dims =

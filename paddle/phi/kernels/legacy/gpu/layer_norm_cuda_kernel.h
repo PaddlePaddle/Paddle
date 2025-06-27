@@ -942,33 +942,6 @@ void HostApplyRMSNorm(V* output,
       output, invvar, input, n1, n2, U(epsilon), gamma);
 }
 
-// template<typename Context>
-// void cuda_layer_norm(const Context& ctx,
-//                             const DenseTensor& x,
-//                             const DenseTensor& scale,
-//                             const DenseTensor& bias,
-//                             int rows,
-//                             int cols,
-//                             float epsilon,
-//                             DenseTensor* y,
-//                             DenseTensor* mean,
-//                             DenseTensor* invvar) {
-//   DISPATCH_FLOAT_HALF_AND_BFLOAT_INOUT_TYPES(
-//       x.dtype(),
-//       y->dtype(),
-//       "cuda_layer_norm_kernel",
-//       HostApplyLayerNorm(y->data<scalar_t_out>(),
-//                          mean->data<float>(),
-//                          invvar->data<float>(),
-//                          const_cast<scalar_t_in*>(x.data<scalar_t_in>()),
-//                          rows,
-//                          cols,
-//                          epsilon,
-//                          const_cast<scalar_t_out*>(scale.data<scalar_t_out>()),
-//                          const_cast<scalar_t_out*>(bias.data<scalar_t_out>()),
-//                          ctx.stream()));
-// }
-
 template <typename T, typename Context>
 void cuda_rms_norm(const Context& ctx,
                    const DenseTensor& x,
@@ -978,14 +951,23 @@ void cuda_rms_norm(const Context& ctx,
                    float epsilon,
                    DenseTensor* y,
                    DenseTensor* invvar) {
-  HostApplyRMSNorm<T, float, T>(y->data<T>(),
-                                invvar->data<float>(),
-                                const_cast<T*>(x.data<T>()),
-                                rows,
-                                cols,
-                                epsilon,
-                                const_cast<T*>(scale.data<T>()),
-                                ctx.stream());
+#define DISPATCH_FWD_CASE(scalar_t_out)                      \
+  HostApplyRMSNorm<T, float, scalar_t_out>(                  \
+      y->data<scalar_t_out>(),                               \
+      invvar->data<float>(),                                 \
+      const_cast<T*>(x.data<T>()),                           \
+      rows,                                                  \
+      cols,                                                  \
+      epsilon,                                               \
+      const_cast<scalar_t_out*>(scale.data<scalar_t_out>()), \
+      ctx.stream())
+  // scale.dtype() same as y->dtype()
+  if (scale.dtype() == phi::DataType::FLOAT32) {
+    DISPATCH_FWD_CASE(float);
+  } else if (scale.dtype() == phi::DataType::BFLOAT16) {
+    DISPATCH_FWD_CASE(phi::bfloat16);
+  }
+#undef DISPATCH_FWD_CASE
 }
 
 template <typename T, typename U, typename V, typename Context>
@@ -1066,17 +1048,25 @@ void cuda_rms_norm_gradient(const Context& ctx,
                             float epsilon,
                             DenseTensor* grad_x,
                             DenseTensor* grad_scale) {
-  HostRMSNormGradient<T, float, T, Context>(ctx,
-                                            dy.data<T>(),
-                                            invvar.data<float>(),
-                                            x,
-                                            rows,
-                                            cols,
-                                            scale.data<T>(),
-                                            epsilon,
-                                            grad_x->data<T>(),
-                                            grad_scale->data<T>(),
-                                            ctx.stream());
+#define DISPATCH_BWD_CASE(scalar_t_out)                 \
+  HostRMSNormGradient<T, float, scalar_t_out, Context>( \
+      ctx,                                              \
+      dy.data<scalar_t_out>(),                          \
+      invvar.data<float>(),                             \
+      x,                                                \
+      rows,                                             \
+      cols,                                             \
+      scale.data<scalar_t_out>(),                       \
+      epsilon,                                          \
+      grad_x->data<T>(),                                \
+      grad_scale->data<scalar_t_out>(),                 \
+      ctx.stream())
+  if (scale.dtype() == phi::DataType::FLOAT32) {
+    DISPATCH_BWD_CASE(float);
+  } else if (scale.dtype() == phi::DataType::BFLOAT16) {
+    DISPATCH_BWD_CASE(phi::bfloat16);
+  }
+#undef DISPATCH_BWD_CASE
 }
 
 }  // namespace phi
