@@ -27,9 +27,11 @@ def program_scope_guard():
     place.set_place(paddle.CPUPlace())
     new_scope = paddle.static.Scope()
     main_program = paddle.static.Program()
-    with paddle.static.scope_guard(new_scope):
-        with paddle.static.program_guard(main_program):
-            yield main_program
+    with (
+        paddle.static.scope_guard(new_scope),
+        paddle.static.program_guard(main_program),
+    ):
+        yield main_program
 
 
 def walk_block(block, fn):

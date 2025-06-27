@@ -115,11 +115,13 @@ class TestCumsumOp(unittest.TestCase):
         self.run_static(use_gpu=True)
 
     def test_name(self):
-        with paddle.pir_utils.OldIrGuard():
-            with base.program_guard(base.Program()):
-                x = paddle.static.data('x', [3, 4])
-                y = paddle.cumsum(x, name='out')
-                self.assertTrue('out' in y.name)
+        with (
+            paddle.pir_utils.OldIrGuard(),
+            base.program_guard(base.Program()),
+        ):
+            x = paddle.static.data('x', [3, 4])
+            y = paddle.cumsum(x, name='out')
+            self.assertTrue('out' in y.name)
 
 
 def cumsum_wrapper(x, axis=-1, flatten=False, exclusive=False, reverse=False):

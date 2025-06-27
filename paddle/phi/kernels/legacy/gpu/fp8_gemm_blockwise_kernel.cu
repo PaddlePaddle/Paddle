@@ -156,7 +156,7 @@ void cublas_gemm_blockwise_impl(const DenseTensor& A,
   PADDLE_CUDABLAS_CHECK(phi::dynload::cublasLtMatmulDescCreate(
       &operationDesc, CUBLAS_COMPUTE_32F, CUDA_R_32F));
 
-#if CUBLAS_VERSION >= 120804 && CUDA_VERSION >= 12060
+#if CUBLAS_VERSION >= 120805 && CUDA_VERSION >= 12080
   // Setup scaling for A and B
   cublasLtMatmulMatrixScale_t A_scale_mode, B_scale_mode;
   // Note: in cuBLAS term, tensor name A and B are swapped.
@@ -187,7 +187,7 @@ void cublas_gemm_blockwise_impl(const DenseTensor& A,
       sizeof(B_scale_mode)));
 #else
   PADDLE_THROW(phi::errors::InvalidArgument(
-      "Sub-channel FP8 GEMM requires CUDA 12.8 and cuBLAS 12.8.4 or later."));
+      "Sub-channel FP8 GEMM requires CUDA 12.8 and cuBLAS 12.8.5 or later."));
 #endif
 
   // setup transa and transb
