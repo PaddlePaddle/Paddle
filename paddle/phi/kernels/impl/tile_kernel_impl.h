@@ -37,7 +37,7 @@ void Tile(const Context& dev_ctx,
             "be positive integers, but the value received is %d.",
             repeat_times[i]));
   }
-  auto vec_x_dims = common::vectorize<int>(x_dims);
+  auto vec_x_dims = common::vectorize<int64_t>(x_dims);
   if (repeat_times.size() < vec_x_dims.size()) {
     int diff = vec_x_dims.size() - repeat_times.size();
     repeat_times.insert(repeat_times.begin(), diff, 1);

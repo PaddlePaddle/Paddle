@@ -5373,7 +5373,7 @@ void TileInferMeta(const MetaTensor& x,
   auto out_rank =
       std::max(static_cast<size_t>(x_dims.size()), repeat_times_data.size());
   std::vector<int64_t> out_shape(out_rank);
-  auto x_dim_vec = common::vectorize<int>(x_dims);
+  auto x_dim_vec = common::vectorize<int64_t>(x_dims);
   if (x_dim_vec.size() > repeat_times_data.size()) {
     auto diff = x_dim_vec.size() - repeat_times_data.size();
     repeat_times_data.insert(repeat_times_data.begin(), diff, 1);

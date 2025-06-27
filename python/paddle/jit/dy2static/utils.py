@@ -308,6 +308,10 @@ def is_dataclass_type(obj):
     return is_dataclass(obj) and isinstance(obj, type)
 
 
+def is_plain_dataclass_type(cls: type):
+    return is_dataclass_type(cls) and len(cls.__mro__) == 2
+
+
 def dataclass_as_dict(obj):
     return {f.name: getattr(obj, f.name) for f in dataclasses.fields(obj)}
 
