@@ -745,7 +745,7 @@ class PartialProgramLayer:
                 ),
                 use_scope_cache=True,
             ),
-            *PartialProgramLayer._dict_attributes_to_op_fn_attrs(attrs),
+            attrs,
         )
 
     def __call__(self, inputs):
@@ -1198,7 +1198,7 @@ class PartialProgramLayer:
         return whole_program
 
     def _prepare_attributes(self, in_sot_mode=False):
-        attrs = {
+        return {
             'forward_program': self.program.forward_program,
             'backward_program': self.program.backward_program,
             'is_test': not self.training,
@@ -1206,19 +1206,7 @@ class PartialProgramLayer:
             'in_sot_mode': in_sot_mode,
             'cuda_graph_state': CUDAGraphState.DISABLE,  # default value for not use cuda graph
             'cuda_graph_dispatch_key': 0,  # default value for not use cuda graph
-        }
-        attrs |= self.program.program_attr.items()
-        return attrs
-
-    @staticmethod
-    def _dict_attributes_to_op_fn_attrs(attrs):
-        op_fn_attrs = []
-        for k, v in attrs.items():
-            if k == "cuda_graph_state":
-                v = int(v)
-            op_fn_attrs.append(k)
-            op_fn_attrs.append(v)
-        return op_fn_attrs
+        } | self.program.program_attr
 
     def _prepare_inputs(self, inputs):
         """
