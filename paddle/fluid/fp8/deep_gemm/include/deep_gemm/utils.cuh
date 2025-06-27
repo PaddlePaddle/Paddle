@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// The file has been adapted from DeepSeek DeepGEMM project
+// The file has been adapted from DeepSeek DeepEP project
 // Copyright (c) 2025 DeepSeek
 // Licensed under the MIT License -
-// https://github.com/deepseek-ai/DeepGEMM/blob/main/LICENSE
+// https://github.com/deepseek-ai/DeepEP/blob/main/LICENSE
 
 #pragma once
 
@@ -72,9 +72,4 @@ class AssertionException : public std::exception {
 template <typename T>
 __device__ __host__ constexpr T ceil_div(T a, T b) {
   return (a + b - 1) / b;
-}
-
-template <typename T>
-__device__ __host__ constexpr T constexpr_gcd(T a, T b) {
-  return b == 0 ? a : constexpr_gcd(b, a % b);
 }

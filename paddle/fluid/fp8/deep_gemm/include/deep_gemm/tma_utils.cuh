@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// The file has been adapted from DeepSeek DeepGEMM project
+// The file has been adapted from DeepSeek DeepEP project
 // Copyright (c) 2025 DeepSeek
 // Licensed under the MIT License -
-// https://github.com/deepseek-ai/DeepGEMM/blob/main/LICENSE
+// https://github.com/deepseek-ai/DeepEP/blob/main/LICENSE
 
 #pragma once
 
@@ -59,7 +59,7 @@ constexpr CUtensorMapDataType get_CUtensorMapDataType() {
   }
 }
 
-inline PFN_cuTensorMapEncodeTiled get_cuTensorMapEncodeTiled() {
+PFN_cuTensorMapEncodeTiled get_cuTensorMapEncodeTiled() {
   // Get pointer to `cuTensorMapEncodeTiled`
   cudaDriverEntryPointQueryResult driver_status;
   void* cuTensorMapEncodeTiled_ptr = nullptr;
@@ -91,16 +91,17 @@ CUtensorMap make_2d_tma_copy_desc(
     uint32_t smem_dim[2],
     CUtensorMapSwizzle swizzle_type,
     PFN_cuTensorMapEncodeTiled encode_func = nullptr) {
-  CUtensorMap tensor_map = {};
-  uint64_t global_stride[1] = {stride_in_bytes};
-  uint32_t elem_strides[2] = {1, 1};
+  CUtensorMap tensor_map{};
+  constexpr uint32_t rank = 2;
+  uint64_t global_stride[rank - 1] = {stride_in_bytes};
+  uint32_t elem_strides[rank] = {1, 1};
 
   if (encode_func == nullptr) encode_func = get_cuTensorMapEncodeTiled();
 
   auto result =
       encode_func(&tensor_map,
-                  get_CUtensorMapDataType<std::remove_cv_t<T>>(),
-                  2,
+                  get_CUtensorMapDataType<typename std::remove_cv<T>::type>(),
+                  rank,
                   global_address,
                   gmem_dim,
                   global_stride,

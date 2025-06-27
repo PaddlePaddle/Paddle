@@ -50,7 +50,7 @@ class JITTuner:
             print(f"Auto-tuning JIT kernel {name} with keys {keys}")
 
         assert signature not in self.tuned
-        space = ({},) if len(space) == 0 else space
+        space = ((),) if len(space) == 0 else space
 
         kernels = []
         for tuned_keys in space:
@@ -109,7 +109,11 @@ class JITTuner:
         signature = (name, m, k, n)
         if signature in self.tuned:
             return self.tuned[signature]
-        space = ({},) if len(space) == 0 else space
+        # keys = {k: keys[k] for k in sorted(keys.keys())}
+        # signature = (name, f"{keys}")
+        # if signature in self.tuned:
+        #     return self.tuned[signature]
+        space = ((),) if len(space) == 0 else space
 
         kernels = []
         for tuned_keys in space:
