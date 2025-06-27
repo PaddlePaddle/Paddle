@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// The file has been adapted from DeepSeek DeepEP project
+// The file has been adapted from DeepSeek DeepGEMM project
 // Copyright (c) 2025 DeepSeek
 // Licensed under the MIT License -
 // https://github.com/deepseek-ai/DeepEP/blob/main/LICENSE
