@@ -594,11 +594,10 @@ void LaunchContiguous2StridedDefaultKernel(
       switch (rank) {
 #define CASE_RANK(__Rk)                                           \
   case __Rk:                                                      \
-    Contiguous2StridedDefaultFunc<T, 8, __Rk>                     \
+    Contiguous2StridedDefaultDiffDimFunc<T, 8, __Rk>              \
         <<<grid, block, 0, dev_ctx.stream()>>>(                   \
             input_data, output_data, output_stride, dims, numel); \
     break
-
         CASE_RANK(1);
         CASE_RANK(2);
         CASE_RANK(3);
@@ -609,6 +608,7 @@ void LaunchContiguous2StridedDefaultKernel(
         CASE_RANK(8);
         CASE_RANK(9);
 #undef CASE_RANK
+
         default:
           PADDLE_THROW(common::errors::InvalidArgument(
               "The rank of input should be less than 9, but received %d.",
@@ -693,10 +693,11 @@ void LaunchContiguous2StridedDefaultKernel(
       switch (rank) {
 #define CASE_RANK(__Rk)                                           \
   case __Rk:                                                      \
-    Contiguous2StridedDefaultDiffDimFunc<T, 8, __Rk>              \
+    Contiguous2StridedDefaultFunc<T, 8, __Rk>                     \
         <<<grid, block, 0, dev_ctx.stream()>>>(                   \
             input_data, output_data, output_stride, dims, numel); \
     break
+
         CASE_RANK(1);
         CASE_RANK(2);
         CASE_RANK(3);
@@ -707,7 +708,6 @@ void LaunchContiguous2StridedDefaultKernel(
         CASE_RANK(8);
         CASE_RANK(9);
 #undef CASE_RANK
-
         default:
           PADDLE_THROW(common::errors::InvalidArgument(
               "The rank of input should be less than 9, but received %d.",
