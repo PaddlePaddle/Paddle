@@ -355,4 +355,12 @@ void ConvertAllInputsToDistTensor(const phi::distributed::ProcessMesh* mesh,
 void ConvertToDistTensor(paddle::Tensor* x,
                          const phi::distributed::ProcessMesh* mesh);
 
+void inline CUDAErrorCheck(const std::string& check_tag) {
+#ifdef PADDLE_WITH_CUDA
+  std::cout << check_tag << " checking..." << std::endl;
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaGetLastError());
+  std::cout << check_tag << " check done." << std::endl;
+#endif
+}
 }  // namespace egr

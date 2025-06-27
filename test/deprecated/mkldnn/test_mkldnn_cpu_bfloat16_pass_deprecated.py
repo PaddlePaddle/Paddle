@@ -28,23 +28,25 @@ from paddle.base.core import PassVersionChecker
 class TestMKLDNNCpuBfloat16Pass(InferencePassTest):
     def setUp(self):
         self.init_data()
-        with paddle.pir_utils.OldIrGuard():
-            with base.program_guard(self.main_program, self.startup_program):
-                x = paddle.static.data(
-                    name='x', shape=[-1, *self.shape_x], dtype=self.d_type
+        with (
+            paddle.pir_utils.OldIrGuard(),
+            base.program_guard(self.main_program, self.startup_program),
+        ):
+            x = paddle.static.data(
+                name='x', shape=[-1, *self.shape_x], dtype=self.d_type
+            )
+
+            out = paddle.transpose(x, perm=[0, 1, 2, 3])
+            out = paddle.reshape(out, [0, 0, 0, 0])
+
+            out = paddle.static.nn.fc(out, size=1)
+
+            self.feeds = {
+                "x": np.random.random([self.bs, *self.shape_x]).astype(
+                    self.d_type
                 )
-
-                out = paddle.transpose(x, perm=[0, 1, 2, 3])
-                out = paddle.reshape(out, [0, 0, 0, 0])
-
-                out = paddle.static.nn.fc(out, size=1)
-
-                self.feeds = {
-                    "x": np.random.random([self.bs, *self.shape_x]).astype(
-                        self.d_type
-                    )
-                }
-                self.fetch_list = [out]
+            }
+            self.fetch_list = [out]
 
     def init_data(self):
         self.bs = 8

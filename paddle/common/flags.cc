@@ -434,6 +434,24 @@ PHI_DEFINE_EXPORTED_bool(
 
 /**
  * Memory related FLAG
+ * Name: FLAGS_enable_async_fast_gc
+ * Since Version: 3.1.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: Enable async fast garbage collection mode. If enabled, allocation will
+ *       be released asynchronously, which makes the garbage collection process
+ *       faster. This flag is valid when fast_eager_deletion_mode is enabled.
+ */
+PHI_DEFINE_EXPORTED_bool(
+    enable_async_fast_gc,
+    false,
+    "Enable async fast garbage collection mode. If enabled, allocation will "
+    "be released asynchronously, which make the garbage collection process "
+    "non-blocking. This flag is only valid when FLAGS_fast_eager_deletion_mode "
+    "is true.");
+
+/**
+ * Memory related FLAG
  * Name: FLAGS_memory_fraction_of_eager_deletion
  * Since Version: 1.4
  * Value Range: double [0.0, 1.0], default=1.0
@@ -1176,6 +1194,19 @@ PHI_DEFINE_EXPORTED_bool(
     "When enabling CUDA Graph with CUDAMallocAsyncAllocator, we add "
     "cudaGraphInstantiateFlagAutoFreeOnLaunch so it would automatically "
     "release graph-owned blocks that have not freed before relaunching.");
+
+/*
+ * CUDA Graph related FLAG
+ * Name: FLAGS_cuda_graph_blacklist
+ * Since Version: 3.1
+ * Value Range: string, default=""
+ * Example: FLAGS_cuda_graph_blacklist="op1,op2,op3" would
+ * blacklist op1, op2, op3 from being captured in CUDA Graph.
+ */
+PHI_DEFINE_EXPORTED_string(
+    cuda_graph_blacklist,
+    "",
+    "CUDA Graph blacklist, split by ',', e.g., 'op1,op2,op3'");
 
 /*
  * Executor related FLAG
@@ -2079,6 +2110,11 @@ PHI_DEFINE_EXPORTED_bool(save_cf_stack_op,
                          false,
                          "Save cf stack op for higher-order derivatives.");
 
+PHI_DEFINE_EXPORTED_bool(
+    enable_auto_growth_allocator_add_lock,
+    false,
+    "Enable add lock when call AutoGrowthBestFitAllocator::ReleaseImpl");
+
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 /**
  * FlashAttention related FLAG
@@ -2096,3 +2132,14 @@ PHI_DEFINE_EXPORTED_int32(
     "Version 2 requires Ampere architecture or higher, "
     "while version 3 requires Hopper architecture.");
 #endif
+
+/**
+ * Operator related FLAG
+ * Name: FLAGS_check_cuda_error
+ * Value Range: bool, default=false
+ * Example:
+ * Note: Used to debug. Checking whether CUDA error occurred or not.
+ */
+PHI_DEFINE_EXPORTED_bool(check_cuda_error,
+                         false,
+                         "Checking whether CUDA error occurred or not.");

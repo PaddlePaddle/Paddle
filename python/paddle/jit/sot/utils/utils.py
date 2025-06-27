@@ -23,6 +23,7 @@ import types
 import weakref
 from collections import OrderedDict
 from contextlib import contextmanager
+from dataclasses import is_dataclass
 from functools import lru_cache
 from typing import TYPE_CHECKING, Any, Callable, TypeVar
 from weakref import WeakValueDictionary
@@ -30,7 +31,11 @@ from weakref import WeakValueDictionary
 import numpy as np
 
 import paddle
-from paddle.jit.dy2static.utils import TransformOptions
+from paddle.jit.dy2static.utils import (
+    TransformOptions,
+    dataclass_as_dict,
+    dataclass_from_dict,
+)
 from paddle.utils import flatten, map_structure
 
 from .envs import (
@@ -281,6 +286,8 @@ def map_if_extend(structure, pred, true_fn, false_fn):
     def wrapped_pred(x):
         if isinstance(x, slice):
             return True
+        if is_dataclass(x) and not isinstance(x, type):
+            return True
         return pred(x)
 
     def wrapped_true_fn(x):
@@ -288,6 +295,12 @@ def map_if_extend(structure, pred, true_fn, false_fn):
             l = [x.start, x.stop, x.step]
             l = map_if_extend(l, pred, true_fn, false_fn)
             return slice(*l)
+
+        if is_dataclass(x) and not isinstance(x, type):
+            dt_dict = dataclass_as_dict(x)
+            dt_dict = map_if_extend(dt_dict, pred, true_fn, false_fn)
+            return dataclass_from_dict(type(x), dt_dict)
+
         return true_fn(x)
 
     return map_if(

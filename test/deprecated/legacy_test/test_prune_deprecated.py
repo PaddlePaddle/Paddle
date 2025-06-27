@@ -298,21 +298,23 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
         program = framework.Program()
         startup_program = framework.Program()
         scope = base.Scope()
-        with base.scope_guard(scope):
-            with base.program_guard(program, startup_program):
-                (x, y, label, loss1, loss2, w_param_attrs) = self.net1()
-                exe = base.Executor(base.CPUPlace())
-                exe.run(startup_program)
-                x_np = np.random.random(size=(10, 2)).astype('float32')
-                label_np = np.random.randint(1, size=(10, 1)).astype('int64')
-                res = exe.run(
-                    program,
-                    feed={'x': x_np, 'label': label_np},
-                    fetch_list=[loss1.name],
-                    use_prune=False,
-                )
-                self.assertIsNotNone(scope.find_var(loss1.name))
-                self.assertIsNotNone(scope.find_var(loss2.name))
+        with (
+            base.scope_guard(scope),
+            base.program_guard(program, startup_program),
+        ):
+            (x, y, label, loss1, loss2, w_param_attrs) = self.net1()
+            exe = base.Executor(base.CPUPlace())
+            exe.run(startup_program)
+            x_np = np.random.random(size=(10, 2)).astype('float32')
+            label_np = np.random.randint(1, size=(10, 1)).astype('int64')
+            res = exe.run(
+                program,
+                feed={'x': x_np, 'label': label_np},
+                fetch_list=[loss1.name],
+                use_prune=False,
+            )
+            self.assertIsNotNone(scope.find_var(loss1.name))
+            self.assertIsNotNone(scope.find_var(loss2.name))
 
     def test_prune_fetches_without_optimizer(self):
         """
@@ -321,30 +323,30 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
         program = framework.Program()
         startup_program = framework.Program()
         scope = base.Scope()
-        with base.scope_guard(scope):
-            with base.program_guard(program, startup_program):
-                (x, y, label, loss1, loss2, w_param_attrs) = self.net1()
-                exe = base.Executor(base.CPUPlace())
-                exe.run(startup_program)
-                weight_init = np.array(
-                    scope.find_var(w_param_attrs.name).get_tensor()
-                )
-                x_np = np.random.random(size=(10, 2)).astype('float32')
-                label_np = np.random.randint(1, size=(10, 1)).astype('int64')
-                res = exe.run(
-                    program,
-                    feed={'x': x_np, 'label': label_np},
-                    fetch_list=[loss1.name],
-                    use_prune=True,
-                )
-                self.assertIsNotNone(scope.find_var(loss1.name))
-                self.assertIsNone(scope.find_var(loss2.name))  # loss2 is pruned
-                weight = np.array(
-                    scope.find_var(w_param_attrs.name).get_tensor()
-                )
-                np.testing.assert_array_equal(
-                    weight_init, weight
-                )  # weight not changed
+        with (
+            base.scope_guard(scope),
+            base.program_guard(program, startup_program),
+        ):
+            (x, y, label, loss1, loss2, w_param_attrs) = self.net1()
+            exe = base.Executor(base.CPUPlace())
+            exe.run(startup_program)
+            weight_init = np.array(
+                scope.find_var(w_param_attrs.name).get_tensor()
+            )
+            x_np = np.random.random(size=(10, 2)).astype('float32')
+            label_np = np.random.randint(1, size=(10, 1)).astype('int64')
+            res = exe.run(
+                program,
+                feed={'x': x_np, 'label': label_np},
+                fetch_list=[loss1.name],
+                use_prune=True,
+            )
+            self.assertIsNotNone(scope.find_var(loss1.name))
+            self.assertIsNone(scope.find_var(loss2.name))  # loss2 is pruned
+            weight = np.array(scope.find_var(w_param_attrs.name).get_tensor())
+            np.testing.assert_array_equal(
+                weight_init, weight
+            )  # weight not changed
 
     def test_prune_fetches_with_optimizer(self):
         """
@@ -354,117 +356,119 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
         program = framework.Program()
         startup_program = framework.Program()
         scope = base.Scope()
-        with base.scope_guard(scope):
-            with base.program_guard(program, startup_program):
-                (x, y, label, loss1, loss2, w_param_attrs) = self.net1()
-                sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.5)
-                sgd_optimizer.minimize(loss1)
-                exe = base.Executor(base.CPUPlace())
-                exe.run(startup_program)
-                weight_init = np.array(
-                    scope.find_var(w_param_attrs.name).get_tensor()
-                )
-                x_np = np.random.random(size=(10, 2)).astype('float32')
-                label_np = np.random.randint(1, size=(10, 1)).astype('int64')
-                res = exe.run(
-                    program,
-                    feed={'x': x_np, 'label': label_np},
-                    fetch_list=[loss1.name],
-                    use_prune=True,
-                )
-                self.assertIsNotNone(scope.find_var(loss1.name))
-                self.assertIsNone(scope.find_var(loss2.name))  # loss2 is pruned
-                weight = np.array(
-                    scope.find_var(w_param_attrs.name).get_tensor()
-                )
-                self.assertFalse(
-                    np.array_equal(weight_init, weight)
-                )  # weight changed
+        with (
+            base.scope_guard(scope),
+            base.program_guard(program, startup_program),
+        ):
+            (x, y, label, loss1, loss2, w_param_attrs) = self.net1()
+            sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.5)
+            sgd_optimizer.minimize(loss1)
+            exe = base.Executor(base.CPUPlace())
+            exe.run(startup_program)
+            weight_init = np.array(
+                scope.find_var(w_param_attrs.name).get_tensor()
+            )
+            x_np = np.random.random(size=(10, 2)).astype('float32')
+            label_np = np.random.randint(1, size=(10, 1)).astype('int64')
+            res = exe.run(
+                program,
+                feed={'x': x_np, 'label': label_np},
+                fetch_list=[loss1.name],
+                use_prune=True,
+            )
+            self.assertIsNotNone(scope.find_var(loss1.name))
+            self.assertIsNone(scope.find_var(loss2.name))  # loss2 is pruned
+            weight = np.array(scope.find_var(w_param_attrs.name).get_tensor())
+            self.assertFalse(
+                np.array_equal(weight_init, weight)
+            )  # weight changed
 
     def test_prune_compiled_program(self):
         program = framework.Program()
         startup_program = framework.Program()
         scope = base.Scope()
-        with base.scope_guard(scope):
-            with base.program_guard(program, startup_program):
-                (x, y, label, loss1, loss2, w_param_attrs) = self.net1()
-                sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.5)
-                sgd_optimizer.minimize(loss1)
-                exe = base.Executor(base.CPUPlace())
-                exe.run(startup_program)
-                compiled_prog = base.CompiledProgram(program)
-                weight_init = np.array(
-                    scope.find_var(w_param_attrs.name).get_tensor()
-                )
-                x_np = np.random.random(size=(10, 2)).astype('float32')
-                label_np = np.random.randint(1, size=(10, 1)).astype('int64')
-                res = exe.run(
-                    compiled_prog,
-                    feed={'x': x_np, 'label': label_np},
-                    fetch_list=[loss1.name],
-                    use_prune=True,
-                )
-                self.assertIsNotNone(scope.find_var(loss1.name))
-                self.assertIsNone(scope.find_var(loss2.name))
-                weight = np.array(
-                    scope.find_var(w_param_attrs.name).get_tensor()
-                )
-                self.assertFalse(
-                    np.array_equal(weight_init, weight)
-                )  # weight changed
+        with (
+            base.scope_guard(scope),
+            base.program_guard(program, startup_program),
+        ):
+            (x, y, label, loss1, loss2, w_param_attrs) = self.net1()
+            sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.5)
+            sgd_optimizer.minimize(loss1)
+            exe = base.Executor(base.CPUPlace())
+            exe.run(startup_program)
+            compiled_prog = base.CompiledProgram(program)
+            weight_init = np.array(
+                scope.find_var(w_param_attrs.name).get_tensor()
+            )
+            x_np = np.random.random(size=(10, 2)).astype('float32')
+            label_np = np.random.randint(1, size=(10, 1)).astype('int64')
+            res = exe.run(
+                compiled_prog,
+                feed={'x': x_np, 'label': label_np},
+                fetch_list=[loss1.name],
+                use_prune=True,
+            )
+            self.assertIsNotNone(scope.find_var(loss1.name))
+            self.assertIsNone(scope.find_var(loss2.name))
+            weight = np.array(scope.find_var(w_param_attrs.name).get_tensor())
+            self.assertFalse(
+                np.array_equal(weight_init, weight)
+            )  # weight changed
 
     def test_prune_feed_without_optimizer(self):
         program = framework.Program()
         startup_program = framework.Program()
         scope = base.Scope()
-        with base.scope_guard(scope):
-            with base.program_guard(program, startup_program):
-                (x, y, label, loss1, loss2, w_param_attrs) = self.net1()
-                exe = base.Executor(base.CPUPlace())
-                exe.run(startup_program)
-                weight_init = np.array(
-                    scope.find_var(w_param_attrs.name).get_tensor()
-                )
-                x_np = np.random.random(size=(10, 2)).astype('float32')
-                label_np = np.random.randint(1, size=(10, 1)).astype('int64')
-                res = exe.run(
-                    program,
-                    feed={y.name: x_np, 'label': label_np},
-                    fetch_list=[loss1.name],
-                    use_prune=True,
-                )
-                self.assertIsNotNone(scope.find_var(loss1.name))
-                self.assertIsNone(scope.find_var(loss2.name))
-                weight = np.array(
-                    scope.find_var(w_param_attrs.name).get_tensor()
-                )
-                np.testing.assert_array_equal(
-                    weight_init, weight
-                )  # weight unchanged
+        with (
+            base.scope_guard(scope),
+            base.program_guard(program, startup_program),
+        ):
+            (x, y, label, loss1, loss2, w_param_attrs) = self.net1()
+            exe = base.Executor(base.CPUPlace())
+            exe.run(startup_program)
+            weight_init = np.array(
+                scope.find_var(w_param_attrs.name).get_tensor()
+            )
+            x_np = np.random.random(size=(10, 2)).astype('float32')
+            label_np = np.random.randint(1, size=(10, 1)).astype('int64')
+            res = exe.run(
+                program,
+                feed={y.name: x_np, 'label': label_np},
+                fetch_list=[loss1.name],
+                use_prune=True,
+            )
+            self.assertIsNotNone(scope.find_var(loss1.name))
+            self.assertIsNone(scope.find_var(loss2.name))
+            weight = np.array(scope.find_var(w_param_attrs.name).get_tensor())
+            np.testing.assert_array_equal(
+                weight_init, weight
+            )  # weight unchanged
 
     def test_prune_feed_with_optimizer(self):
         program = framework.Program()
         startup_program = framework.Program()
         scope = base.Scope()
-        with base.scope_guard(scope):
-            with base.program_guard(program, startup_program):
-                (x, y, label, loss1, loss2, w_param_attrs) = self.net1()
-                sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.5)
-                sgd_optimizer.minimize(loss1)
-                exe = base.Executor(base.CPUPlace())
-                exe.run(startup_program)
-                x_np = np.random.random(size=(10, 2)).astype('float32')
-                label_np = np.random.randint(1, size=(10, 1)).astype('int64')
-                self.assertRaises(
-                    Exception,
-                    exe.run,
-                    program,
-                    feed={y.name: x_np, 'label': label_np},
-                    fetch_list=[loss1.name],
-                    use_prune=True,
-                )
-                self.assertIsNotNone(scope.find_var(loss1.name))
-                self.assertIsNone(scope.find_var(loss2.name))
+        with (
+            base.scope_guard(scope),
+            base.program_guard(program, startup_program),
+        ):
+            (x, y, label, loss1, loss2, w_param_attrs) = self.net1()
+            sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.5)
+            sgd_optimizer.minimize(loss1)
+            exe = base.Executor(base.CPUPlace())
+            exe.run(startup_program)
+            x_np = np.random.random(size=(10, 2)).astype('float32')
+            label_np = np.random.randint(1, size=(10, 1)).astype('int64')
+            self.assertRaises(
+                Exception,
+                exe.run,
+                program,
+                feed={y.name: x_np, 'label': label_np},
+                fetch_list=[loss1.name],
+                use_prune=True,
+            )
+            self.assertIsNotNone(scope.find_var(loss1.name))
+            self.assertIsNone(scope.find_var(loss2.name))
 
     def test_prune_with_cache_program(self):
         '''
@@ -481,24 +485,24 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
             program = framework.Program()
             startup_program = framework.Program()
             scope = base.Scope()
-            with base.scope_guard(scope):
-                with base.program_guard(program, startup_program):
-                    (x, y, label, loss1, loss2, w_param_attrs) = self.net1()
-                    sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.5)
-                    sgd_optimizer.minimize(loss1)
-                    exe.run(startup_program)
-                    x_np = np.random.random(size=(10, 2)).astype('float32')
-                    label_np = np.random.randint(1, size=(10, 1)).astype(
-                        'int64'
+            with (
+                base.scope_guard(scope),
+                base.program_guard(program, startup_program),
+            ):
+                (x, y, label, loss1, loss2, w_param_attrs) = self.net1()
+                sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.5)
+                sgd_optimizer.minimize(loss1)
+                exe.run(startup_program)
+                x_np = np.random.random(size=(10, 2)).astype('float32')
+                label_np = np.random.randint(1, size=(10, 1)).astype('int64')
+                for i in range(10):
+                    res = exe.run(
+                        program,
+                        feed={'x': x_np, 'label': label_np},
+                        fetch_list=[loss1.name],
+                        use_prune=True,
                     )
-                    for i in range(10):
-                        res = exe.run(
-                            program,
-                            feed={'x': x_np, 'label': label_np},
-                            fetch_list=[loss1.name],
-                            use_prune=True,
-                        )
-                        self.assertEqual(exe.prune_called_times, 1)
+                    self.assertEqual(exe.prune_called_times, 1)
 
     def test_prune_with_cache_program2(self):
         '''
@@ -512,58 +516,58 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
             program = framework.Program()
             startup_program = framework.Program()
             scope = base.Scope()
-            with base.scope_guard(scope):
-                with base.program_guard(program, startup_program):
-                    (
-                        x1,
-                        x2,
-                        y1,
-                        y2,
-                        label,
-                        loss1,
-                        loss2,
-                        w1_param_attrs,
-                        w2_param_attrs,
-                    ) = self.net2()
-                    adam_optimizer1 = paddle.optimizer.Adam(learning_rate=0.5)
-                    train1 = adam_optimizer1.minimize(loss1)
-                    adam_optimizer2 = paddle.optimizer.Adam(learning_rate=0.5)
-                    train2 = adam_optimizer2.minimize(loss2)
-                    exe.run(startup_program)
-                    x_np = np.random.random(size=(10, 2)).astype('float32')
-                    label_np = np.random.randint(1, size=(10, 1)).astype(
-                        'int64'
-                    )
+            with (
+                base.scope_guard(scope),
+                base.program_guard(program, startup_program),
+            ):
+                (
+                    x1,
+                    x2,
+                    y1,
+                    y2,
+                    label,
+                    loss1,
+                    loss2,
+                    w1_param_attrs,
+                    w2_param_attrs,
+                ) = self.net2()
+                adam_optimizer1 = paddle.optimizer.Adam(learning_rate=0.5)
+                train1 = adam_optimizer1.minimize(loss1)
+                adam_optimizer2 = paddle.optimizer.Adam(learning_rate=0.5)
+                train2 = adam_optimizer2.minimize(loss2)
+                exe.run(startup_program)
+                x_np = np.random.random(size=(10, 2)).astype('float32')
+                label_np = np.random.randint(1, size=(10, 1)).astype('int64')
 
-                    for i in range(10):
-                        if i % 2:
-                            res = exe.run(
-                                program,
-                                feed={
-                                    'x1': x_np,
-                                    'x2': x_np,
-                                    'label': label_np,
-                                },
-                                fetch_list=[loss1, loss2, train1],
-                                use_prune=True,
-                            )
-                        else:
-                            res = exe.run(
-                                program,
-                                feed={
-                                    'x1': x_np,
-                                    'x2': x_np,
-                                    'label': label_np,
-                                },
-                                fetch_list=[loss1, loss2, train2],
-                                use_prune=True,
-                            )
-                        if i == 0:
-                            self.assertEqual(exe.prune_called_times, 1)
-                        elif i == 1:
-                            self.assertEqual(exe.prune_called_times, 2)
-                        else:
-                            self.assertEqual(exe.prune_called_times, 2)
+                for i in range(10):
+                    if i % 2:
+                        res = exe.run(
+                            program,
+                            feed={
+                                'x1': x_np,
+                                'x2': x_np,
+                                'label': label_np,
+                            },
+                            fetch_list=[loss1, loss2, train1],
+                            use_prune=True,
+                        )
+                    else:
+                        res = exe.run(
+                            program,
+                            feed={
+                                'x1': x_np,
+                                'x2': x_np,
+                                'label': label_np,
+                            },
+                            fetch_list=[loss1, loss2, train2],
+                            use_prune=True,
+                        )
+                    if i == 0:
+                        self.assertEqual(exe.prune_called_times, 1)
+                    elif i == 1:
+                        self.assertEqual(exe.prune_called_times, 2)
+                    else:
+                        self.assertEqual(exe.prune_called_times, 2)
 
     def test_prune_with_cache_compiled_program(self):
         '''
@@ -580,25 +584,25 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
             program = framework.Program()
             startup_program = framework.Program()
             scope = base.Scope()
-            with base.scope_guard(scope):
-                with base.program_guard(program, startup_program):
-                    (x, y, label, loss1, loss2, w_param_attrs) = self.net1()
-                    sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.5)
-                    sgd_optimizer.minimize(loss1)
-                    exe.run(startup_program)
-                    x_np = np.random.random(size=(10, 2)).astype('float32')
-                    label_np = np.random.randint(1, size=(10, 1)).astype(
-                        'int64'
+            with (
+                base.scope_guard(scope),
+                base.program_guard(program, startup_program),
+            ):
+                (x, y, label, loss1, loss2, w_param_attrs) = self.net1()
+                sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.5)
+                sgd_optimizer.minimize(loss1)
+                exe.run(startup_program)
+                x_np = np.random.random(size=(10, 2)).astype('float32')
+                label_np = np.random.randint(1, size=(10, 1)).astype('int64')
+                compiled_prog = base.CompiledProgram(program)
+                for i in range(10):
+                    res = exe.run(
+                        compiled_prog,
+                        feed={'x': x_np, 'label': label_np},
+                        fetch_list=[loss1.name],
+                        use_prune=True,
                     )
-                    compiled_prog = base.CompiledProgram(program)
-                    for i in range(10):
-                        res = exe.run(
-                            compiled_prog,
-                            feed={'x': x_np, 'label': label_np},
-                            fetch_list=[loss1.name],
-                            use_prune=True,
-                        )
-                        self.assertEqual(exe.prune_called_times, 1)
+                    self.assertEqual(exe.prune_called_times, 1)
 
     def test_prune_with_multi_optimizers(self):
         '''
@@ -610,25 +614,27 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
         startup_program = framework.Program()
         scope = base.Scope()
         # do not use_prune
-        with base.scope_guard(scope):
-            with base.program_guard(program, startup_program):
-                (x, y, label, loss1, loss2, w_param_attrs) = self.net1()
-                sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.5)
-                train1, _ = sgd_optimizer.minimize(loss1)
-                cloned_program = program.clone()
-                train2, _ = sgd_optimizer.minimize(loss2)
-                exe.run(startup_program)
-                x_np = np.random.random(size=(10, 2)).astype('float32')
-                label_np = np.random.randint(1, size=(10, 1)).astype('int64')
-                res = exe.run(
-                    program,
-                    feed={'x': x_np, 'label': label_np},
-                    fetch_list=[loss1.name],
-                    use_prune=False,
-                )
-                weight_without_prune = np.array(
-                    scope.find_var(w_param_attrs.name).get_tensor()
-                )
+        with (
+            base.scope_guard(scope),
+            base.program_guard(program, startup_program),
+        ):
+            (x, y, label, loss1, loss2, w_param_attrs) = self.net1()
+            sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.5)
+            train1, _ = sgd_optimizer.minimize(loss1)
+            cloned_program = program.clone()
+            train2, _ = sgd_optimizer.minimize(loss2)
+            exe.run(startup_program)
+            x_np = np.random.random(size=(10, 2)).astype('float32')
+            label_np = np.random.randint(1, size=(10, 1)).astype('int64')
+            res = exe.run(
+                program,
+                feed={'x': x_np, 'label': label_np},
+                fetch_list=[loss1.name],
+                use_prune=False,
+            )
+            weight_without_prune = np.array(
+                scope.find_var(w_param_attrs.name).get_tensor()
+            )
 
         scope = base.Scope()
         # use_prune
@@ -671,28 +677,30 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
         startup_program = framework.Program()
         scope = base.Scope()
         # do not use_prune
-        with base.scope_guard(scope):
-            with base.program_guard(program, startup_program):
-                (x, y, label, loss1, loss2, w_param_attrs) = self.net1()
-                sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.5)
-                train1 = sgd_optimizer.minimize(loss1)
-                cloned_program = program.clone()
+        with (
+            base.scope_guard(scope),
+            base.program_guard(program, startup_program),
+        ):
+            (x, y, label, loss1, loss2, w_param_attrs) = self.net1()
+            sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.5)
+            train1 = sgd_optimizer.minimize(loss1)
+            cloned_program = program.clone()
 
-                train2 = sgd_optimizer.minimize(loss2)
-                exe.run(startup_program)
-                x_np = np.random.random(size=(10, 2)).astype('float32')
-                label_np = np.random.randint(1, size=(10, 1)).astype('int64')
+            train2 = sgd_optimizer.minimize(loss2)
+            exe.run(startup_program)
+            x_np = np.random.random(size=(10, 2)).astype('float32')
+            label_np = np.random.randint(1, size=(10, 1)).astype('int64')
 
-                res = exe.run(
-                    program,
-                    feed={'x': x_np, 'label': label_np},
-                    fetch_list=[loss1.name],
-                    use_prune=False,
-                )
+            res = exe.run(
+                program,
+                feed={'x': x_np, 'label': label_np},
+                fetch_list=[loss1.name],
+                use_prune=False,
+            )
 
-                weight_without_prune = np.array(
-                    scope.find_var(w_param_attrs.name).get_tensor()
-                )
+            weight_without_prune = np.array(
+                scope.find_var(w_param_attrs.name).get_tensor()
+            )
 
         scope = base.Scope()
         # use_prune
@@ -733,58 +741,56 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
         program = framework.Program()
         startup_program = framework.Program()
         scope = base.Scope()
-        with base.scope_guard(scope):
-            with base.program_guard(program, startup_program):
-                (
-                    x1,
-                    x2,
-                    y1,
-                    y2,
-                    label,
-                    loss1,
-                    loss2,
-                    w1_param_attrs,
-                    w2_param_attrs,
-                ) = self.net2()
-                loss1.persistable = True
-                loss2.persistable = True
-                sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.5)
-                train1 = sgd_optimizer.minimize(loss1)
-                sgd_optimizer1 = paddle.optimizer.SGD(learning_rate=0.5)
-                train2 = sgd_optimizer1.minimize(loss2)
-                exe = base.Executor(base.CPUPlace())
-                exe.run(startup_program)
-                weight1_init = np.array(
-                    scope.find_var(w1_param_attrs.name).get_tensor()
-                )
-                weight2_init = np.array(
-                    scope.find_var(w2_param_attrs.name).get_tensor()
-                )
-                x_np = np.random.random(size=(10, 2)).astype('float32')
-                label_np = np.random.randint(1, size=(10, 1)).astype('int64')
+        with (
+            base.scope_guard(scope),
+            base.program_guard(program, startup_program),
+        ):
+            (
+                x1,
+                x2,
+                y1,
+                y2,
+                label,
+                loss1,
+                loss2,
+                w1_param_attrs,
+                w2_param_attrs,
+            ) = self.net2()
+            loss1.persistable = True
+            loss2.persistable = True
+            sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.5)
+            train1 = sgd_optimizer.minimize(loss1)
+            sgd_optimizer1 = paddle.optimizer.SGD(learning_rate=0.5)
+            train2 = sgd_optimizer1.minimize(loss2)
+            exe = base.Executor(base.CPUPlace())
+            exe.run(startup_program)
+            weight1_init = np.array(
+                scope.find_var(w1_param_attrs.name).get_tensor()
+            )
+            weight2_init = np.array(
+                scope.find_var(w2_param_attrs.name).get_tensor()
+            )
+            x_np = np.random.random(size=(10, 2)).astype('float32')
+            label_np = np.random.randint(1, size=(10, 1)).astype('int64')
 
-                res = exe.run(
-                    program,
-                    feed={'x1': x_np, 'label': label_np},
-                    fetch_list=[loss1.name, train1],
-                    use_prune=True,
-                )
-                self.assertIsNotNone(scope.find_var(w1_param_attrs.name))
-                self.assertIsNotNone(scope.find_var(w2_param_attrs.name))
-                self.assertIsNotNone(scope.find_var(loss1.name))
-                self.assertIsNone(scope.find_var(loss2.name))
-                weight1 = np.array(
-                    scope.find_var(w1_param_attrs.name).get_tensor()
-                )
-                weight2 = np.array(
-                    scope.find_var(w2_param_attrs.name).get_tensor()
-                )
-                self.assertFalse(
-                    np.array_equal(weight1_init, weight1)
-                )  # weight changed
-                np.testing.assert_array_equal(
-                    weight2_init, weight2
-                )  # weight2 unchanged
+            res = exe.run(
+                program,
+                feed={'x1': x_np, 'label': label_np},
+                fetch_list=[loss1.name, train1],
+                use_prune=True,
+            )
+            self.assertIsNotNone(scope.find_var(w1_param_attrs.name))
+            self.assertIsNotNone(scope.find_var(w2_param_attrs.name))
+            self.assertIsNotNone(scope.find_var(loss1.name))
+            self.assertIsNone(scope.find_var(loss2.name))
+            weight1 = np.array(scope.find_var(w1_param_attrs.name).get_tensor())
+            weight2 = np.array(scope.find_var(w2_param_attrs.name).get_tensor())
+            self.assertFalse(
+                np.array_equal(weight1_init, weight1)
+            )  # weight changed
+            np.testing.assert_array_equal(
+                weight2_init, weight2
+            )  # weight2 unchanged
 
     def test_prune_override_use_prune(self):
         '''
@@ -795,26 +801,28 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
         startup_program = framework.Program()
         scope = base.Scope()
         # do not use_prune
-        with base.scope_guard(scope):
-            with base.program_guard(program, startup_program):
-                (x, y, label, loss1, loss2, w_param_attrs) = self.net1()
-                sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.5)
-                train1, _ = sgd_optimizer.minimize(loss1)
-                cloned_program = program.clone()
-                train2, _ = sgd_optimizer.minimize(loss2)
-                exe.run(startup_program)
-                x_np = np.random.random(size=(10, 2)).astype('float32')
-                label_np = np.random.randint(1, size=(10, 1)).astype('int64')
-                res = exe.run(
-                    program,
-                    feed={'x': x_np, 'label': label_np},
-                    fetch_list=[loss1.name],
-                    use_prune=False,
-                )
+        with (
+            base.scope_guard(scope),
+            base.program_guard(program, startup_program),
+        ):
+            (x, y, label, loss1, loss2, w_param_attrs) = self.net1()
+            sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.5)
+            train1, _ = sgd_optimizer.minimize(loss1)
+            cloned_program = program.clone()
+            train2, _ = sgd_optimizer.minimize(loss2)
+            exe.run(startup_program)
+            x_np = np.random.random(size=(10, 2)).astype('float32')
+            label_np = np.random.randint(1, size=(10, 1)).astype('int64')
+            res = exe.run(
+                program,
+                feed={'x': x_np, 'label': label_np},
+                fetch_list=[loss1.name],
+                use_prune=False,
+            )
 
-                weight_without_prune = np.array(
-                    scope.find_var(w_param_attrs.name).get_tensor()
-                )
+            weight_without_prune = np.array(
+                scope.find_var(w_param_attrs.name).get_tensor()
+            )
 
         scope = base.Scope()
         # use_prune
@@ -851,61 +859,61 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
         program = framework.Program()
         startup_program = framework.Program()
         scope = base.Scope()
-        with base.scope_guard(scope):
-            with base.program_guard(program, startup_program):
-                (x, y, label, loss1, loss2, w_param_attrs) = self.net1()
-                exe = base.Executor(base.CPUPlace())
-                exe.run(startup_program)
-                weight_init = np.array(
-                    scope.find_var(w_param_attrs.name).get_tensor()
-                )
-                x_np = np.random.random(size=(10, 2)).astype('float32')
-                label_np = np.random.randint(1, size=(10, 1)).astype('int64')
-                res = exe.run(
-                    program,
-                    feed={y.name: x_np, 'label': label_np},
-                    fetch_list=[y.name, loss1.name],
-                    use_prune=True,
-                )
-                self.assertIsNotNone(scope.find_var(loss1.name))
-                self.assertIsNone(scope.find_var(loss2.name))
-                self.assertIsNone(scope.find_var(x.name))
-                weight = np.array(
-                    scope.find_var(w_param_attrs.name).get_tensor()
-                )
-                np.testing.assert_array_equal(
-                    weight_init, weight
-                )  # weight unchanged
+        with (
+            base.scope_guard(scope),
+            base.program_guard(program, startup_program),
+        ):
+            (x, y, label, loss1, loss2, w_param_attrs) = self.net1()
+            exe = base.Executor(base.CPUPlace())
+            exe.run(startup_program)
+            weight_init = np.array(
+                scope.find_var(w_param_attrs.name).get_tensor()
+            )
+            x_np = np.random.random(size=(10, 2)).astype('float32')
+            label_np = np.random.randint(1, size=(10, 1)).astype('int64')
+            res = exe.run(
+                program,
+                feed={y.name: x_np, 'label': label_np},
+                fetch_list=[y.name, loss1.name],
+                use_prune=True,
+            )
+            self.assertIsNotNone(scope.find_var(loss1.name))
+            self.assertIsNone(scope.find_var(loss2.name))
+            self.assertIsNone(scope.find_var(x.name))
+            weight = np.array(scope.find_var(w_param_attrs.name).get_tensor())
+            np.testing.assert_array_equal(
+                weight_init, weight
+            )  # weight unchanged
 
     def test_prune_feed_var_in_fetchlist_2(self):
         # the variable to be fed is leaf
         program = framework.Program()
         startup_program = framework.Program()
         scope = base.Scope()
-        with base.scope_guard(scope):
-            with base.program_guard(program, startup_program):
-                (x, y, label, loss1, loss2, w_param_attrs) = self.net1()
-                exe = base.Executor(base.CPUPlace())
-                exe.run(startup_program)
-                weight_init = np.array(
-                    scope.find_var(w_param_attrs.name).get_tensor()
-                )
-                x_np = np.random.random(size=(10, 2)).astype('float32')
-                label_np = np.random.randint(1, size=(10, 1)).astype('int64')
-                res = exe.run(
-                    program,
-                    feed={x.name: x_np, 'label': label_np},
-                    fetch_list=[x.name, loss1.name],
-                    use_prune=True,
-                )
-                self.assertIsNotNone(scope.find_var(loss1.name))
-                self.assertIsNone(scope.find_var(loss2.name))
-                weight = np.array(
-                    scope.find_var(w_param_attrs.name).get_tensor()
-                )
-                np.testing.assert_array_equal(
-                    weight_init, weight
-                )  # weight unchanged
+        with (
+            base.scope_guard(scope),
+            base.program_guard(program, startup_program),
+        ):
+            (x, y, label, loss1, loss2, w_param_attrs) = self.net1()
+            exe = base.Executor(base.CPUPlace())
+            exe.run(startup_program)
+            weight_init = np.array(
+                scope.find_var(w_param_attrs.name).get_tensor()
+            )
+            x_np = np.random.random(size=(10, 2)).astype('float32')
+            label_np = np.random.randint(1, size=(10, 1)).astype('int64')
+            res = exe.run(
+                program,
+                feed={x.name: x_np, 'label': label_np},
+                fetch_list=[x.name, loss1.name],
+                use_prune=True,
+            )
+            self.assertIsNotNone(scope.find_var(loss1.name))
+            self.assertIsNone(scope.find_var(loss2.name))
+            weight = np.array(scope.find_var(w_param_attrs.name).get_tensor())
+            np.testing.assert_array_equal(
+                weight_init, weight
+            )  # weight unchanged
 
 
 if __name__ == '__main__':

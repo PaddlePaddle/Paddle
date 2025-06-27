@@ -164,44 +164,46 @@ class TestGroupNormNHWC_StaticOp(unittest.TestCase):
         navie_residual_out = naive_residual_add(x_np, residual_np)
         paddle.enable_static()
 
-        with paddle.pir_utils.OldIrGuard():
-            with paddle.static.program_guard(paddle.static.Program()):
-                x_static = paddle.static.data(
-                    name="x_static", shape=self.shape, dtype=dtype
-                )
-                residual_static = paddle.static.data(
-                    name="residual_static",
-                    shape=self.r_shape,
-                    dtype=dtype,
-                )
+        with (
+            paddle.pir_utils.OldIrGuard(),
+            paddle.static.program_guard(paddle.static.Program()),
+        ):
+            x_static = paddle.static.data(
+                name="x_static", shape=self.shape, dtype=dtype
+            )
+            residual_static = paddle.static.data(
+                name="residual_static",
+                shape=self.r_shape,
+                dtype=dtype,
+            )
 
-                scale_static = paddle.static.data(
-                    name="scale_static", shape=[self.shape[-1]], dtype=dtype
-                )
-                bias_static = paddle.static.data(
-                    name="bias_static", shape=[self.shape[-1]], dtype=dtype
-                )
-                outs = add_group_norm_silu_static_wrapper(
-                    x_static,
-                    residual_static,
-                    scale_static,
-                    bias_static,
-                    self.epsilon,
-                    self.groups,
-                    self.data_layout,
-                    activation,
-                )
+            scale_static = paddle.static.data(
+                name="scale_static", shape=[self.shape[-1]], dtype=dtype
+            )
+            bias_static = paddle.static.data(
+                name="bias_static", shape=[self.shape[-1]], dtype=dtype
+            )
+            outs = add_group_norm_silu_static_wrapper(
+                x_static,
+                residual_static,
+                scale_static,
+                bias_static,
+                self.epsilon,
+                self.groups,
+                self.data_layout,
+                activation,
+            )
 
-                exe = base.Executor(self.place)
-                out_s = exe.run(
-                    feed={
-                        "x_static": x_np.astype(dtype),
-                        "scale_static": scale_np.astype(dtype),
-                        "residual_static": residual_np.astype(dtype),
-                        "bias_static": bias_np.astype(dtype),
-                    },
-                    fetch_list=[outs],
-                )
+            exe = base.Executor(self.place)
+            out_s = exe.run(
+                feed={
+                    "x_static": x_np.astype(dtype),
+                    "scale_static": scale_np.astype(dtype),
+                    "residual_static": residual_np.astype(dtype),
+                    "bias_static": bias_np.astype(dtype),
+                },
+                fetch_list=[outs],
+            )
         return (out_s[0], out_s[1]), navie_groupnorm_out, navie_residual_out
 
     def test_residual_add_groupnorm_fp16(self):
