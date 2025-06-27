@@ -30,8 +30,7 @@ ENV PATH=/opt/cmake-3.27.7/bin:${PATH}
 
 # default python version
 ARG PY_VERSION=3.10
-RUN apt-get install -y python3-distutils python3.10 python3.10-dev
-RUN apt-get update && apt-get install -y python3.10-distutils
+RUN apt-get update && apt-get install -y python3.10-distutils python3.10 python3.10-dev
 
 # install pip
 RUN curl -s -q https://bootstrap.pypa.io/get-pip.py | /usr/bin/python3.10
@@ -114,6 +113,12 @@ RUN wget "https://su.bcebos.com/v1/klx-sdk-release-public/xccl/resource/MLNX_OFE
 RUN mkdir /var/run/sshd && echo 'root:root' | chpasswd && \
     sed -ri 's/^PermitRootLogin\s+.*/PermitRootLogin yes/' /etc/ssh/sshd_config && \
     sed -ri 's/UsePAM yes/#UsePAM yes/g' /etc/ssh/sshd_config
+
+# Set language environment in .bashrc
+RUN echo "export LANG=en_US.UTF-8" >> /root/.bashrc && \
+    echo "export LANGUAGE=en_US.UTF-8" >> /root/.bashrc && \
+    echo "export LC_ALL=en_US.UTF-8" >> /root/.bashrc
+
 CMD source ~/.bashrc
 
 # /proc/sys/kernel/core_pattern
