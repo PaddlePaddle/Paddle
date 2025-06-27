@@ -919,29 +919,92 @@ void FlashAttnV3BaseKernel(
     // TODO(umiswing): refine this block constraint (kBlockN % 32), since some
     // of kBlockN is not divisible by 32 flashmask_maxmin_shape[2] =
     // (flashmask_maxmin_shape[2] + 31) / 32 * 8;
-    flashmask_maxmin_shape[2] = (flashmask_maxmin_shape[2] + 31) / 32;
+    flashmask_maxmin_shape[2] = ((flashmask_maxmin_shape[2] + 31) / 32 + 3) / 4;
     flashmask_maxmin_shape[3] = 8;
 
     flashmask_maxmin.set_type(phi::DataType::INT32);
     flashmask_maxmin.Resize(flashmask_maxmin_shape);
     ctx.template Alloc<int32_t>(&flashmask_maxmin);
+    auto call_slice_strided = [&](DenseTensor input,
+                                  int64_t axis,
+                                  int64_t start,
+                                  int64_t end,
+                                  DenseTensor *output) {
+      MetaTensor meta_output(output);
+      std::vector<int64_t> infer_flags = {1};
+      std::vector<int64_t> decrease_axis = {};
+      SliceRawInferMeta(input,
+                        {axis},
+                        {start},
+                        {end},
+                        infer_flags,
+                        decrease_axis,
+                        &meta_output);
+      phi::SliceStridedKernel<Context>(ctx,
+                                       input,
+                                       {axis},
+                                       {start},
+                                       {end},
+                                       infer_flags,
+                                       decrease_axis,
+                                       output);
+      if (!output->meta().is_contiguous()) {
+        phi::SliceKernel<int32_t, Context>(ctx,
+                                           input,
+                                           {axis},
+                                           {start},
+                                           {end},
+                                           infer_flags,
+                                           decrease_axis,
+                                           output);
+      }
+    };
 
     lt_start_row_indices =
         phi::Slice<int32_t>(ctx, startend_row_indices, {3}, {0}, {1});
+
+#if 0
+    call_slice_strided(startend_row_indices,
+                       3, 0, 1, &lt_start_row_indices);
+#endif
     if (startend_row_indices.dims()[3] == 2) {
       if (!is_causal) {
         ut_end_row_indices =
+#if 0
+        call_slice_strided(startend_row_indices,
+                           3, 1, 2, &ut_end_row_indices);
+#endif
+
             phi::Slice<int32_t>(ctx, startend_row_indices, {3}, {1}, {2});
       } else {
         lt_end_row_indices =
+#if 0
+        call_slice_strided(startend_row_indices,
+                           3, 1, 2, &lt_end_row_indices);
+#endif
+
             phi::Slice<int32_t>(ctx, startend_row_indices, {3}, {1}, {2});
       }
     } else if (startend_row_indices.dims()[3] == 4) {
       ut_end_row_indices =
+#if 0
+          call_slice_strided(startend_row_indices,
+                             3, 3, 4, &ut_end_row_indices);
+#endif
           phi::Slice<int32_t>(ctx, startend_row_indices, {3}, {3}, {4});
       lt_end_row_indices =
+#if 0
+          call_slice_strided(startend_row_indices,
+                             3, 1, 2, &lt_end_row_indices);
+#endif
+
           phi::Slice<int32_t>(ctx, startend_row_indices, {3}, {1}, {2});
       ut_start_row_indices =
+#if 0
+          call_slice_strided(startend_row_indices,
+                             3, 2, 3, &ut_start_row_indices);
+#endif
+
           phi::Slice<int32_t>(ctx, startend_row_indices, {3}, {2}, {3});
     }
   }
@@ -985,7 +1048,7 @@ void FlashAttnV3BaseKernel(
     dynload::fa3_fwd_params_set_h_flashmask(params_handle,
                                             startend_row_indices.dims()[1]);
     dynload::fa3_fwd_params_set_h_h_flashmask_ratio(
-        params_handle, head_size / startend_row_indices.dims()[1]);
+        params_handle, num_heads / startend_row_indices.dims()[1]);
   } else {
     dynload::fa3_fwd_params_set_lt_start_ptr(params_handle, nullptr);
     dynload::fa3_fwd_params_set_lt_end_ptr(params_handle, nullptr);
