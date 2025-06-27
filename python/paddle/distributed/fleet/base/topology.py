@@ -20,6 +20,25 @@ from functools import reduce
 from itertools import product
 from typing import TYPE_CHECKING, Any, Literal
 
+import paddle
+from paddle.distributed.utils.nccl_utils import check_nccl_version_for_p2p
+
+from ..utils.log_util import logger
+
+if TYPE_CHECKING:
+    from paddle.distributed.collective import Group
+
+__all__ = ['CommunicateTopology', 'HybridCommunicateGroup']
+
+_HYBRID_PARALLEL_GROUP = None
+_use_four_directions = os.environ.get(
+    'PADDLE_USE_FOUR_DIRECTIONS_P2P', paddle.base.core.is_compiled_with_xpu()
+)
+
+g_pipeline_nccl_comm_init_option = int(
+    os.environ.get("FLAGS_pipeline_nccl_comm_init_option", 0)
+)
+
 
 def message2nccl_config(message, default_name=None):
     if paddle.distributed.collective._default_backend != 'nccl':
@@ -44,27 +63,53 @@ def message2nccl_config(message, default_name=None):
 
 
 def create_nccl_config(nccl_config):
+    r"""Function that creates nccl config.
+
+    Args:
+        nccl_config (Optional[Dict[str, Union[int, str]]]): None or
+            a dict containing the following keys:
+                commName (str): name of the process group.
+                ll_buffsize (int): buffer size of ll protocol.
+                ll128_buffsize (int): buffer size of ll128 protocol.
+                simple_buffsize (int): buffer size of simple protocol.
+                buffsize_align (int): alignment unit of the total buffer size.
+                nchannels (int): max number of channels.
+                algoStr (str): communication algorithm.
+                protoStr (str): communication protocol.
+    Returns:
+        NCCLConfig (Optional[paddle.base.libpaddle.NCCLConfig]): an object containing the information,
+        which can be used as an argument of new_group().
+    Example:
+        import paddle
+        import paddle.distributed as dist
+        dist.init_parallel_env()
+        nccl_config={
+            "commName":"tp_comm",
+            "ll_buffsize":0,
+            "ll128_buffsize":0,
+            "simple_buffsize":1024,
+            "buffsize_align":1024,
+            "nchannels":4,
+            "algoStr":"Ring",
+            "protoStr":"Simple",
+        }
+        ranks=[0,1,2,3,4,5,6,7]
+        nccl_config=dist.create_nccl_config(nccl_config)
+        pg=dist.new_group(ranks, nccl_config=nccl_config)
+        m, n = 4096, 8192
+        local_rank = dist.get_rank(pg)
+        num_local_ranks = dist.get_world_size(pg)
+        x = paddle.ones(shape=[m, n], dtype=paddle.float32) * (local_rank + 1)
+        gbl_x = x.clone()
+        dist.all_reduce(gbl_x, group=pg)
+        res = paddle.ones(shape=[m, n], dtype=paddle.float32) * (
+        num_local_ranks * (num_local_ranks + 1) / 2
+        )
+        assert paddle.allclose(
+            gbl_x, res
+        ), f"rank {local_rank}: all reduce validation failed"
+    """
     return message2nccl_config(nccl_config, None)
-
-
-import paddle
-from paddle.distributed.utils.nccl_utils import check_nccl_version_for_p2p
-
-from ..utils.log_util import logger
-
-if TYPE_CHECKING:
-    from paddle.distributed.collective import Group
-
-__all__ = ['CommunicateTopology', 'HybridCommunicateGroup']
-
-_HYBRID_PARALLEL_GROUP = None
-_use_four_directions = os.environ.get(
-    'PADDLE_USE_FOUR_DIRECTIONS_P2P', paddle.base.core.is_compiled_with_xpu()
-)
-
-g_pipeline_nccl_comm_init_option = int(
-    os.environ.get("FLAGS_pipeline_nccl_comm_init_option", 0)
-)
 
 
 class ParallelMode:
