@@ -63,6 +63,19 @@ class TestSoftmaxMaskFuseOp(OpTest):
 @unittest.skipIf(
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
+class TestSoftmaxMaskFuseOp_ZeroSize(TestSoftmaxMaskFuseOp):
+    def setUp(self):
+        self.op_type = "fused_softmax_mask_upper_triangle"
+        self.python_api = paddle.incubate.softmax_mask_fuse_upper_triangle
+        x = np.random.random((1, 1, 0, 32)).astype("float16")
+        self.inputs = {'X': x}
+        rst = _get_softmax_upper(x)
+        self.outputs = {'Out': rst}
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestSoftmaxMaskFuseOp1(OpTest):
     def setUp(self):
         self.op_type = "fused_softmax_mask_upper_triangle"

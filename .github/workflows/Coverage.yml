@@ -335,10 +335,6 @@ jobs:
           echo "Extracting Paddle.tar.gz"
           tar --use-compress-program="pzstd -1" -xf Paddle.tar.gz --strip-components=1
           rm Paddle.tar.gz
-          source ${{ github.workspace }}/../../../proxy
-          git checkout test
-          echo "Pull upstream develop"
-          bash ci/git_pull.sh $BRANCH
           '
 
       - name: Test
