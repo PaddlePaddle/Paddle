@@ -731,9 +731,9 @@ class PartialProgramLayer:
     @staticmethod
     def run_impl(partial_program_layer, inputs, parameters, outputs, attrs):
         _C_ops.run_program(
-            inputs,
-            parameters,
-            outputs,
+            PartialProgramLayer._valid_vars(inputs),
+            PartialProgramLayer._valid_vars(parameters),
+            PartialProgramLayer._valid_vars(outputs),
             partial_program_layer._create_scope_vec(
                 cache_key=(
                     PartialProgramLayer._calc_scope_cache_key(
@@ -753,15 +753,13 @@ class PartialProgramLayer:
         Execute static graph by Interpreter and Return dynamic Tensors.
         """
         attrs = self._prepare_attributes(in_sot_mode=False)
-        inputs = self._valid_vars(self._prepare_inputs(inputs))
-        parameters = self._valid_vars(self._params)
+        inputs = self._prepare_inputs(inputs)
         out_vars = self._prepare_outputs()
-        outputs = self._valid_vars(out_vars)
 
         self.call_run_impl_with_hook(
             inputs,
-            parameters,
-            outputs,
+            self._params,
+            out_vars,
             attrs,
         )
 
@@ -773,15 +771,12 @@ class PartialProgramLayer:
         In sot, inputs and outputs of partial program only contain tensors, so we can skip some step to speed up
         """
         attrs = self._prepare_attributes(in_sot_mode=True)
-        inputs = self._valid_vars(inputs)
-        parameters = self._valid_vars(self._params)
         out_vars = self._prepare_outputs()
-        outputs = self._valid_vars(out_vars)
 
         self.call_run_impl_with_hook(
             inputs,
-            parameters,
-            outputs,
+            self._params,
+            out_vars,
             attrs,
         )
         return self._outputs.quick_restore(out_vars)
@@ -1348,7 +1343,8 @@ class PartialProgramLayer:
                 )
             param_and_buffer_names_set.add(var.name)
 
-    def _valid_vars(self, vars):
+    @staticmethod
+    def _valid_vars(vars):
         return vars if vars else None
 
 
