@@ -113,7 +113,7 @@ class JITTuner:
         # signature = (name, f"{keys}")
         # if signature in self.tuned:
         #     return self.tuned[signature]
-        space = ((),) if len(space) == 0 else space
+        space = ({},) if len(space) == 0 else space
 
         kernels = []
         for tuned_keys in space:
