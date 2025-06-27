@@ -19,6 +19,7 @@
 #include "paddle/cinn/hlir/framework/pir_compiler.h"
 #include "paddle/common/errors.h"
 #include "paddle/common/performance_statistician.h"
+#include "paddle/fluid/framework/new_executor/instruction/instruction_util.h"
 #include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/gpu/gpu_resources.h"
@@ -29,6 +30,7 @@ PD_DECLARE_bool(cinn_measure_kernel_time);
 PD_DECLARE_string(tile_config_policy);
 PD_DECLARE_string(cinn_kernel_execution_label);
 PD_DECLARE_bool(cinn_check_jit_instruction_shape);
+COMMON_DECLARE_bool(check_cuda_error);
 
 namespace paddle {
 namespace framework {
@@ -334,6 +336,10 @@ CinnJitInstruction::CinnJitInstruction(
 }
 
 void CinnJitInstruction::Run() {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    CUDAErrorCheck("CinnJitInstruction begin");
+  }
+
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   void* running_stream = nullptr;
   bool is_gpu = false;
@@ -367,6 +373,10 @@ void CinnJitInstruction::Run() {
   VLOG(0) << "Not Supported: cinn jit instruction currently does not "
              "support CUDA/HIP kernel";
 #endif
+
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    CUDAErrorCheck("CinnJitInstruction finish");
+  }
 }
 
 const std::string& CinnJitInstruction::Name() const {
