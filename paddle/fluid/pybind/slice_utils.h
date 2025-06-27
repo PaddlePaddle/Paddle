@@ -665,9 +665,7 @@ static paddle::Tensor dealWithAdvancedIndex(
 }
 
 static std::vector<paddle::Tensor> PrepareIndices(
-    const paddle::Tensor& tensor,
-    const paddle::Tensor& bool_2_idx,
-    const paddle::Tensor& bool_index) {
+    const paddle::Tensor& bool_2_idx) {
   std::vector<paddle::Tensor> indices;
   for (int j = 0; j < bool_2_idx.shape()[1]; ++j) {
     paddle::Tensor sliced_tensor =
@@ -721,11 +719,11 @@ static paddle::Tensor getValueForBoolTensor(const paddle::Tensor& tensor,
 
   auto bool_2_idx = nonzero_ad_func(bool_index);
 #ifdef PADDLE_WITH_CUDA
-  if (tensor.is_gpu() && !is_combined_bool) {
-    std::vector<paddle::Tensor> indices =
-        PrepareIndices(tensor, bool_2_idx, bool_index);
+  if (tensor.is_gpu() && !is_combined_bool && bool_2_idx.initialized()) {
+    std::vector<paddle::Tensor> indices = PrepareIndices(bool_2_idx);
     while (indices.size() < static_cast<size_t>(tensor.dims().size())) {
-      indices.emplace_back();
+      indices.emplace_back(
+          empty_ad_func({}, indices[0].dtype(), indices[0].place()));
     }
 
     std::vector<paddle::Tensor> indices_int64;
@@ -736,17 +734,9 @@ static paddle::Tensor getValueForBoolTensor(const paddle::Tensor& tensor,
       indices_int64.push_back(indice);
     }
 
-    AdvancedIndex ad = AdvancedIndex(tensor, indices_int64);
     const bool accumulate = false;
-
-    return index_elementwise_get_ad_func(tensor,
-                                         ad.indices,
-                                         ad.src_sizes,
-                                         ad.src_strides,
-                                         ad.indexed_sizes,
-                                         ad.indexed_strides,
-                                         slice_offset,
-                                         accumulate);
+    return index_elementwise_get_ad_func(
+        tensor, tensor, indices_int64, slice_offset, accumulate);
   } else {
     return gather_nd_ad_func(tensor, bool_2_idx);
   }

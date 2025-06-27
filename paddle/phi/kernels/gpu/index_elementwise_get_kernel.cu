@@ -105,16 +105,26 @@ void GPUIndexElementwiseGetKernel(const phi::GPUContext& ctx,
 }
 
 template <typename T, typename Context>
-void IndexElementwiseGetKernel(const Context& ctx,
-                               const DenseTensor& x,
-                               const std::vector<const DenseTensor*>& index,
-                               const std::vector<int64_t>& input_dims,
-                               const std::vector<int64_t>& input_strides,
-                               const std::vector<int64_t>& index_dims,
-                               const std::vector<int64_t>& index_stride,
-                               const int64_t slice_offset,
-                               const bool accumulate,
-                               DenseTensor* out) {
+void IndexElementwiseGetKernel(
+    const Context& ctx,
+    const DenseTensor& x,
+    const DenseTensor& sub_x,
+    const std::vector<const DenseTensor*>& indices_list,
+    const int64_t slice_offset,
+    const bool accumulate,
+    DenseTensor* out) {
+  funcs::AdvancedIndex<Context> ad(ctx, sub_x, indices_list);
+
+  const std::vector<DenseTensor>& indices_tensors = ad.indices;
+  std::vector<const DenseTensor*> index;
+  for (const auto& tensor : indices_tensors) {
+    index.push_back(&tensor);
+  }
+  const std::vector<int64_t>& input_dims = ad.src_sizes;
+  const std::vector<int64_t>& input_strides = ad.src_strides;
+  const std::vector<int64_t>& index_dims = ad.indexed_sizes;
+  const std::vector<int64_t>& index_stride = ad.indexed_strides;
+
   const auto& index_type = index[0]->dtype();
   PADDLE_ENFORCE_EQ(index_type == phi::DataType::INT64,
                     true,

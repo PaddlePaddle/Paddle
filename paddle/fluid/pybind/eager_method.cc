@@ -1644,7 +1644,7 @@ static PyObject* tensor__getitem_dygraph(TensorObject* self,
 #ifdef PADDLE_WITH_CUDA
     bool has_empty_index = false;
     for (const auto& tensor : transed_index) {
-      if (tensor.numel() == 0) {
+      if (!tensor.initialized()) {
         has_empty_index = true;
         break;
       }
@@ -1686,11 +1686,8 @@ static PyObject* tensor__getitem_dygraph(TensorObject* self,
       AdvancedIndex ad = AdvancedIndex(transed_tensor, transed_index_int64);
       const bool accumulate = true;
       out = index_elementwise_get_ad_func(tensor,
-                                          ad.indices,
-                                          ad.src_sizes,
-                                          ad.src_strides,
-                                          ad.indexed_sizes,
-                                          ad.indexed_strides,
+                                          transed_tensor,
+                                          transed_index_int64,
                                           slice_offset,
                                           accumulate);
       out_is_view = false;

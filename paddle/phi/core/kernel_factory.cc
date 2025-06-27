@@ -406,6 +406,10 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
           kernel_name,
           KernelSelectionErrorMessage(kernel_name, kernel_key)));
 
+  if (kernel_name == "index_elementwise_get" ||
+      kernel_name == "index_elementwise_get_grad") {
+    return {kernel_iter->second, false, true};
+  }
   return {kernel_iter->second, false, false};
 }
 

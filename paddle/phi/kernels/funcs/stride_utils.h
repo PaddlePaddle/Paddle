@@ -21,6 +21,7 @@
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/kernels/reshape_kernel.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__)
 #ifdef __NVCC__
@@ -398,5 +399,94 @@ static inline void IndexGetStride(
   *numel = num;
 }
 
+inline static void restride_src(std::vector<int64_t>* shape,
+                                std::vector<int64_t>* strides,
+                                int64_t dims_before,
+                                int64_t dims_indexed,
+                                const std::vector<int64_t>& replacement_shape) {
+  int64_t end = dims_before + dims_indexed;
+  shape->erase(shape->begin() + dims_before, shape->begin() + end);
+  strides->erase(strides->begin() + dims_before, strides->begin() + end);
+  shape->insert(shape->begin() + dims_before,
+                replacement_shape.begin(),
+                replacement_shape.end());
+  strides->insert(strides->begin() + dims_before, replacement_shape.size(), 0);
+}
+
+template <typename Context>
+inline static DenseTensor reshape_indexer(const Context& dev_ctx,
+                                          const DenseTensor* index,
+                                          int64_t dims_before,
+                                          int64_t dims_after) {
+  auto orig_shape = common::vectorize<int64_t>(index->dims());
+  std::vector<int64_t> shape;
+  shape.insert(shape.end(), dims_before, 1);
+  shape.insert(shape.end(), orig_shape.begin(), orig_shape.end());
+  shape.insert(shape.end(), dims_after, 1);
+
+  DenseTensor out;
+  ReshapeKernel<Context>(dev_ctx, *index, IntArray(shape), &out);
+
+  return out;
+}
+
+template <typename Context>
+struct AdvancedIndex {
+  int64_t dims_before;
+  int64_t dims_after;
+  std::vector<int64_t> src_sizes;
+  std::vector<int64_t> src_strides;
+  std::vector<int64_t> indexed_sizes;
+  std::vector<int64_t> indexed_strides;
+  std::vector<DenseTensor> indices;
+
+  AdvancedIndex(const Context& dev_ctx,
+                const DenseTensor& src,
+                const std::vector<const DenseTensor*>& indices_list) {
+    uint32_t element_size_bytes = phi::SizeOf(src.dtype());
+
+    int64_t dims_before = 0, dims_after = 0, dims_indexed = 0;
+    std::vector<int64_t> shape_vec = common::vectorize<int64_t>(src.dims());
+    std::vector<int64_t> stride_vec = common::vectorize<int64_t>(src.strides());
+    std::vector<int64_t> replacement_shape;
+    std::vector<int64_t> idx_shape_vec = {};
+    std::vector<int64_t> idx_stride_vec = {};
+
+    for (size_t dim = 0; dim < indices_list.size(); dim++) {
+      if (indices_list[dim] == nullptr ||
+          indices_list[dim]->dims().size() == 0) {
+        if (dims_indexed == 0) {
+          dims_before++;
+        } else {
+          dims_after++;
+        }
+      } else {
+        dims_indexed++;
+        replacement_shape =
+            common::vectorize<int64_t>(indices_list[dim]->dims());
+        idx_shape_vec.push_back(shape_vec[dim]);
+        idx_stride_vec.push_back(stride_vec[dim] * element_size_bytes);
+      }
+    }
+
+    this->dims_before = dims_before;
+    this->dims_after = dims_after;
+
+    restride_src(
+        &shape_vec, &stride_vec, dims_before, dims_indexed, replacement_shape);
+    this->src_sizes = shape_vec;
+    this->src_strides = stride_vec;
+
+    this->indexed_sizes = idx_shape_vec;
+    this->indexed_strides = idx_stride_vec;
+
+    for (const auto* index : indices_list) {
+      if (index != nullptr && index->dims().size() > 0) {
+        this->indices.push_back(
+            reshape_indexer<Context>(dev_ctx, index, dims_before, dims_after));
+      }
+    }
+  }
+};
 }  // namespace funcs
 }  // namespace phi

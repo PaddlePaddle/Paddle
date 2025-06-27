@@ -2558,16 +2558,54 @@ void IndexElementwisePutInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
-void IndexElementwiseGetInferMeta(const MetaTensor& x,
-                                  const std::vector<const MetaTensor*>& index,
-                                  const std::vector<int64_t>& input_dims,
-                                  const std::vector<int64_t>& input_strides,
-                                  const std::vector<int64_t>& index_dims,
-                                  const std::vector<int64_t>& index_stride,
-                                  const int64_t slice_offset,
-                                  const bool accumulate,
-                                  MetaTensor* out) {
-  out->set_dims(common::make_ddim(input_dims));
+void IndexElementwiseGetInferMeta(
+    const MetaTensor& x,
+    const MetaTensor& sub_x,
+    const std::vector<const MetaTensor*>& indices_list,
+    const int64_t slice_offset,
+    const bool accumulate,
+    MetaTensor* out) {
+  auto restride_src = [](std::vector<int64_t>* shape,
+                         std::vector<int64_t>* strides,
+                         int64_t dims_before,
+                         int64_t dims_indexed,
+                         const std::vector<int64_t>& replacement_shape) {
+    int64_t end = dims_before + dims_indexed;
+    shape->erase(shape->begin() + dims_before, shape->begin() + end);
+    strides->erase(strides->begin() + dims_before, strides->begin() + end);
+    shape->insert(shape->begin() + dims_before,
+                  replacement_shape.begin(),
+                  replacement_shape.end());
+    strides->insert(
+        strides->begin() + dims_before, replacement_shape.size(), 0);
+  };
+
+  std::vector<int64_t> shape_vec = common::vectorize<int64_t>(sub_x.dims());
+  std::vector<int64_t> stride_vec = common::vectorize<int64_t>(sub_x.strides());
+
+  int64_t dims_before = 0, dims_after = 0, dims_indexed = 0;
+  std::vector<int64_t> replacement_shape;
+  std::vector<int64_t> idx_shape_vec;
+
+  for (size_t dim = 0; dim < indices_list.size(); dim++) {
+    if (indices_list[dim] == nullptr || !indices_list[dim]->initialized() ||
+        indices_list[dim]->dims().size() == 0) {
+      if (dims_indexed == 0) {
+        dims_before++;
+      } else {
+        dims_after++;
+      }
+    } else {
+      dims_indexed++;
+      replacement_shape = common::vectorize<int64_t>(indices_list[dim]->dims());
+      idx_shape_vec.push_back(shape_vec[dim]);
+    }
+  }
+
+  restride_src(
+      &shape_vec, &stride_vec, dims_before, dims_indexed, replacement_shape);
+
+  out->set_dims(common::make_ddim(shape_vec));
   out->set_dtype(x.dtype());
 }
 
