@@ -87,24 +87,19 @@ jobs:
       - name: Prepare environment and download paddle
         run: |
           docker exec ${container_name} bash -c '
-          # rm -rf * .[^.]*
-          # COMMIT_SHA="${{ github.event.pull_request.head.sha }}"
-          # AUTHOR="${{ github.event.pull_request.user.login }}"
-          # AGILE_COMMENTS=[{"Commit":"${COMMIT_SHA}","author":"${AUTHOR}"}]
-          # echo "export AGILE_COMMENTS=$AGILE_COMMENTS" >> ~/.bashrc
+          rm -rf * .[^.]*
           echo $AGILE_COMMENTS
           DEVICE_ID=$(cat /sys/class/dmi/id/product_uuid |awk -F "-" "{print \$5}")
           echo "export DEVICE_ID=$DEVICE_ID" >> ~/.bashrc
           echo $DEVICE_ID
           echo "Downloading build.tar.gz"
-          # wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/build/${PR_ID}/${COMMIT_ID}/build.tar.gz --no-check-certificate
+          wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/build/${PR_ID}/${COMMIT_ID}/build.tar.gz --no-check-certificate
           echo "Extracting build.tar.gz"
-          # tar --use-compress-program="pzstd -1" -xpf build.tar.gz
-          # rm build.tar.gz
-          # rm build.tar.gz
+          tar --use-compress-program="pzstd -1" -xpf build.tar.gz
+          rm build.tar.gz
           git config --global --add safe.directory ${work_dir}
           cd paddle && git submodule foreach "git config --global --add safe.directory \$toplevel/\$sm_path"
-          source ${ci_scripts}/model-benchmark.sh
+          source ${ci_scripts}/model_benchmark.sh
           check_paddle ${{ github.env }}
           '
 
@@ -113,7 +108,7 @@ jobs:
         run: |
           docker exec ${container_name} bash -c '
           source ~/.bashrc
-          source ${ci_scripts}/model-benchmark.sh
+          source ${ci_scripts}/model_benchmark.sh
           wget_model_benchmark_ci
           '
 
@@ -122,7 +117,7 @@ jobs:
         run: |
           docker exec ${container_name} bash -c '
           source ~/.bashrc
-          source ${ci_scripts}/model-benchmark.sh
+          source ${ci_scripts}/model_benchmark.sh
           get_paddlescope_tar
           '
 
@@ -131,16 +126,16 @@ jobs:
         run: |
           docker exec ${container_name} bash -c '
           source ~/.bashrc
-          source ${ci_scripts}/model-benchmark.sh
+          source ${ci_scripts}/model_benchmark.sh
           check_skip ${{ github.env }}
           '
 
-      - name: Model benchmark
+      - name: Check model benchmark
         if: ${{ env.can-skip != 'true' }}
         run: |
           docker exec ${container_name} bash -c '
           source ~/.bashrc
-          source ${ci_scripts}/model-benchmark.sh
+          source ${ci_scripts}/model_benchmark.sh
           check_model_benchmark
           if [[ $EXCODE -eq 0 ]];then
               echo "Congratulations!  Your PR passed the model benchmark ci."
@@ -153,9 +148,9 @@ jobs:
           fi
           '
 
-    # - name: Terminate and delete the container
-    #   if: always()
-    #   run: |
-    #     set +e
-    #     docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'
-    #     docker rm -f ${{ env.container_name }}
+      - name: Terminate and delete the container
+        if: always()
+        run: |
+          set +e
+          docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'
+          docker rm -f ${{ env.container_name }}
