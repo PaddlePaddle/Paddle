@@ -50,7 +50,7 @@ class JITTuner:
             print(f"Auto-tuning JIT kernel {name} with keys {keys}")
 
         assert signature not in self.tuned
-        space = ((),) if len(space) == 0 else space
+        space = ({},) if len(space) == 0 else space
 
         kernels = []
         for tuned_keys in space:
