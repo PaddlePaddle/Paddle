@@ -113,7 +113,7 @@ class API_TestChunkZeroSize1(unittest.TestCase):
             data1 = paddle.static.data(
                 'data1', shape=[0, 1, 1, 4], dtype='float32'
             )
-            x0, x1, x2 = paddle.chunk(data1, chunks=4, axis=-1)
+            x0, x1, x2 = paddle.chunk(data1, chunks=3, axis=-1)
             place = paddle.CPUPlace()
             exe = paddle.static.Executor(place)
             input1 = np.random.random([0, 1, 1, 4]).astype('float32')
@@ -122,7 +122,7 @@ class API_TestChunkZeroSize1(unittest.TestCase):
                 r1,
                 r2,
             ) = exe.run(feed={"data1": input1}, fetch_list=[x0, x1, x2])
-            ex_x0, ex_x1, ex_x2 = np.array_split(input1, 4, axis=-1)
+            ex_x0, ex_x1, ex_x2 = np.array_split(input1, 3, axis=-1)
             np.testing.assert_allclose(ex_x0, r0, rtol=1e-05)
             np.testing.assert_allclose(ex_x1, r1, rtol=1e-05)
             np.testing.assert_allclose(ex_x2, r2, rtol=1e-05)
@@ -134,7 +134,7 @@ class API_TestChunkZeroSize2(unittest.TestCase):
             data1 = paddle.static.data(
                 'data1', shape=[13, 0, 10], dtype='float64'
             )
-            x0, x1, x2 = paddle.chunk(data1, chunks=2, axis=1)
+            x0, x1, x2 = paddle.chunk(data1, chunks=3, axis=1)
             place = paddle.CPUPlace()
             exe = paddle.static.Executor(place)
             input1 = np.random.random([13, 0, 10]).astype('float64')
@@ -143,7 +143,7 @@ class API_TestChunkZeroSize2(unittest.TestCase):
                 r1,
                 r2,
             ) = exe.run(feed={"data1": input1}, fetch_list=[x0, x1, x2])
-            ex_x0, ex_x1, ex_x2 = np.array_split(input1, 2, axis=1)
+            ex_x0, ex_x1, ex_x2 = np.array_split(input1, 3, axis=1)
             np.testing.assert_allclose(ex_x0, r0, rtol=1e-05)
             np.testing.assert_allclose(ex_x1, r1, rtol=1e-05)
             np.testing.assert_allclose(ex_x2, r2, rtol=1e-05)
