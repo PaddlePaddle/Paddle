@@ -99,6 +99,7 @@ jobs:
           echo "Extracting build.tar.gz"
           # tar --use-compress-program="pzstd -1" -xpf build.tar.gz
           # rm build.tar.gz
+          # rm build.tar.gz
           git config --global --add safe.directory ${work_dir}
           cd paddle && git submodule foreach "git config --global --add safe.directory \$toplevel/\$sm_path"
           source ${ci_scripts}/model-benchmark.sh
