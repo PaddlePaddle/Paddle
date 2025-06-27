@@ -85,7 +85,7 @@ jobs:
       - name: Prepare environment and download paddle
         run: |
           docker exec ${container_name} bash -c '
-          rm -rf * .[^.]*
+          # rm -rf * .[^.]*
           COMMIT_SHA="${{ github.event.pull_request.head.sha }}"
           AUTHOR="${{ github.event.pull_request.user.login }}"
           AGILE_COMMENTS=[{"Commit":"${COMMIT_SHA}","author":"${AUTHOR}"}]
