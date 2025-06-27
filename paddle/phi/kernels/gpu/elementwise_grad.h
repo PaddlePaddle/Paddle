@@ -255,6 +255,22 @@ static __global__ void SimpleElemwiseSubGradCUDAKernel(const T *dout,
 }
 
 template <typename T>
+static __global__ void SimpleElemwiseSubGradExCUDAKernel(const T *dout,
+                                                         int64_t size,
+                                                         T *dx,
+                                                         T *dy) {
+  int64_t col = static_cast<int64_t>(BLOCK_ID_X) * BLOCK_NUM_X + THREAD_ID_X;
+
+  while (col < size) {
+    if (dx != nullptr) {
+      dx[col] = dout[col];
+    }
+    dy[col] = -dout[col];
+    col += static_cast<int64_t>(BLOCK_NUM_X) * GRID_NUM_X;
+  }
+}
+
+template <typename T>
 void default_elementwise_sub_grad(const GPUContext &ctx,
                                   const DenseTensor &x,
                                   const DenseTensor &y,
@@ -319,11 +335,19 @@ void elementwise_sub_grad(const GPUContext &ctx,
   auto size = x.numel();
   dim3 grid_size =
       dim3((size + PREDEFINED_BLOCK_SIZE - 1) / PREDEFINED_BLOCK_SIZE, 1);
-  SimpleElemwiseSubGradCUDAKernel<T>
-      <<<grid_size, block_size, 0, ctx.stream()>>>(dout.data<T>(),
-                                                   size,
-                                                   ctx.template Alloc<T>(dx),
-                                                   ctx.template Alloc<T>(dy));
+  if (size > std::numeric_limits<int>::max()) {
+    SimpleElemwiseSubGradExCUDAKernel<T>
+        <<<grid_size, block_size, 0, ctx.stream()>>>(dout.data<T>(),
+                                                     size,
+                                                     ctx.template Alloc<T>(dx),
+                                                     ctx.template Alloc<T>(dy));
+  } else {
+    SimpleElemwiseSubGradCUDAKernel<T>
+        <<<grid_size, block_size, 0, ctx.stream()>>>(dout.data<T>(),
+                                                     size,
+                                                     ctx.template Alloc<T>(dx),
+                                                     ctx.template Alloc<T>(dy));
+  }
 }
 /*
 ******************************
