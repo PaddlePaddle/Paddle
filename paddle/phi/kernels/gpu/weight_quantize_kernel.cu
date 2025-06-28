@@ -65,25 +65,24 @@ void WeightQuantizeKernel(const Context& dev_ctx,
                                  algo);
     trans(dev_ctx, quanted_x, out, axis);
   } else if (algo == "weight_only_int8") {
-
     dev_ctx.template Alloc<T>(scale);
 
     if (std::is_same<T, int8_t>::value) {
-      // you are loading already quantized weight, so we skip doing quantize.
-      // and just copy!
-      cudaMemcpy(quanted_x.data<int8_t>(), 
-                 x.data<T>(), 
-                 x.numel(), 
-                 cudaMemcpyDeviceToDevice );
+      // Zkk: you are loading already quantized weight, so we skip doing
+      // quantize. and just copy!
+      cudaMemcpy(quanted_x.data<int8_t>(),
+                 x.data<T>(),
+                 x.numel(),
+                 cudaMemcpyDeviceToDevice);
     } else {
       weight_quant_gpu<T, Context>(dev_ctx,
-                                  x.data<T>(),
-                                  quanted_x.data<int8_t>(),
-                                  scale->data<T>(),
-                                  weight_shape,
-                                  arch,
-                                  algo);
-      }
+                                   x.data<T>(),
+                                   quanted_x.data<int8_t>(),
+                                   scale->data<T>(),
+                                   weight_shape,
+                                   arch,
+                                   algo);
+    }
 
 #ifdef PADDLE_WITH_HIP
     std::vector<int> axis = {1, 0};
