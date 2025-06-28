@@ -287,6 +287,8 @@ jobs:
       - name: Terminate and delete the container
         if: always()
         run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
           rm -rf * .[^.]*
+          ‘
           docker stop ${container_name}
           docker rm ${container_name}
