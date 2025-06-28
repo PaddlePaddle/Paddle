@@ -50,6 +50,7 @@ void RemainderKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(out);
   return;
 }
+
   RemainderRawKernel<T>(dev_ctx, x, y, axis, out);
 }
 
