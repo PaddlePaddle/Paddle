@@ -38,6 +38,10 @@ void ConvKernelImpl(const Context& dev_ctx,
   std::vector<int> paddings = paddings_t;
   std::vector<int> dilations = dilations_t;
   DenseTensor filter = filter_t;
+  if (input.numel() == 0) {
+    dev_ctx.template Alloc<T>(output);
+    return;
+  }
   // The filter will be reshaped in the calculations,
   // so here use an assignment operation,
   // that avoids modifying the variable in the Scope.

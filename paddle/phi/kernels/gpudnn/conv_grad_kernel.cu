@@ -31,10 +31,10 @@
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/kernels/cpu/conv_util.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/batch_norm_utils.h"
 #include "paddle/phi/kernels/funcs/padding.h"
 #include "paddle/phi/kernels/impl/conv_cudnn_impl.h"
-
 #ifdef PADDLE_WITH_CUDNN_FRONTEND
 // clang-format off
 #include "paddle/phi/backends/dynload/cudnn_frontend.h"
@@ -416,6 +416,18 @@ void ConvCudnnGradKernel(const Context& dev_ctx,
                          const std::string& data_format,
                          DenseTensor* input_grad,
                          DenseTensor* filter_grad) {
+  // 0-size
+  if (input.numel() == 0) {
+    if (input_grad) dev_ctx.template Alloc<T>(input_grad);
+    if (filter_grad) {
+      phi::Full<T, Context>(
+          dev_ctx,
+          phi::IntArray(common::vectorize(filter_grad->dims())),
+          0,
+          filter_grad);
+    }
+    return;
+  }
   if (input_grad) {
     dev_ctx.template Alloc<T>(input_grad);
   }

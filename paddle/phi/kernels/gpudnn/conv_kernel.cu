@@ -313,6 +313,10 @@ void ConvCudnnKernel(const Context& dev_ctx,
                      int groups,
                      const std::string& data_format,
                      DenseTensor* output) {
+  if (input.numel() == 0) {
+    dev_ctx.template Alloc<T>(output);
+    return;
+  }
   dev_ctx.template Alloc<T>(output);
   std::vector<int> paddings = paddings_t;
   std::vector<int> dilations = dilations_t;

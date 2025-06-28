@@ -33,6 +33,10 @@ void DepthwiseConvKernel(const Context& dev_ctx,
                          const std::vector<int>& dilations_t,
                          const std::string& data_format,
                          DenseTensor* out) {
+  if (input.numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   DenseTensor* output = out;
   dev_ctx.template Alloc<T>(output);
 
