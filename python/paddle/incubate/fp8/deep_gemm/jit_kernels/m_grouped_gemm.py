@@ -35,26 +35,21 @@ using namespace deep_gemm;
 constexpr auto N = {N}, K = {K};
 constexpr auto BLOCK_M = {BLOCK_M};
 constexpr auto BLOCK_N = {BLOCK_N};
-constexpr auto BLOCK_K = 128;
-constexpr auto BLOCK_N_PADDING = {BLOCK_N_PADDING};
-constexpr auto kSwizzleDMode = {SWIZZLE_D_MODE};
-constexpr auto kNumGroups = {NUM_GROUPS};
 constexpr auto kNumStages = {NUM_STAGES};
 constexpr auto kNumTMAMulticast = {NUM_TMA_MULTICAST};
-constexpr auto kIsTMAMulticastOnA = {IS_TMA_MULTICAST_ON_A};
 
 // Make a templated grouped GEMM
-using gemm_t = Gemm<N, K, BLOCK_M, BLOCK_N, BLOCK_K, BLOCK_N_PADDING, kSwizzleDMode, kNumGroups, kNumStages, kNumTMAMulticast, kIsTMAMulticastOnA, GemmType::{GEMM_TYPE}>;
+using GemmType = Gemm<N, K, BLOCK_M, BLOCK_N, 128, {NUM_GROUPS}, kNumStages, kNumTMAMulticast, GemmType::{GEMM_TYPE}>;
 
 // Launch kernel
-auto tma_a_desc = gemm_t::make_2d_tma_a_desc(lhs, m);
-auto tma_b_desc = gemm_t::make_2d_tma_b_desc(rhs);
-auto tma_scales_a_desc = gemm_t::make_2d_tma_scales_a_desc(lhs_scales, m);
-auto tma_d_desc = gemm_t::make_2d_tma_d_desc(out, m);
-gemm_t::run(out, rhs_scales, grouped_layout,
-            m,
-            tma_a_desc, tma_b_desc, tma_scales_a_desc, tma_d_desc,
-            stream, num_sms, smem_size);
+auto tma_a_desc = GemmType::make_2d_tma_a_desc(lhs, m);
+auto tma_b_desc = GemmType::make_2d_tma_b_desc(rhs);
+auto tma_scales_a_desc = GemmType::make_2d_tma_scales_a_desc(lhs_scales, m);
+auto tma_d_desc = GemmType::make_2d_tma_d_desc(out, m);
+GemmType::run(out, rhs_scales, grouped_layout,
+              m,
+              tma_a_desc, tma_b_desc, tma_scales_a_desc, tma_d_desc,
+              stream, num_sms, smem_size);
 """
 
 
@@ -65,7 +60,7 @@ def auto_tuning_with_compilation_grouped_gemm_contiguous(
     global includes, template
     if num_sms is None:
         num_sms = get_num_sms()
-    num_sms, block_m, block_n, num_stages, tma_multicast_config, smem_config = (
+    block_m, block_n, num_stages, num_tma_multicast, smem_size = (
         get_best_configs(m, n, k, 1, num_sms, is_grouped_contiguous=True)
     )
     runtime = jit_tuner.compile_and_tune(
@@ -76,15 +71,12 @@ def auto_tuning_with_compilation_grouped_gemm_contiguous(
         keys={
             "BLOCK_M": block_m,
             "BLOCK_N": block_n,
-            "SWIZZLE_D_MODE": smem_config[1],
-            "BLOCK_N_PADDING": smem_config[2],
             "GEMM_TYPE": "GroupedContiguous",
             "K": k,
             "N": n,
             "NUM_GROUPS": num_groups,
             "NUM_STAGES": num_stages,
-            "NUM_TMA_MULTICAST": tma_multicast_config[0],
-            "IS_TMA_MULTICAST_ON_A": tma_multicast_config[1],
+            "NUM_TMA_MULTICAST": num_tma_multicast,
         },
         space=(),
         includes=includes,
@@ -103,7 +95,7 @@ def auto_tuning_with_compilation_grouped_gemm_contiguous(
         ),
         template=template,
     )
-    return runtime, num_sms, smem_config
+    return runtime, num_sms, smem_size
 
 
 def m_grouped_gemm_fp8_fp8_bf16_nt_contiguous(
@@ -165,7 +157,7 @@ def m_grouped_gemm_fp8_fp8_bf16_nt_contiguous(
         return
     # Auto-tuning with compilation
     global includes, template
-    runtime, num_sms, smem_config = (
+    runtime, num_sms, smem_size = (
         auto_tuning_with_compilation_grouped_gemm_contiguous(
             m, n, k, num_groups, num_sms
         )
@@ -182,7 +174,7 @@ def m_grouped_gemm_fp8_fp8_bf16_nt_contiguous(
         num_groups,
         paddle.device.current_stream().stream_base,
         num_sms,
-        smem_config[0],
+        smem_size,
     )
     runtime(*args)
 
@@ -195,16 +187,12 @@ def auto_tuning_with_compilation_grouped_gemm_masked(
     global includes, template
     if num_sms is None:
         num_sms = get_num_sms()
-    num_sms, block_m, block_n, num_stages, tma_multicast_config, smem_config = (
-        get_best_configs(
-            expected_m, n, k, num_groups, num_sms, is_grouped_masked=True
-        )
+    block_m, block_n, num_stages, num_tma_multicast, smem_size = (
+        get_best_configs(expected_m, n, k, num_groups, num_sms)
     )
 
     # Extra checks for TMA store
     if num_groups > 1 and m > block_m:
-        while m % block_m != 0 and block_m > 128:
-            block_m = block_m // 2
         assert (
             m % block_m == 0
         ), f"For masked grouped GEMM, shape M should be multiple of the block M (current block M: {block_m})"
@@ -216,12 +204,9 @@ def auto_tuning_with_compilation_grouped_gemm_masked(
             "K": k,
             "BLOCK_M": block_m,
             "BLOCK_N": block_n,
-            'SWIZZLE_D_MODE': smem_config[1],
-            'BLOCK_N_PADDING': smem_config[2],
             "NUM_GROUPS": num_groups,
             "NUM_STAGES": num_stages,
-            "NUM_TMA_MULTICAST": tma_multicast_config[0],
-            'IS_TMA_MULTICAST_ON_A': tma_multicast_config[1],
+            "NUM_TMA_MULTICAST": num_tma_multicast,
             "GEMM_TYPE": "GroupedMasked",
         },
         space=(),
@@ -241,7 +226,7 @@ def auto_tuning_with_compilation_grouped_gemm_masked(
         template=template,
     )
 
-    return runtime, num_sms, smem_config
+    return runtime, num_sms, smem_size
 
 
 def m_grouped_gemm_fp8_fp8_bf16_nt_masked(
@@ -300,7 +285,8 @@ def m_grouped_gemm_fp8_fp8_bf16_nt_masked(
     # LHS scales must be transposed for TMA load, but not for RHS scales
     lhs_scales = get_col_major_tma_aligned_tensor(lhs_scales)
     assert rhs_scales.is_contiguous()
-    runtime, num_sms, smem_config = (
+
+    runtime, num_sms, smem_size = (
         auto_tuning_with_compilation_grouped_gemm_masked(
             m, expected_m, n, k, num_groups, num_sms
         )
@@ -316,7 +302,7 @@ def m_grouped_gemm_fp8_fp8_bf16_nt_masked(
         m,
         paddle.device.current_stream().stream_base,
         num_sms,
-        smem_config[0],
+        smem_size,
     )
 
     # Run the kernel
