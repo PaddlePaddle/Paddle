@@ -75,10 +75,12 @@ void WeightQuantizeKernel(const Context& dev_ctx,
     if (std::is_same<T, int8_t>::value) {
       // Zkk: you are loading already quantized weight, so we skip doing
       // quantize. and just copy!
+#ifdef PADDLE_WITH_CUDA
       cudaMemcpy(quanted_x.data<int8_t>(),
                  x.data<T>(),
                  x.numel(),
                  cudaMemcpyDeviceToDevice);
+#endif
     } else {
       weight_quant_gpu<T, Context>(dev_ctx,
                                    x.data<T>(),
