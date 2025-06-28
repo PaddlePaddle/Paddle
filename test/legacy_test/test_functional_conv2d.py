@@ -219,15 +219,15 @@ class TestFunctionalConv2DErrorCase11(TestFunctionalConv2DError):
 
 class TestFunctionalConv2DErrorCase12(TestCase):
     def setUp(self):
-        self.input = np.array([])
-        self.filter = np.array([])
-        self.num_filters = 0
-        self.filter_size = 0
+        self.input = np.random.randn(1, 3, 3, 3)
+        self.filter = np.random.randn(3, 3, 1, 1)
+        self.num_filters = 3
+        self.filter_size = 1
         self.bias = None
         self.padding = 0
         self.stride = 1
         self.dilation = 1
-        self.groups = 1
+        self.groups = 0
         self.data_format = "NCHW"
 
     def dygraph_case(self):
@@ -253,34 +253,6 @@ class TestFunctionalConv2DErrorCase12(TestCase):
     def test_dygraph_exception(self):
         with self.assertRaises(ValueError):
             self.dygraph_case()
-
-
-class TestFunctionalConv2DErrorCase13(TestFunctionalConv2DErrorCase12):
-    def setUp(self):
-        self.input = np.random.randn(1, 3, 3, 3)
-        self.filter = np.random.randn(3, 3, 1, 1)
-        self.num_filters = 3
-        self.filter_size = 1
-        self.bias = None
-        self.padding = 0
-        self.stride = 1
-        self.dilation = 1
-        self.groups = 0
-        self.data_format = "NCHW"
-
-
-class TestFunctionalConv2DErrorCase14(TestFunctionalConv2DErrorCase12):
-    def setUp(self):
-        self.input = np.random.randn(0, 0, 0, 0)
-        self.filter = np.random.randn(1, 0, 0, 0)
-        self.num_filters = 0
-        self.filter_size = 0
-        self.bias = None
-        self.padding = 0
-        self.stride = 1
-        self.dilation = 1
-        self.groups = 1
-        self.data_format = "NCHW"
 
 
 class TestFunctionalConv2D_ZeroSize(TestCase):
