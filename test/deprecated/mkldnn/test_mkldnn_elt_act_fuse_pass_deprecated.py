@@ -33,24 +33,24 @@ class ElementwiseActivationOneDNNFusePassTest(InferencePassTest):
 
     def setUp(self):
         self.set_params()
-        with paddle.pir_utils.OldIrGuard():
-            with base.program_guard(self.main_program, self.startup_program):
-                data_A = paddle.static.data(
-                    name="data_A", shape=[-1, 3, 100, 100], dtype="float32"
-                )
-                data_B = paddle.static.data(
-                    name="data_B", shape=[-1, 3, 100, 100], dtype="float32"
-                )
-                elt_out = self.operand(data_A, data_B)
-                if self.act is not None:
-                    if self.act_beta is not None:
-                        elt_out = self.act(
-                            elt_out, self.act_alpha, self.act_beta
-                        )
-                    elif self.act_alpha is not None:
-                        elt_out = self.act(elt_out, self.act_alpha)
-                    else:
-                        elt_out = self.act(elt_out)
+        with (
+            paddle.pir_utils.OldIrGuard(),
+            base.program_guard(self.main_program, self.startup_program),
+        ):
+            data_A = paddle.static.data(
+                name="data_A", shape=[-1, 3, 100, 100], dtype="float32"
+            )
+            data_B = paddle.static.data(
+                name="data_B", shape=[-1, 3, 100, 100], dtype="float32"
+            )
+            elt_out = self.operand(data_A, data_B)
+            if self.act is not None:
+                if self.act_beta is not None:
+                    elt_out = self.act(elt_out, self.act_alpha, self.act_beta)
+                elif self.act_alpha is not None:
+                    elt_out = self.act(elt_out, self.act_alpha)
+                else:
+                    elt_out = self.act(elt_out)
 
         self.feeds = {
             "data_A": np.random.random((1, 3, 100, 100)).astype("float32"),

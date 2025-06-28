@@ -598,10 +598,6 @@ def median(
     if not isinstance(x, (Variable, paddle.pir.Value)):
         raise TypeError("In median, the input x should be a Tensor.")
 
-    if in_dynamic_mode() and x.size == 0:
-        # TODO: Currently, `__eq__` don't support arguments (`pir.Value` & `int`)
-        raise ValueError("In median, the size of input x should not be 0.")
-
     is_flatten = False
     dims = len(x.shape)
     if dims == 0:
@@ -658,7 +654,7 @@ def median(
             keepdim=True,
         )
     else:  # mode == 'min'
-        if sz & 1 == 0:
+        if sz & 1 == 0 and kth != 0:
             out_tensor = paddle.slice(
                 tensor_topk, axes=[axis], starts=[kth - 1], ends=[kth]
             )

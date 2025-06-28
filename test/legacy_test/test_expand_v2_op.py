@@ -669,20 +669,24 @@ class TestExpandV2CompOpInt64_t(OpTest):
 class TestExpandPirValueListShape(unittest.TestCase):
 
     def test_value_list_shape1(self):
-        with static_guard():
-            with paddle.static.program_guard(paddle.static.Program()):
-                x = paddle.static.data('x', [1, 1])
-                shape = [2, paddle.full([], 4)]
-                out = paddle.expand(x, shape)
-                np.testing.assert_array_equal(tuple(out.shape), (2, -1))
+        with (
+            static_guard(),
+            paddle.static.program_guard(paddle.static.Program()),
+        ):
+            x = paddle.static.data('x', [1, 1])
+            shape = [2, paddle.full([], 4)]
+            out = paddle.expand(x, shape)
+            np.testing.assert_array_equal(tuple(out.shape), (2, -1))
 
     def test_value_list_shape2(self):
-        with static_guard():
-            with paddle.static.program_guard(paddle.static.Program()):
-                x = paddle.static.data('x', [1, 1, -1, -1], 'float32')
-                shape1 = paddle.static.data('shape1', [], 'int32')
-                x = paddle.expand(x, shape=[shape1, 1, -1, -1])
-                np.testing.assert_equal(tuple(x.shape), (-1, 1, -1, -1))
+        with (
+            static_guard(),
+            paddle.static.program_guard(paddle.static.Program()),
+        ):
+            x = paddle.static.data('x', [1, 1, -1, -1], 'float32')
+            shape1 = paddle.static.data('shape1', [], 'int32')
+            x = paddle.expand(x, shape=[shape1, 1, -1, -1])
+            np.testing.assert_equal(tuple(x.shape), (-1, 1, -1, -1))
 
 
 class TestExpandV2ZeroSizeOp(OpTest):

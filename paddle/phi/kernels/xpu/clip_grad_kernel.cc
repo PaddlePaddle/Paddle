@@ -27,6 +27,7 @@ void ClipGradKernel(const Context& dev_ctx,
                     const Scalar& max,
                     DenseTensor* x_grad) {
   dev_ctx.template Alloc<T>(x_grad);
+  if (x_grad && x_grad->numel() == 0) return;
   using XPUDataType = typename XPUTypeTrait<T>::Type;
   int r =
       xpu::clamp_grad(dev_ctx.x_context(),

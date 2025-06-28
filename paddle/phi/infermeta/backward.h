@@ -767,5 +767,7 @@ void IndexElementwiseGetGradInferMeta(
     const std::vector<int64_t>& input_strides,
     const std::vector<int64_t>& index_dims,
     const std::vector<int64_t>& index_strides,
+    const int64_t slice_offset,
+    const bool accumulate,
     MetaTensor* x_grad);
 }  // namespace phi
