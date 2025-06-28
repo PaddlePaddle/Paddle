@@ -102,7 +102,7 @@ class TestFunctionalConv1D_ZeroSize(TestCase):
     def init_data(self):
         self.input = np.random.randn(0, 1, 2)
         self.filter = np.random.randn(1, 1, 2)
-        self.np_out = np.random.random([0, 1, 1])
+        self.np_out = np.zeros([0, 1, 1])
 
     def setUp(self):
         self.init_data()
@@ -150,7 +150,7 @@ class TestFunctionalConv1D_ZeroSize2(TestFunctionalConv1D_ZeroSize):
     def init_data(self):
         self.input = np.random.randn(0, 0, 2)
         self.filter = np.random.randn(1, 0, 2)
-        self.np_out = np.random.random([0, 0, 1])
+        self.np_out = np.zeros([0, 0, 1])
 
 
 if __name__ == "__main__":

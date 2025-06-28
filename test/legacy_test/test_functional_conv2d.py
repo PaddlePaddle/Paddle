@@ -287,7 +287,7 @@ class TestFunctionalConv2D_ZeroSize(TestCase):
     def init_data(self):
         self.input = np.random.random([0, 3, 4, 4])
         self.filter = np.random.random([2, 3, 3, 3])
-        self.np_out = np.random.random([0, 2, 2, 2])
+        self.np_out = np.zeros([0, 2, 2, 2])
 
     def setUp(self):
         self.init_data()
@@ -333,7 +333,7 @@ class TestFunctionalConv2D_ZeroSize2(TestFunctionalConv2D_ZeroSize):
     def init_data(self):
         self.input = np.random.random([0, 0, 4, 4])
         self.filter = np.random.random([2, 0, 3, 3])
-        self.np_out = np.random.random([0, 0, 2, 2])
+        self.np_out = np.zeros([0, 0, 2, 2])
 
 
 if __name__ == "__main__":

@@ -13,9 +13,9 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/conv_kernel.h"
-#include "paddle/phi/kernels/gpudnn/conv_gpudnn.h"
-
 #include "glog/logging.h"
+#include "paddle/phi/kernels/full_kernel.h"
+#include "paddle/phi/kernels/gpudnn/conv_gpudnn.h"
 
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
@@ -314,7 +314,8 @@ void ConvCudnnKernel(const Context& dev_ctx,
                      const std::string& data_format,
                      DenseTensor* output) {
   if (input.numel() == 0) {
-    dev_ctx.template Alloc<T>(output);
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(output->dims())), 0, output);
     return;
   }
   dev_ctx.template Alloc<T>(output);
