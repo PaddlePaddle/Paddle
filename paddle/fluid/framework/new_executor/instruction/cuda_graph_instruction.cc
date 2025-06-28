@@ -33,6 +33,8 @@
 #include "paddle/fluid/framework/new_executor/instruction/instruction_util.h"
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 
+COMMON_DECLARE_bool(check_cuda_error);
+
 #ifdef PADDLE_WITH_CUDA || defined(PADDLE_WITH_HIP)
 
 namespace paddle::framework {
@@ -166,6 +168,10 @@ void CudaGraphInstruction::SetInputHooks(
 }
 
 void CudaGraphInstruction::Run() {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    CUDAErrorCheck("CudaGraphInstruction begin");
+  }
+
   if (cuda_graph_ != nullptr && *cuda_graph_state_ref_ == 3) {
     VLOG(4) << "Start replaying cuda graph @" << cuda_graph_.get();
     for (size_t i = 0; i < input_vars_.size(); ++i) {
@@ -232,6 +238,10 @@ void CudaGraphInstruction::Run() {
   } else {
     VLOG(4) << "Run interpreter without cuda graph";
     interpreter_->Run({}, false);
+  }
+
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    CUDAErrorCheck("CudaGraphInstruction finish");
   }
 }
 

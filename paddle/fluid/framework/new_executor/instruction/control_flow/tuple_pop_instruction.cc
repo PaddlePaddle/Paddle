@@ -19,6 +19,8 @@
 #include "paddle/fluid/framework/new_executor/instruction/instruction_util.h"
 #include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
 
+COMMON_DECLARE_bool(check_cuda_error);
+
 namespace paddle {
 namespace framework {
 TuplePopInstruction::TuplePopInstruction(size_t id,
@@ -127,6 +129,10 @@ void ShareVarData(const Variable* src_var, Variable* dst_var) {
 
 void TuplePopInstruction::Run() {
   VLOG(6) << "run tuple_pop instruction";
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    CUDAErrorCheck("TuplePopInstruction begin");
+  }
+
   if (tuple_pop_op_.tuple_size() == 0) {
     stack_element_var_array_->pop_back();
   } else {
@@ -147,6 +153,9 @@ void TuplePopInstruction::Run() {
       Variable* gc_front_var = const_cast<Variable*>(front_var);
       AddEagerGCVar(gc_front_var);
     }
+  }
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    CUDAErrorCheck("TuplePopInstruction finish");
   }
 }
 

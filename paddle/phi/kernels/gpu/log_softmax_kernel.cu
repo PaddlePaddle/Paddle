@@ -29,6 +29,7 @@ void LogSoftmaxKernel(const Context &dev_ctx,
   const int rank = x.dims().size();
 
   dev_ctx.template Alloc<T>(out);
+  if (x.numel() == 0) return;
   // For 0D Tensor
   if (rank == 0) {
     phi::funcs::set_constant(dev_ctx, out, static_cast<T>(0.0));

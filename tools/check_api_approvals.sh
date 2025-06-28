@@ -48,8 +48,8 @@ if [ "$api_spec_diff" != "" -o "${api_params_diff}" != "" ]; then
 fi
 
 if [ "$api_annotation_diff" != "" ]; then
-    echo_line="You must have one member of Typing group (SigureMo, megemini, zrr1999, sunzhongkai588, luotao1) approval for API annotation change.\n"
-    check_approval 1 SigureMo megemini zrr1999 sunzhongkai588 luotao1
+    echo_line="You must have one member of Typing group (SigureMo, zrr1999, megemini, sunzhongkai588) approval for API annotation change.\n"
+    check_approval 1 SigureMo zrr1999 megemini sunzhongkai588
 fi
 
 api_yaml_diff=`python ${PADDLE_ROOT}/tools/check_api_yaml_same.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.spec  ${PADDLE_ROOT}/paddle/fluid/API_PR.spec ${BRANCH} ${PADDLE_ROOT}`

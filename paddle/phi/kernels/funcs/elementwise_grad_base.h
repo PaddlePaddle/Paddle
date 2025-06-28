@@ -709,42 +709,44 @@ static __global__ void CommonGradBroadcast1CUDAKernelHeight(const T *x,
                                                             size_t x_w,
                                                             bool is_y) {
   IndexType j = BLOCK_ID_X;
-  IndexType i = THREAD_ID_X;
-  int tid = THREAD_ID_X;
-  T val(0);
+  for (j; j < w; j = j + gridDim.x) {
+    IndexType i = THREAD_ID_X;
+    int tid = THREAD_ID_X;
+    T val(0);
 
-  if (is_y) {
-    do {
-      IndexType out_offset = i * w + j;
-      IndexType x_offset = (i % x_h) * x_w + j % x_w;
+    if (is_y) {
+      do {
+        IndexType out_offset = i * w + j;
+        IndexType x_offset = (i % x_h) * x_w + j % x_w;
+        if (dy) {
+          val += dy_op(x[x_offset], y[j], out[out_offset], dout[out_offset]);
+        }
+        i += ELEMWISE_MAX_BLOCK_DIM;
+      } while (i < h);
+
       if (dy) {
-        val += dy_op(x[x_offset], y[j], out[out_offset], dout[out_offset]);
+        h = h > ELEMWISE_MAX_BLOCK_DIM ? ELEMWISE_MAX_BLOCK_DIM : h;
+        val = phi::backends::gpu::reduceSum(val, tid, static_cast<int>(h));
+        if (THREAD_ID_X == 0) {
+          dy[j] = val;
+        }
       }
-      i += ELEMWISE_MAX_BLOCK_DIM;
-    } while (i < h);
+    } else {
+      do {
+        IndexType out_offset = i * w + j;
+        IndexType y_offset = (i % x_h) * x_w + j % x_w;
+        if (dy) {
+          val += dy_op(x[j], y[y_offset], out[out_offset], dout[out_offset]);
+        }
+        i += ELEMWISE_MAX_BLOCK_DIM;
+      } while (i < h);
 
-    if (dy) {
-      h = h > ELEMWISE_MAX_BLOCK_DIM ? ELEMWISE_MAX_BLOCK_DIM : h;
-      val = phi::backends::gpu::reduceSum(val, tid, h);
-      if (THREAD_ID_X == 0) {
-        dy[j] = val;
-      }
-    }
-  } else {
-    do {
-      IndexType out_offset = i * w + j;
-      IndexType y_offset = (i % x_h) * x_w + j % x_w;
       if (dy) {
-        val += dy_op(x[j], y[y_offset], out[out_offset], dout[out_offset]);
-      }
-      i += ELEMWISE_MAX_BLOCK_DIM;
-    } while (i < h);
-
-    if (dy) {
-      h = h > ELEMWISE_MAX_BLOCK_DIM ? ELEMWISE_MAX_BLOCK_DIM : h;
-      val = phi::backends::gpu::reduceSum(val, tid, h);
-      if (THREAD_ID_X == 0) {
-        dy[j] = val;
+        h = h > ELEMWISE_MAX_BLOCK_DIM ? ELEMWISE_MAX_BLOCK_DIM : h;
+        val = phi::backends::gpu::reduceSum(val, tid, static_cast<int>(h));
+        if (THREAD_ID_X == 0) {
+          dy[j] = val;
+        }
       }
     }
   }
@@ -767,45 +769,49 @@ static __global__ void ElemwiseGradBroadcast1CUDAKernel(const T *x,
                                                         T *dx,
                                                         T *dy) {
   IndexType j = BLOCK_ID_X;
-  IndexType i = THREAD_ID_X;
-  IndexType tid = THREAD_ID_X;
-  T val(0);
-  if (is_xsize_larger) {
-    do {
-      IndexType x_offset = i * w + j;
-      if (dx) {
-        dx[x_offset] = dx_op(x[x_offset], y[j], out[x_offset], dout[x_offset]);
-      }
-      if (dy) {
-        val += dy_op(x[x_offset], y[j], out[x_offset], dout[x_offset]);
-      }
-      i += ELEMWISE_MAX_BLOCK_DIM;
-    } while (i < h);
+  for (j; j < w; j = j + gridDim.x) {
+    IndexType i = THREAD_ID_X;
+    int tid = THREAD_ID_X;
+    T val(0);
+    if (is_xsize_larger) {
+      do {
+        IndexType x_offset = i * w + j;
+        if (dx) {
+          dx[x_offset] =
+              dx_op(x[x_offset], y[j], out[x_offset], dout[x_offset]);
+        }
+        if (dy) {
+          val += dy_op(x[x_offset], y[j], out[x_offset], dout[x_offset]);
+        }
+        i += ELEMWISE_MAX_BLOCK_DIM;
+      } while (i < h);
 
-    if (dy) {
-      h = h > ELEMWISE_MAX_BLOCK_DIM ? ELEMWISE_MAX_BLOCK_DIM : h;
-      val = phi::backends::gpu::reduceSum(val, tid, h);
-      if (THREAD_ID_X == 0) {
-        dy[j] = val;
-      }
-    }
-  } else {  // x.dims < y.dims, broadcast for x.
-    do {
-      IndexType y_offset = i * w + j;
       if (dy) {
-        dy[y_offset] = dy_op(x[j], y[y_offset], out[y_offset], dout[y_offset]);
+        h = h > ELEMWISE_MAX_BLOCK_DIM ? ELEMWISE_MAX_BLOCK_DIM : h;
+        val = phi::backends::gpu::reduceSum(val, tid, static_cast<int>(h));
+        if (THREAD_ID_X == 0) {
+          dy[j] = val;
+        }
       }
-      if (dx) {
-        val += dx_op(x[j], y[y_offset], out[y_offset], dout[y_offset]);
-      }
-      i += ELEMWISE_MAX_BLOCK_DIM;
-    } while (i < h);
+    } else {  // x.dims < y.dims, broadcast for x.
+      do {
+        IndexType y_offset = i * w + j;
+        if (dy) {
+          dy[y_offset] =
+              dy_op(x[j], y[y_offset], out[y_offset], dout[y_offset]);
+        }
+        if (dx) {
+          val += dx_op(x[j], y[y_offset], out[y_offset], dout[y_offset]);
+        }
+        i += ELEMWISE_MAX_BLOCK_DIM;
+      } while (i < h);
 
-    if (dx) {
-      h = h > ELEMWISE_MAX_BLOCK_DIM ? ELEMWISE_MAX_BLOCK_DIM : h;
-      val = phi::backends::gpu::reduceSum(val, tid, h);
-      if (THREAD_ID_X == 0) {
-        dx[j] = val;
+      if (dx) {
+        h = h > ELEMWISE_MAX_BLOCK_DIM ? ELEMWISE_MAX_BLOCK_DIM : h;
+        val = phi::backends::gpu::reduceSum(val, tid, static_cast<int>(h));
+        if (THREAD_ID_X == 0) {
+          dx[j] = val;
+        }
       }
     }
   }
@@ -923,64 +929,65 @@ static __global__ void ElemwiseGradBroadcast2CUDAKernel(const T *x,
                                                         DY_OP dy_op,
                                                         T *dx,
                                                         T *dy) {
-  IndexType tid = THREAD_ID_X;
+  int tid = THREAD_ID_X;
   IndexType j = BLOCK_ID_X;
+  for (j; j < n; j += gridDim.x) {
+    T val(0);
+    IndexType ttid = tid;
 
-  T val(0);
-  IndexType ttid = tid;
+    if (is_xsize_larger) {
+      while (true) {
+        IndexType i = ttid / post;
+        IndexType k = ttid % post;
+        if (i >= pre) break;
+        IndexType x_offset = i * n * post + j * post + k;
 
-  if (is_xsize_larger) {
-    while (true) {
-      IndexType i = ttid / post;
-      IndexType k = ttid % post;
-      if (i >= pre) break;
+        if (dx != nullptr) {
+          dx[x_offset] =
+              dx_op(x[x_offset], y[j], out[x_offset], dout[x_offset]);
+        }
 
-      IndexType x_offset = i * n * post + j * post + k;
-
-      if (dx != nullptr) {
-        dx[x_offset] = dx_op(x[x_offset], y[j], out[x_offset], dout[x_offset]);
+        if (dy != nullptr) {
+          val += dy_op(x[x_offset], y[j], out[x_offset], dout[x_offset]);
+        }
+        ttid += ELEMWISE_MAX_BLOCK_DIM;
       }
 
-      if (dy != nullptr) {
-        val += dy_op(x[x_offset], y[j], out[x_offset], dout[x_offset]);
+      if (dy) {
+        IndexType h = pre * post;
+        h = h > ELEMWISE_MAX_BLOCK_DIM ? ELEMWISE_MAX_BLOCK_DIM : h;
+        val = phi::backends::gpu::reduceSum(val, tid, static_cast<int>(h));
+        if (THREAD_ID_X == 0) {
+          dy[j] = val;
+        }
+      }
+    } else {  // x.dims < y.dims, broadcast for x.
+      while (true) {
+        IndexType i = ttid / post;
+        IndexType k = ttid % post;
+        if (i >= pre) break;
+
+        IndexType y_offset = i * n * post + j * post + k;
+
+        if (dy != nullptr) {
+          dy[y_offset] =
+              dy_op(x[j], y[y_offset], out[y_offset], dout[y_offset]);
+        }
+
+        if (dx != nullptr) {
+          val += dx_op(x[j], y[y_offset], out[y_offset], dout[y_offset]);
+        }
+
+        ttid += ELEMWISE_MAX_BLOCK_DIM;
       }
 
-      ttid += ELEMWISE_MAX_BLOCK_DIM;
-    }
-
-    if (dy) {
-      IndexType h = pre * post;
-      h = h > ELEMWISE_MAX_BLOCK_DIM ? ELEMWISE_MAX_BLOCK_DIM : h;
-      val = phi::backends::gpu::reduceSum(val, tid, h);
-      if (THREAD_ID_X == 0) {
-        dy[j] = val;
-      }
-    }
-  } else {  // x.dims < y.dims, broadcast for x.
-    while (true) {
-      IndexType i = ttid / post;
-      IndexType k = ttid % post;
-      if (i >= pre) break;
-
-      IndexType y_offset = i * n * post + j * post + k;
-
-      if (dy != nullptr) {
-        dy[y_offset] = dy_op(x[j], y[y_offset], out[y_offset], dout[y_offset]);
-      }
-
-      if (dx != nullptr) {
-        val += dx_op(x[j], y[y_offset], out[y_offset], dout[y_offset]);
-      }
-
-      ttid += ELEMWISE_MAX_BLOCK_DIM;
-    }
-
-    if (dx) {
-      IndexType h = pre * post;
-      h = h > ELEMWISE_MAX_BLOCK_DIM ? ELEMWISE_MAX_BLOCK_DIM : h;
-      val = phi::backends::gpu::reduceSum(val, tid, h);
-      if (THREAD_ID_X == 0) {
-        dx[j] = val;
+      if (dx) {
+        IndexType h = pre * post;
+        h = h > ELEMWISE_MAX_BLOCK_DIM ? ELEMWISE_MAX_BLOCK_DIM : h;
+        val = phi::backends::gpu::reduceSum(val, tid, static_cast<int>(h));
+        if (THREAD_ID_X == 0) {
+          dx[j] = val;
+        }
       }
     }
   }
@@ -1003,7 +1010,13 @@ static void ElemwiseGradBroadcast1CUDA(gpuStream_t stream,
   constexpr int half_walf = 16;
   if (w < half_walf || h < half_walf) {
     int block_size = std::min(static_cast<size_t>(ELEMWISE_MAX_BLOCK_DIM), h);
-    int grid_size = w;
+    int64_t grid_size = w;
+    auto gplace = phi::GPUPlace(phi::backends::gpu::GetCurrentDeviceId());
+    auto *ctx = static_cast<GPUContext *>(
+        phi::DeviceContextPool::Instance().Get(gplace));
+
+    int64_t max_grid_dim = ctx->GetCUDAMaxGridDimSize()[0];
+    grid_size = std::min(grid_size, max_grid_dim);
     if (h * w > std::numeric_limits<int>::max()) {
       ElemwiseGradBroadcast1CUDAKernel<int64_t>
           <<<grid_size, block_size, 0, stream>>>(
@@ -1017,11 +1030,12 @@ static void ElemwiseGradBroadcast1CUDA(gpuStream_t stream,
   } else {
     // suppose performance improves with h increased.
     dim3 block_size = dim3(BLOCK_X, BLOCK_Y);
-    dim3 grid_size = dim3((w + BLOCK_X - 1) / BLOCK_X);
+    int64_t grid_size = (w + BLOCK_X - 1) / BLOCK_X;
     auto gplace = phi::GPUPlace(phi::backends::gpu::GetCurrentDeviceId());
     auto *ctx = static_cast<GPUContext *>(
         phi::DeviceContextPool::Instance().Get(gplace));
-    phi::backends::gpu::LimitGridDim(*ctx, &grid_size);
+    int64_t max_grid_dim = ctx->GetCUDAMaxGridDimSize()[0];
+    grid_size = std::min(grid_size, max_grid_dim);
     if (h * w > std::numeric_limits<int>::max()) {
       FastElemwiseGradBroadcast1CUDAKernel<int64_t>
           <<<grid_size, block_size, 0, stream>>>(
@@ -1050,11 +1064,13 @@ static void ElemwiseGradBroadcast2CUDA(gpuStream_t stream,
                                        T *dy) {
   int block_size =
       std::min(static_cast<size_t>(ELEMWISE_MAX_BLOCK_DIM), pre * post);
-  dim3 grid_size = dim3(n);
+  int64_t grid_size = n;
   auto gplace = phi::GPUPlace(phi::backends::gpu::GetCurrentDeviceId());
   auto *ctx =
       static_cast<GPUContext *>(phi::DeviceContextPool::Instance().Get(gplace));
-  phi::backends::gpu::LimitGridDim(*ctx, &grid_size);
+  int64_t max_grid_dim = ctx->GetCUDAMaxGridDimSize()[0];
+  grid_size = std::min(grid_size, max_grid_dim);
+
   if (pre * n * post > std::numeric_limits<int>::max()) {
     ElemwiseGradBroadcast2CUDAKernel<
         int64_t><<<grid_size, block_size, 0, stream>>>(
@@ -1107,7 +1123,9 @@ __global__ void CommonGradBroadcastCUDAKernel(const int64_t *x_strides_array,
     out_index = C_index;
     val += dx_op(x[x_index], y[y_index], out[out_index], dout[out_index]);
   }
-  val = phi::backends::gpu::reduceSum(val, tid, thread_num);
+  thread_num =
+      thread_num > ELEMWISE_MAX_BLOCK_DIM ? ELEMWISE_MAX_BLOCK_DIM : thread_num;
+  val = phi::backends::gpu::reduceSum(val, tid, static_cast<int>(thread_num));
   if (THREAD_ID_X == 0) {
     dx[i] = val;
   }
@@ -1190,7 +1208,7 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
   std::vector<int64_t> x_broadcast_pos;
   std::vector<int64_t> y_broadcast_pos;
 
-  int bytes = max_dim * sizeof(int64_t);
+  int64_t bytes = max_dim * sizeof(int64_t);
 
   for (int i = 0; i < max_dim; ++i) {
     if (x_dims_array[i] != out_dims_array[i] && x_dims_array[i] == 1) {
@@ -1254,7 +1272,12 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
       if (w < 16 || h < 16) {
         int block_size =
             std::min(static_cast<size_t>(ELEMWISE_MAX_BLOCK_DIM), h);
-        int grid_size = w;
+        int64_t grid_size = w;
+        auto gplace = phi::GPUPlace(phi::backends::gpu::GetCurrentDeviceId());
+        auto *ctx = static_cast<GPUContext *>(
+            phi::DeviceContextPool::Instance().Get(gplace));
+        int64_t max_grid_dim = ctx->GetCUDAMaxGridDimSize()[0];
+        grid_size = std::min(grid_size, max_grid_dim);
         if (use_int64_index) {
           CommonGradBroadcast1CUDAKernelHeight<int64_t>
               <<<grid_size, block_size, 0, stream>>>(x_data,
@@ -1285,8 +1308,13 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
 
       } else {
         dim3 block_size = dim3(BLOCK_X, BLOCK_Y);
-        dim3 grid_size = dim3((w + BLOCK_X - 1) / BLOCK_X);
-        phi::backends::gpu::LimitGridDim(ctx, &grid_size);
+        int64_t grid_size = (w + BLOCK_X - 1) / BLOCK_X;
+        auto gplace = phi::GPUPlace(phi::backends::gpu::GetCurrentDeviceId());
+        auto *ctx = static_cast<GPUContext *>(
+            phi::DeviceContextPool::Instance().Get(gplace));
+
+        int64_t max_grid_dim = ctx->GetCUDAMaxGridDimSize()[0];
+        grid_size = std::min(grid_size, max_grid_dim);
         if (use_int64_index) {
           FastCommonGradBroadcastCUDAKernelHeight<int64_t>
               <<<grid_size, block_size, 0, stream>>>(x_data,
@@ -1319,7 +1347,12 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
       if (w < 16 || h < 16) {
         int block_size =
             std::min(static_cast<size_t>(ELEMWISE_MAX_BLOCK_DIM), h);
-        int grid_size = w;
+        int64_t grid_size = w;
+        auto gplace = phi::GPUPlace(phi::backends::gpu::GetCurrentDeviceId());
+        auto *ctx = static_cast<GPUContext *>(
+            phi::DeviceContextPool::Instance().Get(gplace));
+        int64_t max_grid_dim = ctx->GetCUDAMaxGridDimSize()[0];
+        grid_size = std::min(grid_size, max_grid_dim);
         if (use_int64_index) {
           CommonGradBroadcast1CUDAKernelHeight<int64_t>
               <<<grid_size, block_size, 0, stream>>>(x_data,
@@ -1350,8 +1383,13 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
 
       } else {
         dim3 block_size = dim3(BLOCK_X, BLOCK_Y);
-        dim3 grid_size = dim3((w + BLOCK_X - 1) / BLOCK_X);
-        phi::backends::gpu::LimitGridDim(ctx, &grid_size);
+        int64_t grid_size = (w + BLOCK_X - 1) / BLOCK_X;
+        auto gplace = phi::GPUPlace(phi::backends::gpu::GetCurrentDeviceId());
+        auto *ctx = static_cast<GPUContext *>(
+            phi::DeviceContextPool::Instance().Get(gplace));
+
+        int64_t max_grid_dim = ctx->GetCUDAMaxGridDimSize()[0];
+        grid_size = std::min(grid_size, max_grid_dim);
         if (use_int64_index) {
           FastCommonGradBroadcastCUDAKernelHeight<int64_t>
               <<<grid_size, block_size, 0, stream>>>(x_data,
@@ -1403,7 +1441,12 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
     if (w < 16 || h < 16) {
       int block_size =
           std::min(static_cast<int64_t>(ELEMWISE_MAX_BLOCK_DIM), h);
-      int grid_size = w;
+      int64_t grid_size = w;
+      auto gplace = phi::GPUPlace(phi::backends::gpu::GetCurrentDeviceId());
+      auto *ctx = static_cast<GPUContext *>(
+          phi::DeviceContextPool::Instance().Get(gplace));
+      int64_t max_grid_dim = ctx->GetCUDAMaxGridDimSize()[0];
+      grid_size = std::min(grid_size, max_grid_dim);
       if (use_int64_index) {
         ElemwiseGradBroadcast1CUDAKernel<int64_t>
             <<<grid_size, block_size, 0, stream>>>(x_data,
@@ -1434,7 +1477,13 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
 
     } else {
       dim3 block_size = dim3(BLOCK_X, BLOCK_Y);
-      int grid_size = (w + BLOCK_X - 1) / BLOCK_X;
+      int64_t grid_size = (w + BLOCK_X - 1) / BLOCK_X;
+      auto gplace = phi::GPUPlace(phi::backends::gpu::GetCurrentDeviceId());
+      auto *ctx = static_cast<GPUContext *>(
+          phi::DeviceContextPool::Instance().Get(gplace));
+
+      int64_t max_grid_dim = ctx->GetCUDAMaxGridDimSize()[0];
+      grid_size = std::min(grid_size, max_grid_dim);
       if (use_int64_index) {
         FastElemwiseGradBroadcast1CUDAKernel<int64_t>
             <<<grid_size, block_size, 0, stream>>>(x_data,
@@ -1495,9 +1544,13 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
             << " post:" << post;
 
     int block_size = std::min(static_cast<size_t>(ELEMWISE_MAX_BLOCK_DIM), mid);
-    dim3 grid_size = dim3(pre * post);
-    phi::backends::gpu::LimitGridDim(ctx, &grid_size);
+    int64_t grid_size = pre * post;
+    auto gplace = phi::GPUPlace(phi::backends::gpu::GetCurrentDeviceId());
+    auto *ctx = static_cast<GPUContext *>(
+        phi::DeviceContextPool::Instance().Get(gplace));
 
+    int64_t max_grid_dim = ctx->GetCUDAMaxGridDimSize()[0];
+    grid_size = std::min(grid_size, max_grid_dim);
     if (pre * mid * post > std::numeric_limits<int32_t>::max()) {
       FastCommonGradBroadcastAllCUDAKernel<int64_t>
           <<<grid_size, block_size, 0, stream>>>(x_data,
@@ -1558,8 +1611,12 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
                                    std::multiplies<int64_t>());
           int block_size =
               std::min(static_cast<size_t>(ELEMWISE_MAX_BLOCK_DIM), mid);
-          dim3 grid_size = dim3(pre * post);
-          phi::backends::gpu::LimitGridDim(ctx, &grid_size);
+          int64_t grid_size = pre * post;
+          auto gplace = phi::GPUPlace(phi::backends::gpu::GetCurrentDeviceId());
+          auto *ctx = static_cast<GPUContext *>(
+              phi::DeviceContextPool::Instance().Get(gplace));
+          int64_t max_grid_dim = ctx->GetCUDAMaxGridDimSize()[0];
+          grid_size = std::min(grid_size, max_grid_dim);
           // we need to calc y offset with blockid, so do x_pre/y_pre to get
           // left size.
           if (k_pre != pre) k_pre = pre / k_pre;
@@ -1608,8 +1665,12 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
                                    std::multiplies<int64_t>());
           int block_size =
               std::min(static_cast<size_t>(ELEMWISE_MAX_BLOCK_DIM), mid);
-          dim3 grid_size = dim3(pre * post);
-          phi::backends::gpu::LimitGridDim(ctx, &grid_size);
+          int64_t grid_size = pre * post;
+          auto gplace = phi::GPUPlace(phi::backends::gpu::GetCurrentDeviceId());
+          auto *ctx = static_cast<GPUContext *>(
+              phi::DeviceContextPool::Instance().Get(gplace));
+          int64_t max_grid_dim = ctx->GetCUDAMaxGridDimSize()[0];
+          grid_size = std::min(grid_size, max_grid_dim);
           if (k_pre != pre) k_pre = pre / k_pre;
 
           if (pre * mid * post > std::numeric_limits<int32_t>::max() ||
