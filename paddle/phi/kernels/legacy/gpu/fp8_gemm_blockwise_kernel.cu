@@ -76,7 +76,9 @@ cudaDataType_t ScalarTypeToCudaDataType(phi::DataType dtype) {
     }                                                                     \
   } while (0)
 
-void cublas_gemm_blockwise_impl(const DenseTensor& A,
+template <typename Context>
+void cublas_gemm_blockwise_impl(const Context& dev_ctx,
+                                const DenseTensor& A,
                                 const DenseTensor& A_decode_scale,
                                 const DenseTensor& B,
                                 const DenseTensor& B_decode_scale,
@@ -150,9 +152,7 @@ void cublas_gemm_blockwise_impl(const DenseTensor& A,
   int lda = k, ldb = k, ldc = m, ldd = m;
   float alpha = 1.0, beta = accumulate ? 1.0 : 0.0;
 
-  cublasLtHandle_t ltHandle;
-  PADDLE_CUDABLAS_CHECK(phi::dynload::cublasLtCreate(&ltHandle));
-
+  cublasLtHandle_t ltHandle = dev_ctx.cublaslt_handle();
   // Create operation descriptor
   cublasLtMatmulDesc_t operationDesc = nullptr;
   PADDLE_CUDABLAS_CHECK(phi::dynload::cublasLtMatmulDescCreate(
@@ -287,7 +287,6 @@ void cublas_gemm_blockwise_impl(const DenseTensor& A,
                                                      workspace->data(),
                                                      workspace_size,
                                                      stream));
-
   // Cleanup
   if (preference)
     PADDLE_CUDABLAS_CHECK(
@@ -303,7 +302,6 @@ void cublas_gemm_blockwise_impl(const DenseTensor& A,
   if (operationDesc)
     PADDLE_CUDABLAS_CHECK(
         phi::dynload::cublasLtMatmulDescDestroy(operationDesc));
-  if (ltHandle) PADDLE_CUDABLAS_CHECK(phi::dynload::cublasLtDestroy(ltHandle));
 }
 
 }  // anonymous namespace
@@ -329,23 +327,24 @@ void Fp8GemmBlockwiseKernel(const Context& dev_ctx,
                             DenseTensor* output,
                             DenseTensor* pre_gelu_out,
                             DenseTensor* workspace_out) {
-  cublas_gemm_blockwise_impl(A,
-                             A_scale,
-                             B,
-                             B_scale,
-                             output,
-                             bias,
-                             pre_gelu_out,
-                             transa,
-                             transb,
-                             grad,
-                             workspace_out,
-                             accumulate,
-                             use_split_accumulator,
-                             math_sm_count,
-                             is_A_1d_scaled,
-                             is_B_1d_scaled,
-                             dev_ctx.stream());
+  cublas_gemm_blockwise_impl<Context>(dev_ctx,
+                                      A,
+                                      A_scale,
+                                      B,
+                                      B_scale,
+                                      output,
+                                      bias,
+                                      pre_gelu_out,
+                                      transa,
+                                      transb,
+                                      grad,
+                                      workspace_out,
+                                      accumulate,
+                                      use_split_accumulator,
+                                      math_sm_count,
+                                      is_A_1d_scaled,
+                                      is_B_1d_scaled,
+                                      dev_ctx.stream());
 }
 
 }  // namespace phi

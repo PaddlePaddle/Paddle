@@ -255,12 +255,13 @@ static void FusedElemwiseAndActBroadcast1CUDA(gpuStream_t stream,
                                               const T *x,
                                               const T *y,
                                               CompoundFunctor compound_functor,
-                                              int h,
-                                              int w,
+                                              int64_t h,
+                                              int64_t w,
                                               T *out,
                                               T *intermediate_out) {
-  int block_size = std::min(ELEMWISE_MAX_BLOCK_DIM, w);
-  int gird_size = h;
+  int64_t block_size =
+      std::min(static_cast<int64_t>(ELEMWISE_MAX_BLOCK_DIM), w);
+  int64_t gird_size = h;
   FusedElemwiseAndActBroadcast1CUDAKernel<T,
                                           CompoundFunctor,
                                           BcastY,
@@ -329,14 +330,15 @@ template <typename T,
 static void FusedElemwiseAndActBroadcast2CUDA(gpuStream_t stream,
                                               const T *x,
                                               const T *y,
-                                              int pre,
-                                              int n,
-                                              int post,
+                                              int64_t pre,
+                                              int64_t n,
+                                              int64_t post,
                                               CompoundFunctor compound_functor,
                                               T *out,
                                               T *intermediate_out) {
-  int block_size = std::min(ELEMWISE_MAX_BLOCK_DIM, pre * post);
-  int gird_size = n;
+  int64_t block_size =
+      std::min(static_cast<int64_t>(ELEMWISE_MAX_BLOCK_DIM), pre * post);
+  int64_t gird_size = n;
 
   FusedElemwiseAndActBroadcast2CUDAKernel<T,
                                           CompoundFunctor,
@@ -1083,17 +1085,18 @@ static void FusedElemwiseAndActGradBroadcast2CUDA(
     const T *intermediate_out,
     const T *out,
     const T *dout,
-    int pre,
-    int n,
-    int post,
+    int64_t pre,
+    int64_t n,
+    int64_t post,
     DX_OP dx_op,
     DY_OP dy_op,
     DIntermediate_OP dintermediate_op,
     T *dx,
     T *dy,
     T *dintermediate) {
-  int block_size = std::min(ELEMWISE_MAX_BLOCK_DIM, pre * post);
-  int gird_size = n;
+  int64_t block_size =
+      std::min(static_cast<int64_t>(ELEMWISE_MAX_BLOCK_DIM), pre * post);
+  int64_t gird_size = n;
   FusedElemwiseAndActGradBroadcast2CUDAKernel<T,
                                               DX_OP,
                                               DY_OP,
