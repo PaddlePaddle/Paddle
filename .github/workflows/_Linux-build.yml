@@ -36,7 +36,7 @@ jobs:
     outputs:
       can-skip: ${{ steps.check-bypass.outputs.can-skip }}
     runs-on:
-      group: GZ_BD-CPU
+      group: cpu-cfs
 
     steps:
       - name: Check docker image and run container
@@ -195,8 +195,9 @@ jobs:
           tar --use-compress-program="pzstd -1" -cf build.tar.gz paddle
           echo "Uploading build.tar.gz to bos"
           python ${{ env.bos_file }} build.tar.gz paddle-github-action/PR/build/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
-          mkdir -p /home/data/cfs/build/${PR_ID}/${COMMIT_ID}
-          mv build.tar.gz /home/data/cfs/build/${PR_ID}/${COMMIT_ID}
+          echo "Uploading build.tar.gz to cfs"
+          mkdir -p /home/data/cfs/build_bos/${PR_ID}/${COMMIT_ID}
+          mv build.tar.gz /home/data/cfs/build_bos/${PR_ID}/${COMMIT_ID}
           mv /paddle/build/pr_whl/${{ env.paddle_whl }} .
           echo "Uploading paddle_whl to bos"
           python ${{ env.bos_file }} ${{ env.paddle_whl }} paddle-github-action/PR/build/${{ env.PR_ID }}/${{ env.COMMIT_ID }}

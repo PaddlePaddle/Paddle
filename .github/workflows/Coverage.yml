@@ -48,7 +48,7 @@ jobs:
     needs: [clone, build-docker]
     if: needs.clone.outputs.can-skip != 'true'
     runs-on:
-      group: GZ_BD-CPU
+      group: cpu-cfs
     outputs:
       can-skip: ${{ steps.check-bypass.outputs.can-skip }}
 
@@ -227,13 +227,15 @@ jobs:
             tar xf ${{ env.home_path }}/bos_retry.tar.gz -C ${{ env.home_path }}/bos_retry
           fi
           cd /paddle/dist
+          mkdir -p /home/data/cfs/coverage_bos/${PR_ID}/${COMMIT_ID}
           echo "Uploading coverage build size"
           python ${{ env.bos_file }} coverage_build_size paddle-github-action/PR/coverage/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
           echo "Uploading coverage wheel"
           python ${{ env.bos_file }} ${{ env.paddle_whl }} paddle-github-action/PR/coverage/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
           cd /
           echo "Uploading Paddle.tar.gz"
-          python ${{ env.bos_file }} Paddle.tar.gz paddle-github-action/PR/coverage/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
+          # python ${{ env.bos_file }} Paddle.tar.gz paddle-github-action/PR/coverage/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
+          cp Paddle.tar.gz /home/data/cfs/coverage_bos/${PR_ID}/${COMMIT_ID}
           rm Paddle.tar.gz
           '
 
@@ -331,7 +333,8 @@ jobs:
           rm -rf * .[^.]*
           set -e
           echo "Downloading Paddle.tar.gz"
-          wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/coverage/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
+          # wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/coverage/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
+          cp /home/data/cfs/coverage_bos/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz .
           echo "Extracting Paddle.tar.gz"
           tar --use-compress-program="pzstd -1" -xf Paddle.tar.gz --strip-components=1
           rm Paddle.tar.gz
