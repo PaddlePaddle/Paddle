@@ -1,0 +1,21 @@
+name: CI-Windows
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+    branches: [develop, release/**]
+
+permissions: read-all
+
+concurrency:
+  group: ${{ github.event.pull_request.number }}-Windows
+  cancel-in-progress: true
+
+env:
+  PR_ID: ${{ github.event.pull_request.number }}
+  COMMIT_ID: ${{ github.event.pull_request.head.sha }}
+
+jobs:
+  clone:
+    name: Clone-linux
+    uses: ./.github/workflows/_Clone-windows.yml

@@ -1,0 +1,71 @@
+name: Clone-windows
+
+on:
+  workflow_call:
+
+permissions: read-all
+
+env:
+  PR_ID: ${{ github.event.pull_request.number }}
+  COMMIT_ID: ${{ github.event.pull_request.head.sha }}
+  BRANCH: ${{ github.base_ref }}
+  WORK_DIR: ${{ github.workspace }}
+  WORK_DIR1: ${{ github.workspace }}/..
+  WORK_DIR2: ${{ github.workspace }}\..
+
+defaults:
+  run:
+    shell: cmd
+
+jobs:
+  clone:
+    name: Clone Paddle
+    runs-on:
+      group: win-clone
+    steps:
+      - name: Clone paddle
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.ref }}
+          submodules: 'recursive'
+          fetch-depth: 1000
+
+      - name: Merge pr
+        run: |
+          git config --global user.name "PaddleCI"
+          git config --global user.email "paddle_ci@example.com"
+          git config --global http.postBuffer 524288000
+          git config --global core.longpaths true
+          git fetch origin pull/%PR_ID%/head
+          git checkout -b test_pr FETCH_HEAD
+          git merge --no-edit %BRANCH%
+          git log --pretty=oneline -10
+
+      - name: Upload paddle to bos
+
+        run: |
+          echo %WORK_DIR%
+          echo %WORK_DIR1%
+          echo %WORK_DIR2%
+          echo %BCE_FILE1%
+          echo %BCE_FILE2%
+          cd %WORK_DIR%
+          cd
+          type nul > %WORK_DIR%\11
+          type nul > %WORK_DIR%/22
+          cd %WORK_DIR1%
+          cd
+          type nul > %WORK_DIR%\11
+          type nul > %WORK_DIR%/22
+          cd %WORK_DIR2%
+          cd
+          type nul > %WORK_DIR%\11
+          type nul > %WORK_DIR%/22
+          cd %BCE_FILE1%
+          cd
+          type nul > %WORK_DIR%\11
+          type nul > %WORK_DIR%/22
+          cd %BCE_FILE2%
+          cd
+          type nul > %WORK_DIR%\11
+          type nul > %WORK_DIR%/22
