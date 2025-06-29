@@ -9,7 +9,7 @@ env:
   PR_ID: ${{ github.event.pull_request.number }}
   COMMIT_ID: ${{ github.event.pull_request.head.sha }}
   BRANCH: ${{ github.base_ref }}
-  ci_scripts: ${{ github.workspace }}\ci
+  ci_scripts: ${{ github.workspace }}\ci\windows
   WORK_DIR: ${{ github.workspace }}\..
 
 defaults:
@@ -29,7 +29,7 @@ jobs:
           git config --global http.postBuffer 524288000
           git config --global core.longpaths true
           @ECHO ON
-          call %ci_scripts%\third_party_tag.sh
+          call %ci_scripts%\third_party_tag.bat
 
     # - name: Clone paddle
     #   uses: actions/checkout@v4
