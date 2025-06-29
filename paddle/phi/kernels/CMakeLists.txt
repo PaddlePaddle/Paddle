@@ -77,7 +77,6 @@ if(((WITH_GPU) AND (CUDA_VERSION VERSION_LESS 12.0))
     "legacy/gpu/fp8_quant_blockwise_kernel.cu"
     "fusion/gpu/fused_act_dequant_kernel.cu"
     "fusion/gpu/fused_stack_transpose_quant_kernel.cu"
-    "fusion/gpu/fused_stack_quant_kernel.cu"
     "fusion/gpu/fused_transpose_split_quant_kernel.cu"
     "fusion/gpu/fused_transpose_wlch_split_quant_kernel.cu"
     "fusion/gpu/fused_swiglu_weighted_bwd_kernel.cu"
