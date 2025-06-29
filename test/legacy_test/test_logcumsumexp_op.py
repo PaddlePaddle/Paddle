@@ -199,25 +199,29 @@ class TestLogcumsumexp(unittest.TestCase):
 
     def test_name(self):
         paddle.enable_static()
-        with paddle.pir_utils.OldIrGuard():
-            with base.program_guard(base.Program()):
-                x = paddle.static.data('x', [3, 4])
-                y = paddle.logcumsumexp(x, name='out')
-                self.assertTrue('out' in y.name)
+        with (
+            paddle.pir_utils.OldIrGuard(),
+            base.program_guard(base.Program()),
+        ):
+            x = paddle.static.data('x', [3, 4])
+            y = paddle.logcumsumexp(x, name='out')
+            self.assertTrue('out' in y.name)
         paddle.disable_static()
 
     def test_type_error(self):
         main = paddle.static.Program()
         startup = paddle.static.Program()
-        with paddle.static.program_guard(main, startup):
-            with self.assertRaises(TypeError):
-                data_np = np.random.random((100, 100), dtype=np.int32)
-                x = paddle.static.data('X', [100, 100], dtype='int32')
-                y = paddle.logcumsumexp(x)
+        with (
+            paddle.static.program_guard(main, startup),
+            self.assertRaises(TypeError),
+        ):
+            data_np = np.random.random((100, 100), dtype=np.int32)
+            x = paddle.static.data('X', [100, 100], dtype='int32')
+            y = paddle.logcumsumexp(x)
 
-                place = base.CUDAPlace(0)
-                exe = base.Executor(place)
-                out = exe.run(main, feed={'X': data_np}, fetch_list=[y])
+            place = base.CUDAPlace(0)
+            exe = base.Executor(place)
+            out = exe.run(main, feed={'X': data_np}, fetch_list=[y])
 
 
 def logcumsumexp_wrapper(

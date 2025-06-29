@@ -294,17 +294,20 @@ void CommonForwardBroadcastCPU(const DenseTensor &x,
                                            out_dims_array + max_dim,
                                            1ll,
                                            std::multiplies<int64_t>());
-  int x_index, y_index;
-  for (int out_index = 0; out_index < out_size; ++out_index) {
-    x_index = GetElementwiseIndex(x_dims_array, max_dim, index_array.data());
-    y_index = GetElementwiseIndex(y_dims_array, max_dim, index_array.data());
+  int64_t x_index, y_index;
+  for (int64_t out_index = 0; out_index < out_size; ++out_index) {
+    x_index =
+        GetElementwiseIndex<int64_t>(x_dims_array, max_dim, index_array.data());
+    y_index =
+        GetElementwiseIndex<int64_t>(y_dims_array, max_dim, index_array.data());
     if (is_xsize_larger) {
       out_data[out_index] = func(x_data[x_index], y_data[y_index]);
     } else {
       out_data[out_index] = func(y_data[y_index], x_data[x_index]);
     }
 
-    UpdateElementwiseIndexArray(out_dims_array, max_dim, index_array.data());
+    UpdateElementwiseIndexArray<int64_t>(
+        out_dims_array, max_dim, index_array.data());
   }
 }
 
@@ -406,7 +409,8 @@ void ElementwiseCompute(const CPUContext &dev_ctx,
           max_dim,
           axis));
 
-  int pre, n, post, is_run_common_broadcast, axis_trim = 0;
+  size_t pre, n, post;
+  int is_run_common_broadcast, axis_trim = 0;
   if (is_xsize_larger) {
     auto y_dims_trimmed = TrimTrailingSingularDims(y_dims);
     axis_trim = (y_dims_trimmed.size() == 0) ? x_dims.size() : axis;
