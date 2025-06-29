@@ -837,169 +837,164 @@ class TrtLayerAutoScanTest(AutoScanTest):
                 # transform program from old ir to new ir
                 startup_program = pir.translate_to_pir(util_program.desc)
                 pir_main_program = pir.translate_to_pir(main_program_desc)
-                with paddle.pir_utils.IrGuard():
-                    with paddle.static.program_guard(
+                with (
+                    paddle.pir_utils.IrGuard(),
+                    paddle.static.program_guard(
                         pir_main_program, startup_program
-                    ):
+                    ),
+                ):
 
-                        feed_dict = {}
+                    feed_dict = {}
+                    feed_data = prog_config.get_feed_data()
+                    for key, value in feed_data.items():
+
+                        feed_dict[key] = value['data']
+
+                    place = (
+                        paddle.CUDAPlace(0)
+                        if paddle.is_compiled_with_cuda()
+                        else paddle.CPUPlace()
+                    )
+                    out_put = pir_main_program.get_output_value_by_name(
+                        prog_config.outputs[0]
+                    )
+                    in_put = out_put.get_defining_op().operand_source(0)
+                    exe = paddle.static.Executor(place)
+                    exe.run(startup_program)
+                    static_out = exe.run(
+                        pir_main_program,
+                        feed=feed_dict,
+                        fetch_list=[in_put],
+                    )
+
+                    for (
+                        pred_config,
+                        nodes_num,
+                        threshold,
+                    ) in self.sample_predictor_configs(
+                        prog_config, run_pir=True
+                    ):
+                        if os.path.exists(self.cache_dir):
+                            shutil.rmtree(self.cache_dir)
+                        if isinstance(threshold, float):
+                            atol = threshold
+                            rtol = 1e-4
+                        elif isinstance(threshold, (list, tuple)):
+                            atol = threshold[0]
+                            rtol = threshold[1]
+                        else:
+                            raise NotImplementedError
+
+                        is_fp8 = (
+                            pred_config.tensorrt_precision_mode()
+                            == paddle_infer.PrecisionType.Int8
+                        )
+                        if (not is_fp8 and quant) or (
+                            is_fp8 and not (quant or explicit)
+                        ):
+                            continue
+
+                        if explicit:
+                            pred_config.enable_tensorrt_explicit_quantization()
+                            self.assertTrue(
+                                pred_config.tensorrt_explicit_quantization_enabled()
+                            )
+
+                        ignore_flag = False
+                        for teller, reason, note in self.ignore_cases:
+                            if teller(prog_config, pred_config):
+                                ignore_flag = True
+                                if reason == IgnoreReasons.TRT_NOT_IMPLEMENTED:
+                                    self.ignore_log(
+                                        f"[TRT_NOT_IMPLEMENTED] {note} vs {self.inference_config_str(pred_config)}"
+                                    )
+                                elif reason == IgnoreReasons.TRT_NOT_SUPPORT:
+                                    self.ignore_log(
+                                        f"[TRT_NOT_SUPPORT] {note} vs {self.inference_config_str(pred_config)}"
+                                    )
+                                else:
+                                    raise NotImplementedError
+                                break
+                        if ignore_flag:
+                            continue
+                        attrs = [
+                            prog_config.ops[i].attrs
+                            for i in range(len(prog_config.ops))
+                        ]
+                        dynamic_shape = self.generate_dynamic_shape(attrs)
+
+                        main_program_desc, util_program = create_fake_model(
+                            prog_config,
+                            run_pir=True,
+                            dynamic_shape=dynamic_shape,
+                        )
+                        # transform program from old ir to new ir
+                        startup_program = pir.translate_to_pir(
+                            util_program.desc
+                        )
+                        pir_main_program = pir.translate_to_pir(
+                            main_program_desc
+                        )
+
+                        inputs = []
+                        first_key = next(iter(prog_config.get_feed_data()))
+                        input_data_type = prog_config.get_feed_data()[
+                            first_key
+                        ]['data'].dtype
+                        if not self.dynamic_shape.min_input_shape:
+                            continue
+                        for key in self.dynamic_shape.min_input_shape.keys():
+                            input_data = prog_config.get_feed_data()[key][
+                                'data'
+                            ]
+                            input_dtype = (
+                                input_data.dtype
+                                if hasattr(input_data, 'dtype')
+                                else input_data_type
+                            )
+                            input_range = (
+                                (0.0, input_data.flat[0])
+                                if input_dtype in ['int32', 'int64']
+                                else None
+                            )
+
+                            input_config = Input(
+                                min_input_shape=tuple(
+                                    self.dynamic_shape.min_input_shape[key]
+                                ),
+                                optim_input_shape=tuple(
+                                    self.dynamic_shape.opt_input_shape[key]
+                                ),
+                                max_input_shape=tuple(
+                                    self.dynamic_shape.max_input_shape[key]
+                                ),
+                                input_data_type=str(input_dtype),
+                                input_range=input_range,
+                            )
+                            inputs.append(input_config)
+                        trt_config = TensorRTConfig(inputs=inputs)
+                        trt_config.input_data_type = input_data_type
+                        trt_program = self.transform_to_trt_program(
+                            pir_main_program, trt_config
+                        )
+
+                        assert any(
+                            op.name() == "pd_op.tensorrt_engine"
+                            for op in trt_program.global_block().ops
+                        ), "trt_program does not contain any tensorrt_engine ops."
+
                         feed_data = prog_config.get_feed_data()
                         for key, value in feed_data.items():
-
                             feed_dict[key] = value['data']
-
-                        place = (
-                            paddle.CUDAPlace(0)
-                            if paddle.is_compiled_with_cuda()
-                            else paddle.CPUPlace()
+                        trt_output = exe.run(
+                            trt_program, feed=feed_dict, fetch_list=[in_put]
                         )
-                        out_put = pir_main_program.get_output_value_by_name(
-                            prog_config.outputs[0]
+                        self.assert_tensors_near(
+                            atol, rtol, trt_output, static_out
                         )
-                        in_put = out_put.get_defining_op().operand_source(0)
-                        exe = paddle.static.Executor(place)
-                        exe.run(startup_program)
-                        static_out = exe.run(
-                            pir_main_program,
-                            feed=feed_dict,
-                            fetch_list=[in_put],
+                        paddle.framework.set_flags(
+                            {"FLAGS_trt_min_group_size": 3}
                         )
-
-                        for (
-                            pred_config,
-                            nodes_num,
-                            threshold,
-                        ) in self.sample_predictor_configs(
-                            prog_config, run_pir=True
-                        ):
-                            if os.path.exists(self.cache_dir):
-                                shutil.rmtree(self.cache_dir)
-                            if isinstance(threshold, float):
-                                atol = threshold
-                                rtol = 1e-4
-                            elif isinstance(threshold, (list, tuple)):
-                                atol = threshold[0]
-                                rtol = threshold[1]
-                            else:
-                                raise NotImplementedError
-
-                            is_fp8 = (
-                                pred_config.tensorrt_precision_mode()
-                                == paddle_infer.PrecisionType.Int8
-                            )
-                            if (not is_fp8 and quant) or (
-                                is_fp8 and not (quant or explicit)
-                            ):
-                                continue
-
-                            if explicit:
-                                pred_config.enable_tensorrt_explicit_quantization()
-                                self.assertTrue(
-                                    pred_config.tensorrt_explicit_quantization_enabled()
-                                )
-
-                            ignore_flag = False
-                            for teller, reason, note in self.ignore_cases:
-                                if teller(prog_config, pred_config):
-                                    ignore_flag = True
-                                    if (
-                                        reason
-                                        == IgnoreReasons.TRT_NOT_IMPLEMENTED
-                                    ):
-                                        self.ignore_log(
-                                            f"[TRT_NOT_IMPLEMENTED] {note} vs {self.inference_config_str(pred_config)}"
-                                        )
-                                    elif (
-                                        reason == IgnoreReasons.TRT_NOT_SUPPORT
-                                    ):
-                                        self.ignore_log(
-                                            f"[TRT_NOT_SUPPORT] {note} vs {self.inference_config_str(pred_config)}"
-                                        )
-                                    else:
-                                        raise NotImplementedError
-                                    break
-                            if ignore_flag:
-                                continue
-                            attrs = [
-                                prog_config.ops[i].attrs
-                                for i in range(len(prog_config.ops))
-                            ]
-                            dynamic_shape = self.generate_dynamic_shape(attrs)
-
-                            main_program_desc, util_program = create_fake_model(
-                                prog_config,
-                                run_pir=True,
-                                dynamic_shape=dynamic_shape,
-                            )
-                            # transform program from old ir to new ir
-                            startup_program = pir.translate_to_pir(
-                                util_program.desc
-                            )
-                            pir_main_program = pir.translate_to_pir(
-                                main_program_desc
-                            )
-
-                            inputs = []
-                            first_key = next(iter(prog_config.get_feed_data()))
-                            input_data_type = prog_config.get_feed_data()[
-                                first_key
-                            ]['data'].dtype
-                            if not self.dynamic_shape.min_input_shape:
-                                continue
-                            for (
-                                key
-                            ) in self.dynamic_shape.min_input_shape.keys():
-                                input_data = prog_config.get_feed_data()[key][
-                                    'data'
-                                ]
-                                input_dtype = (
-                                    input_data.dtype
-                                    if hasattr(input_data, 'dtype')
-                                    else input_data_type
-                                )
-                                input_range = (
-                                    (0.0, input_data.flat[0])
-                                    if input_dtype in ['int32', 'int64']
-                                    else None
-                                )
-
-                                input_config = Input(
-                                    min_input_shape=tuple(
-                                        self.dynamic_shape.min_input_shape[key]
-                                    ),
-                                    optim_input_shape=tuple(
-                                        self.dynamic_shape.opt_input_shape[key]
-                                    ),
-                                    max_input_shape=tuple(
-                                        self.dynamic_shape.max_input_shape[key]
-                                    ),
-                                    input_data_type=str(input_dtype),
-                                    input_range=input_range,
-                                )
-                                inputs.append(input_config)
-                            trt_config = TensorRTConfig(inputs=inputs)
-                            trt_config.input_data_type = input_data_type
-                            trt_program = self.transform_to_trt_program(
-                                pir_main_program, trt_config
-                            )
-
-                            assert any(
-                                op.name() == "pd_op.tensorrt_engine"
-                                for op in trt_program.global_block().ops
-                            ), "trt_program does not contain any tensorrt_engine ops."
-
-                            feed_data = prog_config.get_feed_data()
-                            for key, value in feed_data.items():
-                                feed_dict[key] = value['data']
-                            trt_output = exe.run(
-                                trt_program, feed=feed_dict, fetch_list=[in_put]
-                            )
-                            self.assert_tensors_near(
-                                atol, rtol, trt_output, static_out
-                            )
-                            paddle.framework.set_flags(
-                                {"FLAGS_trt_min_group_size": 3}
-                            )
             else:
                 with paddle.pir_utils.OldIrGuard():
                     main_program_desc, util_program = create_fake_model(

@@ -36,7 +36,10 @@ from paddle.base.dygraph.base import (
     _DecoratorContextManager,
     in_sot_simulation_mode,
 )
-from paddle.jit.dy2static.utils import TransformOptions, is_dataclass_type
+from paddle.jit.dy2static.utils import (
+    TransformOptions,
+    is_plain_dataclass_type,
+)
 
 from .... import psdb
 from ....profiler import EventGuard
@@ -1320,11 +1323,7 @@ class DataClassVariable(ClassVariable):
             DummyTracker([*args, *kwargs.values()]),
         )
         if hasattr(self.value, "__post_init__"):
-            post_init = VariableFactory.from_value(
-                self.value.__post_init__,
-                self.graph,
-                GetAttrTracker(self, "__post_init__"),
-            ).bind(instance, "__post_init__")
+            post_init = instance.getattr("__post_init__")
             post_init()
         return instance
 
@@ -1352,7 +1351,7 @@ class DataClassVariable(ClassVariable):
 
     @VariableFactory.register_from_value(successor="ClassVariable")
     def from_value(value: object, graph: FunctionGraph, tracker: Tracker):
-        if is_dataclass_type(value):
+        if is_plain_dataclass_type(value):
             var = DataClassVariable(value, graph=graph, tracker=tracker)
             return var
         return None

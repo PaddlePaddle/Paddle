@@ -56,6 +56,10 @@ void IndexAddKernel(const Context& dev_ctx,
                     const DenseTensor& add_value,
                     int axis,
                     DenseTensor* output) {
+  if (output && output->numel() == 0) {
+    dev_ctx.template Alloc<T>(output);
+    return;
+  }
   auto input_dim = x.dims();
   auto output_dim = output->dims();
   auto add_value_dim = add_value.dims();
@@ -84,6 +88,7 @@ void IndexAddKernel(const Context& dev_ctx,
   // copy input to output.
   // todo(@limin29): inplace do not need copy.
   phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, output);
+  if (index.numel() == 0) return;
 
   if (FLAGS_cudnn_deterministic) {
     VLOG(2) << "Run grad kernel of index_add with single thread.";

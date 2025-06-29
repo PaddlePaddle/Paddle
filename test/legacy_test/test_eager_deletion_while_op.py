@@ -43,9 +43,11 @@ class TestEagerDeletionWhileOpBase(unittest.TestCase):
             places.append(core.CUDAPlace(0))
 
         for p in places:
-            with base.program_guard(base.Program(), base.Program()):
-                with base.scope_guard(base.Scope()):
-                    self.run_main(p)
+            with (
+                base.program_guard(base.Program(), base.Program()),
+                base.scope_guard(base.Scope()),
+            ):
+                self.run_main(p)
 
     def run_main(self, place):
         self.place = place

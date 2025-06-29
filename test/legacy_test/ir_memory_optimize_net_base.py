@@ -124,24 +124,26 @@ class TestIrMemOptBase(BuildIrMemOptBase):
 
         self.setup_reader()
 
-        with base.program_guard(base.Program(), base.Program()):
-            with base.scope_guard(core.Scope()):
-                (
-                    baseline_first_loss,
-                    baseline_last_loss,
-                ) = self.check_network_convergence(self.network)
+        with (
+            base.program_guard(base.Program(), base.Program()),
+            base.scope_guard(core.Scope()),
+        ):
+            (
+                baseline_first_loss,
+                baseline_last_loss,
+            ) = self.check_network_convergence(self.network)
 
-                cur_first_loss, cur_last_loss = self.check_network_convergence(
-                    self.network
-                )
+            cur_first_loss, cur_last_loss = self.check_network_convergence(
+                self.network
+            )
 
-                self.assertAlmostEqual(
-                    np.mean(baseline_last_loss),
-                    np.mean(cur_last_loss),
-                    delta=1e-6,
-                )
-                self.assertAlmostEqual(
-                    np.mean(baseline_first_loss),
-                    np.mean(cur_first_loss),
-                    delta=1e-6,
-                )
+            self.assertAlmostEqual(
+                np.mean(baseline_last_loss),
+                np.mean(cur_last_loss),
+                delta=1e-6,
+            )
+            self.assertAlmostEqual(
+                np.mean(baseline_first_loss),
+                np.mean(cur_first_loss),
+                delta=1e-6,
+            )

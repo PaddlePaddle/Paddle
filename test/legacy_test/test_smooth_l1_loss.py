@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
 
 import paddle
-from paddle import base
+from paddle import base, core
 
 
 def smooth_l1_loss_forward(val, delta):
@@ -30,7 +31,10 @@ def smooth_l1_loss_forward(val, delta):
 
 def smooth_l1_loss_np(input, label, reduction='mean', delta=1.0):
     diff = input - label
-    out = np.vectorize(smooth_l1_loss_forward)(diff, delta)
+    if input.size == 0:
+        out = input
+    else:
+        out = np.vectorize(smooth_l1_loss_forward)(diff, delta)
     if reduction == 'sum':
         return np.sum(out)
     elif reduction == 'mean':
@@ -251,6 +255,45 @@ class SmoothL1Loss(unittest.TestCase):
 
         test_static()
         np.testing.assert_allclose(dy_ret_value, expected, rtol=1e-05)
+
+
+class SmoothL1Loss_ZeroSize(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(123)
+
+    def _test_smooth_l1_loss_mean(self, place):
+        input_np = np.random.random([0, 3, 2]).astype(np.float32)
+        label_np = np.random.random([0, 3, 2]).astype(np.float32)
+        expected = smooth_l1_loss_np(input_np, label_np, reduction='mean')
+
+        paddle.disable_static(place)
+        smooth_l1_loss = paddle.nn.loss.SmoothL1Loss()
+        input = paddle.to_tensor(input_np)
+        input.stop_gradient = False
+        label = paddle.to_tensor(label_np)
+        label.stop_gradient = False
+        dy_ret = smooth_l1_loss(
+            input,
+            label,
+        )
+        np.testing.assert_allclose(dy_ret.numpy(), expected, rtol=1e-05)
+
+        paddle.sum(dy_ret).backward()
+        np.testing.assert_allclose(input.grad.shape, input.shape)
+        paddle.enable_static()
+
+    def test_smooth_l1_loss_mean(self):
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
+        if core.is_compiled_with_cuda():
+            places.append(base.CUDAPlace(0))
+        for p in places:
+            self._test_smooth_l1_loss_mean(p)
 
 
 class SmoothL1LossDivDelta(unittest.TestCase):

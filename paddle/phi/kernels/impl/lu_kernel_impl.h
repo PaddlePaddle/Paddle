@@ -405,7 +405,8 @@ struct OneFunctor {
       : output_(output), idtptr_(idtptr), w_(w), dim_(dim) {}
 
   HOSTDEVICE void operator()(size_t idx) const {
-    output_[w_ * idtptr_[idx] + idx % dim_] = static_cast<T>(1);
+    int64_t addr = static_cast<int64_t>(w_) * idtptr_[idx] + idx % dim_;
+    output_[addr] = static_cast<T>(1);
   }
 
   T* output_;

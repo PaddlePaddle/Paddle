@@ -961,12 +961,12 @@ def crop(
         return _C_ops.crop(x, shape, offsets)
 
     out = helper.create_variable_for_type_inference(x.dtype)
-    ipts = {'X': x}
+    inputs = {'X': x}
     attrs = {}
 
     if isinstance(offsets, Variable):
         offsets.stop_gradient = True
-        ipts['Offsets'] = offsets
+        inputs['Offsets'] = offsets
         attrs['offsets'] = [-1] * len(x.shape)
     elif paddle.utils._contain_var(offsets):
         new_offsets_tensor = []
@@ -982,7 +982,7 @@ def crop(
                 fill_constant([1], 'int32', dim, force_cpu=True, out=temp_out)
                 new_offsets_tensor.append(temp_out)
                 offsets_attr.append(dim)
-        ipts['OffsetsTensor'] = new_offsets_tensor
+        inputs['OffsetsTensor'] = new_offsets_tensor
         attrs['offsets'] = offsets_attr
     else:
         for offset in offsets:
@@ -991,7 +991,7 @@ def crop(
 
     if isinstance(shape, Variable):
         shape.stop_gradient = True
-        ipts['Shape'] = shape
+        inputs['Shape'] = shape
     elif paddle.utils._contain_var(shape):
         new_shape_tensor = []
         shape_attr = []
@@ -1008,7 +1008,7 @@ def crop(
                 )
                 new_shape_tensor.append(temp_out)
                 shape_attr.append(dim_size)
-        ipts['ShapeTensor'] = new_shape_tensor
+        inputs['ShapeTensor'] = new_shape_tensor
         attrs['shape'] = shape_attr
     else:
         for dim_size in shape:
@@ -1017,7 +1017,7 @@ def crop(
 
     helper.append_op(
         type='crop_tensor',
-        inputs=ipts,
+        inputs=inputs,
         outputs={'Out': out},
         attrs=None if len(attrs) == 0 else attrs,
     )
