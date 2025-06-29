@@ -9,9 +9,8 @@ env:
   PR_ID: ${{ github.event.pull_request.number }}
   COMMIT_ID: ${{ github.event.pull_request.head.sha }}
   BRANCH: ${{ github.base_ref }}
-  WORK_DIR: ${{ github.workspace }}
-  WORK_DIR1: ${{ github.workspace }}/..
-  WORK_DIR2: ${{ github.workspace }}\..
+  ci_scripts: ${{ github.workspace }}/ci
+  WORK_DIR: ${{ github.workspace }}\..
 
 defaults:
   run:
@@ -23,85 +22,58 @@ jobs:
     runs-on:
       group: win-clone
     steps:
+      - name: Git config
+        run: |
+          git config --global user.name "PaddleCI"
+          git config --global user.email "paddle_ci@example.com"
+          git config --global http.postBuffer 524288000
+          git config --global core.longpaths true
+
+      - name: Clone paddle
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.ref }}
+          submodules: 'recursive'
+          fetch-depth: 1000
+
+      - name: Merge pr
+        run: |
+          git config --unset http.https://github.com/.extraheader
+          git submodule foreach --recursive sh -c "git config --local --unset-all 'http.https://github.com/.extraheader'"
+          git submodule foreach --recursive sh -c "git config remote.origin.fetch '+refs/heads/*:refs/remotes/origin/*'"
+          git switch $BRANCH
+          set +e
+          git branch -D test
+          set -e
+          git gc
+          git switch -c test
+          git fetch origin pull/${PR_ID}/head:pr
+          git merge --no-ff pr
+          git branch -d pr
+          call ${ci_scripts}/third_party_tag.sh
+          git log --pretty=oneline -10
+
       - name: Upload paddle to bos
         env:
-          BCE_FILE1: 'C:\home\workspace\bce-python-sdk-new'
-          BCE_FILE2: "C:/home/workspace/bce-python-sdk-new"
+          BCE_FILE: ${{ github.workspace }}\..\bce-python-sdk-new\BosClient.py
         run: |
-          echo %WORK_DIR%
-          echo %WORK_DIR1%
-          echo %WORK_DIR2%
-          echo %BCE_FILE1%
-          echo %BCE_FILE2%
-          cd %WORK_DIR%
-          cd
-          type nul > %WORK_DIR%\11
-          type nul > %WORK_DIR%/22
-          cd %WORK_DIR1%
-          cd
-          type nul > %WORK_DIR1%\11
-          type nul > %WORK_DIR1%/22
-          cd %WORK_DIR2%
-          cd
-          type nul > %WORK_DIR2%\11
-          type nul > %WORK_DIR2%/22
-          cd %BCE_FILE1%
-          cd
-          type nul > %BCE_FILE1%\11
-          type nul > %BCE_FILE1%/22
-          cd %BCE_FILE2%
-          cd
-          type nul > %BCE_FILE2%\11
-          type nul > %BCE_FILE2%/22
+          if not exist ${{ github.workspace }}\..\bce-python-sdk-new (
+              echo There is no bce in this PC, will install bce.
+              cd /d %WORK_DIR%
+              pip install wget
+              pip install shutil
+              echo Download package from https://xly-devops.bj.bcebos.com/home/bos_new.tar.gz
+              python -c "import wget;wget.download('https://xly-devops.bj.bcebos.com/home/bos_new.tar.gz')"
+              python -c "import shutil;shutil.unpack_archive('bos_new.tar.gz', extract_dir='./bce-python-sdk-new',format='gztar')"
+          )
+          python -m pip install pycryptodome
+          python -m pip install bce-python-sdk==0.8.74
+          tar -zcf Paddle.tar.gz Paddle
+          python %BCE_FILE% Paddle.tar.gz paddle-github-action/PR/windows/${PR_ID}/${COMMIT_ID}
 
-    # - name: Git config
-    #   run: |
-    #     git config --global user.name "PaddleCI"
-    #     git config --global user.email "paddle_ci@example.com"
-    #     git config --global http.postBuffer 524288000
-    #     git config --global core.longpaths true
-
-    # - name: Clone paddle
-    #   uses: actions/checkout@v4
-    #   with:
-    #     ref: ${{ github.event.pull_request.base.ref }}
-    #     submodules: 'recursive'
-    #     fetch-depth: 1000
-
-    # - name: Merge pr
-    #   run: |
-    #     git fetch origin pull/%PR_ID%/head
-    #     git checkout -b test_pr FETCH_HEAD
-    #     git merge --no-edit %BRANCH%
-    #     git log --pretty=oneline -10
-
-    # - name: Upload paddle to bos
-    #   env:
-    #     BCE_FILE1: 'C:\home\workspace\bce-python-sdk-new'
-    #     BCE_FILE2: "C:/home/workspace/bce-python-sdk-new"
-    #   run: |
-    #     echo %WORK_DIR%
-    #     echo %WORK_DIR1%
-    #     echo %WORK_DIR2%
-    #     echo %BCE_FILE1%
-    #     echo %BCE_FILE2%
-    #     cd %WORK_DIR%
-    #     cd
-    #     type nul > %WORK_DIR%\11
-    #     type nul > %WORK_DIR%/22
-    #     cd %WORK_DIR1%
-    #     cd
-    #     type nul > %WORK_DIR%\11
-    #     type nul > %WORK_DIR%/22
-    #     cd %WORK_DIR2%
-    #     cd
-    #     type nul > %WORK_DIR%\11
-    #     type nul > %WORK_DIR%/22
-    #     cd %BCE_FILE1%
-    #     cd
-    #     type nul > %WORK_DIR%\11
-    #     type nul > %WORK_DIR%/22
-    #     cd %BCE_FILE2%
-    #     cd
-    #     type nul > %WORK_DIR%\11
-    #     type nul > %WORK_DIR%/22
+      - name: Clean env
+        run: |
+          cd -
+          git switch $BRANCH
+          git branch -D test
+          git gc

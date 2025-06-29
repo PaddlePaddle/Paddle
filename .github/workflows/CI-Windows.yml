@@ -17,5 +17,5 @@ env:
 
 jobs:
   clone:
-    name: Clone-linux
+    name: Clone-windows
     uses: ./.github/workflows/_Clone-windows.yml
