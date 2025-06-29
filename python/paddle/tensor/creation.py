@@ -990,7 +990,7 @@ def frombuffer(
     place = paddle.base.framework._get_paddle_place(place)
     proto_dtype = paddle.base.framework.convert_to_proto_type(dtype)
     out: paddle.base.libpaddle.DenseTensor = paddle.base.core.frombuffer(
-        buffer, proto_dtype, count, offset, place
+        buffer, proto_dtype, count, offset
     )
     if paddle.base.framework.in_dygraph_mode():
         out = paddle.Tensor(out, place=place)
