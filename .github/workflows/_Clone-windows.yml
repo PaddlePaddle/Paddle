@@ -42,7 +42,9 @@ jobs:
           git log --pretty=oneline -10
 
       - name: Upload paddle to bos
-
+        env:
+          BCE_FILE1: "C:\\home\\workspace\\bce-python-sdk-new"
+          BCE_FILE2: "C:/home/workspace/bce-python-sdk-new"
         run: |
           echo %WORK_DIR%
           echo %WORK_DIR1%
