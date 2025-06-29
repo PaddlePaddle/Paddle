@@ -309,11 +309,6 @@ class Dy2StTestMeta(type):
                 ):
                     # SOT_MGS10 only test with PIR
                     continue
-                if to_static_mode & (
-                    ToStaticMode.SOT | ToStaticMode.SOT_MGS10
-                ) and ir_mode & (IrMode.LEGACY_IR | IrMode.PT):
-                    # SOT now support only with PIR
-                    continue
                 new_attrs[
                     Dy2StTestMeta.test_case_name(
                         fn_name, to_static_mode, ir_mode
