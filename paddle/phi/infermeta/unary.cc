@@ -6320,11 +6320,6 @@ void WeightQuantizeInferMeta(const MetaTensor& x,
         "'llm.int8', 'w4a8'], but got[%s]",
         algo));
   }
-  if (x.dtype() == DataType::INT8 && algo != "w4a8") {
-    PADDLE_THROW(common::errors::InvalidArgument(
-        "The algo must be 'w4a8' while the x's dtype is INT8, but got[%s]",
-        algo));
-  }
   out->set_dims(common::make_ddim(dim_out));
 
   out->set_dtype(DataType::INT8);
