@@ -20,23 +20,23 @@ if /i "%use_mkl%"=="N" (
   set use_mkl=Y
 )
 
-:set_paddle_infernece_lib
-SET /P paddle_infernece_lib="Please input the path of paddle inference library, such as D:\paddle_inference_install_dir   =======>"
-set tmp_var=!paddle_infernece_lib!
+:set_paddle_inference_lib
+SET /P paddle_inference_lib="Please input the path of paddle inference library, such as D:\paddle_inference_install_dir   =======>"
+set tmp_var=!paddle_inference_lib!
 call:remove_space
-set paddle_infernece_lib=!tmp_var!
-IF NOT EXIST "%paddle_infernece_lib%" (
-echo "------------%paddle_infernece_lib% not exist------------"
-goto set_paddle_infernece_lib
+set paddle_inference_lib=!tmp_var!
+IF NOT EXIST "%paddle_inference_lib%" (
+echo "------------%paddle_inference_lib% not exist------------"
+goto set_paddle_inference_lib
 )
 
 IF "%use_mkl%"=="N" (
-  IF NOT EXIST "%paddle_infernece_lib%\third_party\install\openblas" (
+  IF NOT EXIST "%paddle_inference_lib%\third_party\install\openblas" (
     echo "------------It's not a OpenBlas inference library------------"
     goto:eof
   )
 ) else (
-  IF NOT EXIST "%paddle_infernece_lib%\third_party\install\mklml" (
+  IF NOT EXIST "%paddle_inference_lib%\third_party\install\mklml" (
     echo "------------It's not a MKL inference library------------"
     goto:eof
   )
@@ -139,7 +139,7 @@ echo "use_mkl=%use_mkl%"
 echo.
 echo "use_gpu=%use_gpu%"
 echo.
-echo "paddle_infernece_lib=%paddle_infernece_lib%"
+echo "paddle_inference_lib=%paddle_inference_lib%"
 echo.
 IF /i "%gpu_inference%"=="y" (
   echo "cuda_lib_dir=%cuda_lib_dir%"
@@ -179,16 +179,16 @@ if /i "%gpu_inference%"=="Y" (
     if  "%demo_name%"=="trt_mobilenet_demo" (
       cmake .. -G "Visual Studio 15 2017 Win64"  -T host=x64 -DWITH_GPU=ON ^
       -DWITH_MKL=%use_mkl% -DWITH_STATIC_LIB=ON -DCMAKE_BUILD_TYPE=Release -DDEMO_NAME=%demo_name% ^
-      -DPADDLE_LIB="%paddle_infernece_lib%" -DMSVC_STATIC_CRT=ON -DCUDA_LIB="%cuda_lib_dir%" -DUSE_TENSORRT=ON
+      -DPADDLE_LIB="%paddle_inference_lib%" -DMSVC_STATIC_CRT=ON -DCUDA_LIB="%cuda_lib_dir%" -DUSE_TENSORRT=ON
     ) else (
       cmake .. -G "Visual Studio 15 2017 Win64"  -T host=x64 -DWITH_GPU=ON ^
       -DWITH_MKL=%use_mkl% -DWITH_STATIC_LIB=ON -DCMAKE_BUILD_TYPE=Release -DDEMO_NAME=%demo_name% ^
-      -DPADDLE_LIB="%paddle_infernece_lib%" -DMSVC_STATIC_CRT=ON -DCUDA_LIB="%cuda_lib_dir%"
+      -DPADDLE_LIB="%paddle_inference_lib%" -DMSVC_STATIC_CRT=ON -DCUDA_LIB="%cuda_lib_dir%"
     )
 ) else (
     cmake .. -G "Visual Studio 15 2017 Win64"  -T host=x64 -DWITH_GPU=OFF ^
     -DWITH_MKL=%use_mkl% -DWITH_STATIC_LIB=ON -DCMAKE_BUILD_TYPE=Release -DDEMO_NAME=%demo_name% ^
-    -DPADDLE_LIB="%paddle_infernece_lib%" -DMSVC_STATIC_CRT=ON
+    -DPADDLE_LIB="%paddle_inference_lib%" -DMSVC_STATIC_CRT=ON
 )
 
 call "%vcvarsall_dir%" amd64

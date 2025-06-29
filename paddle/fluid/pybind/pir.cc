@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/pybind/pir.h"
-#include "paddle/fluid/pybind/pir_utils.h"
 
 #include <Python.h>
 #include <algorithm>
@@ -24,8 +23,8 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
-
 #include "paddle/common/enforce.h"
+#include "paddle/common/errors.h"
 #include "paddle/common/flags.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/ir/pass.h"
@@ -53,6 +52,7 @@
 #include "paddle/fluid/pir/dialect/operator/utils/shape_analysis_utils.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
+#include "paddle/fluid/pir/serialize_deserialize/include/ir_serialize.h"
 #include "paddle/fluid/pir/transforms/general/common_subexpression_elimination_pass.h"
 #include "paddle/fluid/pir/transforms/general/dead_code_elimination_pass.h"
 #include "paddle/fluid/pir/transforms/gpu/fused_bn_add_act_pass.h"
@@ -61,6 +61,7 @@
 #include "paddle/fluid/pir/utils/name_analysis.h"
 #include "paddle/fluid/pybind/control_flow_api.h"
 #include "paddle/fluid/pybind/eager_utils.h"
+#include "paddle/fluid/pybind/pir_utils.h"
 #include "paddle/fluid/pybind/pybind_variant_caster.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
@@ -72,6 +73,7 @@
 #include "paddle/pir/include/core/builtin_op.h"
 #include "paddle/pir/include/core/ir_mapping.h"
 #include "paddle/pir/include/core/ir_printer.h"
+#include "paddle/pir/include/core/operation.h"
 #include "paddle/pir/include/core/program.h"
 #include "paddle/pir/include/core/type.h"
 #include "paddle/pir/include/core/value.h"
@@ -88,11 +90,14 @@
 #include "pybind11/stl.h"
 
 #ifdef PADDLE_WITH_CINN
+#include "paddle/ap/include/paddle/hlir/op_dialect.h"
+#include "paddle/ap/include/paddle/pass/add_pcc_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/add_cinn_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/check_infer_symbolic_util.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/pir_to_py_code_converter.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/reduce_as_to_sum_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/specify_input_dynamic_dim_util.h"
 #include "paddle/cinn/hlir/framework/pir_compiler.h"
 #include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 #endif
@@ -103,6 +108,7 @@ using paddle::dialect::DenseTensorType;
 using paddle::dialect::DistDenseTensorType;
 using paddle::dialect::DistTypeInterface;
 using paddle::dialect::IfOp;
+using paddle::dialect::PrintOp;
 using paddle::dialect::PyLayerOp;
 using paddle::dialect::SelectedRowsType;
 using paddle::dialect::SparseCooTensorType;
@@ -144,6 +150,7 @@ namespace paddle {
 namespace pybind {
 
 PyTypeObject *g_ir_value_pytype = nullptr;
+namespace py = pybind11;
 
 void BindOpsAPI(pybind11::module *module);
 
@@ -425,6 +432,7 @@ void BindProgram(py::module *m) {
         **by default, a pair of them will shared the parameters. The** :ref:`api_paddle_static_default_startup_program` **only run once to initialize parameters,**
         :ref:`api_paddle_static_default_main_program` **run in every mini batch and adjust the weights.**
 
+
     Returns:
         Program: An empty Program.
 
@@ -501,6 +509,10 @@ void BindProgram(py::module *m) {
             return vars;
           },
           return_value_policy::reference)
+      .def("_list_named_vars",
+           [](std::shared_ptr<Program> self) {
+             return name_analysis::GetAllNamedValues(*self);
+           })
       .def(
           "global_block",
           [](const std::shared_ptr<Program> &self) { return self->block(); },
@@ -995,6 +1007,7 @@ void BindOperation(py::module *m) {
              }
              return attrs_dict;
            })
+
       .def("copy_attrs_from",
            [](Operation &self, Operation &other) {
              for (auto &pair : other.attributes()) {
@@ -1678,6 +1691,101 @@ bool GetValueBoolAttr(Value value, const std::string &attr_name) {
   return !bool_attr || bool_attr.data();
 }
 
+std::string GetAttrsMapJson(pir::Operation *op) {
+  if (!op) {
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "Operation pointer cannot be nullptr."));
+  }
+  auto attributes = op->attributes();
+  ::pir::ProgramWriter writer(1, false);
+  auto attrs_map_info = writer.GetAttributesMapJson(op->attributes()).dump();
+  return attrs_map_info;
+}
+
+pir::AttributeMap ConvertAttrsToAttributeMap(py::dict attrs) {
+  pir::IrContext *ctx = pir::IrContext::Instance();
+  pir::AttributeMap attrs_map;
+
+  for (auto item : attrs) {
+    std::string key = py::cast<std::string>(item.first);
+    py::handle value = item.second;
+
+    if (py::isinstance<py::bool_>(value)) {
+      attrs_map[key] = pir::BoolAttribute::get(ctx, py::cast<bool>(value));
+    } else if (py::isinstance<py::float_>(value)) {
+      attrs_map[key] = pir::FloatAttribute::get(ctx, py::cast<float>(value));
+    } else if (py::isinstance<py::str>(value)) {
+      attrs_map[key] =
+          pir::StrAttribute::get(ctx, py::cast<std::string>(value));
+    } else if (py::isinstance<py::list>(value)) {
+      py::list list_value = py::cast<py::list>(value);
+      std::vector<pir::Attribute> attr_list;
+      if (list_value.size() > 0) {
+        auto first_elem = list_value[0];
+        if (py::isinstance<py::bool_>(first_elem)) {
+          for (auto elem : list_value) {
+            attr_list.push_back(
+                pir::BoolAttribute::get(ctx, py::cast<bool>(elem)));
+          }
+        } else if (py::isinstance<py::str>(first_elem)) {
+          for (auto elem : list_value) {
+            attr_list.push_back(
+                pir::StrAttribute::get(ctx, py::cast<std::string>(elem)));
+          }
+        } else if (py::isinstance<py::int_>(first_elem)) {
+          for (auto elem : list_value) {
+            int64_t val = py::cast<int64_t>(elem);
+            attr_list.push_back(pir::Int64Attribute::get(ctx, val));
+          }
+        } else {
+          PADDLE_THROW(common::errors::InvalidArgument(
+              "Unsupported list element type, key: %s", key));
+        }
+      }
+      attrs_map[key] = pir::ArrayAttribute::get(ctx, attr_list);
+    } else {
+      PADDLE_THROW(common::errors::InvalidArgument(
+          "Unsupported attribute type, key: %s", key));
+    }
+  }
+  return attrs_map;
+}
+
+std::string GetAttrsMapJson(py::dict attrs) {
+  pir::AttributeMap attrs_map = ConvertAttrsToAttributeMap(attrs);
+  ::pir::ProgramWriter writer(1, false);
+  return writer.GetAttributesMapJson(attrs_map).dump();
+}
+
+std::string GetTypeJson(pir::Operation *op, bool is_input) {
+  if (!op) {
+    PADDLE_THROW(
+        common::errors::InvalidArgument("Operation pointer cannot be nullptr"));
+  }
+  ::pir::ProgramWriter writer(1, false);
+  std::stringstream type_info_ss;
+  if (is_input) {
+    for (auto operand : op->operands_source()) {
+      type_info_ss << (writer.GetTypeJson(operand.type()).dump())
+                   << '\n';  // use '\n' as separator
+    }
+  } else {
+    for (auto result : op->results()) {
+      type_info_ss << (writer.GetTypeJson(result.type()).dump())
+                   << '\n';  // use '\n' as separator
+    }
+  }
+  return type_info_ss.str();
+}
+
+std::string GetInputsTypeJson(pir::Operation *op) {
+  return GetTypeJson(op, true);
+}
+
+std::string GetOutputsTypeJson(pir::Operation *op) {
+  return GetTypeJson(op, false);
+}
+
 void BindType(py::module *m) {
   py::class_<Type> ir_type(*m, "Type");
   ir_type.def("__eq__", &Type::operator==)
@@ -2026,6 +2134,91 @@ std::pair<std::shared_ptr<Program>, ValueMap> CloneProgram(
       std::make_pair(associated_array_key, associated_array_value));
 }
 
+void AppendPrintOp(Program *program,
+                   const pir::Value &value,
+                   int first_n,
+                   std::string message,
+                   int summarize,
+                   bool print_tensor_name,
+                   bool print_tensor_type,
+                   bool print_tensor_shape,
+                   bool print_tensor_layout,
+                   bool print_tensor_lod,
+                   std::string print_phase,
+                   bool is_forward,
+                   int start_point) {
+  std::unordered_set<std::string> print_phase_set{
+      "FORWARD", "BACKWARD", "BOTH"};
+  if (!print_phase_set.count(print_phase)) {
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "The attribute 'print_phase' must be one of 'FORWARD', 'BACKWARD', "
+        "'BOTH' but got '%s'.",
+        print_phase));
+  }
+  pir::IrContext *ctx = pir::IrContext::Instance();
+  auto op_info = ctx->GetRegisteredOpInfo(paddle::dialect::PrintOp::name());
+  pir::AttributeMap attribute_map = {
+      {"first_n", Int32Attribute::get(ctx, first_n)},
+      {"message", StrAttribute::get(ctx, message)},
+      {"summarize", Int32Attribute::get(ctx, summarize)},
+      {"print_tensor_name", BoolAttribute::get(ctx, print_tensor_name)},
+      {"print_tensor_type", BoolAttribute::get(ctx, print_tensor_type)},
+      {"print_tensor_shape", BoolAttribute::get(ctx, print_tensor_shape)},
+      {"print_tensor_layout", BoolAttribute::get(ctx, print_tensor_layout)},
+      {"print_tensor_lod", BoolAttribute::get(ctx, print_tensor_lod)},
+      {"print_phase", StrAttribute::get(ctx, print_phase)},
+      {"is_forward", BoolAttribute::get(ctx, is_forward)},
+  };
+  std::vector<pir::Type> output_types{value.type()};
+  pir::Operation *operation =
+      pir::Operation::Create({value}, attribute_map, output_types, op_info);
+
+  auto block = value.defining_op()->GetParent();
+  auto position = block->begin();
+  std::advance(position, start_point);
+  if (position == block->end()) {
+    block->push_back(operation);
+  } else {
+    block->insert(position, operation);
+  }
+}
+
+void AppendPrintOps(Program *program,
+                    const std::vector<pir::Value> &values,
+                    int first_n,
+                    std::string message,
+                    int summarize,
+                    bool print_tensor_name,
+                    bool print_tensor_type,
+                    bool print_tensor_shape,
+                    bool print_tensor_layout,
+                    bool print_tensor_lod,
+                    std::string print_phase,
+                    bool is_forward,
+                    int start_point) {
+  int counter = 0;
+  std::unordered_set<pir::Value> added_values;
+  for (const auto &value : values) {
+    if (!added_values.count(value)) {
+      AppendPrintOp(program,
+                    value,
+                    first_n,
+                    message,
+                    summarize,
+                    print_tensor_name,
+                    print_tensor_type,
+                    print_tensor_shape,
+                    print_tensor_layout,
+                    print_tensor_lod,
+                    print_phase,
+                    is_forward,
+                    start_point + counter);
+      ++counter;
+      added_values.insert(value);
+    }
+  }
+}
+
 void AppendShadowOutput(Program *program,
                         const pir::Value &value,
                         const std::string &name,
@@ -2353,7 +2546,11 @@ void BindUtils(pybind11::module *m) {
   m->def("split_program", SplitForwardBackward);
   m->def("append_shadow_outputs", AppendShadowOutputs);
   m->def("append_shadow_output", AppendShadowOutput);
+  m->def("append_print", AppendPrintOp);
+  m->def("append_prints", AppendPrintOps);
   m->def("fake_value", FakeValue);
+  m->def("get_fake_value_name",
+         []() -> std::string { return paddle::framework::kFakeVarName; });
   m->def("is_fake_value", IsFakeValue);
   m->def("get_current_insertion_point", []() -> PyInsertionPoint {
     return {ApiBuilder::Instance().GetCurrentInsertionPoint()};
@@ -2543,6 +2740,18 @@ void BindUtils(pybind11::module *m) {
     return cinn::hlir::framework::CompilationCache::Instance().Size();
 #endif
   });
+  m->def("get_attrs_map_json",
+         py::overload_cast<pir::Operation *>(&GetAttrsMapJson),
+         py::arg("op"));
+  m->def("get_attrs_map_json",
+         py::overload_cast<py::dict>(&GetAttrsMapJson),
+         py::arg("attrs"));
+  m->def("get_inputs_type_json",
+         &GetInputsTypeJson,
+         "Get operation input types as JSON string.");
+  m->def("get_outputs_type_json",
+         &GetOutputsTypeJson,
+         "Get operation output types as JSON string.");
 }
 
 namespace {
@@ -2553,6 +2762,7 @@ void ApplyCinnPass(Program &program) {  // NOLINT
     pir::IrContext *ctx = pir::IrContext::Instance();
     ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
     ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
+    ctx->GetOrRegisterDialect<ap::dialect::OperatorDialect>();
     ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
     auto pass_manager = std::make_shared<pir::PassManager>(ctx);
     if (FLAGS_print_ir && VLOG_IS_ON(4)) {
@@ -2565,6 +2775,32 @@ void ApplyCinnPass(Program &program) {  // NOLINT
     return pass_manager;
   };
   cinn::dialect::ir::ApplyCinnPass(&program, CreatePassManager);
+#else
+  PADDLE_THROW(common::errors::Unimplemented(
+      "Currently we only support CINN Pass for Pir under @to_static, please "
+      "compile PaddlePaddle with CINN"));
+#endif
+}
+
+void ApplyPccPass(Program &program) {  // NOLINT
+#ifdef PADDLE_WITH_CINN
+  auto CreatePassManager = [&]() -> std::shared_ptr<pir::PassManager> {
+    pir::IrContext *ctx = pir::IrContext::Instance();
+    ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+    ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
+    ctx->GetOrRegisterDialect<ap::dialect::OperatorDialect>();
+    ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
+    auto pass_manager = std::make_shared<pir::PassManager>(ctx);
+    if (FLAGS_print_ir && VLOG_IS_ON(4)) {
+      pass_manager->EnableIRPrinting();
+    }
+    auto &shape_analysis = pir::ShapeAnalysisManager::Instance().Get(&program);
+    pass_manager->SetValueReplacedHook([&](pir::Value from, pir::Value to) {
+      shape_analysis.ShareShapeOrData(from, to);
+    });
+    return pass_manager;
+  };
+  ap::paddle::ApplyPccPass(&program, CreatePassManager);
 #else
   PADDLE_THROW(common::errors::Unimplemented(
       "Currently we only support CINN Pass for Pir under @to_static, please "
@@ -2645,6 +2881,7 @@ std::shared_ptr<Program> ApplyFusedBnAddActPass(
 
 void BindIrPass(pybind11::module *m) {
   m->def("apply_cinn_pass", ApplyCinnPass);
+  m->def("apply_pcc_pass", ApplyPccPass);
   m->def("check_infer_symbolic_if_need", CheckInferSymbolicIfNeed);
   m->def("infer_symbolic_shape_pass", InferSymbolicShapePass);
   m->def("apply_cse_pass", ApplyCommonSubexpressionEliminationPass);
@@ -3199,6 +3436,122 @@ void BindShapeConstraintIRAnalysis(pybind11::module *m) {
            }
            return flag;
          });
+#ifdef PADDLE_WITH_CINN
+  m->def(
+      "bind_symbolic_constraints",
+      [](pir::Program *program, const py::handle &constraints) -> void {
+        // Check input is sequence
+        PADDLE_ENFORCE_EQ(
+            py::isinstance<py::sequence>(constraints),
+            true,
+            common::errors::InvalidArgument(
+                "constraints for SOT symbolic variables must be a sequence."));
+
+        const py::sequence constraints_seq =
+            py::cast<py::sequence>(constraints);
+        if (py::len(constraints_seq) == 0) {
+          return;
+        }
+
+        // Process constraints
+        std::vector<std::tuple<std::string,
+                               std::tuple<int64_t,
+                                          std::optional<int64_t>,
+                                          std::optional<int64_t>>>>
+            raw_constraints;
+
+        for (size_t idx = 0; idx < constraints_seq.size(); ++idx) {
+          const auto &constraint = constraints_seq[idx];
+
+          // Check constraint item is tuple
+          PADDLE_ENFORCE_EQ(
+              py::isinstance<py::tuple>(constraint),
+              true,
+              common::errors::InvalidArgument("Constraint[%zu] must be a tuple "
+                                              "of (name, dimension_triplet).",
+                                              idx));
+
+          const py::tuple constraint_tuple = py::cast<py::tuple>(constraint);
+
+          // Check tuple has 2 elements
+          PADDLE_ENFORCE_EQ(
+              constraint_tuple.size(),
+              2,
+              common::errors::InvalidArgument(
+                  "Constraint[%zu] must have exactly 2 elements (got %zu).",
+                  idx,
+                  constraint_tuple.size()));
+
+          // Check and get input spec name
+          const py::handle name_handle = constraint_tuple[0];
+
+          PADDLE_ENFORCE_EQ(
+              py::isinstance<py::str>(name_handle),
+              true,
+              common::errors::InvalidArgument(
+                  "Constraint[%zu][0] must be a string (got %s)",
+                  idx,
+                  py::str(name_handle.get_type()).cast<std::string>().c_str()));
+          const std::string input_spec_name =
+              py::cast<std::string>(name_handle);
+
+          // Check and get dimension triplet
+          const py::handle triplet_handle = constraint_tuple[1];
+          PADDLE_ENFORCE_EQ(py::isinstance<py::tuple>(triplet_handle),
+                            true,
+                            common::errors::InvalidArgument(
+                                "Constraint[%zu][1] must be a tuple.", idx));
+
+          const py::tuple triplet = py::cast<py::tuple>(triplet_handle);
+          PADDLE_ENFORCE_EQ(
+              triplet.size(),
+              3,
+              common::errors::InvalidArgument(
+                  "Constraint[%zu][1] must have 3 elements (got %zu).",
+                  idx,
+                  triplet.size()));
+
+          // Validate and convert elements
+          auto convert_optional = [idx](const py::handle &h,
+                                        int pos) -> std::optional<int64_t> {
+            if (h.is_none()) return std::nullopt;
+
+            PADDLE_ENFORCE_EQ(
+                py::isinstance<py::int_>(h),
+                true,
+                "Constraint[%zu][1][%d] must be int or None (got %s).",
+                idx,
+                pos,
+                py::str(h.get_type()).cast<std::string>().c_str());
+            return py::cast<int64_t>(h);
+          };
+
+          // Check dim_idx
+          PADDLE_ENFORCE_EQ(
+              py::isinstance<py::int_>(triplet[0]),
+              true,
+              common::errors::InvalidArgument(
+                  "Constraint[%zu][1][0] (dim_idx) must be int (got %s).",
+                  idx,
+                  py::str(triplet[0].get_type()).cast<std::string>().c_str()));
+          const int64_t dim_idx = py::cast<int64_t>(triplet[0]);
+
+          // Convert min/max with position info
+          std::optional<int64_t> min_val = convert_optional(triplet[1], 1);
+          std::optional<int64_t> max_val = convert_optional(triplet[2], 2);
+
+          // Add to constraints
+          raw_constraints.emplace_back(
+              std::move(input_spec_name),
+              std::make_tuple(dim_idx, min_val, max_val));
+        }
+
+        ::cinn::dialect::ir::SpecifyInputDynamicDimFromPython(program,
+                                                              raw_constraints);
+      },
+      py::arg("program"),
+      py::arg("constraints").noconvert());
+#endif
 
   py::class_<pir::ShapeConstraintIRAnalysis,
              std::shared_ptr<pir::ShapeConstraintIRAnalysis>>

@@ -44,19 +44,21 @@ class TestSigmoid(unittest.TestCase):
     def train(self, net, to_static, with_cinn=False):
         if to_static:
             if with_cinn:
-                build_strategy = paddle.static.BuildStrategy()
-                build_strategy.build_cinn_pass = True
                 input_spec = [
                     InputSpec(shape=[None, 32, 16, 4], dtype='float32')
                 ]
                 net = paddle.jit.to_static(
                     net,
-                    build_strategy=build_strategy,
+                    backend="CINN",
                     input_spec=input_spec,
                     full_graph=True,
                 )
             else:
-                net = paddle.jit.to_static(net, full_graph=True)
+                net = paddle.jit.to_static(
+                    net,
+                    backend=None,
+                    full_graph=True,
+                )
         paddle.seed(123)
         outs = net(*self.inputs)
         return outs

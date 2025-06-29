@@ -408,23 +408,23 @@ class TestExpandV2BF16Op(OpTest):
 class TestExpandV2Error(unittest.TestCase):
 
     def test_errors(self):
-        with static_guard():
-            with paddle.static.program_guard(
+        with (
+            static_guard(),
+            paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
-            ):
-                shape = [2, 2]
-                if not in_pir_mode():
-                    x1 = base.create_lod_tensor(
-                        np.array([[-1]]), [[1]], base.CPUPlace()
-                    )
-                    self.assertRaises(
-                        TypeError, paddle.tensor.expand, x1, shape
-                    )
-                x2 = paddle.static.data(name='x2', shape=[-1, 4], dtype="bool")
-                x2.stop_gradient = False
-                self.assertRaises(ValueError, paddle.tensor.expand, x2, shape)
-                x2.stop_gradient = True
-                self.assertRaises(TypeError, paddle.tensor.expand, x2, 1)
+            ),
+        ):
+            shape = [2, 2]
+            if not in_pir_mode():
+                x1 = base.create_lod_tensor(
+                    np.array([[-1]]), [[1]], base.CPUPlace()
+                )
+                self.assertRaises(TypeError, paddle.tensor.expand, x1, shape)
+            x2 = paddle.static.data(name='x2', shape=[-1, 4], dtype="bool")
+            x2.stop_gradient = False
+            self.assertRaises(ValueError, paddle.tensor.expand, x2, shape)
+            x2.stop_gradient = True
+            self.assertRaises(TypeError, paddle.tensor.expand, x2, 1)
 
 
 # Test python API
@@ -669,20 +669,172 @@ class TestExpandV2CompOpInt64_t(OpTest):
 class TestExpandPirValueListShape(unittest.TestCase):
 
     def test_value_list_shape1(self):
-        with static_guard():
-            with paddle.static.program_guard(paddle.static.Program()):
-                x = paddle.static.data('x', [1, 1])
-                shape = [2, paddle.full([], 4)]
-                out = paddle.expand(x, shape)
-                np.testing.assert_array_equal(tuple(out.shape), (2, -1))
+        with (
+            static_guard(),
+            paddle.static.program_guard(paddle.static.Program()),
+        ):
+            x = paddle.static.data('x', [1, 1])
+            shape = [2, paddle.full([], 4)]
+            out = paddle.expand(x, shape)
+            np.testing.assert_array_equal(tuple(out.shape), (2, -1))
 
     def test_value_list_shape2(self):
-        with static_guard():
-            with paddle.static.program_guard(paddle.static.Program()):
-                x = paddle.static.data('x', [1, 1, -1, -1], 'float32')
-                shape1 = paddle.static.data('shape1', [], 'int32')
-                x = paddle.expand(x, shape=[shape1, 1, -1, -1])
-                np.testing.assert_equal(tuple(x.shape), (-1, 1, -1, -1))
+        with (
+            static_guard(),
+            paddle.static.program_guard(paddle.static.Program()),
+        ):
+            x = paddle.static.data('x', [1, 1, -1, -1], 'float32')
+            shape1 = paddle.static.data('shape1', [], 'int32')
+            x = paddle.expand(x, shape=[shape1, 1, -1, -1])
+            np.testing.assert_equal(tuple(x.shape), (-1, 1, -1, -1))
+
+
+class TestExpandV2ZeroSizeOp(OpTest):
+    def setUp(self):
+        self.op_type = "expand_v2"
+        self.init_data()
+        self.init_place()
+        self.python_api = paddle.expand
+        self.x = np.zeros(self.ori_shape).astype("float64")
+        self.attrs = {
+            'shape': self.shape,
+        }
+        self.set_inputs()
+        self.set_additional_inputs()
+        output = np.zeros(self.expect_shape).astype("float64")
+        self.outputs = {'Out': output}
+
+    def set_inputs(self):
+        self.inputs = {'X': self.x}
+
+    def set_additional_inputs(self):
+        pass
+
+    def init_data(self):
+        self.ori_shape = [1, 0, 1, 140]
+        self.shape = [1, 0, 1, 140]
+        self.expect_shape = [1, 0, 1, 140]
+
+    def init_place(self):
+        self.place = core.CPUPlace()
+
+    def test_check_output(self):
+        self.check_output_with_place(self.place, check_dygraph=False)
+
+    def test_check_grad(self):
+        self.check_grad_with_place(
+            self.place,
+            ["X"],
+            "Out",
+            check_dygraph=False,
+        )
+
+
+class TestExpandV2CPUOp1(TestExpandV2ZeroSizeOp):
+    def init_data(self):
+        self.ori_shape = (0, 1)
+        self.shape = (0, 8)
+        self.expect_shape = (0, 8)
+
+
+class TestExpandV2CPUOp2(TestExpandV2ZeroSizeOp):
+    def init_data(self):
+        self.ori_shape = (0, 130)
+        self.shape = (4, 0, 130)
+        self.expect_shape = (4, 0, 130)
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(),
+    "core is not compiled with CUDA",
+)
+class TestExpandV2ZeroSizeGPUOp(TestExpandV2ZeroSizeOp):
+
+    def init_place(self):
+        self.place = core.CUDAPlace(0)
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(),
+    "core is not compiled with CUDA",
+)
+class TestExpandV2ZeroSizeGPUOp1(TestExpandV2ZeroSizeGPUOp):
+    def init_data(self):
+        self.ori_shape = (0, 130)
+        self.shape = (4, 0, 130)
+        self.expect_shape = (4, 0, 130)
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(),
+    "core is not compiled with CUDA",
+)
+class TestExpandV2ZeroSizeGPUOp2(TestExpandV2ZeroSizeGPUOp):
+    def init_data(self):
+        self.ori_shape = (0, 1)
+        self.shape = (0, 8)
+        self.expect_shape = (0, 8)
+
+
+class TestExpandV2ZeroSizeOneDNNOp(TestExpandV2ZeroSizeOp):
+    def setUp(self):
+        self.op_type = "expand_v2"
+        self.init_data()
+        self.init_place()
+        self.python_api = paddle.expand
+        self.x = np.zeros(self.ori_shape).astype("float32")
+        self.attrs = {'shape': self.shape, 'use_mkldnn': True}
+        self.use_mkldnn = True
+        self.set_inputs()
+        self.set_additional_inputs()
+        output = np.zeros(self.expect_shape).astype("float32")
+        self.outputs = {'Out': output}
+
+    def init_data(self):
+        self.ori_shape = [1, 0, 1, 140]
+        self.shape = [1, 0, 1, 140]
+        self.expect_shape = [1, 0, 1, 140]
+
+    def init_place(self):
+        self.place = core.CPUPlace()
+
+    def test_check_output(self):
+        flags_use_mkldnn = core.globals()["FLAGS_use_mkldnn"]
+        paddle.set_flags({'FLAGS_use_mkldnn': True})
+        self.check_output_with_place(
+            self.place,
+            check_dygraph=False,
+            check_pir=False,
+            check_pir_onednn=True,
+        )
+        paddle.set_flags({'FLAGS_use_mkldnn': flags_use_mkldnn})
+
+    def test_check_grad(self):
+        flags_use_mkldnn = core.globals()["FLAGS_use_mkldnn"]
+        paddle.set_flags({'FLAGS_use_mkldnn': True})
+        self.check_grad_with_place(
+            self.place,
+            ["X"],
+            "Out",
+            check_dygraph=False,
+            check_pir=False,
+            check_pir_onednn=True,
+        )
+        paddle.set_flags({'FLAGS_use_mkldnn': flags_use_mkldnn})
+
+
+class TestExpandV2ZeroSizeOneDNNOp1(TestExpandV2ZeroSizeOneDNNOp):
+    def init_data(self):
+        self.ori_shape = (0, 130)
+        self.shape = (4, 0, 130)
+        self.expect_shape = (4, 0, 130)
+
+
+class TestExpandV2ZeroSizeOneDNNOp2(TestExpandV2ZeroSizeOneDNNOp):
+    def init_data(self):
+        self.ori_shape = (0, 1, 8)
+        self.shape = (0, 8, 8)
+        self.expect_shape = (0, 8, 8)
 
 
 if __name__ == "__main__":

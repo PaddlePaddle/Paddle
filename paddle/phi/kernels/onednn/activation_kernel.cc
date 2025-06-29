@@ -48,11 +48,6 @@ void EltwiseForward(const OneDNNContext& dev_ctx,
                     float beta,
                     DenseTensor* out,
                     dnnl::algorithm algorithm) {
-  PADDLE_ENFORCE_EQ(dev_ctx.GetPlace().GetType() == phi::AllocationType::CPU,
-                    true,
-                    common::errors::PreconditionNotMet(
-                        "Operator DNNL eletwise_forward must use ONEDNNPlace"));
-
   bool is_inplaced = x.IsSharedBufferWith(*out);
 
   funcs::ActivationOneDNNHandler<T> handler(
@@ -83,6 +78,10 @@ struct OneDNNActivationFunc : public funcs::BaseActivationFunctor<T> {
                   float alpha,
                   float beta,
                   DenseTensor* out) const {
+    if (out && out->numel() == 0) {
+      dev_ctx.template Alloc<T>(out);
+      return;
+    }
     EltwiseForward<T>(dev_ctx, x, alpha, beta, out, algorithm);
   }
 };

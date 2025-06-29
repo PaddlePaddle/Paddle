@@ -14,6 +14,7 @@
 
 import numpy as np
 
+import paddle
 from paddle.framework import core
 from paddle.utils import unique_name
 
@@ -121,12 +122,13 @@ def insert_fuse_all_reduce_ops(
         )
         insert_idx += 1
 
-    # c_allreduce_sum should insert
+    # all_reduce sum should insert
+    attrs["reduce_type"] = paddle.distributed.ReduceOp.SUM
     block._insert_op_without_sync(
         insert_idx,
-        type="c_allreduce_sum",
-        inputs={"X": fused_var},
-        outputs={"Out": fused_var},
+        type="all_reduce",
+        inputs={"x": fused_var},
+        outputs={"out": fused_var},
         attrs=attrs,
     )
 
@@ -146,11 +148,6 @@ def has_same_attrs(op1, op2, attr_names):
 def filter_all_collective_op_indices(block):
     # NOTE: should add more collective ops
     all_collective_ops = {
-        "c_allreduce_sum",
-        "c_allreduce_prod",
-        "c_allreduce_max",
-        "c_allreduce_min",
-        "c_allgather",
         "c_broadcast",
         "broadcast",
         "all_gather",
@@ -372,7 +369,7 @@ class FuseAllReducePass(PassBase):
     # NOTE: why FuseAllReducePass can override apply_single_impl instead of
     # apply_impl? AllReduce is a collective operation, so the program of each
     # rank inside the same communication group should have the same
-    # c_allreduce_sum operations. Therefore, FuseAllReducePass can override
+    # all_reduce sum operations. Therefore, FuseAllReducePass can override
     # apply_single_impl directly.
     def _apply_single_impl(self, main_program, startup_program, context):
         max_memory_size = self.get_attr("max_memory_size")

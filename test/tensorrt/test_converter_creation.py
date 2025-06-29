@@ -251,5 +251,23 @@ class TestFullWithTensorCase1TRTPattern(TensorRTBaseTest):
         self.check_trt_result()
 
 
+class TestMeshgridTRTPattern(TensorRTBaseTest):
+    def setUp(self):
+        self.python_api = paddle.meshgrid
+        self.api_args = {
+            "x": [
+                np.random.random([20]).astype("float32"),
+                np.random.random([30]).astype("float32"),
+            ],
+        }
+        self.program_config = {"feed_list": ["x"]}
+        self.min_shape = {"x": [[10], [20]]}
+        self.opt_shape = {"x": [[20], [30]]}
+        self.max_shape = {"x": [[30], [40]]}
+
+    def test_trt_result(self):
+        self.check_trt_result()
+
+
 if __name__ == "__main__":
     unittest.main()

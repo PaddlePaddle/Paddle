@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/cinn/operator_fusion/pir_graph_analyzing/fusion_iters.h"
 #include "paddle/cinn/operator_fusion/pir_graph_analyzing/loop_axis_mapping.h"
 #include "paddle/cinn/operator_fusion/utils.h"
 
@@ -26,12 +25,9 @@ enum InstructionType {
   T_Return,
   T_InitPattern,
   T_TrivialInline,
-  T_ReshapeAlign,
   T_TmpTransform,
   T_TrivialLoopAlign,
   T_AxisTransform,
-  T_ItersTransform,
-  T_Padding
 };
 
 struct FusionInstruction {
@@ -146,32 +142,6 @@ struct TrivialInlineInstr : public FusionInstruction {
   }
 };
 
-struct ReshapeAlignInstr : public FusionInstruction {
-  ReshapeAlignInstr(const std::string& input,
-                    const std::vector<symbol::DimExpr>& in_shape,
-                    const std::vector<symbol::DimExpr>& out_shape,
-                    const std::string& result)
-      : input_(input),
-        in_shape_(in_shape),
-        out_shape_(out_shape),
-        result_(result) {}
-  virtual InstructionType type() const { return T_ReshapeAlign; }
-  virtual FusionInstrPtr Clone() {
-    return std::make_shared<ReshapeAlignInstr>(*this);
-  }
-
-  std::string input_;
-  std::vector<symbol::DimExpr> in_shape_;
-  std::vector<symbol::DimExpr> out_shape_;
-  std::string result_;
-
-  virtual std::string DebugStr() const {
-    return "ReshapeAlignInstr || " + input_ + "(" +
-           cinn::utils::Join(in_shape_, ",") + ") => " + result_ + "(" +
-           cinn::utils::Join(out_shape_, ",") + ")";
-  }
-};
-
 struct TmpTransformInstr : public FusionInstruction {
   TmpTransformInstr(const std::string& upstream,
                     const std::string& downstream,
@@ -241,49 +211,6 @@ struct AxisTransformInstr : public FusionInstruction {
 
   virtual std::string DebugStr() const {
     return "AxisTransformInstr || " + source_ + " => " + target_;
-  }
-};
-
-struct ItersTransformInstr : public FusionInstruction {
-  ItersTransformInstr(const std::string& source,
-                      const std::string& aligned,
-                      const std::string& target,
-                      const ItersTransformRoute& iters_transform_route)
-      : source_(source),
-        aligned_(aligned),
-        target_(target),
-        iters_transform_route_(iters_transform_route) {}
-  virtual InstructionType type() const { return T_ItersTransform; }
-  virtual FusionInstrPtr Clone() {
-    return std::make_shared<ItersTransformInstr>(*this);
-  }
-
-  std::string source_;
-  std::string aligned_;
-  std::string target_;
-  ItersTransformRoute iters_transform_route_;
-
-  virtual std::string DebugStr() const {
-    return "ItersTransformInstr || " + source_ + " => " + target_ +
-           ", Align to " + aligned_;
-  }
-};
-
-struct PaddingInstr : public FusionInstruction {
-  PaddingInstr(const std::string& target,
-               const std::string& result,
-               const std::vector<int>& padding_pos)
-      : target_(target), result_(result), padding_pos_(padding_pos) {}
-  virtual InstructionType type() const { return T_Padding; }
-  virtual FusionInstrPtr Clone() {
-    return std::make_shared<PaddingInstr>(*this);
-  }
-  std::string target_;
-  std::string result_;
-  std::vector<int> padding_pos_;
-
-  virtual std::string DebugStr() const {
-    return "PaddingInstr || " + target_ + " => " + result_;
   }
 };
 

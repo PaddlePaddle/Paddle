@@ -118,10 +118,10 @@ def affine_grid(
             theta, 'theta', ['float32', 'float64'], 'affine_grid'
         )
         out = helper.create_variable_for_type_inference(dtype=theta.dtype)
-        ipts = {'Theta': theta}
+        inputs = {'Theta': theta}
         attrs = {"align_corners": align_corners, "use_cudnn": use_cudnn}
         if isinstance(out_shape, Variable):
-            ipts['OutputShape'] = out_shape
+            inputs['OutputShape'] = out_shape
             check_variable_and_dtype(
                 out_shape, 'out_shape', ['int32'], 'affine_grid'
             )
@@ -130,7 +130,7 @@ def affine_grid(
 
         helper.append_op(
             type='affine_grid',
-            inputs=ipts,
+            inputs=inputs,
             outputs={'Output': out},
             attrs=None if len(attrs) == 0 else attrs,
         )
@@ -210,13 +210,13 @@ def grid_sample(
                 + ws * d_e * d_n + es * d_w * d_n
 
     Args:
-        x(Tensor): The input tensor, which is a 4-d tensor with shape
-                     [N, C, H, W] or a 5-d tensor with shape [N, C, D, H, W],
+        x(Tensor): The input tensor, which is a 4-D tensor with shape
+                     [N, C, H, W] or a 5-D tensor with shape [N, C, D, H, W],
                      N is the batch size, C is the channel number,
                      D, H and W is the feature depth, height and width.
                      The data type is float32 or float64.
-        grid(Tensor): Input grid tensor, which is a 4-d tensor with shape [N, grid_H,
-                        grid_W, 2] or a 5-d tensor with shape [N, grid_D, grid_H,
+        grid(Tensor): Input grid tensor, which is a 4-D tensor with shape [N, grid_H,
+                        grid_W, 2] or a 5-D tensor with shape [N, grid_D, grid_H,
                         grid_W, 3]. The data type is float32 or float64.
         mode(str, optional): The interpolation method which can be 'bilinear' or 'nearest'.
                          Default: 'bilinear'.
@@ -317,7 +317,7 @@ def grid_sample(
         check_variable_and_dtype(
             grid, 'grid', ['float32', 'float64'], 'grid_sample'
         )
-        ipts = {'X': x, 'Grid': grid}
+        inputs = {'X': x, 'Grid': grid}
         attrs = {
             'mode': mode,
             'padding_mode': padding_mode,
@@ -327,7 +327,7 @@ def grid_sample(
         out = helper.create_variable_for_type_inference(x.dtype)
         helper.append_op(
             type='grid_sampler',
-            inputs=ipts,
+            inputs=inputs,
             attrs=attrs,
             outputs={'Output': out},
         )

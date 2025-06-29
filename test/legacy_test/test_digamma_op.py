@@ -32,15 +32,18 @@ class TestDigammaOp(OpTest):
         self.op_type = 'digamma'
         self.python_api = paddle.digamma
         self.init_dtype_type()
-        shape = (5, 32)
-        data = np.random.random(shape).astype(self.dtype) + 1
+        self.init_shape()
+        data = np.random.random(self.shape).astype(self.dtype) + 1
         self.inputs = {'X': data}
-        result = np.ones(shape).astype(self.dtype)
+        result = np.ones(self.shape).astype(self.dtype)
         result = psi(data)
         self.outputs = {'Out': result}
 
     def init_dtype_type(self):
         self.dtype = np.float64
+
+    def init_shape(self):
+        self.shape = (5, 32)
 
     def test_check_output(self):
         self.check_output(check_pir=True, check_symbol_infer=False)
@@ -60,6 +63,11 @@ class TestDigammaOpFp32(TestDigammaOp):
 class TestDigammaFP16Op(TestDigammaOp):
     def init_dtype_type(self):
         self.dtype = np.float16
+
+
+class TestDigammaOp_ZeroSize(TestDigammaOp):
+    def init_shape(self):
+        self.shape = (5, 0)
 
 
 @unittest.skipIf(
@@ -144,17 +152,21 @@ class TestDigammaAPI(unittest.TestCase):
 
     def test_dtype_error(self):
         # in static graph mode
-        with self.assertRaises(TypeError):
-            with static.program_guard(static.Program()):
-                x = static.data(name="x", shape=self._shape, dtype="bool")
-                out = paddle.digamma(x, name="digamma_res")
+        with (
+            self.assertRaises(TypeError),
+            static.program_guard(static.Program()),
+        ):
+            x = static.data(name="x", shape=self._shape, dtype="bool")
+            out = paddle.digamma(x, name="digamma_res")
 
         # in dynamic mode
-        with self.assertRaises(RuntimeError):
-            with base.dygraph.guard():
-                input = np.random.random(self._shape).astype("bool")
-                input_t = paddle.to_tensor(input)
-                res = paddle.digamma(input_t)
+        with (
+            self.assertRaises(RuntimeError),
+            base.dygraph.guard(),
+        ):
+            input = np.random.random(self._shape).astype("bool")
+            input_t = paddle.to_tensor(input)
+            res = paddle.digamma(input_t)
 
 
 if __name__ == "__main__":

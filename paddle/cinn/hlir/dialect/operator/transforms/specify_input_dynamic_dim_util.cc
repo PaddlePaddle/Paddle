@@ -89,6 +89,40 @@ DeserializeInputDynamicDimSpecFromJsonFile(std::string file_path) {
   return DeserializeInputDynamicDimSpecFromJson(json);
 }
 
+std::vector<pir::InputDynamicDimSpec> ConvertRawConstraints(
+    const std::vector<std::tuple<
+        std::string,
+        std::tuple<int64_t, std::optional<int64_t>, std::optional<int64_t>>>>&
+        raw_constraints) {
+  std::vector<pir::InputDynamicDimSpec> res;
+  const std::string prefix_constraint_name = "symbolic_constraint_";
+  for (const auto& raw_constraint : raw_constraints) {
+    pir::InputDynamicDimSpec dim_spec;
+    const std::string& input_spec_name = std::get<0>(raw_constraint);
+    const int64_t constrained_dim = std::get<0>(std::get<1>(raw_constraint));
+    dim_spec.dim_name = prefix_constraint_name + input_spec_name + "_dim_" +
+                        std::to_string(constrained_dim);
+    dim_spec.input_bind = [&]() {
+      std::vector<std::pair<std::string, int>> res;
+      res.emplace_back(std::make_pair(input_spec_name, constrained_dim));
+      return res;
+    }();
+    dim_spec.range = [&]() {
+      symbol::ConstraintsManager::Range range;
+      const auto& range_info = std::get<1>(raw_constraint);
+      if (std::get<1>(range_info).has_value()) {
+        range.min = std::get<1>(range_info).value();
+      }
+      if (std::get<2>(range_info).has_value()) {
+        range.max = std::get<2>(range_info).value();
+      }
+      return range;
+    }();
+    res.emplace_back(std::move(dim_spec));
+  }
+  return res;
+}
+
 }  // namespace
 
 void SpecifyInputDynamicDim(
@@ -96,13 +130,33 @@ void SpecifyInputDynamicDim(
     const std::vector<pir::InputDynamicDimSpec>& input_dynamic_dim_spec) {
   pir::ShapeConstraintIRAnalysis& shape_analysis =
       pir::ShapeAnalysisManager::Instance().Get(program);
+
   shape_analysis.SetInputDynamicDimSpec(input_dynamic_dim_spec);
+}
+
+void AppendInputDynamicDim(
+    pir::Program* program,
+    const std::vector<pir::InputDynamicDimSpec>& input_dynamic_dim_spec) {
+  pir::ShapeConstraintIRAnalysis& shape_analysis =
+      pir::ShapeAnalysisManager::Instance().Get(program);
+
+  shape_analysis.AppendInputDynamicDimSpec(input_dynamic_dim_spec);
 }
 
 void SpecifyInputDynamicDimFromFile(pir::Program* program,
                                     std::string filepath) {
   SpecifyInputDynamicDim(program,
                          DeserializeInputDynamicDimSpecFromJsonFile(filepath));
+}
+void SpecifyInputDynamicDimFromPython(
+    pir::Program* program,
+    const std::vector<std::tuple<
+        std::string,
+        std::tuple<int64_t, std::optional<int64_t>, std::optional<int64_t>>>>&
+        raw_constraints) {
+  const std::vector<pir::InputDynamicDimSpec>& ConvertedConstraints =
+      ConvertRawConstraints(raw_constraints);
+  AppendInputDynamicDim(program, ConvertedConstraints);
 }
 
 }  // namespace ir

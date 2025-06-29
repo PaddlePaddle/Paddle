@@ -16,11 +16,16 @@ from __future__ import annotations
 
 import inspect
 import operator
+from contextlib import contextmanager
+from dataclasses import fields
 from functools import cached_property
 from queue import Queue
 from typing import TYPE_CHECKING, Any, Callable, Optional
 
 import paddle
+from paddle.jit.dy2static.utils import (
+    dataclass_from_dict,
+)
 
 from ....profiler import event_register
 from ....utils import (
@@ -33,6 +38,7 @@ from ..dispatcher import Dispatcher
 from ..guard import (
     FasterStringifiedExpression,
     StringifiedExpression,
+    check_faster_guard,
     check_guard,
     union_free_vars,
 )
@@ -118,7 +124,7 @@ def map_variables(
     Returns:
         tuple: The result of applying the map_func to the variables.
     """
-    from .basic import SliceVariable
+    from .basic import DataClassInstanceVariable, SliceVariable
     from .container import ContainerVariable
 
     def _map_container_variable(variable: VariableBase | object):
@@ -151,9 +157,33 @@ def map_variables(
             DummyTracker([new_slice.start, new_slice.stop, new_slice.step]),
         )
 
+    def _map_dataclass_variable(variable: VariableBase | object):
+        if not isinstance(variable, DataClassInstanceVariable):
+            return variable
+        new_dataclass = dataclass_from_dict(
+            variable.get_py_type(),
+            {
+                fd.name: map_func(variable.getattr(fd.name))
+                for fd in fields(variable.get_py_type())
+            },
+        )
+        if not restore_variable:
+            return new_dataclass
+        return VariableFactory.from_value(
+            new_dataclass,
+            variable.graph,
+            DummyTracker(
+                [
+                    variable.getattr(fd.name)
+                    for fd in fields(variable.get_py_type())
+                ]
+            ),
+        )
+
     def _map_variable(variable: VariableBase | object):
         variable = _map_container_variable(variable)
         variable = _map_slice_variable(variable)
+        variable = _map_dataclass_variable(variable)
         return map_func(variable)
 
     return paddle.utils.map_structure(_map_variable, variables)
@@ -274,7 +304,7 @@ class VariableFactory:
         return var
 
 
-def infer_debug_name_from_tracker(tracker: Tracker) -> str:
+def infer_debug_name_from_tracker(tracker: Tracker) -> str | None:
     res = None
     if isinstance(tracker, (LocalTracker, GlobalTracker, BuiltinTracker)):
         res = f"{tracker.name}"
@@ -343,6 +373,16 @@ class VariableBase:
 
     def __hash__(self):
         return hash(self.id)
+
+    @check_faster_guard
+    def make_faster_guard(self) -> list[paddle.framework.core.GuardNodeBase]:
+        expr_node = self.tracker.guard_tree_expr_node()
+        return [
+            paddle.framework.core.GuardNode(
+                paddle.framework.core.ValueMatchGuard(self.get_py_value()),
+                [expr_node],
+            )
+        ]
 
     @check_guard
     def make_stringified_guard(self) -> list[StringifiedExpression]:
@@ -529,7 +569,7 @@ class VariableBase:
         raise FallbackError(f"{self} is not support setitem.")
 
     def __repr__(self):
-        info = {**self.main_info, **self.debug_info}
+        info = self.main_info | self.debug_info
         info_str = ", ".join([f"{value}" for value in info.values()])
         return f"{self.__class__.__name__}({info_str})"
 
@@ -643,3 +683,46 @@ class VariableBase:
         if isinstance(value, VariableBase):
             return value
         return None
+
+
+@contextmanager
+def signature_clear_guard(fn, name):
+    if not hasattr(fn, name):
+        yield
+    else:
+        saved_attr = getattr(fn, name)
+        delattr(fn, name)
+        yield
+        setattr(fn, name, saved_attr)
+
+
+def fn_bind_inputs(
+    fn: Callable[..., Any],
+    graph: FunctionGraph,
+    *args: Any,
+    **kwargs: Any,
+):
+    # temparay clear the fn.__signature__ to avoid signature check error
+    with (
+        signature_clear_guard(fn, "__signature__"),
+        signature_clear_guard(fn, "__wrapped__"),
+    ):
+        sig = inspect.signature(fn)
+        bound_args = sig.bind(*args, **kwargs)
+    bound_args.apply_defaults()
+    parameters = {}
+    for name, value in bound_args.arguments.items():
+        assert name in sig.parameters
+        # Convert varargs and kwargs to Variable
+        if sig.parameters[name].kind == inspect.Parameter.VAR_POSITIONAL:
+            tracker = DummyTracker(value)
+        elif sig.parameters[name].kind == inspect.Parameter.VAR_KEYWORD:
+            tracker = DummyTracker(list(value.values()))
+        # Convert default args to Variable
+        elif not isinstance(value, VariableBase):
+            tracker = ConstTracker(value)
+        else:
+            tracker = value.tracker
+        value = VariableFactory.from_value(value, graph, tracker)
+        parameters[name] = value
+    return parameters

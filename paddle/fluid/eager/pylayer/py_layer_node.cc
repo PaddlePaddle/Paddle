@@ -17,6 +17,7 @@
 #include "glog/logging.h"
 #include "paddle/common/errors.h"
 #include "paddle/fluid/eager/eager_tensor.h"
+#include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/pybind/eager_utils.h"
@@ -25,6 +26,8 @@
 #include "paddle/phi/core/platform/device_context.h"
 #pragma GCC diagnostic ignored "-Wattributes"
 #include "pybind11/pytypes.h"
+
+COMMON_DECLARE_bool(check_cuda_error);
 
 namespace egr {
 GradNodePyLayer::~GradNodePyLayer() {  // NOLINT
@@ -38,6 +41,9 @@ GradNodePyLayer::operator()(
                          kSlotSmallVectorSize>& grads,  // NOLINT
     bool create_graph,
     bool is_new_grad) {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    egr::CUDAErrorCheck("GradNodePyLayer begin");
+  }
   pybind11::gil_scoped_acquire gil;
   VLOG(3) << "Running Eager Backward Node: " << name();
 
@@ -61,7 +67,7 @@ GradNodePyLayer::operator()(
     if (ctx->forward_output_tensor_is_duplicable[i]) {
       PyObject* pylist = PyList_New((Py_ssize_t)grads[i].size());
       for (size_t j = 0; j < grads[i].size(); j++) {
-        if (ctx->materialize_grads && !grads[i][j].initialized()) {
+        if (ctx->materialize_grads && !grads[i][j].has_allocation()) {
           if (forward_outputs_is_dist_meta_[i][j]) {
             paddle::Tensor dist_tensor;
             dist_tensor.set_impl(std::make_shared<phi::distributed::DistTensor>(
@@ -103,7 +109,7 @@ GradNodePyLayer::operator()(
       }
       PyTuple_SET_ITEM(backward_args, i, pylist);
     } else {
-      if (ctx->materialize_grads && !grads[i][0].initialized()) {
+      if (ctx->materialize_grads && !grads[i][0].has_allocation()) {
         if (forward_outputs_is_dist_meta_[i][0]) {
           paddle::Tensor dist_tensor;
           dist_tensor.set_impl(std::make_shared<phi::distributed::DistTensor>(
@@ -237,6 +243,10 @@ GradNodePyLayer::operator()(
   Py_XDECREF(outputs);
   Py_XDECREF(ctx_);
   ctx_ = nullptr;
+
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    egr::CUDAErrorCheck("GradNodePyLayer finish");
+  }
 
   return grad_out;
 }

@@ -15,6 +15,7 @@
 #include "paddle/phi/kernels/scale_kernel.h"
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
@@ -38,14 +39,16 @@ void ScaleKernel(const Context& dev_ctx,
   if (x.numel() == 0 || !x.IsInitialized()) {
     return;
   }
+
   using XPUType = typename XPUTypeTrait<T>::Type;
-  int r = xpu::scale(dev_ctx.x_context(),
-                     reinterpret_cast<const XPUType*>(x.data<T>()),
-                     reinterpret_cast<XPUType*>(out->data<T>()),
-                     x.numel(),
-                     bias_after_scale,
-                     scale.to<float>(),
-                     bias.to<float>());
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  int r = xpu::scale<XPUType, MT>(dev_ctx.x_context(),
+                                  reinterpret_cast<const XPUType*>(x.data<T>()),
+                                  reinterpret_cast<XPUType*>(out->data<T>()),
+                                  x.numel(),
+                                  bias_after_scale,
+                                  scale.to<MT>(),
+                                  bias.to<MT>());
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "scale");
 }
 
@@ -58,5 +61,8 @@ PD_REGISTER_KERNEL(scale,
                    float,
                    phi::dtype::float16,
                    phi::dtype::bfloat16,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
                    int,
                    int64_t) {}

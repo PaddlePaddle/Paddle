@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include <absl/strings/string_view.h>
+#include <string_view>
 
 #include <fstream>
 #include <memory>
@@ -127,7 +127,7 @@ class Compiler final {
    * Retrieve a function by \p fn_name.
    * @return function address or null if not exists.
    */
-  void* Lookup(absl::string_view fn_name);
+  void* Lookup(std::string_view fn_name);
 
   std::vector<void*> GetFnPtr() const { return fn_ptr_; }
 

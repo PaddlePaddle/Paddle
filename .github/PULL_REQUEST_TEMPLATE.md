@@ -6,7 +6,7 @@
 
 
 ### PR Types
-<!-- One of [ New features | Bug fixes | Improvements | Performance | BC Breaking | Deprecations | Docs | Devs | Not User Facing | Security | Deprecations | Others ] -->
+<!-- One of [ New features | Bug fixes | Improvements | Performance | BC Breaking | Deprecations | Docs | Devs | Not User Facing | Security | Others ] -->
 
 
 ### Description

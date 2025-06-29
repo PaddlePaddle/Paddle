@@ -59,7 +59,7 @@ def check_no_fallback(fn: Callable[P, T]) -> Callable[P, T]:
     return fn
 
 
-def fallback():
+def fallback(recursive=False):
     pass
 
 

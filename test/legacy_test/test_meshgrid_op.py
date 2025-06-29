@@ -552,6 +552,24 @@ class TestMeshgridEmptyTensor2(TestMeshgridEmptyTensor):
         )
 
 
+class TestMeshgridZeroSizeGrad(unittest.TestCase):
+    def test_zero_size_grad_dynamic(self):
+        with base.dygraph.guard():
+            x = paddle.to_tensor(
+                np.ones([3]), dtype="float32", stop_gradient=False
+            )
+            y = paddle.to_tensor(
+                np.ones([0]), dtype="float32", stop_gradient=False
+            )
+            x_grid, y_grid = paddle.meshgrid(x, y)
+            z = paddle.sum(x_grid + y_grid)
+            z.backward()
+            x_grad_expacted = np.zeros([3])
+            y_grad_expacted = np.zeros([0])
+            np.testing.assert_array_equal(x.grad, x_grad_expacted)
+            np.testing.assert_array_equal(y.grad, y_grad_expacted)
+
+
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()

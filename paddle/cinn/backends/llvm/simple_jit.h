@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include <absl/strings/string_view.h>
 #include <llvm/AsmParser/Parser.h>
 #include <llvm/ExecutionEngine/ExecutionEngine.h>
 #include <llvm/ExecutionEngine/JITSymbol.h>
@@ -36,6 +35,7 @@
 
 #include <functional>
 #include <memory>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -67,7 +67,7 @@ class SimpleJIT {
     llvm::cantFail(jit_->addIRModule(std::move(m)));
   }
 
-  llvm::JITTargetAddress Lookup(absl::string_view name) {
+  llvm::JITTargetAddress Lookup(std::string_view name) {
     return llvm::cantFail(jit_->lookup(AsStringRef(name))).getAddress();
   }
 

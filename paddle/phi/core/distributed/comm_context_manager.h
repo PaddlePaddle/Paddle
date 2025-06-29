@@ -28,6 +28,10 @@
 #include "paddle/phi/backends/gpu/forwards.h"
 #endif
 
+#if defined(PADDLE_WITH_FLAGCX)
+#include <flagcx.h>
+#endif
+
 namespace phi {
 namespace distributed {
 
@@ -79,6 +83,11 @@ class CommContextManager {
                                     const std::string& hash_key = "",
                                     const P2POption* opt = nullptr,
                                     int nccl_comm_init_option = 0);
+  static void RecreateNCCLComm(const std::shared_ptr<Store>& store,
+                               const std::string& unique_comm_key,
+                               int rank,
+                               const std::string& hash_key = "",
+                               const P2POption* opt = nullptr);
 #endif
 
 #if defined(PADDLE_WITH_GLOO)
@@ -103,6 +112,14 @@ class CommContextManager {
                                     int rank,
                                     int size,
                                     const std::string& hash_key = "");
+#endif
+
+#if defined(PADDLE_WITH_FLAGCX)
+  static void CreateFlagcxCommContext(const std::shared_ptr<Store>& store,
+                                      const std::string& unique_comm_key,
+                                      int rank,
+                                      int size,
+                                      const std::string& hash_key = "");
 #endif
 
  private:

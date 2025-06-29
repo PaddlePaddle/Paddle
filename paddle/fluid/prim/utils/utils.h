@@ -29,6 +29,7 @@ class TEST_API PrimCommonUtils {
   static void SetEagerPrimEnabled(bool enabled);
   static bool IsFwdPrimEnabled();
   static void SetFwdPrimEnabled(bool enabled);
+  static bool IsAllPrimEnabled();
   static void SetAllPrimEnabled(bool enabled);
   static size_t CheckSkipCompOps(const std::string& op_type);
   static void AddSkipCompOps(const std::string& op_type);

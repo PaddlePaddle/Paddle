@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import itertools
+from contextlib import contextmanager
 from functools import cached_property
 from typing import TYPE_CHECKING
 
@@ -29,15 +30,18 @@ from paddle.base import core, framework
 from paddle.base.compiler import BuildStrategy
 from paddle.base.data_feeder import check_type
 from paddle.base.dygraph.base import switch_to_static_graph
-from paddle.pir import Value, fake_value, is_fake_value
+from paddle.pir import Value, fake_value, get_fake_value_name, is_fake_value
 
 from .logging_utils import TranslatorLogger
 from .utils import (
     RETURN_NO_VALUE_MAGIC_NUM,
+    Backend,
+    CUDAGraphState,
+    TimeCounter,
     auto_layout_is_enabled,
     backend_guard,
-    cinn_is_enabled,
     cse_is_enabled,
+    use_specialized_device,
 )
 
 if TYPE_CHECKING:
@@ -48,7 +52,7 @@ __all__ = []
 prog_logger = TranslatorLogger()
 
 
-FAKE_VALUE_NAME = "FakeValue"
+FAKE_VALUE_NAME = get_fake_value_name()
 
 
 def hash_with_seed(value, seed):
@@ -405,13 +409,6 @@ class RunnableProgram:
         ), "program_attr() is called by PartialProgramLayer, don't call it manually, use program_name_attr instead."
         # can't apply pass after call this function.
         self.finish_pass = True
-        fwd_map = RunnableProgram._get_name_value_map_from_program(
-            self.forward_program
-        )
-        bwd_map = RunnableProgram._get_name_value_map_from_program(
-            self.backward_program
-        )
-
         program_name_attr = self.program_name_attr
         no_need_buffer_names = program_name_attr["no_need_buffers"]
         rename_mapping = {}
@@ -429,19 +426,15 @@ class RunnableProgram:
                 if new_name in no_need_buffer_names:
                     no_need_buffer_names.remove(new_name)
 
-        value_program_attr = {}
-        for k, ns in self.program_name_attr.items():
-            if k.startswith("f"):
-                values = [fwd_map.get(n, fake_value()) for n in ns]
-            elif k.startswith("b"):
-                values = [bwd_map.get(n, fake_value()) for n in ns]
-            elif k == "no_need_buffers":
-                values = [fwd_map.get(n, fake_value()) for n in ns]
-            else:
-                raise ValueError(f"Unknown program attr: {k}")
-            value_program_attr[k] = values
+        RunnableProgram.update_program_name_attr(
+            self.program_name_attr, rename_mapping
+        )
 
-        return value_program_attr
+        program_attr = {}
+        for k, ns in self.program_name_attr.items():
+            program_attr[f"{k}_names"] = ns
+
+        return program_attr
 
     @staticmethod
     def unify_value_names(
@@ -464,6 +457,15 @@ class RunnableProgram:
                     value._has_only_one_name()
                 ), f"Expected all values in Program have only one name, but {value} has multiple names: {value._names}"
         return rename_mapping
+
+    @staticmethod
+    def update_program_name_attr(
+        name_attr: dict[str, list[str]], rename_mapping: dict[str, str]
+    ):
+        for k, vs in name_attr.items():
+            name_attr[k] = [
+                rename_mapping[v] if v in rename_mapping else v for v in vs
+            ]
 
     @cached_property
     def program_name_attr(self):
@@ -664,17 +666,29 @@ class PartialProgramLayer:
         inputs(list[Variable]): The input list of the decorated function by `@to_static`.
         outputs(list[Variable]): The output list of the decorated function by `@to_static`.
         parameters(list[Tensor]|None): All trainable parameters included in the program. Default None.
+        constraints(list[tuple[str, int|None, int|None]]): A list to specify the constraints of the program. Default None.
 
     Returns:
         Layer: A Layer object that run all ops internally in static graph mode.
     """
 
+    HOOKED_RUN_IMPL = None
+
     def __init__(
-        self, main_program, inputs, outputs, parameters=None, **kwargs
+        self,
+        main_program,
+        inputs,
+        outputs,
+        parameters=None,
+        *,
+        constraints=None,
+        **kwargs,
     ):
         super().__init__()
         self._inputs = NestSequence(inputs)
         self._outputs = NestSequence(outputs)
+        # Avoid mutable default argument pitfall (new list per instance)
+        self._constraints = constraints if constraints is not None else []
         self._params, self._param_values = (
             parameters if parameters is not None else ([], [])
         )
@@ -709,31 +723,46 @@ class PartialProgramLayer:
         # program_id -> list(scope)
         self._scope_cache = {}
         self._hookers = []
-        self._backend = kwargs.get('backend', None)
+        self._backend = kwargs.get('backend', Backend.PHI)
         self._grad_var_names = {}
+
+        self._compile_time_counter = TimeCounter()
+
+    @staticmethod
+    def run_impl(partial_program_layer, inputs, parameters, outputs, attrs):
+        _C_ops.run_program(
+            PartialProgramLayer._valid_vars(inputs),
+            PartialProgramLayer._valid_vars(parameters),
+            PartialProgramLayer._valid_vars(outputs),
+            partial_program_layer._create_scope_vec(
+                cache_key=(
+                    PartialProgramLayer._calc_scope_cache_key(
+                        attrs["program_id"],
+                        inputs,
+                        attrs["cuda_graph_state"] != CUDAGraphState.DISABLE,
+                        attrs["cuda_graph_dispatch_key"],
+                    )
+                ),
+                use_scope_cache=True,
+            ),
+            attrs,
+        )
 
     def __call__(self, inputs):
         """
         Execute static graph by Interpreter and Return dynamic Tensors.
         """
-        in_vars = self._prepare_inputs(inputs)
-        out_vars = self._prepare_outputs()
         attrs = self._prepare_attributes(in_sot_mode=False)
-        inputs = self._valid_vars(in_vars)
-        _C_ops.run_program(
+        inputs = self._prepare_inputs(inputs)
+        out_vars = self._prepare_outputs()
+
+        self.call_run_impl_with_hook(
             inputs,
-            self._valid_vars(self._params),
-            self._valid_vars(out_vars),
-            self._create_scope_vec(
-                cache_key=(
-                    hash_with_seed(
-                        self.program_id, self._calc_input_places_hash(inputs)
-                    )
-                ),
-                use_scope_cache=True,
-            ),
-            *attrs,
+            self._params,
+            out_vars,
+            attrs,
         )
+
         restored_nest_out = self._restore_out(out_vars)
         return self._remove_no_value(restored_nest_out)
 
@@ -741,24 +770,39 @@ class PartialProgramLayer:
         """
         In sot, inputs and outputs of partial program only contain tensors, so we can skip some step to speed up
         """
-        out_vars = self._prepare_outputs()
         attrs = self._prepare_attributes(in_sot_mode=True)
-        inputs = self._valid_vars(inputs)
-        _C_ops.run_program(
+        out_vars = self._prepare_outputs()
+
+        self.call_run_impl_with_hook(
             inputs,
-            self._valid_vars(self._params),
-            self._valid_vars(out_vars),
-            self._create_scope_vec(
-                cache_key=(
-                    hash_with_seed(
-                        self.program_id, self._calc_input_places_hash(inputs)
-                    )
-                ),
-                use_scope_cache=True,
-            ),
-            *attrs,
+            self._params,
+            out_vars,
+            attrs,
         )
         return self._outputs.quick_restore(out_vars)
+
+    def call_run_impl_with_hook(
+        self,
+        inputs,
+        parameters,
+        outputs,
+        attrs,
+    ):
+        if PartialProgramLayer.HOOKED_RUN_IMPL is None:
+            PartialProgramLayer.run_impl.__get__(self)(
+                inputs,
+                parameters,
+                outputs,
+                attrs,
+            )
+        else:
+            PartialProgramLayer.HOOKED_RUN_IMPL(
+                PartialProgramLayer.run_impl.__get__(self),
+                inputs,
+                parameters,
+                outputs,
+                attrs,
+            )
 
     @cached_property
     def origin_runnable_program(self) -> RunnableProgram:
@@ -791,10 +835,22 @@ class PartialProgramLayer:
         cached_scopes.append(scope)
         return scope
 
-    def _calc_input_places_hash(self, inputs):
+    @staticmethod
+    def _calc_input_places_hash(inputs):
         if not inputs:
             return 0
         return paddle.base.libpaddle.calc_place_hash(inputs)
+
+    @staticmethod
+    def _calc_scope_cache_key(
+        program_id, inputs, use_cuda_graph, cuda_graph_dispatch_key
+    ):
+        res = hash_with_seed(
+            program_id, PartialProgramLayer._calc_input_places_hash(inputs)
+        )
+        res = hash_with_seed(res, int(use_cuda_graph))
+        res = hash_with_seed(res, cuda_graph_dispatch_key)
+        return res
 
     # whole
     @switch_to_static_graph
@@ -802,18 +858,28 @@ class PartialProgramLayer:
         if is_infer_mode:
 
             def pass_fn(forward_program, backward_program, program_name_attr):
-                apply_general_passes(
-                    forward_program,
-                    enable_cse=cse_is_enabled(),
-                    enable_delete_assert_op=cinn_is_enabled(
-                        self._build_strategy, self._backend
-                    ),
-                )
-
                 # if-else pass
-                if cinn_is_enabled(self._build_strategy, self._backend):
+                if self._backend.is_cinn():
+                    apply_general_passes(
+                        forward_program,
+                        enable_cse=cse_is_enabled(),
+                        enable_delete_assert_op=self._backend.is_cinn(),
+                    )
+                    paddle.base.libpaddle.pir.bind_symbolic_constraints(
+                        forward_program, self._constraints
+                    )
                     paddle.base.libpaddle.pir.apply_cinn_pass(forward_program)
+                elif self._backend.is_pcc():
+                    paddle.base.libpaddle.pir.bind_symbolic_constraints(
+                        forward_program, self._constraints
+                    )
+                    paddle.base.libpaddle.pir.apply_pcc_pass(forward_program)
                 else:
+                    apply_general_passes(
+                        forward_program,
+                        enable_cse=cse_is_enabled(),
+                        enable_delete_assert_op=self._backend.is_cinn(),
+                    )
                     paddle.base.libpaddle.pir.check_infer_symbolic_if_need(
                         forward_program
                     )
@@ -822,7 +888,7 @@ class PartialProgramLayer:
 
             # TODO(xiongkun) who to transfer the pruning program?
             infer_program = self.origin_runnable_program.clone()
-            if auto_layout_is_enabled():
+            if auto_layout_is_enabled() and self._backend.is_cinn():
                 pm = paddle.pir.PassManager(2)
                 pm.add_pass("auto_layout_pass", {})
                 pm.run(infer_program.program)
@@ -837,7 +903,7 @@ class PartialProgramLayer:
             train_program.apply_dist_pass_for_origin_program()
 
             # Author(liujinnan): auto_layout_pass should be applied to the original_program, before append backward. So we put it here.
-            if auto_layout_is_enabled():
+            if auto_layout_is_enabled() and self._backend.is_cinn():
                 pm = paddle.pir.PassManager(2)
                 pm.add_pass("auto_layout_pass", {})
                 pm.run(train_program.program)
@@ -898,23 +964,28 @@ class PartialProgramLayer:
                 apply_general_passes(
                     forward_program,
                     enable_cse=cse_is_enabled(),
-                    enable_delete_assert_op=cinn_is_enabled(
-                        self._build_strategy, self._backend
-                    ),
+                    enable_delete_assert_op=self._backend.is_cinn(),
                 )
                 apply_general_passes(
                     backward_program,
                     enable_cse=cse_is_enabled(),
-                    enable_delete_assert_op=cinn_is_enabled(
-                        self._build_strategy, self._backend
-                    ),
+                    enable_delete_assert_op=self._backend.is_cinn(),
                 )
-                if cinn_is_enabled(self._build_strategy, self._backend):
+                if self._backend.is_cinn():
+                    paddle.base.libpaddle.pir.bind_symbolic_constraints(
+                        forward_program, self._constraints
+                    )
                     paddle.base.libpaddle.pir.apply_cinn_pass(forward_program)
+
                     init_backward_program_shape_analysis(
                         forward_program, backward_program
                     )
                     paddle.base.libpaddle.pir.apply_cinn_pass(backward_program)
+                elif self._backend.is_pcc():
+                    paddle.base.libpaddle.pir.bind_symbolic_constraints(
+                        forward_program, self._constraints
+                    )
+                    paddle.base.libpaddle.pir.apply_pcc_pass(forward_program)
                 else:
                     paddle.base.libpaddle.pir.check_infer_symbolic_if_need(
                         forward_program
@@ -955,11 +1026,13 @@ class PartialProgramLayer:
 
     @cached_property
     def train_program(self) -> RunnableProgram:
-        return self._create_program()
+        with backend_guard(self._backend), self._compile_time_counter.record():
+            return self._create_program()
 
     @cached_property
     def infer_program(self) -> RunnableProgram:
-        return self._create_program(is_infer_mode=True)
+        with backend_guard(self._backend), self._compile_time_counter.record():
+            return self._create_program(is_infer_mode=True)
 
     def _verify_program(self, main_program, outputs):
         """
@@ -1085,13 +1158,13 @@ class PartialProgramLayer:
         )
 
         # construct a runnable program.
-        fused_bn_add_act_pass = FullGraphPreProcessPass(
+        full_graph_pre_process_pass = FullGraphPreProcessPass(
             [inputs, params, targets, x_grad_value, p_grad_value, o_grad_value],
-            cinn_is_enabled(self._build_strategy, self._backend),
+            self._backend.is_cinn(),
         )
         forward_index_pass = IndicesPreservePass(
             [forward_end_idx, backward_start_op_index, backward_end_op_index],
-            fused_bn_add_act_pass,
+            full_graph_pre_process_pass,
         )
 
         program = forward_index_pass(program)
@@ -1102,7 +1175,7 @@ class PartialProgramLayer:
             x_grad_value,
             p_grad_value,
             o_grad_value,
-        ) = fused_bn_add_act_pass.values
+        ) = full_graph_pre_process_pass.values
         (
             forward_end_idx,
             backward_start_op_index,
@@ -1120,22 +1193,15 @@ class PartialProgramLayer:
         return whole_program
 
     def _prepare_attributes(self, in_sot_mode=False):
-        attrs = [
-            'forward_program',
-            self.program.forward_program,
-            'backward_program',
-            self.program.backward_program,
-            'is_test',
-            not self.training,
-            'program_id',
-            self.program_id,
-            'in_sot_mode',
-            in_sot_mode,
-        ]
-        for key, val in self.program.program_attr.items():
-            attrs.append(key)
-            attrs.append(val)
-        return attrs
+        return {
+            'forward_program': self.program.forward_program,
+            'backward_program': self.program.backward_program,
+            'is_test': not self.training,
+            'program_id': self.program_id,
+            'in_sot_mode': in_sot_mode,
+            'cuda_graph_state': CUDAGraphState.DISABLE,  # default value for not use cuda graph
+            'cuda_graph_dispatch_key': 0,  # default value for not use cuda graph
+        } | self.program.program_attr
 
     def _prepare_inputs(self, inputs):
         """
@@ -1158,10 +1224,11 @@ class PartialProgramLayer:
                 )
             elif isinstance(value, core.eager.Tensor):
                 # NOTE(Aurelius84): If var is on CPUPlace, it will be transformed multi times
-                # into CUDAPlace when it's as input of multi Ops. so we move it in advance
-                # to avoid this problem.
-                if value.stop_gradient and not value.place._equals(
-                    expected_place
+                # into CUDAPlace when it's as input of multi Ops. so we move it in advance to avoid this problem.
+                if (
+                    value.stop_gradient
+                    and not value.place._equals(expected_place)
+                    and not use_specialized_device()
                 ):
                     var = value._copy_to(expected_place, False)
                     var.stop_gradient = True
@@ -1276,8 +1343,23 @@ class PartialProgramLayer:
                 )
             param_and_buffer_names_set.add(var.name)
 
-    def _valid_vars(self, vars):
+    @staticmethod
+    def _valid_vars(vars):
         return vars if vars else None
+
+
+@contextmanager
+def replace_run_impl_guard(new_run_impl):
+    """
+    A context manager to temporarily replace the run_impl of PartialProgramLayer.
+    This is used for testing purposes.
+    """
+    old_run_impl = PartialProgramLayer.HOOKED_RUN_IMPL
+    PartialProgramLayer.HOOKED_RUN_IMPL = new_run_impl
+    try:
+        yield
+    finally:
+        PartialProgramLayer.HOOKED_RUN_IMPL = old_run_impl
 
 
 def partial_program_from(
@@ -1294,5 +1376,6 @@ def partial_program_from(
         inputs,
         concrete_program.outputs,
         concrete_program.parameters,
+        constraints=concrete_program.constraints,
         **concrete_program.kwargs,
     )

@@ -276,7 +276,7 @@ def get_cluster(
         # when use paddlecloud, endpoints may > devices_per_proc(user_defined)
         assert len(cur_node_endpoints) >= len(
             devices_per_proc
-        ), "current trainer_endpoints size should be greater equal than acclerators size."
+        ), "current trainer_endpoints size should be greater equal than accelerators size."
         for i in range(len(devices_per_proc)):
             trainer = Trainer()
             if device_mode == DeviceMode.GPU:
@@ -1937,6 +1937,7 @@ def check_backend(backend):
         'auto',
         'heter',
         'xccl',
+        'flagcx',
     ]:
         raise ValueError(
             "paddle.distributed initialize error, "
@@ -1955,6 +1956,12 @@ def check_backend(backend):
         raise ValueError(
             "paddle.distributed initialize error, "
             "your paddle is not compiled with xpu but you assign 'bkcl' as backend."
+        )
+
+    if backend == 'flagcx' and not framework.core.is_compiled_with_flagcx():
+        raise ValueError(
+            "paddle.distributed initialize error, "
+            "your paddle is not compiled with flagcx but you assign 'flagcx' as backend."
         )
 
 

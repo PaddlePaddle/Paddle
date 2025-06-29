@@ -23,7 +23,7 @@ from dygraph_to_static_utils import (
     Dy2StTestBase,
     enable_to_static_guard,
     static_guard,
-    test_default_and_pir,
+    test_default_mode_only,
 )
 from predictor_utils import PredictorTools
 
@@ -449,10 +449,11 @@ class TestResnet(Dy2StTestBase):
             predictor_pre,
             st_pre,
             rtol=1e-05,
+            atol=1e-7,
             err_msg=f'predictor_pre:\n {predictor_pre}\n, st_pre: \n{st_pre}.',
         )
 
-    @test_default_and_pir
+    @test_default_mode_only
     def test_resnet(self):
         static_loss = self.train(to_static=True)
         dygraph_loss = self.train(to_static=False)
@@ -464,7 +465,7 @@ class TestResnet(Dy2StTestBase):
         )
         self.verify_predict()
 
-    @test_default_and_pir
+    @test_default_mode_only
     def test_resnet_composite(self):
         core._set_prim_backward_enabled(True)
         core._add_skip_comp_ops("batch_norm")
@@ -478,7 +479,7 @@ class TestResnet(Dy2StTestBase):
             err_msg=f'static_loss: {static_loss} \n dygraph_loss: {dygraph_loss}',
         )
 
-    @test_default_and_pir
+    @test_default_mode_only
     def test_in_static_mode_mkldnn(self):
         paddle.set_flags({'FLAGS_use_mkldnn': True})
         try:

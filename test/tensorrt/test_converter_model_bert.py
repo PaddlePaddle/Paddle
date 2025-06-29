@@ -46,7 +46,10 @@ class TestConverterBert(unittest.TestCase):
         # Create a TensorRTConfig with inputs as a required field.
         trt_config = TensorRTConfig(inputs=[input_config])
         trt_config.disable_ops = "pd_op.dropout"
-        trt_config.disable_passes = ['constant_folding_pass']
+        trt_config.disable_passes = [
+            'constant_folding_pass',
+            'dead_code_elimination_pass',
+        ]
 
         # Step1.1: get original results(for tests only)
         output_var = program.global_block().ops[-1].result(0)

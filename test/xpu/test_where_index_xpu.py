@@ -112,7 +112,7 @@ class TestWhereRaiseError(unittest.TestCase):
         def test_type():
             paddle.nonzero([10])
 
-        self.assertRaises(AttributeError, test_type)
+        self.assertRaises(TypeError, test_type)
 
 
 class TestWhereSimulatorMode(unittest.TestCase):

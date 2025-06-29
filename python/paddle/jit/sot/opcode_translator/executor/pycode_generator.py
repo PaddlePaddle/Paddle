@@ -946,29 +946,6 @@ class PyCodeGen:
     def gen_get_iter(self):
         return self.add_instr("GET_ITER")
 
-    def gen_operator_only(self, op_name):
-        """
-        only generator operator instruction, do nothing for
-        operands.
-        """
-        return self.add_instr(op_name)
-
-    def gen_operator(self, op_name):
-        """
-        only generator operator instruction, do nothing for
-        operands.
-        """
-        return self.add_instr(op_name)
-
-    def gen_compare(self, cmp_op):
-        """
-        only generator operator instruction, do nothing for
-        operands.
-        """
-        if sys.version_info >= (3, 12):
-            cmp_op <<= 4
-        return self.add_instr("COMPARE_OP", cmp_op)
-
     def add_instr(self, *args, **kwargs):
         instr = gen_instr(*args, **kwargs)
         self._instructions.append(instr)
@@ -1057,7 +1034,9 @@ class ResumeFunctionCreator:
     @staticmethod
     def validate_code(code):
         if len(code.co_freevars) + len(code.co_cellvars) > 0:
-            raise FallbackError("Break graph in closure is not support.")
+            raise FallbackError(
+                f"Break graph in closure is not support.\n`co_freevars`: {code.co_freevars}\n`co_cellvars`: {code.co_cellvars}"
+            )
 
     def lookup(self, cache_key):
         if cache_key in self.CODE_CACHE:

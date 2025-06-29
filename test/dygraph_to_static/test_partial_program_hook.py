@@ -20,6 +20,7 @@ from paddle.jit.dy2static import (
     pir_partial_program,
     program_translator,
 )
+from paddle.jit.dy2static.utils import Backend
 
 
 class TestPartiaProgramLayerHook(unittest.TestCase):
@@ -52,7 +53,7 @@ class TestPrimHook(unittest.TestCase):
             f, full_graph=True
         ).get_concrete_program()
         self._hook = program_translator.PirPrimHooker(
-            concrete_program.main_program, None
+            concrete_program.main_program, Backend.PHI
         )
         self.partial_program_layer = partial_program_layer
 

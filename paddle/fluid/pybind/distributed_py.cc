@@ -54,6 +54,10 @@ limitations under the License. */
 #include "paddle/fluid/distributed/collective/xpu_async_load.h"
 #endif
 
+#if defined(PADDLE_WITH_FLAGCX)
+#include "paddle/fluid/distributed/collective/process_group_flagcx.h"
+#endif
+
 #include "paddle/phi/kernels/sync_batch_norm_kernel.h"
 
 namespace paddle::pybind {
@@ -80,6 +84,10 @@ std::shared_ptr<distributed::EagerReducer> CreateEagerReducer(
 using ProcessGroupGloo = paddle::distributed::ProcessGroupGloo;
 using GlooStore = paddle::distributed::ProcessGroupGloo::GlooStore;
 using GlooOptions = paddle::distributed::ProcessGroupGloo::GlooOptions;
+#endif
+
+#if defined(PADDLE_WITH_FLAGCX)
+using ProcessGroupFlagcx = paddle::distributed::ProcessGroupFlagcx;
 #endif
 
 static UNUSED void *use_ccl_comm_func =
@@ -329,30 +337,15 @@ void BindDistributed(py::module *m) {
                     CastPyArg2VectorOfTensor(py_out_tensor_list.ptr(), 0);
                 auto in_tensor_list =
                     CastPyArg2VectorOfTensor(py_in_tensor_list.ptr(), 0);
+                auto out_dense_list = ToDenseTensors(out_tensor_list);
+                auto in_dense_list = ToDenseTensors(in_tensor_list);
+
                 py::gil_scoped_release release;
 
-                Tensor stack_out_tensor = paddle::stack(out_tensor_list, 0);
-                auto p_out_tensor = std::dynamic_pointer_cast<phi::DenseTensor>(
-                    stack_out_tensor.impl());
-                auto *out_dense = p_out_tensor.get();
-
-                Tensor stack_in_tensor = paddle::stack(in_tensor_list, 0);
-                auto p_in_tensor = std::dynamic_pointer_cast<phi::DenseTensor>(
-                    stack_in_tensor.impl());
-                auto in_dense = *p_in_tensor;
-
                 // in_tensor_list should not be empty
-                int world_size = self.GetSize();
                 auto task =
-                    self.AllToAll(out_dense,
-                                  in_dense,
-                                  GetDefaultSplitSizes(*out_dense, world_size),
-                                  GetDefaultSplitSizes(in_dense, world_size),
-                                  sync_op);
-                auto *dev_ctx =
-                    self.GetDeviceContext(in_tensor_list.back().place());
-                SplitTensor(*dev_ctx, *out_dense, &out_tensor_list);
-                task->UpdateWaitChain(*dev_ctx);
+                    self.AllToAll(&out_dense_list, in_dense_list, sync_op);
+
                 return task;
               },
               py::arg("out"),
@@ -377,14 +370,7 @@ void BindDistributed(py::module *m) {
                     in_tensor.impl());
                 auto in_dense = *p_in_tensor;
 
-                int world_size = self.GetSize();
-
-                return self.AllToAll(
-                    out_dense,
-                    in_dense,
-                    GetDefaultSplitSizes(*out_dense, world_size),
-                    GetDefaultSplitSizes(in_dense, world_size),
-                    sync_op);
+                return self.AllToAll(out_dense, in_dense, {}, {}, sync_op);
               },
               py::arg("out"),
               py::arg("in"),
@@ -917,30 +903,15 @@ void BindDistributed(py::module *m) {
                     CastPyArg2VectorOfTensor(py_out_tensor_list.ptr(), 0);
                 auto in_tensor_list =
                     CastPyArg2VectorOfTensor(py_in_tensor_list.ptr(), 0);
+                auto out_dense_list = ToDenseTensors(out_tensor_list);
+                auto in_dense_list = ToDenseTensors(in_tensor_list);
                 py::gil_scoped_release release;
 
-                Tensor stack_out_tensor = paddle::stack(out_tensor_list, 0);
-                auto p_out_tensor = std::dynamic_pointer_cast<phi::DenseTensor>(
-                    stack_out_tensor.impl());
-                auto *out_dense = p_out_tensor.get();
-
-                Tensor stack_in_tensor = paddle::stack(in_tensor_list, 0);
-                auto p_in_tensor = std::dynamic_pointer_cast<phi::DenseTensor>(
-                    stack_in_tensor.impl());
-                auto in_dense = *p_in_tensor;
-
                 // in_tensor_list should not be empty
-                int world_size = self.GetSize();
-                auto task =
-                    self.AllToAll(out_dense,
-                                  in_dense,
-                                  GetDefaultSplitSizes(*out_dense, world_size),
-                                  GetDefaultSplitSizes(in_dense, world_size),
-                                  /*sync_op*/ true,
-                                  /*use_calc_stream*/ true);
-                auto *dev_ctx = self.GetDeviceContext(
-                    in_tensor_list.back().place(), /*use_calc_stream*/ true);
-                SplitTensor(*dev_ctx, *out_dense, &out_tensor_list);
+                auto task = self.AllToAll(&out_dense_list,
+                                          in_dense_list,
+                                          /*sync_op*/ true,
+                                          /*use_calc_stream*/ true);
                 return task;
               },
               py::arg("out"),
@@ -963,14 +934,12 @@ void BindDistributed(py::module *m) {
                     in_tensor.impl());
                 auto in_dense = *p_in_tensor;
 
-                int world_size = self.GetSize();
-                return self.AllToAll(
-                    out_dense,
-                    in_dense,
-                    GetDefaultSplitSizes(*out_dense, world_size),
-                    GetDefaultSplitSizes(in_dense, world_size),
-                    /*sync_op*/ true,
-                    /*use_calc_stream*/ true);
+                return self.AllToAll(out_dense,
+                                     in_dense,
+                                     {},
+                                     {},
+                                     /*sync_op*/ true,
+                                     /*use_calc_stream*/ true);
               },
               py::arg("out"),
               py::arg("in"))
@@ -1278,7 +1247,9 @@ void BindDistributed(py::module *m) {
                   py::arg("nccl_comm_init_option") = 0,
                   py::call_guard<py::gil_scoped_release>())
       .def_static("group_start", distributed::ProcessGroupNCCL::GroupStart)
-      .def_static("group_end", distributed::ProcessGroupNCCL::GroupEnd);
+      .def_static("group_end", distributed::ProcessGroupNCCL::GroupEnd)
+      .def("shutdown", &distributed::ProcessGroupNCCL::Shutdown)
+      .def("restart", &distributed::ProcessGroupNCCL::Restart);
 
   py::class_<distributed::AsyncLoad::Task,
              std::shared_ptr<distributed::AsyncLoad::Task>>(*m, "AsyncLoadTask")
@@ -1541,6 +1512,20 @@ void BindDistributed(py::module *m) {
                   py::call_guard<py::gil_scoped_release>())
       .def_static("create_default_device",
                   &ProcessGroupGloo::createDefaultDevice,
+                  py::call_guard<py::gil_scoped_release>());
+#endif
+
+#if defined(PADDLE_WITH_FLAGCX)
+  py::class_<ProcessGroupFlagcx, std::shared_ptr<ProcessGroupFlagcx>>(
+      *m, "ProcessGroupFlagcx", ProcessGroup)
+      .def_static("create",
+                  distributed::ProcessGroupFlagcx::CreateProcessGroupFlagcx,
+                  py::arg("store"),
+                  py::arg("rank"),
+                  py::arg("world_size"),
+                  py::arg("group_id") = 0,
+                  py::arg("timeout") = 30 * 60 * 1000,
+                  py::arg("nccl_comm_init_option") = 0,
                   py::call_guard<py::gil_scoped_release>());
 #endif
 

@@ -103,6 +103,8 @@ static const char* pod_value_to_void_p = "cinn_pod_value_to_void_p";
 static const char* print_debug_args_repr = "cinn_print_debug_args";
 
 static const char* call_cuda_kernel = "cinn_call_cuda_kernel";
+static const char* call_cuda_cooperative_kernel =
+    "cinn_call_cuda_cooperative_kernel";
 
 static const char* call_hip_kernel = "cinn_call_hip_kernel";
 

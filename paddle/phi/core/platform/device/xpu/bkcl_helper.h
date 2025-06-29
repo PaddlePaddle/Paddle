@@ -59,11 +59,11 @@ class BKCLGroupGuard {
 
   inline BKCLGroupGuard() {
     BKCLMutex().lock();
-    PADDLE_ENFORCE_XPU_SUCCESS(bkcl_group_start());
+    PADDLE_ENFORCE_BKCL_SUCCESS(bkcl_group_start());
   }
 
   inline ~BKCLGroupGuard() PADDLE_MAY_THROW {
-    PADDLE_ENFORCE_XPU_SUCCESS(bkcl_group_end());
+    PADDLE_ENFORCE_BKCL_SUCCESS(bkcl_group_end());
     BKCLMutex().unlock();
   }
 };
@@ -92,7 +92,7 @@ struct InitBKCLPara {
 static void *init_bkcl_context_func(void *args) {
   struct InitBKCLPara *para = (struct InitBKCLPara *)args;
   platform::SetXPUDeviceId(para->dev_id);
-  PADDLE_ENFORCE_XPU_SUCCESS(
+  PADDLE_ENFORCE_BKCL_SUCCESS(
       bkcl_init_rank(para->ctx, para->rank, para->nranks, para->bkcl_id));
   return nullptr;
 }

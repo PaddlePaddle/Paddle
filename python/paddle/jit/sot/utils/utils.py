@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import builtins
+import copy
 import inspect
 import sys
 import time
@@ -22,12 +23,19 @@ import types
 import weakref
 from collections import OrderedDict
 from contextlib import contextmanager
+from dataclasses import is_dataclass
+from functools import lru_cache
 from typing import TYPE_CHECKING, Any, Callable, TypeVar
 from weakref import WeakValueDictionary
 
 import numpy as np
 
 import paddle
+from paddle.jit.dy2static.utils import (
+    TransformOptions,
+    dataclass_as_dict,
+    dataclass_from_dict,
+)
 from paddle.utils import flatten, map_structure
 
 from .envs import (
@@ -35,19 +43,21 @@ from .envs import (
     ENV_STRICT_MODE,
 )
 from .paddle_api_config import (
-    break_graph_set,
+    break_graph_functions,
     paddle_api_list,
     paddle_api_module_prefix,
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from paddle._typing import NestedStructure
 
 T = TypeVar("T")
 T1 = TypeVar("T1")
 T2 = TypeVar("T2")
 T3 = TypeVar("T3")
-ConstTypes = (int, float, str, bool, type(None))
+ConstTypes = (int, float, str, bool, type(None), bytes)
 
 
 class Singleton(type):
@@ -124,6 +134,17 @@ class ResumeFnNameFactory(metaclass=Singleton):
         return name
 
 
+class SIRToCodeMap(metaclass=Singleton):
+    def __init__(self):
+        self._map = {}
+
+    def register(self, sir, code):
+        self._map[sir.name] = code
+
+    def get(self, sir):
+        return self._map.get(sir.name)
+
+
 def log(level, *args):
     cur_level = ENV_SOT_LOG_LEVEL.get()
     if level <= cur_level:
@@ -144,6 +165,11 @@ def log_format(level, str, *args):
 
 def log_enabled(level):
     return level <= ENV_SOT_LOG_LEVEL.get()
+
+
+@lru_cache
+def log_once(msg):
+    print(msg, flush=True)
 
 
 def no_eval_frame(func):
@@ -174,6 +200,14 @@ def is_paddle_api(func):
     ):  # paddle.Tensor should not be wrapped, but how about other situations?
         return False
     return in_paddle_module(func) or func in paddle_api_list
+
+
+def already_unified_in_dynamic_and_static_graph(fn):
+    if is_paddle_api(fn):
+        return True
+    return not TransformOptions.check_fn_need_transform(
+        fn, TransformOptions.ToStaticMode.SOT
+    )
 
 
 def is_builtin_fn(fn):
@@ -208,7 +242,18 @@ def in_paddle_module(func):
 
 
 def is_break_graph_api(func):
-    return func in break_graph_set
+    return func in break_graph_functions
+
+
+def is_namedtuple_class(cls):
+    if not inspect.isclass(cls):
+        return False
+    if not issubclass(cls, tuple):
+        return False
+    # The signature created by nametuple function
+    namedtuple_attrs = {"_make", "_asdict", "_fields", "_replace"}
+    cls_attrs = set(dir(cls))
+    return namedtuple_attrs.issubset(cls_attrs)
 
 
 def map_if(
@@ -241,6 +286,8 @@ def map_if_extend(structure, pred, true_fn, false_fn):
     def wrapped_pred(x):
         if isinstance(x, slice):
             return True
+        if is_dataclass(x) and not isinstance(x, type):
+            return True
         return pred(x)
 
     def wrapped_true_fn(x):
@@ -248,6 +295,12 @@ def map_if_extend(structure, pred, true_fn, false_fn):
             l = [x.start, x.stop, x.step]
             l = map_if_extend(l, pred, true_fn, false_fn)
             return slice(*l)
+
+        if is_dataclass(x) and not isinstance(x, type):
+            dt_dict = dataclass_as_dict(x)
+            dt_dict = map_if_extend(dt_dict, pred, true_fn, false_fn)
+            return dataclass_from_dict(type(x), dt_dict)
+
         return true_fn(x)
 
     return map_if(
@@ -265,12 +318,13 @@ def count_if(*structures, pred):
 
 
 class Cache:
-    def __init__(self, weak=False):
+    def __init__(self, weak=False, copy=False):
         if not weak:
             self.cache = {}
         else:
             self.cache = WeakValueDictionary()
         self.hit_num = 0
+        self.copy = copy
 
     def __call__(self, *args, **kwargs):
         cache_key = self.key_fn(*args, **kwargs)
@@ -279,7 +333,10 @@ class Cache:
         if cache_key in self.cache:
             log(5, "cache hit: ", cache_key, "\n")
             self.hit_num += 1
-            return self.cache[cache_key]
+            cache_item = self.cache[cache_key]
+            if self.copy:
+                cache_item = copy.deepcopy(cache_item)
+            return cache_item
         value = self.value_fn(*args, **kwargs)
         self.cache[cache_key] = value
         return value
@@ -416,6 +473,24 @@ def get_numpy_ufuncs():
     unary_ufuncs = filter(lambda ufunc: ufunc.nin == 1, ufuncs)
     binary_ufuncs = filter(lambda ufunc: ufunc.nin == 2, ufuncs)
     return list(unary_ufuncs), list(binary_ufuncs)
+
+
+def do_until_stop_iteration(fn: Callable[[], T]) -> list[T]:
+    res = []
+    while True:
+        try:
+            res.append(fn())
+        except StopIteration:
+            break
+    return res
+
+
+def update_list_inplace(
+    original_list: list[T], new_contents: list[T]
+) -> list[T]:
+    original_list.clear()
+    original_list.extend(new_contents)
+    return original_list
 
 
 def get_obj_stable_repr(obj) -> str:

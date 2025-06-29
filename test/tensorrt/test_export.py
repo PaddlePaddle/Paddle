@@ -153,6 +153,7 @@ class TestConvert(unittest.TestCase):
 
             trt_save_path = os.path.join(self.temp_dir.name, 'trt')
             trt_config.save_model_dir = trt_save_path
+            trt_config.refit_params_path = self.save_path + '.pdiparams'
 
             model_dir = self.save_path
             # Obtain tensorrt_engine_op by passing the model path and trt_config.(converted_program)
@@ -307,9 +308,7 @@ class TestConvertMultipleInputs(unittest.TestCase):
 class TestConvertPredictor(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
-        self.save_path = os.path.join(
-            self.temp_dir.name, 'tensor_axis_cumsum_predictor'
-        )
+        self.save_path = os.path.join(self.temp_dir.name, 'tensor_axis_cumsum')
         self.place = (
             paddle.CUDAPlace(0)
             if paddle.is_compiled_with_cuda()

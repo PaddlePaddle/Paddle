@@ -85,11 +85,9 @@ def _all_gather(tensor, group=None, use_calc_stream=True):
             if group is None
             else group.nranks
         )
-        return paddle._legacy_C_ops.all_gather(
+        return paddle._C_ops.all_gather(
             tensor,
-            'ring_id',
             ring_id,
-            'nranks',
             nranks,
         )
 

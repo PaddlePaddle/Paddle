@@ -12,21 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-/**
- * This file implements the strategy to remove the unnecessary nested block.
- */
-#pragma once
 #include "paddle/cinn/optim/replace_cross_thread_reduction.h"
-#include <vector>
-
-#include "paddle/cinn/adt/adt.h"
-#include "paddle/cinn/common/common.h"
 #include "paddle/cinn/hlir/pe/reduction.h"
-#include "paddle/cinn/ir/ir.h"
-#include "paddle/cinn/ir/ir_mutator.h"
-#include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/schedule/ir_schedule_util.h"
-#include "paddle/cinn/ir/utils/stmt_converter.h"
 #include "paddle/cinn/lang/compute.h"
 #include "paddle/cinn/pass/pass_manager.h"
 
@@ -50,6 +38,13 @@ struct CrossThreadReductionReplacer {
     if (block->name().substr(0, 4) == "root") {
       return false;
     }
+    if (cur_loops_.empty()) {
+      return false;
+    }
+    const auto& innermost_loop = cur_loops_.back();
+    if (!innermost_loop->is_gpu_thread_binded()) {
+      return false;
+    }
 
     const std::vector<ir::Expr>& iter_values = block->iter_values();
     const std::vector<ir::Var>& iter_vars = block->iter_vars();
@@ -68,39 +63,7 @@ struct CrossThreadReductionReplacer {
           });
     }
 
-    auto IsThreadBindOnReduceAxis = [&](const ir::stmt::For& for_node) {
-      return reduce_var_names.count(for_node->loop_var()->name) > 0 &&
-             for_node->is_gpu_thread_binded();
-    };
-
-    std::vector<int> thread_binded_reduce_loop_indices;
-    bool is_thread_binded_inner_loop = false;
-    for (int i = 0; i < cur_loops_.size(); ++i) {
-      bool is_thread_bind_on_reduce = IsThreadBindOnReduceAxis(cur_loops_[i]);
-      if (is_thread_bind_on_reduce && ir::GetLoopExtent(cur_loops_[i]) == 1) {
-        return false;
-      }
-      if (is_thread_binded_inner_loop || is_thread_bind_on_reduce) {
-        if (ir::GetLoopExtent(cur_loops_[i]) > 1024) {
-          return false;
-        }
-
-        is_thread_binded_inner_loop = true;
-        thread_binded_reduce_loop_indices.push_back(i);
-      }
-    }
-    if (thread_binded_reduce_loop_indices.size() == 0 ||
-        thread_binded_reduce_loop_indices.back() != cur_loops_.size() - 1) {
-      return false;
-    }
-    for (int i = 1; i < thread_binded_reduce_loop_indices.size(); ++i) {
-      if (thread_binded_reduce_loop_indices[i - 1] + 1 !=
-          thread_binded_reduce_loop_indices[i]) {
-        return false;
-      }
-    }
-
-    return true;
+    return reduce_var_names.count(innermost_loop->loop_var()->name) > 0;
   }
 
   int GetBlockSize() const {
@@ -113,13 +76,38 @@ struct CrossThreadReductionReplacer {
     return block_size;
   }
 
-  template <typename OpT>
+  ir::Expr GetRightOperand(ir::Expr expr) {
+    switch (expr->node_type()) {
+#define CASE_NODE_TYPE(__Ty) \
+  case ir::IrNodeTy::__Ty:   \
+    return expr.As<ir::__Ty>()->b()
+      CASE_NODE_TYPE(Add);
+      CASE_NODE_TYPE(Mul);
+      CASE_NODE_TYPE(Max);
+      CASE_NODE_TYPE(Min);
+      CASE_NODE_TYPE(And);
+      CASE_NODE_TYPE(Or);
+#undef CASE_NODE_TYPE
+      default:
+        PADDLE_THROW(::common::errors::InvalidArgument(
+            "Unsupported operation in cross-thread reduction: %s", expr));
+    }
+  }
+
+  void ReplaceByNoReduce(ir::stmt::Store store) {
+    // NoReduce refers to fake cross-thread reduction such as:
+    //   for (threadIdx.y, 0, 1) {
+    //     var_1[0] = var_1[0] + var_0[0]
+    //   }
+    // This should be replaced by:
+    //   var_1[0] = var_0[0]
+    ir::Expr operand = GetRightOperand(store->value());
+    store->set_value(operand);
+  }
+
   void ReplaceByContinuousReduceExternCall(ir::stmt::Store store,
                                            bool return_warp) {
-    auto* node = store->value().As<OpT>();
-    PADDLE_ENFORCE_NOT_NULL(
-        node, ::common::errors::InvalidArgument("The node must not be null."));
-    auto& operand = node->b();
+    ir::Expr operand = GetRightOperand(store->value());
     std::string reduce_func_name = hlir::pe::CrossThreadReduceExternalFuncName(
         store->value(), operand.template As<ir::Load>()->tensor);
     auto tmp_dtype =
@@ -131,15 +119,11 @@ struct CrossThreadReductionReplacer {
     tmp_buffer->memory_type = ir::MemoryType::GPUShared;
     shm_buffer_.insert(tmp_buffer);
     store->set_value(lang::CallExtern(
-        reduce_func_name, {node->b(), tmp_buffer, ir::Expr(return_warp)}));
+        reduce_func_name, {operand, tmp_buffer, ir::Expr(return_warp)}));
   }
 
-  template <typename OpT>
   void ReplaceByDiscreteReduceExternCall(ir::stmt::Store store) {
-    auto* node = store->value().As<OpT>();
-    PADDLE_ENFORCE_NOT_NULL(
-        node, ::common::errors::InvalidArgument("The node must not be null."));
-    auto& operand = node->b();
+    ir::Expr operand = GetRightOperand(store->value());
     std::string reduce_func_name = hlir::pe::DiscreteReduceExternalFuncName(
         store->value(), operand.template As<ir::Load>()->tensor);
     auto tmp_dtype =
@@ -150,27 +134,24 @@ struct CrossThreadReductionReplacer {
     tmp_buffer->dtype = tmp_dtype;
     tmp_buffer->memory_type = ir::MemoryType::GPUShared;
     shm_buffer_.insert(tmp_buffer);
-    store->set_value(
-        lang::CallExtern(reduce_func_name, {node->b(), tmp_buffer}));
+    store->set_value(lang::CallExtern(reduce_func_name, {operand, tmp_buffer}));
   }
 
-  template <typename OpT>
   void ReplaceByReduceExternCall(ir::stmt::Store store,
                                  const ir::ReduceMethod& method) {
-    std::visit(cinn::adt::match{
-                   [&](const ir::NoneReduceMethod&) {
-                     ReplaceByContinuousReduceExternCall<OpT>(store, false);
-                   },
-                   [&](const ir::WarpReduceMethod&) {
-                     ReplaceByContinuousReduceExternCall<OpT>(store, true);
-                   },
-                   [&](const ir::BlockReduceMethod&) {
-                     ReplaceByContinuousReduceExternCall<OpT>(store, false);
-                   },
-                   [&](const ir::DiscreteReduceMethod&) {
-                     ReplaceByDiscreteReduceExternCall<OpT>(store);
-                   }},
-               method);
+    std::visit(
+        cinn::adt::match{
+            [&](const ir::NoneReduceMethod&) { ReplaceByNoReduce(store); },
+            [&](const ir::WarpReduceMethod&) {
+              ReplaceByContinuousReduceExternCall(store, true);
+            },
+            [&](const ir::BlockReduceMethod&) {
+              ReplaceByContinuousReduceExternCall(store, false);
+            },
+            [&](const ir::DiscreteReduceMethod&) {
+              ReplaceByDiscreteReduceExternCall(store);
+            }},
+        method);
   }
 
   void Visit(ir::_LoweredFunc_* fn) {
@@ -220,7 +201,6 @@ struct CrossThreadReductionReplacer {
     }
     ir::stmt::BlockRef original_update_body = stmt->body();
 
-    ir::stmt::Store original_update_stmt;
     PADDLE_ENFORCE_EQ(original_update_body->stmts().size(),
                       1,
                       ::common::errors::InvalidArgument(
@@ -233,38 +213,10 @@ struct CrossThreadReductionReplacer {
                           "The stmt in schedule's body should be store "
                           "statement, but get %s.",
                           original_update_body->stmts()[0]->stmt_type()));
-    original_update_stmt =
-        original_update_body->stmts()[0].as<ir::stmt::Store>();
 
-    switch (original_update_stmt->value()->node_type()) {
-      case cinn::ir::IrNodeTy::Add:
-        ReplaceByReduceExternCall<ir::Add>(original_update_stmt,
-                                           stmt->reduce_method());
-        break;
-      case cinn::ir::IrNodeTy::Mul:
-        ReplaceByReduceExternCall<ir::Mul>(original_update_stmt,
-                                           stmt->reduce_method());
-        break;
-      case cinn::ir::IrNodeTy::Max:
-        ReplaceByReduceExternCall<ir::Max>(original_update_stmt,
-                                           stmt->reduce_method());
-        break;
-      case cinn::ir::IrNodeTy::Min:
-        ReplaceByReduceExternCall<ir::Min>(original_update_stmt,
-                                           stmt->reduce_method());
-        break;
-      case cinn::ir::IrNodeTy::And:
-        ReplaceByReduceExternCall<ir::And>(original_update_stmt,
-                                           stmt->reduce_method());
-        break;
-      case cinn::ir::IrNodeTy::Or:
-        ReplaceByReduceExternCall<ir::Or>(original_update_stmt,
-                                          stmt->reduce_method());
-        break;
-      default:
-        PADDLE_THROW(::common::errors::InvalidArgument(
-            "The node type is not supported in cross thread reduction."));
-    }
+    ir::stmt::Store original_update_stmt =
+        original_update_body->stmts()[0].as<ir::stmt::Store>();
+    ReplaceByReduceExternCall(original_update_stmt, stmt->reduce_method());
   }
 
  private:

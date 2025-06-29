@@ -62,7 +62,7 @@ class Buffer:
         num_nvl_bytes: int = 0,
         num_rdma_bytes: int = 0,
         low_latency_mode: bool = False,
-        num_qps_per_rank: int = 1,
+        num_qps_per_rank: int = 12,
     ) -> None:
         """
         Initialize the communication buffer.
@@ -105,19 +105,17 @@ class Buffer:
         # Synchronize NVSHMEM unique IDs
         root_unique_id = None
         if self.runtime.get_num_rdma_ranks() > 1 or low_latency_mode:
-            # Enable IBGDA for the low latency mode, which refers to "no package forwarding between NVLink and RDMA"
-            if low_latency_mode:
-                assert num_qps_per_rank > 0
+            # Enable IBGDA
+            assert num_qps_per_rank > 0
+            if not os.getenv("NVSHMEM_DISABLE_P2P"):
                 os.environ['NVSHMEM_DISABLE_P2P'] = '1'
-                os.environ['NVSHMEM_IB_ENABLE_IBGDA'] = '1'
-                os.environ['NVSHMEM_IBGDA_NIC_HANDLER'] = 'gpu'
-                os.environ['NVSHMEM_IBGDA_NUM_RC_PER_PE'] = (
-                    f'{num_qps_per_rank}'
-                )
-                # Make sure QP depth is always larger than the number of on-flight WRs, so that we can skip WQ slot check
-                os.environ['NVSHMEM_QP_DEPTH'] = '1024'
-                # NOTES: NVSHMEM initialization requires at least 256 MiB
-                os.environ['NVSHMEM_CUMEM_GRANULARITY'] = f'{2 ** 29}'
+            os.environ['NVSHMEM_IB_ENABLE_IBGDA'] = '1'
+            os.environ['NVSHMEM_IBGDA_NIC_HANDLER'] = 'gpu'
+            os.environ['NVSHMEM_IBGDA_NUM_RC_PER_PE'] = f'{num_qps_per_rank}'
+            # Make sure QP depth is always larger than the number of on-flight WRs, so that we can skip WQ slot check
+            os.environ['NVSHMEM_QP_DEPTH'] = '1024'
+            # NOTES: NVSHMEM initialization requires at least 256 MiB
+            os.environ['NVSHMEM_CUMEM_GRANULARITY'] = f'{2 ** 29}'
 
             nvshmem_unique_ids = []
             if (low_latency_mode and self.rank == 0) or (
@@ -736,6 +734,9 @@ class Buffer:
         )
         return combined_x, combined_topk_weights, EventOverlap(event)
 
+    def barrier_all(self):
+        self.runtime.barrier_all()
+
     def clean_low_latency_buffer(
         self,
         num_max_dispatch_tokens_per_rank: int,
@@ -762,8 +763,10 @@ class Buffer:
         self,
         x: paddle.Tensor,
         topk_idx: paddle.Tensor,
+        expertwise_scale: paddle.Tensor,
         num_max_dispatch_tokens_per_rank: int,
         num_experts: int,
+        use_fp8: bool = True,
         async_finish: bool = False,
         return_recv_hook: bool = False,
     ) -> tuple[
@@ -774,7 +777,7 @@ class Buffer:
         Callable,
     ]:
         """
-        A low-latency implementation for dispatching with IBGDA **with implicit FP8 casting**.
+        A low-latency implementation for dispatching with IBGDA.
         This kernel requires all the ranks (no matter intranode or internode) should be visible via RDMA
             (specifically, IBGDA must be enabled).
         Even for ranks in the same node, NVLink are fully disabled for simplicity.
@@ -788,6 +791,7 @@ class Buffer:
                 are supported. `-1` indices (not selecting any expert) are supported.
             num_max_dispatch_tokens_per_rank: the maximum number of tokens to dispatch, all the ranks must hold the same value.
             num_experts: the number of all experts.
+            use_fp8: whether to enable FP8 casting, with this, the received data will be a tuple of FP8 tensor and scaling factors.
             async_finish: the current stream will not wait for the communication kernels to be finished if set.
             return_recv_hook: return a receiving hook if set. If set, the kernel will just do the RDMA request issues,
                 but **without actually receiving the data**. You must call the received hook to make sure the data's arrival.
@@ -818,8 +822,10 @@ class Buffer:
         ) = self.runtime.low_latency_dispatch(
             x,
             topk_idx,
+            expertwise_scale,
             num_max_dispatch_tokens_per_rank,
             num_experts,
+            use_fp8,
             async_finish,
             return_recv_hook,
         )
@@ -839,7 +845,7 @@ class Buffer:
             packed_recv_layout_range,
         )
         return (
-            (packed_recv_x, packed_recv_x_scales),
+            (packed_recv_x, packed_recv_x_scales) if use_fp8 else packed_recv_x,
             packed_recv_count,
             handle,
             EventOverlap(event, tensors_to_record if async_finish else None),
@@ -853,8 +859,10 @@ class Buffer:
         topk_idx: paddle.Tensor,
         topk_weights: paddle.Tensor,
         handle: tuple,
+        zero_copy: bool = False,
         async_finish: bool = False,
         return_recv_hook: bool = False,
+        out: paddle.Tensor | None = None,
     ) -> tuple[paddle.Tensor, EventOverlap, Callable]:
         """
         A low-latency implementation for combining tokens (reduce **with weights**) with IBGDA.
@@ -873,13 +881,16 @@ class Buffer:
             topk_weights: `[num_combined_tokens, num_topk]` with `paddle.float32`, the expert weights selected by the dispatched
                 tokens. The received tokens will be reduced with the weights in this tensor.
             handle: the communication handle given by the `dispatch` function.
+            zero_copy: whether the tensor is already copied into the RDMA buffer, should be cooperative
+                with `get_next_low_latency_combine_buffer`.
             async_finish: the current stream will not wait for the communication kernels to be finished if set.
             return_recv_hook: return a receiving hook if set. If set, the kernel will just do the RDMA request issues,
                 but **without actually receiving the data**. You must call the received hook to make sure the data's arrival.
                 If you not set this flag, the kernel will ensure the data's arrival.
+            out: the in-place output tensor, if set, the kernel will write the result to this tensor and return it directly.
 
         Returns:
-            combined_x: the reduced token tensor, with shape `[num_combined_tokens, num_topk]` and type `paddle.bfloat16`.
+            combined_x: the reduced token tensor, with shape `[num_combined_tokens, hidden]` and type `paddle.bfloat16`.
             event: the event after executing the kernel (valid only if `async_finish` is set).
             hook: the receiving hook function (valid only if `return_recv_hook` is set).
         """
@@ -887,6 +898,7 @@ class Buffer:
             src_info,
             layout_range,
             num_max_dispatch_tokens_per_rank,
+            hidden,
             num_experts,
         ) = handle
         combined_x, event, hook = self.runtime.low_latency_combine(
@@ -897,8 +909,10 @@ class Buffer:
             layout_range,
             num_max_dispatch_tokens_per_rank,
             num_experts,
+            zero_copy,
             async_finish,
             return_recv_hook,
+            out,
         )
         tensors_to_record = (
             x,

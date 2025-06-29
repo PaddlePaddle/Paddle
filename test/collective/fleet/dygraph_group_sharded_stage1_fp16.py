@@ -148,7 +148,7 @@ def train_mlp(
     )
 
     if sharding_stage == 1:
-        model.to(device="gpu")
+        model.to(device="xpu" if paddle.core.is_compiled_with_xpu() else "gpu")
 
     if not use_pure_fp16:
         for param in model.parameters():

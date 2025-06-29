@@ -22,6 +22,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/transforms/general/inplace_pass.h"
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
+#include "paddle/phi/backends/device_manager.h"
 #include "paddle/phi/core/platform/profiler/event_tracing.h"
 #include "paddle/pir/include/core/program.h"
 #include "paddle/pir/include/pass/pass.h"
@@ -113,6 +114,10 @@ StandaloneExecutor::StandaloneExecutor(const phi::Place& place,
         }
       }
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
+      if (place_.GetType() == phi::AllocationType::CUSTOM) {
+        phi::DeviceManager::SetDevice(place_);
+      }
+
       if (!FLAGS_enable_custom_engine.empty()) {
         std::string custom_engine_translate_pass = FLAGS_enable_custom_engine;
         std::istringstream ss(custom_engine_translate_pass);

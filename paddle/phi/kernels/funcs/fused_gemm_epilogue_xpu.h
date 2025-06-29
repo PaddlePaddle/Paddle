@@ -71,12 +71,14 @@ void ComputeFusedGemmEpilogueBackwardXPU(const phi::XPUContext& dev_ctx,
                        dout->numel());
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "relu_grad");
   } else if (activation_grad == "gelu") {
+    // int gelu_grad(Context* ctx, const T* x, const T* dy, T* dx, int64_t len,
+    // bool approximate);
     r = xpu::gelu_grad(xpu_ctx,
-                       reserve_space_ptr,
                        reserve_space_ptr,
                        dout_ptr,
                        d_act_input_ptr,
-                       dout->numel());
+                       dout->numel(),
+                       false);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "gelu_grad");
   } else if (activation_grad == "none") {
     // pass

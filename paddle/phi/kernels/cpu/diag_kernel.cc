@@ -37,22 +37,22 @@ void DiagKernel(const Context& dev_ctx,
     phi::funcs::SetConstant<Context, T> set_padding_value;
     set_padding_value(dev_ctx, out, static_cast<T>(padding_value));
 
-    auto x_length = (x_dims.size() == 1UL ? x_dims[0] : int64_t(1));
-    const int& x_stride = 1;
+    int64_t x_length = (x_dims.size() == 1ULL ? x_dims[0] : int64_t(1));
+    const int64_t x_stride = 1;
 
-    auto out_stride_0 = phi::funcs::ComputeStride(0, out_dims);
-    auto out_stride_1 = phi::funcs::ComputeStride(1, out_dims);
+    int64_t out_stride_0 = phi::funcs::ComputeStride(0, out_dims);
+    int64_t out_stride_1 = phi::funcs::ComputeStride(1, out_dims);
     out_data += (offset >= 0 ? offset * out_stride_1 : -offset * out_stride_0);
 
     for (i = 0; i < x_length; i++) {
       out_data[i * (out_stride_0 + out_stride_1)] = x_data[i * x_stride];
     }
   } else {
-    auto out_length = out_dims[0];
-    const int& x_stride_0 = phi::funcs::ComputeStride(0, x_dims);
-    const int& x_stride_1 = phi::funcs::ComputeStride(1, x_dims);
+    int64_t out_length = out_dims[0];
+    const int64_t x_stride_0 = phi::funcs::ComputeStride(0, x_dims);
+    const int64_t x_stride_1 = phi::funcs::ComputeStride(1, x_dims);
 
-    auto out_stride_0 = phi::funcs::ComputeStride(0, out_dims);
+    int64_t out_stride_0 = phi::funcs::ComputeStride(0, out_dims);
     x_data += (offset >= 0 ? offset * x_stride_1 : -offset * x_stride_0);
     for (i = 0; i < out_length; i++) {
       out_data[i * out_stride_0] = x_data[i * (x_stride_0 + x_stride_1)];

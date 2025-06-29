@@ -10,17 +10,12 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/pybind/eager_utils.h"
-#include <Python.h>
-#include "paddle/common/exception.h"
-#include "paddle/pir/include/core/value.h"
-// Avoid a problem with copysign defined in pyconfig.h on Windows.
-#ifdef copysign
-#undef copysign
-#endif
 
+#include <Python.h>
 #include <string>
 #include <vector>
 
+#include "paddle/common/exception.h"
 #include "paddle/common/flags.h"
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/eager/api/all.h"
@@ -49,6 +44,7 @@ limitations under the License. */
 #include "paddle/phi/core/memory/allocation/allocator.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/pir/include/core/attribute.h"
+#include "paddle/pir/include/core/value.h"
 
 COMMON_DECLARE_bool(check_nan_inf);
 COMMON_DECLARE_int32(check_nan_inf_level);
@@ -70,6 +66,7 @@ extern PyTypeObject* g_cudaplace_pytype;
 extern PyTypeObject* g_cpuplace_pytype;
 extern PyTypeObject* g_xpuplace_pytype;
 extern PyTypeObject* g_cudapinnedplace_pytype;
+extern PyTypeObject* g_xpupinnedplace_pytype;
 extern PyTypeObject* g_customplace_pytype;
 extern PyTypeObject* g_framework_tensor_pytype;
 extern PyTypeObject* g_framework_densetensorarray_pytype;
@@ -620,6 +617,8 @@ phi::Place CastPyArg2Place(PyObject* obj, ssize_t arg_pos) {
     place = ::pybind11::handle(obj).cast<phi::XPUPlace>();
   } else if (PyObject_TypeCheck(obj, g_cudapinnedplace_pytype)) {
     place = ::pybind11::handle(obj).cast<phi::GPUPinnedPlace>();
+  } else if (PyObject_TypeCheck(obj, g_xpupinnedplace_pytype)) {
+    place = ::pybind11::handle(obj).cast<phi::XPUPinnedPlace>();
   } else if (PyObject_TypeCheck(obj, g_customplace_pytype)) {
     place = ::pybind11::handle(obj).cast<phi::CustomPlace>();
   } else {
@@ -627,7 +626,7 @@ phi::Place CastPyArg2Place(PyObject* obj, ssize_t arg_pos) {
         "argument (position %d) must be "
         "one "
         "of(Place,CUDAPlace,CPUPlace,XPUPlace,CUDAPinnedPlace,"
-        "CustomPlace), "
+        "XPUPinnedPlace, CustomPlace), "
         "but got %s",
         arg_pos + 1,
         reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
@@ -793,7 +792,7 @@ Placements CastPyArg2VectorOfPlacement(PyObject* obj, ssize_t arg_pos) {
   auto check_and_emplace = [&](PyObject* item, ssize_t i) {
     if (PyObject_TypeCheck(item, g_placement_shard_pytype)) {  // NOLINT
       result.emplace_back(
-          std::make_shared<Shard>(::pybind11::handle(item).cast<Shard>()));
+          ::pybind11::handle(item).cast<std::shared_ptr<Shard>>());
     } else if (PyObject_TypeCheck(item, g_placement_replicated_pytype)) {
       result.emplace_back(std::make_shared<Replicate>(
           ::pybind11::handle(item).cast<Replicate>()));
@@ -1156,13 +1155,19 @@ PyObject* ToPyObject(const phi::distributed::Placement& value) {
   return obj.ptr();
 }
 
+PyObject* ToPyObject(std::shared_ptr<phi::distributed::Placement> value) {
+  auto obj = ::pybind11::cast(value, py::return_value_policy::reference);
+  obj.inc_ref();
+  return obj.ptr();
+}
+
 PyObject* ToPyObject(const phi::distributed::Placements& values) {
 #ifdef PADDLE_WITH_DISTRIBUTE
   PyObject* result = PyList_New((Py_ssize_t)values.size());
 
   for (size_t i = 0; i < values.size(); i++) {
     auto& value = values[i];
-    PyList_SET_ITEM(result, static_cast<Py_ssize_t>(i), ToPyObject(*value));
+    PyList_SET_ITEM(result, static_cast<Py_ssize_t>(i), ToPyObject(value));
   }
 
   return result;
@@ -1279,10 +1284,6 @@ paddle::optional<paddle::Tensor> GetOptionalTensorFromArgs(
     const phi::distributed::ProcessMesh* mesh) {
   PyObject* obj = PyTuple_GET_ITEM(args, arg_idx);
 
-  if (PyTuple_Check(obj)) {
-    obj = PyTuple_GET_ITEM(obj, 0);
-  }
-
   if (obj == nullptr || obj == Py_None) {
     if (!dispensable) {
       PADDLE_THROW(common::errors::InvalidArgument(
@@ -1323,10 +1324,6 @@ static paddle::Tensor& GetTensorFromPyObject(const std::string& op_type,
                                              PyObject* obj,
                                              ssize_t arg_idx,
                                              bool dispensable) {
-  if (PyTuple_Check(obj)) {
-    obj = PyTuple_GET_ITEM(obj, 0);
-  }
-
   if (obj == nullptr || obj == Py_None) {
     if (!dispensable) {
       PADDLE_THROW(common::errors::InvalidArgument(
@@ -1615,10 +1612,6 @@ paddle::Tensor* GetTensorPtrFromArgs(const std::string& op_type,
                                      ssize_t arg_idx,
                                      bool dispensable) {
   PyObject* obj = PyTuple_GET_ITEM(args, arg_idx);
-
-  if (PyTuple_Check(obj)) {
-    obj = PyTuple_GET_ITEM(obj, 0);
-  }
 
   if (obj == nullptr || obj == Py_None) {
     if (!dispensable) {
@@ -2002,48 +1995,52 @@ PyObject* GetEmptyTensorsWithVarDesc(PyObject* self, PyObject* args) {
 
 paddle::Tensor CreateTensorFromValue(const pir::Value& value) {
   auto tensor = paddle::Tensor();
-
-  auto dims = phi::vectorize(GetValueDims(value));
-  auto ddims = phi::make_ddim(dims);
-  if (auto name = pir::utils::name_analysis::TryGetValueFirstName(value)) {
-    tensor.set_name(name.value());
-  }
   auto autograd_meta = egr::EagerUtils::autograd_meta(&tensor);
   autograd_meta->SetPersistable(false);
   autograd_meta->SetStopGradient(GetValueBoolAttr(value, kAttrStopGradients));
 
-  if (value.type().isa<paddle::dialect::DenseTensorType>()) {
-    // TODO(jiabin): Maybe support LegacyLoD later
-    std::shared_ptr<phi::DenseTensor> dense_tensor = nullptr;
-    auto dtype = paddle::dialect::TransToPhiDataType(
-        value.type().dyn_cast<paddle::dialect::DenseTensorType>().dtype());
-
-    if (dims.size() == 1 && dims[0] == 0) {
-      std::shared_ptr<phi::Allocation> allocation_ptr = nullptr;
-      dense_tensor = std::make_shared<phi::DenseTensor>(
-          allocation_ptr, phi::DenseTensorMeta(dtype, ddims));
-    } else {
-      // TODO(dev): we need enhance check for ddims.
-      dense_tensor = std::make_shared<phi::DenseTensor>(
-          std::make_shared<phi::Allocation>(),
-          phi::DenseTensorMeta(dtype, ddims));
+  if (value.impl() == nullptr || !value.type()) {
+    // do-nothing, just skip the Value with nullptr
+  } else {
+    auto dims = phi::vectorize(GetValueDims(value));
+    auto ddims = phi::make_ddim(dims);
+    if (auto name = pir::utils::name_analysis::TryGetValueFirstName(value)) {
+      tensor.set_name(name.value());
     }
 
-    if (value.type().isa<paddle::dialect::DistDenseTensorType>()) {
-      paddle::dialect::DistDenseTensorType value_type =
-          value.type().dyn_cast<paddle::dialect::DistDenseTensorType>();
-      auto pir_attr = value_type.tensor_dist_attr();
-      auto mesh = pir_attr.process_mesh_attr().process_mesh();
-      auto placements = pir_attr.placements();
-      tensor.set_impl(std::make_shared<phi::distributed::DistTensor>(
-          dense_tensor, mesh, placements));
-    } else {
-      tensor.set_impl(dense_tensor);
+    if (value.type().isa<paddle::dialect::DenseTensorType>()) {
+      // TODO(jiabin): Maybe support LegacyLoD later
+      std::shared_ptr<phi::DenseTensor> dense_tensor = nullptr;
+      auto dtype = paddle::dialect::TransToPhiDataType(
+          value.type().dyn_cast<paddle::dialect::DenseTensorType>().dtype());
+
+      if (dims.size() == 1 && dims[0] == 0) {
+        std::shared_ptr<phi::Allocation> allocation_ptr = nullptr;
+        dense_tensor = std::make_shared<phi::DenseTensor>(
+            allocation_ptr, phi::DenseTensorMeta(dtype, ddims));
+      } else {
+        // TODO(dev): we need enhance check for ddims.
+        dense_tensor = std::make_shared<phi::DenseTensor>(
+            std::make_shared<phi::Allocation>(),
+            phi::DenseTensorMeta(dtype, ddims));
+      }
+
+      if (value.type().isa<paddle::dialect::DistDenseTensorType>()) {
+        paddle::dialect::DistDenseTensorType value_type =
+            value.type().dyn_cast<paddle::dialect::DistDenseTensorType>();
+        auto pir_attr = value_type.tensor_dist_attr();
+        auto mesh = pir_attr.process_mesh_attr().process_mesh();
+        auto placements = pir_attr.placements();
+        tensor.set_impl(std::make_shared<phi::distributed::DistTensor>(
+            dense_tensor, mesh, placements));
+      } else {
+        tensor.set_impl(dense_tensor);
+      }
+    } else if (value.type().isa<paddle::dialect::SelectedRowsType>()) {
+      std::shared_ptr<phi::SelectedRows> selected_rows_tensor =
+          std::make_shared<phi::SelectedRows>();
+      tensor.set_impl(selected_rows_tensor);
     }
-  } else if (value.type().isa<paddle::dialect::SelectedRowsType>()) {
-    std::shared_ptr<phi::SelectedRows> selected_rows_tensor =
-        std::make_shared<phi::SelectedRows>();
-    tensor.set_impl(selected_rows_tensor);
   }
 
   if (!autograd_meta->GetMutableGradNode()) {
@@ -2060,29 +2057,28 @@ PyObject* GetEmptyTensorsWithValue(PyObject* self, PyObject* args) {
 
   auto value_list = PyTuple_GetItem(args, 0);
 
+  auto CreateTensorFromValueWithCache =
+      [&out_tensor_map](const pir::Value& value) {
+        if (out_tensor_map.find(value) == out_tensor_map.end()) {
+          paddle::Tensor tensor = CreateTensorFromValue(value);
+          out_tensor_map[value] = tensor;
+          return tensor;
+        } else {
+          return out_tensor_map[value];
+        }
+      };
+
   if (PyList_Check(value_list)) {
     Py_ssize_t len = PyList_Size(value_list);
     for (Py_ssize_t i = 0; i < len; i++) {
       auto value = PyObjectCast<pir::Value>(PyList_GetItem(value_list, i));
-      if (out_tensor_map.find(value) == out_tensor_map.end()) {
-        paddle::Tensor tensor = CreateTensorFromValue(value);
-        out_tensor_map[value] = tensor;
-        result.emplace_back(tensor);
-      } else {
-        result.emplace_back(out_tensor_map[value]);
-      }
+      result.emplace_back(CreateTensorFromValueWithCache(value));
     }
   } else if (PyTuple_Check(value_list)) {
     Py_ssize_t len = PyTuple_Size(value_list);
     for (Py_ssize_t i = 0; i < len; i++) {
       auto value = PyObjectCast<pir::Value>(PyTuple_GetItem(value_list, i));
-      if (out_tensor_map.find(value) == out_tensor_map.end()) {
-        paddle::Tensor tensor = CreateTensorFromValue(value);
-        out_tensor_map[value] = tensor;
-        result.emplace_back(tensor);
-      } else {
-        result.emplace_back(out_tensor_map[value]);
-      }
+      result.emplace_back(CreateTensorFromValueWithCache(value));
     }
   } else if (value_list != Py_None) {
     PADDLE_THROW(common::errors::InvalidArgument(

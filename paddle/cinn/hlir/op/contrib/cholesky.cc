@@ -17,7 +17,7 @@
 #include <utility>
 #include <vector>
 
-#include "absl/types/variant.h"
+#include <variant>
 #include "glog/logging.h"
 #include "paddle/cinn/common/cinn_value.h"
 #include "paddle/cinn/common/common.h"
@@ -39,7 +39,6 @@
 #include "paddle/cinn/lang/compute.h"
 #include "paddle/cinn/lang/packed_func.h"
 #include "paddle/cinn/optim/ir_simplify.h"
-#include "paddle/cinn/poly/stage.h"
 
 #include "paddle/common/errors.h"
 

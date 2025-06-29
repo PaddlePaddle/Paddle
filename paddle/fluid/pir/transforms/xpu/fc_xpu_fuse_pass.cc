@@ -566,10 +566,17 @@ class FCXpuFusePass : public pir::PatternRewritePass {
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
-    unsigned char enable_fc_xpu_pattern = 0xff;
+    int enable_fc_xpu_pattern = 0xff;
     const char *value = std::getenv("XPU_PADDLE_FC_PATTERN");
     if (value != nullptr) {
-      enable_fc_xpu_pattern = std::stoi(value);
+      char *endptr;
+      auto val = std::strtol(value, &endptr, 16);
+      if (*endptr != '\0') {
+        LOG(WARNING) << "Invalid XPU_PADDLE_FC_PATTERN: " << value;
+        enable_fc_xpu_pattern = 0xff;
+      } else {
+        enable_fc_xpu_pattern = static_cast<int>(val);
+      }
       std::cout << "XPU_PADDLE_FC_PATTERN: " << enable_fc_xpu_pattern
                 << std::endl;
     }

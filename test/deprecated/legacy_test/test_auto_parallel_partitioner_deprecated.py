@@ -321,9 +321,10 @@ class MLPLayer(nn.Layer):
 
 
 def mlp_pretrain_forward(train_program, start_program):
-    with static.program_guard(
-        train_program, start_program
-    ), utils.unique_name.guard():
+    with (
+        static.program_guard(train_program, start_program),
+        utils.unique_name.guard(),
+    ):
         batch_size = 4
         hidden_size = 1024
         sequence_len = 512
@@ -452,7 +453,7 @@ class TestMLPAutoPartitioner(unittest.TestCase):
             'elementwise_add',
             'gelu',
             'matmul_v2',
-            'c_allreduce_sum',
+            'all_reduce',
             'elementwise_add',
             'dropout',
         ]
@@ -545,7 +546,7 @@ class TestMLPAutoPartitioner(unittest.TestCase):
             'elementwise_add',
             'gelu',
             'matmul_v2',
-            'c_allreduce_sum',
+            'all_reduce',
             'elementwise_add',
             'dropout',
         ]
@@ -703,9 +704,10 @@ class AttentionLayer(nn.Layer):
 
 
 def attn_pretrain_forward(train_program, start_program):
-    with static.program_guard(
-        train_program, start_program
-    ), utils.unique_name.guard():
+    with (
+        static.program_guard(train_program, start_program),
+        utils.unique_name.guard(),
+    ):
         batch_size = 4
         hidden_size = 1024
         sequence_len = 512
@@ -844,7 +846,7 @@ class TestAttentionAutoPartitioner(unittest.TestCase):
             'transpose2',
             'reshape2',
             'matmul_v2',
-            'c_allreduce_sum',
+            'all_reduce',
             'elementwise_add',
         ]
         self.assertTrue(dist_ops == ref_ops)
@@ -951,7 +953,7 @@ class TestAttentionAutoPartitioner(unittest.TestCase):
             'transpose2',
             'reshape2',
             'matmul_v2',
-            'c_allreduce_sum',
+            'all_reduce',
             'elementwise_add',
         ]
         self.assertTrue(dist_ops == ref_ops)
@@ -1202,9 +1204,10 @@ class DecoderLayer(nn.Layer):
 
 
 def decoder_pretrain_forward(train_program, start_program):
-    with static.program_guard(
-        train_program, start_program
-    ), utils.unique_name.guard():
+    with (
+        static.program_guard(train_program, start_program),
+        utils.unique_name.guard(),
+    ):
         batch_size = 4
         hidden_size = 1024
         sequence_len = 512
@@ -1295,7 +1298,7 @@ class TestDecoderLayerPartitioner(unittest.TestCase):
         dist_ops = [op.type for op in dist_ops]
         ref_ops = [
             'c_embedding',
-            'c_allreduce_sum',
+            'all_reduce',
             'lookup_table_v2',
             'elementwise_add',
             'dropout',
@@ -1320,7 +1323,7 @@ class TestDecoderLayerPartitioner(unittest.TestCase):
             'transpose2',
             'reshape2',
             'matmul_v2',
-            'c_allreduce_sum',
+            'all_reduce',
             'elementwise_add',
             'dropout',
             'elementwise_add',
@@ -1329,7 +1332,7 @@ class TestDecoderLayerPartitioner(unittest.TestCase):
             'elementwise_add',
             'gelu',
             'matmul_v2',
-            'c_allreduce_sum',
+            'all_reduce',
             'elementwise_add',
             'dropout',
             'elementwise_add',

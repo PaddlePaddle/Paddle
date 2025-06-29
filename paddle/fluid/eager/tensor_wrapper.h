@@ -102,7 +102,7 @@ class TensorWrapper {
         unpack_hook_ = egr::SavedTensorsHooks::GetInstance().GetUnPackHook();
         packed_value_ = (*pack_hook)(tensor);
       } else if (egr::SavedTensorsHooks::GetInstance().IsEnable() &&
-                 tensor.initialized() && tensor.is_dist_tensor()) {
+                 tensor.has_allocation() && tensor.is_dist_tensor()) {
         intermediate_tensor_.set_impl(
             std::make_shared<phi::distributed::DistTensor>(
                 tensor.dims(),

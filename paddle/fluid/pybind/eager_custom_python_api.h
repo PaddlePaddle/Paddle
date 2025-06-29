@@ -15,7 +15,7 @@
 
 #include <iostream>
 
-#include "paddle/fluid/eager/to_static/run_program_op_func.h"
+#include "paddle/fluid/eager/to_static/run_program_func.h"
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/phi/core/enforce.h"
 
@@ -36,7 +36,7 @@ static PyObject *eager_api_linear(PyObject *self,
 
     tstate = PyEval_SaveThread();
 
-    if (bias.is_dist_tensor() || bias.initialized()) {
+    if (bias.is_dist_tensor() || bias.has_allocation()) {
       const phi::distributed::ProcessMesh *mesh = nullptr;
       if (InputsContainDistTensor(&mesh, x, weight, bias)) {
         ConvertAllInputsToDistTensor(mesh, x, weight, bias);
@@ -96,12 +96,11 @@ static PyObject *eager_api_run_program(PyObject *self,
     }
     framework::AttributeMap attrs;
     VLOG(6) << "Start PIR ConstructAttrMapFromPyArgs";
-    ConstructAttrMapForRunProgram(
-        "run_program", args, 4, PyTuple_GET_SIZE(args), attrs);
+    ConstructAttrMapForRunProgram("run_program", args, 4, attrs);
 
     VLOG(6) << "Finish Pir ConstructAttrMapFromPyArgs";
     tstate = PyEval_SaveThread();
-    pir_run_program_ad_func(X, Params, Out, OutScope, attrs);
+    egr::to_static::run_program_ad_func(X, Params, Out, OutScope, attrs);
     PyEval_RestoreThread(tstate);
     tstate = nullptr;
     Py_RETURN_NONE;

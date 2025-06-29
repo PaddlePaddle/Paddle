@@ -272,11 +272,14 @@ class OpTestUtils:
 
 
 def apply_to_static(net, use_cinn):
-    build_strategy = paddle.static.BuildStrategy()
-    build_strategy.build_cinn_pass = use_cinn
-    return paddle.jit.to_static(
-        net, build_strategy=build_strategy, full_graph=True
-    )
+    if not paddle.framework.use_pir_api():
+        build_strategy = paddle.static.BuildStrategy()
+        build_strategy.build_cinn_pass = use_cinn
+        return paddle.jit.to_static(
+            net, build_strategy=build_strategy, full_graph=True
+        )
+    backend = "CINN" if use_cinn else None
+    return paddle.jit.to_static(net, backend=backend, full_graph=True)
 
 
 class PrimNet(paddle.nn.Layer):
@@ -1030,7 +1033,7 @@ class PrimGradChecker(PrimForwardChecker):
                 xs.append(inputs_dict[self.inputs_to_check])
             vs = self.gen_eager_grad_outputs()
             no_grad_vars = self.gen_no_grad_set(
-                var_dict={**inputs_dict, **outputs_dict}
+                var_dict=inputs_dict | outputs_dict
             )
             ret = paddle.grad(
                 ys, xs, vs, allow_unused=True, no_grad_vars=no_grad_vars
@@ -1146,7 +1149,7 @@ class PrimGradChecker(PrimForwardChecker):
                 vs, vs_feed = self.gen_static_grad_outputs_and_feed()
                 feed.update(vs_feed)
                 no_grad_vars = self.gen_no_grad_set(
-                    var_dict={**inputs_dict, **outputs_dict}
+                    var_dict=inputs_dict | outputs_dict
                 )
                 if not in_pir_mode():
                     ret = paddle.static.gradients(
@@ -1275,7 +1278,7 @@ class PrimGradChecker(PrimForwardChecker):
                 xs.append(inputs_dict[self.inputs_to_check])
             vs = self.gen_eager_grad_outputs()
             no_grad_vars = self.gen_no_grad_set(
-                var_dict={**inputs_dict, **outputs_dict}
+                var_dict=inputs_dict | outputs_dict
             )
             ret = paddle.grad(
                 ys, xs, vs, allow_unused=True, no_grad_vars=no_grad_vars
@@ -1397,7 +1400,7 @@ class PrimGradChecker(PrimForwardChecker):
                 xs.append(inputs_dict[self.inputs_to_check])
             vs = self.gen_eager_grad_outputs()
             no_grad_vars = self.gen_no_grad_set(
-                var_dict={**inputs_dict, **outputs_dict}
+                var_dict=inputs_dict | outputs_dict
             )
             ret = paddle.grad(
                 ys, xs, vs, allow_unused=True, no_grad_vars=no_grad_vars

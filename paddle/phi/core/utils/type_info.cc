@@ -72,6 +72,7 @@ template class TypeInfoTraits<phi::DeviceContext, GPUPinnedContext>;
 
 #ifdef PADDLE_WITH_XPU
 template class TypeInfoTraits<phi::DeviceContext, XPUContext>;
+template class TypeInfoTraits<phi::DeviceContext, XPUPinnedContext>;
 #endif
 
 #ifdef PADDLE_WITH_DNNL

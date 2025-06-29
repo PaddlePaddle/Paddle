@@ -358,7 +358,7 @@ def monkey_patch_variable():
                 >>> import paddle
                 >>> import numpy as np
 
-                >>> x = np.ones([2, 2], np.float32) # type: ignore[var-annotated]
+                >>> x = np.ones([2, 2], np.float32)
                 >>> with base.dygraph.guard():
                 ...     original_variable = paddle.to_tensor(x)
                 ...     print("original var's dtype is: {}, numpy dtype is {}".format(original_variable.dtype, original_variable.numpy().dtype))

@@ -29,7 +29,7 @@ def _mesh_equal_ignore_shape_one(mesh1, mesh2, dim: int):
     """
     Check if two process meshes are equal, ignoring the shape value `1`
     in the specified dimension. This is used when mesh1 is a sub-mesh
-    splitted from a global mesh, in this case, the shape of mesh1 is `1`
+    split from a global mesh, in this case, the shape of mesh1 is `1`
     in the split dim.
     E.g, the following two meshes are equal:
       mesh1: shape = [1,2,2], process_ids = [0,1,2,3]

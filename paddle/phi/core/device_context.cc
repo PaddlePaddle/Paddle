@@ -156,7 +156,7 @@ struct DeviceContext::Impl {
         ClearHolder(tensor);
       }
     } else {
-      if (tensor->initialized() && tensor->place() != place) {
+      if (tensor->has_allocation() && tensor->place() != place) {
         ClearHolder(tensor);
       }
     }
@@ -213,7 +213,7 @@ struct DeviceContext::Impl {
         ClearHolder(tensor);
       }
     } else {
-      if (tensor->initialized() && tensor->place() != CPUPlace()) {
+      if (tensor->has_allocation() && tensor->place() != CPUPlace()) {
         ClearHolder(tensor);
       }
     }

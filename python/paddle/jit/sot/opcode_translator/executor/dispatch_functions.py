@@ -14,6 +14,8 @@
 
 # This file stores the customized function that will be called by the dispatch mechanism.
 
+from __future__ import annotations
+
 from ...utils import BreakGraphError, BreakGraphReasonBase, FallbackError
 
 
@@ -53,5 +55,17 @@ def operator_is_not_none(val):
     pass
 
 
-def tensor_numel(x):
+def tensor_dim(x):
+    pass
+
+
+def generator_send(x):
+    pass
+
+
+def place_get_device_id():
+    pass
+
+
+def place_get_device_type():
     pass

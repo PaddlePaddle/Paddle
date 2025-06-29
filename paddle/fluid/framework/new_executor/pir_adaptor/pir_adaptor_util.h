@@ -51,6 +51,7 @@ class ValueExecutionInfo {
  public:
   friend class IfInstruction;
   friend class WhileInstruction;
+  friend class CudaGraphInstruction;
   friend class PyLayerInstruction;
   friend class CustomEngineInstruction;
   explicit ValueExecutionInfo(Scope* scope) : scope_(scope) {}
@@ -68,6 +69,8 @@ class ValueExecutionInfo {
   std::string GetNameById(int id) const;
 
   Variable* GetVarByValue(pir::Value value) const;
+
+  ::pir::Value GetValueByVar(const Variable* var) const;
 
   const std::unordered_map<::pir::Value, std::string>& GetValue2VarName() const;
 

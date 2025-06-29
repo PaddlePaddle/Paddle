@@ -20,7 +20,6 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/adam_functors.h"
-// See Note [ Why still include the fluid headers? ]
 #include "paddle/phi/kernels/funcs/selected_rows_functor.h"
 
 namespace phi {
@@ -57,7 +56,7 @@ void AdamDenseParamSparseGradKernel(
   PADDLE_ENFORCE_NE(
       amsgrad,
       true,
-      phi::errors::Unimplemented("Operation amsgrad is not supported yet."));
+      common::errors::Unimplemented("Operation amsgrad is not supported yet."));
 
   using XPUType = typename XPUTypeTrait<T>::Type;
   xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());

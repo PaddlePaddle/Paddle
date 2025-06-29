@@ -291,9 +291,7 @@ class PrimGroupNorm(paddle.nn.Layer):
 
 
 def apply_to_static(net, use_cinn):
-    build_strategy = paddle.static.BuildStrategy()
-    build_strategy.build_cinn_pass = use_cinn
-    return paddle.jit.to_static(net, build_strategy=False, full_graph=True)
+    return paddle.jit.to_static(net, backend=None, full_graph=True)
 
 
 places = [paddle.CPUPlace()]

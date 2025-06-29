@@ -35,7 +35,7 @@ if TYPE_CHECKING:
 def _reduce_in_dygraph(
     tensor, dst_rank_in_group, op, group, sync_op, use_calc_stream
 ):
-    op_type = _get_reduce_op(op, "reduce")
+    op_type = _get_reduce_op(op)
     if use_calc_stream:
         return group.process_group.reduce_on_calc_stream(
             tensor, dst_rank_in_group, op_type

@@ -1,6 +1,8 @@
-string(FIND "${CUDA_ARCH_BIN}" "90" ARCH_BIN_CONTAINS_90)
+string(FIND "${COMPILED_CUDA_ARCHS}" "90" ARCH_BIN_CONTAINS_90)
 
-if(WITH_GPU AND (ARCH_BIN_CONTAINS_90 GREATER -1))
+if(WITH_DISTRIBUTE
+   AND WITH_GPU
+   AND (ARCH_BIN_CONTAINS_90 GREATER -1))
   message(STATUS "Enable DeepEP alltoall communication.")
   add_subdirectory(deep_ep)
   set(DEEPEP_LIB deep_ep)
@@ -36,10 +38,18 @@ if(WITH_NCCL OR WITH_RCCL)
 
 endif()
 
+if(WITH_FLAGCX)
+  cc_library(
+    process_group_flagcx
+    SRCS process_group_flagcx.cc common.cc
+    DEPS process_group phi)
+endif()
+
 if(WITH_XPU_BKCL)
   cc_library(
     process_group_bkcl
     SRCS process_group_bkcl.cc bkcl_tools.cc common.cc
+         process_group_kernel_utils.cc
     DEPS process_group phi)
 
   cc_library(

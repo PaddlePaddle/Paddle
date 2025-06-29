@@ -20,13 +20,18 @@
 namespace common {
 
 template <typename T>
+struct DefaultCompare {
+  bool operator()(const T& a, const T& b) const { return a == b; }
+};
+
+template <typename T, typename Compare = DefaultCompare<T>>
 class UnionFindSet {
  public:
   const T& Find(const T& x) const {
     if (parent_.find(x) == parent_.end()) {
       return x;
     }
-    if (parent_.at(x) != x) return Find(parent_.at(x));
+    if (!compare_(parent_.at(x), x)) return Find(parent_.at(x));
     return parent_.at(x);
   }
 
@@ -34,7 +39,7 @@ class UnionFindSet {
     if (parent_.find(x) == parent_.end()) {
       return x;
     }
-    if (parent_[x] != x) {
+    if (!compare_(parent_.at(x), x)) {
       parent_[x] = Find(parent_[x]);
     }
     return parent_.at(x);
@@ -50,7 +55,9 @@ class UnionFindSet {
     parent_[Find(q)] = Find(p);
   }
 
-  const std::unordered_map<T, T>& GetMap() const { return parent_; }
+  const std::unordered_map<T, T, std::hash<T>, Compare>& GetMap() const {
+    return parent_;
+  }
 
   template <typename DoEachClusterT>
   void VisitCluster(const DoEachClusterT& DoEachCluster) const {
@@ -63,12 +70,19 @@ class UnionFindSet {
     }
   }
 
-  bool HasSameRoot(const T& p, const T& q) const { return Find(p) == Find(q); }
+  bool HasSameRoot(const T& p, const T& q) const {
+    // add shortcut for empty map.
+    if (parent_.empty()) {
+      return compare_(p, q);
+    }
+    return compare_(Find(p), Find(q));
+  }
 
-  std::unordered_map<T, T>* MutMap() { return &parent_; }
+  std::unordered_map<T, T, std::hash<T>, Compare>* MutMap() { return &parent_; }
 
  private:
-  std::unordered_map<T, T> parent_;
+  std::unordered_map<T, T, std::hash<T>, Compare> parent_;
+  Compare compare_;
 };
 
 }  // namespace common

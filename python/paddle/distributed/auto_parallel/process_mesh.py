@@ -15,12 +15,16 @@
 from __future__ import annotations
 
 import copy
+import logging
 from typing import TYPE_CHECKING, Any, SupportsIndex, Union
 
 import numpy as np
 
 import paddle
+from paddle.distributed.communication.group import is_initialized
 from paddle.framework import core
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Sequence
@@ -38,6 +42,7 @@ _g_previous_process_mesh = None
 _g_current_process_mesh = None
 # {shape_process_ids : unique_id}
 _g_unique_process_mesh_map = {}
+_g_group_map = {}
 
 
 def get_current_process_mesh():
@@ -80,6 +85,24 @@ def retrieve_unique_id_for_process_mesh(shape, process_ids):
 def get_unique_process_mesh_map():
     global _g_unique_process_mesh_map
     return _g_unique_process_mesh_map
+
+
+def init_group_by_process_mesh(dim_names):
+    global _g_group_map
+    if dim_names is None:
+        dim_names = []
+    assert isinstance(dim_names, list), "dim_names must be a list."
+    for dim_name in dim_names:
+        if dim_name in _g_group_map:
+            continue
+        _g_group_map[dim_name] = {}
+
+
+def get_group_map_by_dim_name(dim_name):
+    global _g_group_map
+    if dim_name not in _g_group_map:
+        raise RuntimeError(f'No group found for dim_name {dim_name}')
+    return _g_group_map[dim_name]
 
 
 class ProcessMesh(core.ProcessMesh):
@@ -178,6 +201,7 @@ class ProcessMesh(core.ProcessMesh):
         self._unique_id = get_unique_id_for_process_mesh(
             self._shape, self._process_ids
         )
+        init_group_by_process_mesh(self._dim_names)
 
     @property
     def mesh(self) -> npt.NDArray[Any]:
@@ -204,7 +228,7 @@ class ProcessMesh(core.ProcessMesh):
         return self._unique_id
 
     def __getitem__(
-        self, index: slice | tuple[slice, ...] | SupportsIndex
+        self, index: slice | tuple[slice, ...] | str | SupportsIndex
     ) -> ProcessMesh:
         if isinstance(index, tuple):
             new_dim_names = []
@@ -221,6 +245,8 @@ class ProcessMesh(core.ProcessMesh):
             new_mesh = self._mesh[index]
             new_dim_names = self._dim_names
             return ProcessMesh(new_mesh, new_dim_names)
+        elif isinstance(index, str):
+            return self.get_submesh_with_dim(index)
         else:
             new_mesh = self._mesh[index]
             new_dim_names = self._dim_names[1:]
@@ -281,8 +307,150 @@ class ProcessMesh(core.ProcessMesh):
         new_mesh = self._mesh.transpose(new_order)
 
         if index is not None:
-            return ProcessMesh(new_mesh[index], new_dim_names[1:])
+            if len(new_dim_names[1:]) > 0:
+                return ProcessMesh(new_mesh[index], new_dim_names[1:])
+            # satisfy the single dimension mesh case
+            else:
+                return ProcessMesh([new_mesh[index]], new_dim_names)
         return ProcessMesh(new_mesh, new_dim_names)
+
+    def get_submesh_with_dim(
+        self,
+        dim_name: str,
+    ) -> ProcessMesh:
+        """
+        Slice the current ProcessMesh based on the dim_name given to create a submesh with single dimension remained.
+
+        Args:
+            dim_name (str): the name of the mesh dimension of the ProcessMesh to create the submesh for.
+        Returns:
+            A :class:`ProcessMesh` object
+
+        Examples:
+            .. code-block:: python
+
+                >>> import paddle
+                >>> import paddle.distributed as dist
+
+                >>> dist.init_parallel_env()
+                >>> mesh_2d = dist.ProcessMesh([[0, 1, 2, 3], [4, 5, 6, 7]], dim_names=["dp", "tp"])
+
+                >>> dp_mesh = mesh_2d.get_submesh_with_dim("dp")
+                >>> # ProcessMesh:([0, 4]) on rank 0, 4
+                >>> # ProcessMesh:([1, 5]) on rank 1, 5
+                >>> # ProcessMesh:([2, 6]) on rank 2, 6
+                >>> # ProcessMesh:([3, 7]) on rank 3, 7
+
+                >>> tp_mesh = mesh_2d.get_submesh_with_dim("tp")
+                >>> # ProcessMesh:([0, 1, 2, 3]) on rank 0, 1, 2, 3
+                >>> # ProcessMesh:([4, 5, 6, 7]) on rank 4, 5, 6, 7
+
+                >>> mesh_3d = dist.ProcessMesh([[[0, 1],[2, 3]], [[4, 5], [6, 7]]], dim_names=["pp","dp","tp"])
+
+                >>> pp_mesh = mesh_3d.get_submesh_with_dim("pp")
+                >>> # ProcessMesh:([0, 4]) on rank 0, 4
+                >>> # ProcessMesh:([1, 5]) on rank 1, 5
+                >>> # ProcessMesh:([2, 6]) on rank 2, 6
+                >>> # ProcessMesh:([3, 7]) on rank 3, 7
+
+                >>> dp_mesh = mesh_3d.get_submesh_with_dim("dp")
+                >>> # ProcessMesh:([0, 2]) on rank 0, 2
+                >>> # ProcessMesh:([1, 3]) on rank 1, 3
+                >>> # ProcessMesh:([4, 6]) on rank 4, 6
+                >>> # ProcessMesh:([5, 7]) on rank 5, 7
+
+                >>> tp_mesh = mesh_3d.get_submesh_with_dim("tp")
+                >>> # ProcessMesh:([0, 1]) on rank 0, 1
+                >>> # ProcessMesh:([2, 3]) on rank 2, 3
+                >>> # ProcessMesh:([4, 5]) on rank 4, 5
+                >>> # ProcessMesh:([6, 7]) on rank 6, 7
+        """
+
+        reorder_mesh = self.get_mesh_with_dim(dim_name)._mesh.reshape(
+            self.get_dim_size(dim_name), -1
+        )
+        curr_rank = paddle.distributed.get_rank()
+        if curr_rank not in self._process_ids:
+            logger.warning(
+                f"Rank {curr_rank} is not in the process mesh, just return None"
+            )
+            return None
+        # find curr_rank in reorder_mesh, get the column index
+        col_idx = np.argmax(reorder_mesh == curr_rank) % reorder_mesh.shape[-1]
+        sub_mesh = ProcessMesh(reorder_mesh[:, col_idx], [dim_name])
+        return sub_mesh
+
+    def _get_group(
+        self,
+        dim_name: str | None = None,
+    ) -> paddle.distributed.communication.group.Group:
+        """ """
+        assert is_initialized(), (
+            "When you want to get a group from the ProcessMesh."
+            " Call paddle.distributed.init_parallel_env first "
+            "to initialize the distributed environment."
+        )
+        if len(self._dim_names) > 1 and dim_name is None:
+            raise ValueError(
+                "You should specify the dim_name when the ProcessMesh has more than one dimensions."
+            )
+        reorder_mesh = self.get_mesh_with_dim(dim_name)._mesh.reshape(
+            self.get_dim_size(dim_name), -1
+        )
+        curr_rank = paddle.distributed.get_rank()
+        groups = get_group_map_by_dim_name(dim_name)
+
+        for rank in self._process_ids:
+            col_idx = np.argmax(reorder_mesh == rank) % reorder_mesh.shape[-1]
+            if col_idx in groups:
+                continue
+            pg = paddle.distributed.new_group(reorder_mesh[:, col_idx])
+            groups[col_idx] = pg
+
+        cur_col_idx = (
+            np.argmax(reorder_mesh == curr_rank) % reorder_mesh.shape[-1]
+        )
+        return groups[cur_col_idx]
+
+    def get_group(
+        self,
+        dim_name: str | None = None,
+    ) -> paddle.distributed.communication.group.Group:
+        """
+        Convert single dimension ProcessMesh to the corresponding Group.
+
+        Args:
+            dim_name (str, optional): it can be the name of the mesh dimension. Default is None.
+
+        Returns:
+            A :class:`Group` object.
+        """
+
+        # check parallel environment whether ready or not
+        assert is_initialized(), (
+            "When you want to get a group from the ProcessMesh."
+            " Call paddle.distributed.init_parallel_env first "
+            "to initialize the distributed environment."
+        )
+        if len(self._dim_names) > 1 and dim_name is None:
+            raise ValueError(
+                "You should specify the dim_name when the ProcessMesh has more than one dimensions."
+            )
+        if len(self._dim_names) == 1:
+            if dim_name is not None and dim_name not in self._dim_names:
+                raise ValueError(
+                    f"{dim_name} not in the dimension names {self._dim_names}"
+                )
+            else:
+                pg = paddle.distributed.new_group(self._process_ids)
+                return pg
+        else:
+            if dim_name not in self._dim_names:
+                raise ValueError(
+                    f"{dim_name} not in the dimension names {self._dim_names}"
+                )
+            sub_mesh = self.get_submesh_with_dim(dim_name)
+            return sub_mesh.get_group(dim_name)
 
     def __enter__(self) -> None:
         set_current_process_mesh(self)

@@ -33,19 +33,35 @@ NCCLCommContext::NCCLCommContext(int rank,
                                  int size,
                                  ncclUniqueId nccl_id,
                                  int nccl_comm_init_option)
-    : CommContext(rank, size), nccl_version_(0), nccl_comm_(nullptr) {
-  if (nccl_comm_init_option > 0 && phi::dynload::ncclCommInitRank2.IsValid()) {
+    : CommContext(rank, size),
+      nccl_version_(0),
+      nccl_comm_(nullptr),
+      nranks(size_),
+      myrank(rank_),
+      param(nccl_comm_init_option) {
+  this->CreateNCCLComm(nccl_id);
+  NCCL_CHECK(phi::dynload::ncclGetVersion(&nccl_version_));
+}
+
+void NCCLCommContext::CreateNCCLComm(ncclUniqueId nccl_id) {
+  if (param > 0 && phi::dynload::ncclCommInitRank2.IsValid()) {
     LOG(WARNING) << "Creating modified qp with ncclCommInitRank2.";
     NCCL_CHECK(phi::dynload::ncclCommInitRank2(
-        &nccl_comm_, size_, nccl_id, rank_, nccl_comm_init_option));
+        &nccl_comm_, nranks, nccl_id, myrank, param));
   } else {
-    if (nccl_comm_init_option > 0) {
+    if (param > 0) {
       LOG(WARNING) << "ncclCommInitRank2 is not supported.";
     }
     NCCL_CHECK(
-        phi::dynload::ncclCommInitRank(&nccl_comm_, size_, nccl_id, rank_));
+        phi::dynload::ncclCommInitRank(&nccl_comm_, nranks, nccl_id, myrank));
   }
-  NCCL_CHECK(phi::dynload::ncclGetVersion(&nccl_version_));
+}
+
+void NCCLCommContext::DestroyNCCLComm() {
+  if (nccl_comm_ != nullptr) {
+    NCCL_CHECK(phi::dynload::ncclCommDestroy(nccl_comm_));
+    nccl_comm_ = nullptr;
+  }
 }
 
 int NCCLCommContext::GetNcclVersion() { return nccl_version_; }
@@ -122,6 +138,13 @@ void NCCLCommContext::ReduceScatter(phi::DenseTensor* out_tensor,
                                     const phi::DenseTensor& in_tensor,
                                     ncclRedOp_t reduce_type,
                                     gpuStream_t stream) {
+  PADDLE_ENFORCE_EQ(
+      in_tensor.dtype() != phi::DataType::FLOAT8_E4M3FN &&
+          in_tensor.dtype() != phi::DataType::FLOAT8_E5M2,
+      true,
+      common::errors::InvalidArgument(
+          "float8 dtypes are not currently supported for NCCL reductions"));
+
   phi::distributed::CommStaticCheck::ScatterLikeShape(*out_tensor,
                                                       in_tensor,
                                                       /*dst_rank*/ rank_,
@@ -185,6 +208,13 @@ void NCCLCommContext::AllReduce(phi::DenseTensor* out_tensor,
                                 const phi::DenseTensor& in_tensor,
                                 ncclRedOp_t reduce_type,
                                 gpuStream_t stream) {
+  PADDLE_ENFORCE_EQ(
+      in_tensor.dtype() != phi::DataType::FLOAT8_E4M3FN &&
+          in_tensor.dtype() != phi::DataType::FLOAT8_E5M2,
+      true,
+      common::errors::InvalidArgument(
+          "float8 dtypes are not currently supported for NCCL reductions"));
+
   phi::distributed::CommStaticCheck::SameShape(*out_tensor,
                                                in_tensor,
                                                /*dst_rank*/ rank_,
@@ -210,6 +240,13 @@ void NCCLCommContext::Reduce(phi::DenseTensor* out_tensor,
                              ncclRedOp_t reduce_type,
                              int root,
                              gpuStream_t stream) {
+  PADDLE_ENFORCE_EQ(
+      in_tensor.dtype() != phi::DataType::FLOAT8_E4M3FN &&
+          in_tensor.dtype() != phi::DataType::FLOAT8_E5M2,
+      true,
+      common::errors::InvalidArgument(
+          "float8 dtypes are not currently supported for NCCL reductions"));
+
   phi::distributed::CommStaticCheck::SameShape(*out_tensor,
                                                in_tensor,
                                                /*dst_rank*/ root,

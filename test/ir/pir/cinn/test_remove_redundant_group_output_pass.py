@@ -23,9 +23,6 @@ os.environ['FLAGS_use_cinn'] = '1'
 
 import paddle
 
-build_strategy = paddle.static.BuildStrategy()
-build_strategy.build_cinn_pass = True
-
 
 def init():
     var_1 = paddle.rand([32, 1])
@@ -98,7 +95,7 @@ class TestCase(unittest.TestCase):
     def compare_result(self, dy_compute, data_init):
         static_compute = paddle.jit.to_static(
             full_graph=True,
-            build_strategy=build_strategy,
+            backend="CINN",
             input_spec=input_spec(),
         )(dy_compute)
         inputs = data_init()

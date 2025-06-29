@@ -51,13 +51,13 @@ typedef struct PyInterpreterFrameProxy {
 PyInterpreterFrameProxy *PyInterpreterFrameProxy_New(
     _PyInterpreterFrame *frame);
 PyMODINIT_FUNC PyInit__frame_proxy();
-
+typedef PyInterpreterFrameProxy FrameProxy;
 #else
 typedef PyFrameObject FrameObject;
+typedef PyFrameObject FrameProxy;
 #endif
 
 #endif
-
 #ifdef __cplusplus
 }
 #endif

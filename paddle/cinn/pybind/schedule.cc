@@ -105,8 +105,6 @@ void BindSchedule(py::module *m) {
       .def("copy_transform_and_loop_info",
            py::overload_cast<const Expr &, const Expr &>(
                &ir::IRSchedule::CopyTransformAndLoopInfo))
-      .def("rfactor",
-           py::overload_cast<const Expr &, int>(&ir::IRSchedule::Rfactor))
       .def("annotate",
            py::overload_cast<const Expr &,
                              const std::string &,

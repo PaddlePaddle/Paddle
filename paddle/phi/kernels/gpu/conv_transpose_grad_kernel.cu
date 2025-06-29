@@ -25,7 +25,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void Conv2dTransposeDoubleGradKernel(const Context& ctx,
+void Conv2dTransposeDoubleGradKernel(const Context& dev_ctx,
                                      const DenseTensor& x,
                                      const DenseTensor& filter,
                                      const DenseTensor& dout,
@@ -42,7 +42,7 @@ void Conv2dTransposeDoubleGradKernel(const Context& ctx,
                                      DenseTensor* dx,
                                      DenseTensor* dfilter,
                                      DenseTensor* ddout) {
-  ConvTransposeGradRawKernel<T, Context>(ctx,
+  ConvTransposeGradRawKernel<T, Context>(dev_ctx,
                                          x,
                                          filter,
                                          dout,
@@ -57,7 +57,7 @@ void Conv2dTransposeDoubleGradKernel(const Context& ctx,
 }
 
 template <typename T, typename Context>
-void DepthwiseConv2dTransposeGradKernel(const Context& ctx,
+void DepthwiseConv2dTransposeGradKernel(const Context& dev_ctx,
                                         const DenseTensor& x,
                                         const DenseTensor& filter,
                                         const DenseTensor& dout,
@@ -97,7 +97,7 @@ void DepthwiseConv2dTransposeGradKernel(const Context& ctx,
 
   if (dx) {
     paddle::operators::math::DepthwiseConvFunctor<Context, T> depthwiseConv;
-    depthwiseConv(ctx,
+    depthwiseConv(dev_ctx,
                   dout,
                   filter_,
                   strides,
@@ -110,13 +110,13 @@ void DepthwiseConv2dTransposeGradKernel(const Context& ctx,
 
   if (dfilter) {
     funcs::SetConstant<Context, T> set_zero;
-    ctx.template Alloc<T>(dfilter);
-    set_zero(ctx, dfilter, static_cast<T>(0));
+    dev_ctx.template Alloc<T>(dfilter);
+    set_zero(dev_ctx, dfilter, static_cast<T>(0));
 
     paddle::operators::math::DepthwiseConvFilterGradFunctor<Context, T>
         depthwiseConvFilterGrad;
     depthwiseConvFilterGrad(
-        ctx,
+        dev_ctx,
         dout,
         x,
         strides,

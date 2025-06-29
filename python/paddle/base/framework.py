@@ -27,6 +27,7 @@ import threading
 import traceback
 import warnings
 from collections.abc import Iterable
+from contextlib import contextmanager
 from types import FunctionType, MethodType
 from typing import TYPE_CHECKING, Callable, TypeVar, overload
 
@@ -200,6 +201,16 @@ def get_flags(flags: str | Sequence[str]) -> dict[str, bool | str | float]:
     return flags_value
 
 
+@contextmanager
+def flag_guard(flag_name, flag_value):
+    old_value = paddle.get_flags(flag_name)[flag_name]
+    paddle.set_flags({flag_name: flag_value})
+    try:
+        yield
+    finally:
+        paddle.set_flags({flag_name: old_value})
+
+
 # use thread local to create thread save global variables.
 class GlobalThreadLocal(threading.local):
     def __init__(self):
@@ -209,7 +220,6 @@ class GlobalThreadLocal(threading.local):
         """
         global _dygraph_tracer_
         self._in_to_static_mode_ = False
-        self._in_sot_simulation_mode_ = False
         self._functional_dygraph_context_manager = None
         self._dygraph_tracer_ = _dygraph_tracer_
         env_pir_enabled = os.environ.get("FLAGS_enable_pir_api")
@@ -231,9 +241,6 @@ class GlobalThreadLocal(threading.local):
     def __str__(self):
         strings = []
         strings.append("_in_to_static_mode_:" + str(self._in_to_static_mode_))
-        strings.append(
-            "_in_sot_simulation_mode_:" + str(self._in_sot_simulation_mode_)
-        )
         strings.append(
             "_functional_dygraph_context_manager:"
             + str(self._functional_dygraph_context_manager)
@@ -432,8 +439,19 @@ def in_cinn_mode() -> bool:
         bool: Whether paddle runs in cinn mode.
 
     """
-    flag = str(os.environ.get("FLAGS_use_cinn")).lower()
-    return flag in ("true", "1")
+    CINN_FLAG_NAME = "FLAGS_use_cinn"
+    # NOTE: This flag only available when compiled with CINN
+    if not is_compiled_with_cinn():
+        return False
+    return paddle.get_flags(CINN_FLAG_NAME)[CINN_FLAG_NAME]
+
+
+def in_cinn_debug_mode() -> bool:
+    CINN_DEBUG_FLAG_NAME = "FLAGS_cinn_debug"
+    # NOTE: This flag only available when compiled with CINN
+    if not is_compiled_with_cinn():
+        return False
+    return paddle.get_flags(CINN_DEBUG_FLAG_NAME)[CINN_DEBUG_FLAG_NAME]
 
 
 global_ipu_index = -1
@@ -685,7 +703,7 @@ def require_version(min_version: str, max_version: str | None = None) -> None:
 
 
 def _dygraph_not_support_(
-    func: Callable[_InputT, _RetT]
+    func: Callable[_InputT, _RetT],
 ) -> Callable[_InputT, _RetT]:
     def __impl__(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
         assert (
@@ -707,7 +725,7 @@ def _dygraph_only_(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
 
 
 def _non_static_only_(
-    func: Callable[_InputT, _RetT]
+    func: Callable[_InputT, _RetT],
 ) -> Callable[_InputT, _RetT]:
     def __impl__(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
         from .dygraph.base import in_to_static_mode
@@ -743,7 +761,7 @@ def _set_pipeline_stage(stage):
 # TODO(zhiqiu): We should make Tensor consistent with Variable in future, for example, by inheriting
 # same base class.
 def _fake_interface_only_(
-    func: Callable[_InputT, _RetT]
+    func: Callable[_InputT, _RetT],
 ) -> Callable[_InputT, _RetT]:
     def __impl__(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
         raise AssertionError(
@@ -762,7 +780,7 @@ def _fake_interface_only_(
 # NOTE(chenweihang): not using `wrap_decorator` here is because `wrap_decorator` will
 # move kwargs to args, which doesn't work in this decorate case
 def deprecate_stat_dict(
-    func: Callable[_InputT, _RetT]
+    func: Callable[_InputT, _RetT],
 ) -> Callable[_InputT, _RetT]:
     @functools.wraps(func)
     def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
@@ -791,8 +809,9 @@ def _dygraph_tracer():
 
 def _current_expected_place_():
     global _global_expected_place_
-    if _global_expected_place_ is None or isinstance(
-        _global_expected_place_, core.Place
+    if (
+        _global_expected_place_ is None
+        or type(_global_expected_place_) is core.Place
     ):
         if core.is_compiled_with_cuda():
             try:
@@ -1159,6 +1178,41 @@ def cuda_pinned_places(
     if device_count is None:
         device_count = len(_cuda_ids())
     return [core.CUDAPinnedPlace()] * device_count
+
+
+def xpu_pinned_places(
+    device_count: int | None = None,
+) -> list[core.XPUPinnedPlace]:
+    """
+    This function creates a list of :code:`base.XPUPinnedPlace` objects.
+
+    If :code:`device_count` is None, the device count would
+    be determined by environment variable :code:`CPU_NUM`.
+    If :code:`CPU_NUM` is not set, the default value is 1,
+    i.e. CPU_NUM=1.
+    :code:`CPU_NUM` indicates the number of devices used in the current task.
+    The running of the program can be accelerated if :code:`CPU_NUM` is the same as the number of physical cores.
+
+    Parameters:
+        device_count (int, optional): device number. Default: None.
+
+    Returns:
+        list of base.XPUPinnedPlace: Created list of XPU pinned places.
+
+    Examples:
+        .. code-block:: python
+
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle.base as base
+            >>> xpu_pinned_places_cpu_num = base.xpu_pinned_places()
+            >>> # or
+            >>> xpu_pinned_places = base.xpu_pinned_places(1)
+
+    """
+    assert core.is_compiled_with_cuda(), "Not compiled with CUDA"
+    if device_count is None:
+        device_count = len(_cuda_ids())
+    return [core.XPUPinnedPlace()] * device_count
 
 
 class NameScope:
@@ -1658,7 +1712,7 @@ class Variable(metaclass=VariableMetaClass):
     two variables in different :ref:`api_guide_Block_en` could have the same name.
 
     There are many kinds of variables. Each kind of them has its own attributes
-    and usages. Please refer to the `framework.proto <https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/base/framework/framework.proto>`_ for details.
+    and usages. Please refer to the `framework.proto <https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/phi/core/framework/framework.proto>`_ for details.
 
     Most of a Variable's member variables can be set to be None. It mean
     it is not available or will be specified later.
@@ -1912,7 +1966,7 @@ class Variable(metaclass=VariableMetaClass):
                 >>> import paddle
                 >>> paddle.disable_static()
 
-                >>> x = np.ones([2, 2], np.float32) # type: ignore[var-annotated]
+                >>> x = np.ones([2, 2], np.float32)
                 >>> inputs = []
                 >>> for _ in range(10):
                 ...     tmp = paddle.to_tensor(x)
@@ -1956,7 +2010,7 @@ class Variable(metaclass=VariableMetaClass):
                 >>> import numpy as np
 
                 >>> # example1: return ndarray
-                >>> x = np.ones([2, 2], np.float32) # type: ignore[var-annotated]
+                >>> x = np.ones([2, 2], np.float32)
                 >>> with base.dygraph.guard():
                 ...     inputs2 = []
                 ...     for _ in range(10):
@@ -2005,7 +2059,7 @@ class Variable(metaclass=VariableMetaClass):
                 >>> import paddle.base as base
                 >>> import numpy as np
 
-                >>> x = np.ones([2, 2], np.float32) # type: ignore[var-annotated]
+                >>> x = np.ones([2, 2], np.float32)
                 >>> inputs2 = []
                 >>> for _ in range(10):
                 >>>     tmp = paddle.to_tensor(x)
@@ -2910,6 +2964,8 @@ class Variable(metaclass=VariableMetaClass):
             place = core.CPUPlace()
         elif p.is_cuda_pinned_place():
             place = core.CUDAPinnedPlace()
+        elif p.is_xpu_pinned_place():
+            place = core.XPUPinnedPlace()
         elif p.is_xpu_place():
             p = core.Place()
             p.set_place(t._place())
@@ -4729,7 +4785,7 @@ class Block:
     def _insert_op_without_sync(self, index, *args, **kwargs):
         """
         Insert an Operator according to the giving arguments,
-        without sync_with_cpp to meke the compilation faster.
+        without sync_with_cpp to make the compilation faster.
 
         Args:
             index(int): the place that the operator to insert.
@@ -5894,7 +5950,7 @@ class Program:
     it will contain nested block.
 
     Please reference the
-    `framework.proto <https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/base/framework/framework.proto>`_
+    `framework.proto <https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/phi/core/framework/framework.proto>`_
     for details.
 
     A set of Program usually contains startup program and main program.
@@ -8205,6 +8261,7 @@ def _get_paddle_place(place):
             core.XPUPlace,
             core.CPUPlace,
             core.CUDAPinnedPlace,
+            core.XPUPinnedPlace,
             core.CUDAPlace,
             core.IPUPlace,
             core.CustomPlace,
@@ -8249,7 +8306,7 @@ def _get_paddle_place(place):
 
     # XPU
     available_xpu_place = re.match(r"xpu:\d+", place)
-    if available_xpu_place or place == "xpu":
+    if available_xpu_place or place == "xpu" or place == "xpu_pinned":
         if not core.is_compiled_with_xpu():
             raise ValueError(
                 f"The device should not be {available_xpu_place.group()}, since PaddlePaddle is "
@@ -8257,6 +8314,8 @@ def _get_paddle_place(place):
             )
         if place == "xpu":
             return core.XPUPlace(0)
+        elif place == "xpu_pinned":
+            return core.XPUPinnedPlace()
         else:
             place_info_list = place.split(":", 1)
             device_id = place_info_list[1]
@@ -8284,7 +8343,7 @@ def _get_paddle_place(place):
         return core.CustomPlace(device_type, device_id)
 
     raise ValueError(
-        f"Paddle supports CPUPlace, CUDAPlace, CUDAPinnedPlace, XPUPlace, IPUPlace and CustomPlace, but received {place}."
+        f"Paddle supports CPUPlace, CUDAPlace, CUDAPinnedPlace, XPUPlace, XPUPinnedPlace, IPUPlace and CustomPlace, but received {place}."
     )
 
 

@@ -17,19 +17,13 @@ import unittest
 
 import numpy
 
-os.environ['FLAGS_cinn_new_group_scheduler'] = '1'
 os.environ['FLAGS_prim_all'] = 'true'
 os.environ['FLAGS_prim_enable_dynamic'] = 'true'
-os.environ['FLAGS_print_ir'] = '1'
-os.environ['FLAGS_enable_pir_api'] = '1'
 os.environ['FLAGS_use_cinn'] = '1'
 
 from utils import check_jit_kernel_number
 
 import paddle
-
-build_strategy = paddle.static.BuildStrategy()
-build_strategy.build_cinn_pass = True
 
 
 class TestFusion(unittest.TestCase):
@@ -44,7 +38,7 @@ class TestFusion(unittest.TestCase):
     ):
         static_compute = paddle.jit.to_static(
             full_graph=True,
-            build_strategy=build_strategy,
+            backend="CINN",
             input_spec=input_spec(),
         )(dy_compute)
         inputs = data_init()

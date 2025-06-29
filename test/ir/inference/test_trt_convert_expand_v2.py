@@ -93,7 +93,7 @@ class TrtConvertExpandV2Test(TrtLayerAutoScanTest):
 
                 yield program_config
 
-    def generate_dynamic_shape(self):
+    def generate_dynamic_shape(self, attrs):
         if self.dims == 4:
             self.dynamic_shape.min_input_shape = {
                 "expand_v2_input": [1, 1, 4, 6]
@@ -151,7 +151,7 @@ class TrtConvertExpandV2Test(TrtLayerAutoScanTest):
             ), 1e-3
 
         # for dynamic_shape
-        self.generate_dynamic_shape()
+        self.generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         program_config.set_input_type(np.float32)
         yield self.create_inference_config(), generate_trt_nodes_num(
@@ -239,7 +239,7 @@ class TrtConvertExpandV2Case2Test(TrtLayerAutoScanTest):
 
                 yield program_config
 
-    def generate_dynamic_shape(self):
+    def generate_dynamic_shape(self, attrs):
         if self.dims == 4:
             self.dynamic_shape.min_input_shape = {
                 "expand_v2_input": [1, 1, 4, 6]
@@ -267,7 +267,6 @@ class TrtConvertExpandV2Case2Test(TrtLayerAutoScanTest):
     def sample_predictor_configs(
         self, program_config, run_pir=False
     ) -> tuple[paddle_infer.Config, list[int], float]:
-
         def clear_dynamic_shape():
             self.dynamic_shape.min_input_shape = {}
             self.dynamic_shape.max_input_shape = {}
@@ -297,7 +296,7 @@ class TrtConvertExpandV2Case2Test(TrtLayerAutoScanTest):
             ), 1e-3
 
         # for dynamic_shape
-        self.generate_dynamic_shape()
+        self.generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         program_config.set_input_type(np.float32)
         yield self.create_inference_config(), generate_trt_nodes_num(
@@ -385,7 +384,7 @@ class TrtConvertExpandV2Case3Test(TrtLayerAutoScanTest):
 
                 yield program_config
 
-    def generate_dynamic_shape(self):
+    def generate_dynamic_shape(self, attrs):
         if self.dims == 4:
             self.dynamic_shape.min_input_shape = {
                 "expand_v2_input": [1, 1, 4, 6]
@@ -443,7 +442,7 @@ class TrtConvertExpandV2Case3Test(TrtLayerAutoScanTest):
             ), 1e-3
 
         # for dynamic_shape
-        self.generate_dynamic_shape()
+        self.generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         program_config.set_input_type(np.float32)
         yield self.create_inference_config(), generate_trt_nodes_num(
@@ -520,7 +519,7 @@ class TrtConvertExpandV2Test2(TrtLayerAutoScanTest):
 
                 yield program_config
 
-    def generate_dynamic_shape(self):
+    def generate_dynamic_shape(self, attrs):
         if self.dims == 1:
             self.dynamic_shape.min_input_shape = {"expand_v2_input": [1]}
             self.dynamic_shape.max_input_shape = {"expand_v2_input": [1]}
@@ -536,9 +535,13 @@ class TrtConvertExpandV2Test2(TrtLayerAutoScanTest):
             self.dynamic_shape.max_input_shape = {}
             self.dynamic_shape.opt_input_shape = {}
 
+        attrs = [
+            program_config.ops[i].attrs for i in range(len(program_config.ops))
+        ]
+
         clear_dynamic_shape()
         # for dynamic_shape
-        self.generate_dynamic_shape()
+        self.generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         program_config.set_input_type(np.float32)
         # fill_constant will be folded by constant folding pass!
@@ -656,7 +659,7 @@ class TrtConvertExpandV2Test3(TrtLayerAutoScanTest):
 
                 yield program_config
 
-    def generate_dynamic_shape(self):
+    def generate_dynamic_shape(self, attrs):
         if self.dims == 4:
             self.dynamic_shape.min_input_shape = {
                 "expand_v2_input": [1, 1, 4, 6]
@@ -682,9 +685,13 @@ class TrtConvertExpandV2Test3(TrtLayerAutoScanTest):
             self.dynamic_shape.max_input_shape = {}
             self.dynamic_shape.opt_input_shape = {}
 
+        attrs = [
+            program_config.ops[i].attrs for i in range(len(program_config.ops))
+        ]
+
         clear_dynamic_shape()
         # for dynamic_shape
-        self.generate_dynamic_shape()
+        self.generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         program_config.set_input_type(np.float32)
         # fill_constant will be folded by constant folding pass!

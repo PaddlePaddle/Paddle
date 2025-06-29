@@ -972,14 +972,6 @@
   outputs :
     out : Out
 
-- op : distributed_push_sparse
-  inputs :
-    {ids : Ids, shows : Shows, clicks: Clicks}
-  outputs :
-    output : Outputs
-  extra :
-    attrs : ['int[] slots = {}']
-
 - op : divide (elementwise_div)
   backward : divide_grad (elementwise_div_grad)
   inputs :
@@ -3025,55 +3017,8 @@
   outputs :
     out : Out
 
-- op : pull_box_sparse
-  inputs :
-    { w : W, ids: Ids}
-  outputs :
-    out : Out
-  attrs :
-    sparse : is_sparse
-  extra :
-    attrs : [bool is_sparse = false, bool is_distributed = false, int size = 1]
-
-- op : pull_gpups_sparse
-  backward : push_gpups_sparse
-  inputs :
-    {w : W, ids : Ids}
-  outputs :
-    out : Out
-
-- op : pull_sparse_v2
-  inputs :
-    { ids : Ids, w : W}
-  outputs :
-    out : Out
-  extra :
-    attrs : [int embedding_dim = 11, int table_id = 0, str accessor_class = "", str ctr_label_name = "", int padding_id = 0, bool scale_sparse_grad = true, 'str[] input_names = {}', bool is_distributed = true]
-
-- op : push_box_sparse
-  inputs :
-    ids: Ids
-  outputs :
-    out : Out
-  attrs :
-    sparse : is_sparse
-
-- op : push_dense
-  inputs :
-    ids : Ids
-  attrs :
-    {table_id : TableId, scale_data_norm : ScaleDataNorm, input_names: InputNames}
-
-- op : push_sparse_v2
-  inputs :
-    { x : Ids, W : w}
-  outputs :
-    out : Out
-  extra :
-    attrs : [int embedding_dim = 11, int table_id = 0, str accessor_class = "", str ctr_labe_lname = "", int padding_id = 0, bool scales_parse_grad = true, 'str[] input_names = {}', bool is_distributed = true]
-
 - op : put_along_axis
-  backward : put_along_axis_grad
+  backward : put_along_axis_grad, put_along_axis_double_grad
   inputs :
     {arr : Input, indices : Index, values : Value}
   outputs :
@@ -3188,7 +3133,7 @@
     repeats : Repeats
 
 - op : repeat_interleave
-  backward : repeat_interleave_grad
+  backward : repeat_interleave_grad, repeat_interleave_double_grad
   inputs :
     x : X
   outputs :
@@ -3197,7 +3142,7 @@
     {repeats : Repeats, axis : dim}
 
 - op : repeat_interleave_with_tensor_index
-  backward : repeat_interleave_with_tensor_index_grad
+  backward : repeat_interleave_with_tensor_index_grad, repeat_interleave_with_tensor_index_double_grad
   inputs :
     {x : X, repeats: RepeatTensor}
   outputs:
@@ -3380,12 +3325,6 @@
   backward : selu_grad
   inputs :
     x : X
-  outputs :
-    out : Out
-
-- op : send_and_recv
-  inputs :
-    x: X
   outputs :
     out : Out
 
@@ -4230,12 +4169,6 @@
     {param: Param, grad: Grad}
   outputs:
     {fp32_fused_param: FP32FusedParam, fp32_fused_grad: FP32FusedGrad, fp16_fused_param: FP16FusedParam, fp16_fused_grad: FP16FusedGrad, moment1: Moment1, moment2: Moment2, beta1_pow: Beta1Pow, beta2_pow: Beta2Pow, fused_param_offsets: FusedParamOffsets, fp32_shard_fused_param_offsets: FP32ShardFusedParamOffsets, fp16_shard_fused_param_offsets: FP16ShardFusedParamOffsets, param_info: ParamInfo, param_order: ParamOrder, param_out: ParamOut, master_param_out: MasterParamOut, grad_out: GradOut, global_scale: GlobalScale, step: Step}
-
-- op: distributed_lookup_table
-  inputs:
-    {ids: Ids, w: W}
-  outputs:
-    outputs: Outputs
 
 - op: dpsgd
   inputs:

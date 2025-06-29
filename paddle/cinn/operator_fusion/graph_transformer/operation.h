@@ -41,16 +41,11 @@ struct MergeTrivialPatternOperation {
               downstream->stmt_pattern()) ||
           std::holds_alternative<ReduceTreePlusTrivialPattern>(
               downstream->stmt_pattern()) ||
-          std::holds_alternative<ItersPermutationPattern>(
-              downstream->stmt_pattern()) ||
           std::holds_alternative<AnchorPattern>(downstream->stmt_pattern());
 
       if (can_fuse) {
         VLOG(4) << "\ndownstream [" << i << "]: " << downstream->DebugStr();
         auto merged_node = graph->MergeNode(upstream, downstream, MergePattern);
-        merged_node->set_fusion_iters(
-            graph->iters_fusion_policy()->SingleDownstreamItersFusion(
-                upstream, downstream));
         graph->RemoveNode(downstream);
         VLOG(4) << "\nmerged [" << i << "] " << merged_node->DebugStr();
         merged_node->AppendInstr(std::make_shared<TrivialInlineInstr>(
@@ -75,9 +70,6 @@ struct MergeReduceTreeOperation {
             node->downstream().size()));
     auto downstream = node->downstream().at(0);
     auto merged_node = graph->MergeNode(node, downstream, MergePattern);
-    merged_node->set_fusion_iters(
-        graph->iters_fusion_policy()->SingleDownstreamItersFusion(node,
-                                                                  downstream));
     graph->RemoveNode(downstream);
     graph->RemoveNode(node);
     VLOG(4) << "MergeReduceTreeOperation: \nupstream " << node->DebugStr()
@@ -112,24 +104,6 @@ struct MergeReduceTreeAndTrivialOperation {
     };
     PatternNodePtr merged_node =
         graph->MergeNode(node, downstream, merge_pattern_fn);
-    merged_node->set_fusion_iters(
-        graph->iters_fusion_policy()->SingleDownstreamItersFusion(node,
-                                                                  downstream));
-    // TODO(huangjiyi): Support relationship analysis for different iters, for
-    // example the input iters and output iters of reshape op.
-    auto sig = merged_node->fusion_iters();
-    const auto upstream_iters = node->fusion_iters();
-    const auto reduce_iters = SliceVector(upstream_iters.loop_iters,
-                                          -upstream_iters.reduce_iter_nums,
-                                          upstream_iters.loop_iters.size());
-    auto trivial_iters = downstream->fusion_iters().loop_iters;
-    if (!fake_reduce_iter_idx.empty()) {
-      trivial_iters = GatherVector(
-          trivial_iters,
-          ExcludeIndex(trivial_iters.size(), fake_reduce_iter_idx));
-    }
-    sig.loop_iters = ConcatVector(trivial_iters, reduce_iters);
-    merged_node->set_fusion_iters(sig);
 
     graph->RemoveNode(downstream);
     graph->RemoveNode(node);
@@ -155,20 +129,6 @@ struct LiftReduceToReduceTreeOperation {
   }
 };
 
-struct LiftToHorizontalFusionPatternOperation {
-  PatternNodePtr operator()(PatternGraph* graph, PatternNodePtr node) {
-    auto origin_name = node->id();
-    node->set_stmt_pattern(HorizontalFusionPattern(
-        {typename HorizontalFusionPattern::PaddingStmtPattern(
-            node->stmt_pattern(), {})},
-        std::make_shared<FusionTracker>(
-            GetFusionTracker(node->stmt_pattern()))));
-    VLOG(4) << "Make CopyInstr: " << origin_name << " -> " << node->id();
-    node->AppendInstr(std::make_shared<CopyInstr>(origin_name, node->id()));
-    return node;
-  }
-};
-
 struct LiftToAnchorPatternOperation {
   PatternNodePtr operator()(PatternGraph* graph, PatternNodePtr node) {
     std::string origin_name = node->id();
@@ -188,16 +148,16 @@ struct AnchorFusionOperation {
                             const PatternNodePtr& downstream) {
     bool upstream_is_anchor;
     AxisTransformRoute loop_transform;
-    auto loop_lift_transform = GetValidLoopTransformRoute(
+    auto loop_lift_transform = GetValidAdjacentLoopTransform(
         upstream->loop_axis_mapping(), downstream->loop_axis_mapping(), true);
     if (loop_lift_transform.has_value()) {
       loop_transform = loop_lift_transform.value();
       upstream_is_anchor = true;
     } else {
       auto loop_sink_transform =
-          GetValidLoopTransformRoute(upstream->loop_axis_mapping(),
-                                     downstream->loop_axis_mapping(),
-                                     false);
+          GetValidAdjacentLoopTransform(upstream->loop_axis_mapping(),
+                                        downstream->loop_axis_mapping(),
+                                        false);
       if (!loop_sink_transform.has_value()) {
         return upstream;
       }
@@ -242,98 +202,6 @@ struct AnchorFusionOperation {
     return merged_node;
   }
 };
-
-struct LiftToItersPermutationPatternOperation {
-  PatternNodePtr operator()(PatternGraph* graph, PatternNodePtr node) {
-    PADDLE_ENFORCE_EQ(node->sink_op()->num_results(),
-                      1,
-                      ::common::errors::PreconditionNotMet(
-                          "Op with multi output value can not lift to "
-                          "ItersPermutationPattern"));
-    std::string origin_name = node->id();
-    const auto& loop_axis_mapping = node->loop_axis_mapping();
-    node->set_stmt_pattern(ItersPermutationPattern(
-        GetOpsInPattern(node->stmt_pattern()),
-        std::make_shared<FusionTracker>(GetFusionTracker(node->stmt_pattern())),
-        graph->iters_fusion_policy()->GetLoopDims(node->fusion_iters())));
-    node->set_loop_axis_mapping(loop_axis_mapping);
-    node->AppendInstr(std::make_shared<CopyInstr>(origin_name, node->id()));
-    VLOG(4) << "Make CopyInstr: " << origin_name << " -> " << node->id();
-    return node;
-  }
-};
-
-struct FuseItersPermutatioOperation {
-  PatternNodePtr operator()(PatternGraph* graph,
-                            const PatternNodePtr& upstream,
-                            const PatternNodePtr& downstream) {
-    VLOG(4) << "Start FuseItersPermutatioOperation";
-    VLOG(4) << "Upstream: \n" << upstream->DebugStr();
-    VLOG(4) << "Downstream: \n" << downstream->DebugStr();
-    const auto rise_transform_route =
-        graph->iters_fusion_policy()->GetItersTransformRoute(downstream,
-                                                             upstream);
-    const auto sink_transform_route =
-        graph->iters_fusion_policy()->GetItersTransformRoute(upstream,
-                                                             downstream);
-    PADDLE_ENFORCE_EQ(
-        rise_transform_route != std::nullopt ||
-            sink_transform_route != std::nullopt,
-        true,
-        ::common::errors::NotFound("Can not find Transform route."));
-    const bool is_rise = rise_transform_route != std::nullopt;
-    const auto transform_route =
-        is_rise ? rise_transform_route.value() : sink_transform_route.value();
-
-    const auto merge_pattern_fn =
-        [=](const StmtPattern& upstream,
-            const StmtPattern& downstream) -> StmtPattern {
-      const auto upstream_pattern = std::get<ItersPermutationPattern>(upstream);
-      const auto downstream_pattern =
-          std::get<ItersPermutationPattern>(downstream);
-      return ItersPermutationPattern(
-          UniqueConcatVector(GetOpsInPattern(upstream),
-                             GetOpsInPattern(downstream)),
-          std::make_shared<FusionTracker>(upstream_pattern.tracker_,
-                                          downstream_pattern.tracker_),
-          is_rise ? upstream_pattern.loop_dims_
-                  : downstream_pattern.loop_dims_);
-    };
-    auto merged_node = graph->MergeNode(upstream, downstream, merge_pattern_fn);
-    merged_node->set_loop_axis_mapping(
-        LoopAxisMappingMerge(upstream->loop_axis_mapping(),
-                             downstream->loop_axis_mapping(),
-                             is_rise));
-    merged_node->set_fusion_iters(
-        graph->iters_fusion_policy()->MultiDownstreamItersFusion(
-            upstream,
-            downstream,
-            is_rise
-                ? FusionItersManager::FusionDirection::downstream2upstream
-                : FusionItersManager::FusionDirection::upstream2downstream));
-    const auto update_tracker_fn = [=](const PatternNodePtr& source,
-                                       const PatternNodePtr& target) {
-      const std::string source_tmp_id = GetNewTmpId(source->id());
-      merged_node->AppendInstr(std::make_shared<ItersTransformInstr>(
-          source->id(), target->id(), source_tmp_id, transform_route));
-      const std::vector<std::string> names =
-          is_rise ? std::vector<std::string>({target->id(), source_tmp_id})
-                  : std::vector<std::string>({source_tmp_id, target->id()});
-      merged_node->AppendInstr(
-          std::make_shared<CombineInstr>(names, merged_node->id()));
-    };
-    if (is_rise) {
-      update_tracker_fn(downstream, upstream);
-    } else {
-      update_tracker_fn(upstream, downstream);
-    }
-    graph->RemoveNode(upstream);
-    graph->RemoveNode(downstream);
-    VLOG(4) << "Merged: \n" << merged_node->DebugStr();
-    return merged_node;
-  }
-};
-
 struct SplitRecomputeOperation {
   void operator()(PatternGraph* graph, PatternNodePtr upstream) {
     auto origin_name = upstream->id();
@@ -357,75 +225,48 @@ struct SplitRecomputeOperation {
 
 struct HorizontalFusionOperation {
   PatternNodePtr operator()(PatternGraph* graph,
-                            const PatternNodePtr& i,
-                            const PatternNodePtr& j) {
-    VLOG(4) << "Start HorizontalFusionOperation";
-    PADDLE_ENFORCE_EQ(
-        GetPatternType(i->stmt_pattern()),
-        HorizontalFusionPattern::type(),
-        ::common::errors::PreconditionNotMet(
-            "The pattern of the first node should be HorizontalFusionPattern, "
-            "but got %s.",
-            GetPatternId(i->stmt_pattern())));
-    PADDLE_ENFORCE_EQ(
-        GetPatternType(j->stmt_pattern()),
-        HorizontalFusionPattern::type(),
-        ::common::errors::PreconditionNotMet(
-            "The pattern of the second node should be HorizontalFusionPattern, "
-            "but got %s.",
-            GetPatternId(j->stmt_pattern())));
-    auto merged_node = graph->MergeNode(i, j, MergePattern);
-    VLOG(4) << "MergeHorizontalPattern: \ni " << i->DebugStr() << "\nj "
-            << j->DebugStr() << "\nmerged " << merged_node->DebugStr();
-    graph->RemoveNode(i);
-    graph->RemoveNode(j);
-    merged_node->UpdateTracker();
+                            const PatternNodePtr& lhs,
+                            const PatternNodePtr& rhs) {
+    AxisTransformRoute loop_transform;
+    bool lhs_is_anchor;
+    auto rhs_to_lhs_transform = GetValidHorizontalLoopTransform(
+        rhs->loop_axis_mapping(), lhs->loop_axis_mapping());
+    if (rhs_to_lhs_transform.has_value()) {
+      lhs_is_anchor = true;
+      loop_transform = rhs_to_lhs_transform.value();
+    } else {
+      auto lhs_to_rhs_transform = GetValidHorizontalLoopTransform(
+          lhs->loop_axis_mapping(), rhs->loop_axis_mapping());
+      if (!lhs_to_rhs_transform.has_value()) return nullptr;
+      lhs_is_anchor = false;
+      loop_transform = lhs_to_rhs_transform.value();
+    }
+    auto source = lhs_is_anchor ? rhs : lhs;
+    auto target = lhs_is_anchor ? lhs : rhs;
+    VLOG(4) << "Start HorizontalFusionOperation from " << source->id() << " to "
+            << target->id();
+    VLOG(4) << "source: \n" << source->DebugStr();
+    VLOG(4) << "target: \n" << target->DebugStr();
+    const auto merge_pattern_fn = [](const StmtPattern& source,
+                                     const StmtPattern& target) -> StmtPattern {
+      return AnchorPattern(
+          UniqueConcatVector(GetOpsInPattern(source), GetOpsInPattern(target)),
+          std::make_shared<FusionTracker>(GetFusionTracker(source),
+                                          GetFusionTracker(target)),
+          HorizontalLoopAxisMappingMerge(GetPatternLoopAxisMapping(source),
+                                         GetPatternLoopAxisMapping(target)));
+    };
+    auto merged_node = graph->MergeNode(source, target, merge_pattern_fn);
+    auto source_tmp_id = GetNewTmpId(source->id());
+    merged_node->AppendInstr(std::make_shared<AxisTransformInstr>(
+        source->id(), source_tmp_id, loop_transform));
+    merged_node->AppendInstr(std::make_shared<CombineInstr>(
+        std::vector<std::string>{source_tmp_id, target->id()},
+        merged_node->id()));
+    graph->RemoveNode(source);
+    graph->RemoveNode(target);
+    VLOG(4) << "Merged: \n" << merged_node->DebugStr();
     return merged_node;
-  }
-};
-
-struct ReshapeAlignInputOperation {
-  void operator()(PatternGraph* graph, PatternNodePtr node) {
-    VLOG(4) << "Start ReshapeAlignInputOperation";
-    const auto ops = std::get<TrivialPattern>(node->stmt_pattern()).ops();
-    PADDLE_ENFORCE(
-        GetPatternType(node->stmt_pattern()) == TrivialPattern::type() &&
-            std::get<TrivialPattern>(node->stmt_pattern()).ops().size() == 1 &&
-            node->sink_op()->name() == "cinn_op.reshape",
-        ::common::errors::InvalidArgument(
-            "The pattern node should only contain a reshape op."));
-    const auto upstream = node->upstream()[0];
-    const auto input_iters =
-        graph->iters_fusion_policy()->iters_manager()->GetValueIters(
-            *(node->fusion_iters().input_values.begin()));
-    const auto output_iters = node->fusion_iters().loop_iters;
-
-    // Sink reshape
-    MergeTrivialPatternOperation()(graph, node);
-
-    // Align merged pattern to input shape
-    const auto sinked_node = upstream->downstream()[0];
-    auto aligned_fusion_iters = sinked_node->fusion_iters();
-    aligned_fusion_iters.loop_iters = input_iters;
-
-    const auto origin_id = sinked_node->id();
-    sinked_node->set_stmt_pattern(ItersPermutationPattern(
-        GetOpsInPattern(sinked_node->stmt_pattern()),
-        std::make_shared<FusionTracker>(
-            GetFusionTracker(sinked_node->stmt_pattern())),
-        graph->iters_fusion_policy()->GetLoopDims(aligned_fusion_iters)));
-    sinked_node->set_fusion_iters(aligned_fusion_iters);
-
-    const auto input_shape =
-        graph->iters_fusion_policy()->iters_manager()->GetIterSymbols(
-            input_iters);
-    const auto output_shape =
-        graph->iters_fusion_policy()->iters_manager()->GetIterSymbols(
-            output_iters);
-    FusionInstrPtr instr = std::make_shared<ReshapeAlignInstr>(
-        origin_id, output_shape, input_shape, sinked_node->id());
-    sinked_node->AppendInstr(instr);
-    VLOG(4) << instr->DebugStr();
   }
 };
 

@@ -34,8 +34,18 @@
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/distributed/utils.h"
+#include "paddle/phi/core/memory/allocation/allocator_facade.h"
 
 namespace deep_ep {
+
+namespace detail {
+void SetAllocatorStreamForGPUContext(cudaStream_t stream,
+                                     phi::GPUContext* ctx) {
+  ctx->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                        .GetAllocator(ctx->GetPlace(), stream)
+                        .get());
+}
+}  // namespace detail
 
 Buffer::Buffer(int rank,
                int num_ranks,
@@ -208,7 +218,9 @@ int Buffer::get_root_rdma_rank(bool global) const {
 
 int Buffer::get_local_device_id() const { return device_id; }
 
-#if !defined(PADDLE_ON_INFERENCE) && !defined(PADDLE_NO_PYTHON)
+cudaStream_t Buffer::get_comm_stream() const { return comm_stream; }
+
+#ifndef PADDLE_NO_PYTHON
 pybind11::bytearray Buffer::get_local_ipc_handle() const {
   return {ipc_handles[nvl_rank].reserved, CUDA_IPC_HANDLE_SIZE};
 }
@@ -322,7 +334,7 @@ Buffer::get_dispatch_layout(const deep_ep::detail::Tensor& topk_idx,
   auto compute_stream = calc_ctx->stream();
   if (allocate_on_comm_stream) {
     EP_HOST_ASSERT(previous_event.has_value() && async);
-    deep_ep::detail::setCurrentCUDAStream(comm_stream);
+    deep_ep::detail::SetAllocatorStreamForGPUContext(comm_stream, calc_ctx);
   }
 
   // Wait previous tasks to be finished
@@ -345,12 +357,12 @@ Buffer::get_dispatch_layout(const deep_ep::detail::Tensor& topk_idx,
       paddle::experimental::empty({num_tokens, num_ranks},
                                   phi::DataType::BOOL,
                                   phi::GPUPlace(device_id)));
-#ifdef PADDLE_WITH_NVSHMEM
   if (is_internode_available())
     num_tokens_per_rdma_rank =
         ConvertPaddleTensorToDetailTensor(paddle::experimental::empty(
             {num_rdma_ranks}, phi::DataType::INT32, phi::GPUPlace(device_id)));
 
+  // get_dispatch_layout is used for both intranode and internode.
   internode::get_dispatch_layout(
       topk_idx.data_ptr<int64_t>(),
       num_tokens_per_rank.data_ptr<int>(),
@@ -364,7 +376,6 @@ Buffer::get_dispatch_layout(const deep_ep::detail::Tensor& topk_idx,
       num_ranks,
       num_experts,
       comm_stream);
-#endif
 
   // Wait streams
   std::optional<EventHandle> event;
@@ -387,8 +398,9 @@ Buffer::get_dispatch_layout(const deep_ep::detail::Tensor& topk_idx,
   }
 
   // Switch back compute stream
-  if (allocate_on_comm_stream)
-    deep_ep::detail::setCurrentCUDAStream(compute_stream);
+  if (allocate_on_comm_stream) {
+    deep_ep::detail::SetAllocatorStreamForGPUContext(compute_stream, calc_ctx);
+  }
 
   return {num_tokens_per_rank,
           num_tokens_per_rdma_rank,
@@ -521,7 +533,7 @@ Buffer::intranode_dispatch(
   auto compute_stream = calc_ctx->stream();
   if (allocate_on_comm_stream) {
     EP_HOST_ASSERT(previous_event.has_value() && async);
-    deep_ep::detail::setCurrentCUDAStream(comm_stream);
+    deep_ep::detail::SetAllocatorStreamForGPUContext(comm_stream, calc_ctx);
   }
 
   // Wait previous tasks to be finished
@@ -750,8 +762,9 @@ Buffer::intranode_dispatch(
   }
 
   // Switch back compute stream
-  if (allocate_on_comm_stream)
-    deep_ep::detail::setCurrentCUDAStream(compute_stream);
+  if (allocate_on_comm_stream) {
+    deep_ep::detail::SetAllocatorStreamForGPUContext(compute_stream, calc_ctx);
+  }
 
   // Return values
   return {recv_x,
@@ -815,7 +828,7 @@ Buffer::intranode_combine(
   auto compute_stream = calc_ctx->stream();
   if (allocate_on_comm_stream) {
     EP_HOST_ASSERT(previous_event.has_value() && async);
-    deep_ep::detail::setCurrentCUDAStream(comm_stream);
+    deep_ep::detail::SetAllocatorStreamForGPUContext(comm_stream, calc_ctx);
   }
 
   // Wait previous tasks to be finished
@@ -918,8 +931,9 @@ Buffer::intranode_combine(
   }
 
   // Switch back compute stream
-  if (allocate_on_comm_stream)
-    deep_ep::detail::setCurrentCUDAStream(compute_stream);
+  if (allocate_on_comm_stream) {
+    deep_ep::detail::SetAllocatorStreamForGPUContext(compute_stream, calc_ctx);
+  }
 
   return {recv_x, recv_topk_weights, event};
 }
@@ -964,6 +978,12 @@ Buffer::internode_dispatch(
     std::optional<EventHandle>& previous_event,  // NOLINT
     bool async,
     bool allocate_on_comm_stream) {
+  // In dispatch, CPU will busy-wait until GPU receive tensor size metadata from
+  // other ranks, which can be quite long. If users of DeepEP need to execute
+  // other Python code on other threads, such as KV transfer, their code will
+  // get stuck due to GIL unless we release GIL here.
+  // pybind11::gil_scoped_release release;
+
   const int num_channels = config.num_sms / 2;
   EP_HOST_ASSERT(config.num_sms % 2 == 0);
   EP_HOST_ASSERT(0 < get_num_rdma_ranks() &&
@@ -1077,7 +1097,7 @@ Buffer::internode_dispatch(
   auto compute_stream = calc_ctx->stream();
   if (allocate_on_comm_stream) {
     EP_HOST_ASSERT(previous_event.has_value() && async);
-    deep_ep::detail::setCurrentCUDAStream(comm_stream);
+    deep_ep::detail::SetAllocatorStreamForGPUContext(comm_stream, calc_ctx);
   }
 
   // Wait previous tasks to be finished
@@ -1357,8 +1377,9 @@ Buffer::internode_dispatch(
   }
 
   // Switch back compute stream
-  if (allocate_on_comm_stream)
-    deep_ep::detail::setCurrentCUDAStream(compute_stream);
+  if (allocate_on_comm_stream) {
+    deep_ep::detail::SetAllocatorStreamForGPUContext(compute_stream, calc_ctx);
+  }
 
   // Return values
   return {recv_x,
@@ -1449,7 +1470,7 @@ Buffer::internode_combine(
   auto compute_stream = calc_ctx->stream();
   if (allocate_on_comm_stream) {
     EP_HOST_ASSERT(previous_event.has_value() && async);
-    deep_ep::detail::setCurrentCUDAStream(comm_stream);
+    deep_ep::detail::SetAllocatorStreamForGPUContext(comm_stream, calc_ctx);
   }
 
   // Wait previous tasks to be finished
@@ -1567,8 +1588,9 @@ Buffer::internode_combine(
   }
 
   // Switch back compute stream
-  if (allocate_on_comm_stream)
-    deep_ep::detail::setCurrentCUDAStream(compute_stream);
+  if (allocate_on_comm_stream) {
+    deep_ep::detail::SetAllocatorStreamForGPUContext(compute_stream, calc_ctx);
+  }
 
   // Return values
   return {combined_x, combined_topk_weights, event};
@@ -1609,20 +1631,32 @@ void Buffer::clean_low_latency_buffer(int num_max_dispatch_tokens_per_rank,
 #endif
 }
 
+void Buffer::barrier_all() {
+#ifdef PADDLE_WITH_NVSHMEM
+  internode_ll::barrier_all(calc_ctx->stream());
+#else
+  LOG(ERROR) << "NVSHMEM is not enabled. You can enable it by setting cmake "
+                "option WITH_NVSHMEM=ON.";
+#endif
+}
+
 #ifdef PADDLE_WITH_NVSHMEM
 std::tuple<deep_ep::detail::Tensor,
-           deep_ep::detail::Tensor,
+           std::optional<deep_ep::detail::Tensor>,
            deep_ep::detail::Tensor,
            deep_ep::detail::Tensor,
            deep_ep::detail::Tensor,
            std::optional<EventHandle>,
            std::optional<std::function<void()>>>
-Buffer::low_latency_dispatch(const deep_ep::detail::Tensor& x,
-                             const deep_ep::detail::Tensor& topk_idx,
-                             int num_max_dispatch_tokens_per_rank,
-                             int num_experts,
-                             bool async,
-                             bool return_recv_hook) {
+Buffer::low_latency_dispatch(
+    const deep_ep::detail::Tensor& x,
+    const deep_ep::detail::Tensor& topk_idx,
+    const std::optional<deep_ep::detail::Tensor>& expertwise_scale,
+    int num_max_dispatch_tokens_per_rank,
+    int num_experts,
+    bool use_fp8,
+    bool async,
+    bool return_recv_hook) {
   EP_HOST_ASSERT(low_latency_mode);
 
   // Tensor checks
@@ -1658,12 +1692,23 @@ Buffer::low_latency_dispatch(const deep_ep::detail::Tensor& x,
   EP_HOST_ASSERT(!(async && return_recv_hook));
   if (!return_recv_hook) stream_wait(launch_stream, compute_stream);
 
+  EP_HOST_ASSERT(
+      !(expertwise_scale.has_value() && use_fp8) &&
+      "expertwise_scale and use_fp8 can not arise at the same time.");
+  auto return_x_dtype = phi::DataType::BFLOAT16;
+  if (use_fp8) {
+    return_x_dtype = phi::DataType::FLOAT8_E4M3FN;
+  } else if (expertwise_scale.has_value()) {
+    EP_HOST_ASSERT(expertwise_scale.value().size(0) == num_experts);
+    return_x_dtype = phi::DataType::INT8;
+  }
+
   // Allocate packed tensors
   auto packed_recv_x = ConvertPaddleTensorToDetailTensor(
       paddle::experimental::empty({num_local_experts,
                                    num_ranks * num_max_dispatch_tokens_per_rank,
                                    hidden},
-                                  phi::DataType::FLOAT8_E4M3FN,
+                                  return_x_dtype,
                                   x.place()));
   auto packed_recv_src_info =
       ConvertPaddleTensorToDetailTensor(paddle::experimental::empty(
@@ -1679,25 +1724,37 @@ Buffer::low_latency_dispatch(const deep_ep::detail::Tensor& x,
           {num_local_experts}, phi::DataType::INT32, phi::GPUPlace(device_id)));
 
   // Allocate column-majored scales
-  EP_HOST_ASSERT((num_ranks * num_max_dispatch_tokens_per_rank) % 4 == 0 &&
-                 "TMA requires the number of tokens to be multiple of 4");
-  auto packed_recv_x_scales =
-      ConvertPaddleTensorToDetailTensor(paddle::experimental::empty(
-          {num_local_experts,
-           num_scales,
-           num_ranks * num_max_dispatch_tokens_per_rank},
-          phi::DataType::FLOAT32,
-          phi::GPUPlace(device_id)));
-  packed_recv_x_scales =
-      ConvertPaddleTensorToDetailTensor(paddle::experimental::transpose(
-          ConvertDetailTensorToPaddleTensor(packed_recv_x_scales),
-          std::vector<int>{1, 2}));
+  auto packed_recv_x_scales = std::optional<deep_ep::detail::Tensor>();
+
+  float* packed_recv_x_scales_ptr = nullptr;
+
+  if (use_fp8) {
+    EP_HOST_ASSERT((num_ranks * num_max_dispatch_tokens_per_rank) % 4 == 0 &&
+                   "TMA requires the number of tokens to be multiple of 4");
+    packed_recv_x_scales =
+        ConvertPaddleTensorToDetailTensor(paddle::experimental::empty(
+            {num_local_experts,
+             num_scales,
+             num_ranks * num_max_dispatch_tokens_per_rank},
+            phi::DataType::FLOAT32,
+            phi::GPUPlace(device_id)));
+    packed_recv_x_scales =
+        ConvertPaddleTensorToDetailTensor(paddle::experimental::transpose(
+            ConvertDetailTensorToPaddleTensor(packed_recv_x_scales.value()),
+            std::vector<int>{0, 2, 1}));
+    packed_recv_x_scales_ptr = packed_recv_x_scales.value().data_ptr<float>();
+  }
+
+  float* expertwise_scale_ptr = nullptr;
+  if (expertwise_scale.has_value()) {
+    expertwise_scale_ptr = expertwise_scale.value().data_ptr<float>();
+  }
 
   // Kernel launch
   auto next_clean_meta = next_buffer.clean_meta();
   auto launcher = [=](int phases) {
     internode_ll::dispatch(packed_recv_x.data_ptr(),
-                           packed_recv_x_scales.data_ptr<float>(),
+                           packed_recv_x_scales_ptr,
                            packed_recv_src_info.data_ptr<int>(),
                            packed_recv_layout_range.data_ptr<int64_t>(),
                            packed_recv_count.data_ptr<int>(),
@@ -1706,6 +1763,7 @@ Buffer::low_latency_dispatch(const deep_ep::detail::Tensor& x,
                            buffer.dispatch_rdma_send_buffer,
                            x.data_ptr(),
                            topk_idx.data_ptr<int64_t>(),
+                           expertwise_scale_ptr,
                            next_clean_meta.first,
                            next_clean_meta.second,
                            num_tokens,
@@ -1715,6 +1773,7 @@ Buffer::low_latency_dispatch(const deep_ep::detail::Tensor& x,
                            num_experts,
                            rank,
                            num_ranks,
+                           use_fp8,
                            workspace,
                            launch_stream,
                            phases);
@@ -1758,8 +1817,10 @@ Buffer::low_latency_combine(const deep_ep::detail::Tensor& x,
                             const deep_ep::detail::Tensor& layout_range,
                             int num_max_dispatch_tokens_per_rank,
                             int num_experts,
+                            bool zero_copy,
                             bool async,
-                            bool return_recv_hook) {
+                            bool return_recv_hook,
+                            const std::optional<deep_ep::detail::Tensor>& out) {
   EP_HOST_ASSERT(low_latency_mode);
 
   // Tensor checks
@@ -1806,9 +1867,17 @@ Buffer::low_latency_combine(const deep_ep::detail::Tensor& x,
   if (!return_recv_hook) stream_wait(launch_stream, compute_stream);
 
   // Allocate output tensor
-  auto combined_x =
-      ConvertPaddleTensorToDetailTensor(paddle::experimental::empty(
-          {num_combined_tokens, hidden}, x.dtype(), x.place()));
+  deep_ep::detail::Tensor combined_x;
+  if (out.has_value()) {
+    EP_HOST_ASSERT(out->dim() == 2 && out->is_contiguous());
+    EP_HOST_ASSERT(out->size(0) == num_combined_tokens &&
+                   out->size(1) == hidden);
+    EP_HOST_ASSERT(out->scalar_type() == x.scalar_type());
+    combined_x = out.value();
+  } else {
+    combined_x = ConvertPaddleTensorToDetailTensor(paddle::experimental::empty(
+        {num_combined_tokens, hidden}, x.dtype(), x.place()));
+  }
 
   // Kernel launch
   auto next_clean_meta = next_buffer.clean_meta();
@@ -1833,7 +1902,8 @@ Buffer::low_latency_combine(const deep_ep::detail::Tensor& x,
                           num_ranks,
                           workspace,
                           launch_stream,
-                          phases);
+                          phases,
+                          zero_copy);
   };
   launcher(return_recv_hook
                ? LOW_LATENCY_SEND_PHASE
@@ -2076,32 +2146,48 @@ Buffer::internode_combine_api(
 }
 
 std::tuple<paddle::Tensor,
-           paddle::Tensor,
+           std::optional<paddle::Tensor>,
            paddle::Tensor,
            paddle::Tensor,
            paddle::Tensor,
            std::optional<EventHandle>,
            std::optional<std::function<void()>>>
-Buffer::low_latency_dispatch_api(const paddle::Tensor& x,
-                                 const paddle::Tensor& topk_idx,
-                                 int num_max_dispatch_tokens_per_rank,
-                                 int num_experts,
-                                 bool async,
-                                 bool return_recv_hook) {
+Buffer::low_latency_dispatch_api(
+    const paddle::Tensor& x,
+    const paddle::Tensor& topk_idx,
+    const std::optional<paddle::Tensor>& expertwise_scale,
+    int num_max_dispatch_tokens_per_rank,
+    int num_experts,
+    bool use_fp8,
+    bool async,
+    bool return_recv_hook) {
 #ifdef PADDLE_WITH_NVSHMEM
   const auto& x_ = ConvertPaddleTensorToDetailTensor(x);
   const auto& topk_idx_ = ConvertPaddleTensorToDetailTensor(topk_idx);
 
+  std::optional<deep_ep::detail::Tensor> expertwise_scale_;
+  if (expertwise_scale.has_value()) {
+    expertwise_scale_ =
+        ConvertPaddleTensorToDetailTensor(expertwise_scale.value());
+  }
+
   auto res = low_latency_dispatch(x_,
                                   topk_idx_,
+                                  expertwise_scale_,
                                   num_max_dispatch_tokens_per_rank,
                                   num_experts,
+                                  use_fp8,
                                   async,
                                   return_recv_hook);
 
   auto packed_recv_x_ = ConvertDetailTensorToPaddleTensor(std::get<0>(res));
-  auto packed_recv_x_scales_ =
-      ConvertDetailTensorToPaddleTensor(std::get<1>(res));
+
+  std::optional<paddle::Tensor> packed_recv_x_scales_;
+  if (std::get<1>(res).has_value()) {
+    packed_recv_x_scales_ =
+        ConvertDetailTensorToPaddleTensor(std::get<1>(res).value());
+  }
+
   auto packed_recv_count_ = ConvertDetailTensorToPaddleTensor(std::get<2>(res));
   auto packed_recv_src_info_ =
       ConvertDetailTensorToPaddleTensor(std::get<3>(res));
@@ -2135,14 +2221,20 @@ Buffer::low_latency_combine_api(const paddle::Tensor& x,
                                 const paddle::Tensor& layout_range,
                                 int num_max_dispatch_tokens_per_rank,
                                 int num_experts,
+                                bool zero_copy,
                                 bool async,
-                                bool return_recv_hook) {
+                                bool return_recv_hook,
+                                const std::optional<paddle::Tensor>& out) {
 #ifdef PADDLE_WITH_NVSHMEM
   const auto& x_ = ConvertPaddleTensorToDetailTensor(x);
   const auto& topk_idx_ = ConvertPaddleTensorToDetailTensor(topk_idx);
   const auto& topk_weights_ = ConvertPaddleTensorToDetailTensor(topk_weights);
   const auto& src_info_ = ConvertPaddleTensorToDetailTensor(src_info);
   const auto& layout_range_ = ConvertPaddleTensorToDetailTensor(layout_range);
+  std::optional<deep_ep::detail::Tensor> out_ = std::nullopt;
+  if (out.has_value()) {
+    out_ = ConvertOptionalPaddleTensorToDetailTensor(out.value());
+  }
 
   auto res = low_latency_combine(x_,
                                  topk_idx_,
@@ -2151,8 +2243,10 @@ Buffer::low_latency_combine_api(const paddle::Tensor& x,
                                  layout_range_,
                                  num_max_dispatch_tokens_per_rank,
                                  num_experts,
+                                 zero_copy,
                                  async,
-                                 return_recv_hook);
+                                 return_recv_hook,
+                                 out_);
 
   auto combined_x_ = ConvertDetailTensorToPaddleTensor(std::get<0>(res));
   const auto& event = std::get<1>(res);

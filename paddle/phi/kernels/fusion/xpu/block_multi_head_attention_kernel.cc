@@ -56,8 +56,10 @@ void qkv_split_rope_kernel(
     int bsz,
     int max_seq_len,
     int token_num,
-    int num_head,
+    int q_num_head,
+    int kv_num_head,
     int dim_head,
+    bool use_neox_style,
     DenseTensor* q_out,
     DenseTensor* k_out,
     DenseTensor* v_out) {
@@ -66,38 +68,63 @@ void qkv_split_rope_kernel(
   auto q_data = reinterpret_cast<XPUType*>(q_out->data<T>());
   auto k_data = reinterpret_cast<XPUType*>(k_out->data<T>());
   auto v_data = reinterpret_cast<XPUType*>(v_out->data<T>());
-  int r = baidu::xpu::api::split<XPUType>(
-      xpu_ctx.x_context(),
-      reinterpret_cast<const XPUType*>(qkv_input.data<T>()),
-      {q_data, k_data, v_data},
-      {token_num, 3, num_head * dim_head},
-      {1, 1, 1},
-      1);
+  auto qkv_input_data = reinterpret_cast<const XPUType*>(qkv_input.data<T>());
+  int qkv_head = q_num_head + 2 * kv_num_head;
+  int32_t ret;
+  ret = baidu::xpu::api::split<XPUType>(xpu_ctx.x_context(),
+                                        qkv_input_data,
+                                        {q_data, k_data, v_data},
+                                        {token_num, qkv_head, dim_head},
+                                        {q_num_head, kv_num_head, kv_num_head},
+                                        1);
   const_cast<DenseTensor*>(&qkv_input)->clear();
   PADDLE_ENFORCE_EQ(
-      r, 0, common::errors::Fatal("baidu::xpu::api::split failed."));
-  r = baidu::xpu::api::vsl_rotary_neox_embedding<XPUType, float, int32_t>(
-      xpu_ctx.x_context(),
-      q_data,
-      k_data,
-      rotary_emb.data<float>(),
-      q_data,
-      k_data,
-      lods,
-      1,
-      max_seq_len,
-      num_head,
-      dim_head,
-      "BLHD",
-      pos_emb_offset,
-      "NORMAL",
-      -1);
-  PADDLE_ENFORCE_EQ(r,
-                    0,
-                    common::errors::Fatal(
-                        "baidu::xpu::api::vsl_rotary_neox_embedding failed."));
+      ret, 0, common::errors::Fatal("baidu::xpu::api::split failed."));
+  if (use_neox_style) {
+    ret = baidu::xpu::api::vsl_rotary_neox_embedding<XPUType, float, int32_t>(
+        xpu_ctx.x_context(),
+        q_data,
+        k_data,
+        rotary_emb.data<float>(),
+        q_data,
+        k_data,
+        lods,
+        1,
+        max_seq_len,
+        q_num_head,
+        dim_head,
+        "BLHD",
+        pos_emb_offset,
+        "NORMAL",
+        kv_num_head);
+    PADDLE_ENFORCE_EQ(
+        ret,
+        0,
+        common::errors::Fatal(
+            "baidu::xpu::api::vsl_rotary_neox_embedding failed."));
+  } else {
+    ret = baidu::xpu::api::vsl_rotary_embedding<XPUType, float, int32_t>(
+        xpu_ctx.x_context(),
+        q_data,
+        k_data,
+        rotary_emb.data<float>(),
+        q_data,
+        k_data,
+        lods,
+        1,
+        max_seq_len,
+        q_num_head,
+        dim_head,
+        "BLHD",
+        pos_emb_offset,
+        "HALF_HEAD_DIM",
+        kv_num_head);
+    PADDLE_ENFORCE_EQ(
+        ret,
+        0,
+        common::errors::Fatal("baidu::xpu::api::vsl_rotary_embedding failed."));
+  }
 }
-
 template <typename T, typename Context>
 void BlockMultiheadAttentionXPUKernel(
     const Context& dev_ctx,
@@ -138,6 +165,7 @@ void BlockMultiheadAttentionXPUKernel(
     const float quant_min_bound,
     const float out_scale,
     const std::string& compute_dtype,
+    const float rope_theta,
     DenseTensor* fmha_out,
     DenseTensor* qkv_out,
     DenseTensor* key_cache_out,
@@ -164,12 +192,17 @@ void BlockMultiheadAttentionXPUKernel(
   const auto& input_dims = qkv.dims();
   const auto& key_cache_dims = key_cache.dims();
   const int token_num = input_dims[0];
-  const int num_head = key_cache_dims[1];
+  const int kv_num_head = key_cache_dims[1];
   const int dim_head = key_cache_dims[3];
+  const int total_num_head = qkv.dims()[qkv.dims().size() - 1] / dim_head;
+  const int q_num_head = total_num_head - 2 * kv_num_head;
   const int bsz = cum_offsets.dims()[0];
   const int max_block_per_seq = block_tables.dims()[1];
+  const int out_row = fmha_out->dims()[0];
+  const int out_col = fmha_out->dims()[1];
   VLOG(3) << "bsz: " << bsz << " token_num: " << token_num
-          << " num_head: " << num_head << " dim_head: " << dim_head
+          << " q_num_head: " << q_num_head << " kv_num_head: " << kv_num_head
+          << " dim_head: " << dim_head
           << " max_block_per_seq: " << max_block_per_seq;
   VLOG(3) << "fmha_out_dims: " << fmha_out->dims();
   bool causual = true;
@@ -226,9 +259,9 @@ void BlockMultiheadAttentionXPUKernel(
   phi::DenseTensor softmax_out, softmax_lse, seed_offset;
   phi::DenseTensor q_trans, k_trans, v_trans, qktv_out;
   if (!use_pre_cache) {
-    unpadding_q.Resize({{token_num, num_head, dim_head}});
-    unpadding_k.Resize({{token_num, num_head, dim_head}});
-    unpadding_v.Resize({{token_num, num_head, dim_head}});
+    unpadding_q.Resize({{token_num, q_num_head, dim_head}});
+    unpadding_k.Resize({{token_num, kv_num_head, dim_head}});
+    unpadding_v.Resize({{token_num, kv_num_head, dim_head}});
 
     dev_ctx.template Alloc<T>(&unpadding_q, unpadding_q.numel() * sizeof(T));
     dev_ctx.template Alloc<T>(&unpadding_k, unpadding_k.numel() * sizeof(T));
@@ -262,16 +295,17 @@ void BlockMultiheadAttentionXPUKernel(
   baidu::xpu::api::VectorParam<int32_t> lods =
       baidu::xpu::api::VectorParam<int32_t>{lods_cpu.data(), bsz + 1, nullptr}
           .to_xpu(RAII_GUARD);
+  int lods_batch_size = lods.len - 1;
+  int seqlen_sum = lods.cpu[lods_batch_size];
+  VLOG(3) << "lods_batch_size:" << lods_batch_size;
+  VLOG(3) << "seqlen_sum: " << seqlen_sum;
   float* p_batch_max_ptrs = RAII_GUARD.alloc_l3_or_gm<float>(bsz);
 
-  if (!rope_emb || !use_neox_style) {
-    PADDLE_THROW(common::errors::Unimplemented(
-        "only supports use_neox_style rope_emb now."));
-  }
   if (max_enc_len_this_time_data > 0) {
     // const int* sequence_lengths_data = seq_lens_encoder.data<int>();
     xpu::VectorParam<int32_t> pos_emb_offset =
         xpu::VectorParam<int32_t>{nullptr, 0, nullptr};
+
     qkv_split_rope_kernel<T, Context>(dev_ctx,
                                       qkv,
                                       rope_emb.get(),
@@ -281,8 +315,10 @@ void BlockMultiheadAttentionXPUKernel(
                                       bsz,
                                       rope_emb.get().dims()[2],
                                       token_num,
-                                      num_head,
+                                      q_num_head,
+                                      kv_num_head,
                                       dim_head,
+                                      use_neox_style,
                                       &unpadding_q,
                                       &unpadding_k,
                                       &unpadding_v);
@@ -341,7 +377,7 @@ void BlockMultiheadAttentionXPUKernel(
           start_token_ctx_VP,
           ordered_index_ctx_VP,
           bsz,
-          num_head,
+          kv_num_head,
           dim_head,
           bsz,
           block_size,
@@ -353,7 +389,7 @@ void BlockMultiheadAttentionXPUKernel(
           xpu_context,
           reinterpret_cast<XPUType*>(const_cast<T*>(key_cache.data<T>())),
           token_num,
-          num_head * dim_head,
+          kv_num_head * dim_head,
           bsz,
           lods.xpu,
           p_batch_max_ptrs);
@@ -376,7 +412,7 @@ void BlockMultiheadAttentionXPUKernel(
           start_token_ctx_VP,
           ordered_index_ctx_VP,
           bsz,
-          num_head,
+          kv_num_head,
           dim_head,
           bsz,
           block_size,
@@ -388,7 +424,7 @@ void BlockMultiheadAttentionXPUKernel(
           xpu_context,
           reinterpret_cast<XPUType*>(const_cast<T*>(value_cache.data<T>())),
           token_num,
-          num_head * dim_head,
+          kv_num_head * dim_head,
           bsz,
           lods.xpu,
           p_batch_max_ptrs);
@@ -409,6 +445,9 @@ void BlockMultiheadAttentionXPUKernel(
   VLOG(3) << "max_dec_len_this_time_data: " << max_dec_len_this_time_data;
 
   if (max_dec_len_this_time_data > 0) {
+    if (q_num_head != kv_num_head) {
+      PADDLE_THROW(common::errors::Unimplemented("Not supports gqa now."));
+    }
     int cachekv_quant_mode = 0;
     if (cache_k_quant_scales || cachekv_quant_mode) {
       PADDLE_THROW(common::errors::Unimplemented(
@@ -448,8 +487,10 @@ void BlockMultiheadAttentionXPUKernel(
                                       bsz,
                                       rope_emb.get().dims()[2],
                                       token_num,
-                                      num_head,
+                                      q_num_head,
+                                      q_num_head,
                                       dim_head,
+                                      use_neox_style,
                                       &unpadding_q,
                                       &unpadding_k,
                                       &unpadding_v);
@@ -477,7 +518,7 @@ void BlockMultiheadAttentionXPUKernel(
         start_token_ctx_VP,
         ordered_index_ctx_VP,
         bsz,
-        num_head,
+        kv_num_head,
         dim_head,
         bsz,
         block_size,
@@ -489,7 +530,7 @@ void BlockMultiheadAttentionXPUKernel(
         xpu_context,
         reinterpret_cast<XPUType*>(unpadding_k.data<T>()),
         bsz,
-        num_head * dim_head,
+        kv_num_head * dim_head,
         p_batch_max_ptrs);
     PADDLE_ENFORCE_XDNN_SUCCESS(ret, "batch_findmax");
     unpadding_k.clear();
@@ -523,7 +564,7 @@ void BlockMultiheadAttentionXPUKernel(
         start_token_ctx_VP,
         ordered_index_ctx_VP,
         bsz,
-        num_head,
+        kv_num_head,
         dim_head,
         bsz,
         block_size,
@@ -535,7 +576,7 @@ void BlockMultiheadAttentionXPUKernel(
         xpu_context,
         reinterpret_cast<XPUType*>(unpadding_v.data<T>()),
         bsz,
-        num_head * dim_head,
+        kv_num_head * dim_head,
         p_batch_max_ptrs);
     PADDLE_ENFORCE_XDNN_SUCCESS(ret, "batch_findmax");
     unpadding_v.clear();
@@ -572,14 +613,14 @@ void BlockMultiheadAttentionXPUKernel(
             qkvlod_dec.data(), static_cast<int64_t>(qkvlod_dec.size()), nullptr}
             .to_xpu(RAII_GUARD);
     xpu::DecodeAttnParam decoder_attn_vsl_param(
-        qkvlod_dec_vp, max_seq_len, num_head, dim_head, -1, 0, bsz, {});
+        qkvlod_dec_vp, max_seq_len, q_num_head, dim_head, -1, 0, bsz, {});
     xpu::PageAttnParam<int> page_param(
         block_size, bsz, max_block_per_seq, ordered_index_ctx_VP, 0, "HLD");
     float* max_q_ptr = RAII_GUARD.alloc_l3_or_gm<float>(MAXPTR_N);
     ret = xpu::findmax<XPUType>(xpu_context,
                                 reinterpret_cast<XPUType*>(unpadding_q.data()),
                                 max_q_ptr,
-                                token_num * num_head * dim_head);
+                                token_num * q_num_head * dim_head);
 
     ret = xpu::qkv_paged_attention<XPUType,
                                    XPUType,
@@ -602,6 +643,17 @@ void BlockMultiheadAttentionXPUKernel(
         decoder_attn_vsl_param,  // attention 相关参数
         page_param);             // page attention 相关参数
     PADDLE_ENFORCE_XDNN_SUCCESS(ret, "qkv_paged_attention");
+  }
+  if (out_shift && out_smooth) {
+    int ret = xpu::fusion_smooth_transform<XPUType>(
+        xpu_context,
+        reinterpret_cast<const XPUType*>(fmha_buf.data<T>()),
+        reinterpret_cast<const XPUType*>(out_shift.get().data<T>()),
+        reinterpret_cast<const XPUType*>(out_smooth.get().data<T>()),
+        reinterpret_cast<XPUType*>(fmha_buf.data<T>()),
+        out_row,
+        out_col);
+    PADDLE_ENFORCE_XDNN_SUCCESS(ret, "fusion_smooth_transform");
   }
   VLOG(3) << "decoder done";
 }

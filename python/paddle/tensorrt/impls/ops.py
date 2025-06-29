@@ -22,6 +22,9 @@ from paddle.tensorrt.converter_utils import (
     unary_op_converter,
 )
 from paddle.tensorrt.register import converter_registry
+from paddle.tensorrt.util import (
+    TensorRTConstantManager,
+)
 
 
 @converter_registry.register("pd_op.sqrt", trt_version="trt_version_ge=8.0")
@@ -188,9 +191,22 @@ def YoloBoxOpConverter(network, paddle_op, inputs):
 )
 def deformable_conv_converter(network, paddle_op, inputs):
     input = inputs[0]
+    constant_manager = TensorRTConstantManager()
     offset = inputs[1]
     filter = inputs[2]
     mask = inputs[3]
+
+    if isinstance(filter, trt.ITensor):
+        filter_name = (
+            paddle_op.operands()[2]
+            .source()
+            .get_defining_op()
+            .attrs()['parameter_name']
+        )
+
+        filter = constant_manager.get_constant_value(filter_name)
+    else:
+        filter = filter.numpy()
 
     groups = paddle_op.attrs().get("groups")
     deformable_groups = paddle_op.attrs().get("deformable_groups")
@@ -210,7 +226,7 @@ def deformable_conv_converter(network, paddle_op, inputs):
         ),
         trt.PluginField(
             "weights",
-            filter.numpy(),
+            filter,
             trt.PluginFieldType.FLOAT32,
         ),
         trt.PluginField(

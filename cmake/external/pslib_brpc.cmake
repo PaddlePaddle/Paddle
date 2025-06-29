@@ -16,7 +16,7 @@ include(ExternalProject)
 
 set(PSLIB_BRPC_PROJECT "extern_pslib_brpc")
 if((NOT DEFINED PSLIB_BRPC_NAME) OR (NOT DEFINED PSLIB_BRPC_URL))
-  message(STATUS "use pre defined download url")
+  message(STATUS "use predefined download url")
   set(PSLIB_BRPC_VER
       "0.1.0"
       CACHE STRING "" FORCE)

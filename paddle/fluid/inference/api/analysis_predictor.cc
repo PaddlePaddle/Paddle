@@ -54,6 +54,7 @@
 #include "paddle/fluid/inference/utils/io_utils.h"
 #include "paddle/fluid/inference/utils/model_utils.h"
 #include "paddle/fluid/inference/utils/singleton.h"
+#include "paddle/fluid/pir/utils/name_analysis.h"
 #include "paddle/fluid/prim/utils/utils.h"
 #include "paddle/fluid/primitive/base/decomp_trans.h"
 #include "paddle/phi/api/include/context_pool.h"
@@ -69,6 +70,7 @@
 #include "paddle/phi/core/platform/device/gpu/gpu_types.h"
 #include "paddle/phi/core/platform/device_context.h"
 #include "paddle/phi/core/platform/profiler.h"
+#include "paddle/phi/core/tensor_utils.h"
 
 #include "paddle/phi/core/generator.h"
 #include "paddle/phi/kernels/funcs/data_type_transform.h"
@@ -115,6 +117,7 @@
 
 #include "paddle/common/flags.h"
 #include "paddle/fluid/ir_adaptor/translator/translate.h"
+#include "paddle/fluid/pir/dialect/kernel/ir/kernel_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/fluid/pir/serialize_deserialize/include/interface.h"
@@ -141,7 +144,7 @@
 #include "paddle/pir/include/pass/pass_registry.h"
 
 COMMON_DECLARE_bool(pir_apply_inplace_pass);
-COMMON_DECLARE_bool(enable_auto_layout_pass);
+COMMON_DECLARE_bool(enable_auto_layout_pass_in_inference);
 namespace paddle {
 namespace {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -190,7 +193,7 @@ void UpdatePrivateDeviceContext(InferGPUContext *gpu_context,
   gpu_context->SetRuntimeVersion(gpu_resource->GetGpuRuntimeVersion());
   VLOG(1) << "thread id is " << std::this_thread::get_id() << ", stream id is "
           << reinterpret_cast<void *>(gpu_resource->GetStream())
-          << ", allotor ptr is "
+          << ", allocator ptr is "
           << reinterpret_cast<void *>(
                  memory::allocation::AllocatorFacade::Instance()
                      .GetAllocator(place_, gpu_resource->GetStream())
@@ -754,6 +757,10 @@ void AnalysisPredictor::InitDeviceContexts() {
           xpu_context->SetAllocator(instance.GetAllocator(place_).get());
           xpu_context->SetGenerator(
               phi::DefaultXPUGenerator(place_.GetDeviceId()).get());
+          xpu_context->SetPinnedAllocator(
+              memory::allocation::AllocatorFacade::Instance()
+                  .GetAllocator(phi::XPUPinnedPlace())
+                  .get());
           xpu_context->SetHostAllocator(
               instance.GetAllocator(phi::CPUPlace()).get());
           xpu_context->SetHostGenerator(phi::DefaultCPUGenerator().get());
@@ -940,7 +947,7 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
 
         if (config_.enable_gpu_mixed_) {
           AddAutoMixedPrecisionPass(fused_op_pm);
-          if (FLAGS_enable_auto_layout_pass) {
+          if (FLAGS_enable_auto_layout_pass_in_inference) {
             AddAutoLayoutPasses(fused_op_pm);
           } else {
             fused_op_pm.AddPass(
@@ -1086,7 +1093,7 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
     if (config_.save_optimized_model_) {
       std::string optimized_model =
           GetOptimizedModelPath() + "/" + "_optimized.json";
-      pir::WriteModule(*pir_program_, optimized_model, 1, true, false, true);
+      pir::WriteModule(*pir_program_, optimized_model);
       LOG(INFO) << "Optimized model saved to " << optimized_model;
       SaveOrLoadPirParameters(true);
     }
@@ -1100,7 +1107,7 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
       AddAutoMixedPrecisionPass(basic_pass_pm);
     }
   }
-  if (FLAGS_enable_auto_layout_pass) {
+  if (FLAGS_enable_auto_layout_pass_in_inference) {
     AddAutoLayoutPasses(basic_pass_pm);
   } else {
     auto transfer_layout_pass = ::pir::CreateTransferLayoutPass();
@@ -1121,10 +1128,17 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
   }
   auto params_sync_among_devices_pass =
       ::pir::CreateParamsSyncAmongDevicesPass();
+  int64_t params = 0;
+  for (auto op : pir_program_.get()->block()->ops()) {
+    if (op->isa<::pir::ParameterOp>()) {
+      params += 1;
+    }
+  }
   if (std::find(config_.deleted_passes_.begin(),
                 config_.deleted_passes_.end(),
                 params_sync_among_devices_pass->name()) ==
-      config_.deleted_passes_.end()) {
+          config_.deleted_passes_.end() &&
+      params > 0) {
     params_sync_among_devices_pass->SetNotOwned(pir::Pass::kPlaceAttr, &place_);
     params_sync_among_devices_pass->SetNotOwned(pir::Pass::kParamScopeAttr,
                                                 sub_scope_);
@@ -1336,7 +1350,7 @@ bool AnalysisPredictor::SaveOrLoadPirParameters(bool for_save) {
           std::min(num_threads, filter_param_names.size() / chunk_size);
       size_t remain_size = filter_param_names.size() % num_threads;
       VLOG(4) << "Start Load with multi-thread: " << num_threads
-              << " chund size: " << chunk_size;
+              << " chunk size: " << chunk_size;
 
       std::vector<std::future<std::vector<phi::DenseTensor *>>> futures;
 
@@ -1362,11 +1376,16 @@ bool AnalysisPredictor::SaveOrLoadPirParameters(bool for_save) {
       }
 
     } else {
-      pir::LoadCombineFunction(config_.params_file(),
-                               filter_param_names,
-                               &tensor_out,
-                               false,
-                               place_);
+      if (std::filesystem::exists(config_.params_file())) {
+        pir::LoadCombineFunction(config_.params_file(),
+                                 filter_param_names,
+                                 &tensor_out,
+                                 false,
+                                 place_);
+      } else {
+        LOG(WARNING) << "【Pir Load】Parameter Path not exists: "
+                     << config_.params_file();
+      }
     }
   }
   return true;
@@ -1382,7 +1401,7 @@ bool AnalysisPredictor::PreparePirProgram() {
       common::errors::Fatal("Here, pir_program must be a nullptr!"));
 
   pir_program_ = std::make_shared<pir::Program>(pir::IrContext::Instance());
-  pir::ReadModule(config_.prog_file(), pir_program_.get(), 1 /*pir_version*/);
+  pir::ReadModule(config_.prog_file(), pir_program_.get());
   if (!SaveOrLoadPirParameters(false)) {
     return false;
   }
@@ -1879,6 +1898,22 @@ bool AnalysisPredictor::SetFeed(const std::vector<paddle::Tensor> &inputs,
   return true;
 }
 
+phi::Place AnalysisPredictor::GetTensorPlace(const pir::Value &value) {
+  if (!value.use_empty()) {
+    auto next_op = value.first_use().owner();
+    if (next_op->isa<paddle::dialect::PhiKernelOp>()) {
+      auto place =
+          phi::TransToPhiPlace(next_op->dyn_cast<paddle::dialect::PhiKernelOp>()
+                                   .kernel_key()
+                                   .backend());
+      return place;
+    } else {
+      return place_;
+    }
+  } else {
+    return place_;
+  }
+}
 template <typename T>
 void AnalysisPredictor::GetFetchOne(const phi::DenseTensor &fetch,
                                     PaddleTensor *output) {
@@ -2357,6 +2392,14 @@ CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
         if (std::getenv("FLAGS_cache_inference_while_scope") == nullptr) {
           SetGflag("cache_inference_while_scope", "1");
         }
+        std::string model_path = config.prog_file();
+        if (!model_path.empty()) {
+          std::string model_dir = model_path.substr(0, model_path.rfind('.'));
+          SetGflag("trt_engine_serialized_path", model_dir.c_str());
+        } else if (!config.model_dir().empty()) {
+          std::string model_dir = config.model_dir();
+          SetGflag("trt_engine_serialized_path", model_dir.c_str());
+        }
       });
 
       if (config.thread_local_stream_enabled() &&
@@ -2561,22 +2604,28 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetInputTensor(
       static_cast<void *>(scope), this->GetDeviceContexts()));
   res->input_or_output_ = true;
   res->SetName(name);
-  if (phi::is_cpu_place(place_)) {  // NOLINT
+  phi::Place input_place = place_;
+  if (load_pir_model_) {
+    input_place = GetTensorPlace(
+        pir::utils::name_analysis::GetValueByNameInPhiKernelProgram(
+            *(pir_program_.get()), name));
+  }
+  if (phi::is_cpu_place(input_place)) {  // NOLINT
     res->SetPlace(PaddlePlace::kCPU);
-  } else if (phi::is_ipu_place(place_)) {
+  } else if (phi::is_ipu_place(input_place)) {
     // Currently, IPUPlace's tensor copy between cpu and ipu has been set in
     // IpuBackend.
     res->SetPlace(PaddlePlace::kCPU);
-  } else if (phi::is_xpu_place(place_)) {
-    auto xpu_place = place_;
+  } else if (phi::is_xpu_place(input_place)) {
+    auto xpu_place = input_place;
     res->SetPlace(PaddlePlace::kXPU, xpu_place.GetDeviceId());
-  } else if (phi::is_custom_place(place_)) {
-    auto custom_place = place_;
+  } else if (phi::is_custom_place(input_place)) {
+    auto custom_place = input_place;
     res->SetPlace(PaddlePlace::kCUSTOM,
                   custom_place.GetDeviceId(),
                   custom_place.GetDeviceType());
   } else {
-    auto gpu_place = place_;
+    auto gpu_place = input_place;
     res->SetPlace(PaddlePlace::kGPU, gpu_place.GetDeviceId());
   }
   return res;
@@ -3249,7 +3298,7 @@ void AnalysisPredictor::RegisterOutputHook(
               auto *var = scope->FindVar(var_name);
               if (!var || !var->IsType<phi::DenseTensor>()) continue;
               auto dense_tensor = var->Get<phi::DenseTensor>();
-              if (!dense_tensor.initialized()) continue;
+              if (!dense_tensor.has_allocation()) continue;
               auto tensor = paddle::Tensor(
                   std::make_shared<phi::DenseTensor>(dense_tensor), var_name);
               for (auto &hookfunc : this->output_hookfuncs_) {
@@ -3270,7 +3319,7 @@ void AnalysisPredictor::RegisterOutputHook(
                 auto *var = scope->FindVar(var_name);
                 if (!var || !var->IsType<phi::DenseTensor>()) continue;
                 auto dense_tensor = var->Get<phi::DenseTensor>();
-                if (!dense_tensor.initialized()) continue;
+                if (!dense_tensor.has_allocation()) continue;
                 auto tensor = paddle::Tensor(
                     std::make_shared<phi::DenseTensor>(dense_tensor), var_name);
                 for (auto &hookfunc : this->output_hookfuncs_) {
@@ -3296,7 +3345,7 @@ void AnalysisPredictor::RegisterInputHook(const InputTensorHookFunc &hookfunc) {
               auto *var = scope->FindVar(var_name);
               if (!var || !var->IsType<phi::DenseTensor>()) continue;
               auto dense_tensor = var->Get<phi::DenseTensor>();
-              if (!dense_tensor.initialized()) continue;
+              if (!dense_tensor.has_allocation()) continue;
               auto tensor = paddle::Tensor(
                   std::make_shared<phi::DenseTensor>(dense_tensor), var_name);
               for (auto &hookfunc : this->input_hookfuncs_) {
@@ -3317,7 +3366,7 @@ void AnalysisPredictor::RegisterInputHook(const InputTensorHookFunc &hookfunc) {
                 auto *var = scope->FindVar(var_name);
                 if (!var || !var->IsType<phi::DenseTensor>()) continue;
                 auto dense_tensor = var->Get<phi::DenseTensor>();
-                if (!dense_tensor.initialized()) continue;
+                if (!dense_tensor.has_allocation()) continue;
                 auto tensor = paddle::Tensor(
                     std::make_shared<phi::DenseTensor>(dense_tensor), var_name);
                 for (auto &hookfunc : this->input_hookfuncs_) {

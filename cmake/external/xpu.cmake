@@ -28,27 +28,34 @@ set(XPU_XPTI_LIB_NAME "libxpti.so")
 set(XPU_XBLAS_LIB_NAME "libxpu_blas.so")
 set(XPU_XFA_LIB_NAME "libxpu_flash_attention.so")
 set(XPU_XPUDNN_LIB_NAME "libxpu_dnn.so")
+set(XPU_FFT_LIB_NAME "libcufft.so")
+# Avoid deprecated int32 apis:
+add_compile_definitions(XPUAPI_NOT_INCLUDE_DEPRECATED)
 
 if(NOT DEFINED XPU_XHPC_BASE_DATE)
-  set(XPU_XHPC_BASE_DATE "dev/20250306")
+  set(XPU_XHPC_BASE_DATE "dev/20990602")
 endif()
-set(XPU_XCCL_BASE_VERSION "3.0.2.5") # For XRE5
+set(XPU_XCCL_BASE_VERSION "3.0.2.7") # For XRE5
 if(NOT DEFINED XPU_XFT_BASE_VERSION)
-  set(XPU_XFT_BASE_VERSION "20230602")
+  set(XPU_XFT_BASE_VERSION "20250507/xpu3")
 endif()
 
 if(NOT DEFINED XPU_XRE_BASE_VERSION)
   if(WITH_XPU_XRE5)
-    set(XPU_XRE_BASE_VERSION "5.0.21.15")
+    set(XPU_XRE_BASE_VERSION "5.0.21.19")
   else()
     set(XPU_XRE_BASE_VERSION "4.32.0.1")
   endif()
 endif()
 
 if(WITH_XPU_XRE5)
-  set(XPU_XPTI_BASE_VERSION "0.1.0")
+  set(XPU_XPTI_BASE_VERSION "0.2.0")
 else()
   set(XPU_XPTI_BASE_VERSION "0.0.1")
+endif()
+
+if(NOT DEFINED XPU_FFT_BASE_DATE)
+  set(XPU_FFT_BASE_DATE "20250425")
 endif()
 
 set(XPU_XRE_BASE_URL
@@ -61,7 +68,7 @@ set(XPU_XCCL_BASE_URL
 
 if(NOT XPU_XFT_BASE_URL)
   set(XPU_XFT_BASE_URL
-      "https://klx-sdk-release-public.su.bcebos.com/xft/dev/${XPU_XFT_BASE_VERSION}"
+      "https://klx-sdk-release-public.su.bcebos.com/xft_internal/dev/${XPU_XFT_BASE_VERSION}"
   )
 endif()
 
@@ -81,10 +88,25 @@ if(WITH_XPU_XRE5)
   )
 endif()
 
-if(WITH_AARCH64)
-  set(XPU_XRE_DIR_NAME "xre-kylin_aarch64")
-  set(XPU_XCCL_DIR_NAME "") # TODO: xccl has no kylin output now.
-  set(XPU_XFT_DIR_NAME "") # TODO: xft has no kylin output at now.
+if(WITH_XPU_FFT)
+  set(XPU_FFT_BASE_URL
+      "https://klx-sdk-release-public.su.bcebos.com/xpufft/kl3/${XPU_FFT_BASE_DATE}"
+  )
+  set(XPU_FFT_DIR_NAME "xpufft_ubuntu2004-x86_64")
+endif()
+
+if(WITH_ARM)
+  if(WITH_XPU_XRE5)
+    set(XPU_XRE_DIR_NAME "xre-kylin_v10_server-aarch64-${XPU_XRE_BASE_VERSION}")
+    # TODO: xccl has no kylin output now. set default value here.
+    set(XPU_XCCL_DIR_NAME "xccl_Linux_x86_64")
+    set(XPU_XHPC_DIR_NAME "xhpc-kylinv4_aarch64")
+    set(XPU_XFT_DIR_NAME "") # TODO: xft has no kylin output at now.
+  else()
+    set(XPU_XRE_DIR_NAME "")
+    set(XPU_XCCL_DIR_NAME "") # TODO: xccl has no kylin output now.
+    set(XPU_XFT_DIR_NAME "") # TODO: xft has no kylin output at now.
+  endif()
 elseif(WITH_SUNWAY)
   set(XPU_XRE_DIR_NAME "xre-deepin_sw6_64")
   set(XPU_XCCL_DIR_NAME "") # TODO: xccl has no deepin output at now.
@@ -112,7 +134,7 @@ else()
     set(XPU_XHPC_DIR_NAME "xhpc-ubuntu1604_x86_64")
   endif()
   set(XPU_XCCL_DIR_NAME "xccl_Linux_x86_64")
-  set(XPU_XFT_DIR_NAME "xft_ubuntu1604_x86_64")
+  set(XPU_XFT_DIR_NAME "xft_internal_ubuntu2004")
 endif()
 
 set(XPU_XRE_URL
@@ -128,6 +150,10 @@ set(XPU_XFT_GET_DEPENCE_URL
 
 if(WITH_XPTI)
   set(XPU_XPTI_URL "${XPU_XPTI_BASE_URL}/${XPU_XPTI_DIR_NAME}.tar.gz")
+endif()
+
+if(WITH_XPU_FFT)
+  set(XPU_FFT_URL "${XPU_FFT_BASE_URL}/${XPU_FFT_DIR_NAME}.tar.gz")
 endif()
 
 set(XPU_XHPC_URL
@@ -187,9 +213,9 @@ if(DEFINED ENV{XPU_LIB_ROOT})
   endif()
 
   # XCCL
-  if(DEFINED ENV{XCCL_DIR_NAME})
-    set(XPU_XCCL_URL "${XPU_LIB_ROOT}/$ENV{XCCL_DIR_NAME}")
-    set(XCCL_DIR_NAME "$ENV{XCCL_DIR_NAME}")
+  if(DEFINED ENV{XPU_XCCL_DIR_NAME})
+    set(XPU_XCCL_URL "${XPU_LIB_ROOT}/$ENV{XPU_XCCL_DIR_NAME}")
+    set(XPU_XCCL_DIR_NAME "$ENV{XPU_XCCL_DIR_NAME}")
   endif()
 
   # XHPC
@@ -205,6 +231,12 @@ if(DEFINED ENV{XPU_LIB_ROOT})
     set(XFT_COMMAND
         "${CMAKE_SOURCE_DIR}/tools/xpu/get_xft_dependence_from_custom_path.sh")
   endif()
+
+  # FFT
+  if(DEFINED ENV{XPU_FFT_DIR_NAME})
+    set(XPU_FFT_URL "${XPU_LIB_ROOT}/$ENV{XPU_FFT_DIR_NAME}")
+    set(XPU_FFT_DIR_NAME "$ENV{XPU_FFT_DIR_NAME}")
+  endif()
 endif()
 
 if(WITH_XPU_XRE5)
@@ -219,7 +251,9 @@ if(WITH_XPU_XRE5)
       ${XPU_XCCL_URL} ${XPU_XCCL_DIR_NAME} 1 && wget ${XPU_XFT_GET_DEPENCE_URL}
       && bash ${XFT_COMMAND} ${XPU_XFT_URL} ${XPU_XFT_DIR_NAME} && bash
       ${CMAKE_SOURCE_DIR}/tools/xpu/get_xpti_dependence.sh ${XPU_XPTI_URL}
-      ${XPU_XPTI_DIR_NAME}
+      ${XPU_XPTI_DIR_NAME} && bash
+      ${CMAKE_SOURCE_DIR}/tools/xpu/get_xpufft_dependence.sh ${XPU_FFT_URL}
+      ${XPU_FFT_DIR_NAME}
     DOWNLOAD_NO_PROGRESS 1
     UPDATE_COMMAND ""
     CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${XPU_INSTALL_ROOT}
@@ -244,7 +278,9 @@ else()
       ${XPU_XCCL_URL} ${XPU_XCCL_DIR_NAME} 0 && wget ${XPU_XFT_GET_DEPENCE_URL}
       && bash get_xft_dependence.sh ${XPU_XFT_URL} ${XPU_XFT_DIR_NAME} && bash
       ${CMAKE_SOURCE_DIR}/tools/xpu/get_xpti_dependence.sh ${XPU_XPTI_URL}
-      ${XPU_XPTI_DIR_NAME}
+      ${XPU_XPTI_DIR_NAME} && bash
+      ${CMAKE_SOURCE_DIR}/tools/xpu/get_xpufft_dependence.sh ${XPU_FFT_URL}
+      ${XPU_FFT_DIR_NAME}
     DOWNLOAD_NO_PROGRESS 1
     UPDATE_COMMAND ""
     CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${XPU_INSTALL_ROOT}
@@ -270,6 +306,16 @@ if(WITH_XPU_XFT)
   include_directories(${XPU_XFT_INC_DIR})
   set(XPU_XFT_LIB "${XPU_LIB_DIR}/${XPU_XFT_LIB_NAME}")
   target_link_libraries(xpulib ${XPU_XFT_LIB})
+endif()
+
+if(WITH_XPU_FFT)
+  message(STATUS "Compile with XPU FFT!")
+  add_definitions(-DPADDLE_WITH_XPU_FFT)
+
+  set(XPU_FFT_INC_DIR "${XPU_INC_DIR}/fft")
+  include_directories(${XPU_FFT_INC_DIR})
+  set(XPU_FFT_LIB "${XPU_LIB_DIR}/${XPU_FFT_LIB_NAME}")
+  target_link_libraries(xpulib ${XPU_FFT_LIB})
 endif()
 
 set(XPU_XHPC_INC_DIR "${XPU_INC_DIR}/xhpc")
@@ -311,17 +357,14 @@ if(WITH_XPU_XRE5)
     ${XPU_XBLAS_LIB}
     ${XPU_API_LIB}
     ${XPU_XFA_LIB}
-    ${XPU_XPUDNN_LIB})
+    ${XPU_XPUDNN_LIB}
+    ${XPU_ML_LIB})
 else()
   target_link_libraries(xpulib ${XPU_RT_LIB} ${XPU_API_LIB})
 endif()
 
 if(WITH_XPU_BKCL)
-  if(WITH_XPU_XRE5)
-    target_link_libraries(xpulib ${XPU_ML_LIB} ${XPU_BKCL_LIB})
-  else()
-    target_link_libraries(xpulib ${XPU_BKCL_LIB})
-  endif()
+  target_link_libraries(xpulib ${XPU_BKCL_LIB})
 endif()
 
 add_dependencies(xpulib ${XPU_PROJECT})

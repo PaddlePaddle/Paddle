@@ -21,7 +21,7 @@ from .base_reshard_func import (
 from .nd_mesh_reshard_func import NdMeshReshardFunction
 
 
-class GlobaleToSubMeshFunction(ReshardFunction):
+class GlobalToSubMeshFunction(ReshardFunction):
     def is_suitable(self, src_dist_attr, dst_dist_attr):
 
         # NOTE we could allow the src_dist_attr is not replicated and reshard it as replicated before go through the global_to_sub logic

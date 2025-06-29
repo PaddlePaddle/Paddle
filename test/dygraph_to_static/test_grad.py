@@ -19,6 +19,7 @@ import unittest
 import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
+    test_ast_only,
     test_pir_only,
 )
 
@@ -209,6 +210,7 @@ def grad_with_if_case(x):
 
 class TestGradWithIf(Dy2StTestBase):
     @test_pir_only
+    @test_ast_only
     def test_grad_with_if(self):
         fn = grad_with_if_case
         static_fn = paddle.jit.to_static(fn)

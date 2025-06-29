@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/cinn/hlir/framework/pir/compilation_task.h"
+#include "paddle/cinn/ir/utils/ir_copy.h"
 
 #include "paddle/cinn/backends/codegen_device_util.h"
 #include "paddle/cinn/common/dim_expr_converter.h"
@@ -22,6 +23,7 @@
 #include "paddle/cinn/hlir/framework/op_lowering.h"
 #include "paddle/cinn/hlir/framework/pir/op_lowering_group.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
+#include "paddle/cinn/hlir/op/use_ops.h"
 #include "paddle/cinn/ir/utils/stmt_converter.h"
 #include "paddle/common/enforce.h"
 namespace cinn {
@@ -157,8 +159,25 @@ void UnifyBroadcastGroupFuncArgs(
   };
 
   const auto& UpdateAllFuncArgs = [&](GroupCompilationContext& context) {
+    std::unordered_map<std::string, cinn::common::Type> old_type_map;
     for (ir::LoweredFunc& func : context.lowered_funcs_) {
+      old_type_map.clear();
+      // record old func arg type.
+      for (auto& old_arg : func->args) {
+        if (old_arg.is_var() && old_arg.var_arg()->is_symbolic_constant) {
+          old_type_map[old_arg.name()] = old_arg.var_arg()->type();
+        }
+      }
+      // update func args.
       func->args = new_args_vec;
+      // reset arg type to old type.
+      for (auto& new_arg : func->args) {
+        if (new_arg.is_var() && new_arg.var_arg()->is_symbolic_constant &&
+            old_type_map.count(new_arg.name())) {
+          new_arg.set_var(ir::ir_utils::IRCopy(new_arg.var_arg()));
+          new_arg.var_arg()->set_type(old_type_map[new_arg.name()]);
+        }
+      }
     }
   };
 
@@ -223,6 +242,74 @@ void CompilationTask::Lowering() {
 
     context_->broadcast_condition_ = ChangeBroadcastConditionToExpr();
   }
+
+  auto SimplifyPredicate = [](GroupCompilationContext* context) {
+    for (auto& expr : context->predicates_) {
+      optim::SimplifyLogical(&expr);
+    }
+    if (context->broadcast_condition_.defined())
+      optim::SimplifyLogical(&context->broadcast_condition_);
+    for (auto& expr : context->CX86_predicates_) {
+      optim::SimplifyLogical(&expr);
+    }
+  };
+
+  // remove unreachable predicates.
+  auto RemoveUnreachPredicate = [](GroupCompilationContext* context) {
+    // remove unreachable predicate.
+    std::vector<ir::Expr> new_predicates;
+    std::vector<int> new_priorities;
+    std::vector<ir::LoweredFunc> new_lowered_funcs;
+    bool has_true_predicate = false;
+    for (size_t i = 0; i < context->predicates_.size(); ++i) {
+      if (has_true_predicate) continue;
+      if (common::IsZero(context->predicates_[i])) continue;
+      if (common::IsOne(context->predicates_[i])) has_true_predicate = true;
+      new_predicates.push_back(context->predicates_[i]);
+      new_priorities.push_back(context->priorities_[i]);
+      new_lowered_funcs.push_back(context->lowered_funcs_[i]);
+    }
+    // CINN does not support returning an empty module now. if all predicates
+    // are false, we push the first predicate as result.
+    if (new_predicates.empty() && !context->predicates_.empty()) {
+      new_predicates.push_back(context->predicates_[0]);
+      new_priorities.push_back(context->priorities_[0]);
+      new_lowered_funcs.push_back(context->lowered_funcs_[0]);
+    }
+    context->predicates_ = std::move(new_predicates);
+    context->priorities_ = std::move(new_priorities);
+    context->lowered_funcs_ = std::move(new_lowered_funcs);
+
+    // remove unreachable CX86 predicate.
+    std::vector<ir::Expr> new_CX86_predicates;
+    std::vector<ir::LoweredFunc> new_CX86_lowered_funcs;
+    bool has_true_CX86_predicate = false;
+    for (size_t i = 0; i < context->CX86_predicates_.size(); ++i) {
+      if (has_true_CX86_predicate) continue;
+      if (common::IsZero(context->CX86_predicates_[i])) continue;
+      if (common::IsOne(context->CX86_predicates_[i]))
+        has_true_CX86_predicate = true;
+      new_CX86_predicates.push_back(context->CX86_predicates_[i]);
+      new_CX86_lowered_funcs.push_back(context->CX86_lowered_funcs_[i]);
+    }
+    // CINN does not support returning an empty module now. if all predicates
+    // are false, we push the first predicate as result.
+    if (new_CX86_predicates.empty() && !context->CX86_predicates_.empty()) {
+      new_CX86_predicates.push_back(context->CX86_predicates_[0]);
+      new_CX86_lowered_funcs.push_back(context->CX86_lowered_funcs_[0]);
+    }
+    context->CX86_predicates_ = std::move(new_CX86_predicates);
+    context->CX86_lowered_funcs_ = std::move(new_CX86_lowered_funcs);
+  };
+  // Logical Simplifysimplify predicates, such as:
+  // false && ... ==> false
+  // true || ...  ==> true
+  // 1 <= 1       ==> true
+  SimplifyPredicate(context_);
+  // Remove unreachable predicates, unreachable predicates means that predicate
+  // is false, or a true predicate already existed before.
+  RemoveUnreachPredicate(context_);
+
   VLOG(5) << "End to lowering: " << context_->PrintPredicate2Funcs();
 }
 
@@ -231,6 +318,8 @@ std::shared_ptr<pir::CompilationResult> CompilationTask::CodegenAndJit() {
 
   ir::Module ir_module = context_->module_builder_.Build();
   ir::Module ir_moduleCX86 = context_->CX86_module_builder_.Build();
+  cinn::common::OpDataTypePromote(&ir_module);
+  cinn::common::OpDataTypePromote(&ir_moduleCX86);
   return BuildPirCINNKernelInfo(
       ir_module, ir_moduleCX86, context_->NeedCompileCX86Kernel());
 }

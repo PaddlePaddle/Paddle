@@ -105,6 +105,10 @@ void IndexPutKernel(const Context& dev_ctx,
                     const DenseTensor& value,
                     bool accumulate,
                     DenseTensor* out) {
+  if (out && out->numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   PADDLE_ENFORCE_EQ(
       x.dtype(),
       value.dtype(),

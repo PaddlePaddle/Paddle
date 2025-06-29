@@ -44,6 +44,8 @@ bool PyObject_CheckBool(PyObject** obj);
 
 bool PyObject_CheckLong(PyObject* obj);
 
+bool PyObject_CheckDataType(PyObject* obj);
+
 int32_t PyObject_ToInt32(PyObject* obj);
 
 uint32_t PyObject_ToUInt32(PyObject* obj);
@@ -206,11 +208,17 @@ void ConstructAttrMapFromPyArgs(
     ssize_t attr_end,
     paddle::framework::AttributeMap& attrs);  // NOLINT
 
-void ConstructAttrMapForRunProgram(
+void ConstructAttrMapForLegacyRunProgram(
     const std::string& op_type,
     PyObject* args,
     ssize_t attr_start,
     ssize_t attr_end,
+    paddle::framework::AttributeMap& attrs);  // NOLINT
+
+void ConstructAttrMapForRunProgram(
+    const std::string& op_type,
+    PyObject* args,
+    ssize_t arg_pos,
     paddle::framework::AttributeMap& attrs);  // NOLINT
 
 unsigned long GetUnsignedLongFromArgs(  // NOLINT

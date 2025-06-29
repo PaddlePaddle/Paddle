@@ -28,11 +28,6 @@ void TakeAlongAxisKernel(const Context& dev_ctx,
                          const DenseTensor& index,
                          int axis,
                          DenseTensor* out) {
-  PADDLE_ENFORCE_EQ(
-      dev_ctx.GetPlace().GetType() == phi::AllocationType::CPU,
-      true,
-      errors::PreconditionNotMet("This kernel only runs on CPU."));
-
   out->Resize(index.dims());
   dev_ctx.template Alloc<T>(out);
 

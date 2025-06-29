@@ -15,22 +15,11 @@
 import logging
 from collections import deque
 
-import paddle
 from paddle.base import core
 
 from ...utils.log_utils import get_logger
 from ..pass_base import register_pass
-from ..pass_utils import (
-    PipelineMemoryEstimator,
-    _program_for_zero_bubble,
-    _program_for_zero_bubble_vpp,
-    split_matmul_grad_to_matmul,
-)
 from .pipeline_pass_base import PipelinePassBase
-
-FORWARD = "forward"
-BACKWARD = "backward"
-OPT = "optimizer"
 
 logger = get_logger(logging.INFO)
 
@@ -39,23 +28,6 @@ class PipelineZeroBubbleBase(PipelinePassBase):
     def __init__(self):
         super().__init__()
         self.set_attr("enable_optimizer_post_validation", 0)
-
-    def _split_matmul_grad_ops_to_matmul(self, program, dist_context):
-        for block in program.blocks:
-            matmul_grad_op_idx = []
-            ops = block.ops
-            for i, op_i in enumerate(ops):
-                if (
-                    op_i.type == "matmul_v2_grad"
-                    and not op_i.attr("trans_x")
-                    and not op_i.attr("trans_y")
-                ):
-                    matmul_grad_op_idx.append(i)
-
-            for matmul_grad_id in reversed(matmul_grad_op_idx):
-                split_matmul_grad_to_matmul(
-                    block, matmul_grad_id, dist_context=dist_context
-                )
 
 
 @register_pass("pipeline_scheduler_ZBH1")
@@ -78,29 +50,29 @@ class PipelineZeroBubblePipelinePass(PipelineZeroBubbleBase):
 
         forward_micro_batch_id = 0
         for _ in range(micro_batch_in_warmup):
-            forward_job = core.Job(FORWARD)
+            forward_job = core.Job(self.FORWARD)
             forward_job.set_micro_batch_id(forward_micro_batch_id)
             job_list.append(forward_job)
             forward_micro_batch_id += 1
 
         backward_micro_batch_id = 0
         for _ in range(pp_stage):
-            backward_b_job = core.Job(BACKWARD + "_b")
+            backward_b_job = core.Job(self.BACKWARD + "_b")
             backward_b_job.set_micro_batch_id(backward_micro_batch_id)
             job_list.append(backward_b_job)
             backward_micro_batch_id += 1
 
-            forward_job = core.Job(FORWARD)
+            forward_job = core.Job(self.FORWARD)
             forward_job.set_micro_batch_id(forward_micro_batch_id)
             job_list.append(forward_job)
             forward_micro_batch_id += 1
 
         for _ in range(micro_batch_in_zero_bubble):
-            backward_job = core.Job(BACKWARD)
+            backward_job = core.Job(self.BACKWARD)
             backward_job.set_micro_batch_id(backward_micro_batch_id)
             job_list.append(backward_job)
 
-            forward_job = core.Job(FORWARD)
+            forward_job = core.Job(self.FORWARD)
             forward_job.set_micro_batch_id(forward_micro_batch_id)
             job_list.append(forward_job)
 
@@ -108,43 +80,37 @@ class PipelineZeroBubblePipelinePass(PipelineZeroBubbleBase):
             backward_micro_batch_id += 1
 
         for _ in range(micro_batch_in_warmup - 1):
-            backward_job = core.Job(BACKWARD)
+            backward_job = core.Job(self.BACKWARD)
             backward_job.set_micro_batch_id(backward_micro_batch_id)
             job_list.append(backward_job)
             backward_micro_batch_id += 1
 
         if pp_stage > 0:
-            backward_b_job = core.Job(BACKWARD + "_b")
+            backward_b_job = core.Job(self.BACKWARD + "_b")
             backward_b_job.set_micro_batch_id(backward_micro_batch_id)
             job_list.append(backward_b_job)
 
-            backward_w_job = core.Job(BACKWARD + "_w")
+            backward_w_job = core.Job(self.BACKWARD + "_w")
             backward_w_job.set_micro_batch_id(backward_micro_batch_id)
             job_list.append(backward_w_job)
         else:
-            backward_job = core.Job(BACKWARD)
+            backward_job = core.Job(self.BACKWARD)
             backward_job.set_micro_batch_id(backward_micro_batch_id)
             job_list.append(backward_job)
         backward_micro_batch_id += 1
 
         for i in range(pp_stage):
-            backward_w_job = core.Job(BACKWARD + "_w")
+            backward_w_job = core.Job(self.BACKWARD + "_w")
             backward_w_job.set_micro_batch_id(i)
             job_list.append(backward_w_job)
 
-        opt_job = core.Job(OPT)
+        opt_job = core.Job(self.OPT)
         opt_job.set_micro_batch_id(0)
         job_list.append(opt_job)
         return job_list
 
     def _partial_programs(self, program):
-        dist_context = self.get_attr("dist_context")
-        self._split_matmul_grad_ops_to_matmul(program, dist_context)
-        enable_send_recv_overlap = self.get_attr("enable_send_recv_overlap")
-        types, sub_program_list = _program_for_zero_bubble(
-            program, enable_send_recv_overlap
-        )
-        return types, sub_program_list
+        raise NotImplementedError("Not support old IR for ZeroBubble")
 
 
 @register_pass("pipeline_scheduler_ZBVPP")
@@ -224,120 +190,14 @@ class PipelineZeroBubbleVirtualPipelinePass(PipelineZeroBubblePipelinePass):
             job.set_micro_batch_id(job_info["micro_batch"])
             job_list.append(job)
 
-        opt_job = core.Job(OPT)
+        opt_job = core.Job(self.OPT)
         opt_job.set_micro_batch_id(0)
         job_list.append(opt_job)
 
         return job_list
 
     def _partial_programs(self, program):
-        dist_context = self.get_attr("dist_context")
-        num_model_chunks = self.get_attr("vpp_degree")
-        memory_limit_times = self.get_attr("memory_limit_times")
-
-        self._split_matmul_grad_ops_to_matmul(program, dist_context)
-        enable_send_recv_overlap = self.get_attr("enable_send_recv_overlap")
-        types, sub_program_list = _program_for_zero_bubble_vpp(
-            program, num_model_chunks, dist_context, enable_send_recv_overlap
-        )
-
-        rank = paddle.distributed.get_rank()
-        pp_group = []
-        for process_mesh in dist_context.process_meshes:
-            if rank in process_mesh.process_ids:
-                pp_idx = process_mesh.process_ids.index(rank)
-                for process_mesh in dist_context.process_meshes:
-                    pp_group.append(process_mesh.process_ids[pp_idx])
-                break
-
-        if memory_limit_times > 0:
-            self._estimate_program_mem_usagess(
-                types, sub_program_list, dist_context, pp_group
-            )
-            self._get_all_device_base_memory(pp_group)
-        else:
-            self.program_mem_usages = [
-                dict.fromkeys(types, 0) for _ in pp_group
-            ]
-            self.program_max_mem_usages = [
-                dict.fromkeys(types, 0) for _ in pp_group
-            ]
-            self.base_memory = [0 for _ in range(len(pp_group))]
-
-        return types, sub_program_list
-
-    def _estimate_program_mem_usagess(
-        self, types, sub_program_list, dist_context, pp_group
-    ):
-        types = types[:-1]
-        type_to_program = dict(zip(types, sub_program_list))
-
-        memory_estimator = PipelineMemoryEstimator()
-        memory_estimator.set_program_skip_gc_vars(type_to_program, types)
-
-        mem_usages = []
-        max_mem_usages = []
-        for type in types:
-            mem_usage, max_mem_usage = memory_estimator.estimate_memory(
-                type_to_program[type], type, dist_context
-            )
-            mem_usages.append(mem_usage)
-            max_mem_usages.append(max_mem_usage)
-
-        # Get program memory usage from all devices
-        with paddle.base.dygraph.guard():
-            all_mem_usages = []
-            all_max_usages = []
-            paddle.distributed.all_gather_object(all_mem_usages, mem_usages)
-            paddle.distributed.all_gather_object(all_max_usages, max_mem_usages)
-
-        self.program_mem_usages = [{} for _ in range(len(pp_group))]
-        self.program_max_mem_usages = [{} for _ in range(len(pp_group))]
-
-        for i, id in enumerate(pp_group):
-            for j, type in enumerate(types):
-                self.program_mem_usages[i][type] = all_mem_usages[id][j]
-                self.program_max_mem_usages[i][type] = all_max_usages[id][j]
-
-    def _get_all_device_base_memory(self, pp_group):
-        with paddle.base.dygraph.guard():
-            self.base_memory = []
-            all_base_memory = []
-            rank = paddle.distributed.get_rank()
-            base_memory = paddle.device.cuda.memory_allocated(rank)
-            paddle.distributed.all_gather_object(all_base_memory, base_memory)
-            for id in pp_group:
-                self.base_memory.append(all_base_memory[id])
-
-    def _get_max_memory(self):
-        memory_limit_times = self.get_attr("memory_limit_times")
-
-        if memory_limit_times < 0:
-            return float("inf")
-
-        num_model_chunks = self.get_attr("vpp_degree")
-        micro_batch_in_warmup = self.get_attr("pp_degree")
-        base_memory = max(self.base_memory)
-
-        forward_cost = 0
-        for i in range(num_model_chunks):
-            forward_cost += self.program_mem_usages[0][f"forward{i}"]
-
-        backward_max_cost = 0
-        backward_cost = 0
-        for i in range(num_model_chunks):
-            backward_max_cost = max(
-                backward_max_cost,
-                backward_cost
-                + self.program_max_mem_usages[0][f"backward_b{i}"],
-            )
-            backward_cost += self.program_max_mem_usages[0][f"backward_b{i}"]
-
-        memory_1f1b = base_memory + backward_max_cost
-        for i in range(micro_batch_in_warmup):
-            memory_1f1b += forward_cost
-
-        return memory_1f1b * memory_limit_times
+        raise NotImplementedError("Not support old IR for ZeroBubbleVPP")
 
 
 class VScheduleCreator:

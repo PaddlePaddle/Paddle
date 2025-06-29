@@ -14,8 +14,6 @@
 
 #pragma once
 
-#include <absl/container/flat_hash_map.h>
-#include <absl/strings/string_view.h>
 #include <isl/cpp.h>
 
 #include <map>
@@ -23,6 +21,7 @@
 #include <optional>
 #include <set>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -32,7 +31,7 @@
 #include "paddle/cinn/ir/dim.h"
 #include "paddle/cinn/ir/function_base.h"
 #include "paddle/cinn/lang/buffer.h"
-#include "paddle/cinn/poly/stage.h"
+#include "paddle/utils/flat_hash_map.h"
 
 namespace cinn {
 
@@ -207,7 +206,7 @@ class _Tensor_ : public ExprNode<_Tensor_> {
    * @param statement The name of a statement(equivalent to the id of tensor).
    * @return A boolean.
    */
-  bool IsDependOnStatement(absl::string_view statement);
+  bool IsDependOnStatement(std::string_view statement);
 
   /**
    * Get the names of the tensors those this tensor depends on.
@@ -321,11 +320,7 @@ class _Tensor_ : public ExprNode<_Tensor_> {
   // The flatten compute value of tensor, such as Tensor[[1, 2], [3, 4]] ->
   // Tensor[1, 2, 3, 4]
   std::optional<std::vector<Expr>> value_;
-
-  friend Shared<poly::Stage> CreateStage(Tensor tensor);
 };
-
-Shared<poly::Stage> CreateStage(Tensor tensor);
 
 class _Operation_;
 class Operation : public FunctionRef {

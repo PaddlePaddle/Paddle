@@ -60,7 +60,7 @@ void BatchNormKernel(const Context& dev_ctx,
           "But received: the size of input's dimensions is [%d]",
           x_dims.size()));
 
-  int N = -1, C = -1, H = -1, W = -1, D = -1;
+  int64_t N = -1, C = -1, H = -1, W = -1, D = -1;
   funcs::ExtractNCWHD(x_dims, data_layout, &N, &C, &H, &W, &D);
   N = (N == 0) ? 1 : N;
   C = (C == 0) ? 1 : C;
@@ -98,7 +98,6 @@ void BatchNormKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<float>(variance_out);
   dev_ctx.template Alloc<float>(saved_mean);
   dev_ctx.template Alloc<float>(saved_variance);
-
   PADDLE_ENFORCE_LE(
       x_dims.size(),
       5,
@@ -164,4 +163,5 @@ PD_REGISTER_KERNEL(batch_norm,
   kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);
   kernel->OutputAt(3).SetDataType(phi::DataType::FLOAT32);
   kernel->OutputAt(4).SetDataType(phi::DataType::FLOAT32);
+  kernel->OutputAt(5).SetDataType(phi::DataType::UINT8);
 }

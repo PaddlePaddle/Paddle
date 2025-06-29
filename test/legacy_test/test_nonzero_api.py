@@ -38,13 +38,13 @@ class TestNonZeroAPI(unittest.TestCase):
             y = paddle.nonzero(x, as_tuple=True)
             self.assertEqual(type(y), tuple)
             self.assertEqual(len(y), 2)
-            z = paddle.concat(list(y), axis=1)
+            z = paddle.concat(list(y), axis=0)
             exe = base.Executor(base.CPUPlace())
 
             (res,) = exe.run(
                 feed={'x': data}, fetch_list=[z], return_numpy=False
             )
-        expect_out = np.array([[0, 0], [1, 1]])
+        expect_out = np.array([0, 1, 0, 1])
         np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
 
         data = np.array([1, 1, 0], dtype="float32")
@@ -55,13 +55,25 @@ class TestNonZeroAPI(unittest.TestCase):
             y = paddle.nonzero(x, as_tuple=True)
             self.assertEqual(type(y), tuple)
             self.assertEqual(len(y), 1)
-            z = paddle.concat(list(y), axis=1)
+            z = paddle.concat(list(y), axis=0)
             exe = base.Executor(base.CPUPlace())
             (res,) = exe.run(
                 feed={'x': data}, fetch_list=[z], return_numpy=False
             )
-        expect_out = np.array([[0], [1]])
+        expect_out = np.array([0, 1])
         np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
+
+        data = np.zeros([10, 3, 0], dtype="float32")
+        with program_guard(Program(), Program()):
+            x = paddle.static.data(name='x', shape=[10, 3, 0], dtype='float32')
+            if not paddle.framework.use_pir_api():
+                x.desc.set_need_check_feed(False)
+            y = paddle.nonzero(x, as_tuple=True)
+            self.assertEqual(type(y), tuple)
+            self.assertEqual(len(y), 3)
+            expect_out = np.zeros([0])
+            for item in y:
+                np.testing.assert_array_equal(expect_out, item)
 
     def test_nonzero_api(self):
         paddle.enable_static()
@@ -133,6 +145,22 @@ class TestNonzeroOp(OpTest):
         return {'Out': np.transpose(np.nonzero(self.inputs['Condition']))}
 
 
+class TestNonzeroComplex64Op(TestNonzeroOp):
+    def init_shape(self):
+        self.shape = [1, 2, 3]
+
+    def init_dtype(self):
+        self.dtype = np.complex64
+
+
+class TestNonzeroComplex128Op(TestNonzeroOp):
+    def init_shape(self):
+        self.shape = [1, 2, 3]
+
+    def init_dtype(self):
+        self.dtype = np.complex128
+
+
 class TestNonzeroFP32Op(TestNonzeroOp):
     def init_shape(self):
         self.shape = [2, 10, 2]
@@ -179,6 +207,27 @@ class TestNonzeroBF16(OpTest):
 
     def return_outputs(self):
         return {'Out': np.transpose(np.nonzero(self.inputs['Condition']))}
+
+
+class TestZeroSizeOp(TestNonzeroOp):
+
+    def init_shape(self):
+        self.shape = [0, 10]
+
+    def init_dtype(self):
+        self.dtype = np.float64
+
+
+class TestZeroSizeOpCase2(TestNonzeroOp):
+
+    def init_shape(self):
+        self.shape = [0, 10]
+
+    def init_dtype(self):
+        self.dtype = np.float64
+
+    def test_check_output(self):
+        self.check_output(check_pir=True, check_symbol_infer=True)
 
 
 if __name__ == "__main__":

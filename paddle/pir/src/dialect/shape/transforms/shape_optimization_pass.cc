@@ -343,7 +343,12 @@ void InferSymExprForOp(Operation* op,
 }
 static const std::set<std::string> skip_cache_check_op_set = {
     // new symbol
+    "pd_op.arange",
     "pd_op.data",
+    "pd_op.masked_select",
+    "pd_op.nonzero",
+    "pd_op.slice",
+    "pd_op.sync_batch_norm_",
     // unneeded to cache
     "cinn_op.generate_shape",
 };
@@ -357,7 +362,8 @@ void CacheForwardOpSymbolicShape(
       [&](const InferSymbolicShapeCacheValue& infer_result,
           const InferSymbolicShapeCacheValue& cache_result) {
         if (infer_result.size() != cache_result.size()) {
-          LOG(WARNING) << "cached shape is not consistent with real shape";
+          LOG(WARNING) << "cached shape is not consistent with real shape for "
+                       << op->name() << "[id:" << op->id() << "]";
         } else {
           for (uint32_t i = 0; i < cache_result.size(); ++i) {
             if (infer_result[i] != cache_result[i]) {
@@ -368,7 +374,10 @@ void CacheForwardOpSymbolicShape(
                   skip_cache_check_op_set.end()) {
                 continue;
               }
-              LOG(WARNING) << "cached shape is not consistent with real shape";
+              LOG(WARNING)
+                  << "cached shape is not consistent with real shape for "
+                  << op->name() << "[id:" << op->id()
+                  << "] with result index: " << i;
               VLOG(3) << "InferSymbolicShapeCacheKey is: "
                       << op_infer_cache_key;
               VLOG(3) << "cached shape is: " << cache_result[i];

@@ -29,11 +29,6 @@ void TakeAlongAxisGradKernel(const Context& dev_ctx,
                              const DenseTensor& out_grad,
                              int axis,
                              DenseTensor* x_grad) {
-  PADDLE_ENFORCE_EQ(
-      dev_ctx.GetPlace().GetType() == phi::AllocationType::CPU,
-      true,
-      errors::PreconditionNotMet("This kernel only runs on CPU."));
-
   // We need to know the shape of input matrix to determine the shape of grad
   // matrix of input.
   x_grad->Resize(x.dims());

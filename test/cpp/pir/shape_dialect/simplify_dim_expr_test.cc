@@ -221,6 +221,21 @@ TEST(Simplify, FoldRedundantBroadcast) {
   ASSERT_TRUE((simplify_bc == Broadcast<DimExpr>{{S0, S1}}));
 }
 
+TEST(Simplify, SimplifyDoubleNegForMulAndDiv) {
+  // Negative(Mul(S0, Negative(1))) => S0
+  DimExpr S0{"S0"};
+  DimExpr mul{Mul<DimExpr>{{S0, Negative<DimExpr>{DimExpr(1)}}}};
+  DimExpr neg_mul{Negative<DimExpr>{mul}};
+  DimExpr simplify_neg_mul = SimplifyDimExpr(neg_mul);
+  ASSERT_TRUE((simplify_neg_mul == S0));
+
+  // Negative(Div(S0, Negative(1))) => S0
+  DimExpr div{Div<DimExpr>{S0, Negative<DimExpr>{DimExpr(1)}}};
+  DimExpr neg_div{Negative<DimExpr>{div}};
+  DimExpr simplify_neg_div = SimplifyDimExpr(neg_div);
+  ASSERT_TRUE((simplify_neg_div == S0));
+}
+
 TEST(Simplify, Case1) {
   // Div(Mul(Div(Mul(Broadcast(S11, S8), Broadcast(S10, S13, S4, S7),
   // Broadcast(S12, S3, S6, S9)), S0)), 16), 49)
@@ -273,6 +288,21 @@ TEST(Simplify, Case2) {
       Mul<DimExpr>{List<DimExpr>{
           Div<DimExpr>{S0, DimExpr(7)}, Div<DimExpr>{S1, DimExpr(7)}, 2}}};
   ASSERT_TRUE((SimplifyDimExpr(dim_expr)) == expected);
+}
+
+TEST(Simplify, Case3) {
+  DimExpr S3{"S3"};
+  DimExpr S4{"S4"};
+  DimExpr S5{"S5"};
+  DimExpr S7{"S7"};
+  DimExpr S8{"S8"};
+  DimExpr dim_expr = Mul<DimExpr>{List<DimExpr>{
+      Div<DimExpr>{Mul<DimExpr>{List<DimExpr>{S3, S4, S5}},
+                   Mul<DimExpr>{List<DimExpr>{S7, S8}}},
+      Div<DimExpr>{Mul<DimExpr>{List<DimExpr>{S3, S4, S5}},
+                   Div<DimExpr>{Mul<DimExpr>{List<DimExpr>{S3, S4, S5}},
+                                Mul<DimExpr>{List<DimExpr>{S7, S8}}}}}};
+  ASSERT_TRUE((SimplifyDimExpr(dim_expr) == dim_expr));  // Need to simplify
 }
 
 }  // namespace symbol::test

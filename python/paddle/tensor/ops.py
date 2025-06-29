@@ -810,7 +810,7 @@ def round(x: Tensor, decimals: int = 0, name: str | None = None) -> Tensor:
           out.data = [1., -1., 3., 1.]
 
     Args:
-        x (Tensor): Input of Round operator, an N-D Tensor, with data type bfloat16, float32, float64 or float16.
+        x (Tensor): Input of Round operator, an N-D Tensor, with data type bfloat16, int32, int64, float32, float64, float16, complex64 or complex128.
         decimals(int): Rounded decimal place (default: 0).
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
@@ -826,13 +826,25 @@ def round(x: Tensor, decimals: int = 0, name: str | None = None) -> Tensor:
             >>> out = paddle.round(x)
             >>> print(out)
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [-1., -0.,  1.,  2.])
+            [-0., -0.,  1.,  2.])
     """
     if in_dynamic_or_pir_mode():
         return _C_ops.round(x, decimals)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'round'
+            x,
+            'x',
+            [
+                'float16',
+                'uint16',
+                'int32',
+                'int64',
+                'float32',
+                'float64',
+                'complex64',
+                'complex128',
+            ],
+            'round',
         )
         helper = LayerHelper('round', **locals())
         attrs = {

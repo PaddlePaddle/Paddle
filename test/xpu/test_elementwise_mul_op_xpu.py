@@ -114,7 +114,7 @@ class XPUTestElementwiseMulOp(XPUOpTestWrapper):
             self.y = self.gen_data_depend_on_dtype([13, 17])
 
         def init_input_output(self):
-            if self.dtype == np.uint16:
+            if self.dtype == np.uint16 and self.x.size > 0 and self.y.size > 0:
                 self.x = convert_float_to_uint16(self.x)
                 self.y = convert_float_to_uint16(self.y)
             else:
@@ -206,6 +206,21 @@ class XPUTestElementwiseMulOp(XPUOpTestWrapper):
             self.x = self.gen_data_depend_on_dtype([30, 3, 1, 5])
             self.y = self.gen_data_depend_on_dtype([30, 1, 4, 1])
 
+    class TestElementwiseMulZeroSize1(ElementwiseMulOp):
+        def init_data(self):
+            self.x = self.gen_data_depend_on_dtype([0, 2, 3])
+            self.y = self.gen_data_depend_on_dtype([0, 1, 1])
+
+    class TestElementwiseMulZeroSize2(ElementwiseMulOp):
+        def init_data(self):
+            self.x = self.gen_data_depend_on_dtype([2, 0, 3])
+            self.y = self.gen_data_depend_on_dtype([1, 0, 1])
+
+    class TestElementwiseMulZeroSize3(ElementwiseMulOp):
+        def init_data(self):
+            self.x = self.gen_data_depend_on_dtype([2, 0, 0])
+            self.y = self.gen_data_depend_on_dtype([1, 0, 0])
+
     class TestElementwiseMulOp_xsize_lessthan_ysize(ElementwiseMulOp):
         def init_data(self):
             self.x = self.gen_data_depend_on_dtype([10, 10])
@@ -234,8 +249,150 @@ class XPUTestElementwiseMulOp(XPUOpTestWrapper):
 
 
 support_types = get_xpu_op_support_types('elementwise_mul')
-for stype in support_types:
+real_types = [t for t in support_types if t != 'complex64']
+for stype in real_types:
     create_test_class(globals(), XPUTestElementwiseMulOp, stype)
+
+if 'complex64' in support_types:
+
+    class ElementwiseMulComplexOp(XPUTestElementwiseMulOp.ElementwiseMulOp):
+        def init_kernel_type(self):
+            self.use_mkldnn = False
+
+        def setUp(self):
+            self.op_type = 'elementwise_mul'
+            self.use_xpu = True
+            self.cal_x = None
+            self.cal_y = None
+            self.dtype = np.complex64
+            self.axis = -1
+            self.init_data()
+            self.gen_output()
+            self.init_input_output()
+            self.init_kernel_type()
+            self.init_axis()
+
+        def init_input_output(self):
+            self.x = self.x.astype(self.dtype)
+            self.y = self.y.astype(self.dtype)
+
+            self.inputs = {
+                'X': self.x,
+                'Y': self.y,
+            }
+            self.outputs = {'Out': self.out}
+            self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
+
+        def gen_output(self):
+            if self.cal_x is None:
+                self.cal_x = self.x
+            if self.cal_y is None:
+                self.cal_y = self.y
+            self.out = np.multiply(
+                self.cal_x.astype(self.dtype), self.cal_y.astype(self.dtype)
+            )
+
+        def gen_data_depend_on_dtype(self, shape):
+            real_part = np.random.uniform(0.1, 1, size=shape)
+            imag_part = np.random.uniform(0.1, 1, size=shape)
+            return real_part + 1j * imag_part
+
+        def test_check_output(self):
+            if paddle.is_compiled_with_xpu():
+                place = paddle.XPUPlace(0)
+                self.check_output_with_place(place)
+
+        def test_check_grad_normal(self):
+            if paddle.is_compiled_with_xpu():
+                place = paddle.XPUPlace(0)
+                self.check_grad_with_place(
+                    place,
+                    ['X', 'Y'],
+                    'Out',
+                )
+
+        def test_check_grad_ignore_x(self):
+            if paddle.is_compiled_with_xpu():
+                place = paddle.XPUPlace(0)
+                self.check_grad_with_place(
+                    place,
+                    ['Y'],
+                    'Out',
+                    no_grad_set=set("X"),
+                )
+
+        def test_check_grad_ignore_y(self):
+            if paddle.is_compiled_with_xpu():
+                place = paddle.XPUPlace(0)
+                self.check_grad_with_place(
+                    place,
+                    ['X'],
+                    'Out',
+                    no_grad_set=set('Y'),
+                )
+
+    class TestElementwiseMulComplexOp_broadcast_0(ElementwiseMulComplexOp):
+        def init_data(self):
+            self.x = self.gen_data_depend_on_dtype([5, 2, 3])
+            self.y = self.gen_data_depend_on_dtype([5, 1, 1])
+
+    class TestElementwiseMulComplexOp_broadcast_1(ElementwiseMulComplexOp):
+        def init_data(self):
+            self.x = self.gen_data_depend_on_dtype([2, 100, 3])
+            self.y = self.gen_data_depend_on_dtype([1, 100, 1])
+
+    class TestElementwiseMulComplexOp_broadcast_2(ElementwiseMulComplexOp):
+        def init_data(self):
+            self.x = self.gen_data_depend_on_dtype([2, 3, 100])
+            self.y = self.gen_data_depend_on_dtype([1, 1, 100])
+
+    class TestElementwiseMulComplexOp_broadcast_3(ElementwiseMulComplexOp):
+        def init_data(self):
+            self.x = self.gen_data_depend_on_dtype([2, 10, 12, 3])
+            self.y = self.gen_data_depend_on_dtype([1, 10, 12, 1])
+
+    class TestElementwiseMulComplexOp_broadcast_4(ElementwiseMulComplexOp):
+        def init_data(self):
+            self.x = self.gen_data_depend_on_dtype([10, 2, 11])
+            self.y = self.gen_data_depend_on_dtype([10, 1, 11])
+
+    class TestElementwiseMulComplexOp_broadcast_5(ElementwiseMulComplexOp):
+        def init_data(self):
+            self.x = self.gen_data_depend_on_dtype([10, 4, 2, 3])
+            self.y = self.gen_data_depend_on_dtype([10, 4, 1, 3])
+
+    class TestElementwiseMulComplexOp_commonuse_1(ElementwiseMulComplexOp):
+        def init_data(self):
+            self.x = self.gen_data_depend_on_dtype([2, 3, 100])
+            self.y = self.gen_data_depend_on_dtype([1, 1, 100])
+
+    class TestElementwiseMulComplexOp_commonuse_2(ElementwiseMulComplexOp):
+        def init_data(self):
+            self.x = self.gen_data_depend_on_dtype([30, 3, 1, 5])
+            self.y = self.gen_data_depend_on_dtype([30, 1, 4, 1])
+
+    class TestElementwiseMulComplexOpZeroSize1(ElementwiseMulComplexOp):
+        def init_data(self):
+            self.x = self.gen_data_depend_on_dtype([0, 2, 3])
+            self.y = self.gen_data_depend_on_dtype([0, 1, 1])
+
+    class TestElementwiseMulComplexOpZeroSize2(ElementwiseMulComplexOp):
+        def init_data(self):
+            self.x = self.gen_data_depend_on_dtype([2, 0, 3])
+            self.y = self.gen_data_depend_on_dtype([1, 0, 1])
+
+    class TestElementwiseMulComplexOpZeroSize3(ElementwiseMulComplexOp):
+        def init_data(self):
+            self.x = self.gen_data_depend_on_dtype([2, 0, 0])
+            self.y = self.gen_data_depend_on_dtype([1, 0, 0])
+
+    class TestElementwiseMulComplexOp_xsize_lessthan_ysize(
+        ElementwiseMulComplexOp
+    ):
+        def init_data(self):
+            self.x = self.gen_data_depend_on_dtype([10, 10])
+            self.y = self.gen_data_depend_on_dtype([2, 2, 10, 10])
+
 
 if __name__ == '__main__':
     unittest.main()

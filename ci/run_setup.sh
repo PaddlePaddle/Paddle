@@ -15,21 +15,29 @@
 source $(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/utils.sh
 init
 
-if [ "$4" == "sot" ]; then
-    PY_VERSION=$5
-    ln -sf $(which python${PY_VERSION}) /usr/local/bin/python
-    ln -sf $(which pip${PY_VERSION}) /usr/local/bin/pip
-fi
+export PATH=/usr/local/bin:${PATH}
+ln -sf $(which python${PY_VERSION}) /usr/local/bin/python
+ln -sf $(which pip${PY_VERSION}) /usr/local/bin/pip
+echo "::group::Installing zstd"
+apt install zstd -y
+echo "::endgroup::"
 
-if [ "$4" == "py3" ]; then
-    PATH=/usr/local/bin:${PATH}
-    ln -sf $(which python3.9) /usr/local/bin/python
-    ln -sf $(which pip3.9) /usr/local/bin/pip
-    pip config set global.cache-dir "/home/data/cfs/.cache/pip"
-
+if [ "$CI_name" == "cpu" ] || [ "$CI_name" == "coverage" ] || [ "$CI_name" == "xpu" ] || [ "$CI_name" == "distribute" ] || [ "$CI_name" == "build" ]; then
+    if [ "$CI_name" == "xpu" ]; then
+        echo "::group::Installing ninja-build"
+        apt install ninja-build -y
+        echo "::endgroup::"
+    fi
+    if [ "$CI_name" == "build" ]; then
+        export LD_LIBRARY_PATH=/usr/local/cuda/compat:/usr/local/cuda/lib:/usr/local/cuda/lib64:/usr/local/nvidia/lib:/usr/local/nvidia/lib64:/usr/lib/x86_64-linux-gnu:${LD_LIBRARY_PATH}
+        echo "export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}" >> ~/.bashrc
+    fi
+    pip config set global.cache-dir "/root/.cache/pip"
+    pip install --upgrade pip
     echo "::group::Installing python dependencies"
-    pip install -r "${work_dir}/python/requirements.txt"
-    pip install -r "${work_dir}/python/unittest_py/requirements.txt"
+    if [ "$CI_name" != "distribute" ]; then
+        pip install -r "${work_dir}/python/unittest_py/requirements.txt"
+    fi
     echo "::endgroup::"
 fi
 
@@ -46,8 +54,8 @@ function run_setup(){
 
     SYSTEM=`uname -s`
     if [ "$SYSTEM" == "Darwin" ]; then
-        echo "Using python abi: $1"
-        if [ "$1" == "cp38-cp38" ]; then
+        echo "Using python abi: $PYTHON_ABI"
+        if [ "$PYTHON_ABI" == "cp38-cp38" ]; then
             if [ -d "/Library/Frameworks/Python.framework/Versions/3.8" ]; then
                 export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.8/lib/
                 export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.8/lib/
@@ -60,7 +68,7 @@ function run_setup(){
             else
                 exit 1
             fi
-        elif [ "$1" == "cp39-cp39" ]; then
+        elif [ "$PYTHON_ABI" == "cp39-cp39" ]; then
             if [ -d "/Library/Frameworks/Python.framework/Versions/3.9" ]; then
                 export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.9/lib/
                 export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.9/lib/
@@ -71,9 +79,9 @@ function run_setup(){
                 export PYTHON_LIBRARY=/Library/Frameworks/Python.framework/Versions/3.9/lib/libpython3.9.dylib
                 pip3.9 install --user -r ${PADDLE_ROOT}/python/requirements.txt
             else
-                exit 1
+		exit 1
             fi
-        elif [ "$1" == "cp310-cp310" ]; then
+        elif [ "$PYTHON_ABI" == "cp310-cp310" ]; then
             if [ -d "/Library/Frameworks/Python.framework/Versions/3.10" ]; then
                 export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.10/lib/
                 export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.10/lib/
@@ -86,7 +94,7 @@ function run_setup(){
             else
                 exit 1
             fi
-        elif [ "$1" == "cp311-cp311" ]; then
+        elif [ "$PYTHON_ABI" == "cp311-cp311" ]; then
             if [ -d "/Library/Frameworks/Python.framework/Versions/3.11" ]; then
                 export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.11/lib/
                 export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.11/lib/
@@ -99,7 +107,7 @@ function run_setup(){
             else
                 exit 1
             fi
-        elif [ "$1" == "cp312-cp312" ]; then
+        elif [ "$PYTHON_ABI" == "cp312-cp312" ]; then
             if [ -d "/Library/Frameworks/Python.framework/Versions/3.12" ]; then
                 export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.12/lib/
                 export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.12/lib/
@@ -114,9 +122,9 @@ function run_setup(){
             fi
         fi
     else
-        if [ "$1" != "" ]; then
-            echo "using python abi: $1"
-            if [ "$1" == "cp38-cp38" ]; then
+        if [ "$PYTHON_ABI" != "" ]; then
+            echo "using python abi: $PYTHON_ABI"
+            if [ "$PYTHON_ABI" == "cp38-cp38" ]; then
                 export LD_LIBRARY_PATH=/opt/_internal/cpython-3.8.0/lib/:${LD_LIBRARY_PATH}
                 export PATH=/opt/_internal/cpython-3.8.0/bin/:${PATH}
                 #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
@@ -125,7 +133,7 @@ function run_setup(){
                 export PYTHON_LIBRARIES=/opt/_internal/cpython-3.8.0/lib/libpython3.so
                 pip3.8 install -r ${PADDLE_ROOT}/python/requirements.txt
                 pip3.8 install -r ${PADDLE_ROOT}/paddle/scripts/compile_requirements.txt
-            elif [ "$1" == "cp39-cp39" ]; then
+            elif [ "$PYTHON_ABI" == "cp39-cp39" ]; then
                 export LD_LIBRARY_PATH=/opt/_internal/cpython-3.9.0/lib/:${LD_LIBRARY_PATH}
                 export PATH=/opt/_internal/cpython-3.9.0/bin/:${PATH}
                 #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
@@ -134,7 +142,7 @@ function run_setup(){
                 export PYTHON_LIBRARIES=/opt/_internal/cpython-3.9.0/lib/libpython3.so
                 pip3.9 install -r ${PADDLE_ROOT}/python/requirements.txt
                 pip3.9 install -r ${PADDLE_ROOT}/paddle/scripts/compile_requirements.txt
-            elif [ "$1" == "cp310-cp310" ]; then
+            elif [ "$PYTHON_ABI" == "cp310-cp310" ]; then
                 export LD_LIBRARY_PATH=/opt/_internal/cpython-3.10.0/lib/:${LD_LIBRARY_PATH}
                 export PATH=/opt/_internal/cpython-3.10.0/bin/:${PATH}
                 #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
@@ -143,7 +151,7 @@ function run_setup(){
                 export PYTHON_LIBRARIES=/opt/_internal/cpython-3.10.0/lib/libpython3.so
                 pip3.10 install -r ${PADDLE_ROOT}/python/requirements.txt
                 pip3.10 install -r ${PADDLE_ROOT}/paddle/scripts/compile_requirements.txt
-            elif [ "$1" == "cp311-cp311" ]; then
+            elif [ "$PYTHON_ABI" == "cp311-cp311" ]; then
                 export LD_LIBRARY_PATH=/opt/_internal/cpython-3.11.0/lib/:${LD_LIBRARY_PATH}
                 export PATH=/opt/_internal/cpython-3.11.0/bin/:${PATH}
                 #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
@@ -152,7 +160,7 @@ function run_setup(){
                 export PYTHON_LIBRARIES=/opt/_internal/cpython-3.11.0/lib/libpython3.so
                 pip3.11 install -r ${PADDLE_ROOT}/python/requirements.txt
                 pip3.11 install -r ${PADDLE_ROOT}/paddle/scripts/compile_requirements.txt
-            elif [ "$1" == "cp312-cp312" ]; then
+            elif [ "$PYTHON_ABI" == "cp312-cp312" ]; then
                 export LD_LIBRARY_PATH=/opt/_internal/cpython-3.12.0/lib/:${LD_LIBRARY_PATH}
                 export PATH=/opt/_internal/cpython-3.12.0/bin/:${PATH}
                 #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
@@ -165,6 +173,7 @@ function run_setup(){
         else
             echo "::group::Installing python dependencies"
             pip install -r ${PADDLE_ROOT}/python/requirements.txt
+            echo "end"
             echo "::endgroup::"
         fi
     fi
@@ -182,7 +191,9 @@ function run_setup(){
       echo "::group::Installing PyGithub"
       pip install PyGithub
       echo "::endgroup::"
-      python ${PADDLE_ROOT}/tools/check_only_change_python_files.py
+      if [ "$SYSTEM" != "Darwin" ]; then
+        python ${PADDLE_ROOT}/tools/check_only_change_python_files.py
+      fi
       if [ -f "${PADDLE_ROOT}/build/only_change_python_file.txt" ];then
           export WITH_CPP_TEST=OFF
       else
@@ -207,13 +218,13 @@ function run_setup(){
     echo "if you use setup.py to compile,please export envs as following in /paddle ..."
     cat << EOF
     ========================================
-    export CMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE:-Release} WITH_GPU=${WITH_GPU:-OFF} WITH_SHARED_PHI=${WITH_SHARED_PHI:-OFF} WITH_TENSORRT=${WITH_TENSORRT:-ON} WITH_OPENVINO=${WITH_OPENVINO:-OFF} WITH_ROCM=${WITH_ROCM:-OFF} WITH_CINN=${WITH_CINN:-OFF} WITH_DISTRIBUTE=${distributed_flag} WITH_MKL=${WITH_MKL:-ON} WITH_AVX=${WITH_AVX:-OFF} CUDA_ARCH_NAME=${CUDA_ARCH_NAME:-All} NEW_RELEASE_PYPI=${NEW_RELEASE_PYPI:-OFF} NEW_RELEASE_ALL=${NEW_RELEASE_ALL:-OFF} NEW_RELEASE_JIT=${NEW_RELEASE_JIT:-OFF} WITH_PYTHON=${WITH_PYTHON:-ON} CUDNN_ROOT=/usr/ WITH_TESTING=${WITH_TESTING:-ON} WITH_COVERAGE=${WITH_COVERAGE:-OFF} WITH_INCREMENTAL_COVERAGE=${WITH_INCREMENTAL_COVERAGE:-OFF} CMAKE_MODULE_PATH=/opt/rocm/hip/cmake CMAKE_EXPORT_COMPILE_COMMANDS=ON WITH_INFERENCE_API_TEST=${WITH_INFERENCE_API_TEST:-ON} INFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR} PY_VERSION=${PY_VERSION:-3.8} CMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build} WITH_PSCORE=${pscore_flag} WITH_PSLIB=${pslib_flag} WITH_GLOO=${gloo_flag} WITH_XPU=${WITH_XPU:-OFF} WITH_IPU=${WITH_IPU:-OFF} XPU_SDK_ROOT=${XPU_SDK_ROOT:-""} WITH_XPU_BKCL=${WITH_XPU_BKCL:-OFF} WITH_XPU_XRE5=${WITH_XPU_XRE5:-OFF} WITH_ARM=${WITH_ARM:-OFF} WITH_STRIP=${WITH_STRIP:-ON} ON_INFER=${ON_INFER:-OFF} WITH_HETERPS=${WITH_HETERPS:-OFF} CUDA_ARCH_BIN=${CUDA_ARCH_BIN} WITH_RECORD_BUILDTIME=${WITH_RECORD_BUILDTIME:-OFF} WITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF} WITH_ONNXRUNTIME=${WITH_ONNXRUNTIME:-OFF} WITH_CUDNN_FRONTEND=${WITH_CUDNN_FRONTEND:-OFF} WITH_CPP_TEST=${WITH_CPP_TEST:-OFF} FA_BUILD_WITH_CACHE=${FA_BUILD_WITH_CACHE:-ON}
+    export CMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE:-Release} WITH_GPU=${WITH_GPU:-OFF} WITH_SHARED_PHI=${WITH_SHARED_PHI:-OFF} WITH_TENSORRT=${WITH_TENSORRT:-ON} WITH_OPENVINO=${WITH_OPENVINO:-OFF} WITH_ROCM=${WITH_ROCM:-OFF} WITH_CINN=${WITH_CINN:-OFF} WITH_DISTRIBUTE=${distributed_flag} WITH_MKL=${WITH_MKL:-ON} WITH_AVX=${WITH_AVX:-OFF} CUDA_ARCH_NAME=${CUDA_ARCH_NAME:-All} NEW_RELEASE_PYPI=${NEW_RELEASE_PYPI:-OFF} NEW_RELEASE_ALL=${NEW_RELEASE_ALL:-OFF} NEW_RELEASE_JIT=${NEW_RELEASE_JIT:-OFF} WITH_PYTHON=${WITH_PYTHON:-ON} CUDNN_ROOT=/usr/ WITH_TESTING=${WITH_TESTING:-ON} WITH_COVERAGE=${WITH_COVERAGE:-OFF} WITH_INCREMENTAL_COVERAGE=${WITH_INCREMENTAL_COVERAGE:-OFF} CMAKE_MODULE_PATH=/opt/rocm/hip/cmake CMAKE_EXPORT_COMPILE_COMMANDS=ON WITH_INFERENCE_API_TEST=${WITH_INFERENCE_API_TEST:-ON} INFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR} PY_VERSION=${PY_VERSION:-3.8} CMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build} WITH_PSCORE=${pscore_flag} WITH_PSLIB=${pslib_flag} WITH_GLOO=${gloo_flag} WITH_XPU=${WITH_XPU:-OFF} WITH_IPU=${WITH_IPU:-OFF} XPU_SDK_ROOT=${XPU_SDK_ROOT:-""} WITH_XPU_BKCL=${WITH_XPU_BKCL:-OFF} WITH_XPU_XHPC=${WITH_XPU_XHPC:-OFF} WITH_XPU_XFT=${WITH_XPU_XFT:-OFF} WITH_XPU_XRE5=${WITH_XPU_XRE5:-OFF} WITH_XPU_FFT=${WITH_XPU_FFT:-OFF} WITH_ARM=${WITH_ARM:-OFF} WITH_STRIP=${WITH_STRIP:-ON} ON_INFER=${ON_INFER:-OFF} WITH_HETERPS=${WITH_HETERPS:-OFF} CUDA_ARCH_BIN=${CUDA_ARCH_BIN} WITH_RECORD_BUILDTIME=${WITH_RECORD_BUILDTIME:-OFF} WITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF} WITH_ONNXRUNTIME=${WITH_ONNXRUNTIME:-OFF} WITH_CUDNN_FRONTEND=${WITH_CUDNN_FRONTEND:-OFF} WITH_CPP_TEST=${WITH_CPP_TEST:-OFF} FA_BUILD_WITH_CACHE=${FA_BUILD_WITH_CACHE:-ON}
     ========================================
 EOF
     echo "if you use cmake to compile,please Configuring cmake in /paddle/build ..."
     cat <<EOF
     ========================================
-    cmake .. -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE:-Release} -DWITH_GPU=${WITH_GPU:-OFF} -DWITH_SHARED_PHI=${WITH_SHARED_PHI:-OFF} -DWITH_TENSORRT=${WITH_TENSORRT:-ON} -DWITH_OPENVINO=${WITH_OPENVINO:-OFF} -DWITH_ROCM=${WITH_ROCM:-OFF} -DWITH_CINN=${WITH_CINN:-OFF} -DWITH_DISTRIBUTE=${distributed_flag} -DWITH_MKL=${WITH_MKL:-ON} -DWITH_AVX=${WITH_AVX:-OFF} -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-All} -DNEW_RELEASE_PYPI=${NEW_RELEASE_PYPI:-OFF} -DNEW_RELEASE_ALL=${NEW_RELEASE_ALL:-OFF} -DNEW_RELEASE_JIT=${NEW_RELEASE_JIT:-OFF} -DWITH_PYTHON=${WITH_PYTHON:-ON} -DCUDNN_ROOT=/usr/ -DWITH_TESTING=${WITH_TESTING:-ON} -DWITH_COVERAGE=${WITH_COVERAGE:-OFF} -DWITH_INCREMENTAL_COVERAGE=${WITH_INCREMENTAL_COVERAGE:-OFF} -DCMAKE_MODULE_PATH=/opt/rocm/hip/cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DWITH_INFERENCE_API_TEST=${WITH_INFERENCE_API_TEST:-ON} -DINFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR} -DPY_VERSION=${PY_VERSION:-3.8} -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build} -DWITH_PSCORE=${pscore_flag} -DWITH_PSLIB=${pslib_flag} -DWITH_GLOO=${gloo_flag} -DWITH_XPU=${WITH_XPU:-OFF} -DWITH_IPU=${WITH_IPU:-OFF} -DXPU_SDK_ROOT=${XPU_SDK_ROOT:-""} -DWITH_XPU_BKCL=${WITH_XPU_BKCL:-OFF} -DWITH_XPU_XRE5=${WITH_XPU_XRE5:-OFF} -DWITH_ARM=${WITH_ARM:-OFF} -DWITH_STRIP=${WITH_STRIP:-ON} -DON_INFER=${ON_INFER:-OFF} -DWITH_HETERPS=${WITH_HETERPS:-OFF} -DCUDA_ARCH_BIN=${CUDA_ARCH_BIN} -DWITH_RECORD_BUILDTIME=${WITH_RECORD_BUILDTIME:-OFF} -DWITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF} -DWITH_ONNXRUNTIME=${WITH_ONNXRUNTIME:-OFF} -DWITH_CUDNN_FRONTEND=${WITH_CUDNN_FRONTEND:-OFF} -DWITH_CPP_TEST=${WITH_CPP_TEST:-OFF} -DFA_BUILD_WITH_CACHE=${FA_BUILD_WITH_CACHE:-ON}
+    cmake .. -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE:-Release} -DWITH_GPU=${WITH_GPU:-OFF} -DWITH_SHARED_PHI=${WITH_SHARED_PHI:-OFF} -DWITH_TENSORRT=${WITH_TENSORRT:-ON} -DWITH_OPENVINO=${WITH_OPENVINO:-OFF} -DWITH_ROCM=${WITH_ROCM:-OFF} -DWITH_CINN=${WITH_CINN:-OFF} -DWITH_DISTRIBUTE=${distributed_flag} -DWITH_MKL=${WITH_MKL:-ON} -DWITH_AVX=${WITH_AVX:-OFF} -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-All} -DNEW_RELEASE_PYPI=${NEW_RELEASE_PYPI:-OFF} -DNEW_RELEASE_ALL=${NEW_RELEASE_ALL:-OFF} -DNEW_RELEASE_JIT=${NEW_RELEASE_JIT:-OFF} -DWITH_PYTHON=${WITH_PYTHON:-ON} -DCUDNN_ROOT=/usr/ -DWITH_TESTING=${WITH_TESTING:-ON} -DWITH_COVERAGE=${WITH_COVERAGE:-OFF} -DWITH_INCREMENTAL_COVERAGE=${WITH_INCREMENTAL_COVERAGE:-OFF} -DCMAKE_MODULE_PATH=/opt/rocm/hip/cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DWITH_INFERENCE_API_TEST=${WITH_INFERENCE_API_TEST:-ON} -DINFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR} -DPY_VERSION=${PY_VERSION:-3.8} -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build} -DWITH_PSCORE=${pscore_flag} -DWITH_PSLIB=${pslib_flag} -DWITH_GLOO=${gloo_flag} -DWITH_XPU=${WITH_XPU:-OFF} -DWITH_IPU=${WITH_IPU:-OFF} -DXPU_SDK_ROOT=${XPU_SDK_ROOT:-""} -DWITH_XPU_BKCL=${WITH_XPU_BKCL:-OFF} -DWITH_XPU_XHPC=${WITH_XPU_XHPC:-OFF} -DWITH_XPU_XFT=${WITH_XPU_XFT:-OFF} -DWITH_XPU_XRE5=${WITH_XPU_XRE5:-OFF} -DWITH_XPU_FFT=${WITH_XPU_FFT:-OFF} -DWITH_ARM=${WITH_ARM:-OFF} -DWITH_STRIP=${WITH_STRIP:-ON} -DON_INFER=${ON_INFER:-OFF} -DWITH_HETERPS=${WITH_HETERPS:-OFF} -DCUDA_ARCH_BIN=${CUDA_ARCH_BIN} -DWITH_RECORD_BUILDTIME=${WITH_RECORD_BUILDTIME:-OFF} -DWITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF} -DWITH_ONNXRUNTIME=${WITH_ONNXRUNTIME:-OFF} -DWITH_CUDNN_FRONTEND=${WITH_CUDNN_FRONTEND:-OFF} -DWITH_CPP_TEST=${WITH_CPP_TEST:-OFF} -DFA_BUILD_WITH_CACHE=${FA_BUILD_WITH_CACHE:-ON}
     ========================================
 EOF
     export CMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE:-Release}
@@ -247,7 +258,10 @@ EOF
     export WITH_IPU=${WITH_IPU:-OFF}
     export XPU_SDK_ROOT=${XPU_SDK_ROOT:-""}
     export WITH_XPU_BKCL=${WITH_XPU_BKCL:-OFF}
+    export WITH_XPU_XHPC=${WITH_XPU_XHPC:-OFF}
+    export WITH_XPU_XFT=${WITH_XPU_XFT:-OFF}
     export WITH_XPU_XRE5=${WITH_XPU_XRE5:-OFF}
+    export WITH_XPU_FFT=${WITH_XPU_FFT:-OFF}
     export WITH_ARM=${WITH_ARM:-OFF}
     export WITH_STRIP=${WITH_STRIP:-ON}
     export ON_INFER=${ON_INFER:-OFF}
@@ -272,8 +286,8 @@ EOF
     else
       parallel_number=8
     fi
-    if [ "$3" != "" ]; then
-      parallel_number=$3
+    if [ "$parallel_number_env" != "" ]; then
+      parallel_number=$parallel_number_env
     fi
 
     # reset ccache zero stats for collect PR's actual hit rate
@@ -282,21 +296,27 @@ EOF
     fi
     ccache -z
     cd ..
-    echo "::group::Build Paddle"
     if [ "${PYTHON_EXECUTABLE}" != "" ];then
         if [ "$SYSTEM" == "Darwin" ]; then
-            ${PYTHON_EXECUTABLE} setup.py $2 --plat-name=macosx_10_9_x86_64;build_error=$?
+	    if [ "$WITH_ARM" == 'ON' ];then
+              ${PYTHON_EXECUTABLE} setup.py $1 --plat-name=macosx_11_0_arm64;build_error=$?
+            else
+              ${PYTHON_EXECUTABLE} setup.py $1 --plat-name=macosx_10_9_x86_64;build_error=$?
+	    fi
         else
-            ${PYTHON_EXECUTABLE} setup.py $2;build_error=$?
+            ${PYTHON_EXECUTABLE} setup.py $1;build_error=$?
         fi
     else
         if [ "$SYSTEM" == "Darwin" ]; then
-            python setup.py $2 --plat-name=macosx_10_9_x86_64;build_error=$?
+            if [ "$WITH_ARM" == 'ON' ];then
+              python3 setup.py $1 --plat-name=macosx_10_9_arm64;build_error=$?
+            else
+              python3 setup.py $1 --plat-name=macosx_10_9_x86_64;build_error=$?
+	    fi
         else
-            python setup.py $2;build_error=$?
+            python setup.py $1;build_error=$?
         fi
     fi
-    echo "::endgroup::"
 
     # ci will collect ccache hit rate
     collect_ccache_hits
@@ -315,3 +335,60 @@ EOF
 }
 
 run_setup "$@"
+
+if [ "$CI_name" == "build" ]; then
+    if [ ! -d "${PADDLE_ROOT}/build/python/dist/" ]; then
+        mkdir ${PADDLE_ROOT}/build/python/dist/
+    fi
+    mv ${PADDLE_ROOT}/dist/*.whl ${PADDLE_ROOT}/build/python/dist/
+    cmake_change=`git diff --name-only upstream/$BRANCH | grep "cmake/external" || true`
+    # Temporarily save some scripts from PR branch
+    mkdir -p /tmp
+    cp ${PADDLE_ROOT}/python/requirements.txt /tmp
+    cp ${PADDLE_ROOT}/tools/print_signatures.py /tmp
+
+    generate_api_spec "" "PR"
+    mkdir ${PADDLE_ROOT}/build/pr_whl && cp ${PADDLE_ROOT}/build/python/dist/*.whl ${PADDLE_ROOT}/build/pr_whl
+    rm -f ${PADDLE_ROOT}/build/python/dist/*.whl && rm -f ${PADDLE_ROOT}/build/python/build/.timestamp
+
+    git checkout $BRANCH
+    dev_commit=`git log -2|grep -w 'commit'|awk '{print $2}'`
+    for commit_id in $dev_commit
+    do
+    dev_url="https://xly-devops.bj.bcebos.com/PR/build_whl/0/${commit_id}/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl"
+    url_return=`curl -s -m 5 -IL ${dev_url} |awk 'NR==1{print $2}'`
+      if [ "$url_return" == '200' ];then
+        break
+      fi
+    done
+    if [ "$url_return" == '200' ];then
+        mkdir ${PADDLE_ROOT}/build/dev_whl && wget -q -P ${PADDLE_ROOT}/build/dev_whl ${dev_url}
+        cp ${PADDLE_ROOT}/build/dev_whl/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl ${PADDLE_ROOT}/build/python/dist
+    else
+        cp -r ${PADDLE_ROOT}/build /tmp/
+        if [[ ${cmake_change} ]];then
+            rm -rf ${PADDLE_ROOT}/build/Makefile ${PADDLE_ROOT}/build/CMakeCache.txt ${PADDLE_ROOT}/build/build.ninja
+            rm -rf ${PADDLE_ROOT}/build/third_party
+        fi
+        git checkout $BRANCH
+        git submodule update --init
+        run_setup "rerun-cmake bdist_wheel"
+        rm -rf ${PADDLE_ROOT}/build
+        mv /tmp/build ${PADDLE_ROOT}
+        if [ ! -d "${PADDLE_ROOT}/build/python/dist/" ]; then
+            mkdir ${PADDLE_ROOT}/build/python/dist/
+        fi
+        mv ${PADDLE_ROOT}/dist/*.whl ${PADDLE_ROOT}/build/python/dist/
+        mkdir ${PADDLE_ROOT}/build/dev_whl && cp ${PADDLE_ROOT}/build/python/dist/*.whl ${PADDLE_ROOT}/build/dev_whl
+        git checkout test
+    fi
+
+    generate_api_spec "" "DEV"
+fi
+
+
+if [[ -f ${PADDLE_ROOT}/build/build_summary.txt ]];then
+    echo "=====================build summary======================"
+    cat ${PADDLE_ROOT}/build/build_summary.txt
+    echo "========================================================"
+fi

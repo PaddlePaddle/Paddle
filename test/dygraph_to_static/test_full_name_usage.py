@@ -18,6 +18,7 @@ import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
     test_ast_only,
+    test_phi_only,
 )
 
 import paddle
@@ -32,7 +33,7 @@ def dygraph_decorated_func(x):
     return x_v
 
 
-@paddle.jit.to_static(full_graph=True)
+@paddle.jit.to_static(full_graph=True, backend=None)
 def jit_decorated_func(x):
     x = paddle.to_tensor(x)
     if paddle.mean(x) > 0:
@@ -42,25 +43,26 @@ def jit_decorated_func(x):
     return x_v
 
 
-@paddle.jit.to_static(full_graph=True)
+@paddle.jit.to_static(full_graph=True, backend=None)
 def decorated_call_decorated(x):
     return jit_decorated_func(x)
 
 
 class DoubleDecorated:
     @classmethod
-    @paddle.jit.to_static(full_graph=True)
+    @paddle.jit.to_static(full_graph=True, backend=None)
     def double_decorated_func1(self, x):
         return paddle.jit.to_static(dygraph_decorated_func)(x)
 
     @classmethod
-    @paddle.jit.to_static(full_graph=True)
+    @paddle.jit.to_static(full_graph=True, backend=None)
     def double_decorated_func2(self, x):
         return jit_decorated_func(x)
 
 
 class TestFullNameDecorator(Dy2StTestBase):
     @test_ast_only
+    @test_phi_only
     def test_run_success(self):
         x = np.ones([1, 2]).astype("float32")
         answer = np.zeros([1, 2]).astype("float32")

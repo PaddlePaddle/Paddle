@@ -16,6 +16,7 @@ import os
 import unittest
 
 import numpy as np
+from utils import dygraph_guard
 
 import paddle
 from paddle import base
@@ -34,7 +35,11 @@ def group_norm_naive_for_general_dimension(
     input_shape = x.shape
     N, C = x.shape[0], x.shape[1]
     G = groups
-    x = x.reshape((N * G, -1))
+    if 0 in x.shape:
+        # output will reshape to input_shape
+        x = x.reshape((N * G, 0))
+    else:
+        x = x.reshape((N * G, -1))
     mean = np.mean(x, axis=1, keepdims=True)
     var = np.var(x, axis=1, keepdims=True)
     output = (x - mean) / np.sqrt(var + epsilon)
@@ -86,8 +91,8 @@ class TestGroupNormAPIV2_With_General_Dimensions(unittest.TestCase):
                 data_pd = paddle.to_tensor(data)
                 result1 = gn1(data_pd).numpy()
                 result2 = gn2(data_pd).numpy()
-                self.assertTrue(np.allclose(result1, expect_res1, atol=1e-5))
-                self.assertTrue(np.allclose(result2, expect_res2, atol=1e-5))
+                np.testing.assert_allclose(result1, expect_res1, atol=1e-5)
+                np.testing.assert_allclose(result2, expect_res2, atol=1e-5)
 
 
 class TestGroupNormAPIV2_With_NCL(unittest.TestCase):
@@ -593,6 +598,76 @@ class TestGroupNormAPIV2_With_NDHWC_fp16(unittest.TestCase):
             )
 
 
+class TestGroupNormAPIV2_ZeroSize(unittest.TestCase):
+    def test_numerical_accuracy(self):
+        paddle.disable_static()
+        shape_groups = [
+            [(2, 4, 3, 2, 0), 4],
+            [(0, 1, 0, 0, 1), 1],
+        ]
+        np.random.seed(10)
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
+        if core.is_compiled_with_cuda() and core.op_support_gpu("group_norm"):
+            places.append(base.CUDAPlace(0))
+
+        for place in places:
+            paddle.disable_static(place)
+            for shape_group in shape_groups:
+                shape = shape_group[0]
+                group = shape_group[1]
+                scale = np.array([1]).astype("float32")
+                bias = np.array([0]).astype("float32")
+                data = np.random.random(shape).astype("float32")
+                expect_res1 = group_norm_naive_for_general_dimension(
+                    data,
+                    scale,
+                    bias,
+                    epsilon=1e-5,
+                    groups=group,
+                )
+
+                data_pd = paddle.to_tensor(data)
+                data_pd.stop_gradient = False
+                scale_ = paddle.ones(
+                    shape[1]
+                )  # shape[1] is the number of channels
+                scale_.stop_gradient = False
+                bias_ = paddle.zeros(shape[1])
+                bias_.stop_gradient = False
+                result1 = paddle.nn.functional.group_norm(
+                    data_pd,
+                    group,
+                    data_format='NCDHW',
+                    weight=scale_,
+                    bias=bias_,
+                )
+                np.testing.assert_allclose(
+                    result1.numpy(), expect_res1, atol=1e-5
+                )
+
+                loss = paddle.sum(result1)
+                loss.backward()
+                np.testing.assert_allclose(
+                    data_pd.grad.shape,
+                    data_pd.shape,
+                )
+                # If batch is 0, scale grad is 0, or else nan.
+                if data_pd.shape[0] == 0:
+                    scale2 = paddle.zeros(scale_.shape)
+                else:
+                    scale2 = paddle.full(scale_.shape, paddle.nan)
+                np.testing.assert_allclose(scale_.grad.numpy(), scale2.numpy())
+                np.testing.assert_allclose(
+                    bias_.grad.numpy(), paddle.zeros(bias_.shape).numpy()
+                )
+
+
 class TestGroupNormDimException(unittest.TestCase):
     def test_exception(self):
         with paddle.pir_utils.OldIrGuard():
@@ -608,6 +683,56 @@ class TestGroupNormDimException(unittest.TestCase):
                 paddle.static.nn.group_norm(x, 3)
 
             self.assertRaises(ValueError, test_one_dim_input_static_API)
+
+
+class TestGroupNormWithOptionalgradX(unittest.TestCase):
+    def test_group_norm_cpu_with_optional_grad(self):
+        with dygraph_guard():
+            origin_device = paddle.device.get_device()
+            paddle.device.set_device("cpu")
+            x = paddle.randn([16, 32])
+            x.stop_gradient = False
+            gpn = paddle.nn.GroupNorm(num_groups=8, num_channels=32)
+            y = gpn(x)
+            dw_ref, db_ref, dx_ref = paddle.grad(y, [gpn.weight, gpn.bias, x])
+            try:
+                dw, db, dx = (
+                    paddle.grad(y, gpn.weight)[0],
+                    paddle.grad(y, gpn.bias)[0],
+                    paddle.grad(y, x)[0],
+                )
+            except Exception as e:
+                raise e
+            finally:
+                paddle.device.set_device(origin_device)
+            np.testing.assert_equal(dw.numpy(), dw_ref.numpy())
+            np.testing.assert_equal(db.numpy(), db_ref.numpy())
+            np.testing.assert_equal(dx.numpy(), dx_ref.numpy())
+
+    def test_group_norm_cpu_with_optional_grad_nhwc(self):
+        with dygraph_guard():
+            origin_device = paddle.device.get_device()
+            paddle.device.set_device("cpu")
+            x = paddle.randn([4, 32, 32, 32])
+            x.stop_gradient = False
+            gpn = paddle.nn.GroupNorm(
+                num_groups=8, num_channels=32, data_format="NHWC"
+            )
+            y = gpn(x)
+            dw_ref, db_ref, dx_ref = paddle.grad(y, [gpn.weight, gpn.bias, x])
+            try:
+                dw, db, dx = (
+                    paddle.grad(y, gpn.weight)[0],
+                    paddle.grad(y, gpn.bias)[0],
+                    paddle.grad(y, x)[0],
+                )
+            except Exception as e:
+                raise e
+            finally:
+                paddle.device.set_device(origin_device)
+            np.testing.assert_equal(dw.numpy(), dw_ref.numpy())
+            np.testing.assert_equal(db.numpy(), db_ref.numpy())
+            np.testing.assert_equal(dx.numpy(), dx_ref.numpy())
 
 
 if __name__ == '__main__':

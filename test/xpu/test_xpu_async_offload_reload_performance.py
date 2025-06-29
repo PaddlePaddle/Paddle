@@ -12,15 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# test_async_offload_reload_debug.py (XPU version, with debug and performance tests)
-# (c) 2023-2025 PaddlePaddle Authors
-
 import time
 import unittest
 
 import numpy as np
 
 import paddle
+
+# Disable static mode so that .numpy() can be called.
+paddle.disable_static()
+
 from paddle.incubate.tensor.manipulation import (
     async_offload,
     async_offload_with_offset,
@@ -30,35 +31,46 @@ from paddle.incubate.tensor.manipulation import (
 
 
 def print_debug_info(tensor, name):
-    """Prints the device placement of a tensor."""
-    print(f"{name} is on device: {tensor.place}")
+    """Prints debug information for a tensor."""
+    # print(f"{name} is on device: {tensor.place}")
+    # print(f"{name} shape: {tensor.shape}, dtype: {tensor.dtype}")
+    try:
+        arr = tensor.numpy()
+        flat = arr.flatten()
+        # print(f"{name} first 5 elements: {flat[:5]}")
+        # Uncomment the next line if you need to print the full array.
+        # print(f"{name} full array:\n{arr}")
+    except Exception as e:
+        # print(f"{name} cannot be converted to numpy array: {e}")
+        raise
 
 
 class TestSaveLoadLargeParameters(unittest.TestCase):
     def offload_and_reload(self, data0):
-        # Print initial device info for the input tensor.
         print_debug_info(data0, "data0 (original)")
 
-        loader = create_xpu_async_load()
-        data1 = paddle.randn([10, 10])
+        # Create a fixed compute tensor for matmul.
+        data1 = paddle.arange(0, 100, dtype="float32").reshape([10, 10])
         print_debug_info(data1, "data1 (for compute)")
 
-        # Offload data0 -> pinned memory (usually on CPU)
+        loader = create_xpu_async_load()
+
+        # Offload data0 -> pinned memory.
         cpu_data, task = async_offload(data0, loader)
         print_debug_info(cpu_data, "cpu_data (after offload)")
 
-        # Do some random compute on the XPU.
+        # Do a compute on XPU.
         res = paddle.matmul(data1, data1)
         print_debug_info(res, "res (after first compute)")
 
-        # Wait on the CPU side for the offload task to complete.
+        # Wait for the offload task to complete (CPU side).
         task.cpu_wait()
 
-        # Reload from pinned (CPU) memory -> back to XPU.
+        # Reload from pinned memory back to XPU.
         xpu_data, task = async_reload(cpu_data, loader)
         print_debug_info(xpu_data, "xpu_data (after reload)")
 
-        # Another compute on the XPU.
+        # Do another compute on XPU.
         res = paddle.matmul(data1, data1)
         print_debug_info(res, "res (after second compute)")
 
@@ -66,18 +78,22 @@ class TestSaveLoadLargeParameters(unittest.TestCase):
         task.xpu_wait()
         task.cpu_wait()
 
-        # Check correctness.
-        np.testing.assert_array_equal(data0.numpy(), cpu_data.numpy())
-        np.testing.assert_array_equal(data0.numpy(), xpu_data.numpy())
+        # Extract numpy arrays and print max differences.
+        a = data0.numpy()
+        b = cpu_data.numpy()
+        c = xpu_data.numpy()
+        # print("Max diff (data0 - cpu_data):", np.max(np.abs(a - b)))
+        # print("Max diff (data0 - xpu_data):", np.max(np.abs(a - c)))
+        np.testing.assert_array_equal(a, b)
+        np.testing.assert_array_equal(a, c)
 
     def test_large_parameters_paddle_save_tensor(self):
-        # Create XPU data.
-        data0 = paddle.randn([10, 5])
+        # Create a fixed tensor with known values using linspace.
+        arr = np.linspace(0, 1, 50).reshape([10, 5]).astype("float32")
+        data0 = paddle.to_tensor(arr, place=paddle.XPUPlace(0))
         print_debug_info(
             data0, "data0 in test_large_parameters_paddle_save_tensor"
         )
-        # NOTE: If you need to explicitly move data0 to XPU (depending on your PaddlePaddle version),
-        # you might do: data0 = data0.xpu()
         self.offload_and_reload(data0)
 
     def test_large_parameters_paddle_save_model_weight(self):
@@ -91,14 +107,16 @@ class TestSaveLoadLargeParameters(unittest.TestCase):
 
     def test_offload_with_offset(self):
         loader = create_xpu_async_load()
-        data1 = paddle.randn([100])
+        # Create a fixed source tensor with all elements equal to 3.14.
+        src_arr = np.full([100], 3.14, dtype="float32")
+        data1 = paddle.to_tensor(src_arr, place=paddle.XPUPlace(0))
         print_debug_info(data1, "data1 in test_offload_with_offset")
-        data2 = paddle.randn(
-            [100]
-        ).cpu()  # Ensure data2 is on CPU (pinned memory)
+        # Create a destination tensor on CPU (pinned memory) initialized to zeros.
+        dst_arr = np.zeros([100], dtype="float32")
+        data2 = paddle.to_tensor(dst_arr, place=paddle.XPUPinnedPlace())
         print_debug_info(data2, "data2 in test_offload_with_offset (CPU)")
 
-        # Partial offload in two segments.
+        # Offload in two segments.
         task1 = async_offload_with_offset(
             src_tensor=data1,
             dst_tensor=data2,
@@ -116,52 +134,50 @@ class TestSaveLoadLargeParameters(unittest.TestCase):
             async_loader=loader,
         )
 
-        # Wait for tasks to complete.
+        # Wait for both tasks.
         task1.xpu_wait()
         task2.cpu_wait()
 
         print_debug_info(data1, "data1 after offload_with_offset")
         print_debug_info(data2, "data2 after offload_with_offset")
-
-        # Check that the data matches.
+        diff = np.max(np.abs(data1.numpy() - data2.numpy()))
+        # print("Max diff (data1 - data2):", diff)
         np.testing.assert_array_equal(data1.numpy(), data2.numpy())
 
-    def test_xpu_offload_performance(self):
-        """
-        Performance test: Measure the time cost of offloading 100MB of data.
-
-        All extra print/debug calls have been removed to minimize overhead.
-        The offload is run for multiple iterations (with a warm-up) and averaged
-        for a more accurate measurement.
-        """
+    def test_large_data_performance(self):
+        # Create a large tensor (~100MB) on XPU.
+        # For float32 (4 bytes), 100MB = 104857600 bytes => 104857600 / 4 = 26214400 elements.
+        # We use shape [512, 512, 100] since 512*512*100 = 26214400.
+        # print("Starting large data performance test...")
+        large_arr = np.random.rand(512, 512, 1000).astype("float32")
+        large_tensor = paddle.to_tensor(large_arr, place=paddle.XPUPlace(0))
+        print_debug_info(large_tensor, "large_tensor (original)")
         loader = create_xpu_async_load()
-        # For float32, each element takes 4 bytes. For 100MB, we need 25M elements.
-        num_elements = 25_000_000
-        data = paddle.randn([num_elements])
-        # Warm-up run to stabilize performance.
-        _ = paddle.randn([10, 10])
 
-        iterations = 10
-        times = []
-        for _ in range(iterations):
-            start_time = time.perf_counter()
-            cpu_data, task = async_offload(data, loader)
-            task.cpu_wait()
-            end_time = time.perf_counter()
-            times.append(end_time - start_time)
+        # Measure offload time.
+        t0 = time.time()
+        cpu_large, task_offload = async_offload(large_tensor, loader)
+        task_offload.cpu_wait()  # Wait for offload completion.
+        t1 = time.time()
+        offload_time = t1 - t0
+        # print(f"Offload time for 100MB tensor: {offload_time:.4f} seconds")
 
-        avg_time = sum(times) / iterations
+        # Measure reload time.
+        t2 = time.time()
+        xpu_large, task_reload = async_reload(cpu_large, loader)
+        task_reload.cpu_wait()  # Wait for reload completion.
+        t3 = time.time()
+        reload_time = t3 - t2
+        # print(f"Reload time for 100MB tensor: {reload_time:.4f} seconds")
 
-        # Check data integrity (this is not measured)
-        np.testing.assert_array_equal(data.numpy(), cpu_data.numpy())
-
-        # Output the average time (printing outside the measured loop is acceptable)
-        print(
-            f"Average time taken for offloading 100MB data over {iterations} iterations: {avg_time:.4f} seconds"
-        )
+        # Verify that the reloaded tensor matches the original.
+        a = large_tensor.numpy()
+        c = xpu_large.numpy()
+        max_diff = np.max(np.abs(a - c))
+        # print("Max diff (large_tensor - xpu_large):", max_diff)
+        np.testing.assert_array_equal(a, c)
 
 
 if __name__ == '__main__':
-    # Removing the default device print to avoid any extra overhead during performance tests.
     # print("Default Paddle device:", paddle.get_device())
     unittest.main()

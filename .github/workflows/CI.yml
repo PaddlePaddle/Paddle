@@ -3,11 +3,12 @@ name: CI
 on:
   pull_request:
     types: [opened, synchronize]
+    branches: [develop, release/**]
 
 permissions: read-all
 
 concurrency:
-  group: ${{ github.event.pull_request.number }}
+  group: ${{ github.event.pull_request.number }}-${{ github.workflow }}
   cancel-in-progress: true
 
 env:
@@ -19,11 +20,52 @@ jobs:
     name: Clone-linux
     uses: ./.github/workflows/_Clone-linux.yml
 
+  build-docker:
+    name: build docker images
+    needs: clone
+    uses: ./.github/workflows/docker.yml
+
   sot:
     name: PR-CI-SOT
     uses: ./.github/workflows/_SOT.yml
+    needs: build-docker
+    with:
+      docker_cpu_image: ${{ needs.build-docker.outputs.docker_cpu_image }}
+
+  mac:
+    name: Mac-CPU
+    uses: ./.github/workflows/_Mac.yml
     needs: clone
 
-  # Py3:
-  #   uses: ./.github/workflows/_Py3.yml
-  #   needs: Clone
+  xpu:
+    name: Linux-XPU
+    uses: ./.github/workflows/_Linux-XPU.yml
+    needs: clone
+
+  inference:
+    name: PR-CI-Inference
+    uses: ./.github/workflows/_Inference.yml
+    needs: build-docker
+    with:
+      docker_inference_image: ${{ needs.build-docker.outputs.docker_inference_image }}
+
+  cpu:
+    name: Linux-CPU
+    uses: ./.github/workflows/_Linux-CPU.yml
+    needs: build-docker
+    with:
+      docker_cpu_image: ${{ needs.build-docker.outputs.docker_cpu_image }}
+
+  npu:
+    name: Linux-NPU
+    uses: ./.github/workflows/_Linux-NPU.yml
+    needs: cpu
+    with:
+      can-skip: ${{ needs.cpu.outputs.can-skip }}
+
+  distribute:
+    name: Distribute-stable
+    uses: ./.github/workflows/_Distribute-stable.yml
+    needs: build-docker
+    with:
+      docker_distribute_image: ${{ needs.build-docker.outputs.docker_distribute_image }}

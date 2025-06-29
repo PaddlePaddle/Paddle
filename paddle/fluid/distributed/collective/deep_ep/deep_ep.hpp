@@ -24,7 +24,7 @@
 #undef NDEBUG
 #endif
 
-#if !defined(PADDLE_ON_INFERENCE) && !defined(PADDLE_NO_PYTHON)
+#ifndef PADDLE_NO_PYTHON
 #include <pybind11/pybind11.h>
 #include <pybind11/pytypes.h>
 #endif
@@ -122,7 +122,9 @@ struct Buffer {
 
   int get_local_device_id() const;
 
-#if !defined(PADDLE_ON_INFERENCE) && !defined(PADDLE_NO_PYTHON)
+  cudaStream_t get_comm_stream() const;
+
+#ifndef PADDLE_NO_PYTHON
   pybind11::bytearray get_local_ipc_handle() const;
 
   pybind11::bytearray get_local_nvshmem_unique_id() const;
@@ -249,34 +251,41 @@ struct Buffer {
   void clean_low_latency_buffer(int num_max_dispatch_tokens_per_rank,
                                 int hidden,
                                 int num_experts);
+  void barrier_all();
 
 #ifdef PADDLE_WITH_NVSHMEM
   std::tuple<deep_ep::detail::Tensor,
-             deep_ep::detail::Tensor,
+             std::optional<deep_ep::detail::Tensor>,
              deep_ep::detail::Tensor,
              deep_ep::detail::Tensor,
              deep_ep::detail::Tensor,
              std::optional<EventHandle>,
              std::optional<std::function<void()>>>
-  low_latency_dispatch(const deep_ep::detail::Tensor& x,
-                       const deep_ep::detail::Tensor& topk_idx,
-                       int num_max_dispatch_tokens_per_rank,
-                       int num_experts,
-                       bool async,
-                       bool return_recv_hook);
+  low_latency_dispatch(
+      const deep_ep::detail::Tensor& x,
+      const deep_ep::detail::Tensor& topk_idx,
+      const std::optional<deep_ep::detail::Tensor>& expertwise_scale,
+      int num_max_dispatch_tokens_per_rank,
+      int num_experts,
+      bool use_fp8,
+      bool async,
+      bool return_recv_hook);
 
   std::tuple<deep_ep::detail::Tensor,
              std::optional<EventHandle>,
              std::optional<std::function<void()>>>
-  low_latency_combine(const deep_ep::detail::Tensor& x,
-                      const deep_ep::detail::Tensor& topk_idx,
-                      const deep_ep::detail::Tensor& topk_weights,
-                      const deep_ep::detail::Tensor& src_info,
-                      const deep_ep::detail::Tensor& layout_range,
-                      int num_max_dispatch_tokens_per_rank,
-                      int num_experts,
-                      bool async,
-                      bool return_recv_hook);
+  low_latency_combine(
+      const deep_ep::detail::Tensor& x,
+      const deep_ep::detail::Tensor& topk_idx,
+      const deep_ep::detail::Tensor& topk_weights,
+      const deep_ep::detail::Tensor& src_info,
+      const deep_ep::detail::Tensor& layout_range,
+      int num_max_dispatch_tokens_per_rank,
+      int num_experts,
+      bool zero_copy,
+      bool async,
+      bool return_recv_hook,
+      const std::optional<deep_ep::detail::Tensor>& out = std::nullopt);
 #endif  // PADDLE_WITH_NVSHMEM
 
   std::tuple<paddle::Tensor,
@@ -333,18 +342,21 @@ struct Buffer {
                         bool allocate_on_comm_stream);
 
   std::tuple<paddle::Tensor,
-             paddle::Tensor,
+             std::optional<paddle::Tensor>,
              paddle::Tensor,
              paddle::Tensor,
              paddle::Tensor,
              std::optional<EventHandle>,
              std::optional<std::function<void()>>>
-  low_latency_dispatch_api(const paddle::Tensor& x,
-                           const paddle::Tensor& topk_idx,
-                           int num_max_dispatch_tokens_per_rank,
-                           int num_experts,
-                           bool async,
-                           bool return_recv_hook);
+  low_latency_dispatch_api(
+      const paddle::Tensor& x,
+      const paddle::Tensor& topk_idx,
+      const std::optional<paddle::Tensor>& expertwise_scale,
+      int num_max_dispatch_tokens_per_rank,
+      int num_experts,
+      bool use_fp8,
+      bool async,
+      bool return_recv_hook);
 
   std::tuple<paddle::Tensor,
              std::optional<EventHandle>,
@@ -356,8 +368,10 @@ struct Buffer {
                           const paddle::Tensor& layout_range,
                           int num_max_dispatch_tokens_per_rank,
                           int num_experts,
+                          bool zero_copy,
                           bool async,
-                          bool return_recv_hook);
+                          bool return_recv_hook,
+                          const std::optional<paddle::Tensor>& out);
 
   std::tuple<paddle::Tensor,
              std::optional<paddle::Tensor>,

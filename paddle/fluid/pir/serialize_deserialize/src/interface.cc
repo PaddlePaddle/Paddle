@@ -28,10 +28,10 @@ namespace pir {
 #define PIR "pir"
 void WriteModule(const pir::Program& program,
                  const std::string& file_path,
-                 uint64_t pir_version,
                  bool overwrite,
                  bool readable,
-                 bool trainable) {
+                 bool trainable,
+                 int64_t pir_version) {
   PADDLE_ENFORCE_EQ(
       FileExists(file_path) && !overwrite,
       false,
@@ -42,6 +42,11 @@ void WriteModule(const pir::Program& program,
 
   // write base code
   Json total;
+
+  if (pir_version < 0) {
+    pir_version = DEVELOP_VERSION;
+    VLOG(6) << "pir_version is null, get pir_version: " << pir_version;
+  }
 
   total[BASE_CODE] = {
       {MAGIC, PIR}, {PIRVERSION, pir_version}, {TRAINABLE, trainable}};

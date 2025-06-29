@@ -25,6 +25,7 @@
 #include "paddle/phi/backends/gpu/forwards.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/device_context.h"
+#include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
 #include "paddle/phi/core/distributed/store/store.h"
 #include "paddle/phi/core/platform/device_event.h"
@@ -117,6 +118,12 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
       bool sync_op,
       bool use_calc_stream) override;
 
+  std::shared_ptr<ProcessGroup::Task> AllToAll(
+      std::vector<phi::DenseTensor>* out_tensors,
+      const std::vector<phi::DenseTensor>& in_tensors,
+      bool sync_op,
+      bool use_calc_stream) override;
+
   std::shared_ptr<ProcessGroup::Task> Barrier(
       const BarrierOptions& = BarrierOptions()) override;
 
@@ -184,6 +191,9 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
   phi::distributed::NCCLCommContext* GetOrCreateCommContext(
       const Place& place, CommType comm_type = CommType::UNKNOWN);
 
+  void Shutdown();
+  void Restart();
+
  private:
   std::shared_ptr<ProcessGroupNCCL::NCCLTask> CreateTask(const Place& place,
                                                          int rank,
@@ -203,6 +213,13 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
                           int p2p_rank = 0);
 
   void SyncCalcStream(const Place& place, const std::string& place_key);
+
+  std::shared_ptr<ProcessGroup::Task> Collective(
+      std::function<void(phi::distributed::NCCLCommContext*, gpuStream_t)> fn,
+      const std::vector<phi::DenseTensor>& tensors,
+      CommType comm_type,
+      bool sync_op,
+      bool use_calc_stream);
 
   std::shared_ptr<ProcessGroup::Task> Collective(
       std::function<void(phi::distributed::NCCLCommContext*, gpuStream_t)> fn,
@@ -274,6 +291,10 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
   bool is_coalescing_{false};
   std::vector<std::shared_ptr<phi::DenseTensor>> coalescing_tensors_;
   std::vector<std::string> coalescing_place_keys_;
+
+  std::unordered_map<std::string, phi::distributed::P2POption>
+      place_to_p2p_opts_;
+  int64_t create_count_;
 };
 
 }  //  namespace distributed

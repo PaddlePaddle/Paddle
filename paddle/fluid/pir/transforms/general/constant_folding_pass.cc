@@ -187,7 +187,7 @@ class ConstantFoldingPattern : public pir::RewritePattern {
       if (use_parameter_op) {
         if (output_var->IsType<phi::DenseTensor>()) {
           auto* output_tensor = output_var->GetMutable<phi::DenseTensor>();
-          if (output_tensor->IsInitialized() &&
+          if (output_tensor->has_allocation() &&
               output_tensor->place().GetType() != place_.GetType()) {
             phi::DenseTensor temp_tensor;
             temp_tensor.Resize(output_tensor->dims());

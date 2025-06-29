@@ -38,8 +38,6 @@ list(APPEND MIXED_DIST_TEST_OPS test_ascend_group)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_api_input)
 
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_base)
-list(APPEND MIXED_DIST_TEST_OPS test_fleet_base_2_deprecated)
-list(APPEND MIXED_DIST_TEST_OPS test_fleet_base_3_deprecated)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_auto)
 list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_partitioner_deprecated)
 list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_partitioner_gpt_deprecated)
@@ -89,7 +87,6 @@ if(WIN32)
   list(REMOVE_ITEM TEST_OPS test_trainer_desc)
   list(REMOVE_ITEM TEST_OPS test_checkpoint_notify_op)
   list(REMOVE_ITEM TEST_OPS test_downpoursgd_deprecated)
-  list(REMOVE_ITEM TEST_OPS test_fleet_deprecated)
   list(REMOVE_ITEM TEST_OPS test_fleet_nocvm_1_deprecated)
   list(REMOVE_ITEM TEST_OPS test_fleet_rolemaker)
   list(REMOVE_ITEM TEST_OPS test_fleet_rolemaker_3)
@@ -174,7 +171,6 @@ endif()
 
 if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_fused_gate_attention_op)
-  list(REMOVE_ITEM TEST_OPS test_boxps)
   list(REMOVE_ITEM TEST_OPS test_reducescatter_api)
 endif()
 list(REMOVE_ITEM TEST_OPS test_seq_concat_op)
@@ -393,7 +389,6 @@ function(parallel_bash_test_modules TARGET_NAME)
 endfunction()
 
 list(REMOVE_ITEM TEST_OPS test_feed_data_check_shape_type_deprecated)
-list(REMOVE_ITEM TEST_OPS test_data_norm_op_deprecated)
 list(REMOVE_ITEM TEST_OPS test_layers_deprecated)
 list(REMOVE_ITEM TEST_OPS test_basic_gru_api)
 list(REMOVE_ITEM TEST_OPS test_basic_gru_unit_op)
@@ -499,10 +494,6 @@ if(WITH_DISTRIBUTE)
   if(NOT APPLE)
     py_test_modules(test_fleet_base MODULES test_fleet_base ENVS ${dist_ENVS}
                     FLAGS_enable_pir_api=0)
-    py_test_modules(test_fleet_base_2_deprecated MODULES
-                    test_fleet_base_2_deprecated ENVS ${dist_ENVS})
-    py_test_modules(test_fleet_base_3_deprecated MODULES
-                    test_fleet_base_3_deprecated ENVS ${dist_ENVS})
     if(NOT WIN32)
       py_test_modules(
         test_auto_parallel_partitioner_deprecated MODULES
@@ -577,8 +568,6 @@ else()
                   test_feed_data_check_shape_type_deprecated)
 endif()
 
-py_test_modules(test_data_norm_op_deprecated MODULES
-                test_data_norm_op_deprecated)
 py_test_modules(
   test_fuse_bn_act_pass_deprecated
   MODULES
@@ -595,8 +584,8 @@ if(NOT WIN32)
 endif()
 
 set_tests_properties(
-  test_data_norm_op_deprecated test_dataloader_keep_order_deprecated
-  test_dataloader_unkeep_order_deprecated PROPERTIES LABELS "RUN_TYPE=DIST")
+  test_dataloader_keep_order_deprecated test_dataloader_unkeep_order_deprecated
+  PROPERTIES LABELS "RUN_TYPE=DIST")
 
 if(NOT WIN32)
   set_tests_properties(test_multiprocess_reader_exception_deprecated

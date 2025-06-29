@@ -167,6 +167,7 @@ class TestMaskedFillGrad(unittest.TestCase):
                 y = x * 2
                 y.retain_grads()
                 ny = y.masked_fill(mask=mask, value=v)
+                ny.retain_grads()  # if ny grad is none, v_grad should be 0
                 loss = ny.sum()
                 loss.backward()
 
@@ -252,6 +253,33 @@ class TestMaskedFillAPIBroadcast5(TestMaskedFillAPI):
     def init(self):
         self.x_shape = (300, 40)
         self.mask_shape = (40,)
+        self.dtype = "float32"
+        self.scalar_value = True
+
+
+class TestMaskedFillAPIBroadcast6(TestMaskedFillAPI):
+    def init(self):
+        self.x_shape = (1, 1)
+        self.mask_shape = (40, 40)
+        self.dtype = "float32"
+        self.scalar_value = True
+
+
+class TestMaskedFillAPIBroadcast7(TestMaskedFillAPI):
+    def init(self):
+        self.x_shape = (15,)
+        self.mask_shape = (40, 1)
+        self.dtype = "float32"
+        self.scalar_value = True
+
+
+class TestMaskedFillAPIBroadcast8(TestMaskedFillAPI):
+    def init(self):
+        self.x_shape = (3, 1, 1)
+        self.mask_shape = (
+            120,
+            40,
+        )
         self.dtype = "float32"
         self.scalar_value = True
 

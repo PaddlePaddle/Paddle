@@ -127,6 +127,7 @@ from . import (
     linalg as linalg,
     signal as signal,
     tensor as tensor,
+    utils as utils,
 )
 from .autograd import (
     enable_grad,
@@ -155,6 +156,7 @@ from .framework import (  # noqa: F401
     CustomPlace,
     IPUPlace,
     ParamAttr,
+    XPUPinnedPlace,
     XPUPlace,
     async_save,
     clear_async_save_task_queue,
@@ -559,6 +561,7 @@ from .tensor.random import (
     randint,
     randint_like,
     randn,
+    randn_like,
     randperm,
     standard_gamma,
     standard_normal,
@@ -609,17 +612,8 @@ if is_compiled_with_cinn():
     if os.path.exists(cuh_file):
         os.environ.setdefault('runtime_include_dir', runtime_include_dir)
 
-    if sys.version_info >= (3, 9):
-
-        data_file_path = resources.files('paddle.cinn_config')
-        os.environ['CINN_CONFIG_PATH'] = str(data_file_path)
-    else:
-        import pkg_resources
-
-        data_file_path = pkg_resources.resource_filename(
-            'paddle.cinn_config', ''
-        )
-        os.environ['CINN_CONFIG_PATH'] = data_file_path
+    data_file_path = resources.files('paddle.cinn_config')
+    os.environ['CINN_CONFIG_PATH'] = str(data_file_path)
 
 if __is_metainfo_generated and is_compiled_with_cuda():
     import os
@@ -654,6 +648,10 @@ if __is_metainfo_generated and is_compiled_with_cuda():
 
         cupti_dir_lib_path = package_dir + "/.." + "/nvidia/cuda_cupti/lib"
         set_flags({"FLAGS_cupti_dir": cupti_dir_lib_path})
+
+        if is_compiled_with_cinn():
+            cuda_cccl_path = package_dir + "/.." + "/nvidia/cuda_cccl/include/"
+            set_flags({"FLAGS_cuda_cccl_dir": cuda_cccl_path})
 
     elif (
         platform.system() == 'Windows'
@@ -1081,6 +1079,7 @@ __all__ = [
     'cauchy_',
     'geometric_',
     'randn',
+    'randn_like',
     'strided_slice',
     'unique',
     'unique_consecutive',
@@ -1120,6 +1119,7 @@ __all__ = [
     'reverse',
     'nonzero',
     'CUDAPinnedPlace',
+    'XPUPinnedPlace',
     'logical_not',
     'logical_not_',
     'add_n',

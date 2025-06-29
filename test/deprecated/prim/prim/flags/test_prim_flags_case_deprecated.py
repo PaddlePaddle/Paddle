@@ -18,14 +18,13 @@ import unittest
 import paddle
 import paddle.nn.functional as F
 from paddle.base import core
+from paddle.base.core import (
+    __check_and_set_prim_all_enabled as check_and_set_prim_all_enabled,
+)
 
 
-def apply_to_static(net, use_cinn):
-    build_strategy = paddle.static.BuildStrategy()
-    build_strategy.build_cinn_pass = use_cinn
-    return paddle.jit.to_static(
-        net, build_strategy=build_strategy, full_graph=True
-    )
+def apply_to_static(net):
+    return paddle.jit.to_static(net, backend=None, full_graph=True)
 
 
 class PrimeNet(paddle.nn.Layer):
@@ -50,15 +49,17 @@ class TestPrimForwardAndBackward(unittest.TestCase):
         self.flag = None
 
     def reset_env_flag(self):
-        os.environ["FLAGS_prim_backward"] = "False"
-        os.environ["FLAGS_prim_forward"] = "False"
+        if os.getenv("FLAGS_prim_backward"):
+            del os.environ["FLAGS_prim_backward"]
+        if os.getenv("FLAGS_prim_forward"):
+            del os.environ["FLAGS_prim_forward"]
         if os.getenv("FLAGS_prim_all"):
             del os.environ["FLAGS_prim_all"]
-        core.check_and_set_prim_all_enabled()
+        core._set_prim_all_enabled(False)
 
-    def train(self, use_cinn):
+    def train(self):
         net = PrimeNet()
-        net = apply_to_static(net, use_cinn)
+        net = apply_to_static(net)
 
         out = net(self.x)
         loss = paddle.mean(out)
@@ -74,68 +75,41 @@ class TestPrimForwardAndBackward(unittest.TestCase):
             .ops
         ]
 
-        if self.flag in ["prim_all", "cinn_prim_all"]:
+        if self.flag in ["prim_all"]:
             self.assertTrue('softmax' not in ops)
             self.assertTrue('exp_grad' not in ops)
-        elif self.flag in ["prim_forward", "cinn_prim_forward"]:
+        elif self.flag in ["prim_forward"]:
             self.assertTrue('softmax' not in ops)
             self.assertTrue('exp_grad' in ops)
-        elif self.flag in ["prim_backward", "cinn_prim_backward"]:
+        elif self.flag in ["prim_backward"]:
             self.assertTrue('softmax' in ops)
             self.assertTrue('exp_grad' not in ops)
-        elif self.flag == "cinn":
-            self.assertTrue('softmax' in ops)
-            self.assertTrue('exp_grad' in ops)
         else:
             raise TypeError
-
-    def test_cinn_prim_all(self):
-        """cinn + prim forward + prim backward"""
-        self.reset_env_flag()
-        os.environ["FLAGS_prim_all"] = "True"
-        self.flag = "cinn_prim_all"
-        _ = self.train(use_cinn=True)
 
     def test_prim_all(self):
         """prim forward + prim backward"""
         self.reset_env_flag()
         os.environ["FLAGS_prim_all"] = "True"
+        check_and_set_prim_all_enabled()
         self.flag = "prim_all"
-        _ = self.train(use_cinn=False)
-
-    def test_cinn_prim_forward(self):
-        """cinn + prim forward"""
-        self.reset_env_flag()
-        os.environ["FLAGS_prim_forward"] = "True"
-        self.flag = "cinn_prim_forward"
-        _ = self.train(use_cinn=True)
+        _ = self.train()
 
     def test_prim_forward(self):
         """only prim forward"""
         self.reset_env_flag()
         os.environ["FLAGS_prim_forward"] = "True"
+        check_and_set_prim_all_enabled()
         self.flag = "prim_forward"
-        _ = self.train(use_cinn=False)
-
-    def test_cinn_prim_backward(self):
-        """cinn + prim_backward"""
-        self.reset_env_flag()
-        os.environ["FLAGS_prim_backward"] = "True"
-        self.flag = "cinn_prim_backward"
-        _ = self.train(use_cinn=True)
+        _ = self.train()
 
     def test_prim_backward(self):
         """only prim backward"""
         self.reset_env_flag()
         os.environ["FLAGS_prim_backward"] = "True"
+        check_and_set_prim_all_enabled()
         self.flag = "prim_backward"
-        _ = self.train(use_cinn=False)
-
-    def test_cinn(self):
-        """only cinn"""
-        self.reset_env_flag()
-        self.flag = "cinn"
-        _ = self.train(use_cinn=True)
+        _ = self.train()
 
 
 if __name__ == '__main__':

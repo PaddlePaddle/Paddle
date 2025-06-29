@@ -170,6 +170,59 @@ cinn_type_t cinn_float64_t(int num_asterisks) {
   return cinn_type_t(cinn_type_float, 64, num_asterisks);
 }
 
+#define ARGIDX_FUNC_MACRO_DEF_IMPL(TYPENAME, DTYPE, ITYPE)                    \
+  void min_##TYPENAME(TYPENAME* sret, const TYPENAME* a, const TYPENAME* b) { \
+    *sret = a->value == b->value ? (a->index < b->index ? *a : *b)            \
+                                 : (a->value < b->value ? *a : *b);           \
+  }                                                                           \
+  void max_##TYPENAME(TYPENAME* sret, const TYPENAME* a, const TYPENAME* b) { \
+    *sret = a->value == b->value ? (a->index < b->index ? *a : *b)            \
+                                 : (a->value > b->value ? *a : *b);           \
+  }                                                                           \
+  ITYPE cast_##TYPENAME(const TYPENAME* argidx) { return argidx->index; }     \
+  void create_##TYPENAME(TYPENAME* sret, DTYPE val, ITYPE idx) {              \
+    *sret = TYPENAME{val, idx};                                               \
+  }
+
+#define ARGIDX_FUNC_MACRO_DEF(DNAME, DTYPE)                    \
+  ARGIDX_FUNC_MACRO_DEF_IMPL(argidx_##DNAME##_i32, DTYPE, int) \
+  ARGIDX_FUNC_MACRO_DEF_IMPL(argidx_##DNAME##_i64, DTYPE, int64_t)
+
+ARGIDX_FUNC_MACRO_DEF(fp32, float)
+ARGIDX_FUNC_MACRO_DEF(fp64, double)
+ARGIDX_FUNC_MACRO_DEF(i16, int16_t)
+ARGIDX_FUNC_MACRO_DEF(i32, int)
+ARGIDX_FUNC_MACRO_DEF(i64, int64_t)
+ARGIDX_FUNC_MACRO_DEF(u8, uint8_t)
+
+#undef ARGIDX_FUNC_MACRO_DEF_IMPL
+#undef ARGIDX_FUNC_MACRO_DEF
+
+#define WELFORD_COMBINE_MACRO(TYPE_SUFFIX, DTYPE)                     \
+  void sum_welford_##TYPE_SUFFIX(welford_##TYPE_SUFFIX* sret,         \
+                                 const welford_##TYPE_SUFFIX* a,      \
+                                 const welford_##TYPE_SUFFIX* b) {    \
+    DTYPE delta = b->mean - a->mean;                                  \
+    DTYPE weight = a->weight + b->weight;                             \
+    DTYPE w2_over_w =                                                 \
+        a->weight == b->weight ? (DTYPE)0.5 : b->weight / weight;     \
+    DTYPE mean = a->mean + delta * w2_over_w;                         \
+    DTYPE m2 = a->m2 + b->m2 + delta * delta * a->weight * w2_over_w; \
+    *sret = {mean, m2, weight};                                       \
+  }                                                                   \
+  DTYPE cast_welford_##TYPE_SUFFIX(const welford_##TYPE_SUFFIX* wf) { \
+    return wf->m2 / wf->weight;                                       \
+  }                                                                   \
+  void create_welford_##TYPE_SUFFIX(                                  \
+      welford_##TYPE_SUFFIX* sret, DTYPE m, DTYPE m2, DTYPE w) {      \
+    *sret = welford_##TYPE_SUFFIX{m, m2, w};                          \
+  }
+
+WELFORD_COMBINE_MACRO(fp32, float)
+WELFORD_COMBINE_MACRO(fp64, double)
+
+#undef WELFORD_COMBINE_MACRO
+
 }  // extern "C"
 
 struct cinn_buffer_t* cinn_buffer_t::new_(cinn_device_kind_t device,

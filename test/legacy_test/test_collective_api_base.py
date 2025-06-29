@@ -503,7 +503,7 @@ class TestDistBase(unittest.TestCase):
             np.testing.assert_allclose(
                 result_data, need_result, rtol=1e-05, atol=1e-05
             )
-        elif col_type == "all_to_all":
+        elif col_type == "alltoall":
             need_result1 = np.vstack(
                 (
                     input1[0 : input1.shape[0] // 2, :],
@@ -518,6 +518,31 @@ class TestDistBase(unittest.TestCase):
             )
             tr0_out = np.vstack(tr0_out)
             tr1_out = np.vstack(tr1_out)
+            np.testing.assert_allclose(
+                tr0_out, need_result1, rtol=1e-05, atol=1e-05
+            )
+            np.testing.assert_allclose(
+                tr1_out, need_result2, rtol=1e-05, atol=1e-05
+            )
+        elif col_type == "alltoall_unequal_split":
+            half_dim0 = input1.shape[0] // 2
+            half_dim1 = input1.shape[1] // 2
+            need_result1 = np.concatenate(
+                [
+                    input1[: half_dim0 - 1, : half_dim1 - 1].flatten(),
+                    input2[half_dim0 - 1 :, : half_dim1 - 2].flatten(),
+                ],
+                axis=0,
+            )
+            need_result2 = np.concatenate(
+                [
+                    input1[: half_dim0 - 1, half_dim1 - 1 :].flatten(),
+                    input2[half_dim0 - 1 :, half_dim1 - 2 :].flatten(),
+                ],
+                axis=0,
+            )
+            tr0_out = np.concat([out.flatten() for out in tr0_out])
+            tr1_out = np.concat([out.flatten() for out in tr1_out])
             np.testing.assert_allclose(
                 tr0_out, need_result1, rtol=1e-05, atol=1e-05
             )
@@ -732,5 +757,9 @@ class TestDistBase(unittest.TestCase):
                 np.testing.assert_allclose(
                     tr1_out[1], 2 * local_input_buf2, rtol=1e-05, atol=1e-05
                 )
-        else:
+        elif col_type == 'barrier':
             pass
+        else:
+            raise NotImplementedError(
+                f"col_type {col_type} check_with_place not implemented"
+            )

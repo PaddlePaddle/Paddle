@@ -15,7 +15,7 @@
 
 #include <iostream>
 
-#include "paddle/fluid/eager/to_static/run_program_op_func.h"
+#include "paddle/fluid/eager/to_static/run_program_func.h"
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/phi/core/enforce.h"
 
@@ -43,12 +43,11 @@ static PyObject *eager_api_run_program(PyObject *self,  // TOREMOVE
       Out = GetTensorPtrListFromArgs("run_program", "Out", args, 2, true, mesh);
     }
     framework::AttributeMap attrs;
-    // TODO(zengjinle): support CUDA Graph on eager mode
-    ConstructAttrMapFromPyArgs(
+    ConstructAttrMapForLegacyRunProgram(
         "run_program", args, 5, PyTuple_GET_SIZE(args), attrs);
 
     tstate = PyEval_SaveThread();
-    run_program_ad_func(X, Params, Out, OutScope, attrs);
+    egr::to_static::legacy_run_program_ad_func(X, Params, Out, OutScope, attrs);
     PyEval_RestoreThread(tstate);
     tstate = nullptr;
     Py_RETURN_NONE;

@@ -5,8 +5,6 @@ gather_srcs(
   SRCS
   gather_nd.cc
   sort.cc
-  argmin.cc
-  argmax.cc
   repeat.cc
   lookup_table.cc
   one_hot.cc

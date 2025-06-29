@@ -21,13 +21,20 @@ from ...utils.log_utils import get_logger
 from ..pass_base import PassBase
 from ..pass_utils import (
     set_skip_gc_vars,
-    shadow_var_between_sub_programs,
 )
 
 logger = get_logger(logging.INFO)
 
 
 class PipelinePassBase(PassBase):
+
+    # Pipeline stages
+    RECV_FORWARD = "recv_forward"
+    SEND_BACKWARD = "send_backward"
+    FORWARD = "forward"
+    BACKWARD = "backward"
+    OPT = "optimizer"
+
     def __init__(self):
         super().__init__()
         self._in_pir_mode = paddle.base.framework.get_flags(
@@ -86,34 +93,7 @@ class PipelinePassBase(PassBase):
         The shared process is implemented in this function and new subclass only need
         to implement two interfaces above, 'create_job_list' and 'partial_programs'.
         """
-        job_types, sub_programs = self._partial_programs(main_program)
-
-        enable_pir_in_executor = paddle.framework.get_flags(
-            "FLAGS_enable_pir_in_executor"
-        )['FLAGS_enable_pir_in_executor']
-        if enable_pir_in_executor:
-            shadow_var_between_sub_programs(sub_programs)
-
-        for i in range(len(job_types)):
-            logger.debug(
-                f"sub_program type: {job_types[i]}, sum_program:\n{sub_programs[i]}"
-            )
-
-        jobs = self._create_job_list()
-        type_to_program = set_skip_gc_vars(
-            self.get_attr("num_micro_batches"), job_types, sub_programs, jobs
-        )
-
-        for type in type_to_program.keys():
-            if enable_pir_in_executor:
-                type_to_program[type] = paddle.pir.translate_to_pir(
-                    type_to_program[type].desc
-                )
-            else:
-                type_to_program[type] = type_to_program[type].desc
-
-        plan = core.Plan(jobs, type_to_program)
-        context.set_attr("plan", plan)
+        raise NotImplementedError("Not support for old IR")
 
     def _apply_pir_single_impl(self, main_program, startup_program, context):
         """
@@ -135,3 +115,44 @@ class PipelinePassBase(PassBase):
 
         plan = core.Plan(jobs, type_to_program)
         context.set_attr("plan", plan)
+
+    def _add_dependency(self, recorder_op, waiter_op, name):
+        '''
+        Add the extra event dependency of the two operators.
+        This function mainly aims for the cross-programs in pipeline parallelism,
+        especial for the 'send_v2' 'recv_v2' etc.
+        '''
+        if not recorder_op.has_attr("force_record_event"):
+            recorder_op.set_bool_attr("force_record_event", True)
+        recorder_op.set_str_attr("event_to_record", name)
+        waiter_op.set_str_array_attr("events_to_wait", [name])
+
+    def _add_dependency_if_necessary(
+        self,
+        type_to_ops,
+        cur_job_type,
+        next_job_type,
+        op_idx,
+        rst_idx,
+        var_name,
+    ):
+        if not (
+            ("backward" in cur_job_type and "send_backward" in next_job_type)
+            or ("recv_forward" in cur_job_type and "forward" in next_job_type)
+        ):
+            return
+
+        first_used_idx = None
+        first_used_op = None
+        for used_op in (
+            type_to_ops[next_job_type][op_idx].result(rst_idx).all_used_ops()
+        ):
+            used_idx = type_to_ops[next_job_type].index(used_op)
+            if first_used_idx is None or used_idx < first_used_idx:
+                first_used_idx = used_idx
+                first_used_op = used_op
+
+        if first_used_op is not None:
+            self._add_dependency(
+                type_to_ops[cur_job_type][op_idx], first_used_op, var_name
+            )

@@ -31,13 +31,16 @@ from paddle.jit.utils import OrderedSet
 
 from ...profiler import EventGuard
 from ...psdb import NO_BREAKGRAPH_CODES
+from ...symbolic_shape.constraints import LogicalNotConstraintNode
 from ...utils import (
     ENV_MIN_GRAPH_SIZE,
     ENV_SOT_FORCE_FALLBACK_SIR_IDS,
     BreakGraphError,
-    BuiltinFunctionBreak,
+    DataDependencyDynamicShapeBreak,
     FallbackError,
     InnerError,
+    SotCapturedException,
+    SotCapturedExceptionFactory,
     SotUndefinedVar,
     UnsupportedIteratorBreak,
     UnsupportedOperationBreak,
@@ -57,6 +60,7 @@ from ..instruction_utils import (
 from ..instruction_utils.opcode_info import (
     NEED_TO_BOOL,
     RETURN,
+    ExceptionHandler,
     JumpDirection,
     PopJumpCond,
 )
@@ -84,19 +88,19 @@ from .tracker import (
     ConstTracker,
     DanglingTracker,
     DummyTracker,
+    GetAttrTracker,
 )
-from .variable_stack import VariableStack
 from .variables import (
     BuiltinVariable,
-    CellVariable,
     ConstantVariable,
     ContainerVariable,
     DictVariable,
+    ExceptionVariable,
     IterVariable,
     ListVariable,
     MethodVariable,
     NullVariable,
-    RangeVariable,
+    NumPyArrayVariable,
     SequenceIterVariable,
     SliceVariable,
     SymbolicVariable,
@@ -105,13 +109,18 @@ from .variables import (
     UserCodeVariable,
     UserDefinedFunctionVariable,
     UserDefinedGeneratorFunctionVariable,
+    UserDefinedIterVariable,
     VariableBase,
     VariableFactory,
 )
+from .virtual_frame import BlockStackItem
 
 if TYPE_CHECKING:
     from .function_graph import CompileGraphResult, FunctionGraph
+    from .variable_stack import VariableStack
     from .virtual_frame import VirtualFrame
+
+from .exception_stack import ExceptionStack
 
 COMPARE_OP_NAME_TO_FN = {
     ">": operator.gt,
@@ -130,6 +139,10 @@ COMPARE_OP_NAME_TO_FN = {
 
 # In Python 3.13, the method layout is changed, and a NULL will be pushed after the value.
 CALL_METHOD_LAYOUT_NULL_AFTER_VALUE = sys.version_info >= (3, 13)
+ALREADY_SUPPORTED_EXCEPTION = sys.version_info < (
+    3,
+    11,
+)
 
 
 @dataclass
@@ -224,7 +237,23 @@ def pop_jump_if_op_wrapper(fns: list[Callable[[Any], Any]]):
                 )(res)
 
             assert isinstance(res, (ConstantVariable, SymbolicVariable))
-            is_jump = res.get_py_value()
+            if isinstance(res, SymbolicVariable):
+                constraint_node, symbolic_vars = res.create_constraint_tree()
+                if not all(
+                    var.value.is_backed() for var in symbolic_vars.values()
+                ):
+                    raise BreakGraphError(
+                        DataDependencyDynamicShapeBreak(
+                            f"Symbolic variable {symbolic_vars} is not backed."
+                        )
+                    )
+                is_jump = res.get_example_value()
+                if not is_jump:
+                    constraint_node = LogicalNotConstraintNode(constraint_node)
+                for var in symbolic_vars.values():
+                    var.add_constraint((constraint_node, symbolic_vars))
+            else:
+                is_jump = res.get_py_value()
             assert isinstance(is_jump, bool)
             if is_jump:
                 assert instr.jump_to is not None
@@ -251,7 +280,7 @@ def if_break_graph_decorator(normal_jump: Callable):
 
     def inner(self: OpcodeExecutor, instr: Instruction):
         result = self.stack.top
-        if isinstance(result, TensorVariable):
+        if isinstance(result, (TensorVariable, NumPyArrayVariable)):
             # fallback when in OpcodeExecutor
             # raise error in OpcodeInlineExecutor
             log(3, "[BreakGraph] break graph for if jump tensor\n")
@@ -323,6 +352,18 @@ def fallback_when_occur_error(fn: Callable):
     return inner
 
 
+def fallback_if_python_version_unsupported(fn: Callable):
+    def inner(*args, **kwargs):
+        if not ALREADY_SUPPORTED_EXCEPTION:
+            raise FallbackError(
+                "SOT currently only partially supports exception handling (Python 3.10 and below). "
+                "Unsupported exception bytecode will fall back to dynamic graph mode."
+            )
+        return fn(*args, **kwargs)
+
+    return inner
+
+
 def parse_force_fallback_sir_ids() -> set[int]:
     ids_string = ENV_SOT_FORCE_FALLBACK_SIR_IDS.get()
     if not ids_string:
@@ -386,32 +427,31 @@ class OpcodeExecutorBase:
 
     call_stack: list[OpcodeExecutorBase] = []
     empty_code = EmptyCode()
-
-    @staticmethod
-    def validate_value(value):
-        assert isinstance(
-            value, VariableBase
-        ), f"value: {value}, type should be VariableBase(or derived), but get {type(value)}"
-        assert not isinstance(value.tracker, DanglingTracker) or isinstance(
-            value, (NullVariable, CellVariable)
-        ), f"dangling variable {value} should not be pushed into stack."
+    exception_stack = ExceptionStack()
 
     def __init__(self, vframe: VirtualFrame, graph: FunctionGraph):
         OpcodeExecutorBase.call_stack.append(self)
-        # fake env for run, new env should be gened by PyCodeGen
-        self.stack = VariableStack(validate_value_func=self.validate_value)
         self.vframe = vframe
         self._current_line: int = -1
         self._instructions = get_instructions(vframe.code)
         self._graph = graph
         self.new_code: types.CodeType | None = self.empty_code  # type: ignore
         self.guard_fn = None
+        self.guard_chain = None
         self._name = "Executor"
         self._call_shape: tuple[str, ...] | None = (
             None  # store kwnames for Python 3.11 and 3.12
         )
         # self._prepare_virtual_env()
         self.stop_state = None
+
+    @property
+    def stack(self):
+        return self.vframe.stack
+
+    @stack.setter
+    def stack(self, value: VariableStack):
+        self.vframe.stack = value
 
     def check_code_simulatable(self):
         for instr in self._instructions:
@@ -425,7 +465,7 @@ class OpcodeExecutorBase:
         Prints the Static Instruction Representation (SIR) in the executor.
 
         """
-        print(self._graph.sir_ctx.TOS)
+        print(self._graph.sir_builder.current_sir)
 
     def _prepare_virtual_env(self):
         """
@@ -579,7 +619,7 @@ class OpcodeExecutorBase:
 
         """
         log(3, f"[EXECUTOR RUN] Start execute opcode: {self.vframe.code}\n")
-        self.vframe.lasti = 0
+
         while True:
             if self.vframe.lasti >= len(self._instructions):
                 raise InnerError("lasti out of range, InnerError.")
@@ -610,7 +650,7 @@ class OpcodeExecutorBase:
             self._current_line = instr.starts_line
         if not hasattr(self, instr.opname):
             raise FallbackError(f"opcode: {instr.opname} is not supported.")
-        log_message = f"[Translate {self._name}]: (line {self._current_line:>3}) {instr.opname:<12} {instr.argval}, stack is {self.stack}\n"
+        log_message = f"[Translate {self._name} {len(self.call_stack)}] (line {self._current_line:>3}) {instr.opname:<12} {instr.argval}, stack is {self.stack}\n"
         log(3, log_message)
         code_file = self.vframe.code.co_filename
         code_line = self._current_line
@@ -630,7 +670,105 @@ class OpcodeExecutorBase:
             opname = opname if opname != "PRECALL" else "PRECALL__CALL"
             assert opname != "CALL", "CALL should fused with PRECALL"
         with EventGuard(f"{opname}", event_level=2):
-            return getattr(self, opname)(instr)  # run single step.
+            try:
+                return getattr(self, opname)(instr)  # run single step.
+            except SotCapturedException as e:
+                self.handle_exception(e)
+
+    def handle_exception(self, e: SotCapturedException):
+        # TODO(DrRyanHuang): The newly created ExceptionVariable might differ from the previous one
+        e_var = VariableFactory.from_value(
+            e,
+            self._graph,
+            DummyTracker(e.tracked_args),
+        )
+
+        # The exception is not raised by `raise Exception`
+        if (
+            self.exception_stack.empty()
+            or self.exception_stack.get_current_exception() != e_var
+        ):
+            self.exception_stack.set_current_exception(e_var, self._graph)
+
+        if self.vframe.block_stack:
+            # The implementation is referenced from the exception_unwind section
+            # of CPython's main_loop.
+            block_stack_entry = self.vframe.block_stack.pop()
+            while block_stack_entry.inst.opname == ExceptionHandler.opname:
+                # Remove previous EXCEPT_HANDLER entries, which indicate that the
+                # exception has already been handled. Continue until a SETUP_FINALLY
+                # block is encountered, which signifies an active exception handler.
+                self.stack.pop_n(3)
+                self.exception_stack.pop()
+                if len(self.vframe.block_stack) == 0:
+                    # Since the block stack is empty, no handler was found in this
+                    # frame, so the exception is propagated to the outer function for handling.
+                    self.stack.pop_n(
+                        len(self.stack)
+                    )  # Just like CPython; no memory leaks in our simulation
+                    raise e
+                block_stack_entry = self.vframe.block_stack.pop()
+
+            exception_var = self.exception_stack.get_current_exception()
+            self.exception_stack.move_current_exception_to_stack()
+
+            # Pop elements from the stack to restore it to the depth recorded by the block,
+            # ensuring the stack state matches that prior to exception handling.
+            while len(self.stack) > block_stack_entry.level:
+                self.stack.pop()
+
+            # Push a dummy EXCEPT_HANDLER block onto the stack to indicate that exception
+            # handling has begun and to record the current stack level.
+            EXCEPT_HANDLER_INSTRUCTION = Instruction(
+                ExceptionHandler.opcode, ExceptionHandler.opname, None, 0
+            )
+            self.vframe.block_stack.append(
+                BlockStackItem(
+                    EXCEPT_HANDLER_INSTRUCTION.opname,
+                    EXCEPT_HANDLER_INSTRUCTION,
+                    None,
+                    len(self.stack),
+                )
+            )
+
+            # Push the old exception variables (tb, value, type) onto stack
+            if len(self.exception_stack) >= 2:
+                old_exception = self.exception_stack[-2]
+
+                # Current SOT implementation does not track traceback information,
+                # so Traceback is represented as ConstantVariable(None)
+                self.stack.push(
+                    ConstantVariable.wrap_literal(None, self._graph)
+                )
+                self.stack.push(old_exception)
+                self.stack.push(
+                    BuiltinVariable(
+                        old_exception.exc_type,
+                        self._graph,
+                        DummyTracker([]),
+                    )
+                )
+            else:
+                for _ in range(3):
+                    self.stack.push(
+                        ConstantVariable.wrap_literal(None, self._graph)
+                    )
+
+            # Push current exception - tb, val, type
+            self.stack.push(ConstantVariable.wrap_literal(None, self._graph))
+            self.stack.push(exception_var)
+            self.stack.push(
+                BuiltinVariable(
+                    exception_var.exc_type,
+                    self._graph,
+                    GetAttrTracker(exception_var, "__class__"),
+                )
+            )
+
+            self.jump_to(block_stack_entry.handler)
+        else:
+            self.stack.pop_n(len(self.stack))
+            raise e
 
     def indexof(self, instr: Instruction):
         """
@@ -800,10 +938,32 @@ class OpcodeExecutorBase:
 
     @call_break_graph_decorator(push_n=1)
     def LOAD_SUPER_ATTR(self, instr: Instruction):
-        # This bytecode is for Python 3.12+, and it will break graph in Python 3.11-.
-        # We align it's behavior with Python 3.11-.
-        raise BreakGraphError(
-            BuiltinFunctionBreak(reason_str="call super is not supported")
+        # Handle LOAD_SUPER_ATTR bytecode (introduced in Python 3.12+) by simulating its execution
+
+        assert isinstance(instr.arg, int)
+
+        name_idx = instr.arg >> 2  # Name index in co_names
+        is_method = bool(instr.arg & 1)  # Method binding flag
+
+        args = self.stack.pop_n(2)
+        super_func = self.stack.pop()
+        self.stack.push(super_func(*args))
+
+        attr_name = self.vframe.code.co_names[name_idx]
+
+        if is_method:
+            # Handle method binding
+            self.load_method(attr_name)
+            return
+
+        # Handle attribute lookup
+        attr_name_var = ConstantVariable.wrap_literal(attr_name, self._graph)
+        obj = self.stack.pop()
+
+        self.stack.push(
+            BuiltinVariable(
+                getattr, graph=self._graph, tracker=DanglingTracker()
+            )(obj, attr_name_var)
         )
 
     def LOAD_CONST(self, instr: Instruction):
@@ -1068,83 +1228,18 @@ class OpcodeExecutorBase:
         values = self.stack.pop_n(map_size)
         self.stack.push(self.build_map(keys, values))
 
-    def build_seq_unpack(self, instr: Instruction):
-        oparg = instr.arg
-        assert isinstance(oparg, int)
-        unpack_values = self.stack.pop_n(oparg)
-
-        retval = []
-        for item in unpack_values:
-            if not isinstance(
-                item, (TupleVariable, ListVariable, RangeVariable)
-            ):
-                raise BreakGraphError(
-                    UnsupportedOperationBreak(
-                        reason_str=f"{type(item)} not support unpack"
-                    )
-                )
-            retval.extend(item.get_iter().to_list())
-
-        if instr.opname in {
-            "BUILD_TUPLE_UNPACK_WITH_CALL",
-            "BUILD_TUPLE_UNPACK",
-        }:
-            retval = tuple(retval)
-
-        self.stack.push(
-            VariableFactory.from_value(
-                retval, self._graph, DummyTracker(unpack_values)
+    def handle_super_init_without_args(self, fn, args, kwargs):
+        if (
+            isinstance(fn, BuiltinVariable)
+            and fn.value is super
+            and len(args) == 0
+        ):
+            self_name = self.vframe.code.co_varnames[0]
+            args = (
+                self.vframe.cells['__class__'].value,
+                self.vframe.locals[self_name],
             )
-        )
-
-    @call_break_graph_decorator(push_n=1)
-    def BUILD_TUPLE_UNPACK_WITH_CALL(self, instr: Instruction):
-        self.build_seq_unpack(instr)
-
-    @call_break_graph_decorator(push_n=1)
-    def BUILD_TUPLE_UNPACK(self, instr: Instruction):
-        self.build_seq_unpack(instr)
-
-    @call_break_graph_decorator(push_n=1)
-    def BUILD_LIST_UNPACK(self, instr: Instruction):
-        self.build_seq_unpack(instr)
-
-    def BUILD_MAP_UNPACK(self, instr: Instruction):
-        oparg = instr.arg
-        assert isinstance(oparg, int)
-        unpack_values = self.stack.pop_n(oparg)
-
-        retval = {}
-        for item in unpack_values:
-            assert item.get_py_type() is dict
-            retval.update(item.get_wrapped_items())
-
-        self.stack.push(
-            VariableFactory.from_value(
-                retval, self._graph, DummyTracker(unpack_values)
-            )
-        )
-
-    def BUILD_MAP_UNPACK_WITH_CALL(self, instr: Instruction):
-        oparg = instr.arg
-        assert isinstance(oparg, int)
-        unpack_values = self.stack.pop_n(oparg)
-
-        retval = {}
-        for item in unpack_values:
-            assert item.get_py_type() is dict
-            wrapped_item = item.get_wrapped_items()
-            if wrapped_item.items() & retval.items():
-                raise InnerError(
-                    "BUILD_MAP_UNPACK_WITH_CALL found repeated key."
-                )
-            retval.update(wrapped_item)
-
-        self.stack.push(
-            VariableFactory.from_value(
-                retval, self._graph, DummyTracker(unpack_values)
-            )
-        )
+        return fn, args, kwargs
 
     @call_break_graph_decorator(push_n=1)
     def PRECALL__CALL(self, instr: Instruction):
@@ -1195,6 +1290,7 @@ class OpcodeExecutorBase:
         if not is_method:
             # pop the NULL variable
             self.stack.pop()
+        fn, args, kwargs = self.handle_super_init_without_args(fn, args, kwargs)
         self.stack.push(fn(*args, **kwargs))
         self._call_shape = None
 
@@ -1264,6 +1360,7 @@ class OpcodeExecutorBase:
         args = self.stack.pop_n(n_args)
         kwargs = {}
         fn = self.stack.pop()
+        fn, args, kwargs = self.handle_super_init_without_args(fn, args, kwargs)
         ret = fn(*args, **kwargs)
         self.stack.push(ret)
 
@@ -1562,6 +1659,7 @@ class OpcodeExecutorBase:
                 )
             )
 
+    @call_break_graph_decorator(push_n=1)
     def GET_ITER(self, instr: Instruction):
         source_obj = self.stack.pop()
         iter_variable = BuiltinVariable(iter, self._graph, DanglingTracker())(
@@ -1873,6 +1971,124 @@ class OpcodeExecutorBase:
         else:
             raise FallbackError(f"No support Intrinsics, {intrinsic_func.name}")
 
+    @fallback_if_python_version_unsupported
+    def SETUP_FINALLY(self, instr: Instruction):
+        self.vframe.block_stack.append(
+            BlockStackItem(instr.opname, instr, instr.jump_to, len(self.stack))
+        )
+
+    @fallback_if_python_version_unsupported
+    def POP_BLOCK(self, instr: Instruction):
+        self.vframe.block_stack.pop()
+
+    @fallback_if_python_version_unsupported
+    def LOAD_ASSERTION_ERROR(self, instr: Instruction):
+        value = self.vframe.builtins["AssertionError"]
+        self.stack.push(value)
+
+    @fallback_if_python_version_unsupported
+    def POP_EXCEPT(self, instr: Instruction):
+        assert len(self.vframe.block_stack) > 0
+
+        if self.vframe.block_stack[-1].inst.opname != ExceptionHandler.opname:
+            raise FallbackError(
+                "Bug in SOT tracing of exception handling."
+                "Top of the block stack is not EXCEPT_HANDLER."
+            )
+
+        self.vframe.block_stack.pop()
+        self.stack.pop_n(3)
+
+        assert self.exception_stack
+        self.exception_stack.pop()
+
+    @staticmethod
+    def _create_exception_instance(val):
+        if isinstance(val, BuiltinVariable):
+            val = val.call_function()
+        return val
+
+    @staticmethod
+    def _is_exception_isinstance(val):
+        return isinstance(val, ExceptionVariable)
+
+    def _raise_exception_instance(
+        self, val: ExceptionVariable | BuiltinVariable
+    ):
+        # TODO(DrRyanHuang): need to support user-defined Exception
+
+        val = self._create_exception_instance(val)
+        self.exception_stack.set_current_exception(val, self._graph)
+
+        if self._is_exception_isinstance(val):
+            raise SotCapturedExceptionFactory.create(
+                origin_exc=val.get_py_value()
+            )
+
+        raise FallbackError("Attempted to raise a non-Exception type/value.")
+
+    @fallback_if_python_version_unsupported
+    def RAISE_VARARGS(self, instr: Instruction):
+        if instr.arg == 0:
+            if self.exception_stack.empty():
+                msg = ConstantVariable.wrap_literal(
+                    "No active exception to reraise", self._graph
+                )
+                self.raise_sot_captured_exception(RuntimeError, msg)
+
+            assert len(self.exception_stack)
+            val = self.exception_stack[-1]
+            assert self._is_exception_isinstance(val), val
+            self._raise_exception_instance(val)
+        elif instr.arg == 1:
+            val = self.stack.top
+            self._raise_exception_instance(val)
+        else:
+            # raise .. from ...
+            from_exc = self.stack.pop()
+            val = self.stack.pop()
+
+            # type -> instance
+            val = self._create_exception_instance(val)
+            self.exception_stack.set_current_exception(val, self._graph)
+
+            # Update __cause__/__suppress_context__ in the raised exception
+            cause = self._create_exception_instance(from_exc)
+            val.setattr("__cause__", cause)
+
+            raise SotCapturedExceptionFactory.create(
+                origin_exc=val.get_py_value()
+            )
+
+    @fallback_if_python_version_unsupported
+    def JUMP_IF_NOT_EXC_MATCH(self, instr: Instruction):
+        assert len(self.stack) >= 2
+        expected_exc_types = self.stack.pop()
+        exc_instance = self.stack.pop()
+        if not ExceptionVariable.check_if_exception_matches(
+            exc_instance, expected_exc_types
+        ):
+            self.jump_to(instr.jump_to)
+
+    @fallback_if_python_version_unsupported
+    def RERAISE(self, instr: Instruction):
+        _exc_type = self.stack.pop()
+        _exc_instance = self.stack.pop()
+        _traceback = self.stack.pop()
+        self._raise_exception_instance(_exc_instance)
+
+    def raise_sot_captured_exception(
+        self,
+        exc_type: type[Exception],
+        *args,
+        **kwargs,
+    ):
+        exc = BuiltinVariable(
+            exc_type, self._graph, DummyTracker(list(args))
+        ).call_function(*args, **kwargs)
+        self.exception_stack.set_current_exception(exc, self._graph)
+        raise SotCapturedExceptionFactory.create(exc.get_py_value())
+
 
 class OpcodeExecutor(OpcodeExecutorBase):
     """
@@ -1918,10 +2134,10 @@ class OpcodeExecutor(OpcodeExecutorBase):
         self._graph.pycode_gen = None
         Dispatcher.graph = None
         self.call_stack[:] = []
+        self.exception_stack.cleanup()
 
     def FOR_ITER(self, instr):
         iterator = self.stack.pop()
-        backup_iter_idx = None
 
         start = self.indexof(instr)
         end = self.indexof(instr.jump_to)
@@ -1934,14 +2150,14 @@ class OpcodeExecutor(OpcodeExecutorBase):
         self._graph.add_global_guarded_variable(iterator)
 
         try:
-            if not isinstance(iterator, SequenceIterVariable):
+            if not isinstance(iterator, IterVariable) or isinstance(
+                iterator, UserDefinedIterVariable
+            ):
                 raise BreakGraphError(
                     UnsupportedIteratorBreak(
                         f"Can not simulate iterator of {type(iterator)}."
                     )
                 )
-
-            backup_iter_idx = iterator.idx
 
             self._inline_call_for_loop(iterator, instr)
             self.vframe.lasti = self.indexof(instr.jump_to)
@@ -1955,8 +2171,6 @@ class OpcodeExecutor(OpcodeExecutorBase):
                 self.vframe.lasti += skip_n_instrs
         except BreakGraphError as e:
             log(3, f"[BreakGraph] FOR_ITER sim for loop failed for: {e}\n")
-            if backup_iter_idx:
-                iterator.idx = backup_iter_idx
             self._graph.remove_global_guarded_variable(iterator)
             self.stack.push(iterator)
             if is_comprehensive_name(self.vframe.code.co_name):
@@ -1975,6 +2189,45 @@ class OpcodeExecutor(OpcodeExecutorBase):
         ret_val = self.stack.pop()
         return self.compile_return(ret_val)
 
+    @call_break_graph_decorator(push_n=2)
+    @fallback_if_python_version_unsupported
+    def SETUP_WITH(self, instr: Instruction):
+        mgr = self.stack.pop()
+        exit = BuiltinVariable(
+            getattr, graph=self._graph, tracker=DanglingTracker()
+        )(mgr, ConstantVariable.wrap_literal("__exit__", self._graph))
+
+        self.stack.push(exit)
+
+        enter = BuiltinVariable(
+            getattr, graph=self._graph, tracker=DanglingTracker()
+        )(mgr, ConstantVariable.wrap_literal("__enter__", self._graph))
+
+        res = enter.call_function()
+        self.vframe.block_stack.append(
+            BlockStackItem(
+                "SETUP_FINALLY", instr, instr.jump_to, len(self.stack)
+            )
+        )
+        self.stack.push(res)
+
+    @fallback_if_python_version_unsupported
+    def WITH_EXCEPT_START(self, instr: Instruction):
+        """
+        At the top of the stack are 7 values (top is last):
+        [exit_func, previous_tb, previous_val, previous_exc, tb, val, exc]
+        We call exit_func(exc, val, tb).
+        Then push exc and the __exit__ return value.
+        """
+        exc = self.stack.peek[1]
+        val = self.stack.peek[2]
+        tb = self.stack.peek[3]
+
+        exit_func = self.stack.peek[7]
+        res = exit_func.call_function(exc, val, tb)
+
+        self.stack.push(res)
+
     def RETURN_CONST(self, instr: Instruction):
         ret_const = self.vframe.consts[instr.arg]
         return self.compile_return(ret_const)
@@ -1988,6 +2241,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
             self._graph.pycode_gen.gen_return()
             self.new_code = self._graph.pycode_gen.gen_pycode()
         self.guard_fn = self._graph.guard_fn
+        self.guard_chain = self._graph.guard_chain
         return Stop(state="Return")
 
     def get_compute_fn_and_update_changed_vars(
@@ -2031,6 +2285,18 @@ class OpcodeExecutor(OpcodeExecutorBase):
                 compile_graph_result, store_vars, store_var_info
             )
 
+    def fallback_when_block_stack_is_not_empty(self):
+        """
+        SOT currently doesn't support a non-empty block stack (related to exception handling),
+        triggering a fallback.
+        """
+
+        if self.vframe.block_stack:
+            raise FallbackError(
+                'SOT currently does not support a non-empty block stack, '
+                'triggering a fallback\n'
+            )
+
     @fallback_when_occur_error
     def _break_graph_when_if(self, result: TensorVariable, instr: Instruction):
         """
@@ -2041,6 +2307,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
             instr: The jump instruction.
 
         """
+        self.fallback_when_block_stack_is_not_empty()
         self._graph.add_global_guarded_variable(result)
 
         # 1. analyse info
@@ -2182,6 +2449,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
 
         self.new_code = self._graph.pycode_gen.gen_pycode()
         self.guard_fn = self._graph.guard_fn
+        self.guard_chain = self._graph.guard_chain
 
     @fallback_when_occur_error
     def _break_graph_when_call(
@@ -2199,6 +2467,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
             push_n: The number of elements to be pushed onto the stack.
 
         """
+        self.fallback_when_block_stack_is_not_empty()
         self.stack = origin_stack
 
         # 1. collect infomations
@@ -2294,11 +2563,13 @@ class OpcodeExecutor(OpcodeExecutorBase):
         self._graph.pycode_gen.gen_return()
         self.new_code = self._graph.pycode_gen.gen_pycode()
         self.guard_fn = self._graph.guard_fn
+        self.guard_chain = self._graph.guard_chain
 
     @fallback_when_occur_error
     def _break_graph_when_for_loop(
         self, iterator: VariableBase, for_iter: Instruction
     ):
+        self.fallback_when_block_stack_is_not_empty()
         # 1. find the range of loop body
         assert for_iter.jump_to is not None
         for_iter_idx = self.indexof(for_iter)
@@ -2387,7 +2658,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
 
             log(
                 3,
-                "[Resumed Function]: break graph in loop create loop body as\n",
+                "[Resumed Function] break graph in loop create loop body as\n",
             )
             log_do(3, lambda: dis.dis(loop_body_fn))
 
@@ -2542,6 +2813,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
 
         self.new_code = self._graph.pycode_gen.gen_pycode()
         self.guard_fn = self._graph.guard_fn
+        self.guard_chain = self._graph.guard_chain
 
     def _inline_call_for_loop(
         self, iterator: VariableBase, for_iter: Instruction
@@ -2631,7 +2903,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
 
             log(
                 3,
-                f"[Resumed Function]: Inline call for loop function {inline_call_fn.__code__.co_name}\n",
+                f"[Resumed Function] Inline call for loop function {inline_call_fn.__code__.co_name}\n",
             )
             log_do(3, lambda: dis.dis(inline_call_fn))
 

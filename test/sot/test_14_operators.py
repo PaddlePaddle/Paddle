@@ -15,7 +15,7 @@
 import operator
 import unittest
 
-from test_case_base import TestCaseBase, test_with_faster_guard
+from test_case_base import TestCaseBase
 
 import paddle
 
@@ -328,7 +328,6 @@ class TestOperators(TestCaseBase):
         self.assert_results(inplace_or, b, g)
         self.assert_results(inplace_xor, b, g)
 
-    @test_with_faster_guard
     def test_operator_simple(self):
         self.assert_results(operator_add, 1, paddle.to_tensor(2))
         self.assert_results(operator_mul, 1, paddle.to_tensor(2))

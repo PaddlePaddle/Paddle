@@ -304,6 +304,7 @@ file(GLOB_RECURSE dist_dialect_srcs
 # if(WITH_DISTRIBUTE) FIXME in next PR
 set(op_dialect_srcs ${op_dialect_srcs} ${dist_dialect_srcs})
 # endif()
+
 set(op_dialect_deps
     phi
     common
@@ -312,6 +313,9 @@ set(op_dialect_deps
     string_helper
     global_utils
     amp)
+if(WITH_CINN)
+  set(op_dialect_deps ${op_dialect_deps} ap_pir)
+endif()
 if(WITH_ROCM)
   set(op_dialect_deps ${op_dialect_deps} global_utils)
 endif()

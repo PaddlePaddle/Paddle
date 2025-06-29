@@ -23,10 +23,6 @@ from ..pass_utils import (
 )
 from .pipeline_pass_base import PipelinePassBase
 
-FORWARD = "forward"
-BACKWARD = "backward"
-OPT = "optimizer"
-
 logger = get_logger(logging.INFO)
 
 
@@ -41,16 +37,16 @@ class PipelineFThenBPass(PipelinePassBase):
         job_list = []
 
         for i in range(num_micro_batches):
-            forward_job = core.Job(FORWARD)
+            forward_job = core.Job(self.FORWARD)
             forward_job.set_micro_batch_id(i)
             job_list.append(forward_job)
 
         for i in range(num_micro_batches):
-            backward_job = core.Job(BACKWARD)
+            backward_job = core.Job(self.BACKWARD)
             backward_job.set_micro_batch_id(i)
             job_list.append(backward_job)
 
-        opt_job = core.Job(OPT)
+        opt_job = core.Job(self.OPT)
         opt_job.set_micro_batch_id(0)
         job_list.append(opt_job)
         return job_list
@@ -63,7 +59,7 @@ class PipelineFThenBPass(PipelinePassBase):
     def _partial_pir_programs(self, program):
         # NOTE: The flag "enable_send_recv_overlap" may increase the reserved memory of GPUs.
         enable_send_recv_overlap = self.get_attr("enable_send_recv_overlap")
-        types = [FORWARD, BACKWARD, OPT]
+        types = [self.FORWARD, self.BACKWARD, self.OPT]
         sub_program_list = _split_program_into_forward_backward_optimize(
             program, enable_send_recv_overlap
         )

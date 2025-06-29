@@ -1529,7 +1529,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
             )
 
         if len(optimize_blocks) == 0:
-            logging.warn(
+            logging.warning(
                 "pserver [" + str(endpoint) + "] has no optimize block!!"
             )
             pre_block_idx = pserver_program.num_blocks - 1
@@ -2216,7 +2216,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
         }
         outputs = {"ParamOut": [param_var]}
         # only support sgd now
-        logging.warn(
+        logging.warning(
             "distribute lookup table only support sgd optimizer, change it's optimizer to sgd instead of "
             + table_opt_op.type
         )

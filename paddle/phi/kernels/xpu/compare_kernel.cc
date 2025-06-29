@@ -34,6 +34,11 @@ void XPUCompareKernelImpl(
                       bool*,
                       const std::vector<int64_t>&,
                       const std::vector<int64_t>&)> func) {
+  auto* out_data = dev_ctx.template Alloc<bool>(out);
+  if (out->numel() == 0) {
+    return;
+  }
+
   auto x_shape = common::vectorize<int64_t>(x.dims());
   auto y_shape = common::vectorize<int64_t>(y.dims());
 
@@ -46,7 +51,6 @@ void XPUCompareKernelImpl(
 
   auto x_data = reinterpret_cast<const XPUType*>(x.data<T>());
   auto y_data = reinterpret_cast<const XPUType*>(y.data<T>());
-  auto* out_data = dev_ctx.template Alloc<bool>(out);
 
   int ret =
       func(dev_ctx.x_context(), x_data, y_data, out_data, x_shape, y_shape);
@@ -60,13 +64,13 @@ void XPUCompareKernelImpl(
                     const DenseTensor& y,                             \
                     DenseTensor* out) {                               \
     using XPUType = typename XPUTypeTrait<T>::Type;                   \
-    auto f = [](xpu::Context* ctx,                                    \
+    auto f = [](xpu::Context* xpu_ctx,                                \
                 const XPUType* x,                                     \
                 const XPUType* y,                                     \
                 bool* z,                                              \
                 const std::vector<int64_t>& xshape,                   \
                 const std::vector<int64_t>& yshape) {                 \
-      return functor(ctx, x, y, z, xshape, yshape);                   \
+      return functor(xpu_ctx, x, y, z, xshape, yshape);               \
     };                                                                \
     XPUCompareKernelImpl<T, XPUType, Context>(dev_ctx, x, y, out, f); \
   }

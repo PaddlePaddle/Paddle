@@ -17,6 +17,7 @@ limitations under the License. */
 
 #include <algorithm>
 #include <cstdlib>
+#include <mutex>
 #include <string>
 
 #include "glog/logging.h"
@@ -48,6 +49,8 @@ class XPUContext;
 
 namespace backends {
 namespace xpu {
+
+static std::once_flag xpuml_init_flag;
 
 /**************************** Version Management **************************/
 
@@ -220,23 +223,70 @@ void MemcpySyncD2D(void* dst,
 
 /**************************** Others **************************/
 
-XPUVersion get_xpu_version(int dev_id) {
-  uint64_t v = 0;
+int GetXPUDeviceUtilizationRate(int dev_id) {
+  std::call_once(xpuml_init_flag, xpumlInit);
   if (dev_id == -1) {
     dev_id = GetXPUCurrentDeviceId();
   }
-  PADDLE_ENFORCE_XPU_SUCCESS(xpu_device_get_attr(&v, XPUATTR_MODEL, dev_id));
+  xpumlDevice_t dev_handle;
+  PADDLE_ENFORCE_XPUML_SUCCESS(
+      xpumlDeviceGetHandleByIndex(dev_id, &dev_handle));
+  xpumlUtilization_t dev_util;
+  PADDLE_ENFORCE_XPUML_SUCCESS(
+      xpumlDeviceGetUtilizationRates(dev_handle, &dev_util));
+  return dev_util.xpu;
+}
 
-  if (v == K100 || v == K200) {
-    VLOG(1) << "KUNLUN device " << dev_id << " is XPU1\n";
-    return XPU1;
-  } else if (v < KL3_BEGIN) {
-    VLOG(1) << "KUNLUN device " << dev_id << " is XPU2\n";
-    return XPU2;
-  } else {
-    VLOG(1) << "KUNLUN device " << dev_id << " is XPU3\n";
-    return XPU3;
+int GetXPUDeviceTotalMemory(int dev_id) {
+  std::call_once(xpuml_init_flag, xpumlInit);
+  if (dev_id == -1) {
+    dev_id = GetXPUCurrentDeviceId();
   }
+
+  xpumlDevice_t dev_handle;
+  PADDLE_ENFORCE_XPUML_SUCCESS(
+      xpumlDeviceGetHandleByIndex(dev_id, &dev_handle));
+  xpumlMemory_t dev_mem_info;
+  PADDLE_ENFORCE_XPUML_SUCCESS(
+      xpumlDeviceGetMemoryInfo(dev_handle, &dev_mem_info));
+  return dev_mem_info.totalGlobalMemory / 1024 / 1024;  // MB
+}
+
+int GetXPUDeviceUsedMemory(int dev_id) {
+  std::call_once(xpuml_init_flag, xpumlInit);
+  if (dev_id == -1) {
+    dev_id = GetXPUCurrentDeviceId();
+  }
+
+  xpumlDevice_t dev_handle;
+  PADDLE_ENFORCE_XPUML_SUCCESS(
+      xpumlDeviceGetHandleByIndex(dev_id, &dev_handle));
+  xpumlMemory_t dev_mem_info;
+  PADDLE_ENFORCE_XPUML_SUCCESS(
+      xpumlDeviceGetMemoryInfo(dev_handle, &dev_mem_info));
+  return dev_mem_info.usedGlobalMemory / 1024 / 1024;  // MB
+}
+
+XPUVersion get_xpu_version(int dev_id) {
+  if (dev_id == -1) {
+    dev_id = GetXPUCurrentDeviceId();
+  }
+  thread_local std::unordered_map<int, XPUVersion> xpu_version_map;
+  if (xpu_version_map.count(dev_id) == 0) {
+    uint64_t v = 0;
+    PADDLE_ENFORCE_XPU_SUCCESS(xpu_device_get_attr(&v, XPUATTR_MODEL, dev_id));
+    if (v == K100 || v == K200) {
+      VLOG(1) << "KUNLUN device " << dev_id << " is XPU1\n";
+      xpu_version_map[dev_id] = XPU1;
+    } else if (v < KL3_BEGIN) {
+      VLOG(1) << "KUNLUN device " << dev_id << " is XPU2\n";
+      xpu_version_map[dev_id] = XPU2;
+    } else {
+      VLOG(1) << "KUNLUN device " << dev_id << " is XPU3\n";
+      xpu_version_map[dev_id] = XPU3;
+    }
+  }
+  return xpu_version_map[dev_id];
 }
 
 void set_xpu_debug_level(int level) {

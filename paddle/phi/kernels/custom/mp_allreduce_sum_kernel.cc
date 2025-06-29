@@ -17,12 +17,8 @@ namespace phi {
 template <typename T, typename Context>
 void MpAllReduceSumKernel(const Context& dev_ctx,
                           const DenseTensor& x_in,
-                          int ring_id,
-                          bool use_calc_stream,
-                          bool use_model_parallel,
                           DenseTensor* out) {
-  CAllReduceKernel<T, Context, phi::ccl::CCLReduceOp::SUM>(
-      dev_ctx, x_in, ring_id, use_calc_stream, use_model_parallel, out);
+  AllReduceKernel<T, Context, phi::ccl::CCLReduceOp::SUM>(dev_ctx, x_in, out);
 }
 }  // namespace phi
 

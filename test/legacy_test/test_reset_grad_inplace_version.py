@@ -16,7 +16,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import _legacy_C_ops
+from paddle import _C_ops, _legacy_C_ops
 
 paddle.set_device('cpu')
 
@@ -42,9 +42,7 @@ class TestInplaceAndClearGradient(unittest.TestCase):
         for i in range(2):
             print(" Step: ", i)
             out0 = _legacy_C_ops.scale(w, 'scale', 0.1)
-            out = _legacy_C_ops.matmul_v2(
-                out0, w, 'trans_x', False, 'trans_y', False
-            )
+            out = _C_ops.matmul(out0, w, False, False)
             out.backward()
         assert w.grad[0] == 0.15
 
@@ -80,9 +78,7 @@ class TestInplaceClearGradAccumulation(unittest.TestCase):
 
         for c.step in range(5):
             out0 = _legacy_C_ops.scale(w, 'scale', 0.1)
-            out = _legacy_C_ops.matmul_v2(
-                out0, w, 'trans_x', False, 'trans_y', False
-            )
+            out = _C_ops.matmul(out0, w, False, False)
 
             out.backward()
 

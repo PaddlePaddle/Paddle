@@ -1213,10 +1213,17 @@ struct LogitGradFunctor {
   template <typename Device, typename X, typename dOut, typename dX, typename P>
   void operator()(Device d, X x, dOut dout, dX dx, P p, float eps) const {
     // logit(x)' = 1/(x*(1-x))
-    dx.device(d) =
-        (x < static_cast<T>(eps) || x > static_cast<T>(1.0 - eps))
-            .select(p.constant(static_cast<T>(0)),
-                    dout * (static_cast<T>(1) / ((static_cast<T>(1) - x) * x)));
+    if (!eps) {
+      dx.device(d) = (x < static_cast<T>(0.0) || x > static_cast<T>(1.0))
+                         .select(p.constant(static_cast<T>(NAN)),
+                                 dout * (static_cast<T>(1) /
+                                         ((static_cast<T>(1) - x) * x)));
+    } else {
+      dx.device(d) = (x < static_cast<T>(eps) || x > static_cast<T>(1.0 - eps))
+                         .select(p.constant(static_cast<T>(0)),
+                                 dout * (static_cast<T>(1) /
+                                         ((static_cast<T>(1) - x) * x)));
+    }
   }
 };
 
@@ -1948,8 +1955,8 @@ struct HardShrinkFunctor : public BaseActivationFunctor<T> {
   }
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
-    auto temp1 = x < static_cast<T>(threshold * -1.f);  // NOLINT
-    auto temp2 = x > static_cast<T>(threshold);
+    auto temp1 = x <= static_cast<T>(threshold * -1.f);  // NOLINT
+    auto temp2 = x >= static_cast<T>(threshold);
     out.device(d) = x * (temp1 || temp2).template cast<T>();
   }
 };
@@ -1968,8 +1975,8 @@ struct HardShrinkGradFunctor : public BaseActivationFunctor<T> {
             typename dOut,
             typename dX>
   void operator()(Device d, X x, Out out UNUSED, dOut dout, dX dx) const {
-    auto temp1 = x < static_cast<T>(threshold * -1.f);  // NOLINT
-    auto temp2 = x > static_cast<T>(threshold);
+    auto temp1 = x <= static_cast<T>(threshold * -1.f);  // NOLINT
+    auto temp2 = x >= static_cast<T>(threshold);
     dx.device(d) = dout * (temp1 || temp2).template cast<T>();
   }
 
@@ -2999,7 +3006,7 @@ struct FloorFunctor : public BaseActivationFunctor<T> {
 };
 
 // round(x) = [x]
-template <typename T>
+template <typename T, typename Enable = void>
 struct RoundFunctor : public BaseActivationFunctor<T> {
   int decimals;
 
@@ -3010,13 +3017,85 @@ struct RoundFunctor : public BaseActivationFunctor<T> {
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
     if (decimals == 0) {
-      out.device(d) = x.round();
+      out.device(d) = x.unaryExpr([](const T& val) {
+        return (std::isnan(val) || std::isinf(val)) ? val : std::rint(val);
+      });
     } else if (decimals > 0) {
       auto ten_pow_decimals = static_cast<T>(std::pow(10, decimals));
-      out.device(d) = (x * ten_pow_decimals).round() / ten_pow_decimals;
+      out.device(d) = x.unaryExpr([ten_pow_decimals](const T& val) {
+        return (std::isnan(val) || std::isinf(val))
+                   ? val
+                   : std::rint(val * ten_pow_decimals) / ten_pow_decimals;
+      });
     } else {
       auto ten_pow_decimals = static_cast<T>(std::pow(10, -decimals));
-      out.device(d) = (x / ten_pow_decimals).round() * ten_pow_decimals;
+      out.device(d) = x.unaryExpr([ten_pow_decimals](const T& val) {
+        return (std::isnan(val) || std::isinf(val))
+                   ? val
+                   : std::rint(val / ten_pow_decimals) * ten_pow_decimals;
+      });
+    }
+  }
+};
+
+template <typename T>
+struct RoundFunctor<T, std::enable_if_t<std::is_integral_v<T>>>
+    : public BaseActivationFunctor<T> {
+  int decimals;
+
+  std::vector<std::pair<const char*, int*>> GetAttrs() {
+    return {{"decimals", &decimals}};
+  }
+
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) const {
+    out.device(d) = x;
+  }
+};
+
+template <typename T>
+struct RoundFunctor<phi::dtype::complex<T>>
+    : public BaseActivationFunctor<phi::dtype::complex<T>> {
+  int decimals;
+
+  std::vector<std::pair<const char*, int*>> GetAttrs() {
+    return {{"decimals", &decimals}};
+  }
+
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) const {
+    using ComplexT = phi::dtype::complex<T>;
+
+    if (decimals == 0) {
+      out.device(d) = x.unaryExpr([](const ComplexT& c) {
+        T real = std::isnan(c.real) || std::isinf(c.real) ? c.real
+                                                          : std::rint(c.real);
+        T imag = std::isnan(c.imag) || std::isinf(c.imag) ? c.imag
+                                                          : std::rint(c.imag);
+        return ComplexT(real, imag);
+      });
+    } else if (decimals > 0) {
+      auto ten_pow_decimals = static_cast<T>(std::pow(10, decimals));
+      out.device(d) = x.unaryExpr([ten_pow_decimals](const ComplexT& c) {
+        T real = std::isnan(c.real) || std::isinf(c.real)
+                     ? c.real
+                     : std::rint(c.real * ten_pow_decimals) / ten_pow_decimals;
+        T imag = std::isnan(c.imag) || std::isinf(c.imag)
+                     ? c.imag
+                     : std::rint(c.imag * ten_pow_decimals) / ten_pow_decimals;
+        return ComplexT(real, imag);
+      });
+    } else {
+      auto ten_pow_decimals = static_cast<T>(std::pow(10, -decimals));
+      out.device(d) = x.unaryExpr([ten_pow_decimals](const ComplexT& c) {
+        T real = std::isnan(c.real) || std::isinf(c.real)
+                     ? c.real
+                     : std::rint(c.real / ten_pow_decimals) * ten_pow_decimals;
+        T imag = std::isnan(c.imag) || std::isinf(c.imag)
+                     ? c.imag
+                     : std::rint(c.imag / ten_pow_decimals) * ten_pow_decimals;
+        return ComplexT(real, imag);
+      });
     }
   }
 };
@@ -3287,9 +3366,16 @@ struct CudaLogitGradFunctor : public BaseActivationFunctor<T> {
   // logit(x)' = 1/(x*(1-x))
   __device__ __forceinline__ T operator()(const T dout, const T arg_x) const {
     MT x = static_cast<MT>(arg_x);
-    MT dx = (x < static_cast<MT>(eps) || x > one - static_cast<MT>(eps))
-                ? zero
-                : (static_cast<MT>(dout) / (x * (one - x)));
+    MT dx;
+    if (!eps) {
+      dx = (x < zero || x > one) ? static_cast<T>(NAN)
+                                 : (static_cast<MT>(dout) / (x * (one - x)));
+    } else {
+      dx = (x < static_cast<MT>(eps) || x > one - static_cast<MT>(eps))
+               ? zero
+               : (static_cast<MT>(dout) / (x * (one - x)));
+    }
+
     return static_cast<T>(dx);
   }
   static constexpr ActBwdOpFwdDeps FwdDeps() {
@@ -3503,9 +3589,15 @@ struct CudaReciprocalFunctor : public BaseActivationFunctor<T> {
 
 template <typename T>
 struct CudaReciprocalGradFunctor : public BaseActivationFunctor<T> {
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+
   // dx = -dout * out^2
-  __device__ __forceinline__ T operator()(const T dout, const T out) const {
-    return -dout * out * out;
+  __device__ __forceinline__ T operator()(const T arg_dout,
+                                          const T arg_out) const {
+    MPType dout = static_cast<MPType>(arg_dout);
+    MPType out = static_cast<MPType>(arg_out);
+    return static_cast<T>(-dout *
+                          static_cast<MPType>(static_cast<T>(out * out)));
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() {
@@ -4486,7 +4578,7 @@ struct CudaHardShrinkFunctor : public BaseActivationFunctor<T> {
   // hadrshrink(x) = (x > -threshold && x < threshold) ? 0 : x
   __device__ __forceinline__ T operator()(const T x) const {
     T t = static_cast<T>(threshold);
-    return (x > -t && x < t) ? zero : x;
+    return (x >= -t && x <= t) ? zero : x;
   }
 };
 
@@ -4502,7 +4594,7 @@ struct CudaHardShrinkGradFunctor : public BaseActivationFunctor<T> {
   // dx = (x > -threshold && x < threshold) ? 0 : dout
   __device__ __forceinline__ T operator()(const T dout, const T x) const {
     T t = static_cast<T>(threshold);
-    return (x > -t && x < t) ? zero : dout;
+    return (x >= -t && x <= t) ? zero : dout;
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
@@ -5318,7 +5410,7 @@ struct CudaFloorFunctor : public BaseActivationFunctor<T> {
   }
 };
 
-template <typename T>
+template <typename T, typename Enable = void>
 struct CudaRoundFunctor : public BaseActivationFunctor<T> {
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   int decimals;
@@ -5330,17 +5422,76 @@ struct CudaRoundFunctor : public BaseActivationFunctor<T> {
   __device__ __forceinline__ T operator()(const T arg_x) const {
     MPType x = static_cast<MPType>(arg_x);
 
+    if (isnan(x) || isinf(x)) return arg_x;
     if (decimals == 0) {
-      return static_cast<T>(round(x));
+      return static_cast<T>(std::rint(x));
     } else if (decimals > 0) {
-      float ten_pow_decimals = powf(10., decimals);
-      return static_cast<T>(round(x * static_cast<MPType>(ten_pow_decimals)) /
+      MPType ten_pow_decimals =
+          pow(static_cast<MPType>(10), static_cast<MPType>(decimals));
+      return static_cast<T>(rint(x * static_cast<MPType>(ten_pow_decimals)) /
                             ten_pow_decimals);
     } else {
-      float ten_pow_decimals = powf(10., -decimals);
-      return static_cast<T>(round(x / static_cast<MPType>(ten_pow_decimals)) *
+      MPType ten_pow_decimals =
+          pow(static_cast<MPType>(10), static_cast<MPType>(-decimals));
+      return static_cast<T>(rint(x / static_cast<MPType>(ten_pow_decimals)) *
                             ten_pow_decimals);
     }
+  }
+};
+
+template <typename T>
+struct CudaRoundFunctor<T, std::enable_if_t<std::is_integral_v<T>>>
+    : public BaseActivationFunctor<T> {
+  int decimals;
+
+  std::vector<std::pair<const char*, int*>> GetAttrs() {
+    return {{"decimals", &decimals}};
+  }
+  // round(x) = round(x)
+  __device__ __forceinline__ T operator()(const T arg_x) const { return arg_x; }
+};
+
+template <typename T>
+struct CudaRoundFunctor<phi::dtype::complex<T>>
+    : public BaseActivationFunctor<phi::dtype::complex<T>> {
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  int decimals;
+
+  std::vector<std::pair<const char*, int*>> GetAttrs() {
+    return {{"decimals", &decimals}};
+  }
+
+  __device__ __forceinline__ phi::dtype::complex<T> operator()(
+      const phi::dtype::complex<T> arg_x) const {
+    MPType real_part = static_cast<MPType>(arg_x.real);
+    MPType imag_part = static_cast<MPType>(arg_x.imag);
+    bool real_special = isnan(real_part) || isinf(real_part);
+    bool imag_special = isnan(imag_part) || isinf(imag_part);
+    MPType real, imag;
+
+    if (decimals == 0) {
+      real = real_special ? real_part : rint(real_part);
+      imag = imag_special ? imag_part : rint(imag_part);
+    } else if (decimals > 0) {
+      MPType ten_pow_decimals =
+          pow(static_cast<MPType>(10), static_cast<MPType>(decimals));
+      real = real_special
+                 ? real_part
+                 : rint(real_part * ten_pow_decimals) / ten_pow_decimals;
+      imag = imag_special
+                 ? imag_part
+                 : rint(imag_part * ten_pow_decimals) / ten_pow_decimals;
+    } else {
+      MPType ten_pow_decimals =
+          pow(static_cast<MPType>(10), static_cast<MPType>(-decimals));
+      real = real_special
+                 ? real_part
+                 : rint(real_part / ten_pow_decimals) * ten_pow_decimals;
+      imag = imag_special
+                 ? imag_part
+                 : rint(imag_part / ten_pow_decimals) * ten_pow_decimals;
+    }
+    return phi::dtype::complex<T>(static_cast<T>(real), static_cast<T>(imag));
   }
 };
 

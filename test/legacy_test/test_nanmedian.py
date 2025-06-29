@@ -617,6 +617,28 @@ class TestNanmedianFP16Op(OpTest):
         self.check_grad(['X'], 'Out', check_pir=True)
 
 
+class TestNanmedianZeroSize(unittest.TestCase):
+    def init_data(self):
+        self.x_shape = [100, 0]
+        self.expect_out = np.array(np.nan, dtype='float32')
+        self.axis = None
+
+    def test_zero(self):
+        self.init_data()
+        x = paddle.randn(self.x_shape)
+        out = paddle.nanmedian(x, axis=self.axis)
+        np.testing.assert_allclose(
+            out.numpy(), self.expect_out, rtol=1e-05, equal_nan=True
+        )
+
+
+class TestNanmedianZeroSize1(TestNanmedianZeroSize):
+    def init_data(self):
+        self.x_shape = [100, 0, 100]
+        self.expect_out = np.zeros(self.x_shape[:-1], dtype='float32')
+        self.axis = -1
+
+
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),

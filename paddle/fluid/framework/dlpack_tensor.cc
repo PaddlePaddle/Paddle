@@ -95,6 +95,18 @@ struct DLDeviceVisitor {
         common::errors::Unimplemented("phi::XPUPlace is not supported"));
   }
 
+  inline ::DLDevice operator()(const phi::XPUPinnedPlace &place) const {
+#if defined(PADDLE_WITH_XPU)
+    ::DLDevice device;
+    device.device_type = kDLCUDAHost;
+    device.device_id = 0;
+    return device;
+#else
+    PADDLE_THROW(common::errors::Unavailable(
+        "phi::XPUPinnedPlace is not supported in CPU only version."));
+#endif
+  }
+
   inline ::DLDevice operator()(const phi::CustomPlace &place) const {
     PADDLE_THROW(
         common::errors::Unimplemented("phi::CustomPlace is not supported"));

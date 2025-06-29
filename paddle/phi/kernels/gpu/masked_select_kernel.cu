@@ -53,6 +53,13 @@ void MaskedSelectKernel(const Context& dev_ctx,
   DenseTensor mask_expand;
   DenseTensor x_expand;
 
+  if (x.numel() == 0 || mask.numel() == 0) {
+    out->Resize({0});
+    dev_ctx.template Alloc<T>(out);
+
+    return;
+  }
+
   auto expanded_size = funcs::MatrixGetBroadcastBatchPortion(
       common::vectorize(x.dims()), common::vectorize(mask.dims()));
 

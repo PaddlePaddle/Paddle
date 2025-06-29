@@ -62,7 +62,7 @@ class LarsOptimizer(MetaOptimizerBase):
 
         if self.user_defined_strategy.lars:
             if not isinstance(self.inner_opt, Momentum):
-                logging.warn(
+                logging.warning(
                     f"lars need the inner optimizer to be Momentum optimizer but got {self.inner_opt.type}."
                 )
                 return False

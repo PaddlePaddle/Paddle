@@ -27,6 +27,10 @@ void MaximumRawKernel(const Context& dev_ctx,
                       const DenseTensor& y,
                       int axis,
                       DenseTensor* out) {
+  if (out && out->numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   // allocate memory for out
   dev_ctx.template Alloc<T>(out);
   funcs::ElementwiseCompute<funcs::MaximumFunctor<T>, T>(
@@ -39,6 +43,10 @@ void MinimumRawKernel(const Context& dev_ctx,
                       const DenseTensor& y,
                       int axis,
                       DenseTensor* out) {
+  if (out && out->numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   // allocate memory for out
   dev_ctx.template Alloc<T>(out);
   funcs::ElementwiseCompute<funcs::MinimumFunctor<T>, T>(
@@ -151,4 +159,6 @@ PD_REGISTER_KERNEL(elementwise_pow_raw,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

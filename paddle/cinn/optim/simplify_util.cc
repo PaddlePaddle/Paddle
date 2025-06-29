@@ -18,6 +18,7 @@
 #include <unordered_set>
 
 #include "paddle/cinn/common/const_fold.h"
+#include "paddle/cinn/common/shape_constraint.h"
 #include "paddle/cinn/common/simplify_special_pattern.h"
 #include "paddle/cinn/ir/ir_mutator.h"
 #include "paddle/cinn/ir/ir_printer.h"
@@ -223,18 +224,31 @@ bool IsNegatedIndexExpr(const ir::IndexExpr &candidate,
 
 ir::IndexExpr::IndexType VerifyIndex(const ir::Expr &expr) {
   switch (expr.node_type()) {
-    case ir::IrNodeTy::_Var_:
+    case ir::IrNodeTy::_Var_: {
+      if (expr.type().is_index_type()) {
+        return expr.as_var()->is_let_symbol ? ir::IndexExpr::IndexType::kLoad
+                                            : ir::IndexExpr::IndexType::kValid;
+      } else {
+        return ir::IndexExpr::IndexType::kInvalid;
+      }
+    }
     case ir::IrNodeTy::IntImm: {
       return expr.type().is_index_type() ? ir::IndexExpr::IndexType::kValid
                                          : ir::IndexExpr::IndexType::kInvalid;
     }
     case ir::IrNodeTy::Load: {
-      return expr.type().is_index_type() ? ir::IndexExpr::IndexType::kLoad
-                                         : ir::IndexExpr::IndexType::kInvalid;
+      if (!expr.type().is_index_type())
+        return ir::IndexExpr::IndexType::kInvalid;
+      auto load = expr.As<ir::Load>();
+      for (const auto &indices : load->indices) {
+        if (VerifyIndex(indices) == ir::IndexExpr::IndexType::kInvalid)
+          return ir::IndexExpr::IndexType::kInvalid;
+      }
+      return ir::IndexExpr::IndexType::kLoad;
     }
     case ir::IrNodeTy::Cast: {
       ir::IndexExpr::IndexType result = VerifyIndex(expr->operand(0));
-      return result == ir::IndexExpr::IndexType::kValid &&
+      return result != ir::IndexExpr::IndexType::kInvalid &&
                      expr.type().is_index_type()
                  ? ir::IndexExpr::IndexType::kCast
                  : ir::IndexExpr::IndexType::kInvalid;
@@ -661,6 +675,92 @@ std::optional<std::unordered_map<std::string, ir::IndexExpr>> MatchPattern(
   }
 
   return std::nullopt;
+}
+
+ir::IndexExpr BoundSimplify(const ir::IndexExpr &expr) {
+  // return expr if expr is not a division or modulo
+  if (expr.node_type() != ir::IrNodeTy::Div &&
+      expr.node_type() != ir::IrNodeTy::Mod)
+    return expr;
+
+  common::cas_intervals_t var_intervals =
+      common::CollectVarIntervalsOfExprs({expr});
+  common::SymbolicExprAnalyzer ana(var_intervals);
+  // Because the SymbolicExprAnalyzer bound result is [lower, upper), `ProveLE`
+  // is used here instead of `ProveLT`.
+  auto canBeSimplified =
+      ana.ProveLE(ana.UpperBound(expr.operand(0)), expr.operand(1));
+
+  if (canBeSimplified.value_or(false)) {
+    if (expr.node_type() == ir::IrNodeTy::Div) {
+      return ir::IndexExpr(0);
+    } else if (expr.node_type() == ir::IrNodeTy::Mod) {
+      return expr.operand(0);
+    }
+  }
+  return expr;
+}
+
+ir::IndexExpr BroadcastSimplify(const ir::IndexExpr &expr) {
+  // Two consecutive modular operations.
+  auto opt_map =
+      MatchPattern(expr,
+                   "f % a % b",
+                   [](const std::unordered_map<std::string, ir::IndexExpr> &m) {
+                     return m.at("a").node_type() == ir::IrNodeTy::Max ||
+                            m.at("a").node_type() == ir::IrNodeTy::Mul;
+                   });
+  if (!opt_map) return expr;
+
+  auto &map = opt_map.value();
+  auto ll = map.at("f");
+  auto lr = map.at("a");
+  auto r = map.at("b");
+
+  auto CanSimplifyMaxMod = [](const ir::IndexExpr &lr, const ir::IndexExpr &r) {
+    auto lr_elems = GetFlattenExprs<ir::Max>(lr);
+    auto r_elems = GetFlattenExprs<ir::Max>(r);
+
+    // The second modulus is a subset of the first modulus.
+    for (auto &&r_elem : r_elems) {
+      if (std::find(lr_elems.begin(), lr_elems.end(), r_elem) == lr_elems.end())
+        return false;
+    }
+
+    // The first modulus is broadcastable.
+    auto &constraint = cinn::common::ShapeConstraintManager::Instance();
+    return constraint.IsBroadcastable(lr_elems) ? true : false;
+  };
+
+  if (lr.node_type() == ir::IrNodeTy::Max) {
+    if (CanSimplifyMaxMod(lr, r)) return ll % r;
+    return expr;
+  } else {
+    std::unordered_map<ir::IndexExpr, int> r_elems;
+    std::unordered_map<ir::IndexExpr, int> lr_elems;
+    UnpackReduction<ir::Mul>(r, [&](ir::IndexExpr val) { r_elems[val]++; });
+    UnpackReduction<ir::Mul>(lr, [&](ir::IndexExpr val) { lr_elems[val]++; });
+    bool can_simplify = false;
+    for (const auto &[r_first, r_second] : r_elems) {
+      for (auto &[lr_first, lr_second] : lr_elems) {
+        // Check equal relationship between the two operands.
+        if (lr_first == r_first && lr_second >= r_second) {
+          lr_second -= r_second;
+          can_simplify = true;
+          break;
+        }
+        // Check broadcastable relationship between the two operands.
+        if (lr_first.node_type() == ir::IrNodeTy::Max &&
+            CanSimplifyMaxMod(lr_first, r_first) && lr_second >= r_second) {
+          lr_second -= r_second;
+          can_simplify = true;
+          break;
+        }
+      }
+      if (!can_simplify) return expr;
+    }
+    return ll % r;
+  }
 }
 }  // namespace optim
 }  // namespace cinn

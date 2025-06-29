@@ -19,7 +19,6 @@ import unittest
 from test_case_base import (
     TestCaseBase,
     test_instruction_translator_cache_context,
-    test_with_faster_guard,
 )
 
 import paddle
@@ -39,7 +38,6 @@ def guard_inputs(x: int, y: int, z: int):
 
 
 class TestGuardOutputs(TestCaseBase):
-    @test_with_faster_guard
     def test_non_operator_related_fn(self):
         with test_instruction_translator_cache_context() as ctx:
             self.assert_results(non_operator_related_fn, 1, 2)
@@ -47,7 +45,6 @@ class TestGuardOutputs(TestCaseBase):
             self.assert_results(non_operator_related_fn, 3, 4)
             self.assertEqual(ctx.translate_count, 2)
 
-    @test_with_faster_guard
     def test_partial_non_operator_related_fn(self):
         with test_instruction_translator_cache_context() as ctx:
             self.assert_results(
@@ -65,7 +62,6 @@ class TestGuardOutputs(TestCaseBase):
             )
             self.assertEqual(ctx.translate_count, 2)
 
-    @test_with_faster_guard
     def test_guard_inputs(self):
         with test_instruction_translator_cache_context() as ctx:
             self.assert_results(guard_inputs, 1, 2, 3)

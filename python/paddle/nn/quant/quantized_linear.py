@@ -19,7 +19,6 @@ from typing import TYPE_CHECKING, Literal
 import paddle
 from paddle import _C_ops
 from paddle.base.data_feeder import check_dtype
-from paddle.base.framework import convert_np_dtype_to_dtype_
 from paddle.device import (
     is_compiled_with_cuda,
     is_compiled_with_rocm,
@@ -73,7 +72,7 @@ def weight_quantize(
     Args:
         x (Tensor): The input Tensor to be quantized, the data type is float16 or bfloat16.
         algo (str): The algo that is x will be apply, must be one of 'weight_only_int8',
-            'weight_only_int4' and 'llm.int8', default: 'weight_only_int8'.
+            'weight_only_int4', 'llm.int8' and 'w4a8', default: 'weight_only_int8'.
         arch (int): The compute arch for target device. For example, A100 is 80, v100 is 70, if you do not assign arch, we will get arch from your device, default: None.
         group_size (int): The group size for weight quantization. -1 stands for default per-channel mode. Currently only support 64 or 128.
 
@@ -106,6 +105,7 @@ def weight_quantize(
             or arch == 86
             or arch == 89
             or arch == 90
+            or arch == 92
         ), f"Currently weight_quantize only support SM70/75/80/86/89/90. but got {arch} "
 
     assert (
@@ -143,7 +143,7 @@ def weight_dequantize(
         scale (Tensor): The scale Tensor which is the output of weight_quantize, the data type is float32.
         algo (str): The algo that is x will be apply, must be one of 'weight_only_int8',
             'weight_only_int4' and 'llm.int8', default: 'weight_only_int8'.
-        out_dtype (str|np.dtype): The output Tensor's data type, must be one of 'float16' and 'bfloat16', default: 'float16'.
+        out_dtype (str|np.dtype): [Deprecated][Not used] The output Tensor's data type, must be one of 'float16' and 'bfloat16', default: 'float16'.
 
     Returns:
         out (Tensor): The Tensor which is the dequantitative results, the data type is float16 or bfloat16, the shape is transposition of x.
@@ -164,15 +164,12 @@ def weight_dequantize(
         group_size == -1 or group_size == 64 or group_size == 128
     ), f"Currently group_size only support -1/64/128. but got {group_size} "
 
-    check_dtype(
-        out_dtype, 'out_dtype', ['float16', 'bfloat16'], 'weight_dequantize'
-    )
-    out_dtype = convert_np_dtype_to_dtype_(out_dtype)
     if in_dynamic_or_pir_mode():
-        return _C_ops.weight_dequantize(x, scale, algo, out_dtype, group_size)
+        return _C_ops.weight_dequantize(x, scale, algo, group_size)
     else:
         type = "weight_dequantize"
         helper = LayerHelper(type, **locals())
+        out_dtype = scale.dtype
         out = helper.create_variable_for_type_inference(out_dtype)
 
         helper.append_op(
@@ -181,7 +178,6 @@ def weight_dequantize(
             outputs={'out': out},
             attrs={
                 "algo": algo,
-                "out_dtype": out_dtype,
                 "group_size": group_size,
             },
         )

@@ -222,6 +222,7 @@ CINN_REGISTER_HELPER(cuda_intrinsics) {
   REGISTER_EXTERN_FUNC_1_IN_1_INT32(clz)
   REGISTER_EXTERN_FUNC_1_IN_1_INT32(popc)
   REGISTER_EXTERN_FUNC_1_IN_1_INT32(trunc)
+  REGISTER_EXTERN_FUNC_1_IN_1_INT32(exp)
 
 #undef REGISTER_EXTERN_FUNC_1_IN_1_INT32
 
@@ -233,6 +234,7 @@ CINN_REGISTER_HELPER(cuda_intrinsics) {
   REGISTER_EXTERN_FUNC_1_IN_1_INT64(clz)
   REGISTER_EXTERN_FUNC_1_IN_1_INT64(popc)
   REGISTER_EXTERN_FUNC_1_IN_1_INT64(trunc)
+  REGISTER_EXTERN_FUNC_1_IN_1_INT64(exp)
 
 #undef REGISTER_EXTERN_FUNC_1_IN_1_INT64
 
@@ -453,6 +455,23 @@ CINN_REGISTER_HELPER(cinn_cuda_host_api) {
 
   using cinn::runtime::cuda::cinn_call_cuda_kernel;
   REGISTER_EXTERN_FUNC_HELPER(cinn_call_cuda_kernel,
+                              cinn::common::DefaultHostTarget())
+      .SetRetType<void>()
+      .AddInputType<void *>()  // kernel_fn
+      .AddInputType<void *>()  // args
+      .AddInputType<int>()     // num_args
+      .AddInputType<int>()     // grid_x
+      .AddInputType<int>()     // grid_y
+      .AddInputType<int>()     // grid_z
+      .AddInputType<int>()     // block_x
+      .AddInputType<int>()     // block_y
+      .AddInputType<int>()     // block_z
+      .AddInputType<int>()     // shared_mem
+      .AddInputType<void *>()  // stream
+      .End();
+
+  using cinn::runtime::cuda::cinn_call_cuda_cooperative_kernel;
+  REGISTER_EXTERN_FUNC_HELPER(cinn_call_cuda_cooperative_kernel,
                               cinn::common::DefaultHostTarget())
       .SetRetType<void>()
       .AddInputType<void *>()  // kernel_fn

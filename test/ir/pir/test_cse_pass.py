@@ -16,6 +16,7 @@ import unittest
 from contextlib import contextmanager
 
 import paddle
+from paddle.base.framework import flag_guard
 
 paddle.enable_static()
 
@@ -26,19 +27,11 @@ def program_scope_guard():
     place.set_place(paddle.CPUPlace())
     new_scope = paddle.static.Scope()
     main_program = paddle.static.Program()
-    with paddle.static.scope_guard(new_scope):
-        with paddle.static.program_guard(main_program):
-            yield main_program
-
-
-@contextmanager
-def flag_guard(flag_name, flag_value):
-    old_value = paddle.get_flags(flag_name)[flag_name]
-    paddle.set_flags({flag_name: flag_value})
-    try:
-        yield
-    finally:
-        paddle.set_flags({flag_name: old_value})
+    with (
+        paddle.static.scope_guard(new_scope),
+        paddle.static.program_guard(main_program),
+    ):
+        yield main_program
 
 
 def walk_block(block, fn):
@@ -412,12 +405,13 @@ class TestCSECanNotReplace(unittest.TestCase, AssertOpCountEqualMixin):
     "This case only works when compiled with CINN",
 )
 class TestCSEDenyFullInCinn(unittest.TestCase, AssertOpCountEqualMixin):
-    CINN_FLAGS_NAME = "FLAGS_use_cinn"
+    CINN_FLAG_NAME = "FLAGS_use_cinn"
 
     def test_replace_full_without_cinn(self):
-        with flag_guard(
-            self.CINN_FLAGS_NAME, False
-        ), program_scope_guard() as main_program:
+        with (
+            flag_guard(self.CINN_FLAG_NAME, False),
+            program_scope_guard() as main_program,
+        ):
             # Inputs
             x1 = paddle.full([2], 1.0, dtype="float32")
             x2 = paddle.full([2], 1.0, dtype="float32")
@@ -427,9 +421,10 @@ class TestCSEDenyFullInCinn(unittest.TestCase, AssertOpCountEqualMixin):
             self.assert_op_count_equal(main_program, {"pd_op.full": 1})
 
     def test_replace_full_with_cinn(self):
-        with flag_guard(
-            self.CINN_FLAGS_NAME, True
-        ), program_scope_guard() as main_program:
+        with (
+            flag_guard(self.CINN_FLAG_NAME, True),
+            program_scope_guard() as main_program,
+        ):
             # Inputs
             x1 = paddle.full([2], 1.0, dtype="float32")
             x2 = paddle.full([2], 1.0, dtype="float32")

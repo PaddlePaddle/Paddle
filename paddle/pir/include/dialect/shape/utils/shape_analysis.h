@@ -136,6 +136,8 @@ class IR_API InferSymbolicShapeContext {
   std::optional<InferSymbolicShapeCacheValue> GetOpInferSymbolicShapeCache(
       const InferSymbolicShapeCacheKey& op_infer_cache_key) const;
 
+  void ClearOpInferSymbolicShapeCache();
+
   const symbol::ConstraintsManager& constraints_manager() const {
     return constraints_manager_;
   }
@@ -250,7 +252,14 @@ class IR_API ShapeConstraintIRAnalysis final
     return context_.constraints_manager();
   }
 
+  void ClearOpInferSymbolicShapeCache() {
+    context_.ClearOpInferSymbolicShapeCache();
+  }
+
   void SetInputDynamicDimSpec(
+      const std::vector<InputDynamicDimSpec>& input_dynamic_dim_spec);
+
+  void AppendInputDynamicDimSpec(
       const std::vector<InputDynamicDimSpec>& input_dynamic_dim_spec);
 
  private:

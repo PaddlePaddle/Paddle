@@ -1359,12 +1359,11 @@ class TestPutAlongAxisDynamicShape(unittest.TestCase):
     def train(self, to_static):
         arr = paddle.to_tensor(self.arr, stop_gradient=False)
         if to_static:
-            build_strategy = paddle.static.BuildStrategy()
-            build_strategy.build_cinn_pass = self.enable_cinn
+            backend = "CINN" if self.enable_cinn else None
             net = paddle.jit.to_static(
                 self.net,
                 input_spec=self.input_specs,
-                build_strategy=build_strategy,
+                backend=backend,
                 full_graph=True,
             )
             net.train()

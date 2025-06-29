@@ -13,10 +13,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include <Python.h>
-// Avoid a problem with copysign defined in pyconfig.h on Windows.
-#ifdef copysign
-#undef copysign
-#endif
 
 #include <algorithm>
 #include <cctype>
@@ -69,7 +65,6 @@ limitations under the License. */
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/phi/core/memory/allocation/cuda_ipc_allocator.h"
 #endif
-#include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/init.h"
 #include "paddle/fluid/platform/profiler/event_python.h"
@@ -386,6 +381,11 @@ void BindTensor(pybind11::module &m) {  // NOLINT
            py::arg("place"),
            py::arg("zero_copy") = false)
       .def("set",
+           SetTensorFromPyArray<phi::XPUPinnedPlace>,
+           py::arg("array"),
+           py::arg("place"),
+           py::arg("zero_copy") = false)
+      .def("set",
            SetTensorFromPyArray<phi::GPUPinnedPlace>,
            py::arg("array"),
            py::arg("place"),
@@ -395,7 +395,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
 
         Args:
           array (numpy.ndarray): The shape where the DenseTensor is to be set.
-          place (CPUPlace|CUDAPlace|XPUPlace|IPUPlace|CUDAPinnedPlace): The place where the
+          place (CPUPlace|CUDAPlace|XPUPlace|IPUPlace|CUDAPinnedPlace|XPUPinnedPlace): The place where the
           Tensor is to be set.
           zero_copy (bool, optional): Whether to share memory with the input numpy array.
           This parameter only works with CPUPlace. Default: False.
@@ -1195,6 +1195,8 @@ void BindTensor(pybind11::module &m) {  // NOLINT
              self.unsafe_mutable_value()->ShareDataNoCheckWith(src.value());
              return self;
            })
+      .def("_numel",
+           [](DistTensor &self) -> int64_t { return self.value().numel(); })
       .def("_share_data_with",
            [](DistTensor &self, const DistTensor &src) {
              self.unsafe_set_dims(src.dims());

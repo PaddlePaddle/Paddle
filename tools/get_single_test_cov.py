@@ -86,7 +86,7 @@ def analysisFNDAFile(rootPath, test):
     fn_filename = f'{rootPath}/build/ut_map/{test}/fnda.tmp'
     try:
         f = open(fn_filename)
-        print(f"oepn {fn_filename} successfully")
+        print(f"open {fn_filename} successfully")
     except FileNotFoundError:
         print(f"{fn_filename} is not found.")
         return
@@ -133,7 +133,7 @@ def getBaseFnda(rootPath, test):
     filename = f'{rootPath}/build/ut_map/{test}/coverage.info.tmp'
     try:
         f = open(filename)
-        print(f"oepn {filename} successfully")
+        print(f"open {filename} successfully")
     except FileNotFoundError:
         print(f"{filename} is not found.")
     symbol_fnda = {}

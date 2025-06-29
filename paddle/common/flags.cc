@@ -434,6 +434,24 @@ PHI_DEFINE_EXPORTED_bool(
 
 /**
  * Memory related FLAG
+ * Name: FLAGS_enable_async_fast_gc
+ * Since Version: 3.1.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: Enable async fast garbage collection mode. If enabled, allocation will
+ *       be released asynchronously, which makes the garbage collection process
+ *       faster. This flag is valid when fast_eager_deletion_mode is enabled.
+ */
+PHI_DEFINE_EXPORTED_bool(
+    enable_async_fast_gc,
+    false,
+    "Enable async fast garbage collection mode. If enabled, allocation will "
+    "be released asynchronously, which make the garbage collection process "
+    "non-blocking. This flag is only valid when FLAGS_fast_eager_deletion_mode "
+    "is true.");
+
+/**
+ * Memory related FLAG
  * Name: FLAGS_memory_fraction_of_eager_deletion
  * Since Version: 1.4
  * Value Range: double [0.0, 1.0], default=1.0
@@ -791,6 +809,18 @@ PHI_DEFINE_EXPORTED_string(tracer_onednn_ops_off,
                            "List of OneDNN operation types to be turned off");
 
 /**
+ * Performance related FLAG
+ * Name: engine_serialized_path
+ * Since Version: 2.0.0
+ * Value Range: string, default=./
+ * Example:
+ * Note: Path to directory where engine serialized files are stored.
+ */
+PHI_DEFINE_EXPORTED_string(trt_engine_serialized_path,
+                           "./",
+                           "Path to directory of engine serialized files");
+
+/**
  * Debug related FLAG
  * Name: check_kernel_launch
  * Since Version: 2.1.0
@@ -1090,6 +1120,17 @@ PHI_DEFINE_EXPORTED_string(
     "",
     "File path of predefined input dynamic dimension specification.");
 
+/*
+ * CINN related FLAG
+ * Name: FLAGS_cinn_debug
+ * Since Version: 3.0
+ * Value Range: bool, default=false
+ * Example: FLAGS_cinn_debug=true would enable debug log for CINN.
+ */
+PHI_DEFINE_EXPORTED_bool(cinn_debug,
+                         false,
+                         "Whether to enable debug log for CINN.");
+
 #endif
 
 /*
@@ -1153,6 +1194,19 @@ PHI_DEFINE_EXPORTED_bool(
     "When enabling CUDA Graph with CUDAMallocAsyncAllocator, we add "
     "cudaGraphInstantiateFlagAutoFreeOnLaunch so it would automatically "
     "release graph-owned blocks that have not freed before relaunching.");
+
+/*
+ * CUDA Graph related FLAG
+ * Name: FLAGS_cuda_graph_blacklist
+ * Since Version: 3.1
+ * Value Range: string, default=""
+ * Example: FLAGS_cuda_graph_blacklist="op1,op2,op3" would
+ * blacklist op1, op2, op3 from being captured in CUDA Graph.
+ */
+PHI_DEFINE_EXPORTED_string(
+    cuda_graph_blacklist,
+    "",
+    "CUDA Graph blacklist, split by ',', e.g., 'op1,op2,op3'");
 
 /*
  * Executor related FLAG
@@ -1265,10 +1319,40 @@ PHI_DEFINE_EXPORTED_bool(multi_node_sample_use_gpu_table,
 PHI_DEFINE_EXPORTED_bool(nccl_blocking_wait, false, "nccl blocking wait");
 #endif
 
+/**
+ * ProcessGroupFlagCX related FLAG
+ * Name: flagcx_blocking_wait
+ * Since Version:
+ * Value Range: bool, default=false
+ * Example:
+ * Note: nccl blocking wait.
+ * blocks host thread until collective operation completes
+ */
+#if defined(PADDLE_WITH_FLAGCX)
+PHI_DEFINE_EXPORTED_bool(flagcx_blocking_wait, false, "flagcx blocking wait");
+#endif
+
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PHI_DEFINE_EXPORTED_bool(benchmark_nccl,
                          false,
                          "enable nccl debug mode to synchronize nccl comm");
+#endif
+
+/**
+ * ProcessGroupNCCL/ProcessGroupBKCL related FLAG
+ * Name: enable_nccl_dynamic_check/enable_bkcl_dynamic_check
+ * Since Version:
+ * Value Range: bool, default=false
+ */
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PHI_DEFINE_EXPORTED_bool(enable_nccl_dynamic_check,
+                         false,
+                         "enable nccl dynamic checks");
+#elif (defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL))
+PHI_DEFINE_EXPORTED_bool(enable_bkcl_dynamic_check,
+                         false,
+                         "enable bkcl dynamic checks");
 #endif
 
 PHI_DEFINE_EXPORTED_bool(
@@ -1350,37 +1434,14 @@ PHI_DEFINE_EXPORTED_bool(enable_fusion_result_check,
                          "Whether enable fusion result check in cinn.");
 
 /**
- * CINN TransposeItesr transform fusion FLAG
- * Name: FLAGS_enable_transpose_iters_in_fusion
- * Since Version: 3.0 beta
- * Value Range: bool, default=true
+ * CINN all horizontal groups merge FLAG
+ * Name: FLAGS_merge_all_horizontal_groups
+ * Since Version: 3.0
+ * Value Range: bool, default=false
  */
-PHI_DEFINE_EXPORTED_bool(
-    enable_transpose_iters_in_fusion,
-    true,
-    "Whether enable use transpose iters transform in cinn fusion.");
-
-/**
- * CINN ReuseIters transform fusion FLAG
- * Name: FLAGS_enable_reuse_iters_in_fusion
- * Since Version: 3.0 beta
- * Value Range: bool, default=true
- */
-PHI_DEFINE_EXPORTED_bool(
-    enable_reuse_iters_in_fusion,
-    true,
-    "Whether enable use reuse iters transform in cinn fusion.");
-
-/**
- * CINN AppendIters transform fusion FLAG
- * Name: FLAGS_enable_append_iters_in_fusion
- * Since Version: 3.0 beta
- * Value Range: bool, default=true
- */
-PHI_DEFINE_EXPORTED_bool(
-    enable_append_iters_in_fusion,
-    true,
-    "Whether enable use append iters transform in cinn fusion.");
+PHI_DEFINE_EXPORTED_bool(merge_all_horizontal_groups,
+                         false,
+                         "Whether enable merge all horizontal groups in cinn.");
 
 /**
  * Conv Search cache max number related FLAG
@@ -1411,14 +1472,28 @@ PHI_DEFINE_EXPORTED_bool(
  * Performance related FLAG
  * Name: enable_auto_layout_pass
  * Since Version: 3.0.0
- * Value Range: bool, default=false
+ * Value Range: bool, default=true
  * Example:
  * Note: If True, using AutoLayoutInsertPass and AutuLayoutSimplifyPass by
  * default
  */
 PHI_DEFINE_EXPORTED_bool(enable_auto_layout_pass,
-                         false,
+                         true,
                          "Whether enable auto_layout_pass.");
+
+/**
+ * Performance related FLAG
+ * Name: enable_auto_layout_pass_in_inference
+ * Since Version: 3.0.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: This is a temporary flag, When enabled by default in the inference
+ * process, this flag will be removed and enabled or disabled by the
+ * `enable_auto_layout_pass` flag.
+ */
+PHI_DEFINE_EXPORTED_bool(enable_auto_layout_pass_in_inference,
+                         false,
+                         "Whether enable auto_layout_pass_in_inference.");
 
 /**
  * JitLayer related FLAG
@@ -1581,6 +1656,29 @@ PHI_DEFINE_EXPORTED_bool(logging_pir_py_code_dump_symbolic_dims,
                          false,
                          "whether dump symbolic dims into pir py code.");
 
+/**
+ * Enable Abstract Pass
+ * Name: enable_ap
+ * Since Version: 3.0.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: If True, abstract pass will be enabled to optimize performance.
+ */
+PHI_DEFINE_EXPORTED_bool(enable_ap, false, "whether enable abstract pass.");
+
+/**
+ * Enable Classic fused_gemm_epilogue when Abstract Pass is enabled.
+ * Name: ap_enable_classic_gemm_epilogue
+ * Since Version: 3.0.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: If True, classic fused_gemm_epilogue will be enabled.
+ */
+PHI_DEFINE_EXPORTED_bool(ap_enable_classic_gemm_epilogue,
+                         false,
+                         "whether enable classic fused_gemm_epilogue when "
+                         "abstract pass is enabled.");
+
 PHI_DEFINE_EXPORTED_bool(
     pir_interpreter_record_stream_for_gc_cache,
     false,
@@ -1675,6 +1773,8 @@ PHI_DEFINE_EXPORTED_string(
     prim_forward_blacklist,
     "",
     "It controls the forward blacklist ops not to be decomposed.");
+PHI_DEFINE_EXPORTED_bool(prim_forward, false, "enable prim_forward or not");
+PHI_DEFINE_EXPORTED_bool(prim_backward, false, "enable prim_backward or not");
 
 /**
  * Remove some redundant information when printing the pir program
@@ -1688,23 +1788,6 @@ PHI_DEFINE_EXPORTED_string(
     disable_logging_op_attr_list,
     "",
     "Remove some redundant information when printing the pir program");
-
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
-    defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_CUSTOM_DEVICE)
-/**
- * Communication library related FLAG
- * Name: FLAGS_dynamic_static_unified_comm
- * Since Version: 2.5
- * Value Range: bool, default=true
- * Example:
- * Note: Whether to use new communication library in auto parallel and static
- * mode. If true, it will use unified CommContextManager for communication.
- */
-PHI_DEFINE_EXPORTED_bool(dynamic_static_unified_comm,
-                         true,
-                         "Whether to use new communication library in auto "
-                         "parallel and static mode.");
-#endif  // FLAGS_dynamic_static_unified_comm
 
 /**
  * ProcessGroupNCCL related FLAG
@@ -1745,6 +1828,11 @@ PHI_DEFINE_EXPORTED_string(
     "",
     "Specify root dir path for nvidia site-package, such as "
     "python3.9/site-packages/nvidia");
+
+PHI_DEFINE_EXPORTED_string(cuda_cccl_dir,  // NOLINT
+                           "",
+                           "Specify root dir path for nv/target, such as "
+                           "python3.9/site-packages/nvidia/cuda_cccl/include/");
 
 PHI_DEFINE_EXPORTED_string(
     cudnn_dir,  // NOLINT
@@ -1827,6 +1915,19 @@ PHI_DEFINE_EXPORTED_bool(enable_cse_in_dy2st,
                          "Apply CSE optimize pass in Dy2St");
 
 /**
+ * Run Dy2St in specialized device
+ * Name: specialize_device_in_dy2st
+ * Since Version: 3.1.0 Beta
+ * Value Range: bool, default=false
+ * Example:
+ * Note: If True, will specialize device for DataOp's place based on input
+ * tensor's place before lowering.
+ */
+PHI_DEFINE_EXPORTED_bool(specialize_device_in_dy2st,
+                         false,
+                         "Run Dy2St in specialized device");
+
+/**
  * Max count of eliminate redundant computation in CSE, for debug usage
  * Name: cse_max_count
  * Since Version: 3.0.0
@@ -1876,6 +1977,20 @@ PHI_DEFINE_EXPORTED_bool(
     use_xqa_optim,
     false,
     "Enable xqa optim in block_multihead_attention kernel (GQA).");
+
+/**
+ * Whether to use FP32 for accumulation of QK output in
+ * block_multihead_attention kernel(fp16)
+ * Name: blha_use_fp32_qk_sum Since Version: 3.0.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: If TRUE, FP32 will be used for accumulation of the QK output
+ * in block_multihead_attention kernel(fp16) .
+ */
+PHI_DEFINE_EXPORTED_bool(blha_use_fp32_qk_sum,
+                         false,
+                         "use FP32 for accumulation of QK output in "
+                         "block_multihead_attention kernel(fp16).");
 
 PHI_DEFINE_EXPORTED_bool(cuda_core_int8_gemm,
                          false,
@@ -1995,6 +2110,11 @@ PHI_DEFINE_EXPORTED_bool(save_cf_stack_op,
                          false,
                          "Save cf stack op for higher-order derivatives.");
 
+PHI_DEFINE_EXPORTED_bool(
+    enable_auto_growth_allocator_add_lock,
+    false,
+    "Enable add lock when call AutoGrowthBestFitAllocator::ReleaseImpl");
+
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 /**
  * FlashAttention related FLAG
@@ -2012,3 +2132,14 @@ PHI_DEFINE_EXPORTED_int32(
     "Version 2 requires Ampere architecture or higher, "
     "while version 3 requires Hopper architecture.");
 #endif
+
+/**
+ * Operator related FLAG
+ * Name: FLAGS_check_cuda_error
+ * Value Range: bool, default=false
+ * Example:
+ * Note: Used to debug. Checking whether CUDA error occurred or not.
+ */
+PHI_DEFINE_EXPORTED_bool(check_cuda_error,
+                         false,
+                         "Checking whether CUDA error occurred or not.");

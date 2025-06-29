@@ -22,12 +22,10 @@ from paddle.static import InputSpec
 
 
 def apply_to_static(net, use_cinn, input_spec=None):
-    build_strategy = paddle.static.BuildStrategy()
-    build_strategy.build_cinn_pass = use_cinn
-
+    backend = "CINN" if use_cinn else None
     return paddle.jit.to_static(
         net,
-        build_strategy=build_strategy,
+        backend=backend,
         full_graph=True,
         input_spec=input_spec,
     )

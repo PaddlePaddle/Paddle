@@ -29,6 +29,9 @@ void ActivationXPUImpl(const Context& dev_ctx,
   PADDLE_ENFORCE_NOT_NULL(out,
                           errors::NotFound("Output Out should not be nullptr"));
   dev_ctx.template Alloc<T>(out);
+  if (out->numel() == 0) {
+    return;
+  }
   functor(dev_ctx, x, out);
 }
 
@@ -72,7 +75,7 @@ int xpu_activation_func(
     const Context& dev_ctx,
     const DenseTensor& x,
     DenseTensor* out,
-    std::function<int(xpu::Context*, const XPUType*, XPUType*, int)> func) {
+    std::function<int(xpu::Context*, const XPUType*, XPUType*, int64_t)> func) {
   int r = func(dev_ctx.x_context(),
                reinterpret_cast<const XPUType*>(x.data<T>()),
                reinterpret_cast<XPUType*>(out->data<T>()),
@@ -85,8 +88,8 @@ int xpu_activation_func_with_max_x_y(
     const Context& dev_ctx,
     const DenseTensor& x,
     DenseTensor* out,
-    std::function<
-        int(xpu::Context*, const XPUType*, XPUType*, int, const float*, float*)>
+    std::function<int(
+        xpu::Context*, const XPUType*, XPUType*, int64_t, const float*, float*)>
         func) {
   // does not support "const float* max_x, float* max_y" now
   int r = func(dev_ctx.x_context(),
@@ -106,7 +109,7 @@ int xpu_activation_1attr_func(const Context& dev_ctx,
                               std::function<int(xpu::Context*,
                                                 const XPUType*,
                                                 XPUType*,
-                                                int,
+                                                int64_t,
                                                 float,
                                                 const float*,
                                                 float*)> func) {
@@ -130,7 +133,7 @@ int xpu_activation_2attr_func(const Context& dev_ctx,
                               std::function<int(xpu::Context*,
                                                 const XPUType*,
                                                 XPUType*,
-                                                int,
+                                                int64_t,
                                                 float,
                                                 float,
                                                 const float*,
@@ -436,8 +439,12 @@ void EluKernel(const Context& dev_ctx,
                DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   dev_ctx.template Alloc<T>(out);
-  // template<typename T> int elu(Context* ctx, const T* x, T* y, int64_t len,
-  // float alpha = 1.0f, const float* max_x = nullptr, float* max_y = nullptr)
+  if (out->numel() == 0) {
+    return;
+  }
+  // template<typename T> int elu(Context* xpu_ctx, const T* x, T* y, int64_t
+  // len, float alpha = 1.0f, const float* max_x = nullptr, float* max_y =
+  // nullptr)
   int r = xpu::elu(dev_ctx.x_context(),
                    reinterpret_cast<const XPUType*>(x.data<T>()),
                    reinterpret_cast<XPUType*>(out->data<T>()),
@@ -641,8 +648,13 @@ PD_REGISTER_KERNEL(silu,
                    phi::dtype::bfloat16) {}
 PD_REGISTER_KERNEL(
     elu, XPU, ALL_LAYOUT, phi::EluKernel, float, phi::dtype::float16) {}
-PD_REGISTER_KERNEL(
-    sigmoid, XPU, ALL_LAYOUT, phi::SigmoidKernel, float, phi::dtype::float16) {}
+PD_REGISTER_KERNEL(sigmoid,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::SigmoidKernel,
+                   float,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 PD_REGISTER_KERNEL(swish,
                    XPU,
                    ALL_LAYOUT,
@@ -676,8 +688,13 @@ PD_REGISTER_KERNEL(sqrt,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}
 
-PD_REGISTER_KERNEL(
-    tanh, XPU, ALL_LAYOUT, phi::TanhKernel, float, phi::dtype::float16) {}
+PD_REGISTER_KERNEL(tanh,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::TanhKernel,
+                   float,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 
 PD_REGISTER_KERNEL(square,
                    XPU,

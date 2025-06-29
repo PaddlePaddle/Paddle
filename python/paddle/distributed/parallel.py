@@ -167,6 +167,7 @@ def sync_params_buffers(
     src_rank: int = 0,
     is_model_parallel: bool = False,
     fuse_params: bool = True,
+    is_moe_sharding_parallel: bool = False,
 ) -> None:
     model_vars = []
     for _, param in model._obtain_parameters_buffers().items():
@@ -179,10 +180,18 @@ def sync_params_buffers(
             if hasattr(param, "is_distributed") and param.is_distributed:
                 continue
 
-        # NOTE(shenliang03): Support situations that do not require synchronization parameters,
-        # such as moe's expert parameters
-        if getattr(param, "no_sync", False):
-            continue
+        if not is_moe_sharding_parallel:
+            # NOTE(shenliang03): Support situations that do not require synchronization parameters,
+            # such as moe's expert parameters
+            if getattr(param, "no_sync", False):
+                continue
+        else:
+            # NOTE(zhangyuqin1998): In moe sharding parallel, we do need to broadcast expert parameters
+            # in moe sharding group.
+            if getattr(param, "no_sync", False) and not getattr(
+                param, "expert", False
+            ):
+                continue
 
         if param.type == core.VarDesc.VarType.VOCAB:
             continue
@@ -348,7 +357,7 @@ class DataParallel(Layer):
             ...     model = paddle.DataParallel(model)
             ...     opt = paddle.optimizer.SGD(learning_rate=0.01, parameters=model.parameters())
             ...     for step in range(10):
-            ...         x_data = numpy.random.randn(2, 2).astype(numpy.float32) # type: ignore[var-annotated]
+            ...         x_data = numpy.random.randn(2, 2).astype(numpy.float32)
             ...         x = paddle.to_tensor(x_data)
             ...         x.stop_gradient = False
             ...         # step 1 : skip gradient synchronization by 'no_sync'
@@ -932,7 +941,7 @@ def _start_kv_server(port, http_server_d, size):
 def _is_cpuonly(backend):
     check_backend(backend)
     if (
-        backend in ['auto', 'nccl', 'bkcl', 'heter']
+        backend in ['auto', 'nccl', 'bkcl', 'heter', 'flagcx']
         and (core.is_compiled_with_cuda() or core.is_compiled_with_xpu())
     ) or backend == 'xccl':
         # passes 'auto' and can use cuda or xpu, use the default logics. so return False
@@ -1134,7 +1143,7 @@ def init_parallel_env() -> Group:
         default_store = core.create_or_get_global_tcp_store()
         _set_default_store(default_store)
 
-        if backend in ["nccl", 'xccl', 'bkcl']:
+        if backend in ["nccl", 'xccl', 'bkcl', 'flagcx']:
             core.CommContextManager.set_device_id(parallel_env.device_id)
 
         pg = _new_process_group_impl(

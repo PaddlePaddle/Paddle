@@ -17,7 +17,6 @@ import unittest
 from test_case_base import (
     TestCaseBase,
     test_instruction_translator_cache_context,
-    test_with_faster_guard,
 )
 
 import paddle
@@ -108,7 +107,6 @@ class TestBuiltinBool(TestCaseBase):
                 call_bool_by_operator_truth_no_breakgraph, layer
             )
 
-    @test_with_faster_guard
     def test_object_allow_breakgraph(self):
         with test_instruction_translator_cache_context():
             obj = TestObjectWithLen([1, 2, 3])

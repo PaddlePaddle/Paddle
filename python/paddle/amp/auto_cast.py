@@ -14,17 +14,14 @@
 from __future__ import annotations
 
 import copy
+import os
 import warnings
 from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
-    ContextManager,
-    List,
     Literal,
     Protocol,
-    Set,
-    Tuple,
     TypeVar,
     Union,
     overload,
@@ -45,7 +42,8 @@ from paddle.static.amp.decorator import OptimizerWithMixedPrecision
 from .amp_lists import black_list, white_list
 
 if TYPE_CHECKING:
-    from typing import Generator
+    from collections.abc import Generator
+    from contextlib import AbstractContextManager
 
     from typing_extensions import TypeAlias, TypeGuard
 
@@ -56,7 +54,7 @@ if TYPE_CHECKING:
     from paddle.static import Operator, Program
 
     _AmpLevelLiteral = Literal["O0", "OD", "O1", "O2"]
-    _CustomList: TypeAlias = Union[List[str], Tuple[str, ...], Set[str]]
+    _CustomList: TypeAlias = Union[list[str], tuple[str, ...], set[str]]
 
     class _OptimizerLike(Protocol):
         def minimize(
@@ -74,8 +72,8 @@ if TYPE_CHECKING:
         def clear_grad(self, set_to_zero: bool) -> None: ...
 
 
-_ModelsT = TypeVar("_ModelsT", "Layer", List["Layer"])
-_OptimizersT = TypeVar("_OptimizersT", "_OptimizerLike", List["_OptimizerLike"])
+_ModelsT = TypeVar("_ModelsT", "Layer", list["Layer"])
+_OptimizersT = TypeVar("_OptimizersT", "_OptimizerLike", list["_OptimizerLike"])
 
 
 AMP_RELATED_FLAGS = [
@@ -235,6 +233,8 @@ def _is_custom_device_bfloat16_supported() -> bool:
     return (
         place.get_device_type() == 'npu'
         or place.get_device_type() == 'intel_hpu'
+        or place.get_device_type() == 'iluvatar_gpu'
+        or place.get_device_type() == 'metax_gpu'
     )
 
 
@@ -655,6 +655,24 @@ def amp_guard(
             and not amp_global_state().already_register_final_backward_hook
         ):
 
+            def _dtensor_from_local(local_tensor, mesh, placements):
+                global_dims = list(local_tensor.shape)
+                for idx, placement in enumerate(placements):
+                    if placement.is_shard():
+                        global_dims[placement.get_dim()] = (
+                            global_dims[placement.get_dim()] * mesh.shape[idx]
+                        )
+                place = paddle.framework._current_expected_place()
+                place = paddle.framework._get_paddle_place(place)
+
+                return paddle.Tensor(
+                    local_tensor,
+                    dims=global_dims,
+                    process_mesh=mesh,
+                    placements=placements,
+                    place=place,
+                )
+
             def master_grad_hook():
                 # NOTE(lizhiyu): To support semi-auto of dygraph mode, we must
                 # classify the params of model into different classes according to their process_mesh.
@@ -675,15 +693,63 @@ def amp_guard(
                                 ].append(param)
                     amp_global_state().already_classify_params_meshes = True
 
-                if len(amp_global_state().mesh2params):
-                    for _, params in amp_global_state().mesh2params.items():
-                        core.eager.set_master_grads(params)
-                else:
-                    core.eager.set_master_grads(
-                        amp_global_state().model_parameters
-                    )
+                if os.getenv("FLAGS_enable_tensor_fusion") not in [
+                    "True",
+                    "true",
+                    "1",
+                ] and os.getenv("FLAGS_enable_main_grad") not in [
+                    "True",
+                    "true",
+                    "1",
+                ]:
+                    if len(amp_global_state().mesh2params):
+                        for _, params in amp_global_state().mesh2params.items():
+                            core.eager.set_master_grads(params)
+                    else:
+                        core.eager.set_master_grads(
+                            amp_global_state().model_parameters
+                        )
 
                 amp_global_state().already_register_final_backward_hook = False
+
+            def _update_main_grad_hook(param):
+                @paddle.autograd.no_grad()
+                def param_hook(tmp_grad):
+                    if tmp_grad is not None and tmp_grad._is_initialized():
+                        if param.main_grad is None:
+                            tmp = core.eager.Tensor(
+                                value=tmp_grad._local_value()
+                                .cast(paddle.float32)
+                                .value(),
+                                place=tmp_grad.place,
+                                name="main_grad@" + param.name,
+                            )
+                            param.main_grad = _dtensor_from_local(
+                                tmp,
+                                tmp_grad.process_mesh,
+                                tmp_grad.placements,
+                            )
+                        else:
+                            param.main_grad._local_value().add_(
+                                tmp_grad._local_value()
+                            )
+                        tmp_grad._clear_data()
+
+                return param_hook
+
+            if os.getenv("FLAGS_enable_tensor_fusion") in [
+                "True",
+                "true",
+                "1",
+            ] or os.getenv("FLAGS_enable_main_grad") in [
+                "True",
+                "true",
+                "1",
+            ]:
+                for param in amp_global_state().model_parameters:
+                    if not hasattr(param, "main_grad"):
+                        param.main_grad = None
+                        param._register_grad_hook(_update_main_grad_hook(param))
 
             core.eager._add_backward_final_hook(master_grad_hook)
             amp_global_state().already_register_final_backward_hook = True
@@ -1011,7 +1077,7 @@ def auto_cast(
     level: _AmpLevelLiteral = 'O1',
     dtype: _DTypeLiteral = 'float16',
     use_promote: bool = True,
-) -> ContextManager:
+) -> AbstractContextManager:
     """
     Create a context which enables auto-mixed-precision(AMP) of operators executed in dynamic graph mode.
     If enabled, the input data type (float32, float16 or bfloat16) of each operator is decided

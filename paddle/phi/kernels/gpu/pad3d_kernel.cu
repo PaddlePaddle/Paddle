@@ -25,34 +25,34 @@ namespace phi {
 
 using phi::PADDLE_CUDA_NUM_THREADS;
 
-template <typename T>
-__global__ void Pad3DConstNCDHW(const int nthreads,
+template <typename T, typename IndexType>
+__global__ void Pad3DConstNCDHW(const IndexType nthreads,
                                 const T* in_data,
-                                const int num,
-                                const int channels,
-                                const int in_depth,
-                                const int in_height,
-                                const int in_width,
-                                const int out_depth,
-                                const int out_height,
-                                const int out_width,
-                                const int pad_front,
-                                const int pad_top,
-                                const int pad_left,
+                                const IndexType num,
+                                const IndexType channels,
+                                const IndexType in_depth,
+                                const IndexType in_height,
+                                const IndexType in_width,
+                                const IndexType out_depth,
+                                const IndexType out_height,
+                                const IndexType out_width,
+                                const IndexType pad_front,
+                                const IndexType pad_top,
+                                const IndexType pad_left,
                                 T value,
                                 T* out_data) {
-  CUDA_KERNEL_LOOP(index, nthreads) {
-    int nc = index / out_width;
+  CUDA_KERNEL_LOOP_TYPE(index, nthreads, IndexType) {
+    IndexType nc = index / out_width;
 
-    const int out_w = index % out_width;
-    const int out_h = nc % out_height;
+    const IndexType out_w = index % out_width;
+    const IndexType out_h = nc % out_height;
     nc /= out_height;
-    const int out_d = nc % out_depth;
+    const IndexType out_d = nc % out_depth;
     nc /= out_depth;
 
-    int in_d = out_d - pad_front;
-    int in_h = out_h - pad_top;
-    int in_w = out_w - pad_left;
+    IndexType in_d = out_d - pad_front;
+    IndexType in_h = out_h - pad_top;
+    IndexType in_w = out_w - pad_left;
     out_data[index] =
         (in_d < 0 || in_h < 0 || in_w < 0 || in_d >= in_depth ||
          in_h >= in_height || in_w >= in_width)
@@ -62,34 +62,34 @@ __global__ void Pad3DConstNCDHW(const int nthreads,
   }
 }
 
-template <typename T>
-__global__ void Pad3DConstNDHWC(const int nthreads,
+template <typename T, typename IndexType>
+__global__ void Pad3DConstNDHWC(const IndexType nthreads,
                                 const T* in_data,
-                                const int num,
-                                const int channels,
-                                const int in_depth,
-                                const int in_height,
-                                const int in_width,
-                                const int out_depth,
-                                const int out_height,
-                                const int out_width,
-                                const int pad_front,
-                                const int pad_top,
-                                const int pad_left,
+                                const IndexType num,
+                                const IndexType channels,
+                                const IndexType in_depth,
+                                const IndexType in_height,
+                                const IndexType in_width,
+                                const IndexType out_depth,
+                                const IndexType out_height,
+                                const IndexType out_width,
+                                const IndexType pad_front,
+                                const IndexType pad_top,
+                                const IndexType pad_left,
                                 T value,
                                 T* out_data) {
-  CUDA_KERNEL_LOOP(index, nthreads) {
-    int n = index / channels;
-    const int c = index % channels;
-    const int out_w = n % out_width;
+  CUDA_KERNEL_LOOP_TYPE(index, nthreads, IndexType) {
+    IndexType n = index / channels;
+    const IndexType c = index % channels;
+    const IndexType out_w = n % out_width;
     n /= out_width;
-    const int out_h = n % out_height;
+    const IndexType out_h = n % out_height;
     n /= out_height;
-    const int out_d = n % out_depth;
+    const IndexType out_d = n % out_depth;
     n /= out_depth;
-    const int in_d = out_d - pad_front;
-    const int in_h = out_h - pad_top;
-    const int in_w = out_w - pad_left;
+    const IndexType in_d = out_d - pad_front;
+    const IndexType in_h = out_h - pad_top;
+    const IndexType in_w = out_w - pad_left;
 
     out_data[index] =
         (in_d < 0 || in_h < 0 || in_w < 0 || in_d >= in_depth ||
@@ -101,33 +101,33 @@ __global__ void Pad3DConstNDHWC(const int nthreads,
   }
 }
 
-template <typename T>
-__global__ void Pad3DReflectNCDHW(const int nthreads,
+template <typename T, typename IndexType>
+__global__ void Pad3DReflectNCDHW(const IndexType nthreads,
                                   const T* in_data,
-                                  const int num,
-                                  const int channels,
-                                  const int in_depth,
-                                  const int in_height,
-                                  const int in_width,
-                                  const int out_depth,
-                                  const int out_height,
-                                  const int out_width,
-                                  const int pad_front,
-                                  const int pad_top,
-                                  const int pad_left,
+                                  const IndexType num,
+                                  const IndexType channels,
+                                  const IndexType in_depth,
+                                  const IndexType in_height,
+                                  const IndexType in_width,
+                                  const IndexType out_depth,
+                                  const IndexType out_height,
+                                  const IndexType out_width,
+                                  const IndexType pad_front,
+                                  const IndexType pad_top,
+                                  const IndexType pad_left,
                                   T* out_data) {
-  CUDA_KERNEL_LOOP(index, nthreads) {
-    int nc = index / out_width;
+  CUDA_KERNEL_LOOP_TYPE(index, nthreads, IndexType) {
+    IndexType nc = index / out_width;
 
-    const int out_w = index % out_width;
-    const int out_h = nc % out_height;
+    const IndexType out_w = index % out_width;
+    const IndexType out_h = nc % out_height;
     nc /= out_height;
-    const int out_d = nc % out_depth;
+    const IndexType out_d = nc % out_depth;
     nc /= out_depth;
 
-    int in_d = out_d - pad_front;
-    int in_h = out_h - pad_top;
-    int in_w = out_w - pad_left;
+    IndexType in_d = out_d - pad_front;
+    IndexType in_h = out_h - pad_top;
+    IndexType in_w = out_w - pad_left;
 
     in_d = max(in_d, -in_d);                     // reflect by 0
     in_d = min(in_d, 2 * in_depth - in_d - 2);   // reflect by in_depth
@@ -142,33 +142,33 @@ __global__ void Pad3DReflectNCDHW(const int nthreads,
   }
 }
 
-template <typename T>
-__global__ void Pad3DReflectNDHWC(const int nthreads,
+template <typename T, typename IndexType>
+__global__ void Pad3DReflectNDHWC(const IndexType nthreads,
                                   const T* in_data,
-                                  const int num,
-                                  const int channels,
-                                  const int in_depth,
-                                  const int in_height,
-                                  const int in_width,
-                                  const int out_depth,
-                                  const int out_height,
-                                  const int out_width,
-                                  const int pad_front,
-                                  const int pad_top,
-                                  const int pad_left,
+                                  const IndexType num,
+                                  const IndexType channels,
+                                  const IndexType in_depth,
+                                  const IndexType in_height,
+                                  const IndexType in_width,
+                                  const IndexType out_depth,
+                                  const IndexType out_height,
+                                  const IndexType out_width,
+                                  const IndexType pad_front,
+                                  const IndexType pad_top,
+                                  const IndexType pad_left,
                                   T* out_data) {
-  CUDA_KERNEL_LOOP(index, nthreads) {
-    int n = index / channels;
-    const int c = index % channels;
-    const int out_w = n % out_width;
+  CUDA_KERNEL_LOOP_TYPE(index, nthreads, IndexType) {
+    IndexType n = index / channels;
+    const IndexType c = index % channels;
+    const IndexType out_w = n % out_width;
     n /= out_width;
-    const int out_h = n % out_height;
+    const IndexType out_h = n % out_height;
     n /= out_height;
-    const int out_d = n % out_depth;
+    const IndexType out_d = n % out_depth;
     n /= out_depth;
-    int in_d = out_d - pad_front;
-    int in_h = out_h - pad_top;
-    int in_w = out_w - pad_left;
+    IndexType in_d = out_d - pad_front;
+    IndexType in_h = out_h - pad_top;
+    IndexType in_w = out_w - pad_left;
 
     in_d = max(in_d, -in_d);
     in_d = min(in_d, 2 * in_depth - in_d - 2);
@@ -183,33 +183,36 @@ __global__ void Pad3DReflectNDHWC(const int nthreads,
   }
 }
 
-template <typename T>
-__global__ void Pad3DReplicateNCDHW(const int nthreads,
+template <typename T, typename IndexType>
+__global__ void Pad3DReplicateNCDHW(const IndexType nthreads,
                                     const T* in_data,
-                                    const int num,
-                                    const int channels,
-                                    const int in_depth,
-                                    const int in_height,
-                                    const int in_width,
-                                    const int out_depth,
-                                    const int out_height,
-                                    const int out_width,
-                                    const int pad_front,
-                                    const int pad_top,
-                                    const int pad_left,
+                                    const IndexType num,
+                                    const IndexType channels,
+                                    const IndexType in_depth,
+                                    const IndexType in_height,
+                                    const IndexType in_width,
+                                    const IndexType out_depth,
+                                    const IndexType out_height,
+                                    const IndexType out_width,
+                                    const IndexType pad_front,
+                                    const IndexType pad_top,
+                                    const IndexType pad_left,
                                     T* out_data) {
-  CUDA_KERNEL_LOOP(index, nthreads) {
-    int nc = index / out_width;
+  CUDA_KERNEL_LOOP_TYPE(index, nthreads, IndexType) {
+    IndexType nc = index / out_width;
 
-    const int out_w = index % out_width;
-    const int out_h = nc % out_height;
+    const IndexType out_w = index % out_width;
+    const IndexType out_h = nc % out_height;
     nc /= out_height;
-    const int out_d = nc % out_depth;
+    const IndexType out_d = nc % out_depth;
     nc /= out_depth;
 
-    int in_d = min(in_depth - 1, max(out_d - pad_front, 0));
-    int in_h = min(in_height - 1, max(out_h - pad_top, 0));
-    int in_w = min(in_width - 1, max(out_w - pad_left, 0));
+    IndexType in_d =
+        min(in_depth - 1, max(out_d - pad_front, static_cast<IndexType>(0)));
+    IndexType in_h =
+        min(in_height - 1, max(out_h - pad_top, static_cast<IndexType>(0)));
+    IndexType in_w =
+        min(in_width - 1, max(out_w - pad_left, static_cast<IndexType>(0)));
 
     out_data[index] =
         in_data[(nc * in_depth * in_height + in_d * in_height + in_h) *
@@ -218,34 +221,37 @@ __global__ void Pad3DReplicateNCDHW(const int nthreads,
   }
 }
 
-template <typename T>
-__global__ void Pad3DReplicateNDHWC(const int nthreads,
+template <typename T, typename IndexType>
+__global__ void Pad3DReplicateNDHWC(const IndexType nthreads,
                                     const T* in_data,
-                                    const int num,
-                                    const int channels,
-                                    const int in_depth,
-                                    const int in_height,
-                                    const int in_width,
-                                    const int out_depth,
-                                    const int out_height,
-                                    const int out_width,
-                                    const int pad_front,
-                                    const int pad_top,
-                                    const int pad_left,
+                                    const IndexType num,
+                                    const IndexType channels,
+                                    const IndexType in_depth,
+                                    const IndexType in_height,
+                                    const IndexType in_width,
+                                    const IndexType out_depth,
+                                    const IndexType out_height,
+                                    const IndexType out_width,
+                                    const IndexType pad_front,
+                                    const IndexType pad_top,
+                                    const IndexType pad_left,
                                     T* out_data) {
-  CUDA_KERNEL_LOOP(index, nthreads) {
-    int n = index / channels;
-    const int c = index % channels;
-    const int out_w = n % out_width;
+  CUDA_KERNEL_LOOP_TYPE(index, nthreads, IndexType) {
+    IndexType n = index / channels;
+    const IndexType c = index % channels;
+    const IndexType out_w = n % out_width;
     n /= out_width;
-    const int out_h = n % out_height;
+    const IndexType out_h = n % out_height;
     n /= out_height;
-    const int out_d = n % out_depth;
+    const IndexType out_d = n % out_depth;
     n /= out_depth;
 
-    int in_d = min(in_depth - 1, max(out_d - pad_front, 0));
-    int in_h = min(in_height - 1, max(out_h - pad_top, 0));
-    int in_w = min(in_width - 1, max(out_w - pad_left, 0));
+    IndexType in_d =
+        min(in_depth - 1, max(out_d - pad_front, static_cast<IndexType>(0)));
+    IndexType in_h =
+        min(in_height - 1, max(out_h - pad_top, static_cast<IndexType>(0)));
+    IndexType in_w =
+        min(in_width - 1, max(out_w - pad_left, static_cast<IndexType>(0)));
 
     out_data[index] = in_data[n * in_depth * in_height * in_width * channels +
                               in_d * in_height * in_width * channels +
@@ -253,33 +259,33 @@ __global__ void Pad3DReplicateNDHWC(const int nthreads,
   }
 }
 
-template <typename T>
-__global__ void Pad3DCircularNCDHW(const int nthreads,
+template <typename T, typename IndexType>
+__global__ void Pad3DCircularNCDHW(const IndexType nthreads,
                                    const T* in_data,
-                                   const int num,
-                                   const int channels,
-                                   const int in_depth,
-                                   const int in_height,
-                                   const int in_width,
-                                   const int out_depth,
-                                   const int out_height,
-                                   const int out_width,
-                                   const int pad_front,
-                                   const int pad_top,
-                                   const int pad_left,
+                                   const IndexType num,
+                                   const IndexType channels,
+                                   const IndexType in_depth,
+                                   const IndexType in_height,
+                                   const IndexType in_width,
+                                   const IndexType out_depth,
+                                   const IndexType out_height,
+                                   const IndexType out_width,
+                                   const IndexType pad_front,
+                                   const IndexType pad_top,
+                                   const IndexType pad_left,
                                    T* out_data) {
-  CUDA_KERNEL_LOOP(index, nthreads) {
-    int nc = index / out_width;
+  CUDA_KERNEL_LOOP_TYPE(index, nthreads, IndexType) {
+    IndexType nc = index / out_width;
 
-    const int out_w = index % out_width;
-    const int out_h = nc % out_height;
+    const IndexType out_w = index % out_width;
+    const IndexType out_h = nc % out_height;
     nc /= out_height;
-    const int out_d = nc % out_depth;
+    const IndexType out_d = nc % out_depth;
     nc /= out_depth;
 
-    int in_d = ((out_d - pad_front) % in_depth + in_depth) % in_depth;
-    int in_h = ((out_h - pad_top) % in_height + in_height) % in_height;
-    int in_w = ((out_w - pad_left) % in_width + in_width) % in_width;
+    IndexType in_d = ((out_d - pad_front) % in_depth + in_depth) % in_depth;
+    IndexType in_h = ((out_h - pad_top) % in_height + in_height) % in_height;
+    IndexType in_w = ((out_w - pad_left) % in_width + in_width) % in_width;
 
     out_data[index] =
         in_data[(nc * in_depth * in_height + in_d * in_height + in_h) *
@@ -288,34 +294,34 @@ __global__ void Pad3DCircularNCDHW(const int nthreads,
   }
 }
 
-template <typename T>
-__global__ void Pad3DCircularNDHWC(const int nthreads,
+template <typename T, typename IndexType>
+__global__ void Pad3DCircularNDHWC(const IndexType nthreads,
                                    const T* in_data,
-                                   const int num,
-                                   const int channels,
-                                   const int in_depth,
-                                   const int in_height,
-                                   const int in_width,
-                                   const int out_depth,
-                                   const int out_height,
-                                   const int out_width,
-                                   const int pad_front,
-                                   const int pad_top,
-                                   const int pad_left,
+                                   const IndexType num,
+                                   const IndexType channels,
+                                   const IndexType in_depth,
+                                   const IndexType in_height,
+                                   const IndexType in_width,
+                                   const IndexType out_depth,
+                                   const IndexType out_height,
+                                   const IndexType out_width,
+                                   const IndexType pad_front,
+                                   const IndexType pad_top,
+                                   const IndexType pad_left,
                                    T* out_data) {
-  CUDA_KERNEL_LOOP(index, nthreads) {
-    int n = index / channels;
-    const int c = index % channels;
-    const int out_w = n % out_width;
+  CUDA_KERNEL_LOOP_TYPE(index, nthreads, IndexType) {
+    IndexType n = index / channels;
+    const IndexType c = index % channels;
+    const IndexType out_w = n % out_width;
     n /= out_width;
-    const int out_h = n % out_height;
+    const IndexType out_h = n % out_height;
     n /= out_height;
-    const int out_d = n % out_depth;
+    const IndexType out_d = n % out_depth;
     n /= out_depth;
 
-    int in_d = ((out_d - pad_front) % in_depth + in_depth) % in_depth;
-    int in_h = ((out_h - pad_top) % in_height + in_height) % in_height;
-    int in_w = ((out_w - pad_left) % in_width + in_width) % in_width;
+    IndexType in_d = ((out_d - pad_front) % in_depth + in_depth) % in_depth;
+    IndexType in_h = ((out_h - pad_top) % in_height + in_height) % in_height;
+    IndexType in_w = ((out_w - pad_left) % in_width + in_width) % in_width;
 
     out_data[index] = in_data[n * in_depth * in_height * in_width * channels +
                               in_d * in_height * in_width * channels +
@@ -354,13 +360,13 @@ void Pad3dKernel(const Context& dev_ctx,
   out->Resize(out_dims);
   T* out_data = dev_ctx.template Alloc<T>(out);
 
-  int channels = in_dims[1];
-  int in_depth = in_dims[2];
-  int in_height = in_dims[3];
-  int in_width = in_dims[4];
-  int out_depth = out_dims[2];
-  int out_height = out_dims[3];
-  int out_width = out_dims[4];
+  int64_t channels = in_dims[1];
+  int64_t in_depth = in_dims[2];
+  int64_t in_height = in_dims[3];
+  int64_t in_width = in_dims[4];
+  int64_t out_depth = out_dims[2];
+  int64_t out_height = out_dims[3];
+  int64_t out_width = out_dims[4];
   if (data_format == "NDHWC") {
     channels = in_dims[4];
     in_depth = in_dims[1];
@@ -436,141 +442,283 @@ void Pad3dKernel(const Context& dev_ctx,
                           "or replicate padding mode."));
   }
 
-  const int pad_left = pads[0];
-  const int pad_top = pads[2];
-  const int pad_front = pads[4];
-  const int num = in_dims[0];
+  const int64_t pad_left = pads[0];
+  const int64_t pad_top = pads[2];
+  const int64_t pad_front = pads[4];
+  const int64_t num = in_dims[0];
 
   auto stream = dev_ctx.stream();
   int block = PADDLE_CUDA_NUM_THREADS;
-  const int out_size = out->numel();
-  int grid = (out_size + block - 1) / block;
+  const size_t out_size = out->numel();
+  uint32_t grid = (out_size + block - 1) / block;
 
-  if (data_format == "NCDHW") {
-    if (mode == "reflect") {
-      Pad3DReflectNCDHW<T><<<grid, block, 0, stream>>>(out_size,
-                                                       in_data,
-                                                       num,
-                                                       channels,
-                                                       in_depth,
-                                                       in_height,
-                                                       in_width,
-                                                       out_depth,
-                                                       out_height,
-                                                       out_width,
-                                                       pad_front,
-                                                       pad_top,
-                                                       pad_left,
-                                                       out_data);
-    } else if (mode == "replicate") {
-      Pad3DReplicateNCDHW<T><<<grid, block, 0, stream>>>(out_size,
-                                                         in_data,
-                                                         num,
-                                                         channels,
-                                                         in_depth,
-                                                         in_height,
-                                                         in_width,
-                                                         out_depth,
-                                                         out_height,
-                                                         out_width,
-                                                         pad_front,
-                                                         pad_top,
-                                                         pad_left,
-                                                         out_data);
-    } else if (mode == "circular") {
-      Pad3DCircularNCDHW<T><<<grid, block, 0, stream>>>(out_size,
-                                                        in_data,
-                                                        num,
-                                                        channels,
-                                                        in_depth,
-                                                        in_height,
-                                                        in_width,
-                                                        out_depth,
-                                                        out_height,
-                                                        out_width,
-                                                        pad_front,
-                                                        pad_top,
-                                                        pad_left,
-                                                        out_data);
-    } else {
-      Pad3DConstNCDHW<T><<<grid, block, 0, stream>>>(out_size,
-                                                     in_data,
-                                                     num,
-                                                     channels,
-                                                     in_depth,
-                                                     in_height,
-                                                     in_width,
-                                                     out_depth,
-                                                     out_height,
-                                                     out_width,
-                                                     pad_front,
-                                                     pad_top,
-                                                     pad_left,
-                                                     value,
-                                                     out_data);
-    }
+  bool use_int32_index = true;
+  if (out_size > std::numeric_limits<int32_t>::max()) {
+    use_int32_index = false;
   } else {
-    if (mode == "reflect") {
-      Pad3DReflectNDHWC<T><<<grid, block, 0, stream>>>(out_size,
-                                                       in_data,
-                                                       num,
-                                                       channels,
-                                                       in_depth,
-                                                       in_height,
-                                                       in_width,
-                                                       out_depth,
-                                                       out_height,
-                                                       out_width,
-                                                       pad_front,
-                                                       pad_top,
-                                                       pad_left,
-                                                       out_data);
-    } else if (mode == "replicate") {
-      Pad3DReplicateNDHWC<T><<<grid, block, 0, stream>>>(out_size,
-                                                         in_data,
-                                                         num,
-                                                         channels,
-                                                         in_depth,
-                                                         in_height,
-                                                         in_width,
-                                                         out_depth,
-                                                         out_height,
-                                                         out_width,
-                                                         pad_front,
-                                                         pad_top,
-                                                         pad_left,
-                                                         out_data);
-    } else if (mode == "circular") {
-      Pad3DCircularNDHWC<T><<<grid, block, 0, stream>>>(out_size,
-                                                        in_data,
-                                                        num,
-                                                        channels,
-                                                        in_depth,
-                                                        in_height,
-                                                        in_width,
-                                                        out_depth,
-                                                        out_height,
-                                                        out_width,
-                                                        pad_front,
-                                                        pad_top,
-                                                        pad_left,
-                                                        out_data);
+    for (int i = 0; i < out_dims.size(); ++i) {
+      if (out_dims[i] > std::numeric_limits<int32_t>::max()) {
+        use_int32_index = false;
+        break;
+      }
+    }
+  }
+  if (use_int32_index) {
+    if (data_format == "NCDHW") {
+      if (mode == "reflect") {
+        Pad3DReflectNCDHW<T, int32_t><<<grid, block, 0, stream>>>(out_size,
+                                                                  in_data,
+                                                                  num,
+                                                                  channels,
+                                                                  in_depth,
+                                                                  in_height,
+                                                                  in_width,
+                                                                  out_depth,
+                                                                  out_height,
+                                                                  out_width,
+                                                                  pad_front,
+                                                                  pad_top,
+                                                                  pad_left,
+                                                                  out_data);
+      } else if (mode == "replicate") {
+        Pad3DReplicateNCDHW<T, int32_t><<<grid, block, 0, stream>>>(out_size,
+                                                                    in_data,
+                                                                    num,
+                                                                    channels,
+                                                                    in_depth,
+                                                                    in_height,
+                                                                    in_width,
+                                                                    out_depth,
+                                                                    out_height,
+                                                                    out_width,
+                                                                    pad_front,
+                                                                    pad_top,
+                                                                    pad_left,
+                                                                    out_data);
+      } else if (mode == "circular") {
+        Pad3DCircularNCDHW<T, int32_t><<<grid, block, 0, stream>>>(out_size,
+                                                                   in_data,
+                                                                   num,
+                                                                   channels,
+                                                                   in_depth,
+                                                                   in_height,
+                                                                   in_width,
+                                                                   out_depth,
+                                                                   out_height,
+                                                                   out_width,
+                                                                   pad_front,
+                                                                   pad_top,
+                                                                   pad_left,
+                                                                   out_data);
+      } else {
+        Pad3DConstNCDHW<T, int32_t><<<grid, block, 0, stream>>>(out_size,
+                                                                in_data,
+                                                                num,
+                                                                channels,
+                                                                in_depth,
+                                                                in_height,
+                                                                in_width,
+                                                                out_depth,
+                                                                out_height,
+                                                                out_width,
+                                                                pad_front,
+                                                                pad_top,
+                                                                pad_left,
+                                                                value,
+                                                                out_data);
+      }
     } else {
-      Pad3DConstNDHWC<T><<<grid, block, 0, stream>>>(out_size,
-                                                     in_data,
-                                                     num,
-                                                     channels,
-                                                     in_depth,
-                                                     in_height,
-                                                     in_width,
-                                                     out_depth,
-                                                     out_height,
-                                                     out_width,
-                                                     pad_front,
-                                                     pad_top,
-                                                     pad_left,
-                                                     value,
-                                                     out_data);
+      if (mode == "reflect") {
+        Pad3DReflectNDHWC<T, int32_t><<<grid, block, 0, stream>>>(out_size,
+                                                                  in_data,
+                                                                  num,
+                                                                  channels,
+                                                                  in_depth,
+                                                                  in_height,
+                                                                  in_width,
+                                                                  out_depth,
+                                                                  out_height,
+                                                                  out_width,
+                                                                  pad_front,
+                                                                  pad_top,
+                                                                  pad_left,
+                                                                  out_data);
+      } else if (mode == "replicate") {
+        Pad3DReplicateNDHWC<T, int32_t><<<grid, block, 0, stream>>>(out_size,
+                                                                    in_data,
+                                                                    num,
+                                                                    channels,
+                                                                    in_depth,
+                                                                    in_height,
+                                                                    in_width,
+                                                                    out_depth,
+                                                                    out_height,
+                                                                    out_width,
+                                                                    pad_front,
+                                                                    pad_top,
+                                                                    pad_left,
+                                                                    out_data);
+      } else if (mode == "circular") {
+        Pad3DCircularNDHWC<T, int32_t><<<grid, block, 0, stream>>>(out_size,
+                                                                   in_data,
+                                                                   num,
+                                                                   channels,
+                                                                   in_depth,
+                                                                   in_height,
+                                                                   in_width,
+                                                                   out_depth,
+                                                                   out_height,
+                                                                   out_width,
+                                                                   pad_front,
+                                                                   pad_top,
+                                                                   pad_left,
+                                                                   out_data);
+      } else {
+        Pad3DConstNDHWC<T, int32_t><<<grid, block, 0, stream>>>(out_size,
+                                                                in_data,
+                                                                num,
+                                                                channels,
+                                                                in_depth,
+                                                                in_height,
+                                                                in_width,
+                                                                out_depth,
+                                                                out_height,
+                                                                out_width,
+                                                                pad_front,
+                                                                pad_top,
+                                                                pad_left,
+                                                                value,
+                                                                out_data);
+      }
+    }
+
+  } else {
+    if (data_format == "NCDHW") {
+      if (mode == "reflect") {
+        Pad3DReflectNCDHW<T, int64_t><<<grid, block, 0, stream>>>(out_size,
+                                                                  in_data,
+                                                                  num,
+                                                                  channels,
+                                                                  in_depth,
+                                                                  in_height,
+                                                                  in_width,
+                                                                  out_depth,
+                                                                  out_height,
+                                                                  out_width,
+                                                                  pad_front,
+                                                                  pad_top,
+                                                                  pad_left,
+                                                                  out_data);
+      } else if (mode == "replicate") {
+        Pad3DReplicateNCDHW<T, int64_t><<<grid, block, 0, stream>>>(out_size,
+                                                                    in_data,
+                                                                    num,
+                                                                    channels,
+                                                                    in_depth,
+                                                                    in_height,
+                                                                    in_width,
+                                                                    out_depth,
+                                                                    out_height,
+                                                                    out_width,
+                                                                    pad_front,
+                                                                    pad_top,
+                                                                    pad_left,
+                                                                    out_data);
+      } else if (mode == "circular") {
+        Pad3DCircularNCDHW<T, int64_t><<<grid, block, 0, stream>>>(out_size,
+                                                                   in_data,
+                                                                   num,
+                                                                   channels,
+                                                                   in_depth,
+                                                                   in_height,
+                                                                   in_width,
+                                                                   out_depth,
+                                                                   out_height,
+                                                                   out_width,
+                                                                   pad_front,
+                                                                   pad_top,
+                                                                   pad_left,
+                                                                   out_data);
+      } else {
+        Pad3DConstNCDHW<T, int64_t><<<grid, block, 0, stream>>>(out_size,
+                                                                in_data,
+                                                                num,
+                                                                channels,
+                                                                in_depth,
+                                                                in_height,
+                                                                in_width,
+                                                                out_depth,
+                                                                out_height,
+                                                                out_width,
+                                                                pad_front,
+                                                                pad_top,
+                                                                pad_left,
+                                                                value,
+                                                                out_data);
+      }
+    } else {
+      if (mode == "reflect") {
+        Pad3DReflectNDHWC<T, int64_t><<<grid, block, 0, stream>>>(out_size,
+                                                                  in_data,
+                                                                  num,
+                                                                  channels,
+                                                                  in_depth,
+                                                                  in_height,
+                                                                  in_width,
+                                                                  out_depth,
+                                                                  out_height,
+                                                                  out_width,
+                                                                  pad_front,
+                                                                  pad_top,
+                                                                  pad_left,
+                                                                  out_data);
+      } else if (mode == "replicate") {
+        Pad3DReplicateNDHWC<T, int64_t><<<grid, block, 0, stream>>>(out_size,
+                                                                    in_data,
+                                                                    num,
+                                                                    channels,
+                                                                    in_depth,
+                                                                    in_height,
+                                                                    in_width,
+                                                                    out_depth,
+                                                                    out_height,
+                                                                    out_width,
+                                                                    pad_front,
+                                                                    pad_top,
+                                                                    pad_left,
+                                                                    out_data);
+      } else if (mode == "circular") {
+        Pad3DCircularNDHWC<T, int64_t><<<grid, block, 0, stream>>>(out_size,
+                                                                   in_data,
+                                                                   num,
+                                                                   channels,
+                                                                   in_depth,
+                                                                   in_height,
+                                                                   in_width,
+                                                                   out_depth,
+                                                                   out_height,
+                                                                   out_width,
+                                                                   pad_front,
+                                                                   pad_top,
+                                                                   pad_left,
+                                                                   out_data);
+      } else {
+        Pad3DConstNDHWC<T, int64_t><<<grid, block, 0, stream>>>(out_size,
+                                                                in_data,
+                                                                num,
+                                                                channels,
+                                                                in_depth,
+                                                                in_height,
+                                                                in_width,
+                                                                out_depth,
+                                                                out_height,
+                                                                out_width,
+                                                                pad_front,
+                                                                pad_top,
+                                                                pad_left,
+                                                                value,
+                                                                out_data);
+      }
     }
   }
 }

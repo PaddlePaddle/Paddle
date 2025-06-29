@@ -94,7 +94,7 @@ class TestDy2StaticAutoRecomputeRmsNorm(unittest.TestCase):
     def cal_rms_norm_res(self, place):
         weight, hidden = self.product_rms_norm_inputs(place)
         net = PrimNet()
-        net = paddle.jit.to_static(net, full_graph=True)
+        net = paddle.jit.to_static(net, full_graph=True, backend=None)
         program = net.forward.get_concrete_program(weight, hidden)[
             -1
         ].program.program

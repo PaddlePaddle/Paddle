@@ -44,7 +44,7 @@ bool TensorArray::initialized() const {
   }
 
   for (auto const& tensor : tensors_) {
-    if (!tensor.initialized()) {
+    if (!tensor.has_allocation()) {
       return false;
     }
   }

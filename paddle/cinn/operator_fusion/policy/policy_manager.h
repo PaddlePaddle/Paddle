@@ -16,7 +16,6 @@
 
 #include "paddle/cinn/operator_fusion/pattern_node.h"
 #include "paddle/cinn/operator_fusion/policy/general_topo_policy.h"
-#include "paddle/cinn/operator_fusion/policy/iters_fusion_policy.h"
 #include "paddle/cinn/operator_fusion/policy/policy_base.h"
 #include "paddle/cinn/operator_fusion/policy/relative_judge_policy.h"
 

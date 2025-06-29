@@ -274,35 +274,40 @@ template <typename Functor, typename T, typename OutType = T>
 void CommonForwardBroadcastCPU(const DenseTensor &x,
                                const DenseTensor &y,
                                DenseTensor *z,
-                               int *x_dims_array,
-                               int *y_dims_array,
-                               int *out_dims_array,
+                               int64_t *x_dims_array,
+                               int64_t *y_dims_array,
+                               int64_t *out_dims_array,
                                int max_dim,
                                const CPUContext &ctx,
                                Functor func,
                                const bool is_xsize_larger = true) {
-  std::vector<int> index_array(max_dim, 0);
+  std::vector<int64_t> index_array(max_dim, 0);
   const T *x_data = x.data<T>();
   const T *y_data = y.data<T>();
-  PADDLE_ENFORCE_NOT_NULL(
-      x_data, errors::InvalidArgument("The input X should not be empty."));
-  PADDLE_ENFORCE_NOT_NULL(
-      y_data, errors::InvalidArgument("The input Y should not be empty."));
+  if (z && z->numel() == 0) {
+    ctx.Alloc<OutType>(z);
+    return;
+  }
   OutType *out_data = ctx.Alloc<OutType>(z);
 
-  const int out_size = std::accumulate(
-      out_dims_array, out_dims_array + max_dim, 1, std::multiplies<int>());
-  int x_index, y_index;
-  for (int out_index = 0; out_index < out_size; ++out_index) {
-    x_index = GetElementwiseIndex(x_dims_array, max_dim, index_array.data());
-    y_index = GetElementwiseIndex(y_dims_array, max_dim, index_array.data());
+  const int64_t out_size = std::accumulate(out_dims_array,
+                                           out_dims_array + max_dim,
+                                           1ll,
+                                           std::multiplies<int64_t>());
+  int64_t x_index, y_index;
+  for (int64_t out_index = 0; out_index < out_size; ++out_index) {
+    x_index =
+        GetElementwiseIndex<int64_t>(x_dims_array, max_dim, index_array.data());
+    y_index =
+        GetElementwiseIndex<int64_t>(y_dims_array, max_dim, index_array.data());
     if (is_xsize_larger) {
       out_data[out_index] = func(x_data[x_index], y_data[y_index]);
     } else {
       out_data[out_index] = func(y_data[y_index], x_data[x_index]);
     }
 
-    UpdateElementwiseIndexArray(out_dims_array, max_dim, index_array.data());
+    UpdateElementwiseIndexArray<int64_t>(
+        out_dims_array, max_dim, index_array.data());
   }
 }
 
@@ -331,9 +336,9 @@ void CommonElementwiseBroadcastForward(const CPUContext &dev_ctx,
           "Axis should be less than or equal to %d, but received axis is %d.",
           max_dim,
           axis));
-  std::vector<int> x_dims_array(max_dim);
-  std::vector<int> y_dims_array(max_dim);
-  std::vector<int> out_dims_array(max_dim);
+  std::vector<int64_t> x_dims_array(max_dim);
+  std::vector<int64_t> y_dims_array(max_dim);
+  std::vector<int64_t> out_dims_array(max_dim);
   GetBroadcastDimsArrays(x_dims,
                          y_dims,
                          x_dims_array.data(),
@@ -371,6 +376,9 @@ void ElementwiseCompute(const CPUContext &dev_ctx,
                         DenseTensor *z,
                         int axis = -1) {
   dev_ctx.Alloc<OutType>(z);
+  if (z && z->numel() == 0) {
+    return;
+  }
   auto x_dims = x.dims();
   auto y_dims = y.dims();
   bool is_xsize_larger = true;
@@ -401,7 +409,8 @@ void ElementwiseCompute(const CPUContext &dev_ctx,
           max_dim,
           axis));
 
-  int pre, n, post, is_run_common_broadcast, axis_trim = 0;
+  size_t pre, n, post;
+  int is_run_common_broadcast, axis_trim = 0;
   if (is_xsize_larger) {
     auto y_dims_trimmed = TrimTrailingSingularDims(y_dims);
     axis_trim = (y_dims_trimmed.size() == 0) ? x_dims.size() : axis;

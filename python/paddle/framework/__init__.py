@@ -21,6 +21,7 @@ from ..base.core import (  # noqa: F401
     CUDAPlace,
     CustomPlace,
     IPUPlace,
+    XPUPinnedPlace,
     XPUPlace,
 )
 from ..base.dygraph import base  # noqa: F401

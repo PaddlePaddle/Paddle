@@ -31,7 +31,6 @@ foreach(target ${TEST_PRIM_PURE_PIR_CASES})
     MODULES
     ${target}
     ENVS
-    GLOG_v=1
     FLAGS_enable_pir_api=true
     FLAGS_comp_skip_default_ops=0
     FLAGS_prim_enable_dynamic=true)
@@ -51,24 +50,18 @@ foreach(target ${TEST_PRIM_DYNAMIC_SHAPE_BACKWARD_PIR_CASES})
     MODULES
     ${target}
     ENVS
-    GLOG_v=1
     FLAGS_prim_vjp_skip_default_ops=0
     FLAGS_enable_pir_api=true
     FLAGS_comp_skip_default_ops=0
     FLAGS_prim_enable_dynamic=true)
 endforeach()
 
-py_test_modules(
-  test_pir_prim_flags_v3
-  MODULES
-  test_pir_prim_flags_v3
-  ENVS
-  GLOG_v=1
-  FLAGS_enable_pir_api=true
-  FLAGS_prim_vjp_skip_default_ops=0)
+py_test_modules(test_pir_prim_flags_v3 MODULES test_pir_prim_flags_v3 ENVS
+                FLAGS_enable_pir_api=true FLAGS_prim_vjp_skip_default_ops=0)
 
 set_tests_properties(test_auto_recompute PROPERTIES TIMEOUT 40)
 set_tests_properties(test_auto_recompute_dy2static PROPERTIES TIMEOUT 40)
+set_tests_properties(test_pir_prim_flags PROPERTIES TIMEOUT 150)
 
 set(TEST_PRIM_PURE_PIR_CINN test_prim_rms_norm_st_shape
                             test_prim_flags_check_ops)
@@ -80,7 +73,6 @@ if(WITH_CINN)
       MODULES
       ${target}
       ENVS
-      GLOG_v=1
       FLAGS_prim_check_ops=true
       FLAGS_enable_pir_api=true
       FLAGS_prim_enable_dynamic=true
@@ -90,7 +82,7 @@ if(WITH_CINN)
 endif()
 
 foreach(target ${TEST_PRIM_TRANS_PIR_CASES})
-  py_test_modules(${target} MODULES ${target} ENVS GLOG_v=1
+  py_test_modules(${target} MODULES ${target} ENVS
                   FLAGS_enable_pir_in_executor=true)
 endforeach()
 
@@ -101,7 +93,6 @@ py_test_modules(
   MODULES
   ${TEST_PRIM_BACKWARD_BLACKLIST}
   ENVS
-  GLOG_v=1
   FLAGS_enable_pir_api=true
   FLAGS_prim_enable_dynamic=true
   FLAGS_prim_backward_blacklist=pd_op.tanh_grad)

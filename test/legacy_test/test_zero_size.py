@@ -177,7 +177,7 @@ class TestZeroSizeForward(unittest.TestCase):
         for place in self.places:
             paddle.device.set_device(place)
             static_forward_func = paddle.jit.to_static(
-                forward_func, full_graph=True
+                forward_func, full_graph=True, backend=None
             )
 
             for dtype in self.dtypes:
@@ -308,7 +308,7 @@ class TestZeroSizeBackward(unittest.TestCase):
                     self.assertEqual(x.data_ptr(), 0)
 
                     static_gradient_func = paddle.jit.to_static(
-                        gradient_func, full_graph=True
+                        gradient_func, full_graph=True, backend=None
                     )
                     (x_grad,) = static_gradient_func(x)
 
@@ -440,7 +440,7 @@ class TestZeroSizeBackwardWithGradientAccumulation(unittest.TestCase):
                     self.assertEqual(x.data_ptr(), 0)
 
                     static_gradient_func = paddle.jit.to_static(
-                        gradient_func, full_graph=True
+                        gradient_func, full_graph=True, backend=None
                     )
                     (x_grad,) = static_gradient_func(x)
 

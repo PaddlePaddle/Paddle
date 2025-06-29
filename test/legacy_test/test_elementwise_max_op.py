@@ -370,5 +370,39 @@ class TestElementwiseFP16Op_broadcast_4(TestElementwiseFP16Op):
         self.outputs = {'Out': np.maximum(self.inputs['X'], self.inputs['Y'])}
 
 
+class TestElementwiseOpEqualInput(TestElementwiseOp):
+    def init_data(self):
+        self.x = np.ones([13, 17]).astype(np.float32)
+        self.y = np.ones([13, 17]).astype(np.float32)
+
+    def setUp(self):
+        self.init_data()
+        self.op_type = "elementwise_max"
+        self.prim_op_type = "prim"
+        self.if_enable_cinn()
+        self.python_api = paddle.maximum
+        self.dtype = np.float32
+        self.public_python_api = paddle.maximum
+        self.inputs = {'X': self.x, 'Y': self.y}
+        self.outputs = {'Out': np.maximum(self.inputs['X'], self.inputs['Y'])}
+
+
+class TestElementwiseOp0SizeInput(TestElementwiseOp):
+    def init_data(self):
+        self.x = np.ones([0, 1, 2]).astype(np.float32)
+        self.y = np.ones([1, 3598, 2]).astype(np.float32)
+
+    def setUp(self):
+        self.init_data()
+        self.op_type = "elementwise_max"
+        self.prim_op_type = "prim"
+        self.if_enable_cinn()
+        self.python_api = paddle.maximum
+        self.dtype = np.float32
+        self.public_python_api = paddle.maximum
+        self.inputs = {'X': self.x, 'Y': self.y}
+        self.outputs = {'Out': np.maximum(self.inputs['X'], self.inputs['Y'])}
+
+
 if __name__ == '__main__':
     unittest.main()

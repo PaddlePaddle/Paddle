@@ -16,7 +16,6 @@
 
 #include "paddle/cinn/operator_fusion/pattern.h"
 #include "paddle/cinn/operator_fusion/pattern_fuser.h"
-#include "paddle/cinn/operator_fusion/pir_graph_analyzing/fusion_iters.h"
 #include "paddle/cinn/operator_fusion/utils.h"
 
 namespace cinn::fusion {
@@ -26,11 +25,8 @@ struct PatternNode {
   using MergePatternFn =
       std::function<StmtPattern(const StmtPattern&, const StmtPattern&)>;
 
-  explicit PatternNode(const PatternContent& content,
-                       const FusionItersSignature& fusion_iters)
-      : sink_op_(content.op),
-        stmt_pattern_(ConvertToStmtPattern(content)),
-        fusion_iters_(fusion_iters) {}
+  explicit PatternNode(const PatternContent& content)
+      : sink_op_(content.op), stmt_pattern_(ConvertToStmtPattern(content)) {}
 
   explicit PatternNode(PatternNodePtr fused_up_node,
                        PatternNodePtr fused_down_node,
@@ -59,10 +55,8 @@ struct PatternNode {
     for (const auto& d : downstream_) {
       ss << GetPatternId(d->stmt_pattern()) << "(" << d << "), ";
     }
-    // ss << "\n" << fusion_iters_.DebugStr();
     ss << "\nOps in pattern:" << std::endl;
     ss << OpsDebugStr(GetOpsInPattern(this->stmt_pattern()));
-    ss << "Loop Framework is: " << GetLoopFramework(this->stmt_pattern()).loop;
     ss << "\nLoop Mapping is: " << loop_axis_mapping().DebugStr();
     return ss.str();
   }
@@ -94,10 +88,6 @@ struct PatternNode {
     GetFusionTracker(stmt_pattern_)->append(instr);
   }
   void UpdateTracker() { PatternUpdateTracker(stmt_pattern_); }
-  FusionItersSignature fusion_iters() const { return fusion_iters_; }
-  void set_fusion_iters(const FusionItersSignature& fusion_iters) {
-    fusion_iters_ = fusion_iters;
-  }
   FusionTrackerPtr fusion_tracker() { return GetFusionTracker(stmt_pattern_); }
   void set_loop_axis_mapping(const LoopAxisMapping& loop_axis_mapping) {
     std::visit(
@@ -116,8 +106,6 @@ struct PatternNode {
 
   std::vector<PatternNodePtr> upstream_;
   std::vector<PatternNodePtr> downstream_;
-
-  FusionItersSignature fusion_iters_;
 };
 
 using PatternNodePtr = std::shared_ptr<PatternNode>;

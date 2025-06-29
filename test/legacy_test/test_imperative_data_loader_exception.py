@@ -36,11 +36,13 @@ class TestDygraphDataLoaderWithException(unittest.TestCase):
         self.capacity = 5
 
     def test_not_capacity(self):
-        with base.dygraph.guard():
-            with self.assertRaisesRegex(
+        with (
+            base.dygraph.guard(),
+            self.assertRaisesRegex(
                 ValueError, "Please give value to capacity."
-            ):
-                base.io.DataLoader.from_generator()
+            ),
+        ):
+            base.io.DataLoader.from_generator()
 
     def test_single_process_with_thread_exception(self):
         def error_sample_generator(batch_num):

@@ -63,28 +63,28 @@ class TrtConvertHardSigmoidTest_dim_2(TrtLayerAutoScanTest):
 
                         yield program_config
 
+    def generate_dynamic_shape(self):
+        if self.input_dim == 2:
+            self.dynamic_shape.min_input_shape = {"input_data": [1, 8]}
+            self.dynamic_shape.max_input_shape = {"input_data": [4, 32]}
+            self.dynamic_shape.opt_input_shape = {"input_data": [2, 16]}
+        elif self.input_dim == 3:
+            self.dynamic_shape.min_input_shape = {"input_data": [1, 8, 8]}
+            self.dynamic_shape.max_input_shape = {"input_data": [4, 16, 32]}
+            self.dynamic_shape.opt_input_shape = {"input_data": [4, 16, 32]}
+        elif self.input_dim == 4:
+            self.dynamic_shape.min_input_shape = {"input_data": [1, 8, 8, 4]}
+            self.dynamic_shape.max_input_shape = {
+                "input_data": [4, 32, 16, 128]
+            }
+            self.dynamic_shape.opt_input_shape = {
+                "input_data": [4, 32, 16, 128]
+            }
+        return self.dynamic_shape
+
     def sample_predictor_configs(
-        self, program_config
+        self, program_config, run_pir=False
     ) -> tuple[paddle_infer.Config, list[int], float]:
-        def generate_dynamic_shape(attrs):
-            if self.input_dim == 2:
-                self.dynamic_shape.min_input_shape = {"input_data": [1, 8]}
-                self.dynamic_shape.max_input_shape = {"input_data": [4, 32]}
-                self.dynamic_shape.opt_input_shape = {"input_data": [2, 16]}
-            elif self.input_dim == 3:
-                self.dynamic_shape.min_input_shape = {"input_data": [1, 8, 8]}
-                self.dynamic_shape.max_input_shape = {"input_data": [4, 16, 32]}
-                self.dynamic_shape.opt_input_shape = {"input_data": [4, 16, 32]}
-            elif self.input_dim == 4:
-                self.dynamic_shape.min_input_shape = {
-                    "input_data": [1, 8, 8, 4]
-                }
-                self.dynamic_shape.max_input_shape = {
-                    "input_data": [4, 32, 16, 128]
-                }
-                self.dynamic_shape.opt_input_shape = {
-                    "input_data": [4, 32, 16, 128]
-                }
 
         def clear_dynamic_shape():
             self.dynamic_shape.max_input_shape = {}
@@ -94,18 +94,18 @@ class TrtConvertHardSigmoidTest_dim_2(TrtLayerAutoScanTest):
         attrs = [
             program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
-
-        # for static_shape
-        clear_dynamic_shape()
-        self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        program_config.set_input_type(np.float32)
-        yield self.create_inference_config(), (1, 2), 1e-5
-        self.trt_param.precision = paddle_infer.PrecisionType.Half
-        program_config.set_input_type(np.float16)
-        yield self.create_inference_config(), (1, 2), 1e-3
+        if not run_pir:
+            # for static_shape
+            self.trt_param.precision = paddle_infer.PrecisionType.Float32
+            program_config.set_input_type(np.float32)
+            yield self.create_inference_config(), (1, 2), 1e-5
+            self.trt_param.precision = paddle_infer.PrecisionType.Half
+            program_config.set_input_type(np.float16)
+            yield self.create_inference_config(), (1, 2), 1e-3
 
         # for dynamic_shape
-        generate_dynamic_shape(attrs)
+        clear_dynamic_shape()
+        self.generate_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         program_config.set_input_type(np.float32)
         yield self.create_inference_config(), (1, 2), 1e-5
@@ -114,7 +114,7 @@ class TrtConvertHardSigmoidTest_dim_2(TrtLayerAutoScanTest):
         yield self.create_inference_config(), (1, 2), 1e-3
 
     def test(self):
-        self.run_test()
+        self.run_test(run_pir=True)
 
 
 if __name__ == "__main__":

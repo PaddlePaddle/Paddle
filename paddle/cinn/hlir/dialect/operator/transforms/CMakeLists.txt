@@ -9,7 +9,8 @@ set(cinn_transforms_deps
     cinn_runtime_dialect
     op_fusion
     pir_compiler
-    json)
+    json
+    ap_pass)
 
 include_directories(cinn_transforms PRIVATE
                     ${PADDLE_SOURCE_DIR}/third_party/nlohmann_json/include/)

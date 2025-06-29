@@ -51,9 +51,7 @@ class PrimeNet(paddle.nn.Layer):
 
 
 def apply_to_static(net):
-    build_strategy = paddle.static.BuildStrategy()
-    build_strategy.build_cinn_pass = False
-    return paddle.jit.to_static(net, build_strategy=False)
+    return paddle.jit.to_static(net, backend=None)
 
 
 def forward_post_hook_for_prim_net(layer, input, output):

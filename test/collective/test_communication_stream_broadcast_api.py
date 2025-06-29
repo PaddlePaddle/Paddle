@@ -19,17 +19,22 @@ sys.path.append("../legacy_test")
 
 import test_communication_api_base as test_base
 
+import paddle
+
 
 class TestCommunicationStreamBroadcastAPI(test_base.CommunicationTestDistBase):
     def setUp(self):
         super().setUp(num_of_devices=2, timeout=120)
         self._default_envs = {
-            "backend": "nccl",
             "shape": "(100, 200)",
             "dtype": "float32",
             "seeds": str(self._seeds),
         }
+        backend_list = ["nccl"]
+        if paddle.base.core.is_compiled_with_flagcx():
+            backend_list.append("flagcx")
         self._changeable_envs = {
+            "backend": backend_list,
             "sync_op": ["True", "False"],
             "use_calc_stream": ["True", "False"],
         }

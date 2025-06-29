@@ -49,7 +49,8 @@ if(WITH_CUSTOM_DEVICE)
 endif()
 
 if(WITH_XPU)
-  list(APPEND ALLOCATOR_SRCS xpu_allocator.cc stream_safe_xpu_allocator.cc)
+  list(APPEND ALLOCATOR_SRCS xpu_allocator.cc xpu_pinned_allocator.cc
+       stream_safe_xpu_allocator.cc)
 endif()
 
 collect_srcs(core_srcs SRCS ${ALLOCATOR_SRCS})

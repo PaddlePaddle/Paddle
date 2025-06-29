@@ -307,19 +307,16 @@ ir::Tensor Store(const ir::Tensor& A, const std::string& name) {
   return res;
 }
 
-ir::Tensor Arange(const float start,
-                  const float stop,
-                  const float step,
+ir::Tensor Arange(Expr start,
+                  Expr step,
                   const Type& dtype,
+                  const int64_t size,
                   const std::string& output_name) {
-  int num = static_cast<int>(std::ceil((stop - start) / step));
   ir::Tensor res = lang::Compute(
-      {Expr(num)},
+      {Expr(size)},
       [=](const std::vector<ir::Expr>& indices) {
-        return ir::Cast::Make(
-            dtype,
-            Expr(start) +
-                Expr(step) * ir::Cast::Make(cinn::common::F32(), indices[0]));
+        return ir::Cast::Make(dtype,
+                              start + step * ir::Cast::Make(dtype, indices[0]));
       },
       output_name);
   return res;
@@ -338,7 +335,6 @@ ir::Tensor Tril(const ir::Tensor& A,
                               "The Tril op input tensor must have a rank "
                               "greater than or equal to 2."));
         std::vector<Expr> new_indice(indice.end() - 2, indice.end());
-        Expr col_indice = indice.back();
         return ir::Select::Make(new_indice[0] >= new_indice[1] - diagonal,
                                 A(indice),
                                 ir::Zero(A->type()));

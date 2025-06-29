@@ -78,6 +78,9 @@ class XPUContext : public DeviceContext,
   int64_t GetStreamNum() const;
   void AddStashedMemory(int stream, const phi::DenseTensor& tensor);
 
+  void SetEigenDevice(Eigen::DefaultDevice*);
+  void SetEigenDevice(std::function<Eigen::DefaultDevice*()>&&);
+
   // For share external stream.
   void SetStream(void* stream, int i = 0);
 
@@ -125,6 +128,29 @@ class XPUContext : public DeviceContext,
 using KPSContext = XPUContext;
 #endif
 
+}  // namespace phi
+
+namespace phi {
+#if defined(PADDLE_WITH_XPU)
+// Currently, XPUPinnedContext is only used to data copying.
+class XPUPinnedContext
+    : public DeviceContext,
+      public phi::TypeInfoTraits<DeviceContext, XPUPinnedContext> {
+ public:
+  XPUPinnedContext();
+  explicit XPUPinnedContext(XPUPinnedPlace place);
+
+  const Place& GetPlace() const override;
+
+  Eigen::DefaultDevice* eigen_device() const;
+
+  static const char* name() { return "XPUPinnedContext"; }
+
+ private:
+  XPUPinnedPlace place_;
+  std::unique_ptr<Eigen::DefaultDevice> eigen_device_;
+};
+#endif
 }  // namespace phi
 
 #endif

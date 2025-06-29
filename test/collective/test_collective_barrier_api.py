@@ -33,6 +33,15 @@ class TestCollectiveBarrierAPI(TestDistBase):
             "collective_barrier_api.py", "barrier", "gloo", "5"
         )
 
+    def test_barrier_flagcx(self):
+        if paddle.base.core.is_compiled_with_flagcx():
+            self.check_with_place(
+                "collective_barrier_api.py",
+                "barrier",
+                "flagcx",
+                static_mode="0",
+            )
+
 
 if __name__ == '__main__':
     unittest.main()
