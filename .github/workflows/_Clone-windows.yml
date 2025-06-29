@@ -48,8 +48,8 @@ jobs:
           git fetch origin pull/%PR_ID%/head:pr
           git merge --no-ff pr
           git branch -d pr
+          @ECHO ON
           call %ci_scripts%/third_party_tag.sh
-          git log --pretty=oneline -10
 
       - name: Upload paddle to bos
         env:
