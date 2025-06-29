@@ -36,7 +36,7 @@ jobs:
     env:
       TASK: paddle-CI-${{ github.event.pull_request.number }}-inference_build
     runs-on:
-      group: cpu-cfs
+      group: GZ_BD-CPU
 
     steps:
       - name: Check docker image and run container
@@ -160,9 +160,8 @@ jobs:
           cd /
           tar --use-compress-program="pigz -1" -cpPf build.tar.gz paddle
           echo "Uploading build.tar.gz to cfs"
-          # python ${{ env.bos_file }} build.tar.gz paddle-github-action/PR/inference/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
           mkdir -p /home/data/cfs/inference_bos/${PR_ID}/${COMMIT_ID}
-          cp build.tar.gz /home/data/cfs/inference_bos/${PR_ID}/${COMMIT_ID}
+          cp build.tar.gz /home/data/cfs/inference_bos/${PR_ID}/${COMMIT_ID} && echo success
           rm build.tar.gz
           '
 
@@ -179,7 +178,7 @@ jobs:
     env:
       TASK: paddle-CI-${{ github.event.pull_request.number }}-inference_test
     runs-on:
-      group: p4-cfs
+      group: Inference-P4
 
     steps:
       - name: Check docker image and run container
@@ -257,8 +256,7 @@ jobs:
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           set -e
-          echo "Downloading build.tar.gz"
-          # wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/inference/${PR_ID}/${COMMIT_ID}/build.tar.gz --no-check-certificate
+          echo "Downloading build.tar.gz from cfs"
           cp /home/data/cfs/inference_bos/${PR_ID}/${COMMIT_ID}/build.tar.gz .
           echo "Extracting build.tar.gz"
           tar --use-compress-program="pigz -1" -xpf build.tar.gz --strip-components=1

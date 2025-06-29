@@ -29,7 +29,7 @@ jobs:
     outputs:
       can-skip: ${{ steps.check-bypass.outputs.can-skip }}
     runs-on:
-      group: cpu-cfs
+      group: GZ_BD-CPU
 
     steps:
       - name: Check docker image and run container
