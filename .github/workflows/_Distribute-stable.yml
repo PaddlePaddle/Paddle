@@ -268,7 +268,7 @@ jobs:
           export SMI="-v /usr/bin/nvidia-smi:/usr/bin/nvidia-smi"
           container_name=${TASK}-test-$(date +%Y%m%d-%H%M%S)
           echo "container_name=${container_name}" >> ${{ github.env }}
-          docker run -d -t --name ${container_name} ${CUDA_SO} ${DEVICES} ${SMI} --shm-size=32G \
+          docker run -d -t --name ${container_name} ${CUDA_SO} ${DEVICES} ${SMI} --runtime=nvidia --shm-size=32G \
           -v "/home/data/cfs:/home/data/cfs" \
           -v "/home/data/cfs/.cache/:/root/.cache" \
           -v "/home/data/cfs/.ccache:/root/.ccache" \
