@@ -23,6 +23,44 @@ jobs:
     runs-on:
       group: win-clone
     steps:
+      - name: Upload paddle to bos
+        env:
+          BCE_FILE1: 'C:\home\workspace\bce-python-sdk-new'
+          BCE_FILE2: "C:/home/workspace/bce-python-sdk-new"
+        run: |
+          echo %WORK_DIR%
+          echo %WORK_DIR1%
+          echo %WORK_DIR2%
+          echo %BCE_FILE1%
+          echo %BCE_FILE2%
+          cd %WORK_DIR%
+          cd
+          type nul > %WORK_DIR%\11
+          type nul > %WORK_DIR%/22
+          cd %WORK_DIR1%
+          cd
+          type nul > %WORK_DIR%\11
+          type nul > %WORK_DIR%/22
+          cd %WORK_DIR2%
+          cd
+          type nul > %WORK_DIR%\11
+          type nul > %WORK_DIR%/22
+          cd %BCE_FILE1%
+          cd
+          type nul > %WORK_DIR%\11
+          type nul > %WORK_DIR%/22
+          cd %BCE_FILE2%
+          cd
+          type nul > %WORK_DIR%\11
+          type nul > %WORK_DIR%/22
+
+      - name: Git config
+        run: |
+          git config --global user.name "PaddleCI"
+          git config --global user.email "paddle_ci@example.com"
+          git config --global http.postBuffer 524288000
+          git config --global core.longpaths true
+
       - name: Clone paddle
         uses: actions/checkout@v4
         with:
@@ -32,10 +70,6 @@ jobs:
 
       - name: Merge pr
         run: |
-          git config --global user.name "PaddleCI"
-          git config --global user.email "paddle_ci@example.com"
-          git config --global http.postBuffer 524288000
-          git config --global core.longpaths true
           git fetch origin pull/%PR_ID%/head
           git checkout -b test_pr FETCH_HEAD
           git merge --no-edit %BRANCH%
