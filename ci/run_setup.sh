@@ -15,7 +15,7 @@
 source $(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/utils.sh
 init
 
-if [ -z "${WITH_ROCM}" ] || [ "${WITH_ROCM}" = "OFF" ]; then
+if [ "${WITH_ROCM}" != "ON" ]; then
     export PATH=/usr/local/bin:${PATH}
     ln -sf $(which python${PY_VERSION}) /usr/local/bin/python
     ln -sf $(which pip${PY_VERSION}) /usr/local/bin/pip
