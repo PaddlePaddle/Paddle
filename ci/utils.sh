@@ -246,7 +246,6 @@ function determine_kunlun_runner() {
         exit 1
     fi
     cd $GITHUB_WORKSPACE
-    # rm -rf * .[^.]* .??*
 }
 
 function determine_dcu_runner() {
