@@ -22,6 +22,7 @@
 
 #include "paddle/common/ddim.h"
 #include "paddle/phi/kernels/empty_kernel.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/fft.h"
 #include "paddle/phi/kernels/funcs/fft_fill_conj_xpu.h"
 
@@ -34,6 +35,11 @@ void FFTC2CKernel(const Context& ctx,
                   bool forward,
                   DenseTensor* out) {
   ctx.template Alloc<T>(out);
+  if (x.numel() == 0) {
+    phi::Full<T, Context>(
+        ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+    return;
+  }
   const auto norm_type = funcs::get_norm_from_string(normalization, forward);
   funcs::FFTC2CFunctor<Context, T, T> fft_c2c_func;
   fft_c2c_func(ctx, x, out, axes, norm_type, forward);
@@ -49,6 +55,11 @@ void FFTC2RKernel(const Context& ctx,
                   DenseTensor* out) {
   using R = typename T::value_type;  // get real type
   ctx.template Alloc<R>(out);
+  if (x.numel() == 0) {
+    phi::Full<R, Context>(
+        ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+    return;
+  }
   const auto norm_type = funcs::get_norm_from_string(normalization, forward);
   funcs::FFTC2RFunctor<Context, T, R> fft_c2r_func;
   fft_c2r_func(ctx, x, out, axes, norm_type, forward);
@@ -64,6 +75,11 @@ void FFTR2CKernel(const Context& ctx,
                   DenseTensor* out) {
   using C = phi::dtype::complex<T>;
   ctx.template Alloc<C>(out);
+  if (x.numel() == 0) {
+    phi::Full<C, Context>(
+        ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+    return;
+  }
   auto norm_type = funcs::get_norm_from_string(normalization, forward);
   funcs::FFTR2CFunctor<Context, T, C> fft_r2c_func;
 

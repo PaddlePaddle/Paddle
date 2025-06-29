@@ -158,20 +158,6 @@ void exec_fft(const phi::XPUContext& ctx,
   transposed_input.Resize(collapsed_input_shape);
   DenseTensor& collapsed_input = transposed_input;
 
-  // Check if the number of elements participating in FFT transformation is at
-  // least 16
-  int64_t fft_elements = 1;
-  for (const auto& axis : axes) {
-    fft_elements *= in_sizes[axis];
-  }
-  PADDLE_ENFORCE_GE(
-      fft_elements,
-      16,
-      phi::errors::InvalidArgument("The number of elements participating in "
-                                   "FFT transformation must be at least 16, "
-                                   "but got %d.",
-                                   fft_elements));
-
   // make a collapsed output
   phi::DDim transposed_output_shape = out_sizes.transpose(dim_permute);
   std::vector<int64_t> collapsed_output_shape_;

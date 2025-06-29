@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -77,6 +77,19 @@ class FFTConfig {
     const auto batch_size = static_cast<plan_size_type>(sizes[0]);
     std::vector<plan_size_type> signal_sizes(sizes.cbegin() + 1, sizes.cend());
     const int signal_ndim = sizes.size() - 1;
+
+    // Check if the number of elements participating in FFT transformation is
+    // greater than 8 (XPU hardware requirement)
+    for (int i = 0; i < signal_ndim; ++i) {
+      if (signal_sizes[i] <= 8) {
+        PADDLE_THROW(phi::errors::InvalidArgument(
+            "XPU FFT requires all axes to have greater than 8 elements,"
+            "but axis %d has size %d.Set XFFT_DEBUG=1 environment variable"
+            "to inspect dimensions.",
+            i,
+            signal_sizes[i]));
+      }
+    }
 
     cufftType exec_type;
     exec_type = type_input(fft_type);
