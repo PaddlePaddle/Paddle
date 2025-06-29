@@ -24,6 +24,7 @@
 #pragma GCC diagnostic ignored "-Wunused-variable"
 COMMON_DECLARE_bool(check_nan_inf);
 COMMON_DECLARE_string(tensor_operants_mode);
+COMMON_DECLARE_bool(check_cuda_error);
 
 std::tuple<paddle::Tensor,
            paddle::Tensor&,
@@ -45,6 +46,9 @@ sync_batch_norm__ad_func(const paddle::Tensor& x,
   FLAGS_tensor_operants_mode = "eager";
   VLOG(3) << "Running AD API: "
           << "sync_batch_norm_";
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    egr::CUDAErrorCheck("sync_batch_norm__ad_func begin");
+  }
   // Dygraph Record Event
   phi::RecordEvent dygraph_entrance_record_event(
       "sync_batch_norm_ dygraph", phi::TracerEventType::Operator, 1);
@@ -352,7 +356,9 @@ sync_batch_norm__ad_func(const paddle::Tensor& x,
     VLOG(4) << paddle::string::Sprintf(
         INPUT_PRINT_TEMPLATE, input_str, output_str);
   }
-
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    egr::CUDAErrorCheck("sync_batch_norm__ad_func finish");
+  }
   // Returns
   return std::tuple<paddle::Tensor,
                     paddle::Tensor&,
@@ -385,6 +391,9 @@ sync_batch_norm__ad_func(const paddle::Tensor& x,
   FLAGS_tensor_operants_mode = "eager";
   VLOG(3) << "Running AD API: "
           << "sync_batch_norm_";
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    egr::CUDAErrorCheck("sparse::sync_batch_norm__ad_func begin");
+  }
   // Dygraph Record Event
   phi::RecordEvent dygraph_entrance_record_event(
       "sync_batch_norm_ dygraph", phi::TracerEventType::Operator, 1);
@@ -686,7 +695,9 @@ sync_batch_norm__ad_func(const paddle::Tensor& x,
     VLOG(4) << paddle::string::Sprintf(
         INPUT_PRINT_TEMPLATE, input_str, output_str);
   }
-
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    egr::CUDAErrorCheck("sparse::sync_batch_norm__ad_func finish");
+  }
   // Returns
   return std::tuple<paddle::Tensor,
                     paddle::Tensor&,

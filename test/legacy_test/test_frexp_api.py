@@ -96,5 +96,30 @@ class TestSplitsFloat64Case2(TestFrexpAPI):
         self.x_np = np.random.uniform(-1, 1, [4, 5, 2]).astype('float64')
 
 
+class TestFrexpAPI_ZeroSize(unittest.TestCase):
+    def setUp(self):
+        self.place = (
+            paddle.CUDAPlace(0)
+            if paddle.is_compiled_with_cuda()
+            else paddle.CPUPlace()
+        )
+        self.set_input()
+
+    def set_input(self):
+        self.x_np = np.random.uniform(-3, 3, [0, 12]).astype('float32')
+
+    def test_dygraph_api(self):
+        paddle.disable_static(self.place)
+        input_num = paddle.to_tensor(self.x_np)
+        input_num.stop_gradient = False
+        out1 = np.frexp(self.x_np)
+        out2 = paddle.frexp(input_num)
+        np.testing.assert_allclose(out1, out2)
+
+        paddle.sum(out2[0]).backward()
+        np.testing.assert_allclose(input_num.grad.shape, input_num.shape)
+        paddle.enable_static()
+
+
 if __name__ == "__main__":
     unittest.main()

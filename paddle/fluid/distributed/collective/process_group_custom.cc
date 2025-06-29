@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <list>
+
 #include "paddle/fluid/distributed/collective/process_group_custom.h"
 
 #include "paddle/common/flags.h"

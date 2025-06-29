@@ -26,26 +26,28 @@ class TestOpNameConflict(unittest.TestCase):
         paddle.enable_static()
         main = base.Program()
         startup = base.Program()
-        with base.unique_name.guard():
-            with base.program_guard(main, startup):
-                x = paddle.static.data(name="x", shape=[1], dtype='float32')
-                y = paddle.static.data(name="y", shape=[1], dtype='float32')
+        with (
+            base.unique_name.guard(),
+            base.program_guard(main, startup),
+        ):
+            x = paddle.static.data(name="x", shape=[1], dtype='float32')
+            y = paddle.static.data(name="y", shape=[1], dtype='float32')
 
-                m = paddle.log2(x, name="log2")
-                n = paddle.log2(y, name="log2")
+            m = paddle.log2(x, name="log2")
+            n = paddle.log2(y, name="log2")
 
-                place = base.CPUPlace()
-                exe = base.Executor(place)
-                m_v, n_v = exe.run(
-                    feed={
-                        "x": np.ones((1), "float32") * 1,
-                        "y": np.ones((1), "float32") * 2,
-                    },
-                    fetch_list=[m, n],
-                )
+            place = base.CPUPlace()
+            exe = base.Executor(place)
+            m_v, n_v = exe.run(
+                feed={
+                    "x": np.ones((1), "float32") * 1,
+                    "y": np.ones((1), "float32") * 2,
+                },
+                fetch_list=[m, n],
+            )
 
-                self.assertEqual(m_v[0], 0.0)
-                self.assertEqual(n_v[0], 1.0)
+            self.assertEqual(m_v[0], 0.0)
+            self.assertEqual(n_v[0], 1.0)
 
 
 if __name__ == '__main__':

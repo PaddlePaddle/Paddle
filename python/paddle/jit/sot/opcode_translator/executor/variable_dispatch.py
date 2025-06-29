@@ -62,7 +62,7 @@ from .dispatch_functions import (
     tensor_dim,
 )
 from .dispatcher import Dispatcher, optional
-from .tracker import ConstTracker, DanglingTracker, DummyTracker
+from .tracker import ConstTracker, DanglingTracker, DummyTracker, GetAttrTracker
 from .variables import (
     BuiltinVariable,
     CallableVariable,
@@ -250,6 +250,15 @@ Dispatcher.register(
     ("ConstantVariable | SymbolicVariable",),
     lambda var: VariableFactory.from_value(
         var.get_py_type(), graph=var.graph, tracker=DummyTracker([var])
+    ),
+)
+Dispatcher.register(
+    type,
+    ("VariableBase",),
+    lambda var: VariableFactory.from_value(
+        type(var.get_py_value()),
+        graph=var.graph,
+        tracker=GetAttrTracker(var, "__class__"),
     ),
 )
 
@@ -811,7 +820,7 @@ def str_encode(
     return ConstantVariable(
         var.get_py_value().encode(encoding=encoding.get_py_value()),
         graph=var.graph,
-        tracker=DummyTracker([var, encoding]),
+        tracker=DummyTracker([var, encoding, errors]),
     )
 
 
