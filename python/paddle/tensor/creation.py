@@ -980,6 +980,23 @@ def to_tensor(
             return _to_tensor_static(data, dtype, stop_gradient)
 
 
+def frombuffer(
+    buffer: NestedNumericSequence,
+    dtype: DTypeLike | None = None,
+    count: int = -1,
+    offset: int = 0,
+    place: PlaceLike | None = "cpu",
+) -> paddle.Tensor:
+    place = paddle.base.framework._get_paddle_place(place)
+    proto_dtype = paddle.base.framework.convert_to_proto_type(dtype)
+    out: paddle.base.libpaddle.DenseTensor = paddle.base.core.frombuffer(
+        buffer, proto_dtype, count, offset, place
+    )
+    if paddle.base.framework.in_dygraph_mode():
+        out = paddle.Tensor(out, place=place)
+    return out
+
+
 def full_like(
     x: paddle.Tensor,
     fill_value: bool | float,
