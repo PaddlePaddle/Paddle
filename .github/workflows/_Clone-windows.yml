@@ -41,16 +41,14 @@ jobs:
           git config --unset http.https://github.com/.extraheader
           git submodule foreach --recursive sh -c "git config --local --unset-all 'http.https://github.com/.extraheader'"
           git submodule foreach --recursive sh -c "git config remote.origin.fetch '+refs/heads/*:refs/remotes/origin/*'"
-          git switch $BRANCH
-          set +e
+          git switch %BRANCH%
           git branch -D test
-          set -e
           git gc
           git switch -c test
-          git fetch origin pull/${PR_ID}/head:pr
+          git fetch origin pull/%PR_ID%/head:pr
           git merge --no-ff pr
           git branch -d pr
-          call ${ci_scripts}/third_party_tag.sh
+          call %ci_scripts%/third_party_tag.sh
           git log --pretty=oneline -10
 
       - name: Upload paddle to bos
@@ -69,11 +67,12 @@ jobs:
           python -m pip install pycryptodome
           python -m pip install bce-python-sdk==0.8.74
           tar -zcf Paddle.tar.gz Paddle
-          python %BCE_FILE% Paddle.tar.gz paddle-github-action/PR/windows/${PR_ID}/${COMMIT_ID}
+          python %BCE_FILE% Paddle.tar.gz paddle-github-action/PR/windows/%PR_ID%/%COMMIT_ID%
+          del Paddle.tar.gz
 
       - name: Clean env
         run: |
-          cd -
-          git switch $BRANCH
+          cd ${{ github.workspace }}
+          git switch %BRANCH%
           git branch -D test
           git gc
