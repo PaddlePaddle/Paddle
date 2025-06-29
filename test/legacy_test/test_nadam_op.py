@@ -283,22 +283,24 @@ class TestNAdamAPI(unittest.TestCase):
         exe = base.Executor(place)
         train_prog = base.Program()
         startup = base.Program()
-        with base.program_guard(train_prog, startup):
-            with base.unique_name.guard():
-                data = paddle.static.data(name="data", shape=shape)
-                hidden = paddle.static.nn.fc(x=data, size=10)
-                loss = paddle.mean(hidden)
+        with (
+            base.program_guard(train_prog, startup),
+            base.unique_name.guard(),
+        ):
+            data = paddle.static.data(name="data", shape=shape)
+            hidden = paddle.static.nn.fc(x=data, size=10)
+            loss = paddle.mean(hidden)
 
-                beta1 = 0.85
-                beta2 = 0.95
-                opt = paddle.optimizer.NAdam(
-                    learning_rate=1e-5,
-                    beta1=beta1,
-                    beta2=beta2,
-                    weight_decay=0.01,
-                    epsilon=1e-8,
-                )
-                opt.minimize(loss)
+            beta1 = 0.85
+            beta2 = 0.95
+            opt = paddle.optimizer.NAdam(
+                learning_rate=1e-5,
+                beta1=beta1,
+                beta2=beta2,
+                weight_decay=0.01,
+                epsilon=1e-8,
+            )
+            opt.minimize(loss)
 
         exe.run(startup)
         data_np = np.random.random(shape).astype('float32')
@@ -313,22 +315,24 @@ class TestNAdamAPI(unittest.TestCase):
             exe = base.Executor(place)
             train_prog = paddle.static.Program()
             startup = paddle.static.Program()
-            with paddle.static.program_guard(train_prog, startup):
-                with base.unique_name.guard():
-                    data = paddle.static.data(name="data", shape=shape)
-                    hidden = paddle.static.nn.fc(x=data, size=10)
-                    loss = paddle.mean(hidden)
+            with (
+                paddle.static.program_guard(train_prog, startup),
+                base.unique_name.guard(),
+            ):
+                data = paddle.static.data(name="data", shape=shape)
+                hidden = paddle.static.nn.fc(x=data, size=10)
+                loss = paddle.mean(hidden)
 
-                    beta1 = 0.85
-                    beta2 = 0.95
-                    opt = paddle.optimizer.NAdam(
-                        learning_rate=1e-5,
-                        beta1=beta1,
-                        beta2=beta2,
-                        weight_decay=0.01,
-                        epsilon=1e-8,
-                    )
-                    opt.minimize(loss)
+                beta1 = 0.85
+                beta2 = 0.95
+                opt = paddle.optimizer.NAdam(
+                    learning_rate=1e-5,
+                    beta1=beta1,
+                    beta2=beta2,
+                    weight_decay=0.01,
+                    epsilon=1e-8,
+                )
+                opt.minimize(loss)
 
             exe.run(startup)
             data_np = np.random.random(shape).astype('float32')

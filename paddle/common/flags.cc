@@ -2132,3 +2132,14 @@ PHI_DEFINE_EXPORTED_int32(
     "Version 2 requires Ampere architecture or higher, "
     "while version 3 requires Hopper architecture.");
 #endif
+
+/**
+ * Operator related FLAG
+ * Name: FLAGS_check_cuda_error
+ * Value Range: bool, default=false
+ * Example:
+ * Note: Used to debug. Checking whether CUDA error occurred or not.
+ */
+PHI_DEFINE_EXPORTED_bool(check_cuda_error,
+                         false,
+                         "Checking whether CUDA error occurred or not.");

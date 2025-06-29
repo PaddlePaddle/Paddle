@@ -1382,87 +1382,87 @@ class OpTest(unittest.TestCase):
         # get kernel signature
         kernel_sig = self.get_kernel_signature(place)
         ir_program = paddle.static.Program()
-        with paddle.static.program_guard(ir_program):
-            with scope_guard(Scope()):
-                # prepare inps attributes feed
-                (
-                    static_inputs,
-                    attrs,
-                    input_dict,
-                    feed,
-                ) = self.get_ir_input_attr_dict_and_feed(stop_gradient=True)
-                # prepare args
-                args = OpTestUtils.prepare_python_api_arguments(
-                    self.python_api,
-                    static_inputs,
-                    attrs,
-                    kernel_sig,
-                    target_dtype=paddle.pir.core.DataType,
-                )
-                inputs_sig, attrs_sig, outputs_sig = kernel_sig
-                if hasattr(self, "python_out_sig"):
-                    outputs_sig = self.python_out_sig
-                args = OpTestUtils.assumption_assert_and_transform(
-                    args, len(inputs_sig)
-                )
-                ret_tuple = self.python_api(*args)
-                fetch_list = getattr(self, "fetch_list", [])
-                # if the fetch_list is customized by user, we use it directly.
-                # if not, fill the fetch_list by the user configured outputs in test.
-                # filter ret_tuple
-                ret_to_check = []
-                if len(fetch_list) == 0:
-                    if isinstance(ret_tuple, (tuple, list)):
-                        assert len(ret_tuple) == len(outputs_sig)
-                        for var, sig_name in zip(ret_tuple, outputs_sig):
-                            if no_check_set is not None and var in no_check_set:
-                                continue
-                            if not self._need_fetch(sig_name):
-                                continue
-                            if isinstance(var, list):
-                                ret_to_check.append(var)
-                                for v in var:
-                                    fetch_list.append(v)
-                            else:
-                                ret_to_check.append(var)
-                                fetch_list.append(var)
-                    elif isinstance(ret_tuple, paddle.base.libpaddle.pir.Value):
-                        fetch_list.append(ret_tuple)
-                        ret_to_check = ret_tuple
-                    elif ret_tuple is None:
-                        pass
-                    else:
-                        raise ValueError(
-                            "output of python api should be Value or list of Value or tuple of Value"
+        with (
+            paddle.static.program_guard(ir_program),
+            scope_guard(Scope()),
+        ):
+            # prepare inps attributes feed
+            (
+                static_inputs,
+                attrs,
+                input_dict,
+                feed,
+            ) = self.get_ir_input_attr_dict_and_feed(stop_gradient=True)
+            # prepare args
+            args = OpTestUtils.prepare_python_api_arguments(
+                self.python_api,
+                static_inputs,
+                attrs,
+                kernel_sig,
+                target_dtype=paddle.pir.core.DataType,
+            )
+            inputs_sig, attrs_sig, outputs_sig = kernel_sig
+            if hasattr(self, "python_out_sig"):
+                outputs_sig = self.python_out_sig
+            args = OpTestUtils.assumption_assert_and_transform(
+                args, len(inputs_sig)
+            )
+            ret_tuple = self.python_api(*args)
+            fetch_list = getattr(self, "fetch_list", [])
+            # if the fetch_list is customized by user, we use it directly.
+            # if not, fill the fetch_list by the user configured outputs in test.
+            # filter ret_tuple
+            ret_to_check = []
+            if len(fetch_list) == 0:
+                if isinstance(ret_tuple, (tuple, list)):
+                    assert len(ret_tuple) == len(outputs_sig)
+                    for var, sig_name in zip(ret_tuple, outputs_sig):
+                        if no_check_set is not None and var in no_check_set:
+                            continue
+                        if not self._need_fetch(sig_name):
+                            continue
+                        if isinstance(var, list):
+                            ret_to_check.append(var)
+                            for v in var:
+                                fetch_list.append(v)
+                        else:
+                            ret_to_check.append(var)
+                            fetch_list.append(var)
+                elif isinstance(ret_tuple, paddle.base.libpaddle.pir.Value):
+                    fetch_list.append(ret_tuple)
+                    ret_to_check = ret_tuple
+                elif ret_tuple is None:
+                    pass
+                else:
+                    raise ValueError(
+                        "output of python api should be Value or list of Value or tuple of Value"
+                    )
+
+            # executor run
+            executor = Executor(place)
+            outs = executor.run(ir_program, feed=feed, fetch_list=[fetch_list])
+            outputs_sig = [
+                sig_name
+                for sig_name in outputs_sig
+                if self._need_fetch(sig_name)
+            ]
+
+            if paddle.utils.is_sequence(
+                ret_to_check
+            ) and paddle.utils.is_sequence(outs):
+                outs = paddle.utils.pack_sequence_as(ret_to_check, outs)
+
+            result = construct_output_dict_by_kernel_sig(outs, outputs_sig)
+            if hasattr(self, "python_out_sig_sub_name"):
+                for key in self.python_out_sig_sub_name.keys():
+                    result[key][0] = {
+                        a: [b]
+                        for a, b in zip(
+                            self.python_out_sig_sub_name[key],
+                            result[key][0],
                         )
-
-                # executor run
-                executor = Executor(place)
-                outs = executor.run(
-                    ir_program, feed=feed, fetch_list=[fetch_list]
-                )
-                outputs_sig = [
-                    sig_name
-                    for sig_name in outputs_sig
-                    if self._need_fetch(sig_name)
-                ]
-
-                if paddle.utils.is_sequence(
-                    ret_to_check
-                ) and paddle.utils.is_sequence(outs):
-                    outs = paddle.utils.pack_sequence_as(ret_to_check, outs)
-
-                result = construct_output_dict_by_kernel_sig(outs, outputs_sig)
-                if hasattr(self, "python_out_sig_sub_name"):
-                    for key in self.python_out_sig_sub_name.keys():
-                        result[key][0] = {
-                            a: [b]
-                            for a, b in zip(
-                                self.python_out_sig_sub_name[key],
-                                result[key][0],
-                            )
-                        }
-                return result
+                    }
+            return result
 
     def _check_ir_output(self, place, program, feed_map, fetch_list, outs):
         if os.getenv("FLAGS_PIR_OPTEST") is None:
@@ -3939,135 +3939,131 @@ class OpTest(unittest.TestCase):
         # get kernel signature
         kernel_sig = self.get_kernel_signature(place)
         ir_program = paddle.static.Program()
-        with paddle.static.program_guard(ir_program):
-            with scope_guard(Scope()):
-                # prepare inps attributes feed
-                (
-                    static_inputs,
-                    attrs,
-                    inputs_dict,
-                    feed,
-                ) = self.get_ir_input_attr_dict_and_feed(stop_gradient=False)
-                # prepare args
-                args = OpTestUtils.prepare_python_api_arguments(
-                    self.python_api,
-                    static_inputs,
-                    attrs,
-                    kernel_sig,
-                    target_dtype=paddle.pir.core.DataType,
-                )
-                inputs_sig, attrs_sig, outputs_sig = kernel_sig
-                args = OpTestUtils.assumption_assert_and_transform(
-                    args, len(inputs_sig)
-                )
-                grad_outputs = []
-                if user_defined_grad_outputs is not None:
-                    # user_defined_grad_outputs here are numpy arrays
-                    if not isinstance(user_defined_grad_outputs, list):
-                        user_defined_grad_outputs = [user_defined_grad_outputs]
-                    for grad_out_value, idx in zip(
-                        user_defined_grad_outputs,
-                        range(len(user_defined_grad_outputs)),
-                    ):
-                        grad_val = paddle.static.data(
-                            name=f'val_grad_{idx}',
-                            shape=grad_out_value.shape,
-                            dtype=grad_out_value.dtype,
+        with (
+            paddle.static.program_guard(ir_program),
+            scope_guard(Scope()),
+        ):
+            # prepare inps attributes feed
+            (
+                static_inputs,
+                attrs,
+                inputs_dict,
+                feed,
+            ) = self.get_ir_input_attr_dict_and_feed(stop_gradient=False)
+            # prepare args
+            args = OpTestUtils.prepare_python_api_arguments(
+                self.python_api,
+                static_inputs,
+                attrs,
+                kernel_sig,
+                target_dtype=paddle.pir.core.DataType,
+            )
+            inputs_sig, attrs_sig, outputs_sig = kernel_sig
+            args = OpTestUtils.assumption_assert_and_transform(
+                args, len(inputs_sig)
+            )
+            grad_outputs = []
+            if user_defined_grad_outputs is not None:
+                # user_defined_grad_outputs here are numpy arrays
+                if not isinstance(user_defined_grad_outputs, list):
+                    user_defined_grad_outputs = [user_defined_grad_outputs]
+                for grad_out_value, idx in zip(
+                    user_defined_grad_outputs,
+                    range(len(user_defined_grad_outputs)),
+                ):
+                    grad_val = paddle.static.data(
+                        name=f'val_grad_{idx}',
+                        shape=grad_out_value.shape,
+                        dtype=grad_out_value.dtype,
+                    )
+                    grad_outputs.append(grad_val)
+                    feed.update({f'val_grad_{idx}': grad_out_value})
+                # delete the inputs which no need to calculate grad
+                for no_grad_val in no_grad_set:
+                    del static_inputs[no_grad_val]
+
+            ret_tuple = self.python_api(*args)
+            outputs = construct_output_dict_by_kernel_sig(
+                ret_tuple, outputs_sig
+            )
+            if hasattr(self, "python_out_sig_sub_name"):
+                for key in self.python_out_sig_sub_name.keys():
+                    outputs[key][0] = {
+                        a: [b]
+                        for a, b in zip(
+                            self.python_out_sig_sub_name[key],
+                            outputs[key][0],
                         )
-                        grad_outputs.append(grad_val)
-                        feed.update({f'val_grad_{idx}': grad_out_value})
-                    # delete the inputs which no need to calculate grad
-                    for no_grad_val in no_grad_set:
-                        del static_inputs[no_grad_val]
+                    }
+            fetch_list = getattr(self, "fetch_list", [])
 
-                ret_tuple = self.python_api(*args)
-                outputs = construct_output_dict_by_kernel_sig(
-                    ret_tuple, outputs_sig
-                )
-                if hasattr(self, "python_out_sig_sub_name"):
-                    for key in self.python_out_sig_sub_name.keys():
-                        outputs[key][0] = {
-                            a: [b]
-                            for a, b in zip(
-                                self.python_out_sig_sub_name[key],
-                                outputs[key][0],
-                            )
-                        }
-                fetch_list = getattr(self, "fetch_list", [])
-
-                # cast outputs
-                if self.dtype == np.uint16:
-                    cast_inputs = []
-                    for output_name in output_names:
-                        cast_input = self._find_var_in_pir(outputs, output_name)
-                        cast_inputs = cast_inputs + cast_input
-                    cast_outputs = []
-                    for cast_input in cast_inputs:
-                        if isinstance(
-                            cast_input, paddle.base.libpaddle.pir.Value
-                        ):
-                            cast_outputs.append(
-                                paddle.cast(
-                                    cast_input,
-                                    paddle.base.core.DataType.FLOAT32,
-                                )
-                            )
-                        else:
-                            raise TypeError(
-                                f"Unsupported test data type {type(cast_input)}."
-                            )
-
-                    outputs = {}
-                    for i in range(len(output_names)):
-                        outputs.update({output_names[i]: [cast_outputs[i]]})
-
-                outputs_valid = {}
+            # cast outputs
+            if self.dtype == np.uint16:
+                cast_inputs = []
                 for output_name in output_names:
-                    outputs_valid[output_name] = self._find_var_in_pir(
-                        outputs, output_name
-                    )
-                loss_inputs = []
-                for input_name in inputs_to_check:
-                    loss_inputs.append(inputs_dict[input_name])
-
-                if user_defined_grad_outputs is None:
-                    if len(outputs_valid) == 1:
-                        for outputs_valid_key in outputs_valid:
-                            loss = paddle.mean(
-                                outputs_valid[outputs_valid_key][0]
+                    cast_input = self._find_var_in_pir(outputs, output_name)
+                    cast_inputs = cast_inputs + cast_input
+                cast_outputs = []
+                for cast_input in cast_inputs:
+                    if isinstance(cast_input, paddle.base.libpaddle.pir.Value):
+                        cast_outputs.append(
+                            paddle.cast(
+                                cast_input,
+                                paddle.base.core.DataType.FLOAT32,
                             )
+                        )
                     else:
-                        avg_sum = []
-                        for cur_loss in outputs_valid:
-                            cur_avg_loss = paddle.mean(
-                                outputs_valid[cur_loss][0]
-                            )
-                            avg_sum.append(cur_avg_loss)
-                        loss_sum = paddle.add_n(avg_sum)
-                        loss = paddle.scale(
-                            loss_sum, scale=1.0 / float(len(avg_sum))
+                        raise TypeError(
+                            f"Unsupported test data type {type(cast_input)}."
                         )
 
-                    grad_inputs = ir_grad(
-                        outputs=paddle.utils.flatten(loss),
-                        inputs=paddle.utils.flatten(loss_inputs),
-                        grad_outputs=None,
-                    )
-                else:
-                    grad_inputs = ir_grad(
-                        outputs=paddle.utils.flatten(outputs),
-                        inputs=paddle.utils.flatten(static_inputs),
-                        grad_outputs=grad_outputs,
-                    )
-                fetch_list = list(grad_inputs)
-                # executor run
-                executor = paddle.static.Executor(place)
-                outs = executor.run(
-                    ir_program,
-                    feed=feed,
-                    fetch_list=fetch_list,
+                outputs = {}
+                for i in range(len(output_names)):
+                    outputs.update({output_names[i]: [cast_outputs[i]]})
+
+            outputs_valid = {}
+            for output_name in output_names:
+                outputs_valid[output_name] = self._find_var_in_pir(
+                    outputs, output_name
                 )
-                return outs
+            loss_inputs = []
+            for input_name in inputs_to_check:
+                loss_inputs.append(inputs_dict[input_name])
+
+            if user_defined_grad_outputs is None:
+                if len(outputs_valid) == 1:
+                    for outputs_valid_key in outputs_valid:
+                        loss = paddle.mean(outputs_valid[outputs_valid_key][0])
+                else:
+                    avg_sum = []
+                    for cur_loss in outputs_valid:
+                        cur_avg_loss = paddle.mean(outputs_valid[cur_loss][0])
+                        avg_sum.append(cur_avg_loss)
+                    loss_sum = paddle.add_n(avg_sum)
+                    loss = paddle.scale(
+                        loss_sum, scale=1.0 / float(len(avg_sum))
+                    )
+
+                grad_inputs = ir_grad(
+                    outputs=paddle.utils.flatten(loss),
+                    inputs=paddle.utils.flatten(loss_inputs),
+                    grad_outputs=None,
+                )
+            else:
+                grad_inputs = ir_grad(
+                    outputs=paddle.utils.flatten(outputs),
+                    inputs=paddle.utils.flatten(static_inputs),
+                    grad_outputs=grad_outputs,
+                )
+            fetch_list = list(grad_inputs)
+            # executor run
+            executor = paddle.static.Executor(place)
+            outs = executor.run(
+                ir_program,
+                feed=feed,
+                fetch_list=fetch_list,
+            )
+            return outs
 
 
 class OpTestTool:

@@ -35,50 +35,52 @@ class TestSoftmaxWithXe(unittest.TestCase):
         self, x, y, place, inplace=True, numeric_stable_mode=True
     ):
         m, n = x.shape
-        with paddle.pir_utils.OldIrGuard():
-            with base.program_guard(base.Program(), base.Program()):
-                with base.scope_guard(base.Scope()):
-                    x_d = paddle.static.data(
-                        name='x',
-                        shape=[m, n],
-                        dtype=self.dtype,
-                    )
-                    x_d.desc.set_need_check_feed(False)
-                    y_d = paddle.static.data(
-                        name='y',
-                        shape=[m, 1] if not self.soft_label else [m, n],
-                        dtype='int64' if not self.soft_label else self.dtype,
-                    )
-                    y_d.desc.set_need_check_feed(False)
-                    z_d, s_d = paddle.nn.functional.softmax_with_cross_entropy(
-                        x_d,
-                        y_d,
-                        soft_label=self.soft_label,
-                        return_softmax=True,
-                        numeric_stable_mode=numeric_stable_mode,
-                    )
+        with (
+            paddle.pir_utils.OldIrGuard(),
+            base.program_guard(base.Program(), base.Program()),
+            base.scope_guard(base.Scope()),
+        ):
+            x_d = paddle.static.data(
+                name='x',
+                shape=[m, n],
+                dtype=self.dtype,
+            )
+            x_d.desc.set_need_check_feed(False)
+            y_d = paddle.static.data(
+                name='y',
+                shape=[m, 1] if not self.soft_label else [m, n],
+                dtype='int64' if not self.soft_label else self.dtype,
+            )
+            y_d.desc.set_need_check_feed(False)
+            z_d, s_d = paddle.nn.functional.softmax_with_cross_entropy(
+                x_d,
+                y_d,
+                soft_label=self.soft_label,
+                return_softmax=True,
+                numeric_stable_mode=numeric_stable_mode,
+            )
 
-                    exe = base.Executor(place)
+            exe = base.Executor(place)
 
-                    exe.run(base.default_startup_program())
+            exe.run(base.default_startup_program())
 
-                    build_strategy = base.BuildStrategy()
-                    build_strategy.enable_inplace = inplace
-                    prog = base.CompiledProgram(
-                        base.default_main_program(),
-                        build_strategy=build_strategy,
-                    )
+            build_strategy = base.BuildStrategy()
+            build_strategy.enable_inplace = inplace
+            prog = base.CompiledProgram(
+                base.default_main_program(),
+                build_strategy=build_strategy,
+            )
 
-                    fetch_list = [z_d.name, s_d.name]
+            fetch_list = [z_d.name, s_d.name]
 
-                    print('Inplace is {}'.format("ON" if inplace else "OFF"))
+            print('Inplace is {}'.format("ON" if inplace else "OFF"))
 
-                    z, s = exe.run(
-                        prog,
-                        feed={x_d.name: x, y_d.name: y},
-                        fetch_list=fetch_list,
-                    )
-                    return z, s
+            z, s = exe.run(
+                prog,
+                feed={x_d.name: x, y_d.name: y},
+                fetch_list=fetch_list,
+            )
+            return z, s
 
     def main_with_place(self, place):
         x = np.random.random(size=[self.m, self.n]).astype(self.dtype)

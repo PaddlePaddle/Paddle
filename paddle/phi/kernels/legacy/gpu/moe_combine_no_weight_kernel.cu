@@ -28,7 +28,8 @@ __global__ void combine_no_weight_kernel(const T* __restrict__ x,
                                          const float epsilon) {
   extern __shared__ char shared_mem[];
   MTP* shared_weights = reinterpret_cast<MTP*>(shared_mem);
-  int64_t* shared_indices = reinterpret_cast<int64_t*>(shared_mem);
+  int64_t* shared_indices =
+      reinterpret_cast<int64_t*>(shared_mem + sizeof(MTP) * k);
 
   int64_t seq_i = blockIdx.x;
   for (int ki = threadIdx.x; ki < k; ki += blockDim.x) {
