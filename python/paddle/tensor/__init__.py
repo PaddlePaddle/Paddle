@@ -44,6 +44,7 @@ from .creation import (  # noqa: F401
     empty_like,
     eye,
     fill_constant,
+    frombuffer,
     full,
     full_like,
     geometric_,
