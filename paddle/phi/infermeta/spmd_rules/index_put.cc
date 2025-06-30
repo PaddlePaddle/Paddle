@@ -79,14 +79,8 @@ SpmdInfo IndexPutInferSpmd(const DistMetaTensor& x,
             indices[i].dims().size()));
   }
   // Step1: set dims_mapping for input
-  if (x_ndim > indices_size) {
-    for (int i = 0; i < indices_size; i++) {
-      x_dims_mapping[i] = -1;
-    }
-  } else {  // indices_size = x_ndim
-    for (int i = 0; i < x_ndim; i++) {
-      x_dims_mapping[i] = -1;
-    }
+  for (int i = 0; i < indices_size; i++) {
+    x_dims_mapping[i] = -1;
   }
   // Step2: set dims_mapping for output
   TensorDistAttr out_dist_attr = CopyTensorDistAttrForOutput(x_dist_attr_src);
@@ -185,14 +179,8 @@ SpmdInfo IndexPutGradInferSpmd(const DistMetaTensor& x,
             indices[i].dims().size()));
   }
   // Step1: set x_dims_mapping
-  if (x_ndim > indices_size) {
-    for (int i = 0; i < indices_size; i++) {
-      x_dims_mapping[i] = -1;
-    }
-  } else {  // indices_size = x_ndim
-    for (int i = 0; i < x_ndim; i++) {
-      x_dims_mapping[i] = -1;
-    }
+  for (int i = 0; i < indices_size; i++) {
+    x_dims_mapping[i] = -1;
   }
   // Step2: set dims_mapping for output
   TensorDistAttr x_grad_dist_attr =
