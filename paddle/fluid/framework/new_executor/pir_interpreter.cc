@@ -887,7 +887,7 @@ void PirInterpreter::BuildInstruction() {
         CREATE_INSTR(SelectInputInstruction);
       } else if (op.isa<paddle::dialect::SelectOutputOp>()) {
         CREATE_INSTR(SelectOutputInstruction);
-#ifdef PADDLE_WITH_CUDA || defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_CUDA
       } else if (op.isa<paddle::dialect::CudaGraphOp>()) {
         auto cuda_graph_instr_ptr =
             std::make_unique<CudaGraphInstruction>(op_idx++,
