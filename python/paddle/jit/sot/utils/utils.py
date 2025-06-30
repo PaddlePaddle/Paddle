@@ -440,7 +440,10 @@ class StepInfoManager(metaclass=Singleton):
 
     @property
     def need_back_trace(self):
-        return self.current_step_info.need_back_trace()
+        return (
+            self.current_step_info is not None
+            and self.current_step_info.need_back_trace()
+        )
 
     @property
     def current_step(self):
