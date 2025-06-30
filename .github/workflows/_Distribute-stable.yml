@@ -338,6 +338,4 @@ jobs:
         if: always()
         run: |
           set +e
-          docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'
-          docker stop ${{ env.container_name }}
-          docker rm ${{ env.container_name }}
+          docker exec -t ${{ env.container_name }} /bin/bash -c 'sleep 3d'
