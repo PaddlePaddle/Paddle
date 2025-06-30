@@ -110,8 +110,10 @@ def batch_images_from_tar(
         )
 
     with open(meta_file, mode='a') as meta:
-        for file in os.listdir(out_path):
-            meta.write(os.path.abspath(f"{out_path}/{file}") + "\n")
+        meta.writelines(
+            os.path.abspath(f"{out_path}/{file}") + "\n"
+            for file in os.listdir(out_path)
+        )
     return meta_file
 
 

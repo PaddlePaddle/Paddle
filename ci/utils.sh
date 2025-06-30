@@ -246,6 +246,24 @@ function determine_kunlun_runner() {
         exit 1
     fi
     cd $GITHUB_WORKSPACE
+}
+
+function determine_dcu_runner() {
+    runner_name=$1
+
+    if [[ $runner_name == "paddle-1" ]]; then
+        echo "HIP_VISIBLE_DEVICES=0,1" >> $GITHUB_ENV
+    elif [[ $runner_name == "paddle-2" ]]; then
+        echo "HIP_VISIBLE_DEVICES=2,3" >> $GITHUB_ENV
+    elif [[ $runner_name == "paddle-3" ]]; then
+        echo "HIP_VISIBLE_DEVICES=4,5" >> $GITHUB_ENV
+    elif [[ $runner_name == "paddle-4" ]]; then
+        echo "HIP_VISIBLE_DEVICES=6,7" >> $GITHUB_ENV
+    else
+        echo "Unknown runner name: $runner_name"
+        exit 1
+    fi
+    cd $GITHUB_WORKSPACE
     # rm -rf * .[^.]* .??*
 }
 
@@ -665,7 +683,7 @@ function case_count(){
 EOF
     testcases=$1
     num=$(echo $testcases|grep -o '\^'|wc -l)
-    if (( $2 == -1 )); then
+    if [[ "$2" == "-1" ]]; then
         echo "exclusive TestCases count is $num"
         echo "ipipe_log_param_Exclusive_TestCases_Count: $num" >> ${PADDLE_ROOT}/build/build_summary.txt
     else

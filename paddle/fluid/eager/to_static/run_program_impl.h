@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <unordered_set>
 #include <vector>
 #include "paddle/fluid/eager/eager_tensor.h"
 
@@ -23,7 +24,8 @@
 
 namespace egr::to_static {
 namespace details {
-void GcScope(paddle::framework::Scope *scope);
+void GcScope(paddle::framework::Scope *scope,
+             const std::unordered_set<std::string_view> &persistent_names = {});
 
 }  // namespace details
 

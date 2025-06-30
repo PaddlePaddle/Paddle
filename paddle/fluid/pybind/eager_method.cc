@@ -1643,7 +1643,7 @@ static PyObject* tensor__getitem_dygraph(TensorObject* self,
 #ifdef PADDLE_WITH_CUDA
     bool has_empty_index = false;
     for (const auto& tensor : transed_index) {
-      if (tensor.numel() == 0) {
+      if (!tensor.initialized()) {
         has_empty_index = true;
         break;
       }
