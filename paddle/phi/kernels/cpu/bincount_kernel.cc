@@ -36,7 +36,7 @@ void BincountInner(const Context& dev_ctx,
   if (input_data == nullptr) {
     phi::DDim out_dim{minlength};
     output->Resize(out_dim);
-    // Sine minlength may >0 , so fill with 0.
+    // Since minlength may >0 , so fill with 0.
     phi::Full<InputT, Context>(
         dev_ctx, phi::IntArray(common::vectorize(output->dims())), 0, output);
     return;
