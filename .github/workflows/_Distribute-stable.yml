@@ -322,9 +322,6 @@ jobs:
           tar --use-compress-program="pzstd" -xf Paddle.tar.gz --strip-components=1
           rm Paddle.tar.gz
           git checkout test
-          echo "Pull upstream $BRANCH"
-          source ${{ github.workspace }}/../../../proxy
-          bash ci/git_pull.sh $BRANCH
           '
 
       - name: Test

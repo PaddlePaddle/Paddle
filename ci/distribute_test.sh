@@ -99,6 +99,8 @@ function distribute_test() {
     sed -i '/lac/d' scripts/regression/requirements_ci.txt
 
     echo "::group::Install dependencies"
+    # node(swgu98): Switching to the distribute2 machine will install 1.18, which is inconsistent with the previous behavior
+    pip install onnx==1.17
     pip install -r requirements.txt
     pip install -r scripts/regression/requirements_ci.txt
     pip install -r ./csrc/requirements.txt
