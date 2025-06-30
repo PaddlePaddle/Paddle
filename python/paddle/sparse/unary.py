@@ -1193,7 +1193,7 @@ def pca_lowrank(
     def transpose(x):
         shape = x.shape
         perm = list(range(0, len(shape)))
-        perm = perm[:-2] + [perm[-1]] + [perm[-2]]
+        perm = [*perm[:-2], perm[-1], perm[-2]]
         if x.is_sparse():
             return paddle.sparse.transpose(x, perm)
         return paddle.transpose(x, perm)
@@ -1310,6 +1310,6 @@ def pca_lowrank(
         indices, c.values(), (n, 1), dtype=dtype, place=x.place
     )
 
-    ones_m1_t = paddle.ones(x.shape[:-2] + [1, m], dtype=dtype)
+    ones_m1_t = paddle.ones([*x.shape[:-2], 1, m], dtype=dtype)
     M = transpose(paddle.matmul(C_t.to_dense(), ones_m1_t))
     return svd_lowrank(x, q, niter=niter, M=M)

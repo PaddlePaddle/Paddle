@@ -58,18 +58,20 @@ class SparseLoadOp(unittest.TestCase):
     def save_origin_model(self, emb_array, fc_array):
         startup_program = base.framework.Program()
         test_program = base.framework.Program()
-        with base.framework.program_guard(test_program, startup_program):
-            with base.unique_name.guard():
-                loss = self.net(emb_array, fc_array)
-                optimizer = paddle.optimizer.Adam(1e-3)
-                optimizer.minimize(loss)
+        with (
+            base.framework.program_guard(test_program, startup_program),
+            base.unique_name.guard(),
+        ):
+            loss = self.net(emb_array, fc_array)
+            optimizer = paddle.optimizer.Adam(1e-3)
+            optimizer.minimize(loss)
 
-                exe = base.Executor(base.CPUPlace())
-                exe.run(startup_program)
-                model_path = tempfile.mkdtemp()
-                paddle.distributed.io.save_persistables(
-                    executor=exe, dirname=model_path
-                )
+            exe = base.Executor(base.CPUPlace())
+            exe.run(startup_program)
+            model_path = tempfile.mkdtemp()
+            paddle.distributed.io.save_persistables(
+                executor=exe, dirname=model_path
+            )
         return model_path
 
 

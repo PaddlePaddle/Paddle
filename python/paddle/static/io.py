@@ -1574,8 +1574,10 @@ def save(
         pickle_bytes = pickle.dumps(param_dict, protocol=protocol)
         with open(model_path + ".pdparams", 'wb') as f:
             max_bytes = 2**30
-            for i in range(0, len(pickle_bytes), max_bytes):
-                f.write(pickle_bytes[i : i + max_bytes])
+            f.writelines(
+                pickle_bytes[i : i + max_bytes]
+                for i in range(0, len(pickle_bytes), max_bytes)
+            )
     else:
         with open(model_path + ".pdparams", 'wb') as f:
             pickle.dump(param_dict, f, protocol=protocol)

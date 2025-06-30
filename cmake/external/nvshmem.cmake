@@ -45,7 +45,7 @@ if(NVSHMEM_SRC_TAR_PATH)
       && tar xf ${NVSHMEM_TAR_NAME} && mv nvshmem_src extern_nvshmem)
 else()
   set(NVSHMEM_URL
-      "https://developer.download.nvidia.com/compute/redist/nvshmem/3.2.5/source/${NVSHMEM_TAR_NAME}"
+      "https://paddle-ci.gz.bcebos.com/${NVSHMEM_TAR_NAME}"
       CACHE STRING "" FORCE)
   set(NVSHMEM_DOWNLOAD_COMMAND
       rm -rf extern_nvshmem ${NVSHMEM_TAR_NAME} && wget --no-check-certificate
@@ -63,8 +63,6 @@ set(NVSHMEM_PATCH_COMMAND
 set(NVSHMEM_LIB ${NVSHMEM_INSTALL_DIR}/lib/libnvshmem.a)
 set(NVSHMEM_BOOTSTRAP_UID_LIB
     ${NVSHMEM_INSTALL_DIR}/lib/nvshmem_bootstrap_uid.so.3)
-set(NVSHMEM_BOOTSTRAP_MPI_LIB
-    ${NVSHMEM_INSTALL_DIR}/lib/nvshmem_bootstrap_mpi.so.3)
 set(NVSHMEM_BOOTSTRAP_PMI_LIB
     ${NVSHMEM_INSTALL_DIR}/lib/nvshmem_bootstrap_pmi.so.3)
 set(NVSHMEM_BOOTSTRAP_PMI2_LIB
@@ -100,6 +98,7 @@ ExternalProject_Add(
              -DNVSHMEM_IBRC_SUPPORT=1
              -DNVSHMEM_BUILD_TESTS=0
              -DNVSHMEM_BUILD_EXAMPLES=0
+             -DNVSHMEM_MPI_SUPPORT=0
   CMAKE_CACHE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${NVSHMEM_INSTALL_DIR}
   BUILD_BYPRODUCTS ${NVSHMEM_LIB})
 

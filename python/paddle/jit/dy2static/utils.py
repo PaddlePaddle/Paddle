@@ -31,7 +31,7 @@ import types
 import warnings
 from contextlib import contextmanager
 from dataclasses import fields, is_dataclass
-from enum import Enum, Flag, auto
+from enum import Enum, Flag, IntEnum, auto
 from importlib.machinery import SourceFileLoader
 from typing import TYPE_CHECKING, Any
 
@@ -87,6 +87,8 @@ ENV_ENABLE_CINN_IN_DY2ST = BooleanEnvironmentVariable(
     "ENABLE_CINN_IN_DY2ST", True
 )
 
+DYNAMIC_DIMS_ATTR_NAME = "__sot_dynamic_dims"
+
 
 class Backend(Enum):
     CINN = auto()
@@ -115,6 +117,13 @@ class Backend(Enum):
 
     def is_phi(self):
         return self == Backend.PHI
+
+
+class CUDAGraphState(IntEnum):
+    DISABLE = 0
+    WARMUP = 1
+    CAPTURE = 2
+    REPLAY = 3
 
 
 class TransformOptions:
@@ -297,6 +306,10 @@ def is_dataclass_instance(obj):
 
 def is_dataclass_type(obj):
     return is_dataclass(obj) and isinstance(obj, type)
+
+
+def is_plain_dataclass_type(cls: type):
+    return is_dataclass_type(cls) and len(cls.__mro__) == 2
 
 
 def dataclass_as_dict(obj):
@@ -1012,3 +1025,26 @@ def patch_method_guard(
         yield
     finally:
         restorer(instance)
+
+
+def extract_tensor_dynamic_dims(
+    tensor: paddle.Tensor,
+) -> tuple[int]:
+    """
+    Extract dynamic dimensions from a paddle.Tensor.
+    Returns a list of dynamic dimensions or None if no dynamic dimensions exist.
+    """
+    if not isinstance(tensor, paddle.Tensor):
+        raise TypeError(
+            f"Expected a paddle.Tensor, but got {type(tensor).__name__}"
+        )
+
+    if not hasattr(tensor, DYNAMIC_DIMS_ATTR_NAME):
+        return []
+
+    dynamic_dims = getattr(tensor, DYNAMIC_DIMS_ATTR_NAME)
+    if not isinstance(dynamic_dims, tuple):
+        raise TypeError(
+            f"Expected {DYNAMIC_DIMS_ATTR_NAME} to be a tuple, but got {type(dynamic_dims).__name__}"
+        )
+    return dynamic_dims

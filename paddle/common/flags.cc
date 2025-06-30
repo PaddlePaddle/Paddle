@@ -1196,6 +1196,19 @@ PHI_DEFINE_EXPORTED_bool(
     "release graph-owned blocks that have not freed before relaunching.");
 
 /*
+ * CUDA Graph related FLAG
+ * Name: FLAGS_cuda_graph_blacklist
+ * Since Version: 3.1
+ * Value Range: string, default=""
+ * Example: FLAGS_cuda_graph_blacklist="op1,op2,op3" would
+ * blacklist op1, op2, op3 from being captured in CUDA Graph.
+ */
+PHI_DEFINE_EXPORTED_string(
+    cuda_graph_blacklist,
+    "",
+    "CUDA Graph blacklist, split by ',', e.g., 'op1,op2,op3'");
+
+/*
  * Executor related FLAG
  * Name: FLAGS_executor_log_deps_every_microseconds
  * Since Version: 2.5
@@ -2119,3 +2132,14 @@ PHI_DEFINE_EXPORTED_int32(
     "Version 2 requires Ampere architecture or higher, "
     "while version 3 requires Hopper architecture.");
 #endif
+
+/**
+ * Operator related FLAG
+ * Name: FLAGS_check_cuda_error
+ * Value Range: bool, default=false
+ * Example:
+ * Note: Used to debug. Checking whether CUDA error occurred or not.
+ */
+PHI_DEFINE_EXPORTED_bool(check_cuda_error,
+                         false,
+                         "Checking whether CUDA error occurred or not.");
