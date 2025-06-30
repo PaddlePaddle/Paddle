@@ -324,6 +324,9 @@ class TestBincountOp_ZeroSize(TestBincountOp):
         self.np_input = np.random.randint(low=0, high=20, size=0)
         self.Out = np.bincount(self.np_input, minlength=self.minlength)
 
+    def test_check_output(self):
+        self.check_output(check_pir=True, check_symbol_infer=True)
+
 
 if __name__ == "__main__":
     unittest.main()
