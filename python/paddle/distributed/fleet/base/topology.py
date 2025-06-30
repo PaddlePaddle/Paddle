@@ -21,11 +21,16 @@ from itertools import product
 from typing import TYPE_CHECKING, Any, Literal
 
 import paddle
+from paddle.distributed.fleet.proto.distributed_strategy_pb2 import (
+    NCCLConfig as NCCLConfig_Message,
+)
 from paddle.distributed.utils.nccl_utils import check_nccl_version_for_p2p
 
 from ..utils.log_util import logger
 
 if TYPE_CHECKING:
+
+    from paddle.base.libpaddle import NCCLConfig
     from paddle.distributed.collective import Group
 
 __all__ = ['CommunicateTopology', 'HybridCommunicateGroup']
@@ -40,14 +45,14 @@ g_pipeline_nccl_comm_init_option = int(
 )
 
 
-def message2nccl_config(message, default_name=None):
+def message2nccl_config(
+    message: NCCLConfig_Message | dict | None = None,
+    default_name: str | None = None,
+) -> NCCLConfig:
     if paddle.distributed.collective._default_backend != 'nccl':
         return None
-    from paddle.distributed.fleet.proto.distributed_strategy_pb2 import (
-        NCCLConfig,
-    )
 
-    if not isinstance(message, (NCCLConfig, dict)):
+    if not isinstance(message, (NCCLConfig_Message, dict)):
         return None
     from google.protobuf.json_format import MessageToDict
 
@@ -62,7 +67,9 @@ def message2nccl_config(message, default_name=None):
     return core.NCCLConfig.create(**ret_dict)
 
 
-def create_nccl_config(nccl_config):
+def create_nccl_config(
+    nccl_config: dict[str, int | str] | None = None,
+) -> NCCLConfig | None:
     """
 
     Function that creates nccl config.
@@ -81,8 +88,8 @@ def create_nccl_config(nccl_config):
 
     Examples:
         .. code-block:: python
-            :name: code-example1
 
+            >>> # doctest: +REQUIRES(env: DISTRIBUTED)
             >>> import paddle
             >>> import paddle.distributed as dist
             >>> dist.init_parallel_env()
@@ -94,8 +101,7 @@ def create_nccl_config(nccl_config):
             >>> local_rank = dist.get_rank(pg)
             >>> num_local_ranks = dist.get_world_size(pg)
             >>> x = paddle.ones(shape=[m, n], dtype=paddle.float32) * (local_rank + 1)
-            >>> gbl_x = x.clone()
-            >>> dist.all_reduce(gbl_x, group=pg)
+            >>> dist.all_reduce(x, group=pg)
 
     """
     return message2nccl_config(nccl_config, None)
@@ -250,7 +256,9 @@ class CommunicateTopology:
 
 class HybridCommunicateGroup:
     def __init__(
-        self, topology: CommunicateTopology, hybrid_configs=None
+        self,
+        topology: CommunicateTopology,
+        hybrid_configs: NCCLConfig_Message | None = None,
     ) -> None:
         self.nranks = paddle.distributed.get_world_size()
         self.global_rank = paddle.distributed.get_rank()
@@ -768,7 +776,7 @@ class EPHybridCommunicateGroup(HybridCommunicateGroup):
             "model",
         ],
         dims: list[int] = [1, 1, 1, 1, 1, 1, 1],
-        hybrid_configs=None,
+        hybrid_configs: NCCLConfig_Message | None = None,
     ) -> None:
         self.nranks = paddle.distributed.get_world_size()
         self.global_rank = paddle.distributed.get_rank()

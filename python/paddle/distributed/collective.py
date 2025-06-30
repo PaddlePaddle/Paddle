@@ -47,6 +47,9 @@ from .fleet.layers.mpu.mp_ops import (  # noqa: F401
 
 if TYPE_CHECKING:
     _BackendList: TypeAlias = Literal["gloo", "nccl", "xccl", "bkcl", "flagcx"]
+
+    from paddle.base.libpaddle import NCCLConfig
+
 __all__ = []
 
 _global_env = None
@@ -208,7 +211,7 @@ def new_group(
     backend: Literal['nccl'] | None = None,
     timeout: datetime.timedelta = _default_timeout,
     nccl_comm_init_option: int = 0,
-    nccl_config=None,
+    nccl_config: NCCLConfig | None = None,
 ) -> Group:
     """
 
