@@ -391,16 +391,7 @@ def convert_uint16_to_float(in_list):
 
 def get_places(string_format=False):
     places = []
-    if string_format:
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not paddle.is_compiled_with_cuda()
-        ):
-            places.append('cpu')
-        if paddle.is_compiled_with_cuda():
-            places.append('gpu')
-    else:
+    if not string_format:
         if (
             os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
             in ['1', 'true', 'on']
@@ -409,6 +400,15 @@ def get_places(string_format=False):
             places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
+    else:
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not paddle.is_compiled_with_cuda()
+        ):
+            places.append('cpu')
+        if paddle.is_compiled_with_cuda():
+            places.append('gpu')
     return places
 
 
