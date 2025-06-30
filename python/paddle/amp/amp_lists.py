@@ -27,6 +27,7 @@ WHITE_LIST = {
     'fused_gemm_epilogue',
     "fused_rotary_position_embedding",
     "flash_attn",
+    "flash_attn_v3",
 }
 
 # The set of ops that support fp16, and bf16 was unsupported.
