@@ -29,22 +29,24 @@ class TestShadowOutputSlice(unittest.TestCase):
             place.set_place(paddle.CPUPlace())
             new_scope = paddle.static.Scope()
             main_program = paddle.static.Program()
-            with paddle.static.scope_guard(new_scope):
-                with paddle.static.program_guard(main_program):
-                    x = paddle.ones([3, 9, 5], dtype='float32')
-                    y = paddle.static.data(
-                        name="y", shape=[3, 9, 5], dtype="float32"
-                    )
-                    z = x * y  # will be eliminated
+            with (
+                paddle.static.scope_guard(new_scope),
+                paddle.static.program_guard(main_program),
+            ):
+                x = paddle.ones([3, 9, 5], dtype='float32')
+                y = paddle.static.data(
+                    name="y", shape=[3, 9, 5], dtype="float32"
+                )
+                z = x * y  # will be eliminated
 
-                    _, out, _ = paddle.split(x, num_or_sections=3, axis=1)
-                    helper = LayerHelper('shadow_output')
-                    helper.append_op(
-                        type="shadow_output",
-                        inputs={"x": [out.name]},
-                        outputs={"out": [y.name]},
-                        attrs={"name": out.name},
-                    )
+                _, out, _ = paddle.split(x, num_or_sections=3, axis=1)
+                helper = LayerHelper('shadow_output')
+                helper.append_op(
+                    type="shadow_output",
+                    inputs={"x": [out.name]},
+                    outputs={"out": [y.name]},
+                    attrs={"name": out.name},
+                )
 
             new_program = pir.translate_to_pir(main_program.desc)
             op_names = [op.name() for op in new_program.global_block().ops]

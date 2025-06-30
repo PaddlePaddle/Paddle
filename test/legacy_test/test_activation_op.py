@@ -340,12 +340,14 @@ class TestExpm1API(unittest.TestCase):
 
     def test_static_api(self):
         def run(place):
-            with static_guard():
-                with paddle.static.program_guard(paddle.static.Program()):
-                    X = paddle.static.data('X', self.shape, dtype=self.dtype)
-                    out = paddle.expm1(X)
-                    exe = paddle.static.Executor(place)
-                    res = exe.run(feed={'X': self.x})
+            with (
+                static_guard(),
+                paddle.static.program_guard(paddle.static.Program()),
+            ):
+                X = paddle.static.data('X', self.shape, dtype=self.dtype)
+                out = paddle.expm1(X)
+                exe = paddle.static.Executor(place)
+                res = exe.run(feed={'X': self.x})
             for r in res:
                 np.testing.assert_allclose(self.out_ref, r, rtol=1e-05)
 
@@ -674,20 +676,22 @@ class TestSiluAPI(unittest.TestCase):
         paddle.enable_static()
 
     def test_errors(self):
-        with static_guard():
-            with paddle.static.program_guard(paddle.static.Program()):
-                # The input type must be Variable.
-                self.assertRaises(TypeError, F.silu, 1)
-                # The input dtype must be float16, float32, float64.
-                x_int32 = paddle.static.data(
-                    name='x_int32', shape=[11, 17], dtype='int32'
-                )
-                self.assertRaises(TypeError, F.silu, x_int32)
-                # support the input dtype is float16
-                x_fp16 = paddle.static.data(
-                    name='x_fp16', shape=[11, 17], dtype='float16'
-                )
-                F.silu(x_fp16)
+        with (
+            static_guard(),
+            paddle.static.program_guard(paddle.static.Program()),
+        ):
+            # The input type must be Variable.
+            self.assertRaises(TypeError, F.silu, 1)
+            # The input dtype must be float16, float32, float64.
+            x_int32 = paddle.static.data(
+                name='x_int32', shape=[11, 17], dtype='int32'
+            )
+            self.assertRaises(TypeError, F.silu, x_int32)
+            # support the input dtype is float16
+            x_fp16 = paddle.static.data(
+                name='x_fp16', shape=[11, 17], dtype='float16'
+            )
+            F.silu(x_fp16)
 
 
 class TestLogSigmoid(TestActivation):
@@ -774,20 +778,22 @@ class TestLogSigmoidAPI(unittest.TestCase):
         paddle.enable_static()
 
     def test_errors(self):
-        with static_guard():
-            with paddle.static.program_guard(paddle.static.Program()):
-                # The input type must be Variable.
-                self.assertRaises(TypeError, F.log_sigmoid, 1)
-                # The input dtype must be float16, float32, float64.
-                x_int32 = paddle.static.data(
-                    name='x_int32', shape=[11, 17], dtype='int32'
-                )
-                self.assertRaises(TypeError, F.log_sigmoid, x_int32)
-                # support the input dtype is float16
-                x_fp16 = paddle.static.data(
-                    name='x_fp16', shape=[11, 17], dtype='float16'
-                )
-                F.log_sigmoid(x_fp16)
+        with (
+            static_guard(),
+            paddle.static.program_guard(paddle.static.Program()),
+        ):
+            # The input type must be Variable.
+            self.assertRaises(TypeError, F.log_sigmoid, 1)
+            # The input dtype must be float16, float32, float64.
+            x_int32 = paddle.static.data(
+                name='x_int32', shape=[11, 17], dtype='int32'
+            )
+            self.assertRaises(TypeError, F.log_sigmoid, x_int32)
+            # support the input dtype is float16
+            x_fp16 = paddle.static.data(
+                name='x_fp16', shape=[11, 17], dtype='float16'
+            )
+            F.log_sigmoid(x_fp16)
 
 
 class TestTanh(TestActivation, TestParameter):
@@ -920,20 +926,22 @@ class TestTanhAPI(unittest.TestCase):
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
     def test_errors(self):
-        with static_guard():
-            with paddle.static.program_guard(paddle.static.Program()):
-                # The input type must be Variable.
-                self.assertRaises(TypeError, self.tanh, 1)
-                # The input dtype must be float16, float32.
-                x_int32 = paddle.static.data(
-                    name='x_int32', shape=[12, 10], dtype='int32'
-                )
-                self.assertRaises(TypeError, self.tanh, x_int32)
-                # support the input dtype is float16
-                x_fp16 = paddle.static.data(
-                    name='x_fp16', shape=[12, 10], dtype='float16'
-                )
-                self.tanh(x_fp16)
+        with (
+            static_guard(),
+            paddle.static.program_guard(paddle.static.Program()),
+        ):
+            # The input type must be Variable.
+            self.assertRaises(TypeError, self.tanh, 1)
+            # The input dtype must be float16, float32.
+            x_int32 = paddle.static.data(
+                name='x_int32', shape=[12, 10], dtype='int32'
+            )
+            self.assertRaises(TypeError, self.tanh, x_int32)
+            # support the input dtype is float16
+            x_fp16 = paddle.static.data(
+                name='x_fp16', shape=[12, 10], dtype='float16'
+            )
+            self.tanh(x_fp16)
 
 
 class TestTanhInplaceAPI(TestTanhAPI):
@@ -1131,21 +1139,23 @@ class TestSinhAPI(unittest.TestCase):
 class TestSinhOpError(unittest.TestCase):
 
     def test_errors(self):
-        with static_guard():
-            with paddle.static.program_guard(paddle.static.Program()):
-                # The input type must be Variable.
-                self.assertRaises(TypeError, paddle.sinh, 1)
-                # The input dtype must be float16, float32, float64.
-                x_int32 = paddle.static.data(
-                    name='x_int32', shape=[12, 10], dtype='int32'
+        with (
+            static_guard(),
+            paddle.static.program_guard(paddle.static.Program()),
+        ):
+            # The input type must be Variable.
+            self.assertRaises(TypeError, paddle.sinh, 1)
+            # The input dtype must be float16, float32, float64.
+            x_int32 = paddle.static.data(
+                name='x_int32', shape=[12, 10], dtype='int32'
+            )
+            self.assertRaises(TypeError, paddle.sinh, x_int32)
+            # support the input dtype is float16
+            if paddle.is_compiled_with_cuda():
+                x_fp16 = paddle.static.data(
+                    name='x_fp16', shape=[12, 10], dtype='float16'
                 )
-                self.assertRaises(TypeError, paddle.sinh, x_int32)
-                # support the input dtype is float16
-                if paddle.is_compiled_with_cuda():
-                    x_fp16 = paddle.static.data(
-                        name='x_fp16', shape=[12, 10], dtype='float16'
-                    )
-                    paddle.sinh(x_fp16)
+                paddle.sinh(x_fp16)
 
 
 class TestCosh(TestActivation):
@@ -1356,21 +1366,23 @@ class TestTanhshrinkAPI(unittest.TestCase):
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
     def test_errors(self):
-        with static_guard():
-            with paddle.static.program_guard(paddle.static.Program()):
-                # The input type must be Variable.
-                self.assertRaises(TypeError, F.tanhshrink, 1)
-                # The input dtype must be float16, float32, float64.
-                x_int32 = paddle.static.data(
-                    name='x_int32', shape=[12, 10], dtype='int32'
+        with (
+            static_guard(),
+            paddle.static.program_guard(paddle.static.Program()),
+        ):
+            # The input type must be Variable.
+            self.assertRaises(TypeError, F.tanhshrink, 1)
+            # The input dtype must be float16, float32, float64.
+            x_int32 = paddle.static.data(
+                name='x_int32', shape=[12, 10], dtype='int32'
+            )
+            self.assertRaises(TypeError, F.tanhshrink, x_int32)
+            # support the input dtype is float16
+            if paddle.is_compiled_with_cuda():
+                x_fp16 = paddle.static.data(
+                    name='x_fp16', shape=[12, 10], dtype='float16'
                 )
-                self.assertRaises(TypeError, F.tanhshrink, x_int32)
-                # support the input dtype is float16
-                if paddle.is_compiled_with_cuda():
-                    x_fp16 = paddle.static.data(
-                        name='x_fp16', shape=[12, 10], dtype='float16'
-                    )
-                    F.tanhshrink(x_fp16)
+                F.tanhshrink(x_fp16)
 
 
 def ref_hardshrink(x, threshold):
@@ -1474,20 +1486,22 @@ class TestHardShrinkAPI(unittest.TestCase):
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
     def test_errors(self):
-        with static_guard():
-            with paddle.static.program_guard(paddle.static.Program()):
-                # The input type must be Variable.
-                self.assertRaises(TypeError, F.hardshrink, 1)
-                # The input dtype must be float16, float32, float64.
-                x_int32 = paddle.static.data(
-                    name='x_int32', shape=[12, 10], dtype='int32'
-                )
-                self.assertRaises(TypeError, F.hardshrink, x_int32)
-                # support the input dtype is float16
-                x_fp16 = paddle.static.data(
-                    name='x_fp16', shape=[12, 10], dtype='float16'
-                )
-                F.hardshrink(x_fp16)
+        with (
+            static_guard(),
+            paddle.static.program_guard(paddle.static.Program()),
+        ):
+            # The input type must be Variable.
+            self.assertRaises(TypeError, F.hardshrink, 1)
+            # The input dtype must be float16, float32, float64.
+            x_int32 = paddle.static.data(
+                name='x_int32', shape=[12, 10], dtype='int32'
+            )
+            self.assertRaises(TypeError, F.hardshrink, x_int32)
+            # support the input dtype is float16
+            x_fp16 = paddle.static.data(
+                name='x_fp16', shape=[12, 10], dtype='float16'
+            )
+            F.hardshrink(x_fp16)
 
 
 def ref_hardtanh(x, min=-1.0, max=1.0):
@@ -1544,20 +1558,22 @@ class TestHardtanhAPI(unittest.TestCase):
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
     def test_errors(self):
-        with static_guard():
-            with paddle.static.program_guard(paddle.static.Program()):
-                # The input type must be Variable.
-                self.assertRaises(TypeError, F.hardtanh, 1)
-                # The input dtype must be float16, float32, float64.
-                x_int32 = paddle.static.data(
-                    name='x_int32', shape=[12, 10], dtype='int32'
-                )
-                self.assertRaises(TypeError, F.hardtanh, x_int32)
-                # support the input dtype is float16
-                x_fp16 = paddle.static.data(
-                    name='x_fp16', shape=[12, 10], dtype='float16'
-                )
-                F.hardtanh(x_fp16)
+        with (
+            static_guard(),
+            paddle.static.program_guard(paddle.static.Program()),
+        ):
+            # The input type must be Variable.
+            self.assertRaises(TypeError, F.hardtanh, 1)
+            # The input dtype must be float16, float32, float64.
+            x_int32 = paddle.static.data(
+                name='x_int32', shape=[12, 10], dtype='int32'
+            )
+            self.assertRaises(TypeError, F.hardtanh, x_int32)
+            # support the input dtype is float16
+            x_fp16 = paddle.static.data(
+                name='x_fp16', shape=[12, 10], dtype='float16'
+            )
+            F.hardtanh(x_fp16)
 
 
 def ref_softshrink(x, threshold=0.5):
@@ -1642,26 +1658,28 @@ class TestSoftshrinkAPI(unittest.TestCase):
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
     def test_errors(self):
-        with static_guard():
-            with paddle.static.program_guard(paddle.static.Program()):
-                # The input type must be Variable.
-                self.assertRaises(TypeError, F.softshrink, 1)
-                # The input dtype must be float16, float32, float64.
-                x_int32 = paddle.static.data(
-                    name='x_int32', shape=[12, 10], dtype='int32'
+        with (
+            static_guard(),
+            paddle.static.program_guard(paddle.static.Program()),
+        ):
+            # The input type must be Variable.
+            self.assertRaises(TypeError, F.softshrink, 1)
+            # The input dtype must be float16, float32, float64.
+            x_int32 = paddle.static.data(
+                name='x_int32', shape=[12, 10], dtype='int32'
+            )
+            self.assertRaises(TypeError, F.softshrink, x_int32)
+            # The threshold must be no less than zero
+            x_fp32 = paddle.static.data(
+                name='x_fp32', shape=[12, 10], dtype='float32'
+            )
+            self.assertRaises(ValueError, F.softshrink, x_fp32, -1.0)
+            # support the input dtype is float16
+            if core.is_compiled_with_cuda():
+                x_fp16 = paddle.static.data(
+                    name='x_fp16', shape=[12, 10], dtype='float16'
                 )
-                self.assertRaises(TypeError, F.softshrink, x_int32)
-                # The threshold must be no less than zero
-                x_fp32 = paddle.static.data(
-                    name='x_fp32', shape=[12, 10], dtype='float32'
-                )
-                self.assertRaises(ValueError, F.softshrink, x_fp32, -1.0)
-                # support the input dtype is float16
-                if core.is_compiled_with_cuda():
-                    x_fp16 = paddle.static.data(
-                        name='x_fp16', shape=[12, 10], dtype='float16'
-                    )
-                    F.softshrink(x_fp16)
+                F.softshrink(x_fp16)
 
 
 class TestSqrt(TestActivation, TestParameter):
@@ -3023,20 +3041,22 @@ class TestLeakyReluAPI(unittest.TestCase):
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
     def test_errors(self):
-        with static_guard():
-            with paddle.static.program_guard(paddle.static.Program()):
-                # The input type must be Variable.
-                self.assertRaises(TypeError, F.leaky_relu, 1)
-                # The input dtype must be float16, float32, float64.
-                x_int32 = paddle.static.data(
-                    name='x_int32', shape=[12, 10], dtype='int32'
-                )
-                self.assertRaises(TypeError, F.leaky_relu, x_int32)
-                # support the input dtype is float16
-                x_fp16 = paddle.static.data(
-                    name='x_fp16', shape=[12, 10], dtype='float16'
-                )
-                F.leaky_relu(x_fp16)
+        with (
+            static_guard(),
+            paddle.static.program_guard(paddle.static.Program()),
+        ):
+            # The input type must be Variable.
+            self.assertRaises(TypeError, F.leaky_relu, 1)
+            # The input dtype must be float16, float32, float64.
+            x_int32 = paddle.static.data(
+                name='x_int32', shape=[12, 10], dtype='int32'
+            )
+            self.assertRaises(TypeError, F.leaky_relu, x_int32)
+            # support the input dtype is float16
+            x_fp16 = paddle.static.data(
+                name='x_fp16', shape=[12, 10], dtype='float16'
+            )
+            F.leaky_relu(x_fp16)
 
 
 def gelu(x, approximate):
@@ -3207,20 +3227,22 @@ class TestGELUAPI(unittest.TestCase):
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
     def test_errors(self):
-        with static_guard():
-            with paddle.static.program_guard(paddle.static.Program()):
-                # The input type must be Variable.
-                self.assertRaises(TypeError, F.gelu, 1)
-                # The input dtype must be float16, float32, float64.
-                x_int32 = paddle.static.data(
-                    name='x_int32', shape=[11, 17], dtype='int32'
-                )
-                self.assertRaises(TypeError, F.gelu, x_int32)
-                # support the input dtype is float16
-                x_fp16 = paddle.static.data(
-                    name='x_fp16', shape=[11, 17], dtype='float16'
-                )
-                F.gelu(x_fp16)
+        with (
+            static_guard(),
+            paddle.static.program_guard(paddle.static.Program()),
+        ):
+            # The input type must be Variable.
+            self.assertRaises(TypeError, F.gelu, 1)
+            # The input dtype must be float16, float32, float64.
+            x_int32 = paddle.static.data(
+                name='x_int32', shape=[11, 17], dtype='int32'
+            )
+            self.assertRaises(TypeError, F.gelu, x_int32)
+            # support the input dtype is float16
+            x_fp16 = paddle.static.data(
+                name='x_fp16', shape=[11, 17], dtype='float16'
+            )
+            F.gelu(x_fp16)
 
 
 class TestBRelu(TestActivation):
@@ -3351,58 +3373,62 @@ class TestRelu6API(unittest.TestCase):
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
     def test_base_api(self):
-        with static_guard():
-            with base.program_guard(base.Program()):
-                x = paddle.static.data('X', self.x_np.shape, self.x_np.dtype)
-                out = paddle.nn.functional.relu6(x)
-                exe = base.Executor(self.place)
-                res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
+        with (
+            static_guard(),
+            base.program_guard(base.Program()),
+        ):
+            x = paddle.static.data('X', self.x_np.shape, self.x_np.dtype)
+            out = paddle.nn.functional.relu6(x)
+            exe = base.Executor(self.place)
+            res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
+
             out_ref = ref_relu6(self.x_np)
             np.testing.assert_allclose(out_ref, res[0], rtol=1e-05)
 
     def test_errors(self):
-        with static_guard():
-            with paddle.static.program_guard(paddle.static.Program()):
-                # The input type must be Variable.
-                self.assertRaises(TypeError, F.relu6, 1)
-                # The input dtype must be float16, float32, float64.
-                x_int32 = paddle.static.data(
-                    name='x_int32', shape=[12, 10], dtype='int32'
+        with (
+            static_guard(),
+            paddle.static.program_guard(paddle.static.Program()),
+        ):
+            # The input type must be Variable.
+            self.assertRaises(TypeError, F.relu6, 1)
+            # The input dtype must be float16, float32, float64.
+            x_int32 = paddle.static.data(
+                name='x_int32', shape=[12, 10], dtype='int32'
+            )
+            self.assertRaises(TypeError, F.relu6, x_int32)
+            # support the input dtype is float16
+            if paddle.is_compiled_with_cuda():
+                x_fp16 = paddle.static.data(
+                    name='x_fp16', shape=[12, 10], dtype='float16'
                 )
-                self.assertRaises(TypeError, F.relu6, x_int32)
-                # support the input dtype is float16
-                if paddle.is_compiled_with_cuda():
-                    x_fp16 = paddle.static.data(
-                        name='x_fp16', shape=[12, 10], dtype='float16'
-                    )
-                    F.relu6(x_fp16)
+                F.relu6(x_fp16)
 
 
 class TestRelu6APIWarnings(unittest.TestCase):
     def test_warnings(self):
-        with static_guard():
-            with warnings.catch_warnings(record=True) as context:
-                warnings.simplefilter("always")
+        with (
+            static_guard(),
+            warnings.catch_warnings(record=True) as context,
+        ):
+            warnings.simplefilter("always")
 
-                helper = LayerHelper("relu6")
-                data = paddle.static.data(
-                    name='data', shape=[None, 3, 32, 32], dtype='float32'
-                )
-                out = helper.create_variable_for_type_inference(
-                    dtype=data.dtype
-                )
-                os.environ['FLAGS_print_extra_attrs'] = "1"
-                helper.append_op(
-                    type="relu6",
-                    inputs={'X': data},
-                    outputs={'Out': out},
-                    attrs={'threshold': 6.0},
-                )
-                self.assertTrue(
-                    "op relu6 use extra_attr: threshold"
-                    in str(context[-1].message)
-                )
-                os.environ['FLAGS_print_extra_attrs'] = "0"
+            helper = LayerHelper("relu6")
+            data = paddle.static.data(
+                name='data', shape=[None, 3, 32, 32], dtype='float32'
+            )
+            out = helper.create_variable_for_type_inference(dtype=data.dtype)
+            os.environ['FLAGS_print_extra_attrs'] = "1"
+            helper.append_op(
+                type="relu6",
+                inputs={'X': data},
+                outputs={'Out': out},
+                attrs={'threshold': 6.0},
+            )
+            self.assertTrue(
+                "op relu6 use extra_attr: threshold" in str(context[-1].message)
+            )
+            os.environ['FLAGS_print_extra_attrs'] = "0"
 
 
 def ref_hardswish(x, threshold=6.0, scale=6.0, offset=3.0):
@@ -3551,20 +3577,22 @@ class TestHardswishAPI(unittest.TestCase):
             np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
 
     def test_errors(self):
-        with static_guard():
-            with paddle.static.program_guard(paddle.static.Program()):
-                # The input type must be Variable.
-                self.assertRaises(TypeError, F.hardswish, 1)
-                # The input dtype must be float16, float32, float64.
-                x_int32 = paddle.static.data(
-                    name='x_int32', shape=[12, 10], dtype='int32'
-                )
-                self.assertRaises(TypeError, F.hardswish, x_int32)
-                # support the input dtype is float16
-                x_fp16 = paddle.static.data(
-                    name='x_fp16', shape=[12, 10], dtype='float16'
-                )
-                F.hardswish(x_fp16)
+        with (
+            static_guard(),
+            paddle.static.program_guard(paddle.static.Program()),
+        ):
+            # The input type must be Variable.
+            self.assertRaises(TypeError, F.hardswish, 1)
+            # The input dtype must be float16, float32, float64.
+            x_int32 = paddle.static.data(
+                name='x_int32', shape=[12, 10], dtype='int32'
+            )
+            self.assertRaises(TypeError, F.hardswish, x_int32)
+            # support the input dtype is float16
+            x_fp16 = paddle.static.data(
+                name='x_fp16', shape=[12, 10], dtype='float16'
+            )
+            F.hardswish(x_fp16)
 
 
 class TestSoftRelu(TestActivation):
@@ -3714,20 +3742,22 @@ class TestELUAPI(unittest.TestCase):
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
     def test_errors(self):
-        with static_guard():
-            with paddle.static.program_guard(paddle.static.Program()):
-                # The input type must be Variable.
-                self.assertRaises(TypeError, self.elu, 1)
-                # The input dtype must be float16, float32, float64.
-                x_int32 = paddle.static.data(
-                    name='x_int32', shape=[10, 12], dtype='int32'
-                )
-                self.assertRaises(TypeError, self.elu, x_int32)
-                # support the input dtype is float16
-                x_fp16 = paddle.static.data(
-                    name='x_fp16', shape=[10, 12], dtype='float16'
-                )
-                self.elu(x_fp16)
+        with (
+            static_guard(),
+            paddle.static.program_guard(paddle.static.Program()),
+        ):
+            # The input type must be Variable.
+            self.assertRaises(TypeError, self.elu, 1)
+            # The input dtype must be float16, float32, float64.
+            x_int32 = paddle.static.data(
+                name='x_int32', shape=[10, 12], dtype='int32'
+            )
+            self.assertRaises(TypeError, self.elu, x_int32)
+            # support the input dtype is float16
+            x_fp16 = paddle.static.data(
+                name='x_fp16', shape=[10, 12], dtype='float16'
+            )
+            self.elu(x_fp16)
 
 
 class TestELUInplaceAPI(TestELUAPI):
@@ -3795,14 +3825,16 @@ class TestCELUAPI(unittest.TestCase):
         self.celu = F.celu
 
     def test_static_api(self):
-        with static_guard():
-            with paddle.static.program_guard(paddle.static.Program()):
-                x = paddle.static.data('X', [10, 12], dtype="float32")
-                out1 = self.celu(x, 1.5)
-                m = paddle.nn.CELU(1.5)
-                out2 = m(x)
-                exe = paddle.static.Executor(self.place)
-                res = exe.run(feed={'X': self.x_np}, fetch_list=[out1, out2])
+        with (
+            static_guard(),
+            paddle.static.program_guard(paddle.static.Program()),
+        ):
+            x = paddle.static.data('X', [10, 12], dtype="float32")
+            out1 = self.celu(x, 1.5)
+            m = paddle.nn.CELU(1.5)
+            out2 = m(x)
+            exe = paddle.static.Executor(self.place)
+            res = exe.run(feed={'X': self.x_np}, fetch_list=[out1, out2])
             out_ref = celu(self.x_np, 1.5)
             for r in res:
                 np.testing.assert_allclose(out_ref, r, rtol=1e-05)
@@ -3827,25 +3859,27 @@ class TestCELUAPI(unittest.TestCase):
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
     def test_errors(self):
-        with static_guard():
-            with paddle.static.program_guard(paddle.static.Program()):
-                # The input type must be Variable.
-                self.assertRaises(TypeError, self.celu, 1)
-                # The input dtype must be float16, float32, float64.
-                x_int32 = paddle.static.data(
-                    name='x_int32', shape=[10, 12], dtype='int32'
-                )
-                self.assertRaises(TypeError, self.celu, x_int32)
-                # The alpha must be not equal 0
-                x_fp32 = paddle.static.data(
-                    name='x_fp32', shape=[10, 12], dtype='float32'
-                )
-                self.assertRaises(ZeroDivisionError, F.celu, x_fp32, 0)
-                # support the input dtype is float16
-                x_fp16 = paddle.static.data(
-                    name='x_fp16', shape=[10, 12], dtype='float16'
-                )
-                self.celu(x_fp16)
+        with (
+            static_guard(),
+            paddle.static.program_guard(paddle.static.Program()),
+        ):
+            # The input type must be Variable.
+            self.assertRaises(TypeError, self.celu, 1)
+            # The input dtype must be float16, float32, float64.
+            x_int32 = paddle.static.data(
+                name='x_int32', shape=[10, 12], dtype='int32'
+            )
+            self.assertRaises(TypeError, self.celu, x_int32)
+            # The alpha must be not equal 0
+            x_fp32 = paddle.static.data(
+                name='x_fp32', shape=[10, 12], dtype='float32'
+            )
+            self.assertRaises(ZeroDivisionError, F.celu, x_fp32, 0)
+            # support the input dtype is float16
+            x_fp16 = paddle.static.data(
+                name='x_fp16', shape=[10, 12], dtype='float16'
+            )
+            self.celu(x_fp16)
 
 
 class TestReciprocal(TestActivation):
@@ -4831,21 +4865,23 @@ class TestSTanhAPI(unittest.TestCase):
             np.testing.assert_allclose(out_ref, res[0], rtol=1e-05)
 
     def test_errors(self):
-        with static_guard():
-            with paddle.static.program_guard(paddle.static.Program()):
-                # The input type must be Variable.
-                self.assertRaises(TypeError, paddle.stanh, 1)
-                # The input dtype must be float16, float32, float64.
-                x_int32 = paddle.static.data(
-                    name='x_int32', shape=[12, 10], dtype='int32'
+        with (
+            static_guard(),
+            paddle.static.program_guard(paddle.static.Program()),
+        ):
+            # The input type must be Variable.
+            self.assertRaises(TypeError, paddle.stanh, 1)
+            # The input dtype must be float16, float32, float64.
+            x_int32 = paddle.static.data(
+                name='x_int32', shape=[12, 10], dtype='int32'
+            )
+            self.assertRaises(TypeError, paddle.stanh, x_int32)
+            # support the input dtype is float16
+            if core.is_compiled_with_cuda():
+                x_fp16 = paddle.static.data(
+                    name='x_fp16', shape=[12, 10], dtype='float16'
                 )
-                self.assertRaises(TypeError, paddle.stanh, x_int32)
-                # support the input dtype is float16
-                if core.is_compiled_with_cuda():
-                    x_fp16 = paddle.static.data(
-                        name='x_fp16', shape=[12, 10], dtype='float16'
-                    )
-                    paddle.stanh(x_fp16)
+                paddle.stanh(x_fp16)
 
 
 class TestSTanhAPIScaleA(TestSTanhAPI):
@@ -5007,21 +5043,23 @@ class TestSoftplusAPI(unittest.TestCase):
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
     def test_errors(self):
-        with static_guard():
-            with paddle.static.program_guard(paddle.static.Program()):
-                # The input type must be Variable.
-                self.assertRaises(TypeError, F.softplus, 1)
-                # The input dtype must be float16, float32, float64.
-                x_int32 = paddle.static.data(
-                    name='x_int32', shape=[12, 10], dtype='int32'
+        with (
+            static_guard(),
+            paddle.static.program_guard(paddle.static.Program()),
+        ):
+            # The input type must be Variable.
+            self.assertRaises(TypeError, F.softplus, 1)
+            # The input dtype must be float16, float32, float64.
+            x_int32 = paddle.static.data(
+                name='x_int32', shape=[12, 10], dtype='int32'
+            )
+            self.assertRaises(TypeError, F.softplus, x_int32)
+            # support the input dtype is float16
+            if paddle.is_compiled_with_cuda():
+                x_fp16 = paddle.static.data(
+                    name='x_fp16', shape=[12, 10], dtype='float16'
                 )
-                self.assertRaises(TypeError, F.softplus, x_int32)
-                # support the input dtype is float16
-                if paddle.is_compiled_with_cuda():
-                    x_fp16 = paddle.static.data(
-                        name='x_fp16', shape=[12, 10], dtype='float16'
-                    )
-                    F.softplus(x_fp16)
+                F.softplus(x_fp16)
 
 
 def ref_softsign(x):
@@ -5140,21 +5178,23 @@ class TestSoftsignAPI(unittest.TestCase):
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
     def test_errors(self):
-        with static_guard():
-            with paddle.static.program_guard(paddle.static.Program()):
-                # The input type must be Variable.
-                self.assertRaises(TypeError, F.softsign, 1)
-                # The input dtype must be float16, float32, float64.
-                x_int32 = paddle.static.data(
-                    name='x_int32', shape=[12, 10], dtype='int32'
+        with (
+            static_guard(),
+            paddle.static.program_guard(paddle.static.Program()),
+        ):
+            # The input type must be Variable.
+            self.assertRaises(TypeError, F.softsign, 1)
+            # The input dtype must be float16, float32, float64.
+            x_int32 = paddle.static.data(
+                name='x_int32', shape=[12, 10], dtype='int32'
+            )
+            self.assertRaises(TypeError, F.softsign, x_int32)
+            # support the input dtype is float16
+            if core.is_compiled_with_cuda():
+                x_fp16 = paddle.static.data(
+                    name='x_fp16', shape=[12, 10], dtype='float16'
                 )
-                self.assertRaises(TypeError, F.softsign, x_int32)
-                # support the input dtype is float16
-                if core.is_compiled_with_cuda():
-                    x_fp16 = paddle.static.data(
-                        name='x_fp16', shape=[12, 10], dtype='float16'
-                    )
-                    F.softsign(x_fp16)
+                F.softsign(x_fp16)
 
 
 def ref_thresholded_relu(x, threshold=1.0, value=0.0):
@@ -5251,21 +5291,23 @@ class TestThresholdedReluAPI(unittest.TestCase):
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
     def test_errors(self):
-        with static_guard():
-            with paddle.static.program_guard(paddle.static.Program()):
-                # The input type must be Variable.
-                self.assertRaises(TypeError, F.thresholded_relu, 1)
-                # The input dtype must be float16, float32, float64.
-                x_int32 = paddle.static.data(
-                    name='x_int32', shape=[12, 10], dtype='int32'
+        with (
+            static_guard(),
+            paddle.static.program_guard(paddle.static.Program()),
+        ):
+            # The input type must be Variable.
+            self.assertRaises(TypeError, F.thresholded_relu, 1)
+            # The input dtype must be float16, float32, float64.
+            x_int32 = paddle.static.data(
+                name='x_int32', shape=[12, 10], dtype='int32'
+            )
+            self.assertRaises(TypeError, F.thresholded_relu, x_int32)
+            # support the input dtype is float16
+            if paddle.is_compiled_with_cuda():
+                x_fp16 = paddle.static.data(
+                    name='x_fp16', shape=[12, 10], dtype='float16'
                 )
-                self.assertRaises(TypeError, F.thresholded_relu, x_int32)
-                # support the input dtype is float16
-                if paddle.is_compiled_with_cuda():
-                    x_fp16 = paddle.static.data(
-                        name='x_fp16', shape=[12, 10], dtype='float16'
-                    )
-                    F.thresholded_relu(x_fp16)
+                F.thresholded_relu(x_fp16)
 
 
 def ref_hardsigmoid(x, slope=0.166666666666667, offset=0.5):
@@ -5388,20 +5430,22 @@ class TestHardsigmoidAPI(unittest.TestCase):
         np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
 
     def test_errors(self):
-        with static_guard():
-            with paddle.static.program_guard(paddle.static.Program()):
-                # The input type must be Variable.
-                self.assertRaises(TypeError, F.hardsigmoid, 1)
-                # The input dtype must be float16, float32, float64.
-                x_int32 = paddle.static.data(
-                    name='x_int32', shape=[12, 10], dtype='int32'
-                )
-                self.assertRaises(TypeError, F.hardsigmoid, x_int32)
-                # support the input dtype is float16
-                x_fp16 = paddle.static.data(
-                    name='x_fp16', shape=[12, 10], dtype='float16'
-                )
-                F.hardsigmoid(x_fp16)
+        with (
+            static_guard(),
+            paddle.static.program_guard(paddle.static.Program()),
+        ):
+            # The input type must be Variable.
+            self.assertRaises(TypeError, F.hardsigmoid, 1)
+            # The input dtype must be float16, float32, float64.
+            x_int32 = paddle.static.data(
+                name='x_int32', shape=[12, 10], dtype='int32'
+            )
+            self.assertRaises(TypeError, F.hardsigmoid, x_int32)
+            # support the input dtype is float16
+            x_fp16 = paddle.static.data(
+                name='x_fp16', shape=[12, 10], dtype='float16'
+            )
+            F.hardsigmoid(x_fp16)
 
 
 def ref_swish(x):
@@ -5482,31 +5526,35 @@ class TestSwishAPI(unittest.TestCase):
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
     def test_base_api(self):
-        with static_guard():
-            with base.program_guard(base.Program()):
-                x = paddle.static.data('X', self.x_np.shape, self.x_np.dtype)
-                out = paddle.nn.functional.swish(x)
-                exe = base.Executor(self.place)
-                res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
+        with (
+            static_guard(),
+            base.program_guard(base.Program()),
+        ):
+            x = paddle.static.data('X', self.x_np.shape, self.x_np.dtype)
+            out = paddle.nn.functional.swish(x)
+            exe = base.Executor(self.place)
+            res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
             out_ref = ref_swish(self.x_np)
             np.testing.assert_allclose(out_ref, res[0], rtol=1e-05)
 
     def test_errors(self):
-        with static_guard():
-            with paddle.static.program_guard(paddle.static.Program()):
-                # The input type must be Variable.
-                self.assertRaises(TypeError, F.swish, 1)
-                # The input dtype must be float16, float32, float64.
-                x_int32 = paddle.static.data(
-                    name='x_int32', shape=[12, 10], dtype='int32'
+        with (
+            static_guard(),
+            paddle.static.program_guard(paddle.static.Program()),
+        ):
+            # The input type must be Variable.
+            self.assertRaises(TypeError, F.swish, 1)
+            # The input dtype must be float16, float32, float64.
+            x_int32 = paddle.static.data(
+                name='x_int32', shape=[12, 10], dtype='int32'
+            )
+            self.assertRaises(TypeError, F.swish, x_int32)
+            # support the input dtype is float16
+            if paddle.is_compiled_with_cuda():
+                x_fp16 = paddle.static.data(
+                    name='x_fp16', shape=[12, 10], dtype='float16'
                 )
-                self.assertRaises(TypeError, F.swish, x_int32)
-                # support the input dtype is float16
-                if paddle.is_compiled_with_cuda():
-                    x_fp16 = paddle.static.data(
-                        name='x_fp16', shape=[12, 10], dtype='float16'
-                    )
-                    F.swish(x_fp16)
+                F.swish(x_fp16)
 
 
 def ref_mish(x, threshold=20.0):
@@ -5589,30 +5637,34 @@ class TestMishAPI(unittest.TestCase):
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
     def test_base_api(self):
-        with static_guard():
-            with paddle.static.program_guard(paddle.static.Program()):
-                x = paddle.static.data('X', self.x_np.shape, self.x_np.dtype)
-                out = paddle.nn.functional.mish(x)
-                exe = base.Executor(self.place)
-                res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
+        with (
+            static_guard(),
+            paddle.static.program_guard(paddle.static.Program()),
+        ):
+            x = paddle.static.data('X', self.x_np.shape, self.x_np.dtype)
+            out = paddle.nn.functional.mish(x)
+            exe = base.Executor(self.place)
+            res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
             out_ref = ref_mish(self.x_np)
             np.testing.assert_allclose(out_ref, res[0], rtol=1e-05)
 
     def test_errors(self):
-        with static_guard():
-            with paddle.static.program_guard(paddle.static.Program()):
-                # The input type must be Variable.
-                self.assertRaises(TypeError, F.mish, 1)
-                # The input dtype must be float16, float32, float64.
-                x_int32 = paddle.static.data(
-                    name='x_int32', shape=[12, 10], dtype='int32'
-                )
-                self.assertRaises(TypeError, F.mish, x_int32)
-                # support the input dtype is float16
-                x_fp16 = paddle.static.data(
-                    name='x_fp16', shape=[12, 10], dtype='float16'
-                )
-                F.mish(x_fp16)
+        with (
+            static_guard(),
+            paddle.static.program_guard(paddle.static.Program()),
+        ):
+            # The input type must be Variable.
+            self.assertRaises(TypeError, F.mish, 1)
+            # The input dtype must be float16, float32, float64.
+            x_int32 = paddle.static.data(
+                name='x_int32', shape=[12, 10], dtype='int32'
+            )
+            self.assertRaises(TypeError, F.mish, x_int32)
+            # support the input dtype is float16
+            x_fp16 = paddle.static.data(
+                name='x_fp16', shape=[12, 10], dtype='float16'
+            )
+            F.mish(x_fp16)
 
 
 # ------------------ Test Cudnn Activation----------------------

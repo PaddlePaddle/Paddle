@@ -96,8 +96,7 @@ static PyObject *eager_api_run_program(PyObject *self,
     }
     framework::AttributeMap attrs;
     VLOG(6) << "Start PIR ConstructAttrMapFromPyArgs";
-    ConstructAttrMapForRunProgram(
-        "run_program", args, 4, PyTuple_GET_SIZE(args), attrs);
+    ConstructAttrMapForRunProgram("run_program", args, 4, attrs);
 
     VLOG(6) << "Finish Pir ConstructAttrMapFromPyArgs";
     tstate = PyEval_SaveThread();

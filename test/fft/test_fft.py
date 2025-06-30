@@ -315,11 +315,13 @@ class TestFft2Exception(unittest.TestCase):
         - axis type error
         - norm out of range
         """
-        with paddle.base.dygraph.guard(self.place):
-            with self.assertRaises(self.expect_exception):
-                paddle.fft.fft2(
-                    paddle.to_tensor(self.x), self.n, self.axis, self.norm
-                )
+        with (
+            paddle.base.dygraph.guard(self.place),
+            self.assertRaises(self.expect_exception),
+        ):
+            paddle.fft.fft2(
+                paddle.to_tensor(self.x), self.n, self.axis, self.norm
+            )
 
 
 @place(DEVICES)
@@ -846,11 +848,13 @@ class TestHfftException(unittest.TestCase):
         - axis type error
         - norm out of range
         """
-        with paddle.base.dygraph.guard(self.place):
-            with self.assertRaises(self.expect_exception):
-                paddle.fft.hfft(
-                    paddle.to_tensor(self.x), self.n, self.axis, self.norm
-                )
+        with (
+            paddle.base.dygraph.guard(self.place),
+            self.assertRaises(self.expect_exception),
+        ):
+            paddle.fft.hfft(
+                paddle.to_tensor(self.x), self.n, self.axis, self.norm
+            )
 
 
 @place(DEVICES)
@@ -918,11 +922,13 @@ class TestIrfftException(unittest.TestCase):
         - axis out of range
         - norm out of range
         """
-        with paddle.base.dygraph.guard(self.place):
-            with self.assertRaises(self.expect_exception):
-                paddle.fft.irfft(
-                    paddle.to_tensor(self.x), self.n, self.axis, self.norm
-                )
+        with (
+            paddle.base.dygraph.guard(self.place),
+            self.assertRaises(self.expect_exception),
+        ):
+            paddle.fft.irfft(
+                paddle.to_tensor(self.x), self.n, self.axis, self.norm
+            )
 
 
 @place(DEVICES)
@@ -1009,11 +1015,13 @@ class TestHfft2Exception(unittest.TestCase):
         - the dimensions of n and axis are different
         - norm out of range
         """
-        with paddle.base.dygraph.guard(self.place):
-            with self.assertRaises(self.expect_exception):
-                paddle.fft.hfft2(
-                    paddle.to_tensor(self.x), self.n, self.axis, self.norm
-                )
+        with (
+            paddle.base.dygraph.guard(self.place),
+            self.assertRaises(self.expect_exception),
+        ):
+            paddle.fft.hfft2(
+                paddle.to_tensor(self.x), self.n, self.axis, self.norm
+            )
 
 
 @place(DEVICES)
@@ -1090,11 +1098,13 @@ class TestIrfft2Exception(unittest.TestCase):
         - the dimensions of n and axis are different
         - norm out of range
         """
-        with paddle.base.dygraph.guard(self.place):
-            with self.assertRaises(self.expect_exception):
-                paddle.fft.irfft2(
-                    paddle.to_tensor(self.x), self.n, self.axis, self.norm
-                )
+        with (
+            paddle.base.dygraph.guard(self.place),
+            self.assertRaises(self.expect_exception),
+        ):
+            paddle.fft.irfft2(
+                paddle.to_tensor(self.x), self.n, self.axis, self.norm
+            )
 
 
 @place(DEVICES)
@@ -1180,11 +1190,13 @@ class TestHfftnException(unittest.TestCase):
         - the dimensions of n and axis are different
         - norm out of range
         """
-        with paddle.base.dygraph.guard(self.place):
-            with self.assertRaises(self.expect_exception):
-                paddle.fft.hfftn(
-                    paddle.to_tensor(self.x), self.n, self.axis, self.norm
-                )
+        with (
+            paddle.base.dygraph.guard(self.place),
+            self.assertRaises(self.expect_exception),
+        ):
+            paddle.fft.hfftn(
+                paddle.to_tensor(self.x), self.n, self.axis, self.norm
+            )
 
 
 @place(DEVICES)
@@ -1259,11 +1271,13 @@ class TestIrfftnException(unittest.TestCase):
         - norm out of range
         - the dimensions of n and axis are different
         """
-        with paddle.base.dygraph.guard(self.place):
-            with self.assertRaises(self.expect_exception):
-                paddle.fft.irfftn(
-                    paddle.to_tensor(self.x), self.n, self.axis, self.norm
-                )
+        with (
+            paddle.base.dygraph.guard(self.place),
+            self.assertRaises(self.expect_exception),
+        ):
+            paddle.fft.irfftn(
+                paddle.to_tensor(self.x), self.n, self.axis, self.norm
+            )
 
 
 @place(DEVICES)
@@ -1437,11 +1451,13 @@ class TestRfft2Exception(unittest.TestCase):
         - norm out of range
         - the dimensions of n and axis are different
         """
-        with paddle.base.dygraph.guard(self.place):
-            with self.assertRaises(self.expect_exception):
-                paddle.fft.rfft2(
-                    paddle.to_tensor(self.x), self.n, self.axis, self.norm
-                )
+        with (
+            paddle.base.dygraph.guard(self.place),
+            self.assertRaises(self.expect_exception),
+        ):
+            paddle.fft.rfft2(
+                paddle.to_tensor(self.x), self.n, self.axis, self.norm
+            )
 
 
 @place(DEVICES)
@@ -1524,11 +1540,13 @@ class TestRfftnException(unittest.TestCase):
         - norm out of range
         - the dimensions of n and axis are different
         """
-        with paddle.base.dygraph.guard(self.place):
-            with self.assertRaises(self.expect_exception):
-                paddle.fft.rfftn(
-                    paddle.to_tensor(self.x), self.n, self.axis, self.norm
-                )
+        with (
+            paddle.base.dygraph.guard(self.place),
+            self.assertRaises(self.expect_exception),
+        ):
+            paddle.fft.rfftn(
+                paddle.to_tensor(self.x), self.n, self.axis, self.norm
+            )
 
 
 @place(DEVICES)
@@ -1602,11 +1620,13 @@ class TestIhfftException(unittest.TestCase):
         - axis out of range
         - norm out of range
         """
-        with paddle.base.dygraph.guard(self.place):
-            with self.assertRaises(self.expect_exception):
-                paddle.fft.ihfft(
-                    paddle.to_tensor(self.x), self.n, self.axis, self.norm
-                )
+        with (
+            paddle.base.dygraph.guard(self.place),
+            self.assertRaises(self.expect_exception),
+        ):
+            paddle.fft.ihfft(
+                paddle.to_tensor(self.x), self.n, self.axis, self.norm
+            )
 
 
 @place(DEVICES)
@@ -1709,11 +1729,13 @@ class TestIhfft2Exception(unittest.TestCase):
         - axis out of range
         - norm out of range
         """
-        with paddle.base.dygraph.guard(self.place):
-            with self.assertRaises(self.expect_exception):
-                paddle.fft.ihfft2(
-                    paddle.to_tensor(self.x), self.n, self.axis, self.norm
-                )
+        with (
+            paddle.base.dygraph.guard(self.place),
+            self.assertRaises(self.expect_exception),
+        ):
+            paddle.fft.ihfft2(
+                paddle.to_tensor(self.x), self.n, self.axis, self.norm
+            )
 
 
 @place(DEVICES)
@@ -1788,11 +1810,13 @@ class TestIhfftnException(unittest.TestCase):
         - axis out of range
         - norm out of range
         """
-        with paddle.base.dygraph.guard(self.place):
-            with self.assertRaises(self.expect_exception):
-                paddle.fft.ihfftn(
-                    paddle.to_tensor(self.x), self.n, self.axis, self.norm
-                )
+        with (
+            paddle.base.dygraph.guard(self.place),
+            self.assertRaises(self.expect_exception),
+        ):
+            paddle.fft.ihfftn(
+                paddle.to_tensor(self.x), self.n, self.axis, self.norm
+            )
 
 
 @place(DEVICES)
@@ -1827,9 +1851,11 @@ class TestFftFreq(unittest.TestCase):
 class TestFftFreqException(unittest.TestCase):
     def test_fftfreq2(self):
         """Test fftfreq with d = 0"""
-        with paddle.base.dygraph.guard(self.place):
-            with self.assertRaises(self.expect_exception):
-                paddle.fft.fftfreq(self.n, self.d, self.dtype)
+        with (
+            paddle.base.dygraph.guard(self.place),
+            self.assertRaises(self.expect_exception),
+        ):
+            paddle.fft.fftfreq(self.n, self.d, self.dtype)
 
 
 @place(DEVICES)
@@ -1864,9 +1890,11 @@ class TestRfftFreq(unittest.TestCase):
 class TestRfftFreqException(unittest.TestCase):
     def test_rfftfreq2(self):
         """Test fftfreq with d = 0"""
-        with paddle.base.dygraph.guard(self.place):
-            with self.assertRaises(self.expect_exception):
-                paddle.fft.rfftfreq(self.n, self.d, self.dtype)
+        with (
+            paddle.base.dygraph.guard(self.place),
+            self.assertRaises(self.expect_exception),
+        ):
+            paddle.fft.rfftfreq(self.n, self.d, self.dtype)
 
 
 @place(DEVICES)
