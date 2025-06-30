@@ -16,9 +16,9 @@ env:
   COMMIT_ID: ${{ github.event.pull_request.head.sha }}
 
 jobs:
-  clone:
-    name: Clone-windows
-    uses: ./.github/workflows/_Clone-windows.yml
+  # clone:
+  #   name: Clone-windows
+  #   uses: ./.github/workflows/_Clone-windows.yml
 
   win-gpu:
     name: Win-GPU

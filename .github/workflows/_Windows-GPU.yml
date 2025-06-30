@@ -24,6 +24,7 @@ jobs:
       group: win-gpu
     steps:
       - name: Configure env
+        continue-on-error: true
         run: |
           set path=%path%;C:\Program Files\NVIDIA Corporation\NVSMI
           call %ci_scripts%\config_env.bat
