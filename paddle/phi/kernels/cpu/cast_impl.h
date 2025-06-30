@@ -22,7 +22,17 @@ namespace phi {
 
 template <typename InT, typename OutT>
 struct CastOpTransformFunctor {
-  HOSTDEVICE OutT operator()(InT in) const { return static_cast<OutT>(in); }
+  HOSTDEVICE OutT operator()(InT in) const {
+    if constexpr (std::is_same<OutT, phi::dtype::float16>::value) {
+      float val = static_cast<float>(in);
+      if (val > 65504.0f && val <= 65519.0f) {
+        return static_cast<OutT>(65504.0f);
+      } else if (val < -65504.0f && val >= -65519.0f) {
+        return static_cast<OutT>(-65504.0f);
+      }
+    }
+    return static_cast<OutT>(in);
+  }
 };
 
 template <typename InT, typename OutT>
