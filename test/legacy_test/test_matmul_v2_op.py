@@ -943,6 +943,85 @@ class TestMatmulop(unittest.TestCase):
         paddle.enable_static()
 
 
+class TestMatMulOp_ZeroSize(OpTest):
+    def setUp(self):
+        self.op_type = "matmul_v2"
+        self.python_api = paddle.matmul
+        self.init_input_output()
+
+        self.inputs = {
+            'X': OpTest.np_dtype_to_base_dtype(self.x),
+            'Y': OpTest.np_dtype_to_base_dtype(self.y),
+        }
+        self.out = np.matmul(self.x, self.y)
+        self.attrs = {'axis': -1, 'use_mkldnn': False}
+        self.outputs = {'Out': self.out}
+
+    def init_input_output(self):
+        self.x = np.random.random((1, 1, 2, 3))
+        self.y = np.random.random((1, 0, 3, 2))
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['X', 'Y'],
+            'Out',
+            check_pir=True,
+        )
+
+
+class TestMatMulOp_ZeroSize2(TestMatMulOp_ZeroSize):
+    def init_input_output(self):
+        self.x = np.random.random((0, 3, 2, 3))
+        self.y = np.random.random((1, 3, 3, 2))
+
+
+class TestMatMulOp_trans_y(TestMatMulV2Op):
+    # y is 1-D and trans_y is True
+    def config(self):
+        self.x_shape = (2, 100)
+        self.y_shape = (100,)
+        self.trans_x = False
+        self.trans_y = True
+
+    def init_kernel_type(self):
+        self.dtype = "float32" if core.is_compiled_with_rocm() else "float64"
+
+    def setUp(self):
+        self.init_kernel_type()
+        self.config()
+        self.op_type = "matmul_v2"
+        self.python_api = paddle.tensor.matmul
+        self.public_python_api = paddle.tensor.matmul
+        x = np.random.random(self.x_shape).astype(self.dtype)
+        y = np.random.random(self.y_shape).astype(self.dtype)
+        # -0.1 ~ 0.1
+        x = -0.1 + 0.2 * x
+        y = -0.1 + 0.2 * y
+        result = reference_matmul(x, y, self.trans_x, self.trans_y)
+        result = result.astype(self.dtype)
+        self.inputs = {
+            'X': x,
+            'Y': y,
+        }
+        self.attrs = {'trans_x': self.trans_x, 'trans_y': self.trans_y}
+        self.outputs = {'Out': result}
+
+    def test_check_output(self):
+        self.check_output(
+            check_pir=True,
+        )
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['X', 'Y'],
+            'Out',
+            check_pir=True,
+        )
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()

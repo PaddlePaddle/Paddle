@@ -26,6 +26,17 @@ limitations under the License. */
 #include "paddle/phi/kernels/impl/box_coder.h"
 
 namespace phi {
+namespace detail {
+// Used in MatrixRankAtolRtolInferMeta
+static DDim CheckAndGetOutputDim(const DDim& dim_x) {
+  auto x_vec = common::vectorize(dim_x);
+  if (x_vec.size() == 2) {
+    return common::make_ddim({});
+  }
+  x_vec.erase(x_vec.end() - 2, x_vec.end());
+  return common::make_ddim(x_vec);
+}
+}  // namespace detail
 
 void AccuracyInferMeta(const MetaTensor& out,
                        const MetaTensor& indice,
@@ -98,29 +109,6 @@ void AddmmInferMeta(const MetaTensor& input,
           << " alpha=" << alpha << " ndim_input=" << ndim_input
           << " ndim_x=" << ndim_x << " ndim_y=" << ndim_y;
 
-  PADDLE_ENFORCE_NE(
-      product(input_dims),
-      0,
-      errors::PreconditionNotMet("The Input variable 'input' has not "
-                                 "been initialized. You may need to confirm "
-                                 "if you put exe.run(startup_program) "
-                                 "after optimizer.minimize function."));
-
-  PADDLE_ENFORCE_NE(
-      product(x_dims),
-      0,
-      errors::PreconditionNotMet("The Input variable 'x' has not "
-                                 "been initialized. You may need to confirm "
-                                 "if you put exe.run(startup_program) "
-                                 "after optimizer.minimize function."));
-
-  PADDLE_ENFORCE_NE(
-      product(y_dims),
-      0,
-      errors::PreconditionNotMet("The Input variable 'y' has not "
-                                 "been initialized. You may need to confirm "
-                                 "if you put exe.run(startup_program) "
-                                 "after optimizer.minimize function."));
   // dim check
   PADDLE_ENFORCE_EQ(ndim_input == 2 || ndim_input == 1,
                     true,
@@ -1516,6 +1504,18 @@ void MatrixRankAtolRtolInferMeta(const MetaTensor& x,
                                  const MetaTensor& rtol,
                                  bool hermitian,
                                  MetaTensor* out) {
+  if (x.numel() == 0) {
+    auto dim_x = x.dims();
+    PADDLE_ENFORCE_GE(dim_x.size(),
+                      2,
+                      common::errors::InvalidArgument(
+                          "The dims of input must be greater than 2"));
+
+    DDim dim_x_batch = detail::CheckAndGetOutputDim(dim_x);
+    out->set_dims(dim_x_batch);
+    out->share_lod(x);
+    return;
+  }
   MatrixRankTolInferMeta(x, atol, true, hermitian, out);
 }
 
@@ -1627,6 +1627,45 @@ void MoeCombineInferMeta(const MetaTensor& x,
                         x_dim.size()));
   // maybe there is more conditions here....
   y->set_dims(phi::make_ddim({combine_weights_shape[0], x_dim[1]}));
+  y->set_dtype(x.dtype());
+}
+
+void MoeCombineNoWeightInferMeta(const MetaTensor& x,
+                                 const MetaTensor& combine_weights,
+                                 const MetaTensor& scatter_index,
+                                 float epsilon,
+                                 MetaTensor* y) {
+  auto x_dim = x.dims();
+  auto scatter_index_dim = scatter_index.dims();
+  PADDLE_ENFORCE_EQ(x_dim.size(),
+                    2,
+                    common::errors::InvalidArgument(
+                        "The dimensions of Input(x) must be 2, but "
+                        "received dimensions of Input(x) is [%d]",
+                        x_dim.size()));
+  PADDLE_ENFORCE_EQ(scatter_index_dim.size(),
+                    2,
+                    common::errors::InvalidArgument(
+                        "The dimensions of Input(scatter_index) must be 2, but "
+                        "received dimensions of Input(scatter_index) is [%d]",
+                        scatter_index_dim.size()));
+  PADDLE_ENFORCE_EQ(scatter_index.dtype(),
+                    phi::DataType::INT32,
+                    common::errors::InvalidArgument(
+                        "The input scatter_index type should be int32"
+                        "But received scatter_index type = %s",
+                        scatter_index.dtype()));
+  int64_t seqlen = scatter_index_dim[0];
+  int64_t k = scatter_index_dim[1];
+  int64_t hidden_size = x_dim[1];
+  PADDLE_ENFORCE_EQ(x_dim[0],
+                    seqlen * k,
+                    common::errors::InvalidArgument(
+                        "The upper dim of Input(x) [%d] must equal to "
+                        "the total size of Input(scatter_index) [%d].",
+                        x_dim[0],
+                        seqlen * k));
+  y->set_dims(phi::make_ddim({seqlen, hidden_size}));
   y->set_dtype(x.dtype());
 }
 
@@ -1817,16 +1856,6 @@ void MoeGateDispatchPermuteInferMeta(const MetaTensor& x,
             "The dimensions of Input(corr_bias) must be 1, but received "
             "dimensions of Input(corr_bias) is [%d]",
             corr_bias_dims.size()));
-    PADDLE_ENFORCE_EQ(
-        corr_bias_dims[0],
-        x_dims[0],
-        common::errors::InvalidArgument(
-            "The dimensions of Input(corr_bias) must be equal to the first "
-            "dimension of Input(x), but received Input(corr_bias) first "
-            "dimension is [%d],"
-            "Input(x) first dimension is [%d]",
-            corr_bias_dims[0],
-            x_dims[0]));
     PADDLE_ENFORCE_EQ(
         corr_bias.dtype(),
         paddle::DataType::FLOAT32,

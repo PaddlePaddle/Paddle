@@ -172,7 +172,7 @@ void MatrixRankTolKernel(const Context& dev_ctx,
   if (eigenvalue_tensor.dims().size() >= tol_tensor.dims().size()) {
     funcs::ElementwiseCompute<funcs::GreaterThanFunctor<RealType, int64_t>,
                               RealType,
-                              int>(
+                              int64_t>(
         dev_ctx,
         eigenvalue_tensor,
         tol_tensor,
@@ -182,12 +182,13 @@ void MatrixRankTolKernel(const Context& dev_ctx,
   } else {
     funcs::ElementwiseCompute<funcs::LessThanFunctor<RealType, int64_t>,
                               RealType,
-                              int>(dev_ctx,
-                                   eigenvalue_tensor,
-                                   tol_tensor,
-                                   funcs::LessThanFunctor<RealType, int64_t>(),
-                                   &compare_result,
-                                   axis);
+                              int64_t>(
+        dev_ctx,
+        eigenvalue_tensor,
+        tol_tensor,
+        funcs::LessThanFunctor<RealType, int64_t>(),
+        &compare_result,
+        axis);
   }
 
   phi::SumKernel<int64_t>(dev_ctx,
@@ -315,7 +316,7 @@ void MatrixRankAtolRtolKernel(const Context& dev_ctx,
   if (eigenvalue_tensor.dims().size() >= tol_tensor.dims().size()) {
     funcs::ElementwiseCompute<funcs::GreaterThanFunctor<RealType, int64_t>,
                               RealType,
-                              int>(
+                              int64_t>(
         dev_ctx,
         eigenvalue_tensor,
         tol_tensor,
@@ -325,12 +326,13 @@ void MatrixRankAtolRtolKernel(const Context& dev_ctx,
   } else {
     funcs::ElementwiseCompute<funcs::LessThanFunctor<RealType, int64_t>,
                               RealType,
-                              int>(dev_ctx,
-                                   eigenvalue_tensor,
-                                   tol_tensor,
-                                   funcs::LessThanFunctor<RealType, int64_t>(),
-                                   &compare_result,
-                                   axis);
+                              int64_t>(
+        dev_ctx,
+        eigenvalue_tensor,
+        tol_tensor,
+        funcs::LessThanFunctor<RealType, int64_t>(),
+        &compare_result,
+        axis);
   }
 
   phi::SumKernel<int64_t>(dev_ctx,

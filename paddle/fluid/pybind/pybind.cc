@@ -171,6 +171,7 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 #include "paddle/fluid/platform/profiler/custom_device/custom_tracer.h"
+#include "paddle/phi/backends/device_base.h"
 #include "paddle/phi/capi/capi.h"
 #include "paddle/phi/core/platform/collective_helper.h"
 #include "paddle/phi/core/platform/device/custom/custom_device_resource_pool.h"
@@ -303,6 +304,14 @@ bool IsCompiledWithNCCL() {
 
 bool IsCompiledWithFlagcx() {
 #ifdef PADDLE_WITH_FLAGCX
+  return true;
+#else
+  return false;
+#endif
+}
+
+bool IsCompiledWithDeepEP() {
+#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_DEEP_EP)
   return true;
 #else
   return false;
@@ -2582,6 +2591,7 @@ All parameter, weight, gradient are variables in Paddle.
     VLOG(4) << "Initialize tensor operants successfully";
   });
   m.def("is_compiled_with_flagcx", IsCompiledWithFlagcx);
+  m.def("is_compiled_with_deepep", IsCompiledWithDeepEP);
   m.def("is_compiled_with_avx", IsCompiledWithAVX);
   m.def("is_compiled_with_cuda", IsCompiledWithCUDA);
   m.def("is_compiled_with_cudnn_frontend", IsCompiledWithCudnnFrontend);
@@ -2922,6 +2932,44 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("nvprof_enable_record_event", platform::NvprofEnableRecordEvent);
   m.def("nvprof_disable_record_event", platform::NvprofDisableRecordEvent);
 #endif
+#endif
+
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  m.def(
+      "get_device_properties",
+      [](std::string dev_type, int id) -> const phi::DeviceProp & {
+        return phi::DeviceManager::GetDeviceProperties(dev_type, id);
+      },
+      py::return_value_policy::copy);
+
+  py::class_<phi::DeviceProp>(m, "_customDeviceProperties", py::module_local())
+      .def_property_readonly(
+          "name", [](const phi::DeviceProp &prop) { return prop.name; })
+      .def_property_readonly(
+          "major", [](const phi::DeviceProp &prop) { return prop.deviceMajor; })
+      .def_property_readonly(
+          "minor", [](const phi::DeviceProp &prop) { return prop.deviceMinor; })
+      .def_property_readonly(
+          "total_memory",
+          [](const phi::DeviceProp &prop) { return prop.totalGlobalMem; })
+      .def_property_readonly(
+          "multi_processor_count",
+          [](const phi::DeviceProp &prop) { return prop.multiProcessorCount; })
+      .def_property_readonly(
+          "is_multi_gpu_board",
+          [](const phi::DeviceProp &prop) { return prop.isMultiGpuBoard; })
+      .def_property_readonly(
+          "is_integrated",
+          [](const phi::DeviceProp &prop) { return prop.integrated; })
+      .def("__repr__", [](const phi::DeviceProp &prop) {
+        std::stringstream ostr;
+        ostr << "_customDeviceProperties(name='" << prop.name
+             << "', major=" << prop.deviceMajor
+             << ", minor=" << prop.deviceMinor
+             << ", total_memory=" << prop.totalGlobalMem / (1024 * 1024)
+             << "MB, multi_processor_count=" << prop.multiProcessorCount << ")";
+        return ostr.str();
+      });
 #endif
 
 #ifdef PADDLE_WITH_IPU

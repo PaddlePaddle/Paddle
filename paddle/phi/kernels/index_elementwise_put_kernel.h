@@ -19,7 +19,7 @@
 
 namespace phi {
 template <typename T, typename Context>
-void IndexElementwisePutKernel(const Context& ctx,
+void IndexElementwisePutKernel(const Context& dev_ctx,
                                const DenseTensor& input,
                                const std::vector<const DenseTensor*>& index,
                                const DenseTensor& value,
@@ -27,6 +27,7 @@ void IndexElementwisePutKernel(const Context& ctx,
                                const std::vector<int64_t>& input_strides,
                                const std::vector<int64_t>& index_dims,
                                const std::vector<int64_t>& index_strides,
+                               const int64_t slice_offset,
                                DenseTensor* out);
 
 }  // namespace phi

@@ -19,9 +19,10 @@
 
 namespace phi {
 
-inline proto::VarType::Type TransToProtoVarTypeReturnType(
+inline paddle::framework::proto::VarType::Type TransToProtoVarTypeReturnType(
     const DataType& dtype) {
-  return static_cast<proto::VarType::Type>(phi::TransToProtoVarType(dtype));
+  return static_cast<paddle::framework::proto::VarType::Type>(
+      phi::TransToProtoVarType(dtype));
 }
 
 }  // namespace phi

@@ -44,18 +44,20 @@ __global__ void GetPoisson(
 }
 
 template <typename T, typename Context>
-void PoissonKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
+void PoissonKernel(const Context& dev_ctx,
+                   const DenseTensor& x,
+                   DenseTensor* out) {
   const T* x_data = x.data<T>();
-  T* out_data = ctx.template Alloc<T>(out);
+  T* out_data = dev_ctx.template Alloc<T>(out);
   const int size = x.numel();
   const int kMaxBlockDim = 256;
 
-  int block_size = std::min(kMaxBlockDim, ctx.GetMaxThreadsPerBlock());
+  int block_size = std::min(kMaxBlockDim, dev_ctx.GetMaxThreadsPerBlock());
   dim3 dim_block(block_size);
   dim3 dim_grid((size + block_size - 1) / block_size);
-  phi::backends::gpu::LimitGridDim(ctx, &dim_grid);
+  phi::backends::gpu::LimitGridDim(dev_ctx, &dim_grid);
 
-  auto gen_cuda = ctx.GetGenerator();
+  auto gen_cuda = dev_ctx.GetGenerator();
   auto seed_offset = gen_cuda->IncrementOffset(20);
   uint64_t seed = seed_offset.first;
   uint64_t offset = seed_offset.second;

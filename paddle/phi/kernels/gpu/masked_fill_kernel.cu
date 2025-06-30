@@ -31,14 +31,13 @@
 namespace phi {
 
 template <typename T, int VecSize>
-__global__ void GPUMaskedFillKernel(const T* input,
-                                    const bool* mask,
-                                    const T* value,
-                                    const int64_t input_len,
-                                    const int64_t batch_size,
-                                    T* output) {
-  int64_t idx = (blockIdx.x * blockDim.x + threadIdx.x);
-
+__global__ void GPUMaskedFillOneValueKernel(const T* input,
+                                            const bool* mask,
+                                            const T* value,
+                                            const int64_t input_len,
+                                            const int64_t batch_size,
+                                            T* output) {
+  int64_t idx = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
   if (idx >= (input_len / VecSize)) {
     return;
   }
@@ -63,8 +62,35 @@ __global__ void GPUMaskedFillKernel(const T* input,
   }
 }
 
+template <typename T, int VecSize>
+__global__ void GPUMaskedFillKernel(const T* input,
+                                    const bool* mask,
+                                    const T* value,
+                                    const int64_t input_len,
+                                    const int64_t batch_size,
+                                    T* output) {
+  int64_t idx = (blockIdx.x * blockDim.x + threadIdx.x);
+
+  if (idx >= (input_len / VecSize)) {
+    return;
+  }
+
+  int64_t vec_idx = idx * VecSize;
+  int64_t mask_idx = vec_idx / batch_size;
+  using VecType = kps::details::VectorType<T, VecSize>;
+  const VecType* src = reinterpret_cast<const VecType*>(&input[vec_idx]);
+  const VecType* value_src = reinterpret_cast<const VecType*>(&value[vec_idx]);
+  VecType* dst = reinterpret_cast<VecType*>(&output[vec_idx]);
+
+  if (mask[mask_idx]) {
+    *dst = *value_src;
+  } else {
+    *dst = *src;
+  }
+}
+
 template <typename T>
-void DispatchMaskFillKernel(const phi::GPUContext& ctx,
+void DispatchMaskFillKernel(const phi::GPUContext& dev_ctx,
                             const T* input,
                             const bool* mask,
                             const T* value,
@@ -73,41 +99,71 @@ void DispatchMaskFillKernel(const phi::GPUContext& ctx,
                             T* output,
                             int vec_size,
                             const phi::backends::gpu::GpuLaunchConfig& config) {
-  auto stream = ctx.stream();
-  if (vec_size == 4) {
-    GPUMaskedFillKernel<T, 4>
-        <<<config.block_per_grid, config.thread_per_block, 0, stream>>>(
-            input, mask, value, input_len, batch_size, output);
-  } else if (vec_size == 2) {
-    GPUMaskedFillKernel<T, 2>
-        <<<config.block_per_grid, config.thread_per_block, 0, stream>>>(
-            input, mask, value, input_len, batch_size, output);
-  } else if (vec_size == 1) {
-    GPUMaskedFillKernel<T, 1>
-        <<<config.block_per_grid, config.thread_per_block, 0, stream>>>(
-            input, mask, value, input_len, batch_size, output);
-  } else {
-    PADDLE_THROW(common::errors::Unimplemented(
-        "Unsupported vectorized size: %d", vec_size));
+  auto stream = dev_ctx.stream();
+  switch (vec_size) {
+#define CASE_VECSIZE(__Vs)                                               \
+  case __Vs:                                                             \
+    GPUMaskedFillKernel<T, __Vs>                                         \
+        <<<config.block_per_grid, config.thread_per_block, 0, stream>>>( \
+            input, mask, value, input_len, batch_size, output);          \
+    break;
+    CASE_VECSIZE(1)
+    CASE_VECSIZE(2)
+    CASE_VECSIZE(4)
+    CASE_VECSIZE(8)
+#undef CASE_VECSIZE
+    default:
+      PADDLE_THROW(common::errors::Unimplemented(
+          "Unsupported vectorized size: %d", vec_size));
   }
 }
 
 template <typename T>
-void GPUMaskedFill(const phi::GPUContext& ctx,
+void DispatchMaskFillOneValueKernel(
+    const phi::GPUContext& dev_ctx,
+    const T* input,
+    const bool* mask,
+    const T* value,
+    const int64_t input_len,
+    const int64_t batch_size,
+    T* output,
+    int vec_size,
+    const phi::backends::gpu::GpuLaunchConfig& config) {
+  auto stream = dev_ctx.stream();
+  switch (vec_size) {
+#define CASE_VECSIZE(__Vs)                                               \
+  case __Vs:                                                             \
+    GPUMaskedFillOneValueKernel<T, __Vs>                                 \
+        <<<config.block_per_grid, config.thread_per_block, 0, stream>>>( \
+            input, mask, value, input_len, batch_size, output);          \
+    break;
+    CASE_VECSIZE(1)
+    CASE_VECSIZE(2)
+    CASE_VECSIZE(4)
+    CASE_VECSIZE(8)
+#undef CASE_VECSIZE
+    default:
+      PADDLE_THROW(common::errors::Unimplemented(
+          "Unsupported vectorized size: %d", vec_size));
+  }
+}
+
+template <typename T>
+void GPUMaskedFill(const phi::GPUContext& dev_ctx,
                    const DenseTensor& input,
                    const DenseTensor& mask,
                    const DenseTensor& value,
                    DenseTensor* output) {
   const T* input_data = input.data<T>();
   const bool* mask_data = mask.data<bool>();
-  ctx.template Alloc<T>(output);
+  dev_ctx.template Alloc<T>(output);
   T* output_data = output->data<T>();
   const T* value_data = value.data<T>();
   int64_t input_len = input.numel();
   int64_t mask_len = mask.numel();
   int batch_size = input_len / mask_len;
 
-  int vec_size = 4;
+  int vec_size = 8;
   vec_size = std::min(phi::GetVectorizedSize(input_data), vec_size);
   vec_size = std::min(phi::GetVectorizedSize(output_data), vec_size);
   while (vec_size > 1 && batch_size % vec_size != 0) {
@@ -115,17 +171,37 @@ void GPUMaskedFill(const phi::GPUContext& ctx,
   }
 
   auto config =
-      phi::backends::gpu::GetGpuLaunchConfig1D(ctx, input_len, vec_size);
+      phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, input_len, vec_size);
 
-  DispatchMaskFillKernel<T>(ctx,
-                            input_data,
-                            mask_data,
-                            value_data,
-                            input_len,
-                            batch_size,
-                            output_data,
-                            vec_size,
-                            config);
+  if (value.numel() == 1) {
+    DispatchMaskFillOneValueKernel<T>(dev_ctx,
+                                      input_data,
+                                      mask_data,
+                                      value_data,
+                                      input_len,
+                                      batch_size,
+                                      output_data,
+                                      vec_size,
+                                      config);
+  } else {
+    PADDLE_ENFORCE_EQ(value.numel(),
+                      input_len,
+                      common::errors::InvalidArgument(
+                          "value.numel() should equal to input.numel()"
+                          "but got value.numel() = %d, input.numel() = %d",
+                          value.numel(),
+                          input_len));
+
+    DispatchMaskFillKernel<T>(dev_ctx,
+                              input_data,
+                              mask_data,
+                              value_data,
+                              input_len,
+                              batch_size,
+                              output_data,
+                              vec_size,
+                              config);
+  }
 }
 
 template <typename T, typename Context>
@@ -150,8 +226,14 @@ void MaskedFillKernel(const Context& dev_ctx,
   bool flag = funcs::CanDispatchMaskFillShortcut(x.dims(), mask.dims());
   if (expanded_dims != x_dims) flag = false;
 
+  DenseTensor value_expand = value;
+  if (value.numel() != 1 && value.dims() != expanded_dims) {
+    phi::ExpandKernel<T, Context>(
+        dev_ctx, value, IntArray(expanded_size), &value_expand);
+  }
+
   if (flag) {
-    GPUMaskedFill<T>(dev_ctx, x, mask, value, out);
+    GPUMaskedFill<T>(dev_ctx, x, mask, value_expand, out);
     return;
   }
 
@@ -174,7 +256,7 @@ void MaskedFillKernel(const Context& dev_ctx,
 
   out->Resize(expanded_dims);
 
-  GPUMaskedFill<T>(dev_ctx, x_expand, mask_expand, value, out);
+  GPUMaskedFill<T>(dev_ctx, x_expand, mask_expand, value_expand, out);
 }
 
 }  // namespace phi

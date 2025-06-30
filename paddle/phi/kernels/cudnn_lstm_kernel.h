@@ -23,7 +23,7 @@ namespace phi {
 
 template <typename T, typename Context>
 void CudnnLSTMKernel(
-    const Context& ctx,
+    const Context& dev_ctx,
     const DenseTensor& x,
     const DenseTensor& init_h,
     const DenseTensor& init_c,

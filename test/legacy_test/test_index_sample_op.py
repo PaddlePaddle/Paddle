@@ -129,6 +129,52 @@ class TestCase6(TestIndexSampleOp):
         self.index_type = "int64"
 
 
+class TestIndexSampleOp_ZeroSize(OpTest):
+    def setUp(self):
+        self.op_type = "index_sample"
+        self.python_api = paddle.index_sample
+        self.public_python_api = paddle.index_sample
+        self.config()
+        xnp = np.random.random(self.x_shape).astype(self.x_type)
+        if self.x_type == np.complex64 or self.x_type == np.complex128:
+            xnp = (
+                np.random.random(self.x_shape)
+                + 1j * np.random.random(self.x_shape)
+            ).astype(self.x_type)
+        indexnp = np.random.randint(
+            low=0, high=self.x_shape[1], size=self.index_shape
+        ).astype(self.index_type)
+        self.inputs = {'X': xnp, 'Index': indexnp}
+        index_array = []
+        for i in range(self.index_shape[0]):
+            for j in indexnp[i]:
+                index_array.append(xnp[i, j])
+        index_array = np.array(index_array).astype(self.x_type)
+        out = np.reshape(index_array, self.index_shape)
+        self.outputs = {'Out': out}
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', check_pir=True)
+
+    def config(self):
+        self.x_shape = (10, 20)
+        self.x_type = "float64"
+        self.index_shape = (10, 0)
+        self.index_type = "int32"
+
+
+class TestIndexSampleOp_ZeroSize2(TestIndexSampleOp_ZeroSize):
+
+    def config(self):
+        self.x_shape = (0, 20)
+        self.x_type = "float64"
+        self.index_shape = (0, 0)
+        self.index_type = "int32"
+
+
 @unittest.skipIf(core.is_compiled_with_xpu(), "complex is not supported on XPU")
 class TestIndexSampleComplex64(TestIndexSampleOp):
     def config(self):
