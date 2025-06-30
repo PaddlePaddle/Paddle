@@ -81,7 +81,7 @@ bool ReadModule(const std::string& file_path,
   } else {
     data = Json::parse(file_path);
   }
-  
+
   if (pir_version < 0) {
     pir_version = DEVELOP_VERSION;
     VLOG(6) << "pir_version is null, get pir_version: " << pir_version;

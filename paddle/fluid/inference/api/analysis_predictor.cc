@@ -542,7 +542,7 @@ bool AnalysisPredictor::Init(
   if (!PrepareExecutor()) {
     return true;
   }
-  
+
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   // TODO(inference): Now only gpu with external stream support private
   // device_context.
