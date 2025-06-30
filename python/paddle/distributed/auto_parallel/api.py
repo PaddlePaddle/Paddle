@@ -1484,7 +1484,10 @@ class _ShardOptimizer(Optimizer):
         self._inner_opt._append_optimize_op(block, param_and_grad)
         if self.enable_sharding_overlap:
             # overlap all_gather with optimizer op
-            if hasattr(param_and_grad[0], 'last_idx'):
+            if (
+                hasattr(param_and_grad[0], 'last_idx')
+                and param_and_grad[0].last_idx == 0
+            ):
                 idx = param_and_grad[0].last_idx
                 shard_size = (
                     self.param_storage[idx]._numel()
@@ -1501,6 +1504,10 @@ class _ShardOptimizer(Optimizer):
                     group=self._sharding_group,
                     sync_op=False,
                 )
+
+    def _set_sharding_overlap(self, enable_sharding_overlap, layers):
+        self.enable_sharding_overlap = enable_sharding_overlap
+        self._layers = layers
 
     def _reduce_scatter_gradients(self, grad_storage):
         shard_size = grad_storage._numel() // self._sharding_group.nranks
@@ -1541,6 +1548,24 @@ class _ShardOptimizer(Optimizer):
 
                 return fuse_comm
 
+            def fuse_all_gather_hook_func(param_storage, comm_group):
+                @paddle.autograd.no_grad()
+                def fuse_comm(*_):
+                    shard_size = param_storage._numel() // comm_group.nranks
+                    begin = shard_size * max(comm_group.rank, 0)
+                    end = begin + shard_size
+                    slice_buffer = paddle._C_ops.view_slice(
+                        param_storage, begin, end
+                    )
+                    task = paddle.distributed.all_gather(
+                        param_storage,
+                        slice_buffer,
+                        group=self._sharding_group,
+                        sync_op=False,
+                    )
+
+                return fuse_comm
+
             param_group_len = (
                 len(self.fuse_param_view[i]) * self.gradient_accumulation_steps
             )
@@ -1553,6 +1578,30 @@ class _ShardOptimizer(Optimizer):
                     fuse_comm_hook_func(
                         param_group_len,
                         self.grad_storage[i],
+                        self._sharding_group,
+                    )
+                )
+
+            def _find_layer_containing_param(param):
+                if not self._layers:
+                    raise RuntimeError(
+                        "Sharding overlap requires an initialized model. "
+                        "Call `_set_sharding_overlap()` to set model."
+                    )
+                for layer in self._layers.sublayers():
+                    for p in layer.parameters(include_sublayers=False):
+                        if param.name == p.name:
+                            return layer
+                return None
+
+            if i < len(self.fuse_param_view) - 1:
+                first_param = next(iter(self.fuse_param_view[i].values()))[
+                    'param'
+                ]
+                layer = _find_layer_containing_param(first_param)
+                layer.register_forward_pre_hook(
+                    fuse_all_gather_hook_func(
+                        self.param_storage[i + 1],
                         self._sharding_group,
                     )
                 )
