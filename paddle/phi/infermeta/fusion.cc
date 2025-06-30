@@ -2504,6 +2504,88 @@ void FusedTransposeSplitQuantInferMeta(const MetaTensor& x,
                         "x.shape[1] (%d) must be <= 65535 * 128", N));
 }
 
+void FusedTransposeWLCHSplitQuantInferMeta(const MetaTensor& x,
+                                           const IntArray& tokens_per_expert,
+                                           bool pow_2_scales,
+                                           std::vector<MetaTensor*> outs,
+                                           std::vector<MetaTensor*> scales) {
+  PADDLE_ENFORCE_EQ(
+      x.dtype(),
+      DataType::BFLOAT16,
+      common::errors::InvalidArgument(
+          "The dtype of Input(x) must be BFLOAT16, but received %s",
+          x.dtype()));
+
+  auto x_dims = x.dims();
+
+  PADDLE_ENFORCE_EQ(
+      x_dims.size(),
+      4,
+      common::errors::InvalidArgument(
+          "Input(x) must have dimension of 4, but got %d.", x_dims.size()));
+
+  const int64_t M = x_dims[0] * x_dims[1] * x_dims[2];
+  const int64_t H = x_dims[3];
+
+  auto tokens_list = tokens_per_expert.GetData();
+  const size_t num_experts = tokens_list.size();
+
+  PADDLE_ENFORCE_EQ(
+      outs.size(),
+      num_experts,
+      common::errors::InvalidArgument(
+          "Size of outs (%d) must equal size of tokens_per_expert (%d)",
+          outs.size(),
+          num_experts));
+
+  PADDLE_ENFORCE_EQ(
+      scales.size(),
+      num_experts,
+      common::errors::InvalidArgument(
+          "Size of scales (%d) must equal size of tokens_per_expert (%d)",
+          scales.size(),
+          num_experts));
+
+  int64_t sum_tokens = 0;
+  for (size_t i = 0; i < num_experts; ++i) {
+    const int64_t tokens = tokens_list[i];
+
+    PADDLE_ENFORCE_EQ(
+        tokens % 128,
+        0,
+        common::errors::InvalidArgument(
+            "tokens_per_expert[%d] (%d) must be divisible by 128", i, tokens));
+
+    sum_tokens += tokens;
+
+    if (outs[i] != nullptr) {
+      outs[i]->set_dims(common::make_ddim({H, tokens}));
+      outs[i]->set_dtype(DataType::FLOAT8_E4M3FN);
+      outs[i]->set_layout(x.layout());
+    }
+
+    if (scales[i] != nullptr) {
+      scales[i]->set_dims(common::make_ddim({tokens / 128, H}));
+      scales[i]->set_dtype(DataType::FLOAT32);
+      scales[i]->set_layout(x.layout());
+    }
+  }
+
+  PADDLE_ENFORCE_EQ(
+      sum_tokens,
+      M,
+      common::errors::InvalidArgument("Sum of tokens_per_expert (%d) must "
+                                      "equal the upper dims of Input(x) (%d)",
+                                      sum_tokens,
+                                      M));
+  PADDLE_ENFORCE_LE(
+      H,
+      65535 * 128,
+      common::errors::InvalidArgument("Currently only supports the hidden size "
+                                      "of Input(x) <= 65535 * 128, but got %d.",
+                                      H));
+}
+
 void YoloBoxXPUInferMeta(const MetaTensor& x,
                          const MetaTensor& x_max,
                          const MetaTensor& grid,

@@ -30,8 +30,8 @@ bool SameStatusReshardFunction::IsSuitable(
     const DistTensor& in, const TensorDistAttr& out_dist_attr) {
   const auto& in_dist_attr = in.dist_attr();
 
-  RESHARD_SHORTCUT_IF_FALSE(in_dist_attr.dims_mapping() ==
-                            out_dist_attr.dims_mapping());
+  RESHARD_SHORTCUT_IF_FALSE(in_dist_attr.multi_dims_mapping() ==
+                            out_dist_attr.multi_dims_mapping());
   RESHARD_SHORTCUT_IF_FALSE(in_dist_attr.partial_dims() ==
                             out_dist_attr.partial_dims());
 

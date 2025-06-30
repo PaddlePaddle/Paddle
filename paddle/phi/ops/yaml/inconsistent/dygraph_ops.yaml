@@ -279,7 +279,7 @@
   output : Tensor
   infer_meta :
     func : ElementwiseInferMeta
-    spmd_rule : ElementwiseBinaryInferSpmd
+    spmd_rule : ElementwiseBinaryWithPartialInferSpmd
   kernel :
     func : multiply {dense, dense -> dense},
            multiply_sr {selected_rows, dense -> selected_rows}

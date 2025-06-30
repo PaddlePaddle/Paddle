@@ -54,12 +54,14 @@ SpmdInfo IndexPutInferSpmd(const DistMetaTensor& x,
                         x_ndim,
                         indices_size));
 
-  PADDLE_ENFORCE_EQ(value_ndim,
-                    1,
-                    common::errors::InvalidArgument(
-                        "The ndim of value in index_put should be equal to 1, "
-                        "but got value_ndim:[%d].",
-                        value_ndim));
+  PADDLE_ENFORCE_LE(
+      value_ndim,
+      x_ndim - indices_size + 1,
+      common::errors::InvalidArgument("The ndim of value in index_put should "
+                                      "be less than or equal to [%d], "
+                                      "but got value_ndim:[%d].",
+                                      x_ndim - indices_size + 1,
+                                      value_ndim));
   PADDLE_ENFORCE_EQ(
       indices_ndim,
       1,
@@ -78,10 +80,23 @@ SpmdInfo IndexPutInferSpmd(const DistMetaTensor& x,
             i,
             indices[i].dims().size()));
   }
+  std::string alphabet = "ijklmnopqrstuvwxyz";
+  std::string x_axes(x_ndim, '1');
+  for (int i = 0; i < x_ndim; ++i) {
+    x_axes[i] = alphabet[i];
+  }
+  std::string value_axes(value_ndim, '1');
+  int index = indices_size - 1;
+  for (int i = 0; i < value_ndim; ++i) {
+    value_axes[i] = x_axes[index++];
+  }
+
   // Step1: set dims_mapping for input
   for (int i = 0; i < indices_size; i++) {
     x_dims_mapping[i] = -1;
   }
+  std::unordered_map<std::string, int64_t> axis_to_dim_map =
+      ShardingMergeForTensors({{x_axes, x_dims_mapping}});
   // Step2: set dims_mapping for output
   TensorDistAttr out_dist_attr = CopyTensorDistAttrForOutput(x_dist_attr_src);
   out_dist_attr.set_dims_mapping(x_dims_mapping);
@@ -90,7 +105,8 @@ SpmdInfo IndexPutInferSpmd(const DistMetaTensor& x,
   x_dist_attr_dst.set_dims_mapping(x_dims_mapping);
   TensorDistAttr value_dist_attr_dst =
       CopyTensorDistAttrForOutput(value.dist_attr());
-  value_dist_attr_dst.set_dims_mapping(std::vector<int64_t>{-1});
+  value_dist_attr_dst.set_dims_mapping(
+      GetDimsMappingForAxes(value_axes, axis_to_dim_map));
   std::vector<TensorDistAttr> indices_dist_attrs_dst = indices_dist_attrs_src;
   for (auto& input_attr : indices_dist_attrs_dst) {
     input_attr.set_dims_mapping(std::vector<int64_t>{-1});
@@ -154,12 +170,14 @@ SpmdInfo IndexPutGradInferSpmd(const DistMetaTensor& x,
                         x_ndim,
                         indices_size));
 
-  PADDLE_ENFORCE_EQ(value_ndim,
-                    1,
-                    common::errors::InvalidArgument(
-                        "The ndim of value in index_put should be equal to 1, "
-                        "but got value_ndim:[%d].",
-                        value_ndim));
+  PADDLE_ENFORCE_LE(
+      value_ndim,
+      x_ndim - indices_size + 1,
+      common::errors::InvalidArgument("The ndim of value in index_put should "
+                                      "be less than or equal to [%d], "
+                                      "but got value_ndim:[%d].",
+                                      x_ndim - indices_size + 1,
+                                      value_ndim));
   PADDLE_ENFORCE_EQ(
       indices_ndim,
       1,
@@ -178,17 +196,30 @@ SpmdInfo IndexPutGradInferSpmd(const DistMetaTensor& x,
             i,
             indices[i].dims().size()));
   }
+  std::string alphabet = "ijklmnopqrstuvwxyz";
+  std::string x_axes(x_ndim, '1');
+  for (int i = 0; i < x_ndim; ++i) {
+    x_axes[i] = alphabet[i];
+  }
+  std::string value_axes(value_ndim, '1');
+  int index = indices_size - 1;
+  for (int i = 0; i < value_ndim; ++i) {
+    value_axes[i] = x_axes[index++];
+  }
   // Step1: set x_dims_mapping
   for (int i = 0; i < indices_size; i++) {
     x_dims_mapping[i] = -1;
   }
+  std::unordered_map<std::string, int64_t> axis_to_dim_map =
+      ShardingMergeForTensors({{x_axes, x_dims_mapping}});
   // Step2: set dims_mapping for output
   TensorDistAttr x_grad_dist_attr =
       CopyTensorDistAttrForOutput(x_dist_attr_src);
   x_grad_dist_attr.set_dims_mapping(x_dims_mapping);
   TensorDistAttr value_grad_dist_attr =
       CopyTensorDistAttrForOutput(value_dist_attr_src);
-  value_grad_dist_attr.set_dims_mapping(std::vector<int64_t>{-1});
+  value_grad_dist_attr.set_dims_mapping(
+      GetDimsMappingForAxes(value_axes, axis_to_dim_map));
   // Step3: update input dims mapping
   TensorDistAttr x_dist_attr_dst = CopyTensorDistAttrForOutput(x_dist_attr_src);
   x_dist_attr_dst.set_dims_mapping(x_dims_mapping);
@@ -197,7 +228,8 @@ SpmdInfo IndexPutGradInferSpmd(const DistMetaTensor& x,
   out_grad_dist_attr_dst.set_dims_mapping(x_dims_mapping);
   TensorDistAttr value_dist_attr_dst =
       CopyTensorDistAttrForOutput(value.dist_attr());
-  value_dist_attr_dst.set_dims_mapping(std::vector<int64_t>{-1});
+  value_dist_attr_dst.set_dims_mapping(
+      GetDimsMappingForAxes(value_axes, axis_to_dim_map));
   std::vector<TensorDistAttr> indices_dist_attrs_dst = indices_dist_attrs_src;
   for (auto& input_attr : indices_dist_attrs_dst) {
     input_attr.set_dims_mapping(std::vector<int64_t>{-1});
