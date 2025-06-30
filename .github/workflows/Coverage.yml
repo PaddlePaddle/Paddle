@@ -236,7 +236,6 @@ jobs:
           python ${{ env.bos_file }} ${{ env.paddle_whl }} paddle-github-action/PR/coverage/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
           cd /
           echo "Uploading Paddle.tar.gz"
-          # python ${{ env.bos_file }} Paddle.tar.gz paddle-github-action/PR/coverage/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
           cp Paddle.tar.gz ${CFS_DIR}/coverage_bos/${PR_ID}/${COMMIT_ID}
           rm Paddle.tar.gz
           '
