@@ -11,6 +11,7 @@ on:
         required: false
 
 env:
+  docker_images: registry.baidubce.com/baidu.xiaolvyun.images/paddlepaddle:8a09821b692912a392d4a7dd2825be02
   PR_ID: ${{ github.event.pull_request.number }}
   COMMIT_ID: ${{ github.event.pull_request.head.sha }}
   work_dir: /workspace/Paddle
@@ -49,7 +50,6 @@ jobs:
         run: |
           container_name=${TASK}-${core_index}-$(date +%Y%m%d-%H%M%S)
           echo "container_name=${container_name}" >> ${{ github.env }}
-          docker_image=${{ inputs.docker_build_image }}
           nvidia-docker run -d -t --name ${container_name} --net=host -v /dev/shm:/dev/shm --shm-size=32G \
             -v ${{ github.workspace }}/../../..:${{ github.workspace }}/../../.. \
             -v ${{ github.workspace }}:/workspace \
@@ -105,16 +105,12 @@ jobs:
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           ldconfig
+          set -e
           pip config set global.cache-dir "/home/.cache/pip"
           rm -rf /usr/bin/python
           ln -s /usr/bin/python${python_version} /usr/bin/python
           python -c "import sys; print(sys.version_info[:])"
-          '
-          docker exec -t ${{ env.container_name }} /bin/bash -c '
-          ldconfig
-          pip config set global.cache-dir "/home/.cache/pip"
-          set -e
-          source ${{ github.workspace }}/../../../proxy
+          # source ${{ github.workspace }}/../../../proxy
           timeout 80m bash Paddle/ci/auto_parallel/ci_auto_parallel.sh ${paddle_whl}
           '
 
