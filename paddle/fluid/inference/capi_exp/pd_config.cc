@@ -508,8 +508,7 @@ __pd_give PD_Cstr* PD_ConfigSummary(__pd_keep PD_Config* pd_config) {
   return paddle_infer::CvtStrToCstr(sum_str);
 }
 
-void PD_ConfigEnableNewExecutor(__pd_keep PD_Config* pd_config,
-                                PD_Bool x) {
+void PD_ConfigEnableNewExecutor(__pd_keep PD_Config* pd_config, PD_Bool x) {
   CHECK_AND_CONVERT_PD_CONFIG;
   config->EnableNewExecutor(x);
 }
@@ -519,8 +518,7 @@ PD_Bool PD_ConfigNewExecutorEnabled(__pd_keep PD_Config* pd_config) {
   return config->new_executor_enabled();  // NOLINT
 }
 
-void PD_ConfigEnableNewIR(__pd_keep PD_Config* pd_config,
-                          PD_Bool x) {
+void PD_ConfigEnableNewIR(__pd_keep PD_Config* pd_config, PD_Bool x) {
   CHECK_AND_CONVERT_PD_CONFIG;
   config->EnableNewIR(x);
 }
@@ -530,8 +528,7 @@ PD_Bool PD_ConfigNewIREnabled(__pd_keep PD_Config* pd_config) {
   return config->new_ir_enabled();  // NOLINT
 }
 
-void PD_ConfigUseOptimizedModel(__pd_keep PD_Config* pd_config,
-                                PD_Bool x) {
+void PD_ConfigUseOptimizedModel(__pd_keep PD_Config* pd_config, PD_Bool x) {
   CHECK_AND_CONVERT_PD_CONFIG;
   config->UseOptimizedModel(x);
 }

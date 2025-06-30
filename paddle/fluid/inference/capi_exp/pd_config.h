@@ -747,8 +747,7 @@ PADDLE_CAPI_EXPORT extern __pd_give PD_Cstr* PD_ConfigSummary(
 /// \param[in] pd_config config
 /// \param[in] x enable new executor or not
 PADDLE_CAPI_EXPORT extern void PD_ConfigEnableNewExecutor(
-    __pd_keep PD_Config* pd_config,
-    PD_Bool x);
+    __pd_keep PD_Config* pd_config, PD_Bool x);
 
 /// \brief A boolean state telling whether the new executor is enabled.
 /// \param[in] pd_config config
@@ -760,8 +759,7 @@ PADDLE_CAPI_EXPORT extern PD_Bool PD_ConfigNewExecutorEnabled(
 /// \param[in] pd_config config
 /// \param[in] x enable new IR or not
 PADDLE_CAPI_EXPORT extern void PD_ConfigEnableNewIR(
-    __pd_keep PD_Config* pd_config,
-    PD_Bool x);
+    __pd_keep PD_Config* pd_config, PD_Bool x);
 
 /// \brief A boolean state telling whether the new IR is enabled.
 /// \param[in] pd_config config
@@ -773,8 +771,7 @@ PADDLE_CAPI_EXPORT extern PD_Bool PD_ConfigNewIREnabled(
 /// \param[in] pd_config config
 /// \param[in] x whether to use optimized model
 PADDLE_CAPI_EXPORT extern void PD_ConfigUseOptimizedModel(
-    __pd_keep PD_Config* pd_config,
-    PD_Bool x);
+    __pd_keep PD_Config* pd_config, PD_Bool x);
 
 #ifdef __cplusplus
 }  // extern "C"
