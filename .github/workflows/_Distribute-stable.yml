@@ -232,7 +232,7 @@ jobs:
     needs: build
     if: ${{ needs.build.outputs.can-skip != 'true' }}
     runs-on:
-      group: Distribute
+      group: distribute-test
     steps:
       - name: Check docker image and run container
         env:
@@ -338,6 +338,6 @@ jobs:
         if: always()
         run: |
           set +e
-          docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'
+          docker exec -t ${{ env.container_name }} /bin/bash -c 'sleep 3d'
           docker stop ${{ env.container_name }}
           docker rm ${{ env.container_name }}
