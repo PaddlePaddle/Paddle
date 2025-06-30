@@ -650,11 +650,13 @@ def guard(place: PlaceLike | None = None) -> Generator[None, None, None]:
     else:
         expected_place = framework._current_expected_place_()
 
-    with framework.program_guard(train, startup):
-        with framework.unique_name.guard():
-            with framework._dygraph_guard(tracer):
-                with framework._dygraph_place_guard(expected_place):
-                    yield
+    with (
+        framework.program_guard(train, startup),
+        framework.unique_name.guard(),
+        framework._dygraph_guard(tracer),
+        framework._dygraph_place_guard(expected_place),
+    ):
+        yield
 
 
 @framework.non_static_only
