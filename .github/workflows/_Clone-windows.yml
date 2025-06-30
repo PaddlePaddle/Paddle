@@ -48,7 +48,6 @@ jobs:
           git fetch origin pull/%PR_ID%/head:pr
           git merge --no-ff pr
           git branch -d pr
-          @ECHO ON
           call %ci_scripts%\third_party_tag.bat
 
       - name: Upload paddle to bos
@@ -56,13 +55,13 @@ jobs:
           BCE_FILE: ${{ github.workspace }}\..\bce-python-sdk-new\BosClient.py
         run: |
           if not exist ${{ github.workspace }}\..\bce-python-sdk-new (
-              echo There is no bce in this PC, will install bce.
-              cd /d %WORK_DIR%
-              pip install wget
-              pip install shutil
-              echo Download package from https://xly-devops.bj.bcebos.com/home/bos_new.tar.gz
-              python -c "import wget;wget.download('https://xly-devops.bj.bcebos.com/home/bos_new.tar.gz')"
-              python -c "import shutil;shutil.unpack_archive('bos_new.tar.gz', extract_dir='./bce-python-sdk-new',format='gztar')"
+            echo There is no bce in this PC, will install bce.
+            cd /d %WORK_DIR%
+            pip install wget
+            pip install shutil
+            echo Download package from https://xly-devops.bj.bcebos.com/home/bos_new.tar.gz
+            python -c "import wget;wget.download('https://xly-devops.bj.bcebos.com/home/bos_new.tar.gz')"
+            python -c "import shutil;shutil.unpack_archive('bos_new.tar.gz', extract_dir='./bce-python-sdk-new',format='gztar')"
           )
           python -m pip install pycryptodome
           python -m pip install bce-python-sdk==0.8.74
