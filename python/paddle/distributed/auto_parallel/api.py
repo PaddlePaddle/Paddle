@@ -1505,6 +1505,9 @@ class _ShardOptimizer(Optimizer):
                     sync_op=False,
                 )
 
+    def _set_tensor_fusion(self, enable_tensor_fusion):
+        self.enable_tensor_fusion = enable_tensor_fusion
+
     def _set_sharding_overlap(self, enable_sharding_overlap, layers):
         self.enable_sharding_overlap = enable_sharding_overlap
         self._layers = layers
