@@ -48,6 +48,10 @@ from .auto_parallel.api import (
 )
 from .auto_parallel.high_level_api import to_distributed
 from .auto_parallel.interface import get_mesh, set_mesh
+from .auto_parallel.intermediate.context_parallel import (
+    ContextParallel,
+    PrepareContextParallel,
+)
 from .auto_parallel.intermediate.parallelize import parallelize
 from .auto_parallel.intermediate.pipeline_parallel import SplitPoint
 from .auto_parallel.intermediate.tensor_parallel import (
@@ -219,4 +223,6 @@ __all__ = [
     "get_mesh",
     "to_distributed",
     "ConvParallel",
+    "ContextParallel",
+    "PrepareContextParallel",
 ]

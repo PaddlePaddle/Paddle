@@ -35,7 +35,9 @@ void ReshardSToRWithPadding(DeviceContext* dev_ctx,
                             const std::vector<int64_t>& process_ids,
                             const DenseTensor& in,
                             int64_t padding_nums,
-                            DenseTensor* out) {
+                            DenseTensor* out,
+                            int64_t split_factor = 1) {
+  VLOG(4) << "split factor is " << split_factor;
   int64_t num_of_process = process_ids.size();
   auto dtype = in.dtype();
 
@@ -45,8 +47,16 @@ void ReshardSToRWithPadding(DeviceContext* dev_ctx,
   RESHARD_FUNCTOR_WITH_COMM(
       dev_ctx, AllGather, dtype, process_ids, in, num_of_process, out);
 
-  if (split_axis != 0 || padding_nums != 0) {
-    IntArray sections(std::vector<int64_t>(num_of_process, in.dims()[0]));
+  if (split_axis != 0 || padding_nums != 0 || split_factor > 1) {
+    PADDLE_ENFORCE_EQ((in.dims()[0] % split_factor),
+                      0,
+                      common::errors::InvalidArgument(
+                          "The specified axis of tensor should be evenly "
+                          "splited, but got %d and %d.",
+                          in.dims()[0],
+                          split_factor));
+    IntArray sections(std::vector<int64_t>(num_of_process * split_factor,
+                                           in.dims()[0] / split_factor));
 
     std::vector<DenseTensor> split_out_vec;
     RESHARD_FUNCTOR(dev_ctx,
@@ -74,13 +84,27 @@ void ReshardSToRWithPadding(DeviceContext* dev_ctx,
     // Concat the result after split on correct axis.
     std::vector<const DenseTensor*> concat_input_vec;
     concat_input_vec.reserve(split_out_vec.size());
-    for (const auto& tensor : split_out_vec) {
-      concat_input_vec.emplace_back(&tensor);
+
+    for (size_t idx = 0; idx < split_out_vec.size(); idx++) {
+      int64_t new_idx =
+          idx % num_of_process * split_factor + idx / num_of_process;
+      concat_input_vec.emplace_back(&(split_out_vec.at(new_idx)));
     }
+
     RESHARD_FUNCTOR(dev_ctx, Concat, dtype, concat_input_vec, split_axis, out);
   }
 }
 
+std::map<int, int64_t> GetSplitAxisWithDimsMapping(
+    const std::vector<std::vector<int64_t>>& dims_mapping) {
+  std::map<int, int64_t> split_axis_to_mesh_axis;
+  for (size_t i = 0; i < dims_mapping.size(); ++i) {
+    if (dims_mapping[i].size() > 0) {
+      split_axis_to_mesh_axis.emplace(i, dims_mapping[i][0]);
+    }
+  }
+  return split_axis_to_mesh_axis;
+}
 }  // namespace
 
 bool SToRReshardFunction::IsSuitable(const DistTensor& in,
@@ -106,7 +130,7 @@ void SToRReshardFunction::Eval(DeviceContext* dev_ctx,
                                DistTensor* out) {
   VLOG(3) << "Call " << Name();
   const auto& in_dist_attr = in.dist_attr();
-  const auto& in_dims_mapping = in_dist_attr.dims_mapping();
+  const auto& in_dims_mapping = in_dist_attr.multi_dims_mapping();
   const auto& in_process_mesh = in_dist_attr.process_mesh();
   const auto& in_process_ids = in_process_mesh.process_ids();
   if (in_process_ids.size() == 1) {
@@ -116,8 +140,12 @@ void SToRReshardFunction::Eval(DeviceContext* dev_ctx,
   }
 
   int split_axis = GetSplitAxisWithDimsMapping(in_dims_mapping).begin()->first;
+  int64_t mesh_axis =
+      GetSplitAxisWithDimsMapping(in_dims_mapping).begin()->second;
   int64_t num_of_process = in_process_mesh.size();
   int64_t num_of_padding = in.dims()[split_axis] % num_of_process;
+  VLOG(4) << "dist attr " << in_dist_attr.to_string();
+  int64_t split_factor = in_dist_attr.get_split_factor(mesh_axis);
   bool is_balanced_split = (num_of_padding == 0);
 
   if (is_balanced_split) {
@@ -127,7 +155,8 @@ void SToRReshardFunction::Eval(DeviceContext* dev_ctx,
                            in_process_ids,
                            in.value(),
                            /*padding_nums*/ 0,
-                           GetMutableTensor(out));
+                           GetMutableTensor(out),
+                           split_factor);
   } else {
     VLOG(3) << "Unbalanced reshard from shard to replicated";
     int64_t avg_size_on_split_axis =

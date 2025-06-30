@@ -30,12 +30,13 @@ from paddle.base import core, framework
 from paddle.base.compiler import BuildStrategy
 from paddle.base.data_feeder import check_type
 from paddle.base.dygraph.base import switch_to_static_graph
-from paddle.pir import Value, fake_value, is_fake_value
+from paddle.pir import Value, fake_value, get_fake_value_name, is_fake_value
 
 from .logging_utils import TranslatorLogger
 from .utils import (
     RETURN_NO_VALUE_MAGIC_NUM,
     Backend,
+    CUDAGraphState,
     TimeCounter,
     auto_layout_is_enabled,
     backend_guard,
@@ -51,7 +52,7 @@ __all__ = []
 prog_logger = TranslatorLogger()
 
 
-FAKE_VALUE_NAME = "FakeValue"
+FAKE_VALUE_NAME = get_fake_value_name()
 
 
 def hash_with_seed(value, seed):
@@ -408,13 +409,6 @@ class RunnableProgram:
         ), "program_attr() is called by PartialProgramLayer, don't call it manually, use program_name_attr instead."
         # can't apply pass after call this function.
         self.finish_pass = True
-        fwd_map = RunnableProgram._get_name_value_map_from_program(
-            self.forward_program
-        )
-        bwd_map = RunnableProgram._get_name_value_map_from_program(
-            self.backward_program
-        )
-
         program_name_attr = self.program_name_attr
         no_need_buffer_names = program_name_attr["no_need_buffers"]
         rename_mapping = {}
@@ -432,19 +426,15 @@ class RunnableProgram:
                 if new_name in no_need_buffer_names:
                     no_need_buffer_names.remove(new_name)
 
-        value_program_attr = {}
-        for k, ns in self.program_name_attr.items():
-            if k.startswith("f"):
-                values = [fwd_map.get(n, fake_value()) for n in ns]
-            elif k.startswith("b"):
-                values = [bwd_map.get(n, fake_value()) for n in ns]
-            elif k == "no_need_buffers":
-                values = [fwd_map.get(n, fake_value()) for n in ns]
-            else:
-                raise ValueError(f"Unknown program attr: {k}")
-            value_program_attr[k] = values
+        RunnableProgram.update_program_name_attr(
+            self.program_name_attr, rename_mapping
+        )
 
-        return value_program_attr
+        program_attr = {}
+        for k, ns in self.program_name_attr.items():
+            program_attr[f"{k}_names"] = ns
+
+        return program_attr
 
     @staticmethod
     def unify_value_names(
@@ -467,6 +457,15 @@ class RunnableProgram:
                     value._has_only_one_name()
                 ), f"Expected all values in Program have only one name, but {value} has multiple names: {value._names}"
         return rename_mapping
+
+    @staticmethod
+    def update_program_name_attr(
+        name_attr: dict[str, list[str]], rename_mapping: dict[str, str]
+    ):
+        for k, vs in name_attr.items():
+            name_attr[k] = [
+                rename_mapping[v] if v in rename_mapping else v for v in vs
+            ]
 
     @cached_property
     def program_name_attr(self):
@@ -729,40 +728,39 @@ class PartialProgramLayer:
 
         self._compile_time_counter = TimeCounter()
 
+    @staticmethod
+    def run_impl(partial_program_layer, inputs, parameters, outputs, attrs):
+        _C_ops.run_program(
+            PartialProgramLayer._valid_vars(inputs),
+            PartialProgramLayer._valid_vars(parameters),
+            PartialProgramLayer._valid_vars(outputs),
+            partial_program_layer._create_scope_vec(
+                cache_key=(
+                    PartialProgramLayer._calc_scope_cache_key(
+                        attrs["program_id"],
+                        inputs,
+                        attrs["cuda_graph_state"] != CUDAGraphState.DISABLE,
+                        attrs["cuda_graph_dispatch_key"],
+                    )
+                ),
+                use_scope_cache=True,
+            ),
+            attrs,
+        )
+
     def __call__(self, inputs):
         """
         Execute static graph by Interpreter and Return dynamic Tensors.
         """
         attrs = self._prepare_attributes(in_sot_mode=False)
-        inputs = self._valid_vars(self._prepare_inputs(inputs))
-        parameters = self._valid_vars(self._params)
+        inputs = self._prepare_inputs(inputs)
         out_vars = self._prepare_outputs()
-        outputs = self._valid_vars(out_vars)
-
-        def run_impl(inputs, parameters, outputs):
-            _C_ops.run_program(
-                inputs,
-                parameters,
-                outputs,
-                self._create_scope_vec(
-                    cache_key=(
-                        hash_with_seed(
-                            self.program_id,
-                            self._calc_input_places_hash(inputs),
-                        )
-                    ),
-                    use_scope_cache=True,
-                ),
-                *attrs,
-            )
 
         self.call_run_impl_with_hook(
-            run_impl,
             inputs,
-            parameters,
-            outputs,
-            self.program.forward_program,
-            self.program.backward_program,
+            self._params,
+            out_vars,
+            attrs,
         )
 
         restored_nest_out = self._restore_out(out_vars)
@@ -773,61 +771,37 @@ class PartialProgramLayer:
         In sot, inputs and outputs of partial program only contain tensors, so we can skip some step to speed up
         """
         attrs = self._prepare_attributes(in_sot_mode=True)
-        inputs = self._valid_vars(inputs)
-        parameters = self._valid_vars(self._params)
         out_vars = self._prepare_outputs()
-        outputs = self._valid_vars(out_vars)
-
-        def run_impl(inputs, parameters, outputs):
-            _C_ops.run_program(
-                inputs,
-                parameters,
-                outputs,
-                self._create_scope_vec(
-                    cache_key=(
-                        hash_with_seed(
-                            self.program_id,
-                            self._calc_input_places_hash(inputs),
-                        )
-                    ),
-                    use_scope_cache=True,
-                ),
-                *attrs,
-            )
 
         self.call_run_impl_with_hook(
-            run_impl,
             inputs,
-            parameters,
-            outputs,
-            self.program.forward_program,
-            self.program.backward_program,
+            self._params,
+            out_vars,
+            attrs,
         )
         return self._outputs.quick_restore(out_vars)
 
     def call_run_impl_with_hook(
         self,
-        run_impl,
         inputs,
         parameters,
         outputs,
-        forward_program,
-        backward_program,
+        attrs,
     ):
         if PartialProgramLayer.HOOKED_RUN_IMPL is None:
-            run_impl(
+            PartialProgramLayer.run_impl.__get__(self)(
                 inputs,
                 parameters,
                 outputs,
+                attrs,
             )
         else:
             PartialProgramLayer.HOOKED_RUN_IMPL(
-                run_impl,
+                PartialProgramLayer.run_impl.__get__(self),
                 inputs,
                 parameters,
                 outputs,
-                forward_program,
-                backward_program,
+                attrs,
             )
 
     @cached_property
@@ -861,10 +835,22 @@ class PartialProgramLayer:
         cached_scopes.append(scope)
         return scope
 
-    def _calc_input_places_hash(self, inputs):
+    @staticmethod
+    def _calc_input_places_hash(inputs):
         if not inputs:
             return 0
         return paddle.base.libpaddle.calc_place_hash(inputs)
+
+    @staticmethod
+    def _calc_scope_cache_key(
+        program_id, inputs, use_cuda_graph, cuda_graph_dispatch_key
+    ):
+        res = hash_with_seed(
+            program_id, PartialProgramLayer._calc_input_places_hash(inputs)
+        )
+        res = hash_with_seed(res, int(use_cuda_graph))
+        res = hash_with_seed(res, cuda_graph_dispatch_key)
+        return res
 
     # whole
     @switch_to_static_graph
@@ -1207,22 +1193,15 @@ class PartialProgramLayer:
         return whole_program
 
     def _prepare_attributes(self, in_sot_mode=False):
-        attrs = [
-            'forward_program',
-            self.program.forward_program,
-            'backward_program',
-            self.program.backward_program,
-            'is_test',
-            not self.training,
-            'program_id',
-            self.program_id,
-            'in_sot_mode',
-            in_sot_mode,
-        ]
-        for key, val in self.program.program_attr.items():
-            attrs.append(key)
-            attrs.append(val)
-        return attrs
+        return {
+            'forward_program': self.program.forward_program,
+            'backward_program': self.program.backward_program,
+            'is_test': not self.training,
+            'program_id': self.program_id,
+            'in_sot_mode': in_sot_mode,
+            'cuda_graph_state': CUDAGraphState.DISABLE,  # default value for not use cuda graph
+            'cuda_graph_dispatch_key': 0,  # default value for not use cuda graph
+        } | self.program.program_attr
 
     def _prepare_inputs(self, inputs):
         """
@@ -1364,7 +1343,8 @@ class PartialProgramLayer:
                 )
             param_and_buffer_names_set.add(var.name)
 
-    def _valid_vars(self, vars):
+    @staticmethod
+    def _valid_vars(vars):
         return vars if vars else None
 
 

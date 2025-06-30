@@ -2115,6 +2115,117 @@ void FrameInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
+void Fp8QuantBlockwiseInferMeta(const MetaTensor& X,
+                                float epsilon,
+                                bool using_1x128_vec_quant,
+                                bool input_transpose,
+                                bool output_scale_transpose,
+                                bool using_e5m2,
+                                bool using_pow2_scale,
+                                MetaTensor* out,
+                                MetaTensor* scale,
+                                MetaTensor* out_transposed,
+                                MetaTensor* scale_transposed) {
+  auto x_dims = X.dims();
+  PADDLE_ENFORCE_EQ(
+      x_dims.size(),
+      2,
+      common::errors::InvalidArgument("Input must have exactly 2 dimensions."));
+  PADDLE_ENFORCE_EQ(
+      using_e5m2,
+      false,
+      common::errors::InvalidArgument("currently e5m2 is not support."));
+  PADDLE_ENFORCE_EQ(X.dtype(),
+                    phi::DataType::BFLOAT16,
+                    common::errors::InvalidArgument(
+                        "currently only support bfloat16 input."));
+
+  const int64_t rows = x_dims[0];
+  const int64_t cols = x_dims[1];
+  PADDLE_ENFORCE_LE(rows,
+                    65535 * 128,
+                    common::errors::InvalidArgument(
+                        "Currently only supports the first dim of "
+                        "Input(X) <= 65535 * 128, but got %d",
+                        rows));
+  PADDLE_ENFORCE_EQ(
+      rows % 128,
+      0,
+      common::errors::InvalidArgument("The first dim of "
+                                      "Input(X) should be exactly divided "
+                                      "by 128 , but got %d",
+                                      rows));
+  PADDLE_ENFORCE_EQ(cols % 128,
+                    0,
+                    common::errors::InvalidArgument(
+                        "The last dim of Input(X) should be exactly divided "
+                        "by 128 , but got %d",
+                        cols));
+
+  const int64_t row_quantized = (rows + 127) / 128;
+  const int64_t col_quantized = (cols + 127) / 128;
+
+  int64_t output_outer_dim = -1;
+  int64_t output_inner_dim = -1;
+  int64_t scale_outer_dim = -1;
+  int64_t scale_inner_dim = -1;
+  int64_t scale_transposed_outer_dim = -1;
+  int64_t scale_transposed_inner_dim = -1;
+
+  // output_fp8's shape should exactly match input x.
+  output_outer_dim = rows;
+  output_inner_dim = cols;
+
+  if (using_1x128_vec_quant) {
+    // 1x128 w/wo transpose
+    scale_outer_dim = output_scale_transpose ? col_quantized : rows;
+    scale_inner_dim = output_scale_transpose ? rows : col_quantized;
+    scale_transposed_outer_dim = output_scale_transpose ? row_quantized : cols;
+    scale_transposed_inner_dim = output_scale_transpose ? cols : row_quantized;
+  } else {
+    // 128x128 w/wo transpose
+    scale_outer_dim = output_scale_transpose ? col_quantized : row_quantized;
+    scale_inner_dim = output_scale_transpose ? row_quantized : col_quantized;
+    scale_transposed_outer_dim = scale_inner_dim;
+    scale_transposed_inner_dim = scale_outer_dim;
+  }
+
+  PADDLE_ENFORCE_GT(output_outer_dim,
+                    0,
+                    common::errors::InvalidArgument(
+                        "invalid shape encountered in output outer dim."));
+  PADDLE_ENFORCE_GT(output_inner_dim,
+                    0,
+                    common::errors::InvalidArgument(
+                        "invalid shape encountered in output inner dim."));
+  PADDLE_ENFORCE_GT(scale_outer_dim,
+                    0,
+                    common::errors::InvalidArgument(
+                        "invalid shape encountered in scale outer dim."));
+  PADDLE_ENFORCE_GT(scale_inner_dim,
+                    0,
+                    common::errors::InvalidArgument(
+                        "invalid shape encountered in scale inner dim."));
+
+  if (X && out && scale) {
+    out->set_dims(common::make_ddim({output_outer_dim, output_inner_dim}));
+    out->set_dtype(phi::DataType::FLOAT8_E4M3FN);
+    scale->set_dims(common::make_ddim({scale_outer_dim, scale_inner_dim}));
+    scale->set_dtype(phi::DataType::FLOAT32);
+    if (input_transpose) {
+      out_transposed->set_dims(
+          common::make_ddim({output_inner_dim, output_outer_dim}));
+      out_transposed->set_dtype(phi::DataType::FLOAT8_E4M3FN);
+      scale_transposed->set_dims(common::make_ddim(
+          {scale_transposed_outer_dim, scale_transposed_inner_dim}));
+      scale_transposed->set_dtype(phi::DataType::FLOAT32);
+    }
+  } else {
+    PADDLE_THROW(
+        common::errors::InvalidArgument("invalid input or output tensor"));
+  }
+}
+
 void FullBatchSizeLikeInferMeta(const MetaTensor& x,
                                 const std::vector<int>& shape,
                                 const Scalar& val,
@@ -5262,7 +5373,7 @@ void TileInferMeta(const MetaTensor& x,
   auto out_rank =
       std::max(static_cast<size_t>(x_dims.size()), repeat_times_data.size());
   std::vector<int64_t> out_shape(out_rank);
-  auto x_dim_vec = common::vectorize<int>(x_dims);
+  auto x_dim_vec = common::vectorize<int64_t>(x_dims);
   if (x_dim_vec.size() > repeat_times_data.size()) {
     auto diff = x_dim_vec.size() - repeat_times_data.size();
     repeat_times_data.insert(repeat_times_data.begin(), diff, 1);
@@ -6209,11 +6320,6 @@ void WeightQuantizeInferMeta(const MetaTensor& x,
         "'llm.int8', 'w4a8'], but got[%s]",
         algo));
   }
-  if (x.dtype() == DataType::INT8 && algo != "w4a8") {
-    PADDLE_THROW(common::errors::InvalidArgument(
-        "The algo must be 'w4a8' while the x's dtype is INT8, but got[%s]",
-        algo));
-  }
   out->set_dims(common::make_ddim(dim_out));
 
   out->set_dtype(DataType::INT8);
@@ -6376,17 +6482,11 @@ void IntBincountInferMeta(const MetaTensor& x,
                           int64_t high,
                           int64_t dtype,
                           MetaTensor* out) {
-  PADDLE_ENFORCE_EQ(
-      x.dims().size(),
-      1,
-      errors::InvalidArgument(
-          "The input 'x' of int_bincount must be a 1-D Tensor, but got %u-D.",
-          x.dims().size()));
   PADDLE_ENFORCE_GT(
       high,
       low,
       errors::InvalidArgument("Attr high (%d) must be > low (%d).", high, low));
-  int64_t bin_count = high - low + 1;
+  int64_t bin_count = high - low;
 
   out->set_dims(phi::make_ddim({bin_count}));
   out->set_dtype(x.dtype());

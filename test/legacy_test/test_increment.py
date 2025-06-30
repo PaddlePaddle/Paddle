@@ -42,23 +42,23 @@ class TestIncrement(unittest.TestCase):
             self.assertEqual((output.numpy() == expected_result).all(), True)
 
     def test_no_inplace_increment(self):
-        with paddle.pir_utils.IrGuard():
-            with base.program_guard(base.Program(), base.Program()):
-                x = paddle.tensor.fill_constant(
-                    shape=[1], dtype='int64', value=1
-                )
-                x.stop_gradient = False
-                input = paddle._pir_ops.increment(x, 1.0)
-                input = paddle._pir_ops.increment(input, 1.0)
-                input = paddle._pir_ops.increment(input, 1.0)
-                out = paddle._pir_ops.increment(input, 1.0)
+        with (
+            paddle.pir_utils.IrGuard(),
+            base.program_guard(base.Program(), base.Program()),
+        ):
+            x = paddle.tensor.fill_constant(shape=[1], dtype='int64', value=1)
+            x.stop_gradient = False
+            input = paddle._pir_ops.increment(x, 1.0)
+            input = paddle._pir_ops.increment(input, 1.0)
+            input = paddle._pir_ops.increment(input, 1.0)
+            out = paddle._pir_ops.increment(input, 1.0)
 
-                dx = paddle.base.gradients(out, x)
-                exe = base.Executor(base.CPUPlace())
-                result = exe.run(fetch_list=[out, dx])
+            dx = paddle.base.gradients(out, x)
+            exe = base.Executor(base.CPUPlace())
+            result = exe.run(fetch_list=[out, dx])
 
-                self.assertEqual(result[0], 5.0)
-                self.assertEqual(result[1], 1.0)
+            self.assertEqual(result[0], 5.0)
+            self.assertEqual(result[1], 1.0)
 
 
 class TestInplaceApiWithDataTransform(unittest.TestCase):

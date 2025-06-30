@@ -1105,6 +1105,7 @@ def smooth_l1_loss(
     label: Tensor,
     reduction: _ReduceMode = 'mean',
     delta: float = 1.0,
+    is_huber: bool = True,
     name: str | None = None,
 ) -> Tensor:
     r"""
@@ -1143,6 +1144,7 @@ def smooth_l1_loss(
             The value determines how large the errors need to be to use L1. Errors
             smaller than delta are minimized with L2. Parameter is ignored for
             negative/zero values. Default = 1.0
+        is_huber (bool, optional): If True, use the Huber loss, otherwise use a modified version where the Huber loss is divided by delta. Default is True.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -1191,6 +1193,9 @@ def smooth_l1_loss(
             outputs={'Out': out, 'Residual': residual},
             attrs={'delta': delta},
         )
+
+    if not is_huber:
+        out = out / delta
 
     if reduction not in ['sum', 'mean', 'none']:
         raise ValueError(
@@ -1520,7 +1525,7 @@ def nll_loss(
         if input_dims != 2 and input_dims != 4:
             input = _C_ops.reshape(input, [n, c, 1, -1])
             label = _C_ops.reshape(label, [n, 1, -1])
-            out_shape = [n] + input_shape[2:]
+            out_shape = [n, *input_shape[2:]]
         out, total_weight = _C_ops.nll_loss(
             input, label, weight, ignore_index, reduction
         )
@@ -1533,7 +1538,7 @@ def nll_loss(
         if input_dims != 2 and input_dims != 4:
             input = reshape(input, shape=[n, c, 1, -1])
             label = reshape(label, shape=[n, 1, -1])
-            out_shape = [n] + input_shape[2:]
+            out_shape = [n, *input_shape[2:]]
 
         check_variable_and_dtype(
             input, 'input', ['float32', 'float64'], 'nll_loss'
@@ -4551,6 +4556,9 @@ def adaptive_log_softmax_with_loss(
 
         label_mask = (label >= low_idx) & (label < high_idx)
         row_indices = label_mask.nonzero().squeeze()
+
+        if row_indices.dim() == 0:
+            row_indices.unsqueeze_(0)
 
         if row_indices.numel() == 0:
             continue

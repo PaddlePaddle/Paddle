@@ -2869,15 +2869,26 @@ def inner(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
 
 
     """
+    xshape = x.shape
+    yshape = y.shape
     if in_dynamic_mode() and (x.size == 1 or y.size == 1):
         return multiply(x, y)
     else:
-        xshape = x.shape
-        yshape = y.shape
         dstshape = list(xshape[:-1]) + list(yshape[:-1])
-
-        nx = x.reshape((-1, xshape[-1]))
-        ny = y.reshape((-1, yshape[-1]))
+        if xshape[-1] == 0:  # If the last dimension is 0
+            if len(xshape) == 1:  # shape is [0]
+                nx = x.reshape((1, 0))
+            else:
+                nx = x.reshape((math.prod(xshape[:-1]), 0))
+        else:
+            nx = x.reshape((-1, xshape[-1]))
+        if yshape[-1] == 0:  # If the last dimension is 0
+            if len(yshape) == 1:  # shape is [0]
+                ny = y.reshape((1, 0))
+            else:
+                ny = y.reshape((math.prod(yshape[:-1]), 0))
+        else:
+            ny = y.reshape((-1, yshape[-1]))
 
         def __check_input(x, y):
             var_names = {'x': x, 'y': y}
@@ -4012,6 +4023,9 @@ def clip(
     elif x_dtype == 'paddle.float16':
         min_ = float(np.finfo(np.float16).min)
         max_ = float(np.finfo(np.float16).max)
+    elif x_dtype == 'paddle.float64':
+        min_ = float(np.finfo(np.float64).min)
+        max_ = float(np.finfo(np.float64).max)
     else:
         min_ = float(np.finfo(np.float32).min)
         max_ = float(np.finfo(np.float32).max)
@@ -5011,6 +5025,10 @@ def prod(
         )
         if x.dtype != convert_np_dtype_to_dtype_(dtype):
             x = cast(x, dtype)
+
+    # axis is 0-size tensor.
+    if paddle.is_tensor(axis) and axis.shape == [0]:
+        return x
 
     reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
     if in_dynamic_or_pir_mode():
