@@ -60,7 +60,7 @@ repos:
     hooks:
       - id: black
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.11.11
+    rev: v0.12.0
     hooks:
       - id: ruff-check
         args: [--fix, --exit-non-zero-on-fix, --no-cache]

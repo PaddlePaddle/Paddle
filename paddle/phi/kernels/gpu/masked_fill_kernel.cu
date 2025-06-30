@@ -110,6 +110,7 @@ void DispatchMaskFillKernel(const phi::GPUContext& dev_ctx,
     CASE_VECSIZE(1)
     CASE_VECSIZE(2)
     CASE_VECSIZE(4)
+    CASE_VECSIZE(8)
 #undef CASE_VECSIZE
     default:
       PADDLE_THROW(common::errors::Unimplemented(
@@ -139,6 +140,7 @@ void DispatchMaskFillOneValueKernel(
     CASE_VECSIZE(1)
     CASE_VECSIZE(2)
     CASE_VECSIZE(4)
+    CASE_VECSIZE(8)
 #undef CASE_VECSIZE
     default:
       PADDLE_THROW(common::errors::Unimplemented(
@@ -161,7 +163,7 @@ void GPUMaskedFill(const phi::GPUContext& dev_ctx,
   int64_t mask_len = mask.numel();
   int batch_size = input_len / mask_len;
 
-  int vec_size = 4;
+  int vec_size = 8;
   vec_size = std::min(phi::GetVectorizedSize(input_data), vec_size);
   vec_size = std::min(phi::GetVectorizedSize(output_data), vec_size);
   while (vec_size > 1 && batch_size % vec_size != 0) {

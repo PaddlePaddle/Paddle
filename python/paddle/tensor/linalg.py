@@ -3065,7 +3065,7 @@ def _conjugate(x):
 def _transpose(x):
     shape = x.shape
     perm = list(range(0, len(shape)))
-    perm = perm[:-2] + [perm[-1]] + [perm[-2]]
+    perm = [*perm[:-2], perm[-1], perm[-2]]
     return paddle.transpose(x, perm)
 
 
@@ -4159,7 +4159,7 @@ def pinv(
             st = _C_ops.unsqueeze(singular, [-2])
 
             dims = list(range(len(vt.shape)))
-            perm = dims[:-2] + [dims[-1]] + [dims[-2]]
+            perm = [*dims[:-2], dims[-1], dims[-2]]
             v = _C_ops.transpose(vt, perm)
 
             out_1 = v * st
@@ -4223,7 +4223,7 @@ def pinv(
             )
 
             dims = list(range(len(vt.shape)))
-            perm = dims[:-2] + [dims[-1]] + [dims[-2]]
+            perm = [*dims[:-2], dims[-1], dims[-2]]
             v = helper.create_variable_for_type_inference(dtype)
             v_shape = helper.create_variable_for_type_inference(dtype)
             helper.append_op(
