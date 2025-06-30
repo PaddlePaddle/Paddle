@@ -252,6 +252,33 @@ class TestInverseSingularAPI(unittest.TestCase):
                     print("The mat is singular")
 
 
+class TestInverseAPI_ZeroSize(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(123)
+        self.places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            self.places.append(base.CPUPlace())
+        if core.is_compiled_with_cuda():
+            self.places.append(base.CUDAPlace(0))
+
+    def test_dygraph(self):
+        for place in self.places:
+            with base.dygraph.guard(place):
+                input_np = np.random.random([4, 0]).astype("float64")
+                input = paddle.to_tensor(input_np)
+                input.stop_gradient = False
+                result = paddle.linalg.inv(input)
+                np_out = np.random.random([4, 0]).astype("float64")
+                np.testing.assert_allclose(result.numpy(), np_out, rtol=1e-05)
+                loss = paddle.sum(result)
+                loss.backward()
+                np.testing.assert_allclose(input.grad.shape, input.shape)
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()

@@ -55,22 +55,24 @@ def main():
         main = base.Program()
         startup = base.Program()
         scope = base.core.Scope()
-        with base.program_guard(main, startup):
-            with base.scope_guard(scope):
-                with base.unique_name.guard():
-                    test_loader = unittest.TestLoader()
-                    module = importlib.import_module(module_name)
-                    tests = test_loader.loadTestsFromModule(module)
-                    res = unittest.TextTestRunner(stream=buffer).run(tests)
+        with (
+            base.program_guard(main, startup),
+            base.scope_guard(scope),
+            base.unique_name.guard(),
+        ):
+            test_loader = unittest.TestLoader()
+            module = importlib.import_module(module_name)
+            tests = test_loader.loadTestsFromModule(module)
+            res = unittest.TextTestRunner(stream=buffer).run(tests)
 
-                    if not res.wasSuccessful():
-                        some_test_failed = True
-                        print(
-                            module_name,
-                            'failed\n',
-                            buffer.getvalue(),
-                            file=sys.stderr,
-                        )
+            if not res.wasSuccessful():
+                some_test_failed = True
+                print(
+                    module_name,
+                    'failed\n',
+                    buffer.getvalue(),
+                    file=sys.stderr,
+                )
         if flag_need_static_mode:
             paddle.disable_static()
 

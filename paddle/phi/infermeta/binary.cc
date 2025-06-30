@@ -888,19 +888,23 @@ void ConvTransposeInferMeta(const MetaTensor& x,
                 common::make_ddim(output_size).to_str(),
                 i,
                 infer_shape));
-        PADDLE_ENFORCE_LT(
-            output_size[i],
-            infer_shape + strides[i],
-            errors::InvalidArgument(
-                "output_size of Op(ConvTransposeOp) should be less "
-                "than inferred size + stride. But received output_size = [%s], "
-                "whose dim %d is not less than the inferred output size (%d) + "
-                "stride (%d) = %d",
-                common::make_ddim(output_size).to_str(),
-                i,
-                infer_shape,
-                strides[i],
-                infer_shape + strides[i]));
+        if (common::product(x_dims) != 0) {
+          PADDLE_ENFORCE_LT(
+              output_size[i],
+              infer_shape + strides[i],
+              errors::InvalidArgument(
+                  "output_size of Op(ConvTransposeOp) should be less "
+                  "than inferred size + stride. But received output_size = "
+                  "[%s], "
+                  "whose dim %d is not less than the inferred output size (%d) "
+                  "+ "
+                  "stride (%d) = %d",
+                  common::make_ddim(output_size).to_str(),
+                  i,
+                  infer_shape,
+                  strides[i],
+                  infer_shape + strides[i]));
+        }
       }
       output_shape.push_back(output_size[i]);
     } else if (!output_padding.empty()) {
@@ -2564,30 +2568,10 @@ void IndexElementwiseGetInferMeta(const MetaTensor& x,
                                   const std::vector<int64_t>& input_strides,
                                   const std::vector<int64_t>& index_dims,
                                   const std::vector<int64_t>& index_stride,
+                                  const int64_t slice_offset,
+                                  const bool accumulate,
                                   MetaTensor* out) {
-  const auto& x_dims = x.dims();
-
-  PADDLE_ENFORCE_LE(
-      index_dims.size(),
-      x_dims.size(),
-      common::errors::InvalidArgument(
-          "Input(index).rank should be less than or equal to Input(x).rank"));
-
-  for (size_t i = 0; i < index_dims.size(); ++i) {
-    PADDLE_ENFORCE_EQ(index_dims[i],
-                      x_dims[i],
-                      common::errors::InvalidArgument(
-                          "Input(index).shape should match the first k "
-                          "dimensions of Input(x).shape"));
-  }
-  std::vector<int64_t> result_dims;
-  result_dims.push_back(-1);
-
-  int64_t k = index_dims.size();
-  for (int64_t i = k; i < static_cast<int64_t>(x_dims.size()); ++i) {
-    result_dims.push_back(x_dims[i]);
-  }
-  out->set_dims(common::make_ddim(result_dims));
+  out->set_dims(common::make_ddim(input_dims));
   out->set_dtype(x.dtype());
 }
 

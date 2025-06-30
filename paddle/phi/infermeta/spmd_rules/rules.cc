@@ -805,4 +805,9 @@ PD_REGISTER_SPMD_RULE(
     fused_gemm_epilogue,
     PD_INFER_SPMD(phi::distributed::FusedGemmEpilogueInferSpmdBase));
 
+// take_along_axis
+PD_REGISTER_SPMD_RULE(
+    take_along_axis,
+    PD_INFER_SPMD(phi::distributed::TakeAlongAxisInferSpmd),
+    PD_INFER_SPMD(phi::distributed::TakeAlongAxisGradInferSpmd));
 }  // namespace phi::distributed

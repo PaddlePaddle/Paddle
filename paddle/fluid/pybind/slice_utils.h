@@ -72,6 +72,21 @@ static inline common::DDim infer_size_symdimvector(common::DDim a,
   return expandedSizes;
 }
 
+static inline std::vector<paddle::Tensor> expandTensors(
+    std::vector<paddle::Tensor> indices) {
+  // expands bool to int tensors;
+  std::vector<paddle::Tensor> result;
+  for (auto& index : indices) {
+    if (index.dtype() == paddle::DataType::BOOL) {
+      auto bool_2_idx = nonzero_ad_func(index);
+      result.emplace_back(squeeze_ad_func(bool_2_idx, {-1}));
+    } else {
+      result.emplace_back(index);
+    }
+  }
+  return result;
+}
+
 static inline std::vector<paddle::Tensor> expand_outplace(
     std::vector<paddle::Tensor> to_expand) {
   // expands a list of Tensors; ignores undefined (null) tensors
@@ -592,8 +607,7 @@ static paddle::Tensor dealWithAdvancedIndex(
     int* pos_of_new_dim,
     int* rank_of_new_dim,
     std::vector<int>* trans_dim,
-    bool* out_is_view,
-    bool single_value = false) {
+    bool* out_is_view) {
   int p = 0;
   bool int_tensor_only = true;
   for (size_t i = 0; i < advanced_index_dim->size(); ++i) {
@@ -602,7 +616,6 @@ static paddle::Tensor dealWithAdvancedIndex(
       // size of advanced_index is same to number of non -1 element in
       // advanced_index_dim
       auto index = (*advanced_index)[p++];
-      // check if the index has bool element. Remove later.
       if (index.dtype() == phi::DataType::BOOL) {
         int_tensor_only = false;
       }
@@ -644,9 +657,8 @@ static paddle::Tensor dealWithAdvancedIndex(
     *out_is_view = true;
 #ifdef PADDLE_WITH_CUDA
     // Remove the conditions when all cases are supported.
-    // Getitem combine cases to be added.
-    if (tensor.is_gpu() && single_value && int_tensor_only &&
-        *pos_of_new_dim != 0) {
+    if (tensor.is_gpu() && *pos_of_new_dim != 0 &&
+        (is_for_setitem || int_tensor_only)) {
       transed_tensor = tensor;
     } else {
       transed_tensor = transpose_ad_func(tensor, *trans_dim);
@@ -684,7 +696,9 @@ static std::vector<paddle::Tensor> PrepareIndices(
 }
 
 static paddle::Tensor getValueForBoolTensor(const paddle::Tensor& tensor,
-                                            const paddle::Tensor& bool_index) {
+                                            const paddle::Tensor& bool_index,
+                                            const int64_t slice_offset,
+                                            const bool is_combined_bool) {
   PADDLE_ENFORCE(bool_index.shape().size() <= tensor.shape().size(),
                  common::errors::InvalidArgument(
                      "The dims of bool index doesn't match indexed array, "
@@ -723,20 +737,32 @@ static paddle::Tensor getValueForBoolTensor(const paddle::Tensor& tensor,
 
   auto bool_2_idx = nonzero_ad_func(bool_index);
 #ifdef PADDLE_WITH_CUDA
-  if (tensor.is_gpu()) {
-    auto indices = PrepareIndices(tensor, bool_2_idx, bool_index);
+  if (tensor.is_gpu() && !is_combined_bool) {
+    std::vector<paddle::Tensor> indices =
+        PrepareIndices(tensor, bool_2_idx, bool_index);
     while (indices.size() < static_cast<size_t>(tensor.dims().size())) {
       indices.emplace_back();
     }
 
-    AdvancedIndex ad = AdvancedIndex(tensor, indices);
+    std::vector<paddle::Tensor> indices_int64;
+    for (auto& indice : indices) {
+      if (indice.defined() && indice.dtype() == paddle::DataType::INT32) {
+        indice = indice.cast(paddle::DataType::INT64);  // int32 -> int64
+      }
+      indices_int64.push_back(indice);
+    }
+
+    AdvancedIndex ad = AdvancedIndex(tensor, indices_int64);
+    const bool accumulate = false;
 
     return index_elementwise_get_ad_func(tensor,
                                          ad.indices,
                                          ad.src_sizes,
                                          ad.src_strides,
                                          ad.indexed_sizes,
-                                         ad.indexed_strides);
+                                         ad.indexed_strides,
+                                         slice_offset,
+                                         accumulate);
   } else {
     return gather_nd_ad_func(tensor, bool_2_idx);
   }
