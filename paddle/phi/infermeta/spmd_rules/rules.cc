@@ -810,6 +810,7 @@ PD_REGISTER_SPMD_RULE(
     take_along_axis,
     PD_INFER_SPMD(phi::distributed::TakeAlongAxisInferSpmd),
     PD_INFER_SPMD(phi::distributed::TakeAlongAxisGradInferSpmd));
+
 // conv3d
 PD_REGISTER_SPMD_RULE(conv3d,
                       PD_INFER_SPMD(phi::distributed::Conv3dInferSpmd),
