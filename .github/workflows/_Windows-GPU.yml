@@ -11,6 +11,7 @@ env:
   BRANCH: ${{ github.base_ref }}
   ci_scripts: ${{ github.workspace }}\ci\windows
   WORK_DIR: ${{ github.workspace }}\..
+  cache_dir: ${{ github.workspace }}\..\cache
   no_proxy: "bcebos.com,apiin.im.baidu.com,gitee.com,aliyun.com,.baidu.com,.tuna.tsinghua.edu.cn"
 
 defaults:
@@ -23,13 +24,18 @@ jobs:
     runs-on:
       group: win-gpu
     steps:
-      - name: Configure env
-        continue-on-error: true
+      - name: Configure environment
         run: |
-          set path=%path%;C:\Program Files\NVIDIA Corporation\NVSMI
+          cd %WORK_DIR%
+          rmdir /s/q %WORK_DIR%\Paddle 2>NUL
+          echo "path=%path%;C:\Program Files\NVIDIA Corporation\NVSMI" >> %GITHUB_ENV%
+          python -m pip install wget
+          python -c "import wget;wget.download('https://paddle-github-action.bj.bcebos.com/PR/windows/%PR_ID%/%COMMIT_ID%/Paddle.tar.gz')"
+          tar xf Paddle.tar.gz
+          del Paddle.tar.gz
+          cd Paddle
           call %ci_scripts%\config_env.bat
-          echo %PATH%
 
       - name: Download paddle
         run: |
-          echo %PATH%
+          echo %path%
