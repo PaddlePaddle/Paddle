@@ -114,6 +114,7 @@ jobs:
           ldconfig
           pip config set global.cache-dir "/home/.cache/pip"
           set -e
+          source ${{ github.workspace }}/../../../proxy
           timeout 80m bash Paddle/ci/auto_parallel/ci_auto_parallel.sh ${paddle_whl}
           '
 
