@@ -571,13 +571,11 @@ inline static bool MaskedFillDispatching(
     const paddle::Tensor& tensor,
     const std::vector<paddle::Tensor>& indices,
     paddle::Tensor* mask_tensor,
-    paddle::Tensor* value_tensor,
-    int pos_of_new_dim) {
+    paddle::Tensor* value_tensor) {
   bool can_expand = phi::funcs::CheckIsDimsMatchBool(
       static_cast<phi::DenseTensor*>(tensor.impl().get())->dims(),
       static_cast<phi::DenseTensor*>(value_tensor->impl().get())->dims());
-  if (pos_of_new_dim != 0 || indices.size() != 1 ||
-      !(value_tensor->numel() == 1 || can_expand))
+  if (indices.size() != 1 || !(value_tensor->numel() == 1 || can_expand))
     return false;
 
   int64_t num_ind = 0;
