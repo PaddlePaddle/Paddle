@@ -820,7 +820,7 @@ def str_encode(
     return ConstantVariable(
         var.get_py_value().encode(encoding=encoding.get_py_value()),
         graph=var.graph,
-        tracker=DummyTracker([var, encoding]),
+        tracker=DummyTracker([var, encoding, errors]),
     )
 
 

@@ -242,7 +242,7 @@ class OpcodeExecutorCache(metaclass=Singleton):
             try:
                 with EventGuard("try guard"):
                     guard_result = guard_fn(frame)
-                if enable_strict_guard:
+                if enable_strict_guard and (not enable_unsafe_cache_fastpath):
                     assert mirror_guard_result == guard_result, (
                         "faster guard result is not equal to guard result, "
                         f"guard_expr: {getattr(guard_fn, 'expr', 'None')} \n"
@@ -253,10 +253,11 @@ class OpcodeExecutorCache(metaclass=Singleton):
                         2,
                         f"[Cache] Cache hit, Guard is \n{getattr(guard_fn, 'expr', 'None')}\n",
                     )
-                    # TODO(zrr1999): cache_index should be equal to index when enable_strict_guard.
-                    assert (
-                        cache_index is None or index == cache_index
-                    ), f"cache_index({cache_index}) is not equal to index({index})"
+                    if not enable_unsafe_cache_fastpath:
+                        # TODO(zrr1999): cache_index should be equal to index when enable_strict_guard.
+                        assert (
+                            cache_index is None or index == cache_index
+                        ), f"cache_index({cache_index}) is not equal to index({index})"
 
                     if enable_unsafe_cache_fastpath:
                         if index == 0:
@@ -296,7 +297,7 @@ class OpcodeExecutorCache(metaclass=Singleton):
                     2,
                     self.analyse_guard_error(guard_fn, frame),
                 )
-                if enable_strict_guard:
+                if enable_strict_guard and (not enable_unsafe_cache_fastpath):
                     assert type(e) == type(mirror_guard_error) and str(
                         e
                     ) == str(mirror_guard_error), (
@@ -450,6 +451,14 @@ def start_translate(
             guard_chain,
         )
     except SotCapturedException as e:
+        log(
+            1,
+            "Note: This fallback may be triggered by user code, or it could result from an internal "
+            "SOT exception being incorrectly captured. Please investigate carefully.\n",
+        )
+        # TODO(DrRyanHuang): Consider whether an exception should be raised here in the future
+        # if is_strict_mode():
+        #     raise
         dummy_guard_chain: GuardChain = [paddle.framework.core.DummyGuardNode()]
         return (CustomCode(None, True), dummy_guard, dummy_guard_chain)
     except Exception as e:

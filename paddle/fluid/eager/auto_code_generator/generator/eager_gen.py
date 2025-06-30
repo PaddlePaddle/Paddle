@@ -329,6 +329,9 @@ class {} : public egr::GradNodeBase {{
 GRAD_FUNCTION_TEMPLATE = """
 paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize> {}::operator()(paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>& grads, bool create_graph, bool is_new_grad) {{
   VLOG(3) << \"Running AD API GRAD: \" << \"{}\";
+  if (FLAGS_check_cuda_error) [[unlikely]] {{
+    egr::CUDAErrorCheck(\"{} begin\");
+  }}
 
    // This 'Local_XXXGradNode' record event is different with 'Global_XXXGradNode' event.
    // * 'Local_XXXGradNode' will only cover execution time of this function.
@@ -376,6 +379,10 @@ paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize> {}:
     returns = ApplyNodePostHooks(returns, hooked_grads);
   }}
 
+  if (FLAGS_check_cuda_error) [[unlikely]] {{
+    egr::CUDAErrorCheck(\"{} finish\");
+  }}
+
   // Return
 {}
 }}
@@ -385,6 +392,9 @@ FORWARD_FUNCTION_TEMPLATE = """
 TEST_API {} {}({}) {{
   FLAGS_tensor_operants_mode = "eager";
   VLOG(3) << \"Running AD API: \" << \"{}\";
+  if (FLAGS_check_cuda_error) [[unlikely]] {{
+    egr::CUDAErrorCheck(\"{} begin\");
+  }}
 {}
   // Dygraph Record Event
 {}
@@ -433,6 +443,9 @@ TEST_API {} {}({}) {{
   VLOG(4) << \"Finish AD API: {}";
   // LOG IF DEBUG
 {}
+  if (FLAGS_check_cuda_error) [[unlikely]] {{
+    egr::CUDAErrorCheck(\"{} finish\");
+  }}
   // Returns
   return {};
 }}
@@ -464,6 +477,9 @@ FORWARD_ONLY_FUNCTION_TEMPLATE = """
 TEST_API {} {}({}) {{
   FLAGS_tensor_operants_mode = "eager";
   VLOG(3) << \"Running AD API: \" << \"{}\";
+  if (FLAGS_check_cuda_error) [[unlikely]] {{
+    egr::CUDAErrorCheck(\"{} begin\");
+  }}
 {}
   // Dygraph Record Event
 {}
@@ -492,6 +508,9 @@ TEST_API {} {}({}) {{
 {}{}
   // LOG IF DEBUG
 {}
+  if (FLAGS_check_cuda_error) [[unlikely]] {{
+    egr::CUDAErrorCheck(\"{} finish\");
+  }}
   // Returns
   return {};
 }}
@@ -576,6 +595,7 @@ NODE_CC_FILE_TEMPLATE = """
 #include "paddle/phi/core/memory/stats.h"
 #include "paddle/phi/api/lib/data_transform.h"
 COMMON_DECLARE_bool(check_nan_inf);
+COMMON_DECLARE_bool(check_cuda_error);
 {}
 """
 
@@ -619,6 +639,7 @@ COMMON_DECLARE_bool(check_nan_inf);
 COMMON_DECLARE_int32(call_stack_level);
 COMMON_DECLARE_string(tensor_operants_mode);
 COMMON_DECLARE_bool(use_stride_kernel);
+COMMON_DECLARE_bool(check_cuda_error);
 {}
 {}
 """
@@ -2204,6 +2225,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                     forward_ad_function_name,
                     inputs_args_definition_str,
                     forward_api_name,
+                    forward_ad_function_name,
                     strided_flags_check,
                     dygraph_event_str,
                     amp_logic_str,
@@ -2220,6 +2242,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                     check_inplace_str,
                     bump_inplace_version_str,
                     log_str,
+                    forward_ad_function_name,
                     returns_str,
                 )
             )
@@ -2229,6 +2252,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                 forward_ad_function_name,
                 inputs_args_definition_str,
                 forward_api_name,
+                forward_ad_function_name,
                 strided_flags_check,
                 dygraph_event_str,
                 amp_logic_str,
@@ -2252,6 +2276,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                 node_creation_after_call_str,
                 forward_api_name,
                 log_str,
+                forward_ad_function_name,
                 returns_str,
             )
 
@@ -3127,6 +3152,7 @@ if (paddle::prim::PrimCommonUtils::IsEagerPrimEnabled() && !need_skip) {{
             grad_node_name,
             self.backward_api_name,
             grad_node_name,
+            grad_node_name,
             fill_zero_str,
             get_grad_in_args_str,
             convert_input_to_dist_tensor_str,
@@ -3143,6 +3169,7 @@ if (paddle::prim::PrimCommonUtils::IsEagerPrimEnabled() && !need_skip) {{
             next_grad_node_creation_str,
             self.backward_api_name,
             log_str,
+            grad_node_name,
             returns_str,
         )
 

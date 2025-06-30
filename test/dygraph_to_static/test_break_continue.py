@@ -39,9 +39,11 @@ class TestDy2staticException(Dy2StTestBase):
     @test_ast_only
     def test_error(self):
         if self.dyfunc:
-            with self.assertRaisesRegex(Dygraph2StaticException, self.error):
-                with enable_to_static_guard(True):
-                    self.assertTrue(paddle.jit.to_static(self.dyfunc)(self.x))
+            with (
+                self.assertRaisesRegex(Dygraph2StaticException, self.error),
+                enable_to_static_guard(True),
+            ):
+                self.assertTrue(paddle.jit.to_static(self.dyfunc)(self.x))
 
 
 def test_continue_in_for(x):

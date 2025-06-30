@@ -61,6 +61,7 @@ if(WITH_DISTRIBUTE)
     py_test_modules(test_fused_gemm_epilogue_rule MODULES
                     test_fused_gemm_epilogue_rule)
     py_test_modules(test_gelu_rule MODULES test_gelu_rule)
+    py_test_modules(test_take_along_axis_rule MODULES test_take_along_axis_rule)
   endif()
   # End of unittests WITH single card WITHOUT timeout
 
