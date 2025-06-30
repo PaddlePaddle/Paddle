@@ -39,7 +39,7 @@ jobs:
     needs: check-bypass
     if: ${{ inputs.can-skip != 'true'  && needs.check-bypass.outputs.can-skip != 'true' }}
     runs-on:
-      group: Auto-Parallel
+      group: auto-parallel-test
     steps:
       - name: Check docker image and run container
         env:
@@ -96,8 +96,7 @@ jobs:
           cd PaddleNLP
           git pull
           git submodule update --init --recursive --force
-          echo hh
-          python -m pip install bce-python-sdk==0.8.74
+          python3.10 -m pip install bce-python-sdk==0.8.74
           '
 
       - name: Test
@@ -106,7 +105,10 @@ jobs:
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           ldconfig
-          ln -sf $(which python${python_version}) /usr/bin/python
+          pip config set global.cache-dir "/home/.cache/pip"
+          rm -rf /usr/bin/python
+          ln -s /usr/bin/python${python_version} /usr/bin/python
+          python -c "import sys; print(sys.version_info[:])"
           '
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           ldconfig
