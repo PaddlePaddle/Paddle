@@ -1,0 +1,33 @@
+name: Windows-GPU
+
+on:
+  workflow_call:
+
+permissions: read-all
+
+env:
+  PR_ID: ${{ github.event.pull_request.number }}
+  COMMIT_ID: ${{ github.event.pull_request.head.sha }}
+  BRANCH: ${{ github.base_ref }}
+  ci_scripts: ${{ github.workspace }}\ci\windows
+  WORK_DIR: ${{ github.workspace }}\..
+  no_proxy: "bcebos.com,apiin.im.baidu.com,gitee.com,aliyun.com,.baidu.com,.tuna.tsinghua.edu.cn"
+
+defaults:
+  run:
+    shell: cmd
+
+jobs:
+  build:
+    name: Build
+    runs-on:
+      group: win-gpu
+    steps:
+      - name: Configure env
+        run: |
+          set path=%path%;C:\Program Files\NVIDIA Corporation\NVSMI
+          call %ci_scripts%\config_env.bat
+
+      - name: Download paddle
+        run: |
+          echo %PATH%

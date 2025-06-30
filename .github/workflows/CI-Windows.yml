@@ -19,3 +19,8 @@ jobs:
   clone:
     name: Clone-windows
     uses: ./.github/workflows/_Clone-windows.yml
+
+  win-gpu:
+    name: Win-GPU
+    uses: ./.github/workflows/_Windows-GPU.yml
+    needs: clone
