@@ -33,11 +33,15 @@ void UnfoldGradKernel(const Context& dev_ctx,
                       const std::vector<int>& paddings,
                       const std::vector<int>& dilations,
                       DenseTensor* x_grad) {
-  if (x_grad && x_grad->numel() == 0) {
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(x.dims())), 0, x_grad);
+  if (out_grad.numel() == 0) {
+    if (x_grad) {
+      dev_ctx.template Alloc<T>(x_grad);
+      phi::Full<T, Context>(
+          dev_ctx, phi::IntArray(common::vectorize(x.dims())), 0, x_grad);
+    }
     return;
   }
+
   if (!x_grad) return;
   const auto& x_dims = x_grad->dims();
   const int batch_size = static_cast<int>(x_dims[0]);
