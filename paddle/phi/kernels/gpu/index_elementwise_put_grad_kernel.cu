@@ -184,7 +184,7 @@ void LaunchIndexElementwisePutGradCudaKernel(
   phi::Allocator::AllocationPtr indices_holder_1, indices_holder_2;
   const auto& index_type = indices[0]->dtype();
   if (x_grad) {
-    phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
+    x_grad->ShareBufferWith(out_grad);
 
     GPUIndexElementwisePutGradKernel<T, int64_t>(dev_ctx,
                                                  x_indices,
@@ -325,7 +325,7 @@ void IndexElementwisePutGradKernel(
       funcs::DealWithBoolIndices<T, Context>(dev_ctx, indices, &tmp_args);
   if (int_indices_v.empty()) {
     if (x_grad) {
-      phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
+      x_grad->ShareBufferWith(out_grad);
     }
     if (value_grad) {
       FullKernel<T, Context>(dev_ctx,
