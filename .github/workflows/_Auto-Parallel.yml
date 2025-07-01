@@ -11,7 +11,6 @@ on:
         required: false
 
 env:
-  docker_image: registry.baidubce.com/baidu.xiaolvyun.images/paddlepaddle:8a09821b692912a392d4a7dd2825be02
   PR_ID: ${{ github.event.pull_request.number }}
   COMMIT_ID: ${{ github.event.pull_request.head.sha }}
   work_dir: /workspace/Paddle
@@ -40,7 +39,7 @@ jobs:
     needs: check-bypass
     if: ${{ inputs.can-skip != 'true'  && needs.check-bypass.outputs.can-skip != 'true' }}
     runs-on:
-      group: auto-parallel-test
+      group: Auto-Parallel
     steps:
       - name: Check docker image and run container
         env:
@@ -50,6 +49,7 @@ jobs:
         run: |
           container_name=${TASK}-${core_index}-$(date +%Y%m%d-%H%M%S)
           echo "container_name=${container_name}" >> ${{ github.env }}
+          docker_image=${{ inputs.docker_build_image }}
           nvidia-docker run -d -t --name ${container_name} --net=host -v /dev/shm:/dev/shm --shm-size=32G \
             -v ${{ github.workspace }}/../../..:${{ github.workspace }}/../../.. \
             -v ${{ github.workspace }}:/workspace \
@@ -81,7 +81,7 @@ jobs:
           echo "Extracting build.tar.gz"
           tar --use-compress-program="pzstd" -xpf build.tar.gz
           mv paddle Paddle
-          rm build.tar.gz
+          rm -f uild.tar.gz
           '
 
       - name: Download PaddleTest
@@ -107,10 +107,8 @@ jobs:
           ldconfig
           set -e
           pip config set global.cache-dir "/home/.cache/pip"
-          rm -rf /usr/bin/python
-          ln -s /usr/bin/python${python_version} /usr/bin/python
+          ln -sf $(which python${python_version}) /usr/bin/python
           python -c "import sys; print(sys.version_info[:])"
-          # source ${{ github.workspace }}/../../../proxy
           timeout 80m bash Paddle/ci/auto_parallel/ci_auto_parallel.sh ${paddle_whl}
           '
 
