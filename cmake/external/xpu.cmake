@@ -55,7 +55,7 @@ else()
 endif()
 
 if(NOT DEFINED XPU_FFT_BASE_DATE)
-  set(XPU_FFT_BASE_DATE "20250623")
+  set(XPU_FFT_BASE_DATE "20250630")
 endif()
 
 set(XPU_XRE_BASE_URL
@@ -89,10 +89,7 @@ if(WITH_XPU_XRE5)
 endif()
 
 if(WITH_XPU_FFT)
-  set(XPU_FFT_BASE_URL
-      "https://klx-sdk-release-public.su.bcebos.com/xpufft/kl3/${XPU_FFT_BASE_DATE}"
-  )
-  set(XPU_FFT_DIR_NAME "xpufft_ubuntu2004-x86_64")
+  set(XPU_FFT_BASE_URL "https://klx-sdk-release-public.su.bcebos.com/xpufft")
 endif()
 
 if(WITH_ARM)
@@ -106,6 +103,9 @@ if(WITH_ARM)
     set(XPU_XRE_DIR_NAME "")
     set(XPU_XCCL_DIR_NAME "") # TODO: xccl has no kylin output now.
     set(XPU_XFT_DIR_NAME "") # TODO: xft has no kylin output at now.
+  endif()
+  if(WITH_XPU_FFT)
+    set(XPU_FFT_DIR_NAME "kylin_v10_aarch64/xpufft_kylinv10_aarch64_v2")
   endif()
 elseif(WITH_SUNWAY)
   set(XPU_XRE_DIR_NAME "xre-deepin_sw6_64")
@@ -132,6 +132,9 @@ else()
   else()
     set(XPU_XRE_DIR_NAME "xre-ubuntu_1604_x86_64")
     set(XPU_XHPC_DIR_NAME "xhpc-ubuntu1604_x86_64")
+  endif()
+  if(WITH_XPU_FFT)
+    set(XPU_FFT_DIR_NAME "kl3/${XPU_FFT_BASE_DATE}/xpufft_ubuntu2004-x86_64")
   endif()
   set(XPU_XCCL_DIR_NAME "xccl_Linux_x86_64")
   set(XPU_XFT_DIR_NAME "xft_internal_ubuntu2004")
@@ -253,7 +256,6 @@ if(WITH_XPU_XRE5)
       ${CMAKE_SOURCE_DIR}/tools/xpu/get_xpti_dependence.sh ${XPU_XPTI_URL}
       ${XPU_XPTI_DIR_NAME} && bash
       ${CMAKE_SOURCE_DIR}/tools/xpu/get_xpufft_dependence.sh ${XPU_FFT_URL}
-      xpufft
     DOWNLOAD_NO_PROGRESS 1
     UPDATE_COMMAND ""
     CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${XPU_INSTALL_ROOT}
@@ -280,7 +282,6 @@ else()
       ${CMAKE_SOURCE_DIR}/tools/xpu/get_xpti_dependence.sh ${XPU_XPTI_URL}
       ${XPU_XPTI_DIR_NAME} && bash
       ${CMAKE_SOURCE_DIR}/tools/xpu/get_xpufft_dependence.sh ${XPU_FFT_URL}
-      xpufft
     DOWNLOAD_NO_PROGRESS 1
     UPDATE_COMMAND ""
     CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${XPU_INSTALL_ROOT}
