@@ -63,17 +63,17 @@ cudaDataType_t ScalarTypeToCudaDataType(phi::DataType dtype) {
     case phi::DataType::FLOAT16:
       return CUDA_R_16F;
     default:
-      PADDLE_THROW(phi::errors::InvalidArgument("Unsupported data type"));
+      PADDLE_THROW(common::errors::InvalidArgument("Unsupported data type"));
   }
 }
 
 // cuBLAS error checking macro
-#define PADDLE_CUDABLAS_CHECK(func)                                    \
-  do {                                                                 \
-    cublasStatus_t status = func;                                      \
-    if (status != CUBLAS_STATUS_SUCCESS) {                             \
-      PADDLE_THROW(phi::errors::External("cuBLAS error: %d", status)); \
-    }                                                                  \
+#define PADDLE_CUDABLAS_CHECK(func)                                       \
+  do {                                                                    \
+    cublasStatus_t status = func;                                         \
+    if (status != CUBLAS_STATUS_SUCCESS) {                                \
+      PADDLE_THROW(common::errors::External("cuBLAS error: %d", status)); \
+    }                                                                     \
   } while (0)
 
 template <typename Context>
@@ -99,49 +99,51 @@ void cublas_gemm_blockwise_impl(const Context& dev_ctx,
   PADDLE_ENFORCE_EQ(
       transa,
       true,
-      phi::errors::InvalidArgument("Only transa == true is supported"));
+      common::errors::InvalidArgument("Only transa == true is supported"));
   PADDLE_ENFORCE_EQ(
       transb,
       false,
-      phi::errors::InvalidArgument("Only transb == false is supported"));
-  PADDLE_ENFORCE_EQ(
-      A.place().GetType(),
-      phi::AllocationType::GPU,
-      phi::errors::InvalidArgument("Input tensor A must be on CUDA device."));
-  PADDLE_ENFORCE_EQ(
-      B.place().GetType(),
-      phi::AllocationType::GPU,
-      phi::errors::InvalidArgument("Input tensor B must be on CUDA device."));
-  PADDLE_ENFORCE_EQ(
-      D->place().GetType(),
-      phi::AllocationType::GPU,
-      phi::errors::InvalidArgument("Output tensor D must be on CUDA device."));
+      common::errors::InvalidArgument("Only transb == false is supported"));
+  PADDLE_ENFORCE_EQ(A.place().GetType(),
+                    phi::AllocationType::GPU,
+                    common::errors::InvalidArgument(
+                        "Input tensor A must be on CUDA device."));
+  PADDLE_ENFORCE_EQ(B.place().GetType(),
+                    phi::AllocationType::GPU,
+                    common::errors::InvalidArgument(
+                        "Input tensor B must be on CUDA device."));
+  PADDLE_ENFORCE_EQ(D->place().GetType(),
+                    phi::AllocationType::GPU,
+                    common::errors::InvalidArgument(
+                        "Output tensor D must be on CUDA device."));
   PADDLE_ENFORCE_EQ(IsFp8Dtype(A.dtype()),
                     true,
-                    phi::errors::InvalidArgument("A must be FP8"));
+                    common::errors::InvalidArgument("A must be FP8"));
   PADDLE_ENFORCE_EQ(IsFp8Dtype(B.dtype()),
                     true,
-                    phi::errors::InvalidArgument("B must be FP8"));
+                    common::errors::InvalidArgument("B must be FP8"));
   PADDLE_ENFORCE_EQ(
       D->dtype() == phi::DataType::BFLOAT16 ||
           D->dtype() == phi::DataType::FLOAT32,
       true,
-      phi::errors::InvalidArgument("D must be BFloat16 or float"));
+      common::errors::InvalidArgument("D must be BFloat16 or float"));
   PADDLE_ENFORCE_EQ(
       A_decode_scale.dtype() == phi::DataType::FLOAT32,
       true,
-      phi::errors::InvalidArgument("A_decode_scale must be float"));
+      common::errors::InvalidArgument("A_decode_scale must be float"));
   PADDLE_ENFORCE_EQ(
       B_decode_scale.dtype() == phi::DataType::FLOAT32,
       true,
-      phi::errors::InvalidArgument("B_decode_scale must be float"));
-  PADDLE_ENFORCE_EQ(
-      A.dims().size() == 2, true, phi::errors::InvalidArgument("A must be 2D"));
-  PADDLE_ENFORCE_EQ(
-      B.dims().size() == 2, true, phi::errors::InvalidArgument("B must be 2D"));
+      common::errors::InvalidArgument("B_decode_scale must be float"));
+  PADDLE_ENFORCE_EQ(A.dims().size() == 2,
+                    true,
+                    common::errors::InvalidArgument("A must be 2D"));
+  PADDLE_ENFORCE_EQ(B.dims().size() == 2,
+                    true,
+                    common::errors::InvalidArgument("B must be 2D"));
   PADDLE_ENFORCE_EQ(D->dims().size() == 2,
                     true,
-                    phi::errors::InvalidArgument("D must be 2D"));
+                    common::errors::InvalidArgument("D must be 2D"));
 
   const int m = transa ? A.dims()[0] : A.dims()[1];
   const int k = transa ? A.dims()[1] : A.dims()[0];
@@ -173,7 +175,7 @@ void cublas_gemm_blockwise_impl(const Context& dev_ctx,
     B_scale_mode = CUBLASLT_MATMUL_MATRIX_SCALE_VEC128_32F;
   } else {
     PADDLE_THROW(
-        phi::errors::InvalidArgument("2Dx2D scaling is not supported"));
+        common::errors::InvalidArgument("2Dx2D scaling is not supported"));
   }
   PADDLE_CUDABLAS_CHECK(phi::dynload::cublasLtMatmulDescSetAttribute(
       operationDesc,
@@ -186,7 +188,7 @@ void cublas_gemm_blockwise_impl(const Context& dev_ctx,
       &B_scale_mode,
       sizeof(B_scale_mode)));
 #else
-  PADDLE_THROW(phi::errors::InvalidArgument(
+  PADDLE_THROW(common::errors::InvalidArgument(
       "Sub-channel FP8 GEMM requires CUDA 12.8 and cuBLAS 12.8.5 or later."));
 #endif
 

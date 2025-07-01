@@ -477,14 +477,14 @@ bool ConvTransposeFunction(pir::Operation *op,
 
   PADDLE_ENFORCE_EQ(x_shape.size() == 4 || x_shape.size() == 5,
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Input of Op(conv_transpose) should be 4-D or "
                         "5-D Tensor. But received: %u-D Tensor",
                         x_shape.size()));
   PADDLE_ENFORCE_EQ(
       x_shape.size(),
       filter_shape.size(),
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The input's dimension size and filter's dimension size of "
           "Op (conv_transpose) should be equal. But received: the shape of "
           "the dimension size of input is [%d],  the dimension size of filter "
@@ -497,7 +497,7 @@ bool ConvTransposeFunction(pir::Operation *op,
     PADDLE_ENFORCE_GT(
         strides[i],
         0,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The strides of Op(conv_transpose) should be greater than 0. "
             "But received: the strides of Op(conv_transpose) is [%d].",
             strides[i]));
@@ -508,7 +508,7 @@ bool ConvTransposeFunction(pir::Operation *op,
   PADDLE_ENFORCE_EQ(
       x_shape.size() - strides.size(),
       2U,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The input's dimension size minus Attr(stride)'s size must "
           "be equal to 2 for Op(conv_transpose). But received: [%d], the "
           "input's dimension size is [%d]"
@@ -521,7 +521,7 @@ bool ConvTransposeFunction(pir::Operation *op,
     PADDLE_ENFORCE_EQ(
         output_size.size(),
         strides.size(),
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The Attr(output_size) and Attr(stride) of Op(conv_transpose) "
             "should be the same."));
 
@@ -529,7 +529,7 @@ bool ConvTransposeFunction(pir::Operation *op,
     PADDLE_ENFORCE_EQ(
         output_padding.size(),
         strides.size(),
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The Attr(output_padding) and Attr(stride) of Op(conv_transpose) "
             "should be the same."));
 
