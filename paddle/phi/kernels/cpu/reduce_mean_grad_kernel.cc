@@ -49,10 +49,7 @@ PD_REGISTER_KERNEL(mean_grad,
                    CPU,
                    ALL_LAYOUT,
                    phi::ReduceMeanGradKernel,
-                   bool,
                    float,
                    double,
                    phi::dtype::complex<float>,
-                   phi::dtype::complex<double>,
-                   int,
-                   int64_t) {}
+                   phi::dtype::complex<double>) {}
