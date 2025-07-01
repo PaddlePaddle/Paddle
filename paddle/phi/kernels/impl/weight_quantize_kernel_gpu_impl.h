@@ -533,7 +533,7 @@ void weight_permute_gpu_w4a8(const GPUContext& dev_ctx,
           reinterpret_cast<uint32_t*>(output_data), original_numel / 8);
     }
   } else {
-    phi::errors::Unimplemented(
+    common::errors::Unimplemented(
         "The algo %s support need arch > 70, but got algo = %d.", algo, arch);
   }
 }

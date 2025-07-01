@@ -14,10 +14,12 @@
 
 import os
 import unittest
+from unittest import TestCase
 
 import numpy as np
 
 import paddle
+import paddle.base.dygraph as dg
 import paddle.static
 from paddle import nn
 
@@ -1517,6 +1519,63 @@ class TestTensorOutputSize4(TestTensorOutputSize1):
         )(x, output_size)
 
         return out
+
+
+class TestFunctionalConv2DTranspose_ZeroSize(TestCase):
+    def init_data(self):
+        self.input = np.random.randn(0, 4, 16, 4)
+        self.filter = np.random.randn(4, 3, 3, 3)
+        self.np_out = np.zeros([0, 3, 18, 6])
+
+    def setUp(self):
+        self.init_data()
+        self.bias = None
+        self.padding = 0
+        self.stride = 1
+        self.dilation = 1
+        self.groups = 1
+        self.data_format = "NCHW"
+        self.places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not base.core.is_compiled_with_cuda()
+        ):
+            self.places.append(base.CPUPlace())
+        if base.core.is_compiled_with_cuda():
+            self.places.append(base.CUDAPlace(0))
+
+    def test_dygraph(self):
+        for place in self.places:
+            with dg.guard(place):
+                input = paddle.to_tensor(self.input)
+                input.stop_gradient = False
+                filter = paddle.to_tensor(self.filter)
+                filter.stop_gradient = False
+                y = paddle.nn.functional.conv2d_transpose(
+                    input,
+                    filter,
+                    self.bias,
+                    padding=self.padding,
+                    stride=self.stride,
+                    dilation=self.dilation,
+                    groups=self.groups,
+                    data_format=self.data_format,
+                )
+                np.testing.assert_allclose(y.numpy(), self.np_out)
+                loss = y.sum()
+                loss.backward()
+                np.testing.assert_allclose(input.grad.shape, input.shape)
+                np.testing.assert_allclose(filter.grad, np.zeros(filter.shape))
+
+
+class TestFunctionalConv2DTranspose_ZeroSize2(
+    TestFunctionalConv2DTranspose_ZeroSize
+):
+    def init_data(self):
+        self.input = np.random.randn(4, 5, 3, 3)
+        self.filter = np.random.randn(5, 0, 4, 4)
+        self.np_out = np.zeros([4, 0, 6, 6])
 
 
 if __name__ == '__main__':
