@@ -35,6 +35,7 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/cuda/cudnn_workspace_helper.h"
 #include "paddle/phi/kernels/gpudnn/conv_cudnn_v7.h"
 #endif
+#include "paddle/phi/kernels/full_kernel.h"
 
 namespace phi {
 
@@ -51,6 +52,11 @@ void ConvTransposeRawGPUDNNKernel(const Context& dev_ctx,
                                   const std::vector<int>& dilations,
                                   const std::string& data_format,
                                   DenseTensor* out) {
+  if (x.numel() == 0 || filter.numel() == 0) {
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+    return;
+  }
   std::vector<int> paddings_ = paddings;
   std::vector<int> dilations_ =
       dilations;  // cudnn v5 does not support dilations

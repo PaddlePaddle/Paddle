@@ -21,6 +21,7 @@ env:
   PADDLE_ROOT: /paddle
   GIT_PR_ID: ${{ github.event.pull_request.number }}
   CI_name: coverage
+  CFS_DIR: /home/data/cfs
   no_proxy: "bcebos.com,apiin.im.baidu.com,gitee.com,aliyun.com,.baidu.com,.tuna.tsinghua.edu.cn"
 
 defaults:
@@ -129,6 +130,7 @@ jobs:
             -e GITHUB_TOKEN \
             -e GITHUB_API_TOKEN \
             -e UT_RUN_TYPE_SETTING \
+            -e CFS_DIR \
             -e no_proxy \
             -w /paddle --network host ${docker_image}
 
@@ -161,8 +163,8 @@ jobs:
         if: steps.check-bypass.outputs.can-skip != 'true'
         run: |
           docker exec -t ${{ env.container_name }}  /bin/bash -c '
-          mkdir -p /home/data/cfs/.cache/coverage
-          mkdir -p /home/data/cfs/.ccache/coverage
+          mkdir -p ${CFS_DIR}/.cache/coverage
+          mkdir -p ${CFS_DIR}/.ccache/coverage
           source ${{ github.workspace }}/../../../proxy
           bash ${ci_scripts}/cmake-predownload.sh
           bash $ci_scripts/coverage_build.sh bdist_wheel
@@ -227,13 +229,14 @@ jobs:
             tar xf ${{ env.home_path }}/bos_retry.tar.gz -C ${{ env.home_path }}/bos_retry
           fi
           cd /paddle/dist
+          mkdir -p ${CFS_DIR}/coverage_bos/${PR_ID}/${COMMIT_ID}
           echo "Uploading coverage build size"
           python ${{ env.bos_file }} coverage_build_size paddle-github-action/PR/coverage/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
           echo "Uploading coverage wheel"
           python ${{ env.bos_file }} ${{ env.paddle_whl }} paddle-github-action/PR/coverage/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
           cd /
           echo "Uploading Paddle.tar.gz"
-          python ${{ env.bos_file }} Paddle.tar.gz paddle-github-action/PR/coverage/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
+          cp Paddle.tar.gz ${CFS_DIR}/coverage_bos/${PR_ID}/${COMMIT_ID}
           rm Paddle.tar.gz
           '
 
@@ -321,7 +324,8 @@ jobs:
             -e ON_INFER \
             -e COVERAGE_FILE \
             -e GITHUB_TOKEN \
-            -e GITHUB_API_TOKEN  \
+            -e GITHUB_API_TOKEN \
+            -e CFS_DIR \
             -e no_proxy \
             -w /paddle --network host ${docker_image}
 
@@ -330,8 +334,8 @@ jobs:
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           rm -rf * .[^.]*
           set -e
-          echo "Downloading Paddle.tar.gz"
-          wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/coverage/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
+          echo "Downloading Paddle.tar.gz from cfs"
+          cp ${CFS_DIR}/coverage_bos/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz .
           echo "Extracting Paddle.tar.gz"
           tar --use-compress-program="pzstd -1" -xf Paddle.tar.gz --strip-components=1
           rm Paddle.tar.gz
