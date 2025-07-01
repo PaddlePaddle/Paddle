@@ -81,20 +81,20 @@ class TestDistBase(unittest.TestCase):
 
     def _run_cluster(self, model_file, envs):
         run_cluster_process = f"{self._python_interp} -u -m paddle.distributed.launch --log_dir {self.temp_dir.name} {model_file}"
-        filted_envs = {}
+        filtered_envs = {}
         for k in envs.keys():
             if "PADDLE_" == k[:7] and k not in [
                 "PADDLE_NNODES",
                 "PADDLE_MASTER",
             ]:
                 continue
-            filted_envs[k] = envs[k]
+            filtered_envs[k] = envs[k]
 
         launcher = subprocess.Popen(
             run_cluster_process.strip().split(),
             stdout=sys.stderr,
             stderr=sys.stdout,
-            env=filted_envs,
+            env=filtered_envs,
         )
         launcher.communicate(timeout=240)
 

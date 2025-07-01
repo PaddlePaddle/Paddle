@@ -63,45 +63,47 @@ def inplace_dynamic_add(custom_func, device, dtype, np_x, np_y):
 def inplace_static_add(func, device, dtype, np_x, np_y):
     paddle.enable_static()
     paddle.set_device(device)
-    with static.scope_guard(static.Scope()):
-        with static.program_guard(static.Program()):
-            x = static.data(name="x", shape=[None, np_x.shape[1]], dtype=dtype)
-            y = static.data(name="y", shape=[None, np_y.shape[1]], dtype=dtype)
-            x.stop_gradient = False
-            y.stop_gradient = False
-            out = func(x, y)
-            mean_out = paddle.mean(out)
-            static.append_backward(mean_out)
+    with (
+        static.scope_guard(static.Scope()),
+        static.program_guard(static.Program()),
+    ):
+        x = static.data(name="x", shape=[None, np_x.shape[1]], dtype=dtype)
+        y = static.data(name="y", shape=[None, np_y.shape[1]], dtype=dtype)
+        x.stop_gradient = False
+        y.stop_gradient = False
+        out = func(x, y)
+        mean_out = paddle.mean(out)
+        static.append_backward(mean_out)
 
-            exe = static.Executor()
-            exe.run(static.default_startup_program())
+        exe = static.Executor()
+        exe.run(static.default_startup_program())
 
-            if paddle.framework.in_pir_mode():
-                ops = static.default_main_program().global_block().ops
-                fetch_list = [
-                    x,
-                    out,
-                    ops[-1].result(0),
-                    ops[-1].result(1),
-                    ops[-2].result(0),
-                ]
-            else:
-                fetch_list = [
-                    x.name,
-                    out.name,
-                    x.name + "@GRAD",
-                    y.name + "@GRAD",
-                    out.name + "@GRAD",
-                ]
+        if paddle.framework.in_pir_mode():
+            ops = static.default_main_program().global_block().ops
+            fetch_list = [
+                x,
+                out,
+                ops[-1].result(0),
+                ops[-1].result(1),
+                ops[-2].result(0),
+            ]
+        else:
+            fetch_list = [
+                x.name,
+                out.name,
+                x.name + "@GRAD",
+                y.name + "@GRAD",
+                out.name + "@GRAD",
+            ]
 
-            x_v, out_v, x_grad_v, y_grad_v, out_grad_v = exe.run(
-                static.default_main_program(),
-                feed={
-                    "x": np_x.astype(dtype),
-                    "y": np_y.astype(dtype),
-                },
-                fetch_list=fetch_list,
-            )
+        x_v, out_v, x_grad_v, y_grad_v, out_grad_v = exe.run(
+            static.default_main_program(),
+            feed={
+                "x": np_x.astype(dtype),
+                "y": np_y.astype(dtype),
+            },
+            fetch_list=fetch_list,
+        )
     paddle.disable_static()
     return x_v, out_v, x_grad_v, y_grad_v, out_grad_v
 
@@ -132,78 +134,80 @@ def inplace_dynamic_add_vector(custom_func, device, dtype, np_inputs, np_y):
 def inplace_static_add_vector(custom_func, device, dtype, np_inputs, np_y):
     paddle.enable_static()
     paddle.set_device(device)
-    with static.scope_guard(static.Scope()):
-        with static.program_guard(static.Program()):
-            x1 = static.data(
-                name="x1", shape=[None, np_inputs[0].shape[1]], dtype=dtype
-            )
-            x2 = static.data(
-                name="x2", shape=[None, np_inputs[1].shape[1]], dtype=dtype
-            )
-            y = static.data(name="y", shape=[None, np_y.shape[1]], dtype=dtype)
-            x1.stop_gradient = False
-            x2.stop_gradient = False
-            y.stop_gradient = False
+    with (
+        static.scope_guard(static.Scope()),
+        static.program_guard(static.Program()),
+    ):
+        x1 = static.data(
+            name="x1", shape=[None, np_inputs[0].shape[1]], dtype=dtype
+        )
+        x2 = static.data(
+            name="x2", shape=[None, np_inputs[1].shape[1]], dtype=dtype
+        )
+        y = static.data(name="y", shape=[None, np_y.shape[1]], dtype=dtype)
+        x1.stop_gradient = False
+        x2.stop_gradient = False
+        y.stop_gradient = False
+        if custom_func:
+            out = custom_inplace.custom_add_vec([x1, x2], y)
+        else:
+            out = [paddle.add(x1, y), paddle.add(x2, y)]
+        mean_out = paddle.mean(paddle.concat(out))
+        static.append_backward(mean_out)
+
+        exe = static.Executor()
+        exe.run(static.default_startup_program())
+
+        if paddle.framework.in_pir_mode():
+            ops = static.default_main_program().global_block().ops
             if custom_func:
-                out = custom_inplace.custom_add_vec([x1, x2], y)
-            else:
-                out = [paddle.add(x1, y), paddle.add(x2, y)]
-            mean_out = paddle.mean(paddle.concat(out))
-            static.append_backward(mean_out)
-
-            exe = static.Executor()
-            exe.run(static.default_startup_program())
-
-            if paddle.framework.in_pir_mode():
-                ops = static.default_main_program().global_block().ops
-                if custom_func:
-                    fetch_list = [
-                        out[0],
-                        out[1],
-                        ops[-1].result(0),  # x1_grad
-                        ops[-1].result(1),  # x2_grad
-                        ops[-2].result(1),  # y_grad
-                        ops[-5].result(0),  # out0_grad
-                        ops[-5].result(1),
-                    ]  # out1_grad
-                else:
-                    fetch_list = [
-                        out[0],
-                        out[1],
-                        ops[-4].result(0),  # x1_grad
-                        ops[-3].result(0),  # x2_grad
-                        ops[-1].result(0),  # y_grad
-                        ops[-5].result(0),  # out0_grad
-                        ops[-5].result(1),
-                    ]  # out1_grad
+                fetch_list = [
+                    out[0],
+                    out[1],
+                    ops[-1].result(0),  # x1_grad
+                    ops[-1].result(1),  # x2_grad
+                    ops[-2].result(1),  # y_grad
+                    ops[-5].result(0),  # out0_grad
+                    ops[-5].result(1),
+                ]  # out1_grad
             else:
                 fetch_list = [
-                    out[0].name,
-                    out[1].name,
-                    x1.name + "@GRAD",
-                    x2.name + "@GRAD",
-                    y.name + "@GRAD",
-                    out[0].name + "@GRAD",
-                    out[1].name + "@GRAD",
-                ]
+                    out[0],
+                    out[1],
+                    ops[-4].result(0),  # x1_grad
+                    ops[-3].result(0),  # x2_grad
+                    ops[-1].result(0),  # y_grad
+                    ops[-5].result(0),  # out0_grad
+                    ops[-5].result(1),
+                ]  # out1_grad
+        else:
+            fetch_list = [
+                out[0].name,
+                out[1].name,
+                x1.name + "@GRAD",
+                x2.name + "@GRAD",
+                y.name + "@GRAD",
+                out[0].name + "@GRAD",
+                out[1].name + "@GRAD",
+            ]
 
-            (
-                out0_v,
-                out1_v,
-                x1_grad_v,
-                x2_grad_v,
-                y_grad_v,
-                out0_grad_v,
-                out1_grad_v,
-            ) = exe.run(
-                static.default_main_program(),
-                feed={
-                    "x1": np_inputs[0].astype(dtype),
-                    "x2": np_inputs[1].astype(dtype),
-                    "y": np_y.astype(dtype),
-                },
-                fetch_list=fetch_list,
-            )
+        (
+            out0_v,
+            out1_v,
+            x1_grad_v,
+            x2_grad_v,
+            y_grad_v,
+            out0_grad_v,
+            out1_grad_v,
+        ) = exe.run(
+            static.default_main_program(),
+            feed={
+                "x1": np_inputs[0].astype(dtype),
+                "x2": np_inputs[1].astype(dtype),
+                "y": np_y.astype(dtype),
+            },
+            fetch_list=fetch_list,
+        )
     paddle.disable_static()
     return (
         [out0_v, out1_v],
@@ -235,51 +239,53 @@ def inplace_dynamic_relu_net(custom_func, device, dtype, np_x, np_y, np_z):
 def inplace_static_relu_net(func, device, dtype, np_x, np_y, np_z):
     paddle.enable_static()
     paddle.set_device(device)
-    with static.scope_guard(static.Scope()):
-        with static.program_guard(static.Program()):
-            x = static.data(name="x", shape=[None, np_x.shape[1]], dtype=dtype)
-            y = static.data(name="y", shape=[None, np_y.shape[1]], dtype=dtype)
-            z = static.data(name="z", shape=[None, np_z.shape[1]], dtype=dtype)
-            x.stop_gradient = False
-            y.stop_gradient = False
-            z.stop_gradient = False
-            out_xy = x + y
-            out_xy = func(out_xy)
-            out_xyz = out_xy + z
-            out = func(out_xyz)
-            mean_out = paddle.mean(out)
-            static.append_backward(mean_out)
+    with (
+        static.scope_guard(static.Scope()),
+        static.program_guard(static.Program()),
+    ):
+        x = static.data(name="x", shape=[None, np_x.shape[1]], dtype=dtype)
+        y = static.data(name="y", shape=[None, np_y.shape[1]], dtype=dtype)
+        z = static.data(name="z", shape=[None, np_z.shape[1]], dtype=dtype)
+        x.stop_gradient = False
+        y.stop_gradient = False
+        z.stop_gradient = False
+        out_xy = x + y
+        out_xy = func(out_xy)
+        out_xyz = out_xy + z
+        out = func(out_xyz)
+        mean_out = paddle.mean(out)
+        static.append_backward(mean_out)
 
-            exe = static.Executor()
-            exe.run(static.default_startup_program())
+        exe = static.Executor()
+        exe.run(static.default_startup_program())
 
-            if paddle.framework.in_pir_mode():
-                ops = static.default_main_program().global_block().ops
-                fetch_list = [
-                    x,
-                    y,
-                    out,
-                    ops[-1].result(0),  # x_grad
-                    ops[-1].result(1),
-                ]  # y_grad
-            else:
-                fetch_list = [
-                    x.name,
-                    y.name,
-                    out.name,
-                    x.name + "@GRAD",
-                    y.name + "@GRAD",
-                ]
+        if paddle.framework.in_pir_mode():
+            ops = static.default_main_program().global_block().ops
+            fetch_list = [
+                x,
+                y,
+                out,
+                ops[-1].result(0),  # x_grad
+                ops[-1].result(1),
+            ]  # y_grad
+        else:
+            fetch_list = [
+                x.name,
+                y.name,
+                out.name,
+                x.name + "@GRAD",
+                y.name + "@GRAD",
+            ]
 
-            x_v, y_v, out_v, x_grad_v, y_grad_v = exe.run(
-                static.default_main_program(),
-                feed={
-                    "x": np_x.astype(dtype),
-                    "y": np_y.astype(dtype),
-                    "z": np_z.astype(dtype),
-                },
-                fetch_list=fetch_list,
-            )
+        x_v, y_v, out_v, x_grad_v, y_grad_v = exe.run(
+            static.default_main_program(),
+            feed={
+                "x": np_x.astype(dtype),
+                "y": np_y.astype(dtype),
+                "z": np_z.astype(dtype),
+            },
+            fetch_list=fetch_list,
+        )
     paddle.disable_static()
     return x_v, y_v, out_v, x_grad_v, y_grad_v
 
@@ -315,91 +321,93 @@ def dynamic_multi_inplace(custom_func, device, dtype, np_x, np_y, np_a, np_b):
 def static_multi_inplace(custom_func, device, dtype, np_x, np_y, np_a, np_b):
     paddle.enable_static()
     paddle.set_device(device)
-    with static.scope_guard(static.Scope()):
-        with static.program_guard(static.Program()):
-            x = static.data(name="x", shape=[None, np_x.shape[1]], dtype=dtype)
-            y = static.data(name="y", shape=[None, np_y.shape[1]], dtype=dtype)
-            a = static.data(name="a", shape=[None, np_x.shape[1]], dtype=dtype)
-            b = static.data(name="b", shape=[None, np_y.shape[1]], dtype=dtype)
-            x.stop_gradient = False
-            y.stop_gradient = False
-            a.stop_gradient = False
-            b.stop_gradient = False
+    with (
+        static.scope_guard(static.Scope()),
+        static.program_guard(static.Program()),
+    ):
+        x = static.data(name="x", shape=[None, np_x.shape[1]], dtype=dtype)
+        y = static.data(name="y", shape=[None, np_y.shape[1]], dtype=dtype)
+        a = static.data(name="a", shape=[None, np_x.shape[1]], dtype=dtype)
+        b = static.data(name="b", shape=[None, np_y.shape[1]], dtype=dtype)
+        x.stop_gradient = False
+        y.stop_gradient = False
+        a.stop_gradient = False
+        b.stop_gradient = False
+        if custom_func:
+            out_xy, out_ab = custom_inplace.custom_multi_inplace(x, y, a, b)
+        else:
+            out_xy = paddle.add(x, y)
+            out_ab = paddle.add(a, b)
+        mean_out = paddle.mean(paddle.add(out_xy, out_ab))
+        static.append_backward(mean_out)
+
+        if paddle.framework.in_pir_mode():
+            ops = static.default_main_program().global_block().ops
             if custom_func:
-                out_xy, out_ab = custom_inplace.custom_multi_inplace(x, y, a, b)
-            else:
-                out_xy = paddle.add(x, y)
-                out_ab = paddle.add(a, b)
-            mean_out = paddle.mean(paddle.add(out_xy, out_ab))
-            static.append_backward(mean_out)
-
-            if paddle.framework.in_pir_mode():
-                ops = static.default_main_program().global_block().ops
-                if custom_func:
-                    fetch_list = [
-                        x,
-                        out_xy,
-                        ops[-1].result(0),  # x_grad
-                        ops[-1].result(1),  # y_grad
-                        ops[-2].result(0),  # out_xy_grad
-                        a,
-                        out_ab,
-                        ops[-1].result(2),  # a_grad
-                        ops[-1].result(3),  # b_grad
-                        ops[-2].result(1),
-                    ]  # out_ab_grad
-                else:
-                    fetch_list = [
-                        x,
-                        out_xy,
-                        ops[-2].result(0),  # x_grad
-                        ops[-2].result(1),  # y_grad
-                        ops[-3].result(0),  # out_xy_grad
-                        a,
-                        out_ab,
-                        ops[-1].result(0),  # a_grad
-                        ops[-1].result(1),  # b_grad
-                        ops[-3].result(1),
-                    ]  # out_ab_grad
-
+                fetch_list = [
+                    x,
+                    out_xy,
+                    ops[-1].result(0),  # x_grad
+                    ops[-1].result(1),  # y_grad
+                    ops[-2].result(0),  # out_xy_grad
+                    a,
+                    out_ab,
+                    ops[-1].result(2),  # a_grad
+                    ops[-1].result(3),  # b_grad
+                    ops[-2].result(1),
+                ]  # out_ab_grad
             else:
                 fetch_list = [
-                    x.name,
-                    out_xy.name,
-                    x.name + "@GRAD",
-                    y.name + "@GRAD",
-                    out_xy.name + "@GRAD",
-                    a.name,
-                    out_ab.name,
-                    a.name + "@GRAD",
-                    b.name + "@GRAD",
-                    out_ab.name + "@GRAD",
-                ]
+                    x,
+                    out_xy,
+                    ops[-2].result(0),  # x_grad
+                    ops[-2].result(1),  # y_grad
+                    ops[-3].result(0),  # out_xy_grad
+                    a,
+                    out_ab,
+                    ops[-1].result(0),  # a_grad
+                    ops[-1].result(1),  # b_grad
+                    ops[-3].result(1),
+                ]  # out_ab_grad
 
-            exe = static.Executor()
-            exe.run(static.default_startup_program())
+        else:
+            fetch_list = [
+                x.name,
+                out_xy.name,
+                x.name + "@GRAD",
+                y.name + "@GRAD",
+                out_xy.name + "@GRAD",
+                a.name,
+                out_ab.name,
+                a.name + "@GRAD",
+                b.name + "@GRAD",
+                out_ab.name + "@GRAD",
+            ]
 
-            (
-                x_v,
-                out_xy_v,
-                x_grad_v,
-                y_grad_v,
-                out_xy_grad_v,
-                a_v,
-                out_ab_v,
-                a_grad_v,
-                b_grad_v,
-                out_ab_grad_v,
-            ) = exe.run(
-                static.default_main_program(),
-                feed={
-                    "x": np_x.astype(dtype),
-                    "y": np_y.astype(dtype),
-                    "a": np_a.astype(dtype),
-                    "b": np_b.astype(dtype),
-                },
-                fetch_list=fetch_list,
-            )
+        exe = static.Executor()
+        exe.run(static.default_startup_program())
+
+        (
+            x_v,
+            out_xy_v,
+            x_grad_v,
+            y_grad_v,
+            out_xy_grad_v,
+            a_v,
+            out_ab_v,
+            a_grad_v,
+            b_grad_v,
+            out_ab_grad_v,
+        ) = exe.run(
+            static.default_main_program(),
+            feed={
+                "x": np_x.astype(dtype),
+                "y": np_y.astype(dtype),
+                "a": np_a.astype(dtype),
+                "b": np_b.astype(dtype),
+            },
+            fetch_list=fetch_list,
+        )
     paddle.disable_static()
     return (
         x_v,

@@ -34,6 +34,7 @@ void LogSoftmaxGradKernel(const Context &dev_ctx,
     phi::funcs::set_constant(dev_ctx, x_grad, static_cast<T>(0.0));
     return;
   }
+  if (out.numel() == 0) return;
   phi::SoftmaxBackwardCUDAKernelDriver<T, true>(
       dev_ctx, out, out_grad, axis, x_grad);
 }

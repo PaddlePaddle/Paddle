@@ -588,13 +588,6 @@ void ConvInferMeta(const MetaTensor& input,
   const bool channel_last = (config.is_run_mkldnn_kernel == false) &&
                             (data_format == "NHWC" || data_format == "NDHWC");
 
-  for (int i = 0; i < 2; ++i) {
-    PADDLE_ENFORCE_NE(in_dims[i],
-                      0,
-                      common::errors::InvalidArgument(
-                          "The size of Op(Conv) inputs should not be 0."));
-  }
-
   PADDLE_ENFORCE_EQ(
       in_dims.size() == 4 || in_dims.size() == 5,
       true,
@@ -706,11 +699,15 @@ void ConvInferMeta(const MetaTensor& input,
 
   std::vector<int64_t> output_shape({in_dims[0]});
   if (!channel_last) {
-    output_shape.push_back(filter_dims[0]);
+    if (filter_dims[1] == 0) {
+      output_shape.push_back(0);
+    } else {
+      output_shape.push_back(filter_dims[0]);
+    }
   }
   for (int i = 0; i < in_data_dims.size(); ++i) {
     if ((!config.is_runtime) &&
-        (in_data_dims[i] <= 0 || filter_dims[i + 2] <= 0)) {
+        (in_data_dims[i] < 0 || filter_dims[i + 2] < 0)) {
       output_shape.push_back(-1);
     } else {
       const int dkernel =
@@ -723,7 +720,11 @@ void ConvInferMeta(const MetaTensor& input,
     }
   }
   if (channel_last) {
-    output_shape.push_back(filter_dims[0]);
+    if (filter_dims[1] == 0) {
+      output_shape.push_back(0);
+    } else {
+      output_shape.push_back(filter_dims[0]);
+    }
   }
 
   out->set_dims(common::make_ddim(output_shape));
@@ -888,19 +889,23 @@ void ConvTransposeInferMeta(const MetaTensor& x,
                 common::make_ddim(output_size).to_str(),
                 i,
                 infer_shape));
-        PADDLE_ENFORCE_LT(
-            output_size[i],
-            infer_shape + strides[i],
-            errors::InvalidArgument(
-                "output_size of Op(ConvTransposeOp) should be less "
-                "than inferred size + stride. But received output_size = [%s], "
-                "whose dim %d is not less than the inferred output size (%d) + "
-                "stride (%d) = %d",
-                common::make_ddim(output_size).to_str(),
-                i,
-                infer_shape,
-                strides[i],
-                infer_shape + strides[i]));
+        if (common::product(x_dims) != 0) {
+          PADDLE_ENFORCE_LT(
+              output_size[i],
+              infer_shape + strides[i],
+              errors::InvalidArgument(
+                  "output_size of Op(ConvTransposeOp) should be less "
+                  "than inferred size + stride. But received output_size = "
+                  "[%s], "
+                  "whose dim %d is not less than the inferred output size (%d) "
+                  "+ "
+                  "stride (%d) = %d",
+                  common::make_ddim(output_size).to_str(),
+                  i,
+                  infer_shape,
+                  strides[i],
+                  infer_shape + strides[i]));
+        }
       }
       output_shape.push_back(output_size[i]);
     } else if (!output_padding.empty()) {
