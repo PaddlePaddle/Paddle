@@ -890,23 +890,18 @@ __global__ void GatherKthValue(const T* input,
 
   __shared__ int64_t block_min_idx;
   if (threadIdx.x == 0) {
-    block_min_idx = -1;
+    block_min_idx = num_cols;
   }
   __syncthreads();
 
   // 2. find the k-th index
-  for (int64_t i = threadIdx.x; i < num_cols; i += blockDim.x) {
-    int64_t current_min = block_min_idx;
-    if (current_min != -1 && i >= current_min) {
-      break;
-    }
+  for (IndexType i = threadIdx.x; i < num_cols; i += blockDim.x) {
     T v = cur_input[i];
     bool isKValue =
         ((v == kth_value) || (isnan(static_cast<float>(v)) &&
                               isnan(static_cast<float>(kth_value))));
     if (isKValue) {
-      phi::CudaAtomicMin(&block_min_idx, i);
-      break;
+      phi::CudaAtomicMin(&block_min_idx, static_cast<int64_t>(i));
     }
   }
   __syncthreads();
