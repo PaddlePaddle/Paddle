@@ -173,7 +173,7 @@ class TestIndexAddBF16Op(OpTest):
             ['X', 'AddValue'],
             'Out',
             check_pir=True,
-            check_pir_prim=True,
+            check_prim_pir=True,
         )
 
 
