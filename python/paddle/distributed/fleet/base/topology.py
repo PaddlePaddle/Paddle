@@ -496,7 +496,7 @@ class HybridCommunicateGroup:
         self,
         parallel_method: str = "data",
         topo: CommunicateTopology = None,
-        nccl_config=None,
+        nccl_config: NCCLConfig | None = None,
     ) -> tuple[list[int], Group]:
         parallel_group = []
         parallel_comm_group = None
@@ -531,7 +531,7 @@ class HybridCommunicateGroup:
         self,
         parallel_method: str = "data",
         topo: CommunicateTopology = None,
-        nccl_config=None,
+        nccl_config: NCCLConfig | None = None,
     ) -> tuple[list[int], Group]:
         parallel_group = []
         parallel_comm_group = None
@@ -732,7 +732,9 @@ class HybridCommunicateGroup:
         return 0
 
     def create_fuse_group(
-        self, fused_strategy_list: list[str], nccl_config=None
+        self,
+        fused_strategy_list: list[str],
+        nccl_config: NCCLConfig | None = None,
     ) -> tuple[list[list[int]], list[Group]] | tuple[list[int], Group]:
         assert (
             len(fused_strategy_list) > 0

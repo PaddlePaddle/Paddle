@@ -69,6 +69,7 @@ if TYPE_CHECKING:
     from collections.abc import Generator
 
     from paddle import Tensor
+    from paddle.base.libpaddle import NCCLConfig
     from paddle.nn.layer.layers import _StateDict
 __all__ = []
 
@@ -984,7 +985,7 @@ def _print_modified_flags(modified_flags):
         )
 
 
-def init_parallel_env(nccl_config=None) -> Group:
+def init_parallel_env(nccl_config: NCCLConfig | None = None) -> Group:
     """
 
     Initialize parallel training environment in dynamic graph mode.
