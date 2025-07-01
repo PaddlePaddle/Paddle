@@ -20,6 +20,7 @@
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
@@ -86,6 +87,12 @@ void RoiPoolGradKernel(const Context& dev_ctx,
   int height = x_dims[2];
   int width = x_dims[3];
   int rois_num = boxes.dims()[0];
+
+  if (x.numel() == 0 || boxes.numel() == 0) {
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(dx->dims())), 0, dx);
+    return;
+  }
 
   if (dx) {
     DenseTensor box_batch_id_list;
