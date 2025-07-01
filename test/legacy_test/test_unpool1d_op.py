@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
+from op_test import get_places
 
 import paddle
 import paddle.nn.functional as F
@@ -61,16 +61,7 @@ def unpool1dmax_forward_naive(
 
 class TestUnpool1DOpAPI_dygraph(unittest.TestCase):
     def test_case(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not paddle.base.core.is_compiled_with_cuda()
-        ):
-            places.append(paddle.CPUPlace())
-        if paddle.base.core.is_compiled_with_cuda():
-            places.append(paddle.CUDAPlace(0))
-        for place in places:
+        for place in get_places():
             paddle.disable_static()
             input_data = np.random.rand(1, 3, 16)
             input_x = paddle.to_tensor(input_data)
@@ -92,16 +83,7 @@ class TestUnpool1DOpAPI_dygraph(unittest.TestCase):
 
 class TestUnpool1DOpAPI_dygraph2(unittest.TestCase):
     def test_case(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not paddle.base.core.is_compiled_with_cuda()
-        ):
-            places.append(paddle.CPUPlace())
-        if paddle.base.core.is_compiled_with_cuda():
-            places.append(paddle.CUDAPlace(0))
-        for place in places:
+        for place in get_places():
             paddle.disable_static()
             input_data = np.random.rand(1, 3, 16)
             input_x = paddle.to_tensor(input_data)
@@ -123,16 +105,7 @@ class TestUnpool1DOpAPI_dygraph2(unittest.TestCase):
 
 class TestUnpool1DOpAPI_dygraph3(unittest.TestCase):
     def test_case(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not paddle.base.core.is_compiled_with_cuda()
-        ):
-            places.append(paddle.CPUPlace())
-        if paddle.base.core.is_compiled_with_cuda():
-            places.append(paddle.CUDAPlace(0))
-        for place in places:
+        for place in get_places():
             paddle.disable_static()
             input_data = np.random.rand(1, 3, 16)
             input_x = paddle.to_tensor(input_data)
@@ -155,16 +128,7 @@ class TestUnpool1DOpAPI_dygraph3(unittest.TestCase):
 
 class TestUnpool1DOpAPI_dygraph4(unittest.TestCase):
     def test_case(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not paddle.base.core.is_compiled_with_cuda()
-        ):
-            places.append(paddle.CPUPlace())
-        if paddle.base.core.is_compiled_with_cuda():
-            places.append(paddle.CUDAPlace(0))
-        for place in places:
+        for place in get_places():
             paddle.disable_static()
             input_data = np.arange(3 * 16).reshape([1, 3, 16]).astype("float32")
             input_x = paddle.to_tensor(input_data)
@@ -190,16 +154,7 @@ class TestUnpool1DOpAPI_dygraph4(unittest.TestCase):
 
 class TestUnpool1DOpAPI_dygraph5(unittest.TestCase):
     def test_case(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not paddle.base.core.is_compiled_with_cuda()
-        ):
-            places.append(paddle.CPUPlace())
-        if paddle.base.core.is_compiled_with_cuda():
-            places.append(paddle.CUDAPlace(0))
-        for place in places:
+        for place in get_places():
             paddle.disable_static()
             input_data = np.arange(3 * 16).reshape([1, 3, 16]).astype("float32")
             input_x = paddle.to_tensor(input_data)
@@ -227,16 +182,7 @@ class TestUnpool1DOpAPI_static(unittest.TestCase):
 
     def test_case(self):
         paddle.enable_static()
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not paddle.base.core.is_compiled_with_cuda()
-        ):
-            places.append(paddle.CPUPlace())
-        if paddle.base.core.is_compiled_with_cuda():
-            places.append(paddle.CUDAPlace(0))
-        for place in places:
+        for place in get_places():
             with paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
             ):
@@ -275,16 +221,7 @@ class TestUnpool1DOpAPI_static(unittest.TestCase):
 
 class TestUnpool1DOpAPI_ZeroSize(unittest.TestCase):
     def test_case(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not paddle.base.core.is_compiled_with_cuda()
-        ):
-            places.append(paddle.CPUPlace())
-        if paddle.base.core.is_compiled_with_cuda():
-            places.append(paddle.CUDAPlace(0))
-        for place in places:
+        for place in get_places():
             paddle.disable_static()
             input_data = np.random.random([1, 3, 0])
             input_x = paddle.to_tensor(input_data)
