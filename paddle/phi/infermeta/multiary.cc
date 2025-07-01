@@ -2489,14 +2489,14 @@ void FusedBiasActInferMeta(const MetaTensor& x,
 
   if (act_method == "geglu" || act_method == "swiglu") {
     if (config.is_runtime || dim >= 0) {
-      ENFORCE_EQ(
+      PADDLE_ENFORCE_EQ(
           dim % 2,
           0,
           common::errors::InvalidArgument(
               "The last dimension of x must be even, but receive %d", dim));
       x_shapes[x_last_dim] /= 2;
     } else {
-      ENFORCE_EQ(
+      PADDLE_ENFORCE_EQ(
           dim,
           -1,
           common::errors::InvalidArgument("At compile time, a negative last "
