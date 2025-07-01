@@ -19,6 +19,7 @@ env:
   BRANCH: ${{ github.event.pull_request.base.ref }}
   TASK: paddle-CI-${{ github.event.pull_request.number }}-CE-Framework
   CI_name: ce-framework
+  CFS_DIR: /home/data/cfs
   no_proxy: "bcebos.com,apiin.im.baidu.com,gitee.com,aliyun.com,.baidu.com,.tuna.tsinghua.edu.cn"
 
 defaults:
@@ -92,6 +93,7 @@ jobs:
             -e CI_name \
             -e CACHE_DIR \
             -e FLAGS_enable_eager_mode \
+            -e CFS_DIR \
             -w /paddle --network host ${docker_image}
 
       - name: Download Paddle and PaddleTest
@@ -100,8 +102,8 @@ jobs:
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           rm -rf * .[^.]*
-          echo "Downloading build.tar.gz"
-          wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/build/${PR_ID}/${COMMIT_ID}/build.tar.gz --no-check-certificate
+          echo "Downloading build.tar.gz from cfs"
+          cp ${CFS_DIR}/build_bos/${PR_ID}/${COMMIT_ID}/build.tar.gz .
           echo "Extracting build.tar.gz"
           git config --global --add safe.directory ${work_dir}
           tar --use-compress-program="pzstd -1" -xpf build.tar.gz --strip-components=1
@@ -189,6 +191,7 @@ jobs:
             -e CI_name \
             -e CACHE_DIR \
             -e FLAGS_enable_eager_mode \
+            -e CFS_DIR \
             -w /paddle --network host ${docker_image}
 
       - name: Download Paddle and PaddleTest
@@ -197,8 +200,8 @@ jobs:
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           rm -rf * .[^.]*
-          echo "Downloading build.tar.gz"
-          wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/build/${PR_ID}/${COMMIT_ID}/build.tar.gz --no-check-certificate
+          echo "Downloading build.tar.gz from cfs"
+          cp ${CFS_DIR}/build_bos/${PR_ID}/${COMMIT_ID}/build.tar.gz .
           echo "Extracting build.tar.gz"
           git config --global --add safe.directory ${work_dir}
           tar --use-compress-program="pzstd -1" -xpf build.tar.gz --strip-components=1
@@ -229,7 +232,7 @@ jobs:
           ln -s $(which python3.10) run_env/python
           ln -s $(which pip3.10) run_env/pip
           export PATH=$(pwd)/run_env:${PATH}
-          pip config set global.cache-dir "/home/data/cfs/.cache/pip"
+          pip config set global.cache-dir "${CFS_DIR}/.cache/pip"
           pip config set global.index-url https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple
           pip install sympy
           pip install /paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl

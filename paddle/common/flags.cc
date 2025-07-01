@@ -434,8 +434,8 @@ PHI_DEFINE_EXPORTED_bool(
 
 /**
  * Memory related FLAG
- * Name: FLAGS_enable_async_fast_gc
- * Since Version: 3.1.0
+ * Name: FLAGS_async_fast_eager_deletion_mode
+ * Since Version: 3.1.1
  * Value Range: bool, default=false
  * Example:
  * Note: Enable async fast garbage collection mode. If enabled, allocation will
@@ -443,7 +443,7 @@ PHI_DEFINE_EXPORTED_bool(
  *       faster. This flag is valid when fast_eager_deletion_mode is enabled.
  */
 PHI_DEFINE_EXPORTED_bool(
-    enable_async_fast_gc,
+    async_fast_eager_deletion_mode,
     false,
     "Enable async fast garbage collection mode. If enabled, allocation will "
     "be released asynchronously, which make the garbage collection process "

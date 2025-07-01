@@ -97,13 +97,13 @@ DtensorFromLocalGradNode::operator()(
 
   PADDLE_ENFORCE_NE(local_dense,
                     nullptr,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The local DenseTensor inside DistTensor is null."));
 
   PADDLE_ENFORCE_EQ(
       local_dense->initialized(),
       true,
-      phi::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "The local DenseTensor inside DistTensor is not initialized."));
 
   grad_input.set_impl(local_dense);

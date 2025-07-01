@@ -211,7 +211,6 @@ void MaskedFillKernel(const Context& dev_ctx,
                       const DenseTensor& value,
                       DenseTensor* out) {
   if (x.numel() == 0 || mask.numel() == 0) {
-    out->Resize({0});
     dev_ctx.template Alloc<T>(out);
     return;
   }
