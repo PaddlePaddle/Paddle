@@ -66,7 +66,8 @@ void KthvalueGradKernel(const Context& dev_ctx,
   const int64_t max_blocks = std::max(((max_threads - 1) / block_size + 1), 1);
   int64_t desired_grid_size = std::min(max_blocks, pre);
   int64_t grid_size =
-      std::min(desired_grid_size, dev_ctx.GetCUDAMaxGridDimSize()[0]);
+      std::min(desired_grid_size,
+               static_cast<int64_t>(dev_ctx.GetCUDAMaxGridDimSize()[0]));
   phi::funcs::AssignGradWithAxis<T>
       <<<grid_size, block_size, 64 * 4, dev_ctx.stream()>>>(
           out_grad_data, indices_data, x_grad_data, pre, post, n, 1);
