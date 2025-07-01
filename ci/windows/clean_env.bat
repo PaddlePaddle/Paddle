@@ -1,3 +1,4 @@
+@ECHO ON
 taskkill /f /im cmake.exe /t 2>NUL
 taskkill /f /im ninja.exe /t 2>NUL
 taskkill /f /im MSBuild.exe /t 2>NUL
