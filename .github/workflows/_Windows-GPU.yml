@@ -24,7 +24,7 @@ jobs:
     runs-on:
       group: win-gpu
     steps:
-      - name: Configure environment
+      - name: Download Paddle and config env
         run: |
           cd %WORK_DIR%
           rmdir /s/q %WORK_DIR%\Paddle 2>NUL
@@ -35,6 +35,21 @@ jobs:
           del Paddle.tar Paddle.tar.zst
           call %ci_scripts%\config_env.bat
 
-      - name: Download paddle
+      - name: Build
+        env:
+          NIGHTLY_MODE: "OFF"
+          WITH_UNITY_BUILD: "ON"
+          WITH_TPCACHE: "ON"
+          WITH_SCCACHE: "ON"
+          WITH_SHARED_PHI: "OFF"
+          GIT_PR_ID: ${{ github.event.pull_request.number }}
+          WITH_TESTING: "ON"
+          PRECISION_TEST: "OFF"
+          PYTHON_ROOT: C:\Python310
+          vcvars64_dir: 'C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvars64.bat'
+          CUDA_TOOLKIT_ROOT_DIR: C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.0
+          TENSORRT_ROOT: D:\TensorRT
+          CTEST_PARALLEL_LEVEL: 1
+          GENERATOR: "Ninja"
         run: |
           echo %path%
