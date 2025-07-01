@@ -45,7 +45,6 @@ wget_model_benchmark_ci () {
 ############################ get_paddlescope_tar
 get_paddlescope_tar () {
     cd ${ROOT_DIR}
-    # python ${push_file} paddlescope/paddlescope_nosql.tar.gz only-internal-network-support download
     cp ${CACHE_DIR}/paddlescope_nosql.tar.gz .
     tar xf paddlescope_nosql.tar.gz
     pip install -r paddlescope/requirements.txt
@@ -107,24 +106,6 @@ check_paddle () {
     export CINN_FILE_LIST=${sum_num}
     echo "export CINN_FILE_LIST=$CINN_FILE_LIST" >> ~/.bashrc
 }
-############################ pr_analysis.py
-run_pr_analysis () {
-    cd ${ROOT_DIR}
-    export AGILE_MODULE_NAME='PaddlePaddle/Paddle'
-    export AGILE_PULL_ID=$AGILE_PULL_ID
-    cp ${benchmark_ci_cache}/pr_analysis.tar.gz ${ROOT_DIR}
-    tar xf pr_analysis.tar.gz
-    cd pr_analysis
-    rm -rf pr_analysis.csv
-    python -m pip install --upgrade pip
-    python -m pip install -r requirements.txt
-    python pr_analysis.py
-    mv pr_analysis.csv ${ROOT_DIR}
-    echo ------------------------------ run_pr_analysis done ------------------------------
-    ls ${ROOT_DIR};
-}
-set +e;
-# run_pr_analysis
 ############################ model_benchmark_ci
 check_skip () {
     cd ${ROOT_DIR}
