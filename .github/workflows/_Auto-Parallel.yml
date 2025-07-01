@@ -109,6 +109,7 @@ jobs:
           pip config set global.cache-dir "/home/.cache/pip"
           ln -sf $(which python${python_version}) /usr/bin/python
           python -c "import sys; print(sys.version_info[:])"
+          source ${{ github.workspace }}/../../../proxy
           timeout 80m bash Paddle/ci/auto_parallel/ci_auto_parallel.sh ${paddle_whl}
           '
 
