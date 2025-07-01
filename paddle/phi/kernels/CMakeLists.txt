@@ -382,7 +382,8 @@ if(WITH_XPU)
   # The kernel related to xpufft must have WITH_XPU_FFT enabled.
   if(NOT WITH_XPU_FFT)
     list(REMOVE_ITEM kernel_xpu "xpu/complex_kernel.cc"
-         "xpu/complex_grad_kernel.cc")
+         "xpu/complex_grad_kernel.cc" "xpu/fft_kernel.cc"
+         "xpu/fft_grad_kernel.cc")
   endif()
 
   collect_srcs(kernels_srcs SRCS ${kernel_xpu})
