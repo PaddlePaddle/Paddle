@@ -2849,35 +2849,55 @@ PyMODINIT_FUNC PyInit__static_op_arg_pre_cast_hook() {
   return nullptr;
 }
 
-PyObject* CalcPlaceHash(PyObject* dummy, PyObject* tensors) {
-  PADDLE_ENFORCE_EQ(PyList_Check(tensors) || PyTuple_Check(tensors),
+PyObject* CalcScopeCacheKey(PyObject* dummy, PyObject* args) {
+  // Parse args
+  PyObject* program_id = PyTuple_GetItem(args, 0);
+  PyObject* input_tensors = PyTuple_GetItem(args, 1);
+  PyObject* use_cuda_graph = PyTuple_GetItem(args, 2);
+  PyObject* cuda_graph_dispatch_key = PyTuple_GetItem(args, 3);
+
+  // Check type
+  PADDLE_ENFORCE_EQ(PyLong_Check(program_id),
+                    true,
+                    common::errors::InvalidArgument(
+                        "The program_id should be a long integer."));
+  PADDLE_ENFORCE_EQ(PyList_Check(input_tensors) || PyTuple_Check(input_tensors),
                     true,
                     common::errors::InvalidArgument(
                         "The input tensors should be a list/tuple of Tensor."));
+  PADDLE_ENFORCE_EQ(PyBool_Check(use_cuda_graph),
+                    true,
+                    common::errors::InvalidArgument(
+                        "The use_cuda_graph should be a boolean value."));
+  PADDLE_ENFORCE_EQ(
+      PyLong_Check(cuda_graph_dispatch_key),
+      true,
+      common::errors::InvalidArgument(
+          "The cuda_graph_dispatch_key should be a long integer."));
+
+  // Convert to C++ types
+  int64_t program_id_value = PyLong_AsLongLong(program_id);
+  bool use_cuda_graph_value = (use_cuda_graph == Py_True);
+  int64_t cuda_graph_dispatch_key_value =
+      PyLong_AsLongLong(cuda_graph_dispatch_key);
+
+  bool input_is_list = PyList_Check(input_tensors);
   std::vector<const paddle::Tensor*> tensors_vec;
-  const auto& GetSequenceItem = [](PyObject* seq, Py_ssize_t i) {
-    if (PyList_Check(seq)) {
-      return PyList_GetItem(seq, i);
-    } else {
-      return PyTuple_GetItem(seq, i);
-    }
-  };
-  const auto& GetSequenceSize = [](PyObject* seq) {
-    if (PyList_Check(seq)) {
-      return PyList_Size(seq);
-    } else {
-      return PyTuple_Size(seq);
-    }
-  };
-  for (Py_ssize_t i = 0; i < GetSequenceSize(tensors); ++i) {
-    PyObject* item = GetSequenceItem(tensors, i);
+  Py_ssize_t input_size =
+      input_is_list ? PyList_Size(input_tensors) : PyTuple_Size(input_tensors);
+  tensors_vec.reserve(input_size);
+  for (Py_ssize_t i = 0; i < input_size; ++i) {
+    PyObject* item = input_is_list ? PyList_GetItem(input_tensors, i)
+                                   : PyTuple_GetItem(input_tensors, i);
     if (PyObject_TypeCheck(item, p_tensor_type)) {
       tensors_vec.push_back(&(reinterpret_cast<TensorObject*>(item)->tensor));
     } else {
       PADDLE_THROW(common::errors::InvalidArgument(
-          "The input tensors should be a list of Tensor."));
+          "The input tensors should be a list or tuple of Tensor."));
     }
   }
+
+  // Calculate the scope cache key
   const auto& hash_with_seed = [](int64_t value, int64_t seed) {
     return seed + 0x9e3779b9 + (value << 6) + (value >> 2);
   };
@@ -2886,7 +2906,15 @@ PyObject* CalcPlaceHash(PyObject* dummy, PyObject* tensors) {
     int64_t device_type = static_cast<int64_t>(tensor->place().GetType());
     place_hash_key = hash_with_seed(place_hash_key, device_type);
   }
-  return ToPyObject(place_hash_key);
+  int64_t scope_cache_key = program_id_value;
+  scope_cache_key = hash_with_seed(scope_cache_key, place_hash_key);
+  scope_cache_key = hash_with_seed(scope_cache_key,
+                                   static_cast<int64_t>(use_cuda_graph_value));
+  scope_cache_key =
+      hash_with_seed(scope_cache_key, cuda_graph_dispatch_key_value);
+
+  // Return the scope cache key as a Python object
+  return ToPyObject(scope_cache_key);
 }
 
 /* ------------------ for auto parallel ----------------------- */
@@ -2904,10 +2932,10 @@ static PyMethodDef EagerUtilMethods[] = {  // NOLINT
      (PyCFunction)SetStaticOpArgPreCastHook,
      METH_O,
      "Set hook for pre cast a static OP argument."},
-    {"calc_place_hash",
-     (PyCFunction)CalcPlaceHash,
-     METH_O,
-     "Calculate the hash value by tensors place."},
+    {"calc_scope_cache_key",
+     (PyCFunction)CalcScopeCacheKey,
+     METH_VARARGS,
+     "Calculate the cache key for scope."},
     {nullptr, nullptr, 0, nullptr}};
 
 void BindEagerUtils(PyObject* module) {
