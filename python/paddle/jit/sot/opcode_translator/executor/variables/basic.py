@@ -2471,7 +2471,10 @@ class DataClassInstanceVariable(VariableBase):
             ).bind(self, "__post_init__")
         if name == "__dataclass_fields__":
             return VariableFactory.from_value(
-                {fd.name: fd for fd in dataclasses.fields(self.value)},
+                {
+                    fd.name: fd
+                    for fd in dataclasses.fields(self.class_var.value)
+                },
                 graph=self.graph,
                 tracker=GetAttrTracker(self, "__dataclass_fields__"),
             )

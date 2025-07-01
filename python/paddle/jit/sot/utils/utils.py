@@ -476,11 +476,13 @@ def get_numpy_ufuncs():
 
 
 def do_until_stop_iteration(fn: Callable[[], T]) -> list[T]:
+    from paddle.jit.sot.utils.exceptions import SotCapturedStopIteration
+
     res = []
     while True:
         try:
             res.append(fn())
-        except StopIteration:
+        except SotCapturedStopIteration:
             break
     return res
 

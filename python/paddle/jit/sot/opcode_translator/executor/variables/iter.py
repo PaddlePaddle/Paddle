@@ -28,6 +28,7 @@ from ....utils.exceptions import (
     FallbackError,
     FallbackInlineCallBreak,
     OtherInlineCallBreak,
+    SotCapturedStopIteration,
     SotErrorBase,
     UnsupportedOperationBreak,
 )
@@ -124,7 +125,7 @@ class SequenceIterVariable(IterVariable):
             self.idx += 1
             return val
         else:
-            raise StopIteration
+            raise SotCapturedStopIteration
 
     def to_list(self) -> list:
         if self.has_side_effect():
@@ -356,7 +357,9 @@ class GeneratorVariable(IterVariable):
             ):
                 output: VariableBase = inline_gen_executor.inline_call()
                 if inline_gen_executor.stop_state == "Return":
-                    raise StopIteration
+                    raise SotCapturedStopIteration
+        except SotCapturedStopIteration:
+            raise
         except SotErrorBase as error:
             self.graph.restore_memo(checkpoint)
             self.vframe.restore_state(frame_state)

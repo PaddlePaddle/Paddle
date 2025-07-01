@@ -647,8 +647,8 @@ Dispatcher.register(
 
 def register_exception(exc_type: type[Exception]):
     @Dispatcher.register_decorator(exc_type)
-    def builtin_exception_dispatcher(*args) -> int:
-        exc = exc_type(*args)
+    def builtin_exception_dispatcher(*args: VariableBase) -> int:
+        exc = exc_type(*[arg.get_py_value() for arg in args])
         return ExceptionVariable(
             exc,
             graph=Dispatcher.graph,
