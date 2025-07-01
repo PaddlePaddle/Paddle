@@ -161,6 +161,9 @@ void KthvalueKernel(const Context& dev_ctx,
                     bool keepdim,
                     DenseTensor* output,
                     DenseTensor* indices) {
+  // TODO(cangtianhuang): support int64_t k
+  k = static_cast<int64_t>(k);
+
   if (x.numel() == 0) {
     phi::Full<T, Context>(
         dev_ctx, phi::IntArray(common::vectorize(output->dims())), NAN, output);
@@ -195,13 +198,24 @@ void KthvalueKernel(const Context& dev_ctx,
     const int64_t& input_width = in_dims[in_dims.size() - 1];
 #if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 9000
     const T* input_data = x.data<T>();
-    funcs::LaunchGatherKthValue<T>(dev_ctx,
-                                   input_data,
-                                   input_width,
-                                   input_height,
-                                   k,
-                                   output_data,
-                                   indices_data);
+    if (input_width > std::numeric_limits<int32_t>::max()) {
+      funcs::LaunchGatherKthValue<T, int64_t>(dev_ctx,
+                                              input_data,
+                                              input_width,
+                                              input_height,
+                                              k,
+                                              output_data,
+                                              indices_data);
+    } else {
+      funcs::LaunchGatherKthValue<T, int32_t>(
+          dev_ctx,
+          input_data,
+          static_cast<int32_t>(input_width),
+          static_cast<int32_t>(input_height),
+          static_cast<int32_t>(k),
+          output_data,
+          indices_data);
+    }
 #else
     PADDLE_ENFORCE_EQ(
         SortKthvalue<T>(
@@ -209,7 +223,6 @@ void KthvalueKernel(const Context& dev_ctx,
         true,
         common::errors::External("KthvalueOP: Error when use cub sorting"));
 #endif
-
     return;
   } else {
     std::vector<int> trans;
@@ -257,13 +270,24 @@ void KthvalueKernel(const Context& dev_ctx,
     const int64_t input_width = trans_dims[trans_dims.size() - 1];
 
 #if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 9000
-    funcs::LaunchGatherKthValue<T>(dev_ctx,
-                                   tran_input_data,
-                                   input_width,
-                                   input_height,
-                                   k,
-                                   tran_output_data,
-                                   tran_indices_data);
+    if (input_width > std::numeric_limits<int32_t>::max()) {
+      funcs::LaunchGatherKthValue<T, int64_t>(dev_ctx,
+                                              tran_input_data,
+                                              input_width,
+                                              input_height,
+                                              k,
+                                              tran_output_data,
+                                              tran_indices_data);
+    } else {
+      funcs::LaunchGatherKthValue<T, int32_t>(
+          dev_ctx,
+          tran_input_data,
+          static_cast<int32_t>(input_width),
+          static_cast<int32_t>(input_height),
+          static_cast<int32_t>(k),
+          tran_output_data,
+          tran_indices_data);
+    }
 #else
     PADDLE_ENFORCE_EQ(
         SortKthvalue<T>(dev_ctx,

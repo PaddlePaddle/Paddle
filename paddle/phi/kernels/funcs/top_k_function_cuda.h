@@ -694,10 +694,10 @@ __device__ void ExclusiveBinaryPrefixScan(
   }
 }
 
-template <typename T, typename RadixType>
+template <typename T, typename RadixType, typename IndexType>
 __device__ T FindPattern(const T* input,
                          T* shared_mem,
-                         int64_t slice_size,
+                         IndexType slice_size,
                          RadixType desired,
                          RadixType desired_mask) {
   if (threadIdx.x < 2) {
@@ -705,9 +705,9 @@ __device__ T FindPattern(const T* input,
   }
   __syncthreads();
 
-  int block_dim = static_cast<int>(blockDim.x);
-  int64_t loop = ((slice_size + block_dim - 1) / block_dim * block_dim);
-  for (int64_t i = threadIdx.x; i < loop; i += blockDim.x) {
+  IndexType block_dim = static_cast<IndexType>(blockDim.x);
+  IndexType loop = ((slice_size + block_dim - 1) / block_dim * block_dim);
+  for (IndexType i = threadIdx.x; i < loop; i += blockDim.x) {
     bool valid = (i < slice_size);
     T v = valid ? input[i] : static_cast<T>(0);
 
@@ -732,14 +732,18 @@ __device__ T FindPattern(const T* input,
   return static_cast<T>(0);
 }
 
-template <typename T, typename RadixType, int RadixSize, int RadixBits>
+template <typename T,
+          typename RadixType,
+          typename IndexType,
+          int RadixSize,
+          int RadixBits>
 __device__ void RadixCountUsingMask(const T* input,
-                                    int counts[RadixSize],
-                                    int* shared_mem,
+                                    IndexType counts[RadixSize],
+                                    IndexType* shared_mem,
                                     RadixType desired,
                                     RadixType desired_mask,
                                     int radix_digit_pos,
-                                    int64_t slice_size) {
+                                    IndexType slice_size) {
 #pragma unroll
   for (int i = 0; i < RadixSize; ++i) {
     counts[i] = 0;
@@ -750,7 +754,7 @@ __device__ void RadixCountUsingMask(const T* input,
   }
   __syncthreads();
 
-  for (int64_t i = threadIdx.x; i < slice_size; i += blockDim.x) {
+  for (IndexType i = threadIdx.x; i < slice_size; i += blockDim.x) {
     RadixType val = RadixTypeConfig<T>::Convert(input[i]);
 
     bool has_val = ((val & desired_mask) == desired);
@@ -781,44 +785,47 @@ __device__ void RadixCountUsingMask(const T* input,
   __syncthreads();
 }
 
-template <typename T, typename RadixType, bool Largest>
-__device__ void RadixSearch(
-    const T* input, int k, int64_t slice_size, int* shared_mem, T* kth_value) {
-  int counts[RADIX_SIZE];
-
+template <typename T, typename RadixType, typename IndexType, bool Largest>
+__device__ void RadixSearch(const T* input,
+                            IndexType k,
+                            IndexType slice_size,
+                            void* shared_mem,
+                            T* kth_value) {
+  IndexType counts[RADIX_SIZE];
+  IndexType k_left = k;
   RadixType desired = 0;
   RadixType desired_mask = 0;
-
-  int k_left = k;
 
 #pragma unroll
   for (int digit_pos = sizeof(T) * 8 - RADIX_BITS; digit_pos >= 0;
        digit_pos -= RADIX_BITS) {
-    RadixCountUsingMask<T, RadixType, RADIX_SIZE, RADIX_BITS>(input,
-                                                              counts,
-                                                              shared_mem,
-                                                              desired,
-                                                              desired_mask,
-                                                              digit_pos,
-                                                              slice_size);
+    RadixCountUsingMask<T, RadixType, IndexType, RADIX_SIZE, RADIX_BITS>(
+        input,
+        counts,
+        static_cast<IndexType*>(shared_mem),
+        desired,
+        desired_mask,
+        digit_pos,
+        slice_size);
 
-    auto found_unique = [&](int i, int count) -> bool {
+    auto found_unique = [&](int i, IndexType count) -> bool {
       if (count == 1 && k_left == 1) {
         desired =
             Bitfield<RadixType>::SetBitfield(desired, i, digit_pos, RADIX_BITS);
         desired_mask = Bitfield<RadixType>::SetBitfield(
             desired_mask, RADIX_MASK, digit_pos, RADIX_BITS);
 
-        *kth_value = FindPattern<T, RadixType>(input,
-                                               reinterpret_cast<T*>(shared_mem),
-                                               slice_size,
-                                               desired,
-                                               desired_mask);
+        *kth_value =
+            FindPattern<T, RadixType, IndexType>(input,
+                                                 static_cast<T*>(shared_mem),
+                                                 slice_size,
+                                                 desired,
+                                                 desired_mask);
         return true;
       }
       return false;
     };
-    auto found_non_unique = [&](int i, int count) -> bool {
+    auto found_non_unique = [&](int i, IndexType count) -> bool {
       if (count >= k_left) {
         desired =
             Bitfield<RadixType>::SetBitfield(desired, i, digit_pos, RADIX_BITS);
@@ -835,7 +842,7 @@ __device__ void RadixSearch(
 // Descending order
 #pragma unroll
       for (int i = RADIX_SIZE - 1; i >= 0; --i) {
-        int count = counts[i];
+        IndexType count = counts[i];
         if (found_unique(i, count)) {
           return;
         }
@@ -847,7 +854,7 @@ __device__ void RadixSearch(
 // Ascending order
 #pragma unroll
       for (int i = 0; i < RADIX_SIZE; ++i) {
-        int count = counts[i];
+        IndexType count = counts[i];
         if (found_unique(i, count)) {
           return;
         }
@@ -861,23 +868,25 @@ __device__ void RadixSearch(
   *kth_value = RadixTypeConfig<T>::Deconvert(desired);
 }
 
-template <typename T>
+template <typename T, typename IndexType>
 __global__ void GatherKthValue(const T* input,
-                               const int k,
-                               const int64_t num_rows,
-                               const int64_t num_cols,
+                               const IndexType k,
+                               const IndexType num_rows,
+                               const IndexType num_cols,
                                T* output,
                                int64_t* indices) {
-  __shared__ int shared_mem[32];
-  int row =
+  extern __shared__ char shared_mem_char[];
+  void* shared_mem = static_cast<void*>(shared_mem_char);
+
+  IndexType row =
       blockIdx.z * gridDim.y * gridDim.x + blockIdx.y * gridDim.x + blockIdx.x;
+  if (row >= num_rows) return;
   const T* cur_input = input + row * num_cols;
 
   // 1. Find the k-th value
   T kth_value = static_cast<T>(0);
-  RadixSearch<T, RadixTypeConfig<T>::RadixType, false>(
+  RadixSearch<T, RadixTypeConfig<T>::RadixType, IndexType, false>(
       cur_input, k, num_cols, shared_mem, &kth_value);
-  const auto converted_kth_value = RadixTypeConfig<T>::Convert(kth_value);
 
   // 2. find the k-th index
   int64_t kth_index = 0;
@@ -901,19 +910,52 @@ __global__ void GatherKthValue(const T* input,
   }
 }
 
-template <typename T>
+template <typename T, typename IndexType>
 void LaunchGatherKthValue(const phi::GPUContext& dev_ctx,
                           const T* input_data,
-                          const int64_t num_cols,
-                          const int64_t num_rows,
-                          const int k,
+                          const IndexType num_rows,
+                          const IndexType num_cols,
+                          const IndexType k,
                           T* out_data,
                           int64_t* indices_data) {
+  size_t size_for_count = RADIX_SIZE * sizeof(IndexType);
+  size_t size_for_find = 2 * sizeof(T);
+  size_t shared_mem_size = std::max(size_for_count, size_for_find);
+
   int num_threads = std::min(
       static_cast<int>(round_up(static_cast<int>(num_cols), WARP_SIZE)),
       MAX_NUM_THREADS);
-  GatherKthValue<T><<<num_rows, num_threads, 0, dev_ctx.stream()>>>(
-      input_data, k, num_rows, num_cols, out_data, indices_data);
+  dim3 block_dim(num_threads);
+
+  dim3 grid_dim;
+  const IndexType max_grid_x = dev_ctx.GetCUDAMaxGridDimSize()[0];
+  const IndexType max_grid_y = dev_ctx.GetCUDAMaxGridDimSize()[1];
+  const IndexType max_grid_z = dev_ctx.GetCUDAMaxGridDimSize()[2];
+  if (num_rows <= max_grid_x) {
+    grid_dim.x = num_rows;
+    grid_dim.y = 1;
+    grid_dim.z = 1;
+  } else {
+    grid_dim.x = max_grid_x;
+    IndexType remaining_rows = (num_rows + max_grid_x - 1) / max_grid_x;
+    if (remaining_rows <= max_grid_y) {
+      grid_dim.y = remaining_rows;
+      grid_dim.z = 1;
+    } else {
+      grid_dim.y = max_grid_y;
+      grid_dim.z = (remaining_rows + max_grid_y - 1) / max_grid_y;
+      PADDLE_ENFORCE_LE(grid_dim.z,
+                        max_grid_z,
+                        common::errors::InvalidArgument(
+                            "The number of rows (%d) is too large to be "
+                            "launched in a 3D CUDA grid.",
+                            num_rows));
+    }
+  }
+
+  GatherKthValue<T, IndexType>
+      <<<grid_dim, block_dim, shared_mem_size, dev_ctx.stream()>>>(
+          input_data, k, num_rows, num_cols, out_data, indices_data);
 }
 
 template <typename T, bool Largest>
@@ -927,8 +969,8 @@ __global__ void RadixTopK(const T* input,
 
   // 1. Find the k-th value
   T kth_value = static_cast<T>(0);
-  RadixSearch<T, typename RadixTypeConfig<T>::RadixType, Largest>(
-      input, k, slice_size, shared_mem, &kth_value);
+  RadixSearch<T, typename RadixTypeConfig<T>::RadixType, int64_t, Largest>(
+      input, k, slice_size, static_cast<void*>(shared_mem), &kth_value);
   const auto converted_kth_value = RadixTypeConfig<T>::Convert(kth_value);
 
   // 2. Select the value strictly less/greater than kth_value and their indices
