@@ -998,6 +998,47 @@ Tensor index_select_decomp(const Tensor& x, const Tensor& index, int axis) {
 }
 
 template <typename T>
+Tensor index_elementwise_get_decomp(const Tensor& x,
+                                    const Tensor& sub_x,
+                                    const Tensor& transed_index,
+                                    const std::vector<Tensor>& index,
+                                    const std::vector<int64_t>& input_dims,
+                                    const std::vector<int64_t>& input_strides,
+                                    const std::vector<int64_t>& index_dims,
+                                    const std::vector<int64_t>& index_stride,
+                                    const bool need_transpose,
+                                    const std::vector<int>& trans_dim,
+                                    const int pos_of_new_dim,
+                                    const int rank_of_new_dim,
+                                    const int64_t slice_offset,
+                                    const bool accumulate) {
+  Tensor processed_sub_x = sub_x;
+  if (need_transpose) {
+    processed_sub_x = transpose<T>(sub_x, trans_dim);
+  }
+
+  Tensor out = gather_nd<T>(processed_sub_x, transed_index);
+
+  if (pos_of_new_dim != 0) {
+    std::vector<int> perm(out.shape().size(), 0);
+    int tmp1 = rank_of_new_dim, tmp2 = 0,
+        tmp3 = pos_of_new_dim + rank_of_new_dim;
+    for (int i = 0; i < static_cast<int>(out.shape().size()); ++i) {
+      if (i < pos_of_new_dim) {
+        perm[i] = tmp1++;
+      } else if (i >= pos_of_new_dim && i < pos_of_new_dim + rank_of_new_dim) {
+        perm[i] = tmp2++;
+      } else {
+        perm[i] = tmp3++;
+      }
+    }
+    out = transpose<T>(out, perm);
+  }
+
+  return out;
+}
+
+template <typename T>
 std::tuple<Tensor, Tensor, Tensor> group_norm_decomp(
     const Tensor& x,
     const paddle::optional<Tensor>& scale,

@@ -1591,6 +1591,7 @@ static PyObject* tensor__getitem_dygraph(TensorObject* self,
   int pos_of_new_dim = INT_MAX, rank_of_new_dim = 1;
 
   paddle::Tensor out;
+  bool need_transpose = false;
   paddle::Tensor transed_tensor = dealWithAdvancedIndex(sub_tensor,
                                                         &advanced_index_dim,
                                                         &advanced_index,
@@ -1600,7 +1601,8 @@ static PyObject* tensor__getitem_dygraph(TensorObject* self,
                                                         &pos_of_new_dim,
                                                         &rank_of_new_dim,
                                                         &trans_dim,
-                                                        &out_is_view);
+                                                        &out_is_view,
+                                                        &need_transpose);
 
   bool has_bool_index = false;
   for (auto& index : transed_index) {
@@ -1634,11 +1636,33 @@ static PyObject* tensor__getitem_dygraph(TensorObject* self,
       transed_index[0].dtype() == phi::DataType::BOOL) {
     // get value for bool tensor
     int64_t slice_offset = 0;
-    out = getValueForBoolTensor(
-        transed_tensor, transed_index[0], slice_offset, is_combined_bool);
+    out = getValueForBoolTensor(transed_tensor,
+                                transed_index[0],
+                                slice_offset,
+                                is_combined_bool,
+                                need_transpose,
+                                trans_dim,
+                                pos_of_new_dim,
+                                rank_of_new_dim);
   } else {
     // get value for int tensor
     ParseBoolAndBroadcastIndices(&transed_index);
+
+    paddle::Tensor transed_advanced_index_tensor;
+    if (transed_index.size() > 1) {
+      transed_advanced_index_tensor = stack_ad_func(transed_index, -1);
+    } else {
+      // fast path for single index tensor, since stack is much slower than
+      // unsqueeze
+      transed_advanced_index_tensor = unsqueeze_ad_func(transed_index[0], {-1});
+    }
+
+    const phi::distributed::ProcessMesh* mesh = nullptr;
+    if (InputsContainDistTensor(
+            &mesh, transed_tensor, transed_advanced_index_tensor)) {
+      ConvertAllInputsToDistTensor(
+          mesh, transed_tensor, transed_advanced_index_tensor);
+    }
 
 #ifdef PADDLE_WITH_CUDA
     bool has_empty_index = false;
@@ -1685,53 +1709,27 @@ static PyObject* tensor__getitem_dygraph(TensorObject* self,
       AdvancedIndex ad = AdvancedIndex(transed_tensor, transed_index_int64);
       const bool accumulate = true;
       out = index_elementwise_get_ad_func(tensor,
+                                          transed_tensor,
+                                          transed_advanced_index_tensor,
                                           ad.indices,
                                           ad.src_sizes,
                                           ad.src_strides,
                                           ad.indexed_sizes,
                                           ad.indexed_strides,
+                                          need_transpose,
+                                          trans_dim,
+                                          pos_of_new_dim,
+                                          rank_of_new_dim,
                                           slice_offset,
                                           accumulate);
       out_is_view = false;
       return ToPyObject(out);
     } else {
-      paddle::Tensor transed_advanced_index_tensor;
-      if (transed_index.size() > 1) {
-        transed_advanced_index_tensor = stack_ad_func(transed_index, -1);
-      } else {
-        // fast path for single index tensor, since stack is much slower than
-        // unsqueeze
-        transed_advanced_index_tensor =
-            unsqueeze_ad_func(transed_index[0], {-1});
-      }
-
-      const phi::distributed::ProcessMesh* mesh = nullptr;
-      if (InputsContainDistTensor(
-              &mesh, transed_tensor, transed_advanced_index_tensor)) {
-        ConvertAllInputsToDistTensor(
-            mesh, transed_tensor, transed_advanced_index_tensor);
-      }
       out = gather_nd_ad_func(transed_tensor, transed_advanced_index_tensor);
       handle_transpose(out);
       return ToPyObject(out);
     }
 #else
-    paddle::Tensor transed_advanced_index_tensor;
-    if (transed_index.size() > 1) {
-      transed_advanced_index_tensor = stack_ad_func(transed_index, -1);
-    } else {
-      // fast path for single index tensor, since stack is much slower than
-      // unsqueeze
-      transed_advanced_index_tensor = unsqueeze_ad_func(transed_index[0], {-1});
-    }
-
-    const phi::distributed::ProcessMesh* mesh = nullptr;
-    if (InputsContainDistTensor(
-            &mesh, transed_tensor, transed_advanced_index_tensor)) {
-      ConvertAllInputsToDistTensor(
-          mesh, transed_tensor, transed_advanced_index_tensor);
-    }
-
     out = gather_nd_ad_func(transed_tensor, transed_advanced_index_tensor);
     handle_transpose(out);
     return ToPyObject(out);
@@ -2049,6 +2047,7 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
 
     int pos_of_new_dim = INT_MAX, rank_of_new_dim = 1;
 
+    bool need_transpose = false;
     paddle::Tensor transed_sub_tensor =
         dealWithAdvancedIndex(sub_tensor,
                               &advanced_index_dim,
@@ -2059,7 +2058,8 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
                               &pos_of_new_dim,
                               &rank_of_new_dim,
                               &trans_dim,
-                              &out_is_view);
+                              &out_is_view,
+                              &need_transpose);
 
     // Release gil and do tracing
     py::gil_scoped_release release;

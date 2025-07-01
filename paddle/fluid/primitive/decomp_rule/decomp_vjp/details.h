@@ -1600,6 +1600,65 @@ void instance_norm_grad(const Tensor& x,
 }
 
 template <typename T>
+void index_elementwise_get_grad(const Tensor& x,
+                                const Tensor& sub_x,
+                                const Tensor& transed_index,
+                                const std::vector<Tensor>& index,
+                                const Tensor& out_grad,
+                                const std::vector<int64_t>& input_dims,
+                                const std::vector<int64_t>& input_strides,
+                                const std::vector<int64_t>& index_dims,
+                                const std::vector<int64_t>& index_stride,
+                                const bool need_transpose,
+                                const std::vector<int>& trans_dim,
+                                const int pos_of_new_dim,
+                                const int rank_of_new_dim,
+                                const int64_t slice_offset,
+                                const bool accumulate,
+                                Tensor* x_grad) {
+  if (x_grad) {
+    Tensor processed_out_grad = out_grad;
+    if (pos_of_new_dim != 0) {
+      std::vector<int> perm(out_grad.shape().size(), 0);
+      int tmp1 = pos_of_new_dim, tmp2 = rank_of_new_dim, tmp3 = 0;
+      for (int i = 0; i < static_cast<int>(out_grad.shape().size()); ++i) {
+        if (i < rank_of_new_dim) {
+          perm[i] = tmp1++;
+        } else if (i >= rank_of_new_dim &&
+                   i < rank_of_new_dim + pos_of_new_dim) {
+          perm[i] = tmp2++;
+        } else {
+          perm[i] = tmp3++;
+        }
+      }
+      processed_out_grad = transpose<T>(out_grad, perm);
+    }
+
+    Tensor zero_tensor;
+    if (has_dynamic_shape(sub_x.shape())) {
+      zero_tensor = backend::full_with_tensor<T>(
+          shape64<T>(sub_x), 0.0, sub_x.dtype(), sub_x.place());
+    } else {
+      zero_tensor = full<T>(
+          common::vectorize(sub_x.dims()), 0.0, sub_x.dtype(), sub_x.place());
+    }
+
+    auto x_grad_tmp =
+        scatter_nd_add<T>(zero_tensor, transed_index, processed_out_grad);
+
+    if (need_transpose) {
+      std::vector<int> reverse_trans_dim(trans_dim.size());
+      for (size_t i = 0; i < trans_dim.size(); ++i) {
+        reverse_trans_dim[trans_dim[i]] = i;
+      }
+      x_grad_tmp = transpose<T>(x_grad_tmp, reverse_trans_dim);
+    }
+
+    set_output<T>(x_grad_tmp, x_grad);
+  }
+}
+
+template <typename T>
 void pad_grad(const Tensor& input,
               const Tensor& out_grad,
               const std::vector<int>& paddings,

@@ -761,12 +761,18 @@ void FusedRMSNormGradInferMeta(const MetaTensor& x,
 
 void IndexElementwiseGetGradInferMeta(
     const MetaTensor& x,
+    const MetaTensor& sub_x,
+    const MetaTensor& transed_indices,
     const std::vector<const MetaTensor*>& index,
     const MetaTensor& out_grad,
     const std::vector<int64_t>& input_dims,
     const std::vector<int64_t>& input_strides,
     const std::vector<int64_t>& index_dims,
     const std::vector<int64_t>& index_strides,
+    const bool need_transpose,
+    const std::vector<int>& trans_dim,
+    const int pos_of_new_dim,
+    const int rank_of_new_dim,
     const int64_t slice_offset,
     const bool accumulate,
     MetaTensor* x_grad);

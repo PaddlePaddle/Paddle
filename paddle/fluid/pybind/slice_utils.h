@@ -605,7 +605,8 @@ static paddle::Tensor dealWithAdvancedIndex(
     int* pos_of_new_dim,
     int* rank_of_new_dim,
     std::vector<int>* trans_dim,
-    bool* out_is_view) {
+    bool* out_is_view,
+    bool* need_transpose) {
   int p = 0;
   bool int_tensor_only = true;
   for (size_t i = 0; i < advanced_index_dim->size(); ++i) {
@@ -658,6 +659,7 @@ static paddle::Tensor dealWithAdvancedIndex(
     if (tensor.is_gpu() && *pos_of_new_dim != 0 &&
         (is_for_setitem || int_tensor_only)) {
       transed_tensor = tensor;
+      *need_transpose = true;
     } else {
       transed_tensor = transpose_ad_func(tensor, *trans_dim);
     }
@@ -696,7 +698,11 @@ static std::vector<paddle::Tensor> PrepareIndices(
 static paddle::Tensor getValueForBoolTensor(const paddle::Tensor& tensor,
                                             const paddle::Tensor& bool_index,
                                             const int64_t slice_offset,
-                                            const bool is_combined_bool) {
+                                            const bool is_combined_bool,
+                                            const bool need_transpose,
+                                            const std::vector<int>& trans_dim,
+                                            const int pos_of_new_dim,
+                                            const int rank_of_new_dim) {
   PADDLE_ENFORCE(bool_index.shape().size() <= tensor.shape().size(),
                  common::errors::InvalidArgument(
                      "The dims of bool index doesn't match indexed array, "
@@ -754,11 +760,17 @@ static paddle::Tensor getValueForBoolTensor(const paddle::Tensor& tensor,
     const bool accumulate = false;
 
     return index_elementwise_get_ad_func(tensor,
+                                         tensor,
+                                         bool_2_idx,
                                          ad.indices,
                                          ad.src_sizes,
                                          ad.src_strides,
                                          ad.indexed_sizes,
                                          ad.indexed_strides,
+                                         need_transpose,
+                                         trans_dim,
+                                         pos_of_new_dim,
+                                         rank_of_new_dim,
                                          slice_offset,
                                          accumulate);
   } else {
