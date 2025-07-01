@@ -416,7 +416,11 @@ bool Conv2dOpInferSymbolicShape(pir::Operation *op,
   const symbol::ShapeOrDataDimExprs &shape_data = [&] {
     std::vector<symbol::DimExpr> out_s_or_d({in_s_or_d.shape()[0]});
     if (!channel_last) {
-      out_s_or_d.push_back(filter_s_or_d.shape()[0]);
+      if (filter_s_or_d.shape()[1] == 0) {
+        out_s_or_d.push_back(symbol::DimExpr{0});
+      } else {
+        out_s_or_d.push_back(filter_s_or_d.shape()[0]);
+      }
     }
 
     for (size_t i = 0; i < in_data_dims.size(); ++i) {
@@ -429,7 +433,11 @@ bool Conv2dOpInferSymbolicShape(pir::Operation *op,
       out_s_or_d.push_back(output_size);
     }
     if (channel_last) {
-      out_s_or_d.push_back(filter_s_or_d.shape()[0]);
+      if (filter_s_or_d.shape()[1] == 0) {
+        out_s_or_d.push_back(symbol::DimExpr{0});
+      } else {
+        out_s_or_d.push_back(filter_s_or_d.shape()[0]);
+      }
     }
 
     return symbol::ShapeOrDataDimExprs{
