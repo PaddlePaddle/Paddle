@@ -15,7 +15,6 @@
 export PATH=$(pwd)/run_env:${PATH}
 push_file=${ROOT_DIR}/PaddleTest/tools/bos_tools.py
 
-############################ set_python
 set_python () {
     cd ${ROOT_DIR}
     set +e
@@ -28,7 +27,7 @@ set_python () {
     echo "----------benchmark_log: python env done; pip list ------------- "
     pip list
 }
-############################ wget model_benchmark_ci
+
 wget_model_benchmark_ci () {
     cd ${ROOT_DIR}
     wget --no-proxy https://paddle-github-action.bj.bcebos.com/paddle-qa/benchmark/${bos_path}/model_benchmark_ci_action.tar.gz
@@ -42,7 +41,7 @@ wget_model_benchmark_ci () {
     tar xf PaddleTest.tar.gz
     ls
 }
-############################ get_paddlescope_tar
+
 get_paddlescope_tar () {
     cd ${ROOT_DIR}
     cp ${CACHE_DIR}/paddlescope_nosql.tar.gz .
@@ -51,7 +50,7 @@ get_paddlescope_tar () {
     echo "----------benchmark_log: paddlescope python env done; pip list ------------- "
     pip list;
 }
-############################ update_summary
+
 update_summary () {
     cd ${ROOT_DIR}
     rm -rf benchmark_summary_res.csv
@@ -61,7 +60,7 @@ update_summary () {
     echo "----------benchmark_log: update_summary done ------------- "
     head -3 benchmark_summary_res.csv
 }
-############################ wget_paddle git diff
+
 check_paddle () {
     set_python
     cd ${ROOT_DIR}/paddle
@@ -106,7 +105,7 @@ check_paddle () {
     export CINN_FILE_LIST=${sum_num}
     echo "export CINN_FILE_LIST=$CINN_FILE_LIST" >> ~/.bashrc
 }
-############################ model_benchmark_ci
+
 check_skip () {
     cd ${ROOT_DIR}
     export IF_RUN='False'
@@ -132,10 +131,10 @@ check_skip () {
     cat $ROOT_DIR/case_info.csv
 }
 check_model_benchmark () {
-    ########################### benchmark case
+    # benchmark case
     cd ${ROOT_DIR}
     bash main.sh run_all;EXCODE=$?
-    ########################### over
+    # over
     cd ${ROOT_DIR}
     bash main.sh update_history
     python ${push_file} benchmark_history_PR_result.csv paddle-github-action/paddle-qa/benchmark/${bos_path} upload
@@ -143,4 +142,3 @@ check_model_benchmark () {
     echo ------------------------------ model_benchmark CI result   ------------------------------
     cat $ROOT_DIR/case_info.csv
 }
-###########################
