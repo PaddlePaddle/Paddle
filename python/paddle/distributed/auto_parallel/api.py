@@ -1483,7 +1483,7 @@ class _ShardOptimizer(Optimizer):
             param_and_grad = (param_and_grad[0], grad)
         self._inner_opt._append_optimize_op(block, param_and_grad)
         if self.enable_sharding_overlap:
-            # overlap all_gather with optimizer op
+            # overlap the first param all_gather with optimizer pass
             if hasattr(param_and_grad[0], 'last_idx'):
                 idx = param_and_grad[0].last_idx
                 if param_and_grad[0].last_idx == 0:
@@ -1530,7 +1530,7 @@ class _ShardOptimizer(Optimizer):
             sync_op=False,
         ).wait()
 
-    def _async_reduce_scatter(self):
+    def _async_sharding_comm(self):
         if not self._layers:
             raise RuntimeError(
                 "Sharding overlap requires an initialized model. "
@@ -1547,6 +1547,7 @@ class _ShardOptimizer(Optimizer):
             def fuse_comm_hook_func(param_group_len, grad_storage, comm_group):
                 @paddle.autograd.no_grad()
                 def fuse_comm(*_):
+                    # Ensures all gards in grad_storage have be checked in
                     grad_storage.check_in += 1
                     if grad_storage.check_in == param_group_len:
                         shard_size = grad_storage._numel() // comm_group.nranks
@@ -1569,6 +1570,7 @@ class _ShardOptimizer(Optimizer):
             def fuse_all_gather_hook_func(param_storage, comm_group):
                 @paddle.autograd.no_grad()
                 def fuse_comm(*_):
+                    # Ensures all_gather param just once per nosync param_storage
                     if not param_storage.is_sync:
                         shard_size = param_storage._numel() // comm_group.nranks
                         begin = shard_size * max(comm_group.rank, 0)
@@ -1586,6 +1588,7 @@ class _ShardOptimizer(Optimizer):
 
                 return fuse_comm
 
+            # Register reduce_scatter hooks on all parameters in this group
             param_group_len = (
                 len(self.fuse_param_view[i]) * self.gradient_accumulation_steps
             )
@@ -1602,6 +1605,8 @@ class _ShardOptimizer(Optimizer):
                     )
                 )
 
+            # Register all_gather hooks for next chuck's parameters
+            # (Uses i+1 because we need to prefetch parameters for next layer)
             if i < len(self.fuse_param_view) - 1:
                 first_param = next(iter(self.fuse_param_view[i].values()))[
                     'param'
@@ -1628,11 +1633,14 @@ class _ShardOptimizer(Optimizer):
             )
             return ((size + align_size - 1) // align_size) * align_size
 
+        # Calculate total buffer size needed (with padding)
         total_buffer_size = 0
         param2index = {}
         for param, _ in params_and_grads:
             param2index[param.name] = total_buffer_size
             total_buffer_size += get_padded_size(param)
+
+        # Create fused buffers
         param_buffer = paddle.zeros(
             shape=[total_buffer_size], dtype=params_and_grads[0][0].dtype
         )
@@ -1642,6 +1650,7 @@ class _ShardOptimizer(Optimizer):
         grad_buffer.check_in = 0
         grad_buffer.comm_task = None
 
+        # Create views into the fused buffers
         views = {}
         for param, grad in params_and_grads:
             padded_size = get_padded_size(param)
@@ -1695,13 +1704,29 @@ class _ShardOptimizer(Optimizer):
                 grad.placements,
             )
             param.main_grad = tmp_grad
+
+            # Clean up original gradient storage
             grad.get_tensor()._clear()
             paddle.device.cuda.empty_cache()
 
         return (views, param_buffer, grad_buffer)
 
     def _tensor_fusion(self, params_grads):
+        """
+        1. Tensor Fusion
+            - Groups params/grads into contiguous param_storage/grad_storage buffers
+            - Supports non-uniform partitioning across GPUs
+            - Uses view_slice to access individual params/grads each step
+        2. Reduce_scatter Overlap
+            - Overlaps grad reduce_scatter with backward
+        3. All_gather Overlap
+            - Overlaps param all_gather with forward
+            - Strategically scatters all_gather during forward
+            (Launching all all_gather at once blocks overlap with other sync/comm ops)
+        """
         if self.do_tensor_fusion_once:
+            # Execute only once during first step
+            # Groups params/grads and registers hooks for comm overlap
             mesh = dist.auto_parallel.get_mesh()
             shard_groups = get_mesh_comm_list(mesh, "dp")
             for group in shard_groups:
@@ -1750,8 +1775,11 @@ class _ShardOptimizer(Optimizer):
                 self.grad_storage.append(grad_storage)
 
             if self.enable_sharding_overlap:
-                self._async_reduce_scatter()
+                # overlap reduce_scatter with backward
+                # overlap all_gather with forward
+                self._async_sharding_comm()
 
+            # Configure gradient clipping for sharding
             if self._inner_opt._grad_clip is not None:
                 self._inner_opt._grad_clip.should_comm_on_shard_dim = True
                 self._inner_opt._grad_clip.sharding_group = self._sharding_group
@@ -1912,6 +1940,7 @@ class _ShardOptimizer(Optimizer):
         self, loss, startup_program, params_grads, param_group_idx=0
     ):
         if self.enable_tensor_fusion:
+            # tensor fusion fuse params/grads into large chunks, no need _fused_comm_before_apply_optimize.
             params_grads = self._tensor_fusion(params_grads)
         else:
             # Fuse the communication of gradients prior to the optimization operation in the dynamic mode.
