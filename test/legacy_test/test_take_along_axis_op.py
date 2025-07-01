@@ -26,6 +26,58 @@ from paddle.framework import core
 paddle.enable_static()
 
 
+class TestTakeAlongAxis0Size(OpTest):
+    def setUp(self):
+        self.python_api = paddle.take_along_axis
+        self.op_type = "take_along_axis"
+        self.dtype = "float64"
+        self.check_pir = True
+
+        x = np.zeros((2, 0, 5)).astype(self.dtype)
+        indices = np.zeros((2, 3, 5)).astype("int64")
+
+        self.inputs = {'Input': x, 'Index': indices}
+        self.attrs = {'Axis': 1}
+
+        output = np.zeros((2, 3, 5)).astype(self.dtype)
+        self.outputs = {'Result': output}
+
+    def test_check_output(self):
+        self.check_output(check_pir=self.check_pir)
+
+    def test_check_grad(self):
+        self.check_grad(['Input'], 'Result', check_pir=self.check_pir)
+
+
+class TestTakeAlongAxis0Size2(OpTest):
+    def setUp(self):
+        self.python_api = paddle.take_along_axis
+        self.op_type = "take_along_axis"
+        self.dtype = "float64"
+        self.check_pir = True
+
+        x = np.random.rand(2, 3, 5).astype(self.dtype)
+        indices = np.zeros((2, 0, 5)).astype("int64")
+
+        self.inputs = {'Input': x, 'Index': indices}
+        self.attrs = {'Axis': 1}
+
+        output = np.zeros((2, 0, 5)).astype(self.dtype)
+        self.outputs = {'Result': output}
+
+    def test_check_output(self):
+        self.check_output(check_pir=self.check_pir)
+
+    def test_check_grad(self):
+        self.grad = np.zeros_like(self.outputs['Result']).astype(self.dtype)
+        self.check_grad(
+            ['Input'],
+            'Result',
+            user_defined_grads=[self.grad],
+            check_pir=self.check_pir,
+        )
+
+
 class TestTakeAlongAxisOp(OpTest):
     def setUp(self):
         self.init_data()
