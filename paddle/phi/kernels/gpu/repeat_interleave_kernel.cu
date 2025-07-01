@@ -22,31 +22,6 @@
 
 namespace phi {
 
-template <typename T>
-__global__ void repeat_interleave_kernel(const T* __restrict__ input,
-                                         T* __restrict__ output,
-                                         const int64_t numel,
-                                         const int64_t outer_size,
-                                         const int64_t repeat_size,
-                                         const int64_t inner_size,
-                                         const int repeats) {
-  const int64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
-  if (tid >= numel) return;
-
-  // Decompose output index
-  const int64_t inner_idx = tid % inner_size;
-  const int64_t temp = tid / inner_size;
-  const int64_t repeat_idx = temp % (repeat_size * repeats);
-  const int64_t outer_idx = temp / (repeat_size * repeats);
-
-  // Map to input index
-  const int64_t src_repeat_idx = repeat_idx / repeats;
-  const int64_t src_idx = outer_idx * repeat_size * inner_size +
-                          src_repeat_idx * inner_size + inner_idx;
-
-  output[tid] = input[src_idx];
-}
-
 // Vectorized version for better memory throughput
 template <typename T, int VecSize>
 __global__ void RepeatInterleaveVecKernel(const T* __restrict__ input,
@@ -113,16 +88,6 @@ void RepeatInterleaveKernelV2(const Context& dev_ctx,
   const int64_t total_elements =
       outer_size * repeat_size * repeats * inner_size;
 
-  // Launch configuration
-  const int threads = 256;
-  const int blocks = (total_elements + threads - 1) / threads;
-
-  // Choose kernel based on data alignment and size
-  const bool use_vectorized =
-      (inner_size % 4 == 0) &&
-      (reinterpret_cast<uintptr_t>(x.data<T>()) % 16 == 0) &&
-      (reinterpret_cast<uintptr_t>(out->data<T>()) % 16 == 0);
-
   int vec_size = 8;
   vec_size = std::min(phi::GetVectorizedSize(x.data<T>()), vec_size);
   vec_size = std::min(phi::GetVectorizedSize(out->data<T>()), vec_size);
@@ -157,18 +122,6 @@ void RepeatInterleaveKernelV2(const Context& dev_ctx,
       PADDLE_THROW(common::errors::Unimplemented(
           "Unsupported vectorized size: %d", vec_size));
   }
-  // if (use_vectorized && inner_size >= 4) {
-  //     const int vec_threads = threads / 4;
-  //     const int vec_blocks = (total_elements / 4 + vec_threads - 1) /
-  //     vec_threads; RepeatInterleaveVecKernel<T, 4><<<vec_blocks, vec_threads,
-  //     0, dev_ctx.stream()>>>(
-  //         x.data<T>(), out->data<T>(), total_elements,
-  //         outer_size, repeat_size, inner_size, repeats);
-  // } else {
-  //     repeat_interleave_kernel<T><<<blocks, threads, 0, dev_ctx.stream()>>>(
-  //         x.data<T>(), out->data<T>(), total_elements,
-  //         outer_size, repeat_size, inner_size, repeats);
-  // }
 }
 
 }  // namespace phi

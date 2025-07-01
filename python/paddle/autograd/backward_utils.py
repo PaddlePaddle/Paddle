@@ -109,6 +109,7 @@ ALLOW_DYNAMIC_SHAPE_VJP_OPS = [
     "pd_op.p_norm",
     "pd_op.elu",
     "pd_op.masked_fill",
+    "pd_op.masked_select",
 ]
 
 
