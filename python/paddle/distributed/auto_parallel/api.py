@@ -2317,6 +2317,7 @@ def shard_scaler(scaler: GradScaler) -> GradScaler:
         current_process_mesh = None
 
         self._found_inf = paddle.to_tensor(np.array([0]).astype(np.bool_))
+        self_found_inf_is_changed = self._found_inf.clone()
         mesh2param_grads = {}
         if getattr(optimizer, '_param_groups', None) and isinstance(
             optimizer._param_groups[0], dict
@@ -2324,7 +2325,12 @@ def shard_scaler(scaler: GradScaler) -> GradScaler:
             for group in optimizer._param_groups:
                 for param in group['params']:
                     tgt_grad = param._grad_ivar()
-                    if tgt_grad is not None:
+                    if (
+                        tgt_grad is not None
+                        and getattr(
+                            tgt_grad, '_is_initialized', lambda: False
+                        )()
+                    ):
                         if src_mesh is None:
                             src_mesh = tgt_grad.process_mesh
                         if (
@@ -2341,7 +2347,10 @@ def shard_scaler(scaler: GradScaler) -> GradScaler:
         else:
             for param in optimizer._parameter_list:
                 tgt_grad = param._grad_ivar()
-                if tgt_grad is not None:
+                if (
+                    tgt_grad is not None
+                    and getattr(tgt_grad, '_is_initialized', lambda: False)()
+                ):
                     if src_mesh is None:
                         src_mesh = tgt_grad.process_mesh
                     if (
@@ -2421,7 +2430,9 @@ def shard_scaler(scaler: GradScaler) -> GradScaler:
                 temp_found_inf, src_mesh, temp_found_inf.placements
             )
             self._found_inf = _C_ops.bitwise_or(self._found_inf, temp_found_inf)
-
+        # nothing need to unscale and check inf
+        if paddle.equal(self._found_inf, self_found_inf_is_changed):
+            return
         # The rank of src_mesh, should not overwrite the original variable `self._found_inf`
         if self._found_inf.process_mesh == current_process_mesh:
             for process_mesh in mesh2param_grads.keys():
