@@ -53,3 +53,8 @@ jobs:
           GENERATOR: "Ninja"
         run: |
           echo %path%
+
+      - name: Clean up dir
+        if: always()
+        run: |
+          del /s /q %WORK_DIR%\Paddle
