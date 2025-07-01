@@ -63,6 +63,7 @@ void DiagKernel(const Context& dev_ctx,
   auto* x_data = x.data<T>();
   auto x_dims = x.dims();
   T* out_data = dev_ctx.template Alloc<T>(out);
+  if (out && out->numel() == 0) return;
   auto out_dims = out->dims();
 
   auto GetBlockGridSize = [&dev_ctx](int64_t size) {
