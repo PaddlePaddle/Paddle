@@ -92,7 +92,7 @@ __global__ void MatrixTranspose(T* odata,
   }
 }
 
-struct LogAddExp {
+struct LogSumExp {
   template <typename T>
   __host__ __device__ __forceinline__ T operator()(const T& a,
                                                    const T& b) const {
@@ -119,7 +119,7 @@ struct Identity<T, cub::Sum> {
 };
 
 template <typename T>
-struct Identity<T, LogAddExp> {
+struct Identity<T, LogSumExp> {
   static constexpr T value = std::numeric_limits<T>::lowest();
 };
 
@@ -205,7 +205,7 @@ __global__ void BlockScanKernel(T* d_out,
                                 bool exclusive,
                                 Op op) {
   using MT = phi::dtype::MPTypeTrait<T>::Type;
-  using CallbackOp = std::conditional_t<std::is_same<Op, LogAddExp>::value,
+  using CallbackOp = std::conditional_t<std::is_same<Op, LogSumExp>::value,
                                         LSEPrefixCallbackOp<MT, Op>,
                                         SumPrefixCallbackOp<MT, Op>>;
 
@@ -397,7 +397,7 @@ void LogcumsumexpKernel(const Context& dev_ctx,
                         bool exclusive,
                         bool reverse,
                         DenseTensor* out) {
-  using Op = LogAddExp;
+  using Op = LogSumExp;
   auto op = Op();
   ScanKernel<T, Context, Op>(
       dev_ctx, x, axis, flatten, exclusive, reverse, op, out);
