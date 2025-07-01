@@ -924,9 +924,10 @@ void LaunchGatherKthValue(const phi::GPUContext& dev_ctx,
   size_t size_for_find = 2 * sizeof(T);
   size_t shared_mem_size = std::max(size_for_count, size_for_find);
 
-  int num_threads = std::min(
-      static_cast<int>(round_up(static_cast<int>(num_cols), WARP_SIZE)),
-      MAX_NUM_THREADS);
+  IndexType num_threads =
+      std::min(static_cast<IndexType>(round_up(num_cols, WARP_SIZE)),
+               static_cast<IndexType>(MAX_NUM_THREADS));
+  num_threads = std::max(num_threads, IndexType(1));
   dim3 block_dim(num_threads);
 
   dim3 grid_dim;
