@@ -129,24 +129,74 @@ struct Identity<T, ComplexSum> {
 };
 
 template <typename T, typename Op>
-struct BlockPrefixCallbackOp {
+struct SumPrefixCallbackOp {
   // Running prefix
   T running_total_;
+  T compensation_;
   Op op_;
 
-  __device__ BlockPrefixCallbackOp(T running_total, Op op)
-      : running_total_(running_total), op_(op) {}
+  __device__ SumPrefixCallbackOp(T identity, Op op)
+      : running_total_(identity), compensation_(identity), op_(op) {}
 
   // Callback operator to be entered by the first warp of threads in the block.
   // tid 0 is responsible for returning a value for seeding the block-wide scan.
   __device__ T operator()(T block_aggregate) {
     T old_prefix = running_total_;
-    running_total_ = op_(old_prefix, block_aggregate);
+
+    // Kahan Summation
+    T y = op_(block_aggregate, -compensation_);
+    T t = op_(running_total_, y);
+    compensation_ = op_(op_(t, -running_total_), -y);
+    running_total_ = t;
+
     return old_prefix;
   }
 };
 
-// TODO(cangtianhuang): accelerate kernel by using chunk and d_agg
+template <typename T, typename Op>
+struct LSEPrefixCallbackOp {
+  T max_so_far_;
+  T scaled_sum_;
+  T compensation_;
+  Op op_;
+
+  __device__ LSEPrefixCallbackOp(T identity, Op op)
+      : max_so_far_(-std::numeric_limits<T>::infinity()),
+        scaled_sum_(0.0f),
+        compensation_(0.0f),
+        op_(op) {}
+
+  __device__ T operator()(T block_aggregate) {
+    if (scaled_sum_ == 0.0f) {
+      max_so_far_ = block_aggregate;
+      scaled_sum_ = 1.0f;
+      compensation_ = 0.0f;
+      return -std::numeric_limits<T>::infinity();
+    }
+
+    // Online Scaling
+    T old_prefix = max_so_far_ + logf(scaled_sum_);
+
+    T m_old = max_so_far_;
+    T m_new = fmaxf(m_old, block_aggregate);
+
+    T scale = expf(m_old - m_new);
+    scaled_sum_ *= scale;
+    compensation_ *= scale;
+
+    // Kahan Summation
+    T term = expf(block_aggregate - m_new);
+    T y = term - compensation_;
+    T t = scaled_sum_ + y;
+    compensation_ = (t - scaled_sum_) - y;
+    scaled_sum_ = t;
+
+    max_so_far_ = m_new;
+
+    return old_prefix;
+  }
+};
+
 template <typename T, int BLOCK_THREADS, int ITEMS_PER_THREAD, typename Op>
 __global__ void BlockScanKernel(T* d_out,
                                 const T* d_in,
@@ -154,11 +204,10 @@ __global__ void BlockScanKernel(T* d_out,
                                 int64_t scan_size,
                                 bool exclusive,
                                 Op op) {
-  // float still results in precision loss, so promote to double here
-  using MT = std::conditional_t<
-      std::is_same_v<typename phi::dtype::MPTypeTrait<T>::Type, float>,
-      double,
-      typename phi::dtype::MPTypeTrait<T>::Type>;
+  using MT = phi::dtype::MPTypeTrait<T>::Type;
+  using CallbackOp = std::conditional_t<std::is_same<Op, LogAddExp>::value,
+                                        LSEPrefixCallbackOp<MT, Op>,
+                                        SumPrefixCallbackOp<MT, Op>>;
 
   // Specialize BlockLoad, BlockStore, and BlockRadixSort collective types
   using BlockLoadT = cub::
@@ -179,7 +228,7 @@ __global__ void BlockScanKernel(T* d_out,
   // Obtain this block's segment of consecutive keys (blocked across threads)
   int64_t item_per_block = BLOCK_THREADS * ITEMS_PER_THREAD;
   for (int64_t bx = blockIdx.x; bx < grid_size; bx += gridDim.x) {
-    BlockPrefixCallbackOp<MT, Op> prefix_op(Identity<MT, Op>::value, op);
+    CallbackOp prefix_op(Identity<MT, Op>::value, op);
 
     for (int64_t block_offset = 0; block_offset < scan_size;
          block_offset += item_per_block) {
