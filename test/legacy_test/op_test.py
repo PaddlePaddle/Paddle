@@ -3632,7 +3632,9 @@ class OpTest(unittest.TestCase):
             if user_defined_grad_outputs is None:
                 if len(outputs_valid) == 1:
                     for outputs_valid_key in outputs_valid:
-                        loss = paddle.mean(outputs_valid[outputs_valid_key][0])
+                        loss = paddle.mean(
+                            outputs_valid[outputs_valid_key][0].cast('float32')
+                        )
                 else:
                     avg_sum = []
                     for cur_loss in outputs_valid:

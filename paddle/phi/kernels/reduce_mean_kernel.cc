@@ -27,6 +27,17 @@ void MeanKernel(const Context& dev_ctx,
                 const IntArray& dims,
                 bool keep_dim,
                 DenseTensor* out) {
+  bool valid_arg =
+      x.dtype() == DataType::FLOAT16 || x.dtype() == DataType::FLOAT32 ||
+      x.dtype() == DataType::FLOAT64 || x.dtype() == DataType::COMPLEX64 ||
+      x.dtype() == DataType::COMPLEX128 || x.dtype() == DataType::BFLOAT16;
+  PADDLE_ENFORCE_EQ(
+      valid_arg,
+      true,
+      phi::errors::InvalidArgument(
+          "The DataType of mean Op must be either a floating point "
+          "or complex dtype. But got: %s",
+          DataTypeToString(x.dtype())));
   bool reduce_all = recompute_reduce_all(x, dims);
   if (std::is_same<T, int>::value || std::is_same<T, int64_t>::value ||
       std::is_same<T, bool>::value) {
@@ -56,9 +67,6 @@ PD_REGISTER_KERNEL(mean,
                    phi::MeanKernel,
                    float,
                    double,
-                   bool,
-                   int,
-                   int64_t,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
 
@@ -69,9 +77,6 @@ PD_REGISTER_KERNEL(mean,
                    phi::MeanKernel,
                    float,
                    double,
-                   bool,
-                   int,
-                   int64_t,
                    phi::dtype::float16,
                    phi::dtype::bfloat16,
                    phi::dtype::complex<float>,
