@@ -207,9 +207,9 @@ template <typename T, typename LabelT>
 __global__ void CrossEntropyExpHardLabel(T* loss,
                                          T* softmax,
                                          const LabelT* labels,
-                                         const int n,
-                                         const int dim,
-                                         const int d,
+                                         const int64_t n,
+                                         const int64_t dim,
+                                         const int64_t d,
                                          const int ignore_idx) {
   int64_t idx = blockIdx.x * blockDim.x + threadIdx.x;
   int64_t idx_n = idx / (d * dim);
@@ -1149,16 +1149,18 @@ template <typename T, typename LabelT>
 static void SoftmaxWithCrossEntropyHardLabel(const GPUContext& dev_ctx,
                                              int rank,
                                              int axis,
-                                             const T* logits_data,
+                                             const DenseTensor& logits,
                                              const LabelT* labels_data,
                                              T* loss_data,
-                                             T* softmax_data,
+                                             DenseTensor* softmax,
                                              int N,
                                              int dim,
                                              int D,
                                              const int ignore_index) {
   VLOG(7) << "rank=" << rank << ", axis = " << axis << ", N = " << N
           << ", dim = " << dim << ", D = " << D;
+  auto* logits_data = logits.data<T>();
+  auto* softmax_data = dev_ctx.template Alloc<T>(softmax);
   auto stream = dev_ctx.stream();
   constexpr int max_dim = 320;
   if (D == 1) {
@@ -1187,15 +1189,10 @@ static void SoftmaxWithCrossEntropyHardLabel(const GPUContext& dev_ctx,
     ScopedTensorDescriptor desc;
     std::vector<int> tensor_dims = {N, dim, D, 1};
     GPUDNNDataLayout layout = GPUDNNDataLayout::kNCHW;
+
 #ifdef PADDLE_WITH_HIP
     miopenTensorDescriptor_t descp = desc.descriptor<T>(layout, tensor_dims);
-#else
-    cudnnTensorDescriptor_t descp = desc.descriptor<T>(layout, tensor_dims);
-#endif
-
     auto handle = dev_ctx.cudnn_handle();
-
-#ifdef PADDLE_WITH_HIP
     auto mode = axis == rank - 1 ? MIOPEN_SOFTMAX_MODE_INSTANCE
                                  : MIOPEN_SOFTMAX_MODE_CHANNEL;
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::miopenSoftmaxForward_V2(
@@ -1211,19 +1208,11 @@ static void SoftmaxWithCrossEntropyHardLabel(const GPUContext& dev_ctx,
 #else
     auto mode = axis == rank - 1 ? CUDNN_SOFTMAX_MODE_INSTANCE
                                  : CUDNN_SOFTMAX_MODE_CHANNEL;
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnSoftmaxForward(
-        handle,
-        CUDNN_SOFTMAX_LOG,
-        mode,
-        phi::backends::gpu::CudnnDataType<T>::kOne(),
-        descp,
-        logits_data,
-        phi::backends::gpu::CudnnDataType<T>::kZero(),
-        descp,
-        softmax_data));
+    SoftmaxForwardCUDAKernelDriver<T, true>(dev_ctx, logits, axis, softmax);
+    softmax_data = softmax->data<T>();
 #endif
     int threads = 128;
-    int blocks = (N * dim * D + threads - 1) / threads;
+    int blocks = (static_cast<int64_t>(N) * dim * D + threads - 1) / threads;
     // compute cross entropy, input is log softmax
     CrossEntropyExpHardLabel<T, LabelT><<<blocks, threads, 0, stream>>>(
         loss_data, softmax_data, labels_data, N, dim, D, ignore_index);
@@ -1386,15 +1375,14 @@ void CrossEntropyWithSoftmaxCUDAKernel(const GPUContext& dev_ctx,
                                                        ignore_index,
                                                        axis_dim);
     } else {
-      auto* logits_data = logits.data<T>();
       auto* labels_data = label.data<LabelT>();
       SoftmaxWithCrossEntropyHardLabel<T, LabelT>(dev_ctx,
                                                   rank,
                                                   axis_v,
-                                                  logits_data,
+                                                  logits,
                                                   labels_data,
                                                   loss_data,
-                                                  softmax_data,
+                                                  softmax,
                                                   n,
                                                   axis_dim,
                                                   d / axis_dim,

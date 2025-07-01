@@ -31,6 +31,7 @@ from paddle.framework import core
 from paddle.jit.dy2static.utils import (
     dataclass_from_dict,
     is_plain_dataclass_type,
+    parameters_persistent_mode_is_enabled,
 )
 from paddle.jit.sot.opcode_translator.executor.pycode_generator import PyCodeGen
 from paddle.pir.core import _PADDLE_PIR_DTYPE_2_NUMPY_DTYPE
@@ -1481,9 +1482,12 @@ class ParameterVariable(TensorVariable):
 
     @VariableFactory.register_from_value(successor="TensorVariable")
     def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
-        if isinstance(value, (paddle.base.framework.EagerParamBase)):
-            value = MetaInfoOrNull.from_tensor(value)
-            return ParameterVariable(value, graph, tracker)
+        if isinstance(value, paddle.base.framework.EagerParamBase):
+            meta = MetaInfoOrNull.from_tensor(value)
+            param_var = ParameterVariable(meta, graph, tracker)
+            if parameters_persistent_mode_is_enabled():
+                graph.parameters_holder.set(param_var.get_symbol().name, value)
+            return param_var
         return None
 
 

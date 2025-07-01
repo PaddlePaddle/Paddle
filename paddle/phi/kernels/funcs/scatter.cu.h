@@ -217,7 +217,7 @@ void GPUScatterAssign(const phi::GPUContext& ctx,
   }
 
   // for overwrite mode, use vectorization
-  int vec_size = 4;
+  int vec_size = 8;
   vec_size = std::min(phi::GetVectorizedSize(&src), vec_size);
   vec_size = std::min(phi::GetVectorizedSize(output), vec_size);
   while (vec_size > 1 && slice_size % vec_size != 0) {
@@ -227,7 +227,6 @@ void GPUScatterAssign(const phi::GPUContext& ctx,
   constexpr int loop_count = 4;
   auto config =
       phi::backends::gpu::GetGpuLaunchConfig1D(ctx, n, vec_size * loop_count);
-
   switch (vec_size) {
 #define CASE_VEC_SIZE(__Sz)                                                    \
   case __Sz:                                                                   \
@@ -235,6 +234,7 @@ void GPUScatterAssign(const phi::GPUContext& ctx,
         <<<config.block_per_grid, config.thread_per_block, 0, ctx.stream()>>>( \
             p_src, p_index, p_output, output_dims[0], index_size, slice_size); \
     break
+    CASE_VEC_SIZE(8);
     CASE_VEC_SIZE(4);
     CASE_VEC_SIZE(2);
     CASE_VEC_SIZE(1);
@@ -303,7 +303,7 @@ void GPUScatterNdAdd(const phi::GPUContext& ctx,
     g_output_dims[i] = output_dims[i];
   }
 
-  int vec_size = 4;
+  int vec_size = 8;
   vec_size = std::min(phi::GetVectorizedSize(p_update), vec_size);
   vec_size = std::min(phi::GetVectorizedSize(p_output), vec_size);
   while (vec_size > 1 && slice_size % vec_size != 0) {
@@ -315,7 +315,6 @@ void GPUScatterNdAdd(const phi::GPUContext& ctx,
       ctx, remain_numel * slice_size, vec_size * loop_count);
 
   auto stream = ctx.stream();
-
   switch (vec_size) {
 #define CASE_VEC_SIZE(__Sz)                                              \
   case __Sz:                                                             \
@@ -329,6 +328,7 @@ void GPUScatterNdAdd(const phi::GPUContext& ctx,
             slice_size,                                                  \
             end_size);                                                   \
     break
+    CASE_VEC_SIZE(8);
     CASE_VEC_SIZE(4);
     CASE_VEC_SIZE(2);
     CASE_VEC_SIZE(1);

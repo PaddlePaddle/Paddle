@@ -86,7 +86,7 @@ def get_mesh_comm_list(mesh, axis_name):
     for x in product(*ranges):
         result = []
         for i in range(0, mesh.get_dim_size(axis_name)):
-            coord = x[0:axis_index] + (i,) + x[axis_index + 1 :]
+            coord = (*x[0:axis_index], i, *x[axis_index + 1 :])
             result.append(mesh.mesh[coord])
         all_result.append(result)
     return all_result

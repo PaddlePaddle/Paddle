@@ -2938,7 +2938,7 @@ void NanmedianInferMeta(const MetaTensor& x,
   auto x_dim = x.dims();
   int64_t x_rank = x_dim.size();
 
-  std::vector<int32_t> out_dim;
+  std::vector<int64_t> out_dim;
   if (axis_list.empty()) {
     if (keep_dim) {
       for (int64_t i = 0; i < x_rank; i++) {
@@ -6318,11 +6318,6 @@ void WeightQuantizeInferMeta(const MetaTensor& x,
     PADDLE_THROW(common::errors::InvalidArgument(
         "The algo must be in ['weight_only_int8', 'weight_only_int4', "
         "'llm.int8', 'w4a8'], but got[%s]",
-        algo));
-  }
-  if (x.dtype() == DataType::INT8 && algo != "w4a8") {
-    PADDLE_THROW(common::errors::InvalidArgument(
-        "The algo must be 'w4a8' while the x's dtype is INT8, but got[%s]",
         algo));
   }
   out->set_dims(common::make_ddim(dim_out));
