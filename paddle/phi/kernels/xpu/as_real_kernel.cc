@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#ifdef PADDLE_WITH_XPU_FFT
 #include "paddle/phi/kernels/as_real_kernel.h"
 
 #include "paddle/phi/backends/xpu/xpu_context.h"
@@ -39,3 +40,4 @@ void AsRealKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
 PD_REGISTER_KERNEL(as_real, XPU, ALL_LAYOUT, phi::AsRealKernel, complex64) {
   kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
 }
+#endif  // PADDLE_WITH_XPU_FFT

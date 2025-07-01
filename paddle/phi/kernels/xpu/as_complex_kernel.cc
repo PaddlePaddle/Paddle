@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#ifdef PADDLE_WITH_XPU_FFT
 #include "paddle/phi/kernels/as_complex_kernel.h"
 
 #include "paddle/phi/common/complex.h"
@@ -39,3 +40,4 @@ void AsComplexKernel(const Context& ctx,
 PD_REGISTER_KERNEL(as_complex, XPU, ALL_LAYOUT, phi::AsComplexKernel, float) {
   kernel->OutputAt(0).SetDataType(phi::dtype::ToComplex(kernel_key.dtype()));
 }
+#endif  // PADDLE_WITH_XPU_FFT
