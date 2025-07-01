@@ -2488,7 +2488,7 @@ void FusedBiasActInferMeta(const MetaTensor& x,
   }
 
   if (act_method == "geglu" || act_method == "swiglu") {
-    if (config.is_runtime || dim > 0) {
+    if (config.is_runtime || dim >= 0) {
       ENFORCE_EQ(
           dim % 2,
           0,
