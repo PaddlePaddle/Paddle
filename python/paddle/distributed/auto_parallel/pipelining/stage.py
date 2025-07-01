@@ -292,6 +292,7 @@ class _PipelineStageBase(ABC):
                 return None
 
         map_structure(map_recv_to_send, args_recv_info)
+        # print("xxx Grad send info: ", self.log_prefix, grad_send_info)
 
         logger.debug("%s Grad send info: %s", self.log_prefix, grad_send_info)
         return grad_send_info
@@ -429,7 +430,7 @@ class _PipelineStageBase(ABC):
         for this stage.
         """
         recv_infos: tuple[InputInfo, ...] = self.args_recv_info[fwd_chunk_id]
-
+        # print("xxx get_fwd_recv_ops recv_infos ")
         return self._get_recv_ops(recv_infos)
 
     def get_bwd_recv_ops(self, bwd_chunk_id: int) -> list[dist.P2POp]:
@@ -439,7 +440,7 @@ class _PipelineStageBase(ABC):
         """
         if not self.has_backward or self.is_last:
             return []
-
+        # print("xxx get_bwd_recv_ops recv_infos ")
         recv_infos = self.grad_recv_info[bwd_chunk_id]
         return self._get_recv_ops(recv_infos)
 
@@ -457,6 +458,7 @@ class _PipelineStageBase(ABC):
         for idx, out in enumerate(output_tuple):
             dst_stages = self.act_send_info[idx]
             for dst in dst_stages:
+                # print("xxx get_fwd_send_ops beg, dst, out: ", idx, dst)
                 if dst is None:
                     continue
                 logger.debug(
@@ -513,6 +515,7 @@ class _PipelineStageBase(ABC):
         ops: list[dist.P2POp] = []
         grads_input = self.bwd_cache.pop(bwd_chunk_id)
         for grad, grad_recv_stage in zip(grads_input, self.grad_send_info):
+            # print("xxx get_bwd_send_ops ,grad: ", grad_recv_stage)
             if isinstance(grad, paddle.Tensor) and grad_recv_stage is not None:
                 logger.debug(
                     "%s Sending gradient to Stage %s: %s",
@@ -868,12 +871,15 @@ class PipelineStage(_PipelineStageBase):
         input_args: TensorMeta | tuple[TensorMeta, ...] | None = None,
         output_args: TensorMeta | tuple[TensorMeta, ...] | None = None,
         group: Group | None = None,
+        shared_map = None,
     ):
+        
         super().__init__(layer, stage_index, num_stages, group)
         self.inputs: list[paddle.Tensor] | None = None
         self.inputs_meta: tuple[TensorMeta, ...] | None = None
         # output's grad meta-info
         self.grads_meta: tuple[TensorMeta, ...] | None = None
+        self.shared_map = shared_map
 
         if input_args is None:
             assert output_args is None, (
@@ -926,6 +932,54 @@ class PipelineStage(_PipelineStageBase):
             dbg_str += " running shape-inference at runtime"
 
         logger.debug(dbg_str)
+
+        print("xxx self.sublayer param sum : ", len(self.sublayer.parameters()))
+        print("xxx enter PipelineStage")
+
+        for a_map in self.shared_map.values():
+            src_rank = a_map["src_rank"]
+            print("xxx src_rank : ", src_rank, self.group_rank)
+            if src_rank != self.group_rank:
+                continue
+            need_share_data = a_map["need_share_data"]
+            if not need_share_data:
+                continue
+            # sync_param = a_map["param"]
+            # peer_sync_param = a_map["peer_params"]
+            # print("xxx sync_param: ", sync_param.name, sync_param.shape, sync_param._is_initialized())
+            # print("xxx peer_sync_param: ", peer_sync_param.name, peer_sync_param.shape, peer_sync_param._is_initialized())
+            # sync_param.initialize() 
+            # peer_sync_param.initialize() 
+            # print("xxx lazy init not : ", sync_param)
+            # print("xxx lazy init not : ", peer_sync_param)
+            # sync_param._local_value().get_tensor()._share_data_with(peer_sync_param._local_value().get_tensor())
+
+
+
+        # for param in self.sublayer.parameters(): 
+        #     # print("xxx stage param: ", param.name, param._is_initialized())
+
+        #     for a_map in self.shared_map:
+        #         param_name = a_map["param_name"]
+        #     if self.shared_map is not None and  param.name in shared_map:
+        #         print("xxx find shared params")
+        #         print("xxx embedding weight: ", shared_map[param.name]._is_initialized())
+        #         print("xxx lmhead weight: ", param._is_initialized())
+        #         print("xxx embedding weight: ", shared_map[param.name])
+        #         # shared_map[param.name].get_tensor()._share_data_with(param)
+        #         print("xxx param type : ", type(param))
+        #         print("xxx param.get_tensor() type : ", type(param.get_tensor()))
+        #         # param.get_tensor()._share_data_with(shared_map[param.name].get_tensor())
+        #         # param.get_tensor()._share_data_nocheck_with(shared_map[param.name].get_tensor())
+        #         # _share_data_nocheck_with
+
+        print("xxx self.sublayer param sum : ", len(self.sublayer.parameters()))
+
+    def need_sync_params(self):
+        return len(self.shared_map) == 0
+
+    def get_shared_map(self):
+        return self.shared_map
 
     def _shape_inference(
         self,
@@ -1206,8 +1260,12 @@ class PipelineStage(_PipelineStageBase):
         self.clear_runtime_states()
         # Clear grads of the stage.
         for param in self.sublayer.parameters():
+            # print("xxx _prepare_backward_infra param: ", param.name)
             param.clear_grad()
         return grads
+
+    def get_stage_parameters(self) -> list[Parameter]:
+        return self.sublayer.parameters()
 
     def _create_grad_recv_info(
         self,
