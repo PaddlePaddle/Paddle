@@ -46,7 +46,7 @@ g_pipeline_nccl_comm_init_option = int(
 
 
 def message2nccl_config(
-    message: NCCLConfig_Message | dict | None = None,
+    message: NCCLConfig_Message | dict[str, int | str] | None = None,
     default_name: str | None = None,
 ) -> NCCLConfig:
     if paddle.distributed.collective._default_backend != 'nccl':
@@ -75,7 +75,7 @@ def create_nccl_config(
     Function that creates nccl config.
 
     Args:
-        nccl_config (Optional[Dict[str, Union[int, str]]]): None or a dict containing the following keys:
+        nccl_config (dict[str, int | str] | None): None or a dict containing the following keys:
             commName (str): name of the process group. ll_buffsize (int): buffer size of ll protocol.
             ll128_buffsize (int): buffer size of ll128 protocol. simple_buffsize (int): buffer size of
             simple protocol. buffsize_align (int): alignment unit of the total buffer size.
@@ -83,7 +83,7 @@ def create_nccl_config(
             protoStr (str): communication protocol.
 
     Returns:
-        NCCLConfig (Optional[paddle.base.libpaddle.NCCLConfig]): an object containing the information,
+        NCCLConfig (NCCLConfig | None): an object containing the information,
         which can be used as an argument of new_group().
 
     Examples:
@@ -93,7 +93,7 @@ def create_nccl_config(
             >>> import paddle
             >>> import paddle.distributed as dist
             >>> dist.init_parallel_env()
-            >>> nccl_config={"commName":"tp_comm","ll_buffsize":0,"ll128_buffsize":0,"simple_buffsize":1024,"buffsize_align":1024,"nchannels":4,"algoStr":"Ring","protoStr":"Simple",}
+            >>> nccl_config: dict[str, int | str] = {"commName":"tp_comm","ll_buffsize":0,"ll128_buffsize":0,"simple_buffsize":1024,"buffsize_align":1024,"nchannels":4,"algoStr":"Ring","protoStr":"Simple",}
             >>> ranks=[0,1,2,3,4,5,6,7]
             >>> nccl_config=dist.create_nccl_config(nccl_config)
             >>> pg=dist.new_group(ranks, nccl_config=nccl_config)
