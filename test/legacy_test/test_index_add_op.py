@@ -126,6 +126,8 @@ class TestIndexAddBF16Op(OpTest):
     def setUp(self):
         self.python_api = raw_index_add
         self.op_type = "index_add"
+        self.prim_op_type = "prim"
+        self.public_python_api = raw_index_add
         self.init_dtype_type()
         index_np = np.random.randint(
             low=-self.x_shape[self.axis],
@@ -471,6 +473,8 @@ class TestIndexAddOp_ZeroSize(OpTest):
     def setUp(self):
         self.python_api = raw_index_add
         self.op_type = "index_add"
+        self.prim_op_type = "prim"
+        self.public_python_api = raw_index_add
         self.init_dtype_type()
         index_np = np.random.randint(
             low=-self.x_shape[self.axis],
@@ -507,7 +511,9 @@ class TestIndexAddOp_ZeroSize(OpTest):
         self.check_output(atol=1e-2, check_pir=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'AddValue'], 'Out', check_pir=True)
+        self.check_grad(
+            ['X', 'AddValue'], 'Out', check_pir=True, check_prim_pir=True
+        )
 
 
 if __name__ == '__main__':
