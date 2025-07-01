@@ -29,6 +29,11 @@ void MaskedFillKernel(const Context& dev_ctx,
                       const DenseTensor& mask,
                       const DenseTensor& value,
                       DenseTensor* out) {
+  if (x.numel() == 0 || mask.numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
+
   auto x_dims = x.dims();
   auto mask_dims = mask.dims();
 

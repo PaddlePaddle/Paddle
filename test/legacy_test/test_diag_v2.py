@@ -400,6 +400,44 @@ class TestDiagV2Complex128OP(TestDiagV2Op):
         self.out = np.diag(self.x, self.offset)
 
 
+class TestDiagV2Op_ZeroSize(OpTest):
+    def setUp(self):
+        self.op_type = "diag_v2"
+        self.python_api = paddle.diag
+        self.public_python_api = paddle.diag
+
+        self.init_dtype()
+        self.init_attrs()
+        self.init_input_output()
+        self.set_input_output()
+
+    def init_dtype(self):
+        self.dtype = np.float64
+
+    def init_attrs(self):
+        self.offset = 1
+        self.padding_value = 0.0
+
+    def init_input_output(self):
+        self.x = np.random.rand(10, 0).astype(self.dtype)
+        self.out = np.diag(self.x, self.offset)
+
+    def set_input_output(self):
+        self.attrs = {
+            'offset': self.offset,
+            'padding_value': self.padding_value,
+        }
+
+        self.inputs = {'X': self.x}
+        self.outputs = {'Out': self.out}
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', check_pir=True)
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()

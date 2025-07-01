@@ -145,6 +145,7 @@ class TestMaskedFillGrad(unittest.TestCase):
         self.dtype = "float32"
 
     def test_backward(self):
+        paddle.disable_static()
         expected_np = np.array(
             [[2, 1, 1], [2, 1, 1], [2, 1, 1], [2, 1, 1]]
         ).astype('float32')
@@ -355,6 +356,50 @@ class TestMaskedFillBF16APIBroadcast2(TestMaskedFillBF16):
         self.x_shape = (300, 1)
         self.mask_shape = (300, 3)
         self.dtype = "uint16"
+        self.scalar_value = False
+
+
+class TestMaskedFillAPI_ZeroSize(unittest.TestCase):
+    def setUp(self):
+        self.init()
+
+        self.x_np = np.random.random(self.x_shape).astype(self.dtype)
+        self.mask_np = np.array(
+            np.random.randint(2, size=self.mask_shape), dtype="bool"
+        )
+
+        self.value_np = np.random.randn(1).astype(self.dtype)
+        self.out_np = np_masked_fill(self.x_np, self.mask_np, self.value_np)
+
+    def init(self):
+        self.x_shape = (0, 3)
+        self.mask_shape = self.x_shape
+        self.dtype = "float32"
+        self.scalar_value = False
+
+    def test_dygraph(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.x_np, dtype=self.dtype)
+        x.stop_gradient = False
+        mask = paddle.to_tensor(self.mask_np).astype('bool')
+        if self.scalar_value:
+            value = self.value_np[0]
+        else:
+            value = paddle.to_tensor(self.value_np, dtype=self.dtype)
+        result = paddle.masked_fill(x, mask, value)
+        np.testing.assert_allclose(self.out_np, result.numpy(), rtol=1e-05)
+
+        paddle.sum(result).backward()
+        np.testing.assert_allclose(x.grad.shape, x.shape)
+        np.testing.assert_allclose(x.grad.numpy(), np.zeros(x.shape))
+
+
+class TestMaskedFillAPI_ZeroSize2(TestMaskedFillAPI_ZeroSize):
+    # x_grad shape [2, 3], filled with 0.
+    def init(self):
+        self.x_shape = (1, 3)
+        self.mask_shape = (0, 3)
+        self.dtype = "float32"
         self.scalar_value = False
 
 

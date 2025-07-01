@@ -456,9 +456,8 @@ def start_translate(
             "Note: This fallback may be triggered by user code, or it could result from an internal "
             "SOT exception being incorrectly captured. Please investigate carefully.\n",
         )
-        # TODO(DrRyanHuang): Consider whether an exception should be raised here in the future
-        # if is_strict_mode():
-        #     raise
+        if is_strict_mode():
+            raise
         dummy_guard_chain: GuardChain = [paddle.framework.core.DummyGuardNode()]
         return (CustomCode(None, True), dummy_guard, dummy_guard_chain)
     except Exception as e:

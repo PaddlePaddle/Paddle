@@ -955,6 +955,9 @@ void DiagInferMeta(const MetaTensor& x,
         size_ = x_dims[1];
       }
     }
+    if (size_ < 0) {
+      size_ = 0;
+    }
     out->set_dims({size_});
     out->set_dtype(x.dtype());
   } else {
