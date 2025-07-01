@@ -1684,6 +1684,7 @@
     data_type : out_grad
   inplace : (out_grad -> x_grad)
   backward : index_add_double_grad
+  no_need_buffer: add_value
 
 - backward_op : index_elementwise_get_grad
   forward : index_elementwise_get (Tensor x, Tensor[] index, int64_t[] input_dims, int64_t[] input_strides, int64_t[] index_dims, int64_t[] index_stride, int64_t slice_offset, bool accumulate) -> Tensor(out)
