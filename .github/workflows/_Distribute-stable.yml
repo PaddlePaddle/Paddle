@@ -224,15 +224,14 @@ jobs:
         run: |
           set +e
           docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'
-          docker stop ${{ env.container_name }}
-          docker rm ${{ env.container_name }}
+          docker rm -f ${{ env.container_name }}
 
   test:
     name: Test
     needs: build
     if: ${{ needs.build.outputs.can-skip != 'true' }}
     runs-on:
-      group: distribute-test
+      group: Distribute
     steps:
       - name: Check docker image and run container
         env:
@@ -335,6 +334,5 @@ jobs:
         if: always()
         run: |
           set +e
-          docker exec -t ${{ env.container_name }} /bin/bash -c 'sleep 3d'
-          docker stop ${{ env.container_name }}
-          docker rm ${{ env.container_name }}
+          docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'
+          docker rm -f ${{ env.container_name }}

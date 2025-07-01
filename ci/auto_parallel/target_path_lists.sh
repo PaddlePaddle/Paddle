@@ -34,7 +34,6 @@ target_lists_for_semi_auto_ci=(
     "python/paddle/base/executor.py"
 )
 
-
 target_lists_for_dygraph_ci=(
     "python/paddle/distributed/fleet"
     "python/paddle/distributed/communication"
