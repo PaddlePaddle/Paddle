@@ -38,8 +38,8 @@ jobs:
       - name: Merge pr
         run: |
           git config --unset http.https://github.com/.extraheader
-          # git submodule foreach --recursive sh -c "git config --local --unset-all 'http.https://github.com/.extraheader'"
-          # git submodule foreach --recursive sh -c "git config remote.origin.fetch '+refs/heads/*:refs/remotes/origin/*'"
+          REM git submodule foreach --recursive sh -c "git config --local --unset-all 'http.https://github.com/.extraheader'"
+          REM git submodule foreach --recursive sh -c "git config remote.origin.fetch '+refs/heads/*:refs/remotes/origin/*'"
           git switch %BRANCH%
           git branch -D test
           git gc
@@ -47,7 +47,7 @@ jobs:
           git fetch origin pull/%PR_ID%/head:pr
           git merge --no-ff pr
           git branch -d pr
-          # call %ci_scripts%\third_party_tag.bat
+          REM call %ci_scripts%\third_party_tag.bat
 
       - name: Upload paddle to bos
         env:
