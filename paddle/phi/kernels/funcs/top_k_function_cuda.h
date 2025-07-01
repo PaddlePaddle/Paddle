@@ -1066,7 +1066,7 @@ __global__ void AssignGradWithAxis(const T* grad_out,
   for (int64_t i = blockIdx.x; i < pre; i += gridDim.x) {
     int64_t base_index = i * post * k;
     int64_t base_grad = i * post * raw_height;
-    for (int j = threadIdx.x; j < raw_height * post; j += blockDim.x) {
+    for (int64_t j = threadIdx.x; j < raw_height * post; j += blockDim.x) {
       grad_in[base_grad + j] = static_cast<T>(0);
     }
     __syncthreads();
