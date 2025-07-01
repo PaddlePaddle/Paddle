@@ -29,6 +29,21 @@ void AsRealStridedKernel(const Context& dev_ctx,
         "FLAGS_use_stride_kernel is closed. Strided kernel "
         "be called, something wrong has happened!"));
   }
+  if (out && out->numel() == 0) {
+    if (x.dtype() == DataType::COMPLEX64) {
+      out->set_type(DataType::FLOAT32);
+    } else if (x.dtype() == DataType::COMPLEX128) {
+      out->set_type(DataType::FLOAT64);
+    } else {
+      PADDLE_THROW(common::errors::Unimplemented(
+          "as_real is not supported data type (%s).",
+          DataTypeToString(x.dtype())));
+    }
+    out->set_offset(x.offset());
+    out->ResetHolder(x.Holder());
+    out->ShareInplaceVersionCounterWith(x);
+    return;
+  }
   auto out_stride_v = common::vectorize(x.strides());
   for (auto& v : out_stride_v) {
     v *= 2;
