@@ -76,6 +76,7 @@ from ....utils.exceptions import (
     PsdbBreakReason,
     SotCapturedException,
     SotCapturedExceptionFactory,
+    SotCapturedStopIteration,
     SotErrorBase,
     UnsupportedNumPyAPIBreak,
     UnsupportedOperationBreak,
@@ -967,6 +968,11 @@ class BuiltinVariable(FunctionVariable):
         if handler is not None:
             try:
                 return handler(*args, **kwargs)
+            except SotCapturedStopIteration:
+                # Although SotCapturedStopIteration is a subclass of SotErrorBase,
+                # this exception is handled separately because StopIteration is essential for generator operation.
+                # Explicitly separating this branch clarifies its role and makes debugging easier.
+                raise
             except SotErrorBase as e:
                 # NOTE: BuiltinVariable.call_function cat not raise SotCapturedException,
                 # so we can directly raise SotErrorBase.

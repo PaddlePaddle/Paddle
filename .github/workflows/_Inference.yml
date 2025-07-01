@@ -14,6 +14,7 @@ env:
   work_dir: /paddle
   PADDLE_ROOT: /paddle
   BRANCH: ${{ github.event.pull_request.base.ref }}
+  CFS_DIR: /home/data/cfs
   no_proxy: "bcebos.com,apiin.im.baidu.com,gitee.com,aliyun.com,.baidu.com,.tuna.tsinghua.edu.cn"
 
 defaults:
@@ -104,6 +105,7 @@ jobs:
           -e ci_scripts \
           -e CUDA_ARCH_NAME \
           -e PADDLE_CUDA_INSTALL_REQUIREMENTS \
+          -e CFS_DIR \
           -e no_proxy \
           -w /paddle --network host ${docker_image} /bin/bash
 
@@ -159,7 +161,9 @@ jobs:
           source /action-runner/unproxy
           cd /
           tar --use-compress-program="pigz -1" -cpPf build.tar.gz paddle
-          python ${{ env.bos_file }} build.tar.gz paddle-github-action/PR/inference/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
+          echo "Uploading build.tar.gz to cfs"
+          mkdir -p ${CFS_DIR}/inference_bos/${PR_ID}/${COMMIT_ID}
+          cp build.tar.gz ${CFS_DIR}/inference_bos/${PR_ID}/${COMMIT_ID} && echo success
           rm build.tar.gz
           '
 
@@ -247,6 +251,7 @@ jobs:
           -e CUDA_ARCH_NAME \
           -e PADDLE_CUDA_INSTALL_REQUIREMENTS \
           -e GITHUB_API_TOKEN \
+          -e CFS_DIR \
           -e no_proxy \
           -w /paddle --network host ${docker_image} /bin/bash
 
@@ -254,8 +259,8 @@ jobs:
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           set -e
-          echo "Downloading build.tar.gz"
-          wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/inference/${PR_ID}/${COMMIT_ID}/build.tar.gz --no-check-certificate
+          echo "Downloading build.tar.gz from cfs"
+          cp ${CFS_DIR}/inference_bos/${PR_ID}/${COMMIT_ID}/build.tar.gz .
           echo "Extracting build.tar.gz"
           tar --use-compress-program="pigz -1" -xpf build.tar.gz --strip-components=1
           rm build.tar.gz
