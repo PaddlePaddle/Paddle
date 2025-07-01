@@ -23,33 +23,31 @@ from paddle import base
 
 class TestDygraphBilinearTensorProductAPIError(unittest.TestCase):
     def test_errors(self):
-        with paddle_static_guard():
-            with base.program_guard(base.Program(), base.Program()):
-                layer = paddle.nn.Bilinear(5, 4, 1000)
-                # the input must be Variable.
-                x0 = base.create_lod_tensor(
-                    np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], base.CPUPlace()
-                )
-                self.assertRaises(TypeError, layer, x0)
-                # the input dtype must be float32 or float64
-                x1 = paddle.static.data(
-                    name='x1', shape=[-1, 5], dtype="float16"
-                )
-                x2 = paddle.static.data(
-                    name='x2', shape=[-1, 4], dtype="float32"
-                )
-                self.assertRaises(TypeError, layer, x1, x2)
-                # the dimensions of x and y must be 2
-                paddle.enable_static()
-                x3 = paddle.static.data("", shape=[0], dtype="float32")
-                x4 = paddle.static.data("", shape=[0], dtype="float32")
-                self.assertRaises(
-                    ValueError,
-                    paddle.static.nn.bilinear_tensor_product,
-                    x3,
-                    x4,
-                    1000,
-                )
+        with (
+            paddle_static_guard(),
+            base.program_guard(base.Program(), base.Program()),
+        ):
+            layer = paddle.nn.Bilinear(5, 4, 1000)
+            # the input must be Variable.
+            x0 = base.create_lod_tensor(
+                np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], base.CPUPlace()
+            )
+            self.assertRaises(TypeError, layer, x0)
+            # the input dtype must be float32 or float64
+            x1 = paddle.static.data(name='x1', shape=[-1, 5], dtype="float16")
+            x2 = paddle.static.data(name='x2', shape=[-1, 4], dtype="float32")
+            self.assertRaises(TypeError, layer, x1, x2)
+            # the dimensions of x and y must be 2
+            paddle.enable_static()
+            x3 = paddle.static.data("", shape=[0], dtype="float32")
+            x4 = paddle.static.data("", shape=[0], dtype="float32")
+            self.assertRaises(
+                ValueError,
+                paddle.static.nn.bilinear_tensor_product,
+                x3,
+                x4,
+                1000,
+            )
 
 
 if __name__ == "__main__":

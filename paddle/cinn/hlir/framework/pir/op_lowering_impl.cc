@@ -319,10 +319,10 @@ std::vector<CondFuncPriorWrapper> OpLowererImpl::PostProcess(
     bool contain_unknown_dim = [&]() {
       bool check = op_result && op_result.type() &&
                    op_result.type().isa<paddle::dialect::DenseTensorType>();
-      PADDLE_ENFORCE_EQ(
-          check,
-          true,
-          phi::errors::PreconditionNotMet("cinn only support DenseTensorType"));
+      PADDLE_ENFORCE_EQ(check,
+                        true,
+                        ::common::errors::PreconditionNotMet(
+                            "cinn only support DenseTensorType"));
       const auto dims =
           op_result.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
       return ::common::contain_unknown_dim(dims);

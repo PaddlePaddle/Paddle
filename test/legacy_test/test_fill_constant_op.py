@@ -553,6 +553,21 @@ class TestFillConstantOp_ValueTensorBf16(OpTest):
         )
 
 
+class TestFillConstantOp_ZeroSize(unittest.TestCase):
+
+    def test_shape(self):
+        out = paddle.full(
+            shape=[
+                paddle.to_tensor([1]),
+                paddle.to_tensor([1]),
+                paddle.to_tensor([]),
+            ],
+            fill_value=1.0,
+        )
+        out_np = out.numpy()
+        np.testing.assert_allclose(out_np, np.ones([1, 1]).astype(out_np.dtype))
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()

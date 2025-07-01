@@ -3336,6 +3336,9 @@ def squeeze(
         axis = [axis]
     elif isinstance(axis, tuple):
         axis = list(axis)
+    elif isinstance(axis, (paddle.Tensor, Variable)):
+        if axis.size == 0:
+            return x
 
     input = x
     axes = axis
@@ -7415,11 +7418,15 @@ def _index_fill_impl(
     perm[axis] = 0
 
     if inplace:
+        if in_dynamic_mode() and index.size == 0:
+            return x
         paddle.transpose_(x, perm)
         paddle.index_put_(x, (index,), value)
         paddle.transpose_(x, perm)
         return x
     else:
+        if in_dynamic_mode() and index.size == 0:
+            return x.clone()
         out = paddle.transpose(x, perm)
         out = paddle.index_put(out, (index,), value)
         out = paddle.transpose(out, perm)

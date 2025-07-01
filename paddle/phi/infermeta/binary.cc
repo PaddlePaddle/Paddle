@@ -888,19 +888,23 @@ void ConvTransposeInferMeta(const MetaTensor& x,
                 common::make_ddim(output_size).to_str(),
                 i,
                 infer_shape));
-        PADDLE_ENFORCE_LT(
-            output_size[i],
-            infer_shape + strides[i],
-            errors::InvalidArgument(
-                "output_size of Op(ConvTransposeOp) should be less "
-                "than inferred size + stride. But received output_size = [%s], "
-                "whose dim %d is not less than the inferred output size (%d) + "
-                "stride (%d) = %d",
-                common::make_ddim(output_size).to_str(),
-                i,
-                infer_shape,
-                strides[i],
-                infer_shape + strides[i]));
+        if (common::product(x_dims) != 0) {
+          PADDLE_ENFORCE_LT(
+              output_size[i],
+              infer_shape + strides[i],
+              errors::InvalidArgument(
+                  "output_size of Op(ConvTransposeOp) should be less "
+                  "than inferred size + stride. But received output_size = "
+                  "[%s], "
+                  "whose dim %d is not less than the inferred output size (%d) "
+                  "+ "
+                  "stride (%d) = %d",
+                  common::make_ddim(output_size).to_str(),
+                  i,
+                  infer_shape,
+                  strides[i],
+                  infer_shape + strides[i]));
+        }
       }
       output_shape.push_back(output_size[i]);
     } else if (!output_padding.empty()) {
