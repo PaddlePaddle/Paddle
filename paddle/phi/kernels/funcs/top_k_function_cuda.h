@@ -871,8 +871,8 @@ __device__ void RadixSearch(const T* input,
 template <typename T, typename IndexType>
 __global__ void GatherKthValue(const T* input,
                                const IndexType k,
-                               const IndexType num_rows,
                                const IndexType num_cols,
+                               const IndexType num_rows,
                                T* output,
                                int64_t* indices) {
   extern __shared__ char shared_mem_char[];
@@ -888,33 +888,40 @@ __global__ void GatherKthValue(const T* input,
   RadixSearch<T, RadixTypeConfig<T>::RadixType, IndexType, false>(
       cur_input, k, num_cols, shared_mem, &kth_value);
 
+  __shared__ int64_t block_min_idx;
+  if (threadIdx.x == 0) {
+    block_min_idx = -1;
+  }
+  __syncthreads();
+
   // 2. find the k-th index
-  int64_t kth_index = 0;
-  bool foundKValue = false;
   for (int64_t i = threadIdx.x; i < num_cols; i += blockDim.x) {
-    bool inRange = (i < num_cols);
-    T v = inRange ? cur_input[i] : static_cast<T>(0);
+    int64_t current_min = block_min_idx;
+    if (current_min != -1 && i >= current_min) {
+      break;
+    }
+    T v = cur_input[i];
     bool isKValue =
-        inRange && ((v == kth_value) || (isnan(static_cast<float>(v)) &&
-                                         isnan(static_cast<float>(kth_value))));
+        ((v == kth_value) || (isnan(static_cast<float>(v)) &&
+                              isnan(static_cast<float>(kth_value))));
     if (isKValue) {
-      kth_index = i;
-      foundKValue = true;
+      phi::CudaAtomicMin(&block_min_idx, i);
       break;
     }
   }
+  __syncthreads();
 
-  if (foundKValue) {
+  if (threadIdx.x == 0) {
     output[row] = kth_value;
-    indices[row] = kth_index;
+    indices[row] = block_min_idx;
   }
 }
 
 template <typename T, typename IndexType>
 void LaunchGatherKthValue(const phi::GPUContext& dev_ctx,
                           const T* input_data,
-                          const IndexType num_rows,
                           const IndexType num_cols,
+                          const IndexType num_rows,
                           const IndexType k,
                           T* out_data,
                           int64_t* indices_data) {
@@ -955,7 +962,7 @@ void LaunchGatherKthValue(const phi::GPUContext& dev_ctx,
 
   GatherKthValue<T, IndexType>
       <<<grid_dim, block_dim, shared_mem_size, dev_ctx.stream()>>>(
-          input_data, k, num_rows, num_cols, out_data, indices_data);
+          input_data, k, num_cols, num_rows, out_data, indices_data);
 }
 
 template <typename T, bool Largest>
