@@ -3633,7 +3633,9 @@ class OpTest(unittest.TestCase):
                 if len(outputs_valid) == 1:
                     for outputs_valid_key in outputs_valid:
                         loss = paddle.mean(
-                            outputs_valid[outputs_valid_key][0].cast('float32')
+                            outputs_valid[outputs_valid_key][0].astype(
+                                "float32"
+                            )
                         )
                 else:
                     avg_sum = []
