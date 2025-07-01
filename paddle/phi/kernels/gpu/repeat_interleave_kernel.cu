@@ -15,13 +15,168 @@
 #include "paddle/phi/kernels/repeat_interleave_kernel.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/repeat_interleave_kernel_impl.h"
+#include "paddle/phi/kernels/primitive/kernel_primitives.h"
+
+namespace phi {
+
+template <typename T>
+__global__ void repeat_interleave_kernel(const T* __restrict__ input,
+                                         T* __restrict__ output,
+                                         const int64_t numel,
+                                         const int64_t outer_size,
+                                         const int64_t repeat_size,
+                                         const int64_t inner_size,
+                                         const int repeats) {
+  const int64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
+  if (tid >= numel) return;
+
+  // Decompose output index
+  const int64_t inner_idx = tid % inner_size;
+  const int64_t temp = tid / inner_size;
+  const int64_t repeat_idx = temp % (repeat_size * repeats);
+  const int64_t outer_idx = temp / (repeat_size * repeats);
+
+  // Map to input index
+  const int64_t src_repeat_idx = repeat_idx / repeats;
+  const int64_t src_idx = outer_idx * repeat_size * inner_size +
+                          src_repeat_idx * inner_size + inner_idx;
+
+  output[tid] = input[src_idx];
+}
+
+// Vectorized version for better memory throughput
+template <typename T, int VecSize>
+__global__ void RepeatInterleaveVecKernel(const T* __restrict__ input,
+                                          T* __restrict__ output,
+                                          const int64_t numel,
+                                          const int64_t outer_size,
+                                          const int64_t repeat_size,
+                                          const int64_t inner_size,
+                                          const int repeats) {
+  using VecType = kps::details::VectorType<T, VecSize>;
+
+  const int64_t tid = (blockIdx.x * blockDim.x + threadIdx.x) * VecSize;
+  if (tid >= numel) return;
+
+  VecType* vec_output = reinterpret_cast<VecType*>(output);
+  const VecType* vec_input = reinterpret_cast<const VecType*>(input);
+
+#pragma unroll
+  for (int v = 0; v < VecSize && tid + v < numel; v++) {
+    const int64_t idx = tid + v;
+    const int64_t inner_idx = idx % inner_size;
+    const int64_t temp = idx / inner_size;
+    const int64_t repeat_idx = temp % (repeat_size * repeats);
+    const int64_t outer_idx = temp / (repeat_size * repeats);
+    const int64_t src_repeat_idx = repeat_idx / repeats;
+    const int64_t src_idx = outer_idx * repeat_size * inner_size +
+                            src_repeat_idx * inner_size + inner_idx;
+
+    if (v == 0 && (idx % VecSize == 0) && ((idx + VecSize) <= numel)) {
+      vec_output[idx / VecSize] = vec_input[src_idx / VecSize];
+      break;
+    } else {
+      output[idx] = input[src_idx];
+    }
+  }
+}
+template <typename T, typename Context>
+void RepeatInterleaveKernelV2(const Context& dev_ctx,
+                              const DenseTensor& x,
+                              int repeats,
+                              int dim,
+                              DenseTensor* out) {
+  dev_ctx.template Alloc<T>(out);
+  if (out && out->numel() == 0) {
+    return;
+  }
+  // Get actual dimension
+  const int ndim = x.dims().size();
+  const int target_dim = (dim < 0) ? ndim + dim : dim;
+
+  // Calculate sizes
+  int64_t outer_size = 1;
+  for (int i = 0; i < target_dim; i++) {
+    outer_size *= x.dims()[i];
+  }
+
+  const int64_t repeat_size = x.dims()[target_dim];
+
+  int64_t inner_size = 1;
+  for (int i = target_dim + 1; i < ndim; i++) {
+    inner_size *= x.dims()[i];
+  }
+
+  const int64_t total_elements =
+      outer_size * repeat_size * repeats * inner_size;
+
+  // Launch configuration
+  const int threads = 256;
+  const int blocks = (total_elements + threads - 1) / threads;
+
+  // Choose kernel based on data alignment and size
+  const bool use_vectorized =
+      (inner_size % 4 == 0) &&
+      (reinterpret_cast<uintptr_t>(x.data<T>()) % 16 == 0) &&
+      (reinterpret_cast<uintptr_t>(out->data<T>()) % 16 == 0);
+
+  int vec_size = 8;
+  vec_size = std::min(phi::GetVectorizedSize(x.data<T>()), vec_size);
+  vec_size = std::min(phi::GetVectorizedSize(out->data<T>()), vec_size);
+  while (vec_size > 1 && inner_size % vec_size != 0) {
+    vec_size /= 2;
+  }
+
+  constexpr int loop_count = 1;
+  auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
+      dev_ctx, total_elements, vec_size * loop_count);
+
+  switch (vec_size) {
+#define CASE_VEC_SIZE(__Sz)                                                  \
+  case __Sz:                                                                 \
+    RepeatInterleaveVecKernel<T, __Sz><<<config.block_per_grid,              \
+                                         config.thread_per_block,            \
+                                         0,                                  \
+                                         dev_ctx.stream()>>>(x.data<T>(),    \
+                                                             out->data<T>(), \
+                                                             total_elements, \
+                                                             outer_size,     \
+                                                             repeat_size,    \
+                                                             inner_size,     \
+                                                             repeats);       \
+    break
+    CASE_VEC_SIZE(8);
+    CASE_VEC_SIZE(4);
+    CASE_VEC_SIZE(2);
+    CASE_VEC_SIZE(1);
+#undef CASE_VEC_SIZE
+    default:
+      PADDLE_THROW(common::errors::Unimplemented(
+          "Unsupported vectorized size: %d", vec_size));
+  }
+  // if (use_vectorized && inner_size >= 4) {
+  //     const int vec_threads = threads / 4;
+  //     const int vec_blocks = (total_elements / 4 + vec_threads - 1) /
+  //     vec_threads; RepeatInterleaveVecKernel<T, 4><<<vec_blocks, vec_threads,
+  //     0, dev_ctx.stream()>>>(
+  //         x.data<T>(), out->data<T>(), total_elements,
+  //         outer_size, repeat_size, inner_size, repeats);
+  // } else {
+  //     repeat_interleave_kernel<T><<<blocks, threads, 0, dev_ctx.stream()>>>(
+  //         x.data<T>(), out->data<T>(), total_elements,
+  //         outer_size, repeat_size, inner_size, repeats);
+  // }
+}
+
+}  // namespace phi
 
 PD_REGISTER_KERNEL(repeat_interleave,
                    GPU,
                    ALL_LAYOUT,
-                   phi::RepeatInterleaveKernel,
+                   phi::RepeatInterleaveKernelV2,
                    float,
                    double,
                    int,
