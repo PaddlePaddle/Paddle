@@ -9,7 +9,7 @@ env:
   PR_ID: ${{ github.event.pull_request.number }}
   COMMIT_ID: ${{ github.event.pull_request.head.sha }}
   BRANCH: ${{ github.base_ref }}
-  ci_scripts: ${{ github.workspace }}\Paddle\ci\windows
+  ci_scripts: ${{ github.workspace }}\ci\windows
   WORK_DIR: ${{ github.workspace }}\..
   cache_dir: ${{ github.workspace }}\..\cache
   no_proxy: "bcebos.com,apiin.im.baidu.com,gitee.com,aliyun.com,.baidu.com,.tuna.tsinghua.edu.cn"
@@ -25,8 +25,9 @@ jobs:
       group: win-gpu
     steps:
       - name: Download Paddle and config env
+        working-directory: ..
         run: |
-          cd %WORK_DIR%
+          cd
           rmdir /s/q %WORK_DIR%\Paddle 2>NUL
           echo "path=%path%;C:\Program Files\NVIDIA Corporation\NVSMI" >> %GITHUB_ENV%
           python -m pip install wget
