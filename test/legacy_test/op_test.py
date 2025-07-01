@@ -3632,15 +3632,35 @@ class OpTest(unittest.TestCase):
             if user_defined_grad_outputs is None:
                 if len(outputs_valid) == 1:
                     for outputs_valid_key in outputs_valid:
-                        loss = paddle.mean(
-                            outputs_valid[outputs_valid_key][0].astype(
-                                "float32"
+                        if outputs_valid[outputs_valid_key][0].dtype in [
+                            paddle.int32,
+                            paddle.int64,
+                            paddle.bool,
+                        ]:
+                            loss = paddle.mean(
+                                outputs_valid[outputs_valid_key][0].astype(
+                                    "float64"
+                                )
                             )
-                        )
+                        else:
+                            loss = paddle.mean(
+                                outputs_valid[outputs_valid_key][0]
+                            )
                 else:
                     avg_sum = []
                     for cur_loss in outputs_valid:
-                        cur_avg_loss = paddle.mean(outputs_valid[cur_loss][0])
+                        if outputs_valid[cur_loss][0].dtype in [
+                            paddle.int32,
+                            paddle.int64,
+                            paddle.bool,
+                        ]:
+                            cur_avg_loss = paddle.mean(
+                                outputs_valid[cur_loss][0].astype("float64")
+                            )
+                        else:
+                            cur_avg_lossloss = paddle.mean(
+                                outputs_valid[cur_loss][0]
+                            )
                         avg_sum.append(cur_avg_loss)
                     loss_sum = paddle.add_n(avg_sum)
                     loss = paddle.scale(
@@ -4050,11 +4070,35 @@ class OpTest(unittest.TestCase):
             if user_defined_grad_outputs is None:
                 if len(outputs_valid) == 1:
                     for outputs_valid_key in outputs_valid:
-                        loss = paddle.mean(outputs_valid[outputs_valid_key][0])
+                        if outputs_valid[outputs_valid_key][0].dtype in [
+                            paddle.int32,
+                            paddle.int64,
+                            paddle.bool,
+                        ]:
+                            loss = paddle.mean(
+                                outputs_valid[outputs_valid_key][0].astype(
+                                    "float64"
+                                )
+                            )
+                        else:
+                            loss = paddle.mean(
+                                outputs_valid[outputs_valid_key][0]
+                            )
                 else:
                     avg_sum = []
                     for cur_loss in outputs_valid:
-                        cur_avg_loss = paddle.mean(outputs_valid[cur_loss][0])
+                        if outputs_valid[cur_loss][0].dtype in [
+                            paddle.int32,
+                            paddle.int64,
+                            paddle.bool,
+                        ]:
+                            cur_avg_loss = paddle.mean(
+                                outputs_valid[cur_loss][0].astype("float64")
+                            )
+                        else:
+                            cur_avg_loss = paddle.mean(
+                                outputs_valid[cur_loss][0]
+                            )
                         avg_sum.append(cur_avg_loss)
                     loss_sum = paddle.add_n(avg_sum)
                     loss = paddle.scale(
