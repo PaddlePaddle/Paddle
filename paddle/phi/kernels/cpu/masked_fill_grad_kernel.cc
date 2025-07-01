@@ -20,9 +20,9 @@
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/expand_grad_kernel.h"
 #include "paddle/phi/kernels/expand_kernel.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/common_infer_shape_functions.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
-
 namespace phi {
 
 template <typename T, typename Context>
@@ -33,6 +33,19 @@ void MaskedFillGradKernel(const Context& dev_ctx,
                           const DenseTensor& out_grad,
                           DenseTensor* x_grad,
                           DenseTensor* v_grad) {
+  if (out_grad.numel() == 0 || mask.numel() == 0) {
+    // x shape [2, 1, 3], mask shape [2, 0, 3], x_grad shape [2, 1, 3]
+    if (x_grad) {
+      phi::Full<T, Context>(
+          dev_ctx, phi::IntArray(common::vectorize(x_grad->dims())), 0, x_grad);
+    }
+    if (v_grad) {
+      phi::Full<T, Context>(
+          dev_ctx, phi::IntArray(common::vectorize(v_grad->dims())), 0, v_grad);
+    }
+    return;
+  }
+
   auto x_grad_dims = x_grad->dims();
   auto mask_dims = mask.dims();
   bool expand_x = false;
