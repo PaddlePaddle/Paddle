@@ -2500,7 +2500,7 @@ void FusedBiasActInferMeta(const MetaTensor& x,
           dim,
           -1,
           common::errors::InvalidArgument("At compile time, a negative last "
-                                          "dimension must be -1, but got  %d",
+                                          "dimension must be -1, but got %d",
                                           dim));
     }
 
