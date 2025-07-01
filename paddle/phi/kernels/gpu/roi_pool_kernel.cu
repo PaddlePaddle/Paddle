@@ -115,10 +115,10 @@ void RoiPoolKernel(const Context& dev_ctx,
   auto x_dims = x.dims();
   int64_t batch_size = x_dims[0];
   auto in_stride = common::stride(x_dims);
-  int channels = x_dims[1];
-  int height = x_dims[2];
-  int width = x_dims[3];
-  int rois_num = boxes.dims()[0];
+  int64_t channels = x_dims[1];
+  int64_t height = x_dims[2];
+  int64_t width = x_dims[3];
+  int64_t rois_num = boxes.dims()[0];
 
   if (x.numel() == 0 || boxes.numel() == 0) {
     phi::Full<T, Context>(
