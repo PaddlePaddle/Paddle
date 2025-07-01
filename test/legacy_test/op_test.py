@@ -3658,7 +3658,7 @@ class OpTest(unittest.TestCase):
                                 outputs_valid[cur_loss][0].astype("float64")
                             )
                         else:
-                            cur_avg_lossloss = paddle.mean(
+                            cur_avg_loss = paddle.mean(
                                 outputs_valid[cur_loss][0]
                             )
                         avg_sum.append(cur_avg_loss)
