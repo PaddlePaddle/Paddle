@@ -2123,6 +2123,7 @@ void Fp8QuantBlockwiseInferMeta(const MetaTensor& X,
                                 bool using_1x128_vec_quant,
                                 bool input_transpose,
                                 bool output_scale_transpose,
+                                bool return_transpose_only,
                                 bool using_e5m2,
                                 bool using_pow2_scale,
                                 MetaTensor* out,
@@ -2211,10 +2212,17 @@ void Fp8QuantBlockwiseInferMeta(const MetaTensor& X,
                         "invalid shape encountered in scale inner dim."));
 
   if (X && out && scale) {
-    out->set_dims(common::make_ddim({output_outer_dim, output_inner_dim}));
-    out->set_dtype(phi::DataType::FLOAT8_E4M3FN);
-    scale->set_dims(common::make_ddim({scale_outer_dim, scale_inner_dim}));
-    scale->set_dtype(phi::DataType::FLOAT32);
+    if (!return_transpose_only) {
+      out->set_dims(common::make_ddim({output_outer_dim, output_inner_dim}));
+      out->set_dtype(phi::DataType::FLOAT8_E4M3FN);
+      scale->set_dims(common::make_ddim({scale_outer_dim, scale_inner_dim}));
+      scale->set_dtype(phi::DataType::FLOAT32);
+    } else {
+      out->set_dims(common::make_ddim({0}));
+      out->set_dtype(phi::DataType::FLOAT8_E4M3FN);
+      scale->set_dims(common::make_ddim({0}));
+      scale->set_dtype(phi::DataType::FLOAT32);
+    }
     if (input_transpose) {
       out_transposed->set_dims(
           common::make_ddim({output_inner_dim, output_outer_dim}));
