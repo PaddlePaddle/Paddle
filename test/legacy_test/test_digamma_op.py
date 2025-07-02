@@ -152,17 +152,21 @@ class TestDigammaAPI(unittest.TestCase):
 
     def test_dtype_error(self):
         # in static graph mode
-        with self.assertRaises(TypeError):
-            with static.program_guard(static.Program()):
-                x = static.data(name="x", shape=self._shape, dtype="bool")
-                out = paddle.digamma(x, name="digamma_res")
+        with (
+            self.assertRaises(TypeError),
+            static.program_guard(static.Program()),
+        ):
+            x = static.data(name="x", shape=self._shape, dtype="bool")
+            out = paddle.digamma(x, name="digamma_res")
 
         # in dynamic mode
-        with self.assertRaises(RuntimeError):
-            with base.dygraph.guard():
-                input = np.random.random(self._shape).astype("bool")
-                input_t = paddle.to_tensor(input)
-                res = paddle.digamma(input_t)
+        with (
+            self.assertRaises(RuntimeError),
+            base.dygraph.guard(),
+        ):
+            input = np.random.random(self._shape).astype("bool")
+            input_t = paddle.to_tensor(input)
+            res = paddle.digamma(input_t)
 
 
 if __name__ == "__main__":

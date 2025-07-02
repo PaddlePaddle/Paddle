@@ -747,6 +747,14 @@ inline void retry_sleep(unsigned millisecond) {
 #undef DEFINE_EXTERNAL_API_TYPE
 #endif  // PADDLE_WITH_HIP
 
+#define PADDLE_THROW_BAD_ALLOC(...)                                           \
+  do {                                                                        \
+    HANDLE_THE_ERROR                                                          \
+    throw ::paddle::memory::allocation::BadAlloc(                             \
+        ::common::ErrorSummary(__VA_ARGS__).to_string(), __FILE__, __LINE__); \
+    END_HANDLE_THE_ERROR                                                      \
+  } while (0)
+
 }  // namespace enforce
 using namespace enforce;  // NOLINT
 }  // namespace phi

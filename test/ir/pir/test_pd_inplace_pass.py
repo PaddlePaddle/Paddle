@@ -27,19 +27,21 @@ class TestPdInplacePass(unittest.TestCase):
         place.set_place(paddle.CPUPlace())
         new_scope = paddle.static.Scope()
         main_program = paddle.static.Program()
-        with paddle.static.scope_guard(new_scope):
-            with paddle.static.program_guard(main_program):
-                x = paddle.static.data('x', [2, 2], dtype='float32')
-                y = paddle.ones([2, 2], dtype='float32')
-                z = paddle.divide(x, y)
-                out = paddle.nn.functional.relu(z)
+        with (
+            paddle.static.scope_guard(new_scope),
+            paddle.static.program_guard(main_program),
+        ):
+            x = paddle.static.data('x', [2, 2], dtype='float32')
+            y = paddle.ones([2, 2], dtype='float32')
+            z = paddle.divide(x, y)
+            out = paddle.nn.functional.relu(z)
 
-                exe = paddle.static.Executor()
-                x_feed = np.ones([2, 2], dtype=np.float32) * 10
-                (sum_value,) = exe.run(feed={'x': x_feed}, fetch_list=[out])
-                np.testing.assert_allclose(
-                    sum_value, np.ones([2, 2], dtype="float32") * 10
-                )
+            exe = paddle.static.Executor()
+            x_feed = np.ones([2, 2], dtype=np.float32) * 10
+            (sum_value,) = exe.run(feed={'x': x_feed}, fetch_list=[out])
+            np.testing.assert_allclose(
+                sum_value, np.ones([2, 2], dtype="float32") * 10
+            )
 
 
 class TestInputsHasBeenInplaced(unittest.TestCase):
@@ -48,28 +50,30 @@ class TestInputsHasBeenInplaced(unittest.TestCase):
         place.set_place(paddle.CPUPlace())
         new_scope = paddle.static.Scope()
         main_program = paddle.static.Program()
-        with paddle.static.scope_guard(new_scope):
-            with paddle.static.program_guard(main_program):
-                x = paddle.static.data('x', [2, 2], dtype='float32')
-                y = paddle.static.data('y', [2, 2], dtype='float32')
-                z = paddle.add(x, y)
+        with (
+            paddle.static.scope_guard(new_scope),
+            paddle.static.program_guard(main_program),
+        ):
+            x = paddle.static.data('x', [2, 2], dtype='float32')
+            y = paddle.static.data('y', [2, 2], dtype='float32')
+            z = paddle.add(x, y)
 
-                detached_z = z.detach()
-                out = detached_z + 1
+            detached_z = z.detach()
+            out = detached_z + 1
 
-                exe = paddle.static.Executor()
-                x_feed = np.ones([2, 2], dtype=np.float32) * 1
-                y_feed = np.ones([2, 2], dtype=np.float32) * 2
-                (z_data, out_data) = exe.run(
-                    feed={"x": x_feed, "y": y_feed},
-                    fetch_list=[z, out],
-                )
-                np.testing.assert_allclose(
-                    z_data, np.ones([2, 2], dtype="float32") * 3
-                )
-                np.testing.assert_allclose(
-                    out_data, np.ones([2, 2], dtype="float32") * 4
-                )
+            exe = paddle.static.Executor()
+            x_feed = np.ones([2, 2], dtype=np.float32) * 1
+            y_feed = np.ones([2, 2], dtype=np.float32) * 2
+            (z_data, out_data) = exe.run(
+                feed={"x": x_feed, "y": y_feed},
+                fetch_list=[z, out],
+            )
+            np.testing.assert_allclose(
+                z_data, np.ones([2, 2], dtype="float32") * 3
+            )
+            np.testing.assert_allclose(
+                out_data, np.ones([2, 2], dtype="float32") * 4
+            )
 
 
 if __name__ == "__main__":

@@ -150,5 +150,64 @@ class TestIndexFillAPI3(TestIndexFillAPIBase):
         self.value = 0.5
 
 
+class TestIndexFillAPI_ZeroSize(unittest.TestCase):
+    def setUp(self):
+        self.init_setting()
+        self.x_np = np.random.random(self.x_shape).astype(self.dtype_np)
+        self.index_np = np.random.random(self.index_size).astype(
+            self.index_type
+        )
+
+        self.place = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not paddle.is_compiled_with_cuda()
+        ):
+            self.place.append('cpu')
+        if self.dtype_np == 'float16':
+            self.place = []
+        if paddle.is_compiled_with_cuda():
+            self.place.append('gpu')
+
+    def init_setting(self):
+        self.dtype_np = 'float64'
+        self.index_type = 'int64'
+        self.x_shape = (20, 40)
+        # test index with zero size
+        self.index_size = (0,)
+        self.axis = 0
+        self.value = -1
+
+    def test_dygraph(self):
+        paddle.disable_static()
+        for place in self.place:
+            paddle.device.set_device(place)
+            x_pd = paddle.to_tensor(self.x_np)
+            x_pd.stop_gradient = False
+            index_pd = paddle.to_tensor(self.index_np)
+            pd_res = paddle.index_fill(x_pd, index_pd, self.axis, self.value)
+            ref_res = compute_index_fill_ref(
+                self.x_np, self.axis, self.index_np, self.value
+            )
+            np.testing.assert_allclose(ref_res, pd_res)
+            pd_res.sum().backward()
+            np.testing.assert_allclose(
+                x_pd.grad.numpy(), np.ones_like(self.x_np)
+            )
+        paddle.enable_static()
+
+
+class TestIndexFillAPI_ZeroSize2(TestIndexFillAPI_ZeroSize):
+
+    def init_setting(self):
+        self.dtype_np = 'float64'
+        self.index_type = 'int64'
+        self.x_shape = (20, 0)
+        self.index_size = (2,)
+        self.axis = 0
+        self.value = -1
+
+
 if __name__ == "__main__":
     unittest.main()

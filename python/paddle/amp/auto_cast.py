@@ -233,6 +233,8 @@ def _is_custom_device_bfloat16_supported() -> bool:
     return (
         place.get_device_type() == 'npu'
         or place.get_device_type() == 'intel_hpu'
+        or place.get_device_type() == 'iluvatar_gpu'
+        or place.get_device_type() == 'metax_gpu'
     )
 
 
@@ -695,6 +697,10 @@ def amp_guard(
                     "True",
                     "true",
                     "1",
+                ] and os.getenv("FLAGS_enable_main_grad") not in [
+                    "True",
+                    "true",
+                    "1",
                 ]:
                     if len(amp_global_state().mesh2params):
                         for _, params in amp_global_state().mesh2params.items():
@@ -731,7 +737,15 @@ def amp_guard(
 
                 return param_hook
 
-            if os.getenv("FLAGS_enable_tensor_fusion") in ["True", "true", "1"]:
+            if os.getenv("FLAGS_enable_tensor_fusion") in [
+                "True",
+                "true",
+                "1",
+            ] or os.getenv("FLAGS_enable_main_grad") in [
+                "True",
+                "true",
+                "1",
+            ]:
                 for param in amp_global_state().model_parameters:
                     if not hasattr(param, "main_grad"):
                         param.main_grad = None

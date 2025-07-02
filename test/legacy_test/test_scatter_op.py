@@ -728,46 +728,43 @@ class TestScatterAPI(unittest.TestCase):
         self.scatter = paddle.scatter
 
     def check_static_result(self, place):
-        with static_guard():
-            with paddle.static.program_guard(
+        with (
+            static_guard(),
+            paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
-            ):
-                input = paddle.static.data(
-                    name="input", shape=[3, 2], dtype="float64"
-                )
-                index = paddle.static.data(
-                    name="index", shape=[4], dtype="int64"
-                )
-                updates = paddle.static.data(
-                    name="updates", shape=[4, 2], dtype="float64"
-                )
-                result = self.scatter(input, index, updates, False)
+            ),
+        ):
+            input = paddle.static.data(
+                name="input", shape=[3, 2], dtype="float64"
+            )
+            index = paddle.static.data(name="index", shape=[4], dtype="int64")
+            updates = paddle.static.data(
+                name="updates", shape=[4, 2], dtype="float64"
+            )
+            result = self.scatter(input, index, updates, False)
 
-                input_data = np.array([[1, 1], [2, 2], [3, 3]]).astype(
-                    np.float64
-                )
-                index_data = np.array([2, 1, 0, 1]).astype(np.int64)
-                updates_data = np.array(
-                    [[1, 1], [2, 2], [3, 3], [4, 4]]
-                ).astype(np.float64)
+            input_data = np.array([[1, 1], [2, 2], [3, 3]]).astype(np.float64)
+            index_data = np.array([2, 1, 0, 1]).astype(np.int64)
+            updates_data = np.array([[1, 1], [2, 2], [3, 3], [4, 4]]).astype(
+                np.float64
+            )
 
-                exe = paddle.static.Executor(place)
-                fetches = exe.run(
-                    paddle.static.default_main_program(),
-                    feed={
-                        "input": input_data,
-                        "index": index_data,
-                        "updates": updates_data,
-                    },
-                    fetch_list=[result],
-                )
-                self.assertEqual(
-                    (
-                        fetches[0]
-                        == np.array([[3.0, 3.0], [6.0, 6.0], [1.0, 1.0]])
-                    ).all(),
-                    True,
-                )
+            exe = paddle.static.Executor(place)
+            fetches = exe.run(
+                paddle.static.default_main_program(),
+                feed={
+                    "input": input_data,
+                    "index": index_data,
+                    "updates": updates_data,
+                },
+                fetch_list=[result],
+            )
+            self.assertEqual(
+                (
+                    fetches[0] == np.array([[3.0, 3.0], [6.0, 6.0], [1.0, 1.0]])
+                ).all(),
+                True,
+            )
 
     def test_static(self):
         for place in self.places:

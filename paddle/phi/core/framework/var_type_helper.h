@@ -27,12 +27,11 @@
 #include "paddle/phi/core/framework/framework.pb.h"
 #include "paddle/utils/test_macros.h"
 
-namespace proto = paddle::framework::proto;
-
 namespace phi {
 
-TEST_API std::string VarDataTypeToString(const proto::VarType::Type type);
-TEST_API extern size_t SizeOfType(proto::VarType::Type type);
+TEST_API std::string VarDataTypeToString(
+    const paddle::framework::proto::VarType::Type type);
+TEST_API extern size_t SizeOfType(paddle::framework::proto::VarType::Type type);
 
 template <typename T>
 struct IsComplex : public std::false_type {};
@@ -46,8 +45,8 @@ struct DataTypeTrait {};
 // Stub handle for void
 template <>
 struct DataTypeTrait<void> {
-  constexpr static proto::VarType::Type DataType() {
-    return proto::VarType::RAW;
+  constexpr static paddle::framework::proto::VarType::Type DataType() {
+    return paddle::framework::proto::VarType::RAW;
   }
 };
 
@@ -126,21 +125,26 @@ struct DataTypeTrait<void> {
   _ForEachDataTypeHelper_(callback, int16_t, INT16);               \
   _ForEachDataTypeHelper_(callback, int8_t, INT8);
 
-#define DefineDataTypeTrait(cpp_type, proto_type)                           \
-  template <>                                                               \
-  struct DataTypeTrait<cpp_type> {                                          \
-    constexpr static proto::VarType::Type DataType() { return proto_type; } \
+#define DefineDataTypeTrait(cpp_type, proto_type)                         \
+  template <>                                                             \
+  struct DataTypeTrait<cpp_type> {                                        \
+    constexpr static paddle::framework::proto::VarType::Type DataType() { \
+      return proto_type;                                                  \
+    }                                                                     \
   }
 
 _ForEachDataType_(DefineDataTypeTrait);
 
 #undef DefineDataTypeTrait
 
-TEST_API extern proto::VarType::Type ToDataType(std::type_index type);
-extern std::type_index ToTypeIndex(proto::VarType::Type type);
+TEST_API extern paddle::framework::proto::VarType::Type ToDataType(
+    std::type_index type);
+extern std::type_index ToTypeIndex(
+    paddle::framework::proto::VarType::Type type);
 
 template <typename Visitor>
-inline void VisitDataType(proto::VarType::Type type, Visitor visitor) {
+inline void VisitDataType(paddle::framework::proto::VarType::Type type,
+                          Visitor visitor) {
 #define VisitDataTypeCallback(cpp_type, proto_type) \
   do {                                              \
     if (type == proto_type) {                       \
@@ -152,12 +156,13 @@ inline void VisitDataType(proto::VarType::Type type, Visitor visitor) {
   _ForEachDataType_(VisitDataTypeCallback);
 #undef VisitDataTypeCallback
   PADDLE_THROW(common::errors::Unimplemented(
-      "Not supported proto::VarType::Type(%d) as data type.",
+      "Not supported paddle::framework::proto::VarType::Type(%d) as data type.",
       static_cast<int>(type)));
 }
 
 template <typename Visitor>
-inline void VisitDataTypeSmall(proto::VarType::Type type, Visitor visitor) {
+inline void VisitDataTypeSmall(paddle::framework::proto::VarType::Type type,
+                               Visitor visitor) {
 #define VisitDataTypeCallbackSmall(cpp_type, proto_type) \
   do {                                                   \
     if (type == proto_type) {                            \
@@ -172,7 +177,8 @@ inline void VisitDataTypeSmall(proto::VarType::Type type, Visitor visitor) {
 
 // for normal dtype, int, int64, float, float64, float16
 template <typename Visitor>
-inline void VisitDataTypeNormal(proto::VarType::Type type, Visitor visitor) {
+inline void VisitDataTypeNormal(paddle::framework::proto::VarType::Type type,
+                                Visitor visitor) {
 #define VisitDataTypeCallbackNormal(cpp_type, proto_type) \
   do {                                                    \
     if (type == proto_type) {                             \
@@ -186,7 +192,8 @@ inline void VisitDataTypeNormal(proto::VarType::Type type, Visitor visitor) {
 }
 
 template <typename Visitor>
-inline void VisitIntDataType(proto::VarType::Type type, Visitor visitor) {
+inline void VisitIntDataType(paddle::framework::proto::VarType::Type type,
+                             Visitor visitor) {
 #define VisitIntDataTypeCallback(cpp_type, proto_type) \
   do {                                                 \
     if (type == proto_type) {                          \
@@ -204,7 +211,8 @@ inline void VisitIntDataType(proto::VarType::Type type, Visitor visitor) {
 }
 
 template <typename Visitor>
-inline void VisitDataTypeTiny(proto::VarType::Type type, Visitor visitor) {
+inline void VisitDataTypeTiny(paddle::framework::proto::VarType::Type type,
+                              Visitor visitor) {
 #define VisitDataTypeCallbackTiny(cpp_type, proto_type) \
   do {                                                  \
     if (type == proto_type) {                           \
@@ -218,7 +226,8 @@ inline void VisitDataTypeTiny(proto::VarType::Type type, Visitor visitor) {
 }
 
 template <typename Visitor>
-inline void VisitDataTypeForHIP(proto::VarType::Type type, Visitor visitor) {
+inline void VisitDataTypeForHIP(paddle::framework::proto::VarType::Type type,
+                                Visitor visitor) {
 #define VisitDataTypeCallbackHIP(cpp_type, proto_type) \
   do {                                                 \
     if (type == proto_type) {                          \
@@ -231,26 +240,29 @@ inline void VisitDataTypeForHIP(proto::VarType::Type type, Visitor visitor) {
 #undef VisitDataTypeCallbackHIP
 }
 
-inline std::ostream& operator<<(std::ostream& out,
-                                const proto::VarType::Type& type) {
+inline std::ostream& operator<<(
+    std::ostream& out, const paddle::framework::proto::VarType::Type& type) {
   out << VarDataTypeToString(type);
   return out;
 }
 
-extern inline bool IsComplexType(const proto::VarType::Type& type) {
-  return (type == proto::VarType::COMPLEX64 ||
-          type == proto::VarType::COMPLEX128);
+extern inline bool IsComplexType(
+    const paddle::framework::proto::VarType::Type& type) {
+  return (type == paddle::framework::proto::VarType::COMPLEX64 ||
+          type == paddle::framework::proto::VarType::COMPLEX128);
 }
 
-extern proto::VarType::Type PromoteTypesIfComplexExists(
-    const proto::VarType::Type type_a, const proto::VarType::Type type_b);
+extern paddle::framework::proto::VarType::Type PromoteTypesIfComplexExists(
+    const paddle::framework::proto::VarType::Type type_a,
+    const paddle::framework::proto::VarType::Type type_b);
 
-extern inline proto::VarType::Type ToComplexType(proto::VarType::Type t) {
+extern inline paddle::framework::proto::VarType::Type ToComplexType(
+    paddle::framework::proto::VarType::Type t) {
   switch (t) {
-    case proto::VarType::FP32:
-      return proto::VarType::COMPLEX64;
-    case proto::VarType::FP64:
-      return proto::VarType::COMPLEX128;
+    case paddle::framework::proto::VarType::FP32:
+      return paddle::framework::proto::VarType::COMPLEX64;
+    case paddle::framework::proto::VarType::FP64:
+      return paddle::framework::proto::VarType::COMPLEX128;
     default:
       PADDLE_THROW(common::errors::Unimplemented(
           "Unknown real value data type (%s), now only support float32 and "
@@ -259,12 +271,13 @@ extern inline proto::VarType::Type ToComplexType(proto::VarType::Type t) {
   }
 }
 
-extern inline proto::VarType::Type ToRealType(proto::VarType::Type t) {
+extern inline paddle::framework::proto::VarType::Type ToRealType(
+    paddle::framework::proto::VarType::Type t) {
   switch (t) {
-    case proto::VarType::COMPLEX64:
-      return proto::VarType::FP32;
-    case proto::VarType::COMPLEX128:
-      return proto::VarType::FP64;
+    case paddle::framework::proto::VarType::COMPLEX64:
+      return paddle::framework::proto::VarType::FP32;
+    case paddle::framework::proto::VarType::COMPLEX128:
+      return paddle::framework::proto::VarType::FP64;
     default:
       PADDLE_THROW(common::errors::Unimplemented(
           "Unknown complex value data type (%s), now only support complex64 "

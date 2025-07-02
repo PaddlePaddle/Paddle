@@ -45,7 +45,7 @@ void TileKernel(const Context& dev_ctx,
             repeat_times_data[i]));
   }
 
-  auto vec_x_dims = common::vectorize<int>(x_dims);
+  auto vec_x_dims = common::vectorize<int64_t>(x_dims);
   if (repeat_times_data.size() < vec_x_dims.size()) {
     int diff = vec_x_dims.size() - repeat_times_data.size();
     repeat_times_data.insert(repeat_times_data.begin(), diff, 1);
