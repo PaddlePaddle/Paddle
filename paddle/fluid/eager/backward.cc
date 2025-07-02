@@ -202,7 +202,7 @@ std::vector<paddle::Tensor> RunBackward(
             std::dynamic_pointer_cast<phi::DenseTensor>(inputs[i].impl());
         use_shared_buffer = output_tensor->IsSharedBufferWith(*input_tensor);
       }
-
+      use_shared_buffer = true;
       if (use_shared_buffer) {
         // Share buffer with given grad_tensor
         paddle::small_vector<std::vector<paddle::Tensor>, kSlotSmallVectorSize>
