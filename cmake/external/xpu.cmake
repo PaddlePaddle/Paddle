@@ -55,7 +55,7 @@ else()
 endif()
 
 if(NOT DEFINED XPU_FFT_BASE_DATE)
-  set(XPU_FFT_BASE_DATE "20250425")
+  set(XPU_FFT_BASE_DATE "20250623")
 endif()
 
 set(XPU_XRE_BASE_URL
@@ -253,7 +253,7 @@ if(WITH_XPU_XRE5)
       ${CMAKE_SOURCE_DIR}/tools/xpu/get_xpti_dependence.sh ${XPU_XPTI_URL}
       ${XPU_XPTI_DIR_NAME} && bash
       ${CMAKE_SOURCE_DIR}/tools/xpu/get_xpufft_dependence.sh ${XPU_FFT_URL}
-      ${XPU_FFT_DIR_NAME}
+      xpufft
     DOWNLOAD_NO_PROGRESS 1
     UPDATE_COMMAND ""
     CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${XPU_INSTALL_ROOT}
@@ -280,7 +280,7 @@ else()
       ${CMAKE_SOURCE_DIR}/tools/xpu/get_xpti_dependence.sh ${XPU_XPTI_URL}
       ${XPU_XPTI_DIR_NAME} && bash
       ${CMAKE_SOURCE_DIR}/tools/xpu/get_xpufft_dependence.sh ${XPU_FFT_URL}
-      ${XPU_FFT_DIR_NAME}
+      xpufft
     DOWNLOAD_NO_PROGRESS 1
     UPDATE_COMMAND ""
     CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${XPU_INSTALL_ROOT}

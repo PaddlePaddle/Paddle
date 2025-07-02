@@ -2443,6 +2443,7 @@
     {softmax : Softmax, loss : Loss}
 
 - op : masked_select
+  backward : masked_select_grad, masked_select_double_grad
   inputs :
     {x : X, mask : Mask}
   outputs :

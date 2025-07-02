@@ -16,6 +16,7 @@
 
 #include "paddle/phi/kernels/conv_kernel.h"
 #include "paddle/phi/kernels/cpu/conv_util.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/batch_norm_utils.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/im2col.h"
@@ -38,6 +39,11 @@ void ConvKernelImpl(const Context& dev_ctx,
   std::vector<int> paddings = paddings_t;
   std::vector<int> dilations = dilations_t;
   DenseTensor filter = filter_t;
+  if (input.numel() == 0) {
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(output->dims())), 0, output);
+    return;
+  }
   // The filter will be reshaped in the calculations,
   // so here use an assignment operation,
   // that avoids modifying the variable in the Scope.
