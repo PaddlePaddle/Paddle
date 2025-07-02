@@ -12,12 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import sys
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16, get_places
 from utils import dygraph_guard
 
 import paddle
@@ -228,15 +227,7 @@ class TestTakeAlongAxisAPI(unittest.TestCase):
             -dim_size, dim_size, size=([1, 3])
         ).astype('int64')
         self.x_np = np.random.random(self.shape).astype(np.float32)
-        self.place = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.place.append(paddle.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.place.append(paddle.CUDAPlace(0))
+        self.place = get_places()
 
     def test_api_static(self):
         paddle.enable_static()
@@ -291,15 +282,7 @@ class TestTakeAlongAxisAPICase1(TestTakeAlongAxisAPI):
             -dim_size, dim_size, size=(4, 2)
         ).astype('int64')
         self.x_np = np.random.random(self.shape).astype(np.float32)
-        self.place = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.place.append(paddle.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.place.append(paddle.CUDAPlace(0))
+        self.place = get_places()
 
 
 class TestTakeAlongAxisAPICase2(unittest.TestCase):
@@ -313,15 +296,7 @@ class TestTakeAlongAxisAPICase2(unittest.TestCase):
             -dim_size, dim_size, size=(1, 3)
         ).astype('int64')
         self.x_np = np.random.random(self.shape).astype(np.float32)
-        self.place = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.place.append(paddle.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.place.append(paddle.CUDAPlace(0))
+        self.place = get_places()
 
     def test_api_static(self):
         paddle.enable_static()
