@@ -88,16 +88,6 @@ std::vector<std::string> GetTensorsName(const std::vector<Tensor *> &ins) {
   return in_names;
 }
 
-std::vector<paddle::Tensor *> GetTensorsPtr(
-    std::vector<paddle::Tensor> &tensors) {  // NOLINT
-  std::vector<paddle::Tensor *> res;
-  res.reserve(tensors.size());
-  for (auto &t : tensors) {
-    res.push_back(&t);
-  }
-  return res;
-}
-
 void CheckOutputVarStatus(const paddle::framework::Variable &src_var,
                           const Tensor &dst_tensor) {
   auto name = dst_tensor.name();
@@ -663,7 +653,7 @@ std::vector<paddle::Tensor> RunProgramImpl(
         "fetch_and_gc", phi::TracerEventType::UserDefined, 1);
     // Get Output
     details::ShareTensorsFromScopeWithName(
-        details::GetTensorsPtr(out), output_names, global_inner_scope);
+        egr::to_static::GetTensorsPtr(out), output_names, global_inner_scope);
     VLOG(3) << paddle::framework::GenScopeTreeDebugInfo(out_scope_vec->front());
 
     if (!need_grad) {

@@ -26,6 +26,9 @@ int64_t hash_with_seed(int64_t value, int64_t seed);
 
 bool IsVariableRefArray(const paddle::Tensor& tensor);
 
+std::vector<paddle::Tensor*> GetTensorsPtr(
+    std::vector<paddle::Tensor>& tensors);  // NOLINT
+
 std::vector<paddle::Tensor> DereferenceTensors(
     const std::vector<paddle::Tensor*>& tensor_ptr);
 }  // namespace egr::to_static
