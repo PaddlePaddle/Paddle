@@ -1649,12 +1649,16 @@ static PyObject* tensor__getitem_dygraph(TensorObject* self,
       }
     }
 
+    // const phi::distributed::ProcessMesh* mesh_ = nullptr;
+    // const bool has_dist_tensor = InputsContainDistTensor(
+    //     &mesh_, self->tensor, transed_tensor, transed_index);
     if (transed_tensor.is_gpu() && !is_combined_bool && !has_empty_index) {
       const phi::distributed::ProcessMesh* mesh = nullptr;
-      if (InputsContainDistTensor(&mesh, transed_tensor, transed_index)) {
-        ConvertAllInputsToDistTensor(mesh, transed_tensor, transed_index);
+      if (InputsContainDistTensor(
+              &mesh, self->tensor, transed_tensor, transed_index)) {
+        ConvertAllInputsToDistTensor(
+            mesh, self->tensor, transed_tensor, transed_index);
       }
-
       transed_index = expand_outplace(transed_index);
 
       for (int i = 0; i < pos_of_new_dim; ++i) {
@@ -1685,6 +1689,7 @@ static PyObject* tensor__getitem_dygraph(TensorObject* self,
       AdvancedIndex ad = AdvancedIndex(transed_tensor, transed_index_int64);
       const bool accumulate = true;
       out = index_elementwise_get_ad_func(tensor,
+                                          transed_tensor,
                                           ad.indices,
                                           ad.src_sizes,
                                           ad.src_strides,

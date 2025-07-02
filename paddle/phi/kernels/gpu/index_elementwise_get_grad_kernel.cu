@@ -150,6 +150,7 @@ void GPUIndexElementwiseGetGrad(const phi::GPUContext& ctx,
 template <typename T, typename Context>
 void IndexElementwiseGetGradKernel(const Context& ctx,
                                    const DenseTensor& x,
+                                   const DenseTensor& transed_tensor,
                                    const std::vector<const DenseTensor*>& index,
                                    const DenseTensor& out_grad,
                                    const std::vector<int64_t>& input_dims,

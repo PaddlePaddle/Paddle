@@ -718,7 +718,6 @@ static paddle::Tensor getValueForBoolTensor(const paddle::Tensor& tensor,
             bool_index.shape()[i]));
     i++;
   }
-
   const phi::distributed::ProcessMesh* mesh = nullptr;
   if (InputsContainDistTensor(&mesh, tensor, bool_index)) {
     ConvertAllInputsToDistTensor(mesh, tensor, bool_index);
@@ -754,6 +753,7 @@ static paddle::Tensor getValueForBoolTensor(const paddle::Tensor& tensor,
     const bool accumulate = false;
 
     return index_elementwise_get_ad_func(tensor,
+                                         tensor,
                                          ad.indices,
                                          ad.src_sizes,
                                          ad.src_strides,

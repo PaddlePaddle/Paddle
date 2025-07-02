@@ -22,6 +22,7 @@ namespace phi {
 template <typename T, typename Context>
 void IndexElementwiseGetKernel(const Context &ctx,
                                const DenseTensor &x,
+                               const DenseTensor &transed_tensor,
                                const std::vector<const DenseTensor *> &index,
                                const std::vector<int64_t> &input_dims,
                                const std::vector<int64_t> &input_strides,
