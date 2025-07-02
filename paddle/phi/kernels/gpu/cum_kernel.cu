@@ -204,7 +204,7 @@ __global__ void BlockScanKernel(T* d_out,
                                 int64_t scan_size,
                                 bool exclusive,
                                 Op op) {
-  using MT = phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   using CallbackOp = std::conditional_t<std::is_same<Op, LogSumExp>::value,
                                         LSEPrefixCallbackOp<MT, Op>,
                                         SumPrefixCallbackOp<MT, Op>>;
