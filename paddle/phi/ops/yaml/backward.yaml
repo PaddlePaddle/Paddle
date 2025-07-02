@@ -1725,6 +1725,7 @@
   output : Tensor(x_grad), Tensor(value_grad)
   infer_meta :
     func : IndexPutGradInferMeta
+    spmd_rule : IndexPutGradInferSpmd
   kernel :
     func : index_put_grad
     data_type : out_grad
