@@ -425,6 +425,8 @@ std::vector<paddle::Tensor> CreateOutputTensorsFromValue(
     const auto &value = values[i];
     const auto &name = names[i];
     if (value.impl() == nullptr || !value.type()) {
+      // Insert a placeholder tensor to maintain alignment
+      result.emplace_back(paddle::Tensor());
       continue;
     }
     auto tensor = CreateTensorFromValueWithCache(value);
