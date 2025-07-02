@@ -35,7 +35,7 @@ std::vector<paddle::Tensor *> GetTensorsPtr(
   std::vector<paddle::Tensor *> res;
   res.reserve(tensors.size());
   for (auto &t : tensors) {
-    res.push_back(&t);
+    res.emplace_back(&t);
   }
   return res;
 }
