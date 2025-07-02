@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, get_places
 
 import paddle
 from paddle import base
@@ -294,22 +293,8 @@ class TestAdadeltaOpMultiPrecision(unittest.TestCase):
                 optimizer.clear_grad()
         paddle.enable_static()
 
-    def _get_places(self):
-        import paddle
-
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not paddle.is_compiled_with_cuda()
-        ):
-            places.append('cpu')
-        if paddle.is_compiled_with_cuda():
-            places.append('gpu')
-        return places
-
     def test_main(self):
-        for place in self._get_places():
+        for place in get_places(string_format=True):
             use_amp_list = [True, False]
             for use_amp in use_amp_list:
                 self._test_adadelta_op_dygraph_place_amp(place, use_amp)
