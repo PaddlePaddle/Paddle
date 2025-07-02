@@ -139,6 +139,7 @@ GENERATE_IMPL_VJP = [
     'p_norm_grad',
     'masked_fill_grad',
     'index_put_grad',
+    'index_add_grad',
 ]
 
 # declare belongs to codegen, but implementation not
