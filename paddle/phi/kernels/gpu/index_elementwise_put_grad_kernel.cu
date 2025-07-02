@@ -182,21 +182,36 @@ void LaunchIndexElementwisePutGradCudaKernel(
     DenseTensor* value_grad,
     DenseTensor* x_grad) {
   phi::Allocator::AllocationPtr indices_holder_1, indices_holder_2;
+  const auto& index_type = indices[0]->dtype();
+  if (x_grad) {
+    phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
+
+    GPUIndexElementwisePutGradKernel<T, int64_t>(dev_ctx,
+                                                 x_indices,
+                                                 input_dims,
+                                                 input_strides,
+                                                 index_dims,
+                                                 index_strides,
+                                                 slice_offset,
+                                                 x_grad);
+  }
+
+  auto out_grad_dims = out_grad.dims();
+  auto out_grad_stride = common::stride(out_grad_dims);
+
+  Array<int64_t, DDim::kMaxRank> stride_array;
+  Array<int64_t, DDim::kMaxRank> shape_array;
+  for (int i = 0; i < rank; ++i) {
+    stride_array[i] = out_grad_stride[i];
+    shape_array[i] = out_grad_dims[i];
+  }
+
+  const int64_t numel = indices[0]->numel();
+  auto pd_indices = funcs::GetDevicePointerArray<int64_t, Context>(
+      dev_ctx, indices, &indices_holder_2);
+  auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel);
+
   if (value_grad) {
-    auto out_grad_dims = out_grad.dims();
-    auto out_grad_stride = common::stride(out_grad_dims);
-
-    Array<int64_t, DDim::kMaxRank> stride_array;
-    Array<int64_t, DDim::kMaxRank> shape_array;
-    for (int i = 0; i < rank; ++i) {
-      stride_array[i] = out_grad_stride[i];
-      shape_array[i] = out_grad_dims[i];
-    }
-
-    const int64_t numel = indices[0]->numel();
-    auto pd_indices = funcs::GetDevicePointerArray<int64_t, Context>(
-        dev_ctx, indices, &indices_holder_2);
-    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel);
     if (value_grad->numel() == 1) {
       DenseTensor tmp_value_grad(value_grad->dtype());
       tmp_value_grad.Resize(indices[0]->dims());
@@ -280,19 +295,6 @@ void LaunchIndexElementwisePutGradCudaKernel(
       value_grad->Resize(pre_dims);
     }
   }
-
-  if (x_grad) {
-    x_grad->ShareBufferWith(out_grad);
-
-    GPUIndexElementwisePutGradKernel<T, int64_t>(dev_ctx,
-                                                 x_indices,
-                                                 input_dims,
-                                                 input_strides,
-                                                 index_dims,
-                                                 index_strides,
-                                                 slice_offset,
-                                                 x_grad);
-  }
 }
 
 template <typename T, typename Context>
@@ -321,7 +323,7 @@ void IndexElementwisePutGradKernel(
   std::vector<DenseTensor> tmp_args;
   if (indices.empty()) {
     if (x_grad) {
-      x_grad->ShareBufferWith(out_grad);
+      phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
     }
     if (value_grad) {
       FullKernel<T, Context>(dev_ctx,
