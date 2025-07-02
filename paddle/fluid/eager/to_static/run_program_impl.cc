@@ -379,16 +379,6 @@ inline bool is_use_cuda_graph(int64_t cuda_graph_state) {
 
 paddle::Tensor CreateTensorFromValue(const pir::Value &value) {
   auto tensor = paddle::Tensor();
-  // auto autograd_meta = egr::EagerUtils::autograd_meta(&tensor);
-  // autograd_meta->SetPersistable(false);
-  // autograd_meta->SetStopGradient(GetValueBoolAttr(value,
-  // kAttrStopGradients));
-
-  // auto dims = phi::vectorize(GetValueDims(value));
-  // auto ddims = phi::make_ddim(dims);
-  // if (auto name = pir::utils::name_analysis::TryGetValueFirstName(value)) {
-  //   tensor.set_name(name.value());
-  // }
   const auto &value_type = value.type();
 
   if (value_type.isa<paddle::dialect::DenseTensorType>()) {
@@ -425,12 +415,6 @@ paddle::Tensor CreateTensorFromValue(const pir::Value &value) {
         std::make_shared<phi::SelectedRows>();
     tensor.set_impl(selected_rows_tensor);
   }
-
-  // if (!autograd_meta->GetMutableGradNode()) {
-  //   autograd_meta->SetGradNode(
-  //       std::make_shared<egr::GradNodeAccumulation>(autograd_meta));
-  // }
-
   return tensor;
 }
 

@@ -206,7 +206,6 @@ std::vector<egr::AutogradMeta*> AttachAutoGradMeta(
   std::vector<egr::AutogradMeta*> result;
   auto size = tensors.size();
   result.reserve(tensors.size());
-  // for (auto& tensor : tensors) {
   for (size_t i = 0; i < size; ++i) {
     auto& tensor = tensors[i];
     const auto& value = values[i];
@@ -227,7 +226,6 @@ std::vector<paddle::Tensor> run_program_ad_func(
     const paddle::framework::AttributeMap& attrs) {
   // Prepare Autograd Meta
   VLOG(2) << "start run pir run_program ad function.";
-  // auto deref_out = egr::to_static::DereferenceTensors(out);
   std::vector<egr::AutogradMeta*> p_autograd_x =
       egr::EagerUtils::nullable_autograd_meta(x);
   std::vector<egr::AutogradMeta*> p_autograd_params =
@@ -306,8 +304,6 @@ std::vector<paddle::Tensor> run_program_ad_func(
                         /*slot id*/ 1);
 
     grad_node->SetGradInMeta(out, 0);
-    // std::vector<egr::AutogradMeta*> p_autograd_outs =
-    //     egr::EagerUtils::nullable_autograd_meta(out);
     egr::EagerUtils::SetOutRankWithSlot(&p_autograd_outs, 0);
 
     // Set History for output set current Grad Node for

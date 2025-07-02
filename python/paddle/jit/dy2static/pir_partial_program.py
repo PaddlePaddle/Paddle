@@ -430,6 +430,7 @@ class RunnableProgram:
 
         program_attr = {}
         for k, ns in self.program_name_attr.items():
+            # Pass output values to create tensors in run program impl
             if k == "fo":
                 program_attr[f"{k}_values"] = [
                     fwd_map.get(n, fake_value()) for n in ns
@@ -1214,11 +1215,6 @@ class PartialProgramLayer:
                 continue
             input_vars.append(var)
         return input_vars
-
-    # def _prepare_outputs(self):
-    #     return paddle.framework.core.create_empty_tensors_with_values(
-    #         self._outputs.var_list
-    #     )
 
     def _create_scope_vec(self, cache_key=None, use_scope_cache=False):
         inner_scope = self._get_scope(
