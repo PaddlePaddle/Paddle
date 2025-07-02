@@ -347,7 +347,9 @@ class TestParallelAPI:
                         gather_output=True
                     ),
                     f"{prefix}llama.layers.*.self_attn.v_proj.lora_B": dist.ColWiseParallel(),
-                    f"{prefix}llama.layers.*.self_attn.o_proj": dist.RowWiseParallel(),
+                    f"{prefix}llama.layers.*.self_attn.o_proj": dist.RowWiseParallel(
+                        is_input_parallel=False
+                    ),
                     f"{prefix}llama.layers.*.self_attn.o_proj.lora_A": dist.RowWiseParallel(),
                     f"{prefix}llama.layers.*.mlp.gate_proj": dist.ColWiseParallel(),
                     f"{prefix}llama.layers.*.mlp.gate_proj.lora_B": dist.ColWiseParallel(),
