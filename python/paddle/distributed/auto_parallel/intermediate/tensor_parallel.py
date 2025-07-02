@@ -51,13 +51,16 @@ def c_split(x, process_mesh, need_transpose, split_type="sp"):
         elif placements[dp_index] == dist.Shard(1):
             # NOTE(zhangwl):if shard(1) , input shape should be [s,b,h]
             split_dims = dist.Shard(0)
+        else:
+            logging.warning(
+                f"parallel api don't know {target_x.shape} which dimension is batch, default is to cut to the 0th dimension"
+            )
+            split_dims = dist.Shard(0)
     elif split_type == "mp":
-        split_dims = dist.Shard(2)
+        split_dims = dist.Shard(2)  # split h [b,s,h]
     else:
-        logging.warning(
-            f"parallel api don't know {target_x.shape} which dimension is batch, default is to cut to the 0th dimension"
-        )
-        split_dims = dist.Shard(0)
+        raise ValueError(f"Unsupported split type {split_type}")
+
     placements[mp_index] = split_dims
     target_x = dist.reshard(target_x, process_mesh, placements)
     if isinstance(x, tuple):
