@@ -1153,20 +1153,6 @@ class TestIndexPutPrim(unittest.TestCase):
                     )
                     dout_pd.stop_gradient = False
 
-                    # eager
-                    dx_ref = paddle.grad(
-                        out_pd, x_pd, dout_pd, create_graph=True
-                    )[
-                        0
-                    ]  #
-
-                    dv_ref = paddle.grad(
-                        out_pd, value_pd, dout_pd, create_graph=True
-                    )[
-                        0
-                    ]  #
-
-                    # static dynamic shape
                     if accumulate:
 
                         def compute_dx_dv(x, indices, v, dy, accumulate=True):
@@ -1179,6 +1165,12 @@ class TestIndexPutPrim(unittest.TestCase):
                             y = paddle.index_put(x, indices, v, False)
                             return paddle.grad(y, [x, v], dy, create_graph=True)
 
+                    # eager
+                    dx_ref, dv_ref = compute_dx_dv(
+                        x_pd, indices_pd, value_pd, dout_pd
+                    )
+
+                    # static dynamic shape
                     st_func1 = paddle.jit.to_static(
                         compute_dx_dv,
                         input_spec=[
