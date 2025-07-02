@@ -1,4 +1,4 @@
-@ECHO ON
+
 setlocal enabledelayedexpansion
 set work_dir=%cd%
 if not defined cache_dir set cache_dir=%work_dir%\..\cache
@@ -50,7 +50,6 @@ if not defined WITH_TPCACHE echo WITH_TPCACHE=OFF >> %GITHUB_ENV%
 if not defined WITH_CACHE echo WITH_CACHE=OFF >> %GITHUB_ENV%
 if not defined WITH_SCCACHE echo WITH_SCCACHE=OFF >> %GITHUB_ENV%
 if not defined INFERENCE_DEMO_INSTALL_DIR echo INFERENCE_DEMO_INSTALL_DIR=%cache_dir:\=/%/inference_demo >> %GITHUB_ENV%
-echo %INFERENCE_DEMO_INSTALL_DIR%
 if not defined LOG_LEVEL echo LOG_LEVEL=normal >> %GITHUB_ENV%
 if not defined PRECISION_TEST echo PRECISION_TEST=OFF >> %GITHUB_ENV%
 if not defined WIN_UNITTEST_LEVEL echo WIN_UNITTEST_LEVEL=2 >> %GITHUB_ENV%
@@ -65,10 +64,6 @@ if not defined PYTHON_ROOT echo PYTHON_ROOT=C:\Python38 >> %GITHUB_ENV%
 if not defined BUILD_DIR echo BUILD_DIR=build >> %GITHUB_ENV%
 if not defined TEST_INFERENCE echo TEST_INFERENCE=ON >> %GITHUB_ENV%
 if not defined WITH_PIP_CUDA_LIBRARIES echo WITH_PIP_CUDA_LIBRARIES=OFF >> %GITHUB_ENV%
-
-
-echo aaa=123 >> %GITHUB_ENV%
-
 
 echo UPLOAD_TP_FILE=OFF >> %GITHUB_ENV%
 echo UPLOAD_TP_CODE=OFF >> %GITHUB_ENV%

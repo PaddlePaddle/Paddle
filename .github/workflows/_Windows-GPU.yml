@@ -55,9 +55,20 @@ jobs:
         run: |
           call %ci_scripts%\config_env.bat
 
-      - name: se
+      - name: Build paddle
+        env:
+          WITH_MKL: "ON"
+          WITH_GPU: "ON"
+          WITH_AVX: "ON"
+          MSVC_STATIC_CRT: "OFF"
+          ON_INFER: "ON"
+          WITH_TENSORRT: "ON"
+          WITH_INFERENCE_API_TEST: "OFF"
+          WIN_UNITTEST_LEVEL: 0
+          CUDA_ARCH_NAME: "Auto"
         run: |
-          echo %aaa%
+          call %ci_scripts%\cmake.bat
+          call %ci_scripts%\build.bat
 
     # - name: Clean up dir
     #   if: always()
