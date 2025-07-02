@@ -175,9 +175,6 @@ class TestSemiAutoParallelShardingStage1:
 
     def test_pure_sharding_multi_mesh_stage_1_with_tensor_fusion(self):
         def run_sharding_test(enable_tensor_fusion):
-            os.environ['FLAGS_enable_tensor_fusion'] = (
-                '1' if enable_tensor_fusion else '0'
-            )
             paddle.distributed.auto_parallel.set_mesh(self._multi_dim_mesh)
             paddle.seed(self._seed)
             model = paddle.nn.Linear(10, 10)
@@ -187,6 +184,8 @@ class TestSemiAutoParallelShardingStage1:
             opt = dist.shard_optimizer(
                 opt, dist.ShardingStage1(sharding_mesh_dim="dp")
             )
+            if enable_tensor_fusion:
+                opt._enable_tensor_fusion()
             model, opt = paddle.amp.decorate(
                 model, optimizers=opt, level='O2', master_grad=True
             )
@@ -207,7 +206,6 @@ class TestSemiAutoParallelShardingStage1:
         self,
     ):
         dist.init_parallel_env()
-        os.environ['FLAGS_enable_tensor_fusion'] = '1'
         paddle.distributed.auto_parallel.set_mesh(self._multi_dim_mesh)
         paddle.seed(self._seed)
         model = paddle.nn.Linear(10, 10)
@@ -220,6 +218,7 @@ class TestSemiAutoParallelShardingStage1:
         opt = dist.shard_optimizer(
             opt, dist.ShardingStage1(sharding_mesh_dim="dp")
         )
+        opt._enable_tensor_fusion()
         model, opt = paddle.amp.decorate(
             model, optimizers=opt, level='O2', master_grad=True
         )
@@ -232,10 +231,6 @@ class TestSemiAutoParallelShardingStage1:
 
     def test_pure_sharding_multi_mesh_stage_1_with_sharding_overlap(self):
         def run_sharding_test(enable_sharding_overlap):
-            os.environ['FLAGS_enable_tensor_fusion'] = '1'
-            os.environ['FLAGS_enable_sharding_overlap'] = (
-                '1' if enable_sharding_overlap else '0'
-            )
             paddle.distributed.auto_parallel.set_mesh(self._multi_dim_mesh)
             paddle.seed(self._seed)
             model = paddle.nn.Linear(10, 10)
@@ -245,6 +240,9 @@ class TestSemiAutoParallelShardingStage1:
             opt = dist.shard_optimizer(
                 opt, dist.ShardingStage1(sharding_mesh_dim="dp")
             )
+            opt._enable_tensor_fusion()
+            if enable_sharding_overlap:
+                opt._enable_sharding_overlap(model)
             model, opt = paddle.amp.decorate(
                 model, optimizers=opt, level='O2', master_grad=True
             )
