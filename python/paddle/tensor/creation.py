@@ -1519,6 +1519,8 @@ def full(
             dtype = "bool"
         elif isinstance(fill_value, (builtins.complex)):
             dtype = "complex128"
+        elif isinstance(fill_value, (int)):
+            dtype = "int64"
         else:
             dtype = paddle.get_default_dtype()
 

@@ -103,6 +103,8 @@ class TestFullAPI(unittest.TestCase):
 
             out_18 = paddle.full(shape=10, fill_value=True)
 
+            out_19 = paddle.full(shape=10, fill_value=1)
+
             exe = base.Executor(place=base.CPUPlace())
             (
                 res_1,
@@ -123,6 +125,7 @@ class TestFullAPI(unittest.TestCase):
                 res_16,
                 res_17,
                 res_18,
+                res_19,
             ) = exe.run(
                 paddle.static.default_main_program(),
                 feed={
@@ -148,6 +151,7 @@ class TestFullAPI(unittest.TestCase):
                     out_16,
                     out_17,
                     out_18,
+                    out_19,
                 ],
             )
 
@@ -207,6 +211,7 @@ class TestFullAPI(unittest.TestCase):
         )
         np.testing.assert_allclose(res_17, np.full([10], 1.1 + 1.1j))
         np.testing.assert_array_equal(res_18, np.full([10], True))
+        np.testing.assert_array_equal(res_19, np.full([10], 1))
         paddle.disable_static()
 
     def test_api_eager(self):
@@ -307,6 +312,9 @@ class TestFullAPI(unittest.TestCase):
             # test without dtype input for bool
             out_21 = paddle.full(shape=[1, 2, 3], fill_value=True)
 
+            # test without dtype input for int
+            out_22 = paddle.full(shape=[1, 2, 3], fill_value=1)
+
             np.testing.assert_array_equal(
                 out_1, np.full([1, 2], 1.1, dtype="float32")
             )
@@ -369,6 +377,7 @@ class TestFullAPI(unittest.TestCase):
             )
             np.testing.assert_allclose(out_20, np.full([1, 2, 3], 1.1 + 1.1j))
             np.testing.assert_array_equal(out_21, np.full([1, 2, 3], True))
+            np.testing.assert_array_equal(out_22, np.full([1, 2, 3], 1))
 
 
 class TestFullOpError(unittest.TestCase):
