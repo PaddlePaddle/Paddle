@@ -2,6 +2,7 @@
 setlocal enabledelayedexpansion
 set work_dir=%cd%
 if not defined cache_dir set cache_dir=%work_dir%\..\cache
+if not exist %cache_dir% mkdir %cache_dir%
 if not exist %cache_dir%\tools (
     cd /d %cache_dir%
     python -m pip install wget
