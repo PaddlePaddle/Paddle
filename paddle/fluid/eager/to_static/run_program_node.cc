@@ -119,12 +119,8 @@ GradNodeRunProgram::operator()(
     VLOG(3) << "hooked_grads[0].size() : " << hooked_grads[0].size();
     ConstructXGradTensors(x_, &x_grad);
     ConstructParamGradTensors(params_, &params_grad);
-    for (auto &i : x_grad) {
-      x_grad_ptr.emplace_back(&i);
-    }
-    for (auto &i : params_grad) {
-      params_grad_ptr.emplace_back(&i);
-    }
+    x_grad_ptr = egr::to_static::GetTensorsPtr(x_grad);
+    params_grad_ptr = egr::to_static::GetTensorsPtr(params_grad);
   }
 
   const auto &out_grad_names =
