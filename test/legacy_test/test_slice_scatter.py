@@ -13,13 +13,12 @@
 # limitations under the License.
 
 import itertools
-import os
 import unittest
 
 import numpy as np
+from op_test import get_places
 
 import paddle
-from paddle.framework import core
 
 paddle.enable_static()
 
@@ -57,18 +56,8 @@ def numpy_ref(_x, value, axes, starts, ends, strides):
 class TestSliceScatterApi(unittest.TestCase):
     def setUp(self):
         np.random.seed(2023)
-
         self.init_shape()
-
-        self.place = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.place.append(paddle.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.place.append(paddle.CUDAPlace(0))
+        self.place = get_places()
 
     def init_np(self):
         self.x_np = np.random.random(self.x_shape).astype(

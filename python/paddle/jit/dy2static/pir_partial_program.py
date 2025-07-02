@@ -55,11 +55,6 @@ prog_logger = TranslatorLogger()
 FAKE_VALUE_NAME = get_fake_value_name()
 
 
-def hash_with_seed(value, seed):
-    result = seed + 0x9E3779B9 + (value << 6) + (value >> 2)
-    return result & ((1 << 64) - 1)
-
-
 def get_value_name(value):
     if is_fake_value(value):
         return FAKE_VALUE_NAME
@@ -730,19 +725,18 @@ class PartialProgramLayer:
 
     @staticmethod
     def run_impl(partial_program_layer, inputs, parameters, outputs, attrs):
+        scope_cache_key = paddle.base.core.calc_scope_cache_key(
+            attrs["program_id"],
+            inputs,
+            attrs["cuda_graph_state"] != CUDAGraphState.DISABLE,
+            attrs["cuda_graph_dispatch_key"],
+        )
         _C_ops.run_program(
             PartialProgramLayer._valid_vars(inputs),
             PartialProgramLayer._valid_vars(parameters),
             PartialProgramLayer._valid_vars(outputs),
             partial_program_layer._create_scope_vec(
-                cache_key=(
-                    PartialProgramLayer._calc_scope_cache_key(
-                        attrs["program_id"],
-                        inputs,
-                        attrs["cuda_graph_state"] != CUDAGraphState.DISABLE,
-                        attrs["cuda_graph_dispatch_key"],
-                    )
-                ),
+                cache_key=scope_cache_key,
                 use_scope_cache=True,
             ),
             attrs,
@@ -834,23 +828,6 @@ class PartialProgramLayer:
         scope = core.Scope()
         cached_scopes.append(scope)
         return scope
-
-    @staticmethod
-    def _calc_input_places_hash(inputs):
-        if not inputs:
-            return 0
-        return paddle.base.libpaddle.calc_place_hash(inputs)
-
-    @staticmethod
-    def _calc_scope_cache_key(
-        program_id, inputs, use_cuda_graph, cuda_graph_dispatch_key
-    ):
-        res = hash_with_seed(
-            program_id, PartialProgramLayer._calc_input_places_hash(inputs)
-        )
-        res = hash_with_seed(res, int(use_cuda_graph))
-        res = hash_with_seed(res, cuda_graph_dispatch_key)
-        return res
 
     # whole
     @switch_to_static_graph

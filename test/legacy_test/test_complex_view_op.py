@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
@@ -19,7 +20,7 @@ from op_test import OpTest
 
 import paddle
 from paddle import static
-from paddle.base import dygraph
+from paddle.base import core, dygraph
 
 paddle.enable_static()
 
@@ -119,6 +120,34 @@ class TestViewAsRealAPI(unittest.TestCase):
         exe.run(sp)
         [out_np] = exe.run(mp, feed={"x": self.x}, fetch_list=[out])
         np.testing.assert_allclose(self.out, out_np, rtol=1e-05)
+
+
+class TestViewAsRealAPI_ZeroSize(unittest.TestCase):
+    def get_places(self):
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(core.CPUPlace())
+        if core.is_compiled_with_cuda():
+            places.append(core.CUDAPlace(0))
+        return places
+
+    def setUp(self):
+        self.x = np.random.randn(10, 0) + 1j * np.random.randn(10, 0)
+        self.out = ref_view_as_real(self.x)
+
+    def test_dygraph(self):
+        for place in self.get_places():
+            with dygraph.guard(place):
+                x_tensor = paddle.to_tensor(self.x)
+                x_tensor.stop_gradient = False
+                out = paddle.as_real(x_tensor)
+                np.testing.assert_allclose(self.out, out.numpy(), rtol=1e-05)
+                out.sum().backward()
+                np.testing.assert_allclose(x_tensor.grad.shape, x_tensor.shape)
 
 
 if __name__ == "__main__":
