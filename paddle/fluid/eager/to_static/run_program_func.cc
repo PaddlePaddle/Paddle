@@ -255,7 +255,7 @@ std::vector<paddle::Tensor> run_program_ad_func(
   auto out = egr::to_static::RunProgramImpl(
       x_tmp, params_tmp, step_scope, require_any_grad, attrs, place_hash_key);
   const auto& out_values =
-      PADDLE_GET_CONST(std::vector<pir::Value>, attrs.at("out_values"));
+      PADDLE_GET_CONST(std::vector<pir::Value>, attrs.at("fo_values"));
   std::vector<egr::AutogradMeta*> p_autograd_outs =
       AttachAutoGradMeta(out, out_values);
   if (!is_test && require_any_grad) {
