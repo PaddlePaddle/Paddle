@@ -1169,18 +1169,18 @@ class TestIndexPutPrim(unittest.TestCase):
                     # static dynamic shape
                     if accumulate:
 
-                        def func_acc_false(x, indices, v, dy, accumulate=True):
+                        def compute_dx_dv(x, indices, v, dy, accumulate=True):
                             y = paddle.index_put(x, indices, v, True)
                             return paddle.grad(y, [x, v], dy, create_graph=True)
 
                     else:
 
-                        def func_acc_false(x, indices, v, dy, accumulate=False):
+                        def compute_dx_dv(x, indices, v, dy, accumulate=False):
                             y = paddle.index_put(x, indices, v, False)
                             return paddle.grad(y, [x, v], dy, create_graph=True)
 
                     st_func1 = paddle.jit.to_static(
-                        func_acc_false,
+                        compute_dx_dv,
                         input_spec=[
                             paddle.static.InputSpec(
                                 shape=[-1, -1], dtype='float32'
@@ -1204,29 +1204,29 @@ class TestIndexPutPrim(unittest.TestCase):
 
                     # static fixed shape
                     st_func2 = paddle.jit.to_static(
-                        func_acc_false,
+                        compute_dx_dv,
                         full_graph=True,
                     )
                     dx_2, dv_2 = st_func2(x_pd, indices_pd, value_pd, dout_pd)
 
                     np.testing.assert_allclose(
-                        dx_ref.numpy(),
                         dx_1.numpy(),
-                        err_msg=f"accumulate={accumulate}\nx_np:\n{x_np}\nindices_np:\n{indices_np}\nvalue_np:\n{value_np}\nout_np:{out_pd.numpy()}\n",
-                    )
-                    np.testing.assert_allclose(
-                        dv_ref.numpy(),
-                        dv_1.numpy(),
-                        err_msg=f"accumulate={accumulate}\nx_np:\n{x_np}\nindices_np:\n{indices_np}\nvalue_np:\n{value_np}\nout_np:{out_pd.numpy()}\n",
-                    )
-                    np.testing.assert_allclose(
                         dx_ref.numpy(),
-                        dx_2.numpy(),
                         err_msg=f"accumulate={accumulate}\nx_np:\n{x_np}\nindices_np:\n{indices_np}\nvalue_np:\n{value_np}\nout_np:{out_pd.numpy()}\n",
                     )
                     np.testing.assert_allclose(
+                        dv_1.numpy(),
                         dv_ref.numpy(),
+                        err_msg=f"accumulate={accumulate}\nx_np:\n{x_np}\nindices_np:\n{indices_np}\nvalue_np:\n{value_np}\nout_np:{out_pd.numpy()}\n",
+                    )
+                    np.testing.assert_allclose(
+                        dx_2.numpy(),
+                        dx_ref.numpy(),
+                        err_msg=f"accumulate={accumulate}\nx_np:\n{x_np}\nindices_np:\n{indices_np}\nvalue_np:\n{value_np}\nout_np:{out_pd.numpy()}\n",
+                    )
+                    np.testing.assert_allclose(
                         dv_2.numpy(),
+                        dv_ref.numpy(),
                         err_msg=f"accumulate={accumulate}\nx_np:\n{x_np}\nindices_np:\n{indices_np}\nvalue_np:\n{value_np}\nout_np:{out_pd.numpy()}\n",
                     )
         finally:
