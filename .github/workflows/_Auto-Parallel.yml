@@ -81,7 +81,7 @@ jobs:
           echo "Extracting build.tar.gz"
           tar --use-compress-program="pzstd" -xpf build.tar.gz
           mv paddle Paddle
-          rm -f uild.tar.gz
+          rm -f build.tar.gz
           '
 
       - name: Download PaddleTest
