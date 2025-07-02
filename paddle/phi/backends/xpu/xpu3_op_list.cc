@@ -1908,6 +1908,8 @@ XPUOpMap& get_kl3_ops() {
       {"imag_grad", XPUKernelSet({phi::DataType::COMPLEX64})},
       {"complex", XPUKernelSet({phi::DataType::FLOAT32})},
       {"complex_grad", XPUKernelSet({phi::DataType::FLOAT32})},
+      {"as_complex", XPUKernelSet({phi::DataType::FLOAT32})},
+      {"as_real", XPUKernelSet({phi::DataType::COMPLEX64})},
       {"fft_c2c", XPUKernelSet({phi::DataType::COMPLEX64})},
       {"fft_c2r", XPUKernelSet({phi::DataType::COMPLEX64})},
       {"fft_r2c", XPUKernelSet({phi::DataType::FLOAT32})},

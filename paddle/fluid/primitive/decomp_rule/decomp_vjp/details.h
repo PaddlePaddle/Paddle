@@ -504,6 +504,80 @@ void scatter_grad(const Tensor& index,
 }
 
 template <typename T>
+void index_add_grad(const Tensor& index,
+                    const Tensor& add_value,
+                    const Tensor& out_grad,
+                    int axis,
+                    Tensor* x_grad,
+                    Tensor* add_value_grad) {
+  if (x_grad) {
+    by_pass<T>(out_grad, x_grad);
+  }
+
+  if (add_value_grad) {
+    if (axis < 0) {
+      axis += out_grad.dims().size();
+    }
+
+    if (has_dynamic_shape(index.shape()) ||
+        has_dynamic_shape(add_value.shape()) ||
+        has_dynamic_shape(out_grad.shape())) {
+      auto out_grad_shape = shape64<T>(out_grad);
+      auto index_shape = shape64<T>(index);
+      std::vector<Tensor> index_expand_shape;
+      std::vector<Tensor> index_unsqueeze_shape;
+      for (int i = 0; i < out_grad.dims().size(); ++i) {
+        if (i != axis) {
+          index_expand_shape.push_back(get_slice<T>(out_grad_shape, i));
+          index_unsqueeze_shape.push_back(
+              full<T>({1}, 1, DataType::INT64, out_grad.place()));
+        } else {
+          index_expand_shape.push_back(get_slice<T>(index_shape, 0));
+          index_unsqueeze_shape.push_back(get_slice<T>(index_shape, 0));
+        }
+      }
+      auto index_expand_shape_tensor = concat<T>(index_expand_shape);
+      auto index_unsqueeze_shape_tensor = concat<T>(index_unsqueeze_shape);
+
+      // align ndim first [N] --unsqueeze--> [1,..,N,..,1]
+      auto index_expand =
+          backend::reshape<T>(index, index_unsqueeze_shape_tensor);
+      // then expand [1,..,N,..,1] --expand--> [*,..,N,..,*]
+      index_expand =
+          backend::expand<T>(index_expand, index_expand_shape_tensor);
+
+      auto add_value_grad_tmp =
+          take_along_axis<T>(out_grad, index_expand, axis);
+      set_output<T>(add_value_grad_tmp, add_value_grad);
+
+    } else {
+      auto out_grad_shape = out_grad.shape();
+      auto index_shape = index.shape();
+      auto index_expand_shape = std::vector<int64_t>(out_grad_shape.size(), 1);
+      auto index_unsqueeze_shape =
+          std::vector<int64_t>(out_grad_shape.size(), 1);
+      for (int i = 0; i < out_grad_shape.size(); ++i) {
+        if (i != axis) {
+          index_expand_shape.at(i) = out_grad_shape.at(i);
+        } else {
+          index_expand_shape.at(i) = index_shape.at(0);
+        }
+      }
+      index_unsqueeze_shape[axis] = index_shape.at(0);
+
+      // align ndim first [N] --unsqueeze--> [1,..,N,..,1]
+      auto index_expand = reshape<T>(index, index_unsqueeze_shape);
+      // then expand [1,..,N,..,1] --expand--> [*,..,N,..,*]
+      index_expand = expand<T>(index_expand, index_expand_shape);
+
+      auto add_value_grad_tmp =
+          take_along_axis<T>(out_grad, index_expand, axis);
+      set_output<T>(add_value_grad_tmp, add_value_grad);
+    }
+  }
+}
+
+template <typename T>
 void scatter_nd_add_grad(const Tensor& index,
                          const Tensor& updates,
                          const Tensor& out_grad,

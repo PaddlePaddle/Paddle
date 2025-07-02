@@ -255,6 +255,27 @@ DDim DDim::reshape(std::vector<int>& shape) const {
   return common::make_ddim(shape);
 }
 
+DDim DDim::reshape(std::vector<int64_t>& shape) const {
+  const DDim& in_dims = *this;
+
+  for (int i = 0; i < static_cast<int>(shape.size()); ++i) {
+    if (shape[i] == 0) {
+      shape[i] = static_cast<int64_t>(in_dims.at(i));
+    }
+  }
+
+  // Dim marked as "-1" must be inferred
+  auto it = std::find(shape.begin(), shape.end(), -1);
+  if (it != shape.end()) {
+    int index = static_cast<int>(std::distance(shape.begin(), it));
+    int64_t reshape_out_product =
+        std::accumulate(shape.begin(), shape.end(), -1, std::multiplies<>());
+    shape[index] = static_cast<int64_t>(product(in_dims)) / reshape_out_product;
+  }
+
+  return common::make_ddim(shape);
+}
+
 DDim DDim::transpose(const std::vector<int>& axis) const {
   const DDim& in_dims = *this;
 

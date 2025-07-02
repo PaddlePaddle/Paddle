@@ -98,7 +98,7 @@ function distribute_test() {
     cd PaddleNLP
     sed -i '/lac/d' scripts/regression/requirements_ci.txt
 
-    echo "::group::Install dependencies"
+    echo "::group::Install paddlenlp dependencies"
     pip install -r requirements.txt
     pip install -r scripts/regression/requirements_ci.txt
     pip install -r ./csrc/requirements.txt
@@ -141,9 +141,11 @@ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/lib64/:/usr/local/lib/
 PATH=/usr/local/bin:${PATH}
 ln -sf $(which python3.10) /usr/local/bin/python
 ln -sf $(which pip3.10) /usr/local/bin/pip
-echo "::group::Install dependencies"
+echo "::group::Install paddle dependencies"
 pip config set global.cache-dir "/root/.cache/pip"
 pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
+# node(swgu98): Switching to the distribute2 machine will install 1.18, which is inconsistent with the previous behavior
+pip install onnx==1.17.0
 pip install -r "${work_dir}/python/requirements.txt"
 pip install -r "${work_dir}/python/unittest_py/requirements.txt"
 pip install ${work_dir}/dist/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl

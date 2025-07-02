@@ -68,7 +68,7 @@ void ShardIndexKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_GT(nshards,
                     0,
                     common::errors::InvalidArgument(
-                        "The value 'nshard' for Op(shard_index) must be "
+                        "The value 'nshards' for Op(shard_index) must be "
                         "greater than 0, but the value given is %d.",
                         nshards));
   PADDLE_ENFORCE_GE(
@@ -92,6 +92,7 @@ void ShardIndexKernel(const Context& dev_ctx,
   auto* in_data = in.data<T>();
   auto* out_data = dev_ctx.template Alloc<T>(out);
   int64_t numel = in.numel();
+  if (numel == 0) return;
   auto stream = dev_ctx.stream();
   ShardIndexInner<T>
       <<<(numel + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS,

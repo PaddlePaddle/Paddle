@@ -224,8 +224,7 @@ jobs:
         run: |
           set +e
           docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'
-          docker stop ${{ env.container_name }}
-          docker rm ${{ env.container_name }}
+          docker rm -f ${{ env.container_name }}
 
   test:
     name: Test
@@ -322,9 +321,6 @@ jobs:
           tar --use-compress-program="pzstd" -xf Paddle.tar.gz --strip-components=1
           rm Paddle.tar.gz
           git checkout test
-          echo "Pull upstream $BRANCH"
-          source ${{ github.workspace }}/../../../proxy
-          bash ci/git_pull.sh $BRANCH
           '
 
       - name: Test
@@ -339,5 +335,4 @@ jobs:
         run: |
           set +e
           docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'
-          docker stop ${{ env.container_name }}
-          docker rm ${{ env.container_name }}
+          docker rm -f ${{ env.container_name }}
