@@ -397,22 +397,22 @@ paddle::Tensor CreateTensorFromValue(const pir::Value &value) {
     auto dtype = paddle::dialect::TransToPhiDataType(
         value_type.dyn_cast<paddle::dialect::DenseTensorType>().dtype());
 
-    // TODO(SigureMo): Remove this
-    if (ddims.size() == 1 && ddims[0] == 0) {
-      std::shared_ptr<phi::Allocation> allocation_ptr = nullptr;
-      dense_tensor = std::make_shared<phi::DenseTensor>(
-          allocation_ptr, phi::DenseTensorMeta(dtype, ddims));
-    } else {
-      // TODO(dev): we need enhance check for ddims.
-      dense_tensor = std::make_shared<phi::DenseTensor>(
-          std::make_shared<phi::Allocation>(),
-          phi::DenseTensorMeta(dtype, ddims));
-    }
+    // // TODO(SigureMo): Remove this
+    // if (ddims.size() == 1 && ddims[0] == 0) {
+    std::shared_ptr<phi::Allocation> allocation_ptr = nullptr;
+    dense_tensor = std::make_shared<phi::DenseTensor>(
+        allocation_ptr, phi::DenseTensorMeta(dtype, ddims));
+    // } else {
+    //   // TODO(dev): we need enhance check for ddims.
+    //   dense_tensor = std::make_shared<phi::DenseTensor>(
+    //       std::make_shared<phi::Allocation>(),
+    //       phi::DenseTensorMeta(dtype, ddims));
+    // }
 
     if (value_type.isa<paddle::dialect::DistDenseTensorType>()) {
-      paddle::dialect::DistDenseTensorType value_type =
+      paddle::dialect::DistDenseTensorType dist_value_type =
           value_type.dyn_cast<paddle::dialect::DistDenseTensorType>();
-      auto pir_attr = value_type.tensor_dist_attr();
+      auto pir_attr = dist_value_type.tensor_dist_attr();
       auto mesh = pir_attr.process_mesh_attr().process_mesh();
       auto placements = pir_attr.placements();
       tensor.set_impl(std::make_shared<phi::distributed::DistTensor>(
