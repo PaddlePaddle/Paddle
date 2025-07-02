@@ -1,4 +1,4 @@
-# A image for building paddle binaries
+# A1 image for building paddle binaries
 # Use cuda devel base image for both cpu and gpu environment
 # When you modify it, please be aware of cudnn-runtime version
 FROM <baseimg>
