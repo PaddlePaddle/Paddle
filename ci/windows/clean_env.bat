@@ -24,4 +24,4 @@ powershell -Command "Stop-Process -Name 'cvtres' -Force 2>$null"
 powershell -Command "Stop-Process -Name 'rc' -Force 2>$null"
 powershell -Command "Stop-Process -Name 'cl' -Force 2>$null"
 powershell -Command "Stop-Process -Name 'lib' -Force 2>$null"
-powershell -Command "Stop-Process -Name 'python' -Force 2>$null"
+powershell -Command "Stop-Process -Name 'python' -Force 2>$null" || ver >nul
