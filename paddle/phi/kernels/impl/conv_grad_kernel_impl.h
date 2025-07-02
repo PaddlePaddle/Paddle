@@ -15,12 +15,12 @@
 #pragma once
 
 #include "paddle/phi/kernels/cpu/conv_util.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/batch_norm_utils.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/im2col.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/vol2col.h"
-
 namespace phi {
 
 template <typename T, typename Context>
@@ -45,6 +45,19 @@ void ConvGradKernel(const Context& dev_ctx,
   std::vector<int> dilations = dilations_t;
 
   DenseTensor filter = filter_t;
+  // 0-size
+  if (input.numel() == 0) {
+    if (input_grad) dev_ctx.template Alloc<T>(input_grad);
+    if (filter_grad) {
+      phi::Full<T, Context>(
+          dev_ctx,
+          phi::IntArray(common::vectorize(filter_grad->dims())),
+          0,
+          filter_grad);
+    }
+    return;
+  }
+
   const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
 
   DenseTensor transformed_input(input.type());

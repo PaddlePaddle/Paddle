@@ -57,6 +57,7 @@ void DiagGradKernel(const Context& dev_ctx,
                     int offset,
                     DenseTensor* x_grad) {
   T* dx_data = dev_ctx.template Alloc<T>(x_grad);
+  if (x_grad && x_grad->numel() == 0) return;
   auto* dout_data = out_grad.data<T>();
   auto dx_dims = x_grad->dims();
   auto dout_dims = out_grad.dims();
