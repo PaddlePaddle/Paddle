@@ -1886,26 +1886,23 @@ class _ShardOptimizer(Optimizer):
 
             # 2. Prioritize setting placement[sharding_axis] as shard (usually shard(0)), otherwise set as replicate.
             dim = get_first_can_shard_dim(tensor_shape, shard_dims_set)
+            new_placements[self._sharding_axis] = dist.Replicate()
             if dim != -1:
                 shard_dims_set.add(dim)
                 new_placements[self._sharding_axis] = dist.Shard(dim)
-            else:
-                new_placements[self._sharding_axis] = dist.Replicate()
 
             for mesh_axis, placement in enumerate(grad.placements):
                 if mesh_axis == self._sharding_axis:
                     continue
                 # 3. Keep shard states in placements unchanged.
-                if placement.is_shard():
-                    continue
-                dim = get_first_can_shard_dim(tensor_shape, shard_dims_set)
-                if dim != -1:
-                    # 4. Turn other placements into shard state if possible.
-                    shard_dims_set.add(dim)
-                    new_placements[mesh_axis] = dist.Shard(dim)
-                else:
-                    # 5. When all tensor dims are in shard state, set remaining placements to replicate.
+                if not placement.is_shard():
+                    dim = get_first_can_shard_dim(tensor_shape, shard_dims_set)
+                    # 4. Default all tensor dims are in shard state, set remaining placements to replicate.
                     new_placements[mesh_axis] = dist.Replicate()
+                    if dim != -1:
+                        # 5. Turn other placements into shard state if possible.
+                        shard_dims_set.add(dim)
+                        new_placements[mesh_axis] = dist.Shard(dim)
 
             if grad.placements != new_placements:
                 # 6. Add reduce_scatter comms via reshard API.
