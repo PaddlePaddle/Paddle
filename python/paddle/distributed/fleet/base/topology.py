@@ -419,7 +419,6 @@ class HybridCommunicateGroup:
                 ),
             )
 
-
         # create p2p group
         self.is_first_stage = self.stage_id == 0
         self.is_last_stage = self.stage_id == (self._pp_degree - 1)
