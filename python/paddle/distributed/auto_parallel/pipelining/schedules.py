@@ -343,12 +343,6 @@ class PipelineScheduleSingle(_PipelineSchedule):
         self._stage.has_backward = self._has_backward
         self._stage_initialized = False
 
-        # for idx, stage in enumerate(self._stage):
-        #     print("xxx idx stage: ", idx)
-        for param in self._stage.get_stage_parameters():
-            print("    xxx param : ", param.name, param.shape)
-                
-
     def _initialize_stage(self, args, kwargs, labels):
         if self._stage.is_first:
             next_stage_args = self._stage._prepare_forward_infra(
@@ -392,52 +386,11 @@ class PipelineScheduleSingle(_PipelineSchedule):
         # Run microbatches
         self._step_microbatches(args_split, kwargs_split, targets_split, losses)
 
-
         # Return merged results per original format
         if self._stage.is_last:
             return self._merge_outputs(self._stage.output_chunks)
         else:
             return None
-
-        
-    def sync_shared_params(self):
-        print("xxx enter sync_shared_params")
-        stage = self._stage
-        shared_map = stage.get_shared_map()
-        cur_rank = stage.group_rank
-        # print("xxx shared_map: ", shared_map)
-        
-        if len(shared_map) == 0 :
-            return
-        for a_map in shared_map.values():
-            if a_map["src_rank"] != cur_rank:
-                continue
-            peers = a_map["peers"]
-            ranks = sorted(peers + [cur_rank])
-            # find param
-            param_name = a_map["param_name"]
-            sync_param = None
-            for param in stage.get_stage_parameters():
-                if param.name != param_name:
-                    continue
-                # sync_param = param.grad
-                sync_param = param._local_value()
-                break
-            # print("xxx sync_param: ", sync_param)
-            assert sync_param is not None
-
-            # build comm group
-            # group = paddle.distributed.new_group(ranks=ranks)
-            group = a_map["group"]
-            # print("xxx group: ", group)
-            # allreduce params
-            with paddle.no_grad():
-                paddle.distributed.all_reduce(
-                    sync_param,
-                    op=paddle.distributed.ReduceOp.SUM,
-                    group=group
-                )
-            print("xxx allreduce OK")
 
 
 def _batch_p2p(p2p_ops: list[dist.P2POp], desc: str | None = None):
@@ -489,7 +442,6 @@ class ScheduleFThenB(PipelineScheduleSingle):
         target_mbs: list | None = None,
         losses: list | None = None,
     ):
-        print("xxx ScheduleFThenB")
         """
         Run one iteration of the pipeline schedule with list of microbatches.
         Will go through all the microbatches according to the FThenB schedule.
@@ -570,6 +522,9 @@ class ScheduleFThenB(PipelineScheduleSingle):
         for work in bwd_sends_to_wait:
             work.wait()
 
+        # Synchronize the gradients of shared parameters.
+        self._stage.sync_shared_params()
+
 
 class Schedule1F1B(PipelineScheduleSingle):
     """
@@ -584,7 +539,6 @@ class Schedule1F1B(PipelineScheduleSingle):
         target_mbs: list | None = None,
         losses: list | None = None,
     ):
-        print("xxx Schedule1F1B")
         """
         Run one iteration of the pipeline schedule with list of microbatches.
         Will go through all the microbatches according to the 1F1B schedule.
@@ -601,8 +555,6 @@ class Schedule1F1B(PipelineScheduleSingle):
                 self._initialize_stage(arg_mbs[0], kwarg_mbs[0], target_mbs[0])
             else:
                 self._initialize_stage(arg_mbs[0], kwarg_mbs[0], None)
-
-        
 
         # Last stage has 1 warmup, second-to-last 2 warmups, ...
         # first stage `num_stages` warmups
@@ -729,10 +681,11 @@ class Schedule1F1B(PipelineScheduleSingle):
         if send_work:
             send_work.wait()
 
-        self.sync_shared_params()
-
         # Return losses if there is a container passed in
         self._update_losses(self._stage, losses)
+
+        # Synchronize the gradients of shared parameters.
+        self._stage.sync_shared_params()
 
 
 class PipelineScheduleMulti(_PipelineSchedule):
@@ -771,12 +724,6 @@ class PipelineScheduleMulti(_PipelineSchedule):
                 stage.stage_index_to_group_rank = stage_index_to_group_rank
         self.stage_index_to_group_rank = stages[0].stage_index_to_group_rank
 
-        
-        # for idx, stage in enumerate(self._stages):
-        #     print("xxx idx stage: ", idx)
-        #     for param in stage.get_stage_parameters():
-        #         print("    xxx param : ", param.name, param.shape)
-
         # Set the same has_backward flag for stage object
         for stage in self._stages:
             stage.has_backward = self._has_backward
@@ -796,8 +743,6 @@ class PipelineScheduleMulti(_PipelineSchedule):
             )
 
     def _initialize_stages(self, args: tuple[Any, ...], kwargs, labels):
-        # for arg in args: # not output
-        #     print("xxx arg: ",arg.name)
         # may be 'none' value (if this stage sends its output shapes to the next stage via P2P)
         # or real value (if this stage and next stage are on the same device)
         next_stage_args: tuple[Any, ...] = ()
@@ -867,7 +812,6 @@ class PipelineScheduleMulti(_PipelineSchedule):
         target_mbs: list | None = None,
         losses: list | None = None,
     ):
-        print("xxx PipelineScheduleMulti")
         """
         Operate on the microbatches for looped schedules (multiple stages on each rank).
         """
@@ -1041,36 +985,9 @@ class PipelineScheduleMulti(_PipelineSchedule):
         # Return losses if there is a container passed in
         self._update_losses(self._stages, losses)
 
-    # def sync_shared_params(self):
-    #     for stage in self._stages:
-    #         if not stage.need_sync_params():
-    #             continue
-    #         shared_map = self.get_shared_map()
-    #         cur_rank = stage.group_rank
-    #         if shared_map["src_rank"] != cur_rank:
-    #             continue
-    #         peers = shared_map["peers"]
-    #         ranks = sorted(peer + [cur_rank])
-    #         # find param
-    #         param_name = shared_map["param_name"]
-    #         sync_param = None
-    #         for param in stage.get_stage_parameters():
-    #             if param.name != param_name:
-    #                 continue
-    #             sync_param = param
-    #             break
-        
-    #         assert sync_param is not None
-
-    #         # build comm group
-    #         group = paddle.distributed.new_group(ranks=ranks)
-    #         # allreduce params
-    #         with paddle.no_grad():
-    #             paddle.distributed.all_reduce(
-    #                 sync_param,
-    #                 group
-    #             )
-    #         print("xxx allreduce OK")
+        # Synchronize the gradients of shared parameters.
+        for stage in self._stages:
+            stage.sync_shared_params()
 
 
 def _get_1f1b_rank_ops(
