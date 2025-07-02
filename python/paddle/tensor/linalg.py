@@ -3735,8 +3735,8 @@ def lu_unpack(
             Tensor(shape=[2], dtype=int32, place=Place(cpu), stop_gradient=True,
             [3, 3])
             >>> print(info)
-            Tensor(shape=[1], dtype=int32, place=Place(cpu), stop_gradient=True,
-            [0])
+            Tensor(shape=[], dtype=int32, place=Place(cpu), stop_gradient=True,
+            0)
 
             >>> P,L,U = paddle.linalg.lu_unpack(lu,p)
 
