@@ -3687,7 +3687,7 @@ def lu_unpack(
 ) -> tuple[Tensor, Tensor, Tensor]:
     r"""
     Unpack L U and P to single matrix tensor .
-    unpack L and U matrix from LU, unpack permutation matrix P from Pivtos .
+    unpack L and U matrix from LU, unpack permutation matrix P from Pivots .
 
     P mat can be get by pivots:
 
@@ -3705,7 +3705,7 @@ def lu_unpack(
 
         unpack_ludata (bool, optional): whether to unpack L and U from x. Default: True.
 
-        unpack_pivots (bool, optional): whether to unpack permutation matrix P from Pivtos. Default: True.
+        unpack_pivots (bool, optional): whether to unpack permutation matrix P from Pivots. Default: True.
 
         name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
@@ -3802,7 +3802,7 @@ def eig(x: Tensor, name: str | None = None) -> tuple[Tensor, Tensor]:
 
     Args:
         x (Tensor): A tensor with shape math:`[*, N, N]`, The data type of the x should be one of ``float32``,
-            ``float64``, ``compplex64`` or ``complex128``.
+            ``float64``, ``complex64`` or ``complex128``.
         name (str|None, optional): The default value is `None`. Normally there is no need for user to set
             this property. For more information, please refer to :ref:`api_guide_Name`.
 
