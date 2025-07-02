@@ -19,6 +19,7 @@ env:
   ci_scripts: /paddle/ci
   BRANCH: ${{ github.event.pull_request.base.ref }}
   CI_name: ce-cinn-framework
+  CFS_DIR: /home/data/cfs
   no_proxy: "bcebos.com,apiin.im.baidu.com,gitee.com,aliyun.com,.baidu.com,.tuna.tsinghua.edu.cn"
 
 defaults:
@@ -60,6 +61,7 @@ jobs:
             -e CI_name \
             -e CACHE_DIR \
             -e GITHUB_API_TOKEN \
+            -e CFS_DIR \
             -w /paddle --network host ${docker_image}
 
       - name: Download Paddle and PaddleTest
@@ -68,8 +70,8 @@ jobs:
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           rm -rf * .[^.]*
-          echo "Downloading build.tar.gz"
-          wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/build/${PR_ID}/${COMMIT_ID}/build.tar.gz --no-check-certificate
+          echo "Downloading build.tar.gz from cfs"
+          cp ${CFS_DIR}/build_bos/${PR_ID}/${COMMIT_ID}/build.tar.gz .
           echo "Extracting build.tar.gz"
           git config --global --add safe.directory ${work_dir}
           tar --use-compress-program="pzstd -1" -xpf build.tar.gz --strip-components=1

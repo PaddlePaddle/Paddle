@@ -2164,6 +2164,12 @@
   no_need_buffer : x, value
   backward: masked_fill_double_grad
 
+- backward_op : masked_select_double_grad
+  forward: masked_select_grad (Tensor x, Tensor mask, Tensor grad_out) -> Tensor(grad_x)
+  args : (Tensor mask, Tensor grad_x_grad)
+  output : Tensor(grad_out_grad)
+  invoke : masked_select(grad_x_grad, mask)
+
 - backward_op : masked_select_grad
   forward : masked_select (Tensor x, Tensor mask) -> Tensor(out)
   args : (Tensor x, Tensor mask, Tensor out_grad)
@@ -2175,6 +2181,7 @@
     func : masked_select_grad
     data_type : x
   no_need_buffer : x
+  backward: masked_select_double_grad
 
 - backward_op : match_matrix_tensor_grad
   forward: match_matrix_tensor(Tensor x, Tensor y, Tensor w, int dim_t = 1) -> Tensor (out), Tensor (tmp)
