@@ -1191,6 +1191,7 @@ class TestIndexPutPrim(unittest.TestCase):
                             ),
                         ],
                         full_graph=True,
+                        backend=None,
                     )
                     dx_1, dv_1 = st_func1(x_pd, indices_pd, value_pd, dout_pd)
 
@@ -1198,6 +1199,7 @@ class TestIndexPutPrim(unittest.TestCase):
                     st_func2 = paddle.jit.to_static(
                         compute_dx_dv,
                         full_graph=True,
+                        backend=None,
                     )
                     dx_2, dv_2 = st_func2(x_pd, indices_pd, value_pd, dout_pd)
 
