@@ -128,6 +128,7 @@
   infer_meta :
     func : UnchangedMultiInferMeta
     param : [x_shape]
+    spmd_rule : EinsumGradInferSpmd
   kernel :
     func : einsum_grad
 
