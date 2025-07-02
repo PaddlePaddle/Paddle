@@ -215,15 +215,15 @@ class CinnJitInstruction::FnPtrImpl {
     PADDLE_ENFORCE_EQ(
         first.size(),
         second.size(),
-        phi::errors::PreconditionNotMet("The rank of dim MUST be same. "
-                                        "But get [%d] and [%d]",
-                                        first.size(),
-                                        second.size()));
+        common::errors::PreconditionNotMet("The rank of dim MUST be same. "
+                                           "But get [%d] and [%d]",
+                                           first.size(),
+                                           second.size()));
     for (size_t i = 0; i < first.size(); ++i) {
       if (first[i] > 0) {
         PADDLE_ENFORCE_EQ(first[i],
                           second[i],
-                          phi::errors::PreconditionNotMet(
+                          common::errors::PreconditionNotMet(
                               "Dim MUST be equal"
                               ", but Get first[%d] is [%d], second[%d] is[%d]",
                               i,
@@ -237,13 +237,13 @@ class CinnJitInstruction::FnPtrImpl {
   void CheckDimGTZero(const DDim& dim, const std::string& kernel_name) {
     VLOG(3) << "Start Check that Dims is greater than zero in jit instruction.";
     for (int i = 0; i < dim.size(); ++i) {
-      PADDLE_ENFORCE_EQ(
-          dim.at(i) >= 0,
-          true,
-          phi::errors::PreconditionNotMet("The dim of tensor MUST >= 0. "
-                                          "Jit Kernel name: %s. Tensor dim: %s",
-                                          kernel_name,
-                                          dim.to_str()));
+      PADDLE_ENFORCE_EQ(dim.at(i) >= 0,
+                        true,
+                        common::errors::PreconditionNotMet(
+                            "The dim of tensor MUST >= 0. "
+                            "Jit Kernel name: %s. Tensor dim: %s",
+                            kernel_name,
+                            dim.to_str()));
     }
   }
 
@@ -294,7 +294,7 @@ CinnJitInstruction::CinnJitInstruction(
                  result.type().isa<paddle::dialect::DenseTensorType>();
     PADDLE_ENFORCE_EQ(check,
                       true,
-                      phi::errors::PreconditionNotMet(
+                      common::errors::PreconditionNotMet(
                           "cinn jit instruction only support DenseTensorType"));
     auto var_name = value_exec_info->GetVarName(result);
 

@@ -889,7 +889,7 @@ def conv1d_transpose(
            None by default.
 
     Returns:
-        A  tensor representing the result of 1-D transpose convolution, whose
+        A tensor representing the result of 1-D transpose convolution, whose
         data type is the same with input. And its shape is (num_batches, channels, length)
         when data_format is `"NCL"` and (num_batches, length, channels) when data_format is
         `"NLC"`.

@@ -5580,7 +5580,7 @@ def histogramdd(
 
     Examples:
         .. code-block:: python
-            :name: exampl
+            :name: example
 
             >>> import paddle
             >>> x = paddle.to_tensor([[0., 1.], [1., 0.], [2.,0.], [2., 2.]])

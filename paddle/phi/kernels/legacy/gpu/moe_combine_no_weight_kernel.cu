@@ -97,7 +97,7 @@ void moe_combine_no_weight_fwd(const T* x,
     CALL_KERNEL(15);
     CALL_KERNEL(16);
     default:
-      PADDLE_THROW(phi::errors::InvalidArgument("Invalid k value."));
+      PADDLE_THROW(common::errors::InvalidArgument("Invalid k value."));
       break;
   }
 #undef CALL_KERNEL
