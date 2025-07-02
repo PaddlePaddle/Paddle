@@ -96,7 +96,6 @@ jobs:
           cd PaddleNLP
           git pull
           git submodule update --init --recursive --force
-          echo hh
           python -m pip install bce-python-sdk==0.8.74
           '
 
