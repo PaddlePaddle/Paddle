@@ -720,10 +720,6 @@ void RunProgramGradImpl(
       std::shared_ptr<::pir::Program>, attrs.at("backward_program"));
 
   // Get All needed names
-  const auto &input_names =
-      PADDLE_GET_CONST(std::vector<std::string>, attrs.at("bx_names"));
-  const auto &parameter_names =
-      PADDLE_GET_CONST(std::vector<std::string>, attrs.at("bp_names"));
   const auto &output_grad_names =
       PADDLE_GET_CONST(std::vector<std::string>, attrs.at("bo_g_names"));
   const auto &x_grad_names =
