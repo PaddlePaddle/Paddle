@@ -3170,7 +3170,7 @@ def svd_lowrank(
     m, n = x.shape[-2:]
     if q is None:
         q = min(6, m, n)
-    elif not (q >= 0 and q <= min(m, n)):
+    elif min(m, n) != 0 and not (q >= 0 and q <= min(m, n)):
         raise ValueError(
             f'q(={q}) must be non-negative integer'
             f' and not greater than min(m, n)={min(m, n)}'
@@ -3194,7 +3194,8 @@ def svd_lowrank(
         else:
             B_t = paddle.matmul(x, Q_c) - paddle.matmul(M, Q_c)
         assert B_t.shape[-2] == m, (B_t.shape, m)
-        assert B_t.shape[-1] == q, (B_t.shape, q)
+        if B_t.shape[-1] != 0:
+            assert B_t.shape[-1] == q, (B_t.shape, q)
         assert B_t.shape[-1] <= B_t.shape[-2], B_t.shape
         U, S, Vh = paddle.linalg.svd(B_t, full_matrices=False)
         V = _transjugate(Vh)
@@ -3207,7 +3208,8 @@ def svd_lowrank(
         else:
             B = paddle.matmul(A_t, Q_c) - paddle.matmul(M_t, Q_c)
         B_t = _transpose(B)
-        assert B_t.shape[-2] == q, (B_t.shape, q)
+        if B_t.shape[-2] != 0:
+            assert B_t.shape[-2] == q, (B_t.shape, q)
         assert B_t.shape[-1] == n, (B_t.shape, n)
         assert B_t.shape[-1] <= B_t.shape[-2], B_t.shape
         U, S, Vh = paddle.linalg.svd(B_t, full_matrices=False)

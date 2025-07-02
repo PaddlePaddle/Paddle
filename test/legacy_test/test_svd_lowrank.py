@@ -235,5 +235,28 @@ class TestStaticSvdLowrankAPI(unittest.TestCase):
                             )
 
 
+class TestSvdLowRankAPI_ZeroSize(unittest.TestCase):
+    def generate_input(self):
+        self._input_shape = (1, 4, 0)
+        self._input_data = np.random.random(self._input_shape).astype("float64")
+
+    def generate_output(self):
+        self._output_data = [
+            np.random.random((1, 4, 0)).astype("float64"),
+            np.random.random((1, 0)).astype("float64"),
+            np.random.random((1, 0, 0)).astype("float64"),
+        ]
+
+    def test_dygraph_api(self):
+        self.generate_input()
+        self.generate_output()
+        x = paddle.to_tensor(self._input_data)
+        x.stop_gradient = False
+        out = paddle.linalg.svd_lowrank(x, q=4)
+        np.testing.assert_allclose(out[0].numpy(), self._output_data[0])
+        np.testing.assert_allclose(out[1].numpy(), self._output_data[1])
+        np.testing.assert_allclose(out[2].numpy(), self._output_data[2])
+
+
 if __name__ == "__main__":
     unittest.main()
