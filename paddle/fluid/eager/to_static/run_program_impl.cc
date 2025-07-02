@@ -22,6 +22,7 @@
 #include "paddle/fluid/framework/tensor_ref_array.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/ir_adaptor/translator/program_translator.h"
+#include "paddle/fluid/pir/dialect/distributed/ir/dist_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/transforms/cuda_graph_extract_pass.h"
@@ -85,6 +86,16 @@ std::vector<std::string> GetTensorsName(const std::vector<Tensor *> &ins) {
     in_names.emplace_back(in_t->name());
   }
   return in_names;
+}
+
+std::vector<paddle::Tensor *> GetTensorsPtr(
+    std::vector<paddle::Tensor> &tensors) {  // NOLINT
+  std::vector<paddle::Tensor *> res;
+  res.reserve(tensors.size());
+  for (auto &t : tensors) {
+    res.push_back(&t);
+  }
+  return res;
 }
 
 void CheckOutputVarStatus(const paddle::framework::Variable &src_var,
@@ -366,12 +377,103 @@ inline bool is_use_cuda_graph(int64_t cuda_graph_state) {
   return cuda_graph_state != 0;
 }
 
+paddle::Tensor CreateTensorFromValue(const pir::Value &value) {
+  auto tensor = paddle::Tensor();
+  // auto autograd_meta = egr::EagerUtils::autograd_meta(&tensor);
+  // autograd_meta->SetPersistable(false);
+  // autograd_meta->SetStopGradient(GetValueBoolAttr(value,
+  // kAttrStopGradients));
+
+  // auto dims = phi::vectorize(GetValueDims(value));
+  // auto ddims = phi::make_ddim(dims);
+  // if (auto name = pir::utils::name_analysis::TryGetValueFirstName(value)) {
+  //   tensor.set_name(name.value());
+  // }
+  const auto &value_type = value.type();
+
+  if (value_type.isa<paddle::dialect::DenseTensorType>()) {
+    auto ddims = value_type.dyn_cast<paddle::dialect::DenseTensorType>().dims();
+    std::shared_ptr<phi::DenseTensor> dense_tensor = nullptr;
+    auto dtype = paddle::dialect::TransToPhiDataType(
+        value_type.dyn_cast<paddle::dialect::DenseTensorType>().dtype());
+
+    // TODO(SigureMo): Remove this
+    if (ddims.size() == 1 && ddims[0] == 0) {
+      std::shared_ptr<phi::Allocation> allocation_ptr = nullptr;
+      dense_tensor = std::make_shared<phi::DenseTensor>(
+          allocation_ptr, phi::DenseTensorMeta(dtype, ddims));
+    } else {
+      // TODO(dev): we need enhance check for ddims.
+      dense_tensor = std::make_shared<phi::DenseTensor>(
+          std::make_shared<phi::Allocation>(),
+          phi::DenseTensorMeta(dtype, ddims));
+    }
+
+    if (value_type.isa<paddle::dialect::DistDenseTensorType>()) {
+      paddle::dialect::DistDenseTensorType value_type =
+          value_type.dyn_cast<paddle::dialect::DistDenseTensorType>();
+      auto pir_attr = value_type.tensor_dist_attr();
+      auto mesh = pir_attr.process_mesh_attr().process_mesh();
+      auto placements = pir_attr.placements();
+      tensor.set_impl(std::make_shared<phi::distributed::DistTensor>(
+          dense_tensor, mesh, placements));
+    } else {
+      tensor.set_impl(dense_tensor);
+    }
+  } else if (value_type.isa<paddle::dialect::SelectedRowsType>()) {
+    std::shared_ptr<phi::SelectedRows> selected_rows_tensor =
+        std::make_shared<phi::SelectedRows>();
+    tensor.set_impl(selected_rows_tensor);
+  }
+
+  // if (!autograd_meta->GetMutableGradNode()) {
+  //   autograd_meta->SetGradNode(
+  //       std::make_shared<egr::GradNodeAccumulation>(autograd_meta));
+  // }
+
+  return tensor;
+}
+
+std::vector<paddle::Tensor> CreateOutputTensorsFromValue(
+    const std::vector<::pir::Value> &values,
+    const std::vector<std::string> &names) {
+  PADDLE_ENFORCE_EQ(values.size(),
+                    names.size(),
+                    common::errors::InvalidArgument(
+                        "The size of values and names should be equal, but got "
+                        "values size: %d, names size: %d.",
+                        values.size(),
+                        names.size()));
+  std::vector<paddle::Tensor> result;
+  std::unordered_map<pir::Value, paddle::Tensor> out_tensor_map;
+  auto CreateTensorFromValueWithCache =
+      [&out_tensor_map](const pir::Value &value) {
+        if (out_tensor_map.find(value) == out_tensor_map.end()) {
+          paddle::Tensor tensor = CreateTensorFromValue(value);
+          out_tensor_map[value] = tensor;
+          return tensor;
+        } else {
+          return out_tensor_map[value];
+        }
+      };
+  for (size_t i = 0; i < values.size(); ++i) {
+    const auto &value = values[i];
+    const auto &name = names[i];
+    if (value.impl() == nullptr || !value.type()) {
+      continue;
+    }
+    auto tensor = CreateTensorFromValueWithCache(value);
+    tensor.set_name(name);
+    result.emplace_back(std::move(tensor));
+  }
+  return result;
+}
+
 }  // namespace details
 
-void RunProgramImpl(
+std::vector<paddle::Tensor> RunProgramImpl(
     const std::vector<paddle::Tensor> &x,
     const std::vector<paddle::Tensor> &params,
-    std::vector<paddle::Tensor *> &out,                   // NOLINT
     std::vector<paddle::framework::Scope *> &step_scope,  // NOLINT
     bool require_any_grad,
     const paddle::framework::AttributeMap &attrs,
@@ -426,6 +528,9 @@ void RunProgramImpl(
       PADDLE_GET_CONST(std::vector<std::string>, attrs.at("fo_names"));
   const auto &no_need_buffer_names = PADDLE_GET_CONST(
       std::vector<std::string>, attrs.at("no_need_buffers_names"));
+
+  const auto &output_values =
+      PADDLE_GET_CONST(std::vector<::pir::Value>, attrs.at("fo_values"));
 
   std::shared_ptr<::pir::Program> forward_program = PADDLE_GET_CONST(
       std::shared_ptr<::pir::Program>, attrs.at("forward_program"));
@@ -566,12 +671,15 @@ void RunProgramImpl(
     interpreter_core->Run({});
   }
 
+  // Create output tensors and fetch the real output tensors from scope.
+  auto out = details::CreateOutputTensorsFromValue(output_values, output_names);
+
   {
     phi::RecordEvent record_event(
         "fetch_and_gc", phi::TracerEventType::UserDefined, 1);
-    // Get Output, and Middle Outputs
+    // Get Output
     details::ShareTensorsFromScopeWithName(
-        out, output_names, global_inner_scope);
+        details::GetTensorsPtr(out), output_names, global_inner_scope);
     VLOG(3) << paddle::framework::GenScopeTreeDebugInfo(out_scope_vec->front());
 
     if (!need_grad) {
@@ -598,6 +706,7 @@ void RunProgramImpl(
 #ifdef PADDLE_WITH_DNNL
   if (FLAGS_use_mkldnn) paddle::platform::DontClearMKLDNNCache(place);
 #endif
+  return out;
 }
 
 void RunProgramGradImpl(

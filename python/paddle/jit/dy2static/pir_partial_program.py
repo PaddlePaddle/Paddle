@@ -409,6 +409,9 @@ class RunnableProgram:
         ), "program_attr() is called by PartialProgramLayer, don't call it manually, use program_name_attr instead."
         # can't apply pass after call this function.
         self.finish_pass = True
+        fwd_map = RunnableProgram._get_name_value_map_from_program(
+            self.forward_program
+        )
         program_name_attr = self.program_name_attr
         no_need_buffer_names = program_name_attr["no_need_buffers"]
         rename_mapping = {}
@@ -432,6 +435,10 @@ class RunnableProgram:
 
         program_attr = {}
         for k, ns in self.program_name_attr.items():
+            if k == "fo":
+                program_attr[f"{k}_values"] = [
+                    fwd_map.get(n, fake_value()) for n in ns
+                ]
             program_attr[f"{k}_names"] = ns
 
         return program_attr
@@ -729,11 +736,10 @@ class PartialProgramLayer:
         self._compile_time_counter = TimeCounter()
 
     @staticmethod
-    def run_impl(partial_program_layer, inputs, parameters, outputs, attrs):
-        _C_ops.run_program(
+    def run_impl(partial_program_layer, inputs, parameters, attrs):
+        return _C_ops.run_program(
             PartialProgramLayer._valid_vars(inputs),
             PartialProgramLayer._valid_vars(parameters),
-            PartialProgramLayer._valid_vars(outputs),
             partial_program_layer._create_scope_vec(
                 cache_key=(
                     PartialProgramLayer._calc_scope_cache_key(
@@ -754,16 +760,14 @@ class PartialProgramLayer:
         """
         attrs = self._prepare_attributes(in_sot_mode=False)
         inputs = self._prepare_inputs(inputs)
-        out_vars = self._prepare_outputs()
 
-        self.call_run_impl_with_hook(
+        out = self.call_run_impl_with_hook(
             inputs,
             self._params,
-            out_vars,
             attrs,
         )
 
-        restored_nest_out = self._restore_out(out_vars)
+        restored_nest_out = self._restore_out(out)
         return self._remove_no_value(restored_nest_out)
 
     def sot_call(self, inputs):
@@ -771,36 +775,31 @@ class PartialProgramLayer:
         In sot, inputs and outputs of partial program only contain tensors, so we can skip some step to speed up
         """
         attrs = self._prepare_attributes(in_sot_mode=True)
-        out_vars = self._prepare_outputs()
 
-        self.call_run_impl_with_hook(
+        out = self.call_run_impl_with_hook(
             inputs,
             self._params,
-            out_vars,
             attrs,
         )
-        return self._outputs.quick_restore(out_vars)
+        return self._outputs.quick_restore(out)
 
     def call_run_impl_with_hook(
         self,
         inputs,
         parameters,
-        outputs,
         attrs,
     ):
         if PartialProgramLayer.HOOKED_RUN_IMPL is None:
-            PartialProgramLayer.run_impl.__get__(self)(
+            return PartialProgramLayer.run_impl.__get__(self)(
                 inputs,
                 parameters,
-                outputs,
                 attrs,
             )
         else:
-            PartialProgramLayer.HOOKED_RUN_IMPL(
+            return PartialProgramLayer.HOOKED_RUN_IMPL(
                 PartialProgramLayer.run_impl.__get__(self),
                 inputs,
                 parameters,
-                outputs,
                 attrs,
             )
 
@@ -1239,10 +1238,10 @@ class PartialProgramLayer:
             input_vars.append(var)
         return input_vars
 
-    def _prepare_outputs(self):
-        return paddle.framework.core.create_empty_tensors_with_values(
-            self._outputs.var_list
-        )
+    # def _prepare_outputs(self):
+    #     return paddle.framework.core.create_empty_tensors_with_values(
+    #         self._outputs.var_list
+    #     )
 
     def _create_scope_vec(self, cache_key=None, use_scope_cache=False):
         inner_scope = self._get_scope(
