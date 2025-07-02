@@ -394,6 +394,8 @@ def prepare_unix_cudaflags(cflags):
             *cflags,
             *get_rocm_arch_flags(cflags),
         ]
+    elif core.is_compiled_with_custom_device("iluvatar_gpu"):
+        cflags = [*COMMON_NVCC_FLAGS, '-fPIC', '-DPADDLE_WITH_COREX', *cflags]
     else:
         cflags = [
             *COMMON_NVCC_FLAGS,
