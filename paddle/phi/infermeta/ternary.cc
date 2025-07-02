@@ -1881,8 +1881,10 @@ void MoeGateDispatchPermuteInferMeta(const MetaTensor& x,
 void MoeGateDispatchAndQuantInferMeta(const MetaTensor& x,
                                       const MetaTensor& gate_logits,
                                       const MetaTensor& corr_bias,
-                                      int64_t k,
-                                      int64_t capacity,
+                                      const int64_t k,
+                                      const int64_t capacity,
+                                      const bool use_pad,
+                                      const bool use_pow2_scale,
                                       MetaTensor* fp8_out,
                                       MetaTensor* scale,
                                       MetaTensor* combine_weights,
@@ -1890,54 +1892,45 @@ void MoeGateDispatchAndQuantInferMeta(const MetaTensor& x,
                                       MetaTensor* expert_offset,
                                       MetaTensor* expert_id) {
   auto x_dims = x.dims();
-  PADDLE_ENFORCE_EQ(x_dims.size(),
-                    2,
-                    common::errors::InvalidArgument(
-                        "The dimensions of Input(x) must be 2, but "
-                        "received dimensions of"
-                        "Input(x) is [%d]",
-                        x_dims.size()));
   auto gate_logits_dims = gate_logits.dims();
-  PADDLE_ENFORCE_EQ(gate_logits_dims.size(),
-                    2,
-                    common::errors::InvalidArgument(
-                        "The dimensions of Input(gate_logits) must be 2, but "
-                        "received dimensions of"
-                        "Input(gate_logits) is [%d]",
-                        gate_logits_dims.size()));
-  PADDLE_ENFORCE_EQ(gate_logits_dims[0],
-                    x_dims[0],
-                    common::errors::InvalidArgument(
-                        "The first dimensions of Input(gate_logits) must be "
-                        "equal to the first "
-                        "dimension of Input(x), but received "
-                        "Input(gate_logits) shape is [%d],"
-                        "Input(x) shape is [%d]",
-                        gate_logits_dims[0],
-                        x_dims[0]));
 
-  PADDLE_ENFORCE_GE(gate_logits_dims[1],
-                    k,
-                    common::errors::InvalidArgument(
-                        "The number of experts ((the second dimension of "
-                        "Input(gate_logits))) must be greater than or equal to "
-                        "k, but received "
-                        "num_experts = %d, k = %d",
+  const int64_t num_rows = x_dims[0];
+  const int64_t num_experts = gate_logits_dims[1];
+
+  PADDLE_ENFORCE_EQ(
+      x_dims.size(),
+      2,
+      errors::InvalidArgument("Input x should have 2 dimensions"));
+
+  PADDLE_ENFORCE_EQ(
+      gate_logits_dims.size(),
+      2,
+      errors::InvalidArgument("Input gate_logits should have 2 dimensions"));
+
+  PADDLE_ENFORCE_EQ(
+      x_dims[0],
+      gate_logits_dims[0],
+      errors::InvalidArgument(
+          "The 0-th dimension of x [%d] "
+          "must match that of the 0-th dimension gate_logits [%d].",
+          x_dims[0],
+          gate_logits_dims[0]));
+
+  PADDLE_ENFORCE_EQ(gate_logits_dims[1] >= k,
+                    true,
+                    errors::InvalidArgument(
+                        "The 1-th dimension of gate_logits [%d] "
+                        "must be greater than or equal to that of k [%d].",
                         gate_logits_dims[1],
                         k));
 
   PADDLE_ENFORCE_EQ(
-      x_dims[0] % 128 0,
+      x_dims[1] % 128,
+      0,
       common::errors::InvalidArgument("The last dimensions of Input(x) must be "
                                       "divided to tile size, but received "
                                       "Input(x) shape is [%d]",
                                       x_dims[0]));
-  PADDLE_ENFORCE_EQ(
-      gate_logits.dtype(),
-      phi::DataType::FLOAT32,
-      common::errors::InvalidArgument(
-          "The dtype of Input(gate_logits) must be FLOAT32, but received %s",
-          gate_logits.dtype()));
 
   PADDLE_ENFORCE_EQ(
       x.dtype(),

@@ -14,6 +14,7 @@
 
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/fusion/gpu/quant_utils.h"
 #include "paddle/phi/kernels/legacy/gpu/moe_fuse_op.h"
 #include "paddle/phi/kernels/legacy/gpu/moe_ops_utils.h"
 
@@ -41,7 +42,7 @@ constexpr int64_t WarpSize = 32;
 
 template <bool Power2Scaling>
 __device__ __forceinline__ float ScaleWrapper(const float amax,
-                                              const float eps) {
+                                              const float eps = 0.f) {
   constexpr float fp8_max = 448.0f;
   float amax_mod = fmaxf(amax, eps);
   if (amax_mod == 0.f) {
@@ -71,7 +72,7 @@ __device__ __forceinline__ float ScaleWrapper(const float amax,
 }
 
 template <int VecSize, bool Power2Scaling>
-__device__ void ComputeScaleAndWrite(__nv_bfloat16 *data_ptr,
+__device__ void ComputeScaleAndWrite(__nv_bfloat16 *data,
                                      float *scale,
                                      float *scale_out,
                                      int64_t local_scale_id,
@@ -79,45 +80,52 @@ __device__ void ComputeScaleAndWrite(__nv_bfloat16 *data_ptr,
                                      int64_t dest_scale_col,
                                      int64_t scale_row_num,
                                      int64_t scale_col_num) {
-  // step1: compute local_max
-  __nv_bfloat16 local_max = __float2bfloat16(-INFINITY);  // Initialize to -inf
+  // -------------------------------------------------------------------------
+  // Step 1: Compute local maximum within each thread's vector
+  // -------------------------------------------------------------------------
+  __nv_bfloat16 local_max = __float2bfloat16(-INFINITY);
   for (int i = 0; i < VecSize; ++i) {
-    __nv_bfloat16 val = __habs(data[i]);
-    if (__hgt(val, local_max)) local_max = val;
+    __nv_bfloat16 val = BF16_ABS(data[i]);
+    local_max = BF16_MAX(val, local_max);
   }
 
-  // step2: reduce per TileSize
-  // 目的是: 每个线程持有VecSize个元素, warp内部, 在连续的TileSize个元素中求max
-  // 做法是: 通过分组shfl进行规约
-  static_assert(
-      VecSize >=
-      4);  // 因为不想跨warp规约,
-           // 所以每个tile只能出现在一个warp内。但一个warp不一定只处理128个元素。
+  // -------------------------------------------------------------------------
+  // Step 2: Reduce maximum across warp using shuffle operations
+  // -------------------------------------------------------------------------
+  static_assert(VecSize >= 4,
+                "VecSize must be at least 4 to avoid cross-warp reduction");
+  static_assert(TileSize >= VecSize && TileSize % VecSize == 0,
+                "TileSize must be >= VecSize and a multiple of VecSize");
+
   __nv_bfloat16 global_max = local_max;
-  static_assert(TileSize >= VecSize && TileSize % VecSize == 0);
-  constexpr int group_size = TileSize / VecSize;  // 每个group处理一个tile
-  int lane_id = threadIdx.x % WarpSize;
-  int group_id = lane_id / group_size;
-  int group_lane = lane_id % group_size;
-  unsigned mask =
+  constexpr int group_size = TileSize / VecSize;  // Elements per thread group
+  const int lane_id = threadIdx.x % WarpSize;
+  const int group_id = lane_id / group_size;
+  const int group_lane = lane_id % group_size;
+  const unsigned mask =
       (1u << ((group_id + 1) * group_size)) - (1u << (group_id * group_size));
 
+  // Parallel reduction within each group
   for (int stride = group_size / 2; stride > 0; stride >>= 1) {
     __nv_bfloat16 other = __shfl_down_sync(mask, global_max, stride);
-    if (__hgt(other, global_max)) global_max = other;
+    global_max = BF16_MAX(other, global_max);
   }
 
-  // step3: write scale to smem
+  // -------------------------------------------------------------------------
+  // Step 3: Write the computed scale to shared and global memory
+  // -------------------------------------------------------------------------
   if (group_lane == 0) {
     float scale_value =
         ScaleWrapper<Power2Scaling>(__bfloat162float(global_max));
-    scale[local_scale_id] = scale_value;  // to smem
-    // CUBLAS需要在这里做了转置, CUTLASS不需要
-    // scale_out[dest_scale_col * scale_row_num + dest_scale_row] = 1.0f /
-    // scale_value; // to gmem
+
+    // Write to shared memory
+    scale[local_scale_id] = scale_value;
+
+    // Write inverse to global memory (CUTLASS layout - no transpose needed)
     scale_out[dest_scale_row * scale_col_num + dest_scale_col] =
-        1.0f / scale_value;  // to gmem
+        1.0f / scale_value;
   }
+
   __syncthreads();
 }
 
@@ -150,17 +158,15 @@ __global__ void initialize_moe_routing_kernel(
     const int64_t capacity,
     const int64_t num_experts,
     bool use_pad) {
-  static_assert(VecSize * ThreadNum % TileSize == 0);
-  static_assert(VecSize <= TileSize);
+  // Static assertions for compile-time checks
+  static_assert(VecSize * ThreadNum % TileSize == 0,
+                "VecSize * ThreadNum must be a multiple of TileSize");
+  static_assert(VecSize <= TileSize,
+                "VecSize must be less than or equal to TileSize");
 
-  // Reverse permutation map.
-  // I do this so that later, we can use the source -> dest map to do the k-way
-  // reduction and unpermuting. I need the reverse map for that reduction to
-  // allow each threadblock to do 1 k-way reduce without atomics later in MoE. 1
-  // thread block will be responsible for all k summations.
   using LoadT = phi::AlignedVector<__nv_bfloat16, VecSize>;
-  LoadT src_vec;
   using StoreT = phi::AlignedVector<__nv_fp8_e4m3, VecSize>;
+  LoadT src_vec;
   StoreT dest_vec;
 
   const int64_t expanded_dest_row = blockIdx.x;
@@ -206,8 +212,8 @@ __global__ void initialize_moe_routing_kernel(
 
   for (int64_t element_id = threadIdx.x * VecSize; element_id < cols;
        element_id += blockDim.x * VecSize) {
-    // 每个线程读VecSize个元素, 一共读取了ThreadNum*VecSize个元素
-    // 注意: 一个线程最多只能计算一个scale, 即一个线程最多处理TileSize个元素
+    // Each thread reads VecSize elements, totaling ThreadNum*VecSize elements
+    // read Note: A single thread can compute at most one scale value
     phi::Load<__nv_bfloat16, VecSize>(&source_row_ptr[element_id], &src_vec);
 
     int64_t local_scale_id = VecSize * threadIdx.x / TileSize;
@@ -244,28 +250,25 @@ void fp8_initialize_moe_routing_kernelLauncher(
     bool use_pow2_scale,
     cudaStream_t stream) {
   const int blocks = num_rows * k;
-
-  // (divisor, elements_per_thread, threads)
-  static constexpr std::tuple<int, int, int> configs[] = {{2048, 8, 256},
-                                                          {1024, 4, 256},
-                                                          {512, 4, 128},
-                                                          {256, 4, 64},
-                                                          {128, 4, 32}};
-
-  for (const auto &[divisor, elements_per_thread, threads] : configs) {
-    if (cols % divisor == 0) {
-      if (use_pow2_scale) {
-        LAUNCH_KERNEL(elements_per_thread, threads, true);
-      } else {
-        LAUNCH_KERNEL(elements_per_thread, threads, false);
-      }
-      return;
-    }
-  }
-
-  assert(false &&
-         "Unsupported column size (must be divisible by 128, 256, 512, 1024 or "
-         "2048)");
+  DISPATCH_BOOL(
+      use_pow2_scale,
+      k_use_pow2_scale,
+      if (cols % 2048 == 0) {
+        constexpr int threads = 256;
+        LAUNCH_KERNEL(8, threads, k_use_pow2_scale);
+      } else if (cols % 1024 == 0) {
+        constexpr int threads = 256;
+        LAUNCH_KERNEL(4, threads, k_use_pow2_scale);
+      } else if (cols % 512 == 0) {
+        constexpr int threads = 128;
+        LAUNCH_KERNEL(4, threads, k_use_pow2_scale);
+      } else if (cols % 256 == 0) {
+        constexpr int threads = 64;
+        LAUNCH_KERNEL(4, threads, k_use_pow2_scale);
+      } else if (cols % 128 == 0) {
+        constexpr int threads = 32;
+        LAUNCH_KERNEL(4, threads, k_use_pow2_scale);
+      } else { assert(0); })
 }
 
 template <typename T, typename Context>
@@ -286,49 +289,44 @@ void apply_moe_dispatch_fwd(const Context &dev_ctx,
                             int *expert_id,
                             bool use_pad,
                             bool use_pow2_scale,
-                            cudaStream_t stream,
-                            const phi::Place &place) {
-  int **permuted_rows = nullptr;
-  int **permuted_experts = nullptr;
+                            cudaStream_t stream) {
+  int *permuted_rows = nullptr;
+  int *permuted_experts = nullptr;
   topk_gating(dev_ctx,
               x,
               gate_logits,
               corr_bias,
-              permuted_rows,
-              permuted_experts,
+              &permuted_rows,
+              &permuted_experts,
               num_rows,
               num_experts,
               hidden_size,
               capacity,
               k,
-              y,
               combine_weights,
               scatter_index,
               expert_offset,
               expert_id,
               use_pad,
-              world_size,
-              num_local_experts,
               stream);
-  auto permuted_rows_ = *permuted_rows;
-  auto permuted_experts_ = *permuted_experts;
 
-  fp8_initialize_moe_routing_kernelLauncher(x,
-                                            out_fp8,
-                                            out_scale,
-                                            permuted_rows_,
-                                            scatter_index,
-                                            permuted_experts_,
-                                            expert_offset,
-                                            combine_weights,
-                                            static_cast<int>(num_rows),
-                                            static_cast<int>(hidden_size),
-                                            static_cast<int>(k),
-                                            capacity,
-                                            num_experts,
-                                            use_pad,
-                                            use_pow2_scale,
-                                            stream);
+  fp8_initialize_moe_routing_kernelLauncher(
+      reinterpret_cast<const __nv_bfloat16 *>(x),
+      out_fp8,
+      out_scale,
+      permuted_rows,
+      scatter_index,
+      permuted_experts,
+      expert_offset,
+      combine_weights,
+      static_cast<int>(num_rows),
+      static_cast<int>(hidden_size),
+      static_cast<int>(k),
+      capacity,
+      num_experts,
+      use_pad,
+      use_pow2_scale,
+      stream);
 
   return;
 }
@@ -356,10 +354,10 @@ void MoeDispatchAndQuantKernel(const Context &dev_ctx,
   dev_ctx.template Alloc<float>(scale);
 
   cudaMemsetAsync(
-      reinterpret_cast<void *>(out_fp8.data<phi::dtype::float8_e4m3fn>()),
+      reinterpret_cast<void *>(out_fp8->data<phi::dtype::float8_e4m3fn>()),
       0,
       sizeof(phi::dtype::float8_e4m3fn) * out_fp8->numel(),
-      x.stream());
+      dev_ctx.stream());
 
   phi::Full<float, Context>(
       dev_ctx, phi::IntArray(common::vectorize(scale->dims())), 1, scale);
@@ -372,7 +370,7 @@ void MoeDispatchAndQuantKernel(const Context &dev_ctx,
 
   apply_moe_dispatch_fwd<T, Context>(
       dev_ctx,
-      reinterpret_cast<const __nv_bfloat16 *>(x.data<phi::dtype::bfloat16>()),
+      x.data<T>(),
       gate_logits.data<float>(),
       corr_bias ? corr_bias.get().data<float>() : nullptr,
       num_rows,
@@ -381,18 +379,15 @@ void MoeDispatchAndQuantKernel(const Context &dev_ctx,
       capacity,
       k,
       reinterpret_cast<__nv_fp8_e4m3 *>(
-          out_fp8.data<phi::dtype::float8_e4m3fn>()),
-      scale.data<float>(),
-      combine_weights.data<float>(),
-      scatter_index.data<int>(),
-      expert_offset.data<int64_t>(),
-      expert_id.data<int>(),
+          out_fp8->data<phi::dtype::float8_e4m3fn>()),
+      scale->data<float>(),
+      const_cast<float *>(combine_weights->data<float>()),
+      const_cast<int *>(scatter_index->data<int>()),
+      const_cast<int64_t *>(expert_offset->data<int64_t>()),
+      const_cast<int *>(expert_id->data<int>()),
       use_pad,
       use_pow2_scale,
-      x.stream());
-
-  return {
-      out_fp8, scale, combine_weights, scatter_index, expert_offset, expert_id};
+      dev_ctx.stream());
 }
 
 }  // namespace phi

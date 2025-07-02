@@ -38,36 +38,31 @@ void apply_moe_dispatch_fwd(const Context &dev_ctx,
                             int64_t world_size,
                             int64_t num_local_experts,
                             cudaStream_t stream) {
-  int **permuted_rows = nullptr;
-  int **permuted_experts = nullptr;
+  int *permuted_rows = nullptr;
+  int *permuted_experts = nullptr;
   topk_gating(dev_ctx,
               x,
               gate_logits,
               corr_bias,
-              permuted_rows,
-              permuted_experts,
+              &permuted_rows,
+              &permuted_experts,
               num_rows,
               num_experts,
               hidden_size,
               capacity,
               k,
-              y,
               combine_weights,
               scatter_index,
               expert_offset,
               expert_id,
               use_pad,
-              world_size,
-              num_local_experts,
               stream);
-  auto permuted_rows_ = *permuted_rows;
-  auto permuted_experts_ = *permuted_experts;
 
   initialize_moe_routing_permute_kernelLauncher(x,
                                                 y,
-                                                permuted_rows_,
+                                                permuted_rows,
                                                 scatter_index,
-                                                permuted_experts_,
+                                                permuted_experts,
                                                 expert_offset,
                                                 combine_weights,
                                                 static_cast<int>(num_rows),

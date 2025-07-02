@@ -74,14 +74,11 @@ void topk_gating(const Context &dev_ctx,
                  int64_t hidden_size,
                  int64_t capacity,
                  int64_t k,
-                 T *y,
                  float *combine_weights,
                  int *scatter_index,
                  int64_t *expert_offset,
                  int *expert_id,
                  bool use_pad,
-                 int64_t world_size,
-                 int64_t num_local_experts,
                  cudaStream_t stream) {
   phi::CubKeyValueSorter sorter(stream);
 
@@ -91,12 +88,13 @@ void topk_gating(const Context &dev_ctx,
   DenseTensor active_cnt_tensor =
       phi::Empty<int, Context>(dev_ctx, IntArray({1}));
 
-  int64_t bytes = details::getWorkspaceSize<T>(num_rows,
-                                               hidden_size,  // hidden-size=0
-                                               0,            // inter-size=0
-                                               num_experts,
-                                               k,
-                                               sorter);
+  int64_t bytes =
+      phi::details::getWorkspaceSize<T>(num_rows,
+                                        hidden_size,  // hidden-size=0
+                                        0,            // inter-size=0
+                                        num_experts,
+                                        k,
+                                        sorter);
 
   DenseTensor ws_ptr_tensor =
       phi::Empty<int8_t, Context>(dev_ctx, IntArray({bytes}));

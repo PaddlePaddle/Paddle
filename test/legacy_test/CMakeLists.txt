@@ -518,6 +518,7 @@ if(NOT WITH_GPU
     test_incubate_moe_gate_dispatch_partial_nosoftmaxtopk
     test_incubate_moe_gate_dispatch_w_permute_bwd
     test_incubate_moe_gate_dispatch_w_permute
+    test_incubate_moe_gate_dispatch_and_quant
     test_fp8_gemm
     test_fp8_quant
     test_fused_act_dequant_op
