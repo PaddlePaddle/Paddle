@@ -39,7 +39,7 @@ jobs:
       CTEST_PARALLEL_LEVEL: 1
       GENERATOR: "Ninja"
     steps:
-      - name: Download Paddle and config env
+      - name: Download Paddle and clean env
         working-directory: ..
         run: |
           cd
@@ -51,7 +51,7 @@ jobs:
           del Paddle.tar Paddle.tar.zst
           call %ci_scripts%\clean_env.bat
 
-      - name: Build
+      - name: Config env
         run: |
           call %ci_scripts%\config_env.bat
 

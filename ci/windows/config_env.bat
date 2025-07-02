@@ -80,10 +80,10 @@ rem ------initialize set git config------
 git config --global core.longpaths true
 
 rem ------initialize the python environment------
+set PYTHON_VENV_ROOT=%cache_dir%\python_venv
 echo PYTHON_VENV_ROOT=%cache_dir%\python_venv >> %GITHUB_ENV%
-if not exist %PYTHON_VENV_ROOT% (
-    mkdir %PYTHON_VENV_ROOT%
-)
+if not exist %PYTHON_VENV_ROOT% mkdir %PYTHON_VENV_ROOT%
+set PYTHON_EXECUTABLE=%PYTHON_VENV_ROOT%\Scripts\python.exe
 echo PYTHON_EXECUTABLE=%PYTHON_VENV_ROOT%\Scripts\python.exe >> %GITHUB_ENV%
 %PYTHON_ROOT%\python.exe -m venv --clear %PYTHON_VENV_ROOT%
 call %PYTHON_VENV_ROOT%\Scripts\activate.bat
