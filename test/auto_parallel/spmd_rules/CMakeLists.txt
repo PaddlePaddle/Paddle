@@ -67,6 +67,7 @@ if(WITH_DISTRIBUTE)
                     test_depthwise_conv2d_rule)
     py_test_modules(test_conv2d_transpose_rule MODULES
                     test_conv2d_transpose_rule)
+    py_test_modules(test_einsum_rule MODULES test_einsum_rule)
   endif()
   # End of unittests WITH single card WITHOUT timeout
 
