@@ -1,0 +1,246 @@
+@REM if not defined SCCACHE_ROOT set SCCACHE_ROOT=D:\sccache
+@REM set PATH=%SCCACHE_ROOT%;%PATH%
+@REM if "%WITH_SCCACHE%"=="ON" (
+@REM     cmd /C sccache -V || call :install_sccache
+
+@REM     sccache --stop-server 2> NUL
+@REM     del %SCCACHE_ROOT%\sccache_log.txt
+
+@REM     :: Locally storage on windows
+@REM     if not exist %SCCACHE_ROOT% mkdir %SCCACHE_ROOT%
+@REM     set SCCACHE_DIR=%SCCACHE_ROOT%\.cache
+
+@REM     :: Sccache will shut down if a source file takes more than 10 mins to compile
+@REM     set SCCACHE_IDLE_TIMEOUT=0
+@REM     set SCCACHE_CACHE_SIZE=100G
+@REM     set SCCACHE_ERROR_LOG=%SCCACHE_ROOT%\sccache_log.txt
+@REM     set SCCACHE_LOG=quiet
+
+@REM     :: Distributed storage on windows
+@REM     set SCCACHE_ENDPOINT=s3.bj.bcebos.com
+@REM     set SCCACHE_BUCKET=paddle-windows
+@REM     set SCCACHE_S3_KEY_PREFIX=sccache/
+@REM     set SCCACHE_S3_USE_SSL=true
+
+@REM     sccache --start-server
+@REM     sccache -z
+@REM     goto :CASE_%1
+@REM ) else (
+@REM     del %SCCACHE_ROOT%\sccache.exe 2> NUL
+@REM     goto :CASE_%1
+@REM )
+
+@REM :install_sccache
+@REM echo There is not sccache in this PC, will install sccache.
+@REM echo Download package from https://paddle-ci.gz.bcebos.com/window_requirement/sccache.exe
+@REM python -c "import wget;wget.download('https://paddle-ci.gz.bcebos.com/window_requirement/sccache.exe')"
+@REM xcopy sccache.exe %SCCACHE_ROOT%\ /Y
+@REM del sccache.exe
+@REM goto:eof
+
+call :cmake || goto cmake_error
+goto:eof
+
+:cmake
+@ECHO ON
+echo    ========================================
+echo    Step 1. Cmake ...
+echo    ========================================
+
+mkdir %BUILD_DIR%
+rem set vs language to english to block showIncludes, this need vs has installed English language package.
+set VSLANG=1033
+rem Configure the environment for 64-bit builds. 'DISTUTILS_USE_SDK' indicates that the user has selected the compiler.
+if not defined vcvars64_dir set vcvars64_dir="C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvars64.bat"
+call %vcvars64_dir%
+
+set DISTUTILS_USE_SDK=1
+rem Windows 10 Kit bin dir
+set PATH=C:\Program Files (x86)\Windows Kits\10\bin\10.0.17763.0\x64;%PATH%
+rem Use 64-bit ToolSet to compile
+set PreferredToolArchitecture=x64
+
+for /F %%# in ('wmic os get localdatetime^|findstr 20') do set start=%%#
+set start=%start:~4,10%
+
+if not defined CUDA_TOOLKIT_ROOT_DIR set CUDA_TOOLKIT_ROOT_DIR=C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.2
+set PATH=%TENSORRT_ROOT:/=\%\lib;%CUDA_TOOLKIT_ROOT_DIR:/=\%\bin;%CUDA_TOOLKIT_ROOT_DIR:/=\%\libnvvp;%PATH%
+
+@ECHO ON
+if "%WITH_GPU%"=="ON" (
+    set cuda_version=%CUDA_TOOLKIT_ROOT_DIR:~-4%
+    if "!cuda_version!"=="12.0" (
+        set "PATH=C:\Program Files (x86)\Windows Kits\10\bin\10.0.19041.0\x64;%PATH%"
+    )
+)
+echo %PATH%
+rem CUDA_TOOLKIT_ROOT_DIR in cmake must use / rather than \
+set TENSORRT_ROOT=%TENSORRT_ROOT:\=/%
+set CUDA_TOOLKIT_ROOT_DIR=%CUDA_TOOLKIT_ROOT_DIR:\=/%
+
+rem install ninja if GENERATOR is Ninja
+if %GENERATOR% == "Ninja" (
+    rem Set the default generator for cmake to Ninja
+    setx CMAKE_GENERATOR Ninja
+    pip install ninja
+    if %errorlevel% NEQ 0 (
+        echo pip install ninja failed!
+        exit /b 5
+    )
+)
+
+rem ------show summary of current GPU environment----------
+cmake --version
+if "%WITH_GPU%"=="ON" (
+    nvcc --version
+    nvidia-smi 2>NUL
+)
+
+rem ------set third_party cache dir------
+
+if "%WITH_TPCACHE%"=="OFF" (
+    set THIRD_PARTY_PATH=%work_dir:\=/%/%BUILD_DIR%/third_party
+    goto :cmake_impl
+)
+
+rem clear third party cache every ten days
+for /F %%# in ('wmic os get localdatetime^|findstr 20') do set datetime=%%#
+set day_now=%datetime:~6,2%
+set day_before=-1
+set /p day_before=< %cache_dir%\day_third_party.txt
+if %day_now% NEQ %day_before% (
+    echo %day_now% > %cache_dir%\day_third_party.txt
+    type %cache_dir%\day_third_party.txt
+    if %day_now% EQU 21 (
+        rmdir %cache_dir%\third_party /s/q
+    )
+    if %day_now% EQU 11 (
+        rmdir %cache_dir%\third_party /s/q
+    )
+    if %day_now% EQU 01 (
+        rmdir %cache_dir%\third_party /s/q
+    )
+)
+
+echo set -ex > cache.sh
+echo md5_content=$(cat %work_dir:\=/%/cmake/external/*.cmake^|md5sum^|awk '{print $1}')$(git submodule status^|md5sum^|awk '{print $1}')>>cache.sh
+echo echo ${md5_content}^>md5.txt>>cache.sh
+
+%cache_dir%\tools\busybox64.exe cat cache.sh
+%cache_dir%\tools\busybox64.exe bash cache.sh
+
+set /p md5=< md5.txt
+if "%WITH_GPU%"=="ON" (
+    set cuda_version=%CUDA_TOOLKIT_ROOT_DIR:~-4%
+    set sub_dir=cuda!cuda_version:.=!
+) else (
+    set sub_dir=cpu
+)
+
+@ECHO ON
+cd /d %work_dir%
+python -c "import wget;wget.download('https://paddle-windows.bj.bcebos.com/third_party_code/%sub_dir%/%md5%.tar.gz')" 2>nul
+if !ERRORLEVEL! EQU 0 (
+    echo Getting source code of third party : extracting ...
+    tar -xf %md5%.tar.gz
+    del %md5%.tar.gz
+    if !errorlevel! EQU 0 (
+        echo Getting source code of third party : successful
+    )
+) else (
+    git submodule update --init --recursive
+    if !errorlevel! EQU 0 (
+        set UPLOAD_TP_CODE=ON
+    )
+)
+if "%UPLOAD_TP_CODE%"=="ON" (
+    set BCE_FILE=%cache_dir%\bce-python-sdk-new\BosClient.py
+    echo Uploading source code of third_party: checking bce ...
+    if not exist %cache_dir%\bce-python-sdk-new (
+        echo There is no bce in this PC, will install bce.
+        cd /d %cache_dir%
+        echo Download package from https://xly-devops.bj.bcebos.com/home/bos_new.tar.gz
+        python -c "import wget;wget.download('https://xly-devops.bj.bcebos.com/home/bos_new.tar.gz')"
+        python -c "import shutil;shutil.unpack_archive('bos_new.tar.gz', extract_dir='./bce-python-sdk-new',format='gztar')"
+    )
+    python -m pip install pycryptodome
+    python -m pip install bce-python-sdk==0.8.74
+    if !errorlevel! EQU 0 (
+        cd /d %work_dir%
+        echo Uploading source code of third party: compressing ...
+        tar -zcf %md5%.tar.gz ./third_party ./.git/modules
+        if !errorlevel! EQU 0 (
+            echo Uploading source code of third party: uploading ...
+            python !BCE_FILE! %md5%.tar.gz paddle-windows/third_party_code/%sub_dir% 1>nul
+            if !errorlevel! EQU 0 (
+                echo Upload source code of third party %md5% to bos paddle-windows/third_party_code/%sub_dir% successfully.
+            ) else (
+                echo Failed upload source code of third party to bos, reason: upload failed.
+            )
+        ) else (
+            echo Failed upload source code of third party to bos, reason: compress failed.
+        )
+        del %md5%.tar.gz
+    ) else (
+        echo Failed upload source code of third party to bos, reason: install bce failed.
+    )
+)
+
+set THIRD_PARTY_HOME=%cache_dir:\=/%/third_party/%sub_dir%
+set THIRD_PARTY_PATH=%THIRD_PARTY_HOME%/%md5%
+
+echo %task_name%|findstr build >nul && (
+    echo %task_name% is a whl-build task, will only reuse local third_party cache.
+    goto :cmake_impl
+) || (
+    echo %task_name% is a PR-CI-Windows task, will try to reuse bos and local third_party cache both.
+)
+
+:cmake_impl
+if "%WITH_TESTING%"=="ON" (
+    cd /d %work_dir%\%BUILD_DIR%
+    rem whether to run cpp test
+    python -m pip install PyGithub
+    python %work_dir%\tools\check_only_change_python_files.py
+    if exist %work_dir%\%BUILD_DIR%\only_change_python_file.txt set WITH_CPP_TEST=OFF
+    echo WITH_CPP_TEST: %WITH_CPP_TEST%
+)
+cd /d %work_dir%\%BUILD_DIR%
+echo cmake .. -G %GENERATOR% -DCMAKE_BUILD_TYPE=Release -DWITH_AVX=%WITH_AVX% -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% ^
+-DWITH_TESTING=%WITH_TESTING% -DWITH_PYTHON=%WITH_PYTHON% -DPYTHON_EXECUTABLE=%PYTHON_EXECUTABLE% -DON_INFER=%ON_INFER% ^
+-DWITH_INFERENCE_API_TEST=%WITH_INFERENCE_API_TEST% -DTHIRD_PARTY_PATH=%THIRD_PARTY_PATH% ^
+-DINFERENCE_DEMO_INSTALL_DIR=%INFERENCE_DEMO_INSTALL_DIR% -DWITH_STATIC_LIB=%WITH_STATIC_LIB% ^
+-DWITH_TENSORRT=%WITH_TENSORRT% -DTENSORRT_ROOT="%TENSORRT_ROOT%" -DMSVC_STATIC_CRT=%MSVC_STATIC_CRT% ^
+-DWITH_UNITY_BUILD=%WITH_UNITY_BUILD% -DCUDA_ARCH_NAME=%CUDA_ARCH_NAME% -DCUDA_ARCH_BIN=%CUDA_ARCH_BIN% -DCUB_PATH=%THIRD_PARTY_HOME%/cub ^
+-DCUDA_TOOLKIT_ROOT_DIR="%CUDA_TOOLKIT_ROOT_DIR%" -DNEW_RELEASE_ALL=%NEW_RELEASE_ALL% -DNEW_RELEASE_PYPI=%NEW_RELEASE_PYPI% ^
+-DNEW_RELEASE_JIT=%NEW_RELEASE_JIT% -DWITH_ONNXRUNTIME=%WITH_ONNXRUNTIME% -DWITH_CPP_TEST=%WITH_CPP_TEST% ^
+-DWIN_UNITTEST_LEVEL=%WIN_UNITTEST_LEVEL% -DWITH_NIGHTLY_BUILD=%WITH_NIGHTLY_BUILD% -DWITH_PIP_CUDA_LIBRARIES=%WITH_PIP_CUDA_LIBRARIES% ^
+-DWITH_SCCACHE=%WITH_SCCACHE% >> %work_dir%\win_cmake.sh
+
+echo cmake .. -G %GENERATOR% -DCMAKE_BUILD_TYPE=Release -DWITH_AVX=%WITH_AVX% -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% ^
+-DWITH_TESTING=%WITH_TESTING% -DWITH_PYTHON=%WITH_PYTHON% -DPYTHON_EXECUTABLE=%PYTHON_EXECUTABLE% -DON_INFER=%ON_INFER% ^
+-DWITH_INFERENCE_API_TEST=%WITH_INFERENCE_API_TEST% -DTHIRD_PARTY_PATH=%THIRD_PARTY_PATH% ^
+-DINFERENCE_DEMO_INSTALL_DIR=%INFERENCE_DEMO_INSTALL_DIR% -DWITH_STATIC_LIB=%WITH_STATIC_LIB% ^
+-DWITH_TENSORRT=%WITH_TENSORRT% -DTENSORRT_ROOT="%TENSORRT_ROOT%" -DMSVC_STATIC_CRT=%MSVC_STATIC_CRT% ^
+-DWITH_UNITY_BUILD=%WITH_UNITY_BUILD% -DCUDA_ARCH_NAME=%CUDA_ARCH_NAME% -DCUDA_ARCH_BIN=%CUDA_ARCH_BIN% -DCUB_PATH=%THIRD_PARTY_HOME%/cub ^
+-DCUDA_TOOLKIT_ROOT_DIR="%CUDA_TOOLKIT_ROOT_DIR%" -DNEW_RELEASE_ALL=%NEW_RELEASE_ALL% -DNEW_RELEASE_PYPI=%NEW_RELEASE_PYPI% ^
+-DNEW_RELEASE_JIT=%NEW_RELEASE_JIT% -DWITH_ONNXRUNTIME=%WITH_ONNXRUNTIME% -DWITH_CPP_TEST=%WITH_CPP_TEST% ^
+-DWIN_UNITTEST_LEVEL=%WIN_UNITTEST_LEVEL% -DWITH_NIGHTLY_BUILD=%WITH_NIGHTLY_BUILD% -DWITH_PIP_CUDA_LIBRARIES=%WITH_PIP_CUDA_LIBRARIES% ^
+-DWITH_SCCACHE=%WITH_SCCACHE%>> %work_dir%\win_cmake.sh
+
+cmake .. -G %GENERATOR% -DCMAKE_BUILD_TYPE=Release -DWITH_AVX=%WITH_AVX% -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% ^
+-DWITH_TESTING=%WITH_TESTING% -DWITH_PYTHON=%WITH_PYTHON% -DPYTHON_EXECUTABLE=%PYTHON_EXECUTABLE% -DON_INFER=%ON_INFER% ^
+-DWITH_INFERENCE_API_TEST=%WITH_INFERENCE_API_TEST% -DTHIRD_PARTY_PATH=%THIRD_PARTY_PATH% ^
+-DINFERENCE_DEMO_INSTALL_DIR=%INFERENCE_DEMO_INSTALL_DIR% -DWITH_STATIC_LIB=%WITH_STATIC_LIB% ^
+-DWITH_TENSORRT=%WITH_TENSORRT% -DTENSORRT_ROOT="%TENSORRT_ROOT%" -DMSVC_STATIC_CRT=%MSVC_STATIC_CRT% ^
+-DWITH_UNITY_BUILD=%WITH_UNITY_BUILD% -DCUDA_ARCH_NAME=%CUDA_ARCH_NAME% -DCUDA_ARCH_BIN=%CUDA_ARCH_BIN% -DCUB_PATH=%THIRD_PARTY_HOME%/cub ^
+-DCUDA_TOOLKIT_ROOT_DIR="%CUDA_TOOLKIT_ROOT_DIR%" -DNEW_RELEASE_ALL=%NEW_RELEASE_ALL% -DNEW_RELEASE_PYPI=%NEW_RELEASE_PYPI% ^
+-DNEW_RELEASE_JIT=%NEW_RELEASE_JIT% -DWITH_ONNXRUNTIME=%WITH_ONNXRUNTIME% -DWITH_CPP_TEST=%WITH_CPP_TEST% ^
+-DWIN_UNITTEST_LEVEL=%WIN_UNITTEST_LEVEL% -DWITH_NIGHTLY_BUILD=%WITH_NIGHTLY_BUILD% -DWITH_PIP_CUDA_LIBRARIES=%WITH_PIP_CUDA_LIBRARIES% ^
+-DWITH_SCCACHE=%WITH_SCCACHE%
+
+:cmake_error
+echo 7 > %cache_dir%\error_code.txt
+type %cache_dir%\error_code.txt
+echo Cmake failed, will exit!
+exit /b 7
