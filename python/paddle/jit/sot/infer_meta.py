@@ -139,7 +139,6 @@ class MetaInfoOrNull:
             return MetaInfoOrNull(None)
         return MetaInfoOrNull(copy.deepcopy(self.meta))
 
-
     @staticmethod
     def mix_axes(axes1: list[int], axes2: list[int]) -> list[int]:
         return sorted(set(axes1 + axes2))
@@ -440,9 +439,7 @@ class VariableCreator(metaclass=Singleton):
 
             if meta.dist_info is not None:
                 mesh = meta.dist_info.mesh
-                placements = to_placements(
-                    meta.dist_info.dims_mapping, mesh
-                )
+                placements = to_placements(meta.dist_info.dims_mapping, mesh)
                 var = paddle._pir_ops.shard_tensor(var, mesh, placements)
                 var.stop_gradient = meta.stop_gradient
         assert not isinstance(

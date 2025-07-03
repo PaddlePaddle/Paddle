@@ -18,7 +18,6 @@ import inspect
 from typing import TYPE_CHECKING
 
 import paddle
-from paddle.framework import _dygraph_tracer
 
 from ..infer_meta import convert_meta_to_input_spec
 from ..profiler import EventGuard
@@ -32,7 +31,6 @@ from ..utils import (
     StepInfoManager,
     SubGraphInfo,
     SubGraphRelationInfo,
-    log,
     log_do,
 )
 from .export import export
@@ -118,9 +116,7 @@ class FallbackWrapper:
                 self.partial_program,
             ) = self.compiled_fn.get_concrete_program(input_spec)
             self.partial_program.training = self.is_training
-        global_block_ops = (
-            self.concrete_program.main_program.global_block().ops
-        )
+        global_block_ops = self.concrete_program.main_program.global_block().ops
         non_builtin_ops = list(filter(_is_computation_op, global_block_ops))
         return len(non_builtin_ops)
 
