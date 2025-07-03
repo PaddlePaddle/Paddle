@@ -145,6 +145,7 @@ SpmdInfo EinsumInferSpmd(const std::vector<DistMetaTensor>& inputs,
 
     std::vector<int64_t> fake_output_shape(right.size(), 1);
     TensorDistAttr out_dist_attr_dst(fake_output_shape);
+    out_dist_attr_dst.set_process_mesh(x_dist_attr_src.process_mesh());
     out_dist_attr_dst.set_dims_mapping(
         GetDimsMappingForAxes(right, axis_to_dim_map));
 
@@ -210,7 +211,7 @@ SpmdInfo EinsumInferSpmd(const std::vector<DistMetaTensor>& inputs,
 
     VLOG(6) << "EinsumInferSpmd InferForward Inputs: "
             << "X shape: [" << str_join(x_shape) << "], x_dims_mapping: ["
-            << str_join(x_dims_mapping) << "Y shape: [" << str_join(y_shape)
+            << str_join(x_dims_mapping) << "], Y shape: [" << str_join(y_shape)
             << "], y_dims_mapping: [" << str_join(y_dims_mapping);
 
     // Step1: Sharding Propagation
@@ -231,6 +232,7 @@ SpmdInfo EinsumInferSpmd(const std::vector<DistMetaTensor>& inputs,
 
     std::vector<int64_t> fake_output_shape(right.size(), 1);
     TensorDistAttr out_dist_attr_dst(fake_output_shape);
+    out_dist_attr_dst.set_process_mesh(x_dist_attr_src.process_mesh());
     out_dist_attr_dst.set_dims_mapping(
         GetDimsMappingForAxes(right, axis_to_dim_map));
 
@@ -240,7 +242,7 @@ SpmdInfo EinsumInferSpmd(const std::vector<DistMetaTensor>& inputs,
         ResoluteOutputPartialDimension(axis_to_dim_map, right);
     out_dist_attr_dst.set_partial_status(partial_on_dims);
 
-    VLOG(4) << "x_axes: " << operands[0] << "y_axes: " << operands[1]
+    VLOG(4) << "x_axes: " << operands[0] << " y_axes: " << operands[1]
             << " out_axes: " << right;
     LOG_SPMD_INPUT(x);
     LOG_SPMD_INPUT(y);
