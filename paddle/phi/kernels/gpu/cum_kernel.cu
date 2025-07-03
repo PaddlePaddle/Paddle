@@ -272,9 +272,8 @@ void ScanKernel(const Context& dev_ctx,
                 Op op,
                 DenseTensor* out) {
   T* out_data = dev_ctx.template Alloc<T>(out);
-  if (out && out->numel() == 0) {
-    return;
-  }
+  if (out && out->numel() == 0) return;
+
   // For 0D Tensor
   if (out->numel() == 1) {
     auto raw_dims = out->dims();

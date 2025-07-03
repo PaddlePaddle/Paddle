@@ -58,9 +58,8 @@ void ScanKernel(const Context& dev_ctx,
                 Reducer reducer,
                 DenseTensor* out) {
   dev_ctx.template Alloc<T>(out);
-  if (out && out->numel() == 0) {
-    return;
-  }
+  if (out && out->numel() == 0) return;
+
   if (x.numel() == 1) {
     auto raw_dims = out->dims();
     phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
