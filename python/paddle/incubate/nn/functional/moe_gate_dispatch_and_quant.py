@@ -17,8 +17,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from paddle import _C_ops
-
-# from ....framework import LayerHelper, in_dynamic_or_pir_mode
 from paddle.base.framework import in_dynamic_or_pir_mode
 
 if TYPE_CHECKING:
@@ -34,27 +32,41 @@ def moe_gate_dispatch_and_quant(
     use_pad: bool,
     use_pow2_scale: bool,
     name: str | None = None,
-) -> Tensor:
+) -> tuple(Tensor, Tensor, Tensor, Tensor, Tensor, Tensor):
     """
     Args:
         x:
+            Input tensor, usually of shape [batch_size, sequence_length, feature_dim].
         gate_logits:
+            Logits for gating mechanism, determining input routing to experts.
         corr_bias:
+            Bias for adjusting gate logits.
         k:
+            Number of top experts to select for each input.
         capacity:
+            Max tokens each expert can process per batch.
         use_pad:
+            Boolean indicating if padding is used for uniform input length.
         use_pow2_scale:
+            Boolean indicating if power-of-two scaling is applied for quantization.
 
     Returns:
         fp8_out:
+            Processed output tensor in FP8 format.
         scale:
+            Scaling factors used during processing.
         combine_weights:
+            Weights for combining expert outputs.
         scatter_index:
+            Indices for scattering outputs back to original order.
         expert_offset:
+            Start index of each expert's output.
         expert_id:
+            IDs of selected experts for each input.
     """
-    if in_dynamic_or_pir_mode():
+    if not in_dynamic_or_pir_mode():
+        raise NotImplementedError('Static graph mode not implemented')
+    else:
         return _C_ops.moe_gate_dispatch_and_quant(
             x, gate_logits, corr_bias, k, capacity, use_pad, use_pow2_scale
         )
-    raise NotImplementedError('Static graph mode not implemented')
