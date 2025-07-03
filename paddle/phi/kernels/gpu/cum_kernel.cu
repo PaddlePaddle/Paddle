@@ -168,6 +168,9 @@ struct LSEPrefixCallbackOp {
 
   __device__ T operator()(T block_aggregate) {
     if (scaled_sum_ == 0.0f) {
+      if (block_aggregate == -std::numeric_limits<T>::infinity()) {
+        return -std::numeric_limits<T>::infinity();
+      }
       max_so_far_ = block_aggregate;
       scaled_sum_ = 1.0f;
       compensation_ = 0.0f;
@@ -179,6 +182,10 @@ struct LSEPrefixCallbackOp {
 
     T m_old = max_so_far_;
     T m_new = fmaxf(m_old, block_aggregate);
+
+    if (block_aggregate == -std::numeric_limits<T>::infinity()) {
+      return old_prefix;
+    }
 
     T scale = expf(m_old - m_new);
     scaled_sum_ *= scale;

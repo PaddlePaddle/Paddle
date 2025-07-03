@@ -50,49 +50,55 @@ void LogcumsumexpGradKernel(const Context& dev_ctx,
                             bool exclusive,
                             bool reverse,
                             DenseTensor* d_x) {
-  if (d_x && d_x->numel() == 0) {
-    dev_ctx.template Alloc<T>(d_x);
-    return;
-  }
-  reverse = !reverse;
   dev_ctx.template Alloc<T>(d_x);
+  if (d_x && d_x->numel() == 0) return;
+
+  bool grad_reverse = !reverse;
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  auto& place = *dev_ctx.eigen_device();
 
   auto eigen_x = EigenVector<T>::Flatten(x);
   auto eigen_out = EigenVector<T>::Flatten(out);
   auto eigen_d_out = EigenVector<T>::Flatten(d_out);
-  auto& place = *dev_ctx.eigen_device();
+  auto eigen_d_x = EigenVector<T>::Flatten(*d_x);
 
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
-  DenseTensor output_pos;
-  output_pos.Resize(d_out.dims());
-  dev_ctx.template Alloc<MT>(&output_pos);
-  auto eigen_output_pos = EigenVector<MT>::Flatten(output_pos);
-  DenseTensor output_neg;
-  output_neg.Resize(d_out.dims());
-  dev_ctx.template Alloc<MT>(&output_neg);
-  auto eigen_output_neg = EigenVector<MT>::Flatten(output_neg);
+  // store log(d_out) - out
   DenseTensor tmp;
   tmp.Resize(d_out.dims());
   dev_ctx.template Alloc<MT>(&tmp);
   auto eigen_tmp = EigenVector<MT>::Flatten(tmp);
 
+  // d_out > 0
+  DenseTensor output_pos;
+  output_pos.Resize(d_out.dims());
+  dev_ctx.template Alloc<MT>(&output_pos);
+  auto eigen_output_pos = EigenVector<MT>::Flatten(output_pos);
+
+  // d_out < 0
+  DenseTensor output_neg;
+  output_neg.Resize(d_out.dims());
+  dev_ctx.template Alloc<MT>(&output_neg);
+  auto eigen_output_neg = EigenVector<MT>::Flatten(output_neg);
+
+  // log(d_out) - out for positive d_out
   eigen_tmp.device(place) =
       eigen_d_out.template cast<MT>().unaryExpr(LogGradPositiveFunctor<MT>()) -
       eigen_out.template cast<MT>();
   LogcumsumexpKernel<MT, Context>(
-      dev_ctx, tmp, axis, flatten, exclusive, reverse, &output_pos);
+      dev_ctx, tmp, axis, flatten, exclusive, grad_reverse, &output_pos);
   auto out_pos = eigen_output_pos + eigen_x.template cast<MT>();
   eigen_output_pos.device(place) = out_pos.exp();
 
+  // log(d_out) - out for negative d_out
   eigen_tmp.device(place) =
       eigen_d_out.template cast<MT>().unaryExpr(LogGradNegativeFunctor<MT>()) -
       eigen_out.template cast<MT>();
   LogcumsumexpKernel<MT, Context>(
-      dev_ctx, tmp, axis, flatten, exclusive, reverse, &output_neg);
+      dev_ctx, tmp, axis, flatten, exclusive, grad_reverse, &output_neg);
   auto out_neg = eigen_output_neg + eigen_x.template cast<MT>();
   eigen_output_neg.device(place) = out_neg.exp();
 
-  auto eigen_d_x = EigenVector<T>::Flatten(*d_x);
+  // positive - negative
   eigen_d_x.device(place) =
       (eigen_output_pos - eigen_output_neg).template cast<T>();
 }
