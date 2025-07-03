@@ -141,6 +141,119 @@ class TestGraphSendRecvMeanOp(OpTest):
         self.check_grad(['X'], 'Out', check_pir=True)
 
 
+class TestGraphSendRecvMaxOp_ZeroSize(OpTest):
+    def setUp(self):
+        paddle.enable_static()
+        self.python_api = graph_send_recv_wrapper
+        self.python_out_sig = ["Out"]
+        self.op_type = "graph_send_recv"
+        x = np.random.random((10, 0)).astype("float64")
+        index = np.random.randint(0, 10, (15, 2)).astype(np.int64)
+        src_index = index[:, 0]
+        dst_index = index[:, 1]
+
+        self.inputs = {'X': x, 'Src_index': src_index, 'Dst_index': dst_index}
+
+        self.attrs = {'reduce_op': 'MAX'}
+
+        out, self.gradient = compute_graph_send_recv_for_min_max(
+            self.inputs, self.attrs
+        )
+        self.outputs = {'Out': out}
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['X'], 'Out', user_defined_grads=[self.gradient], check_pir=True
+        )
+
+
+class TestGraphSendRecvMinOp_ZeroSize(OpTest):
+    def setUp(self):
+        paddle.enable_static()
+        self.python_api = graph_send_recv_wrapper
+        self.python_out_sig = ["Out"]
+        self.op_type = "graph_send_recv"
+        x = np.random.random((10, 0)).astype("float64")
+        index = np.random.randint(0, 10, (15, 2)).astype(np.int64)
+        src_index = index[:, 0]
+        dst_index = index[:, 1]
+
+        self.inputs = {'X': x, 'Src_index': src_index, 'Dst_index': dst_index}
+
+        self.attrs = {'reduce_op': 'MIN'}
+
+        out, self.gradient = compute_graph_send_recv_for_min_max(
+            self.inputs, self.attrs
+        )
+
+        self.outputs = {'Out': out}
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['X'], 'Out', user_defined_grads=[self.gradient], check_pir=True
+        )
+
+
+class TestGraphSendRecvSumOp_ZeroSize(OpTest):
+    def setUp(self):
+        paddle.enable_static()
+        self.python_api = graph_send_recv_wrapper
+        self.python_out_sig = ["Out"]
+        self.op_type = "graph_send_recv"
+        x = np.random.random((10, 0)).astype("float64")
+        index = np.random.randint(0, 10, (15, 2)).astype(np.int64)
+        src_index = index[:, 0]
+        dst_index = index[:, 1]
+
+        self.inputs = {'X': x, 'Src_index': src_index, 'Dst_index': dst_index}
+
+        self.attrs = {'reduce_op': 'SUM'}
+
+        out, _ = compute_graph_send_recv_for_sum_mean(self.inputs, self.attrs)
+
+        self.outputs = {'Out': out}
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', check_pir=True)
+
+
+class TestGraphSendRecvMeanOp_ZeroSize(OpTest):
+    def setUp(self):
+        paddle.enable_static()
+        self.python_api = graph_send_recv_wrapper
+        self.python_out_sig = ["Out"]
+        self.op_type = "graph_send_recv"
+        x = np.random.random((10, 20)).astype("float64")
+        index = np.random.randint(0, 10, (0, 2)).astype(np.int64)
+        src_index = index[:, 0]
+        dst_index = index[:, 1]
+
+        self.inputs = {'X': x, 'Src_index': src_index, 'Dst_index': dst_index}
+
+        self.attrs = {'reduce_op': 'MEAN'}
+
+        out, dst_count = compute_graph_send_recv_for_sum_mean(
+            self.inputs, self.attrs
+        )
+
+        self.outputs = {'Out': out, 'Dst_count': dst_count}
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', check_pir=True)
+
+
 def compute_graph_send_recv_for_sum_mean(inputs, attributes):
     x = inputs['X']
     src_index = inputs['Src_index']

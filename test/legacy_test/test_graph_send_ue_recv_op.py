@@ -393,6 +393,16 @@ class TestSumCase7(TestGraphSendUERecvSumOp):
         self.message_op = 'MUL'
 
 
+class TestSumCase8_ZeroSize(TestGraphSendUERecvSumOp):
+    def set_config(self):
+        self.x = np.random.random((15, 0)).astype("float64")
+        self.y = np.random.random((15, 0)).astype("float64")
+        index = np.random.randint(0, 15, (15, 2)).astype(np.int64)
+        self.src_index = index[:, 0]
+        self.dst_index = index[:, 1]
+        self.message_op = 'MUL'
+
+
 class TestGraphSendUERecvMeanOp(OpTest):
     def setUp(self):
         paddle.enable_static()
@@ -610,6 +620,16 @@ class TestMaxCase7(TestGraphSendUERecvMaxOp):
         self.message_op = 'MUL'
 
 
+class TestMaxCase8_ZeroSize(TestGraphSendUERecvMaxOp):
+    def set_config(self):
+        self.x = np.random.random((15, 0)).astype("float64")
+        self.y = np.random.random((15, 0)).astype("float64")
+        index = np.random.randint(0, 15, (15, 2)).astype(np.int64)
+        self.src_index = index[:, 0]
+        self.dst_index = index[:, 1]
+        self.message_op = 'MUL'
+
+
 class TestGraphSendUERecvMinOp(OpTest):
     def setUp(self):
         paddle.enable_static()
@@ -716,6 +736,16 @@ class TestMinCase7(TestGraphSendUERecvMinOp):
         self.x = np.random.random((100, 1)).astype("float64")
         self.y = np.random.random((15, 20)).astype("float64")
         index = np.random.randint(0, 100, (15, 2)).astype(np.int64)
+        self.src_index = index[:, 0]
+        self.dst_index = index[:, 1]
+        self.message_op = 'MUL'
+
+
+class TestMinCase8_ZeroSize(TestGraphSendUERecvMinOp):
+    def set_config(self):
+        self.x = np.random.random((15, 0)).astype("float64")
+        self.y = np.random.random((15, 0)).astype("float64")
+        index = np.random.randint(0, 15, (15, 2)).astype(np.int64)
         self.src_index = index[:, 0]
         self.dst_index = index[:, 1]
         self.message_op = 'MUL'

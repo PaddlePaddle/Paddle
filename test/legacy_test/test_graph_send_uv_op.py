@@ -147,6 +147,16 @@ class TestCase7(TestGraphSendUVOp):
         self.message_op = 'MUL'
 
 
+class TestCase8_ZeroSize(TestGraphSendUVOp):
+    def set_config(self):
+        self.x = np.random.random((100, 0)).astype("float64")
+        self.y = np.random.random((100, 0)).astype("float64")
+        index = np.random.randint(0, 100, (15, 2)).astype(np.int64)
+        self.src_index = index[:, 0]
+        self.dst_index = index[:, 1]
+        self.message_op = 'ADD'
+
+
 class API_GeometricSendUVTest(unittest.TestCase):
     def test_compute_all_dygraph(self):
         paddle.disable_static()
