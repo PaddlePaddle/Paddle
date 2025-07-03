@@ -1086,5 +1086,146 @@ class TestIndexPutAPI_ZeroSize(unittest.TestCase):
             )
 
 
+class TestIndexPutPrim(unittest.TestCase):
+    def __int__(self):
+        self().__init__()
+
+    def test_prim(self):
+        try:
+            paddle.framework.core._set_prim_all_enabled(True)
+            for accumulate in [False, True]:
+                for x_shape, indices_shape, value_shape in [
+                    ([16], [10], [10]),
+                    ([16, 16], [20, 2], [20]),
+                    ([12, 13, 14], [88, 1], [88, 13, 14]),
+                    ([12, 13, 14], [88, 2], [88, 14]),
+                    ([12, 13, 14], [88, 3], [88]),
+                    ([12, 13, 14], [12 * 13 * 14, 3], [12 * 13 * 14]),
+                ]:
+                    n_indices = indices_shape[0]
+                    index_dim_size = (
+                        indices_shape[1] if len(indices_shape) > 1 else 1
+                    )
+
+                    x_np = np.random.randn(*x_shape)
+                    indices_np = tuple(
+                        [
+                            np.random.randint(
+                                -x_shape[i], x_shape[i], [n_indices]
+                            )
+                            for i in range(max(index_dim_size, 1))
+                        ]
+                    )
+                    value_np = np.random.randn(*value_shape).astype("float32")
+
+                    # run paddle
+                    x_pd = paddle.to_tensor(
+                        x_np.copy(),
+                        "float32",
+                        stop_gradient=False,
+                    )
+                    indices_pd = tuple(
+                        [
+                            paddle.to_tensor(
+                                indice.copy(),
+                                "int64",
+                                stop_gradient=True,
+                            )
+                            for indice in indices_np
+                        ]
+                    )
+                    value_pd = paddle.to_tensor(
+                        value_np.copy(),
+                        "float32",
+                        stop_gradient=False,
+                    )
+
+                    out_pd = paddle.index_put(
+                        x_pd, indices_pd, value_pd, accumulate=accumulate
+                    )
+                    # out_pd = paddle.tanh(out_pd) #
+                    dout_np = np.random.randn(*out_pd.shape)
+
+                    dout_pd = paddle.to_tensor(
+                        dout_np.copy(),
+                        "float32",
+                        stop_gradient=False,
+                    )
+                    dout_pd.stop_gradient = False
+
+                    if accumulate:
+
+                        def compute_dx_dv(x, indices, v, dy, accumulate=True):
+                            y = paddle.index_put(x, indices, v, True)
+                            return paddle.grad(y, [x, v], dy, create_graph=True)
+
+                    else:
+
+                        def compute_dx_dv(x, indices, v, dy, accumulate=False):
+                            y = paddle.index_put(x, indices, v, False)
+                            return paddle.grad(y, [x, v], dy, create_graph=True)
+
+                    # eager
+                    dx_ref, dv_ref = compute_dx_dv(
+                        x_pd, indices_pd, value_pd, dout_pd
+                    )
+
+                    # static dynamic shape
+                    st_func1 = paddle.jit.to_static(
+                        compute_dx_dv,
+                        input_spec=[
+                            paddle.static.InputSpec(
+                                shape=[-1, -1], dtype='float32'
+                            ),
+                            tuple(
+                                paddle.static.InputSpec(
+                                    shape=[-1], dtype='int64'
+                                )
+                                for _ in range(len(indices_pd))
+                            ),
+                            paddle.static.InputSpec(
+                                shape=[-1, -1], dtype='float32'
+                            ),
+                            paddle.static.InputSpec(
+                                shape=[-1, -1], dtype='float32'
+                            ),
+                        ],
+                        full_graph=True,
+                        backend=None,
+                    )
+                    dx_1, dv_1 = st_func1(x_pd, indices_pd, value_pd, dout_pd)
+
+                    # static fixed shape
+                    st_func2 = paddle.jit.to_static(
+                        compute_dx_dv,
+                        full_graph=True,
+                        backend=None,
+                    )
+                    dx_2, dv_2 = st_func2(x_pd, indices_pd, value_pd, dout_pd)
+
+                    np.testing.assert_allclose(
+                        dx_1.numpy(),
+                        dx_ref.numpy(),
+                        err_msg=f"accumulate={accumulate}\nx_np:\n{x_np}\nindices_np:\n{indices_np}\nvalue_np:\n{value_np}\nout_np:{out_pd.numpy()}\n",
+                    )
+                    np.testing.assert_allclose(
+                        dv_1.numpy(),
+                        dv_ref.numpy(),
+                        err_msg=f"accumulate={accumulate}\nx_np:\n{x_np}\nindices_np:\n{indices_np}\nvalue_np:\n{value_np}\nout_np:{out_pd.numpy()}\n",
+                    )
+                    np.testing.assert_allclose(
+                        dx_2.numpy(),
+                        dx_ref.numpy(),
+                        err_msg=f"accumulate={accumulate}\nx_np:\n{x_np}\nindices_np:\n{indices_np}\nvalue_np:\n{value_np}\nout_np:{out_pd.numpy()}\n",
+                    )
+                    np.testing.assert_allclose(
+                        dv_2.numpy(),
+                        dv_ref.numpy(),
+                        err_msg=f"accumulate={accumulate}\nx_np:\n{x_np}\nindices_np:\n{indices_np}\nvalue_np:\n{value_np}\nout_np:{out_pd.numpy()}\n",
+                    )
+        finally:
+            paddle.framework.core._set_prim_all_enabled(False)
+
+
 if __name__ == '__main__':
     unittest.main()
