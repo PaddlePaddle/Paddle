@@ -113,7 +113,7 @@ class API_TestChunkZeroSize1(unittest.TestCase):
             data1 = paddle.static.data(
                 'data1', shape=[3, 0, 6], dtype='float32'
             )
-            x0, x1, x2 = paddle.chunk(data1, chunks=3[3, 0, 3], axis=-1)
+            x0, x1, x2 = paddle.chunk(data1, chunks=[3, 0, 3], axis=-1)
             place = paddle.CPUPlace()
             exe = paddle.static.Executor(place)
             input1 = np.random.random([3, 0, 6]).astype('float32')
