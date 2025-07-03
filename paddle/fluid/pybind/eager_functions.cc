@@ -579,13 +579,41 @@ PyObject* eager_api_run_custom_op(PyObject* self,
     if (paddle::framework::detail::IsDuplicableVar(input)) {
       std::vector<paddle::Tensor> tensors =
           CastPyArg2VectorOfTensor(obj, i + 1);
+      for (size_t i = 0; i < tensors.size(); ++i) {
+        paddle::Tensor& t = tensors[i];
+        if (t.initialized() && t.is_dense_tensor() &&
+            !std::dynamic_pointer_cast<phi::DenseTensor>(t.impl())
+                 ->meta()
+                 .is_contiguous()) {
+          tensors[i] = paddle::Tensor(
+              std::make_shared<phi::DenseTensor>(
+                  paddle::experimental::Trans2Contiguous(*(
+                      std::dynamic_pointer_cast<phi::DenseTensor>(t.impl())))),
+              t.mutable_autograd_meta(),
+              t.name());
+        }
+      }
+
       ctx.EmplaceBackInputs(std::move(tensors));
       VLOG(7) << "Custom operator add input " << input
               << " to CustomOpKernelContext. Add vector<Tensor> size = "
               << ctx.InputRangeAt(i).second - ctx.InputRangeAt(i).first;
     } else {
       const paddle::Tensor& tensor = CastPyArg2Tensor(obj, i + 1);  // NOLINT
-      ctx.EmplaceBackInput(tensor);
+      paddle::Tensor tensor_contiguous = tensor;
+      if (tensor.initialized() && tensor.is_dense_tensor() &&
+          !std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl())
+               ->meta()
+               .is_contiguous()) {
+        tensor_contiguous = paddle::Tensor(
+            std::make_shared<phi::DenseTensor>(
+                paddle::experimental::Trans2Contiguous(
+                    *(std::dynamic_pointer_cast<phi::DenseTensor>(
+                        tensor.impl())))),
+            tensor.mutable_autograd_meta(),
+            tensor.name());
+      }
+      ctx.EmplaceBackInput(tensor_contiguous);
       VLOG(7) << "Custom operator add input " << input
               << " to CustomOpKernelContext. Add Tensor for general case.";
     }
