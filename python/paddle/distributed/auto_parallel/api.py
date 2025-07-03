@@ -1507,10 +1507,12 @@ class _ShardOptimizer(Optimizer):
                     self.param_storage[idx].is_sync = False
 
     def _enable_tensor_fusion(self):
-        self.enable_tensor_fusion = True
+        # TODO: enable after clear FLAGS_enable_tensor_fusion
+        # self.enable_tensor_fusion = True
+        pass
 
     def _enable_sharding_overlap(self, layers):
-        self.enable_sharding_overlap = True
+        # self.enable_sharding_overlap = True
         if not isinstance(layers, paddle.nn.Layer):
             raise RuntimeError(
                 f"`layers` must be `paddle.nn.Layer` but got {type(layers)}"
