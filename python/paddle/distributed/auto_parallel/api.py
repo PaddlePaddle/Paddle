@@ -2429,9 +2429,7 @@ def shard_scaler(scaler: GradScaler) -> GradScaler:
                 temp_found_inf, src_mesh, temp_found_inf.placements
             )
             self._found_inf = _C_ops.bitwise_or(self._found_inf, temp_found_inf)
-        # nothing need to unscale and check inf
-        if not mesh2param_grads:
-            return
+
         # The rank of src_mesh, should not overwrite the original variable `self._found_inf`
         if self._found_inf.process_mesh == current_process_mesh:
             for process_mesh in mesh2param_grads.keys():
