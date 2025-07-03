@@ -2317,7 +2317,6 @@ def shard_scaler(scaler: GradScaler) -> GradScaler:
         current_process_mesh = None
 
         self._found_inf = paddle.to_tensor(np.array([0]).astype(np.bool_))
-        self_found_inf_is_changed = self._found_inf.clone()
         mesh2param_grads = {}
         if getattr(optimizer, '_param_groups', None) and isinstance(
             optimizer._param_groups[0], dict
@@ -2431,7 +2430,7 @@ def shard_scaler(scaler: GradScaler) -> GradScaler:
             )
             self._found_inf = _C_ops.bitwise_or(self._found_inf, temp_found_inf)
         # nothing need to unscale and check inf
-        if paddle.equal(self._found_inf, self_found_inf_is_changed):
+        if not mesh2param_grads:
             return
         # The rank of src_mesh, should not overwrite the original variable `self._found_inf`
         if self._found_inf.process_mesh == current_process_mesh:
