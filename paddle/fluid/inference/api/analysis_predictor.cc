@@ -1378,7 +1378,8 @@ bool AnalysisPredictor::SaveOrLoadPirParameters(bool for_save) {
       }
 
     } else {
-      if (std::filesystem::exists(config_.params_file())) {
+      if (config_.model_from_memory_ ||
+          std::filesystem::exists(config_.params_file())) {
         pir::LoadCombineFunction(config_.params_file(),
                                  filter_param_names,
                                  &tensor_out,
