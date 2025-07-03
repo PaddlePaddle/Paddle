@@ -33,7 +33,7 @@ void UnfoldKernel(const Context& dev_ctx,
                   const std::vector<int>& dilations,
                   DenseTensor* out) {
   const int batch_size = static_cast<int>(x.dims()[0]);
-  if (x && x->numel() == 0) {
+  if (x && x.numel() == 0) {
     phi::Full<T, Context>(
         dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
     return;
