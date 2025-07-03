@@ -770,9 +770,9 @@ enum MMapLoadModes {
   ALLOCATOR_MAPPED_FROMFD = 32,
   ALLOCATOR_MAPPED_UNLINK = 64
 };
-class MmapStorage {
- public:
-  MmapStorage(const std::string &filename_, int64_t nbytes) : size(nbytes) {
+struct MmapStorage {
+  MmapStorage(const std::string &filename_, int64_t nbytes)
+      : base_ptr_(nullptr), size(nbytes) {
     /* open file */
     int flags_{0};
     if ((flags_ ^ ALLOCATOR_MAPPED_EXCLUSIVE) == 0) {
@@ -867,7 +867,6 @@ class MmapStorage {
     ptrdiff_t size_ = static_cast<ptrdiff_t>(
         size); /* if we are here, it must be the right size */
 
-    void *base_ptr_{nullptr};
     /* map it */
     if (flags_ & (ALLOCATOR_MAPPED_SHARED | ALLOCATOR_MAPPED_SHAREDMEM)) {
       base_ptr_ =
@@ -914,8 +913,6 @@ class MmapStorage {
           size_ / 1073741824));
     }
   }
-
- private:
   void *base_ptr_;
   int64_t size;
 };
@@ -1460,253 +1457,27 @@ PYBIND11_MODULE(libpaddle, m) {
   m.def("wait_device", [](const phi::Place &place) {
     phi::DeviceContextPool::Instance().Get(place)->Wait();
   });
-  py::class_<MMapStorage>(m, "MmapStorage")  // class attr: base_ptr_, size_
-      .def(py::init<const std::string &, int64_t, >());  // filename_, nbytes
-  .def("get_slice",
-       [](proto::VarType::Type dtype,
-          int64_t start,
-          int64_t stop,
-          int64_t step) {
-         Py_ssize_t slicelength =
-             PySlice_AdjustIndices(size_, &start, &stop, step);
-         auto data = static_cast<uint8_t *>(base_ptr_) + start;
-         auto dtype_phi = phi::TransToPhiDataType(dtype);
-         // todo: 确定是否有内存泄漏问题
-         return from_blob(data,
-                          phi::IntArray({slicelength}),
-                          dtype_phi,
-                          phi::DataLayout::NCHW,
-                          phi::CPUPlace());
-       });
-
-  m.def(
-      "fromfile",
-      [](const std::string &filename_,
-         proto::VarType::Type dtype,
-         int64_t nbytes,
-         int64_t start,
-         int64_t stop,
-         int64_t step) {
-        int64_t size = nbytes;
-        /* open file */
-        int flags_{0};
-        if ((flags_ ^ ALLOCATOR_MAPPED_EXCLUSIVE) == 0) {
-          PADDLE_THROW(common::errors::InvalidArgument(
-              "ALLOCATOR_MAPPED_EXCLUSIVE flag requires opening the file in "
-              "shared mode"));
-        }
-        if (!(flags_ & ALLOCATOR_MAPPED_SHARED) &&
-            !(flags_ & ALLOCATOR_MAPPED_SHAREDMEM)) {
-          flags_ &= ~ALLOCATOR_MAPPED_NOCREATE;
-        }
-
-        // OK, now do the allocation
-
-        if (size == 0) {
-          PADDLE_THROW(
-              common::errors::InvalidArgument("nbytes must be greater than 0"));
-        }
-        int fd{-1};
-        int flags{0};  // shadow
-        if (flags_ & (ALLOCATOR_MAPPED_SHARED | ALLOCATOR_MAPPED_SHAREDMEM)) {
-          flags = O_RDWR | O_CREAT;
-        } else {
-          flags = O_RDONLY;
-        }
-
-        if (flags_ & ALLOCATOR_MAPPED_EXCLUSIVE) {
-          flags |= O_EXCL;
-        }
-        if (flags_ & ALLOCATOR_MAPPED_NOCREATE) {
-          flags &= ~O_CREAT;
-        }
-
-        if (!(flags_ & ALLOCATOR_MAPPED_FROMFD)) {
-          if (flags_ & ALLOCATOR_MAPPED_SHARED) {
-            if ((fd = open(filename_.c_str(), flags, (mode_t)0600)) == -1) {
-              PADDLE_THROW(common::errors::InvalidArgument(
-                  "unable to open file <%s> in read-write mode.", filename_));
-            }
-          } else if (flags_ & ALLOCATOR_MAPPED_SHAREDMEM) {
-#ifdef HAVE_SHM_OPEN
-            if ((fd = shm_open(filename_.c_str(), flags, (mode_t)0600)) == -1) {
-              PADDLE_THROW(common::errors::InvalidArgument(
-                  "unable to open shared memory file <%s> in read-write mode.",
-                  filename_));
-            }
-#else
-            PADDLE_THROW(common::errors::InvalidArgument(
-                "unable to open file <%s> in sharedmem mode, shm_open "
-                "unavailable on this platform.",
-                filename_));
-#endif
-          } else {
-            if ((fd = open(filename_.c_str(), O_RDONLY)) == -1) {
-              PADDLE_THROW(common::errors::InvalidArgument(
-                  "unable to open file <%s> in read-only mode.", filename_));
-            }
-          }
-        }
-        PADDLE_ENFORCE_GE(
-            fd, 0, common::errors::InvalidArgument("open file filed."));
-        struct stat file_stat {};
-        if (fstat(fd, &file_stat) == -1) {
-          if (!(flags_ & ALLOCATOR_MAPPED_FROMFD)) {
-            ::close(fd);
-          }
-          PADDLE_THROW(common::errors::InvalidArgument(
-              "unable to stat the file <%s>", filename_));
-        }
-
-        if (size > 0) {
-          if (static_cast<int64_t>(size) > file_stat.st_size) {
-            if (flags_) {
-              if (ftruncate(fd, static_cast<off_t>(size)) == -1) {
-                PADDLE_THROW(common::errors::InvalidArgument(
-                    "unable to resize file <%s> to the right size", filename_));
-              }
-              if (fstat(fd, &file_stat) == -1 ||
-                  file_stat.st_size < static_cast<int64_t>(size)) {
-                ::close(fd);
-                PADDLE_THROW(common::errors::InvalidArgument(
-                    "unable to stretch file <%s> to the right size",
-                    filename_));
-              }
-            } else {
-              ::close(fd);
-              PADDLE_THROW(common::errors::InvalidArgument(
-                  "file <%s> size <%d> is smaller than the required mapping "
-                  "size <%d>",
-                  filename_,
-                  file_stat.st_size,
-                  size));
-            }
-          }
-        } else {
-          size = file_stat.st_size;
-        }
-        ptrdiff_t size_ = static_cast<ptrdiff_t>(
-            size); /* if we are here, it must be the right size */
-
-        void *base_ptr_{nullptr};
-        /* map it */
-        if (flags_ & (ALLOCATOR_MAPPED_SHARED | ALLOCATOR_MAPPED_SHAREDMEM)) {
-          base_ptr_ =
-              mmap(nullptr, size_, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-        } else {
-          base_ptr_ =
-              mmap(nullptr, size_, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
-        }
-
-        if (base_ptr_ == MAP_FAILED) {
-          base_ptr_ = nullptr; /* let's be sure it is NULL */
-          PADDLE_THROW(common::errors::InvalidArgument(
-              "unable to mmap %d bytes from file <%s>", size, filename_));
-        }
-
-        if (::close(fd) == -1) {
-          PADDLE_THROW(common::errors::InvalidArgument(
-              "Error closing file <%s>", filename_));
-        }
-
-        if (flags_ & ALLOCATOR_MAPPED_UNLINK) {
-          if (flags_ & ALLOCATOR_MAPPED_SHAREDMEM) {
-#ifdef HAVE_SHM_UNLINK
-            if (shm_unlink(filename_.c_str()) == -1) {
-              PADDLE_THROW(common::errors::InvalidArgument(
-                  "could not unlink the shared memory file <%s>", filename_));
-            }
-#else
-            PADDLE_THROW(common::errors::InvalidArgument(
-                "could not unlink the shared memory file <%s>, shm_unlink not "
-                "available on platform",
-                filename_));
-#endif
-          } else {
-            if (unlink(filename_.c_str()) == -1)
-              PADDLE_THROW(common::errors::InvalidArgument(
-                  "could not unlink file  <%s>", filename_));
-          }
-        }
-
-        if (base_ptr_ == MAP_FAILED) {
-          PADDLE_THROW(common::errors::InvalidArgument(
-              "unable to mmap memory: you tried to mmap %d bytes",
-              size_ / 1073741824));
-        }
-
-        Py_ssize_t slicelength =
-            PySlice_AdjustIndices(nbytes, &start, &stop, step);
-        auto data = static_cast<uint8_t *>(base_ptr_) + start;
-        auto dtype_phi = phi::TransToPhiDataType(dtype);
-        // todo: 确定是否有内存泄漏问题
-        return from_blob(data,
-                         phi::IntArray({slicelength}),
-                         dtype_phi,
-                         phi::DataLayout::NCHW,
-                         phi::CPUPlace());
-      });
-
-  m.def("frombuffer",
-        [](py::object buffer,
-           proto::VarType::Type dtype,
-           int64_t count,
-           int64_t offset) {
-          size_t actual_count = 0;
-          auto dtype_phi = phi::TransToPhiDataType(dtype);
-          auto elsize = phi::SizeOf(dtype_phi);
-          Py_buffer view;
-          if (PyObject_GetBuffer(buffer.ptr(), &view, PyBUF_WRITABLE) < 0) {
-            PADDLE_ENFORCE_EQ(
-                PyObject_GetBuffer(buffer.ptr(), &view, PyBUF_SIMPLE) >= 0,
-                true,
-                common::errors::InvalidArgument(
-                    "could not retrieve buffer from object"));
-            PyErr_Clear();
-          }
-          Py_INCREF(view.obj);
-          std::unique_ptr<PyObject> obj(view.obj);
-          auto len = view.len;
-          auto buf = view.buf;
-          PyBuffer_Release(&view);
-          PADDLE_ENFORCE_EQ(
-              len > 0 && count != 0,
-              true,
-              common::errors::InvalidArgument(
-                  "both buffer length and count must be greater than 0"));
-          PADDLE_ENFORCE_EQ(
-              offset >= 0 && offset < len,
-              true,
-              common::errors::InvalidArgument("offset must be non-negative and "
-                                              "no greater than buffer length"));
-          PADDLE_ENFORCE_EQ(
-              count > 0 || (len - offset) % elsize == 0,
-              true,
-              common::errors::InvalidArgument("buffer length after offset must "
-                                              "be a multiple of element size"));
-          if (count < 0) {
-            actual_count = (len - offset) / elsize;
-          } else {
-            actual_count = static_cast<size_t>(count);
-          }
-
-          PADDLE_ENFORCE_LE(static_cast<size_t>(offset) + actual_count * elsize,
-                            static_cast<size_t>(len),
-                            common::errors::InvalidArgument(
-                                "requested buffer length after offset must not "
-                                "be greater than actual buffer length"));
-
-          auto offset_buf = static_cast<char *>(buf) + offset;
-          return from_blob(offset_buf,
-                           phi::IntArray({actual_count}),
-                           dtype_phi,
-                           phi::DataLayout::NCHW,
-                           phi::CPUPlace(),
-                           [obj = obj.release()](void *) {
-                             pybind11::gil_scoped_acquire gil;
-                             Py_DECREF(obj);
-                           });
-        });
+  py::class_<MmapStorage>(m, "MmapStorage")  // class attr: base_ptr_, size_
+      .def(py::init<const std::string &, int64_t>())  // filename_, nbytes
+      .def("get_slice",
+           [](MmapStorage &self,
+              proto::VarType::Type dtype,
+              int64_t start,
+              int64_t stop,
+              int64_t step) {
+             if (stop < 0) {
+               stop = start + 1;  // default: get the start element.
+             }
+             Py_ssize_t slicelength =
+                 PySlice_AdjustIndices(self.size, &start, &stop, step);
+             auto data = static_cast<uint8_t *>(self.base_ptr_) + start;
+             auto dtype_phi = phi::TransToPhiDataType(dtype);
+             return from_blob(data,
+                              phi::IntArray({slicelength}),
+                              dtype_phi,
+                              phi::DataLayout::NCHW,
+                              phi::CPUPlace());
+           });
 
   m.def("from_dlpack", [](py::object data) {
     DLManagedTensor *dlMTensor = reinterpret_cast<DLManagedTensor *>(

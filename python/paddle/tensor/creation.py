@@ -981,6 +981,27 @@ def to_tensor(
 
 
 class MmapStorage(paddle.base.core.MmapStorage):
+    """
+    This class will use mmap to load a file.
+    Args:
+        filename(str): the name of .safetensors file.
+        nbytes(int): number of bytes to map into memory.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> t = paddle.MmapStorage('./model-00006-of-00009.safetensors', 64)
+            >>> t.get_slice(start=0,stop=64,step=1)
+            Tensor(shape=[64], dtype=uint8, place=Place(cpu), stop_gradient=True,
+                   [232, 208, 0  , 0  , 0  , 0  , 0  , 0  , 123, 34 , 95 , 95 , 109, 101,
+                    116, 97 , 100, 97 , 116, 97 , 95 , 95 , 34 , 58 , 123, 34 , 102, 111,
+                    114, 109, 97 , 116, 34 , 58 , 34 , 110, 112, 34 , 125, 44 , 34 , 101,
+                    114, 110, 105, 101, 46 , 108, 97 , 121, 101, 114, 115, 46 , 49 , 54 ,
+                    46 , 109, 108, 112, 46 , 103, 97 , 116])
+
+    """
+
     def __init__(self, filename: str, nbytes: int):
         super().__init__(filename, nbytes)
 
@@ -991,51 +1012,21 @@ class MmapStorage(paddle.base.core.MmapStorage):
         stop: int = -1,
         step: int = 1,
     ) -> paddle.Tensor:
+        """
+        Slice the tensor from the mmapped file.
+        Args:
+            dtype (DTypeLike | None): The data type of the output tensor. Default: "uint8".
+            start (int): The start index of the slice. Default: 0.
+            stop (int): The end index of the slice. Default: -1.
+            step (int): The step size of the slice. Default: 1.
+        Returns:
+            Tensor: The sliced tensor.
+        """
         proto_dtype = paddle.base.framework.convert_to_proto_type(dtype)
         out: paddle.base.libpaddle.DenseTensor = super().get_slice(
             proto_dtype, start, stop, step
         )
         return out
-
-
-def fromfile(
-    filename_: str,
-    size: int,
-    dtype: DTypeLike | None = "uint8",
-    start: int = 0,
-    stop: int = -1,
-    step: int = 1,
-) -> paddle.Tensor:
-    proto_dtype = paddle.base.framework.convert_to_proto_type(dtype)
-    out: paddle.base.libpaddle.DenseTensor = paddle.base.core.fromfile(
-        filename_, proto_dtype, size, start, stop, step
-    )
-    return out
-
-
-"""
-import paddle
-a =  paddle.fromfile('/root/paddlejob/workspace/env_run/output/liuyuanle/0_Origin_Models/ernie-4_5-21b-a3b-bf16-paddle/model-00006-of-00009.safetensors', size=160, start=0, stop=160, step=1)
-t = paddle.MmapStorage('/root/paddlejob/workspace/env_run/output/liuyuanle/0_Origin_Models/ernie-4_5-21b-a3b-bf16-paddle/model-00006-of-00009.safetensors', 160)
-m = t.get_slice(start=0,stop=160,step=1)
-"""
-
-
-def frombuffer(
-    buffer: NestedNumericSequence,
-    dtype: DTypeLike | None = None,
-    count: int = -1,
-    offset: int = 0,
-    place: PlaceLike | None = "cpu",
-) -> paddle.Tensor:
-    place = paddle.base.framework._get_paddle_place(place)
-    proto_dtype = paddle.base.framework.convert_to_proto_type(dtype)
-    out: paddle.base.libpaddle.DenseTensor = paddle.base.core.frombuffer(
-        buffer, proto_dtype, count, offset
-    )
-    if paddle.base.framework.in_dygraph_mode():
-        out = paddle.Tensor(out, place=place)
-    return out
 
 
 def full_like(

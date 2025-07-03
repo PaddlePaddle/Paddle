@@ -204,8 +204,6 @@ from .tensor.creation import (
     empty,
     empty_like,
     eye,
-    frombuffer,
-    fromfile,
     full,
     full_like,
     geometric_,
