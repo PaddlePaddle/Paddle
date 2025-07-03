@@ -27,7 +27,7 @@ from test_conv3d_op import (
 
 class TestMKLDNN(TestConv3DOp):
     def init_kernel_type(self):
-        self.use_mkldnn = True
+        self.use_onednn = True
         self.data_format = "NCHW"
         self.dtype = np.float32
         self.check_pir_onednn = True
@@ -35,7 +35,7 @@ class TestMKLDNN(TestConv3DOp):
 
 class TestMKLDNNCase1(TestCase1):
     def init_kernel_type(self):
-        self.use_mkldnn = True
+        self.use_onednn = True
         self.data_format = "NCHW"
         self.dtype = np.float32
         self.check_pir_onednn = True
@@ -43,7 +43,7 @@ class TestMKLDNNCase1(TestCase1):
 
 class TestMKLDNNGroup1(TestWithGroup1):
     def init_kernel_type(self):
-        self.use_mkldnn = True
+        self.use_onednn = True
         self.data_format = "NCHW"
         self.dtype = np.float32
         self.check_pir_onednn = True
@@ -51,7 +51,7 @@ class TestMKLDNNGroup1(TestWithGroup1):
 
 class TestMKLDNNGroup2(TestWithGroup2):
     def init_kernel_type(self):
-        self.use_mkldnn = True
+        self.use_onednn = True
         self.data_format = "NCHW"
         self.dtype = np.float32
         self.check_pir_onednn = True
@@ -59,7 +59,7 @@ class TestMKLDNNGroup2(TestWithGroup2):
 
 class TestMKLDNNWith1x1(TestWith1x1):
     def init_kernel_type(self):
-        self.use_mkldnn = True
+        self.use_onednn = True
         self.data_format = "NCHW"
         self.dtype = np.float32
         self.check_pir_onednn = True
@@ -67,7 +67,7 @@ class TestMKLDNNWith1x1(TestWith1x1):
 
 class TestMKLDNNWithInput1x1Filter1x1(TestWithInput1x1Filter1x1):
     def init_kernel_type(self):
-        self.use_mkldnn = True
+        self.use_onednn = True
         self.data_format = "NCHW"
         self.dtype = np.float32
         self.check_pir_onednn = True
@@ -75,7 +75,7 @@ class TestMKLDNNWithInput1x1Filter1x1(TestWithInput1x1Filter1x1):
 
 class TestConv3DOp_AsyPadding_MKLDNN(TestConv3DOp):
     def init_kernel_type(self):
-        self.use_mkldnn = True
+        self.use_onednn = True
         self.data_format = "NCHW"
         self.dtype = np.float32
         self.check_pir_onednn = True
@@ -91,7 +91,7 @@ class TestConv3DOp_Same_MKLDNN(TestConv3DOp_AsyPadding_MKLDNN):
         self.padding_algorithm = "SAME"
 
     def init_kernel_type(self):
-        self.use_mkldnn = True
+        self.use_onednn = True
         self.data_format = "NCHW"
         self.dtype = np.float32
         self.check_pir_onednn = True
@@ -103,7 +103,7 @@ class TestConv3DOp_Valid_MKLDNN(TestConv3DOp_AsyPadding_MKLDNN):
         self.padding_algorithm = "VALID"
 
     def init_kernel_type(self):
-        self.use_mkldnn = True
+        self.use_onednn = True
         self.data_format = "NCHW"
         self.dtype = np.float32
         self.check_pir_onednn = True
