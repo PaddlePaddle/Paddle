@@ -2411,11 +2411,6 @@ void SendURecvInferMeta(const MetaTensor& x,
                                         dst_index_dims.size()));
   }
 
-  PADDLE_ENFORCE_EQ(src_index_dims[0],
-                    dst_index_dims[0],
-                    common::errors::InvalidArgument(
-                        "Src_index and Dst_index should have the same shape."));
-
   auto dims = x.dims();
   std::vector<int64_t> dims_ = common::vectorize(dims);
   dims_[0] = -1;

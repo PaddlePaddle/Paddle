@@ -571,15 +571,11 @@ void SendUERecvGradKernel(const Context& dev_ctx,
                           DenseTensor* y_grad) {
   auto index_type = src_index.dtype();
 
-  if (out_grad.numel() == 0) {
-    if (x_grad) {
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(x_grad->dims())), 0, x_grad);
-    }
-    if (y_grad) {
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(y_grad->dims())), 0, y_grad);
-    }
+  if (out_grad.numel() == 0 || x.numel() == 0 || y.numel() == 0) {
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(x_grad->dims())), 0, x_grad);
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(y_grad->dims())), 0, y_grad);
     return;
   }
 

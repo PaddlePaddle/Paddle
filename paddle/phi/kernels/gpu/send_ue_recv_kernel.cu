@@ -284,8 +284,8 @@ void SendUERecvKernel(const Context& dev_ctx,
   auto index_type = src_index.dtype();
   auto& out_size_data = out_size.GetData();
 
-  if (x.numel() == 0 || y.numel() == 0) {
-    // out->Resize(common::make_ddim(out_size_data));
+  if (x.numel() == 0 || y.numel() == 0 || src_index.numel() == 0 ||
+      dst_index.numel() == 0) {
     std::vector<int64_t> dims_ = common::vectorize(out->dims());
     if (out_size_data[0] <= 0) {
       dims_[0] = x.dims()[0];
@@ -293,12 +293,13 @@ void SendUERecvKernel(const Context& dev_ctx,
       dims_[0] = out_size_data[0];
     }
     out->Resize(common::make_ddim(dims_));
+    dst_count->Resize(common::make_ddim(dims_));
     phi::Full<T, Context>(
         dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
-    phi::Full<T, Context>(dev_ctx,
-                          phi::IntArray(common::vectorize(dst_count->dims())),
-                          0,
-                          dst_count);
+    phi::Full<int, Context>(dev_ctx,
+                            phi::IntArray(common::vectorize(dst_count->dims())),
+                            0,
+                            dst_count);
     return;
   }
 

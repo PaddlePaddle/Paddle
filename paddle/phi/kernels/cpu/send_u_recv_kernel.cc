@@ -156,18 +156,21 @@ void SendURecvKernel(const Context& dev_ctx,
   auto index_type = src_index.dtype();
   auto& out_size_data = out_size.GetData();
 
-  if (x.numel() == 0) {
+  if (x.numel() == 0 || src_index.numel() == 0 || dst_index.numel() == 0) {
     if (out_size_data[0] <= 0) {
       out->Resize(x.dims());
+      dst_count->Resize(x.dims());
     } else {
       out->Resize(common::make_ddim(out_size_data));
+      dst_count->Resize(common::make_ddim(out_size_data));
     }
     phi::Full<T, Context>(
         dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
-    phi::Full<T, Context>(dev_ctx,
-                          phi::IntArray(common::vectorize(dst_count->dims())),
-                          0,
-                          dst_count);
+    phi::Full<int32_t, Context>(
+        dev_ctx,
+        phi::IntArray(common::vectorize(dst_count->dims())),
+        0,
+        dst_count);
     return;
   }
 
