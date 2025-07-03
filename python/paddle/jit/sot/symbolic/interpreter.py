@@ -63,16 +63,8 @@ def replace_symbol(
 
 def _append_opstack_between(start, end, stack):
     # The range is [start, end)
-    from paddle.framework import core
-
-    op_maker = core.op_proto_and_checker_maker
-    callstack_attr_name = op_maker.kOpCreationCallstackAttrName()
     for op in for_each_ops_between(start, end):
-        if paddle.framework.use_pir_api():
-            op.callstack = stack
-        else:
-            # NOTE(xiongkun): we don't sync for speed. careful!!
-            op._set_attr(callstack_attr_name, stack)
+        op.callstack = stack
 
 
 def for_each_ops_between(start, end):
