@@ -32,6 +32,10 @@ void ExpandAs(const Context& context,
   auto diff = target_shape.size() - vec_in_dims.size();
   vec_in_dims.insert(vec_in_dims.begin(), diff, 1);
   for (size_t i = 0; i < vec_in_dims.size(); ++i) {
+    if (target_shape[i] == 0) {
+      dev_ctx.template Alloc<T>(out);
+      return;
+    }
     PADDLE_ENFORCE_NE(target_shape[i],
                       0,
                       common::errors::InvalidArgument(
