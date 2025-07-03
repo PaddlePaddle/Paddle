@@ -65,7 +65,7 @@ jobs:
           python -m pip install pycryptodome
           python -m pip install bce-python-sdk==0.8.74
           tar -cf Paddle.tar Paddle && zstd Paddle.tar
-          python %BCE_FILE% Paddle.tar.zst paddle-github-action/PR/windows/%PR_ID%/%COMMIT_ID%
+          python %BCE_FILE% Paddle.tar.zst paddle-github-action/windows/PR/%PR_ID%/%COMMIT_ID%
           del Paddle.tar Paddle.tar.zst
 
       - name: Clean env
