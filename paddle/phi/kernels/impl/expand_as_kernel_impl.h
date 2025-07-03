@@ -42,10 +42,6 @@ void ExpandAs(const Context& context,
       context.template Alloc<T>(out);
       return;
     }
-    PADDLE_ENFORCE_NE(
-        target_shape[i],
-        0,
-        errors::InvalidArgument("The value of target shape cannot be zero."));
     if (i < diff) {
       PADDLE_ENFORCE_GT(
           target_shape[i],

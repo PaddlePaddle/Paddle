@@ -36,10 +36,6 @@ void ExpandAs(const Context& context,
       context.template Alloc<T>(out);
       return;
     }
-    PADDLE_ENFORCE_NE(target_shape[i],
-                      0,
-                      common::errors::InvalidArgument(
-                          "The value of target shape cannot be zero."));
     if (vec_in_dims[i] != 1) {
       PADDLE_ENFORCE_EQ(
           vec_in_dims[i],
