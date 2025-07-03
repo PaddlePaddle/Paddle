@@ -20,7 +20,7 @@ from typing import TYPE_CHECKING
 import paddle
 from paddle.amp.auto_cast import amp_state
 from paddle.base.data_feeder import convert_dtype
-from paddle.framework import _dygraph_tracer, use_pir_api
+from paddle.framework import _dygraph_tracer
 
 from ..infer_meta import convert_meta_to_input_spec
 from ..profiler import EventGuard
@@ -144,16 +144,11 @@ class FallbackWrapper:
                 self.partial_program,
             ) = self.compiled_fn.get_concrete_program(input_spec)
             self.partial_program.training = self.is_training
-        if use_pir_api():
-            global_block_ops = (
-                self.concrete_program.main_program.global_block().ops
-            )
-            non_builtin_ops = list(filter(_is_computation_op, global_block_ops))
-            return len(non_builtin_ops)
-        else:
-            if self.partial_program.program.num_blocks > 1:
-                return -1
-            return len(self.partial_program.program.block(0).ops)
+        global_block_ops = (
+            self.concrete_program.main_program.global_block().ops
+        )
+        non_builtin_ops = list(filter(_is_computation_op, global_block_ops))
+        return len(non_builtin_ops)
 
     def collect_new_symbol_hit_rate(self, inputs, outputs):
         if not InfoCollector().need_collect(NewSymbolHitRateInfo):
@@ -253,8 +248,6 @@ class FallbackWrapper:
                 2,
                 lambda: print("[FallbackWrapper] start run SIR: \n", self.SIR),
             )
-            if not use_pir_api():
-                args, kwargs = self.amp_cast_inputs(args, kwargs)
             log_do(
                 4,
                 lambda: print(

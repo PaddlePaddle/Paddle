@@ -22,14 +22,6 @@ def is_inplace_api(func):
     return func in inplace_apis
 
 
-def get_variable_methods():
-    return [
-        member_name
-        for member_name, member in inspect.getmembers(paddle.static.Variable)
-        if inspect.isfunction(member)
-    ]
-
-
 def get_value_methods():
     return [
         member_name
@@ -106,13 +98,9 @@ def get_paddle_api():
 
 def create_tensor_methods_getter():
     value_methods = get_value_methods()
-    variable_methods = get_variable_methods()
 
     def _get_tensor_methods():
-        if paddle.framework.use_pir_api():
-            return value_methods
-        else:
-            return variable_methods
+        return value_methods
 
     return _get_tensor_methods
 

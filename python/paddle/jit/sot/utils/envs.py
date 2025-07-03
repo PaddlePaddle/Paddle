@@ -121,8 +121,8 @@ ENV_SOT_WITH_CONTROL_FLOW = BooleanEnvironmentVariable(
 ENV_SOT_EXPORT = StringEnvironmentVariable("SOT_EXPORT", "")
 ENV_SOT_ALLOW_DYNAMIC_SHAPE = BooleanEnvironmentVariable(
     "SOT_ALLOW_DYNAMIC_SHAPE",
-    # Enable SOT dynamic shape as default in PIR mode only
-    paddle.framework.use_pir_api(),
+    # Enable SOT dynamic shape as default in PIR mode
+    True,
 )
 ENV_SOT_ENABLE_FASTER_GUARD = BooleanEnvironmentVariable(
     "SOT_ENABLE_FASTER_GUARD",
