@@ -22,6 +22,7 @@
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cpu/graph_send_ue_recv_funcs.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/impl/graph_message_passing_impl.h"
 
 namespace phi {
@@ -256,6 +257,24 @@ void SendUERecvKernel(const Context& dev_ctx,
                       DenseTensor* dst_count) {
   auto index_type = src_index.dtype();
   auto& out_size_data = out_size.GetData();
+
+  if (x.numel() == 0 || y.numel() == 0) {
+    std::vector<int64_t> dims_ = common::vectorize(out->dims());
+    if (out_size_data[0] <= 0) {
+      dims_[0] = x.dims()[0];
+    } else {
+      dims_[0] = out_size_data[0];
+    }
+    out->Resize(common::make_ddim(dims_));
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+    phi::Full<T, Context>(dev_ctx,
+                          phi::IntArray(common::vectorize(dst_count->dims())),
+                          0,
+                          dst_count);
+    return;
+  }
+
   if (index_type == phi::DataType::INT32) {
     GraphSendUERecvOpKernelLaunchHelper<Context, T, int32_t>(dev_ctx,
                                                              x,
