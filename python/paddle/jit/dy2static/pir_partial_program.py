@@ -229,6 +229,9 @@ class RunnableProgram:
         self.x_names = self.convert_name(in_out_values[0])
         self.param_names = self.convert_name(in_out_values[1])
         self.out_names = self.convert_name(in_out_values[2])
+        # NOTE(SigureMo): Record original stop gradient for output values to avoid
+        # losing during optimization passes.
+        self.out_stop_gradients = [v.stop_gradient for v in in_out_values[2]]
         self.forward_range = forward_range
         self.backward_range = backward_range
         self.has_splited = False
@@ -436,6 +439,15 @@ class RunnableProgram:
                     fwd_map.get(n, fake_value()) for n in ns
                 ]
             program_attr[f"{k}_names"] = ns
+
+        # Restore stop_gradient for output values
+        assert len(program_attr["fo_values"]) == len(
+            self.out_stop_gradients
+        ), "Output values and stop gradients length mismatch"
+        for v, stop_gradient in zip(
+            program_attr["fo_values"], self.out_stop_gradients
+        ):
+            v.stop_gradient = stop_gradient
 
         return program_attr
 
