@@ -32,6 +32,7 @@ from .attribute import (  # noqa: F401
     shape,
 )
 from .creation import (  # noqa: F401
+    MmapStorage,
     arange,
     cauchy_,
     complex,
@@ -45,6 +46,7 @@ from .creation import (  # noqa: F401
     eye,
     fill_constant,
     frombuffer,
+    fromfile,
     full,
     full_like,
     geometric_,

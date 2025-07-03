@@ -980,6 +980,47 @@ def to_tensor(
             return _to_tensor_static(data, dtype, stop_gradient)
 
 
+class MmapStorage(paddle.base.core.MmapStorage):
+    def __init__(self, filename: str, nbytes: int):
+        super().__init__(filename, nbytes)
+
+    def get_slice(
+        self,
+        dtype: DTypeLike | None = "uint8",
+        start: int = 0,
+        stop: int = -1,
+        step: int = 1,
+    ) -> paddle.Tensor:
+        proto_dtype = paddle.base.framework.convert_to_proto_type(dtype)
+        out: paddle.base.libpaddle.DenseTensor = super().get_slice(
+            proto_dtype, start, stop, step
+        )
+        return out
+
+
+def fromfile(
+    filename_: str,
+    size: int,
+    dtype: DTypeLike | None = "uint8",
+    start: int = 0,
+    stop: int = -1,
+    step: int = 1,
+) -> paddle.Tensor:
+    proto_dtype = paddle.base.framework.convert_to_proto_type(dtype)
+    out: paddle.base.libpaddle.DenseTensor = paddle.base.core.fromfile(
+        filename_, proto_dtype, size, start, stop, step
+    )
+    return out
+
+
+"""
+import paddle
+a =  paddle.fromfile('/root/paddlejob/workspace/env_run/output/liuyuanle/0_Origin_Models/ernie-4_5-21b-a3b-bf16-paddle/model-00006-of-00009.safetensors', size=160, start=0, stop=160, step=1)
+t = paddle.MmapStorage('/root/paddlejob/workspace/env_run/output/liuyuanle/0_Origin_Models/ernie-4_5-21b-a3b-bf16-paddle/model-00006-of-00009.safetensors', 160)
+m = t.get_slice(start=0,stop=160,step=1)
+"""
+
+
 def frombuffer(
     buffer: NestedNumericSequence,
     dtype: DTypeLike | None = None,
