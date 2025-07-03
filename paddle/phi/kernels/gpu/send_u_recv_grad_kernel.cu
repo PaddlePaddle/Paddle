@@ -107,7 +107,8 @@ void SendURecvGradKernel(const Context& dev_ctx,
                          DenseTensor* x_grad) {
   auto index_type = src_index.dtype();
 
-  if (out_grad.numel() == 0 || x.numel() == 0) {
+  if (out_grad.numel() == 0 || x.numel() == 0 || src_index.numel() == 0 ||
+      dst_index.numel() == 0) {
     phi::Full<T, Context>(
         dev_ctx, phi::IntArray(common::vectorize(x_grad->dims())), 0, x_grad);
     return;

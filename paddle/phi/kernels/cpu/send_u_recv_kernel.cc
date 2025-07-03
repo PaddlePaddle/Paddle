@@ -159,10 +159,13 @@ void SendURecvKernel(const Context& dev_ctx,
   if (x.numel() == 0 || src_index.numel() == 0 || dst_index.numel() == 0) {
     if (out_size_data[0] <= 0) {
       out->Resize(x.dims());
-      dst_count->Resize(x.dims());
     } else {
       out->Resize(common::make_ddim(out_size_data));
-      dst_count->Resize(common::make_ddim(out_size_data));
+    }
+    if (reduce_op == "MEAN") {
+      int64_t input_size =
+          out_size_data[0] <= 0 ? x.dims()[0] : out_size_data[0];
+      dst_count->Resize({input_size});
     }
     phi::Full<T, Context>(
         dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);

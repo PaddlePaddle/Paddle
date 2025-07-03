@@ -292,8 +292,12 @@ void SendUERecvKernel(const Context& dev_ctx,
     } else {
       dims_[0] = out_size_data[0];
     }
+    if (reduce_op == "MEAN") {
+      int64_t input_size =
+          out_size_data[0] <= 0 ? x.dims()[0] : out_size_data[0];
+      dst_count->Resize({input_size});
+    }
     out->Resize(common::make_ddim(dims_));
-    dst_count->Resize(common::make_ddim(dims_));
     phi::Full<T, Context>(
         dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
     phi::Full<int, Context>(dev_ctx,
