@@ -18,8 +18,6 @@ import inspect
 from typing import TYPE_CHECKING
 
 import paddle
-from paddle.amp.auto_cast import amp_state
-from paddle.base.data_feeder import convert_dtype
 from paddle.framework import _dygraph_tracer
 
 from ..infer_meta import convert_meta_to_input_spec
@@ -36,7 +34,6 @@ from ..utils import (
     SubGraphRelationInfo,
     log,
     log_do,
-    map_if,
 )
 from .export import export
 from .interpreter import compile_sir
@@ -107,29 +104,6 @@ class FallbackWrapper:
         self.is_training = is_training
         self.exported = False
         self.is_first_call = True
-
-    def amp_cast_inputs(self, args, kwargs):
-        """Prepare inputs for amp, cast float16 into float32 if needed."""
-        current_amp_state = amp_state()
-        if current_amp_state is None:
-            return args, kwargs
-        # skip if not gpu / xpu / custom place
-        tracer = _dygraph_tracer()
-        if not (
-            tracer._expected_place.is_gpu_place()
-            or tracer._expected_place.is_xpu_place()
-            or tracer._expected_place.is_custom_place()
-        ):
-            return args, kwargs
-        amp_dtype = convert_dtype(current_amp_state["dtype"])
-        log(3, f"[AMP] Cast {amp_dtype} into float32\n")
-        return map_if(
-            (args, kwargs),
-            pred=lambda x: isinstance(x, paddle.Tensor)
-            and convert_dtype(x.dtype) == amp_dtype,
-            true_fn=lambda x: x.cast(paddle.float32),
-            false_fn=lambda x: x,
-        )
 
     def graph_size(self):
         if self.partial_program is None:
