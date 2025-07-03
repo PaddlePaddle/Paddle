@@ -20,22 +20,26 @@
 #include <string>
 #include <type_traits>
 
-#include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/profiler/common_event.h"
-#include "paddle/fluid/platform/profiler/host_tracer.h"
-#include "paddle/fluid/platform/profiler/profiler.h"
+#include "paddle/phi/api/profiler/common_event.h"
 #include "paddle/phi/api/profiler/device_tracer.h"
+#include "paddle/phi/api/profiler/event.h"  // import EventRole, TODO(TIEXING): remove later
+#include "paddle/phi/api/profiler/host_tracer.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/platform/profiler/host_event_recorder.h"
 #include "paddle/phi/core/platform/profiler_helper.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/phi/backends/dynload/nvtx.h"
 #endif
 #include "paddle/common/flags.h"
-#include "paddle/fluid/framework/op_proto_maker.h"
-#include "paddle/fluid/framework/operator.h"
 #include "paddle/phi/core/os_info.h"
 
 COMMON_DECLARE_bool(enable_record_memory);
+COMMON_DECLARE_int64(host_trace_level);
+
+struct ProfilerOptions {
+  uint32_t trace_switch = 0;  // bit 0: cpu, bit 1: gpu, bit 2: xpu
+  uint32_t trace_level = FLAGS_host_trace_level;
+};
 
 #if defined(_WIN32) && defined(PHI_SHARED)
 phi::ProfilerState phi::ProfilerHelper::g_state = phi::ProfilerState::kDisabled;
@@ -60,60 +64,12 @@ MemEventRecorder MemEventRecorder::recorder;
 RecordInstantEvent::RecordInstantEvent(const char *name,
                                        phi::TracerEventType type,
                                        uint32_t level) {
-  if (UNLIKELY(HostTraceLevel::GetInstance().NeedTrace(level) == false)) {
+  if (UNLIKELY(phi::HostTraceLevel::GetInstance().NeedTrace(level) == false)) {
     return;
   }
   auto start_end_ns = phi::PosixInNsec();
-  HostEventRecorder<CommonEvent>::GetInstance().RecordEvent(
+  HostEventRecorder<phi::CommonEvent>::GetInstance().RecordEvent(
       name, start_end_ns, start_end_ns, EventRole::kOrdinary, type);
-}
-
-RecordOpInfoSupplement::RecordOpInfoSupplement(
-    const std::string &type,
-    const framework::AttributeMap &attrs,
-    const framework::InferShapeContext &shape_ctx,
-    const framework::RuntimeContext &ctx,
-    uint64_t op_id) {
-  if (FLAGS_enable_host_event_recorder_hook == false) {
-    return;
-  }
-  if (IsEnabled() == false) {
-    return;
-  }
-  std::map<std::string, std::vector<phi::DDim>> input_shapes;
-  std::map<std::string, std::vector<framework::proto::VarType::Type>> dtypes;
-  for (const auto &input : ctx.inputs) {
-    input_shapes[input.first] = shape_ctx.GetInputsDim(input.first);
-    dtypes[input.first] = shape_ctx.GetInputsVarType(input.first);
-  }
-
-  HostEventRecorder<OperatorSupplementOriginEvent>::GetInstance().RecordEvent(
-      phi::PosixInNsec(), type, input_shapes, dtypes, attrs, op_id);
-}
-
-RecordOpInfoSupplement::RecordOpInfoSupplement(
-    const std::string &type,
-    const framework::AttributeMap &attrs,
-    const framework::InferShapeContext &shape_ctx,
-    const phi::KernelSignature &kernel_signature) {
-  if (FLAGS_enable_host_event_recorder_hook == false) {
-    return;
-  }
-  if (IsEnabled() == false) {
-    return;
-  }
-  std::map<std::string, std::vector<phi::DDim>> input_shapes;
-  std::map<std::string, std::vector<framework::proto::VarType::Type>> dtypes;
-  for (auto input_name_char : kernel_signature.input_names) {
-    std::string input_name(input_name_char);
-    if (shape_ctx.HasInputs(input_name)) {
-      input_shapes[input_name] = shape_ctx.GetInputsDim(input_name);
-      dtypes[input_name] = shape_ctx.GetInputsVarType(input_name);
-    }
-  }
-  uint64_t op_id = 0;
-  HostEventRecorder<OperatorSupplementOriginEvent>::GetInstance().RecordEvent(
-      phi::PosixInNsec(), type, input_shapes, dtypes, attrs, op_id);
 }
 
 bool RecordMemEvent::IsEnabled() { return FLAGS_enable_record_memory; }
@@ -495,7 +451,7 @@ void MemEventRecorder::PushMemRecord(const void *ptr,
                                      uint64_t peak_reserved) {
   std::lock_guard<std::mutex> guard(mtx_);
   if (FLAGS_enable_host_event_recorder_hook) {  // new MemRecord
-    HostEventRecorder<CommonMemEvent>::GetInstance().RecordEvent(
+    HostEventRecorder<phi::CommonMemEvent>::GetInstance().RecordEvent(
         phi::PosixInNsec(),
         reinterpret_cast<uint64_t>(ptr),
         type,
@@ -544,7 +500,7 @@ void MemEventRecorder::PopMemRecord(const void *ptr,
                                     uint64_t peak_reserved) {
   std::lock_guard<std::mutex> guard(mtx_);
   if (FLAGS_enable_host_event_recorder_hook) {  // new MemRecord
-    HostEventRecorder<CommonMemEvent>::GetInstance().RecordEvent(
+    HostEventRecorder<phi::CommonMemEvent>::GetInstance().RecordEvent(
         phi::PosixInNsec(),
         reinterpret_cast<uint64_t>(ptr),
         type,
@@ -657,7 +613,7 @@ void PopMemEvent(uint64_t start_ns,
 
 void Mark(const std::string &name) {
   if (FLAGS_enable_host_event_recorder_hook) {
-    HostEventRecorder<CommonEvent>::GetInstance().RecordEvent(
+    HostEventRecorder<phi::CommonEvent>::GetInstance().RecordEvent(
         name, 0, 0, EventRole::kOrdinary, phi::TracerEventType::UserDefined);
     return;
   }
@@ -678,7 +634,7 @@ void EnableProfiler(ProfilerState state) {
   }
   phi::ProfilerHelper::g_state = state;
   ProfilerOptions option;
-  HostTraceLevel::GetInstance().SetLevel(option.trace_level);
+  phi::HostTraceLevel::GetInstance().SetLevel(option.trace_level);
   should_send_profile_state = true;
   phi::GetDeviceTracer()->Enable();
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -792,8 +748,9 @@ bool IsProfileEnabled() {
 
 bool ShouldSendProfileState() { return should_send_profile_state; }
 
-std::string OpName(const framework::VariableNameMap &name_map,
-                   const std::string &type_name) {
+std::string OpName(
+    const std::map<std::string, std::vector<std::string>> &name_map,
+    const std::string &type_name) {
   if (platform::GetTracerOption() != platform::TracerOption::kAllOpDetail ||
       !IsProfileEnabled())
     return "";
@@ -850,7 +807,7 @@ void DisableMemoryRecorder() { FLAGS_enable_record_memory = false; }
 std::string PrintHostEvents() {
   std::ostringstream oss;
   auto host_evt_sec =
-      HostEventRecorder<CommonEvent>::GetInstance().GatherEvents();
+      HostEventRecorder<phi::CommonEvent>::GetInstance().GatherEvents();
   for (const auto &thr_evt_sec : host_evt_sec.thr_sections) {
     oss << thr_evt_sec.thread_id << std::endl;
     for (const auto &evt : thr_evt_sec.events) {
@@ -863,7 +820,7 @@ std::string PrintHostEvents() {
 }
 
 static void EmulateEventPushAndPop(
-    const HostEventSection<CommonEvent> &host_sec,
+    const HostEventSection<phi::CommonEvent> &host_sec,
     std::map<uint64_t, phi::ThreadEvents> *out) {
   for (const auto &thr_sec : host_sec.thr_sections) {
     uint64_t tid = thr_sec.thread_id;
@@ -913,7 +870,7 @@ static void EmulateEventPushAndPop(
 }
 
 static void EmulateCPURecordsAdd(
-    const HostEventSection<CommonEvent> &host_sec) {
+    const HostEventSection<phi::CommonEvent> &host_sec) {
   phi::DeviceTracer *tracer = phi::GetDeviceTracer();
   if (tracer == nullptr) {
     return;
@@ -942,7 +899,7 @@ static std::map<uint64_t, phi::ThreadEvents> DockHostEventRecorderHostPart() {
     return thr_events;
   }
   auto host_evt_sec =
-      HostEventRecorder<CommonEvent>::GetInstance().GatherEvents();
+      HostEventRecorder<phi::CommonEvent>::GetInstance().GatherEvents();
   EmulateEventPushAndPop(host_evt_sec, &thr_events);
   EmulateCPURecordsAdd(host_evt_sec);
   return thr_events;

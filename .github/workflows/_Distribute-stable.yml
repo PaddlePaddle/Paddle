@@ -136,7 +136,7 @@ jobs:
           source ${{ github.workspace }}/../../../proxy
           git checkout test
           echo "Pull upstream develop"
-          git pull upstream $BRANCH --no-edit
+          bash ci/git_pull.sh $BRANCH
           '
 
       - name: Check bypass
@@ -164,6 +164,7 @@ jobs:
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ${{ github.workspace }}/../../../proxy
+          bash ${ci_scripts}/cmake-predownload.sh
           bash ${ci_scripts}/run_setup.sh bdist_wheel
           '
 
@@ -178,10 +179,7 @@ jobs:
             md5sum fa_libs.tar |awk "{print \$1}" >MD5.txt
             cd .. && tar -zcf flashattn_libs_${{ env.flashattn_version }}.tar ./flashattn_libs_${{ env.flashattn_version }}
           fi
-          cd ${work_dir}/build
-          rm -rf $(find . -name "*.a")
-          rm -rf $(find . -name "*.o")
-          cd ${work_dir}/build/third_party && find `ls | grep -v "dlpack"| grep -v "install"|grep -v "eigen3"|grep -v "gflags" ` -type f ! -name "*.so" -a ! -name "libdnnl.so*" -delete
+          bash ${ci_scripts}/compress_build.sh
           cd ${work_dir}/..
           tar --use-compress-program="pzstd -1" --warning=no-file-changed -cf Paddle.tar.gz paddle
           '
@@ -190,7 +188,7 @@ jobs:
         if: steps.check-bypass.outputs.can-skip != 'true'
         env:
           home_path: ${{ github.workspace }}/..
-          bos_file: ${{ github.workspace }}/../bos/BosClient.py
+          bos_file: ${{ github.workspace }}/../bos_retry/BosClient.py
           paddle_whl: paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
@@ -202,9 +200,9 @@ jobs:
           python -m pip install bce-python-sdk==0.8.74
           echo "::endgroup::"
           if [ ! -f "${{ env.bos_file }}" ]; then
-            wget -q --no-proxy -O ${{ env.home_path }}/bos_new.tar.gz https://xly-devops.bj.bcebos.com/home/bos_new.tar.gz --no-check-certificate
-            mkdir ${{ env.home_path }}/bos
-            tar xf ${{ env.home_path }}/bos_new.tar.gz -C ${{ env.home_path }}/bos
+            wget -q --no-proxy -O ${{ env.home_path }}/bos_retry.tar.gz https://xly-devops.bj.bcebos.com/home/bos_retry.tar.gz --no-check-certificate
+            mkdir ${{ env.home_path }}/bos_retry
+            tar xf ${{ env.home_path }}/bos_retry.tar.gz -C ${{ env.home_path }}/bos_retry
           fi
           cd ..
           source ${{ github.workspace }}/../../../unproxy
@@ -265,12 +263,12 @@ jobs:
           CACHE_DIR: /root/.cache/build
           CCACHE_DIR: /root/.ccache/gpubox
         run: |
-          export CUDA_SO="$(\ls /usr/lib64/libcuda* | xargs -I{} echo "-v {}:{}") $(\ls /usr/lib64/libnvidia* | xargs -I{} echo "-v {}:{}")"
+          export CUDA_SO="$(\ls -d /usr/lib64/libcuda* | xargs -I{} echo '-v {}:{}') $(\ls -d /usr/lib64/libnvidia* | xargs -I{} echo '-v {}:{}')"
           export DEVICES="$(\ls -d /dev/nvidia* | xargs -I{} echo "-v {}:{}") $(\ls /dev/nvidia-caps/* | xargs -I{} echo "-v {}:{}")"
           export SMI="-v /usr/bin/nvidia-smi:/usr/bin/nvidia-smi"
           container_name=${TASK}-test-$(date +%Y%m%d-%H%M%S)
           echo "container_name=${container_name}" >> ${{ github.env }}
-          docker run --privileged -d -t --name ${container_name} ${CUDA_SO} ${DEVICES} ${SMI} --shm-size=32G \
+          docker run -d -t --name ${container_name} ${CUDA_SO} ${DEVICES} ${SMI} --shm-size=32G \
           -v "/home/data/cfs:/home/data/cfs" \
           -v "/home/data/cfs/.cache/:/root/.cache" \
           -v "/home/data/cfs/.ccache:/root/.ccache" \
@@ -320,14 +318,13 @@ jobs:
           rm -rf * .[^.]*
           echo "Downloading Paddle.tar.gz"
           wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/gpups/${{ env.PR_ID }}/${{ env.COMMIT_ID }}/Paddle.tar.gz --no-check-certificate
-          # wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/gpups/72396/2b797c6b9b483cc0bd8433fb9d97d06b7ce137c1/Paddle.tar.gz --no-check-certificate
           echo "Extracting Paddle.tar.gz"
           tar --use-compress-program="pzstd" -xf Paddle.tar.gz --strip-components=1
           rm Paddle.tar.gz
           git checkout test
           echo "Pull upstream $BRANCH"
           source ${{ github.workspace }}/../../../proxy
-          git pull upstream $BRANCH --no-edit
+          bash ci/git_pull.sh $BRANCH
           '
 
       - name: Test

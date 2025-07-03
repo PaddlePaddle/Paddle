@@ -17,11 +17,11 @@
 #include "paddle/common/macros.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/pooling.h"
-
 namespace phi {
 template <typename T, typename Context>
-void Pool2dKernel(const Context& ctx,
+void Pool2dKernel(const Context& dev_ctx,
                   const DenseTensor& x,
                   const IntArray& kernel_size_t,
                   const std::vector<int64_t>& strides,
@@ -34,6 +34,16 @@ void Pool2dKernel(const Context& ctx,
                   bool adaptive,
                   const std::string& padding_algorithm,
                   DenseTensor* out) {
+  if (x.numel() == 0) {
+    if (pooling_type == "max") {
+      phi::Full<T, Context>(
+          dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+    } else {
+      phi::Full<T, Context>(
+          dev_ctx, phi::IntArray(common::vectorize(out->dims())), NAN, out);
+    }
+    return;
+  }
   using XPUType = typename XPUTypeTrait<T>::Type;
 
   std::vector<int64_t> kernel_size(kernel_size_t.GetData().begin(),
@@ -79,7 +89,7 @@ void Pool2dKernel(const Context& ctx,
                        strides,
                        kernel_size);
 
-  ctx.template Alloc<T>(out);
+  dev_ctx.template Alloc<T>(out);
   int* index_data = nullptr;
   int r = 0;
   if (!adaptive) {
@@ -91,7 +101,7 @@ void Pool2dKernel(const Context& ctx,
     }
     if (pooling_type == "max") {
       r = xpu::max_pool2d<XPUType>(
-          ctx.x_context(),
+          dev_ctx.x_context(),
           reinterpret_cast<const XPUType*>(x.data<T>()),
           reinterpret_cast<XPUType*>(out->data<T>()),
           index_data,
@@ -105,7 +115,7 @@ void Pool2dKernel(const Context& ctx,
           true);
     } else if (pooling_type == "avg") {
       r = xpu::avg_pool2d<XPUType>(
-          ctx.x_context(),
+          dev_ctx.x_context(),
           reinterpret_cast<const XPUType*>(x.data<T>()),
           reinterpret_cast<XPUType*>(out->data<T>()),
           n,
@@ -124,7 +134,7 @@ void Pool2dKernel(const Context& ctx,
   } else {
     if (pooling_type == "max") {
       r = xpu::adaptive_max_pool2d<XPUType>(
-          ctx.x_context(),
+          dev_ctx.x_context(),
           reinterpret_cast<const XPUType*>(x.data<T>()),
           reinterpret_cast<XPUType*>(out->data<T>()),
           index_data,
@@ -137,7 +147,7 @@ void Pool2dKernel(const Context& ctx,
           true);
     } else if (pooling_type == "avg") {
       r = xpu::adaptive_avg_pool2d<XPUType>(
-          ctx.x_context(),
+          dev_ctx.x_context(),
           reinterpret_cast<const XPUType*>(x.data<T>()),
           reinterpret_cast<XPUType*>(out->data<T>()),
           n,
@@ -156,7 +166,7 @@ void Pool2dKernel(const Context& ctx,
 }
 
 template <typename T, typename Context>
-void Pool3dKernel(const Context& ctx,
+void Pool3dKernel(const Context& dev_ctx,
                   const DenseTensor& x,
                   const std::vector<int64_t>& kernel_size_t,
                   const std::vector<int64_t>& strides,
@@ -169,6 +179,11 @@ void Pool3dKernel(const Context& ctx,
                   bool adaptive,
                   const std::string& padding_algorithm,
                   DenseTensor* out) {
+  if (x.numel() == 0) {
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(out->dims())), NAN, out);
+    return;
+  }
   using XPUType = typename XPUTypeTrait<T>::Type;
 
   const bool channel_last = data_format == "NDHWC";
@@ -217,13 +232,13 @@ void Pool3dKernel(const Context& ctx,
     funcs::UpdateKernelSize(&kernel_size, data_dims);
   }
 
-  ctx.template Alloc<T>(out);
+  dev_ctx.template Alloc<T>(out);
   int* index_data = nullptr;
   int r = 0;
   if (!adaptive) {
     if (pooling_type == "max") {
       r = xpu::max_pool3d<XPUType>(
-          ctx.x_context(),
+          dev_ctx.x_context(),
           reinterpret_cast<const XPUType*>(x.data<T>()),
           reinterpret_cast<XPUType*>(out->data<T>()),
           index_data,
@@ -238,7 +253,7 @@ void Pool3dKernel(const Context& ctx,
           data_format == "NCDHW");
     } else if (pooling_type == "avg") {
       r = xpu::avg_pool3d<XPUType>(
-          ctx.x_context(),
+          dev_ctx.x_context(),
           reinterpret_cast<const XPUType*>(x.data<T>()),
           reinterpret_cast<XPUType*>(out->data<T>()),
           n,
@@ -258,7 +273,7 @@ void Pool3dKernel(const Context& ctx,
   } else {
     if (pooling_type == "max") {
       r = xpu::adaptive_max_pool3d<XPUType>(
-          ctx.x_context(),
+          dev_ctx.x_context(),
           reinterpret_cast<const XPUType*>(x.data<T>()),
           reinterpret_cast<XPUType*>(out->data<T>()),
           index_data,
@@ -273,7 +288,7 @@ void Pool3dKernel(const Context& ctx,
           data_format == "NCDHW");
     } else if (pooling_type == "avg") {
       r = xpu::adaptive_avg_pool3d<XPUType>(
-          ctx.x_context(),
+          dev_ctx.x_context(),
           reinterpret_cast<const XPUType*>(x.data<T>()),
           reinterpret_cast<XPUType*>(out->data<T>()),
           n,
@@ -294,7 +309,7 @@ void Pool3dKernel(const Context& ctx,
 }
 
 template <typename T, typename Context>
-void MaxPool2dWithIndexKernel(const Context& ctx,
+void MaxPool2dWithIndexKernel(const Context& dev_ctx,
                               const DenseTensor& x,
                               const std::vector<int>& kernel_size_t,
                               const std::vector<int>& strides_t,
@@ -304,9 +319,20 @@ void MaxPool2dWithIndexKernel(const Context& ctx,
                               bool ceil_mode UNUSED,
                               DenseTensor* out,
                               DenseTensor* mask) {
+  if (x.numel() == 0) {
+    if (out) {
+      phi::Full<T, Context>(
+          dev_ctx, phi::IntArray(common::vectorize(out->dims())), NAN, out);
+    }
+    if (mask) {
+      phi::Full<int, Context>(
+          dev_ctx, phi::IntArray(common::vectorize(mask->dims())), 0, mask);
+    }
+    return;
+  }
   using XPUType = typename XPUTypeTrait<T>::Type;
 
-  ctx.template Alloc<int>(mask);
+  dev_ctx.template Alloc<int>(mask);
   auto* index_data = mask->data<int>();
 
   std::vector<int64_t> kernel_size(kernel_size_t.begin(), kernel_size_t.end());
@@ -337,10 +363,10 @@ void MaxPool2dWithIndexKernel(const Context& ctx,
   const int64_t in_h = x.dims()[2];
   const int64_t in_w = x.dims()[3];
   auto input = reinterpret_cast<const XPUType*>(x.data<T>());
-  ctx.template Alloc<T>(out);
+  dev_ctx.template Alloc<T>(out);
   auto output = reinterpret_cast<XPUType*>(out->data<T>());
   int r = 0;
-  r = xpu::max_pool2d<XPUType>(ctx.x_context(),
+  r = xpu::max_pool2d<XPUType>(dev_ctx.x_context(),
                                input,
                                output,
                                index_data,

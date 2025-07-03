@@ -49,6 +49,58 @@ if(APPLE OR WIN32)
   list(REMOVE_ITEM kernel_cu "sparse/gpu/conv_kernel_igemm.cu")
 endif()
 
+# New Op only supported by CUDA>=12.0 and Linux
+if(((WITH_GPU) AND (CUDA_VERSION VERSION_LESS 12.0))
+   OR APPLE
+   OR WIN32
+   OR WITH_ROCM)
+  list(
+    REMOVE_ITEM
+    kernel_cu
+    "legacy/gpu/moe_ops_partial_nosoftmaxtopk_kernel.cu"
+    "legacy/gpu/moe_ops_partial_nosoftmaxtopk_grad_kernel.cu"
+    "legacy/gpu/moe_gate_dispatch_permute_grad_kernel.cu"
+    "legacy/gpu/moe_gate_dispatch_permute_kernel.cu"
+    "legacy/gpu/expand_modality_expert_id_kernel.cu"
+    "legacy/gpu/moe_combine_kernel.cu"
+    "legacy/gpu/moe_combine_grad_kernel.cu"
+    "legacy/gpu/moe_combine_no_weight_kernel.cu"
+    "legacy/gpu/moe_combine_no_weight_grad_kernel.cu"
+    "legacy/gpu/cal_aux_loss_kernel.cu"
+    "legacy/gpu/cal_aux_loss_grad_kernel.cu"
+    "legacy/gpu/ext_build_src_rank_and_local_expert_id_kernel.cu"
+    "legacy/gpu/moe_gate_dispatch_kernel.cu"
+    "legacy/gpu/moe_gate_dispatch_grad_kernel.cu"
+    "legacy/gpu/int_bincount.cu"
+    "legacy/gpu/layer_norm_cuda_kernel.cu"
+    "legacy/gpu/fp8_gemm_blockwise_kernel.cu"
+    "legacy/gpu/fp8_quant_blockwise_kernel.cu"
+    "fusion/gpu/fused_act_dequant_kernel.cu"
+    "fusion/gpu/fused_stack_transpose_quant_kernel.cu"
+    "fusion/gpu/fused_transpose_split_quant_kernel.cu"
+    "fusion/gpu/fused_transpose_wlch_split_quant_kernel.cu"
+    "fusion/gpu/fused_swiglu_weighted_bwd_kernel.cu"
+    "fusion/gpu/fused_weighted_swiglu_act_quant_kernel.cu")
+endif()
+
+# Get flag for CUDA arch >= 80
+set(has_arch_ge80 FALSE)
+foreach(arch ${NVCC_ARCH_BIN})
+  if(${arch} GREATER_EQUAL 80)
+    set(has_arch_ge80 TRUE)
+    break()
+  endif()
+endforeach()
+
+if(WITH_GPU
+   AND (NOT has_arch_ge80 OR (CUDA_VERSION VERSION_LESS 12.0))
+   OR WIN32
+   OR APPLE
+   OR WITH_ROCM) # need support BF16
+  list(REMOVE_ITEM kernel_gpu "gpu/moe_permute_kernel.cu"
+       "gpu/moe_unpermute_kernel.cu")
+endif()
+
 if(NOT WITH_DGC)
   list(REMOVE_ITEM kernel_gpu "gpu/dgc_kernel.cu")
 endif()

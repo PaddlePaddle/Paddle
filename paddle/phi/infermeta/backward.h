@@ -462,6 +462,44 @@ void MemoryEfficientAttentionGradInferMeta(const MetaTensor& query,
                                            MetaTensor* value_grad,
                                            MetaTensor* bias_grad);
 
+void MoeCombineGradInferMeta(const MetaTensor& x,
+                             const MetaTensor& combine_weights,
+                             const MetaTensor& scatter_index,
+                             const MetaTensor& grad_y,
+                             MetaTensor* grad_x,
+                             MetaTensor* grad_combine_weights_helper);
+// Tensor combine_weights_out, Tensor scatter_index, Tensor scatter_index_rev,
+// Tensor expert_offset, Tensor expert_offset_local, Tensor y_grad, Tensor
+// combine_weights_out_grad, int64_t k, int64_t capacity, bool use_pad, int64_t
+// expert_start_index, int64_t expert_end_index)
+//  output : Tensor(x_grad), Tensor(combine_weights_grad)
+void MoeGateDispatchPartialNoSoftmaxTopkGradInferMeta(
+    const MetaTensor& combine_weights_out,
+    const MetaTensor& scatter_index,
+    const MetaTensor& scatter_index_rev,
+    const MetaTensor& expert_offset,
+    const MetaTensor& expert_offset_local,
+    const MetaTensor& y_grad,
+    const MetaTensor& combine_weights_out_grad,
+    int64_t k,
+    int64_t capacity,
+    bool use_pad,
+    int64_t expert_start_index,
+    int64_t expert_end_index,
+    MetaTensor* x_grad,
+    MetaTensor* combine_weights_grad);
+
+void MoeGateDispatchPermuteGradInferMeta(const MetaTensor& combine_weights,
+                                         const MetaTensor& scatter_index,
+                                         const MetaTensor& expert_id,
+                                         const MetaTensor& y_grad,
+                                         const MetaTensor& combine_weights_grad,
+                                         int64_t k,
+                                         int64_t capacity,
+                                         int64_t world_size,
+                                         MetaTensor* x_grad,
+                                         MetaTensor* gate_logits_grad);
+
 void MultiDotGradInferMeta(const std::vector<const MetaTensor*>& x,
                            const MetaTensor& out_grad,
                            std::vector<MetaTensor*> x_grad);
@@ -675,9 +713,61 @@ void IndexPutGradInferMeta(const MetaTensor& x,
                            MetaTensor* x_grad,
                            MetaTensor* value_grad);
 
+void IndexElementwisePutGradInferMeta(
+    const MetaTensor& x,
+    const std::vector<const MetaTensor*>& index,
+    const MetaTensor& value,
+    const MetaTensor& out_grad,
+    const std::vector<int64_t>& input_dims,
+    const std::vector<int64_t>& input_strides,
+    const std::vector<int64_t>& index_dims,
+    const std::vector<int64_t>& index_strides,
+    const int64_t slice_offset,
+    MetaTensor* x_grad,
+    MetaTensor* value_grad);
+
 void SetValueGradInferMeta(const MetaTensor& out_grad,
                            const MetaTensor& values,
                            MetaTensor* x_grad,
                            MetaTensor* value_grad);
 
+void CalAuxLossGradInferMeta(const MetaTensor& gate_prob,
+                             const MetaTensor& seqlen_float,
+                             const MetaTensor& ce,
+                             const MetaTensor& l_aux_loss_grad,
+                             const int64_t num_experts,
+                             const bool use_group,
+                             const int64_t moe_k,
+                             MetaTensor* gate_prob_grad);
+
+void MoeGateDispatchGradInferMeta(const MetaTensor& combine_weights,
+                                  const MetaTensor& scatter_index,
+                                  const MetaTensor& expert_id,
+                                  const MetaTensor& y_grad,
+                                  const MetaTensor& combine_weights_grad,
+                                  const int64_t k,
+                                  const int64_t capacity,
+                                  const bool use_pad,
+                                  MetaTensor* x_grad,
+                                  MetaTensor* gate_logits_grad);
+
+void FusedRMSNormGradInferMeta(const MetaTensor& x,
+                               const MetaTensor& scale,
+                               const MetaTensor& invvar,
+                               const MetaTensor& dy,
+                               float epsilon,
+                               MetaTensor* x_grad,
+                               MetaTensor* scale_grad);
+
+void IndexElementwiseGetGradInferMeta(
+    const MetaTensor& x,
+    const std::vector<const MetaTensor*>& index,
+    const MetaTensor& out_grad,
+    const std::vector<int64_t>& input_dims,
+    const std::vector<int64_t>& input_strides,
+    const std::vector<int64_t>& index_dims,
+    const std::vector<int64_t>& index_strides,
+    const int64_t slice_offset,
+    const bool accumulate,
+    MetaTensor* x_grad);
 }  // namespace phi

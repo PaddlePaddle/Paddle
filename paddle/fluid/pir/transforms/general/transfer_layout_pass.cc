@@ -810,6 +810,7 @@ class TransferLayoutPass : public pir::Pass {
         pir::SetNewLayoutForValue(transpose_op.out(), new_layout);
         dst_value.ReplaceUsesWithIf(transpose_op.out(),
                                     replace_uses_without_self);
+        value_replacement_map[dst_value] = transpose_op.out();
       }
 
       // if node is the src node of a cut edge
@@ -825,12 +826,17 @@ class TransferLayoutPass : public pir::Pass {
         }
 
         auto value = std::get<pir::Value>(node.data);
+        // The 'value' might have been replaced with its transposed version
+        // due to processing previous Op-sourced cut edges. See more details at
+        // https://github.com/PaddlePaddle/Paddle/pull/73418
+        if (value_replacement_map.find(value) != value_replacement_map.end()) {
+          value = value_replacement_map[value];
+        }
         VLOG(10) << "[Rewrite][Var] for var:"
                  << (value ? value.defining_op() : nullptr);
         for (const auto& op : operation_set) {
           VLOG(10) << " op: " << op << ",";
         }
-        VLOG(10);
         const auto& perm =
             ((src_set.count(node) > 0) ? layout_to_perm("NCHW", "NHWC")
                                        : layout_to_perm("NHWC", "NCHW"));
@@ -866,6 +872,11 @@ class TransferLayoutPass : public pir::Pass {
     }
     AddStatistics(num_of_transpose_ops, num_of_layout_changed_ops);
   }
+
+ private:
+  // Tracks how an original op output Value is redirected to a new Value (from a
+  // TransposeOp) due to an Op-sourced cut.
+  std::unordered_map<pir::Value, pir::Value> value_replacement_map;
 };
 
 namespace pir {

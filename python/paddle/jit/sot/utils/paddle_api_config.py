@@ -42,6 +42,7 @@ def get_paddle_api():
     modules = [
         paddle,
         paddle.nn.functional,
+        paddle.nn.quant,
         paddle.incubate.nn.functional,
         paddle.linalg,
         paddle.signal,
@@ -51,15 +52,25 @@ def get_paddle_api():
         paddle.geometric,
     ]
     distributed_apis = [
+        paddle.distributed.all_reduce,
         paddle.distributed.shard_tensor,
         paddle.distributed.reshard,
+        paddle.distributed.all_gather,
+        paddle.distributed.alltoall,
+        paddle.distributed.barrier,
+        paddle.distributed.recv,
+        paddle.distributed.send,
+        paddle.distributed.broadcast,
         paddle.distributed.unshard_dtensor,
         paddle.distributed.auto_parallel.api.dtensor_to_local,
         paddle.distributed.auto_parallel.api.dtensor_from_local,
         paddle.distributed.auto_parallel.api.moe_global_mesh_tensor,
         paddle.distributed.auto_parallel.api.moe_sub_mesh_tensors,
     ]
-    special_paddle_apis = [paddle.tensor.fill_constant]
+    special_paddle_apis = [
+        paddle.tensor.fill_constant,
+        paddle.tensor.top_p_sampling,
+    ]
     non_operator_related_apis = [
         paddle.in_dynamic_mode,
         paddle.save,
@@ -116,9 +127,8 @@ paddle_api_module_prefix = {
     "paddle.nn.functional",
 }
 
-break_graph_set = set()
-
-
+break_graph_functions = set()
+break_graph_layer_classes = set()
 break_graph_tensor_method = {
     'register_hook',
     'numpy',
@@ -139,8 +149,12 @@ def is_break_graph_tensor_methods(method_name):
     return method_name in break_graph_tensor_method
 
 
-def add_break_graph_apis(apis: list):
-    break_graph_set.update(apis)
+def add_break_graph_function(fn):
+    break_graph_functions.add(fn)
+
+
+def add_break_graph_layer_class(layer_class: type[paddle.nn.Layer]):
+    break_graph_layer_classes.add(layer_class)
 
 
 def is_directly_run_api(api):

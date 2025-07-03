@@ -87,6 +87,7 @@ from .extension import (
     temporal_shift,
 )
 from .flash_attention import (
+    flash_attention_v3_varlen,
     flash_attn_qkvpacked,
     flash_attn_varlen_qkvpacked,
     flashmask_attention,
@@ -129,6 +130,8 @@ from .loss import (
     triplet_margin_loss,
     triplet_margin_with_distance_loss,
 )
+from .moe_permute import moe_permute
+from .moe_unpermute import moe_unpermute
 from .norm import (
     batch_norm,
     group_norm,
@@ -294,6 +297,9 @@ __all__ = [
     'scaled_dot_product_attention',
     'flashmask_attention',
     'flash_attn_qkvpacked',
+    "flash_attention_v3_varlen",
     'flash_attn_varlen_qkvpacked',
     'group_norm',
+    'moe_permute',
+    'moe_unpermute',
 ]

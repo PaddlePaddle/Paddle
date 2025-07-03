@@ -587,15 +587,17 @@ class TestSumOpDtype(unittest.TestCase):
         self.assertEqual(paddle_result.dtype, self.paddle_output_dtype)
 
     def test_static(self):
-        with static_guard():
-            with paddle.static.program_guard(
+        with (
+            static_guard(),
+            paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
-            ):
-                x = paddle.static.data(
-                    name='x', shape=self.shape, dtype=self.input_dtype
-                )
-                result = paddle.sum(x, axis=self.axis, dtype=self.output_dtype)
-                self.assertEqual(result[0].dtype, self.paddle_output_dtype)
+            ),
+        ):
+            x = paddle.static.data(
+                name='x', shape=self.shape, dtype=self.input_dtype
+            )
+            result = paddle.sum(x, axis=self.axis, dtype=self.output_dtype)
+            self.assertEqual(result[0].dtype, self.paddle_output_dtype)
 
 
 class TestSumOpError(unittest.TestCase):
@@ -897,30 +899,72 @@ class TestSumTripleGradCheck(unittest.TestCase):
 
 class TestSumAPIWarnings(unittest.TestCase):
     def test_warnings(self):
-        with paddle.pir_utils.OldIrGuard():
-            with warnings.catch_warnings(record=True) as context:
-                warnings.simplefilter("always")
-                paddle.enable_static()
-                helper = LayerHelper("sum")
-                data = paddle.static.data(
-                    name='data', shape=[32, 32], dtype='float32'
-                )
-                out = helper.create_variable_for_type_inference(
-                    dtype=data.dtype
-                )
-                attrs = {'dim': [1], 'keep_dim': True, 'reduce_all': True}
-                os.environ["FLAGS_print_extra_attrs"] = '1'
-                helper.append_op(
-                    type="reduce_sum",
-                    inputs={'X': data},
-                    outputs={'Out': out},
-                    attrs=attrs,
-                )
-                self.assertTrue(
-                    "op reduce_sum's attr reduce_all = True is not the default value: False"
-                    in str(context[-1].message)
-                )
-                os.environ["FLAGS_print_extra_attrs"] = '0'
+        with (
+            paddle.pir_utils.OldIrGuard(),
+            warnings.catch_warnings(record=True) as context,
+        ):
+            warnings.simplefilter("always")
+            paddle.enable_static()
+            helper = LayerHelper("sum")
+            data = paddle.static.data(
+                name='data', shape=[32, 32], dtype='float32'
+            )
+            out = helper.create_variable_for_type_inference(dtype=data.dtype)
+            attrs = {'dim': [1], 'keep_dim': True, 'reduce_all': True}
+            os.environ["FLAGS_print_extra_attrs"] = '1'
+            helper.append_op(
+                type="reduce_sum",
+                inputs={'X': data},
+                outputs={'Out': out},
+                attrs=attrs,
+            )
+            self.assertTrue(
+                "op reduce_sum's attr reduce_all = True is not the default value: False"
+                in str(context[-1].message)
+            )
+            os.environ["FLAGS_print_extra_attrs"] = '0'
+
+
+class TestSum_BoolToInt64_ZeroSize(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(123)
+        self.shape = [3, 0, 2]
+        self.places = [base.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            self.places.append(base.CUDAPlace(0))
+
+    def check_result(
+        self, dygraph_result, expected_result, axis, keepdim, dtype, place
+    ):
+        self.assertTrue(
+            (dygraph_result == expected_result).all(),
+            f"Shape: {self.shape}, Axis: {axis}, Keepdim: {keepdim}, Dtype: {dtype}, Place: {place}",
+        )
+
+    def _test_dygraph(self, place, axis, keepdim, dtype):
+        with dygraph_guard():
+            x_np = np.random.random(self.shape).astype(dtype)
+            x = paddle.to_tensor(x_np)
+            x.stop_gradient = False
+            dygraph_result = paddle.sum(x, axis=axis, keepdim=keepdim)
+            expected_result = np.sum(x_np, axis=axis, keepdims=keepdim)
+            self.check_result(
+                dygraph_result.numpy(),
+                expected_result,
+                axis,
+                keepdim,
+                dtype,
+                place,
+            )
+            paddle.sum(dygraph_result).backward()
+            np.testing.assert_allclose(x.grad.shape, x.shape)
+
+    def test_zero_size(self):
+        keepdims_options = [True, False]
+        for place in self.places:
+            for keepdim in keepdims_options:
+                self._test_dygraph(place, None, keepdim, "bool")
+                self._test_dygraph(place, None, keepdim, "int32")
 
 
 if __name__ == "__main__":

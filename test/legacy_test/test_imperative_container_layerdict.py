@@ -61,7 +61,7 @@ class TestLayerDict(unittest.TestCase):
 
         sublayer = OrderedDict(
             [
-                ('sigmod', paddle.nn.Sigmoid()),
+                ('sigmoid', paddle.nn.Sigmoid()),
                 ('relu', paddle.nn.ReLU()),
             ]
         )

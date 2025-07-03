@@ -16,6 +16,7 @@
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -160,6 +161,14 @@ void KthvalueKernel(const Context& dev_ctx,
                     bool keepdim,
                     DenseTensor* output,
                     DenseTensor* indices) {
+  if (x.numel() == 0) {
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(output->dims())), NAN, output);
+    phi::Full<int64_t, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(indices->dims())), 0, indices);
+    return;
+  }
+
   const auto& in_dims = x.dims();
   if (axis < 0) axis += in_dims.size();
   auto out_dims = output->dims();

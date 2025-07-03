@@ -18,6 +18,7 @@ import builtins
 import inspect
 import math
 import operator
+from dataclasses import fields
 from functools import partial, reduce
 from typing import TYPE_CHECKING
 
@@ -43,6 +44,7 @@ from ...utils import (
 from ...utils.exceptions import InnerError
 from ...utils.magic_methods import (
     BINARY_OPS,
+    NEED_GUARD_ZERO_DIVISION_ERROR_OPS,
     UNARY_OPS,
     magic_method_builtin_dispatch,
     non_inplace_op_to_inplace_op,
@@ -60,14 +62,16 @@ from .dispatch_functions import (
     tensor_dim,
 )
 from .dispatcher import Dispatcher, optional
-from .tracker import ConstTracker, DanglingTracker, DummyTracker
+from .tracker import ConstTracker, DanglingTracker, DummyTracker, GetAttrTracker
 from .variables import (
     BuiltinVariable,
     CallableVariable,
     ConstantVariable,
     ContainerVariable,
+    DataClassInstanceVariable,
     DictVariable,
     EnumerateVariable,
+    EnumVariable,
     ExceptionVariable,
     IterVariable,
     ListVariable,
@@ -85,6 +89,7 @@ from .variables import (
 )
 
 if TYPE_CHECKING:
+    from ...utils.magic_methods import BinaryOp
     from .variables import DataVariable, TensorVariable
 
 
@@ -245,6 +250,15 @@ Dispatcher.register(
     ("ConstantVariable | SymbolicVariable",),
     lambda var: VariableFactory.from_value(
         var.get_py_type(), graph=var.graph, tracker=DummyTracker([var])
+    ),
+)
+Dispatcher.register(
+    type,
+    ("VariableBase",),
+    lambda var: VariableFactory.from_value(
+        type(var.get_py_value()),
+        graph=var.graph,
+        tracker=GetAttrTracker(var, "__class__"),
     ),
 )
 
@@ -793,6 +807,23 @@ def str_format(var: ConstantVariable, *args: ConstantVariable):
     return var.format(*args)
 
 
+@Dispatcher.register_decorator(str.encode)
+def str_encode(
+    var: ConstantVariable,
+    encoding: ConstantVariable = None,  # type: ignore
+    errors: ConstantVariable = None,  # type: ignore
+):
+    if encoding is None:
+        encoding = ConstantVariable('utf-8', var.graph, DanglingTracker())
+    if errors is None:
+        errors = ConstantVariable('strict', var.graph, DanglingTracker())
+    return ConstantVariable(
+        var.get_py_value().encode(encoding=encoding.get_py_value()),
+        graph=var.graph,
+        tracker=DummyTracker([var, encoding, errors]),
+    )
+
+
 Dispatcher.register(
     str.lower,
     ("ConstantVariable",),
@@ -981,16 +1012,17 @@ Dispatcher.register(
     ),
 )
 
+
 # VariableBase
-Dispatcher.register(
-    operator.is_,
-    ("VariableBase", "VariableBase"),
-    lambda var, other: ConstantVariable(
+@Dispatcher.register_decorator(operator.is_)
+def is_func(var: VariableBase, other: VariableBase):
+    if var.get_py_type() is not other.get_py_type():
+        return ConstantVariable(False, var.graph, DummyTracker([var, other]))
+    return ConstantVariable(
         var.get_py_value() is other.get_py_value(),
         var.graph,
-        tracker=DummyTracker([var, other]),
-    ),
-)
+        DummyTracker([var, other]),
+    )
 
 
 @Dispatcher.register_decorator(operator.is_not)
@@ -1036,6 +1068,23 @@ Dispatcher.register(
 )
 
 
+def apply_op_with_zero_division_check(
+    op: BinaryOp, lhs: VariableBase, rhs: VariableBase
+):
+
+    graph = lhs.graph
+    if op in NEED_GUARD_ZERO_DIVISION_ERROR_OPS:
+        call_eq = BuiltinVariable(operator.eq, graph, DanglingTracker())
+        zero = ConstantVariable.wrap_literal(0, graph)
+        rhs_eq_to_zero = call_eq(rhs, zero)
+        add_guard(rhs_eq_to_zero)
+    return VariableFactory.from_value(
+        op(lhs.get_py_value(), rhs.get_py_value()),
+        graph,
+        DummyTracker([lhs, rhs]),
+    )
+
+
 # Constant
 for unary_fn in UNARY_OPS:
     for magic_method in magic_method_builtin_dispatch(unary_fn):
@@ -1060,11 +1109,7 @@ for binary_fn in BINARY_OPS:
                 "ConstantVariable | NumPyNumberVariable",
             ),
             partial(
-                lambda fn, var, other: VariableFactory.from_value(
-                    fn(var.get_py_value(), other.get_py_value()),
-                    var.graph,
-                    tracker=DummyTracker([var, other]),
-                ),
+                apply_op_with_zero_division_check,
                 binary_fn,
             ),
         )
@@ -1538,6 +1583,53 @@ Dispatcher.register(
     ("ExceptionVariable", "ExceptionVariable"),
     lambda left, right: exception_variable_equal(left, right),
 )
+
+
+@Dispatcher.register_decorator(operator.eq)
+def dataclass_instance_eq(
+    lhs: DataClassInstanceVariable, rhs: DataClassInstanceVariable
+):
+    if lhs.get_py_type() != rhs.get_py_type():
+        return ConstantVariable(False, lhs.graph, DummyTracker([lhs, rhs]))
+
+    call_eq = BuiltinVariable(operator.eq, lhs.graph, DanglingTracker())
+    call_bool = BuiltinVariable(bool, lhs.graph, DanglingTracker())
+
+    return ConstantVariable(
+        all(
+            bool(
+                call_bool(
+                    call_eq(lhs.getattr(field.name), rhs.getattr(field.name))
+                )
+            )
+            for field in fields(lhs.get_py_type())
+        ),
+        lhs.graph,
+        DummyTracker([lhs, rhs]),
+    )
+
+
+@Dispatcher.register_decorator(operator.ne)
+def dataclass_instance_ne(lhs: TupleVariable, rhs: TupleVariable):
+    return Dispatcher.call(operator.eq, lhs, rhs).bool_not()
+
+
+Dispatcher.register(
+    operator.eq,
+    ("EnumVariable", "EnumVariable"),
+    lambda left, right: ConstantVariable(
+        left.get_py_value() == right.get_py_value(),
+        left.graph,
+        tracker=DummyTracker([left, right]),
+    ),
+)
+
+
+# TODO(wangmingkai): Forward operator.ne of (VariableBase, VariableBase) to the negation of operator.eq
+@Dispatcher.register_decorator(operator.ne)
+def dispatch_enum_ne(lhs: EnumVariable, rhs: EnumVariable):
+    return Dispatcher.call(operator.eq, lhs, rhs).bool_not()
+
 
 Dispatcher.register(
     bool,

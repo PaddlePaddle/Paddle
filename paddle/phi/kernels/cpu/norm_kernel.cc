@@ -23,7 +23,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void NormKernel(const Context& ctx,
+void NormKernel(const Context& dev_ctx,
                 const DenseTensor& x,
                 int axis,
                 float epsilon,
@@ -47,10 +47,10 @@ void NormKernel(const Context& ctx,
     out_norm = norm;
   }
 
-  ctx.template Alloc<T>(out);
-  ctx.template Alloc<T>(out_norm);
+  dev_ctx.template Alloc<T>(out);
+  dev_ctx.template Alloc<T>(out_norm);
 
-  auto* place = ctx.eigen_device();
+  auto* place = dev_ctx.eigen_device();
 
   Eigen::DSizes<int, 3> shape(pre, n, post);
   Eigen::DSizes<int, 2> norm_shape(pre, post);

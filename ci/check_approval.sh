@@ -151,15 +151,15 @@ IF_ADD_METACONFIG=`echo $INFERMETA_FILES_ADDED_LINES | grep -B5 --no-group-separ
 HAS_MODIFIED_OP_BUILD_GEN_SCRIPT=`git diff --name-only upstream/$BRANCH -- 'paddle/fluid/pir/dialect/op_generator/op_build_gen.py'`
 if [ -n "${IF_ADD_METACONFIG}" ] && [ -z "${HAS_MODIFIED_OP_BUILD_GEN_SCRIPT}" ]; then
     echo_line="If your added infermeta file contains MetaConfig, you must update _INFERMETA_NEED_META_CONFIG in op_build_gen.py synchronously.\n"
-    echo_line=${echo_line}"If you believe this is a false positive, please request one of the RD (SigureMo(Recommend), zyfncg, zhangbo9674) approval for the changes.\n"
-    check_approval 1 SigureMo zyfncg zhangbo9674
+    echo_line=${echo_line}"If you believe this is a false positive, please request one of the RD (SigureMo(Recommend), DrRyanHuang, zyfncg, zhangbo9674) approval for the changes.\n"
+    check_approval 1 SigureMo DrRyanHuang zyfncg zhangbo9674
 fi
 
 CINN_FILES_ADDED_LINES=$(git diff -U0 upstream/$BRANCH -- 'paddle/cinn/' |grep "^+")
 IF_ADD_LOG_INFO=`echo $CINN_FILES_ADDED_LINES | grep -B5 --no-group-separator "LOG(INFO)" || true`
 if [[ ${IF_ADD_LOG_INFO} ]]; then
-    echo_line="You must have one RD (SigureMo(Recommend), zyfncg) approval for using LOG(INFO), which may make user confused. Recommend to move it under if (FLAGS_cinn_debug)\n"
-    check_approval 1 SigureMo zyfncg
+    echo_line="You must have one RD (SigureMo(Recommend), DrRyanHuang, zyfncg) approval for using LOG(INFO), which may make user confused. Recommend to move it under if (FLAGS_cinn_debug)\n"
+    check_approval 1 SigureMo DrRyanHuang zyfncg
 fi
 
 HAS_DEFINE_FLAG=`git diff -U0 upstream/$BRANCH |grep -o -m 1 "DEFINE_int32" |grep -o -m 1 "DEFINE_bool" | grep -o -m 1 "DEFINE_string" || true`
@@ -327,8 +327,8 @@ fi
 
 INVALID_UNITTEST_ASSERT_CHECK=`echo "$ALL_ADDED_LINES" | grep -zoE '\+\s+((assert\s+)|(self\.assert(True|Equal)\())(\s*\+\s*)?(np|numpy)\.(allclose|array_equal)[^+]*' || true`
 if [ "${INVALID_UNITTEST_ASSERT_CHECK}" != "" ] && [ "${PR_ID}" != "" ]; then
-    echo_line="It is recommended to use 'np.testing.assert_allclose' and 'np.testing.assert_array_equal' instead of 'self.assertTrue(np.allclose(...))' and 'self.assertTrue(np.array_equal(...))'.\nPlease modify the code below. If anything is unclear, please read the specification [ https://github.com/PaddlePaddle/community/blob/master/rfcs/CodeStyle/20220805_code_style_improvement_for_unittest.md#background ]. If it is a mismatch, please request SigureMo (Recommend) or luotao1 review and approve.\nThe code that do not meet the specification are as follows:\n${INVALID_UNITTEST_ASSERT_CHECK}\n"
-    check_approval 1 SigureMo luotao1
+    echo_line="It is recommended to use 'np.testing.assert_allclose' and 'np.testing.assert_array_equal' instead of 'self.assertTrue(np.allclose(...))' and 'self.assertTrue(np.array_equal(...))'.\nPlease modify the code below. If anything is unclear, please read the specification [ https://github.com/PaddlePaddle/community/blob/master/rfcs/CodeStyle/20220805_code_style_improvement_for_unittest.md#background ]. If it is a mismatch, please request SigureMo (Recommend) or zrr1999 or luotao1 review and approve.\nThe code that do not meet the specification are as follows:\n${INVALID_UNITTEST_ASSERT_CHECK}\n"
+    check_approval 1 SigureMo zrr1999 luotao1
 fi
 
 TEST_FILE_ADDED_LINES=$(git diff -U0 upstream/$BRANCH -- test |grep "^+")

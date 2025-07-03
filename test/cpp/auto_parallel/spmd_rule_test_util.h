@@ -44,6 +44,8 @@ const std::set<int64_t> get_partial_dims(
 void check_dim_mapping(const phi::distributed::ArgDistAttr& dist_attr,
                        const std::vector<int64_t>& dim_mapping,
                        const std::string& line = "");
+void check_empty_dist_attr(const phi::distributed::ArgDistAttr& dist_attr,
+                           const std::string& line = "");
 
 void check_partial_dims(const phi::distributed::ArgDistAttr& dist_attr,
                         const std::set<int64_t>& dims,

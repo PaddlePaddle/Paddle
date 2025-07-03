@@ -36,7 +36,8 @@ from paddle.distributed.auto_parallel.static.utils import (
     convert_to_dims_mapping,
 )
 from paddle.framework import use_pir_api
-from paddle.pir import fake_value, is_fake_value
+from paddle.jit.dy2static.utils import extract_tensor_dynamic_dims
+from paddle.pir import is_fake_value
 from paddle.static import InputSpec
 from paddle.utils import flatten, is_sequence
 
@@ -115,8 +116,7 @@ class MetaInfoOrNull:
         return self.meta
 
     def unwrap_unsafe(self):
-        if self.meta is None:
-            raise AssertionError("MetaInfo is None")
+        assert self.meta is not None, "MetaInfo is None"
         return self.meta
 
     def with_dynamic_axes(
@@ -159,6 +159,10 @@ class MetaInfoOrNull:
         return dtype
 
     @staticmethod
+    def mix_axes(axes1: list[int], axes2: list[int]) -> list[int]:
+        return sorted(set(axes1 + axes2))
+
+    @staticmethod
     def from_tensor(
         tensor: paddle.Tensor, *, dynamic_axes: list[int] | None = None
     ) -> MetaInfoOrNull:
@@ -172,9 +176,13 @@ class MetaInfoOrNull:
         assert (
             -1 not in tensor.shape
         ), "Tensor shape should not contain -1, maybe you pass a Value to from_tensor"
+        user_specified_dynamic_axes = extract_tensor_dynamic_dims(tensor)
         dynamic_axes = dynamic_axes or []
+        dynamic_axes = MetaInfoOrNull.mix_axes(
+            dynamic_axes, list(user_specified_dynamic_axes)
+        )
         shape = [
-            SymbolicInt() if i in dynamic_axes else dim
+            SymbolicInt(dim) if i in dynamic_axes else dim
             for i, dim in enumerate(tensor.shape)
         ]
         if tensor.is_dist():
@@ -222,6 +230,13 @@ class MetaInfoOrNull:
         name = SOT_INFER_META_INNER_VAR
         dtype = MetaInfoOrNull._handle_legacy_ir_amp_dtype(value.dtype)
         shape = [SymbolicInt() if dim == -1 else dim for dim in value.shape]
+        for dim in shape:
+            if isinstance(dim, int):
+                assert dim >= 0, (
+                    "Dimensions must be non-negative integers or SymbolicInt. "
+                    f"Encountered value {dim} in shape {shape}."
+                )
+
         if isinstance(value, paddle.pir.Value) and value.is_dist():
             dist_info = DistInfo.from_value(value)
         else:
@@ -296,10 +311,19 @@ class MetaInfo:
         ]
 
     def with_dynamic_axes(self, name: str, dynamic_axes: list[int]) -> MetaInfo:
+        mixed_dynamic_axes = MetaInfoOrNull.mix_axes(
+            self.dynamic_axes, dynamic_axes
+        )
         # NOTE(SigureMo): Make sure create a new shape list with dynamic axes.
         # We will create a new shape list variable lazily in the future.
         shape = [
-            SymbolicInt(dim) if i in dynamic_axes else dim
+            (
+                SymbolicInt(dim)
+                if (
+                    i in mixed_dynamic_axes and not isinstance(dim, SymbolicInt)
+                )
+                else dim
+            )
             for i, dim in enumerate(self.shape)
         ]
         return MetaInfo(
@@ -448,7 +472,7 @@ class VariableCreator(metaclass=Singleton):
 
     def create_var(self, meta_or_null: MetaInfoOrNull):
         if meta_or_null.is_null():
-            return fake_value()
+            return None
         meta = meta_or_null.unwrap_unsafe()
         shape = meta.shape_with_special_symbol(-1)
 

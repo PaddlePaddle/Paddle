@@ -22,13 +22,13 @@
 namespace phi {
 
 template <typename T, typename Context>
-void BilinearKernel(const Context& ctx,
+void BilinearKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     const DenseTensor& y,
                     const DenseTensor& weight,
                     const paddle::optional<DenseTensor>& bias,
                     DenseTensor* out) {
-  ctx.template Alloc<T>(out);
+  dev_ctx.template Alloc<T>(out);
 
   auto y_mat = EigenMatrix<T>::From(y);
   auto output_mat = EigenMatrix<T>::From(*out);
@@ -38,30 +38,30 @@ void BilinearKernel(const Context& ctx,
   int out_dim = weight_dims[0];
   auto x_dim = weight_dims[1];
   auto y_dim = weight_dims[2];
-  auto& place = *ctx.eigen_device();
+  auto& place = *dev_ctx.eigen_device();
 
   // Create the intermediate variable to calculate the result of
   // Input(X) multiplied by Input(Weight_i), the formula is:
   // left_mul = X Weight_i.
   DenseTensor left_mul;
   left_mul.Resize(common::make_ddim({batch_size, y_dim}));
-  ctx.template Alloc<T>(&left_mul);
+  dev_ctx.template Alloc<T>(&left_mul);
   auto left_mul_mat = EigenMatrix<T>::From(left_mul);
 
   for (int i = 0; i < out_dim; ++i) {
     auto output_col_vec = output_mat.chip(i, 1);
     DenseTensor weight_mat =
         weight.Slice(i, i + 1).Resize(common::make_ddim({x_dim, y_dim}));
-    phi::funcs::GetBlas<Context, T>(ctx).GEMM(CblasNoTrans,
-                                              CblasNoTrans,
-                                              batch_size,
-                                              y_dim,
-                                              x_dim,
-                                              1,
-                                              x.data<T>(),
-                                              weight_mat.data<T>(),
-                                              0,
-                                              left_mul.data<T>());
+    phi::funcs::GetBlas<Context, T>(dev_ctx).GEMM(CblasNoTrans,
+                                                  CblasNoTrans,
+                                                  batch_size,
+                                                  y_dim,
+                                                  x_dim,
+                                                  1,
+                                                  x.data<T>(),
+                                                  weight_mat.data<T>(),
+                                                  0,
+                                                  left_mul.data<T>());
     output_col_vec.device(place) =
         (left_mul_mat * y_mat).sum(Eigen::DSizes<int, 1>(1));
   }

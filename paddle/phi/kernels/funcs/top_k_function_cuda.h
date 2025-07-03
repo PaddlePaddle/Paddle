@@ -91,7 +91,7 @@ namespace funcs {
 using Tensor = phi::DenseTensor;
 
 inline void GetDims(
-    const phi::DDim& dim, int axis, int* pre, int* n, int* post) {
+    const phi::DDim& dim, int axis, int64_t* pre, int64_t* n, int64_t* post) {
   *pre = 1;
   *post = 1;
   *n = dim[axis];
@@ -220,8 +220,8 @@ __device__ __forceinline__ void AddTo(Pair<T> topk[],
 template <typename T, int BlockSize>
 __device__ __forceinline__ void GetTopK(Pair<T> topk[],
                                         const T* src,
-                                        int idx,
-                                        int dim,
+                                        int64_t idx,
+                                        int64_t dim,
                                         int beam_size,
                                         const bool& largest) {
   while (idx < dim) {
@@ -243,8 +243,8 @@ __device__ __forceinline__ void GetTopK(Pair<T> topk[],
 template <typename T, int BlockSize>
 __device__ __forceinline__ void GetTopK(Pair<T> topk[],
                                         const T* src,
-                                        int idx,
-                                        int dim,
+                                        int64_t idx,
+                                        int64_t dim,
                                         const Pair<T>& max,
                                         int beam_size,
                                         const bool& largest) {
@@ -276,7 +276,7 @@ __device__ __forceinline__ void ThreadGetTopK(Pair<T> topk[],
                                               bool* firstStep,
                                               bool* is_empty,
                                               Pair<T>* max,
-                                              int dim,
+                                              int64_t dim,
                                               const int tid,
                                               bool largest) {
   if (*beam > 0) {
@@ -316,7 +316,7 @@ __forceinline__ __device__ Pair<T> WarpReduce(Pair<T> input,
     for (int offset = WARP_SIZE / 2; offset > 0; offset >>= 1) {
       T tmp_val =
           phi::backends::gpu::CudaShuffleDownSync(FINAL_MASK, input.v, offset);
-      int tmp_id =
+      int64_t tmp_id =
           phi::backends::gpu::CudaShuffleDownSync(FINAL_MASK, input.id, offset);
       if (input.v < tmp_val || (input.v == tmp_val && input.id > tmp_id)) {
         input.v = tmp_val;
@@ -328,7 +328,7 @@ __forceinline__ __device__ Pair<T> WarpReduce(Pair<T> input,
     for (int offset = WARP_SIZE / 2; offset > 0; offset >>= 1) {
       T tmp_val =
           phi::backends::gpu::CudaShuffleDownSync(FINAL_MASK, input.v, offset);
-      int tmp_id =
+      int64_t tmp_id =
           phi::backends::gpu::CudaShuffleDownSync(FINAL_MASK, input.id, offset);
       if (input.v > tmp_val || (input.v == tmp_val && input.id > tmp_id)) {
         input.v = tmp_val;
@@ -413,17 +413,17 @@ __global__ void KeMatrixTopK(T* output,
                              int output_stride,
                              int64_t* indices,
                              const T* src,
-                             int lds,
-                             int dim,
+                             int64_t lds,
+                             int64_t dim,
                              int k,
                              int grid_dim,
-                             int num,
+                             int64_t num,
                              bool largest = true) {
   const int tid = threadIdx.x;
   const int wid = tid / WARP_SIZE;
   const int lane = tid % WARP_SIZE;
   const int bid = blockIdx.x;
-  for (int i = bid; i < num; i += grid_dim) {
+  for (int64_t i = bid; i < num; i += grid_dim) {
     int top_num = k;
     __shared__ Pair<T> shared_max[BlockSize / WARP_SIZE];
     T* out = output + i * output_stride;
@@ -697,7 +697,7 @@ __device__ void ExclusiveBinaryPrefixScan(
 template <typename T, typename RadixType>
 __device__ T FindPattern(const T* input,
                          T* shared_mem,
-                         int slice_size,
+                         int64_t slice_size,
                          RadixType desired,
                          RadixType desired_mask) {
   if (threadIdx.x < 2) {
@@ -706,8 +706,8 @@ __device__ T FindPattern(const T* input,
   __syncthreads();
 
   int block_dim = static_cast<int>(blockDim.x);
-  int loop = ((slice_size + block_dim - 1) / block_dim * block_dim);
-  for (int i = threadIdx.x; i < loop; i += blockDim.x) {
+  int64_t loop = ((slice_size + block_dim - 1) / block_dim * block_dim);
+  for (int64_t i = threadIdx.x; i < loop; i += blockDim.x) {
     bool valid = (i < slice_size);
     T v = valid ? input[i] : static_cast<T>(0);
 
@@ -739,7 +739,7 @@ __device__ void RadixCountUsingMask(const T* input,
                                     RadixType desired,
                                     RadixType desired_mask,
                                     int radix_digit_pos,
-                                    int slice_size) {
+                                    int64_t slice_size) {
 #pragma unroll
   for (int i = 0; i < RadixSize; ++i) {
     counts[i] = 0;
@@ -750,7 +750,7 @@ __device__ void RadixCountUsingMask(const T* input,
   }
   __syncthreads();
 
-  for (int i = threadIdx.x; i < slice_size; i += blockDim.x) {
+  for (int64_t i = threadIdx.x; i < slice_size; i += blockDim.x) {
     RadixType val = RadixTypeConfig<T>::Convert(input[i]);
 
     bool has_val = ((val & desired_mask) == desired);
@@ -783,7 +783,7 @@ __device__ void RadixCountUsingMask(const T* input,
 
 template <typename T, typename RadixType, bool Largest>
 __device__ void RadixSearch(
-    const T* input, int k, int slice_size, int* shared_mem, T* kth_value) {
+    const T* input, int k, int64_t slice_size, int* shared_mem, T* kth_value) {
   int counts[RADIX_SIZE];
 
   RadixType desired = 0;
@@ -919,8 +919,8 @@ void LaunchGatherKthValue(const phi::GPUContext& dev_ctx,
 template <typename T, bool Largest>
 __global__ void RadixTopK(const T* input,
                           int k,
-                          int slice_num,
-                          int slice_size,
+                          int64_t slice_num,
+                          int64_t slice_size,
                           T* output,
                           int64_t* indices) {
   __shared__ int shared_mem[32];
@@ -933,10 +933,10 @@ __global__ void RadixTopK(const T* input,
 
   // 2. Select the value strictly less/greater than kth_value and their indices
   int block_dim = static_cast<int>(blockDim.x);
-  int loop = ((slice_size + block_dim - 1) / block_dim * block_dim);
+  int64_t loop = ((slice_size + block_dim - 1) / block_dim * block_dim);
   int write_start = 0;
 
-  for (int i = threadIdx.x; i < loop; i += blockDim.x) {
+  for (int64_t i = threadIdx.x; i < loop; i += blockDim.x) {
     bool valid = i < slice_size;
     T v = valid ? input[i] : static_cast<T>(0);
     const auto convertd_v = RadixTypeConfig<T>::Convert(v);
@@ -962,7 +962,7 @@ __global__ void RadixTopK(const T* input,
   // 3. Fill the rest with value == kth_value
   assert(k >= write_start);
   int remain = k - write_start;
-  for (int i = threadIdx.x; i < loop; i += blockDim.x) {
+  for (int64_t i = threadIdx.x; i < loop; i += blockDim.x) {
     bool valid = i < slice_size;
     T v = valid ? input[i] : static_cast<T>(0);
     const auto convertd_v = RadixTypeConfig<T>::Convert(v);
@@ -1014,19 +1014,19 @@ template <typename T>
 __global__ void AssignGradWithAxis(const T* grad_out,
                                    const int64_t* indices,
                                    T* grad_in,
-                                   int pre,
-                                   int post,
-                                   int raw_height,
+                                   int64_t pre,
+                                   int64_t post,
+                                   int64_t raw_height,
                                    int k) {
   // raw_height is the length of topk axis
-  for (int i = blockIdx.x; i < pre; i += gridDim.x) {
-    int base_index = i * post * k;
-    int base_grad = i * post * raw_height;
+  for (int64_t i = blockIdx.x; i < pre; i += gridDim.x) {
+    int64_t base_index = i * post * k;
+    int64_t base_grad = i * post * raw_height;
     for (int j = threadIdx.x; j < raw_height * post; j += blockDim.x) {
       grad_in[base_grad + j] = static_cast<T>(0);
     }
     __syncthreads();
-    for (int j = threadIdx.x; j < k * post; j += blockDim.x) {
+    for (int64_t j = threadIdx.x; j < k * post; j += blockDim.x) {
       int64_t idx_ij = indices[base_index + j];
       int64_t in_ij = base_grad + (idx_ij * post) + (j % post);
       grad_in[in_ij] = grad_out[base_index + j];

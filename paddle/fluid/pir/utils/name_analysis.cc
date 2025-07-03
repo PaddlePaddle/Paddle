@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/utils/name_analysis.h"
+#include <unordered_map>
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 
@@ -319,6 +320,33 @@ std::string GetValueFirstName(pir::Value value) {
                      "SetParameterOp and ShadowOutputOp."));
 
   return name.value();
+}
+
+std::unordered_map<std::string, pir::Value> GetAllNamedValues(
+    const pir::Program &program) {
+  std::unordered_map<std::string, pir::Value> named_values;
+  std::vector<pir::Value> all_values;
+  all_values.insert(all_values.end(),
+                    program.block()->args().begin(),
+                    program.block()->args().end());
+  for (const auto &[k, v] : program.block()->kwargs()) {
+    all_values.push_back(v);
+  }
+  for (auto op : program.block()->ops()) {
+    for (auto var : op->results()) {
+      all_values.push_back(var);
+    }
+  }
+
+  for (auto &value : all_values) {
+    std::optional<std::string> name = TryGetValueFirstName(value);
+    if (!name.has_value()) {
+      continue;
+    }
+    named_values[name.value()] = value;
+  }
+
+  return named_values;
 }
 
 }  // namespace name_analysis
