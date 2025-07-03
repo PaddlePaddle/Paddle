@@ -399,7 +399,8 @@ class VariableCreator(metaclass=Singleton):
     def __init__(self):
         self.var_name_generator = UniqueNameGenerator(SOT_INFER_META_INNER_VAR)
         self.var_cache = {}
-        self.main_program, self.startup_program = (paddle.static.Program(), paddle.static.Program())
+        self.main_program = paddle.static.Program()
+        self.startup_program = paddle.static.Program()
 
     def gen_name(self, meta_or_null: MetaInfoOrNull):
         if meta_or_null.is_null():
