@@ -400,6 +400,7 @@ class VariableCreator(metaclass=Singleton):
 
     def __init__(self):
         self.var_name_generator = UniqueNameGenerator(SOT_INFER_META_INNER_VAR)
+        self.var_cache = {}
 
     def gen_name(self, meta_or_null: MetaInfoOrNull):
         if meta_or_null.is_null():
@@ -408,10 +409,6 @@ class VariableCreator(metaclass=Singleton):
         name = f"{meta.dtype}_{meta.stop_gradient}_"
         name += "_".join(map(str, meta.shape))
         return name
-
-    @cached_property
-    def var_cache(self):
-        return {}
 
     @cached_property
     def programs(self):

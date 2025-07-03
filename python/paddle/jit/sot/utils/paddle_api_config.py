@@ -96,16 +96,7 @@ def get_paddle_api():
     )
 
 
-def create_tensor_methods_getter():
-    value_methods = get_value_methods()
-
-    def _get_tensor_methods():
-        return value_methods
-
-    return _get_tensor_methods
-
-
-get_tensor_methods = create_tensor_methods_getter()
+get_tensor_methods = get_value_methods
 paddle_api_list = get_paddle_api()
 
 # TODO(Aurelius84): It seems that we use it to judge 'in_paddle_module()'.
