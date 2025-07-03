@@ -16,7 +16,6 @@
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/unfold_functor.h"
 
 namespace phi {
@@ -30,11 +29,8 @@ void UnfoldKernel(const Context& dev_ctx,
                   const std::vector<int>& dilations_,
                   DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
-  if (x.numel() == 0) {
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
-    return;
-  }
+  dev_ctx.template Alloc<T>(out);
+  if (out->numel() == 0) return;
   const std::string data_format = common::DataLayoutToString(x.layout());
   bool is_nchw = data_format == "NCHW";
   PADDLE_ENFORCE_EQ(is_nchw,

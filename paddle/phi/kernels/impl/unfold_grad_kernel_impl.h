@@ -17,7 +17,6 @@
 #include <vector>
 
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/im2col.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/unfold_functor.h"
@@ -33,14 +32,8 @@ void UnfoldGradKernel(const Context& dev_ctx,
                       const std::vector<int>& paddings,
                       const std::vector<int>& dilations,
                       DenseTensor* x_grad) {
-  if (out_grad.numel() == 0) {
-    if (x_grad) {
-      dev_ctx.template Alloc<T>(x_grad);
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(x.dims())), 0, x_grad);
-    }
-    return;
-  }
+  dev_ctx.template Alloc<T>(x_grad);
+  if (x_grad->numel() == 0) return;
 
   if (!x_grad) return;
   const auto& x_dims = x_grad->dims();
