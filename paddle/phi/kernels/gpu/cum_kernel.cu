@@ -120,7 +120,7 @@ struct Identity<T, cub::Sum> {
 
 template <typename T>
 struct Identity<T, LogSumExp> {
-  static constexpr T value = std::numeric_limits<T>::lowest();
+  static constexpr T value = -std::numeric_limits<T>::infinity();
 };
 
 template <typename T>
@@ -129,13 +129,13 @@ struct Identity<T, ComplexSum> {
 };
 
 template <typename T, typename Op>
-struct SumPrefixCallbackOp {
+struct BlockPrefixCallbackOp {
   // Running prefix
   T running_total_;
   T compensation_;
   Op op_;
 
-  __device__ SumPrefixCallbackOp(T identity, Op op)
+  __device__ BlockPrefixCallbackOp(T identity, Op op)
       : running_total_(identity), compensation_(identity), op_(op) {}
 
   // Callback operator to be entered by the first warp of threads in the block.
@@ -153,24 +153,29 @@ struct SumPrefixCallbackOp {
   }
 };
 
-template <typename T, typename Op>
-struct LSEPrefixCallbackOp {
+template <typename T>
+struct BlockPrefixCallbackOp<T, LogSumExp> {
   T max_so_far_;
   T scaled_sum_;
   T compensation_;
-  Op op_;
+  LogSumExp op_;
 
-  __device__ LSEPrefixCallbackOp(T identity, Op op)
-      : max_so_far_(-std::numeric_limits<T>::infinity()),
+  __device__ BlockPrefixCallbackOp(T identity, LogSumExp op)
+      : max_so_far_(identity),
         scaled_sum_(0.0f),
         compensation_(0.0f),
         op_(op) {}
 
   __device__ T operator()(T block_aggregate) {
-    if (scaled_sum_ == 0.0f) {
-      if (block_aggregate == -std::numeric_limits<T>::infinity()) {
+    if (block_aggregate == -std::numeric_limits<T>::infinity()) {
+      if (scaled_sum_ == 0.0f) {
         return -std::numeric_limits<T>::infinity();
+      } else {
+        return max_so_far_ + std::log(scaled_sum_);
       }
+    }
+
+    if (scaled_sum_ == 0.0f) {
       max_so_far_ = block_aggregate;
       scaled_sum_ = 1.0f;
       compensation_ = 0.0f;
@@ -178,26 +183,22 @@ struct LSEPrefixCallbackOp {
     }
 
     // Online Scaling
-    T old_prefix = max_so_far_ + logf(scaled_sum_);
-
+    T old_prefix = max_so_far_ + std::log(scaled_sum_);
     T m_old = max_so_far_;
-    T m_new = fmaxf(m_old, block_aggregate);
+    T m_new = std::fmax(m_old, block_aggregate);
 
-    if (block_aggregate == -std::numeric_limits<T>::infinity()) {
-      return old_prefix;
+    if (m_new > m_old) {
+      T scale = std::exp(m_old - m_new);
+      scaled_sum_ *= scale;
+      compensation_ *= scale;
     }
 
-    T scale = expf(m_old - m_new);
-    scaled_sum_ *= scale;
-    compensation_ *= scale;
-
     // Kahan Summation
-    T term = expf(block_aggregate - m_new);
+    T term = std::exp(block_aggregate - m_new);
     T y = term - compensation_;
     T t = scaled_sum_ + y;
     compensation_ = (t - scaled_sum_) - y;
     scaled_sum_ = t;
-
     max_so_far_ = m_new;
 
     return old_prefix;
@@ -212,9 +213,7 @@ __global__ void BlockScanKernel(T* d_out,
                                 bool exclusive,
                                 Op op) {
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
-  using CallbackOp = std::conditional_t<std::is_same<Op, LogSumExp>::value,
-                                        LSEPrefixCallbackOp<MT, Op>,
-                                        SumPrefixCallbackOp<MT, Op>>;
+  using CallbackOp = BlockPrefixCallbackOp<MT, Op>;
 
   // Specialize BlockLoad, BlockStore, and BlockRadixSort collective types
   using BlockLoadT = cub::
