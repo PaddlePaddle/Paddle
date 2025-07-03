@@ -183,7 +183,7 @@ static phi::DDim BroadCastTensorsDims(
 }
 
 template <typename T, typename Context>
-T** GetDevicePointerArray(const Context& dev_ctx,
+T** GetDevicePointerArray(const Context& ctx,
                           const std::vector<const DenseTensor*>& indices_v,
                           phi::Allocator::AllocationPtr* holder_ptr) {
   PADDLE_ENFORCE_NOT_NULL(
@@ -196,15 +196,15 @@ T** GetDevicePointerArray(const Context& dev_ctx,
   }
   auto& d_indices_data = *holder_ptr;
   d_indices_data = phi::memory_utils::Alloc(
-      dev_ctx.GetPlace(),
+      ctx.GetPlace(),
       h_indices_v.size() * sizeof(T*),
-      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
-  phi::memory_utils::Copy(dev_ctx.GetPlace(),
+      phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
+  phi::memory_utils::Copy(ctx.GetPlace(),
                           d_indices_data->ptr(),
                           phi::CPUPlace(),
                           reinterpret_cast<void*>(h_indices_v.data()),
                           h_indices_v.size() * sizeof(T*),
-                          dev_ctx.stream());
+                          ctx.stream());
   return reinterpret_cast<T**>(d_indices_data->ptr());
 }
 

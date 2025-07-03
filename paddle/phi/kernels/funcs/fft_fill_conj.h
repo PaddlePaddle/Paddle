@@ -138,7 +138,7 @@ struct FFTFillConjFunctor {
 };
 
 template <typename DeviceContext, typename C>
-void FFTFillConj(const DeviceContext& dev_ctx,
+void FFTFillConj(const DeviceContext& ctx,
                  const DenseTensor* src,
                  DenseTensor* dst,
                  const std::vector<int64_t>& axes) {
@@ -202,7 +202,7 @@ void FFTFillConj(const DeviceContext& dev_ctx,
   const auto dst_shape = dst_shape_v.data();
   const auto p_is_fft_axis = _is_fft_axis.get();
 #endif
-  ForRange<DeviceContext> for_range(dev_ctx, dst->numel());
+  ForRange<DeviceContext> for_range(ctx, dst->numel());
   FFTFillConjFunctor<C> fill_conj_functor(src_data,
                                           dst_data,
                                           src_strides,
