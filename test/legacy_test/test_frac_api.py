@@ -110,5 +110,29 @@ class TestFracError(unittest.TestCase):
         self.assertRaises(TypeError, paddle.frac, x)
 
 
+class TestFracAPI_ZeroSize(unittest.TestCase):
+    def set_dtype(self):
+        self.dtype = 'float64'
+
+    def setUp(self):
+        self.set_dtype()
+        self.x_np = np.random.random([0, 3]).astype(self.dtype)
+        self.place = (
+            paddle.CUDAPlace(0)
+            if core.is_compiled_with_cuda()
+            else paddle.CPUPlace()
+        )
+
+    def test_api_dygraph(self):
+        paddle.disable_static(self.place)
+        x = paddle.to_tensor(self.x_np)
+        x.stop_gradient = False
+        out = paddle.frac(x)
+        out_ref = ref_frac(self.x_np)
+        np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
+        out.sum().backward()
+        np.testing.assert_allclose(x.grad.shape, x.shape)
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -32,7 +32,7 @@ bool ArangeOpInferSymbolicShape(pir::Operation *op,
                  result.type().isa<paddle::dialect::DenseTensorType>();
     PADDLE_ENFORCE_EQ(check,
                       true,
-                      phi::errors::PreconditionNotMet(
+                      common::errors::PreconditionNotMet(
                           "result for arange must be DenseTensorType"));
     const auto dims =
         result.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();

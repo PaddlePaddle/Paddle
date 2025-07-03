@@ -32,7 +32,7 @@ bool ApTrivialFusionBeginOpInferSymbolicShape(
   infer_context->SetShapeOrDataForValue(op->result(0), empty_shape);
   return true;
 #else
-  PADDLE_THROW(phi::errors::Unimplemented(
+  PADDLE_THROW(common::errors::Unimplemented(
       "ap_trivial_fusion_begin is not implemented when cinn is not enabled."));
   return false;
 #endif
@@ -46,7 +46,7 @@ bool ApTrivialFusionEndOpInferSymbolicShape(
   infer_context->SetShapeOrDataForValue(op->result(0), empty_shape);
   return true;
 #else
-  PADDLE_THROW(phi::errors::Unimplemented(
+  PADDLE_THROW(common::errors::Unimplemented(
       "ap_trivial_fusion_end is not implemented when cinn is not enabled."));
   return false;
 #endif
@@ -57,7 +57,7 @@ bool ApFacadeOpInferSymbolicShape(
 #ifdef PADDLE_WITH_CINN
   return ap::dialect::PdOpApFacadeOpInferSymbolicShape(op, infer_context);
 #else
-  PADDLE_THROW(phi::errors::Unimplemented(
+  PADDLE_THROW(common::errors::Unimplemented(
       "ap_facade is not implemented when cinn is not enabled."));
   return false;
 #endif
@@ -68,7 +68,7 @@ bool ApVariadicOpInferSymbolicShape(
 #ifdef PADDLE_WITH_CINN
   return ap::dialect::PdOpApVariadicOpInferSymbolicShape(op, infer_context);
 #else
-  PADDLE_THROW(phi::errors::Unimplemented(
+  PADDLE_THROW(common::errors::Unimplemented(
       "ap_variadic is not implemented when cinn is not enabled."));
   return false;
 #endif

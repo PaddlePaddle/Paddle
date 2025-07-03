@@ -334,7 +334,12 @@ class Fleet:
                     os.environ["FLAGS_nccl_nrings"] = str(
                         self._user_defined_strategy.nccl_comm_num
                     )
-                paddle.distributed.init_parallel_env()
+
+                paddle.distributed.init_parallel_env(
+                    self._user_defined_strategy.hybrid_configs[
+                        "default_comm_group_configs"
+                    ].nccl_config
+                )
 
             # hybrid parallel not support for npu/xpu
             if not self._user_defined_strategy.heter_ccl_mode:
@@ -679,12 +684,16 @@ class Fleet:
             and dims[hybrid_group_names.index("expert")] > 1
         ):
             # for expert parallel in MoE model
-            hcg = tp.EPHybridCommunicateGroup(hybrid_group_names, dims)
+            hcg = tp.EPHybridCommunicateGroup(
+                hybrid_group_names, dims, self.hybrid_configs
+            )
             self._topology = hcg._dense_topo
             return hcg
         else:
             self._topology = tp.CommunicateTopology(hybrid_group_names, dims)
-            return tp.HybridCommunicateGroup(self._topology)
+            return tp.HybridCommunicateGroup(
+                self._topology, self.hybrid_configs
+            )
 
     def _init_hybrid_parallel_env(self):
         """initialize the hybrid environment."""

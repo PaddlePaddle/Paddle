@@ -85,6 +85,7 @@ select = [
 
     # Flake8-simplify
     "SIM101",
+    "SIM117",
 
     # Pygrep-hooks
     "PGH004",
