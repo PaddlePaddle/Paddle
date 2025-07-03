@@ -191,6 +191,7 @@ from .tensor.attribute import (
     shape,
 )
 from .tensor.creation import (
+    MmapStorage,
     arange,
     assign,
     cauchy_,
@@ -204,6 +205,7 @@ from .tensor.creation import (
     empty_like,
     eye,
     frombuffer,
+    fromfile,
     full,
     full_like,
     geometric_,
@@ -888,6 +890,8 @@ __all__ = [
     'logical_and',
     'logical_and_',
     'frombuffer',
+    'MmapStorage',
+    'fromfile',
     'full_like',
     'less_than',
     'less_than_',
