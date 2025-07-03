@@ -79,10 +79,10 @@ class Laplace(distribution.Distribution):
             )
 
         if isinstance(loc, numbers.Real):
-            loc = paddle.full(shape=(), fill_value=loc)
+            loc = paddle.full(shape=(), fill_value=float(loc))
 
         if isinstance(scale, numbers.Real):
-            scale = paddle.full(shape=(), fill_value=scale)
+            scale = paddle.full(shape=(), fill_value=float(scale))
 
         if (len(scale.shape) > 0 or len(loc.shape) > 0) and (
             loc.dtype == scale.dtype
@@ -151,7 +151,7 @@ class Laplace(distribution.Distribution):
           loc, scale, value: The broadcasted loc, scale and value, with the same dimension and data type.
         """
         if isinstance(value, numbers.Real):
-            value = paddle.full(shape=(), fill_value=value)
+            value = paddle.full(shape=(), fill_value=float(value))
         if value.dtype != self.scale.dtype:
             value = paddle.cast(value, self.scale.dtype)
         if (

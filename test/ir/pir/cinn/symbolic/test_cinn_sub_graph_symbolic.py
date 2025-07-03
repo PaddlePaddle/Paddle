@@ -201,7 +201,9 @@ class LlamaRMSNorm(paddle.nn.Layer):
         # 1.2 decomp mean -> sum & div
         sum_rst = paddle.sum(pow_rst, [axis_rst], keepdim=True)
         shape_rst = paddle.shape(sum_rst)
-        div_by = paddle.full(shape_rst, hidden_states.shape[axis_rst])
+        div_by = paddle.full(
+            shape_rst, hidden_states.shape[axis_rst], dtype=sum_rst.dtype
+        )
         variance = paddle.divide(sum_rst, div_by)
 
         # 2. hidden_states = (paddle.rsqrt(variance + self.variance_epsilon) * hidden_states)

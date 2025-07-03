@@ -50,8 +50,8 @@ class LlamaInference(nn.Layer):
         logits = logits[:, -1, :]
         probs = F.softmax(logits)
 
-        temperature = paddle.full([1], 1)
-        top_p = paddle.full([1], 0)
+        temperature = paddle.full([1], 1.0)
+        top_p = paddle.full([1], 0.0)
 
         # sample
         origin_probs = F.log_softmax(logits)

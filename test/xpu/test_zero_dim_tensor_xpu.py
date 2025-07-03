@@ -1988,8 +1988,8 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(x2.grad.numpy(), 1)
 
     def test_atan2(self):
-        x1 = paddle.full([], 0)
-        x2 = paddle.full([], 2)
+        x1 = paddle.full([], 0.0)
+        x2 = paddle.full([], 2.0)
         x1.retain_grads()
         x2.retain_grads()
         x1.stop_gradient = False
@@ -2026,7 +2026,7 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(out1.shape, [2, 3, 12, 12])
         self.assertEqual(input_x.grad.shape, [2, 3, 6, 6])
 
-        scale_1 = [paddle.full([], 2), paddle.full([], 2)]
+        scale_1 = [paddle.full([], 2.0), paddle.full([], 2.0)]
         out2 = interpolate(
             x=input_x,
             scale_factor=scale_1,
@@ -2038,7 +2038,7 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(out2.shape, [2, 3, 12, 12])
         self.assertEqual(input_x.grad.shape, [2, 3, 6, 6])
 
-        scale_2 = paddle.full([], 2)
+        scale_2 = paddle.full([], 2.0)
         out3 = interpolate(
             x=input_x,
             scale_factor=scale_2,
@@ -2079,8 +2079,8 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(input_x.grad.shape, [2, 3, 6, 6])
 
     def test_unstack(self):
-        x1 = paddle.full([1], 0)
-        x2 = paddle.full([2], 2)
+        x1 = paddle.full([1], 0.0)
+        x2 = paddle.full([2], 2.0)
         x1.retain_grads()
         x2.retain_grads()
         x1.stop_gradient = False
@@ -2104,8 +2104,8 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(x2.grad.shape, [2])
 
     def test_unbind(self):
-        x1 = paddle.full([1], 0)
-        x2 = paddle.full([2], 2)
+        x1 = paddle.full([1], 0.0)
+        x2 = paddle.full([2], 2.0)
         x1.retain_grads()
         x2.retain_grads()
         x1.stop_gradient = False
@@ -2143,7 +2143,7 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(x.grad.numpy(), 1)
 
     def test_squeeze(self):
-        x1 = paddle.full([], 2)
+        x1 = paddle.full([], 2.0)
         x1.stop_gradient = False
         x1.retain_grads()
         out1 = paddle.squeeze(x1, axis=0)
@@ -2152,7 +2152,7 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(out1.shape, [])
         self.assertEqual(x1.grad.shape, [])
 
-        x2 = paddle.full([], 3)
+        x2 = paddle.full([], 3.0)
         x3 = paddle.full([1], 0, dtype='int32')
         x2.stop_gradient = False
         x2.retain_grads()
@@ -2163,7 +2163,7 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(x2.grad.shape, [])
 
     def test_unsqueeze(self):
-        x1 = paddle.full([], 2)
+        x1 = paddle.full([], 2.0)
         x1.stop_gradient = False
         x1.retain_grads()
         out1 = paddle.unsqueeze(x1, axis=0)

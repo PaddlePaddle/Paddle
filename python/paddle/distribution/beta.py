@@ -99,10 +99,10 @@ class Beta(exponential_family.ExponentialFamily):
 
     def __init__(self, alpha: float | Tensor, beta: float | Tensor) -> None:
         if isinstance(alpha, numbers.Real):
-            alpha = paddle.full(shape=[], fill_value=alpha)
+            alpha = paddle.full(shape=[], fill_value=float(alpha))
 
         if isinstance(beta, numbers.Real):
-            beta = paddle.full(shape=[], fill_value=beta)
+            beta = paddle.full(shape=[], fill_value=float(beta))
 
         self.alpha, self.beta = paddle.broadcast_tensors([alpha, beta])
 

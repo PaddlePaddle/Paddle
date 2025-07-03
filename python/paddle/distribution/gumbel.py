@@ -111,10 +111,10 @@ class Gumbel(TransformedDistribution):
             )
 
         if isinstance(loc, numbers.Real):
-            loc = paddle.full(shape=(), fill_value=loc)
+            loc = paddle.full(shape=(), fill_value=float(loc))
 
         if isinstance(scale, numbers.Real):
-            scale = paddle.full(shape=(), fill_value=scale)
+            scale = paddle.full(shape=(), fill_value=float(scale))
 
         if loc.shape != scale.shape:
             self.loc, self.scale = paddle.broadcast_tensors([loc, scale])

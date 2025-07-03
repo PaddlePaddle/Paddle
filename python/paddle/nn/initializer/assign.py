@@ -245,10 +245,10 @@ class Assign(NumpyArrayInitializer):
             >>> data_3 = paddle.ones(shape=[1, 2], dtype='float32')
             >>> weight_attr_3 = paddle.ParamAttr(
             ...     name="linear_weight_3",
-            ...     initializer=paddle.nn.initializer.Assign(paddle.full([2], 2)))
+            ...     initializer=paddle.nn.initializer.Assign(paddle.full([2], 2.0)))
             >>> bias_attr_3 = paddle.ParamAttr(
             ...     name="linear_bias_3",
-            ...     initializer=paddle.nn.initializer.Assign(paddle.full([1], 2)))
+            ...     initializer=paddle.nn.initializer.Assign(paddle.full([1], 2.0)))
             >>> linear_3 = paddle.nn.Linear(2, 2, weight_attr=weight_attr_3, bias_attr=bias_attr_3)
             >>> print(linear_3.weight.numpy())
             [2. 2.]

@@ -72,7 +72,7 @@ class TestMultiLoad(unittest.TestCase):
 
     def test_multi_load(self):
         paddle.disable_static()
-        x = paddle.full([2, 4], 2)
+        x = paddle.full([2, 4], 2.0)
         model = create_net()
         with enable_to_static_guard(False):
             forward_out1 = model.forward(x)
@@ -90,7 +90,7 @@ class TestMultiLoad(unittest.TestCase):
         np.testing.assert_allclose(infer_out1, infer_out2[0], rtol=1e-05)
 
     def test_multi_jit_load(self):
-        x = paddle.full([2, 4], 2)
+        x = paddle.full([2, 4], 2.0)
         model = create_net()
         with enable_to_static_guard(False):
             forward_out1 = model.forward(x)

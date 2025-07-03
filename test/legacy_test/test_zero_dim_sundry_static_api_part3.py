@@ -150,7 +150,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         prog = paddle.static.default_main_program()
         res1 = self.exe.run(prog, feed={}, fetch_list=[out1, input_x_grad])
 
-        scale_1 = paddle.full([], 2)
+        scale_1 = paddle.full([], 2.0)
         out2 = interpolate(
             x=input_x,
             scale_factor=scale_1,
@@ -261,14 +261,14 @@ class TestSundryAPIStatic(unittest.TestCase):
 
     @prog_scope()
     def test_squeeze(self):
-        x1 = paddle.full([], 2)
+        x1 = paddle.full([], 2.0)
         x1.stop_gradient = False
         out1 = paddle.squeeze(x1, axis=0)
         _, x1_grad = paddle.static.append_backward(
             out1.sum(), parameter_list=[x1]
         )[0]
 
-        x2 = paddle.full([], 3)
+        x2 = paddle.full([], 3.0)
         x3 = paddle.full([], 0, dtype='int32')
         x2.stop_gradient = False
         out2 = paddle.squeeze(x2, axis=x3)
@@ -293,14 +293,14 @@ class TestSundryAPIStatic(unittest.TestCase):
 
     @prog_scope()
     def test_unsqueeze(self):
-        x1 = paddle.full([], 2)
+        x1 = paddle.full([], 2.0)
         x1.stop_gradient = False
         out1 = paddle.unsqueeze(x1, axis=0)
         _, x1_grad = paddle.static.append_backward(
             out1.sum(), parameter_list=[x1]
         )[0]
 
-        x2 = paddle.full([], 3)
+        x2 = paddle.full([], 3.0)
         x3 = paddle.full([], 0, dtype='int32')
         x2.stop_gradient = False
         out2 = paddle.unsqueeze(x2, axis=x3)

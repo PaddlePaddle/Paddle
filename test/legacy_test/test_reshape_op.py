@@ -769,7 +769,7 @@ class TestReshapePirValueListShape(unittest.TestCase):
             x = paddle.static.data('x', [3])
             shape = [1, paddle.full([], 3)]
             out = paddle.reshape(x, shape)
-            self.assertEqual(out.shape, [1, -1])
+            self.assertEqual(out.shape, [1, 3])
 
 
 class TestReshapePirTensorWithZeroShape(unittest.TestCase):

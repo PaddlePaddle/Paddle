@@ -766,7 +766,7 @@ class TestAssign(unittest.TestCase):
 
         weight_attr_3 = paddle.framework.ParamAttr(
             name="linear_weight_3",
-            initializer=paddle.nn.initializer.Assign(paddle.full([2], 2)),
+            initializer=paddle.nn.initializer.Assign(paddle.full([2], 2.0)),
         )
         linear_3 = paddle.nn.Linear(2, 2, weight_attr=weight_attr_3)
 

@@ -1113,7 +1113,7 @@ class TestBilinearInterpOpAPI_0DTensorScale(unittest.TestCase):
             expect_res = bilinear_interp_np(
                 input_data, out_h=12, out_w=12, align_corners=False
             )
-            scale_0d = paddle.full([], 2)
+            scale_0d = paddle.full([], 2.0)
             out = interpolate(
                 x=input_x,
                 scale_factor=scale_0d,
@@ -1137,7 +1137,7 @@ class TestBilinearInterpOpAPI_0DTensorScale2(unittest.TestCase):
             expect_res = bilinear_interp_np(
                 input_data, out_h=12, out_w=12, align_corners=False
             )
-            scale_0d = [paddle.full([], 2), paddle.full([], 2)]
+            scale_0d = [paddle.full([], 2.0), paddle.full([], 2.0)]
             out = interpolate(
                 x=input_x,
                 scale_factor=scale_0d,

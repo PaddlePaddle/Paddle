@@ -23,9 +23,9 @@ class LayerCase(paddle.nn.Layer):
         self.relu = paddle.nn.functional.relu
 
     def triple_full(self):
-        y1 = paddle.full([4], 1)
-        y2 = paddle.full([4], 0)
-        y3 = paddle.full([4], 0)
+        y1 = paddle.full([4], 1.0)
+        y2 = paddle.full([4], 0.0)
+        y3 = paddle.full([4], 0.0)
         return y1, y2, y3
 
     def concat_case_1(self):

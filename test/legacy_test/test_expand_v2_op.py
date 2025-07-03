@@ -676,7 +676,7 @@ class TestExpandPirValueListShape(unittest.TestCase):
             x = paddle.static.data('x', [1, 1])
             shape = [2, paddle.full([], 4)]
             out = paddle.expand(x, shape)
-            np.testing.assert_array_equal(tuple(out.shape), (2, -1))
+            np.testing.assert_array_equal(tuple(out.shape), (2, 4))
 
     def test_value_list_shape2(self):
         with (
