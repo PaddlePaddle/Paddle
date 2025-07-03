@@ -104,16 +104,17 @@ __global__ void ScatterNdCUDAKernel(const T* update,
                                     size_t remain_size,
                                     size_t slice_size,
                                     size_t end_size) {
-  int total_size = remain_size * slice_size;
-  int idx = (blockIdx.x * blockDim.x + threadIdx.x) * VecSize;
-  int64_t stride = blockDim.x * gridDim.x * VecSize;
+  size_t total_size = remain_size * slice_size;
+  size_t idx =
+      (static_cast<size_t>(blockIdx.x) * blockDim.x + threadIdx.x) * VecSize;
+  size_t stride = static_cast<size_t>(blockDim.x) * gridDim.x * VecSize;
 
 #pragma unroll
   for (; idx < total_size; idx += stride) {
-    int indices_i = idx / slice_size;
-    int slice_i = idx % slice_size;
-    int64_t gather_i = 0;
-    int64_t temp = slice_size;
+    size_t indices_i = idx / slice_size;
+    size_t slice_i = idx % slice_size;
+    size_t gather_i = 0;
+    size_t gather_stride = slice_size;
 
 #pragma unroll
     for (int j = end_size - 1; j >= 0; --j) {
@@ -132,11 +133,11 @@ __global__ void ScatterNdCUDAKernel(const T* update,
         index_value += output_dims[j];
       }
 
-      gather_i += (index_value * temp);
-      temp *= output_dims[j];
+      gather_i += index_value * gather_stride;
+      gather_stride *= output_dims[j];
     }
 
-    int64_t output_i = gather_i + slice_i;
+    size_t output_i = gather_i + slice_i;
 
     using VecType = kps::details::VectorType<T, VecSize>;
     const VecType* src = reinterpret_cast<const VecType*>(&update[idx]);
@@ -216,7 +217,7 @@ void GPUScatterAssign(const phi::GPUContext& ctx,
   }
 
   // for overwrite mode, use vectorization
-  int vec_size = 4;
+  int vec_size = 8;
   vec_size = std::min(phi::GetVectorizedSize(&src), vec_size);
   vec_size = std::min(phi::GetVectorizedSize(output), vec_size);
   while (vec_size > 1 && slice_size % vec_size != 0) {
@@ -226,7 +227,6 @@ void GPUScatterAssign(const phi::GPUContext& ctx,
   constexpr int loop_count = 4;
   auto config =
       phi::backends::gpu::GetGpuLaunchConfig1D(ctx, n, vec_size * loop_count);
-
   switch (vec_size) {
 #define CASE_VEC_SIZE(__Sz)                                                    \
   case __Sz:                                                                   \
@@ -234,6 +234,7 @@ void GPUScatterAssign(const phi::GPUContext& ctx,
         <<<config.block_per_grid, config.thread_per_block, 0, ctx.stream()>>>( \
             p_src, p_index, p_output, output_dims[0], index_size, slice_size); \
     break
+    CASE_VEC_SIZE(8);
     CASE_VEC_SIZE(4);
     CASE_VEC_SIZE(2);
     CASE_VEC_SIZE(1);
@@ -302,7 +303,7 @@ void GPUScatterNdAdd(const phi::GPUContext& ctx,
     g_output_dims[i] = output_dims[i];
   }
 
-  int vec_size = 4;
+  int vec_size = 8;
   vec_size = std::min(phi::GetVectorizedSize(p_update), vec_size);
   vec_size = std::min(phi::GetVectorizedSize(p_output), vec_size);
   while (vec_size > 1 && slice_size % vec_size != 0) {
@@ -314,7 +315,6 @@ void GPUScatterNdAdd(const phi::GPUContext& ctx,
       ctx, remain_numel * slice_size, vec_size * loop_count);
 
   auto stream = ctx.stream();
-
   switch (vec_size) {
 #define CASE_VEC_SIZE(__Sz)                                              \
   case __Sz:                                                             \
@@ -328,6 +328,7 @@ void GPUScatterNdAdd(const phi::GPUContext& ctx,
             slice_size,                                                  \
             end_size);                                                   \
     break
+    CASE_VEC_SIZE(8);
     CASE_VEC_SIZE(4);
     CASE_VEC_SIZE(2);
     CASE_VEC_SIZE(1);

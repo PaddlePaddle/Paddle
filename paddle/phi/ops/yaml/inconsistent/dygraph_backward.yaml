@@ -76,6 +76,7 @@
   infer_meta :
     func : GeneralTernaryGradInferMeta
     param : [x, scale, bias]
+    spmd_rule : BatchNormGradInferSpmd
   kernel :
     func : batch_norm_grad
     data_type : out_grad

@@ -127,6 +127,7 @@ from . import (
     linalg as linalg,
     signal as signal,
     tensor as tensor,
+    utils as utils,
 )
 from .autograd import (
     enable_grad,
@@ -647,6 +648,10 @@ if __is_metainfo_generated and is_compiled_with_cuda():
 
         cupti_dir_lib_path = package_dir + "/.." + "/nvidia/cuda_cupti/lib"
         set_flags({"FLAGS_cupti_dir": cupti_dir_lib_path})
+
+        if is_compiled_with_cinn():
+            cuda_cccl_path = package_dir + "/.." + "/nvidia/cuda_cccl/include/"
+            set_flags({"FLAGS_cuda_cccl_dir": cuda_cccl_path})
 
     elif (
         platform.system() == 'Windows'

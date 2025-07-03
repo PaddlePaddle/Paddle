@@ -45,6 +45,7 @@ if TYPE_CHECKING:
     from paddle.static import InputSpec, Program
 
     from .builder import StatementIRBuilder
+    from .statement_ir import ParametersHolder
 
 
 def trace_back_frames():
@@ -301,6 +302,7 @@ class CompileSIRCache(Cache, metaclass=Singleton):
         self,
         builder: StatementIRBuilder,
         sir_name: str,
+        parameters_holder: ParametersHolder,
         input_spec: tuple[InputSpec | None, ...],
         **kwargs,
     ):
@@ -317,13 +319,16 @@ class CompileSIRCache(Cache, metaclass=Singleton):
         """
         sir = builder.get_sir(sir_name)
         # NOTE(dev): Is str(sir) a heavy operation ?
-        hash_key = hash((str(sir), *input_spec, kwargs['training']))
+        hash_key = hash(
+            (str(sir), *input_spec, id(parameters_holder), kwargs['training'])
+        )
         return hash_key
 
     def value_fn(
         self,
         builder: StatementIRBuilder,
         sir_name: str,
+        parameters_holder: ParametersHolder,
         input_spec: tuple[InputSpec | None, ...],
         **kwargs,
     ):
@@ -342,7 +347,7 @@ class CompileSIRCache(Cache, metaclass=Singleton):
         backend = kwargs.get("backend", None)
         return FallbackWrapper(
             paddle.jit.to_static(
-                compile_sir(builder, sir_name),
+                compile_sir(builder, sir_name, parameters_holder),
                 input_spec=[input_spec],
                 build_strategy=build_strategy,
                 backend=backend,

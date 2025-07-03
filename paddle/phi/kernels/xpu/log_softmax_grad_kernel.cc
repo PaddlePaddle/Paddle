@@ -40,6 +40,7 @@ void LogSoftmaxGradKernel(const Context& dev_ctx,
 
   auto out_shape = common::vectorize<int64_t>(out.dims());
   dev_ctx.template Alloc<T>(x_grad);
+  if (out.numel() == 0) return;
   int r = xpu::log_softmax_grad(
       dev_ctx.x_context(),
       reinterpret_cast<const XPUType*>(out.data<T>()),

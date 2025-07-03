@@ -520,24 +520,26 @@ class TestScatterNdOpRaise(unittest.TestCase):
         self.assertRaises(IndexError, check_raise_is_test)
 
     def test_check_raise2(self):
-        with self.assertRaises(TypeError):
-            with static_guard():
-                ref6 = paddle.static.data(
-                    name='ref6',
-                    shape=[10, 9, 8, 1, 3],
-                    dtype='double',
-                )
-                index6 = paddle.static.data(
-                    name='index6',
-                    shape=[5, 8, 5],
-                    dtype='int32',
-                )
-                updates6 = paddle.static.data(
-                    name='update6',
-                    shape=[5, 8],
-                    dtype='float32',
-                )
-                output6 = paddle.scatter_nd_add(ref6, index6, updates6)
+        with (
+            self.assertRaises(TypeError),
+            static_guard(),
+        ):
+            ref6 = paddle.static.data(
+                name='ref6',
+                shape=[10, 9, 8, 1, 3],
+                dtype='double',
+            )
+            index6 = paddle.static.data(
+                name='index6',
+                shape=[5, 8, 5],
+                dtype='int32',
+            )
+            updates6 = paddle.static.data(
+                name='update6',
+                shape=[5, 8],
+                dtype='float32',
+            )
+            output6 = paddle.scatter_nd_add(ref6, index6, updates6)
 
     def test_check_raise3(self):
         def check_raise_is_test():

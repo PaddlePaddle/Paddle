@@ -120,8 +120,8 @@ void StridedSliceRawKernel(const Context& dev_ctx,
      * [1 3 5 7 9
      *  2 4 6 8 10]
      */
-    // int transpose(Context* ctx, const T* x, T* y, const std::vector<int64_t>&
-    // xshape, const std::vector<int64_t>& permute)
+    // int transpose(Context* xpu_ctx, const T* x, T* y, const
+    // std::vector<int64_t>& xshape, const std::vector<int64_t>& permute)
     int r =
         xpu::transpose<XPUType>(dev_ctx.x_context(),
                                 reinterpret_cast<const XPUType*>(x.data<T>()),
@@ -135,7 +135,7 @@ void StridedSliceRawKernel(const Context& dev_ctx,
     if (starts_in.back() == 1) {
       offset = x.numel() / 2;
     }
-    // int copy(Context* ctx, const T* x, T* y, int64_t len)
+    // int copy(Context* xpu_ctx, const T* x, T* y, int64_t len)
     r = xpu::copy<XPUType>(dev_ctx.x_context(),
                            x_transpose + offset,
                            reinterpret_cast<XPUType*>(out->data<T>()),

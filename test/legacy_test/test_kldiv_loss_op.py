@@ -115,6 +115,52 @@ class TestKLDivLossOp6(TestKLDivLossOp):
         self.log_target = True
 
 
+class TestKLDivLossOp_ZeroSize1(TestKLDivLossOp):
+    def setUp(self):
+        self.initTestCase()
+        self.op_type = 'kldiv_loss'
+        self.python_api = kl_div
+        self.public_python_api = paddle.nn.functional.kl_div
+        x = np.random.uniform(-10, 10, self.x_shape).astype('float64')
+        target = np.random.uniform(-10, 10, self.x_shape).astype('float64')
+
+        self.attrs = {
+            "reduction": self.reduction,
+            "log_target": self.log_target,
+        }
+
+        self.inputs = {
+            'X': x,
+            'Target': target,
+        }
+        loss = kldiv_loss(x, target, self.reduction, self.log_target)
+        self.outputs = {'Loss': loss.astype('float64')}
+
+    def initTestCase(self):
+        # return NAN
+        self.x_shape = (0, 2, 7, 7)
+        self.reduction = 'mean'
+        self.log_target = False
+
+    def test_check_output(self):
+        self.check_output(check_pir=True, equal_nan=True)
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['X'],
+            'Loss',
+            no_grad_set={"Target"},
+            check_pir=True,
+        )
+
+
+class TestKLDivLossOp_ZeroSize2(TestKLDivLossOp_ZeroSize1):
+    def initTestCase(self):
+        self.x_shape = (0, 2, 7, 7)
+        self.reduction = 'none'
+        self.log_target = False
+
+
 class TestKLDivLossDygraph(unittest.TestCase):
     def run_kl_loss(self, reduction, shape=(5, 20), log_target=False):
         x = np.random.uniform(-10, 10, shape).astype('float64')

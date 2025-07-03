@@ -35,9 +35,9 @@ __global__ void LerpGradKernelImpl(const T* weight,
                                    const T* dout,
                                    T* dx,
                                    T* dy,
-                                   const int out_size,
-                                   const int x_size,
-                                   const int y_size) {
+                                   const int64_t out_size,
+                                   const int64_t x_size,
+                                   const int64_t y_size) {
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   CUDA_KERNEL_LOOP_TYPE(idx, out_size, int64_t) {
     MPType temp_dx =
@@ -60,9 +60,9 @@ __global__ void LerpGradScalarKernelImpl(const T* weight,
                                          const T* dout,
                                          T* dx,
                                          T* dy,
-                                         const int out_size,
-                                         const int x_size,
-                                         const int y_size) {
+                                         const int64_t out_size,
+                                         const int64_t x_size,
+                                         const int64_t y_size) {
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   MPType weight_scalar = static_cast<MPType>(weight[0]);
   CUDA_KERNEL_LOOP_TYPE(idx, out_size, int64_t) {
@@ -117,8 +117,8 @@ template <typename T, typename Context>
 void SwitchKernel(const Context& dev_ctx,
                   const DenseTensor& weight,
                   const DenseTensor& out_grad,
-                  const int x_grad_size,
-                  const int y_grad_size,
+                  const int64_t x_grad_size,
+                  const int64_t y_grad_size,
                   T* x_grad_data,
                   T* y_grad_data) {
   if (weight.numel() == 1) {
@@ -127,6 +127,7 @@ void SwitchKernel(const Context& dev_ctx,
     const T* out_grad_data = out_grad.data<T>();
     const int64_t out_size = out_grad.numel();
     const int64_t weight_size = weight.numel();
+
     auto gpu_config =
         phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, out_size);
     LerpGradScalarKernelImpl<T><<<gpu_config.GetGridSize(),
@@ -150,9 +151,8 @@ void SwitchKernel(const Context& dev_ctx,
 
     const T* weight_data = b_weight.data<T>();
     const T* out_grad_data = b_out.data<T>();
-    const int out_size = out_grad.numel();
-    const int weight_size = weight.numel();
-
+    const int64_t out_size = out_grad.numel();
+    const int64_t weight_size = weight.numel();
     auto gpu_config =
         phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, out_size);
     LerpGradKernelImpl<T><<<gpu_config.GetGridSize(),
@@ -210,7 +210,7 @@ void LerpGradKernel(const Context& dev_ctx,
   //  they need to be broadcast and then reduced.
   bool reduce_flag = XYNeedReduce(x, y, out);
   if (!reduce_flag) {
-    int x_grad_size = 0, y_grad_size = 0;
+    int64_t x_grad_size = 0, y_grad_size = 0;
     T* x_grad_data = NULL;
     T* y_grad_data = NULL;
 
@@ -233,7 +233,7 @@ void LerpGradKernel(const Context& dev_ctx,
                              y_grad_data);
 
   } else {
-    int x_grad_size = 0, y_grad_size = 0;
+    int64_t x_grad_size = 0, y_grad_size = 0;
     DenseTensor b_xgrad = phi::EmptyLike<T, Context>(dev_ctx, out_grad);
     DenseTensor b_ygrad = phi::EmptyLike<T, Context>(dev_ctx, out_grad);
     T* x_grad_data = NULL;

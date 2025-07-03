@@ -42,7 +42,6 @@ class SeluTest(OpTest):
     def setUp(self):
         self.op_type = "selu"
         self.python_api = paddle.nn.functional.selu
-        self.x_shape = [3, 5, 5, 10]
         self.init_x_shape()
         self.init_dtype()
 
@@ -73,7 +72,7 @@ class SeluTest(OpTest):
         }
 
     def init_x_shape(self):
-        pass
+        self.x_shape = [3, 5, 5, 10]
 
     def init_dtype(self):
         self.dtype = np.float64
@@ -106,6 +105,21 @@ class SeluTestBF16OP(SeluTest):
         self.check_grad_with_place(
             core.CUDAPlace(0), ['X'], 'Out', check_pir=True
         )
+
+
+class SeluTestZeroSize1(SeluTest):
+    def init_x_shape(self):
+        self.x_shape = [9, 0]
+
+
+class SeluTestZeroSize2(SeluTest):
+    def init_x_shape(self):
+        self.x_shape = [0, 0]
+
+
+class SeluTestZeroSize3(SeluTest):
+    def init_x_shape(self):
+        self.x_shape = [5, 0, 8]
 
 
 class TestSeluAPI(unittest.TestCase):
@@ -180,4 +194,5 @@ class TestSeluAPI(unittest.TestCase):
 
 
 if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()
