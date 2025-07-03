@@ -81,7 +81,7 @@ paddle::Tensor dtensor_to_local_ad_function(
   PADDLE_ENFORCE_EQ(
       input.initialized(),
       true,
-      phi::errors::InvalidArgument("Input tensor must be initialized."));
+      common::errors::InvalidArgument("Input tensor must be initialized."));
 
   paddle::Tensor api_result;
   if (input.is_dist_tensor()) {
@@ -94,13 +94,13 @@ paddle::Tensor dtensor_to_local_ad_function(
 
     PADDLE_ENFORCE_NE(local_dense,
                       nullptr,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The local DenseTensor inside DistTensor is null."));
 
     PADDLE_ENFORCE_EQ(
         local_dense->initialized(),
         true,
-        phi::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "The local DenseTensor inside DistTensor is not initialized."));
 
     api_result = paddle::Tensor(local_dense);

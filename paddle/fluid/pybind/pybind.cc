@@ -2724,6 +2724,9 @@ All parameter, weight, gradient are variables in Paddle.
   BindGlobalValueGetterSetter(&m);
   BindTCPStore(&m);
   BindCommContextManager(&m);
+#if defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_NCCL)
+  BindNCCLConfig(&m);
+#endif
   BindAutoParallel(&m);
   BindJitProperty(&m);
 

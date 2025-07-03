@@ -856,6 +856,12 @@ def use_specialized_device():
     ]
 
 
+def parameters_persistent_mode_is_enabled():
+    return paddle.get_flags(["FLAGS_parameters_persistent_mode_in_dy2st"])[
+        "FLAGS_parameters_persistent_mode_in_dy2st"
+    ]
+
+
 def prim_is_enabled():
     return core._is_bwd_prim_enabled() or core._is_fwd_prim_enabled()
 

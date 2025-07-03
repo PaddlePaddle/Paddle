@@ -162,6 +162,7 @@ CUSTOM_VJP = [
     'swiglu_grad',
     'p_norm_grad',
     'masked_fill_grad',
+    'index_add_grad',
 ]  # custom vjp list of composite op
 
 VJP_COMPS = PRIM_VJP + CUSTOM_VJP

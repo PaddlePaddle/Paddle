@@ -18,7 +18,10 @@ from .value_patch import monkey_patch_value_in_dist
 
 monkey_patch_value_in_dist()
 from paddle.base.core import Placement, ReduceType
-from paddle.distributed.fleet.base.topology import ParallelMode
+from paddle.distributed.fleet.base.topology import (
+    ParallelMode,
+    create_nccl_config,
+)
 from paddle.distributed.fleet.dataset import InMemoryDataset, QueueDataset
 
 from . import (
@@ -225,4 +228,5 @@ __all__ = [
     "ConvParallel",
     "ContextParallel",
     "PrepareContextParallel",
+    "create_nccl_config",
 ]

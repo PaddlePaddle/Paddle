@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 from unittest import TestCase
 
@@ -20,6 +21,7 @@ import numpy as np
 import paddle
 import paddle.base.dygraph as dg
 import paddle.nn.functional as F
+from paddle import base
 
 
 class TestFunctionalConv1DError(TestCase):
@@ -70,18 +72,6 @@ class TestFunctionalConv1DErrorCase1(TestFunctionalConv1DError):
         self.data_format = "NCL"
 
 
-class TestFunctionalConv1DErrorCase2(TestFunctionalConv1DError):
-    def setUp(self):
-        self.input = np.random.randn(0, 0, 0)
-        self.filter = np.random.randn(1, 0, 0)
-        self.bias = None
-        self.padding = 0
-        self.stride = 1
-        self.dilation = 1
-        self.groups = 1
-        self.data_format = "NCL"
-
-
 class TestFunctionalConv1D_CPU_FP16(TestCase):
     def setUp(self):
         self.padding = 0
@@ -106,6 +96,61 @@ class TestFunctionalConv1D_CPU_FP16(TestCase):
                 data_format=self.data_format,
             )
             np.testing.assert_allclose(y.numpy(), [[[2]]])
+
+
+class TestFunctionalConv1D_ZeroSize(TestCase):
+    def init_data(self):
+        self.input = np.random.randn(0, 1, 2)
+        self.filter = np.random.randn(1, 1, 2)
+        self.np_out = np.zeros([0, 1, 1])
+
+    def setUp(self):
+        self.init_data()
+        self.bias = None
+        self.padding = 0
+        self.stride = 1
+        self.dilation = 1
+        self.groups = 1
+        self.data_format = "NCL"
+        self.places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not base.core.is_compiled_with_cuda()
+        ):
+            self.places.append(base.CPUPlace())
+        if base.core.is_compiled_with_cuda():
+            self.places.append(base.CUDAPlace(0))
+
+    def test_dygraph(self):
+        for place in self.places:
+            with dg.guard(place):
+                input = paddle.to_tensor(self.input)
+                input.stop_gradient = False
+                filter = paddle.to_tensor(self.filter)
+                filter.stop_gradient = False
+                y = F.conv1d(
+                    input,
+                    filter,
+                    self.bias,
+                    padding=self.padding,
+                    stride=self.stride,
+                    dilation=self.dilation,
+                    groups=self.groups,
+                    data_format=self.data_format,
+                )
+                np.testing.assert_allclose(y.numpy(), self.np_out)
+                loss = y.sum()
+                loss.backward()
+                np.testing.assert_allclose(input.grad.shape, input.shape)
+                np.testing.assert_allclose(filter.grad, np.zeros(filter.shape))
+
+
+class TestFunctionalConv1D_ZeroSize2(TestFunctionalConv1D_ZeroSize):
+    def init_data(self):
+        self.input = np.random.randn(0, 0, 2)
+        self.filter = np.random.randn(1, 0, 2)
+        self.np_out = np.zeros([0, 0, 1])
 
 
 if __name__ == "__main__":

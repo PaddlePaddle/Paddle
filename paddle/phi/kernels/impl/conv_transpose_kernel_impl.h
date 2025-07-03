@@ -18,6 +18,7 @@
 #include "paddle/common/layout.h"
 #include "paddle/phi/kernels/conv_transpose_kernel.h"
 #include "paddle/phi/kernels/cpu/conv_util.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 #include "paddle/phi/kernels/funcs/im2col.h"
@@ -37,6 +38,11 @@ void ConvTransposeRawKernel(const Context& dev_ctx,
                             const std::vector<int>& dilations,
                             const std::string& data_format,
                             DenseTensor* out) {
+  if (x.numel() == 0 || filter.numel() == 0) {
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+    return;
+  }
   const DataLayout data_layout = common::StringToDataLayout(data_format);
   // The filter will be reshaped, so it should not be constant
   DenseTensor filter_ = filter;

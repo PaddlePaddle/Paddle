@@ -47,10 +47,10 @@ void GatherGradKernel(const Context& dev_ctx,
   }
 
   dev_ctx.template Alloc<T>(x_grad);
-  auto dxt = EigenVector<T>::Flatten(*x_grad);
-  auto& place = *dev_ctx.eigen_device();
-  dxt.device(place) = dxt.constant(static_cast<T>(0));
-  if (out_grad.numel() == 0) return;
+  phi::funcs::set_constant(dev_ctx, x_grad, static_cast<float>(0));
+  if (out_grad.numel() == 0) {
+    return;
+  }
   if (index_type == DataType::INT32) {
     phi::funcs::GPUScatterAssign<T, int>(
         dev_ctx, out_grad, index, x_grad, false);

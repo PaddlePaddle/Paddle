@@ -41,45 +41,45 @@ def simple_fc_net(places, use_legacy_py_reader, use_double_buffer):
     startup_prog = base.Program()
     main_prog = base.Program()
 
-    with base.unique_name.guard():
-        with base.program_guard(main_prog, startup_prog):
-            image = paddle.static.data(
-                name='image', shape=[-1, 784], dtype='float32'
-            )
-            label = paddle.static.data(
-                name='label', shape=[-1, 1], dtype='int64'
-            )
-            py_reader = base.io.DataLoader.from_generator(
-                feed_list=[image, label],
-                capacity=4,
-                iterable=not use_legacy_py_reader,
-                use_double_buffer=use_double_buffer,
-            )
-            hidden = image
-            for hidden_size in [10, 20, 30]:
-                hidden = paddle.static.nn.fc(
-                    hidden,
-                    size=hidden_size,
-                    activation='tanh',
-                    bias_attr=base.ParamAttr(
-                        initializer=paddle.nn.initializer.Constant(value=1.0)
-                    ),
-                )
-
-            predict_label = paddle.static.nn.fc(
-                hidden, size=CLASS_NUM, activation='softmax'
-            )
-            loss = paddle.mean(
-                paddle.nn.functional.cross_entropy(
-                    input=predict_label,
-                    label=label,
-                    reduction='none',
-                    use_softmax=False,
-                )
+    with (
+        base.unique_name.guard(),
+        base.program_guard(main_prog, startup_prog),
+    ):
+        image = paddle.static.data(
+            name='image', shape=[-1, 784], dtype='float32'
+        )
+        label = paddle.static.data(name='label', shape=[-1, 1], dtype='int64')
+        py_reader = base.io.DataLoader.from_generator(
+            feed_list=[image, label],
+            capacity=4,
+            iterable=not use_legacy_py_reader,
+            use_double_buffer=use_double_buffer,
+        )
+        hidden = image
+        for hidden_size in [10, 20, 30]:
+            hidden = paddle.static.nn.fc(
+                hidden,
+                size=hidden_size,
+                activation='tanh',
+                bias_attr=base.ParamAttr(
+                    initializer=paddle.nn.initializer.Constant(value=1.0)
+                ),
             )
 
-            optimizer = paddle.optimizer.Adam()
-            optimizer.minimize(loss)
+        predict_label = paddle.static.nn.fc(
+            hidden, size=CLASS_NUM, activation='softmax'
+        )
+        loss = paddle.mean(
+            paddle.nn.functional.cross_entropy(
+                input=predict_label,
+                label=label,
+                reduction='none',
+                use_softmax=False,
+            )
+        )
+
+        optimizer = paddle.optimizer.Adam()
+        optimizer.minimize(loss)
     return startup_prog, main_prog, py_reader, loss
 
 
