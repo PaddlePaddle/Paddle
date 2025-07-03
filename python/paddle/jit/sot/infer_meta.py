@@ -14,7 +14,6 @@
 from __future__ import annotations
 
 import copy
-from functools import cached_property
 from typing import TYPE_CHECKING, Any, TypeVar
 
 import paddle
@@ -400,6 +399,7 @@ class VariableCreator(metaclass=Singleton):
     def __init__(self):
         self.var_name_generator = UniqueNameGenerator(SOT_INFER_META_INNER_VAR)
         self.var_cache = {}
+        self.main_program, self.startup_program = (paddle.static.Program(), paddle.static.Program())
 
     def gen_name(self, meta_or_null: MetaInfoOrNull):
         if meta_or_null.is_null():
@@ -408,18 +408,6 @@ class VariableCreator(metaclass=Singleton):
         name = f"{meta.dtype}_{meta.stop_gradient}_"
         name += "_".join(map(str, meta.shape))
         return name
-
-    @cached_property
-    def programs(self):
-        return (paddle.static.Program(), paddle.static.Program())
-
-    @property
-    def main_program(self):
-        return self.programs[0]
-
-    @property
-    def startup_program(self):
-        return self.programs[1]
 
     def create_var(self, meta_or_null: MetaInfoOrNull):
         if meta_or_null.is_null():
