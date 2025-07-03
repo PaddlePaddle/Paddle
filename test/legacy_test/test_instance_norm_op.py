@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, get_places
 
 import paddle
 from paddle import base
@@ -260,20 +259,7 @@ class TestInstanceNormCaseNC(TestInstanceNormOp):
 class TestElasticNormOp(unittest.TestCase):
     def init_test_case(self):
         self.epsilon = 1e-5
-        self.places = []
-        if os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower() in [
-            '1',
-            'true',
-            'on',
-        ] or not (
-            core.is_compiled_with_cuda()
-            and core.op_support_gpu("instance_norm")
-        ):
-            self.places.append(core.CPUPlace())
-        if core.is_compiled_with_cuda() and core.op_support_gpu(
-            "instance_norm"
-        ):
-            self.places.append(core.CUDAPlace(0))
+        self.places = get_places()
 
     def test_norm(self):
         self.init_test_case()
