@@ -29,6 +29,10 @@ void ExpandAsKernel(const Context& dev_ctx,
                     const paddle::optional<DenseTensor>& y,
                     const std::vector<int64_t>& target_shape_t,
                     DenseTensor* out) {
+  if (x.numel() == 0 || (y.get_ptr() && y.get_ptr()->numel() == 0)) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   std::vector<int64_t> target_shape = target_shape_t;
 
   if (y.get_ptr()) {

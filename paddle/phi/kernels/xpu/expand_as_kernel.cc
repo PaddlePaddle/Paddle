@@ -89,6 +89,10 @@ void ExpandAsKernel(const Context& dev_ctx,
                     const paddle::optional<DenseTensor>& y,
                     const std::vector<int64_t>& target_shape,
                     DenseTensor* out) {
+  if (x.numel() == 0 || (y.get_ptr() && y.get_ptr()->numel() == 0)) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   auto rank = x.dims().size();
   auto target_rank = target_shape.size();
   PADDLE_ENFORCE_GE(target_rank,
