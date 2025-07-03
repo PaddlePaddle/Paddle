@@ -1732,6 +1732,7 @@
   data_transform :
     skip_transform : indices
   backward : index_put_double_grad
+  no_need_buffer: x, value
 
 - backward_op : index_sample_grad
   forward : index_sample (Tensor x, Tensor index) -> Tensor(out)

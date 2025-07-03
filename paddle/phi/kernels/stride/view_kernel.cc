@@ -134,7 +134,7 @@ void ViewDtypeKernel(const Context& dev_ctx,
             input.dtype(),
             dtype,
             input.strides()[input.strides().size() - 1]));
-    size_t times = input_dtype_size / output_dtype_size;
+    size_t times = output_dtype_size / input_dtype_size;
     PADDLE_ENFORCE_EQ(
         input.dims()[input.dims().size() - 1] % times,
         0,
@@ -160,11 +160,11 @@ void ViewDtypeKernel(const Context& dev_ctx,
         output_dims[output_dims.size() - 1] / times;  // NOLINT
 
     DDim output_stride = input.strides();
-    for (int i = 0; i < output_stride.size(); i++) {
+    for (int i = 0; i < output_stride.size() - 1; i++) {
       PADDLE_ENFORCE_EQ(
           output_stride[i] % times,
           0,
-          common::errors::InvalidArgument("input.strides[%d](%d) must be be "
+          common::errors::InvalidArgument("input.strides[%d](%d) must be "
                                           "multiple of %d to view %s as %s",
                                           i,
                                           output_stride[i],
