@@ -2527,8 +2527,12 @@ void IndexAddInferMeta(const MetaTensor& x,
                         true,
                         common::errors::InvalidArgument(
                             "The add_value parameter does not supported "
-                            "broadcast, so input_dim[i] must be equal to "
-                            "add_value_dim[i] when i != axis."));
+                            "broadcast, so input_dim[i](%d) must be equal to "
+                            "add_value_dim[i](%d) when i(%d) != axis(%d).",
+                            input_dim[i],
+                            add_value_dim[i],
+                            i,
+                            real_axis));
     }
   }
 
