@@ -9,6 +9,9 @@ on:
       can-skip:
         type: string
         required: false
+      slice-check:
+        type: string
+        required: false
 
 env:
   PR_ID: ${{ github.event.pull_request.number }}
@@ -28,7 +31,7 @@ defaults:
 jobs:
   slice:
     name: Slice test
-    if: ${{ inputs.can-skip != 'true' }}
+    if: ${{ inputs.can-skip != 'true' && inputs.slice-check == 'true' }}
     runs-on:
       group: slice
     steps:
@@ -46,7 +49,7 @@ jobs:
           container_name="api_benchmark_ci_${RUN_ID}"
           echo "container_name=${container_name}" >> ${{ github.env }}
           docker_image=${{ inputs.docker_build_image }}
-          docker run -d -t --gpus all --name ${container_name} --privileged --shm-size=128g \
+          docker run -d -t --gpus all --name ${container_name} --shm-size=128g \
             -v "/home/data/cfs:/home/data/cfs" \
             -v ${{ github.workspace }}/../../..:${{ github.workspace }}/../../.. \
             -v ${{ github.workspace }}:/paddle \
@@ -96,5 +99,5 @@ jobs:
       - name: Terminate and delete the container
         if: always()
         run: |
-          sudo rm -rf * .[^.]*
+          docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'
           docker rm -f ${{ env.container_name }}

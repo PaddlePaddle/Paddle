@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
@@ -906,6 +907,45 @@ class TestCheckOutType(unittest.TestCase):
             index = paddle.static.data(shape=[4], dtype='int64', name='index')
             out = paddle.gather(data, index)
             self.assertTrue(out.dtype == core.DataType.INT64)
+
+
+class TestGatherBackward(unittest.TestCase):
+    def setUp(self):
+        self.shape = [10, 20]
+        self.dtype = 'float32'
+        self.index = (1, 3, 5)
+        self.index_dtype = 'int64'
+        self.places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not paddle.is_compiled_with_cuda()
+        ):
+            self.places.append(paddle.CPUPlace())
+        if paddle.is_compiled_with_cuda():
+            self.places.append(paddle.CUDAPlace(0))
+
+    def test_gather_backward(self):
+        if len(self.places) != 2:
+            return
+        res_list = []
+        x_np = np.random.random(self.shape).astype(self.dtype)
+        index_np = np.array(self.index, dtype=self.index_dtype)
+        grad_out_np = np.random.random(self.shape).astype(self.dtype)
+        for place in self.places:
+            with base.dygraph.guard(place):
+                x = paddle.to_tensor(x_np, dtype=self.dtype)
+                x.stop_gradient = False
+                index = paddle.to_tensor(index_np, dtype=self.index_dtype)
+                out = paddle.gather(x, index, -1)
+                grad_out = paddle.to_tensor(grad_out_np, dtype=self.dtype)
+                (re,) = paddle.grad(
+                    outputs=out,
+                    inputs=x,
+                    grad_outputs=grad_out,
+                )
+                res_list.append(re.numpy())
+        np.testing.assert_allclose(res_list[0], res_list[1])
 
 
 if __name__ == "__main__":

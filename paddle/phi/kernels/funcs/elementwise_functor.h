@@ -123,6 +123,91 @@ struct InverseDivideFunctor {
 template <typename T>
 using ComplexType = phi::dtype::complex<T>;
 
+// Reference: https://github.com/pytorch/pytorch/pull/92539
+template <typename T>
+struct DivideFunctor<ComplexType<T>> {
+  inline HOSTDEVICE ComplexType<T> operator()(const ComplexType<T> x,
+                                              const ComplexType<T> y) const {
+    T a = x.real;
+    T b = x.imag;
+    T c = y.real;
+    T d = y.imag;
+
+    // (a + bi) / (c + di) = (ac + bd)/(c^2 + d^2) + (bc - ad)/(c^2 + d^2) i
+    // the calculation below follows numpy's complex division
+#if defined(__GNUC__) && !defined(__clang__)
+    // std::abs is already constexpr by gcc
+    auto abs_c = std::abs(c);
+    auto abs_d = std::abs(d);
+#else
+    auto abs_c = c < 0 ? -c : c;
+    auto abs_d = d < 0 ? -d : d;
+#endif
+
+    T real_, imag_;
+    if (abs_c >= abs_d) {
+      if (abs_c == T(0) && abs_d == T(0)) {
+        /* divide by zeros should yield a complex inf or nan */
+        real_ = a / abs_c;
+        imag_ = b / abs_d;
+      } else {
+        auto rat = d / c;
+        auto scl = T(1.0) / (c + d * rat);
+        real_ = (a + b * rat) * scl;
+        imag_ = (b - a * rat) * scl;
+      }
+    } else {
+      auto rat = c / d;
+      auto scl = T(1.0) / (d + c * rat);
+      real_ = (a * rat + b) * scl;
+      imag_ = (b * rat - a) * scl;
+    }
+    return ComplexType<T>(real_, imag_);
+  }
+};
+
+template <typename T>
+struct InverseDivideFunctor<ComplexType<T>> {
+  inline HOSTDEVICE ComplexType<T> operator()(const ComplexType<T> x,
+                                              const ComplexType<T> y) const {
+    T a = y.real;
+    T b = y.imag;
+    T c = x.real;
+    T d = x.imag;
+
+    // (a + bi) / (c + di) = (ac + bd)/(c^2 + d^2) + (bc - ad)/(c^2 + d^2) i
+    // the calculation below follows numpy's complex division
+#if defined(__GNUC__) && !defined(__clang__)
+    // std::abs is already constexpr by gcc
+    auto abs_c = std::abs(c);
+    auto abs_d = std::abs(d);
+#else
+    auto abs_c = c < 0 ? -c : c;
+    auto abs_d = d < 0 ? -d : d;
+#endif
+
+    T real_, imag_;
+    if (abs_c >= abs_d) {
+      if (abs_c == T(0) && abs_d == T(0)) {
+        /* divide by zeros should yield a complex inf or nan */
+        real_ = a / abs_c;
+        imag_ = b / abs_d;
+      } else {
+        auto rat = d / c;
+        auto scl = T(1.0) / (c + d * rat);
+        real_ = (a + b * rat) * scl;
+        imag_ = (b - a * rat) * scl;
+      }
+    } else {
+      auto rat = c / d;
+      auto scl = T(1.0) / (d + c * rat);
+      real_ = (a * rat + b) * scl;
+      imag_ = (b * rat - a) * scl;
+    }
+    return ComplexType<T>(real_, imag_);
+  }
+};
+
 template <typename InT, typename OutT>
 struct DivGradXYFunctor {
   inline HOSTDEVICE phi::Array<OutT, 2> operator()(const InT a,
@@ -666,6 +751,70 @@ struct RemainderFunctor<dtype::bfloat16> {
   }
 };
 
+/**
+ * Remainder for complex number rule
+ * Regarding a and b is gaussian integer, then
+ * r = mod(a, b) = a - b * round(a/b)
+ * and a, b is complex number
+ */
+template <typename T>
+struct RemainderFunctor<ComplexType<T>> {
+  inline HOSTDEVICE ComplexType<T> operator()(ComplexType<T> a,
+                                              ComplexType<T> b) const {
+    // remainder = z1 - q_rounded * z2
+    T a__ = a.real;
+    T b__ = a.imag;
+    T c__ = b.real;
+    T d__ = b.imag;
+
+    // (a + bi) / (c + di) = (ac + bd)/(c^2 + d^2) + (bc - ad)/(c^2 + d^2) i
+    // the calculation below follows numpy's complex division
+#if defined(__GNUC___) && !defined(__clang__)
+    // std::abs is already constexpr by gcc
+    auto abs_c = std::abs(c__);
+    auto abs_d = std::abs(d__);
+#else
+    auto abs_c = c__ < 0 ? -c__ : c__;
+    auto abs_d = d__ < 0 ? -d__ : d__;
+#endif
+
+    T real_, imag_;
+    if (abs_c >= abs_d) {
+      if (abs_c == T(0) && abs_d == T(0)) {
+        /* divide by zeros should yield a complex inf or nan */
+        real_ = a__ / abs_c;
+        imag_ = b__ / abs_d;
+      } else {
+        auto rat = d__ / c__;
+        auto scl = T(1.0) / (c__ + d__ * rat);
+        real_ = (a__ + b__ * rat) * scl;
+        imag_ = (b__ - a__ * rat) * scl;
+      }
+    } else {
+      auto rat = c__ / d__;
+      auto scl = T(1.0) / (d__ + c__ * rat);
+      real_ = (a__ * rat + b__) * scl;
+      imag_ = (b__ * rat - a__) * scl;
+    }
+    auto q = ComplexType<T>(real_, imag_);
+
+#if defined(__CUDA_ARCH__) || defined(__HIPCC__)
+    const auto& q_rounded = ComplexType<T>(round(q.real), round(q.imag));
+#else
+    const auto& q_rounded =
+        ComplexType<T>(std::round(q.real), std::round(q.imag));
+#endif
+    const auto& a_ = q_rounded.real;
+    const auto& b_ = q_rounded.imag;
+    const auto& c = b.real;
+    const auto& d = b.imag;
+    const auto& t_real_ = a_ * c - b_ * d;
+    const auto& t_imag_ = a_ * d + b_ * c;
+    auto remainder = ComplexType<T>(a.real - t_real_, a.imag - t_imag_);
+    return remainder;
+  }
+};
+
 // RemainderGradXFunctor
 template <typename T>
 struct RemainderGradXFunctor {
@@ -791,6 +940,72 @@ struct InverseRemainderFunctor<
     T res = fmod(b, a);
     if ((res != 0) && ((a < 0) != (res < 0))) res += a;
     return res;
+  }
+};
+
+/**
+ * Remainder for complex number rule
+ * Regarding a and b is gaussian integer, then
+ * r = mod(a, b) = a - b * round(a/b)
+ * and a, b is complex number
+ */
+template <typename T>
+struct InverseRemainderFunctor<
+    ComplexType<T>,
+    typename std::enable_if_t<std::is_floating_point<T>::value>> {
+  inline HOSTDEVICE ComplexType<T> operator()(ComplexType<T> b,
+                                              ComplexType<T> a) const {
+    // remainder = z1 - q_rounded * z2
+    T a__ = a.real;
+    T b__ = a.imag;
+    T c__ = b.real;
+    T d__ = b.imag;
+
+    // (a + bi) / (c + di) = (ac + bd)/(c^2 + d^2) + (bc - ad)/(c^2 + d^2) i
+    // the calculation below follows numpy's complex division
+#if defined(__GNUC___) && !defined(__clang__)
+    // std::abs is already constexpr by gcc
+    auto abs_c = std::abs(c__);
+    auto abs_d = std::abs(d__);
+#else
+    auto abs_c = c__ < 0 ? -c__ : c__;
+    auto abs_d = d__ < 0 ? -d__ : d__;
+#endif
+
+    T real_, imag_;
+    if (abs_c >= abs_d) {
+      if (abs_c == T(0) && abs_d == T(0)) {
+        /* divide by zeros should yield a complex inf or nan */
+        real_ = a__ / abs_c;
+        imag_ = b__ / abs_d;
+      } else {
+        auto rat = d__ / c__;
+        auto scl = T(1.0) / (c__ + d__ * rat);
+        real_ = (a__ + b__ * rat) * scl;
+        imag_ = (b__ - a__ * rat) * scl;
+      }
+    } else {
+      auto rat = c__ / d__;
+      auto scl = T(1.0) / (d__ + c__ * rat);
+      real_ = (a__ * rat + b__) * scl;
+      imag_ = (b__ * rat - a__) * scl;
+    }
+    auto q = ComplexType<T>(real_, imag_);
+
+#if defined(__CUDA_ARCH__) || defined(__HIPCC__)
+    const auto& q_rounded = ComplexType<T>(round(q.real), round(q.imag));
+#else
+    const auto& q_rounded =
+        ComplexType<T>(std::round(q.real), std::round(q.imag));
+#endif
+    const auto& a_ = q_rounded.real;
+    const auto& b_ = q_rounded.imag;
+    const auto& c = b.real;
+    const auto& d = b.imag;
+    const auto& t_real_ = a_ * c - b_ * d;
+    const auto& t_imag_ = a_ * d + b_ * c;
+    auto remainder = ComplexType<T>(a.real - t_real_, a.imag - t_imag_);
+    return remainder;
   }
 };
 
@@ -1045,6 +1260,10 @@ compute_pow(const T a, const T b) {
   // it will return a float number like 2.99... , which floor to 2
   // when cast to int by default and it is wrong.
   // Use llrint to cast it to the nearest integer, which is 3.
+  T zero = static_cast<T>(0);
+  if (a == zero && b < zero) {
+    return zero;
+  }
   return llrint(pow(static_cast<double>(a), static_cast<double>(b)));
 }
 template <typename T, typename MPType>
@@ -1057,6 +1276,11 @@ compute_pow(const T a, const T b) {
 #else
 template <typename T, typename MPType>
 inline HOSTDEVICE T compute_pow(const T a, const T b) {
+  if constexpr (std::is_integral<T>::value) {
+    if (a == static_cast<T>(0) && b < static_cast<T>(0)) {
+      return static_cast<T>(0);
+    }
+  }
   MPType a_val = static_cast<MPType>(a);
   MPType b_val = static_cast<MPType>(b);
 #ifdef PADDLE_WITH_XPU_KP

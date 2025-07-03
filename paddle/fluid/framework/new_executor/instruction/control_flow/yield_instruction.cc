@@ -23,6 +23,8 @@
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/pir/include/core/builtin_type.h"
 
+COMMON_DECLARE_bool(check_cuda_error);
+
 namespace paddle {
 namespace framework {
 
@@ -112,6 +114,10 @@ void FullFakeTensor(const pir::Value &output_value, Variable *output_var) {
 #endif
 }
 void YieldInstruction::Run() {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    CUDAErrorCheck("YieldInstruction begin");
+  }
+
   for (size_t i = 0; i < input_vars_.size(); ++i) {
     if (input_vars_[i] == nullptr) {
       output_vars_[i] = nullptr;
@@ -134,6 +140,9 @@ void YieldInstruction::Run() {
       PADDLE_THROW(common::errors::Unimplemented("unsupported type %d",
                                                  input_vars_[i]->Type()));
     }
+  }
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    CUDAErrorCheck("YieldInstruction finish");
   }
 }
 

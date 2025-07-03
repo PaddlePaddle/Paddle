@@ -54,9 +54,11 @@ class TestDataLoaderEarlyReset(unittest.TestCase):
         )
 
     def test_main(self):
-        with base.program_guard(base.Program(), base.Program()):
-            with base.scope_guard(base.Scope()):
-                self.run_network()
+        with (
+            base.program_guard(base.Program(), base.Program()),
+            base.scope_guard(base.Scope()),
+        ):
+            self.run_network()
 
     def run_network(self):
         loader = self.create_data_loader()

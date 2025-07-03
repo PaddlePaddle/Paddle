@@ -113,7 +113,7 @@ def can_use_flash_attn(query, key, attn_mask, dropout, is_causal) -> bool:
         return False
     if query.ndim != 4:
         return False
-    if query.shape[-1] >= 256:
+    if query.shape[-1] > 256:
         return False
     if _get_arch_info() < 80:
         return False
@@ -1361,6 +1361,7 @@ def scaled_dot_product_attention(
     is_causal: bool = False,
     training: bool = True,
     name: str | None = None,
+    backend: str | None = None,
 ) -> Tensor:
     r"""
     The equation is:
@@ -1427,6 +1428,23 @@ def scaled_dot_product_attention(
 
     if value.ndim == 3:
         value = paddle.unsqueeze(value, axis=0)
+
+    if (
+        backend == 'p2p'
+        and query.is_dist()
+        and key.is_dist()
+        and value.is_dist()
+    ):
+        # ring attention for auto_parallel mode
+        out = paddle.distributed.auto_parallel.ring_attention.RingFlashAttention.apply(
+            query,
+            key,
+            value,
+            attn_mask,
+            dropout_p,
+            is_causal,
+        )
+        return out
 
     if attn_mask is None:
         # downgraded to ordinary flash attention implementation
@@ -2216,7 +2234,7 @@ def flashmask_attention(
         assert startend_row_indices.shape[1] in [
             1,
             key.shape[2],
-        ], "startend_row_indices head_num must be equal to 1(broadcast) or hean_num_k."
+        ], "startend_row_indices head_num must be equal to 1(broadcast) or head_num_k."
 
         if causal:
             if startend_row_indices.shape[-1] == 1:

@@ -27,8 +27,11 @@ namespace funcs {
 
 template <typename Context, typename T>
 struct MapMatrixInverseFunctor {
-  void operator()(
-      const Context& dev_ctx, const T* a_ptr, T* a_inv_ptr, int offset, int n) {
+  void operator()(const Context& dev_ctx,
+                  const T* a_ptr,
+                  T* a_inv_ptr,
+                  int64_t offset,
+                  int64_t n) {
     using Matrix =
         Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
     using EigenMatrixMap = Eigen::Map<Matrix>;
@@ -52,8 +55,8 @@ struct MapMatrixInverseFunctor<Context, phi::dtype::complex<T>> {
   void operator()(const Context& dev_ctx,
                   const phi::dtype::complex<T>* a_ptr,
                   phi::dtype::complex<T>* a_inv_ptr,
-                  int offset,
-                  int n) {
+                  int64_t offset,
+                  int64_t n) {
     using Matrix = Eigen::Matrix<std::complex<T>,
                                  Eigen::Dynamic,
                                  Eigen::Dynamic,
@@ -62,7 +65,7 @@ struct MapMatrixInverseFunctor<Context, phi::dtype::complex<T>> {
     using ConstEigenMatrixMap = Eigen::Map<const Matrix>;
     std::complex<T>* std_ptr = new std::complex<T>[n * n];
     std::complex<T>* std_inv_ptr = new std::complex<T>[n * n];
-    for (int i = 0; i < n * n; i++) {
+    for (int64_t i = 0; i < n * n; i++) {
       *(std_ptr + i) = static_cast<std::complex<T>>(*(a_ptr + offset + i));
     }
     ConstEigenMatrixMap mat(std_ptr, n, n);
@@ -75,7 +78,7 @@ struct MapMatrixInverseFunctor<Context, phi::dtype::complex<T>> {
                       static_cast<std::complex<T>>(0),
                       errors::InvalidArgument("Input is not invertible."));
     mat_inv.noalias() = lu.inverse();
-    for (int i = 0; i < n * n; i++) {
+    for (int64_t i = 0; i < n * n; i++) {
       *(a_inv_ptr + offset + i) =
           static_cast<phi::dtype::complex<T>>(*(std_inv_ptr + i));
     }
@@ -90,8 +93,8 @@ void ComputeInverseEigen(const Context& dev_ctx,
                          DenseTensor* a_inv) {
   const auto& mat_dims = a.dims();
   const int rank = mat_dims.size();
-  int n = mat_dims[rank - 1];
-  int batch_size = rank > 2 ? a.numel() / (n * n) : 1;
+  int64_t n = mat_dims[rank - 1];
+  int64_t batch_size = rank > 2 ? a.numel() / (n * n) : 1;
 
   const T* a_ptr = a.data<T>();
   T* a_inv_ptr = dev_ctx.template Alloc<T>(a_inv);
@@ -100,7 +103,7 @@ void ComputeInverseEigen(const Context& dev_ctx,
   // it's not going to get the right result,
   // so we're going to convert it to std::complex and
   // then we're going to put it into eigen::matrix.
-  for (int i = 0; i < batch_size; ++i) {
+  for (int64_t i = 0; i < batch_size; ++i) {
     MapMatrixInverseFunctor<Context, T> functor;
     functor(dev_ctx, a_ptr, a_inv_ptr, i * n * n, n);
   }

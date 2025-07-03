@@ -656,6 +656,22 @@ def get_paddle_extra_install_requirements():
                 "nvidia-cufile-cu12==1.14.0.30; platform_system == 'Linux' and platform_machine == 'x86_64'"
             ),
         }
+        if '@WITH_CINN@' == 'ON':
+            PADDLE_CUDA_INSTALL_REQUIREMENTS["12.3"] += (
+                    " | nvidia-cuda-cccl-cu12==12.3.52;platform_system == 'Linux' and platform_machine == 'x86_64' "
+            )
+            PADDLE_CUDA_INSTALL_REQUIREMENTS["12.4"] += (
+                    " | nvidia-cuda-cccl-cu12==12.4.99;platform_system == 'Linux' and platform_machine == 'x86_64' "
+            )
+            PADDLE_CUDA_INSTALL_REQUIREMENTS["12.6"] += (
+                    " | nvidia-cuda-cccl-cu12==12.6.77;platform_system == 'Linux' and platform_machine == 'x86_64' "
+            )
+            PADDLE_CUDA_INSTALL_REQUIREMENTS["12.8"] += (
+                    " | nvidia-cuda-cccl-cu12==12.8.90;platform_system == 'Linux' and platform_machine == 'x86_64' "
+            )
+            PADDLE_CUDA_INSTALL_REQUIREMENTS["12.9"] += (
+                    " | nvidia-cuda-cccl-cu12==12.9.27;platform_system == 'Linux' and platform_machine == 'x86_64' "
+            )
         elif platform.system() == 'Windows':
             PADDLE_CUDA_INSTALL_REQUIREMENTS = {
                 "11.8": (
@@ -1112,14 +1128,12 @@ if '${WITH_GPU}' == 'ON' or '${WITH_ROCM}' == 'ON':
 if '${WITH_DISTRIBUTE}' == 'ON' and '${WITH_NVSHMEM}' == 'ON':
     package_data['paddle.libs']+=[
         os.path.basename('${NVSHMEM_BOOTSTRAP_UID_LIB}'),
-        os.path.basename('${NVSHMEM_BOOTSTRAP_MPI_LIB}'),
         os.path.basename('${NVSHMEM_BOOTSTRAP_PMI_LIB}'),
         os.path.basename('${NVSHMEM_BOOTSTRAP_PMI2_LIB}'),
         os.path.basename('${NVSHMEM_TRANSPORT_IBRC_LIB}'),
         os.path.basename('${NVSHMEM_TRANSPORT_IBGDA_LIB}'),
     ]
     shutil.copy('${NVSHMEM_BOOTSTRAP_UID_LIB}', libs_path)
-    shutil.copy('${NVSHMEM_BOOTSTRAP_MPI_LIB}', libs_path)
     shutil.copy('${NVSHMEM_BOOTSTRAP_PMI_LIB}', libs_path)
     shutil.copy('${NVSHMEM_BOOTSTRAP_PMI2_LIB}', libs_path)
     shutil.copy('${NVSHMEM_TRANSPORT_IBRC_LIB}', libs_path)

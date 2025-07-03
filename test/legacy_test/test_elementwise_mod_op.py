@@ -20,7 +20,7 @@ from op_test import OpTest, convert_float_to_uint16, convert_uint16_to_float
 from utils import dygraph_guard, static_guard
 
 import paddle
-from paddle import static
+from paddle import base, static
 from paddle.base import core
 
 
@@ -196,6 +196,50 @@ class TestElementwiseModBF16Op_ZeroDim1(TestElementwiseModBF16Op):
 class TestElementwiseModOpDouble(TestElementwiseModOpFloat):
     def init_dtype(self):
         self.dtype = np.float64
+
+
+class TestElementwiseModOpComplex64(unittest.TestCase):
+    def test_check_output(self):
+        with dygraph_guard():
+            dtype = "complex64"
+            a = np.array([6 + 4j]).astype(dtype)
+            b = np.array([3 + 5j]).astype(dtype)
+            res = np.array([-2 + 2j]).astype(dtype)
+
+            res_pd = paddle.remainder(paddle.to_tensor(a), paddle.to_tensor(b))
+            np.testing.assert_allclose(res, res_pd.numpy())
+
+            dtype = "complex64"
+            a = np.array([6 + 4j]).astype(dtype)
+            b = np.array([3 + 5j]).astype(dtype)
+            res = np.array([-2 + 2j]).astype(dtype)
+
+            res_pd = paddle.remainder(paddle.to_tensor(a), paddle.to_tensor(b))
+            np.testing.assert_allclose(res, res_pd.numpy())
+
+            with base.device_guard("cpu"):
+                res_pd = paddle.remainder(
+                    paddle.to_tensor(a), paddle.to_tensor(b)
+                )
+            np.testing.assert_allclose(res, res_pd.numpy())
+
+
+class TestElementwiseModOpComplex128(unittest.TestCase):
+    def test_check_output(self):
+        with dygraph_guard():
+            dtype = "complex128"
+            a = np.array([6 + 4j]).astype(dtype)
+            b = np.array([3 + 5j]).astype(dtype)
+            res = np.array([-2 + 2j]).astype(dtype)
+
+            res_pd = paddle.remainder(paddle.to_tensor(a), paddle.to_tensor(b))
+            np.testing.assert_allclose(res, res_pd.numpy())
+
+            with base.device_guard("cpu"):
+                res_pd = paddle.remainder(
+                    paddle.to_tensor(a), paddle.to_tensor(b)
+                )
+            np.testing.assert_allclose(res, res_pd.numpy())
 
 
 class TestElementwiseDygraph(unittest.TestCase):
