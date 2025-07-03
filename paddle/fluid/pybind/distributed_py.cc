@@ -1245,11 +1245,20 @@ void BindDistributed(py::module *m) {
                   py::arg("group_id") = 0,
                   py::arg("timeout") = 30 * 60 * 1000,
                   py::arg("nccl_comm_init_option") = 0,
+                  py::arg("nccl_config") = nullptr,
                   py::call_guard<py::gil_scoped_release>())
       .def_static("group_start", distributed::ProcessGroupNCCL::GroupStart)
       .def_static("group_end", distributed::ProcessGroupNCCL::GroupEnd)
       .def("shutdown", &distributed::ProcessGroupNCCL::Shutdown)
-      .def("restart", &distributed::ProcessGroupNCCL::Restart);
+      .def("restart", &distributed::ProcessGroupNCCL::Restart)
+      .def(
+          "eager_connect_ring_exchange",
+          [](distributed::ProcessGroupNCCL &self,
+             std::shared_ptr<phi::distributed::NCCLConfig> nccl_config) {
+            self.EagerConnectRingExchange(nccl_config);
+          },
+          py::arg("nccl_config"),
+          py::call_guard<py::gil_scoped_release>());
 
   py::class_<distributed::AsyncLoad::Task,
              std::shared_ptr<distributed::AsyncLoad::Task>>(*m, "AsyncLoadTask")

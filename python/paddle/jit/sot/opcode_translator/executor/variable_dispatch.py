@@ -41,7 +41,7 @@ from ...utils import (
     UnsupportedOperationBreak,
     do_until_stop_iteration,
 )
-from ...utils.exceptions import InnerError
+from ...utils.exceptions import InnerError, SotCapturedStopIteration
 from ...utils.magic_methods import (
     BINARY_OPS,
     NEED_GUARD_ZERO_DIVISION_ERROR_OPS,
@@ -647,8 +647,8 @@ Dispatcher.register(
 
 def register_exception(exc_type: type[Exception]):
     @Dispatcher.register_decorator(exc_type)
-    def builtin_exception_dispatcher(*args) -> int:
-        exc = exc_type(*args)
+    def builtin_exception_dispatcher(*args: VariableBase) -> int:
+        exc = exc_type(*[arg.get_py_value() for arg in args])
         return ExceptionVariable(
             exc,
             graph=Dispatcher.graph,
@@ -1406,7 +1406,7 @@ def dispatch_reduce(
     ):
         try:
             initializer = iterator.next()
-        except StopIteration:
+        except SotCapturedStopIteration:
             raise InnerError("reduce() of empty iterable with no initial value")
     result = initializer
 
@@ -1424,7 +1424,7 @@ def dispatch_max_iterable(var: ContainerVariable | IterVariable):
     call_next = BuiltinVariable(next, var.graph, DanglingTracker())
     try:
         res = call_next(it)
-    except StopIteration:
+    except SotCapturedStopIteration:
         raise InnerError("max() arg is an empty sequence")
     call_gt = BuiltinVariable(operator.gt, var.graph, DanglingTracker())
 
@@ -1655,7 +1655,7 @@ def dispatch_any(var: ContainerVariable | IterVariable):
             assert isinstance(bool_item, ConstantVariable)
             if bool_item.get_py_value():
                 return ConstantVariable(True, graph, DummyTracker([var]))
-        except StopIteration:
+        except SotCapturedStopIteration:
             break
     return ConstantVariable(False, graph, DummyTracker([var]))
 
@@ -1673,7 +1673,7 @@ def dispatch_all(var: ContainerVariable | IterVariable):
             assert isinstance(bool_item, ConstantVariable)
             if not bool_item.get_py_value():
                 return ConstantVariable(False, graph, DummyTracker([var]))
-        except StopIteration:
+        except SotCapturedStopIteration:
             break
     return ConstantVariable(True, graph, DummyTracker([var]))
 

@@ -18,7 +18,6 @@ import dataclasses
 import operator
 import sys
 import types
-from dataclasses import asdict
 from enum import Enum
 from functools import cached_property, reduce
 from typing import TYPE_CHECKING, Any
@@ -29,6 +28,7 @@ import paddle
 from paddle._typing import unreached
 from paddle.framework import core
 from paddle.jit.dy2static.utils import (
+    dataclass_as_dict,
     dataclass_from_dict,
     is_plain_dataclass_type,
     parameters_persistent_mode_is_enabled,
@@ -2475,7 +2475,10 @@ class DataClassInstanceVariable(VariableBase):
             ).bind(self, "__post_init__")
         if name == "__dataclass_fields__":
             return VariableFactory.from_value(
-                {fd.name: fd for fd in dataclasses.fields(self.value)},
+                {
+                    fd.name: fd
+                    for fd in dataclasses.fields(self.class_var.value)
+                },
                 graph=self.graph,
                 tracker=GetAttrTracker(self, "__dataclass_fields__"),
             )
@@ -2591,7 +2594,7 @@ class DataClassInstanceVariable(VariableBase):
                 type(value), graph, DanglingTracker()
             )
             try:
-                data_dict = asdict(value)
+                data_dict = dataclass_as_dict(value)
             except:
                 data_dict = {}
             var = DataClassInstanceVariable(
