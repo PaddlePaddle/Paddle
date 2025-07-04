@@ -51,12 +51,16 @@ jobs:
           zstd -d Paddle.tar.zst && tar -xf Paddle.tar
           del Paddle.tar Paddle.tar.zst
           call %ci_scripts%\clean_env.bat
+          echo ----------------------------------------------------------------------
+          dir third_party\openvino
+          echo ----------------------------------------------------------------------
 
       - name: Config env
         run: |
-          call %ci_scripts%\config_env.bat
           echo ----------------------------------------------------------------------
           dir third_party\openvino
+          echo ----------------------------------------------------------------------
+          call %ci_scripts%\config_env.bat
 
       - name: Build paddle
         env:
