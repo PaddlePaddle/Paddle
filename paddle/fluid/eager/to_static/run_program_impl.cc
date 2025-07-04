@@ -372,8 +372,9 @@ paddle::Tensor CreateTensorFromValue(const pir::Value &value) {
   const auto &value_type = value.type();
 
   if (value_type.isa<paddle::dialect::DenseTensorType>()) {
-    auto ddims = value_type.dyn_cast<paddle::dialect::DenseTensorType>().dims();
-    auto dtype = paddle::dialect::TransToPhiDataType(
+    const auto &ddims =
+        value_type.dyn_cast<paddle::dialect::DenseTensorType>().dims();
+    const auto &dtype = paddle::dialect::TransToPhiDataType(
         value_type.dyn_cast<paddle::dialect::DenseTensorType>().dtype());
 
     std::shared_ptr<phi::DenseTensor> dense_tensor =
@@ -382,9 +383,9 @@ paddle::Tensor CreateTensorFromValue(const pir::Value &value) {
     if (value_type.isa<paddle::dialect::DistDenseTensorType>()) {
       paddle::dialect::DistDenseTensorType dist_value_type =
           value_type.dyn_cast<paddle::dialect::DistDenseTensorType>();
-      auto pir_attr = dist_value_type.tensor_dist_attr();
-      auto mesh = pir_attr.process_mesh_attr().process_mesh();
-      auto placements = pir_attr.placements();
+      const auto &pir_attr = dist_value_type.tensor_dist_attr();
+      const auto &mesh = pir_attr.process_mesh_attr().process_mesh();
+      const auto &placements = pir_attr.placements();
       tensor.set_impl(std::make_shared<phi::distributed::DistTensor>(
           dense_tensor, mesh, placements));
     } else {
@@ -410,6 +411,7 @@ std::vector<paddle::Tensor> CreateOutputTensorsFromValue(
                         names.size()));
   std::vector<paddle::Tensor> result;
   std::unordered_map<pir::Value, paddle::Tensor> out_tensor_map;
+  result.reserve(values.size());
   auto CreateTensorFromValueWithCache =
       [&out_tensor_map](const pir::Value &value) {
         if (out_tensor_map.find(value) == out_tensor_map.end()) {
