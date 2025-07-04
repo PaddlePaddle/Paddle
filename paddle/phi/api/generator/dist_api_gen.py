@@ -125,17 +125,14 @@ SET_NCCL_COMMCONTEXT = """
             "has ring_id(%d) attr.",
             std::to_string(ring_id)));
     #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_XPU_BKCL)
-        if (!comm_context->GetDevContext() || !comm_context->GetDevContext()->GetCommContext())
-        {{
-            auto kernel_res = phi::KernelFactory::Instance().SelectKernelOrThrowError(
-            "{}", {{kernel_backend, kernel_layout, kernel_data_type}}, true);
-            if (FLAGS_low_precision_op_list) {{
-            phi::KernelFactory::Instance().AddToLowPrecisionKernelList("{}", kernel_data_type);
-            }}
-            Backend act_kernel_backend = kernel_res.has_fallback_cpu ? Backend::CPU : kernel_backend;
-            auto* dev_context = GetDeviceContextByBackend(act_kernel_backend);
-            dev_context->SetCommContext(comm_context);
+        auto kernel_res = phi::KernelFactory::Instance().SelectKernelOrThrowError(
+        "{}", {{kernel_backend, kernel_layout, kernel_data_type}}, true);
+        if (FLAGS_low_precision_op_list) {{
+        phi::KernelFactory::Instance().AddToLowPrecisionKernelList("{}", kernel_data_type);
         }}
+        Backend act_kernel_backend = kernel_res.has_fallback_cpu ? Backend::CPU : kernel_backend;
+        auto* dev_context = GetDeviceContextByBackend(act_kernel_backend);
+        dev_context->SetCommContext(comm_context);
     #elif defined(PADDLE_WITH_CUSTOM_DEVICE)
         auto kernel_res = phi::KernelFactory::Instance().SelectKernelOrThrowError(
             "{}", {{kernel_backend, kernel_layout, kernel_data_type}}, true);
