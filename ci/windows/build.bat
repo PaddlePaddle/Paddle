@@ -148,7 +148,7 @@ python -c "import wget;wget.download('https://paddle-github-action.bj.bcebos.com
 @REM python -c "import wget;wget.download('https://paddle-windows.bj.bcebos.com/third_party_code/%sub_dir%/%md5%.tar.gz')" 2>nul
 if !ERRORLEVEL! EQU 0 (
     echo Getting source code of third party : extracting ...
-    tar -xf %md5%.tar.zst
+    zstd -d %md5%.tar.zst && tar -xf %md5%.tar
     del %md5%.tar.zst
     if !errorlevel! EQU 0 (
         echo Getting source code of third party : successful
