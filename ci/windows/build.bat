@@ -99,7 +99,8 @@ if "%WITH_GPU%"=="ON" (
 )
 
 rem ------set third_party cache dir------
-
+echo [%BUILD_DIR%]
+echo [%work_dir:\=/%]
 if "%WITH_TPCACHE%"=="OFF" (
     set THIRD_PARTY_PATH=%work_dir:\=/%/%BUILD_DIR%/third_party
     goto :cmake_impl
