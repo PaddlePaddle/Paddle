@@ -2,8 +2,10 @@ setlocal enabledelayedexpansion
 
 set work_dir=%cd%
 echo work_dir=%work_dir% >> %GITHUB_ENV%
-if not defined cache_dir set cache_dir=%work_dir%\..\cache
-echo cache_dir=%cache_dir% >> %GITHUB_ENV%
+if not defined cache_dir (
+    set "cache_dir=%work_dir%\..\cache"
+    echo "cache_dir=%cache_dir%" >> %GITHUB_ENV%
+)
 if not exist %cache_dir% mkdir %cache_dir%
 if not exist %cache_dir%\tools (
     cd /d %cache_dir%
@@ -83,7 +85,7 @@ if not exist %PYTHON_VENV_ROOT% mkdir %PYTHON_VENV_ROOT%
 set PYTHON_EXECUTABLE=%PYTHON_VENV_ROOT%\Scripts\python.exe
 echo PYTHON_EXECUTABLE=%PYTHON_VENV_ROOT%\Scripts\python.exe >> %GITHUB_ENV%
 %PYTHON_ROOT%\python.exe -m venv --clear %PYTHON_VENV_ROOT%
-call %PYTHON_VENV_ROOT%\Scripts\activate.bat
+call "%PYTHON_VENV_ROOT%\Scripts\activate.bat"
 if %ERRORLEVEL% NEQ 0 (
     echo activate python virtual environment failed!
     exit /b 5
