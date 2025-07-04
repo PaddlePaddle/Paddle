@@ -168,7 +168,7 @@ void FlashAttnV3InferMeta(const MetaTensor& q,
                           MetaTensor* out,
                           MetaTensor* softmax_lse);
 
-void FlashAttnVarlenV3InferMeta(const MetaTensor& q,
+void FlashAttnV3VarlenInferMeta(const MetaTensor& q,
                                 const MetaTensor& k,
                                 const MetaTensor& v,
                                 MetaTensor* out,

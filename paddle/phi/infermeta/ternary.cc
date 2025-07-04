@@ -735,7 +735,7 @@ void FlashAttnV3InferMeta(const MetaTensor& q,
   softmax_lse->set_dtype(phi::DataType::FLOAT32);
 }
 
-void FlashAttnVarlenV3InferMeta(const MetaTensor& q,
+void FlashAttnV3VarlenInferMeta(const MetaTensor& q,
                                 const MetaTensor& k,
                                 const MetaTensor& v,
                                 MetaTensor* out,

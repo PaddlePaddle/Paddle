@@ -255,7 +255,7 @@ void FlashAttnV3GradInferMeta(const MetaTensor& q,
                               MetaTensor* dk,
                               MetaTensor* dv);
 
-void FlashAttnVarlenV3GradInferMeta(const MetaTensor& q,
+void FlashAttnV3VarlenGradInferMeta(const MetaTensor& q,
                                     const MetaTensor& k,
                                     const MetaTensor& v,
                                     MetaTensor* dq,
