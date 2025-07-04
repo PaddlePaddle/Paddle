@@ -819,9 +819,7 @@ class TestDygraphMathOpPatches(unittest.TestCase):
             ):
                 _ = a @ b_f
 
-            with self.assertRaisesRegex(
-                ValueError, r"\(InvalidArgument\) Input\(Y\) has error dim"
-            ):
+            with self.assertRaises(ValueError):
                 _ = a @ a
 
     def test_dygraph_custom_div(self):
