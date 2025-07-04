@@ -19,7 +19,7 @@
 #include "paddle/phi/kernels/funcs/top_k_function_cuda.h"
 
 namespace phi {
-static int getBlockSize(int col) {
+static int getBlockSize(int64_t col) {
   if (col > 512)
     return 1024;
   else if (col > 256 && col <= 512)
@@ -60,10 +60,14 @@ void KthvalueGradKernel(const Context& dev_ctx,
   const int64_t* indices_data = indices.data<int64_t>();
   int64_t pre, n, post;
   phi::funcs::GetDims(in_dims, axis, &pre, &n, &post);
+
   int block_size = getBlockSize(post * k);
   int max_threads = dev_ctx.GetMaxPhysicalThreadCount();
   const int64_t max_blocks = std::max(((max_threads - 1) / block_size + 1), 1);
-  int grid_size = std::min(max_blocks, pre);
+  int64_t desired_grid_size = std::min(max_blocks, pre);
+  int64_t grid_size =
+      std::min(desired_grid_size,
+               static_cast<int64_t>(dev_ctx.GetCUDAMaxGridDimSize()[0]));
   phi::funcs::AssignGradWithAxis<T>
       <<<grid_size, block_size, 64 * 4, dev_ctx.stream()>>>(
           out_grad_data, indices_data, x_grad_data, pre, post, n, 1);

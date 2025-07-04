@@ -53,13 +53,25 @@ class TestUnsafeCacheFastPath(TestCaseBase):
                     add.__code__
                 )
             )
-            for _ in range(33):
+            # The test needs to consider the issue of dynamic shapes: when the input shape changes,
+            # the previous cache may become invalid.
+            self.assert_results(add, 1, paddle.ones([32, 4]))
+            for _ in range(34):
                 self.assert_results(add, 1, paddle.ones([4]))
             self.assertTrue(
                 OpcodeExecutorCache().is_fastpath_threshold_reached(
                     add.__code__
                 )
             )
+            # NOTE: Once fastpath is enabled, the cache will not be rebuilt even if the shape changes again afterwards.
+            # This is the "UNSAFE" aspect of the environment variable `ENV_SOT_UNSAFE_CACHE_FASTPATH`.
+            self.assert_results(add, 1, paddle.ones([31, 4]))
+            self.assertTrue(
+                OpcodeExecutorCache().is_fastpath_threshold_reached(
+                    add.__code__
+                )
+            )
+
             self.assertFalse(
                 OpcodeExecutorCache().is_fastpath_threshold_reached(
                     subtract.__code__

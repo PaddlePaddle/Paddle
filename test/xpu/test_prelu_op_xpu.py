@@ -63,7 +63,7 @@ class XPUTestPReluOp(XPUOpTestWrapper):
                     -1, -0.5, [1, 1, 1, self.x_shape[-1]]
                 )
             else:
-                self.alpha = np.random.uniform(-1, -0.5, [1] + self.x_shape[1:])
+                self.alpha = np.random.uniform(-1, -0.5, [1, *self.x_shape[1:]])
             self.alpha = self.alpha.astype(self.dtype)
 
             self.inputs = {'X': self.x, 'Alpha': self.alpha}

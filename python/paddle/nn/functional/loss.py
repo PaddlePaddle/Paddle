@@ -1525,7 +1525,7 @@ def nll_loss(
         if input_dims != 2 and input_dims != 4:
             input = _C_ops.reshape(input, [n, c, 1, -1])
             label = _C_ops.reshape(label, [n, 1, -1])
-            out_shape = [n] + input_shape[2:]
+            out_shape = [n, *input_shape[2:]]
         out, total_weight = _C_ops.nll_loss(
             input, label, weight, ignore_index, reduction
         )
@@ -1538,7 +1538,7 @@ def nll_loss(
         if input_dims != 2 and input_dims != 4:
             input = reshape(input, shape=[n, c, 1, -1])
             label = reshape(label, shape=[n, 1, -1])
-            out_shape = [n] + input_shape[2:]
+            out_shape = [n, *input_shape[2:]]
 
         check_variable_and_dtype(
             input, 'input', ['float32', 'float64'], 'nll_loss'
@@ -4170,8 +4170,9 @@ def multi_margin_loss(
             )
         weight = paddle.gather(weight, label, axis=0).reshape((-1, 1))
         loss = paddle.mean(
-            paddle.pow(
-                paddle.clip(weight * (margin - index_sample + input), min=0.0),
+            weight
+            * paddle.pow(
+                paddle.clip((margin - index_sample + input), min=0.0),
                 p,
             ),
             axis=1,
@@ -4556,6 +4557,9 @@ def adaptive_log_softmax_with_loss(
 
         label_mask = (label >= low_idx) & (label < high_idx)
         row_indices = label_mask.nonzero().squeeze()
+
+        if row_indices.dim() == 0:
+            row_indices.unsqueeze_(0)
 
         if row_indices.numel() == 0:
             continue

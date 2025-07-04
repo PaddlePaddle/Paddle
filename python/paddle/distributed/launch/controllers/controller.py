@@ -334,7 +334,8 @@ class Controller(ControllerBase):
         try:
             os.makedirs(os.path.dirname(f), exist_ok=True)
             with open(f, container.log_mode) as fd:
-                for k, v in sorted(container.env.items()):
-                    fd.write(str(f"{k}={v}\n"))
+                fd.writelines(
+                    f"{k}={v}\n" for k, v in sorted(container.env.items())
+                )
         except Exception as e:
             self.ctx.logger.error(f"save pod env log failed because {e}")

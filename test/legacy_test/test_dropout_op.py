@@ -12,12 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
 import parameterized as param
-from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_places,
+    skip_check_grad_ci,
+)
 from utils import static_guard
 
 import paddle
@@ -568,15 +572,7 @@ class TestDropoutOpError(unittest.TestCase):
 class TestDropoutFAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
-        self.places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.places.append(base.CUDAPlace(0))
+        self.places = get_places()
 
     def check_static_result(self, place):
         paddle.enable_static()
@@ -907,15 +903,7 @@ class TestDropoutFAPIError(unittest.TestCase):
 class TestDropoutCAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
-        self.places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.places.append(base.CUDAPlace(0))
+        self.places = get_places()
 
     def test_dygraph(self):
         for place in self.places:
@@ -934,15 +922,7 @@ class TestDropoutCAPI(unittest.TestCase):
 class TestDropout2DFAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
-        self.places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.places.append(base.CUDAPlace(0))
+        self.places = get_places()
 
     def check_static_result(self, place):
         paddle.enable_static()
@@ -1025,15 +1005,7 @@ class TestDropout2DFAPIError(unittest.TestCase):
 class TestDropout2DCAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
-        self.places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.places.append(base.CUDAPlace(0))
+        self.places = get_places()
 
     def test_dygraph(self):
         for place in self.places:
@@ -1076,15 +1048,7 @@ class TestDropout2DCAPI(unittest.TestCase):
 class TestDropout3DFAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
-        self.places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.places.append(base.CUDAPlace(0))
+        self.places = get_places()
 
     def check_static_result(self, place):
         paddle.enable_static()
@@ -1167,15 +1131,7 @@ class TestDropout3DFAPIError(unittest.TestCase):
 class TestDropout3DCAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
-        self.places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.places.append(base.CUDAPlace(0))
+        self.places = get_places()
 
     def test_dygraph(self):
         for place in self.places:
@@ -1194,15 +1150,7 @@ class TestDropout3DCAPI(unittest.TestCase):
 class TestAlphaDropoutFAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
-        self.places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.places.append(base.CUDAPlace(0))
+        self.places = get_places()
 
     def check_static_result(self, place):
         paddle.enable_static()
@@ -1310,15 +1258,7 @@ class TestAlphaDropoutFAPIError(unittest.TestCase):
 class TestAlphaDropoutCAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
-        self.places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.places.append(base.CUDAPlace(0))
+        self.places = get_places()
 
     def test_dygraph(self):
         for place in self.places:
@@ -1364,15 +1304,7 @@ class TestDropoutWithDeterminateSeedGenerator(unittest.TestCase):
         paddle.framework.random.set_random_seed_generator('seed1', 123)
         rng0 = paddle.framework.random.get_random_seed_generator('seed0')
         rng1 = paddle.framework.random.get_random_seed_generator('seed1')
-        self.places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not paddle.is_compiled_with_cuda()
-        ):
-            self.places.append(paddle.CPUPlace())
-        if paddle.is_compiled_with_cuda():
-            self.places.append(paddle.CUDAPlace(0))
+        self.places = get_places()
 
     def check_static_result(self, place):
         from paddle.distributed.fleet.meta_parallel.parallel_layers.random import (
@@ -1417,15 +1349,7 @@ class TestDropoutWithDeterminateSeedGenerator(unittest.TestCase):
 class TestDropoutBackward(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
-        self.places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.places.append(base.CUDAPlace(0))
+        self.places = get_places()
 
     def cal_grad_upscale_train(self, mask, prob):
         return mask.astype("float32") / (1 - prob)
@@ -1561,15 +1485,7 @@ class TestRandomValue(unittest.TestCase):
         paddle.enable_static()
 
 
-places = []
-if (
-    os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-    in ['1', 'true', 'on']
-    or not paddle.is_compiled_with_cuda()
-):
-    places.append(paddle.CPUPlace())
-if paddle.is_compiled_with_cuda():
-    places.append(paddle.CUDAPlace(0))
+places = get_places()
 
 
 class PrimNet(paddle.nn.Layer):

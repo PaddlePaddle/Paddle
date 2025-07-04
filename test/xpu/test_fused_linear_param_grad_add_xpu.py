@@ -114,7 +114,7 @@ class TestMainClassBase(unittest.TestCase):
         self, has_dweight, has_dbias, multi_precision, has_bias
     ):
         x_shape = self.shape
-        dy_shape = self.shape[:-1] + [self.output_size]
+        dy_shape = [*self.shape[:-1], self.output_size]
         dweight_shape = [self.shape[-1], self.output_size]
         dbias_shape = [self.output_size]
 

@@ -63,10 +63,12 @@ class TestOpStatsEager(unittest.TestCase):
         conv = paddle.nn.Conv2D(3, 2, 3)
         x = paddle.rand([10, 3, 32, 32])
 
-        with paddle.amp.debugging.collect_operator_stats():
+        with (
+            paddle.amp.debugging.collect_operator_stats(),
             # amp list conv2d, elementwise_add, cast (transfer_dtype)
-            with paddle.amp.auto_cast(enable=True, level='O2'):
-                out = conv(x)
+            paddle.amp.auto_cast(enable=True, level='O2'),
+        ):
+            out = conv(x)
 
         self._check_result(dtype=out.dtype)
 

@@ -28,14 +28,16 @@ class DeprecatedMemoryOptimizationInterfaceTest(unittest.TestCase):
     def build_network(self, call_interface):
         startup_prog = base.Program()
         main_prog = base.Program()
-        with base.program_guard(main_prog, startup_prog):
-            with base.unique_name.guard():
-                loss = simple_fc_net()
-                opt = paddle.optimizer.Adam(learning_rate=1e-3)
-                opt.minimize(loss)
+        with (
+            base.program_guard(main_prog, startup_prog),
+            base.unique_name.guard(),
+        ):
+            loss = simple_fc_net()
+            opt = paddle.optimizer.Adam(learning_rate=1e-3)
+            opt.minimize(loss)
 
-                if call_interface:
-                    self.method(main_prog)
+            if call_interface:
+                self.method(main_prog)
 
         return main_prog
 

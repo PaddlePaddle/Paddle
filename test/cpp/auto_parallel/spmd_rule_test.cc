@@ -230,6 +230,84 @@ TEST(MatmulSPMDRule, Ctor) {
   check_partial_dims(inferred_dist_attrs.second[0], {0});
   VLOG(4) << "test11 done." << std::endl << std::endl << std::endl;
 }
+
+TEST(IndexPut, Ctor) {
+  // build input data class
+  std::vector<int64_t> x_shape = {64, 64, 64};
+  std::vector<int64_t> indice_shape = {32};
+  std::vector<int64_t> value_shape = {32, 64};
+  std::vector<int64_t> mesh_shape = {2, 3};
+  std::vector<int64_t> process_ids = {0, 1, 2, 3, 4, 5};
+  std::vector<std::string> dim_names = {"x", "y"};
+  ProcessMesh process_mesh(mesh_shape, process_ids, dim_names);
+
+  TensorDistAttr x_dist_attr = TensorDistAttr();
+  x_dist_attr.set_process_mesh(process_mesh);
+  x_dist_attr.set_dims_mapping(std::vector<int64_t>({-1, 0, 1}));
+  x_dist_attr.set_dynamic_dims(std::vector<bool>({false, false, false}));
+
+  TensorDistAttr value_dist_attr = TensorDistAttr();
+  value_dist_attr.set_process_mesh(process_mesh);
+  value_dist_attr.set_dims_mapping(std::vector<int64_t>({-1, -1}));
+  value_dist_attr.set_dynamic_dims(std::vector<bool>({false, false}));
+  TensorDistAttr indice_dist_attr = TensorDistAttr();
+  indice_dist_attr.set_process_mesh(process_mesh);
+  indice_dist_attr.set_dims_mapping(std::vector<int64_t>({-1}));
+  indice_dist_attr.set_dynamic_dims(std::vector<bool>({false}));
+
+  // Test forward.
+  // [-1,0, 1], [[-1],[-1]], [-1,-1] --> [-1,-1, 1]
+  // infer input:[-1,-1, 1], [[-1],[-1]], [-1,1]
+  phi::distributed::DistMetaTensor x(common::make_ddim(x_shape), x_dist_attr);
+  phi::distributed::DistMetaTensor value(common::make_ddim(value_shape),
+                                         value_dist_attr);
+  std::vector<phi::distributed::DistMetaTensor> indices;
+  for (int i = 0; i < 2; ++i) {
+    phi::distributed::DistMetaTensor indice(common::make_ddim(indice_shape),
+                                            indice_dist_attr);
+    indices.push_back(indice);
+  }
+  phi::distributed::SpmdInfo forward_info =
+      phi::distributed::IndexPutInferSpmd(x, indices, value);
+  size_t input_size = 3;
+  size_t output_size = 1;
+  EXPECT_EQ(forward_info.first.size(), input_size);
+  EXPECT_EQ(forward_info.second.size(), output_size);
+  check_dim_mapping(forward_info.first[0], {-1, -1, 1});
+  std::vector<TensorDistAttr> indices_dist_attr =
+      paddle::get<1>(forward_info.first[1]);
+  for (auto& attr : indices_dist_attr) {
+    check_dim_mapping(attr, {-1});
+  }
+
+  check_dim_mapping(forward_info.first[2], {-1, 1});
+  check_dim_mapping(forward_info.second[0], {-1, -1, 1});
+  VLOG(4) << "test forward done.";
+
+  // Test backward.
+  // [-1,0, 1], [[-1],[-1]], [-1,-1],[-1,0, 1] --> [-1,-1, 1], [-1,1]
+  // infer input:[-1,-1, 1], [[-1],[-1]], [-1,1],[-1,-1, 1]
+  phi::distributed::DistMetaTensor out_grad(common::make_ddim(x_shape),
+                                            x_dist_attr);
+
+  phi::distributed::SpmdInfo backward_info =
+      phi::distributed::IndexPutGradInferSpmd(x, indices, value, out_grad);
+  input_size = 4;
+  output_size = 2;
+  EXPECT_EQ(backward_info.first.size(), input_size);
+  EXPECT_EQ(backward_info.second.size(), output_size);
+  check_dim_mapping(backward_info.first[0], {-1, -1, 1});
+  indices_dist_attr = paddle::get<1>(backward_info.first[1]);
+  for (auto& attr : indices_dist_attr) {
+    check_dim_mapping(attr, {-1});
+  }
+
+  check_dim_mapping(backward_info.first[2], {-1, 1});
+  check_dim_mapping(backward_info.first[3], {-1, -1, 1});
+  check_dim_mapping(backward_info.second[0], {-1, -1, 1});
+  check_dim_mapping(backward_info.second[1], {-1, 1});
+  VLOG(4) << "test backward done.";
+}
 TEST(InstanceNorm, Ctor) {
   // build input data class
   std::vector<int64_t> x_shape = {64, 64, 64, 64};  // N,C,H,W

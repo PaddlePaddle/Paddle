@@ -509,7 +509,7 @@ std::string DummyGuardNode::stringify(int indent) {
 void GuardTree::add_guard_chain(
     const std::vector<std::shared_ptr<GuardNodeBase>>& guard_chain) {
   if (guard_chain.empty()) {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "Empty guard chain, please check the guard chain"));
   }
   for (size_t i = 1; i < guard_chain.size(); ++i) {

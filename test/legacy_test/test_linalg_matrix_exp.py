@@ -18,10 +18,9 @@ import unittest
 
 import numpy as np
 import scipy
+from op_test import get_places
 
 import paddle
-from paddle import base
-from paddle.base import core
 
 os.environ['NVIDIA_TF32_OVERRIDE'] = '0'
 
@@ -44,15 +43,7 @@ class MatrixExpTestCase(unittest.TestCase):
         self.init_config()
         self.generate_input()
         self.generate_output()
-        self.places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.places.append(paddle.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.places.append(paddle.CUDAPlace(0))
+        self.places = get_places()
 
     def generate_input(self):
         self._input_shape = (5, 5)
@@ -84,17 +75,8 @@ class MatrixExpTestCase(unittest.TestCase):
     #
     def test_static(self):
         paddle.enable_static()
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
 
-        for place in places:
+        for place in get_places():
             with paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
             ):

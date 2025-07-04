@@ -27,41 +27,43 @@ namespace phi {
 static constexpr int kNumCUDAThreads = 512;
 static constexpr int kNumMaximumNumBlocks = 4096;
 
-static inline int NumBlocks(const int N) {
-  return std::min((N + kNumCUDAThreads - 1) / kNumCUDAThreads,
-                  kNumMaximumNumBlocks);
+static inline uint32_t NumBlocks(const int64_t N) {
+  return static_cast<uint32_t>(
+      std::min((N + kNumCUDAThreads - 1) / kNumCUDAThreads,
+               static_cast<int64_t>(kNumMaximumNumBlocks)));
 }
 
-template <typename T>
-__global__ void GPURoiPoolBackward(const int nthreads,
+template <typename T, typename IndexType>
+__global__ void GPURoiPoolBackward(const IndexType nthreads,
                                    const T* input_rois,
                                    const T* output_grad,
                                    const int64_t* arg_max_data,
-                                   const int num_rois,
+                                   const IndexType num_rois,
                                    const float spatial_scale,
-                                   const int channels,
-                                   const int height,
-                                   const int width,
+                                   const IndexType channels,
+                                   const IndexType height,
+                                   const IndexType width,
                                    const int pooled_height,
                                    const int pooled_width,
                                    int* box_batch_id_data,
                                    T* input_grad) {
-  int index = blockIdx.x * blockDim.x + threadIdx.x;
-  int offset = blockDim.x * gridDim.x;
-  for (int i = index; i < nthreads; i += offset) {
-    int pw = i % pooled_width;
-    int ph = (i / pooled_width) % pooled_height;
-    int c = (i / pooled_width / pooled_height) % channels;
-    int n = i / pooled_width / pooled_height / channels;
+  IndexType index =
+      static_cast<IndexType>(blockIdx.x) * blockDim.x + threadIdx.x;
+  IndexType offset = static_cast<IndexType>(blockDim.x) * gridDim.x;
+  for (IndexType i = index; i < nthreads; i += offset) {
+    IndexType pw = i % pooled_width;
+    IndexType ph = (i / pooled_width) % pooled_height;
+    IndexType c = (i / pooled_width / pooled_height) % channels;
+    IndexType n = i / pooled_width / pooled_height / channels;
 
     int roi_batch_ind = box_batch_id_data[n];
-    int input_offset = (roi_batch_ind * channels + c) * height * width;
-    int output_offset = (n * channels + c) * pooled_height * pooled_width;
+    IndexType input_offset = (roi_batch_ind * channels + c) * height * width;
+    IndexType output_offset = (n * channels + c) * pooled_height * pooled_width;
     const T* offset_output_grad = output_grad + output_offset;
     T* offset_input_grad = input_grad + input_offset;
     const int64_t* offset_arg_max_data = arg_max_data + output_offset;
 
-    int arg_max = offset_arg_max_data[ph * pooled_width + pw];
+    int64_t arg_max = offset_arg_max_data[ph * pooled_width + pw];
     if (arg_max != -1) {
       phi::CudaAtomicAdd(
           offset_input_grad + arg_max,
@@ -82,10 +84,10 @@ void RoiPoolGradKernel(const Context& dev_ctx,
                        float spatial_scale,
                        DenseTensor* dx) {
   auto x_dims = x.dims();
-  int channels = x_dims[1];
-  int height = x_dims[2];
-  int width = x_dims[3];
-  int rois_num = boxes.dims()[0];
+  int64_t channels = x_dims[1];
+  int64_t height = x_dims[2];
+  int64_t width = x_dims[3];
+  int64_t rois_num = boxes.dims()[0];
 
   if (dx) {
     DenseTensor box_batch_id_list;
@@ -136,25 +138,43 @@ void RoiPoolGradKernel(const Context& dev_ctx,
     phi::funcs::SetConstant<Context, T> set_zero;
     set_zero(dev_ctx, dx, static_cast<T>(0));
 
-    int output_grad_size = out_grad.numel();
-    int blocks = NumBlocks(output_grad_size);
-    int threads = kNumCUDAThreads;
+    int64_t output_grad_size = out_grad.numel();
+    uint32_t blocks = NumBlocks(output_grad_size);
+    uint32_t threads = kNumCUDAThreads;
 
     if (output_grad_size > 0) {
-      GPURoiPoolBackward<T>
-          <<<blocks, threads, 0, dev_ctx.stream()>>>(output_grad_size,
-                                                     boxes.data<T>(),
-                                                     out_grad.data<T>(),
-                                                     arg_max.data<int64_t>(),
-                                                     rois_num,
-                                                     spatial_scale,
-                                                     channels,
-                                                     height,
-                                                     width,
-                                                     pooled_height,
-                                                     pooled_width,
-                                                     roi_id_data,
-                                                     dx->data<T>());
+      if (output_grad_size > std::numeric_limits<int32_t>::max() ||
+          dx->numel() > std::numeric_limits<int32_t>::max()) {
+        GPURoiPoolBackward<T, int64_t>
+            <<<blocks, threads, 0, dev_ctx.stream()>>>(output_grad_size,
+                                                       boxes.data<T>(),
+                                                       out_grad.data<T>(),
+                                                       arg_max.data<int64_t>(),
+                                                       rois_num,
+                                                       spatial_scale,
+                                                       channels,
+                                                       height,
+                                                       width,
+                                                       pooled_height,
+                                                       pooled_width,
+                                                       roi_id_data,
+                                                       dx->data<T>());
+      } else {
+        GPURoiPoolBackward<T, int32_t>
+            <<<blocks, threads, 0, dev_ctx.stream()>>>(output_grad_size,
+                                                       boxes.data<T>(),
+                                                       out_grad.data<T>(),
+                                                       arg_max.data<int64_t>(),
+                                                       rois_num,
+                                                       spatial_scale,
+                                                       channels,
+                                                       height,
+                                                       width,
+                                                       pooled_height,
+                                                       pooled_width,
+                                                       roi_id_data,
+                                                       dx->data<T>());
+      }
     }
   }
 }
