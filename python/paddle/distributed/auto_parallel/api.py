@@ -1512,7 +1512,7 @@ class _ShardOptimizer(Optimizer):
         pass
 
     def _enable_sharding_overlap(self, layers):
-        if layers.config.get("to_static", False):
+        if hasattr(layers, 'config') and layers.config.get("to_static", False):
             return
         # self.enable_sharding_overlap = True
         if not isinstance(layers, paddle.nn.Layer):
