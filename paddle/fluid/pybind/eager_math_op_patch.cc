@@ -306,7 +306,7 @@ static PyObject* tensor__add__method(TensorObject* self,
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
       paddle::experimental::Scalar value;
-      // NOTE: call r method of other_obj if cast failed
+      // NOTE: call reflected method of other_obj if cast failed
       try {
         value = CastPyArg2Scalar(other_obj, "__add__", 0);
       } catch (...) {
@@ -419,7 +419,7 @@ static PyObject* tensor__sub__method(TensorObject* self,
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
       paddle::experimental::Scalar value;
-      // NOTE: call r method of other_obj if cast failed
+      // NOTE: call reflected method of other_obj if cast failed
       try {
         value = CastPyArg2Scalar(other_obj, "__sub__", 0);
       } catch (...) {
@@ -628,7 +628,7 @@ static PyObject* tensor__mul__method(TensorObject* self,
     } else {
       paddle::experimental::Scalar value;
 
-      // NOTE: call r method of other_obj if cast failed
+      // NOTE: call reflected method of other_obj if cast failed
       try {
         value = CastPyArg2Scalar(other_obj, "__mul__", 0);
       } catch (...) {
@@ -742,7 +742,7 @@ static PyObject* tensor__div__method(TensorObject* self,
     } else {
       paddle::experimental::Scalar value;
 
-      // NOTE: call r method of other_obj if cast failed
+      // NOTE: call reflected method of other_obj if cast failed
       try {
         value = CastPyArg2Scalar(other_obj, "__div__", 0);
       } catch (...) {
@@ -1126,7 +1126,7 @@ static PyObject* tensor__mod__method(TensorObject* self,
     } else {
       paddle::experimental::Scalar value;
 
-      // NOTE: call r method of other_obj if cast failed
+      // NOTE: call reflected method of other_obj if cast failed
       try {
         value = CastPyArg2Scalar(other_obj, "__mod__", 0);
       } catch (...) {
@@ -1333,7 +1333,7 @@ static PyObject* tensor__matmul__method(TensorObject* self,
     } else {
       paddle::experimental::Scalar value;
 
-      // NOTE: call r method of other_obj if cast failed
+      // NOTE: call reflected method of other_obj if cast failed
       try {
         value = CastPyArg2Scalar(other_obj, "__matmul__", 0);
       } catch (...) {
@@ -1784,7 +1784,7 @@ static PyObject* tensor__floordiv__method(TensorObject* self,
     } else {
       paddle::experimental::Scalar value;
 
-      // NOTE: call r method of other_obj if cast failed
+      // NOTE: call reflected method of other_obj if cast failed
       try {
         value = CastPyArg2Scalar(other_obj, "__floordiv__", 0);
       } catch (...) {
@@ -1990,7 +1990,7 @@ static PyObject* tensor__pow__method(TensorObject* self,
     } else {
       paddle::experimental::Scalar value;
 
-      // NOTE: call r method of other_obj if cast failed
+      // NOTE: call reflected method of other_obj if cast failed
       try {
         value = CastPyArg2Scalar(other_obj, "__pow__", 0);
       } catch (...) {

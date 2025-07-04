@@ -677,14 +677,17 @@ class TestDygraphMathOpPatches(unittest.TestCase):
             a = paddle.to_tensor(a_np)
             b = paddle.to_tensor(b_np)
             c = a + CustomTensor(b)
-            np.testing.assert_allclose(a + b, c, atol=0)
+            np.testing.assert_allclose((a + b).numpy(), c.numpy(), atol=0)
 
     def test_dygraph_vanilla_add(self):
         with dygraph_guard():
             a_np = np.random.random((2, 3)).astype(np.float32) * 100
             b_f = lambda y: y + 1
             a = paddle.to_tensor(a_np)
-            with self.assertRaises(TypeError):
+            with self.assertRaisesRegex(
+                TypeError,
+                r"__add__\(\): argument \(position 1\) must be int, float, bool or Tensor, but got ",
+            ):
                 _ = a + b_f
 
             with self.assertRaisesRegex(
@@ -703,14 +706,17 @@ class TestDygraphMathOpPatches(unittest.TestCase):
             a = paddle.to_tensor(a_np)
             b = paddle.to_tensor(b_np)
             c = a * CustomTensor(b)
-            np.testing.assert_allclose(a * b, c, atol=0)
+            np.testing.assert_allclose((a * b).numpy(), c.numpy(), atol=0)
 
     def test_dygraph_vanilla_mul(self):
         with dygraph_guard():
             a_np = np.random.random((2, 3)).astype(np.float32) * 100
             b_f = lambda y: y + 1
             a = paddle.to_tensor(a_np)
-            with self.assertRaises(TypeError):
+            with self.assertRaisesRegex(
+                TypeError,
+                r"__mul__\(\): argument \(position 1\) must be int, float, bool or Tensor, but got ",
+            ):
                 _ = a * b_f
 
             with self.assertRaisesRegex(
@@ -725,14 +731,17 @@ class TestDygraphMathOpPatches(unittest.TestCase):
             a = paddle.to_tensor(a_np)
             b = paddle.to_tensor(b_np)
             c = a - CustomTensor(b)
-            np.testing.assert_allclose(a - b, c, atol=0)
+            np.testing.assert_allclose((a - b).numpy(), c.numpy(), atol=0)
 
     def test_dygraph_vanilla_sub(self):
         with dygraph_guard():
             a_np = np.random.random((2, 3)).astype(np.float32) * 100
             b_f = lambda y: y + 1
             a = paddle.to_tensor(a_np)
-            with self.assertRaises(TypeError):
+            with self.assertRaisesRegex(
+                TypeError,
+                r"__sub__\(\): argument \(position 1\) must be int, float, bool or Tensor, but got ",
+            ):
                 _ = a - b_f
 
             with self.assertRaisesRegex(
@@ -747,14 +756,17 @@ class TestDygraphMathOpPatches(unittest.TestCase):
             a = paddle.to_tensor(a_np)
             b = paddle.to_tensor(b_np)
             c = a ** CustomTensor(b)
-            np.testing.assert_allclose(a**b, c, atol=0)
+            np.testing.assert_allclose((a**b).numpy(), c.numpy(), atol=0)
 
     def test_dygraph_vanilla_pow(self):
         with dygraph_guard():
             a_np = np.random.random((2, 3)).astype(np.float32) * 100
             b_f = lambda y: y + 1
             a = paddle.to_tensor(a_np)
-            with self.assertRaises(TypeError):
+            with self.assertRaisesRegex(
+                TypeError,
+                r"__pow__\(\): argument \(position 1\) must be int, float, bool or Tensor, but got ",
+            ):
                 _ = a**b_f
 
             with self.assertRaisesRegex(
@@ -769,14 +781,17 @@ class TestDygraphMathOpPatches(unittest.TestCase):
             a = paddle.to_tensor(a_np)
             b = paddle.to_tensor(b_np)
             c = a % CustomTensor(b)
-            np.testing.assert_allclose(a % b, c, atol=0)
+            np.testing.assert_allclose((a % b).numpy(), c.numpy(), atol=0)
 
     def test_dygraph_vanilla_mod(self):
         with dygraph_guard():
             a_np = np.random.random((2, 3)).astype(np.float32) * 100
             b_f = lambda y: y + 1
             a = paddle.to_tensor(a_np)
-            with self.assertRaises(TypeError):
+            with self.assertRaisesRegex(
+                TypeError,
+                r"__mod__\(\): argument \(position 1\) must be int, float, bool or Tensor, but got ",
+            ):
                 _ = a % b_f
 
             with self.assertRaisesRegex(
@@ -791,20 +806,23 @@ class TestDygraphMathOpPatches(unittest.TestCase):
             a = paddle.to_tensor(a_np)
             b = paddle.to_tensor(b_np)
             c = a @ CustomTensor(b)
-            np.testing.assert_allclose(a @ b, c, atol=0)
+            np.testing.assert_allclose((a @ b).numpy(), c.numpy(), atol=0)
 
     def test_dygraph_vanilla_matmul(self):
         with dygraph_guard():
             a_np = np.random.random((2, 3)).astype(np.float32) * 100
             b_f = lambda y: y + 1
             a = paddle.to_tensor(a_np)
-            with self.assertRaises(TypeError):
+            with self.assertRaisesRegex(
+                TypeError,
+                r"__matmul__\(\): argument \(position 1\) must be int, float, bool or Tensor, but got ",
+            ):
                 _ = a @ b_f
 
             with self.assertRaisesRegex(
-                ValueError, "Broadcast dimension mismatch"
+                ValueError, r"\(InvalidArgument\) Input\(Y\) has error dim"
             ):
-                _ = a @ a.T
+                _ = a @ a
 
     def test_dygraph_custom_div(self):
         with dygraph_guard():
@@ -813,14 +831,17 @@ class TestDygraphMathOpPatches(unittest.TestCase):
             a = paddle.to_tensor(a_np)
             b = paddle.to_tensor(b_np)
             c = a / CustomTensor(b)
-            np.testing.assert_allclose(a / b, c, atol=0)
+            np.testing.assert_allclose((a / b).numpy(), c.numpy(), atol=0)
 
     def test_dygraph_vanilla_div(self):
         with dygraph_guard():
             a_np = np.random.random((2, 3)).astype(np.float32) * 100
             b_f = lambda y: y + 1
             a = paddle.to_tensor(a_np)
-            with self.assertRaises(TypeError):
+            with self.assertRaisesRegex(
+                TypeError,
+                r"__div__\(\): argument \(position 1\) must be int, float, bool or Tensor, but got ",
+            ):
                 _ = a / b_f
 
             with self.assertRaisesRegex(
@@ -835,14 +856,17 @@ class TestDygraphMathOpPatches(unittest.TestCase):
             a = paddle.to_tensor(a_np)
             b = paddle.to_tensor(b_np)
             c = a / CustomTensor(b)
-            np.testing.assert_allclose(a / b, c, atol=0)
+            np.testing.assert_allclose((a / b).numpy(), c.numpy(), atol=0)
 
     def test_dygraph_vanilla_truediv(self):
         with dygraph_guard():
             a_np = np.random.random((2, 3)).astype(np.float32) * 100
             b_f = lambda y: y + 1
             a = paddle.to_tensor(a_np)
-            with self.assertRaises(TypeError):
+            with self.assertRaisesRegex(
+                TypeError,
+                r"__div__\(\): argument \(position 1\) must be int, float, bool or Tensor, but got ",
+            ):
                 _ = a / b_f
 
             with self.assertRaisesRegex(
@@ -857,14 +881,17 @@ class TestDygraphMathOpPatches(unittest.TestCase):
             a = paddle.to_tensor(a_np)
             b = paddle.to_tensor(b_np)
             c = a // CustomTensor(b)
-            np.testing.assert_allclose(a // b, c, atol=0)
+            np.testing.assert_allclose((a // b).numpy(), c.numpy(), atol=0)
 
     def test_dygraph_vanilla_floordiv(self):
         with dygraph_guard():
             a_np = np.random.random((2, 3)).astype(np.float32) * 100
             b_f = lambda y: y + 1
             a = paddle.to_tensor(a_np)
-            with self.assertRaises(TypeError):
+            with self.assertRaisesRegex(
+                TypeError,
+                r"__floordiv__\(\): argument \(position 1\) must be int, float, bool or Tensor, but got ",
+            ):
                 _ = a // b_f
 
             with self.assertRaisesRegex(
