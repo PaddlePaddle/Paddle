@@ -948,6 +948,46 @@ class TestGatherBackward(unittest.TestCase):
         np.testing.assert_allclose(res_list[0], res_list[1])
 
 
+class TestGatherOp_ZeroSize(OpTest):
+    def setUp(self):
+        self.op_type = "gather"
+        self.python_api = paddle.gather
+        self.public_python_api = paddle.gather
+        self.config()
+        self.init_inputs_and_outputs()
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', check_pir=True)
+
+    def config(self):
+        self.x_shape = (3, 0, 4)
+        self.config_dtype()
+        self.index = [2]
+        self.index_type = "int32"
+
+    def config_dtype(self):
+        self.x_type = "float64"
+
+    def init_inputs_and_outputs(self):
+        xnp = np.random.random(self.x_shape).astype(self.x_type)
+        self.inputs = {
+            'X': xnp,
+            'Index': np.array(self.index).astype(self.index_type),
+        }
+        self.outputs = {'Out': self.inputs["X"][self.inputs["Index"]]}
+
+
+class TestGatherOp_ZeroSize2(TestGatherOp_ZeroSize):
+    def config(self):
+        self.x_shape = (10, 20)
+        self.config_dtype()
+        self.index = [2, 0]
+        self.index_type = "int32"
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()

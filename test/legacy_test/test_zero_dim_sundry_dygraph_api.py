@@ -21,6 +21,7 @@ import os
 import unittest
 
 import numpy as np
+from op_test import get_places
 
 import paddle
 import paddle.nn.functional as F
@@ -1690,16 +1691,7 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(y2.grad.shape, [])
 
     def test_repeat_interleave(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not paddle.is_compiled_with_cuda()
-        ):
-            places.append('cpu')
-        if paddle.is_compiled_with_cuda():
-            places.append('gpu')
-        for place in places:
+        for place in get_places(string_format=True):
             paddle.set_device(place)
 
             x = paddle.randn(())

@@ -2015,12 +2015,14 @@ void GatherInferMeta(const MetaTensor& x,
   auto index_dims = index.dims();
 
   if (index_dims.size() == 2) {
-    PADDLE_ENFORCE_EQ(
-        index_dims[1],
-        1,
-        common::errors::InvalidArgument(
-            "The last dim of index should be 1 when it is 2D, but we get %d",
-            index_dims[1]));
+    if (index_dims[1] != 0) {
+      PADDLE_ENFORCE_EQ(
+          index_dims[1],
+          1,
+          common::errors::InvalidArgument("The last dim of index should be 0 "
+                                          "or 1 when it is 2D, but we get %d",
+                                          index_dims[1]));
+    }
   } else {
     PADDLE_ENFORCE_EQ(
         index_dims.size() == 1 || index_dims.size() == 0,
@@ -2089,6 +2091,9 @@ void GatherInferMeta(const MetaTensor& x,
     if (axis.FromTensor() || axis_v == 0) {
       // if axis.FromTensor(), we can not obtain correct shape of output
       int batch_size = static_cast<int>(index_dims[0]);
+      if (index_dims.size() == 2 && index_dims[1] == 0) {
+        batch_size = 0;
+      }
       phi::DDim output_dims(input_dim);
       output_dims[0] = batch_size;
       out->set_dims(output_dims);
@@ -2096,6 +2101,9 @@ void GatherInferMeta(const MetaTensor& x,
       out->share_lod(x);
     } else {
       int index_size = static_cast<int>(index_dims[0]);
+      if (index_dims.size() == 2 && index_dims[1] == 0) {
+        index_size = 0;
+      }
       std::vector<int> out_dim_vec;
       for (int i = 0; i < axis_v; i++) {
         out_dim_vec.push_back(input_dim[i]);  // NOLINT
