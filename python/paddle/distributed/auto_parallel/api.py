@@ -1512,13 +1512,14 @@ class _ShardOptimizer(Optimizer):
         pass
 
     def _enable_sharding_overlap(self, layers):
+        if hasattr(layers, "config") and layers.config.get("to_static", False):
+            return
         # self.enable_sharding_overlap = True
-        if paddle.in_dynamic_mode():
-            if not isinstance(layers, paddle.nn.Layer):
-                raise RuntimeError(
-                    f"`layers` must be `paddle.nn.Layer` but got {type(layers)}"
-                )
-            self._layers = layers
+        if not isinstance(layers, paddle.nn.Layer):
+            raise RuntimeError(
+                f"`layers` must be `paddle.nn.Layer` but got {type(layers)}"
+            )
+        self._layers = layers
 
     def _reduce_scatter_gradients(self, grad_storage):
         shard_size = grad_storage._numel() // self._sharding_group.nranks
