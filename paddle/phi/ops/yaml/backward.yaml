@@ -1194,7 +1194,7 @@
   optional : seqused_q, seqused_k
   output : Tensor(q_grad), Tensor(k_grad), Tensor(v_grad)
   infer_meta :
-    func : FlashAttnVarlenV3GradInferMeta
+    func : FlashAttnV3VarlenGradInferMeta
     param : [q, k, v]
   kernel :
     func : flash_attn_v3_varlen_grad

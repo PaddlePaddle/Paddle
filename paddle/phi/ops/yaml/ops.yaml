@@ -2093,7 +2093,7 @@
   output : Tensor(out), Tensor(softmax_lse)
   optional : seqused_q, seqused_k, qv, q_descale, k_descale, v_descale
   infer_meta :
-    func : FlashAttnVarlenV3InferMeta
+    func : FlashAttnV3VarlenInferMeta
     param : [q, k, v]
   kernel :
     func : flash_attn_v3_varlen
