@@ -212,6 +212,7 @@ class RunnableProgram:
         self,
         program,
         in_out_values,
+        out_stop_gradients,
         grad_in_out_values=None,
         forward_range=None,
         backward_range=None,
@@ -229,9 +230,7 @@ class RunnableProgram:
         self.x_names = self.convert_name(in_out_values[0])
         self.param_names = self.convert_name(in_out_values[1])
         self.out_names = self.convert_name(in_out_values[2])
-        # NOTE(SigureMo): Record original stop gradient for output values to avoid
-        # losing during optimization passes.
-        self.out_stop_gradients = [v.stop_gradient for v in in_out_values[2]]
+        self.out_stop_gradients = out_stop_gradients
         self.forward_range = forward_range
         self.backward_range = backward_range
         self.has_splited = False
@@ -303,6 +302,7 @@ class RunnableProgram:
         return RunnableProgram(
             cloned_program,
             (self.x_names, self.param_names, self.out_names),
+            self.out_stop_gradients,
             None,
             self.forward_range,
             self.backward_range,
@@ -814,6 +814,9 @@ class PartialProgramLayer:
     def origin_runnable_program(self) -> RunnableProgram:
         inputs = list(self._inputs.var_list)
         outputs = list(self._outputs.var_list)
+        # NOTE(SigureMo): Record original stop gradient for output values to avoid
+        # losing during optimization passes.
+        out_stop_gradients = [v.stop_gradient for v in outputs]
         params = self._param_values
         paddle.base.libpaddle.pir.append_shadow_outputs(
             self._origin_main_program,
@@ -822,7 +825,9 @@ class PartialProgramLayer:
             "output_",
         )
         return RunnableProgram(
-            self._origin_main_program, (inputs, params, outputs)
+            self._origin_main_program,
+            (inputs, params, outputs),
+            out_stop_gradients,
         )
 
     def add_hooker(self, hooker):
@@ -1174,6 +1179,7 @@ class PartialProgramLayer:
         whole_program = RunnableProgram(
             program,
             (inputs, params, targets),
+            train_runnable_program.out_stop_gradients,
             (x_grad_value, p_grad_value, o_grad_value),
             (0, forward_end_idx),
             (backward_start_op_index, backward_end_op_index),
