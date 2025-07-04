@@ -2099,7 +2099,8 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
             mesh, self->tensor, transed_sub_tensor, value_tensor);
       }
       paddle::Tensor mask_tensor;
-      if (MaskedFillDispatching(
+      if (pos_of_new_dim == 0 &&
+          MaskedFillDispatching(
               transed_sub_tensor, transed_index, &mask_tensor, &value_tensor)) {
         transed_sub_tensor =
             masked_fill__ad_func(transed_sub_tensor, mask_tensor, value_tensor);

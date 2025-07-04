@@ -14,7 +14,7 @@
 
 #pragma once
 
-#ifdef PADDLE_WITH_CUDA || defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_CUDA
 
 #include "paddle/fluid/framework/new_executor/instruction/instruction_base.h"
 #include "paddle/fluid/framework/new_executor/interpreter/execution_config.h"
