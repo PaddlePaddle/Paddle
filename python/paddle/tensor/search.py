@@ -781,10 +781,18 @@ def where(
              [3]]),)
     """
     if np.isscalar(x):
-        x = paddle.full([1], x, np.array([x]).dtype.name)
+        # TODO: Use `x = paddle.full([1], x)` after support int scalar dtype infer for `full`.
+        if isinstance(x, int):
+            x = paddle.full([1], x, dtype='int64')
+        else:
+            x = paddle.full([1], x)
 
     if np.isscalar(y):
-        y = paddle.full([1], y, np.array([y]).dtype.name)
+        # TODO: Use `y = paddle.full([1], y)` after support int scalar dtype infer for `full`.
+        if isinstance(y, int):
+            y = paddle.full([1], y, dtype='int64')
+        else:
+            y = paddle.full([1], y)
 
     if x is None and y is None:
         return nonzero(condition, as_tuple=True)
