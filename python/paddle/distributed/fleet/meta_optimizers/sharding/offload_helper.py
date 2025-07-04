@@ -404,7 +404,7 @@ class OffloadHelper:
 
         def remove_param(input_name):
             global_params.remove(input_name)
-            if input_name in local_params:
+            if input_name in local_params:  # noqa: FURB132
                 local_params.remove(input_name)
             if input_name in param_to_fp16:
                 fp16_param = param_to_fp16.pop(input_name)

@@ -17,6 +17,7 @@ import unittest
 
 import numpy as np
 from op import Operator
+from op_test import get_places
 
 import paddle
 from paddle import base
@@ -225,15 +226,7 @@ class TestRmspropOp(TestBase):
             )
 
     def test_rmsprop(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(core.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(core.CUDAPlace(0))
+        places = get_places()
 
         size = (128, 320)
         for place in places:

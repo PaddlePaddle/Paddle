@@ -112,7 +112,7 @@ __global__ void KeLinearInterpBw(T* in,
   }
 }
 
-template <typename T>
+template <typename T, typename IndexType>
 __global__ void KeNearestNeighborInterpNCHWBw(T* in,
                                               const size_t in_img_h,
                                               const size_t in_img_w,
@@ -123,24 +123,25 @@ __global__ void KeNearestNeighborInterpNCHWBw(T* in,
                                               const float ratio_h,
                                               const float ratio_w,
                                               const bool align_corners) {
-  int out_img_idx = threadIdx.x + blockIdx.x * blockDim.x;
-  int out_img_idy = threadIdx.y + blockIdx.y * blockDim.y;
-  int nc_id = threadIdx.z + blockIdx.z * blockDim.z;
-  int nc_stride = blockDim.z * gridDim.z;
+  IndexType out_img_idx = threadIdx.x + blockIdx.x * blockDim.x;
+  IndexType out_img_idy = threadIdx.y + blockIdx.y * blockDim.y;
+  IndexType nc_id = threadIdx.z + blockIdx.z * blockDim.z;
+  IndexType nc_stride = blockDim.z * gridDim.z;
 
   // nearest_sampling by multiple read in_addr and write to out_addr
-  int in_img_idx = (align_corners)
-                       ? static_cast<int>(ratio_w * out_img_idx + 0.5)
-                       : static_cast<int>(ratio_w * out_img_idx);
-  int in_img_idy = (align_corners)
-                       ? static_cast<int>(ratio_h * out_img_idy + 0.5)
-                       : static_cast<int>(ratio_h * out_img_idy);
+  IndexType in_img_idx =
+      (align_corners) ? static_cast<IndexType>(ratio_w * out_img_idx + 0.5)
+                      : static_cast<IndexType>(ratio_w * out_img_idx);
+  IndexType in_img_idy =
+      (align_corners) ? static_cast<IndexType>(ratio_h * out_img_idy + 0.5)
+                      : static_cast<IndexType>(ratio_h * out_img_idy);
 
-  int in_index = (nc_id * in_img_h + in_img_idy) * in_img_w + in_img_idx;
-  int in_index_stride = nc_stride * in_img_h * in_img_w;
+  IndexType in_index = (nc_id * in_img_h + in_img_idy) * in_img_w + in_img_idx;
+  IndexType in_index_stride = nc_stride * in_img_h * in_img_w;
 
-  int out_index = (nc_id * out_img_h + out_img_idy) * out_img_w + out_img_idx;
-  int out_index_stride = nc_stride * out_img_h * out_img_w;
+  IndexType out_index =
+      (nc_id * out_img_h + out_img_idy) * out_img_w + out_img_idx;
+  IndexType out_index_stride = nc_stride * out_img_h * out_img_w;
 
   // prevent from multiple threads writing
   if (out_img_idx < out_img_w && out_img_idy < out_img_h) {
@@ -1069,21 +1070,40 @@ static void Interpolate2DCUDABwd(
     if (data_layout == DataLayout::kNCHW) {
       // get launch 3D config
       int nc = n * c;
+      int64_t total_size = static_cast<int64_t>(n) * c * in_h * in_w;
       backends::gpu::GpuLaunchConfig config_3d =
           backends::gpu::GetGpuLaunchConfig3D(dev_ctx, nc, out_h, out_w);
-      KeNearestNeighborInterpNCHWBw<T><<<config_3d.block_per_grid,
-                                         config_3d.thread_per_block,
-                                         0,
-                                         dev_ctx.stream()>>>(input_grad_data,
-                                                             in_h,
-                                                             in_w,
-                                                             output_grad_data,
-                                                             out_h,
-                                                             out_w,
-                                                             nc,
-                                                             ratio_h,
-                                                             ratio_w,
-                                                             align_corners);
+      if (static_cast<uint64_t>(total_size) > std::numeric_limits<int>::max()) {
+        KeNearestNeighborInterpNCHWBw<T, int64_t>
+            <<<config_3d.block_per_grid,
+               config_3d.thread_per_block,
+               0,
+               dev_ctx.stream()>>>(input_grad_data,
+                                   in_h,
+                                   in_w,
+                                   output_grad_data,
+                                   out_h,
+                                   out_w,
+                                   nc,
+                                   ratio_h,
+                                   ratio_w,
+                                   align_corners);
+      } else {
+        KeNearestNeighborInterpNCHWBw<T, int>
+            <<<config_3d.block_per_grid,
+               config_3d.thread_per_block,
+               0,
+               dev_ctx.stream()>>>(input_grad_data,
+                                   in_h,
+                                   in_w,
+                                   output_grad_data,
+                                   out_h,
+                                   out_w,
+                                   nc,
+                                   ratio_h,
+                                   ratio_w,
+                                   align_corners);
+      }
     } else {
       int64_t cw = c * out_w;
       auto interp_divmods = funcs::FastDivModForInterpolate(c, out_chw, cw);

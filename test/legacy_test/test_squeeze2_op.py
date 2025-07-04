@@ -230,5 +230,26 @@ class TestSqueezeInplaceAPI(TestSqueezeAPI):
         self.squeeze = paddle.squeeze_
 
 
+class TestSqueezeAPI_ZeroSize(unittest.TestCase):
+    def setUp(self):
+        self.executed_api()
+
+    def executed_api(self):
+        self.squeeze = paddle.squeeze
+
+    def test_api(self):
+        paddle.disable_static()
+        input_data = np.random.random([3, 2, 1]).astype("float32")
+        x = paddle.to_tensor(input_data)
+        x.stop_gradient = False
+        # axis set to 0-size
+        out = self.squeeze(x, axis=paddle.to_tensor([], dtype=paddle.int32))
+        np.testing.assert_allclose(out.numpy(), x.numpy())
+
+        out.backward()
+        np.testing.assert_allclose(x.grad.shape, x.shape)
+        paddle.enable_static()
+
+
 if __name__ == "__main__":
     unittest.main()

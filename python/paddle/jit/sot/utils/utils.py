@@ -57,7 +57,7 @@ T = TypeVar("T")
 T1 = TypeVar("T1")
 T2 = TypeVar("T2")
 T3 = TypeVar("T3")
-ConstTypes = (int, float, str, bool, type(None))
+ConstTypes = (int, float, str, bool, type(None), bytes)
 
 
 class Singleton(type):
@@ -440,7 +440,10 @@ class StepInfoManager(metaclass=Singleton):
 
     @property
     def need_back_trace(self):
-        return self.current_step_info.need_back_trace()
+        return (
+            self.current_step_info is not None
+            and self.current_step_info.need_back_trace()
+        )
 
     @property
     def current_step(self):
@@ -476,11 +479,13 @@ def get_numpy_ufuncs():
 
 
 def do_until_stop_iteration(fn: Callable[[], T]) -> list[T]:
+    from paddle.jit.sot.utils.exceptions import SotCapturedStopIteration
+
     res = []
     while True:
         try:
             res.append(fn())
-        except StopIteration:
+        except SotCapturedStopIteration:
             break
     return res
 

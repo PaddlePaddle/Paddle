@@ -61,7 +61,7 @@ static double fft_normalization_scale(FFTNormMode normalization,
 }
 
 template <typename T>
-void exec_normalization(const phi::GPUContext& ctx,
+void exec_normalization(const phi::GPUContext& dev_ctx,
                         const DenseTensor& in,
                         DenseTensor* out,
                         FFTNormMode normalization,
@@ -69,9 +69,9 @@ void exec_normalization(const phi::GPUContext& ctx,
                         const std::vector<int64_t>& axes) {
   const double scale = fft_normalization_scale(normalization, sizes, axes);
   if (scale != 1.0) {
-    ScaleKernel<T, phi::GPUContext>(ctx, in, scale, 0, true, out);
+    ScaleKernel<T, phi::GPUContext>(dev_ctx, in, scale, 0, true, out);
   } else {
-    AssignKernel<phi::GPUContext>(ctx, in, out);
+    AssignKernel<phi::GPUContext>(dev_ctx, in, out);
   }
 }
 
@@ -108,7 +108,7 @@ inline bool use_cache(const int64_t* signal_size) { return true; }
 
 // up to 3d unnormalized fft transform (c2r, r2c, c2c)
 template <typename Ti, typename To>
-void exec_fft(const phi::GPUContext& ctx,
+void exec_fft(const phi::GPUContext& dev_ctx,
               const DenseTensor& x,
               DenseTensor* out,
               const std::vector<int64_t>& axes,
@@ -134,7 +134,7 @@ void exec_fft(const phi::GPUContext& ctx,
 
   // transpose input according to the permutation
   DenseTensor transposed_input =
-      Transpose<Ti, phi::GPUContext>(ctx, x, dim_permute);
+      Transpose<Ti, phi::GPUContext>(dev_ctx, x, dim_permute);
   const phi::DDim transposed_input_shape = transposed_input.dims();
 
   // batch size
@@ -165,11 +165,11 @@ void exec_fft(const phi::GPUContext& ctx,
   phi::DDim collapsed_output_shape = common::make_ddim(collapsed_output_shape_);
   DenseTensor collapsed_output;
   collapsed_output.Resize(collapsed_output_shape);
-  ctx.Alloc<To>(&collapsed_output);
+  dev_ctx.Alloc<To>(&collapsed_output);
 
   FFTConfigKey key =
       create_fft_configkey(collapsed_input, collapsed_output, signal_ndim);
-  int64_t device_id = ctx.GetPlace().GetDeviceId();
+  int64_t device_id = dev_ctx.GetPlace().GetDeviceId();
   FFTConfig* config = nullptr;
   std::unique_ptr<FFTConfig> config_ = nullptr;
   bool using_cache = use_cache(key.sizes_);
@@ -185,17 +185,17 @@ void exec_fft(const phi::GPUContext& ctx,
   }
 
   const int64_t workspace_size = static_cast<int64_t>(config->workspace_size());
-  DenseTensor workspace_tensor = Empty<uint8_t>(ctx, {workspace_size});
+  DenseTensor workspace_tensor = Empty<uint8_t>(dev_ctx, {workspace_size});
 
   // prepare cufft for execution
 #if defined(PADDLE_WITH_CUDA)
   PADDLE_ENFORCE_GPU_SUCCESS(
-      phi::dynload::cufftSetStream(config->plan(), ctx.stream()));
+      phi::dynload::cufftSetStream(config->plan(), dev_ctx.stream()));
   PADDLE_ENFORCE_GPU_SUCCESS(
       phi::dynload::cufftSetWorkArea(config->plan(), workspace_tensor.data()));
 #elif defined(PADDLE_WITH_HIP)
   PADDLE_ENFORCE_GPU_SUCCESS(
-      phi::dynload::hipfftSetStream(config->plan(), ctx.stream()));
+      phi::dynload::hipfftSetStream(config->plan(), dev_ctx.stream()));
   PADDLE_ENFORCE_GPU_SUCCESS(
       phi::dynload::hipfftSetWorkArea(config->plan(), workspace_tensor.data()));
 #endif
@@ -203,11 +203,12 @@ void exec_fft(const phi::GPUContext& ctx,
   // execution of fft plan
   const FFTTransformType fft_type = config->transform_type();
   if (fft_type == FFTTransformType::C2R && forward) {
-    ConjKernel<Ti, phi::GPUContext>(ctx, collapsed_input, &collapsed_input);
+    ConjKernel<Ti, phi::GPUContext>(dev_ctx, collapsed_input, &collapsed_input);
     exec_plan(*config, collapsed_input.data(), collapsed_output.data(), false);
   } else if (fft_type == FFTTransformType::R2C && !forward) {
     exec_plan(*config, collapsed_input.data(), collapsed_output.data(), true);
-    ConjKernel<To, phi::GPUContext>(ctx, collapsed_output, &collapsed_output);
+    ConjKernel<To, phi::GPUContext>(
+        dev_ctx, collapsed_output, &collapsed_output);
   } else {
     exec_plan(
         *config, collapsed_input.data(), collapsed_output.data(), forward);
@@ -223,20 +224,20 @@ void exec_fft(const phi::GPUContext& ctx,
     reverse_dim_permute[dim_permute[i]] = i;
   }
   TransposeKernel<To, phi::GPUContext>(
-      ctx, transposed_output, reverse_dim_permute, out);
+      dev_ctx, transposed_output, reverse_dim_permute, out);
 }
 }  // namespace detail
 
 template <typename Ti, typename To>
 struct FFTC2CFunctor<phi::GPUContext, Ti, To> {
-  void operator()(const phi::GPUContext& ctx,
+  void operator()(const phi::GPUContext& dev_ctx,
                   const DenseTensor& x,
                   DenseTensor* out,
                   const std::vector<int64_t>& axes,
                   FFTNormMode normalization,
                   bool forward) {
     if (axes.empty()) {
-      AssignKernel<phi::GPUContext>(ctx, x, out);
+      AssignKernel<phi::GPUContext>(dev_ctx, x, out);
       return;
     }
 
@@ -251,7 +252,8 @@ struct FFTC2CFunctor<phi::GPUContext, Ti, To> {
                           working_axes.size());
       first_dims.assign(working_axes.end() - max_dims, working_axes.end());
 
-      detail::exec_fft<Ti, To>(ctx, working_tensor, out, first_dims, forward);
+      detail::exec_fft<Ti, To>(
+          dev_ctx, working_tensor, out, first_dims, forward);
       working_axes.resize(working_axes.size() - max_dims);
       first_dims.clear();
 
@@ -261,7 +263,7 @@ struct FFTC2CFunctor<phi::GPUContext, Ti, To> {
 
       if (working_tensor.IsSharedWith(x)) {
         working_tensor = std::move(*out);
-        *out = EmptyLike<Ti>(ctx, x);
+        *out = EmptyLike<Ti>(dev_ctx, x);
       } else {
         std::swap(*out, working_tensor);
       }
@@ -269,13 +271,13 @@ struct FFTC2CFunctor<phi::GPUContext, Ti, To> {
 
     std::vector<int64_t> out_dims = common::vectorize(x.dims());
     detail::exec_normalization<To>(
-        ctx, *out, out, normalization, out_dims, axes);
+        dev_ctx, *out, out, normalization, out_dims, axes);
   }
 };
 
 template <typename Ti, typename To>
 struct FFTC2RFunctor<phi::GPUContext, Ti, To> {
-  void operator()(const phi::GPUContext& ctx,
+  void operator()(const phi::GPUContext& dev_ctx,
                   const DenseTensor& x,
                   DenseTensor* out,
                   const std::vector<int64_t>& axes,
@@ -284,40 +286,41 @@ struct FFTC2RFunctor<phi::GPUContext, Ti, To> {
     std::vector<int64_t> out_dims = common::vectorize(out->dims());
 
     if (detail::use_optimized_fft_path(axes)) {
-      DenseTensor x_copy = Assign(ctx, x);
-      detail::exec_fft<Ti, To>(ctx, x_copy, out, axes, forward);
+      DenseTensor x_copy = Assign(dev_ctx, x);
+      detail::exec_fft<Ti, To>(dev_ctx, x_copy, out, axes, forward);
     } else {
-      DenseTensor c2c_result = EmptyLike<Ti, phi::GPUContext>(ctx, x);
+      DenseTensor c2c_result = EmptyLike<Ti, phi::GPUContext>(dev_ctx, x);
       FFTC2CFunctor<phi::GPUContext, Ti, Ti> c2c_functor;
-      c2c_functor(ctx,
+      c2c_functor(dev_ctx,
                   x,
                   &c2c_result,
                   {axes.begin(), axes.end() - 1},
                   FFTNormMode::none,
                   forward);
-      detail::exec_fft<Ti, To>(ctx, c2c_result, out, {axes.back()}, forward);
+      detail::exec_fft<Ti, To>(
+          dev_ctx, c2c_result, out, {axes.back()}, forward);
     }
     detail::exec_normalization<To>(
-        ctx, *out, out, normalization, out_dims, axes);
+        dev_ctx, *out, out, normalization, out_dims, axes);
   }
 };
 
 template <typename Ti, typename To>
 struct FFTR2CFunctor<phi::GPUContext, Ti, To> {
-  void operator()(const phi::GPUContext& ctx,
+  void operator()(const phi::GPUContext& dev_ctx,
                   const DenseTensor& x,
                   DenseTensor* out,
                   const std::vector<int64_t>& axes,
                   FFTNormMode normalization,
                   bool forward) {
     if (detail::use_optimized_fft_path(axes)) {
-      detail::exec_fft<Ti, To>(ctx, x, out, axes, forward);
+      detail::exec_fft<Ti, To>(dev_ctx, x, out, axes, forward);
     } else {
-      DenseTensor r2c_result = EmptyLike<To, phi::GPUContext>(ctx, *out);
-      detail::exec_fft<Ti, To>(ctx, x, &r2c_result, {axes.back()}, forward);
+      DenseTensor r2c_result = EmptyLike<To, phi::GPUContext>(dev_ctx, *out);
+      detail::exec_fft<Ti, To>(dev_ctx, x, &r2c_result, {axes.back()}, forward);
 
       FFTC2CFunctor<phi::GPUContext, To, To> fft_c2c_func;
-      fft_c2c_func(ctx,
+      fft_c2c_func(dev_ctx,
                    r2c_result,
                    out,
                    {axes.begin(), axes.end() - 1},
@@ -327,7 +330,7 @@ struct FFTR2CFunctor<phi::GPUContext, Ti, To> {
 
     const auto in_dims = common::vectorize(x.dims());
     detail::exec_normalization<To>(
-        ctx, *out, out, normalization, in_dims, axes);
+        dev_ctx, *out, out, normalization, in_dims, axes);
   }
 };
 

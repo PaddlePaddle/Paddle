@@ -1600,8 +1600,7 @@ static PyObject* tensor__getitem_dygraph(TensorObject* self,
                                                         &pos_of_new_dim,
                                                         &rank_of_new_dim,
                                                         &trans_dim,
-                                                        &out_is_view,
-                                                        false);
+                                                        &out_is_view);
 
   bool has_bool_index = false;
   for (auto& index : transed_index) {
@@ -1644,7 +1643,7 @@ static PyObject* tensor__getitem_dygraph(TensorObject* self,
 #ifdef PADDLE_WITH_CUDA
     bool has_empty_index = false;
     for (const auto& tensor : transed_index) {
-      if (tensor.numel() == 0) {
+      if (!tensor.initialized()) {
         has_empty_index = true;
         break;
       }
@@ -2049,8 +2048,6 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
     std::vector<int> trans_back_dim, trans_dim;
 
     int pos_of_new_dim = INT_MAX, rank_of_new_dim = 1;
-    // Check if the value is a single value. Remove this later.
-    bool single_value = value_tensor.numel() == 1;
 
     paddle::Tensor transed_sub_tensor =
         dealWithAdvancedIndex(sub_tensor,
@@ -2062,8 +2059,7 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
                               &pos_of_new_dim,
                               &rank_of_new_dim,
                               &trans_dim,
-                              &out_is_view,
-                              single_value);
+                              &out_is_view);
 
     // Release gil and do tracing
     py::gil_scoped_release release;
@@ -2087,7 +2083,13 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
       }
 
       if (value_tensor.dims().size() > 1 && pos_of_new_dim != 0) {
+#ifdef PADDLE_WITH_CUDA
+        if (!value_tensor.is_gpu()) {
+          value_tensor = transpose_ad_func(value_tensor, trans_dim);
+        }
+#else
         value_tensor = transpose_ad_func(value_tensor, trans_dim);
+#endif
       }
 
       const phi::distributed::ProcessMesh* mesh = nullptr;
@@ -2097,21 +2099,16 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
             mesh, self->tensor, transed_sub_tensor, value_tensor);
       }
       paddle::Tensor mask_tensor;
-      if (MaskedFillDispatching(
+      if (!out_is_view &&
+          MaskedFillDispatching(
               transed_sub_tensor, transed_index, &mask_tensor, &value_tensor)) {
         transed_sub_tensor =
             masked_fill__ad_func(transed_sub_tensor, mask_tensor, value_tensor);
       } else {
-        // Check if the index has bool element. Remove later.
-        bool int_tensor_only = true;
-        for (auto& index : transed_index) {
-          if (index.dtype() == phi::DataType::BOOL) {
-            int_tensor_only = false;
-          }
-        }
 #ifdef PADDLE_WITH_CUDA
         // TODO(czy): remove in the future
-        if (transed_sub_tensor.is_gpu() && single_value && int_tensor_only) {
+        if (transed_sub_tensor.is_gpu()) {
+          transed_index = expandTensors(transed_index);
           transed_index = expand_outplace(transed_index);
           for (int i = 0; i < pos_of_new_dim; ++i) {
             transed_index.insert(
@@ -2468,6 +2465,36 @@ static PyObject* tensor__clear_dataptr(TensorObject* self,
   EAGER_TRY
   self->tensor.set_impl(nullptr);
   RETURN_PY_NONE
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+static PyObject* tensor__clear_to_zero_allocation(TensorObject* self,
+                                                  PyObject* args,
+                                                  PyObject* kwargs) {
+  EAGER_TRY
+  auto* dense_tensor =
+      dynamic_cast<phi::DenseTensor*>(self->tensor.impl().get());
+  if (dense_tensor != nullptr && dense_tensor->Holder() != nullptr) {
+    phi::DenseTensor tmp(std::make_shared<phi::Allocation>(
+                             nullptr, 0, dense_tensor->Holder()->place()),
+                         dense_tensor->meta());
+    dense_tensor->ShareBufferWith(std::move(tmp), /*only_buffer=*/true);
+  }
+  RETURN_PY_NONE
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+static PyObject* tensor__holder_size(TensorObject* self,
+                                     PyObject* args,
+                                     PyObject* kwargs) {
+  EAGER_TRY
+  auto* dense_tensor =
+      dynamic_cast<phi::DenseTensor*>(self->tensor.impl().get());
+  size_t size = 0;
+  if (dense_tensor != nullptr && dense_tensor->Holder() != nullptr) {
+    size = dense_tensor->Holder()->size();
+  }
+  return PyLong_FromSize_t(size);
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
@@ -3954,6 +3981,14 @@ PyMethodDef variable_methods[] = {  // NOLINT
      nullptr},
     {"_clear_dataptr",
      (PyCFunction)(void (*)())tensor__clear_dataptr,
+     METH_VARARGS | METH_KEYWORDS,
+     nullptr},
+    {"_clear_to_zero_allocation",
+     (PyCFunction)(void (*)())tensor__clear_to_zero_allocation,
+     METH_VARARGS | METH_KEYWORDS,
+     nullptr},
+    {"_holder_size",
+     (PyCFunction)(void (*)())tensor__holder_size,
      METH_VARARGS | METH_KEYWORDS,
      nullptr},
     {"_copy_gradient_from",

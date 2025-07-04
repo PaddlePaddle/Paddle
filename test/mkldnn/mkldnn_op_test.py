@@ -168,7 +168,7 @@ def check_if_mkldnn_batchnorm_primitives_exist_in_bwd(
                 for id, name in enumerate(test_case.fetch_list):
                     __assert_close(test_case, var_dict[name], out[id], name)
 
-        print("MKLDNN op test forward passed: ", str(place), data_layout)
+        print("ONEDNN op test forward passed: ", str(place), data_layout)
 
 
 def format_reorder(out, size):

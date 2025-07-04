@@ -30,7 +30,8 @@ from paddle.framework import core
 from paddle.jit.dy2static.utils import (
     dataclass_as_dict,
     dataclass_from_dict,
-    is_dataclass_instance,
+    is_plain_dataclass_type,
+    parameters_persistent_mode_is_enabled,
 )
 from paddle.jit.sot.opcode_translator.executor.pycode_generator import PyCodeGen
 from paddle.pir.core import _PADDLE_PIR_DTYPE_2_NUMPY_DTYPE
@@ -1481,9 +1482,12 @@ class ParameterVariable(TensorVariable):
 
     @VariableFactory.register_from_value(successor="TensorVariable")
     def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
-        if isinstance(value, (paddle.base.framework.EagerParamBase)):
-            value = MetaInfoOrNull.from_tensor(value)
-            return ParameterVariable(value, graph, tracker)
+        if isinstance(value, paddle.base.framework.EagerParamBase):
+            meta = MetaInfoOrNull.from_tensor(value)
+            param_var = ParameterVariable(meta, graph, tracker)
+            if parameters_persistent_mode_is_enabled():
+                graph.parameters_holder.set(param_var.get_symbol().name, value)
+            return param_var
         return None
 
 
@@ -2462,7 +2466,26 @@ class DataClassInstanceVariable(VariableBase):
     def getattr(self, name: str, default=None):
         if name == "__class__":
             return self.class_var
-        return self.proxy.get(name)
+        if name == "__post_init__":
+            cls_var = self.getattr("__class__")
+            return VariableFactory.from_value(
+                cls_var.value.__post_init__,
+                self.graph,
+                GetAttrTracker(cls_var, "__post_init__"),
+            ).bind(self, "__post_init__")
+        if name == "__dataclass_fields__":
+            return VariableFactory.from_value(
+                {
+                    fd.name: fd
+                    for fd in dataclasses.fields(self.class_var.value)
+                },
+                graph=self.graph,
+                tracker=GetAttrTracker(self, "__dataclass_fields__"),
+            )
+        res = self.proxy.get(name)
+        if self.proxy.is_empty(res):
+            return super().getattr(name, default)
+        return res
 
     def setattr(self, key: str, value):
         self.proxy.set(key, value)
@@ -2566,12 +2589,16 @@ class DataClassInstanceVariable(VariableBase):
 
     @VariableFactory.register_from_value()
     def from_value(value: object, graph: FunctionGraph, tracker: Tracker):
-        if is_dataclass_instance(value):
+        if is_plain_dataclass_type(type(value)):
             class_var = VariableFactory.from_value(
                 type(value), graph, DanglingTracker()
             )
+            try:
+                data_dict = dataclass_as_dict(value)
+            except:
+                data_dict = {}
             var = DataClassInstanceVariable(
-                dataclass_as_dict(value),
+                data_dict,
                 class_var,
                 id(value),
                 graph=graph,
