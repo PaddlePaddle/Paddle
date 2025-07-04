@@ -31,6 +31,13 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
+#ifdef _WIN32
+#include <winbase.h>
+#include <windows.h>
+#include <codecvt>
+#include <locale>
+#endif
+
 #include "paddle/common/ddim.h"
 #include "paddle/fluid/eager/grad_node_info.h"
 #include "paddle/fluid/framework/compiled_program.h"
@@ -773,8 +780,7 @@ enum MMapLoadModes {
 struct MmapStorage {
   MmapStorage(const std::string &filename_, int64_t nbytes)
       : base_ptr_(nullptr), size(nbytes) {
-    // https://github.com/pytorch/pytorch/blob/d58ed04d89c34c6930d0f28be351c53db407078f/aten/src/ATen/MapAllocator.cpp#L234-L370
-    /* open file */
+    // https://github.com/pytorch/pytorch/blob/d58ed04d89c34c6930d0f28be351c53db407078f/aten/src/ATen/MapAllocator.cpp#L65-L370
     int flags_{0};
     if ((flags_ ^ ALLOCATOR_MAPPED_EXCLUSIVE) == 0) {
       PADDLE_THROW(common::errors::InvalidArgument(
@@ -785,7 +791,205 @@ struct MmapStorage {
         !(flags_ & ALLOCATOR_MAPPED_SHAREDMEM)) {
       flags_ &= ~ALLOCATOR_MAPPED_NOCREATE;
     }
+#ifdef _WIN32
+    constexpr const char *unknown_eventname = "eventname not specified";
+    void *handle_ = INVALID_HANDLE_VALUE;
+    void *event_ = INVALID_HANDLE_VALUE;
+    std::string eventname_ = filename_.empty()
+                                 ? unknown_eventname
+                                 : (std::string(filename_) + "_event");
 
+    if (flags_ & ALLOCATOR_MAPPED_SHAREDMEM) {
+      // Shadowing
+      const wchar_t *filename;
+      const wchar_t *eventname;
+      std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+      const std::wstring wFilename = converter.from_bytes(filename_);
+      const std::wstring wEventname = converter.from_bytes(eventname_);
+      LARGE_INTEGER hfilesz;
+
+      if (filename_[0] == '/') {
+        filename = wFilename.c_str() + 1;
+        eventname = wEventname.c_str() + 1;
+      } else {
+        filename = wFilename.c_str();
+        eventname = wEventname.c_str();
+      }
+
+      hfilesz.QuadPart = size;
+
+      if (flags_ & ALLOCATOR_MAPPED_EXCLUSIVE) {
+        event_ = CreateEventW(nullptr, FALSE, FALSE, eventname);
+      } else if (flags_ & ALLOCATOR_MAPPED_NOCREATE) {
+        event_ = OpenEventW(EVENT_ALL_ACCESS, FALSE, eventname);
+      } else {
+        PADDLE_THROW(common::errors::InvalidArgument(
+            "Expected either ALLOCATOR_MAPPED_EXCLUSIVE or "
+            "ALLOCATOR_MAPPED_NOCREATE"));
+      }
+
+      if (event_ == nullptr) {
+        PADDLE_THROW(common::errors::InvalidArgument(
+            "Couldn't open shared event: <%s>.", eventname));
+      }
+
+      if (flags_ & ALLOCATOR_MAPPED_EXCLUSIVE) {
+        handle_ = CreateFileMappingW(INVALID_HANDLE_VALUE,
+                                     nullptr,
+                                     PAGE_READWRITE,
+                                     hfilesz.HighPart,
+                                     hfilesz.LowPart,
+                                     filename);
+      } else if (flags_ & ALLOCATOR_MAPPED_NOCREATE) {
+        handle_ = OpenFileMappingW(FILE_MAP_ALL_ACCESS, FALSE, filename);
+      } else {
+        PADDLE_THROW(common::errors::InvalidArgument(
+            "Expected either ALLOCATOR_MAPPED_EXCLUSIVE or "
+            "ALLOCATOR_MAPPED_NOCREATE"));
+      }
+
+      if (handle_ == nullptr) {
+        PADDLE_THROW(common::errors::InvalidArgument(
+            "Couldn't open shared file mapping: <%s>.", eventname));
+      }
+
+      base_ptr_ = MapViewOfFile(handle_, FILE_MAP_ALL_ACCESS, 0, 0, size);
+      if (!base_ptr_) {
+        PADDLE_THROW(common::errors::InvalidArgument(
+            "Couldn't map view of shared file <%s>.", eventname));
+      }
+
+    } else {
+      HANDLE hfile;
+      HANDLE hmfile;
+      LARGE_INTEGER hfilesz;
+
+      if (flags_ & ALLOCATOR_MAPPED_EXCLUSIVE) {
+        PADDLE_THROW(common::errors::InvalidArgument(
+            "exclusive file mapping is not supported on Windows"));
+      }
+      if (flags_ & ALLOCATOR_MAPPED_NOCREATE) {
+        PADDLE_THROW(common::errors::InvalidArgument(
+            "file mapping without creation is not supported on Windows"));
+      }
+      if (flags_ & ALLOCATOR_MAPPED_KEEPFD) {
+        PADDLE_THROW(common::errors::InvalidArgument(
+            "ALLOCATOR_MAPPED_KEEPFD not supported on Windows"));
+      }
+      if (flags_ & ALLOCATOR_MAPPED_FROMFD) {
+        PADDLE_THROW(common::errors::InvalidArgument(
+            "ALLOCATOR_MAPPED_FROMFD not supported on Windows"));
+      }
+
+      // Shadowing
+      const wchar_t *filename;
+      std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+      const std::wstring wFilename = converter.from_bytes(filename_);
+
+      filename = wFilename.c_str();
+
+      /* open file */
+      /* FILE_FLAG_RANDOM_ACCESS ? */
+      if (flags_) {
+        hfile = CreateFileW(filename,
+                            GENERIC_READ | GENERIC_WRITE,
+                            FILE_SHARE_WRITE | FILE_SHARE_READ,
+                            0,
+                            OPEN_ALWAYS,
+                            FILE_ATTRIBUTE_NORMAL,
+                            0);
+        if (hfile == INVALID_HANDLE_VALUE) {
+          PADDLE_THROW(common::errors::InvalidArgument(
+              "could not open file <%s> in read-write mode;", filename_));
+        }
+      } else {
+        hfile = CreateFileW(filename,
+                            GENERIC_READ,
+                            FILE_SHARE_WRITE | FILE_SHARE_READ,
+                            0,
+                            OPEN_EXISTING,
+                            FILE_ATTRIBUTE_NORMAL,
+                            0);
+        if (hfile == INVALID_HANDLE_VALUE) {
+          PADDLE_THROW(common::errors::InvalidArgument(
+              "could not open file <%s> in read-only mode;", filename_));
+        }
+      }
+
+      if (GetFileSizeEx(hfile, &hfilesz) == 0) {
+        PADDLE_THROW(common::errors::InvalidArgument(
+            "could not get file size: <%s>;", filename_));
+      }
+
+      if (size > 0) {
+        if (size > hfilesz.QuadPart) {
+          if (flags_) {
+            hfilesz.QuadPart = size;
+            if (SetFilePointerEx(hfile, hfilesz, NULL, FILE_BEGIN) == 0) {
+              CloseHandle(hfile);
+              PADDLE_THROW(common::errors::InvalidArgument(
+                  "unable to stretch file : <%s> to the right size;",
+                  filename_));
+            }
+            if (SetEndOfFile(hfile) == 0) {
+              CloseHandle(hfile);
+              PADDLE_THROW(common::errors::InvalidArgument(
+                  "unable to write to file : <%s>", filename_));
+            }
+          } else {
+            CloseHandle(hfile);
+            PADDLE_THROW(common::errors::InvalidArgument(
+                "file: <%s> size <%d> is smaller than the required mapping "
+                "size <%d>",
+                filename_,
+                hfilesz.QuadPart,
+                size));
+          }
+        }
+      } else {
+        size = hfilesz.QuadPart;
+      }
+      /* if we are here, it must be the right size */
+
+      hfilesz.QuadPart = size;
+
+      /* get map handle */
+      if (flags_) {
+        if ((hmfile = CreateFileMappingW(hfile,
+                                         NULL,
+                                         PAGE_READWRITE,
+                                         hfilesz.HighPart,
+                                         hfilesz.LowPart,
+                                         NULL)) == NULL) {
+          CloseHandle(hfile);
+          PADDLE_THROW(common::errors::InvalidArgument(
+              "could not create a map on file <%s>", filename_));
+        }
+      } else {
+        if ((hmfile = CreateFileMappingW(hfile,
+                                         NULL,
+                                         PAGE_WRITECOPY,
+                                         hfilesz.HighPart,
+                                         hfilesz.LowPart,
+                                         NULL)) == NULL) {
+          PADDLE_THROW(common::errors::InvalidArgument(
+              "could not create a map on file <%s>", filename_));
+        }
+      }
+
+      /* map the stuff */
+      if (flags_) {
+        base_ptr_ = MapViewOfFile(hmfile, FILE_MAP_ALL_ACCESS, 0, 0, 0);
+      } else {
+        base_ptr_ = MapViewOfFile(hmfile, FILE_MAP_COPY, 0, 0, 0);
+      }
+
+      CloseHandle(hfile);
+      CloseHandle(hmfile);
+    }
+
+#else
+    // open file
     // OK, now do the allocation
     int fd{-1};
     int flags{0};  // shadow
@@ -866,9 +1070,9 @@ struct MmapStorage {
       size = file_stat.st_size;
     }
     ptrdiff_t size_ = static_cast<ptrdiff_t>(
-        size); /* if we are here, it must be the right size */
+        size);  // if we are here, it must be the right size
 
-    /* map it */
+    // map it
     if (flags_ & (ALLOCATOR_MAPPED_SHARED | ALLOCATOR_MAPPED_SHAREDMEM)) {
       base_ptr_ =
           mmap(nullptr, size_, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
@@ -878,7 +1082,7 @@ struct MmapStorage {
     }
 
     if (base_ptr_ == MAP_FAILED) {
-      base_ptr_ = nullptr; /* let's be sure it is NULL */
+      base_ptr_ = nullptr;  // let's be sure it is NULL
       PADDLE_THROW(common::errors::InvalidArgument(
           "unable to mmap %d bytes from file <%s>", size, filename_));
     }
@@ -913,6 +1117,7 @@ struct MmapStorage {
           "unable to mmap memory: you tried to mmap %d bytes",
           size_ / 1073741824));
     }
+#endif
   }
   void *base_ptr_;
   int64_t size;
@@ -1469,8 +1674,12 @@ PYBIND11_MODULE(libpaddle, m) {
              if (stop < 0) {
                stop = start + 1;  // default: get the start element.
              }
+             Py_ssize_t size_py = static_cast<Py_ssize_t>(self.size);
+             Py_ssize_t start_py = static_cast<Py_ssize_t>(start);
+             Py_ssize_t stop_py = static_cast<Py_ssize_t>(stop);
+             Py_ssize_t step_py = static_cast<Py_ssize_t>(step);
              Py_ssize_t slicelength =
-                 PySlice_AdjustIndices(self.size, &start, &stop, step);
+                 PySlice_AdjustIndices(size_py, &start_py, &stop_py, step_py);
              auto data = static_cast<uint8_t *>(self.base_ptr_) + start;
              auto dtype_phi = phi::TransToPhiDataType(dtype);
              return from_blob(data,

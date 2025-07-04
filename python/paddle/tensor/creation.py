@@ -991,14 +991,18 @@ class MmapStorage(paddle.base.core.MmapStorage):
         .. code-block:: python
 
             >>> import paddle
-            >>> t = paddle.MmapStorage('./model-00006-of-00009.safetensors', 64)
-            >>> t.get_slice(start=0,stop=64,step=1)
-            Tensor(shape=[64], dtype=uint8, place=Place(cpu), stop_gradient=True,
-                   [232, 208, 0  , 0  , 0  , 0  , 0  , 0  , 123, 34 , 95 , 95 , 109, 101,
-                    116, 97 , 100, 97 , 116, 97 , 95 , 95 , 34 , 58 , 123, 34 , 102, 111,
-                    114, 109, 97 , 116, 34 , 58 , 34 , 110, 112, 34 , 125, 44 , 34 , 101,
-                    114, 110, 105, 101, 46 , 108, 97 , 121, 101, 114, 115, 46 , 49 , 54 ,
-                    46 , 109, 108, 112, 46 , 103, 97 , 116])
+            >>> shape = [4,5]
+            >>> dtype = "float32"
+            >>> a = paddle.arange(4*5).reshape(shape).astype(dtype)
+            >>> a.numpy().tofile("test.pp")
+            >>> size = a.size * a.element_size()
+            >>> t = paddle.MmapStorage("test.pp", size)
+            >>> t.get_slice(dtype, 0, a.size).reshape(shape)
+            Tensor(shape=[4, 5], dtype=float32, place=Place(cpu), stop_gradient=True,
+                   [[0. , 1. , 2. , 3. , 4. ],
+                    [5. , 6. , 7. , 8. , 9. ],
+                    [10., 11., 12., 13., 14.],
+                    [15., 16., 17., 18., 19.]])
 
     """
 
