@@ -401,6 +401,28 @@ class TestTakeAlongAxisAPICase4(unittest.TestCase):
             _ = static_f(x, ind, axis=0, broadcast=False)
 
 
+class TestTakeAlongAxisAPICase_ZeroSize(unittest.TestCase):
+    def test_static_shape_take_along_axis(self):
+        with dygraph_guard():
+
+            x = paddle.randn([4, 0])
+            ind = paddle.to_tensor([[]])
+
+            static_f = paddle.jit.to_static(
+                paddle.take_along_axis,
+                input_spec=[
+                    paddle.static.InputSpec(
+                        shape=[-1, -1], dtype="float32", name="arr"
+                    ),
+                    paddle.static.InputSpec(
+                        shape=[-1, 0], dtype="int64", name="indices"
+                    ),
+                ],
+                full_graph=True,
+            )
+            _ = static_f(x, ind, axis=-1, broadcast=False)
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()

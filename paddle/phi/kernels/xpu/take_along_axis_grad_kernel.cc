@@ -29,6 +29,10 @@ void TakeAlongAxisGradKernel(const Context& dev_ctx,
   using XPUType = typename XPUTypeTrait<T>::Type;
   dev_ctx.template Alloc<T>(x_grad);
 
+  if (x_grad->numel() == 0) {
+    return;
+  }
+
   const auto& index_dtype = index.dtype();
   bool index_dtype_match =
       index_dtype == DataType::INT32 || index_dtype == DataType::INT64;
