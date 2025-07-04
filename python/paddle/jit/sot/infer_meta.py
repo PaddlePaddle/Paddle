@@ -152,7 +152,6 @@ class MetaInfoOrNull:
             tensor, paddle.Tensor
         ), "Expect a Tensor, but got a Value."
 
-        dtype = tensor.dtype
         assert (
             -1 not in tensor.shape
         ), "Tensor shape should not contain -1, maybe you pass a Value to from_tensor"
@@ -171,7 +170,7 @@ class MetaInfoOrNull:
             dist_info = None
         return MetaInfo(
             shape,
-            dtype,
+            tensor.dtype,
             tensor.stop_gradient,
             tensor.name,
             tensor.persistable,
@@ -208,7 +207,6 @@ class MetaInfoOrNull:
         if is_fake_value(value):
             return MetaInfoOrNull.null()
         name = SOT_INFER_META_INNER_VAR
-        dtype = value.dtype
         shape = [SymbolicInt() if dim == -1 else dim for dim in value.shape]
         for dim in shape:
             if isinstance(dim, int):
@@ -223,7 +221,7 @@ class MetaInfoOrNull:
             dist_info = None
         return MetaInfo(
             shape,
-            dtype,
+            value.dtype,
             value.stop_gradient,
             name,
             value.persistable,
