@@ -16,6 +16,12 @@ if(WITH_CINN)
   endif()
 
   message(STATUS "PYTHON_EXECUTABLE: ${PYTHON_EXECUTABLE}")
+
+  add_custom_target(
+    apy_cutlass_build ALL
+    COMMAND bash compile.sh
+    WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}/python/paddle/apy/matmul_pass/
+    COMMENT "Abstract pass's third_party cutlass construction script")
 endif()
 
 file(GLOB UTILS_PY_FILES . ./paddle/legacy/utils/*.py)

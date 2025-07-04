@@ -1290,41 +1290,6 @@ def get_paddle_extra_install_requirements():
     return paddle_cuda_requires, paddle_tensorrt_requires
 
 
-def build_cutlass3_src_code():
-    target_path = f"{paddle_binary_dir}/python/paddle/apy/matmul_pass/matmul/cutlass-3.7.0"
-    if not os.path.exists(target_path):
-        os.mkdir(target_path)
-    try:
-        cmd = ['git', 'rev-parse', 'HEAD']
-        git_commit = (
-            subprocess.Popen(
-                cmd,
-                stdout=subprocess.PIPE,
-                cwd=f"{paddle_source_dir}/third_party/cutlass",
-            )
-            .communicate()[0]
-            .strip()
-        )
-    except:
-        git_commit = 'Unknown'
-        raise Exception("obtain commit id of third_party cutlass failed")
-    commit_id = str(git_commit.decode())
-    command = (
-        'cd '
-        + f'{paddle_source_dir}/third_party/cutlass && '
-        + 'git checkout v3.7.0 && '
-        + 'cp '
-        + f'{paddle_source_dir}/third_party/cutlass/tools -r '
-        + f'{target_path} && '
-        + 'cp '
-        + f'{paddle_source_dir}/third_party/cutlass/include -r '
-        + f'{target_path} && '
-        + f'git checkout {commit_id}'
-    )
-    if os.system(command) != 0:
-        raise Exception(f"copy cutlass-3.7.0 failed, command: {command}")
-
-
 def get_cinn_config_jsons():
     from pathlib import Path
 
@@ -1426,9 +1391,6 @@ def get_package_data_and_package_dir():
     json_path_list = get_cinn_config_jsons()
     for json in json_path_list:
         package_data['paddle.cinn_config'] += [json]
-
-    # if env_dict.get("WITH_CINN") == 'ON':
-    #     build_cutlass3_src_code()
 
     package_data['paddle.apy'] = []
     file_path_list = get_apy_files()
