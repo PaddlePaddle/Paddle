@@ -278,6 +278,12 @@ def _select_sdp(head_dim: int) -> str:
     if "xpu" in place:
         return "flash_attn"
 
+    if "iluvatar_gpu" in place:
+        return "flash_attn"
+
+    if "metax_gpu" in place:
+        return "flash_attn"
+
     # not use sdp_kernel
     if g_enable_flash is None:
         if "gpu" not in place:
@@ -312,6 +318,12 @@ def _select_sdp_for_sdpa(query, key, attn_mask, dropout, is_causal) -> str:
     """
     place = paddle.get_device()
     if "xpu" in place:
+        return "flash_attn"
+
+    if "iluvatar_gpu" in place:
+        return "flash_attn"
+
+    if "metax_gpu" in place:
         return "flash_attn"
 
     # not use sdp_kernel
@@ -2234,7 +2246,7 @@ def flashmask_attention(
         assert startend_row_indices.shape[1] in [
             1,
             key.shape[2],
-        ], "startend_row_indices head_num must be equal to 1(broadcast) or hean_num_k."
+        ], "startend_row_indices head_num must be equal to 1(broadcast) or head_num_k."
 
         if causal:
             if startend_row_indices.shape[-1] == 1:

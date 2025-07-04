@@ -590,7 +590,31 @@ void LaunchContiguous2StridedDefaultKernel(
   auto& block = config.thread_per_block;
 
   if (diff_dims) {
-    if (VecSize == 4) {
+    if (VecSize == 8) {
+      switch (rank) {
+#define CASE_RANK(__Rk)                                           \
+  case __Rk:                                                      \
+    Contiguous2StridedDefaultDiffDimFunc<T, 8, __Rk>              \
+        <<<grid, block, 0, dev_ctx.stream()>>>(                   \
+            input_data, output_data, output_stride, dims, numel); \
+    break
+        CASE_RANK(1);
+        CASE_RANK(2);
+        CASE_RANK(3);
+        CASE_RANK(4);
+        CASE_RANK(5);
+        CASE_RANK(6);
+        CASE_RANK(7);
+        CASE_RANK(8);
+        CASE_RANK(9);
+#undef CASE_RANK
+
+        default:
+          PADDLE_THROW(common::errors::InvalidArgument(
+              "The rank of input should be less than 9, but received %d.",
+              rank));
+      }
+    } else if (VecSize == 4) {
       switch (rank) {
 #define CASE_RANK(__Rk)                                           \
   case __Rk:                                                      \
@@ -665,7 +689,32 @@ void LaunchContiguous2StridedDefaultKernel(
       }
     }
   } else {
-    if (VecSize == 4) {
+    if (VecSize == 8) {
+      switch (rank) {
+#define CASE_RANK(__Rk)                                           \
+  case __Rk:                                                      \
+    Contiguous2StridedDefaultFunc<T, 8, __Rk>                     \
+        <<<grid, block, 0, dev_ctx.stream()>>>(                   \
+            input_data, output_data, output_stride, dims, numel); \
+    break
+
+        CASE_RANK(1);
+        CASE_RANK(2);
+        CASE_RANK(3);
+        CASE_RANK(4);
+        CASE_RANK(5);
+        CASE_RANK(6);
+        CASE_RANK(7);
+        CASE_RANK(8);
+        CASE_RANK(9);
+#undef CASE_RANK
+        default:
+          PADDLE_THROW(common::errors::InvalidArgument(
+              "The rank of input should be less than 9, but received %d.",
+              rank));
+      }
+
+    } else if (VecSize == 4) {
       switch (rank) {
 #define CASE_RANK(__Rk)                                           \
   case __Rk:                                                      \
@@ -781,6 +830,7 @@ void StrideCopyDiffDimKernel(
       CASE_VECSIZE(1);
       CASE_VECSIZE(2);
       CASE_VECSIZE(4);
+      CASE_VECSIZE(8);
 #undef CASE_VECSIZE
       default:
         PADDLE_THROW(common::errors::InvalidArgument(

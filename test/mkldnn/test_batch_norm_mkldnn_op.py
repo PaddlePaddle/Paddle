@@ -32,7 +32,7 @@ from paddle.base import core
 _set_use_system_allocator(True)
 
 
-class TestMKLDNNBatchNormOpTraining(TestBatchNormOpTraining):
+class TestONEDNNBatchNormOpTraining(TestBatchNormOpTraining):
     def init_kernel_type(self):
         self.use_mkldnn = True
         self.data_formats = ["NCHW"]
@@ -81,15 +81,15 @@ class TestMKLDNNBatchNormOpTraining(TestBatchNormOpTraining):
             super().test_forward_backward()
 
 
-class TestMKLDNNBatchNormOpTraining_NHWC(TestMKLDNNBatchNormOpTraining):
+class TestONEDNNBatchNormOpTraining_NHWC(TestONEDNNBatchNormOpTraining):
     def init_kernel_type(self):
         self.use_mkldnn = True
         self.data_formats = ["NHWC"]
 
 
-class TestMKLDNNBatchNormOpExistedPrimitives(TestMKLDNNBatchNormOpTraining):
+class TestONEDNNBatchNormOpExistedPrimitives(TestONEDNNBatchNormOpTraining):
     def init_test_case(self):
-        TestMKLDNNBatchNormOpTraining.init_test_case(self)
+        TestONEDNNBatchNormOpTraining.init_test_case(self)
         self.fetch_list = ['y', 'x@GRAD']
 
     def test_forward_backward(self):
@@ -136,7 +136,7 @@ class TestMKLDNNBatchNormOpExistedPrimitives(TestMKLDNNBatchNormOpTraining):
         )
 
 
-class TestMKLDNNBatchNormOpInference(TestBatchNormOpInference):
+class TestONEDNNBatchNormOpInference(TestBatchNormOpInference):
     def init_kernel_type(self):
         self.use_mkldnn = True
 
@@ -154,7 +154,7 @@ class TestMKLDNNBatchNormOpInference(TestBatchNormOpInference):
             )
 
 
-class TestMKLDNNBatchNormOpInference_NHWC(TestMKLDNNBatchNormOpInference):
+class TestONEDNNBatchNormOpInference_NHWC(TestONEDNNBatchNormOpInference):
     def test_check_output(self):
         place = core.CPUPlace()
         data_format = "NHWC"
@@ -164,7 +164,7 @@ class TestMKLDNNBatchNormOpInference_NHWC(TestMKLDNNBatchNormOpInference):
         )
 
 
-class TestMKLDNNBatchNormOpWithReluInference(TestBatchNormOpInference):
+class TestONEDNNBatchNormOpWithReluInference(TestBatchNormOpInference):
     def init_kernel_type(self):
         self.use_mkldnn = True
         self.fuse_with_relu = True

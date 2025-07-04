@@ -24,6 +24,7 @@ env:
   ci_scripts: /paddle/ci
   BRANCH: ${{ github.event.pull_request.base.ref }}
   CI_name: build
+  CFS_DIR: /home/data/cfs
   no_proxy: "bcebos.com,apiin.im.baidu.com,gitee.com,aliyun.com,.baidu.com,.tuna.tsinghua.edu.cn"
 
 defaults:
@@ -114,6 +115,7 @@ jobs:
             -e CCACHE_DIR \
             -e CCACHE_SLOPPINESS \
             -e CCACHE_STATSLOG \
+            -e CFS_DIR \
             -e no_proxy \
             -e CI_name \
             -w /paddle --network host ${docker_image}
@@ -195,8 +197,9 @@ jobs:
           tar --use-compress-program="pzstd -1" -cf build.tar.gz paddle
           echo "Uploading build.tar.gz to bos"
           python ${{ env.bos_file }} build.tar.gz paddle-github-action/PR/build/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
-          mkdir -p /home/data/cfs/build/${PR_ID}/${COMMIT_ID}
-          mv build.tar.gz /home/data/cfs/build/${PR_ID}/${COMMIT_ID}
+          echo "Uploading build.tar.gz to cfs"
+          mkdir -p ${CFS_DIR}/build_bos/${PR_ID}/${COMMIT_ID}
+          mv build.tar.gz ${CFS_DIR}/build_bos/${PR_ID}/${COMMIT_ID} && echo success
           mv /paddle/build/pr_whl/${{ env.paddle_whl }} .
           echo "Uploading paddle_whl to bos"
           python ${{ env.bos_file }} ${{ env.paddle_whl }} paddle-github-action/PR/build/${{ env.PR_ID }}/${{ env.COMMIT_ID }}

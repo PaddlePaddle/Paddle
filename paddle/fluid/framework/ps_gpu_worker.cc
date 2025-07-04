@@ -234,7 +234,7 @@ int PSGPUWorker::OpRunAndShapeCheck(OperatorBase& op,
       after_lods.push_back(infer_shape_ctx.GetOutputsLod(var_name_item.first));
     }
 
-    std::string op_name = "unknow_op";
+    std::string op_name = "unknown_op";
     if (op.Info().HasOpProtoAndChecker()) {
       op_name = op.Info().Proto().type();
     }

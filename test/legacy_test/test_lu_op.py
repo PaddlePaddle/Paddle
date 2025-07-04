@@ -14,17 +14,15 @@
 
 import copy
 import itertools
-import os
 import unittest
 
 import numpy as np
 import scipy
 import scipy.linalg
-from op_test import OpTest
+from op_test import OpTest, get_places
 
 import paddle
 from paddle import base
-from paddle.base import core
 
 
 def scipy_lu(A, pivot):
@@ -203,16 +201,7 @@ class TestLUAPI(unittest.TestCase):
             min_mn = min(m, n)
             pivot = True
 
-            places = []
-            if (
-                os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-                in ['1', 'true', 'on']
-                or not core.is_compiled_with_cuda()
-            ):
-                places.append(base.CPUPlace())
-            if core.is_compiled_with_cuda():
-                places.append(base.CUDAPlace(0))
-            for place in places:
+            for place in get_places():
                 paddle.disable_static(place)
                 batch_size = a.size // (a.shape[-1] * a.shape[-2])
                 x = paddle.to_tensor(a, dtype=dtype)
@@ -259,16 +248,7 @@ class TestLUAPI(unittest.TestCase):
             min_mn = min(m, n)
             pivot = True
 
-            places = []
-            if (
-                os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-                in ['1', 'true', 'on']
-                or not core.is_compiled_with_cuda()
-            ):
-                places.append(base.CPUPlace())
-            if core.is_compiled_with_cuda():
-                places.append(base.CUDAPlace(0))
-            for place in places:
+            for place in get_places():
                 with paddle.static.program_guard(
                     paddle.static.Program(), paddle.static.Program()
                 ):

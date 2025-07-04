@@ -17,9 +17,9 @@
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
-
 namespace phi {
 
 using phi::PADDLE_CUDA_NUM_THREADS;
@@ -99,9 +99,10 @@ void BincountCUDAInner(const Context& dev_ctx,
   int64_t input_numel = static_cast<int64_t>(input->numel());
 
   if (input_data == nullptr) {
-    phi::DDim out_dim{0};
+    phi::DDim out_dim{minlength};
     output->Resize(out_dim);
-    dev_ctx.template Alloc<T>(output);
+    phi::Full<InputT, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(output->dims())), 0, output);
     return;
   }
 

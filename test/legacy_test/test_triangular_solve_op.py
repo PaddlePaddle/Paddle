@@ -12,18 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.w
 
-import os
 import sys
 import unittest
 
 import numpy as np
 
 sys.path.append("..")
-from op_test import OpTest
+from op_test import OpTest, get_places
 
 import paddle
 from paddle import base
-from paddle.base import Program, core, program_guard
+from paddle.base import Program, program_guard
 
 paddle.enable_static()
 
@@ -744,16 +743,8 @@ class TestTriangularSolveOpCp12854b(TestTriangularSolveOp):
 class TestTriangularSolveAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2021)
-        self.place = []
+        self.place = get_places()
         self.dtype = "float64"
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.place.append(paddle.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.place.append(paddle.CUDAPlace(0))
 
     def check_static_result(self, place):
         with paddle.static.program_guard(

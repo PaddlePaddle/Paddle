@@ -46,6 +46,7 @@ COMMON_DECLARE_bool(enable_pir_with_pt_in_dy2st);
 COMMON_DECLARE_bool(enable_pir_in_executor);
 COMMON_DECLARE_bool(use_mkldnn);
 COMMON_DECLARE_bool(specialize_device_in_dy2st);
+COMMON_DECLARE_bool(parameters_persistent_mode_in_dy2st);
 
 namespace egr::to_static {
 namespace details {
@@ -327,24 +328,27 @@ void BuildScopeByBlock(
   }
 }
 
-void GcScope(paddle::framework::Scope *scope) {
-  for (auto &[_, var] : scope->LocalVarsMap()) {
-    if (var != nullptr) {
-      if (var->IsType<phi::DenseTensor>()) {
-        var->GetMutable<phi::DenseTensor>()->MoveMemoryHolder();
+void GcScope(paddle::framework::Scope *scope,
+             const std::unordered_set<std::string_view> &persistent_names) {
+  for (auto &[name, var] : scope->LocalVarsMap()) {
+    if (persistent_names.count(name)) {
+      continue;
+    }
+    if (var == nullptr) {
+      continue;
+    }
+    if (var->IsType<phi::DenseTensor>()) {
+      var->GetMutable<phi::DenseTensor>()->MoveMemoryHolder();
+    }
+    if (var->IsType<phi::SelectedRows>()) {
+      var->GetMutable<phi::SelectedRows>()->mutable_value()->MoveMemoryHolder();
+    }
+    if (var->IsType<phi::TensorArray>()) {
+      auto *lod_tensor_arr = var->GetMutable<phi::TensorArray>();
+      for (auto &t : *lod_tensor_arr) {
+        t.MoveMemoryHolder();
       }
-      if (var->IsType<phi::SelectedRows>()) {
-        var->GetMutable<phi::SelectedRows>()
-            ->mutable_value()
-            ->MoveMemoryHolder();
-      }
-      if (var->IsType<phi::TensorArray>()) {
-        auto *lod_tensor_arr = var->GetMutable<phi::TensorArray>();
-        for (auto &t : *lod_tensor_arr) {
-          t.MoveMemoryHolder();
-        }
-        lod_tensor_arr->clear();
-      }
+      lod_tensor_arr->clear();
     }
   }
 }
@@ -389,6 +393,7 @@ void RunProgramImpl(
   if (attrs.count("in_sot_mode")) {
     in_sot_mode = PADDLE_GET_CONST(bool, attrs.at("in_sot_mode"));
   }
+  auto need_grad = !is_test && require_any_grad;
   auto place = egr::Controller::Instance().GetExpectedPlace();
 
   // NOTE(chenweihang): In order not to add new variable type, use vector
@@ -399,6 +404,12 @@ void RunProgramImpl(
       1,
       common::errors::InvalidArgument(
           "The OutScope of RunProgramGradOp should only hold one scope."));
+
+  if (FLAGS_parameters_persistent_mode_in_dy2st && need_grad) {
+    PADDLE_THROW(common::errors::PreconditionNotMet(
+        "Currently parameters persistent mode only support forward "
+        "process, but got need_grad is true."));
+  }
 
   VLOG(2) << "RunProgram use interpretercore to execute program.";
 
@@ -519,6 +530,9 @@ void RunProgramImpl(
       skip_names_set.erase(name);
     }
     skip_names_set.insert(output_names.begin(), output_names.end());
+    if (FLAGS_parameters_persistent_mode_in_dy2st) {
+      skip_names_set.insert(param_names.begin(), param_names.end());
+    }
 
     details::print_collection(skip_names_set);
     interpreter_core->SetSkipGcVars(skip_names_set);
@@ -534,8 +548,14 @@ void RunProgramImpl(
 #endif
     // Step 2. update scope for cache interpretercore
     details::ShareTensorsIntoScopeWithName(x, input_names, global_inner_scope);
-    details::ShareTensorsIntoScopeWithName(
-        params, param_names, global_inner_scope);
+    if (!FLAGS_parameters_persistent_mode_in_dy2st) {
+      // In parameters persistent mode, we only share params once, so
+      // we don't need to share params again.
+      // NOTE(dev): Currently, we only use this in LLM inference, so
+      // we don't modify this logic about backward impl.
+      details::ShareTensorsIntoScopeWithName(
+          params, param_names, global_inner_scope);
+    }
   }
 
   paddle::framework::RunFeedHooks(*forward_program, *global_inner_scope);
@@ -554,12 +574,21 @@ void RunProgramImpl(
         out, output_names, global_inner_scope);
     VLOG(3) << paddle::framework::GenScopeTreeDebugInfo(out_scope_vec->front());
 
-    if (is_test || !require_any_grad) {
-      VLOG(4) << "don't require any grad, set this scope can reused";
+    if (!need_grad) {
       VLOG(4) << "is_test: " << is_test
               << ", require_any_grad: " << require_any_grad;
+      if (FLAGS_parameters_persistent_mode_in_dy2st) {
+        VLOG(4) << "Parameters persistent mode is enabled, "
+                   "set this scope can not reused and skip gc "
+                   "for persistent parameters.";
+        const std::unordered_set<std::string_view> persistent_names(
+            param_names.begin(), param_names.end());
+        details::GcScope(global_inner_scope, persistent_names);
+      } else {
+        VLOG(4) << "don't require any grad, set this scope can reused";
+        details::GcScope(global_inner_scope);
+      }
       global_inner_scope->SetCanReused(true);
-      details::GcScope(global_inner_scope);
     } else {
       VLOG(4) << "not test, set this scope can not reused";
       global_inner_scope->SetCanReused(false);

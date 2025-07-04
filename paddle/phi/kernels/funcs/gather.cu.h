@@ -109,7 +109,7 @@ void GPUGatherNd(const phi::GPUContext& ctx,
     g_input_dims[i] = input_dims[i];
   }
 
-  int vec_size = 4;
+  int vec_size = 8;
   vec_size = std::min(phi::GetVectorizedSize(p_input), vec_size);
   vec_size = std::min(phi::GetVectorizedSize(p_output), vec_size);
   while (vec_size > 1 && slice_size % vec_size != 0) {
@@ -135,6 +135,7 @@ void GPUGatherNd(const phi::GPUContext& ctx,
             slice_size,                                                  \
             end_size);                                                   \
     break
+    CASE_VEC_SIZE(8);
     CASE_VEC_SIZE(4);
     CASE_VEC_SIZE(2);
     CASE_VEC_SIZE(1);
@@ -248,7 +249,7 @@ void GatherV2CUDAFunction(const DenseTensor* input,
   int64_t out_size = out->numel();
   if (out_size == 0) return;
 
-  int vec_size = 4;
+  int vec_size = 8;
   vec_size = std::min(phi::GetVectorizedSize(input), vec_size);
   vec_size = std::min(phi::GetVectorizedSize(out), vec_size);
   while (vec_size > 1 && outer_dim_size % vec_size != 0) {
@@ -259,7 +260,6 @@ void GatherV2CUDAFunction(const DenseTensor* input,
   auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
       ctx, out_size, vec_size * loop_count);
   auto stream = ctx.stream();
-
   switch (vec_size) {
 #define CASE_VEC_SIZE(__Sz)                                              \
   case __Sz:                                                             \
@@ -273,6 +273,7 @@ void GatherV2CUDAFunction(const DenseTensor* input,
             index_dim_size,                                              \
             out_size);                                                   \
     break
+    CASE_VEC_SIZE(8);
     CASE_VEC_SIZE(4);
     CASE_VEC_SIZE(2);
     CASE_VEC_SIZE(1);
