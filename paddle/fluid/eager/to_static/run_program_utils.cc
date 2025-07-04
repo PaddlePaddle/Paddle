@@ -30,16 +30,6 @@ bool IsVariableRefArray(const paddle::Tensor &tensor) {
   return paddle::framework::VariableRefArray::classof(tensor.impl().get());
 }
 
-std::vector<paddle::Tensor *> GetTensorsPtr(
-    std::vector<paddle::Tensor> &tensors) {  // NOLINT
-  std::vector<paddle::Tensor *> res;
-  res.reserve(tensors.size());
-  for (auto &t : tensors) {
-    res.emplace_back(&t);
-  }
-  return res;
-}
-
 std::vector<paddle::Tensor> DereferenceTensors(
     const std::vector<paddle::Tensor *> &tensor_ptr) {
   std::vector<paddle::Tensor> res;

@@ -199,18 +199,18 @@ void ShareTensorsIntoScope(const std::vector<Tensor> &tensors,
   ShareTensorsIntoScopeWithName(tensors, names, scope);
 }
 
-void ShareTensorsFromScopeWithName(const std::vector<Tensor *> &tensors,
+void ShareTensorsFromScopeWithName(std::vector<Tensor> *tensors,
                                    const std::vector<std::string> &names,
                                    paddle::framework::Scope *scope) {
   PADDLE_ENFORCE_EQ(
-      tensors.size(),
+      tensors->size(),
       names.size(),
       common::errors::InvalidArgument(
           "The size of tensors and names should be equal, but got "
           "tensors size: %d, names size: %d.",
-          tensors.size(),
+          tensors->size(),
           names.size()));
-  for (size_t i = 0; i < tensors.size(); ++i) {
+  for (size_t i = 0; i < tensors->size(); ++i) {
     auto &name = names[i];
     VLOG(4) << "Share Tensor From Scope: " << name;
 
@@ -225,33 +225,34 @@ void ShareTensorsFromScopeWithName(const std::vector<Tensor *> &tensors,
                                  "RunProgram(Grad)Op'"
                                  "s internal scope.",
                                  name));
-    CheckOutputVarStatus(*var, *tensors[i]);
+    const auto &tensor = tensors->at(i);
+    CheckOutputVarStatus(*var, tensor);
     // share tensor
     if (var->IsType<phi::DenseTensor>()) {
       auto &src_tensor = var->Get<phi::DenseTensor>();
-      if (tensors[i]->is_dist_tensor()) {
+      if (tensor.is_dist_tensor()) {
         auto *dst_tensor =
             std::dynamic_pointer_cast<phi::distributed::DistTensor>(
-                tensors[i]->impl())
+                tensor.impl())
                 ->unsafe_mutable_value();
         VLOG(2) << "actually do sharing " << name << " from scope";
         *dst_tensor = src_tensor;
       } else {
         auto *dst_tensor = const_cast<phi::DenseTensor *>(
-            dynamic_cast<const phi::DenseTensor *>(tensors[i]->impl().get()));
+            dynamic_cast<const phi::DenseTensor *>(tensor.impl().get()));
         VLOG(2) << "actually do sharing " << name << " from scope";
         *dst_tensor = src_tensor;
       }
     } else if (var->IsType<phi::SelectedRows>()) {
       auto &src_tensor = var->Get<phi::SelectedRows>();
       auto *dst_tensor = const_cast<phi::SelectedRows *>(
-          dynamic_cast<const phi::SelectedRows *>(tensors[i]->impl().get()));
+          dynamic_cast<const phi::SelectedRows *>(tensor.impl().get()));
       *dst_tensor = src_tensor;
     } else if (var->IsType<paddle::framework::VariableRefArray>()) {
       auto &src_tensor = var->Get<paddle::framework::VariableRefArray>();
       auto *dst_tensor = const_cast<paddle::framework::VariableRefArray *>(
           dynamic_cast<const paddle::framework::VariableRefArray *>(
-              tensors[i]->impl().get()));
+              tensor.impl().get()));
       *dst_tensor = src_tensor;
     } else {
       PADDLE_THROW(common::errors::InvalidArgument(
@@ -646,7 +647,7 @@ std::vector<paddle::Tensor> RunProgramImpl(
         "fetch_and_gc", phi::TracerEventType::UserDefined, 1);
     // Get Output
     details::ShareTensorsFromScopeWithName(
-        egr::to_static::GetTensorsPtr(out), output_names, global_inner_scope);
+        &out, output_names, global_inner_scope);
     VLOG(3) << paddle::framework::GenScopeTreeDebugInfo(out_scope_vec->front());
 
     if (!need_grad) {
@@ -680,11 +681,11 @@ void RunProgramGradImpl(
     const std::vector<paddle::Tensor> &out_grad,
     const std::vector<paddle::framework::Scope *> &step_scope,  // NOLINT
     const paddle::framework::AttributeMap &attrs,
-    std::vector<paddle::Tensor *> &x_grad,       // NOLINT
-    std::vector<paddle::Tensor *> &params_grad,  // NOLINT
+    std::vector<paddle::Tensor> *x_grad,
+    std::vector<paddle::Tensor> *params_grad,
     const int64_t &place_hash_key) {
   // if all output vars are set to stop_gradient, grad op no need to executed
-  if (x_grad.empty() && params_grad.empty()) return;
+  if (x_grad->empty() && params_grad->empty()) return;
   auto *out_scope_vec = &step_scope;
   PADDLE_ENFORCE_EQ(
       out_scope_vec->size(),

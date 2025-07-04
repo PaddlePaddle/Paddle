@@ -108,8 +108,6 @@ GradNodeRunProgram::operator()(
 
   std::vector<paddle::Tensor> x_grad;
   std::vector<paddle::Tensor> params_grad;
-  std::vector<paddle::Tensor *> x_grad_ptr;
-  std::vector<paddle::Tensor *> params_grad_ptr;
   {
     phi::RecordEvent record_event(
         "construct_grad_tensor", phi::TracerEventType::UserDefined, 1);
@@ -119,8 +117,6 @@ GradNodeRunProgram::operator()(
     VLOG(3) << "hooked_grads[0].size() : " << hooked_grads[0].size();
     ConstructXGradTensors(x_, &x_grad);
     ConstructParamGradTensors(params_, &params_grad);
-    x_grad_ptr = egr::to_static::GetTensorsPtr(x_grad);
-    params_grad_ptr = egr::to_static::GetTensorsPtr(params_grad);
   }
 
   const auto &out_grad_names =
@@ -134,8 +130,8 @@ GradNodeRunProgram::operator()(
   egr::to_static::RunProgramGradImpl(hooked_grads[0],
                                      step_scope_,
                                      attrs_,
-                                     x_grad_ptr,
-                                     params_grad_ptr,
+                                     &x_grad,
+                                     &params_grad,
                                      place_hash_key_);
   VLOG(3) << "End Eager Backward Node: GradNodeRunProgram";
 
