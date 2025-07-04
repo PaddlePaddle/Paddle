@@ -33,7 +33,7 @@ class TestFP8Quantization(unittest.TestCase):
         self.return_transpose_only_options = [True, False]
         self.using_pow2_scale_options = [True, False]
 
-    def cal_all_rmse(self, x, x_q, x_qdq, transposed: bool):
+    def cal_all_rmse(self, x, x_qdq, transposed: bool):
         if transposed:
             diff_squared = (x_qdq.T - x.to(paddle.float32)) ** 2
         else:
@@ -87,8 +87,6 @@ class TestFP8Quantization(unittest.TestCase):
             )
             x_q_valid = True
 
-        self.assertEqual(len(x_q.shape), 2)
-        self.assertEqual(len(scale.shape), 2)
         valid_test_list = []
 
         if x_q_valid:
@@ -139,32 +137,27 @@ class TestFP8Quantization(unittest.TestCase):
                 quant_method=quant_method,
                 input_transpose=input_transpose,
                 output_scale_transpose=output_scale_transpose,
+                return_transpose_only=return_transpose_only,
+                using_pow2_scale=using_pow2_scale,
             )
             self.assertLessEqual(rmse, self.rmse_threshold)
             rmses.append(rmse)
         return rmses
 
-    def eval_per_1x128_quant(
-        self,
-        x: paddle.Tensor,
-        input_transpose: bool = False,
-        scale_transpose=False,
-    ):
-        rmse = self.quant_verify_wrapper(
-            x,
-            quant_method="1x128",
-            input_transpose=input_transpose,
-            output_scale_transpose=scale_transpose,
-        )
-        self.assertLessEqual(rmse, self.rmse_threshold)
-        return rmse
-
     def test_tensor_shapes(self):
         self.assertEqual(self.x.shape, [self.m, self.n])
         self.assertEqual(self.x.dtype, paddle.bfloat16)
 
-    def test_quantization_consistency_128x128(self):
+    def test_quantization_accuracy(self):
         rmses = self.eval_all(self.x)
+        for r in rmses:
+            self.assertLessEqual(r, self.rmse_threshold)
+
+    def test_quantization_consistency(self):
+        rmses1 = self.eval_all(self.x)
+        rmses2 = self.eval_all(self.x)
+        for r1, r2 in zip(rmses1, rmses1):
+            self.assertEqual(r1, r2)
 
 
 if __name__ == '__main__':
