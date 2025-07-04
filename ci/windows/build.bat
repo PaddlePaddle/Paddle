@@ -26,10 +26,10 @@ if "%WITH_SCCACHE%"=="ON" (
 
     sccache --start-server
     sccache -z
-    goto :CASE_%1
+    goto :cmake
 ) else (
     del %SCCACHE_ROOT%\sccache.exe 2> NUL
-    goto :CASE_%1
+    goto :cmake
 )
 
 :install_sccache
