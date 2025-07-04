@@ -32,7 +32,7 @@ def moe_gate_dispatch_and_quant(
     use_pad: bool,
     use_pow2_scale: bool,
     name: str | None = None,
-) -> tuple(Tensor, Tensor, Tensor, Tensor, Tensor, Tensor):
+) -> tuple[Tensor, Tensor, Tensor, Tensor, Tensor, Tensor]:
     """
     Args:
         x:
