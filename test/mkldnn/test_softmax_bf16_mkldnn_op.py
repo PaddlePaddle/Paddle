@@ -42,7 +42,7 @@ def stable_softmax(x):
 @unittest.skipIf(
     not core.supports_bfloat16(), "place does not support BF16 evaluation"
 )
-class TestSoftmaxMKLDNNOp(TestSoftmaxOp):
+class TestSoftmaxONEDNNOp(TestSoftmaxOp):
     def get_x_shape(self):
         return [10, 10]
 
@@ -76,31 +76,31 @@ class TestSoftmaxMKLDNNOp(TestSoftmaxOp):
         self.use_mkldnn = True
 
 
-class TestSoftmaxMKLDNNOp2(TestSoftmaxOp2):
+class TestSoftmaxONEDNNOp2(TestSoftmaxOp2):
     def init_kernel_type(self):
         self.use_mkldnn = True
         self.check_pir_onednn = True
 
 
-class TestSoftmaxMKLDNNOp3(TestSoftmaxOp3):
+class TestSoftmaxONEDNNOp3(TestSoftmaxOp3):
     def init_kernel_type(self):
         self.use_mkldnn = True
         self.check_pir_onednn = True
 
 
-class TestSoftmaxMKLDNNOp4(TestSoftmaxOp4):
+class TestSoftmaxONEDNNOp4(TestSoftmaxOp4):
     def init_kernel_type(self):
         self.use_mkldnn = True
         self.check_pir_onednn = True
 
 
-class TestSoftmaxMKLDNNOp5(TestSoftmaxOp5):
+class TestSoftmaxONEDNNOp5(TestSoftmaxOp5):
     def init_kernel_type(self):
         self.use_mkldnn = True
         self.check_pir_onednn = True
 
 
-class TestSoftmaxMKLDNNOp6(TestSoftmaxOp6):
+class TestSoftmaxONEDNNOp6(TestSoftmaxOp6):
     def init_kernel_type(self):
         self.use_mkldnn = True
         self.check_pir_onednn = True
