@@ -1271,69 +1271,68 @@ class ConcreteProgram:
             paddle.static.default_startup_program().random_seed
         )
 
-        with ir_static.program_guard(main_program, startup_program):
+        with (
+            ir_static.program_guard(main_program, startup_program),
+            to_static_mode_guard(is_to_static=True),
+            static_op_arg_cast_guard(_convert_into_value),
+        ):
+            # 1. Adds `paddle.static.data` layers for input if needed
+            static_inputs, program_inputs = (
+                func_spec.pir_to_static_inputs_with_spec(
+                    input_spec, main_program
+                )
+            )
+            _kwargs, _ = func_spec.pir_to_static_inputs_with_spec(
+                input_kwargs_spec, main_program
+            )
+            if class_instance:
+                static_inputs = (
+                    class_instance,
+                    *list(static_inputs),
+                )
+                program_inputs = (
+                    class_instance,
+                    *list(program_inputs),
+                )
+
+            # 2. Builds program only once and returns the output Variables.
             with (
-                to_static_mode_guard(is_to_static=True),
-                static_op_arg_cast_guard(_convert_into_value),
+                param_guard(get_parameters(class_instance, True)),
+                param_guard(get_buffers(class_instance, True)),
+                backend_guard(backend),
             ):
-                # 1. Adds `paddle.static.data` layers for input if needed
-                static_inputs, program_inputs = (
-                    func_spec.pir_to_static_inputs_with_spec(
-                        input_spec, main_program
-                    )
-                )
-                _kwargs, _ = func_spec.pir_to_static_inputs_with_spec(
-                    input_kwargs_spec, main_program
-                )
-                if class_instance:
-                    static_inputs = (
-                        class_instance,
-                        *list(static_inputs),
-                    )
-                    program_inputs = (
-                        class_instance,
-                        *list(program_inputs),
-                    )
+                try:
+                    # only for jit.save, do nothing while train and eval process
+                    inputs = hook_helper.apply_pre_hooks(static_inputs)
+                    if _kwargs:
+                        outputs = static_func(*inputs, **_kwargs)
+                    else:
+                        outputs = static_func(*inputs)
+                    outputs = hook_helper.apply_post_hooks(inputs, outputs)
+                except BaseException as e:
+                    # NOTE: If e is raised in compile time, e should be attached to ERROR_DATA here.
+                    error.attach_error_data(e)
+                    error_data = getattr(e, error.ERROR_DATA, None)
+                    if error_data:
+                        error_data.raise_new_exception()
+                    raise
 
-                # 2. Builds program only once and returns the output Variables.
-                with (
-                    param_guard(get_parameters(class_instance, True)),
-                    param_guard(get_buffers(class_instance, True)),
-                    backend_guard(backend),
-                ):
-                    try:
-                        # only for jit.save, do nothing while train and eval process
-                        inputs = hook_helper.apply_pre_hooks(static_inputs)
-                        if _kwargs:
-                            outputs = static_func(*inputs, **_kwargs)
-                        else:
-                            outputs = static_func(*inputs)
-                        outputs = hook_helper.apply_post_hooks(inputs, outputs)
-                    except BaseException as e:
-                        # NOTE: If e is raised in compile time, e should be attached to ERROR_DATA here.
-                        error.attach_error_data(e)
-                        error_data = getattr(e, error.ERROR_DATA, None)
-                        if error_data:
-                            error_data.raise_new_exception()
-                        raise
+            # 3. Gets all ParamBases and buffered VarBases in the function
+            from ..pir_dy2static.parameter_recorder import (
+                _global_inplace_map,
+                _global_parameter_recorder,
+            )
 
-                # 3. Gets all ParamBases and buffered VarBases in the function
-                from ..pir_dy2static.parameter_recorder import (
-                    _global_inplace_map,
-                    _global_parameter_recorder,
+            all_parameters_and_buffers = _global_parameter_recorder.pop(
+                main_program
+            )
+            _global_inplace_map.pop(main_program)
+            if outputs is not None:
+                need_wrap_into_list = (
+                    not isinstance(outputs, (tuple, list)) or len(outputs) == 1
                 )
-
-                all_parameters_and_buffers = _global_parameter_recorder.pop(
-                    main_program
-                )
-                _global_inplace_map.pop(main_program)
-                if outputs is not None:
-                    need_wrap_into_list = (
-                        not isinstance(outputs, (tuple, list))
-                        or len(outputs) == 1
-                    )
-                    if need_wrap_into_list:
-                        outputs = [outputs]
+                if need_wrap_into_list:
+                    outputs = [outputs]
 
         main_program = update_op_callstack_with_origin_info(main_program)
         if not os.environ.get("stride_in_no_check_dy2st_diff", "0") == "1":
@@ -1389,56 +1388,57 @@ class ConcreteProgram:
 
         ProgramTranslator.get_instance()._amp_records.clear()
 
-        with framework.program_guard(main_program, startup_program):
-            with to_static_mode_guard(is_to_static=True):
-                # 1. Adds `paddle.static.data` layers for input if needed
-                static_inputs = func_spec.to_static_inputs_with_spec(
-                    input_spec, main_program
-                )
-                _kwargs = func_spec.to_static_inputs_with_spec(
-                    input_kwargs_spec, main_program
-                )
-                if class_instance:
-                    static_inputs = (
-                        class_instance,
-                        *list(static_inputs),
-                    )
-
-                # 2. Builds program only once and returns the output Variables.
-                with (
-                    param_guard(get_parameters(class_instance, True)),
-                    param_guard(get_buffers(class_instance, True)),
-                ):
-                    try:
-                        # only for jit.save, do nothing while train and eval process
-                        inputs = hook_helper.apply_pre_hooks(static_inputs)
-                        if _kwargs:
-                            outputs = static_func(*inputs, **_kwargs)
-                        else:
-                            outputs = static_func(*inputs)
-                        outputs = hook_helper.apply_post_hooks(inputs, outputs)
-                    except BaseException as e:
-                        # NOTE: If e is raised in compile time, e should be attached to ERROR_DATA here.
-                        error.attach_error_data(e)
-                        error_data = getattr(e, error.ERROR_DATA, None)
-                        if error_data:
-                            error_data.raise_new_exception()
-                        raise
-
-                # 3. Gets all ParamBases and buffered VarBases in the function
-                all_parameters_and_buffers = (
-                    ProgramTranslator.get_instance()._params_recorder.pop(
-                        main_program
-                    )
+        with (
+            framework.program_guard(main_program, startup_program),
+            to_static_mode_guard(is_to_static=True),
+        ):
+            # 1. Adds `paddle.static.data` layers for input if needed
+            static_inputs = func_spec.to_static_inputs_with_spec(
+                input_spec, main_program
+            )
+            _kwargs = func_spec.to_static_inputs_with_spec(
+                input_kwargs_spec, main_program
+            )
+            if class_instance:
+                static_inputs = (
+                    class_instance,
+                    *list(static_inputs),
                 )
 
-                if outputs is not None:
-                    need_wrap_into_list = (
-                        not isinstance(outputs, (tuple, list))
-                        or len(outputs) == 1
-                    )
-                    if need_wrap_into_list:
-                        outputs = [outputs]
+            # 2. Builds program only once and returns the output Variables.
+            with (
+                param_guard(get_parameters(class_instance, True)),
+                param_guard(get_buffers(class_instance, True)),
+            ):
+                try:
+                    # only for jit.save, do nothing while train and eval process
+                    inputs = hook_helper.apply_pre_hooks(static_inputs)
+                    if _kwargs:
+                        outputs = static_func(*inputs, **_kwargs)
+                    else:
+                        outputs = static_func(*inputs)
+                    outputs = hook_helper.apply_post_hooks(inputs, outputs)
+                except BaseException as e:
+                    # NOTE: If e is raised in compile time, e should be attached to ERROR_DATA here.
+                    error.attach_error_data(e)
+                    error_data = getattr(e, error.ERROR_DATA, None)
+                    if error_data:
+                        error_data.raise_new_exception()
+                    raise
+
+            # 3. Gets all ParamBases and buffered VarBases in the function
+            all_parameters_and_buffers = (
+                ProgramTranslator.get_instance()._params_recorder.pop(
+                    main_program
+                )
+            )
+
+            if outputs is not None:
+                need_wrap_into_list = (
+                    not isinstance(outputs, (tuple, list)) or len(outputs) == 1
+                )
+                if need_wrap_into_list:
+                    outputs = [outputs]
 
         main_program = update_op_callstack_with_origin_info(main_program)
 

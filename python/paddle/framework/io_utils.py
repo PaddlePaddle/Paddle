@@ -171,11 +171,13 @@ def _load_program_scope(main=None, startup=None, scope=None):
     prog = main if main else paddle.base.Program()
     startup_prog = startup if startup else paddle.base.Program()
     scope = scope if scope else paddle.base.core.Scope()
-    with paddle.base.scope_guard(scope):
-        with paddle.base.program_guard(prog, startup_prog):
-            with paddle.base.unique_name.guard():
-                with paddle.base.framework._dygraph_guard(None):
-                    yield
+    with (
+        paddle.base.scope_guard(scope),
+        paddle.base.program_guard(prog, startup_prog),
+        paddle.base.unique_name.guard(),
+        paddle.base.framework._dygraph_guard(None),
+    ):
+        yield
 
 
 @static_only
@@ -196,8 +198,10 @@ def _legacy_static_save(param_dict, model_path, protocol=2):
         pickle_bytes = pickle.dumps(param_dict, protocol=protocol)
         with open(model_path, 'wb') as f:
             max_bytes = 2**30
-            for i in range(0, len(pickle_bytes), max_bytes):
-                f.write(pickle_bytes[i : i + max_bytes])
+            f.writelines(
+                pickle_bytes[i : i + max_bytes]
+                for i in range(0, len(pickle_bytes), max_bytes)
+            )
     else:
         with _open_file_buffer(model_path, 'wb') as f:
             pickle.dump(param_dict, f, protocol=protocol)

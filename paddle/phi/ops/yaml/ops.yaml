@@ -1145,6 +1145,7 @@
   output : Tensor
   infer_meta :
     func : Conv3DInferMeta
+    spmd_rule : Conv3dInferSpmd
   kernel :
     func : conv3d
     data_type : input
@@ -2825,6 +2826,7 @@
   output : Tensor(out)
   infer_meta :
     func : IndexPutInferMeta
+    spmd_rule : IndexPutInferSpmd
   kernel :
     func : index_put
     data_type : x
@@ -5229,6 +5231,7 @@
   infer_meta :
     func : TakeAlongAxisInferMeta
     param : [arr, indices, axis]
+    spmd_rule : TakeAlongAxisInferSpmd
   kernel :
     func : take_along_axis
     data_type : arr

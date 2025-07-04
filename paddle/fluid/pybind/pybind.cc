@@ -2904,6 +2904,9 @@ All parameter, weight, gradient are variables in Paddle.
   BindGlobalValueGetterSetter(&m);
   BindTCPStore(&m);
   BindCommContextManager(&m);
+#if defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_NCCL)
+  BindNCCLConfig(&m);
+#endif
   BindAutoParallel(&m);
   BindJitProperty(&m);
 
@@ -3517,7 +3520,7 @@ All parameter, weight, gradient are variables in Paddle.
                      } else {
                        PADDLE_THROW(common::errors::InvalidArgument(
                            "Invalid argument, key must be one of paddle_op, "
-                           "popart_op, domain or version, but revecived %s",
+                           "popart_op, domain or version, but received %s",
                            option_key));
                      }
                    }

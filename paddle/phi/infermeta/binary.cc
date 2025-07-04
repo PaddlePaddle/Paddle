@@ -588,13 +588,6 @@ void ConvInferMeta(const MetaTensor& input,
   const bool channel_last = (config.is_run_mkldnn_kernel == false) &&
                             (data_format == "NHWC" || data_format == "NDHWC");
 
-  for (int i = 0; i < 2; ++i) {
-    PADDLE_ENFORCE_NE(in_dims[i],
-                      0,
-                      common::errors::InvalidArgument(
-                          "The size of Op(Conv) inputs should not be 0."));
-  }
-
   PADDLE_ENFORCE_EQ(
       in_dims.size() == 4 || in_dims.size() == 5,
       true,
@@ -706,11 +699,15 @@ void ConvInferMeta(const MetaTensor& input,
 
   std::vector<int64_t> output_shape({in_dims[0]});
   if (!channel_last) {
-    output_shape.push_back(filter_dims[0]);
+    if (filter_dims[1] == 0) {
+      output_shape.push_back(0);
+    } else {
+      output_shape.push_back(filter_dims[0]);
+    }
   }
   for (int i = 0; i < in_data_dims.size(); ++i) {
     if ((!config.is_runtime) &&
-        (in_data_dims[i] <= 0 || filter_dims[i + 2] <= 0)) {
+        (in_data_dims[i] < 0 || filter_dims[i + 2] < 0)) {
       output_shape.push_back(-1);
     } else {
       const int dkernel =
@@ -723,7 +720,11 @@ void ConvInferMeta(const MetaTensor& input,
     }
   }
   if (channel_last) {
-    output_shape.push_back(filter_dims[0]);
+    if (filter_dims[1] == 0) {
+      output_shape.push_back(0);
+    } else {
+      output_shape.push_back(filter_dims[0]);
+    }
   }
 
   out->set_dims(common::make_ddim(output_shape));
@@ -888,19 +889,23 @@ void ConvTransposeInferMeta(const MetaTensor& x,
                 common::make_ddim(output_size).to_str(),
                 i,
                 infer_shape));
-        PADDLE_ENFORCE_LT(
-            output_size[i],
-            infer_shape + strides[i],
-            errors::InvalidArgument(
-                "output_size of Op(ConvTransposeOp) should be less "
-                "than inferred size + stride. But received output_size = [%s], "
-                "whose dim %d is not less than the inferred output size (%d) + "
-                "stride (%d) = %d",
-                common::make_ddim(output_size).to_str(),
-                i,
-                infer_shape,
-                strides[i],
-                infer_shape + strides[i]));
+        if (common::product(x_dims) != 0) {
+          PADDLE_ENFORCE_LT(
+              output_size[i],
+              infer_shape + strides[i],
+              errors::InvalidArgument(
+                  "output_size of Op(ConvTransposeOp) should be less "
+                  "than inferred size + stride. But received output_size = "
+                  "[%s], "
+                  "whose dim %d is not less than the inferred output size (%d) "
+                  "+ "
+                  "stride (%d) = %d",
+                  common::make_ddim(output_size).to_str(),
+                  i,
+                  infer_shape,
+                  strides[i],
+                  infer_shape + strides[i]));
+        }
       }
       output_shape.push_back(output_size[i]);
     } else if (!output_padding.empty()) {
@@ -2010,12 +2015,14 @@ void GatherInferMeta(const MetaTensor& x,
   auto index_dims = index.dims();
 
   if (index_dims.size() == 2) {
-    PADDLE_ENFORCE_EQ(
-        index_dims[1],
-        1,
-        common::errors::InvalidArgument(
-            "The last dim of index should be 1 when it is 2D, but we get %d",
-            index_dims[1]));
+    if (index_dims[1] != 0) {
+      PADDLE_ENFORCE_EQ(
+          index_dims[1],
+          1,
+          common::errors::InvalidArgument("The last dim of index should be 0 "
+                                          "or 1 when it is 2D, but we get %d",
+                                          index_dims[1]));
+    }
   } else {
     PADDLE_ENFORCE_EQ(
         index_dims.size() == 1 || index_dims.size() == 0,
@@ -2084,6 +2091,9 @@ void GatherInferMeta(const MetaTensor& x,
     if (axis.FromTensor() || axis_v == 0) {
       // if axis.FromTensor(), we can not obtain correct shape of output
       int batch_size = static_cast<int>(index_dims[0]);
+      if (index_dims.size() == 2 && index_dims[1] == 0) {
+        batch_size = 0;
+      }
       phi::DDim output_dims(input_dim);
       output_dims[0] = batch_size;
       out->set_dims(output_dims);
@@ -2091,6 +2101,9 @@ void GatherInferMeta(const MetaTensor& x,
       out->share_lod(x);
     } else {
       int index_size = static_cast<int>(index_dims[0]);
+      if (index_dims.size() == 2 && index_dims[1] == 0) {
+        index_size = 0;
+      }
       std::vector<int> out_dim_vec;
       for (int i = 0; i < axis_v; i++) {
         out_dim_vec.push_back(input_dim[i]);  // NOLINT
@@ -2522,8 +2535,12 @@ void IndexAddInferMeta(const MetaTensor& x,
                         true,
                         common::errors::InvalidArgument(
                             "The add_value parameter does not supported "
-                            "broadcast, so input_dim[i] must be equal to "
-                            "add_value_dim[i] when i != axis."));
+                            "broadcast, so input_dim[i](%d) must be equal to "
+                            "add_value_dim[i](%d) when i(%d) != axis(%d).",
+                            input_dim[i],
+                            add_value_dim[i],
+                            i,
+                            real_axis));
     }
   }
 

@@ -32,7 +32,7 @@ namespace phi {
 namespace funcs {
 
 template <typename T1, typename T2 = T1>
-void SquaredL2Norm(const phi::CPUContext& ctx,
+void SquaredL2Norm(const phi::CPUContext& dev_ctx,
                    const T1* x,
                    T2* y,
                    size_t numel,
@@ -43,7 +43,7 @@ void SquaredL2Norm(const phi::CPUContext& ctx,
     using EigenDim = typename phi::EigenDim<1>::Type;
     ConstEigenT input(x, EigenDim(numel));
     EigenT output(reinterpret_cast<T1*>(y), EigenDim(1));
-    output.device(*ctx.eigen_device()) = input.square().sum();
+    output.device(*dev_ctx.eigen_device()) = input.square().sum();
   } else {
     T2 ret = static_cast<T2>(0);
     for (size_t i = 0; i < numel; ++i) {
@@ -56,21 +56,21 @@ void SquaredL2Norm(const phi::CPUContext& ctx,
 
 #if defined(__NVCC__) || defined(__HIPCC__)
 template <typename T1, typename T2 = T1>
-void SquaredL2Norm(const phi::GPUContext& ctx,
+void SquaredL2Norm(const phi::GPUContext& dev_ctx,
                    const T1* x,
                    T2* y,
                    size_t numel,
                    memory_utils::Buffer* buffer = nullptr) {
   if (UNLIKELY(buffer == nullptr)) {
-    memory_utils::Buffer tmp_buffer(ctx.GetPlace());
-    return SquaredL2Norm(ctx, x, y, numel, &tmp_buffer);
+    memory_utils::Buffer tmp_buffer(dev_ctx.GetPlace());
+    return SquaredL2Norm(dev_ctx, x, y, numel, &tmp_buffer);
   }
 
   using FunctorT = phi::kps::SquareFunctor<T1, T2>;
   cub::TransformInputIterator<T2, FunctorT, const T1*> iter(x, FunctorT());
   size_t temp_storage_bytes = 0;
   void* d_temp_storage = nullptr;
-  auto stream = ctx.stream();
+  auto stream = dev_ctx.stream();
 #pragma unroll 2
   for (size_t i = 0; i < 2; ++i) {
     if (temp_storage_bytes > 0) {
