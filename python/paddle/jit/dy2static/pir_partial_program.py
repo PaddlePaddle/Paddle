@@ -447,6 +447,8 @@ class RunnableProgram:
         for v, stop_gradient in zip(
             program_attr["fo_values"], self.out_stop_gradients
         ):
+            if is_fake_value(v):
+                continue
             v.stop_gradient = stop_gradient
 
         return program_attr
