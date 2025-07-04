@@ -68,7 +68,6 @@ def _append_opstack_between(start, end, stack):
 
 
 def for_each_ops_between(start, end):
-    # NOTE(xiongkun): we don't sync for speed. careful!!
     # [start, end)
     program = paddle.static.default_main_program()
     ops = program.global_block().ops[start:end]
@@ -76,7 +75,6 @@ def for_each_ops_between(start, end):
 
 
 def opnum_in_program():
-    # NOTE(xiongkun): we don't sync for speed. careful!!
     program = paddle.static.default_main_program()
     return len(program.global_block().ops)
 
