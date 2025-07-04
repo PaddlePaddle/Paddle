@@ -24,13 +24,13 @@ from test_gaussian_random_op import TestGaussianRandomOp
 import paddle
 
 
-class TestONEDNNGaussianRandomOpSeed10(TestGaussianRandomOp):
+class TestMKLDNNGaussianRandomOpSeed10(TestGaussianRandomOp):
     def init_kernel_type(self):
         self.use_mkldnn = True
         self.check_pir_onednn = True
 
 
-class TestONEDNNGaussianRandomOpSeed0(TestGaussianRandomOp):
+class TestMKLDNNGaussianRandomOpSeed0(TestGaussianRandomOp):
     def setUp(self):
         TestGaussianRandomOp.setUp(self)
         self.use_mkldnn = True

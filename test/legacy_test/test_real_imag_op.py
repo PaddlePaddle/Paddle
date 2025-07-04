@@ -12,10 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
-from op_test import OpTest, get_places
+from op_test import OpTest
 
 import paddle
 from paddle import base, static
@@ -185,7 +186,15 @@ class TestRealAPI(unittest.TestCase):
         # prepare test attrs
         self.api = "real"
         self.dtypes = ["complex64", "complex128"]
-        self.places = get_places()
+        self.places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not paddle.is_compiled_with_cuda()
+        ):
+            self.places.append(paddle.CPUPlace())
+        if paddle.is_compiled_with_cuda():
+            self.places.append(paddle.CUDAPlace(0))
         self._shape = [2, 20, 2, 3]
 
     def test_in_static_mode(self):
@@ -261,7 +270,15 @@ class TestImagAPI(TestRealAPI):
         # prepare test attrs
         self.api = "imag"
         self.dtypes = ["complex64", "complex128"]
-        self.places = get_places()
+        self.places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not paddle.is_compiled_with_cuda()
+        ):
+            self.places.append(paddle.CPUPlace())
+        if paddle.is_compiled_with_cuda():
+            self.places.append(paddle.CUDAPlace(0))
         self.init_shape()
 
     def init_shape(self):

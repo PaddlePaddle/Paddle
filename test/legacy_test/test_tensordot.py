@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
-from op_test import get_places
 
 import paddle
+from paddle.base import core
 
 np.random.seed(2021)
 
@@ -76,7 +77,15 @@ class TestTensordotAPI(unittest.TestCase):
         self.set_test_axes()
 
     def set_place(self):
-        self.places = get_places()
+        self.places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            self.places.append(core.CPUPlace())
+        if core.is_compiled_with_cuda():
+            self.places.append(core.CUDAPlace(0))
 
     def set_dtype(self):
         self.dtype = np.float32

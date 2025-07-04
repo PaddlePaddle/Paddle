@@ -282,9 +282,7 @@ bool BincountOpInferSymbolicShape(
                           "The 'shape' of Input(Weights) must be 1-D tensor. "
                           "But the dimension of Input(Weights) is [%d]",
                           weights_dims.size()));
-    if (x_dims[0] != 0) {
-      infer_context->AddEqualCstr(weights_dims[0], x_dims[0]);
-    }
+    infer_context->AddEqualCstr(weights_dims[0], x_dims[0]);
   }
 
   symbol::DimExpr out_unknown = infer_context->GetNextSymName();

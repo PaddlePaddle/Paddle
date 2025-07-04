@@ -30,7 +30,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/strided_slice.h"
 #include "paddle/phi/kernels/funcs/unfold_functor.h"
 #include "paddle/phi/kernels/funcs/unsqueeze.h"
-#include "paddle/phi/kernels/impl/einsum_kernel_impl.h"
+#include "paddle/phi/kernels/impl/einsum_impl.h"
 
 namespace phi {
 
@@ -2941,7 +2941,7 @@ void NanmedianInferMeta(const MetaTensor& x,
   auto x_dim = x.dims();
   int64_t x_rank = x_dim.size();
 
-  std::vector<int32_t> out_dim;
+  std::vector<int64_t> out_dim;
   if (axis_list.empty()) {
     if (keep_dim) {
       for (int64_t i = 0; i < x_rank; i++) {

@@ -12,10 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
-from op_test import OpTest, get_places
+from op_test import OpTest
 
 import paddle
 from paddle.base import core
@@ -119,7 +120,16 @@ class TestIscloseStatic(unittest.TestCase):
         paddle.enable_static()
         x_data = np.random.rand(10, 10)
         y_data = np.random.rand(10, 10)
-        for place in get_places():
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not paddle.base.core.is_compiled_with_cuda()
+        ):
+            places.append(paddle.base.CPUPlace())
+        if paddle.base.core.is_compiled_with_cuda():
+            places.append(paddle.base.CUDAPlace(0))
+        for place in places:
             main = paddle.static.Program()
             startup = paddle.static.Program()
             with paddle.static.program_guard(main, startup):
@@ -142,7 +152,16 @@ class TestIscloseStatic(unittest.TestCase):
 
 class TestIscloseDygraph(unittest.TestCase):
     def test_api_case(self):
-        for place in get_places():
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not paddle.base.core.is_compiled_with_cuda()
+        ):
+            places.append(paddle.CPUPlace())
+        if paddle.base.core.is_compiled_with_cuda():
+            places.append(paddle.CUDAPlace(0))
+        for place in places:
             paddle.disable_static()
             x_data = np.random.rand(10, 10)
             y_data = np.random.rand(10, 10)

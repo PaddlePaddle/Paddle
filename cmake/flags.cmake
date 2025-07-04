@@ -244,6 +244,7 @@ if(APPLE)
   set(COMMON_FLAGS
       -Wno-deprecated-register
       -Werror=format
+      -Werror=inconsistent-missing-override
       -Werror=braced-scalar-init
       -Werror=uninitialized
       -Werror=tautological-constant-out-of-range-compare

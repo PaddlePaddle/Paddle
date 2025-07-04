@@ -18,7 +18,7 @@ import unittest
 
 import numpy as np
 from op import Operator
-from op_test import OpTest, get_places
+from op_test import OpTest
 
 import paddle
 from paddle.base import core
@@ -205,7 +205,16 @@ class TestSparseAdagradOp(unittest.TestCase):
         )
 
     def test_sparse_adagrad(self):
-        for place in get_places():
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(core.CPUPlace())
+        if core.is_compiled_with_cuda():
+            places.append(core.CUDAPlace(0))
+        for place in places:
             self.check_with_place(place)
 
 

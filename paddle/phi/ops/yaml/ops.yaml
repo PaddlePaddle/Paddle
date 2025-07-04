@@ -1145,7 +1145,6 @@
   output : Tensor
   infer_meta :
     func : Conv3DInferMeta
-    spmd_rule : Conv3dInferSpmd
   kernel :
     func : conv3d
     data_type : input

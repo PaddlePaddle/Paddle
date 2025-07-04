@@ -25,7 +25,7 @@ from test_conv3d_op import (
 )
 
 
-class TestONEDNN(TestConv3DOp):
+class TestMKLDNN(TestConv3DOp):
     def init_kernel_type(self):
         self.use_mkldnn = True
         self.data_format = "NCHW"
@@ -33,7 +33,7 @@ class TestONEDNN(TestConv3DOp):
         self.check_pir_onednn = True
 
 
-class TestONEDNNCase1(TestCase1):
+class TestMKLDNNCase1(TestCase1):
     def init_kernel_type(self):
         self.use_mkldnn = True
         self.data_format = "NCHW"
@@ -41,7 +41,7 @@ class TestONEDNNCase1(TestCase1):
         self.check_pir_onednn = True
 
 
-class TestONEDNNGroup1(TestWithGroup1):
+class TestMKLDNNGroup1(TestWithGroup1):
     def init_kernel_type(self):
         self.use_mkldnn = True
         self.data_format = "NCHW"
@@ -49,7 +49,7 @@ class TestONEDNNGroup1(TestWithGroup1):
         self.check_pir_onednn = True
 
 
-class TestONEDNNGroup2(TestWithGroup2):
+class TestMKLDNNGroup2(TestWithGroup2):
     def init_kernel_type(self):
         self.use_mkldnn = True
         self.data_format = "NCHW"
@@ -57,7 +57,7 @@ class TestONEDNNGroup2(TestWithGroup2):
         self.check_pir_onednn = True
 
 
-class TestONEDNNWith1x1(TestWith1x1):
+class TestMKLDNNWith1x1(TestWith1x1):
     def init_kernel_type(self):
         self.use_mkldnn = True
         self.data_format = "NCHW"
@@ -65,7 +65,7 @@ class TestONEDNNWith1x1(TestWith1x1):
         self.check_pir_onednn = True
 
 
-class TestONEDNNWithInput1x1Filter1x1(TestWithInput1x1Filter1x1):
+class TestMKLDNNWithInput1x1Filter1x1(TestWithInput1x1Filter1x1):
     def init_kernel_type(self):
         self.use_mkldnn = True
         self.data_format = "NCHW"
@@ -73,7 +73,7 @@ class TestONEDNNWithInput1x1Filter1x1(TestWithInput1x1Filter1x1):
         self.check_pir_onednn = True
 
 
-class TestConv3DOp_AsyPadding_ONEDNN(TestConv3DOp):
+class TestConv3DOp_AsyPadding_MKLDNN(TestConv3DOp):
     def init_kernel_type(self):
         self.use_mkldnn = True
         self.data_format = "NCHW"
@@ -85,7 +85,7 @@ class TestConv3DOp_AsyPadding_ONEDNN(TestConv3DOp):
         self.padding_algorithm = "EXPLICIT"
 
 
-class TestConv3DOp_Same_ONEDNN(TestConv3DOp_AsyPadding_ONEDNN):
+class TestConv3DOp_Same_MKLDNN(TestConv3DOp_AsyPadding_MKLDNN):
     def init_paddings(self):
         self.pad = [0, 0, 0]
         self.padding_algorithm = "SAME"
@@ -97,7 +97,7 @@ class TestConv3DOp_Same_ONEDNN(TestConv3DOp_AsyPadding_ONEDNN):
         self.check_pir_onednn = True
 
 
-class TestConv3DOp_Valid_ONEDNN(TestConv3DOp_AsyPadding_ONEDNN):
+class TestConv3DOp_Valid_MKLDNN(TestConv3DOp_AsyPadding_MKLDNN):
     def init_paddings(self):
         self.pad = [1, 1, 1]
         self.padding_algorithm = "VALID"

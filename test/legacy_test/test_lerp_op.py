@@ -12,10 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16, get_places
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle.base import core
@@ -146,7 +147,15 @@ class TestLerpAPI(unittest.TestCase):
         self.y = np.full(4, 10.0).astype(self.dtype)
         self.w = np.asarray([0.75]).astype(self.dtype)
         self.res_ref = self.x + self.w * (self.y - self.x)
-        self.place = get_places()
+        self.place = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            self.place.append(paddle.CPUPlace())
+        if core.is_compiled_with_cuda():
+            self.place.append(paddle.CUDAPlace(0))
 
     def test_static_api(self):
         paddle.enable_static()

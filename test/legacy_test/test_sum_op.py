@@ -21,12 +21,7 @@ import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
 from op import Operator
-from op_test import (
-    OpTest,
-    convert_float_to_uint16,
-    convert_uint16_to_float,
-    get_places,
-)
+from op_test import OpTest, convert_float_to_uint16, convert_uint16_to_float
 from utils import dygraph_guard, static_guard
 
 import paddle
@@ -170,7 +165,16 @@ class TestSelectedRowsSumOp(unittest.TestCase):
         return var
 
     def test_w_is_selected_rows(self):
-        for place in get_places():
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(core.CPUPlace())
+        if core.is_compiled_with_cuda():
+            places.append(core.CUDAPlace(0))
+        for place in places:
             for inplace in [True, False]:
                 self.check_with_place(place, inplace)
 
@@ -756,7 +760,16 @@ class TestAddNDoubleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        for p in get_places():
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
+        if core.is_compiled_with_cuda():
+            places.append(base.CUDAPlace(0))
+        for p in places:
             self.func(p)
 
 
@@ -797,7 +810,16 @@ class TestAddNTripleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        for p in get_places():
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
+        if core.is_compiled_with_cuda():
+            places.append(base.CUDAPlace(0))
+        for p in places:
             self.func(p)
 
 
@@ -825,7 +847,16 @@ class TestSumDoubleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        for p in get_places():
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
+        if core.is_compiled_with_cuda():
+            places.append(base.CUDAPlace(0))
+        for p in places:
             self.func(p)
 
 
@@ -853,7 +884,16 @@ class TestSumTripleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        for p in get_places():
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
+        if core.is_compiled_with_cuda():
+            places.append(base.CUDAPlace(0))
+        for p in places:
             self.func(p)
 
 

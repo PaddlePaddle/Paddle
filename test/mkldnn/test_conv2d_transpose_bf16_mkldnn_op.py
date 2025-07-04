@@ -33,7 +33,7 @@ def conv2d_bias_naive(out, bias):
 @unittest.skipIf(
     not core.supports_bfloat16(), "place does not support BF16 evaluation"
 )
-class TestConv2DTransposeBF16ONEDNNOp(OpTest):
+class TestConv2DTransposeBF16MKLDNNOp(OpTest):
     def test_check_output(self):
         self.check_output_with_place(core.CPUPlace(), check_pir_onednn=True)
 
@@ -133,7 +133,7 @@ class TestConv2DTransposeBF16ONEDNNOp(OpTest):
         self.outputs['Output'] = output
 
 
-class TestONEDNNFuseBias(TestConv2DTransposeBF16ONEDNNOp):
+class TestMKLDNNFuseBias(TestConv2DTransposeBF16MKLDNNOp):
     def init_test_case(self):
         super().init_test_case()
         self.pad = [1, 1]
@@ -141,14 +141,14 @@ class TestONEDNNFuseBias(TestConv2DTransposeBF16ONEDNNOp):
         self.bias_size = [6]
 
 
-class TestONEDNNWithPad(TestConv2DTransposeBF16ONEDNNOp):
+class TestMKLDNNWithPad(TestConv2DTransposeBF16MKLDNNOp):
     def init_test_case(self):
         super().init_test_case()
         self.pad = [1, 1]
         self.input_size = [2, 3, 10, 10]
 
 
-class TestONEDNNWithStride(TestConv2DTransposeBF16ONEDNNOp):
+class TestMKLDNNWithStride(TestConv2DTransposeBF16MKLDNNOp):
     def init_test_case(self):
         super().init_test_case()
         self.pad = [1, 1]
@@ -156,28 +156,28 @@ class TestONEDNNWithStride(TestConv2DTransposeBF16ONEDNNOp):
         self.input_size = [2, 3, 6, 6]  # NCHW
 
 
-class TestONEDNNWithAsymPad(TestConv2DTransposeBF16ONEDNNOp):
+class TestMKLDNNWithAsymPad(TestConv2DTransposeBF16MKLDNNOp):
     def init_test_case(self):
         super().init_test_case()
         self.pad = [0, 0, 1, 2]
         self.padding_algorithm = "EXPLICIT"
 
 
-class TestONEDNNWithSamePad(TestConv2DTransposeBF16ONEDNNOp):
+class TestMKLDNNWithSamePad(TestConv2DTransposeBF16MKLDNNOp):
     def init_test_case(self):
         super().init_test_case()
         self.pad = [0, 0]
         self.padding_algorithm = "SAME"
 
 
-class TestONEDNNWithValidPad(TestConv2DTransposeBF16ONEDNNOp):
+class TestMKLDNNWithValidPad(TestConv2DTransposeBF16MKLDNNOp):
     def init_test_case(self):
         super().init_test_case()
         self.pad = [1, 1]
         self.padding_algorithm = "VALID"
 
 
-class TestONEDNNWithValidPad_NHWC(TestONEDNNWithValidPad):
+class TestMKLDNNWithValidPad_NHWC(TestMKLDNNWithValidPad):
     def init_test_case(self):
         super().init_test_case()
         self.data_format = 'NHWC'
@@ -185,8 +185,8 @@ class TestONEDNNWithValidPad_NHWC(TestONEDNNWithValidPad):
         self.input_size = [N, H, W, C]
 
 
-class TestConv2DTransposeONEDNNWithDilationsExplicitPad(
-    TestConv2DTransposeBF16ONEDNNOp
+class TestConv2DTransposeMKLDNNWithDilationsExplicitPad(
+    TestConv2DTransposeBF16MKLDNNOp
 ):
     def init_test_case(self):
         super().init_test_case()

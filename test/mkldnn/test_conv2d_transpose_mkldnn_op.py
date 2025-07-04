@@ -30,7 +30,7 @@ def conv2d_bias_naive(out, bias):
     return out
 
 
-class TestConv2DTransposeONEDNNOp(TestConv2DTransposeOp):
+class TestConv2DTransposeMKLDNNOp(TestConv2DTransposeOp):
     def test_check_grad(self):
         return
 
@@ -100,51 +100,51 @@ class TestConv2DTransposeONEDNNOp(TestConv2DTransposeOp):
         self.outputs['Output'] = output
 
 
-class TestONEDNNFuseBias(TestConv2DTransposeONEDNNOp):
+class TestMKLDNNFuseBias(TestConv2DTransposeMKLDNNOp):
     def init_test_case(self):
-        TestConv2DTransposeONEDNNOp.init_test_case(self)
+        TestConv2DTransposeMKLDNNOp.init_test_case(self)
         self.pad = [1, 1]
         self.fuse_bias = True
         self.bias_size = [6]
 
 
-class TestONEDNNWithPad(TestConv2DTransposeONEDNNOp):
+class TestMKLDNNWithPad(TestConv2DTransposeMKLDNNOp):
     def init_test_case(self):
-        TestConv2DTransposeONEDNNOp.init_test_case(self)
+        TestConv2DTransposeMKLDNNOp.init_test_case(self)
         self.pad = [1, 1]
         self.input_size = [2, 3, 10, 10]
 
 
-class TestONEDNNWithStride(TestConv2DTransposeONEDNNOp):
+class TestMKLDNNWithStride(TestConv2DTransposeMKLDNNOp):
     def init_test_case(self):
-        TestConv2DTransposeONEDNNOp.init_test_case(self)
+        TestConv2DTransposeMKLDNNOp.init_test_case(self)
         self.pad = [1, 1]
         self.stride = [2, 2]
         self.input_size = [2, 3, 6, 6]  # NCHW
 
 
-class TestONEDNNWithAsymPad(TestConv2DTransposeONEDNNOp):
+class TestMKLDNNWithAsymPad(TestConv2DTransposeMKLDNNOp):
     def init_test_case(self):
-        TestConv2DTransposeONEDNNOp.init_test_case(self)
+        TestConv2DTransposeMKLDNNOp.init_test_case(self)
         self.pad = [0, 0, 1, 2]
         self.padding_algorithm = "EXPLICIT"
 
 
-class TestONEDNNWithSamePad(TestConv2DTransposeONEDNNOp):
+class TestMKLDNNWithSamePad(TestConv2DTransposeMKLDNNOp):
     def init_test_case(self):
-        TestConv2DTransposeONEDNNOp.init_test_case(self)
+        TestConv2DTransposeMKLDNNOp.init_test_case(self)
         self.pad = [0, 0]
         self.padding_algorithm = "SAME"
 
 
-class TestONEDNNWithValidPad(TestConv2DTransposeONEDNNOp):
+class TestMKLDNNWithValidPad(TestConv2DTransposeMKLDNNOp):
     def init_test_case(self):
-        TestConv2DTransposeONEDNNOp.init_test_case(self)
+        TestConv2DTransposeMKLDNNOp.init_test_case(self)
         self.pad = [1, 1]
         self.padding_algorithm = "VALID"
 
 
-class TestONEDNNWithValidPad_NHWC(TestONEDNNWithValidPad):
+class TestMKLDNNWithValidPad_NHWC(TestMKLDNNWithValidPad):
     def init_test_case(self):
         super().init_test_case()
         self.data_format = "NHWC"
@@ -152,11 +152,11 @@ class TestONEDNNWithValidPad_NHWC(TestONEDNNWithValidPad):
         self.input_size = [N, H, W, C]
 
 
-class TestConv2DTransposeONEDNNWithDilationsExplicitPad(
-    TestConv2DTransposeONEDNNOp
+class TestConv2DTransposeMKLDNNWithDilationsExplicitPad(
+    TestConv2DTransposeMKLDNNOp
 ):
     def init_test_case(self):
-        TestConv2DTransposeONEDNNOp.init_test_case(self)
+        TestConv2DTransposeMKLDNNOp.init_test_case(self)
         self.stride = [2, 1]
         self.dilations = [1, 2]
         self.groups = 1
@@ -167,9 +167,9 @@ class TestConv2DTransposeONEDNNWithDilationsExplicitPad(
         self.padding_algorithm = "EXPLICIT"
 
 
-class TestONEDNNWithGroups(TestConv2DTransposeONEDNNOp):
+class TestMKLDNNWithGroups(TestConv2DTransposeMKLDNNOp):
     def init_test_case(self):
-        TestConv2DTransposeONEDNNOp.init_test_case(self)
+        TestConv2DTransposeMKLDNNOp.init_test_case(self)
         self.pad = [1, 1]
         self.groups = 2
         self.input_size = [2, 4, 5, 5]  # NCHW
@@ -177,9 +177,9 @@ class TestONEDNNWithGroups(TestConv2DTransposeONEDNNOp):
         self.filter_size = [f_c, 3, 3, 3]
 
 
-class TestONEDNNWithGroups_NHWC(TestConv2DTransposeONEDNNOp):
+class TestMKLDNNWithGroups_NHWC(TestConv2DTransposeMKLDNNOp):
     def init_test_case(self):
-        TestConv2DTransposeONEDNNOp.init_test_case(self)
+        TestConv2DTransposeMKLDNNOp.init_test_case(self)
         self.pad = [1, 1]
         self.groups = 2
         self.input_size = [2, 5, 5, 4]  # NHWC

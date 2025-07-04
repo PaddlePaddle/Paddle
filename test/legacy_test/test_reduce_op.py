@@ -12,15 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
-from op_test import (
-    OpTest,
-    convert_float_to_uint16,
-    get_places,
-    skip_check_grad_ci,
-)
+from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 from utils import dygraph_guard, static_guard
 
 import paddle
@@ -2072,7 +2068,15 @@ class API_TestSumOp(unittest.TestCase):
         if np_axis is None:
             np_axis = attr_axis
 
-        places = get_places()
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
+        if core.is_compiled_with_cuda():
+            places.append(base.CUDAPlace(0))
         for place in places:
             with base.program_guard(base.Program(), base.Program()):
                 data = paddle.static.data("data", shape=shape, dtype=x_dtype)
@@ -2144,7 +2148,15 @@ class TestAllAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
         paddle.enable_static()
-        self.places = get_places()
+        self.places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            self.places.append(base.CPUPlace())
+        if core.is_compiled_with_cuda():
+            self.places.append(base.CUDAPlace(0))
 
     def check_static_result(self, place):
         main = paddle.static.Program()
@@ -2249,7 +2261,15 @@ class TestAnyAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
         paddle.enable_static()
-        self.places = get_places()
+        self.places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            self.places.append(base.CPUPlace())
+        if core.is_compiled_with_cuda():
+            self.places.append(base.CUDAPlace(0))
 
     def check_static_result(self, place):
         main = paddle.static.Program()

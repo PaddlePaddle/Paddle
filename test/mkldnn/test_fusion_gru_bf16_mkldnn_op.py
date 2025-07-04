@@ -25,7 +25,7 @@ from paddle.base import core
 @unittest.skipIf(
     not core.supports_bfloat16(), "place does not support BF16 evaluation"
 )
-class TestFusionGRUBF16ONEDNNOp(OpTest):
+class TestFusionGRUBF16MKLDNNOp(OpTest):
     def set_confs(self):
         pass
 
@@ -134,17 +134,17 @@ class TestFusionGRUBF16ONEDNNOp(OpTest):
         }
 
 
-class TestFusionGRUINT8ONEDNNOp2(TestFusionGRUBF16ONEDNNOp):
+class TestFusionGRUINT8MKLDNNOp2(TestFusionGRUBF16MKLDNNOp):
     def set_confs(self):
         self.origin_mode = False
 
 
-class TestFusionGRUINT8ONEDNNOp3(TestFusionGRUBF16ONEDNNOp):
+class TestFusionGRUINT8MKLDNNOp3(TestFusionGRUBF16MKLDNNOp):
     def set_confs(self):
         self.with_bias = False
 
 
-class TestFusionGRUINT8ONEDNNBF16WeightsOp(TestFusionGRUBF16ONEDNNOp):
+class TestFusionGRUINT8MKLDNNBF16WeightsOp(TestFusionGRUBF16MKLDNNOp):
     def set_confs(self):
         self.weights_dtype = 'bf16'
 

@@ -26,12 +26,7 @@ from paddle import nn
 paddle.enable_static()
 import sys
 
-from op_test import (
-    OpTest,
-    convert_float_to_uint16,
-    get_numeric_gradient,
-    get_places,
-)
+from op_test import OpTest, convert_float_to_uint16, get_numeric_gradient
 
 sys.path.append("../deprecated/legacy_test")
 from test_attribute_var import UnittestBase
@@ -1540,7 +1535,15 @@ class TestFunctionalConv2DTranspose_ZeroSize(TestCase):
         self.dilation = 1
         self.groups = 1
         self.data_format = "NCHW"
-        self.places = get_places()
+        self.places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not base.core.is_compiled_with_cuda()
+        ):
+            self.places.append(base.CPUPlace())
+        if base.core.is_compiled_with_cuda():
+            self.places.append(base.CUDAPlace(0))
 
     def test_dygraph(self):
         for place in self.places:

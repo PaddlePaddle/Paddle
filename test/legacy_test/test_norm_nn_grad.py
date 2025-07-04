@@ -12,15 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
-from op_test import get_places
 
 import paddle
 from paddle import base
+from paddle.base import core
 
 
 class TestInstanceNormDoubleGradCheck(unittest.TestCase):
@@ -58,7 +59,16 @@ class TestInstanceNormDoubleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        for p in get_places():
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
+        if core.is_compiled_with_cuda():
+            places.append(base.CUDAPlace(0))
+        for p in places:
             with paddle.pir_utils.OldIrGuard():
                 self.func(p)
             self.func_pir(p)
@@ -134,7 +144,16 @@ class TestInstanceNormDoubleGradEagerCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        for p in get_places():
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
+        if core.is_compiled_with_cuda():
+            places.append(base.CUDAPlace(0))
+        for p in places:
             self.func(p)
 
 
@@ -247,7 +266,16 @@ class TestBatchNormDoubleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        for p in get_places():
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
+        if core.is_compiled_with_cuda():
+            places.append(base.CUDAPlace(0))
+        for p in places:
             with paddle.pir_utils.OldIrGuard():
                 self.func(p)
             self.func_pir(p)

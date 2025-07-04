@@ -14,10 +14,11 @@
 
 # Test set_value op in static graph mode
 
+import os
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16, get_places
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle.base import core
@@ -1277,7 +1278,16 @@ class TestSetValueValueShape6(TestSetValueApi):
         return x
 
     def test_api(self):
-        for place in get_places(string_format=True):
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not paddle.is_compiled_with_cuda()
+        ):
+            places.append('cpu')
+        if paddle.is_compiled_with_cuda():
+            places.append('gpu')
+        for place in places:
             paddle.set_device(place)
 
             static_out = self._run_static()

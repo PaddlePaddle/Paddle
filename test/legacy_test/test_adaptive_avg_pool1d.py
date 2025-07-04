@@ -16,7 +16,6 @@ import os
 import unittest
 
 import numpy as np
-from op_test import get_places
 
 import paddle
 import paddle.nn.functional as F
@@ -84,7 +83,15 @@ def avg_pool1D_forward_naive(
 class TestPool1D_API(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
-        self.places = get_places()
+        self.places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            self.places.append(base.CPUPlace())
+        if core.is_compiled_with_cuda():
+            self.places.append(base.CUDAPlace(0))
 
     def check_adaptive_avg_dygraph_results(self, place):
         with base.dygraph.guard(place):

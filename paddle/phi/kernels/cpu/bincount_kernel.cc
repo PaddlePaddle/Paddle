@@ -16,7 +16,6 @@
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
@@ -34,11 +33,9 @@ void BincountInner(const Context& dev_ctx,
   auto input_numel = input->numel();
 
   if (input_data == nullptr) {
-    phi::DDim out_dim{minlength};
+    phi::DDim out_dim{0};
     output->Resize(out_dim);
-    // Since minlength may >0 , so fill with 0.
-    phi::Full<InputT, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(output->dims())), 0, output);
+    dev_ctx.template Alloc<InputT>(output);
     return;
   }
 

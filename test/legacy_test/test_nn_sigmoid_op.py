@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
-from op_test import get_places
 
 import paddle
 from paddle import base, nn
+from paddle.base import core
 from paddle.nn import functional
 
 
@@ -64,7 +65,16 @@ class TestNNSigmoidAPI(unittest.TestCase):
         np.testing.assert_allclose(y.numpy(), self.y, rtol=1e-05)
 
     def test_check_api(self):
-        for place in get_places():
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
+        if core.is_compiled_with_cuda():
+            places.append(base.CUDAPlace(0))
+        for place in places:
             self.check_dynamic_api(place)
             self.check_static_api(place)
 
@@ -98,7 +108,16 @@ class TestNNFunctionalSigmoidAPI(unittest.TestCase):
         np.testing.assert_allclose(y.numpy(), self.y, rtol=1e-05)
 
     def test_check_api(self):
-        for place in get_places():
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
+        if core.is_compiled_with_cuda():
+            places.append(base.CUDAPlace(0))
+        for place in places:
             self.check_static_api(place)
             self.check_dynamic_api()
 

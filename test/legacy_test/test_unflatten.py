@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
-from op_test import get_places
 
 import paddle
 
@@ -69,7 +69,15 @@ class TestUnflattenAPI(unittest.TestCase):
         self.set_api()
         self.set_args()
         self.get_output()
-        self.places = get_places()
+        self.places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not paddle.device.is_compiled_with_cuda()
+        ):
+            self.places.append(paddle.CPUPlace())
+        if paddle.device.is_compiled_with_cuda():
+            self.places.append(paddle.CUDAPlace(0))
 
     def func_dygraph(self):
         for place in self.places:
@@ -88,7 +96,16 @@ class TestUnflattenAPI(unittest.TestCase):
 
     def test_static(self):
         paddle.enable_static()
-        for place in get_places():
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not paddle.device.is_compiled_with_cuda()
+        ):
+            places.append(paddle.CPUPlace())
+        if paddle.device.is_compiled_with_cuda():
+            places.append(paddle.CUDAPlace(0))
+        for place in places:
             with paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
             ):
@@ -256,10 +273,27 @@ class TestLayer(unittest.TestCase):
 
     def setUp(self):
         self.set_args()
-        self.places = get_places()
+        self.places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not paddle.device.is_compiled_with_cuda()
+        ):
+            self.places.append(paddle.CPUPlace())
+        if paddle.device.is_compiled_with_cuda():
+            self.places.append(paddle.CUDAPlace(0))
 
     def test_layer(self):
-        for place in get_places():
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not paddle.device.is_compiled_with_cuda()
+        ):
+            places.append(paddle.CPUPlace())
+        if paddle.device.is_compiled_with_cuda():
+            places.append(paddle.CUDAPlace(0))
+        for place in places:
             paddle.disable_static()
             x = paddle.to_tensor(self.x, dtype='float32', place=place)
             unflatten = paddle.nn.Unflatten(self.axis, self.shape)

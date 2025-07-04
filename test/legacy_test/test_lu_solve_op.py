@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import sys
 import unittest
 
@@ -19,9 +20,10 @@ import numpy as np
 
 import paddle
 from paddle import base
+from paddle.base import core
 
 sys.path.append("..")
-from op_test import OpTest, get_places
+from op_test import OpTest
 
 
 def _transpose_last_2dim(x):
@@ -192,7 +194,15 @@ class TestLuSolveOpAPI(unittest.TestCase):
             _,
             _,
         ) = get_inandout(self.A_shape, self.b_shape, self.trans, self.dtype)
-        self.place = get_places()
+        self.place = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            self.place.append(base.CPUPlace())
+        if core.is_compiled_with_cuda():
+            self.place.append(base.CUDAPlace(0))
 
     def init_value(self):
         # Ax = b

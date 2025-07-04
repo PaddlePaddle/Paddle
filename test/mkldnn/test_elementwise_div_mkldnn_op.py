@@ -26,7 +26,7 @@ from paddle.base.framework import _current_expected_place
     not (isinstance(_current_expected_place(), core.CPUPlace)),
     "GPU is not supported",
 )
-class TestONEDNNElementwiseDivOp(OpTest):
+class TestMKLDNNElementwiseDivOp(OpTest):
     def setUp(self):
         self.op_type = "elementwise_div"
         self.init_dtype()
@@ -73,21 +73,21 @@ class TestONEDNNElementwiseDivOp(OpTest):
         self.check_output(check_pir_onednn=True)
 
 
-class TestONEDNNElementwiseDivOp2(TestONEDNNElementwiseDivOp):
+class TestMKLDNNElementwiseDivOp2(TestMKLDNNElementwiseDivOp):
     def init_input_output(self):
         self.x = np.random.uniform(0.1, 1, [100]).astype(self.dtype)
         self.y = np.random.uniform(0.1, 1, [100]).astype(self.dtype)
         self.out = np.divide(self.x, self.y)
 
 
-class TestONEDNNElementwiseDivOp3(TestONEDNNElementwiseDivOp):
+class TestMKLDNNElementwiseDivOp3(TestMKLDNNElementwiseDivOp):
     def init_input_output(self):
         self.x = np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype(self.dtype)
         self.y = np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype(self.dtype)
         self.out = np.divide(self.x, self.y)
 
 
-class TestONEDNNElementwiseDivOp4(TestONEDNNElementwiseDivOp):
+class TestMKLDNNElementwiseDivOp4(TestMKLDNNElementwiseDivOp):
     def init_input_output(self):
         self.x = np.random.uniform(1, 2, [2, 3, 4, 32]).astype(self.dtype)
         self.y = np.random.uniform(1, 2, [4, 32]).astype(self.dtype)
@@ -100,7 +100,7 @@ class TestONEDNNElementwiseDivOp4(TestONEDNNElementwiseDivOp):
         pass
 
 
-class TestONEDNNElementwiseDivOp5(TestONEDNNElementwiseDivOp):
+class TestMKLDNNElementwiseDivOp5(TestMKLDNNElementwiseDivOp):
     def init_input_output(self):
         self.x = np.random.uniform(1, 2, [2, 3, 4, 100]).astype(self.dtype)
         self.y = np.random.uniform(1, 2, [100]).astype(self.dtype)
@@ -113,7 +113,7 @@ class TestONEDNNElementwiseDivOp5(TestONEDNNElementwiseDivOp):
         pass
 
 
-class TestONEDNNElementwiseDivOpZeroDim(TestONEDNNElementwiseDivOp):
+class TestMKLDNNElementwiseDivOpZeroDim(TestMKLDNNElementwiseDivOp):
     def init_input_output(self):
         self.x = np.random.uniform(0.1, 1, [100]).astype(self.dtype)
         self.y = np.array(3.0).astype(self.dtype)
@@ -126,7 +126,7 @@ class TestONEDNNElementwiseDivOpZeroDim(TestONEDNNElementwiseDivOp):
         pass
 
 
-class TestONEDNNElementwiseDivOpZeroDim2(TestONEDNNElementwiseDivOp):
+class TestMKLDNNElementwiseDivOpZeroDim2(TestMKLDNNElementwiseDivOp):
     def init_input_output(self):
         self.x = np.array(3.0).astype(self.dtype)
         self.y = np.random.uniform(0.1, 1, [100]).astype(self.dtype)
@@ -139,7 +139,7 @@ class TestONEDNNElementwiseDivOpZeroDim2(TestONEDNNElementwiseDivOp):
         pass
 
 
-class TestONEDNNElementwiseDivOpZeroDim3(TestONEDNNElementwiseDivOp):
+class TestMKLDNNElementwiseDivOpZeroDim3(TestMKLDNNElementwiseDivOp):
     def init_input_output(self):
         self.x = np.array(3.0).astype(self.dtype)
         self.y = np.array(3.0).astype(self.dtype)
@@ -153,7 +153,7 @@ class TestONEDNNElementwiseDivOpZeroDim3(TestONEDNNElementwiseDivOp):
 
 
 @OpTestTool.skip_if_not_cpu_bf16()
-class TestBf16(TestONEDNNElementwiseDivOp):
+class TestBf16(TestMKLDNNElementwiseDivOp):
     def setUp(self):
         self.op_type = "elementwise_div"
         self.init_dtype()

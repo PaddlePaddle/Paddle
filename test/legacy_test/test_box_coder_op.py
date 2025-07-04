@@ -12,10 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
-from op_test import OpTest, get_places
+from op_test import OpTest
 
 import paddle
 
@@ -339,7 +340,15 @@ class TestBoxCoderOpWithVarianceDygraphAPI(unittest.TestCase):
             self.box_normalized,
             self.axis,
         )
-        self.place = get_places()
+        self.place = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not paddle.is_compiled_with_cuda()
+        ):
+            self.place.append(paddle.CPUPlace())
+        if paddle.is_compiled_with_cuda():
+            self.place.append(paddle.CUDAPlace(0))
 
     def test_dygraph_api(self):
         def run(place):

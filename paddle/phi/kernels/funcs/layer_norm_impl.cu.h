@@ -52,19 +52,6 @@ inline static int GetDesiredBlockDim(int64_t block_dim) {
   return block_dim >= kMaxBlockDim ? kMaxBlockDim : lwarpSize;
 }
 
-static dim3 GetDesiredGridDim(int64_t grid_size) {
-  dim3 grid_dim(1, 1);
-  int64_t grid_x = grid_size > 1 ? grid_size : 1;
-  int64_t grid_y = 1;
-  if (grid_x > 2147483648LL) {
-    grid_y = 1024;
-    grid_x = (grid_x + grid_y - 1) / grid_x;
-  }
-  grid_dim.x = static_cast<uint32_t>(grid_x);
-  grid_dim.y = static_cast<uint32_t>(grid_y);
-  return grid_dim;
-}
-
 template <typename U>
 static __forceinline__ __device__ U WarpReduceSum(U val) {
   unsigned mask = 0u;
@@ -417,13 +404,8 @@ __global__ void LayerNormForward(
                                  // warpSize <= 1024/32 = 32;
   __shared__ U shared_var[32];
 
-  int64_t beg_idx =
-      (static_cast<int64_t>(blockIdx.x) * gridDim.y + blockIdx.y) *
-          feature_size +
-      threadIdx.x;
-  int64_t end_idx =
-      (static_cast<int64_t>(blockIdx.x) * gridDim.y + blockIdx.y + 1) *
-      feature_size;
+  int64_t beg_idx = blockIdx.x * feature_size + threadIdx.x;
+  int64_t end_idx = (blockIdx.x + 1) * feature_size;
 
   // Step 1: Reduce to calculate mean and var
   U mean_val = 0;
@@ -2156,8 +2138,7 @@ static void LayerNormBackward(
         uint64_t addr = reinterpret_cast<uint64_t>(d_y) |
                         reinterpret_cast<uint64_t>(x) |
                         reinterpret_cast<uint64_t>(d_x);
-        int vec_size =
-            std::min(4, phi::GetVectorizedSize<T>(reinterpret_cast<T *>(addr)));
+        int vec_size = phi::GetVectorizedSize<T>(reinterpret_cast<T *>(addr));
         int real_vec = VecSizeJudgeForeGradInput(feature_size, vec_size);
 
         if (feature_size <= 2048) {

@@ -12,14 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
-from op_test import check_out_dtype, get_places, paddle_static_guard
+from op_test import check_out_dtype, paddle_static_guard
 
 import paddle
 import paddle.nn.functional as F
 from paddle import base
+from paddle.base import core
 
 
 def adaptive_start_index(index, input_size, output_size):
@@ -72,7 +74,15 @@ def max_pool1D_forward_naive(
 class TestPool1D_API(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
-        self.places = get_places()
+        self.places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            self.places.append(base.CPUPlace())
+        if core.is_compiled_with_cuda():
+            self.places.append(base.CUDAPlace(0))
 
     def check_adaptive_max_dygraph_results(self, place):
         with base.dygraph.guard(place):
@@ -139,7 +149,15 @@ class TestOutDtype(unittest.TestCase):
 class TestPool1D_API_ZeroSize(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
-        self.places = get_places()
+        self.places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            self.places.append(base.CPUPlace())
+        if core.is_compiled_with_cuda():
+            self.places.append(base.CUDAPlace(0))
 
     def check_adaptive_max_dygraph_results(self, place):
         with base.dygraph.guard(place):

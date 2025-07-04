@@ -570,7 +570,6 @@
   infer_meta :
     func : GeneralBinaryGradInferMeta
     param : [input, filter]
-    spmd_rule : Conv3dGradInferSpmd
   kernel :
     func : conv3d_grad
     data_type : input
@@ -1733,7 +1732,6 @@
   data_transform :
     skip_transform : indices
   backward : index_put_double_grad
-  no_need_buffer: x, value
 
 - backward_op : index_sample_grad
   forward : index_sample (Tensor x, Tensor index) -> Tensor(out)
@@ -3859,7 +3857,6 @@
   kernel :
     func : view_dtype_grad
     data_type : out_grad
-  no_need_buffer: input
 
 - backward_op : warpctc_grad
   forward : warpctc (Tensor logits, Tensor label, Tensor logits_length, Tensor labels_length, int blank = 0, bool norm_by_times = false) -> Tensor(loss), Tensor(warpctcgrad)

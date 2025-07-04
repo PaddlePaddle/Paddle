@@ -22,7 +22,6 @@ from op_test import (
     _set_use_system_allocator,
     convert_float_to_uint16,
     convert_uint16_to_float,
-    get_places,
 )
 
 import paddle
@@ -454,7 +453,17 @@ class TestBatchNormOpInference(unittest.TestCase):
         )
 
     def test_check_output(self):
-        for place in get_places():
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(core.CPUPlace())
+        if core.is_compiled_with_cuda():
+            places.append(core.CUDAPlace(0))
+
+        for place in places:
             for data_format in ["NCHW", "NHWC"]:
                 self.check_with_place(
                     place,
@@ -563,7 +572,16 @@ class TestDygraphBatchNormAPIError(unittest.TestCase):
 
 class TestDygraphBatchNormTrainableStats(unittest.TestCase):
     def test_dygraph(self):
-        for p in get_places():
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
+        if core.is_compiled_with_cuda():
+            places.append(base.CUDAPlace(0))
+        for p in places:
             shape = [4, 10, 4, 4]
 
             def compute(x, is_test, trainable_statistics):
@@ -582,7 +600,16 @@ class TestDygraphBatchNormTrainableStats(unittest.TestCase):
             np.testing.assert_allclose(y1, y2, rtol=1e-05)
 
     def test_static(self):
-        for p in get_places():
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
+        if core.is_compiled_with_cuda():
+            places.append(base.CUDAPlace(0))
+        for p in places:
             exe = base.Executor(p)
             shape = [4, 10, 16, 16]
 
