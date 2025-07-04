@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
@@ -990,18 +989,6 @@ class TestMultiTensorMomentumDygraph(unittest.TestCase):
                 optimizer.clear_grad(set_to_zero=False)
         return output, model.parameters()
 
-    def _get_places(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not paddle.is_compiled_with_cuda()
-        ):
-            places.append('cpu')
-        if paddle.is_compiled_with_cuda():
-            places.append('gpu')
-        return places
-
     def _check_with_place_amp(self, place, use_amp):
         output1, params1 = self._momentum_optimize_dygraph(
             place=place, use_amp=use_amp, use_multi_tensor=True
@@ -1049,7 +1036,7 @@ class TestMultiTensorMomentumDygraph(unittest.TestCase):
             np.testing.assert_allclose(params1[idx], params2[idx], rtol=1e-05)
 
     def test_main(self):
-        for place in self._get_places():
+        for place in get_places(string_format=True):
             use_amp_list = [True, False]
             for use_amp in use_amp_list:
                 self._check_with_place_amp(place, use_amp)
