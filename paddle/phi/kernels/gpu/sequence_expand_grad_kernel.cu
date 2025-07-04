@@ -49,7 +49,7 @@ inline __global__ void sequence_expand_grad_kernel(const T* dout_data,
 
 template <typename T>
 struct SequenceExpandGradFunctor<phi::GPUContext, T> {
-  void operator()(const phi::GPUContext& context,
+  void operator()(const phi::GPUContext& dev_ctx,
                   const DenseTensor& dout,
                   const phi::Vector<size_t>& x_lod,   /*expand source lod*/
                   const phi::Vector<size_t>& ref_lod, /*expand based lod*/
@@ -67,14 +67,14 @@ struct SequenceExpandGradFunctor<phi::GPUContext, T> {
     phi::MixVector<size_t> mixv_ref_lod(&ref_lod);
     phi::MixVector<size_t> mixv_x_lod(&x_lod);
     phi::MixVector<size_t> mixv_out_offset(&out_offset);
-    sequence_expand_grad_kernel<<<grid_size, block_size, 0, context.stream()>>>(
+    sequence_expand_grad_kernel<<<grid_size, block_size, 0, dev_ctx.stream()>>>(
         dout.data<T>(),
-        mixv_ref_lod.CUDAData(context.GetPlace()),
-        mixv_x_lod.CUDAData(context.GetPlace()),
-        mixv_out_offset.CUDAData(context.GetPlace()),
+        mixv_ref_lod.CUDAData(dev_ctx.GetPlace()),
+        mixv_x_lod.CUDAData(dev_ctx.GetPlace()),
+        mixv_out_offset.CUDAData(dev_ctx.GetPlace()),
         ref_lod.size(),
         x_item_length,
-        context.template Alloc<T>(dx));
+        dev_ctx.template Alloc<T>(dx));
   }
 };
 
