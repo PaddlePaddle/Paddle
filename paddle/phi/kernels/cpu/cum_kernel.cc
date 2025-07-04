@@ -159,16 +159,16 @@ struct LogSumExp {
                                                      const T& b) const {
     auto mi = Eigen::internal::scalar_min_op<T>()(a, b);
     auto ma = Eigen::internal::scalar_max_op<T>()(a, b);
+    if (ma == -Eigen::NumTraits<T>::infinity()) {
+      return ma;
+    }
 
     auto sub = Eigen::internal::scalar_difference_op<T>();
     auto add = Eigen::internal::scalar_sum_op<T>();
     auto exp = Eigen::internal::scalar_exp_op<T>();
     auto log1p = Eigen::internal::scalar_log1p_op<T>();
-    auto cmp_lt =
-        Eigen::internal::scalar_cmp_op<T, T, Eigen::internal::cmp_LT>();
 
-    auto logsumexp = add(log1p(exp(sub(mi, ma))), ma);
-    return cmp_lt(ma, Eigen::NumTraits<T>::lowest()) ? ma : logsumexp;
+    return add(log1p(exp(sub(mi, ma))), ma);
   }
   EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE T packetOp(const T& a,
                                                    const T& b) const {
@@ -183,7 +183,7 @@ struct LogSumExp {
 
     auto logsumexp = padd(plog1p(pexp(psub(mi, ma))), ma);
     return pselect(
-        pcmp_lt(ma, pset1(Eigen::NumTraits<T>::lowest())), ma, logsumexp);
+        pcmp_lt(ma, pset1(-Eigen::NumTraits<T>::infinity())), ma, logsumexp);
   }
 };
 
@@ -202,7 +202,7 @@ struct LogSumExpReducer {
   }
 
   EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE T initialize() const {
-    return Eigen::NumTraits<T>::lowest();
+    return -Eigen::NumTraits<T>::infinity();
   }
 
   template <typename Packet>
@@ -226,12 +226,11 @@ struct LogSumExpReducer {
     auto max_reducer = Eigen::internal::MaxReducer<T, Eigen::PropagateNaN>();
     auto sum_reducer = Eigen::internal::SumReducer<T>();
     auto exp = Eigen::internal::scalar_exp_op<T>();
-    auto cmp_lt =
-        Eigen::internal::scalar_cmp_op<T, T, Eigen::internal::cmp_LT>();
     auto log = Eigen::internal::scalar_log_op<T>();
     auto add = Eigen::internal::scalar_sum_op<T>();
 
     using Eigen::internal::pexp;
+    using Eigen::internal::pset1;
     using Eigen::internal::psub;
 
     // `ma = max(x1, ..., xn)`
@@ -241,10 +240,13 @@ struct LogSumExpReducer {
     //
     // `logsumexp(x1, ..., xn) = ma + log (exp(x1 - ma) + ... + exp(xn - ma))`
     auto ma = max_reducer.finalizeBoth(saccum, vaccum);
-    auto logsumexp = add(log(sum_reducer.finalizeBoth(
-                             exp(saccum - ma), pexp(psub(vaccum, pset1(ma))))),
-                         ma);
-    return cmp_lt(ma, Eigen::NumTraits<T>::lowest()) ? initialize() : logsumexp;
+    if (ma == -Eigen::NumTraits<T>::infinity()) {
+      return ma;
+    }
+
+    auto sum_of_exps = sum_reducer.finalizeBoth(exp(saccum - ma),
+                                                pexp(psub(vaccum, pset1(ma))));
+    return add(log(sum_of_exps), ma);
   }
 };
 
