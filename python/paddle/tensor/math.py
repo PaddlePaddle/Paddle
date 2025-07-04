@@ -4683,7 +4683,7 @@ def logcumsumexp(
 
 def cumprod(
     x: Tensor,
-    dim: int | None = None,
+    dim: int,
     dtype: DTypeLike | None = None,
     name: str | None = None,
 ) -> Tensor:
@@ -4695,7 +4695,7 @@ def cumprod(
 
     Args:
         x (Tensor): the input tensor need to be cumproded.
-        dim (int|None, optional): the dimension along which the input tensor will be accumulated. It need to be in the range of [-x.rank, x.rank),
+        dim (int): the dimension along which the input tensor will be accumulated. It need to be in the range of [-x.rank, x.rank),
                     where x.rank means the dimensions of the input tensor x and -1 means the last dimension.
         dtype (str|paddle.dtype|np.dtype, optional): The data type of the output tensor, can be bfloat16, float16, float32, float64, int32, int64,
                     complex64, complex128. If specified, the input tensor is casted to dtype before the operation is performed.
@@ -4781,7 +4781,7 @@ def cumprod(
 @inplace_apis_in_dygraph_only
 def cumprod_(
     x: Tensor,
-    dim: int | None = None,
+    dim: int,
     dtype: DTypeLike | None = None,
     name: str | None = None,
 ) -> Tensor:
