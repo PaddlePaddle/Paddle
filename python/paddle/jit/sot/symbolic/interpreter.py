@@ -20,9 +20,14 @@ import paddle
 from paddle.jit.dy2static.utils import compose_guards
 from paddle.utils import to_sequence
 
-from ..utils import InnerError, log_do, map_if, map_if_extend
+from ..utils import (
+    InnerError,
+    log_do,
+    map_if,
+    map_if_extend,
+)
 from .statement_ir import (
-    SIRRuntimeCache,
+    ParametersHolder,
     StatementContext,
     StatementContextRegistry,
     Symbol,
@@ -148,11 +153,6 @@ class Interpreter:
         # fetch outputs
         return replace_symbol(SIR.outputs, state)
 
-    def call(self, stmt: Statement, inputs):
-        SIR = self.get_sir(stmt.sir_name)
-        state = prepare_state(SIR, inputs)
-        return self.run_sir(stmt.sir_name, state)
-
     def api(self, stmt, inputs):
         args, kwargs = inputs
         return stmt.api(*args, **kwargs)
@@ -173,7 +173,9 @@ class Interpreter:
         return stmt.converted_func(*args, **kwargs)
 
 
-def compile_sir(builder: StatementIRBuilder, name: str):
+def compile_sir(
+    builder: StatementIRBuilder, name: str, parameters_holder: ParametersHolder
+):
     """
     Compile a SIR to a new function
 
@@ -191,24 +193,25 @@ def compile_sir(builder: StatementIRBuilder, name: str):
         """
         interpreter = Interpreter(builder)
         SIR = interpreter.get_sir(name)
-        state = prepare_state(SIR, args)
+        state = prepare_state(SIR, args, parameters_holder)
         return interpreter.run_sir(name, state)
 
     return wrapper
 
 
-def prepare_state(SIR, inputs):
+def prepare_state(
+    SIR: StatementIR, inputs, parameters_holder: ParametersHolder
+):
     state = {}
-
-    # update free vars if exists
-    if SIRRuntimeCache().has_key(SIR.name):
-        free_var_seeker = SIRRuntimeCache().get_free_vars(SIR.name)
-        if free_var_seeker:
-            state = free_var_seeker()
-
     # bind inputs
+    assert len(SIR.inputs) == len(inputs), "Inputs length mismatch."
     for sir_inp, inp in zip(SIR.inputs, inputs):
         state[sir_inp.name] = inp
+
+    for sir_param in SIR.params:
+        state[sir_param.name] = paddle.base.dygraph.base._convert_into_variable(
+            parameters_holder.get(sir_param.name)
+        )
 
     return state
 

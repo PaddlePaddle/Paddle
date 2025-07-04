@@ -19,7 +19,7 @@ namespace phi {
 namespace fusion {
 
 template <typename T, typename Context>
-void MaskAdaptiveXPUKernel(const Context& ctx,
+void MaskAdaptiveXPUKernel(const Context& dev_ctx,
                            const DenseTensor& mask,
                            DenseTensor* length,
                            DenseTensor* seq_lod,
@@ -48,12 +48,12 @@ void MaskAdaptiveXPUKernel(const Context& ctx,
     cpu_seq_lod.push_back(cpu_seq_lod.back() + cur_batch_seq_len);
     cpu_seq_lens.push_back(cur_batch_seq_len);
   }
-  auto* seq_lod_ptr = ctx.template HostAlloc<int>(seq_lod);
+  auto* seq_lod_ptr = dev_ctx.template HostAlloc<int>(seq_lod);
   memcpy(seq_lod_ptr, cpu_seq_lod.data(), cpu_seq_lod.size() * sizeof(int));
-  auto* seq_lens_ptr = ctx.template HostAlloc<int64_t>(length);
+  auto* seq_lens_ptr = dev_ctx.template HostAlloc<int64_t>(length);
   memcpy(
       seq_lens_ptr, cpu_seq_lens.data(), cpu_seq_lens.size() * sizeof(int64_t));
-  auto* pad_seq_len_ptr = ctx.template HostAlloc<int>(pad_seq_len);
+  auto* pad_seq_len_ptr = dev_ctx.template HostAlloc<int>(pad_seq_len);
   pad_seq_len_ptr[0] = pad_seq_len_size;
 }
 

@@ -27,6 +27,7 @@
 #include "paddle/phi/core/platform/cuda_device_guard.h"
 #include "paddle/phi/core/platform/device/gpu/nccl_helper.h"
 #include "paddle/phi/core/utils/data_type.h"
+#include "paddle/utils/string/string_helper.h"
 
 COMMON_DECLARE_bool(flagcx_blocking_wait);
 COMMON_DECLARE_bool(enable_async_trace);

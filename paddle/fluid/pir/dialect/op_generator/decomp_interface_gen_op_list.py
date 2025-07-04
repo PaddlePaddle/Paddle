@@ -78,6 +78,7 @@ GENERATE_IMPL_DECOMP = [
     "unbind",
     "unsqueeze",
     "unstack",
+    "masked_fill",
 ]
 decomp_rule_interface_declare_gen_op_list = (
     GENERATE_IMPL_DECOMP + MANUAL_IMPL_DECOMP
@@ -136,6 +137,9 @@ GENERATE_IMPL_VJP = [
     'transpose_grad',
     'unsqueeze_grad',
     'p_norm_grad',
+    'masked_fill_grad',
+    'index_put_grad',
+    'index_add_grad',
 ]
 
 # declare belongs to codegen, but implementation not

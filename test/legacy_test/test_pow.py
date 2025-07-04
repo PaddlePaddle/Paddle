@@ -12,13 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
+from op_test import get_places
 
 import paddle
-from paddle.base import core
 from paddle.static import Program, program_guard
 
 DYNAMIC = 1
@@ -80,15 +79,7 @@ class TestPowerAPI(unittest.TestCase):
     """TestPowerAPI."""
 
     def setUp(self):
-        self.places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.places.append('cpu')
-        if core.is_compiled_with_cuda():
-            self.places.append('gpu')
+        self.places = get_places(string_format=True)
 
     def test_power(self):
         """test_power."""
@@ -230,6 +221,34 @@ class TestPowerError(unittest.TestCase):
                     out = paddle.pow(x, 2)
 
             self.assertRaises(TypeError, x_dtype_error)
+
+
+class TestPowerAPI_ZeroSize(unittest.TestCase):
+    """TestPowerAPI."""
+
+    def setUp(self):
+        self.places = get_places(string_format=True)
+
+    def _test_power(self, shape):
+        np.random.seed(7)
+        for place in self.places:
+            dims = shape
+            x = (np.random.rand(*dims) * 10).astype(np.float64)
+            y = np.random.rand() * 10
+            paddle.disable_static()
+            paddle.set_device(place)
+            x_ = paddle.to_tensor(x)
+            x_.stop_gradient = False
+            y_ = y
+            res = paddle.pow(x_, y_)
+            np.testing.assert_allclose(res, np.power(x, y), rtol=1e-05)
+            loss = paddle.sum(res)
+            loss.backward()
+            np.testing.assert_allclose(x_.grad.shape, x_.shape)
+
+    def test_power(self):
+        self._test_power((0, 2))
+        self._test_power((0, 0))
 
 
 if __name__ == '__main__':

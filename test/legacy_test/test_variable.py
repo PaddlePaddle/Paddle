@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 from functools import reduce
 
 import numpy as np
+from op_test import get_places
 
 import paddle
 from paddle import base
@@ -272,15 +272,7 @@ class TestVariable(unittest.TestCase):
         self.assertTrue((result[0] == expected[0]).all())
 
     def test_slice(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(core.CUDAPlace(0))
+        places = get_places()
 
         for place in places:
             self._test_slice_index_tensor(place)
@@ -382,35 +374,37 @@ class TestVariable(unittest.TestCase):
             startup = paddle.static.Program()
             main = paddle.static.Program()
             scope = base.core.Scope()
-            with paddle.static.scope_guard(scope):
-                with paddle.static.program_guard(main, startup):
-                    x = paddle.static.data(
-                        name='x', shape=[3, 2, 1], dtype='float32'
-                    )
-                    x.persistable = True
-                    feed_data = np.ones(shape=[3, 2, 1], dtype=np.float32)
-                    detach_x = x.detach()
-                    exe = paddle.static.Executor(paddle.CPUPlace())
-                    exe.run(startup)
-                    result = exe.run(
-                        main, feed={'x': feed_data}, fetch_list=[x, detach_x]
-                    )
-                    self.assertTrue((result[1] == feed_data).all())
-                    self.assertTrue((result[0] == result[1]).all())
+            with (
+                paddle.static.scope_guard(scope),
+                paddle.static.program_guard(main, startup),
+            ):
+                x = paddle.static.data(
+                    name='x', shape=[3, 2, 1], dtype='float32'
+                )
+                x.persistable = True
+                feed_data = np.ones(shape=[3, 2, 1], dtype=np.float32)
+                detach_x = x.detach()
+                exe = paddle.static.Executor(paddle.CPUPlace())
+                exe.run(startup)
+                result = exe.run(
+                    main, feed={'x': feed_data}, fetch_list=[x, detach_x]
+                )
+                self.assertTrue((result[1] == feed_data).all())
+                self.assertTrue((result[0] == result[1]).all())
 
-                    modified_value = np.zeros(shape=[3, 2, 1], dtype=np.float32)
-                    detach_x.set_value(modified_value, scope)
-                    result = exe.run(main, fetch_list=[x, detach_x])
-                    self.assertTrue((result[1] == modified_value).all())
-                    self.assertTrue((result[0] == result[1]).all())
+                modified_value = np.zeros(shape=[3, 2, 1], dtype=np.float32)
+                detach_x.set_value(modified_value, scope)
+                result = exe.run(main, fetch_list=[x, detach_x])
+                self.assertTrue((result[1] == modified_value).all())
+                self.assertTrue((result[0] == result[1]).all())
 
-                    modified_value = np.random.uniform(
-                        -1, 1, size=[3, 2, 1]
-                    ).astype('float32')
-                    x.set_value(modified_value, scope)
-                    result = exe.run(main, fetch_list=[x, detach_x])
-                    self.assertTrue((result[1] == modified_value).all())
-                    self.assertTrue((result[0] == result[1]).all())
+                modified_value = np.random.uniform(
+                    -1, 1, size=[3, 2, 1]
+                ).astype('float32')
+                x.set_value(modified_value, scope)
+                result = exe.run(main, fetch_list=[x, detach_x])
+                self.assertTrue((result[1] == modified_value).all())
+                self.assertTrue((result[0] == result[1]).all())
 
 
 class TestVariableSlice(unittest.TestCase):
@@ -486,17 +480,7 @@ class TestVariableSlice(unittest.TestCase):
             self.assertTrue((result[i] == expected[i]).all())
 
     def test_slice(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(core.CUDAPlace(0))
-
-        for place in places:
+        for place in get_places():
             self._test_item_none(place)
             self._test_item_none_and_decrease(place)
 

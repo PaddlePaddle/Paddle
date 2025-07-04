@@ -222,49 +222,51 @@ class XPUTestAdamwOp2(XPUOpTestWrapper):
             exe = base.Executor(place)
             train_prog = base.Program()
             startup = base.Program()
-            with base.program_guard(train_prog, startup):
-                with base.unique_name.guard():
-                    data = paddle.static.data(name="data", shape=shape)
-                    conv = paddle.nn.Conv2D(
-                        in_channels=3,
-                        out_channels=8,
-                        kernel_size=3,
-                    )(data)
-                    loss = paddle.mean(conv)
+            with (
+                base.program_guard(train_prog, startup),
+                base.unique_name.guard(),
+            ):
+                data = paddle.static.data(name="data", shape=shape)
+                conv = paddle.nn.Conv2D(
+                    in_channels=3,
+                    out_channels=8,
+                    kernel_size=3,
+                )(data)
+                loss = paddle.mean(conv)
 
-                    if paddle.framework.in_pir_mode():
-                        beta1 = paddle.pir.core.create_persistable_value(
-                            shape=[1],
-                            dtype=self.in_type_str,
-                            initializer=paddle.nn.initializer.Constant(0.85),
-                        )
-                        beta2 = paddle.pir.core.create_persistable_value(
-                            shape=[1],
-                            dtype=self.in_type_str,
-                            initializer=paddle.nn.initializer.Constant(0.95),
-                        )
-                    else:
-                        beta1 = paddle.static.create_global_var(
-                            shape=[1],
-                            value=0.85,
-                            dtype=self.in_type_str,
-                            persistable=True,
-                        )
-                        beta2 = paddle.static.create_global_var(
-                            shape=[1],
-                            value=0.95,
-                            dtype=self.in_type_str,
-                            persistable=True,
-                        )
-                    betas = [beta1, beta2]
-                    opt = paddle.optimizer.AdamW(
-                        learning_rate=1e-5,
-                        beta1=beta1,
-                        beta2=beta2,
-                        weight_decay=0.01,
-                        epsilon=1e-8,
+                if paddle.framework.in_pir_mode():
+                    beta1 = paddle.pir.core.create_persistable_value(
+                        shape=[1],
+                        dtype=self.in_type_str,
+                        initializer=paddle.nn.initializer.Constant(0.85),
                     )
-                    opt.minimize(loss)
+                    beta2 = paddle.pir.core.create_persistable_value(
+                        shape=[1],
+                        dtype=self.in_type_str,
+                        initializer=paddle.nn.initializer.Constant(0.95),
+                    )
+                else:
+                    beta1 = paddle.static.create_global_var(
+                        shape=[1],
+                        value=0.85,
+                        dtype=self.in_type_str,
+                        persistable=True,
+                    )
+                    beta2 = paddle.static.create_global_var(
+                        shape=[1],
+                        value=0.95,
+                        dtype=self.in_type_str,
+                        persistable=True,
+                    )
+                betas = [beta1, beta2]
+                opt = paddle.optimizer.AdamW(
+                    learning_rate=1e-5,
+                    beta1=beta1,
+                    beta2=beta2,
+                    weight_decay=0.01,
+                    epsilon=1e-8,
+                )
+                opt.minimize(loss)
 
             exe.run(startup)
             data_np = np.random.random(shape).astype(self.in_type_str)
@@ -514,86 +516,72 @@ class XPUTestAdamwOp2(XPUOpTestWrapper):
 
             train_prog = base.Program()
             startup = base.Program()
-            with base.program_guard(train_prog, startup):
-                with base.unique_name.guard():
-                    x = paddle.static.data(
-                        name='x', shape=[None, 10], dtype='float32'
-                    )
-                    y = paddle.static.data(
-                        name='y', shape=[None, 1], dtype='float32'
-                    )
+            with (
+                base.program_guard(train_prog, startup),
+                base.unique_name.guard(),
+            ):
+                x = paddle.static.data(
+                    name='x', shape=[None, 10], dtype='float32'
+                )
+                y = paddle.static.data(
+                    name='y', shape=[None, 1], dtype='float32'
+                )
 
-                    weight_attr1 = paddle.framework.ParamAttr(
-                        name="linear_0.w_0"
-                    )
-                    bias_attr1 = paddle.framework.ParamAttr(
-                        name="linear_0.b_0",
-                        initializer=paddle.nn.initializer.Constant(value=1.0),
-                    )
-                    weight_attr2 = paddle.framework.ParamAttr(
-                        name="linear_1.w_0"
-                    )
-                    bias_attr2 = paddle.framework.ParamAttr(
-                        name="linear_1.b_0",
-                        initializer=paddle.nn.initializer.Constant(value=1.0),
-                    )
-                    linear1 = paddle.nn.Linear(
-                        10, 32, weight_attr=weight_attr1, bias_attr=bias_attr1
-                    )
-                    linear2 = paddle.nn.Linear(
-                        32, 1, weight_attr=weight_attr2, bias_attr=bias_attr2
-                    )
+                weight_attr1 = paddle.framework.ParamAttr(name="linear_0.w_0")
+                bias_attr1 = paddle.framework.ParamAttr(
+                    name="linear_0.b_0",
+                    initializer=paddle.nn.initializer.Constant(value=1.0),
+                )
+                weight_attr2 = paddle.framework.ParamAttr(name="linear_1.w_0")
+                bias_attr2 = paddle.framework.ParamAttr(
+                    name="linear_1.b_0",
+                    initializer=paddle.nn.initializer.Constant(value=1.0),
+                )
+                linear1 = paddle.nn.Linear(
+                    10, 32, weight_attr=weight_attr1, bias_attr=bias_attr1
+                )
+                linear2 = paddle.nn.Linear(
+                    32, 1, weight_attr=weight_attr2, bias_attr=bias_attr2
+                )
 
-                    out = linear1(x)
-                    out = linear2(out)
+                out = linear1(x)
+                out = linear2(out)
 
-                    fc1_w_mon1 = np.zeros(linear1.weight.shape).astype(
-                        "float32"
-                    )
-                    fc1_w_mon2 = np.zeros(linear1.weight.shape).astype(
-                        "float32"
-                    )
-                    fc1_w_mon2_max = np.zeros(linear1.weight.shape).astype(
-                        "float32"
-                    )
-                    fc1_b_mon1 = np.zeros(linear1.bias.shape).astype("float32")
-                    fc1_b_mon2 = np.zeros(linear1.bias.shape).astype("float32")
-                    fc1_b_mon2_max = np.zeros(linear1.bias.shape).astype(
-                        "float32"
-                    )
-                    fc2_w_mon1 = np.zeros(linear2.weight.shape).astype(
-                        "float32"
-                    )
-                    fc2_w_mon2 = np.zeros(linear2.weight.shape).astype(
-                        "float32"
-                    )
-                    fc2_w_mon2_max = np.zeros(linear2.weight.shape).astype(
-                        "float32"
-                    )
-                    fc2_b_mon1 = np.zeros(linear2.bias.shape).astype("float32")
-                    fc2_b_mon2 = np.zeros(linear2.bias.shape).astype("float32")
-                    fc2_b_mon2_max = np.zeros(linear2.bias.shape).astype(
-                        "float32"
-                    )
+                fc1_w_mon1 = np.zeros(linear1.weight.shape).astype("float32")
+                fc1_w_mon2 = np.zeros(linear1.weight.shape).astype("float32")
+                fc1_w_mon2_max = np.zeros(linear1.weight.shape).astype(
+                    "float32"
+                )
+                fc1_b_mon1 = np.zeros(linear1.bias.shape).astype("float32")
+                fc1_b_mon2 = np.zeros(linear1.bias.shape).astype("float32")
+                fc1_b_mon2_max = np.zeros(linear1.bias.shape).astype("float32")
+                fc2_w_mon1 = np.zeros(linear2.weight.shape).astype("float32")
+                fc2_w_mon2 = np.zeros(linear2.weight.shape).astype("float32")
+                fc2_w_mon2_max = np.zeros(linear2.weight.shape).astype(
+                    "float32"
+                )
+                fc2_b_mon1 = np.zeros(linear2.bias.shape).astype("float32")
+                fc2_b_mon2 = np.zeros(linear2.bias.shape).astype("float32")
+                fc2_b_mon2_max = np.zeros(linear2.bias.shape).astype("float32")
 
-                    cost = paddle.nn.functional.square_error_cost(
-                        input=out, label=y
-                    )
-                    avg_cost = paddle.mean(cost)
+                cost = paddle.nn.functional.square_error_cost(
+                    input=out, label=y
+                )
+                avg_cost = paddle.mean(cost)
 
-                    simple_lr_fun = partial(
-                        simple_lr_setting, decay_rate=0.8, n_layers=2
-                    )
+                simple_lr_fun = partial(
+                    simple_lr_setting, decay_rate=0.8, n_layers=2
+                )
 
-                    opt = paddle.optimizer.AdamW(
-                        learning_rate=learning_rate,
-                        beta1=beta1,
-                        beta2=beta2,
-                        weight_decay=weight_decay,
-                        epsilon=epsilon,
-                        lr_ratio=simple_lr_fun,
-                    )
-                    _, params_grads = opt.minimize(avg_cost)
+                opt = paddle.optimizer.AdamW(
+                    learning_rate=learning_rate,
+                    beta1=beta1,
+                    beta2=beta2,
+                    weight_decay=weight_decay,
+                    epsilon=epsilon,
+                    lr_ratio=simple_lr_fun,
+                )
+                _, params_grads = opt.minimize(avg_cost)
 
             def get_numpy_output(
                 param, grad, moment1, moment2, moment2_max, lr_ratio, t

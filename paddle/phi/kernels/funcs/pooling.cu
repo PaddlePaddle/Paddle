@@ -1446,7 +1446,7 @@ class Pool3dFunctor<phi::GPUContext, PoolProcess, T> {
 
     int64_t nthreads = batch_size * output_channels * output_depth *
                        output_height * output_width;
-    int64_t thread_num = 1024;
+    int thread_num = 1024;
 #ifdef WITH_NV_JETSON
     backends::gpu::ChangeThreadNum(context, &thread_num);
 #endif

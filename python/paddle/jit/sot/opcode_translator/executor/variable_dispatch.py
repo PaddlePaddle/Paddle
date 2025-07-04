@@ -18,6 +18,7 @@ import builtins
 import inspect
 import math
 import operator
+from dataclasses import fields
 from functools import partial, reduce
 from typing import TYPE_CHECKING
 
@@ -40,7 +41,7 @@ from ...utils import (
     UnsupportedOperationBreak,
     do_until_stop_iteration,
 )
-from ...utils.exceptions import InnerError
+from ...utils.exceptions import InnerError, SotCapturedStopIteration
 from ...utils.magic_methods import (
     BINARY_OPS,
     NEED_GUARD_ZERO_DIVISION_ERROR_OPS,
@@ -61,14 +62,16 @@ from .dispatch_functions import (
     tensor_dim,
 )
 from .dispatcher import Dispatcher, optional
-from .tracker import ConstTracker, DanglingTracker, DummyTracker
+from .tracker import ConstTracker, DanglingTracker, DummyTracker, GetAttrTracker
 from .variables import (
     BuiltinVariable,
     CallableVariable,
     ConstantVariable,
     ContainerVariable,
+    DataClassInstanceVariable,
     DictVariable,
     EnumerateVariable,
+    EnumVariable,
     ExceptionVariable,
     IterVariable,
     ListVariable,
@@ -247,6 +250,15 @@ Dispatcher.register(
     ("ConstantVariable | SymbolicVariable",),
     lambda var: VariableFactory.from_value(
         var.get_py_type(), graph=var.graph, tracker=DummyTracker([var])
+    ),
+)
+Dispatcher.register(
+    type,
+    ("VariableBase",),
+    lambda var: VariableFactory.from_value(
+        type(var.get_py_value()),
+        graph=var.graph,
+        tracker=GetAttrTracker(var, "__class__"),
     ),
 )
 
@@ -635,8 +647,8 @@ Dispatcher.register(
 
 def register_exception(exc_type: type[Exception]):
     @Dispatcher.register_decorator(exc_type)
-    def builtin_exception_dispatcher(*args) -> int:
-        exc = exc_type(*args)
+    def builtin_exception_dispatcher(*args: VariableBase) -> int:
+        exc = exc_type(*[arg.get_py_value() for arg in args])
         return ExceptionVariable(
             exc,
             graph=Dispatcher.graph,
@@ -793,6 +805,23 @@ Dispatcher.register(
 @Dispatcher.register_decorator(str.format)
 def str_format(var: ConstantVariable, *args: ConstantVariable):
     return var.format(*args)
+
+
+@Dispatcher.register_decorator(str.encode)
+def str_encode(
+    var: ConstantVariable,
+    encoding: ConstantVariable = None,  # type: ignore
+    errors: ConstantVariable = None,  # type: ignore
+):
+    if encoding is None:
+        encoding = ConstantVariable('utf-8', var.graph, DanglingTracker())
+    if errors is None:
+        errors = ConstantVariable('strict', var.graph, DanglingTracker())
+    return ConstantVariable(
+        var.get_py_value().encode(encoding=encoding.get_py_value()),
+        graph=var.graph,
+        tracker=DummyTracker([var, encoding, errors]),
+    )
 
 
 Dispatcher.register(
@@ -1377,7 +1406,7 @@ def dispatch_reduce(
     ):
         try:
             initializer = iterator.next()
-        except StopIteration:
+        except SotCapturedStopIteration:
             raise InnerError("reduce() of empty iterable with no initial value")
     result = initializer
 
@@ -1395,7 +1424,7 @@ def dispatch_max_iterable(var: ContainerVariable | IterVariable):
     call_next = BuiltinVariable(next, var.graph, DanglingTracker())
     try:
         res = call_next(it)
-    except StopIteration:
+    except SotCapturedStopIteration:
         raise InnerError("max() arg is an empty sequence")
     call_gt = BuiltinVariable(operator.gt, var.graph, DanglingTracker())
 
@@ -1555,6 +1584,53 @@ Dispatcher.register(
     lambda left, right: exception_variable_equal(left, right),
 )
 
+
+@Dispatcher.register_decorator(operator.eq)
+def dataclass_instance_eq(
+    lhs: DataClassInstanceVariable, rhs: DataClassInstanceVariable
+):
+    if lhs.get_py_type() != rhs.get_py_type():
+        return ConstantVariable(False, lhs.graph, DummyTracker([lhs, rhs]))
+
+    call_eq = BuiltinVariable(operator.eq, lhs.graph, DanglingTracker())
+    call_bool = BuiltinVariable(bool, lhs.graph, DanglingTracker())
+
+    return ConstantVariable(
+        all(
+            bool(
+                call_bool(
+                    call_eq(lhs.getattr(field.name), rhs.getattr(field.name))
+                )
+            )
+            for field in fields(lhs.get_py_type())
+        ),
+        lhs.graph,
+        DummyTracker([lhs, rhs]),
+    )
+
+
+@Dispatcher.register_decorator(operator.ne)
+def dataclass_instance_ne(lhs: TupleVariable, rhs: TupleVariable):
+    return Dispatcher.call(operator.eq, lhs, rhs).bool_not()
+
+
+Dispatcher.register(
+    operator.eq,
+    ("EnumVariable", "EnumVariable"),
+    lambda left, right: ConstantVariable(
+        left.get_py_value() == right.get_py_value(),
+        left.graph,
+        tracker=DummyTracker([left, right]),
+    ),
+)
+
+
+# TODO(wangmingkai): Forward operator.ne of (VariableBase, VariableBase) to the negation of operator.eq
+@Dispatcher.register_decorator(operator.ne)
+def dispatch_enum_ne(lhs: EnumVariable, rhs: EnumVariable):
+    return Dispatcher.call(operator.eq, lhs, rhs).bool_not()
+
+
 Dispatcher.register(
     bool,
     ("NumPyVariable",),
@@ -1579,7 +1655,7 @@ def dispatch_any(var: ContainerVariable | IterVariable):
             assert isinstance(bool_item, ConstantVariable)
             if bool_item.get_py_value():
                 return ConstantVariable(True, graph, DummyTracker([var]))
-        except StopIteration:
+        except SotCapturedStopIteration:
             break
     return ConstantVariable(False, graph, DummyTracker([var]))
 
@@ -1597,7 +1673,7 @@ def dispatch_all(var: ContainerVariable | IterVariable):
             assert isinstance(bool_item, ConstantVariable)
             if not bool_item.get_py_value():
                 return ConstantVariable(False, graph, DummyTracker([var]))
-        except StopIteration:
+        except SotCapturedStopIteration:
             break
     return ConstantVariable(True, graph, DummyTracker([var]))
 

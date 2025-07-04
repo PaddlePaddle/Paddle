@@ -41,6 +41,7 @@ void ClipKernel(const Context& dev_ctx,
                               static_cast<float>(max_)));
 
   dev_ctx.template Alloc<T>(out);
+  if (out && out->numel() == 0) return;
   using XPUDataType = typename XPUTypeTrait<T>::Type;
   auto x_data = reinterpret_cast<const XPUDataType*>(x.data<T>());
   auto out_data = reinterpret_cast<XPUDataType*>(out->data<T>());

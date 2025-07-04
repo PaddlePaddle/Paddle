@@ -69,6 +69,7 @@ if TYPE_CHECKING:
     from collections.abc import Generator
 
     from paddle import Tensor
+    from paddle.base.libpaddle import NCCLConfig
     from paddle.nn.layer.layers import _StateDict
 __all__ = []
 
@@ -984,7 +985,7 @@ def _print_modified_flags(modified_flags):
         )
 
 
-def init_parallel_env() -> Group:
+def init_parallel_env(nccl_config: NCCLConfig | None = None) -> Group:
     """
 
     Initialize parallel training environment in dynamic graph mode.
@@ -1146,6 +1147,10 @@ def init_parallel_env() -> Group:
         if backend in ["nccl", 'xccl', 'bkcl', 'flagcx']:
             core.CommContextManager.set_device_id(parallel_env.device_id)
 
+        from paddle.distributed.fleet.base.topology import (
+            message2nccl_config,
+        )
+
         pg = _new_process_group_impl(
             backend,
             default_store,
@@ -1153,6 +1158,10 @@ def init_parallel_env() -> Group:
             world_size,
             _default_group_name,
             pg_options=None,
+            nccl_config=message2nccl_config(
+                nccl_config,
+                "default",
+            ),
         )
         ranks = list(range(world_size))
         group = Group(rank, 0, ranks, pg=pg, name=_default_group_name)
