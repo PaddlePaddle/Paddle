@@ -64,8 +64,8 @@ rem skip them on Windows-GPU(CUDA 12.0)
 rem LEVEL 2: run all test
 if not defined NIGHTLY_MODE echo NIGHTLY_MODE=OFF >> %GITHUB_ENV%
 if not defined retry_times echo retry_times=1 >> %GITHUB_ENV%
-if not defined PYTHON_ROOT echo "PYTHON_ROOT=C:\Python38" >> %GITHUB_ENV%
-if not defined BUILD_DIR echo "BUILD_DIR=build" >> %GITHUB_ENV%
+if not defined PYTHON_ROOT echo PYTHON_ROOT=C:\Python38 >> %GITHUB_ENV%
+if not defined BUILD_DIR echo BUILD_DIR=build >> %GITHUB_ENV%
 if not defined TEST_INFERENCE echo TEST_INFERENCE=ON >> %GITHUB_ENV%
 if not defined WITH_PIP_CUDA_LIBRARIES echo WITH_PIP_CUDA_LIBRARIES=OFF >> %GITHUB_ENV%
 
@@ -80,10 +80,10 @@ git config --global core.longpaths true
 
 rem ------initialize the python environment------
 set "PYTHON_VENV_ROOT=%cache_dir%\python_venv"
-echo "PYTHON_VENV_ROOT=%cache_dir%\python_venv" >> %GITHUB_ENV%
+echo PYTHON_VENV_ROOT=%PYTHON_VENV_ROOT% >> %GITHUB_ENV%
 if not exist %PYTHON_VENV_ROOT% mkdir %PYTHON_VENV_ROOT%
 set "PYTHON_EXECUTABLE=%PYTHON_VENV_ROOT%\Scripts\python.exe"
-echo "PYTHON_EXECUTABLE=%PYTHON_VENV_ROOT%\Scripts\python.exe" >> %GITHUB_ENV%
+echo PYTHON_EXECUTABLE=%PYTHON_EXECUTABLE% >> %GITHUB_ENV%
 %PYTHON_ROOT%\python.exe -m venv --clear %PYTHON_VENV_ROOT%
 call "%PYTHON_VENV_ROOT%\Scripts\activate.bat"
 if %ERRORLEVEL% NEQ 0 (
