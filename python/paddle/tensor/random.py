@@ -449,7 +449,7 @@ def multinomial(
     name: str | None = None,
 ) -> Tensor:
     """
-    Returns a Tensor filled with random values sampled from a Multinomical
+    Returns a Tensor filled with random values sampled from a Multinomial
     distribution. The input ``x`` is a tensor with probabilities for generating the
     random number. Each element in ``x`` should be larger or equal to 0, but not all
     0. ``replacement`` indicates whether it is a replaceable sample. If ``replacement``

@@ -12,15 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, get_places
 
 import paddle
 from paddle import base
-from paddle.base import core
 
 
 class TestInverseOp(OpTest):
@@ -135,15 +133,7 @@ class TestInverseOpComplex128(TestInverseOp):
 class TestInverseAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
-        self.places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.places.append(base.CUDAPlace(0))
+        self.places = get_places()
 
     def check_static_result(self, place):
         with paddle.static.program_guard(
@@ -202,15 +192,7 @@ class TestInverseAPIError(unittest.TestCase):
 
 class TestInverseSingularAPI(unittest.TestCase):
     def setUp(self):
-        self.places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.places.append(base.CUDAPlace(0))
+        self.places = get_places()
 
     def check_static_result(self, place):
         with paddle.static.program_guard(
@@ -255,15 +237,7 @@ class TestInverseSingularAPI(unittest.TestCase):
 class TestInverseAPI_ZeroSize(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
-        self.places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.places.append(base.CUDAPlace(0))
+        self.places = get_places()
 
     def test_dygraph(self):
         for place in self.places:

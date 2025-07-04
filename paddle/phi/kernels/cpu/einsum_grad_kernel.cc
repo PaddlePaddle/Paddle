@@ -16,7 +16,7 @@
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/impl/einsum_grad_impl.h"
+#include "paddle/phi/kernels/impl/einsum_grad_kernel_impl.h"
 
 PD_REGISTER_KERNEL(einsum_grad,
                    CPU,
