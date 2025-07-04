@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import sys
 import unittest
 
@@ -20,7 +19,12 @@ import numpy as np
 
 sys.path.append("../../legacy_test")
 from op import Operator
-from op_test import OpTest, convert_float_to_uint16, paddle_static_guard
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_places,
+    paddle_static_guard,
+)
 
 import paddle
 from paddle import base
@@ -141,17 +145,7 @@ class TestFillConstantOpWithSelectedRows(unittest.TestCase):
         np.testing.assert_array_equal(result_array, full_array)
 
     def test_fill_constant_with_selected_rows(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(core.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(core.CUDAPlace(0))
-
-        for place in places:
+        for place in get_places():
             self.check_with_place(place)
 
 

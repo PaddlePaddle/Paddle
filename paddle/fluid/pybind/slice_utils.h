@@ -79,7 +79,11 @@ static inline std::vector<paddle::Tensor> expandTensors(
   for (auto& index : indices) {
     if (index.dtype() == paddle::DataType::BOOL) {
       auto bool_2_idx = nonzero_ad_func(index);
-      result.emplace_back(squeeze_ad_func(bool_2_idx, {-1}));
+      for (int j = 0; j < index.dims().size(); j++) {
+        paddle::Tensor sliced_tensor =
+            slice_ad_func(bool_2_idx, {1}, {j}, {j + 1}, {1}, {1});
+        result.emplace_back(sliced_tensor);
+      }
     } else {
       result.emplace_back(index);
     }

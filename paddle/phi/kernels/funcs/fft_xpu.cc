@@ -77,37 +77,9 @@ void exec_normalization(const phi::XPUContext& ctx,
     DenseTensor scale_tensor =
         phi::Full<T, phi::XPUContext>(ctx, {1}, static_cast<T>(scale));
     MultiplyKernel<T, phi::XPUContext>(ctx, in, scale_tensor, out);
-    // ScaleKernel<T, phi::XPUContext>(ctx, in, scale, 0, true, out);
   } else {
     AssignKernel<phi::XPUContext>(ctx, in, out);
   }
-}
-
-bool has_large_prime_factor(int64_t n) {
-  constexpr int64_t first_large_prime = 11;
-  const std::array<int64_t, 4> prime_radices{{2, 3, 5, 7}};
-  for (auto prime : prime_radices) {
-    if (n < first_large_prime) {
-      return false;
-    }
-    while (n % prime == 0) {
-      n /= prime;
-    }
-  }
-  return n != 1;
-}
-
-inline bool use_cache(const int64_t* signal_size) {
-  bool using_cache = true;
-  int cufft_version;
-  phi::dynload::cufftGetVersion(&cufft_version);
-  if (10300 <= cufft_version && cufft_version <= 10400) {
-    using_cache = std::none_of(
-        signal_size + 1, signal_size + kMaxDataNdim, [](int64_t dim_size) {
-          return has_large_prime_factor(dim_size);
-        });
-  }
-  return using_cache;
 }
 
 // up to 3d unnormalized fft transform (c2r, r2c, c2c)
@@ -171,22 +143,12 @@ void exec_fft(const phi::XPUContext& ctx,
   collapsed_output.Resize(collapsed_output_shape);
   ctx.Alloc<To>(&collapsed_output);
 
+  int64_t device_id = ctx.GetPlace().GetDeviceId();
+  FFTConfigCache& plan_cache = get_fft_plan_cache(device_id);
+  std::lock_guard<std::mutex> guard(plan_cache.mutex);
   FFTConfigKey key =
       create_fft_configkey(collapsed_input, collapsed_output, signal_ndim);
-  int64_t device_id = ctx.GetPlace().GetDeviceId();
-  FFTConfig* config = nullptr;
-  std::unique_ptr<FFTConfig> config_ = nullptr;
-  bool using_cache = use_cache(key.sizes_);
-
-  if (using_cache) {
-    FFTConfigCache& plan_cache = get_fft_plan_cache(device_id);
-    std::unique_lock<std::mutex> guard(plan_cache.mutex, std::defer_lock);
-    guard.lock();
-    config = &(plan_cache.lookup(key));
-  } else {
-    config_ = std::make_unique<FFTConfig>(key);
-    config = config_.get();
-  }
+  FFTConfig* config = &(plan_cache.lookup(key));
 
   const int64_t workspace_size = static_cast<int64_t>(config->workspace_size());
   DenseTensor workspace_tensor = Empty<uint8_t>(ctx, {workspace_size});

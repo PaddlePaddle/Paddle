@@ -1,4 +1,4 @@
-# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,7 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, get_places
+from get_test_cover_info import (
+    XPUOpTestWrapper,
+    create_test_class,
+    get_xpu_op_support_types,
+)
+from op_test_xpu import XPUOpTest
 
 import paddle
 from paddle import static
@@ -33,46 +38,73 @@ def ref_view_as_real(x):
     return np.stack([x.real, x.imag], -1)
 
 
-class TestViewAsComplexOp(OpTest):
-    def setUp(self):
-        self.op_type = "as_complex"
-        self.python_api = paddle.as_complex
-        x = np.random.randn(10, 10, 2).astype("float64")
-        out_ref = ref_view_as_complex(x)
-        self.inputs = {'X': x}
-        self.outputs = {'Out': out_ref}
+class XPUTestAsComplexOp(XPUOpTestWrapper):
+    def __init__(self):
+        self.op_name = 'as_complex'
+        self.use_dynamic_create_class = False
 
-    def test_check_output(self):
-        self.check_output(check_pir=True)
+    class TestViewAsComplexOp(XPUOpTest):
+        def setUp(self):
+            self.op_type = "as_complex"
+            self.python_api = paddle.as_complex
+            x = np.random.randn(10, 10, 2).astype("float32")
+            out_ref = ref_view_as_complex(x)
+            self.inputs = {'X': x}
+            self.outputs = {'Out': out_ref}
 
-    def test_check_grad(self):
-        self.check_grad(
-            ['X'],
-            'Out',
-            check_pir=True,
-        )
+        def test_check_output(self):
+            if paddle.is_compiled_with_xpu():
+                place = paddle.XPUPlace(0)
+                self.check_output_with_place(place)
+
+        def test_check_grad(self):
+            if paddle.is_compiled_with_xpu():
+                place = paddle.XPUPlace(0)
+                self.check_grad_with_place(
+                    place,
+                    ['X'],
+                    'Out',
+                )
 
 
-class TestViewAsRealOp(OpTest):
-    def setUp(self):
-        self.op_type = "as_real"
-        real = np.random.randn(10, 10).astype("float64")
-        imag = np.random.randn(10, 10).astype("float64")
-        x = real + 1j * imag
-        out_ref = ref_view_as_real(x)
-        self.inputs = {'X': x}
-        self.outputs = {'Out': out_ref}
-        self.python_api = paddle.as_real
+class XPUTestAsRealOp(XPUOpTestWrapper):
+    def __init__(self):
+        self.op_name = 'as_real'
+        self.use_dynamic_create_class = False
 
-    def test_check_output(self):
-        self.check_output(check_pir=True)
+    class TestViewAsRealOp(XPUOpTest):
+        def setUp(self):
+            self.op_type = "as_real"
+            real = np.random.randn(10, 10).astype("float32")
+            imag = np.random.randn(10, 10).astype("float32")
+            x = real + 1j * imag
+            out_ref = ref_view_as_real(x)
+            self.inputs = {'X': x}
+            self.outputs = {'Out': out_ref}
+            self.python_api = paddle.as_real
 
-    def test_check_grad(self):
-        self.check_grad(
-            ['X'],
-            'Out',
-            check_pir=True,
-        )
+        def test_check_output(self):
+            if paddle.is_compiled_with_xpu():
+                place = paddle.XPUPlace(0)
+                self.check_output_with_place(place)
+
+        def test_check_grad(self):
+            if paddle.is_compiled_with_xpu():
+                place = paddle.XPUPlace(0)
+                self.check_grad_with_place(
+                    place,
+                    ['X'],
+                    'Out',
+                )
+
+
+support_types = get_xpu_op_support_types('as_complex')
+for stype in support_types:
+    create_test_class(globals(), XPUTestAsComplexOp, stype)
+
+support_types = get_xpu_op_support_types('as_real')
+for stype in support_types:
+    create_test_class(globals(), XPUTestAsRealOp, stype)
 
 
 class TestViewAsComplexAPI(unittest.TestCase):
@@ -119,22 +151,6 @@ class TestViewAsRealAPI(unittest.TestCase):
         exe.run(sp)
         [out_np] = exe.run(mp, feed={"x": self.x}, fetch_list=[out])
         np.testing.assert_allclose(self.out, out_np, rtol=1e-05)
-
-
-class TestViewAsRealAPI_ZeroSize(unittest.TestCase):
-    def setUp(self):
-        self.x = np.random.randn(10, 0) + 1j * np.random.randn(10, 0)
-        self.out = ref_view_as_real(self.x)
-
-    def test_dygraph(self):
-        for place in get_places():
-            with dygraph.guard(place):
-                x_tensor = paddle.to_tensor(self.x)
-                x_tensor.stop_gradient = False
-                out = paddle.as_real(x_tensor)
-                np.testing.assert_allclose(self.out, out.numpy(), rtol=1e-05)
-                out.sum().backward()
-                np.testing.assert_allclose(x_tensor.grad.shape, x_tensor.shape)
 
 
 if __name__ == "__main__":

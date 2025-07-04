@@ -328,7 +328,7 @@ static void UniqueDim(const Context& context,
 
 template <typename Context, typename InT>
 struct UniqueFlattenedTensorFunctor {
-  const Context& ctx_; /*  */
+  const Context& dev_ctx_; /*  */
   const DenseTensor& in_;
   DenseTensor* out_;
   DenseTensor* indices_;
@@ -347,7 +347,7 @@ struct UniqueFlattenedTensorFunctor {
                                bool return_index,
                                bool return_inverse,
                                bool return_counts)
-      : ctx_(context),
+      : dev_ctx_(context),
         in_(in),
         out_(out),
         indices_(indices),
@@ -359,7 +359,7 @@ struct UniqueFlattenedTensorFunctor {
 
   template <typename IndexT>
   void apply() const {
-    UniqueFlattenedTensor<Context, InT, IndexT>(ctx_,
+    UniqueFlattenedTensor<Context, InT, IndexT>(dev_ctx_,
                                                 in_,
                                                 out_,
                                                 indices_,
@@ -373,7 +373,7 @@ struct UniqueFlattenedTensorFunctor {
 
 template <typename Context, typename InT>
 struct UniqueDimFunctor {
-  const Context& ctx_;
+  const Context& dev_ctx_;
   const DenseTensor& in_;
   DenseTensor* out_;
   DenseTensor* indices_;
@@ -394,7 +394,7 @@ struct UniqueDimFunctor {
                    bool return_index,
                    bool return_inverse,
                    bool return_counts)
-      : ctx_(context),
+      : dev_ctx_(context),
         in_(in),
         out_(out),
         indices_(indices),
@@ -407,7 +407,7 @@ struct UniqueDimFunctor {
 
   template <typename IndexT>
   void apply() const {
-    UniqueDim<Context, InT, IndexT>(ctx_,
+    UniqueDim<Context, InT, IndexT>(dev_ctx_,
                                     in_,
                                     out_,
                                     indices_,
