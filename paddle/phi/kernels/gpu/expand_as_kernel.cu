@@ -47,10 +47,10 @@ void ExpandAsKernel(const Context& dev_ctx,
   vec_in_dims.insert(vec_in_dims.begin(), diff, 1);
 
   for (unsigned int i = 0; i < vec_in_dims.size(); ++i) {
-    PADDLE_ENFORCE_NE(
-        target_shape[i],
-        0,
-        errors::InvalidArgument("The value of target shape cannot be zero."));
+    if (target_shape[i] == 0) {
+      dev_ctx.template Alloc<T>(out);
+      return;
+    }
     if (i < diff) {
       PADDLE_ENFORCE_GT(
           target_shape[i],
