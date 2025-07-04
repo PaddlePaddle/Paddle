@@ -23,7 +23,7 @@ jobs:
   build-and-test:
     name: Build and test
     runs-on:
-      group: win-gpu
+      group: win-inference
     env:
       NIGHTLY_MODE: "OFF"
       WITH_UNITY_BUILD: "ON"
@@ -35,8 +35,8 @@ jobs:
       PRECISION_TEST: "OFF"
       PYTHON_ROOT: C:\Python310
       vcvars64_dir: 'C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvars64.bat'
-      CUDA_TOOLKIT_ROOT_DIR: 'C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.0'
-      TENSORRT_ROOT: D:\TensorRT
+      CUDA_TOOLKIT_ROOT_DIR: 'C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.2'
+      TENSORRT_ROOT: D:/TensorRT-8.0.1.6
       CTEST_PARALLEL_LEVEL: 1
       GENERATOR: "Ninja"
       GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -62,11 +62,12 @@ jobs:
           WITH_MKL: "ON"
           WITH_GPU: "ON"
           WITH_AVX: "ON"
-          MSVC_STATIC_CRT: "OFF"
+          MSVC_STATIC_CRT: "ON"
           ON_INFER: "ON"
           WITH_TENSORRT: "ON"
-          WITH_INFERENCE_API_TEST: "OFF"
-          WIN_UNITTEST_LEVEL: 0
+          WITH_INFERENCE_API_TEST: "ON"
+          WITH_ONNXRUNTIME: "ON"
+          WIN_UNITTEST_LEVEL: 2
           CUDA_ARCH_NAME: "Auto"
         run: |
           python -m pip install bce-python-sdk==0.8.74
@@ -80,10 +81,6 @@ jobs:
       - name: Test paddle
         run: |
           call %ci_scripts%\test.bat
-
-      - name: Test fluid library
-        run: |
-          call %ci_scripts%\test_fluid_library.bat
 
       - name: Clean up dir
         if: always()
