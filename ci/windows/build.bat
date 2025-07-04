@@ -1,7 +1,7 @@
 setlocal enabledelayedexpansion
 
-if not defined SCCACHE_ROOT set SCCACHE_ROOT=D:\sccache
-set PATH=%SCCACHE_ROOT%;%PATH%
+if not defined SCCACHE_ROOT set "SCCACHE_ROOT=D:\sccache"
+set "PATH=%SCCACHE_ROOT%;%PATH%"
 if "%WITH_SCCACHE%"=="ON" (
     cmd /C sccache -V || call :install_sccache
 
@@ -10,12 +10,12 @@ if "%WITH_SCCACHE%"=="ON" (
 
     :: Locally storage on windows
     if not exist %SCCACHE_ROOT% mkdir %SCCACHE_ROOT%
-    set SCCACHE_DIR=%SCCACHE_ROOT%\.cache
+    set "SCCACHE_DIR=%SCCACHE_ROOT%\.cache"
 
     :: Sccache will shut down if a source file takes more than 10 mins to compile
     set SCCACHE_IDLE_TIMEOUT=0
     set SCCACHE_CACHE_SIZE=100G
-    set SCCACHE_ERROR_LOG=%SCCACHE_ROOT%\sccache_log.txt
+    set "SCCACHE_ERROR_LOG=%SCCACHE_ROOT%\sccache_log.txt"
     set SCCACHE_LOG=quiet
 
     @REM :: Distributed storage on windows
@@ -53,20 +53,20 @@ mkdir %BUILD_DIR%
 rem set vs language to english to block showIncludes, this need vs has installed English language package.
 set VSLANG=1033
 rem Configure the environment for 64-bit builds. 'DISTUTILS_USE_SDK' indicates that the user has selected the compiler.
-if not defined vcvars64_dir set vcvars64_dir="C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvars64.bat"
-call "%vcvars64_dir%"
+if not defined vcvars64_dir set "vcvars64_dir=C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvars64.bat"
+call %vcvars64_dir%
 
 set DISTUTILS_USE_SDK=1
 rem Windows 10 Kit bin dir
-set PATH=C:\Program Files (x86)\Windows Kits\10\bin\10.0.17763.0\x64;%PATH%
+set "PATH=C:\Program Files (x86)\Windows Kits\10\bin\10.0.17763.0\x64;%PATH%"
 rem Use 64-bit ToolSet to compile
 set PreferredToolArchitecture=x64
 
-for /F %%# in ('wmic os get localdatetime^|findstr 20') do set start=%%#
+for /f "usebackq" %%i in (`powershell -NoProfile -Command "Get-Date -Format 'yyyyMMddHHmmss'"`) do set start=%%i
 set start=%start:~4,10%
 
-if not defined CUDA_TOOLKIT_ROOT_DIR set CUDA_TOOLKIT_ROOT_DIR=C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.2
-set PATH=%TENSORRT_ROOT:/=\%\lib;%CUDA_TOOLKIT_ROOT_DIR:/=\%\bin;%CUDA_TOOLKIT_ROOT_DIR:/=\%\libnvvp;%PATH%
+if not defined CUDA_TOOLKIT_ROOT_DIR set "CUDA_TOOLKIT_ROOT_DIR=C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.2"
+set "PATH=%TENSORRT_ROOT:/=\%\lib;%CUDA_TOOLKIT_ROOT_DIR:/=\%\bin;%CUDA_TOOLKIT_ROOT_DIR:/=\%\libnvvp;%PATH%"
 
 @ECHO ON
 if "%WITH_GPU%"=="ON" (
@@ -77,8 +77,8 @@ if "%WITH_GPU%"=="ON" (
 )
 echo %PATH%
 rem CUDA_TOOLKIT_ROOT_DIR in cmake must use / rather than \
-set TENSORRT_ROOT=%TENSORRT_ROOT:\=/%
-set CUDA_TOOLKIT_ROOT_DIR=%CUDA_TOOLKIT_ROOT_DIR:\=/%
+set "TENSORRT_ROOT=%TENSORRT_ROOT:\=/%"
+set "CUDA_TOOLKIT_ROOT_DIR=%CUDA_TOOLKIT_ROOT_DIR:\=/%"
 
 rem install ninja if GENERATOR is Ninja
 if %GENERATOR% == "Ninja" (
@@ -197,6 +197,8 @@ echo this is a CI-Windows task, will try to reuse bos and local third_party cach
 
 :cmake_impl
 if "%WITH_TESTING%"=="ON" (
+    echo [%work_dir%]
+    echo [%work_dir%\%BUILD_DIR%]
     cd /d %work_dir%\%BUILD_DIR%
     rem whether to run cpp test
     python -m pip install PyGithub
