@@ -50,6 +50,9 @@ jobs:
           python -c "import wget;wget.download('https://paddle-github-action.bj.bcebos.com/windows/PR/%PR_ID%/%COMMIT_ID%/Paddle.tar.zst')"
           zstd -d Paddle.tar.zst && tar -xf Paddle.tar
           del Paddle.tar Paddle.tar.zst
+          echo ----------------------------------------------------------------------
+          dir Paddle\third_party\openvino
+          echo ----------------------------------------------------------------------
           call %ci_scripts%\clean_env.bat
           echo ----------------------------------------------------------------------
           dir Paddle\third_party\openvino
@@ -57,9 +60,6 @@ jobs:
 
       - name: Config env
         run: |
-          echo ----------------------------------------------------------------------
-          dir third_party\openvino
-          echo ----------------------------------------------------------------------
           call %ci_scripts%\config_env.bat
 
       - name: Build paddle

@@ -1,20 +1,12 @@
 setlocal enabledelayedexpansion
 @ECHO ON
-echo ----------------------------------------------------------------------
-dir third_party\openvino
-echo ----------------------------------------------------------------------
 set work_dir=%cd%
 echo work_dir=%work_dir%>> %GITHUB_ENV%
-echo ----------------------------------------------------------------------
-dir third_party\openvino
-echo ----------------------------------------------------------------------
 if not defined cache_dir (
     set "cache_dir=%work_dir%\..\cache"
     echo cache_dir=%cache_dir%>> %GITHUB_ENV%
 )
-echo ----------------------------------------------------------------------
-dir third_party\openvino
-echo ----------------------------------------------------------------------
+
 if not exist %cache_dir% mkdir %cache_dir%
 if not exist %cache_dir%\tools (
     cd /d %cache_dir%
@@ -23,9 +15,7 @@ if not exist %cache_dir%\tools (
     tar xf tools.zip
     cd /d %work_dir%
 )
-echo ----------------------------------------------------------------------
-dir third_party\openvino
-echo ----------------------------------------------------------------------
+
 pip config set global.trusted-host pypi.org
 pip config set global.trusted-host files.pythonhosted.org
 pip config set global.trusted-host pypi.python.org
@@ -40,9 +30,6 @@ git remote add upstream https://github.com/PaddlePaddle/Paddle.git
 git --no-pager pull upstream %BRANCH% --no-edit
 if %errorlevel% NEQ 0 exit /b 1
 if exist .git\index.lock del .git\index.lock 2>NUL
-echo ----------------------------------------------------------------------
-dir third_party\openvino
-echo ----------------------------------------------------------------------
 if not defined GENERATOR echo GENERATOR="Visual Studio 15 2017 Win64">> %GITHUB_ENV%
 if not defined WITH_TENSORRT echo WITH_TENSORRT=ON>> %GITHUB_ENV%
 if not defined TENSORRT_ROOT echo TENSORRT_ROOT=D:/TensorRT>> %GITHUB_ENV%
@@ -84,9 +71,7 @@ if not defined WITH_PIP_CUDA_LIBRARIES echo WITH_PIP_CUDA_LIBRARIES=OFF>> %GITHU
 
 echo UPLOAD_TP_FILE=OFF>> %GITHUB_ENV%
 echo UPLOAD_TP_CODE=OFF>> %GITHUB_ENV%
-echo ----------------------------------------------------------------------
-dir third_party\openvino
-echo ----------------------------------------------------------------------
+
 echo error_code=0 >> %GITHUB_ENV%
 type %cache_dir%\error_code.txt
 
@@ -105,9 +90,7 @@ if %ERRORLEVEL% NEQ 0 (
     echo activate python virtual environment failed!
     exit /b 5
 )
-echo ----------------------------------------------------------------------
-dir third_party\openvino
-echo ----------------------------------------------------------------------
+
 if "%WITH_PYTHON%" == "ON" (
     where python
     where pip
