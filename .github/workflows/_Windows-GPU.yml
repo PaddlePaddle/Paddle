@@ -52,7 +52,7 @@ jobs:
           del Paddle.tar Paddle.tar.zst
           call %ci_scripts%\clean_env.bat
           echo ----------------------------------------------------------------------
-          dir third_party\openvino
+          dir Paddle\third_party\openvino
           echo ----------------------------------------------------------------------
 
       - name: Config env
