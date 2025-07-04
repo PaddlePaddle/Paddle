@@ -178,7 +178,7 @@ if "%UPLOAD_TP_CODE%"=="ON" (
         tar -cf %md5%.tar ./third_party ./.git/modules && zstd %md5%.tar
         if !errorlevel! EQU 0 (
             echo Uploading source code of third party: uploading ...
-            python !BCE_FILE! %md5%.tar.zst paddle-windows/third_party_code/%sub_dir% 1>nul
+            python !BCE_FILE! %md5%.tar.zst paddle-github-action/windows/third_party_code/%sub_dir% 1>nul
             if !errorlevel! EQU 0 (
                 echo Upload source code of third party %md5% to bos paddle-github-action/windows/third_party_code/%sub_dir% successfully.
             ) else (
