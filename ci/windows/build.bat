@@ -154,6 +154,7 @@ if !ERRORLEVEL! EQU 0 (
         echo Getting source code of third party : successful
     )
 ) else (
+    @REM rmdir third_party\openvino\doc
     git submodule update --init --recursive
     if !errorlevel! EQU 0 (
         set UPLOAD_TP_CODE=ON

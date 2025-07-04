@@ -49,40 +49,40 @@ jobs:
           python -m pip install wget
           python -c "import wget;wget.download('https://paddle-github-action.bj.bcebos.com/windows/PR/%PR_ID%/%COMMIT_ID%/Paddle.tar.zst')"
           zstd -d Paddle.tar.zst && tar -xf Paddle.tar
-          del Paddle.tar Paddle.tar.zst
           echo ----------------------------------------------------------------------
           dir Paddle\third_party\openvino
           echo ----------------------------------------------------------------------
-          call %ci_scripts%\clean_env.bat
+          rem del Paddle.tar Paddle.tar.zst
           echo ----------------------------------------------------------------------
           dir Paddle\third_party\openvino
           echo ----------------------------------------------------------------------
+          rem call %ci_scripts%\clean_env.bat
 
-      - name: Config env
-        run: |
-          call %ci_scripts%\config_env.bat
+    #   - name: Config env
+    #     run: |
+    #       call %ci_scripts%\config_env.bat
 
-      - name: Build paddle
-        env:
-          WITH_MKL: "ON"
-          WITH_GPU: "ON"
-          WITH_AVX: "ON"
-          MSVC_STATIC_CRT: "OFF"
-          ON_INFER: "ON"
-          WITH_TENSORRT: "ON"
-          WITH_INFERENCE_API_TEST: "OFF"
-          WIN_UNITTEST_LEVEL: 0
-          CUDA_ARCH_NAME: "Auto"
-        run: |
-          @ECHO ON
-          python -m pip install bce-python-sdk==0.8.74
-          call %ACTION_DIR%\proxy.bat
-          echo ----------------------------------------------------------------------
-          dir third_party\openvino
-          echo ----------------------------------------------------------------------
-          call %ci_scripts%\build.bat
+    #   - name: Build paddle
+    #     env:
+    #       WITH_MKL: "ON"
+    #       WITH_GPU: "ON"
+    #       WITH_AVX: "ON"
+    #       MSVC_STATIC_CRT: "OFF"
+    #       ON_INFER: "ON"
+    #       WITH_TENSORRT: "ON"
+    #       WITH_INFERENCE_API_TEST: "OFF"
+    #       WIN_UNITTEST_LEVEL: 0
+    #       CUDA_ARCH_NAME: "Auto"
+    #     run: |
+    #       @ECHO ON
+    #       python -m pip install bce-python-sdk==0.8.74
+    #       call %ACTION_DIR%\proxy.bat
+    #       echo ----------------------------------------------------------------------
+    #       dir third_party\openvino
+    #       echo ----------------------------------------------------------------------
+    #       call %ci_scripts%\build.bat
 
-    # - name: Clean up dir
-    #   if: always()
-    #   run: |
-    #     del /s /q %WORKSPACE_DIR%\Paddle
+    # # - name: Clean up dir
+    # #   if: always()
+    # #   run: |
+    # #     del /s /q %WORKSPACE_DIR%\Paddle
